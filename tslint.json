@@ -1,0 +1,12 @@
+{
+  "rules": {
+    "no-string-throw": true,
+    "no-unused-expression": true,
+    "no-duplicate-variable": true,
+    "curly": false,
+    "class-name": true,
+    "semicolon": [false, "always"],
+    "triple-equals": true
+  },
+  "defaultSeverity": "warning"
+}

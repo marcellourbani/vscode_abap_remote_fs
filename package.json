@@ -1,0 +1,87 @@
+{
+  "name": "vscode-abap-remote-fs",
+  "displayName": "vscode_abap_remote_fs",
+  "description": "Work on your ABAP code straight from the server",
+  "version": "0.0.1",
+  "publisher": "murbani",
+  "engines": {
+    "vscode": "^1.28.0"
+  },
+  "categories": [
+    "Other"
+  ],
+  "keywords": [
+    "ABAP",
+    "sap",
+    "filesystem",
+    "remote"
+  ],
+  "scripts": {
+    "vscode:prepublish": "npm run compile",
+    "compile": "tsc -p ./",
+    "watch": "tsc -watch -p ./",
+    "postinstall": "node ./node_modules/vscode/bin/install",
+    "test": "npm run compile && node ./node_modules/vscode/bin/test"
+  },
+  "devDependencies": {
+    "typescript": "^2.6.1",
+    "vscode": "^1.1.21",
+    "tslint": "^5.8.0",
+    "@types/node": "^8.10.25",
+    "@types/mocha": "^2.2.42",
+    "@types/xml2js": "^0.4.3",
+    "@types/request": "^2.47.1"
+  },
+  "dependencies": {
+    "request": "^2.88.0",
+    "xml2js": "^0.4.19"
+  },
+  "activationEvents": [
+    "onFileSystem:adt",
+    "onCommand:abapfs.connect"
+  ],
+  "main": "./out/extension",
+  "contributes": {
+    "configuration": {
+      "title": "ABAP-FS configuration",
+      "properties": {
+        "abapfs.remote": {
+          "type": "object",
+          "description": "ABAP systems",
+          "patternProperties": {
+            "[a-zA-Z][a-zA-Z0-9][a-zA-Z0-9]": {
+              "type": "object",
+              "properties": {
+                "url": {
+                  "type": "string",
+                  "description": "Server base URL",
+                  "$comment": "https://<myserver>:<myport>",
+                  "default": "https://myserver:44300"
+                },
+                "username": {
+                  "type": "string",
+                  "description": "User name"
+                },
+                "password": {
+                  "type": "string",
+                  "description": "Password"
+                }
+              },
+              "required": [
+                "url",
+                "username",
+                "password"
+              ]
+            }
+          }
+        }
+      }
+    },
+    "commands": [
+      {
+        "command": "abapfs.connect",
+        "title": "Connect to an ABAP system"
+      }
+    ]
+  }
+}
