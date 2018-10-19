@@ -4,12 +4,21 @@
   "description": "Work on your ABAP code straight from the server",
   "version": "0.0.1",
   "publisher": "murbani",
+  "author": {
+    "email": "marcello.urbani@gmail.com",
+    "name": "Marcello Urbani"
+  },
+  "homepage": "https://github.com/marcellourbani/vscode_abap_remote_fs",
   "engines": {
     "vscode": "^1.28.0"
   },
   "categories": [
     "Other"
   ],
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/marcellourbani/vscode_abap_remote_fs.git"
+  },
   "keywords": [
     "ABAP",
     "sap",
