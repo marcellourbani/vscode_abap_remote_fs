@@ -69,7 +69,7 @@ export class AdtConnection {
       headers: {
         "x-csrf-token": this._csrftoken
       }
-    }
+    } as request.Options //workaround for compiler bug
   }
   private myrequest(options: request.Options): Promise<request.Response> {
     return new Promise((resolve, reject) => {

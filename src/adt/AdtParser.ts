@@ -52,12 +52,12 @@ export const getNode = (...args: any[]) => {
     )
     return [functions, rest]
   }
-  const fn = (...fargs: any) => {
+  const fn = (...fargs: any[]) => {
     const [functions, rest] = split(...fargs)
     if (functions.length === 0) return rest[0]
     const piped = pipe(...functions)
     return rest.length === 0
-      ? (...iargs: any) => fn(piped, ...iargs)
+      ? (...iargs: any[]) => fn(piped, ...iargs)
       : piped(...rest)
   }
   return fn(...args)

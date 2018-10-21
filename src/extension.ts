@@ -1,11 +1,13 @@
 "use strict"
 import * as vscode from "vscode"
 import { AbapFsProvider } from "./abapFsProvider"
-import { getRemoteList } from "./config"
+import { getRemoteList, RemoteConfig } from "./config"
 import { AdtConnectionManager } from "./adt/AdtConnectionManager"
 
-function selectRemote() {
+function selectRemote(connection: string): Thenable<RemoteConfig> {
   const remotes = getRemoteList()
+  if (remotes[1] && remotes[1].name === connection)
+    return new Promise(resolve => resolve(remotes[1]))
   return vscode.window
     .showQuickPick(
       remotes.map(remote => ({
@@ -17,7 +19,10 @@ function selectRemote() {
         placeHolder: "Please choose a remote"
       }
     )
-    .then(selection => selection && selection.remote)
+    .then(selection => {
+      if (selection) return selection.remote
+      throw new Error("No connection selected")
+    })
 }
 
 export function activate(context: vscode.ExtensionContext) {
@@ -28,20 +33,24 @@ export function activate(context: vscode.ExtensionContext) {
     })
   )
 
-  let disposable = vscode.commands.registerCommand("abapfs.connect", () => {
-    selectRemote().then(remote => {
-      return AdtConnectionManager.getManager()
-        .setConn(remote)
-        .then(() => {
-          if (remote) {
-            vscode.workspace.updateWorkspaceFolders(0, 0, {
-              uri: vscode.Uri.parse("adt://" + remote.name + "/sap/bc/adt/"),
-              name: "ABAP"
-            })
-          }
-        })
-    })
-  })
+  let disposable = vscode.commands.registerCommand(
+    "abapfs.connect",
+    (selector: any) => {
+      const connection = selector && selector.connection
+      selectRemote(connection).then(remote => {
+        return AdtConnectionManager.getManager()
+          .setConn(remote)
+          .then(() => {
+            if (remote) {
+              vscode.workspace.updateWorkspaceFolders(0, 0, {
+                uri: vscode.Uri.parse("adt://" + remote.name + "/sap/bc/adt/"),
+                name: remote.name + "(ABAP)"
+              })
+            }
+          })
+      })
+    }
+  )
   context.subscriptions.push(disposable)
 }
 

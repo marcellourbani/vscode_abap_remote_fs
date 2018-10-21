@@ -1,23 +1,42 @@
 import { AdtNode } from "./AdtNode"
-import { adtPathResolver, AdtPath } from "./adtPathResolver"
+import { adtPathResolver } from "./adtPathResolver"
 import { AdtConnectionManager } from "./AdtConnectionManager"
 import { Response } from "request"
 import { getNodeStructureTreeContent, ObjectNode } from "./AdtParser"
+import { Uri } from "vscode"
 
 export class AdtPathManager {
+  getDirectory(uri: Uri): AdtNode {
+    throw new Error("Method not implemented.")
+  }
   private _cache: Map<string, AdtNode> = new Map()
   private _manager = AdtConnectionManager.getManager()
-  parse(path: AdtPath, response: Response): any {
+
+  parse(uri: Uri, response: Response): any {
     return getNodeStructureTreeContent(response.body).then(
       (children: ObjectNode[]) => {
-        const node = new AdtNode(path.url)
+        const node = new AdtNode(uri)
         node.setChildrenFromTreeContent(children)
         return node
       }
     )
   }
-  fetchDirectory(url: string): Promise<AdtNode> {
+  fetchFileOrDir(url: Uri): Promise<AdtNode> {
     let path = adtPathResolver(url)
+    if (path.isRoot) {
+      let root = this._cache.get(url.toString())
+      if (!root) {
+        root = new AdtNode(url, path.connectionName)
+        this._cache.set(url.toString(), root)
+        const firstChild = new AdtNode(
+          url.with({
+            path: url.path + "repository/nodestructure"
+          })
+        )
+        root.entries.set(firstChild.name, firstChild)
+      }
+      return new Promise(resolve => resolve(root))
+    }
     return new Promise((resolve, reject) => {
       if (path) {
         let key = path!.connectionName + path!.path
@@ -29,7 +48,7 @@ export class AdtPathManager {
             conn
               .request(path!.path, path!.method)
               .then(response => {
-                return this.parse(path!, response)
+                return this.parse(url, response)
               })
               .then(file => {
                 this._cache.set(key, file)

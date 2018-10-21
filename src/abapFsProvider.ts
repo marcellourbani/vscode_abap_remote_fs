@@ -1,14 +1,11 @@
 import * as vscode from "vscode"
 import { AdtPathManager } from "./adt/AdtPathManager"
-import { AdtNode } from "./adt/AdtNode"
 
 export class AbapFsProvider implements vscode.FileSystemProvider {
   private _pathManager = new AdtPathManager()
   private _eventEmitter = new vscode.EventEmitter<vscode.FileChangeEvent[]>()
   readonly onDidChangeFile: vscode.Event<vscode.FileChangeEvent[]> = this
     ._eventEmitter.event
-  rooturl: string = ""
-  root: AdtNode = new AdtNode("")
   watch(
     uri: vscode.Uri,
     options: { recursive: boolean; excludes: string[] }
@@ -16,25 +13,18 @@ export class AbapFsProvider implements vscode.FileSystemProvider {
     throw new Error("Method not implemented.")
   }
   stat(uri: vscode.Uri): vscode.FileStat | Thenable<vscode.FileStat> {
-    const uristring = uri.toString()
-    if (this.rooturl === "") this.rooturl = uristring
-    if (this.rooturl === uristring) {
-      const newroot = this._pathManager
-        .fetchDirectory(uristring)
-        .then(newroot => (this.root = newroot))
-      return newroot
-    }
-    throw new Error("not found")
+    console.log(uri.toString())
+    return this._pathManager.fetchFileOrDir(uri).then(n => {
+      console.log(n)
+      return n
+    })
   }
   readDirectory(
     uri: vscode.Uri
   ): [string, vscode.FileType][] | Thenable<[string, vscode.FileType][]> {
-    if (uri.toString() !== this.rooturl || !this.root) {
-      throw new Error("Only root directory for now...")
-    }
     const result: [string, vscode.FileType][] = []
-    Array.from(this.root.entries).forEach(([key, value]) =>
-      result.push([key, value.type])
+    Array.from(this._pathManager.getDirectory(uri).entries).forEach(
+      ([key, value]) => result.push([key, value.type])
     )
     return result
   }
