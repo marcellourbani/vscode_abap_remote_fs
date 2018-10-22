@@ -15,7 +15,7 @@ export class AbapFsProvider implements vscode.FileSystemProvider {
   stat(uri: vscode.Uri): vscode.FileStat | Thenable<vscode.FileStat> {
     console.log(uri.toString())
     return this._pathManager.fetchFileOrDir(uri).then(n => {
-      console.log(n)
+      // console.log(n)
       return n
     })
   }
@@ -23,9 +23,11 @@ export class AbapFsProvider implements vscode.FileSystemProvider {
     uri: vscode.Uri
   ): [string, vscode.FileType][] | Thenable<[string, vscode.FileType][]> {
     const result: [string, vscode.FileType][] = []
-    Array.from(this._pathManager.getDirectory(uri).entries).forEach(
-      ([key, value]) => result.push([key, value.type])
-    )
+    const dir = this._pathManager.getDirectory(uri)
+    if (dir)
+      Array.from(dir.entries).forEach(([key, value]) =>
+        result.push([key.replace(/\//g, "_"), value.type])
+      )
     return result
   }
   createDirectory(uri: vscode.Uri): void | Thenable<void> {

@@ -1,4 +1,7 @@
 import * as request from "request"
+import { AdtPathClassifier } from "./AdtPathClassifier"
+import { Uri } from "vscode"
+
 enum ConnStatus {
   new,
   active,
@@ -12,13 +15,16 @@ export class AdtConnection {
   private _csrftoken: string = "fetch"
   private _status: ConnStatus = ConnStatus.new
   private _listeners: Array<Function> = []
+  pathclassifier: AdtPathClassifier
 
   constructor(name: string, url: string, username: string, password: string) {
     this.name = name
     this.url = url
     this.username = username
     this.password = password
+    this.pathclassifier = new AdtPathClassifier()
   }
+
   isActive(): boolean {
     return this._status === ConnStatus.active
   }
@@ -40,6 +46,19 @@ export class AdtConnection {
         respond()
       }
     })
+  }
+
+  vsRequest(vsUri: Uri, config: request.Options) {
+    const uri = this.pathclassifier.originalFromVscode(vsUri)
+    const info = this.pathclassifier.adtUriInfo(uri!) //TODO: error handling
+    let options: any = {} //{...config}
+    if (info.uri.query !== "") {
+      ;(options.qs = info.uri.query), (options.useQuerystring = true)
+    }
+    options = { ...options, ...config }
+    return this.myrequest(
+      this.createrequest(info.uri.path, info.method, options)
+    )
   }
 
   request(

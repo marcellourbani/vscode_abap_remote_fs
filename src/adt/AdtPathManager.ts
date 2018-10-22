@@ -1,18 +1,30 @@
 import { AdtNode } from "./AdtNode"
-import { adtPathResolver } from "./adtPathResolver"
 import { AdtConnectionManager } from "./AdtConnectionManager"
 import { Response } from "request"
 import { getNodeStructureTreeContent, ObjectNode } from "./AdtParser"
-import { Uri } from "vscode"
+import { Uri, FileType } from "vscode"
+
+const asPromise = (x: AdtNode) => new Promise<AdtNode>(resolve => resolve(x))
+const isValid = (uri: Uri) => uri.path.match(/\/sap\/bc\/adt\/.*\//i)
+
+const getMethod = (uri: Uri): string => {
+  return "POST"
+}
+const key = (uri: Uri) => uri.authority + uri.path
 
 export class AdtPathManager {
-  getDirectory(uri: Uri): AdtNode {
-    throw new Error("Method not implemented.")
+  getDirectory(uri: Uri): AdtNode | undefined {
+    return this.getDirCached(uri)
   }
-  private _cache: Map<string, AdtNode> = new Map()
+  private _dircache: Map<string, AdtNode> = new Map()
   private _manager = AdtConnectionManager.getManager()
 
-  parse(uri: Uri, response: Response): any {
+  private actualUri(original: Uri): Uri {
+    if (!isValid(original)) throw new Error("Not found")
+    return original
+  }
+
+  parse(uri: Uri, response: Response): Promise<AdtNode> {
     return getNodeStructureTreeContent(response.body).then(
       (children: ObjectNode[]) => {
         const node = new AdtNode(uri)
@@ -21,44 +33,31 @@ export class AdtPathManager {
       }
     )
   }
+  getDirCached(url: Uri) {
+    return this._dircache.get(key(url))
+  }
+  setDirCached(url: Uri, directory: AdtNode): void {
+    this._dircache.set(key(url), directory)
+  }
   fetchFileOrDir(url: Uri): Promise<AdtNode> {
-    let path = adtPathResolver(url)
-    if (path.isRoot) {
-      let root = this._cache.get(url.toString())
-      if (!root) {
-        root = new AdtNode(url, path.connectionName)
-        this._cache.set(url.toString(), root)
-        const firstChild = new AdtNode(
-          url.with({
-            path: url.path + "repository/nodestructure"
-          })
-        )
-        root.entries.set(firstChild.name, firstChild)
-      }
-      return new Promise(resolve => resolve(root))
-    }
+    url = this.actualUri(url)
+    const cached = this.getDirCached(url)
+    if (cached) return asPromise(cached)
+
     return new Promise((resolve, reject) => {
-      if (path) {
-        let key = path!.connectionName + path!.path
-        let response = this._cache.get(key)
-        if (response) {
-          resolve(response)
-        } else {
-          this._manager.findConn(path.connectionName).then(conn => {
-            conn
-              .request(path!.path, path!.method)
-              .then(response => {
-                return this.parse(url, response)
-              })
-              .then(file => {
-                this._cache.set(key, file)
-                resolve(file)
-              })
+      this._manager.findConn(url.authority).then(conn => {
+        conn
+          .request(url.path, getMethod(url))
+          .then(response => {
+            return this.parse(url, response)
           })
-        }
-      } else {
-        reject()
-      }
+          .then(file => {
+            if (file.type === FileType.Directory) {
+              this.setDirCached(url, file)
+            }
+            resolve(file)
+          })
+      })
     })
   }
 }

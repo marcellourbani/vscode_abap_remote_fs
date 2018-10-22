@@ -43,7 +43,11 @@ export function activate(context: vscode.ExtensionContext) {
           .then(() => {
             if (remote) {
               vscode.workspace.updateWorkspaceFolders(0, 0, {
-                uri: vscode.Uri.parse("adt://" + remote.name + "/sap/bc/adt/"),
+                uri: vscode.Uri.parse(
+                  "adt://" +
+                    remote.name +
+                    "/sap/bc/adt/repository/nodestructure"
+                ),
                 name: remote.name + "(ABAP)"
               })
             }

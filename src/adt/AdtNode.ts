@@ -3,10 +3,6 @@ import { ObjectNode } from "./AdtParser"
 const lastPathEntry = (uri: Uri) =>
   uri.path.replace(/\/$/, "").replace(/.*\//, "")
 export class AdtNode implements FileStat {
-  // static fromTreeContent(fromTreeContent: ObjectNode[]): AdtNode {
-  //   const node = new AdtNode("")
-  //   return node
-  // }
   type: FileType = FileType.Directory
   name: string
   ctime: number
@@ -34,5 +30,11 @@ export class AdtNode implements FileStat {
       )
     })
     return this
+  }
+  escapeName = (n: string) => n.replace(/\//g, "_")
+
+  childPath(childname: string): string {
+    const sep = this.path.path.match(/\/$/) ? "" : "/"
+    return this.path.path + sep + this.escapeName(childname)
   }
 }
