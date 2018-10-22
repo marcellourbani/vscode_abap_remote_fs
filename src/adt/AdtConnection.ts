@@ -1,6 +1,6 @@
 import * as request from "request"
 import { AdtPathClassifier } from "./AdtPathClassifier"
-import { Uri } from "vscode"
+import { Uri, FileSystemError } from "vscode"
 
 enum ConnStatus {
   new,
@@ -48,10 +48,11 @@ export class AdtConnection {
     })
   }
 
-  vsRequest(vsUri: Uri, config: request.Options) {
+  vsRequest(vsUri: Uri, config: request.CoreOptions = {}) {
     const uri = this.pathclassifier.originalFromVscode(vsUri)
-    const info = this.pathclassifier.adtUriInfo(uri!) //TODO: error handling
-    let options: any = {} //{...config}
+    if (!uri) throw FileSystemError.FileNotFound(vsUri)
+    const info = this.pathclassifier.adtUriInfo(uri)
+    let options: any = {}
     if (info.uri.query !== "") {
       ;(options.qs = info.uri.query), (options.useQuerystring = true)
     }

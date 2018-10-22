@@ -24,6 +24,13 @@ export interface AdtPathInfo {
   isDirectory: FileType
 }
 
+export const isValid = (vsUri: Uri): boolean => {
+  const matches = vsUri.path.match(
+    /^\/sap\/bc\/adt\/repository\/nodestructure\/?(.*)/i
+  )
+  return !!(matches && (matches[1] === "" || matches[1].match(/\//)))
+}
+
 export class AdtPathClassifier {
   private nameSpaces: Set<string> = new Set()
   private pathinfo: Map<string, AdtPathInfo> = new Map()
@@ -32,7 +39,8 @@ export class AdtPathClassifier {
     const matches = vsuri.path.match(
       /^\/sap\/bc\/adt\/repository\/nodestructure\/?(.*)/i
     )
-    if (!matches) throw new Error("Path did not originate in vscode")
+    if (!matches)
+      throw FileSystemError.NoPermissions("Path did not originate in vscode")
     return matches[1]
   }
 
@@ -45,7 +53,7 @@ export class AdtPathClassifier {
       return info ? info.uri : undefined
     }
   }
-  public registerNamespace(connection: string, node: ObjectNode) {
+  public registerNamespace(node: ObjectNode) {
     const matches = node.OBJECT_NAME.match(/^(\/[^\/]+\/)/)
     if (matches) this.nameSpaces.add(matches[1])
   }
@@ -55,7 +63,7 @@ export class AdtPathClassifier {
   public registerCodeUri(codeUri: Uri, adtUri: Uri) {}
 
   private uriInfo(uri: Uri, source: Uri): AdtPathInfo {
-    if (uri.path.match(/\/sap\/bc\/adt\/.*\//i))
+    if (!uri.path.match(/\/sap\/bc\/adt\/.*\/?/i))
       throw FileSystemError.FileNotFound(uri)
     let type, method, isDirectory
     if (uri.path.match(/\/repository\/nodestructure\/?$/i)) {

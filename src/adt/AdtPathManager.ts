@@ -2,14 +2,11 @@ import { AdtNode } from "./AdtNode"
 import { AdtConnectionManager } from "./AdtConnectionManager"
 import { Response } from "request"
 import { getNodeStructureTreeContent, ObjectNode } from "./AdtParser"
-import { Uri, FileType } from "vscode"
+import { Uri, FileType, FileSystemError } from "vscode"
+import { AdtPathClassifier, isValid } from "./AdtPathClassifier"
 
 const asPromise = (x: AdtNode) => new Promise<AdtNode>(resolve => resolve(x))
-const isValid = (uri: Uri) => uri.path.match(/\/sap\/bc\/adt\/.*\//i)
 
-const getMethod = (uri: Uri): string => {
-  return "POST"
-}
 const key = (uri: Uri) => uri.authority + uri.path
 
 export class AdtPathManager {
@@ -20,13 +17,18 @@ export class AdtPathManager {
   private _manager = AdtConnectionManager.getManager()
 
   private actualUri(original: Uri): Uri {
-    if (!isValid(original)) throw new Error("Not found")
+    if (!isValid(original)) throw FileSystemError.FileNotFound(original)
     return original
   }
 
-  parse(uri: Uri, response: Response): Promise<AdtNode> {
+  parse(
+    uri: Uri,
+    response: Response,
+    classifier: AdtPathClassifier
+  ): Promise<AdtNode> {
     return getNodeStructureTreeContent(response.body).then(
       (children: ObjectNode[]) => {
+        children.forEach(child => classifier.registerNamespace(child))
         const node = new AdtNode(uri)
         node.setChildrenFromTreeContent(children)
         return node
@@ -47,9 +49,9 @@ export class AdtPathManager {
     return new Promise((resolve, reject) => {
       this._manager.findConn(url.authority).then(conn => {
         conn
-          .request(url.path, getMethod(url))
+          .vsRequest(url)
           .then(response => {
-            return this.parse(url, response)
+            return this.parse(url, response, conn.pathclassifier)
           })
           .then(file => {
             if (file.type === FileType.Directory) {
