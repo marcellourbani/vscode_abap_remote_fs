@@ -1,6 +1,6 @@
 import * as request from "request"
-import { AdtPathClassifier } from "./AdtPathClassifier"
-import { Uri, FileSystemError } from "vscode"
+// import { AdtPathClassifier } from "./AdtPathClassifier"
+import { Uri } from "vscode"
 
 enum ConnStatus {
   new,
@@ -15,14 +15,12 @@ export class AdtConnection {
   private _csrftoken: string = "fetch"
   private _status: ConnStatus = ConnStatus.new
   private _listeners: Array<Function> = []
-  pathclassifier: AdtPathClassifier
 
   constructor(name: string, url: string, username: string, password: string) {
     this.name = name
     this.url = url
     this.username = username
     this.password = password
-    this.pathclassifier = new AdtPathClassifier()
   }
 
   isActive(): boolean {
@@ -48,28 +46,9 @@ export class AdtConnection {
     })
   }
 
-  vsRequest(vsUri: Uri, config: request.CoreOptions = {}) {
-    const uri = this.pathclassifier.originalFromVscode(vsUri)
-    if (!uri) throw FileSystemError.FileNotFound(vsUri)
-    const info = this.pathclassifier.adtUriInfo(uri)
-    let options: any = {}
-    if (info.uri.query !== "") {
-      ;(options.qs = info.uri.query), (options.useQuerystring = true)
-    }
-    options = { ...options, ...config }
-    return this.myrequest(
-      this.createrequest(info.uri.path, info.method, options)
-    )
-  }
-
-  request(
-    path: string,
-    method: string = "GET",
-    config: request.Options | Object = {}
-  ): Promise<request.Response> {
-    let relativePath = path.replace(/(?:adt:\/)?\/[^\/]*\/sap\/bc\/adt/i, "")
-    const request = this.createrequest(relativePath, method, config)
-    return this.myrequest(request)
+  request(uri: Uri, method: string): Promise<request.Response> {
+    const path = uri.query ? uri.path + "?" + uri.query : uri.path
+    return this.myrequest(this.createrequest(path, method))
   }
 
   private createrequest(

@@ -13,11 +13,7 @@ export class AbapFsProvider implements vscode.FileSystemProvider {
     throw new Error("Method not implemented.")
   }
   stat(uri: vscode.Uri): vscode.FileStat | Thenable<vscode.FileStat> {
-    console.log(uri.toString())
-    return this._pathManager.fetchFileOrDir(uri).then(n => {
-      // console.log(n)
-      return n
-    })
+    return this._pathManager.fetchFileOrDir(uri)
   }
   readDirectory(
     uri: vscode.Uri

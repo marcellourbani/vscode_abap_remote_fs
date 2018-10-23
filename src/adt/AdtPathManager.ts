@@ -1,21 +1,15 @@
 import { AdtNode } from "./AdtNode"
 import { Response } from "request"
 import { getNodeStructureTreeContent, ObjectNode } from "./AdtParser"
-import { Uri, FileSystemError } from "vscode"
-import { isValid } from "./AdtPathClassifier"
 import { getServer, AdtServer } from "./AdtServer"
 import { fromObjectNode } from "./AbapObjectFactory"
+import { Uri } from "vscode"
 
 const asPromise = (x: AdtNode) => new Promise<AdtNode>(resolve => resolve(x))
 
 export class AdtPathManager {
   getDirectory(uri: Uri): AdtNode | undefined {
     return getServer(uri.authority).getDirectory(uri.path)
-  }
-
-  private actualUri(original: Uri): Uri {
-    if (!isValid(original)) throw FileSystemError.FileNotFound(original)
-    return original
   }
 
   parse(uri: Uri, response: Response, server: AdtServer): Promise<AdtNode> {
@@ -29,18 +23,18 @@ export class AdtPathManager {
     )
   }
 
-  fetchFileOrDir(url: Uri): Promise<AdtNode> {
-    const server = getServer(url.authority)
-    url = this.actualUri(url)
+  fetchFileOrDir(vsUrl: Uri): Promise<AdtNode> {
+    const server = getServer(vsUrl.authority)
 
-    const cached = server.getDirectory(url.path)
+    const cached = server.getDirectory(vsUrl.path)
     if (cached && !cached.needRefresh()) {
       return asPromise(cached)
     }
-    if (cached) return asPromise(cached)
+
+    const url = server.actualUri(vsUrl)
 
     return server.connectionP
-      .then(conn => conn.vsRequest(url))
-      .then(response => this.parse(url, response, server))
+      .then(conn => conn.request(url, "POST"))
+      .then(response => this.parse(vsUrl, response, server))
   }
 }

@@ -1,9 +1,24 @@
 import { AdtConnectionManager } from "./AdtConnectionManager"
 import { AdtConnection } from "./AdtConnection"
 import { AdtNode } from "./AdtNode"
-import { Uri } from "vscode"
+import { Uri, FileSystemError } from "vscode"
 import { AbapObject } from "./AbapObject"
-
+// visual studio paths are hierarchic, adt ones aren't
+// so we need a way to translate the hierarchic ones to the original ones
+// this file is concerned with telling whether a path is a real ADT one or one from vscode
+// /sap/bc/adt/repository/nodestructure (with ampty query) is the root of both
+// also, several objects have namespaces.
+//  Class /foo/bar of package /foo/baz in code will have a path like
+//    /sap/bc/adt/repository/nodestructure/foo/baz/foo/bar
+//  the actual adt path would be something like:
+//    /sap/bc/adt/oo/classes/%2Ffoo%2Fbar
+//  so we need to do quite a bit of transcoding
+const isValid = (vsUri: Uri): boolean => {
+  const matches = vsUri.path.match(
+    /^\/sap\/bc\/adt\/repository\/nodestructure\/?(.*)/i
+  )
+  return !!(matches && !matches[1].match(/^\./))
+}
 export class AdtServer {
   readonly connectionId: string
   readonly connectionP: Promise<AdtConnection>
@@ -17,6 +32,11 @@ export class AdtServer {
       node.entries.set(object.nameinns(), child)
       this.objectUris.set(childname, object.getUri(node.uri))
     })
+  }
+
+  actualUri(original: Uri): Uri {
+    if (!isValid(original)) throw FileSystemError.FileNotFound(original)
+    return this.objectUris.get(original.path) || original
   }
 
   addNodes(parent: AdtNode, objects: AbapObject[]) {
