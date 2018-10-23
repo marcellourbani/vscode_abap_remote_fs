@@ -1,5 +1,6 @@
 import { Uri, FileType, FileSystemError } from "vscode"
 import { ObjectNode } from "./AdtParser"
+import { AdtNode } from "./AdtNode"
 // visual studio paths are hierarchic, adt ones aren't
 // so we need a way to translate the hierarchic ones to the original ones
 // this file is concerned with telling whether a path is a real ADT one or one from vscode
@@ -28,7 +29,7 @@ export const isValid = (vsUri: Uri): boolean => {
   const matches = vsUri.path.match(
     /^\/sap\/bc\/adt\/repository\/nodestructure\/?(.*)/i
   )
-  return !!(matches && (matches[1] === "" || matches[1].match(/\//)))
+  return !!(matches && !matches[1].match(/^\./))
 }
 
 export class AdtPathClassifier {
@@ -42,6 +43,15 @@ export class AdtPathClassifier {
     if (!matches)
       throw FileSystemError.NoPermissions("Path did not originate in vscode")
     return matches[1]
+  }
+  public addVsPath(parent: AdtNode, name: string, path: string) {
+    const sep = parent.uri.path.match(/\/$/) || name.match(/^\//) ? "" : "/"
+    const vspath = parent.uri.path + sep + name
+    const vsuri = parent.uri.with({ path: vspath })
+    const adtUri = Uri.parse(vsuri.scheme + "://" + vsuri.authority + path)
+    const info = this.uriInfo(adtUri, vsuri) //TODO error handling
+    const subpart = this.subpath(vsuri)
+    this.pathinfo.set(subpart, info)
   }
 
   public originalFromVscode(vsuri: Uri): Uri | undefined {
