@@ -1,4 +1,5 @@
 import { FileStat, FileType, Uri } from "vscode"
+
 export class AdtNode implements FileStat {
   type: FileType
   ctime: number
@@ -24,9 +25,9 @@ export class AdtNode implements FileStat {
     const sep = this.uri.path.match(/\/$/) || childname.match(/^\//) ? "" : "/"
     return this.uri.path + sep + childname
   }
-  setContents(body: Buffer): void {
-    this.body = body
-    this.size = body.length
+  setContents(body: string): void {
+    this.body = Buffer.from(body)
+    this.size = this.body.length
     this.fetched = true
   }
 }

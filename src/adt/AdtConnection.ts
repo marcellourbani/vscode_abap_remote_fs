@@ -66,7 +66,8 @@ export class AdtConnection {
       },
       method,
       headers: {
-        "x-csrf-token": this._csrftoken
+        "x-csrf-token": this._csrftoken,
+        Accept: "*/*"
       }
     } as request.Options //workaround for compiler bug
   }

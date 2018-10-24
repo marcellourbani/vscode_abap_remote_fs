@@ -59,7 +59,10 @@ export class AdtPathManager {
     const url = server.actualUri(vsUrl)
 
     return server.connectionP
-      .then(conn => conn.request(url, "POST"))
+      .then(conn => conn.request(url, this.getMethod(url)))
       .then(response => this.parse(vsUrl, response, server, cached))
+  }
+  getMethod(uri: Uri): string {
+    return uri.path.match(/\/nodestructure/i) ? "POST" : "GET"
   }
 }

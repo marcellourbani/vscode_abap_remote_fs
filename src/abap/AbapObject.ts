@@ -22,7 +22,7 @@ export class AbapObject {
   }
 
   getUri(base: Uri): Uri {
-    return base.with({ path: this.path })
+    return base.with({ path: this.path + "/source/main" })
   }
   namespace(): string {
     return this.name.match(/^\//)
