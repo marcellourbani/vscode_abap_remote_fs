@@ -1,8 +1,8 @@
 import { AdtConnectionManager } from "./AdtConnectionManager"
 import { AdtConnection } from "./AdtConnection"
 import { AdtNode } from "./AdtNode"
-import { Uri, FileSystemError } from "vscode"
-import { AbapObject } from "./AbapObject"
+import { Uri, FileSystemError, FileType } from "vscode"
+import { AbapObject } from "../abap/AbapObject"
 // visual studio paths are hierarchic, adt ones aren't
 // so we need a way to translate the hierarchic ones to the original ones
 // this file is concerned with telling whether a path is a real ADT one or one from vscode
@@ -28,9 +28,14 @@ export class AdtServer {
   private addChildrenToNs(node: AdtNode, objects: AbapObject[]) {
     objects.forEach(object => {
       const childname = node.childPath(object.nameinns())
-      const child = new AdtNode(node.uri.with({ path: childname }))
+      const child = new AdtNode(
+        node.uri.with({ path: childname }),
+        !object.isLeaf(),
+        false
+      )
       node.entries.set(object.nameinns(), child)
       this.objectUris.set(childname, object.getUri(node.uri))
+      if(child.type=== FileType.Directory)this.directories.set(childname,child)
     })
   }
 
@@ -52,15 +57,26 @@ export class AdtServer {
       return map
     }, new Map<string, AbapObject[]>())
 
+    //for every namespace create a node, add the children to it
+    // so package /foo/bar will be rendered in
+    //  a namespace folder foo
+    //  with a package bar inside
     namespaces.forEach((objects, name) => {
-      if (name === "") this.addChildrenToNs(parent, objects)
-      else {
+      if (name !== "") {
         const nodeName = parent.childPath(name)
-        const node = new AdtNode(parent.uri.with({ path: nodeName }))
+        const node = new AdtNode(
+          parent.uri.with({ path: nodeName }),
+          true,
+          true
+        )
         parent.entries.set(name, node)
         this.addChildrenToNs(node, objects)
         this.directories.set(nodeName, node)
       }
+    })
+    //add objects without a namespace
+    namespaces.forEach((objects, name) => {
+      if (name === "") this.addChildrenToNs(parent, objects)
     })
   }
 

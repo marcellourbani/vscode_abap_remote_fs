@@ -2,39 +2,64 @@ import { AdtNode } from "./AdtNode"
 import { Response } from "request"
 import { getNodeStructureTreeContent, ObjectNode } from "./AdtParser"
 import { getServer, AdtServer } from "./AdtServer"
-import { fromObjectNode } from "./AbapObjectFactory"
-import { Uri } from "vscode"
-
-const asPromise = (x: AdtNode) => new Promise<AdtNode>(resolve => resolve(x))
+import { fromObjectNode } from "../abap/AbapObjectFactory"
+import { Uri, FileSystemError, FileType } from "vscode"
 
 export class AdtPathManager {
   getDirectory(uri: Uri): AdtNode | undefined {
     return getServer(uri.authority).getDirectory(uri.path)
   }
-
-  parse(uri: Uri, response: Response, server: AdtServer): Promise<AdtNode> {
-    return getNodeStructureTreeContent(response.body).then(
-      (children: ObjectNode[]) => {
-        const node = new AdtNode(uri)
-        server.addNodes(node, children.map(fromObjectNode))
-
-        return node
-      }
-    )
+  find(uri: Uri): AdtNode | undefined {
+    const server = getServer(uri.authority)
+    let node = server.getDirectory(uri.path)
+    if (node) return node
+    const matches = uri.path.match(/(.*)\/([^\/]+)$/)
+    if (matches) {
+      const [dir, name] = matches.slice(1)
+      let parent = server.getDirectory(dir)
+      let node = parent && parent.entries.get(name)
+      if (node) return node
+    }
   }
 
-  fetchFileOrDir(vsUrl: Uri): Promise<AdtNode> {
+  parse(
+    uri: Uri,
+    response: Response,
+    server: AdtServer,
+    node: AdtNode | undefined
+  ): Promise<AdtNode> | AdtNode {
+    if (
+      response.request.uri.path &&
+      response.request.uri.path.match(/\/nodestructure/i)
+    )
+      return getNodeStructureTreeContent(response.body).then(
+        (children: ObjectNode[]) => {
+          if (node) node.entries.clear()
+          else node = new AdtNode(uri, true, true)
+          server.addNodes(node, children.map(fromObjectNode))
+          node.fetched = true
+          return node
+        }
+      )
+    else if (node && node.type === FileType.File) {
+      node.setContents(response.body)
+      return node
+    }
+    throw FileSystemError.FileNotFound(uri.path)
+  }
+
+  fetchFileOrDir(vsUrl: Uri): Promise<AdtNode> | AdtNode {
     const server = getServer(vsUrl.authority)
 
-    const cached = server.getDirectory(vsUrl.path)
+    const cached = this.find(vsUrl)
     if (cached && !cached.needRefresh()) {
-      return asPromise(cached)
+      return cached
     }
 
     const url = server.actualUri(vsUrl)
 
     return server.connectionP
       .then(conn => conn.request(url, "POST"))
-      .then(response => this.parse(vsUrl, response, server))
+      .then(response => this.parse(vsUrl, response, server, cached))
   }
 }

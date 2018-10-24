@@ -30,15 +30,9 @@ export class AbapFsProvider implements vscode.FileSystemProvider {
     throw new Error("Method not implemented.")
   }
   readFile(uri: vscode.Uri): Uint8Array | Thenable<Uint8Array> {
-    // if (uri.path === "/dummy.abap" && this.root) {
-    //   return this.root.then(x => {
-    //     const child = x.entries.get("dummy.abap")
-    //     if (child && child instanceof AdtFile && child.data) {
-    //       return child.data
-    //     }
-    //   })
-    // }
-    throw new Error("Method not implemented.")
+    const file = this._pathManager.find(uri)
+    if (file && file.body) return file.body
+    return new Uint8Array([])
   }
   writeFile(
     uri: vscode.Uri,

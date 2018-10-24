@@ -17,6 +17,10 @@ export class AbapObject {
     this.path = path
   }
 
+  isLeaf() {
+    return true
+  }
+
   getUri(base: Uri): Uri {
     return base.with({ path: this.path })
   }
