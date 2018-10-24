@@ -1,4 +1,7 @@
 import * as request from "request"
+// import { AdtPathClassifier } from "./AdtPathClassifier"
+import { Uri } from "vscode"
+
 enum ConnStatus {
   new,
   active,
@@ -19,6 +22,7 @@ export class AdtConnection {
     this.username = username
     this.password = password
   }
+
   isActive(): boolean {
     return this._status === ConnStatus.active
   }
@@ -42,14 +46,9 @@ export class AdtConnection {
     })
   }
 
-  request(
-    path: string,
-    method: string = "GET",
-    config: request.Options | Object = {}
-  ): Promise<request.Response> {
-    let relativePath = path.replace(/(?:adt:\/)?\/[^\/]*\/sap\/bc\/adt/i, "")
-    const request = this.createrequest(relativePath, method, config)
-    return this.myrequest(request)
+  request(uri: Uri, method: string): Promise<request.Response> {
+    const path = uri.query ? uri.path + "?" + uri.query : uri.path
+    return this.myrequest(this.createrequest(path, method))
   }
 
   private createrequest(
@@ -67,9 +66,10 @@ export class AdtConnection {
       },
       method,
       headers: {
-        "x-csrf-token": this._csrftoken
+        "x-csrf-token": this._csrftoken,
+        Accept: "*/*"
       }
-    }
+    } as request.Options //workaround for compiler bug
   }
   private myrequest(options: request.Options): Promise<request.Response> {
     return new Promise((resolve, reject) => {

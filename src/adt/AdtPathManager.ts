@@ -1,45 +1,68 @@
 import { AdtNode } from "./AdtNode"
-import { adtPathResolver, AdtPath } from "./adtPathResolver"
-import { AdtConnectionManager } from "./AdtConnectionManager"
 import { Response } from "request"
 import { getNodeStructureTreeContent, ObjectNode } from "./AdtParser"
+import { getServer, AdtServer } from "./AdtServer"
+import { fromObjectNode } from "../abap/AbapObjectFactory"
+import { Uri, FileSystemError, FileType } from "vscode"
 
 export class AdtPathManager {
-  private _cache: Map<string, AdtNode> = new Map()
-  private _manager = AdtConnectionManager.getManager()
-  parse(path: AdtPath, response: Response): any {
-    return getNodeStructureTreeContent(response.body).then(
-      (children: ObjectNode[]) => {
-        const node = new AdtNode(path.url)
-        node.setChildrenFromTreeContent(children)
-        return node
-      }
-    )
+  getDirectory(uri: Uri): AdtNode | undefined {
+    return getServer(uri.authority).getDirectory(uri.path)
   }
-  fetchDirectory(url: string): Promise<AdtNode> {
-    let path = adtPathResolver(url)
-    return new Promise((resolve, reject) => {
-      if (path) {
-        let key = path!.connectionName + path!.path
-        let response = this._cache.get(key)
-        if (response) {
-          resolve(response)
-        } else {
-          this._manager.findConn(path.connectionName).then(conn => {
-            conn
-              .request(path!.path, path!.method)
-              .then(response => {
-                return this.parse(path!, response)
-              })
-              .then(file => {
-                this._cache.set(key, file)
-                resolve(file)
-              })
-          })
+  find(uri: Uri): AdtNode | undefined {
+    const server = getServer(uri.authority)
+    let node = server.getDirectory(uri.path)
+    if (node) return node
+    const matches = uri.path.match(/(.*)\/([^\/]+)$/)
+    if (matches) {
+      const [dir, name] = matches.slice(1)
+      let parent = server.getDirectory(dir)
+      let node = parent && parent.entries.get(name)
+      if (node) return node
+    }
+  }
+
+  parse(
+    uri: Uri,
+    response: Response,
+    server: AdtServer,
+    node: AdtNode | undefined
+  ): Promise<AdtNode> | AdtNode {
+    if (
+      response.request.uri.path &&
+      response.request.uri.path.match(/\/nodestructure/i)
+    )
+      return getNodeStructureTreeContent(response.body).then(
+        (children: ObjectNode[]) => {
+          if (node) node.entries.clear()
+          else node = new AdtNode(uri, true, true)
+          server.addNodes(node, children.map(fromObjectNode))
+          node.fetched = true
+          return node
         }
-      } else {
-        reject()
-      }
-    })
+      )
+    else if (node && node.type === FileType.File) {
+      node.setContents(response.body)
+      return node
+    }
+    throw FileSystemError.FileNotFound(uri.path)
+  }
+
+  fetchFileOrDir(vsUrl: Uri): Promise<AdtNode> | AdtNode {
+    const server = getServer(vsUrl.authority)
+
+    const cached = this.find(vsUrl)
+    if (cached && !cached.needRefresh()) {
+      return cached
+    }
+
+    const url = server.actualUri(vsUrl)
+
+    return server.connectionP
+      .then(conn => conn.request(url, this.getMethod(url)))
+      .then(response => this.parse(vsUrl, response, server, cached))
+  }
+  getMethod(uri: Uri): string {
+    return uri.path.match(/\/nodestructure/i) ? "POST" : "GET"
   }
 }
