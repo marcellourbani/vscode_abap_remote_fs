@@ -25,20 +25,6 @@ export class AdtServer {
   private directories: Map<string, AdtNode> = new Map()
   private objectUris: Map<string, Uri> = new Map()
 
-  private addChildrenToNs(node: AdtNode, objects: AbapObject[]) {
-    objects.forEach(object => {
-      const childname = node.childPath(object.nameinns())
-      const child = new AdtNode(
-        node.uri.with({ path: childname }),
-        !object.isLeaf(),
-        false
-      )
-      node.entries.set(object.nameinns(), child)
-      this.objectUris.set(childname, object.getUri(node.uri))
-      if(child.type=== FileType.Directory)this.directories.set(childname,child)
-    })
-  }
-
   actualUri(original: Uri): Uri {
     if (!isValid(original)) throw FileSystemError.FileNotFound(original)
     return this.objectUris.get(original.path) || original
@@ -46,37 +32,17 @@ export class AdtServer {
 
   addNodes(parent: AdtNode, objects: AbapObject[]) {
     this.directories.set(parent.uri.path, parent)
-    const namespaces = objects.reduce((map, obj) => {
-      const nsname = obj.namespace()
-      let ns = map.get(nsname)
-      if (!ns) {
-        ns = []
-        map.set(nsname, ns)
-      }
-      ns.push(obj)
-      return map
-    }, new Map<string, AbapObject[]>())
-
-    //for every namespace create a node, add the children to it
-    // so package /foo/bar will be rendered in
-    //  a namespace folder foo
-    //  with a package bar inside
-    namespaces.forEach((objects, name) => {
-      if (name !== "") {
-        const nodeName = parent.childPath(name)
-        const node = new AdtNode(
-          parent.uri.with({ path: nodeName }),
-          true,
-          true
-        )
-        parent.entries.set(name, node)
-        this.addChildrenToNs(node, objects)
-        this.directories.set(nodeName, node)
-      }
-    })
-    //add objects without a namespace
-    namespaces.forEach((objects, name) => {
-      if (name === "") this.addChildrenToNs(parent, objects)
+    objects.forEach(object => {
+      const childname = parent.childPath(object.vsName())
+      const child = new AdtNode(
+        parent.uri.with({ path: childname }),
+        !object.isLeaf(),
+        false
+      )
+      parent.entries.set(object.vsName(), child)
+      this.objectUris.set(childname, object.getUri(parent.uri))
+      if (child.type === FileType.Directory)
+        this.directories.set(childname, child)
     })
   }
 
