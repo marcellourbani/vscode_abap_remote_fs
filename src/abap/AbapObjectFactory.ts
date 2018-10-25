@@ -2,7 +2,7 @@ import { ObjectNode } from "../adt/AdtParser"
 import { AbapObject } from "./AbapObject"
 import { AbapPackage } from "./AbapPackage"
 import { AbapFunctionGroup } from "./AbapFunctionGroup"
-import { AbapSimpleObject } from "./AbapSimpleObject"
+import { AbapSimpleObjectXml } from "./AbapSimpleObject"
 
 export function fromObjectNode(node: ObjectNode): AbapObject {
   let objtype = AbapObject
@@ -16,7 +16,7 @@ export function fromObjectNode(node: ObjectNode): AbapObject {
     case "TABL/DT":
     case "DOMA/DT":
     case "DTEL/DE":
-      objtype = AbapSimpleObject
+      objtype = AbapSimpleObjectXml
       break
   }
   return new objtype(node.OBJECT_TYPE, node.OBJECT_NAME, node.OBJECT_URI)

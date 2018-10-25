@@ -6,3 +6,8 @@ export class AbapSimpleObject extends AbapObject {
     return base.with({ path: this.path })
   }
 }
+export class AbapSimpleObjectXml extends AbapSimpleObject {
+  getExtension() {
+    return ".xml"
+  }
+}

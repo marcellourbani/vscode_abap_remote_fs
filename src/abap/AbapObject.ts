@@ -30,6 +30,9 @@ export class AbapObject {
       : ""
   }
   nameinns(): string {
-    return this.name.replace(/^\/[^\/]*\/(.*)/, "$1")
+    return this.name.replace(/^\/[^\/]*\/(.*)/, "$1") + this.getExtension()
+  }
+  getExtension(): any {
+    return this.isLeaf() ? ".abap" : ""
   }
 }

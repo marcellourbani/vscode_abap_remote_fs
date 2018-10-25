@@ -4,6 +4,9 @@ import { getNodeStructureTreeContent, ObjectNode } from "./AdtParser"
 import { getServer, AdtServer } from "./AdtServer"
 import { fromObjectNode } from "../abap/AbapObjectFactory"
 import { Uri, FileSystemError, FileType } from "vscode"
+const nodeTypeValid = (node: ObjectNode): boolean => {
+  return !node.OBJECT_TYPE.match(/(FUGR\/P.)/)
+}
 
 export class AdtPathManager {
   getDirectory(uri: Uri): AdtNode | undefined {
@@ -36,7 +39,10 @@ export class AdtPathManager {
         (children: ObjectNode[]) => {
           if (node) node.entries.clear()
           else node = new AdtNode(uri, true, true)
-          server.addNodes(node, children.map(fromObjectNode))
+          server.addNodes(
+            node,
+            children.filter(nodeTypeValid).map(fromObjectNode)
+          )
           node.fetched = true
           return node
         }
