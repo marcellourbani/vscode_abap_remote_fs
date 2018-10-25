@@ -5,6 +5,28 @@ export interface AbapObjectPart {
   name: string
   parent: AbapObject
 }
+export class AbapObjectName {
+  namespace: string
+  name: string
+  vsName(): string {
+    return this.namespace === ""
+      ? this.name
+      : `／${this.namespace}／${this.name}`
+  }
+  abapName(): string {
+    return this.namespace === "" ? this.name : `/${this.namespace}/${this.name}`
+  }
+  constructor(fullname: string) {
+    const parts = fullname.replace(/／/g, "/").match(/^\/([^\/]*)\/(.*)/)
+    if (parts) {
+      this.namespace = parts[1]
+      this.name = parts[2]
+    } else {
+      this.name = fullname
+      this.namespace = ""
+    }
+  }
+}
 
 export class AbapObject {
   type: string
@@ -20,18 +42,14 @@ export class AbapObject {
   isLeaf() {
     return true
   }
+  vsName(): string {
+    return this.name.replace(/\//g, "／") + this.getExtension()
+  }
 
   getUri(base: Uri): Uri {
     return base.with({ path: this.path + "/source/main" })
   }
-  namespace(): string {
-    return this.name.match(/^\//)
-      ? this.name.replace(/^\/([^\/]*)\/.*/, "$1")
-      : ""
-  }
-  nameinns(): string {
-    return this.name.replace(/^\/[^\/]*\/(.*)/, "$1") + this.getExtension()
-  }
+
   getExtension(): any {
     return this.isLeaf() ? ".abap" : ""
   }

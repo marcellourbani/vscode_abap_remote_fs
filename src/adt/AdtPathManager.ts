@@ -5,7 +5,7 @@ import { getServer, AdtServer } from "./AdtServer"
 import { fromObjectNode } from "../abap/AbapObjectFactory"
 import { Uri, FileSystemError, FileType } from "vscode"
 const nodeTypeValid = (node: ObjectNode): boolean => {
-  return !node.OBJECT_TYPE.match(/(FUGR\/P.)/)
+  return !node.OBJECT_TYPE.match(/(FUGR\/P.)|(SRFC)/)
 }
 
 export class AdtPathManager {

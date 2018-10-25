@@ -1,4 +1,4 @@
-import { AbapObject } from "./AbapObject"
+import { AbapObject, AbapObjectName } from "./AbapObject"
 import { Uri } from "vscode"
 
 export class AbapFunctionGroup extends AbapObject {
@@ -8,10 +8,11 @@ export class AbapFunctionGroup extends AbapObject {
   getUri(base: Uri): Uri {
     const ptype = encodeURIComponent(this.type)
     const pname = encodeURIComponent(this.name)
+    const abapname = new AbapObjectName(this.name)
     const techname = encodeURIComponent(
-      this.namespace() === ""
-        ? "SAPL" + this.name
-        : `/${this.namespace()}/SAPL${this.nameinns}`
+      abapname.namespace === ""
+        ? "SAPL" + abapname.name
+        : `/${abapname.namespace}/SAPL${abapname.name}`
     )
     return base.with({
       path: "/sap/bc/adt/repository/nodestructure",
