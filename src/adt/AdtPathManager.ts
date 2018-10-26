@@ -1,6 +1,6 @@
 import { AdtNode } from "./AdtNode"
 import { Response } from "request"
-import { getNodeStructureTreeContent, ObjectNode } from "./AdtParser"
+import { ObjectNode, getNodeStructure } from "./AdtParser"
 import { getServer, AdtServer } from "./AdtServer"
 import { fromObjectNode } from "../abap/AbapObjectFactory"
 import { Uri, FileSystemError, FileType } from "vscode"
@@ -35,18 +35,18 @@ export class AdtPathManager {
       response.request.uri.path &&
       response.request.uri.path.match(/\/nodestructure/i)
     )
-      return getNodeStructureTreeContent(response.body).then(
-        (children: ObjectNode[]) => {
-          if (node) node.entries.clear()
-          else node = new AdtNode(uri, true, true)
-          server.addNodes(
-            node,
-            children.filter(nodeTypeValid).map(fromObjectNode)
-          )
-          node.fetched = true
-          return node
-        }
-      )
+      return getNodeStructure(response.body).then(ns => {
+        if (node) node.entries.clear()
+        else node = new AdtNode(uri, true, true)
+        server.addNodes(
+          node,
+          ns.nodes.filter(nodeTypeValid).map(fromObjectNode),
+          ns.objectTypes,
+          ns.categories
+        )
+        node.fetched = true
+        return node
+      })
     else if (node && node.type === FileType.File) {
       node.setContents(response.body)
       return node
