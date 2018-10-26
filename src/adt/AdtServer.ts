@@ -3,6 +3,7 @@ import { AdtConnection } from "./AdtConnection"
 import { AdtNode } from "./AdtNode"
 import { Uri, FileSystemError, FileType } from "vscode"
 import { AbapObject } from "../abap/AbapObject"
+import { ObjectTypeNode, CategoryNode } from "./AdtParser"
 // visual studio paths are hierarchic, adt ones aren't
 // so we need a way to translate the hierarchic ones to the original ones
 // this file is concerned with telling whether a path is a real ADT one or one from vscode
@@ -19,6 +20,27 @@ const isValid = (vsUri: Uri): boolean => {
   )
   return !!(matches && !matches[1].match(/^\./))
 }
+const mappedProp = (
+  map: Map<string, any>,
+  property: string,
+  name: string
+): any => {
+  const fn = (m: Map<string, any>, index: string) => {
+    const record = m.get(index)
+    return record && record[property]
+  }
+  if (name || name === "") return fn(map, name)
+  return fn
+}
+const mapGetOrSet = (map: Map<any, any>, index: any, constr: any): any =>
+  // let value: any = map.get(index)
+  // if (!value) {
+  //   value = new constr()
+  //   map.set(index, value)
+  // }
+  // return value
+  map.get(index) ? map.get(index) : map.set(index, new constr()).get(index)
+
 export class AdtServer {
   readonly connectionId: string
   readonly connectionP: Promise<AdtConnection>
@@ -30,8 +52,7 @@ export class AdtServer {
     return this.objectUris.get(original.path) || original
   }
 
-  addNodes(parent: AdtNode, objects: AbapObject[]) {
-    this.directories.set(parent.uri.path, parent)
+  addChildren(parent: AdtNode, objects: AbapObject[]) {
     objects.forEach(object => {
       const childname = parent.childPath(object.vsName())
       const child = new AdtNode(
@@ -44,6 +65,55 @@ export class AdtServer {
       if (child.type === FileType.Directory)
         this.directories.set(childname, child)
     })
+  }
+
+  addNodes(
+    parent: AdtNode,
+    objects: AbapObject[],
+    objectTypes: Map<string, ObjectTypeNode>,
+    categories: Map<string, CategoryNode>
+  ) {
+    // addNodes(parent: AdtNode, objects: AbapObject[]) {
+    this.directories.set(parent.uri.path, parent)
+    const objectsByCategory = objects.reduce((objbytype, object) => {
+      const typename =
+        mappedProp(objectTypes, "OBJECT_TYPE_LABEL", object.type) || object.type
+      const ocattag = mappedProp(objectTypes, "CATEGORY_TAG", object.type) || ""
+      const ocatName = mappedProp(categories, "CATEGORY_LABEL", ocattag) || ""
+      const category = mapGetOrSet(objbytype, ocatName, Map)
+      const objtype = mapGetOrSet(category, typename, Map)
+      objtype.set(object.name, object)
+      return objbytype
+    }, new Map<string, Map<string, AbapObject[]>>())
+    for (const [category, types] of objectsByCategory) {
+      if (category !== "") {
+        const catpath = parent.childPath(category)
+        const catNode = new AdtNode(
+          parent.uri.with({ path: catpath }),
+          true,
+          true
+        )
+        for (const [typename, typeObjects] of types) {
+          const typepath = catNode.childPath(typename)
+          const typeNode = new AdtNode(
+            catNode.uri.with({ path: typepath }),
+            true,
+            true
+          )
+          this.addChildren(typeNode, typeObjects)
+          if (typeNode.entries.size > 0) {
+            catNode.entries.set(typename, typeNode)
+            this.directories.set(typepath, typeNode)
+          }
+        }
+        if (catNode.entries.size > 0) {
+          parent.entries.set(category, catNode)
+          this.directories.set(catpath, catNode)
+        }
+      }
+    }
+    const nocat = objectsByCategory.get("")
+    if (nocat) for (const entry of nocat) this.addChildren(parent, entry[1])
   }
 
   getDirectory(name: string): AdtNode | undefined {

@@ -14,6 +14,12 @@ export const mapWidth = (func: any, target?: any[]) => {
   const fn = (x: any[]) => x.map(func)
   return target ? fn(target) : fn
 }
+export const ArrayToMap = (name: string) => (arr: any[]): Map<string, any> => {
+  return arr.reduce((map, current: any) => {
+    map.set(current[name], current)
+    return map
+  }, new Map())
+}
 
 //xml2js maps <root><record><field>foo</field></record><root> to {root:{field:[foo]}}
 // when the field is an array getfield will return its first line
@@ -80,9 +86,72 @@ export interface ObjectNode {
   EXPANDABLE: string
 }
 
-export const getNodeStructureTreeContent = parsetoPromise(
+export interface CategoryNode {
+  CATEGORY: string
+  CATEGORY_LABEL: string
+}
+
+export interface ObjectTypeNode {
+  OBJECT_TYPE: string
+  CATEGORY_TAG: string
+  OBJECT_TYPE_LABEL: string
+  NODE_ID: string
+}
+export interface NodeStructure {
+  nodes: ObjectNode[]
+  categories: Map<string, CategoryNode>
+  objectTypes: Map<string, ObjectTypeNode>
+}
+const filterComplex = (isComplex: boolean) => (x: Array<any>) =>
+  x.filter(element => (typeof element === "string" ? !isComplex : isComplex))
+
+const defaultVal = (def: any, fn: (...args: any[]) => any) => (
+  ...args: any[]
+) => {
+  try {
+    return fn(...args)
+  } catch (error) {
+    return def
+  }
+}
+const treecontentParser = defaultVal(
+  [],
   getNode(
     "asx:abap/asx:values/DATA/TREE_CONTENT/SEU_ADT_REPOSITORY_OBJ_NODE",
+    filterComplex(true),
     mapWidth(recxml2js)
   )
+)
+const categoryNodeParser = defaultVal(
+  new Map(),
+  getNode(
+    "asx:abap/asx:values/DATA/CATEGORIES",
+    filterComplex(true),
+    "SEU_ADT_OBJECT_CATEGORY_INFO",
+    mapWidth(recxml2js),
+    ArrayToMap("CATEGORY")
+  )
+)
+
+const ObjectTypeParser = defaultVal(
+  new Map(),
+  getNode(
+    "asx:abap/asx:values/DATA/OBJECT_TYPES",
+    filterComplex(true),
+    "SEU_ADT_OBJECT_TYPE_INFO",
+    mapWidth(recxml2js),
+    ArrayToMap("OBJECT_TYPE")
+  )
+)
+export const getNodeStructureTreeContent = parsetoPromise(
+  treecontentParser
 ) as (x: string) => Promise<ObjectNode[]>
+
+export const getNodeStructure = parsetoPromise((payload: any) => {
+  const structure: NodeStructure = {
+    nodes: treecontentParser(payload),
+    categories: categoryNodeParser(payload),
+    objectTypes: ObjectTypeParser(payload)
+  }
+  return structure
+}) as (x: string) => Promise<NodeStructure>
