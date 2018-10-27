@@ -3,10 +3,16 @@ import { AdtConnection } from "../adt/AdtConnection"
 import { pick } from "../functions"
 
 export const XML_EXTENSION = ".XML"
-export type AbapComponents = Array<{
+export type AbapNodeComponentByType = {
   name: string
-  types: Array<{ name: string; objects: Array<AbapObject> }>
-}>
+  type: string
+  objects: Array<AbapObject>
+}
+export type AbapNodeComponentByCategory = {
+  name: string
+  category: string
+  types: Array<AbapNodeComponentByType>
+}
 
 export class AbapObjectName {
   namespace: string
@@ -60,7 +66,9 @@ export class AbapObject {
   getExtension(): any {
     return this.isLeaf() ? ".abap" : ""
   }
-  getChildren(connection: AdtConnection): Promise<AbapComponents> {
+  getChildren(
+    connection: AdtConnection
+  ): Promise<Array<AbapNodeComponentByCategory>> {
     throw new Error("Method not implemented.")
   }
 }

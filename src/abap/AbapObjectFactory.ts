@@ -14,8 +14,9 @@ export function fromObjectNode(node: ObjectNode): AbapObject {
       objtype = AbapFunctionGroup
       break
     case "TABL/DT":
-    case "DOMA/DT":
+    case "DOMA/DD":
     case "DTEL/DE":
+    case "TTYP/DA":
       objtype = AbapSimpleObjectXml
       break
   }

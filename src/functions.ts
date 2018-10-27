@@ -3,6 +3,12 @@ type unaryFunction = (x: any) => any
 type promiseTransformer = (x: Promise<any>) => Promise<any>
 
 export const pick = <T, K extends keyof T>(name: K) => (x: T): T[K] => x[name]
+export const flat = <T>(a: Array<Array<T>>): Array<T> =>
+  a.reduce((res, current) => [...res, ...current], [])
+export const flatMap = <T1, T2>(
+  arr: Array<T1>,
+  cb: (c: T1, idx?: number, arrref?: Array<T1>) => Array<T2>
+) => flat(arr.map(cb))
 
 //return a function that applies all the functions, starting with the rightmost
 //compose(a,b)(...args) = a(b(...args))

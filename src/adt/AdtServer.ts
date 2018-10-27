@@ -72,7 +72,7 @@ export class AdtServer {
     this.connectionP = AdtConnectionManager.getManager().findConn(connectionId)
     this.root = new AbapMetaFolder()
     this.root.setChild(
-      "Local",
+      `$TMP`,
       new AbapObjectNode(new AbapPackage("DEVC/K", "$TMP", ADTBASEURL))
     )
     this.root.setChild(

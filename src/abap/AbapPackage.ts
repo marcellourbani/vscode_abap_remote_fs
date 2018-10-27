@@ -1,4 +1,4 @@
-import { AbapObject, AbapComponents } from "./AbapObject"
+import { AbapObject, AbapNodeComponentByCategory } from "./AbapObject"
 import { Uri } from "vscode"
 import { AdtConnection } from "../adt/AdtConnection"
 import { parseNodeStructure } from "../adt/AdtNodeStructParser"
@@ -8,7 +8,9 @@ export class AbapPackage extends AbapObject {
   isLeaf() {
     return false
   }
-  getChildren(connection: AdtConnection): Promise<AbapComponents> {
+  getChildren(
+    connection: AdtConnection
+  ): Promise<Array<AbapNodeComponentByCategory>> {
     const ptype = encodeURIComponent(this.type)
     const pname = encodeURIComponent(this.name)
     const query = `parent_name=${pname}&parent_tech_name=${pname}&parent_type=${ptype}&withShortDescriptions=true`

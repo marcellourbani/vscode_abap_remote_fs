@@ -1,4 +1,8 @@
-import { AbapObject, AbapObjectName, AbapComponents } from "./AbapObject"
+import {
+  AbapObject,
+  AbapObjectName,
+  AbapNodeComponentByCategory
+} from "./AbapObject"
 import { Uri } from "vscode"
 import { AdtConnection } from "../adt/AdtConnection"
 import { pick } from "../functions"
@@ -9,7 +13,9 @@ export class AbapFunctionGroup extends AbapObject {
     return false
   }
 
-  getChildren(connection: AdtConnection): Promise<AbapComponents> {
+  getChildren(
+    connection: AdtConnection
+  ): Promise<Array<AbapNodeComponentByCategory>> {
     const ptype = encodeURIComponent(this.type)
     const pname = encodeURIComponent(this.name)
     const abapname = new AbapObjectName(this.name)

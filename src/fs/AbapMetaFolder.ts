@@ -23,6 +23,12 @@ export class AbapMetaFolder implements FileStat, Iterable<[string, AbapNode]> {
     this.children.set(name, child)
     return child
   }
+  public deleteChild(name: string): void {
+    this.children.delete(name)
+  }
+  public numChildren(): number {
+    return this.children.size
+  }
 
   public refresh(connection: AdtConnection): Promise<AbapNode> {
     return Promise.resolve(this)
