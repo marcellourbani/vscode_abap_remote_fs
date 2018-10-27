@@ -2,7 +2,7 @@
   "name": "vscode-abap-remote-fs",
   "displayName": "vscode_abap_remote_fs",
   "description": "Work on your ABAP code straight from the server",
-  "version": "0.0.1",
+  "version": "0.0.2",
   "publisher": "murbani",
   "author": {
     "email": "marcello.urbani@gmail.com",
