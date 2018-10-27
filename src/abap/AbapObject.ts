@@ -1,5 +1,6 @@
 import { Uri } from "vscode"
 import { AdtConnection } from "../adt/AdtConnection"
+import { pick } from "../functions"
 
 export type AbapComponents = Array<{
   name: string
@@ -47,8 +48,11 @@ export class AbapObject {
     return this.name.replace(/\//g, "／") + this.getExtension()
   }
 
-  getUri(base: Uri): Uri {
-    return base.with({ path: this.path + "/source/main" })
+  getContents(connection: AdtConnection): Promise<string> {
+    const uri = Uri.parse("adt://" + connection.name).with({
+      path: this.path + "/source/main"
+    })
+    return connection.request(uri, "GET").then(pick("body"))
   }
 
   getExtension(): any {

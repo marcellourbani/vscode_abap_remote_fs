@@ -84,7 +84,7 @@ export const parseNodeStructure: (
     }
     components.push(cat)
     for (const ctype of ctypes) {
-      const typerec = types.get(ctype)
+      const typerec = types.get(ctype.OBJECT_TYPE)
       if (typerec)
         cat.types.push({
           name: typeLabel(ctype),
@@ -92,6 +92,11 @@ export const parseNodeStructure: (
         })
     }
   }
+  if (catTypes.size === 0)
+    components.push({
+      name: "",
+      types: [{ name: "", objects: nodes.map(fromObjectNode) }]
+    })
 
   return components
 })

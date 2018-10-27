@@ -1,6 +1,9 @@
 // type FunctionType1 = (x: string, y: number) => number;
 type unaryFunction = (x: any) => any
 type promiseTransformer = (x: Promise<any>) => Promise<any>
+
+export const pick = <T, K extends keyof T>(name: K) => (x: T): T[K] => x[name]
+
 //return a function that applies all the functions, starting with the rightmost
 //compose(a,b)(...args) = a(b(...args))
 // gave up type checking to allow a random number of composed functions
@@ -54,7 +57,6 @@ export function ArrayToMap(name: string) {
     }, new Map())
   }
 }
-
 export const GroupArray = (name: string) => (
   arr: any[]
 ): Map<string, any[]> => {
