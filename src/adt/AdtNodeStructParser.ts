@@ -87,7 +87,7 @@ export const parseNodeStructure: (
       const typerec = types.get(ctype.OBJECT_TYPE)
       if (typerec)
         cat.types.push({
-          name: typeLabel(ctype),
+          name: typeLabel(ctype.OBJECT_TYPE),
           objects: typerec.map(fromObjectNode)
         })
     }

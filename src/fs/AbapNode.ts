@@ -10,10 +10,11 @@ const addObjects = (node: AbapObjectNode, components: AbapComponents): void => {
       : node.getChild(category.name) ||
         node.setChild(category.name, new AbapMetaFolder())
     category.types.forEach(otype => {
-      const typeFolder = !otype.name
-        ? catFolder
-        : catFolder.getChild(otype.name) ||
-          catFolder.setChild(otype.name, new AbapMetaFolder())
+      const typeFolder =
+        !otype.name || otype.name === category.name
+          ? catFolder
+          : catFolder.getChild(otype.name) ||
+            catFolder.setChild(otype.name, new AbapMetaFolder())
 
       otype.objects.forEach(obj =>
         typeFolder.setChild(obj.vsName(), new AbapObjectNode(obj))

@@ -2,6 +2,7 @@ import { Uri } from "vscode"
 import { AdtConnection } from "../adt/AdtConnection"
 import { pick } from "../functions"
 
+export const XML_EXTENSION = ".XML"
 export type AbapComponents = Array<{
   name: string
   types: Array<{ name: string; objects: Array<AbapObject> }>
@@ -49,8 +50,9 @@ export class AbapObject {
   }
 
   getContents(connection: AdtConnection): Promise<string> {
+    const suffix = this.getExtension() === XML_EXTENSION ? "" : "/source/main"
     const uri = Uri.parse("adt://" + connection.name).with({
-      path: this.path + "/source/main"
+      path: this.path + suffix
     })
     return connection.request(uri, "GET").then(pick("body"))
   }
