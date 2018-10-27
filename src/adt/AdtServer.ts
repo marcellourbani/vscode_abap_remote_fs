@@ -59,7 +59,7 @@ export class AdtServer {
       ? rootProm
       : pipePromise(...parts.map(promiseChild))(rootProm).then(
           node =>
-            node.canRefresh()
+            node.isFolder() && node.canRefresh()
               ? this.connectionP.then(conn => {
                   return node.refresh(conn)
                 })

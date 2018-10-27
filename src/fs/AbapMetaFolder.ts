@@ -1,4 +1,4 @@
-import { FileStat, FileType } from "vscode"
+import { FileStat, FileType, FileSystemError } from "vscode"
 import { AbapNode } from "./AbapNode"
 import { AdtConnection } from "../adt/AdtConnection"
 
@@ -29,6 +29,9 @@ export class AbapMetaFolder implements FileStat, Iterable<[string, AbapNode]> {
   }
   public canRefresh() {
     return false
+  }
+  public fetchContents(connection: AdtConnection): Promise<Uint8Array> {
+    throw FileSystemError.FileIsADirectory()
   }
 
   [Symbol.iterator]() {

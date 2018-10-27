@@ -52,8 +52,13 @@ export class AbapObjectNode implements FileStat, Iterable<[string, AbapNode]> {
     this.children.set(name, child)
     return child
   }
-  public fetchContents(): Promise<Uint8Array> {
-    throw new Error("not yet implemented")
+  public fetchContents(connection: AdtConnection): Promise<Uint8Array> {
+    if (this.isFolder()) throw FileSystemError.FileIsADirectory()
+    return this.abapObject.getContents(connection).then(response => {
+      const buf = Buffer.from(response)
+      this.size = buf.length
+      return buf
+    })
   }
   public refresh(connection: AdtConnection): Promise<AbapNode> {
     return this.abapObject.getChildren(connection).then(objects => {
