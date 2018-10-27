@@ -1,27 +1,6 @@
 import { parseString, convertableToString } from "xml2js"
-// a handful of functional utilities, would belong to their own file...
-export const compose = (...functions: any[]) =>
-  functions
-    .slice(1)
-    .reduce((acc, fn) => (...inargs: any[]) => acc(fn(...inargs)), functions[0])
+import { pipe, mapWidth, ArrayToMap } from "../functions"
 
-export const pipe = (...functions: any[]) =>
-  functions
-    .slice(1)
-    .reduce((acc, fn) => (...inargs: any[]) => fn(acc(...inargs)), functions[0])
-
-export const mapWidth = (func: any, target?: any[]) => {
-  const fn = (x: any[]) => x.map(func)
-  return target ? fn(target) : fn
-}
-export const ArrayToMap = (name: string) => (arr: any[]): Map<string, any> => {
-  return arr.reduce((map, current: any) => {
-    map.set(current[name], current)
-    return map
-  }, new Map())
-}
-
-//xml2js maps <root><record><field>foo</field></record><root> to {root:{field:[foo]}}
 // when the field is an array getfield will return its first line
 // use with caution!
 export const getField = (name: string) => (subj: any) => {

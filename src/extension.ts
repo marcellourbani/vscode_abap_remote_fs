@@ -1,6 +1,6 @@
 "use strict"
 import * as vscode from "vscode"
-import { AbapFsProvider } from "./abapFsProvider"
+import { AbapFsProvider } from "./fs/AbapFsProvider"
 import { getRemoteList, RemoteConfig } from "./config"
 import { AdtConnectionManager } from "./adt/AdtConnectionManager"
 
@@ -43,11 +43,7 @@ export function activate(context: vscode.ExtensionContext) {
           .then(() => {
             if (remote) {
               vscode.workspace.updateWorkspaceFolders(0, 0, {
-                uri: vscode.Uri.parse(
-                  "adt://" +
-                    remote.name +
-                    "/sap/bc/adt/repository/nodestructure"
-                ),
+                uri: vscode.Uri.parse("adt://" + remote.name),
                 name: remote.name + "(ABAP)"
               })
             }

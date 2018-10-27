@@ -1,9 +1,12 @@
 import { AdtConnectionManager } from "./AdtConnectionManager"
 import { AdtConnection } from "./AdtConnection"
-import { AdtNode } from "./AdtNode"
 import { Uri, FileSystemError, FileType } from "vscode"
-import { AbapObject } from "../abap/AbapObject"
-import { ObjectTypeNode, CategoryNode } from "./AdtParser"
+import { AbapMetaFolder } from "../fs/AbapMetaFolder"
+import { AbapObjectNode, AbapNode } from "../fs/AbapNode"
+import { AbapPackage } from "../abap/AbapPackage"
+import { mapWidth, pipe, pipePromise } from "../functions"
+export const ADTBASEURL = "/sap/bc/adt/repository/nodestructure"
+
 // visual studio paths are hierarchic, adt ones aren't
 // so we need a way to translate the hierarchic ones to the original ones
 // this file is concerned with telling whether a path is a real ADT one or one from vscode
@@ -14,115 +17,65 @@ import { ObjectTypeNode, CategoryNode } from "./AdtParser"
 //  the actual adt path would be something like:
 //    /sap/bc/adt/oo/classes/%2Ffoo%2Fbar
 //  so we need to do quite a bit of transcoding
-const isValid = (vsUri: Uri): boolean => {
-  const matches = vsUri.path.match(
-    /^\/sap\/bc\/adt\/repository\/nodestructure\/?(.*)/i
-  )
-  return !!(matches && !matches[1].match(/^\./))
-}
-const mappedProp = (
-  map: Map<string, any>,
-  property: string,
-  name: string
-): any => {
-  const fn = (m: Map<string, any>, index: string) => {
-    const record = m.get(index)
-    return record && record[property]
-  }
-  if (name || name === "") return fn(map, name)
-  return fn
-}
-const mapGetOrSet = (map: Map<any, any>, index: any, constr: any): any =>
-  // let value: any = map.get(index)
-  // if (!value) {
-  //   value = new constr()
-  //   map.set(index, value)
-  // }
-  // return value
-  map.get(index) ? map.get(index) : map.set(index, new constr()).get(index)
 
 export class AdtServer {
   readonly connectionId: string
   readonly connectionP: Promise<AdtConnection>
-  private directories: Map<string, AdtNode> = new Map()
-  private objectUris: Map<string, Uri> = new Map()
+  private root: AbapMetaFolder
 
-  actualUri(original: Uri): Uri {
-    if (!isValid(original)) throw FileSystemError.FileNotFound(original)
-    return this.objectUris.get(original.path) || original
+  findNode(uri: Uri): AbapNode {
+    const parts = uri.path.split("/").slice(1)
+    return parts.reduce((current: any, name) => {
+      if (current && "getChild" in current) return current.getChild(name)
+      throw FileSystemError.FileNotFound(uri)
+    }, this.root)
   }
 
-  addChildren(parent: AdtNode, objects: AbapObject[]) {
-    objects.forEach(object => {
-      const childname = parent.childPath(object.vsName())
-      const child = new AdtNode(
-        parent.uri.with({ path: childname }),
-        !object.isLeaf(),
-        false
-      )
-      parent.entries.set(object.vsName(), child)
-      this.objectUris.set(childname, object.getUri(parent.uri))
-      if (child.type === FileType.Directory)
-        this.directories.set(childname, child)
-    })
-  }
+  findNodePromise(uri: Uri): Promise<AbapNode> {
+    const parts = uri.path.split("/").slice(1)
 
-  addNodes(
-    parent: AdtNode,
-    objects: AbapObject[],
-    objectTypes: Map<string, ObjectTypeNode>,
-    categories: Map<string, CategoryNode>
-  ) {
-    // addNodes(parent: AdtNode, objects: AbapObject[]) {
-    this.directories.set(parent.uri.path, parent)
-    const objectsByCategory = objects.reduce((objbytype, object) => {
-      const typename =
-        mappedProp(objectTypes, "OBJECT_TYPE_LABEL", object.type) || object.type
-      const ocattag = mappedProp(objectTypes, "CATEGORY_TAG", object.type) || ""
-      const ocatName = mappedProp(categories, "CATEGORY_LABEL", ocattag) || ""
-      const category = mapGetOrSet(objbytype, ocatName, Map)
-      const objtype = mapGetOrSet(category, typename, Map)
-      objtype.set(object.name, object)
-      return objbytype
-    }, new Map<string, Map<string, AbapObject[]>>())
-    for (const [category, types] of objectsByCategory) {
-      if (category !== "") {
-        const catpath = parent.childPath(category)
-        const catNode = new AdtNode(
-          parent.uri.with({ path: catpath }),
-          true,
-          true
-        )
-        for (const [typename, typeObjects] of types) {
-          const typepath = catNode.childPath(typename)
-          const typeNode = new AdtNode(
-            catNode.uri.with({ path: typepath }),
-            true,
-            true
-          )
-          this.addChildren(typeNode, typeObjects)
-          if (typeNode.entries.size > 0) {
-            catNode.entries.set(typename, typeNode)
-            this.directories.set(typepath, typeNode)
-          }
+    const promiseChild = (name: string) => (node: AbapNode) =>
+      this.connectionP.then(node.refresh).then(fresh => {
+        const child = fresh.getChild(name)
+        if (child) return child
+        throw FileSystemError.FileNotFound(name)
+      })
+
+    const rootProm = Promise.resolve(this.root)
+
+    return parts.length === 0
+      ? rootProm
+      : pipePromise(...parts.map(promiseChild))(rootProm)
+
+    const nextp = (name: string) => (
+      parentP: Promise<AbapNode>
+    ): Promise<AbapNode> =>
+      parentP.then(parent => {
+        if (parent.type === FileType.Directory) {
+          let child = parent.getChild(name)
+          if (child) return child
+          if (parent instanceof AbapObjectNode)
+            this.connectionP.then(parent.refresh)
         }
-        if (catNode.entries.size > 0) {
-          parent.entries.set(category, catNode)
-          this.directories.set(catpath, catNode)
-        }
-      }
-    }
-    const nocat = objectsByCategory.get("")
-    if (nocat) for (const entry of nocat) this.addChildren(parent, entry[1])
-  }
+        throw FileSystemError.FileNotFound(uri)
+      })
+    const chained = pipe(mapWidth(nextp, parts))
 
-  getDirectory(name: string): AdtNode | undefined {
-    return this.directories.get(name)
+    return Promise.resolve(this.root).then(chained)
   }
 
   constructor(connectionId: string) {
     this.connectionId = connectionId
     this.connectionP = AdtConnectionManager.getManager().findConn(connectionId)
+    this.root = new AbapMetaFolder()
+    this.root.setChild(
+      "Local",
+      new AbapObjectNode(new AbapPackage("DEVC/K", "$TMP", ADTBASEURL))
+    )
+    this.root.setChild(
+      "System Library",
+      new AbapObjectNode(new AbapPackage("DEVC/K", "", ADTBASEURL))
+    )
   }
 }
 const servers = new Map<string, AdtServer>()
@@ -133,4 +86,8 @@ export const getServer = (connId: string): AdtServer => {
     servers.set(connId, server)
   }
   return server
+}
+export const fromUri = (uri: Uri) => {
+  if (uri.scheme === "adt") return getServer(uri.authority)
+  throw FileSystemError.FileNotFound(uri)
 }
