@@ -4,7 +4,7 @@ import { AbapMetaFolder } from "./AbapMetaFolder"
 import { AdtConnection } from "../adt/AdtConnection"
 
 //folders are only used to store other nodes
-export class AbapObjectNode implements FileStat {
+export class AbapObjectNode implements FileStat, Iterable<[string, AbapNode]> {
   abapObject: AbapObject
   type: FileType
   ctime: number = Date.now()
@@ -41,6 +41,10 @@ export class AbapObjectNode implements FileStat {
   }
   public refresh(connection: AdtConnection): Promise<AbapNode> {
     return Promise.resolve(this)
+  }
+  [Symbol.iterator]() {
+    if (!this.children) throw FileSystemError.FileNotADirectory()
+    return this.children[Symbol.iterator]()
   }
 }
 

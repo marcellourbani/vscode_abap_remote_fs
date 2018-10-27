@@ -1,10 +1,10 @@
 import { AdtConnectionManager } from "./AdtConnectionManager"
 import { AdtConnection } from "./AdtConnection"
-import { Uri, FileSystemError, FileType } from "vscode"
+import { Uri, FileSystemError } from "vscode"
 import { AbapMetaFolder } from "../fs/AbapMetaFolder"
 import { AbapObjectNode, AbapNode } from "../fs/AbapNode"
 import { AbapPackage } from "../abap/AbapPackage"
-import { mapWidth, pipe, pipePromise } from "../functions"
+import { pipePromise } from "../functions"
 export const ADTBASEURL = "/sap/bc/adt/repository/nodestructure"
 
 // visual studio paths are hierarchic, adt ones aren't
@@ -17,6 +17,10 @@ export const ADTBASEURL = "/sap/bc/adt/repository/nodestructure"
 //  the actual adt path would be something like:
 //    /sap/bc/adt/oo/classes/%2Ffoo%2Fbar
 //  so we need to do quite a bit of transcoding
+const uriParts = (uri: Uri): string[] =>
+  uri.path
+    .split("/")
+    .filter((v, idx, arr) => (idx > 0 && idx < arr.length - 1) || v) //ignore empty at begginning or end
 
 export class AdtServer {
   readonly connectionId: string
@@ -24,7 +28,7 @@ export class AdtServer {
   private root: AbapMetaFolder
 
   findNode(uri: Uri): AbapNode {
-    const parts = uri.path.split("/").slice(1)
+    const parts = uriParts(uri)
     return parts.reduce((current: any, name) => {
       if (current && "getChild" in current) return current.getChild(name)
       throw FileSystemError.FileNotFound(uri)
@@ -32,8 +36,7 @@ export class AdtServer {
   }
 
   findNodePromise(uri: Uri): Promise<AbapNode> {
-    const parts = uri.path.split("/").slice(1)
-
+    const parts = uriParts(uri)
     const promiseChild = (name: string) => (node: AbapNode) =>
       this.connectionP.then(node.refresh).then(fresh => {
         const child = fresh.getChild(name)
@@ -46,22 +49,6 @@ export class AdtServer {
     return parts.length === 0
       ? rootProm
       : pipePromise(...parts.map(promiseChild))(rootProm)
-
-    const nextp = (name: string) => (
-      parentP: Promise<AbapNode>
-    ): Promise<AbapNode> =>
-      parentP.then(parent => {
-        if (parent.type === FileType.Directory) {
-          let child = parent.getChild(name)
-          if (child) return child
-          if (parent instanceof AbapObjectNode)
-            this.connectionP.then(parent.refresh)
-        }
-        throw FileSystemError.FileNotFound(uri)
-      })
-    const chained = pipe(mapWidth(nextp, parts))
-
-    return Promise.resolve(this.root).then(chained)
   }
 
   constructor(connectionId: string) {

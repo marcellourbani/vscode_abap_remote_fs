@@ -18,14 +18,12 @@ export class AbapFsProvider implements vscode.FileSystemProvider {
   readDirectory(
     uri: vscode.Uri
   ): [string, vscode.FileType][] | Thenable<[string, vscode.FileType][]> {
-    // const server = fromUri(uri)
-    // const dir = server.findNode(uri)
-    // if (isFolder(dir)) if (dir) dir.keys().map()
-    // Array.from(dir.entries).forEach(([key, value]) =>
-    //   result.push([key.replace(/\//g, "_"), value.type])
-    // )
-    // return result
-    throw new Error("Method not implemented.")
+    const server = fromUri(uri)
+    const dir = server.findNode(uri)
+    const contents = [...dir].map(
+      ([name, node]) => [name, node.type] as [string, vscode.FileType]
+    )
+    return contents
   }
   createDirectory(uri: vscode.Uri): void | Thenable<void> {
     throw new Error("Method not implemented.")
