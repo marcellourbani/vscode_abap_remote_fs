@@ -18,6 +18,7 @@ Too early to publish as an extension, there's a compiled extension you can run f
 `code --install-extension vscode-abap-remote-fs-0.0.2.vsix`
 
 Once installed you'll need an ABAP system with the ADT (Abap Developer Tools for eclipse) installed and SICF node /sap/bc/adt activated:
+
 ![image](https://user-images.githubusercontent.com/2453277/47607084-5760de00-da13-11e8-9c51-7e04eeff4299.png)
 
 You will need connection details in your settings:
