@@ -1,13 +1,8 @@
-import { AbapObject } from "./AbapObject"
-import { Uri } from "vscode"
+import { AbapObject, XML_EXTENSION } from "./AbapObject"
 
-export class AbapSimpleObject extends AbapObject {
-  getUri(base: Uri): Uri {
-    return base.with({ path: this.path })
-  }
-}
+export class AbapSimpleObject extends AbapObject {}
 export class AbapSimpleObjectXml extends AbapSimpleObject {
   getExtension() {
-    return ".xml"
+    return XML_EXTENSION
   }
 }
