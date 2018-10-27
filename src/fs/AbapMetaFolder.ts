@@ -19,17 +19,18 @@ export class AbapMetaFolder implements FileStat, Iterable<[string, AbapNode]> {
     return this.children.get(name)
   }
 
-  public setChild(name: string, child: AbapNode) {
+  public setChild(name: string, child: AbapNode): AbapNode {
     this.children.set(name, child)
+    return child
   }
 
   public refresh(connection: AdtConnection): Promise<AbapNode> {
     return Promise.resolve(this)
   }
-
-  public keys() {
-    return this.children.keys()
+  public canRefresh() {
+    return false
   }
+
   [Symbol.iterator]() {
     return this.children[Symbol.iterator]()
   }

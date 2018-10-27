@@ -46,11 +46,34 @@ export const mapWidth = (func: any, target?: any[]) => {
 
 //given an array of objects returns a map indexed by a property
 // only works if the property is an unique key
-export const ArrayToMap = (name: string) => (arr: any[]): Map<string, any> => {
+export function ArrayToMap(name: string) {
+  return (arr: any[]): Map<string, any> => {
+    return arr.reduce((map, current: any) => {
+      map.set(current[name], current)
+      return map
+    }, new Map())
+  }
+}
+
+export const GroupArray = (name: string) => (
+  arr: any[]
+): Map<string, any[]> => {
   return arr.reduce((map, current: any) => {
-    map.set(current[name], current)
+    const key = current[name]
+    const group = map.get(key) || map.set(key, []).get(key)
+    group!.push(current)
     return map
   }, new Map())
+}
+
+// returns a function that gets the given property from a map
+export const selectMap = <T1, K extends keyof T1, T2>(
+  map: Map<string, T1>,
+  property: K,
+  defval: T2
+): ((index: string) => T2) => (index: string): T2 => {
+  const record = map && map.get(index)
+  return ((record && record[property]) || defval) as T2
 }
 
 export const mappedProp = (
@@ -58,13 +81,27 @@ export const mappedProp = (
   property: string,
   name: string
 ): any => {
-  const fn = (m: Map<string, any>, index: string) => {
-    const record = m.get(index)
+  const fn = (index: string) => {
+    const record = map && map.get(index)
     return record && record[property]
   }
-  if (name || name === "") return fn(map, name)
+  if (name || name === "") return fn(name)
   return fn
 }
 //if map.get fails, create an entry of the given type, add it and return it
 export const mapGetOrSet = (map: Map<any, any>, index: any, constr: any): any =>
   map.get(index) ? map.get(index) : map.set(index, new constr()).get(index)
+
+export const filterComplex = (isComplex: boolean) => (x: Array<any>) =>
+  x.filter(element => (typeof element === "string" ? !isComplex : isComplex))
+
+//tries a function, returns its default
+export const defaultVal = (def: any, fn: (...args: any[]) => any) => (
+  ...args: any[]
+) => {
+  try {
+    return fn(...args)
+  } catch (error) {
+    return def
+  }
+}

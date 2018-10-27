@@ -1,8 +1,8 @@
-import { ObjectNode } from "../adt/AdtParser"
 import { AbapObject } from "./AbapObject"
 import { AbapPackage } from "./AbapPackage"
 import { AbapFunctionGroup } from "./AbapFunctionGroup"
 import { AbapSimpleObjectXml } from "./AbapSimpleObject"
+import { ObjectNode } from "../adt/AdtNodeStructParser"
 
 export function fromObjectNode(node: ObjectNode): AbapObject {
   let objtype = AbapObject

@@ -37,18 +37,34 @@ export class AdtServer {
 
   findNodePromise(uri: Uri): Promise<AbapNode> {
     const parts = uriParts(uri)
-    const promiseChild = (name: string) => (node: AbapNode) =>
-      this.connectionP.then(node.refresh).then(fresh => {
-        const child = fresh.getChild(name)
-        if (child) return child
-        throw FileSystemError.FileNotFound(name)
-      })
+    const promiseChild = (name: string) => (node: AbapNode) => {
+      const child = node.getChild(name)
+      if (child) return Promise.resolve(child)
+      if (node.canRefresh()) {
+        return this.connectionP
+          .then(conn => {
+            return node.refresh(conn)
+          })
+          .then(fresh => {
+            const child = fresh.getChild(name)
+            if (child) return child
+            throw FileSystemError.FileNotFound(name)
+          })
+      } else throw FileSystemError.FileNotFound(name)
+    }
 
     const rootProm = Promise.resolve(this.root)
 
     return parts.length === 0
       ? rootProm
-      : pipePromise(...parts.map(promiseChild))(rootProm)
+      : pipePromise(...parts.map(promiseChild))(rootProm).then(
+          node =>
+            node.canRefresh()
+              ? this.connectionP.then(conn => {
+                  return node.refresh(conn)
+                })
+              : node
+        )
   }
 
   constructor(connectionId: string) {

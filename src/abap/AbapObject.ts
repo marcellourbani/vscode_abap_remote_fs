@@ -1,10 +1,11 @@
 import { Uri } from "vscode"
+import { AdtConnection } from "../adt/AdtConnection"
 
-export interface AbapObjectPart {
-  type: string
+export type AbapComponents = Array<{
   name: string
-  parent: AbapObject
-}
+  types: Array<{ name: string; objects: Array<AbapObject> }>
+}>
+
 export class AbapObjectName {
   namespace: string
   name: string
@@ -52,5 +53,8 @@ export class AbapObject {
 
   getExtension(): any {
     return this.isLeaf() ? ".abap" : ""
+  }
+  getChildren(connection: AdtConnection): Promise<AbapComponents> {
+    throw new Error("Method not implemented.")
   }
 }
