@@ -5,7 +5,9 @@ Very early stages, for now it only displays some packages and a handful of objec
 
 ![anim](https://user-images.githubusercontent.com/2453277/47482169-ae0cc300-d82d-11e8-8d19-f55dd877c166.gif)
 ![image](https://user-images.githubusercontent.com/2453277/47466602-dd99dc00-d7e9-11e8-97ed-28e23dfd8f90.png)
-syntax highlighting added manually with the [ABAP language extension](https://marketplace.visualstudio.com/items?itemName=larshp.vscode-abap), picture was too lame without it :)
+syntax highlighting provided by [ABAP language extension](https://marketplace.visualstudio.com/items?itemName=larshp.vscode-abap), picture was too lame without it :)
+
+Sadly [ABAPlint](https://marketplace.visualstudio.com/items?itemName=larshp.vscode-abaplint) doesn't work over remote FS
 
 ## Features
 
