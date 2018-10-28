@@ -33,6 +33,12 @@ interface ObjectTypeNode {
   NODE_ID: string
 }
 
+interface NodeContents {
+  nodes: Array<ObjectNode>
+  categories: Map<string, CategoryNode>
+  objectTypes: Map<string, ObjectTypeNode>
+}
+
 const treecontentParser = defaultVal(
   [],
   getNode(
@@ -63,46 +69,50 @@ const ObjectTypeParser: (a: string) => Map<string, ObjectTypeNode> = defaultVal(
   )
 )
 
-export const parseNodeStructure: (
+export const parseNode: (
   rawpayload: convertableToString
-) => Promise<Array<AbapNodeComponentByCategory>> = parsetoPromise(
-  (payload: any) => {
-    const nodes = treecontentParser(payload)
-    const categories = categoryNodeParser(payload)
-    const objectTypes = ObjectTypeParser(payload)
-
-    const catLabel = selectMap(categories, "CATEGORY_LABEL", "")
-    const typeLabel = selectMap(objectTypes, "OBJECT_TYPE_LABEL", "")
-
-    const types = GroupArray("OBJECT_TYPE")(nodes)
-    const catTypes = GroupArray("CATEGORY_TAG")([...objectTypes.values()])
-
-    const components: Array<AbapNodeComponentByCategory> = []
-    for (const [category, ctypes] of catTypes) {
-      const cat = {
-        name: catLabel(category),
-        category,
-        types: new Array<any>()
-      }
-      components.push(cat)
-      for (const ctype of ctypes) {
-        const typerec = types.get(ctype.OBJECT_TYPE)
-        if (typerec)
-          cat.types.push({
-            name: typeLabel(ctype.OBJECT_TYPE),
-            type: ctype.OBJECT_TYPE,
-            objects: typerec.map(fromObjectNode)
-          })
-      }
-    }
-    //root node has no categories, just a list of packages
-    if (catTypes.size === 0)
-      components.push({
-        name: "",
-        category: "",
-        types: [{ name: "", type: "", objects: nodes.map(fromObjectNode) }]
-      })
-
-    return components
+) => Promise<NodeContents> = parsetoPromise((payload: any) => {
+  return {
+    nodes: treecontentParser(payload),
+    categories: categoryNodeParser(payload),
+    objectTypes: ObjectTypeParser(payload)
   }
-)
+})
+
+export function aggregateNodes(
+  cont: NodeContents
+): Array<AbapNodeComponentByCategory> {
+  const catLabel = selectMap(cont.categories, "CATEGORY_LABEL", "")
+  const typeLabel = selectMap(cont.objectTypes, "OBJECT_TYPE_LABEL", "")
+
+  const types = GroupArray("OBJECT_TYPE")(cont.nodes)
+  const catTypes = GroupArray("CATEGORY_TAG")([...cont.objectTypes.values()])
+
+  const components: Array<AbapNodeComponentByCategory> = []
+  for (const [category, ctypes] of catTypes) {
+    const cat = {
+      name: catLabel(category),
+      category,
+      types: new Array<any>()
+    }
+    components.push(cat)
+    for (const ctype of ctypes) {
+      const typerec = types.get(ctype.OBJECT_TYPE)
+      if (typerec)
+        cat.types.push({
+          name: typeLabel(ctype.OBJECT_TYPE),
+          type: ctype.OBJECT_TYPE,
+          objects: typerec.map(fromObjectNode)
+        })
+    }
+  }
+  //root node has no categories, just a list of packages
+  if (catTypes.size === 0)
+    components.push({
+      name: "",
+      category: "",
+      types: [{ name: "", type: "", objects: cont.nodes.map(fromObjectNode) }]
+    })
+
+  return components
+}

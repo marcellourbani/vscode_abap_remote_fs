@@ -6,7 +6,7 @@ import {
 import { Uri } from "vscode"
 import { AdtConnection } from "../adt/AdtConnection"
 import { pick } from "../functions"
-import { parseNodeStructure } from "../adt/AdtNodeStructParser"
+import { parseNode, aggregateNodes } from "../adt/AdtNodeStructParser"
 
 export class AbapFunctionGroup extends AbapObject {
   isLeaf() {
@@ -29,10 +29,19 @@ export class AbapFunctionGroup extends AbapObject {
       path: "/sap/bc/adt/repository/nodestructure",
       query: `parent_name=${pname}&parent_tech_name=${techname}&parent_type=${ptype}&withShortDescriptions=true`
     })
-    return connection
-      .request(uri, "POST")
-      .then(pick("body"))
-      .then(parseNodeStructure)
+    return (
+      connection
+        .request(uri, "POST")
+        .then(pick("body"))
+        .then(parseNode)
+        //filter out subobjects before aggregating
+        .then(nodestr => ({
+          categories: nodestr.categories,
+          objectTypes: nodestr.objectTypes,
+          nodes: nodestr.nodes.filter(n => !n.OBJECT_URI.match("[#|?].*name="))
+        }))
+        .then(aggregateNodes)
+    )
   }
 
   getUri(base: Uri): Uri {

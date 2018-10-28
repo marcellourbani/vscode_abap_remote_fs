@@ -1,7 +1,7 @@
 import { AbapObject, AbapNodeComponentByCategory } from "./AbapObject"
 import { Uri } from "vscode"
 import { AdtConnection } from "../adt/AdtConnection"
-import { parseNodeStructure } from "../adt/AdtNodeStructParser"
+import { parseNode, aggregateNodes } from "../adt/AdtNodeStructParser"
 import { pick } from "../functions"
 
 export class AbapPackage extends AbapObject {
@@ -22,6 +22,7 @@ export class AbapPackage extends AbapObject {
     return connection
       .request(uri, "POST")
       .then(pick("body"))
-      .then(parseNodeStructure)
+      .then(parseNode)
+      .then(aggregateNodes)
   }
 }

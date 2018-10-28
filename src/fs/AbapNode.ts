@@ -49,9 +49,9 @@ const refreshObjects = (
   components: Array<AbapNodeComponentByCategory>
 ): void => {
   //create a new structure, then will match it with the node's
-  const newFolder = node.abapObject.type.match(/FUGR/)
-    ? getNodeHierarchyByType(components)
-    : getNodeHierarchy(components)
+  const newFolder = node.abapObject.type.match(/DEVC/)
+    ? getNodeHierarchy(components)
+    : getNodeHierarchyByType(components)
 
   function reconcile(current: AbapNode, newNode: AbapNode) {
     for (const [name, value] of [...newNode]) {

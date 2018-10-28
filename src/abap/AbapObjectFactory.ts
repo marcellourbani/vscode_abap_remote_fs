@@ -1,8 +1,8 @@
 import { AbapObject } from "./AbapObject"
 import { AbapPackage } from "./AbapPackage"
-import { AbapFunctionGroup } from "./AbapFunctionGroup"
-import { AbapSimpleObjectXml } from "./AbapSimpleObject"
+import { AbapSimpleObjectXml, AbapGenericObject } from "./AbapSimpleObject"
 import { ObjectNode } from "../adt/AdtNodeStructParser"
+import { AbapFunctionGroup } from "./AbapFunctionGroup"
 
 export function fromObjectNode(node: ObjectNode): AbapObject {
   let objtype = AbapObject
@@ -19,6 +19,13 @@ export function fromObjectNode(node: ObjectNode): AbapObject {
     case "TTYP/DA":
       objtype = AbapSimpleObjectXml
       break
+    default:
+      return new AbapGenericObject(
+        node.OBJECT_TYPE,
+        node.OBJECT_NAME,
+        node.OBJECT_URI,
+        node.EXPANDABLE
+      )
   }
   return new objtype(node.OBJECT_TYPE, node.OBJECT_NAME, node.OBJECT_URI)
 }
