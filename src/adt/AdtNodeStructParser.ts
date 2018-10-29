@@ -1,16 +1,7 @@
 import { getNode, recxml2js, parsetoPromise } from "./AdtParserBase"
 
-import {
-  mapWidth,
-  ArrayToMap,
-  filterComplex,
-  defaultVal,
-  GroupArray,
-  selectMap
-} from "../functions"
-import { fromObjectNode } from "../abap/AbapObjectFactory"
+import { mapWidth, ArrayToMap, filterComplex, defaultVal } from "../functions"
 import { convertableToString } from "xml2js"
-import { AbapNodeComponentByCategory } from "../abap/AbapObject"
 
 export interface ObjectNode {
   OBJECT_TYPE: string
@@ -78,41 +69,3 @@ export const parseNode: (
     objectTypes: ObjectTypeParser(payload)
   }
 })
-
-export function aggregateNodes(
-  cont: NodeStructure
-): Array<AbapNodeComponentByCategory> {
-  const catLabel = selectMap(cont.categories, "CATEGORY_LABEL", "")
-  const typeLabel = selectMap(cont.objectTypes, "OBJECT_TYPE_LABEL", "")
-
-  const types = GroupArray("OBJECT_TYPE")(cont.nodes)
-  const catTypes = GroupArray("CATEGORY_TAG")([...cont.objectTypes.values()])
-
-  const components: Array<AbapNodeComponentByCategory> = []
-  for (const [category, ctypes] of catTypes) {
-    const cat = {
-      name: catLabel(category),
-      category,
-      types: new Array<any>()
-    }
-    components.push(cat)
-    for (const ctype of ctypes) {
-      const typerec = types.get(ctype.OBJECT_TYPE)
-      if (typerec)
-        cat.types.push({
-          name: typeLabel(ctype.OBJECT_TYPE),
-          type: ctype.OBJECT_TYPE,
-          objects: typerec.map(fromObjectNode)
-        })
-    }
-  }
-  //root node has no categories, just a list of packages
-  if (catTypes.size === 0)
-    components.push({
-      name: "",
-      category: "",
-      types: [{ name: "", type: "", objects: cont.nodes.map(fromObjectNode) }]
-    })
-
-  return components
-}

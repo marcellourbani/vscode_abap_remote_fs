@@ -3,6 +3,7 @@ import { AbapObject, AbapNodeComponentByCategory } from "../abap/AbapObject"
 import { AbapMetaFolder } from "./AbapMetaFolder"
 import { AdtConnection } from "../adt/AdtConnection"
 import { flatMap, pick } from "../functions"
+import { aggregateNodes } from "../abap/AbapObjectUtilities"
 
 const getNodeHierarchyByType = (
   components: Array<AbapNodeComponentByCategory>
@@ -111,7 +112,7 @@ export class AbapObjectNode implements FileStat, Iterable<[string, AbapNode]> {
   }
   public refresh(connection: AdtConnection): Promise<AbapNode> {
     return this.abapObject.getChildren(connection).then(objects => {
-      refreshObjects(this, objects)
+      refreshObjects(this, aggregateNodes(objects))
       return this
     })
   }

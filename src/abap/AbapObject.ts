@@ -1,11 +1,7 @@
 import { Uri, FileSystemError } from "vscode"
 import { AdtConnection } from "../adt/AdtConnection"
 import { pick } from "../functions"
-import {
-  parseNode,
-  NodeStructure,
-  aggregateNodes
-} from "../adt/AdtNodeStructParser"
+import { parseNode, NodeStructure } from "../adt/AdtNodeStructParser"
 import { parsetoPromise } from "../adt/AdtParserBase"
 import { parseObject } from "../adt/AdtObjectParser"
 
@@ -21,29 +17,6 @@ export type AbapNodeComponentByCategory = {
   category: string
   types: Array<AbapNodeComponentByType>
 }
-
-// export class AbapObjectName {
-//   namespace: string
-//   name: string
-//   vsName(): string {
-//     return this.namespace === ""
-//       ? this.name
-//       : `／${this.namespace}／${this.name}`
-//   }
-//   abapName(): string {
-//     return this.namespace === "" ? this.name : `/${this.namespace}/${this.name}`
-//   }
-//   constructor(fullname: string) {
-//     const parts = fullname.replace(/／/g, "/").match(/^\/([^\/]*)\/(.*)/)
-//     if (parts) {
-//       this.namespace = parts[1]
-//       this.name = parts[2]
-//     } else {
-//       this.name = fullname
-//       this.namespace = ""
-//     }
-//   }
-// }
 
 export class AbapObject {
   readonly type: string
@@ -115,9 +88,7 @@ export class AbapObject {
     if (!this.isLeaf()) return ""
     return this.sapguiOnly ? ".txt" : ".abap"
   }
-  getChildren(
-    connection: AdtConnection
-  ): Promise<Array<AbapNodeComponentByCategory>> {
+  getChildren(connection: AdtConnection): Promise<NodeStructure> {
     if (this.isLeaf()) throw FileSystemError.FileNotADirectory(this.vsName())
     const nodeUri = this.getNodeUri(connection)
 
@@ -126,7 +97,6 @@ export class AbapObject {
       .then(pick("body"))
       .then(parseNode)
       .then(this.filterNodeStructure.bind(this))
-      .then(aggregateNodes)
   }
 
   protected getNodeUri(connection: AdtConnection): Uri {

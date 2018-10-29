@@ -1,16 +1,14 @@
-import { AbapObject, AbapNodeComponentByCategory } from "./AbapObject"
+import { AbapObject } from "./AbapObject"
 import { Uri } from "vscode"
 import { AdtConnection } from "../adt/AdtConnection"
-import { parseNode, aggregateNodes } from "../adt/AdtNodeStructParser"
+import { parseNode, NodeStructure } from "../adt/AdtNodeStructParser"
 import { pick } from "../functions"
 
 export class AbapPackage extends AbapObject {
   isLeaf() {
     return false
   }
-  getChildren(
-    connection: AdtConnection
-  ): Promise<Array<AbapNodeComponentByCategory>> {
+  getChildren(connection: AdtConnection): Promise<NodeStructure> {
     const ptype = encodeURIComponent(this.type)
     const pname = encodeURIComponent(this.name)
     const query = `parent_name=${pname}&parent_tech_name=${pname}&parent_type=${ptype}&withShortDescriptions=true`
@@ -23,6 +21,5 @@ export class AbapPackage extends AbapObject {
       .request(uri, "POST")
       .then(pick("body"))
       .then(parseNode)
-      .then(aggregateNodes)
   }
 }
