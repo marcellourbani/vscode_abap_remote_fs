@@ -33,7 +33,7 @@ interface ObjectTypeNode {
   NODE_ID: string
 }
 
-interface NodeContents {
+export interface NodeStructure {
   nodes: Array<ObjectNode>
   categories: Map<string, CategoryNode>
   objectTypes: Map<string, ObjectTypeNode>
@@ -71,7 +71,7 @@ const ObjectTypeParser: (a: string) => Map<string, ObjectTypeNode> = defaultVal(
 
 export const parseNode: (
   rawpayload: convertableToString
-) => Promise<NodeContents> = parsetoPromise((payload: any) => {
+) => Promise<NodeStructure> = parsetoPromise((payload: any) => {
   return {
     nodes: treecontentParser(payload),
     categories: categoryNodeParser(payload),
@@ -80,7 +80,7 @@ export const parseNode: (
 })
 
 export function aggregateNodes(
-  cont: NodeContents
+  cont: NodeStructure
 ): Array<AbapNodeComponentByCategory> {
   const catLabel = selectMap(cont.categories, "CATEGORY_LABEL", "")
   const typeLabel = selectMap(cont.objectTypes, "OBJECT_TYPE_LABEL", "")

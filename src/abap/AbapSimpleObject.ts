@@ -1,13 +1,13 @@
 import {
   AbapObject,
   XML_EXTENSION,
-  AbapNodeComponentByCategory,
-  AbapObjectName
+  AbapNodeComponentByCategory
 } from "./AbapObject"
 import { AdtConnection } from "../adt/AdtConnection"
 import { Uri, FileSystemError } from "vscode"
-import { pick, GroupArray, mapGetOrSet } from "../functions"
+import { pick, GroupArray } from "../functions"
 import { parseNode, aggregateNodes } from "../adt/AdtNodeStructParser"
+import { parsetoPromise } from "../adt/AdtParserBase"
 
 export class AbapSimpleObjectXml extends AbapObject {
   getExtension() {
@@ -15,13 +15,8 @@ export class AbapSimpleObjectXml extends AbapObject {
   }
 }
 export class AbapGenericObject extends AbapObject {
-  expandable: boolean
-  sapguiOnly: boolean
-
   constructor(type: string, name: string, path: string, expandable: string) {
-    super(type, name, path)
-    this.expandable = !!expandable
-    this.sapguiOnly = !!path.match(/\/sap\/bc\/adt\/vit/)
+    super(type, name, path, expandable)
   }
   isLeaf() {
     return !this.expandable
@@ -45,10 +40,76 @@ export class AbapGenericObject extends AbapObject {
     const ptype = encodeURIComponent(this.type)
     const pname = encodeURIComponent(this.name)
 
-    const uri = Uri.parse("adt://" + connection.name).with({
+    const uri = Uri.parse(
+      "adt://dummy//sap/bc/adt/repository/nodestructure"
+    ).with({
+      authority: connection.name,
       path: "/sap/bc/adt/repository/nodestructure",
       query: `parent_name=${pname}&parent_tech_name=${pname}&parent_type=${ptype}&withShortDescriptions=true`
     })
+
+    connection
+      .request(uri.with({ path: this.path, query: "" }), "GET")
+      .then(pick("body"))
+      .then(
+        parsetoPromise((payload: any) => {
+          const objectRoot = (payload: any) => payload[Object.keys(payload)[0]]
+          const objheader = (payload: any) => objectRoot(payload)["$"]
+          const mainLinks = (payload: any) =>
+            objectRoot(payload)["atom:link"].map((x: any) => x["$"])
+          const classIncludes = (payload: any) =>
+            objectRoot(payload)["class:include"].map((x: any) => x["$"])
+
+          let out = {
+            h: objheader(payload),
+            l: mainLinks(payload),
+            ci: this.type.match(/CLAS/) && classIncludes(payload)
+          }
+          console.log(JSON.stringify(out))
+
+          //payload[Object.keys(payload)[0]]["$"]
+          //payload[Object.keys(payload)[0]]["atom:link"].map(x=>x["$"])
+          //payload[Object.keys(payload)[0]]["class:include"].map(x=>x["$"])
+          const header = payload["abapsource:objectStructureElement"]["$"]
+
+          const links = payload["abapsource:objectStructureElement"][
+            "atom:link"
+          ].map((x: any) => x["$"])
+          console.log(header, JSON.stringify(links))
+        })
+      )
+
+    // connection
+    //   .request(
+    //     uri.with({ path: this.path + "/objectstructure", query: "" }),
+    //     "GET"
+    //   )
+    //   .then(pick("body"))
+    //   .then(
+    //     parsetoPromise((payload: any) => {
+    //       console.log(
+    //         payload["abapsource:objectStructureElement"]["$"]["xml:base"]
+    //       )
+    //       const children =
+    //         payload["abapsource:objectStructureElement"][
+    //           "abapsource:objectStructureElement"
+    //         ]
+    //       const c2 = children.map((child: any) => {
+    //         const nc: any = {}
+    //         for (const p in child["$"]) {
+    //           nc[p.replace(/.*:/, "")] = child["$"][p]
+    //         }
+    //         nc.links = child["atom:link"].map((l: any) => l["$"])
+    //         return nc
+    //       })
+    //       console.log(c2, JSON.stringify(c2))
+    //       const f = (ok: boolean, link: any) =>
+    //         ok || !(link.href.match(/name=/) || link.href.match(/start=[0-9]/))
+
+    //       const c3 = c2.filter((c: any) => c.links.reduce(f, false))
+    //       console.log(c3, JSON.stringify(c3))
+    //     })
+    //   )
     return (
       connection
         .request(uri, "POST")
@@ -71,7 +132,10 @@ export class AbapGenericObject extends AbapObject {
             nodes: nodestr.nodes.filter(n => {
               if (forbidden.get(n.TECH_NAME))
                 return n.TECH_NAME === n.OBJECT_NAME
-              return !n.OBJECT_URI.match("[#|?].*name=")
+              return !(
+                n.OBJECT_URI.match("[#?;].*name=") ||
+                n.OBJECT_URI.match(/start=[0-9]/)
+              )
             })
           }
         })
