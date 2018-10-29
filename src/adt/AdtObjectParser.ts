@@ -1,10 +1,9 @@
-interface BaseHeader {
+interface AbapSource {
   "abapsource:sourceUri": string
-  "abapsource:fixPointArithmetic": string
-  "abapsource:activeUnicodeCheck": string
-  "adtcore:responsible": string
-  "adtcore:masterLanguage": string
-  "adtcore:masterSystem": string
+  "abapsource:fixPointArithmetic"?: string
+  "abapsource:activeUnicodeCheck"?: string
+}
+interface BaseHeader extends AbapSource {
   "adtcore:name": string
   "adtcore:type": string
   "adtcore:changedAt": Date
@@ -12,21 +11,52 @@ interface BaseHeader {
   "adtcore:createdAt": Date
   "adtcore:changedBy": string
   "adtcore:createdBy": string
-  "adtcore:description": string
-  "adtcore:descriptionTextLimit": string
-  "adtcore:language": string
+  "adtcore:responsible"?: string
+  "adtcore:masterLanguage"?: string
+  "adtcore:masterSystem"?: string
+  "adtcore:description"?: string
+  "adtcore:descriptionTextLimit"?: string
+  "adtcore:language"?: string
 }
-interface AdtAtomLink {
+interface AtomLink {
   href: string
   rel: string
   type: string
   title: string
 }
-//payload[Object.keys(payload)[0]]["$"]
-//payload[Object.keys(payload)[0]]["atom:link"].map(x=>x["$"])
-//payload[Object.keys(payload)[0]]["class:include"].map(x=>x["$"])
-export interface AdtObjectBase<T1 extends BaseHeader, T2 extends AdtAtomLink> {
+
+export interface AdtObjectBase<T1 extends BaseHeader, T2 extends AtomLink> {
   nodeName: string
   header: T1
   links: T2[]
+}
+export interface AdtObjectClass<T1 extends BaseHeader, T2 extends AtomLink>
+  extends AdtObjectBase<T1, T2> {
+  includes: Array<{ header: T1; links: T2[] }>
+}
+
+export function parseObject<T1 extends BaseHeader, T2 extends AtomLink>(
+  xmlObject: any
+): AdtObjectBase<T1, T2> {
+  const nodeName = Object.keys(xmlObject)[0]
+  const root = nodeName && xmlObject[nodeName]
+  const header = root && root["$"]
+  const links = root && root["atom:link"].map((x: any) => x["$"])
+  return { nodeName, header, links }
+}
+
+export function parseClass<T1 extends BaseHeader, T2 extends AtomLink>(
+  xmlObject: any
+): AdtObjectClass<T1, T2> {
+  const nodeName = Object.keys(xmlObject)[0]
+  const root = nodeName && xmlObject[nodeName]
+  const header = root && root["$"]
+  const links = root && root["atom:link"].map((x: any) => x["$"])
+  const includes = root["class:include"].map((x: any) => {
+    return {
+      header: x["$"],
+      links: x["atom:link"].map((x: any) => x["$"])
+    }
+  })
+  return { nodeName, header, links, includes }
 }

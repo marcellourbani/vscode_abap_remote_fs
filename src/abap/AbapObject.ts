@@ -6,8 +6,11 @@ import {
   NodeStructure,
   aggregateNodes
 } from "../adt/AdtNodeStructParser"
+import { parsetoPromise } from "../adt/AdtParserBase"
+import { parseObject } from "../adt/AdtObjectParser"
 
 export const XML_EXTENSION = ".XML"
+export const SAPGUIONLY = "Objects of this type are only supported in SAPGUI"
 export type AbapNodeComponentByType = {
   name: string
   type: string
@@ -19,28 +22,28 @@ export type AbapNodeComponentByCategory = {
   types: Array<AbapNodeComponentByType>
 }
 
-export class AbapObjectName {
-  namespace: string
-  name: string
-  vsName(): string {
-    return this.namespace === ""
-      ? this.name
-      : `／${this.namespace}／${this.name}`
-  }
-  abapName(): string {
-    return this.namespace === "" ? this.name : `/${this.namespace}/${this.name}`
-  }
-  constructor(fullname: string) {
-    const parts = fullname.replace(/／/g, "/").match(/^\/([^\/]*)\/(.*)/)
-    if (parts) {
-      this.namespace = parts[1]
-      this.name = parts[2]
-    } else {
-      this.name = fullname
-      this.namespace = ""
-    }
-  }
-}
+// export class AbapObjectName {
+//   namespace: string
+//   name: string
+//   vsName(): string {
+//     return this.namespace === ""
+//       ? this.name
+//       : `／${this.namespace}／${this.name}`
+//   }
+//   abapName(): string {
+//     return this.namespace === "" ? this.name : `/${this.namespace}/${this.name}`
+//   }
+//   constructor(fullname: string) {
+//     const parts = fullname.replace(/／/g, "/").match(/^\/([^\/]*)\/(.*)/)
+//     if (parts) {
+//       this.namespace = parts[1]
+//       this.name = parts[2]
+//     } else {
+//       this.name = fullname
+//       this.namespace = ""
+//     }
+//   }
+// }
 
 export class AbapObject {
   readonly type: string
@@ -74,16 +77,38 @@ export class AbapObject {
 
   getContents(connection: AdtConnection): Promise<string> {
     if (!this.isLeaf()) throw FileSystemError.FileIsADirectory(this.vsName())
-    if (this.sapguiOnly)
-      return Promise.resolve(
-        `Objects of this type are only supported in SAPGUI`
-      )
-
-    const suffix = this.getExtension() === ".abap" ? "/source/main" : ""
-    const uri = Uri.parse("adt://" + connection.name).with({
-      path: this.path + suffix
+    if (this.sapguiOnly) return Promise.resolve(SAPGUIONLY)
+    const mainUri = Uri.parse("adt://" + connection.name).with({
+      path: this.path
     })
-    return connection.request(uri, "GET").then(pick("body"))
+    //bit of heuristics: assume we're already dealing with a source file
+    // if source/main is part of the url
+    if (this.path.match(/\/source\/main/))
+      return connection.request(mainUri, "GET").then(pick("body"))
+
+    const follow = this.followLinkGen(mainUri)
+
+    return connection
+      .request(mainUri, "GET")
+      .then(pick("body"))
+      .then(parsetoPromise())
+      .then(parseObject)
+      .then(o => {
+        let actualUri
+        let query = o.header["adtcore:version"]
+          ? `version=${o.header["adtcore:version"]}`
+          : ""
+        o.links.some(link => {
+          return (
+            link.type &&
+            link.type.match(/text/i) &&
+            (actualUri = follow(link.href).with({ query }))
+          )
+        })
+        if (actualUri)
+          return connection.request(actualUri, "GET").then(pick("body"))
+        else return SAPGUIONLY
+      })
   }
 
   getExtension(): any {
@@ -129,5 +154,20 @@ export class AbapObject {
 
   protected whiteListed(OBJECT_TYPE: string): boolean {
     return !!OBJECT_TYPE.match(/^....\/(.|(FF))$/)
+  }
+
+  protected followLinkGen(base: Uri): any {
+    return (relPath: string): Uri => {
+      let path
+      if (relPath.match(/^\//)) path = relPath
+      else if (relPath.match(/^\.\//)) {
+        path =
+          base.path.replace(/\/([^\/]*)$/, "/") + relPath.replace(/\.\//, "")
+      } else {
+        const sep = base.path.match(/\/$/) ? "" : "/"
+        path = base.path + sep + relPath.replace(/\.\//, "")
+      }
+      return base.with({ path })
+    }
   }
 }
