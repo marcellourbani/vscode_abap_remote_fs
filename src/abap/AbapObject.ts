@@ -120,9 +120,7 @@ export class AbapObject {
   //exclude those visible only in SAPGUI, except whitelisted
   protected filterNodeStructure(nodest: NodeStructure): NodeStructure {
     if (this.type === "DEVC/K") return nodest
-    const nodes = nodest.nodes.filter(node =>
-      node.OBJECT_TYPE.match(/^....\/(.|(FF))$/)
-    )
+    const nodes = nodest.nodes.filter(x => this.whiteListed(x.OBJECT_TYPE))
     return {
       ...nodest,
       nodes
@@ -130,6 +128,6 @@ export class AbapObject {
   }
 
   protected whiteListed(OBJECT_TYPE: string): boolean {
-    return OBJECT_TYPE === "DEVC/K"
+    return !!OBJECT_TYPE.match(/^....\/(.|(FF))$/)
   }
 }
