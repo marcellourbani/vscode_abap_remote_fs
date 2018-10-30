@@ -109,6 +109,10 @@ export class AbapObjectNode implements FileStat, Iterable<[string, AbapNode]> {
       return buf
     })
   }
+  public save(connection: AdtConnection, contents: Uint8Array) {
+    if (this.isFolder()) throw FileSystemError.FileIsADirectory()
+    this.abapObject.setContents(connection, contents)
+  }
   numChildren(): number {
     return this.children ? this.children.size : 0
   }

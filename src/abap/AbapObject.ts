@@ -13,6 +13,7 @@ import {
   objectVersion
 } from "../adt/AdtObjectParser"
 import { aggregateNodes } from "./AbapObjectUtilities"
+import { adtLockParser } from "../adt/AdtLockParser"
 
 export const XML_EXTENSION = ".XML"
 export const SAPGUIONLY = "Objects of this type are only supported in SAPGUI"
@@ -61,6 +62,40 @@ export class AbapObject {
     return Uri.parse("adt://" + connection.name).with({
       path: this.path
     })
+  }
+
+  setContents(connection: AdtConnection, contents: Uint8Array): any {
+    if (!this.isLeaf()) throw FileSystemError.FileIsADirectory(this.vsName())
+    if (this.sapguiOnly)
+      throw FileSystemError.FileNotFound(
+        `${this.name} can only be edited in SAPGUI`
+      )
+    const baseUri = this.getUri(connection)
+    let lock = ""
+    //get a lock
+    connection
+      .request(
+        baseUri.with({ query: "?_action=LOCK&accessMode=MODIFY" }),
+        "POST"
+      )
+      .then(pick("body"))
+      .then(parsetoPromise() as any)
+      .then(adtLockParser)
+      .then(l => {
+        lock = l.LOCK_HANDLE
+        return connection.request(
+          baseUri.with({ query: `?lockHandle=${lock}` }),
+          "PUT",
+          { body: contents }
+        )
+      })
+      .then(() =>
+        connection.request(
+          baseUri.with({ query: `?_action=UNLOCK&lockHandle=${lock}` }),
+          "POST"
+        )
+      )
+    //
   }
 
   getContents(connection: AdtConnection): Promise<string> {

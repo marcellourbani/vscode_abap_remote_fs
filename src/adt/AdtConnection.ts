@@ -46,9 +46,13 @@ export class AdtConnection {
     })
   }
 
-  request(uri: Uri, method: string): Promise<request.Response> {
+  request(
+    uri: Uri,
+    method: string,
+    config: request.Options | Object = {}
+  ): Promise<request.Response> {
     const path = uri.query ? uri.path + "?" + uri.query : uri.path
-    return this.myrequest(this.createrequest(path, method))
+    return this.myrequest(this.createrequest(path, method, config))
   }
 
   private createrequest(

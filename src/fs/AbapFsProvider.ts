@@ -44,7 +44,14 @@ export class AbapFsProvider implements vscode.FileSystemProvider {
     content: Uint8Array,
     options: { create: boolean; overwrite: boolean }
   ): void | Thenable<void> {
-    throw new Error("Method not implemented.")
+    const server = fromUri(uri)
+    const file = server.findNode(uri)
+    if (!file && options.create)
+      throw FileSystemError.NoPermissions(
+        "Not a real filesystem, file creation is not supported"
+      )
+    if (!file) throw FileSystemError.FileNotFound(uri)
+    return server.connectionP.then(conn => file.save(conn, content))
   }
   delete(
     uri: vscode.Uri,
