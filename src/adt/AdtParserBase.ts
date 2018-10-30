@@ -47,12 +47,12 @@ export const getNode = (...args: any[]) => {
   }
   return fn(...args)
 }
-export const parsetoPromise = <T>(parser: Function) => (
+export const parsetoPromise = <T>(parser?: Function) => (
   xml: convertableToString
 ): Promise<T> =>
   new Promise(resolve => {
     parseString(xml, (err, result) => {
       if (err) throw err
-      resolve(parser(result))
+      resolve(parser ? parser(result) : result)
     })
   })

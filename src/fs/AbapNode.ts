@@ -1,8 +1,11 @@
 import { FileStat, FileType, FileSystemError } from "vscode"
+import { aggregateNodes } from "../abap/AbapObjectUtilities"
 import { AbapObject, AbapNodeComponentByCategory } from "../abap/AbapObject"
 import { AbapMetaFolder } from "./AbapMetaFolder"
 import { AdtConnection } from "../adt/AdtConnection"
 import { flatMap, pick } from "../functions"
+
+export const dummy = () => !!aggregateNodes //hack to fix circular dependency issue
 
 const getNodeHierarchyByType = (
   components: Array<AbapNodeComponentByCategory>
@@ -49,9 +52,9 @@ const refreshObjects = (
   components: Array<AbapNodeComponentByCategory>
 ): void => {
   //create a new structure, then will match it with the node's
-  const newFolder = node.abapObject.type.match(/FUGR/)
-    ? getNodeHierarchyByType(components)
-    : getNodeHierarchy(components)
+  const newFolder = node.abapObject.type.match(/DEVC/)
+    ? getNodeHierarchy(components)
+    : getNodeHierarchyByType(components)
 
   function reconcile(current: AbapNode, newNode: AbapNode) {
     for (const [name, value] of [...newNode]) {
