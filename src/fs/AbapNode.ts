@@ -1,9 +1,11 @@
 import { FileStat, FileType, FileSystemError } from "vscode"
+import { aggregateNodes } from "../abap/AbapObjectUtilities"
 import { AbapObject, AbapNodeComponentByCategory } from "../abap/AbapObject"
 import { AbapMetaFolder } from "./AbapMetaFolder"
 import { AdtConnection } from "../adt/AdtConnection"
 import { flatMap, pick } from "../functions"
-import { aggregateNodes } from "../abap/AbapObjectUtilities"
+
+export const dummy = () => !!aggregateNodes //hack to fix circular dependency issue
 
 const getNodeHierarchyByType = (
   components: Array<AbapNodeComponentByCategory>
@@ -112,7 +114,7 @@ export class AbapObjectNode implements FileStat, Iterable<[string, AbapNode]> {
   }
   public refresh(connection: AdtConnection): Promise<AbapNode> {
     return this.abapObject.getChildren(connection).then(objects => {
-      refreshObjects(this, aggregateNodes(objects))
+      refreshObjects(this, objects)
       return this
     })
   }

@@ -1,7 +1,8 @@
-import { AbapNodeComponentByCategory, AbapObject } from "./AbapObject"
+import { AbapObject, AbapNodeComponentByCategory } from "./AbapObject"
 import { NodeStructure, ObjectNode } from "../adt/AdtNodeStructParser"
 // import { selectMap, GroupArray } from "../functions"
 import { AbapProgram } from "./AbapProgram"
+import { AbapClass } from "./AbapClass"
 
 export function aggregateNodes(
   cont: NodeStructure
@@ -60,36 +61,6 @@ export function aggregateNodes(
     }
     typeNode.objects.push(abapObjectFromNode(node))
   })
-  // for (const [category, ctypes] of catTypes) {
-  //   const cat = {
-  //     name: catLabel(category),
-  //     category,
-  //     types: new Array<any>()
-  //   }
-  //   components.push(cat)
-  //   for (const ctype of ctypes) {
-  //     const typerec = types.get(ctype.OBJECT_TYPE)
-  //     if (typerec)
-  //       cat.types.push({
-  //         name: typeLabel(ctype.OBJECT_TYPE),
-  //         type: ctype.OBJECT_TYPE,
-  //         objects: typerec.map(abapObjectFromNode)
-  //       })
-  //   }
-  // }
-  // //root node has no categories, just a list of packages
-  // if (catTypes.size === 0)
-  //   components.push({
-  //     name: "",
-  //     category: "",
-  //     types: [
-  //       {
-  //         name: "",
-  //         type: "",
-  //         objects: cont.nodes.map(abapObjectFromNode)
-  //       }
-  //     ]
-  //   })
 
   return components
 }
@@ -99,6 +70,9 @@ export function abapObjectFromNode(node: ObjectNode): AbapObject {
   switch (node.OBJECT_TYPE) {
     case "PROG/P":
       objtype = AbapProgram
+      break
+    case "CLAS/OC":
+      objtype = AbapClass
       break
   }
   return new objtype(

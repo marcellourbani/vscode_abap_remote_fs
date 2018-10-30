@@ -1,9 +1,18 @@
 import { Uri, FileSystemError } from "vscode"
 import { AdtConnection } from "../adt/AdtConnection"
 import { pick } from "../functions"
-import { parseNode, NodeStructure } from "../adt/AdtNodeStructParser"
+import {
+  parseNode,
+  NodeStructure,
+  ObjectNode
+} from "../adt/AdtNodeStructParser"
 import { parsetoPromise } from "../adt/AdtParserBase"
-import { parseObject } from "../adt/AdtObjectParser"
+import {
+  parseObject,
+  firstTextLink,
+  objectVersion
+} from "../adt/AdtObjectParser"
+import { aggregateNodes } from "./AbapObjectUtilities"
 
 export const XML_EXTENSION = ".XML"
 export const SAPGUIONLY = "Objects of this type are only supported in SAPGUI"
@@ -48,15 +57,23 @@ export class AbapObject {
     return this.name.replace(/\//g, "／") + this.getExtension()
   }
 
+  protected getUri(connection: AdtConnection) {
+    return Uri.parse("adt://" + connection.name).with({
+      path: this.path
+    })
+  }
+
   getContents(connection: AdtConnection): Promise<string> {
     if (!this.isLeaf()) throw FileSystemError.FileIsADirectory(this.vsName())
     if (this.sapguiOnly) return Promise.resolve(SAPGUIONLY)
-    const mainUri = Uri.parse("adt://" + connection.name).with({
-      path: this.path
-    })
+    const mainUri = this.getUri(connection)
     //bit of heuristics: assume we're already dealing with a source file
-    // if source/main is part of the url
-    if (this.path.match(/\/source\/main/))
+    // if source/main is part of the url. Won't get an XML file with the original anyway
+    // same for class includes
+    if (
+      this.path.match(/\/source\/main/) ||
+      this.path.match(/\/includes\/[a-zA-Z]+$/)
+    )
       return connection.request(mainUri, "GET").then(pick("body"))
 
     const follow = this.followLinkGen(mainUri)
@@ -67,20 +84,13 @@ export class AbapObject {
       .then(parsetoPromise())
       .then(parseObject)
       .then(o => {
-        let actualUri
-        let query = o.header["adtcore:version"]
-          ? `version=${o.header["adtcore:version"]}`
-          : ""
-        o.links.some(link => {
-          return (
-            link.type &&
-            link.type.match(/text/i) &&
-            (actualUri = follow(link.href).with({ query }))
-          )
-        })
-        if (actualUri)
+        const link = firstTextLink(o.links)
+        if (link) {
+          const query = objectVersion(o.header)
+          const actualUri = follow(link.href).with({ query })
+
           return connection.request(actualUri, "GET").then(pick("body"))
-        else return SAPGUIONLY
+        } else return SAPGUIONLY
       })
   }
 
@@ -88,7 +98,10 @@ export class AbapObject {
     if (!this.isLeaf()) return ""
     return this.sapguiOnly ? ".txt" : ".abap"
   }
-  getChildren(connection: AdtConnection): Promise<NodeStructure> {
+
+  getChildren(
+    connection: AdtConnection
+  ): Promise<Array<AbapNodeComponentByCategory>> {
     if (this.isLeaf()) throw FileSystemError.FileNotADirectory(this.vsName())
     const nodeUri = this.getNodeUri(connection)
 
@@ -97,6 +110,7 @@ export class AbapObject {
       .then(pick("body"))
       .then(parseNode)
       .then(this.filterNodeStructure.bind(this))
+      .then(aggregateNodes)
   }
 
   protected getNodeUri(connection: AdtConnection): Uri {
@@ -126,8 +140,9 @@ export class AbapObject {
     return !!OBJECT_TYPE.match(/^....\/(.|(FF))$/)
   }
 
-  protected followLinkGen(base: Uri): any {
+  protected followLinkGen(base: Uri) {
     return (relPath: string): Uri => {
+      if (!relPath) return base
       let path
       if (relPath.match(/^\//)) path = relPath
       else if (relPath.match(/^\.\//)) {
@@ -138,6 +153,16 @@ export class AbapObject {
         path = base.path + sep + relPath.replace(/\.\//, "")
       }
       return base.with({ path })
+    }
+  }
+  protected selfLeafNode(): ObjectNode {
+    return {
+      OBJECT_NAME: this.name,
+      OBJECT_TYPE: this.type,
+      OBJECT_URI: this.path,
+      OBJECT_VIT_URI: this.path,
+      EXPANDABLE: "",
+      TECH_NAME: this.techName
     }
   }
 }

@@ -3,8 +3,8 @@ import { AdtConnection } from "./AdtConnection"
 import { Uri, FileSystemError } from "vscode"
 import { AbapMetaFolder } from "../fs/AbapMetaFolder"
 import { AbapObjectNode, AbapNode } from "../fs/AbapNode"
-import { AbapPackage } from "../abap/AbapPackage"
 import { pipePromise } from "../functions"
+import { AbapObject } from "../abap/AbapObject"
 export const ADTBASEURL = "/sap/bc/adt/repository/nodestructure"
 
 // visual studio paths are hierarchic, adt ones aren't
@@ -73,11 +73,11 @@ export class AdtServer {
     this.root = new AbapMetaFolder()
     this.root.setChild(
       `$TMP`,
-      new AbapObjectNode(new AbapPackage("DEVC/K", "$TMP", ADTBASEURL))
+      new AbapObjectNode(new AbapObject("DEVC/K", "$TMP", ADTBASEURL, "X"))
     )
     this.root.setChild(
       "System Library",
-      new AbapObjectNode(new AbapPackage("DEVC/K", "", ADTBASEURL))
+      new AbapObjectNode(new AbapObject("DEVC/K", "", ADTBASEURL, "X"))
     )
   }
 }

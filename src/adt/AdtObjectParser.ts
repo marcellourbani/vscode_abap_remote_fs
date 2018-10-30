@@ -18,6 +18,14 @@ interface BaseHeader extends AbapSource {
   "adtcore:descriptionTextLimit"?: string
   "adtcore:language"?: string
 }
+interface ClassHeader extends BaseHeader {
+  "class:final": string
+  "class:abstract": string
+  "class:visibility": string
+  "class:category": string
+  "class:sharedMemoryEnabled": string
+  "class:includeType"?: string
+}
 interface AtomLink {
   href: string
   rel: string
@@ -30,7 +38,7 @@ export interface AdtObjectBase<T1 extends BaseHeader, T2 extends AtomLink> {
   header: T1
   links: T2[]
 }
-export interface AdtObjectClass<T1 extends BaseHeader, T2 extends AtomLink>
+export interface AdtObjectClass<T1 extends ClassHeader, T2 extends AtomLink>
   extends AdtObjectBase<T1, T2> {
   includes: Array<{ header: T1; links: T2[] }>
 }
@@ -44,8 +52,17 @@ export function parseObject<T1 extends BaseHeader, T2 extends AtomLink>(
   const links = root && root["atom:link"].map((x: any) => x["$"])
   return { nodeName, header, links }
 }
-
-export function parseClass<T1 extends BaseHeader, T2 extends AtomLink>(
+export function firstTextLink(links: AtomLink[]): AtomLink | undefined {
+  let firstLink: AtomLink | undefined
+  links.some(
+    link => !!(link.type && link.type.match(/text/i) && (firstLink = link))
+  )
+  return firstLink
+}
+export function objectVersion(header: BaseHeader) {
+  return header["adtcore:version"] ? `version=${header["adtcore:version"]}` : ""
+}
+export function parseClass<T1 extends ClassHeader, T2 extends AtomLink>(
   xmlObject: any
 ): AdtObjectClass<T1, T2> {
   const nodeName = Object.keys(xmlObject)[0]

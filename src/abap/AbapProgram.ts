@@ -21,14 +21,7 @@ export class AbapProgram extends AbapObject {
         x.OBJECT_NAME.substr(0, this.name.length) === this.name
     )
 
-    nodes.unshift({
-      OBJECT_NAME: this.name,
-      OBJECT_TYPE: this.type,
-      OBJECT_URI: this.path,
-      OBJECT_VIT_URI: this.path,
-      EXPANDABLE: "",
-      TECH_NAME: this.techName
-    })
+    nodes.unshift(this.selfLeafNode())
 
     return {
       ...nodest,
