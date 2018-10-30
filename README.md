@@ -1,7 +1,7 @@
 # ABAP remote filesystem for visual studio code
 
 Ideally one day this will allow you to edit your ABAP code directly in Visual studio code
-Very early stages, for now it only displays some packages and a handful of object types like programs, functions and classes
+Early stages, for now it only displays ABAP code for programs, function groups, classes and few others (actual list depends on ADT version)
 
 ![anim](https://user-images.githubusercontent.com/2453277/47482169-ae0cc300-d82d-11e8-8d19-f55dd877c166.gif)
 ![image](https://user-images.githubusercontent.com/2453277/47466602-dd99dc00-d7e9-11e8-97ed-28e23dfd8f90.png)

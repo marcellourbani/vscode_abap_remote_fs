@@ -38,22 +38,20 @@ export class AbapClass extends AbapObject {
           const mainLink = firstTextLink(parsed.links)
           const main = this.selfLeafNode()
           if (mainLink) main.OBJECT_URI = follow(mainLink.href).path
-          ns.nodes.push(main)
 
           for (const classInc of parsed.includes) {
-            if (classInc.header["abapsource:sourceUri"] !== "source/main") {
-              const name =
-                this.name + "." + classInc.header["class:includeType"]
-              ns.nodes.push({
-                EXPANDABLE: "",
-                OBJECT_NAME: name,
-                OBJECT_TYPE: classInc.header["adtcore:type"],
-                OBJECT_URI: follow(classInc.header["abapsource:sourceUri"])
-                  .path,
-                OBJECT_VIT_URI: "",
-                TECH_NAME: name
-              })
+            const name = this.name + "." + classInc.header["class:includeType"]
+            const node = {
+              EXPANDABLE: "",
+              OBJECT_NAME: name,
+              OBJECT_TYPE: classInc.header["adtcore:type"],
+              OBJECT_URI: follow(classInc.header["abapsource:sourceUri"]).path,
+              OBJECT_VIT_URI: "",
+              TECH_NAME: name
             }
+            if (classInc.header["abapsource:sourceUri"] === "source/main")
+              ns.nodes.unshift(node)
+            else ns.nodes.push(node)
           }
 
           return ns

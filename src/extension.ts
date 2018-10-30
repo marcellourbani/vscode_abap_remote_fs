@@ -6,6 +6,7 @@ import { AdtConnectionManager } from "./adt/AdtConnectionManager"
 
 function selectRemote(connection: string): Thenable<RemoteConfig> {
   const remotes = getRemoteList()
+  if (!remotes) throw new Error("No ABAP system configured yet")
   if (remotes[1] && remotes[1].name === connection)
     return new Promise(resolve => resolve(remotes[1]))
   return vscode.window
@@ -16,7 +17,7 @@ function selectRemote(connection: string): Thenable<RemoteConfig> {
         remote
       })),
       {
-        placeHolder: "Please choose a remote"
+        placeHolder: "Please choose an ABAP system"
       }
     )
     .then(selection => {

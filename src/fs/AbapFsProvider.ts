@@ -27,7 +27,9 @@ export class AbapFsProvider implements vscode.FileSystemProvider {
     return contents
   }
   createDirectory(uri: vscode.Uri): void | Thenable<void> {
-    throw new Error("Method not implemented.")
+    throw FileSystemError.NoPermissions(
+      "Not a real filesystem, directory creation is not supported"
+    )
   }
   readFile(uri: vscode.Uri): Uint8Array | Thenable<Uint8Array> {
     const server = fromUri(uri)

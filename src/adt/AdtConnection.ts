@@ -1,6 +1,6 @@
 import * as request from "request"
 // import { AdtPathClassifier } from "./AdtPathClassifier"
-import { Uri } from "vscode"
+import { Uri, FileSystemError } from "vscode"
 
 enum ConnStatus {
   new,
@@ -74,24 +74,21 @@ export class AdtConnection {
   private myrequest(options: request.Options): Promise<request.Response> {
     return new Promise((resolve, reject) => {
       request(options, (error, response, body) => {
-        if (error) {
-          reject(error)
-        } else {
-          response.statusCode < 300
-            ? resolve(response)
-            : reject({
-                statusCode: response.statusCode,
-                statusMessage: response.statusMessage,
-                options
-              })
-        }
+        if (error) throw error
+        if (response.statusCode < 300) resolve(response)
+        else
+          throw FileSystemError.NoPermissions(
+            `Failed to connect to ${this.name}:${response.statusCode}:${
+              response.statusMessage
+            }`
+          )
       })
     })
   }
 
   connect(): Promise<request.Response> {
     return this.myrequest(
-      this.createrequest("/sap/bc/adt/core/discovery")
+      this.createrequest("/sap/bc/adt/compatibility/graph")
     ).then((response: request.Response) => {
       const newtoken = response.headers["x-csrf-token"]
       if (typeof newtoken === "string") {
