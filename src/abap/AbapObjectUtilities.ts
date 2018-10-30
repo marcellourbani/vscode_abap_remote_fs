@@ -1,23 +1,17 @@
 import { AbapObject, AbapNodeComponentByCategory } from "./AbapObject"
 import { NodeStructure, ObjectNode } from "../adt/AdtNodeStructParser"
-// import { selectMap, GroupArray } from "../functions"
+import { selectMap } from "../functions"
 import { AbapProgram } from "./AbapProgram"
 import { AbapClass } from "./AbapClass"
 
 export function aggregateNodes(
   cont: NodeStructure
 ): Array<AbapNodeComponentByCategory> {
-  // const catLabel = selectMap(cont.categories, "CATEGORY_LABEL", "")
-  // const typeLabel = selectMap(cont.objectTypes, "OBJECT_TYPE_LABEL", "")
-
-  // const types = GroupArray("OBJECT_TYPE")(cont.nodes)
-  // const catTypes = GroupArray("CATEGORY_TAG")([...cont.objectTypes.values()])
+  const catLabel = selectMap(cont.categories, "CATEGORY_LABEL", "")
+  const typeCat = selectMap(cont.objectTypes, "CATEGORY_TAG", "")
+  const typeLabel = selectMap(cont.objectTypes, "OBJECT_TYPE_LABEL", "")
 
   const components: Array<AbapNodeComponentByCategory> = []
-  const nullcat = {
-    CATEGORY: "",
-    CATEGORY_LABEL: ""
-  }
   const findById = <T>(
     arr: Array<T>,
     prop: string,
@@ -27,34 +21,22 @@ export function aggregateNodes(
   }
 
   cont.nodes.forEach(node => {
-    let typerec = cont.objectTypes.get(node.OBJECT_TYPE)
-    let catrec
-    if (typerec) {
-      catrec = cont.categories.get(typerec.CATEGORY_TAG)! || nullcat
-    } else {
-      catrec = nullcat
-      typerec = {
-        OBJECT_TYPE: "",
-        CATEGORY_TAG: "",
-        OBJECT_TYPE_LABEL: "",
-        NODE_ID: ""
-      }
-    }
-
-    let catNode = findById(components, "category", catrec.CATEGORY)
+    const categoryTag = typeCat(node.OBJECT_TYPE)
+    const categoryLabel = catLabel(categoryTag)
+    let catNode = findById(components, "category", categoryTag)
     if (!catNode) {
       catNode = {
-        category: catrec.CATEGORY,
-        name: catrec.CATEGORY_LABEL,
+        category: categoryTag,
+        name: categoryLabel,
         types: []
       }
       components.push(catNode)
     }
-    let typeNode = findById(catNode.types, "type", typerec.OBJECT_TYPE)
+    let typeNode = findById(catNode.types, "type", node.OBJECT_TYPE)
     if (!typeNode) {
       typeNode = {
-        name: typerec.OBJECT_TYPE_LABEL,
-        type: typerec.OBJECT_TYPE,
+        name: typeLabel(node.OBJECT_TYPE),
+        type: node.OBJECT_TYPE,
         objects: []
       }
       catNode.types.push(typeNode)

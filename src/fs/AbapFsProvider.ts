@@ -13,14 +13,12 @@ export class AbapFsProvider implements vscode.FileSystemProvider {
     throw new Error("Method not implemented.")
   }
   stat(uri: vscode.Uri): vscode.FileStat | Thenable<vscode.FileStat> {
-    console.log(`stat ${uri.path}`)
     const server = fromUri(uri)
     return server.findNodePromise(uri)
   }
   readDirectory(
     uri: vscode.Uri
   ): [string, vscode.FileType][] | Thenable<[string, vscode.FileType][]> {
-    console.log(`dir ${uri.path}`)
     const server = fromUri(uri)
     const dir = server.findNode(uri)
     const contents = [...dir].map(
@@ -32,7 +30,6 @@ export class AbapFsProvider implements vscode.FileSystemProvider {
     throw new Error("Method not implemented.")
   }
   readFile(uri: vscode.Uri): Uint8Array | Thenable<Uint8Array> {
-    console.log(`download ${uri.path}`)
     const server = fromUri(uri)
     const file = server.findNode(uri)
     if (file && !file.isFolder())
