@@ -1,8 +1,8 @@
 "use strict"
 import * as vscode from "vscode"
-import { AbapFsProvider } from "./fs/AbapFsProvider"
+import { FsProvider } from "./fs/FsProvider"
 import { getRemoteList, RemoteConfig } from "./config"
-import { AdtConnectionManager } from "./adt/AdtConnectionManager"
+import { AdtConnection } from "./adt/AdtConnection"
 
 function selectRemote(connection: string): Thenable<RemoteConfig> {
   const remotes = getRemoteList()
@@ -27,7 +27,7 @@ function selectRemote(connection: string): Thenable<RemoteConfig> {
 }
 
 export function activate(context: vscode.ExtensionContext) {
-  const abapFS = new AbapFsProvider()
+  const abapFS = new FsProvider()
   context.subscriptions.push(
     vscode.workspace.registerFileSystemProvider("adt", abapFS, {
       isCaseSensitive: true
@@ -36,19 +36,22 @@ export function activate(context: vscode.ExtensionContext) {
 
   let disposable = vscode.commands.registerCommand(
     "abapfs.connect",
-    (selector: any) => {
-      const connection = selector && selector.connection
-      selectRemote(connection).then(remote => {
-        return AdtConnectionManager.getManager()
-          .setConn(remote)
-          .then(() => {
-            if (remote) {
-              vscode.workspace.updateWorkspaceFolders(0, 0, {
-                uri: vscode.Uri.parse("adt://" + remote.name),
-                name: remote.name + "(ABAP)"
-              })
-            }
-          })
+    async (selector: any) => {
+      const connectionID = selector && selector.connection
+      const remote = await selectRemote(connectionID)
+      const connection = AdtConnection.fromRemote(remote)
+
+      try {
+        const response = await connection.connect()
+        if (response.statusCode > 300)
+          throw new Error(`Error connecting to server ${connectionID}`)
+      } catch (error) {
+        throw new Error(`Error connecting to server ${connectionID}`)
+      }
+
+      vscode.workspace.updateWorkspaceFolders(0, 0, {
+        uri: vscode.Uri.parse("adt://" + remote.name),
+        name: remote.name + "(ABAP)"
       })
     }
   )

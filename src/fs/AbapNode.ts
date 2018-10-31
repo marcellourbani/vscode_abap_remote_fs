@@ -1,7 +1,7 @@
 import { FileStat, FileType, FileSystemError } from "vscode"
 import { aggregateNodes } from "../abap/AbapObjectUtilities"
 import { AbapObject, AbapNodeComponentByCategory } from "../abap/AbapObject"
-import { AbapMetaFolder } from "./AbapMetaFolder"
+import { MetaFolder } from "./MetaFolder"
 import { AdtConnection } from "../adt/AdtConnection"
 import { flatMap, pick } from "../functions"
 
@@ -9,12 +9,12 @@ export const dummy = () => !!aggregateNodes //hack to fix circular dependency is
 
 const getNodeHierarchyByType = (
   components: Array<AbapNodeComponentByCategory>
-): AbapMetaFolder => {
-  const newNode = new AbapMetaFolder()
+): MetaFolder => {
+  const newNode = new MetaFolder()
   const flatComp = flatMap(components, pick("types"))
   flatComp.forEach(otype => {
     const curNode = otype.name
-      ? newNode.setChild(otype.name, new AbapMetaFolder())
+      ? newNode.setChild(otype.name, new MetaFolder())
       : newNode
     otype.objects.forEach(o =>
       curNode.setChild(o.vsName(), new AbapObjectNode(o))
@@ -25,19 +25,19 @@ const getNodeHierarchyByType = (
 
 const getNodeHierarchy = (
   components: Array<AbapNodeComponentByCategory>
-): AbapMetaFolder => {
-  const newNode = new AbapMetaFolder()
+): MetaFolder => {
+  const newNode = new MetaFolder()
   components.forEach(category => {
-    let categFolder: AbapMetaFolder
+    let categFolder: MetaFolder
     category.types.forEach(otype => {
       let tpFolder: AbapNode
       if (otype.type.match("DEVC") || otype.type === "") tpFolder = newNode
       else {
-        categFolder = categFolder || new AbapMetaFolder()
+        categFolder = categFolder || new MetaFolder()
         tpFolder =
           !otype.name || otype.name === category.name
             ? categFolder
-            : categFolder.setChild(otype.name, new AbapMetaFolder())
+            : categFolder.setChild(otype.name, new MetaFolder())
       }
       otype.objects.forEach(obj =>
         tpFolder.setChild(obj.vsName(), new AbapObjectNode(obj))
@@ -86,31 +86,45 @@ export class AbapObjectNode implements FileStat, Iterable<[string, AbapNode]> {
   }
 
   public isFolder() {
-    return !!this.children
+    return !this.abapObject.isLeaf()
   }
   public getChild(name: string): AbapNode | undefined {
-    if (!this.children) throw FileSystemError.FileNotADirectory(name)
+    if (!this.children || !this.isFolder())
+      throw FileSystemError.FileNotADirectory(name)
     return this.children.get(name)
   }
   public setChild(name: string, child: AbapNode): AbapNode {
-    if (!this.children) throw FileSystemError.FileNotFound(name)
+    if (!this.children || !this.isFolder())
+      throw FileSystemError.FileNotADirectory(name)
     this.children.set(name, child)
+    this.mtime = Date.now()
     return child
   }
   public deleteChild(name: string): void {
-    if (!this.children) throw FileSystemError.FileNotFound(name)
+    if (!this.children || !this.isFolder())
+      throw FileSystemError.FileNotADirectory(name)
+    this.mtime = Date.now()
     this.children.delete(name)
-  }
-  public fetchContents(connection: AdtConnection): Promise<Uint8Array> {
-    if (this.isFolder()) throw FileSystemError.FileIsADirectory()
-    return this.abapObject.getContents(connection).then(response => {
-      const buf = Buffer.from(response)
-      this.size = buf.length
-      return buf
-    })
   }
   numChildren(): number {
     return this.children ? this.children.size : 0
+  }
+  public async fetchContents(connection: AdtConnection): Promise<Uint8Array> {
+    if (this.isFolder())
+      return Promise.reject(FileSystemError.FileIsADirectory())
+
+    try {
+      const payload = await this.abapObject.getContents(connection)
+      const buf = Buffer.from(payload)
+      this.size = buf.length
+      return buf
+    } catch (e) {
+      return Promise.reject(e)
+    }
+  }
+  public save(connection: AdtConnection, contents: Uint8Array) {
+    if (this.isFolder()) throw FileSystemError.FileIsADirectory()
+    this.abapObject.setContents(connection, contents)
   }
   public refresh(connection: AdtConnection): Promise<AbapNode> {
     return this.abapObject.getChildren(connection).then(objects => {
@@ -128,4 +142,4 @@ export class AbapObjectNode implements FileStat, Iterable<[string, AbapNode]> {
   }
 }
 
-export type AbapNode = AbapObjectNode | AbapMetaFolder
+export type AbapNode = AbapObjectNode | MetaFolder

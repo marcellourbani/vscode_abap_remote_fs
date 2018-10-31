@@ -1,7 +1,11 @@
 # ABAP remote filesystem for visual studio code
 
-Ideally one day this will allow you to edit your ABAP code directly in Visual studio code
-Early stages, for now it only displays ABAP code for programs, function groups, classes and few others (actual list depends on ADT version)
+This extension allows editing of ABAP code on your server directly in Visual studio code.
+It's still in its early stages
+
+<aside class="warning">
+WRITE SUPPORT IS EXPERIMANTAL USE AT YOUR OWN RISK
+</aside>
 
 ![anim](https://user-images.githubusercontent.com/2453277/47482169-ae0cc300-d82d-11e8-8d19-f55dd877c166.gif)
 ![image](https://user-images.githubusercontent.com/2453277/47466602-dd99dc00-d7e9-11e8-97ed-28e23dfd8f90.png)
@@ -12,12 +16,21 @@ Sadly [ABAPlint](https://marketplace.visualstudio.com/items?itemName=larshp.vsco
 ## Features
 
 Connect to your SAP server using the ADT interface
+The complete list of editable objects depends on your installation, on my local 7.51 works for:
+
+- programs/includes
+- function groups
+- classes
+- transformations
+  <aside class="warning">
+  Saved objects will be deactivated, this doesn't allow activation yet
+  </aside>
 
 ## setup
 
 Too early to publish as an extension, there's a compiled extension you can run from source or install from the command line with
 
-`code --install-extension vscode-abap-remote-fs-0.0.2.vsix`
+`code --install-extension vscode-abap-remote-fs-0.0.3.vsix`
 
 Once installed you'll need an ABAP system with the ADT (Abap Developer Tools for eclipse) installed and SICF node `/sap/bc/adt` activated:
 

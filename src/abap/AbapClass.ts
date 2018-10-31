@@ -59,28 +59,4 @@ export class AbapClass extends AbapObject {
       )
       .then(aggregateNodes)
   }
-
-  // protected filterNodeStructure(nodest: NodeStructure): NodeStructure {
-  //   const nodes = nodest.nodes.filter(
-  //     x =>
-  //       this.whiteListed(x.OBJECT_TYPE) &&
-  //       (x.OBJECT_TYPE !== "PROG/I" || //keep includes only if they start with the program name
-  //         x.OBJECT_NAME.length === this.name.length + 3) &&
-  //       x.OBJECT_NAME.substr(0, this.name.length) === this.name
-  //   )
-
-  //   nodes.unshift({
-  //     OBJECT_NAME: this.name,
-  //     OBJECT_TYPE: this.type,
-  //     OBJECT_URI: this.path,
-  //     OBJECT_VIT_URI: this.path,
-  //     EXPANDABLE: "",
-  //     TECH_NAME: this.techName
-  //   })
-
-  //   return {
-  //     ...nodest,
-  //     nodes
-  //   }
-  // }
 }

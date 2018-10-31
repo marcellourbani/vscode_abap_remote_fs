@@ -1,6 +1,6 @@
 import * as request from "request"
-// import { AdtPathClassifier } from "./AdtPathClassifier"
-import { Uri, FileSystemError } from "vscode"
+import { Uri } from "vscode"
+import { RemoteConfig } from "../config"
 
 enum ConnStatus {
   new,
@@ -46,18 +46,23 @@ export class AdtConnection {
     })
   }
 
-  request(uri: Uri, method: string): Promise<request.Response> {
+  request(
+    uri: Uri,
+    method: string,
+    config: request.Options | Object = {}
+  ): Promise<request.Response> {
     const path = uri.query ? uri.path + "?" + uri.query : uri.path
-    return this.myrequest(this.createrequest(path, method))
+    return this.myrequest(path, method, config)
   }
 
-  private createrequest(
+  private myrequest(
     path: string,
     method: string = "GET",
-    config: request.Options | Object = {}
-  ): request.Options {
-    return {
-      ...config,
+    options: request.CoreOptions = {}
+  ): Promise<request.Response> {
+    const { headers, ...rest } = options
+    const urlOptions: request.OptionsWithUrl = {
+      ...rest,
       url: this.url + path,
       jar: true,
       auth: {
@@ -66,44 +71,58 @@ export class AdtConnection {
       },
       method,
       headers: {
+        ...headers,
         "x-csrf-token": this._csrftoken,
         Accept: "*/*"
       }
-    } as request.Options //workaround for compiler bug
-  }
-  private myrequest(options: request.Options): Promise<request.Response> {
+    }
+
     return new Promise((resolve, reject) => {
-      request(options, (error, response, body) => {
-        if (error) throw error
-        if (response.statusCode < 300) resolve(response)
+      request(urlOptions, (error, response, body) => {
+        if (error) reject(error)
+        else if (response.statusCode < 300) resolve(response)
         else
-          throw FileSystemError.NoPermissions(
-            `Failed to connect to ${this.name}:${response.statusCode}:${
-              response.statusMessage
-            }`
+          reject(
+            new Error(
+              `Failed to connect to ${this.name}:${response.statusCode}:${
+                response.statusMessage
+              }`
+            )
           )
       })
     })
   }
 
   connect(): Promise<request.Response> {
-    return this.myrequest(
-      this.createrequest("/sap/bc/adt/compatibility/graph")
-    ).then((response: request.Response) => {
-      const newtoken = response.headers["x-csrf-token"]
-      if (typeof newtoken === "string") {
-        this._csrftoken = newtoken
+    return this.myrequest("/sap/bc/adt/compatibility/graph").then(
+      (response: request.Response) => {
+        const newtoken = response.headers["x-csrf-token"]
+        if (typeof newtoken === "string") {
+          this._csrftoken = newtoken
+        }
+        if (response.statusCode < 300) {
+          this.setStatus(ConnStatus.active)
+        } else {
+          this.setStatus(ConnStatus.failed)
+        }
+        return response
       }
-      if (response.statusCode < 300) {
-        this.setStatus(ConnStatus.active)
-      } else {
-        this.setStatus(ConnStatus.failed)
-      }
-      return response
-    })
+    )
   }
+
   setStatus(newStatus: ConnStatus): any {
     this._status = newStatus
     this._listeners.forEach(l => l())
+  }
+
+  static fromRemote(config: RemoteConfig) {
+    const connection = new AdtConnection(
+      config.name,
+      config.url,
+      config.username,
+      config.password
+    )
+
+    return connection
   }
 }
