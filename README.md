@@ -3,9 +3,7 @@
 This extension allows editing of ABAP code on your server directly in Visual studio code.
 It's still in its early stages
 
-<aside class="warning">
-WRITE SUPPORT IS EXPERIMANTAL USE AT YOUR OWN RISK
-</aside>
+**WRITE SUPPORT IS EXPERIMANTAL USE AT YOUR OWN RISK**
 
 ![anim](https://user-images.githubusercontent.com/2453277/47482169-ae0cc300-d82d-11e8-8d19-f55dd877c166.gif)
 ![image](https://user-images.githubusercontent.com/2453277/47466602-dd99dc00-d7e9-11e8-97ed-28e23dfd8f90.png)
@@ -22,9 +20,8 @@ The complete list of editable objects depends on your installation, on my local 
 - function groups
 - classes
 - transformations
-  <aside class="warning">
-  Saved objects will be deactivated, this doesn't allow activation yet
-  </aside>
+
+**Saved objects will be deactivated, this doesn't allow activation yet**
 
 ## setup
 
