@@ -1,6 +1,7 @@
 import * as request from "request"
 // import { AdtPathClassifier } from "./AdtPathClassifier"
 import { Uri, FileSystemError } from "vscode"
+import { RemoteConfig } from "../config"
 
 enum ConnStatus {
   new,
@@ -79,8 +80,8 @@ export class AdtConnection {
 
     return new Promise((resolve, reject) => {
       request(urlOptions, (error, response, body) => {
-        if (error) throw error
-        if (response.statusCode < 300) resolve(response)
+        if (error) reject(error)
+        else if (response.statusCode < 300) resolve(response)
         else
           throw FileSystemError.NoPermissions(
             `Failed to connect to ${this.name}:${response.statusCode}:${
@@ -107,8 +108,20 @@ export class AdtConnection {
       }
     )
   }
+
   setStatus(newStatus: ConnStatus): any {
     this._status = newStatus
     this._listeners.forEach(l => l())
+  }
+
+  static fromRemote(config: RemoteConfig) {
+    const connection = new AdtConnection(
+      config.name,
+      config.url,
+      config.username,
+      config.password
+    )
+
+    return connection
   }
 }

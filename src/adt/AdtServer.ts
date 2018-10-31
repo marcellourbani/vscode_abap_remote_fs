@@ -1,10 +1,10 @@
-import { AdtConnectionManager } from "./AdtConnectionManager"
 import { AdtConnection } from "./AdtConnection"
 import { Uri, FileSystemError } from "vscode"
 import { AbapMetaFolder } from "../fs/AbapMetaFolder"
 import { AbapObjectNode, AbapNode } from "../fs/AbapNode"
 import { pipePromise } from "../functions"
 import { AbapObject } from "../abap/AbapObject"
+import { getRemoteList } from "../config"
 export const ADTBASEURL = "/sap/bc/adt/repository/nodestructure"
 
 // visual studio paths are hierarchic, adt ones aren't
@@ -68,8 +68,18 @@ export class AdtServer {
   }
 
   constructor(connectionId: string) {
-    this.connectionId = connectionId
-    this.connectionP = AdtConnectionManager.getManager().findConn(connectionId)
+    const config = getRemoteList().filter(
+      config => config.name.toLowerCase() === connectionId.toLowerCase()
+    )[0]
+
+    if (!config) throw new Error(`connection ${connectionId}`)
+
+    const connection = AdtConnection.fromRemote(config)
+
+    this.connectionId = config.name.toLowerCase()
+    this.connectionP = connection.waitReady()
+    connection.connect()
+
     this.root = new AbapMetaFolder()
     this.root.setChild(
       `$TMP`,
