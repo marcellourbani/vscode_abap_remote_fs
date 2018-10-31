@@ -13,5 +13,5 @@ interface AdtLock {
 }
 export const adtLockParser = defaultVal(
   [],
-  getNode("asx:abap/asx:values/DATA", mapWidth(recxml2js))
+  getNode("asx:abap/asx:values/DATA", mapWidth(recxml2js), (x: any[]) => x[0])
 ) as (xml: string) => AdtLock

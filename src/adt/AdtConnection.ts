@@ -52,16 +52,17 @@ export class AdtConnection {
     config: request.Options | Object = {}
   ): Promise<request.Response> {
     const path = uri.query ? uri.path + "?" + uri.query : uri.path
-    return this.myrequest(this.createrequest(path, method, config))
+    return this.myrequest(path, method, config)
   }
 
-  private createrequest(
+  private myrequest(
     path: string,
     method: string = "GET",
-    config: request.Options | Object = {}
-  ): request.Options {
-    return {
-      ...config,
+    options: request.CoreOptions = {}
+  ): Promise<request.Response> {
+    const { headers, ...rest } = options
+    const urlOptions: request.OptionsWithUrl = {
+      ...rest,
       url: this.url + path,
       jar: true,
       auth: {
@@ -70,14 +71,14 @@ export class AdtConnection {
       },
       method,
       headers: {
+        ...headers,
         "x-csrf-token": this._csrftoken,
         Accept: "*/*"
       }
-    } as request.Options //workaround for compiler bug
-  }
-  private myrequest(options: request.Options): Promise<request.Response> {
+    }
+
     return new Promise((resolve, reject) => {
-      request(options, (error, response, body) => {
+      request(urlOptions, (error, response, body) => {
         if (error) throw error
         if (response.statusCode < 300) resolve(response)
         else
@@ -91,20 +92,20 @@ export class AdtConnection {
   }
 
   connect(): Promise<request.Response> {
-    return this.myrequest(
-      this.createrequest("/sap/bc/adt/compatibility/graph")
-    ).then((response: request.Response) => {
-      const newtoken = response.headers["x-csrf-token"]
-      if (typeof newtoken === "string") {
-        this._csrftoken = newtoken
+    return this.myrequest("/sap/bc/adt/compatibility/graph").then(
+      (response: request.Response) => {
+        const newtoken = response.headers["x-csrf-token"]
+        if (typeof newtoken === "string") {
+          this._csrftoken = newtoken
+        }
+        if (response.statusCode < 300) {
+          this.setStatus(ConnStatus.active)
+        } else {
+          this.setStatus(ConnStatus.failed)
+        }
+        return response
       }
-      if (response.statusCode < 300) {
-        this.setStatus(ConnStatus.active)
-      } else {
-        this.setStatus(ConnStatus.failed)
-      }
-      return response
-    })
+    )
   }
   setStatus(newStatus: ConnStatus): any {
     this._status = newStatus

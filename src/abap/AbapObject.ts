@@ -75,8 +75,9 @@ export class AbapObject {
     //get a lock
     connection
       .request(
-        baseUri.with({ query: "?_action=LOCK&accessMode=MODIFY" }),
-        "POST"
+        baseUri.with({ query: "_action=LOCK&accessMode=MODIFY" }),
+        "POST",
+        { headers: { "X-sap-adt-sessiontype": "stateful" } }
       )
       .then(pick("body"))
       .then(parsetoPromise() as any)
@@ -84,14 +85,14 @@ export class AbapObject {
       .then(l => {
         lock = l.LOCK_HANDLE
         return connection.request(
-          baseUri.with({ query: `?lockHandle=${lock}` }),
+          baseUri.with({ query: `lockHandle=${lock}` }),
           "PUT",
           { body: contents }
         )
       })
       .then(() =>
         connection.request(
-          baseUri.with({ query: `?_action=UNLOCK&lockHandle=${lock}` }),
+          baseUri.with({ query: `_action=UNLOCK&lockHandle=${lock}` }),
           "POST"
         )
       )
