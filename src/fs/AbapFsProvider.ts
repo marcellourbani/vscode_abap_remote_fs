@@ -10,9 +10,11 @@ export class AbapFsProvider implements vscode.FileSystemProvider {
     uri: vscode.Uri,
     options: { recursive: boolean; excludes: string[] }
   ): vscode.Disposable {
+    console.log(uri.path, options)
     throw new Error("Method not implemented.")
   }
   stat(uri: vscode.Uri): vscode.FileStat | Thenable<vscode.FileStat> {
+    if (uri.path === ".vscode") throw FileSystemError.FileNotFound(uri)
     const server = fromUri(uri)
     return server.findNodePromise(uri)
   }
@@ -31,13 +33,15 @@ export class AbapFsProvider implements vscode.FileSystemProvider {
       "Not a real filesystem, directory creation is not supported"
     )
   }
-  readFile(uri: vscode.Uri): Uint8Array | Thenable<Uint8Array> {
+  async readFile(uri: vscode.Uri): Promise<Uint8Array> {
     const server = fromUri(uri)
     const file = server.findNode(uri)
-    if (file && !file.isFolder())
-      return server.connectionP.then(conn => file.fetchContents(conn))
 
-    throw FileSystemError.FileNotFound(uri)
+    try {
+      if (file && !file.isFolder())
+        return await server.connectionP.then(conn => file.fetchContents(conn))
+    } catch (error) {}
+    throw FileSystemError.Unavailable(uri)
   }
   writeFile(
     uri: vscode.Uri,

@@ -101,13 +101,18 @@ export class AbapObjectNode implements FileStat, Iterable<[string, AbapNode]> {
     if (!this.children) throw FileSystemError.FileNotFound(name)
     this.children.delete(name)
   }
-  public fetchContents(connection: AdtConnection): Promise<Uint8Array> {
-    if (this.isFolder()) throw FileSystemError.FileIsADirectory()
-    return this.abapObject.getContents(connection).then(response => {
-      const buf = Buffer.from(response)
+  public async fetchContents(connection: AdtConnection): Promise<Uint8Array> {
+    if (this.isFolder())
+      return Promise.reject(FileSystemError.FileIsADirectory())
+
+    try {
+      const payload = await this.abapObject.getContents(connection)
+      const buf = Buffer.from(payload)
       this.size = buf.length
       return buf
-    })
+    } catch (e) {
+      return Promise.reject(e)
+    }
   }
   public save(connection: AdtConnection, contents: Uint8Array) {
     if (this.isFolder()) throw FileSystemError.FileIsADirectory()

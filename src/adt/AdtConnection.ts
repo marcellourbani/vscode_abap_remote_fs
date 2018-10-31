@@ -1,5 +1,4 @@
 import * as request from "request"
-// import { AdtPathClassifier } from "./AdtPathClassifier"
 import { Uri, FileSystemError } from "vscode"
 import { RemoteConfig } from "../config"
 
@@ -83,10 +82,12 @@ export class AdtConnection {
         if (error) reject(error)
         else if (response.statusCode < 300) resolve(response)
         else
-          throw FileSystemError.NoPermissions(
-            `Failed to connect to ${this.name}:${response.statusCode}:${
-              response.statusMessage
-            }`
+          reject(
+            new Error(
+              `Failed to connect to ${this.name}:${response.statusCode}:${
+                response.statusMessage
+              }`
+            )
           )
       })
     })
