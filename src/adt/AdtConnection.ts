@@ -1,5 +1,5 @@
 import * as request from "request"
-import { Uri, FileSystemError } from "vscode"
+import { Uri } from "vscode"
 import { RemoteConfig } from "../config"
 
 enum ConnStatus {

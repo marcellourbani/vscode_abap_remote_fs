@@ -1,6 +1,6 @@
 "use strict"
 import * as vscode from "vscode"
-import { AbapFsProvider } from "./fs/AbapFsProvider"
+import { FsProvider } from "./fs/FsProvider"
 import { getRemoteList, RemoteConfig } from "./config"
 import { AdtConnection } from "./adt/AdtConnection"
 
@@ -27,7 +27,7 @@ function selectRemote(connection: string): Thenable<RemoteConfig> {
 }
 
 export function activate(context: vscode.ExtensionContext) {
-  const abapFS = new AbapFsProvider()
+  const abapFS = new FsProvider()
   context.subscriptions.push(
     vscode.workspace.registerFileSystemProvider("adt", abapFS, {
       isCaseSensitive: true

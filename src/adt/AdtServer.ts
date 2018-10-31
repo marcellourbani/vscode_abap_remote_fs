@@ -1,6 +1,6 @@
 import { AdtConnection } from "./AdtConnection"
 import { Uri, FileSystemError } from "vscode"
-import { AbapMetaFolder } from "../fs/AbapMetaFolder"
+import { MetaFolder } from "../fs/MetaFolder"
 import { AbapObjectNode, AbapNode } from "../fs/AbapNode"
 import { pipePromise } from "../functions"
 import { AbapObject } from "../abap/AbapObject"
@@ -25,7 +25,7 @@ const uriParts = (uri: Uri): string[] =>
 export class AdtServer {
   readonly connectionId: string
   readonly connectionP: Promise<AdtConnection>
-  private root: AbapMetaFolder
+  private root: MetaFolder
 
   findNode(uri: Uri): AbapNode {
     const parts = uriParts(uri)
@@ -80,7 +80,7 @@ export class AdtServer {
     this.connectionP = connection.waitReady()
     connection.connect()
 
-    this.root = new AbapMetaFolder()
+    this.root = new MetaFolder()
     this.root.setChild(
       `$TMP`,
       new AbapObjectNode(new AbapObject("DEVC/K", "$TMP", ADTBASEURL, "X"))

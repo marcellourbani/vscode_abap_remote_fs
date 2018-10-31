@@ -2,22 +2,25 @@ import * as vscode from "vscode"
 import { fromUri } from "../adt/AdtServer"
 import { FileSystemError } from "vscode"
 
-export class AbapFsProvider implements vscode.FileSystemProvider {
+export class FsProvider implements vscode.FileSystemProvider {
   private _eventEmitter = new vscode.EventEmitter<vscode.FileChangeEvent[]>()
   readonly onDidChangeFile: vscode.Event<vscode.FileChangeEvent[]> = this
     ._eventEmitter.event
+
   watch(
     uri: vscode.Uri,
     options: { recursive: boolean; excludes: string[] }
   ): vscode.Disposable {
-    console.log(uri.path, options)
-    throw new Error("Method not implemented.")
+    return new vscode.Disposable(() => undefined)
   }
+
   stat(uri: vscode.Uri): vscode.FileStat | Thenable<vscode.FileStat> {
-    if (uri.path === ".vscode") throw FileSystemError.FileNotFound(uri)
+    if (uri.path === "/.vscode") throw FileSystemError.FileNotFound(uri)
     const server = fromUri(uri)
+    if (uri.path === "/") return server.findNode(uri)
     return server.findNodePromise(uri)
   }
+
   readDirectory(
     uri: vscode.Uri
   ): [string, vscode.FileType][] | Thenable<[string, vscode.FileType][]> {

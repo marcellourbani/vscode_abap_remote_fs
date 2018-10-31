@@ -48,7 +48,9 @@ export class AbapObject {
     this.path = path
     this.expandable = !!expandable
     this.techName = techName || name
-    this.sapguiOnly = !!path.match(/\/sap\/bc\/adt\/vit/)
+    this.sapguiOnly = !!path.match(
+      "(/sap/bc/adt/vit)|(/sap/bc/adt/ddic/domains/)|(/sap/bc/adt/ddic/dataelements/)"
+    )
   }
 
   isLeaf() {
@@ -99,6 +101,7 @@ export class AbapObject {
       baseUri.with({ query: `_action=UNLOCK&lockHandle=${lock}` }),
       "POST"
     )
+    console.log("saved:" + baseUri.path)
   }
   async getFileUri(connection: AdtConnection): Promise<Uri> {
     const mainUri = this.getUri(connection)
@@ -134,7 +137,13 @@ export class AbapObject {
   async getContents(connection: AdtConnection): Promise<string> {
     if (!this.isLeaf()) throw FileSystemError.FileIsADirectory(this.vsName())
     if (this.sapguiOnly) return Promise.resolve(SAPGUIONLY)
-    const uri = await this.getFileUri(connection)
+
+    let uri
+    try {
+      uri = await this.getFileUri(connection)
+    } catch (e) {
+      return Promise.reject(e)
+    }
 
     return connection.request(uri, "GET").then(pick("body"))
   }

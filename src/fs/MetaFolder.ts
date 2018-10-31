@@ -3,7 +3,7 @@ import { AbapNode } from "./AbapNode"
 import { AdtConnection } from "../adt/AdtConnection"
 
 //folders are only used to store other nodes
-export class AbapMetaFolder implements FileStat, Iterable<[string, AbapNode]> {
+export class MetaFolder implements FileStat, Iterable<[string, AbapNode]> {
   type: FileType = FileType.Directory
   ctime: number = Date.now()
   mtime: number = Date.now()
