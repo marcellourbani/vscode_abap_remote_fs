@@ -36,6 +36,7 @@ Once installed you'll need an ABAP system with the ADT (Abap Developer Tools for
 You will need connection details in your settings:
 
 ```json
+{
   "abapfs.remote": {
     "NPL": {
       "url": "https://vhcalnplci.bti.local:8000",
@@ -43,6 +44,7 @@ You will need connection details in your settings:
       "password": "secret"
     }
   }
+}
 ```
 
 ## License
