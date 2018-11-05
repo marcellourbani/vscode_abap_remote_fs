@@ -1,8 +1,7 @@
 import { AdtConnection } from "./AdtConnection"
-import { Uri, FileSystemError } from "vscode"
+import { Uri, FileSystemError, FileType } from "vscode"
 import { MetaFolder } from "../fs/MetaFolder"
 import { AbapObjectNode, AbapNode } from "../fs/AbapNode"
-import { pipePromise } from "../functions"
 import { AbapObject } from "../abap/AbapObject"
 import { getRemoteList } from "../config"
 export const ADTBASEURL = "/sap/bc/adt/repository/nodestructure"
@@ -35,36 +34,26 @@ export class AdtServer {
     }, this.root)
   }
 
-  findNodePromise(uri: Uri): Promise<AbapNode> {
+  async findNodePromise(uri: Uri): Promise<AbapNode> {
+    let node: AbapNode = this.root
     const parts = uriParts(uri)
-    const promiseChild = (name: string) => (node: AbapNode) => {
-      const child = node.getChild(name)
-      if (child) return Promise.resolve(child)
-      if (node.canRefresh()) {
-        return this.connectionP
-          .then(conn => {
-            return node.refresh(conn)
-          })
-          .then(fresh => {
-            const child = fresh.getChild(name)
-            if (child) return child
-            throw FileSystemError.FileNotFound(name)
-          })
-      } else throw FileSystemError.FileNotFound(name)
+    for (const part of parts) {
+      let next: AbapNode | undefined = node.getChild(part)
+      if (!next && node.canRefresh()) {
+        const conn = await this.connectionP
+        await node.refresh(conn)
+        next = node.getChild(part)
+      }
+      if (next) node = next
+      else return Promise.reject(FileSystemError.FileNotFound(uri))
     }
 
-    const rootProm = Promise.resolve(this.root)
+    if (node.canRefresh() && node.type === FileType.Directory) {
+      const conn = await this.connectionP
+      await node.refresh(conn)
+    }
 
-    return parts.length === 0
-      ? rootProm
-      : pipePromise(...parts.map(promiseChild))(rootProm).then(
-          node =>
-            node.isFolder() && node.canRefresh()
-              ? this.connectionP.then(conn => {
-                  return node.refresh(conn)
-                })
-              : node
-        )
+    return node
   }
 
   constructor(connectionId: string) {
