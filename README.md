@@ -27,7 +27,18 @@ The complete list of editable objects depends on your installation, on my local 
 
 Too early to publish as an extension, there's a compiled extension you can run from source or install from the command line with
 
-`code --install-extension vscode-abap-remote-fs-0.0.3.vsix`
+```shell
+code --install-extension vscode-abap-remote-fs-0.0.3.vsix
+```
+
+The compiled file can be either downloaded from for the
+[releases](https://github.com/marcellourbani/vscode_abap_remote_fs/releases) or
+built by the following commands:
+
+```shell
+npm install
+npm run build
+```
 
 Once installed you'll need an ABAP system with the ADT (Abap Developer Tools for eclipse) installed and SICF node `/sap/bc/adt` activated:
 
