@@ -132,6 +132,17 @@ export class AbapObjectNode implements FileStat, Iterable<[string, AbapNode]> {
       return this
     })
   }
+
+  public async stat(connection: AdtConnection): Promise<AbapNode> {
+    await this.abapObject.loadMetadata(connection)
+    const meta = this.abapObject.metaData
+    if (meta) {
+      this.ctime = meta.createdAt
+      this.mtime = meta.changedAt
+    }
+    return this
+  }
+
   public canRefresh() {
     return true
   }

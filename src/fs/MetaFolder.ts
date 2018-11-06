@@ -11,6 +11,10 @@ export class MetaFolder implements FileStat, Iterable<[string, AbapNode]> {
 
   private children: Map<string, AbapNode> = new Map()
 
+  public async stat(connection: AdtConnection): Promise<AbapNode> {
+    return this
+  }
+
   public isFolder() {
     return true
   }

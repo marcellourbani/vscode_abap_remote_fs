@@ -34,6 +34,16 @@ export class AdtServer {
     }, this.root)
   }
 
+  async stat(uri: Uri) {
+    const node = await this.findNodePromise(uri)
+    if (node.canRefresh()) {
+      const conn = await this.connectionP
+      if (node.type === FileType.Directory) await node.refresh(conn)
+      else await node.stat(conn)
+    }
+    return node
+  }
+
   async findNodePromise(uri: Uri): Promise<AbapNode> {
     let node: AbapNode = this.root
     const parts = uriParts(uri)
@@ -46,11 +56,6 @@ export class AdtServer {
       }
       if (next) node = next
       else return Promise.reject(FileSystemError.FileNotFound(uri))
-    }
-
-    if (node.canRefresh() && node.type === FileType.Directory) {
-      const conn = await this.connectionP
-      await node.refresh(conn)
     }
 
     return node

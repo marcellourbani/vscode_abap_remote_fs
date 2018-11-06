@@ -1,17 +1,13 @@
 import { Uri, FileSystemError } from "vscode"
 import { AdtConnection } from "../adt/AdtConnection"
-import { pick } from "../functions"
+import { pick, followLink } from "../functions"
 import {
   parseNode,
   NodeStructure,
   ObjectNode
 } from "../adt/AdtNodeStructParser"
 import { parsetoPromise } from "../adt/AdtParserBase"
-import {
-  parseObject,
-  firstTextLink,
-  objectVersion
-} from "../adt/AdtObjectParser"
+import { parseObject, firstTextLink } from "../adt/AdtObjectParser"
 import { aggregateNodes } from "./AbapObjectUtilities"
 import { adtLockParser } from "../adt/AdtLockParser"
 
@@ -27,6 +23,14 @@ export type AbapNodeComponentByCategory = {
   category: string
   types: Array<AbapNodeComponentByType>
 }
+export interface AbapMetaData {
+  sourcePath: string
+  createdAt: number
+  changedAt: number
+  version: string
+  masterLanguage?: string
+  masterSystem?: string
+}
 
 export class AbapObject {
   readonly type: string
@@ -34,6 +38,7 @@ export class AbapObject {
   readonly techName: string
   readonly path: string
   readonly expandable: boolean
+  metaData?: AbapMetaData
   protected sapguiOnly: boolean
 
   constructor(
@@ -75,12 +80,11 @@ export class AbapObject {
       throw FileSystemError.FileNotFound(
         `${this.name} can only be edited in SAPGUI`
       )
-    let baseUri = await this.getFileUri(connection)
-    baseUri = baseUri.with({ path: baseUri.path.replace(/\?.*/, "") })
+    let contentUri = this.getContentsUri(connection)
 
     const lockRecord = await connection
       .request(
-        baseUri.with({ query: "_action=LOCK&accessMode=MODIFY" }),
+        contentUri.with({ query: "_action=LOCK&accessMode=MODIFY" }),
         "POST",
         { headers: { "X-sap-adt-sessiontype": "stateful" } }
       )
@@ -89,63 +93,56 @@ export class AbapObject {
       .then(adtLockParser)
 
     const lock = encodeURI(lockRecord.LOCK_HANDLE)
-    console.log(lock, lockRecord)
 
     await connection.request(
-      baseUri.with({ query: `lockHandle=${lock}` }),
+      contentUri.with({ query: `lockHandle=${lock}` }),
       "PUT",
       { body: contents }
     )
 
     await connection.request(
-      baseUri.with({ query: `_action=UNLOCK&lockHandle=${lock}` }),
+      contentUri.with({ query: `_action=UNLOCK&lockHandle=${lock}` }),
       "POST"
     )
-    console.log("saved:" + baseUri.path)
   }
-  async getFileUri(connection: AdtConnection): Promise<Uri> {
-    const mainUri = this.getUri(connection)
 
-    if (!this.isLeaf()) throw FileSystemError.FileIsADirectory(this.vsName())
-    if (this.sapguiOnly)
-      throw FileSystemError.Unavailable(this.vsName() + SAPGUIONLY)
-    //bit of heuristics: assume we're already dealing with a source file
-    // if source/main is part of the url. Won't get an XML file with the original anyway
-    // same for class includes
-    if (
-      this.path.match(/\/source\/main/) ||
-      this.path.match(/\/includes\/[a-zA-Z]+$/)
-    )
-      return mainUri.with({ path: this.path })
-
-    const objectRecord = await connection
-      .request(mainUri, "GET")
-      .then(pick("body"))
-      .then(parsetoPromise())
-      .then(parseObject)
-    const link = firstTextLink(objectRecord.links)
-
-    if (link) {
-      const query = objectVersion(objectRecord.header)
-      return this.followLinkGen(mainUri)(link.href).with({ query })
+  async loadMetadata(connection: AdtConnection): Promise<AbapObject> {
+    if (this.name) {
+      const mainUri = this.getUri(connection)
+      const meta = await connection
+        .request(mainUri, "GET")
+        .then(pick("body"))
+        .then(parsetoPromise())
+        .then(parseObject)
+      const link = firstTextLink(meta.links)
+      const sourcePath = link ? link.href : ""
+      this.metaData = {
+        createdAt: Date.parse(meta.header["adtcore:createdAt"]),
+        changedAt: Date.parse(meta.header["adtcore:createdAt"]),
+        version: meta.header["adtcore:version"],
+        masterLanguage: meta.header["adtcore:masterLanguage"],
+        masterSystem: meta.header["adtcore:masterSystem"],
+        sourcePath
+      }
     }
-    return Promise.reject(
-      FileSystemError.Unavailable(this.vsName() + SAPGUIONLY)
-    )
+    return this
+  }
+  getContentsUri(connection: AdtConnection): Uri {
+    if (!this.metaData) throw FileSystemError.FileNotFound(this.path)
+    // baseUri = baseUri.with({ path: baseUri.path.replace(/\?.*/, "") })
+    return followLink(this.getUri(connection), this.metaData.sourcePath).with({
+      query: `version=${this.metaData.version}`
+    })
   }
 
   async getContents(connection: AdtConnection): Promise<string> {
     if (!this.isLeaf()) throw FileSystemError.FileIsADirectory(this.vsName())
-    if (this.sapguiOnly) return Promise.resolve(SAPGUIONLY)
+    if (this.sapguiOnly || !this.metaData || !this.metaData.sourcePath)
+      return SAPGUIONLY
 
-    let uri
-    try {
-      uri = await this.getFileUri(connection)
-    } catch (e) {
-      return Promise.reject(e)
-    }
-
-    return connection.request(uri, "GET").then(pick("body"))
+    return connection
+      .request(this.getContentsUri(connection), "GET")
+      .then(pick("body"))
   }
 
   getExtension(): any {
@@ -194,21 +191,6 @@ export class AbapObject {
     return !!OBJECT_TYPE.match(/^....\/(.|(FF))$/)
   }
 
-  protected followLinkGen(base: Uri) {
-    return (relPath: string): Uri => {
-      if (!relPath) return base
-      let path
-      if (relPath.match(/^\//)) path = relPath
-      else if (relPath.match(/^\.\//)) {
-        path =
-          base.path.replace(/\/([^\/]*)$/, "/") + relPath.replace(/\.\//, "")
-      } else {
-        const sep = base.path.match(/\/$/) ? "" : "/"
-        path = base.path + sep + relPath.replace(/\.\//, "")
-      }
-      return base.with({ path })
-    }
-  }
   protected selfLeafNode(): ObjectNode {
     return {
       OBJECT_NAME: this.name,

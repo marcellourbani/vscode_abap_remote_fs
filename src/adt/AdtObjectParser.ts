@@ -3,12 +3,12 @@ interface AbapSource {
   "abapsource:fixPointArithmetic"?: string
   "abapsource:activeUnicodeCheck"?: string
 }
-interface BaseHeader extends AbapSource {
+export interface BaseHeader extends AbapSource {
   "adtcore:name": string
   "adtcore:type": string
-  "adtcore:changedAt": Date
+  "adtcore:changedAt": string
   "adtcore:version": string
-  "adtcore:createdAt": Date
+  "adtcore:createdAt": string
   "adtcore:changedBy": string
   "adtcore:createdBy": string
   "adtcore:responsible"?: string
