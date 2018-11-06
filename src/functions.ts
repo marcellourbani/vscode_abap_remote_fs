@@ -1,3 +1,5 @@
+import { Uri } from "vscode"
+
 // type FunctionType1 = (x: string, y: number) => number;
 type unaryFunction = (x: any) => any
 type promiseTransformer = (x: Promise<any>) => Promise<any>
@@ -112,4 +114,17 @@ export const defaultVal = (def: any, fn: (...args: any[]) => any) => (
   } catch (error) {
     return def
   }
+}
+//
+export function followLink(base: Uri, relPath: string): Uri {
+  if (!relPath) return base
+  let path
+  if (relPath.match(/^\//)) path = relPath
+  else if (relPath.match(/^\.\//)) {
+    path = base.path.replace(/\/([^\/]*)$/, "/") + relPath.replace(/\.\//, "")
+  } else {
+    const sep = base.path.match(/\/$/) ? "" : "/"
+    path = base.path + sep + relPath.replace(/\.\//, "")
+  }
+  return base.with({ path })
 }

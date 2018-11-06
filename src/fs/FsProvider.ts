@@ -18,7 +18,7 @@ export class FsProvider implements vscode.FileSystemProvider {
     if (uri.path === "/.vscode") throw FileSystemError.FileNotFound(uri)
     const server = fromUri(uri)
     if (uri.path === "/") return server.findNode(uri)
-    return server.findNodePromise(uri)
+    return server.stat(uri)
   }
 
   readDirectory(

@@ -3,6 +3,8 @@ import { NodeStructure, ObjectNode } from "../adt/AdtNodeStructParser"
 import { selectMap } from "../functions"
 import { AbapProgram } from "./AbapProgram"
 import { AbapClass } from "./AbapClass"
+import { AbapInclude } from "./AbapInclude"
+import { AbapClassInclude } from "./AbapClassInclude"
 
 export function aggregateNodes(
   cont: NodeStructure
@@ -55,6 +57,12 @@ export function abapObjectFromNode(node: ObjectNode): AbapObject {
       break
     case "CLAS/OC":
       objtype = AbapClass
+      break
+    case "CLAS/I":
+      objtype = AbapClassInclude
+      break
+    case "PROG/I":
+      objtype = AbapInclude
       break
   }
   return new objtype(
