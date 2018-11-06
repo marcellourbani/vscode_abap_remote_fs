@@ -62,6 +62,7 @@ export function abapObjectFromNode(node: ObjectNode): AbapObject {
       objtype = AbapClassInclude
       break
     case "PROG/I":
+    case "FUGR/I":
       objtype = AbapInclude
       break
   }
