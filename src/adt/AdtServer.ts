@@ -1,7 +1,7 @@
 import { AdtConnection } from "./AdtConnection"
 import { Uri, FileSystemError, FileType } from "vscode"
 import { MetaFolder } from "../fs/MetaFolder"
-import { AbapObjectNode, AbapNode } from "../fs/AbapNode"
+import { AbapObjectNode, AbapNode, isAbap } from "../fs/AbapNode"
 import { AbapObject } from "../abap/AbapObject"
 import { getRemoteList } from "../config"
 export const ADTBASEURL = "/sap/bc/adt/repository/nodestructure"
@@ -32,6 +32,12 @@ export class AdtServer {
       if (current && "getChild" in current) return current.getChild(name)
       throw FileSystemError.FileNotFound(uri)
     }, this.root)
+  }
+
+  async findAbapObject(uri: Uri): Promise<AbapObject> {
+    const node = await this.findNodePromise(uri)
+    if (isAbap(node)) return node.abapObject
+    return Promise.reject(new Error("Not an abap object"))
   }
 
   async stat(uri: Uri) {

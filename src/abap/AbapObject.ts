@@ -70,7 +70,26 @@ export class AbapObject {
       path: this.path
     })
   }
+  async activate(connection: AdtConnection) {
+    const uri = this.getUri(connection).with({
+      path: "/sap/bc/adt/activation",
+      query: "method=activate&preauditRequested=true"
+    })
+    const payload =
+      `<?xml version="1.0" encoding="UTF-8"?>` +
+      `<adtcore:objectReferences xmlns:adtcore="http://www.sap.com/adt/core">` +
+      `<adtcore:objectReference adtcore:uri="${this.path}" adtcore:name="${
+        this.name
+      }"/>` +
+      `</adtcore:objectReferences>`
 
+    try {
+      const result = await connection.request(uri, "POST", { body: payload })
+      console.log(result)
+    } catch (e) {
+      console.log(e)
+    }
+  }
   async setContents(
     connection: AdtConnection,
     contents: Uint8Array
