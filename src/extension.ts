@@ -6,6 +6,7 @@ import { AdtConnection } from "./adt/AdtConnection"
 import { window, Uri } from "vscode"
 import { activeTextEditorChangedListener } from "./listeners"
 import { fromUri } from "./adt/AdtServer"
+import { AdtHttpException } from "./adt/AdtExceptions"
 
 function selectRemote(connection: string): Thenable<RemoteConfig> {
   const remotes = getRemoteList()
@@ -39,13 +40,7 @@ async function connect(selector: any) {
   const remote = await selectRemote(connectionID)
   const connection = AdtConnection.fromRemote(remote)
 
-  try {
-    const response = await connection.connect()
-    if (response.statusCode > 300)
-      throw new Error(`Error connecting to server ${connectionID}`)
-  } catch (error) {
-    throw new Error(`Error connecting to server ${connectionID}`)
-  }
+  await connection.connect() // if connection raises an exception don't mount any folder
 
   vscode.workspace.updateWorkspaceFolders(0, 0, {
     uri: vscode.Uri.parse("adt://" + remote.name),
