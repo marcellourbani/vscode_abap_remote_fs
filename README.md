@@ -1,7 +1,7 @@
 # ABAP remote filesystem for visual studio code
 
-This extension allows editing of ABAP code on your server directly in Visual studio code.
-It's still in its early stages
+This extension allows editing and activation of ABAP code on your server directly in Visual studio code.
+It's still in its early stages, for now no transport selection is provided, save and activate does work for local objects
 
 **WRITE SUPPORT IS EXPERIMANTAL USE AT YOUR OWN RISK**
 

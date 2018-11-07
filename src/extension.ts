@@ -3,6 +3,9 @@ import * as vscode from "vscode"
 import { FsProvider } from "./fs/FsProvider"
 import { getRemoteList, RemoteConfig } from "./config"
 import { AdtConnection } from "./adt/AdtConnection"
+import { window, Uri } from "vscode"
+import { activeTextEditorChangedListener } from "./listeners"
+import { fromUri } from "./adt/AdtServer"
 
 function selectRemote(connection: string): Thenable<RemoteConfig> {
   const remotes = getRemoteList()
@@ -25,35 +28,45 @@ function selectRemote(connection: string): Thenable<RemoteConfig> {
       throw new Error("No connection selected")
     })
 }
+async function activateCurrent(selector: Uri) {
+  const server = fromUri(selector)
+  const obj = await server.findAbapObject(selector)
+  server.activate(obj)
+}
+async function connect(selector: any) {
+  const connectionID = selector && selector.connection
+  const remote = await selectRemote(connectionID)
+  const connection = AdtConnection.fromRemote(remote)
+
+  await connection.connect() // if connection raises an exception don't mount any folder
+
+  vscode.workspace.updateWorkspaceFolders(0, 0, {
+    uri: vscode.Uri.parse("adt://" + remote.name),
+    name: remote.name + "(ABAP)"
+  })
+}
 
 export function activate(context: vscode.ExtensionContext) {
   const abapFS = new FsProvider()
+  //register the filesystem type
   context.subscriptions.push(
     vscode.workspace.registerFileSystemProvider("adt", abapFS, {
       isCaseSensitive: true
     })
   )
 
-  let disposable = vscode.commands.registerCommand(
-    "abapfs.connect",
-    async (selector: any) => {
-      const connectionID = selector && selector.connection
-      const remote = await selectRemote(connectionID)
-      const connection = AdtConnection.fromRemote(remote)
+  //
+  context.subscriptions.push(
+    window.onDidChangeActiveTextEditor(activeTextEditorChangedListener)
+  )
 
-      try {
-        const response = await connection.connect()
-        if (response.statusCode > 300)
-          throw new Error(`Error connecting to server ${connectionID}`)
-      } catch (error) {
-        throw new Error(`Error connecting to server ${connectionID}`)
-      }
-
-      vscode.workspace.updateWorkspaceFolders(0, 0, {
-        uri: vscode.Uri.parse("adt://" + remote.name),
-        name: remote.name + "(ABAP)"
-      })
-    }
+  //connect command
+  let disposable = vscode.commands.registerCommand("abapfs.connect", connect)
+  context.subscriptions.push(disposable)
+  //activate command
+  disposable = vscode.commands.registerCommand(
+    "abapfs.activate",
+    activateCurrent
   )
   context.subscriptions.push(disposable)
 }

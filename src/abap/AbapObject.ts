@@ -6,7 +6,7 @@ import {
   NodeStructure,
   ObjectNode
 } from "../adt/AdtNodeStructParser"
-import { parsetoPromise } from "../adt/AdtParserBase"
+import { parsetoPromise, getNode } from "../adt/AdtParserBase"
 import { parseObject, firstTextLink } from "../adt/AdtObjectParser"
 import { aggregateNodes } from "./AbapObjectUtilities"
 import { adtLockParser } from "../adt/AdtLockParser"
@@ -30,6 +30,11 @@ export interface AbapMetaData {
   version: string
   masterLanguage?: string
   masterSystem?: string
+}
+interface MainProgram {
+  "adtcore:uri": string
+  "adtcore:type": string
+  "adtcore:name": string
 }
 
 export class AbapObject {
@@ -70,6 +75,47 @@ export class AbapObject {
       path: this.path
     })
   }
+  async activate(
+    connection: AdtConnection,
+    mainInclude?: string
+  ): Promise<string> {
+    const uri = this.getUri(connection).with({
+      path: "/sap/bc/adt/activation",
+      query: "method=activate&preauditRequested=true"
+    })
+    const incl = mainInclude
+      ? `?context=${encodeURIComponent(mainInclude)}`
+      : ""
+    const payload =
+      `<?xml version="1.0" encoding="UTF-8"?>` +
+      `<adtcore:objectReferences xmlns:adtcore="http://www.sap.com/adt/core">` +
+      `<adtcore:objectReference adtcore:uri="${
+        this.path
+      }${incl}" adtcore:name="${this.name}"/>` +
+      `</adtcore:objectReferences>`
+
+    const response = await connection.request(uri, "POST", { body: payload })
+    if (response.body) {
+      //activation error(s)
+      const messages = (await parsetoPromise(
+        getNode("chkl:messages/msg/shortText/txt")
+      )(response.body)) as string[]
+
+      return messages[0]
+    }
+    return ""
+  }
+
+  async getMainPrograms(connection: AdtConnection): Promise<MainProgram[]> {
+    const response = await connection.request(
+      followLink(this.getUri(connection), "mainprograms"),
+      "GET"
+    )
+    const parsed: any = await parsetoPromise()(response.body)
+    return parsed["adtcore:objectReferences"]["adtcore:objectReference"].map(
+      (link: any) => link["$"]
+    )
+  }
 
   async setContents(
     connection: AdtConnection,
@@ -82,17 +128,13 @@ export class AbapObject {
       )
     let contentUri = this.getContentsUri(connection)
 
-    const lockRecord = await connection
-      .request(
-        contentUri.with({ query: "_action=LOCK&accessMode=MODIFY" }),
-        "POST",
-        { headers: { "X-sap-adt-sessiontype": "stateful" } }
-      )
-      .then(pick("body"))
-      .then(parsetoPromise() as any)
-      .then(adtLockParser)
-
-    const lock = encodeURI(lockRecord.LOCK_HANDLE)
+    const response = await connection.request(
+      contentUri.with({ query: "_action=LOCK&accessMode=MODIFY" }),
+      "POST",
+      { headers: { "X-sap-adt-sessiontype": "stateful" } }
+    )
+    const lockRecord = await parsetoPromise(adtLockParser)(response.body)
+    const lock = encodeURIComponent(lockRecord.LOCK_HANDLE)
 
     await connection.request(
       contentUri.with({ query: `lockHandle=${lock}` }),

@@ -1,6 +1,6 @@
 import * as vscode from "vscode"
 import { fromUri } from "../adt/AdtServer"
-import { FileSystemError } from "vscode"
+import { FileSystemError, commands } from "vscode"
 
 export class FsProvider implements vscode.FileSystemProvider {
   private _eventEmitter = new vscode.EventEmitter<vscode.FileChangeEvent[]>()
@@ -46,11 +46,11 @@ export class FsProvider implements vscode.FileSystemProvider {
     } catch (error) {}
     throw FileSystemError.Unavailable(uri)
   }
-  writeFile(
+  async writeFile(
     uri: vscode.Uri,
     content: Uint8Array,
     options: { create: boolean; overwrite: boolean }
-  ): void | Thenable<void> {
+  ): Promise<void> {
     const server = fromUri(uri)
     const file = server.findNode(uri)
     if (!file && options.create)
@@ -58,7 +58,12 @@ export class FsProvider implements vscode.FileSystemProvider {
         "Not a real filesystem, file creation is not supported"
       )
     if (!file) throw FileSystemError.FileNotFound(uri)
-    return server.connectionP.then(conn => file.save(conn, content))
+    const connection = await server.connectionP
+    await file.save(connection, content)
+    //not active anymore... update the status. By the book we should check if it's set by this object first...
+    //TODO: move this logic somewhere else...
+    await this.stat(uri)
+    commands.executeCommand("setContext", "abapfs:objectInactive", true)
   }
   delete(
     uri: vscode.Uri,

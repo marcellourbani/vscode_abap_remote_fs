@@ -1,0 +1,263 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<svg
+   xmlns:dc="http://purl.org/dc/elements/1.1/"
+   xmlns:cc="http://creativecommons.org/ns#"
+   xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#"
+   xmlns:svg="http://www.w3.org/2000/svg"
+   xmlns="http://www.w3.org/2000/svg"
+   xmlns:sodipodi="http://sodipodi.sourceforge.net/DTD/sodipodi-0.dtd"
+   xmlns:inkscape="http://www.inkscape.org/namespaces/inkscape"
+   width="15.836003"
+   height="20"
+   version="1.1"
+   id="svg3840"
+   sodipodi:docname="activate_single.svg"
+   inkscape:version="0.92.2 2405546, 2018-03-11">
+  <metadata
+     id="metadata3846">
+    <rdf:RDF>
+      <cc:Work
+         rdf:about="">
+        <dc:format>image/svg+xml</dc:format>
+        <dc:type
+           rdf:resource="http://purl.org/dc/dcmitype/StillImage" />
+        <dc:title></dc:title>
+      </cc:Work>
+    </rdf:RDF>
+  </metadata>
+  <defs
+     id="defs3844" />
+  <sodipodi:namedview
+     pagecolor="#ffffff"
+     bordercolor="#666666"
+     borderopacity="1"
+     objecttolerance="10"
+     gridtolerance="10"
+     guidetolerance="10"
+     inkscape:pageopacity="0"
+     inkscape:pageshadow="2"
+     inkscape:window-width="1920"
+     inkscape:window-height="1015"
+     id="namedview3842"
+     showgrid="false"
+     inkscape:zoom="28.57"
+     inkscape:cx="7.9180016"
+     inkscape:cy="9.9999998"
+     inkscape:window-x="0"
+     inkscape:window-y="0"
+     inkscape:window-maximized="1"
+     inkscape:current-layer="svg3840"
+     fit-margin-top="0"
+     fit-margin-left="0"
+     fit-margin-right="0"
+     fit-margin-bottom="0" />
+  <!-- Created with SVG-edit - https://github.com/SVG-Edit/svgedit-->
+  <g
+     class="layer"
+     id="g3838"
+     transform="matrix(0.05128205,0,0,0.05128205,-0.77430583,-0.97435895)">
+    <title
+       id="title3824">Layer 1</title>
+    <g
+       id="svg_16">
+      <rect
+         height="184"
+         id="svg_6"
+         stroke-linecap="null"
+         stroke-linejoin="null"
+         width="100"
+         x="118"
+         y="222.5"
+         style="fill:#00ffff;stroke:#0000ff;stroke-width:5;stroke-dasharray:none" />
+      <rect
+         height="100"
+         id="svg_5"
+         stroke-linecap="null"
+         stroke-linejoin="null"
+         width="100"
+         x="118"
+         y="125"
+         style="fill:#ffaa56;stroke:#ff0000;stroke-width:5;stroke-dasharray:none" />
+    </g>
+    <g
+       id="svg_17">
+      <rect
+         height="84"
+         id="svg_7"
+         stroke-linecap="null"
+         stroke-linejoin="null"
+         width="20"
+         x="158"
+         y="19"
+         style="fill:#ffff00;stroke-width:5;stroke-dasharray:none" />
+      <rect
+         height="84"
+         id="svg_9"
+         stroke-linecap="null"
+         stroke-linejoin="null"
+         transform="rotate(-45,74.5,82.25)"
+         width="20"
+         x="64.5"
+         y="40.25"
+         style="fill:#ffff00;stroke-width:5;stroke-dasharray:none" />
+      <rect
+         height="84"
+         id="svg_10"
+         stroke-linecap="null"
+         stroke-linejoin="null"
+         transform="rotate(45,261.75,82.25)"
+         width="20"
+         x="251.75"
+         y="40.25"
+         style="fill:#ffff00;stroke-width:5;stroke-dasharray:none" />
+      <g
+         id="svg_13"
+         transform="rotate(-180,166.625,259.75)">
+        <rect
+           height="84"
+           id="svg_12"
+           stroke-linecap="null"
+           stroke-linejoin="null"
+           transform="rotate(-45,73,259.75)"
+           width="20"
+           x="63"
+           y="217.75"
+           style="fill:#ffff00;stroke-width:5;stroke-dasharray:none" />
+        <rect
+           height="84"
+           id="svg_11"
+           stroke-linecap="null"
+           stroke-linejoin="null"
+           transform="rotate(45,260.25,259.75)"
+           width="20"
+           x="250.25"
+           y="217.75"
+           style="fill:#ffff00;stroke-width:5;stroke-dasharray:none" />
+      </g>
+      <rect
+         height="84"
+         id="svg_14"
+         stroke-linecap="null"
+         stroke-linejoin="null"
+         transform="rotate(89.85,281.875,177)"
+         width="20"
+         x="271.875"
+         y="135"
+         style="fill:#ffff00;stroke-width:5;stroke-dasharray:none" />
+      <rect
+         height="84"
+         id="svg_15"
+         stroke-linecap="null"
+         stroke-linejoin="null"
+         transform="rotate(89.85,57.125,175.25)"
+         width="20"
+         x="47.125"
+         y="133.25"
+         style="fill:#ffff00;stroke-width:5;stroke-dasharray:none" />
+    </g>
+  </g>
+  <g
+     transform="matrix(0.05128205,0,0,0.05128205,-0.77430583,-0.97435895)"
+     id="g76"
+     class="layer">
+    <title
+       id="title50">Layer 1</title>
+    <g
+       id="g56">
+      <rect
+         style="fill:#00ffff;stroke:#0000ff;stroke-width:5;stroke-dasharray:none"
+         y="222.5"
+         x="118"
+         width="100"
+         stroke-linejoin="null"
+         stroke-linecap="null"
+         id="rect52"
+         height="184" />
+      <rect
+         style="fill:#ffaa56;stroke:#ff0000;stroke-width:5;stroke-dasharray:none"
+         y="125"
+         x="118"
+         width="100"
+         stroke-linejoin="null"
+         stroke-linecap="null"
+         id="rect54"
+         height="100" />
+    </g>
+    <g
+       id="g74">
+      <rect
+         style="fill:#ffff00;stroke-width:5;stroke-dasharray:none"
+         y="19"
+         x="158"
+         width="20"
+         stroke-linejoin="null"
+         stroke-linecap="null"
+         id="rect58"
+         height="84" />
+      <rect
+         style="fill:#ffff00;stroke-width:5;stroke-dasharray:none"
+         y="40.25"
+         x="64.5"
+         width="20"
+         transform="rotate(-45,74.5,82.25)"
+         stroke-linejoin="null"
+         stroke-linecap="null"
+         id="rect60"
+         height="84" />
+      <rect
+         style="fill:#ffff00;stroke-width:5;stroke-dasharray:none"
+         y="40.25"
+         x="251.75"
+         width="20"
+         transform="rotate(45,261.75,82.25)"
+         stroke-linejoin="null"
+         stroke-linecap="null"
+         id="rect62"
+         height="84" />
+      <g
+         transform="rotate(-180,166.625,259.75)"
+         id="g68">
+        <rect
+           style="fill:#ffff00;stroke-width:5;stroke-dasharray:none"
+           y="217.75"
+           x="63"
+           width="20"
+           transform="rotate(-45,73,259.75)"
+           stroke-linejoin="null"
+           stroke-linecap="null"
+           id="rect64"
+           height="84" />
+        <rect
+           style="fill:#ffff00;stroke-width:5;stroke-dasharray:none"
+           y="217.75"
+           x="250.25"
+           width="20"
+           transform="rotate(45,260.25,259.75)"
+           stroke-linejoin="null"
+           stroke-linecap="null"
+           id="rect66"
+           height="84" />
+      </g>
+      <rect
+         style="fill:#ffff00;stroke-width:5;stroke-dasharray:none"
+         y="135"
+         x="271.875"
+         width="20"
+         transform="rotate(89.85,281.875,177)"
+         stroke-linejoin="null"
+         stroke-linecap="null"
+         id="rect70"
+         height="84" />
+      <rect
+         style="fill:#ffff00;stroke-width:5;stroke-dasharray:none"
+         y="133.25"
+         x="47.125"
+         width="20"
+         transform="rotate(89.85,57.125,175.25)"
+         stroke-linejoin="null"
+         stroke-linecap="null"
+         id="rect72"
+         height="84" />
+    </g>
+  </g>
+</svg>

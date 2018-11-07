@@ -53,6 +53,29 @@
   ],
   "main": "./out/extension",
   "contributes": {
+    "commands": [
+      {
+        "command": "abapfs.connect",
+        "title": "Connect to an ABAP system"
+      },
+      {
+        "command": "abapfs.activate",
+        "title": "Activate the current ABAP object",
+        "icon": {
+          "dark": "images/activate_single.svg",
+          "light": "images/activate_single.svg"
+        }
+      }
+    ],
+    "menus": {
+      "editor/title": [
+        {
+          "command": "abapfs.activate",
+          "group": "navigation",
+          "when": "resourceScheme == adt && abapfs:objectInactive"
+        }
+      ]
+    },
     "configuration": {
       "title": "ABAP-FS configuration",
       "properties": {
@@ -87,12 +110,6 @@
           }
         }
       }
-    },
-    "commands": [
-      {
-        "command": "abapfs.connect",
-        "title": "Connect to an ABAP system"
-      }
-    ]
+    }
   }
 }

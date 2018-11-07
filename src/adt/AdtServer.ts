@@ -1,7 +1,7 @@
 import { AdtConnection } from "./AdtConnection"
-import { Uri, FileSystemError, FileType } from "vscode"
+import { Uri, FileSystemError, FileType, window, commands } from "vscode"
 import { MetaFolder } from "../fs/MetaFolder"
-import { AbapObjectNode, AbapNode } from "../fs/AbapNode"
+import { AbapObjectNode, AbapNode, isAbap } from "../fs/AbapNode"
 import { AbapObject } from "../abap/AbapObject"
 import { getRemoteList } from "../config"
 export const ADTBASEURL = "/sap/bc/adt/repository/nodestructure"
@@ -26,12 +26,41 @@ export class AdtServer {
   readonly connectionP: Promise<AdtConnection>
   private root: MetaFolder
 
+  constructor(connectionId: string) {
+    const config = getRemoteList().filter(
+      config => config.name.toLowerCase() === connectionId.toLowerCase()
+    )[0]
+
+    if (!config) throw new Error(`connection ${connectionId}`)
+
+    const connection = AdtConnection.fromRemote(config)
+
+    this.connectionId = config.name.toLowerCase()
+    this.connectionP = connection.waitReady()
+    connection.connect()
+
+    this.root = new MetaFolder()
+    this.root.setChild(
+      `$TMP`,
+      new AbapObjectNode(new AbapObject("DEVC/K", "$TMP", ADTBASEURL, "X"))
+    )
+    this.root.setChild(
+      "System Library",
+      new AbapObjectNode(new AbapObject("DEVC/K", "", ADTBASEURL, "X"))
+    )
+  }
   findNode(uri: Uri): AbapNode {
     const parts = uriParts(uri)
     return parts.reduce((current: any, name) => {
       if (current && "getChild" in current) return current.getChild(name)
       throw FileSystemError.FileNotFound(uri)
     }, this.root)
+  }
+
+  async findAbapObject(uri: Uri): Promise<AbapObject> {
+    const node = await this.findNodePromise(uri)
+    if (isAbap(node)) return node.abapObject
+    return Promise.reject(new Error("Not an abap object"))
   }
 
   async stat(uri: Uri) {
@@ -61,28 +90,40 @@ export class AdtServer {
     return node
   }
 
-  constructor(connectionId: string) {
-    const config = getRemoteList().filter(
-      config => config.name.toLowerCase() === connectionId.toLowerCase()
-    )[0]
-
-    if (!config) throw new Error(`connection ${connectionId}`)
-
-    const connection = AdtConnection.fromRemote(config)
-
-    this.connectionId = config.name.toLowerCase()
-    this.connectionP = connection.waitReady()
-    connection.connect()
-
-    this.root = new MetaFolder()
-    this.root.setChild(
-      `$TMP`,
-      new AbapObjectNode(new AbapObject("DEVC/K", "$TMP", ADTBASEURL, "X"))
-    )
-    this.root.setChild(
-      "System Library",
-      new AbapObjectNode(new AbapObject("DEVC/K", "", ADTBASEURL, "X"))
-    )
+  async activate(obj: AbapObject) {
+    const conn = await this.connectionP
+    let message = ""
+    try {
+      message = await obj.activate(conn)
+    } catch (e) {
+      const mainPrograms = await obj.getMainPrograms(conn)
+      let url = ""
+      if (mainPrograms.length === 1) url = mainPrograms[0]["adtcore:uri"]
+      else {
+        const mainProg =
+          (await window.showQuickPick(
+            mainPrograms.map(p => p["adtcore:name"]),
+            { placeHolder: "Please select a main program" }
+          )) || ""
+        if (mainProg)
+          url = mainPrograms.find(x => x["adtcore:name"] === mainProg)![
+            "adtcore:uri"
+          ]
+        else return
+      }
+      if (url)
+        try {
+          message = await obj.activate(conn, url)
+        } catch (err) {
+          window.showErrorMessage(err)
+        }
+    }
+    if (message) window.showErrorMessage(message)
+    else {
+      //activation successful, update the status. By the book we should check if it's set by this object first...
+      await obj.loadMetadata(conn)
+      commands.executeCommand("setContext", "abapfs:objectInactive", false)
+    }
   }
 }
 const servers = new Map<string, AdtServer>()

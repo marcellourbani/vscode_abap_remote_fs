@@ -1,6 +1,8 @@
 import * as request from "request"
 import { Uri } from "vscode"
 import { RemoteConfig } from "../config"
+import { AdtException, AdtHttpException } from "./AdtExceptions"
+import { Response } from "request"
 
 enum ConnStatus {
   new,
@@ -77,18 +79,18 @@ export class AdtConnection {
       }
     }
 
-    return new Promise((resolve, reject) => {
-      request(urlOptions, (error, response, body) => {
+    return new Promise<Response>((resolve, reject) => {
+      request(urlOptions, async (error, response, body) => {
         if (error) reject(error)
+        //TODO:support 304 non modified? Should only happen if I send a header like
+        //If-None-Match: 201811061933580005ZDEMO_CALENDAR
         else if (response.statusCode < 300) resolve(response)
         else
-          reject(
-            new Error(
-              `Failed to connect to ${this.name}:${response.statusCode}:${
-                response.statusMessage
-              }`
-            )
-          )
+          try {
+            reject(await AdtException.fromXml(body))
+          } catch (e) {
+            reject(new AdtHttpException(response))
+          }
       })
     })
   }
