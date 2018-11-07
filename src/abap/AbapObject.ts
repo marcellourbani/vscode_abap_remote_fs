@@ -6,10 +6,11 @@ import {
   NodeStructure,
   ObjectNode
 } from "../adt/AdtNodeStructParser"
-import { parsetoPromise } from "../adt/AdtParserBase"
+import { parsetoPromise, getNode } from "../adt/AdtParserBase"
 import { parseObject, firstTextLink } from "../adt/AdtObjectParser"
 import { aggregateNodes } from "./AbapObjectUtilities"
 import { adtLockParser } from "../adt/AdtLockParser"
+import { request } from "https"
 
 export const XML_EXTENSION = ".XML"
 export const SAPGUIONLY = "Objects of this type are only supported in SAPGUI"
@@ -30,6 +31,11 @@ export interface AbapMetaData {
   version: string
   masterLanguage?: string
   masterSystem?: string
+}
+interface MainProgram {
+  "adtcore:uri": string
+  "adtcore:type": string
+  "adtcore:name": string
 }
 
 export class AbapObject {
@@ -70,26 +76,45 @@ export class AbapObject {
       path: this.path
     })
   }
-  async activate(connection: AdtConnection) {
+  async activate(
+    connection: AdtConnection,
+    mainInclude?: string
+  ): Promise<string> {
     const uri = this.getUri(connection).with({
       path: "/sap/bc/adt/activation",
       query: "method=activate&preauditRequested=true"
     })
+    const incl = mainInclude ? `?context=${encodeURI(mainInclude)}` : ""
     const payload =
       `<?xml version="1.0" encoding="UTF-8"?>` +
       `<adtcore:objectReferences xmlns:adtcore="http://www.sap.com/adt/core">` +
-      `<adtcore:objectReference adtcore:uri="${this.path}" adtcore:name="${
-        this.name
-      }"/>` +
+      `<adtcore:objectReference adtcore:uri="${
+        this.path
+      }${incl}" adtcore:name="${this.name}"/>` +
       `</adtcore:objectReferences>`
 
-    try {
-      const result = await connection.request(uri, "POST", { body: payload })
-      console.log(result)
-    } catch (e) {
-      console.log(e)
+    const response = await connection.request(uri, "POST", { body: payload })
+    if (response.body) {
+      //activation error(s)
+      const messages = (await parsetoPromise(
+        getNode("chkl:messages/msg/shortText/txt")
+      )(response.body)) as string[]
+
+      return messages[0]
     }
+    return ""
   }
+  async getMainPrograms(connection: AdtConnection): Promise<MainProgram[]> {
+    const response = await connection.request(
+      followLink(this.getUri(connection), "mainprograms"),
+      "GET"
+    )
+    const parsed: any = await parsetoPromise()(response.body)
+    return parsed["adtcore:objectReferences"]["adtcore:objectReference"].map(
+      (link: any) => link["$"]
+    )
+  }
+
   async setContents(
     connection: AdtConnection,
     contents: Uint8Array

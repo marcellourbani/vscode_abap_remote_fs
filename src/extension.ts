@@ -31,8 +31,7 @@ function selectRemote(connection: string): Thenable<RemoteConfig> {
 async function activateCurrent(selector: Uri) {
   const server = fromUri(selector)
   const obj = await server.findAbapObject(selector)
-  const conn = await server.connectionP
-  obj.activate(conn)
+  server.activate(obj)
 }
 async function connect(selector: any) {
   const connectionID = selector && selector.connection

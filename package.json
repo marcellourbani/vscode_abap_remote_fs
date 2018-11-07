@@ -62,8 +62,8 @@
         "command": "abapfs.activate",
         "title": "Activate the current ABAP object",
         "icon": {
-          "dark": "images/inactive.svg",
-          "light": "images/inactive.svg"
+          "dark": "images/activate_single.svg",
+          "light": "images/activate_single.svg"
         }
       }
     ],
