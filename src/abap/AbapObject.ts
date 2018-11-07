@@ -10,7 +10,6 @@ import { parsetoPromise, getNode } from "../adt/AdtParserBase"
 import { parseObject, firstTextLink } from "../adt/AdtObjectParser"
 import { aggregateNodes } from "./AbapObjectUtilities"
 import { adtLockParser } from "../adt/AdtLockParser"
-import { request } from "https"
 
 export const XML_EXTENSION = ".XML"
 export const SAPGUIONLY = "Objects of this type are only supported in SAPGUI"
@@ -84,7 +83,9 @@ export class AbapObject {
       path: "/sap/bc/adt/activation",
       query: "method=activate&preauditRequested=true"
     })
-    const incl = mainInclude ? `?context=${encodeURI(mainInclude)}` : ""
+    const incl = mainInclude
+      ? `?context=${encodeURIComponent(mainInclude)}`
+      : ""
     const payload =
       `<?xml version="1.0" encoding="UTF-8"?>` +
       `<adtcore:objectReferences xmlns:adtcore="http://www.sap.com/adt/core">` +
@@ -104,6 +105,7 @@ export class AbapObject {
     }
     return ""
   }
+
   async getMainPrograms(connection: AdtConnection): Promise<MainProgram[]> {
     const response = await connection.request(
       followLink(this.getUri(connection), "mainprograms"),
@@ -126,17 +128,13 @@ export class AbapObject {
       )
     let contentUri = this.getContentsUri(connection)
 
-    const lockRecord = await connection
-      .request(
-        contentUri.with({ query: "_action=LOCK&accessMode=MODIFY" }),
-        "POST",
-        { headers: { "X-sap-adt-sessiontype": "stateful" } }
-      )
-      .then(pick("body"))
-      .then(parsetoPromise() as any)
-      .then(adtLockParser)
-
-    const lock = encodeURI(lockRecord.LOCK_HANDLE)
+    const response = await connection.request(
+      contentUri.with({ query: "_action=LOCK&accessMode=MODIFY" }),
+      "POST",
+      { headers: { "X-sap-adt-sessiontype": "stateful" } }
+    )
+    const lockRecord = await parsetoPromise(adtLockParser)(response.body)
+    const lock = encodeURIComponent(lockRecord.LOCK_HANDLE)
 
     await connection.request(
       contentUri.with({ query: `lockHandle=${lock}` }),

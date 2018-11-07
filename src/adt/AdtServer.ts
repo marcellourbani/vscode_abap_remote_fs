@@ -1,5 +1,5 @@
 import { AdtConnection } from "./AdtConnection"
-import { Uri, FileSystemError, FileType, window } from "vscode"
+import { Uri, FileSystemError, FileType, window, commands } from "vscode"
 import { MetaFolder } from "../fs/MetaFolder"
 import { AbapObjectNode, AbapNode, isAbap } from "../fs/AbapNode"
 import { AbapObject } from "../abap/AbapObject"
@@ -100,15 +100,16 @@ export class AdtServer {
       let url = ""
       if (mainPrograms.length === 1) url = mainPrograms[0]["adtcore:uri"]
       else {
-        window.showInformationMessage("Please select a main program")
         const mainProg =
           (await window.showQuickPick(
-            mainPrograms.map(p => p["adtcore:name"])
+            mainPrograms.map(p => p["adtcore:name"]),
+            { placeHolder: "Please select a main program" }
           )) || ""
         if (mainProg)
           url = mainPrograms.find(x => x["adtcore:name"] === mainProg)![
             "adtcore:uri"
           ]
+        else return
       }
       if (url)
         try {
@@ -118,6 +119,11 @@ export class AdtServer {
         }
     }
     if (message) window.showErrorMessage(message)
+    else {
+      //activation successful, update the status. By the book we should check if it's set by this object first...
+      await obj.loadMetadata(conn)
+      commands.executeCommand("setContext", "abapfs:objectInactive", false)
+    }
   }
 }
 const servers = new Map<string, AdtServer>()

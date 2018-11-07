@@ -1,8 +1,13 @@
 import { parseString, convertableToString } from "xml2js"
 import { pipe } from "../functions"
 
-// when the field is an array getfield will return its first line
-// use with caution!
+/**
+ * Returns a function to select the contents of a simple field
+ * when the object is an array the function will look for the field in its first line
+ *
+ * @param name name of the field
+ *
+ */
 export const getField = (name: string) => (subj: any) => {
   if (subj instanceof Array) {
     return subj[0][name]
@@ -68,6 +73,7 @@ export function getFieldAttribute(
 export const recxml2js = (record: any) =>
   Object.keys(record).reduce((acc: any, current: any) => {
     acc[current] = record[current][0]
+    if (acc[current] && acc[current]._) acc[current] = acc[current]._
     return acc
   }, {})
 
@@ -100,7 +106,7 @@ export const getNode = (...args: any[]) => {
   }
   return fn(...args)
 }
-export const parsetoPromise = <T>(parser?: Function) => (
+export const parsetoPromise = <T>(parser?: (raw: any) => T) => (
   xml: convertableToString
 ): Promise<T> =>
   new Promise(resolve => {
