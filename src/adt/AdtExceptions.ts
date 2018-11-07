@@ -1,9 +1,4 @@
-import {
-  parsetoPromise,
-  getFieldAttribute,
-  recxml2js,
-  getField
-} from "./AdtParserBase"
+import { parsetoPromise, getFieldAttribute, recxml2js } from "./AdtParserBase"
 import { Response } from "request"
 
 export class AdtException extends Error {
