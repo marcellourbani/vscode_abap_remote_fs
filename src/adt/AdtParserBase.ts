@@ -24,7 +24,7 @@ export const getFieldAttributes = (
   node?: any
 ): any | ((x: any) => any) => {
   function getAttributes(o: any): any {
-    return o && o[fieldname] && o[fieldname]["$"]
+    return o && o[fieldname] && o[fieldname][0] && o[fieldname][0]["$"]
   }
   if (node) return getAttributes(node)
   return getAttributes

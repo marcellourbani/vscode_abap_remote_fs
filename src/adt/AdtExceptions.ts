@@ -24,9 +24,9 @@ export class AdtException extends Error {
 
   static async fromXml(xml: string): Promise<AdtException> {
     const raw: any = await parsetoPromise()(xml)
-    const root: any = raw["exc:exception"][0]
+    const root: any = raw["exc:exception"]
     const namespace = getFieldAttribute("namespace", "id", root)
-    const type = getFieldAttribute("namespace", "id", root)
+    const type = getFieldAttribute("type", "id", root)
     const values = recxml2js(root)
     return new AdtException(
       namespace,

@@ -46,11 +46,11 @@ export class FsProvider implements vscode.FileSystemProvider {
     } catch (error) {}
     throw FileSystemError.Unavailable(uri)
   }
-  writeFile(
+  async writeFile(
     uri: vscode.Uri,
     content: Uint8Array,
     options: { create: boolean; overwrite: boolean }
-  ): void | Thenable<void> {
+  ): Promise<void> {
     const server = fromUri(uri)
     const file = server.findNode(uri)
     if (!file && options.create)
@@ -58,7 +58,8 @@ export class FsProvider implements vscode.FileSystemProvider {
         "Not a real filesystem, file creation is not supported"
       )
     if (!file) throw FileSystemError.FileNotFound(uri)
-    return server.connectionP.then(conn => file.save(conn, content))
+    const connection = await server.connectionP
+    return file.save(connection, content)
   }
   delete(
     uri: vscode.Uri,

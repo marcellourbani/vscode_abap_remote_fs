@@ -6,7 +6,6 @@ import { AdtConnection } from "./adt/AdtConnection"
 import { window, Uri } from "vscode"
 import { activeTextEditorChangedListener } from "./listeners"
 import { fromUri } from "./adt/AdtServer"
-import { AdtHttpException } from "./adt/AdtExceptions"
 
 function selectRemote(connection: string): Thenable<RemoteConfig> {
   const remotes = getRemoteList()
