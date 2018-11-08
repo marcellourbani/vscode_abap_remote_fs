@@ -2,8 +2,9 @@ import { AdtConnection } from "./AdtConnection"
 import { Uri, FileSystemError, FileType, window, commands } from "vscode"
 import { MetaFolder } from "../fs/MetaFolder"
 import { AbapObjectNode, AbapNode, isAbap } from "../fs/AbapNode"
-import { AbapObject } from "../abap/AbapObject"
+import { AbapObject, TransportStatus } from "../abap/AbapObject"
 import { getRemoteList } from "../config"
+import { JSON2AbapXML } from "../abap/JSONToAbapXml"
 export const ADTBASEURL = "/sap/bc/adt/repository/nodestructure"
 
 // visual studio paths are hierarchic, adt ones aren't
@@ -49,6 +50,34 @@ export class AdtServer {
       new AbapObjectNode(new AbapObject("DEVC/K", "", ADTBASEURL, "X"))
     )
   }
+
+  async saveFile(file: AbapNode, content: Uint8Array): Promise<void> {
+    if (file.isFolder()) throw FileSystemError.FileIsADirectory()
+    if (!isAbap(file))
+      throw FileSystemError.NoPermissions("Can only save source code")
+
+    const conn = await this.connectionP
+    await file.abapObject.lock(conn)
+    if (file.abapObject.transport === TransportStatus.REQUIRED) {
+      const response = await conn.request(
+        conn.createUri("/sap/bc/adt/cts/transportchecks"),
+        "POST",
+        {
+          body: JSON2AbapXML({ URI: file.abapObject.getContentsUri(conn).path })
+        }
+      )
+      console.log(response.body)
+      throw new Error("transport selection not supported(yet)")
+    }
+
+    await file.abapObject.setContents(conn, content)
+
+    await file.abapObject.unlock(conn)
+    await file.stat(conn)
+    //might have a race condition with user changing editor...
+    commands.executeCommand("setContext", "abapfs:objectInactive", true)
+  }
+
   findNode(uri: Uri): AbapNode {
     const parts = uriParts(uri)
     return parts.reduce((current: any, name) => {

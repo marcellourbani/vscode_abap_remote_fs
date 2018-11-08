@@ -1,6 +1,6 @@
 import * as vscode from "vscode"
 import { fromUri } from "../adt/AdtServer"
-import { FileSystemError, commands } from "vscode"
+import { FileSystemError } from "vscode"
 
 export class FsProvider implements vscode.FileSystemProvider {
   private _eventEmitter = new vscode.EventEmitter<vscode.FileChangeEvent[]>()
@@ -58,12 +58,7 @@ export class FsProvider implements vscode.FileSystemProvider {
         "Not a real filesystem, file creation is not supported"
       )
     if (!file) throw FileSystemError.FileNotFound(uri)
-    const connection = await server.connectionP
-    await file.save(connection, content)
-    //not active anymore... update the status. By the book we should check if it's set by this object first...
-    //TODO: move this logic somewhere else...
-    await this.stat(uri)
-    commands.executeCommand("setContext", "abapfs:objectInactive", true)
+    return server.saveFile(file, content)
   }
   delete(
     uri: vscode.Uri,

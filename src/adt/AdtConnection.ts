@@ -94,7 +94,12 @@ export class AdtConnection {
       })
     })
   }
-
+  createUri(path: string, query: string = "") {
+    return Uri.parse("adt://" + this.name).with({
+      path,
+      query
+    })
+  }
   connect(): Promise<request.Response> {
     return this.myrequest("/sap/bc/adt/compatibility/graph").then(
       (response: request.Response) => {

@@ -122,11 +122,7 @@ export class AbapObjectNode implements FileStat, Iterable<[string, AbapNode]> {
       return Promise.reject(e)
     }
   }
-  public save(connection: AdtConnection, contents: Uint8Array) {
-    if (this.isFolder()) throw FileSystemError.FileIsADirectory()
-    //returning a promise will allow the exceptions to propagate
-    return this.abapObject.setContents(connection, contents)
-  }
+
   public refresh(connection: AdtConnection): Promise<AbapNode> {
     return this.abapObject.getChildren(connection).then(objects => {
       refreshObjects(this, objects)
