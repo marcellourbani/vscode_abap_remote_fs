@@ -73,9 +73,10 @@ export class AdtConnection {
       },
       method,
       headers: {
-        ...headers,
         "x-csrf-token": this._csrftoken,
-        Accept: "*/*"
+        "X-sap-adt-sessiontype": "stateful",
+        Accept: "*/*",
+        ...headers
       }
     }
 

@@ -50,7 +50,7 @@ export const composePromise = (
 
 //returns a function that maps an array yo the given function
 // mapWith(f)(array) is the same of array.map(f), but composable
-export const mapWidth = (func: any, target?: any[]) => {
+export const mapWith = (func: any, target?: any[]) => {
   const fn = (x: any[]) => x.map(func)
   return target ? fn(target) : fn
 }

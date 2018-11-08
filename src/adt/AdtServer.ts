@@ -4,7 +4,7 @@ import { MetaFolder } from "../fs/MetaFolder"
 import { AbapObjectNode, AbapNode, isAbap } from "../fs/AbapNode"
 import { AbapObject, TransportStatus } from "../abap/AbapObject"
 import { getRemoteList } from "../config"
-import { JSON2AbapXML } from "../abap/JSONToAbapXml"
+import { selectTransport } from "./AdtTransports"
 export const ADTBASEURL = "/sap/bc/adt/repository/nodestructure"
 
 // visual studio paths are hierarchic, adt ones aren't
@@ -59,15 +59,8 @@ export class AdtServer {
     const conn = await this.connectionP
     await file.abapObject.lock(conn)
     if (file.abapObject.transport === TransportStatus.REQUIRED) {
-      const response = await conn.request(
-        conn.createUri("/sap/bc/adt/cts/transportchecks"),
-        "POST",
-        {
-          body: JSON2AbapXML({ URI: file.abapObject.getContentsUri(conn).path })
-        }
-      )
-      console.log(response.body)
-      throw new Error("transport selection not supported(yet)")
+      const transport = await selectTransport(file.abapObject, conn)
+      if (transport) file.abapObject.transport = transport
     }
 
     await file.abapObject.setContents(conn, content)

@@ -1,6 +1,6 @@
 import { getNode, recxml2js, parsetoPromise } from "./AdtParserBase"
 
-import { mapWidth, ArrayToMap, filterComplex, defaultVal } from "../functions"
+import { mapWith, ArrayToMap, filterComplex, defaultVal } from "../functions"
 import { convertableToString } from "xml2js"
 
 export interface ObjectNode {
@@ -35,7 +35,7 @@ const treecontentParser = defaultVal(
   getNode(
     "asx:abap/asx:values/DATA/TREE_CONTENT/SEU_ADT_REPOSITORY_OBJ_NODE",
     filterComplex(true),
-    mapWidth(recxml2js)
+    mapWith(recxml2js)
   )
 ) as (xml: string) => Array<ObjectNode>
 const categoryNodeParser: (a: string) => Map<string, CategoryNode> = defaultVal(
@@ -44,7 +44,7 @@ const categoryNodeParser: (a: string) => Map<string, CategoryNode> = defaultVal(
     "asx:abap/asx:values/DATA/CATEGORIES",
     filterComplex(true),
     "SEU_ADT_OBJECT_CATEGORY_INFO",
-    mapWidth(recxml2js),
+    mapWith(recxml2js),
     ArrayToMap("CATEGORY")
   )
 )
@@ -55,7 +55,7 @@ const ObjectTypeParser: (a: string) => Map<string, ObjectTypeNode> = defaultVal(
     "asx:abap/asx:values/DATA/OBJECT_TYPES",
     filterComplex(true),
     "SEU_ADT_OBJECT_TYPE_INFO",
-    mapWidth(recxml2js),
+    mapWith(recxml2js),
     ArrayToMap("OBJECT_TYPE")
   )
 )

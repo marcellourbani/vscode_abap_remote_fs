@@ -1,4 +1,4 @@
-import { defaultVal, mapWidth } from "../functions"
+import { defaultVal, mapWith } from "../functions"
 
 import { getNode, recxml2js } from "./AdtParserBase"
 
@@ -13,5 +13,5 @@ interface AdtLock {
 }
 export const adtLockParser = defaultVal(
   [],
-  getNode("asx:abap/asx:values/DATA", mapWidth(recxml2js), (x: any[]) => x[0])
+  getNode("asx:abap/asx:values/DATA", mapWith(recxml2js), (x: any[]) => x[0])
 ) as (xml: string) => AdtLock
