@@ -31,6 +31,11 @@ export interface AbapMetaData {
   masterLanguage?: string
   masterSystem?: string
 }
+export enum TransportStatus {
+  UNKNOWN,
+  REQUIRED,
+  LOCAL
+}
 interface MainProgram {
   "adtcore:uri": string
   "adtcore:type": string
@@ -43,6 +48,8 @@ export class AbapObject {
   readonly techName: string
   readonly path: string
   readonly expandable: boolean
+  lockId?: string
+  transport: TransportStatus | string = TransportStatus.UNKNOWN
   metaData?: AbapMetaData
   protected sapguiOnly: boolean
 
@@ -117,15 +124,8 @@ export class AbapObject {
     )
   }
 
-  async setContents(
-    connection: AdtConnection,
-    contents: Uint8Array
-  ): Promise<void> {
-    if (!this.isLeaf()) throw FileSystemError.FileIsADirectory(this.vsName())
-    if (this.sapguiOnly)
-      throw FileSystemError.FileNotFound(
-        `${this.name} can only be edited in SAPGUI`
-      )
+  async lock(connection: AdtConnection) {
+    this.checkWritable()
     let contentUri = this.getContentsUri(connection)
 
     const response = await connection.request(
@@ -134,17 +134,49 @@ export class AbapObject {
       { headers: { "X-sap-adt-sessiontype": "stateful" } }
     )
     const lockRecord = await parsetoPromise(adtLockParser)(response.body)
-    const lock = encodeURIComponent(lockRecord.LOCK_HANDLE)
+    this.lockId = lockRecord.LOCK_HANDLE
+    this.transport =
+      lockRecord.CORRNR ||
+      (lockRecord.IS_LOCAL ? TransportStatus.LOCAL : TransportStatus.REQUIRED)
+  }
+  async unlock(connection: AdtConnection) {
+    this.checkWritable()
+    if (!this.lockId) return
+    let contentUri = this.getContentsUri(connection)
+    await connection.request(
+      contentUri.with({
+        query: `_action=UNLOCK&lockHandle=${encodeURIComponent(this.lockId)}`
+      }),
+      "POST"
+    )
+  }
+
+  protected checkWritable() {
+    if (!this.isLeaf()) throw FileSystemError.FileIsADirectory(this.vsName())
+    if (this.sapguiOnly)
+      throw FileSystemError.FileNotFound(
+        `${this.name} can only be edited in SAPGUI`
+      )
+  }
+
+  async setContents(
+    connection: AdtConnection,
+    contents: Uint8Array
+  ): Promise<void> {
+    this.checkWritable()
+    let contentUri = this.getContentsUri(connection)
+
+    const trselection =
+      typeof this.transport === "string" ? `&corrNr=${this.transport}` : ""
 
     await connection.request(
-      contentUri.with({ query: `lockHandle=${lock}` }),
+      contentUri.with({
+        query: `lockHandle=${encodeURIComponent(
+          this.lockId || ""
+        )}${trselection}`
+      }),
       "PUT",
       { body: contents }
-    )
-
-    await connection.request(
-      contentUri.with({ query: `_action=UNLOCK&lockHandle=${lock}` }),
-      "POST"
     )
   }
 
