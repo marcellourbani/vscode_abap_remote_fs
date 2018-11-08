@@ -1,4 +1,9 @@
-import { AbapObject, AbapNodeComponentByCategory } from "./AbapObject"
+import {
+  AbapObject,
+  AbapNodeComponentByCategory,
+  AbapSimpleObject,
+  AbapXmlObject
+} from "./AbapObject"
 import { NodeStructure, ObjectNode } from "../adt/AdtNodeStructParser"
 import { selectMap } from "../functions"
 import { AbapProgram } from "./AbapProgram"
@@ -60,6 +65,12 @@ export function abapObjectFromNode(node: ObjectNode): AbapObject {
       break
     case "CLAS/I":
       objtype = AbapClassInclude
+      break
+    case "XSLT/VT":
+      objtype = AbapXmlObject
+      break
+    case "INTF/OI":
+      objtype = AbapSimpleObject
       break
     case "PROG/I":
     case "FUGR/I":

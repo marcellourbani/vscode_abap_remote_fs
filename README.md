@@ -1,7 +1,7 @@
 # ABAP remote filesystem for visual studio code
 
 This extension allows editing and activation of ABAP code on your server directly in Visual studio code.
-It's still in its early stages, for now no transport selection is provided, save and activate does work for local objects
+Doesn't allow to create objects yet, but does read/save/activate several object types
 
 **WRITE SUPPORT IS EXPERIMANTAL USE AT YOUR OWN RISK**
 
@@ -13,7 +13,7 @@ Sadly [ABAPlint](https://marketplace.visualstudio.com/items?itemName=larshp.vsco
 
 ## Features
 
-Connect to your SAP server using the ADT interface
+Connect to your SAP server using the ADT interface, edit, save and activate files
 The complete list of editable objects depends on your installation, on my local 7.51 works for:
 
 - programs/includes
@@ -21,14 +21,14 @@ The complete list of editable objects depends on your installation, on my local 
 - classes
 - transformations
 
-**Saved objects will be deactivated, this doesn't allow activation yet**
+![anim](https://user-images.githubusercontent.com/2453277/48232926-30a78d80-e3ab-11e8-8a12-00844431f9af.gif)
 
 ## setup
 
 Too early to publish as an extension, there's a compiled extension you can run from source or install from the command line with
 
 ```shell
-code --install-extension vscode-abap-remote-fs-0.0.3.vsix
+code --install-extension vscode-abap-remote-fs-0.1.0.vsix
 ```
 
 The compiled file can be either downloaded from for the

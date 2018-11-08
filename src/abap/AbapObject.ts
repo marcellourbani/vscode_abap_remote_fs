@@ -219,7 +219,7 @@ export class AbapObject {
       .then(pick("body"))
   }
 
-  getExtension(): any {
+  getExtension(): string {
     if (!this.isLeaf()) return ""
     return this.sapguiOnly ? ".txt" : ".abap"
   }
@@ -274,5 +274,16 @@ export class AbapObject {
       EXPANDABLE: "",
       TECH_NAME: this.techName
     }
+  }
+}
+export class AbapXmlObject extends AbapObject {
+  getExtension(): string {
+    if (!this.isLeaf()) return ""
+    return this.sapguiOnly ? ".txt" : ".xml"
+  }
+}
+export class AbapSimpleObject extends AbapObject {
+  isLeaf() {
+    return true
   }
 }
