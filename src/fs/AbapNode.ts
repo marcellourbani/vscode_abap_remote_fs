@@ -151,6 +151,6 @@ export class AbapObjectNode implements FileStat, Iterable<[string, AbapNode]> {
 }
 
 export type AbapNode = AbapObjectNode | MetaFolder
-export function isAbap(node: AbapNode): node is AbapObjectNode {
+export function isAbapNode(node: AbapNode): node is AbapObjectNode {
   return (<AbapObjectNode>node).abapObject !== undefined
 }

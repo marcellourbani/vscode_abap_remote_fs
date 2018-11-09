@@ -41,8 +41,7 @@ export class FsProvider implements vscode.FileSystemProvider {
     const file = server.findNode(uri)
 
     try {
-      if (file && !file.isFolder())
-        return await server.connectionP.then(conn => file.fetchContents(conn))
+      if (file && !file.isFolder()) return file.fetchContents(server.connection)
     } catch (error) {}
     throw FileSystemError.Unavailable(uri)
   }

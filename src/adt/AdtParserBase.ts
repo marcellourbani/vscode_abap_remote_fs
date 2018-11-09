@@ -25,11 +25,14 @@ export const getField = (name: string) => (subj: any) => {
  * will return {bar:"barval",baz:"bazval"}
  */
 export const getFieldAttributes = (
-  fieldname: string,
+  fieldname?: string,
   node?: any
 ): any | ((x: any) => any) => {
   function getAttributes(o: any): any {
-    return o && o[fieldname] && o[fieldname][0] && o[fieldname][0]["$"]
+    let base = o
+    if (o && fieldname) base = getField(fieldname)(o)
+
+    return base && (base["$"] || base[0]["$"])
   }
   if (node) return getAttributes(node)
   return getAttributes

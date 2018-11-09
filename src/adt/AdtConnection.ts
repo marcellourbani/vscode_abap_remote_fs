@@ -37,7 +37,7 @@ export class AdtConnection {
           case ConnStatus.active:
             resolve(connection)
           case ConnStatus.failed:
-            resolve(connection)
+            reject(connection)
         }
       }
       if (this._status === ConnStatus.new) {
@@ -48,11 +48,12 @@ export class AdtConnection {
     })
   }
 
-  request(
+  async request(
     uri: Uri,
     method: string,
     config: request.Options | Object = {}
   ): Promise<request.Response> {
+    if (this._status !== ConnStatus.active) await this.waitReady()
     const path = uri.query ? uri.path + "?" + uri.query : uri.path
     return this.myrequest(path, method, config)
   }

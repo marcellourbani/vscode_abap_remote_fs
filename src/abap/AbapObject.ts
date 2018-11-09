@@ -11,6 +11,7 @@ import { parseObject, firstTextLink } from "../adt/AdtObjectParser"
 import { aggregateNodes } from "./AbapObjectUtilities"
 import { adtLockParser } from "../adt/AdtLockParser"
 
+const TYPEID = Symbol()
 export const XML_EXTENSION = ".XML"
 export const SAPGUIONLY = "Objects of this type are only supported in SAPGUI"
 export type AbapNodeComponentByType = {
@@ -52,6 +53,9 @@ export class AbapObject {
   transport: TransportStatus | string = TransportStatus.UNKNOWN
   metaData?: AbapMetaData
   protected sapguiOnly: boolean
+  private get _typeId() {
+    return TYPEID
+  }
 
   constructor(
     type: string,
@@ -68,6 +72,9 @@ export class AbapObject {
     this.sapguiOnly = !!path.match(
       "(/sap/bc/adt/vit)|(/sap/bc/adt/ddic/domains/)|(/sap/bc/adt/ddic/dataelements/)"
     )
+  }
+  static isAbapObject(x: any): x is AbapObject {
+    return (<AbapObject>x)._typeId === TYPEID
   }
 
   isLeaf() {
@@ -103,12 +110,17 @@ export class AbapObject {
 
     const response = await connection.request(uri, "POST", { body: payload })
     if (response.body) {
-      //activation error(s)
-      const messages = (await parsetoPromise(
-        getNode("chkl:messages/msg/shortText/txt")
-      )(response.body)) as string[]
+      //activation error(s?)
+      const raw = (await parsetoPromise()(response.body)) as any
 
-      return messages[0]
+      if (raw && raw["chkl:messages"]) {
+        const messages = (await parsetoPromise(
+          getNode("chkl:messages/msg/shortText/txt")
+        )(response.body)) as string[]
+
+        return messages[0]
+      } else if (raw && raw["ioc:inactiveObjects"]) {
+      }
     }
     return ""
   }
@@ -287,3 +299,4 @@ export class AbapSimpleObject extends AbapObject {
     return true
   }
 }
+export const isAbapObject = AbapObject.isAbapObject

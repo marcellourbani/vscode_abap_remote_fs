@@ -1,10 +1,11 @@
 import { AdtConnection } from "./AdtConnection"
-import { Uri, FileSystemError, FileType, window, commands } from "vscode"
+import { Uri, FileSystemError, FileType, commands } from "vscode"
 import { MetaFolder } from "../fs/MetaFolder"
-import { AbapObjectNode, AbapNode, isAbap } from "../fs/AbapNode"
-import { AbapObject, TransportStatus } from "../abap/AbapObject"
+import { AbapObjectNode, AbapNode, isAbapNode } from "../fs/AbapNode"
+import { AbapObject, TransportStatus, isAbapObject } from "../abap/AbapObject"
 import { getRemoteList } from "../config"
 import { selectTransport } from "./AdtTransports"
+import { AdtObjectActivator } from "./AdtObjectActivator"
 export const ADTBASEURL = "/sap/bc/adt/repository/nodestructure"
 
 // visual studio paths are hierarchic, adt ones aren't
@@ -23,8 +24,8 @@ const uriParts = (uri: Uri): string[] =>
     .filter((v, idx, arr) => (idx > 0 && idx < arr.length - 1) || v) //ignore empty at begginning or end
 
 export class AdtServer {
-  readonly connectionId: string
-  readonly connectionP: Promise<AdtConnection>
+  readonly connection: AdtConnection
+  private readonly activator: AdtObjectActivator
   private root: MetaFolder
 
   constructor(connectionId: string) {
@@ -34,11 +35,9 @@ export class AdtServer {
 
     if (!config) throw new Error(`connection ${connectionId}`)
 
-    const connection = AdtConnection.fromRemote(config)
-
-    this.connectionId = config.name.toLowerCase()
-    this.connectionP = connection.waitReady()
-    connection.connect()
+    this.connection = AdtConnection.fromRemote(config)
+    this.activator = new AdtObjectActivator(this.connection)
+    this.connection.connect() //fired, will not wait for the outcome now
 
     this.root = new MetaFolder()
     this.root.setChild(
@@ -53,20 +52,19 @@ export class AdtServer {
 
   async saveFile(file: AbapNode, content: Uint8Array): Promise<void> {
     if (file.isFolder()) throw FileSystemError.FileIsADirectory()
-    if (!isAbap(file))
+    if (!isAbapNode(file))
       throw FileSystemError.NoPermissions("Can only save source code")
 
-    const conn = await this.connectionP
-    await file.abapObject.lock(conn)
+    await file.abapObject.lock(this.connection)
     if (file.abapObject.transport === TransportStatus.REQUIRED) {
-      const transport = await selectTransport(file.abapObject, conn)
+      const transport = await selectTransport(file.abapObject, this.connection)
       if (transport) file.abapObject.transport = transport
     }
 
-    await file.abapObject.setContents(conn, content)
+    await file.abapObject.setContents(this.connection, content)
 
-    await file.abapObject.unlock(conn)
-    await file.stat(conn)
+    await file.abapObject.unlock(this.connection)
+    await file.stat(this.connection)
     //might have a race condition with user changing editor...
     commands.executeCommand("setContext", "abapfs:objectInactive", true)
   }
@@ -81,16 +79,15 @@ export class AdtServer {
 
   async findAbapObject(uri: Uri): Promise<AbapObject> {
     const node = await this.findNodePromise(uri)
-    if (isAbap(node)) return node.abapObject
+    if (isAbapNode(node)) return node.abapObject
     return Promise.reject(new Error("Not an abap object"))
   }
 
   async stat(uri: Uri) {
     const node = await this.findNodePromise(uri)
     if (node.canRefresh()) {
-      const conn = await this.connectionP
-      if (node.type === FileType.Directory) await node.refresh(conn)
-      else await node.stat(conn)
+      if (node.type === FileType.Directory) await node.refresh(this.connection)
+      else await node.stat(this.connection)
     }
     return node
   }
@@ -101,8 +98,7 @@ export class AdtServer {
     for (const part of parts) {
       let next: AbapNode | undefined = node.getChild(part)
       if (!next && node.canRefresh()) {
-        const conn = await this.connectionP
-        await node.refresh(conn)
+        await node.refresh(this.connection)
         next = node.getChild(part)
       }
       if (next) node = next
@@ -112,40 +108,16 @@ export class AdtServer {
     return node
   }
 
-  async activate(obj: AbapObject) {
-    const conn = await this.connectionP
-    let message = ""
-    try {
-      message = await obj.activate(conn)
-    } catch (e) {
-      const mainPrograms = await obj.getMainPrograms(conn)
-      let url = ""
-      if (mainPrograms.length === 1) url = mainPrograms[0]["adtcore:uri"]
-      else {
-        const mainProg =
-          (await window.showQuickPick(
-            mainPrograms.map(p => p["adtcore:name"]),
-            { placeHolder: "Please select a main program" }
-          )) || ""
-        if (mainProg)
-          url = mainPrograms.find(x => x["adtcore:name"] === mainProg)![
-            "adtcore:uri"
-          ]
-        else return
-      }
-      if (url)
-        try {
-          message = await obj.activate(conn, url)
-        } catch (err) {
-          window.showErrorMessage(err)
-        }
-    }
-    if (message) window.showErrorMessage(message)
-    else {
-      //activation successful, update the status. By the book we should check if it's set by this object first...
-      await obj.loadMetadata(conn)
-      commands.executeCommand("setContext", "abapfs:objectInactive", false)
-    }
+  async activate(subject: AbapObject | Uri) {
+    const obj = this.getObject(subject)
+    return this.activator.activate(obj)
+  }
+
+  private getObject(subject: Uri | AbapObject): AbapObject {
+    if (isAbapObject(subject)) return subject
+    const node = this.findNode(subject)
+    if (isAbapNode(node)) return node.abapObject
+    throw new Error(`Path ${subject.path} is not an ABAP object`)
   }
 }
 const servers = new Map<string, AdtServer>()

@@ -1,5 +1,6 @@
 import { parsetoPromise, getFieldAttribute, recxml2js } from "./AdtParserBase"
 import { Response } from "request"
+const TYPEID = Symbol()
 
 export class AdtException extends Error {
   namespace: string
@@ -7,6 +8,10 @@ export class AdtException extends Error {
   message: string
   localizedMessage: string
   properties: Map<string, string>
+  get typeID(): Symbol {
+    return TYPEID
+  }
+
   constructor(
     namespace: string,
     type: string,
@@ -53,14 +58,6 @@ export class AdtHttpException extends Error {
       } from ${response.request.uri.hostname}`
   }
 }
-// const test = `<?xml version="1.0" encoding="utf-8"?>
-// <exc:exception xmlns:exc="http://www.sap.com/abapxml/types/communicationframework">
-//     <namespace id="com.sap.adt"/>
-//     <type id="invalidMainProgram"/>
-//     <message lang="EN">Select a master program for include ZDEMO_EXCEL_OUTPUTOPT_INCL in the properties view</message>
-//     <localizedMessage lang="EN">Select a master program for include ZDEMO_EXCEL_OUTPUTOPT_INCL in the properties view</localizedMessage>
-//     <properties>
-//         <entry key="LONGTEXT"/>
-//     </properties>
-// </exc:exception>`
-// export const tested = AdtException.fromXml(test)
+export function isAdtException(e: Error): e is AdtException {
+  return (<AdtException>e).typeID === TYPEID
+}

@@ -14,3 +14,15 @@ export function JSON2AbapXML(original: any, root: string = "DATA") {
   </asx:values>
 </asx:abap>`
 }
+export function JSON2AbapXMLNode(
+  original: any,
+  nodeName: string,
+  value?: string
+): string {
+  const paramValues = Object.keys(original)
+    .map(k => `${k}="${original[k]}"`)
+    .join(" ")
+  return value
+    ? `<${nodeName} ${paramValues}>${value}</${nodeName}>`
+    : `<${nodeName} ${paramValues}/>`
+}
