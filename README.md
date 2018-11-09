@@ -3,6 +3,8 @@
 This extension allows editing and activation of ABAP code on your server directly in Visual studio code.
 Doesn't allow to create objects yet, but does read/save/activate several object types
 
+**Unless your system is very modern, write support will require you to install [this extension](https://github.com/marcellourbani/abapfs_extensions)** in your dev server to enable locking files
+
 **WRITE SUPPORT IS EXPERIMANTAL USE AT YOUR OWN RISK**
 
 ![anim](https://user-images.githubusercontent.com/2453277/47482169-ae0cc300-d82d-11e8-8d19-f55dd877c166.gif)
