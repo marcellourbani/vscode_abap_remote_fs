@@ -4,9 +4,9 @@ import { AbapObject } from "../abap/AbapObject"
 import { isAdtException } from "./AdtExceptions"
 import { parsetoPromise, getNode, getFieldAttributes } from "./AdtParserBase"
 import { mapWith } from "../functions"
-import { isObject, isString } from "util"
-import { JSON2AbapXML, JSON2AbapXMLNode } from "../abap/JSONToAbapXml"
-interface inactiveComponents {
+import { isString } from "util"
+import { JSON2AbapXMLNode } from "../abap/JSONToAbapXml"
+interface InactiveComponents {
   "adtcore:uri": string
   "adtcore:type": string
   "adtcore:name": string
@@ -33,8 +33,8 @@ export class AdtObjectActivator {
 
   private async _activate(
     obj: AbapObject,
-    extra?: string | inactiveComponents[]
-  ): Promise<string | inactiveComponents[]> {
+    extra?: string | InactiveComponents[]
+  ): Promise<string | InactiveComponents[]> {
     const uri = obj.getContentsUri(this.connection).with({
       path: "/sap/bc/adt/activation",
       query: "method=activate&preauditRequested=true"
@@ -78,7 +78,7 @@ export class AdtObjectActivator {
           mapWith(getNode("ioc:object/ioc:ref")),
           mapWith(getFieldAttributes()),
           raw
-        ) as inactiveComponents[]
+        ) as InactiveComponents[]
       }
     }
     return ""
