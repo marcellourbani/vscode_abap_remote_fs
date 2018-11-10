@@ -41,7 +41,9 @@
     "@types/node": "^8.10.25",
     "@types/mocha": "^2.2.42",
     "@types/xml2js": "^0.4.3",
-    "@types/request": "^2.47.1"
+    "@types/request": "^2.47.1",
+    "ts-node": "^7.0.1",
+    "tsconfig-paths": "^3.6.0"
   },
   "dependencies": {
     "request": "^2.88.0",

@@ -103,20 +103,20 @@ export class AdtConnection {
     })
   }
   connect(): Promise<request.Response> {
-    return this.myrequest("/sap/bc/adt/compatibility/graph").then(
-      (response: request.Response) => {
-        const newtoken = response.headers["x-csrf-token"]
-        if (typeof newtoken === "string") {
-          this._csrftoken = newtoken
-        }
-        if (response.statusCode < 300) {
-          this.setStatus(ConnStatus.active)
-        } else {
-          this.setStatus(ConnStatus.failed)
-        }
-        return response
+    return this.myrequest(
+      "/sap/bc/adt/repository/informationsystem/objecttypes?maxItemCount=999&name=*&data=usedByProvider"
+    ).then((response: request.Response) => {
+      const newtoken = response.headers["x-csrf-token"]
+      if (typeof newtoken === "string") {
+        this._csrftoken = newtoken
       }
-    )
+      if (response.statusCode < 300) {
+        this.setStatus(ConnStatus.active)
+      } else {
+        this.setStatus(ConnStatus.failed)
+      }
+      return response
+    })
   }
 
   setStatus(newStatus: ConnStatus): any {
