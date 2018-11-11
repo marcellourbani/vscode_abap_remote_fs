@@ -28,8 +28,8 @@ const uriParts = (uri: Uri): string[] =>
 export class AdtServer {
   readonly connection: AdtConnection
   private readonly activator: AdtObjectActivator
-  private root: MetaFolder
-  readonly objectFinder: Promise<AdtObjectFinder>
+  readonly root: MetaFolder
+  readonly objectFinder: AdtObjectFinder
 
   constructor(connectionId: string) {
     const config = getRemoteList().filter(
@@ -40,10 +40,12 @@ export class AdtServer {
 
     this.connection = AdtConnection.fromRemote(config)
     this.activator = new AdtObjectActivator(this.connection)
-    this.objectFinder = this.connection
+
+    this.objectFinder = new AdtObjectFinder(this.connection)
+    this.connection
       .connect()
       .then(pick("body"))
-      .then(AdtObjectFinder.fromXML)
+      .then(this.objectFinder.setTypes.bind(this))
 
     this.root = new MetaFolder()
     this.root.setChild(
@@ -57,7 +59,7 @@ export class AdtServer {
   }
 
   async saveFile(file: AbapNode, content: Uint8Array): Promise<void> {
-    if (file.isFolder()) throw FileSystemError.FileIsADirectory()
+    if (file.isFolder) throw FileSystemError.FileIsADirectory()
     if (!isAbapNode(file))
       throw FileSystemError.NoPermissions("Can only save source code")
 

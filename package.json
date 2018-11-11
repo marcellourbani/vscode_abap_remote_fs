@@ -61,6 +61,10 @@
         "title": "Connect to an ABAP system"
       },
       {
+        "command": "abapfs.search",
+        "title": "Search for ABAP object"
+      },
+      {
         "command": "abapfs.activate",
         "title": "Activate the current ABAP object",
         "icon": {

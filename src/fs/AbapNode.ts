@@ -17,7 +17,7 @@ const getNodeHierarchyByType = (
       ? newNode.setChild(otype.name, new MetaFolder())
       : newNode
     otype.objects.forEach(o =>
-      curNode.setChild(o.vsName(), new AbapObjectNode(o))
+      curNode.setChild(o.vsName, new AbapObjectNode(o))
     )
   })
   return newNode
@@ -40,7 +40,7 @@ const getNodeHierarchy = (
             : categFolder.setChild(otype.name, new MetaFolder())
       }
       otype.objects.forEach(obj =>
-        tpFolder.setChild(obj.vsName(), new AbapObjectNode(obj))
+        tpFolder.setChild(obj.vsName, new AbapObjectNode(obj))
       )
       if (categFolder) newNode.setChild(category.name, categFolder)
     })
@@ -60,7 +60,7 @@ const refreshObjects = (
     for (const [name, value] of [...newNode]) {
       const oldChild = current.getChild(name)
       if (!oldChild) current.setChild(name, value)
-      else if (oldChild.isFolder()) reconcile(oldChild, value)
+      else if (oldChild.isFolder) reconcile(oldChild, value)
     }
   }
 
@@ -85,23 +85,23 @@ export class AbapObjectNode implements FileStat, Iterable<[string, AbapNode]> {
     this.abapObject = abapObject
   }
 
-  public isFolder() {
+  public get isFolder() {
     return !this.abapObject.isLeaf()
   }
   public getChild(name: string): AbapNode | undefined {
-    if (!this.children || !this.isFolder())
+    if (!this.children || !this.isFolder)
       throw FileSystemError.FileNotADirectory(name)
     return this.children.get(name)
   }
   public setChild(name: string, child: AbapNode): AbapNode {
-    if (!this.children || !this.isFolder())
+    if (!this.children || !this.isFolder)
       throw FileSystemError.FileNotADirectory(name)
     this.children.set(name, child)
     this.mtime = Date.now()
     return child
   }
   public deleteChild(name: string): void {
-    if (!this.children || !this.isFolder())
+    if (!this.children || !this.isFolder)
       throw FileSystemError.FileNotADirectory(name)
     this.mtime = Date.now()
     this.children.delete(name)
@@ -110,8 +110,7 @@ export class AbapObjectNode implements FileStat, Iterable<[string, AbapNode]> {
     return this.children ? this.children.size : 0
   }
   public async fetchContents(connection: AdtConnection): Promise<Uint8Array> {
-    if (this.isFolder())
-      return Promise.reject(FileSystemError.FileIsADirectory())
+    if (this.isFolder) return Promise.reject(FileSystemError.FileIsADirectory())
 
     try {
       const payload = await this.abapObject.getContents(connection)

@@ -15,7 +15,7 @@ export class MetaFolder implements FileStat, Iterable<[string, AbapNode]> {
     return this
   }
 
-  public isFolder() {
+  public get isFolder() {
     return true
   }
 
@@ -23,7 +23,7 @@ export class MetaFolder implements FileStat, Iterable<[string, AbapNode]> {
     return this.children.get(name)
   }
   public save(connection: AdtConnection, contents: Uint8Array) {
-    if (this.isFolder()) throw FileSystemError.FileIsADirectory()
+    if (this.isFolder) throw FileSystemError.FileIsADirectory()
   }
   public setChild(name: string, child: AbapNode): AbapNode {
     this.children.set(name, child)
