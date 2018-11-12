@@ -108,12 +108,24 @@ export class AdtObjectFinder {
     if (abapPath.length === 0) return
     const server = getServer(this.conn.name)
     if (!server) return
-    let children = abapPath[0].name.match(/^\$/)
-      ? abapPath
-      : [
-          { name: "", parentUri: "", uri: "", category: "", type: "DEVC/K" },
-          ...abapPath
-        ]
+    let children = [...abapPath]
+    if (abapPath[0].name.match(/^\$/)) {
+      if (abapPath[0].name !== "$TMP")
+        children.unshift({
+          name: "$TMP",
+          parentUri: "",
+          uri: "",
+          category: "",
+          type: "DEVC/K"
+        })
+    } else
+      children.unshift({
+        name: "",
+        parentUri: "",
+        uri: "",
+        category: "",
+        type: "DEVC/K"
+      })
 
     let nodePath: NodePath = { path: "", node: server.root }
 
