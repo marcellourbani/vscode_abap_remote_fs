@@ -4,7 +4,7 @@ import {
   recxml2js,
   nodeProperties
 } from "./AdtParserBase"
-import { mapWith, ArrayToMap, pick } from "../functions"
+import { mapWith, ArrayToMap, pick, sapEscape } from "../functions"
 import { AdtConnection } from "./AdtConnection"
 import { window, QuickPickItem, workspace } from "vscode"
 import * as vscode from "vscode"
@@ -70,7 +70,7 @@ export class AdtObjectFinder {
     prefix: string,
     conn: AdtConnection
   ): Promise<SearchResult[]> {
-    const query = encodeURIComponent(prefix + "*")
+    const query = sapEscape(prefix.toUpperCase() + "*")
     const uri = conn.createUri(
       "/sap/bc/adt/repository/informationsystem/search",
       `operation=quickSearch&query=${query}&maxResults=51`
@@ -161,11 +161,17 @@ export class AdtObjectFinder {
       }
       uri = this.conn.createUri(main.path)
     } else uri = this.conn.createUri(nodePath.path)
-    const doc = await workspace.openTextDocument(uri)
-    await window.showTextDocument(doc)
-    vscode.commands.executeCommand(
-      "workbench.files.action.showActiveFileInExplorer"
-    )
+    try {
+      const doc = await workspace.openTextDocument(uri)
+      await window.showTextDocument(doc)
+      vscode.commands.executeCommand(
+        "workbench.files.action.showActiveFileInExplorer"
+      )
+    } catch (e) {
+      window.showErrorMessage(
+        `Error displaying object ${nodePath.path}.Type not supported?`
+      )
+    }
   }
 
   async findObject(): Promise<SearchResult | undefined> {

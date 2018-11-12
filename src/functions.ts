@@ -154,3 +154,6 @@ export function removeNameSpace(orig: any, namespaces: RegExp = /.*/): any {
     return nons
   }, {})
 }
+
+export const sapEscape = (x: string) =>
+  encodeURIComponent(x).replace(/\*/g, "%2A")

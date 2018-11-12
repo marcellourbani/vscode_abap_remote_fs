@@ -22,9 +22,9 @@ export async function activateCurrent(selector: Uri) {
   server.activate(obj)
 }
 
-export async function searchAdtObject() {
+export async function searchAdtObject(uri: Uri | undefined) {
   //find the adt relevant namespace roots, and let the user pick one if needed
-  const root = await pickAdtRoot()
+  const root = await pickAdtRoot(uri)
   const server = root && fromUri(root.uri)
   const object = server && (await server.objectFinder.findObject())
   const path = object && (await server!.objectFinder.findObjectPath(object))

@@ -80,6 +80,13 @@
           "group": "navigation",
           "when": "resourceScheme == adt && abapfs:objectInactive"
         }
+      ],
+      "explorer/context": [
+        {
+          "command": "abapfs.search",
+          "when": "resourceScheme == adt",
+          "group": "4_search@1"
+        }
       ]
     },
     "configuration": {

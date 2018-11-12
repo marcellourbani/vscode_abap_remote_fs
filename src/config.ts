@@ -1,5 +1,5 @@
 import * as vscode from "vscode"
-import { window, workspace, QuickPickItem, WorkspaceFolder } from "vscode"
+import { window, workspace, QuickPickItem, WorkspaceFolder, Uri } from "vscode"
 export interface RemoteConfig {
   name: string
   url: string
@@ -46,7 +46,7 @@ export function selectRemote(connection: string): Thenable<RemoteConfig> {
 interface RootItem extends QuickPickItem {
   root: WorkspaceFolder
 }
-export async function pickAdtRoot() {
+export async function pickAdtRoot(uri?: Uri) {
   const roots = (
     (workspace.workspaceFolders && workspace.workspaceFolders) ||
     []
@@ -55,6 +55,10 @@ export async function pickAdtRoot() {
     throw new Error("No ABAP filesystem mounted in current workspace")
 
   if (roots.length === 1) return roots[0] //no need to pick if only one root is mounted
+  if (uri) {
+    const root = roots.find(r => r.uri.authority === uri.authority)
+    if (root) return root
+  }
 
   const item = await window.showQuickPick(
     roots.map(root => <RootItem>{ label: root.name, root })
