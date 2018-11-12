@@ -80,7 +80,7 @@ export class AbapObject {
   isLeaf() {
     return !this.expandable
   }
-  vsName(): string {
+  get vsName(): string {
     return this.name.replace(/\//g, "／") + this.getExtension()
   }
 
@@ -164,7 +164,7 @@ export class AbapObject {
   }
 
   protected checkWritable() {
-    if (!this.isLeaf()) throw FileSystemError.FileIsADirectory(this.vsName())
+    if (!this.isLeaf()) throw FileSystemError.FileIsADirectory(this.vsName)
     if (this.sapguiOnly)
       throw FileSystemError.FileNotFound(
         `${this.name} can only be edited in SAPGUI`
@@ -222,7 +222,7 @@ export class AbapObject {
   }
 
   async getContents(connection: AdtConnection): Promise<string> {
-    if (!this.isLeaf()) throw FileSystemError.FileIsADirectory(this.vsName())
+    if (!this.isLeaf()) throw FileSystemError.FileIsADirectory(this.vsName)
     if (this.sapguiOnly || !this.metaData || !this.metaData.sourcePath)
       return SAPGUIONLY
 
@@ -239,7 +239,7 @@ export class AbapObject {
   getChildren(
     connection: AdtConnection
   ): Promise<Array<AbapNodeComponentByCategory>> {
-    if (this.isLeaf()) throw FileSystemError.FileNotADirectory(this.vsName())
+    if (this.isLeaf()) throw FileSystemError.FileNotADirectory(this.vsName)
     const nodeUri = this.getNodeUri(connection)
 
     return connection

@@ -10,6 +10,12 @@ import { AbapProgram } from "./AbapProgram"
 import { AbapClass } from "./AbapClass"
 import { AbapInclude } from "./AbapInclude"
 import { AbapClassInclude } from "./AbapClassInclude"
+import { AbapNode, isAbapNode } from "../fs/AbapNode"
+
+export interface NodePath {
+  path: string
+  node: AbapNode
+}
 
 export function aggregateNodes(
   cont: NodeStructure
@@ -84,4 +90,44 @@ export function abapObjectFromNode(node: ObjectNode): AbapObject {
     node.EXPANDABLE,
     node.TECH_NAME
   )
+}
+export function findObjectInNode(
+  folder: AbapNode,
+  type: string,
+  name: string
+): NodePath | undefined {
+  const children = [...folder]
+  for (const [path, node] of children) {
+    if (isAbapNode(node)) {
+      const o = node.abapObject
+      if (o.type === type && o.name === name)
+        return { path: o.vsName || path, node }
+    } else {
+      const part = findObjectInNode(node, type, name)
+      if (part) return { ...part, path: `${path}/${part.path}` }
+    }
+  }
+}
+
+export function allChildren(o: NodePath): NodePath[] {
+  if (o.node.numChildren === 0) return []
+  const children: NodePath[] = [...o.node].map(x => {
+    return { path: o.path + "/" + x[0], node: x[1] }
+  })
+
+  let all = children
+  for (const child of children) {
+    all = [...all, ...allChildren(child)]
+  }
+  return all
+}
+
+export function findMainInclude(o: NodePath) {
+  const candidates = allChildren(o).filter(
+    x => isAbapNode(x.node) && !x.node.isFolder
+  )
+  const main = candidates.find(
+    x => isAbapNode(x.node) && !!x.node.abapObject.path.match("/source/main")
+  )
+  return main || candidates[0]
 }

@@ -41,7 +41,9 @@
     "@types/node": "^8.10.25",
     "@types/mocha": "^2.2.42",
     "@types/xml2js": "^0.4.3",
-    "@types/request": "^2.47.1"
+    "@types/request": "^2.47.1",
+    "ts-node": "^7.0.1",
+    "tsconfig-paths": "^3.6.0"
   },
   "dependencies": {
     "request": "^2.88.0",
@@ -59,6 +61,10 @@
         "title": "Connect to an ABAP system"
       },
       {
+        "command": "abapfs.search",
+        "title": "Search for ABAP object"
+      },
+      {
         "command": "abapfs.activate",
         "title": "Activate the current ABAP object",
         "icon": {
@@ -73,6 +79,13 @@
           "command": "abapfs.activate",
           "group": "navigation",
           "when": "resourceScheme == adt && abapfs:objectInactive"
+        }
+      ],
+      "explorer/context": [
+        {
+          "command": "abapfs.search",
+          "when": "resourceScheme == adt",
+          "group": "4_search@1"
         }
       ]
     },

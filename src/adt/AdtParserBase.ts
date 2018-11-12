@@ -1,5 +1,6 @@
 import { parseString, convertableToString } from "xml2js"
-import { pipe } from "../functions"
+import { pipe, pick, removeNameSpace, mapWith } from "../functions"
+import { isArray } from "util"
 
 /**
  * Returns a function to select the contents of a simple field
@@ -80,12 +81,22 @@ export const recxml2js = (record: any) =>
     return acc
   }, {})
 
-// this is way more complicated that it needs to be
-// given a document like <a><b><c>...some stuff</c></b</a> it would simply need to do:
-// getnode("a/b/c",document) // ...some stuff
-//   can also do getnode("a","b","c",document)
-//               getnode("a")("b","c",document)
-//   or even     getnode("a","b","c",fn)(document)
+/** Navigates a parsed XML tree
+ * WAY more complicated than it needs to be, but I was having fun with currying
+ *  given a document like <a><b><c>...some stuff</c></b</a> it would simply need to do:
+ *  getnode("a/b/c",document) // ...some stuff
+ *    can also do getnode("a","b","c",document)
+ *                getnode("a")("b","c",document)
+ *    or even     getnode("a/b","c",fn)(document)
+ *
+ * @param args a list of strings or functions, the last one could be an object
+ *  string argument will be split at / and every part will be converted to a function getField
+ *  the list of functions obtained will then be piped
+ *  finally if the last argument is an object, the final function will be called upon it
+ *  otherwise it returns a curried version of the piped function which:
+ *    passed other functions or strings will return a function which pipes them too
+ *    passed an object will apply the piped function to it
+ */
 export const getNode = (...args: any[]) => {
   const split = (...sargs: any[]) => {
     const functions: Array<(x: any) => any> = []
@@ -118,3 +129,17 @@ export const parsetoPromise = <T>(parser?: (raw: any) => T) => (
       resolve(parser ? parser(result) : result)
     })
   })
+/**
+ * Given a parsed XML node, returns an object with its attributes stripped of namespaces
+ * Given an array of parsed XML nodes, does the same with all entries
+ *
+ * @param node An XML node (or array of nodes) parsed as javascript object
+ */
+export function nodeProperties(node: any | any[]): any {
+  const single = pipe(
+    pick("$"),
+    removeNameSpace
+  )
+  if (isArray(node)) return mapWith(single, node)
+  return single(node)
+}

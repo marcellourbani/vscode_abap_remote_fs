@@ -67,7 +67,7 @@ export class AbapClass extends AbapObject {
   async getChildren(
     connection: AdtConnection
   ): Promise<Array<AbapNodeComponentByCategory>> {
-    if (this.isLeaf()) throw FileSystemError.FileNotADirectory(this.vsName())
+    if (this.isLeaf()) throw FileSystemError.FileNotADirectory(this.vsName)
     if (!this.metaData) await this.loadMetadata(connection)
     const mainUri = this.getUri(connection)
 

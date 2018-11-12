@@ -6,6 +6,8 @@ import { AbapObject, TransportStatus, isAbapObject } from "../abap/AbapObject"
 import { getRemoteList } from "../config"
 import { selectTransport } from "./AdtTransports"
 import { AdtObjectActivator } from "./AdtObjectActivator"
+import { pick } from "../functions"
+import { AdtObjectFinder } from "./AdtObjectFinder"
 export const ADTBASEURL = "/sap/bc/adt/repository/nodestructure"
 
 // visual studio paths are hierarchic, adt ones aren't
@@ -26,7 +28,8 @@ const uriParts = (uri: Uri): string[] =>
 export class AdtServer {
   readonly connection: AdtConnection
   private readonly activator: AdtObjectActivator
-  private root: MetaFolder
+  readonly root: MetaFolder
+  readonly objectFinder: AdtObjectFinder
 
   constructor(connectionId: string) {
     const config = getRemoteList().filter(
@@ -37,7 +40,12 @@ export class AdtServer {
 
     this.connection = AdtConnection.fromRemote(config)
     this.activator = new AdtObjectActivator(this.connection)
-    this.connection.connect() //fired, will not wait for the outcome now
+
+    this.objectFinder = new AdtObjectFinder(this.connection)
+    this.connection
+      .connect()
+      .then(pick("body"))
+      .then(this.objectFinder.setTypes.bind(this))
 
     this.root = new MetaFolder()
     this.root.setChild(
@@ -51,7 +59,7 @@ export class AdtServer {
   }
 
   async saveFile(file: AbapNode, content: Uint8Array): Promise<void> {
-    if (file.isFolder()) throw FileSystemError.FileIsADirectory()
+    if (file.isFolder) throw FileSystemError.FileIsADirectory()
     if (!isAbapNode(file))
       throw FileSystemError.NoPermissions("Can only save source code")
 

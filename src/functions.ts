@@ -15,7 +15,7 @@ export const flatMap = <T1, T2>(
 //return a function that applies all the functions, starting with the rightmost
 //compose(a,b)(...args) = a(b(...args))
 // gave up type checking to allow a random number of composed functions
-export const compose = (...functions: any[]) =>
+export const compose = (...functions: ((...args: any[]) => any)[]) =>
   functions
     .slice(1)
     .reduce((acc, fn) => (...inargs: any[]) => acc(fn(...inargs)), functions[0])
@@ -23,7 +23,7 @@ export const compose = (...functions: any[]) =>
 //return a function that applies all the functions, starting with the leftmost
 //pipe(a,b)(...args) = b(a(...args))
 // gave up type checking to allow a random number of composed functions
-export const pipe = (...functions: any[]) =>
+export const pipe = (...functions: ((...args: any[]) => any)[]) =>
   functions
     .slice(1)
     .reduce((acc, fn) => (...inargs: any[]) => fn(acc(...inargs)), functions[0])
@@ -50,7 +50,7 @@ export const composePromise = (
 
 //returns a function that maps an array yo the given function
 // mapWith(f)(array) is the same of array.map(f), but composable
-export const mapWith = (func: any, target?: any[]) => {
+export const mapWith = (func: (x: any) => any, target?: any[]) => {
   const fn = (x: any[]) => x.map(func)
   return target ? fn(target) : fn
 }
@@ -133,3 +133,27 @@ export function followLink(base: Uri, relPath: string): Uri {
   }
   return base.with({ path })
 }
+
+/**
+ * Removes namespace from object properties
+ * For instance {"adtcore:version":"inactive"} will become {"adtcore:version":"inactive"}
+ * USE WITH CAUTION: if applied to an object like {"foo:bar":1,"baz:bar":2} will return something like {"bar":2}
+ *
+ * @param orig Original object
+ * @param namespaces optional regular expression. Only namespaces matching it will be removed
+ */
+export function removeNameSpace(orig: any, namespaces: RegExp = /.*/): any {
+  return [...Object.keys(orig)].reduce((nons: any, k) => {
+    const parts = k.split(":")
+    if (parts.length === 1) nons[k] = orig[k]
+    else {
+      const prefix = parts.slice(0, -1).join(":")
+      const subk = prefix.match(namespaces) ? parts.pop() : k
+      nons[subk!] = orig[k]
+    }
+    return nons
+  }, {})
+}
+
+export const sapEscape = (x: string) =>
+  encodeURIComponent(x).replace(/\*/g, "%2A")
