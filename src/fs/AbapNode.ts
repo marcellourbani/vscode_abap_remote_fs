@@ -106,7 +106,7 @@ export class AbapObjectNode implements FileStat, Iterable<[string, AbapNode]> {
     this.mtime = Date.now()
     this.children.delete(name)
   }
-  numChildren(): number {
+  get numChildren(): number {
     return this.children ? this.children.size : 0
   }
   public async fetchContents(connection: AdtConnection): Promise<Uint8Array> {

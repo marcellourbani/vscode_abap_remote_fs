@@ -6,9 +6,15 @@ import {
 } from "./AdtParserBase"
 import { mapWith, ArrayToMap, pick } from "../functions"
 import { AdtConnection } from "./AdtConnection"
-import { window, QuickPickItem } from "vscode"
+import { window, QuickPickItem, workspace } from "vscode"
+import * as vscode from "vscode"
 import { getServer } from "./AdtServer"
-import { AbapNode, AbapObjectNode, isAbapNode } from "../fs/AbapNode"
+import {
+  NodePath,
+  findObjectInNode,
+  findMainInclude
+} from "../abap/AbapObjectUtilities"
+import { isAbapNode } from "../fs/AbapNode"
 
 interface AdtObjectType {
   "nameditem:name": string
@@ -55,10 +61,6 @@ class SearchResult implements QuickPickItem, AdtSearchResult {
     this.description = r.description
   }
 }
-interface NodePath {
-  path: string
-  node: AbapObjectNode
-}
 
 export class AdtObjectFinder {
   types?: Map<string, SearchObjectType>
@@ -103,45 +105,55 @@ export class AdtObjectFinder {
   }
 
   async locateObject(abapPath: AdtObjectPathNode[]) {
-    function findObject(
-      folder: AbapNode,
-      type: string,
-      name: string
-    ): NodePath | undefined {
-      const children = [...folder]
-      for (const [path, node] of children) {
-        if (isAbapNode(node)) {
-          const o = node.abapObject
-          if (o.type === type && o.vsName === name) return { path, node }
-        } else {
-          const part = findObject(node, type, name)
-          if (part) return { ...part, path: `${path}/${part.path}` }
-        }
-      }
-    }
     if (abapPath.length === 0) return
     const server = getServer(this.conn.name)
     if (!server) return
+    let children = abapPath[0].name.match(/^\$/)
+      ? abapPath
+      : [
+          { name: "", parentUri: "", uri: "", category: "", type: "DEVC/K" },
+          ...abapPath
+        ]
 
-    // start searching at the subpath
-    let node = findObject(
-      server.root,
-      abapPath[0].type,
-      abapPath[0].name.match(/^\$/) ? abapPath[0].name : ""
-    )
-    if (!node) return
+    let nodePath: NodePath = { path: "", node: server.root }
 
-    for (const part of abapPath.slice(1)) {
-      let child = findObject(node.node, part.type, part.name)
+    for (const part of children) {
+      let child = findObjectInNode(nodePath.node, part.type, part.name)
       if (!child) {
-        await node.node.refresh(this.conn)
-        child = findObject(node.node, part.type, part.name)
+        await nodePath.node.refresh(this.conn)
+        child = findObjectInNode(nodePath.node, part.type, part.name)
       }
 
-      if (child) node = { node: child.node, path: `${node.path}/${child.path}` }
+      if (child)
+        nodePath = { node: child.node, path: `${nodePath.path}/${child.path}` }
       else return
     }
-    return node
+    return nodePath
+  }
+
+  async displayNode(nodePath: NodePath) {
+    let uri
+    if (nodePath.node.isFolder) {
+      if (
+        isAbapNode(nodePath.node) &&
+        nodePath.node.abapObject.type.match(/DEVC/i)
+      ) {
+        window.showInformationMessage(`Can't open object ${nodePath.path}`)
+        return
+      }
+      await nodePath.node.refresh(this.conn)
+      const main = findMainInclude(nodePath)
+      if (!main) {
+        window.showInformationMessage(`Can't open object ${nodePath.path}`)
+        return
+      }
+      uri = this.conn.createUri(main.path)
+    } else uri = this.conn.createUri(nodePath.path)
+    const doc = await workspace.openTextDocument(uri)
+    await window.showTextDocument(doc)
+    vscode.commands.executeCommand(
+      "workbench.files.action.showActiveFileInExplorer"
+    )
   }
 
   async findObject(): Promise<SearchResult | undefined> {

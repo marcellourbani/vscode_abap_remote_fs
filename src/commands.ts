@@ -28,6 +28,6 @@ export async function searchAdtObject() {
   const server = root && fromUri(root.uri)
   const object = server && (await server.objectFinder.findObject())
   const path = object && (await server!.objectFinder.findObjectPath(object))
-  console.log(path)
-  server!.objectFinder.locateObject(path!)
+  const nodePath = await server!.objectFinder.locateObject(path!)
+  if (nodePath) server!.objectFinder.displayNode(nodePath)
 }
