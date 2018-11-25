@@ -157,3 +157,23 @@ export function removeNameSpace(orig: any, namespaces: RegExp = /.*/): any {
 
 export const sapEscape = (x: string) =>
   encodeURIComponent(x).replace(/\*/g, "%2A")
+
+export const pluck = (x: any) => mapWith(pick(x))
+
+export const project = (...args: any[]) => {
+  const last = args.slice(-1)[0]
+  let rest = args
+  if (last instanceof Array || last instanceof Object) rest = args.slice(0, -1)
+
+  const projector = (x: any) => {
+    const retval: any = {}
+    for (const field of rest) retval[field] = x[field]
+    return retval
+  }
+  const projectorwitharray = (x: any) => {
+    if (x instanceof Array) return mapWith(projector, x)
+    return projector(x)
+  }
+  if (args.length > rest.length) return projectorwitharray(last)
+  return projectorwitharray
+}

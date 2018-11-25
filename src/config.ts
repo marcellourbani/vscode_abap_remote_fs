@@ -21,12 +21,14 @@ export function getRemoteList(): RemoteConfig[] {
     config(name, remote[name] as RemoteConfig)
   )
 }
-export function selectRemote(connection: string): Thenable<RemoteConfig> {
+export async function selectRemote(connection: string): Promise<RemoteConfig> {
   const remotes = getRemoteList()
   if (!remotes) throw new Error("No ABAP system configured yet")
-  if (remotes[1] && remotes[1].name === connection)
-    return new Promise(resolve => resolve(remotes[1]))
-  return window
+  let found=undefined
+  if (connection)
+    found = remotes.find(x=>x.name===connection) 
+
+  return found || window
     .showQuickPick(
       remotes.map(remote => ({
         label: remote.name,

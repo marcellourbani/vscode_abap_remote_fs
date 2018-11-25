@@ -1,5 +1,5 @@
 import { AdtConnection } from "./adt/AdtConnection"
-import { workspace, Uri } from "vscode"
+import { workspace, Uri, window } from "vscode"
 import { fromUri } from "./adt/AdtServer"
 import { selectRemote, pickAdtRoot } from "./config"
 
@@ -27,7 +27,22 @@ export async function searchAdtObject(uri: Uri | undefined) {
   const root = await pickAdtRoot(uri)
   const server = root && fromUri(root.uri)
   const object = server && (await server.objectFinder.findObject())
-  const path = object && (await server!.objectFinder.findObjectPath(object))
+  const path = object && (await server!.objectFinder.findObjectPath(object.uri))
   const nodePath = await server!.objectFinder.locateObject(path!)
   if (nodePath) server!.objectFinder.displayNode(nodePath)
+}
+
+export async function createAdtObject(uri: Uri | undefined) {
+  try {
+    //find the adt relevant namespace roots, and let the user pick one if needed
+    const root = await pickAdtRoot(uri)
+    const server = root && fromUri(root.uri)
+    if (!server) return
+    const objPath = await server.creator.createObject(uri)
+    const path = await server!.objectFinder.findObjectPath(objPath!)
+    const nodePath = await server!.objectFinder.locateObject(path!)
+    if (nodePath) server!.objectFinder.displayNode(nodePath)
+  } catch (e) {
+    window.showErrorMessage(e.toString())
+  }
 }

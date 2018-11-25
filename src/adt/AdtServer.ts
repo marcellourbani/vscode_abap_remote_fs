@@ -8,6 +8,7 @@ import { selectTransport } from "./AdtTransports"
 import { AdtObjectActivator } from "./AdtObjectActivator"
 import { pick } from "../functions"
 import { AdtObjectFinder } from "./AdtObjectFinder"
+import { AdtObjectCreator } from "./create/AdtObjectCreator"
 export const ADTBASEURL = "/sap/bc/adt/repository/nodestructure"
 
 // visual studio paths are hierarchic, adt ones aren't
@@ -30,6 +31,7 @@ export class AdtServer {
   private readonly activator: AdtObjectActivator
   readonly root: MetaFolder
   readonly objectFinder: AdtObjectFinder
+  creator: AdtObjectCreator
 
   constructor(connectionId: string) {
     const config = getRemoteList().filter(
@@ -39,14 +41,16 @@ export class AdtServer {
     if (!config) throw new Error(`connection ${connectionId}`)
 
     this.connection = AdtConnection.fromRemote(config)
+    //utility components
+    this.creator = new AdtObjectCreator(this)
     this.activator = new AdtObjectActivator(this.connection)
-
     this.objectFinder = new AdtObjectFinder(this.connection)
     this.connection
       .connect()
       .then(pick("body"))
       .then(this.objectFinder.setTypes.bind(this))
 
+    //root folder
     this.root = new MetaFolder()
     this.root.setChild(
       `$TMP`,
@@ -65,7 +69,10 @@ export class AdtServer {
 
     await file.abapObject.lock(this.connection)
     if (file.abapObject.transport === TransportStatus.REQUIRED) {
-      const transport = await selectTransport(file.abapObject, this.connection)
+      const transport = await selectTransport(
+        file.abapObject.getContentsUri(this.connection),
+        this.connection
+      )
       if (transport) file.abapObject.transport = transport
     }
 

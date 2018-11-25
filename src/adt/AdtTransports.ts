@@ -1,9 +1,8 @@
-import { AbapObject } from "../abap/AbapObject"
 import { JSON2AbapXML } from "../abap/JSONToAbapXml"
 import { parsetoPromise, getNode, recxml2js } from "./AdtParserBase"
 import { mapWith, flat } from "../functions"
 import { AdtConnection } from "./AdtConnection"
-import { window } from "vscode"
+import { window, Uri } from "vscode"
 
 interface TransportHeader {
   TRKORR: string
@@ -33,16 +32,27 @@ interface TransportInfo {
   EXISTING_REQ_ONLY: string
   TRANSPORTS: TransportHeader[]
 }
-
+interface ValidateTransportMessage {
+  SEVERITY: string
+  SPRSL: string
+  ARBGB: string
+  MSGNR: string
+  TEXT: string
+}
+function throwMessage(msg: ValidateTransportMessage) {
+  throw new Error(`${msg.TEXT} (${msg.SEVERITY}${msg.MSGNR}(${msg.ARBGB}))`)
+}
 export async function getTransportCandidates(
-  obj: AbapObject,
+  objContentUri: Uri,
   conn: AdtConnection
 ): Promise<TransportInfo> {
   const response = await conn.request(
     conn.createUri("/sap/bc/adt/cts/transportchecks"),
     "POST",
     {
-      body: JSON2AbapXML({ URI: obj.getContentsUri(conn).path })
+      body: JSON2AbapXML({
+        URI: objContentUri.path
+      })
     }
   )
   const rawdata = await parsetoPromise()(response.body)
@@ -51,22 +61,35 @@ export async function getTransportCandidates(
     mapWith(recxml2js),
     rawdata
   )[0]
+  const rawMessages = getNode("asx:abap/asx:values/DATA/MESSAGES", rawdata)
+  if (rawMessages && rawMessages[0]) {
+    const messages = mapWith(
+      getNode("CTS_MESSAGE", recxml2js),
+      rawMessages
+    ) as ValidateTransportMessage[]
+    messages.filter(x => x.SEVERITY === "E").map(throwMessage)
+  }
+  const RAWTRANSPORTS = getNode("asx:abap/asx:values/DATA/REQUESTS", rawdata)
+  const TRANSPORTS =
+    RAWTRANSPORTS && RAWTRANSPORTS[0]
+      ? getNode(
+          "CTS_REQUEST",
+          mapWith(getNode("REQ_HEADER")),
+          flat,
+          mapWith(recxml2js),
+          RAWTRANSPORTS
+        )
+      : []
 
-  const TRANSPORTS = getNode(
-    "asx:abap/asx:values/DATA/REQUESTS/CTS_REQUEST",
-    mapWith(getNode("REQ_HEADER")),
-    flat,
-    mapWith(recxml2js),
-    rawdata
-  )
   return { ...header, TRANSPORTS }
 }
 
 export async function selectTransport(
-  obj: AbapObject,
+  objContentUri: Uri,
   conn: AdtConnection
 ): Promise<string> {
-  const ti = await getTransportCandidates(obj, conn)
+  const ti = await getTransportCandidates(objContentUri, conn)
+  if (ti.DLVUNIT === "LOCAL") return ""
   const CREATENEW = "Create a new transport"
   let selection = await window.showQuickPick([
     CREATENEW,
@@ -77,19 +100,19 @@ export async function selectTransport(
   if (selection === CREATENEW) {
     const text = await window.showInputBox({ prompt: "Request text" })
     if (!text) return ""
-    return createTransport(conn, obj, text, ti.DEVCLASS)
+    return createTransport(conn, objContentUri, text, ti.DEVCLASS)
   } else return selection.split(" ")[0]
 }
+
 async function createTransport(
   conn: AdtConnection,
-  obj: AbapObject,
+  objUri: Uri,
   REQUEST_TEXT: string,
   DEVCLASS: string
 ): Promise<string> {
-  let uri = obj.getContentsUri(conn)
-  const body = JSON2AbapXML({ DEVCLASS, REQUEST_TEXT, REF: uri.path })
-  uri = uri.with({ path: "/sap/bc/adt/cts/transports" })
-  const response = await conn.request(uri, "POST", { body })
+  const body = JSON2AbapXML({ DEVCLASS, REQUEST_TEXT, REF: objUri.path })
+  objUri = objUri.with({ path: "/sap/bc/adt/cts/transports" })
+  const response = await conn.request(objUri, "POST", { body })
   const transport = response.body.split("/").pop()
   return transport
 }

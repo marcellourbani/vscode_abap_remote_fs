@@ -86,10 +86,10 @@ export class AdtObjectFinder {
     return results
   }
 
-  async findObjectPath(o: SearchResult) {
+  async findObjectPath(objPath: string) {
     const uri = this.conn.createUri(
       "/sap/bc/adt/repository/nodepath",
-      "uri=" + encodeURIComponent(o.uri)
+      "uri=" + encodeURIComponent(objPath)
     )
     const raw = await this.conn
       .request(uri, "POST")
