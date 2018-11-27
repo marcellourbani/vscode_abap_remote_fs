@@ -4,6 +4,7 @@
   "description": "Work on your ABAP code straight from the server",
   "version": "0.1.0",
   "publisher": "murbani",
+  "license": "MIT",
   "author": {
     "email": "marcello.urbani@gmail.com",
     "name": "Marcello Urbani"
@@ -47,6 +48,7 @@
   },
   "dependencies": {
     "request": "^2.88.0",
+    "event-stream": "3.3.4",
     "xml2js": "^0.4.19"
   },
   "activationEvents": [
