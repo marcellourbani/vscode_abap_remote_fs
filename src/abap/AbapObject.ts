@@ -236,18 +236,18 @@ export class AbapObject {
     return this.sapguiOnly ? ".txt" : ".abap"
   }
 
-  getChildren(
+  async getChildren(
     connection: AdtConnection
   ): Promise<Array<AbapNodeComponentByCategory>> {
     if (this.isLeaf()) throw FileSystemError.FileNotADirectory(this.vsName)
     const nodeUri = this.getNodeUri(connection)
 
-    return connection
-      .request(nodeUri, "POST")
-      .then(pick("body"))
-      .then(parseNode)
-      .then(this.filterNodeStructure.bind(this))
-      .then(aggregateNodes)
+    const response = await connection.request(nodeUri, "POST")
+    const nodes = await parseNode(response.body)
+    const filtered = this.filterNodeStructure(nodes)
+    const components = aggregateNodes(filtered)
+
+    return components
   }
 
   protected getNodeUri(connection: AdtConnection): Uri {
@@ -260,6 +260,8 @@ export class AbapObject {
         techName
       )}&parent_type=${encodeURIComponent(
         this.type
+      )}&user_name=${encodeURIComponent(
+        connection.username.toUpperCase()
       )}&withShortDescriptions=true`
     })
   }

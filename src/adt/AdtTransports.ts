@@ -44,6 +44,7 @@ function throwMessage(msg: ValidateTransportMessage) {
 }
 export async function getTransportCandidates(
   objContentUri: Uri,
+  devClass: string,
   conn: AdtConnection
 ): Promise<TransportInfo> {
   const response = await conn.request(
@@ -51,6 +52,7 @@ export async function getTransportCandidates(
     "POST",
     {
       body: JSON2AbapXML({
+        DEVCLASS: devClass,
         URI: objContentUri.path
       })
     }
@@ -86,9 +88,10 @@ export async function getTransportCandidates(
 
 export async function selectTransport(
   objContentUri: Uri,
+  devClass: string,
   conn: AdtConnection
 ): Promise<string> {
-  const ti = await getTransportCandidates(objContentUri, conn)
+  const ti = await getTransportCandidates(objContentUri, devClass, conn)
   if (ti.DLVUNIT === "LOCAL") return ""
   const CREATENEW = "Create a new transport"
   let selection = await window.showQuickPick([

@@ -1,5 +1,8 @@
-import { sapEscape } from "../../functions"
+import { sapEscape, compose } from "../../functions"
 import { window, QuickPickItem } from "vscode"
+import { ObjectNode } from "../AdtNodeStructParser"
+
+export const PACKAGE = "DEVC/K"
 
 export interface NewObjectConfig {
   name: string
@@ -27,21 +30,26 @@ export function objMap(fn: (x: any) => any, orig?: Object): Object {
 }
 const escapeObj = objMap(sapEscape)
 
-export class ObjType implements QuickPickItem {
+export class ObjectType implements QuickPickItem {
+  protected _parentType: string
+  get parentType() {
+    return this._parentType
+  }
   constructor(
     public readonly type: string,
     public readonly label: string,
-    public readonly parentType: string,
     public readonly rootName: string,
     public readonly nameSpace: string,
     public readonly pathTemplate: string,
     public readonly validateTemplate: string
-  ) {}
+  ) {
+    this._parentType = PACKAGE
+  }
   protected escapedValues(config: NewObjectConfig): any {
     return escapeObj({
       ...config,
       type: this.type,
-      parentType: this.parentType
+      parentType: this._parentType
     })
   }
   getPath(config: NewObjectConfig): string {
@@ -56,64 +64,120 @@ export class ObjType implements QuickPickItem {
     return expand(this.validateTemplate, this.escapedValues(config))
   }
 
-  getCreatePayload(config: NewObjectConfig) {
-    const parentRef =
-      this.parentType === "DEVC/K"
-        ? `<adtcore:packageRef adtcore:name="${config.parentName}"/>`
-        : `<adtcore:containerRef adtcore:name="${
-            config.parentName
-          }" adtcore:type="${this.parentType}" adtcore:uri="${this.getBasePath(
-            config
-          )}"/>`
+  objNode(newObj: NewObjectConfig): ObjectNode {
+    return {
+      OBJECT_TYPE: this.type,
+      OBJECT_NAME: newObj.name.toLowerCase(),
+      TECH_NAME: newObj.name.toLowerCase(),
+      OBJECT_URI: this.getPath(newObj),
+      OBJECT_VIT_URI: "",
+      EXPANDABLE: ""
+    }
+  }
 
+  getCreatePayload(config: NewObjectConfig) {
     const payload = `<?xml version="1.0" encoding="UTF-8"?>
-<${this.rootName} ${
-      this.nameSpace
-    } xmlns:adtcore="http://www.sap.com/adt/core" adtcore:description="${
-      config.description
-    }" adtcore:name="${config.name}" adtcore:type="${this.type}">
-    ${parentRef}
-  
-</${this.rootName}>`
+    <${this.rootName} ${this.nameSpace} 
+      xmlns:adtcore="http://www.sap.com/adt/core" 
+      adtcore:description="${config.description}" 
+      adtcore:name="${config.name}" adtcore:type="${this.type}">
+        <adtcore:packageRef adtcore:name="${config.parentName}"/>
+    </${this.rootName}>`
     return payload
   }
 }
-export async function selectObjectType(): Promise<ObjType | undefined> {
-  return window.showQuickPick(OBJECTTYPES)
+
+class FGObjectType extends ObjectType {
+  constructor(
+    public readonly type: string,
+    public readonly label: string,
+    public readonly rootName: string,
+    public readonly nameSpace: string,
+    public readonly pathTemplate: string,
+    public readonly validateTemplate: string
+  ) {
+    super(type, label, rootName, nameSpace, pathTemplate, validateTemplate)
+    this._parentType = "FUGR/F"
+  }
+  getCreatePayload(config: NewObjectConfig) {
+    const payload = `<?xml version="1.0" encoding="UTF-8"?>
+<${this.rootName} ${this.nameSpace} 
+   xmlns:adtcore="http://www.sap.com/adt/core" 
+   adtcore:description="${config.description}" 
+   adtcore:name="${config.name}" adtcore:type="${this.type}"> 
+     <adtcore:containerRef adtcore:name="${config.parentName}" 
+       adtcore:type="${this._parentType}" 
+       adtcore:uri="${this.getBasePath(config)}"/>
+</${this.rootName}>`
+
+    return payload
+  }
 }
 
-export const OBJECTTYPES: ObjType[] = [
-  new ObjType(
-    "PROG/I",
-    "Include",
-    "DEVC/K",
-    "include:abapInclude",
-    'xmlns:include="http://www.sap.com/adt/programs/includes"',
-    "/sap/bc/adt/programs/includes",
-    "/sap/bc/adt/includes/validation?objtype={type}&objname={name}&packagename={parentName}&description={description}"
+export function getObjectType(type: string): ObjectType | undefined {
+  return OBJECTTYPES.find(t => t.type === type)
+}
+export async function selectObjectType(
+  parentType?: string
+): Promise<ObjectType | undefined> {
+  const types = parentType
+    ? OBJECTTYPES.filter(t => t.parentType === parentType)
+    : OBJECTTYPES
+  return window.showQuickPick(types.length > 0 ? types : OBJECTTYPES)
+}
+
+export const OBJECTTYPES: ObjectType[] = [
+  new ObjectType(
+    "PROG/P",
+    "Program",
+    "program:abapProgram",
+    'xmlns:program="http://www.sap.com/adt/programs/programs"',
+    "/sap/bc/adt/programs/programs",
+    "/sap/bc/adt/programs/validation?objtype={type}&objname={name}&packagename={parentName}&description={description}"
   ),
-  new ObjType(
+  new ObjectType(
+    "CLAS/OC",
+    "Class",
+    "class:abapClass",
+    'xmlns:class="http://www.sap.com/adt/oo/classes"',
+    "/sap/bc/adt/oo/classes",
+    "/sap/bc/adt/oo/validation/objectname?objtype={type}&objname={name}&packagename={parentName}&description={description}"
+  ),
+  new ObjectType(
     "INTF/OI",
     "Interface",
-    "DEVC/K",
     "intf:abapInterface",
     'xmlns:intf="http://www.sap.com/adt/oo/interfaces"',
     "/sap/bc/adt/oo/interfaces",
     "/sap/bc/adt/oo/validation/objectname?objtype={type}&objname={name}&packagename={parentName}&description={description}"
   ),
-  new ObjType(
+  new ObjectType(
+    "FUGR/F",
+    "Function Group",
+    "group:abapFunctionGroup",
+    'xmlns:group="http://www.sap.com/adt/functions/groups"',
+    "/sap/bc/adt/functions/groups",
+    "/sap/bc/adt/functions/validation?objtype={type}&objname={name}&packagename={parentName}&description={description}"
+  ),
+  new FGObjectType(
     "FUGR/FF",
     "Function module",
-    "FUGR/F",
     "fmodule:abapFunctionModule",
     'xmlns:fmodule="http://www.sap.com/adt/functions/fmodules"',
     "/sap/bc/adt/functions/groups/{parentName}/fmodules",
     "/sap/bc/adt/functions/validation?objtype={type}&objname={name}&fugrname={parentName}&description={description}"
   ),
-  new ObjType(
+  new ObjectType(
+    "PROG/I",
+    "Include",
+    "include:abapInclude",
+    'xmlns:include="http://www.sap.com/adt/programs/includes"',
+    "/sap/bc/adt/programs/includes",
+    "/sap/bc/adt/includes/validation?objtype={type}&objname={name}&packagename={parentName}&description={description}"
+  ),
+  new FGObjectType(
     "FUGR/I",
     "Function group include",
-    "FUGR/F",
     "finclude:abapFunctionGroupInclude",
     'xmlns:finclude="http://www.sap.com/adt/functions/fincludes"',
     "/sap/bc/adt/functions/groups/{parentName}/includes",

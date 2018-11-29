@@ -71,6 +71,7 @@ export class AdtServer {
     if (file.abapObject.transport === TransportStatus.REQUIRED) {
       const transport = await selectTransport(
         file.abapObject.getContentsUri(this.connection),
+        "",
         this.connection
       )
       if (transport) file.abapObject.transport = transport
@@ -85,11 +86,27 @@ export class AdtServer {
   }
 
   findNode(uri: Uri): AbapNode {
+    // const parts = uriParts(uri)
+    // return parts.reduce((current: any, name) => {
+    //   if (current && "getChild" in current) return current.getChild(name)
+    //   throw FileSystemError.FileNotFound(uri)
+    // }, this.root)
+    return this.findNodeHierarcy(uri)[0]
+  }
+
+  findNodeHierarcy(uri: Uri): AbapNode[] {
     const parts = uriParts(uri)
-    return parts.reduce((current: any, name) => {
-      if (current && "getChild" in current) return current.getChild(name)
-      throw FileSystemError.FileNotFound(uri)
-    }, this.root)
+    return parts.reduce(
+      (current: AbapNode[], name) => {
+        const folder = current[0]
+        const child = folder.isFolder && folder.getChild(name)
+        if (!child) throw FileSystemError.FileNotFound(uri)
+
+        current.unshift(child)
+        return current
+      },
+      [this.root]
+    )
   }
 
   async findAbapObject(uri: Uri): Promise<AbapObject> {
@@ -109,15 +126,20 @@ export class AdtServer {
 
   async findNodePromise(uri: Uri): Promise<AbapNode> {
     let node: AbapNode = this.root
+    let refreshable: AbapNode | undefined = node.canRefresh() ? node : undefined
     const parts = uriParts(uri)
+
     for (const part of parts) {
       let next: AbapNode | undefined = node.getChild(part)
-      if (!next && node.canRefresh()) {
-        await node.refresh(this.connection)
+      if (!next && refreshable) {
+        //refreshable will tipically be the current node or its first abap parent (usually a package)
+        await refreshable.refresh(this.connection)
         next = node.getChild(part)
       }
-      if (next) node = next
-      else return Promise.reject(FileSystemError.FileNotFound(uri))
+      if (next) {
+        node = next
+        if (node.canRefresh()) refreshable = node
+      } else return Promise.reject(FileSystemError.FileNotFound(uri))
     }
 
     return node

@@ -1,6 +1,6 @@
 import * as vscode from "vscode"
 import { fromUri } from "../adt/AdtServer"
-import { FileSystemError } from "vscode"
+import { FileSystemError, FileChangeType } from "vscode"
 
 export class FsProvider implements vscode.FileSystemProvider {
   private _eventEmitter = new vscode.EventEmitter<vscode.FileChangeEvent[]>()
@@ -21,11 +21,10 @@ export class FsProvider implements vscode.FileSystemProvider {
     return server.stat(uri)
   }
 
-  readDirectory(
-    uri: vscode.Uri
-  ): [string, vscode.FileType][] | Thenable<[string, vscode.FileType][]> {
+  async readDirectory(uri: vscode.Uri): Promise<[string, vscode.FileType][]> {
     const server = fromUri(uri)
     const dir = server.findNode(uri)
+    if (dir.canRefresh()) await dir.refresh(server.connection)
     const contents = [...dir].map(
       ([name, node]) => [name, node.type] as [string, vscode.FileType]
     )
@@ -57,7 +56,8 @@ export class FsProvider implements vscode.FileSystemProvider {
         "Not a real filesystem, file creation is not supported"
       )
     if (!file) throw FileSystemError.FileNotFound(uri)
-    return server.saveFile(file, content)
+    await server.saveFile(file, content)
+    this._eventEmitter.fire([{ type: FileChangeType.Changed, uri }])
   }
   delete(
     uri: vscode.Uri,

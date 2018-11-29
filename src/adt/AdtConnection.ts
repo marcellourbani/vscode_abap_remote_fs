@@ -14,6 +14,8 @@ export class AdtConnection {
   readonly url: string
   readonly username: string
   readonly password: string
+  //TODO: hack for object creation, needs proper session support and backend cache invalidation
+  stateful = true
   private _csrftoken: string = "fetch"
   private _status: ConnStatus = ConnStatus.new
   private _listeners: Array<Function> = []
@@ -75,7 +77,7 @@ export class AdtConnection {
       method,
       headers: {
         "x-csrf-token": this._csrftoken,
-        "X-sap-adt-sessiontype": "stateful",
+        "X-sap-adt-sessiontype": this.stateful ? "stateful" : "",
         Accept: "*/*",
         ...headers
       }

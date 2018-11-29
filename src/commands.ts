@@ -39,9 +39,10 @@ export async function createAdtObject(uri: Uri | undefined) {
     const server = root && fromUri(root.uri)
     if (!server) return
     const objPath = await server.creator.createObject(uri)
-    const path = await server!.objectFinder.findObjectPath(objPath!)
-    const nodePath = await server!.objectFinder.locateObject(path!)
-    if (nodePath) server!.objectFinder.displayNode(nodePath)
+    if (!objPath) return //user aborted
+    const path = await server.objectFinder.findObjectPath(objPath!)
+    const nodePath = await server.objectFinder.locateObject(path!)
+    if (nodePath) server.objectFinder.displayNode(nodePath)
   } catch (e) {
     window.showErrorMessage(e.toString())
   }

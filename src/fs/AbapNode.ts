@@ -122,11 +122,10 @@ export class AbapObjectNode implements FileStat, Iterable<[string, AbapNode]> {
     }
   }
 
-  public refresh(connection: AdtConnection): Promise<AbapNode> {
-    return this.abapObject.getChildren(connection).then(objects => {
-      refreshObjects(this, objects)
-      return this
-    })
+  public async refresh(connection: AdtConnection): Promise<AbapNode> {
+    const children = await this.abapObject.getChildren(connection)
+    refreshObjects(this, children)
+    return this
   }
 
   public async stat(connection: AdtConnection): Promise<AbapNode> {
