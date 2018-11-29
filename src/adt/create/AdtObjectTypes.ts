@@ -1,4 +1,4 @@
-import { sapEscape, compose } from "../../functions"
+import { sapEscape } from "../../functions"
 import { window, QuickPickItem } from "vscode"
 import { ObjectNode } from "../AdtNodeStructParser"
 
