@@ -9,6 +9,7 @@ export interface NewObjectConfig {
   parentName: string
   description: string
   devclass: string
+  responsible: string
 }
 function expand(template: string, values: any): string {
   return template.replace(/{([^}]+)}/g, (x, y) => values[y] || "")
@@ -30,7 +31,7 @@ export function objMap(fn: (x: any) => any, orig?: Object): Object {
 }
 const escapeObj = objMap(sapEscape)
 
-export class ObjectType implements QuickPickItem {
+export class CreatableObjectType implements QuickPickItem {
   protected _parentType: string
   get parentType() {
     return this._parentType
@@ -80,14 +81,15 @@ export class ObjectType implements QuickPickItem {
     <${this.rootName} ${this.nameSpace} 
       xmlns:adtcore="http://www.sap.com/adt/core" 
       adtcore:description="${config.description}" 
-      adtcore:name="${config.name}" adtcore:type="${this.type}">
+      adtcore:name="${config.name}" adtcore:type="${this.type}" 
+      adtcore:responsible="${config.responsible}">
         <adtcore:packageRef adtcore:name="${config.parentName}"/>
     </${this.rootName}>`
     return payload
   }
 }
 
-class FGObjectType extends ObjectType {
+class FGObjectType extends CreatableObjectType {
   constructor(
     public readonly type: string,
     public readonly label: string,
@@ -104,7 +106,8 @@ class FGObjectType extends ObjectType {
 <${this.rootName} ${this.nameSpace} 
    xmlns:adtcore="http://www.sap.com/adt/core" 
    adtcore:description="${config.description}" 
-   adtcore:name="${config.name}" adtcore:type="${this.type}"> 
+   adtcore:name="${config.name}" adtcore:type="${this.type}" 
+   adtcore:responsible="${config.responsible}> 
      <adtcore:containerRef adtcore:name="${config.parentName}" 
        adtcore:type="${this._parentType}" 
        adtcore:uri="${this.getBasePath(config)}"/>
@@ -114,20 +117,20 @@ class FGObjectType extends ObjectType {
   }
 }
 
-export function getObjectType(type: string): ObjectType | undefined {
+export function getObjectType(type: string): CreatableObjectType | undefined {
   return OBJECTTYPES.find(t => t.type === type)
 }
 export async function selectObjectType(
   parentType?: string
-): Promise<ObjectType | undefined> {
+): Promise<CreatableObjectType | undefined> {
   const types = parentType
     ? OBJECTTYPES.filter(t => t.parentType === parentType)
     : OBJECTTYPES
   return window.showQuickPick(types.length > 0 ? types : OBJECTTYPES)
 }
 
-export const OBJECTTYPES: ObjectType[] = [
-  new ObjectType(
+export const OBJECTTYPES: CreatableObjectType[] = [
+  new CreatableObjectType(
     "PROG/P",
     "Program",
     "program:abapProgram",
@@ -135,7 +138,7 @@ export const OBJECTTYPES: ObjectType[] = [
     "/sap/bc/adt/programs/programs",
     "/sap/bc/adt/programs/validation?objtype={type}&objname={name}&packagename={parentName}&description={description}"
   ),
-  new ObjectType(
+  new CreatableObjectType(
     "CLAS/OC",
     "Class",
     "class:abapClass",
@@ -143,7 +146,7 @@ export const OBJECTTYPES: ObjectType[] = [
     "/sap/bc/adt/oo/classes",
     "/sap/bc/adt/oo/validation/objectname?objtype={type}&objname={name}&packagename={parentName}&description={description}"
   ),
-  new ObjectType(
+  new CreatableObjectType(
     "INTF/OI",
     "Interface",
     "intf:abapInterface",
@@ -151,7 +154,7 @@ export const OBJECTTYPES: ObjectType[] = [
     "/sap/bc/adt/oo/interfaces",
     "/sap/bc/adt/oo/validation/objectname?objtype={type}&objname={name}&packagename={parentName}&description={description}"
   ),
-  new ObjectType(
+  new CreatableObjectType(
     "FUGR/F",
     "Function Group",
     "group:abapFunctionGroup",
@@ -167,7 +170,7 @@ export const OBJECTTYPES: ObjectType[] = [
     "/sap/bc/adt/functions/groups/{parentName}/fmodules",
     "/sap/bc/adt/functions/validation?objtype={type}&objname={name}&fugrname={parentName}&description={description}"
   ),
-  new ObjectType(
+  new CreatableObjectType(
     "PROG/I",
     "Include",
     "include:abapInclude",

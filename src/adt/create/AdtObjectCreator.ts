@@ -5,7 +5,7 @@ import { AdtServer } from "../AdtServer"
 import { isAbapNode, AbapNode } from "../../fs/AbapNode"
 import {
   selectObjectType,
-  ObjectType,
+  CreatableObjectType,
   NewObjectConfig,
   getObjectType,
   PACKAGE
@@ -73,7 +73,7 @@ export class AdtObjectCreator {
 
   private async guessOrSelectObjectType(
     hierarchy: AbapNode[]
-  ): Promise<ObjectType | undefined> {
+  ): Promise<CreatableObjectType | undefined> {
     //TODO: guess from URI
     const base = hierarchy[0]
     //if I picked the root node,a direct descendent or a package just ask the user to select any object type
@@ -95,7 +95,7 @@ export class AdtObjectCreator {
   }
 
   private async validateObject(
-    objType: ObjectType,
+    objType: CreatableObjectType,
     objDetails: NewObjectConfig
   ): Promise<ValidationMessage[]> {
     const url = this.server.connection.createUri(
@@ -118,7 +118,7 @@ export class AdtObjectCreator {
    * @param objDetails Object name, description,...
    */
   private async selectTransport(
-    objType: ObjectType,
+    objType: CreatableObjectType,
     objDetails: NewObjectConfig
   ): Promise<string> {
     //TODO: no request for temp packages
@@ -133,7 +133,7 @@ export class AdtObjectCreator {
    * @param request Transport request
    */
   private async create(
-    objType: ObjectType,
+    objType: CreatableObjectType,
     objDetails: NewObjectConfig,
     request: string
   ) {
@@ -175,22 +175,39 @@ export class AdtObjectCreator {
     if (!name) return
     const description = await this.askInput("description", false)
     if (!description) return
+    const responsible = this.server.connection.username.toUpperCase()
     let parentName
     if (objType.parentType === PACKAGE) parentName = devclass
-    else
-      parentName =
-        this.guessParentByType(hierarchy, objType.parentType) ||
-        (await this.askInput("parent"))
+    else {
+      parentName = this.guessParentByType(hierarchy, objType.parentType)
+      if (!parentName) {
+        const parent = await this.server.objectFinder.findObject(
+          "Select parent",
+          objType.parentType
+        )
+        if (!parent) return
+        parentName = parent.name
+        devclass = parent.packageName
+      }
+    }
     if (!parentName) return
 
-    if (!devclass) devclass = await this.askInput("Package")
+    if (!devclass) {
+      const packageResult = await this.server.objectFinder.findObject(
+        "Select package",
+        "DEVC/K"
+      )
+      if (!packageResult) return
+      devclass = packageResult.name
+    }
     if (!devclass) return
     if (objType.parentType === PACKAGE) parentName = devclass
     const objDetails: NewObjectConfig = {
       description,
       devclass,
       parentName: parentName || "",
-      name
+      name,
+      responsible
     }
     const valresult = await this.validateObject(objType, objDetails)
     const err =

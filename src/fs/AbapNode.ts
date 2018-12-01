@@ -57,6 +57,11 @@ const refreshObjects = (
     : getNodeHierarchyByType(components)
 
   function reconcile(current: AbapNode, newNode: AbapNode) {
+    //remove deleted objects from node
+    ;[...current]
+      .filter(x => !newNode.getChild(x[0]))
+      .forEach(x => current.deleteChild(x[0]))
+
     for (const [name, value] of [...newNode]) {
       const oldChild = current.getChild(name)
       if (!oldChild) current.setChild(name, value)

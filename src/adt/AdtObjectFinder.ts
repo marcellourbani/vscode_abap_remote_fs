@@ -68,12 +68,14 @@ export class AdtObjectFinder {
 
   private async search(
     prefix: string,
-    conn: AdtConnection
+    conn: AdtConnection,
+    objType: string = ""
   ): Promise<SearchResult[]> {
     const query = sapEscape(prefix.toUpperCase() + "*")
+    const ot = objType ? "&objectType=" + sapEscape(objType) : ""
     const uri = conn.createUri(
       "/sap/bc/adt/repository/informationsystem/search",
-      `operation=quickSearch&query=${query}&maxResults=51`
+      `operation=quickSearch&query=${query}${ot}&maxResults=51`
     )
     const response = await conn.request(uri, "GET")
     const raw = await parsetoPromise()(response.body)
@@ -132,7 +134,7 @@ export class AdtObjectFinder {
     for (const part of children) {
       let child = findObjectInNode(nodePath.node, part.type, part.name)
       if (!child) {
-        await nodePath.node.refresh(this.conn)
+        await server.refreshDirIfNeeded(nodePath.node)
         child = findObjectInNode(nodePath.node, part.type, part.name)
       }
 
@@ -174,15 +176,18 @@ export class AdtObjectFinder {
     }
   }
 
-  async findObject(): Promise<SearchResult | undefined> {
+  async findObject(
+    prompt: string = "Search an ABAP object",
+    objType: string = ""
+  ): Promise<SearchResult | undefined> {
     const o = await new Promise<SearchResult>(resolve => {
       const qp = window.createQuickPick()
-      //TODO debounce
+      //TODO debounce? Looks like VSC does it for me!
       qp.onDidChangeValue(e => {
         if (e.length > 3)
-          this.search(e, this.conn).then(res => (qp.items = res))
+          this.search(e, this.conn, objType).then(res => (qp.items = res))
       })
-      qp.placeholder = "Search an ABAP object"
+      qp.placeholder = prompt
       qp.onDidChangeSelection(e => {
         if (e[0]) {
           resolve(e[0] as SearchResult)

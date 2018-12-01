@@ -24,7 +24,7 @@ export class FsProvider implements vscode.FileSystemProvider {
   async readDirectory(uri: vscode.Uri): Promise<[string, vscode.FileType][]> {
     const server = fromUri(uri)
     const dir = server.findNode(uri)
-    if (dir.canRefresh()) await dir.refresh(server.connection)
+    await server.refreshDirIfNeeded(dir)
     const contents = [...dir].map(
       ([name, node]) => [name, node.type] as [string, vscode.FileType]
     )
