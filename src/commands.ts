@@ -20,6 +20,7 @@ export async function activateCurrent(selector: Uri) {
   try {
     const server = fromUri(selector)
     const obj = await server.findAbapObject(selector)
+    if (!obj.metaData) await obj.loadMetadata(server.connection)
     await server.activate(obj)
   } catch (e) {
     window.showErrorMessage(e.toString())

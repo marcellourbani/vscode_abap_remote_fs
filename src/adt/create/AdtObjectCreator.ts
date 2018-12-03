@@ -74,7 +74,6 @@ export class AdtObjectCreator {
   private async guessOrSelectObjectType(
     hierarchy: AbapNode[]
   ): Promise<CreatableObjectType | undefined> {
-    //TODO: guess from URI
     const base = hierarchy[0]
     //if I picked the root node,a direct descendent or a package just ask the user to select any object type
     // if not, for abap nodes pick child objetc types (if any)
@@ -121,7 +120,6 @@ export class AdtObjectCreator {
     objType: CreatableObjectType,
     objDetails: NewObjectConfig
   ): Promise<string> {
-    //TODO: no request for temp packages
     const uri = this.server.connection.createUri(objType.getPath(objDetails))
     return selectTransport(uri, objDetails.devclass, this.server.connection)
   }
@@ -137,18 +135,14 @@ export class AdtObjectCreator {
     objDetails: NewObjectConfig,
     request: string
   ) {
-    const uri = this.server.connection.createUri(
-      objType.getBasePath(objDetails)
-    )
+    const conn = await this.server.connection.getStatelessClone()
+    const uri = conn
+      .createUri(objType.getBasePath(objDetails))
+      .with({ query: request && `corrNr=${request}` })
     let body = objType.getCreatePayload(objDetails)
-    const query = request ? `corrNr=${request}` : ""
-    //TODO hack for cache invalidation, need to find a proper solution
-    this.server.connection.stateful = false
-    let response = await this.server.connection.request(uri, "POST", {
-      body,
-      query
+    let response = await conn.request(uri, "POST", {
+      body
     })
-    this.server.connection.stateful = true
     return response
   }
   private async askInput(

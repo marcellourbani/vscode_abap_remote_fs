@@ -1,9 +1,11 @@
 import * as request from "request"
 import { Uri } from "vscode"
 import { RemoteConfig } from "../config"
-import { AdtException, AdtHttpException } from "./AdtExceptions"
+import { AdtException, AdtHttpException, isAdtException } from "./AdtExceptions"
 import { Response } from "request"
 
+const CSRF_EXPIRED = "CSRF_EXPIRED"
+const FETCH_CSRF_TOKEN = "fetch"
 enum ConnStatus {
   new,
   active,
@@ -14,17 +16,38 @@ export class AdtConnection {
   readonly url: string
   readonly username: string
   readonly password: string
-  //TODO: hack for object creation, needs proper session support and backend cache invalidation
+  //TODO: proper session support
   stateful = true
-  private _csrftoken: string = "fetch"
+  private _csrftoken: string = FETCH_CSRF_TOKEN
   private _status: ConnStatus = ConnStatus.new
   private _listeners: Array<Function> = []
+  private _clone?: AdtConnection
 
   constructor(name: string, url: string, username: string, password: string) {
     this.name = name
     this.url = url
     this.username = username
     this.password = password
+  }
+
+  /**
+   * get a stateless clone of the original connection
+   *
+   * some calls, like object creation must be done in a separate connection
+   * to prevent leaving dirty data in function groups, which makes other calls fail
+   */
+  async getStatelessClone(): Promise<AdtConnection> {
+    if (!this._clone) {
+      this._clone = new AdtConnection(
+        this.name + "_clone",
+        this.url,
+        this.username,
+        this.password
+      )
+      this._clone.stateful = false
+    }
+    await this._clone.connect()
+    return this._clone
   }
 
   isActive(): boolean {
@@ -57,7 +80,17 @@ export class AdtConnection {
   ): Promise<request.Response> {
     if (this._status !== ConnStatus.active) await this.waitReady()
     const path = uri.query ? uri.path + "?" + uri.query : uri.path
-    return this.myrequest(path, method, config)
+    try {
+      return await this.myrequest(path, method, config)
+    } catch (e) {
+      if (isAdtException(e) && e.type === CSRF_EXPIRED) {
+        //Token expired, try getting a new one
+        // only retry once!
+        this._csrftoken = FETCH_CSRF_TOKEN
+        await this.connect()
+        return this.myrequest(path, method, config)
+      } else throw e
+    }
   }
 
   private myrequest(
@@ -87,9 +120,9 @@ export class AdtConnection {
     return new Promise<Response>((resolve, reject) => {
       request(urlOptions, async (error, response, body) => {
         if (error) reject(error)
-        //TODO:support 304 non modified? Should only happen if I send a header like
-        //If-None-Match: 201811061933580005ZDEMO_CALENDAR
-        else if (response.statusCode < 300) resolve(response)
+        else if (response.statusCode < 400) resolve(response)
+        else if (response.statusCode === 403 && body.match(/CSRF.*failed/))
+          reject(new AdtException(CSRF_EXPIRED, ""))
         else
           try {
             reject(await AdtException.fromXml(body))

@@ -3,28 +3,23 @@ import { Response } from "request"
 const TYPEID = Symbol()
 
 export class AdtException extends Error {
-  namespace: string
-  type: string
-  message: string
-  localizedMessage: string
-  properties: Map<string, string>
+  // namespace: string
+  // type: string
+  // message: string
+  // localizedMessage: string
+  // properties: Map<string, string>
   get typeID(): Symbol {
     return TYPEID
   }
 
   constructor(
-    namespace: string,
-    type: string,
-    message: string,
-    localizedMessage: string,
-    properties: Map<string, string>
+    public type: string,
+    public message: string,
+    public namespace?: string,
+    public localizedMessage?: string,
+    public properties?: Map<string, string>
   ) {
     super()
-    this.namespace = namespace
-    this.type = type
-    this.message = message
-    this.localizedMessage = localizedMessage
-    this.properties = properties
   }
 
   static async fromXml(xml: string): Promise<AdtException> {
@@ -34,9 +29,9 @@ export class AdtException extends Error {
     const type = getFieldAttribute("type", "id", root)
     const values = recxml2js(root)
     return new AdtException(
-      namespace,
       type,
       values.message,
+      namespace,
       values.localizedMessage,
       new Map()
     )

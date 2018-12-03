@@ -15,6 +15,7 @@ interface TransportHeader {
   AS4TEXT: string
   CLIENT: string
 }
+
 interface TransportInfo {
   PGMID: string
   OBJECT: string
@@ -31,6 +32,7 @@ interface TransportInfo {
   RECORDING: string
   EXISTING_REQ_ONLY: string
   TRANSPORTS: TransportHeader[]
+  LOCKS: TransportHeader[]
 }
 interface ValidateTransportMessage {
   SEVERITY: string
@@ -42,6 +44,31 @@ interface ValidateTransportMessage {
 function throwMessage(msg: ValidateTransportMessage) {
   throw new Error(`${msg.TEXT} (${msg.SEVERITY}${msg.MSGNR}(${msg.ARBGB}))`)
 }
+function extracttLocks(raw: any): TransportHeader[] {
+  let locks: TransportHeader[] | undefined
+  try {
+    locks = getNode(
+      "asx:abap/asx:values/DATA/LOCKS/CTS_OBJECT_LOCK/LOCK_HOLDER/REQ_HEADER",
+      mapWith(recxml2js),
+      raw
+    )
+  } catch (e) {}
+  return locks || []
+}
+function extracttTransports(raw: any): TransportHeader[] {
+  let transports: TransportHeader[] | undefined
+  try {
+    transports = getNode(
+      "asx:abap/asx:values/DATA/REQUESTS/CTS_REQUEST",
+      mapWith(getNode("REQ_HEADER")),
+      flat,
+      mapWith(recxml2js),
+      raw
+    )
+  } catch (e) {}
+  return transports || []
+}
+
 export async function getTransportCandidates(
   objContentUri: Uri,
   devClass: string,
@@ -71,19 +98,10 @@ export async function getTransportCandidates(
     ) as ValidateTransportMessage[]
     messages.filter(x => x.SEVERITY === "E").map(throwMessage)
   }
-  const RAWTRANSPORTS = getNode("asx:abap/asx:values/DATA/REQUESTS", rawdata)
-  const TRANSPORTS =
-    RAWTRANSPORTS && RAWTRANSPORTS[0]
-      ? getNode(
-          "CTS_REQUEST",
-          mapWith(getNode("REQ_HEADER")),
-          flat,
-          mapWith(recxml2js),
-          RAWTRANSPORTS
-        )
-      : []
+  const LOCKS = extracttLocks(rawdata)
+  const TRANSPORTS = extracttTransports(rawdata)
 
-  return { ...header, TRANSPORTS }
+  return { ...header, TRANSPORTS, LOCKS }
 }
 
 export async function selectTransport(
@@ -92,6 +110,10 @@ export async function selectTransport(
   conn: AdtConnection
 ): Promise<string> {
   const ti = await getTransportCandidates(objContentUri, devClass, conn)
+  //if I have a lock return the locking transport
+  // will probably be a task but should be fine
+  if (ti.LOCKS.length > 0) return ti.LOCKS[0].TRKORR
+
   if (ti.DLVUNIT === "LOCAL") return ""
   const CREATENEW = "Create a new transport"
   let selection = await window.showQuickPick([

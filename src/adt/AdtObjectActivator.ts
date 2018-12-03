@@ -84,14 +84,15 @@ export class AdtObjectActivator {
     return ""
   }
 
-  async activate(obj: AbapObject) {
+  async activate(object: AbapObject) {
+    const inactive = object.getActivationSubject()
     let message = ""
     try {
-      let retval = await this._activate(obj)
+      let retval = await this._activate(inactive)
       if (retval) {
         if (isString(retval)) message = retval
         else {
-          retval = await this._activate(obj, retval)
+          retval = await this._activate(inactive, retval)
           if (isString(retval)) message = retval
           else throw new Error("Unexpected activation error")
         }
@@ -100,8 +101,8 @@ export class AdtObjectActivator {
       if (isAdtException(e)) {
         switch (e.type) {
           case "invalidMainProgram":
-            const mainProg = await this.selectMain(obj)
-            const res = await this._activate(obj, mainProg)
+            const mainProg = await this.selectMain(inactive)
+            const res = await this._activate(inactive, mainProg)
             if (isString(res)) message = res
             else throw new Error("Unexpected activation error")
             break
@@ -113,7 +114,7 @@ export class AdtObjectActivator {
     if (message) window.showErrorMessage(message)
     else {
       //activation successful, update the status. By the book we should check if it's set by this object first...
-      await obj.loadMetadata(this.connection)
+      await inactive.loadMetadata(this.connection)
       commands.executeCommand("setContext", "abapfs:objectInactive", false)
     }
   }

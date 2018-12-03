@@ -236,6 +236,10 @@ export class AbapObject {
     return this.sapguiOnly ? ".txt" : ".abap"
   }
 
+  getActivationSubject(): AbapObject {
+    return this
+  }
+
   async getChildren(
     connection: AdtConnection
   ): Promise<Array<AbapNodeComponentByCategory>> {

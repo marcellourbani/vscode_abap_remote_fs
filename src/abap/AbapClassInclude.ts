@@ -27,6 +27,11 @@ export class AbapClassInclude extends AbapObject {
       query: `version=${this.metaData.version}`
     })
   }
+
+  getActivationSubject(): AbapObject {
+    return this.parent || this
+  }
+
   async loadMetadata(connection: AdtConnection): Promise<AbapObject> {
     if (this.parent) {
       await this.parent.loadMetadata(connection)

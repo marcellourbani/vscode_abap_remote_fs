@@ -107,7 +107,7 @@ class FGObjectType extends CreatableObjectType {
    xmlns:adtcore="http://www.sap.com/adt/core" 
    adtcore:description="${config.description}" 
    adtcore:name="${config.name}" adtcore:type="${this.type}" 
-   adtcore:responsible="${config.responsible}> 
+   adtcore:responsible="${config.responsible}"> 
      <adtcore:containerRef adtcore:name="${config.parentName}" 
        adtcore:type="${this._parentType}" 
        adtcore:uri="${this.getBasePath(config)}"/>
