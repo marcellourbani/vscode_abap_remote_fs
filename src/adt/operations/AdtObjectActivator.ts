@@ -1,9 +1,13 @@
-import { AdtConnection } from "./AdtConnection"
+import { AdtConnection } from "../AdtConnection"
 import { commands, window } from "vscode"
 import { AbapObject } from "../abap/AbapObject"
-import { isAdtException } from "./AdtExceptions"
-import { parsetoPromise, getNode, getFieldAttributes } from "./AdtParserBase"
-import { mapWith } from "../functions"
+import { isAdtException } from "../AdtExceptions"
+import {
+  parseToPromise,
+  getNode,
+  getFieldAttributes
+} from "../parsers/AdtParserBase"
+import { mapWith } from "../../functions"
 import { isString } from "util"
 import { JSON2AbapXMLNode } from "../abap/JSONToAbapXml"
 interface InactiveComponents {
@@ -63,7 +67,7 @@ export class AdtObjectActivator {
     })
     if (response.body) {
       //activation error(s?)
-      const raw = (await parsetoPromise()(response.body)) as any
+      const raw = (await parseToPromise()(response.body)) as any
 
       if (raw && raw["chkl:messages"]) {
         const messages = getNode(
@@ -73,12 +77,13 @@ export class AdtObjectActivator {
 
         return messages[0]
       } else if (raw && raw["ioc:inactiveObjects"]) {
-        return getNode(
+        const components = (getNode(
           "ioc:inactiveObjects/ioc:entry",
           mapWith(getNode("ioc:object/ioc:ref")),
           mapWith(getFieldAttributes()),
           raw
-        ) as InactiveComponents[]
+        ) as InactiveComponents[]).filter(x => x)
+        return components
       }
     }
     return ""

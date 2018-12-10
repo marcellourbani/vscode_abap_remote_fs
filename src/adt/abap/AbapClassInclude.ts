@@ -1,5 +1,5 @@
 import { AbapObject, AbapMetaData } from "./AbapObject"
-import { AdtConnection } from "../adt/AdtConnection"
+import { AdtConnection } from "../AdtConnection"
 import { AbapClass } from "./AbapClass"
 import { Uri, FileSystemError } from "vscode"
 export interface ClassIncludeMeta extends AbapMetaData {
@@ -29,6 +29,10 @@ export class AbapClassInclude extends AbapObject {
   }
 
   getActivationSubject(): AbapObject {
+    return this.parent || this
+  }
+
+  getLockTarget(): AbapObject {
     return this.parent || this
   }
 

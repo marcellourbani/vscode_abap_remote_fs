@@ -1,6 +1,6 @@
-import { defaultVal, mapWith } from "../functions"
+import { defaultVal, mapWith } from "../../functions"
 
-import { getNode, recxml2js } from "./AdtParserBase"
+import { getNode, recxml2js } from "../parsers/AdtParserBase"
 
 interface AdtLock {
   LOCK_HANDLE: string

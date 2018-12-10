@@ -1,5 +1,5 @@
-import { JSON2AbapXML } from "../abap/JSONToAbapXml"
-import { parsetoPromise, getNode, recxml2js } from "./AdtParserBase"
+import { JSON2AbapXML } from "./abap/JSONToAbapXml"
+import { parseToPromise, getNode, recxml2js } from "./parsers/AdtParserBase"
 import { mapWith, flat } from "../functions"
 import { AdtConnection } from "./AdtConnection"
 import { window, Uri } from "vscode"
@@ -84,7 +84,7 @@ export async function getTransportCandidates(
       })
     }
   )
-  const rawdata = await parsetoPromise()(response.body)
+  const rawdata = await parseToPromise()(response.body)
   const header = getNode(
     "asx:abap/asx:values/DATA",
     mapWith(recxml2js),

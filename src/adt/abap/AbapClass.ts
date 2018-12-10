@@ -3,13 +3,13 @@ import {
   AbapNodeComponentByCategory,
   AbapMetaData
 } from "./AbapObject"
-import { NodeStructure } from "../adt/AdtNodeStructParser"
-import { AdtConnection } from "../adt/AdtConnection"
+import { NodeStructure } from "../parsers/AdtNodeStructParser"
+import { AdtConnection } from "../AdtConnection"
 import { FileSystemError } from "vscode"
-import { pick, followLink } from "../functions"
+import { pick, followLink } from "../../functions"
 import { aggregateNodes } from "./AbapObjectUtilities"
-import { parseClass, firstTextLink } from "../adt/AdtObjectParser"
-import { parsetoPromise } from "../adt/AdtParserBase"
+import { parseClass, firstTextLink } from "../parsers/AdtObjectParser"
+import { parseToPromise } from "../parsers/AdtParserBase"
 import { ClassIncludeMeta, isClassInclude } from "./AbapClassInclude"
 
 interface ClassMetaData extends AbapMetaData {
@@ -26,13 +26,14 @@ export class AbapClass extends AbapObject {
   ) {
     super(type, name, path, expandable, techName)
   }
+
   async loadMetadata(connection: AdtConnection): Promise<AbapObject> {
     if (this.name) {
       const mainUri = this.getUri(connection)
       const meta = await connection
         .request(mainUri, "GET")
         .then(pick("body"))
-        .then(parsetoPromise())
+        .then(parseToPromise())
         .then(parseClass)
       const includes = meta.includes.map(i => {
         const sourcePath = i.header["abapsource:sourceUri"]
@@ -64,6 +65,7 @@ export class AbapClass extends AbapObject {
     }
     return this
   }
+
   async getChildren(
     connection: AdtConnection
   ): Promise<Array<AbapNodeComponentByCategory>> {
@@ -93,21 +95,6 @@ export class AbapClass extends AbapObject {
         if (include.sourcePath === "source/main") ns.nodes.unshift(node)
         else ns.nodes.push(node)
       }
-
-    // for (const classInc of parsed.includes) {
-    //   const name = this.name + "." + classInc.header["class:includeType"]
-    //   const node = {
-    //     EXPANDABLE: "",
-    //     OBJECT_NAME: name,
-    //     OBJECT_TYPE: classInc.header["adtcore:type"],
-    //     OBJECT_URI: follow(classInc.header["abapsource:sourceUri"]).path,
-    //     OBJECT_VIT_URI: "",
-    //     TECH_NAME: name
-    //   }
-    //   if (classInc.header["abapsource:sourceUri"] === "source/main")
-    //     ns.nodes.unshift(node)
-    //   else ns.nodes.push(node)
-    // }
 
     const aggregated = aggregateNodes(ns)
     for (const cat of aggregated)

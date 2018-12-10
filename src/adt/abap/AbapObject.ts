@@ -1,15 +1,14 @@
 import { Uri, FileSystemError } from "vscode"
-import { AdtConnection } from "../adt/AdtConnection"
-import { pick, followLink } from "../functions"
+import { AdtConnection } from "../AdtConnection"
+import { pick, followLink } from "../../functions"
 import {
   parseNode,
   NodeStructure,
   ObjectNode
-} from "../adt/AdtNodeStructParser"
-import { parsetoPromise, getNode } from "../adt/AdtParserBase"
-import { parseObject, firstTextLink } from "../adt/AdtObjectParser"
+} from "../parsers/AdtNodeStructParser"
+import { parseToPromise, getNode } from "../parsers/AdtParserBase"
+import { parseObject, firstTextLink } from "../parsers/AdtObjectParser"
 import { aggregateNodes } from "./AbapObjectUtilities"
-import { adtLockParser } from "../adt/AdtLockParser"
 
 const TYPEID = Symbol()
 export const XML_EXTENSION = ".XML"
@@ -49,7 +48,6 @@ export class AbapObject {
   readonly techName: string
   readonly path: string
   readonly expandable: boolean
-  lockId?: string
   transport: TransportStatus | string = TransportStatus.UNKNOWN
   metaData?: AbapMetaData
   protected sapguiOnly: boolean
@@ -84,7 +82,7 @@ export class AbapObject {
     return this.name.replace(/\//g, "／") + this.getExtension()
   }
 
-  protected getUri(connection: AdtConnection) {
+  getUri(connection: AdtConnection) {
     return Uri.parse("adt://" + connection.name).with({
       path: this.path
     })
@@ -111,10 +109,10 @@ export class AbapObject {
     const response = await connection.request(uri, "POST", { body: payload })
     if (response.body) {
       //activation error(s?)
-      const raw = (await parsetoPromise()(response.body)) as any
+      const raw = (await parseToPromise()(response.body)) as any
 
       if (raw && raw["chkl:messages"]) {
-        const messages = (await parsetoPromise(
+        const messages = (await parseToPromise(
           getNode("chkl:messages/msg/shortText/txt")
         )(response.body)) as string[]
 
@@ -130,40 +128,17 @@ export class AbapObject {
       followLink(this.getUri(connection), "mainprograms"),
       "GET"
     )
-    const parsed: any = await parsetoPromise()(response.body)
+    const parsed: any = await parseToPromise()(response.body)
     return parsed["adtcore:objectReferences"]["adtcore:objectReference"].map(
       (link: any) => link["$"]
     )
   }
 
-  async lock(connection: AdtConnection) {
-    this.checkWritable()
-    let contentUri = this.getContentsUri(connection)
-
-    const response = await connection.request(
-      contentUri.with({ query: "_action=LOCK&accessMode=MODIFY" }),
-      "POST",
-      { headers: { "X-sap-adt-sessiontype": "stateful" } }
-    )
-    const lockRecord = await parsetoPromise(adtLockParser)(response.body)
-    this.lockId = lockRecord.LOCK_HANDLE
-    this.transport =
-      lockRecord.CORRNR ||
-      (lockRecord.IS_LOCAL ? TransportStatus.LOCAL : TransportStatus.REQUIRED)
-  }
-  async unlock(connection: AdtConnection) {
-    this.checkWritable()
-    if (!this.lockId) return
-    let contentUri = this.getContentsUri(connection)
-    await connection.request(
-      contentUri.with({
-        query: `_action=UNLOCK&lockHandle=${encodeURIComponent(this.lockId)}`
-      }),
-      "POST"
-    )
+  getLockTarget(): AbapObject {
+    return this
   }
 
-  protected checkWritable() {
+  canBeWritten() {
     if (!this.isLeaf()) throw FileSystemError.FileIsADirectory(this.vsName)
     if (this.sapguiOnly)
       throw FileSystemError.FileNotFound(
@@ -173,9 +148,10 @@ export class AbapObject {
 
   async setContents(
     connection: AdtConnection,
-    contents: Uint8Array
+    contents: Uint8Array,
+    lockId: string
   ): Promise<void> {
-    this.checkWritable()
+    this.canBeWritten()
     let contentUri = this.getContentsUri(connection)
 
     const trselection =
@@ -183,9 +159,7 @@ export class AbapObject {
 
     await connection.request(
       contentUri.with({
-        query: `lockHandle=${encodeURIComponent(
-          this.lockId || ""
-        )}${trselection}`
+        query: `lockHandle=${encodeURIComponent(lockId)}${trselection}`
       }),
       "PUT",
       { body: contents }
@@ -198,7 +172,7 @@ export class AbapObject {
       const meta = await connection
         .request(mainUri, "GET")
         .then(pick("body"))
-        .then(parsetoPromise())
+        .then(parseToPromise())
         .then(parseObject)
       const link = firstTextLink(meta.links)
       const sourcePath = link ? link.href : ""
@@ -213,6 +187,7 @@ export class AbapObject {
     }
     return this
   }
+
   getContentsUri(connection: AdtConnection): Uri {
     if (!this.metaData) throw FileSystemError.FileNotFound(this.path)
     // baseUri = baseUri.with({ path: baseUri.path.replace(/\?.*/, "") })

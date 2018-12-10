@@ -1,5 +1,5 @@
 import { Uri, window } from "vscode"
-import { parsetoPromise, getNode, recxml2js } from "../AdtParserBase"
+import { parseToPromise, getNode, recxml2js } from "../parsers/AdtParserBase"
 import { mapWith } from "../../functions"
 import { AdtServer } from "../AdtServer"
 import { isAbapNode, AbapNode } from "../../fs/AbapNode"
@@ -11,7 +11,7 @@ import {
   PACKAGE
 } from "./AdtObjectTypes"
 import { selectTransport } from "../AdtTransports"
-import { abapObjectFromNode } from "../../abap/AbapObjectUtilities"
+import { abapObjectFromNode } from "../abap/AbapObjectUtilities"
 
 interface ValidationMessage {
   SEVERITY: string
@@ -39,7 +39,7 @@ export class AdtObjectCreator {
       "/sap/bc/adt/repository/typestructure"
     )
     const response = await this.server.connection.request(uri, "POST")
-    const raw = await parsetoPromise()(response.body)
+    const raw = await parseToPromise()(response.body)
     return getNode(
       "asx:abap/asx:values/DATA/SEU_ADT_OBJECT_TYPE_DESCRIPTOR",
       mapWith(recxml2js),
@@ -66,7 +66,7 @@ export class AdtObjectCreator {
   private getHierarchy(uri: Uri | undefined): AbapNode[] {
     if (uri)
       try {
-        return this.server.findNodeHierarcy(uri)
+        return this.server.findNodeHierarchy(uri)
       } catch (e) {}
     return []
   }
@@ -101,7 +101,7 @@ export class AdtObjectCreator {
       objType.getValidatePath(objDetails)
     )
     const response = await this.server.connection.request(url, "POST")
-    const rawValidation = await parsetoPromise()(response.body)
+    const rawValidation = await parseToPromise()(response.body)
     return getNode(
       "asx:abap/asx:values/DATA",
       mapWith(recxml2js),

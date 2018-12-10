@@ -1,6 +1,6 @@
-import { getNode, recxml2js, parsetoPromise } from "./AdtParserBase"
+import { getNode, recxml2js, parseToPromise } from "./AdtParserBase"
 
-import { mapWith, ArrayToMap, filterComplex, defaultVal } from "../functions"
+import { mapWith, ArrayToMap, filterComplex, defaultVal } from "../../functions"
 import { convertableToString } from "xml2js"
 
 export interface ObjectNode {
@@ -62,7 +62,7 @@ const ObjectTypeParser: (a: string) => Map<string, ObjectTypeNode> = defaultVal(
 
 export const parseNode: (
   rawpayload: convertableToString
-) => Promise<NodeStructure> = parsetoPromise((payload: any) => {
+) => Promise<NodeStructure> = parseToPromise((payload: any) => {
   return {
     nodes: treecontentParser(payload),
     categories: categoryNodeParser(payload),

@@ -11,17 +11,24 @@ enum ConnStatus {
   active,
   failed
 }
+export interface StateRequestor {
+  needStateFul: boolean
+}
 export class AdtConnection {
   readonly name: string
   readonly url: string
   readonly username: string
   readonly password: string
-  //TODO: proper session support
-  stateful = true
+
+  get stateful() {
+    for (const r of this._stateRequestors) if (r.needStateFul) return true
+    return false
+  }
   private _csrftoken: string = FETCH_CSRF_TOKEN
   private _status: ConnStatus = ConnStatus.new
   private _listeners: Array<Function> = []
   private _clone?: AdtConnection
+  private _stateRequestors: Set<StateRequestor> = new Set()
 
   constructor(name: string, url: string, username: string, password: string) {
     this.name = name
@@ -44,10 +51,13 @@ export class AdtConnection {
         this.username,
         this.password
       )
-      this._clone.stateful = false
     }
     await this._clone.connect()
     return this._clone
+  }
+
+  addStateRequestor(r: StateRequestor) {
+    this._stateRequestors.add(r)
   }
 
   isActive(): boolean {
@@ -138,6 +148,21 @@ export class AdtConnection {
       query
     })
   }
+
+  dropSession() {
+    return this.myrequest(
+      "/sap/bc/adt/repository/informationsystem/objecttypes",
+      "GET",
+      {
+        headers: {
+          "x-csrf-token": this._csrftoken,
+          "X-sap-adt-sessiontype": "",
+          Accept: "*/*"
+        }
+      }
+    )
+  }
+
   connect(): Promise<request.Response> {
     return this.myrequest(
       "/sap/bc/adt/repository/informationsystem/objecttypes?maxItemCount=999&name=*&data=usedByProvider"

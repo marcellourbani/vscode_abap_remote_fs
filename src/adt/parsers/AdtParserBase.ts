@@ -1,5 +1,6 @@
+/* cSpell:disable */
 import { parseString, convertableToString } from "xml2js"
-import { pipe, pick, removeNameSpace, mapWith } from "../functions"
+import { pipe, pick, removeNameSpace, mapWith } from "../../functions"
 import { isArray } from "util"
 
 /**
@@ -120,7 +121,7 @@ export const getNode = (...args: any[]) => {
   }
   return fn(...args)
 }
-export const parsetoPromise = <T>(parser?: (raw: any) => T) => (
+export const parseToPromise = <T>(parser?: (raw: any) => T) => (
   xml: convertableToString
 ): Promise<T> =>
   new Promise(resolve => {

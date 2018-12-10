@@ -1,5 +1,5 @@
 import { AbapObject } from "./AbapObject"
-import { NodeStructure } from "../adt/AdtNodeStructParser"
+import { NodeStructure } from "../parsers/AdtNodeStructParser"
 
 export class AbapProgram extends AbapObject {
   constructor(

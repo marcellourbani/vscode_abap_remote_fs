@@ -2,11 +2,14 @@ import { AdtConnection } from "./adt/AdtConnection"
 import { workspace, Uri, window } from "vscode"
 import { fromUri } from "./adt/AdtServer"
 import { selectRemote, pickAdtRoot } from "./config"
+import { log } from "./logger"
 
 export async function connectAdtServer(selector: any) {
   const connectionID = selector && selector.connection
   const remote = await selectRemote(connectionID)
   const connection = AdtConnection.fromRemote(remote)
+
+  log(`Connecting to server ${connectionID}`)
 
   await connection.connect() // if connection raises an exception don't mount any folder
 
@@ -14,6 +17,8 @@ export async function connectAdtServer(selector: any) {
     uri: Uri.parse("adt://" + remote.name),
     name: remote.name + "(ABAP)"
   })
+
+  log(`Connected to server ${connectionID}`)
 }
 
 export async function activateCurrent(selector: Uri) {

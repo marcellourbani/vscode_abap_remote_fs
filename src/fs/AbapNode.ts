@@ -1,6 +1,6 @@
 import { FileStat, FileType, FileSystemError } from "vscode"
-import { aggregateNodes } from "../abap/AbapObjectUtilities"
-import { AbapObject, AbapNodeComponentByCategory } from "../abap/AbapObject"
+import { aggregateNodes } from "../adt/abap/AbapObjectUtilities"
+import { AbapObject, AbapNodeComponentByCategory } from "../adt/abap/AbapObject"
 import { MetaFolder } from "./MetaFolder"
 import { AdtConnection } from "../adt/AdtConnection"
 import { flatMap, pick } from "../functions"

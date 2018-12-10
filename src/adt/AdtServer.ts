@@ -2,14 +2,16 @@ import { AdtConnection } from "./AdtConnection"
 import { Uri, FileSystemError, FileType, commands } from "vscode"
 import { MetaFolder } from "../fs/MetaFolder"
 import { AbapObjectNode, AbapNode, isAbapNode } from "../fs/AbapNode"
-import { AbapObject, TransportStatus, isAbapObject } from "../abap/AbapObject"
+import { AbapObject, TransportStatus, isAbapObject } from "./abap/AbapObject"
 import { getRemoteList } from "../config"
 import { selectTransport } from "./AdtTransports"
-import { AdtObjectActivator } from "./AdtObjectActivator"
+import { AdtObjectActivator } from "./operations/AdtObjectActivator"
 import { pick } from "../functions"
-import { AdtObjectFinder } from "./AdtObjectFinder"
-import { AdtObjectCreator } from "./create/AdtObjectCreator"
-import { PACKAGE } from "./create/AdtObjectTypes"
+import { AdtObjectFinder } from "./operations/AdtObjectFinder"
+import { AdtObjectCreator } from "./operations/AdtObjectCreator"
+import { PACKAGE } from "./operations/AdtObjectTypes"
+import { LockManager } from "./operations/LockManager"
+import { AdtException } from "./AdtExceptions"
 export const ADTBASEURL = "/sap/bc/adt/repository/nodestructure"
 
 /**
@@ -20,7 +22,7 @@ export const ADTBASEURL = "/sap/bc/adt/repository/nodestructure"
 const uriParts = (uri: Uri): string[] =>
   uri.path
     .split("/")
-    .filter((v, idx, arr) => (idx > 0 && idx < arr.length - 1) || v) //ignore empty at begginning or end
+    .filter((v, idx, arr) => (idx > 0 && idx < arr.length - 1) || v) //ignore empty at beginning or end
 /**
  * centralizes most API accesses
  * some will be delegated/provided from members or ABAP object nodes
@@ -30,7 +32,8 @@ export class AdtServer {
   private readonly activator: AdtObjectActivator
   readonly root: MetaFolder
   readonly objectFinder: AdtObjectFinder
-  creator: AdtObjectCreator
+  readonly creator: AdtObjectCreator
+  readonly lockManager: LockManager
   private lastRefreshed?: string
 
   /**
@@ -50,6 +53,7 @@ export class AdtServer {
     this.creator = new AdtObjectCreator(this)
     this.activator = new AdtObjectActivator(this.connection)
     this.objectFinder = new AdtObjectFinder(this.connection)
+    this.lockManager = new LockManager(this.connection)
     this.connection
       .connect()
       .then(pick("body"))
@@ -109,32 +113,40 @@ export class AdtServer {
     if (!isAbapNode(file))
       throw FileSystemError.NoPermissions("Can only save source code")
 
-    await file.abapObject.lock(this.connection)
-    if (file.abapObject.transport === TransportStatus.REQUIRED) {
+    const obj = file.abapObject
+    //check file is locked
+    if (!this.lockManager.isLocked(obj))
+      throw new AdtException(
+        "lockNotFound",
+        `Object not locked ${obj.type} ${obj.name}`
+      )
+
+    if (obj.transport === TransportStatus.REQUIRED) {
       const transport = await selectTransport(
-        file.abapObject.getContentsUri(this.connection),
+        obj.getContentsUri(this.connection),
         "",
         this.connection
       )
       if (transport) file.abapObject.transport = transport
     }
 
-    await file.abapObject.setContents(this.connection, content)
+    const lockId = this.lockManager.getLockId(obj)
+    await obj.setContents(this.connection, content, lockId)
 
-    await file.abapObject.unlock(this.connection)
     await file.stat(this.connection)
+    await this.lockManager.unlock(obj)
     //might have a race condition with user changing editor...
     commands.executeCommand("setContext", "abapfs:objectInactive", true)
   }
 
   /**
    * converts vscode URI to ADT URI
-   * @see findNodeHierarcy for more details
+   * @see findNodeHierarchy for more details
    *
    * @param uri vscode URI
    */
   findNode(uri: Uri): AbapNode {
-    return this.findNodeHierarcy(uri)[0]
+    return this.findNodeHierarchy(uri)[0]
   }
 
   /**
@@ -145,7 +157,7 @@ export class AdtServer {
    * @abstract visual studio paths are hierarchic, adt ones aren't
    * so we need a way to translate the hierarchic ones to the original ones
    * this file is concerned with telling whether a path is a real ADT one or one from vscode
-   * /sap/bc/adt/repository/nodestructure (with ampty query) is the root of both
+   * /sap/bc/adt/repository/nodestructure (with empty query) is the root of both
    * also, several objects have namespaces.
    *  Class /foo/bar of package /foo/baz in code will have a path like
    *    /sap/bc/adt/repository/nodestructure/foo/baz/foo/bar
@@ -155,7 +167,7 @@ export class AdtServer {
    *
    * @param uri VSCode URI
    */
-  findNodeHierarcy(uri: Uri): AbapNode[] {
+  findNodeHierarchy(uri: Uri): AbapNode[] {
     const parts = uriParts(uri)
     return parts.reduce(
       (current: AbapNode[], name) => {
@@ -185,7 +197,7 @@ export class AdtServer {
     for (const part of parts) {
       let next: AbapNode | undefined = node.getChild(part)
       if (!next && refreshable) {
-        //refreshable will tipically be the current node or its first abap parent (usually a package)
+        //refreshable will typically be the current node or its first abap parent (usually a package)
         await refreshable.refresh(this.connection)
         next = node.getChild(part)
       }
@@ -258,4 +270,11 @@ export const getServer = (connId: string): AdtServer => {
 export const fromUri = (uri: Uri) => {
   if (uri.scheme === "adt") return getServer(uri.authority)
   throw FileSystemError.FileNotFound(uri)
+}
+export async function disconnect() {
+  const promises: Promise<any>[] = []
+  for (const server of servers) {
+    promises.push(server[1].connection.dropSession())
+  }
+  await Promise.all(promises)
 }

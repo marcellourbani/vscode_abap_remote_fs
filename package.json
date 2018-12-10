@@ -2,9 +2,10 @@
   "name": "vscode-abap-remote-fs",
   "displayName": "vscode_abap_remote_fs",
   "description": "Work on your ABAP code straight from the server",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "publisher": "murbani",
   "license": "MIT",
+  "icon": "images/abapfs_icon.png",
   "author": {
     "email": "marcello.urbani@gmail.com",
     "name": "Marcello Urbani"
@@ -43,12 +44,12 @@
     "tsconfig-paths": "^3.7.0",
     "tslint": "^5.8.0",
     "typescript": "^2.6.1",
-    "vsce": "^1.52.0",
-    "vscode": "^1.1.21"
+    "vsce": "^1.53.2",
+    "vscode": "^1.1.26"
   },
   "dependencies": {
-    "request": "^2.88.0",
     "event-stream": "3.3.4",
+    "request": "^2.88.0",
     "xml2js": "^0.4.19"
   },
   "activationEvents": [

@@ -4,13 +4,13 @@ import {
   AbapSimpleObject,
   AbapXmlObject
 } from "./AbapObject"
-import { NodeStructure, ObjectNode } from "../adt/AdtNodeStructParser"
-import { selectMap } from "../functions"
+import { NodeStructure, ObjectNode } from "../parsers/AdtNodeStructParser"
+import { selectMap } from "../../functions"
 import { AbapProgram } from "./AbapProgram"
 import { AbapClass } from "./AbapClass"
 import { AbapInclude } from "./AbapInclude"
 import { AbapClassInclude } from "./AbapClassInclude"
-import { AbapNode, isAbapNode } from "../fs/AbapNode"
+import { AbapNode, isAbapNode } from "../../fs/AbapNode"
 
 export interface NodePath {
   path: string

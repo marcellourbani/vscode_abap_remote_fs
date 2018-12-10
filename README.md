@@ -1,11 +1,10 @@
 # ABAP remote filesystem for visual studio code
 
-This extension allows editing and activation of ABAP code on your server directly in Visual studio code.
-Doesn't allow to create objects yet, but does read/save/activate several object types
+This extension allows editing and activation of ABAP code on your server directly in Visual studio code, including transport assignment and creation (if your system supports it).
 
 **Unless your system is very modern, write support will require you to install [this extension](https://github.com/marcellourbani/abapfs_extensions)** in your dev server to enable locking files
 
-**WRITE SUPPORT IS EXPERIMANTAL USE AT YOUR OWN RISK**
+**THIS SOFTWARE IS IN BETA TEST, USE AT YOUR OWN RISK**
 
 ![anim](https://user-images.githubusercontent.com/2453277/47482169-ae0cc300-d82d-11e8-8d19-f55dd877c166.gif)
 ![image](https://user-images.githubusercontent.com/2453277/47466602-dd99dc00-d7e9-11e8-97ed-28e23dfd8f90.png)
@@ -21,16 +20,16 @@ The complete list of editable objects depends on your installation, on my local 
 - programs/includes
 - function groups
 - classes
-- transformations
+- transformations (except creation)
 
 ![anim](https://user-images.githubusercontent.com/2453277/48232926-30a78d80-e3ab-11e8-8a12-00844431f9af.gif)
 
 ## setup
 
-Too early to publish as an extension, there's a compiled extension you can run from source or install from the command line with
+Will soon be published in the marketplace, in the meanwhile there's a compiled extension you can run from source or install from the command line with
 
 ```shell
-code --install-extension vscode-abap-remote-fs-0.1.0.vsix
+code --install-extension vscode-abap-remote-fs-0.3.0.vsix
 ```
 
 The compiled file can be either downloaded from for the

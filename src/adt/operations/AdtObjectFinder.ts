@@ -1,20 +1,20 @@
 import {
-  parsetoPromise,
+  parseToPromise,
   getNode,
   recxml2js,
   nodeProperties
-} from "./AdtParserBase"
-import { mapWith, ArrayToMap, pick, sapEscape } from "../functions"
-import { AdtConnection } from "./AdtConnection"
+} from "../parsers/AdtParserBase"
+import { mapWith, ArrayToMap, pick, sapEscape } from "../../functions"
+import { AdtConnection } from "../AdtConnection"
 import { window, QuickPickItem, workspace } from "vscode"
 import * as vscode from "vscode"
-import { getServer } from "./AdtServer"
+import { getServer } from "../AdtServer"
 import {
   NodePath,
   findObjectInNode,
   findMainInclude
 } from "../abap/AbapObjectUtilities"
-import { isAbapNode } from "../fs/AbapNode"
+import { isAbapNode } from "../../fs/AbapNode"
 
 interface AdtObjectType {
   "nameditem:name": string
@@ -78,7 +78,7 @@ export class AdtObjectFinder {
       `operation=quickSearch&query=${query}${ot}&maxResults=51`
     )
     const response = await conn.request(uri, "GET")
-    const raw = await parsetoPromise()(response.body)
+    const raw = await parseToPromise()(response.body)
     const results = getNode(
       "adtcore:objectReferences/adtcore:objectReference",
       nodeProperties,
@@ -96,7 +96,7 @@ export class AdtObjectFinder {
     const raw = await this.conn
       .request(uri, "POST")
       .then(pick("body"))
-      .then(parsetoPromise())
+      .then(parseToPromise())
     const objectPath = getNode(
       "projectexplorer:nodepath/projectexplorer:objectLinkReferences/objectLinkReference",
       nodeProperties,
@@ -200,7 +200,7 @@ export class AdtObjectFinder {
     return o
   }
   async setTypes(source: string) {
-    const parser = parsetoPromise(
+    const parser = parseToPromise(
       getNode("nameditem:namedItemList/nameditem:namedItem", mapWith(recxml2js))
     )
     const raw = (await parser(source)) as AdtObjectType[]

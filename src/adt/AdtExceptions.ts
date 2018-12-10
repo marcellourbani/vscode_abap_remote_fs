@@ -1,4 +1,8 @@
-import { parsetoPromise, getFieldAttribute, recxml2js } from "./AdtParserBase"
+import {
+  parseToPromise,
+  getFieldAttribute,
+  recxml2js
+} from "./parsers/AdtParserBase"
 import { Response } from "request"
 const TYPEID = Symbol()
 
@@ -23,7 +27,7 @@ export class AdtException extends Error {
   }
 
   static async fromXml(xml: string): Promise<AdtException> {
-    const raw: any = await parsetoPromise()(xml)
+    const raw: any = await parseToPromise()(xml)
     const root: any = raw["exc:exception"]
     const namespace = getFieldAttribute("namespace", "id", root)
     const type = getFieldAttribute("type", "id", root)
