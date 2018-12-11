@@ -36,6 +36,11 @@ export class AbapClassInclude extends AbapObject {
     return this.parent || this
   }
 
+  get vsName(): string {
+    const base = this.name.replace(/\..*/, "")
+    return base.replace(/\//g, "／") + this.getExtension()
+  }
+
   async loadMetadata(connection: AdtConnection): Promise<AbapObject> {
     if (this.parent) {
       await this.parent.loadMetadata(connection)

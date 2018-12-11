@@ -9,7 +9,7 @@ import { selectMap } from "../../functions"
 import { AbapProgram } from "./AbapProgram"
 import { AbapClass } from "./AbapClass"
 import { AbapInclude } from "./AbapInclude"
-import { AbapClassInclude } from "./AbapClassInclude"
+import { AbapClassInclude, isClassInclude } from "./AbapClassInclude"
 import { AbapNode, isAbapNode } from "../../fs/AbapNode"
 
 export interface NodePath {
@@ -130,4 +130,36 @@ export function findMainInclude(o: NodePath) {
     x => isAbapNode(x.node) && !!x.node.abapObject.path.match("/source/main")
   )
   return main || candidates[0]
+}
+
+// to support ABAPLINT we need to follow its naming conventions
+// for most object types an extension is good enough
+// function modules are an exception, for now it won't work for them
+const TYPES: any = {
+  "PROG/P": ".prog",
+  "PROG/I": ".prog",
+  "FUGR/I": ".prog",
+  "CLAS/I": ".clas",
+  "INTF/OI": ".intf",
+  "FUGR/FF": ".func"
+}
+const CLASSINCLUDES: any = {
+  testclasses: ".testclasses",
+  definitions: ".locals_def",
+  implementations: ".locals_imp",
+  macros: ".macros",
+  main: ""
+}
+export function objectTypeExtension(obj: AbapObject): string {
+  if (isClassInclude(obj)) {
+    const incltype = obj.name.replace(/.*\./, "")
+    switch (incltype) {
+      case "main":
+      case "":
+        return ".clas"
+      default:
+        return `.clas${CLASSINCLUDES[incltype] || "." + incltype}`
+    }
+  }
+  return TYPES[obj.type] || ""
 }

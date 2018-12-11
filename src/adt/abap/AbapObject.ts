@@ -8,7 +8,7 @@ import {
 } from "../parsers/AdtNodeStructParser"
 import { parseToPromise, getNode } from "../parsers/AdtParserBase"
 import { parseObject, firstTextLink } from "../parsers/AdtObjectParser"
-import { aggregateNodes } from "./AbapObjectUtilities"
+import { aggregateNodes, objectTypeExtension } from "./AbapObjectUtilities"
 
 const TYPEID = Symbol()
 export const XML_EXTENSION = ".XML"
@@ -208,7 +208,7 @@ export class AbapObject {
 
   getExtension(): string {
     if (!this.isLeaf()) return ""
-    return this.sapguiOnly ? ".txt" : ".abap"
+    return this.sapguiOnly ? ".txt" : objectTypeExtension(this) + ".abap"
   }
 
   getActivationSubject(): AbapObject {
