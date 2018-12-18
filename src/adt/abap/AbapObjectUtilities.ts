@@ -33,29 +33,31 @@ export function aggregateNodes(
     return arr.find((x: any) => x[prop] === value)
   }
 
-  cont.nodes.forEach(node => {
-    const categoryTag = typeCat(node.OBJECT_TYPE)
-    const categoryLabel = catLabel(categoryTag)
-    let catNode = findById(components, "category", categoryTag)
-    if (!catNode) {
-      catNode = {
-        category: categoryTag,
-        name: categoryLabel,
-        types: []
+  cont.nodes
+    .filter(o => o.OBJECT_NAME) // fix for 7.52 which returns unnamed package components. TODO investigate
+    .forEach(node => {
+      const categoryTag = typeCat(node.OBJECT_TYPE)
+      const categoryLabel = catLabel(categoryTag)
+      let catNode = findById(components, "category", categoryTag)
+      if (!catNode) {
+        catNode = {
+          category: categoryTag,
+          name: categoryLabel,
+          types: []
+        }
+        components.push(catNode)
       }
-      components.push(catNode)
-    }
-    let typeNode = findById(catNode.types, "type", node.OBJECT_TYPE)
-    if (!typeNode) {
-      typeNode = {
-        name: typeLabel(node.OBJECT_TYPE),
-        type: node.OBJECT_TYPE,
-        objects: []
+      let typeNode = findById(catNode.types, "type", node.OBJECT_TYPE)
+      if (!typeNode) {
+        typeNode = {
+          name: typeLabel(node.OBJECT_TYPE),
+          type: node.OBJECT_TYPE,
+          objects: []
+        }
+        catNode.types.push(typeNode)
       }
-      catNode.types.push(typeNode)
-    }
-    typeNode.objects.push(abapObjectFromNode(node))
-  })
+      typeNode.objects.push(abapObjectFromNode(node))
+    })
 
   return components
 }
@@ -141,7 +143,7 @@ const TYPES: any = {
   "FUGR/I": ".prog",
   "CLAS/I": ".clas",
   "INTF/OI": ".intf",
-  "FUGR/FF": ".func"
+  "FUGR/FF": ".fugr"
 }
 const CLASSINCLUDES: any = {
   testclasses: ".testclasses",
