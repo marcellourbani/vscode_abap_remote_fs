@@ -65,3 +65,24 @@ export async function createAdtObject(uri: Uri | undefined) {
     window.showErrorMessage(e.toString())
   }
 }
+
+export async function executeAbap() {
+  try {
+    log("Execute ABAP")
+    if (!window.activeTextEditor) return
+    const uri = window.activeTextEditor.document.uri
+    const root = await pickAdtRoot(uri)
+    const server = root && fromUri(root.uri)
+    if (!server) return
+    const object = await server.findAbapObject(uri)
+    const cmd = object.getExecutionCommand()
+    if (cmd) {
+      log("Running " + JSON.stringify(cmd))
+      server.sapGui.checkConfig()
+      const ticket = await server.getReentranceTicket()
+      await server.sapGui.startGui(cmd, ticket)
+    }
+  } catch (e) {
+    window.showErrorMessage(e.toString())
+  }
+}

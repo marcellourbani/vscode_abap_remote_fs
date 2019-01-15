@@ -9,6 +9,7 @@ import {
 import { parseToPromise, getNode } from "../parsers/AdtParserBase"
 import { parseObject, firstTextLink } from "../parsers/AdtObjectParser"
 import { aggregateNodes, objectTypeExtension } from "./AbapObjectUtilities"
+import { SapGuiCommand } from "../sapgui/sapgui"
 
 const TYPEID = Symbol()
 export const XML_EXTENSION = ".XML"
@@ -80,6 +81,10 @@ export class AbapObject {
   }
   get vsName(): string {
     return this.name.replace(/\//g, "／") + this.getExtension()
+  }
+
+  getExecutionCommand(): SapGuiCommand | undefined {
+    return
   }
 
   getUri(connection: AdtConnection) {
@@ -169,11 +174,9 @@ export class AbapObject {
   async loadMetadata(connection: AdtConnection): Promise<AbapObject> {
     if (this.name) {
       const mainUri = this.getUri(connection)
-      const meta = await connection
-        .request(mainUri, "GET")
-        .then(pick("body"))
-        .then(parseToPromise())
-        .then(parseObject)
+      const response = await connection.request(mainUri, "GET")
+      const raw = await parseToPromise()(response.body)
+      const meta = parseObject(raw)
       const link = firstTextLink(meta.links)
       const sourcePath = link ? link.href : ""
       this.metaData = {
@@ -224,7 +227,7 @@ export class AbapObject {
     const response = await connection.request(nodeUri, "POST")
     const nodes = await parseNode(response.body)
     const filtered = this.filterNodeStructure(nodes)
-    const components = aggregateNodes(filtered)
+    const components = aggregateNodes(filtered, this.type)
 
     return components
   }

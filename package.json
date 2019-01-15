@@ -38,6 +38,7 @@
   "devDependencies": {
     "@types/mocha": "^2.2.42",
     "@types/node": "^8.10.38",
+    "@types/opn": "^5.1.0",
     "@types/request": "^2.48.1",
     "@types/xml2js": "^0.4.3",
     "ts-node": "^7.0.1",
@@ -48,8 +49,12 @@
     "vscode": "^1.1.26"
   },
   "dependencies": {
+    "@types/tmp": "0.0.33",
     "event-stream": "3.3.4",
+    "fs-jetpack": "^2.2.0",
+    "opn": "^5.4.0",
     "request": "^2.88.0",
+    "tmp-promise": "^1.0.5",
     "xml2js": "^0.4.19"
   },
   "activationEvents": [
@@ -78,6 +83,17 @@
           "dark": "images/activate_single.svg",
           "light": "images/activate_single.svg"
         }
+      },
+      {
+        "command": "abapfs.execute",
+        "title": "Create ABAP object"
+      }
+    ],
+    "keybindings": [
+      {
+        "command": "abapfs.execute",
+        "key": "F5",
+        "when": "editorTextFocus && editorLangId == abap"
       }
     ],
     "menus": {
@@ -124,6 +140,58 @@
                 "password": {
                   "type": "string",
                   "description": "Password"
+                },
+                "client": {
+                  "type": "string",
+                  "description": "Client",
+                  "format": "[0-9][0-9][0-9]",
+                  "minLength": 3,
+                  "maxLength": 3
+                },
+                "language": {
+                  "type": "string",
+                  "description": "Login language",
+                  "format": "[a-zA-Z][a-zA-Z]",
+                  "minLength": 2,
+                  "maxLength": 2
+                },
+                "sapGui": {
+                  "type": "object",
+                  "description": "SapGUI integration (optional, default guessed from URL)",
+                  "properties": {
+                    "disabled": {
+                      "type": "boolean"
+                    },
+                    "group": {
+                      "type": "string",
+                      "description": "Group (for load balancing)"
+                    },
+                    "messageServer": {
+                      "type": "string",
+                      "description": "Message server (for load balancing)"
+                    },
+                    "messageServerPort": {
+                      "type": "string",
+                      "description": "Message server port (for load balancing)",
+                      "format": "[0-9][0-9][0-9][0-9]",
+                      "default": "3600"
+                    },
+                    "server": {
+                      "type": "string",
+                      "description": "Server (without load balancing)"
+                    },
+                    "systemNumber": {
+                      "type": "string",
+                      "description": "System number (without load balancing)",
+                      "minLength": 2,
+                      "maxLength": 2,
+                      "format": "\n\n"
+                    },
+                    "routerString": {
+                      "type": "string",
+                      "description": "Router String"
+                    }
+                  }
                 }
               },
               "required": [

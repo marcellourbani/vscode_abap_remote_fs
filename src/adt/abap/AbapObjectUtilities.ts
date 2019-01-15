@@ -11,6 +11,7 @@ import { AbapClass } from "./AbapClass"
 import { AbapInclude } from "./AbapInclude"
 import { AbapClassInclude, isClassInclude } from "./AbapClassInclude"
 import { AbapNode, isAbapNode } from "../../fs/AbapNode"
+import { AbapFunction } from "./AbapFunction"
 
 export interface NodePath {
   path: string
@@ -18,11 +19,17 @@ export interface NodePath {
 }
 
 export function aggregateNodes(
-  cont: NodeStructure
+  cont: NodeStructure,
+  parentType: string
 ): Array<AbapNodeComponentByCategory> {
   const catLabel = selectMap(cont.categories, "CATEGORY_LABEL", "")
   const typeCat = selectMap(cont.objectTypes, "CATEGORY_TAG", "")
-  const typeLabel = selectMap(cont.objectTypes, "OBJECT_TYPE_LABEL", "")
+  // in 7.52 labels are stored in types like 'DEVC/OC' instead of 'CLAS/OC'. Not sure this is a proper fix but seems to work...
+  const typeLabelBase = selectMap(cont.objectTypes, "OBJECT_TYPE_LABEL", "")
+  const baseType = parentType.replace(/\/.*/, "")
+  const typeLabel = (name: string) => {
+    return typeLabelBase(name) || typeLabelBase(name.replace(/\w+/, baseType))
+  }
 
   const components: Array<AbapNodeComponentByCategory> = []
   const findById = <T>(
@@ -79,6 +86,9 @@ export function abapObjectFromNode(node: ObjectNode): AbapObject {
       break
     case "INTF/OI":
       objtype = AbapSimpleObject
+      break
+    case "FUGR/FF":
+      objtype = AbapFunction
       break
     case "PROG/I":
     case "FUGR/I":

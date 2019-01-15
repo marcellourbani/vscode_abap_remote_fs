@@ -11,7 +11,8 @@ import {
   connectAdtServer,
   activateCurrent,
   searchAdtObject,
-  createAdtObject
+  createAdtObject,
+  executeAbap
 } from "./commands"
 import { disconnect } from "./adt/AdtServer"
 import { log } from "./logger"
@@ -45,6 +46,9 @@ export function activate(context: vscode.ExtensionContext) {
 
   //create command
   sub.push(commands.registerCommand("abapfs.create", createAdtObject))
+
+  //execute Abap command
+  sub.push(commands.registerCommand("abapfs.execute", executeAbap))
 
   log(`Activated,pid=${process.pid}`)
 }

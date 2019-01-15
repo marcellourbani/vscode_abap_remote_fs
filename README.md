@@ -2,6 +2,11 @@
 
 This extension allows editing and activation of ABAP code on your server directly in Visual studio code, including transport assignment and creation (if your system supports it).
 
+# new in 0.3.2
+
+- SAPGUI integration: in classes, programs and function modules F5 will now open the relevant transaction in SAPGUI _NOTE:_ client is required for SAPGUI support, other parameters might be needed too
+- client and language support in configuration
+
 **Unless your system is very modern (7.51 or later I think), write support will require you to install [this plugin](https://github.com/marcellourbani/abapfs_extensions)** in your dev server to enable. Browsing works even without it
 
 **THIS SOFTWARE IS IN BETA TEST, USE AT YOUR OWN RISK**
@@ -53,7 +58,9 @@ You will need connection details in your settings:
     "NPL": {
       "url": "https://vhcalnplci.bti.local:8000",
       "username": "developer",
-      "password": "secret"
+      "password": "secret",
+      "client": "001",
+      "language": "EN"
     }
   }
 }

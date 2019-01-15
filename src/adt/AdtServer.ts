@@ -12,6 +12,7 @@ import { AdtObjectCreator } from "./operations/AdtObjectCreator"
 import { PACKAGE } from "./operations/AdtObjectTypes"
 import { LockManager } from "./operations/LockManager"
 import { AdtException } from "./AdtExceptions"
+import { SapGui } from "./sapgui/sapgui"
 export const ADTBASEURL = "/sap/bc/adt/repository/nodestructure"
 
 /**
@@ -34,6 +35,7 @@ export class AdtServer {
   readonly objectFinder: AdtObjectFinder
   readonly creator: AdtObjectCreator
   readonly lockManager: LockManager
+  readonly sapGui: SapGui
   private lastRefreshed?: string
 
   /**
@@ -54,6 +56,7 @@ export class AdtServer {
     this.activator = new AdtObjectActivator(this.connection)
     this.objectFinder = new AdtObjectFinder(this.connection)
     this.lockManager = new LockManager(this.connection)
+    this.sapGui = SapGui.create(config)
     this.connection
       .connect()
       .then(pick("body"))
@@ -242,6 +245,14 @@ export class AdtServer {
   async activate(subject: AbapObject | Uri) {
     const obj = this.getObject(subject)
     return this.activator.activate(obj)
+  }
+
+  async getReentranceTicket() {
+    const response = await this.connection.request(
+      this.connection.createUri("/sap/bc/adt/security/reentranceticket"),
+      "GET"
+    )
+    return response.body
   }
 
   /**

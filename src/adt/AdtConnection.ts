@@ -15,10 +15,19 @@ export interface StateRequestor {
   needStateFul: boolean
 }
 export class AdtConnection {
-  readonly name: string
-  readonly url: string
-  readonly username: string
-  readonly password: string
+  constructor(
+    readonly name: string,
+    readonly url: string,
+    readonly username: string,
+    readonly password: string,
+    readonly language: string,
+    readonly client: string
+  ) {
+    this.name = name
+    this.url = url
+    this.username = username
+    this.password = password
+  }
 
   get stateful() {
     for (const r of this._stateRequestors) if (r.needStateFul) return true
@@ -29,13 +38,6 @@ export class AdtConnection {
   private _listeners: Array<Function> = []
   private _clone?: AdtConnection
   private _stateRequestors: Set<StateRequestor> = new Set()
-
-  constructor(name: string, url: string, username: string, password: string) {
-    this.name = name
-    this.url = url
-    this.username = username
-    this.password = password
-  }
 
   /**
    * get a stateless clone of the original connection
@@ -49,7 +51,9 @@ export class AdtConnection {
         this.name + "_clone",
         this.url,
         this.username,
-        this.password
+        this.password,
+        this.language,
+        this.client
       )
     }
     await this._clone.connect()
@@ -164,9 +168,12 @@ export class AdtConnection {
   }
 
   connect(): Promise<request.Response> {
-    return this.myrequest(
+    let url =
       "/sap/bc/adt/repository/informationsystem/objecttypes?maxItemCount=999&name=*&data=usedByProvider"
-    ).then((response: request.Response) => {
+    //set language and client if requested
+    if (this.client) url = `${url}&sap-client=${this.client}`
+    if (this.language) url = `${url}&sap-language=${this.language}`
+    return this.myrequest(url).then((response: request.Response) => {
       const newtoken = response.headers["x-csrf-token"]
       if (typeof newtoken === "string") {
         this._csrftoken = newtoken
@@ -190,7 +197,9 @@ export class AdtConnection {
       config.name,
       config.url,
       config.username,
-      config.password
+      config.password,
+      config.language || "",
+      config.client || ""
     )
 
     return connection

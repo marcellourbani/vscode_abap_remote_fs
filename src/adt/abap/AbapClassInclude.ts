@@ -2,6 +2,7 @@ import { AbapObject, AbapMetaData } from "./AbapObject"
 import { AdtConnection } from "../AdtConnection"
 import { AbapClass } from "./AbapClass"
 import { Uri, FileSystemError } from "vscode"
+import { SapGuiCommand } from "../sapgui/sapgui"
 export interface ClassIncludeMeta extends AbapMetaData {
   includeType: string
   type: string
@@ -39,6 +40,15 @@ export class AbapClassInclude extends AbapObject {
   get vsName(): string {
     const base = this.name.replace(/\..*/, "")
     return base.replace(/\//g, "／") + this.getExtension()
+  }
+
+  getExecutionCommand(): SapGuiCommand | undefined {
+    if (this.parent)
+      return {
+        type: "Transaction",
+        command: "SE24",
+        parameters: [{ name: "SEOCLASS-CLSNAME", value: this.parent.name }]
+      }
   }
 
   async loadMetadata(connection: AdtConnection): Promise<AbapObject> {

@@ -49,14 +49,16 @@ export function parseObject<T1 extends BaseHeader, T2 extends AtomLink>(
   const nodeName = Object.keys(xmlObject)[0]
   const root = nodeName && xmlObject[nodeName]
   const header = root && root["$"]
-  const links = root && root["atom:link"].map((x: any) => x["$"])
+  const links =
+    root && root["atom:link"] && root["atom:link"].map((x: any) => x["$"])
   return { nodeName, header, links }
 }
 export function firstTextLink(links: AtomLink[]): AtomLink | undefined {
   let firstLink: AtomLink | undefined
-  links.some(
-    link => !!(link.type && link.type.match(/text/i) && (firstLink = link))
-  )
+  if (links)
+    links.some(
+      link => !!(link.type && link.type.match(/text/i) && (firstLink = link))
+    )
   return firstLink
 }
 export function objectVersion(header: BaseHeader) {

@@ -96,7 +96,7 @@ export class AbapClass extends AbapObject {
         else ns.nodes.push(node)
       }
 
-    const aggregated = aggregateNodes(ns)
+    const aggregated = aggregateNodes(ns, this.type)
     for (const cat of aggregated)
       for (const type of cat.types)
         for (const incl of type.objects)

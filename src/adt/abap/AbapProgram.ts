@@ -1,5 +1,6 @@
 import { AbapObject } from "./AbapObject"
 import { NodeStructure } from "../parsers/AdtNodeStructParser"
+import { SapGuiCommand } from "../sapgui/sapgui"
 
 export class AbapProgram extends AbapObject {
   constructor(
@@ -10,6 +11,14 @@ export class AbapProgram extends AbapObject {
     techName?: string
   ) {
     super(type, name, path, expandable, techName)
+  }
+
+  getExecutionCommand(): SapGuiCommand {
+    return {
+      type: "Transaction",
+      command: "SE38",
+      parameters: [{ name: "RS38M-PROGRAMM", value: this.name }]
+    }
   }
 
   protected filterNodeStructure(nodest: NodeStructure): NodeStructure {

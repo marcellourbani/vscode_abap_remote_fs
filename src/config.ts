@@ -1,10 +1,24 @@
 import * as vscode from "vscode"
 import { window, workspace, QuickPickItem, WorkspaceFolder, Uri } from "vscode"
+
 export interface RemoteConfig {
   name: string
   url: string
   username: string
   password: string
+  client: string
+  language: string
+  sapGui: {
+    disabled: boolean
+    routerString: string
+    //load balancing
+    messageServer: string
+    messageServerPort: string
+    group: string
+    //individual server
+    server: string
+    systemNumber: string
+  }
 }
 
 const config = (name: string, remote: RemoteConfig) => {
@@ -24,25 +38,27 @@ export function getRemoteList(): RemoteConfig[] {
 export async function selectRemote(connection: string): Promise<RemoteConfig> {
   const remotes = getRemoteList()
   if (!remotes) throw new Error("No ABAP system configured yet")
-  let found=undefined
-  if (connection)
-    found = remotes.find(x=>x.name===connection) 
+  let found = undefined
+  if (connection) found = remotes.find(x => x.name === connection)
 
-  return found || window
-    .showQuickPick(
-      remotes.map(remote => ({
-        label: remote.name,
-        description: remote.name,
-        remote
-      })),
-      {
-        placeHolder: "Please choose an ABAP system"
-      }
-    )
-    .then(selection => {
-      if (selection) return selection.remote
-      throw new Error("No connection selected")
-    })
+  return (
+    found ||
+    window
+      .showQuickPick(
+        remotes.map(remote => ({
+          label: remote.name,
+          description: remote.name,
+          remote
+        })),
+        {
+          placeHolder: "Please choose an ABAP system"
+        }
+      )
+      .then(selection => {
+        if (selection) return selection.remote
+        throw new Error("No connection selected")
+      })
+  )
 }
 
 interface RootItem extends QuickPickItem {
