@@ -2,7 +2,7 @@
 
 This extension allows editing and activation of ABAP code on your server directly in Visual studio code, including transport assignment and creation (if your system supports it).
 
-# new in 0.3.2
+# new in 0.3.3
 
 - SAPGUI integration: in classes, programs and function modules F5 will now open the relevant transaction in SAPGUI _NOTE:_ client is required for SAPGUI support, other parameters might be needed too
 - client and language support in configuration
