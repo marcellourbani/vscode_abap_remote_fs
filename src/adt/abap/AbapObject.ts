@@ -167,7 +167,10 @@ export class AbapObject {
         query: `lockHandle=${encodeURIComponent(lockId)}${trselection}`
       }),
       "PUT",
-      { body: contents }
+      {
+        body: contents,
+        headers: { "content-type": "text/plain; charset=utf-8" }
+      }
     )
   }
 
