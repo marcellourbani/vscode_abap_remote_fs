@@ -13,6 +13,7 @@ import { PACKAGE } from "./operations/AdtObjectTypes"
 import { LockManager } from "./operations/LockManager"
 import { AdtException } from "./AdtExceptions"
 import { SapGui } from "./sapgui/sapgui"
+import { ADTClient } from "abap-adt-api"
 export const ADTBASEURL = "/sap/bc/adt/repository/nodestructure"
 
 /**
@@ -37,6 +38,7 @@ export class AdtServer {
   readonly lockManager: LockManager
   readonly sapGui: SapGui
   private lastRefreshed?: string
+  readonly client: ADTClient
 
   /**
    * Creates a server object and all its dependencies
@@ -49,7 +51,13 @@ export class AdtServer {
     )[0]
 
     if (!config) throw new Error(`connection ${connectionId}`)
-
+    this.client = new ADTClient(
+      config.url,
+      config.username,
+      config.password,
+      config.client,
+      config.language
+    )
     this.connection = AdtConnection.fromRemote(config)
     //utility components
     this.creator = new AdtObjectCreator(this)

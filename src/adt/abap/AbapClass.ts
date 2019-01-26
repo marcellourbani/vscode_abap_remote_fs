@@ -1,22 +1,14 @@
-import {
-  AbapObject,
-  AbapNodeComponentByCategory,
-  AbapMetaData
-} from "./AbapObject"
+import { AbapObject, AbapNodeComponentByCategory } from "./AbapObject"
 import { NodeStructure } from "../parsers/AdtNodeStructParser"
-import { AdtConnection } from "../AdtConnection"
-import { FileSystemError } from "vscode"
-import { pick, followLink } from "../../functions"
-import { aggregateNodes } from "./AbapObjectUtilities"
-import { parseClass, firstTextLink } from "../parsers/AdtObjectParser"
-import { parseToPromise } from "../parsers/AdtParserBase"
-import { ClassIncludeMeta, isClassInclude } from "./AbapClassInclude"
 
-interface ClassMetaData extends AbapMetaData {
-  includes: Array<ClassIncludeMeta>
-}
+import { FileSystemError } from "vscode"
+import { followLink } from "../../functions"
+import { aggregateNodes } from "./AbapObjectUtilities"
+import { isClassInclude } from "./AbapClassInclude"
+import { ADTClient, isClassStructure, AbapClassStructure } from "abap-adt-api"
+
 export class AbapClass extends AbapObject {
-  metaData?: ClassMetaData
+  structure?: AbapClassStructure
   constructor(
     type: string,
     name: string,
@@ -27,47 +19,19 @@ export class AbapClass extends AbapObject {
     super(type, name, path, expandable, techName)
   }
 
-  async loadMetadata(connection: AdtConnection): Promise<AbapObject> {
+  async loadMetadata(client: ADTClient): Promise<AbapObject> {
     if (this.name) {
-      const mainUri = this.getUri(connection)
-      const meta = await connection
-        .request(mainUri, "GET")
-        .then(pick("body"))
-        .then(parseToPromise())
-        .then(parseClass)
-      const includes = meta.includes.map(i => {
-        const sourcePath = i.header["abapsource:sourceUri"]
-
-        return {
-          includeType: i.header["class:includeType"] || "",
-          type: i.header["adtcore:type"],
-          version: i.header["adtcore:version"],
-          createdAt: Date.parse(i.header["adtcore:createdAt"]),
-          changedAt: Date.parse(i.header["adtcore:changedAt"]),
-          masterLanguage: i.header["adtcore:masterLanguage"],
-          masterSystem: i.header["adtcore:masterSystem"],
-          sourcePath
-        }
-      })
-
-      const link = firstTextLink(meta.links)
-      const sourcePath = link ? link.href : ""
-
-      this.metaData = {
-        createdAt: Date.parse(meta.header["adtcore:createdAt"]),
-        changedAt: Date.parse(meta.header["adtcore:createdAt"]),
-        version: meta.header["adtcore:version"],
-        masterLanguage: meta.header["adtcore:masterLanguage"],
-        masterSystem: meta.header["adtcore:masterSystem"],
-        sourcePath,
-        includes
+      const struc = await client.objectStructure(this.path)
+      if (isClassStructure(struc)) {
+        this.structure = struc
       }
     }
+
     return this
   }
 
   async getChildren(
-    connection: AdtConnection
+    client: ADTClient
   ): Promise<Array<AbapNodeComponentByCategory>> {
     if (this.isLeaf()) throw FileSystemError.FileNotADirectory(this.vsName)
     if (!this.metaData) await this.loadMetadata(connection)

@@ -7,9 +7,11 @@ import {
   ObjectNode
 } from "../parsers/AdtNodeStructParser"
 import { parseToPromise, getNode } from "../parsers/AdtParserBase"
-import { parseObject, firstTextLink } from "../parsers/AdtObjectParser"
 import { aggregateNodes, objectTypeExtension } from "./AbapObjectUtilities"
 import { SapGuiCommand } from "../sapgui/sapgui"
+import { ADTClient, AbapObjectStructure } from "abap-adt-api"
+import { isString } from "util"
+import { NodeParents } from "abap-adt-api/build/api"
 
 const TYPEID = Symbol()
 export const XML_EXTENSION = ".XML"
@@ -50,7 +52,7 @@ export class AbapObject {
   readonly path: string
   readonly expandable: boolean
   transport: TransportStatus | string = TransportStatus.UNKNOWN
-  metaData?: AbapMetaData
+  structure?: AbapObjectStructure
   protected sapguiOnly: boolean
   private get _typeId() {
     return TYPEID
@@ -92,40 +94,10 @@ export class AbapObject {
       path: this.path
     })
   }
-  async activate(
-    connection: AdtConnection,
-    mainInclude?: string
-  ): Promise<string> {
-    const uri = this.getUri(connection).with({
-      path: "/sap/bc/adt/activation",
-      query: "method=activate&preauditRequested=true"
-    })
-    const incl = mainInclude
-      ? `?context=${encodeURIComponent(mainInclude)}`
-      : ""
-    const payload =
-      `<?xml version="1.0" encoding="UTF-8"?>` +
-      `<adtcore:objectReferences xmlns:adtcore="http://www.sap.com/adt/core">` +
-      `<adtcore:objectReference adtcore:uri="${
-        this.path
-      }${incl}" adtcore:name="${this.name}"/>` +
-      `</adtcore:objectReferences>`
-
-    const response = await connection.request(uri, "POST", { body: payload })
-    if (response.body) {
-      //activation error(s?)
-      const raw = (await parseToPromise()(response.body)) as any
-
-      if (raw && raw["chkl:messages"]) {
-        const messages = (await parseToPromise(
-          getNode("chkl:messages/msg/shortText/txt")
-        )(response.body)) as string[]
-
-        return messages[0]
-      } else if (raw && raw["ioc:inactiveObjects"]) {
-      }
-    }
-    return ""
+  async activate(client: ADTClient, mainInclude?: string): Promise<string> {
+    const result = await client.activate(this.name, this.path, mainInclude)
+    const m = result.messages[0]
+    return (m && m.shortText) || ""
   }
 
   async getMainPrograms(connection: AdtConnection): Promise<MainProgram[]> {
@@ -152,64 +124,41 @@ export class AbapObject {
   }
 
   async setContents(
-    connection: AdtConnection,
+    client: ADTClient,
     contents: Uint8Array,
     lockId: string
   ): Promise<void> {
     this.canBeWritten()
-    let contentUri = this.getContentsUri(connection)
+    const contentUri = this.getContentsUri()
+    const transport = isString(this.transport) ? this.transport : undefined
 
-    const trselection =
-      typeof this.transport === "string" ? `&corrNr=${this.transport}` : ""
-
-    await connection.request(
-      contentUri.with({
-        query: `lockHandle=${encodeURIComponent(lockId)}${trselection}`
-      }),
-      "PUT",
-      {
-        body: contents,
-        headers: { "content-type": "text/plain; charset=utf-8" }
-      }
+    await client.setObjectSource(
+      contentUri,
+      contents.toString(),
+      lockId,
+      transport
     )
   }
 
-  async loadMetadata(connection: AdtConnection): Promise<AbapObject> {
+  async loadMetadata(client: ADTClient): Promise<AbapObject> {
     if (this.name) {
-      const mainUri = this.getUri(connection)
-      const response = await connection.request(mainUri, "GET")
-      const raw = await parseToPromise()(response.body)
-      const meta = parseObject(raw)
-      const link = firstTextLink(meta.links)
-      const sourcePath = link ? link.href : ""
-      this.metaData = {
-        createdAt: Date.parse(meta.header["adtcore:createdAt"]),
-        changedAt: Date.parse(meta.header["adtcore:createdAt"]),
-        version: meta.header["adtcore:version"],
-        masterLanguage: meta.header["adtcore:masterLanguage"],
-        masterSystem: meta.header["adtcore:masterSystem"],
-        sourcePath
-      }
+      this.structure = await client.objectStructure(this.path)
     }
     return this
   }
 
-  getContentsUri(connection: AdtConnection): Uri {
-    if (!this.metaData) throw FileSystemError.FileNotFound(this.path)
-    // baseUri = baseUri.with({ path: baseUri.path.replace(/\?.*/, "") })
-    return followLink(this.getUri(connection), this.metaData.sourcePath).with({
-      query: `version=${this.metaData.version}`
-    })
+  getContentsUri(): string {
+    if (!this.structure) throw FileSystemError.FileNotFound(this.path)
+    const include = ADTClient.mainInclude(this.structure)
+    return include
   }
 
-  async getContents(connection: AdtConnection): Promise<string> {
+  async getContents(client: ADTClient): Promise<string> {
     if (!this.isLeaf()) throw FileSystemError.FileIsADirectory(this.vsName)
-    if (this.sapguiOnly || !this.metaData || !this.metaData.sourcePath)
-      return SAPGUIONLY
+    const url = this.structure && ADTClient.mainInclude(this.structure)
+    if (this.sapguiOnly || !url) return SAPGUIONLY
 
-    return connection
-      .request(this.getContentsUri(connection), "GET")
-      .then(pick("body"))
+    return client.getObjectSource(url)
   }
 
   getExtension(): string {
@@ -222,13 +171,16 @@ export class AbapObject {
   }
 
   async getChildren(
-    connection: AdtConnection
+    client: ADTClient
   ): Promise<Array<AbapNodeComponentByCategory>> {
     if (this.isLeaf()) throw FileSystemError.FileNotADirectory(this.vsName)
-    const nodeUri = this.getNodeUri(connection)
 
-    const response = await connection.request(nodeUri, "POST")
-    const nodes = await parseNode(response.body)
+    const nodes = await client.nodeContents({
+      parent_name: this.name,
+      parent_tech_name: this.techName,
+      parent_type: this.type as NodeParents
+    })
+
     const filtered = this.filterNodeStructure(nodes)
     const components = aggregateNodes(filtered, this.type)
 
