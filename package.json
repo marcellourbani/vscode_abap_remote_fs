@@ -1,8 +1,8 @@
 {
   "name": "vscode-abap-remote-fs",
-  "displayName": "vscode_abap_remote_fs",
+  "displayName": "ABAP remote filesystem",
   "description": "Work on your ABAP code straight from the server",
-  "version": "0.3.4",
+  "version": "0.3.5",
   "publisher": "murbani",
   "license": "MIT",
   "icon": "images/abapfs_icon.png",

@@ -141,7 +141,8 @@ export class AdtObjectCreator {
       .with({ query: request && `corrNr=${request}` })
     let body = objType.getCreatePayload(objDetails)
     let response = await conn.request(uri, "POST", {
-      body
+      body,
+      headers: { "Content-Type": "application/*" }
     })
     return response
   }
