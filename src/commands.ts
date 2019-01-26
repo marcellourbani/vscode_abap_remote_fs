@@ -1,31 +1,36 @@
-import { AdtConnection } from "./adt/AdtConnection"
 import { workspace, Uri, window } from "vscode"
 import { fromUri } from "./adt/AdtServer"
-import { selectRemote, pickAdtRoot } from "./config"
+import { selectRemote, pickAdtRoot, createClient } from "./config"
 import { log } from "./logger"
 
 export async function connectAdtServer(selector: any) {
   const connectionID = selector && selector.connection
   const remote = await selectRemote(connectionID)
-  const connection = AdtConnection.fromRemote(remote)
+  const client = createClient(remote)
 
-  log(`Connecting to server ${connectionID}`)
+  log(`Connecting to server ${remote.name}`)
 
-  await connection.connect() // if connection raises an exception don't mount any folder
+  try {
+    await client.login() // if connection raises an exception don't mount any folder
 
-  workspace.updateWorkspaceFolders(0, 0, {
-    uri: Uri.parse("adt://" + remote.name),
-    name: remote.name + "(ABAP)"
-  })
+    workspace.updateWorkspaceFolders(0, 0, {
+      uri: Uri.parse("adt://" + remote.name),
+      name: remote.name + "(ABAP)"
+    })
 
-  log(`Connected to server ${connectionID}`)
+    log(`Connected to server ${remote.name}`)
+  } catch (e) {
+    window.showErrorMessage(
+      `Failed to connect to ${remote.name}:${e.toString()}`
+    )
+  }
 }
 
 export async function activateCurrent(selector: Uri) {
   try {
     const server = fromUri(selector)
     const obj = await server.findAbapObject(selector)
-    if (!obj.metaData) await obj.loadMetadata(server.connection)
+    if (!obj.structure) await obj.loadMetadata(server.client)
     await server.activate(obj)
   } catch (e) {
     window.showErrorMessage(e.toString())
@@ -33,11 +38,11 @@ export async function activateCurrent(selector: Uri) {
 }
 
 export async function searchAdtObject(uri: Uri | undefined) {
-  //find the adt relevant namespace roots, and let the user pick one if needed
+  // find the adt relevant namespace roots, and let the user pick one if needed
   const root = await pickAdtRoot(uri)
   const server = root && fromUri(root.uri)
   try {
-    if (!server) throw new Error("Fatal error: invalid server connection") //this should NEVER happen!
+    if (!server) throw new Error("Fatal error: invalid server connection") // this should NEVER happen!
     const object = await server.objectFinder.findObject()
     if (!object) return // user cancelled
     const path = await server.objectFinder.findObjectPath(object.uri)
@@ -52,13 +57,13 @@ export async function searchAdtObject(uri: Uri | undefined) {
 
 export async function createAdtObject(uri: Uri | undefined) {
   try {
-    //find the adt relevant namespace roots, and let the user pick one if needed
+    // find the adt relevant namespace roots, and let the user pick one if needed
     const root = await pickAdtRoot(uri)
     const server = root && fromUri(root.uri)
     if (!server) return
-    const objPath = await server.creator.createObject(uri)
-    if (!objPath) return //user aborted
-    const path = await server.objectFinder.findObjectPath(objPath)
+    const obj = await server.creator.createObject(uri)
+    if (!obj) return // user aborted
+    const path = await server.objectFinder.findObjectPath(obj.path)
     const nodePath = await server.objectFinder.locateObject(path)
     if (nodePath) server.objectFinder.displayNode(nodePath)
   } catch (e) {

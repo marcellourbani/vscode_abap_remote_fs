@@ -1,6 +1,6 @@
+import { ADTClient } from "abap-adt-api"
 import { FileStat, FileType, FileSystemError } from "vscode"
 import { AbapNode } from "./AbapNode"
-import { AdtConnection } from "../adt/AdtConnection"
 
 //folders are only used to store other nodes
 export class MetaFolder implements FileStat, Iterable<[string, AbapNode]> {
@@ -11,7 +11,7 @@ export class MetaFolder implements FileStat, Iterable<[string, AbapNode]> {
 
   private children: Map<string, AbapNode> = new Map()
 
-  public async stat(connection: AdtConnection): Promise<AbapNode> {
+  public async stat(client: ADTClient): Promise<AbapNode> {
     return this
   }
 
@@ -22,7 +22,7 @@ export class MetaFolder implements FileStat, Iterable<[string, AbapNode]> {
   public getChild(name: string): AbapNode | undefined {
     return this.children.get(name)
   }
-  public save(connection: AdtConnection, contents: Uint8Array) {
+  public save(client: ADTClient, contents: Uint8Array) {
     if (this.isFolder) throw FileSystemError.FileIsADirectory()
   }
   public setChild(name: string, child: AbapNode): AbapNode {
@@ -36,13 +36,13 @@ export class MetaFolder implements FileStat, Iterable<[string, AbapNode]> {
     return this.children.size
   }
 
-  public refresh(connection: AdtConnection): Promise<AbapNode> {
+  public refresh(client: ADTClient): Promise<AbapNode> {
     return Promise.resolve(this)
   }
   public canRefresh() {
     return false
   }
-  public fetchContents(connection: AdtConnection): Promise<Uint8Array> {
+  public fetchContents(client: ADTClient): Promise<Uint8Array> {
     throw FileSystemError.FileIsADirectory()
   }
 

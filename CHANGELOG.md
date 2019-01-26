@@ -4,6 +4,28 @@ All notable changes to the "vscode-abap-remote-fs" extension will be documented 
 
 Format based on [Keep a Changelog](http://keepachangelog.com/)
 
+## Unreleased
+
+### Fixed
+
+- multiple object activation
+- transport detection on lock
+- CDS extension support
+- better transport selection
+- cancel operation if transport not selected
+- suffix instead of name for group includes
+
+## [0.3.6] 2019-02-05
+
+### Changed
+
+- use abap-adt-api
+
+### Added
+
+- object deletions (no transport selection)
+- self-signed certificates
+
 ## [0.3.5] 2019-01-26
 
 ### Fixed

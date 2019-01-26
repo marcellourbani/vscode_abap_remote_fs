@@ -2,9 +2,9 @@ import {
   AbapObject,
   AbapNodeComponentByCategory,
   AbapSimpleObject,
-  AbapXmlObject
+  AbapXmlObject,
+  NodeStructureMapped
 } from "./AbapObject"
-import { NodeStructure, ObjectNode } from "../parsers/AdtNodeStructParser"
 import { selectMap } from "../../functions"
 import { AbapProgram } from "./AbapProgram"
 import { AbapClass } from "./AbapClass"
@@ -12,6 +12,9 @@ import { AbapInclude } from "./AbapInclude"
 import { AbapClassInclude, isClassInclude } from "./AbapClassInclude"
 import { AbapNode, isAbapNode } from "../../fs/AbapNode"
 import { AbapFunction } from "./AbapFunction"
+import { AbapCds } from "./AbapCds"
+import { Node } from "abap-adt-api"
+import { AbapFunctionGroup } from "./AbapFunctionGroup"
 
 export interface NodePath {
   path: string
@@ -19,21 +22,22 @@ export interface NodePath {
 }
 
 export function aggregateNodes(
-  cont: NodeStructure,
+  cont: NodeStructureMapped,
   parentType: string
-): Array<AbapNodeComponentByCategory> {
+): AbapNodeComponentByCategory[] {
   const catLabel = selectMap(cont.categories, "CATEGORY_LABEL", "")
   const typeCat = selectMap(cont.objectTypes, "CATEGORY_TAG", "")
-  // in 7.52 labels are stored in types like 'DEVC/OC' instead of 'CLAS/OC'. Not sure this is a proper fix but seems to work...
+  // in 7.52 labels are stored in types like 'DEVC/OC' instead of 'CLAS/OC'.
+  // Not sure this is a proper fix but seems to work...
   const typeLabelBase = selectMap(cont.objectTypes, "OBJECT_TYPE_LABEL", "")
   const baseType = parentType.replace(/\/.*/, "")
   const typeLabel = (name: string) => {
     return typeLabelBase(name) || typeLabelBase(name.replace(/\w+/, baseType))
   }
 
-  const components: Array<AbapNodeComponentByCategory> = []
+  const components: AbapNodeComponentByCategory[] = []
   const findById = <T>(
-    arr: Array<T>,
+    arr: T[],
     prop: string,
     value: string
   ): T | undefined => {
@@ -69,7 +73,7 @@ export function aggregateNodes(
   return components
 }
 
-export function abapObjectFromNode(node: ObjectNode): AbapObject {
+export function abapObjectFromNode(node: Node): AbapObject {
   let objtype = AbapObject
   switch (node.OBJECT_TYPE) {
     case "PROG/P":
@@ -87,12 +91,18 @@ export function abapObjectFromNode(node: ObjectNode): AbapObject {
     case "INTF/OI":
       objtype = AbapSimpleObject
       break
+    case "FUGR/F":
+      objtype = AbapFunctionGroup
+      break
     case "FUGR/FF":
       objtype = AbapFunction
       break
     case "PROG/I":
     case "FUGR/I":
       objtype = AbapInclude
+      break
+    case "DDLS/DF":
+      objtype = AbapCds
       break
   }
   return new objtype(

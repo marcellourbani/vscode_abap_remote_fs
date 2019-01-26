@@ -1,81 +1,110 @@
-import { Uri, window } from "vscode"
-import { parseToPromise, getNode, recxml2js } from "../parsers/AdtParserBase"
-import { mapWith } from "../../functions"
-import { AdtServer } from "../AdtServer"
-import { isAbapNode, AbapNode } from "../../fs/AbapNode"
 import {
-  selectObjectType,
-  CreatableObjectType,
-  NewObjectConfig,
-  getObjectType,
-  PACKAGE
-} from "./AdtObjectTypes"
-import { selectTransport } from "../AdtTransports"
+  CreatableType,
+  CreatableTypeIds,
+  GroupTypeIds,
+  isGroupType,
+  NewObjectOptions,
+  NonGroupTypeIds,
+  objectPath,
+  ObjectType,
+  parentTypeId,
+  ParentTypeIds,
+  ValidateOptions
+} from "abap-adt-api"
+import { CreatableTypes } from "abap-adt-api"
+import { Uri, window } from "vscode"
+import { AbapNode, isAbapNode } from "../../fs/AbapNode"
 import { abapObjectFromNode } from "../abap/AbapObjectUtilities"
+import { AdtServer } from "../AdtServer"
+import { selectTransport } from "../AdtTransports"
+import { fieldOrder } from "../../functions"
+import { MySearchResult } from "./AdtObjectFinder"
+// import { stringOrder, pick } from "../../functions"
 
-interface ValidationMessage {
-  SEVERITY: string
-  SHORT_TEXT: string
-  LONG_TEXT: string
+export const PACKAGE = "DEVC/K"
+type details =
+  | {
+      options: NewObjectOptions
+      devclass: string
+    }
+  | undefined
+
+export async function selectObjectType(
+  parentType?: string
+): Promise<CreatableType | undefined> {
+  const rawtypes = [...CreatableTypes.values()].sort(fieldOrder("label"))
+  const types = parentType
+    ? rawtypes.filter(t => parentTypeId(t.typeId) === parentType)
+    : rawtypes
+  return window.showQuickPick(types || rawtypes)
 }
 
-interface AdtObjectType {
-  OBJECT_TYPE: string
-  OBJECT_TYPE_LABEL: string
-  CATEGORY: string
-  CATEGORY_LABEL: string
-  URI_TEMPLATE: string
-  PARENT_OBJECT_TYPE: string
-  OBJNAME_MAXLENGTH: string
-  canCreate: boolean
-}
 export class AdtObjectCreator {
-  private types?: AdtObjectType[]
+  private types?: ObjectType[]
 
   constructor(private server: AdtServer) {}
 
-  async loadTypes(): Promise<AdtObjectType[]> {
-    const uri = this.server.connection.createUri(
-      "/sap/bc/adt/repository/typestructure"
-    )
-    const response = await this.server.connection.request(uri, "POST")
-    const raw = await parseToPromise()(response.body)
-    return getNode(
-      "asx:abap/asx:values/DATA/SEU_ADT_OBJECT_TYPE_DESCRIPTOR",
-      mapWith(recxml2js),
-      (typedescs: any[]) => typedescs.filter(td => td.CAPABILITIES !== ""),
-      mapWith(x => {
-        const { CAPABILITIES, ...rest } = x
-        const canCreate = !!CAPABILITIES.SEU_ACTION.find(
-          (x: any) => x === "CREATE"
-        )
-        return { ...rest, canCreate }
-      }),
-      raw
-    )
-  }
-
-  async getObjectTypes(uri: Uri): Promise<AdtObjectType[]> {
-    if (!this.types) this.types = await this.loadTypes()
+  public async getObjectTypes(uri: Uri): Promise<ObjectType[]> {
+    if (!this.types) this.types = await this.server.client.loadTypes()
     const parent = this.server.findNode(uri)
     let otype = parent && isAbapNode(parent) && parent.abapObject.type
     if (otype === PACKAGE) otype = ""
     return this.types!.filter(x => x.PARENT_OBJECT_TYPE === otype)
   }
 
+  /**
+   * Creates an ABAP object asking the user for unknown details
+   * Tries to guess object type and parent/package from URI
+   *
+   * @param uri Creates an ABAP object
+   */
+  public async createObject(uri: Uri | undefined) {
+    const objDetails = await this.getObjectDetails(uri)
+    if (!objDetails) return
+    const { options, devclass } = objDetails
+    await this.validateObject(options)
+    const transport = await selectTransport(
+      objectPath(options.objtype, options.name, options.parentName),
+      devclass,
+      this.server.client
+    )
+    if (transport.cancelled) return
+    options.transport = transport.transport
+    await this.server.client.statelessClone.createObject(options)
+
+    const obj = abapObjectFromNode({
+      EXPANDABLE: "",
+      OBJECT_NAME: options.name,
+      OBJECT_TYPE: options.objtype,
+      OBJECT_URI: objectPath(options),
+      OBJECT_VIT_URI: "",
+      TECH_NAME: options.name
+    })
+    await obj.loadMetadata(this.server.client)
+    return obj
+  }
+  public guessParentByType(hierarchy: AbapNode[], type: ParentTypeIds): string {
+    // find latest package parent
+    const pn = hierarchy.find(n => isAbapNode(n) && n.abapObject.type === type)
+    // return package name or blank string
+    return (pn && isAbapNode(pn) && pn.abapObject.name) || ""
+  }
+
   private getHierarchy(uri: Uri | undefined): AbapNode[] {
     if (uri)
       try {
         return this.server.findNodeHierarchy(uri)
-      } catch (e) {}
+      } catch (e) {
+        // ignore
+      }
     return []
   }
 
   private async guessOrSelectObjectType(
     hierarchy: AbapNode[]
-  ): Promise<CreatableObjectType | undefined> {
+  ): Promise<CreatableType | undefined> {
     const base = hierarchy[0]
-    //if I picked the root node,a direct descendent or a package just ask the user to select any object type
+    // if I picked the root node,a direct descendent or a package just ask the user to select any object type
     // if not, for abap nodes pick child objetc types (if any)
     // for non-abap nodes if it's an object type guess the type from the children
     if (hierarchy.length > 2)
@@ -85,141 +114,112 @@ export class AdtObjectCreator {
           .map(c => c[1])
           .find(c => isAbapNode(c) && c.abapObject.type !== PACKAGE)
         if (child && isAbapNode(child)) {
-          const guessed = getObjectType(child.abapObject.type)
+          const typeid = child.abapObject.type as CreatableTypeIds
+          const guessed = CreatableTypes.get(typeid)
           if (guessed) return guessed
         }
       }
-    //default...
+    // default...
     return selectObjectType()
   }
 
-  private async validateObject(
-    objType: CreatableObjectType,
-    objDetails: NewObjectConfig
-  ): Promise<ValidationMessage[]> {
-    const url = this.server.connection.createUri(
-      objType.getValidatePath(objDetails)
-    )
-    const response = await this.server.connection.request(url, "POST")
-    const rawValidation = await parseToPromise()(response.body)
-    return getNode(
-      "asx:abap/asx:values/DATA",
-      mapWith(recxml2js),
-      rawValidation
-    ) as ValidationMessage[]
+  private async validateObject(objDetails: NewObjectOptions) {
+    let validateOptions: ValidateOptions
+    if (isGroupType(objDetails.objtype))
+      validateOptions = {
+        description: objDetails.description,
+        fugrname: objDetails.parentName,
+        objname: objDetails.name,
+        objtype: objDetails.objtype as GroupTypeIds
+      }
+    else
+      validateOptions = {
+        description: objDetails.description,
+        objname: objDetails.name,
+        objtype: objDetails.objtype as NonGroupTypeIds,
+        packagename: objDetails.parentName
+      }
+    return this.server.client.validateNewObject(validateOptions)
   }
-
-  /**
-   * Finds or ask the user to select/create a transport for an object.
-   * Returns an empty string for local objects
-   *
-   * @param objType Object type
-   * @param objDetails Object name, description,...
-   */
-  private async selectTransport(
-    objType: CreatableObjectType,
-    objDetails: NewObjectConfig
-  ): Promise<string> {
-    const uri = this.server.connection.createUri(objType.getPath(objDetails))
-    return selectTransport(uri, objDetails.devclass, this.server.connection)
-  }
-  /**
-   * Creates an ABAP object
-   *
-   * @param objType Object type descriptor
-   * @param objDetails Object details (name, description, package,...)
-   * @param request Transport request
-   */
-  private async create(
-    objType: CreatableObjectType,
-    objDetails: NewObjectConfig,
-    request: string
-  ) {
-    const conn = await this.server.connection.getStatelessClone()
-    const uri = conn
-      .createUri(objType.getBasePath(objDetails))
-      .with({ query: request && `corrNr=${request}` })
-    let body = objType.getCreatePayload(objDetails)
-    let response = await conn.request(uri, "POST", {
-      body,
-      headers: { "Content-Type": "application/*" }
-    })
-    return response
-  }
-  private async askInput(
-    prompt: string,
-    uppercase: boolean = true
-  ): Promise<string> {
-    const res = (await window.showInputBox({ prompt })) || ""
-    return uppercase ? res.toUpperCase() : res
-  }
-
-  /**
-   * Creates an ABAP object asking the user for unknown details
-   * Tries to guess object type and parent/package from URI
-   *
-   * @param uri Creates an ABAP object
-   */
-  async createObject(uri: Uri | undefined) {
+  private async getObjectDetails(uri: Uri | undefined): Promise<details> {
     const hierarchy = this.getHierarchy(uri)
     let devclass: string = this.guessParentByType(hierarchy, PACKAGE)
     const objType = await this.guessOrSelectObjectType(hierarchy)
-    //user didn't pick one...
+    // user didn't pick one...
     if (!objType) return
-    const name = await this.askInput("name")
+    const name = await this.askName(objType.typeId)
     if (!name) return
     const description = await this.askInput("description", false)
     if (!description) return
-    const responsible = this.server.connection.username.toUpperCase()
+    const responsible = this.server.client.username.toUpperCase()
+    const parentType = parentTypeId(objType.typeId)
     let parentName
-    if (objType.parentType === PACKAGE) parentName = devclass
-    else {
-      parentName = this.guessParentByType(hierarchy, objType.parentType)
+    if (parentType !== PACKAGE) {
+      parentName = this.guessParentByType(hierarchy, "FUGR/F")
       if (!parentName) {
         const parent = await this.server.objectFinder.findObject(
           "Select parent",
-          objType.parentType
+          parentType
         )
         if (!parent) return
         parentName = parent.name
-        devclass = parent.packageName
+        devclass = await this.findPackage(parent)
       }
+      if (!parentName) return
     }
-    if (!parentName) return
 
     if (!devclass) {
       const packageResult = await this.server.objectFinder.findObject(
         "Select package",
-        "DEVC/K"
+        PACKAGE
       )
       if (!packageResult) return
       devclass = packageResult.name
     }
-    if (!devclass) return
-    if (objType.parentType === PACKAGE) parentName = devclass
-    const objDetails: NewObjectConfig = {
-      description,
+    if (parentType === PACKAGE) parentName = devclass
+    if (!devclass || !parentName) return
+    return {
       devclass,
-      parentName: parentName || "",
-      name,
-      responsible
+      options: {
+        description,
+        name: this.fixName(name, objType.typeId, parentName),
+        objtype: objType.typeId,
+        parentName,
+        parentPath: objectPath(parentType, parentName, ""),
+        responsible
+      }
     }
-    const valresult = await this.validateObject(objType, objDetails)
-    const err =
-      valresult.length > 0 && valresult.find(x => x.SEVERITY === "ERROR")
-    if (err) throw new Error(err.SHORT_TEXT)
-
-    const trnumber = await this.selectTransport(objType, objDetails)
-
-    await this.create(objType, objDetails, trnumber) //exceptions will bubble up
-    const obj = abapObjectFromNode(objType.objNode(objDetails))
-    await obj.loadMetadata(this.server.connection)
-    return objType.getPath(objDetails)
   }
-  guessParentByType(hierarchy: AbapNode[], type: string): string {
-    //find latest package parent
-    const pn = hierarchy.find(n => isAbapNode(n) && n.abapObject.type === type)
-    //return package name or blank string
-    return (pn && isAbapNode(pn) && pn.abapObject.name) || ""
+  private async findPackage(parent: MySearchResult) {
+    if (parent.packageName) return parent.packageName
+    const path = await this.server.objectFinder.findObjectPath(parent.uri)
+    if (path.length > 1 && path[path.length - 2]["adtcore:type"] === PACKAGE)
+      return path[path.length - 2]["adtcore:name"]
+    return ""
+  }
+  private fixName(name: string, typeId: string, parentName: string): string {
+    if (typeId !== "FUGR/I") return name
+    const parts = parentName.split("/")
+
+    return parts.length < 3
+      ? `L${parentName}${name}`
+      : `/${parts[1]}/L${parts[2]}${name}`
+  }
+  private askName(objType: CreatableTypeIds) {
+    if (objType === "FUGR/I")
+      return this.askInput("suffix", true, (s: string) =>
+        s.match(/^[A-Za-z]\w\w$/) ? "" : "Suffix must be 3 character long"
+      )
+
+    return this.askInput("name")
+  }
+
+  private async askInput(
+    prompt: string,
+    uppercase: boolean = true,
+    validateInput = (s: string) => ""
+  ): Promise<string> {
+    const res = (await window.showInputBox({ prompt, validateInput })) || ""
+    return uppercase ? res.toUpperCase() : res
   }
 }

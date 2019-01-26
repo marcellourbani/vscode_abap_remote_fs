@@ -1,11 +1,17 @@
 {
+  "extends": ["tslint:recommended"],
   "rules": {
+    "arrow-parens": false,
     "no-string-throw": true,
     "no-unused-expression": true,
     "no-duplicate-variable": true,
     "curly": false,
     "class-name": true,
+    "interface-name": false,
+    "ordered-imports": false,
+    "object-literal-sort-keys": false,
     "semicolon": [false, "always"],
+    "trailing-comma": false,
     "triple-equals": true
   },
   "defaultSeverity": "warning"

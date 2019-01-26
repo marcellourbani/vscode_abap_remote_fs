@@ -1,22 +1,21 @@
 import {
   AbapObject,
   AbapNodeComponentByCategory,
-  AbapMetaData
+  NodeStructureMapped
 } from "./AbapObject"
-import { NodeStructure } from "../parsers/AdtNodeStructParser"
-import { AdtConnection } from "../AdtConnection"
-import { FileSystemError } from "vscode"
-import { pick, followLink } from "../../functions"
-import { aggregateNodes } from "./AbapObjectUtilities"
-import { parseClass, firstTextLink } from "../parsers/AdtObjectParser"
-import { parseToPromise } from "../parsers/AdtParserBase"
-import { ClassIncludeMeta, isClassInclude } from "./AbapClassInclude"
 
-interface ClassMetaData extends AbapMetaData {
-  includes: Array<ClassIncludeMeta>
-}
+import { FileSystemError } from "vscode"
+import { aggregateNodes } from "./AbapObjectUtilities"
+import { isClassInclude } from "./AbapClassInclude"
+import {
+  ADTClient,
+  isClassStructure,
+  AbapClassStructure,
+  classIncludes
+} from "abap-adt-api"
+
 export class AbapClass extends AbapObject {
-  metaData?: ClassMetaData
+  public structure?: AbapClassStructure
   constructor(
     type: string,
     name: string,
@@ -25,76 +24,48 @@ export class AbapClass extends AbapObject {
     techName?: string
   ) {
     super(type, name, path, expandable, techName)
+    this.pExpandable = !!expandable
   }
 
-  async loadMetadata(connection: AdtConnection): Promise<AbapObject> {
+  public async loadMetadata(client: ADTClient): Promise<AbapObject> {
     if (this.name) {
-      const mainUri = this.getUri(connection)
-      const meta = await connection
-        .request(mainUri, "GET")
-        .then(pick("body"))
-        .then(parseToPromise())
-        .then(parseClass)
-      const includes = meta.includes.map(i => {
-        const sourcePath = i.header["abapsource:sourceUri"]
-
-        return {
-          includeType: i.header["class:includeType"] || "",
-          type: i.header["adtcore:type"],
-          version: i.header["adtcore:version"],
-          createdAt: Date.parse(i.header["adtcore:createdAt"]),
-          changedAt: Date.parse(i.header["adtcore:changedAt"]),
-          masterLanguage: i.header["adtcore:masterLanguage"],
-          masterSystem: i.header["adtcore:masterSystem"],
-          sourcePath
-        }
-      })
-
-      const link = firstTextLink(meta.links)
-      const sourcePath = link ? link.href : ""
-
-      this.metaData = {
-        createdAt: Date.parse(meta.header["adtcore:createdAt"]),
-        changedAt: Date.parse(meta.header["adtcore:createdAt"]),
-        version: meta.header["adtcore:version"],
-        masterLanguage: meta.header["adtcore:masterLanguage"],
-        masterSystem: meta.header["adtcore:masterSystem"],
-        sourcePath,
-        includes
+      const struc = await client.objectStructure(this.path)
+      if (isClassStructure(struc)) {
+        this.structure = struc
       }
     }
     return this
   }
 
-  async getChildren(
-    connection: AdtConnection
-  ): Promise<Array<AbapNodeComponentByCategory>> {
+  public async getChildren(
+    client: ADTClient
+  ): Promise<AbapNodeComponentByCategory[]> {
     if (this.isLeaf()) throw FileSystemError.FileNotADirectory(this.vsName)
-    if (!this.metaData) await this.loadMetadata(connection)
-    const mainUri = this.getUri(connection)
+    if (!this.structure) await this.loadMetadata(client)
+    if (!this.structure) throw FileSystemError.FileNotFound(this.vsName)
 
-    const ns: NodeStructure = {
+    const ns: NodeStructureMapped = {
       categories: new Map(),
       objectTypes: new Map(),
       nodes: []
     }
     const main = this.selfLeafNode()
-    main.OBJECT_URI = this.metaData!.sourcePath
-    if (this.metaData)
-      for (const include of this.metaData.includes) {
-        const OBJECT_NAME = this.name + "." + include.includeType
-        const node = {
-          EXPANDABLE: "",
-          OBJECT_NAME,
-          OBJECT_TYPE: include.type,
-          OBJECT_URI: followLink(mainUri, include.sourcePath).path,
-          OBJECT_VIT_URI: "",
-          TECH_NAME: include.includeType //bit of sa hack, used to match include metadata
-        }
-
-        if (include.sourcePath === "source/main") ns.nodes.unshift(node)
+    main.OBJECT_URI = ADTClient.mainInclude(this.structure)
+    const sources = ADTClient.classIncludes(this.structure)
+    this.structure.includes.forEach(i => {
+      const node = {
+        EXPANDABLE: "",
+        OBJECT_NAME: this.name + "." + i["class:includeType"],
+        OBJECT_TYPE: i["adtcore:type"],
+        OBJECT_URI: sources.get(i["class:includeType"] as classIncludes) || "",
+        OBJECT_VIT_URI: "",
+        TECH_NAME: i["class:includeType"] // bit of a hack, used to match include metadata
+      }
+      if (node.OBJECT_URI) {
+        if (i["abapsource:sourceUri"] === "source/main") ns.nodes.unshift(node)
         else ns.nodes.push(node)
       }
+    })
 
     const aggregated = aggregateNodes(ns, this.type)
     for (const cat of aggregated)

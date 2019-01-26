@@ -1,18 +1,16 @@
-import { AdtConnection } from "./AdtConnection"
 import { Uri, FileSystemError, FileType, commands } from "vscode"
 import { MetaFolder } from "../fs/MetaFolder"
 import { AbapObjectNode, AbapNode, isAbapNode } from "../fs/AbapNode"
 import { AbapObject, TransportStatus, isAbapObject } from "./abap/AbapObject"
-import { getRemoteList } from "../config"
+import { getRemoteList, createClient } from "../config"
 import { selectTransport } from "./AdtTransports"
 import { AdtObjectActivator } from "./operations/AdtObjectActivator"
-import { pick } from "../functions"
 import { AdtObjectFinder } from "./operations/AdtObjectFinder"
-import { AdtObjectCreator } from "./operations/AdtObjectCreator"
-import { PACKAGE } from "./operations/AdtObjectTypes"
+import { AdtObjectCreator, PACKAGE } from "./operations/AdtObjectCreator"
 import { LockManager } from "./operations/LockManager"
-import { AdtException } from "./AdtExceptions"
 import { SapGui } from "./sapgui/sapgui"
+import { ADTClient, adtException, isCreatableTypeId } from "abap-adt-api"
+import { isString } from "util"
 export const ADTBASEURL = "/sap/bc/adt/repository/nodestructure"
 
 /**
@@ -23,19 +21,19 @@ export const ADTBASEURL = "/sap/bc/adt/repository/nodestructure"
 const uriParts = (uri: Uri): string[] =>
   uri.path
     .split("/")
-    .filter((v, idx, arr) => (idx > 0 && idx < arr.length - 1) || v) //ignore empty at beginning or end
+    .filter((v, idx, arr) => (idx > 0 && idx < arr.length - 1) || v) // ignore empty at beginning or end
 /**
  * centralizes most API accesses
  * some will be delegated/provided from members or ABAP object nodes
  */
 export class AdtServer {
-  readonly connection: AdtConnection
+  public readonly root: MetaFolder
+  public readonly objectFinder: AdtObjectFinder
+  public readonly creator: AdtObjectCreator
+  public readonly lockManager: LockManager
+  public readonly sapGui: SapGui
+  public readonly client: ADTClient
   private readonly activator: AdtObjectActivator
-  readonly root: MetaFolder
-  readonly objectFinder: AdtObjectFinder
-  readonly creator: AdtObjectCreator
-  readonly lockManager: LockManager
-  readonly sapGui: SapGui
   private lastRefreshed?: string
 
   /**
@@ -43,26 +41,21 @@ export class AdtServer {
    *
    * @param connectionId ADT connection ID
    */
-  constructor(connectionId: string) {
+  constructor(readonly connectionId: string) {
     const config = getRemoteList().filter(
-      config => config.name.toLowerCase() === connectionId.toLowerCase()
+      cfg => cfg.name.toLowerCase() === connectionId.toLowerCase()
     )[0]
 
     if (!config) throw new Error(`connection ${connectionId}`)
-
-    this.connection = AdtConnection.fromRemote(config)
-    //utility components
+    this.client = createClient(config)
+    // utility components
     this.creator = new AdtObjectCreator(this)
-    this.activator = new AdtObjectActivator(this.connection)
-    this.objectFinder = new AdtObjectFinder(this.connection)
-    this.lockManager = new LockManager(this.connection)
+    this.activator = new AdtObjectActivator(this.client)
+    this.objectFinder = new AdtObjectFinder(this)
+    this.lockManager = new LockManager(this.client)
     this.sapGui = SapGui.create(config)
-    this.connection
-      .connect()
-      .then(pick("body"))
-      .then(this.objectFinder.setTypes.bind(this))
 
-    //root folder
+    // root folder
     this.root = new MetaFolder()
     this.root.setChild(
       `$TMP`,
@@ -73,6 +66,30 @@ export class AdtServer {
       new AbapObjectNode(new AbapObject("DEVC/K", "", ADTBASEURL, "X"))
     )
   }
+  public async delete(uri: Uri) {
+    const file = this.findNode(uri)
+    if (isAbapNode(file)) {
+      const obj = file.abapObject
+      if (!isCreatableTypeId(obj.type))
+        throw FileSystemError.NoPermissions(
+          "Only allowed to delete abap objects can be created"
+        )
+
+      try {
+        await this.lockManager.lock(obj)
+        const transport = await this.selectTransportIfNeeded(obj)
+        if (!transport.cancelled)
+          await this.client.deleteObject(
+            obj.path,
+            this.lockManager.getLockId(obj),
+            transport.transport
+          )
+      } finally {
+        await this.lockManager.unlock(obj)
+      }
+    } else
+      throw FileSystemError.NoPermissions("Only abap objects can be deleted")
+  }
   /**
    * Refresh a directory
    * Workaround for ADT bug: when a session is stateful, it caches package contents
@@ -80,20 +97,17 @@ export class AdtServer {
    *
    * @param dir the directory to refresh
    */
-  async refreshDirIfNeeded(dir: AbapNode) {
+  public async refreshDirIfNeeded(dir: AbapNode) {
     if (dir.canRefresh()) {
       /* Workaround for ADT bug: when a session is stateful, it caches package contents
        * to invalidate the cache, read contents of another package
        * but only do that if it was the last package read*/
-      if (this.connection.stateful) {
+      if (this.client.isStateful) {
         if (isAbapNode(dir) && dir.abapObject.type === PACKAGE) {
           if (this.lastRefreshed === dir.abapObject.name) {
-            this.connection.request(
-              await this.connection.createUri(
-                "/sap/bc/adt/repository/nodestructure",
-                `parent_name=${this.lastRefreshed ? "SEU_ADT" : "%24TMP"}`
-              ),
-              "POST"
+            await this.client.nodeContents(
+              PACKAGE,
+              this.lastRefreshed === "$TMP" ? "SEU_ADT" : "$TMP"
             )
           }
 
@@ -101,8 +115,15 @@ export class AdtServer {
         }
       } else this.lastRefreshed = undefined
 
-      await dir.refresh(this.connection)
+      await dir.refresh(this.client)
     }
+  }
+
+  public createUri(path: string, query: string = "") {
+    return Uri.parse("adt://" + this.connectionId).with({
+      path,
+      query
+    })
   }
 
   /**
@@ -111,35 +132,27 @@ export class AdtServer {
    * @param file the ABAP node being saved
    * @param content the source of the ABAP file
    */
-  async saveFile(file: AbapNode, content: Uint8Array): Promise<void> {
+  public async saveFile(file: AbapNode, content: Uint8Array): Promise<void> {
     if (file.isFolder) throw FileSystemError.FileIsADirectory()
     if (!isAbapNode(file))
       throw FileSystemError.NoPermissions("Can only save source code")
 
     const obj = file.abapObject
-    //check file is locked
+    // check file is locked
     if (!this.lockManager.isLocked(obj))
-      throw new AdtException(
-        "lockNotFound",
-        `Object not locked ${obj.type} ${obj.name}`
-      )
+      throw adtException(`Object not locked ${obj.type} ${obj.name}`)
 
-    if (obj.transport === TransportStatus.REQUIRED) {
-      const transport = await selectTransport(
-        obj.getContentsUri(this.connection),
-        "",
-        this.connection
-      )
-      if (transport) file.abapObject.transport = transport
+    const transport = await this.selectTransportIfNeeded(obj)
+
+    if (!transport.cancelled) {
+      const lockId = this.lockManager.getLockId(obj)
+      await obj.setContents(this.client, content, lockId)
+
+      await file.stat(this.client)
+      await this.lockManager.unlock(obj)
+      // might have a race condition with user changing editor...
+      commands.executeCommand("setContext", "abapfs:objectInactive", true)
     }
-
-    const lockId = this.lockManager.getLockId(obj)
-    await obj.setContents(this.connection, content, lockId)
-
-    await file.stat(this.connection)
-    await this.lockManager.unlock(obj)
-    //might have a race condition with user changing editor...
-    commands.executeCommand("setContext", "abapfs:objectInactive", true)
   }
 
   /**
@@ -148,7 +161,7 @@ export class AdtServer {
    *
    * @param uri vscode URI
    */
-  findNode(uri: Uri): AbapNode {
+  public findNode(uri: Uri): AbapNode {
     return this.findNodeHierarchy(uri)[0]
   }
 
@@ -170,7 +183,7 @@ export class AdtServer {
    *
    * @param uri VSCode URI
    */
-  findNodeHierarchy(uri: Uri): AbapNode[] {
+  public findNodeHierarchy(uri: Uri): AbapNode[] {
     const parts = uriParts(uri)
     return parts.reduce(
       (current: AbapNode[], name) => {
@@ -192,7 +205,7 @@ export class AdtServer {
    *
    * @param uri VSCode URI
    */
-  async findNodePromise(uri: Uri): Promise<AbapNode> {
+  public async findNodePromise(uri: Uri): Promise<AbapNode> {
     let node: AbapNode = this.root
     let refreshable: AbapNode | undefined = node.canRefresh() ? node : undefined
     const parts = uriParts(uri)
@@ -200,8 +213,8 @@ export class AdtServer {
     for (const part of parts) {
       let next: AbapNode | undefined = node.getChild(part)
       if (!next && refreshable) {
-        //refreshable will typically be the current node or its first abap parent (usually a package)
-        await refreshable.refresh(this.connection)
+        // refreshable will typically be the current node or its first abap parent (usually a package)
+        await refreshable.refresh(this.client)
         next = node.getChild(part)
       }
       if (next) {
@@ -217,7 +230,7 @@ export class AdtServer {
    *
    * @param uri VSCode URI
    */
-  async findAbapObject(uri: Uri): Promise<AbapObject> {
+  public async findAbapObject(uri: Uri): Promise<AbapObject> {
     const node = await this.findNodePromise(uri)
     if (isAbapNode(node)) return node.abapObject
     return Promise.reject(new Error("Not an abap object"))
@@ -228,11 +241,11 @@ export class AdtServer {
    *
    * @param uri VSCode URI
    */
-  async stat(uri: Uri) {
+  public async stat(uri: Uri) {
     const node = await this.findNodePromise(uri)
     if (node.canRefresh()) {
-      if (node.type === FileType.Directory) await node.refresh(this.connection)
-      else await node.stat(this.connection)
+      if (node.type === FileType.Directory) await node.refresh(this.client)
+      else await node.stat(this.client)
     }
     return node
   }
@@ -242,17 +255,29 @@ export class AdtServer {
    *
    * @param subject Object or vscode URI to activate
    */
-  async activate(subject: AbapObject | Uri) {
+  public async activate(subject: AbapObject | Uri) {
     const obj = this.getObject(subject)
     return this.activator.activate(obj)
   }
 
-  async getReentranceTicket() {
-    const response = await this.connection.request(
-      this.connection.createUri("/sap/bc/adt/security/reentranceticket"),
-      "GET"
-    )
-    return response.body
+  public async getReentranceTicket() {
+    return this.client.reentranceTicket()
+  }
+
+  private async selectTransportIfNeeded(obj: AbapObject) {
+    if (obj.transport === TransportStatus.REQUIRED) {
+      const transport = await selectTransport(
+        obj.getContentsUri(),
+        "",
+        this.client
+      )
+      if (transport.transport) obj.transport = transport.transport
+      return transport
+    }
+    return {
+      transport: isString(obj.transport) ? obj.transport : "",
+      cancelled: false
+    }
   }
 
   /**
@@ -283,9 +308,9 @@ export const fromUri = (uri: Uri) => {
   throw FileSystemError.FileNotFound(uri)
 }
 export async function disconnect() {
-  const promises: Promise<any>[] = []
+  const promises: Array<Promise<any>> = []
   for (const server of servers) {
-    promises.push(server[1].connection.dropSession())
+    promises.push(server[1].client.dropSession())
   }
   await Promise.all(promises)
 }

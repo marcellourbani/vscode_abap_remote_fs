@@ -1,28 +1,36 @@
-import { Uri, FileSystemError } from "vscode"
-import { AdtConnection } from "../AdtConnection"
-import { pick, followLink } from "../../functions"
-import {
-  parseNode,
-  NodeStructure,
-  ObjectNode
-} from "../parsers/AdtNodeStructParser"
-import { parseToPromise, getNode } from "../parsers/AdtParserBase"
-import { parseObject, firstTextLink } from "../parsers/AdtObjectParser"
+import { FileSystemError } from "vscode"
+import { ArrayToMap } from "../../functions"
 import { aggregateNodes, objectTypeExtension } from "./AbapObjectUtilities"
 import { SapGuiCommand } from "../sapgui/sapgui"
+import {
+  ADTClient,
+  AbapObjectStructure,
+  Node,
+  NodeCategory,
+  NodeObjectType
+} from "abap-adt-api"
+import { isString } from "util"
+import { isNodeParent } from "abap-adt-api"
+import { PACKAGE } from "../operations/AdtObjectCreator"
 
 const TYPEID = Symbol()
 export const XML_EXTENSION = ".XML"
 export const SAPGUIONLY = "Objects of this type are only supported in SAPGUI"
-export type AbapNodeComponentByType = {
+export interface AbapNodeComponentByType {
   name: string
   type: string
-  objects: Array<AbapObject>
+  objects: AbapObject[]
 }
-export type AbapNodeComponentByCategory = {
+
+export interface NodeStructureMapped {
+  nodes: Node[]
+  categories: Map<string, NodeCategory>
+  objectTypes: Map<string, NodeObjectType>
+}
+export interface AbapNodeComponentByCategory {
   name: string
   category: string
-  types: Array<AbapNodeComponentByType>
+  types: AbapNodeComponentByType[]
 }
 export interface AbapMetaData {
   sourcePath: string
@@ -37,24 +45,23 @@ export enum TransportStatus {
   REQUIRED,
   LOCAL
 }
-interface MainProgram {
-  "adtcore:uri": string
-  "adtcore:type": string
-  "adtcore:name": string
-}
 
 export class AbapObject {
-  readonly type: string
-  readonly name: string
-  readonly techName: string
-  readonly path: string
-  readonly expandable: boolean
-  transport: TransportStatus | string = TransportStatus.UNKNOWN
-  metaData?: AbapMetaData
-  protected sapguiOnly: boolean
-  private get _typeId() {
-    return TYPEID
+  public static isAbapObject(x: any): x is AbapObject {
+    return (x as AbapObject)._typeId === TYPEID
   }
+  public readonly type: string
+  public readonly name: string
+  public readonly techName: string
+  public readonly path: string
+  public get expandable() {
+    return this.pExpandable
+  }
+  public transport: TransportStatus | string = TransportStatus.UNKNOWN
+  public structure?: AbapObjectStructure
+
+  protected pExpandable: boolean
+  protected sapguiOnly: boolean
 
   constructor(
     type: string,
@@ -66,84 +73,42 @@ export class AbapObject {
     this.name = name
     this.type = type
     this.path = path
-    this.expandable = !!expandable
+    this.pExpandable = !!expandable && type === PACKAGE
     this.techName = techName || name
     this.sapguiOnly = !!path.match(
       "(/sap/bc/adt/vit)|(/sap/bc/adt/ddic/domains/)|(/sap/bc/adt/ddic/dataelements/)"
     )
   }
-  static isAbapObject(x: any): x is AbapObject {
-    return (<AbapObject>x)._typeId === TYPEID
-  }
 
-  isLeaf() {
+  public isLeaf() {
     return !this.expandable
   }
   get vsName(): string {
     return this.name.replace(/\//g, "／") + this.getExtension()
   }
 
-  getExecutionCommand(): SapGuiCommand | undefined {
+  public getExecutionCommand(): SapGuiCommand | undefined {
     return
   }
 
-  getUri(connection: AdtConnection) {
-    return Uri.parse("adt://" + connection.name).with({
-      path: this.path
-    })
-  }
-  async activate(
-    connection: AdtConnection,
+  public async activate(
+    client: ADTClient,
     mainInclude?: string
   ): Promise<string> {
-    const uri = this.getUri(connection).with({
-      path: "/sap/bc/adt/activation",
-      query: "method=activate&preauditRequested=true"
-    })
-    const incl = mainInclude
-      ? `?context=${encodeURIComponent(mainInclude)}`
-      : ""
-    const payload =
-      `<?xml version="1.0" encoding="UTF-8"?>` +
-      `<adtcore:objectReferences xmlns:adtcore="http://www.sap.com/adt/core">` +
-      `<adtcore:objectReference adtcore:uri="${
-        this.path
-      }${incl}" adtcore:name="${this.name}"/>` +
-      `</adtcore:objectReferences>`
-
-    const response = await connection.request(uri, "POST", { body: payload })
-    if (response.body) {
-      //activation error(s?)
-      const raw = (await parseToPromise()(response.body)) as any
-
-      if (raw && raw["chkl:messages"]) {
-        const messages = (await parseToPromise(
-          getNode("chkl:messages/msg/shortText/txt")
-        )(response.body)) as string[]
-
-        return messages[0]
-      } else if (raw && raw["ioc:inactiveObjects"]) {
-      }
-    }
-    return ""
+    const result = await client.activate(this.name, this.path, mainInclude)
+    const m = result.messages[0]
+    return (m && m.shortText) || ""
   }
 
-  async getMainPrograms(connection: AdtConnection): Promise<MainProgram[]> {
-    const response = await connection.request(
-      followLink(this.getUri(connection), "mainprograms"),
-      "GET"
-    )
-    const parsed: any = await parseToPromise()(response.body)
-    return parsed["adtcore:objectReferences"]["adtcore:objectReference"].map(
-      (link: any) => link["$"]
-    )
+  public async getMainPrograms(client: ADTClient) {
+    return client.mainPrograms(this.path)
   }
 
-  getLockTarget(): AbapObject {
+  public getLockTarget(): AbapObject {
     return this
   }
 
-  canBeWritten() {
+  public canBeWritten() {
     if (!this.isLeaf()) throw FileSystemError.FileIsADirectory(this.vsName)
     if (this.sapguiOnly)
       throw FileSystemError.FileNotFound(
@@ -151,107 +116,77 @@ export class AbapObject {
       )
   }
 
-  async setContents(
-    connection: AdtConnection,
+  public async setContents(
+    client: ADTClient,
     contents: Uint8Array,
     lockId: string
   ): Promise<void> {
     this.canBeWritten()
-    let contentUri = this.getContentsUri(connection)
+    // contents URL depends on metadata
+    if (!this.structure) await this.loadMetadata(client)
+    const contentUri = this.getContentsUri()
+    const transport = isString(this.transport) ? this.transport : undefined
 
-    const trselection =
-      typeof this.transport === "string" ? `&corrNr=${this.transport}` : ""
-
-    await connection.request(
-      contentUri.with({
-        query: `lockHandle=${encodeURIComponent(lockId)}${trselection}`
-      }),
-      "PUT",
-      {
-        body: contents,
-        headers: { "content-type": "text/plain; charset=utf-8" }
-      }
+    await client.setObjectSource(
+      contentUri,
+      contents.toString(),
+      lockId,
+      transport
     )
   }
 
-  async loadMetadata(connection: AdtConnection): Promise<AbapObject> {
+  public async loadMetadata(client: ADTClient): Promise<AbapObject> {
     if (this.name) {
-      const mainUri = this.getUri(connection)
-      const response = await connection.request(mainUri, "GET")
-      const raw = await parseToPromise()(response.body)
-      const meta = parseObject(raw)
-      const link = firstTextLink(meta.links)
-      const sourcePath = link ? link.href : ""
-      this.metaData = {
-        createdAt: Date.parse(meta.header["adtcore:createdAt"]),
-        changedAt: Date.parse(meta.header["adtcore:createdAt"]),
-        version: meta.header["adtcore:version"],
-        masterLanguage: meta.header["adtcore:masterLanguage"],
-        masterSystem: meta.header["adtcore:masterSystem"],
-        sourcePath
-      }
+      this.structure = await client.objectStructure(this.path)
     }
     return this
   }
 
-  getContentsUri(connection: AdtConnection): Uri {
-    if (!this.metaData) throw FileSystemError.FileNotFound(this.path)
-    // baseUri = baseUri.with({ path: baseUri.path.replace(/\?.*/, "") })
-    return followLink(this.getUri(connection), this.metaData.sourcePath).with({
-      query: `version=${this.metaData.version}`
-    })
+  public getContentsUri(): string {
+    if (!this.structure) throw FileSystemError.FileNotFound(this.path)
+    const include = ADTClient.mainInclude(this.structure)
+    return include
   }
 
-  async getContents(connection: AdtConnection): Promise<string> {
+  public async getContents(client: ADTClient): Promise<string> {
     if (!this.isLeaf()) throw FileSystemError.FileIsADirectory(this.vsName)
-    if (this.sapguiOnly || !this.metaData || !this.metaData.sourcePath)
-      return SAPGUIONLY
+    const url = this.getContentsUri()
+    if (this.sapguiOnly || !url) return SAPGUIONLY
 
-    return connection
-      .request(this.getContentsUri(connection), "GET")
-      .then(pick("body"))
+    return client.getObjectSource(url)
   }
 
-  getExtension(): string {
+  public getExtension(): string {
     if (!this.isLeaf()) return ""
     return this.sapguiOnly ? ".txt" : objectTypeExtension(this) + ".abap"
   }
 
-  getActivationSubject(): AbapObject {
+  public getActivationSubject(): AbapObject {
     return this
   }
 
-  async getChildren(
-    connection: AdtConnection
-  ): Promise<Array<AbapNodeComponentByCategory>> {
-    if (this.isLeaf()) throw FileSystemError.FileNotADirectory(this.vsName)
-    const nodeUri = this.getNodeUri(connection)
+  public async getChildren(
+    client: ADTClient
+  ): Promise<AbapNodeComponentByCategory[]> {
+    if (this.isLeaf() || !isNodeParent(this.type))
+      throw FileSystemError.FileNotADirectory(this.vsName)
 
-    const response = await connection.request(nodeUri, "POST")
-    const nodes = await parseNode(response.body)
+    const adtnodes = await client.nodeContents(this.type, this.name)
+    const nodes = {
+      nodes: adtnodes.nodes,
+      categories: ArrayToMap("CATEGORY")(adtnodes.categories),
+      objectTypes: ArrayToMap("OBJECT_TYPE")(adtnodes.objectTypes)
+    }
     const filtered = this.filterNodeStructure(nodes)
     const components = aggregateNodes(filtered, this.type)
 
     return components
   }
 
-  protected getNodeUri(connection: AdtConnection): Uri {
-    const techName = this.techName.match(/^=/) ? this.name : this.techName
-    return Uri.parse("adt://dummy/sap/bc/adt/repository/nodestructure").with({
-      authority: connection.name,
-      query: `parent_name=${encodeURIComponent(
-        this.name
-      )}&parent_tech_name=${encodeURIComponent(
-        techName
-      )}&parent_type=${encodeURIComponent(
-        this.type
-      )}&user_name=${encodeURIComponent(
-        connection.username.toUpperCase()
-      )}&withShortDescriptions=true`
-    })
-  }
-  //exclude those visible only in SAPGUI, except whitelisted
-  protected filterNodeStructure(nodest: NodeStructure): NodeStructure {
+  // exclude those visible only in SAPGUI, except whitelisted
+  protected filterNodeStructure(
+    nodest: NodeStructureMapped
+  ): NodeStructureMapped {
     if (this.type === "DEVC/K") return nodest
     const nodes = nodest.nodes.filter(x => this.whiteListed(x.OBJECT_TYPE))
     return {
@@ -264,7 +199,7 @@ export class AbapObject {
     return !!OBJECT_TYPE.match(/^....\/(.|(FF))$/)
   }
 
-  protected selfLeafNode(): ObjectNode {
+  protected selfLeafNode(): Node {
     return {
       OBJECT_NAME: this.name,
       OBJECT_TYPE: this.type,
@@ -274,15 +209,20 @@ export class AbapObject {
       TECH_NAME: this.techName
     }
   }
+
+  private get _typeId() {
+    return TYPEID
+  }
 }
+// tslint:disable:max-classes-per-file
 export class AbapXmlObject extends AbapObject {
-  getExtension(): string {
+  public getExtension(): string {
     if (!this.isLeaf()) return ""
     return this.sapguiOnly ? ".txt" : ".xml"
   }
 }
 export class AbapSimpleObject extends AbapObject {
-  isLeaf() {
+  public isLeaf() {
     return true
   }
 }
