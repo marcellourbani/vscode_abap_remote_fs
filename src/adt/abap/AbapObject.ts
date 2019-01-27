@@ -1,12 +1,8 @@
 import { Uri, FileSystemError } from "vscode"
 import { AdtConnection } from "../AdtConnection"
-import { pick, followLink } from "../../functions"
-import {
-  parseNode,
-  NodeStructure,
-  ObjectNode
-} from "../parsers/AdtNodeStructParser"
-import { parseToPromise, getNode } from "../parsers/AdtParserBase"
+import { followLink, ArrayToMap } from "../../functions"
+import { NodeStructure, ObjectNode } from "../parsers/AdtNodeStructParser"
+import { parseToPromise } from "../parsers/AdtParserBase"
 import { aggregateNodes, objectTypeExtension } from "./AbapObjectUtilities"
 import { SapGuiCommand } from "../sapgui/sapgui"
 import { ADTClient, AbapObjectStructure } from "abap-adt-api"
@@ -175,12 +171,16 @@ export class AbapObject {
   ): Promise<Array<AbapNodeComponentByCategory>> {
     if (this.isLeaf()) throw FileSystemError.FileNotADirectory(this.vsName)
 
-    const nodes = await client.nodeContents({
+    const adtnodes = await client.nodeContents({
       parent_name: this.name,
       parent_tech_name: this.techName,
       parent_type: this.type as NodeParents
     })
-
+    const nodes = {
+      nodes: adtnodes.nodes,
+      categories: ArrayToMap("CATEGORY")(adtnodes.categories),
+      objectTypes: ArrayToMap("OBJECT_TYPE")(adtnodes.objectTypes)
+    }
     const filtered = this.filterNodeStructure(nodes)
     const components = aggregateNodes(filtered, this.type)
 
