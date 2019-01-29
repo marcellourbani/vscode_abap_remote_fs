@@ -1,14 +1,9 @@
-import {
-  parseToPromise,
-  getNode,
-  recxml2js,
-  nodeProperties
-} from "../parsers/AdtParserBase"
-import { mapWith, ArrayToMap, pick, sapEscape } from "../../functions"
-import { AdtConnection } from "../AdtConnection"
+import { AdtServer } from "./../AdtServer"
+import { ADTClient, SearchResult } from "abap-adt-api"
+import { parseToPromise, getNode, recxml2js } from "../parsers/AdtParserBase"
+import { mapWith, ArrayToMap, sapEscape } from "../../functions"
 import { window, QuickPickItem, workspace } from "vscode"
 import * as vscode from "vscode"
-import { getServer } from "../AdtServer"
 import {
   NodePath,
   findObjectInNode,
@@ -40,7 +35,7 @@ interface AdtObjectPathNode {
   parentUri: string
   category: string
 }
-class SearchResult implements QuickPickItem, AdtSearchResult {
+class MySearchResult implements QuickPickItem, AdtSearchResult {
   get label(): string {
     return `${this.name}(${this.description})`
   }
@@ -53,63 +48,37 @@ class SearchResult implements QuickPickItem, AdtSearchResult {
     return `Package ${this.packageName} type ${this.type}`
   }
   picked: boolean = false
-  constructor(r: AdtSearchResult) {
-    this.uri = r.uri
-    this.type = r.type
-    this.name = r.name
-    this.packageName = r.packageName
-    this.description = r.description
+  constructor(r: SearchResult) {
+    this.uri = r["adtcore:uri"]
+    this.type = r["adtcore:type"]
+    this.name = r["adtcore:name"]
+    this.packageName = r["adtcore:packageName"]
+    this.description = r["adtcore:description"]
   }
 }
 
 export class AdtObjectFinder {
   types?: Map<string, SearchObjectType>
-  constructor(public readonly conn: AdtConnection) {}
+  constructor(public readonly server: AdtServer) {}
 
   private async search(
     prefix: string,
-    conn: AdtConnection,
+    client: ADTClient,
     objType: string = ""
-  ): Promise<SearchResult[]> {
+  ): Promise<MySearchResult[]> {
     const query = sapEscape(prefix.toUpperCase() + "*")
-    const ot = objType ? "&objectType=" + sapEscape(objType) : ""
-    const uri = conn.createUri(
-      "/sap/bc/adt/repository/informationsystem/search",
-      `operation=quickSearch&query=${query}${ot}&maxResults=51`
-    )
-    const response = await conn.request(uri, "GET")
-    const raw = await parseToPromise()(response.body)
-    const results = getNode(
-      "adtcore:objectReferences/adtcore:objectReference",
-      nodeProperties,
-      mapWith((x: AdtSearchResult) => new SearchResult(x)),
-      raw
-    )
-    return results
+    const raw = await client.searchObject(query, objType)
+    return raw.map(res => {
+      return new MySearchResult(res)
+    })
   }
 
   async findObjectPath(objPath: string) {
-    const uri = this.conn.createUri(
-      "/sap/bc/adt/repository/nodepath",
-      "uri=" + encodeURIComponent(objPath)
-    )
-    const raw = await this.conn
-      .request(uri, "POST")
-      .then(pick("body"))
-      .then(parseToPromise())
-    const objectPath = getNode(
-      "projectexplorer:nodepath/projectexplorer:objectLinkReferences/objectLinkReference",
-      nodeProperties,
-      raw
-    ) as AdtObjectPathNode[]
-
-    return objectPath
+    return this.server.client.findObjectPath(objPath)
   }
 
   async locateObject(abapPath: AdtObjectPathNode[]) {
     if (abapPath.length === 0) return
-    const server = getServer(this.conn.name)
-    if (!server) return
     let children = [...abapPath]
     if (abapPath[0].name.match(/^\$/)) {
       if (abapPath[0].name !== "$TMP")
@@ -129,12 +98,12 @@ export class AdtObjectFinder {
         type: "DEVC/K"
       })
 
-    let nodePath: NodePath = { path: "", node: server.root }
+    let nodePath: NodePath = { path: "", node: this.server.root }
 
     for (const part of children) {
       let child = findObjectInNode(nodePath.node, part.type, part.name)
       if (!child) {
-        await server.refreshDirIfNeeded(nodePath.node)
+        await this.server.refreshDirIfNeeded(nodePath.node)
         child = findObjectInNode(nodePath.node, part.type, part.name)
       }
 
@@ -155,14 +124,14 @@ export class AdtObjectFinder {
         window.showInformationMessage(`Can't open object ${nodePath.path}`)
         return
       }
-      await nodePath.node.refresh(this.conn)
+      await nodePath.node.refresh(this.server.client)
       const main = findMainInclude(nodePath)
       if (!main) {
         window.showInformationMessage(`Can't open object ${nodePath.path}`)
         return
       }
-      uri = this.conn.createUri(main.path)
-    } else uri = this.conn.createUri(nodePath.path)
+      uri = main.path
+    } else uri = nodePath.path
     try {
       const doc = await workspace.openTextDocument(uri)
       await window.showTextDocument(doc)
@@ -179,18 +148,20 @@ export class AdtObjectFinder {
   async findObject(
     prompt: string = "Search an ABAP object",
     objType: string = ""
-  ): Promise<SearchResult | undefined> {
-    const o = await new Promise<SearchResult>(resolve => {
+  ): Promise<MySearchResult | undefined> {
+    const o = await new Promise<MySearchResult>(resolve => {
       const qp = window.createQuickPick()
       //TODO debounce? Looks like VSC does it for me!
       qp.onDidChangeValue(e => {
         if (e.length > 3)
-          this.search(e, this.conn, objType).then(res => (qp.items = res))
+          this.search(e, this.server.client, objType).then(
+            res => (qp.items = res)
+          )
       })
       qp.placeholder = prompt
       qp.onDidChangeSelection(e => {
         if (e[0]) {
-          resolve(e[0] as SearchResult)
+          resolve(e[0] as MySearchResult)
           qp.hide()
         }
       })

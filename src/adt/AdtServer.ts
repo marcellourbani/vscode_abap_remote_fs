@@ -62,7 +62,7 @@ export class AdtServer {
     //utility components
     this.creator = new AdtObjectCreator(this)
     this.activator = new AdtObjectActivator(this.client)
-    this.objectFinder = new AdtObjectFinder(this.connection)
+    this.objectFinder = new AdtObjectFinder(this)
     this.lockManager = new LockManager(this.connection)
     this.sapGui = SapGui.create(config)
     this.connection
@@ -96,12 +96,9 @@ export class AdtServer {
       if (this.connection.stateful) {
         if (isAbapNode(dir) && dir.abapObject.type === PACKAGE) {
           if (this.lastRefreshed === dir.abapObject.name) {
-            this.connection.request(
-              await this.connection.createUri(
-                "/sap/bc/adt/repository/nodestructure",
-                `parent_name=${this.lastRefreshed ? "SEU_ADT" : "%24TMP"}`
-              ),
-              "POST"
+            await this.client.nodeContents(
+              "DEVC/K",
+              this.lastRefreshed ? "SEU_ADT" : "%24TMP"
             )
           }
 
@@ -109,7 +106,7 @@ export class AdtServer {
         }
       } else this.lastRefreshed = undefined
 
-      await dir.refresh(this.connection)
+      await dir.refresh(this.client)
     }
   }
 
@@ -144,7 +141,7 @@ export class AdtServer {
     const lockId = this.lockManager.getLockId(obj)
     await obj.setContents(this.client, content, lockId)
 
-    await file.stat(this.connection)
+    await file.stat(this.client)
     await this.lockManager.unlock(obj)
     //might have a race condition with user changing editor...
     commands.executeCommand("setContext", "abapfs:objectInactive", true)
@@ -209,7 +206,7 @@ export class AdtServer {
       let next: AbapNode | undefined = node.getChild(part)
       if (!next && refreshable) {
         //refreshable will typically be the current node or its first abap parent (usually a package)
-        await refreshable.refresh(this.connection)
+        await refreshable.refresh(this.client)
         next = node.getChild(part)
       }
       if (next) {
@@ -239,8 +236,8 @@ export class AdtServer {
   async stat(uri: Uri) {
     const node = await this.findNodePromise(uri)
     if (node.canRefresh()) {
-      if (node.type === FileType.Directory) await node.refresh(this.connection)
-      else await node.stat(this.connection)
+      if (node.type === FileType.Directory) await node.refresh(this.client)
+      else await node.stat(this.client)
     }
     return node
   }
@@ -256,11 +253,7 @@ export class AdtServer {
   }
 
   async getReentranceTicket() {
-    const response = await this.connection.request(
-      this.connection.createUri("/sap/bc/adt/security/reentranceticket"),
-      "GET"
-    )
-    return response.body
+    return this.client.reentranceTicket()
   }
 
   /**

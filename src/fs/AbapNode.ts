@@ -1,8 +1,8 @@
+import { ADTClient } from "abap-adt-api"
 import { FileStat, FileType, FileSystemError } from "vscode"
 import { aggregateNodes } from "../adt/abap/AbapObjectUtilities"
 import { AbapObject, AbapNodeComponentByCategory } from "../adt/abap/AbapObject"
 import { MetaFolder } from "./MetaFolder"
-import { AdtConnection } from "../adt/AdtConnection"
 import { flatMap, pick } from "../functions"
 
 export const dummy = () => !!aggregateNodes //hack to fix circular dependency issue
@@ -114,11 +114,11 @@ export class AbapObjectNode implements FileStat, Iterable<[string, AbapNode]> {
   get numChildren(): number {
     return this.children ? this.children.size : 0
   }
-  public async fetchContents(connection: AdtConnection): Promise<Uint8Array> {
+  public async fetchContents(client: ADTClient): Promise<Uint8Array> {
     if (this.isFolder) return Promise.reject(FileSystemError.FileIsADirectory())
 
     try {
-      const payload = await this.abapObject.getContents(connection)
+      const payload = await this.abapObject.getContents(client)
       const buf = Buffer.from(payload)
       this.size = buf.length
       return buf
@@ -127,18 +127,18 @@ export class AbapObjectNode implements FileStat, Iterable<[string, AbapNode]> {
     }
   }
 
-  public async refresh(connection: AdtConnection): Promise<AbapNode> {
-    const children = await this.abapObject.getChildren(connection)
+  public async refresh(client: ADTClient): Promise<AbapNode> {
+    const children = await this.abapObject.getChildren(client)
     refreshObjects(this, children)
     return this
   }
 
-  public async stat(connection: AdtConnection): Promise<AbapNode> {
-    await this.abapObject.loadMetadata(connection)
-    const meta = this.abapObject.metaData
+  public async stat(client: ADTClient): Promise<AbapNode> {
+    await this.abapObject.loadMetadata(client)
+    const meta = this.abapObject.structure
     if (meta) {
-      this.ctime = meta.createdAt
-      this.mtime = meta.changedAt
+      this.ctime = meta.metaData["adtcore:createdAt"].getTime()
+      this.mtime = meta.metaData["adtcore:changedAt"].getTime()
     }
     return this
   }

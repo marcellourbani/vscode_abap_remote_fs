@@ -12,6 +12,7 @@ import {
 } from "./AdtObjectTypes"
 import { selectTransport } from "../AdtTransports"
 import { abapObjectFromNode } from "../abap/AbapObjectUtilities"
+import { ObjectType } from "abap-adt-api"
 
 interface ValidationMessage {
   SEVERITY: string
@@ -19,44 +20,13 @@ interface ValidationMessage {
   LONG_TEXT: string
 }
 
-interface AdtObjectType {
-  OBJECT_TYPE: string
-  OBJECT_TYPE_LABEL: string
-  CATEGORY: string
-  CATEGORY_LABEL: string
-  URI_TEMPLATE: string
-  PARENT_OBJECT_TYPE: string
-  OBJNAME_MAXLENGTH: string
-  canCreate: boolean
-}
 export class AdtObjectCreator {
-  private types?: AdtObjectType[]
+  private types?: ObjectType[]
 
   constructor(private server: AdtServer) {}
 
-  async loadTypes(): Promise<AdtObjectType[]> {
-    const uri = this.server.connection.createUri(
-      "/sap/bc/adt/repository/typestructure"
-    )
-    const response = await this.server.connection.request(uri, "POST")
-    const raw = await parseToPromise()(response.body)
-    return getNode(
-      "asx:abap/asx:values/DATA/SEU_ADT_OBJECT_TYPE_DESCRIPTOR",
-      mapWith(recxml2js),
-      (typedescs: any[]) => typedescs.filter(td => td.CAPABILITIES !== ""),
-      mapWith(x => {
-        const { CAPABILITIES, ...rest } = x
-        const canCreate = !!CAPABILITIES.SEU_ACTION.find(
-          (x: any) => x === "CREATE"
-        )
-        return { ...rest, canCreate }
-      }),
-      raw
-    )
-  }
-
-  async getObjectTypes(uri: Uri): Promise<AdtObjectType[]> {
-    if (!this.types) this.types = await this.loadTypes()
+  async getObjectTypes(uri: Uri): Promise<ObjectType[]> {
+    if (!this.types) this.types = await this.server.client.loadTypes()
     const parent = this.server.findNode(uri)
     let otype = parent && isAbapNode(parent) && parent.abapObject.type
     if (otype === PACKAGE) otype = ""
@@ -120,8 +90,11 @@ export class AdtObjectCreator {
     objType: CreatableObjectType,
     objDetails: NewObjectConfig
   ): Promise<string> {
-    const uri = this.server.connection.createUri(objType.getPath(objDetails))
-    return selectTransport(uri, objDetails.devclass, this.server.connection)
+    return selectTransport(
+      objType.getPath(objDetails),
+      objDetails.devclass,
+      this.server.client
+    )
   }
   /**
    * Creates an ABAP object
@@ -213,7 +186,7 @@ export class AdtObjectCreator {
 
     await this.create(objType, objDetails, trnumber) //exceptions will bubble up
     const obj = abapObjectFromNode(objType.objNode(objDetails))
-    await obj.loadMetadata(this.server.connection)
+    await obj.loadMetadata(this.server.client)
     return objType.getPath(objDetails)
   }
   guessParentByType(hierarchy: AbapNode[], type: string): string {
