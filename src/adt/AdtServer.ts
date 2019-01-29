@@ -61,7 +61,7 @@ export class AdtServer {
     this.connection = AdtConnection.fromRemote(config)
     //utility components
     this.creator = new AdtObjectCreator(this)
-    this.activator = new AdtObjectActivator(this.connection)
+    this.activator = new AdtObjectActivator(this.client)
     this.objectFinder = new AdtObjectFinder(this.connection)
     this.lockManager = new LockManager(this.connection)
     this.sapGui = SapGui.create(config)
@@ -134,15 +134,15 @@ export class AdtServer {
 
     if (obj.transport === TransportStatus.REQUIRED) {
       const transport = await selectTransport(
-        obj.getContentsUri(this.connection),
+        obj.getContentsUri(),
         "",
-        this.connection
+        this.client
       )
       if (transport) file.abapObject.transport = transport
     }
 
     const lockId = this.lockManager.getLockId(obj)
-    await obj.setContents(this.connection, content, lockId)
+    await obj.setContents(this.client, content, lockId)
 
     await file.stat(this.connection)
     await this.lockManager.unlock(obj)

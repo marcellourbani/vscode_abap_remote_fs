@@ -1,8 +1,6 @@
 import { Uri, FileSystemError } from "vscode"
-import { AdtConnection } from "../AdtConnection"
-import { followLink, ArrayToMap } from "../../functions"
+import { ArrayToMap } from "../../functions"
 import { NodeStructure, ObjectNode } from "../parsers/AdtNodeStructParser"
-import { parseToPromise } from "../parsers/AdtParserBase"
 import { aggregateNodes, objectTypeExtension } from "./AbapObjectUtilities"
 import { SapGuiCommand } from "../sapgui/sapgui"
 import { ADTClient, AbapObjectStructure } from "abap-adt-api"
@@ -34,11 +32,6 @@ export enum TransportStatus {
   UNKNOWN,
   REQUIRED,
   LOCAL
-}
-interface MainProgram {
-  "adtcore:uri": string
-  "adtcore:type": string
-  "adtcore:name": string
 }
 
 export class AbapObject {
@@ -85,26 +78,14 @@ export class AbapObject {
     return
   }
 
-  getUri(connection: AdtConnection) {
-    return Uri.parse("adt://" + connection.name).with({
-      path: this.path
-    })
-  }
   async activate(client: ADTClient, mainInclude?: string): Promise<string> {
     const result = await client.activate(this.name, this.path, mainInclude)
     const m = result.messages[0]
     return (m && m.shortText) || ""
   }
 
-  async getMainPrograms(connection: AdtConnection): Promise<MainProgram[]> {
-    const response = await connection.request(
-      followLink(this.getUri(connection), "mainprograms"),
-      "GET"
-    )
-    const parsed: any = await parseToPromise()(response.body)
-    return parsed["adtcore:objectReferences"]["adtcore:objectReference"].map(
-      (link: any) => link["$"]
-    )
+  async getMainPrograms(client: ADTClient) {
+    return client.mainPrograms(this.path)
   }
 
   getLockTarget(): AbapObject {
@@ -187,21 +168,6 @@ export class AbapObject {
     return components
   }
 
-  protected getNodeUri(connection: AdtConnection): Uri {
-    const techName = this.techName.match(/^=/) ? this.name : this.techName
-    return Uri.parse("adt://dummy/sap/bc/adt/repository/nodestructure").with({
-      authority: connection.name,
-      query: `parent_name=${encodeURIComponent(
-        this.name
-      )}&parent_tech_name=${encodeURIComponent(
-        techName
-      )}&parent_type=${encodeURIComponent(
-        this.type
-      )}&user_name=${encodeURIComponent(
-        connection.username.toUpperCase()
-      )}&withShortDescriptions=true`
-    })
-  }
   //exclude those visible only in SAPGUI, except whitelisted
   protected filterNodeStructure(nodest: NodeStructure): NodeStructure {
     if (this.type === "DEVC/K") return nodest

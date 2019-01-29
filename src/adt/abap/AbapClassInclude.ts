@@ -1,32 +1,32 @@
-import { AbapObject, AbapMetaData } from "./AbapObject"
-import { AdtConnection } from "../AdtConnection"
+import { ADTClient, AbapClassStructure } from "abap-adt-api"
+import { AbapObject } from "./AbapObject"
 import { AbapClass } from "./AbapClass"
-import { Uri, FileSystemError } from "vscode"
+import { FileSystemError } from "vscode"
 import { SapGuiCommand } from "../sapgui/sapgui"
-export interface ClassIncludeMeta extends AbapMetaData {
-  includeType: string
-  type: string
-}
+import { classIncludes } from "abap-adt-api/build/api"
+
 export class AbapClassInclude extends AbapObject {
-  metaData?: ClassIncludeMeta
+  structure?: AbapClassStructure
   parent?: AbapClass
   constructor(
     type: string,
     name: string,
     path: string,
     expandable?: string,
-    techName?: string
+    techName?: classIncludes
   ) {
     super(type, name, path, expandable, techName)
   }
   setParent(parent: AbapClass) {
     this.parent = parent
   }
-  getContentsUri(connection: AdtConnection): Uri {
-    if (!this.metaData) throw FileSystemError.FileNotFound(this.path)
-    return this.getUri(connection).with({
-      query: `version=${this.metaData.version}`
-    })
+  getContentsUri(): string {
+    if (!this.structure || !this.techName)
+      throw FileSystemError.FileNotFound(this.path)
+    const include = ADTClient.classIncludes(this.structure).get(this
+      .techName as classIncludes)
+    if (!include) throw FileSystemError.FileNotFound(this.path)
+    return include
   }
 
   getActivationSubject(): AbapObject {
@@ -51,13 +51,13 @@ export class AbapClassInclude extends AbapObject {
       }
   }
 
-  async loadMetadata(connection: AdtConnection): Promise<AbapObject> {
+  async loadMetadata(client: ADTClient): Promise<AbapObject> {
     if (this.parent) {
-      await this.parent.loadMetadata(connection)
-      if (this.parent.metaData)
-        for (const incmeta of this.parent.metaData.includes)
-          if (incmeta.includeType === this.techName) {
-            this.metaData = incmeta
+      await this.parent.loadMetadata(client)
+      if (this.parent.structure)
+        for (const incmeta of this.parent.structure.includes)
+          if (incmeta["class:includeType"] === this.techName) {
+            this.structure = this.parent.structure
             break
           }
     }

@@ -2,7 +2,6 @@ import { AbapObject, AbapNodeComponentByCategory } from "./AbapObject"
 import { NodeStructure } from "../parsers/AdtNodeStructParser"
 
 import { FileSystemError } from "vscode"
-import { followLink } from "../../functions"
 import { aggregateNodes } from "./AbapObjectUtilities"
 import { isClassInclude } from "./AbapClassInclude"
 import { ADTClient, isClassStructure, AbapClassStructure } from "abap-adt-api"

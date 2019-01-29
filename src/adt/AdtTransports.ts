@@ -1,12 +1,12 @@
-import { window, Uri } from "vscode"
+import { window } from "vscode"
 import { ADTClient } from "abap-adt-api"
 
 export async function selectTransport(
-  objContentUri: Uri,
+  objContentPath: string,
   devClass: string,
   client: ADTClient
 ): Promise<string> {
-  const ti = await client.transportInfo(objContentUri.path, devClass)
+  const ti = await client.transportInfo(objContentPath, devClass)
   //if I have a lock return the locking transport
   // will probably be a task but should be fine
 
@@ -23,6 +23,6 @@ export async function selectTransport(
   if (selection === CREATENEW) {
     const text = await window.showInputBox({ prompt: "Request text" })
     if (!text) return ""
-    return await client.createTransport(objContentUri.path, text, ti.DEVCLASS)
+    return await client.createTransport(objContentPath, text, ti.DEVCLASS)
   } else return selection.split(" ")[0]
 }
