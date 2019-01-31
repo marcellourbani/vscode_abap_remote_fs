@@ -1,5 +1,5 @@
 import { AdtServer } from "./../AdtServer"
-import { ADTClient, SearchResult } from "abap-adt-api"
+import { ADTClient, SearchResult, PathStep } from "abap-adt-api"
 import { parseToPromise, getNode, recxml2js } from "../parsers/AdtParserBase"
 import { mapWith, ArrayToMap, sapEscape } from "../../functions"
 import { window, QuickPickItem, workspace } from "vscode"
@@ -28,13 +28,7 @@ interface AdtSearchResult {
   packageName: string
   description: string
 }
-interface AdtObjectPathNode {
-  uri: string
-  type: string
-  name: string
-  parentUri: string
-  category: string
-}
+
 class MySearchResult implements QuickPickItem, AdtSearchResult {
   get label(): string {
     return `${this.name}(${this.description})`
@@ -77,34 +71,35 @@ export class AdtObjectFinder {
     return this.server.client.findObjectPath(objPath)
   }
 
-  async locateObject(abapPath: AdtObjectPathNode[]) {
+  async locateObject(abapPath: PathStep[]) {
     if (abapPath.length === 0) return
     let children = [...abapPath]
-    if (abapPath[0].name.match(/^\$/)) {
-      if (abapPath[0].name !== "$TMP")
+    const name = abapPath[0]["adtcore:name"]
+    if (name.match(/^\$/)) {
+      if (name !== "$TMP")
         children.unshift({
-          name: "$TMP",
-          parentUri: "",
-          uri: "",
-          category: "",
-          type: "DEVC/K"
+          "adtcore:name": "$TMP",
+          "adtcore:uri": "",
+          "projectexplorer:category": "",
+          "adtcore:type": "DEVC/K"
         })
     } else
       children.unshift({
-        name: "",
-        parentUri: "",
-        uri: "",
-        category: "",
-        type: "DEVC/K"
+        "adtcore:name": "",
+        "adtcore:uri": "",
+        "projectexplorer:category": "",
+        "adtcore:type": "DEVC/K"
       })
 
     let nodePath: NodePath = { path: "", node: this.server.root }
 
     for (const part of children) {
-      let child = findObjectInNode(nodePath.node, part.type, part.name)
+      const name = part["adtcore:name"]
+      const type = part["adtcore:type"]
+      let child = findObjectInNode(nodePath.node, type, name)
       if (!child) {
         await this.server.refreshDirIfNeeded(nodePath.node)
-        child = findObjectInNode(nodePath.node, part.type, part.name)
+        child = findObjectInNode(nodePath.node, type, name)
       }
 
       if (child)

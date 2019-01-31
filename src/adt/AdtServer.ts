@@ -63,7 +63,7 @@ export class AdtServer {
     this.creator = new AdtObjectCreator(this)
     this.activator = new AdtObjectActivator(this.client)
     this.objectFinder = new AdtObjectFinder(this)
-    this.lockManager = new LockManager(this.connection)
+    this.lockManager = new LockManager(this.client)
     this.sapGui = SapGui.create(config)
     this.connection
       .connect()

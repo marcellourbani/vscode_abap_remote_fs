@@ -54,7 +54,10 @@ export async function activeTextEditorChangedListener(
     if (editor && editor.document.uri.scheme === "adt") {
       const server = fromUri(editor.document.uri)
       const obj = await server.findAbapObject(editor.document.uri)
-      if (obj.metaData && obj.metaData.version === "inactive") {
+      if (
+        obj.structure &&
+        obj.structure.metaData["adtcore:version"] === "inactive"
+      ) {
         commands.executeCommand("setContext", "abapfs:objectInactive", true)
         return
       }

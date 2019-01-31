@@ -1,7 +1,7 @@
-import { AdtConnection, StateRequestor } from "../AdtConnection"
+import { ADTClient } from "abap-adt-api"
+import { StateRequestor } from "../AdtConnection"
 import { AbapObject, TransportStatus } from "../abap/AbapObject"
-import { parseToPromise } from "../parsers/AdtParserBase"
-import { adtLockParser } from "../parsers/AdtLockParser"
+import { session_types } from "abap-adt-api/build/AdtHTTP"
 
 enum LockStatuses {
   LOCKED,
@@ -59,9 +59,7 @@ class LockObject {
 
 export class LockManager implements StateRequestor {
   l: Map<AbapObject, LockObject> = new Map()
-  constructor(private conn: AdtConnection) {
-    conn.addStateRequestor(this)
-  }
+  constructor(private client: ADTClient) {}
 
   private getLockObject(child: AbapObject) {
     const lockSubject = child.getLockTarget()
@@ -97,15 +95,13 @@ export class LockManager implements StateRequestor {
 
     lockObj.setLockStatus(LockStatuses.LOCKING)
     try {
-      const uri = lockObj.main
-        .getUri(this.conn)
-        .with({ query: "_action=LOCK&accessMode=MODIFY" })
-      const response = await this.conn.request(uri, "POST")
-      const lockRecord = await parseToPromise(adtLockParser)(response.body)
-      lockObj.setLockStatus(LockStatuses.LOCKED, lockRecord.LOCK_HANDLE)
+      this.client.stateful = session_types.stateful
+      const lock = await this.client.lock(lockObj.main.path)
+      lockObj.setLockStatus(LockStatuses.LOCKED, lock.LOCK_HANDLE)
       obj.transport =
-        lockRecord.CORRNR ||
-        (lockRecord.IS_LOCAL ? TransportStatus.LOCAL : TransportStatus.REQUIRED)
+        lock.CORRNR || lock.IS_LOCAL
+          ? TransportStatus.LOCAL
+          : TransportStatus.REQUIRED
       console.log("locked", obj.name)
     } catch (e) {
       if (
@@ -113,6 +109,7 @@ export class LockManager implements StateRequestor {
         lockObj.lockStatus === LockStatuses.LOCKING
       )
         lockObj.setLockStatus(LockStatuses.UNLOCKED)
+      if (!this.needStateFul) this.client.stateful = session_types.stateless
       throw e
     }
   }
@@ -131,10 +128,8 @@ export class LockManager implements StateRequestor {
 
     lockObj.setLockStatus(LockStatuses.UNLOCKING)
     try {
-      const uri = obj.getUri(this.conn).with({
-        query: `_action=UNLOCK&lockHandle=${encodeURIComponent(lockObj.lockId)}`
-      })
-      await this.conn.request(uri, "POST")
+      //TODO: check if unlocking the right object. lock is on main one
+      await this.client.unLock(obj.path, lockObj.lockId)
       lockObj.setLockStatus(LockStatuses.UNLOCKED)
       console.log("unlocked", obj.name)
     } catch (e) {
@@ -145,6 +140,7 @@ export class LockManager implements StateRequestor {
       )
         lockObj.setLockStatus(LockStatuses.LOCKED, lockId)
     }
+    if (!this.needStateFul) this.client.stateful = session_types.stateless
   }
 
   isLocked(obj: AbapObject) {
