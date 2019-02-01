@@ -1,4 +1,5 @@
 {
+  "extends": ["tslint:recommended"],
   "rules": {
     "no-string-throw": true,
     "no-unused-expression": true,
@@ -6,6 +7,7 @@
     "curly": false,
     "class-name": true,
     "semicolon": [false, "always"],
+    "trailing-comma": false,
     "triple-equals": true
   },
   "defaultSeverity": "warning"
