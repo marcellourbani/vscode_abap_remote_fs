@@ -1,24 +1,24 @@
-import { Uri, FileSystemError } from "vscode"
+import { FileSystemError } from "vscode"
 import { ArrayToMap } from "../../functions"
 import { NodeStructure, ObjectNode } from "../parsers/AdtNodeStructParser"
 import { aggregateNodes, objectTypeExtension } from "./AbapObjectUtilities"
 import { SapGuiCommand } from "../sapgui/sapgui"
 import { ADTClient, AbapObjectStructure } from "abap-adt-api"
 import { isString } from "util"
-import { NodeParents } from "abap-adt-api/build/api"
+import { isNodeParent } from "abap-adt-api/build/api"
 
 const TYPEID = Symbol()
 export const XML_EXTENSION = ".XML"
 export const SAPGUIONLY = "Objects of this type are only supported in SAPGUI"
-export type AbapNodeComponentByType = {
+export interface AbapNodeComponentByType {
   name: string
   type: string
-  objects: Array<AbapObject>
+  objects: AbapObject[]
 }
-export type AbapNodeComponentByCategory = {
+export interface AbapNodeComponentByCategory {
   name: string
   category: string
-  types: Array<AbapNodeComponentByType>
+  types: AbapNodeComponentByType[]
 }
 export interface AbapMetaData {
   sourcePath: string
@@ -35,17 +35,18 @@ export enum TransportStatus {
 }
 
 export class AbapObject {
-  readonly type: string
-  readonly name: string
-  readonly techName: string
-  readonly path: string
-  readonly expandable: boolean
-  transport: TransportStatus | string = TransportStatus.UNKNOWN
-  structure?: AbapObjectStructure
-  protected sapguiOnly: boolean
-  private get _typeId() {
-    return TYPEID
+  public static isAbapObject(x: any): x is AbapObject {
+    return (x as AbapObject)._typeId === TYPEID
   }
+  public readonly type: string
+  public readonly name: string
+  public readonly techName: string
+  public readonly path: string
+  public readonly expandable: boolean
+  public transport: TransportStatus | string = TransportStatus.UNKNOWN
+  public structure?: AbapObjectStructure
+
+  protected sapguiOnly: boolean
 
   constructor(
     type: string,
@@ -63,36 +64,36 @@ export class AbapObject {
       "(/sap/bc/adt/vit)|(/sap/bc/adt/ddic/domains/)|(/sap/bc/adt/ddic/dataelements/)"
     )
   }
-  static isAbapObject(x: any): x is AbapObject {
-    return (<AbapObject>x)._typeId === TYPEID
-  }
 
-  isLeaf() {
+  public isLeaf() {
     return !this.expandable
   }
   get vsName(): string {
     return this.name.replace(/\//g, "／") + this.getExtension()
   }
 
-  getExecutionCommand(): SapGuiCommand | undefined {
+  public getExecutionCommand(): SapGuiCommand | undefined {
     return
   }
 
-  async activate(client: ADTClient, mainInclude?: string): Promise<string> {
+  public async activate(
+    client: ADTClient,
+    mainInclude?: string
+  ): Promise<string> {
     const result = await client.activate(this.name, this.path, mainInclude)
     const m = result.messages[0]
     return (m && m.shortText) || ""
   }
 
-  async getMainPrograms(client: ADTClient) {
+  public async getMainPrograms(client: ADTClient) {
     return client.mainPrograms(this.path)
   }
 
-  getLockTarget(): AbapObject {
+  public getLockTarget(): AbapObject {
     return this
   }
 
-  canBeWritten() {
+  public canBeWritten() {
     if (!this.isLeaf()) throw FileSystemError.FileIsADirectory(this.vsName)
     if (this.sapguiOnly)
       throw FileSystemError.FileNotFound(
@@ -100,7 +101,7 @@ export class AbapObject {
       )
   }
 
-  async setContents(
+  public async setContents(
     client: ADTClient,
     contents: Uint8Array,
     lockId: string
@@ -117,20 +118,20 @@ export class AbapObject {
     )
   }
 
-  async loadMetadata(client: ADTClient): Promise<AbapObject> {
+  public async loadMetadata(client: ADTClient): Promise<AbapObject> {
     if (this.name) {
       this.structure = await client.objectStructure(this.path)
     }
     return this
   }
 
-  getContentsUri(): string {
+  public getContentsUri(): string {
     if (!this.structure) throw FileSystemError.FileNotFound(this.path)
     const include = ADTClient.mainInclude(this.structure)
     return include
   }
 
-  async getContents(client: ADTClient): Promise<string> {
+  public async getContents(client: ADTClient): Promise<string> {
     if (!this.isLeaf()) throw FileSystemError.FileIsADirectory(this.vsName)
     const url = this.structure && ADTClient.mainInclude(this.structure)
     if (this.sapguiOnly || !url) return SAPGUIONLY
@@ -138,25 +139,22 @@ export class AbapObject {
     return client.getObjectSource(url)
   }
 
-  getExtension(): string {
+  public getExtension(): string {
     if (!this.isLeaf()) return ""
     return this.sapguiOnly ? ".txt" : objectTypeExtension(this) + ".abap"
   }
 
-  getActivationSubject(): AbapObject {
+  public getActivationSubject(): AbapObject {
     return this
   }
 
-  async getChildren(
+  public async getChildren(
     client: ADTClient
-  ): Promise<Array<AbapNodeComponentByCategory>> {
-    if (this.isLeaf()) throw FileSystemError.FileNotADirectory(this.vsName)
+  ): Promise<AbapNodeComponentByCategory[]> {
+    if (this.isLeaf() || !isNodeParent(this.type))
+      throw FileSystemError.FileNotADirectory(this.vsName)
 
-    const adtnodes = await client.nodeContents({
-      parent_name: this.name,
-      parent_tech_name: this.techName,
-      parent_type: this.type as NodeParents
-    })
+    const adtnodes = await client.nodeContents(this.type, this.name)
     const nodes = {
       nodes: adtnodes.nodes,
       categories: ArrayToMap("CATEGORY")(adtnodes.categories),
@@ -168,7 +166,7 @@ export class AbapObject {
     return components
   }
 
-  //exclude those visible only in SAPGUI, except whitelisted
+  // exclude those visible only in SAPGUI, except whitelisted
   protected filterNodeStructure(nodest: NodeStructure): NodeStructure {
     if (this.type === "DEVC/K") return nodest
     const nodes = nodest.nodes.filter(x => this.whiteListed(x.OBJECT_TYPE))
@@ -192,15 +190,20 @@ export class AbapObject {
       TECH_NAME: this.techName
     }
   }
+
+  private get _typeId() {
+    return TYPEID
+  }
 }
+// tslint:disable:max-classes-per-file
 export class AbapXmlObject extends AbapObject {
-  getExtension(): string {
+  public getExtension(): string {
     if (!this.isLeaf()) return ""
     return this.sapguiOnly ? ".txt" : ".xml"
   }
 }
 export class AbapSimpleObject extends AbapObject {
-  isLeaf() {
+  public isLeaf() {
     return true
   }
 }

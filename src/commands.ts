@@ -1,4 +1,4 @@
-import { AdtConnection } from "./adt/AdtConnection"
+import { ADTClient } from "abap-adt-api"
 import { workspace, Uri, window } from "vscode"
 import { fromUri } from "./adt/AdtServer"
 import { selectRemote, pickAdtRoot } from "./config"
@@ -7,11 +7,17 @@ import { log } from "./logger"
 export async function connectAdtServer(selector: any) {
   const connectionID = selector && selector.connection
   const remote = await selectRemote(connectionID)
-  const connection = AdtConnection.fromRemote(remote)
+  const client = new ADTClient(
+    remote.url,
+    remote.username,
+    remote.password,
+    remote.client,
+    remote.language
+  )
 
   log(`Connecting to server ${connectionID}`)
 
-  await connection.connect() // if connection raises an exception don't mount any folder
+  await client.login() // if connection raises an exception don't mount any folder
 
   workspace.updateWorkspaceFolders(0, 0, {
     uri: Uri.parse("adt://" + remote.name),
@@ -33,11 +39,11 @@ export async function activateCurrent(selector: Uri) {
 }
 
 export async function searchAdtObject(uri: Uri | undefined) {
-  //find the adt relevant namespace roots, and let the user pick one if needed
+  // find the adt relevant namespace roots, and let the user pick one if needed
   const root = await pickAdtRoot(uri)
   const server = root && fromUri(root.uri)
   try {
-    if (!server) throw new Error("Fatal error: invalid server connection") //this should NEVER happen!
+    if (!server) throw new Error("Fatal error: invalid server connection") // this should NEVER happen!
     const object = await server.objectFinder.findObject()
     if (!object) return // user cancelled
     const path = await server.objectFinder.findObjectPath(object.uri)
@@ -52,13 +58,13 @@ export async function searchAdtObject(uri: Uri | undefined) {
 
 export async function createAdtObject(uri: Uri | undefined) {
   try {
-    //find the adt relevant namespace roots, and let the user pick one if needed
+    // find the adt relevant namespace roots, and let the user pick one if needed
     const root = await pickAdtRoot(uri)
     const server = root && fromUri(root.uri)
     if (!server) return
-    const objPath = await server.creator.createObject(uri)
-    if (!objPath) return //user aborted
-    const path = await server.objectFinder.findObjectPath(objPath)
+    const obj = await server.creator.createObject(uri)
+    if (!obj) return // user aborted
+    const path = await server.objectFinder.findObjectPath(obj.path)
     const nodePath = await server.objectFinder.locateObject(path)
     if (nodePath) server.objectFinder.displayNode(nodePath)
   } catch (e) {

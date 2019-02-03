@@ -43,7 +43,7 @@
     "@types/xml2js": "^0.4.3",
     "ts-node": "^7.0.1",
     "tsconfig-paths": "^3.7.0",
-    "tslint": "^5.8.0",
+    "tslint": "^5.12.1",
     "typescript": "^2.6.1",
     "vsce": "^1.53.2",
     "vscode": "^1.1.26"

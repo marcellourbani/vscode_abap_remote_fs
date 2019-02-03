@@ -18,7 +18,6 @@ import { abapObjectFromNode } from "../abap/AbapObjectUtilities"
 import { AdtServer } from "../AdtServer"
 import { selectTransport } from "../AdtTransports"
 import { PACKAGE, selectObjectType } from "./AdtObjectTypes"
-import { Server } from "tls"
 
 export class AdtObjectCreator {
   private types?: ObjectType[]
@@ -39,17 +38,17 @@ export class AdtObjectCreator {
    *
    * @param uri Creates an ABAP object
    */
-  async createObject(uri: Uri | undefined) {
+  public async createObject(uri: Uri | undefined) {
     const hierarchy = this.getHierarchy(uri)
     let devclass: string = this.guessParentByType(hierarchy, PACKAGE)
     const objType = await this.guessOrSelectObjectType(hierarchy)
-    //user didn't pick one...
+    // user didn't pick one...
     if (!objType) return
     const name = await this.askInput("name")
     if (!name) return
     const description = await this.askInput("description", false)
     if (!description) return
-    const responsible = this.server.connection.username.toUpperCase()
+    const responsible = this.server.client.username.toUpperCase()
     const parentType = parentTypeId(objType.typeId)
     let parentName
     if (parentType !== PACKAGE) {
@@ -81,7 +80,7 @@ export class AdtObjectCreator {
       name,
       objtype: objType.typeId,
       parentName,
-      parentPath: "", // TODO: fix
+      parentPath: objectPath(parentType, parentName, ""),
       responsible
     }
     await this.validateObject(objDetails)
@@ -89,14 +88,21 @@ export class AdtObjectCreator {
 
     await this.server.client.statelessClone.createObject(objDetails)
 
-    const obj = abapObjectFromNode(objType.objNode(objDetails))
+    const obj = abapObjectFromNode({
+      EXPANDABLE: "",
+      OBJECT_NAME: objDetails.name,
+      OBJECT_TYPE: objDetails.objtype,
+      OBJECT_URI: objectPath(objDetails),
+      OBJECT_VIT_URI: "",
+      TECH_NAME: objDetails.name
+    })
     await obj.loadMetadata(this.server.client)
-    return objDetails
+    return obj
   }
-  guessParentByType(hierarchy: AbapNode[], type: ParentTypeIds): string {
-    //find latest package parent
+  public guessParentByType(hierarchy: AbapNode[], type: ParentTypeIds): string {
+    // find latest package parent
     const pn = hierarchy.find(n => isAbapNode(n) && n.abapObject.type === type)
-    //return package name or blank string
+    // return package name or blank string
     return (pn && isAbapNode(pn) && pn.abapObject.name) || ""
   }
 
@@ -104,7 +110,9 @@ export class AdtObjectCreator {
     if (uri)
       try {
         return this.server.findNodeHierarchy(uri)
-      } catch (e) {}
+      } catch (e) {
+        // ignore
+      }
     return []
   }
 
@@ -112,7 +120,7 @@ export class AdtObjectCreator {
     hierarchy: AbapNode[]
   ): Promise<CreatableType | undefined> {
     const base = hierarchy[0]
-    //if I picked the root node,a direct descendent or a package just ask the user to select any object type
+    // if I picked the root node,a direct descendent or a package just ask the user to select any object type
     // if not, for abap nodes pick child objetc types (if any)
     // for non-abap nodes if it's an object type guess the type from the children
     if (hierarchy.length > 2)
@@ -127,7 +135,7 @@ export class AdtObjectCreator {
           if (guessed) return guessed
         }
       }
-    //default...
+    // default...
     return selectObjectType()
   }
 

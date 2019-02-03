@@ -21,19 +21,20 @@ export interface NodePath {
 export function aggregateNodes(
   cont: NodeStructure,
   parentType: string
-): Array<AbapNodeComponentByCategory> {
+): AbapNodeComponentByCategory[] {
   const catLabel = selectMap(cont.categories, "CATEGORY_LABEL", "")
   const typeCat = selectMap(cont.objectTypes, "CATEGORY_TAG", "")
-  // in 7.52 labels are stored in types like 'DEVC/OC' instead of 'CLAS/OC'. Not sure this is a proper fix but seems to work...
+  // in 7.52 labels are stored in types like 'DEVC/OC' instead of 'CLAS/OC'.
+  // Not sure this is a proper fix but seems to work...
   const typeLabelBase = selectMap(cont.objectTypes, "OBJECT_TYPE_LABEL", "")
   const baseType = parentType.replace(/\/.*/, "")
   const typeLabel = (name: string) => {
     return typeLabelBase(name) || typeLabelBase(name.replace(/\w+/, baseType))
   }
 
-  const components: Array<AbapNodeComponentByCategory> = []
+  const components: AbapNodeComponentByCategory[] = []
   const findById = <T>(
-    arr: Array<T>,
+    arr: T[],
     prop: string,
     value: string
   ): T | undefined => {

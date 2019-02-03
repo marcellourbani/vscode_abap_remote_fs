@@ -1,7 +1,5 @@
+import { ADTClient, PathStep, SearchResult } from "abap-adt-api"
 import { AdtServer } from "./../AdtServer"
-import { ADTClient, SearchResult, PathStep } from "abap-adt-api"
-import { parseToPromise, getNode, recxml2js } from "../parsers/AdtParserBase"
-import { mapWith, ArrayToMap, sapEscape } from "../../functions"
 import { window, QuickPickItem, workspace } from "vscode"
 import * as vscode from "vscode"
 import {
@@ -10,12 +8,8 @@ import {
   findMainInclude
 } from "../abap/AbapObjectUtilities"
 import { isAbapNode } from "../../fs/AbapNode"
+import { sapEscape } from "../../functions"
 
-interface AdtObjectType {
-  "nameditem:name": string
-  "nameditem:description": string
-  "nameditem:data": string
-}
 interface SearchObjectType {
   name: string
   description: string
@@ -41,7 +35,7 @@ class MySearchResult implements QuickPickItem, AdtSearchResult {
   get detail(): string | undefined {
     return `Package ${this.packageName} type ${this.type}`
   }
-  picked: boolean = false
+  public picked: boolean = false
   constructor(r: SearchResult) {
     this.uri = r["adtcore:uri"]
     this.type = r["adtcore:type"]
@@ -51,32 +45,21 @@ class MySearchResult implements QuickPickItem, AdtSearchResult {
   }
 }
 
+// tslint:disable-next-line:max-classes-per-file
 export class AdtObjectFinder {
-  types?: Map<string, SearchObjectType>
+  public types?: Map<string, SearchObjectType>
   constructor(public readonly server: AdtServer) {}
 
-  private async search(
-    prefix: string,
-    client: ADTClient,
-    objType: string = ""
-  ): Promise<MySearchResult[]> {
-    const query = sapEscape(prefix.toUpperCase() + "*")
-    const raw = await client.searchObject(query, objType)
-    return raw.map(res => {
-      return new MySearchResult(res)
-    })
-  }
-
-  async findObjectPath(objPath: string) {
+  public async findObjectPath(objPath: string) {
     return this.server.client.findObjectPath(objPath)
   }
 
-  async locateObject(abapPath: PathStep[]) {
+  public async locateObject(abapPath: PathStep[]) {
     if (abapPath.length === 0) return
-    let children = [...abapPath]
-    const name = abapPath[0]["adtcore:name"]
-    if (name.match(/^\$/)) {
-      if (name !== "$TMP")
+    const children = [...abapPath]
+    const firstName = abapPath[0]["adtcore:name"]
+    if (firstName.match(/^\$/)) {
+      if (firstName !== "$TMP")
         children.unshift({
           "adtcore:name": "$TMP",
           "adtcore:uri": "",
@@ -109,7 +92,7 @@ export class AdtObjectFinder {
     return nodePath
   }
 
-  async displayNode(nodePath: NodePath) {
+  public async displayNode(nodePath: NodePath) {
     let uri
     if (nodePath.node.isFolder) {
       if (
@@ -140,13 +123,13 @@ export class AdtObjectFinder {
     }
   }
 
-  async findObject(
+  public async findObject(
     prompt: string = "Search an ABAP object",
     objType: string = ""
   ): Promise<MySearchResult | undefined> {
     const o = await new Promise<MySearchResult>(resolve => {
       const qp = window.createQuickPick()
-      //TODO debounce? Looks like VSC does it for me!
+      // TODO debounce? Looks like VSC does it for me!
       qp.onDidChangeValue(e => {
         if (e.length > 3)
           this.search(e, this.server.client, objType).then(
@@ -165,21 +148,16 @@ export class AdtObjectFinder {
     })
     return o
   }
-  async setTypes(source: string) {
-    const parser = parseToPromise(
-      getNode("nameditem:namedItemList/nameditem:namedItem", mapWith(recxml2js))
-    )
-    const raw = (await parser(source)) as AdtObjectType[]
-    const types: SearchObjectType[] = raw
-      .filter(o => o["nameditem:data"].match(/usedBy:.*quick_search/i))
-      .map(o => {
-        return {
-          name: o["nameditem:name"],
-          description: o["nameditem:description"],
-          type: o["nameditem:data"].replace(/.*type:([^;]*).*/, "$1")
-        }
-      })
 
-    this.types = ArrayToMap("type")(types)
+  private async search(
+    prefix: string,
+    client: ADTClient,
+    objType: string = ""
+  ): Promise<MySearchResult[]> {
+    const query = sapEscape(prefix.toUpperCase() + "*")
+    const raw = await client.searchObject(query, objType)
+    return raw.map(res => {
+      return new MySearchResult(res)
+    })
   }
 }

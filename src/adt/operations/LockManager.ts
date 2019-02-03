@@ -1,5 +1,4 @@
 import { ADTClient } from "abap-adt-api"
-import { StateRequestor } from "../AdtConnection"
 import { AbapObject, TransportStatus } from "../abap/AbapObject"
 import { session_types } from "abap-adt-api/build/AdtHTTP"
 
@@ -11,25 +10,25 @@ enum LockStatuses {
 }
 
 class LockObject {
-  children: Set<AbapObject> = new Set()
-  listeners: Array<(s: LockStatuses) => void> = []
-  private _lockStatus = LockStatuses.UNLOCKED
+  public children: Set<AbapObject> = new Set()
+  public listeners: Array<(s: LockStatuses) => void> = []
+  public lockId: string = ""
+  private pLockStatus = LockStatuses.UNLOCKED
   get lockStatus() {
-    return this._lockStatus
+    return this.pLockStatus
   }
-  lockId: string = ""
 
   constructor(public main: AbapObject) {}
 
-  setLockStatus(status: LockStatuses, lockId: string = "") {
-    this._lockStatus = status
+  public setLockStatus(status: LockStatuses, lockId: string = "") {
+    this.pLockStatus = status
     this.lockId = status === LockStatuses.LOCKED ? lockId : ""
     const l = this.listeners
     this.listeners = []
     l.forEach(x => x(status))
   }
 
-  needLock(child: AbapObject) {
+  public needLock(child: AbapObject) {
     this.children.add(child)
     return (
       this.lockStatus === LockStatuses.UNLOCKED ||
@@ -37,10 +36,10 @@ class LockObject {
     )
   }
 
-  isLocked(child: AbapObject) {
+  public isLocked(child: AbapObject) {
     return this.children.has(child)
   }
-  needUnlock(child: AbapObject) {
+  public needUnlock(child: AbapObject) {
     this.children.delete(child)
     return (
       this.children.size === 0 &&
@@ -49,7 +48,7 @@ class LockObject {
     )
   }
 
-  waitStatusUpdate() {
+  public waitStatusUpdate() {
     const waitUpdate = new Promise<LockStatuses>(resolve => {
       this.listeners.push(resolve)
     })
@@ -57,21 +56,11 @@ class LockObject {
   }
 }
 
-export class LockManager implements StateRequestor {
-  l: Map<AbapObject, LockObject> = new Map()
+export class LockManager {
+  public l: Map<AbapObject, LockObject> = new Map()
   constructor(private client: ADTClient) {}
 
-  private getLockObject(child: AbapObject) {
-    const lockSubject = child.getLockTarget()
-    let lockObj = this.l.get(lockSubject)
-    if (!lockObj) {
-      lockObj = new LockObject(lockSubject)
-      this.l.set(lockSubject, lockObj)
-    }
-    return lockObj
-  }
-
-  getLockId(obj: AbapObject): string {
+  public getLockId(obj: AbapObject): string {
     const lockObj = this.getLockObject(obj)
     // const lockId = this.locks.get(obj)
     if (lockObj.lockId) return lockObj.lockId
@@ -82,7 +71,7 @@ export class LockManager implements StateRequestor {
     return this.lockedObjects.length > 0
   }
 
-  async lock(obj: AbapObject) {
+  public async lock(obj: AbapObject) {
     if (!obj.canBeWritten) return
     const lockObj = this.getLockObject(obj)
     if (!lockObj.needLock(obj)) return
@@ -114,7 +103,7 @@ export class LockManager implements StateRequestor {
     }
   }
 
-  async unlock(obj: AbapObject) {
+  public async unlock(obj: AbapObject) {
     if (!obj.canBeWritten) return
     const lockObj = this.getLockObject(obj)
     if (!lockObj.needUnlock(obj)) return
@@ -143,7 +132,7 @@ export class LockManager implements StateRequestor {
     if (!this.needStateFul) this.client.stateful = session_types.stateless
   }
 
-  isLocked(obj: AbapObject) {
+  public isLocked(obj: AbapObject) {
     const lockObj = this.getLockObject(obj)
     return lockObj.isLocked(obj)
   }
@@ -152,5 +141,14 @@ export class LockManager implements StateRequestor {
     let children: AbapObject[] = []
     this.l.forEach(x => (children = [...children, ...[...x.children]]))
     return children
+  }
+  private getLockObject(child: AbapObject) {
+    const lockSubject = child.getLockTarget()
+    let lockObj = this.l.get(lockSubject)
+    if (!lockObj) {
+      lockObj = new LockObject(lockSubject)
+      this.l.set(lockSubject, lockObj)
+    }
+    return lockObj
   }
 }
