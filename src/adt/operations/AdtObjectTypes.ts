@@ -1,19 +1,7 @@
-import {
-  CreatableType,
-  CreatableTypes,
-  parentTypeId
-} from "abap-adt-api/build/api"
+import { CreatableType, CreatableTypes, parentTypeId } from "abap-adt-api"
 import { window } from "vscode"
 
 export const PACKAGE = "DEVC/K"
-
-export interface NewObjectConfig {
-  name: string
-  parentName: string
-  description: string
-  devclass: string
-  responsible: string
-}
 
 export async function selectObjectType(
   parentType?: string

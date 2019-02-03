@@ -1,22 +1,24 @@
 import {
   CreatableType,
+  CreatableTypeIds,
   GroupTypeIds,
   isGroupType,
-  ObjectType
-} from "abap-adt-api"
-import {
-  CreatableTypeIds,
   NewObjectOptions,
   NonGroupTypeIds,
+  objectPath,
+  ObjectType,
+  parentTypeId,
+  ParentTypeIds,
   ValidateOptions
-} from "abap-adt-api/build/api"
+} from "abap-adt-api"
 import { CreatableTypes } from "abap-adt-api/build/api"
 import { Uri, window } from "vscode"
 import { AbapNode, isAbapNode } from "../../fs/AbapNode"
 import { abapObjectFromNode } from "../abap/AbapObjectUtilities"
 import { AdtServer } from "../AdtServer"
 import { selectTransport } from "../AdtTransports"
-import { NewObjectConfig, PACKAGE, selectObjectType } from "./AdtObjectTypes"
+import { PACKAGE, selectObjectType } from "./AdtObjectTypes"
+import { Server } from "tls"
 
 export class AdtObjectCreator {
   private types?: ObjectType[]
@@ -48,52 +50,50 @@ export class AdtObjectCreator {
     const description = await this.askInput("description", false)
     if (!description) return
     const responsible = this.server.connection.username.toUpperCase()
+    const parentType = parentTypeId(objType.typeId)
     let parentName
-    if (objType.parentType === PACKAGE) parentName = devclass
-    else {
-      parentName = this.guessParentByType(hierarchy, objType.parentType)
+    if (parentType !== PACKAGE) {
+      parentName = this.guessParentByType(hierarchy, "FUGR/F")
       if (!parentName) {
         const parent = await this.server.objectFinder.findObject(
           "Select parent",
-          objType.parentType
+          parentType
         )
         if (!parent) return
         parentName = parent.name
         devclass = parent.packageName
       }
+      if (!parentName) return
     }
-    if (!parentName) return
 
     if (!devclass) {
       const packageResult = await this.server.objectFinder.findObject(
         "Select package",
-        "DEVC/K"
+        PACKAGE
       )
       if (!packageResult) return
       devclass = packageResult.name
     }
-    if (!devclass) return
-    if (objType.parentType === PACKAGE) parentName = devclass
-    const objDetails: NewObjectConfig = {
+    if (!devclass || !parentName) return
+    if (parentType === PACKAGE) parentName = devclass
+    const objDetails: NewObjectOptions = {
       description,
-      devclass,
-      parentName: parentName || "",
       name,
+      objtype: objType.typeId,
+      parentName,
+      parentPath: "", // TODO: fix
       responsible
     }
-    const valresult = await this.validateObject(objType, objDetails)
-    const err =
-      valresult.length > 0 && valresult.find(x => x.SEVERITY === "ERROR")
-    if (err) throw new Error(err.SHORT_TEXT)
+    await this.validateObject(objDetails)
+    objDetails.transport = await this.selectTransport(objDetails, devclass)
 
-    const trnumber = await this.selectTransport(objType, objDetails)
+    await this.server.client.statelessClone.createObject(objDetails)
 
-    await this.create(objType, objDetails, trnumber) //exceptions will bubble up
     const obj = abapObjectFromNode(objType.objNode(objDetails))
     await obj.loadMetadata(this.server.client)
-    return (objDetails)
+    return objDetails
   }
-  guessParentByType(hierarchy: AbapNode[], type: string): string {
+  guessParentByType(hierarchy: AbapNode[], type: ParentTypeIds): string {
     //find latest package parent
     const pn = hierarchy.find(n => isAbapNode(n) && n.abapObject.type === type)
     //return package name or blank string
@@ -158,38 +158,16 @@ export class AdtObjectCreator {
    * @param objDetails Object name, description,...
    */
   private async selectTransport(
-    objType: CreatableObjectType,
-    objDetails: NewObjectConfig
+    objDetails: NewObjectOptions,
+    devClass: string
   ): Promise<string> {
     return selectTransport(
-      objType.getPath(objDetails.),
-      objDetails.devclass,
+      objectPath(objDetails.objtype, objDetails.name, objDetails.parentName),
+      devClass,
       this.server.client
     )
   }
-  /**
-   * Creates an ABAP object
-   *
-   * @param objType Object type descriptor
-   * @param objDetails Object details (name, description, package,...)
-   * @param request Transport request
-   */
-  private async create(
-    objType: CreatableType,
-    objDetails: NewObjectConfig,
-    request: string
-  ) {
-    const conn = await this.server.connection.getStatelessClone()
-    const uri = conn
-      .createUri(objType.getBasePath(objDetails))
-      .with({ query: request && `corrNr=${request}` })
-    let body = objType.getCreatePayload(objDetails)
-    let response = await conn.request(uri, "POST", {
-      body,
-      headers: { "Content-Type": "application/*" }
-    })
-    return response
-  }
+
   private async askInput(
     prompt: string,
     uppercase: boolean = true
