@@ -137,8 +137,8 @@ export class AbapObjectNode implements FileStat, Iterable<[string, AbapNode]> {
     await this.abapObject.loadMetadata(client)
     const meta = this.abapObject.structure
     if (meta) {
-      this.ctime = meta.metaData["adtcore:createdAt"].getTime()
-      this.mtime = meta.metaData["adtcore:changedAt"].getTime()
+      this.ctime = meta.metaData["adtcore:createdAt"]
+      this.mtime = meta.metaData["adtcore:changedAt"]
     }
     return this
   }

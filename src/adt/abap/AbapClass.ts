@@ -51,7 +51,7 @@ export class AbapClass extends AbapObject {
     this.structure.includes.forEach(i => {
       const node = {
         EXPANDABLE: "",
-        OBJECT_NAME: this.name + "." + i["adtcore:name"],
+        OBJECT_NAME: this.name + "." + i["class:includeType"],
         OBJECT_TYPE: i["adtcore:type"],
         OBJECT_URI: sources.get(i["class:includeType"] as classIncludes) || "",
         OBJECT_VIT_URI: "",
