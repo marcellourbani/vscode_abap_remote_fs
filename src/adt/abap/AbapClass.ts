@@ -4,11 +4,15 @@ import { NodeStructure } from "../parsers/AdtNodeStructParser"
 import { FileSystemError } from "vscode"
 import { aggregateNodes } from "./AbapObjectUtilities"
 import { isClassInclude } from "./AbapClassInclude"
-import { ADTClient, isClassStructure, AbapClassStructure } from "abap-adt-api"
-import { classIncludes } from "abap-adt-api/build/api"
+import {
+  ADTClient,
+  isClassStructure,
+  AbapClassStructure,
+  classIncludes
+} from "abap-adt-api"
 
 export class AbapClass extends AbapObject {
-  structure?: AbapClassStructure
+  public structure?: AbapClassStructure
   constructor(
     type: string,
     name: string,
@@ -19,7 +23,7 @@ export class AbapClass extends AbapObject {
     super(type, name, path, expandable, techName)
   }
 
-  async loadMetadata(client: ADTClient): Promise<AbapObject> {
+  public async loadMetadata(client: ADTClient): Promise<AbapObject> {
     if (this.name) {
       const struc = await client.objectStructure(this.path)
       if (isClassStructure(struc)) {
@@ -29,9 +33,9 @@ export class AbapClass extends AbapObject {
     return this
   }
 
-  async getChildren(
+  public async getChildren(
     client: ADTClient
-  ): Promise<Array<AbapNodeComponentByCategory>> {
+  ): Promise<AbapNodeComponentByCategory[]> {
     if (this.isLeaf()) throw FileSystemError.FileNotADirectory(this.vsName)
     if (!this.structure) await this.loadMetadata(client)
     if (!this.structure) throw FileSystemError.FileNotFound(this.vsName)
@@ -51,7 +55,7 @@ export class AbapClass extends AbapObject {
         OBJECT_TYPE: i["adtcore:type"],
         OBJECT_URI: sources.get(i["class:includeType"] as classIncludes) || "",
         OBJECT_VIT_URI: "",
-        TECH_NAME: i["class:includeType"] //bit of a hack, used to match include metadata
+        TECH_NAME: i["class:includeType"] // bit of a hack, used to match include metadata
       }
       if (node.OBJECT_URI) {
         if (i["abapsource:sourceUri"] === "source/main") ns.nodes.unshift(node)

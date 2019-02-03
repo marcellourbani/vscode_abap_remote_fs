@@ -11,7 +11,7 @@ import {
   ParentTypeIds,
   ValidateOptions
 } from "abap-adt-api"
-import { CreatableTypes } from "abap-adt-api/build/api"
+import { CreatableTypes } from "abap-adt-api"
 import { Uri, window } from "vscode"
 import { AbapNode, isAbapNode } from "../../fs/AbapNode"
 import { abapObjectFromNode } from "../abap/AbapObjectUtilities"

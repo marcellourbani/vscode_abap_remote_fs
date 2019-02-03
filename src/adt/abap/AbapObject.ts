@@ -5,7 +5,7 @@ import { aggregateNodes, objectTypeExtension } from "./AbapObjectUtilities"
 import { SapGuiCommand } from "../sapgui/sapgui"
 import { ADTClient, AbapObjectStructure } from "abap-adt-api"
 import { isString } from "util"
-import { isNodeParent } from "abap-adt-api/build/api"
+import { isNodeParent } from "abap-adt-api"
 
 const TYPEID = Symbol()
 export const XML_EXTENSION = ".XML"

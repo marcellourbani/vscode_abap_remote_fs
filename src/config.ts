@@ -11,11 +11,11 @@ export interface RemoteConfig {
   sapGui: {
     disabled: boolean
     routerString: string
-    //load balancing
+    // load balancing
     messageServer: string
     messageServerPort: string
     group: string
-    //individual server
+    // individual server
     server: string
     systemNumber: string
   }
@@ -38,8 +38,7 @@ export function getRemoteList(): RemoteConfig[] {
 export async function selectRemote(connection: string): Promise<RemoteConfig> {
   const remotes = getRemoteList()
   if (!remotes) throw new Error("No ABAP system configured yet")
-  let found = undefined
-  if (connection) found = remotes.find(x => x.name === connection)
+  const found = connection && remotes.find(x => x.name === connection)
 
   return (
     found ||
@@ -72,14 +71,16 @@ export async function pickAdtRoot(uri?: Uri) {
   if (roots.length === 0)
     throw new Error("No ABAP filesystem mounted in current workspace")
 
-  if (roots.length === 1) return roots[0] //no need to pick if only one root is mounted
+  if (roots.length === 1) return roots[0] // no need to pick if only one root is mounted
   if (uri) {
     const root = roots.find(r => r.uri.authority === uri.authority)
     if (root) return root
   }
 
   const item = await window.showQuickPick(
-    roots.map(root => <RootItem>{ label: root.name, root })
+    roots.map(root => {
+      return { label: root.name, root } as RootItem
+    })
   )
   if (item) return item.root
 }

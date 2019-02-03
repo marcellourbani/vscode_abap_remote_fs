@@ -25,7 +25,7 @@ interface ObjectTypeNode {
 }
 
 export interface NodeStructure {
-  nodes: Array<ObjectNode>
+  nodes: ObjectNode[]
   categories: Map<string, CategoryNode>
   objectTypes: Map<string, ObjectTypeNode>
 }
@@ -37,7 +37,7 @@ const treecontentParser = defaultVal(
     filterComplex(true),
     mapWith(recxml2js)
   )
-) as (xml: string) => Array<ObjectNode>
+) as (xml: string) => ObjectNode[]
 const categoryNodeParser: (a: string) => Map<string, CategoryNode> = defaultVal(
   new Map(),
   getNode(

@@ -1,6 +1,6 @@
-import { ADTClient } from "abap-adt-api"
+import { ADTClient, session_types } from "abap-adt-api"
 import { AbapObject, TransportStatus } from "../abap/AbapObject"
-import { session_types } from "abap-adt-api/build/AdtHTTP"
+import { log } from "../../logger"
 
 enum LockStatuses {
   LOCKED,
@@ -56,6 +56,7 @@ class LockObject {
   }
 }
 
+// tslint:disable-next-line:max-classes-per-file
 export class LockManager {
   public l: Map<AbapObject, LockObject> = new Map()
   constructor(private client: ADTClient) {}
@@ -75,7 +76,7 @@ export class LockManager {
     if (!obj.canBeWritten) return
     const lockObj = this.getLockObject(obj)
     if (!lockObj.needLock(obj)) return
-    //if unlocking in process, wait for it to finish and then lock
+    // if unlocking in process, wait for it to finish and then lock
     // perhaps we should check the status returned...
     if (lockObj.lockStatus === LockStatuses.UNLOCKING)
       await lockObj.waitStatusUpdate()
@@ -91,7 +92,7 @@ export class LockManager {
         lock.CORRNR || lock.IS_LOCAL
           ? TransportStatus.LOCAL
           : TransportStatus.REQUIRED
-      console.log("locked", obj.name)
+      log("locked", obj.name)
     } catch (e) {
       if (
         lockObj.needUnlock(obj) &&
@@ -107,7 +108,7 @@ export class LockManager {
     if (!obj.canBeWritten) return
     const lockObj = this.getLockObject(obj)
     if (!lockObj.needUnlock(obj)) return
-    //if locking in process, wait for it to finish and then unlock
+    // if locking in process, wait for it to finish and then unlock
     // perhaps we should check the status returned...
     if (lockObj.lockStatus === LockStatuses.LOCKING)
       await lockObj.waitStatusUpdate()
@@ -117,12 +118,12 @@ export class LockManager {
 
     lockObj.setLockStatus(LockStatuses.UNLOCKING)
     try {
-      //TODO: check if unlocking the right object. lock is on main one
+      // TODO: check if unlocking the right object. lock is on main one
       await this.client.unLock(obj.path, lockObj.lockId)
       lockObj.setLockStatus(LockStatuses.UNLOCKED)
-      console.log("unlocked", obj.name)
+      log("unlocked", obj.name)
     } catch (e) {
-      //unlocking failed, restore the original ID
+      // unlocking failed, restore the original ID
       if (
         lockObj.needLock(obj) &&
         lockObj.lockStatus === LockStatuses.UNLOCKING
