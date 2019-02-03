@@ -110,7 +110,7 @@ export class AdtObjectFinder {
       uri = main.path
     } else uri = nodePath.path
     try {
-      const doc = await workspace.openTextDocument(uri)
+      const doc = await workspace.openTextDocument(this.server.createUri(uri))
       await window.showTextDocument(doc)
       vscode.commands.executeCommand(
         "workbench.files.action.showActiveFileInExplorer"

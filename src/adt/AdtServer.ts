@@ -42,7 +42,7 @@ export class AdtServer {
    *
    * @param connectionId ADT connection ID
    */
-  constructor(connectionId: string) {
+  constructor(readonly connectionId: string) {
     const config = getRemoteList().filter(
       cfg => cfg.name.toLowerCase() === connectionId.toLowerCase()
     )[0]
@@ -100,6 +100,13 @@ export class AdtServer {
 
       await dir.refresh(this.client)
     }
+  }
+
+  public createUri(path: string, query: string = "") {
+    return Uri.parse("adt://" + this.connectionId).with({
+      path,
+      query
+    })
   }
 
   /**
