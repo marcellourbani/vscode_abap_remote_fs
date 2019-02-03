@@ -1,5 +1,5 @@
 import { ADTClient } from "abap-adt-api"
-import { window } from "vscode"
+import { window, commands } from "vscode"
 import { AbapObject } from "../abap/AbapObject"
 import { isAdtException } from "../AdtExceptions"
 
@@ -22,10 +22,19 @@ export class AdtObjectActivator {
   }
 
   async activate(object: AbapObject) {
-    //TODO: handle multiple inactive components
+    // TODO: handle multiple inactive components
     const inactive = object.getActivationSubject()
     try {
-      return await this.client.activate(inactive.name, inactive.path)
+      const result = await this.client.activate(inactive.name, inactive.path)
+      if (result.success) {
+        await inactive.loadMetadata(this.client)
+        commands.executeCommand("setContext", "abapfs:objectInactive", false)
+      } else {
+        window.showErrorMessage(
+          (result.messages[0] && result.messages[0].shortText) ||
+            `Error activating ${object.name}`
+        )
+      }
     } catch (e) {
       if (isAdtException(e) && e.type === "invalidMainProgram") {
         const mainProg = await this.selectMain(inactive)
