@@ -8,7 +8,6 @@ import {
   findMainInclude
 } from "../abap/AbapObjectUtilities"
 import { isAbapNode } from "../../fs/AbapNode"
-import { sapEscape } from "../../functions"
 
 interface SearchObjectType {
   name: string
@@ -154,7 +153,7 @@ export class AdtObjectFinder {
     client: ADTClient,
     objType: string = ""
   ): Promise<MySearchResult[]> {
-    const query = sapEscape(prefix.toUpperCase() + "*")
+    const query = prefix.toUpperCase() + "*"
     const raw = await client.searchObject(query, objType)
     return raw.map(res => {
       return new MySearchResult(res)
