@@ -1,5 +1,5 @@
 export function JSON2AbapXML(original: any, root: string = "DATA") {
-  //only flat objects for now, might extend later...
+  // only flat objects for now, might extend later...
   let inner = ""
   for (const key of Object.keys(original))
     if (original[key])

@@ -2,7 +2,7 @@ import { AbapObject } from "./AbapObject"
 import { SapGuiCommand } from "../sapgui/sapgui"
 
 export class AbapFunction extends AbapObject {
-  getExecutionCommand(): SapGuiCommand {
+  public getExecutionCommand(): SapGuiCommand {
     return {
       type: "Transaction",
       command: "SE37",

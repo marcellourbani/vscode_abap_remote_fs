@@ -133,7 +133,7 @@ export class AbapObject {
 
   public async getContents(client: ADTClient): Promise<string> {
     if (!this.isLeaf()) throw FileSystemError.FileIsADirectory(this.vsName)
-    const url = this.structure && ADTClient.mainInclude(this.structure)
+    const url = this.getContentsUri()
     if (this.sapguiOnly || !url) return SAPGUIONLY
 
     return client.getObjectSource(url)

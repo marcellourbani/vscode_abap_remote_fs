@@ -13,7 +13,7 @@ export class AbapProgram extends AbapObject {
     super(type, name, path, expandable, techName)
   }
 
-  getExecutionCommand(): SapGuiCommand {
+  public getExecutionCommand(): SapGuiCommand {
     return {
       type: "Transaction",
       command: "SE38",
@@ -25,7 +25,7 @@ export class AbapProgram extends AbapObject {
     const nodes = nodest.nodes.filter(
       x =>
         this.whiteListed(x.OBJECT_TYPE) &&
-        (x.OBJECT_TYPE !== "PROG/I" || //keep includes only if they start with the program name
+        (x.OBJECT_TYPE !== "PROG/I" || // keep includes only if they start with the program name
           x.OBJECT_NAME.length === this.name.length + 3) &&
         x.OBJECT_NAME.substr(0, this.name.length) === this.name
     )

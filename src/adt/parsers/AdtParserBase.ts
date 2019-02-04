@@ -57,7 +57,7 @@ export function getFieldAttribute(
 export function getFieldAttribute(
   fieldname: string,
   attrname: string
-): ((x: any) => string)
+): (x: any) => string
 export function getFieldAttribute(
   fieldname: string,
   attrname: string,

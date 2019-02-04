@@ -5,7 +5,7 @@ import { isAdtException } from "../AdtExceptions"
 
 export class AdtObjectActivator {
   constructor(private client: ADTClient) {}
-  async selectMain(obj: AbapObject): Promise<string> {
+  public async selectMain(obj: AbapObject): Promise<string> {
     const mainPrograms = await obj.getMainPrograms(this.client)
     if (mainPrograms.length === 1) return mainPrograms[0]["adtcore:uri"]
     const mainProg = await window.showQuickPick(
@@ -21,7 +21,7 @@ export class AdtObjectActivator {
     return ""
   }
 
-  async activate(object: AbapObject) {
+  public async activate(object: AbapObject) {
     // TODO: handle multiple inactive components
     const inactive = object.getActivationSubject()
     try {

@@ -15,11 +15,15 @@ export class FsProvider implements vscode.FileSystemProvider {
     return new vscode.Disposable(() => undefined)
   }
 
-  public stat(uri: vscode.Uri): vscode.FileStat | Thenable<vscode.FileStat> {
+  public async stat(uri: vscode.Uri): Promise<vscode.FileStat> {
     if (uri.path === "/.vscode") throw FileSystemError.FileNotFound(uri)
     const server = fromUri(uri)
     if (uri.path === "/") return server.findNode(uri)
-    return server.stat(uri)
+    try {
+      return await server.stat(uri)
+    } catch (e) {
+      throw e
+    }
   }
 
   public async readDirectory(
