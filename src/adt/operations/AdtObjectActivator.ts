@@ -23,23 +23,30 @@ export class AdtObjectActivator {
   public async activate(object: AbapObject) {
     // TODO: handle multiple inactive components
     const inactive = object.getActivationSubject()
+    let result
+    let message
     try {
-      const result = await this.client.activate(inactive.name, inactive.path)
-      if (result.success) {
-        await inactive.loadMetadata(this.client)
-        commands.executeCommand("setContext", "abapfs:objectInactive", false)
-      } else {
-        window.showErrorMessage(
-          (result.messages[0] && result.messages[0].shortText) ||
-            `Error activating ${object.name}`
-        )
-      }
+      result = await this.client.activate(inactive.name, inactive.path)
     } catch (e) {
       if (isAdtError(e) && e.type === "invalidMainProgram") {
         const mainProg = await this.selectMain(inactive)
         if (mainProg)
-          return this.client.activate(inactive.name, inactive.path, mainProg)
-      } else throw e
+          result = await this.client.activate(
+            inactive.name,
+            inactive.path,
+            mainProg
+          )
+      } else message = e.toString()
+    }
+    if (result && result.success) {
+      await inactive.loadMetadata(this.client)
+      commands.executeCommand("setContext", "abapfs:objectInactive", false)
+    } else {
+      window.showErrorMessage(
+        (result && result.messages[0] && result.messages[0].shortText) ||
+          message ||
+          `Error activating ${object.name}`
+      )
     }
   }
 }
