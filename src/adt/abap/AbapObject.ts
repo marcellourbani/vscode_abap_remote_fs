@@ -1,6 +1,6 @@
 import { FileSystemError } from "vscode"
 import { ArrayToMap } from "../../functions"
-import { NodeStructure, ObjectNode } from "../parsers/AdtNodeStructParser"
+import { NodeStructure, ObjectNode } from "./AdtNodeStructure"
 import { aggregateNodes, objectTypeExtension } from "./AbapObjectUtilities"
 import { SapGuiCommand } from "../sapgui/sapgui"
 import { ADTClient, AbapObjectStructure } from "abap-adt-api"

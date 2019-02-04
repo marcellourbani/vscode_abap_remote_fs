@@ -4,7 +4,7 @@ import {
   AbapSimpleObject,
   AbapXmlObject
 } from "./AbapObject"
-import { NodeStructure, ObjectNode } from "../parsers/AdtNodeStructParser"
+import { NodeStructure, ObjectNode } from "./AdtNodeStructure"
 import { selectMap } from "../../functions"
 import { AbapProgram } from "./AbapProgram"
 import { AbapClass } from "./AbapClass"

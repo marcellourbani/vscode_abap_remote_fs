@@ -1,5 +1,5 @@
 import { AbapObject, AbapNodeComponentByCategory } from "./AbapObject"
-import { NodeStructure } from "../parsers/AdtNodeStructParser"
+import { NodeStructure } from "./AdtNodeStructure"
 
 import { FileSystemError } from "vscode"
 import { aggregateNodes } from "./AbapObjectUtilities"

@@ -9,9 +9,8 @@ import { AdtObjectFinder } from "./operations/AdtObjectFinder"
 import { AdtObjectCreator } from "./operations/AdtObjectCreator"
 import { PACKAGE } from "./operations/AdtObjectTypes"
 import { LockManager } from "./operations/LockManager"
-import { AdtException } from "./AdtExceptions"
 import { SapGui } from "./sapgui/sapgui"
-import { ADTClient } from "abap-adt-api"
+import { ADTClient, adtException } from "abap-adt-api"
 export const ADTBASEURL = "/sap/bc/adt/repository/nodestructure"
 
 /**
@@ -123,10 +122,7 @@ export class AdtServer {
     const obj = file.abapObject
     // check file is locked
     if (!this.lockManager.isLocked(obj))
-      throw new AdtException(
-        "lockNotFound",
-        `Object not locked ${obj.type} ${obj.name}`
-      )
+      throw adtException(`Object not locked ${obj.type} ${obj.name}`)
 
     if (obj.transport === TransportStatus.REQUIRED) {
       const transport = await selectTransport(

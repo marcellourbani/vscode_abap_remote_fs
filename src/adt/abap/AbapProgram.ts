@@ -1,5 +1,5 @@
 import { AbapObject } from "./AbapObject"
-import { NodeStructure } from "../parsers/AdtNodeStructParser"
+import { NodeStructure } from "./AdtNodeStructure"
 import { SapGuiCommand } from "../sapgui/sapgui"
 
 export class AbapProgram extends AbapObject {

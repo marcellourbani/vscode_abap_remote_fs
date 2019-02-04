@@ -1,7 +1,6 @@
-import { ADTClient } from "abap-adt-api"
+import { ADTClient, isAdtError } from "abap-adt-api"
 import { window, commands } from "vscode"
 import { AbapObject } from "../abap/AbapObject"
-import { isAdtException } from "../AdtExceptions"
 
 export class AdtObjectActivator {
   constructor(private client: ADTClient) {}
@@ -36,7 +35,7 @@ export class AdtObjectActivator {
         )
       }
     } catch (e) {
-      if (isAdtException(e) && e.type === "invalidMainProgram") {
+      if (isAdtError(e) && e.type === "invalidMainProgram") {
         const mainProg = await this.selectMain(inactive)
         if (mainProg)
           return this.client.activate(inactive.name, inactive.path, mainProg)

@@ -44,13 +44,13 @@
     "ts-node": "^7.0.1",
     "tsconfig-paths": "^3.7.0",
     "tslint": "^5.12.1",
-    "typescript": "^2.6.1",
+    "typescript": "^3.3.1",
     "vsce": "^1.53.2",
     "vscode": "^1.1.26"
   },
   "dependencies": {
     "@types/tmp": "0.0.33",
-    "abap-adt-api": "^0.4.7",
+    "abap-adt-api": "^0.4.8",
     "event-stream": "3.3.4",
     "fs-jetpack": "^2.2.0",
     "opn": "^5.4.0",
