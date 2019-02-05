@@ -1,19 +1,12 @@
-import { ADTClient } from "abap-adt-api"
 import { workspace, Uri, window } from "vscode"
 import { fromUri } from "./adt/AdtServer"
-import { selectRemote, pickAdtRoot } from "./config"
+import { selectRemote, pickAdtRoot, createClient } from "./config"
 import { log } from "./logger"
 
 export async function connectAdtServer(selector: any) {
   const connectionID = selector && selector.connection
   const remote = await selectRemote(connectionID)
-  const client = new ADTClient(
-    remote.url,
-    remote.username,
-    remote.password,
-    remote.client,
-    remote.language
-  )
+  const client = createClient(remote)
 
   log(`Connecting to server ${remote.name}`)
 

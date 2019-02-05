@@ -11,7 +11,7 @@ export class AbapProgram extends AbapObject {
     techName?: string
   ) {
     super(type, name, path, expandable, techName)
-    this.pExpandable = true
+    this.pExpandable = !!expandable
   }
 
   public getExecutionCommand(): SapGuiCommand {

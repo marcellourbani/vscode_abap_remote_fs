@@ -1,5 +1,6 @@
 import * as vscode from "vscode"
 import { window, workspace, QuickPickItem, WorkspaceFolder, Uri } from "vscode"
+import { ADTClient, createSSLConfig } from "abap-adt-api"
 
 export interface RemoteConfig {
   name: string
@@ -8,6 +9,8 @@ export interface RemoteConfig {
   password: string
   client: string
   language: string
+  allowSelfSigned: boolean
+  customCA: string
   sapGui: {
     disabled: boolean
     routerString: string
@@ -83,4 +86,18 @@ export async function pickAdtRoot(uri?: Uri) {
     })
   )
   if (item) return item.root
+}
+
+export function createClient(conf: RemoteConfig) {
+  const sslconf = conf.url.match(/https:/i)
+    ? createSSLConfig(conf.allowSelfSigned, conf.customCA)
+    : {}
+  return new ADTClient(
+    conf.url,
+    conf.username,
+    conf.password,
+    conf.client,
+    conf.language,
+    sslconf
+  )
 }

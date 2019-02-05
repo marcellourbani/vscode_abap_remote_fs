@@ -2,7 +2,7 @@ import { Uri, FileSystemError, FileType, commands } from "vscode"
 import { MetaFolder } from "../fs/MetaFolder"
 import { AbapObjectNode, AbapNode, isAbapNode } from "../fs/AbapNode"
 import { AbapObject, TransportStatus, isAbapObject } from "./abap/AbapObject"
-import { getRemoteList } from "../config"
+import { getRemoteList, createClient } from "../config"
 import { selectTransport } from "./AdtTransports"
 import { AdtObjectActivator } from "./operations/AdtObjectActivator"
 import { AdtObjectFinder } from "./operations/AdtObjectFinder"
@@ -47,13 +47,7 @@ export class AdtServer {
     )[0]
 
     if (!config) throw new Error(`connection ${connectionId}`)
-    this.client = new ADTClient(
-      config.url,
-      config.username,
-      config.password,
-      config.client,
-      config.language
-    )
+    this.client = createClient(config)
     // utility components
     this.creator = new AdtObjectCreator(this)
     this.activator = new AdtObjectActivator(this.client)
