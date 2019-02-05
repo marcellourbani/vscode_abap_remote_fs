@@ -1,3 +1,4 @@
+import { PACKAGE } from "./../operations/AdtObjectTypes"
 import { FileSystemError } from "vscode"
 import { ArrayToMap } from "../../functions"
 import { NodeStructure, ObjectNode } from "./AdtNodeStructure"
@@ -42,10 +43,13 @@ export class AbapObject {
   public readonly name: string
   public readonly techName: string
   public readonly path: string
-  public readonly expandable: boolean
+  public get expandable() {
+    return this.pExpandable
+  }
   public transport: TransportStatus | string = TransportStatus.UNKNOWN
   public structure?: AbapObjectStructure
 
+  protected pExpandable: boolean
   protected sapguiOnly: boolean
 
   constructor(
@@ -58,7 +62,7 @@ export class AbapObject {
     this.name = name
     this.type = type
     this.path = path
-    this.expandable = !!expandable
+    this.pExpandable = !!expandable && type === PACKAGE
     this.techName = techName || name
     this.sapguiOnly = !!path.match(
       "(/sap/bc/adt/vit)|(/sap/bc/adt/ddic/domains/)|(/sap/bc/adt/ddic/dataelements/)"

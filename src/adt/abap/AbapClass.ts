@@ -21,6 +21,7 @@ export class AbapClass extends AbapObject {
     techName?: string
   ) {
     super(type, name, path, expandable, techName)
+    this.pExpandable = true
   }
 
   public async loadMetadata(client: ADTClient): Promise<AbapObject> {

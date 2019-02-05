@@ -75,7 +75,6 @@ export class AdtObjectCreator {
     }
     if (parentType === PACKAGE) parentName = devclass
     if (!devclass || !parentName) return
-    if (parentType === PACKAGE) parentName = devclass
     const objDetails: NewObjectOptions = {
       description,
       name,
