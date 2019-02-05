@@ -56,6 +56,7 @@
     "opn": "^5.4.0",
     "request": "^2.88.0",
     "tmp-promise": "^1.0.5",
+    "tough-cookie": "^3.0.0",
     "xml2js": "^0.4.19"
   },
   "activationEvents": [

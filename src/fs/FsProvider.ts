@@ -68,12 +68,12 @@ export class FsProvider implements vscode.FileSystemProvider {
     await server.saveFile(file, content)
     this.pEventEmitter.fire([{ type: FileChangeType.Changed, uri }])
   }
-  public delete(
-    uri: vscode.Uri,
-    options: { recursive: boolean }
-  ): void | Thenable<void> {
-    throw new Error("Method not implemented.")
+
+  public async delete(uri: vscode.Uri, options: { recursive: boolean }) {
+    const server = fromUri(uri)
+    return server.delete(uri)
   }
+
   public rename(
     oldUri: vscode.Uri,
     newUri: vscode.Uri,

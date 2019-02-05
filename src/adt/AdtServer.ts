@@ -10,7 +10,7 @@ import { AdtObjectCreator } from "./operations/AdtObjectCreator"
 import { PACKAGE } from "./operations/AdtObjectTypes"
 import { LockManager } from "./operations/LockManager"
 import { SapGui } from "./sapgui/sapgui"
-import { ADTClient, adtException } from "abap-adt-api"
+import { ADTClient, adtException, isCreatableTypeId } from "abap-adt-api"
 export const ADTBASEURL = "/sap/bc/adt/repository/nodestructure"
 
 /**
@@ -71,6 +71,27 @@ export class AdtServer {
       "System Library",
       new AbapObjectNode(new AbapObject("DEVC/K", "", ADTBASEURL, "X"))
     )
+  }
+  public async delete(uri: Uri) {
+    const file = this.findNode(uri)
+    if (isAbapNode(file)) {
+      const obj = file.abapObject
+      if (!isCreatableTypeId(obj.type))
+        throw FileSystemError.NoPermissions(
+          "Only allowed to delete abap objects can be created"
+        )
+      // const info = await this.client.transportInfo(obj.path)
+      await this.lockManager.lock(obj)
+      try {
+        await this.client.deleteObject(
+          obj.path,
+          this.lockManager.getLockId(obj)
+        )
+      } finally {
+        this.lockManager.unlock(obj)
+      }
+    } else
+      throw FileSystemError.NoPermissions("Only abap objects can be deleted")
   }
   /**
    * Refresh a directory

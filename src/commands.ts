@@ -15,16 +15,22 @@ export async function connectAdtServer(selector: any) {
     remote.language
   )
 
-  log(`Connecting to server ${connectionID}`)
+  log(`Connecting to server ${remote.name}`)
 
-  await client.login() // if connection raises an exception don't mount any folder
+  try {
+    await client.login() // if connection raises an exception don't mount any folder
 
-  workspace.updateWorkspaceFolders(0, 0, {
-    uri: Uri.parse("adt://" + remote.name),
-    name: remote.name + "(ABAP)"
-  })
+    workspace.updateWorkspaceFolders(0, 0, {
+      uri: Uri.parse("adt://" + remote.name),
+      name: remote.name + "(ABAP)"
+    })
 
-  log(`Connected to server ${connectionID}`)
+    log(`Connected to server ${remote.name}`)
+  } catch (e) {
+    window.showErrorMessage(
+      `Failed to connect to ${remote.name}:${e.toString()}`
+    )
+  }
 }
 
 export async function activateCurrent(selector: Uri) {
