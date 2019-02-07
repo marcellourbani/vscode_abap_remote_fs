@@ -17,13 +17,15 @@ import { AbapNode, isAbapNode } from "../../fs/AbapNode"
 import { abapObjectFromNode } from "../abap/AbapObjectUtilities"
 import { AdtServer } from "../AdtServer"
 import { selectTransport } from "../AdtTransports"
+import { fieldOrder } from "../../functions"
+// import { stringOrder, pick } from "../../functions"
 
 export const PACKAGE = "DEVC/K"
 
 export async function selectObjectType(
   parentType?: string
 ): Promise<CreatableType | undefined> {
-  const rawtypes = [...CreatableTypes.values()]
+  const rawtypes = [...CreatableTypes.values()].sort(fieldOrder("label"))
   const types = parentType
     ? rawtypes.filter(t => parentTypeId(t.typeId) === parentType)
     : rawtypes

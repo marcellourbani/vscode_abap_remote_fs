@@ -14,6 +14,7 @@ import { AbapNode, isAbapNode } from "../../fs/AbapNode"
 import { AbapFunction } from "./AbapFunction"
 import { AbapCds } from "./AbapCds"
 import { Node } from "abap-adt-api"
+import { AbapFunctionGroup } from "./AbapFunctionGroup"
 
 export interface NodePath {
   path: string
@@ -89,6 +90,9 @@ export function abapObjectFromNode(node: Node): AbapObject {
       break
     case "INTF/OI":
       objtype = AbapSimpleObject
+      break
+    case "FUGR/F":
+      objtype = AbapFunctionGroup
       break
     case "FUGR/FF":
       objtype = AbapFunction

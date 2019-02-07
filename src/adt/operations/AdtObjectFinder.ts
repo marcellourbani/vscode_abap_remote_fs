@@ -155,8 +155,10 @@ export class AdtObjectFinder {
   ): Promise<MySearchResult[]> {
     const query = prefix.toUpperCase() + "*"
     const raw = await client.searchObject(query, objType)
-    return raw.map(res => {
-      return new MySearchResult(res)
-    })
+    return raw
+      .filter(r => !objType || objType === r["adtcore:type"])
+      .map(res => {
+        return new MySearchResult(res)
+      })
   }
 }

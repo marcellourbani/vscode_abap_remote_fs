@@ -122,6 +122,8 @@ export class AbapObject {
     lockId: string
   ): Promise<void> {
     this.canBeWritten()
+    // contents URL depends on metadata
+    if (!this.structure) await this.loadMetadata(client)
     const contentUri = this.getContentsUri()
     const transport = isString(this.transport) ? this.transport : undefined
 

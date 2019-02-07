@@ -27,3 +27,13 @@ export const selectMap = <T1, K extends keyof T1, T2>(
   const record = map && map.get(index)
   return ((record && record[property]) || defval) as T2
 }
+
+export const stringOrder = (s1: any, s2: any) => {
+  if (s1 > s2) return 1
+  return s2 > s1 ? -1 : 0
+}
+
+export const fieldOrder = <T>(fieldName: keyof T, inverse: boolean = false) => (
+  a1: T,
+  a2: T
+) => stringOrder(a1[fieldName], a2[fieldName]) * (inverse ? -1 : 1)
