@@ -1,12 +1,17 @@
-import { PACKAGE } from "./../operations/AdtObjectTypes"
 import { FileSystemError } from "vscode"
 import { ArrayToMap } from "../../functions"
-import { NodeStructure, ObjectNode } from "./AdtNodeStructure"
 import { aggregateNodes, objectTypeExtension } from "./AbapObjectUtilities"
 import { SapGuiCommand } from "../sapgui/sapgui"
-import { ADTClient, AbapObjectStructure } from "abap-adt-api"
+import {
+  ADTClient,
+  AbapObjectStructure,
+  Node,
+  NodeCategory,
+  NodeObjectType
+} from "abap-adt-api"
 import { isString } from "util"
 import { isNodeParent } from "abap-adt-api"
+import { PACKAGE } from "../operations/AdtObjectCreator"
 
 const TYPEID = Symbol()
 export const XML_EXTENSION = ".XML"
@@ -15,6 +20,12 @@ export interface AbapNodeComponentByType {
   name: string
   type: string
   objects: AbapObject[]
+}
+
+export interface NodeStructureMapped {
+  nodes: Node[]
+  categories: Map<string, NodeCategory>
+  objectTypes: Map<string, NodeObjectType>
 }
 export interface AbapNodeComponentByCategory {
   name: string
@@ -171,7 +182,9 @@ export class AbapObject {
   }
 
   // exclude those visible only in SAPGUI, except whitelisted
-  protected filterNodeStructure(nodest: NodeStructure): NodeStructure {
+  protected filterNodeStructure(
+    nodest: NodeStructureMapped
+  ): NodeStructureMapped {
     if (this.type === "DEVC/K") return nodest
     const nodes = nodest.nodes.filter(x => this.whiteListed(x.OBJECT_TYPE))
     return {
@@ -184,7 +197,7 @@ export class AbapObject {
     return !!OBJECT_TYPE.match(/^....\/(.|(FF))$/)
   }
 
-  protected selfLeafNode(): ObjectNode {
+  protected selfLeafNode(): Node {
     return {
       OBJECT_NAME: this.name,
       OBJECT_TYPE: this.type,

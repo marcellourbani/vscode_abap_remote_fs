@@ -1,5 +1,8 @@
-import { AbapObject, AbapNodeComponentByCategory } from "./AbapObject"
-import { NodeStructure } from "./AdtNodeStructure"
+import {
+  AbapObject,
+  AbapNodeComponentByCategory,
+  NodeStructureMapped
+} from "./AbapObject"
 
 import { FileSystemError } from "vscode"
 import { aggregateNodes } from "./AbapObjectUtilities"
@@ -41,7 +44,7 @@ export class AbapClass extends AbapObject {
     if (!this.structure) await this.loadMetadata(client)
     if (!this.structure) throw FileSystemError.FileNotFound(this.vsName)
 
-    const ns: NodeStructure = {
+    const ns: NodeStructureMapped = {
       categories: new Map(),
       objectTypes: new Map(),
       nodes: []

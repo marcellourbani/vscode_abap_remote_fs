@@ -39,8 +39,6 @@
     "@types/mocha": "^2.2.42",
     "@types/node": "^8.10.38",
     "@types/opn": "^5.1.0",
-    "@types/request": "^2.48.1",
-    "@types/xml2js": "^0.4.3",
     "ts-node": "^7.0.1",
     "tsconfig-paths": "^3.7.0",
     "tslint": "^5.12.1",
@@ -50,14 +48,12 @@
   },
   "dependencies": {
     "@types/tmp": "0.0.33",
-    "abap-adt-api": "^0.4.10",
+    "abap-adt-api": "^0.4.13",
     "event-stream": "3.3.4",
     "fs-jetpack": "^2.2.0",
     "opn": "^5.4.0",
-    "request": "^2.88.0",
     "tmp-promise": "^1.0.5",
-    "tough-cookie": "^3.0.0",
-    "xml2js": "^0.4.19"
+    "tough-cookie": "^3.0.0"
   },
   "activationEvents": [
     "onFileSystem:adt",

@@ -17,7 +17,18 @@ import { AbapNode, isAbapNode } from "../../fs/AbapNode"
 import { abapObjectFromNode } from "../abap/AbapObjectUtilities"
 import { AdtServer } from "../AdtServer"
 import { selectTransport } from "../AdtTransports"
-import { PACKAGE, selectObjectType } from "./AdtObjectTypes"
+
+export const PACKAGE = "DEVC/K"
+
+export async function selectObjectType(
+  parentType?: string
+): Promise<CreatableType | undefined> {
+  const rawtypes = [...CreatableTypes.values()]
+  const types = parentType
+    ? rawtypes.filter(t => parentTypeId(t.typeId) === parentType)
+    : rawtypes
+  return window.showQuickPick(types || rawtypes)
+}
 
 export class AdtObjectCreator {
   private types?: ObjectType[]

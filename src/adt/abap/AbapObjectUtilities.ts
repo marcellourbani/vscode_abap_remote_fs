@@ -2,9 +2,9 @@ import {
   AbapObject,
   AbapNodeComponentByCategory,
   AbapSimpleObject,
-  AbapXmlObject
+  AbapXmlObject,
+  NodeStructureMapped
 } from "./AbapObject"
-import { NodeStructure, ObjectNode } from "./AdtNodeStructure"
 import { selectMap } from "../../functions"
 import { AbapProgram } from "./AbapProgram"
 import { AbapClass } from "./AbapClass"
@@ -13,6 +13,7 @@ import { AbapClassInclude, isClassInclude } from "./AbapClassInclude"
 import { AbapNode, isAbapNode } from "../../fs/AbapNode"
 import { AbapFunction } from "./AbapFunction"
 import { AbapCds } from "./AbapCds"
+import { Node } from "abap-adt-api"
 
 export interface NodePath {
   path: string
@@ -20,7 +21,7 @@ export interface NodePath {
 }
 
 export function aggregateNodes(
-  cont: NodeStructure,
+  cont: NodeStructureMapped,
   parentType: string
 ): AbapNodeComponentByCategory[] {
   const catLabel = selectMap(cont.categories, "CATEGORY_LABEL", "")
@@ -71,7 +72,7 @@ export function aggregateNodes(
   return components
 }
 
-export function abapObjectFromNode(node: ObjectNode): AbapObject {
+export function abapObjectFromNode(node: Node): AbapObject {
   let objtype = AbapObject
   switch (node.OBJECT_TYPE) {
     case "PROG/P":

@@ -1,5 +1,4 @@
-import { AbapObject } from "./AbapObject"
-import { NodeStructure } from "./AdtNodeStructure"
+import { AbapObject, NodeStructureMapped } from "./AbapObject"
 import { SapGuiCommand } from "../sapgui/sapgui"
 
 export class AbapProgram extends AbapObject {
@@ -22,7 +21,9 @@ export class AbapProgram extends AbapObject {
     }
   }
 
-  protected filterNodeStructure(nodest: NodeStructure): NodeStructure {
+  protected filterNodeStructure(
+    nodest: NodeStructureMapped
+  ): NodeStructureMapped {
     const nodes = nodest.nodes.filter(
       x =>
         this.whiteListed(x.OBJECT_TYPE) &&

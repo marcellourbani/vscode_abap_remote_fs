@@ -7,14 +7,14 @@ export async function selectTransport(
   client: ADTClient
 ): Promise<string> {
   const ti = await client.transportInfo(objContentPath, devClass)
-  //if I have a lock return the locking transport
+  // if I have a lock return the locking transport
   // will probably be a task but should be fine
 
   if (ti.LOCKS) return ti.LOCKS.HEADER.TRKORR
 
   if (ti.DLVUNIT === "LOCAL") return ""
   const CREATENEW = "Create a new transport"
-  let selection = await window.showQuickPick([
+  const selection = await window.showQuickPick([
     CREATENEW,
     ...ti.TRANSPORTS.map(t => `${t.TRKORR} ${t.AS4TEXT}`)
   ])

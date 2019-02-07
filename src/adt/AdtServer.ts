@@ -6,8 +6,7 @@ import { getRemoteList, createClient } from "../config"
 import { selectTransport } from "./AdtTransports"
 import { AdtObjectActivator } from "./operations/AdtObjectActivator"
 import { AdtObjectFinder } from "./operations/AdtObjectFinder"
-import { AdtObjectCreator } from "./operations/AdtObjectCreator"
-import { PACKAGE } from "./operations/AdtObjectTypes"
+import { AdtObjectCreator, PACKAGE } from "./operations/AdtObjectCreator"
 import { LockManager } from "./operations/LockManager"
 import { SapGui } from "./sapgui/sapgui"
 import { ADTClient, adtException, isCreatableTypeId } from "abap-adt-api"
@@ -106,8 +105,8 @@ export class AdtServer {
         if (isAbapNode(dir) && dir.abapObject.type === PACKAGE) {
           if (this.lastRefreshed === dir.abapObject.name) {
             await this.client.nodeContents(
-              "DEVC/K",
-              this.lastRefreshed ? "SEU_ADT" : "%24TMP"
+              PACKAGE,
+              this.lastRefreshed === "$TMP" ? "SEU_ADT" : "$TMP"
             )
           }
 
