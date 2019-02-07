@@ -11,6 +11,7 @@ import { PACKAGE } from "./operations/AdtObjectTypes"
 import { LockManager } from "./operations/LockManager"
 import { SapGui } from "./sapgui/sapgui"
 import { ADTClient, adtException, isCreatableTypeId } from "abap-adt-api"
+import { isString } from "util"
 export const ADTBASEURL = "/sap/bc/adt/repository/nodestructure"
 
 /**
@@ -74,12 +75,14 @@ export class AdtServer {
         throw FileSystemError.NoPermissions(
           "Only allowed to delete abap objects can be created"
         )
-      // const info = await this.client.transportInfo(obj.path)
+
       await this.lockManager.lock(obj)
+      const transport = await this.selectTransportIfNeeded(obj)
       try {
         await this.client.deleteObject(
           obj.path,
-          this.lockManager.getLockId(obj)
+          this.lockManager.getLockId(obj),
+          transport
         )
       } finally {
         this.lockManager.unlock(obj)
@@ -139,14 +142,7 @@ export class AdtServer {
     if (!this.lockManager.isLocked(obj))
       throw adtException(`Object not locked ${obj.type} ${obj.name}`)
 
-    if (obj.transport === TransportStatus.REQUIRED) {
-      const transport = await selectTransport(
-        obj.getContentsUri(),
-        "",
-        this.client
-      )
-      if (transport) file.abapObject.transport = transport
-    }
+    await this.selectTransportIfNeeded(obj)
 
     const lockId = this.lockManager.getLockId(obj)
     await obj.setContents(this.client, content, lockId)
@@ -264,6 +260,18 @@ export class AdtServer {
 
   public async getReentranceTicket() {
     return this.client.reentranceTicket()
+  }
+
+  private async selectTransportIfNeeded(obj: AbapObject) {
+    if (obj.transport === TransportStatus.REQUIRED) {
+      const transport = await selectTransport(
+        obj.getContentsUri(),
+        "",
+        this.client
+      )
+      if (transport) obj.transport = transport
+    }
+    return isString(obj.transport) ? obj.transport : ""
   }
 
   /**

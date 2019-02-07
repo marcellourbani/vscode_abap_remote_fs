@@ -89,9 +89,8 @@ export class LockManager {
       const lock = await this.client.lock(lockObj.main.path)
       lockObj.setLockStatus(LockStatuses.LOCKED, lock.LOCK_HANDLE)
       obj.transport =
-        lock.CORRNR || lock.IS_LOCAL
-          ? TransportStatus.LOCAL
-          : TransportStatus.REQUIRED
+        lock.CORRNR ||
+        (lock.IS_LOCAL ? TransportStatus.LOCAL : TransportStatus.REQUIRED)
       log("locked", obj.name)
     } catch (e) {
       if (
@@ -100,6 +99,7 @@ export class LockManager {
       )
         lockObj.setLockStatus(LockStatuses.UNLOCKED)
       if (!this.needStateFul) this.client.stateful = session_types.stateless
+      log("failed to lock", obj.name, e.toString())
       throw e
     }
   }

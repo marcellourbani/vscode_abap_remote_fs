@@ -5,10 +5,10 @@ import { AbapObject, AbapNodeComponentByCategory } from "../adt/abap/AbapObject"
 import { MetaFolder } from "./MetaFolder"
 import { flatMap, pick } from "../functions"
 
-export const dummy = () => !!aggregateNodes //hack to fix circular dependency issue
+export const dummy = () => !!aggregateNodes // hack to fix circular dependency issue
 
 const getNodeHierarchyByType = (
-  components: Array<AbapNodeComponentByCategory>
+  components: AbapNodeComponentByCategory[]
 ): MetaFolder => {
   const newNode = new MetaFolder()
   const flatComp = flatMap(components, pick("types"))
@@ -24,7 +24,7 @@ const getNodeHierarchyByType = (
 }
 
 const getNodeHierarchy = (
-  components: Array<AbapNodeComponentByCategory>
+  components: AbapNodeComponentByCategory[]
 ): MetaFolder => {
   const newNode = new MetaFolder()
   components.forEach(category => {
@@ -49,16 +49,17 @@ const getNodeHierarchy = (
 }
 const refreshObjects = (
   node: AbapObjectNode,
-  components: Array<AbapNodeComponentByCategory>
+  components: AbapNodeComponentByCategory[]
 ): void => {
-  //create a new structure, then will match it with the node's
+  // create a new structure, then will match it with the node's
   const newFolder = node.abapObject.type.match(/DEVC/)
     ? getNodeHierarchy(components)
     : getNodeHierarchyByType(components)
 
   function reconcile(current: AbapNode, newNode: AbapNode) {
-    //remove deleted objects from node
-    ;[...current]
+    // remove deleted objects from node
+    const cur = [...current]
+    cur
       .filter(x => !newNode.getChild(x[0]))
       .forEach(x => current.deleteChild(x[0]))
 
@@ -72,13 +73,13 @@ const refreshObjects = (
   reconcile(node, newFolder)
 }
 
-//folders are only used to store other nodes
+// folders are only used to store other nodes
 export class AbapObjectNode implements FileStat, Iterable<[string, AbapNode]> {
-  abapObject: AbapObject
-  type: FileType
-  ctime: number = Date.now()
-  mtime: number = Date.now()
-  size: number = 0
+  public abapObject: AbapObject
+  public type: FileType
+  public ctime: number = Date.now()
+  public mtime: number = Date.now()
+  public size: number = 0
   private children?: Map<string, AbapNode>
 
   constructor(abapObject: AbapObject) {
@@ -147,7 +148,7 @@ export class AbapObjectNode implements FileStat, Iterable<[string, AbapNode]> {
     return true
   }
 
-  [Symbol.iterator]() {
+  public [Symbol.iterator]() {
     if (!this.children) throw FileSystemError.FileNotADirectory()
     return this.children[Symbol.iterator]()
   }
@@ -155,5 +156,5 @@ export class AbapObjectNode implements FileStat, Iterable<[string, AbapNode]> {
 
 export type AbapNode = AbapObjectNode | MetaFolder
 export function isAbapNode(node: AbapNode): node is AbapObjectNode {
-  return (<AbapObjectNode>node).abapObject !== undefined
+  return (node as AbapObjectNode).abapObject !== undefined
 }

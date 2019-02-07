@@ -12,6 +12,7 @@ import { AbapInclude } from "./AbapInclude"
 import { AbapClassInclude, isClassInclude } from "./AbapClassInclude"
 import { AbapNode, isAbapNode } from "../../fs/AbapNode"
 import { AbapFunction } from "./AbapFunction"
+import { AbapCds } from "./AbapCds"
 
 export interface NodePath {
   path: string
@@ -94,6 +95,9 @@ export function abapObjectFromNode(node: ObjectNode): AbapObject {
     case "PROG/I":
     case "FUGR/I":
       objtype = AbapInclude
+      break
+    case "DDLS/DF":
+      objtype = AbapCds
       break
   }
   return new objtype(

@@ -9,6 +9,8 @@ Format based on [Keep a Changelog](http://keepachangelog.com/)
 ### Fixed
 
 - multiple object activation
+- transport detection on lock
+- CDS extension support
 
 ## [0.3.6] 2019-02-05
 
