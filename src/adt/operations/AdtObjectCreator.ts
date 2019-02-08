@@ -146,7 +146,7 @@ export class AdtObjectCreator {
     const objType = await this.guessOrSelectObjectType(hierarchy)
     // user didn't pick one...
     if (!objType) return
-    const name = await this.askInput("name")
+    const name = await this.askName(objType.typeId)
     if (!name) return
     const description = await this.askInput("description", false)
     if (!description) return
@@ -181,7 +181,7 @@ export class AdtObjectCreator {
       devclass,
       options: {
         description,
-        name,
+        name: this.fixName(name, objType.typeId, parentName),
         objtype: objType.typeId,
         parentName,
         parentPath: objectPath(parentType, parentName, ""),
@@ -189,12 +189,29 @@ export class AdtObjectCreator {
       }
     }
   }
+  private fixName(name: string, typeId: string, parentName: string): string {
+    if (typeId !== "FUGR/I") return name
+    const parts = parentName.split("/")
+
+    return parts.length < 3
+      ? `L${parentName}${name}`
+      : `/${parts[1]}/L${parts[2]}${name}`
+  }
+  private askName(objType: CreatableTypeIds) {
+    if (objType === "FUGR/I")
+      return this.askInput("suffix", true, (s: string) =>
+        s.match(/^[A-Za-z]\w\w$/) ? "" : "Suffix must be 3 character long"
+      )
+
+    return this.askInput("name")
+  }
 
   private async askInput(
     prompt: string,
-    uppercase: boolean = true
+    uppercase: boolean = true,
+    validateInput = (s: string) => ""
   ): Promise<string> {
-    const res = (await window.showInputBox({ prompt })) || ""
+    const res = (await window.showInputBox({ prompt, validateInput })) || ""
     return uppercase ? res.toUpperCase() : res
   }
 }

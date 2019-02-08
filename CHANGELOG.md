@@ -11,6 +11,9 @@ Format based on [Keep a Changelog](http://keepachangelog.com/)
 - multiple object activation
 - transport detection on lock
 - CDS extension support
+- better transport selection
+- cancel operation if transport not selected
+- suffix instead of name for group includes
 
 ## [0.3.6] 2019-02-05
 
