@@ -155,6 +155,7 @@ export class AdtObjectFinder {
   ): Promise<MySearchResult[]> {
     const query = prefix.toUpperCase() + "*"
     const raw = await client.searchObject(query, objType)
+    // object type is only honoured in part. PROG/P matches PROG/I too, and so on
     return raw
       .filter(r => !objType || objType === r["adtcore:type"])
       .map(res => {

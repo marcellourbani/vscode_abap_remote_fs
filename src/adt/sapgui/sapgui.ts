@@ -8,7 +8,7 @@ import opn = require("opn")
 export interface SapGuiCommand {
   type: "Transaction" | "Report" | "SystemCommand"
   command: string
-  parameters?: [{ name: string; value: string }]
+  parameters?: Array<{ name: string; value: string }>
   okCode?: string
 }
 interface ServerGuiConfig {

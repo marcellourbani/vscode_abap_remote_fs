@@ -16,8 +16,11 @@ export class AbapProgram extends AbapObject {
   public getExecutionCommand(): SapGuiCommand {
     return {
       type: "Transaction",
-      command: "SE38",
-      parameters: [{ name: "RS38M-PROGRAMM", value: this.name }]
+      command: "*SE38",
+      parameters: [
+        { name: "RS38M-PROGRAMM", value: this.name },
+        { name: "DYNP_OKCODE", value: "SHOP" }
+      ]
     }
   }
 

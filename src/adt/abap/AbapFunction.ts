@@ -6,22 +6,14 @@ export function isAbapFunction(o: AbapObject): o is AbapFunction {
 }
 
 export class AbapFunction extends AbapObject {
-  private parent?: AbapObject
   public getExecutionCommand(): SapGuiCommand {
     return {
       type: "Transaction",
-      command: "SE37",
-      parameters: [{ name: "RS38L-NAME", value: this.name }]
+      command: "*SE37",
+      parameters: [
+        { name: "RS38L-NAME", value: this.name },
+        { name: "DYNP_OKCODE", value: "WB_DISPLAY" }
+      ]
     }
-  }
-  public getActivationSubject(): AbapObject {
-    return this.parent || this
-  }
-
-  public getLockTarget(): AbapObject {
-    return this.parent || this
-  }
-  public setParent(parent: AbapObject) {
-    this.parent = parent
   }
 }

@@ -46,8 +46,11 @@ export class AbapClassInclude extends AbapObject {
     if (this.parent)
       return {
         type: "Transaction",
-        command: "SE24",
-        parameters: [{ name: "SEOCLASS-CLSNAME", value: this.parent.name }]
+        command: "*SE24",
+        parameters: [
+          { name: "SEOCLASS-CLSNAME", value: this.parent.name },
+          { name: "DYNP_OKCODE", value: "WB_DISPLAY" }
+        ]
       }
   }
 
