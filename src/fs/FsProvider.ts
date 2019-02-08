@@ -71,7 +71,7 @@ export class FsProvider implements vscode.FileSystemProvider {
 
   public async delete(uri: vscode.Uri, options: { recursive: boolean }) {
     const server = fromUri(uri)
-    return server.delete(uri)
+    await server.delete(uri)
   }
 
   public rename(

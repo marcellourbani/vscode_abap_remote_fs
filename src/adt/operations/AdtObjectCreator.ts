@@ -21,6 +21,12 @@ import { fieldOrder } from "../../functions"
 // import { stringOrder, pick } from "../../functions"
 
 export const PACKAGE = "DEVC/K"
+type details =
+  | {
+      options: NewObjectOptions
+      devclass: string
+    }
+  | undefined
 
 export async function selectObjectType(
   parentType?: string
@@ -52,62 +58,26 @@ export class AdtObjectCreator {
    * @param uri Creates an ABAP object
    */
   public async createObject(uri: Uri | undefined) {
-    const hierarchy = this.getHierarchy(uri)
-    let devclass: string = this.guessParentByType(hierarchy, PACKAGE)
-    const objType = await this.guessOrSelectObjectType(hierarchy)
-    // user didn't pick one...
-    if (!objType) return
-    const name = await this.askInput("name")
-    if (!name) return
-    const description = await this.askInput("description", false)
-    if (!description) return
-    const responsible = this.server.client.username.toUpperCase()
-    const parentType = parentTypeId(objType.typeId)
-    let parentName
-    if (parentType !== PACKAGE) {
-      parentName = this.guessParentByType(hierarchy, "FUGR/F")
-      if (!parentName) {
-        const parent = await this.server.objectFinder.findObject(
-          "Select parent",
-          parentType
-        )
-        if (!parent) return
-        parentName = parent.name
-        devclass = parent.packageName
-      }
-      if (!parentName) return
-    }
-
-    if (!devclass) {
-      const packageResult = await this.server.objectFinder.findObject(
-        "Select package",
-        PACKAGE
-      )
-      if (!packageResult) return
-      devclass = packageResult.name
-    }
-    if (parentType === PACKAGE) parentName = devclass
-    if (!devclass || !parentName) return
-    const objDetails: NewObjectOptions = {
-      description,
-      name,
-      objtype: objType.typeId,
-      parentName,
-      parentPath: objectPath(parentType, parentName, ""),
-      responsible
-    }
-    await this.validateObject(objDetails)
-    objDetails.transport = await this.selectTransport(objDetails, devclass)
-
-    await this.server.client.statelessClone.createObject(objDetails)
+    const objDetails = await this.getObjectDetails(uri)
+    if (!objDetails) return
+    const { options, devclass } = objDetails
+    await this.validateObject(options)
+    const transport = await selectTransport(
+      objectPath(options.objtype, options.name, options.parentName),
+      devclass,
+      this.server.client
+    )
+    if (transport.cancelled) return
+    options.transport = transport.transport
+    await this.server.client.statelessClone.createObject(options)
 
     const obj = abapObjectFromNode({
       EXPANDABLE: "",
-      OBJECT_NAME: objDetails.name,
-      OBJECT_TYPE: objDetails.objtype,
-      OBJECT_URI: objectPath(objDetails),
+      OBJECT_NAME: options.name,
+      OBJECT_TYPE: options.objtype,
+      OBJECT_URI: objectPath(options),
       OBJECT_VIT_URI: "",
-      TECH_NAME: objDetails.name
+      TECH_NAME: options.name
     })
     await obj.loadMetadata(this.server.client)
     return obj
@@ -170,23 +140,54 @@ export class AdtObjectCreator {
       }
     return this.server.client.validateNewObject(validateOptions)
   }
+  private async getObjectDetails(uri: Uri | undefined): Promise<details> {
+    const hierarchy = this.getHierarchy(uri)
+    let devclass: string = this.guessParentByType(hierarchy, PACKAGE)
+    const objType = await this.guessOrSelectObjectType(hierarchy)
+    // user didn't pick one...
+    if (!objType) return
+    const name = await this.askInput("name")
+    if (!name) return
+    const description = await this.askInput("description", false)
+    if (!description) return
+    const responsible = this.server.client.username.toUpperCase()
+    const parentType = parentTypeId(objType.typeId)
+    let parentName
+    if (parentType !== PACKAGE) {
+      parentName = this.guessParentByType(hierarchy, "FUGR/F")
+      if (!parentName) {
+        const parent = await this.server.objectFinder.findObject(
+          "Select parent",
+          parentType
+        )
+        if (!parent) return
+        parentName = parent.name
+        devclass = parent.packageName
+      }
+      if (!parentName) return
+    }
 
-  /**
-   * Finds or ask the user to select/create a transport for an object.
-   * Returns an empty string for local objects
-   *
-   * @param objType Object type
-   * @param objDetails Object name, description,...
-   */
-  private async selectTransport(
-    objDetails: NewObjectOptions,
-    devClass: string
-  ): Promise<string> {
-    return selectTransport(
-      objectPath(objDetails.objtype, objDetails.name, objDetails.parentName),
-      devClass,
-      this.server.client
-    )
+    if (!devclass) {
+      const packageResult = await this.server.objectFinder.findObject(
+        "Select package",
+        PACKAGE
+      )
+      if (!packageResult) return
+      devclass = packageResult.name
+    }
+    if (parentType === PACKAGE) parentName = devclass
+    if (!devclass || !parentName) return
+    return {
+      devclass,
+      options: {
+        description,
+        name,
+        objtype: objType.typeId,
+        parentName,
+        parentPath: objectPath(parentType, parentName, ""),
+        responsible
+      }
+    }
   }
 
   private async askInput(

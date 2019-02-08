@@ -75,16 +75,17 @@ export class AdtServer {
           "Only allowed to delete abap objects can be created"
         )
 
-      await this.lockManager.lock(obj)
-      const transport = await this.selectTransportIfNeeded(obj)
       try {
-        await this.client.deleteObject(
-          obj.path,
-          this.lockManager.getLockId(obj),
-          transport
-        )
+        await this.lockManager.lock(obj)
+        const transport = await this.selectTransportIfNeeded(obj)
+        if (!transport.cancelled)
+          await this.client.deleteObject(
+            obj.path,
+            this.lockManager.getLockId(obj),
+            transport.transport
+          )
       } finally {
-        this.lockManager.unlock(obj)
+        await this.lockManager.unlock(obj)
       }
     } else
       throw FileSystemError.NoPermissions("Only abap objects can be deleted")
@@ -141,15 +142,17 @@ export class AdtServer {
     if (!this.lockManager.isLocked(obj))
       throw adtException(`Object not locked ${obj.type} ${obj.name}`)
 
-    await this.selectTransportIfNeeded(obj)
+    const transport = await this.selectTransportIfNeeded(obj)
 
-    const lockId = this.lockManager.getLockId(obj)
-    await obj.setContents(this.client, content, lockId)
+    if (!transport.cancelled) {
+      const lockId = this.lockManager.getLockId(obj)
+      await obj.setContents(this.client, content, lockId)
 
-    await file.stat(this.client)
-    await this.lockManager.unlock(obj)
-    // might have a race condition with user changing editor...
-    commands.executeCommand("setContext", "abapfs:objectInactive", true)
+      await file.stat(this.client)
+      await this.lockManager.unlock(obj)
+      // might have a race condition with user changing editor...
+      commands.executeCommand("setContext", "abapfs:objectInactive", true)
+    }
   }
 
   /**
@@ -268,9 +271,13 @@ export class AdtServer {
         "",
         this.client
       )
-      if (transport) obj.transport = transport
+      if (transport.transport) obj.transport = transport.transport
+      return transport
     }
-    return isString(obj.transport) ? obj.transport : ""
+    return {
+      transport: isString(obj.transport) ? obj.transport : "",
+      cancelled: false
+    }
   }
 
   /**
