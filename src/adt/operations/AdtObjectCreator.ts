@@ -18,6 +18,7 @@ import { abapObjectFromNode } from "../abap/AbapObjectUtilities"
 import { AdtServer } from "../AdtServer"
 import { selectTransport } from "../AdtTransports"
 import { fieldOrder } from "../../functions"
+import { MySearchResult } from "./AdtObjectFinder"
 // import { stringOrder, pick } from "../../functions"
 
 export const PACKAGE = "DEVC/K"
@@ -162,7 +163,7 @@ export class AdtObjectCreator {
         )
         if (!parent) return
         parentName = parent.name
-        devclass = parent.packageName
+        devclass = await this.findPackage(parent)
       }
       if (!parentName) return
     }
@@ -188,6 +189,13 @@ export class AdtObjectCreator {
         responsible
       }
     }
+  }
+  private async findPackage(parent: MySearchResult) {
+    if (parent.packageName) return parent.packageName
+    const path = await this.server.objectFinder.findObjectPath(parent.uri)
+    if (path.length > 1 && path[path.length - 2]["adtcore:type"] === PACKAGE)
+      return path[path.length - 2]["adtcore:name"]
+    return ""
   }
   private fixName(name: string, typeId: string, parentName: string): string {
     if (typeId !== "FUGR/I") return name

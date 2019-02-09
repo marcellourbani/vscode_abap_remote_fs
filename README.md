@@ -2,10 +2,11 @@
 
 This extension allows editing and activation of ABAP code on your server directly in Visual studio code, including transport assignment and creation (if your system supports it).
 
-# new in 0.3.3
+## new in 0.4
 
-- SAPGUI integration: in classes, programs and function modules F5 will now open the relevant transaction in SAPGUI _NOTE:_ client is required for SAPGUI support, other parameters might be needed too
-- client and language support in configuration
+- Delete objects
+- Refactored to leverage [ABAP ADT Module](https://github.com/marcellourbani/abap-adt-api)
+- Support self-signed certificates
 
 **Unless your system is very modern (7.51 or later I think), write support will require you to install [this plugin](https://github.com/marcellourbani/abapfs_extensions)** in your dev server to enable. Browsing works even without it
 
@@ -20,12 +21,13 @@ Compatibility with [ABAPlint](https://marketplace.visualstudio.com/items?itemNam
 ## Features
 
 Connect to your SAP server using the ADT interface, edit, save and activate files
-The complete list of editable objects depends on your installation, on my local 7.51 works for:
+The complete list of editable objects depends on your installation, on my local 7.52 works for:
 
 - programs/includes
 - function groups
 - classes
 - transformations (except creation)
+- CDS and tables (display, didn't try saving)
 
 ![anim](https://user-images.githubusercontent.com/2453277/48232926-30a78d80-e3ab-11e8-8a12-00844431f9af.gif)
 
@@ -59,8 +61,9 @@ You will need connection details in your settings:
       "url": "https://vhcalnplci.bti.local:8000",
       "username": "developer",
       "password": "secret",
-      "client": "001",
-      "language": "EN"
+      "client": "001", // client is required for SAPGUI integration. Might need more
+      "language": "EN",
+      "allowSelfSigned": true
     }
   }
 }

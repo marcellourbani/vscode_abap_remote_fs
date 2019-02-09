@@ -1,4 +1,5 @@
-import { ADTClient, PathStep, SearchResult } from "abap-adt-api"
+import { PACKAGE } from "./AdtObjectCreator"
+import { ADTClient, PathStep, SearchResult, ObjectType } from "abap-adt-api"
 import { AdtServer } from "./../AdtServer"
 import { window, QuickPickItem, workspace } from "vscode"
 import * as vscode from "vscode"
@@ -18,19 +19,40 @@ interface AdtSearchResult {
   uri: string
   type: string
   name: string
-  packageName: string
-  description: string
+  packageName?: string
+  description?: string
 }
 
-class MySearchResult implements QuickPickItem, AdtSearchResult {
+export class MySearchResult implements QuickPickItem, AdtSearchResult {
+  public static async createResults(
+    results: SearchResult[],
+    client: ADTClient
+  ) {
+    const myresults = results.map(r => new MySearchResult(r))
+    if (myresults.find(r => !r.description)) {
+      if (!this.types) this.types = await client.loadTypes()
+      myresults
+        .filter(r => !r.description)
+        .forEach(r => {
+          const typ = this.types.find(t => t.OBJECT_TYPE === r.type)
+          r.description = typ ? typ.OBJECT_TYPE_LABEL : r.type
+        })
+    }
+    myresults.forEach(typ => {
+      if (!typ.packageName)
+        typ.packageName = typ.type === PACKAGE ? typ.name : "unknown"
+    })
+    return myresults
+  }
+  private static types: ObjectType[]
   get label(): string {
     return `${this.name}(${this.description})`
   }
-  public readonly uri: string
-  public readonly type: string
-  public readonly name: string
-  public readonly packageName: string
-  public readonly description: string
+  public uri: string
+  public type: string
+  public name: string
+  public packageName?: string
+  public description?: string
   get detail(): string | undefined {
     return `Package ${this.packageName} type ${this.type}`
   }
@@ -129,11 +151,9 @@ export class AdtObjectFinder {
     const o = await new Promise<MySearchResult>(resolve => {
       const qp = window.createQuickPick()
       // TODO debounce? Looks like VSC does it for me!
-      qp.onDidChangeValue(e => {
+      qp.onDidChangeValue(async e => {
         if (e.length > 3)
-          this.search(e, this.server.client, objType).then(
-            res => (qp.items = res)
-          )
+          qp.items = await this.search(e, this.server.client, objType)
       })
       qp.placeholder = prompt
       qp.onDidChangeSelection(e => {
@@ -156,10 +176,9 @@ export class AdtObjectFinder {
     const query = prefix.toUpperCase() + "*"
     const raw = await client.searchObject(query, objType)
     // object type is only honoured in part. PROG/P matches PROG/I too, and so on
-    return raw
-      .filter(r => !objType || objType === r["adtcore:type"])
-      .map(res => {
-        return new MySearchResult(res)
-      })
+    return await MySearchResult.createResults(
+      raw.filter(r => !objType || objType === r["adtcore:type"]),
+      client
+    )
   }
 }
