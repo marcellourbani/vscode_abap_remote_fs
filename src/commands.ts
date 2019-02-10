@@ -1,4 +1,4 @@
-import { workspace, Uri, window } from "vscode"
+import { workspace, Uri, window, commands } from "vscode"
 import { fromUri } from "./adt/AdtServer"
 import { selectRemote, pickAdtRoot, createClient } from "./config"
 import { log } from "./logger"
@@ -63,10 +63,22 @@ export async function createAdtObject(uri: Uri | undefined) {
     if (!server) return
     const obj = await server.creator.createObject(uri)
     if (!obj) return // user aborted
+    log(`Created object ${obj.type} ${obj.name}`)
     const path = await server.objectFinder.findObjectPath(obj.path)
     const nodePath = await server.objectFinder.locateObject(path)
-    if (nodePath) server.objectFinder.displayNode(nodePath)
+    if (nodePath) {
+      server.objectFinder.displayNode(nodePath)
+      try {
+        await commands.executeCommand(
+          "workbench.files.action.refreshFilesExplorer"
+        )
+        log("workspace refreshed")
+      } catch (e) {
+        log("error refreshing workspace")
+      }
+    }
   } catch (e) {
+    log("Exception in createAdtObject:", e.stack)
     window.showErrorMessage(e.toString())
   }
 }
