@@ -1,11 +1,10 @@
-"use strict"
-import * as vscode from "vscode"
 import { FsProvider } from "./fs/FsProvider"
-import { window, commands, workspace } from "vscode"
+import { window, commands, workspace, ExtensionContext } from "vscode"
 import {
   activeTextEditorChangedListener,
   documentChangedListener,
-  documentClosedListener
+  documentClosedListener,
+  documentOpenListener
 } from "./listeners"
 import {
   connectAdtServer,
@@ -14,24 +13,27 @@ import {
   createAdtObject,
   executeAbap
 } from "./commands"
-import { disconnect } from "./adt/AdtServer"
+import { disconnect, ADTSCHEME, lockedFiles } from "./adt/AdtServer"
 import { log } from "./logger"
+import { client, startLanguageClient } from "./langClient"
+import { restoreLocks } from "./adt/operations/LockManager"
 
-export function activate(context: vscode.ExtensionContext) {
+export function activate(context: ExtensionContext) {
   const abapFS = new FsProvider()
   const sub = context.subscriptions
   // register the filesystem type
   sub.push(
-    vscode.workspace.registerFileSystemProvider("adt", abapFS, {
+    workspace.registerFileSystemProvider(ADTSCHEME, abapFS, {
       isCaseSensitive: true
     })
   )
 
   // change document listener, for locking (and possibly validation in future)
   sub.push(workspace.onDidChangeTextDocument(documentChangedListener))
+  // opened document listener, for main program
+  sub.push(workspace.onDidOpenTextDocument(documentOpenListener))
   // closed document listener, for locking
   sub.push(workspace.onDidCloseTextDocument(documentClosedListener))
-
   // Editor changed listener, updates context and icons
   sub.push(window.onDidChangeActiveTextEditor(activeTextEditorChangedListener))
 
@@ -50,6 +52,10 @@ export function activate(context: vscode.ExtensionContext) {
   // execute Abap command
   sub.push(commands.registerCommand("abapfs.execute", executeAbap))
 
+  startLanguageClient(context)
+
+  restoreLocks()
+
   log(`Activated,pid=${process.pid}`)
 }
 
@@ -59,6 +65,11 @@ export function activate(context: vscode.ExtensionContext) {
 // Locks will not be released until either explicitly closed or the session is terminates
 // an open session can leave sources locked without any UI able to release them (except SM12 and the like)
 export async function deactivate() {
-  await disconnect()
-  log(`Deactivated,pid=${process.pid}`)
+  const locks = lockedFiles()
+
+  if (locks.length > 0)
+    window.showInformationMessage(
+      "Locks will be dropped now. If the relevant editors are still open they will be restored later"
+    )
+  await Promise.all([client && client.stop(), disconnect()])
 }

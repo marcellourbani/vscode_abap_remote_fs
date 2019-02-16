@@ -1,0 +1,20 @@
+{
+  "name": "vscode-abap-remote-fs-server",
+  "version": "1.0.0",
+  "description": "Language server for ABAP remote filesystem",
+  "scripts": {},
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/marcellourbani/vscode_abap_remote_fs.git"
+  },
+  "keywords": [
+    "ABAP"
+  ],
+  "author": "Marcello Urbani",
+  "license": "MIT",
+  "dependencies": {
+    "abap-adt-api": "^0.4.19",
+    "sharedtypes": "file:../sharedtypes",
+    "vscode-languageserver": "^4.4.2"
+  }
+}

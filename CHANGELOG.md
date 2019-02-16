@@ -4,6 +4,17 @@ All notable changes to the "vscode-abap-remote-fs" extension will be documented 
 
 Format based on [Keep a Changelog](http://keepachangelog.com/)
 
+## Unreleased
+
+### Added
+
+- split in subprojects to add a language server
+- language server
+- restore locks on extension restart
+- warn of lock changes on disconnection
+- syntax check
+- code completion
+
 ## [0.4.1] 2019-02-10
 
 ### Fixed

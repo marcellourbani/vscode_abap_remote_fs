@@ -1,8 +1,8 @@
-import { Uri, FileSystemError, FileType, commands } from "vscode"
+import { Uri, FileSystemError, FileType, commands, window } from "vscode"
 import { MetaFolder } from "../fs/MetaFolder"
 import { AbapObjectNode, AbapNode, isAbapNode } from "../fs/AbapNode"
 import { AbapObject, TransportStatus, isAbapObject } from "./abap/AbapObject"
-import { getRemoteList, createClient } from "../config"
+import { createClient, configFromId } from "../config"
 import { selectTransport } from "./AdtTransports"
 import { AdtObjectActivator } from "./operations/AdtObjectActivator"
 import { AdtObjectFinder } from "./operations/AdtObjectFinder"
@@ -12,7 +12,7 @@ import { SapGui } from "./sapgui/sapgui"
 import { ADTClient, adtException, isCreatableTypeId } from "abap-adt-api"
 import { isString } from "util"
 export const ADTBASEURL = "/sap/bc/adt/repository/nodestructure"
-
+export const ADTSCHEME = "adt"
 /**
  * Split a vscode URI. Parts will then be used to navigate the path
  *
@@ -33,7 +33,7 @@ export class AdtServer {
   public readonly lockManager: LockManager
   public readonly sapGui: SapGui
   public readonly client: ADTClient
-  private readonly activator: AdtObjectActivator
+  public readonly activator: AdtObjectActivator
   private lastRefreshed?: string
 
   /**
@@ -42,9 +42,7 @@ export class AdtServer {
    * @param connectionId ADT connection ID
    */
   constructor(readonly connectionId: string) {
-    const config = getRemoteList().filter(
-      cfg => cfg.name.toLowerCase() === connectionId.toLowerCase()
-    )[0]
+    const config = configFromId(connectionId)
 
     if (!config) throw new Error(`connection ${connectionId}`)
     this.client = createClient(config)
@@ -309,8 +307,20 @@ export const fromUri = (uri: Uri) => {
 }
 export async function disconnect() {
   const promises: Array<Promise<any>> = []
+  let haslocks = false
   for (const server of servers) {
+    if (server[1].lockManager.lockedObjects.length > 0) haslocks = true
     promises.push(server[1].client.dropSession())
   }
+  if (haslocks)
+    window.showInformationMessage("All locked files will be unlocked")
   await Promise.all(promises)
+}
+export function lockedFiles() {
+  return [...servers]
+    .map(s => ({
+      connectionId: s[0],
+      locked: s[1].lockManager.lockedObjects.length
+    }))
+    .filter(f => f.locked > 0)
 }

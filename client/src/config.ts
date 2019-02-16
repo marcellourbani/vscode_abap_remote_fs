@@ -1,16 +1,9 @@
-import * as vscode from "vscode"
+import { ClientConfiguration } from "sharedtypes"
 import { window, workspace, QuickPickItem, WorkspaceFolder, Uri } from "vscode"
 import { ADTClient, createSSLConfig } from "abap-adt-api"
+import { ADTSCHEME } from "./adt/AdtServer"
 
-export interface RemoteConfig {
-  name: string
-  url: string
-  username: string
-  password: string
-  client: string
-  language: string
-  allowSelfSigned: boolean
-  customCA: string
+export interface RemoteConfig extends ClientConfiguration {
   sapGui: {
     disabled: boolean
     routerString: string
@@ -31,7 +24,7 @@ const config = (name: string, remote: RemoteConfig) => {
 }
 
 export function getRemoteList(): RemoteConfig[] {
-  const userConfig = vscode.workspace.getConfiguration("abapfs")
+  const userConfig = workspace.getConfiguration("abapfs")
   const remote = userConfig.remote
   if (!remote) throw new Error("No destination configured")
   return Object.keys(remote).map(name =>
@@ -70,7 +63,7 @@ export async function pickAdtRoot(uri?: Uri) {
   const roots = (
     (workspace.workspaceFolders && workspace.workspaceFolders) ||
     []
-  ).filter(r => r.uri.scheme === "adt")
+  ).filter(r => r.uri.scheme === ADTSCHEME)
   if (roots.length === 0)
     throw new Error("No ABAP filesystem mounted in current workspace")
 
@@ -100,4 +93,10 @@ export function createClient(conf: RemoteConfig) {
     conf.language,
     sslconf
   )
+}
+
+export function configFromId(connectionId: string) {
+  return getRemoteList().filter(
+    cfg => cfg.name.toLowerCase() === connectionId.toLowerCase()
+  )[0]
 }

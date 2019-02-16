@@ -1,7 +1,6 @@
 import { window } from "vscode"
 
-const channel = window.createOutputChannel("ABAPFS")
-
+export const channel = window.createOutputChannel("ABAP FS")
 export function log(...messages: string[]) {
   channel.appendLine(messages.join(""))
 }

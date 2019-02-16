@@ -1,0 +1,56 @@
+{
+  "name": "vscode-abap-remote-fs-client",
+  "displayName": "ABAP remote filesystem",
+  "description": "Work on your ABAP code straight from the server",
+  "version": "0.4.1",
+  "publisher": "murbani",
+  "license": "MIT",
+  "icon": "../images/abapfs_icon.png",
+  "author": {
+    "email": "marcello.urbani@gmail.com",
+    "name": "Marcello Urbani"
+  },
+  "homepage": "https://github.com/marcellourbani/vscode_abap_remote_fs",
+  "engines": {
+    "vscode": "^1.29.0"
+  },
+  "categories": [
+    "Other"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/marcellourbani/vscode_abap_remote_fs.git"
+  },
+  "keywords": [
+    "ABAP",
+    "sap",
+    "filesystem",
+    "remote"
+  ],
+  "scripts": {
+    "update-vscode": "vscode-install",
+    "postinstall": "vscode-install"
+  },
+  "devDependencies": {
+    "@types/mocha": "^2.2.42",
+    "@types/node": "^8.10.38",
+    "@types/opn": "^5.1.0",
+    "ts-node": "^7.0.1",
+    "tsconfig-paths": "^3.7.0",
+    "tslint": "^5.12.1",
+    "typescript": "^3.3.1",
+    "vsce": "^1.53.2",
+    "vscode": "^1.1.29"
+  },
+  "dependencies": {
+    "@types/tmp": "0.0.33",
+    "abap-adt-api": "^0.4.19",
+    "event-stream": "3.3.4",
+    "fs-jetpack": "^2.2.0",
+    "opn": "^5.4.0",
+    "sharedtypes": "file:../sharedtypes",
+    "tmp-promise": "^1.0.5",
+    "tough-cookie": "^3.0.0",
+    "vscode-languageclient": "^4.4.2"
+  }
+}

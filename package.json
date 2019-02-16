@@ -28,38 +28,24 @@
     "remote"
   ],
   "scripts": {
-    "vscode:prepublish": "npm run compile",
-    "compile": "tsc -p ./",
-    "watch": "tsc -watch -p ./",
-    "postinstall": "node ./node_modules/vscode/bin/install",
-    "test": "npm run compile && node ./node_modules/vscode/bin/test",
-    "build": "vsce package"
+    "vscode:prepublish": "cd client && npm run update-vscode && cd .. && npm run compile",
+    "update-vscode": "vscode-install",
+    "compile": "tsc -b",
+    "watch": "tsc -b -w",
+    "clean": "rm -Rf out client/out server/out sharedtypes/out node_modules client/node_modules server/node_modules sharedtypes/node_modules *.vsix",
+    "postinstall": "cd server && npm install && cd ../client && npm install"
   },
   "devDependencies": {
     "@types/mocha": "^2.2.42",
     "@types/node": "^8.10.38",
-    "@types/opn": "^5.1.0",
-    "ts-node": "^7.0.1",
-    "tsconfig-paths": "^3.7.0",
     "tslint": "^5.12.1",
-    "typescript": "^3.3.1",
-    "vsce": "^1.53.2",
-    "vscode": "^1.1.26"
-  },
-  "dependencies": {
-    "@types/tmp": "0.0.33",
-    "abap-adt-api": "^0.4.17",
-    "event-stream": "3.3.4",
-    "fs-jetpack": "^2.2.0",
-    "opn": "^5.4.0",
-    "tmp-promise": "^1.0.5",
-    "tough-cookie": "^3.0.0"
+    "typescript": "^3.3.1"
   },
   "activationEvents": [
     "onFileSystem:adt",
     "onCommand:abapfs.connect"
   ],
-  "main": "./out/extension",
+  "main": "./client/out/extension",
   "contributes": {
     "commands": [
       {

@@ -1,12 +1,50 @@
+import { ADTSCHEME, fromUri } from "../AdtServer"
 import { ADTClient, session_types } from "abap-adt-api"
 import { AbapObject, TransportStatus } from "../abap/AbapObject"
 import { log } from "../../logger"
+import { window, TextDocument, StatusBarAlignment } from "vscode"
 
 enum LockStatuses {
   LOCKED,
   UNLOCKED,
   LOCKING,
   UNLOCKING
+}
+const statusBarItem = window.createStatusBarItem(StatusBarAlignment.Right, 100)
+
+export async function setDocumentLock(document: TextDocument) {
+  const uri = document.uri
+  if (uri.scheme === ADTSCHEME) {
+    const server = fromUri(uri)
+    const obj = await server.findAbapObject(uri)
+    const shouldLock = document.isDirty
+    // no need to lock objects already locked
+    if (shouldLock !== server.lockManager.isLocked(obj)) {
+      if (shouldLock) {
+        try {
+          await server.lockManager.lock(obj)
+        } catch (e) {
+          window.showErrorMessage(
+            `Object not locked ${obj.type} ${
+              obj.name
+            }.Won't be able to save changes`
+          )
+        }
+      } else await server.lockManager.unlock(obj)
+    }
+
+    statusBarItem.text = `${uri.authority}:${
+      server.lockManager.lockedObjects.length
+    } objects locked`
+    statusBarItem.show()
+  }
+}
+// when the extension is deactivated, all locks are dropped
+// try to restore them as needed
+export async function restoreLocks() {
+  return Promise.all(
+    window.visibleTextEditors.map(e => setDocumentLock(e.document))
+  )
 }
 
 class LockObject {

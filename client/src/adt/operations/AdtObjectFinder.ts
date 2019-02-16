@@ -1,8 +1,8 @@
 import { PACKAGE } from "./AdtObjectCreator"
 import { ADTClient, PathStep, SearchResult, ObjectType } from "abap-adt-api"
 import { AdtServer } from "./../AdtServer"
-import { window, QuickPickItem, workspace } from "vscode"
-import * as vscode from "vscode"
+import { window, QuickPickItem, workspace, commands } from "vscode"
+
 import {
   NodePath,
   findObjectInNode,
@@ -134,9 +134,7 @@ export class AdtObjectFinder {
     try {
       const doc = await workspace.openTextDocument(this.server.createUri(uri))
       await window.showTextDocument(doc)
-      vscode.commands.executeCommand(
-        "workbench.files.action.showActiveFileInExplorer"
-      )
+      commands.executeCommand("workbench.files.action.showActiveFileInExplorer")
     } catch (e) {
       window.showErrorMessage(
         `Error displaying object ${nodePath.path}.Type not supported?`
