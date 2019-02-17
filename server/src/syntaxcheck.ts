@@ -5,14 +5,14 @@ import { getObject } from "./objectManager"
 import { sourceRange, decodeSeverity } from "./utilities"
 
 export async function syntaxCheck(document: TextDocument) {
-  const client = await clientFromUrl(document.uri)
-  if (!client) return
-  const obj = await getObject(document.uri)
-  // no object or include without a main program
-  if (!obj || !objectIsValid(obj)) return
-
   const diagnostics: Diagnostic[] = []
   try {
+    const client = await clientFromUrl(document.uri)
+    if (!client) return
+    const obj = await getObject(document.uri)
+    // no object or include without a main program
+    if (!obj || !objectIsValid(obj)) return
+
     const source = document.getText()
     const checks = await client.syntaxCheck(
       obj.url,

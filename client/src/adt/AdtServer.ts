@@ -234,47 +234,12 @@ export class AdtServer {
    * @param uri VSCode URI
    */
   public async findAbapObject(uri: Uri): Promise<AbapObject> {
+    const linked = this.symLinks.getRealNode(uri)
+    if (linked) return linked.abapObject
+
     const node = await this.findNodePromise(uri)
     if (isAbapNode(node)) return node.abapObject
     return Promise.reject(new Error("Not an abap object"))
-  }
-
-  /**
-   * Usually symlinks are ADT urls, try to resolve the correct include and stat it
-   * then return a symlink to it
-   *
-   * @param {Uri} uri
-   * @returns
-   * @memberof AdtServer
-   */
-  public async statSymlink(uri: Uri) {
-    let node
-    if (this.symLinks.isSymlink(uri)) {
-      const linked = this.symLinks.getRealNode(uri)
-      if (linked) await linked.stat(this.client)
-      let link = this.symLinks.getNode(uri)
-      if (!link) {
-        const steps = await this.objectFinder.findObjectPath(uri.path)
-        const path = await this.objectFinder.locateObject(steps)
-        if (path && isAbapNode(path.node)) {
-          const obj = path.node.abapObject
-          if (obj.path === uri.path) node = path.node
-          else if (path.node.isFolder) {
-            let pnode = findObjectInNodeByPath(path.node, uri.path)
-            if (!pnode) await path.node.refresh(this.client)
-            pnode = findObjectInNodeByPath(path.node, uri.path)
-            if (pnode && isAbapNode(pnode.node)) node = pnode.node
-          }
-        }
-        if (node) {
-          await node.stat(this.client)
-          this.symLinks.updateLink(uri, node)
-          link = this.symLinks.getNode(uri)
-        }
-      }
-      if (!link) throw FileSystemError.FileNotFound(uri)
-      return link
-    }
   }
 
   /**
@@ -305,6 +270,45 @@ export class AdtServer {
 
   public async getReentranceTicket() {
     return this.client.reentranceTicket()
+  }
+
+  /**
+   * Usually symlinks are ADT urls, try to resolve the correct include and stat it
+   * then return a symlink to it
+   *
+   * @param {Uri} uri
+   * @returns
+   * @memberof AdtServer
+   */
+  private async statSymlink(uri: Uri) {
+    let node
+    if (this.symLinks.isSymlink(uri)) {
+      const realPath = uri.path.replace(/\.abap/, "")
+      const linked = this.symLinks.getRealNode(uri)
+      if (linked) await linked.stat(this.client)
+      let link = this.symLinks.getNode(uri)
+      if (!link) {
+        const steps = await this.objectFinder.findObjectPath(realPath)
+        const path = await this.objectFinder.locateObject(steps)
+        if (path && isAbapNode(path.node)) {
+          const obj = path.node.abapObject
+          if (obj.path === realPath) node = path.node
+          else if (path.node.isFolder) {
+            let pnode = findObjectInNodeByPath(path.node, realPath)
+            if (!pnode) await path.node.refresh(this.client)
+            pnode = findObjectInNodeByPath(path.node, realPath)
+            if (pnode && isAbapNode(pnode.node)) node = pnode.node
+          }
+        }
+        if (node) {
+          await node.stat(this.client)
+          this.symLinks.updateLink(uri, node)
+          link = this.symLinks.getNode(uri)
+        }
+      }
+      if (!link) throw FileSystemError.FileNotFound(uri)
+      return link
+    }
   }
 
   private async selectTransportIfNeeded(obj: AbapObject) {

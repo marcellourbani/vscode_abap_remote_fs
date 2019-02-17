@@ -43,3 +43,5 @@ export function objectIsValid(obj?: AbapObjectDetail) {
   if (!obj) return false
   return obj.type !== "PROG/I" || !!obj.mainProgram
 }
+
+export const stripExtension = (u: string) => u.replace(/\.abap/, "")

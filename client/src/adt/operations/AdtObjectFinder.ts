@@ -6,8 +6,8 @@ import { window, QuickPickItem, workspace, commands } from "vscode"
 import {
   NodePath,
   findObjectInNode,
-  findMainInclude,
-  findObjectInNodeByPath
+  findObjectInNodeByPath,
+  findMainIncludeAsync
 } from "../abap/AbapObjectUtilities"
 import { isAbapNode } from "../../fs/AbapNode"
 
@@ -127,8 +127,7 @@ export class AdtObjectFinder {
         window.showInformationMessage(`Can't open object ${nodePath.path}`)
         return
       }
-      await nodePath.node.refresh(this.server.client)
-      const main = findMainInclude(nodePath)
+      const main = await findMainIncludeAsync(nodePath, this.server.client)
       if (!main) {
         window.showInformationMessage(`Can't open object ${nodePath.path}`)
         return

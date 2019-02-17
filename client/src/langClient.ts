@@ -15,6 +15,7 @@ import { configFromId } from "./config"
 import { isString } from "util"
 export let client: LanguageClient
 import { join } from "path"
+import { findMainIncludeAsync } from "./adt/abap/AbapObjectUtilities"
 
 const includes: Map<string, string> = new Map()
 
@@ -24,7 +25,9 @@ async function getVSCodeUri(req: UriRequest): Promise<StringWrapper> {
   let s = ""
 
   if (path.length) {
-    const nodePath = await server.objectFinder.locateObject(path)
+    let nodePath = await server.objectFinder.locateObject(path)
+    if (nodePath && nodePath.node.isFolder)
+      nodePath = await findMainIncludeAsync(nodePath, server.client)
     if (nodePath) s = urlFromPath(req.confKey, nodePath.path)
   }
   return { s }

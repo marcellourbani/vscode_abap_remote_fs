@@ -1,5 +1,5 @@
 import { DiagnosticSeverity, TextDocument, Range } from "vscode-languageserver"
-import { isString } from "util"
+import { isString, isNumber } from "util"
 import { ADTClient } from "abap-adt-api"
 import { AbapObjectDetail } from "sharedtypes"
 import { clientKeyFromUrl, clientFromKey } from "./clientManager"
@@ -57,4 +57,31 @@ export async function clientAndObjfromUrl(
   const source = withSource ? await getObjectSource(uri) : ""
 
   return { confKey, client, obj, source }
+}
+
+export const memoize = <P, R>(
+  base: (p: P) => Promise<R>
+): ((p: P) => Promise<R>) => async (param: P) => {
+  const cache: Map<P, R> = new Map()
+  let result = cache.get(param)
+  if (!result) {
+    result = await base(param)
+    cache.set(param, result)
+  }
+  return result
+}
+
+export function parts(whole: any, pattern: RegExp): string[] {
+  if (!isString(whole)) return []
+  const match = whole.match(pattern)
+  return match ? match.slice(1) : []
+}
+
+export function toInt(raw: any): number {
+  if (isNaN(raw)) return 0
+  if (isNumber(raw)) return Math.floor(raw)
+  if (!raw && !isString(raw)) return 0
+  const n = Number.parseInt(raw, 10)
+  if (isNaN(n)) return 0
+  return n
 }

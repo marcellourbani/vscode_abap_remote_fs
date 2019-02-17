@@ -13,7 +13,7 @@ import { AbapClassInclude, isClassInclude } from "./AbapClassInclude"
 import { AbapNode, isAbapNode } from "../../fs/AbapNode"
 import { AbapFunction } from "./AbapFunction"
 import { AbapCds } from "./AbapCds"
-import { Node } from "abap-adt-api"
+import { Node, ADTClient } from "abap-adt-api"
 import { AbapFunctionGroup } from "./AbapFunctionGroup"
 
 export interface NodePath {
@@ -169,6 +169,13 @@ export function findMainInclude(o: NodePath) {
     x => isAbapNode(x.node) && !!x.node.abapObject.path.match("/source/main")
   )
   return main || candidates[0]
+}
+
+export async function findMainIncludeAsync(nodePath: NodePath, c: ADTClient) {
+  const main = findMainInclude(nodePath)
+  if (main) return main
+  await nodePath.node.refresh(c)
+  return findMainInclude(nodePath)
 }
 
 // to support ABAPLINT we need to follow its naming conventions
