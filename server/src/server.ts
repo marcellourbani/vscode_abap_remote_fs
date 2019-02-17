@@ -6,7 +6,7 @@ import {
 import { connection, log } from "./clientManager"
 import { syntaxCheck } from "./syntaxcheck"
 import { completion } from "./completion"
-import { findDefinition } from "./references"
+import { findDefinition, findReferences } from "./references"
 
 const documents: TextDocuments = new TextDocuments()
 
@@ -32,7 +32,8 @@ connection.onInitialize((params: InitializeParams) => {
       completionProvider: {
         resolveProvider: true
       },
-      definitionProvider: true
+      definitionProvider: true,
+      referencesProvider: true
     }
   }
 })
@@ -54,6 +55,7 @@ connection.onInitialized(() => {
 
 connection.onCompletion(completion)
 connection.onDefinition(findDefinition)
+connection.onReferences(findReferences)
 documents.onDidChangeContent(change => syntaxCheck(change.document))
 
 documents.listen(connection)

@@ -6,7 +6,8 @@ import { window, QuickPickItem, workspace, commands } from "vscode"
 import {
   NodePath,
   findObjectInNode,
-  findMainInclude
+  findMainInclude,
+  findObjectInNodeByPath
 } from "../abap/AbapObjectUtilities"
 import { isAbapNode } from "../../fs/AbapNode"
 
@@ -100,10 +101,13 @@ export class AdtObjectFinder {
     for (const part of children) {
       const name = part["adtcore:name"]
       const type = part["adtcore:type"]
+      const uri = part["adtcore:uri"]
       let child = findObjectInNode(nodePath.node, type, name)
+      if (!child) child = findObjectInNodeByPath(nodePath.node, uri)
       if (!child) {
         await this.server.refreshDirIfNeeded(nodePath.node)
         child = findObjectInNode(nodePath.node, type, name)
+        if (!child) child = findObjectInNodeByPath(nodePath.node, uri)
       }
 
       if (child)

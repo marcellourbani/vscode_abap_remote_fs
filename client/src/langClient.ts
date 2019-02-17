@@ -5,11 +5,12 @@ import {
   Methods,
   StringWrapper,
   AbapObjectSource,
+  urlFromPath,
   UriRequest
 } from "sharedtypes"
 import { ExtensionContext, Uri, window } from "vscode"
 import { LanguageClient, TransportKind, State } from "vscode-languageclient"
-import { ADTSCHEME, fromUri, getServer, urlFromPath } from "./adt/AdtServer"
+import { ADTSCHEME, fromUri, getServer } from "./adt/AdtServer"
 import { configFromId } from "./config"
 import { isString } from "util"
 export let client: LanguageClient

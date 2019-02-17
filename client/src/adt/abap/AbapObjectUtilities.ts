@@ -113,6 +113,23 @@ export function abapObjectFromNode(node: Node): AbapObject {
     node.TECH_NAME
   )
 }
+
+export function findObjectInNodeByPath(
+  folder: AbapNode,
+  opath: string
+): NodePath | undefined {
+  const children = [...folder]
+  for (const [path, node] of children) {
+    if (isAbapNode(node)) {
+      const o = node.abapObject
+      if (o.path === opath) return { path: o.vsName || path, node }
+    } else {
+      const part = findObjectInNodeByPath(node, opath)
+      if (part) return { ...part, path: `${path}/${part.path}` }
+    }
+  }
+}
+
 export function findObjectInNode(
   folder: AbapNode,
   type: string,

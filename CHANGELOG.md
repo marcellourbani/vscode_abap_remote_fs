@@ -16,6 +16,7 @@ Format based on [Keep a Changelog](http://keepachangelog.com/)
 - code completion
 - added dependency on ABAP language extension
 - go to definition
+- references (where used)
 
 ## [0.4.1] 2019-02-10
 

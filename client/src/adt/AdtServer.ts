@@ -1,3 +1,4 @@
+import { AdtSymLinkCollection } from "./AdtSymbolicLinks"
 import { Uri, FileSystemError, FileType, commands, window } from "vscode"
 import { MetaFolder } from "../fs/MetaFolder"
 import { AbapObjectNode, AbapNode, isAbapNode } from "../fs/AbapNode"
@@ -11,6 +12,7 @@ import { LockManager } from "./operations/LockManager"
 import { SapGui } from "./sapgui/sapgui"
 import { ADTClient, adtException, isCreatableTypeId } from "abap-adt-api"
 import { isString } from "util"
+import { findObjectInNodeByPath } from "./abap/AbapObjectUtilities"
 export const ADTBASEURL = "/sap/bc/adt/repository/nodestructure"
 export const ADTSCHEME = "adt"
 /**
@@ -35,6 +37,7 @@ export class AdtServer {
   public readonly client: ADTClient
   public readonly activator: AdtObjectActivator
   private lastRefreshed?: string
+  private symLinks = new AdtSymLinkCollection()
 
   /**
    * Creates a server object and all its dependencies
@@ -96,21 +99,19 @@ export class AdtServer {
    * @param dir the directory to refresh
    */
   public async refreshDirIfNeeded(dir: AbapNode) {
-    if (dir.canRefresh()) {
+    if (dir.canRefresh() && isAbapNode(dir)) {
       /* Workaround for ADT bug: when a session is stateful, it caches package contents
        * to invalidate the cache, read contents of another package
        * but only do that if it was the last package read*/
       if (this.client.isStateful) {
-        if (isAbapNode(dir) && dir.abapObject.type === PACKAGE) {
-          if (this.lastRefreshed === dir.abapObject.name) {
-            await this.client.nodeContents(
-              PACKAGE,
-              this.lastRefreshed === "$TMP" ? "SEU_ADT" : "$TMP"
-            )
-          }
-
-          this.lastRefreshed = dir.abapObject.name
+        if (this.lastRefreshed === dir.abapObject.name) {
+          await this.client.nodeContents(
+            PACKAGE,
+            this.lastRefreshed === "$TMP" ? "SEU_ADT" : "$TMP"
+          )
         }
+
+        this.lastRefreshed = dir.abapObject.name
       } else this.lastRefreshed = undefined
 
       await dir.refresh(this.client)
@@ -160,6 +161,10 @@ export class AdtServer {
    * @param uri vscode URI
    */
   public findNode(uri: Uri): AbapNode {
+    if (this.symLinks.isSymlink(uri)) {
+      const linked = this.symLinks.getRealNode(uri)
+      if (linked) return linked
+    }
     return this.findNodeHierarchy(uri)[0]
   }
 
@@ -235,11 +240,51 @@ export class AdtServer {
   }
 
   /**
+   * Usually symlinks are ADT urls, try to resolve the correct include and stat it
+   * then return a symlink to it
+   *
+   * @param {Uri} uri
+   * @returns
+   * @memberof AdtServer
+   */
+  public async statSymlink(uri: Uri) {
+    let node
+    if (this.symLinks.isSymlink(uri)) {
+      const linked = this.symLinks.getRealNode(uri)
+      if (linked) await linked.stat(this.client)
+      let link = this.symLinks.getNode(uri)
+      if (!link) {
+        const steps = await this.objectFinder.findObjectPath(uri.path)
+        const path = await this.objectFinder.locateObject(steps)
+        if (path && isAbapNode(path.node)) {
+          const obj = path.node.abapObject
+          if (obj.path === uri.path) node = path.node
+          else if (path.node.isFolder) {
+            let pnode = findObjectInNodeByPath(path.node, uri.path)
+            if (!pnode) await path.node.refresh(this.client)
+            pnode = findObjectInNodeByPath(path.node, uri.path)
+            if (pnode && isAbapNode(pnode.node)) node = pnode.node
+          }
+        }
+        if (node) {
+          await node.stat(this.client)
+          this.symLinks.updateLink(uri, node)
+          link = this.symLinks.getNode(uri)
+        }
+      }
+      if (!link) throw FileSystemError.FileNotFound(uri)
+      return link
+    }
+  }
+
+  /**
    * finds the details of a node, and refreshes them from server if needed
    *
    * @param uri VSCode URI
    */
   public async stat(uri: Uri) {
+    const linked = await this.statSymlink(uri)
+    if (linked) return linked
     const node = await this.findNodePromise(uri)
     if (node.canRefresh()) {
       if (node.type === FileType.Directory) await node.refresh(this.client)
@@ -307,9 +352,6 @@ export const fromUri = (uri: Uri) => {
   if (uri.scheme === "adt") return getServer(uri.authority)
   throw FileSystemError.FileNotFound(uri)
 }
-
-export const urlFromPath = (configKey: string, path: string) =>
-  `${ADTSCHEME}://${configKey}${path}`
 
 export async function disconnect() {
   const promises: Array<Promise<any>> = []

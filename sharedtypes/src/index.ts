@@ -36,6 +36,9 @@ export interface UriRequest {
   uri: string
 }
 
+export const urlFromPath = (configKey: string, path: string) =>
+  `adt://${configKey}${path}`
+
 export function objectIsValid(obj?: AbapObjectDetail) {
   if (!obj) return false
   return obj.type !== "PROG/I" || !!obj.mainProgram
