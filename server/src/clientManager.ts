@@ -15,12 +15,11 @@ export const log = (x: any) => {
   }
   connection.console.log(msg)
 }
-
-export async function clientFromUrl(url: string) {
+export function clientKeyFromUrl(url: string) {
   const match = url.match(/adt:\/\/([^\/]*)/)
-  const key = match && match[1]
-  if (!key) return
-
+  return match && match[1]
+}
+export async function clientFromKey(key: string) {
   let client = clients.get(key)
   if (!client) {
     const conf = await readConfiguration(key)
@@ -40,4 +39,10 @@ export async function clientFromUrl(url: string) {
     }
   }
   return client
+}
+
+export async function clientFromUrl(url: string) {
+  const key = clientKeyFromUrl(url)
+  if (!key) return
+  return clientFromKey(key)
 }

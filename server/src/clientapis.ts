@@ -2,7 +2,9 @@ import {
   ClientConfiguration,
   Methods,
   AbapObjectDetail,
-  AbapObjectSource
+  AbapObjectSource,
+  StringWrapper,
+  UriRequest
 } from "sharedtypes"
 import { connection } from "./clientManager"
 
@@ -26,4 +28,10 @@ export async function getObjectSource(uri: string) {
     uri
   )) as AbapObjectSource
   return (source && source.source) || ""
+}
+
+export async function getVSCodeUri(confKey: string, uri: string) {
+  const req: UriRequest = { confKey, uri }
+  const s = (await connection.sendRequest(Methods.vsUri, req)) as StringWrapper
+  return (s && s.s) || ""
 }

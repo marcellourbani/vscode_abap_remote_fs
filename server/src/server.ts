@@ -6,6 +6,7 @@ import {
 import { connection, log } from "./clientManager"
 import { syntaxCheck } from "./syntaxcheck"
 import { completion } from "./completion"
+import { findDefinition } from "./references"
 
 const documents: TextDocuments = new TextDocuments()
 
@@ -30,7 +31,8 @@ connection.onInitialize((params: InitializeParams) => {
       // Tell the client that the server supports code completion
       completionProvider: {
         resolveProvider: true
-      }
+      },
+      definitionProvider: true
     }
   }
 })
@@ -51,6 +53,7 @@ connection.onInitialized(() => {
 })
 
 connection.onCompletion(completion)
+connection.onDefinition(findDefinition)
 documents.onDidChangeContent(change => syntaxCheck(change.document))
 
 documents.listen(connection)

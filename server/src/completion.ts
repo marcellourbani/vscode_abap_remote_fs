@@ -1,17 +1,11 @@
 import { CompletionParams, CompletionItem } from "vscode-languageserver"
-import { clientFromUrl } from "./clientManager"
-import { getObjectSource } from "./clientapis"
-import { getObject } from "./objectManager"
+import { clientAndObjfromUrl } from "./utilities"
 
 export async function completion(params: CompletionParams) {
   const items: CompletionItem[] = []
-  const uri = params.textDocument.uri
-  const client = await clientFromUrl(uri)
-  if (!client) return items
-  const obj = await getObject(uri)
-  if (!obj) return
-  const source = await getObjectSource(uri)
-  if (!source) return items
+  const co = await clientAndObjfromUrl(params.textDocument.uri)
+  if (!co) return items
+  const { client, obj, source } = co
   const rawItems = await client.codeCompletion(
     obj.mainUrl,
     source,

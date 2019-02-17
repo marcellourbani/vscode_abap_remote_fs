@@ -14,6 +14,8 @@ Format based on [Keep a Changelog](http://keepachangelog.com/)
 - warn of lock changes on disconnection
 - syntax check
 - code completion
+- added dependency on ABAP language extension
+- go to definition
 
 ## [0.4.1] 2019-02-10
 

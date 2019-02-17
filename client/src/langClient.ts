@@ -1,16 +1,33 @@
-import { AbapObjectSource } from "./../../sharedtypes/out/index.d"
 import { AbapObject } from "./adt/abap/AbapObject"
 import { log, channel } from "./logger"
-import { AbapObjectDetail, Methods } from "sharedtypes"
+import {
+  AbapObjectDetail,
+  Methods,
+  StringWrapper,
+  AbapObjectSource,
+  UriRequest
+} from "sharedtypes"
 import { ExtensionContext, Uri, window } from "vscode"
 import { LanguageClient, TransportKind, State } from "vscode-languageclient"
-import { ADTSCHEME, fromUri } from "./adt/AdtServer"
+import { ADTSCHEME, fromUri, getServer, urlFromPath } from "./adt/AdtServer"
 import { configFromId } from "./config"
 import { isString } from "util"
 export let client: LanguageClient
 import { join } from "path"
 
 const includes: Map<string, string> = new Map()
+
+async function getVSCodeUri(req: UriRequest): Promise<StringWrapper> {
+  const server = getServer(req.confKey)
+  const path = await server.objectFinder.findObjectPath(req.uri)
+  let s = ""
+
+  if (path.length) {
+    const nodePath = await server.objectFinder.locateObject(path)
+    if (nodePath) s = urlFromPath(req.confKey, nodePath.path)
+  }
+  return { s }
+}
 
 async function readObjectSource(uri: string) {
   const current = window.visibleTextEditors.find(
@@ -33,6 +50,7 @@ function objectDetail(obj: AbapObject, mainProgram?: string) {
   }
   return detail
 }
+
 async function objectDetailFromUrl(url: string) {
   const uri = Uri.parse(url)
   const server = await fromUri(uri)
@@ -92,6 +110,7 @@ export async function startLanguageClient(context: ExtensionContext) {
       client.onRequest(Methods.readConfiguration, configFromUrl)
       client.onRequest(Methods.objectDetails, objectDetailFromUrl)
       client.onRequest(Methods.readObjectSource, readObjectSource)
+      client.onRequest(Methods.vsUri, getVSCodeUri)
     }
   })
 }

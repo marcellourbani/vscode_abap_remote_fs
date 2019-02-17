@@ -1,39 +1,8 @@
 import { clientFromUrl, connection, log } from "./clientManager"
 import { objectIsValid } from "sharedtypes"
-import {
-  TextDocument,
-  Diagnostic,
-  DiagnosticSeverity,
-  Range
-} from "vscode-languageserver"
+import { TextDocument, Diagnostic } from "vscode-languageserver"
 import { getObject } from "./objectManager"
-
-function decodeSeverity(severity: string) {
-  switch (severity) {
-    case "E":
-    case "A":
-    case "X":
-      return DiagnosticSeverity.Error
-    case "W":
-      return DiagnosticSeverity.Warning
-    case "I":
-    case "S":
-      return DiagnosticSeverity.Information
-  }
-  return DiagnosticSeverity.Warning
-}
-export function sourceRange(
-  document: TextDocument,
-  line: number,
-  character: number
-): Range {
-  const start = { line: line - 1, character }
-  const end = { line: line - 1, character: character + 1000 }
-  const part = document.getText({ start, end })
-  const match = part.match(/^([\w]+)/)
-  end.character = start.character + (match ? match[1].length : 1)
-  return { start, end }
-}
+import { sourceRange, decodeSeverity } from "./utilities"
 
 export async function syntaxCheck(document: TextDocument) {
   const client = await clientFromUrl(document.uri)

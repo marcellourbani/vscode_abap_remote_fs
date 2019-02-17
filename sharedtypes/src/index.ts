@@ -1,7 +1,8 @@
 export enum Methods {
   objectDetails = "vscabap.objDetails",
   readConfiguration = "vscabap.readConfig",
-  readObjectSource = "vscabap.objSource"
+  readObjectSource = "vscabap.objSource",
+  vsUri = "vscabap.vsUri"
 }
 
 export interface AbapObjectDetail {
@@ -24,6 +25,15 @@ export interface ClientConfiguration {
 
 export interface AbapObjectSource {
   source: string
+}
+
+export interface StringWrapper {
+  s: string
+}
+
+export interface UriRequest {
+  confKey: string
+  uri: string
 }
 
 export function objectIsValid(obj?: AbapObjectDetail) {

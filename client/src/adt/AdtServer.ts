@@ -292,6 +292,7 @@ export class AdtServer {
     throw new Error(`Path ${subject.path} is not an ABAP object`)
   }
 }
+
 const servers = new Map<string, AdtServer>()
 export const getServer = (connId: string): AdtServer => {
   let server = servers.get(connId)
@@ -301,10 +302,15 @@ export const getServer = (connId: string): AdtServer => {
   }
   return server
 }
+
 export const fromUri = (uri: Uri) => {
   if (uri.scheme === "adt") return getServer(uri.authority)
   throw FileSystemError.FileNotFound(uri)
 }
+
+export const urlFromPath = (configKey: string, path: string) =>
+  `${ADTSCHEME}://${configKey}${path}`
+
 export async function disconnect() {
   const promises: Array<Promise<any>> = []
   let haslocks = false
