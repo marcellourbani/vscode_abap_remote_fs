@@ -15,7 +15,11 @@ import { configFromId } from "./config"
 import { isString } from "util"
 export let client: LanguageClient
 import { join } from "path"
-import { findMainIncludeAsync } from "./adt/abap/AbapObjectUtilities"
+import {
+  findMainIncludeAsync,
+  uriToNodePath
+} from "./adt/abap/AbapObjectUtilities"
+import { isAbapNode } from "./fs/AbapNode"
 
 const includes: Map<string, string> = new Map()
 
@@ -25,25 +29,41 @@ async function getVSCodeUri(req: UriRequest): Promise<StringWrapper> {
   let s = ""
 
   if (path.length) {
-    let nodePath = await server.objectFinder.locateObject(path)
-    if (nodePath && nodePath.node.isFolder)
-      nodePath = await findMainIncludeAsync(nodePath, server.client)
-    if (nodePath) s = urlFromPath(req.confKey, nodePath.path)
+    let nPath = await server.objectFinder.locateObject(path)
+    if (nPath && nPath.node.isFolder && req.mainInclude)
+      nPath = await findMainIncludeAsync(nPath, server.client)
+    if (nPath) s = urlFromPath(req.confKey, nPath.path)
   }
   return { s }
 }
 
-async function readObjectSource(uri: string) {
+async function readEditorObjectSource(url: string) {
   const current = window.visibleTextEditors.find(
     e =>
-      e.document.uri.scheme === ADTSCHEME && e.document.uri.toString() === uri
+      e.document.uri.scheme === ADTSCHEME && e.document.uri.toString() === url
   )
-  if (current)
-    return {
-      source: current.document.getText()
-    } as AbapObjectSource
+  const source: AbapObjectSource = { source: "", url }
+  if (current) source.source = current.document.getText()
+  return source
 }
 
+async function readObjectSource(uri: string) {
+  const source = await readEditorObjectSource(uri)
+  if (source.source) return source
+
+  const url = Uri.parse(uri)
+  const server = fromUri(url)
+  let nodep = uriToNodePath(url, await server.findNodePromise(url))
+  if (nodep.node.isFolder)
+    nodep = await findMainIncludeAsync(nodep, server.client)
+  if (nodep && !nodep.node.isFolder) {
+    source.url = urlFromPath(server.connectionId, nodep.path)
+    if (isAbapNode(nodep.node) && !nodep.node.abapObject.structure)
+      nodep.node.stat(server.client)
+    source.source = (await nodep.node.fetchContents(server.client)).toString()
+  }
+  return source
+}
 function objectDetail(obj: AbapObject, mainProgram?: string) {
   if (!obj) return
   const detail: AbapObjectDetail = {
@@ -113,7 +133,8 @@ export async function startLanguageClient(context: ExtensionContext) {
     if (e.newState === State.Running) {
       client.onRequest(Methods.readConfiguration, configFromUrl)
       client.onRequest(Methods.objectDetails, objectDetailFromUrl)
-      client.onRequest(Methods.readObjectSource, readObjectSource)
+      client.onRequest(Methods.readEditorObjectSource, readEditorObjectSource)
+      client.onRequest(Methods.readObjectSourceOrMain, readObjectSource)
       client.onRequest(Methods.vsUri, getVSCodeUri)
     }
   })

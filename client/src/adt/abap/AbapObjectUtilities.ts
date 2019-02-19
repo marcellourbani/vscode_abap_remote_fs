@@ -15,10 +15,16 @@ import { AbapFunction } from "./AbapFunction"
 import { AbapCds } from "./AbapCds"
 import { Node, ADTClient } from "abap-adt-api"
 import { AbapFunctionGroup } from "./AbapFunctionGroup"
+import { Uri } from "vscode"
 
 export interface NodePath {
   path: string
   node: AbapNode
+}
+
+export function uriToNodePath(uri: Uri, node: AbapNode): NodePath {
+  const path = uri.path
+  return { path, node }
 }
 
 export function aggregateNodes(
@@ -171,11 +177,11 @@ export function findMainInclude(o: NodePath) {
   return main || candidates[0]
 }
 
-export async function findMainIncludeAsync(nodePath: NodePath, c: ADTClient) {
-  const main = findMainInclude(nodePath)
+export async function findMainIncludeAsync(nPath: NodePath, c: ADTClient) {
+  const main = findMainInclude(nPath)
   if (main) return main
-  await nodePath.node.refresh(c)
-  return findMainInclude(nodePath)
+  await nPath.node.refresh(c)
+  return findMainInclude(nPath)
 }
 
 // to support ABAPLINT we need to follow its naming conventions

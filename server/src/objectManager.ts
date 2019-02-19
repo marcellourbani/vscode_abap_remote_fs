@@ -14,11 +14,15 @@ export async function getObject(uri: string) {
   return object
 }
 
-export async function vscUrl(confKey: string, uri: string) {
-  const key = `${confKey} ${uri}`
+export async function vscUrl(
+  confKey: string,
+  uri: string,
+  main: boolean = true
+) {
+  const key = `${confKey} ${uri} ${main}`
   let vsurl = vsurlCache.get(key)
   if (!vsurl && vsurl !== "") {
-    vsurl = await getVSCodeUri(confKey, uri)
+    vsurl = await getVSCodeUri(confKey, uri, main)
     vsurlCache.set(key, vsurl)
   }
   return vsurl

@@ -4,7 +4,7 @@ import { ADTClient } from "abap-adt-api"
 import { AbapObjectDetail } from "sharedtypes"
 import { clientKeyFromUrl, clientFromKey } from "./clientManager"
 import { getObject } from "./objectManager"
-import { getObjectSource } from "./clientapis"
+import { getEditorObjectSource } from "./clientapis"
 
 export function decodeSeverity(severity: string) {
   switch (severity) {
@@ -23,19 +23,26 @@ export function decodeSeverity(severity: string) {
 
 export function sourceRange(
   document: TextDocument | string,
-  line: number,
+  oline: number,
   character: number
 ): Range {
-  const getpart = () => {
-    if (!isString(document)) return document.getText({ start, end })
-    const lines = document.split("\n")
-    return ((lines && lines[line - 1]) || "").substr(character)
+  const line = oline === 0 ? 0 : oline - 1
+  if (isString(document)) {
+    const lineText = document.split("\n")[line]
+    const lastwordm = lineText.substr(0, character).match(/([\w]+)$/)
+    const start = { line, character }
+    if (lastwordm) start.character -= lastwordm[1].length
+    const end = { line, character: character + 1000 }
+    const match = lineText.substr(start.character).match(/^([\w]+)/)
+    end.character = start.character + (match ? match[1].length : 1)
+    return { start, end }
+  } else {
+    const start = { line, character }
+    const end = { line, character: character + 1000 }
+    const match = document.getText({ start, end }).match(/^([\w]+)/)
+    end.character = start.character + (match ? match[1].length : 1)
+    return { start, end }
   }
-  const start = { line: line - 1, character }
-  const end = { line: line - 1, character: character + 1000 }
-  const match = getpart().match(/^([\w]+)/)
-  end.character = start.character + (match ? match[1].length : 1)
-  return { start, end }
 }
 export interface ClientAndObject {
   confKey: string
@@ -54,7 +61,7 @@ export async function clientAndObjfromUrl(
   if (!client) return
   const obj = await getObject(uri)
   if (!obj) return
-  const source = withSource ? await getObjectSource(uri) : ""
+  const source = withSource ? await getEditorObjectSource(uri) : ""
 
   return { confKey, client, obj, source }
 }

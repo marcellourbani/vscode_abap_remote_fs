@@ -1,7 +1,8 @@
 import {
   TextDocuments,
   InitializeParams,
-  DidChangeConfigurationNotification
+  DidChangeConfigurationNotification,
+  CompletionItem
 } from "vscode-languageserver"
 import { connection, log } from "./clientManager"
 import { syntaxCheck } from "./syntaxcheck"
@@ -54,6 +55,7 @@ connection.onInitialized(() => {
 })
 
 connection.onCompletion(completion)
+connection.onCompletionResolve((c: CompletionItem) => c)
 connection.onDefinition(findDefinition)
 connection.onReferences(findReferences)
 documents.onDidChangeContent(change => syntaxCheck(change.document))

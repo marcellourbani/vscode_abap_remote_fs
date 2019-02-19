@@ -1,7 +1,8 @@
 export enum Methods {
   objectDetails = "vscabap.objDetails",
   readConfiguration = "vscabap.readConfig",
-  readObjectSource = "vscabap.objSource",
+  readEditorObjectSource = "vscabap.objSource",
+  readObjectSourceOrMain = "vscabap.objSource",
   vsUri = "vscabap.vsUri"
 }
 
@@ -24,6 +25,7 @@ export interface ClientConfiguration {
 }
 
 export interface AbapObjectSource {
+  url: string
   source: string
 }
 
@@ -34,6 +36,7 @@ export interface StringWrapper {
 export interface UriRequest {
   confKey: string
   uri: string
+  mainInclude: boolean
 }
 
 export const urlFromPath = (configKey: string, path: string) =>

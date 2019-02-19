@@ -1,5 +1,6 @@
 import { CompletionParams, CompletionItem } from "vscode-languageserver"
 import { clientAndObjfromUrl } from "./utilities"
+import { log } from "./clientManager"
 
 export async function completion(params: CompletionParams) {
   const items: CompletionItem[] = []
@@ -18,7 +19,7 @@ export async function completion(params: CompletionParams) {
       items.push(item)
     })
   } catch (e) {
-    // ignore
+    log(e) // ignore
   }
   return items
 }

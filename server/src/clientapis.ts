@@ -22,16 +22,28 @@ export async function getObjectDetails(uri: string) {
   return object
 }
 
-export async function getObjectSource(uri: string) {
+export async function getEditorObjectSource(uri: string) {
   const source = (await connection.sendRequest(
-    Methods.readObjectSource,
+    Methods.readEditorObjectSource,
     uri
   )) as AbapObjectSource
   return (source && source.source) || ""
 }
 
-export async function getVSCodeUri(confKey: string, uri: string) {
-  const req: UriRequest = { confKey, uri }
+export async function getObjectSource(uri: string) {
+  const source = (await connection.sendRequest(
+    Methods.readEditorObjectSource,
+    uri
+  )) as AbapObjectSource
+  return source
+}
+
+export async function getVSCodeUri(
+  confKey: string,
+  uri: string,
+  mainInclude: boolean
+) {
+  const req: UriRequest = { confKey, uri, mainInclude }
   const s = (await connection.sendRequest(Methods.vsUri, req)) as StringWrapper
   return (s && s.s) || ""
 }

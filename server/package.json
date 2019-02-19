@@ -13,8 +13,12 @@
   "author": "Marcello Urbani",
   "license": "MIT",
   "dependencies": {
-    "abap-adt-api": "^0.4.22",
+    "abap-adt-api": "^0.4.23",
+    "lodash": "^4.17.11",
     "sharedtypes": "file:../sharedtypes",
     "vscode-languageserver": "^4.4.2"
+  },
+  "devDependencies": {
+    "@types/lodash": "^4.14.121"
   }
 }

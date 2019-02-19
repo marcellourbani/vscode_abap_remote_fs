@@ -16,36 +16,56 @@ import {
   ReferenceUri,
   Location as ApiLocation,
   ADTClient,
-  ClassComponent
+  ClassComponent,
+  UsageReference
 } from "abap-adt-api"
 import { vscUrl } from "./objectManager"
+import { groupBy } from "lodash"
+import { log } from "./clientManager"
+import { getObjectSource } from "./clientapis"
 
 export async function findDefinition(params: TextDocumentPositionParams) {
   try {
     const co = await clientAndObjfromUrl(params.textDocument.uri)
     if (!co) return
+
+    const range = sourceRange(
+      co.source,
+      params.position.line + 1,
+      params.position.character
+    )
     const result = await co.client.findDefinition(
       co.obj.mainUrl,
       co.source,
-      params.position.line + 1,
-      params.position.character,
-      params.position.character
+      range.start.line + 1,
+      range.start.character,
+      range.end.character
     )
 
-    const uri =
-      result.url &&
-      (result.url === co.obj.url
-        ? params.textDocument.uri // same file
-        : await vscUrl(co.confKey, result.url)) // ask for new file's url
+    if (!result.url) return
 
-    if (!uri) return
+    let uri
+    let source = ""
+    if (result.url === co.obj.url) {
+      // same file
+      uri = params.textDocument.uri
+      source = co.source
+    } else {
+      uri = await vscUrl(co.confKey, result.url, true) // ask for new file's url
+      if (!uri) return
+      const s = await getObjectSource(uri)
+      if (!s) return
+      uri = s.url
+      source = s.source
+    }
+
     const l: Location = {
       uri,
-      range: sourceRange(co.source, result.line, result.column)
+      range: sourceRange(source, result.line, result.column)
     }
     return l
   } catch (e) {
-    // ignore
+    log(e) // ignore
   }
 }
 
@@ -109,6 +129,11 @@ class LocationManager {
   })
 }
 
+const fullname = (usageReference: UsageReference) => {
+  const rparts = usageReference.objectIdentifier.split(";")
+  return rparts[1] && rparts[0] === "ABAPFullName" ? rparts[1] : ""
+}
+
 export async function findReferences(
   params: ReferenceParams,
   token: CancellationToken
@@ -118,22 +143,30 @@ export async function findReferences(
     const co = await clientAndObjfromUrl(params.textDocument.uri, false)
     if (!co) return
     const manager = new LocationManager(co.confKey, co.client)
-    const result = await co.client.usageReferences(
+    const references = await co.client.usageReferences(
       co.obj.mainUrl,
       params.position.line + 1,
       params.position.character
     )
     if (token.isCancellationRequested) return
-    const snippets = await co.client.usageReferenceSnippets(result)
-    for (const s of snippets) {
-      for (const sn of s.snippets) {
-        if (token.isCancellationRequested) return
-        const location = await manager.locationFromUrl(sn.uri)
-        if (location) locations.push(location)
+
+    const groups = groupBy(references, fullname)
+    for (const group of Object.keys(groups)) {
+      try {
+        const snippets = await co.client.usageReferenceSnippets(groups[group])
+        for (const s of snippets) {
+          for (const sn of s.snippets) {
+            if (token.isCancellationRequested) return
+            const location = await manager.locationFromUrl(sn.uri)
+            if (location) locations.push(location)
+          }
+        }
+      } catch (e) {
+        log(e) // ignore
       }
     }
   } catch (e) {
-    // ignore
+    log(e) // ignore
   }
   return locations
 }
