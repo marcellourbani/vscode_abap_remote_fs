@@ -2,10 +2,10 @@
   "name": "sharedtypes",
   "version": "1.0.0",
   "description": "Types and constants shared between server and client",
-  "main": "out/index.js",
-  "types": "out/index.d.ts",
+  "main": "../client/sharedtypes/index.js",
+  "types": "../client/sharedtypes/index.d.ts",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "clean": "rm -Rf ../client/sharedtypes"
   },
   "repository": {
     "type": "git",

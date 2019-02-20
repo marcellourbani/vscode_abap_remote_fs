@@ -1,4 +1,4 @@
-import { AbapObjectDetail, objectIsValid } from "sharedtypes"
+import { AbapObjectDetail, objectIsValid } from "../sharedtypes"
 import { getObjectDetails, getVSCodeUri } from "./clientapis"
 
 const cache: Map<string, AbapObjectDetail> = new Map()

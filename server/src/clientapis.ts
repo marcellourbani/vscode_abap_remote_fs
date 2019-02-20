@@ -5,7 +5,7 @@ import {
   AbapObjectSource,
   StringWrapper,
   UriRequest
-} from "sharedtypes"
+} from "../sharedtypes"
 import { connection } from "./clientManager"
 
 export async function readConfiguration(key: string) {
@@ -32,7 +32,7 @@ export async function getEditorObjectSource(uri: string) {
 
 export async function getObjectSource(uri: string) {
   const source = (await connection.sendRequest(
-    Methods.readEditorObjectSource,
+    Methods.readObjectSourceOrMain,
     uri
   )) as AbapObjectSource
   return source

@@ -1,5 +1,7 @@
 out
 node_modules
+client/server
+client/sharedtypes
 client/node_modules
 server/node_modules
 .vscode-test/

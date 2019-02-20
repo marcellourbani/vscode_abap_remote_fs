@@ -19,7 +19,7 @@ export async function completion(params: CompletionParams) {
       items.push(item)
     })
   } catch (e) {
-    log(e) // ignore
+    log("Exception in completion:", e.toString()) // ignore
   }
   return items
 }

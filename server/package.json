@@ -2,7 +2,6 @@
   "name": "vscode-abap-remote-fs-server",
   "version": "1.0.0",
   "description": "Language server for ABAP remote filesystem",
-  "scripts": {},
   "repository": {
     "type": "git",
     "url": "https://github.com/marcellourbani/vscode_abap_remote_fs.git"
@@ -15,10 +14,13 @@
   "dependencies": {
     "abap-adt-api": "^0.4.23",
     "lodash": "^4.17.11",
-    "sharedtypes": "file:../sharedtypes",
     "vscode-languageserver": "^4.4.2"
   },
   "devDependencies": {
     "@types/lodash": "^4.14.121"
+  },
+  "scripts": {
+    "clean": "rm -Rf node_modules ../client/server",
+    "postinstall": "mkdir ../client/server ; cp -r node_modules ../client/server"
   }
 }

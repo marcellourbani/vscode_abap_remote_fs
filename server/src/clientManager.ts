@@ -5,13 +5,15 @@ import { readConfiguration } from "./clientapis"
 const clients: Map<string, ADTClient> = new Map()
 
 export const connection = createConnection(ProposedFeatures.all)
-export const log = (x: any) => {
+export const log = (...params: any) => {
   let msg = ""
-  try {
-    if (isError(x)) msg = `\nError ${x.name}\n${x.message}\n\n${x.stack}\n`
-    else msg = isString(x) ? x : JSON.stringify(x)
-  } catch (e) {
-    msg = x.toString()
+  for (const x of params) {
+    try {
+      if (isError(x)) msg += `\nError ${x.name}\n${x.message}\n\n${x.stack}\n`
+      else msg += isString(x) ? x : JSON.stringify(x)
+    } catch (e) {
+      msg += x.toString()
+    }
   }
   connection.console.log(msg)
 }

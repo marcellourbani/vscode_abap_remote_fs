@@ -1,8 +1,8 @@
 export enum Methods {
   objectDetails = "vscabap.objDetails",
   readConfiguration = "vscabap.readConfig",
-  readEditorObjectSource = "vscabap.objSource",
-  readObjectSourceOrMain = "vscabap.objSource",
+  readEditorObjectSource = "vscabap.editObjSource",
+  readObjectSourceOrMain = "vscabap.mainObjSource",
   vsUri = "vscabap.vsUri"
 }
 

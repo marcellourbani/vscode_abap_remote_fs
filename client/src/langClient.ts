@@ -7,7 +7,7 @@ import {
   AbapObjectSource,
   urlFromPath,
   UriRequest
-} from "sharedtypes"
+} from "../sharedtypes"
 import { ExtensionContext, Uri, window } from "vscode"
 import { LanguageClient, TransportKind, State } from "vscode-languageclient"
 import { ADTSCHEME, fromUri, getServer } from "./adt/AdtServer"
@@ -108,7 +108,7 @@ export async function manageIncludes(uri: Uri, opened: boolean) {
 }
 
 export async function startLanguageClient(context: ExtensionContext) {
-  const module = context.asAbsolutePath(join("server", "out", "server.js"))
+  const module = context.asAbsolutePath(join("server", "server.js"))
   const transport = TransportKind.ipc
   const options = { execArgv: ["--nolazy", "--inspect=6009"] }
   log("creating language client...")

@@ -65,7 +65,7 @@ export async function findDefinition(params: TextDocumentPositionParams) {
     }
     return l
   } catch (e) {
-    log(e) // ignore
+    log("Exception in find definition:", e.toString()) // ignore
   }
 }
 
@@ -162,11 +162,11 @@ export async function findReferences(
           }
         }
       } catch (e) {
-        log(e) // ignore
+        log("Exception in reference search:", e.toString()) // ignore
       }
     }
   } catch (e) {
-    log(e) // ignore
+    log("Exception in reference search:", e.toString()) // ignore
   }
   return locations
 }

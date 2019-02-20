@@ -1,5 +1,5 @@
 import { clientFromUrl, connection, log } from "./clientManager"
-import { objectIsValid } from "sharedtypes"
+import { objectIsValid } from "../sharedtypes"
 import { TextDocument, Diagnostic } from "vscode-languageserver"
 import { getObject } from "./objectManager"
 import { sourceRange, decodeSeverity } from "./utilities"
@@ -29,7 +29,7 @@ export async function syntaxCheck(document: TextDocument) {
       })
     })
   } catch (e) {
-    log(e)
+    log("Exception in syntax check:", e.toString()) // ignore
   }
   connection.sendDiagnostics({ uri: document.uri, diagnostics })
 }

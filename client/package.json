@@ -2,10 +2,10 @@
   "name": "vscode-abap-remote-fs-client",
   "displayName": "ABAP remote filesystem",
   "description": "Work on your ABAP code straight from the server",
-  "version": "0.4.1",
+  "version": "0.5.1",
   "publisher": "murbani",
   "license": "MIT",
-  "icon": "../images/abapfs_icon.png",
+  "icon": "images/abapfs_icon.png",
   "author": {
     "email": "marcello.urbani@gmail.com",
     "name": "Marcello Urbani"
@@ -29,7 +29,9 @@
   ],
   "scripts": {
     "update-vscode": "vscode-install",
-    "postinstall": "vscode-install"
+    "postinstall": "vscode-install",
+    "vscode:prepublish": "npm run update-vscode && cd .. && npm run compile",
+    "clean": "rm -Rf out node-modules server sharedtypes"
   },
   "devDependencies": {
     "@types/mocha": "^2.2.42",
@@ -52,5 +54,165 @@
     "tmp-promise": "^1.0.5",
     "tough-cookie": "^3.0.0",
     "vscode-languageclient": "^4.4.2"
+  },
+  "extensionDependencies": [
+    "larshp.vscode-abap"
+  ],
+  "activationEvents": [
+    "onFileSystem:adt",
+    "onCommand:abapfs.connect"
+  ],
+  "main": "./out/extension",
+  "contributes": {
+    "commands": [
+      {
+        "command": "abapfs.connect",
+        "title": "Connect to an ABAP system"
+      },
+      {
+        "command": "abapfs.search",
+        "title": "Search for ABAP object"
+      },
+      {
+        "command": "abapfs.create",
+        "title": "Create ABAP object"
+      },
+      {
+        "command": "abapfs.activate",
+        "title": "Activate the current ABAP object",
+        "icon": {
+          "dark": "images/activate_single.svg",
+          "light": "images/activate_single.svg"
+        }
+      },
+      {
+        "command": "abapfs.execute",
+        "title": "Create ABAP object"
+      }
+    ],
+    "keybindings": [
+      {
+        "command": "abapfs.execute",
+        "key": "F5",
+        "when": "editorTextFocus && editorLangId == abap"
+      }
+    ],
+    "menus": {
+      "editor/title": [
+        {
+          "command": "abapfs.activate",
+          "group": "navigation",
+          "when": "resourceScheme == adt && abapfs:objectInactive"
+        }
+      ],
+      "explorer/context": [
+        {
+          "command": "abapfs.create",
+          "when": "resourceScheme == adt",
+          "group": "2_workspace@1"
+        },
+        {
+          "command": "abapfs.search",
+          "when": "resourceScheme == adt",
+          "group": "4_search@1"
+        }
+      ]
+    },
+    "configuration": {
+      "title": "ABAP-FS configuration",
+      "properties": {
+        "abapfs.remote": {
+          "type": "object",
+          "description": "ABAP systems",
+          "patternProperties": {
+            "[a-zA-Z][a-zA-Z0-9][a-zA-Z0-9]": {
+              "type": "object",
+              "properties": {
+                "url": {
+                  "type": "string",
+                  "description": "Server base URL",
+                  "$comment": "https://<myserver>:<myport>",
+                  "default": "https://myserver:44300"
+                },
+                "username": {
+                  "type": "string",
+                  "description": "User name"
+                },
+                "password": {
+                  "type": "string",
+                  "description": "Password"
+                },
+                "client": {
+                  "type": "string",
+                  "description": "Client",
+                  "format": "[0-9][0-9][0-9]",
+                  "minLength": 3,
+                  "maxLength": 3
+                },
+                "language": {
+                  "type": "string",
+                  "description": "Login language",
+                  "format": "[a-zA-Z][a-zA-Z]",
+                  "minLength": 2,
+                  "maxLength": 2
+                },
+                "allowSelfSigned": {
+                  "type": "boolean",
+                  "title": "Do not validate SSL certificates (lowers the connection security)",
+                  "default": false
+                },
+                "customCA": {
+                  "type": "string",
+                  "title": "Custom certificate authority certificate"
+                },
+                "sapGui": {
+                  "type": "object",
+                  "description": "SapGUI integration (optional, default guessed from URL)",
+                  "properties": {
+                    "disabled": {
+                      "type": "boolean"
+                    },
+                    "group": {
+                      "type": "string",
+                      "description": "Group (for load balancing)"
+                    },
+                    "messageServer": {
+                      "type": "string",
+                      "description": "Message server (for load balancing)"
+                    },
+                    "messageServerPort": {
+                      "type": "string",
+                      "description": "Message server port (for load balancing)",
+                      "format": "[0-9][0-9][0-9][0-9]",
+                      "default": "3600"
+                    },
+                    "server": {
+                      "type": "string",
+                      "description": "Server (without load balancing)"
+                    },
+                    "systemNumber": {
+                      "type": "string",
+                      "description": "System number (without load balancing)",
+                      "minLength": 2,
+                      "maxLength": 2,
+                      "format": "\n\n"
+                    },
+                    "routerString": {
+                      "type": "string",
+                      "description": "Router String"
+                    }
+                  }
+                }
+              },
+              "required": [
+                "url",
+                "username",
+                "password"
+              ]
+            }
+          }
+        }
+      }
+    }
   }
 }
