@@ -27,7 +27,7 @@
       "skipFiles": ["<node_internals>/**"],
       "port": 6009,
       "sourceMaps": true,
-      "outFiles": ["${workspaceRoot}/server/out/**/*.js"]
+      "outFiles": ["${workspaceRoot}/client/server/**/*.js"]
     },
     {
       "name": "Extension Tests",

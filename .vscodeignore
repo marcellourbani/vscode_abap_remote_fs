@@ -3,7 +3,23 @@
 out/test/**
 out/**/*.map
 src/**
+client/out/test/**
+client/out/**/*.map
+client/src/**
+server/out/test/**
+server/out/**/*.map
+server/src/**
+sharedtypes/out/test/**
+sharedtypes/out/**/*.map
+sharedtypes/src/**
+
 .gitignore
 tsconfig.json
 vsc-extension-quickstart.md
 tslint.json
+tmp/**
+# client/node_modules/**
+# !client/node_modules/vscode-jsonrpc/**
+# !client/node_modules/vscode-languageclient/**
+# !client/node_modules/vscode-languageserver-protocol/**
+# !client/node_modules/vscode-languageserver-types/**
