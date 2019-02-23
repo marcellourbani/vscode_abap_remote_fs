@@ -2,7 +2,7 @@
   "name": "vscode-abap-remote-fs",
   "displayName": "ABAP remote filesystem",
   "description": "Work on your ABAP code straight from the server",
-  "version": "0.5.5",
+  "version": "0.5.6",
   "publisher": "murbani",
   "license": "MIT",
   "icon": "images/abapfs_icon.png",
@@ -46,7 +46,7 @@
   },
   "dependencies": {
     "@types/tmp": "0.0.33",
-    "abap-adt-api": "^0.4.19",
+    "abap-adt-api": "^0.5.0",
     "event-stream": "3.3.4",
     "fs-jetpack": "^2.2.0",
     "opn": "^5.4.0",

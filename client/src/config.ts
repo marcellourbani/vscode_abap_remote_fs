@@ -2,6 +2,7 @@ import { ClientConfiguration } from "../sharedtypes"
 import { window, workspace, QuickPickItem, WorkspaceFolder, Uri } from "vscode"
 import { ADTClient, createSSLConfig } from "abap-adt-api"
 import { ADTSCHEME } from "./adt/AdtServer"
+import { readFileSync } from "fs"
 
 export interface RemoteConfig extends ClientConfiguration {
   sapGui: {
@@ -20,6 +21,12 @@ export interface RemoteConfig extends ClientConfiguration {
 const config = (name: string, remote: RemoteConfig) => {
   const conf = { url: "", ...remote, name, valid: true }
   conf.valid = !!(remote.url && remote.username && remote.password)
+  if (conf.customCA && !conf.customCA.match(/-----BEGIN CERTIFICATE-----/gi))
+    try {
+      conf.customCA = readFileSync(conf.customCA).toString()
+    } catch (e) {
+      delete conf.customCA
+    }
   return conf
 }
 

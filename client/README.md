@@ -4,6 +4,8 @@ This extension allows editing and activation of ABAP code on your server directl
 
 **THIS SOFTWARE IS IN BETA TEST, USE AT YOUR OWN RISK**
 
+## new in 0.5.6: support self-signed certificates and custom certificate authorities
+
 ## new in 0.5: Much better language support
 
 - syntax checks
