@@ -6,6 +6,7 @@ import { log } from "./logger"
 export async function connectAdtServer(selector: any) {
   const connectionID = selector && selector.connection
   const remote = await selectRemote(connectionID)
+  if (!remote) return
   const client = createClient(remote)
 
   log(`Connecting to server ${remote.name}`)

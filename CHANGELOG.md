@@ -6,6 +6,20 @@ Format based on [Keep a Changelog](http://keepachangelog.com/)
 
 ## Unreleased
 
+### Fixed
+
+- find objects in orphaned packages
+- persist opened files on window refresh
+
+## [0.5.6] 2019-02-23
+
+### Fixed
+
+- Self signed certificates
+- custom CA support
+
+## [0.5.0] 2019-02-20
+
 ### Added
 
 - split in subprojects to add a language server

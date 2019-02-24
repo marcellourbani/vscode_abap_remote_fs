@@ -47,15 +47,19 @@ const getNodeHierarchy = (
   })
   return newNode
 }
+
 const refreshObjects = (
   node: AbapObjectNode,
-  components: AbapNodeComponentByCategory[]
+  components: AbapNodeComponentByCategory[],
+  manual?: Map<string, AbapNode>
 ): void => {
   // create a new structure, then will match it with the node's
   const newFolder = node.abapObject.type.match(/DEVC/)
     ? getNodeHierarchy(components)
     : getNodeHierarchyByType(components)
-
+  if (manual)
+    for (const k of manual.keys())
+      if (!newFolder.getChild(k)) newFolder.setChild(k, manual.get(k)!)
   function reconcile(current: AbapNode, newNode: AbapNode) {
     // remove deleted objects from node
     const cur = [...current]
@@ -81,6 +85,7 @@ export class AbapObjectNode implements FileStat, Iterable<[string, AbapNode]> {
   public mtime: number = Date.now()
   public size: number = 0
   private children?: Map<string, AbapNode>
+  private manualChildren?: Map<string, AbapNode>
 
   constructor(abapObject: AbapObject) {
     if (abapObject.isLeaf()) this.type = FileType.File
@@ -99,11 +104,19 @@ export class AbapObjectNode implements FileStat, Iterable<[string, AbapNode]> {
       throw FileSystemError.FileNotADirectory(name)
     return this.children.get(name)
   }
-  public setChild(name: string, child: AbapNode): AbapNode {
+  public setChild(
+    name: string,
+    child: AbapNode,
+    manual: boolean = true
+  ): AbapNode {
     if (!this.children || !this.isFolder)
       throw FileSystemError.FileNotADirectory(name)
     this.children.set(name, child)
     this.mtime = Date.now()
+    if (manual) {
+      if (!this.manualChildren) this.manualChildren = new Map()
+      this.manualChildren.set(name, child)
+    }
     return child
   }
   public deleteChild(name: string): void {
@@ -119,6 +132,7 @@ export class AbapObjectNode implements FileStat, Iterable<[string, AbapNode]> {
     if (this.isFolder) return Promise.reject(FileSystemError.FileIsADirectory())
 
     try {
+      if (!this.abapObject.structure) await this.abapObject.loadMetadata(client)
       const payload = await this.abapObject.getContents(client)
       const buf = Buffer.from(payload)
       this.size = buf.length
@@ -130,7 +144,7 @@ export class AbapObjectNode implements FileStat, Iterable<[string, AbapNode]> {
 
   public async refresh(client: ADTClient): Promise<AbapNode> {
     const children = await this.abapObject.getChildren(client)
-    refreshObjects(this, children)
+    refreshObjects(this, children, this.manualChildren)
     return this
   }
 

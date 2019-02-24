@@ -12,7 +12,10 @@ import { LockManager } from "./operations/LockManager"
 import { SapGui } from "./sapgui/sapgui"
 import { ADTClient, adtException, isCreatableTypeId } from "abap-adt-api"
 import { isString } from "util"
-import { findObjectInNodeByPath } from "./abap/AbapObjectUtilities"
+import {
+  findObjectInNodeByPath,
+  abapObjectFromNode
+} from "./abap/AbapObjectUtilities"
 export const ADTBASEURL = "/sap/bc/adt/repository/nodestructure"
 export const ADTSCHEME = "adt"
 /**
@@ -219,6 +222,27 @@ export class AdtServer {
         // refreshable will typically be the current node or its first abap parent (usually a package)
         await refreshable.refresh(this.client)
         next = node.getChild(part)
+        // hack for orphaned local packages
+        if (
+          !next &&
+          part.match(/^\$/) &&
+          isAbapNode(node) &&
+          node.abapObject.name === "$TMP"
+        ) {
+          const obj = abapObjectFromNode({
+            EXPANDABLE: "X",
+            OBJECT_NAME: part,
+            OBJECT_TYPE: PACKAGE,
+            OBJECT_URI: `/sap/bc/adt/vit/wb/object_type/devck/object_name/${part}`,
+            OBJECT_VIT_URI:
+              "/sap/bc/adt/vit/wb/object_type/devck/object_name/${part}",
+            TECH_NAME: part
+          })
+          const child = new AbapObjectNode(obj)
+          node.setChild(part, child, true)
+          await child.refresh(this.client)
+          next = child
+        }
       }
       if (next) {
         node = next

@@ -1,3 +1,4 @@
+import { AbapObjectNode } from "./../../fs/AbapNode"
 import { PACKAGE } from "./AdtObjectCreator"
 import { ADTClient, PathStep, SearchResult, ObjectType } from "abap-adt-api"
 import { AdtServer } from "./../AdtServer"
@@ -7,9 +8,11 @@ import {
   NodePath,
   findObjectInNode,
   findObjectInNodeByPath,
-  findMainIncludeAsync
+  findMainIncludeAsync,
+  abapObjectFromNode
 } from "../abap/AbapObjectUtilities"
 import { isAbapNode } from "../../fs/AbapNode"
+import { AbapObject } from "../abap/AbapObject"
 
 interface SearchObjectType {
   name: string
@@ -81,19 +84,42 @@ export class AdtObjectFinder {
     const children = [...abapPath]
     const firstName = abapPath[0]["adtcore:name"]
     if (firstName.match(/^\$/)) {
-      if (firstName !== "$TMP")
-        children.unshift({
+      if (firstName !== "$TMP") {
+        // hack for local packages not marked as children of $TMP
+        const tmpStep: PathStep = {
           "adtcore:name": "$TMP",
           "adtcore:uri": "",
           "projectexplorer:category": "",
-          "adtcore:type": "DEVC/K"
-        })
+          "adtcore:type": PACKAGE
+        }
+        // get the $TMP node
+        const tmp = findObjectInNode(this.server.root, PACKAGE, "$TMP")
+        if (tmp) {
+          // always true in theory
+          await tmp.node.refresh(this.server.client)
+          const first = findObjectInNode(tmp.node, PACKAGE, "$TMP")
+          if (!first) {
+            // package not in $TMP, should always be the case...
+            const fn = abapPath[0]
+            const obj: AbapObject = abapObjectFromNode({
+              OBJECT_TYPE: fn["adtcore:type"],
+              OBJECT_NAME: fn["adtcore:name"],
+              TECH_NAME: fn["adtcore:name"],
+              OBJECT_URI: fn["adtcore:uri"],
+              OBJECT_VIT_URI: "",
+              EXPANDABLE: "X"
+            })
+            tmp.node.setChild(obj.vsName, new AbapObjectNode(obj))
+          }
+        }
+        children.unshift(tmpStep)
+      }
     } else
       children.unshift({
         "adtcore:name": "",
         "adtcore:uri": "",
         "projectexplorer:category": "",
-        "adtcore:type": "DEVC/K"
+        "adtcore:type": PACKAGE
       })
 
     let nodePath: NodePath = { path: "", node: this.server.root }

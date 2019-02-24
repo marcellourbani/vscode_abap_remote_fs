@@ -17,6 +17,7 @@ import { disconnect, ADTSCHEME, lockedFiles } from "./adt/AdtServer"
 import { log } from "./logger"
 import { client, startLanguageClient } from "./langClient"
 import { restoreLocks } from "./adt/operations/LockManager"
+// import { restoreOpenfilePaths } from "./adt/operations/AdtObjectFinder"
 
 export function activate(context: ExtensionContext) {
   const abapFS = new FsProvider()
@@ -55,6 +56,7 @@ export function activate(context: ExtensionContext) {
   startLanguageClient(context)
 
   restoreLocks()
+  // restoreOpenfilePaths()
 
   log(`Activated,pid=${process.pid}`)
 }

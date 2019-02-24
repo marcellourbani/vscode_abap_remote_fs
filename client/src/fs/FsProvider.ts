@@ -11,6 +11,7 @@ import {
   FileStat,
   FileType
 } from "vscode"
+import { log } from "../logger"
 
 export class FsProvider implements FileSystemProvider {
   private pEventEmitter = new EventEmitter<FileChangeEvent[]>()
@@ -26,60 +27,82 @@ export class FsProvider implements FileSystemProvider {
   }
 
   public async stat(uri: Uri): Promise<FileStat> {
-    if (uri.path === "/.vscode") throw FileSystemError.FileNotFound(uri)
-    const server = fromUri(uri)
-    if (uri.path === "/") return server.findNode(uri)
+    // no .* files allowed here, no need to log that
+    if (uri.path.match(/(^\.)|(\/\.)/)) throw FileSystemError.FileNotFound(uri)
     try {
+      const server = fromUri(uri)
+      if (uri.path === "/") {
+        return server.findNode(uri)
+      }
       return await server.stat(uri)
     } catch (e) {
+      log(`Error in stat of ${uri.toString()}\n${e.toString()}`)
       throw e
     }
   }
 
   public async readDirectory(uri: Uri): Promise<Array<[string, FileType]>> {
-    const server = fromUri(uri)
-    const dir = server.findNode(uri)
-    await server.refreshDirIfNeeded(dir)
-    const contents = [...dir].map(
-      ([name, node]) => [name, node.type] as [string, FileType]
-    )
-    return contents
+    try {
+      const server = fromUri(uri)
+      const dir = server.findNode(uri)
+      await server.refreshDirIfNeeded(dir)
+      const contents = [...dir].map(
+        ([name, node]) => [name, node.type] as [string, FileType]
+      )
+      return contents
+    } catch (e) {
+      log(`Error reading directory ${uri.toString()}\n${e.toString()}`)
+      throw e
+    }
   }
+
   public createDirectory(uri: Uri): void | Thenable<void> {
     throw FileSystemError.NoPermissions(
       "Not a real filesystem, directory creation is not supported"
     )
   }
+
   public async readFile(uri: Uri): Promise<Uint8Array> {
     const server = fromUri(uri)
-    const file = server.findNode(uri)
+    const file = await server.findNodePromise(uri)
 
     try {
-      if (file && !file.isFolder) return file.fetchContents(server.client)
+      if (file && !file.isFolder) return await file.fetchContents(server.client)
     } catch (error) {
-      // ignore
+      log(`Error reading file ${uri.toString()}\n${error.toString()}`)
     }
     throw FileSystemError.Unavailable(uri)
   }
+
   public async writeFile(
     uri: Uri,
     content: Uint8Array,
     options: { create: boolean; overwrite: boolean }
   ): Promise<void> {
-    const server = fromUri(uri)
-    const file = server.findNode(uri)
-    if (!file && options.create)
-      throw FileSystemError.NoPermissions(
-        "Not a real filesystem, file creation is not supported"
-      )
-    if (!file) throw FileSystemError.FileNotFound(uri)
-    await server.saveFile(file, content)
-    this.pEventEmitter.fire([{ type: FileChangeType.Changed, uri }])
+    try {
+      const server = fromUri(uri)
+      const file = server.findNode(uri)
+      if (!file && options.create)
+        throw FileSystemError.NoPermissions(
+          "Not a real filesystem, file creation is not supported"
+        )
+      if (!file) throw FileSystemError.FileNotFound(uri)
+      await server.saveFile(file, content)
+      this.pEventEmitter.fire([{ type: FileChangeType.Changed, uri }])
+    } catch (e) {
+      log(`Error writing file ${uri.toString()}\n${e.toString()}`)
+      throw e
+    }
   }
 
   public async delete(uri: Uri, options: { recursive: boolean }) {
-    const server = fromUri(uri)
-    await server.delete(uri)
+    try {
+      const server = fromUri(uri)
+      await server.delete(uri)
+    } catch (e) {
+      log(`Error deleting file ${uri.toString()}\n${e.toString()}`)
+      throw e
+    }
   }
 
   public rename(
