@@ -19,7 +19,6 @@ import { AdtServer } from "../AdtServer"
 import { selectTransport } from "../AdtTransports"
 import { fieldOrder } from "../../functions"
 import { MySearchResult } from "./AdtObjectFinder"
-// import { stringOrder, pick } from "../../functions"
 
 export const PACKAGE = "DEVC/K"
 type details =
@@ -66,7 +65,8 @@ export class AdtObjectCreator {
     const transport = await selectTransport(
       objectPath(options.objtype, options.name, options.parentName),
       devclass,
-      this.server.client
+      this.server.client,
+      true
     )
     if (transport.cancelled) return
     options.transport = transport.transport

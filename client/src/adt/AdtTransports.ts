@@ -15,9 +15,14 @@ const sel = (
 export async function selectTransport(
   objContentPath: string,
   devClass: string,
-  client: ADTClient
+  client: ADTClient,
+  forCreation: boolean = false
 ): Promise<TransportSelection> {
-  const ti = await client.transportInfo(objContentPath, devClass)
+  const ti = await client.transportInfo(
+    objContentPath,
+    devClass,
+    forCreation ? "I" : ""
+  )
   // if I have a lock return the locking transport
   // will probably be a task but should be fine
 
@@ -30,7 +35,7 @@ export async function selectTransport(
     ...ti.TRANSPORTS.map(t => `${t.TRKORR} ${t.AS4TEXT}`)
   ])
 
-  if (!selection) return sel("")
+  if (!selection) return sel("", true)
   if (selection === CREATENEW) {
     const text = await window.showInputBox({ prompt: "Request text" })
     if (!text) return sel("", true)

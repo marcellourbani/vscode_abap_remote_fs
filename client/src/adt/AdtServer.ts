@@ -154,7 +154,7 @@ export class AdtServer {
       await this.lockManager.unlock(obj)
       // might have a race condition with user changing editor...
       commands.executeCommand("setContext", "abapfs:objectInactive", true)
-    }
+    } else throw adtException("Object can't be saved without a transport")
   }
 
   /**
