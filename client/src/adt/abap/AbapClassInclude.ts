@@ -38,8 +38,11 @@ export class AbapClassInclude extends AbapObject {
   }
 
   get vsName(): string {
-    const base = this.name.replace(/\..*/, "")
-    return base.replace(/\//g, "／") + this.getExtension()
+    if (this.name) {
+      const base = this.name.replace(/\..*/, "")
+      return base.replace(/\//g, "／") + this.getExtension()
+    }
+    return ""
   }
 
   public getExecutionCommand(): SapGuiCommand | undefined {

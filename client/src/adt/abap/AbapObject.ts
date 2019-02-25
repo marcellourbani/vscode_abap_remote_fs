@@ -84,7 +84,8 @@ export class AbapObject {
     return !this.expandable
   }
   get vsName(): string {
-    return this.name.replace(/\//g, "／") + this.getExtension()
+    if (this.name) return this.name.replace(/\//g, "／") + this.getExtension()
+    return ""
   }
 
   public getExecutionCommand(): SapGuiCommand | undefined {
@@ -136,7 +137,7 @@ export class AbapObject {
   }
 
   public async loadMetadata(client: ADTClient): Promise<AbapObject> {
-    if (this.name) {
+    if (this.name && !this.sapguiOnly) {
       this.structure = await client.objectStructure(this.path)
     }
     return this
@@ -150,8 +151,8 @@ export class AbapObject {
 
   public async getContents(client: ADTClient): Promise<string> {
     if (!this.isLeaf()) throw FileSystemError.FileIsADirectory(this.vsName)
-    const url = this.getContentsUri()
-    if (this.sapguiOnly || !url) return SAPGUIONLY
+    const url = this.sapguiOnly ? "" : this.getContentsUri()
+    if (!url) return SAPGUIONLY
 
     return client.getObjectSource(url)
   }

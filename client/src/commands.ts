@@ -41,8 +41,9 @@ export async function activateCurrent(selector: Uri) {
 export async function searchAdtObject(uri: Uri | undefined) {
   // find the adt relevant namespace roots, and let the user pick one if needed
   const root = await pickAdtRoot(uri)
-  const server = root && fromUri(root.uri)
+  if (!root) return
   try {
+    const server = fromUri(root.uri)
     if (!server) throw new Error("Fatal error: invalid server connection") // this should NEVER happen!
     const object = await server.objectFinder.findObject()
     if (!object) return // user cancelled

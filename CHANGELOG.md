@@ -10,6 +10,8 @@ Format based on [Keep a Changelog](http://keepachangelog.com/)
 
 - find objects in orphaned packages
 - persist opened files on window refresh
+- fixed bugs in find object definition
+- abort search if no system selected
 
 ## [0.5.6] 2019-02-23
 

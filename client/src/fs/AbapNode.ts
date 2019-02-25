@@ -29,21 +29,22 @@ const getNodeHierarchy = (
   const newNode = new MetaFolder()
   components.forEach(category => {
     let categFolder: MetaFolder
-    category.types.forEach(otype => {
-      let tpFolder: AbapNode
-      if (otype.type.match("DEVC") || otype.type === "") tpFolder = newNode
-      else {
-        categFolder = categFolder || new MetaFolder()
-        tpFolder =
-          !otype.name || otype.name === category.name
-            ? categFolder
-            : categFolder.setChild(otype.name, new MetaFolder())
-      }
-      otype.objects.forEach(obj =>
-        tpFolder.setChild(obj.vsName, new AbapObjectNode(obj))
-      )
-      if (categFolder) newNode.setChild(category.name, categFolder)
-    })
+    if (category && category.types)
+      category.types.forEach(otype => {
+        let tpFolder: AbapNode
+        if (otype.type.match("DEVC") || otype.type === "") tpFolder = newNode
+        else {
+          categFolder = categFolder || new MetaFolder()
+          tpFolder =
+            !otype.name || otype.name === category.name
+              ? categFolder
+              : categFolder.setChild(otype.name, new MetaFolder())
+        }
+        otype.objects.forEach(obj =>
+          tpFolder.setChild(obj.vsName, new AbapObjectNode(obj))
+        )
+        if (categFolder) newNode.setChild(category.name, categFolder)
+      })
   })
   return newNode
 }
