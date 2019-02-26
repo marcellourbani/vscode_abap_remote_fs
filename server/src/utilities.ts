@@ -68,16 +68,17 @@ export async function clientAndObjfromUrl(
 
 export const memoize = <P, R>(
   base: (p: P) => Promise<R>
-): ((p: P) => Promise<R>) => async (param: P) => {
+): ((p: P) => Promise<R>) => {
   const cache: Map<P, R> = new Map()
-  let result = cache.get(param)
-  if (!result) {
-    result = await base(param)
-    cache.set(param, result)
+  return async (param: P) => {
+    let result = cache.get(param)
+    if (!result) {
+      result = await base(param)
+      cache.set(param, result)
+    }
+    return result
   }
-  return result
 }
-
 export function parts(whole: any, pattern: RegExp): string[] {
   if (!isString(whole)) return []
   const match = whole.match(pattern)
