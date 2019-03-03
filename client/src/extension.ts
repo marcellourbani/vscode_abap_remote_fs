@@ -1,3 +1,4 @@
+import { FavouritesProvider } from "./views/favourites"
 import { FsProvider } from "./fs/FsProvider"
 import { window, commands, workspace, ExtensionContext } from "vscode"
 import {
@@ -11,7 +12,9 @@ import {
   activateCurrent,
   searchAdtObject,
   createAdtObject,
-  executeAbap
+  executeAbap,
+  addFavourite,
+  deleteFavourite
 } from "./commands"
 import { disconnect, ADTSCHEME, lockedFiles } from "./adt/AdtServer"
 import { log } from "./logger"
@@ -53,10 +56,20 @@ export function activate(context: ExtensionContext) {
   // execute Abap command
   sub.push(commands.registerCommand("abapfs.execute", executeAbap))
 
+  // add favourite
+  sub.push(commands.registerCommand("abapfs.addfavourite", addFavourite))
+
+  // add favourite
+  sub.push(commands.registerCommand("abapfs.deletefavourite", deleteFavourite))
+
+  const fav = FavouritesProvider.get()
+  fav.storagePath = context.globalStoragePath
+  sub.push(window.registerTreeDataProvider("abapfs.favorites", fav))
+
   startLanguageClient(context)
 
+  commands.executeCommand("setContext", "abapfs:extensionActive", true)
   restoreLocks()
-  // restoreOpenfilePaths()
 
   log(`Activated,pid=${process.pid}`)
 }
@@ -73,5 +86,6 @@ export async function deactivate() {
     window.showInformationMessage(
       "Locks will be dropped now. If the relevant editors are still open they will be restored later"
     )
+  commands.executeCommand("setContext", "abapfs:extensionActive", false)
   await Promise.all([client && client.stop(), disconnect()])
 }

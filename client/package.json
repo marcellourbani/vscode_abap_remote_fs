@@ -2,7 +2,7 @@
   "name": "vscode-abap-remote-fs",
   "displayName": "ABAP remote filesystem",
   "description": "Work on your ABAP code straight from the server",
-  "version": "0.5.8",
+  "version": "0.5.9",
   "publisher": "murbani",
   "license": "MIT",
   "icon": "images/abapfs_icon.png",
@@ -12,7 +12,7 @@
   },
   "homepage": "https://github.com/marcellourbani/vscode_abap_remote_fs",
   "engines": {
-    "vscode": "^1.29.0"
+    "vscode": "^1.31.0"
   },
   "categories": [
     "Other"
@@ -35,14 +35,14 @@
   },
   "devDependencies": {
     "@types/mocha": "^2.2.42",
-    "@types/node": "^8.10.38",
+    "@types/node": "^11.10.4",
     "@types/opn": "^5.1.0",
     "ts-node": "^7.0.1",
     "tsconfig-paths": "^3.7.0",
     "tslint": "^5.12.1",
     "typescript": "^3.3.1",
     "vsce": "^1.53.2",
-    "vscode": "^1.1.29"
+    "vscode": "^1.1.30"
   },
   "dependencies": {
     "@types/tmp": "0.0.33",
@@ -64,6 +64,15 @@
   ],
   "main": "./out/extension",
   "contributes": {
+    "views": {
+      "explorer": [
+        {
+          "id": "abapfs.favorites",
+          "name": "Favorites",
+          "when": "abapfs:extensionActive"
+        }
+      ]
+    },
     "commands": [
       {
         "command": "abapfs.connect",
@@ -78,6 +87,14 @@
         "title": "Create ABAP object"
       },
       {
+        "command": "abapfs.addfavourite",
+        "title": "Add ABAPfs favourite"
+      },
+      {
+        "command": "abapfs.deletefavourite",
+        "title": "delete ABAPfs favourite"
+      },
+      {
         "command": "abapfs.activate",
         "title": "Activate the current ABAP object",
         "icon": {
@@ -87,7 +104,7 @@
       },
       {
         "command": "abapfs.execute",
-        "title": "Create ABAP object"
+        "title": "Open in SAPGUI"
       }
     ],
     "keybindings": [
@@ -98,6 +115,13 @@
       }
     ],
     "menus": {
+      "view/item/context": [
+        {
+          "command": "abapfs.deletefavourite",
+          "group": "navigation",
+          "when": "view == abapfs.favorites"
+        }
+      ],
       "editor/title": [
         {
           "command": "abapfs.activate",
@@ -108,6 +132,11 @@
       "explorer/context": [
         {
           "command": "abapfs.create",
+          "when": "resourceScheme == adt",
+          "group": "2_workspace@1"
+        },
+        {
+          "command": "abapfs.addfavourite",
           "when": "resourceScheme == adt",
           "group": "2_workspace@1"
         },

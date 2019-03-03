@@ -2,6 +2,7 @@ import { workspace, Uri, window, commands } from "vscode"
 import { fromUri } from "./adt/AdtServer"
 import { selectRemote, pickAdtRoot, createClient } from "./config"
 import { log } from "./logger"
+import { FavouritesProvider, FavItem } from "./views/favourites"
 
 export async function connectAdtServer(selector: any) {
   const connectionID = selector && selector.connection
@@ -104,4 +105,12 @@ export async function executeAbap() {
   } catch (e) {
     window.showErrorMessage(e.toString())
   }
+}
+export async function addFavourite(uri: Uri | undefined) {
+  // find the adt relevant namespace roots, and let the user pick one if needed
+  if (uri) FavouritesProvider.get().addFavourite(uri)
+}
+
+export async function deleteFavourite(node: FavItem) {
+  FavouritesProvider.get().deleteFavourite(node)
 }

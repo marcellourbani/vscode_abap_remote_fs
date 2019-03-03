@@ -1,0 +1,21 @@
+{
+  "folders": [
+    {
+      "path": "client"
+    },
+    {
+      "path": "server"
+    },
+    {
+      "path": "sharedtypes"
+    },
+    {
+      "path": "."
+    }
+  ],
+  "settings": {
+    "typescript.tsc.autoDetect": "off",
+    "typescript.locale": "en",
+    "gitlens.codeLens.enabled": false
+  }
+}

@@ -168,6 +168,7 @@ export function allChildren(o: NodePath): NodePath[] {
 }
 
 export function findMainInclude(o: NodePath) {
+  if (!isAbapNode(o.node)) return
   const candidates = allChildren(o).filter(
     x => isAbapNode(x.node) && !x.node.isFolder
   )
@@ -178,6 +179,7 @@ export function findMainInclude(o: NodePath) {
 }
 
 export async function findMainIncludeAsync(nPath: NodePath, c: ADTClient) {
+  if (!isAbapNode(nPath.node)) return
   const main = findMainInclude(nPath)
   if (main) return main
   await nPath.node.refresh(c)

@@ -55,7 +55,7 @@ async function readObjectSource(uri: string) {
   const server = fromUri(url)
   let nodep = uriToNodePath(url, await server.findNodePromise(url))
   if (nodep.node.isFolder)
-    nodep = await findMainIncludeAsync(nodep, server.client)
+    nodep = (await findMainIncludeAsync(nodep, server.client)) || nodep
   if (nodep && !nodep.node.isFolder) {
     source.url = urlFromPath(server.connectionId, nodep.path)
     if (isAbapNode(nodep.node) && !nodep.node.abapObject.structure)

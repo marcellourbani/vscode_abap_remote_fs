@@ -4,14 +4,7 @@ This extension allows editing and activation of ABAP code on your server directl
 
 **THIS SOFTWARE IS IN BETA TEST, USE AT YOUR OWN RISK**
 
-## new in 0.5.6: support self-signed certificates and custom certificate authorities
-
-## new in 0.5: Much better language support
-
-- syntax checks
-- completion
-- go to definition
-- usages
+## new in 0.5.9: Favourites view in explorer
 
 **Unless your system is very modern (7.51 or later I think), write support will require you to install [this plugin](https://github.com/marcellourbani/abapfs_extensions)** in your dev server to enable. Browsing works even without it
 
