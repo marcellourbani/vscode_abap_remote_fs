@@ -2,7 +2,9 @@
 
 This extension allows editing and activation of ABAP code on your server directly in Visual studio code, including transport assignment and creation (if your system supports it).
 
-**THIS SOFTWARE IS IN BETA TEST, USE AT YOUR OWN RISK**
+Warning: **THIS SOFTWARE IS IN BETA TEST, USE AT YOUR OWN RISK**
+
+Please refer to the [wiki](https://github.com/marcellourbani/vscode_abap_remote_fs/wiki) for system requirements, [installation](https://github.com/marcellourbani/vscode_abap_remote_fs/wiki/installation) and [usage](https://github.com/marcellourbani/vscode_abap_remote_fs/wiki/usage) instructions
 
 ## new in 0.5.9: Favourites view in explorer
 
@@ -31,12 +33,9 @@ Now includes ABAP language support!
 
 ## setup
 
-- install the extension from the visual studio marketplace
-- on your dev system, make sure that in transaction SICF node `/sap/bc/adt` is active, like in the image below
+Check the system requirements on the [wiki](https://github.com/marcellourbani/vscode_abap_remote_fs/wiki) and follow the [installation instructions](https://github.com/marcellourbani/vscode_abap_remote_fs/wiki/installation)
 
-![image](https://user-images.githubusercontent.com/2453277/47607084-5760de00-da13-11e8-9c51-7e04eeff4299.png)
-
-- create a configuration entry for your DEV system
+You will end up with one or more server connections like this in your vs code configuration:
 
 ```json
 {
@@ -52,8 +51,6 @@ Now includes ABAP language support!
   }
 }
 ```
-
-- to be able to save files you might need to install [this plugin](https://github.com/marcellourbani/abapfs_extensions)
 
 ## License
 
