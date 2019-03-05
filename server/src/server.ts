@@ -8,6 +8,7 @@ import { connection, log } from "./clientManager"
 import { syntaxCheck } from "./syntaxcheck"
 import { completion } from "./completion"
 import { findDefinition, findReferences } from "./references"
+import { documentSymbols } from "./symbols"
 
 const documents: TextDocuments = new TextDocuments()
 
@@ -34,7 +35,8 @@ connection.onInitialize((params: InitializeParams) => {
         resolveProvider: true
       },
       definitionProvider: true,
-      referencesProvider: true
+      referencesProvider: true,
+      documentSymbolProvider: true
     }
   }
 })
@@ -58,6 +60,7 @@ connection.onCompletion(completion)
 connection.onCompletionResolve((c: CompletionItem) => c)
 connection.onDefinition(findDefinition)
 connection.onReferences(findReferences)
+connection.onDocumentSymbol(documentSymbols)
 documents.onDidChangeContent(change => syntaxCheck(change.document))
 
 documents.listen(connection)

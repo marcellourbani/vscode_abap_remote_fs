@@ -14,6 +14,7 @@ export const log = (...params: any) => {
     } catch (e) {
       msg += x.toString()
     }
+    msg += " "
   }
   connection.console.log(msg)
 }

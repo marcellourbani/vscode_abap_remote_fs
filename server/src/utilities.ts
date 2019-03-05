@@ -44,6 +44,20 @@ export function sourceRange(
     return { start, end }
   }
 }
+
+export function rangeFromUri(uri: string): Range | undefined {
+  const [startl, startc, endl, endc] = parts(
+    uri,
+    /\#(?:.*;)?start=(\d+),(\d+);end=(\d+),(\d+)/
+  )
+  if (endc)
+    return {
+      start: { line: toInt(startl) - 1, character: toInt(startc) },
+      end: { line: toInt(endl) - 1, character: toInt(endc) }
+    }
+  return
+}
+
 export interface ClientAndObject {
   confKey: string
   client: ADTClient
