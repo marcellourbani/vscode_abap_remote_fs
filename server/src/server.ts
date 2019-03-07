@@ -9,6 +9,7 @@ import { syntaxCheck } from "./syntaxcheck"
 import { completion } from "./completion"
 import { findDefinition, findReferences } from "./references"
 import { documentSymbols } from "./symbols"
+import { formatDocument } from "./documentformatter"
 
 const documents: TextDocuments = new TextDocuments()
 
@@ -36,7 +37,8 @@ connection.onInitialize((params: InitializeParams) => {
       },
       definitionProvider: true,
       referencesProvider: true,
-      documentSymbolProvider: true
+      documentSymbolProvider: true,
+      documentFormattingProvider: true
     }
   }
 })
@@ -61,6 +63,7 @@ connection.onCompletionResolve((c: CompletionItem) => c)
 connection.onDefinition(findDefinition)
 connection.onReferences(findReferences)
 connection.onDocumentSymbol(documentSymbols)
+connection.onDocumentFormatting(formatDocument)
 documents.onDidChangeContent(change => syntaxCheck(change.document))
 
 documents.listen(connection)

@@ -11,6 +11,7 @@ export interface AbapObjectDetail {
   mainUrl: string
   mainProgram?: string
   type: string
+  name: string
 }
 
 export interface ClientConfiguration {

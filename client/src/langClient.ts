@@ -70,7 +70,8 @@ function objectDetail(obj: AbapObject, mainProgram?: string) {
     url: obj.path,
     mainUrl: obj.getContentsUri(),
     mainProgram,
-    type: obj.type
+    type: obj.type,
+    name: obj.name
   }
   return detail
 }

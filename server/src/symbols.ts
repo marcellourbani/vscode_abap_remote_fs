@@ -83,11 +83,13 @@ function filterComp(comp: ClassComponent, part: string): ClassComponent[] {
   else for (const c of comp.components) components.push(...filterComp(c, part))
   return components
 }
+
 export async function documentSymbols(params: DocumentSymbolParams) {
   const symbols: DocumentSymbol[] = []
   try {
     const co = await clientAndObjfromUrl(params.textDocument.uri, false)
     if (!co) return
+    // classes and interfaces have their own service/format
     if (co.obj.type.match("(CLAS)|(INTF)")) {
       const pattern = /((?:(?:\/source\/)|(?:\/includes\/)).*)/
       const [part] = parts(co.obj.url, pattern)
