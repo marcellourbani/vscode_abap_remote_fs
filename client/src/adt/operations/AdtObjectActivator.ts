@@ -1,5 +1,5 @@
 import { ADTClient, isAdtError, inactiveObjectsInResults } from "abap-adt-api"
-import { window, commands } from "vscode"
+import { window } from "vscode"
 import { AbapObject } from "../abap/AbapObject"
 
 export class AdtObjectActivator {
@@ -44,7 +44,6 @@ export class AdtObjectActivator {
     }
     if (result && result.success) {
       await inactive.loadMetadata(this.client)
-      commands.executeCommand("setContext", "abapfs:objectInactive", false)
     } else {
       window.showErrorMessage(
         (result && result.messages[0] && result.messages[0].shortText) ||

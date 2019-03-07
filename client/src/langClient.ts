@@ -36,12 +36,14 @@ async function getVSCodeUri(req: UriRequest): Promise<StringWrapper> {
   }
   return { s }
 }
-
-async function readEditorObjectSource(url: string) {
-  const current = window.visibleTextEditors.find(
+export function findEditor(url: string) {
+  return window.visibleTextEditors.find(
     e =>
       e.document.uri.scheme === ADTSCHEME && e.document.uri.toString() === url
   )
+}
+async function readEditorObjectSource(url: string) {
+  const current = findEditor(url)
   const source: AbapObjectSource = { source: "", url }
   if (current) source.source = current.document.getText()
   return source
@@ -64,6 +66,7 @@ async function readObjectSource(uri: string) {
   }
   return source
 }
+
 function objectDetail(obj: AbapObject, mainProgram?: string) {
   if (!obj) return
   const detail: AbapObjectDetail = {

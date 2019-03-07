@@ -1,5 +1,5 @@
 import { AdtSymLinkCollection } from "./AdtSymbolicLinks"
-import { Uri, FileSystemError, FileType, commands, window } from "vscode"
+import { Uri, FileSystemError, FileType, window } from "vscode"
 import { MetaFolder } from "../fs/MetaFolder"
 import { AbapObjectNode, AbapNode, isAbapNode } from "../fs/AbapNode"
 import { AbapObject, TransportStatus, isAbapObject } from "./abap/AbapObject"
@@ -152,8 +152,6 @@ export class AdtServer {
 
       await file.stat(this.client)
       await this.lockManager.unlock(obj)
-      // might have a race condition with user changing editor...
-      commands.executeCommand("setContext", "abapfs:objectInactive", true)
     } else throw adtException("Object can't be saved without a transport")
   }
 

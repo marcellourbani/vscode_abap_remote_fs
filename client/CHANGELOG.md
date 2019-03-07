@@ -4,6 +4,17 @@ All notable changes to the "vscode-abap-remote-fs" extension will be documented 
 
 Format based on [Keep a Changelog](http://keepachangelog.com/)
 
+## [0.5.12] 2019-03-06
+
+### Added
+
+- Save on activate
+- Show activate button on dirty documents
+
+### Fixed
+
+- quirks showing the activate button
+
 ## [0.5.11] 2019-03-06
 
 ### Added

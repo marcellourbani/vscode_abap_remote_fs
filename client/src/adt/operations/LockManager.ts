@@ -37,6 +37,7 @@ export async function setDocumentLock(document: TextDocument) {
       server.lockManager.lockedObjects.length
     } objects locked`
     statusBarItem.show()
+    return server.lockManager.isLocked(obj)
   }
 }
 // when the extension is deactivated, all locks are dropped

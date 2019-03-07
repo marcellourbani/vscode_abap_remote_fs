@@ -3,6 +3,9 @@ import { fromUri } from "./adt/AdtServer"
 import { selectRemote, pickAdtRoot, createClient } from "./config"
 import { log } from "./logger"
 import { FavouritesProvider, FavItem } from "./views/favourites"
+import { uriToNodePath } from "./adt/abap/AbapObjectUtilities"
+import { findEditor } from "./langClient"
+import { showHideActivate } from "./listeners"
 
 export async function connectAdtServer(selector: any) {
   const connectionID = selector && selector.connection
@@ -31,9 +34,17 @@ export async function connectAdtServer(selector: any) {
 export async function activateCurrent(selector: Uri) {
   try {
     const server = fromUri(selector)
+    if (!server)
+      throw Error("ABAP connection not found for" + uriToNodePath.toString())
+    const editor = findEditor(selector.toString())
     const obj = await server.findAbapObject(selector)
-    if (!obj.structure) await obj.loadMetadata(server.client)
+    // if editor is dirty, save before activate
+    if (editor && editor.document.isDirty) {
+      await editor.document.save()
+      await obj.loadMetadata(server.client)
+    } else if (!obj.structure) await obj.loadMetadata(server.client)
     await server.activate(obj)
+    if (editor === window.activeTextEditor) await showHideActivate(editor, obj)
   } catch (e) {
     window.showErrorMessage(e.toString())
   }

@@ -17,6 +17,7 @@ const typeMap: Map<string, SymbolKind> = new Map([
   ["CLAS/OLD", SymbolKind.Method],
   ["CLAS/OND", SymbolKind.Method],
   ["CLAS/ON", SymbolKind.Method],
+  ["CLAS/OO", SymbolKind.Method],
   ["CLAS/OLF", SymbolKind.TypeParameter],
   ["CLAS/OLN", SymbolKind.Interface],
   ["CLAS/OLT", SymbolKind.TypeParameter], // implementation, local
@@ -36,7 +37,12 @@ function decodeType(comp: ClassComponent) {
   if (mapped === SymbolKind.Field && comp.constant) return SymbolKind.Constant
   if (mapped) return mapped
 
-  log("Unknown symbol type for", comp)
+  log(
+    "Unknown symbol type for",
+    comp["adtcore:type"],
+    comp["adtcore:name"],
+    comp.links.length && comp.links[0].href
+  )
 
   return SymbolKind.Null
 }
