@@ -17,10 +17,13 @@
     "vscode-languageserver": "^4.4.2"
   },
   "devDependencies": {
-    "@types/lodash": "^4.14.121"
+    "@types/lodash": "^4.14.121",
+    "rifraf": "^2.0.3"
   },
   "scripts": {
-    "clean": "rm -Rf node_modules ../client/server",
-    "postinstall": "mkdir ../client/server ; cp -r node_modules ../client/server"
+    "clean": "rifraf ../client/server",
+    "build": "npm run compile",
+    "compile": "installServerIntoExtension ../client ./package.json ./tsconfig.json && tsc -p .",
+    "watch": "installServerIntoExtension ../client ./package.json ./tsconfig.json && tsc --watch -p ."
   }
 }

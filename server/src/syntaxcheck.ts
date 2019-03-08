@@ -1,5 +1,5 @@
 import { clientFromUrl, connection, log } from "./clientManager"
-import { objectIsValid } from "../sharedtypes"
+import { objectIsValid } from "./api"
 import { TextDocument, Diagnostic } from "vscode-languageserver"
 import { getObject } from "./objectManager"
 import { sourceRange, decodeSeverity } from "./utilities"

@@ -7,9 +7,6 @@
       "path": "server"
     },
     {
-      "path": "sharedtypes"
-    },
-    {
       "path": "."
     },
     {

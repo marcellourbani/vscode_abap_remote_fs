@@ -29,7 +29,7 @@
     "update-vscode": "vscode-install",
     "compile": "tsc -b",
     "watch": "tsc -b -w",
-    "clean": "rm -Rf out *.vsix;cd server && npm run clean&& cd ../client &&npm run clean &&cd ../sharedtypes&& npm run clean",
+    "clean": "rm -Rf out *.vsix;cd server && npm run clean&& cd ../client &&npm run clean",
     "postinstall": "cd server && npm install && cd ../client && npm install"
   },
   "devDependencies": {

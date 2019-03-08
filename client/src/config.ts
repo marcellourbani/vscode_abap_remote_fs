@@ -1,4 +1,4 @@
-import { ClientConfiguration } from "../sharedtypes"
+import { ClientConfiguration } from "../server"
 import { window, workspace, QuickPickItem, WorkspaceFolder, Uri } from "vscode"
 import { ADTClient, createSSLConfig } from "abap-adt-api"
 import { ADTSCHEME } from "./adt/AdtServer"

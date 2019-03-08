@@ -22,7 +22,9 @@ export async function completion(params: CompletionParams) {
         // if the first character of the match is <, eat it from completion text
         if (!firstChar) {
           const line = source.split(/\n/)[params.position.line]
-          if (line) firstChar = line[params.position.character - 1]
+          let pos = params.position.character - 1
+          while (pos > 0 && !line[pos - 1].match(/\s/)) pos--
+          if (line) firstChar = line[pos]
           firstChar = firstChar ? firstChar.substr(0, 1) || ">" : ">" // dummy, !== <
         }
         if (firstChar === "<") insertText = insertText.substr(1)

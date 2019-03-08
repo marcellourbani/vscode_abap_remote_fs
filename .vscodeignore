@@ -9,9 +9,7 @@ client/src/**
 server/out/test/**
 server/out/**/*.map
 server/src/**
-sharedtypes/out/test/**
-sharedtypes/out/**/*.map
-sharedtypes/src/**
+
 
 .gitignore
 tsconfig.json

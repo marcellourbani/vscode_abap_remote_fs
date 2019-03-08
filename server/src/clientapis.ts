@@ -5,7 +5,7 @@ import {
   AbapObjectSource,
   StringWrapper,
   UriRequest
-} from "../sharedtypes"
+} from "./api"
 import { connection } from "./clientManager"
 
 export async function readConfiguration(key: string) {

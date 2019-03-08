@@ -7,7 +7,7 @@ import {
   AbapObjectSource,
   urlFromPath,
   UriRequest
-} from "../sharedtypes"
+} from "../server"
 import { ExtensionContext, Uri, window } from "vscode"
 import { LanguageClient, TransportKind, State } from "vscode-languageclient"
 import { ADTSCHEME, fromUri, getServer } from "./adt/AdtServer"

@@ -31,12 +31,13 @@
     "update-vscode": "vscode-install",
     "postinstall": "vscode-install",
     "vscode:prepublish": "npm run update-vscode && cd .. && npm run compile",
-    "clean": "rm -Rf out node-modules server sharedtypes"
+    "clean": "rifraf out node-modules server"
   },
   "devDependencies": {
     "@types/mocha": "^2.2.42",
     "@types/node": "^11.10.4",
     "@types/opn": "^5.1.0",
+    "rifraf": "^2.0.3",
     "ts-node": "^7.0.1",
     "tsconfig-paths": "^3.7.0",
     "tslint": "^5.12.1",
@@ -50,7 +51,6 @@
     "event-stream": "3.3.4",
     "fs-jetpack": "^2.2.0",
     "opn": "^5.4.0",
-    "sharedtypes": "file:../sharedtypes",
     "tmp-promise": "^1.0.5",
     "tough-cookie": "^3.0.0",
     "vscode-languageclient": "^4.4.2"
