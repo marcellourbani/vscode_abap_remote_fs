@@ -47,3 +47,7 @@ export async function getVSCodeUri(
   const s = (await connection.sendRequest(Methods.vsUri, req)) as StringWrapper
   return (s && s.s) || ""
 }
+
+export async function setSearchProgress(text: string) {
+  connection.sendRequest(Methods.setSearchProgress, text)
+}

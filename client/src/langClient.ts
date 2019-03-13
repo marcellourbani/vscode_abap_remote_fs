@@ -8,8 +8,20 @@ import {
   urlFromPath,
   UriRequest
 } from "../server"
-import { ExtensionContext, Uri, window } from "vscode"
-import { LanguageClient, TransportKind, State } from "vscode-languageclient"
+import {
+  ExtensionContext,
+  Uri,
+  window,
+  StatusBarAlignment,
+  StatusBarItem,
+  commands
+} from "vscode"
+import {
+  LanguageClient,
+  TransportKind,
+  State,
+  RevealOutputChannelOn
+} from "vscode-languageclient"
 import { ADTSCHEME, fromUri, getServer } from "./adt/AdtServer"
 import { configFromId } from "./config"
 import { isString } from "util"
@@ -91,6 +103,23 @@ async function configFromUrl(url: string) {
   return cfg
 }
 
+let searchProgress: StatusBarItem
+async function setSearchProgress(text: string) {
+  if (!searchProgress) {
+    searchProgress = window.createStatusBarItem(StatusBarAlignment.Right, 100)
+    commands.registerCommand("abapfs:cancelSearch", () => {
+      client.sendRequest(Methods.cancelSearch)
+    })
+  }
+  if (text) {
+    searchProgress.text = text
+    searchProgress.command = "abapfs:cancelSearch"
+    searchProgress.show()
+  } else {
+    searchProgress.hide()
+  }
+}
+
 export async function manageIncludes(uri: Uri, opened: boolean) {
   const key = uri.toString()
   if (opened) {
@@ -126,7 +155,8 @@ export async function startLanguageClient(context: ExtensionContext) {
     },
     {
       documentSelector: [{ language: "abap", scheme: ADTSCHEME }],
-      outputChannel: channel
+      outputChannel: channel,
+      revealOutputChannelOn: RevealOutputChannelOn.Warn
     }
   )
   log("starting language client...")
@@ -140,6 +170,7 @@ export async function startLanguageClient(context: ExtensionContext) {
       client.onRequest(Methods.readEditorObjectSource, readEditorObjectSource)
       client.onRequest(Methods.readObjectSourceOrMain, readObjectSource)
       client.onRequest(Methods.vsUri, getVSCodeUri)
+      client.onRequest(Methods.setSearchProgress, setSearchProgress)
     }
   })
 }

@@ -3,6 +3,8 @@ export enum Methods {
   readConfiguration = "vscabap.readConfig",
   readEditorObjectSource = "vscabap.editObjSource",
   readObjectSourceOrMain = "vscabap.mainObjSource",
+  setSearchProgress = "vscabap.setSearchProgress",
+  cancelSearch = "vscabap.cancelSearch",
   vsUri = "vscabap.vsUri"
 }
 

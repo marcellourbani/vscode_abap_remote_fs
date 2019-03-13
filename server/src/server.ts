@@ -1,3 +1,4 @@
+import { Methods } from "./api"
 import {
   TextDocuments,
   InitializeParams,
@@ -7,7 +8,7 @@ import {
 import { connection, log } from "./clientManager"
 import { syntaxCheck } from "./syntaxcheck"
 import { completion } from "./completion"
-import { findDefinition, findReferences } from "./references"
+import { findDefinition, findReferences, cancelSearch } from "./references"
 import { documentSymbols } from "./symbols"
 import { formatDocument } from "./documentformatter"
 
@@ -15,6 +16,8 @@ const documents: TextDocuments = new TextDocuments()
 
 let hasConfigurationCapability: boolean = false
 let hasWorkspaceFolderCapability: boolean = false
+
+export const ADTSCHEME = "adt"
 
 connection.onInitialize((params: InitializeParams) => {
   const capabilities = params.capabilities
@@ -36,6 +39,9 @@ connection.onInitialize((params: InitializeParams) => {
         resolveProvider: true
       },
       definitionProvider: true,
+      implementationProvider: {
+        documentSelector: [{ scheme: ADTSCHEME }, { language: "ABAP" }]
+      },
       referencesProvider: true,
       documentSymbolProvider: true,
       documentFormattingProvider: true
@@ -60,11 +66,13 @@ connection.onInitialized(() => {
 
 connection.onCompletion(completion)
 connection.onCompletionResolve((c: CompletionItem) => c)
-connection.onDefinition(findDefinition)
+connection.onDefinition(findDefinition.bind(null, false))
+connection.onImplementation(findDefinition.bind(null, true))
 connection.onReferences(findReferences)
 connection.onDocumentSymbol(documentSymbols)
 connection.onDocumentFormatting(formatDocument)
 documents.onDidChangeContent(change => syntaxCheck(change.document))
+connection.onRequest(Methods.cancelSearch, cancelSearch)
 
 documents.listen(connection)
 connection.listen()

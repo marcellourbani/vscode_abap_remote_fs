@@ -1,5 +1,4 @@
 import { AbapNode, isAbapNode, AbapObjectNode } from "./../fs/AbapNode"
-import { AdtServer } from "./../adt/AdtServer"
 import {
   TreeDataProvider,
   TreeItem,
@@ -10,7 +9,7 @@ import {
 } from "vscode"
 import { isString, isArray } from "util"
 import { path, fileAsync, readAsync } from "fs-jetpack"
-import { fromUri } from "../adt/AdtServer"
+import { fromUri, AdtServer, ADTSCHEME } from "../adt/AdtServer"
 import { findMainIncludeAsync } from "../adt/abap/AbapObjectUtilities"
 
 interface FavouriteCache {
@@ -221,7 +220,7 @@ export class FavouritesProvider implements TreeDataProvider<FavItem> {
       const favRoot = new Favourite("", "")
       const root = await this.root
       const folders = (workspace.workspaceFolders || []).filter(
-        f => f.uri.scheme === "adt"
+        f => f.uri.scheme === ADTSCHEME
       )
       for (const f of folders) {
         const fav = root.get(f.uri.authority)

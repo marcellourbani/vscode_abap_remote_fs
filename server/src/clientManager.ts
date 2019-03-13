@@ -5,19 +5,15 @@ import { readConfiguration } from "./clientapis"
 const clients: Map<string, ADTClient> = new Map()
 
 export const connection = createConnection(ProposedFeatures.all)
-export const log = (...params: any) => {
-  let msg = ""
-  for (const x of params) {
-    try {
-      if (isError(x)) msg += `\nError ${x.name}\n${x.message}\n\n${x.stack}\n`
-      else msg += isString(x) ? x : JSON.stringify(x)
-    } catch (e) {
-      msg += x.toString()
-    }
-    msg += " "
-  }
-  connection.console.log(msg)
-}
+export const error = (...params: any) =>
+  connection.console.error(convertParams(...params))
+export const warn = (...params: any) =>
+  connection.console.warn(convertParams(...params))
+export const info = (...params: any) =>
+  connection.console.info(convertParams(...params))
+export const log = (...params: any) =>
+  connection.console.log(convertParams(...params))
+
 export function clientKeyFromUrl(url: string) {
   const match = url.match(/adt:\/\/([^\/]*)/)
   return match && match[1]
@@ -48,4 +44,18 @@ export async function clientFromUrl(url: string) {
   const key = clientKeyFromUrl(url)
   if (!key) return
   return clientFromKey(key)
+}
+
+function convertParams(...params: any) {
+  let msg = ""
+  for (const x of params) {
+    try {
+      if (isError(x)) msg += `\nError ${x.name}\n${x.message}\n\n${x.stack}\n`
+      else msg += isString(x) ? x : JSON.stringify(x)
+    } catch (e) {
+      msg += x.toString()
+    }
+    msg += " "
+  }
+  return msg
 }

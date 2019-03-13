@@ -4,6 +4,24 @@ All notable changes to the "vscode-abap-remote-fs" extension will be documented 
 
 Format based on [Keep a Changelog](http://keepachangelog.com/)
 
+## [0.5.15] 2019-03-13
+
+### Added
+
+- search progress, interruptable
+
+### Fixed
+
+- references for aliases
+- references of plain methods
+- build system
+
+## [0.5.14] 2019-03-08
+
+### Fixed
+
+- language server in build
+
 ## [0.5.13] 2019-03-08
 
 ### Fixed

@@ -3,14 +3,16 @@ import {
   Location,
   ReferenceParams,
   CancellationToken,
-  Position
+  Position,
+  CancellationTokenSource
 } from "vscode-languageserver"
 import {
   sourceRange,
   clientAndObjfromUrl,
   memoize,
   parts,
-  toInt
+  toInt,
+  hashParms
 } from "./utilities"
 import {
   ReferenceUri,
@@ -21,10 +23,13 @@ import {
 } from "abap-adt-api"
 import { vscUrl } from "./objectManager"
 import { groupBy } from "lodash"
-import { log } from "./clientManager"
-import { getObjectSource } from "./clientapis"
+import { log, warn } from "./clientManager"
+import { getObjectSource, setSearchProgress } from "./clientapis"
 
-export async function findDefinition(params: TextDocumentPositionParams) {
+export async function findDefinition(
+  impl: boolean,
+  params: TextDocumentPositionParams
+) {
   try {
     const co = await clientAndObjfromUrl(params.textDocument.uri)
     if (!co) return
@@ -39,7 +44,8 @@ export async function findDefinition(params: TextDocumentPositionParams) {
       co.source,
       range.start.line + 1,
       range.start.character,
-      range.end.character
+      range.end.character,
+      impl
     )
 
     if (!result.url) return
@@ -88,7 +94,7 @@ class LocationManager {
       if (type && name) {
         let include
         try {
-          include = await this.findInclude(name, type, uri, url)
+          include = await this.findInclude(name, type, uri)
         } catch (e) {
           return
         }
@@ -121,7 +127,19 @@ class LocationManager {
       } as Location
     }
   }
-
+  public async locationFromRef(ref: UsageReference) {
+    const objtype = ref["adtcore:type"]
+    if (objtype && objtype.match(/(clas)|(intf)/i)) {
+      const { type, name } = hashParms(ref.uri)
+      const uri = ref.uri.replace(/[#\?].*/, "")
+      return this.locationFromUrl({
+        uri,
+        type: type || objtype,
+        name: name || ref["adtcore:name"],
+        start: { line: 0, column: 0 }
+      })
+    }
+  }
   private async findLine(reg: RegExp, uri: string) {
     // hack for protected and private in older systems
     if (reg) {
@@ -144,12 +162,7 @@ class LocationManager {
     )
   }
 
-  private async findInclude(
-    name: string,
-    type: string,
-    uri: string,
-    url: ReferenceUri
-  ) {
+  private async findInclude(name: string, type: string, uri: string) {
     let include
     if (type && name) {
       const match = uri.match(
@@ -183,10 +196,24 @@ const fullname = (usageReference: UsageReference) => {
   return rparts[1] && rparts[0] === "ABAPFullName" ? rparts[1] : ""
 }
 
+let lastSearch: CancellationTokenSource | undefined
+export function cancelSearch() {
+  if (lastSearch) {
+    lastSearch.cancel()
+    lastSearch = undefined
+    setSearchProgress("")
+  }
+}
 export async function findReferences(
   params: ReferenceParams,
   token: CancellationToken
 ) {
+  cancelSearch()
+  const mySearch = new CancellationTokenSource()
+  lastSearch = mySearch
+  const cancelled = () =>
+    mySearch.token.isCancellationRequested || token.isCancellationRequested
+
   const locations: Location[] = []
   try {
     const co = await clientAndObjfromUrl(params.textDocument.uri, false)
@@ -197,25 +224,44 @@ export async function findReferences(
       params.position.line + 1,
       params.position.character
     )
-    if (token.isCancellationRequested) return
+    if (cancelled()) return locations
 
     const groups = groupBy(references.filter(fullname), fullname)
+    const startTime = new Date()
     for (const group of Object.keys(groups)) {
       try {
         const snippets = await co.client.usageReferenceSnippets(groups[group])
         for (const s of snippets) {
+          if (s.snippets.length === 0) {
+            const ref = references.find(
+              r => r.objectIdentifier === s.objectIdentifier
+            )
+            if (ref)
+              try {
+                const loc = await manager.locationFromRef(ref)
+                if (loc) locations.push(loc)
+              } catch (e) {
+                warn("no reference found for", s.objectIdentifier) // ignore
+              }
+          }
           for (const sn of s.snippets) {
-            if (token.isCancellationRequested) return
+            if (cancelled()) return locations
             const location = await manager.locationFromUrl(sn.uri)
-            if (location) locations.push(location)
+            if (location && !location.uri)
+              location.uri = await vscUrl(co.confKey, sn.uri.uri)
+            if (location && location.uri) locations.push(location)
+            else warn("no reference found for", s.objectIdentifier, sn.uri.uri)
           }
         }
       } catch (e) {
-        log("Exception in reference search:", e.toString()) // ignore
+        warn("Exception in reference search:", e.toString()) // ignore
+      }
+      if (new Date().getTime() - startTime.getTime() > 1000) {
+        setSearchProgress(`ABAP where used:${locations.length}`)
       }
     }
   } catch (e) {
-    log("Exception in reference search:", e.toString()) // ignore
+    warn("Exception in reference search:", e.toString()) // ignore
   }
   return locations
 }

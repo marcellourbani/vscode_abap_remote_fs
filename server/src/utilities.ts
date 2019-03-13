@@ -5,6 +5,7 @@ import { AbapObjectDetail } from "./api"
 import { clientKeyFromUrl, clientFromKey } from "./clientManager"
 import { getObject } from "./objectManager"
 import { getEditorObjectSource } from "./clientapis"
+import { AllHtmlEntities } from "html-entities"
 
 export function decodeSeverity(severity: string) {
   switch (severity) {
@@ -106,4 +107,29 @@ export function toInt(raw: any): number {
   const n = Number.parseInt(raw, 10)
   if (isNaN(n)) return 0
   return n
+}
+export const [decodeEntity, encodeEntity] = (() => {
+  let entities: AllHtmlEntities | undefined
+  return [
+    (s: string) => {
+      if (!entities) entities = new AllHtmlEntities()
+      return entities.decode(s)
+    },
+    (s: string) => {
+      if (!entities) entities = new AllHtmlEntities()
+      return entities.encode(s)
+    }
+  ]
+})()
+
+export const hashParms = (uri: string): any => {
+  const parms: any = {}
+  const hash = uri.split(/#/)[1]
+  const uriHashArgs: string[] = (hash && hash.split(/;/)) || []
+  for (const arg of uriHashArgs) {
+    const argTuple = arg.split(/=/, 2)
+    if (argTuple.length > 1)
+      parms[argTuple[0]] = decodeURIComponent(argTuple[1])
+  }
+  return parms
 }

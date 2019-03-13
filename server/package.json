@@ -12,17 +12,19 @@
   "author": "Marcello Urbani",
   "license": "MIT",
   "dependencies": {
-    "abap-adt-api": "^0.5.5",
+    "abap-adt-api": "^0.5.6",
+    "html-entities": "^1.2.1",
     "lodash": "^4.17.11",
     "vscode-languageserver": "^4.4.2"
   },
   "devDependencies": {
+    "@types/html-entities": "^1.2.16",
     "@types/lodash": "^4.14.121",
-    "rifraf": "^2.0.3"
+    "rimraf": "^2.6.3"
   },
   "scripts": {
-    "clean": "rifraf ../client/server",
-    "build": "npm run compile",
+    "clean": "rimraf ../client/server",
+    "build": "npm run clean;npm run compile",
     "compile": "installServerIntoExtension ../client ./package.json ./tsconfig.json && tsc -p .",
     "watch": "installServerIntoExtension ../client ./package.json ./tsconfig.json && tsc --watch -p ."
   }
