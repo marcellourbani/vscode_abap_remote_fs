@@ -1,9 +1,11 @@
 import { CompletionParams, CompletionItem } from "vscode-languageserver"
-import { clientAndObjfromUrl } from "./utilities"
+import { clientAndObjfromUrl, parts } from "./utilities"
 import { log } from "./clientManager"
 
 export async function completion(params: CompletionParams) {
+  const iRole = 58 // sccmp_role_intftype in abap
   const items: CompletionItem[] = []
+  const sapIdStartPattern = /[\w\/\<]/
   try {
     const co = await clientAndObjfromUrl(params.textDocument.uri)
     if (!co) return items
@@ -14,20 +16,24 @@ export async function completion(params: CompletionParams) {
       params.position.line + 1,
       params.position.character
     )
-    let firstChar: string
+    let prefix: string
     rawItems.forEach(i => {
-      const label = i.IDENTIFIER
+      const label = i.IDENTIFIER + (i.ROLE === iRole ? "~" : "")
       let insertText = label
-      if (label && label[0] === "<") {
-        // if the first character of the match is <, eat it from completion text
-        if (!firstChar) {
+      if (label && label[0].match(/^[\/<]/)) {
+        // if the first character of the match is < or a namespace, eat it from completion text
+        if (prefix === undefined) {
           const line = source.split(/\n/)[params.position.line]
-          let pos = params.position.character - 1
-          while (pos > 0 && !line[pos - 1].match(/\s/)) pos--
-          if (line) firstChar = line[pos]
-          firstChar = firstChar ? firstChar.substr(0, 1) || ">" : ">" // dummy, !== <
+          let pos = params.position.character
+          while (pos > 0 && line[pos - 1].match(sapIdStartPattern)) pos--
+          // field symbol
+          if (label[0] === "<") prefix = line && line[pos]
+          // namespace
+          else [prefix] = parts(line.substr(pos), /^(\/(?:[\w]+\/)?)/)
+          // }
+          prefix = prefix || "" // prevent doing it every loop
         }
-        if (firstChar === "<") insertText = insertText.substr(1)
+        if (prefix) insertText = insertText.substr(prefix.length)
       }
       const item: CompletionItem = {
         label,

@@ -263,5 +263,6 @@ export async function findReferences(
   } catch (e) {
     warn("Exception in reference search:", e.toString()) // ignore
   }
+  cancelSearch() // just for cleanup
   return locations
 }
