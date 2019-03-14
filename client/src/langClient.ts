@@ -1,3 +1,4 @@
+import { SearchProgress } from "./../server/api.d"
 import { AbapObject } from "./adt/abap/AbapObject"
 import { log, channel } from "./logger"
 import {
@@ -8,14 +9,7 @@ import {
   urlFromPath,
   UriRequest
 } from "../server"
-import {
-  ExtensionContext,
-  Uri,
-  window,
-  StatusBarAlignment,
-  StatusBarItem,
-  commands
-} from "vscode"
+import { ExtensionContext, Uri, window, ProgressLocation } from "vscode"
 import {
   LanguageClient,
   TransportKind,
@@ -103,20 +97,43 @@ async function configFromUrl(url: string) {
   return cfg
 }
 
-let searchProgress: StatusBarItem
-async function setSearchProgress(text: string) {
-  if (!searchProgress) {
-    searchProgress = window.createStatusBarItem(StatusBarAlignment.Right, 100)
-    commands.registerCommand("abapfs:cancelSearch", () => {
-      client.sendRequest(Methods.cancelSearch)
-    })
-  }
-  if (text) {
-    searchProgress.text = text
-    searchProgress.command = "abapfs:cancelSearch"
-    searchProgress.show()
-  } else {
-    searchProgress.hide()
+let setProgress: ((prog: SearchProgress) => void) | undefined
+async function setSearchProgress(searchProg: SearchProgress) {
+  if (setProgress) setProgress(searchProg)
+  else if (!searchProg.ended) {
+    window.withProgress(
+      {
+        location: ProgressLocation.Notification,
+        cancellable: true,
+        title: "Where used list in progress - "
+      },
+      (progress, token) => {
+        let current = 0
+        let resPromise: () => void
+        const result = new Promise(resolve => {
+          resPromise = resolve
+        })
+        token.onCancellationRequested(async () => {
+          setProgress = undefined
+          await client.sendRequest(Methods.cancelSearch)
+          if (resPromise) resPromise()
+        })
+        setProgress = (s: SearchProgress) => {
+          if (s.ended) {
+            setProgress = undefined
+            if (resPromise) resPromise()
+            return
+          }
+          progress.report({
+            increment: s.progress - current,
+            message: `Searching usage references, ${s.hits} hits found so far`
+          })
+          current = s.progress
+        }
+        setProgress(searchProg)
+        return result
+      }
+    )
   }
 }
 

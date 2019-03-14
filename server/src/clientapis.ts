@@ -4,7 +4,8 @@ import {
   AbapObjectDetail,
   AbapObjectSource,
   StringWrapper,
-  UriRequest
+  UriRequest,
+  SearchProgress
 } from "./api"
 import { connection } from "./clientManager"
 
@@ -48,6 +49,6 @@ export async function getVSCodeUri(
   return (s && s.s) || ""
 }
 
-export async function setSearchProgress(text: string) {
-  connection.sendRequest(Methods.setSearchProgress, text)
+export async function setSearchProgress(progress: SearchProgress) {
+  connection.sendRequest(Methods.setSearchProgress, progress)
 }

@@ -42,6 +42,12 @@ export interface UriRequest {
   mainInclude: boolean
 }
 
+export interface SearchProgress {
+  progress: number
+  hits: number
+  ended: boolean
+}
+
 export const urlFromPath = (configKey: string, path: string) =>
   `adt://${configKey}${path}`
 

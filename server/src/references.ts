@@ -201,7 +201,7 @@ export function cancelSearch() {
   if (lastSearch) {
     lastSearch.cancel()
     lastSearch = undefined
-    setSearchProgress("")
+    setSearchProgress({ ended: true, hits: 0, progress: 100 })
   }
 }
 export async function findReferences(
@@ -226,8 +226,10 @@ export async function findReferences(
     )
     if (cancelled()) return locations
 
-    const groups = groupBy(references.filter(fullname), fullname)
+    const goodRefs = references.filter(fullname)
+    const groups = groupBy(goodRefs, fullname)
     const startTime = new Date()
+    let processed = 0
     for (const group of Object.keys(groups)) {
       try {
         const snippets = await co.client.usageReferenceSnippets(groups[group])
@@ -256,8 +258,13 @@ export async function findReferences(
       } catch (e) {
         warn("Exception in reference search:", e.toString()) // ignore
       }
+      processed = processed + groups[group].length
       if (new Date().getTime() - startTime.getTime() > 1000) {
-        setSearchProgress(`ABAP where used:${locations.length}`)
+        setSearchProgress({
+          ended: processed === goodRefs.length,
+          hits: locations.length,
+          progress: (processed / goodRefs.length) * 100
+        })
       }
     }
   } catch (e) {
