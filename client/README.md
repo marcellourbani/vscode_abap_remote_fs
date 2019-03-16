@@ -6,7 +6,7 @@ Warning: **THIS SOFTWARE IS IN BETA TEST, USE AT YOUR OWN RISK**
 
 Please refer to the [wiki](https://github.com/marcellourbani/vscode_abap_remote_fs/wiki) for system requirements, [installation](https://github.com/marcellourbani/vscode_abap_remote_fs/wiki/installation) and [usage](https://github.com/marcellourbani/vscode_abap_remote_fs/wiki/usage) instructions
 
-## new in 0.5.9: Favourites view in explorer
+## new in 0.5.18: Run abap unit tests
 
 **Unless your system is very modern (7.51 or later I think), write support will require you to install [this plugin](https://github.com/marcellourbani/abapfs_extensions)** in your dev server to enable. Browsing works even without it
 

@@ -108,6 +108,7 @@ export function toInt(raw: any): number {
   if (isNaN(n)) return 0
   return n
 }
+
 export const [decodeEntity, encodeEntity] = (() => {
   let entities: AllHtmlEntities | undefined
   return [

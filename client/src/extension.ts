@@ -14,7 +14,8 @@ import {
   createAdtObject,
   executeAbap,
   addFavourite,
-  deleteFavourite
+  deleteFavourite,
+  runAbapUnit
 } from "./commands"
 import { disconnect, ADTSCHEME, lockedFiles } from "./adt/AdtServer"
 import { log } from "./logger"
@@ -59,8 +60,11 @@ export function activate(context: ExtensionContext) {
   // add favourite
   sub.push(commands.registerCommand("abapfs.addfavourite", addFavourite))
 
-  // add favourite
+  // delete favourite
   sub.push(commands.registerCommand("abapfs.deletefavourite", deleteFavourite))
+
+  // run unit tests
+  sub.push(commands.registerCommand("abapfs.unittest", runAbapUnit))
 
   const fav = FavouritesProvider.get()
   fav.storagePath = context.globalStoragePath

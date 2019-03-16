@@ -47,6 +47,7 @@ function isInactive(obj?: AbapObject): boolean {
     obj.structure.metaData["adtcore:version"] === "inactive"
   )
 }
+
 export async function showHideActivate(editor?: TextEditor, obj?: AbapObject) {
   if (editor && obj)
     try {

@@ -35,7 +35,7 @@ export async function selectObjectType(
   const types = parentType
     ? rawtypes.filter(t => parentTypeId(t.typeId) === parentType)
     : rawtypes
-  return window.showQuickPick(types || rawtypes)
+  return window.showQuickPick(types.length > 0 ? types : rawtypes)
 }
 
 export class AdtObjectCreator {
@@ -108,11 +108,14 @@ export class AdtObjectCreator {
     // if not, for abap nodes pick child objetc types (if any)
     // for non-abap nodes if it's an object type guess the type from the children
     if (hierarchy.length > 2)
-      if (isAbapNode(base)) return selectObjectType(base.abapObject.type)
+      if (isAbapNode(base) && base.abapObject.type.match(/FUGR\/F/))
+        return selectObjectType(base.abapObject.type)
       else {
-        const child = [...base]
-          .map(c => c[1])
-          .find(c => isAbapNode(c) && c.abapObject.type !== PACKAGE)
+        const child = base.isFolder
+          ? [...base]
+              .map(c => c[1])
+              .find(c => isAbapNode(c) && c.abapObject.type !== PACKAGE)
+          : base
         if (child && isAbapNode(child)) {
           const typeid = child.abapObject.type as CreatableTypeIds
           const guessed = CreatableTypes.get(typeid)

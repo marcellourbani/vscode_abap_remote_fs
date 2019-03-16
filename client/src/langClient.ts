@@ -31,16 +31,7 @@ const includes: Map<string, string> = new Map()
 
 async function getVSCodeUri(req: UriRequest): Promise<StringWrapper> {
   const server = getServer(req.confKey)
-  const path = await server.objectFinder.findObjectPath(req.uri)
-  let s = ""
-
-  if (path.length) {
-    let nPath = await server.objectFinder.locateObject(path)
-    if (nPath && nPath.node.isFolder && req.mainInclude)
-      nPath = await findMainIncludeAsync(nPath, server.client)
-    if (nPath) s = urlFromPath(req.confKey, nPath.path)
-  }
-  return { s }
+  return { s: await server.objectFinder.vscodeUri(req.uri, req.mainInclude) }
 }
 export function findEditor(url: string) {
   return window.visibleTextEditors.find(

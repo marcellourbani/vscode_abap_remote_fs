@@ -25,6 +25,7 @@ export async function syntaxCheck(document: TextDocument) {
       diagnostics.push({
         message: c.text,
         range,
+        source: "ABAPfs",
         severity: decodeSeverity(c.severity)
       })
     })

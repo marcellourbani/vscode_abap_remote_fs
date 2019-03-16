@@ -1,11 +1,12 @@
 import { workspace, Uri, window, commands, ProgressLocation } from "vscode"
-import { fromUri, AdtServer } from "./adt/AdtServer"
+import { fromUri, AdtServer, ADTSCHEME } from "./adt/AdtServer"
 import { selectRemote, pickAdtRoot, createClient } from "./config"
 import { log } from "./logger"
 import { FavouritesProvider, FavItem } from "./views/favourites"
 import { uriToNodePath } from "./adt/abap/AbapObjectUtilities"
 import { findEditor } from "./langClient"
 import { showHideActivate } from "./listeners"
+import { abapUnit } from "./adt/operations/UnitTestRunner"
 
 export async function connectAdtServer(selector: any) {
   const connectionID = selector && selector.connection
@@ -47,8 +48,10 @@ export async function activateCurrent(selector: Uri) {
           await obj.loadMetadata(server.client)
         } else if (!obj.structure) await obj.loadMetadata(server.client)
         await server.activate(obj)
-        if (editor === window.activeTextEditor)
+        if (editor === window.activeTextEditor) {
+          await obj.loadMetadata(server.client)
           await showHideActivate(editor, obj)
+        }
       }
     )
   } catch (e) {
@@ -146,4 +149,19 @@ export async function addFavourite(uri: Uri | undefined) {
 
 export async function deleteFavourite(node: FavItem) {
   FavouritesProvider.get().deleteFavourite(node)
+}
+
+export async function runAbapUnit() {
+  try {
+    log("Execute ABAP Unit tests")
+    if (!window.activeTextEditor) return
+    const uri = window.activeTextEditor.document.uri
+    if (uri.scheme !== ADTSCHEME) return
+    await window.withProgress(
+      { location: ProgressLocation.Window, title: "Running ABAP UNIT" },
+      () => abapUnit(uri)
+    )
+  } catch (e) {
+    window.showErrorMessage(e.toString())
+  }
 }

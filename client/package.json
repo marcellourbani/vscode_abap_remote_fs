@@ -47,7 +47,7 @@
   },
   "dependencies": {
     "@types/tmp": "0.0.33",
-    "abap-adt-api": "^0.5.5",
+    "abap-adt-api": "^0.5.7",
     "event-stream": "3.3.4",
     "fs-jetpack": "^2.2.0",
     "opn": "^5.4.0",
@@ -109,6 +109,10 @@
       {
         "command": "abapfs.execute",
         "title": "ABAPfs Open in SAPGUI"
+      },
+      {
+        "command": "abapfs.unittest",
+        "title": "ABAPfs run unit tests"
       }
     ],
     "keybindings": [
@@ -121,6 +125,10 @@
         "command": "editor.action.formatDocument",
         "key": "ctrl+shift+i",
         "when": "editorTextFocus && editorLangId == abap"
+      },
+      {
+        "command": "abapfs.unittest",
+        "key": "ctrl+shift+f11"
       }
     ],
     "menus": {

@@ -7,12 +7,13 @@ import { window, QuickPickItem, workspace, commands } from "vscode"
 import {
   NodePath,
   findObjectInNode,
-  findObjectInNodeByPath,
   findMainIncludeAsync,
-  abapObjectFromNode
+  abapObjectFromNode,
+  findObjByPathAsync
 } from "../abap/AbapObjectUtilities"
 import { isAbapNode } from "../../fs/AbapNode"
 import { AbapObject } from "../abap/AbapObject"
+import { urlFromPath } from "../../../server"
 
 interface SearchObjectType {
   name: string
@@ -79,6 +80,18 @@ export class AdtObjectFinder {
     return this.server.client.findObjectPath(objPath)
   }
 
+  public async vscodeUri(uri: string, mainInclude: boolean) {
+    const path = await this.server.objectFinder.findObjectPath(uri)
+    let s = ""
+
+    if (path.length) {
+      let nPath = await this.server.objectFinder.locateObject(path)
+      if (nPath && nPath.node.isFolder && mainInclude)
+        nPath = await findMainIncludeAsync(nPath, this.server.client)
+      if (nPath) s = urlFromPath(this.server.connectionId, nPath.path)
+    }
+    return s
+  }
   public async locateObject(abapPath: PathStep[]) {
     if (abapPath.length === 0) return
     const children = [...abapPath]
@@ -128,13 +141,11 @@ export class AdtObjectFinder {
       const name = part["adtcore:name"]
       const type = part["adtcore:type"]
       const uri = part["adtcore:uri"]
+
       let child = findObjectInNode(nodePath.node, type, name)
-      if (!child) child = findObjectInNodeByPath(nodePath.node, uri)
-      if (!child) {
-        await this.server.refreshDirIfNeeded(nodePath.node)
-        child = findObjectInNode(nodePath.node, type, name)
-        if (!child) child = findObjectInNodeByPath(nodePath.node, uri)
-      }
+      if (!child)
+        child = await findObjByPathAsync(nodePath.node, uri, this.server)
+      if (!child) child = findObjectInNode(nodePath.node, type, name)
 
       if (child)
         nodePath = { node: child.node, path: `${nodePath.path}/${child.path}` }

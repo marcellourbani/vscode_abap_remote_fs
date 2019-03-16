@@ -1,3 +1,4 @@
+import { AdtServer } from "./../AdtServer"
 import {
   AbapObject,
   AbapNodeComponentByCategory,
@@ -134,6 +135,17 @@ export function findObjectInNodeByPath(
       if (part) return { ...part, path: `${path}/${part.path}` }
     }
   }
+}
+
+export async function findObjByPathAsync(
+  folder: AbapNode,
+  opath: string,
+  server: AdtServer
+) {
+  const hit = findObjectInNodeByPath(folder, opath)
+  if (hit) return hit
+  await server.refreshDirIfNeeded(folder)
+  return findObjectInNodeByPath(folder, opath)
 }
 
 export function findObjectInNode(
