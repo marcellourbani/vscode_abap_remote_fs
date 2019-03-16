@@ -55,3 +55,4 @@ You will end up with one or more server connections like this in your vs code co
 ## License
 
 MIT license applies
+some icons found in client/images are from [Material design](https://material.io) and subject to the [Apache license 2.0](https://www.apache.org/licenses/LICENSE-2.0.html)

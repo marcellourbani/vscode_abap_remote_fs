@@ -43,7 +43,8 @@ export class FavItem extends TreeItem {
         collapsibleState,
         children: [],
         openUri: "",
-        isContainer: true
+        isContainer: true,
+        dynamic: true
       }
     } else {
       super(favourite.label, favourite.collapsibleState)
@@ -58,6 +59,9 @@ export class FavItem extends TreeItem {
   }
   get uri() {
     return this.favourite.uri
+  }
+  get contextValue() {
+    return this.favourite.dynamic ? "" : "favourite"
   }
 
   public async getChildren() {
@@ -79,7 +83,8 @@ export class FavItem extends TreeItem {
             for (const c of childnodes)
               children.push(
                 await favouriteFromUri(
-                  uri.with({ path: uri.path + "/" + c[0] })
+                  uri.with({ path: uri.path + "/" + c[0] }),
+                  true
                 )
               )
           }
@@ -118,7 +123,8 @@ class Favourite implements FavouriteIf {
     public readonly collapsibleState = TreeItemCollapsibleState.Expanded,
     public readonly children: Favourite[] = [],
     public readonly openUri = "",
-    public readonly isContainer = false
+    public readonly isContainer = false,
+    public readonly dynamic = false
   ) {
     if (isString(labelOrFav)) {
       this.label = labelOrFav
@@ -147,7 +153,10 @@ function nodeLabel(server: AdtServer, node: AbapNode, uri: Uri) {
   return label
 }
 
-async function favouriteFromUri(uri: Uri): Promise<Favourite> {
+async function favouriteFromUri(
+  uri: Uri,
+  dynamic: boolean
+): Promise<Favourite> {
   const server = fromUri(uri)
   const node = await server.findNodePromise(uri)
   const collapsibleState = node.isFolder
@@ -173,7 +182,8 @@ async function favouriteFromUri(uri: Uri): Promise<Favourite> {
     children: [],
     collapsibleState,
     openUri,
-    isContainer: false
+    isContainer: false,
+    dynamic
   }
 }
 
@@ -239,7 +249,7 @@ export class FavouritesProvider implements TreeDataProvider<FavItem> {
       favRoot = []
       root.set(uri.authority, favRoot)
     }
-    favRoot.push(await favouriteFromUri(uri))
+    favRoot.push(await favouriteFromUri(uri, false))
     this.refresh()
     this.save()
   }

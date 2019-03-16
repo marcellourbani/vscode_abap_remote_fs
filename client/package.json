@@ -76,27 +76,31 @@
     "commands": [
       {
         "command": "abapfs.connect",
-        "title": "Connect to an ABAP system"
+        "title": "ABAPfs Connect to an ABAP system"
       },
       {
         "command": "abapfs.search",
-        "title": "Search for ABAP object"
+        "title": "ABAPfs Search for object"
       },
       {
         "command": "abapfs.create",
-        "title": "Create ABAP object"
+        "title": "ABAPfs Create object"
       },
       {
         "command": "abapfs.addfavourite",
-        "title": "Add ABAPfs favourite"
+        "title": "ABAPfs Add favourite"
       },
       {
         "command": "abapfs.deletefavourite",
-        "title": "delete ABAPfs favourite"
+        "title": "ABAPfs delete favourite",
+        "icon": {
+          "dark": "images/delete_dark.svg",
+          "light": "images/delete_light.svg"
+        }
       },
       {
         "command": "abapfs.activate",
-        "title": "Activate the current ABAP object",
+        "title": "ABAPfs Activate current object (will also save if dirty)",
         "icon": {
           "dark": "images/activate_single.svg",
           "light": "images/activate_single.svg"
@@ -104,7 +108,7 @@
       },
       {
         "command": "abapfs.execute",
-        "title": "Open in SAPGUI"
+        "title": "ABAPfs Open in SAPGUI"
       }
     ],
     "keybindings": [
@@ -123,8 +127,8 @@
       "view/item/context": [
         {
           "command": "abapfs.deletefavourite",
-          "group": "navigation",
-          "when": "view == abapfs.favorites"
+          "group": "inline",
+          "when": "view == abapfs.favorites && viewItem == favourite"
         }
       ],
       "editor/title": [
