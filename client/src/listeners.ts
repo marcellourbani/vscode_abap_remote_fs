@@ -11,10 +11,12 @@ import { fromUri, ADTSCHEME } from "./adt/AdtServer"
 import { setDocumentLock } from "./adt/operations/LockManager"
 import { manageIncludes } from "./langClient"
 import { AbapObject } from "./adt/abap/AbapObject"
+import { clearUTResultsIfLastRun } from "./adt/operations/UnitTestRunner"
 
 export async function documentClosedListener(doc: TextDocument) {
   const uri = doc.uri
   if (uri.scheme === ADTSCHEME) {
+    clearUTResultsIfLastRun(doc.uri)
     const server = fromUri(uri)
     const obj = await server.findAbapObject(uri)
     if (server.lockManager.isLocked(obj)) await server.lockManager.unlock(obj)

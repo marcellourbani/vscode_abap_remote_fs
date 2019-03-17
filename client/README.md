@@ -8,6 +8,8 @@ Please refer to the [wiki](https://github.com/marcellourbani/vscode_abap_remote_
 
 ## new in 0.5.18: Run abap unit tests
 
+Can be run from the menu or with hotkey ctrl+shift+F11 (sadly ctrl+shift+F10 was taken )
+
 **Unless your system is very modern (7.51 or later I think), write support will require you to install [this plugin](https://github.com/marcellourbani/abapfs_extensions)** in your dev server to enable. Browsing works even without it
 
 ![anim](https://user-images.githubusercontent.com/2453277/47482169-ae0cc300-d82d-11e8-8d19-f55dd877c166.gif)

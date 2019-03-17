@@ -93,8 +93,15 @@ async function abapUnitMain(uri: Uri) {
   }
   return rv
 }
-
+let lastUtUri: Uri | undefined
+export function clearUTResultsIfLastRun(uri: Uri) {
+  if (!lastUtUri) return
+  if (uri.toString() !== lastUtUri.toString()) return
+  lastUtUri = undefined
+  if (abapUnitcollection) abapUnitcollection.clear()
+}
 export async function abapUnit(uri: Uri) {
+  lastUtUri = uri
   if (!abapUnitcollection)
     abapUnitcollection = languages.createDiagnosticCollection(
       "ABAPfs unit test"
@@ -112,7 +119,8 @@ export async function abapUnit(uri: Uri) {
         DiagnosticSeverity.Information
       )
     )
-    for (const entry of results.diag)
-      abapUnitcollection.set(Uri.parse(entry[0]), entry[1])
+    if (lastUtUri === uri)
+      for (const entry of results.diag)
+        abapUnitcollection.set(Uri.parse(entry[0]), entry[1])
   }
 }
