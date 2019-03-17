@@ -5,7 +5,6 @@ import {
   FileSystemProvider,
   EventEmitter,
   FileChangeEvent,
-  Event,
   Uri,
   Disposable,
   FileStat,
@@ -14,11 +13,10 @@ import {
 import { log } from "../logger"
 
 export class FsProvider implements FileSystemProvider {
+  public get onDidChangeFile() {
+    return this.pEventEmitter.event
+  }
   private pEventEmitter = new EventEmitter<FileChangeEvent[]>()
-  // tslint:disable-next-line:member-ordering
-  public readonly onDidChangeFile: Event<FileChangeEvent[]> = this.pEventEmitter
-    .event
-
   public watch(
     uri: Uri,
     options: { recursive: boolean; excludes: string[] }

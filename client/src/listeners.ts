@@ -3,7 +3,8 @@ import {
   commands,
   TextDocumentChangeEvent,
   TextDocument,
-  window
+  window,
+  Uri
 } from "vscode"
 
 import { fromUri, ADTSCHEME } from "./adt/AdtServer"
@@ -25,13 +26,14 @@ export async function documentChangedListener(event: TextDocumentChangeEvent) {
   if (uri.scheme === ADTSCHEME) {
     const server = fromUri(uri)
     const obj = await server.findAbapObject(uri)
-    return setDocumentLock(event.document).then(locked =>
-      commands.executeCommand(
-        "setContext",
-        "abapfs:showActivate",
-        isInactive(obj) || (event.document.isDirty && locked)
-      )
-    )
+    try {
+      await setDocumentLock(event.document)
+    } finally {
+      const editor = window.activeTextEditor
+      if (editor && editor.document === event.document)
+        showHideActivate(editor, obj)
+    }
+    return
   }
 }
 
@@ -40,12 +42,13 @@ export function documentOpenListener(document: TextDocument) {
   if (uri.scheme === ADTSCHEME) manageIncludes(uri, true)
 }
 
-function isInactive(obj?: AbapObject): boolean {
-  return !!(
+function isInactive(obj: AbapObject): boolean {
+  const inactive = !!(
     obj &&
     obj.structure &&
     obj.structure.metaData["adtcore:version"] === "inactive"
   )
+  return inactive
 }
 
 export async function showHideActivate(editor?: TextEditor, obj?: AbapObject) {
@@ -68,6 +71,17 @@ export async function showHideActivate(editor?: TextEditor, obj?: AbapObject) {
     }
   await commands.executeCommand("setContext", "abapfs:showActivate", false)
 }
+export async function activationStateListener(uri: Uri) {
+  const editor = window.activeTextEditor
+  if (editor && editor.document.uri.scheme === ADTSCHEME) {
+    const euri = editor.document.uri
+    if (uri.path !== euri.path) return
+    const server = fromUri(uri)
+    const obj = await server.findAbapObject(uri)
+    showHideActivate(editor, obj)
+  }
+}
+
 export async function activeTextEditorChangedListener(
   editor: TextEditor | undefined
 ) {

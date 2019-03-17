@@ -25,9 +25,7 @@ export async function setDocumentLock(document: TextDocument) {
           await server.lockManager.lock(obj)
         } catch (e) {
           window.showErrorMessage(
-            `Object not locked ${obj.type} ${
-              obj.name
-            }.Won't be able to save changes`
+            `${e.toString()}\nWon't be able to save changes`
           )
         }
       } else await server.lockManager.unlock(obj)

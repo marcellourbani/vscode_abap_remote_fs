@@ -4,7 +4,7 @@ All notable changes to the "vscode-abap-remote-fs" extension will be documented 
 
 Format based on [Keep a Changelog](http://keepachangelog.com/)
 
-## Unreleased
+## 0.5.18
 
 ### Added
 
@@ -15,6 +15,10 @@ Format based on [Keep a Changelog](http://keepachangelog.com/)
 - delete favourites now displayed online
 - only show delete favourite for those who can be deleted
 - command descriptions - all starting with ABAPfs now
+
+### Fixed
+
+- #49 activation button not reset on activate
 
 ## [0.5.17] 2019-03-15
 

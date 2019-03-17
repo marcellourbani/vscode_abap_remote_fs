@@ -1,5 +1,5 @@
 import { AdtSymLinkCollection } from "./AdtSymbolicLinks"
-import { Uri, FileSystemError, FileType, window } from "vscode"
+import { Uri, FileSystemError, FileType, window, EventEmitter } from "vscode"
 import { MetaFolder } from "../fs/MetaFolder"
 import { AbapObjectNode, AbapNode, isAbapNode } from "../fs/AbapNode"
 import { AbapObject, TransportStatus, isAbapObject } from "./abap/AbapObject"
@@ -16,6 +16,7 @@ import {
   findObjectInNodeByPath,
   abapObjectFromNode
 } from "./abap/AbapObjectUtilities"
+import { activationStateListener } from "../listeners"
 export const ADTBASEURL = "/sap/bc/adt/repository/nodestructure"
 export const ADTSCHEME = "adt"
 /**
@@ -41,6 +42,7 @@ export class AdtServer {
   public readonly activator: AdtObjectActivator
   private lastRefreshed?: string
   private symLinks = new AdtSymLinkCollection()
+  private activationStatusEmitter = new EventEmitter<Uri>()
 
   /**
    * Creates a server object and all its dependencies
@@ -52,6 +54,8 @@ export class AdtServer {
 
     if (!config) throw new Error(`connection ${connectionId}`)
     this.client = createClient(config)
+    this.activationStatusEmitter.event(activationStateListener)
+
     // utility components
     this.creator = new AdtObjectCreator(this)
     this.activator = new AdtObjectActivator(this.client)
@@ -271,11 +275,22 @@ export class AdtServer {
    */
   public async stat(uri: Uri) {
     const linked = await this.statSymlink(uri)
+    const getVersion = (nd: AbapNode) => {
+      if (!isAbapNode(nd)) return ""
+      const str = nd.abapObject.structure
+      return str ? str.metaData["adtcore:version"] : ""
+    }
     if (linked) return linked
     const node = await this.findNodePromise(uri)
     if (node.canRefresh()) {
       if (node.type === FileType.Directory) await node.refresh(this.client)
-      else await node.stat(this.client)
+      else {
+        const oldvers = getVersion(node)
+        await node.stat(this.client)
+        const version = getVersion(node)
+        if (version !== oldvers && isAbapNode(node))
+          this.activationStatusEmitter.fire(uri)
+      }
     }
     return node
   }
