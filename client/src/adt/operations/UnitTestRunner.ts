@@ -5,7 +5,8 @@ import {
   DiagnosticSeverity,
   Range,
   Position,
-  languages
+  languages,
+  commands
 } from "vscode"
 import { fromUri } from "../AdtServer"
 import { parts, toInt, mapGet } from "../../functions"
@@ -119,8 +120,10 @@ export async function abapUnit(uri: Uri) {
         DiagnosticSeverity.Information
       )
     )
-    if (lastUtUri === uri)
+    if (lastUtUri === uri) {
       for (const entry of results.diag)
         abapUnitcollection.set(Uri.parse(entry[0]), entry[1])
+      if (results.failed) commands.executeCommand("workbench.action.keepEditor")
+    }
   }
 }

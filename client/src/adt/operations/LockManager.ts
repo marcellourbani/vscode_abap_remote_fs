@@ -12,7 +12,10 @@ enum LockStatuses {
 }
 const statusBarItem = window.createStatusBarItem(StatusBarAlignment.Right, 100)
 
-export async function setDocumentLock(document: TextDocument) {
+export async function setDocumentLock(
+  document: TextDocument,
+  interactive = false
+) {
   const uri = document.uri
   if (uri.scheme === ADTSCHEME) {
     const server = fromUri(uri)
@@ -22,7 +25,18 @@ export async function setDocumentLock(document: TextDocument) {
     if (shouldLock !== server.lockManager.isLocked(obj)) {
       if (shouldLock) {
         try {
-          await server.lockManager.lock(obj)
+          const ok = "Ok"
+          const lock = await server.lockManager.lock(obj)
+          if (interactive && lock && lock.IS_LINK_UP) {
+            const resp = await window.showWarningMessage(
+              `Object is locked, a new task will be created in ${
+                lock.CORRUSER
+              }'s ${lock.CORRNR} ${lock.CORRTEXT}`,
+              ok,
+              "Cancel"
+            )
+            if (resp !== ok) await server.lockManager.unlock(obj)
+          }
         } catch (e) {
           window.showErrorMessage(
             `${e.toString()}\nWon't be able to save changes`
@@ -129,6 +143,7 @@ export class LockManager {
         lock.CORRNR ||
         (lock.IS_LOCAL ? TransportStatus.LOCAL : TransportStatus.REQUIRED)
       log("locked", obj.name)
+      return lock
     } catch (e) {
       if (
         lockObj.needUnlock(obj) &&
