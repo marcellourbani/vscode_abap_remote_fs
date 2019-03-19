@@ -4,14 +4,15 @@ All notable changes to the "vscode-abap-remote-fs" extension will be documented 
 
 Format based on [Keep a Changelog](http://keepachangelog.com/)
 
-## Unreleased
+## 0.5.19 2019-03-19
 
 ### Added
 
 - keep open the source with the last unit test results if they failed
 - warning for adding tasks to transports on change
+- CDS support
 
-## 0.5.18
+## 0.5.18 2019-03-16
 
 ### Added
 

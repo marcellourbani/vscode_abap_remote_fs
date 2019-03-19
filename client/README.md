@@ -6,6 +6,10 @@ Warning: **THIS SOFTWARE IS IN BETA TEST, USE AT YOUR OWN RISK**
 
 Please refer to the [wiki](https://github.com/marcellourbani/vscode_abap_remote_fs/wiki) for system requirements, [installation](https://github.com/marcellourbani/vscode_abap_remote_fs/wiki/installation) and [usage](https://github.com/marcellourbani/vscode_abap_remote_fs/wiki/usage) instructions
 
+## new in 0.5.19: CDS support
+
+Creation, deletion and syntax check works, no completion or other helps
+
 ## new in 0.5.18: Run abap unit tests
 
 Can be run from the menu or with hotkey ctrl+shift+F11 (sadly ctrl+shift+F10 was taken )
