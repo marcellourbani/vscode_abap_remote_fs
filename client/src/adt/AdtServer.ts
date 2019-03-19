@@ -144,8 +144,8 @@ export class AdtServer {
       throw FileSystemError.NoPermissions("Can only save source code")
 
     const obj = file.abapObject
-    // check file is locked
-    if (!this.lockManager.isLocked(obj))
+    // check file is locked. Waits if locking is in progress
+    if (!(await this.lockManager.waitLocked(obj)))
       throw adtException(`Object not locked ${obj.type} ${obj.name}`)
 
     const transport = await this.selectTransportIfNeeded(obj)
