@@ -42,7 +42,9 @@ export class FsProvider implements FileSystemProvider {
   public async readDirectory(uri: Uri): Promise<Array<[string, FileType]>> {
     try {
       const server = fromUri(uri)
-      const dir = server.findNode(uri)
+      // on restart code might try to read a file before it read its parent directory
+      //  this might end up reloading the same directory many times, might want to fix it one day
+      const dir = await server.findNodePromise(uri)
       await server.refreshDirIfNeeded(dir)
       const contents = [...dir].map(
         ([name, node]) => [name, node.type] as [string, FileType]

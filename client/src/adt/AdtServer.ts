@@ -397,12 +397,12 @@ export const fromUri = (uri: Uri) => {
 export async function disconnect() {
   const promises: Array<Promise<any>> = []
   let haslocks = false
+  if (haslocks)
+    window.showInformationMessage("All locked files will be unlocked")
   for (const server of servers) {
     if (server[1].lockManager.lockedObjects.length > 0) haslocks = true
     promises.push(server[1].client.dropSession())
   }
-  if (haslocks)
-    window.showInformationMessage("All locked files will be unlocked")
   await Promise.all(promises)
 }
 export function lockedFiles() {

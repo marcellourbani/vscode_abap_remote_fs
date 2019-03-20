@@ -4,6 +4,13 @@ All notable changes to the "vscode-abap-remote-fs" extension will be documented 
 
 Format based on [Keep a Changelog](http://keepachangelog.com/)
 
+## 0.5.20 2019-03-20
+
+### Fixed
+
+- #48 lock status changed on stat
+- race confition in read directory on reload/workspace changes
+
 ## 0.5.19 2019-03-19
 
 ### Added

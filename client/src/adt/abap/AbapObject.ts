@@ -57,6 +57,9 @@ export class AbapObject {
   public get expandable() {
     return this.pExpandable
   }
+  public get key() {
+    return `${this.type} ${this.name}`
+  }
   public transport: TransportStatus | string = TransportStatus.UNKNOWN
   public structure?: AbapObjectStructure
 

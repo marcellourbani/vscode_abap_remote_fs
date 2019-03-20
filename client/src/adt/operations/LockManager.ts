@@ -25,7 +25,6 @@ async function validateLock(lock: AdtLock) {
   }
   return true
 }
-
 export async function setDocumentLock(
   document: TextDocument,
   interactive = false
@@ -65,7 +64,7 @@ export async function restoreLocks() {
 }
 
 class LockObject {
-  public children: Set<AbapObject> = new Set()
+  public children: Set<string> = new Set()
   public listeners: Array<(s: LockStatuses) => void> = []
   public lockId: string = ""
   private pLockStatus = LockStatuses.UNLOCKED
@@ -84,7 +83,7 @@ class LockObject {
   }
 
   public needLock(child: AbapObject) {
-    this.children.add(child)
+    this.children.add(child.key)
     return (
       this.lockStatus === LockStatuses.UNLOCKED ||
       this.lockStatus === LockStatuses.UNLOCKING
@@ -92,7 +91,7 @@ class LockObject {
   }
 
   public isLocked(child: AbapObject) {
-    return this.children.has(child)
+    return this.children.has(child.key)
   }
 
   /**
@@ -104,7 +103,7 @@ class LockObject {
    * @memberof LockObject
    */
   public removeObject(child: AbapObject) {
-    this.children.delete(child)
+    this.children.delete(child.key)
     return (
       this.children.size === 0 &&
       (this.lockStatus === LockStatuses.LOCKED ||
@@ -122,7 +121,7 @@ class LockObject {
 
 // tslint:disable-next-line:max-classes-per-file
 export class LockManager {
-  public l: Map<AbapObject, LockObject> = new Map()
+  public l: Map<string, LockObject> = new Map()
   constructor(private client: ADTClient) {}
 
   public getLockId(obj: AbapObject): string {
@@ -224,17 +223,17 @@ export class LockManager {
     return lockObj.isLocked(obj)
   }
   get lockedObjects() {
-    let children: AbapObject[] = []
+    let children: string[] = []
     this.l.forEach(x => (children = [...children, ...[...x.children]]))
     return children
   }
 
   private getLockObject(child: AbapObject) {
     const lockSubject = child.getLockTarget()
-    let lockObj = this.l.get(lockSubject)
+    let lockObj = this.l.get(lockSubject.key)
     if (!lockObj) {
       lockObj = new LockObject(lockSubject)
-      this.l.set(lockSubject, lockObj)
+      this.l.set(lockSubject.key, lockObj)
     }
     return lockObj
   }
