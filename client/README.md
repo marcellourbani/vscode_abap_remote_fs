@@ -4,9 +4,9 @@ This extension allows editing and activation of ABAP code on your server directl
 
 Warning: **THIS SOFTWARE IS IN BETA TEST, USE AT YOUR OWN RISK**
 
-## Getting started and documentation
-
-See the [getting started article](https://github.com/marcellourbani/vscode_abap_remote_fs/wiki/getting-started) in the  [wiki](https://github.com/marcellourbani/vscode_abap_remote_fs/wiki)
+## Links
+[Getting started](https://github.com/marcellourbani/vscode_abap_remote_fs/wiki/getting-started)
+[wiki/documentation](https://github.com/marcellourbani/vscode_abap_remote_fs/wiki)
 
 ## new in 0.5.19: CDS support
 
