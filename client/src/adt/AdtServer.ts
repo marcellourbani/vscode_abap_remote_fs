@@ -193,7 +193,8 @@ export class AdtServer {
    */
   public findNodeHierarchy(uri: Uri): AbapNode[] {
     const parts = uriParts(uri)
-    return parts.reduce(
+
+    const retv = parts.reduce(
       (current: AbapNode[], name) => {
         const folder = current[0]
         const child = folder.isFolder && folder.getChild(name)
@@ -204,6 +205,7 @@ export class AdtServer {
       },
       [this.root]
     )
+    return retv
   }
 
   /**

@@ -12,7 +12,7 @@
   "author": "Marcello Urbani",
   "license": "MIT",
   "dependencies": {
-    "abap-adt-api": "^0.5.9",
+    "abap-adt-api": "^0.5.10",
     "html-entities": "^1.2.1",
     "lodash": "^4.17.11",
     "vscode-languageserver": "^4.4.2"

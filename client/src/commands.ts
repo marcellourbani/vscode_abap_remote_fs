@@ -7,7 +7,21 @@ import { uriToNodePath } from "./adt/abap/AbapObjectUtilities"
 import { findEditor } from "./langClient"
 import { showHideActivate } from "./listeners"
 import { abapUnit } from "./adt/operations/UnitTestRunner"
+import { isClassInclude } from "./adt/abap/AbapClassInclude"
 
+function currentUri() {
+  if (!window.activeTextEditor) return
+  const uri = window.activeTextEditor.document.uri
+  if (uri.scheme !== ADTSCHEME) return
+  return uri
+}
+function current() {
+  const uri = currentUri()
+  if (!uri) return
+  const server = fromUri(uri)
+  if (!server) return
+  return { uri, server }
+}
 export async function connectAdtServer(selector: any) {
   const connectionID = selector && selector.connection
   const remote = await selectRemote(connectionID)
@@ -120,8 +134,8 @@ export async function createAdtObject(uri: Uri | undefined) {
 export async function executeAbap() {
   try {
     log("Execute ABAP")
-    if (!window.activeTextEditor) return
-    const uri = window.activeTextEditor.document.uri
+    const uri = currentUri()
+    if (!uri) return
     const root = await pickAdtRoot(uri)
     await window.withProgress(
       { location: ProgressLocation.Window, title: "Opening SAPGui..." },
@@ -154,9 +168,8 @@ export async function deleteFavourite(node: FavItem) {
 export async function runAbapUnit() {
   try {
     log("Execute ABAP Unit tests")
-    if (!window.activeTextEditor) return
-    const uri = window.activeTextEditor.document.uri
-    if (uri.scheme !== ADTSCHEME) return
+    const uri = currentUri()
+    if (!uri) return
     await window.withProgress(
       { location: ProgressLocation.Window, title: "Running ABAP UNIT" },
       () => abapUnit(uri)
@@ -164,4 +177,32 @@ export async function runAbapUnit() {
   } catch (e) {
     window.showErrorMessage(e.toString())
   }
+}
+
+async function createTI(server: AdtServer, uri: Uri) {
+  const obj = await server.findAbapObject(uri)
+  // only makes sense for classes
+  if (!isClassInclude(obj)) return
+  if (!obj.parent) return
+  const m = server.lockManager
+  let lockId = m.isLocked(obj) && m.getLockId(obj)
+  let lock
+  if (!lockId) {
+    lock = await m.lock(obj)
+    lockId = (lock && lock.LOCK_HANDLE) || ""
+  }
+  if (lockId) server.client.createTestInclude(obj.parent.name, lockId)
+  // If I created the lock I remove it. Possible race condition here...
+  if (lock) await m.unlock(obj)
+  await commands.executeCommand("workbench.files.action.refreshFilesExplorer")
+}
+
+export async function createTestInclude(uri?: Uri) {
+  if (uri) {
+    if (uri.scheme !== ADTSCHEME) return
+    return createTI(fromUri(uri), uri)
+  }
+  const cur = current()
+  if (!cur) return
+  return createTI(cur.server, cur.uri)
 }

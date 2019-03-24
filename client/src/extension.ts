@@ -15,7 +15,8 @@ import {
   executeAbap,
   addFavourite,
   deleteFavourite,
-  runAbapUnit
+  runAbapUnit,
+  createTestInclude
 } from "./commands"
 import { disconnect, ADTSCHEME, lockedFiles } from "./adt/AdtServer"
 import { log } from "./logger"
@@ -65,6 +66,11 @@ export function activate(context: ExtensionContext) {
 
   // run unit tests
   sub.push(commands.registerCommand("abapfs.unittest", runAbapUnit))
+
+  // create test class include
+  sub.push(
+    commands.registerCommand("abapfs.createtestinclude", createTestInclude)
+  )
 
   const fav = FavouritesProvider.get()
   fav.storagePath = context.globalStoragePath

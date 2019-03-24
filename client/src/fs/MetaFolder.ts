@@ -2,12 +2,12 @@ import { ADTClient } from "abap-adt-api"
 import { FileStat, FileType, FileSystemError } from "vscode"
 import { AbapNode } from "./AbapNode"
 
-//folders are only used to store other nodes
+// folders are only used to store other nodes
 export class MetaFolder implements FileStat, Iterable<[string, AbapNode]> {
-  type: FileType = FileType.Directory
-  ctime: number = Date.now()
-  mtime: number = Date.now()
-  size: number = 0
+  public type: FileType = FileType.Directory
+  public ctime: number = Date.now()
+  public mtime: number = Date.now()
+  public size: number = 0
 
   private children: Map<string, AbapNode> = new Map()
 
@@ -46,7 +46,7 @@ export class MetaFolder implements FileStat, Iterable<[string, AbapNode]> {
     throw FileSystemError.FileIsADirectory()
   }
 
-  [Symbol.iterator]() {
+  public [Symbol.iterator]() {
     return this.children[Symbol.iterator]()
   }
 }

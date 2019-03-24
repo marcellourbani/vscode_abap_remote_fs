@@ -47,7 +47,7 @@
   },
   "dependencies": {
     "@types/tmp": "0.0.33",
-    "abap-adt-api": "^0.5.9",
+    "abap-adt-api": "^0.5.10",
     "event-stream": "3.3.4",
     "fs-jetpack": "^2.2.0",
     "opn": "^5.4.0",
@@ -85,6 +85,10 @@
       {
         "command": "abapfs.create",
         "title": "ABAPfs Create object"
+      },
+      {
+        "command": "abapfs.createtestinclude",
+        "title": "ABAPfs Create test class include"
       },
       {
         "command": "abapfs.addfavourite",
@@ -147,6 +151,11 @@
         }
       ],
       "explorer/context": [
+        {
+          "command": "abapfs.createtestinclude",
+          "when": "resourceScheme == adt && resourceFilename =~ /.clas\\.abap$/",
+          "group": "2_workspace@1"
+        },
         {
           "command": "abapfs.create",
           "when": "resourceScheme == adt",
