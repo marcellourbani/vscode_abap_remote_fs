@@ -1,3 +1,4 @@
+import { TransportsProvider } from "./views/transports"
 import { FavouritesProvider } from "./views/favourites"
 import { FsProvider } from "./fs/FsProvider"
 import { window, commands, workspace, ExtensionContext } from "vscode"
@@ -16,7 +17,9 @@ import {
   addFavourite,
   deleteFavourite,
   runAbapUnit,
-  createTestInclude
+  createTestInclude,
+  refreshTransports,
+  openTransportObject
 } from "./commands"
 import { disconnect, ADTSCHEME, lockedFiles } from "./adt/AdtServer"
 import { log } from "./logger"
@@ -72,9 +75,21 @@ export function activate(context: ExtensionContext) {
     commands.registerCommand("abapfs.createtestinclude", createTestInclude)
   )
 
+  sub.push(
+    commands.registerCommand("abapfs.refreshtransports", refreshTransports)
+  )
+  sub.push(
+    commands.registerCommand("abapfs.openTransportObject", openTransportObject)
+  )
   const fav = FavouritesProvider.get()
   fav.storagePath = context.globalStoragePath
   sub.push(window.registerTreeDataProvider("abapfs.favorites", fav))
+  sub.push(
+    window.registerTreeDataProvider(
+      "abapfs.transports",
+      TransportsProvider.get()
+    )
+  )
 
   startLanguageClient(context)
 

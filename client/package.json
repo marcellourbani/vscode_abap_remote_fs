@@ -2,7 +2,7 @@
   "name": "vscode-abap-remote-fs",
   "displayName": "ABAP remote filesystem",
   "description": "Work on your ABAP code straight from the server",
-  "version": "0.5.21",
+  "version": "0.5.22",
   "publisher": "murbani",
   "license": "MIT",
   "icon": "images/abapfs_icon.png",
@@ -47,7 +47,7 @@
   },
   "dependencies": {
     "@types/tmp": "0.0.33",
-    "abap-adt-api": "^0.5.10",
+    "abap-adt-api": "^0.5.11",
     "event-stream": "3.3.4",
     "fs-jetpack": "^2.2.0",
     "opn": "^5.4.0",
@@ -64,7 +64,23 @@
   ],
   "main": "./out/extension",
   "contributes": {
+    "viewsContainers": {
+      "activitybar": [
+        {
+          "id": "abapfs",
+          "title": "Abap FS",
+          "icon": "images/abapfs_activitybar.svg"
+        }
+      ]
+    },
     "views": {
+      "abapfs": [
+        {
+          "id": "abapfs.transports",
+          "name": "Transports",
+          "when": "abapfs:extensionActive"
+        }
+      ],
       "explorer": [
         {
           "id": "abapfs.favorites",
@@ -111,12 +127,24 @@
         }
       },
       {
+        "command": "abapfs.refreshtransports",
+        "title": "ABAPfs refresh transports",
+        "icon": {
+          "dark": "images/spinner11_dark.svg",
+          "light": "images/spinner11_light.svg"
+        }
+      },
+      {
         "command": "abapfs.execute",
         "title": "ABAPfs Open in SAPGUI"
       },
       {
         "command": "abapfs.unittest",
         "title": "ABAPfs run unit tests"
+      },
+      {
+        "command": "abapfs.openTransportObject",
+        "title": "ABAPfs Open transportable object"
       }
     ],
     "keybindings": [
@@ -141,6 +169,13 @@
           "command": "abapfs.deletefavourite",
           "group": "inline",
           "when": "view == abapfs.favorites && viewItem == favourite"
+        }
+      ],
+      "view/title": [
+        {
+          "command": "abapfs.refreshtransports",
+          "group": "navigation",
+          "when": "view == abapfs.transports"
         }
       ],
       "editor/title": [

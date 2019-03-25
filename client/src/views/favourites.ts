@@ -188,10 +188,13 @@ async function favouriteFromUri(
 }
 
 export class FavouritesProvider implements TreeDataProvider<FavItem> {
+  public static get() {
+    if (!FavouritesProvider.instance)
+      FavouritesProvider.instance = new FavouritesProvider()
+    return FavouritesProvider.instance
+  }
   private static instance?: FavouritesProvider
-  private emitter = new EventEmitter<FavItem | null | undefined>()
-  private storage?: string
-  // tslint:disable: member-ordering
+
   public set storagePath(storagePath: string | undefined) {
     this.storage = storagePath
       ? path(storagePath, "favourites.json")
@@ -209,13 +212,12 @@ export class FavouritesProvider implements TreeDataProvider<FavItem> {
     return readRoot()
   }
 
-  public onDidChangeTreeData = this.emitter.event
-
-  public static get() {
-    if (!FavouritesProvider.instance)
-      FavouritesProvider.instance = new FavouritesProvider()
-    return FavouritesProvider.instance
+  public get onDidChangeTreeData() {
+    return this.emitter.event
   }
+
+  private emitter = new EventEmitter<FavItem | null | undefined>()
+  private storage?: string
 
   public refresh(): void {
     this.emitter.fire()
@@ -254,6 +256,18 @@ export class FavouritesProvider implements TreeDataProvider<FavItem> {
     this.save()
   }
 
+  public async deleteFavourite(item: FavItem) {
+    const root = await this.root
+    const favRoot = root.get(Uri.parse(item.uri).authority)
+    if (!favRoot) return
+    const idx = favRoot.findIndex(f => f === item.favourite)
+    if (idx >= 0) {
+      favRoot.splice(idx, 1)
+      this.refresh()
+      this.save()
+    }
+  }
+
   private async readFavourite() {
     const root: Map<string, Favourite[]> = new Map()
     if (this.storage) {
@@ -270,17 +284,5 @@ export class FavouritesProvider implements TreeDataProvider<FavItem> {
   private async save() {
     const root = await this.root
     if (this.storage) fileAsync(this.storage, { content: [...root] })
-  }
-
-  public async deleteFavourite(item: FavItem) {
-    const root = await this.root
-    const favRoot = root.get(Uri.parse(item.uri).authority)
-    if (!favRoot) return
-    const idx = favRoot.findIndex(f => f === item.favourite)
-    if (idx >= 0) {
-      favRoot.splice(idx, 1)
-      this.refresh()
-      this.save()
-    }
   }
 }

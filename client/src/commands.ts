@@ -3,11 +3,14 @@ import { fromUri, AdtServer, ADTSCHEME } from "./adt/AdtServer"
 import { selectRemote, pickAdtRoot, createClient } from "./config"
 import { log } from "./logger"
 import { FavouritesProvider, FavItem } from "./views/favourites"
-import { uriToNodePath } from "./adt/abap/AbapObjectUtilities"
 import { findEditor } from "./langClient"
 import { showHideActivate } from "./listeners"
 import { abapUnit } from "./adt/operations/UnitTestRunner"
 import { isClassInclude } from "./adt/abap/AbapClassInclude"
+import { TransportsProvider } from "./views/transports"
+import { TransportObject } from "abap-adt-api"
+import { isAbapNode } from "./fs/AbapNode"
+import { findMainIncludeAsync } from "./adt/abap/AbapObjectUtilities"
 
 function currentUri() {
   if (!window.activeTextEditor) return
@@ -48,14 +51,14 @@ export async function connectAdtServer(selector: any) {
 
 export async function activateCurrent(selector: Uri) {
   try {
-    const server = fromUri(selector)
-    if (!server)
-      throw Error("ABAP connection not found for" + uriToNodePath.toString())
-    const editor = findEditor(selector.toString())
+    const uri = selector || currentUri()
+    const server = fromUri(uri)
+    if (!server) throw Error("ABAP connection not found for" + uri.toString())
+    const editor = findEditor(uri.toString())
     await window.withProgress(
       { location: ProgressLocation.Window, title: "Activating..." },
       async () => {
-        const obj = await server.findAbapObject(selector)
+        const obj = await server.findAbapObject(uri)
         // if editor is dirty, save before activate
         if (editor && editor.document.isDirty) {
           await editor.document.save()
@@ -205,4 +208,46 @@ export async function createTestInclude(uri?: Uri) {
   const cur = current()
   if (!cur) return
   return createTI(cur.server, cur.uri)
+}
+
+export function refreshTransports() {
+  TransportsProvider.get().refresh()
+}
+
+export async function openTransportObject(
+  obj: TransportObject,
+  server: AdtServer
+) {
+  if (!obj || !server) return
+  const url = await server.client.transportReference(
+    obj["tm:pgmid"],
+    obj["tm:type"],
+    obj["tm:name"]
+  )
+  const steps = await server.objectFinder.findObjectPath(url)
+  const path = await server.objectFinder.locateObject(steps)
+  if (!path) return
+  let file
+  if (path.node.isFolder) {
+    if (
+      isAbapNode(path.node) &&
+      path.node.abapObject.type.match(/(CLAS)|(PROG)/)
+    ) {
+      const main = await findMainIncludeAsync(path, server.client)
+      file = main ? main.path : ""
+    }
+  } else {
+    file = path.path
+  }
+  if (file) {
+    const uri = Uri.parse("adt://foo/").with({
+      authority: server.connectionId,
+      path: file
+    })
+
+    const document = await workspace.openTextDocument(uri)
+    return window.showTextDocument(document, {
+      preserveFocus: false
+    })
+  }
 }

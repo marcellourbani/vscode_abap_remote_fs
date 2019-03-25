@@ -392,7 +392,7 @@ export const getServer = (connId: string): AdtServer => {
 }
 
 export const fromUri = (uri: Uri) => {
-  if (uri.scheme === "adt") return getServer(uri.authority)
+  if (uri && uri.scheme === ADTSCHEME) return getServer(uri.authority)
   throw FileSystemError.FileNotFound(uri)
 }
 
