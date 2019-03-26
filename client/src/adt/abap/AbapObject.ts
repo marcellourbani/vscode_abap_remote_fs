@@ -141,7 +141,10 @@ export class AbapObject {
 
   public async loadMetadata(client: ADTClient): Promise<AbapObject> {
     if (this.name && !this.sapguiOnly) {
-      this.structure = await client.objectStructure(this.path)
+      // hack for some objects which return source/main in the package entry
+      this.structure = await client.objectStructure(
+        this.path.replace(/\/source\/main$/, "")
+      )
     }
     return this
   }

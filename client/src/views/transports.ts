@@ -69,12 +69,13 @@ class TargetItem extends CollectionItem {
 }
 // tslint:disable-next-line: max-classes-per-file
 function isTransport(task: TransportTask): task is TransportRequest {
-  return !!(task as any).transports
+  return !!(task as any).tasks
 }
 // tslint:disable-next-line: max-classes-per-file
 class TransportItem extends CollectionItem {
   constructor(task: TransportTask, server: AdtServer) {
     super(`${task["tm:number"]} ${task["tm:desc"]}`)
+    this.collapsibleState = TreeItemCollapsibleState.Collapsed
     if (isTransport(task))
       for (const subTask of task.tasks) {
         this.addChild(new TransportItem(subTask, server))
@@ -102,7 +103,11 @@ class ObjectItem extends CollectionItem {
 // tslint:disable-next-line: max-classes-per-file
 export class TransportsProvider implements TreeDataProvider<CollectionItem> {
   public static get() {
-    if (!this.instance) this.instance = new TransportsProvider()
+    if (!this.instance) {
+      const instance = new TransportsProvider()
+      this.instance = instance
+      workspace.onDidChangeWorkspaceFolders(() => instance.refresh())
+    }
     return this.instance
   }
 

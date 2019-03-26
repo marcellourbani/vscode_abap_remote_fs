@@ -1,5 +1,6 @@
 import { window } from "vscode"
 import { ADTClient } from "abap-adt-api"
+import { fieldOrder } from "../functions"
 
 export interface TransportSelection {
   cancelled: boolean
@@ -32,7 +33,9 @@ export async function selectTransport(
   const CREATENEW = "Create a new transport"
   const selection = await window.showQuickPick([
     CREATENEW,
-    ...ti.TRANSPORTS.map(t => `${t.TRKORR} ${t.AS4TEXT}`)
+    ...ti.TRANSPORTS.sort(fieldOrder("TRKORR", true)).map(
+      t => `${t.TRKORR} ${t.AS4TEXT}`
+    )
   ])
 
   if (!selection) return sel("", true)

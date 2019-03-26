@@ -45,11 +45,11 @@ export class AdtObjectActivator {
     if (result && result.success) {
       await inactive.loadMetadata(this.client)
     } else {
-      window.showErrorMessage(
+      message =
         (result && result.messages[0] && result.messages[0].shortText) ||
-          message ||
-          `Error activating ${object.name}`
-      )
+        message ||
+        `Error activating ${object.name}`
+      throw new Error(message)
     }
   }
 }
