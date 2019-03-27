@@ -5,15 +5,19 @@ import {
   TreeItemCollapsibleState,
   workspace,
   Uri,
-  EventEmitter
+  EventEmitter,
+  window,
+  ProgressLocation
 } from "vscode"
 import { ADTSCHEME, fromUri } from "../adt/AdtServer"
 import {
   TransportTarget,
   TransportRequest,
   TransportTask,
-  TransportObject
+  TransportObject,
+  ADTClient
 } from "abap-adt-api"
+import { refreshTransports } from "../commands"
 
 class CollectionItem extends TreeItem {
   protected children: CollectionItem[] = []
@@ -28,7 +32,7 @@ class CollectionItem extends TreeItem {
     return this.children
   }
 }
-// tslint:disable-next-line: max-classes-per-file
+// tslint:disable: max-classes-per-file
 class ConnectionItem extends CollectionItem {
   constructor(private uri: Uri) {
     super(uri.authority.toUpperCase())
@@ -52,7 +56,6 @@ class ConnectionItem extends CollectionItem {
     return this.children
   }
 }
-// tslint:disable-next-line: max-classes-per-file
 class TargetItem extends CollectionItem {
   constructor(target: TransportTarget, server: AdtServer) {
     super(`${target["tm:name"]} ${target["tm:desc"]}`)
@@ -67,15 +70,18 @@ class TargetItem extends CollectionItem {
     }
   }
 }
-// tslint:disable-next-line: max-classes-per-file
+
 function isTransport(task: TransportTask): task is TransportRequest {
   return !!(task as any).tasks
 }
-// tslint:disable-next-line: max-classes-per-file
+
 class TransportItem extends CollectionItem {
-  constructor(task: TransportTask, server: AdtServer) {
-    super(`${task["tm:number"]} ${task["tm:desc"]}`)
+  constructor(public task: TransportTask, public server: AdtServer) {
+    super(`${task["tm:number"]} ${task["tm:owner"]} ${task["tm:desc"]}`)
     this.collapsibleState = TreeItemCollapsibleState.Collapsed
+    this.contextValue = task["tm:status"].match(/[DL]/)
+      ? "tr_unreleased"
+      : "tr_released"
     if (isTransport(task))
       for (const subTask of task.tasks) {
         this.addChild(new TransportItem(subTask, server))
@@ -86,7 +92,6 @@ class TransportItem extends CollectionItem {
   }
 }
 
-// tslint:disable-next-line: max-classes-per-file
 class ObjectItem extends CollectionItem {
   constructor(private obj: TransportObject, private server: AdtServer) {
     super(`${obj["tm:pgmid"]} ${obj["tm:type"]} ${obj["tm:name"]}`)
@@ -100,7 +105,6 @@ class ObjectItem extends CollectionItem {
   }
 }
 
-// tslint:disable-next-line: max-classes-per-file
 export class TransportsProvider implements TreeDataProvider<CollectionItem> {
   public static get() {
     if (!this.instance) {
@@ -142,5 +146,72 @@ export class TransportsProvider implements TreeDataProvider<CollectionItem> {
     )
     for (const f of folders) root.addChild(new ConnectionItem(f.uri))
     return root
+  }
+}
+
+export async function deleteTransport(tran: TransportItem) {
+  try {
+    await tran.server.client.transportDelete(tran.task["tm:number"])
+    refreshTransports()
+  } catch (e) {
+    window.showErrorMessage(e.toString())
+  }
+}
+
+export async function releaseTransport(tran: TransportItem) {
+  try {
+    const transport = tran.task["tm:number"]
+    await window.withProgress(
+      { location: ProgressLocation.Window, title: `Releasing ${transport}` },
+      async () => {
+        const reports = await tran.server.client.transportRelease(transport)
+        const failure = reports.find(r => r["chkrun:status"] !== "released")
+        if (failure)
+          throw new Error(
+            `${transport} not released: ${failure["chkrun:statusText"]}`
+          )
+      }
+    )
+    refreshTransports()
+  } catch (e) {
+    window.showErrorMessage(e.toString())
+  }
+}
+async function pickUser(client: ADTClient) {
+  const users = (await client.systemUsers()).map(u => ({
+    label: u.title,
+    description: u.id,
+    payload: u
+  }))
+  const selected = await window.showQuickPick(users)
+  return selected && selected.payload
+}
+export async function transportOwner(tran: TransportItem) {
+  try {
+    const selected = await pickUser(tran.server.client)
+    if (selected && selected.id !== tran.task["tm:owner"]) {
+      await tran.server.client.transportSetOwner(
+        tran.task["tm:number"],
+        selected.id
+      )
+      refreshTransports()
+    }
+  } catch (e) {
+    window.showErrorMessage(e.toString())
+  }
+}
+
+export async function transportAddUser(tran: TransportItem) {
+  try {
+    const selected = await pickUser(tran.server.client)
+    if (selected && selected.id !== tran.task["tm:owner"]) {
+      await tran.server.client.transportAddUser(
+        tran.task["tm:number"],
+        selected.id
+      )
+      refreshTransports()
+    }
+  } catch (e) {
+    window.showErrorMessage(e.toString())
   }
 }

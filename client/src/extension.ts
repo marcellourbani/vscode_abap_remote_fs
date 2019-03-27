@@ -1,4 +1,10 @@
-import { TransportsProvider } from "./views/transports"
+import {
+  TransportsProvider,
+  deleteTransport,
+  releaseTransport,
+  transportOwner,
+  transportAddUser
+} from "./views/transports"
 import { FavouritesProvider } from "./views/favourites"
 import { FsProvider } from "./fs/FsProvider"
 import { window, commands, workspace, ExtensionContext } from "vscode"
@@ -25,7 +31,6 @@ import { disconnect, ADTSCHEME, lockedFiles } from "./adt/AdtServer"
 import { log } from "./logger"
 import { client, startLanguageClient } from "./langClient"
 import { restoreLocks } from "./adt/operations/LockManager"
-// import { restoreOpenfilePaths } from "./adt/operations/AdtObjectFinder"
 
 export function activate(context: ExtensionContext) {
   const abapFS = new FsProvider()
@@ -81,6 +86,14 @@ export function activate(context: ExtensionContext) {
   sub.push(
     commands.registerCommand("abapfs.openTransportObject", openTransportObject)
   )
+  const cmd = (name: string, callback: (...x: any) => any) =>
+    sub.push(commands.registerCommand(name, callback))
+
+  cmd("abapfs.deleteTransport", deleteTransport)
+  cmd("abapfs.releaseTransport", releaseTransport)
+  cmd("abapfs.transportOwner", transportOwner)
+  cmd("abapfs.transportAddUser", transportAddUser)
+
   const fav = FavouritesProvider.get()
   fav.storagePath = context.globalStoragePath
   sub.push(window.registerTreeDataProvider("abapfs.favorites", fav))

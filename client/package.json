@@ -2,7 +2,7 @@
   "name": "vscode-abap-remote-fs",
   "displayName": "ABAP remote filesystem",
   "description": "Work on your ABAP code straight from the server",
-  "version": "0.5.22",
+  "version": "0.5.23",
   "publisher": "murbani",
   "license": "MIT",
   "icon": "images/abapfs_icon.png",
@@ -47,7 +47,7 @@
   },
   "dependencies": {
     "@types/tmp": "0.0.33",
-    "abap-adt-api": "^0.5.11",
+    "abap-adt-api": "^0.5.12",
     "event-stream": "3.3.4",
     "fs-jetpack": "^2.2.0",
     "opn": "^5.4.0",
@@ -145,6 +145,38 @@
       {
         "command": "abapfs.openTransportObject",
         "title": "ABAPfs Open transportable object"
+      },
+      {
+        "command": "abapfs.deleteTransport",
+        "title": "ABAPfs Delete transport",
+        "icon": {
+          "dark": "images/delete_dark.svg",
+          "light": "images/delete_light.svg"
+        }
+      },
+      {
+        "command": "abapfs.releaseTransport",
+        "title": "ABAPfs Release transport",
+        "icon": {
+          "dark": "images/truck_dark.svg",
+          "light": "images/truck_light.svg"
+        }
+      },
+      {
+        "command": "abapfs.transportOwner",
+        "title": "ABAPfs Change transport owner",
+        "icon": {
+          "dark": "images/user_dark.svg",
+          "light": "images/user_light.svg"
+        }
+      },
+      {
+        "command": "abapfs.transportAddUser",
+        "title": "ABAPfs Change transport owner",
+        "icon": {
+          "dark": "images/useradd_dark.svg",
+          "light": "images/useradd_light.svg"
+        }
       }
     ],
     "keybindings": [
@@ -169,6 +201,26 @@
           "command": "abapfs.deletefavourite",
           "group": "inline",
           "when": "view == abapfs.favorites && viewItem == favourite"
+        },
+        {
+          "command": "abapfs.releaseTransport",
+          "group": "inline",
+          "when": "view == abapfs.transports && viewItem == tr_unreleased"
+        },
+        {
+          "command": "abapfs.deleteTransport",
+          "group": "inline",
+          "when": "view == abapfs.transports && viewItem == tr_unreleased"
+        },
+        {
+          "command": "abapfs.transportOwner",
+          "group": "inline",
+          "when": "view == abapfs.transports && viewItem == tr_unreleased"
+        },
+        {
+          "command": "abapfs.transportAddUser",
+          "group": "inline",
+          "when": "view == abapfs.transports && viewItem == tr_unreleased"
         }
       ],
       "view/title": [
