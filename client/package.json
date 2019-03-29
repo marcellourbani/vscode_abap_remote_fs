@@ -196,6 +196,67 @@
       }
     ],
     "menus": {
+      "commandPalette": [
+        {
+          "command": "abapfs.connect"
+        },
+        {
+          "command": "abapfs.search",
+          "when": "abapfs:extensionActive"
+        },
+        {
+          "command": "abapfs.create",
+          "when": "abapfs:extensionActive"
+        },
+        {
+          "command": "abapfs.createtestinclude",
+          "when": "abapfs:extensionActive"
+        },
+        {
+          "command": "abapfs.addfavourite",
+          "when": "hideCommands.never"
+        },
+        {
+          "command": "abapfs.deletefavourite",
+          "when": "hideCommands.never"
+        },
+        {
+          "command": "abapfs.activate",
+          "when": "hideCommands.never"
+        },
+        {
+          "command": "abapfs.refreshtransports",
+          "when": "hideCommands.never"
+        },
+        {
+          "command": "abapfs.execute",
+          "when": "hideCommands.never"
+        },
+        {
+          "command": "abapfs.unittest",
+          "when": "abapfs:extensionActive"
+        },
+        {
+          "command": "abapfs.openTransportObject",
+          "when": "hideCommands.never"
+        },
+        {
+          "command": "abapfs.deleteTransport",
+          "when": "hideCommands.never"
+        },
+        {
+          "command": "abapfs.releaseTransport",
+          "when": "hideCommands.never"
+        },
+        {
+          "command": "abapfs.transportOwner",
+          "when": "hideCommands.never"
+        },
+        {
+          "command": "abapfs.transportAddUser",
+          "when": "hideCommands.never"
+        }
+      ],
       "view/item/context": [
         {
           "command": "abapfs.deletefavourite",

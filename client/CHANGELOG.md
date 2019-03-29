@@ -4,6 +4,13 @@ All notable changes to the "vscode-abap-remote-fs" extension will be documented 
 
 Format based on [Keep a Changelog](http://keepachangelog.com/)
 
+## Unreleased
+
+### Fixed
+
+- completion list improved: mark as incomplete when completion list is long
+- hidden irrelevant commands from palette
+
 ## 0.5.23 2019-03-27
 
 ### Added

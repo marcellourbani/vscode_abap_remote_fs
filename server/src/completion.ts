@@ -1,4 +1,8 @@
-import { CompletionParams, CompletionItem } from "vscode-languageserver"
+import {
+  CompletionParams,
+  CompletionItem,
+  CompletionList
+} from "vscode-languageserver"
 import { clientAndObjfromUrl, parts } from "./utilities"
 import { log } from "./clientManager"
 
@@ -46,5 +50,5 @@ export async function completion(params: CompletionParams) {
   } catch (e) {
     log("Exception in completion:", e.toString()) // ignore
   }
-  return items
+  return CompletionList.create(items, items.length > 10)
 }
