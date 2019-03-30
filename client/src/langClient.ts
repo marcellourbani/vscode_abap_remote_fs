@@ -1,4 +1,3 @@
-import { SearchProgress } from "./../server/api.d"
 import { AbapObject } from "./adt/abap/AbapObject"
 import { log, channel } from "./logger"
 import {
@@ -7,9 +6,17 @@ import {
   StringWrapper,
   AbapObjectSource,
   urlFromPath,
-  UriRequest
+  UriRequest,
+  SearchProgress
 } from "../server"
-import { ExtensionContext, Uri, window, ProgressLocation } from "vscode"
+import {
+  ExtensionContext,
+  Uri,
+  window,
+  ProgressLocation,
+  TextEdit,
+  commands
+} from "vscode"
 import {
   LanguageClient,
   TransportKind,
@@ -26,6 +33,8 @@ import {
   uriToNodePath
 } from "./adt/abap/AbapObjectUtilities"
 import { isAbapNode } from "./fs/AbapNode"
+import { FixProposal } from "abap-adt-api"
+import { fail } from "assert"
 
 const includes: Map<string, string> = new Map()
 
@@ -181,4 +190,41 @@ export async function startLanguageClient(context: ExtensionContext) {
       client.onRequest(Methods.setSearchProgress, setSearchProgress)
     }
   })
+}
+export async function applyQuickFix(proposal: FixProposal, uri: string) {
+  try {
+    const edits = (await client.sendRequest(Methods.quickFix, {
+      proposal,
+      uri
+    })) as TextEdit[]
+    const editor = findEditor(uri)
+
+    const msg = (e?: Error) =>
+      window.showErrorMessage(
+        "Failed to apply ABAPfs fix to the document" + e ? e!.toString() : ""
+      )
+
+    if (editor && edits) {
+      const success = await editor.edit(mutator => {
+        for (const edit of edits) {
+          if (edit.range.start.character !== edit.range.end.character)
+            mutator.replace(
+              client.protocol2CodeConverter.asRange(edit.range),
+              edit.newText
+            )
+          else
+            mutator.insert(
+              client.protocol2CodeConverter.asPosition(edit.range.start),
+              "\n" + edit.newText + "\n"
+            )
+        }
+      })
+
+      if (success)
+        commands.executeCommand("editor.action.formatDocument", editor)
+      else msg()
+    }
+  } catch (e) {
+    fail(e)
+  }
 }

@@ -5,7 +5,8 @@ export enum Methods {
   readObjectSourceOrMain = "vscabap.mainObjSource",
   setSearchProgress = "vscabap.setSearchProgress",
   cancelSearch = "vscabap.cancelSearch",
-  vsUri = "vscabap.vsUri"
+  vsUri = "vscabap.vsUri",
+  quickFix = "vscabap.quickfix"
 }
 
 export interface AbapObjectDetail {

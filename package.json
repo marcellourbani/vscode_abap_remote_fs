@@ -27,7 +27,7 @@
   "scripts": {
     "vscode:prepublish": "cd client && npm run update-vscode && cd .. && npm run compile",
     "update-vscode": "vscode-install",
-    "compile": "tsc -b",
+    "compile": "cd server;npm run build;cd ..;tsc -b",
     "watch": "tsc -b -w",
     "clean": "rm -Rf out *.vsix;cd server && npm run clean&& cd ../client &&npm run clean",
     "postinstall": "cd server && npm install && cd ../client && npm install"

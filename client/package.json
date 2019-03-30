@@ -2,7 +2,7 @@
   "name": "vscode-abap-remote-fs",
   "displayName": "ABAP remote filesystem",
   "description": "Work on your ABAP code straight from the server",
-  "version": "0.5.24",
+  "version": "0.5.25",
   "publisher": "murbani",
   "license": "MIT",
   "icon": "images/abapfs_icon.png",
@@ -31,13 +31,13 @@
     "update-vscode": "vscode-install",
     "postinstall": "vscode-install",
     "vscode:prepublish": "npm run update-vscode && cd .. && npm run compile",
-    "clean": "rifraf out node-modules server"
+    "clean": "rimraf out node-modules server"
   },
   "devDependencies": {
     "@types/mocha": "^2.2.42",
     "@types/node": "^11.10.4",
     "@types/opn": "^5.1.0",
-    "rifraf": "^2.0.3",
+    "rimraf": "^2.6.3",
     "ts-node": "^7.0.1",
     "tsconfig-paths": "^3.7.0",
     "tslint": "^5.12.1",
@@ -46,7 +46,7 @@
     "vscode": "^1.1.30"
   },
   "dependencies": {
-    "@types/tmp": "0.0.33",
+    "@types/tmp": "0.0.34",
     "abap-adt-api": "^0.5.12",
     "event-stream": "3.3.4",
     "fs-jetpack": "^2.2.0",
@@ -177,6 +177,10 @@
           "dark": "images/useradd_dark.svg",
           "light": "images/useradd_light.svg"
         }
+      },
+      {
+        "command": "abapfs.quickfix",
+        "title": "apply fix"
       }
     ],
     "keybindings": [
@@ -254,6 +258,10 @@
         },
         {
           "command": "abapfs.transportAddUser",
+          "when": "hideCommands.never"
+        },
+        {
+          "command": "abapfs.quickfix",
           "when": "hideCommands.never"
         }
       ],

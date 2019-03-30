@@ -29,7 +29,7 @@ import {
 } from "./commands"
 import { disconnect, ADTSCHEME, lockedFiles } from "./adt/AdtServer"
 import { log } from "./logger"
-import { client, startLanguageClient } from "./langClient"
+import { client, startLanguageClient, applyQuickFix } from "./langClient"
 import { restoreLocks } from "./adt/operations/LockManager"
 
 export function activate(context: ExtensionContext) {
@@ -93,6 +93,7 @@ export function activate(context: ExtensionContext) {
   cmd("abapfs.releaseTransport", releaseTransport)
   cmd("abapfs.transportOwner", transportOwner)
   cmd("abapfs.transportAddUser", transportAddUser)
+  cmd("abapfs.quickfix", applyQuickFix)
 
   const fav = FavouritesProvider.get()
   fav.storagePath = context.globalStoragePath

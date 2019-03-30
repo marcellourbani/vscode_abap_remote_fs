@@ -1,4 +1,5 @@
 out
+wiki
 client/out/**
 node_modules
 client/server

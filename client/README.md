@@ -5,16 +5,9 @@ This extension allows editing and activation of ABAP code on your server directl
 Warning: **THIS SOFTWARE IS IN BETA TEST, USE AT YOUR OWN RISK**
 
 ## Links
+
 [Getting started](https://github.com/marcellourbani/vscode_abap_remote_fs/wiki/getting-started)
 [wiki/documentation](https://github.com/marcellourbani/vscode_abap_remote_fs/wiki)
-
-## new in 0.5.19: CDS support
-
-Creation, deletion and syntax check works, no completion or other helps
-
-## new in 0.5.18: Run abap unit tests
-
-Can be run from the menu or with hotkey ctrl+shift+F11 (sadly ctrl+shift+F10 was taken )
 
 **Unless your system is very modern (7.51 or later I think), write support will require you to install [this plugin](https://github.com/marcellourbani/abapfs_extensions)** in your dev server to enable. Browsing works even without it
 

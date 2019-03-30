@@ -3,7 +3,9 @@ import {
   TextDocuments,
   InitializeParams,
   DidChangeConfigurationNotification,
-  CompletionItem
+  CompletionItem,
+  CodeActionKind,
+  InitializeResult
 } from "vscode-languageserver"
 import { connection, log } from "./clientManager"
 import { syntaxCheck } from "./syntaxcheck"
@@ -11,11 +13,13 @@ import { completion } from "./completion"
 import { findDefinition, findReferences, cancelSearch } from "./references"
 import { documentSymbols } from "./symbols"
 import { formatDocument } from "./documentformatter"
+import { codeActionHandler, resolveQuickFix } from "./codeActions"
 
 const documents: TextDocuments = new TextDocuments()
 
 let hasConfigurationCapability: boolean = false
 let hasWorkspaceFolderCapability: boolean = false
+let hasLiteral: boolean = false
 
 export const ADTSCHEME = "adt"
 
@@ -31,7 +35,13 @@ connection.onInitialize((params: InitializeParams) => {
     capabilities.workspace && !!capabilities.workspace.workspaceFolders
   )
 
-  return {
+  hasLiteral = !!(
+    capabilities.textDocument &&
+    capabilities.textDocument.codeAction &&
+    capabilities.textDocument.codeAction.codeActionLiteralSupport
+  )
+
+  const result: InitializeResult = {
     capabilities: {
       textDocumentSync: documents.syncKind,
       // Tell the client that the server supports code completion
@@ -47,6 +57,12 @@ connection.onInitialize((params: InitializeParams) => {
       documentFormattingProvider: true
     }
   }
+
+  if (hasLiteral)
+    result.capabilities.codeActionProvider = {
+      codeActionKinds: [CodeActionKind.QuickFix]
+    }
+  return result
 })
 
 connection.onInitialized(() => {
@@ -73,6 +89,8 @@ connection.onDocumentSymbol(documentSymbols)
 connection.onDocumentFormatting(formatDocument)
 documents.onDidChangeContent(change => syntaxCheck(change.document))
 connection.onRequest(Methods.cancelSearch, cancelSearch)
+connection.onCodeAction(codeActionHandler)
+connection.onRequest(Methods.quickFix, resolveQuickFix)
 
 documents.listen(connection)
 connection.listen()
