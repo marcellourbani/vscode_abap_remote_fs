@@ -19,6 +19,8 @@ import {
 } from "abap-adt-api"
 import { refreshTransports } from "../commands"
 
+const currentUsers = new Map<string, string>()
+
 class CollectionItem extends TreeItem {
   protected children: CollectionItem[] = []
   constructor(label: string) {
@@ -34,15 +36,24 @@ class CollectionItem extends TreeItem {
 }
 // tslint:disable: max-classes-per-file
 class ConnectionItem extends CollectionItem {
-  constructor(private uri: Uri) {
+  private get user() {
+    const server = fromUri(this.uri)
+    return currentUsers.get(server.connectionId) || server.client.username
+  }
+  public get label() {
+    return `${this.uri.authority.toUpperCase()} Transport of ${this.user.toUpperCase()}`
+  }
+  public set label(l: string) {
+    // will never change
+  }
+  constructor(public uri: Uri) {
     super(uri.authority.toUpperCase())
+    this.contextValue = "tr_connection"
   }
   public async getChildren() {
     if (this.children.length === 0 && !!this.uri) {
       const server = fromUri(this.uri)
-      const transports = await server.client.userTransports(
-        server.client.username
-      )
+      const transports = await server.client.userTransports(this.user)
 
       for (const cat of ["workbench", "customizing"]) {
         const targets = (transports as any)[cat] as TransportTarget[]
@@ -214,4 +225,17 @@ export async function transportAddUser(tran: TransportItem) {
   } catch (e) {
     window.showErrorMessage(e.toString())
   }
+}
+
+export async function transportSelectUser(conn: ConnectionItem) {
+  const server = fromUri(conn.uri)
+  if (!server) return
+  const selected = await pickUser(server.client)
+
+  if (!selected) return
+
+  if (currentUsers.get(server.connectionId) === selected.id) return
+
+  currentUsers.set(server.connectionId, selected.id)
+  refreshTransports()
 }

@@ -3,7 +3,8 @@ import {
   deleteTransport,
   releaseTransport,
   transportOwner,
-  transportAddUser
+  transportAddUser,
+  transportSelectUser
 } from "./views/transports"
 import { FavouritesProvider } from "./views/favourites"
 import { FsProvider } from "./fs/FsProvider"
@@ -94,6 +95,7 @@ export function activate(context: ExtensionContext) {
   cmd("abapfs.transportOwner", transportOwner)
   cmd("abapfs.transportAddUser", transportAddUser)
   cmd("abapfs.quickfix", applyQuickFix)
+  cmd("abapfs.transportUser", transportSelectUser)
 
   const fav = FavouritesProvider.get()
   fav.storagePath = context.globalStoragePath

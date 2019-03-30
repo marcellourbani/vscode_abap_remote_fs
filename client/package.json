@@ -181,6 +181,14 @@
       {
         "command": "abapfs.quickfix",
         "title": "apply fix"
+      },
+      {
+        "command": "abapfs.transportUser",
+        "title": "ABAPfs List transports for a given user",
+        "icon": {
+          "dark": "images/user_dark.svg",
+          "light": "images/user_light.svg"
+        }
       }
     ],
     "keybindings": [
@@ -263,6 +271,10 @@
         {
           "command": "abapfs.quickfix",
           "when": "hideCommands.never"
+        },
+        {
+          "command": "abapfs.transportUser",
+          "when": "hideCommands.never"
         }
       ],
       "view/item/context": [
@@ -290,6 +302,11 @@
           "command": "abapfs.transportAddUser",
           "group": "inline",
           "when": "view == abapfs.transports && viewItem == tr_unreleased"
+        },
+        {
+          "command": "abapfs.transportUser",
+          "group": "inline",
+          "when": "view == abapfs.transports && viewItem == tr_connection"
         }
       ],
       "view/title": [
