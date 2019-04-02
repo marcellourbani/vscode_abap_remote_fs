@@ -12,6 +12,16 @@ import { TransportObject } from "abap-adt-api"
 import { isAbapNode } from "./fs/AbapNode"
 import { findMainIncludeAsync } from "./adt/abap/AbapObjectUtilities"
 
+export const abapcmds: Array<{
+  name: string
+  target: (...x: any[]) => any
+}> = []
+
+export const command = (name: string) => (target: any, propertyKey: string) => {
+  const func = target[propertyKey]
+  abapcmds.push({ name, target: func.bind(target) })
+}
+
 function currentUri() {
   if (!window.activeTextEditor) return
   const uri = window.activeTextEditor.document.uri

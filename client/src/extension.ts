@@ -26,12 +26,14 @@ import {
   runAbapUnit,
   createTestInclude,
   refreshTransports,
-  openTransportObject
+  openTransportObject,
+  abapcmds
 } from "./commands"
 import { disconnect, ADTSCHEME, lockedFiles } from "./adt/AdtServer"
 import { log } from "./logger"
 import { client, startLanguageClient, applyQuickFix } from "./langClient"
 import { restoreLocks } from "./adt/operations/LockManager"
+import { registerRevisionModel } from "./scm/abaprevision"
 
 export function activate(context: ExtensionContext) {
   const abapFS = new FsProvider()
@@ -96,6 +98,8 @@ export function activate(context: ExtensionContext) {
   cmd("abapfs.transportAddUser", transportAddUser)
   cmd("abapfs.quickfix", applyQuickFix)
   cmd("abapfs.transportUser", transportSelectUser)
+  abapcmds.forEach(c => cmd(c.name, c.target))
+  registerRevisionModel(context)
 
   const fav = FavouritesProvider.get()
   fav.storagePath = context.globalStoragePath

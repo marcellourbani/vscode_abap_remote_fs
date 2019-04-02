@@ -2,7 +2,7 @@
   "name": "vscode-abap-remote-fs",
   "displayName": "ABAP remote filesystem",
   "description": "Work on your ABAP code straight from the server",
-  "version": "0.5.25",
+  "version": "0.5.26",
   "publisher": "murbani",
   "license": "MIT",
   "icon": "images/abapfs_icon.png",
@@ -47,7 +47,7 @@
   },
   "dependencies": {
     "@types/tmp": "0.0.34",
-    "abap-adt-api": "^0.5.12",
+    "abap-adt-api": "^0.5.17",
     "event-stream": "3.3.4",
     "fs-jetpack": "^2.2.0",
     "opn": "^5.4.0",
@@ -189,6 +189,10 @@
           "dark": "images/user_dark.svg",
           "light": "images/user_light.svg"
         }
+      },
+      {
+        "command": "abapfs.opendiff",
+        "title": "Show diff"
       }
     ],
     "keybindings": [
@@ -274,6 +278,10 @@
         },
         {
           "command": "abapfs.transportUser",
+          "when": "hideCommands.never"
+        },
+        {
+          "command": "abapfs.opendiff",
           "when": "hideCommands.never"
         }
       ],
