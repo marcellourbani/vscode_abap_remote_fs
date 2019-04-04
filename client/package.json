@@ -2,7 +2,7 @@
   "name": "vscode-abap-remote-fs",
   "displayName": "ABAP remote filesystem",
   "description": "Work on your ABAP code straight from the server",
-  "version": "0.5.26",
+  "version": "0.5.27",
   "publisher": "murbani",
   "license": "MIT",
   "icon": "images/abapfs_icon.png",
@@ -192,7 +192,11 @@
       },
       {
         "command": "abapfs.opendiff",
-        "title": "Show diff"
+        "title": "Compare with revision",
+        "icon": {
+          "dark": "images/list2_dark.svg",
+          "light": "images/list2_light.svg"
+        }
       }
     ],
     "keybindings": [

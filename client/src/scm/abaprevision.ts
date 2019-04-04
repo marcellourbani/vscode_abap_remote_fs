@@ -25,9 +25,10 @@ const ADTREVISION = "adt_revision"
 interface ConnRevision {
   sc: SourceControl
   groups: Map<string, SourceControlResourceGroup>
+  files: Map<string, Revision[]>
 }
+const uriExt = (uri: Uri) => parts(uri.path, EXTREGEX)[0] || ""
 
-// tslint:disable-next-line: max-classes-per-file
 class AbapRevision implements TextDocumentContentProvider, QuickDiffProvider {
   public static get() {
     if (!this.instance) this.instance = new AbapRevision()
@@ -41,6 +42,14 @@ class AbapRevision implements TextDocumentContentProvider, QuickDiffProvider {
     return this.emitter.event
   }
 
+  /**
+   * Cocument provider implementation for scheme adt_revision, used for diffs
+   *
+   * @param {Uri} uri
+   * @param {CancellationToken} token
+   * @returns contents of the required version
+   * @memberof AbapRevision
+   */
   public async provideTextDocumentContent(uri: Uri, token: CancellationToken) {
     const server = getServer(uri.authority)
     const source = await server.client.getObjectSource(
@@ -53,7 +62,7 @@ class AbapRevision implements TextDocumentContentProvider, QuickDiffProvider {
     const uri = doc.uri
     if (uri.scheme !== ADTSCHEME) return
     const cur = uri.toString()
-    const recent = this.sourceGroup(uri.authority, "recent")
+    const [conn, recent] = this.sourceGroup(uri.authority, "recent")
     if (!recent.resourceStates.find(s => s.resourceUri.toString() === cur)) {
       const server = fromUri(uri)
       if (!server) return
@@ -65,31 +74,40 @@ class AbapRevision implements TextDocumentContentProvider, QuickDiffProvider {
       if (!obj.structure) await obj.loadMetadata(server.client)
       if (!obj.structure) return
       const revisions = await server.client.revisions(obj.structure, include)
-      if (revisions.length > 0)
-        recent.resourceStates = [
-          ...recent.resourceStates,
-          {
-            resourceUri: uri,
-            command: {
-              command: "abapfs.opendiff",
-              title: "View diff",
-              arguments: [uri, revisions]
-            }
-          }
-        ]
+      if (revisions.length > 1) this.addResource(conn, recent, uri, revisions)
     }
   }
 
-  public provideOriginalResource?(uri: Uri, token: CancellationToken) {
-    return uri
+  /**
+   * Provides relevant URI for quickdiff.
+   * either the latest version with a transport ID different from the last or the next to last
+   *
+   * @param {Uri} uri
+   * @param {CancellationToken} token
+   * @returns
+   * @memberof AbapRevision
+   */
+  public provideOriginalResource(uri: Uri, token: CancellationToken) {
+    const conn = this.conns.get(uri.authority)
+    if (!conn) return
+    const revisions = conn.files.get(uri.path)
+    if (!revisions || !revisions[1]) return
+    const ext = uriExt(uri)
+    const revision =
+      revisions.find(r => r.version !== revisions[0].version) || revisions[1]
+    return uri.with({
+      scheme: ADTREVISION,
+      path: revision.uri + ext
+    })
   }
 
   @command("abapfs.opendiff")
-  public async openDiff(uri: Uri, revisions: Revision[]) {
-    const old = revisions[revisions.length > 1 ? 1 : 0]
+  public async openDiff(uri: Uri, revisions: Revision[], index = 1) {
+    const old = revisions[index]
+    if (!old) return
     const name = uri.path.split("/").pop() || uri.toString()
-    const [ext] = parts(uri.path, EXTREGEX)
-    const left = uri.with({ scheme: ADTREVISION, path: old.uri + (ext || "") })
+    const ext = uriExt(uri)
+    const left = uri.with({ scheme: ADTREVISION, path: old.uri + ext })
     const right = uri
     return await commands.executeCommand<void>("vscode.diff", left, right, name)
   }
@@ -100,8 +118,10 @@ class AbapRevision implements TextDocumentContentProvider, QuickDiffProvider {
       const id = `ABAP ${connId}`
       conn = {
         sc: scm.createSourceControl(id, id),
-        groups: new Map()
+        groups: new Map(),
+        files: new Map()
       }
+      conn.sc.quickDiffProvider = this
       this.conns.set(connId, conn)
     }
     let group = conn.groups.get(groupId)
@@ -109,7 +129,27 @@ class AbapRevision implements TextDocumentContentProvider, QuickDiffProvider {
       group = conn.sc.createResourceGroup("groupId", "groupId")
       conn.groups.set(groupId, group)
     }
-    return group
+    return [conn, group] as [ConnRevision, SourceControlResourceGroup]
+  }
+
+  private addResource(
+    conn: ConnRevision,
+    group: SourceControlResourceGroup,
+    uri: Uri,
+    revisions: Revision[]
+  ) {
+    conn.files.set(uri.path, revisions)
+    group.resourceStates = [
+      ...group.resourceStates,
+      {
+        resourceUri: uri,
+        command: {
+          command: "abapfs.opendiff",
+          title: "View diff",
+          arguments: [uri, revisions]
+        }
+      }
+    ]
   }
 }
 export function registerRevisionModel(context: ExtensionContext) {

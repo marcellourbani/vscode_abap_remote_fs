@@ -56,6 +56,7 @@ export async function connectAdtServer(selector: any) {
     window.showErrorMessage(
       `Failed to connect to ${remote.name}:${e.toString()}`
     )
+    if (e.response) log(e.response.body)
   }
 }
 
