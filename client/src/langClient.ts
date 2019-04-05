@@ -35,6 +35,7 @@ import {
 import { isAbapNode } from "./fs/AbapNode"
 import { FixProposal } from "abap-adt-api"
 import { fail } from "assert"
+import { command } from "./commands"
 
 const includes: Map<string, string> = new Map()
 
@@ -191,40 +192,44 @@ export async function startLanguageClient(context: ExtensionContext) {
     }
   })
 }
-export async function applyQuickFix(proposal: FixProposal, uri: string) {
-  try {
-    const edits = (await client.sendRequest(Methods.quickFix, {
-      proposal,
-      uri
-    })) as TextEdit[]
-    const editor = findEditor(uri)
 
-    const msg = (e?: Error) =>
-      window.showErrorMessage(
-        "Failed to apply ABAPfs fix to the document" + e ? e!.toString() : ""
-      )
+class LanguageCommands {
+  @command("abapfs.quickfix")
+  private async applyQuickFix(proposal: FixProposal, uri: string) {
+    try {
+      const edits = (await client.sendRequest(Methods.quickFix, {
+        proposal,
+        uri
+      })) as TextEdit[]
+      const editor = findEditor(uri)
 
-    if (editor && edits) {
-      const success = await editor.edit(mutator => {
-        for (const edit of edits) {
-          if (edit.range.start.character !== edit.range.end.character)
-            mutator.replace(
-              client.protocol2CodeConverter.asRange(edit.range),
-              edit.newText
-            )
-          else
-            mutator.insert(
-              client.protocol2CodeConverter.asPosition(edit.range.start),
-              "\n" + edit.newText + "\n"
-            )
-        }
-      })
+      const msg = (e?: Error) =>
+        window.showErrorMessage(
+          "Failed to apply ABAPfs fix to the document" + e ? e!.toString() : ""
+        )
 
-      if (success)
-        commands.executeCommand("editor.action.formatDocument", editor)
-      else msg()
+      if (editor && edits) {
+        const success = await editor.edit(mutator => {
+          for (const edit of edits) {
+            if (edit.range.start.character !== edit.range.end.character)
+              mutator.replace(
+                client.protocol2CodeConverter.asRange(edit.range),
+                edit.newText
+              )
+            else
+              mutator.insert(
+                client.protocol2CodeConverter.asPosition(edit.range.start),
+                "\n" + edit.newText + "\n"
+              )
+          }
+        })
+
+        if (success)
+          commands.executeCommand("editor.action.formatDocument", editor)
+        else msg()
+      }
+    } catch (e) {
+      fail(e)
     }
-  } catch (e) {
-    fail(e)
   }
 }

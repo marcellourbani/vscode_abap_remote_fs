@@ -8,7 +8,7 @@
     "lib": ["es6"],
     "sourceMap": true,
     "strict": true,
-    "noUnusedLocals": true,
+    "noUnusedLocals": false,
     "composite": true
   },
   "include": ["src"],

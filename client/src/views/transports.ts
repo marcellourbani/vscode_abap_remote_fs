@@ -17,7 +17,9 @@ import {
   TransportObject,
   ADTClient
 } from "abap-adt-api"
-import { refreshTransports } from "../commands"
+import { command } from "../commands"
+import { isAbapNode } from "../fs/AbapNode"
+import { findMainIncludeAsync } from "../adt/abap/AbapObjectUtilities"
 
 const currentUsers = new Map<string, string>()
 
@@ -158,84 +160,130 @@ export class TransportsProvider implements TreeDataProvider<CollectionItem> {
     for (const f of folders) root.addChild(new ConnectionItem(f.uri))
     return root
   }
-}
-
-export async function deleteTransport(tran: TransportItem) {
-  try {
-    await tran.server.client.transportDelete(tran.task["tm:number"])
-    refreshTransports()
-  } catch (e) {
-    window.showErrorMessage(e.toString())
-  }
-}
-
-export async function releaseTransport(tran: TransportItem) {
-  try {
-    const transport = tran.task["tm:number"]
-    await window.withProgress(
-      { location: ProgressLocation.Window, title: `Releasing ${transport}` },
-      async () => {
-        const reports = await tran.server.client.transportRelease(transport)
-        const failure = reports.find(r => r["chkrun:status"] !== "released")
-        if (failure)
-          throw new Error(
-            `${transport} not released: ${failure["chkrun:statusText"]}`
-          )
-      }
+  // tslint:disable: member-ordering
+  @command("abapfs.openTransportObject")
+  private static async openTransportObject(
+    obj: TransportObject,
+    server: AdtServer
+  ) {
+    if (!obj || !server) return
+    const url = await server.client.transportReference(
+      obj["tm:pgmid"],
+      obj["tm:type"],
+      obj["tm:name"]
     )
-    refreshTransports()
-  } catch (e) {
-    window.showErrorMessage(e.toString())
-  }
-}
-async function pickUser(client: ADTClient) {
-  const users = (await client.systemUsers()).map(u => ({
-    label: u.title,
-    description: u.id,
-    payload: u
-  }))
-  const selected = await window.showQuickPick(users)
-  return selected && selected.payload
-}
-export async function transportOwner(tran: TransportItem) {
-  try {
-    const selected = await pickUser(tran.server.client)
-    if (selected && selected.id !== tran.task["tm:owner"]) {
-      await tran.server.client.transportSetOwner(
-        tran.task["tm:number"],
-        selected.id
-      )
-      refreshTransports()
+    const steps = await server.objectFinder.findObjectPath(url)
+    const path = await server.objectFinder.locateObject(steps)
+    if (!path) return
+    let file
+    if (path.node.isFolder) {
+      if (
+        isAbapNode(path.node) &&
+        path.node.abapObject.type.match(/(CLAS)|(PROG)/)
+      ) {
+        const main = await findMainIncludeAsync(path, server.client)
+        file = main ? main.path : ""
+      }
+    } else {
+      file = path.path
     }
-  } catch (e) {
-    window.showErrorMessage(e.toString())
-  }
-}
+    if (file) {
+      const uri = Uri.parse("adt://foo/").with({
+        authority: server.connectionId,
+        path: file
+      })
 
-export async function transportAddUser(tran: TransportItem) {
-  try {
-    const selected = await pickUser(tran.server.client)
-    if (selected && selected.id !== tran.task["tm:owner"]) {
-      await tran.server.client.transportAddUser(
-        tran.task["tm:number"],
-        selected.id
-      )
-      refreshTransports()
+      const document = await workspace.openTextDocument(uri)
+      return window.showTextDocument(document, {
+        preserveFocus: false
+      })
     }
-  } catch (e) {
-    window.showErrorMessage(e.toString())
   }
-}
+  @command("abapfs.deleteTransport")
+  private static async deleteTransport(tran: TransportItem) {
+    try {
+      await tran.server.client.transportDelete(tran.task["tm:number"])
+      this.refreshTransports()
+    } catch (e) {
+      window.showErrorMessage(e.toString())
+    }
+  }
+  @command("abapfs.refreshtransports")
+  private static async refreshTransports() {
+    TransportsProvider.get().refresh()
+  }
+  @command("abapfs.releaseTransport")
+  private static async releaseTransport(tran: TransportItem) {
+    try {
+      const transport = tran.task["tm:number"]
+      await window.withProgress(
+        { location: ProgressLocation.Window, title: `Releasing ${transport}` },
+        async () => {
+          const reports = await tran.server.client.transportRelease(transport)
+          const failure = reports.find(r => r["chkrun:status"] !== "released")
+          if (failure)
+            throw new Error(
+              `${transport} not released: ${failure["chkrun:statusText"]}`
+            )
+        }
+      )
+      this.refreshTransports()
+    } catch (e) {
+      window.showErrorMessage(e.toString())
+    }
+  }
+  private static async pickUser(client: ADTClient) {
+    const users = (await client.systemUsers()).map(u => ({
+      label: u.title,
+      description: u.id,
+      payload: u
+    }))
+    const selected = await window.showQuickPick(users)
+    return selected && selected.payload
+  }
+  @command("abapfs.transportOwner")
+  private static async transportOwner(tran: TransportItem) {
+    try {
+      const selected = await this.pickUser(tran.server.client)
+      if (selected && selected.id !== tran.task["tm:owner"]) {
+        await tran.server.client.transportSetOwner(
+          tran.task["tm:number"],
+          selected.id
+        )
+        this.refreshTransports()
+      }
+    } catch (e) {
+      window.showErrorMessage(e.toString())
+    }
+  }
 
-export async function transportSelectUser(conn: ConnectionItem) {
-  const server = fromUri(conn.uri)
-  if (!server) return
-  const selected = await pickUser(server.client)
+  @command("abapfs.transportAddUser")
+  private static async transportAddUser(tran: TransportItem) {
+    try {
+      const selected = await this.pickUser(tran.server.client)
+      if (selected && selected.id !== tran.task["tm:owner"]) {
+        await tran.server.client.transportAddUser(
+          tran.task["tm:number"],
+          selected.id
+        )
+        this.refreshTransports()
+      }
+    } catch (e) {
+      window.showErrorMessage(e.toString())
+    }
+  }
 
-  if (!selected) return
+  @command("abapfs.transportUser")
+  private static async transportSelectUser(conn: ConnectionItem) {
+    const server = fromUri(conn.uri)
+    if (!server) return
+    const selected = await this.pickUser(server.client)
 
-  if (currentUsers.get(server.connectionId) === selected.id) return
+    if (!selected) return
 
-  currentUsers.set(server.connectionId, selected.id)
-  refreshTransports()
+    if (currentUsers.get(server.connectionId) === selected.id) return
+
+    currentUsers.set(server.connectionId, selected.id)
+    this.refreshTransports()
+  }
 }

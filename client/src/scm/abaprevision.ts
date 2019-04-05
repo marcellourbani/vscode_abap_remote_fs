@@ -34,6 +34,7 @@ class AbapRevision implements TextDocumentContentProvider, QuickDiffProvider {
     if (!this.instance) this.instance = new AbapRevision()
     return this.instance
   }
+
   private static instance?: AbapRevision
   private emitter = new EventEmitter<Uri>()
   private conns = new Map<string, ConnRevision>()
