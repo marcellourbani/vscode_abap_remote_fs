@@ -1,3 +1,5 @@
+import { AbapNode } from "./../fs/AbapNode"
+import { PACKAGE } from "./../adt/operations/AdtObjectCreator"
 import { AbapRevision } from "./../scm/abaprevision"
 import { AdtServer } from "./../adt/AdtServer"
 import {
@@ -21,7 +23,11 @@ import {
 } from "abap-adt-api"
 import { command } from "../commands"
 import { isAbapNode } from "../fs/AbapNode"
-import { findMainIncludeAsync } from "../adt/abap/AbapObjectUtilities"
+import {
+  findMainIncludeAsync,
+  allChildren,
+  NodePath
+} from "../adt/abap/AbapObjectUtilities"
 
 const currentUsers = new Map<string, string>()
 
@@ -102,6 +108,13 @@ class TransportItem extends CollectionItem {
   }
   private static tranTypeId = Symbol()
   public readonly typeId: symbol
+
+  public get contextValue() {
+    return this.task["tm:status"].match(/[DL]/)
+      ? "tr_unreleased"
+      : "tr_released"
+  }
+
   constructor(
     public task: TransportTask,
     public server: AdtServer,
@@ -110,9 +123,6 @@ class TransportItem extends CollectionItem {
     super(`${task["tm:number"]} ${task["tm:owner"]} ${task["tm:desc"]}`)
     this.typeId = TransportItem.tranTypeId
     this.collapsibleState = TreeItemCollapsibleState.Collapsed
-    this.contextValue = task["tm:status"].match(/[DL]/)
-      ? "tr_unreleased"
-      : "tr_released"
     if (isTransport(task))
       for (const subTask of task.tasks) {
         this.addChild(new TransportItem(subTask, server, this))
@@ -132,12 +142,18 @@ class TransportItem extends CollectionItem {
 }
 
 class ObjectItem extends CollectionItem {
+  public static isA(x: any): x is ObjectItem {
+    return x && (x as ObjectItem).typeId === ObjectItem.objTypeId
+  }
+  private static objTypeId = Symbol()
+  public readonly typeId: symbol
   constructor(
     public readonly obj: TransportObject,
     public readonly server: AdtServer,
     public readonly transport: TransportItem
   ) {
     super(`${obj["tm:pgmid"]} ${obj["tm:type"]} ${obj["tm:name"]}`)
+    this.typeId = ObjectItem.objTypeId
     this.collapsibleState = TreeItemCollapsibleState.None
     this.contextValue = "tr_object"
     if (obj["tm:pgmid"].match(/(LIMU)|(R3TR)/))
@@ -146,6 +162,16 @@ class ObjectItem extends CollectionItem {
         command: "abapfs.openTransportObject",
         arguments: [this.obj, this.server]
       }
+  }
+
+  public sameObj(other: ObjectItem) {
+    const oo = other.obj
+    const to = this.obj
+    return (
+      oo["tm:pgmid"] === to["tm:pgmid"] &&
+      oo["tm:type"] === to["tm:type"] &&
+      oo["tm:name"] === to["tm:name"]
+    )
   }
 }
 
@@ -194,18 +220,24 @@ export class TransportsProvider implements TreeDataProvider<CollectionItem> {
   // tslint:disable: member-ordering
   private static async decodeTransportObject(
     obj: TransportObject,
-    server: AdtServer
+    server: AdtServer,
+    main = true
   ) {
     if (!obj || !server) return
-    const url = await server.client.transportReference(
-      obj["tm:pgmid"],
-      obj["tm:type"],
-      obj["tm:name"]
-    )
+    let url
+    try {
+      url = await server.client.transportReference(
+        obj["tm:pgmid"],
+        obj["tm:type"],
+        obj["tm:name"]
+      )
+    } catch (e) {
+      return
+    }
     const steps = await server.objectFinder.findObjectPath(url)
     const path = await server.objectFinder.locateObject(steps)
     if (!path) return
-    if (!path.node.isFolder) return path
+    if (!main || !path.node.isFolder) return path
 
     if (
       isAbapNode(path.node) &&
@@ -218,10 +250,7 @@ export class TransportsProvider implements TreeDataProvider<CollectionItem> {
   private static async openTransportObjectDiff(item: ObjectItem) {
     const path = await this.decodeTransportObject(item.obj, item.server)
     if (!path || !path.path || !isAbapNode(path.node)) return
-    const uri = Uri.parse("adt://foo/").with({
-      authority: item.server.connectionId,
-      path: path.path
-    })
+    const uri = item.server.createUri(path.path)
     const obj = path.node.abapObject
     if (!obj.structure) await obj.loadMetadata(item.server.client)
     if (!obj.structure) return
@@ -261,10 +290,12 @@ export class TransportsProvider implements TreeDataProvider<CollectionItem> {
       window.showErrorMessage(e.toString())
     }
   }
+
   @command("abapfs.refreshtransports")
   private static async refreshTransports() {
     TransportsProvider.get().refresh()
   }
+
   @command("abapfs.releaseTransport")
   private static async releaseTransport(tran: TransportItem) {
     try {
@@ -285,6 +316,7 @@ export class TransportsProvider implements TreeDataProvider<CollectionItem> {
       window.showErrorMessage(e.toString())
     }
   }
+
   private static async pickUser(client: ADTClient) {
     const users = (await client.systemUsers()).map(u => ({
       label: u.title,
@@ -294,6 +326,7 @@ export class TransportsProvider implements TreeDataProvider<CollectionItem> {
     const selected = await window.showQuickPick(users)
     return selected && selected.payload
   }
+
   @command("abapfs.transportOwner")
   private static async transportOwner(tran: TransportItem) {
     try {
@@ -325,6 +358,113 @@ export class TransportsProvider implements TreeDataProvider<CollectionItem> {
       window.showErrorMessage(e.toString())
     }
   }
+
+  @command("abapfs.transportRevision")
+  private static async transportRevision(tran: TransportItem) {
+    const transport = tran.task["tm:number"]
+    const children = await tran.getChildren()
+    // find the objects in transports and subtasks
+    const trobjects = children.filter(ObjectItem.isA)
+    for (const child of children.filter(TransportItem.isA)) {
+      const gc = await child.getChildren()
+      for (const obj of gc.filter(ObjectItem.isA))
+        if (!trobjects.find(o => o.sameObj(obj))) trobjects.push(obj)
+    }
+
+    if (!trobjects.length) return
+
+    const paths: NodePath[] = []
+    const addNode = async (node: NodePath) => {
+      if (isAbapNode(node.node) && node.node.abapObject.canBeWritten) {
+        if (paths.find(p => p.path === node.path)) return
+        paths.push(node)
+        await AbapRevision.get().addTransport(
+          tran.label || transport,
+          tran.server,
+          [node],
+          tran.revisionFilter
+        )
+      }
+    }
+    await window.withProgress(
+      {
+        location: ProgressLocation.Notification,
+        cancellable: true,
+        title: `Creating scm group for transport ${transport}`
+      },
+      async (progress, token) => {
+        try {
+          for (const tro of trobjects) {
+            if (token.isCancellationRequested) return
+            progress.report({ increment: (1 * 100) / trobjects.length })
+            const path = await this.decodeTransportObject(
+              tro.obj,
+              tro.server,
+              false
+            )
+            if (!path) continue
+            if (path.node.isFolder) {
+              // expand folders to children
+              if (!isAbapNode(path.node)) continue
+              const obj = path.node.abapObject
+              // for packages we don't really care about contents
+              if (obj.type === PACKAGE) continue
+              let components = allChildren(path)
+              if (components.length === 0) {
+                await path.node.refresh(tro.server.client)
+                components = allChildren(path)
+              }
+              for (const child of allChildren(path)) await addNode(child)
+            } else await addNode(path)
+          }
+        } catch (e) {
+          window.showErrorMessage(e.toString())
+        }
+      }
+    )
+  }
+
+  // private static async transportRevision_int(tran: TransportItem) {
+  //   const children = await tran.getChildren()
+  //   // find the objects in transports and subtasks
+  //   const trobjects = children.filter(ObjectItem.isA)
+  //   for (const child of children.filter(TransportItem.isA)) {
+  //     const gc = await child.getChildren()
+  //     for (const obj of gc.filter(ObjectItem.isA))
+  //       if (!trobjects.find(o => o.sameObj(obj))) trobjects.push(obj)
+  //   }
+  //   // expand the transportable objects in regular objects/paths
+  //   const paths: NodePath[] = []
+  //   const addNode = (node: NodePath) => {
+  //     if (isAbapNode(node.node) && node.node.abapObject.canBeWritten)
+  //       paths.push(node)
+  //   }
+
+  //   for (const tro of trobjects) {
+  //     const path = await this.decodeTransportObject(tro.obj, tro.server, false)
+  //     if (!path) continue
+  //     if (path.node.isFolder) {
+  //       // expand folders to children
+  //       if (!isAbapNode(path.node)) continue
+  //       const obj = path.node.abapObject
+  //       // for packages we don't really care about contents
+  //       if (obj.type === PACKAGE) continue
+  //       let components = allChildren(path)
+  //       if (components.length === 0) {
+  //         await path.node.refresh(tro.server.client)
+  //         components = allChildren(path)
+  //       }
+  //       for (const child of allChildren(path)) addNode(child)
+  //     } else addNode(path)
+  //   }
+
+  //   AbapRevision.get().addTransport(
+  //     tran.label || tran.task["tm:number"],
+  //     tran.server,
+  //     paths,
+  //     tran.revisionFilter
+  //   )
+  // }
 
   @command("abapfs.transportUser")
   private static async transportSelectUser(conn: ConnectionItem) {

@@ -73,3 +73,5 @@ export function toInt(raw: any): number {
   if (isNaN(n)) return 0
   return n
 }
+
+export const isDefined = (x: any) => typeof x !== "undefined"

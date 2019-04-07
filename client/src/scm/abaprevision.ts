@@ -1,4 +1,4 @@
-import { ADTSCHEME, fromUri, getServer } from "./../adt/AdtServer"
+import { ADTSCHEME, fromUri, getServer, AdtServer } from "./../adt/AdtServer"
 import {
   ExtensionContext,
   workspace,
@@ -18,15 +18,20 @@ import {
 } from "vscode"
 import { Revision, classIncludes } from "abap-adt-api"
 import { command } from "../commands"
-import { parts } from "../functions"
+import { parts, isDefined } from "../functions"
 import { isClassInclude } from "../adt/abap/AbapClassInclude"
+import { NodePath } from "../adt/abap/AbapObjectUtilities"
+import { isAbapNode } from "../fs/AbapNode"
+import { log } from "../logger"
 
 const EXTREGEX = /(\.[^\/]+)$/
+const EMPTYFILE = "empty"
 
 const ADTREVISION = "adt_revision"
 
 interface RevisionState extends SourceControlResourceState {
   group: string
+  mainRevision?: Revision
 }
 
 interface ConnRevision {
@@ -46,6 +51,9 @@ const revtoQP = (revision: Revision): RevQp => ({
   revision
 })
 
+const revLabel = (rev: Revision | undefined, fallback: string) =>
+  (rev && rev.version) || (rev && rev.date) || fallback
+
 export class AbapRevision
   implements TextDocumentContentProvider, QuickDiffProvider {
   public static get() {
@@ -53,19 +61,42 @@ export class AbapRevision
     return this.instance
   }
 
-  public static revisionUri(revision: Revision, uri: Uri) {
+  public static revisionUri(revision: Revision | undefined, uri: Uri) {
+    if (!revision)
+      return uri.with({
+        scheme: ADTREVISION,
+        authority: "",
+        path: EMPTYFILE
+      })
     const ext = parts(uri.path, EXTREGEX)[0] || ""
     return uri.with({
       scheme: ADTREVISION,
       path: revision.uri + ext
     })
   }
+
+  public static async displayRevDiff(
+    rightRev: Revision,
+    levtRev: Revision | undefined,
+    base: Uri
+  ) {
+    if (!levtRev && !rightRev) return
+    const left = AbapRevision.revisionUri(levtRev, base)
+
+    const right = AbapRevision.revisionUri(rightRev, base)
+    const lvers = revLabel(levtRev, "initial")
+    const rvers = revLabel(rightRev, "current")
+    const name =
+      (base.path.split("/").pop() || base.toString()) + ` ${lvers}->${rvers}`
+    return await commands.executeCommand<void>("vscode.diff", left, right, name)
+  }
+
   public static async displayDiff(uri: Uri, selected: Revision) {
     const left = AbapRevision.revisionUri(selected, uri)
     const right = uri
     const name =
       (uri.path.split("/").pop() || uri.toString()) +
-      `${selected.version}->current`
+      `${revLabel(selected, "previous")}->current`
     return await commands.executeCommand<void>("vscode.diff", left, right, name)
   }
 
@@ -86,6 +117,7 @@ export class AbapRevision
    * @memberof AbapRevision
    */
   public async provideTextDocumentContent(uri: Uri, token: CancellationToken) {
+    if (uri.path === EMPTYFILE) return ""
     const server = getServer(uri.authority)
     const source = await server.client.getObjectSource(
       uri.path.replace(EXTREGEX, "")
@@ -96,6 +128,7 @@ export class AbapRevision
   public addDocument = async (doc: TextDocument) => {
     const uri = doc.uri
     if (uri.scheme !== ADTSCHEME) return
+    if (this.find(uri)) return
     const cur = uri.toString()
     const [conn, recent] = this.sourceGroup(uri.authority, "recent")
     if (!recent.resourceStates.find(s => s.resourceUri.toString() === cur)) {
@@ -110,6 +143,44 @@ export class AbapRevision
       if (!obj.structure) return
       const revisions = await server.client.revisions(obj.structure, include)
       if (revisions.length > 1) this.addResource(conn, recent, uri, revisions)
+    }
+  }
+
+  public findInGroup(uri: Uri, group: SourceControlResourceGroup) {
+    const target = uri.toString()
+    return group.resourceStates.find(s => s.resourceUri.toString() === target)
+  }
+
+  public find(uri: Uri) {
+    const conn = this.conns.get(uri.authority)
+    if (!conn) return
+    for (const g of conn.groups) {
+      const found = this.findInGroup(uri, g[1])
+      if (found) return found
+    }
+  }
+
+  public async addTransport(
+    transport: string,
+    server: AdtServer,
+    nodes: NodePath[],
+    filter: RegExp
+  ) {
+    if (nodes.length === 0 || !filter) return
+    const [conn, group] = this.sourceGroup(server.connectionId, transport)
+    for (const node of nodes) {
+      if (!isAbapNode(node.node)) continue
+      const uri = server.createUri(node.path)
+      if (this.findInGroup(uri, group)) continue
+
+      const obj = node.node.abapObject
+      const include = isClassInclude(obj)
+        ? (obj.techName as classIncludes)
+        : undefined
+      if (!obj.structure) await obj.loadMetadata(server.client)
+      if (!obj.structure) continue
+      const revisions = await server.client.revisions(obj.structure, include)
+      this.addResource(conn, group, uri, revisions, filter)
     }
   }
 
@@ -132,6 +203,11 @@ export class AbapRevision
     return AbapRevision.revisionUri(revision, uri)
   }
 
+  @command("abapfs.clearScmGroup")
+  public async clearScmGroup(group: SourceControlResourceGroup) {
+    group.resourceStates = []
+  }
+
   @command("abapfs.openrevstate")
   public async openCurrent(state: RevisionState) {
     const document = await workspace.openTextDocument(state.resourceUri)
@@ -141,18 +217,20 @@ export class AbapRevision
   }
 
   @command("abapfs.opendiff")
-  public async openDiff(state: RevisionState, index?: number) {
+  public async openDiff(state: RevisionState, older?: number) {
     const uri = state.resourceUri
     const rev = AbapRevision.get()
     const [conn] = rev.sourceGroup(uri.authority, state.group)
     const revisions = conn.files.get(uri.path)
     if (!revisions) return
     let selected
-    if (index) selected = revisions[index]
+    if (older) selected = revisions[older]
     else {
       const sel = await window.showQuickPick(revisions.map(revtoQP))
       if (sel) selected = sel.revision
     }
+    if (state.mainRevision && (selected || older))
+      return AbapRevision.displayRevDiff(state.mainRevision, selected, uri)
     if (!selected) return
     return AbapRevision.displayDiff(uri, selected)
   }
@@ -171,7 +249,8 @@ export class AbapRevision
     }
     let group = conn.groups.get(groupId)
     if (!group) {
-      group = conn.sc.createResourceGroup("groupId", "groupId")
+      group = conn.sc.createResourceGroup(groupId, groupId)
+      group.hideWhenEmpty = true
       conn.groups.set(groupId, group)
     }
     return [conn, group] as [ConnRevision, SourceControlResourceGroup]
@@ -181,7 +260,8 @@ export class AbapRevision
     conn: ConnRevision,
     group: SourceControlResourceGroup,
     uri: Uri,
-    revisions: Revision[]
+    revisions: Revision[],
+    filter?: RegExp
   ) {
     conn.files.set(uri.path, revisions)
     const state: RevisionState = {
@@ -193,7 +273,21 @@ export class AbapRevision
         arguments: []
       }
     }
-    state.command!.arguments!.push(state, 1)
+    // for transports, I want to compare the latest revision in the transport with the latest out of it
+    let first
+    let last
+    if (filter) {
+      for (let r = 0; r < revisions.length; r++)
+        if (revisions[r].version.match(filter)) first = first || r
+        else if (isDefined(first)) {
+          last = r
+          break
+        }
+      if (!isDefined(first)) return
+      if (!isDefined(last)) last = revisions.length
+      state.mainRevision = revisions[first!]
+    } else last = 1
+    state.command!.arguments!.push(state, last)
     group.resourceStates = [...group.resourceStates, state]
   }
 }

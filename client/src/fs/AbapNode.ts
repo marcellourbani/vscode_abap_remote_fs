@@ -100,11 +100,13 @@ export class AbapObjectNode implements FileStat, Iterable<[string, AbapNode]> {
   public get isFolder() {
     return !this.abapObject.isLeaf()
   }
+
   public getChild(name: string): AbapNode | undefined {
     if (!this.children || !this.isFolder)
       throw FileSystemError.FileNotADirectory(name)
     return this.children.get(name)
   }
+
   public setChild(
     name: string,
     child: AbapNode,
@@ -120,15 +122,18 @@ export class AbapObjectNode implements FileStat, Iterable<[string, AbapNode]> {
     }
     return child
   }
+
   public deleteChild(name: string): void {
     if (!this.children || !this.isFolder)
       throw FileSystemError.FileNotADirectory(name)
     this.mtime = Date.now()
     this.children.delete(name)
   }
+
   get numChildren(): number {
     return this.children ? this.children.size : 0
   }
+
   public async fetchContents(client: ADTClient): Promise<Uint8Array> {
     if (this.isFolder) return Promise.reject(FileSystemError.FileIsADirectory())
 

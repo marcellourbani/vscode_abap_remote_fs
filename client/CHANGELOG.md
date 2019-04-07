@@ -9,6 +9,7 @@ Format based on [Keep a Changelog](http://keepachangelog.com/)
 ### Added
 
 - diff in transport view
+- scm groups per transport
 
 ### Changed
 

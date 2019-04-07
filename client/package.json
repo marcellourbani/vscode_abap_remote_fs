@@ -209,6 +209,22 @@
           "dark": "images/dark/icon-compare.svg",
           "light": "images/light/icon-compare.svg"
         }
+      },
+      {
+        "command": "abapfs.transportRevision",
+        "title": "Add transport to source control",
+        "icon": {
+          "dark": "images/dark/icon-repo.svg",
+          "light": "images/light/icon-repo.svg"
+        }
+      },
+      {
+        "command": "abapfs.clearScmGroup",
+        "title": "Clear",
+        "icon": {
+          "dark": "images/dark/icon-delete.svg",
+          "light": "images/light/icon-delete.svg"
+        }
       }
     ],
     "keybindings": [
@@ -307,6 +323,10 @@
         {
           "command": "abapfs.transportObjectDiff",
           "when": "hideCommands.never"
+        },
+        {
+          "command": "abapfs.transportRevision",
+          "when": "hideCommands.never"
         }
       ],
       "view/item/context": [
@@ -344,6 +364,16 @@
           "command": "abapfs.transportObjectDiff",
           "group": "inline",
           "when": "view == abapfs.transports && viewItem == tr_object"
+        },
+        {
+          "command": "abapfs.transportRevision",
+          "group": "inline",
+          "when": "view == abapfs.transports && viewItem == tr_unreleased "
+        },
+        {
+          "command": "abapfs.transportRevision",
+          "group": "inline",
+          "when": "view == abapfs.transports && viewItem == tr_released"
         }
       ],
       "view/title": [
@@ -358,6 +388,13 @@
           "command": "abapfs.activate",
           "group": "navigation",
           "when": "resourceScheme == adt && editorLangId == abap && abapfs:showActivate "
+        }
+      ],
+      "scm/resourceGroup/context": [
+        {
+          "command": "abapfs.clearScmGroup",
+          "group": "inline",
+          "when": "scmProvider =~ /^ABAP/"
         }
       ],
       "scm/resourceState/context": [
