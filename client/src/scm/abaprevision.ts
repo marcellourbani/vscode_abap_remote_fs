@@ -11,7 +11,10 @@ import {
   SourceControl,
   SourceControlResourceGroup,
   TextDocument,
-  commands
+  commands,
+  SourceControlResourceState,
+  window,
+  QuickPickItem
 } from "vscode"
 import { Revision, classIncludes } from "abap-adt-api"
 import { command } from "../commands"
@@ -22,17 +25,48 @@ const EXTREGEX = /(\.[^\/]+)$/
 
 const ADTREVISION = "adt_revision"
 
+interface RevisionState extends SourceControlResourceState {
+  group: string
+}
+
 interface ConnRevision {
   sc: SourceControl
   groups: Map<string, SourceControlResourceGroup>
   files: Map<string, Revision[]>
 }
-const uriExt = (uri: Uri) => parts(uri.path, EXTREGEX)[0] || ""
 
-class AbapRevision implements TextDocumentContentProvider, QuickDiffProvider {
+interface RevQp extends QuickPickItem {
+  revision: Revision
+}
+
+const revtoQP = (revision: Revision): RevQp => ({
+  label: revision.version,
+  description: revision.versionTitle,
+  detail: `${revision.author || ""} ${revision.date}`,
+  revision
+})
+
+export class AbapRevision
+  implements TextDocumentContentProvider, QuickDiffProvider {
   public static get() {
     if (!this.instance) this.instance = new AbapRevision()
     return this.instance
+  }
+
+  public static revisionUri(revision: Revision, uri: Uri) {
+    const ext = parts(uri.path, EXTREGEX)[0] || ""
+    return uri.with({
+      scheme: ADTREVISION,
+      path: revision.uri + ext
+    })
+  }
+  public static async displayDiff(uri: Uri, selected: Revision) {
+    const left = AbapRevision.revisionUri(selected, uri)
+    const right = uri
+    const name =
+      (uri.path.split("/").pop() || uri.toString()) +
+      `${selected.version}->current`
+    return await commands.executeCommand<void>("vscode.diff", left, right, name)
   }
 
   private static instance?: AbapRevision
@@ -93,24 +127,34 @@ class AbapRevision implements TextDocumentContentProvider, QuickDiffProvider {
     if (!conn) return
     const revisions = conn.files.get(uri.path)
     if (!revisions || !revisions[1]) return
-    const ext = uriExt(uri)
     const revision =
       revisions.find(r => r.version !== revisions[0].version) || revisions[1]
-    return uri.with({
-      scheme: ADTREVISION,
-      path: revision.uri + ext
+    return AbapRevision.revisionUri(revision, uri)
+  }
+
+  @command("abapfs.openrevstate")
+  public async openCurrent(state: RevisionState) {
+    const document = await workspace.openTextDocument(state.resourceUri)
+    return window.showTextDocument(document, {
+      preserveFocus: false
     })
   }
 
   @command("abapfs.opendiff")
-  public async openDiff(uri: Uri, revisions: Revision[], index = 1) {
-    const old = revisions[index]
-    if (!old) return
-    const name = uri.path.split("/").pop() || uri.toString()
-    const ext = uriExt(uri)
-    const left = uri.with({ scheme: ADTREVISION, path: old.uri + ext })
-    const right = uri
-    return await commands.executeCommand<void>("vscode.diff", left, right, name)
+  public async openDiff(state: RevisionState, index?: number) {
+    const uri = state.resourceUri
+    const rev = AbapRevision.get()
+    const [conn] = rev.sourceGroup(uri.authority, state.group)
+    const revisions = conn.files.get(uri.path)
+    if (!revisions) return
+    let selected
+    if (index) selected = revisions[index]
+    else {
+      const sel = await window.showQuickPick(revisions.map(revtoQP))
+      if (sel) selected = sel.revision
+    }
+    if (!selected) return
+    return AbapRevision.displayDiff(uri, selected)
   }
 
   private sourceGroup(connId: string, groupId: string) {
@@ -140,17 +184,17 @@ class AbapRevision implements TextDocumentContentProvider, QuickDiffProvider {
     revisions: Revision[]
   ) {
     conn.files.set(uri.path, revisions)
-    group.resourceStates = [
-      ...group.resourceStates,
-      {
-        resourceUri: uri,
-        command: {
-          command: "abapfs.opendiff",
-          title: "View diff",
-          arguments: [uri, revisions]
-        }
+    const state: RevisionState = {
+      resourceUri: uri,
+      group: group.id,
+      command: {
+        command: "abapfs.opendiff",
+        title: "View diff",
+        arguments: []
       }
-    ]
+    }
+    state.command!.arguments!.push(state, 1)
+    group.resourceStates = [...group.resourceStates, state]
   }
 }
 export function registerRevisionModel(context: ExtensionContext) {

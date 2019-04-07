@@ -114,8 +114,8 @@
         "command": "abapfs.deletefavourite",
         "title": "ABAPfs delete favourite",
         "icon": {
-          "dark": "images/delete_dark.svg",
-          "light": "images/delete_light.svg"
+          "dark": "images/dark/icon-delete.svg",
+          "light": "images/light/icon-delete.svg"
         }
       },
       {
@@ -130,8 +130,8 @@
         "command": "abapfs.refreshtransports",
         "title": "ABAPfs refresh transports",
         "icon": {
-          "dark": "images/spinner11_dark.svg",
-          "light": "images/spinner11_light.svg"
+          "dark": "images/dark/icon-refresh.svg",
+          "light": "images/light/icon-refresh.svg"
         }
       },
       {
@@ -150,32 +150,32 @@
         "command": "abapfs.deleteTransport",
         "title": "ABAPfs Delete transport",
         "icon": {
-          "dark": "images/delete_dark.svg",
-          "light": "images/delete_light.svg"
+          "dark": "images/dark/icon-delete.svg",
+          "light": "images/light/icon-delete.svg"
         }
       },
       {
         "command": "abapfs.releaseTransport",
         "title": "ABAPfs Release transport",
         "icon": {
-          "dark": "images/truck_dark.svg",
-          "light": "images/truck_light.svg"
+          "dark": "images/dark/truck.svg",
+          "light": "images/light/truck.svg"
         }
       },
       {
         "command": "abapfs.transportOwner",
         "title": "ABAPfs Change transport owner",
         "icon": {
-          "dark": "images/user_dark.svg",
-          "light": "images/user_light.svg"
+          "dark": "images/dark/user.svg",
+          "light": "images/light/user.svg"
         }
       },
       {
         "command": "abapfs.transportAddUser",
         "title": "ABAPfs Change transport owner",
         "icon": {
-          "dark": "images/useradd_dark.svg",
-          "light": "images/useradd_light.svg"
+          "dark": "images/dark/useradd.svg",
+          "light": "images/light/useradd.svg"
         }
       },
       {
@@ -186,16 +186,28 @@
         "command": "abapfs.transportUser",
         "title": "ABAPfs List transports for a given user",
         "icon": {
-          "dark": "images/user_dark.svg",
-          "light": "images/user_light.svg"
+          "dark": "images/dark/user.svg",
+          "light": "images/light/user.svg"
         }
       },
       {
         "command": "abapfs.opendiff",
         "title": "Compare with revision",
         "icon": {
-          "dark": "images/list2_dark.svg",
-          "light": "images/list2_light.svg"
+          "dark": "images/dark/icon-compare.svg",
+          "light": "images/light/icon-compare.svg"
+        }
+      },
+      {
+        "command": "abapfs.openrevstate",
+        "title": "Open current version"
+      },
+      {
+        "command": "abapfs.transportObjectDiff",
+        "title": "Open current version",
+        "icon": {
+          "dark": "images/dark/icon-compare.svg",
+          "light": "images/light/icon-compare.svg"
         }
       }
     ],
@@ -287,6 +299,14 @@
         {
           "command": "abapfs.opendiff",
           "when": "hideCommands.never"
+        },
+        {
+          "command": "abapfs.openrevstate",
+          "when": "hideCommands.never"
+        },
+        {
+          "command": "abapfs.transportObjectDiff",
+          "when": "hideCommands.never"
         }
       ],
       "view/item/context": [
@@ -319,6 +339,11 @@
           "command": "abapfs.transportUser",
           "group": "inline",
           "when": "view == abapfs.transports && viewItem == tr_connection"
+        },
+        {
+          "command": "abapfs.transportObjectDiff",
+          "group": "inline",
+          "when": "view == abapfs.transports && viewItem == tr_object"
         }
       ],
       "view/title": [
@@ -333,6 +358,18 @@
           "command": "abapfs.activate",
           "group": "navigation",
           "when": "resourceScheme == adt && editorLangId == abap && abapfs:showActivate "
+        }
+      ],
+      "scm/resourceState/context": [
+        {
+          "command": "abapfs.openrevstate",
+          "group": "context",
+          "when": "scmProvider =~ /^ABAP/"
+        },
+        {
+          "command": "abapfs.opendiff",
+          "group": "inline",
+          "when": "scmProvider =~ /^ABAP/"
         }
       ],
       "explorer/context": [

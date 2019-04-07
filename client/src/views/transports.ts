@@ -1,3 +1,4 @@
+import { AbapRevision } from "./../scm/abaprevision"
 import { AdtServer } from "./../adt/AdtServer"
 import {
   TreeDataProvider,
@@ -7,7 +8,8 @@ import {
   Uri,
   EventEmitter,
   window,
-  ProgressLocation
+  ProgressLocation,
+  commands
 } from "vscode"
 import { ADTSCHEME, fromUri } from "../adt/AdtServer"
 import {
@@ -36,22 +38,27 @@ class CollectionItem extends TreeItem {
     return this.children
   }
 }
+
 // tslint:disable: max-classes-per-file
 class ConnectionItem extends CollectionItem {
   private get user() {
     const server = fromUri(this.uri)
     return currentUsers.get(server.connectionId) || server.client.username
   }
+
   public get label() {
     return `${this.uri.authority.toUpperCase()} Transport of ${this.user.toUpperCase()}`
   }
+
   public set label(l: string) {
     // will never change
   }
+
   constructor(public uri: Uri) {
     super(uri.authority.toUpperCase())
     this.contextValue = "tr_connection"
   }
+
   public async getChildren() {
     if (this.children.length === 0 && !!this.uri) {
       const server = fromUri(this.uri)
@@ -69,6 +76,7 @@ class ConnectionItem extends CollectionItem {
     return this.children
   }
 }
+
 class TargetItem extends CollectionItem {
   constructor(target: TransportTarget, server: AdtServer) {
     super(`${target["tm:name"]} ${target["tm:desc"]}`)
@@ -89,26 +97,49 @@ function isTransport(task: TransportTask): task is TransportRequest {
 }
 
 class TransportItem extends CollectionItem {
-  constructor(public task: TransportTask, public server: AdtServer) {
+  public static isA(x: any): x is TransportItem {
+    return x && (x as TransportItem).typeId === TransportItem.tranTypeId
+  }
+  private static tranTypeId = Symbol()
+  public readonly typeId: symbol
+  constructor(
+    public task: TransportTask,
+    public server: AdtServer,
+    public transport?: TransportItem
+  ) {
     super(`${task["tm:number"]} ${task["tm:owner"]} ${task["tm:desc"]}`)
+    this.typeId = TransportItem.tranTypeId
     this.collapsibleState = TreeItemCollapsibleState.Collapsed
     this.contextValue = task["tm:status"].match(/[DL]/)
       ? "tr_unreleased"
       : "tr_released"
     if (isTransport(task))
       for (const subTask of task.tasks) {
-        this.addChild(new TransportItem(subTask, server))
+        this.addChild(new TransportItem(subTask, server, this))
       }
     for (const obj of task.objects) {
-      this.addChild(new ObjectItem(obj, server))
+      this.addChild(new ObjectItem(obj, server, this))
     }
+  }
+
+  public get revisionFilter(): RegExp {
+    if (this.transport) return this.transport.revisionFilter
+    const trChildren = this.children.filter(TransportItem.isA)
+    return RegExp(
+      [this, ...trChildren].map(ti => ti.task["tm:number"]).join("|")
+    )
   }
 }
 
 class ObjectItem extends CollectionItem {
-  constructor(private obj: TransportObject, private server: AdtServer) {
+  constructor(
+    public readonly obj: TransportObject,
+    public readonly server: AdtServer,
+    public readonly transport: TransportItem
+  ) {
     super(`${obj["tm:pgmid"]} ${obj["tm:type"]} ${obj["tm:name"]}`)
     this.collapsibleState = TreeItemCollapsibleState.None
+    this.contextValue = "tr_object"
     if (obj["tm:pgmid"].match(/(LIMU)|(R3TR)/))
       this.command = {
         title: "Open",
@@ -161,8 +192,7 @@ export class TransportsProvider implements TreeDataProvider<CollectionItem> {
     return root
   }
   // tslint:disable: member-ordering
-  @command("abapfs.openTransportObject")
-  private static async openTransportObject(
+  private static async decodeTransportObject(
     obj: TransportObject,
     server: AdtServer
   ) {
@@ -175,30 +205,53 @@ export class TransportsProvider implements TreeDataProvider<CollectionItem> {
     const steps = await server.objectFinder.findObjectPath(url)
     const path = await server.objectFinder.locateObject(steps)
     if (!path) return
-    let file
-    if (path.node.isFolder) {
-      if (
-        isAbapNode(path.node) &&
-        path.node.abapObject.type.match(/(CLAS)|(PROG)/)
-      ) {
-        const main = await findMainIncludeAsync(path, server.client)
-        file = main ? main.path : ""
-      }
-    } else {
-      file = path.path
-    }
-    if (file) {
-      const uri = Uri.parse("adt://foo/").with({
-        authority: server.connectionId,
-        path: file
-      })
+    if (!path.node.isFolder) return path
 
-      const document = await workspace.openTextDocument(uri)
-      return window.showTextDocument(document, {
-        preserveFocus: false
-      })
-    }
+    if (
+      isAbapNode(path.node) &&
+      path.node.abapObject.type.match(/(CLAS)|(PROG)/)
+    )
+      return await findMainIncludeAsync(path, server.client)
   }
+
+  @command("abapfs.transportObjectDiff")
+  private static async openTransportObjectDiff(item: ObjectItem) {
+    const path = await this.decodeTransportObject(item.obj, item.server)
+    if (!path || !path.path || !isAbapNode(path.node)) return
+    const uri = Uri.parse("adt://foo/").with({
+      authority: item.server.connectionId,
+      path: path.path
+    })
+    const obj = path.node.abapObject
+    if (!obj.structure) await obj.loadMetadata(item.server.client)
+    if (!obj.structure) return
+
+    const revisions = await item.server.client.revisions(obj.structure)
+    const beforeTr = revisions.find(
+      r => !r.version.match(item.transport.revisionFilter)
+    )
+    if (!beforeTr) return
+    return AbapRevision.displayDiff(uri, beforeTr)
+  }
+
+  @command("abapfs.openTransportObject")
+  private static async openTransportObject(
+    obj: TransportObject,
+    server: AdtServer
+  ) {
+    const path = await this.decodeTransportObject(obj, server)
+    if (!path || !path.path) return
+    const uri = Uri.parse("adt://foo/").with({
+      authority: server.connectionId,
+      path: path.path
+    })
+
+    const document = await workspace.openTextDocument(uri)
+    return window.showTextDocument(document, {
+      preserveFocus: false
+    })
+  }
+
   @command("abapfs.deleteTransport")
   private static async deleteTransport(tran: TransportItem) {
     try {
