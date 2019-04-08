@@ -1,7 +1,7 @@
-import { AbapObjectNode } from "./../../fs/AbapNode"
+import { AbapObjectNode } from "../../fs/AbapNode"
 import { PACKAGE } from "./AdtObjectCreator"
 import { ADTClient, PathStep, SearchResult, ObjectType } from "abap-adt-api"
-import { AdtServer } from "./../AdtServer"
+import { AdtServer } from "../AdtServer"
 import { window, QuickPickItem, workspace, commands } from "vscode"
 
 import {

@@ -1,6 +1,6 @@
 import { workspace, Uri, window, commands, ProgressLocation } from "vscode"
 import { fromUri, AdtServer, ADTSCHEME } from "./adt/AdtServer"
-import { selectRemote, pickAdtRoot, createClient } from "./config"
+import { selectMissingRemote, pickAdtRoot, createClient } from "./config"
 import { log } from "./logger"
 import { FavouritesProvider, FavItem } from "./views/favourites"
 import { findEditor } from "./langClient"
@@ -50,7 +50,7 @@ export class AdtCommands {
   @command("abapfs.connect")
   private static async connectAdtServer(selector: any) {
     const connectionID = selector && selector.connection
-    const remote = await selectRemote(connectionID)
+    const remote = await selectMissingRemote(connectionID)
     if (!remote) return
     const client = createClient(remote)
 

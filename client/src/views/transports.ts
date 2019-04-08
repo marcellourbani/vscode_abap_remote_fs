@@ -1,7 +1,7 @@
-import { AbapNode } from "./../fs/AbapNode"
-import { PACKAGE } from "./../adt/operations/AdtObjectCreator"
-import { AbapRevision } from "./../scm/abaprevision"
-import { AdtServer } from "./../adt/AdtServer"
+import { AbapNode } from "../fs/AbapNode"
+import { PACKAGE } from "../adt/operations/AdtObjectCreator"
+import { AbapRevision } from "../scm/abaprevision"
+import { AdtServer } from "../adt/AdtServer"
 import {
   TreeDataProvider,
   TreeItem,

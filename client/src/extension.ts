@@ -1,7 +1,13 @@
 import { TransportsProvider } from "./views/transports"
 import { FavouritesProvider } from "./views/favourites"
 import { FsProvider } from "./fs/FsProvider"
-import { window, commands, workspace, ExtensionContext } from "vscode"
+import {
+  window,
+  commands,
+  workspace,
+  ExtensionContext,
+  languages
+} from "vscode"
 import {
   activeTextEditorChangedListener,
   documentChangedListener,
@@ -14,6 +20,7 @@ import { log } from "./logger"
 import { client, startLanguageClient } from "./langClient"
 import { restoreLocks } from "./adt/operations/LockManager"
 import { registerRevisionModel } from "./scm/abaprevision"
+import { AbapRevisionLensP } from "./scm/abaprevisionlens"
 
 export function activate(context: ExtensionContext) {
   const abapFS = new FsProvider()
@@ -47,6 +54,12 @@ export function activate(context: ExtensionContext) {
     window.registerTreeDataProvider(
       "abapfs.transports",
       TransportsProvider.get()
+    )
+  )
+  sub.push(
+    languages.registerCodeLensProvider(
+      { language: "abap", scheme: ADTSCHEME },
+      AbapRevisionLensP.get()
     )
   )
 

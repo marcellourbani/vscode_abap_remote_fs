@@ -1,4 +1,4 @@
-import { AdtServer } from "./../AdtServer"
+import { AdtServer } from "../AdtServer"
 import {
   AbapObject,
   AbapNodeComponentByCategory,

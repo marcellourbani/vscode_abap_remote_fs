@@ -1,4 +1,4 @@
-import { ADTSCHEME, fromUri, getServer, AdtServer } from "./../adt/AdtServer"
+import { ADTSCHEME, fromUri, getServer, AdtServer } from "../adt/AdtServer"
 import {
   ExtensionContext,
   workspace,
@@ -22,12 +22,14 @@ import { parts, isDefined } from "../functions"
 import { isClassInclude } from "../adt/abap/AbapClassInclude"
 import { NodePath } from "../adt/abap/AbapObjectUtilities"
 import { isAbapNode } from "../fs/AbapNode"
+import { isUndefined } from "util"
 import { log } from "../logger"
 
 const EXTREGEX = /(\.[^\/]+)$/
 const EMPTYFILE = "empty"
 
 const ADTREVISION = "adt_revision"
+const QUICKDIFFQUERY = "quickdiff=true"
 
 interface RevisionState extends SourceControlResourceState {
   group: string
@@ -51,7 +53,7 @@ const revtoQP = (revision: Revision): RevQp => ({
   revision
 })
 
-const revLabel = (rev: Revision | undefined, fallback: string) =>
+export const revLabel = (rev: Revision | undefined, fallback: string) =>
   (rev && rev.version) || (rev && rev.date) || fallback
 
 export class AbapRevision
@@ -73,6 +75,24 @@ export class AbapRevision
       scheme: ADTREVISION,
       path: revision.uri + ext
     })
+  }
+
+  public static displayRemoteDiff(
+    localUri: Uri,
+    localRev: Revision,
+    remoteUri: Uri,
+    remoteRev: Revision
+  ) {
+    const name = `${localUri.authority} ${revLabel(localRev, "local")}->${
+      remoteUri.authority
+    } ${revLabel(remoteRev, "remote")}`
+
+    return commands.executeCommand<void>(
+      "vscode.diff",
+      remoteUri,
+      localUri,
+      name
+    )
   }
 
   public static async displayRevDiff(
@@ -103,6 +123,7 @@ export class AbapRevision
   private static instance?: AbapRevision
   private emitter = new EventEmitter<Uri>()
   private conns = new Map<string, ConnRevision>()
+  private QDRevision = new Map<string, Revision>()
 
   public get onDidChange() {
     return this.emitter.event
@@ -116,48 +137,61 @@ export class AbapRevision
    * @returns contents of the required version
    * @memberof AbapRevision
    */
-  public async provideTextDocumentContent(uri: Uri, token: CancellationToken) {
+  public async provideTextDocumentContent(uri: Uri, token?: CancellationToken) {
     if (uri.path === EMPTYFILE) return ""
+    let revUri = uri
+    if (uri.query === QUICKDIFFQUERY) {
+      const revision = this.getReferenceRevision(
+        uri.with({ query: "", scheme: ADTSCHEME })
+      )
+      if (revision) revUri = AbapRevision.revisionUri(revision, uri)
+    }
     const server = getServer(uri.authority)
     const source = await server.client.getObjectSource(
-      uri.path.replace(EXTREGEX, "")
+      revUri.path.replace(EXTREGEX, "")
     )
     return source
   }
 
-  public addDocument = async (doc: TextDocument) => {
-    const uri = doc.uri
+  public addDocument = async (uri: Uri) => {
     if (uri.scheme !== ADTSCHEME) return
-    if (this.find(uri)) return
+    if (this.find(uri)[0]) return
     const cur = uri.toString()
     const [conn, recent] = this.sourceGroup(uri.authority, "recent")
     if (!recent.resourceStates.find(s => s.resourceUri.toString() === cur)) {
       const server = fromUri(uri)
       if (!server) return
-      const obj = await server.findAbapObject(uri)
-      if (!obj) return
-      const include = isClassInclude(obj)
-        ? (obj.techName as classIncludes)
-        : undefined
-      if (!obj.structure) await obj.loadMetadata(server.client)
-      if (!obj.structure) return
-      const revisions = await server.client.revisions(obj.structure, include)
-      if (revisions.length > 1) this.addResource(conn, recent, uri, revisions)
+      try {
+        const obj = await server.findAbapObject(uri)
+        if (!obj) return
+        const include = isClassInclude(obj)
+          ? (obj.techName as classIncludes)
+          : undefined
+        if (!obj.structure) await obj.loadMetadata(server.client)
+        if (!obj.structure) return
+        const revisions = await server.client.revisions(obj.structure, include)
+        if (revisions.length > 1) this.addResource(conn, recent, uri, revisions)
+      } catch (e) {
+        log(e)
+      }
     }
   }
 
   public findInGroup(uri: Uri, group: SourceControlResourceGroup) {
     const target = uri.toString()
-    return group.resourceStates.find(s => s.resourceUri.toString() === target)
+    return group.resourceStates.find(
+      s => s.resourceUri.toString() === target
+    ) as RevisionState
   }
 
-  public find(uri: Uri) {
+  public find(uri: Uri): [RevisionState?, SourceControlResourceGroup?] {
     const conn = this.conns.get(uri.authority)
-    if (!conn) return
+    if (!conn) return []
     for (const g of conn.groups) {
       const found = this.findInGroup(uri, g[1])
-      if (found) return found
+      if (found) return [found, g[1]]
     }
+    return []
   }
 
   public async addTransport(
@@ -184,6 +218,27 @@ export class AbapRevision
     }
   }
 
+  public setReferenceRevision(uri: Uri, current: Revision) {
+    const key = this.qdKey(uri)
+    const old = this.QDRevision.get(key)
+    this.QDRevision.set(key.toString(), current)
+    if (old) this.emitter.fire(AbapRevision.revisionUri(old, uri))
+    this.emitter.fire(this.provideOriginalResource(uri))
+  }
+
+  public getReferenceRevision(uri: Uri) {
+    let current = this.QDRevision.get(this.qdKey(uri))
+    if (!current) {
+      const conn = this.conns.get(uri.authority)
+      if (conn) {
+        const revisions = conn.files.get(uri.path)
+        current = revisions && revisions[1]
+        if (current) this.QDRevision.set(this.qdKey(uri), current)
+      }
+    }
+    return current
+  }
+
   /**
    * Provides relevant URI for quickdiff.
    * either the latest version with a transport ID different from the last or the next to last
@@ -193,14 +248,12 @@ export class AbapRevision
    * @returns
    * @memberof AbapRevision
    */
-  public provideOriginalResource(uri: Uri, token: CancellationToken) {
-    const conn = this.conns.get(uri.authority)
-    if (!conn) return
-    const revisions = conn.files.get(uri.path)
-    if (!revisions || !revisions[1]) return
-    const revision =
-      revisions.find(r => r.version !== revisions[0].version) || revisions[1]
-    return AbapRevision.revisionUri(revision, uri)
+  public provideOriginalResource(uri: Uri, token?: CancellationToken) {
+    const qrUri = uri.with({
+      scheme: ADTREVISION,
+      query: QUICKDIFFQUERY
+    })
+    return qrUri
   }
 
   @command("abapfs.clearScmGroup")
@@ -216,23 +269,33 @@ export class AbapRevision
     })
   }
 
+  public async selectRevision(uri: Uri, placeHolder: string, older?: number) {
+    const conn = this.conns.get(uri.authority)
+    if (!conn) return
+    const revisions = conn.files.get(uri.path)
+    if (!revisions) return
+    if (!isUndefined(older)) return revisions[older]
+
+    const sel = await window.showQuickPick(revisions.map(revtoQP), {
+      placeHolder
+    })
+    if (sel) return sel.revision
+  }
+
   @command("abapfs.opendiff")
   public async openDiff(state: RevisionState, older?: number) {
     const uri = state.resourceUri
     const rev = AbapRevision.get()
-    const [conn] = rev.sourceGroup(uri.authority, state.group)
-    const revisions = conn.files.get(uri.path)
-    if (!revisions) return
-    let selected
-    if (older) selected = revisions[older]
-    else {
-      const sel = await window.showQuickPick(revisions.map(revtoQP))
-      if (sel) selected = sel.revision
-    }
+    const selected = await rev.selectRevision(uri, "Select version", older)
+
     if (state.mainRevision && (selected || older))
       return AbapRevision.displayRevDiff(state.mainRevision, selected, uri)
     if (!selected) return
     return AbapRevision.displayDiff(uri, selected)
+  }
+
+  private qdKey(uri: Uri) {
+    return `${uri.authority}_${uri.path.replace(EXTREGEX, "")}`
   }
 
   private sourceGroup(connId: string, groupId: string) {
@@ -289,10 +352,13 @@ export class AbapRevision
     } else last = 1
     state.command!.arguments!.push(state, last)
     group.resourceStates = [...group.resourceStates, state]
+    this.emitter.fire(uri)
   }
 }
 export function registerRevisionModel(context: ExtensionContext) {
   const c = AbapRevision.get()
   workspace.registerTextDocumentContentProvider(ADTREVISION, c)
-  context.subscriptions.push(workspace.onDidOpenTextDocument(c.addDocument))
+  context.subscriptions.push(
+    workspace.onDidOpenTextDocument(doc => c.addDocument(doc.uri))
+  )
 }

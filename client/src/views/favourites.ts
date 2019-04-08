@@ -1,4 +1,4 @@
-import { AbapNode, isAbapNode, AbapObjectNode } from "./../fs/AbapNode"
+import { AbapNode, isAbapNode, AbapObjectNode } from "../fs/AbapNode"
 import {
   TreeDataProvider,
   TreeItem,

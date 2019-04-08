@@ -383,10 +383,11 @@ export class AdtServer {
 
 const servers = new Map<string, AdtServer>()
 export const getServer = (connId: string): AdtServer => {
-  let server = servers.get(connId)
+  const conn = connId.toLowerCase()
+  let server = servers.get(conn)
   if (!server) {
-    server = new AdtServer(connId)
-    servers.set(connId, server)
+    server = new AdtServer(conn)
+    servers.set(conn, server)
   }
   return server
 }

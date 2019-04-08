@@ -4,7 +4,9 @@ import {
   TextDocumentChangeEvent,
   TextDocument,
   window,
-  Uri
+  Uri,
+  Disposable,
+  Event
 } from "vscode"
 
 import { fromUri, ADTSCHEME, AdtServer } from "./adt/AdtServer"
@@ -13,6 +15,15 @@ import { manageIncludes } from "./langClient"
 import { AbapObject } from "./adt/abap/AbapObject"
 import { clearUTResultsIfLastRun } from "./adt/operations/UnitTestRunner"
 
+export const listenersubscribers: Array<(...x: any[]) => Disposable> = []
+
+export const listener = <T>(event: Event<T>) => (
+  target: any,
+  propertyKey: string
+) => {
+  const func = () => event(target[propertyKey].bind(target))
+  listenersubscribers.push(func)
+}
 export async function documentClosedListener(doc: TextDocument) {
   const uri = doc.uri
   if (uri.scheme === ADTSCHEME) {
