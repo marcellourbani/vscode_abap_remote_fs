@@ -4,12 +4,15 @@ All notable changes to the "vscode-abap-remote-fs" extension will be documented 
 
 Format based on [Keep a Changelog](http://keepachangelog.com/)
 
-## Unreleased
+## 0.6.0 2019-04-09
 
 ### Added
 
 - diff in transport view
 - scm groups per transport
+- revision codelens
+- compare versions
+- compare remote versions
 
 ### Changed
 

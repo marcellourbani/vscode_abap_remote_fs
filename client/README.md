@@ -4,7 +4,7 @@ This extension allows editing and activation of ABAP code on your server directl
 
 Warning: **THIS SOFTWARE IS IN BETA TEST, USE AT YOUR OWN RISK**
 
-## New in 0.5.25: change user in transports view, quickfix
+## New in 0.6: source control
 
 ## Links
 
