@@ -79,13 +79,13 @@ export class AbapRevision
 
   public static displayRemoteDiff(
     localUri: Uri,
-    localRev: Revision,
+    localRev: Revision | undefined,
     remoteUri: Uri,
-    remoteRev: Revision
+    remoteRev: Revision | undefined
   ) {
-    const name = `${localUri.authority} ${revLabel(localRev, "local")}->${
+    const name = `${localUri.authority} ${revLabel(localRev, "current")}->${
       remoteUri.authority
-    } ${revLabel(remoteRev, "remote")}`
+    } ${revLabel(remoteRev, "current")}`
 
     return commands.executeCommand<void>(
       "vscode.diff",
@@ -269,29 +269,48 @@ export class AbapRevision
     })
   }
 
+  public async selectRevisionOrFail(
+    uri: Uri,
+    placeHolder: string,
+    failMessage: string,
+    older?: number
+  ) {
+    const { revision, userCancel } = await this.selectRevision(
+      uri,
+      placeHolder,
+      older
+    )
+    if (!revision && !userCancel) throw Error(failMessage)
+    return revision
+  }
+
   public async selectRevision(uri: Uri, placeHolder: string, older?: number) {
     const conn = this.conns.get(uri.authority)
-    if (!conn) return
+    if (!conn) return {}
     const revisions = conn.files.get(uri.path)
-    if (!revisions) return
-    if (!isUndefined(older)) return revisions[older]
+    if (!revisions) return {}
+    if (!isUndefined(older)) return { revision: revisions[older] }
 
     const sel = await window.showQuickPick(revisions.map(revtoQP), {
       placeHolder
     })
-    if (sel) return sel.revision
+    return { revision: sel && sel.revision, userCancel: !sel }
   }
 
   @command("abapfs.opendiff")
   public async openDiff(state: RevisionState, older?: number) {
     const uri = state.resourceUri
     const rev = AbapRevision.get()
-    const selected = await rev.selectRevision(uri, "Select version", older)
+    const { revision, userCancel } = await rev.selectRevision(
+      uri,
+      "Select version",
+      older
+    )
 
-    if (state.mainRevision && (selected || older))
-      return AbapRevision.displayRevDiff(state.mainRevision, selected, uri)
-    if (!selected) return
-    return AbapRevision.displayDiff(uri, selected)
+    if (state.mainRevision && (revision || older))
+      return AbapRevision.displayRevDiff(state.mainRevision, revision, uri)
+    if (!revision) return
+    return AbapRevision.displayDiff(uri, revision)
   }
 
   private qdKey(uri: Uri) {

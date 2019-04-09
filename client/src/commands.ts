@@ -49,14 +49,19 @@ function openObject(server: AdtServer, uri: string) {
 export class AdtCommands {
   @command("abapfs.connect")
   private static async connectAdtServer(selector: any) {
-    const connectionID = selector && selector.connection
-    const remote = await selectMissingRemote(connectionID)
-    if (!remote) return
-    const client = createClient(remote)
-
-    log(`Connecting to server ${remote.name}`)
-
+    let name = ""
     try {
+      const connectionID = selector && selector.connection
+      const { remote, userCancel } = await selectMissingRemote(connectionID)
+      if (!remote)
+        if (!userCancel)
+          throw Error("No remote configuration available in settings")
+        else return
+      name = remote.name
+      const client = createClient(remote)
+
+      log(`Connecting to server ${remote.name}`)
+
       await client.login() // if connection raises an exception don't mount any folder
 
       workspace.updateWorkspaceFolders(0, 0, {
@@ -66,9 +71,7 @@ export class AdtCommands {
 
       log(`Connected to server ${remote.name}`)
     } catch (e) {
-      window.showErrorMessage(
-        `Failed to connect to ${remote.name}:${e.toString()}`
-      )
+      window.showErrorMessage(`Failed to connect to ${name}:${e.toString()}`)
       if (e.response) log(e.response.body)
     }
   }

@@ -40,8 +40,7 @@ export function getRemoteList(): RemoteConfig[] {
 }
 
 async function selectRemoteInt(remotes: RemoteConfig[]) {
-  if (remotes.length === 0) return
-  if (remotes.length === 1) return remotes[0]
+  if (remotes.length <= 1) return { remote: remotes[0], userCancel: false }
 
   const selection = await window.showQuickPick(
     remotes.map(remote => ({
@@ -53,12 +52,10 @@ async function selectRemoteInt(remotes: RemoteConfig[]) {
       placeHolder: "Please choose an ABAP system"
     }
   )
-  if (selection) return selection.remote
+  return { remote: selection && selection.remote, userCancel: !selection }
 }
 
-export async function selectMissingRemote(
-  connection: string
-): Promise<RemoteConfig | undefined> {
+export async function selectMissingRemote(connection: string) {
   let remotes = getRemoteList()
   if (!remotes) throw new Error("No ABAP system configured yet")
   const wsf = (workspace.workspaceFolders || []).reduce(
@@ -70,9 +67,9 @@ export async function selectMissingRemote(
   )
   const filter = (r: RemoteConfig) => !wsf.has(r.name.toLowerCase())
   remotes = remotes.filter(filter)
-  const found = connection && remotes.find(x => x.name === connection)
+  const remote = connection && remotes.find(x => x.name === connection)
 
-  if (found) return found
+  if (remote) return { remote, userCancel: false }
   return selectRemoteInt(remotes)
 }
 

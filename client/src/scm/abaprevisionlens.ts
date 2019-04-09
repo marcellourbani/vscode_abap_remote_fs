@@ -26,7 +26,7 @@ export class AbapRevisionLensP implements CodeLensProvider {
     const uri = document.uri
     if (uri.scheme !== ADTSCHEME) return
     const revp = AbapRevision.get()
-    const revision = await revp.selectRevision(uri, "Select version")
+    const { revision } = await revp.selectRevision(uri, "Select version")
     if (revision) {
       revp.setReferenceRevision(uri, revision)
       AbapRevisionLensP.get().emitter.fire()
@@ -37,41 +37,47 @@ export class AbapRevisionLensP implements CodeLensProvider {
   private static async remoteDiff(document: TextDocument) {
     const uri = document.uri
     if (uri.scheme !== ADTSCHEME) return
-    const localServer = fromUri(uri)
-    if (!localServer) return
-    const obj = await localServer.findAbapObject(uri)
-    if (!obj) return
-    const remote = await selectRemote(
-      r => r.name.toLowerCase() !== uri.authority
-    )
-    if (!remote) return
-    const remoteServer = getServer(remote.name)
-    if (!remoteServer) return
+    try {
+      const localServer = fromUri(uri)
+      const obj = await localServer.findAbapObject(uri)
+      const { remote, userCancel } = await selectRemote(
+        r => r.name.toLowerCase() !== uri.authority
+      )
+      if (!remote)
+        if (userCancel) return
+        else throw Error("No remote system available in configuration")
 
-    const path = await remoteServer.objectFinder.findObjectPath(obj.path)
-    if (path.length === 0) return
-    const nodePath = await remoteServer.objectFinder.locateObject(path)
-    if (!nodePath) return
+      const remoteServer = getServer(remote.name)
+      if (!remoteServer)
+        throw Error(`Faild to connect to server ${remote.name}`)
 
-    let remoteUri = uri.with({
-      authority: remoteServer.connectionId,
-      path: nodePath.path
-    })
-    const revp = AbapRevision.get()
-    await revp.addDocument(remoteUri)
-    const leftRev = await revp.selectRevision(
-      remoteUri,
-      "Select version for left pane"
-    )
-    if (!leftRev) return
-    remoteUri = AbapRevision.revisionUri(leftRev, remoteUri)
-    const rightRev = await revp.selectRevision(
-      uri,
-      "Select version for right pane"
-    )
-    if (!rightRev) return
-    const localUri = AbapRevision.revisionUri(rightRev, uri)
-    AbapRevision.displayRemoteDiff(localUri, rightRev, remoteUri, leftRev)
+      const path = await remoteServer.objectFinder.objectNode(obj.path)
+      if (!path) throw Error(`Object not found in remote ${remote.name}`)
+
+      let remoteUri = uri.with({
+        authority: remoteServer.connectionId,
+        path: path.path
+      })
+      const revp = AbapRevision.get()
+      await revp.addDocument(remoteUri)
+      const {
+        revision: leftRev,
+        userCancel: leftcanc
+      } = await revp.selectRevision(remoteUri, "Select version for left pane")
+      if (leftcanc) return
+      remoteUri = leftRev
+        ? AbapRevision.revisionUri(leftRev, remoteUri)
+        : remoteUri
+      const {
+        revision: rightRev,
+        userCancel: rightcanc
+      } = await revp.selectRevision(uri, "Select version for right pane")
+      if (rightcanc) return
+      const localUri = rightRev ? AbapRevision.revisionUri(rightRev, uri) : uri
+      AbapRevision.displayRemoteDiff(localUri, rightRev, remoteUri, leftRev)
+    } catch (e) {
+      window.showErrorMessage(e.toString())
+    }
   }
 
   @command("abapfs.comparediff")
@@ -79,12 +85,12 @@ export class AbapRevisionLensP implements CodeLensProvider {
     const uri = document.uri
     if (uri.scheme !== ADTSCHEME) return
     const revp = AbapRevision.get()
-    const leftRev = await revp.selectRevision(
+    const { revision: leftRev } = await revp.selectRevision(
       uri,
       "Select version for left pane"
     )
     if (!leftRev) return
-    const rightRev = await revp.selectRevision(
+    const { revision: rightRev } = await revp.selectRevision(
       uri,
       "Select version for right pane"
     )

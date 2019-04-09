@@ -80,6 +80,17 @@ export class AdtObjectFinder {
     return this.server.client.findObjectPath(objPath)
   }
 
+  public async objectNode(objUri: string, mainInclude = true) {
+    const path = await this.server.objectFinder.findObjectPath(objUri)
+
+    if (path.length) {
+      let nPath = await this.server.objectFinder.locateObject(path)
+      if (nPath && nPath.node.isFolder && mainInclude)
+        nPath = await findMainIncludeAsync(nPath, this.server.client)
+      return nPath
+    }
+  }
+
   public async vscodeUri(uri: string, mainInclude: boolean) {
     const path = await this.server.objectFinder.findObjectPath(uri)
     let s = ""
