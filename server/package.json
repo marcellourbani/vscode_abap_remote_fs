@@ -24,7 +24,7 @@
   },
   "scripts": {
     "clean": "rimraf ../client/server",
-    "build": "npm run clean;npm run compile",
+    "build": "npm run clean && npm run compile",
     "compile": "installServerIntoExtension ../client ./package.json ./tsconfig.json && tsc -p .",
     "watch": "installServerIntoExtension ../client ./package.json ./tsconfig.json && tsc --watch -p ."
   }
