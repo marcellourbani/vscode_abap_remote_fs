@@ -1,5 +1,5 @@
 import { ADTSCHEME, fromUri, getServer } from "../adt/AdtServer"
-import { command } from "../commands"
+import { command, AbapFsCommands } from "../commands"
 import {
   CodeLensProvider,
   EventEmitter,
@@ -21,7 +21,7 @@ export class AbapRevisionLensP implements CodeLensProvider {
   }
   private static instance?: AbapRevisionLensP
 
-  @command("abapfs.changequickdiff")
+  @command(AbapFsCommands.changequickdiff)
   private static async changeQD(document: TextDocument) {
     const uri = document.uri
     if (uri.scheme !== ADTSCHEME) return
@@ -33,7 +33,7 @@ export class AbapRevisionLensP implements CodeLensProvider {
     }
   }
 
-  @command("abapfs.remotediff")
+  @command(AbapFsCommands.remotediff)
   private static async remoteDiff(document: TextDocument) {
     const uri = document.uri
     if (uri.scheme !== ADTSCHEME) return
@@ -80,7 +80,7 @@ export class AbapRevisionLensP implements CodeLensProvider {
     }
   }
 
-  @command("abapfs.comparediff")
+  @command(AbapFsCommands.comparediff)
   private static async compareDiff(document: TextDocument) {
     const uri = document.uri
     if (uri.scheme !== ADTSCHEME) return
@@ -119,21 +119,21 @@ export class AbapRevisionLensP implements CodeLensProvider {
     )}`
 
     const changeQD: Command = {
-      command: "abapfs.changequickdiff",
+      command: AbapFsCommands.changequickdiff,
       title,
       arguments: [document]
     }
     const qdLens = new CodeLens(new Range(0, 0, 0, 0), changeQD)
 
     const compareDiff: Command = {
-      command: "abapfs.comparediff",
+      command: AbapFsCommands.comparediff,
       title: "compare versions",
       arguments: [document]
     }
     const compareLens = new CodeLens(new Range(0, 0, 0, 0), compareDiff)
 
     const remoteDiff: Command = {
-      command: "abapfs.remotediff",
+      command: AbapFsCommands.remotediff,
       title: "compare with remote",
       arguments: [document]
     }

@@ -17,12 +17,14 @@ import {
 import { abapcmds } from "./commands"
 import { disconnect, ADTSCHEME, lockedFiles } from "./adt/AdtServer"
 import { log } from "./logger"
-import { client, startLanguageClient } from "./langClient"
+import { client, LanguageCommands } from "./langClient"
 import { restoreLocks } from "./adt/operations/LockManager"
 import { registerRevisionModel } from "./scm/abaprevision"
 import { AbapRevisionLensP } from "./scm/abaprevisionlens"
+import { IncludeLensP } from "./adt/operations/IncludeLens"
 
 export function activate(context: ExtensionContext) {
+  log("activating ABAPfs...")
   const abapFS = new FsProvider()
   const sub = context.subscriptions
   // register the filesystem type
@@ -44,7 +46,6 @@ export function activate(context: ExtensionContext) {
   const cmd = (name: string, callback: (...x: any) => any) =>
     sub.push(commands.registerCommand(name, callback))
 
-  abapcmds.forEach(c => cmd(c.name, c.target))
   registerRevisionModel(context)
 
   const fav = FavouritesProvider.get()
@@ -63,10 +64,19 @@ export function activate(context: ExtensionContext) {
     )
   )
 
-  startLanguageClient(context)
+  sub.push(
+    languages.registerCodeLensProvider(
+      { language: "abap", scheme: ADTSCHEME },
+      IncludeLensP.get()
+    )
+  )
+
+  LanguageCommands.start(context)
 
   commands.executeCommand("setContext", "abapfs:extensionActive", true)
   restoreLocks()
+
+  abapcmds.forEach(c => cmd(c.name, c.target))
 
   log(`Activated,pid=${process.pid}`)
 }

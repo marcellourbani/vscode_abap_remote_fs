@@ -17,6 +17,34 @@ export const command = (name: string) => (target: any, propertyKey: string) => {
   const func = target[propertyKey]
   abapcmds.push({ name, target: func.bind(target) })
 }
+export const AbapFsCommands = {
+  connect: "abapfs.connect",
+  activate: "abapfs.activate",
+  search: "abapfs.search",
+  create: "abapfs.create",
+  execute: "abapfs.execute",
+  addfavourite: "abapfs.addfavourite",
+  deletefavourite: "abapfs.deletefavourite",
+  unittest: "abapfs.unittest",
+  createtestinclude: "abapfs.createtestinclude",
+  quickfix: "abapfs.quickfix",
+  clearScmGroup: "abapfs.clearScmGroup",
+  openrevstate: "abapfs.openrevstate",
+  opendiff: "abapfs.opendiff",
+  changequickdiff: "abapfs.changequickdiff",
+  remotediff: "abapfs.remotediff",
+  comparediff: "abapfs.comparediff",
+  transportObjectDiff: "abapfs.transportObjectDiff",
+  openTransportObject: "abapfs.openTransportObject",
+  deleteTransport: "abapfs.deleteTransport",
+  refreshtransports: "abapfs.refreshtransports",
+  releaseTransport: "abapfs.releaseTransport",
+  transportOwner: "abapfs.transportOwner",
+  transportAddUser: "abapfs.transportAddUser",
+  transportRevision: "abapfs.transportRevision",
+  transportUser: "abapfs.transportUser",
+  changeInclude: "abapfs:changeInclude"
+}
 
 function currentUri() {
   if (!window.activeTextEditor) return
@@ -47,7 +75,7 @@ function openObject(server: AdtServer, uri: string) {
 }
 
 export class AdtCommands {
-  @command("abapfs.connect")
+  @command(AbapFsCommands.connect)
   private static async connectAdtServer(selector: any) {
     let name = ""
     try {
@@ -75,7 +103,7 @@ export class AdtCommands {
       if (e.response) log(e.response.body)
     }
   }
-  @command("abapfs.activate")
+  @command(AbapFsCommands.activate)
   private static async activateCurrent(selector: Uri) {
     try {
       const uri = selector || currentUri()
@@ -91,7 +119,7 @@ export class AdtCommands {
             await editor.document.save()
             await obj.loadMetadata(server.client)
           } else if (!obj.structure) await obj.loadMetadata(server.client)
-          await server.activate(obj)
+          await server.activator.activate(obj, uri)
           if (editor === window.activeTextEditor) {
             await obj.loadMetadata(server.client)
             await showHideActivate(editor, obj)
@@ -103,7 +131,7 @@ export class AdtCommands {
     }
   }
 
-  @command("abapfs.search")
+  @command(AbapFsCommands.search)
   private static async searchAdtObject(uri: Uri | undefined) {
     // find the adt relevant namespace roots, and let the user pick one if needed
     const root = await pickAdtRoot(uri)
@@ -120,7 +148,7 @@ export class AdtCommands {
     }
   }
 
-  @command("abapfs.create")
+  @command(AbapFsCommands.create)
   private static async createAdtObject(uri: Uri | undefined) {
     try {
       // find the adt relevant namespace roots, and let the user pick one if needed
@@ -149,7 +177,7 @@ export class AdtCommands {
     }
   }
 
-  @command("abapfs.execute")
+  @command(AbapFsCommands.execute)
   private static async executeAbap() {
     try {
       log("Execute ABAP")
@@ -176,18 +204,18 @@ export class AdtCommands {
     }
   }
 
-  @command("abapfs.addfavourite")
+  @command(AbapFsCommands.addfavourite)
   private static addFavourite(uri: Uri | undefined) {
     // find the adt relevant namespace roots, and let the user pick one if needed
     if (uri) FavouritesProvider.get().addFavourite(uri)
   }
 
-  @command("abapfs.deletefavourite")
+  @command(AbapFsCommands.deletefavourite)
   private static deleteFavourite(node: FavItem) {
     FavouritesProvider.get().deleteFavourite(node)
   }
 
-  @command("abapfs.unittest")
+  @command(AbapFsCommands.unittest)
   private static async runAbapUnit() {
     try {
       log("Execute ABAP Unit tests")
@@ -202,7 +230,7 @@ export class AdtCommands {
     }
   }
 
-  @command("abapfs.createtestinclude")
+  @command(AbapFsCommands.createtestinclude)
   private static createTestInclude(uri?: Uri) {
     if (uri) {
       if (uri.scheme !== ADTSCHEME) return

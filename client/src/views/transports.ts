@@ -21,7 +21,7 @@ import {
   TransportObject,
   ADTClient
 } from "abap-adt-api"
-import { command } from "../commands"
+import { command, AbapFsCommands } from "../commands"
 import { isAbapNode } from "../fs/AbapNode"
 import {
   findMainIncludeAsync,
@@ -159,7 +159,7 @@ class ObjectItem extends CollectionItem {
     if (obj["tm:pgmid"].match(/(LIMU)|(R3TR)/))
       this.command = {
         title: "Open",
-        command: "abapfs.openTransportObject",
+        command: AbapFsCommands.openTransportObject,
         arguments: [this.obj, this.server]
       }
   }
@@ -246,7 +246,7 @@ export class TransportsProvider implements TreeDataProvider<CollectionItem> {
       return await findMainIncludeAsync(path, server.client)
   }
 
-  @command("abapfs.transportObjectDiff")
+  @command(AbapFsCommands.transportObjectDiff)
   private static async openTransportObjectDiff(item: ObjectItem) {
     const path = await this.decodeTransportObject(item.obj, item.server)
     if (!path || !path.path || !isAbapNode(path.node)) return
@@ -263,7 +263,7 @@ export class TransportsProvider implements TreeDataProvider<CollectionItem> {
     return AbapRevision.displayDiff(uri, beforeTr)
   }
 
-  @command("abapfs.openTransportObject")
+  @command(AbapFsCommands.openTransportObject)
   private static async openTransportObject(
     obj: TransportObject,
     server: AdtServer
@@ -281,7 +281,7 @@ export class TransportsProvider implements TreeDataProvider<CollectionItem> {
     })
   }
 
-  @command("abapfs.deleteTransport")
+  @command(AbapFsCommands.deleteTransport)
   private static async deleteTransport(tran: TransportItem) {
     try {
       await tran.server.client.transportDelete(tran.task["tm:number"])
@@ -291,12 +291,12 @@ export class TransportsProvider implements TreeDataProvider<CollectionItem> {
     }
   }
 
-  @command("abapfs.refreshtransports")
+  @command(AbapFsCommands.refreshtransports)
   private static async refreshTransports() {
     TransportsProvider.get().refresh()
   }
 
-  @command("abapfs.releaseTransport")
+  @command(AbapFsCommands.releaseTransport)
   private static async releaseTransport(tran: TransportItem) {
     try {
       const transport = tran.task["tm:number"]
@@ -327,7 +327,7 @@ export class TransportsProvider implements TreeDataProvider<CollectionItem> {
     return selected && selected.payload
   }
 
-  @command("abapfs.transportOwner")
+  @command(AbapFsCommands.transportOwner)
   private static async transportOwner(tran: TransportItem) {
     try {
       const selected = await this.pickUser(tran.server.client)
@@ -343,7 +343,7 @@ export class TransportsProvider implements TreeDataProvider<CollectionItem> {
     }
   }
 
-  @command("abapfs.transportAddUser")
+  @command(AbapFsCommands.transportAddUser)
   private static async transportAddUser(tran: TransportItem) {
     try {
       const selected = await this.pickUser(tran.server.client)
@@ -359,7 +359,7 @@ export class TransportsProvider implements TreeDataProvider<CollectionItem> {
     }
   }
 
-  @command("abapfs.transportRevision")
+  @command(AbapFsCommands.transportRevision)
   private static async transportRevision(tran: TransportItem) {
     const transport = tran.task["tm:number"]
     const children = await tran.getChildren()
@@ -466,7 +466,7 @@ export class TransportsProvider implements TreeDataProvider<CollectionItem> {
   //   )
   // }
 
-  @command("abapfs.transportUser")
+  @command(AbapFsCommands.transportUser)
   private static async transportSelectUser(conn: ConnectionItem) {
     const server = fromUri(conn.uri)
     if (!server) return

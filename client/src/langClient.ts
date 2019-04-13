@@ -35,9 +35,8 @@ import {
 import { isAbapNode } from "./fs/AbapNode"
 import { FixProposal } from "abap-adt-api"
 import { fail } from "assert"
-import { command } from "./commands"
-
-const includes: Map<string, string> = new Map()
+import { command, AbapFsCommands } from "./commands"
+import { IncludeLensP } from "./adt/operations/IncludeLens"
 
 async function getVSCodeUri(req: UriRequest): Promise<StringWrapper> {
   const server = getServer(req.confKey)
@@ -90,7 +89,7 @@ async function objectDetailFromUrl(url: string) {
   const uri = Uri.parse(url)
   const server = await fromUri(uri)
   const obj = await server.findAbapObject(uri)
-  return objectDetail(obj, includes.get(url))
+  return objectDetail(obj, IncludeLensP.get().getMain(uri))
 }
 
 async function configFromUrl(url: string) {
@@ -138,26 +137,6 @@ async function setSearchProgress(searchProg: SearchProgress) {
   }
 }
 
-export async function manageIncludes(uri: Uri, opened: boolean) {
-  const key = uri.toString()
-  if (opened) {
-    const include = includes.get(key)
-    if (isString(include)) return
-    const server = fromUri(uri)
-    const obj = await server.findAbapObject(uri)
-    if (obj.type !== "PROG/I") includes.set(key, "")
-    else {
-      let main = ""
-      try {
-        main = await await server.activator.selectMain(obj)
-      } finally {
-        includes.set(key, main || "")
-        // if(main)
-      }
-    }
-  } else includes.delete(key)
-}
-
 export async function startLanguageClient(context: ExtensionContext) {
   const module = context.asAbsolutePath(join("server", "server.js"))
   const transport = TransportKind.ipc
@@ -193,9 +172,13 @@ export async function startLanguageClient(context: ExtensionContext) {
   })
 }
 
-class LanguageCommands {
-  @command("abapfs.quickfix")
-  private async applyQuickFix(proposal: FixProposal, uri: string) {
+export class LanguageCommands {
+  public static start(context: ExtensionContext) {
+    command(AbapFsCommands.quickfix)(this, "applyQuickFix")
+    return startLanguageClient(context)
+  }
+
+  public static async applyQuickFix(proposal: FixProposal, uri: string) {
     try {
       const edits = (await client.sendRequest(Methods.quickFix, {
         proposal,

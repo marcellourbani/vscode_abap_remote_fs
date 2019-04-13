@@ -17,7 +17,7 @@ import {
   QuickPickItem
 } from "vscode"
 import { Revision, classIncludes } from "abap-adt-api"
-import { command } from "../commands"
+import { command, AbapFsCommands } from "../commands"
 import { parts, isDefined } from "../functions"
 import { isClassInclude } from "../adt/abap/AbapClassInclude"
 import { NodePath } from "../adt/abap/AbapObjectUtilities"
@@ -256,12 +256,12 @@ export class AbapRevision
     return qrUri
   }
 
-  @command("abapfs.clearScmGroup")
+  @command(AbapFsCommands.clearScmGroup)
   public async clearScmGroup(group: SourceControlResourceGroup) {
     group.resourceStates = []
   }
 
-  @command("abapfs.openrevstate")
+  @command(AbapFsCommands.openrevstate)
   public async openCurrent(state: RevisionState) {
     const document = await workspace.openTextDocument(state.resourceUri)
     return window.showTextDocument(document, {
@@ -297,7 +297,7 @@ export class AbapRevision
     return { revision: sel && sel.revision, userCancel: !sel }
   }
 
-  @command("abapfs.opendiff")
+  @command(AbapFsCommands.opendiff)
   public async openDiff(state: RevisionState, older?: number) {
     const uri = state.resourceUri
     const rev = AbapRevision.get()
@@ -350,7 +350,7 @@ export class AbapRevision
       resourceUri: uri,
       group: group.id,
       command: {
-        command: "abapfs.opendiff",
+        command: AbapFsCommands.opendiff,
         title: "View diff",
         arguments: []
       }

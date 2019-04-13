@@ -11,9 +11,9 @@ import {
 
 import { fromUri, ADTSCHEME, AdtServer } from "./adt/AdtServer"
 import { setDocumentLock } from "./adt/operations/LockManager"
-import { manageIncludes } from "./langClient"
 import { AbapObject } from "./adt/abap/AbapObject"
 import { clearUTResultsIfLastRun } from "./adt/operations/UnitTestRunner"
+import { IncludeLensP } from "./adt/operations/IncludeLens"
 
 export const listenersubscribers: Array<(...x: any[]) => Disposable> = []
 
@@ -55,7 +55,8 @@ export async function documentChangedListener(event: TextDocumentChangeEvent) {
 
 export function documentOpenListener(document: TextDocument) {
   const uri = document.uri
-  if (uri.scheme === ADTSCHEME) manageIncludes(uri, true)
+  if (uri.scheme !== ADTSCHEME) return
+  return IncludeLensP.get().selectIncludeIfNeeded(uri)
 }
 
 function isInactive(obj: AbapObject): boolean {

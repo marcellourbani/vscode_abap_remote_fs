@@ -257,7 +257,7 @@ export class AdtServer {
     return node
   }
   /**
-   * like {@link findNodePromise}, but raises an exception if the node is not an ABAP object
+   * like {@link findNodePromise}, but returns an abap object and raises an exception if the node is not an ABAP object
    *
    * @param uri VSCode URI
    */
@@ -295,16 +295,6 @@ export class AdtServer {
       }
     }
     return node
-  }
-
-  /**
-   * Activates an abap object
-   *
-   * @param subject Object or vscode URI to activate
-   */
-  public async activate(subject: AbapObject | Uri) {
-    const obj = this.getObject(subject)
-    return this.activator.activate(obj)
   }
 
   public async getReentranceTicket() {
