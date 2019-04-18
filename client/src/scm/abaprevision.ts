@@ -358,17 +358,23 @@ export class AbapRevision
     // for transports, I want to compare the latest revision in the transport with the latest out of it
     let first
     let last
+    let firstDate: number
     if (filter) {
-      for (let r = 0; r < revisions.length; r++)
-        if (revisions[r].version.match(filter)) first = first || r
-        else if (isDefined(first)) {
-          last = r
-          break
+      for (let r = 0; r < revisions.length; r++) {
+        const cur = revisions[r]
+        if (cur.version.match(filter) && isUndefined(first)) {
+          first = r
+          firstDate = Date.parse(cur.date)
+        } else if (isDefined(first) && Date.parse(cur.date) < firstDate!) {
+          if (isUndefined(r) || cur.version) last = r
+          if (cur.version) break
         }
+      }
       if (!isDefined(first)) return
       if (!isDefined(last)) last = revisions.length
       state.mainRevision = revisions[first!]
     } else last = 1
+    if (isUndefined(first)) return
     state.command!.arguments!.push(state, last)
     group.resourceStates = [...group.resourceStates, state]
     this.emitter.fire(uri)

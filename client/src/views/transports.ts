@@ -1,4 +1,3 @@
-import { AbapNode } from "../fs/AbapNode"
 import { PACKAGE } from "../adt/operations/AdtObjectCreator"
 import { AbapRevision } from "../scm/abaprevision"
 import { AdtServer } from "../adt/AdtServer"
@@ -386,6 +385,7 @@ export class TransportsProvider implements TreeDataProvider<CollectionItem> {
         )
       }
     }
+
     await window.withProgress(
       {
         location: ProgressLocation.Notification,
@@ -423,48 +423,6 @@ export class TransportsProvider implements TreeDataProvider<CollectionItem> {
       }
     )
   }
-
-  // private static async transportRevision_int(tran: TransportItem) {
-  //   const children = await tran.getChildren()
-  //   // find the objects in transports and subtasks
-  //   const trobjects = children.filter(ObjectItem.isA)
-  //   for (const child of children.filter(TransportItem.isA)) {
-  //     const gc = await child.getChildren()
-  //     for (const obj of gc.filter(ObjectItem.isA))
-  //       if (!trobjects.find(o => o.sameObj(obj))) trobjects.push(obj)
-  //   }
-  //   // expand the transportable objects in regular objects/paths
-  //   const paths: NodePath[] = []
-  //   const addNode = (node: NodePath) => {
-  //     if (isAbapNode(node.node) && node.node.abapObject.canBeWritten)
-  //       paths.push(node)
-  //   }
-
-  //   for (const tro of trobjects) {
-  //     const path = await this.decodeTransportObject(tro.obj, tro.server, false)
-  //     if (!path) continue
-  //     if (path.node.isFolder) {
-  //       // expand folders to children
-  //       if (!isAbapNode(path.node)) continue
-  //       const obj = path.node.abapObject
-  //       // for packages we don't really care about contents
-  //       if (obj.type === PACKAGE) continue
-  //       let components = allChildren(path)
-  //       if (components.length === 0) {
-  //         await path.node.refresh(tro.server.client)
-  //         components = allChildren(path)
-  //       }
-  //       for (const child of allChildren(path)) addNode(child)
-  //     } else addNode(path)
-  //   }
-
-  //   AbapRevision.get().addTransport(
-  //     tran.label || tran.task["tm:number"],
-  //     tran.server,
-  //     paths,
-  //     tran.revisionFilter
-  //   )
-  // }
 
   @command(AbapFsCommands.transportUser)
   private static async transportSelectUser(conn: ConnectionItem) {

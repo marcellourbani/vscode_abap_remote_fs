@@ -4,6 +4,19 @@ All notable changes to the "vscode-abap-remote-fs" extension will be documented 
 
 Format based on [Keep a Changelog](http://keepachangelog.com/)
 
+## 0.6.1 2019-04-18
+
+### Added
+
+- codelens to select main program for includes
+
+### Fixed
+
+- revision selection in transport comparison
+- use main program for includes syntax check
+- use main program for reference search
+- syntax errors reported in wrong include
+
 ## 0.6.0 2019-04-09
 
 ### Added
