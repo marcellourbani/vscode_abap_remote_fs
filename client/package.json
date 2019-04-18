@@ -34,25 +34,25 @@
     "clean": "rimraf out node-modules server"
   },
   "devDependencies": {
-    "@types/mocha": "^2.2.42",
-    "@types/node": "^11.10.4",
-    "@types/opn": "^5.1.0",
+    "@types/mocha": "^5.2.6",
+    "@types/node": "^11.13.5",
+    "@types/open": "^6.1.0",
     "rimraf": "^2.6.3",
-    "ts-node": "^7.0.1",
-    "tsconfig-paths": "^3.7.0",
+    "ts-node": "^8.1.0",
+    "tsconfig-paths": "^3.8.0",
     "tslint": "^5.12.1",
-    "typescript": "^3.3.1",
-    "vsce": "^1.53.2",
+    "typescript": "^3.4.3",
+    "vsce": "^1.59.0",
     "vscode": "^1.1.33"
   },
   "dependencies": {
     "@types/tmp": "0.0.34",
-    "abap-adt-api": "^0.5.18",
-    "event-stream": "3.3.4",
-    "fs-jetpack": "^2.2.0",
-    "opn": "^5.4.0",
+    "abap-adt-api": "^0.5.19",
+    "event-stream": "4.0.1",
+    "fs-jetpack": "^2.2.2",
+    "open": "^6.1.0",
     "tmp-promise": "^1.0.5",
-    "tough-cookie": "^3.0.0",
+    "tough-cookie": "^3.0.1",
     "vscode-languageclient": "^4.4.2"
   },
   "extensionDependencies": [

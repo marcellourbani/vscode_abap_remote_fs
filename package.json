@@ -35,6 +35,7 @@
   },
   "devDependencies": {
     "@types/mocha": "^2.2.42",
+    "rimraf": "^2.6.3",
     "@types/node": "^8.10.38",
     "tslint": "^5.12.1",
     "typescript": "^3.3.1"

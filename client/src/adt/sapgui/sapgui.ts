@@ -3,7 +3,7 @@ import { file } from "tmp-promise"
 import { writeAsync } from "fs-jetpack"
 import { log } from "../../logger"
 import { closeSync } from "fs"
-import opn = require("opn")
+import opn = require("open")
 
 export interface SapGuiCommand {
   type: "Transaction" | "Report" | "SystemCommand"
