@@ -6,7 +6,8 @@ export enum Methods {
   setSearchProgress = "vscabap.setSearchProgress",
   cancelSearch = "vscabap.cancelSearch",
   vsUri = "vscabap.vsUri",
-  quickFix = "vscabap.quickfix"
+  quickFix = "vscabap.quickfix",
+  updateMainProgram = "vscabap.updateMain"
 }
 
 export interface AbapObjectDetail {
@@ -47,6 +48,11 @@ export interface SearchProgress {
   progress: number
   hits: number
   ended: boolean
+}
+
+export interface MainProgram {
+  includeUri: string
+  mainProgramUri: string
 }
 
 export const urlFromPath = (configKey: string, path: string) =>

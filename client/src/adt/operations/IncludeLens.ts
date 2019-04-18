@@ -1,3 +1,4 @@
+import { MainProgram } from "../../../server/api"
 import {
   CodeLensProvider,
   TextDocument,
@@ -14,7 +15,6 @@ import { fromUri } from "../AdtServer"
 import { command, AbapFsCommands } from "../../commands"
 import { isAbapNode } from "../../fs/AbapNode"
 import { PACKAGE } from "./AdtObjectCreator"
-import { AbapFunctionGroup } from "../abap/AbapFunctionGroup"
 
 export class IncludeLensP implements CodeLensProvider {
   public static get() {
@@ -28,12 +28,13 @@ export class IncludeLensP implements CodeLensProvider {
     const server = fromUri(uri)
     const obj = await server.findAbapObject(uri)
     if (!obj) return
-    const main = await provider.selectMain(obj, server.client)
+    const main = await provider.selectMain(obj, server.client, uri)
     if (!main) return
     provider.includes.set(uri.toString(), main)
     provider.emitter.fire()
   }
   private emitter = new EventEmitter<void>()
+  private selectedEmitter = new EventEmitter<MainProgram>()
   private includes: Map<string, string> = new Map()
   private notInclude: Map<string, boolean> = new Map()
   private currentUri?: Uri
@@ -41,10 +42,35 @@ export class IncludeLensP implements CodeLensProvider {
   public get onDidChangeCodeLenses() {
     return this.emitter.event
   }
+
+  public get onDidSelectInclude() {
+    return this.selectedEmitter.event
+  }
+
   private constructor() {}
 
   public getMain(uri: Uri) {
     return this.includes.get(uri.toString())
+  }
+
+  public async guessMain(uri: Uri) {
+    let mainProg = this.getMain(uri)
+    if (mainProg) return mainProg
+    const key = uri.toString()
+
+    if (this.notInclude.get(key)) return
+
+    const server = fromUri(uri)
+    const [obj, parent] = await this.getObjectAndParent(uri)
+    if (!obj) return
+    // if I opened this from a function group or program, set the main include to that
+    if (parent && parent.type !== PACKAGE) mainProg = parent.path
+    if (!mainProg) {
+      const mainPrograms = await obj.getMainPrograms(server.client)
+      mainProg =
+        mainPrograms && mainPrograms[0] && mainPrograms[0]["adtcore:uri"]
+    }
+    return mainProg
   }
 
   public async selectIncludeIfNeeded(uri: Uri) {
@@ -61,7 +87,7 @@ export class IncludeLensP implements CodeLensProvider {
     if (parent && parent.type !== PACKAGE) mainProg = parent.path
     if (!mainProg) {
       this.currentUri = uri
-      mainProg = await this.selectMain(obj, server.client)
+      mainProg = await this.selectMain(obj, server.client, uri)
     } else this.notInclude.set(uri.toString(), true)
     if (mainProg) {
       this.includes.set(uri.toString(), mainProg)
@@ -71,20 +97,30 @@ export class IncludeLensP implements CodeLensProvider {
     return mainProg
   }
 
-  public async selectMain(obj: AbapObject, client: ADTClient): Promise<string> {
+  public async selectMain(
+    obj: AbapObject,
+    client: ADTClient,
+    uri: Uri
+  ): Promise<string> {
     const mainPrograms = await obj.getMainPrograms(client)
-    if (mainPrograms.length === 1) return mainPrograms[0]["adtcore:uri"]
-    const mainProg = await window.showQuickPick(
-      mainPrograms.map(p => p["adtcore:name"]),
-      {
-        placeHolder: `Please select a main program for ${obj.name}`
-      }
-    )
-    if (mainProg)
-      return mainPrograms.find(x => x["adtcore:name"] === mainProg)![
-        "adtcore:uri"
-      ]
-    return ""
+    let mainProgramUri
+    if (mainPrograms.length === 1)
+      mainProgramUri = mainPrograms[0]["adtcore:uri"]
+    if (!mainProgramUri) {
+      const mainProg = await window.showQuickPick(
+        mainPrograms.map(p => p["adtcore:name"]),
+        {
+          placeHolder: `Please select a main program for ${obj.name}`
+        }
+      )
+      if (mainProg)
+        mainProgramUri = mainPrograms.find(
+          x => x["adtcore:name"] === mainProg
+        )!["adtcore:uri"]
+    }
+    if (mainProgramUri)
+      this.selectedEmitter.fire({ includeUri: uri.toString(), mainProgramUri })
+    return mainProgramUri || ""
   }
 
   public provideCodeLenses(document: TextDocument, token: CancellationToken) {

@@ -1,3 +1,4 @@
+import { MainProgram } from "../server/api.d"
 import { AbapObject } from "./adt/abap/AbapObject"
 import { log, channel } from "./logger"
 import {
@@ -89,7 +90,10 @@ async function objectDetailFromUrl(url: string) {
   const uri = Uri.parse(url)
   const server = await fromUri(uri)
   const obj = await server.findAbapObject(uri)
-  return objectDetail(obj, IncludeLensP.get().getMain(uri))
+  let mainProgram
+  if (obj.type === "PROG/I")
+    mainProgram = await IncludeLensP.get().guessMain(uri)
+  return objectDetail(obj, mainProgram)
 }
 
 async function configFromUrl(url: string) {
@@ -137,6 +141,10 @@ async function setSearchProgress(searchProg: SearchProgress) {
   }
 }
 
+async function includeChanged(prog: MainProgram) {
+  await client.sendRequest(Methods.updateMainProgram, prog)
+}
+
 export async function startLanguageClient(context: ExtensionContext) {
   const module = context.asAbsolutePath(join("server", "server.js"))
   const transport = TransportKind.ipc
@@ -159,6 +167,8 @@ export async function startLanguageClient(context: ExtensionContext) {
   log("starting language client...")
 
   client.start()
+
+  IncludeLensP.get().onDidSelectInclude(includeChanged)
 
   client.onDidChangeState(e => {
     if (e.newState === State.Running) {

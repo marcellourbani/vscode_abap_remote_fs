@@ -14,8 +14,9 @@ import { findDefinition, findReferences, cancelSearch } from "./references"
 import { documentSymbols } from "./symbols"
 import { formatDocument } from "./documentformatter"
 import { codeActionHandler, resolveQuickFix } from "./codeActions"
+import { updateInclude } from "./objectManager"
 
-const documents: TextDocuments = new TextDocuments()
+export const documents: TextDocuments = new TextDocuments()
 
 let hasConfigurationCapability: boolean = false
 let hasWorkspaceFolderCapability: boolean = false
@@ -88,9 +89,11 @@ connection.onReferences(findReferences)
 connection.onDocumentSymbol(documentSymbols)
 connection.onDocumentFormatting(formatDocument)
 documents.onDidChangeContent(change => syntaxCheck(change.document))
-connection.onRequest(Methods.cancelSearch, cancelSearch)
 connection.onCodeAction(codeActionHandler)
+// custom APIs exposed to the client
+connection.onRequest(Methods.cancelSearch, cancelSearch)
 connection.onRequest(Methods.quickFix, resolveQuickFix)
+connection.onRequest(Methods.updateMainProgram, updateInclude)
 
 documents.listen(connection)
 connection.listen()

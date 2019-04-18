@@ -374,7 +374,8 @@ export class AbapRevision
       if (!isDefined(last)) last = revisions.length
       state.mainRevision = revisions[first!]
     } else last = 1
-    if (isUndefined(first)) return
+
+    if (filter && isUndefined(first)) return // for transports, if object has no transport version don't add it
     state.command!.arguments!.push(state, last)
     group.resourceStates = [...group.resourceStates, state]
     this.emitter.fire(uri)

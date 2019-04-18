@@ -45,7 +45,8 @@ export async function findDefinition(
       range.start.line + 1,
       range.start.character,
       range.end.character,
-      impl
+      impl,
+      co.obj.mainProgram || ""
     )
 
     if (!result.url) return

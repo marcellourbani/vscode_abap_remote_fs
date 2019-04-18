@@ -20,8 +20,7 @@ export class AdtObjectActivator {
     } catch (e) {
       if (isAdtError(e) && e.type === "invalidMainProgram") {
         const provider = IncludeLensP.get()
-        let mainProg = provider.getMain(uri)
-        mainProg = await provider.selectMain(inactive, this.client)
+        const mainProg = await provider.selectIncludeIfNeeded(uri)
         if (mainProg)
           result = await this.client.activate(
             inactive.name,
