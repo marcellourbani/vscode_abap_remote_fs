@@ -43,7 +43,7 @@ export async function syntaxCheck(document: TextDocument) {
     for (const c of checks) {
       let diagnostics
       let range
-      if (c.uri === obj.url) {
+      if (c.uri === obj.mainUrl) {
         diagnostics = getdiag(document.uri)
         range = sourceRange(document, c.line, c.offset)
       } else {

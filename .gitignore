@@ -8,3 +8,4 @@ server/node_modules
 .vscode-test/
 *.vsix
 tmp
+*.tsbuildinfo
