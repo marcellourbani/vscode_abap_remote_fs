@@ -7,6 +7,7 @@ import { findEditor } from "./langClient"
 import { showHideActivate } from "./listeners"
 import { abapUnit } from "./adt/operations/UnitTestRunner"
 import { isClassInclude } from "./adt/abap/AbapClassInclude"
+import { selectTransport } from "./adt/AdtTransports"
 
 export const abapcmds: Array<{
   name: string
@@ -256,9 +257,36 @@ export class AdtCommands {
       lock = await m.lock(obj)
       lockId = (lock && lock.LOCK_HANDLE) || ""
     }
-    if (lockId) server.client.createTestInclude(obj.parent.name, lockId)
-    // If I created the lock I remove it. Possible race condition here...
-    if (lock) await m.unlock(obj)
-    await commands.executeCommand("workbench.files.action.refreshFilesExplorer")
+    if (!lockId) {
+      throw new Error(`Can't acquire a lock for ${obj.name}`)
+    }
+    try {
+      let created
+      // check if I already have one
+      if (obj.parent.hasInclude("testclasses")) {
+        window.showInformationMessage("Test include already exists")
+      } else {
+        const transport = await selectTransport(
+          obj.getContentsUri(),
+          "",
+          server.client,
+          true
+        )
+        if (transport.cancelled) return
+        await server.client.createTestInclude(
+          obj.parent.name,
+          lockId,
+          transport.transport
+        )
+        created = true
+      }
+      // If I created the lock I remove it. Possible race condition here...
+      if (lock) await m.unlock(obj)
+      if (created)
+        commands.executeCommand("workbench.files.action.refreshFilesExplorer")
+    } catch (e) {
+      if (lock) await m.unlock(obj)
+      log(e.toString())
+    }
   }
 }

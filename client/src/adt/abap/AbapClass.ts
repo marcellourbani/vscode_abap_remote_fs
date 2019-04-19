@@ -11,7 +11,8 @@ import {
   ADTClient,
   isClassStructure,
   AbapClassStructure,
-  classIncludes
+  classIncludes,
+  ClassInclude
 } from "abap-adt-api"
 
 export class AbapClass extends AbapObject {
@@ -25,6 +26,11 @@ export class AbapClass extends AbapObject {
   ) {
     super(type, name, path, expandable, techName)
     this.pExpandable = !!expandable
+  }
+
+  public hasInclude(name: classIncludes) {
+    if (!this.structure) return
+    return this.structure.includes.find(i => i["class:includeType"] === name)
   }
 
   public async loadMetadata(client: ADTClient): Promise<AbapObject> {

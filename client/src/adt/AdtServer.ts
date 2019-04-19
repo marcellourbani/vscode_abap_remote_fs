@@ -75,7 +75,8 @@ export class AdtServer {
     )
   }
   public async delete(uri: Uri) {
-    const file = this.findNode(uri)
+    const hier = this.findNodeHierarchy(uri)
+    const file = hier && hier[0]
     if (isAbapNode(file)) {
       const obj = file.abapObject
       if (!isCreatableTypeId(obj.type))
@@ -92,8 +93,13 @@ export class AdtServer {
             this.lockManager.getLockId(obj),
             transport.transport
           )
-      } finally {
         await this.lockManager.unlock(obj)
+        // refresh parent node to prevent open editors to lock the object forever
+        const parent = hier.find(p => p !== file && isAbapNode(p))
+        if (parent && parent.canRefresh()) await parent.refresh(this.client)
+      } catch (e) {
+        await this.lockManager.unlock(obj)
+        throw e
       }
     } else
       throw FileSystemError.NoPermissions("Only abap objects can be deleted")
@@ -144,6 +150,8 @@ export class AdtServer {
       throw FileSystemError.NoPermissions("Can only save source code")
 
     const obj = file.abapObject
+    if (!obj.structure) await file.stat(this.client)
+
     // check file is locked. Waits if locking is in progress
     if (!(await this.lockManager.waitLocked(obj)))
       throw adtException(`Object not locked ${obj.type} ${obj.name}`)

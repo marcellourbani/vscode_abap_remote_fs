@@ -17,6 +17,7 @@ Format based on [Keep a Changelog](http://keepachangelog.com/)
 - reference search in includes with namespaces #72
 - improved transport selection
 - fixed locking quirks #64
+- fixed quirk saving newly created object
 
 ## 0.6.1 2019-04-18
 

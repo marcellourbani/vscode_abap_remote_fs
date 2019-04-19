@@ -180,7 +180,6 @@ export class LockManager {
   }
 
   public async unlock(obj: AbapObject) {
-    if (!obj.canBeWritten) return
     const lockObj = this.getLockObject(obj)
     if (!lockObj.removeObject(obj)) return
     // if locking in process, wait for it to finish and then unlock
