@@ -1,4 +1,5 @@
 import { isString, isNumber } from "util"
+import { Uri } from "vscode"
 
 export const pick = <T, K extends keyof T>(name: K) => (x: T): T[K] => x[name]
 export const flat = <T>(a: T[][]): T[] =>
@@ -75,3 +76,4 @@ export function toInt(raw: any): number {
 }
 export const isUnDefined = (x: any) => typeof x === "undefined"
 export const isDefined = (x: any) => !isUnDefined(x)
+export const uriName = (uri: Uri) => uri.path.split("/").pop() || ""

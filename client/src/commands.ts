@@ -99,8 +99,10 @@ export class AdtCommands {
 
       log(`Connected to server ${remote.name}`)
     } catch (e) {
-      window.showErrorMessage(`Failed to connect to ${name}:${e.toString()}`)
       if (e.response) log(e.response.body)
+      return window.showErrorMessage(
+        `Failed to connect to ${name}:${e.toString()}`
+      )
     }
   }
   @command(AbapFsCommands.activate)
@@ -116,8 +118,9 @@ export class AdtCommands {
           const obj = await server.findAbapObject(uri)
           // if editor is dirty, save before activate
           if (editor && editor.document.isDirty) {
-            await editor.document.save()
-            await obj.loadMetadata(server.client)
+            const saved = await editor.document.save() // workbench.action.files.save?
+            if (saved) await obj.loadMetadata(server.client)
+            else return
           } else if (!obj.structure) await obj.loadMetadata(server.client)
           await server.activator.activate(obj, uri)
           if (editor === window.activeTextEditor) {
@@ -127,7 +130,7 @@ export class AdtCommands {
         }
       )
     } catch (e) {
-      window.showErrorMessage(e.toString())
+      return window.showErrorMessage(e.toString())
     }
   }
 
@@ -144,7 +147,7 @@ export class AdtCommands {
       // found, show progressbar as opening might take a while
       await openObject(server, object.uri)
     } catch (e) {
-      window.showErrorMessage(e.toString())
+      return window.showErrorMessage(e.toString())
     }
   }
 
@@ -173,7 +176,7 @@ export class AdtCommands {
       }
     } catch (e) {
       log("Exception in createAdtObject:", e.stack)
-      window.showErrorMessage(e.toString())
+      return window.showErrorMessage(e.toString())
     }
   }
 
@@ -200,7 +203,7 @@ export class AdtCommands {
         }
       )
     } catch (e) {
-      window.showErrorMessage(e.toString())
+      return window.showErrorMessage(e.toString())
     }
   }
 
@@ -226,7 +229,7 @@ export class AdtCommands {
         () => abapUnit(uri)
       )
     } catch (e) {
-      window.showErrorMessage(e.toString())
+      return window.showErrorMessage(e.toString())
     }
   }
 

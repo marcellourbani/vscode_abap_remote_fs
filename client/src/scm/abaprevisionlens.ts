@@ -13,6 +13,7 @@ import {
 } from "vscode"
 import { AbapRevision, revLabel } from "./abaprevision"
 import { selectRemote } from "../config"
+import { uriName } from "../functions"
 
 export class AbapRevisionLensP implements CodeLensProvider {
   public static get() {
@@ -26,7 +27,10 @@ export class AbapRevisionLensP implements CodeLensProvider {
     const uri = document.uri
     if (uri.scheme !== ADTSCHEME) return
     const revp = AbapRevision.get()
-    const { revision } = await revp.selectRevision(uri, "Select version")
+    const { revision } = await revp.selectRevision(
+      uri,
+      `Select version for ${uriName(uri)}`
+    )
     if (revision) {
       revp.setReferenceRevision(uri, revision)
       AbapRevisionLensP.get().emitter.fire()

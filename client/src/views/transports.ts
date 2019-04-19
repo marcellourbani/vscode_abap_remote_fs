@@ -10,7 +10,11 @@ import {
   EventEmitter,
   window,
   ProgressLocation,
-  commands
+  commands,
+  Diagnostic,
+  DiagnosticCollection,
+  languages,
+  Range
 } from "vscode"
 import { ADTSCHEME, fromUri } from "../adt/AdtServer"
 import {
@@ -18,7 +22,9 @@ import {
   TransportRequest,
   TransportTask,
   TransportObject,
-  ADTClient
+  ADTClient,
+  TransportReleaseReport,
+  SAPRC
 } from "abap-adt-api"
 import { command, AbapFsCommands } from "../commands"
 import { isAbapNode } from "../fs/AbapNode"
@@ -27,6 +33,7 @@ import {
   allChildren,
   NodePath
 } from "../adt/abap/AbapObjectUtilities"
+import { pick } from "../functions"
 
 const currentUsers = new Map<string, string>()
 
@@ -101,17 +108,59 @@ function isTransport(task: TransportTask): task is TransportRequest {
   return !!(task as any).tasks
 }
 
+const failuretext = (failure: TransportReleaseReport) =>
+  failure.messages
+    .filter(m => m["chkrun:type"] === SAPRC.Error)
+    .map(m => m["chkrun:shortText"])
+    .join(" ") || failure["chkrun:statusText"]
+
 class TransportItem extends CollectionItem {
   public static isA(x: any): x is TransportItem {
     return x && (x as TransportItem).typeId === TransportItem.tranTypeId
   }
   private static tranTypeId = Symbol()
+  @command(AbapFsCommands.releaseTransport)
+  private static async releaseTransport(tran: TransportItem) {
+    try {
+      const transport = tran.task["tm:number"]
+      await window.withProgress(
+        { location: ProgressLocation.Window, title: `Releasing ${transport}` },
+        async () => {
+          // before releasing the main transports, release subtasks if
+          //  - not released
+          //  - not empty
+          const tasks = tran.children.filter(
+            c => TransportItem.isA(c) && c.children.length && !c.released
+          )
+          // append main transport as last
+          tasks.push(tran)
+          for (const task of tasks) {
+            if (!TransportItem.isA(task)) continue // just to make ts happy
+            const reports = await task.server.client.transportRelease(
+              task.task["tm:number"]
+            )
+            const failure = reports.find(r => r["chkrun:status"] !== "released")
+            if (failure) {
+              throw new Error(
+                `${transport} not released: ${failuretext(failure)}`
+              )
+            }
+          }
+        }
+      )
+      commands.executeCommand(AbapFsCommands.refreshtransports)
+    } catch (e) {
+      window.showErrorMessage(e.toString())
+    }
+  }
   public readonly typeId: symbol
 
+  public get released() {
+    return !this.task["tm:status"].match(/[DL]/)
+  }
+
   public get contextValue() {
-    return this.task["tm:status"].match(/[DL]/)
-      ? "tr_unreleased"
-      : "tr_released"
+    return this.released ? "tr_released" : "tr_unreleased"
   }
 
   constructor(
@@ -293,27 +342,6 @@ export class TransportsProvider implements TreeDataProvider<CollectionItem> {
   @command(AbapFsCommands.refreshtransports)
   private static async refreshTransports() {
     TransportsProvider.get().refresh()
-  }
-
-  @command(AbapFsCommands.releaseTransport)
-  private static async releaseTransport(tran: TransportItem) {
-    try {
-      const transport = tran.task["tm:number"]
-      await window.withProgress(
-        { location: ProgressLocation.Window, title: `Releasing ${transport}` },
-        async () => {
-          const reports = await tran.server.client.transportRelease(transport)
-          const failure = reports.find(r => r["chkrun:status"] !== "released")
-          if (failure)
-            throw new Error(
-              `${transport} not released: ${failure["chkrun:statusText"]}`
-            )
-        }
-      )
-      this.refreshTransports()
-    } catch (e) {
-      window.showErrorMessage(e.toString())
-    }
   }
 
   private static async pickUser(client: ADTClient) {

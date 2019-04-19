@@ -4,6 +4,20 @@ All notable changes to the "vscode-abap-remote-fs" extension will be documented 
 
 Format based on [Keep a Changelog](http://keepachangelog.com/)
 
+## Unreleased
+
+### Added
+
+- release subtasks before releasing main transport
+
+### Fixed
+
+- field symbols selection in syntax
+- include resolution in error checks
+- reference search in includes with namespaces #72
+- improved transport selection
+- fixed locking quirks #64
+
 ## 0.6.1 2019-04-18
 
 ### Added

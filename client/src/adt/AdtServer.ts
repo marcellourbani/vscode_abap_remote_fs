@@ -4,7 +4,7 @@ import { MetaFolder } from "../fs/MetaFolder"
 import { AbapObjectNode, AbapNode, isAbapNode } from "../fs/AbapNode"
 import { AbapObject, TransportStatus, isAbapObject } from "./abap/AbapObject"
 import { createClient, configFromId } from "../config"
-import { selectTransport } from "./AdtTransports"
+import { selectTransport, trSel } from "./AdtTransports"
 import { AdtObjectActivator } from "./operations/AdtObjectActivator"
 import { AdtObjectFinder } from "./operations/AdtObjectFinder"
 import { AdtObjectCreator, PACKAGE } from "./operations/AdtObjectCreator"
@@ -341,19 +341,13 @@ export class AdtServer {
   }
 
   private async selectTransportIfNeeded(obj: AbapObject) {
-    if (obj.transport === TransportStatus.REQUIRED) {
-      const transport = await selectTransport(
-        obj.getContentsUri(),
-        "",
-        this.client
-      )
-      if (transport.transport) obj.transport = transport.transport
-      return transport
-    }
-    return {
-      transport: isString(obj.transport) ? obj.transport : "",
-      cancelled: false
-    }
+    // no need for transports for local objects
+    if (obj.transport === TransportStatus.LOCAL) return trSel("")
+    // I might already have a transport number, but might be stale
+    let current = ""
+    if (isString(obj.transport)) current = obj.transport
+    const uri = obj.getContentsUri()
+    return selectTransport(uri, "", this.client, false, current)
   }
 
   /**

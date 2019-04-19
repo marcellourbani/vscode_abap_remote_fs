@@ -6,7 +6,7 @@ export interface TransportSelection {
   cancelled: boolean
   transport: string
 }
-const sel = (
+export const trSel = (
   transport: string,
   cancelled: boolean = false
 ): TransportSelection => ({
@@ -17,7 +17,8 @@ export async function selectTransport(
   objContentPath: string,
   devClass: string,
   client: ADTClient,
-  forCreation: boolean = false
+  forCreation: boolean = false,
+  current = ""
 ): Promise<TransportSelection> {
   const ti = await client.transportInfo(
     objContentPath,
@@ -27,9 +28,15 @@ export async function selectTransport(
   // if I have a lock return the locking transport
   // will probably be a task but should be fine
 
-  if (ti.LOCKS) return sel(ti.LOCKS.HEADER.TRKORR)
+  if (ti.LOCKS) return trSel(ti.LOCKS.HEADER.TRKORR)
 
-  if (ti.DLVUNIT === "LOCAL") return sel("")
+  // if one of the proposals matches the requested, return that
+  const curtr = current && ti.TRANSPORTS.find(t => t.TRKORR === current)
+  if (curtr) return trSel(curtr.TRKORR)
+  // if local, return an empty value
+  if (ti.DLVUNIT === "LOCAL") return trSel("")
+
+  // select/create
   const CREATENEW = "Create a new transport"
   const selection = await window.showQuickPick([
     CREATENEW,
@@ -38,10 +45,12 @@ export async function selectTransport(
     )
   ])
 
-  if (!selection) return sel("", true)
+  if (!selection) return trSel("", true)
   if (selection === CREATENEW) {
     const text = await window.showInputBox({ prompt: "Request text" })
-    if (!text) return sel("", true)
-    return sel(await client.createTransport(objContentPath, text, ti.DEVCLASS))
-  } else return sel(selection.split(" ")[0])
+    if (!text) return trSel("", true)
+    return trSel(
+      await client.createTransport(objContentPath, text, ti.DEVCLASS)
+    )
+  } else return trSel(selection.split(" ")[0])
 }
