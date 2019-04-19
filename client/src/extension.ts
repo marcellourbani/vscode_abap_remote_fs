@@ -15,10 +15,10 @@ import {
   documentOpenListener
 } from "./listeners"
 import { abapcmds } from "./commands"
-import { disconnect, ADTSCHEME, lockedFiles } from "./adt/AdtServer"
+import { disconnect, ADTSCHEME } from "./adt/AdtServer"
 import { log } from "./logger"
 import { client, LanguageCommands } from "./langClient"
-import { restoreLocks } from "./adt/operations/LockManager"
+import { restoreLocks, LockManager } from "./adt/operations/LockManager"
 import { registerRevisionModel } from "./scm/abaprevision"
 import { AbapRevisionLensP } from "./scm/abaprevisionlens"
 import { IncludeLensP } from "./adt/operations/IncludeLens"
@@ -87,9 +87,7 @@ export function activate(context: ExtensionContext) {
 // Locks will not be released until either explicitly closed or the session is terminates
 // an open session can leave sources locked without any UI able to release them (except SM12 and the like)
 export async function deactivate() {
-  const locks = lockedFiles()
-
-  if (locks.length > 0)
+  if (LockManager.get().hasLocks())
     window.showInformationMessage(
       "Locks will be dropped now. If the relevant editors are still open they will be restored later"
     )

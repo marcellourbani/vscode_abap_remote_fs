@@ -36,7 +36,6 @@ export class AdtServer {
   public readonly root: MetaFolder
   public readonly objectFinder: AdtObjectFinder
   public readonly creator: AdtObjectCreator
-  public readonly lockManager: LockManager
   public readonly sapGui: SapGui
   public readonly client: ADTClient
   public readonly activator: AdtObjectActivator
@@ -60,7 +59,6 @@ export class AdtServer {
     this.creator = new AdtObjectCreator(this)
     this.activator = new AdtObjectActivator(this.client)
     this.objectFinder = new AdtObjectFinder(this)
-    this.lockManager = new LockManager(this.client)
     this.sapGui = SapGui.create(config)
 
     // root folder
@@ -84,21 +82,27 @@ export class AdtServer {
           "Only allowed to delete abap objects can be created"
         )
 
+      const lm = LockManager.get()
       try {
-        await this.lockManager.lock(obj)
-        const transport = await this.selectTransportIfNeeded(obj)
-        if (!transport.cancelled)
-          await this.client.deleteObject(
-            obj.path,
-            this.lockManager.getLockId(obj),
-            transport.transport
-          )
-        await this.lockManager.unlock(obj)
+        await lm.lock(uri)
+        const transport = await this.selectTransportIfNeeded(
+          obj,
+          lm.getTransport(uri)
+        )
+        if (transport.cancelled)
+          throw new Error("A transport is required to perform the deletion")
+        await this.client.deleteObject(
+          obj.path,
+          lm.getLockId(uri),
+          transport.transport
+        )
+        await lm.unlock(uri)
+
         // refresh parent node to prevent open editors to lock the object forever
         const parent = hier.find(p => p !== file && isAbapNode(p))
         if (parent && parent.canRefresh()) await parent.refresh(this.client)
       } catch (e) {
-        await this.lockManager.unlock(obj)
+        await lm.unlock(uri)
         throw e
       }
     } else
@@ -144,26 +148,34 @@ export class AdtServer {
    * @param file the ABAP node being saved
    * @param content the source of the ABAP file
    */
-  public async saveFile(file: AbapNode, content: Uint8Array): Promise<void> {
+  public async saveFile(
+    file: AbapNode,
+    content: Uint8Array,
+    uri: Uri
+  ): Promise<void> {
     if (file.isFolder) throw FileSystemError.FileIsADirectory()
     if (!isAbapNode(file))
       throw FileSystemError.NoPermissions("Can only save source code")
 
     const obj = file.abapObject
     if (!obj.structure) await file.stat(this.client)
+    const lm = LockManager.get()
 
     // check file is locked. Waits if locking is in progress
-    if (!(await this.lockManager.waitLocked(obj)))
+    if (!(await lm.getFinalStatus(uri)))
       throw adtException(`Object not locked ${obj.type} ${obj.name}`)
 
-    const transport = await this.selectTransportIfNeeded(obj)
+    const transport = await this.selectTransportIfNeeded(
+      obj,
+      lm.getTransport(uri)
+    )
 
     if (!transport.cancelled) {
-      const lockId = this.lockManager.getLockId(obj)
-      await obj.setContents(this.client, content, lockId)
+      const lockId = lm.getLockId(uri)
+      await obj.setContents(this.client, content, lockId, transport.transport)
 
       await file.stat(this.client)
-      await this.lockManager.unlock(obj)
+      await lm.unlock(uri)
     } else throw adtException("Object can't be saved without a transport")
   }
 
@@ -348,12 +360,15 @@ export class AdtServer {
     }
   }
 
-  private async selectTransportIfNeeded(obj: AbapObject) {
+  private async selectTransportIfNeeded(
+    obj: AbapObject,
+    transport: string | TransportStatus
+  ) {
     // no need for transports for local objects
-    if (obj.transport === TransportStatus.LOCAL) return trSel("")
+    if (transport === TransportStatus.LOCAL) return trSel("")
     // I might already have a transport number, but might be stale
     let current = ""
-    if (isString(obj.transport)) current = obj.transport
+    if (isString(transport)) current = transport
     const uri = obj.getContentsUri()
     return selectTransport(uri, "", this.client, false, current)
   }
@@ -391,20 +406,11 @@ export const fromUri = (uri: Uri) => {
 
 export async function disconnect() {
   const promises: Array<Promise<any>> = []
-  let haslocks = false
-  if (haslocks)
+  if (LockManager.get().hasLocks())
     window.showInformationMessage("All locked files will be unlocked")
   for (const server of servers) {
-    if (server[1].lockManager.lockedObjects.length > 0) haslocks = true
-    promises.push(server[1].client.dropSession())
+    const client = server[1].client
+    if (client.isStateful) promises.push(client.dropSession())
   }
   await Promise.all(promises)
-}
-export function lockedFiles() {
-  return [...servers]
-    .map(s => ({
-      connectionId: s[0],
-      locked: s[1].lockManager.lockedObjects.length
-    }))
-    .filter(f => f.locked > 0)
 }

@@ -1,16 +1,12 @@
-import { ADTSCHEME, fromUri } from "../AdtServer"
+import { getServer, ADTSCHEME } from "../AdtServer"
 import { ADTClient, session_types, AdtLock } from "abap-adt-api"
 import { AbapObject, TransportStatus } from "../abap/AbapObject"
 import { log } from "../../logger"
-import { window, TextDocument, StatusBarAlignment } from "vscode"
+import { window, TextDocument, StatusBarAlignment, Uri } from "vscode"
+import { uriName, promiseQueue, asyncCache, cache } from "../../functions"
 
-enum LockStatuses {
-  LOCKED,
-  UNLOCKED,
-  LOCKING,
-  UNLOCKING
-}
 const statusBarItem = window.createStatusBarItem(StatusBarAlignment.Right, 100)
+type LockValidator = (l: AdtLock) => Promise<boolean>
 async function validateLock(lock: AdtLock) {
   const ok = "Ok"
   if (lock && lock.IS_LINK_UP) {
@@ -25,35 +21,26 @@ async function validateLock(lock: AdtLock) {
   }
   return true
 }
+
 export async function setDocumentLock(
   document: TextDocument,
   interactive = false
 ) {
   const uri = document.uri
+  const lockManager = LockManager.get()
   if (uri.scheme === ADTSCHEME) {
-    const server = fromUri(uri)
-    const obj = await server.findAbapObject(uri)
-    const shouldLock = document.isDirty
-    // no need to lock objects already locked
-    if (shouldLock !== server.lockManager.isLocked(obj)) {
-      if (shouldLock) {
-        try {
-          if (interactive) await server.lockManager.lock(obj, validateLock)
-          else await server.lockManager.lock(obj)
-        } catch (e) {
-          window.showErrorMessage(
-            `${e.toString()}\nWon't be able to save changes`
-          )
-        }
-      } else await server.lockManager.unlock(obj)
-    }
-
-    statusBarItem.text = `${uri.authority}:${
-      server.lockManager.lockedObjects.length
-    } objects locked`
-    statusBarItem.show()
-    return server.lockManager.isLocked(obj)
+    const cb = interactive ? validateLock : undefined
+    if (document.isDirty)
+      try {
+        await lockManager.lock(uri, cb)
+      } catch (e) {
+        window.showErrorMessage(
+          `${e.toString()}\nWon't be able to save changes`
+        )
+      }
+    else await lockManager.unlock(uri)
   }
+  return await lockManager.getFinalStatus(uri)
 }
 // when the extension is deactivated, all locks are dropped
 // try to restore them as needed
@@ -63,177 +50,203 @@ export async function restoreLocks() {
   )
 }
 
-class LockObject {
-  public children: Set<string> = new Set()
-  public listeners: Array<(s: LockStatuses) => void> = []
-  public lockId: string = ""
-  private pLockStatus = LockStatuses.UNLOCKED
-  get lockStatus() {
-    return this.pLockStatus
-  }
-
-  constructor(public main: AbapObject) {}
-
-  public setLockStatus(status: LockStatuses, lockId: string = "") {
-    this.pLockStatus = status
-    this.lockId = status === LockStatuses.LOCKED ? lockId : ""
-    const l = this.listeners
-    this.listeners = []
-    l.forEach(x => x(status))
-  }
-
-  public needLock(child: AbapObject) {
-    this.children.add(child.key)
+export class LockObject {
+  public get transport(): string | TransportStatus {
+    if (!this.lock) return TransportStatus.UNKNOWN
     return (
-      this.lockStatus === LockStatuses.UNLOCKED ||
-      this.lockStatus === LockStatuses.UNLOCKING
+      this.lock.CORRNR ||
+      (this.lock.IS_LOCAL ? TransportStatus.LOCAL : TransportStatus.REQUIRED)
     )
   }
 
-  public isLocked(child: AbapObject) {
-    return this.children.has(child.key)
+  private children = new Set<string>()
+  private lock?: AdtLock
+  private current = promiseQueue(this.lock)
+
+  public get finalStatus() {
+    return this.current()
   }
 
-  /**
-   * Removes the child from the list of locked subobjects
-   * returns true if the list of children is empty and an unlock is required
-   *
-   * @param {AbapObject} child
-   * @returns
-   * @memberof LockObject
-   */
-  public removeObject(child: AbapObject) {
-    this.children.delete(child.key)
-    return (
-      this.children.size === 0 &&
-      (this.lockStatus === LockStatuses.LOCKED ||
-        this.lockStatus === LockStatuses.LOCKING)
-    )
+  public get isLocked() {
+    return !!this.lock
   }
 
-  public waitStatusUpdate() {
-    const waitUpdate = new Promise<LockStatuses>(resolve => {
-      this.listeners.push(resolve)
-    })
-    return waitUpdate
+  public get lockId() {
+    return (this.lock && this.lock.LOCK_HANDLE) || ""
+  }
+
+  constructor(public main: AbapObject, private client: ADTClient) {}
+
+  public async requestLock(uri: Uri, validate?: LockValidator) {
+    // if (un)lock pending, wait for it
+    const isLocked = await this.finalStatus
+    const key = uri.toString()
+    if (this.children.has(key)) return this.lock
+
+    if (!isLocked) {
+      let error: Error | undefined
+      const onerr = (e: Error) => (error = e)
+      const previous = this.lock
+
+      const lockCB = async () => {
+        this.client.stateful = session_types.stateful
+        const lock = await this.client.lock(this.main.path)
+        return lock
+      }
+      const validateCB = async (lock?: AdtLock) => {
+        if (error || !lock) return lock
+        if (!validate || (await validate(lock))) {
+          log(`locked ${uriName(uri)} ${lock.LOCK_HANDLE}`)
+          return lock
+        } else {
+          await this.client.unLock(this.main.path, lock.LOCK_HANDLE)
+          return previous // undefined if unlock fails will return lock
+        }
+      }
+
+      this.current(lockCB, onerr)
+      const newLock = await this.current(validateCB, onerr)
+
+      this.setLock(key, newLock)
+      if (error) throw error // will not affect other (un)lock calls
+    }
+    return this.lock
+  }
+
+  public async requestUnLock(uri: Uri) {
+    await this.finalStatus
+    const key = uri.toString()
+    if (this.children.size === 1 && this.children.has(key)) {
+      if (this.lock) {
+        let error
+        const onerr = (e: Error) => (error = e)
+        const cb = async () => {
+          if (this.lock) {
+            const handle = this.lock.LOCK_HANDLE
+            await this.client.unLock(this.main.path, handle)
+            log(`unlocked ${uriName(uri)} ${handle}`)
+          }
+          return undefined
+        }
+
+        this.setLock(key, await this.current(cb, onerr))
+        if (error) throw error
+      } else this.setLock(key)
+    }
+  }
+
+  private setLock(key: string, lock?: AdtLock) {
+    this.lock = lock
+    if (lock) {
+      this.children.add(key)
+    } else this.children.delete(key)
   }
 }
 
-// tslint:disable-next-line:max-classes-per-file
+const createLC = (connId: string) => {
+  const server = getServer(connId)
+  const mains = new Map<string, AbapObject>()
+  const getObjKey = async (uri: string) => {
+    const vuri = Uri.parse(uri)
+    const obj = await server.findAbapObject(vuri)
+    const main = obj.getLockTarget()
+    mains.set(main.key, main)
+    return main.key
+  }
+  const objKeys = asyncCache(getObjKey, (u: Uri) => u.toString())
+  const getLock = (key: string) => {
+    const main = mains.get(key)
+    if (!main) throw new Error("Locking object not found")
+    return new LockObject(main, server.client)
+  }
+  const locks = cache(getLock)
+  return {
+    server,
+    objKeys,
+    locks
+  }
+}
+// tslint:disable-next-line: max-classes-per-file
 export class LockManager {
-  public l: Map<string, LockObject> = new Map()
-  constructor(private client: ADTClient) {}
-
-  public getLockId(obj: AbapObject): string {
-    const lockObj = this.getLockObject(obj)
-    // const lockId = this.locks.get(obj)
-    if (lockObj.lockId) return lockObj.lockId
-    throw new Error(`Object ${obj.name} is not locked`)
+  public static get(): LockManager {
+    if (!this.instance) this.instance = new LockManager()
+    return this.instance
   }
+  private static instance: LockManager
+  private connections = cache(createLC)
 
-  get needStateFul(): boolean {
-    return this.lockedObjects.length > 0
-  }
-
-  public async lock(
-    obj: AbapObject,
-    validate?: (l: AdtLock) => Promise<boolean>
-  ) {
-    if (!obj.canBeWritten) return
-    const lockObj = this.getLockObject(obj)
-    if (!lockObj.needLock(obj)) return
-    // if unlocking in process, wait for it to finish and then lock
-    // perhaps we should check the status returned...
-    if (lockObj.lockStatus === LockStatuses.UNLOCKING)
-      await lockObj.waitStatusUpdate()
-
-    if (!lockObj.needLock(obj)) return // in case another object triggered before
-
-    lockObj.setLockStatus(LockStatuses.LOCKING)
-    try {
-      this.client.stateful = session_types.stateful
-      const lock = await this.client.lock(lockObj.main.path)
-      if (!validate || (await validate(lock))) {
-        obj.transport =
-          lock.CORRNR ||
-          (lock.IS_LOCAL ? TransportStatus.LOCAL : TransportStatus.REQUIRED)
-        lockObj.setLockStatus(LockStatuses.LOCKED, lock.LOCK_HANDLE)
-        log("locked", obj.name)
-        return lock
-      } else {
-        if (lockObj.removeObject(obj)) {
-          lockObj.setLockStatus(LockStatuses.UNLOCKING)
-          await this.client.unLock(lockObj.main.path, lock.LOCK_HANDLE)
-          lockObj.setLockStatus(LockStatuses.UNLOCKED)
-        }
-      }
-    } catch (e) {
-      if (
-        lockObj.removeObject(obj) &&
-        lockObj.lockStatus === LockStatuses.LOCKING
-      )
-        lockObj.setLockStatus(LockStatuses.UNLOCKED)
-      if (!this.needStateFul) this.client.stateful = session_types.stateless
-      log("failed to lock", obj.name, e.toString())
-      throw e
+  public async lock(uri: Uri, validate?: LockValidator) {
+    const lo = await this.getLockObjAsync(uri)
+    if (lo) {
+      const result = await lo.requestLock(uri, validate)
+      this.setCount(uri)
+      return result
     }
   }
 
-  public async unlock(obj: AbapObject) {
-    const lockObj = this.getLockObject(obj)
-    if (!lockObj.removeObject(obj)) return
-    // if locking in process, wait for it to finish and then unlock
-    // perhaps we should check the status returned...
-    if (lockObj.lockStatus === LockStatuses.LOCKING)
-      await lockObj.waitStatusUpdate()
-
-    if (!lockObj.removeObject(obj)) return // in case another object triggered before
-    const lockId = lockObj.lockId
-
-    lockObj.setLockStatus(LockStatuses.UNLOCKING)
-    try {
-      // TODO: check if unlocking the right object. lock is on main one
-      await this.client.unLock(obj.path, lockObj.lockId)
-      lockObj.setLockStatus(LockStatuses.UNLOCKED)
-      log("unlocked", obj.name)
-    } catch (e) {
-      // unlocking failed, restore the original ID
-      if (
-        lockObj.needLock(obj) &&
-        lockObj.lockStatus === LockStatuses.UNLOCKING
-      )
-        lockObj.setLockStatus(LockStatuses.LOCKED, lockId)
-    }
-    if (!this.needStateFul) this.client.stateful = session_types.stateless
+  public async unlock(uri: Uri) {
+    const lo = await this.getLockObjAsync(uri)
+    if (!lo) return
+    await lo.requestUnLock(uri)
+    const conn = this.connections.get(uri.authority)
+    if (conn && !this.hasLocks(uri.authority))
+      conn.server.client.stateful = session_types.stateless
+    this.setCount(uri)
   }
 
-  public isLocked(obj: AbapObject) {
-    const lockObj = this.getLockObject(obj)
-    return lockObj.isLocked(obj)
+  public getLockId(uri: Uri) {
+    const lo = this.getLockObj(uri)
+    return lo ? lo.lockId : ""
   }
 
-  public async waitLocked(obj: AbapObject) {
-    const lockObj = this.getLockObject(obj)
-    if (
-      lockObj.lockStatus === LockStatuses.LOCKING ||
-      lockObj.lockStatus === LockStatuses.UNLOCKING
-    )
-      await lockObj.waitStatusUpdate()
-    return lockObj.isLocked(obj)
-  }
-  get lockedObjects() {
-    let children: string[] = []
-    this.l.forEach(x => (children = [...children, ...[...x.children]]))
-    return children
+  public getTransport(uri: Uri) {
+    const lo = this.getLockObj(uri)
+    return (lo && lo.transport) || TransportStatus.UNKNOWN
   }
 
-  private getLockObject(child: AbapObject) {
-    const lockSubject = child.getLockTarget()
-    let lockObj = this.l.get(lockSubject.key)
-    if (!lockObj) {
-      lockObj = new LockObject(lockSubject)
-      this.l.set(lockSubject.key, lockObj)
-    }
-    return lockObj
+  public async isLockedAsync(uri: Uri) {
+    return !!(await this.getFinalStatus(uri))
+  }
+
+  public numLocked(connId: string) {
+    const conn = this.connections.get(connId)
+    if (!conn) return 0
+    const locked = [...conn.locks].filter(x => x.isLocked)
+    return locked.length
+  }
+
+  public async getFinalStatus(uri: Uri) {
+    const lo = await this.getLockObjAsync(uri)
+    if (!lo) return
+    return lo.finalStatus
+  }
+
+  public hasLocks(connId?: string) {
+    for (const conn of this.connections)
+      if (!connId || conn.server.connectionId === connId)
+        for (const l of conn.locks) if (l.isLocked) return true
+    return false
+  }
+
+  private getLockObj(uri: Uri) {
+    if (uri.scheme !== ADTSCHEME) return
+    const conn = this.connections.get(uri.authority)
+    const objKey = conn.objKeys.getSync(uri)
+    return objKey && conn.locks.get(objKey)
+  }
+
+  private setCount(uri: Uri) {
+    statusBarItem.text = `${uri.authority}:${this.numLocked(
+      uri.authority
+    )} objects locked`
+    statusBarItem.show()
+  }
+
+  private async getLockObjAsync(uri: Uri) {
+    if (uri.scheme !== ADTSCHEME) return
+
+    const conn = this.connections.get(uri.authority)
+    const objKey = await conn.objKeys.get(uri)
+    return await conn.locks.get(objKey)
   }
 }

@@ -60,7 +60,6 @@ export class AbapObject {
   public get key() {
     return `${this.type} ${this.name}`
   }
-  public transport: TransportStatus | string = TransportStatus.UNKNOWN
   public structure?: AbapObjectStructure
 
   protected pExpandable: boolean
@@ -123,13 +122,13 @@ export class AbapObject {
   public async setContents(
     client: ADTClient,
     contents: Uint8Array,
-    lockId: string
+    lockId: string,
+    transport?: string
   ): Promise<void> {
     this.canBeWritten()
     // contents URL depends on metadata
     if (!this.structure) await this.loadMetadata(client)
     const contentUri = this.getContentsUri()
-    const transport = isString(this.transport) ? this.transport : undefined
 
     await client.setObjectSource(
       contentUri,

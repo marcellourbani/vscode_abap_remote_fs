@@ -89,7 +89,7 @@ export class FsProvider implements FileSystemProvider {
           "Not a real filesystem, file creation is not supported"
         )
       if (!file) throw FileSystemError.FileNotFound(uri)
-      await server.saveFile(file, content)
+      await server.saveFile(file, content, uri)
       this.pEventEmitter.fire([{ type: FileChangeType.Changed, uri }])
     } catch (e) {
       log(`Error writing file ${uri.toString()}\n${e.toString()}`)

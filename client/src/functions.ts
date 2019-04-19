@@ -77,3 +77,96 @@ export function toInt(raw: any): number {
 export const isUnDefined = (x: any) => typeof x === "undefined"
 export const isDefined = (x: any) => !isUnDefined(x)
 export const uriName = (uri: Uri) => uri.path.split("/").pop() || ""
+export const eatException = (cb: (...args: any[]) => any) => (
+  ...args: any[]
+) => {
+  try {
+    return cb(...args)
+  } catch (e) {
+    return
+  }
+}
+
+export const cache = <TK, TP, TAK>(
+  creator: (k: TAK) => TP,
+  keyTran: (k: TK) => TAK = (x: any) => x
+) => {
+  const values = new Map<TAK, TP>()
+  return {
+    get: (k: TK) => {
+      const ak = keyTran(k)
+      let cur = values.get(ak)
+      if (!cur) {
+        cur = creator(ak)
+        values.set(ak, cur)
+      }
+      return cur
+    },
+    get size() {
+      return values.size
+    },
+    *[Symbol.iterator]() {
+      const v = values.values()
+      let r = v.next()
+      while (!r.done) {
+        yield r.value
+        r = v.next()
+      }
+    }
+  }
+}
+
+export const asyncCache = <TK, TP, TAK>(
+  creator: (k: TAK) => Promise<TP>,
+  keyTran: (k: TK) => TAK = (x: any) => x
+) => {
+  const values = new Map<TAK, TP>()
+
+  function get(k: TK) {
+    return new Promise(async resolve => {
+      const ak = keyTran(k)
+      let cur = values.get(ak)
+      if (!cur) {
+        cur = await creator(ak)
+        values.set(ak, cur)
+      }
+      resolve(cur)
+    })
+  }
+  return {
+    get,
+    getSync: (k: TK) => values.get(keyTran(k)),
+    get size() {
+      return values.size
+    },
+    *[Symbol.iterator]() {
+      const v = values.values()
+      let r = v.next()
+      while (!r.done) {
+        yield r.value
+        r = v.next()
+      }
+    }
+  }
+}
+
+export const promiseQueue = <T>(initial: T) => {
+  let current = Promise.resolve(initial)
+  let last = initial
+
+  return (cb?: (c: T) => Promise<T>, onErr?: (e: Error) => void) => {
+    // must guarantee current will always resolve!
+    if (cb)
+      current = current.then(async cur => {
+        try {
+          const newres = await cb(cur)
+          last = newres
+          return newres
+        } catch (e) {
+          if (onErr) eatException(onErr)(e)
+          return last
+        }
+      })
+    return current
+  }
+}
