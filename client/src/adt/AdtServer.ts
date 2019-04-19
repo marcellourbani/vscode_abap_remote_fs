@@ -36,7 +36,6 @@ export class AdtServer {
   public readonly root: MetaFolder
   public readonly objectFinder: AdtObjectFinder
   public readonly creator: AdtObjectCreator
-  public readonly lockManager: LockManager
   public readonly sapGui: SapGui
   public readonly client: ADTClient
   public readonly activator: AdtObjectActivator
@@ -60,7 +59,6 @@ export class AdtServer {
     this.creator = new AdtObjectCreator(this)
     this.activator = new AdtObjectActivator(this.client)
     this.objectFinder = new AdtObjectFinder(this)
-    this.lockManager = new LockManager(this.client)
     this.sapGui = SapGui.create(config)
 
     // root folder
@@ -85,20 +83,20 @@ export class AdtServer {
         )
 
       try {
-        await this.lockManager.lock(obj)
+        await LockManager.get().lock(uri)
         const transport = await this.selectTransportIfNeeded(obj)
         if (!transport.cancelled)
           await this.client.deleteObject(
             obj.path,
-            this.lockManager.getLockId(obj),
+            LockManager.get().getLockId(uri),
             transport.transport
           )
-        await this.lockManager.unlock(obj)
+        await LockManager.get().unlock(uri)
         // refresh parent node to prevent open editors to lock the object forever
         const parent = hier.find(p => p !== file && isAbapNode(p))
         if (parent && parent.canRefresh()) await parent.refresh(this.client)
       } catch (e) {
-        await this.lockManager.unlock(obj)
+        await LockManager.get().unlock(uri)
         throw e
       }
     } else
@@ -144,7 +142,11 @@ export class AdtServer {
    * @param file the ABAP node being saved
    * @param content the source of the ABAP file
    */
-  public async saveFile(file: AbapNode, content: Uint8Array): Promise<void> {
+  public async saveFile(
+    file: AbapNode,
+    content: Uint8Array,
+    uri: Uri
+  ): Promise<void> {
     if (file.isFolder) throw FileSystemError.FileIsADirectory()
     if (!isAbapNode(file))
       throw FileSystemError.NoPermissions("Can only save source code")
@@ -153,17 +155,17 @@ export class AdtServer {
     if (!obj.structure) await file.stat(this.client)
 
     // check file is locked. Waits if locking is in progress
-    if (!(await this.lockManager.waitLocked(obj)))
+    if (!(await LockManager.get().getFinalStatus(uri)))
       throw adtException(`Object not locked ${obj.type} ${obj.name}`)
 
     const transport = await this.selectTransportIfNeeded(obj)
 
     if (!transport.cancelled) {
-      const lockId = this.lockManager.getLockId(obj)
+      const lockId = LockManager.get().getLockId(uri)
       await obj.setContents(this.client, content, lockId)
 
       await file.stat(this.client)
-      await this.lockManager.unlock(obj)
+      await LockManager.get().unlock(uri)
     } else throw adtException("Object can't be saved without a transport")
   }
 
@@ -391,20 +393,11 @@ export const fromUri = (uri: Uri) => {
 
 export async function disconnect() {
   const promises: Array<Promise<any>> = []
-  let haslocks = false
-  if (haslocks)
+  if (LockManager.get().hasLocks())
     window.showInformationMessage("All locked files will be unlocked")
   for (const server of servers) {
-    if (server[1].lockManager.lockedObjects.length > 0) haslocks = true
-    promises.push(server[1].client.dropSession())
+    const client = server[1].client
+    if (client.isStateful) promises.push(client.dropSession())
   }
   await Promise.all(promises)
-}
-export function lockedFiles() {
-  return [...servers]
-    .map(s => ({
-      connectionId: s[0],
-      locked: s[1].lockManager.lockedObjects.length
-    }))
-    .filter(f => f.locked > 0)
 }

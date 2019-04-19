@@ -10,7 +10,7 @@ import {
 } from "vscode"
 
 import { fromUri, ADTSCHEME, AdtServer } from "./adt/AdtServer"
-import { setDocumentLock } from "./adt/operations/LockManager"
+import { setDocumentLock, LockManager } from "./adt/operations/LockManager"
 import { AbapObject } from "./adt/abap/AbapObject"
 import { clearUTResultsIfLastRun } from "./adt/operations/UnitTestRunner"
 import { IncludeLensP } from "./adt/operations/IncludeLens"
@@ -29,25 +29,21 @@ export async function documentClosedListener(doc: TextDocument) {
   if (uri.scheme === ADTSCHEME) {
     clearUTResultsIfLastRun(doc.uri)
     const server = fromUri(uri)
-    const obj = await server.findAbapObject(uri)
-    if (server.lockManager.isLocked(obj)) await server.lockManager.unlock(obj)
+    if (await LockManager.get().isLockedAsync(uri))
+      await LockManager.get().unlock(uri)
   }
 }
 
 export async function documentChangedListener(event: TextDocumentChangeEvent) {
   const uri = event.document.uri
+  const editor = window.activeTextEditor
   if (uri.scheme !== ADTSCHEME) return
   // only need to (un)lock if the isDirty flag changed, which implies a status change without edits
-  // will call anyway if dirty as locking is mandatory for saving
-  if (event.contentChanges.length === 0 || event.document.isDirty) {
-    const server = fromUri(uri)
-    const obj = await server.findAbapObject(uri)
+  if (event.contentChanges.length === 0) {
     try {
       await setDocumentLock(event.document, true)
     } finally {
-      const editor = window.activeTextEditor
-      if (editor && editor.document === event.document)
-        showHideActivate(editor, obj, server)
+      if (editor && editor.document === event.document) showHideActivate(editor)
     }
     return
   }
@@ -68,41 +64,31 @@ function isInactive(obj: AbapObject): boolean {
   return inactive
 }
 
-export async function showHideActivate(
-  editor?: TextEditor,
-  obj?: AbapObject,
-  server?: AdtServer
-) {
-  if (editor && obj && server)
+export async function showHideActivate(editor?: TextEditor) {
+  let shouldShow = false
+  const uri = editor && editor.document.uri
+  if (editor && uri && uri.scheme === ADTSCHEME)
     try {
-      // race condition, active editor might have changed while async operation was pending
-      if (editor !== window.activeTextEditor) return
-      if (editor && editor.document.uri.scheme === ADTSCHEME) {
-        if (
-          (editor.document.isDirty && server.lockManager.isLocked(obj)) ||
-          isInactive(obj)
-        ) {
-          await commands.executeCommand(
-            "setContext",
-            "abapfs:showActivate",
-            true
-          )
-          return
-        }
+      shouldShow =
+        editor.document.isDirty &&
+        (await LockManager.get().isLockedAsync(editor.document.uri))
+      if (!shouldShow) {
+        const obj = await fromUri(uri).findAbapObject(uri)
+        shouldShow = obj && isInactive(obj)
       }
     } catch (e) {
-      // ignore
+      shouldShow = false
     }
-  await commands.executeCommand("setContext", "abapfs:showActivate", false)
+  // race condition, active editor might have changed while async operation was pending
+  if (editor !== window.activeTextEditor) return
+  await commands.executeCommand("setContext", "abapfs:showActivate", shouldShow)
 }
 export async function activationStateListener(uri: Uri) {
   const editor = window.activeTextEditor
   if (editor && editor.document.uri.scheme === ADTSCHEME) {
     const euri = editor.document.uri
     if (uri.path !== euri.path) return
-    const server = fromUri(uri)
-    const obj = await server.findAbapObject(uri)
-    await showHideActivate(editor, obj, server)
+    await showHideActivate(editor)
   }
 }
 
@@ -113,7 +99,7 @@ export async function activeTextEditorChangedListener(
     if (editor && editor.document.uri.scheme === ADTSCHEME) {
       const server = fromUri(editor.document.uri)
       const obj = await server.findAbapObject(editor.document.uri)
-      await showHideActivate(editor, obj, server)
+      await showHideActivate(editor)
     }
   } catch (e) {
     await showHideActivate() // reset

@@ -8,6 +8,7 @@ import { showHideActivate } from "./listeners"
 import { abapUnit } from "./adt/operations/UnitTestRunner"
 import { isClassInclude } from "./adt/abap/AbapClassInclude"
 import { selectTransport } from "./adt/AdtTransports"
+import { LockManager } from "./adt/operations/LockManager"
 
 export const abapcmds: Array<{
   name: string
@@ -126,7 +127,7 @@ export class AdtCommands {
           await server.activator.activate(obj, uri)
           if (editor === window.activeTextEditor) {
             await obj.loadMetadata(server.client)
-            await showHideActivate(editor, obj)
+            await showHideActivate(editor)
           }
         }
       )
@@ -250,11 +251,11 @@ export class AdtCommands {
     // only makes sense for classes
     if (!isClassInclude(obj)) return
     if (!obj.parent) return
-    const m = server.lockManager
-    let lockId = m.isLocked(obj) && m.getLockId(obj)
+    const m = LockManager.get()
+    let lockId = m.getLockId(uri)
     let lock
     if (!lockId) {
-      lock = await m.lock(obj)
+      lock = await m.lock(uri)
       lockId = (lock && lock.LOCK_HANDLE) || ""
     }
     if (!lockId) {
@@ -281,11 +282,11 @@ export class AdtCommands {
         created = true
       }
       // If I created the lock I remove it. Possible race condition here...
-      if (lock) await m.unlock(obj)
+      if (lock) await m.unlock(uri)
       if (created)
         commands.executeCommand("workbench.files.action.refreshFilesExplorer")
     } catch (e) {
-      if (lock) await m.unlock(obj)
+      if (lock) await m.unlock(uri)
       log(e.toString())
     }
   }
