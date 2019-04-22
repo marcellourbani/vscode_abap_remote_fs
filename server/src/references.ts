@@ -229,7 +229,7 @@ export async function findReferences(
 
     const goodRefs = references.filter(fullname)
     const groups = groupBy(goodRefs, fullname)
-    const startTime = new Date()
+
     let processed = 0
     for (const group of Object.keys(groups)) {
       try {
@@ -260,13 +260,11 @@ export async function findReferences(
         warn("Exception in reference search:", e.toString()) // ignore
       }
       processed = processed + groups[group].length
-      if (new Date().getTime() - startTime.getTime() > 1000) {
-        setSearchProgress({
-          ended: processed === goodRefs.length,
-          hits: locations.length,
-          progress: (processed / goodRefs.length) * 100
-        })
-      }
+      setSearchProgress({
+        ended: processed === goodRefs.length,
+        hits: locations.length,
+        progress: (processed / goodRefs.length) * 100
+      })
     }
   } catch (e) {
     warn("Exception in reference search:", e.toString()) // ignore

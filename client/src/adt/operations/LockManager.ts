@@ -1,5 +1,5 @@
 import { getServer, ADTSCHEME } from "../AdtServer"
-import { ADTClient, session_types, AdtLock } from "abap-adt-api"
+import { ADTClient, session_types, AdtLock, isCsrfError } from "abap-adt-api"
 import { AbapObject, TransportStatus } from "../abap/AbapObject"
 import { log } from "../../logger"
 import { window, TextDocument, StatusBarAlignment, Uri } from "vscode"
@@ -24,7 +24,8 @@ async function validateLock(lock: AdtLock) {
 
 export async function setDocumentLock(
   document: TextDocument,
-  interactive = false
+  interactive = false,
+  retry = true
 ) {
   const uri = document.uri
   const lockManager = LockManager.get()
@@ -34,9 +35,21 @@ export async function setDocumentLock(
       try {
         await lockManager.lock(uri, cb)
       } catch (e) {
-        window.showErrorMessage(
-          `${e.toString()}\nWon't be able to save changes`
-        )
+        const ok = "Ok"
+        if (isCsrfError(e)) {
+          const resp = await window.showErrorMessage(
+            "Session expired, files can't be locked might be stale. Try to refresh locks?",
+            "Ok",
+            "Cancel"
+          )
+          if (resp === ok) {
+            await lockManager.reset(uri)
+            if (retry) setDocumentLock(document, interactive, false)
+          }
+        } else
+          window.showErrorMessage(
+            `${e.toString()}\nWon't be able to save changes`
+          )
       }
     else await lockManager.unlock(uri)
   }
@@ -88,11 +101,6 @@ export class LockObject {
       const onerr = (e: Error) => (error = e)
       const previous = this.lock
 
-      const lockCB = async () => {
-        this.client.stateful = session_types.stateful
-        const lock = await this.client.lock(this.main.path)
-        return lock
-      }
       const validateCB = async (lock?: AdtLock) => {
         if (error || !lock) return lock
         if (!validate || (await validate(lock))) {
@@ -104,7 +112,7 @@ export class LockObject {
         }
       }
 
-      this.current(lockCB, onerr)
+      this.current(this.lockCB, onerr)
       const newLock = await this.current(validateCB, onerr)
 
       this.setLock(key, newLock)
@@ -135,11 +143,27 @@ export class LockObject {
     }
   }
 
+  public async restore() {
+    if (!this.lock) return
+    // make TS happy
+    const cb: () => AdtLock | undefined = () => undefined
+    // old promises shouldn't matter anymore.
+    // TODO: stale promises might still be alive, prevent them form changing stuff
+    this.current = promiseQueue(cb())
+    this.lock = await this.current(this.lockCB)
+  }
+
   private setLock(key: string, lock?: AdtLock) {
     this.lock = lock
     if (lock) {
       this.children.add(key)
     } else this.children.delete(key)
+  }
+
+  private lockCB = async () => {
+    this.client.stateful = session_types.stateful
+    const lock = await this.client.lock(this.main.path)
+    return lock
   }
 }
 
@@ -213,6 +237,26 @@ export class LockManager {
     if (!conn) return 0
     const locked = [...conn.locks].filter(x => x.isLocked)
     return locked.length
+  }
+  public async reset(uri: Uri) {
+    const conn = this.connections.get(uri.authority)
+    if (!conn) return
+    try {
+      conn.server.client.stateful = session_types.stateless
+      // juts in case I have pending locks...
+      await conn.server.client.logout()
+    } catch (error) {
+      // ignore
+    }
+    try {
+      await conn.server.client.login()
+    } catch (error) {
+      log(error.toString())
+    }
+    const locked = [...conn.locks].filter(x => x.isLocked)
+    for (const lock of locked) {
+      await lock.restore()
+    }
   }
 
   public async getFinalStatus(uri: Uri) {

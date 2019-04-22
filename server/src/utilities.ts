@@ -30,17 +30,17 @@ export function sourceRange(
   const line = oline === 0 ? 0 : oline - 1
   if (isString(document)) {
     const lineText = document.split("\n")[line]
-    const lastwordm = lineText.substr(0, character).match(/([<>\w]+)$/)
+    const lastwordm = lineText.substr(0, character).match(/(<?[\w]+>?)$/)
     const start = { line, character }
     if (lastwordm) start.character -= lastwordm[1].length
     const end = { line, character: character + 1000 }
-    const match = lineText.substr(start.character).match(/^([<>\w]+)/)
+    const match = lineText.substr(start.character).match(/^(<?[\w]+>?)/)
     end.character = start.character + (match ? match[1].length : 1)
     return { start, end }
   } else {
     const start = { line, character }
     const end = { line, character: character + 1000 }
-    const match = document.getText({ start, end }).match(/^([<>\w]+)/)
+    const match = document.getText({ start, end }).match(/^(<?[\w]+>?)/)
     end.character = start.character + (match ? match[1].length : 1)
     return { start, end }
   }

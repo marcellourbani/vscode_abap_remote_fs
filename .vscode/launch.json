@@ -10,8 +10,12 @@
       "type": "extensionHost",
       "request": "launch",
       "runtimeExecutable": "${execPath}",
-      "args": ["--extensionDevelopmentPath=${workspaceFolder}/client"],
-      "outFiles": ["${workspaceFolder}/client/out/**/*.js"],
+      "args": [
+        "--extensionDevelopmentPath=${workspaceFolder}/client"
+      ],
+      "outFiles": [
+        "${workspaceFolder}/client/out/**/*.js"
+      ],
       "preLaunchTask": {
         "type": "npm",
         "script": "watch"
@@ -24,10 +28,17 @@
       "address": "localhost",
       "protocol": "inspector",
       "smartStep": true,
-      "skipFiles": ["<node_internals>/**"],
+      "skipFiles": [
+        "<node_internals>/**"
+      ],
       "port": 6009,
       "sourceMaps": true,
-      "outFiles": ["${workspaceRoot}/client/server/**/*.js"]
+      "sourceMapPathOverrides": {
+        "*": "${workspaceRoot}/client/server/*",
+      },
+      "outFiles": [
+        "${workspaceRoot}/client/server/**/*.js"
+      ]
     },
     {
       "name": "Extension Tests",
@@ -38,14 +49,19 @@
         "--extensionDevelopmentPath=${workspaceFolder}",
         "--extensionTestsPath=${workspaceFolder}/out/test"
       ],
-      "outFiles": ["${workspaceFolder}/client/out/test/**/*.js"],
+      "outFiles": [
+        "${workspaceFolder}/client/out/test/**/*.js"
+      ],
       "preLaunchTask": "npm: watch"
     }
   ],
   "compounds": [
     {
       "name": "Client + Server",
-      "configurations": ["Client", "Attach to Server"]
+      "configurations": [
+        "Client",
+        "Attach to Server"
+      ]
     }
   ]
 }

@@ -10,6 +10,11 @@ Format based on [Keep a Changelog](http://keepachangelog.com/)
 
 - release subtasks before releasing main transport
 
+### Changed
+
+- rewrote locking
+- refactored transport selection
+
 ### Fixed
 
 - field symbols selection in syntax
