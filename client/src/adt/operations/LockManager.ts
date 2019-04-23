@@ -104,7 +104,11 @@ export class LockObject {
       const validateCB = async (lock?: AdtLock) => {
         if (error || !lock) return lock
         if (!validate || (await validate(lock))) {
-          log(`locked ${uriName(uri)} ${lock.LOCK_HANDLE}`)
+          log(
+            `locked ${uriName(uri)} ${lock.LOCK_HANDLE} ses. ${
+              this.client.sessionID
+            }`
+          )
           return lock
         } else {
           await this.client.unLock(this.main.path, lock.LOCK_HANDLE)
@@ -132,7 +136,9 @@ export class LockObject {
           if (this.lock) {
             const handle = this.lock.LOCK_HANDLE
             await this.client.unLock(this.main.path, handle)
-            log(`unlocked ${uriName(uri)} ${handle}`)
+            log(
+              `unlocked ${uriName(uri)} ${handle} ses. ${this.client.sessionID}`
+            )
           }
           return undefined
         }

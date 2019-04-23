@@ -4,7 +4,13 @@ All notable changes to the "vscode-abap-remote-fs" extension will be documented 
 
 Format based on [Keep a Changelog](http://keepachangelog.com/)
 
-## Unreleased
+## [0.6.3] 2019-04-24
+### Fixed
+
+- retry lock on change
+- better include resolution
+
+## [0.6.2] 2019-04-23
 
 ### Added
 
@@ -24,7 +30,7 @@ Format based on [Keep a Changelog](http://keepachangelog.com/)
 - fixed locking quirks #64
 - fixed quirk saving newly created object
 
-## 0.6.1 2019-04-18
+## [0.6.1] 2019-04-18
 
 ### Added
 
@@ -37,7 +43,7 @@ Format based on [Keep a Changelog](http://keepachangelog.com/)
 - use main program for reference search
 - syntax errors reported in wrong include
 
-## 0.6.0 2019-04-09
+## [0.6.0] 2019-04-09
 
 ### Added
 
@@ -52,7 +58,7 @@ Format based on [Keep a Changelog](http://keepachangelog.com/)
 - some icons, borrowed from gitlens
 - decentralised command definitions
 
-## 0.5.27 2019-03-30
+## [0.5.27] 2019-03-30
 
 ### Added
 
@@ -62,13 +68,13 @@ Format based on [Keep a Changelog](http://keepachangelog.com/)
 
 - better logging on connection failure
 
-## 0.5.26 2019-03-30
+## [0.5.26] 2019-03-30
 
 ### Added
 
 - revision history (incomplete)
 
-## 0.5.25 2019-03-30
+## [0.5.25] 2019-03-30
 
 ### Added
 
@@ -79,14 +85,14 @@ Format based on [Keep a Changelog](http://keepachangelog.com/)
 
 - better completion of field-symbols
 
-## 0.5.24 2019-03-29
+## [0.5.24] 2019-03-29
 
 ### Fixed
 
 - completion list improved: mark as incomplete when completion list is long
 - hidden irrelevant commands from palette
 
-## 0.5.23 2019-03-27
+## [0.5.23] 2019-03-27
 
 ### Added
 
@@ -101,13 +107,13 @@ Format based on [Keep a Changelog](http://keepachangelog.com/)
 - transports not expanden in view
 - transport tasks
 
-## 0.5.22 2019-03-26
+## [0.5.22] 2019-03-26
 
 ### Added
 
 - transports view
 
-## 0.5.21 2019-03-24
+## [0.5.21] 2019-03-24
 
 ### Added
 
@@ -117,14 +123,14 @@ Format based on [Keep a Changelog](http://keepachangelog.com/)
 
 - #56 create namespaced objects
 
-## 0.5.20 2019-03-20
+## [0.5.20] 2019-03-20
 
 ### Fixed
 
 - #48 lock status changed on stat
 - race confition in read directory on reload/workspace changes
 
-## 0.5.19 2019-03-19
+## [0.5.19] 2019-03-19
 
 ### Added
 
@@ -132,7 +138,7 @@ Format based on [Keep a Changelog](http://keepachangelog.com/)
 - warning for adding tasks to transports on change
 - CDS support
 
-## 0.5.18 2019-03-16
+## [0.5.18] 2019-03-16
 
 ### Added
 

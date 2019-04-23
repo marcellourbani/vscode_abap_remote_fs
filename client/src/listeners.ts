@@ -39,7 +39,8 @@ export async function documentChangedListener(event: TextDocumentChangeEvent) {
   const editor = window.activeTextEditor
   if (uri.scheme !== ADTSCHEME) return
   // only need to (un)lock if the isDirty flag changed, which implies a status change without edits
-  if (event.contentChanges.length === 0) {
+  // will call anyway if dirty as locking is mandatory for saving
+  if (event.contentChanges.length === 0 || event.document.isDirty) {
     try {
       await setDocumentLock(event.document, true)
     } finally {

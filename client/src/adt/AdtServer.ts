@@ -410,7 +410,7 @@ export async function disconnect() {
     window.showInformationMessage("All locked files will be unlocked")
   for (const server of servers) {
     const client = server[1].client
-    if (client.isStateful) promises.push(client.dropSession())
+    if (client.isStateful) promises.push(client.logout())
   }
   await Promise.all(promises)
 }

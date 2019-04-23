@@ -1,5 +1,7 @@
 {
-  "extends": ["tslint:recommended"],
+  "extends": [
+    "tslint:recommended"
+  ],
   "rules": {
     "arrow-parens": false,
     "no-string-throw": true,
@@ -10,9 +12,13 @@
     "interface-name": false,
     "ordered-imports": false,
     "object-literal-sort-keys": false,
-    "semicolon": [false, "always"],
+    "semicolon": [
+      false,
+      "always"
+    ],
     "trailing-comma": false,
-    "triple-equals": true
+    "triple-equals": true,
+    "member-ordering": false
   },
   "defaultSeverity": "warning"
 }
