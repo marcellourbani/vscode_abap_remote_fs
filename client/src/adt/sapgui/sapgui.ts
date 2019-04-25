@@ -120,7 +120,7 @@ export class SapGui {
     try {
       await opn(shortcut.path)
       // delete after opening sapgui, only in windows
-      if (win32) shortcut.cleanup()
+      if (win32) setTimeout(() => shortcut.cleanup(), 50000)
     } catch (e) {
       log("Error executing file", shortcut.path)
     }

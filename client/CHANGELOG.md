@@ -3,6 +3,10 @@
 All notable changes to the "vscode-abap-remote-fs" extension will be documented in this file.
 
 Format based on [Keep a Changelog](http://keepachangelog.com/)
+## [0.6.4] 2019-04-25
+### Fixed
+
+- fix open sapgui in windows
 
 ## [0.6.3] 2019-04-24
 ### Fixed
