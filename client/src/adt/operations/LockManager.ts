@@ -2,7 +2,13 @@ import { getServer, ADTSCHEME } from "../AdtServer"
 import { ADTClient, session_types, AdtLock, isCsrfError } from "abap-adt-api"
 import { AbapObject, TransportStatus } from "../abap/AbapObject"
 import { log } from "../../logger"
-import { window, TextDocument, StatusBarAlignment, Uri } from "vscode"
+import {
+  window,
+  TextDocument,
+  StatusBarAlignment,
+  Uri,
+  workspace
+} from "vscode"
 import { uriName, promiseQueue, asyncCache, cache } from "../../functions"
 
 const statusBarItem = window.createStatusBarItem(StatusBarAlignment.Right, 100)
@@ -28,39 +34,38 @@ export async function setDocumentLock(
   retry = true
 ) {
   const uri = document.uri
+  if (uri.scheme !== ADTSCHEME) return
   const lockManager = LockManager.get()
-  if (uri.scheme === ADTSCHEME) {
-    const cb = interactive ? validateLock : undefined
-    if (document.isDirty)
-      try {
-        await lockManager.lock(uri, cb)
-      } catch (e) {
-        const ok = "Ok"
-        if (isCsrfError(e)) {
-          const resp = await window.showErrorMessage(
-            "Session expired, files can't be locked might be stale. Try to refresh locks?",
-            "Ok",
-            "Cancel"
-          )
-          if (resp === ok) {
-            await lockManager.reset(uri)
-            if (retry) setDocumentLock(document, interactive, false)
-          }
-        } else
-          window.showErrorMessage(
-            `${e.toString()}\nWon't be able to save changes`
-          )
-      }
-    else await lockManager.unlock(uri)
-  }
+
+  const cb = interactive ? validateLock : undefined
+  if (document.isDirty)
+    try {
+      await lockManager.lock(uri, cb)
+    } catch (e) {
+      const ok = "Ok"
+      if (isCsrfError(e)) {
+        const resp = await window.showErrorMessage(
+          "Session expired, files can't be locked might be stale. Try to refresh locks?",
+          "Ok",
+          "Cancel"
+        )
+        if (resp === ok) {
+          await lockManager.reset(uri)
+          if (retry) setDocumentLock(document, interactive, false)
+        }
+      } else
+        window.showErrorMessage(
+          `${e.toString()}\nWon't be able to save changes`
+        )
+    }
+  else await lockManager.unlock(uri)
+
   return await lockManager.getFinalStatus(uri)
 }
 // when the extension is deactivated, all locks are dropped
 // try to restore them as needed
 export async function restoreLocks() {
-  return Promise.all(
-    window.visibleTextEditors.map(e => setDocumentLock(e.document))
-  )
+  return Promise.all(workspace.textDocuments.map(doc => setDocumentLock(doc)))
 }
 
 export class LockObject {

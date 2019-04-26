@@ -265,7 +265,8 @@ export class AbapRevision
   public async openCurrent(state: RevisionState) {
     const document = await workspace.openTextDocument(state.resourceUri)
     return window.showTextDocument(document, {
-      preserveFocus: false
+      preserveFocus: false,
+      preview: false
     })
   }
 

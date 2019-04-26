@@ -2,7 +2,7 @@
   "name": "vscode-abap-remote-fs",
   "displayName": "ABAP remote filesystem",
   "description": "Work on your ABAP code straight from the server",
-  "version": "0.6.4",
+  "version": "0.6.5",
   "publisher": "murbani",
   "license": "MIT",
   "icon": "images/abapfs_icon.png",
@@ -191,16 +191,20 @@
         }
       },
       {
+        "command": "abapfs.openrevstate",
+        "title": "Open current version",
+        "icon": {
+          "dark": "images/dark/icon-open-file.svg",
+          "light": "images/light/icon-open-file.svg"
+        }
+      },
+      {
         "command": "abapfs.opendiff",
-        "title": "Compare with revision",
+        "title": "Open diff with revision",
         "icon": {
           "dark": "images/dark/icon-compare.svg",
           "light": "images/light/icon-compare.svg"
         }
-      },
-      {
-        "command": "abapfs.openrevstate",
-        "title": "Open current version"
       },
       {
         "command": "abapfs.transportObjectDiff",
@@ -399,12 +403,12 @@
       ],
       "scm/resourceState/context": [
         {
-          "command": "abapfs.openrevstate",
-          "group": "context",
+          "command": "abapfs.opendiff",
+          "group": "inline",
           "when": "scmProvider =~ /^ABAP/"
         },
         {
-          "command": "abapfs.opendiff",
+          "command": "abapfs.openrevstate",
           "group": "inline",
           "when": "scmProvider =~ /^ABAP/"
         }
