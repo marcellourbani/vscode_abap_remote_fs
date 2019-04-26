@@ -20,7 +20,7 @@ export async function selectTransport(
   forCreation: boolean = false,
   current = ""
 ): Promise<TransportSelection> {
-  const ti = await client.statelessClone.transportInfo(
+  const ti = await client.transportInfo(
     objContentPath,
     devClass,
     forCreation ? "I" : ""

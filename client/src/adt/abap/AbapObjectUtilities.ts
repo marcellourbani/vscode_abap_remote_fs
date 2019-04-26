@@ -1,8 +1,8 @@
+import { AbapInterface } from "./AbapInterface"
 import { AdtServer } from "../AdtServer"
 import {
   AbapObject,
   AbapNodeComponentByCategory,
-  AbapSimpleObject,
   AbapXmlObject,
   NodeStructureMapped
 } from "./AbapObject"
@@ -96,7 +96,7 @@ export function abapObjectFromNode(node: Node): AbapObject {
       objtype = AbapXmlObject
       break
     case "INTF/OI":
-      objtype = AbapSimpleObject
+      objtype = AbapInterface
       break
     case "FUGR/F":
       objtype = AbapFunctionGroup

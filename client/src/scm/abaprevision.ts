@@ -10,7 +10,6 @@ import {
   EventEmitter,
   SourceControl,
   SourceControlResourceGroup,
-  TextDocument,
   commands,
   SourceControlResourceState,
   window,

@@ -10,15 +10,22 @@ import { AdtObjectFinder } from "./operations/AdtObjectFinder"
 import { AdtObjectCreator, PACKAGE } from "./operations/AdtObjectCreator"
 import { LockManager } from "./operations/LockManager"
 import { SapGui } from "./sapgui/sapgui"
-import { ADTClient, adtException, isCreatableTypeId } from "abap-adt-api"
+import {
+  ADTClient,
+  adtException,
+  isCreatableTypeId,
+  session_types
+} from "abap-adt-api"
 import { isString } from "util"
 import {
   findObjectInNodeByPath,
   abapObjectFromNode
 } from "./abap/AbapObjectUtilities"
 import { activationStateListener } from "../listeners"
+import { CancellationToken, CancellationTokenSource } from "vscode-jsonrpc"
 export const ADTBASEURL = "/sap/bc/adt/repository/nodestructure"
 export const ADTSCHEME = "adt"
+
 /**
  * Split a vscode URI. Parts will then be used to navigate the path
  *
@@ -39,6 +46,7 @@ export class AdtServer {
   public readonly sapGui: SapGui
   public readonly client: ADTClient
   public readonly activator: AdtObjectActivator
+  private mainClient: ADTClient
   private lastRefreshed?: string
   private symLinks = new AdtSymLinkCollection()
   private activationStatusEmitter = new EventEmitter<Uri>()
@@ -52,7 +60,8 @@ export class AdtServer {
     const config = configFromId(connectionId)
 
     if (!config) throw new Error(`connection ${connectionId}`)
-    this.client = createClient(config)
+    this.mainClient = createClient(config)
+    this.client = this.mainClient.statelessClone
     this.activationStatusEmitter.event(activationStateListener)
 
     // utility components
@@ -72,6 +81,53 @@ export class AdtServer {
       new AbapObjectNode(new AbapObject("DEVC/K", "", ADTBASEURL, "X"))
     )
   }
+
+  // used by runInSession
+  private currentCall = Promise.resolve()
+  private currentCancel = new CancellationTokenSource()
+
+  /**
+   * Runs the given callback in a (possibly) stateful session
+   * All callbacks are queued
+   *
+   * @template T the callback's promised payload
+   * @param {(client: ADTClient) => Promise<T>} callback
+   * @returns {Promise<T>}
+   * @memberof AdtServer
+   */
+  public async runInSession<T>(
+    callback: (client: ADTClient) => Promise<T>
+  ): Promise<T> {
+    const token = this.currentCancel.token
+    return new Promise((resolve, reject) => {
+      this.currentCall = this.currentCall.then(async () => {
+        try {
+          if (token.isCancellationRequested) reject("Cancelled")
+          // if the callback resolves so will thhe returned promise
+          resolve(await callback(this.mainClient))
+        } catch (error) {
+          // ignore, must always resolve
+        }
+      })
+    })
+  }
+
+  public async relogin() {
+    this.currentCancel.cancel()
+    this.currentCancel = new CancellationTokenSource()
+    this.currentCall = Promise.resolve()
+    if (this.mainClient.stateful === session_types.stateful) {
+      try {
+        this.mainClient.stateful = session_types.stateless
+        // juts in case I have pending locks...
+        await this.mainClient.logout()
+      } catch (error) {
+        // ignore
+      }
+      await this.mainClient.login()
+    }
+  }
+
   public async delete(uri: Uri) {
     const hier = this.findNodeHierarchy(uri)
     const file = hier && hier[0]
@@ -91,10 +147,8 @@ export class AdtServer {
         )
         if (transport.cancelled)
           throw new Error("A transport is required to perform the deletion")
-        await this.client.deleteObject(
-          obj.path,
-          lm.getLockId(uri),
-          transport.transport
+        await this.runInSession(client =>
+          client.deleteObject(obj.path, lm.getLockId(uri), transport.transport)
         )
         await lm.unlock(uri)
 
@@ -172,7 +226,9 @@ export class AdtServer {
 
     if (!transport.cancelled) {
       const lockId = lm.getLockId(uri)
-      await obj.setContents(this.client, content, lockId, transport.transport)
+      await this.runInSession(client =>
+        obj.setContents(client, content, lockId, transport.transport)
+      )
 
       await file.stat(this.client)
       await lm.unlock(uri)
@@ -409,8 +465,11 @@ export async function disconnect() {
   if (LockManager.get().hasLocks())
     window.showInformationMessage("All locked files will be unlocked")
   for (const server of servers) {
-    const client = server[1].client
-    if (client.isStateful) promises.push(client.logout())
+    const promise = server[1].runInSession(async (client: ADTClient) => {
+      if (client.isStateful) return client.logout()
+    })
+
+    promises.push(promise)
   }
   await Promise.all(promises)
 }

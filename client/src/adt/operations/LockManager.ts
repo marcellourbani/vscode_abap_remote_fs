@@ -1,3 +1,4 @@
+import { AdtServer } from "./../AdtServer"
 import { getServer, ADTSCHEME } from "../AdtServer"
 import { ADTClient, session_types, AdtLock, isCsrfError } from "abap-adt-api"
 import { AbapObject, TransportStatus } from "../abap/AbapObject"
@@ -93,7 +94,7 @@ export class LockObject {
     return (this.lock && this.lock.LOCK_HANDLE) || ""
   }
 
-  constructor(public main: AbapObject, private client: ADTClient) {}
+  constructor(public main: AbapObject, private server: AdtServer) {}
 
   public async requestLock(uri: Uri, validate?: LockValidator) {
     // if (un)lock pending, wait for it
@@ -109,15 +110,13 @@ export class LockObject {
       const validateCB = async (lock?: AdtLock) => {
         if (error || !lock) return lock
         if (!validate || (await validate(lock))) {
-          log(
-            `locked ${uriName(uri)} ${lock.LOCK_HANDLE} ses. ${
-              this.client.sessionID
-            }`
-          )
+          log(`locked ${uriName(uri)} ${lock.LOCK_HANDLE}`)
           return lock
         } else {
-          await this.client.unLock(this.main.path, lock.LOCK_HANDLE)
-          return previous // undefined if unlock fails will return lock
+          await this.server.runInSession(async client => {
+            await client.unLock(this.main.path, lock.LOCK_HANDLE)
+            return previous // undefined; if unlock fails will return lock
+          })
         }
       }
 
@@ -138,13 +137,13 @@ export class LockObject {
         let error
         const onerr = (e: Error) => (error = e)
         const cb = async () => {
-          if (this.lock) {
-            const handle = this.lock.LOCK_HANDLE
-            await this.client.unLock(this.main.path, handle)
-            log(
-              `unlocked ${uriName(uri)} ${handle} ses. ${this.client.sessionID}`
-            )
-          }
+          if (this.lock)
+            await this.server.runInSession(async client => {
+              if (!this.lock) return
+              const handle = this.lock.LOCK_HANDLE
+              await client.unLock(this.main.path, handle)
+              log(`unlocked ${uriName(uri)} ${handle} ses. ${client.sessionID}`)
+            })
           return undefined
         }
 
@@ -171,10 +170,13 @@ export class LockObject {
     } else this.children.delete(key)
   }
 
-  private lockCB = async () => {
-    this.client.stateful = session_types.stateful
-    const lock = await this.client.lock(this.main.path)
-    return lock
+  private lockCB = async (curLock?: AdtLock) => {
+    return this.server.runInSession(async client => {
+      if (curLock) return curLock
+      client.stateful = session_types.stateful
+      const lock = await client.lock(this.main.path)
+      return lock
+    })
   }
 }
 
@@ -192,7 +194,7 @@ const createLC = (connId: string) => {
   const getLock = (key: string) => {
     const main = mains.get(key)
     if (!main) throw new Error("Locking object not found")
-    return new LockObject(main, server.client)
+    return new LockObject(main, server)
   }
   const locks = cache(getLock)
   return {
@@ -225,7 +227,9 @@ export class LockManager {
     await lo.requestUnLock(uri)
     const conn = this.connections.get(uri.authority)
     if (conn && !this.hasLocks(uri.authority))
-      conn.server.client.stateful = session_types.stateless
+      await conn.server.runInSession(
+        async client => (client.stateful = session_types.stateless)
+      )
     this.setCount(uri)
   }
 
@@ -253,15 +257,10 @@ export class LockManager {
     const conn = this.connections.get(uri.authority)
     if (!conn) return
     try {
-      conn.server.client.stateful = session_types.stateless
       // juts in case I have pending locks...
-      await conn.server.client.logout()
+      await conn.server.relogin()
     } catch (error) {
       // ignore
-    }
-    try {
-      await conn.server.client.login()
-    } catch (error) {
       log(error.toString())
     }
     const locked = [...conn.locks].filter(x => x.isLocked)

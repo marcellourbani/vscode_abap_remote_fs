@@ -70,7 +70,7 @@ export class AdtObjectCreator {
     )
     if (transport.cancelled) return
     options.transport = transport.transport
-    await this.server.client.statelessClone.createObject(options)
+    await this.server.client.createObject(options)
 
     const obj = abapObjectFromNode({
       EXPANDABLE: "",

@@ -274,10 +274,9 @@ export class AdtCommands {
           true
         )
         if (transport.cancelled) return
-        await server.client.createTestInclude(
-          obj.parent.name,
-          lockId,
-          transport.transport
+        const parentName = obj.parent.name
+        await server.runInSession(client =>
+          client.createTestInclude(parentName, lockId, transport.transport)
         )
         created = true
       }

@@ -6,9 +6,15 @@ Format based on [Keep a Changelog](http://keepachangelog.com/)
 
 ## Unreleased
 
+### Added
+
+- open interfaces in sapgui
+
 ### Changed
 
 - inline open original in diff view
+- default to stateless connections
+- queue all stateful calls
 
 ### Fixed
 
