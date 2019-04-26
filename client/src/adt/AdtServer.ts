@@ -106,7 +106,8 @@ export class AdtServer {
           // if the callback resolves so will thhe returned promise
           resolve(await callback(this.mainClient))
         } catch (error) {
-          // ignore, must always resolve
+          // reject the external promise, the inner one will always resolve
+          reject(error)
         }
       })
     })

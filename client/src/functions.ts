@@ -77,6 +77,13 @@ export function toInt(raw: any): number {
 export const isUnDefined = (x: any) => typeof x === "undefined"
 export const isDefined = (x: any) => !isUnDefined(x)
 export const uriName = (uri: Uri) => uri.path.split("/").pop() || ""
+export const eatPromiseException = async <T>(p: Promise<T>) => {
+  try {
+    await p
+  } catch (error) {
+    // ignore
+  }
+}
 export const eatException = (cb: (...args: any[]) => any) => (
   ...args: any[]
 ) => {
@@ -84,6 +91,15 @@ export const eatException = (cb: (...args: any[]) => any) => (
     return cb(...args)
   } catch (e) {
     return
+  }
+}
+// synchronous. awaiting would defeat the purpose
+export const createMutex = () => {
+  const m: Map<string, Promise<any>> = new Map()
+  return (key: string, cb: any) => {
+    const prom = (m.get(key) || Promise.resolve()).then(cb)
+    m.set(key, eatPromiseException(prom))
+    return prom
   }
 }
 

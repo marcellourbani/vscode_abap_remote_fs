@@ -10,7 +10,15 @@ import {
   Uri,
   workspace
 } from "vscode"
-import { uriName, promiseQueue, asyncCache, cache } from "../../functions"
+import {
+  uriName,
+  promiseQueue,
+  asyncCache,
+  cache,
+  eatException,
+  eatPromiseException,
+  createMutex
+} from "../../functions"
 
 const statusBarItem = window.createStatusBarItem(StatusBarAlignment.Right, 100)
 type LockValidator = (l: AdtLock) => Promise<boolean>
@@ -28,7 +36,23 @@ async function validateLock(lock: AdtLock) {
   }
   return true
 }
-
+async function reconnectExpired(
+  document: TextDocument,
+  interactive: boolean,
+  retry: boolean
+) {
+  const uri = document.uri
+  const ok = "Ok"
+  const resp = await window.showErrorMessage(
+    "Session expired, files can't be locked might be stale. Try to refresh locks?",
+    "Ok",
+    "Cancel"
+  )
+  if (resp === ok) {
+    await LockManager.get().reset(uri)
+    if (retry) setDocumentLock(document, interactive, false)
+  }
+}
 export async function setDocumentLock(
   document: TextDocument,
   interactive = false,
@@ -44,17 +68,8 @@ export async function setDocumentLock(
       await lockManager.lock(uri, cb)
     } catch (e) {
       const ok = "Ok"
-      if (isCsrfError(e)) {
-        const resp = await window.showErrorMessage(
-          "Session expired, files can't be locked might be stale. Try to refresh locks?",
-          "Ok",
-          "Cancel"
-        )
-        if (resp === ok) {
-          await lockManager.reset(uri)
-          if (retry) setDocumentLock(document, interactive, false)
-        }
-      } else
+      if (isCsrfError(e)) await reconnectExpired(document, interactive, retry)
+      else
         window.showErrorMessage(
           `${e.toString()}\nWon't be able to save changes`
         )
@@ -104,8 +119,11 @@ export class LockObject {
 
     if (!isLocked) {
       let error: Error | undefined
-      const onerr = (e: Error) => (error = e)
+      const onerr = (e: Error) => {
+        error = e
+      }
       const previous = this.lock
+      this.current(this.lockCB(), onerr)
 
       const validateCB = async (lock?: AdtLock) => {
         if (error || !lock) return lock
@@ -120,7 +138,6 @@ export class LockObject {
         }
       }
 
-      this.current(this.lockCB, onerr)
       const newLock = await this.current(validateCB, onerr)
 
       this.setLock(key, newLock)
@@ -142,7 +159,7 @@ export class LockObject {
               if (!this.lock) return
               const handle = this.lock.LOCK_HANDLE
               await client.unLock(this.main.path, handle)
-              log(`unlocked ${uriName(uri)} ${handle} ses. ${client.sessionID}`)
+              log(`unlocked ${uriName(uri)} ${handle}`)
             })
           return undefined
         }
@@ -160,7 +177,7 @@ export class LockObject {
     // old promises shouldn't matter anymore.
     // TODO: stale promises might still be alive, prevent them form changing stuff
     this.current = promiseQueue(cb())
-    this.lock = await this.current(this.lockCB)
+    this.lock = await this.current(this.lockCB())
   }
 
   private setLock(key: string, lock?: AdtLock) {
@@ -170,13 +187,15 @@ export class LockObject {
     } else this.children.delete(key)
   }
 
-  private lockCB = async (curLock?: AdtLock) => {
-    return this.server.runInSession(async client => {
-      if (curLock) return curLock
-      client.stateful = session_types.stateful
-      const lock = await client.lock(this.main.path)
-      return lock
-    })
+  private lockCB = () => {
+    return async (curLock?: AdtLock) => {
+      return this.server.runInSession(async client => {
+        if (curLock) return curLock
+        client.stateful = session_types.stateful
+        const lock = await client.lock(this.main.path)
+        return lock
+      })
+    }
   }
 }
 
@@ -210,27 +229,32 @@ export class LockManager {
     return this.instance
   }
   private static instance: LockManager
+  private mutex = createMutex()
   private connections = cache(createLC)
 
   public async lock(uri: Uri, validate?: LockValidator) {
-    const lo = await this.getLockObjAsync(uri)
-    if (lo) {
-      const result = await lo.requestLock(uri, validate)
-      this.setCount(uri)
-      return result
-    }
+    return await this.mutex(uri.toString(), async () => {
+      const lo = await this.getLockObjAsync(uri)
+      if (lo) {
+        const result = await lo.requestLock(uri, validate)
+        this.setCount(uri)
+        return result
+      }
+    })
   }
 
   public async unlock(uri: Uri) {
-    const lo = await this.getLockObjAsync(uri)
-    if (!lo) return
-    await lo.requestUnLock(uri)
-    const conn = this.connections.get(uri.authority)
-    if (conn && !this.hasLocks(uri.authority))
-      await conn.server.runInSession(
-        async client => (client.stateful = session_types.stateless)
-      )
-    this.setCount(uri)
+    return await this.mutex(uri.toString(), async () => {
+      const lo = await this.getLockObjAsync(uri)
+      if (!lo) return
+      await lo.requestUnLock(uri)
+      const conn = this.connections.get(uri.authority)
+      if (conn && !this.hasLocks(uri.authority))
+        await conn.server.runInSession(
+          async client => (client.stateful = session_types.stateless)
+        )
+      this.setCount(uri)
+    })
   }
 
   public getLockId(uri: Uri) {

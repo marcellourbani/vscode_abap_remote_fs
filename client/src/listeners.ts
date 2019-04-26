@@ -36,7 +36,6 @@ export async function documentClosedListener(doc: TextDocument) {
 
 export async function documentChangedListener(event: TextDocumentChangeEvent) {
   const uri = event.document.uri
-  const editor = window.activeTextEditor
   if (uri.scheme !== ADTSCHEME) return
   // only need to (un)lock if the isDirty flag changed, which implies a status change without edits
   // will call anyway if dirty as locking is mandatory for saving
@@ -44,6 +43,7 @@ export async function documentChangedListener(event: TextDocumentChangeEvent) {
     try {
       await setDocumentLock(event.document, true)
     } finally {
+      const editor = window.activeTextEditor
       if (editor && editor.document === event.document) showHideActivate(editor)
     }
     return
