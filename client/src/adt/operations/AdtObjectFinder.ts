@@ -104,8 +104,9 @@ export class AdtObjectFinder {
     return s
   }
 
-  private async getRootNode(abapPath: PathStep[]): Promise<PathStep> {
+  private async getRootNode(abapPath: PathStep[]) {
     const firstName = abapPath[0]["adtcore:name"]
+    if (firstName === "$TMP") return
     const tmpStep: PathStep = {
       "adtcore:name": "",
       "adtcore:uri": "",
@@ -144,7 +145,8 @@ export class AdtObjectFinder {
   public async locateObject(abapPath: PathStep[]) {
     if (abapPath.length === 0) return
     const children = [...abapPath]
-    children.unshift(await this.getRootNode(abapPath))
+    const root = await this.getRootNode(abapPath)
+    if (root) children.unshift(root)
 
     let nodePath: NodePath = { path: "", node: this.server.root }
 
