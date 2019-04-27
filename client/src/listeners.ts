@@ -14,6 +14,7 @@ import { setDocumentLock, LockManager } from "./adt/operations/LockManager"
 import { AbapObject } from "./adt/abap/AbapObject"
 import { clearUTResultsIfLastRun } from "./adt/operations/UnitTestRunner"
 import { IncludeLensP } from "./adt/operations/IncludeLens"
+import { debounce } from "./functions"
 
 export const listenersubscribers: Array<(...x: any[]) => Disposable> = []
 
@@ -34,20 +35,27 @@ export async function documentClosedListener(doc: TextDocument) {
   }
 }
 
+// debouncing is important for an edge case:
+// if the object is modified but not locked, undoing the changes and restoring the editor
+// would result in an attempt to lock (perhaps with an error or a request to select a transport)
+// followed by an unlock request after a few milliseconds
+// after debouncing it will only process the last status
+const doclock = debounce(200, async (document: TextDocument) => {
+  try {
+    await setDocumentLock(document, true)
+  } finally {
+    const editor = window.activeTextEditor
+    if (editor && editor.document === document) showHideActivate(editor)
+  }
+})
+
 export async function documentChangedListener(event: TextDocumentChangeEvent) {
   const uri = event.document.uri
   if (uri.scheme !== ADTSCHEME) return
   // only need to (un)lock if the isDirty flag changed, which implies a status change without edits
   // will call anyway if dirty as locking is mandatory for saving
-  if (event.contentChanges.length === 0 || event.document.isDirty) {
-    try {
-      await setDocumentLock(event.document, true)
-    } finally {
-      const editor = window.activeTextEditor
-      if (editor && editor.document === event.document) showHideActivate(editor)
-    }
-    return
-  }
+  if (event.contentChanges.length === 0 || event.document.isDirty)
+    doclock(event.document)
 }
 
 export function documentOpenListener(document: TextDocument) {

@@ -186,3 +186,19 @@ export const promiseQueue = <T>(initial: T) => {
     return current
   }
 }
+
+export const debounce = <K, R>(frequency: number, cb: (x: K) => R) => {
+  const calls = new Map<K, Promise<R>>()
+  return (key: K) => {
+    const p =
+      calls.get(key) ||
+      new Promise(resolve => {
+        setTimeout(() => {
+          calls.delete(key)
+          resolve(cb(key))
+        }, frequency)
+      })
+    calls.set(key, p)
+    return p
+  }
+}

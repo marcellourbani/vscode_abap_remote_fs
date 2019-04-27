@@ -21,6 +21,7 @@ export async function syntaxCheck(document: TextDocument) {
     const obj = await getObject(document.uri)
     // no object or include without a main program
     if (!obj || !objectIsValid(obj)) return
+    diagmap.set(obj.mainUrl, []) // make sure we clean up old messages
 
     const getSource = memoize((c: string) => co.client.getObjectSource(c))
     const getUri = memoize((uri: string) => vscUrl(co.confKey, uri, false))

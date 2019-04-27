@@ -102,25 +102,33 @@ export class IncludeLensP implements CodeLensProvider {
     client: ADTClient,
     uri: Uri
   ): Promise<string> {
-    const mainPrograms = await obj.getMainPrograms(client)
-    let mainProgramUri
-    if (mainPrograms.length === 1)
-      mainProgramUri = mainPrograms[0]["adtcore:uri"]
-    if (!mainProgramUri) {
-      const mainProg = await window.showQuickPick(
-        mainPrograms.map(p => p["adtcore:name"]),
-        {
-          placeHolder: `Please select a main program for ${obj.name}`
-        }
-      )
-      if (mainProg)
-        mainProgramUri = mainPrograms.find(
-          x => x["adtcore:name"] === mainProg
-        )!["adtcore:uri"]
+    try {
+      const mainPrograms = await obj.getMainPrograms(client)
+      let mainProgramUri
+      if (mainPrograms.length === 1)
+        mainProgramUri = mainPrograms[0]["adtcore:uri"]
+      if (!mainProgramUri) {
+        const mainProg = await window.showQuickPick(
+          mainPrograms.map(p => p["adtcore:name"]),
+          {
+            placeHolder: `Please select a main program for ${obj.name}`
+          }
+        )
+        if (mainProg)
+          mainProgramUri = mainPrograms.find(
+            x => x["adtcore:name"] === mainProg
+          )!["adtcore:uri"]
+      }
+      if (mainProgramUri)
+        this.selectedEmitter.fire({
+          includeUri: uri.toString(),
+          mainProgramUri
+        })
+      return mainProgramUri || ""
+    } catch (e) {
+      this.notInclude.set(uri.toString(), true)
     }
-    if (mainProgramUri)
-      this.selectedEmitter.fire({ includeUri: uri.toString(), mainProgramUri })
-    return mainProgramUri || ""
+    return ""
   }
 
   public provideCodeLenses(document: TextDocument, token: CancellationToken) {

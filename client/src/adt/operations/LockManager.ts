@@ -53,6 +53,7 @@ async function reconnectExpired(
     if (retry) setDocumentLock(document, interactive, false)
   }
 }
+
 export async function setDocumentLock(
   document: TextDocument,
   interactive = false,
