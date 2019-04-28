@@ -2,7 +2,7 @@
   "name": "vscode-abap-remote-fs",
   "displayName": "ABAP remote filesystem",
   "description": "Work on your ABAP code straight from the server",
-  "version": "0.6.6",
+  "version": "0.6.7",
   "publisher": "murbani",
   "license": "MIT",
   "icon": "images/abapfs_logo.png",
@@ -237,6 +237,10 @@
           "dark": "images/dark/icon-delete.svg",
           "light": "images/light/icon-delete.svg"
         }
+      },
+      {
+        "command": "abapfs.showdocu",
+        "title": "Show ABAP documentation"
       }
     ],
     "keybindings": [
@@ -253,6 +257,11 @@
       {
         "command": "abapfs.unittest",
         "key": "ctrl+shift+f11"
+      },
+      {
+        "command": "abapfs.showdocu",
+        "key": "F1",
+        "when": "editorTextFocus && editorLangId == abap"
       }
     ],
     "menus": {
@@ -338,6 +347,18 @@
         },
         {
           "command": "abapfs.transportRevision",
+          "when": "hideCommands.never"
+        },
+        {
+          "command": "abapfs.opendiffNormalized",
+          "when": "hideCommands.never"
+        },
+        {
+          "command": "abapfs.clearScmGroup",
+          "when": "hideCommands.never"
+        },
+        {
+          "command": "abapfs.showdocu",
           "when": "hideCommands.never"
         }
       ],

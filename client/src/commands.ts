@@ -1,4 +1,11 @@
-import { workspace, Uri, window, commands, ProgressLocation } from "vscode"
+import {
+  workspace,
+  Uri,
+  window,
+  commands,
+  ProgressLocation,
+  ViewColumn
+} from "vscode"
 import { fromUri, AdtServer, ADTSCHEME } from "./adt/AdtServer"
 import { selectMissingRemote, pickAdtRoot, createClient } from "./config"
 import { log } from "./logger"
@@ -10,6 +17,7 @@ import { isClassInclude } from "./adt/abap/AbapClassInclude"
 import { selectTransport } from "./adt/AdtTransports"
 import { LockManager } from "./adt/operations/LockManager"
 
+const ABAPDOC = "ABAPDOC"
 export const abapcmds: Array<{
   name: string
   target: (...x: any[]) => any
@@ -46,7 +54,8 @@ export const AbapFsCommands = {
   transportAddUser: "abapfs.transportAddUser",
   transportRevision: "abapfs.transportRevision",
   transportUser: "abapfs.transportUser",
-  changeInclude: "abapfs:changeInclude"
+  changeInclude: "abapfs:changeInclude",
+  showDocumentation: "abapfs.showdocu"
 }
 
 function currentUri() {
@@ -78,6 +87,39 @@ function openObject(server: AdtServer, uri: string) {
 }
 
 export class AdtCommands {
+  @command(AbapFsCommands.showDocumentation)
+  private static async showAbapDoc() {
+    const editor = window.activeTextEditor
+    if (!editor) return
+    const uri = editor.document.uri
+    const sel = editor.selection.active
+    if (uri.scheme !== ADTSCHEME) return
+    const server = fromUri(uri)
+    const obj = await server.findAbapObject(uri)
+    const doc = await server.client.abapDocumentation(
+      obj.path,
+      editor.document.getText(),
+      sel.line + 1,
+      sel.character + 1
+    )
+    const panel = window.createWebviewPanel(
+      ABAPDOC,
+      "ABAP documentation",
+      {
+        viewColumn: ViewColumn.Beside,
+        preserveFocus: false
+      },
+      {
+        retainContextWhenHidden: true,
+        enableFindWidget: true,
+        enableCommandUris: true,
+        enableScripts: true
+      }
+    )
+
+    panel.webview.html = doc
+  }
+
   @command(AbapFsCommands.connect)
   private static async connectAdtServer(selector: any) {
     let name = ""
