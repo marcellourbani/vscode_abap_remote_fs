@@ -15,13 +15,13 @@ export async function syntaxCheck(document: TextDocument) {
   const diagmap = new Map<string, Diagnostic[]>()
   const oldKeys = oldDiagKeys.get(document.uri)
   if (oldKeys) for (const k of oldKeys) diagmap.set(k, [])
+  diagmap.set(document.uri, [])
   try {
     const co = await clientAndObjfromUrl(document.uri, false)
     if (!co) return
     const obj = await getObject(document.uri)
     // no object or include without a main program
     if (!obj || !objectIsValid(obj)) return
-    diagmap.set(obj.mainUrl, []) // make sure we clean up old messages
 
     const getSource = memoize((c: string) => co.client.getObjectSource(c))
     const getUri = memoize((uri: string) => vscUrl(co.confKey, uri, false))

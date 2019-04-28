@@ -33,6 +33,7 @@ export const AbapFsCommands = {
   clearScmGroup: "abapfs.clearScmGroup",
   openrevstate: "abapfs.openrevstate",
   opendiff: "abapfs.opendiff",
+  opendiffNormalized: "abapfs.opendiffNormalized",
   changequickdiff: "abapfs.changequickdiff",
   remotediff: "abapfs.remotediff",
   comparediff: "abapfs.comparediff",

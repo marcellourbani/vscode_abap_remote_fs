@@ -1,4 +1,10 @@
-import { ADTSCHEME, fromUri, getServer, AdtServer } from "../adt/AdtServer"
+import {
+  ADTSCHEME,
+  fromUri,
+  getServer,
+  AdtServer,
+  ADTURIPATTERN
+} from "../adt/AdtServer"
 import {
   ExtensionContext,
   workspace,
@@ -17,22 +23,46 @@ import {
 } from "vscode"
 import { Revision, classIncludes } from "abap-adt-api"
 import { command, AbapFsCommands } from "../commands"
-import { parts, isDefined } from "../functions"
+import { parts } from "../functions"
 import { isClassInclude } from "../adt/abap/AbapClassInclude"
 import { NodePath } from "../adt/abap/AbapObjectUtilities"
 import { isAbapNode } from "../fs/AbapNode"
-import { isUndefined } from "util"
 import { log } from "../logger"
+import { FsProvider } from "../fs/FsProvider"
 
 const EXTREGEX = /(\.[^\/]+)$/
 const EMPTYFILE = "empty"
 
 const ADTREVISION = "adt_revision"
 const QUICKDIFFQUERY = "quickdiff=true"
+const CURRENTREV = "current"
+
+export const normalizeAbap = (source: string): string => {
+  return source
+    .split(/\n/)
+    .map(line => {
+      if (line.match(/^\*|^(\s*")/)) return line // whole comment
+      // comments and strings will be left alone, the rest will be converted to lower case
+      const stringsornot = line.split(/'/)
+      for (const i in stringsornot) {
+        if (Number(i) % 2) continue // string, nothing to do
+        const part = stringsornot[i]
+        const c = stringsornot[i].indexOf('"')
+        if (c >= 0) {
+          // comment
+          stringsornot[i] = part.substr(0, c).toLowerCase() + part.substr(c)
+          break
+        } else stringsornot[i] = part.toLowerCase()
+      }
+      return stringsornot.join("'")
+    })
+    .join("\n")
+}
 
 interface RevisionState extends SourceControlResourceState {
   group: string
   mainRevision?: Revision
+  refRevision?: Revision
 }
 
 interface ConnRevision {
@@ -62,17 +92,25 @@ export class AbapRevision
     return this.instance
   }
 
-  public static revisionUri(revision: Revision | undefined, uri: Uri) {
+  public static revisionUri(
+    revision: Revision | undefined,
+    uri: Uri,
+    normalize = false
+  ) {
+    const query = normalize ? "normalize=true" : ""
     if (!revision)
       return uri.with({
         scheme: ADTREVISION,
         authority: "",
-        path: EMPTYFILE
+        path: EMPTYFILE,
+        query
       })
-    const ext = parts(uri.path, EXTREGEX)[0] || ""
+    const ext =
+      (revision.uri.match(ADTURIPATTERN) && parts(uri.path, EXTREGEX)[0]) || ""
     return uri.with({
       scheme: ADTREVISION,
-      path: revision.uri + ext
+      path: revision.uri + ext,
+      query
     })
   }
 
@@ -82,9 +120,9 @@ export class AbapRevision
     remoteUri: Uri,
     remoteRev: Revision | undefined
   ) {
-    const name = `${localUri.authority} ${revLabel(localRev, "current")}->${
+    const name = `${localUri.authority} ${revLabel(localRev, CURRENTREV)}->${
       remoteUri.authority
-    } ${revLabel(remoteRev, "current")}`
+    } ${revLabel(remoteRev, CURRENTREV)}`
 
     return commands.executeCommand<void>(
       "vscode.diff",
@@ -95,16 +133,17 @@ export class AbapRevision
   }
 
   public static async displayRevDiff(
-    rightRev: Revision,
-    levtRev: Revision | undefined,
-    base: Uri
+    rightRev: Revision | undefined,
+    leftRev: Revision,
+    base: Uri,
+    normalize = false
   ) {
-    if (!levtRev && !rightRev) return
-    const left = AbapRevision.revisionUri(levtRev, base)
+    if (!leftRev && !rightRev) return
+    const left = AbapRevision.revisionUri(leftRev, base, normalize)
 
-    const right = AbapRevision.revisionUri(rightRev, base)
-    const lvers = revLabel(levtRev, "initial")
-    const rvers = revLabel(rightRev, "current")
+    const right = AbapRevision.revisionUri(rightRev, base, normalize)
+    const lvers = revLabel(leftRev, "initial")
+    const rvers = revLabel(rightRev, CURRENTREV)
     const name =
       (base.path.split("/").pop() || base.toString()) + ` ${lvers}->${rvers}`
     return await commands.executeCommand<void>("vscode.diff", left, right, name)
@@ -129,7 +168,7 @@ export class AbapRevision
   }
 
   /**
-   * Cocument provider implementation for scheme adt_revision, used for diffs
+   * Document provider implementation for scheme adt_revision, used for diffs
    *
    * @param {Uri} uri
    * @param {CancellationToken} token
@@ -146,9 +185,13 @@ export class AbapRevision
       if (revision) revUri = AbapRevision.revisionUri(revision, uri)
     }
     const server = getServer(uri.authority)
-    const source = await server.client.getObjectSource(
-      revUri.path.replace(EXTREGEX, "")
-    )
+    const source: string =
+      uri.path.match(ADTURIPATTERN) || uri.query === QUICKDIFFQUERY
+        ? await server.client.getObjectSource(revUri.path.replace(EXTREGEX, ""))
+        : (await FsProvider.get().readFile(
+            uri.with({ query: "", scheme: ADTSCHEME })
+          )).toString()
+    if (uri.query === "normalize=true") return normalizeAbap(source)
     return source
   }
 
@@ -273,7 +316,7 @@ export class AbapRevision
     uri: Uri,
     placeHolder: string,
     failMessage: string,
-    older?: number
+    older?: Revision
   ) {
     const { revision, userCancel } = await this.selectRevision(
       uri,
@@ -284,12 +327,12 @@ export class AbapRevision
     return revision
   }
 
-  public async selectRevision(uri: Uri, placeHolder: string, older?: number) {
+  public async selectRevision(uri: Uri, placeHolder: string, older?: Revision) {
+    if (older) return { revision: older }
     const conn = this.conns.get(uri.authority)
     if (!conn) return {}
     const revisions = conn.files.get(uri.path)
     if (!revisions) return {}
-    if (!isUndefined(older)) return { revision: revisions[older] }
 
     const sel = await window.showQuickPick(revisions.map(revtoQP), {
       placeHolder
@@ -298,19 +341,45 @@ export class AbapRevision
   }
 
   @command(AbapFsCommands.opendiff)
-  public async openDiff(state: RevisionState, older?: number) {
+  public async openDiff(state: RevisionState, select = true) {
     const uri = state.resourceUri
     const rev = AbapRevision.get()
     const { revision, userCancel } = await rev.selectRevision(
       uri,
       "Select version",
-      older
+      select ? undefined : state.refRevision
     )
+    if (userCancel || !revision) return
 
-    if (state.mainRevision && (revision || older))
+    if (state.mainRevision)
       return AbapRevision.displayRevDiff(state.mainRevision, revision, uri)
-    if (!revision) return
     return AbapRevision.displayDiff(uri, revision)
+  }
+
+  private static currentRevision(uri: Uri): Revision {
+    const server = fromUri(uri)
+
+    return {
+      uri: uri.path,
+      date: Date(),
+      author: server.client.username,
+      version: CURRENTREV,
+      versionTitle: CURRENTREV
+    }
+  }
+
+  @command(AbapFsCommands.opendiffNormalized)
+  public async openDiffNormalized(state: RevisionState) {
+    if (!state.refRevision) return
+    const rightRev =
+      state.mainRevision || AbapRevision.currentRevision(state.resourceUri)
+    if (rightRev)
+      AbapRevision.displayRevDiff(
+        rightRev,
+        state.refRevision,
+        state.resourceUri,
+        true
+      )
   }
 
   private qdKey(uri: Uri) {
@@ -355,28 +424,22 @@ export class AbapRevision
         arguments: []
       }
     }
-    // for transports, I want to compare the latest revision in the transport with the latest out of it
-    let first
-    let last
-    let firstDate: number
+    state.command!.arguments!.push(state, false)
     if (filter) {
-      for (let r = 0; r < revisions.length; r++) {
-        const cur = revisions[r]
-        if (cur.version.match(filter) && isUndefined(first)) {
-          first = r
-          firstDate = Date.parse(cur.date)
-        } else if (isDefined(first) && Date.parse(cur.date) < firstDate!) {
-          if (isUndefined(r) || cur.version) last = r
-          if (cur.version) break
-        }
-      }
-      if (!isDefined(first)) return
-      if (!isDefined(last)) last = revisions.length
-      state.mainRevision = revisions[first!]
-    } else last = 1
+      // for transports, I want to compare the latest revision in the transport with the latest out of it
+      state.mainRevision = revisions.find(r => !!r.version.match(filter))
+      if (!state.mainRevision) return
+      const firstDate = Date.parse(state.mainRevision.date)
+      state.refRevision = revisions.find(
+        r => Date.parse(r.date) < firstDate && !r.version.match(filter)
+      )
+      if (!state.refRevision) return
+    } else {
+      // for non-transports compare the current with the latest
+      if (revisions.length < 1) return
+      state.refRevision = revisions[0]
+    }
 
-    if (filter && isUndefined(first)) return // for transports, if object has no transport version don't add it
-    state.command!.arguments!.push(state, last)
     group.resourceStates = [...group.resourceStates, state]
     this.emitter.fire(uri)
   }

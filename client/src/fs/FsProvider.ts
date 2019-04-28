@@ -11,8 +11,14 @@ import {
   FileType
 } from "vscode"
 import { log } from "../logger"
+import { create } from "domain"
 
 export class FsProvider implements FileSystemProvider {
+  private static instance: FsProvider
+  public static get() {
+    if (!FsProvider.instance) FsProvider.instance = new FsProvider()
+    return FsProvider.instance
+  }
   public get onDidChangeFile() {
     return this.pEventEmitter.event
   }

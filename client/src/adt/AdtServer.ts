@@ -25,6 +25,7 @@ import { activationStateListener } from "../listeners"
 import { CancellationToken, CancellationTokenSource } from "vscode-jsonrpc"
 export const ADTBASEURL = "/sap/bc/adt/repository/nodestructure"
 export const ADTSCHEME = "adt"
+export const ADTURIPATTERN = /\/sap\/bc\/adt\//
 
 /**
  * Split a vscode URI. Parts will then be used to navigate the path

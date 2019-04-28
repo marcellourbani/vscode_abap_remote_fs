@@ -25,11 +25,10 @@ import { IncludeLensP } from "./adt/operations/IncludeLens"
 
 export function activate(context: ExtensionContext) {
   log("activating ABAPfs...")
-  const abapFS = new FsProvider()
   const sub = context.subscriptions
   // register the filesystem type
   sub.push(
-    workspace.registerFileSystemProvider(ADTSCHEME, abapFS, {
+    workspace.registerFileSystemProvider(ADTSCHEME, FsProvider.get(), {
       isCaseSensitive: true
     })
   )

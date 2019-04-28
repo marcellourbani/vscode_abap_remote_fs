@@ -5,7 +5,7 @@
   "version": "0.6.5",
   "publisher": "murbani",
   "license": "MIT",
-  "icon": "images/abapfs_icon.png",
+  "icon": "images/abapfs_logo.png",
   "author": {
     "email": "marcello.urbani@gmail.com",
     "name": "Marcello Urbani"
@@ -204,6 +204,14 @@
         "icon": {
           "dark": "images/dark/icon-compare.svg",
           "light": "images/light/icon-compare.svg"
+        }
+      },
+      {
+        "command": "abapfs.opendiffNormalized",
+        "title": "Open diff normalized",
+        "icon": {
+          "dark": "images/dark/icon-compare-formatted.svg",
+          "light": "images/light/icon-compare-formatted.svg"
         }
       },
       {
@@ -409,6 +417,11 @@
         },
         {
           "command": "abapfs.openrevstate",
+          "group": "inline",
+          "when": "scmProvider =~ /^ABAP/"
+        },
+        {
+          "command": "abapfs.opendiffNormalized",
           "group": "inline",
           "when": "scmProvider =~ /^ABAP/"
         }
