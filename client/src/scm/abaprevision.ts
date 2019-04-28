@@ -63,6 +63,7 @@ interface RevisionState extends SourceControlResourceState {
   group: string
   mainRevision?: Revision
   refRevision?: Revision
+  refMissing?: boolean
 }
 
 interface ConnRevision {
@@ -134,7 +135,7 @@ export class AbapRevision
 
   public static async displayRevDiff(
     rightRev: Revision | undefined,
-    leftRev: Revision,
+    leftRev: Revision | undefined,
     base: Uri,
     normalize = false
   ) {
@@ -149,7 +150,7 @@ export class AbapRevision
     return await commands.executeCommand<void>("vscode.diff", left, right, name)
   }
 
-  public static async displayDiff(uri: Uri, selected: Revision) {
+  public static async displayDiff(uri: Uri, selected?: Revision) {
     const left = AbapRevision.revisionUri(selected, uri)
     const right = uri
     const name =
@@ -344,16 +345,26 @@ export class AbapRevision
   public async openDiff(state: RevisionState, select = true) {
     const uri = state.resourceUri
     const rev = AbapRevision.get()
-    const { revision, userCancel } = await rev.selectRevision(
-      uri,
-      "Select version",
-      select ? undefined : state.refRevision
-    )
-    if (userCancel || !revision) return
+    if (select) {
+      const { revision, userCancel } = await rev.selectRevision(
+        uri,
+        "Select version",
+        select ? undefined : state.refRevision
+      )
+      if (userCancel || !revision) return
 
-    if (state.mainRevision)
-      return AbapRevision.displayRevDiff(state.mainRevision, revision, uri)
-    return AbapRevision.displayDiff(uri, revision)
+      if (state.mainRevision)
+        return AbapRevision.displayRevDiff(state.mainRevision, revision, uri)
+      return AbapRevision.displayDiff(uri, revision)
+    } else {
+      if (state.mainRevision)
+        return AbapRevision.displayRevDiff(
+          state.mainRevision,
+          state.refRevision,
+          uri
+        )
+      return AbapRevision.displayDiff(uri, state.refRevision)
+    }
   }
 
   private static currentRevision(uri: Uri): Revision {
@@ -370,7 +381,6 @@ export class AbapRevision
 
   @command(AbapFsCommands.opendiffNormalized)
   public async openDiffNormalized(state: RevisionState) {
-    if (!state.refRevision) return
     const rightRev =
       state.mainRevision || AbapRevision.currentRevision(state.resourceUri)
     if (rightRev)
@@ -431,9 +441,12 @@ export class AbapRevision
       if (!state.mainRevision) return
       const firstDate = Date.parse(state.mainRevision.date)
       state.refRevision = revisions.find(
-        r => Date.parse(r.date) < firstDate && !r.version.match(filter)
+        r =>
+          !!r.version &&
+          Date.parse(r.date) < firstDate &&
+          !r.version.match(filter)
       )
-      if (!state.refRevision) return
+      if (!state.refRevision) state.refMissing = true
     } else {
       // for non-transports compare the current with the latest
       if (revisions.length < 1) return
