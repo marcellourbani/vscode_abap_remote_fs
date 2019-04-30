@@ -16,6 +16,7 @@ import { abapUnit } from "./adt/operations/UnitTestRunner"
 import { isClassInclude } from "./adt/abap/AbapClassInclude"
 import { selectTransport } from "./adt/AdtTransports"
 import { LockManager } from "./adt/operations/LockManager"
+import { IncludeLensP } from "./adt/operations/IncludeLens"
 
 const ABAPDOC = "ABAPDOC"
 export const abapcmds: Array<{
@@ -55,7 +56,10 @@ export const AbapFsCommands = {
   transportRevision: "abapfs.transportRevision",
   transportUser: "abapfs.transportUser",
   changeInclude: "abapfs:changeInclude",
-  showDocumentation: "abapfs.showdocu"
+  showDocumentation: "abapfs.showdocu",
+  showObject: "abapfs.showObject",
+  pickObject: "abapfs.pickObject",
+  refreshHierarchy: "abapfs.refreshHierarchy"
 }
 
 function currentUri() {
@@ -72,7 +76,7 @@ function current() {
   return { uri, server }
 }
 
-function openObject(server: AdtServer, uri: string) {
+export function openObject(server: AdtServer, uri: string) {
   return window.withProgress(
     { location: ProgressLocation.Window, title: "Opening..." },
     async () => {
@@ -102,22 +106,23 @@ export class AdtCommands {
       sel.line + 1,
       sel.character + 1
     )
-    const panel = window.createWebviewPanel(
-      ABAPDOC,
-      "ABAP documentation",
-      {
-        viewColumn: ViewColumn.Beside,
-        preserveFocus: false
-      },
-      {
-        retainContextWhenHidden: true,
-        enableFindWidget: true,
-        enableCommandUris: true,
-        enableScripts: true
-      }
-    )
+    const panel = window.createWebviewPanel(ABAPDOC, "ABAP documentation", {
+      viewColumn: ViewColumn.Beside,
+      preserveFocus: false
+    })
 
     panel.webview.html = doc
+  }
+
+  @command(AbapFsCommands.changeInclude)
+  private static async changeMain(uri: Uri) {
+    const provider = IncludeLensP.get()
+    const server = fromUri(uri)
+    const obj = await server.findAbapObject(uri)
+    if (!obj) return
+    const main = await provider.selectMain(obj, server.client, uri)
+    if (!main) return
+    provider.setInclude(uri, main)
   }
 
   @command(AbapFsCommands.connect)

@@ -1,5 +1,6 @@
 import { isString, isNumber } from "util"
 import { Uri } from "vscode"
+import { rejects } from "assert"
 
 export const pick = <T, K extends keyof T>(name: K) => (x: T): T[K] => x[name]
 export const flat = <T>(a: T[][]): T[] =>
@@ -79,7 +80,7 @@ export const isDefined = (x: any) => !isUnDefined(x)
 export const uriName = (uri: Uri) => uri.path.split("/").pop() || ""
 export const eatPromiseException = async <T>(p: Promise<T>) => {
   try {
-    await p
+    return await p
   } catch (error) {
     // ignore
   }
@@ -137,17 +138,25 @@ export const asyncCache = <TK, TP, TAK>(
   keyTran: (k: TK) => TAK = (x: any) => x
 ) => {
   const values = new Map<TAK, TP>()
+  const pending = new Map<TAK, Promise<TP>>()
+  const attempt = async (ak: TAK, refresh: boolean) => {
+    let cur = values.get(ak)
+    if (refresh || !cur) {
+      cur = await creator(ak)
+      values.set(ak, cur)
+    }
+    return cur
+  }
 
-  function get(k: TK) {
-    return new Promise(async resolve => {
-      const ak = keyTran(k)
-      let cur = values.get(ak)
-      if (!cur) {
-        cur = await creator(ak)
-        values.set(ak, cur)
-      }
-      resolve(cur)
-    })
+  function get(k: TK, refresh = false) {
+    const ak = keyTran(k)
+    let curP = pending.get(ak)
+    if (!curP) {
+      curP = attempt(ak, refresh)
+      pending.set(ak, curP)
+      eatPromiseException(curP).then(() => pending.delete(ak))
+    }
+    return curP
   }
   return {
     get,

@@ -22,6 +22,7 @@ import { restoreLocks, LockManager } from "./adt/operations/LockManager"
 import { registerRevisionModel } from "./scm/abaprevision"
 import { AbapRevisionLensP } from "./scm/abaprevisionlens"
 import { IncludeLensP } from "./adt/operations/IncludeLens"
+import { ClassHierarchyLensProvider } from "./adt/classhierarchy"
 
 export function activate(context: ExtensionContext) {
   log("activating ABAPfs...")
@@ -54,6 +55,12 @@ export function activate(context: ExtensionContext) {
     window.registerTreeDataProvider(
       "abapfs.transports",
       TransportsProvider.get()
+    )
+  )
+  sub.push(
+    languages.registerCodeLensProvider(
+      { language: "abap", scheme: ADTSCHEME },
+      ClassHierarchyLensProvider.get()
     )
   )
   sub.push(

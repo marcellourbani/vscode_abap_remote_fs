@@ -22,17 +22,6 @@ export class IncludeLensP implements CodeLensProvider {
     return this.instance
   }
   private static instance?: IncludeLensP
-  @command(AbapFsCommands.changeInclude)
-  private static async changeMain(uri: Uri) {
-    const provider = this.get()
-    const server = fromUri(uri)
-    const obj = await server.findAbapObject(uri)
-    if (!obj) return
-    const main = await provider.selectMain(obj, server.client, uri)
-    if (!main) return
-    provider.includes.set(uri.toString(), main)
-    provider.emitter.fire()
-  }
   private emitter = new EventEmitter<void>()
   private selectedEmitter = new EventEmitter<MainProgram>()
   private includes: Map<string, string> = new Map()
@@ -51,6 +40,10 @@ export class IncludeLensP implements CodeLensProvider {
 
   public getMain(uri: Uri) {
     return this.includes.get(uri.toString())
+  }
+  public setInclude(uri: Uri, main: string) {
+    this.includes.set(uri.toString(), main)
+    this.emitter.fire()
   }
 
   public async guessMain(uri: Uri) {
