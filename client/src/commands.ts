@@ -315,6 +315,7 @@ export class AdtCommands {
       if (obj.parent.hasInclude("testclasses")) {
         window.showInformationMessage("Test include already exists")
       } else {
+        if (!obj.structure) await obj.loadMetadata(server.client)
         const transport = await selectTransport(
           obj.getContentsUri(),
           "",
@@ -330,11 +331,15 @@ export class AdtCommands {
       }
       // If I created the lock I remove it. Possible race condition here...
       if (lock) await m.unlock(uri)
-      if (created)
+      if (created) {
+        if (window.activeTextEditor)
+          showHideActivate(window.activeTextEditor, true)
         commands.executeCommand("workbench.files.action.refreshFilesExplorer")
+      }
     } catch (e) {
       if (lock) await m.unlock(uri)
       log(e.toString())
+      window.showErrorMessage(`Error creating class include`)
     }
   }
 }

@@ -73,7 +73,7 @@ function isInactive(obj: AbapObject): boolean {
   return inactive
 }
 
-export async function showHideActivate(editor?: TextEditor) {
+export async function showHideActivate(editor?: TextEditor, refresh = false) {
   let shouldShow = false
   const uri = editor && editor.document.uri
   if (editor && uri && uri.scheme === ADTSCHEME)
@@ -82,7 +82,9 @@ export async function showHideActivate(editor?: TextEditor) {
         editor.document.isDirty &&
         (await LockManager.get().isLockedAsync(editor.document.uri))
       if (!shouldShow) {
-        const obj = await fromUri(uri).findAbapObject(uri)
+        const server = fromUri(uri)
+        const obj = await server.findAbapObject(uri)
+        if (refresh) await obj.loadMetadata(server.client)
         shouldShow = obj && isInactive(obj)
       }
     } catch (e) {
