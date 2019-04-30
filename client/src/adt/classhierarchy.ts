@@ -209,13 +209,17 @@ export class ClassHierarchyLensProvider implements CodeLensProvider {
 
   @command(AbapFsCommands.refreshHierarchy)
   private static refreshHier(p: RefreshParams) {
-    const title = `Loading ${p.parents ? "parent" : "child"} classes...`
+    const targ = p.parents ? "parent" : "child"
+    const title = `Loading ${targ} classes...`
     window.withProgress(
       { location: ProgressLocation.Window, title },
       async () => {
         const ocache = ClassHierarchyLensProvider.caches.get(p.connId)(p.key)
-        if (p.parents) await ocache.refreshParents(p.key, true)
-        else await ocache.refreshChildren(p.key, true)
+        const result = await (p.parents
+          ? ocache.refreshParents(p.key, true)
+          : ocache.refreshChildren(p.key, true))
+        if (!result || !result.length)
+          window.showInformationMessage(`No ${targ} found`)
         ClassHierarchyLensProvider.emitter.fire()
       }
     )

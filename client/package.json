@@ -216,7 +216,7 @@
       },
       {
         "command": "abapfs.transportObjectDiff",
-        "title": "Open current version",
+        "title": "Diff with current version",
         "icon": {
           "dark": "images/dark/icon-compare.svg",
           "light": "images/light/icon-compare.svg"

@@ -1,3 +1,4 @@
+import { CancellationToken } from "vscode-jsonrpc"
 import { PACKAGE } from "../adt/operations/AdtObjectCreator"
 import { AbapRevision } from "../scm/abaprevision"
 import { AdtServer } from "../adt/AdtServer"
@@ -11,10 +12,7 @@ import {
   window,
   ProgressLocation,
   commands,
-  Diagnostic,
-  DiagnosticCollection,
-  languages,
-  Range
+  Progress
 } from "vscode"
 import { ADTSCHEME, fromUri } from "../adt/AdtServer"
 import {
@@ -33,7 +31,7 @@ import {
   allChildren,
   NodePath
 } from "../adt/abap/AbapObjectUtilities"
-import { pick } from "../functions"
+import { withp } from "../functions"
 
 const currentUsers = new Map<string, string>()
 
@@ -296,19 +294,30 @@ export class TransportsProvider implements TreeDataProvider<CollectionItem> {
 
   @command(AbapFsCommands.transportObjectDiff)
   private static async openTransportObjectDiff(item: ObjectItem) {
-    const path = await this.decodeTransportObject(item.obj, item.server)
-    if (!path || !path.path || !isAbapNode(path.node)) return
-    const uri = item.server.createUri(path.path)
-    const obj = path.node.abapObject
-    if (!obj.structure) await obj.loadMetadata(item.server.client)
-    if (!obj.structure) return
+    let displayed = false
+    try {
+      await withp("Opening diff...", async () => {
+        const path = await this.decodeTransportObject(item.obj, item.server)
+        if (!path || !path.path || !isAbapNode(path.node)) return
+        const uri = item.server.createUri(path.path)
+        const obj = path.node.abapObject
+        if (!obj.structure) await obj.loadMetadata(item.server.client)
+        if (!obj.structure) return
 
-    const revisions = await item.server.client.revisions(obj.structure)
-    const beforeTr = revisions.find(
-      r => !r.version.match(item.transport.revisionFilter)
-    )
-    if (!beforeTr) return
-    return AbapRevision.displayDiff(uri, beforeTr)
+        const revisions = await item.server.client.revisions(obj.structure)
+        const beforeTr = revisions.find(
+          r => !r.version.match(item.transport.revisionFilter)
+        )
+        if (!beforeTr) return
+        displayed = true
+        return AbapRevision.displayDiff(uri, beforeTr)
+      })
+      if (!displayed) window.showInformationMessage("Object not found")
+    } catch (e) {
+      window.showErrorMessage(
+        `Error displaying transport object: ${e.toString}`
+      )
+    }
   }
 
   @command(AbapFsCommands.openTransportObject)
@@ -316,17 +325,28 @@ export class TransportsProvider implements TreeDataProvider<CollectionItem> {
     obj: TransportObject,
     server: AdtServer
   ) {
-    const path = await this.decodeTransportObject(obj, server)
-    if (!path || !path.path) return
-    const uri = Uri.parse("adt://foo/").with({
-      authority: server.connectionId,
-      path: path.path
-    })
+    let displayed = false
+    try {
+      await withp("Opening object...", async () => {
+        const path = await this.decodeTransportObject(obj, server)
+        if (!path || !path.path) return
+        const uri = Uri.parse("adt://foo/").with({
+          authority: server.connectionId,
+          path: path.path
+        })
 
-    const document = await workspace.openTextDocument(uri)
-    return window.showTextDocument(document, {
-      preserveFocus: false
-    })
+        const document = await workspace.openTextDocument(uri)
+        displayed = true
+        return window.showTextDocument(document, {
+          preserveFocus: false
+        })
+      })
+      if (!displayed) window.showInformationMessage("Object not foundy")
+    } catch (e) {
+      window.showErrorMessage(
+        `Error displaying transport object: ${e.toString}`
+      )
+    }
   }
 
   @command(AbapFsCommands.deleteTransport)

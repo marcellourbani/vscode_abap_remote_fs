@@ -1,6 +1,11 @@
 import { isString, isNumber } from "util"
-import { Uri } from "vscode"
-import { rejects } from "assert"
+import {
+  Uri,
+  Progress,
+  CancellationToken,
+  ProgressLocation,
+  window
+} from "vscode"
 
 export const pick = <T, K extends keyof T>(name: K) => (x: T): T[K] => x[name]
 export const flat = <T>(a: T[][]): T[] =>
@@ -211,3 +216,12 @@ export const debounce = <K, R>(frequency: number, cb: (x: K) => R) => {
     return p
   }
 }
+
+export const withp = <T>(
+  title: string,
+  cb: (
+    progress?: Progress<{ message?: string; increment?: number }>,
+    token?: CancellationToken
+  ) => Promise<T>,
+  location = ProgressLocation.Window
+) => window.withProgress({ location, title }, cb)

@@ -4,6 +4,17 @@ All notable changes to the "vscode-abap-remote-fs" extension will be documented 
 
 Format based on [Keep a Changelog](http://keepachangelog.com/)
 
+## Unreleased
+
+### Added
+
+- #61 parent / child classes codelens
+- #74 progress and error handling for transport object open
+
+### Fixed
+
+- #75 quirks in test class include
+
 ## [0.6.7] 2019-04-28
 
 ### Added
