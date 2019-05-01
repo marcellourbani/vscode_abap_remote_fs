@@ -2,9 +2,7 @@
 
 This extension allows editing and activation of ABAP code on your server directly in Visual studio code, including transport assignment and creation (if your system supports it).
 
-Warning: **THIS SOFTWARE IS IN BETA TEST, USE AT YOUR OWN RISK**
-
-## New in 0.6: source control
+## New in 0.7: Class hierarchy, [transport based versioning](https://blogs.sap.com/2019/04/28/peer-reviewing-abap-code/)
 
 ## Links
 
@@ -21,16 +19,11 @@ Compatibility with [ABAPlint](https://marketplace.visualstudio.com/items?itemNam
 
 ## Features
 
-Connect to your SAP server using the ADT interface, edit, save and activate files
-The complete list of editable objects depends on your installation, on my local 7.52 works for:
-
-- programs/includes
-- function groups
-- classes
-- transformations (except creation)
-- CDS and tables (display, didn't try saving)
-
-Now includes ABAP language support!
+- edit, create, search and delete ABAP objects
+- syntax check with automatic fixing
+- where used list
+- transport management
+- source control
 
 ![anim](https://user-images.githubusercontent.com/2453277/48232926-30a78d80-e3ab-11e8-8a12-00844431f9af.gif)
 
@@ -58,4 +51,15 @@ You will end up with one or more server connections like this in your vs code co
 ## License
 
 MIT license applies
+
 some icons found in client/images are from [Material design](https://material.io) and subject to the [Apache license 2.0](https://www.apache.org/licenses/LICENSE-2.0.html)
+
+## Disclaimer
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
