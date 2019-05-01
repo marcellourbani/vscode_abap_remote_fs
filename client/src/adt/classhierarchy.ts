@@ -81,7 +81,7 @@ function hierCache(server: AdtServer) {
   }
 }
 
-const CLASSREGEX = /((?:class)|(?:interface))\s+((?:\/\w+\/)?\w+)/i
+const CLASSREGEX = /^\s*((?:class)|(?:interface))\s+((?:\/\w+\/)?\w+)/i
 const refreshHier = (
   uri: Uri,
   key: string,
@@ -142,7 +142,7 @@ export class ClassHierarchyLensProvider implements CodeLensProvider {
       if (!match) continue
       const [type, name] = match.slice(1)
       if (!type) continue
-      const char = match.index || 0 + match[0].indexOf(name)
+      const char = match[0].indexOf(name)
       const position = new Position(idx, char)
       const endpos = new Position(idx, char + name.length)
       const key = ok(type, name)
