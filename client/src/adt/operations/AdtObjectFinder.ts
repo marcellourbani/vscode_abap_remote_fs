@@ -1,5 +1,5 @@
 import { AbapObjectNode } from "../../fs/AbapNode"
-import { PACKAGE } from "./AdtObjectCreator"
+import { PACKAGE, TMPPACKAGE } from "./AdtObjectCreator"
 import { ADTClient, PathStep, SearchResult, ObjectType } from "abap-adt-api"
 import { AdtServer } from "../AdtServer"
 import { window, QuickPickItem, workspace, commands } from "vscode"
@@ -106,7 +106,7 @@ export class AdtObjectFinder {
 
   private async getRootNode(abapPath: PathStep[]) {
     const firstName = abapPath[0]["adtcore:name"]
-    if (firstName === "$TMP") return
+    if (firstName === TMPPACKAGE) return
     const tmpStep: PathStep = {
       "adtcore:name": "",
       "adtcore:uri": "",
@@ -114,15 +114,15 @@ export class AdtObjectFinder {
       "adtcore:type": PACKAGE
     }
     if (!firstName.match(/^\$/)) return tmpStep
-    tmpStep["adtcore:name"] = "$TMP"
-    if (firstName !== "$TMP") {
+    tmpStep["adtcore:name"] = TMPPACKAGE
+    if (firstName !== TMPPACKAGE) {
       // hack for local packages not marked as children of $TMP
-      const tmp = findObjectInNode(this.server.root, PACKAGE, "$TMP")
+      const tmp = findObjectInNode(this.server.root, PACKAGE, TMPPACKAGE)
       if (tmp) {
-        let first = findObjectInNode(tmp.node, PACKAGE, "$TMP")
+        let first = findObjectInNode(tmp.node, PACKAGE, TMPPACKAGE)
         if (!first) {
           await tmp.node.refresh(this.server.client)
-          first = findObjectInNode(tmp.node, PACKAGE, "$TMP")
+          first = findObjectInNode(tmp.node, PACKAGE, TMPPACKAGE)
         }
         if (!first) {
           // package not in $TMP, should always be the case...

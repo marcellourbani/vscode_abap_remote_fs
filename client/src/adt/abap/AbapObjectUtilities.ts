@@ -1,3 +1,4 @@
+import { MetaFolder } from "./../../fs/MetaFolder"
 import { AbapInterface } from "./AbapInterface"
 import { AdtServer } from "../AdtServer"
 import {
@@ -6,17 +7,19 @@ import {
   AbapXmlObject,
   NodeStructureMapped
 } from "./AbapObject"
-import { selectMap } from "../../functions"
+import { selectMap, ArrayToMap } from "../../functions"
 import { AbapProgram } from "./AbapProgram"
 import { AbapClass } from "./AbapClass"
 import { AbapInclude } from "./AbapInclude"
 import { AbapClassInclude, isClassInclude } from "./AbapClassInclude"
-import { AbapNode, isAbapNode } from "../../fs/AbapNode"
+import { AbapNode, isAbapNode, AbapObjectNode } from "../../fs/AbapNode"
 import { AbapFunction } from "./AbapFunction"
 import { AbapCds } from "./AbapCds"
-import { Node, ADTClient } from "abap-adt-api"
+import { Node, ADTClient, NodeStructure } from "abap-adt-api"
 import { AbapFunctionGroup } from "./AbapFunctionGroup"
-import { Uri } from "vscode"
+import { Uri, commands } from "vscode"
+import { PACKAGE, TMPPACKAGE } from "../operations/AdtObjectCreator"
+import { log } from "../../logger"
 
 export interface NodePath {
   path: string
@@ -76,6 +79,22 @@ export function aggregateNodes(
       }
       typeNode.objects.push(abapObjectFromNode(node))
     })
+
+  return components
+}
+
+export const convertNodes = (
+  rawnodes: NodeStructure,
+  type: string,
+  filter?: (o: NodeStructureMapped) => NodeStructureMapped
+) => {
+  const nodes = {
+    nodes: rawnodes.nodes,
+    categories: ArrayToMap("CATEGORY")(rawnodes.categories),
+    objectTypes: ArrayToMap("OBJECT_TYPE")(rawnodes.objectTypes)
+  }
+  const filtered = filter ? filter(nodes) : nodes
+  const components = aggregateNodes(filtered, type)
 
   return components
 }

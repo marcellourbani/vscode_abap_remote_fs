@@ -11,7 +11,6 @@ import {
   FileType
 } from "vscode"
 import { log } from "../logger"
-import { create } from "domain"
 
 export class FsProvider implements FileSystemProvider {
   private static instance: FsProvider

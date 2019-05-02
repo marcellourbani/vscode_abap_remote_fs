@@ -1,6 +1,6 @@
 import { FileSystemError } from "vscode"
-import { ArrayToMap } from "../../functions"
-import { aggregateNodes, objectTypeExtension } from "./AbapObjectUtilities"
+
+import { objectTypeExtension, convertNodes } from "./AbapObjectUtilities"
 import { SapGuiCommand } from "../sapgui/sapgui"
 import {
   ADTClient,
@@ -178,13 +178,9 @@ export class AbapObject {
       throw FileSystemError.FileNotADirectory(this.vsName)
 
     const adtnodes = await client.nodeContents(this.type, this.name)
-    const nodes = {
-      nodes: adtnodes.nodes,
-      categories: ArrayToMap("CATEGORY")(adtnodes.categories),
-      objectTypes: ArrayToMap("OBJECT_TYPE")(adtnodes.objectTypes)
-    }
-    const filtered = this.filterNodeStructure(nodes)
-    const components = aggregateNodes(filtered, this.type)
+    const components = convertNodes(adtnodes, this.type, x =>
+      this.filterNodeStructure(x)
+    )
 
     return components
   }
@@ -193,7 +189,7 @@ export class AbapObject {
   protected filterNodeStructure(
     nodest: NodeStructureMapped
   ): NodeStructureMapped {
-    if (this.type === "DEVC/K") return nodest
+    if (this.type === PACKAGE) return nodest
     const nodes = nodest.nodes.filter(x => this.whiteListed(x.OBJECT_TYPE))
     return {
       ...nodest,

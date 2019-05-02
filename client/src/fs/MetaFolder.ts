@@ -10,6 +10,7 @@ export class MetaFolder implements FileStat, Iterable<[string, AbapNode]> {
   public size: number = 0
 
   private children: Map<string, AbapNode> = new Map()
+  public manualChildren?: Map<string, AbapNode>
 
   public async stat(client: ADTClient): Promise<AbapNode> {
     return this
@@ -25,8 +26,12 @@ export class MetaFolder implements FileStat, Iterable<[string, AbapNode]> {
   public save(client: ADTClient, contents: Uint8Array) {
     if (this.isFolder) throw FileSystemError.FileIsADirectory()
   }
-  public setChild(name: string, child: AbapNode): AbapNode {
+  public setChild(name: string, child: AbapNode, manual = false): AbapNode {
     this.children.set(name, child)
+    if (manual) {
+      if (!this.manualChildren) this.manualChildren = new Map()
+      this.manualChildren.set(name, child)
+    }
     return child
   }
   public deleteChild(name: string): void {

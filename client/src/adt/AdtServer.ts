@@ -7,7 +7,11 @@ import { createClient, configFromId } from "../config"
 import { selectTransport, trSel } from "./AdtTransports"
 import { AdtObjectActivator } from "./operations/AdtObjectActivator"
 import { AdtObjectFinder } from "./operations/AdtObjectFinder"
-import { AdtObjectCreator, PACKAGE } from "./operations/AdtObjectCreator"
+import {
+  AdtObjectCreator,
+  PACKAGE,
+  TMPPACKAGE
+} from "./operations/AdtObjectCreator"
 import { LockManager } from "./operations/LockManager"
 import { SapGui } from "./sapgui/sapgui"
 import {
@@ -48,7 +52,6 @@ export class AdtServer {
   public readonly client: ADTClient
   public readonly activator: AdtObjectActivator
   private mainClient: ADTClient
-  private lastRefreshed?: string
   private symLinks = new AdtSymLinkCollection()
   private activationStatusEmitter = new EventEmitter<Uri>()
 
@@ -74,12 +77,12 @@ export class AdtServer {
     // root folder
     this.root = new MetaFolder()
     this.root.setChild(
-      `$TMP`,
-      new AbapObjectNode(new AbapObject("DEVC/K", "$TMP", ADTBASEURL, "X"))
+      TMPPACKAGE,
+      new AbapObjectNode(new AbapObject(PACKAGE, TMPPACKAGE, ADTBASEURL, "X"))
     )
     this.root.setChild(
       "System Library",
-      new AbapObjectNode(new AbapObject("DEVC/K", "", ADTBASEURL, "X"))
+      new AbapObjectNode(new AbapObject(PACKAGE, "", ADTBASEURL, "X"))
     )
   }
 
@@ -173,20 +176,6 @@ export class AdtServer {
    */
   public async refreshDirIfNeeded(dir: AbapNode) {
     if (dir.canRefresh() && isAbapNode(dir)) {
-      /* Workaround for ADT bug: when a session is stateful, it caches package contents
-       * to invalidate the cache, read contents of another package
-       * but only do that if it was the last package read*/
-      if (this.client.isStateful) {
-        if (this.lastRefreshed === dir.abapObject.name) {
-          await this.client.nodeContents(
-            PACKAGE,
-            this.lastRefreshed === "$TMP" ? "SEU_ADT" : "$TMP"
-          )
-        }
-
-        this.lastRefreshed = dir.abapObject.name
-      } else this.lastRefreshed = undefined
-
       await dir.refresh(this.client)
     }
   }
@@ -309,7 +298,7 @@ export class AdtServer {
           !next &&
           part.match(/^\$/) &&
           isAbapNode(node) &&
-          node.abapObject.name === "$TMP"
+          node.abapObject.name === TMPPACKAGE
         ) {
           const obj = abapObjectFromNode({
             EXPANDABLE: "X",

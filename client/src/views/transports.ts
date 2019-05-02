@@ -227,6 +227,7 @@ export class TransportsProvider implements TreeDataProvider<CollectionItem> {
       const instance = new TransportsProvider()
       this.instance = instance
       workspace.onDidChangeWorkspaceFolders(() => instance.refresh())
+      instance.refresh()
     }
     return this.instance
   }
@@ -250,19 +251,33 @@ export class TransportsProvider implements TreeDataProvider<CollectionItem> {
     return this.root.getChildren()
   }
 
-  public refresh() {
-    this.root = this.newRoot()
+  public async refresh() {
+    const root = this.newRoot()
+
+    const folders = (workspace.workspaceFolders || []).filter(
+      f => f.uri.scheme === ADTSCHEME
+    )
+    for (const f of folders) {
+      const server = fromUri(f.uri)
+      const hasTR = await server.client.featureDetails(
+        "Change and Transport System"
+      )
+      if (
+        hasTR &&
+        hasTR.collection.find(
+          c => c.href === "/sap/bc/adt/cts/transportrequests"
+        )
+      )
+        root.addChild(new ConnectionItem(f.uri))
+    }
+    this.root = root
     this.emitter.fire()
   }
 
   private newRoot() {
-    const root = new CollectionItem("root")
-    const folders = (workspace.workspaceFolders || []).filter(
-      f => f.uri.scheme === ADTSCHEME
-    )
-    for (const f of folders) root.addChild(new ConnectionItem(f.uri))
-    return root
+    return new CollectionItem("root")
   }
+
   // tslint:disable: member-ordering
   private static async decodeTransportObject(
     obj: TransportObject,

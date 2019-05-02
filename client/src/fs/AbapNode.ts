@@ -23,7 +23,7 @@ const getNodeHierarchyByType = (
   return newNode
 }
 
-const getNodeHierarchy = (
+export const getNodeHierarchy = (
   components: AbapNodeComponentByCategory[]
 ): MetaFolder => {
   const newNode = new MetaFolder()
@@ -58,10 +58,15 @@ const refreshObjects = (
   const newFolder = node.abapObject.type.match(/DEVC/)
     ? getNodeHierarchy(components)
     : getNodeHierarchyByType(components)
-  if (manual)
-    for (const k of manual.keys())
-      if (!newFolder.getChild(k)) newFolder.setChild(k, manual.get(k)!)
-  function reconcile(current: AbapNode, newNode: AbapNode) {
+  function reconcile(
+    current: AbapNode,
+    newNode: AbapNode,
+    manchildren?: Map<string, AbapNode>
+  ) {
+    // prevent manual additions from being removed
+    if (manchildren && newNode.isFolder)
+      for (const k of manchildren.keys())
+        if (!newNode.getChild(k)) newNode.setChild(k, manchildren.get(k)!)
     // remove deleted objects from node
     const cur = [...current]
     cur
@@ -71,11 +76,12 @@ const refreshObjects = (
     for (const [name, value] of [...newNode]) {
       const oldChild = current.getChild(name)
       if (!oldChild) current.setChild(name, value)
-      else if (oldChild.isFolder) reconcile(oldChild, value)
+      else if (oldChild.isFolder)
+        reconcile(oldChild, value, oldChild.manualChildren)
     }
   }
 
-  reconcile(node, newFolder)
+  reconcile(node, newFolder, manual)
 }
 
 // folders are only used to store other nodes
@@ -86,7 +92,7 @@ export class AbapObjectNode implements FileStat, Iterable<[string, AbapNode]> {
   public mtime: number = Date.now()
   public size: number = 0
   private children?: Map<string, AbapNode>
-  private manualChildren?: Map<string, AbapNode>
+  public manualChildren?: Map<string, AbapNode>
 
   constructor(abapObject: AbapObject) {
     if (abapObject.isLeaf()) this.type = FileType.File

@@ -21,6 +21,7 @@ import { fieldOrder } from "../../functions"
 import { MySearchResult } from "./AdtObjectFinder"
 
 export const PACKAGE = "DEVC/K"
+export const TMPPACKAGE = "$TMP"
 type details =
   | {
       options: NewObjectOptions
