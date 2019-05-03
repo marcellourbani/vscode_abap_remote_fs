@@ -36,23 +36,28 @@ async function validateLock(lock: AdtLock) {
   }
   return true
 }
-async function reconnectExpired(
-  document: TextDocument,
-  interactive: boolean,
-  retry: boolean
-) {
-  const uri = document.uri
+
+export async function reconnectExpired(uri: Uri) {
   const ok = "Ok"
-  const resp = await window.showErrorMessage(
-    "Session expired, files can't be locked might be stale. Try to refresh locks?",
-    "Ok",
-    "Cancel"
-  )
+  const lm = LockManager.get()
+
+  const resp = lm.hasLocks(uri.authority)
+    ? await window.showErrorMessage(
+        "Session expired, files can't be locked might be stale. Try to refresh locks?",
+        "Ok",
+        "Cancel"
+      )
+    : ok
   if (resp === ok) {
-    await LockManager.get().reset(uri)
-    if (retry) setDocumentLock(document, interactive, false)
+    await lm.reset(uri)
+    return true
   }
+  return false
 }
+
+export const isExpired = (error: any) =>
+  isCsrfError(error) ||
+  (error.message === "Session timed out" && error.err === 400)
 
 export async function setDocumentLock(
   document: TextDocument,
@@ -68,9 +73,10 @@ export async function setDocumentLock(
     try {
       await lockManager.lock(uri, cb)
     } catch (e) {
-      const ok = "Ok"
-      if (isCsrfError(e)) await reconnectExpired(document, interactive, retry)
-      else
+      if (isExpired(e)) {
+        if (retry && (await reconnectExpired(document.uri)))
+          setDocumentLock(document, interactive, false)
+      } else
         window.showErrorMessage(
           `${e.toString()}\nWon't be able to save changes`
         )
@@ -292,6 +298,10 @@ export class LockManager {
     for (const lock of locked) {
       await lock.restore()
     }
+    if (this.hasLocks(uri.authority))
+      window.showWarningMessage(
+        "Locks restored. Saving files might overwrite changes by other users"
+      )
   }
 
   public async getFinalStatus(uri: Uri) {

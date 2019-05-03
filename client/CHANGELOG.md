@@ -4,6 +4,14 @@ All notable changes to the "vscode-abap-remote-fs" extension will be documented 
 
 Format based on [Keep a Changelog](http://keepachangelog.com/)
 
+## [0.7.1] 2019-05-01
+
+### Fixed
+
+- some glitches in lock restoring/saving with expired locks
+- bogus class hierarchy lenses
+- won't try to load the transports for systems who don't support it
+
 ## [0.7.0] 2019-05-01
 
 ### Added

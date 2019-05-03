@@ -12,7 +12,11 @@ import {
   PACKAGE,
   TMPPACKAGE
 } from "./operations/AdtObjectCreator"
-import { LockManager } from "./operations/LockManager"
+import {
+  LockManager,
+  isExpired,
+  reconnectExpired
+} from "./operations/LockManager"
 import { SapGui } from "./sapgui/sapgui"
 import {
   ADTClient,
@@ -30,7 +34,7 @@ import { CancellationToken, CancellationTokenSource } from "vscode-jsonrpc"
 export const ADTBASEURL = "/sap/bc/adt/repository/nodestructure"
 export const ADTSCHEME = "adt"
 export const ADTURIPATTERN = /\/sap\/bc\/adt\//
-
+const LOCKEXPIRED = "ExceptionResourceInvalidLockHandle"
 /**
  * Split a vscode URI. Parts will then be used to navigate the path
  *
@@ -216,10 +220,21 @@ export class AdtServer {
     )
 
     if (!transport.cancelled) {
-      const lockId = lm.getLockId(uri)
-      await this.runInSession(client =>
-        obj.setContents(client, content, lockId, transport.transport)
-      )
+      let lockId = lm.getLockId(uri)
+      try {
+        await this.runInSession(client =>
+          obj.setContents(client, content, lockId, transport.transport)
+        )
+      } catch (e) {
+        if (isExpired(e) || e.type === LOCKEXPIRED) {
+          if (await reconnectExpired(uri)) {
+            lockId = lm.getLockId(uri)
+            await this.runInSession(client =>
+              obj.setContents(client, content, lockId, transport.transport)
+            )
+          } else throw e
+        } else throw e
+      }
 
       await file.stat(this.client)
       await lm.unlock(uri)
