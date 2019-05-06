@@ -13,7 +13,7 @@ import {
 } from "../abap/AbapObjectUtilities"
 import { isAbapNode } from "../../fs/AbapNode"
 import { AbapObject } from "../abap/AbapObject"
-import { urlFromPath } from "../../../server"
+import { urlFromPath } from "vscode-abap-remote-fs-sharedapi"
 
 interface SearchObjectType {
   name: string

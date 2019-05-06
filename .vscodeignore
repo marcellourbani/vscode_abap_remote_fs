@@ -3,21 +3,24 @@
 out/test/**
 out/**/*.map
 src/**
-client/out/test/**
-client/out/**/*.map
-client/src/**
-server/out/test/**
-server/out/**/*.map
-server/src/**
-
 
 .gitignore
 tsconfig.json
 vsc-extension-quickstart.md
 tslint.json
 tmp/**
-# client/node_modules/**
-# !client/node_modules/vscode-jsonrpc/**
-# !client/node_modules/vscode-languageclient/**
-# !client/node_modules/vscode-languageserver-protocol/**
-# !client/node_modules/vscode-languageserver-types/**
+server/**
+!server/dist/server.js
+client/dist/*.map
+client/node_modules/**
+client/out/**
+client/package.json
+client/package-lock.json
+client/src/**
+client/tsconfig.json
+client/tsconfig.tsbuildinfo
+client/webpack.config.js
+client/.vscodeignore
+sharedapi/**
+wiki/**
+*.workspace

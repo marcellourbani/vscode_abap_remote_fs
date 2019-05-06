@@ -1,6 +1,10 @@
 out
 wiki
 client/out/**
+client/dist/**
+sharedapi/out/**
+server/out/**
+server/dist/**
 node_modules
 client/server
 client/node_modules

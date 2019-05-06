@@ -1,5 +1,5 @@
 import { connection, log } from "./clientManager"
-import { objectIsValid } from "./api"
+import { objectIsValid } from "vscode-abap-remote-fs-sharedapi"
 import { TextDocument, Diagnostic } from "vscode-languageserver"
 import { getObject, vscUrl } from "./objectManager"
 import {

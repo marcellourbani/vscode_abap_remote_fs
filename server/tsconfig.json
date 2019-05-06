@@ -4,7 +4,7 @@
     "target": "es6",
     "rootDir": "src",
     "moduleResolution": "node",
-    "outDir": "../client/server",
+    "outDir": "./out",
     "sourceMap": true,
     "strict": true,
     "noUnusedLocals": true,

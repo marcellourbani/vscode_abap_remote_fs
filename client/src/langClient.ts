@@ -1,4 +1,4 @@
-import { MainProgram } from "../server/api.d"
+import { MainProgram } from "vscode-abap-remote-fs-sharedapi"
 import { AbapObject } from "./adt/abap/AbapObject"
 import { log, channel } from "./logger"
 import {
@@ -9,7 +9,7 @@ import {
   urlFromPath,
   UriRequest,
   SearchProgress
-} from "../server"
+} from "vscode-abap-remote-fs-sharedapi"
 import {
   ExtensionContext,
   Uri,
@@ -146,7 +146,7 @@ async function includeChanged(prog: MainProgram) {
 }
 
 export async function startLanguageClient(context: ExtensionContext) {
-  const module = context.asAbsolutePath(join("server", "server.js"))
+  const module = context.asAbsolutePath(join("server", "dist", "server.js"))
   const transport = TransportKind.ipc
   const options = { execArgv: ["--nolazy", "--inspect=6009"] }
   log("creating language client...")
@@ -166,8 +166,6 @@ export async function startLanguageClient(context: ExtensionContext) {
   )
   log("starting language client...")
 
-  client.start()
-
   IncludeLensP.get().onDidSelectInclude(includeChanged)
 
   client.onDidChangeState(e => {
@@ -180,6 +178,7 @@ export async function startLanguageClient(context: ExtensionContext) {
       client.onRequest(Methods.setSearchProgress, setSearchProgress)
     }
   })
+  client.start()
 }
 
 export class LanguageCommands {

@@ -1,7 +1,7 @@
 import { DiagnosticSeverity, TextDocument, Range } from "vscode-languageserver"
 import { isString, isNumber } from "util"
 import { ADTClient } from "abap-adt-api"
-import { AbapObjectDetail } from "./api"
+import { AbapObjectDetail } from "vscode-abap-remote-fs-sharedapi"
 import { clientKeyFromUrl, clientFromKey } from "./clientManager"
 import { getObject } from "./objectManager"
 import { getEditorObjectSource } from "./clientapis"

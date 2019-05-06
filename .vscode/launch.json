@@ -11,10 +11,10 @@
       "request": "launch",
       "runtimeExecutable": "${execPath}",
       "args": [
-        "--extensionDevelopmentPath=${workspaceFolder}/client"
+        "--extensionDevelopmentPath=${workspaceFolder}"
       ],
       "outFiles": [
-        "${workspaceFolder}/client/out/**/*.js"
+        "${workspaceFolder}/client/dist/**/*.js"
       ],
       "preLaunchTask": {
         "type": "npm",
@@ -33,11 +33,8 @@
       ],
       "port": 6009,
       "sourceMaps": true,
-      "sourceMapPathOverrides": {
-        "*": "${workspaceRoot}/client/server/*",
-      },
       "outFiles": [
-        "${workspaceRoot}/client/server/**/*.js"
+        "${workspaceRoot}/server/dist/**/*.js"
       ]
     },
     {

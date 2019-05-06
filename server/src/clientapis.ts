@@ -6,7 +6,7 @@ import {
   StringWrapper,
   UriRequest,
   SearchProgress
-} from "./api"
+} from "vscode-abap-remote-fs-sharedapi"
 import { connection } from "./clientManager"
 
 export async function readConfiguration(key: string) {

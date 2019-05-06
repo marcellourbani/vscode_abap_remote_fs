@@ -15,18 +15,22 @@
     "abap-adt-api": "^0.5.22",
     "html-entities": "^1.2.1",
     "lodash": "^4.17.11",
-    "vscode-languageserver": "^4.4.2"
+    "vscode-abap-remote-fs-sharedapi": "file:../sharedapi",
+    "vscode-languageserver": "^5.2.1"
   },
   "devDependencies": {
     "@types/html-entities": "^1.2.16",
     "@types/lodash": "^4.14.121",
+    "rimraf": "^2.6.3",
+    "ts-loader": "^5.4.5",
     "typescript": "^3.4.3",
-    "rimraf": "^2.6.3"
+    "webpack": "^4.30.0",
+    "webpack-cli": "^3.3.1"
   },
   "scripts": {
-    "clean": "rimraf ../client/server ./out",
-    "build": "npm run clean && npm run compile",
-    "compile": "installServerIntoExtension ../client ./package.json ./tsconfig.json && tsc -p .",
-    "watch": "installServerIntoExtension ../client ./package.json ./tsconfig.json && tsc --watch -p ."
+    "clean": "rimraf ./out ./dist",
+    "build": "npm run clean && npm run webpack",
+    "webpack": "webpack --mode production",
+    "watch": "webpack --mode none --env.development --watch --info-verbosity verbose"
   }
 }

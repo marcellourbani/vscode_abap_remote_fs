@@ -1,1 +1,65 @@
-client/README.md
+# ABAP remote filesystem for visual studio code (beta)
+
+This extension allows editing and activation of ABAP code on your server directly in Visual studio code, including transport assignment and creation (if your system supports it).
+
+## New in 0.7: Class hierarchy, [transport based versioning](https://blogs.sap.com/2019/04/28/peer-reviewing-abap-code/)
+
+## Links
+
+[Getting started](https://github.com/marcellourbani/vscode_abap_remote_fs/wiki/getting-started)
+[wiki/documentation](https://github.com/marcellourbani/vscode_abap_remote_fs/wiki)
+
+**Unless your system is very modern (7.51 or later I think), write support will require you to install [this plugin](https://github.com/marcellourbani/abapfs_extensions)** in your dev server to enable. Browsing works even without it
+
+![anim](https://user-images.githubusercontent.com/2453277/47482169-ae0cc300-d82d-11e8-8d19-f55dd877c166.gif)
+![image](https://user-images.githubusercontent.com/2453277/47466602-dd99dc00-d7e9-11e8-97ed-28e23dfd8f90.png)
+syntax highlighting provided by [ABAP language extension](https://marketplace.visualstudio.com/items?itemName=larshp.vscode-abap), picture was too lame without it :)
+
+Compatibility with [ABAPlint](https://marketplace.visualstudio.com/items?itemName=larshp.vscode-abaplint) is limited by different naming conventions
+
+## Features
+
+- edit, create, search and delete ABAP objects
+- syntax check with automatic fixing
+- where used list
+- transport management
+- source control
+
+![anim](https://user-images.githubusercontent.com/2453277/48232926-30a78d80-e3ab-11e8-8a12-00844431f9af.gif)
+
+## setup
+
+Check the system requirements on the [wiki](https://github.com/marcellourbani/vscode_abap_remote_fs/wiki) and follow the [installation instructions](https://github.com/marcellourbani/vscode_abap_remote_fs/wiki/installation)
+
+You will end up with one or more server connections like this in your vs code configuration:
+
+```json
+{
+  "abapfs.remote": {
+    "NPL": {
+      "url": "https://vhcalnplci.bti.local:8000",
+      "username": "developer",
+      "password": "secret",
+      "client": "001", // client is required for SAPGUI integration. Might need more
+      "language": "EN",
+      "allowSelfSigned": true
+    }
+  }
+}
+```
+
+## License
+
+MIT license applies
+
+some icons found in client/images are from [Material design](https://material.io) and subject to the [Apache license 2.0](https://www.apache.org/licenses/LICENSE-2.0.html)
+
+## Disclaimer
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.

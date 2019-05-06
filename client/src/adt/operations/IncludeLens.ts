@@ -1,4 +1,4 @@
-import { MainProgram } from "../../../server/api"
+import { MainProgram } from "vscode-abap-remote-fs-sharedapi"
 import {
   CodeLensProvider,
   TextDocument,

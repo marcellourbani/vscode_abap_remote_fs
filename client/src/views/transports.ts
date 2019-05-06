@@ -356,7 +356,7 @@ export class TransportsProvider implements TreeDataProvider<CollectionItem> {
           preserveFocus: false
         })
       })
-      if (!displayed) window.showInformationMessage("Object not foundy")
+      if (!displayed) window.showInformationMessage("Object not found")
     } catch (e) {
       window.showErrorMessage(
         `Error displaying transport object: ${e.toString}`

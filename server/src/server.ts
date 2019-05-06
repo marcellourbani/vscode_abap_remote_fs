@@ -1,4 +1,4 @@
-import { Methods } from "./api"
+import { Methods } from "vscode-abap-remote-fs-sharedapi"
 import {
   TextDocuments,
   InitializeParams,
