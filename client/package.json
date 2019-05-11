@@ -55,7 +55,7 @@
     "abap-adt-api": "^0.5.22",
     "event-stream": "4.0.1",
     "fs-jetpack": "^2.2.2",
-    "open": "^6.1.0",
+    "open": "^6.2.0",
     "tmp-promise": "^1.0.5",
     "tough-cookie": "^3.0.1",
     "vscode-abap-remote-fs-sharedapi": "file:../sharedapi",

@@ -109,6 +109,7 @@ export class SapGui {
   public async startGui(command: SapGuiCommand, ticket: string) {
     const content = this.createLauncherContent(command, ticket)
     const win32 = process.platform === "win32"
+    const linux = process.platform === "linux"
     const shortcut = await file({
       postfix: ".sap",
       prefix: "abapfs_shortcut_",
@@ -118,7 +119,11 @@ export class SapGui {
     // windows won't open this if still open...
     if (win32) closeSync(shortcut.fd)
     try {
-      await opn(shortcut.path)
+      // workaround for bug in opn trying to use /xdg-open...
+      const options: any = {}
+      if (linux) options.app = "xdg-open"
+
+      await opn(shortcut.path, options)
       // delete after opening sapgui, only in windows
       if (win32) setTimeout(() => shortcut.cleanup(), 50000)
     } catch (e) {
