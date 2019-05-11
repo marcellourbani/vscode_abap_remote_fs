@@ -4,6 +4,18 @@ All notable changes to the "vscode-abap-remote-fs" extension will be documented 
 
 Format based on [Keep a Changelog](http://keepachangelog.com/)
 
+## [0.7.3] 2019-05-11
+
+### Added
+
+- Copy transport number
+- Open transport in sapgui
+
+### Fixed
+
+- #81 open sapgui in linux
+- #80 transport revision terminates with an exception
+
 ## [0.7.2] 2019-05-06
 
 ### Added

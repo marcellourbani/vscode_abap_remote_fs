@@ -1,4 +1,4 @@
-import { CancellationToken } from "vscode-jsonrpc"
+import { showInGui } from "./../adt/sapgui/sapgui"
 import { PACKAGE } from "../adt/operations/AdtObjectCreator"
 import { AbapRevision } from "../scm/abaprevision"
 import { AdtServer } from "../adt/AdtServer"
@@ -12,7 +12,7 @@ import {
   window,
   ProgressLocation,
   commands,
-  Progress
+  env
 } from "vscode"
 import { ADTSCHEME, fromUri } from "../adt/AdtServer"
 import {
@@ -32,6 +32,7 @@ import {
   NodePath
 } from "../adt/abap/AbapObjectUtilities"
 import { withp } from "../functions"
+import { SapGuiCommand } from "../adt/sapgui/sapgui"
 
 const currentUsers = new Map<string, string>()
 
@@ -295,16 +296,24 @@ export class TransportsProvider implements TreeDataProvider<CollectionItem> {
     } catch (e) {
       return
     }
-    const steps = await server.objectFinder.findObjectPath(url)
-    const path = await server.objectFinder.locateObject(steps)
-    if (!path) return
-    if (!main || !path.node.isFolder) return path
+    try {
+      const steps = await server.objectFinder.findObjectPath(url)
+      const path = await server.objectFinder.locateObject(steps)
+      if (!path) return
+      if (!main || !path.node.isFolder) return path
 
-    if (
-      isAbapNode(path.node) &&
-      path.node.abapObject.type.match(/(CLAS)|(PROG)/)
-    )
-      return await findMainIncludeAsync(path, server.client)
+      if (
+        isAbapNode(path.node) &&
+        path.node.abapObject.type.match(/(CLAS)|(PROG)/)
+      )
+        return await findMainIncludeAsync(path, server.client)
+    } catch (e) {
+      throw new Error(
+        `Error locating object ${obj["tm:pgmid"]} ${obj["tm:type"]} ${
+          obj["tm:name"]
+        }: ${e.toString()}`
+      )
+    }
   }
 
   @command(AbapFsCommands.transportObjectDiff)
@@ -405,6 +414,16 @@ export class TransportsProvider implements TreeDataProvider<CollectionItem> {
     }
   }
 
+  @command(AbapFsCommands.transportOpenGui)
+  private static openTransportInGui(tran: TransportItem) {
+    return showInGui(tran.server, tran.task["tm:uri"])
+  }
+
+  @command(AbapFsCommands.transportCopyNumber)
+  private static copyTransportNumber(tran: TransportItem) {
+    env.clipboard.writeText(tran.task["tm:number"])
+  }
+
   @command(AbapFsCommands.transportAddUser)
   private static async transportAddUser(tran: TransportItem) {
     try {
@@ -456,10 +475,10 @@ export class TransportsProvider implements TreeDataProvider<CollectionItem> {
         title: `Creating scm group for transport ${transport}`
       },
       async (progress, token) => {
-        try {
-          for (const tro of trobjects) {
-            if (token.isCancellationRequested) return
-            progress.report({ increment: (1 * 100) / trobjects.length })
+        for (const tro of trobjects) {
+          if (token.isCancellationRequested) return
+          progress.report({ increment: (1 * 100) / trobjects.length })
+          try {
             const path = await this.decodeTransportObject(
               tro.obj,
               tro.server,
@@ -479,9 +498,9 @@ export class TransportsProvider implements TreeDataProvider<CollectionItem> {
               }
               for (const child of allChildren(path)) await addNode(child)
             } else await addNode(path)
+          } catch (e) {
+            window.showErrorMessage(e.toString())
           }
-        } catch (e) {
-          window.showErrorMessage(e.toString())
         }
       }
     )

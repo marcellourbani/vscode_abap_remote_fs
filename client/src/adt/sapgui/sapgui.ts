@@ -1,9 +1,11 @@
+import { AdtServer } from "./../AdtServer"
 import { RemoteConfig } from "../../config"
 import { file } from "tmp-promise"
 import { writeAsync } from "fs-jetpack"
 import { log } from "../../logger"
 import { closeSync } from "fs"
 import opn = require("open")
+import { window, ProgressLocation } from "vscode"
 
 export interface SapGuiCommand {
   type: "Transaction" | "Report" | "SystemCommand"
@@ -30,6 +32,34 @@ function isLoadBalancing(config: guiConfig): config is LoadBalancingGuiConfig {
   return !!(config as LoadBalancingGuiConfig).messageServer
 }
 
+export async function runInSapGui(
+  server: AdtServer,
+  getCmd: () => Promise<SapGuiCommand | undefined> | SapGuiCommand | undefined
+) {
+  await window.withProgress(
+    { location: ProgressLocation.Window, title: "Opening SAPGui..." },
+    async () => {
+      const cmd = await getCmd()
+      if (cmd) {
+        log("Running " + JSON.stringify(cmd))
+        server.sapGui.checkConfig()
+        const ticket = await server.getReentranceTicket()
+        await server.sapGui.startGui(cmd, ticket)
+      }
+    }
+  )
+}
+
+export function showInGui(server: AdtServer, uri: string) {
+  return runInSapGui(server, () => ({
+    type: "Transaction",
+    command: "*SADT_START_WB_URI",
+    parameters: [
+      { name: "D_OBJECT_URI", value: uri },
+      { name: "DYNP_OKCODE", value: "OKAY" }
+    ]
+  }))
+}
 export class SapGui {
   public static create(config: RemoteConfig) {
     try {
@@ -155,6 +185,10 @@ ${loginTicket}
 ${lang}
 [Function]
 Type=${command.type}
-Command=${this.commandString(command)}`
+Command=${this.commandString(command)}
+[Configuration]
+GuiSize=Maximized
+[Options]
+Reuse=1`
   }
 }

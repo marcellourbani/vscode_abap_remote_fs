@@ -1,3 +1,4 @@
+import { SapGuiCommand } from "./../out/adt/sapgui/sapgui.d"
 import {
   workspace,
   Uri,
@@ -17,6 +18,7 @@ import { isClassInclude } from "./adt/abap/AbapClassInclude"
 import { selectTransport } from "./adt/AdtTransports"
 import { LockManager } from "./adt/operations/LockManager"
 import { IncludeLensP } from "./adt/operations/IncludeLens"
+import { runInSapGui } from "./adt/sapgui/sapgui"
 
 const ABAPDOC = "ABAPDOC"
 export const abapcmds: Array<{
@@ -55,6 +57,8 @@ export const AbapFsCommands = {
   transportAddUser: "abapfs.transportAddUser",
   transportRevision: "abapfs.transportRevision",
   transportUser: "abapfs.transportUser",
+  transportCopyNumber: "abapfs.transportCopyNumber",
+  transportOpenGui: "abapfs.transportOpenGui",
   changeInclude: "abapfs:changeInclude",
   showDocumentation: "abapfs.showdocu",
   showObject: "abapfs.showObject",
@@ -237,21 +241,12 @@ export class AdtCommands {
       const uri = currentUri()
       if (!uri) return
       const root = await pickAdtRoot(uri)
-      await window.withProgress(
-        { location: ProgressLocation.Window, title: "Opening SAPGui..." },
-        async () => {
-          const server = root && fromUri(root.uri)
-          if (!server) return
-          const object = await server.findAbapObject(uri)
-          const cmd = object.getExecutionCommand()
-          if (cmd) {
-            log("Running " + JSON.stringify(cmd))
-            server.sapGui.checkConfig()
-            const ticket = await server.getReentranceTicket()
-            await server.sapGui.startGui(cmd, ticket)
-          }
-        }
-      )
+      const server = root && fromUri(root.uri)
+      if (!server) return
+      await runInSapGui(server, async () => {
+        const object = await server.findAbapObject(uri)
+        return object.getExecutionCommand()
+      })
     } catch (e) {
       return window.showErrorMessage(e.toString())
     }

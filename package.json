@@ -140,8 +140,20 @@
         "title": "ABAPfs Open transportable object"
       },
       {
+        "command": "abapfs.transportCopyNumber",
+        "title": "Copy transport number to clipboard",
+        "icon": {
+          "dark": "client/images/dark/icon-clipboard.svg",
+          "light": "client/images/light/icon-clipboard.svg"
+        }
+      },
+      {
+        "command": "abapfs.transportOpenGui",
+        "title": "Open transport in GUI"
+      },
+      {
         "command": "abapfs.deleteTransport",
-        "title": "ABAPfs Delete transport",
+        "title": "Delete transport",
         "icon": {
           "dark": "client/images/dark/icon-delete.svg",
           "light": "client/images/light/icon-delete.svg"
@@ -149,7 +161,7 @@
       },
       {
         "command": "abapfs.releaseTransport",
-        "title": "ABAPfs Release transport",
+        "title": "Release transport",
         "icon": {
           "dark": "client/images/dark/truck.svg",
           "light": "client/images/light/truck.svg"
@@ -157,7 +169,7 @@
       },
       {
         "command": "abapfs.transportOwner",
-        "title": "ABAPfs Change transport owner",
+        "title": "Change transport owner",
         "icon": {
           "dark": "client/images/dark/user.svg",
           "light": "client/images/light/user.svg"
@@ -165,7 +177,7 @@
       },
       {
         "command": "abapfs.transportAddUser",
-        "title": "ABAPfs Change transport owner",
+        "title": "Add user",
         "icon": {
           "dark": "client/images/dark/useradd.svg",
           "light": "client/images/light/useradd.svg"
@@ -177,7 +189,7 @@
       },
       {
         "command": "abapfs.transportUser",
-        "title": "ABAPfs List transports for a given user",
+        "title": "List transports for a given user",
         "icon": {
           "dark": "client/images/dark/user.svg",
           "light": "client/images/light/user.svg"
@@ -368,23 +380,28 @@
         },
         {
           "command": "abapfs.deleteTransport",
-          "group": "inline",
+          "group": "context",
           "when": "view == abapfs.transports && viewItem == tr_unreleased"
         },
         {
           "command": "abapfs.transportOwner",
-          "group": "inline",
+          "group": "context",
           "when": "view == abapfs.transports && viewItem == tr_unreleased"
         },
         {
           "command": "abapfs.transportAddUser",
-          "group": "inline",
+          "group": "context",
           "when": "view == abapfs.transports && viewItem == tr_unreleased"
         },
         {
           "command": "abapfs.transportUser",
           "group": "inline",
           "when": "view == abapfs.transports && viewItem == tr_connection"
+        },
+        {
+          "command": "abapfs.transportCopyNumber",
+          "group": "inline",
+          "when": "view == abapfs.transports && viewItem =~ /tr_(un)?released/ "
         },
         {
           "command": "abapfs.transportObjectDiff",
@@ -394,12 +411,12 @@
         {
           "command": "abapfs.transportRevision",
           "group": "inline",
-          "when": "view == abapfs.transports && viewItem == tr_unreleased "
+          "when": "view == abapfs.transports && viewItem =~ /tr_(un)?released/ "
         },
         {
-          "command": "abapfs.transportRevision",
-          "group": "inline",
-          "when": "view == abapfs.transports && viewItem == tr_released"
+          "command": "abapfs.transportOpenGui",
+          "group": "context",
+          "when": "view == abapfs.transports && viewItem =~ /tr_(un)?released/ "
         }
       ],
       "view/title": [
