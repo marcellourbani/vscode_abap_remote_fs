@@ -128,6 +128,8 @@ export function abapObjectFromNode(node: Node): AbapObject {
       objtype = AbapInclude
       break
     case "DDLS/DF":
+    case "DCLS/DL":
+    case "DDLX/EX":
       objtype = AbapCds
       break
   }

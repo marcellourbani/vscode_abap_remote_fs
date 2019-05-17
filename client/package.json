@@ -48,7 +48,8 @@
     "vsce": "^1.59.0",
     "vscode": "^1.1.33",
     "webpack": "^4.30.0",
-    "webpack-cli": "^3.3.1"
+    "webpack-cli": "^3.3.1",
+    "webpack-watch-changed": "^1.0.0"
   },
   "dependencies": {
     "@types/tmp": "0.0.34",

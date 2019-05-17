@@ -4,6 +4,20 @@ All notable changes to the "vscode-abap-remote-fs" extension will be documented 
 
 Format based on [Keep a Changelog](http://keepachangelog.com/)
 
+## [0.7.4] 2019-05-17
+
+### Added
+
+- better support for CDS syntax highlighting via CDS extension
+
+### Changed
+
+- extension for CDS objects
+
+### Fixed
+
+- build loop in webpack
+
 ## [0.7.3] 2019-05-11
 
 ### Added
