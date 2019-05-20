@@ -1,8 +1,9 @@
 import { TextEdit, DocumentFormattingParams } from "vscode-languageserver"
-import { clientAndObjfromUrl } from "./utilities"
+import { clientAndObjfromUrl, isAbap } from "./utilities"
 import { isString } from "util"
 
 export async function formatDocument(params: DocumentFormattingParams) {
+  if (!isAbap(params.textDocument.uri)) return
   const edits: TextEdit[] = []
   const co = await clientAndObjfromUrl(params.textDocument.uri, true)
   if (co) {

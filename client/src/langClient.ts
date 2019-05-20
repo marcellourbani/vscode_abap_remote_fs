@@ -159,7 +159,10 @@ export async function startLanguageClient(context: ExtensionContext) {
       debug: { module, transport, options }
     },
     {
-      documentSelector: [{ language: "abap", scheme: ADTSCHEME }],
+      documentSelector: [
+        { language: "abap", scheme: ADTSCHEME },
+        { language: "cds", scheme: ADTSCHEME }
+      ],
       outputChannel: channel,
       revealOutputChannelOn: RevealOutputChannelOn.Warn
     }

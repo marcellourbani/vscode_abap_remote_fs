@@ -3,7 +3,7 @@ import {
   DocumentSymbol,
   SymbolKind
 } from "vscode-languageserver"
-import { clientAndObjfromUrl, rangeFromUri, parts } from "./utilities"
+import { clientAndObjfromUrl, rangeFromUri, parts, isAbap } from "./utilities"
 import { ClassComponent, Link } from "abap-adt-api"
 import { log } from "./clientManager"
 
@@ -93,6 +93,7 @@ function filterComp(comp: ClassComponent, part: string): ClassComponent[] {
 export async function documentSymbols(params: DocumentSymbolParams) {
   const symbols: DocumentSymbol[] = []
   try {
+    if (!isAbap(params.textDocument.uri)) return
     const co = await clientAndObjfromUrl(params.textDocument.uri, false)
     if (!co) return
     // classes and interfaces have their own service/format

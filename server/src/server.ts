@@ -51,7 +51,7 @@ connection.onInitialize((params: InitializeParams) => {
       },
       definitionProvider: true,
       implementationProvider: {
-        documentSelector: [{ scheme: ADTSCHEME }, { language: "ABAP" }]
+        documentSelector: [{ scheme: ADTSCHEME, language: "abap" }]
       },
       referencesProvider: true,
       documentSymbolProvider: true,

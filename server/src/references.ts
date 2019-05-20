@@ -12,7 +12,8 @@ import {
   memoize,
   parts,
   toInt,
-  hashParms
+  hashParms,
+  isAbap
 } from "./utilities"
 import {
   ReferenceUri,
@@ -30,6 +31,7 @@ export async function findDefinition(
   impl: boolean,
   params: TextDocumentPositionParams
 ) {
+  if (!isAbap(params.textDocument.uri)) return
   try {
     const co = await clientAndObjfromUrl(params.textDocument.uri)
     if (!co) return
@@ -209,6 +211,7 @@ export async function findReferences(
   params: ReferenceParams,
   token: CancellationToken
 ) {
+  if (!isAbap(params.textDocument.uri)) return
   cancelSearch()
   const mySearch = new CancellationTokenSource()
   lastSearch = mySearch

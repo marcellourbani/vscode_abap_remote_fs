@@ -256,11 +256,6 @@
         "when": "editorTextFocus && editorLangId == abap"
       },
       {
-        "command": "editor.action.formatDocument",
-        "key": "ctrl+shift+i",
-        "when": "editorTextFocus && editorLangId == abap"
-      },
-      {
         "command": "abapfs.unittest",
         "key": "ctrl+shift+f11"
       },
@@ -268,6 +263,11 @@
         "command": "abapfs.showdocu",
         "key": "F1",
         "when": "editorTextFocus && editorLangId == abap"
+      },
+      {
+        "command": "abapfs.activate",
+        "key": "alt+shift+f3",
+        "when": "resourceScheme == adt && editorLangId =~ /abap|cds/ && abapfs:showActivate"
       }
     ],
     "menus": {
@@ -439,7 +439,7 @@
         {
           "command": "abapfs.activate",
           "group": "navigation",
-          "when": "resourceScheme == adt && editorLangId == abap && abapfs:showActivate "
+          "when": "resourceScheme == adt && editorLangId =~ /abap|cds/ && abapfs:showActivate "
         }
       ],
       "scm/resourceGroup/context": [

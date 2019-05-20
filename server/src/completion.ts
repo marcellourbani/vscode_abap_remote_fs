@@ -3,10 +3,11 @@ import {
   CompletionItem,
   CompletionList
 } from "vscode-languageserver"
-import { clientAndObjfromUrl } from "./utilities"
+import { clientAndObjfromUrl, isAbap } from "./utilities"
 import { log } from "./clientManager"
 
 export async function completion(params: CompletionParams) {
+  if (!isAbap(params.textDocument.uri)) return
   const iRole = 58 // sccmp_role_intftype in abap
   const items: CompletionItem[] = []
   // const sapIdStartPattern = /[\w\/\<]/

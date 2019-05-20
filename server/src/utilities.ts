@@ -134,3 +134,5 @@ export const hashParms = (uri: string): any => {
   }
   return parms
 }
+
+export const isAbap = (uri: string) => !!uri.match(/\.abap$/i)
