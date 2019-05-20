@@ -8,7 +8,7 @@ import { log } from "./clientManager"
 
 export async function completion(params: CompletionParams) {
   if (!isAbap(params.textDocument.uri)) return
-  const iRole = 58 // sccmp_role_intftype in abap
+  const InterfaceRole = 58 // sccmp_role_intftype in abap
   const items: CompletionItem[] = []
   // const sapIdStartPattern = /[\w\/\<]/
   try {
@@ -23,14 +23,20 @@ export async function completion(params: CompletionParams) {
     )
     // let prefix: string
     const line = source.split(/\n/)[params.position.line] || ""
+    const before = line.substr(0, params.position.character)
     rawItems.forEach(i => {
-      const label = i.IDENTIFIER + (i.ROLE === iRole ? "~" : "")
+      const lastChar = before.substr(-i.PREFIXLENGTH, 1)
+      const isMethodCall = !!before
+        .substr(-(i.PREFIXLENGTH + 2))
+        .match(/^[-=]>/)
+      const label =
+        i.IDENTIFIER + (i.ROLE === InterfaceRole && isMethodCall ? "~" : "")
       let insertText = label
       // fix namespaces
       const match = label.match(/^(\/\w+\/)/)
       if (match) {
         let len = match[1].length
-        len = i.PREFIXLENGTH >= len ? len : 1
+        len = i.PREFIXLENGTH >= len ? len : lastChar === "/" ? 1 : 0
         if (len) insertText = insertText.substr(len)
       }
       // fix field-symbols

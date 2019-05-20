@@ -14,6 +14,7 @@ Format based on [Keep a Changelog](http://keepachangelog.com/)
 
 - activation button for CDS
 - syntax check for CDS
+- completion for namespaced method calls
 
 ## [0.7.4] 2019-05-17
 

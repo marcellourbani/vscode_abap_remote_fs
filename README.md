@@ -1,8 +1,8 @@
 # ABAP remote filesystem for visual studio code (beta)
 
-This extension allows editing and activation of ABAP code on your server directly in Visual studio code, including transport assignment and creation (if your system supports it).
+Turns Visual studio code into an IDE for ABAP development, operating directly on your SAP server.
 
-## New in 0.7: Class hierarchy, [transport based versioning](https://blogs.sap.com/2019/04/28/peer-reviewing-abap-code/)
+Is less capable and more buggy than Eclipse with ADT, but also more responsive, and has a couple of extra features not found in Eclipse, like listing changed sources by transport and normalizing changes in diff views
 
 ## Links
 

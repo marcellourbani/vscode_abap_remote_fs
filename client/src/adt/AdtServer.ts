@@ -472,7 +472,7 @@ export async function disconnect() {
     window.showInformationMessage("All locked files will be unlocked")
   for (const server of servers) {
     const promise = server[1].runInSession(async (client: ADTClient) => {
-      if (client.isStateful) return client.logout()
+      return client.logout()
     })
 
     promises.push(promise)
