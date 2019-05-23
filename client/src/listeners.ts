@@ -6,7 +6,8 @@ import {
   window,
   Uri,
   Disposable,
-  Event
+  Event,
+  TextDocumentWillSaveEvent
 } from "vscode"
 
 import { fromUri, ADTSCHEME, AdtServer } from "./adt/AdtServer"
@@ -57,7 +58,13 @@ export async function documentChangedListener(event: TextDocumentChangeEvent) {
   if (event.contentChanges.length === 0 || event.document.isDirty)
     doclock(event.document)
 }
-
+// if the document is dirty it's probably locked already. If not, lock it
+export async function documentWillSave(e: TextDocumentWillSaveEvent) {
+  const uri = e.document.uri
+  if (uri.scheme !== ADTSCHEME) return
+  if (!e.document.isDirty)
+    await setDocumentLock({ ...e.document, isDirty: true }, true)
+}
 export function documentOpenListener(document: TextDocument) {
   const uri = document.uri
   if (uri.scheme !== ADTSCHEME) return

@@ -12,7 +12,8 @@ import {
   activeTextEditorChangedListener,
   documentChangedListener,
   documentClosedListener,
-  documentOpenListener
+  documentOpenListener,
+  documentWillSave
 } from "./listeners"
 import { abapcmds } from "./commands"
 import { disconnect, ADTSCHEME } from "./adt/AdtServer"
@@ -36,6 +37,7 @@ export function activate(context: ExtensionContext) {
 
   // change document listener, for locking (and possibly validation in future)
   sub.push(workspace.onDidChangeTextDocument(documentChangedListener))
+  sub.push(workspace.onWillSaveTextDocument(documentWillSave))
   // opened document listener, for main program
   sub.push(workspace.onDidOpenTextDocument(documentOpenListener))
   // closed document listener, for locking
