@@ -1,4 +1,3 @@
-import { SapGuiCommand } from "./../out/adt/sapgui/sapgui.d"
 import {
   workspace,
   Uri,
