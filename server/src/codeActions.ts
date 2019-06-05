@@ -17,15 +17,31 @@ export async function codeActionHandler(
   if (!parms.context.diagnostics.length) return
   return quickfix(parms)
 }
+const shouldAdd = (newProposal: FixProposal, existing: FixProposal[]) => {
+  const propType = newProposal["adtcore:type"]
+  if (propType.match(/dialog|rename_quickfix/i)) return false
+  return !existing.find(
+    a =>
+      a["adtcore:uri"] === newProposal["adtcore:uri"] &&
+      a["adtcore:name"] === newProposal["adtcore:name"] &&
+      a["adtcore:type"] === newProposal["adtcore:type"] &&
+      a.uri === newProposal.uri &&
+      a.line === newProposal.line &&
+      a.column === newProposal.column
+  )
+}
 async function quickfix(
   parms: CodeActionParams
 ): Promise<CodeAction[] | undefined> {
   const diag = parms.context.diagnostics
   const uri = parms.textDocument.uri
   let co
-  const actions: CodeAction[] = []
+  const allProposals: FixProposal[] = []
   for (const d of diag)
-    if (d.severity === DiagnosticSeverity.Error) {
+    if (
+      d.severity === DiagnosticSeverity.Error ||
+      d.severity === DiagnosticSeverity.Warning
+    ) {
       if (!co) co = await clientAndObjfromUrl(parms.textDocument.uri, true)
       if (!co || !co.client) return
       try {
@@ -36,18 +52,17 @@ async function quickfix(
           d.range.start.character
         )
         for (const p of proposals)
-          if (!p["adtcore:type"].match(/dialog/i))
-            actions.push(
-              CodeAction.create(
-                decodeEntity(p["adtcore:name"]),
-                Command.create("fix", "abapfs.quickfix", p, uri)
-              )
-            )
+          if (shouldAdd(p, allProposals)) allProposals.push(p)
       } catch (e) {
         log(e)
       }
     }
-
+  const actions = allProposals.map(p =>
+    CodeAction.create(
+      decodeEntity(p["adtcore:name"]),
+      Command.create("fix", "abapfs.quickfix", p, uri)
+    )
+  )
   return actions
 }
 function convertLocation(loc: Location) {

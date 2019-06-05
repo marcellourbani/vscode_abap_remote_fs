@@ -4,6 +4,14 @@ All notable changes to the "vscode-abap-remote-fs" extension will be documented 
 
 Format based on [Keep a Changelog](http://keepachangelog.com/)
 
+## [0.7.8] 2019-06-05
+
+### Fixed
+
+- Quickfix proposals for warnings
+- no rename quickfix proposed (might reintroduce once rename is supported)
+- Better handling of namespaced identifiers
+
 ## [0.7.7] 2019-06-04
 
 ### Fixed

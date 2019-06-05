@@ -7,6 +7,9 @@ import { getObject } from "./objectManager"
 import { getEditorObjectSource } from "./clientapis"
 import { AllHtmlEntities } from "html-entities"
 
+const startIdent = /^((<?[\w]+>?)|(\/\w+\/\w+))/
+const endIdent = /((<?[\w]+>?)|(\/\w+\/\w+))$/
+
 export function decodeSeverity(severity: string) {
   switch (severity) {
     case "E":
@@ -30,17 +33,17 @@ export function sourceRange(
   const line = oline === 0 ? 0 : oline - 1
   if (isString(document)) {
     const lineText = document.split("\n")[line]
-    const lastwordm = lineText.substr(0, character).match(/(<?[\w]+>?)$/)
+    const lastwordm = lineText.substr(0, character).match(endIdent)
     const start = { line, character }
     if (lastwordm) start.character -= lastwordm[1].length
     const end = { line, character: character + 1000 }
-    const match = lineText.substr(start.character).match(/^(<?[\w]+>?)/)
+    const match = lineText.substr(start.character).match(startIdent)
     end.character = start.character + (match ? match[1].length : 1)
     return { start, end }
   } else {
     const start = { line, character }
     const end = { line, character: character + 1000 }
-    const match = document.getText({ start, end }).match(/^(<?[\w]+>?)/)
+    const match = document.getText({ start, end }).match(startIdent)
     end.character = start.character + (match ? match[1].length : 1)
     return { start, end }
   }
