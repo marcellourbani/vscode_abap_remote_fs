@@ -1,4 +1,9 @@
-import { ADTSCHEME, fromUri, getServer } from "../adt/AdtServer"
+import {
+  ADTSCHEME,
+  fromUri,
+  getServer,
+  getOrCreateServer
+} from "../adt/AdtServer"
 import { command, AbapFsCommands } from "../commands"
 import {
   CodeLensProvider,
@@ -12,8 +17,8 @@ import {
   workspace
 } from "vscode"
 import { AbapRevision, revLabel } from "./abaprevision"
-import { selectRemote } from "../config"
 import { uriName } from "../functions"
+import { RemoteManager } from "../config"
 
 export class AbapRevisionLensP implements CodeLensProvider {
   public static get() {
@@ -44,14 +49,15 @@ export class AbapRevisionLensP implements CodeLensProvider {
     try {
       const localServer = fromUri(uri)
       const obj = await localServer.findAbapObject(uri)
-      const { remote, userCancel } = await selectRemote(
+      const { remote, userCancel } = await RemoteManager.get().selectConnection(
+        undefined,
         r => r.name.toLowerCase() !== uri.authority
       )
       if (!remote)
         if (userCancel) return
         else throw Error("No remote system available in configuration")
 
-      const remoteServer = getServer(remote.name)
+      const remoteServer = await getOrCreateServer(remote.name)
       if (!remoteServer)
         throw Error(`Faild to connect to server ${remote.name}`)
 

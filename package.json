@@ -247,6 +247,10 @@
       {
         "command": "abapfs.showdocu",
         "title": "Show ABAP documentation"
+      },
+      {
+        "command": "abapfs.clearPassword",
+        "title": "ABAPFS Clear password"
       }
     ],
     "keybindings": [
@@ -577,8 +581,7 @@
               },
               "required": [
                 "url",
-                "username",
-                "password"
+                "username"
               ]
             }
           }

@@ -3,7 +3,6 @@ import { Uri, FileSystemError, FileType, window, EventEmitter } from "vscode"
 import { MetaFolder } from "../fs/MetaFolder"
 import { AbapObjectNode, AbapNode, isAbapNode } from "../fs/AbapNode"
 import { AbapObject, TransportStatus, isAbapObject } from "./abap/AbapObject"
-import { createClient, configFromId } from "../config"
 import { selectTransport, trSel } from "./AdtTransports"
 import { AdtObjectActivator } from "./operations/AdtObjectActivator"
 import { AdtObjectFinder } from "./operations/AdtObjectFinder"
@@ -31,6 +30,7 @@ import {
 } from "./abap/AbapObjectUtilities"
 import { activationStateListener } from "../listeners"
 import { CancellationToken, CancellationTokenSource } from "vscode-jsonrpc"
+import { RemoteManager, RemoteConfig, formatKey, createClient } from "../config"
 export const ADTBASEURL = "/sap/bc/adt/repository/nodestructure"
 export const ADTSCHEME = "adt"
 export const ADTURIPATTERN = /\/sap\/bc\/adt\//
@@ -64,10 +64,7 @@ export class AdtServer {
    *
    * @param connectionId ADT connection ID
    */
-  constructor(readonly connectionId: string) {
-    const config = configFromId(connectionId)
-
-    if (!config) throw new Error(`connection ${connectionId}`)
+  constructor(readonly connectionId: string, config: RemoteConfig) {
     this.mainClient = createClient(config)
     this.client = this.mainClient.statelessClone
     this.activationStatusEmitter.event(activationStateListener)
@@ -452,18 +449,38 @@ export class AdtServer {
 
 const servers = new Map<string, AdtServer>()
 export const getServer = (connId: string): AdtServer => {
-  const conn = connId.toLowerCase()
-  let server = servers.get(conn)
-  if (!server) {
-    server = new AdtServer(conn)
-    servers.set(conn, server)
-  }
+  const server = servers.get(formatKey(connId))
+  if (!server) throw Error(`No ABAP server connection active for ${connId}`)
   return server
 }
 
 export const fromUri = (uri: Uri) => {
   if (uri && uri.scheme === ADTSCHEME) return getServer(uri.authority)
-  throw FileSystemError.FileNotFound(uri)
+  throw Error(`No ABAP server defined for ${uri.toString()}`)
+}
+
+export async function getOrCreateServer(connId: string) {
+  connId = formatKey(connId)
+  let server = servers.get(connId)
+  if (!server) {
+    const manager = RemoteManager.get()
+    const connection = await manager.byIdAsync(connId)
+    if (!connection) return
+    if (!connection.password) {
+      connection.password = (await manager.askPassword(connection.name)) || ""
+      if (!connection.password) throw Error("Can't connect without a password")
+      const cli = createClient(connection)
+      await cli.login()
+      await manager.savePassword(
+        connection.name,
+        connection.username,
+        connection.password
+      )
+    }
+    server = new AdtServer(connId, connection)
+    servers.set(connId, server)
+  }
+  return server
 }
 
 export async function disconnect() {

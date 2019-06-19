@@ -4,10 +4,16 @@ import {
   window,
   commands,
   ProgressLocation,
-  ViewColumn
+  ViewColumn,
+  ExtensionContext
 } from "vscode"
-import { fromUri, AdtServer, ADTSCHEME } from "./adt/AdtServer"
-import { selectMissingRemote, pickAdtRoot, createClient } from "./config"
+import {
+  fromUri,
+  AdtServer,
+  ADTSCHEME,
+  getOrCreateServer
+} from "./adt/AdtServer"
+import { pickAdtRoot, RemoteManager } from "./config"
 import { log } from "./logger"
 import { FavouritesProvider, FavItem } from "./views/favourites"
 import { findEditor } from "./langClient"
@@ -20,15 +26,24 @@ import { IncludeLensP } from "./adt/operations/IncludeLens"
 import { runInSapGui } from "./adt/sapgui/sapgui"
 
 const ABAPDOC = "ABAPDOC"
-export const abapcmds: Array<{
+const abapcmds: Array<{
   name: string
-  target: (...x: any[]) => any
+  func: (...x: any[]) => any
+  target: any
 }> = []
 
 export const command = (name: string) => (target: any, propertyKey: string) => {
   const func = target[propertyKey]
-  abapcmds.push({ name, target: func.bind(target) })
+  abapcmds.push({ name, target, func })
 }
+
+export const registerCommands = (context: ExtensionContext) => {
+  for (const cmd of abapcmds)
+    context.subscriptions.push(
+      commands.registerCommand(cmd.name, cmd.func.bind(cmd.target))
+    )
+}
+
 export const AbapFsCommands = {
   connect: "abapfs.connect",
   activate: "abapfs.activate",
@@ -62,7 +77,8 @@ export const AbapFsCommands = {
   showDocumentation: "abapfs.showdocu",
   showObject: "abapfs.showObject",
   pickObject: "abapfs.pickObject",
-  refreshHierarchy: "abapfs.refreshHierarchy"
+  refreshHierarchy: "abapfs.refreshHierarchy",
+  clearPassword: "abapfs.clearPassword"
 }
 
 function currentUri() {
@@ -133,17 +149,19 @@ export class AdtCommands {
     let name = ""
     try {
       const connectionID = selector && selector.connection
-      const { remote, userCancel } = await selectMissingRemote(connectionID)
+      const manager = RemoteManager.get()
+      const { remote, userCancel } = await manager.selectConnection(
+        connectionID
+      )
       if (!remote)
         if (!userCancel)
           throw Error("No remote configuration available in settings")
         else return
       name = remote.name
-      const client = createClient(remote)
 
       log(`Connecting to server ${remote.name}`)
-
-      await client.login() // if connection raises an exception don't mount any folder
+      // this might involve asking for a password...
+      await getOrCreateServer(remote.name) // if connection raises an exception don't mount any folder
 
       workspace.updateWorkspaceFolders(0, 0, {
         uri: Uri.parse("adt://" + remote.name),
@@ -286,6 +304,11 @@ export class AdtCommands {
     const cur = current()
     if (!cur) return
     return this.createTI(cur.server, cur.uri)
+  }
+
+  @command(AbapFsCommands.clearPassword)
+  public static async clearPasswordCmd(connectionId?: string) {
+    return RemoteManager.get().clearPasswordCmd(connectionId)
   }
 
   private static async createTI(server: AdtServer, uri: Uri) {

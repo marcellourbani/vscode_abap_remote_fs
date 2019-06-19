@@ -16,6 +16,12 @@
   "settings": {
     "typescript.tsc.autoDetect": "off",
     "typescript.locale": "en",
-    "gitlens.codeLens.enabled": false
+    "gitlens.codeLens.enabled": false,
+    "files.exclude": {
+      "**/.classpath": true,
+      "**/.project": true,
+      "**/.settings": true,
+      "**/.factorypath": true
+    }
   }
 }
