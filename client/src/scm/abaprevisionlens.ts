@@ -1,9 +1,4 @@
-import {
-  ADTSCHEME,
-  fromUri,
-  getServer,
-  getOrCreateServer
-} from "../adt/AdtServer"
+import { ADTSCHEME, fromUri, getOrCreateServer } from "../adt/AdtServer"
 import { command, AbapFsCommands } from "../commands"
 import {
   CodeLensProvider,
@@ -13,8 +8,7 @@ import {
   Command,
   Range,
   Uri,
-  window,
-  workspace
+  window
 } from "vscode"
 import { AbapRevision, revLabel } from "./abaprevision"
 import { uriName } from "../functions"

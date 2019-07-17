@@ -1,4 +1,4 @@
-import { fromUri } from "../adt/AdtServer"
+import { fromUri, getOrCreateServer } from "../adt/AdtServer"
 import {
   FileSystemError,
   FileChangeType,
@@ -31,7 +31,7 @@ export class FsProvider implements FileSystemProvider {
     // no .* files allowed here, no need to log that
     if (uri.path.match(/(^\.)|(\/\.)/)) throw FileSystemError.FileNotFound(uri)
     try {
-      const server = fromUri(uri)
+      const server = await getOrCreateServer(uri.authority)
       if (uri.path === "/") {
         return server.findNode(uri)
       }
@@ -48,7 +48,7 @@ export class FsProvider implements FileSystemProvider {
 
   public async readDirectory(uri: Uri): Promise<Array<[string, FileType]>> {
     try {
-      const server = fromUri(uri)
+      const server = await getOrCreateServer(uri.authority)
       // on restart code might try to read a file before it read its parent directory
       //  this might end up reloading the same directory many times, might want to fix it one day
       const dir = await server.findNodePromise(uri)
@@ -70,7 +70,7 @@ export class FsProvider implements FileSystemProvider {
   }
 
   public async readFile(uri: Uri): Promise<Uint8Array> {
-    const server = fromUri(uri)
+    const server = await getOrCreateServer(uri.authority)
     const file = await server.findNodePromise(uri)
 
     try {
@@ -87,7 +87,7 @@ export class FsProvider implements FileSystemProvider {
     options: { create: boolean; overwrite: boolean }
   ): Promise<void> {
     try {
-      const server = fromUri(uri)
+      const server = await getOrCreateServer(uri.authority)
       const file = server.findNode(uri)
       if (!file && options.create)
         throw FileSystemError.NoPermissions(
@@ -104,7 +104,7 @@ export class FsProvider implements FileSystemProvider {
 
   public async delete(uri: Uri, options: { recursive: boolean }) {
     try {
-      const server = fromUri(uri)
+      const server = await getOrCreateServer(uri.authority)
       await server.delete(uri)
     } catch (e) {
       log(`Error deleting file ${uri.toString()}\n${e.toString()}`)

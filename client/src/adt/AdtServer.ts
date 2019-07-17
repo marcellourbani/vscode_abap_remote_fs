@@ -448,6 +448,8 @@ export class AdtServer {
 }
 
 const servers = new Map<string, AdtServer>()
+const serverPromises = new Map<string, Promise<AdtServer>>()
+
 export const getServer = (connId: string): AdtServer => {
   const server = servers.get(formatKey(connId))
   if (!server) throw Error(`No ABAP server connection active for ${connId}`)
@@ -459,28 +461,38 @@ export const fromUri = (uri: Uri) => {
   throw Error(`No ABAP server defined for ${uri.toString()}`)
 }
 
-export async function getOrCreateServer(connId: string) {
-  connId = formatKey(connId)
+async function getOrCreateServerInt(connId: string) {
   let server = servers.get(connId)
   if (!server) {
     const manager = RemoteManager.get()
     const connection = await manager.byIdAsync(connId)
-    if (!connection) return
+    if (!connection) throw Error(`Connection not found ${connId}`)
     if (!connection.password) {
       connection.password = (await manager.askPassword(connection.name)) || ""
       if (!connection.password) throw Error("Can't connect without a password")
-      const cli = createClient(connection)
-      await cli.login()
+      await createClient(connection).login() // raise exception for wrong password/server down
       await manager.savePassword(
         connection.name,
         connection.username,
         connection.password
       )
+    } else {
+      await createClient(connection).login() // raise exception for login issues
     }
     server = new AdtServer(connId, connection)
     servers.set(connId, server)
   }
   return server
+}
+
+export function getOrCreateServer(connId: string) {
+  connId = formatKey(connId)
+  let serverPromise = serverPromises.get(connId)
+  if (!serverPromise) {
+    serverPromise = getOrCreateServerInt(connId)
+    serverPromises.set(connId, serverPromise)
+  }
+  return serverPromise
 }
 
 export async function disconnect() {

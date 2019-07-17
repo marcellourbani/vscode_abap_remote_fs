@@ -54,7 +54,7 @@
   },
   "dependencies": {
     "@types/tmp": "0.0.34",
-    "abap-adt-api": "^0.5.24",
+    "abap-adt-api": "^0.5.25",
     "event-stream": "4.0.1",
     "fs-jetpack": "^2.2.2",
     "keytar": "^4.9.0",

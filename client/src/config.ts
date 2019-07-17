@@ -211,12 +211,9 @@ export class RemoteManager {
 
   public async getPassword(connectionId: string, userName: string) {
     if (!this.keytar) throw failKeytarCheck()
-    return (
-      (await this.keytar.getPassword(
-        `vscode.abapfs.${formatKey(connectionId)}`,
-        userName
-      )) || ""
-    )
+    const key = `vscode.abapfs.${formatKey(connectionId)}`
+    const password = await this.keytar.getPassword(key, userName)
+    return password || ""
   }
 
   private async pickConnectionId() {

@@ -14,7 +14,7 @@
   "dependencies": {
     "abap-adt-api": "^0.5.24",
     "html-entities": "^1.2.1",
-    "lodash": "^4.17.11",
+    "lodash": "^4.17.14",
     "vscode-abap-remote-fs-sharedapi": "file:../sharedapi",
     "vscode-languageserver": "^5.2.1"
   },

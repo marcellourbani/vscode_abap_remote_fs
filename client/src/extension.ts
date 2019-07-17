@@ -23,17 +23,11 @@ import { registerRevisionModel } from "./scm/abaprevision"
 import { AbapRevisionLensP } from "./scm/abaprevisionlens"
 import { IncludeLensP } from "./adt/operations/IncludeLens"
 import { ClassHierarchyLensProvider } from "./adt/classhierarchy"
-import { RemoteManager } from "./config"
 import { registerCommands } from "./commands"
 
-export async function activate(context: ExtensionContext) {
+export function activate(context: ExtensionContext) {
   log("activating ABAPfs...")
   const sub = context.subscriptions
-  // make sure the remotes are accessible
-  for (const root of workspace.workspaceFolders || [])
-    if (root.uri.scheme === ADTSCHEME)
-      await getOrCreateServer(root.uri.authority)
-
   // register the filesystem type
   sub.push(
     workspace.registerFileSystemProvider(ADTSCHEME, FsProvider.get(), {
