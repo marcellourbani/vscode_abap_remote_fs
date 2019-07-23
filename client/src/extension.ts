@@ -15,8 +15,7 @@ import {
   documentOpenListener,
   documentWillSave
 } from "./listeners"
-import { abapcmds } from "./commands"
-import { disconnect, ADTSCHEME } from "./adt/AdtServer"
+import { disconnect, ADTSCHEME, getOrCreateServer } from "./adt/AdtServer"
 import { log } from "./logger"
 import { client, LanguageCommands } from "./langClient"
 import { restoreLocks, LockManager } from "./adt/operations/LockManager"
@@ -24,6 +23,7 @@ import { registerRevisionModel } from "./scm/abaprevision"
 import { AbapRevisionLensP } from "./scm/abaprevisionlens"
 import { IncludeLensP } from "./adt/operations/IncludeLens"
 import { ClassHierarchyLensProvider } from "./adt/classhierarchy"
+import { registerCommands } from "./commands"
 
 export function activate(context: ExtensionContext) {
   log("activating ABAPfs...")
@@ -44,9 +44,6 @@ export function activate(context: ExtensionContext) {
   sub.push(workspace.onDidCloseTextDocument(documentClosedListener))
   // Editor changed listener, updates context and icons
   sub.push(window.onDidChangeActiveTextEditor(activeTextEditorChangedListener))
-
-  const cmd = (name: string, callback: (...x: any) => any) =>
-    sub.push(commands.registerCommand(name, callback))
 
   registerRevisionModel(context)
 
@@ -84,7 +81,7 @@ export function activate(context: ExtensionContext) {
   commands.executeCommand("setContext", "abapfs:extensionActive", true)
   restoreLocks()
 
-  abapcmds.forEach(c => cmd(c.name, c.target))
+  registerCommands(context)
 
   log(`Activated,pid=${process.pid}`)
 }

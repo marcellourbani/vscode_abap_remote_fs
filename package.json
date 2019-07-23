@@ -2,7 +2,7 @@
   "name": "vscode-abap-remote-fs",
   "displayName": "ABAP remote filesystem",
   "description": "Work on your ABAP code straight from the server",
-  "version": "0.7.9",
+  "version": "0.7.10",
   "publisher": "murbani",
   "license": "MIT",
   "icon": "client/images/abapfs_logo.png",
@@ -247,6 +247,10 @@
       {
         "command": "abapfs.showdocu",
         "title": "Show ABAP documentation"
+      },
+      {
+        "command": "abapfs.clearPassword",
+        "title": "ABAPFS Clear password"
       }
     ],
     "keybindings": [
@@ -274,6 +278,10 @@
       "commandPalette": [
         {
           "command": "abapfs.connect"
+        },
+        {
+          "command": "abapfs.clearPassword",
+          "when": "abapfs:extensionActive"
         },
         {
           "command": "abapfs.search",
@@ -577,8 +585,7 @@
               },
               "required": [
                 "url",
-                "username",
-                "password"
+                "username"
               ]
             }
           }

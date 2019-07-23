@@ -1,7 +1,7 @@
 import { showInGui } from "./../adt/sapgui/sapgui"
 import { PACKAGE } from "../adt/operations/AdtObjectCreator"
 import { AbapRevision } from "../scm/abaprevision"
-import { AdtServer } from "../adt/AdtServer"
+import { AdtServer, getOrCreateServer } from "../adt/AdtServer"
 import {
   TreeDataProvider,
   TreeItem,
@@ -259,7 +259,7 @@ export class TransportsProvider implements TreeDataProvider<CollectionItem> {
       f => f.uri.scheme === ADTSCHEME
     )
     for (const f of folders) {
-      const server = fromUri(f.uri)
+      const server = await getOrCreateServer(f.uri.authority)
       const hasTR = await server.client.featureDetails(
         "Change and Transport System"
       )

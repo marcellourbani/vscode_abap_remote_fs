@@ -25,8 +25,6 @@ import {
   RevealOutputChannelOn
 } from "vscode-languageclient"
 import { ADTSCHEME, fromUri, getServer } from "./adt/AdtServer"
-import { configFromId } from "./config"
-import { isString } from "util"
 export let client: LanguageClient
 import { join } from "path"
 import {
@@ -38,6 +36,7 @@ import { FixProposal } from "abap-adt-api"
 import { fail } from "assert"
 import { command, AbapFsCommands } from "./commands"
 import { IncludeLensP } from "./adt/operations/IncludeLens"
+import { RemoteManager } from "./config"
 
 async function getVSCodeUri(req: UriRequest): Promise<StringWrapper> {
   const server = getServer(req.confKey)
@@ -96,8 +95,8 @@ async function objectDetailFromUrl(url: string) {
   return objectDetail(obj, mainProgram)
 }
 
-async function configFromUrl(url: string) {
-  const { sapGui, ...cfg } = configFromId(url)
+async function configFromKey(connId: string) {
+  const { sapGui, ...cfg } = (await RemoteManager.get()).byId(connId)!
   return cfg
 }
 
@@ -173,7 +172,7 @@ export async function startLanguageClient(context: ExtensionContext) {
 
   client.onDidChangeState(e => {
     if (e.newState === State.Running) {
-      client.onRequest(Methods.readConfiguration, configFromUrl)
+      client.onRequest(Methods.readConfiguration, configFromKey)
       client.onRequest(Methods.objectDetails, objectDetailFromUrl)
       client.onRequest(Methods.readEditorObjectSource, readEditorObjectSource)
       client.onRequest(Methods.readObjectSourceOrMain, readObjectSource)
