@@ -280,6 +280,10 @@
           "command": "abapfs.connect"
         },
         {
+          "command": "abapfs.clearPassword",
+          "when": "abapfs:extensionActive"
+        },
+        {
           "command": "abapfs.search",
           "when": "abapfs:extensionActive"
         },

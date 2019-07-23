@@ -98,6 +98,7 @@ export async function pickAdtRoot(uri?: Uri) {
   )
   if (item) return item.root
 }
+
 export function createClient(conf: RemoteConfig) {
   const sslconf = conf.url.match(/https:/i)
     ? createSSLConfig(conf.allowSelfSigned, conf.customCA)
@@ -232,7 +233,11 @@ export class RemoteManager {
 
   // @command(AbapFsCommands.clearPassword)
   public async clearPasswordCmd(connectionId?: string) {
-    if (!connectionId) connectionId = await this.pickConnectionId()
+    if (!connectionId) {
+      const { remote, userCancel } = await this.selectConnection()
+      if (userCancel || !remote) return
+      connectionId = remote.name
+    }
     if (!connectionId) return
     connectionId = formatKey(connectionId)
     const conn = this.remoteList().find(r => connectionId === formatKey(r.name))
