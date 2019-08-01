@@ -94,15 +94,6 @@ export class AbapObject {
     return
   }
 
-  public async activate(
-    client: ADTClient,
-    mainInclude?: string
-  ): Promise<string> {
-    const result = await client.activate(this.name, this.path, mainInclude)
-    const m = result.messages[0]
-    return (m && m.shortText) || ""
-  }
-
   public async getMainPrograms(client: ADTClient) {
     return client.mainPrograms(this.path)
   }

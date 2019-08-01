@@ -189,7 +189,7 @@ export class AdtCommands {
           const obj = await server.findAbapObject(uri)
           // if editor is dirty, save before activate
           if (editor && editor.document.isDirty) {
-            const saved = await editor.document.save() // workbench.action.files.save?
+            const saved = await editor.document.save()
             if (saved) await obj.loadMetadata(server.client)
             else return
           } else if (!obj.structure) await obj.loadMetadata(server.client)

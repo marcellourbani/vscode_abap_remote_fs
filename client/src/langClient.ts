@@ -87,7 +87,7 @@ function objectDetail(obj: AbapObject, mainProgram?: string) {
 
 async function objectDetailFromUrl(url: string) {
   const uri = Uri.parse(url)
-  const server = await fromUri(uri)
+  const server = fromUri(uri)
   const obj = await server.findAbapObject(uri)
   let mainProgram
   if (obj.type === "PROG/I")

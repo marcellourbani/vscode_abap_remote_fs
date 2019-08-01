@@ -225,3 +225,6 @@ export const withp = <T>(
   ) => Promise<T>,
   location = ProgressLocation.Window
 ) => window.withProgress({ location, title }, cb)
+
+export const delay = (time: number) =>
+  new Promise(resolve => setTimeout(resolve, time))
