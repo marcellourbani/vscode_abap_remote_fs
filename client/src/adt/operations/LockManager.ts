@@ -1,6 +1,6 @@
 import { AdtServer } from "./../AdtServer"
 import { getServer, ADTSCHEME } from "../AdtServer"
-import { ADTClient, session_types, AdtLock, isCsrfError } from "abap-adt-api"
+import { session_types, AdtLock, isCsrfError } from "abap-adt-api"
 import { AbapObject, TransportStatus } from "../abap/AbapObject"
 import { log } from "../../logger"
 import {
@@ -15,8 +15,6 @@ import {
   promiseQueue,
   asyncCache,
   cache,
-  eatException,
-  eatPromiseException,
   createMutex
 } from "../../functions"
 
@@ -26,9 +24,7 @@ async function validateLock(lock: AdtLock) {
   const ok = "Ok"
   if (lock && lock.IS_LINK_UP) {
     const resp = await window.showWarningMessage(
-      `Object is locked, a new task will be created in ${lock.CORRUSER}'s ${
-        lock.CORRNR
-      } ${lock.CORRTEXT}`,
+      `Object is locked, a new task will be created in ${lock.CORRUSER}'s ${lock.CORRNR} ${lock.CORRTEXT}`,
       ok,
       "Cancel"
     )

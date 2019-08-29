@@ -3,10 +3,12 @@ import { window, workspace, QuickPickItem, WorkspaceFolder, Uri } from "vscode"
 import { ADTClient, createSSLConfig } from "abap-adt-api"
 import { ADTSCHEME } from "./adt/AdtServer"
 import { readFileSync } from "fs"
-import { command, AbapFsCommands } from "./commands"
+import { createProxy, MethodCall } from "method-call-logger"
 // keytar depends on a native module shipped in vscode
 // this loads only the type definitions
 import * as keytarType from "keytar"
+import { log } from "./logger"
+import { Client, ApiResponse } from "@elastic/elasticsearch"
 
 export interface RemoteConfig extends ClientConfiguration {
   sapGui: {
@@ -103,7 +105,7 @@ export function createClient(conf: RemoteConfig) {
   const sslconf = conf.url.match(/https:/i)
     ? createSSLConfig(conf.allowSelfSigned, conf.customCA)
     : {}
-  return new ADTClient(
+  const client = new ADTClient(
     conf.url,
     conf.username,
     conf.password,
@@ -111,6 +113,90 @@ export function createClient(conf: RemoteConfig) {
     conf.language,
     sslconf
   )
+  let id = 10000000
+  const index = `abapfs_${conf.name
+    .replace(/[\\\/\*\?\"<>\|\s,#]/g, "_")
+    .toLowerCase()}`
+  const isFailed = (resp: ApiResponse<any, any>) =>
+    !resp.statusCode || resp.statusCode >= 300
+  const logAndRethrow = (e: Error) => {
+    log(JSON.stringify(e))
+    throw e
+  }
+  const toDocument = (call: MethodCall) => {
+    const {
+      methodName,
+      callType,
+      start,
+      duration,
+      failed,
+      resolvedPromise,
+      ...callDetails
+    } = call
+    return {
+      methodName,
+      callType,
+      start,
+      duration,
+      failed,
+      resolvedPromise,
+      callDetails
+    }
+  }
+  const elastic = new Client({ node: "http://localhost:9200" })
+
+  const ns = (async () => {
+    let res
+    const body = {
+      mappings: {
+        properties: {
+          methodName: { type: "keyword" },
+          callType: { type: "keyword" },
+          start: { type: "long" },
+          duration: { type: "long" },
+          failed: { type: "boolean" },
+          resolvedPromise: { type: "boolean" },
+          callDetails: { type: "nested", dynamic: false }
+        }
+      }
+    }
+    try {
+      res = await elastic.indices.delete({ index })
+    } catch (error) {
+      log(error.message)
+    }
+    res = await elastic.indices.exists({ index })
+    if (isFailed(res))
+      res = await elastic.indices.create({
+        index,
+        body
+      })
+    return res
+  })()
+
+  const cb = (call: MethodCall) => {
+    if (call.resolvedPromise)
+      ns.then(async resp => {
+        if (isFailed(resp)) log(JSON.stringify(resp))
+        try {
+          const result = await elastic.create({
+            id: `${id++}`,
+            index,
+            body: toDocument(call)
+          })
+          log(JSON.stringify(result))
+        } catch (error) {
+          log(error.message)
+        }
+      })
+  }
+
+  const clone = createProxy(client.statelessClone, cb)
+
+  return createProxy(client, cb, {
+    resolvePromises: true,
+    getterOverride: new Map([["statelessClone", () => clone]])
+  })
 }
 
 const failKeytarCheck = () => Error("Error accessing system secure store")

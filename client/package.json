@@ -53,11 +53,13 @@
     "webpack-watch-changed": "^1.0.0"
   },
   "dependencies": {
+    "@elastic/elasticsearch": "^7.3.0",
     "@types/tmp": "0.0.34",
     "abap-adt-api": "^0.5.25",
     "event-stream": "4.0.1",
     "fs-jetpack": "^2.2.2",
     "keytar": "^4.9.0",
+    "method-call-logger": "^1.0.5",
     "open": "^6.2.0",
     "tmp-promise": "^1.0.5",
     "tough-cookie": "^3.0.1",
