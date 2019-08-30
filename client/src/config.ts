@@ -101,6 +101,97 @@ export async function pickAdtRoot(uri?: Uri) {
   if (item) return item.root
 }
 
+const ELASTICSCHEMA = {
+  mappings: {
+    properties: {
+      methodName: { type: "keyword" },
+      callType: { type: "keyword" },
+      start: { type: "long" },
+      duration: { type: "long" },
+      failed: { type: "boolean" },
+      resolvedPromise: { type: "boolean" },
+      callDetails: { type: "nested", dynamic: false }
+    }
+  }
+}
+
+function formatElasticIndexname(name: string): string {
+  return `abapfs_${name.replace(/[\\\/\*\?\"<>\|\s,#]/g, "_").toLowerCase()}`
+}
+const toElasticDocument = (call: MethodCall) => {
+  const {
+    methodName,
+    callType,
+    start,
+    duration,
+    failed,
+    resolvedPromise,
+    ...callDetails
+  } = call
+  return {
+    methodName,
+    callType,
+    start,
+    duration,
+    failed,
+    resolvedPromise,
+    callDetails
+  }
+}
+
+const hasFailed = (resp: ApiResponse<any, any>) =>
+  !resp.statusCode || resp.statusCode >= 300
+
+function loggedProxy(client: ADTClient, conf: RemoteConfig) {
+  const elasticServer = "http://localhost:9200"
+  if (!elasticServer) return client // no log needed
+
+  const index = formatElasticIndexname(conf.name)
+  const elastic = new Client({ node: elasticServer })
+
+  const connect = async () => {
+    let res
+    const body = ELASTICSCHEMA
+    res = await elastic.indices.exists({ index })
+    if (hasFailed(res))
+      if (res.statusCode && res.statusCode < 500)
+        res = await elastic.indices.create({
+          index,
+          body
+        })
+    if (hasFailed(res)) {
+      const failure = "Failed to connect to ElasticSearch"
+      log(failure)
+      log(JSON.stringify(res))
+      throw new Error(failure)
+    }
+  }
+  const connected = connect()
+
+  const logToElastic = async (call: MethodCall) => {
+    if (call.resolvedPromise) {
+      await connected // if connection failed nothing will be logged
+      try {
+        const result = await elastic.create({
+          id: `${call.start}${call.methodName}`,
+          index,
+          body: toElasticDocument(call)
+        })
+        log(JSON.stringify(result))
+      } catch (error) {
+        log(error.message || error.toString())
+      }
+    }
+  }
+
+  const clone = createProxy(client.statelessClone, logToElastic)
+
+  return createProxy(client, logToElastic, {
+    resolvePromises: true,
+    getterOverride: new Map([["statelessClone", () => clone]])
+  })
+}
+
 export function createClient(conf: RemoteConfig) {
   const sslconf = conf.url.match(/https:/i)
     ? createSSLConfig(conf.allowSelfSigned, conf.customCA)
@@ -113,90 +204,7 @@ export function createClient(conf: RemoteConfig) {
     conf.language,
     sslconf
   )
-  let id = 10000000
-  const index = `abapfs_${conf.name
-    .replace(/[\\\/\*\?\"<>\|\s,#]/g, "_")
-    .toLowerCase()}`
-  const isFailed = (resp: ApiResponse<any, any>) =>
-    !resp.statusCode || resp.statusCode >= 300
-  const logAndRethrow = (e: Error) => {
-    log(JSON.stringify(e))
-    throw e
-  }
-  const toDocument = (call: MethodCall) => {
-    const {
-      methodName,
-      callType,
-      start,
-      duration,
-      failed,
-      resolvedPromise,
-      ...callDetails
-    } = call
-    return {
-      methodName,
-      callType,
-      start,
-      duration,
-      failed,
-      resolvedPromise,
-      callDetails
-    }
-  }
-  const elastic = new Client({ node: "http://localhost:9200" })
-
-  const ns = (async () => {
-    let res
-    const body = {
-      mappings: {
-        properties: {
-          methodName: { type: "keyword" },
-          callType: { type: "keyword" },
-          start: { type: "long" },
-          duration: { type: "long" },
-          failed: { type: "boolean" },
-          resolvedPromise: { type: "boolean" },
-          callDetails: { type: "nested", dynamic: false }
-        }
-      }
-    }
-    try {
-      res = await elastic.indices.delete({ index })
-    } catch (error) {
-      log(error.message)
-    }
-    res = await elastic.indices.exists({ index })
-    if (isFailed(res))
-      res = await elastic.indices.create({
-        index,
-        body
-      })
-    return res
-  })()
-
-  const cb = (call: MethodCall) => {
-    if (call.resolvedPromise)
-      ns.then(async resp => {
-        if (isFailed(resp)) log(JSON.stringify(resp))
-        try {
-          const result = await elastic.create({
-            id: `${id++}`,
-            index,
-            body: toDocument(call)
-          })
-          log(JSON.stringify(result))
-        } catch (error) {
-          log(error.message)
-        }
-      })
-  }
-
-  const clone = createProxy(client.statelessClone, cb)
-
-  return createProxy(client, cb, {
-    resolvePromises: true,
-    getterOverride: new Map([["statelessClone", () => clone]])
-  })
+  return loggedProxy(client, conf)
 }
 
 const failKeytarCheck = () => Error("Error accessing system secure store")
