@@ -4,6 +4,13 @@ All notable changes to the "vscode-abap-remote-fs" extension will be documented 
 
 Format based on [Keep a Changelog](http://keepachangelog.com/)
 
+## Unreleased
+
+### Added
+
+- optionally log calls to elasticsearch
+- Configuration defaults
+
 ## [0.7.10] 2019-07-21
 
 ### Added

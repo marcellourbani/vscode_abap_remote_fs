@@ -7,8 +7,7 @@ import { createProxy, MethodCall } from "method-call-logger"
 // keytar depends on a native module shipped in vscode
 // this loads only the type definitions
 import * as keytarType from "keytar"
-import { log } from "./logger"
-import { Client, ApiResponse } from "@elastic/elasticsearch"
+import { elasticLogger } from "./elasticClient"
 
 export interface RemoteConfig extends ClientConfiguration {
   sapGui: {
@@ -101,92 +100,14 @@ export async function pickAdtRoot(uri?: Uri) {
   if (item) return item.root
 }
 
-const ELASTICSCHEMA = {
-  mappings: {
-    properties: {
-      methodName: { type: "keyword" },
-      callType: { type: "keyword" },
-      start: { type: "long" },
-      duration: { type: "long" },
-      failed: { type: "boolean" },
-      resolvedPromise: { type: "boolean" },
-      callDetails: { type: "nested", dynamic: false }
-    }
-  }
-}
-
-function formatElasticIndexname(name: string): string {
-  return `abapfs_${name.replace(/[\\\/\*\?\"<>\|\s,#]/g, "_").toLowerCase()}`
-}
-const toElasticDocument = (call: MethodCall) => {
-  const {
-    methodName,
-    callType,
-    start,
-    duration,
-    failed,
-    resolvedPromise,
-    ...callDetails
-  } = call
-  return {
-    methodName,
-    callType,
-    start,
-    duration,
-    failed,
-    resolvedPromise,
-    callDetails
-  }
-}
-
-const hasFailed = (resp: ApiResponse<any, any>) =>
-  !resp.statusCode || resp.statusCode >= 300
-
 function loggedProxy(client: ADTClient, conf: RemoteConfig) {
-  const elasticServer = "http://localhost:9200"
-  if (!elasticServer) return client // no log needed
+  const logger = elasticLogger(conf.name, "client", false)
+  const cloneLogger = elasticLogger(conf.name, "client", true)
+  if (!(logger && cloneLogger)) return client
 
-  const index = formatElasticIndexname(conf.name)
-  const elastic = new Client({ node: elasticServer })
+  const clone = createProxy(client.statelessClone, cloneLogger)
 
-  const connect = async () => {
-    let res
-    const body = ELASTICSCHEMA
-    res = await elastic.indices.exists({ index })
-    if (hasFailed(res))
-      if (res.statusCode && res.statusCode < 500)
-        res = await elastic.indices.create({
-          index,
-          body
-        })
-    if (hasFailed(res)) {
-      const failure = "Failed to connect to ElasticSearch"
-      log(failure)
-      log(JSON.stringify(res))
-      throw new Error(failure)
-    }
-  }
-  const connected = connect()
-
-  const logToElastic = async (call: MethodCall) => {
-    if (call.resolvedPromise) {
-      await connected // if connection failed nothing will be logged
-      try {
-        const result = await elastic.create({
-          id: `${call.start}${call.methodName}`,
-          index,
-          body: toElasticDocument(call)
-        })
-        log(JSON.stringify(result))
-      } catch (error) {
-        log(error.message || error.toString())
-      }
-    }
-  }
-
-  const clone = createProxy(client.statelessClone, logToElastic)
-
-  return createProxy(client, logToElastic, {
+  return createProxy(client, logger, {
     resolvePromises: true,
     getterOverride: new Map([["statelessClone", () => clone]])
   })

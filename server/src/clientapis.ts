@@ -5,7 +5,8 @@ import {
   AbapObjectSource,
   StringWrapper,
   UriRequest,
-  SearchProgress
+  SearchProgress,
+  LogEntry
 } from "vscode-abap-remote-fs-sharedapi"
 import { connection } from "./clientManager"
 
@@ -51,4 +52,8 @@ export async function getVSCodeUri(
 
 export async function setSearchProgress(progress: SearchProgress) {
   connection.sendRequest(Methods.setSearchProgress, progress)
+}
+
+export async function sendLog(entry: LogEntry) {
+  connection.sendRequest(Methods.logCall, entry)
 }

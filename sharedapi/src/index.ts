@@ -1,3 +1,4 @@
+import { MethodCall } from "method-call-logger"
 export enum Methods {
   objectDetails = "vscabap.objDetails",
   readConfiguration = "vscabap.readConfig",
@@ -7,7 +8,8 @@ export enum Methods {
   cancelSearch = "vscabap.cancelSearch",
   vsUri = "vscabap.vsUri",
   quickFix = "vscabap.quickfix",
-  updateMainProgram = "vscabap.updateMain"
+  updateMainProgram = "vscabap.updateMain",
+  logCall = "vscabap.logCall"
 }
 
 export interface AbapObjectDetail {
@@ -27,6 +29,7 @@ export interface ClientConfiguration {
   language: string
   allowSelfSigned: boolean
   customCA: string
+  elasticUrl: string
 }
 
 export interface AbapObjectSource {
@@ -53,6 +56,13 @@ export interface SearchProgress {
 export interface MainProgram {
   includeUri: string
   mainProgramUri: string
+}
+
+export interface LogEntry {
+  connection: string
+  source: string
+  fromClone: boolean
+  call: MethodCall
 }
 
 export const urlFromPath = (configKey: string, path: string) =>

@@ -8,7 +8,8 @@ import {
   AbapObjectSource,
   urlFromPath,
   UriRequest,
-  SearchProgress
+  SearchProgress,
+  LogEntry
 } from "vscode-abap-remote-fs-sharedapi"
 import {
   ExtensionContext,
@@ -37,6 +38,7 @@ import { fail } from "assert"
 import { command, AbapFsCommands } from "./commands"
 import { IncludeLensP } from "./adt/operations/IncludeLens"
 import { RemoteManager } from "./config"
+import { elasticLogger } from "./elasticClient"
 
 async function getVSCodeUri(req: UriRequest): Promise<StringWrapper> {
   const server = getServer(req.confKey)
@@ -144,6 +146,11 @@ async function includeChanged(prog: MainProgram) {
   await client.sendRequest(Methods.updateMainProgram, prog)
 }
 
+function logCall(entry: LogEntry) {
+  const logger = elasticLogger(entry.connection, entry.source, entry.fromClone)
+  if (logger) logger(entry.call)
+}
+
 export async function startLanguageClient(context: ExtensionContext) {
   const module = context.asAbsolutePath(join("server", "dist", "server.js"))
   const transport = TransportKind.ipc
@@ -178,6 +185,7 @@ export async function startLanguageClient(context: ExtensionContext) {
       client.onRequest(Methods.readObjectSourceOrMain, readObjectSource)
       client.onRequest(Methods.vsUri, getVSCodeUri)
       client.onRequest(Methods.setSearchProgress, setSearchProgress)
+      client.onRequest(Methods.logCall, logCall)
     }
   })
   client.start()

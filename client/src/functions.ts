@@ -108,15 +108,22 @@ export const createMutex = () => {
     return prom
   }
 }
-
+/**
+ * Given a constructor function returns an enumerable cache of objects
+ * Optionally accepts a key conversion method as second parameter
+ * Automates the pattern of returning an object from a map, or create and insert it if not found
+ *
+ * @param  {(k:TAK)=>TP} creator
+ * @param  {(k:TK)=>TAK=(x:any} KeyTranslator (optional)
+ */
 export const cache = <TK, TP, TAK>(
   creator: (k: TAK) => TP,
-  keyTran: (k: TK) => TAK = (x: any) => x
+  keyTranslator: (k: TK) => TAK = (x: any) => x
 ) => {
   const values = new Map<TAK, TP>()
   return {
     get: (k: TK) => {
-      const ak = keyTran(k)
+      const ak = keyTranslator(k)
       let cur = values.get(ak)
       if (!cur) {
         cur = creator(ak)

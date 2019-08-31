@@ -14,6 +14,7 @@
   "license": "MIT",
   "devDependencies": {
     "tslint": "^5.12.1",
+    "method-call-logger": "^1.0.5",
     "typescript": "^3.3.3333"
   }
 }

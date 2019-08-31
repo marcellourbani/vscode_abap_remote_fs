@@ -37,7 +37,7 @@ You will end up with one or more server connections like this in your vs code co
 {
   "abapfs.remote": {
     "NPL": {
-      "url": "https://vhcalnplci.bti.local:8000",
+      "url": "https://vhcalnplci:8000",
       "username": "developer",
       "password": "secret",
       "client": "001", // client is required for SAPGUI integration. Might need more

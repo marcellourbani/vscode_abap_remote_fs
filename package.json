@@ -504,7 +504,7 @@
           "type": "object",
           "description": "ABAP systems",
           "patternProperties": {
-            "[a-zA-Z][a-zA-Z0-9][a-zA-Z0-9]": {
+            "[a-zA-Z][a-zA-Z0-9_]+": {
               "type": "object",
               "properties": {
                 "url": {
@@ -543,6 +543,11 @@
                 "customCA": {
                   "type": "string",
                   "title": "Custom certificate authority certificate"
+                },
+                "elasticUrl": {
+                  "type": "string",
+                  "title": "Log calls to elasticSearch (url)",
+                  "default": ""
                 },
                 "sapGui": {
                   "type": "object",
@@ -589,7 +594,46 @@
               ]
             }
           }
+        },
+        "default": {
+          "abapfs.remote": {
+            "NPL_dev_edition_local": {
+              "url": "https://127.0.0.1:8000",
+              "username": "developer"
+            },
+            "NPL_dev_edition_host": {
+              "url": "https://vhcalnplci:44300",
+              "username": "developer",
+              "password": "",
+              "client": "001",
+              "allowSelfSigned": true
+            },
+            "DEV_WORK": {
+              "url": "http://dev.mycompany.com:44300",
+              "username": "murbani",
+              "password": "verysecret",
+              "client": "100",
+              "language": "DE",
+              "allowSelfSigned": false,
+              "customCA": "/secrets/mycompanyCA.pem",
+              "elasticUrl": "http://127.0.0.1:9200/",
+              "sapGui": {
+                "group": "MYSERVERGROUP",
+                "disabled": false,
+                "messageServer": "vhcalnplci",
+                "routerString": "",
+                "server": "",
+                "systemID": "02"
+              }
+            }
+          }
         }
+      }
+    },
+    "configurationDefaults": {
+      "[abap]": {
+        "editor.formatOnSave": true,
+        "editor.formatOnSaveTimeout": 5000
       }
     }
   }

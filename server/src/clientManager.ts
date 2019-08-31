@@ -1,7 +1,9 @@
 import { ADTClient, createSSLConfig } from "abap-adt-api"
 import { createConnection, ProposedFeatures } from "vscode-languageserver"
 import { isString, isError } from "util"
-import { readConfiguration } from "./clientapis"
+import { readConfiguration, sendLog } from "./clientapis"
+import { ClientConfiguration } from "vscode-abap-remote-fs-sharedapi"
+import { createProxy, MethodCall } from "method-call-logger"
 const clients: Map<string, ADTClient> = new Map()
 
 export const connection = createConnection(ProposedFeatures.all)
@@ -17,6 +19,24 @@ export const log = (...params: any) =>
 export function clientKeyFromUrl(url: string) {
   const match = url.match(/adt:\/\/([^\/]*)/)
   return match && match[1]
+}
+
+function loggedProxy(client: ADTClient, conf: ClientConfiguration) {
+  const temp = {
+    connection: conf.name,
+    source: "server",
+    fromClone: false
+  }
+  const logger = (call: MethodCall) => sendLog({ ...temp, call })
+  const cloneLogger = (call: MethodCall) =>
+    sendLog({ ...temp, call, fromClone: true })
+
+  const clone = createProxy(client.statelessClone, cloneLogger)
+
+  return createProxy(client, logger, {
+    resolvePromises: true,
+    getterOverride: new Map([["statelessClone", () => clone]])
+  })
 }
 export async function clientFromKey(key: string) {
   let client = clients.get(key)
@@ -34,6 +54,7 @@ export async function clientFromKey(key: string) {
         conf.language,
         sslconf
       )
+      if (conf.elasticUrl) client = loggedProxy(client, conf)
       clients.set(key, client)
     }
   }
