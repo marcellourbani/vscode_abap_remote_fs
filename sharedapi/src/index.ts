@@ -29,7 +29,7 @@ export interface ClientConfiguration {
   language: string
   allowSelfSigned: boolean
   customCA: string
-  elasticUrl: string
+  mongoUrl: string
 }
 
 export interface AbapObjectSource {

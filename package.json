@@ -509,31 +509,35 @@
               "properties": {
                 "url": {
                   "type": "string",
-                  "description": "Server base URL",
+                  "description": "Server base URL. the http(s) URL of your SAP dev server",
                   "$comment": "https://<myserver>:<myport>",
                   "default": "https://myserver:44300"
                 },
                 "username": {
                   "type": "string",
-                  "description": "User name"
+                  "description": "User name",
+                  "default": "developer"
                 },
                 "password": {
                   "type": "string",
-                  "description": "Password"
+                  "description": "Password",
+                  "default": ""
                 },
                 "client": {
                   "type": "string",
                   "description": "Client",
                   "format": "[0-9][0-9][0-9]",
                   "minLength": 3,
-                  "maxLength": 3
+                  "maxLength": 3,
+                  "default": "001"
                 },
                 "language": {
                   "type": "string",
                   "description": "Login language",
                   "format": "[a-zA-Z][a-zA-Z]",
                   "minLength": 2,
-                  "maxLength": 2
+                  "maxLength": 2,
+                  "default": "en"
                 },
                 "allowSelfSigned": {
                   "type": "boolean",
@@ -542,12 +546,13 @@
                 },
                 "customCA": {
                   "type": "string",
-                  "title": "Custom certificate authority certificate"
+                  "title": "Custom certificate authority certificate",
+                  "default": "/secrets/myCA.pem"
                 },
-                "elasticUrl": {
+                "mongoUrl": {
                   "type": "string",
-                  "title": "Log calls to elasticSearch (url)",
-                  "default": ""
+                  "title": "Log calls to mongoDb (url)",
+                  "default": "mongodb://127.0.0.1:27017"
                 },
                 "sapGui": {
                   "type": "object",
@@ -593,34 +598,31 @@
                 "username"
               ]
             }
-          }
-        },
-        "default": {
-          "abapfs.remote": {
-            "NPL_dev_edition_local": {
-              "url": "https://127.0.0.1:8000",
+          },
+          "default": {
+            "NPL_dev_edition_local_http": {
+              "url": "http://127.0.0.1:8000",
               "username": "developer"
             },
-            "NPL_dev_edition_host": {
+            "NPL_dev_edition_host_https": {
               "url": "https://vhcalnplci:44300",
               "username": "developer",
-              "password": "",
+              "password": "mysecret",
               "client": "001",
               "allowSelfSigned": true
             },
-            "DEV_WORK": {
+            "DEV_loadbalancing": {
               "url": "http://dev.mycompany.com:44300",
-              "username": "murbani",
-              "password": "verysecret",
+              "username": "myusername",
+              "password": "",
               "client": "100",
               "language": "DE",
               "allowSelfSigned": false,
               "customCA": "/secrets/mycompanyCA.pem",
-              "elasticUrl": "http://127.0.0.1:9200/",
               "sapGui": {
                 "group": "MYSERVERGROUP",
                 "disabled": false,
-                "messageServer": "vhcalnplci",
+                "messageServer": "dev.mycompany.com",
                 "routerString": "",
                 "server": "",
                 "systemID": "02"

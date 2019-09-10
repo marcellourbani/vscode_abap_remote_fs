@@ -54,7 +54,7 @@ export async function clientFromKey(key: string) {
         conf.language,
         sslconf
       )
-      if (conf.elasticUrl) client = loggedProxy(client, conf)
+      if (conf.mongoUrl) client = loggedProxy(client, conf)
       clients.set(key, client)
     }
   }

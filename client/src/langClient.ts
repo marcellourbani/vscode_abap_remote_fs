@@ -38,7 +38,7 @@ import { fail } from "assert"
 import { command, AbapFsCommands } from "./commands"
 import { IncludeLensP } from "./adt/operations/IncludeLens"
 import { RemoteManager } from "./config"
-import { elasticLogger } from "./elasticClient"
+import { mongoLogger } from "./mongoClient"
 
 async function getVSCodeUri(req: UriRequest): Promise<StringWrapper> {
   const server = getServer(req.confKey)
@@ -147,7 +147,7 @@ async function includeChanged(prog: MainProgram) {
 }
 
 function logCall(entry: LogEntry) {
-  const logger = elasticLogger(entry.connection, entry.source, entry.fromClone)
+  const logger = mongoLogger(entry.connection, entry.source, entry.fromClone)
   if (logger) logger(entry.call)
 }
 

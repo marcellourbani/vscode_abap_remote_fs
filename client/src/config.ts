@@ -7,7 +7,7 @@ import { createProxy, MethodCall } from "method-call-logger"
 // keytar depends on a native module shipped in vscode
 // this loads only the type definitions
 import * as keytarType from "keytar"
-import { elasticLogger } from "./elasticClient"
+import { mongoLogger } from "./mongoClient"
 
 export interface RemoteConfig extends ClientConfiguration {
   sapGui: {
@@ -101,8 +101,9 @@ export async function pickAdtRoot(uri?: Uri) {
 }
 
 function loggedProxy(client: ADTClient, conf: RemoteConfig) {
-  const logger = elasticLogger(conf.name, "client", false)
-  const cloneLogger = elasticLogger(conf.name, "client", true)
+  if (!conf.mongoUrl) return client
+  const logger = mongoLogger(conf.name, "client", false)
+  const cloneLogger = mongoLogger(conf.name, "client", true)
   if (!(logger && cloneLogger)) return client
 
   const clone = createProxy(client.statelessClone, cloneLogger)

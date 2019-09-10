@@ -38,6 +38,7 @@
   "devDependencies": {
     "@types/keytar": "^4.4.0",
     "@types/mocha": "^5.2.6",
+    "@types/mongoose": "^5.5.17",
     "@types/node": "^11.13.5",
     "@types/open": "^6.1.0",
     "rimraf": "^2.6.3",
@@ -53,13 +54,13 @@
     "webpack-watch-changed": "^1.0.0"
   },
   "dependencies": {
-    "@elastic/elasticsearch": "^7.3.0",
     "@types/tmp": "0.0.34",
     "abap-adt-api": "^0.5.25",
     "event-stream": "4.0.1",
     "fs-jetpack": "^2.2.2",
     "keytar": "^4.9.0",
     "method-call-logger": "^1.0.5",
+    "mongoose": "^5.6.12",
     "open": "^6.2.0",
     "tmp-promise": "^1.0.5",
     "tough-cookie": "^3.0.1",

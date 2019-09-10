@@ -8,7 +8,7 @@ Format based on [Keep a Changelog](http://keepachangelog.com/)
 
 ### Added
 
-- optionally log calls to elasticsearch
+- optionally log calls to mongodb
 - Configuration defaults
 
 ## [0.7.10] 2019-07-21
