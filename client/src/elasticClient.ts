@@ -1,20 +1,21 @@
 import { MethodCall } from "method-call-logger"
 import { ApiResponse, Client } from "@elastic/elasticsearch"
-import { log } from "console"
 import { cache } from "./functions"
 import { RemoteManager, RemoteConfig } from "./config"
+import { log } from "./logger"
 const ELASTICSCHEMA = {
   mappings: {
     properties: {
+      // tslint:disable: object-literal-key-quotes
       methodName: { type: "keyword" },
       source: { type: "keyword" },
       statelessClone: { type: "boolean" },
       callType: { type: "keyword" },
-      start: { type: "long" },
+      "@timestamp": { type: "date", format: "epoch_millis" },
       duration: { type: "long" },
       failed: { type: "boolean" },
       resolvedPromise: { type: "boolean" },
-      callDetails: { type: "nested", dynamic: false }
+      callDetails: { type: "text", index: false }
     }
   }
 }
@@ -40,7 +41,7 @@ class ElasticClient {
     if (call.resolvedPromise) {
       await this.connected // if connection failed nothing will be logged
       try {
-        this.elastic.create({
+        await this.elastic.create({
           id: this.getId(),
           index: this.elasticIndex,
           body: this.toElasticDocument(call, source, statelessClone)
@@ -61,18 +62,20 @@ class ElasticClient {
     let res
 
     const body = ELASTICSCHEMA
-    res = await this.elastic.indices.exists({ index: this.elasticIndex })
-    if (hasFailed(res))
-      if (res.statusCode && res.statusCode < 500)
-        res = await this.elastic.indices.create({
-          index: this.elasticIndex,
-          body
-        })
-    if (hasFailed(res)) {
-      const failure = "Failed to connect to ElasticSearch"
-      log(failure)
-      log(JSON.stringify(res))
-      throw new Error(failure)
+    try {
+      res = await this.elastic.indices.exists({ index: this.elasticIndex })
+      if (hasFailed(res))
+        if (res.statusCode && res.statusCode < 500)
+          res = await this.elastic.indices.create({
+            index: this.elasticIndex,
+            body
+          })
+      if (hasFailed(res)) {
+        throw new Error(JSON.stringify(res))
+      }
+    } catch (error) {
+      log(`Failed to connect to ElasticSearch\n${JSON.stringify(error)}`)
+      throw error
     }
   }
   private toElasticDocument = (
@@ -89,17 +92,19 @@ class ElasticClient {
       resolvedPromise,
       ...callDetails
     } = call
-    return {
+    const retval = {
       methodName,
       callType,
       source,
       statelessClone,
-      start,
+      "@timestamp": start,
       duration,
       failed,
       resolvedPromise,
-      callDetails
+      callDetails: JSON.stringify(callDetails)
     }
+    log(`${retval.callDetails.length}`)
+    return retval
   }
 }
 
