@@ -11,6 +11,10 @@ Format based on [Keep a Changelog](http://keepachangelog.com/)
 - optionally log calls to mongodb
 - Configuration defaults
 
+### Fixed
+
+- #90 overlapping syntax checks
+
 ## [0.7.10] 2019-07-21
 
 ### Added

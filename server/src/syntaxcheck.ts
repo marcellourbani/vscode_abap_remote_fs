@@ -9,9 +9,36 @@ import {
   memoize
 } from "./utilities"
 
-const oldDiagKeys = new Map<string, string[]>()
+interface RunningState {
+  current: Promise<void>
+  next?: () => Promise<void>
+}
 
+const oldDiagKeys = new Map<string, string[]>()
+const runStates = new Map<string, RunningState>()
+
+const resumeQueued = (uri: string) => async () => {
+  const state = runStates.get(uri)
+  if (!state) return
+  if (state.next) {
+    state.current = state.next().then(resumeQueued(uri))
+    state.next = undefined
+  } else runStates.delete(uri)
+}
+
+// is a syntax check running for this document?
+// if it is, set the new one as the next to be run after this is completed
+// if not start it and take note in runstates
 export async function syntaxCheck(document: TextDocument) {
+  const { uri } = document
+  let state = runStates.get(uri)
+  if (!state) {
+    const current = runSyntaxCheck(document).then(resumeQueued(uri))
+    state = { current }
+    runStates.set(uri, state)
+  } else state.next = () => runSyntaxCheck(document)
+}
+async function runSyntaxCheck(document: TextDocument) {
   const diagmap = new Map<string, Diagnostic[]>()
   const oldKeys = oldDiagKeys.get(document.uri)
   if (oldKeys) for (const k of oldKeys) diagmap.set(k, [])
