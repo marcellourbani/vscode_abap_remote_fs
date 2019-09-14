@@ -28,6 +28,7 @@
       "address": "localhost",
       "protocol": "inspector",
       "smartStep": true,
+      "showAsyncStacks": true,
       "skipFiles": [
         "<node_internals>/**"
       ],

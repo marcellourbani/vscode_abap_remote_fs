@@ -1,11 +1,11 @@
 import { DiagnosticSeverity, TextDocument, Range } from "vscode-languageserver"
-import { isString, isNumber } from "util"
+import { isString } from "util"
 import { ADTClient } from "abap-adt-api"
 import { AbapObjectDetail } from "vscode-abap-remote-fs-sharedapi"
 import { clientKeyFromUrl, clientFromKey } from "./clientManager"
 import { getObject } from "./objectManager"
 import { getEditorObjectSource } from "./clientapis"
-import { AllHtmlEntities } from "html-entities"
+import { toInt, parts } from "./functions"
 
 const startIdent = /^((<?[\w]+>?)|(\/\w+\/\w+))/
 const endIdent = /((<?[\w]+>?)|(\/\w+\/\w+))$/
@@ -83,59 +83,3 @@ export async function clientAndObjfromUrl(
 
   return { confKey, client, obj, source }
 }
-
-export const memoize = <P, R>(
-  base: (p: P) => Promise<R>
-): ((p: P) => Promise<R>) => {
-  const cache: Map<P, R> = new Map()
-  return async (param: P) => {
-    let result = cache.get(param)
-    if (!result) {
-      result = await base(param)
-      cache.set(param, result)
-    }
-    return result
-  }
-}
-export function parts(whole: any, pattern: RegExp): string[] {
-  if (!isString(whole)) return []
-  const match = whole.match(pattern)
-  return match ? match.slice(1) : []
-}
-
-export function toInt(raw: any): number {
-  if (isNaN(raw)) return 0
-  if (isNumber(raw)) return Math.floor(raw)
-  if (!raw && !isString(raw)) return 0
-  const n = Number.parseInt(raw, 10)
-  if (isNaN(n)) return 0
-  return n
-}
-
-export const [decodeEntity, encodeEntity] = (() => {
-  let entities: AllHtmlEntities | undefined
-  return [
-    (s: string) => {
-      if (!entities) entities = new AllHtmlEntities()
-      return entities.decode(s)
-    },
-    (s: string) => {
-      if (!entities) entities = new AllHtmlEntities()
-      return entities.encode(s)
-    }
-  ]
-})()
-
-export const hashParms = (uri: string): any => {
-  const parms: any = {}
-  const hash = uri.split(/#/)[1]
-  const uriHashArgs: string[] = (hash && hash.split(/;/)) || []
-  for (const arg of uriHashArgs) {
-    const argTuple = arg.split(/=/, 2)
-    if (argTuple.length > 1)
-      parms[argTuple[0]] = decodeURIComponent(argTuple[1])
-  }
-  return parms
-}
-
-export const isAbap = (uri: string) => !!uri.match(/\.abap$/i)

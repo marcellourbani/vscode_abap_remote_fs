@@ -1,9 +1,10 @@
+import { isAbap, parts } from "./functions"
 import {
   DocumentSymbolParams,
   DocumentSymbol,
   SymbolKind
 } from "vscode-languageserver"
-import { clientAndObjfromUrl, rangeFromUri, parts, isAbap } from "./utilities"
+import { clientAndObjfromUrl, rangeFromUri } from "./utilities"
 import { ClassComponent, Link } from "abap-adt-api"
 import { log } from "./clientManager"
 

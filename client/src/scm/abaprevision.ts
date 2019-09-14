@@ -186,12 +186,11 @@ export class AbapRevision
       if (revision) revUri = AbapRevision.revisionUri(revision, uri)
     }
     const server = getServer(uri.authority)
-    const source: string =
-      uri.path.match(ADTURIPATTERN) || uri.query === QUICKDIFFQUERY
-        ? await server.client.getObjectSource(revUri.path.replace(EXTREGEX, ""))
-        : (await FsProvider.get().readFile(
-            uri.with({ query: "", scheme: ADTSCHEME })
-          )).toString()
+    const source: string = revUri.path.match(ADTURIPATTERN)
+      ? await server.client.getObjectSource(revUri.path.replace(EXTREGEX, ""))
+      : (await FsProvider.get().readFile(
+          uri.with({ query: "", scheme: ADTSCHEME })
+        )).toString()
     if (uri.query === "normalize=true") return normalizeAbap(source)
     return source
   }

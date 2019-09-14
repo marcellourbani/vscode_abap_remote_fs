@@ -7,9 +7,10 @@ import {
   Range,
   TextEdit
 } from "vscode-languageserver"
-import { clientAndObjfromUrl, decodeEntity } from "./utilities"
+import { clientAndObjfromUrl } from "./utilities"
 import { log } from "./clientManager"
 import { FixProposal, Range as ApiRange, Location } from "abap-adt-api"
+import { decodeEntity } from "./functions"
 
 export async function codeActionHandler(
   parms: CodeActionParams

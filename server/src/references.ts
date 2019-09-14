@@ -6,15 +6,7 @@ import {
   Position,
   CancellationTokenSource
 } from "vscode-languageserver"
-import {
-  sourceRange,
-  clientAndObjfromUrl,
-  memoize,
-  parts,
-  toInt,
-  hashParms,
-  isAbap
-} from "./utilities"
+import { sourceRange, clientAndObjfromUrl } from "./utilities"
 import {
   ReferenceUri,
   Location as ApiLocation,
@@ -26,6 +18,7 @@ import { vscUrl } from "./objectManager"
 import { groupBy } from "lodash"
 import { log, warn } from "./clientManager"
 import { getObjectSource, setSearchProgress } from "./clientapis"
+import { isAbap, memoize, parts, toInt, hashParms } from "./functions"
 
 export async function findDefinition(
   impl: boolean,

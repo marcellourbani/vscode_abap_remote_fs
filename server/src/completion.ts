@@ -3,8 +3,9 @@ import {
   CompletionItem,
   CompletionList
 } from "vscode-languageserver"
-import { clientAndObjfromUrl, isAbap } from "./utilities"
+import { clientAndObjfromUrl } from "./utilities"
 import { log } from "./clientManager"
+import { isAbap } from "./functions"
 
 export async function completion(params: CompletionParams) {
   if (!isAbap(params.textDocument.uri)) return

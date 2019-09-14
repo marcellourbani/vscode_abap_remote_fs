@@ -29,7 +29,7 @@ import {
   abapObjectFromNode
 } from "./abap/AbapObjectUtilities"
 import { activationStateListener } from "../listeners"
-import { CancellationToken, CancellationTokenSource } from "vscode-jsonrpc"
+import { CancellationTokenSource } from "vscode-jsonrpc"
 import { RemoteManager, RemoteConfig, formatKey, createClient } from "../config"
 export const ADTBASEURL = "/sap/bc/adt/repository/nodestructure"
 export const ADTSCHEME = "adt"

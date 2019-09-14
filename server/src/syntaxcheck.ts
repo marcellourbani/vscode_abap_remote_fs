@@ -2,42 +2,22 @@ import { connection, log } from "./clientManager"
 import { objectIsValid } from "vscode-abap-remote-fs-sharedapi"
 import { TextDocument, Diagnostic } from "vscode-languageserver"
 import { getObject, vscUrl } from "./objectManager"
-import {
-  sourceRange,
-  decodeSeverity,
-  clientAndObjfromUrl,
-  memoize
-} from "./utilities"
-
-interface RunningState {
-  current: Promise<void>
-  next?: () => Promise<void>
-}
+import { sourceRange, decodeSeverity, clientAndObjfromUrl } from "./utilities"
+import { callThrottler } from "./functions"
+import { memoize } from "lodash"
 
 const oldDiagKeys = new Map<string, string[]>()
-const runStates = new Map<string, RunningState>()
 
-const resumeQueued = (uri: string) => async () => {
-  const state = runStates.get(uri)
-  if (!state) return
-  if (state.next) {
-    state.current = state.next().then(resumeQueued(uri))
-    state.next = undefined
-  } else runStates.delete(uri)
-}
+const debouncer = callThrottler<void>()
 
 // is a syntax check running for this document?
 // if it is, set the new one as the next to be run after this is completed
 // if not start it and take note in runstates
 export async function syntaxCheck(document: TextDocument) {
   const { uri } = document
-  let state = runStates.get(uri)
-  if (!state) {
-    const current = runSyntaxCheck(document).then(resumeQueued(uri))
-    state = { current }
-    runStates.set(uri, state)
-  } else state.next = () => runSyntaxCheck(document)
+  return debouncer(uri, () => runSyntaxCheck(document))
 }
+
 async function runSyntaxCheck(document: TextDocument) {
   const diagmap = new Map<string, Diagnostic[]>()
   const oldKeys = oldDiagKeys.get(document.uri)
