@@ -1,4 +1,8 @@
-import { ClientConfiguration } from "vscode-abap-remote-fs-sharedapi"
+import {
+  ClientConfiguration,
+  clientTraceUrl,
+  httpTraceUrl
+} from "vscode-abap-remote-fs-sharedapi"
 import { window, workspace, QuickPickItem, WorkspaceFolder, Uri } from "vscode"
 import { ADTClient, createSSLConfig } from "abap-adt-api"
 import { ADTSCHEME } from "./adt/AdtServer"
@@ -7,7 +11,7 @@ import { createProxy, MethodCall } from "method-call-logger"
 // keytar depends on a native module shipped in vscode
 // this loads only the type definitions
 import * as keytarType from "keytar"
-import { mongoLogger } from "./mongoClient"
+import { mongoApiLogger, mongoHttpLogger } from "./mongoClient"
 
 export interface RemoteConfig extends ClientConfiguration {
   sapGui: {
@@ -101,9 +105,9 @@ export async function pickAdtRoot(uri?: Uri) {
 }
 
 function loggedProxy(client: ADTClient, conf: RemoteConfig) {
-  if (!conf.mongoUrl) return client
-  const logger = mongoLogger(conf.name, "client", false)
-  const cloneLogger = mongoLogger(conf.name, "client", true)
+  if (!clientTraceUrl(conf)) return client
+  const logger = mongoApiLogger(conf.name, "client", false)
+  const cloneLogger = mongoApiLogger(conf.name, "client", true)
   if (!(logger && cloneLogger)) return client
 
   const clone = createProxy(client.statelessClone, cloneLogger)
@@ -113,11 +117,16 @@ function loggedProxy(client: ADTClient, conf: RemoteConfig) {
     getterOverride: new Map([["statelessClone", () => clone]])
   })
 }
-
+const httpLogger = (conf: RemoteConfig) => {
+  const mongoUrl = httpTraceUrl(conf)
+  if (!mongoUrl) return undefined
+  return mongoHttpLogger(conf.name, "client", false)
+}
 export function createClient(conf: RemoteConfig) {
   const sslconf = conf.url.match(/https:/i)
     ? createSSLConfig(conf.allowSelfSigned, conf.customCA)
     : {}
+  sslconf.debugCallback = httpLogger(conf)
   const client = new ADTClient(
     conf.url,
     conf.username,

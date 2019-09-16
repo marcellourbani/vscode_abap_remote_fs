@@ -29,8 +29,18 @@ export interface ClientConfiguration {
   language: string
   allowSelfSigned: boolean
   customCA: string
-  mongoUrl: string
+  trace?: {
+    mongoUrl: string
+    api_methods: boolean
+    http_calls: boolean
+  }
 }
+
+export const clientTraceUrl = (conf: ClientConfiguration) =>
+  conf.trace && conf.trace.api_methods && conf.trace.mongoUrl
+
+export const httpTraceUrl = (conf: ClientConfiguration) =>
+  conf.trace && conf.trace.http_calls && conf.trace.mongoUrl
 
 export interface AbapObjectSource {
   url: string

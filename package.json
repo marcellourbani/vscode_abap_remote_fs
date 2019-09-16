@@ -549,10 +549,30 @@
                   "title": "Custom certificate authority certificate",
                   "default": "/secrets/myCA.pem"
                 },
-                "mongoUrl": {
-                  "type": "string",
-                  "title": "Log calls to mongoDb (url)",
-                  "default": "mongodb://127.0.0.1:27017"
+                "trace": {
+                  "type": "object",
+                  "title": "Trace API or HTTP calls to mongoDB",
+                  "mongoUrl": {
+                    "type": "string",
+                    "title": "MongoDb url",
+                    "default": "mongodb://127.0.0.1:27017"
+                  },
+                  "api methods": {
+                    "type": "boolean"
+                  },
+                  "http_calls": {
+                    "type": "boolean"
+                  },
+                  "required": [
+                    "mongoUrl",
+                    "api_methods",
+                    "http_calls"
+                  ],
+                  "default": {
+                    "mongoUrl": "mongodb://127.0.0.1:27017",
+                    "http_calls": true,
+                    "api_methods": true
+                  }
                 },
                 "sapGui": {
                   "type": "object",

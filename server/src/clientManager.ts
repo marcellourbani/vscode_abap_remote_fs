@@ -2,7 +2,10 @@ import { ADTClient, createSSLConfig } from "abap-adt-api"
 import { createConnection, ProposedFeatures } from "vscode-languageserver"
 import { isString, isError } from "util"
 import { readConfiguration, sendLog } from "./clientapis"
-import { ClientConfiguration } from "vscode-abap-remote-fs-sharedapi"
+import {
+  ClientConfiguration,
+  clientTraceUrl
+} from "vscode-abap-remote-fs-sharedapi"
 import { createProxy, MethodCall } from "method-call-logger"
 const clients: Map<string, ADTClient> = new Map()
 
@@ -38,6 +41,7 @@ function loggedProxy(client: ADTClient, conf: ClientConfiguration) {
     getterOverride: new Map([["statelessClone", () => clone]])
   })
 }
+
 export async function clientFromKey(key: string) {
   let client = clients.get(key)
   if (!client) {
@@ -54,7 +58,8 @@ export async function clientFromKey(key: string) {
         conf.language,
         sslconf
       )
-      if (conf.mongoUrl) client = loggedProxy(client, conf)
+      const traceUrl = clientTraceUrl(conf)
+      if (traceUrl) client = loggedProxy(client, conf)
       clients.set(key, client)
     }
   }
