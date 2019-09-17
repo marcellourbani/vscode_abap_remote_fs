@@ -70,9 +70,9 @@ const httpSchema = new Schema({
   statusCode: { type: Types.Number, required: true, index: true },
   uri: { type: Types.String, required: true, index: true },
   headers: { type: Types.Mixed, required: true, index: false },
-  requestBody: { type: Types.Mixed, required: true, index: false },
+  requestBody: { type: Types.Mixed, required: false, index: false },
   responseHeaders: { type: Types.Mixed, required: true, index: false },
-  responseBody: { type: Types.Mixed, required: true, index: false }
+  responseBody: { type: Types.Mixed, required: false, index: false }
 })
 
 class MongoClient {
@@ -163,6 +163,7 @@ class MongoClient {
           break
         case "response":
           const oldRequest = this.pendingRequests.get(data.debugId)
+          this.pendingRequests.delete(data.debugId)
           if (!oldRequest)
             log(`Response received for unknown request ${data.debugId}`)
           else {
@@ -174,7 +175,7 @@ class MongoClient {
             const response: HttpLog = {
               ...oldRequest,
               statusCode,
-              duration: new Date().getTime(),
+              duration: new Date().getTime() - oldRequest.start,
               responseHeaders,
               responseBody
             }
@@ -212,5 +213,10 @@ export const mongoHttpLogger = (
   clone: boolean
 ) => {
   const mongo = mongoClients.get(name)
-  if (mongo) return (call: MethodCall) => mongo.log(call, source, clone)
+  if (mongo)
+    return (
+      type: LogPhase,
+      data: LogData,
+      r: RequestAPI<Request, CoreOptions, RequiredUriUrl>
+    ) => mongo.httpLog(type, data, r, source, clone)
 }
