@@ -15,6 +15,7 @@ Format based on [Keep a Changelog](http://keepachangelog.com/)
 ### Fixed
 
 - #90 overlapping syntax checks
+- #91 overlapping completions
 
 ## [0.7.10] 2019-07-21
 

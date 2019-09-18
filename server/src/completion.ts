@@ -1,12 +1,28 @@
 import {
   CompletionParams,
   CompletionItem,
-  CompletionList
+  CompletionList,
+  Position
 } from "vscode-languageserver"
 import { clientAndObjfromUrl } from "./utilities"
 import { log } from "./clientManager"
-import { isAbap } from "./functions"
+import { isAbap, callThrottler } from "./functions"
+import { CompletionProposal, ADTClient } from "abap-adt-api"
 
+const completionKey = (url: string, p: Position) =>
+  `${url} ${p.line} ${p.character}`
+const throttler = callThrottler<CompletionProposal[]>()
+const proposals = (
+  client: ADTClient,
+  url: string,
+  p: Position,
+  source: string
+) => {
+  const key = completionKey(url, p)
+  return throttler(key, () =>
+    client.codeCompletion(url, source, p.line + 1, p.character)
+  )
+}
 export async function completion(params: CompletionParams) {
   if (!isAbap(params.textDocument.uri)) return
   const InterfaceRole = 58 // sccmp_role_intftype in abap
@@ -16,13 +32,12 @@ export async function completion(params: CompletionParams) {
     const co = await clientAndObjfromUrl(params.textDocument.uri)
     if (!co) return items
     const { client, obj, source } = co
-    const rawItems = await client.codeCompletion(
+    const rawItems = await proposals(
+      client,
       obj.mainUrl,
-      source,
-      params.position.line + 1,
-      params.position.character
+      params.position,
+      source
     )
-    // let prefix: string
     const line = source.split(/\n/)[params.position.line] || ""
     const before = line.substr(0, params.position.character)
     rawItems.forEach(i => {
