@@ -58,6 +58,7 @@ export class AdtServer {
   private mainClient: ADTClient
   private symLinks = new AdtSymLinkCollection()
   private activationStatusEmitter = new EventEmitter<Uri>()
+  private lastRefresh?: { node: AbapNode; current: Promise<AbapNode> }
 
   /**
    * Creates a server object and all its dependencies
@@ -160,7 +161,7 @@ export class AdtServer {
 
         // refresh parent node to prevent open editors to lock the object forever
         const parent = hier.find(p => p !== file && isAbapNode(p))
-        if (parent && parent.canRefresh()) await parent.refresh(this.client)
+        if (parent && parent.canRefresh()) await this.refresh(parent)
       } catch (e) {
         await lm.unlock(uri)
         throw e
@@ -177,7 +178,7 @@ export class AdtServer {
    */
   public async refreshDirIfNeeded(dir: AbapNode) {
     if (dir.canRefresh() && isAbapNode(dir)) {
-      await dir.refresh(this.client)
+      await this.refresh(dir)
     }
   }
 
@@ -287,6 +288,17 @@ export class AdtServer {
     return retv
   }
 
+  private async refresh(node: AbapNode) {
+    if (this.lastRefresh && this.lastRefresh.node === node)
+      return this.lastRefresh.current
+    const current = node.refresh(this.client)
+    this.lastRefresh = { node, current }
+    setTimeout(() => {
+      this.lastRefresh = undefined
+    }, 500)
+    return current
+  }
+
   /**
    * converts a VSCode URI to an ADT one
    * similar to {@link findNode} but asynchronous.
@@ -303,7 +315,7 @@ export class AdtServer {
       let next: AbapNode | undefined = node.getChild(part)
       if (!next && refreshable) {
         // refreshable will typically be the current node or its first abap parent (usually a package)
-        await refreshable.refresh(this.client)
+        await this.refresh(refreshable)
         next = node.getChild(part)
         // hack for orphaned local packages
         if (
@@ -323,7 +335,7 @@ export class AdtServer {
           })
           const child = new AbapObjectNode(obj)
           node.setChild(part, child, true)
-          await child.refresh(this.client)
+          await this.refresh(child)
           next = child
         }
       }
@@ -364,7 +376,7 @@ export class AdtServer {
     if (linked) return linked
     const node = await this.findNodePromise(uri)
     if (node.canRefresh()) {
-      if (node.type === FileType.Directory) await node.refresh(this.client)
+      if (node.type === FileType.Directory) await this.refresh(node)
       else {
         const oldvers = getVersion(node)
         await node.stat(this.client)
@@ -403,7 +415,7 @@ export class AdtServer {
           if (obj.path === realPath) node = path.node
           else if (path.node.isFolder) {
             let pnode = findObjectInNodeByPath(path.node, realPath)
-            if (!pnode) await path.node.refresh(this.client)
+            if (!pnode) await this.refresh(path.node)
             pnode = findObjectInNodeByPath(path.node, realPath)
             if (pnode && isAbapNode(pnode.node)) node = pnode.node
           }

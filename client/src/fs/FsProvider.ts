@@ -21,7 +21,6 @@ export class FsProvider implements FileSystemProvider {
   public get onDidChangeFile() {
     return this.pEventEmitter.event
   }
-  private lastStat: Uri | undefined
   private pEventEmitter = new EventEmitter<FileChangeEvent[]>()
   public watch(): Disposable {
     return new Disposable(() => undefined)
@@ -35,10 +34,6 @@ export class FsProvider implements FileSystemProvider {
       if (uri.path === "/") {
         return server.findNode(uri)
       }
-      this.lastStat = uri
-      setTimeout(() => {
-        if (this.lastStat === uri) this.lastStat = undefined
-      }, 500)
       return await server.stat(uri)
     } catch (e) {
       log(`Error in stat of ${uri.toString()}\n${e.toString()}`)
@@ -52,7 +47,7 @@ export class FsProvider implements FileSystemProvider {
       // on restart code might try to read a file before it read its parent directory
       //  this might end up reloading the same directory many times, might want to fix it one day
       const dir = await server.findNodePromise(uri)
-      if (uri !== this.lastStat) await server.refreshDirIfNeeded(dir)
+      server.refreshDirIfNeeded(dir)
       const contents = [...dir].map(
         ([name, node]) => [name, node.type] as [string, FileType]
       )

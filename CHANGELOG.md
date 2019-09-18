@@ -4,18 +4,18 @@ All notable changes to the "vscode-abap-remote-fs" extension will be documented 
 
 Format based on [Keep a Changelog](http://keepachangelog.com/)
 
-## Unreleased
+## [0.7.11] 2019-09-18
 
 ### Added
 
 - optionally log API calls to mongodb
 - optionally log HTTP calls to mongodb
-- Configuration defaults
 
 ### Fixed
 
 - #90 overlapping syntax checks
 - #91 overlapping completions
+- #92 multiple API calls
 
 ## [0.7.10] 2019-07-21
 
