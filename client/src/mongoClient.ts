@@ -3,15 +3,15 @@ import { RemoteManager } from "./config"
 import { MethodCall } from "method-call-logger"
 import { log } from "./logger"
 import { cache } from "./functions"
-import { clientTraceUrl } from "vscode-abap-remote-fs-sharedapi"
-import { LogPhase, LogData, RequestData, ResponseData } from "request-debug"
 import {
-  RequestAPI,
-  Request,
-  CoreOptions,
-  RequiredUriUrl,
-  Headers
-} from "request"
+  clientTraceUrl,
+  SOURCE_CLIENT,
+  SOURCE_SERVER,
+  Sources
+} from "vscode-abap-remote-fs-sharedapi"
+import { LogPhase, LogData, RequestData, ResponseData } from "request-debug"
+import { Headers } from "request"
+import { session_types } from "abap-adt-api"
 
 const CALLLOG = "callLog"
 const HTTPLOG = "httpLog"
@@ -32,7 +32,7 @@ interface CallLog {
 interface HttpRequest {
   start: number
   source: string
-  statelessClone: boolean
+  stateful: boolean
   method: string
   uri: string
   headers: Headers
@@ -62,7 +62,7 @@ const callSchema = new Schema({
 const httpSchema = new Schema({
   start: { type: Types.Number, required: true, index: true },
   source: { type: Types.String, required: true, index: true },
-  statelessClone: { type: Types.Boolean, required: true, index: false },
+  stateful: { type: Types.Boolean, required: true, index: false },
   duration: { type: Types.Number, required: true, index: false },
   // unknownResponse: { type: Types.Boolean, required: true, index: false },
   debugId: { type: Types.Number, required: true, index: true },
@@ -77,7 +77,10 @@ const httpSchema = new Schema({
 
 class MongoClient {
   private connection: Promise<typeof import("mongoose")>
-  private pendingRequests = new Map<number, HttpRequest>()
+  private pendingRequests = new Map([
+    [SOURCE_CLIENT, new Map<number, HttpRequest>()],
+    [SOURCE_SERVER, new Map<number, HttpRequest>()]
+  ])
   private formatDbName(name: string): string {
     return `abapfs_${name.replace(/[\\\/\*\?\"<>\|\s,#]/g, "_").toLowerCase()}`
   }
@@ -130,40 +133,31 @@ class MongoClient {
       })
   }
 
-  private toHttpRequest(
-    request: RequestData,
-    source: string,
-    statelessClone: boolean
-  ): HttpRequest {
+  private toHttpRequest(request: RequestData, source: string): HttpRequest {
     const { body: requestBody, ...rest } = request
+    const s = request.headers["X-sap-adt-sessiontype"]
+    const stateful = s === session_types.stateful || s === session_types.keep
+
     return {
       ...rest,
       requestBody,
       source,
-      statelessClone,
+      stateful,
       start: new Date().getTime()
     }
   }
-  public httpLog(
-    type: LogPhase,
-    data: LogData,
-    r: RequestAPI<Request, CoreOptions, RequiredUriUrl>,
-    source: string,
-    statelessClone: boolean
-  ) {
+  public httpLog(type: LogPhase, data: LogData, source: Sources) {
+    const pendingRequests = this.pendingRequests.get(source)
+    if (!pendingRequests) return
     this.connection.then(async mongo => {
       switch (type) {
         case "request":
-          const request = this.toHttpRequest(
-            data as RequestData,
-            source,
-            statelessClone
-          )
-          this.pendingRequests.set(data.debugId, request)
+          const request = this.toHttpRequest(data as RequestData, source)
+          pendingRequests.set(data.debugId, request)
           break
         case "response":
-          const oldRequest = this.pendingRequests.get(data.debugId)
-          this.pendingRequests.delete(data.debugId)
+          const oldRequest = pendingRequests.get(data.debugId)
+          pendingRequests.delete(data.debugId)
           if (!oldRequest)
             log(`Response received for unknown request ${data.debugId}`)
           else {
@@ -207,16 +201,8 @@ export const mongoApiLogger = (
   if (mongo) return (call: MethodCall) => mongo.log(call, source, clone)
 }
 
-export const mongoHttpLogger = (
-  name: string,
-  source: string,
-  clone: boolean
-) => {
+export const mongoHttpLogger = (name: string, source: Sources) => {
   const mongo = mongoClients.get(name)
   if (mongo)
-    return (
-      type: LogPhase,
-      data: LogData,
-      r: RequestAPI<Request, CoreOptions, RequiredUriUrl>
-    ) => mongo.httpLog(type, data, r, source, clone)
+    return (type: LogPhase, data: LogData) => mongo.httpLog(type, data, source)
 }

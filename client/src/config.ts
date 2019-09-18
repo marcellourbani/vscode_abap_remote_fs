@@ -1,7 +1,8 @@
 import {
   ClientConfiguration,
   clientTraceUrl,
-  httpTraceUrl
+  httpTraceUrl,
+  SOURCE_CLIENT
 } from "vscode-abap-remote-fs-sharedapi"
 import { window, workspace, QuickPickItem, WorkspaceFolder, Uri } from "vscode"
 import { ADTClient, createSSLConfig } from "abap-adt-api"
@@ -106,8 +107,8 @@ export async function pickAdtRoot(uri?: Uri) {
 
 function loggedProxy(client: ADTClient, conf: RemoteConfig) {
   if (!clientTraceUrl(conf)) return client
-  const logger = mongoApiLogger(conf.name, "client", false)
-  const cloneLogger = mongoApiLogger(conf.name, "client", true)
+  const logger = mongoApiLogger(conf.name, SOURCE_CLIENT, false)
+  const cloneLogger = mongoApiLogger(conf.name, SOURCE_CLIENT, true)
   if (!(logger && cloneLogger)) return client
 
   const clone = createProxy(client.statelessClone, cloneLogger)
@@ -120,7 +121,7 @@ function loggedProxy(client: ADTClient, conf: RemoteConfig) {
 const httpLogger = (conf: RemoteConfig) => {
   const mongoUrl = httpTraceUrl(conf)
   if (!mongoUrl) return undefined
-  return mongoHttpLogger(conf.name, "client", false)
+  return mongoHttpLogger(conf.name, SOURCE_CLIENT)
 }
 export function createClient(conf: RemoteConfig) {
   const sslconf = conf.url.match(/https:/i)

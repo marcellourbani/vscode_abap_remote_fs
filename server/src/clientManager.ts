@@ -1,12 +1,15 @@
 import { ADTClient, createSSLConfig } from "abap-adt-api"
 import { createConnection, ProposedFeatures } from "vscode-languageserver"
 import { isString, isError } from "util"
-import { readConfiguration, sendLog } from "./clientapis"
+import { readConfiguration, sendLog, sendHttpLog } from "./clientapis"
 import {
   ClientConfiguration,
-  clientTraceUrl
+  clientTraceUrl,
+  httpTraceUrl,
+  SOURCE_SERVER
 } from "vscode-abap-remote-fs-sharedapi"
 import { createProxy, MethodCall } from "method-call-logger"
+import { LogPhase, LogData } from "request-debug"
 const clients: Map<string, ADTClient> = new Map()
 
 export const connection = createConnection(ProposedFeatures.all)
@@ -27,7 +30,7 @@ export function clientKeyFromUrl(url: string) {
 function loggedProxy(client: ADTClient, conf: ClientConfiguration) {
   const temp = {
     connection: conf.name,
-    source: "server",
+    source: SOURCE_SERVER,
     fromClone: false
   }
   const logger = (call: MethodCall) => sendLog({ ...temp, call })
@@ -42,6 +45,12 @@ function loggedProxy(client: ADTClient, conf: ClientConfiguration) {
   })
 }
 
+function debugCallBack(conf: ClientConfiguration) {
+  if (httpTraceUrl(conf))
+    return (type: LogPhase, data: LogData) =>
+      sendHttpLog({ source: SOURCE_SERVER, type, data, connection: conf.name })
+}
+
 export async function clientFromKey(key: string) {
   let client = clients.get(key)
   if (!client) {
@@ -50,6 +59,7 @@ export async function clientFromKey(key: string) {
       const sslconf = conf.url.match(/https:/i)
         ? createSSLConfig(conf.allowSelfSigned, conf.customCA)
         : {}
+      sslconf.debugCallback = debugCallBack(conf)
       client = new ADTClient(
         conf.url,
         conf.username,

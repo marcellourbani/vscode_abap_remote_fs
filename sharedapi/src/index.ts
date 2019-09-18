@@ -1,4 +1,5 @@
 import { MethodCall } from "method-call-logger"
+import { LogPhase, LogData } from "request-debug"
 export enum Methods {
   objectDetails = "vscabap.objDetails",
   readConfiguration = "vscabap.readConfig",
@@ -9,8 +10,13 @@ export enum Methods {
   vsUri = "vscabap.vsUri",
   quickFix = "vscabap.quickfix",
   updateMainProgram = "vscabap.updateMain",
-  logCall = "vscabap.logCall"
+  logCall = "vscabap.logCall",
+  logHTTP = "vscabap.logHTTP"
 }
+
+export type Sources = "client" | "server"
+export const SOURCE_CLIENT: Sources = "client"
+export const SOURCE_SERVER: Sources = "server"
 
 export interface AbapObjectDetail {
   url: string
@@ -70,9 +76,16 @@ export interface MainProgram {
 
 export interface LogEntry {
   connection: string
-  source: string
+  source: Sources
   fromClone: boolean
   call: MethodCall
+}
+
+export interface HttpLogEntry {
+  connection: string
+  source: Sources
+  type: LogPhase
+  data: LogData
 }
 
 export const urlFromPath = (configKey: string, path: string) =>

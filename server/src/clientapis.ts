@@ -6,7 +6,8 @@ import {
   StringWrapper,
   UriRequest,
   SearchProgress,
-  LogEntry
+  LogEntry,
+  HttpLogEntry
 } from "vscode-abap-remote-fs-sharedapi"
 import { connection } from "./clientManager"
 
@@ -56,4 +57,8 @@ export async function setSearchProgress(progress: SearchProgress) {
 
 export async function sendLog(entry: LogEntry) {
   connection.sendRequest(Methods.logCall, entry)
+}
+
+export async function sendHttpLog(entry: HttpLogEntry) {
+  connection.sendRequest(Methods.logHTTP, entry)
 }

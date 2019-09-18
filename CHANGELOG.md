@@ -8,7 +8,8 @@ Format based on [Keep a Changelog](http://keepachangelog.com/)
 
 ### Added
 
-- optionally log calls to mongodb
+- optionally log API calls to mongodb
+- optionally log HTTP calls to mongodb
 - Configuration defaults
 
 ### Fixed

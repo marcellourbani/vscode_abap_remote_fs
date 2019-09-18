@@ -1,4 +1,4 @@
-import { MainProgram } from "vscode-abap-remote-fs-sharedapi"
+import { MainProgram, HttpLogEntry } from "vscode-abap-remote-fs-sharedapi"
 import { AbapObject } from "./adt/abap/AbapObject"
 import { log, channel } from "./logger"
 import {
@@ -38,7 +38,7 @@ import { fail } from "assert"
 import { command, AbapFsCommands } from "./commands"
 import { IncludeLensP } from "./adt/operations/IncludeLens"
 import { RemoteManager } from "./config"
-import { mongoApiLogger } from "./mongoClient"
+import { mongoApiLogger, mongoHttpLogger } from "./mongoClient"
 
 async function getVSCodeUri(req: UriRequest): Promise<StringWrapper> {
   const server = getServer(req.confKey)
@@ -150,7 +150,10 @@ function logCall(entry: LogEntry) {
   const logger = mongoApiLogger(entry.connection, entry.source, entry.fromClone)
   if (logger) logger(entry.call)
 }
-
+function logHttp(entry: HttpLogEntry) {
+  const logger = mongoHttpLogger(entry.connection, entry.source)
+  if (logger) logger(entry.type, entry.data)
+}
 export async function startLanguageClient(context: ExtensionContext) {
   const module = context.asAbsolutePath(join("server", "dist", "server.js"))
   const transport = TransportKind.ipc
@@ -186,6 +189,7 @@ export async function startLanguageClient(context: ExtensionContext) {
       client.onRequest(Methods.vsUri, getVSCodeUri)
       client.onRequest(Methods.setSearchProgress, setSearchProgress)
       client.onRequest(Methods.logCall, logCall)
+      client.onRequest(Methods.logHTTP, logHttp)
     }
   })
   client.start()
