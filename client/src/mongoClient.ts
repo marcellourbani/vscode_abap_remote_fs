@@ -7,7 +7,8 @@ import {
   clientTraceUrl,
   SOURCE_CLIENT,
   SOURCE_SERVER,
-  Sources
+  Sources,
+  httpTraceUrl
 } from "vscode-abap-remote-fs-sharedapi"
 import { LogPhase, LogData, RequestData, ResponseData } from "request-debug"
 import { Headers } from "request"
@@ -187,7 +188,7 @@ class MongoClient {
 
 const mongoClients = cache((name: string) => {
   const conf = name && RemoteManager.get().byId(name)
-  const mongoUrl = conf && clientTraceUrl(conf)
+  const mongoUrl = conf && (clientTraceUrl(conf) || httpTraceUrl(conf))
   if (!conf || !mongoUrl) return undefined
   return new MongoClient(conf.name, mongoUrl)
 })
