@@ -288,7 +288,7 @@ export class AdtServer {
     return retv
   }
 
-  private async refresh(node: AbapNode) {
+  private refresh(node: AbapNode) {
     if (this.lastRefresh && this.lastRefresh.node === node)
       return this.lastRefresh.current
     const current = node.refresh(this.client)

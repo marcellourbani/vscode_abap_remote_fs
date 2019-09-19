@@ -4,6 +4,12 @@ All notable changes to the "vscode-abap-remote-fs" extension will be documented 
 
 Format based on [Keep a Changelog](http://keepachangelog.com/)
 
+## [0.7.12] 2019-09-19
+
+### Fixed
+
+- failure to expand program nodes
+
 ## [0.7.11] 2019-09-18
 
 ### Added

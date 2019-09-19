@@ -47,7 +47,7 @@ export class FsProvider implements FileSystemProvider {
       // on restart code might try to read a file before it read its parent directory
       //  this might end up reloading the same directory many times, might want to fix it one day
       const dir = await server.findNodePromise(uri)
-      server.refreshDirIfNeeded(dir)
+      await server.refreshDirIfNeeded(dir)
       const contents = [...dir].map(
         ([name, node]) => [name, node.type] as [string, FileType]
       )
