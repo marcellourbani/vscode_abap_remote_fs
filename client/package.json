@@ -31,7 +31,7 @@
     "update-vscode": "vscode-install",
     "postinstall": "vscode-install",
     "vscode:prepublish": "fail",
-    "clean": "rimraf out dist node-modules server",
+    "clean": "rimraf out dist node_modules server",
     "webpack": "webpack --mode production",
     "watch": "webpack --mode none --env.development --watch --info-verbosity verbose"
   },

@@ -34,7 +34,7 @@
     "webpack-cli": "^3.3.1"
   },
   "scripts": {
-    "clean": "rimraf ./out ./dist",
+    "clean": "rimraf ./out ./dist node_modules",
     "build": "npm run clean && npm run webpack",
     "webpack": "webpack --mode production",
     "watch": "webpack --mode none --env.development --watch --info-verbosity verbose",
