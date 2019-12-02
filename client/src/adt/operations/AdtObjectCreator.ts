@@ -9,7 +9,13 @@ import {
   ObjectType,
   parentTypeId,
   ParentTypeIds,
-  ValidateOptions
+  ValidateOptions,
+  PackageTypeId,
+  PackageSpecificData,
+  hasPackageOptions,
+  NewPackageOptions,
+  PackageTypes,
+  isPackageType
 } from "abap-adt-api"
 import { CreatableTypes } from "abap-adt-api"
 import { Uri, window } from "vscode"
@@ -136,7 +142,17 @@ export class AdtObjectCreator {
         objname: objDetails.name,
         objtype: objDetails.objtype as GroupTypeIds
       }
-    else
+    else if (objDetails.objtype === PACKAGE && hasPackageOptions(objDetails)) {
+      validateOptions = {
+        description: objDetails.description,
+        objname: objDetails.name,
+        objtype: objDetails.objtype as PackageTypeId,
+        packagename: objDetails.parentName,
+        swcomp: objDetails.swcomp,
+        packagetype: objDetails.packagetype,
+        transportLayer: objDetails.transportLayer
+      }
+    } else
       validateOptions = {
         description: objDetails.description,
         objname: objDetails.name,
@@ -144,6 +160,48 @@ export class AdtObjectCreator {
         packagename: objDetails.parentName
       }
     return this.server.client.validateNewObject(validateOptions)
+  }
+
+  private async selectTransportLayer() {
+    const layers = await this.server.client.packageSearchHelp("transportlayers")
+    const items = layers.map(l => ({
+      label: l.name,
+      description: l.description,
+      detail: l.data
+    }))
+    return await window.showQuickPick(items)
+  }
+
+  private async getPackageOptions(options: NewObjectOptions) {
+    const swcomp = await this.askInput(
+      "Software Component",
+      true,
+      options.name.match(/^\$/) ? "LOCAL" : "HOME"
+    )
+    if (!swcomp) return
+    const packagetype = (await window.showQuickPick([
+      "development",
+      "structure",
+      "main"
+    ])) as PackageTypes | undefined
+    if (!packagetype) return
+    const layer = await this.selectTransportLayer()
+    if (!layer) return
+    const packageData: PackageSpecificData = {
+      swcomp,
+      packagetype,
+      transportLayer: layer.label
+    }
+    return packageData
+  }
+  private async askParent(parentType: string) {
+    const parent = await this.server.objectFinder.findObject(
+      "Select parent",
+      parentType
+    )
+    if (!parent) return ["", ""]
+    const devclass = await this.findPackage(parent)
+    return [parent.name, devclass]
   }
   private async getObjectDetails(uri: Uri | undefined): Promise<details> {
     const hierarchy = this.getHierarchy(uri)
@@ -160,15 +218,7 @@ export class AdtObjectCreator {
     let parentName
     if (parentType !== PACKAGE) {
       parentName = this.guessParentByType(hierarchy, "FUGR/F")
-      if (!parentName) {
-        const parent = await this.server.objectFinder.findObject(
-          "Select parent",
-          parentType
-        )
-        if (!parent) return
-        parentName = parent.name
-        devclass = await this.findPackage(parent)
-      }
+      if (!parentName) [parentName, devclass] = await this.askParent(parentType)
       if (!parentName) return
     }
 
@@ -182,17 +232,26 @@ export class AdtObjectCreator {
     }
     if (parentType === PACKAGE) parentName = devclass
     if (!devclass || !parentName) return
-    return {
-      devclass,
-      options: {
-        description,
-        name: this.fixName(name, objType.typeId, parentName),
-        objtype: objType.typeId,
-        parentName,
-        parentPath: objectPath(parentType, parentName, ""),
-        responsible
-      }
+
+    const options: NewObjectOptions | NewPackageOptions = {
+      description,
+      name: this.fixName(name, objType.typeId, parentName),
+      objtype: objType.typeId,
+      parentName,
+      parentPath: objectPath(parentType, parentName, ""),
+      responsible
     }
+    if (isPackageType(options.objtype)) {
+      const pkgopt = await this.getPackageOptions(options)
+      if (!pkgopt) return
+      const { swcomp, packagetype, transportLayer } = pkgopt
+
+      const pkoptions = { ...options, swcomp, packagetype, transportLayer }
+      return {
+        devclass,
+        options: pkoptions
+      }
+    } else return { devclass, options }
   }
   private async findPackage(parent: MySearchResult) {
     if (parent.packageName) return parent.packageName
@@ -211,7 +270,7 @@ export class AdtObjectCreator {
   }
   private askName(objType: CreatableTypeIds) {
     if (objType === "FUGR/I")
-      return this.askInput("suffix", true, (s: string) =>
+      return this.askInput("suffix", true, "", (s: string) =>
         s.match(/^[A-Za-z]\w\w$/) ? "" : "Suffix must be 3 character long"
       )
 
@@ -221,9 +280,11 @@ export class AdtObjectCreator {
   private async askInput(
     prompt: string,
     uppercase: boolean = true,
+    value = "",
     validateInput = (s: string) => ""
   ): Promise<string> {
-    const res = (await window.showInputBox({ prompt, validateInput })) || ""
+    const res =
+      (await window.showInputBox({ prompt, validateInput, value })) || ""
     return uppercase ? res.toUpperCase() : res
   }
 }
