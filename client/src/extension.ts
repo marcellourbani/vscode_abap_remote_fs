@@ -24,6 +24,7 @@ import { AbapRevisionLensP } from "./scm/abaprevisionlens"
 import { IncludeLensP } from "./adt/operations/IncludeLens"
 import { ClassHierarchyLensProvider } from "./adt/classhierarchy"
 import { registerCommands } from "./commands"
+import { abapGitProvider } from "./views/abapgit"
 
 export function activate(context: ExtensionContext) {
   log("activating ABAPfs...")
@@ -56,6 +57,7 @@ export function activate(context: ExtensionContext) {
       TransportsProvider.get()
     )
   )
+  sub.push(window.registerTreeDataProvider("abapfs.abapgit", abapGitProvider))
   sub.push(
     languages.registerCodeLensProvider(
       { language: "abap", scheme: ADTSCHEME },

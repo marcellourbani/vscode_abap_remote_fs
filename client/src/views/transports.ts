@@ -32,7 +32,6 @@ import {
   NodePath
 } from "../adt/abap/AbapObjectUtilities"
 import { withp } from "../functions"
-import { SapGuiCommand } from "../adt/sapgui/sapgui"
 
 const currentUsers = new Map<string, string>()
 

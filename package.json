@@ -73,6 +73,11 @@
           "id": "abapfs.transports",
           "name": "Transports",
           "when": "abapfs:extensionActive"
+        },
+        {
+          "id": "abapfs.abapgit",
+          "name": "abapGit ",
+          "when": "abapfs:extensionActive"
         }
       ],
       "explorer": [
