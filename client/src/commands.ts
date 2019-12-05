@@ -1,3 +1,4 @@
+import { PACKAGE } from "./adt/operations/AdtObjectCreator"
 import {
   workspace,
   Uri,
@@ -232,6 +233,8 @@ export class AdtCommands {
       const obj = await server.creator.createObject(uri)
       if (!obj) return // user aborted
       log(`Created object ${obj.type} ${obj.name}`)
+
+      if (obj.type === PACKAGE) return // Packages can't be opened perhaps could reveal it
 
       const nodePath = await openObject(server, obj.path)
       if (nodePath) {

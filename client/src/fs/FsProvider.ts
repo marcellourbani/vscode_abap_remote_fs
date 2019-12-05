@@ -102,8 +102,9 @@ export class FsProvider implements FileSystemProvider {
       const server = await getOrCreateServer(uri.authority)
       await server.delete(uri)
     } catch (e) {
-      log(`Error deleting file ${uri.toString()}\n${e.toString()}`)
-      throw e
+      const msg = `Error deleting file ${uri.toString()}\n${e.toString()}`
+      log(msg)
+      throw new Error(msg)
     }
   }
 

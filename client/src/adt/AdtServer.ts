@@ -440,6 +440,7 @@ export class AdtServer {
     // I might already have a transport number, but might be stale
     let current = ""
     if (isString(transport)) current = transport
+    if (!obj.structure) await obj.loadMetadata(this.client)
     const uri = obj.getContentsUri()
     return selectTransport(uri, "", this.client, false, current)
   }
