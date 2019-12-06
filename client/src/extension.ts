@@ -27,6 +27,7 @@ import { registerCommands } from "./commands"
 import { abapGitProvider } from "./views/abapgit"
 
 export function activate(context: ExtensionContext) {
+  const startTime = new Date().getTime()
   log("activating ABAPfs...")
   const sub = context.subscriptions
   // register the filesystem type
@@ -84,8 +85,8 @@ export function activate(context: ExtensionContext) {
   restoreLocks()
 
   registerCommands(context)
-
-  log(`Activated,pid=${process.pid}`)
+  const elapsed = new Date().getTime() - startTime
+  log(`Activated,pid=${process.pid}, activation time(ms):${elapsed}`)
 }
 
 // this method is called when your extension is deactivated

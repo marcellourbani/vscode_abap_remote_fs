@@ -134,6 +134,38 @@
         }
       },
       {
+        "command": "abapfs.refreshrepos",
+        "title": "ABAPfs refresh abapGit repositories",
+        "icon": {
+          "dark": "client/images/dark/icon-refresh.svg",
+          "light": "client/images/light/icon-refresh.svg"
+        }
+      },
+      {
+        "command": "abapfs.pullRepo",
+        "title": "ABAPfs pull abapGit Repo",
+        "icon": {
+          "dark": "client/images/dark/icon-repo.svg",
+          "light": "client/images/light/icon-repo.svg"
+        }
+      },
+      {
+        "command": "abapfs.createRepo",
+        "title": "ABAPfs create abapGit Repo",
+        "icon": {
+          "dark": "client/images/dark/icon-repo.svg",
+          "light": "client/images/light/icon-repo.svg"
+        }
+      },
+      {
+        "command": "abapfs.deleteRepo",
+        "title": "ABAPfs delete abapGit Repo",
+        "icon": {
+          "dark": "client/images/dark/icon-delete.svg",
+          "light": "client/images/light/icon-delete.svg"
+        }
+      },
+      {
         "command": "abapfs.execute",
         "title": "ABAPfs Open in SAPGUI"
       },
@@ -317,6 +349,22 @@
           "when": "hideCommands.never"
         },
         {
+          "command": "abapfs.refreshrepos",
+          "when": "hideCommands.never"
+        },
+        {
+          "command": "abapfs.pullRepo",
+          "when": "hideCommands.never"
+        },
+        {
+          "command": "abapfs.createRepo",
+          "when": "hideCommands.never"
+        },
+        {
+          "command": "abapfs.deleteRepo",
+          "when": "hideCommands.never"
+        },
+        {
           "command": "abapfs.execute",
           "when": "hideCommands.never"
         },
@@ -439,6 +487,16 @@
           "command": "abapfs.transportOpenGui",
           "group": "context",
           "when": "view == abapfs.transports && viewItem =~ /tr_(un)?released/ "
+        },
+        {
+          "command": "abapfs.deleteRepo",
+          "group": "inline",
+          "when": "viewItem == repository"
+        },
+        {
+          "command": "abapfs.pullRepo",
+          "group": "inline",
+          "when": "view == abapfs.abapgit && viewItem == repository"
         }
       ],
       "view/title": [
@@ -446,6 +504,16 @@
           "command": "abapfs.refreshtransports",
           "group": "navigation",
           "when": "view == abapfs.transports"
+        },
+        {
+          "command": "abapfs.refreshrepos",
+          "group": "navigation",
+          "when": "view == abapfs.abapgit"
+        },
+        {
+          "command": "abapfs.createRepo",
+          "group": "navigation",
+          "when": "view == abapfs.abapgit"
         }
       ],
       "editor/title": [

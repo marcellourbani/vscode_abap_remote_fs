@@ -51,11 +51,19 @@ export const AbapFsCommands = {
   search: "abapfs.search",
   create: "abapfs.create",
   execute: "abapfs.execute",
-  addfavourite: "abapfs.addfavourite",
-  deletefavourite: "abapfs.deletefavourite",
   unittest: "abapfs.unittest",
   createtestinclude: "abapfs.createtestinclude",
   quickfix: "abapfs.quickfix",
+  changeInclude: "abapfs:changeInclude",
+  showDocumentation: "abapfs.showdocu",
+  showObject: "abapfs.showObject",
+  clearPassword: "abapfs.clearPassword",
+  addfavourite: "abapfs.addfavourite",
+  deletefavourite: "abapfs.deletefavourite",
+  // classes
+  refreshHierarchy: "abapfs.refreshHierarchy",
+  pickObject: "abapfs.pickObject",
+  // revisions
   clearScmGroup: "abapfs.clearScmGroup",
   openrevstate: "abapfs.openrevstate",
   opendiff: "abapfs.opendiff",
@@ -63,6 +71,7 @@ export const AbapFsCommands = {
   changequickdiff: "abapfs.changequickdiff",
   remotediff: "abapfs.remotediff",
   comparediff: "abapfs.comparediff",
+  // transports
   transportObjectDiff: "abapfs.transportObjectDiff",
   openTransportObject: "abapfs.openTransportObject",
   deleteTransport: "abapfs.deleteTransport",
@@ -74,12 +83,11 @@ export const AbapFsCommands = {
   transportUser: "abapfs.transportUser",
   transportCopyNumber: "abapfs.transportCopyNumber",
   transportOpenGui: "abapfs.transportOpenGui",
-  changeInclude: "abapfs:changeInclude",
-  showDocumentation: "abapfs.showdocu",
-  showObject: "abapfs.showObject",
-  pickObject: "abapfs.pickObject",
-  refreshHierarchy: "abapfs.refreshHierarchy",
-  clearPassword: "abapfs.clearPassword"
+  // abapgit
+  agitRefreshRepos: "abapfs.refreshrepos",
+  agitPull: "abapfs.pullRepo",
+  agitCreate: "abapfs.createRepo",
+  agitDelete: "abapfs.deleteRepo"
 }
 
 function currentUri() {
