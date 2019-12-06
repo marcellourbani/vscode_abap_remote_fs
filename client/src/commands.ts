@@ -87,7 +87,7 @@ export const AbapFsCommands = {
   agitRefreshRepos: "abapfs.refreshrepos",
   agitPull: "abapfs.pullRepo",
   agitCreate: "abapfs.createRepo",
-  agitDelete: "abapfs.deleteRepo"
+  agitUnlink: "abapfs.unlinkRepo"
 }
 
 function currentUri() {

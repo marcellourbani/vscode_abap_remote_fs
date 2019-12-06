@@ -4,7 +4,8 @@ import {
   TreeItem,
   workspace,
   EventEmitter,
-  TreeItemCollapsibleState
+  TreeItemCollapsibleState,
+  window
 } from "vscode"
 import { GitRepo, ADTClient } from "abap-adt-api"
 import { ADTSCHEME, getOrCreateServer } from "../adt/AdtServer"
@@ -23,6 +24,9 @@ const isServerItem = (item: TreeItem): item is ServerItem =>
   !!(item as any).client
 
 class AbapGit {
+  public unlink(repo: GitRepo, client: ADTClient) {
+    return client.gitUnlinkRepo(repo.key)
+  }
   private async getServerItem(server: AdtServer) {
     const repos = await server.client.gitRepos()
     const item: ServerItem = {
@@ -70,7 +74,7 @@ class AbapGitProvider implements TreeDataProvider<TreeItem> {
   public onDidChangeTreeData = this.emitter.event
 
   public static get() {
-    this.instance = new AbapGitProvider()
+    if (!this.instance) this.instance = new AbapGitProvider()
     return this.instance
   }
 
@@ -94,25 +98,44 @@ class AbapGitProvider implements TreeDataProvider<TreeItem> {
     throw new Error("Method not implemented.")
   }
 
-  private delete(repoItem: AbapGitItem) {
-    throw new Error("Method not implemented.")
+  private async unLink(repoItem: AbapGitItem) {
+    const confirm = "Confirm"
+    const answer = await window.showInformationMessage(
+      `Detach package ${repoItem.repo.sapPackage} from abapGit repo? All objects will be unaffected`,
+      confirm,
+      "Cancel"
+    )
+    if (answer !== confirm) return
+    const server = this.repoServer(repoItem)
+    await this.git.unlink(repoItem.repo, server.client)
+    await this.refresh()
+  }
+  private repoServer(repoItem: AbapGitItem) {
+    const hasRepo = (s: ServerItem) =>
+      !!s.children.find(r => r.id === repoItem.id)
+    const server = this.children.find(hasRepo)
+    if (!server)
+      throw new Error(
+        `No server connection found for package ${repoItem.repo.sapPackage}`
+      )
+    return server
   }
 
   @command(AbapFsCommands.agitRefreshRepos)
   private static refreshCommand() {
-    AbapGitProvider.get().refresh()
+    return AbapGitProvider.get().refresh()
   }
   @command(AbapFsCommands.agitCreate)
   private static createCommand() {
-    AbapGitProvider.get().refresh()
+    return AbapGitProvider.get().refresh()
   }
-  @command(AbapFsCommands.agitDelete)
-  private static deleteCommand(repoItem: AbapGitItem) {
-    AbapGitProvider.get().delete(repoItem)
+  @command(AbapFsCommands.agitUnlink)
+  private static unLinkCommand(repoItem: AbapGitItem) {
+    return AbapGitProvider.get().unLink(repoItem)
   }
   @command(AbapFsCommands.agitPull)
   private static pullCommand(repoItem: AbapGitItem) {
-    AbapGitProvider.get().pull(repoItem)
+    return AbapGitProvider.get().pull(repoItem)
   }
 }
 
