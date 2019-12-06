@@ -135,7 +135,7 @@
       },
       {
         "command": "abapfs.refreshrepos",
-        "title": "ABAPfs refresh abapGit repositories",
+        "title": "Refresh abapGit repositories",
         "icon": {
           "dark": "client/images/dark/icon-refresh.svg",
           "light": "client/images/light/icon-refresh.svg"
@@ -143,23 +143,23 @@
       },
       {
         "command": "abapfs.pullRepo",
-        "title": "ABAPfs pull abapGit Repo",
+        "title": "Pull from git",
         "icon": {
-          "dark": "client/images/dark/icon-repo.svg",
-          "light": "client/images/light/icon-repo.svg"
+          "dark": "client/images/dark/icon-pull.svg",
+          "light": "client/images/light/icon-pull.svg"
         }
       },
       {
         "command": "abapfs.createRepo",
-        "title": "ABAPfs create abapGit Repo",
+        "title": "Create abapGit Repo",
         "icon": {
-          "dark": "client/images/dark/icon-repo.svg",
-          "light": "client/images/light/icon-repo.svg"
+          "dark": "client/images/dark/icon-add.svg",
+          "light": "client/images/light/icon-add.svg"
         }
       },
       {
         "command": "abapfs.deleteRepo",
-        "title": "ABAPfs delete abapGit Repo",
+        "title": "Unlink abapGit Repo",
         "icon": {
           "dark": "client/images/dark/icon-delete.svg",
           "light": "client/images/light/icon-delete.svg"
