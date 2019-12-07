@@ -1,3 +1,4 @@
+import { isAbapObject } from "./adt/abap/AbapObject"
 import { PACKAGE } from "./adt/operations/AdtObjectCreator"
 import {
   workspace,
@@ -25,6 +26,7 @@ import { selectTransport } from "./adt/AdtTransports"
 import { LockManager } from "./adt/operations/LockManager"
 import { IncludeLensP } from "./adt/operations/IncludeLens"
 import { runInSapGui } from "./adt/sapgui/sapgui"
+import { isAbapNode } from "./fs/AbapNode"
 
 const ABAPDOC = "ABAPDOC"
 const abapcmds: Array<{
@@ -112,6 +114,13 @@ export function openObject(server: AdtServer, uri: string) {
       if (path.length === 0) throw new Error("Object not found")
       const nodePath = await server.objectFinder.locateObject(path)
       if (!nodePath) throw new Error("Object not found in workspace")
+      if (
+        isAbapNode(nodePath.node) &&
+        nodePath.node.abapObject.type === PACKAGE
+      ) {
+        commands.executeCommand("filesExplorer.findInWorkspace", nodePath.path)
+        return // Packages can't be opened perhaps could reveal it
+      }
       if (nodePath) await server.objectFinder.displayNode(nodePath)
       return nodePath
     }
@@ -242,8 +251,9 @@ export class AdtCommands {
       if (!obj) return // user aborted
       log(`Created object ${obj.type} ${obj.name}`)
 
-      if (obj.type === PACKAGE) return // Packages can't be opened perhaps could reveal it
-
+      // if (obj.type === PACKAGE) {
+      //   return // Packages can't be opened perhaps could reveal it
+      // }
       const nodePath = await openObject(server, obj.path)
       if (nodePath) {
         server.objectFinder.displayNode(nodePath)

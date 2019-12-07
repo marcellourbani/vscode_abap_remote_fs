@@ -5,23 +5,27 @@ import {
   workspace,
   EventEmitter,
   TreeItemCollapsibleState,
-  window
+  window,
+  commands,
+  ProgressLocation
 } from "vscode"
-import { GitRepo, ADTClient } from "abap-adt-api"
+import { GitRepo, ADTClient, objectPath } from "abap-adt-api"
 import { ADTSCHEME, getOrCreateServer } from "../adt/AdtServer"
 import { v1 } from "uuid"
 import { command, AbapFsCommands } from "../commands"
-const REPO = "repo"
+import { PACKAGE } from "../adt/operations/AdtObjectCreator"
+import { selectTransport } from "../adt/AdtTransports"
+const confirm = "Confirm"
 interface AbapGitItem extends TreeItem {
   repo: GitRepo
 }
 
 interface ServerItem extends TreeItem {
-  client: ADTClient
+  server: AdtServer
   children: AbapGitItem[]
 }
 const isServerItem = (item: TreeItem): item is ServerItem =>
-  !!(item as any).client
+  !!(item as any).server
 
 class AbapGit {
   public unlink(repo: GitRepo, client: ADTClient) {
@@ -30,7 +34,7 @@ class AbapGit {
   private async getServerItem(server: AdtServer) {
     const repos = await server.client.gitRepos()
     const item: ServerItem = {
-      client: server.client,
+      server,
       id: v1(),
       contextValue: "system",
       collapsibleState: TreeItemCollapsibleState.Expanded,
@@ -94,12 +98,44 @@ class AbapGitProvider implements TreeDataProvider<TreeItem> {
     return []
   }
 
-  private pull(repoItem: AbapGitItem) {
-    throw new Error("Method not implemented.")
+  private async pull(repoItem: AbapGitItem) {
+    const answer = await window.showInformationMessage(
+      `Pull package ${repoItem.repo.sapPackage} from git? Uncommitted changes will be overwritten`,
+      confirm,
+      "Cancel"
+    )
+    if (answer !== confirm) return
+    const server = this.repoServer(repoItem)
+    // const uri = await this.packageUri(repoItem.repo, server.server)
+    // if (!uri) throw new Error("Package not found")
+    const transport = await selectTransport(
+      objectPath(PACKAGE, repoItem.repo.sapPackage),
+      repoItem.repo.sapPackage,
+      server.server.client
+    )
+    if (transport.cancelled) return
+    await window.withProgress(
+      {
+        location: ProgressLocation.Window,
+        title: `Pulling repo ${repoItem.repo.sapPackage}`
+      },
+      () => {
+        return server.server.client.gitPullRepo(
+          repoItem.repo.key,
+          undefined,
+          transport.transport
+        )
+      }
+    )
+  }
+
+  private async packageUri(repo: GitRepo, server: AdtServer) {
+    const pkgHits = await server.client.searchObject(repo.sapPackage, PACKAGE)
+    const pkg = pkgHits.find(hit => hit["adtcore:name"] === repo.sapPackage)
+    return pkg && pkg["adtcore:uri"]
   }
 
   private async unLink(repoItem: AbapGitItem) {
-    const confirm = "Confirm"
     const answer = await window.showInformationMessage(
       `Detach package ${repoItem.repo.sapPackage} from abapGit repo? All objects will be unaffected`,
       confirm,
@@ -107,7 +143,7 @@ class AbapGitProvider implements TreeDataProvider<TreeItem> {
     )
     if (answer !== confirm) return
     const server = this.repoServer(repoItem)
-    await this.git.unlink(repoItem.repo, server.client)
+    await this.git.unlink(repoItem.repo, server.server.client)
     await this.refresh()
   }
   private repoServer(repoItem: AbapGitItem) {
