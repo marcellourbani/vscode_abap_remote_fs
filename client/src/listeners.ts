@@ -15,7 +15,7 @@ import { setDocumentLock, LockManager } from "./adt/operations/LockManager"
 import { AbapObject } from "./adt/abap/AbapObject"
 import { clearUTResultsIfLastRun } from "./adt/operations/UnitTestRunner"
 import { IncludeLensP } from "./adt/operations/IncludeLens"
-import { debounce } from "./functions"
+import { debounce } from "./helpers/functions"
 
 export const listenersubscribers: Array<(...x: any[]) => Disposable> = []
 

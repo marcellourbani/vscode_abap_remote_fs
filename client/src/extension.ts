@@ -16,7 +16,7 @@ import {
   documentWillSave
 } from "./listeners"
 import { disconnect, ADTSCHEME, getOrCreateServer } from "./adt/AdtServer"
-import { log } from "./logger"
+import { log } from "./helpers/logger"
 import { client, LanguageCommands } from "./langClient"
 import { restoreLocks, LockManager } from "./adt/operations/LockManager"
 import { registerRevisionModel } from "./scm/abaprevision"

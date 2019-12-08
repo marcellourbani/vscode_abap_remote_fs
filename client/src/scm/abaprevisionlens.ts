@@ -11,7 +11,7 @@ import {
   window
 } from "vscode"
 import { AbapRevision, revLabel } from "./abaprevision"
-import { uriName } from "../functions"
+import { uriName } from "../helpers/vscodefunctions"
 import { RemoteManager } from "../config"
 
 export class AbapRevisionLensP implements CodeLensProvider {

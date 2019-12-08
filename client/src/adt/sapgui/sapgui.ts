@@ -2,7 +2,7 @@ import { AdtServer } from "./../AdtServer"
 import { RemoteConfig } from "../../config"
 import { file } from "tmp-promise"
 import { writeAsync } from "fs-jetpack"
-import { log } from "../../logger"
+import { log } from "../../helpers/logger"
 import { closeSync } from "fs"
 import opn = require("open")
 import { window, ProgressLocation } from "vscode"

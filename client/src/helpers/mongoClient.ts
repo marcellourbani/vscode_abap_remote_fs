@@ -1,5 +1,5 @@
 import { Schema, model, connect } from "mongoose"
-import { RemoteManager } from "./config"
+import { RemoteManager } from "../config"
 import { MethodCall } from "method-call-logger"
 import { log } from "./logger"
 import { cache } from "./functions"

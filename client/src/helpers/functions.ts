@@ -1,11 +1,6 @@
 import { isString, isNumber } from "util"
-import {
-  Uri,
-  Progress,
-  CancellationToken,
-  ProgressLocation,
-  window
-} from "vscode"
+import { Option, option, isNone, none } from "fp-ts/lib/Option"
+import { Task, task } from "fp-ts/lib/Task"
 
 export const pick = <T, K extends keyof T>(name: K) => (x: T): T[K] => x[name]
 export const flat = <T>(a: T[][]): T[] =>
@@ -82,7 +77,6 @@ export function toInt(raw: any): number {
 }
 export const isUnDefined = (x: any) => typeof x === "undefined"
 export const isDefined = (x: any) => !isUnDefined(x)
-export const uriName = (uri: Uri) => uri.path.split("/").pop() || ""
 export const eatPromiseException = async <T>(p: Promise<T>) => {
   try {
     return await p
@@ -224,14 +218,21 @@ export const debounce = <K, R>(frequency: number, cb: (x: K) => R) => {
   }
 }
 
-export const withp = <T>(
-  title: string,
-  cb: (
-    progress?: Progress<{ message?: string; increment?: number }>,
-    token?: CancellationToken
-  ) => Promise<T>,
-  location = ProgressLocation.Window
-) => window.withProgress({ location, title }, cb)
-
 export const delay = (time: number) =>
   new Promise(resolve => setTimeout(resolve, time))
+
+export const replace = <T1, T2 extends keyof T1, T3>(
+  valueOption: Option<T1>,
+  field: T2,
+  inputTask: Task<Option<T3>>
+) => {
+  return task.chain(inputTask, iop => () => {
+    if (isNone(valueOption)) return Promise.resolve(none)
+
+    return Promise.resolve(
+      option.map(iop, iv => {
+        return { ...valueOption.value, [field]: iv }
+      })
+    )
+  })
+}

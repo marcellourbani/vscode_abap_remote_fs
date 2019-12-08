@@ -1,3 +1,5 @@
+import { formatKey } from "./../config"
+import { FsProvider } from "./../fs/FsProvider"
 import { AdtServer } from "./../adt/AdtServer"
 import {
   TreeDataProvider,
@@ -6,15 +8,18 @@ import {
   EventEmitter,
   TreeItemCollapsibleState,
   window,
+  ProgressLocation,
   commands,
-  ProgressLocation
+  Uri,
+  FileChangeType
 } from "vscode"
-import { GitRepo, ADTClient, objectPath } from "abap-adt-api"
+import { GitRepo, ADTClient, objectPath, GitExternalInfo } from "abap-adt-api"
 import { ADTSCHEME, getOrCreateServer } from "../adt/AdtServer"
 import { v1 } from "uuid"
 import { command, AbapFsCommands } from "../commands"
 import { PACKAGE } from "../adt/operations/AdtObjectCreator"
 import { selectTransport } from "../adt/AdtTransports"
+import { log } from "../helpers/logger"
 const confirm = "Confirm"
 interface AbapGitItem extends TreeItem {
   repo: GitRepo
@@ -24,6 +29,7 @@ interface ServerItem extends TreeItem {
   server: AdtServer
   children: AbapGitItem[]
 }
+
 const isServerItem = (item: TreeItem): item is ServerItem =>
   !!(item as any).server
 
@@ -66,6 +72,22 @@ class AbapGit {
     }
     return servers
   }
+  public async getRemoteInfo(
+    repoUrl: string,
+    client: ADTClient,
+    user = "",
+    password = ""
+  ) {
+    const remote = await client.gitExternalRepoInfo(repoUrl)
+    return remote
+  }
+}
+
+interface RepoAccess {
+  user: string
+  password: string
+  branch: string | undefined
+  cancelled: boolean
 }
 
 // tslint:disable-next-line: max-classes-per-file
@@ -98,41 +120,43 @@ class AbapGitProvider implements TreeDataProvider<TreeItem> {
     return []
   }
 
-  private async pull(repoItem: AbapGitItem) {
-    const answer = await window.showInformationMessage(
-      `Pull package ${repoItem.repo.sapPackage} from git? Uncommitted changes will be overwritten`,
+  private confirmPull(pkg: string) {
+    return window.showInformationMessage(
+      `Pull package ${pkg} from git? Uncommitted changes will be overwritten`,
       confirm,
       "Cancel"
     )
-    if (answer !== confirm) return
+  }
+
+  private async pull(repoItem: AbapGitItem) {
+    if ((await this.confirmPull(repoItem.repo.sapPackage)) !== confirm) return
     const server = this.repoServer(repoItem)
-    // const uri = await this.packageUri(repoItem.repo, server.server)
-    // if (!uri) throw new Error("Package not found")
     const transport = await selectTransport(
       objectPath(PACKAGE, repoItem.repo.sapPackage),
       repoItem.repo.sapPackage,
       server.server.client
     )
     if (transport.cancelled) return
-    await window.withProgress(
+    const branch = await this.getRemoteInfo(
+      repoItem.repo.url,
+      server.server.client
+    )
+    if (!branch) return
+    return await window.withProgress(
       {
         location: ProgressLocation.Window,
         title: `Pulling repo ${repoItem.repo.sapPackage}`
       },
-      () => {
-        return server.server.client.gitPullRepo(
+      async () => {
+        const result = await server.server.client.gitPullRepo(
           repoItem.repo.key,
-          undefined,
+          branch.branch,
           transport.transport
         )
+        commands.executeCommand("workbench.files.action.refreshFilesExplorer")
+        return result
       }
     )
-  }
-
-  private async packageUri(repo: GitRepo, server: AdtServer) {
-    const pkgHits = await server.client.searchObject(repo.sapPackage, PACKAGE)
-    const pkg = pkgHits.find(hit => hit["adtcore:name"] === repo.sapPackage)
-    return pkg && pkg["adtcore:uri"]
   }
 
   private async unLink(repoItem: AbapGitItem) {
@@ -146,6 +170,7 @@ class AbapGitProvider implements TreeDataProvider<TreeItem> {
     await this.git.unlink(repoItem.repo, server.server.client)
     await this.refresh()
   }
+
   private repoServer(repoItem: AbapGitItem) {
     const hasRepo = (s: ServerItem) =>
       !!s.children.find(r => r.id === repoItem.id)
@@ -157,13 +182,67 @@ class AbapGitProvider implements TreeDataProvider<TreeItem> {
     return server
   }
 
+  private async getRemoteInfo(repoUrl: string, client: ADTClient) {
+    const access: RepoAccess = {
+      branch: undefined,
+      user: "",
+      password: "",
+      cancelled: false
+    }
+    try {
+      const ri = await this.git.getRemoteInfo(repoUrl, client)
+      if (ri.access_mode === "PRIVATE") {
+        //
+      } else access.branch = ri && ri.branches[0] && ri.branches[0].name
+    } catch (e) {
+      log(e.toString())
+    }
+    return access
+  }
+
+  private async createRepo(item: ServerItem) {
+    const pkg = await item.server.objectFinder.findObject(
+      "Select package",
+      PACKAGE
+    )
+    if (!pkg) return
+    const repoUrl = await window.showInputBox({ prompt: "Repository URL" })
+    if (!repoUrl) return
+
+    const branch = await this.getRemoteInfo(repoUrl, item.server.client)
+
+    const transport = await selectTransport(
+      objectPath(PACKAGE, pkg.name),
+      pkg.name,
+      item.server.client
+    )
+    if (transport.cancelled) return
+    if ((await this.confirmPull(pkg.name)) !== confirm) return
+    return await window.withProgress(
+      {
+        location: ProgressLocation.Window,
+        title: `Linking and pulling package ${pkg.name}`
+      },
+      async () => {
+        const result = await item.server.client.gitCreateRepo(
+          pkg.name,
+          repoUrl,
+          branch.branch
+        )
+        commands.executeCommand("workbench.files.action.refreshFilesExplorer")
+        this.refresh()
+        return result
+      }
+    )
+  }
+
   @command(AbapFsCommands.agitRefreshRepos)
   private static refreshCommand() {
     return AbapGitProvider.get().refresh()
   }
   @command(AbapFsCommands.agitCreate)
-  private static createCommand() {
-    return AbapGitProvider.get().refresh()
+  private static createCommand(item: ServerItem) {
+    return AbapGitProvider.get().createRepo(item)
   }
   @command(AbapFsCommands.agitUnlink)
   private static unLinkCommand(repoItem: AbapGitItem) {

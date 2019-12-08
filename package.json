@@ -497,6 +497,11 @@
           "command": "abapfs.pullRepo",
           "group": "inline",
           "when": "view == abapfs.abapgit && viewItem == repository"
+        },
+        {
+          "command": "abapfs.createRepo",
+          "group": "inline",
+          "when": "view == abapfs.abapgit  && viewItem == system"
         }
       ],
       "view/title": [
@@ -507,11 +512,6 @@
         },
         {
           "command": "abapfs.refreshrepos",
-          "group": "navigation",
-          "when": "view == abapfs.abapgit"
-        },
-        {
-          "command": "abapfs.createRepo",
           "group": "navigation",
           "when": "view == abapfs.abapgit"
         }

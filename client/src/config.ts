@@ -12,7 +12,7 @@ import { createProxy, MethodCall } from "method-call-logger"
 // keytar depends on a native module shipped in vscode
 // this loads only the type definitions
 import * as keytarType from "keytar"
-import { mongoApiLogger, mongoHttpLogger } from "./mongoClient"
+import { mongoApiLogger, mongoHttpLogger } from "./helpers/mongoClient"
 
 export interface RemoteConfig extends ClientConfiguration {
   sapGui: {

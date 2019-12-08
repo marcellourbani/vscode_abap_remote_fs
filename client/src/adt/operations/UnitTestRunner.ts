@@ -9,7 +9,7 @@ import {
   commands
 } from "vscode"
 import { fromUri } from "../AdtServer"
-import { parts, toInt, mapGet } from "../../functions"
+import { parts, toInt, mapGet } from "../../helpers/functions"
 import {
   UnitTestSeverity,
   UnitTestAlert,

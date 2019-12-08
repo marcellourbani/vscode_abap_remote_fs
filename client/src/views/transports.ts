@@ -31,7 +31,7 @@ import {
   allChildren,
   NodePath
 } from "../adt/abap/AbapObjectUtilities"
-import { withp } from "../functions"
+import { withp } from "../helpers/vscodefunctions"
 
 const currentUsers = new Map<string, string>()
 

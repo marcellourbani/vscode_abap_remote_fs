@@ -10,7 +10,7 @@ import {
   FileStat,
   FileType
 } from "vscode"
-import { log } from "../logger"
+import { log } from "../helpers/logger"
 
 export class FsProvider implements FileSystemProvider {
   private static instance: FsProvider
@@ -24,6 +24,10 @@ export class FsProvider implements FileSystemProvider {
   private pEventEmitter = new EventEmitter<FileChangeEvent[]>()
   public watch(): Disposable {
     return new Disposable(() => undefined)
+  }
+
+  public notifyChanges(changes: FileChangeEvent[]) {
+    this.pEventEmitter.fire(changes)
   }
 
   public async stat(uri: Uri): Promise<FileStat> {

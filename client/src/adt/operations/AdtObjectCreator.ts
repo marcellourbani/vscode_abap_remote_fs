@@ -23,7 +23,7 @@ import { AbapNode, isAbapNode } from "../../fs/AbapNode"
 import { abapObjectFromNode } from "../abap/AbapObjectUtilities"
 import { AdtServer } from "../AdtServer"
 import { selectTransport } from "../AdtTransports"
-import { fieldOrder } from "../../functions"
+import { fieldOrder } from "../../helpers/functions"
 import { MySearchResult } from "./AdtObjectFinder"
 
 export const PACKAGE = "DEVC/K"

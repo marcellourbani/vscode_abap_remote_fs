@@ -1,6 +1,6 @@
 import { callThrottler } from "../functions"
 
-test("dummy", async () => {
+test("call throttler", async () => {
   const numCalls = 9
   const key = "key"
   const calls: boolean[] = []

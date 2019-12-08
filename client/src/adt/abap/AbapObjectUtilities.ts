@@ -7,7 +7,7 @@ import {
   AbapXmlObject,
   NodeStructureMapped
 } from "./AbapObject"
-import { selectMap, ArrayToMap } from "../../functions"
+import { selectMap, ArrayToMap } from "../../helpers/functions"
 import { AbapProgram } from "./AbapProgram"
 import { AbapClass } from "./AbapClass"
 import { AbapInclude } from "./AbapInclude"
@@ -19,7 +19,7 @@ import { Node, ADTClient, NodeStructure } from "abap-adt-api"
 import { AbapFunctionGroup } from "./AbapFunctionGroup"
 import { Uri, commands } from "vscode"
 import { PACKAGE, TMPPACKAGE } from "../operations/AdtObjectCreator"
-import { log } from "../../logger"
+import { log } from "../../helpers/logger"
 
 export interface NodePath {
   path: string
