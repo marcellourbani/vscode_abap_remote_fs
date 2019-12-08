@@ -20,6 +20,9 @@ import { command, AbapFsCommands } from "../commands"
 import { PACKAGE } from "../adt/operations/AdtObjectCreator"
 import { selectTransport } from "../adt/AdtTransports"
 import { log } from "../helpers/logger"
+import { chainTaskTransformers, fieldReplacer } from "../helpers/functions"
+import { simpleInputBox } from "../helpers/vscodefunctions"
+import { some, Option, isSome } from "fp-ts/lib/Option"
 const confirm = "Confirm"
 interface AbapGitItem extends TreeItem {
   repo: GitRepo
@@ -193,6 +196,23 @@ class AbapGitProvider implements TreeDataProvider<TreeItem> {
       const ri = await this.git.getRemoteInfo(repoUrl, client)
       if (ri.access_mode === "PRIVATE") {
         //
+        const inputUser = simpleInputBox("user")
+        const inputPwd = simpleInputBox("password", "", true)
+        const newAccess = await chainTaskTransformers<Option<RepoAccess>>(
+          fieldReplacer("user", inputUser),
+          fieldReplacer("password", inputPwd)
+        )(some(access))()
+        if (isSome(newAccess)) {
+          const pri = await this.git.getRemoteInfo(
+            repoUrl,
+            client,
+            newAccess.value.user,
+            newAccess.value.password
+          )
+          newAccess.value.branch =
+            pri && pri.branches[0] && pri.branches[0].name
+          return newAccess.value
+        }
       } else access.branch = ri && ri.branches[0] && ri.branches[0].name
     } catch (e) {
       log(e.toString())
@@ -209,7 +229,7 @@ class AbapGitProvider implements TreeDataProvider<TreeItem> {
     const repoUrl = await window.showInputBox({ prompt: "Repository URL" })
     if (!repoUrl) return
 
-    const branch = await this.getRemoteInfo(repoUrl, item.server.client)
+    const repoaccess = await this.getRemoteInfo(repoUrl, item.server.client)
 
     const transport = await selectTransport(
       objectPath(PACKAGE, pkg.name),
@@ -227,7 +247,10 @@ class AbapGitProvider implements TreeDataProvider<TreeItem> {
         const result = await item.server.client.gitCreateRepo(
           pkg.name,
           repoUrl,
-          branch.branch
+          repoaccess.branch,
+          "",
+          repoaccess.user,
+          repoaccess.password
         )
         commands.executeCommand("workbench.files.action.refreshFilesExplorer")
         this.refresh()
