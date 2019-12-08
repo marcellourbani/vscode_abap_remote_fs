@@ -221,18 +221,35 @@ export const debounce = <K, R>(frequency: number, cb: (x: K) => R) => {
 export const delay = (time: number) =>
   new Promise(resolve => setTimeout(resolve, time))
 
-export const replace = <T1, T2 extends keyof T1, T3>(
-  valueOption: Option<T1>,
+export function fieldReplacer<T1, T2 extends string>(
   field: T2,
-  inputTask: Task<Option<T3>>
-) => {
-  return task.chain(inputTask, iop => () => {
-    if (isNone(valueOption)) return Promise.resolve(none)
+  inputTask: Task<Option<T1>>
+): <T3 extends Record<T2, T1>>(x: Option<T3>) => Task<Option<T3>>
+export function fieldReplacer<T1, T2 extends string, T3 extends Record<T2, T1>>(
+  field: T2,
+  inputTask: Task<Option<T1>>,
+  data: Option<T3>
+): Task<Option<T3>>
+export function fieldReplacer<T1, T2 extends string, T3 extends Record<T2, T1>>(
+  field: T2,
+  inputTask: Task<Option<T1>>,
+  data?: Option<T3>
+) {
+  const createTask = (valueOption: Option<T3>): Task<Option<T3>> => {
+    return task.chain(inputTask, iop => () => {
+      if (isNone(valueOption)) return Promise.resolve(none)
 
-    return Promise.resolve(
-      option.map(iop, iv => {
-        return { ...valueOption.value, [field]: iv }
-      })
-    )
-  })
+      return Promise.resolve(
+        option.map(iop, iv => {
+          return { ...valueOption.value, [field]: iv }
+        })
+      )
+    })
+  }
+  return data ? createTask(data) : createTask
 }
+
+export const chainTaskTransformers = <T>(
+  first: (x: T) => Task<T>,
+  ...rest: Array<(x: T) => Task<T>>
+) => (y: T) => rest.reduce(task.chain, first(y))

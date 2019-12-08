@@ -29,29 +29,3 @@ export const inputBox = (
 export function simpleInputBox(prompt: string, value = "", password = false) {
   return inputBox({ prompt, value, password })
 }
-
-export const collect = () => {
-  const t1 = simpleInputBox("")
-  const t2 = simpleInputBox("")
-  return task.chain(t1, x => (x === none ? t1 : t2))
-}
-export const replace = <T1, T2 extends keyof T1, T3>(
-  valueOption: Option<T1>,
-  field: T2,
-  inputTask: Task<Option<T3>>
-) => {
-  return task.chain(inputTask, iop => () =>
-    Promise.resolve(
-      option.map(valueOption, x =>
-        option.map(iop, iv => {
-          return { ...x, [field]: iv }
-        })
-      )
-    )
-  )
-}
-
-const foo = () => {
-  const bar = some({ a: "1", b: "2" })
-  return replace(bar, "a", simpleInputBox("a"))()
-}
