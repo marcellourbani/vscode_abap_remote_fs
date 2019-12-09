@@ -248,7 +248,7 @@ class AbapGitProvider implements TreeDataProvider<TreeItem> {
           pkg.name,
           repoUrl,
           repoaccess.branch,
-          "",
+          transport.transport,
           repoaccess.user,
           repoaccess.password
         )

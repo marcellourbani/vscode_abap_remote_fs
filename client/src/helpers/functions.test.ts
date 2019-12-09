@@ -35,5 +35,23 @@ test("compose text input tasks", async () => {
 
   const both = await inputBoth()
   if (isNone(both)) throw new Error("Unexpected none")
+  expect(both.value.b).toBe("bb")
   expect(both.value.a).toBe("cc")
+})
+
+test("compose text input tasks with filter", async () => {
+  const base = some({ a: "", b: "b" })
+
+  const isFalsey = (x: any) => !x
+
+  const inputBoth = chainTaskTransformers<Option<A>>(
+    fieldReplacer("b", fakeinput("bb"), isFalsey),
+    fieldReplacer("a", fakeinput("aa"), isFalsey),
+    fieldReplacer("a", fakeinput(), isFalsey)
+  )(base)
+
+  const both = await inputBoth()
+  if (isNone(both)) throw new Error("Unexpected none")
+  expect(both.value.a).toBe("aa")
+  expect(both.value.b).toBe("b")
 })

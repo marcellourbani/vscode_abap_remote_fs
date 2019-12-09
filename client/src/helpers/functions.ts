@@ -221,10 +221,27 @@ export const debounce = <K, R>(frequency: number, cb: (x: K) => R) => {
 export const delay = (time: number) =>
   new Promise(resolve => setTimeout(resolve, time))
 
+// export function fieldReplacer<T1, T2 extends string>(
+//   field: T2,
+//   inputTask: Task<Option<T1>>,
+//   shouldReplace: (x: T1) => boolean
+// ): <T3 extends Record<T2, T1>>(x: Option<T3>) => Task<Option<T3>>
+// export function fieldReplacer<T1, T2 extends string, T3 extends Record<T2, T1>>(
+//   field: T2,
+//   inputTask: Task<Option<T1>>,
+//   data: Option<T3>
+// ): Task<Option<T3>>
 export function fieldReplacer<T1, T2 extends string>(
   field: T2,
-  inputTask: Task<Option<T1>>
+  inputTask: Task<Option<T1>>,
+  shouldReplace?: (x: T1) => boolean
 ): <T3 extends Record<T2, T1>>(x: Option<T3>) => Task<Option<T3>>
+export function fieldReplacer<T1, T2 extends string, T3 extends Record<T2, T1>>(
+  field: T2,
+  inputTask: Task<Option<T1>>,
+  shouldReplace: (x: T1) => boolean,
+  data: Option<T3>
+): Task<Option<T3>>
 export function fieldReplacer<T1, T2 extends string, T3 extends Record<T2, T1>>(
   field: T2,
   inputTask: Task<Option<T1>>,
@@ -233,11 +250,15 @@ export function fieldReplacer<T1, T2 extends string, T3 extends Record<T2, T1>>(
 export function fieldReplacer<T1, T2 extends string, T3 extends Record<T2, T1>>(
   field: T2,
   inputTask: Task<Option<T1>>,
-  data?: Option<T3>
+  data?: Option<T3> | ((x: T1) => boolean),
+  data2?: Option<T3>
 ) {
   const createTask = (valueOption: Option<T3>): Task<Option<T3>> => {
     return task.chain(inputTask, iop => () => {
       if (isNone(valueOption)) return Promise.resolve(none)
+      const { value } = valueOption
+
+      if (isFn(data) && !data(value[field])) return Promise.resolve(valueOption)
 
       return Promise.resolve(
         option.map(iop, iv => {
@@ -246,7 +267,9 @@ export function fieldReplacer<T1, T2 extends string, T3 extends Record<T2, T1>>(
       )
     })
   }
-  return data ? createTask(data) : createTask
+
+  const actualData = isFn(data) ? data2 : data
+  return actualData ? createTask(actualData) : createTask
 }
 
 export const chainTaskTransformers = <T>(
