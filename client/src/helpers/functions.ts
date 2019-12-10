@@ -1,6 +1,8 @@
 import { isString, isNumber } from "util"
 import { Option, option, isNone, none } from "fp-ts/lib/Option"
 import { Task, task } from "fp-ts/lib/Task"
+import { taskEither, TaskEither } from "fp-ts/lib/TaskEither"
+import { Either, isLeft, right, either } from "fp-ts/lib/Either"
 
 export const pick = <T, K extends keyof T>(name: K) => (x: T): T[K] => x[name]
 export const flat = <T>(a: T[][]): T[] =>
@@ -33,8 +35,12 @@ export const selectMap = <T1, K extends keyof T1, T2>(
 }
 
 // tslint:disable-next-line: ban-types
-const isFn = (f: any): f is Function => {
+export const isFn = (f: any): f is Function => {
   return typeof f === "function"
+}
+
+export const isStr = (f: any): f is string => {
+  return typeof f === "string"
 }
 
 export const mapGet = <T1, T2>(
@@ -221,16 +227,6 @@ export const debounce = <K, R>(frequency: number, cb: (x: K) => R) => {
 export const delay = (time: number) =>
   new Promise(resolve => setTimeout(resolve, time))
 
-// export function fieldReplacer<T1, T2 extends string>(
-//   field: T2,
-//   inputTask: Task<Option<T1>>,
-//   shouldReplace: (x: T1) => boolean
-// ): <T3 extends Record<T2, T1>>(x: Option<T3>) => Task<Option<T3>>
-// export function fieldReplacer<T1, T2 extends string, T3 extends Record<T2, T1>>(
-//   field: T2,
-//   inputTask: Task<Option<T1>>,
-//   data: Option<T3>
-// ): Task<Option<T3>>
 export function fieldReplacer<T1, T2 extends string>(
   field: T2,
   inputTask: Task<Option<T1>>,
@@ -254,17 +250,13 @@ export function fieldReplacer<T1, T2 extends string, T3 extends Record<T2, T1>>(
   data2?: Option<T3>
 ) {
   const createTask = (valueOption: Option<T3>): Task<Option<T3>> => {
-    return task.chain(inputTask, iop => () => {
-      if (isNone(valueOption)) return Promise.resolve(none)
+    return task.chain(inputTask, iop => async () => {
+      if (isNone(valueOption)) return none
       const { value } = valueOption
 
-      if (isFn(data) && !data(value[field])) return Promise.resolve(valueOption)
+      if (isFn(data) && !data(value[field])) return valueOption
 
-      return Promise.resolve(
-        option.map(iop, iv => {
-          return { ...valueOption.value, [field]: iv }
-        })
-      )
+      return option.map(iop, iv => ({ ...valueOption.value, [field]: iv }))
     })
   }
 
@@ -276,3 +268,53 @@ export const chainTaskTransformers = <T>(
   first: (x: T) => Task<T>,
   ...rest: Array<(x: T) => Task<T>>
 ) => (y: T) => rest.reduce(task.chain, first(y))
+
+export const chainTaskEitherTransformers = <E, T>(
+  first: (x: T) => TaskEither<E, T>,
+  ...rest: Array<(x: T) => TaskEither<E, T>>
+) => (y: T) => rest.reduce(taskEither.chain, first(y))
+
+export function fieldReplacerte<E, T1, T2 extends string>(
+  field: T2,
+  inputTask: TaskEither<E, T1>,
+  shouldReplace?: (x: T1) => boolean
+): <T3 extends Record<T2, T1>>(x: T3) => TaskEither<E, T3>
+
+export function fieldReplacerte<
+  E,
+  T1,
+  T2 extends string,
+  T3 extends Record<T2, T1>
+>(
+  field: T2,
+  inputTask: TaskEither<E, T1>,
+  shouldReplace: (x: T1) => boolean,
+  data: T3
+): TaskEither<E, T3>
+export function fieldReplacerte<
+  E,
+  T1,
+  T2 extends string,
+  T3 extends Record<T2, T1>
+>(field: T2, inputTask: TaskEither<E, T1>, data: T3): TaskEither<E, T3>
+export function fieldReplacerte<
+  E,
+  T1,
+  T2 extends string,
+  T3 extends Record<T2, T1>
+>(
+  field: T2,
+  inputTask: TaskEither<E, T1>,
+  data?: T3 | ((x: T1) => boolean),
+  data2?: T3
+) {
+  const createTask = (prev: T3): TaskEither<E, T3> => {
+    return taskEither.chain(inputTask, iop => async () => {
+      if (isFn(data) && !data(prev[field])) return right(prev)
+      return right({ ...prev, [field]: iop })
+    })
+  }
+
+  const actualData = isFn(data) ? data2 : data
+  return actualData ? createTask(actualData) : createTask
+}
