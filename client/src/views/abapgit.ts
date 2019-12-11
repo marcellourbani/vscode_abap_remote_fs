@@ -1,5 +1,4 @@
-import { formatKey } from "./../config"
-import { FsProvider } from "./../fs/FsProvider"
+import { isRight } from "fp-ts/lib/Either"
 import { AdtServer } from "./../adt/AdtServer"
 import {
   TreeDataProvider,
@@ -9,9 +8,7 @@ import {
   TreeItemCollapsibleState,
   window,
   ProgressLocation,
-  commands,
-  Uri,
-  FileChangeType
+  commands
 } from "vscode"
 import { GitRepo, ADTClient, objectPath, GitExternalInfo } from "abap-adt-api"
 import { ADTSCHEME, getOrCreateServer } from "../adt/AdtServer"
@@ -21,8 +18,8 @@ import { PACKAGE } from "../adt/operations/AdtObjectCreator"
 import { selectTransport } from "../adt/AdtTransports"
 import { log } from "../helpers/logger"
 import { chainTaskTransformers, fieldReplacer } from "../helpers/functions"
-import { simpleInputBox } from "../helpers/vscodefunctions"
-import { some, Option, isSome } from "fp-ts/lib/Option"
+import { simpleInputBox, quickPick } from "../helpers/vscodefunctions"
+
 const confirm = "Confirm"
 interface AbapGitItem extends TreeItem {
   repo: GitRepo
@@ -81,7 +78,7 @@ class AbapGit {
     user = "",
     password = ""
   ) {
-    const remote = await client.gitExternalRepoInfo(repoUrl)
+    const remote = await client.gitExternalRepoInfo(repoUrl, user, password)
     return remote
   }
 }
@@ -89,7 +86,7 @@ class AbapGit {
 interface RepoAccess {
   user: string
   password: string
-  branch: string | undefined
+  branch: string
   cancelled: boolean
 }
 
@@ -140,11 +137,8 @@ class AbapGitProvider implements TreeDataProvider<TreeItem> {
       server.server.client
     )
     if (transport.cancelled) return
-    const branch = await this.getRemoteInfo(
-      repoItem.repo.url,
-      server.server.client
-    )
-    if (!branch) return
+    const ri = await this.getRemoteInfo(repoItem.repo.url, server.server.client)
+    if (!ri) return
     return await window.withProgress(
       {
         location: ProgressLocation.Window,
@@ -153,8 +147,10 @@ class AbapGitProvider implements TreeDataProvider<TreeItem> {
       async () => {
         const result = await server.server.client.gitPullRepo(
           repoItem.repo.key,
-          branch.branch,
-          transport.transport
+          ri.branch,
+          transport.transport,
+          ri.user,
+          ri.password
         )
         commands.executeCommand("workbench.files.action.refreshFilesExplorer")
         return result
@@ -187,7 +183,7 @@ class AbapGitProvider implements TreeDataProvider<TreeItem> {
 
   private async getRemoteInfo(repoUrl: string, client: ADTClient) {
     const access: RepoAccess = {
-      branch: undefined,
+      branch: "",
       user: "",
       password: "",
       cancelled: false
@@ -198,21 +194,30 @@ class AbapGitProvider implements TreeDataProvider<TreeItem> {
         //
         const inputUser = simpleInputBox("user")
         const inputPwd = simpleInputBox("password", "", true)
-        const newAccess = await chainTaskTransformers<Option<RepoAccess>>(
-          fieldReplacer("user", inputUser),
-          fieldReplacer("password", inputPwd)
-        )(some(access))()
-        if (isSome(newAccess)) {
-          const pri = await this.git.getRemoteInfo(
+        const getBranches = (x: RepoAccess) => async () => {
+          const curremote = await this.git.getRemoteInfo(
             repoUrl,
             client,
-            newAccess.value.user,
-            newAccess.value.password
+            x.user,
+            x.password
           )
-          newAccess.value.branch =
-            pri && pri.branches[0] && pri.branches[0].name
-          return newAccess.value
+          return curremote.branches.map(b => b.name)
         }
+
+        const replaceBranch = (x: RepoAccess) =>
+          fieldReplacer(
+            "branch",
+            quickPick(getBranches(x), {
+              placeHolder: "select branch"
+            })
+          )(x)
+
+        const newAccess = await chainTaskTransformers<RepoAccess>(
+          fieldReplacer("user", inputUser),
+          fieldReplacer("password", inputPwd),
+          replaceBranch
+        )(access)()
+        if (isRight(newAccess)) return newAccess.right
       } else access.branch = ri && ri.branches[0] && ri.branches[0].name
     } catch (e) {
       log(e.toString())
