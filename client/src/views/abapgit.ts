@@ -17,7 +17,11 @@ import { command, AbapFsCommands } from "../commands"
 import { PACKAGE } from "../adt/operations/AdtObjectCreator"
 import { selectTransport } from "../adt/AdtTransports"
 import { log } from "../helpers/logger"
-import { chainTaskTransformers, fieldReplacer } from "../helpers/functions"
+import {
+  chainTaskTransformers,
+  fieldReplacer,
+  dependFieldReplacer
+} from "../helpers/functions"
 import { simpleInputBox, quickPick } from "../helpers/vscodefunctions"
 
 const confirm = "Confirm"
@@ -204,13 +208,11 @@ class AbapGitProvider implements TreeDataProvider<TreeItem> {
           return curremote.branches.map(b => b.name)
         }
 
-        const replaceBranch = (x: RepoAccess) =>
-          fieldReplacer(
-            "branch",
-            quickPick(getBranches(x), {
-              placeHolder: "select branch"
-            })
-          )(x)
+        const replaceBranch = dependFieldReplacer<RepoAccess>("branch", x =>
+          quickPick(getBranches(x), {
+            placeHolder: "select branch"
+          })
+        )
 
         const newAccess = await chainTaskTransformers<RepoAccess>(
           fieldReplacer("user", inputUser),

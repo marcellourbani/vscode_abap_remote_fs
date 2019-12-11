@@ -234,31 +234,76 @@ export const chainTaskTransformers = <T>(
   ...rest: Array<(x: T) => TaskEither<leftType, T>>
 ) => (y: T) => rest.reduce(taskEither.chain, first(y))
 
-export function fieldReplacer<T1, T2 extends string>(
-  field: T2,
-  inputTask: TaskEither<leftType, T1>,
+export function fieldReplacer<T1>(
+  field: keyof T1,
+  inputTask: TaskEither<leftType, T1[keyof T1]>,
   shouldReplace?: (x: T1) => boolean
-): <T3 extends Record<T2, T1>>(x: T3) => TaskEither<leftType, T3>
-export function fieldReplacer<T1, T2 extends string, T3 extends Record<T2, T1>>(
-  field: T2,
-  inputTask: TaskEither<leftType, T1>,
+): <T2 extends T1>(x: T2) => TaskEither<leftType, T2>
+export function fieldReplacer<T1, T2 extends T1>(
+  field: keyof T1,
+  inputTask: TaskEither<leftType, T1[keyof T1]>,
   shouldReplace: (x: T1) => boolean,
-  data: T3
-): TaskEither<leftType, T3>
+  data: T2
+): TaskEither<leftType, T2>
+export function fieldReplacer<T1, T2 extends T1>(
+  field: keyof T1,
+  inputTask: TaskEither<leftType, T1[keyof T1]>,
+  data: T2
+): TaskEither<leftType, T2>
 export function fieldReplacer<T1, T2 extends string, T3 extends Record<T2, T1>>(
   field: T2,
   inputTask: TaskEither<leftType, T1>,
-  data: T3
-): TaskEither<leftType, T3>
-export function fieldReplacer<T1, T2 extends string, T3 extends Record<T2, T1>>(
-  field: T2,
-  inputTask: TaskEither<leftType, T1>,
-  data?: T3 | ((x: T1) => boolean),
+  data?: T3 | ((x: T3) => boolean),
   data2?: T3
 ) {
   const createTask = (prev: T3): TaskEither<leftType, T3> => {
     return taskEither.chain(inputTask, iop => async () => {
-      if (isFn(data) && !data(prev[field])) return right(prev)
+      if (isFn(data) && !data(prev)) return right(prev)
+      return right({ ...prev, [field]: iop })
+    })
+  }
+
+  const actualData = isFn(data) ? data2 : data
+  return actualData ? createTask(actualData) : createTask
+}
+
+export function dependFieldReplacer<T1>(
+  field: keyof T1,
+  input: (data: T1, field: keyof T1) => TaskEither<leftType, T1[keyof T1]>,
+  shouldReplace?: (x: T1) => boolean
+): <T2 extends T1>(x: T2) => TaskEither<leftType, T2>
+export function dependFieldReplacer<
+  T1,
+  T2 extends string,
+  T3 extends Record<T2, T1>
+>(
+  field: T2,
+  input: (data: T3, field: T2) => TaskEither<leftType, T1[keyof T1]>,
+  shouldReplace: (x: T3) => boolean,
+  data: T3
+): TaskEither<leftType, T3>
+export function dependFieldReplacer<
+  T1,
+  T2 extends string,
+  T3 extends Record<T2, T1>
+>(
+  field: T2,
+  input: (data: T3, field: T2) => TaskEither<leftType, T1[keyof T1]>,
+  data: T3
+): TaskEither<leftType, T3>
+export function dependFieldReplacer<
+  T1,
+  T2 extends string,
+  T3 extends Record<T2, T1>
+>(
+  field: T2,
+  input: (data: T3, field: T2) => TaskEither<leftType, T1[keyof T1]>,
+  data?: T3 | ((x: T3) => boolean),
+  data2?: T3
+) {
+  const createTask = (prev: T3): TaskEither<leftType, T3> => {
+    return taskEither.chain(input(prev, field), iop => async () => {
+      if (isFn(data) && !data(prev)) return right(prev)
       return right({ ...prev, [field]: iop })
     })
   }
