@@ -198,20 +198,14 @@ class AbapGitProvider implements TreeDataProvider<TreeItem> {
         //
         const inputUser = simpleInputBox("user")
         const inputPwd = simpleInputBox("password", "", true)
-        const getBranches = (x: RepoAccess) => async () => {
-          const curremote = await this.git.getRemoteInfo(
-            repoUrl,
-            client,
-            x.user,
-            x.password
-          )
-          return curremote.branches.map(b => b.name)
-        }
 
+        const getBranches = (x: RepoAccess) => async () =>
+          (
+            await this.git.getRemoteInfo(repoUrl, client, x.user, x.password)
+          ).branches.map(b => b.name)
+        const placeHolder = "select branch"
         const replaceBranch = dependFieldReplacer<RepoAccess>("branch", x =>
-          quickPick(getBranches(x), {
-            placeHolder: "select branch"
-          })
+          quickPick(getBranches(x), { placeHolder })
         )
 
         const newAccess = await chainTaskTransformers<RepoAccess>(
