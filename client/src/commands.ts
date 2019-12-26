@@ -180,9 +180,12 @@ export class AdtCommands {
       log(`Connected to server ${remote.name}`)
     } catch (e) {
       if (e.response) log(e.response.body)
-      return window.showErrorMessage(
-        `Failed to connect to ${name}:${e.toString()}`
-      )
+      const isMissing = (e: any) =>
+        !!`${e}`.match("name.*org.freedesktop.secrets")
+      const message = isMissing(e)
+        ? `Password storage not supported. Please install gnome-keyring or add a password to the connection`
+        : `Failed to connect to ${name}:${e.toString()}`
+      return window.showErrorMessage(message)
     }
   }
   @command(AbapFsCommands.activate)
