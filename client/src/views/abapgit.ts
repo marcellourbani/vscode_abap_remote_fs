@@ -8,7 +8,8 @@ import {
   TreeItemCollapsibleState,
   window,
   ProgressLocation,
-  commands
+  commands,
+  Uri
 } from "vscode"
 import { GitRepo, ADTClient, objectPath, GitExternalInfo } from "abap-adt-api"
 import { ADTSCHEME, getOrCreateServer } from "../adt/AdtServer"
@@ -122,6 +123,23 @@ class AbapGitProvider implements TreeDataProvider<TreeItem> {
     if (!element) return this.children
     if (isServerItem(element)) return element.children
     return []
+  }
+
+  private async reveal(repoItem: AbapGitItem) {
+    const pkg = repoItem.repo.sapPackage
+    const server = this.repoServer(repoItem)
+    const url = await server.server.client.transportReference(
+      "R3TR",
+      "DEVC",
+      pkg
+    )
+    const steps = await server.server.objectFinder.findObjectPath(url)
+    const path = await server.server.objectFinder.locateObject(steps)
+    if (!path) return
+    commands.executeCommand(
+      "revealInExplorer",
+      server.server.createUri(path.path)
+    )
   }
 
   private confirmPull(pkg: string) {
@@ -275,6 +293,10 @@ class AbapGitProvider implements TreeDataProvider<TreeItem> {
   @command(AbapFsCommands.agitPull)
   private static pullCommand(repoItem: AbapGitItem) {
     return AbapGitProvider.get().pull(repoItem)
+  }
+  @command(AbapFsCommands.agitReveal)
+  private static revealCommand(repoItem: AbapGitItem) {
+    return AbapGitProvider.get().reveal(repoItem)
   }
 }
 

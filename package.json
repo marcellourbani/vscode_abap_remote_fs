@@ -198,6 +198,10 @@
         }
       },
       {
+        "command": "abapfs.revealPackage",
+        "title": "Reveal in sidebar"
+      },
+      {
         "command": "abapfs.releaseTransport",
         "title": "Release transport",
         "icon": {
@@ -342,6 +346,10 @@
         },
         {
           "command": "abapfs.activate",
+          "when": "hideCommands.never"
+        },
+        {
+          "command": "abapfs.revealPackage",
           "when": "hideCommands.never"
         },
         {
@@ -502,6 +510,11 @@
           "command": "abapfs.createRepo",
           "group": "inline",
           "when": "view == abapfs.abapgit  && viewItem == system"
+        },
+        {
+          "command": "abapfs.revealPackage",
+          "group": "context",
+          "when": "view == abapfs.abapgit && viewItem == repository"
         }
       ],
       "view/title": [
