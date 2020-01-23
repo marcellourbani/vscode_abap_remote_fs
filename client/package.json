@@ -65,7 +65,7 @@
     "fp-ts": "^2.2.0",
     "fs-jetpack": "^2.2.3",
     "keytar": "^5.0.0",
-    "method-call-logger": "^1.0.6",
+    "method-call-logger": "^1.0.7",
     "mongoose": "^5.7.14",
     "open": "^7.0.0",
     "request-debug": "^0.2.0",

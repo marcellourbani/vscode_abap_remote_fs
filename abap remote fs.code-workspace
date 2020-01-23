@@ -17,6 +17,8 @@
     "typescript.tsc.autoDetect": "off",
     "typescript.locale": "en",
     "gitlens.codeLens.enabled": false,
+    "prettier.semi": false,
+    "editor.formatOnSave": true,
     "files.exclude": {
       "**/.classpath": true,
       "**/.project": true,
