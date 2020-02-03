@@ -170,7 +170,7 @@ export async function startLanguageClient(context: ExtensionContext) {
     {
       documentSelector: [
         { language: "abap", scheme: ADTSCHEME },
-        { language: "cds", scheme: ADTSCHEME }
+        { language: "abap_cds", scheme: ADTSCHEME }
       ],
       outputChannel: channel,
       revealOutputChannelOn: RevealOutputChannelOn.Warn
