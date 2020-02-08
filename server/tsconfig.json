@@ -7,16 +7,16 @@
     "outDir": "./out",
     "sourceMap": true,
     "strict": true,
-    "noUnusedLocals": true,
+    // "noUnusedLocals": true,
     "composite": true,
-    "skipLibCheck": true
+    "skipLibCheck": true,
+    "esModuleInterop": true
   },
   "include": [
     "src"
   ],
   "exclude": [
     "node_modules",
-    ".vscode-test",
-    "**/*.test.ts"
+    ".vscode-test"
   ]
 }
