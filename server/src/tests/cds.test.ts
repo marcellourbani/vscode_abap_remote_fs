@@ -1,6 +1,12 @@
-import { parseCDS, findNode } from "../cdsSyntax"
+import {
+  parseCDS,
+  findNode,
+  isTerminal,
+  parseCDSWithDataSources
+} from "../cdsSyntax"
 import { Position } from "vscode-languageserver"
 import { ABAPCDSParser } from "abapcdsgrammar"
+import { ParseTreeListener, ParseTree } from "antlr4ts/tree"
 
 const sampleview = `@AbapCatalog.sqlViewName: 'ZAPIDUMMY_DDEFSV'
 @AbapCatalog.compiler.compareFilter: true
@@ -8,7 +14,7 @@ const sampleview = `@AbapCatalog.sqlViewName: 'ZAPIDUMMY_DDEFSV'
 @AccessControl.authorizationCheck: #CHECK
 @EndUserText.label: 'data definition test'
 @Metadata.allowExtensions: true
-define view ZAPIDUMMY_datadef as select from e070 {
+define view ZAPIDUMMY_datadef as select from e070 inner join e071 on e071~trkorr = e070~trkorr {
     trkorr,
     korrdev,
     as4user ,
@@ -45,4 +51,11 @@ test("cds parsing errors", async () => {
   const tree = parseCDS(source)
   expect(tree).toBeDefined()
   expect(tree.errors.length).toBe(2)
+})
+
+test("extract source tables", async () => {
+  const result = parseCDSWithDataSources(sampleview)
+  expect(result).toBeDefined()
+  expect(result.sources.length).toBe(2)
+  expect(result.sources).toEqual(["e071", "e070"])
 })
