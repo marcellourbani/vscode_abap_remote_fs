@@ -1,12 +1,6 @@
-import {
-  parseCDS,
-  findNode,
-  isTerminal,
-  parseCDSWithDataSources
-} from "../cdsSyntax"
+import { parseCDS, findNode, parseCDSWithDataSources } from "../cdsSyntax"
 import { Position } from "vscode-languageserver"
 import { ABAPCDSParser } from "abapcdsgrammar"
-import { ParseTreeListener, ParseTree } from "antlr4ts/tree"
 
 const sampleview = `@AbapCatalog.sqlViewName: 'ZAPIDUMMY_DDEFSV'
 @AbapCatalog.compiler.compareFilter: true
@@ -14,9 +8,9 @@ const sampleview = `@AbapCatalog.sqlViewName: 'ZAPIDUMMY_DDEFSV'
 @AccessControl.authorizationCheck: #CHECK
 @EndUserText.label: 'data definition test'
 @Metadata.allowExtensions: true
-define view ZAPIDUMMY_datadef as select from e070 inner join e071 on e071~trkorr = e070~trkorr {
-    trkorr,
-    korrdev,
+define view ZAPIDUMMY_datadef as select from e070 inner join e071 on e071.trkorr = e070.trkorr {
+    e071.trkorr,
+    @Aggregation.default: #NONE
     as4user ,
       cast(
   case trstatus
@@ -58,4 +52,20 @@ test("extract source tables", async () => {
   expect(result).toBeDefined()
   expect(result.sources.length).toBe(2)
   expect(result.sources).toEqual(["e071", "e070"])
+})
+
+test("cds parse for annotation", async () => {
+  const cursor: Position = { line: 8, character: 13 }
+  const result = parseCDS(sampleview)
+  expect(result).toBeDefined()
+  const anno1 = findNode(result.tree, cursor)
+  expect(anno1).toBeDefined()
+  expect(anno1?.ruleIndex).toBe(ABAPCDSParser.RULE_annotation_identifier)
+  expect(anno1?.text).toBe("Aggregation")
+  cursor.character = 20
+  const anno2 = findNode(result.tree, cursor)
+  expect(anno2).toBeDefined()
+  // with the patched CDS grammar a keyword is acceptable
+  expect(anno2?.ruleIndex).toBe(ABAPCDSParser.RULE_keyword)
+  expect(anno2?.text).toBe("default")
 })
