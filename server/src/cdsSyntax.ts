@@ -5,17 +5,11 @@ import {
   ParserRuleContext,
   Token,
   ANTLRErrorListener,
-  RecognitionException
+  TokenSource,
+  CommonToken
 } from "antlr4ts"
 import { ParseTree, ParseTreeListener, TerminalNode } from "antlr4ts/tree"
 import { Position } from "vscode-languageserver"
-
-interface SyntaxError {
-  position: Position
-  offendingSymbol?: Token
-  message: string
-  error?: RecognitionException
-}
 
 export const isRuleContext = (tree: ParseTree): tree is ParserRuleContext =>
   !!(tree as any).start
@@ -25,15 +19,37 @@ export const isTerminal = (tree: ParseTree): tree is TerminalNode =>
 
 export const terminalType = (t: ParseTree) => isTerminal(t) && t.symbol.type
 
-const tokenStartPosition = (t: Token): Position => ({
-  line: t.line - 1,
-  character: t.charPositionInLine + 1
+export const vscPosition = (line: number, character: number): Position => ({
+  line: line - 1,
+  character: character + 1
 })
 
-const tokenStopPosition = (t: Token): Position => ({
-  line: t.line - 1,
-  character: t.stopIndex - t.startIndex + t.charPositionInLine + 1
-})
+const tokenStartPosition = (t: Token): Position =>
+  vscPosition(t.line, t.charPositionInLine)
+
+const tokenStopPosition = (t: Token): Position =>
+  vscPosition(t.line, t.stopIndex - t.startIndex + t.charPositionInLine)
+
+// const tokenStartPosition = (t: Token): Position => ({
+//   line: t.line - 1,
+//   character: t.charPositionInLine + 1
+// })
+
+// const tokenStopPosition = (t: Token): Position => ({
+//   line: t.line - 1,
+//   character: t.stopIndex - t.startIndex + t.charPositionInLine + 1
+// })
+
+export const positionInToken = (p: Position, t: Token) => {
+  const start = tokenStartPosition(t)
+  const stop = tokenStopPosition(t)
+  return (
+    p.line === stop.line &&
+    p.line === start.line &&
+    p.character >= start.character &&
+    p.character <= stop.character
+  )
+}
 
 function inNode(ctx: ParserRuleContext, position: Position) {
   const start = tokenStartPosition(ctx.start)
@@ -49,17 +65,42 @@ function inNode(ctx: ParserRuleContext, position: Position) {
   if (stop.line === position.line) return position.character <= stop.character
   return start.line < position.line && stop.line > position.line
 }
-const createSyntaxErrorListener = (
-  errors: SyntaxError[]
-): ANTLRErrorListener<Token> => ({
-  syntaxError: (recognizer, offendingSymbol, line, character, message, error) =>
-    errors.push({
-      position: { line: line - 1, character: character + 1 },
-      message,
-      error,
-      offendingSymbol
-    })
+
+export const createSourceDetector = (
+  detect: (s: string) => void
+): ParseTreeListener => ({
+  exitEveryRule: ctx => {
+    if (ctx.ruleIndex === ABAPCDSParser.RULE_data_source) {
+      const c = ctx.children && ctx.children[0]
+      if (c && terminalType(c) === ABAPCDSParser.IDENTIFIER) detect(c.text)
+    }
+  }
 })
+
+export const BADTOKEN = -10
+export const createFakeTokenInjector = (
+  p: Position,
+  notifier?: (t: Token) => void
+) => (ts: TokenSource): TokenSource => {
+  const source = { ...ts }
+  source.nextToken = () => {
+    const t = ts.nextToken()
+
+    if (positionInToken(p, t)) {
+      if (notifier) notifier(t)
+      return new CommonToken(
+        BADTOKEN,
+        t.text,
+        { source: t.tokenSource, stream: t.inputStream },
+        t.channel,
+        t.startIndex,
+        t.stopIndex
+      )
+    }
+    return t
+  }
+  return source
+}
 
 export function findNode(
   ctx: ParserRuleContext,
@@ -73,32 +114,19 @@ export function findNode(
     } else return ctx
 }
 
-export function parseCDS(source: string, listener?: ParseTreeListener) {
+interface ParserConfig {
+  tokenMiddleware?: (s: TokenSource) => TokenSource
+  errorListener?: ANTLRErrorListener<Token>
+  parserListener?: ParseTreeListener
+}
+export function parseCDS(source: string, config: ParserConfig = {}) {
+  const { tokenMiddleware: mid, errorListener, parserListener } = config
   const inputStream = new ANTLRInputStream(source)
   const lexer = new ABAPCDSLexer(inputStream)
-  const tokenStream = new CommonTokenStream(lexer)
+
+  const tokenStream = new CommonTokenStream(mid ? mid(lexer) : lexer)
   const parser = new ABAPCDSParser(tokenStream)
-  const errors: SyntaxError[] = []
-  parser.addErrorListener(createSyntaxErrorListener(errors))
-  if (listener) parser.addParseListener(listener)
-
-  return {
-    tree: parser.cdsddl(),
-    errors
-  }
-}
-
-export function parseCDSWithDataSources(source: string) {
-  const sources: string[] = []
-  const listener: ParseTreeListener = {
-    exitEveryRule: ctx => {
-      if (ctx.ruleIndex === ABAPCDSParser.RULE_data_source) {
-        const c = ctx.children && ctx.children[0]
-        if (c && terminalType(c) === ABAPCDSParser.IDENTIFIER)
-          sources.push(c.text)
-      }
-    }
-  }
-  const result = parseCDS(source, listener)
-  return { ...result, sources }
+  if (errorListener) parser.addErrorListener(errorListener)
+  if (parserListener) parser.addParseListener(parserListener)
+  return parser.cdsddl()
 }
