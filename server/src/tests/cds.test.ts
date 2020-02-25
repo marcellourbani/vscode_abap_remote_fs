@@ -5,15 +5,8 @@ import {
   findNode
 } from "../cdsSyntax"
 import { Position } from "vscode-languageserver"
-import { ABAPCDSParser, ABAPCDSLexer } from "abapcdsgrammar"
-import {
-  ANTLRErrorListener,
-  Token,
-  Lexer,
-  Parser,
-  ANTLRInputStream
-} from "antlr4ts"
-import { autosuggester, Constructor } from "antlr4-autosuggest"
+import { ABAPCDSParser } from "abapcdsgrammar"
+import { ANTLRErrorListener, Token } from "antlr4ts"
 import { ATNState, TransitionType } from "antlr4ts/atn"
 
 const sampleview = `@AbapCatalog.sqlViewName: 'ZAPIDUMMY_DDEFSV'
@@ -63,8 +56,7 @@ test("cds parsing errors", async () => {
       offendingSymbol,
       line: number,
       charPositionInLine: number,
-      msg: string,
-      e
+      msg: string
     ) => {
       errors.push(msg)
     }
@@ -101,25 +93,8 @@ test("cds parse for annotation", async () => {
 const suggestionCollector = (
   collect: (sugg: string) => void
 ): ANTLRErrorListener<Token> => ({
-  syntaxError: (
-    recognizer,
-    offendingSymbol,
-    line: number,
-    charPositionInLine: number,
-    msg: string,
-    e
-  ) => {
+  syntaxError: recognizer => {
     const state = recognizer.atn.states[recognizer.state]
-    for (const token of state?.nextTokenWithinRule?.intervals || []) {
-      const name = recognizer.vocabulary.getDisplayName(token.a)
-      if (name) collect(name)
-    }
-    // offendingSymbol?.inputStream?.LA.
-    for (const t of state.getTransitions()) {
-      if (t.isEpsilon) collect(t.label?.toString() || "")
-    }
-
-    const tokens: Token[] = (recognizer?.inputStream as any)?.tokens || []
     const traversed = new Set<number>()
 
     const traverse = (s: ATNState) => {
@@ -129,25 +104,22 @@ const suggestionCollector = (
           if (!traversed.has(t.target.stateNumber)) traverse(t.target)
         } else if (t.serializationType === TransitionType.ATOM) {
           collect(recognizer.vocabulary.getDisplayName((t as any)._label))
-          collect(t.target.toString())
         } else if (t.serializationType === TransitionType.SET) {
-          collect(t.target.toString())
+          // not implemented...
         }
       }
     }
 
     traverse(state)
-
-    if (tokens.length > 1) {
-      const lastToken = tokens[tokens.length - 2]
-      const tokenType = recognizer.vocabulary.getDisplayName(lastToken.type)
-      collect(tokenType)
-    }
-    collect(msg)
   }
 })
+
+// ok, we get the token names. IDs are easy too.
+// But couldn't find a way to convert i.e. BOOLEANLITERAL to true or false
+// guess ANTLR compiles those in an automata, might try to follow that but risk going down a rabbit hole
+// completion of table names and fields will do for now
 test("syntax completion suggestions", async () => {
-  const source = `define as view ZAPIDUMMY_datadef af select from e070 inn a { as4user }`
+  const source = `define view ZAPIDUMMY_datadef af select from e070 inn a { as4user }`
   const cursor: Position = { line: 0, character: 31 }
   let original: Token | undefined
   const suggestions: string[] = []
@@ -158,17 +130,16 @@ test("syntax completion suggestions", async () => {
   })
   expect(result).toBeDefined()
   expect(original).toBeDefined()
-  expect(suggestions[0]).toBe("as")
-  expect(suggestions[1]).toBe("WITH")
+  expect(suggestions.find(x => x === "AS")).toBeTruthy()
+  expect(suggestions.find(x => x === "WITH")).toBeTruthy()
 })
+// autocomplete doesn't seem to work at all...
+// test("syntax completion suggestions 2", async () => {
+//   const source = `define view ZAPIDUMMY_datadef `
+//   const lc: any = (ABAPCDSLexer as any) as Constructor<Lexer>
+//   const pc: any = (ABAPCDSParser as any) as Constructor<Parser>
 
-test("syntax completion suggestions 2", async () => {
-  const source = `define view ZAPIDUMMY_datadef A`
-  const lc: any = (ABAPCDSLexer as any) as Constructor<Lexer>
-  const pc: any = (ABAPCDSParser as any) as Constructor<Parser>
-
-  const suggester = autosuggester(lc, pc, "BOTH")
-  const suggestions = suggester.autosuggest(source)
-  expect(suggestions).toBeDefined()
-  fail(1)
-})
+//   const suggester = autosuggester(lc, pc, "BOTH")
+//   const suggestions = suggester.autosuggest(source)
+//   expect(suggestions.length).toBeGreaterThan(0)
+// })
