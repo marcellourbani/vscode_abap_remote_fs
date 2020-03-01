@@ -1,3 +1,4 @@
+import { positionInToken } from "./../cdsSyntax"
 import {
   createSourceDetector,
   createFakeTokenInjector,
@@ -7,7 +8,60 @@ import {
 import { Position } from "vscode-languageserver"
 import { ABAPCDSParser } from "abapcdsgrammar"
 import { ANTLRErrorListener, Token } from "antlr4ts"
-import { ATNState, TransitionType } from "antlr4ts/atn"
+import { ParseTreeListener } from "antlr4ts/tree"
+const literals: { [key: string]: string | string[] } = {
+  DEFINE: "define",
+  VIEW: "view",
+  AS: "as",
+  SELECT: "select",
+  FROM: "from",
+  WHERE: "where",
+  GROUPBY: "group by",
+  HAVING: "having",
+  UNION: "union",
+  ALL: "all",
+  KEY: "key",
+  CASE: "case",
+  WHEN: "when",
+  THEN: "then",
+  ELSE: "else",
+  END: "end",
+  CAST: "cast",
+  PRESERVINGTYPE: "preserving type",
+  DISTINCT: "distinct",
+  TO: "to",
+  WITH: "with",
+  PARAMETERS: "parameters",
+  DEFAULT: "default",
+  FILTER: "filter",
+  ASSOCIATION: "association",
+  ON: "on",
+  NOT: "not",
+  AND: "and",
+  OR: "or",
+  BETWEEN: "between",
+  LIKE: "like",
+  ESCAPE: "escape",
+  IS: "is",
+  NULL: "null",
+  INNER: "inner",
+  JOIN: "join",
+  OUTER: "outer",
+  LEFT: "left",
+  RIGHT: "right",
+  ONE: "one",
+  MANY: "many",
+  CROSS: "cross",
+  MAX: "max",
+  MIN: "min",
+  AVG: "avg",
+  SUM: "sum",
+  COUNT: "count",
+  IMPLEMENTEDBYMETHOD: "implemented by method",
+  TABLEFUNCTION: "table function",
+  RETURNS: "returns",
+  BOOLEANLITERAL: ["true", "false"]
+}
 
 const sampleview = `@AbapCatalog.sqlViewName: 'ZAPIDUMMY_DDEFSV'
 @AbapCatalog.compiler.compareFilter: true
@@ -25,11 +79,11 @@ define view ZAPIDUMMY_datadef as select from e070 inner join e071 on e071.trkorr
     when 'N' then 'X'
     else ' '
   end as flag )
-  as isreleased,fo
+  as isreleased, fo
 }`
 
-test("cds parse for completion", async () => {
-  const cursor: Position = { line: 16, character: 18 }
+test("cds parse for completion end of line", async () => {
+  const cursor: Position = { line: 16, character: 18 } // last character, not cursor position
   const result = parseCDS(sampleview)
   expect(result).toBeDefined()
   const leaf = findNode(result, cursor)
@@ -38,7 +92,7 @@ test("cds parse for completion", async () => {
   expect(leaf?.text).toBe("fo")
 })
 
-test("cds parse for completion end of line", async () => {
+test("cds parse for completion after comma", async () => {
   const cursor: Position = { line: 16, character: 16 }
   const result = parseCDS(sampleview)
   expect(result).toBeDefined()
@@ -51,13 +105,7 @@ test("cds parsing errors", async () => {
   const source = `define view ZAPIDUMMY_datadef as select from { as4user foobar defwe }`
   const errors: string[] = []
   const errorListener: ANTLRErrorListener<Token> = {
-    syntaxError: (
-      recognizer,
-      offendingSymbol,
-      line: number,
-      charPositionInLine: number,
-      msg: string
-    ) => {
+    syntaxError: (recognizer, offendingSymbol, line, cp, msg) => {
       errors.push(msg)
     }
   }
@@ -91,26 +139,22 @@ test("cds parse for annotation", async () => {
   expect(anno2?.text).toBe("default")
 })
 const suggestionCollector = (
-  collect: (sugg: string) => void
+  collect: (sugg: string) => void,
+  position: Position
 ): ANTLRErrorListener<Token> => ({
-  syntaxError: recognizer => {
-    const state = recognizer.atn.states[recognizer.state]
-    const traversed = new Set<number>()
-
-    const traverse = (s: ATNState) => {
-      traversed.add(s.stateNumber)
-      for (const t of s.getTransitions()) {
-        if (t.isEpsilon) {
-          if (!traversed.has(t.target.stateNumber)) traverse(t.target)
-        } else if (t.serializationType === TransitionType.ATOM) {
-          collect(recognizer.vocabulary.getDisplayName((t as any)._label))
-        } else if (t.serializationType === TransitionType.SET) {
-          // not implemented...
-        }
-      }
+  syntaxError: (recognizer, offending, line, char, msg, exc) => {
+    // instanceof doesn't seem to work, at least in tests
+    if (
+      exc?.constructor.name === "InputMismatchException" &&
+      offending &&
+      positionInToken(position, offending)
+    ) {
+      const tokens = exc.expectedTokens?.intervals || []
+      tokens.forEach(i => {
+        const lit = literals[recognizer.vocabulary.getDisplayName(i.a)]
+        if (lit) Array.isArray(lit) ? lit.map(collect) : collect(lit)
+      })
     }
-
-    traverse(state)
   }
 })
 
@@ -118,28 +162,68 @@ const suggestionCollector = (
 // But couldn't find a way to convert i.e. BOOLEANLITERAL to true or false
 // guess ANTLR compiles those in an automata, might try to follow that but risk going down a rabbit hole
 // completion of table names and fields will do for now
-test("syntax completion suggestions", async () => {
-  const source = `define view ZAPIDUMMY_datadef af select from e070 inn a { as4user }`
-  const cursor: Position = { line: 0, character: 31 }
-  let original: Token | undefined
+test("syntax completion suggestions 1", async () => {
+  const source = `define view ZAPIDUMMY_datadef as select from e070 foo`
+  const cursor: Position = { line: 0, character: 50 }
+  // let original: Token | undefined
   const suggestions: string[] = []
-  const tokenMiddleware = createFakeTokenInjector(cursor, t => (original = t))
+  // const tokenMiddleware = createFakeTokenInjector(cursor, t => (original = t))
   const result = parseCDS(source, {
-    tokenMiddleware,
-    errorListener: suggestionCollector(s => suggestions.push(s))
+    // tokenMiddleware,
+    errorListener: suggestionCollector(s => suggestions.push(s), cursor)
   })
   expect(result).toBeDefined()
-  expect(original).toBeDefined()
-  expect(suggestions.find(x => x === "AS")).toBeTruthy()
+  // expect(original).toBeDefined()
+  expect(suggestions.find(x => x === "as")).toBeTruthy()
   expect(suggestions.find(x => x === "WITH")).toBeTruthy()
 })
-// autocomplete doesn't seem to work at all...
-// test("syntax completion suggestions 2", async () => {
-//   const source = `define view ZAPIDUMMY_datadef `
-//   const lc: any = (ABAPCDSLexer as any) as Constructor<Lexer>
-//   const pc: any = (ABAPCDSParser as any) as Constructor<Parser>
+const createPL = (
+  collect: (sugg: string) => void,
+  p: Position
+): ParseTreeListener => ({
+  enterEveryRule: ctx => {
+    const t = ctx.start
+    if (t.text && positionInToken(p, t)) {
+      if (
+        t.type === ABAPCDSParser.IDENTIFIER &&
+        ctx.ruleIndex === ABAPCDSParser.RULE_data_source
+      ) {
+        const prefixLen = p.character - t.charPositionInLine
+        collect(t.text?.substr(0, prefixLen))
+      }
+      // tslint:disable-next-line: no-console
+      console.log(t.charPositionInLine)
+      collect(`${t.text}`)
+    }
+  }
+})
+test("syntax completion suggestions 2", async () => {
+  const source = sampleview
+  const cursor: Position = { line: 6, character: 47 } // data_source, e070
+  // const cursor: Position = { line: 6, character: 64 } // data_source, e070
+  // const source = `define view ZAPIDUMMY_datadef kkk select from e070`
+  // const cursor: Position = { line: 0, character: 32 } // syntax error
+  const suggestions: string[] = []
+  const parserListener = createPL(s => suggestions.push(s), cursor)
+  const result = parseCDS(source, {
+    errorListener: suggestionCollector(s => suggestions.push(s), cursor),
+    parserListener
+  })
+  expect(result).toBeDefined()
+  expect(suggestions.find(x => x === "as")).toBeTruthy()
+  expect(suggestions.find(x => x === "with")).toBeTruthy()
+})
 
-//   const suggester = autosuggester(lc, pc, "BOTH")
-//   const suggestions = suggester.autosuggest(source)
-//   expect(suggestions.length).toBeGreaterThan(0)
-// })
+test("syntax completion suggestions keywords", async () => {
+  const source = `define view ZAPIDUMMY_datadef kkk select from e070`
+  const cursor: Position = { line: 0, character: 30 } // syntax error
+  const suggestions: string[] = []
+  const parserListener = createPL(s => suggestions.push(s), cursor)
+  const result = parseCDS(source, {
+    errorListener: suggestionCollector(s => suggestions.push(s), cursor),
+    parserListener
+  })
+  expect(result).toBeDefined()
+  expect(suggestions.find(x => x === "as")).toBeTruthy()
+  expect(suggestions.find(x => x === "with")).toBeTruthy()
+})

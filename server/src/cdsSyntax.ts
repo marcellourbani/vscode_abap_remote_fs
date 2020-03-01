@@ -21,7 +21,7 @@ export const terminalType = (t: ParseTree) => isTerminal(t) && t.symbol.type
 
 export const vscPosition = (line: number, character: number): Position => ({
   line: line - 1,
-  character: character + 1
+  character
 })
 
 const tokenStartPosition = (t: Token): Position =>
