@@ -1,3 +1,4 @@
+import { TransitionType } from "antlr4ts/atn"
 import { positionInToken } from "./../cdsSyntax"
 import {
   createSourceDetector,
@@ -7,8 +8,15 @@ import {
 } from "../cdsSyntax"
 import { Position } from "vscode-languageserver"
 import { ABAPCDSParser } from "abapcdsgrammar"
-import { ANTLRErrorListener, Token } from "antlr4ts"
-import { ParseTreeListener } from "antlr4ts/tree"
+import {
+  ANTLRErrorListener,
+  Token,
+  Recognizer,
+  RuleContext,
+  ParserRuleContext
+} from "antlr4ts"
+import { ParseTreeListener, ParseTree } from "antlr4ts/tree"
+import { ATNState } from "antlr4ts/atn/ATNState"
 const literals: { [key: string]: string | string[] } = {
   DEFINE: "define",
   VIEW: "view",
@@ -138,22 +146,83 @@ test("cds parse for annotation", async () => {
   expect(anno2?.ruleIndex).toBe(ABAPCDSParser.RULE_keyword)
   expect(anno2?.text).toBe("default")
 })
+const isEof = (t?: Token) => !!t && t.type === Token.EOF // t.stopIndex < t.startIndex
+
+const prevTokens = (r: Recognizer<Token, any>) => {
+  const tokens: Token[] = (r?.inputStream as any)?.tokens || []
+  let idx = tokens.length - 1
+  if (isEof(tokens[idx])) idx--
+  const current = tokens[idx]
+  const previous = tokens[idx - 1]
+  return { current, previous }
+}
+const ptStart = (x: any) => x.start
+const leafContext = (t: Token, c: ParseTree): ParseTree | undefined => {
+  if (ptStart(c) === t && c.sourceInterval.a === c.sourceInterval.b) return c
+
+  for (let idx = 0; idx < c.childCount; idx++) {
+    const child = leafContext(t, c.getChild(idx))
+    if (child) return child
+  }
+}
+const lastTokenContext = (t: Token, c?: RuleContext) => {
+  const findLast = (tk: Token, ct?: RuleContext): RuleContext | undefined => {
+    const idx = (ct && ct.childCount - 1) || -1
+    const last = ct && (ct.getChild(idx) as ParserRuleContext)
+    if (last)
+      if (last.start === tk) return last
+      else return findLast(tk, last)
+    return last
+  }
+  return findLast(t, c)
+}
+
+const genTraverse = (
+  collect: (sugg: string) => void,
+  recognizer: Recognizer<Token, any>
+) => {
+  const traversed = new Set<number>()
+
+  const traverse = (s: ATNState) => {
+    traversed.add(s.stateNumber)
+    for (const t of s.getTransitions()) {
+      if (t.isEpsilon) {
+        if (!traversed.has(t.target.stateNumber)) traverse(t.target)
+      } else if (t.serializationType === TransitionType.ATOM) {
+        collect(recognizer.vocabulary.getDisplayName((t as any)._label))
+        collect(t.target.toString())
+      }
+    }
+  }
+  return traverse
+}
 const suggestionCollector = (
   collect: (sugg: string) => void,
   position: Position
 ): ANTLRErrorListener<Token> => ({
   syntaxError: (recognizer, offending, line, char, msg, exc) => {
     // instanceof doesn't seem to work, at least in tests
-    if (
-      exc?.constructor.name === "InputMismatchException" &&
-      offending &&
-      positionInToken(position, offending)
-    ) {
-      const tokens = exc.expectedTokens?.intervals || []
-      tokens.forEach(i => {
-        const lit = literals[recognizer.vocabulary.getDisplayName(i.a)]
-        if (lit) Array.isArray(lit) ? lit.map(collect) : collect(lit)
-      })
+    if (exc?.constructor.name === "InputMismatchException") {
+      if (isEof(offending)) {
+        const { current, previous } = prevTokens(recognizer)
+        if (current && positionInToken(position, current) && previous) {
+          // follow
+          const context =
+            exc.context && leafContext(previous, exc.context)?.parent
+          const t = genTraverse(collect, recognizer)
+          const state =
+            context &&
+            recognizer.atn.states[(context as RuleContext).invokingState]
+          if (state) t(state)
+          collect((context && context.text) || "bar")
+        }
+      } else if (offending && positionInToken(position, offending)) {
+        const tokens = exc.expectedTokens?.intervals || []
+        tokens.forEach(i => {
+          const lit = literals[recognizer.vocabulary.getDisplayName(i.a)]
+          if (lit) Array.isArray(lit) ? lit.map(collect) : collect(lit)
+        })
+      }
     }
   }
 })
@@ -165,9 +234,9 @@ const suggestionCollector = (
 test("syntax completion suggestions 1", async () => {
   const source = `define view ZAPIDUMMY_datadef as select from e070 foo`
   const cursor: Position = { line: 0, character: 50 }
-  // let original: Token | undefined
+  let original: Token | undefined
   const suggestions: string[] = []
-  // const tokenMiddleware = createFakeTokenInjector(cursor, t => (original = t))
+  const tokenMiddleware = createFakeTokenInjector(cursor, t => (original = t))
   const result = parseCDS(source, {
     // tokenMiddleware,
     errorListener: suggestionCollector(s => suggestions.push(s), cursor)

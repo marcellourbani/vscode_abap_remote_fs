@@ -30,16 +30,6 @@ const tokenStartPosition = (t: Token): Position =>
 const tokenStopPosition = (t: Token): Position =>
   vscPosition(t.line, t.stopIndex - t.startIndex + t.charPositionInLine)
 
-// const tokenStartPosition = (t: Token): Position => ({
-//   line: t.line - 1,
-//   character: t.charPositionInLine + 1
-// })
-
-// const tokenStopPosition = (t: Token): Position => ({
-//   line: t.line - 1,
-//   character: t.stopIndex - t.startIndex + t.charPositionInLine + 1
-// })
-
 export const positionInToken = (p: Position, t: Token) => {
   const start = tokenStartPosition(t)
   const stop = tokenStopPosition(t)
@@ -88,14 +78,13 @@ export const createFakeTokenInjector = (
 
     if (positionInToken(p, t)) {
       if (notifier) notifier(t)
-      return new CommonToken(
-        BADTOKEN,
-        t.text,
-        { source: t.tokenSource, stream: t.inputStream },
-        t.channel,
-        t.startIndex,
-        t.stopIndex
-      )
+      const nt = new CommonToken(BADTOKEN, t.text)
+      nt.channel = t.channel
+      nt.line = t.line
+      nt.charPositionInLine = t.charPositionInLine
+      nt.startIndex = t.startIndex
+      nt.stopIndex = t.stopIndex
+      return nt
     }
     return t
   }
