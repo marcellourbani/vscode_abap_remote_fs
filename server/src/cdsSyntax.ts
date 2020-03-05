@@ -41,7 +41,7 @@ export const positionInToken = (p: Position, t: Token) => {
   )
 }
 
-function inNode(ctx: ParserRuleContext, position: Position) {
+export function positionInContext(ctx: ParserRuleContext, position: Position) {
   const start = tokenStartPosition(ctx.start)
   const stop = tokenStopPosition(ctx.stop || ctx.start)
 
@@ -56,48 +56,15 @@ function inNode(ctx: ParserRuleContext, position: Position) {
   return start.line < position.line && stop.line > position.line
 }
 
-export const createSourceDetector = (
-  detect: (s: string) => void
-): ParseTreeListener => ({
-  exitEveryRule: ctx => {
-    if (ctx.ruleIndex === ABAPCDSParser.RULE_data_source) {
-      const c = ctx.children && ctx.children[0]
-      if (c && terminalType(c) === ABAPCDSParser.IDENTIFIER) detect(c.text)
-    }
-  }
-})
-
-export const BADTOKEN = -10
-export const createFakeTokenInjector = (
-  p: Position,
-  notifier?: (t: Token) => void
-) => (ts: TokenSource): TokenSource => {
-  const source = { ...ts }
-  source.nextToken = () => {
-    const t = ts.nextToken()
-
-    if (positionInToken(p, t)) {
-      if (notifier) notifier(t)
-      const nt = new CommonToken(BADTOKEN, t.text)
-      nt.channel = t.channel
-      nt.line = t.line
-      nt.charPositionInLine = t.charPositionInLine
-      nt.startIndex = t.startIndex
-      nt.stopIndex = t.stopIndex
-      return nt
-    }
-    return t
-  }
-  return source
-}
-
 export function findNode(
   ctx: ParserRuleContext,
   pos: Position
 ): ParserRuleContext | undefined {
-  if (inNode(ctx, pos))
+  if (positionInContext(ctx, pos))
     if (ctx.children) {
-      const child = ctx.children.filter(isRuleContext).find(c => inNode(c, pos))
+      const child = ctx.children
+        .filter(isRuleContext)
+        .find(c => positionInContext(c, pos))
       const leaf = child && findNode(child, pos)
       return leaf || ctx
     } else return ctx
@@ -118,4 +85,46 @@ export function parseCDS(source: string, config: ParserConfig = {}) {
   if (errorListener) parser.addErrorListener(errorListener)
   if (parserListener) parser.addParseListener(parserListener)
   return parser.cdsddl()
+}
+export const completionItemDetector = (
+  notify: (ctx: ParserRuleContext, sources: string[]) => void
+): ParseTreeListener => {
+  const completionRules = new Set([
+    ABAPCDSParser.RULE_data_source,
+    ABAPCDSParser.RULE_field,
+    ABAPCDSParser.RULE_case_operand
+  ])
+  let sources: string[] = []
+  return {
+    exitEveryRule: ctx => {
+      if (completionRules.has(ctx.ruleIndex)) {
+        if (ctx.start.type === ABAPCDSLexer.IDENTIFIER) {
+          notify(ctx, sources)
+          if (
+            ctx.ruleIndex === ABAPCDSParser.RULE_data_source &&
+            ctx.start.text
+          )
+            sources = [...sources, ctx.start.text]
+        }
+      }
+      if (ctx.ruleIndex === ABAPCDSParser.RULE_view) sources = []
+    }
+  }
+}
+
+export const sourceOrFieldCompletion = (
+  cursor: Position,
+  completeSource: (prefix: string) => void,
+  completeField: (prefix: string, sources: string[]) => void
+) => {
+  const last = { line: cursor.line, character: cursor.character - 1 }
+  return completionItemDetector((ctx, sources) => {
+    if (positionInContext(ctx, last)) {
+      const len = cursor.character - ctx.start.charPositionInLine
+      if (ctx.ruleIndex === ABAPCDSParser.RULE_data_source) {
+        if (len && ctx.start.text && positionInToken(last, ctx.start))
+          completeSource(ctx.start.text.substr(0, len))
+      } else if (len > 0) completeField(ctx.text.substr(0, len), sources)
+    }
+  })
 }

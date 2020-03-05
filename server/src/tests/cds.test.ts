@@ -1,75 +1,12 @@
-import { TransitionType } from "antlr4ts/atn"
-import { positionInToken } from "./../cdsSyntax"
 import {
-  createSourceDetector,
-  createFakeTokenInjector,
-  parseCDS,
-  findNode
-} from "../cdsSyntax"
+  positionInContext,
+  completionItemDetector,
+  sourceOrFieldCompletion
+} from "./../cdsSyntax"
+import { parseCDS, findNode } from "../cdsSyntax"
 import { Position } from "vscode-languageserver"
 import { ABAPCDSParser } from "abapcdsgrammar"
-import {
-  ANTLRErrorListener,
-  Token,
-  Recognizer,
-  RuleContext,
-  ParserRuleContext
-} from "antlr4ts"
-import { ParseTreeListener, ParseTree } from "antlr4ts/tree"
-import { ATNState } from "antlr4ts/atn/ATNState"
-const literals: { [key: string]: string | string[] } = {
-  DEFINE: "define",
-  VIEW: "view",
-  AS: "as",
-  SELECT: "select",
-  FROM: "from",
-  WHERE: "where",
-  GROUPBY: "group by",
-  HAVING: "having",
-  UNION: "union",
-  ALL: "all",
-  KEY: "key",
-  CASE: "case",
-  WHEN: "when",
-  THEN: "then",
-  ELSE: "else",
-  END: "end",
-  CAST: "cast",
-  PRESERVINGTYPE: "preserving type",
-  DISTINCT: "distinct",
-  TO: "to",
-  WITH: "with",
-  PARAMETERS: "parameters",
-  DEFAULT: "default",
-  FILTER: "filter",
-  ASSOCIATION: "association",
-  ON: "on",
-  NOT: "not",
-  AND: "and",
-  OR: "or",
-  BETWEEN: "between",
-  LIKE: "like",
-  ESCAPE: "escape",
-  IS: "is",
-  NULL: "null",
-  INNER: "inner",
-  JOIN: "join",
-  OUTER: "outer",
-  LEFT: "left",
-  RIGHT: "right",
-  ONE: "one",
-  MANY: "many",
-  CROSS: "cross",
-  MAX: "max",
-  MIN: "min",
-  AVG: "avg",
-  SUM: "sum",
-  COUNT: "count",
-  IMPLEMENTEDBYMETHOD: "implemented by method",
-  TABLEFUNCTION: "table function",
-  RETURNS: "returns",
-  BOOLEANLITERAL: ["true", "false"]
-}
+import { ANTLRErrorListener, Token } from "antlr4ts"
 
 const sampleview = `@AbapCatalog.sqlViewName: 'ZAPIDUMMY_DDEFSV'
 @AbapCatalog.compiler.compareFilter: true
@@ -121,16 +58,6 @@ test("cds parsing errors", async () => {
   expect(tree).toBeDefined()
   expect(errors.length).toBe(2)
 })
-
-test("extract source tables", async () => {
-  const sources: string[] = []
-  const parserListener = createSourceDetector(s => sources.push(s))
-  const result = parseCDS(sampleview, { parserListener })
-  expect(result).toBeDefined()
-  expect(sources.length).toBe(2)
-  expect(sources).toEqual(["e071", "e070"])
-})
-
 test("cds parse for annotation", async () => {
   const cursor: Position = { line: 8, character: 13 }
   const result = parseCDS(sampleview)
@@ -146,153 +73,59 @@ test("cds parse for annotation", async () => {
   expect(anno2?.ruleIndex).toBe(ABAPCDSParser.RULE_keyword)
   expect(anno2?.text).toBe("default")
 })
-const isEof = (t?: Token) => !!t && t.type === Token.EOF // t.stopIndex < t.startIndex
 
-const prevTokens = (r: Recognizer<Token, any>) => {
-  const tokens: Token[] = (r?.inputStream as any)?.tokens || []
-  let idx = tokens.length - 1
-  if (isEof(tokens[idx])) idx--
-  const current = tokens[idx]
-  const previous = tokens[idx - 1]
-  return { current, previous }
-}
-const ptStart = (x: any) => x.start
-const leafContext = (t: Token, c: ParseTree): ParseTree | undefined => {
-  if (ptStart(c) === t && c.sourceInterval.a === c.sourceInterval.b) return c
-
-  for (let idx = 0; idx < c.childCount; idx++) {
-    const child = leafContext(t, c.getChild(idx))
-    if (child) return child
-  }
-}
-const lastTokenContext = (t: Token, c?: RuleContext) => {
-  const findLast = (tk: Token, ct?: RuleContext): RuleContext | undefined => {
-    const idx = (ct && ct.childCount - 1) || -1
-    const last = ct && (ct.getChild(idx) as ParserRuleContext)
-    if (last)
-      if (last.start === tk) return last
-      else return findLast(tk, last)
-    return last
-  }
-  return findLast(t, c)
-}
-
-const genTraverse = (
-  collect: (sugg: string) => void,
-  recognizer: Recognizer<Token, any>
-) => {
-  const traversed = new Set<number>()
-
-  const traverse = (s: ATNState) => {
-    traversed.add(s.stateNumber)
-    for (const t of s.getTransitions()) {
-      if (t.isEpsilon) {
-        if (!traversed.has(t.target.stateNumber)) traverse(t.target)
-      } else if (t.serializationType === TransitionType.ATOM) {
-        collect(recognizer.vocabulary.getDisplayName((t as any)._label))
-        collect(t.target.toString())
-      }
-    }
-  }
-  return traverse
-}
-const suggestionCollector = (
-  collect: (sugg: string) => void,
-  position: Position
-): ANTLRErrorListener<Token> => ({
-  syntaxError: (recognizer, offending, line, char, msg, exc) => {
-    // instanceof doesn't seem to work, at least in tests
-    if (exc?.constructor.name === "InputMismatchException") {
-      if (isEof(offending)) {
-        const { current, previous } = prevTokens(recognizer)
-        if (current && positionInToken(position, current) && previous) {
-          // follow
-          const context =
-            exc.context && leafContext(previous, exc.context)?.parent
-          const t = genTraverse(collect, recognizer)
-          const state =
-            context &&
-            recognizer.atn.states[(context as RuleContext).invokingState]
-          if (state) t(state)
-          collect((context && context.text) || "bar")
-        }
-      } else if (offending && positionInToken(position, offending)) {
-        const tokens = exc.expectedTokens?.intervals || []
-        tokens.forEach(i => {
-          const lit = literals[recognizer.vocabulary.getDisplayName(i.a)]
-          if (lit) Array.isArray(lit) ? lit.map(collect) : collect(lit)
-        })
-      }
-    }
-  }
-})
-
-// ok, we get the token names. IDs are easy too.
-// But couldn't find a way to convert i.e. BOOLEANLITERAL to true or false
-// guess ANTLR compiles those in an automata, might try to follow that but risk going down a rabbit hole
-// completion of table names and fields will do for now
-test("syntax completion suggestions 1", async () => {
-  const source = `define view ZAPIDUMMY_datadef as select from e070 foo`
-  const cursor: Position = { line: 0, character: 50 }
-  let original: Token | undefined
-  const suggestions: string[] = []
-  const tokenMiddleware = createFakeTokenInjector(cursor, t => (original = t))
-  const result = parseCDS(source, {
-    // tokenMiddleware,
-    errorListener: suggestionCollector(s => suggestions.push(s), cursor)
+test("trigger completions", async () => {
+  const candidates: string[] = []
+  const cursor: Position = { line: 7, character: 14 }
+  let sources: string[] = []
+  const parserListener = completionItemDetector((ctx, src) => {
+    const inCtx = positionInContext(ctx, cursor)
+    const text =
+      ctx.ruleIndex === ABAPCDSParser.RULE_field ? ctx.text : ctx.start.text
+    if (inCtx) sources = src
+    candidates.push(`${ctx.ruleIndex} ${text},${inCtx}`)
   })
-  expect(result).toBeDefined()
-  // expect(original).toBeDefined()
-  expect(suggestions.find(x => x === "as")).toBeTruthy()
-  expect(suggestions.find(x => x === "WITH")).toBeTruthy()
-})
-const createPL = (
-  collect: (sugg: string) => void,
-  p: Position
-): ParseTreeListener => ({
-  enterEveryRule: ctx => {
-    const t = ctx.start
-    if (t.text && positionInToken(p, t)) {
-      if (
-        t.type === ABAPCDSParser.IDENTIFIER &&
-        ctx.ruleIndex === ABAPCDSParser.RULE_data_source
-      ) {
-        const prefixLen = p.character - t.charPositionInLine
-        collect(t.text?.substr(0, prefixLen))
-      }
-      // tslint:disable-next-line: no-console
-      console.log(t.charPositionInLine)
-      collect(`${t.text}`)
-    }
-  }
-})
-test("syntax completion suggestions 2", async () => {
-  const source = sampleview
-  const cursor: Position = { line: 6, character: 47 } // data_source, e070
-  // const cursor: Position = { line: 6, character: 64 } // data_source, e070
-  // const source = `define view ZAPIDUMMY_datadef kkk select from e070`
-  // const cursor: Position = { line: 0, character: 32 } // syntax error
-  const suggestions: string[] = []
-  const parserListener = createPL(s => suggestions.push(s), cursor)
-  const result = parseCDS(source, {
-    errorListener: suggestionCollector(s => suggestions.push(s), cursor),
-    parserListener
-  })
-  expect(result).toBeDefined()
-  expect(suggestions.find(x => x === "as")).toBeTruthy()
-  expect(suggestions.find(x => x === "with")).toBeTruthy()
+  parseCDS(sampleview, { parserListener })
+  expect(candidates.length).toBe(6)
+  expect(sources).toEqual(["e071", "e070"])
 })
 
-test("syntax completion suggestions keywords", async () => {
-  const source = `define view ZAPIDUMMY_datadef kkk select from e070`
-  const cursor: Position = { line: 0, character: 30 } // syntax error
-  const suggestions: string[] = []
-  const parserListener = createPL(s => suggestions.push(s), cursor)
-  const result = parseCDS(source, {
-    errorListener: suggestionCollector(s => suggestions.push(s), cursor),
-    parserListener
-  })
-  expect(result).toBeDefined()
-  expect(suggestions.find(x => x === "as")).toBeTruthy()
-  expect(suggestions.find(x => x === "with")).toBeTruthy()
+test("source completion", async () => {
+  const findSource = (view: string, cursor: Position) => {
+    let candidate = "nocall"
+    const parserListener = sourceOrFieldCompletion(
+      cursor,
+      prefix => (candidate = prefix),
+      () => 0
+    )
+    parseCDS(view, { parserListener })
+    return candidate
+  }
+  expect(findSource(sampleview, { line: 6, character: 65 })).toEqual("e071")
+  expect(findSource(sampleview, { line: 6, character: 62 })).toEqual("e")
+  expect(findSource(sampleview, { line: 6, character: 49 })).toEqual("e070")
+  expect(findSource(sampleview, { line: 7, character: 62 })).toEqual("nocall")
+})
+
+test("field completion", async () => {
+  let sources: string[] = []
+  const findField = (view: string, cursor: Position) => {
+    let candidate = "nocall"
+    const parserListener = sourceOrFieldCompletion(
+      cursor,
+      () => 0,
+      (prefix, src) => {
+        candidate = prefix
+        sources = src
+      }
+    )
+    parseCDS(view, { parserListener })
+    return candidate
+  }
+  expect(findField(sampleview, { line: 7, character: 11 })).toEqual("e071.tr")
+  expect(findField(sampleview, { line: 9, character: 11 })).toEqual("as4user")
+  expect(sources).toEqual(["e071", "e070"])
+  expect(findField(sampleview, { line: 9, character: 12 })).toEqual("nocall")
+  expect(findField(sampleview, { line: 16, character: 18 })).toEqual("f")
+  expect(findField(sampleview, { line: 16, character: 13 })).toEqual("nocall")
 })
