@@ -24,6 +24,7 @@ Compatibility with [ABAPlint](https://marketplace.visualstudio.com/items?itemNam
 - where used list
 - transport management
 - source control
+- abapGit integration
 
 ![anim](https://user-images.githubusercontent.com/2453277/48232926-30a78d80-e3ab-11e8-8a12-00844431f9af.gif)
 
