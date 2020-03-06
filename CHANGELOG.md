@@ -10,6 +10,7 @@ Format based on [Keep a Changelog](http://keepachangelog.com/)
 
 - field completion for CDS views
 - data source completion for CDS views
+- open git repository
 
 ## [0.7.16] 2020-02-03
 

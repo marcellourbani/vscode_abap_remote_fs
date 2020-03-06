@@ -64,23 +64,25 @@ async function abapCompletion(co: ClientAndObject, pos: Position) {
   return items
 }
 async function cdsCompletion(co: ClientAndObject, pos: Position) {
-  const { client, obj, source } = co
+  const { client, source } = co
   const items: CompletionItem[] = []
   const { matched, prefix, sources } = cdsCompletionExtractor(source, pos)
+  const add = (label: string) => {
+    if (!items.find(i => i.label === label)) items.push({ label })
+  }
   if (matched === "NONE") return items
   if (matched === "SOURCE") {
     const elements = await client.ddicRepositoryAccess(`${prefix}*`)
-    for (const element of elements) items.push({ label: element.name })
+    for (const element of elements) add(element.name)
   } else if (sources.length) {
     const elements = await client.ddicRepositoryAccess(
       sources.map(s => `${s}.`)
     )
-    const compatible = elements.filter(e => e.name.startsWith(prefix))
     for (const element of elements) {
-      if (element.name.startsWith(prefix)) items.push({ label: element.name })
+      if (element.name.startsWith(prefix)) add(element.name)
       else {
         const label = `${element.path}.${element.name}`
-        if (label.startsWith(prefix)) items.push({ label })
+        if (label.startsWith(prefix)) add(label)
       }
     }
   }

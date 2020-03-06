@@ -87,6 +87,7 @@ export const AbapFsCommands = {
   // abapgit
   agitRefreshRepos: "abapfs.refreshrepos",
   agitReveal: "abapfs.revealPackage",
+  agitOpenRepo: "abapfs.openRepo",
   agitPull: "abapfs.pullRepo",
   agitCreate: "abapfs.createRepo",
   agitUnlink: "abapfs.unlinkRepo"

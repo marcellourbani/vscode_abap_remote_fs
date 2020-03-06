@@ -9,6 +9,7 @@ import {
   window,
   ProgressLocation,
   commands,
+  env,
   Uri
 } from "vscode"
 import { GitRepo, ADTClient, objectPath, GitExternalInfo } from "abap-adt-api"
@@ -140,6 +141,10 @@ class AbapGitProvider implements TreeDataProvider<TreeItem> {
       "revealInExplorer",
       server.server.createUri(path.path)
     )
+  }
+
+  private openRepo(repoItem: AbapGitItem) {
+    env.openExternal(Uri.parse(repoItem.repo.url))
   }
 
   private confirmPull(pkg: string) {
@@ -297,6 +302,11 @@ class AbapGitProvider implements TreeDataProvider<TreeItem> {
   @command(AbapFsCommands.agitReveal)
   private static revealCommand(repoItem: AbapGitItem) {
     return AbapGitProvider.get().reveal(repoItem)
+  }
+
+  @command(AbapFsCommands.agitOpenRepo)
+  private static openRepoCommand(repoItem: AbapGitItem) {
+    return AbapGitProvider.get().openRepo(repoItem)
   }
 }
 

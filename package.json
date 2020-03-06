@@ -202,6 +202,10 @@
         "title": "Reveal in sidebar"
       },
       {
+        "command": "abapfs.openRepo",
+        "title": "Open Repository"
+      },
+      {
         "command": "abapfs.releaseTransport",
         "title": "Release transport",
         "icon": {
@@ -350,6 +354,10 @@
         },
         {
           "command": "abapfs.revealPackage",
+          "when": "hideCommands.never"
+        },
+        {
+          "command": "abapfs.openRepo",
           "when": "hideCommands.never"
         },
         {
@@ -513,6 +521,11 @@
         },
         {
           "command": "abapfs.revealPackage",
+          "group": "context",
+          "when": "view == abapfs.abapgit && viewItem == repository"
+        },
+        {
+          "command": "abapfs.openRepo",
           "group": "context",
           "when": "view == abapfs.abapgit && viewItem == repository"
         }
