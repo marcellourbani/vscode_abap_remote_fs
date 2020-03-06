@@ -73,7 +73,8 @@ test("cds parse for annotation", async () => {
 test("source completion", async () => {
   const findSource = (view: string, cursor: Position) => {
     const res = cdsCompletionExtractor(view, cursor)
-    if (res.isSource) return res.prefix || "nocall"
+    if (res.matched === "SOURCE") return res.prefix
+    return "nocall"
   }
   expect(findSource(sampleview, { line: 6, character: 65 })).toEqual("e071")
   expect(findSource(sampleview, { line: 6, character: 62 })).toEqual("e")
@@ -85,7 +86,7 @@ test("field completion", async () => {
   let sources: string[] = []
   const findField = (view: string, cursor: Position) => {
     const res = cdsCompletionExtractor(view, cursor)
-    if (!res.isSource) {
+    if (res.matched === "FIELD") {
       sources = res.sources
       return res.prefix
     } else return "nocall"

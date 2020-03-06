@@ -8,7 +8,7 @@ import { clientAndObjfromUrl, ClientAndObject } from "./utilities"
 import { log } from "./clientManager"
 import { isAbap, callThrottler, isCdsView } from "./functions"
 import { CompletionProposal, ADTClient } from "abap-adt-api"
-import { parseCDS, cdsCompletionExtractor } from "./cdsSyntax"
+import { cdsCompletionExtractor } from "./cdsSyntax"
 
 const completionKey = (url: string, p: Position) =>
   `${url} ${p.line} ${p.character}`
@@ -63,11 +63,27 @@ async function abapCompletion(co: ClientAndObject, pos: Position) {
   })
   return items
 }
-
 async function cdsCompletion(co: ClientAndObject, pos: Position) {
   const { client, obj, source } = co
   const items: CompletionItem[] = []
-  const res = cdsCompletionExtractor(source, pos)
+  const { matched, prefix, sources } = cdsCompletionExtractor(source, pos)
+  if (matched === "NONE") return items
+  if (matched === "SOURCE") {
+    const elements = await client.ddicRepositoryAccess(`${prefix}*`)
+    for (const element of elements) items.push({ label: element.name })
+  } else if (sources.length) {
+    const elements = await client.ddicRepositoryAccess(
+      sources.map(s => `${s}.`)
+    )
+    const compatible = elements.filter(e => e.name.startsWith(prefix))
+    for (const element of elements) {
+      if (element.name.startsWith(prefix)) items.push({ label: element.name })
+      else {
+        const label = `${element.path}.${element.name}`
+        if (label.startsWith(prefix)) items.push({ label })
+      }
+    }
+  }
   return items
 }
 export async function completion(params: CompletionParams) {

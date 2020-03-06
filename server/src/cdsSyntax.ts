@@ -129,18 +129,23 @@ const sourceOrFieldCompletion = (
   })
 }
 
+export type MatchType = "NONE" | "FIELD" | "SOURCE"
+
 export const cdsCompletionExtractor = (source: string, cursor: Position) => {
   const result = {
     prefix: "",
     sources: [] as string[],
-    isSource: true
+    matched: "NONE" as MatchType
   }
   const parserListener = sourceOrFieldCompletion(
     cursor,
-    prefix => (result.prefix = prefix),
+    prefix => {
+      result.prefix = prefix
+      result.matched = "SOURCE"
+    },
     (prefix, src) => {
       result.prefix = prefix
-      result.isSource = false
+      result.matched = "FIELD"
       result.sources = src
     }
   )
