@@ -5,8 +5,7 @@ import {
   ParserRuleContext,
   Token,
   ANTLRErrorListener,
-  TokenSource,
-  CommonToken
+  TokenSource
 } from "antlr4ts"
 import { ParseTree, ParseTreeListener, TerminalNode } from "antlr4ts/tree"
 import { Position } from "vscode-languageserver"
@@ -86,7 +85,8 @@ export function parseCDS(source: string, config: ParserConfig = {}) {
   if (parserListener) parser.addParseListener(parserListener)
   return parser.cdsddl()
 }
-export const completionItemDetector = (
+
+const completionItemDetector = (
   notify: (ctx: ParserRuleContext, sources: string[]) => void
 ): ParseTreeListener => {
   const completionRules = new Set([
@@ -112,7 +112,7 @@ export const completionItemDetector = (
   }
 }
 
-export const sourceOrFieldCompletion = (
+const sourceOrFieldCompletion = (
   cursor: Position,
   completeSource: (prefix: string) => void,
   completeField: (prefix: string, sources: string[]) => void
@@ -127,4 +127,23 @@ export const sourceOrFieldCompletion = (
       } else if (len > 0) completeField(ctx.text.substr(0, len), sources)
     }
   })
+}
+
+export const cdsCompletionExtractor = (source: string, cursor: Position) => {
+  const result = {
+    prefix: "",
+    sources: [] as string[],
+    isSource: true
+  }
+  const parserListener = sourceOrFieldCompletion(
+    cursor,
+    prefix => (result.prefix = prefix),
+    (prefix, src) => {
+      result.prefix = prefix
+      result.isSource = false
+      result.sources = src
+    }
+  )
+  parseCDS(source, { parserListener })
+  return result
 }

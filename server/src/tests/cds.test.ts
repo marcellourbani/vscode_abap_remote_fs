@@ -1,8 +1,4 @@
-import {
-  positionInContext,
-  completionItemDetector,
-  sourceOrFieldCompletion
-} from "./../cdsSyntax"
+import { cdsCompletionExtractor } from "./../cdsSyntax"
 import { parseCDS, findNode } from "../cdsSyntax"
 import { Position } from "vscode-languageserver"
 import { ABAPCDSParser } from "abapcdsgrammar"
@@ -74,32 +70,10 @@ test("cds parse for annotation", async () => {
   expect(anno2?.text).toBe("default")
 })
 
-test("trigger completions", async () => {
-  const candidates: string[] = []
-  const cursor: Position = { line: 7, character: 14 }
-  let sources: string[] = []
-  const parserListener = completionItemDetector((ctx, src) => {
-    const inCtx = positionInContext(ctx, cursor)
-    const text =
-      ctx.ruleIndex === ABAPCDSParser.RULE_field ? ctx.text : ctx.start.text
-    if (inCtx) sources = src
-    candidates.push(`${ctx.ruleIndex} ${text},${inCtx}`)
-  })
-  parseCDS(sampleview, { parserListener })
-  expect(candidates.length).toBe(6)
-  expect(sources).toEqual(["e071", "e070"])
-})
-
 test("source completion", async () => {
   const findSource = (view: string, cursor: Position) => {
-    let candidate = "nocall"
-    const parserListener = sourceOrFieldCompletion(
-      cursor,
-      prefix => (candidate = prefix),
-      () => 0
-    )
-    parseCDS(view, { parserListener })
-    return candidate
+    const res = cdsCompletionExtractor(view, cursor)
+    if (res.isSource) return res.prefix || "nocall"
   }
   expect(findSource(sampleview, { line: 6, character: 65 })).toEqual("e071")
   expect(findSource(sampleview, { line: 6, character: 62 })).toEqual("e")
@@ -110,17 +84,11 @@ test("source completion", async () => {
 test("field completion", async () => {
   let sources: string[] = []
   const findField = (view: string, cursor: Position) => {
-    let candidate = "nocall"
-    const parserListener = sourceOrFieldCompletion(
-      cursor,
-      () => 0,
-      (prefix, src) => {
-        candidate = prefix
-        sources = src
-      }
-    )
-    parseCDS(view, { parserListener })
-    return candidate
+    const res = cdsCompletionExtractor(view, cursor)
+    if (!res.isSource) {
+      sources = res.sources
+      return res.prefix
+    } else return "nocall"
   }
   expect(findField(sampleview, { line: 7, character: 11 })).toEqual("e071.tr")
   expect(findField(sampleview, { line: 9, character: 11 })).toEqual("as4user")
