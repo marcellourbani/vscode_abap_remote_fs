@@ -15,7 +15,7 @@
   "devDependencies": {
     "@types/request-debug": "^0.2.0",
     "method-call-logger": "^1.0.7",
-    "tslint": "^5.20.1",
-    "typescript": "^3.7.2"
+    "tslint": "^6.1.0",
+    "typescript": "^3.8.3"
   }
 }

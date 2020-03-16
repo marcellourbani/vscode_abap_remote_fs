@@ -49,13 +49,13 @@
     "postinstall": "cd sharedapi&& npm i && npm run build && cd ../server && npm i && cd ../client && npm i"
   },
   "devDependencies": {
-    "@types/mocha": "^2.2.42",
-    "@types/node": "^8.10.38",
-    "concurrently": "^4.1.0",
-    "rimraf": "^2.6.3",
-    "tslint": "^5.12.1",
-    "typescript": "^3.3.1",
-    "webpack-cli": "^3.3.1"
+    "@types/mocha": "^7.0.2",
+    "@types/node": "^13.9.1",
+    "concurrently": "^5.1.0",
+    "rimraf": "^3.0.2",
+    "tslint": "^6.1.0",
+    "typescript": "^3.8.3",
+    "webpack-cli": "^3.3.11"
   },
   "contributes": {
     "viewsContainers": {

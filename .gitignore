@@ -13,3 +13,4 @@ server/node_modules
 *.vsix
 tmp
 *.tsbuildinfo
+package-lock.json
