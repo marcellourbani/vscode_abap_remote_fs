@@ -12,7 +12,7 @@
   "author": "Marcello Urbani",
   "license": "MIT",
   "dependencies": {
-    "abap-adt-api": "^0.5.36",
+    "abap-adt-api": "^0.5.37",
     "abapcdsgrammar": "0.0.7",
     "antlr4ts": "^0.5.0-alpha.3",
     "html-entities": "^1.2.1",
@@ -20,7 +20,7 @@
     "method-call-logger": "^1.0.7",
     "request-debug": "^0.2.0",
     "vscode-abap-remote-fs-sharedapi": "file:../sharedapi",
-    "vscode-languageserver": "^6.1.1"
+    "vscode-languageserver": "^5.2.1"
   },
   "devDependencies": {
     "@types/antlr4": "^4.7.0",
@@ -38,7 +38,7 @@
   },
   "scripts": {
     "clean": "rimraf ./out ./dist node_modules",
-    "build": "npm run clean && npm run webpack",
+    "build": "npm run webpack",
     "webpack": "webpack --mode production",
     "watch": "webpack --mode none --env.development --watch --info-verbosity verbose",
     "test": "jest"

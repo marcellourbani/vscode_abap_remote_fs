@@ -4,6 +4,12 @@ All notable changes to the "vscode-abap-remote-fs" extension will be documented 
 
 Format based on [Keep a Changelog](http://keepachangelog.com/)
 
+## [0.7.18] 2020-03-23
+
+### Added
+
+- oauth2 login support (including sap cloud platform)
+
 ## [0.7.17] 2020-03-06
 
 ### Added

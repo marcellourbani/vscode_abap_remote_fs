@@ -1,3 +1,4 @@
+import { Token } from "client-oauth2"
 import {
   ClientConfiguration,
   clientTraceUrl,
@@ -125,11 +126,20 @@ const httpLogger = (conf: RemoteConfig) => {
   if (!mongoUrl) return undefined
   return mongoHttpLogger(conf.name, SOURCE_CLIENT)
 }
+
+const pendingGrants = new Map<string, Promise<Token>>()
+export const futureToken = async (connId: string) => {
+  const oldGrant = getToken(connId)
+  if (oldGrant) return oldGrant.accessToken
+  const pending = pendingGrants.get(connId)
+  if (pending) return pending.then(t => t.accessToken)
+}
 function createOauthLogin(conf: RemoteConfig) {
   if (!conf.oauth) return
   const { clientId, clientSecret, loginUrl } = conf.oauth
   return async () => {
-    const oldGrant = getToken(conf)
+    const connId = formatKey(conf.name)
+    const oldGrant = getToken(connId)
     if (oldGrant) return Promise.resolve(oldGrant.accessToken)
 
     const server = loginServer()
@@ -138,8 +148,11 @@ function createOauthLogin(conf: RemoteConfig) {
       server.server.close()
       throw new Error("User logon timed out")
     })
-    const result = await Promise.race([grant, timeout])
-    if (result) setToken(conf, result)
+    const pendingGrant = Promise.race([grant, timeout])
+    pendingGrants.set(formatKey(connId), pendingGrant)
+    const result = await pendingGrant
+    if (result) setToken(connId, result)
+    pendingGrants.delete(formatKey(connId))
     return result.accessToken
   }
 }

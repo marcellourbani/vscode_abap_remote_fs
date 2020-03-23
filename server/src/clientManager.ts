@@ -6,7 +6,8 @@ import {
   ClientConfiguration,
   clientTraceUrl,
   httpTraceUrl,
-  SOURCE_SERVER
+  SOURCE_SERVER,
+  Methods
 } from "vscode-abap-remote-fs-sharedapi"
 import { createProxy, MethodCall } from "method-call-logger"
 import { LogPhase, LogData } from "request-debug"
@@ -50,6 +51,11 @@ function debugCallBack(conf: ClientConfiguration) {
     return (type: LogPhase, data: LogData) =>
       sendHttpLog({ source: SOURCE_SERVER, type, data, connection: conf.name })
 }
+function createFetchToken(conf: ClientConfiguration) {
+  if (conf.oauth)
+    return () =>
+      connection.sendRequest(Methods.getToken, conf.name) as Promise<string>
+}
 
 export async function clientFromKey(key: string) {
   let client = clients.get(key)
@@ -60,10 +66,11 @@ export async function clientFromKey(key: string) {
         ? createSSLConfig(conf.allowSelfSigned, conf.customCA)
         : {}
       sslconf.debugCallback = debugCallBack(conf)
+      const pwdOrFetch = createFetchToken(conf) || conf.password
       client = new ADTClient(
         conf.url,
         conf.username,
-        conf.password,
+        pwdOrFetch,
         conf.client,
         conf.language,
         sslconf

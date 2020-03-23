@@ -59,14 +59,19 @@ function convertComponent(comp: ClassComponent, definition: boolean) {
 
   const range = mainLink && rangeFromUri(mainLink.href)
   if (range) {
-    const symbol = new DocumentSymbol()
-    symbol.range = range
-    symbol.selectionRange = range
-    symbol.name = comp["adtcore:name"] + suffix
-    symbol.kind = decodeType(comp)
-    symbol.children = comp.components
+    const selectionRange = range
+    const name = comp["adtcore:name"] + suffix
+    const kind = decodeType(comp)
+    const children = comp.components
       .map(x => convertComponent(x, definition))
       .filter(x => x) as DocumentSymbol[]
+    const symbol: DocumentSymbol = {
+      range,
+      name,
+      kind,
+      selectionRange,
+      children
+    }
     return symbol
   }
 }

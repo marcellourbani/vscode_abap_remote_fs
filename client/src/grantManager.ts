@@ -16,13 +16,12 @@ const strip = (t: TokenData) => {
   return { accessToken, refreshToken, tokenType }
 }
 
-export function getToken(conf: RemoteConfig) {
-  const connId = formatKey(conf.name)
+export function getToken(connId: string) {
   return tokens.get(connId)
 }
 
-export function setToken(conf: RemoteConfig, token: TokenData) {
-  tokens.set(formatKey(conf.name), strip(token))
+export function setToken(connId: string, token: TokenData) {
+  tokens.set(connId, strip(token))
 }
 
 export function storeTokens() {

@@ -37,7 +37,7 @@ import { FixProposal } from "abap-adt-api"
 import { fail } from "assert"
 import { command, AbapFsCommands } from "./commands"
 import { IncludeLensP } from "./adt/operations/IncludeLens"
-import { RemoteManager } from "./config"
+import { RemoteManager, futureToken, formatKey } from "./config"
 import { mongoApiLogger, mongoHttpLogger } from "./helpers/mongoClient"
 
 async function getVSCodeUri(req: UriRequest): Promise<StringWrapper> {
@@ -100,6 +100,9 @@ async function objectDetailFromUrl(url: string) {
 async function configFromKey(connId: string) {
   const { sapGui, ...cfg } = (await RemoteManager.get()).byId(connId)!
   return cfg
+}
+async function getToken(connId: string) {
+  return futureToken(formatKey(connId))
 }
 
 let setProgress: ((prog: SearchProgress) => void) | undefined
@@ -181,8 +184,8 @@ export async function startLanguageClient(context: ExtensionContext) {
   IncludeLensP.get().onDidSelectInclude(includeChanged)
 
   client.onDidChangeState(e => {
+    client.onRequest(Methods.readConfiguration, configFromKey)
     if (e.newState === State.Running) {
-      client.onRequest(Methods.readConfiguration, configFromKey)
       client.onRequest(Methods.objectDetails, objectDetailFromUrl)
       client.onRequest(Methods.readEditorObjectSource, readEditorObjectSource)
       client.onRequest(Methods.readObjectSourceOrMain, readObjectSource)
@@ -190,6 +193,7 @@ export async function startLanguageClient(context: ExtensionContext) {
       client.onRequest(Methods.setSearchProgress, setSearchProgress)
       client.onRequest(Methods.logCall, logCall)
       client.onRequest(Methods.logHTTP, logHttp)
+      client.onRequest(Methods.getToken, getToken)
     }
   })
   client.start()

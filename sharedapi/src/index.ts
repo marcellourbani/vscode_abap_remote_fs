@@ -11,7 +11,8 @@ export enum Methods {
   quickFix = "vscabap.quickfix",
   updateMainProgram = "vscabap.updateMain",
   logCall = "vscabap.logCall",
-  logHTTP = "vscabap.logHTTP"
+  logHTTP = "vscabap.logHTTP",
+  getToken = "vscabap.getToken"
 }
 
 export type Sources = "client" | "server"
