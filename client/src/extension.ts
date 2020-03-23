@@ -25,10 +25,15 @@ import { IncludeLensP } from "./adt/operations/IncludeLens"
 import { ClassHierarchyLensProvider } from "./adt/classhierarchy"
 import { registerCommands } from "./commands"
 import { abapGitProvider } from "./views/abapgit"
+import { loadTokens, clearTokens } from "./grantManager"
+export let context: ExtensionContext
 
-export function activate(context: ExtensionContext) {
+export function activate(ctx: ExtensionContext) {
+  context = ctx
   const startTime = new Date().getTime()
   log("activating ABAPfs...")
+  loadTokens()
+  clearTokens()
   const sub = context.subscriptions
   // register the filesystem type
   sub.push(

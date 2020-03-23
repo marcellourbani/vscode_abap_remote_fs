@@ -8,14 +8,14 @@ import { window, workspace, QuickPickItem, WorkspaceFolder, Uri } from "vscode"
 import { ADTClient, createSSLConfig } from "abap-adt-api"
 import { ADTSCHEME } from "./adt/AdtServer"
 import { readFileSync } from "fs"
-import { createProxy, MethodCall } from "method-call-logger"
+import { createProxy } from "method-call-logger"
 // keytar depends on a native module shipped in vscode
 // this loads only the type definitions
 import * as keytarType from "keytar"
 import { mongoApiLogger, mongoHttpLogger } from "./helpers/mongoClient"
 import { cfCodeGrant, loginServer } from "abap_cloud_platform"
 import { delay } from "./helpers/functions"
-
+import { getToken, setToken } from "./grantManager"
 export interface RemoteConfig extends ClientConfiguration {
   sapGui: {
     disabled: boolean
@@ -129,13 +129,18 @@ function createOauthLogin(conf: RemoteConfig) {
   if (!conf.oauth) return
   const { clientId, clientSecret, loginUrl } = conf.oauth
   return async () => {
+    const oldGrant = getToken(conf)
+    if (oldGrant) return Promise.resolve(oldGrant.accessToken)
+
     const server = loginServer()
     const grant = cfCodeGrant(loginUrl, clientId, clientSecret, server)
     const timeout = delay(60000).then(() => {
       server.server.close()
       throw new Error("User logon timed out")
     })
-    return Promise.race([grant.then(g => g.accessToken), timeout])
+    const result = await Promise.race([grant, timeout])
+    if (result) setToken(conf, result)
+    return result.accessToken
   }
 }
 
@@ -258,12 +263,6 @@ export class RemoteManager {
     const key = `vscode.abapfs.${formatKey(connectionId)}`
     const password = await this.keytar.getPassword(key, userName)
     return password || ""
-  }
-
-  private async pickConnectionId() {
-    const root = await pickAdtRoot()
-    if (!root) return
-    return formatKey(root.uri.authority)
   }
 
   public async askPassword(connectionId: string) {

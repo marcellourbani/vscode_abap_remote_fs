@@ -26,6 +26,7 @@ import { LockManager } from "./adt/operations/LockManager"
 import { IncludeLensP } from "./adt/operations/IncludeLens"
 import { runInSapGui } from "./adt/sapgui/sapgui"
 import { isAbapNode } from "./fs/AbapNode"
+import { storeTokens } from "./grantManager"
 
 const ABAPDOC = "ABAPDOC"
 const abapcmds: {
@@ -183,6 +184,8 @@ export class AdtCommands {
       log(`Connecting to server ${remote.name}`)
       // this might involve asking for a password...
       await getOrCreateServer(remote.name) // if connection raises an exception don't mount any folder
+
+      await storeTokens()
 
       workspace.updateWorkspaceFolders(0, 0, {
         uri: Uri.parse("adt://" + remote.name),
