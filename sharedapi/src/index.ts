@@ -35,6 +35,11 @@ export interface ClientConfiguration {
   language: string
   allowSelfSigned: boolean
   customCA: string
+  oauth?: {
+    clientId: string
+    clientSecret: string
+    loginUrl: string
+  }
   trace?: {
     mongoUrl: string
     api_methods: boolean

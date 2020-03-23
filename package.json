@@ -12,7 +12,7 @@
   },
   "homepage": "https://github.com/marcellourbani/vscode_abap_remote_fs",
   "engines": {
-    "vscode": "^1.33.0"
+    "vscode": "^1.39.0"
   },
   "categories": [
     "Other"
@@ -647,6 +647,20 @@
                   "type": "string",
                   "title": "Custom certificate authority certificate",
                   "default": "/secrets/myCA.pem"
+                },
+                "oauth": {
+                  "clientId": {
+                    "type": "string",
+                    "title": "Client ID"
+                  },
+                  "clientSecret": {
+                    "type": "string",
+                    "title": "Client secret"
+                  },
+                  "loginUrl": {
+                    "type": "string",
+                    "title": "Login Url"
+                  }
                 },
                 "trace": {
                   "type": "object",

@@ -28,11 +28,11 @@ import { runInSapGui } from "./adt/sapgui/sapgui"
 import { isAbapNode } from "./fs/AbapNode"
 
 const ABAPDOC = "ABAPDOC"
-const abapcmds: Array<{
+const abapcmds: {
   name: string
   func: (...x: any[]) => any
   target: any
-}> = []
+}[] = []
 
 export const command = (name: string) => (target: any, propertyKey: string) => {
   const func = target[propertyKey]

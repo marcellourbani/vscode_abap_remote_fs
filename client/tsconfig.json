@@ -2,15 +2,24 @@
   "compilerOptions": {
     "experimentalDecorators": true,
     "module": "commonjs",
+    "esModuleInterop": true,
     "target": "es6",
     "rootDir": "src",
     "outDir": "out",
-    "lib": ["es6"],
+    "lib": [
+      "es6"
+    ],
     "sourceMap": true,
     "strict": true,
     "noUnusedLocals": false,
     "composite": true
   },
-  "include": ["src"],
-  "exclude": ["node_modules", ".vscode-test", "*.d.ts"]
+  "include": [
+    "src"
+  ],
+  "exclude": [
+    "node_modules",
+    ".vscode-test",
+    "*.d.ts"
+  ]
 }

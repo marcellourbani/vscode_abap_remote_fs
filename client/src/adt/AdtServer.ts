@@ -55,7 +55,6 @@ export class AdtServer {
   public readonly sapGui: SapGui
   public readonly client: ADTClient
   public readonly activator: AdtObjectActivator
-  private mainClient: ADTClient
   private symLinks = new AdtSymLinkCollection()
   private activationStatusEmitter = new EventEmitter<Uri>()
   private lastRefresh?: { node: AbapNode; current: Promise<AbapNode> }
@@ -65,8 +64,11 @@ export class AdtServer {
    *
    * @param connectionId ADT connection ID
    */
-  constructor(readonly connectionId: string, config: RemoteConfig) {
-    this.mainClient = createClient(config)
+  constructor(
+    readonly connectionId: string,
+    private mainClient: ADTClient,
+    config: RemoteConfig
+  ) {
     this.client = this.mainClient.statelessClone
     this.activationStatusEmitter.event(activationStateListener)
 
@@ -480,36 +482,42 @@ async function getOrCreateServerInt(connId: string) {
     const manager = RemoteManager.get()
     const connection = await manager.byIdAsync(connId)
     if (!connection) throw Error(`Connection not found ${connId}`)
-    if (!connection.password) {
+    let client
+    if (connection.oauth || connection.password) {
+      client = createClient(connection)
+      await client.login() // raise exception for login issues
+    } else {
       connection.password = (await manager.askPassword(connection.name)) || ""
       if (!connection.password) throw Error("Can't connect without a password")
-      await createClient(connection).login() // raise exception for wrong password/server down
-      await manager.savePassword(
-        connection.name,
-        connection.username,
-        connection.password
-      )
-    } else {
-      await createClient(connection).login() // raise exception for login issues
+      client = await createClient(connection)
+      await client.login() // raise exception for login issues
+      const { name, username, password } = connection
+      await manager.savePassword(name, username, password)
     }
-    server = new AdtServer(connId, connection)
+    server = new AdtServer(connId, client, connection)
     servers.set(connId, server)
   }
   return server
 }
 
-export function getOrCreateServer(connId: string) {
+export async function getOrCreateServer(connId: string) {
   connId = formatKey(connId)
   let serverPromise = serverPromises.get(connId)
   if (!serverPromise) {
-    serverPromise = getOrCreateServerInt(connId)
-    serverPromises.set(connId, serverPromise)
+    try {
+      serverPromise = getOrCreateServerInt(connId)
+      serverPromises.set(connId, serverPromise)
+      await serverPromise
+    } catch (e) {
+      serverPromises.delete(connId)
+      throw e
+    }
   }
   return serverPromise
 }
 
 export async function disconnect() {
-  const promises: Array<Promise<any>> = []
+  const promises: Promise<any>[] = []
   if (LockManager.get().hasLocks())
     window.showInformationMessage("All locked files will be unlocked")
   for (const server of servers) {

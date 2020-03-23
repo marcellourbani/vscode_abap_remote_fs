@@ -13,6 +13,8 @@ import { createProxy, MethodCall } from "method-call-logger"
 // this loads only the type definitions
 import * as keytarType from "keytar"
 import { mongoApiLogger, mongoHttpLogger } from "./helpers/mongoClient"
+import { cfCodeGrant, loginServer } from "abap_cloud_platform"
+import { delay } from "./helpers/functions"
 
 export interface RemoteConfig extends ClientConfiguration {
   sapGui: {
@@ -123,15 +125,30 @@ const httpLogger = (conf: RemoteConfig) => {
   if (!mongoUrl) return undefined
   return mongoHttpLogger(conf.name, SOURCE_CLIENT)
 }
+function createOauthLogin(conf: RemoteConfig) {
+  if (!conf.oauth) return
+  const { clientId, clientSecret, loginUrl } = conf.oauth
+  return async () => {
+    const server = loginServer()
+    const grant = cfCodeGrant(loginUrl, clientId, clientSecret, server)
+    const timeout = delay(60000).then(() => {
+      server.server.close()
+      throw new Error("User logon timed out")
+    })
+    return Promise.race([grant.then(g => g.accessToken), timeout])
+  }
+}
+
 export function createClient(conf: RemoteConfig) {
   const sslconf = conf.url.match(/https:/i)
     ? createSSLConfig(conf.allowSelfSigned, conf.customCA)
     : {}
   sslconf.debugCallback = httpLogger(conf)
+  const password = createOauthLogin(conf) || conf.password
   const client = new ADTClient(
     conf.url,
     conf.username,
-    conf.password,
+    password,
     conf.client,
     conf.language,
     sslconf
