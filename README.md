@@ -8,6 +8,7 @@ Is less capable and more buggy than Eclipse with ADT, but also more responsive, 
 
 [Getting started](https://github.com/marcellourbani/vscode_abap_remote_fs/wiki/getting-started)
 [wiki/documentation](https://github.com/marcellourbani/vscode_abap_remote_fs/wiki)
+[blog post by Leon Hassan](https://blogs.sap.com/2019/12/06/abap-development-in-vs-code)
 
 **Unless your system is very modern (7.51 or later I think), write support will require you to install [this plugin](https://github.com/marcellourbani/abapfs_extensions)** in your dev server to enable. Browsing works even without it
 
