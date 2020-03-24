@@ -1,4 +1,3 @@
-import { MetaFolder } from "./../../fs/MetaFolder"
 import { AbapInterface } from "./AbapInterface"
 import { AdtServer } from "../AdtServer"
 import {
@@ -12,14 +11,12 @@ import { AbapProgram } from "./AbapProgram"
 import { AbapClass } from "./AbapClass"
 import { AbapInclude } from "./AbapInclude"
 import { AbapClassInclude, isClassInclude } from "./AbapClassInclude"
-import { AbapNode, isAbapNode, AbapObjectNode } from "../../fs/AbapNode"
+import { AbapNode, isAbapNode } from "../../fs/AbapNode"
 import { AbapFunction } from "./AbapFunction"
 import { AbapCds } from "./AbapCds"
 import { Node, ADTClient, NodeStructure } from "abap-adt-api"
 import { AbapFunctionGroup } from "./AbapFunctionGroup"
-import { Uri, commands } from "vscode"
-import { PACKAGE, TMPPACKAGE } from "../operations/AdtObjectCreator"
-import { log } from "../../helpers/logger"
+import { Uri } from "vscode"
 
 export interface NodePath {
   path: string
@@ -111,6 +108,9 @@ export function abapObjectFromNode(node: Node): AbapObject {
     case "CLAS/I":
       objtype = AbapClassInclude
       break
+    case "SRVB/SVB":
+    case "SIA6":
+    case "SUSH":
     case "XSLT/VT":
       objtype = AbapXmlObject
       break
@@ -130,6 +130,7 @@ export function abapObjectFromNode(node: Node): AbapObject {
     case "DDLS/DF":
     case "DCLS/DL":
     case "DDLX/EX":
+    case "BDEF/BDO":
       objtype = AbapCds
       break
   }

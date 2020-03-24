@@ -129,12 +129,12 @@ class AbapGitProvider implements TreeDataProvider<TreeItem> {
   private async reveal(repoItem: AbapGitItem) {
     const pkg = repoItem.repo.sapPackage
     const server = this.repoServer(repoItem)
-    const url = await server.server.client.transportReference(
-      "R3TR",
-      "DEVC",
-      pkg
+    const candidates = await server.server.client.searchObject(pkg, "DEVC")
+    const found = candidates.find(c => c["adtcore:name"] === pkg)
+    if (!found) return
+    const steps = await server.server.objectFinder.findObjectPath(
+      found?.["adtcore:uri"]
     )
-    const steps = await server.server.objectFinder.findObjectPath(url)
     const path = await server.server.objectFinder.locateObject(steps)
     if (!path) return
     commands.executeCommand(

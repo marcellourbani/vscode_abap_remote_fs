@@ -3,6 +3,11 @@
 All notable changes to the "vscode-abap-remote-fs" extension will be documented in this file.
 
 Format based on [Keep a Changelog](http://keepachangelog.com/)
+## Unreleased
+### Fixed
+
+- reveal abapGit repo without transport details
+- error starting language client
 
 ## [0.7.18] 2020-03-23
 

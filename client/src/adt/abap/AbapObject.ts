@@ -77,9 +77,10 @@ export class AbapObject {
     this.path = path
     this.pExpandable = !!expandable && type === PACKAGE
     this.techName = techName || name
-    this.sapguiOnly = !!path.match(
-      "(/sap/bc/adt/vit)|(/sap/bc/adt/ddic/domains/)|(/sap/bc/adt/ddic/dataelements/)"
-    )
+    this.sapguiOnly =
+      !!path.match(
+        "(/sap/bc/adt/vit)|(/sap/bc/adt/ddic/domains/)|(/sap/bc/adt/ddic/dataelements/)"
+      ) || this.type === "IWSV"
   }
 
   public isLeaf() {
@@ -141,7 +142,7 @@ export class AbapObject {
 
   public getContentsUri(): string {
     if (!this.structure) throw FileSystemError.FileNotFound(this.path)
-    const include = ADTClient.mainInclude(this.structure)
+    const include = ADTClient.mainInclude(this.structure, false)
     return include
   }
 

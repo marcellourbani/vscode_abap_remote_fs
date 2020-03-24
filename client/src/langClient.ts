@@ -184,8 +184,8 @@ export async function startLanguageClient(context: ExtensionContext) {
   IncludeLensP.get().onDidSelectInclude(includeChanged)
 
   client.onDidChangeState(e => {
-    client.onRequest(Methods.readConfiguration, configFromKey)
     if (e.newState === State.Running) {
+      client.onRequest(Methods.readConfiguration, configFromKey)
       client.onRequest(Methods.objectDetails, objectDetailFromUrl)
       client.onRequest(Methods.readEditorObjectSource, readEditorObjectSource)
       client.onRequest(Methods.readObjectSourceOrMain, readObjectSource)

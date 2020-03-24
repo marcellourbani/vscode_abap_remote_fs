@@ -9,6 +9,8 @@ export class AbapCds extends AbapObject {
         return ".dcls.asdcls"
       case "DDLX/EX":
         return ".ddlx.asddlxs"
+      case "BDEF/BDO":
+        return ".bdef.asbdef"
     }
     return ".cds" // should never happen...
   }

@@ -141,17 +141,13 @@ export class AbapObjectNode implements FileStat, Iterable<[string, AbapNode]> {
   }
 
   public async fetchContents(client: ADTClient): Promise<Uint8Array> {
-    if (this.isFolder) return Promise.reject(FileSystemError.FileIsADirectory())
+    if (this.isFolder) throw FileSystemError.FileIsADirectory()
 
-    try {
-      if (!this.abapObject.structure) await this.abapObject.loadMetadata(client)
-      const payload = await this.abapObject.getContents(client)
-      const buf = Buffer.from(payload)
-      this.size = buf.length
-      return buf
-    } catch (e) {
-      return Promise.reject(e)
-    }
+    if (!this.abapObject.structure) await this.abapObject.loadMetadata(client)
+    const payload = await this.abapObject.getContents(client)
+    const buf = Buffer.from(payload)
+    this.size = buf.length
+    return buf
   }
 
   public async refresh(client: ADTClient): Promise<AbapNode> {
