@@ -205,8 +205,7 @@ export class LockObject {
 const createLC = (connId: string) => {
   const server = getServer(connId)
   const mains = new Map<string, AbapObject>()
-  const getObjKey = async (uri: string) => {
-    const vuri = Uri.parse(uri)
+  const getObjKey = async (vuri: Uri) => {
     const obj = await server.findAbapObject(vuri)
     const main = obj.getLockTarget()
     mains.set(main.key, main)

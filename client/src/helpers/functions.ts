@@ -1,8 +1,7 @@
 import { isString, isNumber } from "util"
-import { Option, option, isNone, none } from "fp-ts/lib/Option"
-import { Task, task } from "fp-ts/lib/Task"
+import { none } from "fp-ts/lib/Option"
 import { taskEither, TaskEither } from "fp-ts/lib/TaskEither"
-import { Either, isLeft, right, either } from "fp-ts/lib/Either"
+import { right } from "fp-ts/lib/Either"
 
 export const pick = <T, K extends keyof T>(name: K) => (x: T): T[K] => x[name]
 export const flat = <T>(a: T[][]): T[] =>
@@ -108,26 +107,30 @@ export const createMutex = () => {
     return prom
   }
 }
+export interface Cache<TK, TP> extends Iterable<TP> {
+  get: (x: TK) => TP
+  size: number
+}
 /**
  * Given a constructor function returns an enumerable cache of objects
  * Optionally accepts a key conversion method as second parameter
  * Automates the pattern of returning an object from a map, or create and insert it if not found
  *
- * @param  {(k:TAK)=>TP} creator
- * @param  {(k:TK)=>TAK=(x:any} KeyTranslator (optional)
+ * @param  {(k:TMAPKEY)=>TRESULT} creator
+ * @param  {(k:TGETKEY)=>TMAPKEY=(x:any} KeyTranslator (optional)
  */
-export const cache = <TK, TP, TAK>(
-  creator: (k: TAK) => TP,
-  keyTranslator: (k: TK) => TAK = (x: any) => x
-) => {
-  const values = new Map<TAK, TP>()
+export function cache<TGETKEY, TRESULT, TMAPKEY>(
+  creator: (k: TGETKEY) => TRESULT,
+  keyTranslator: (k: TGETKEY) => TMAPKEY = (x: any) => x
+): Cache<TGETKEY, TRESULT> {
+  const values = new Map<TMAPKEY, TRESULT>()
   return {
-    get: (k: TK) => {
-      const ak = keyTranslator(k)
-      let cur = values.get(ak)
+    get: (key: TGETKEY) => {
+      const mapKey = keyTranslator(key)
+      let cur = values.get(mapKey)
       if (!cur) {
-        cur = creator(ak)
-        values.set(ak, cur)
+        cur = creator(key)
+        values.set(mapKey, cur)
       }
       return cur
     },
@@ -145,28 +148,34 @@ export const cache = <TK, TP, TAK>(
   }
 }
 
+export interface AsyncCache<TK, TP> extends Iterable<TP> {
+  get: (x: TK, refresh?: boolean) => Promise<TP>
+  getSync: (x: TK) => TP | undefined
+  size: number
+}
+
 export const asyncCache = <TK, TP, TAK>(
-  creator: (k: TAK) => Promise<TP>,
+  creator: (k: TK) => Promise<TP>,
   keyTran: (k: TK) => TAK = (x: any) => x
-) => {
+): AsyncCache<TK, TP> => {
   const values = new Map<TAK, TP>()
   const pending = new Map<TAK, Promise<TP>>()
-  const attempt = async (ak: TAK, refresh: boolean) => {
-    let cur = values.get(ak)
+  const attempt = async (mapKey: TAK, key: TK, refresh: boolean) => {
+    let cur = values.get(mapKey)
     if (refresh || !cur) {
-      cur = await creator(ak)
-      values.set(ak, cur)
+      cur = await creator(key)
+      values.set(mapKey, cur)
     }
     return cur
   }
 
-  function get(k: TK, refresh = false) {
-    const ak = keyTran(k)
-    let curP = pending.get(ak)
+  function get(key: TK, refresh = false) {
+    const mapKey = keyTran(key)
+    let curP = pending.get(mapKey)
     if (!curP) {
-      curP = attempt(ak, refresh)
-      pending.set(ak, curP)
-      eatPromiseException(curP).then(() => pending.delete(ak))
+      curP = attempt(mapKey, key, refresh)
+      pending.set(mapKey, curP)
+      eatPromiseException(curP).then(() => pending.delete(mapKey))
     }
     return curP
   }
@@ -228,10 +237,9 @@ export const delay = (time: number) =>
   new Promise(resolve => setTimeout(resolve, time))
 
 type leftType = Error | typeof none
-
 export const chainTaskTransformers = <T>(
   first: (x: T) => TaskEither<leftType, T>,
-  ...rest: Array<(x: T) => TaskEither<leftType, T>>
+  ...rest: ((x: T) => TaskEither<leftType, T>)[]
 ) => (y: T) => rest.reduce(taskEither.chain, first(y))
 
 export function fieldReplacer<T1>(
