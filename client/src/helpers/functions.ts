@@ -319,3 +319,6 @@ export function dependFieldReplacer<
   const actualData = isFn(data) ? data2 : data
   return actualData ? createTask(actualData) : createTask
 }
+
+export const btoa = (s: string) => Buffer.from(s).toString("base64")
+export const atob = (s: string) => Buffer.from(s, "base64").toString()

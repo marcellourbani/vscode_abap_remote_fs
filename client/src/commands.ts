@@ -91,7 +91,9 @@ export const AbapFsCommands = {
   agitOpenRepo: "abapfs.openRepo",
   agitPull: "abapfs.pullRepo",
   agitCreate: "abapfs.createRepo",
-  agitUnlink: "abapfs.unlinkRepo"
+  agitUnlink: "abapfs.unlinkRepo",
+  agitAddScm: "abapfs.registerSCM",
+  agitRefresh: "abapfs.refreshAbapGit"
 }
 
 function currentUri() {

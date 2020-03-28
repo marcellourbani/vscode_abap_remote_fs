@@ -166,6 +166,22 @@
         }
       },
       {
+        "command": "abapfs.registerSCM",
+        "title": "Register in source control",
+        "icon": {
+          "dark": "client/images/dark/icon-repo.svg",
+          "light": "client/images/light/icon-repo.svg"
+        }
+      },
+      {
+        "command": "abapfs.refreshAbapGit",
+        "title": "Refresh repo contents",
+        "icon": {
+          "dark": "client/images/dark/icon-refresh.svg",
+          "light": "client/images/light/icon-refresh.svg"
+        }
+      },
+      {
         "command": "abapfs.execute",
         "title": "ABAPfs Open in SAPGUI"
       },
@@ -373,6 +389,14 @@
           "when": "hideCommands.never"
         },
         {
+          "command": "abapfs.registerSCM",
+          "when": "hideCommands.never"
+        },
+        {
+          "command": "abapfs.refreshAbapGit",
+          "when": "hideCommands.never"
+        },
+        {
           "command": "abapfs.createRepo",
           "when": "hideCommands.never"
         },
@@ -507,12 +531,17 @@
         {
           "command": "abapfs.unlinkRepo",
           "group": "inline",
-          "when": "viewItem == repository"
+          "when": "viewItem == repository || viewItem == repository_push"
         },
         {
           "command": "abapfs.pullRepo",
           "group": "inline",
-          "when": "view == abapfs.abapgit && viewItem == repository"
+          "when": "view == abapfs.abapgit && viewItem == repository || view == abapfs.abapgit && viewItem == repository_push"
+        },
+        {
+          "command": "abapfs.registerSCM",
+          "group": "inline",
+          "when": "view == abapfs.abapgit &&  viewItem == repository_push"
         },
         {
           "command": "abapfs.createRepo",
@@ -522,12 +551,12 @@
         {
           "command": "abapfs.revealPackage",
           "group": "context",
-          "when": "view == abapfs.abapgit && viewItem == repository"
+          "when": "view == abapfs.abapgit && viewItem == repository || view == abapfs.abapgit && viewItem == repository_push "
         },
         {
           "command": "abapfs.openRepo",
           "group": "context",
-          "when": "view == abapfs.abapgit && viewItem == repository"
+          "when": "view == abapfs.abapgit && viewItem == repository || view == abapfs.abapgit && viewItem == repository_push"
         }
       ],
       "view/title": [
@@ -649,17 +678,20 @@
                   "default": "/secrets/myCA.pem"
                 },
                 "oauth": {
-                  "clientId": {
-                    "type": "string",
-                    "title": "Client ID"
-                  },
-                  "clientSecret": {
-                    "type": "string",
-                    "title": "Client secret"
-                  },
-                  "loginUrl": {
-                    "type": "string",
-                    "title": "Login Url"
+                  "type": "object",
+                  "properties": {
+                    "clientId": {
+                      "type": "string",
+                      "title": "Client ID"
+                    },
+                    "clientSecret": {
+                      "type": "string",
+                      "title": "Client secret"
+                    },
+                    "loginUrl": {
+                      "type": "string",
+                      "title": "Login Url"
+                    }
                   }
                 },
                 "trace": {

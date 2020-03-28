@@ -30,7 +30,7 @@ import { isAbapNode } from "../fs/AbapNode"
 import { log } from "../helpers/logger"
 import { FsProvider } from "../fs/FsProvider"
 
-const EXTREGEX = /(\.[^\/]+)$/
+const EXTREGEX = /(\.[^\/^\.]+)$/
 const EMPTYFILE = "empty"
 
 const ADTREVISION = "adt_revision"
@@ -188,9 +188,11 @@ export class AbapRevision
     const server = getServer(uri.authority)
     const source: string = revUri.path.match(ADTURIPATTERN)
       ? await server.client.getObjectSource(revUri.path.replace(EXTREGEX, ""))
-      : (await FsProvider.get().readFile(
-          uri.with({ query: "", scheme: ADTSCHEME })
-        )).toString()
+      : (
+          await FsProvider.get().readFile(
+            uri.with({ query: "", scheme: ADTSCHEME })
+          )
+        ).toString()
     if (uri.query === "normalize=true") return normalizeAbap(source)
     return source
   }

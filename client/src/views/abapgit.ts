@@ -25,6 +25,7 @@ import {
   dependFieldReplacer
 } from "../helpers/functions"
 import { simpleInputBox, quickPick } from "../helpers/vscodefunctions"
+import { addRepo } from "../scm/abapGitRevision"
 
 const confirm = "Confirm"
 interface AbapGitItem extends TreeItem {
@@ -57,11 +58,13 @@ class AbapGit {
   }
 
   private gitItem(repo: GitRepo): AbapGitItem {
+    const canpush = !!repo.links.find(l => l.type === "push_link")
+    const contextValue = canpush ? "repository_push" : "repository"
     return {
       repo,
       id: v1(),
       label: repo.sapPackage,
-      contextValue: "repository",
+      contextValue,
       description: repo.url,
       collapsibleState: TreeItemCollapsibleState.None
     }
@@ -145,6 +148,11 @@ class AbapGitProvider implements TreeDataProvider<TreeItem> {
 
   private openRepo(repoItem: AbapGitItem) {
     env.openExternal(Uri.parse(repoItem.repo.url))
+  }
+
+  private addScm(repoItem: AbapGitItem) {
+    const server = this.repoServer(repoItem).server.connectionId
+    addRepo(server, repoItem.repo, true)
   }
 
   private confirmPull(pkg: string) {
@@ -303,10 +311,13 @@ class AbapGitProvider implements TreeDataProvider<TreeItem> {
   private static revealCommand(repoItem: AbapGitItem) {
     return AbapGitProvider.get().reveal(repoItem)
   }
-
   @command(AbapFsCommands.agitOpenRepo)
   private static openRepoCommand(repoItem: AbapGitItem) {
     return AbapGitProvider.get().openRepo(repoItem)
+  }
+  @command(AbapFsCommands.agitAddScm)
+  private static addScmCommand(repoItem: AbapGitItem) {
+    return AbapGitProvider.get().addScm(repoItem)
   }
 }
 
