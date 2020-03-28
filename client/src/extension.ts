@@ -26,6 +26,7 @@ import { ClassHierarchyLensProvider } from "./adt/classhierarchy"
 import { registerCommands } from "./commands"
 import { abapGitProvider } from "./views/abapgit"
 import { loadTokens, clearTokens } from "./grantManager"
+import { registerAbapGit } from "./scm/abapGitRevision"
 export let context: ExtensionContext
 
 export function activate(ctx: ExtensionContext) {
@@ -88,6 +89,7 @@ export function activate(ctx: ExtensionContext) {
 
   commands.executeCommand("setContext", "abapfs:extensionActive", true)
   restoreLocks()
+  registerAbapGit(context)
 
   registerCommands(context)
   const elapsed = new Date().getTime() - startTime

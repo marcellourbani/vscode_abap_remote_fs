@@ -578,6 +578,13 @@
           "when": "resourceScheme == adt && editorLangId =~ /abap|cds/ && abapfs:showActivate "
         }
       ],
+      "scm/title": [
+        {
+          "command": "abapfs.refreshAbapGit",
+          "group": "navigation",
+          "when": "scmProvider =~ /abapGit_/"
+        }
+      ],
       "scm/resourceGroup/context": [
         {
           "command": "abapfs.clearScmGroup",

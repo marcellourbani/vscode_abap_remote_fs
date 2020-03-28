@@ -11,12 +11,11 @@ export const flatMap = <T1, T2>(
   arr: T1[],
   cb: (c: T1, idx?: number, arrref?: T1[]) => T2[]
 ) => flat(arr.map(cb))
-
 // given an array of objects returns a map indexed by a property
 // only works if the property is an unique key
-export function ArrayToMap(name: string) {
-  return (arr: any[]): Map<string, any> => {
-    return arr.reduce((map, current: any) => {
+export function ArrayToMap<T>(name: keyof T) {
+  return (arr: T[]): Map<string, T> => {
+    return arr.reduce((map, current: T) => {
       map.set(current[name], current)
       return map
     }, new Map())

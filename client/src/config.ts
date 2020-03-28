@@ -10,13 +10,11 @@ import { ADTClient, createSSLConfig } from "abap-adt-api"
 import { ADTSCHEME } from "./adt/AdtServer"
 import { readFileSync } from "fs"
 import { createProxy } from "method-call-logger"
-// keytar depends on a native module shipped in vscode
-// this loads only the type definitions
-import * as keytarType from "keytar"
 import { mongoApiLogger, mongoHttpLogger } from "./helpers/mongoClient"
 import { cfCodeGrant, loginServer } from "abap_cloud_platform"
 import { delay } from "./helpers/functions"
 import { getToken, setToken } from "./grantManager"
+import { PasswordVault } from "./helpers/externalmodules"
 export interface RemoteConfig extends ClientConfiguration {
   sapGui: {
     disabled: boolean
@@ -39,22 +37,6 @@ const connectedRoots = () => {
   )
   for (const r of roots) rootmap.set(formatKey(r.uri.authority), r)
   return rootmap
-}
-
-// get the module from vscode. This is not an official API, might break at some point
-// this is required because keytar includes a binary we can't include
-// see https://github.com/microsoft/vscode/issues/68738
-function getCodeModule<T>(moduleName: string): T | undefined {
-  // adapted from https://github.com/Microsoft/vscode-pull-request-github/blob/master/src/authentication/keychain.ts
-  // I guess we use eval to load the embedded module at runtime
-  // rather than allowing webpack to bundle it
-  // tslint:disable-next-line: no-eval
-  const vscodeRequire = eval("require")
-  try {
-    return vscodeRequire(moduleName)
-  } catch (err) {
-    return undefined
-  }
 }
 
 const config = (name: string, remote: RemoteConfig) => {
@@ -174,14 +156,13 @@ export function createClient(conf: RemoteConfig) {
   return loggedProxy(client, conf)
 }
 
-const failKeytarCheck = () => Error("Error accessing system secure store")
 export class RemoteManager {
   private static instance: RemoteManager
   private connections = new Map<string, RemoteConfig>()
-  private keytar: typeof keytarType | undefined
+  private vault: PasswordVault
 
   private constructor() {
-    this.keytar = getCodeModule<typeof keytarType>("keytar")
+    this.vault = new PasswordVault()
   }
   public static get = () =>
     RemoteManager.instance || (RemoteManager.instance = new RemoteManager())
@@ -251,9 +232,8 @@ export class RemoteManager {
     userName: string,
     password: string
   ) {
-    if (!this.keytar) throw failKeytarCheck()
     connectionId = formatKey(connectionId)
-    const result = await this.keytar.setPassword(
+    const result = await this.vault.setPassword(
       `vscode.abapfs.${connectionId}`,
       userName,
       password
@@ -264,17 +244,15 @@ export class RemoteManager {
   }
 
   public clearPassword(connectionId: string, userName: string) {
-    if (!this.keytar) throw failKeytarCheck()
-    return this.keytar.deletePassword(
+    return this.vault.deletePassword(
       `vscode.abapfs.${formatKey(connectionId)}`,
       userName
     )
   }
 
   public async getPassword(connectionId: string, userName: string) {
-    if (!this.keytar) throw failKeytarCheck()
     const key = `vscode.abapfs.${formatKey(connectionId)}`
-    const password = await this.keytar.getPassword(key, userName)
+    const password = await this.vault.getPassword(key, userName)
     return password || ""
   }
 

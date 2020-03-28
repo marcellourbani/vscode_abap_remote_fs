@@ -14,7 +14,13 @@ import { AbapClassInclude, isClassInclude } from "./AbapClassInclude"
 import { AbapNode, isAbapNode } from "../../fs/AbapNode"
 import { AbapFunction } from "./AbapFunction"
 import { AbapCds } from "./AbapCds"
-import { Node, ADTClient, NodeStructure } from "abap-adt-api"
+import {
+  Node,
+  ADTClient,
+  NodeStructure,
+  NodeCategory,
+  NodeObjectType
+} from "abap-adt-api"
 import { AbapFunctionGroup } from "./AbapFunctionGroup"
 import { Uri } from "vscode"
 
@@ -87,8 +93,8 @@ export const convertNodes = (
 ) => {
   const nodes = {
     nodes: rawnodes.nodes,
-    categories: ArrayToMap("CATEGORY")(rawnodes.categories),
-    objectTypes: ArrayToMap("OBJECT_TYPE")(rawnodes.objectTypes)
+    categories: ArrayToMap<NodeCategory>("CATEGORY")(rawnodes.categories),
+    objectTypes: ArrayToMap<NodeObjectType>("OBJECT_TYPE")(rawnodes.objectTypes)
   }
   const filtered = filter ? filter(nodes) : nodes
   const components = aggregateNodes(filtered, type)
