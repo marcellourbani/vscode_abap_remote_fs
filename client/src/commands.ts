@@ -15,7 +15,7 @@ import {
   getOrCreateServer
 } from "./adt/AdtServer"
 import { pickAdtRoot, RemoteManager } from "./config"
-import { log } from "./helpers/logger"
+import { log } from "./lib"
 import { FavouritesProvider, FavItem } from "./views/favourites"
 import { findEditor } from "./langClient"
 import { showHideActivate } from "./listeners"
@@ -93,7 +93,13 @@ export const AbapFsCommands = {
   agitCreate: "abapfs.createRepo",
   agitUnlink: "abapfs.unlinkRepo",
   agitAddScm: "abapfs.registerSCM",
-  agitRefresh: "abapfs.refreshAbapGit"
+  agitRefresh: "abapfs.refreshAbapGit",
+  agitPullScm: "abapfs.pullAbapGit",
+  agitPush: "abapfs.pushAbapGit",
+  agitAdd: "abapfs.addAbapGit",
+  agitRemove: "abapfs.removeAbapGit",
+  agitresetPwd: "abapfs.resetAbapGitPwd",
+  agitBranch: "abapfs.switchBranch"
 }
 
 function currentUri() {

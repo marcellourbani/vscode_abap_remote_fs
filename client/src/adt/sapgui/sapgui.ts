@@ -2,7 +2,7 @@ import { AdtServer } from "./../AdtServer"
 import { RemoteConfig } from "../../config"
 import { file } from "tmp-promise"
 import { writeAsync } from "fs-jetpack"
-import { log } from "../../helpers/logger"
+import { log } from "../../lib"
 import { closeSync } from "fs"
 import opn = require("open")
 import { window, ProgressLocation } from "vscode"
@@ -10,7 +10,7 @@ import { window, ProgressLocation } from "vscode"
 export interface SapGuiCommand {
   type: "Transaction" | "Report" | "SystemCommand"
   command: string
-  parameters?: Array<{ name: string; value: string }>
+  parameters?: { name: string; value: string }[]
   okCode?: string
 }
 interface ServerGuiConfig {
@@ -123,9 +123,7 @@ export class SapGui {
     const c = this.config
     const routerString = this.config.routerString.replace(/\/.\/$/, "")
     if (isLoadBalancing(c)) {
-      return `${routerString}/M/${c.messageServer}/S/${c.messageServerPort}/G/${
-        c.group
-      }`
+      return `${routerString}/M/${c.messageServer}/S/${c.messageServerPort}/G/${c.group}`
     } else {
       return `${routerString}/H/${c.server}/S/32${c.systemNumber}`
     }

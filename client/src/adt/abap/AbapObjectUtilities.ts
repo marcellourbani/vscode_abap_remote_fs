@@ -6,7 +6,7 @@ import {
   AbapXmlObject,
   NodeStructureMapped
 } from "./AbapObject"
-import { selectMap, ArrayToMap } from "../../helpers/functions"
+import { selectMap, ArrayToMap } from "../../lib"
 import { AbapProgram } from "./AbapProgram"
 import { AbapClass } from "./AbapClass"
 import { AbapInclude } from "./AbapInclude"

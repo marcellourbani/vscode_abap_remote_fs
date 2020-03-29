@@ -9,7 +9,7 @@ import {
   commands
 } from "vscode"
 import { fromUri } from "../AdtServer"
-import { parts, toInt, mapGet } from "../../helpers/functions"
+import { parts, toInt, mapGet } from "../../lib"
 import {
   UnitTestSeverity,
   UnitTestAlert,
@@ -113,9 +113,7 @@ export async function abapUnit(uri: Uri) {
     const diagnostics = mapGet(results.diag, uri.toString(), [])
     diagnostics.unshift(
       createDiag(
-        `ABAP Unit results:${results.classes} test classes ${
-          results.methods
-        } methods ${results.failed} failed`,
+        `ABAP Unit results:${results.classes} test classes ${results.methods} methods ${results.failed} failed`,
         0,
         DiagnosticSeverity.Information
       )

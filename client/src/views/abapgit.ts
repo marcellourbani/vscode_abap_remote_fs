@@ -18,14 +18,14 @@ import { v1 } from "uuid"
 import { command, AbapFsCommands } from "../commands"
 import { PACKAGE } from "../adt/operations/AdtObjectCreator"
 import { selectTransport } from "../adt/AdtTransports"
-import { log } from "../helpers/logger"
 import {
   chainTaskTransformers,
   fieldReplacer,
-  dependFieldReplacer
-} from "../helpers/functions"
-import { simpleInputBox, quickPick } from "../helpers/vscodefunctions"
-import { addRepo } from "../scm/abapGitRevision"
+  dependFieldReplacer,
+  log
+} from "../lib"
+import { simpleInputBox, quickPick } from "../lib"
+import { addRepo } from "../scm/abapGit"
 
 const confirm = "Confirm"
 interface AbapGitItem extends TreeItem {

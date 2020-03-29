@@ -13,7 +13,7 @@ import {
   QuickPickItem,
   ProgressLocation
 } from "vscode"
-import { asyncCache, cache } from "../helpers/functions"
+import { asyncCache, cache } from "../lib"
 
 const ok = (type: string, name: string) =>
   `${type.toUpperCase()} ${name.toUpperCase()}`

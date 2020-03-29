@@ -1,6 +1,6 @@
 import { window } from "vscode"
 import { ADTClient } from "abap-adt-api"
-import { fieldOrder } from "../helpers/functions"
+import { fieldOrder } from "../lib"
 
 export interface TransportSelection {
   cancelled: boolean

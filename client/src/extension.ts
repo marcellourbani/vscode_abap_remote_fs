@@ -15,8 +15,8 @@ import {
   documentOpenListener,
   documentWillSave
 } from "./listeners"
-import { disconnect, ADTSCHEME, getOrCreateServer } from "./adt/AdtServer"
-import { log } from "./helpers/logger"
+import { disconnect, ADTSCHEME } from "./adt/AdtServer"
+import { log } from "./lib"
 import { client, LanguageCommands } from "./langClient"
 import { restoreLocks, LockManager } from "./adt/operations/LockManager"
 import { registerRevisionModel } from "./scm/abaprevision"
@@ -26,7 +26,7 @@ import { ClassHierarchyLensProvider } from "./adt/classhierarchy"
 import { registerCommands } from "./commands"
 import { abapGitProvider } from "./views/abapgit"
 import { loadTokens, clearTokens } from "./grantManager"
-import { registerAbapGit } from "./scm/abapGitRevision"
+import { registerAbapGit } from "./scm/abapGit"
 export let context: ExtensionContext
 
 export function activate(ctx: ExtensionContext) {

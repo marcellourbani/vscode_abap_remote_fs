@@ -10,7 +10,7 @@ import {
   FileStat,
   FileType
 } from "vscode"
-import { log } from "../helpers/logger"
+import { log } from "../lib"
 
 export class FsProvider implements FileSystemProvider {
   private static instance: FsProvider

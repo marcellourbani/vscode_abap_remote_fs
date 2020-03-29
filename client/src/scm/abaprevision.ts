@@ -23,11 +23,10 @@ import {
 } from "vscode"
 import { Revision, classIncludes } from "abap-adt-api"
 import { command, AbapFsCommands } from "../commands"
-import { parts } from "../helpers/functions"
 import { isClassInclude } from "../adt/abap/AbapClassInclude"
 import { NodePath } from "../adt/abap/AbapObjectUtilities"
 import { isAbapNode } from "../fs/AbapNode"
-import { log } from "../helpers/logger"
+import { log, parts } from "../lib"
 import { FsProvider } from "../fs/FsProvider"
 
 const EXTREGEX = /(\.[^\/^\.]+)$/

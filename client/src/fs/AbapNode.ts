@@ -3,7 +3,7 @@ import { FileStat, FileType, FileSystemError } from "vscode"
 import { aggregateNodes } from "../adt/abap/AbapObjectUtilities"
 import { AbapObject, AbapNodeComponentByCategory } from "../adt/abap/AbapObject"
 import { MetaFolder } from "./MetaFolder"
-import { flatMap, pick } from "../helpers/functions"
+import { flatMap, pick } from "../lib"
 
 export const dummy = () => !!aggregateNodes // hack to fix circular dependency issue
 

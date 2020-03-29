@@ -50,7 +50,7 @@
   },
   "devDependencies": {
     "@types/mocha": "^7.0.2",
-    "@types/node": "^13.9.1",
+    "@types/node": "^13.9.5",
     "concurrently": "^5.1.0",
     "rimraf": "^3.0.2",
     "tslint": "^6.1.0",
@@ -180,6 +180,42 @@
           "dark": "client/images/dark/icon-refresh.svg",
           "light": "client/images/light/icon-refresh.svg"
         }
+      },
+      {
+        "command": "abapfs.pushAbapGit",
+        "title": "Push to current branch",
+        "icon": {
+          "dark": "client/images/dark/check.svg",
+          "light": "client/images/light/check.svg"
+        }
+      },
+      {
+        "command": "abapfs.pullAbapGit",
+        "title": "Pull from current branch (overwrites all changes)",
+        "icon": {
+          "dark": "client/images/dark/icon-pull.svg",
+          "light": "client/images/light/icon-pull.svg"
+        }
+      },
+      {
+        "command": "abapfs.addAbapGit",
+        "title": "Refresh repo contents",
+        "icon": {
+          "dark": "client/images/dark/icon-pull.svg",
+          "light": "client/images/light/icon-pull.svg"
+        }
+      },
+      {
+        "command": "abapfs.removeAbapGit",
+        "title": "Refresh repo contents",
+        "icon": {
+          "dark": "client/images/dark/icon-pull.svg",
+          "light": "client/images/light/icon-pull.svg"
+        }
+      },
+      {
+        "command": "abapfs.resetAbapGitPwd",
+        "title": "abapGit password reset"
       },
       {
         "command": "abapfs.execute",
@@ -397,6 +433,22 @@
           "when": "hideCommands.never"
         },
         {
+          "command": "abapfs.pushAbapGit",
+          "when": "hideCommands.never"
+        },
+        {
+          "command": "abapfs.pullAbapGit",
+          "when": "hideCommands.never"
+        },
+        {
+          "command": "abapfs.addAbapGit",
+          "when": "hideCommands.never"
+        },
+        {
+          "command": "abapfs.removeAbapGit",
+          "when": "hideCommands.never"
+        },
+        {
           "command": "abapfs.createRepo",
           "when": "hideCommands.never"
         },
@@ -583,6 +635,16 @@
           "command": "abapfs.refreshAbapGit",
           "group": "navigation",
           "when": "scmProvider =~ /abapGit_/"
+        },
+        {
+          "command": "abapfs.pushAbapGit",
+          "group": "navigation",
+          "when": "scmProvider =~ /abapGit_/"
+        },
+        {
+          "command": "abapfs.pullAbapGit",
+          "group": "navigation",
+          "when": "scmProvider =~ /abapGit_/"
         }
       ],
       "scm/resourceGroup/context": [
@@ -590,6 +652,16 @@
           "command": "abapfs.clearScmGroup",
           "group": "inline",
           "when": "scmProvider =~ /^ABAP/"
+        },
+        {
+          "command": "abapfs.addAbapGit",
+          "group": "navigation",
+          "when": "scmProvider =~ /abapGit_/ && scmResourceGroup == unstaged"
+        },
+        {
+          "command": "abapfs.removeAbapGit",
+          "group": "navigation",
+          "when": "scmProvider =~ /abapGit_/ && scmResourceGroup == staged"
         }
       ],
       "scm/resourceState/context": [
@@ -607,6 +679,28 @@
           "command": "abapfs.opendiffNormalized",
           "group": "inline",
           "when": "scmProvider =~ /^ABAP/"
+        },
+        {
+          "command": "abapfs.addAbapGit",
+          "group": "navigation",
+          "when": "scmProvider =~ /abapGit_/ && scmResourceGroup == unstaged"
+        },
+        {
+          "command": "abapfs.removeAbapGit",
+          "group": "navigation",
+          "when": "scmProvider =~ /abapGit_/ && scmResourceGroup == staged"
+        }
+      ],
+      "scm/resourceFolder/context": [
+        {
+          "command": "abapfs.addAbapGit",
+          "group": "navigation",
+          "when": "scmProvider =~ /abapGit_/ && scmResourceGroup == unstaged"
+        },
+        {
+          "command": "abapfs.removeAbapGit",
+          "group": "navigation",
+          "when": "scmProvider =~ /abapGit_/ && scmResourceGroup == staged"
         }
       ],
       "explorer/context": [

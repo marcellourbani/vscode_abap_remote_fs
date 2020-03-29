@@ -2,7 +2,6 @@ import { AdtServer } from "./../AdtServer"
 import { getServer, ADTSCHEME } from "../AdtServer"
 import { session_types, AdtLock, isCsrfError } from "abap-adt-api"
 import { AbapObject, TransportStatus } from "../abap/AbapObject"
-import { log } from "../../helpers/logger"
 import {
   window,
   TextDocument,
@@ -14,9 +13,10 @@ import {
   promiseQueue,
   asyncCache,
   cache,
-  createMutex
-} from "../../helpers/functions"
-import { uriName } from "../../helpers/vscodefunctions"
+  createMutex,
+  log,
+  uriName
+} from "../../lib"
 
 const statusBarItem = window.createStatusBarItem(StatusBarAlignment.Right, 100)
 type LockValidator = (l: AdtLock) => Promise<boolean>

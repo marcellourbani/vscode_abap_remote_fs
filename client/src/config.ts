@@ -10,11 +10,9 @@ import { ADTClient, createSSLConfig } from "abap-adt-api"
 import { ADTSCHEME } from "./adt/AdtServer"
 import { readFileSync } from "fs"
 import { createProxy } from "method-call-logger"
-import { mongoApiLogger, mongoHttpLogger } from "./helpers/mongoClient"
 import { cfCodeGrant, loginServer } from "abap_cloud_platform"
-import { delay } from "./helpers/functions"
 import { getToken, setToken } from "./grantManager"
-import { PasswordVault } from "./helpers/externalmodules"
+import { delay, mongoApiLogger, mongoHttpLogger, PasswordVault } from "./lib"
 export interface RemoteConfig extends ClientConfiguration {
   sapGui: {
     disabled: boolean

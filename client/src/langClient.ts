@@ -1,6 +1,6 @@
 import { MainProgram, HttpLogEntry } from "vscode-abap-remote-fs-sharedapi"
 import { AbapObject } from "./adt/abap/AbapObject"
-import { log, channel } from "./helpers/logger"
+import { log, channel, mongoApiLogger, mongoHttpLogger } from "./lib"
 import {
   AbapObjectDetail,
   Methods,
@@ -38,7 +38,6 @@ import { fail } from "assert"
 import { command, AbapFsCommands } from "./commands"
 import { IncludeLensP } from "./adt/operations/IncludeLens"
 import { RemoteManager, futureToken, formatKey } from "./config"
-import { mongoApiLogger, mongoHttpLogger } from "./helpers/mongoClient"
 
 async function getVSCodeUri(req: UriRequest): Promise<StringWrapper> {
   const server = getServer(req.confKey)
