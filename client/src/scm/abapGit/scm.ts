@@ -6,8 +6,13 @@ import {
   Command,
   scm
 } from "vscode"
-import { GitRepo, GitStagingObject, GitStagingFile } from "abap-adt-api"
-import { Cache, mapGet, cache } from "../../lib"
+import {
+  GitRepo,
+  GitStagingObject,
+  GitStagingFile,
+  GitStaging
+} from "abap-adt-api"
+import { Cache, mapGet, cache, log } from "../../lib"
 import { getServer } from "../../adt/AdtServer"
 import { repoCredentials } from "./credentials"
 import { gitUrl } from "./documentProvider"
@@ -18,15 +23,26 @@ import { saveRepos } from "./storage"
 const STAGED = "staged"
 const UNSTAGED = "unstaged"
 const IGNORED = "ignored"
+const GDESC: { [key: string]: string } = {
+  staged: "STAGED CHANGES",
+  unstaged: "CHANGES",
+  ignored: "IGNORED"
+}
 
 export interface ScmData {
   scm: SourceControl
   connId: string
   repo: GitRepo
   groups: Cache<string, SourceControlResourceGroup>
-  loaded: boolean
+  notNew: boolean
+  staging?: GitStaging
   credentials?: { user?: string; password?: string }
 }
+interface AgResState extends SourceControlResourceState {
+  data: ScmData
+}
+const isAgResState = (x: any): x is AgResState =>
+  !!(x?.data?.connId && x.resourceUri)
 
 const scms = new Map<string, ScmData>()
 
@@ -35,10 +51,7 @@ export const scmKey = (connId: string, repoKey: string) =>
 
 export const scmData = (key: string) => scms.get(key)
 
-const resourceState = (
-  data: ScmData,
-  file: GitStagingFile
-): SourceControlResourceState => {
+const resourceState = (data: ScmData, file: GitStagingFile): AgResState => {
   const resourceUri = Uri.parse(`${file.path}${file.name}`)
   const local = file.links.find(l => l.rel.match(/localversion/))
   const remote = file.links.find(l => l.rel.match(/remoteversion/))
@@ -53,7 +66,7 @@ const resourceState = (
         `abapGit#${data.repo.sapPackage} ${file.name} ↔ Local changes`
       ]
     }
-  const state = { resourceUri, command: cmd }
+  const state = { resourceUri, command: cmd, data }
   return state
 }
 
@@ -75,7 +88,8 @@ async function refresh(data: Option<ScmData>) {
   mapState(STAGED, staging.staged)
   mapState(UNSTAGED, staging.unstaged)
   mapState(IGNORED, staging.ignored)
-  data.value.loaded = true
+  data.value.notNew = true
+  data.value.staging = staging
 }
 
 const createScm = (connId: string, repo: GitRepo): ScmData => {
@@ -85,12 +99,12 @@ const createScm = (connId: string, repo: GitRepo): ScmData => {
   )
   gscm.inputBox.placeholder = `Message ${repo.branch_name}`
   const groups = cache((groupKey: string) => {
-    const group = gscm.createResourceGroup(groupKey, groupKey)
+    const group = gscm.createResourceGroup(groupKey, GDESC[groupKey])
     group.hideWhenEmpty = true
     return group
   })
   const loaded = false
-  const rec: ScmData = { scm: gscm, connId, repo, groups, loaded }
+  const rec: ScmData = { scm: gscm, connId, repo, groups, notNew: loaded }
   rec.scm.statusBarCommands = [
     {
       command: AbapFsCommands.agitBranch,
@@ -101,51 +115,84 @@ const createScm = (connId: string, repo: GitRepo): ScmData => {
   return rec
 }
 
-export async function addRepo(connId: string, repo: GitRepo, update = false) {
+export async function addRepo(connId: string, repo: GitRepo, addnew = false) {
   const gitScm = mapGet(scms, scmKey(connId, repo.key), () =>
     createScm(connId, repo)
   )
   gitScm.groups.get(STAGED)
   gitScm.groups.get(UNSTAGED)
   gitScm.groups.get(IGNORED)
-  if (update && !gitScm.loaded)
+  if (!addnew) gitScm.notNew = true
+  if (addnew && !gitScm.notNew)
     await refresh(some(gitScm)).then(() => saveRepos(scms))
   return gitScm
 }
 
-const findSc = (sc: SourceControl) => {
+const fromSC = (sc: SourceControl) => {
   const candidates = [...scms.values()]
   const found = sc ? candidates.find(s => s.scm === sc) : candidates[0]
   return fromNullable(found)
+}
+const fromData = (group: SourceControlResourceGroup) =>
+  [...scms.values()].find(s => [...s.groups].includes(group))
+
+const transfer = (
+  source: SourceControlResourceGroup,
+  target: SourceControlResourceGroup,
+  items: SourceControlResourceState[]
+) => {
+  target.resourceStates = [...target.resourceStates, ...items]
+  source.resourceStates = source.resourceStates.filter(x => !items.includes(x))
 }
 
 class GitCommands {
   @command(AbapFsCommands.agitRefresh)
   private static async refreshCmd(sc: SourceControl) {
-    return refresh(findSc(sc))
+    return refresh(fromSC(sc))
   }
   @command(AbapFsCommands.agitPush)
-  private static async pushCmd(gitScm: SourceControl) {
-    // tslint:disable-next-line:no-console
-    console.log(gitScm)
+  private static async pushCmd(sc: SourceControl) {
+    log("not yet implemented...")
   }
   @command(AbapFsCommands.agitPullScm)
   private static async pullCmd(gitScm: SourceControl) {
-    // tslint:disable-next-line:no-console
-    console.log(gitScm)
+    log("not yet implemented...")
   }
+
   @command(AbapFsCommands.agitAdd)
-  private static async addCmd(gitScm: SourceControl) {
-    // tslint:disable-next-line:no-console
-    console.log(gitScm)
+  private static async addCmd(
+    ...args: AgResState[] | SourceControlResourceGroup[]
+  ) {
+    const unstaged = args[0]
+    if (isAgResState(unstaged)) {
+      const data = unstaged.data
+      const states = args as AgResState[]
+      transfer(data.groups.get(UNSTAGED), data.groups.get(STAGED), states)
+    } else {
+      const data = fromData(unstaged)
+      if (data)
+        transfer(unstaged, data.groups.get(STAGED), unstaged.resourceStates)
+    }
   }
+
   @command(AbapFsCommands.agitRemove)
-  private static async removeCmd(gitScm: SourceControl) {
-    // tslint:disable-next-line:no-console
-    console.log(gitScm)
+  private static async removeCmd(
+    ...args: AgResState[] | SourceControlResourceGroup[]
+  ) {
+    const staged = args[0]
+    if (isAgResState(staged)) {
+      const data = staged.data
+      const states = args as AgResState[]
+      transfer(data.groups.get(STAGED), data.groups.get(UNSTAGED), states)
+    } else {
+      const data = fromData(staged)
+      if (data)
+        transfer(staged, data.groups.get(UNSTAGED), staged.resourceStates)
+    }
   }
+
   @command(AbapFsCommands.agitresetPwd)
   private static async resetCmd() {
-    // console.log(gitScm)
+    log("not yet implemented...")
   }
 }

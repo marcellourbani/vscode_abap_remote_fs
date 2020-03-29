@@ -8,12 +8,14 @@ Format based on [Keep a Changelog](http://keepachangelog.com/)
 
 ### Added
 
-- stage abapGit repo
+- stage abapGit repos
+- remember oauth tokens
 
 ### Fixed
 
 - reveal abapGit repo without transport details
 - error starting language client
+- refactored login code and functions
 
 ## [0.7.18] 2020-03-23
 
