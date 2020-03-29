@@ -1,4 +1,3 @@
-import { Token } from "client-oauth2"
 import {
   ClientConfiguration,
   clientTraceUrl,
@@ -10,9 +9,8 @@ import { ADTClient, createSSLConfig } from "abap-adt-api"
 import { ADTSCHEME } from "./adt/AdtServer"
 import { readFileSync } from "fs"
 import { createProxy } from "method-call-logger"
-import { cfCodeGrant, loginServer } from "abap_cloud_platform"
-import { getToken, setToken } from "./grantManager"
-import { delay, mongoApiLogger, mongoHttpLogger, PasswordVault } from "./lib"
+import { mongoApiLogger, mongoHttpLogger, PasswordVault } from "./lib"
+import { oauthLogin } from "./oauth"
 export interface RemoteConfig extends ClientConfiguration {
   sapGui: {
     disabled: boolean
@@ -107,42 +105,12 @@ const httpLogger = (conf: RemoteConfig) => {
   return mongoHttpLogger(conf.name, SOURCE_CLIENT)
 }
 
-const pendingGrants = new Map<string, Promise<Token>>()
-export const futureToken = async (connId: string) => {
-  const oldGrant = getToken(connId)
-  if (oldGrant) return oldGrant.accessToken
-  const pending = pendingGrants.get(connId)
-  if (pending) return pending.then(t => t.accessToken)
-}
-function createOauthLogin(conf: RemoteConfig) {
-  if (!conf.oauth) return
-  const { clientId, clientSecret, loginUrl } = conf.oauth
-  return async () => {
-    const connId = formatKey(conf.name)
-    const oldGrant = getToken(connId)
-    if (oldGrant) return Promise.resolve(oldGrant.accessToken)
-
-    const server = loginServer()
-    const grant = cfCodeGrant(loginUrl, clientId, clientSecret, server)
-    const timeout = delay(60000).then(() => {
-      server.server.close()
-      throw new Error("User logon timed out")
-    })
-    const pendingGrant = Promise.race([grant, timeout])
-    pendingGrants.set(formatKey(connId), pendingGrant)
-    const result = await pendingGrant
-    if (result) setToken(connId, result)
-    pendingGrants.delete(formatKey(connId))
-    return result.accessToken
-  }
-}
-
 export function createClient(conf: RemoteConfig) {
   const sslconf = conf.url.match(/https:/i)
     ? createSSLConfig(conf.allowSelfSigned, conf.customCA)
     : {}
   sslconf.debugCallback = httpLogger(conf)
-  const password = createOauthLogin(conf) || conf.password
+  const password = oauthLogin(conf) || conf.password
   const client = new ADTClient(
     conf.url,
     conf.username,

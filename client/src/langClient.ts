@@ -37,7 +37,8 @@ import { FixProposal } from "abap-adt-api"
 import { fail } from "assert"
 import { command, AbapFsCommands } from "./commands"
 import { IncludeLensP } from "./adt/operations/IncludeLens"
-import { RemoteManager, futureToken, formatKey } from "./config"
+import { RemoteManager, formatKey } from "./config"
+import { futureToken } from "./oauth"
 
 async function getVSCodeUri(req: UriRequest): Promise<StringWrapper> {
   const server = getServer(req.confKey)

@@ -1,5 +1,5 @@
 import {
-  delay,
+  after,
   chainTaskTransformers,
   fieldReplacer,
   dependFieldReplacer
@@ -25,7 +25,7 @@ const fakeselect = <T2>(
     } catch (error) {
       return left(error)
     }
-  return delay(1).then(() => (x ? right(x as string) : left(none)))
+  return after(1).then(() => (x ? right(x as string) : left(none)))
 }
 
 function dependentInput<T1 extends Record<string, string>, T2>(

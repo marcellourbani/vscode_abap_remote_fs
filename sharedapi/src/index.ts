@@ -40,6 +40,7 @@ export interface ClientConfiguration {
     clientId: string
     clientSecret: string
     loginUrl: string
+    saveCredentials?: boolean
   }
   trace?: {
     mongoUrl: string

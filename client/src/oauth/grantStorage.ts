@@ -1,6 +1,5 @@
 import { Token } from "client-oauth2"
-import { RemoteConfig, formatKey } from "./config"
-import { context } from "./extension"
+import { context } from "../extension"
 
 export interface TokenData {
   tokenType: string
@@ -11,7 +10,7 @@ export interface TokenData {
 const KEY = "oauth_grants"
 const tokens = new Map<string, TokenData>()
 
-const strip = (t: TokenData) => {
+export const strip = (t: TokenData): TokenData => {
   const { accessToken, refreshToken, tokenType } = t
   return { accessToken, refreshToken, tokenType }
 }

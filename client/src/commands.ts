@@ -26,7 +26,7 @@ import { LockManager } from "./adt/operations/LockManager"
 import { IncludeLensP } from "./adt/operations/IncludeLens"
 import { runInSapGui } from "./adt/sapgui/sapgui"
 import { isAbapNode } from "./fs/AbapNode"
-import { storeTokens } from "./grantManager"
+import { storeTokens } from "./oauth"
 
 const ABAPDOC = "ABAPDOC"
 const abapcmds: {

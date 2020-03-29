@@ -232,7 +232,7 @@ export const debounce = <K, R>(frequency: number, cb: (x: K) => R) => {
   }
 }
 
-export const delay = (time: number) =>
+export const after = (time: number) =>
   new Promise(resolve => setTimeout(resolve, time))
 
 type leftType = Error | typeof none

@@ -25,7 +25,7 @@ import { IncludeLensP } from "./adt/operations/IncludeLens"
 import { ClassHierarchyLensProvider } from "./adt/classhierarchy"
 import { registerCommands } from "./commands"
 import { abapGitProvider } from "./views/abapgit"
-import { loadTokens, clearTokens } from "./grantManager"
+import { loadTokens, clearTokens } from "./oauth"
 import { registerAbapGit } from "./scm/abapGit"
 export let context: ExtensionContext
 
