@@ -7,7 +7,8 @@ import {
   CancellationToken,
   ProgressLocation,
   QuickPickItem,
-  QuickPickOptions
+  QuickPickOptions,
+  Memento
 } from "vscode"
 import { none, fromNullable, None } from "fp-ts/lib/Option"
 import { isFn, isUnDefined } from "./functions"
@@ -91,5 +92,26 @@ export function quickPick(
     if (selection !== undefined)
       return right(projector ? projector(selection) : selection)
     return left(none)
+  }
+}
+
+export const createStore = <T>(name: string, store: Memento): Memento => {
+  let _map: Map<string, T>
+  const load = () => {
+    if (!_map) {
+      _map = new Map(store.get(name) || [])
+    }
+  }
+  return {
+    get: (key: string, defValue?: T) => {
+      load()
+      return _map.get(key) || defValue
+    },
+    update: async (key: string, value: T) => {
+      load()
+      if (_map.get(key) === value) return
+      _map.set(key, value)
+      return store.update(name, [..._map])
+    }
   }
 }

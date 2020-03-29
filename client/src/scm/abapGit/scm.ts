@@ -14,6 +14,7 @@ import { getServer, getOrCreateServer } from "../../adt/AdtServer"
 import { repoCredentials } from "./credentials"
 import { gitUrl } from "./documentProvider"
 import { AbapFsCommands, command } from "../../commands"
+import { isNone, fromNullable, Option, some } from "fp-ts/lib/Option"
 
 const STAGED = "staged"
 const UNSTAGED = "unstaged"
@@ -63,22 +64,25 @@ const resourceState = (
   return state
 }
 
-async function refresh(gitScm: ScmData) {
-  const server = getServer(gitScm.connId)
-  const { user, password } = await repoCredentials(gitScm)
-  const staging = await server.client.stageRepo(gitScm.repo, user, password)
+async function refresh(data: Option<ScmData>) {
+  if (isNone(data)) return
+  const server = getServer(data.value.connId)
+  const credentials = await repoCredentials(data.value)
+  if (isNone(credentials)) return
+  const { user, password } = await credentials.value
+  const staging = await server.client.stageRepo(data.value.repo, user, password)
   const mapState = (key: string, objs: GitStagingObject[]) => {
-    const group = gitScm.groups.get(key)
+    const group = data.value.groups.get(key)
     const state: SourceControlResourceState[] = []
     for (const obj of objs)
       for (const file of obj.abapGitFiles)
-        state.push(resourceState(gitScm, file))
+        state.push(resourceState(data.value, file))
     group.resourceStates = state
   }
   mapState(STAGED, staging.staged)
   mapState(UNSTAGED, staging.unstaged)
   mapState(IGNORED, staging.ignored)
-  gitScm.loaded = true
+  data.value.loaded = true
 }
 
 const createScm = (connId: string, repo: GitRepo): ScmData => {
@@ -111,7 +115,7 @@ export async function addRepo(connId: string, repo: GitRepo, update = false) {
   gitScm.groups.get(STAGED)
   gitScm.groups.get(UNSTAGED)
   gitScm.groups.get(IGNORED)
-  if (update && !gitScm.loaded) await refresh(gitScm).then(saveRepos)
+  if (update && !gitScm.loaded) await refresh(some(gitScm)).then(saveRepos)
   return gitScm
 }
 
@@ -119,6 +123,8 @@ const connRepos = async (connId: string) =>
   getOrCreateServer(connId).then(server =>
     server.client.gitRepos().then(ArrayToMap("key"))
   )
+
+let storage: Memento
 
 const loadRepos = async () => {
   const stored: StoredRepo[] = storage.get(REPOSSTORAGEKEY, [])
@@ -148,26 +154,29 @@ const saveRepos = () => {
   }
 }
 
-let storage: Memento
+const findSc = (sc: SourceControl) => {
+  const candidates = [...scms.values()]
+  const found = sc ? candidates.find(s => s.scm === sc) : candidates[0]
+  return fromNullable(found)
+}
 
 class GitCommands {
   @command(AbapFsCommands.agitRefresh)
-  private static async refreshCmd(gitScm: ScmData) {
-    if (gitScm) return refresh(gitScm)
-    else for (const grepo of scms.values()) await refresh(grepo)
+  private static async refreshCmd(sc: SourceControl) {
+    return refresh(findSc(sc))
   }
   @command(AbapFsCommands.agitPush)
-  private static async pushCmd(gitScm: ScmData) {
+  private static async pushCmd(gitScm: SourceControl) {
     // tslint:disable-next-line:no-console
     console.log(gitScm)
   }
   @command(AbapFsCommands.agitPullScm)
-  private static async pullCmd(gitScm: ScmData) {
+  private static async pullCmd(gitScm: SourceControl) {
     // tslint:disable-next-line:no-console
     console.log(gitScm)
   }
   @command(AbapFsCommands.agitresetPwd)
-  private static async resetCmd(gitScm: ScmData) {
+  private static async resetCmd(gitScm: SourceControl) {
     gitScm = gitScm || (scms.size === 1 && scms.values().next())
     // tslint:disable-next-line:no-console
     console.log(gitScm)
