@@ -1,1 +1,2 @@
-export { registerAbapGit, addRepo } from "./scm"
+export { addRepo } from "./scm"
+export { registerAbapGit } from "./storage"

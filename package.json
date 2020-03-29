@@ -199,18 +199,18 @@
       },
       {
         "command": "abapfs.addAbapGit",
-        "title": "Refresh repo contents",
+        "title": "Stage changes",
         "icon": {
-          "dark": "client/images/dark/icon-pull.svg",
-          "light": "client/images/light/icon-pull.svg"
+          "dark": "client/images/dark/add.svg",
+          "light": "client/images/light/add.svg"
         }
       },
       {
         "command": "abapfs.removeAbapGit",
-        "title": "Refresh repo contents",
+        "title": "Unstage changes",
         "icon": {
-          "dark": "client/images/dark/icon-pull.svg",
-          "light": "client/images/light/icon-pull.svg"
+          "dark": "client/images/dark/remove.svg",
+          "light": "client/images/light/remove.svg"
         }
       },
       {
@@ -655,12 +655,12 @@
         },
         {
           "command": "abapfs.addAbapGit",
-          "group": "navigation",
+          "group": "inline",
           "when": "scmProvider =~ /abapGit_/ && scmResourceGroup == unstaged"
         },
         {
           "command": "abapfs.removeAbapGit",
-          "group": "navigation",
+          "group": "inline",
           "when": "scmProvider =~ /abapGit_/ && scmResourceGroup == staged"
         }
       ],
@@ -682,24 +682,24 @@
         },
         {
           "command": "abapfs.addAbapGit",
-          "group": "navigation",
+          "group": "inline",
           "when": "scmProvider =~ /abapGit_/ && scmResourceGroup == unstaged"
         },
         {
           "command": "abapfs.removeAbapGit",
-          "group": "navigation",
+          "group": "inline",
           "when": "scmProvider =~ /abapGit_/ && scmResourceGroup == staged"
         }
       ],
       "scm/resourceFolder/context": [
         {
           "command": "abapfs.addAbapGit",
-          "group": "navigation",
+          "group": "inline",
           "when": "scmProvider =~ /abapGit_/ && scmResourceGroup == unstaged"
         },
         {
           "command": "abapfs.removeAbapGit",
-          "group": "navigation",
+          "group": "inline",
           "when": "scmProvider =~ /abapGit_/ && scmResourceGroup == staged"
         }
       ],
@@ -792,8 +792,17 @@
                     "loginUrl": {
                       "type": "string",
                       "title": "Login Url"
+                    },
+                    "saveCredentials": {
+                      "type": "boolean",
+                      "title": "Save oauth tokens"
                     }
-                  }
+                  },
+                  "required": [
+                    "clientId",
+                    "clentSecret",
+                    "loginUrl"
+                  ]
                 },
                 "trace": {
                   "type": "object",

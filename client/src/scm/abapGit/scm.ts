@@ -4,22 +4,20 @@ import {
   SourceControlResourceState,
   Uri,
   Command,
-  Memento,
-  scm,
-  ExtensionContext
+  scm
 } from "vscode"
 import { GitRepo, GitStagingObject, GitStagingFile } from "abap-adt-api"
-import { Cache, mapGet, cache, ArrayToMap } from "../../lib"
-import { getServer, getOrCreateServer } from "../../adt/AdtServer"
+import { Cache, mapGet, cache } from "../../lib"
+import { getServer } from "../../adt/AdtServer"
 import { repoCredentials } from "./credentials"
 import { gitUrl } from "./documentProvider"
 import { AbapFsCommands, command } from "../../commands"
 import { isNone, fromNullable, Option, some } from "fp-ts/lib/Option"
+import { saveRepos } from "./storage"
 
 const STAGED = "staged"
 const UNSTAGED = "unstaged"
 const IGNORED = "ignored"
-const REPOSSTORAGEKEY = "abapGitRepos"
 
 export interface ScmData {
   scm: SourceControl
@@ -30,11 +28,6 @@ export interface ScmData {
   credentials?: { user?: string; password?: string }
 }
 
-interface StoredRepo {
-  connId: string
-  repoKey: string
-  user?: string
-}
 const scms = new Map<string, ScmData>()
 
 export const scmKey = (connId: string, repoKey: string) =>
@@ -115,43 +108,9 @@ export async function addRepo(connId: string, repo: GitRepo, update = false) {
   gitScm.groups.get(STAGED)
   gitScm.groups.get(UNSTAGED)
   gitScm.groups.get(IGNORED)
-  if (update && !gitScm.loaded) await refresh(some(gitScm)).then(saveRepos)
+  if (update && !gitScm.loaded)
+    await refresh(some(gitScm)).then(() => saveRepos(scms))
   return gitScm
-}
-
-const connRepos = async (connId: string) =>
-  getOrCreateServer(connId).then(server =>
-    server.client.gitRepos().then(ArrayToMap("key"))
-  )
-
-let storage: Memento
-
-const loadRepos = async () => {
-  const stored: StoredRepo[] = storage.get(REPOSSTORAGEKEY, [])
-  const repos = new Map<string, Promise<Map<string, GitRepo>>>()
-  for (const s of stored) {
-    const repM = await mapGet(repos, s.connId, async () => connRepos(s.connId))
-    const repo = repM.get(s.repoKey)
-    if (repo) {
-      const gr = await addRepo(s.connId, repo)
-      if (s.user) gr.credentials = { user: s.user }
-    }
-  }
-}
-
-const saveRepos = () => {
-  if (storage) {
-    return storage.update(
-      REPOSSTORAGEKEY,
-      [...scms.values()].map(
-        (s): StoredRepo => ({
-          connId: s.connId,
-          repoKey: s.repo.key,
-          user: s.credentials?.user
-        })
-      )
-    )
-  }
 }
 
 const findSc = (sc: SourceControl) => {
@@ -175,14 +134,18 @@ class GitCommands {
     // tslint:disable-next-line:no-console
     console.log(gitScm)
   }
-  @command(AbapFsCommands.agitresetPwd)
-  private static async resetCmd(gitScm: SourceControl) {
-    gitScm = gitScm || (scms.size === 1 && scms.values().next())
+  @command(AbapFsCommands.agitAdd)
+  private static async addCmd(gitScm: SourceControl) {
     // tslint:disable-next-line:no-console
     console.log(gitScm)
   }
-}
-export function registerAbapGit(context: ExtensionContext) {
-  storage = context.workspaceState
-  loadRepos()
+  @command(AbapFsCommands.agitRemove)
+  private static async removeCmd(gitScm: SourceControl) {
+    // tslint:disable-next-line:no-console
+    console.log(gitScm)
+  }
+  @command(AbapFsCommands.agitresetPwd)
+  private static async resetCmd() {
+    // console.log(gitScm)
+  }
 }
