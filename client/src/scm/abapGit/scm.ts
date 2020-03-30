@@ -51,9 +51,11 @@ export const scmKey = (connId: string, repoKey: string) =>
   `abapGit_${connId}_${repoKey}`
 
 export const scmData = (key: string) => scms.get(key)
+export const fileUri = (file: GitStagingFile) =>
+  Uri.parse(`${file.path}${file.name}`)
 
 const resourceState = (data: ScmData, file: GitStagingFile): AgResState => {
-  const resourceUri = Uri.parse(`${file.path}${file.name}`)
+  const resourceUri = fileUri(file)
   const local = file.links.find(l => l.rel.match(/localversion/))
   const remote = file.links.find(l => l.rel.match(/remoteversion/))
   let cmd: Command | undefined

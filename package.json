@@ -183,7 +183,7 @@
       },
       {
         "command": "abapfs.pushAbapGit",
-        "title": "Push to current branch",
+        "title": "Commit to current branch",
         "icon": {
           "dark": "client/images/dark/check.svg",
           "light": "client/images/light/check.svg"
@@ -251,7 +251,7 @@
       },
       {
         "command": "abapfs.revealPackage",
-        "title": "Reveal in sidebar"
+        "title": "Reveal in explorer"
       },
       {
         "command": "abapfs.openRepo",
@@ -446,6 +446,10 @@
         },
         {
           "command": "abapfs.removeAbapGit",
+          "when": "hideCommands.never"
+        },
+        {
+          "command": "abapfs.resetAbapGitPwd",
           "when": "hideCommands.never"
         },
         {
@@ -644,7 +648,7 @@
         {
           "command": "abapfs.pullAbapGit",
           "group": "navigation",
-          "when": "scmProvider =~ /abapGit_/"
+          "when": "scmProvider =~ /abapGit_/ && never == bar"
         }
       ],
       "scm/resourceGroup/context": [

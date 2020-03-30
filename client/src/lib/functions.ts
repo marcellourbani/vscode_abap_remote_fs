@@ -1,7 +1,7 @@
 import { isString, isNumber } from "util"
-import { none } from "fp-ts/lib/Option"
+import { none, isSome, isNone } from "fp-ts/lib/Option"
 import { taskEither, TaskEither } from "fp-ts/lib/TaskEither"
-import { right } from "fp-ts/lib/Either"
+import { right, left, either, fromNullable, tryCatch } from "fp-ts/lib/Either"
 
 export const pick = <T, K extends keyof T>(name: K) => (x: T): T[K] => x[name]
 export const flat = <T>(a: T[][]): T[] =>
@@ -236,11 +236,25 @@ export const after = (time: number) =>
   new Promise(resolve => setTimeout(resolve, time))
 
 type leftType = Error | typeof none
+
+type TaskTransformer<T> = (x: T) => TaskEither<leftType, T>
+export const createTaskTransformer = <T>(f: (y: T) => T | Promise<T>) => (
+  x: T
+): TaskEither<leftType, T> => () => {
+  const toProm = async () => f(x)
+  return toProm()
+    .then(right)
+    .catch(left)
+}
+
 export const chainTaskTransformers = <T>(
-  first: (x: T) => TaskEither<leftType, T>,
-  ...rest: ((x: T) => TaskEither<leftType, T>)[]
+  first: TaskTransformer<T>,
+  ...rest: TaskTransformer<T>[]
 ) => (y: T) => rest.reduce(taskEither.chain, first(y))
 
+const c = <T>(x: T): TaskEither<leftType, T> => async () => right(x)
+const d = <T>(f: (x: T) => T) => (z: T): TaskEither<leftType, T> => async () =>
+  right(f(z))
 export function fieldReplacer<T1>(
   field: keyof T1,
   inputTask: TaskEither<leftType, T1[keyof T1]>,
@@ -264,8 +278,8 @@ export function fieldReplacer<T1, T2 extends string, T3 extends Record<T2, T1>>(
   data2?: T3
 ) {
   const createTask = (prev: T3): TaskEither<leftType, T3> => {
+    if (isFn(data) && !data(prev)) return async () => right(prev)
     return taskEither.chain(inputTask, iop => async () => {
-      if (isFn(data) && !data(prev)) return right(prev)
       return right({ ...prev, [field]: iop })
     })
   }
