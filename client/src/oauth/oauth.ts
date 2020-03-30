@@ -2,8 +2,8 @@ import ClientOAuth2, { Token } from "client-oauth2"
 import { getToken, setToken, TokenData, strip } from "./grantStorage"
 import { RemoteConfig, formatKey } from "../config"
 import { loginServer, cfCodeGrant } from "abap_cloud_platform"
-import { after, PasswordVault } from "../lib"
-import { some, tryCatch, toNullable, none, toUndefined } from "fp-ts/lib/Option"
+import { after, PasswordVault, cache } from "../lib"
+import { some, none, toUndefined } from "fp-ts/lib/Option"
 
 const pendingGrants = new Map<string, Promise<Token>>()
 export const futureToken = async (connId: string) => {
@@ -62,7 +62,10 @@ export function oauthLogin(conf: RemoteConfig) {
     let oldGrant = getToken(connId)
     if (saveCredentials && !oldGrant)
       oldGrant = toUndefined(await fromVault(conf))
-    if (oldGrant) return Promise.resolve(oldGrant.accessToken)
+    if (oldGrant) {
+      setToken(connId, oldGrant)
+      return oldGrant.accessToken
+    }
 
     const server = loginServer()
     const grant = cfCodeGrant(loginUrl, clientId, clientSecret, server)
@@ -79,3 +82,4 @@ export function oauthLogin(conf: RemoteConfig) {
     return result.accessToken
   }
 }
+const logins = cache(oauthLogin)
