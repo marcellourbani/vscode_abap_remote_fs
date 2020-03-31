@@ -140,5 +140,3 @@ export const fromSC = (sc: SourceControl) => {
 
 export const fromData = (group: SourceControlResourceGroup) =>
   [...scms.values()].find(s => [...s.groups].includes(group))
-// tslint:disable-next-line:no-unused-expression
-// new GitCommands()

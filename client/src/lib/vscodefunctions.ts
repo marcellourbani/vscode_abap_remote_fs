@@ -10,8 +10,8 @@ import {
   QuickPickOptions,
   Memento
 } from "vscode"
-import { none, fromNullable, None } from "fp-ts/lib/Option"
-import { isFn, isUnDefined } from "./functions"
+import { none, None } from "fp-ts/lib/Option"
+import { isFn } from "./functions"
 import { left, right } from "fp-ts/lib/Either"
 
 export const uriName = (uri: Uri) => uri.path.split("/").pop() || ""
@@ -47,13 +47,15 @@ type simplePickSource =
   | (() => string[])
   | (() => Promise<string[]>)
 
-type recordPickSource =
-  | QuickPickItem[]
-  | Promise<QuickPickItem[]>
-  | (() => QuickPickItem[])
-  | (() => Promise<QuickPickItem[]>)
+type recordPickSource<T extends QuickPickItem> =
+  | T[]
+  | Promise<T[]>
+  | (() => T[])
+  | (() => Promise<T[]>)
 
-type pickSource = simplePickSource | recordPickSource
+type pickSource<T extends QuickPickItem> =
+  | simplePickSource
+  | recordPickSource<T>
 
 export function quickPick(
   items: simplePickSource,
@@ -61,31 +63,31 @@ export function quickPick(
   projector?: undefined,
   token?: CancellationToken
 ): TaskEither<Error | None, string>
-export function quickPick(
-  items: recordPickSource,
+export function quickPick<T extends QuickPickItem>(
+  items: recordPickSource<T>,
   options: QuickPickOptions | undefined,
   projector: (item: QuickPickItem) => string,
   token?: CancellationToken
 ): TaskEither<Error | None, string>
-export function quickPick(
-  items: recordPickSource,
+export function quickPick<T extends QuickPickItem>(
+  items: recordPickSource<T>,
   options?: QuickPickOptions,
   projector?: undefined,
   token?: CancellationToken
-): TaskEither<Error | None, QuickPickItem>
-export function quickPick(
-  items: pickSource,
+): TaskEither<Error | None, T>
+export function quickPick<T extends QuickPickItem>(
+  items: pickSource<T>,
   options?: QuickPickOptions,
   projector?: (item: QuickPickItem) => string,
   token?: CancellationToken
-): TaskEither<Error | None, string | QuickPickItem> {
+): TaskEither<Error | None, string | T> {
   return async () => {
     try {
       items = isFn(items) ? await items() : await items
     } catch (error) {
       return left(error)
     }
-    const pickItems = items as QuickPickItem[] // typescript fails to deal with the overload...
+    const pickItems = items as T[] // typescript fails to deal with the overload...
     if (pickItems.length === 0) return left(none)
 
     const selection = await window.showQuickPick(pickItems, options, token)

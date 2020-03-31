@@ -1,7 +1,7 @@
 import { isString, isNumber } from "util"
-import { none, isSome, isNone } from "fp-ts/lib/Option"
+import { none, isSome, isNone, Option } from "fp-ts/lib/Option"
 import { taskEither, TaskEither } from "fp-ts/lib/TaskEither"
-import { right, left, either, fromNullable, tryCatch } from "fp-ts/lib/Either"
+import { right, left } from "fp-ts/lib/Either"
 
 export const pick = <T, K extends keyof T>(name: K) => (x: T): T[K] => x[name]
 export const flat = <T>(a: T[][]): T[] =>
@@ -236,14 +236,18 @@ export const after = (time: number) =>
   new Promise(resolve => setTimeout(resolve, time))
 
 type leftType = Error | typeof none
+const isOption = <T>(x: any): x is Option<T> => isSome(x) || isNone(x)
 
 type TaskTransformer<T> = (x: T) => TaskEither<leftType, T>
-export const createTaskTransformer = <T>(f: (y: T) => T | Promise<T>) => (
-  x: T
-): TaskEither<leftType, T> => () => {
+export const createTaskTransformer = <T>(
+  f: (y: T) => T | Option<T> | Promise<T | Option<T>>
+) => (x: T): TaskEither<leftType, T> => () => {
   const toProm = async () => f(x)
   return toProm()
-    .then(right)
+    .then((r: T | Option<T>) => {
+      if (isOption(r)) return isNone(r) ? left(r) : right(r.value)
+      else return right(r)
+    })
     .catch(left)
 }
 

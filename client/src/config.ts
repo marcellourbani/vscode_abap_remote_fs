@@ -241,6 +241,9 @@ export class RemoteManager {
     connectionId = formatKey(connectionId)
     const conn = this.remoteList().find(r => connectionId === formatKey(r.name))
     if (!conn) return // no connection found, should never happen
-    return this.clearPassword(connectionId, conn.username)
+    return this.clearPassword(
+      connectionId,
+      conn.oauth?.clientId || conn.username
+    )
   }
 }

@@ -3,7 +3,8 @@ import {
   SourceControlResourceState,
   SourceControl,
   Memento,
-  window
+  window,
+  commands
 } from "vscode"
 import { command, AbapFsCommands } from "../../commands"
 import {
@@ -19,20 +20,24 @@ import {
 } from "./scm"
 import {
   after,
-  log,
   simpleInputBox,
   chainTaskTransformers,
   fieldReplacer,
   withp,
   createTaskTransformer,
   createStore,
-  inputBox
+  inputBox,
+  quickPick
 } from "../../lib"
 import { map, isNone, none, fromEither, isSome } from "fp-ts/lib/Option"
-import { getServer } from "../../adt/AdtServer"
-import { dataCredentials } from "./credentials"
-import { GitStagingFile, GitStaging } from "abap-adt-api"
+import { getServer, fromUri } from "../../adt/AdtServer"
+import { dataCredentials, listPasswords, deletePassword } from "./credentials"
+import { GitStagingFile, GitStaging, objectPath } from "abap-adt-api"
 import { context } from "../../extension"
+import { selectTransport } from "../../adt/AdtTransports"
+import { PACKAGE } from "../../adt/operations/AdtObjectCreator"
+import { pickAdtRoot } from "../../config"
+import { isRight, isLeft } from "fp-ts/lib/Either"
 
 let commitStore: Memento
 const getStore = () => {
@@ -74,7 +79,7 @@ const getCommitDetails = async (data: ScmData) => {
       fieldReplacer("name", getUser),
       fieldReplacer("email", getEmail),
       createTaskTransformer(c => {
-        if (!(c.comment && c.email && c.name)) throw none // will be ignored
+        if (!(c.comment && c.email && c.name)) return none // will be ignored
         getStore().update(repoid, {
           committer: c.name,
           committerEmail: c.email
@@ -158,8 +163,26 @@ export class GitCommands {
   }
   @command(AbapFsCommands.agitPullScm)
   @findSC()
-  private static async pullCmd(data: ScmData) {
-    log("not yet implemented...")
+  private static pullCmd(data: ScmData) {
+    return withp("", async () => {
+      const server = await getServer(data.connId)
+      await dataCredentials(data)
+      const transport = await selectTransport(
+        objectPath(PACKAGE, data.repo.sapPackage),
+        data.repo.sapPackage,
+        server.client
+      )
+      if (transport.cancelled) return
+      const result = server.client.gitPullRepo(
+        data.repo.key,
+        data.repo.branch_name,
+        transport.transport,
+        data.credentials?.user,
+        data.credentials?.password
+      )
+      commands.executeCommand("workbench.files.action.refreshFilesExplorer")
+      return result
+    })
   }
 
   @command(AbapFsCommands.agitAdd)
@@ -196,6 +219,28 @@ export class GitCommands {
 
   @command(AbapFsCommands.agitresetPwd)
   private static async resetCmd() {
-    log("not yet implemented...")
+    const root = await pickAdtRoot()
+    const server = root && fromUri(root.uri)
+    const repos = server && (await server.client.gitRepos())
+    if (!repos || !repos.length) return
+
+    const items = repos.map(repo => ({
+      repo,
+      label: repo.sapPackage,
+      description: repo.url
+    }))
+
+    const item = await quickPick(items, { placeHolder: "Select Repository" })()
+    if (isLeft(item)) return
+    const candidates = await listPasswords(item.right.repo)
+    const user = await quickPick(
+      candidates.map(c => c.account),
+      { placeHolder: "Select Account" }
+    )()
+    if (isRight(user)) await deletePassword(item.right.repo, user.right)
+  }
+  @command(AbapFsCommands.agitBranch)
+  private async switchBranch(...args: any[]) {
+    window.showInformationMessage("Branch switching not implemented yet")
   }
 }

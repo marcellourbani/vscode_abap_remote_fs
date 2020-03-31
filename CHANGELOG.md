@@ -4,7 +4,15 @@ All notable changes to the "vscode-abap-remote-fs" extension will be documented 
 
 Format based on [Keep a Changelog](http://keepachangelog.com/)
 
-## Unreleased
+## [0.7.20] 2020-04-01
+
+## Added
+
+- abapGit pull from scm view
+- reset git password
+- reset tokens for oauth clients
+
+## [0.7.19] 2020-03-31
 
 ### Added
 

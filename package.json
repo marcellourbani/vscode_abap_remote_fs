@@ -2,7 +2,7 @@
   "name": "vscode-abap-remote-fs",
   "displayName": "ABAP remote filesystem",
   "description": "Work on your ABAP code straight from the server",
-  "version": "0.7.19",
+  "version": "0.7.20",
   "publisher": "murbani",
   "license": "MIT",
   "icon": "client/images/abapfs_logo.png",
@@ -91,27 +91,27 @@
     "commands": [
       {
         "command": "abapfs.connect",
-        "title": "ABAPfs Connect to an ABAP system"
+        "title": "AbapFs Connect to an ABAP system"
       },
       {
         "command": "abapfs.search",
-        "title": "ABAPfs Search for object"
+        "title": "AbapFs Search for object"
       },
       {
         "command": "abapfs.create",
-        "title": "ABAPfs Create object"
+        "title": "AbapFs Create object"
       },
       {
         "command": "abapfs.createtestinclude",
-        "title": "ABAPfs Create test class include"
+        "title": "AbapFs Create test class include"
       },
       {
         "command": "abapfs.addfavourite",
-        "title": "ABAPfs Add favourite"
+        "title": "AbapFs Add favourite"
       },
       {
         "command": "abapfs.deletefavourite",
-        "title": "ABAPfs delete favourite",
+        "title": "AbapFs delete favourite",
         "icon": {
           "dark": "client/images/dark/icon-delete.svg",
           "light": "client/images/light/icon-delete.svg"
@@ -119,7 +119,7 @@
       },
       {
         "command": "abapfs.activate",
-        "title": "ABAPfs Activate current object (will also save if dirty)",
+        "title": "AbapFs Activate current object (will also save if dirty)",
         "icon": {
           "dark": "client/images/activate_single.svg",
           "light": "client/images/activate_single.svg"
@@ -127,7 +127,7 @@
       },
       {
         "command": "abapfs.refreshtransports",
-        "title": "ABAPfs refresh transports",
+        "title": "AbapFs refresh transports",
         "icon": {
           "dark": "client/images/dark/icon-refresh.svg",
           "light": "client/images/light/icon-refresh.svg"
@@ -215,19 +215,19 @@
       },
       {
         "command": "abapfs.resetAbapGitPwd",
-        "title": "abapGit password reset"
+        "title": "AbapFs forget git password"
       },
       {
         "command": "abapfs.execute",
-        "title": "ABAPfs Open in SAPGUI"
+        "title": "AbapFs Open in SAPGUI"
       },
       {
         "command": "abapfs.unittest",
-        "title": "ABAPfs run unit tests"
+        "title": "AbapFs run unit tests"
       },
       {
         "command": "abapfs.openTransportObject",
-        "title": "ABAPfs Open transportable object"
+        "title": "AbapFs Open transportable object"
       },
       {
         "command": "abapfs.transportCopyNumber",
@@ -347,7 +347,7 @@
       },
       {
         "command": "abapfs.clearPassword",
-        "title": "ABAPFS Clear password"
+        "title": "AbapFs forget connection password"
       }
     ],
     "keybindings": [
@@ -375,6 +375,10 @@
       "commandPalette": [
         {
           "command": "abapfs.connect"
+        },
+        {
+          "command": "abapfs.resetAbapGitPwd",
+          "when": "abapfs:extensionActive"
         },
         {
           "command": "abapfs.clearPassword",
@@ -446,10 +450,6 @@
         },
         {
           "command": "abapfs.removeAbapGit",
-          "when": "hideCommands.never"
-        },
-        {
-          "command": "abapfs.resetAbapGitPwd",
           "when": "hideCommands.never"
         },
         {
@@ -648,7 +648,7 @@
         {
           "command": "abapfs.pullAbapGit",
           "group": "navigation",
-          "when": "scmProvider =~ /abapGit_/ && never == bar"
+          "when": "scmProvider =~ /abapGit_/"
         }
       ],
       "scm/resourceGroup/context": [

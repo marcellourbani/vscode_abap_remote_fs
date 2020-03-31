@@ -37,7 +37,6 @@
   },
   "devDependencies": {
     "@types/jest": "^25.1.4",
-    "@types/keytar": "^4.4.2",
     "@types/mocha": "^7.0.2",
     "@types/mongoose": "^5.7.7",
     "@types/node": "^13.9.3",
@@ -66,7 +65,6 @@
     "event-stream": "4.0.1",
     "fp-ts": "^2.5.3",
     "fs-jetpack": "^2.2.3",
-    "keytar": "^5.4.0",
     "method-call-logger": "^1.0.7",
     "mongoose": "^5.9.5",
     "open": "^7.0.3",

@@ -77,8 +77,12 @@ export async function dataCredentials(
   return some(data.credentials)
 }
 
-export const deletePassword = (data: ScmData) => {
-  if (!data.credentials?.user) return
+export const deletePassword = (repo: GitRepo, user: string) => {
   const vault = new PasswordVault()
-  return vault.deletePassword(pwdService(data.repo.url), data.credentials.user)
+  return vault.deletePassword(pwdService(repo.url), user)
+}
+
+export const listPasswords = (repo: GitRepo) => {
+  const vault = new PasswordVault()
+  return vault.acounts(pwdService(repo.url))
 }

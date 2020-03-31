@@ -1,8 +1,8 @@
 import ClientOAuth2, { Token } from "client-oauth2"
 import { getToken, setToken, TokenData, strip } from "./grantStorage"
-import { RemoteConfig, formatKey } from "../config"
+import { RemoteConfig, formatKey, RemoteManager } from "../config"
 import { loginServer, cfCodeGrant } from "abap_cloud_platform"
-import { after, PasswordVault, cache } from "../lib"
+import { after, cache } from "../lib"
 import { some, none, toUndefined } from "fp-ts/lib/Option"
 
 const pendingGrants = new Map<string, Promise<Token>>()
@@ -12,8 +12,6 @@ export const futureToken = async (connId: string) => {
   const pending = pendingGrants.get(connId)
   if (pending) return pending.then(t => t.accessToken)
 }
-
-const vaultId = (conn: string) => `vscode_git_${formatKey(conn)}`
 
 const deserializeToken = (s?: string): TokenData | undefined => {
   const data = s && JSON.parse(s)
@@ -26,16 +24,14 @@ const toVault = async (conf: RemoteConfig, token: Token) => {
   const serialized = serializeToken(strip(token))
   const { clientId, clientSecret, loginUrl } = conf.oauth || {}
   if (!(clientId && clientSecret && loginUrl)) return
-  const vault = new PasswordVault()
-  return vault.setPassword(vaultId(conf.name), clientId, serialized)
+  RemoteManager.get().savePassword(conf.name, clientId, serialized)
 }
 
 const fromVault = async (conf: RemoteConfig) => {
   const { clientId, clientSecret, loginUrl } = conf.oauth || {}
   if (!(clientId && clientSecret && loginUrl)) return none
-  const vault = new PasswordVault()
   try {
-    const tp = await vault.getPassword(vaultId(conf.name), clientId)
+    const tp = await RemoteManager.get().getPassword(conf.name, clientId)
     const td = tp && deserializeToken(tp)
     if (!td) return none
     const oauth = new ClientOAuth2({
