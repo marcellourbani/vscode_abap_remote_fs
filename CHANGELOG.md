@@ -8,7 +8,8 @@ Format based on [Keep a Changelog](http://keepachangelog.com/)
 
 ### Added
 
-- stage abapGit repos
+- basic abapGit source control
+- push changes to abapgit
 - remember oauth tokens
 
 ### Fixed
