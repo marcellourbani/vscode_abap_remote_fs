@@ -22,10 +22,12 @@ import {
   chainTaskTransformers,
   fieldReplacer,
   dependFieldReplacer,
-  log
+  log,
+  createTaskTransformer
 } from "../lib"
 import { simpleInputBox, quickPick } from "../lib"
-import { addRepo } from "../scm/abapGit"
+import { addRepo, repoCredentials } from "../scm/abapGit"
+import { isNone, none, isSome } from "fp-ts/lib/Option"
 
 const confirm = "Confirm"
 interface AbapGitItem extends TreeItem {
@@ -226,22 +228,23 @@ class AbapGitProvider implements TreeDataProvider<TreeItem> {
     try {
       const ri = await this.git.getRemoteInfo(repoUrl, client)
       if (ri.access_mode === "PRIVATE") {
-        //
-        const inputUser = simpleInputBox("user")
-        const inputPwd = simpleInputBox("password", "", true)
-
         const getBranches = (x: RepoAccess) => async () =>
           (
             await this.git.getRemoteInfo(repoUrl, client, x.user, x.password)
           ).branches.map(b => b.name)
+
         const placeHolder = "select branch"
         const replaceBranch = dependFieldReplacer<RepoAccess>("branch", x =>
           quickPick(getBranches(x), { placeHolder })
         )
 
         const newAccess = await chainTaskTransformers<RepoAccess>(
-          fieldReplacer("user", inputUser),
-          fieldReplacer("password", inputPwd),
+          createTaskTransformer(async x => {
+            const cred = await repoCredentials(repoUrl)
+            if (isNone(cred)) throw none
+            if (isSome(cred)) x = { ...x, ...cred.value }
+            return x
+          }),
           replaceBranch
         )(access)()
         if (isRight(newAccess)) return newAccess.right

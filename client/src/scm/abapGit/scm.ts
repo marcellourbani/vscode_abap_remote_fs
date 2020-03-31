@@ -14,7 +14,7 @@ import {
 } from "abap-adt-api"
 import { Cache, mapGet, cache } from "../../lib"
 import { getServer } from "../../adt/AdtServer"
-import { repoCredentials } from "./credentials"
+import { dataCredentials } from "./credentials"
 import { gitUrl } from "./documentProvider"
 import { AbapFsCommands } from "../../commands"
 import { isNone, fromNullable, Option, some } from "fp-ts/lib/Option"
@@ -29,7 +29,10 @@ const GDESC: { [key: string]: string } = {
   unstaged: "CHANGES",
   ignored: "IGNORED"
 }
-
+export interface ScmCredentials {
+  user: string
+  password: string
+}
 export interface ScmData {
   scm: SourceControl
   connId: string
@@ -37,7 +40,7 @@ export interface ScmData {
   groups: Cache<string, SourceControlResourceGroup>
   notNew: boolean
   staging?: GitStaging
-  credentials?: { user?: string; password?: string }
+  credentials?: ScmCredentials
 }
 export interface AgResState extends SourceControlResourceState {
   data: ScmData
@@ -75,7 +78,7 @@ const resourceState = (data: ScmData, file: GitStagingFile): AgResState => {
 
 export async function refresh(data: ScmData) {
   const server = getServer(data.connId)
-  const credentials = await repoCredentials(data)
+  const credentials = await dataCredentials(data)
   if (isNone(credentials)) return
   const { user, password } = await credentials.value
   const staging = await server.client.stageRepo(data.repo, user, password)

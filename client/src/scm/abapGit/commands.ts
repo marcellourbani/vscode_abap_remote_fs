@@ -30,7 +30,7 @@ import {
 } from "../../lib"
 import { map, isNone, none, fromEither, isSome } from "fp-ts/lib/Option"
 import { getServer } from "../../adt/AdtServer"
-import { repoCredentials } from "./credentials"
+import { dataCredentials } from "./credentials"
 import { GitStagingFile, GitStaging } from "abap-adt-api"
 import { context } from "../../extension"
 
@@ -52,7 +52,7 @@ const transfer = (
 }
 
 const getCommitDetails = async (data: ScmData) => {
-  const cred = await repoCredentials(data, true)
+  const cred = await dataCredentials(data, true)
   if (isNone(cred)) return none
   const repoid = `${data.connId}_${data.repo.sapPackage}`
   const { committer = "", committerEmail = cred.value.user } =
@@ -145,10 +145,13 @@ export class GitCommands {
         await client.pushRepo(data.repo, toPush, user, password)
       })
       window.showInformationMessage(
-        "Commit started. A refresh will be attempted in a few seconds",
+        "Commit started successfully. A refresh will be attempted in a few seconds",
         "Ok"
       )
-      after(15000).then(() => refresh(data))
+      // errors will be ignored
+      withp("Waiting commit", () => after(7000)).then(() =>
+        GitCommands.refreshCmd(data)
+      )
     } catch (error) {
       throw new Error(`Error during commit:${error.toString()}`)
     }

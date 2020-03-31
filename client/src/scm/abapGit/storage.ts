@@ -28,7 +28,7 @@ const loadRepos = async () => {
     const repo = repM.get(s.repoKey)
     if (repo) {
       const gr = await addRepo(s.connId, repo)
-      if (s.user) gr.credentials = { user: s.user }
+      if (s.user) gr.credentials = { user: s.user, password: "" }
     }
   }
 }
