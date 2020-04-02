@@ -79,8 +79,7 @@ export function toInt(raw: any): number {
   if (isNaN(n)) return 0
   return n
 }
-export const isUnDefined = (x: any) => typeof x === "undefined"
-export const isDefined = (x: any) => !isUnDefined(x)
+export const isUnDefined = (x: any): x is undefined => typeof x === "undefined"
 export const eatPromiseException = async <T>(p: Promise<T>) => {
   try {
     return await p

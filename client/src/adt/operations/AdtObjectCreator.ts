@@ -69,11 +69,14 @@ export class AdtObjectCreator {
     if (!objDetails) return
     const { options, devclass } = objDetails
     await this.validateObject(options)
+    const layer = hasPackageOptions(options) ? options.transportLayer : ""
     const transport = await selectTransport(
       objectPath(options.objtype, options.name, options.parentName),
       devclass,
       this.server.client,
-      true
+      true,
+      undefined,
+      layer
     )
     if (transport.cancelled) return
     options.transport = transport.transport
@@ -225,13 +228,15 @@ export class AdtObjectCreator {
     if (!devclass) {
       const packageResult = await this.server.objectFinder.findObject(
         "Select package",
-        PACKAGE
+        PACKAGE,
+        objType.typeId
       )
       if (!packageResult) return
       devclass = packageResult.name
     }
     if (parentType === PACKAGE) parentName = devclass
-    if (!devclass || !parentName) return
+    if ((!devclass || !parentName) && objType.typeId !== PACKAGE) return
+    if (!parentName) parentName = ""
 
     const options: NewObjectOptions | NewPackageOptions = {
       description,

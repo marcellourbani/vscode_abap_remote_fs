@@ -287,8 +287,14 @@ class AbapGitProvider implements TreeDataProvider<TreeItem> {
           repoaccess.user,
           repoaccess.password
         )
-        commands.executeCommand("workbench.files.action.refreshFilesExplorer")
-        this.refresh()
+        await Promise.all([
+          this.refresh(),
+          commands.executeCommand("workbench.files.action.refreshFilesExplorer")
+        ])
+        const created = this.children
+          .find(i => i.server.connectionId === item.server.connectionId)
+          ?.children.find(r => r.repo.url === repoUrl)
+        if (created) this.reveal(created)
         return result
       }
     )

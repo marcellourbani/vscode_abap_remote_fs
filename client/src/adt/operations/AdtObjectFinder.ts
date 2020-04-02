@@ -1,6 +1,12 @@
 import { AbapObjectNode } from "../../fs/AbapNode"
 import { PACKAGE, TMPPACKAGE } from "./AdtObjectCreator"
-import { ADTClient, PathStep, SearchResult, ObjectType } from "abap-adt-api"
+import {
+  ADTClient,
+  PathStep,
+  SearchResult,
+  ObjectType,
+  CreatableTypeIds
+} from "abap-adt-api"
 import { AdtServer } from "../AdtServer"
 import { window, QuickPickItem, workspace, commands } from "vscode"
 
@@ -203,18 +209,33 @@ export class AdtObjectFinder {
       )
     }
   }
-
+  EPMTYPACKAGE = {
+    "adtcore:uri": "",
+    "adtcore:type": PACKAGE,
+    "adtcore:name": "",
+    "adtcore:packageName": "",
+    "adtcore:description": "<NONE>"
+  }
   public async findObject(
     prompt: string = "Search an ABAP object",
-    objType: string = ""
+    objType: string = "",
+    forType?: CreatableTypeIds
   ): Promise<MySearchResult | undefined> {
     const o = await new Promise<MySearchResult>(resolve => {
+      const empty: MySearchResult[] = []
+      if (forType === PACKAGE) empty.push(new MySearchResult(this.EPMTYPACKAGE))
       const qp = window.createQuickPick()
+      const searchParent = async (e: string) => {
+        qp.items =
+          e.length >= 3
+            ? await this.search(e, this.server.client, objType)
+            : empty
+      }
+
+      qp.items = empty
+      qp.items = [...empty]
       // TODO debounce? Looks like VSC does it for me!
-      qp.onDidChangeValue(async e => {
-        if (e.length > 3)
-          qp.items = await this.search(e, this.server.client, objType)
-      })
+      qp.onDidChangeValue(async e => searchParent(e))
       qp.placeholder = prompt
       qp.onDidChangeSelection(e => {
         if (e[0]) {

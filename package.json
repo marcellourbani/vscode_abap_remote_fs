@@ -2,7 +2,7 @@
   "name": "vscode-abap-remote-fs",
   "displayName": "ABAP remote filesystem",
   "description": "Work on your ABAP code straight from the server",
-  "version": "0.7.20",
+  "version": "0.7.21",
   "publisher": "murbani",
   "license": "MIT",
   "icon": "client/images/abapfs_logo.png",
@@ -363,7 +363,7 @@
       {
         "command": "abapfs.showdocu",
         "key": "F1",
-        "when": "editorTextFocus && editorLangId == abap"
+        "when": "editorTextFocus && resourceScheme == adt && editorLangId == abap "
       },
       {
         "command": "abapfs.activate",

@@ -18,7 +18,8 @@ export async function selectTransport(
   devClass: string,
   client: ADTClient,
   forCreation: boolean = false,
-  current = ""
+  current = "",
+  transportLayer = ""
 ): Promise<TransportSelection> {
   const ti = await client.transportInfo(
     objContentPath,
@@ -50,7 +51,12 @@ export async function selectTransport(
     const text = await window.showInputBox({ prompt: "Request text" })
     if (!text) return trSel("", true)
     return trSel(
-      await client.createTransport(objContentPath, text, ti.DEVCLASS)
+      await client.createTransport(
+        objContentPath,
+        text,
+        ti.DEVCLASS,
+        transportLayer
+      )
     )
   } else return trSel(selection.split(" ")[0])
 }
