@@ -42,6 +42,15 @@ interface ServerItem extends TreeItem {
 const isServerItem = (item: TreeItem): item is ServerItem =>
   !!(item as any).server
 
+export const confirmPull = (pkg: string) =>
+  window
+    .showInformationMessage(
+      `Pull package ${pkg} from git? Uncommitted changes will be overwritten`,
+      confirm,
+      "Cancel"
+    )
+    .then(r => r === confirm)
+
 class AbapGit {
   public unlink(repo: GitRepo, client: ADTClient) {
     return client.gitUnlinkRepo(repo.key)
@@ -157,16 +166,8 @@ class AbapGitProvider implements TreeDataProvider<TreeItem> {
     addRepo(server, repoItem.repo, true)
   }
 
-  private confirmPull(pkg: string) {
-    return window.showInformationMessage(
-      `Pull package ${pkg} from git? Uncommitted changes will be overwritten`,
-      confirm,
-      "Cancel"
-    )
-  }
-
   private async pull(repoItem: AbapGitItem) {
-    if ((await this.confirmPull(repoItem.repo.sapPackage)) !== confirm) return
+    if (await confirmPull(repoItem.repo.sapPackage)) return
     const server = this.repoServer(repoItem)
     const transport = await selectTransport(
       objectPath(PACKAGE, repoItem.repo.sapPackage),
@@ -272,7 +273,7 @@ class AbapGitProvider implements TreeDataProvider<TreeItem> {
       item.server.client
     )
     if (transport.cancelled) return
-    if ((await this.confirmPull(pkg.name)) !== confirm) return
+    if (!(await confirmPull(pkg.name))) return
     return await window.withProgress(
       {
         location: ProgressLocation.Window,

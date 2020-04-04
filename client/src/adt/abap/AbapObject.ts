@@ -12,6 +12,7 @@ import {
 import { isString } from "util"
 import { isNodeParent } from "abap-adt-api"
 import { PACKAGE } from "../operations/AdtObjectCreator"
+import { convertSlash } from "../../lib"
 
 const TYPEID = Symbol()
 export const XML_EXTENSION = ".XML"
@@ -87,8 +88,7 @@ export class AbapObject {
     return !this.expandable
   }
   get vsName(): string {
-    if (this.name) return this.name.replace(/\//g, "／") + this.getExtension()
-    return ""
+    return this.name ? `${convertSlash(this.name)}${this.getExtension()}` : ""
   }
 
   public getExecutionCommand(): SapGuiCommand | undefined {

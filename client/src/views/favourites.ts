@@ -11,6 +11,7 @@ import { isString, isArray } from "util"
 import { path, fileAsync, readAsync } from "fs-jetpack"
 import { fromUri, AdtServer, ADTSCHEME } from "../adt/AdtServer"
 import { findMainIncludeAsync } from "../adt/abap/AbapObjectUtilities"
+import { NSSLASH } from "../lib"
 
 interface FavouriteCache {
   uri: string
@@ -104,6 +105,11 @@ interface FavouriteIf {
   openUri: string
   isContainer: boolean
 }
+
+const fixold = (x: string) => x.replace(/\uFF0F/g, NSSLASH)
+const fixoldu = (x: string) =>
+  x.replace(/\%EF\%BC\%8F/g, encodeURIComponent(NSSLASH))
+
 // tslint:disable: max-classes-per-file
 class Favourite implements FavouriteIf {
   public readonly label: string
@@ -127,14 +133,14 @@ class Favourite implements FavouriteIf {
     public readonly dynamic = false
   ) {
     if (isString(labelOrFav)) {
-      this.label = labelOrFav
+      this.label = fixold(labelOrFav)
       this.uri = uri
     } else {
-      this.label = labelOrFav.label
+      this.label = fixold(labelOrFav.label)
       this.collapsibleState = labelOrFav.collapsibleState
-      this.uri = labelOrFav.uri
+      this.uri = fixoldu(labelOrFav.uri)
       this.children = labelOrFav.children.map(f => new Favourite(f))
-      this.openUri = labelOrFav.openUri
+      this.openUri = fixoldu(labelOrFav.openUri)
       this.isContainer = labelOrFav.isContainer
     }
   }
@@ -234,10 +240,16 @@ export class FavouritesProvider implements TreeDataProvider<FavItem> {
       const folders = (workspace.workspaceFolders || []).filter(
         f => f.uri.scheme === ADTSCHEME
       )
-      for (const f of folders) {
-        const fav = root.get(f.uri.authority)
+      if (folders.length === 1) {
+        const fav = root.get(folders[0].uri.authority)
         if (fav) favRoot.children.push(...fav)
-      }
+      } else
+        for (const f of folders) {
+          const cur = new Favourite(f.uri.authority, "")
+          favRoot.children.push(cur)
+          const fav = root.get(f.uri.authority)
+          if (fav) cur.children.push(...fav)
+        }
 
       return new FavItem(favRoot).getChildren()
     }
@@ -271,12 +283,16 @@ export class FavouritesProvider implements TreeDataProvider<FavItem> {
   private async readFavourite() {
     const root: Map<string, Favourite[]> = new Map()
     if (this.storage) {
-      const saved: Array<[string, FavouriteIf[]]> = await readAsync(
+      const saved: [string, FavouriteIf[]][] = await readAsync(
         this.storage,
         "json"
       )
       if (isArray(saved))
-        for (const s of saved) root.set(s[0], s[1].map(f => new Favourite(f)))
+        for (const s of saved)
+          root.set(
+            s[0],
+            s[1].map(f => new Favourite(f))
+          )
     }
     return root
   }

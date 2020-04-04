@@ -4,6 +4,7 @@ import { AbapClass } from "./AbapClass"
 import { FileSystemError } from "vscode"
 import { SapGuiCommand } from "../sapgui/sapgui"
 import { classIncludes } from "abap-adt-api"
+import { convertSlash } from "../../lib"
 
 export class AbapClassInclude extends AbapObject {
   public structure?: AbapClassStructure
@@ -23,8 +24,9 @@ export class AbapClassInclude extends AbapObject {
   public getContentsUri(): string {
     if (!this.structure || !this.techName)
       throw FileSystemError.FileNotFound(this.path)
-    const include = ADTClient.classIncludes(this.structure).get(this
-      .techName as classIncludes)
+    const include = ADTClient.classIncludes(this.structure).get(
+      this.techName as classIncludes
+    )
     if (!include) throw FileSystemError.FileNotFound(this.path)
     return include
   }
@@ -38,11 +40,9 @@ export class AbapClassInclude extends AbapObject {
   }
 
   get vsName(): string {
-    if (this.name) {
-      const base = this.name.replace(/\..*/, "")
-      return base.replace(/\//g, "／") + this.getExtension()
-    }
-    return ""
+    return this.name
+      ? `${convertSlash(this.name.replace(/\..*/, ""))}${this.getExtension()}`
+      : ""
   }
 
   public getExecutionCommand(): SapGuiCommand | undefined {

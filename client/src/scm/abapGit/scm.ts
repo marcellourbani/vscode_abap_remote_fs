@@ -55,7 +55,7 @@ export const scmKey = (connId: string, repoKey: string) =>
 
 export const scmData = (key: string) => scms.get(key)
 export const fileUri = (file: GitStagingFile) =>
-  Uri.parse(`${file.path}${file.name}`)
+  Uri.parse(`${file.path}${encodeURIComponent(file.name)}`)
 
 const resourceState = (data: ScmData, file: GitStagingFile): AgResState => {
   const resourceUri = fileUri(file)

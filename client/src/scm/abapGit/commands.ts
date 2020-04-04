@@ -38,6 +38,7 @@ import { selectTransport } from "../../adt/AdtTransports"
 import { PACKAGE } from "../../adt/operations/AdtObjectCreator"
 import { pickAdtRoot } from "../../config"
 import { isRight, isLeft } from "fp-ts/lib/Either"
+import { confirmPull } from "../../views/abapgit"
 
 let commitStore: Memento
 const getStore = () => {
@@ -163,26 +164,27 @@ export class GitCommands {
   }
   @command(AbapFsCommands.agitPullScm)
   @findSC()
-  private static pullCmd(data: ScmData) {
-    return withp("", async () => {
-      const server = await getServer(data.connId)
-      await dataCredentials(data)
-      const transport = await selectTransport(
-        objectPath(PACKAGE, data.repo.sapPackage),
-        data.repo.sapPackage,
-        server.client
-      )
-      if (transport.cancelled) return
-      const result = server.client.gitPullRepo(
-        data.repo.key,
-        data.repo.branch_name,
-        transport.transport,
-        data.credentials?.user,
-        data.credentials?.password
-      )
-      commands.executeCommand("workbench.files.action.refreshFilesExplorer")
-      return result
-    })
+  private static async pullCmd(data: ScmData) {
+    if (await confirmPull(data.repo.sapPackage))
+      return withp("Pulling repo", async () => {
+        const server = await getServer(data.connId)
+        await dataCredentials(data)
+        const transport = await selectTransport(
+          objectPath(PACKAGE, data.repo.sapPackage),
+          data.repo.sapPackage,
+          server.client
+        )
+        if (transport.cancelled) return
+        const result = await server.client.gitPullRepo(
+          data.repo.key,
+          data.repo.branch_name,
+          transport.transport,
+          data.credentials?.user,
+          data.credentials?.password
+        )
+        commands.executeCommand("workbench.files.action.refreshFilesExplorer")
+        return result
+      })
   }
 
   @command(AbapFsCommands.agitAdd)

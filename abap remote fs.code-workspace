@@ -27,6 +27,12 @@
       "**/.project": true,
       "**/.settings": true,
       "**/.factorypath": true
+    },
+    "prettier.arrowParens": "avoid",
+    "prettier.proseWrap": "never",
+    "prettier.trailingComma": "none",
+    "markdownlint.config": {
+      "no-duplicate-header": false
     }
   }
 }

@@ -4,9 +4,23 @@ All notable changes to the "vscode-abap-remote-fs" extension will be documented 
 
 Format based on [Keep a Changelog](http://keepachangelog.com/)
 
+## Unreleased
+
+### Added
+
+- connection folders in favourites
+
+### Changed
+
+- changed forward slash in nmespaces from uFF0F to u2215
+
+### Fixed
+
+- abapgit support for namespaced repos
+
 ## [0.7.20] 2020-04-01
 
-## Added
+### Added
 
 - abapGit pull from scm view
 - reset git password
