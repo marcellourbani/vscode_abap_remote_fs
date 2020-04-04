@@ -17,7 +17,8 @@ Format based on [Keep a Changelog](http://keepachangelog.com/)
 ### Fixed
 
 - abapgit support for namespaced repos
-
+- abapGit transport selection for older systems
+  
 ## [0.7.20] 2020-04-01
 
 ### Added

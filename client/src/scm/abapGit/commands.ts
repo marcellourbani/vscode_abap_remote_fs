@@ -38,7 +38,7 @@ import { selectTransport } from "../../adt/AdtTransports"
 import { PACKAGE } from "../../adt/operations/AdtObjectCreator"
 import { pickAdtRoot } from "../../config"
 import { isRight, isLeft } from "fp-ts/lib/Either"
-import { confirmPull } from "../../views/abapgit"
+import { confirmPull, packageUri } from "../../views/abapgit"
 
 let commitStore: Memento
 const getStore = () => {
@@ -169,8 +169,9 @@ export class GitCommands {
       return withp("Pulling repo", async () => {
         const server = await getServer(data.connId)
         await dataCredentials(data)
+        const uri = await packageUri(server.client, data.repo.sapPackage)
         const transport = await selectTransport(
-          objectPath(PACKAGE, data.repo.sapPackage),
+          uri,
           data.repo.sapPackage,
           server.client
         )

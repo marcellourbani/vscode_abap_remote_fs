@@ -51,6 +51,17 @@ export const confirmPull = (pkg: string) =>
     )
     .then(r => r === confirm)
 
+export const packageUri = async (client: ADTClient, name: string) => {
+  const cancreate = await client.collectionFeatureDetails(
+    "/sap/bc/adt/packages"
+  )
+  return cancreate
+    ? objectPath(PACKAGE, name)
+    : `/sap/bc/adt/vit/wb/object_type/devck/object_name/${encodeURIComponent(
+        name
+      )}`
+}
+
 class AbapGit {
   public unlink(repo: GitRepo, client: ADTClient) {
     return client.gitUnlinkRepo(repo.key)
@@ -167,15 +178,17 @@ class AbapGitProvider implements TreeDataProvider<TreeItem> {
   }
 
   private async pull(repoItem: AbapGitItem) {
-    if (await confirmPull(repoItem.repo.sapPackage)) return
-    const server = this.repoServer(repoItem)
+    if (!(await confirmPull(repoItem.repo.sapPackage))) return
+    const client = this.repoServer(repoItem).server.client
+
+    const uri = await packageUri(client, repoItem.repo.sapPackage)
     const transport = await selectTransport(
-      objectPath(PACKAGE, repoItem.repo.sapPackage),
+      uri,
       repoItem.repo.sapPackage,
-      server.server.client
+      client
     )
     if (transport.cancelled) return
-    const ri = await this.getRemoteInfo(repoItem.repo.url, server.server.client)
+    const ri = await this.getRemoteInfo(repoItem.repo.url, client)
     if (!ri) return
     return await window.withProgress(
       {
@@ -183,7 +196,7 @@ class AbapGitProvider implements TreeDataProvider<TreeItem> {
         title: `Pulling repo ${repoItem.repo.sapPackage}`
       },
       async () => {
-        const result = await server.server.client.gitPullRepo(
+        const result = await client.gitPullRepo(
           repoItem.repo.key,
           ri.branch,
           transport.transport,
