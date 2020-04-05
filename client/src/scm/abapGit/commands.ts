@@ -4,7 +4,8 @@ import {
   SourceControl,
   Memento,
   window,
-  commands
+  commands,
+  QuickPickItem
 } from "vscode"
 import { command, AbapFsCommands } from "../../commands"
 import {
@@ -35,7 +36,6 @@ import { dataCredentials, listPasswords, deletePassword } from "./credentials"
 import { GitStagingFile, GitStaging, objectPath } from "abap-adt-api"
 import { context } from "../../extension"
 import { selectTransport } from "../../adt/AdtTransports"
-import { PACKAGE } from "../../adt/operations/AdtObjectCreator"
 import { pickAdtRoot } from "../../config"
 import { isRight, isLeft } from "fp-ts/lib/Either"
 import { confirmPull, packageUri } from "../../views/abapgit"
@@ -57,6 +57,7 @@ const transfer = (
   )
 }
 
+const validateInput = (x: string) => (x ? null : "Field is mandatory")
 const getCommitDetails = async (data: ScmData) => {
   const cred = await dataCredentials(data, true)
   if (isNone(cred)) return none
@@ -65,7 +66,6 @@ const getCommitDetails = async (data: ScmData) => {
     getStore().get(repoid) || {}
   const comment = data.scm.inputBox.value
   const commitdata = { ...cred.value, name: "", email: "", comment }
-  const validateInput = (x: string) => (x ? null : "Field is mandatory")
   const getUser = inputBox({
     prompt: "Committer user",
     value: committer,
@@ -243,7 +243,50 @@ export class GitCommands {
     if (isRight(user)) await deletePassword(item.right.repo, user.right)
   }
   @command(AbapFsCommands.agitBranch)
-  private async switchBranch(...args: any[]) {
-    window.showInformationMessage("Branch switching not implemented yet")
+  private async switchBranch(data: ScmData) {
+    const { password = "", user = "" } = data.credentials || {}
+    const client = getServer(data.connId).client
+    const branch = await client.remoteRepoInfo(data.repo, user, password)
+    const candidates = branch.branches.map(b => {
+      const o: QuickPickItem = {
+        label: b.display_name,
+        detail: b.is_head ? "HEAD" : "",
+        description: b.name
+      }
+      return o
+    })
+    candidates.push({ label: "Create new..." })
+    const selection = await quickPick(candidates)()
+    if (isLeft(selection)) return
+    const sel = selection.right
+    if (sel.description)
+      await client.switchRepoBranch(
+        data.repo,
+        sel.description,
+        false,
+        user,
+        password
+      )
+    else {
+      const branchName = await inputBox({
+        prompt: "Branch name",
+        validateInput
+      })()
+      if (isLeft(branchName)) return
+      if (
+        isNone(await dataCredentials(data, true)) ||
+        !data.credentials?.password ||
+        !data.credentials.user
+      )
+        return
+      await client.switchRepoBranch(
+        data.repo,
+        `refs/heads/${branchName.right.replace(/ /g, "_")}`,
+        true,
+        data.credentials.user,
+        data.credentials.password
+      )
+    }
+    return GitCommands.refreshCmd(data)
   }
 }

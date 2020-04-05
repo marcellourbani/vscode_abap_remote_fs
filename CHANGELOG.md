@@ -4,7 +4,7 @@ All notable changes to the "vscode-abap-remote-fs" extension will be documented 
 
 Format based on [Keep a Changelog](http://keepachangelog.com/)
 
-## Unreleased
+## 0.7.22
 
 ### Added
 
@@ -21,6 +21,13 @@ Format based on [Keep a Changelog](http://keepachangelog.com/)
 - main program removed for CDS types
 - censor password for git repo access
 - no stat of locked files (should fix #88)
+- switch abapgit branch (needs not yet merged support)
+
+## [0.7.21] 2020-04-01
+
+### Fixed
+
+- create packages without parents
 
 ## [0.7.20] 2020-04-01
 

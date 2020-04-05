@@ -82,6 +82,10 @@ export async function refresh(data: ScmData) {
   if (isNone(credentials)) return
   const { user, password } = await credentials.value
   const staging = await server.client.stageRepo(data.repo, user, password)
+  const repo = (await server.client.gitRepos()).find(
+    r => r.key === data.repo.key
+  )
+  if (repo) data.repo = repo
   const mapState = (key: string, objs: GitStagingObject[]) => {
     const group = data.groups.get(key)
     const state: SourceControlResourceState[] = []
@@ -94,6 +98,17 @@ export async function refresh(data: ScmData) {
   mapState(IGNORED, staging.ignored)
   data.notNew = true
   data.staging = staging
+  setStatusCommand(data)
+}
+
+export const setStatusCommand = (data: ScmData) => {
+  data.scm.statusBarCommands = [
+    {
+      command: AbapFsCommands.agitBranch,
+      arguments: [data],
+      title: data.repo.branch_name.replace(/^\/?refs\/heads\//, "")
+    }
+  ]
 }
 
 const createScm = (connId: string, repo: GitRepo): ScmData => {
@@ -108,15 +123,9 @@ const createScm = (connId: string, repo: GitRepo): ScmData => {
     return group
   })
   const loaded = false
-  const rec: ScmData = { scm: gscm, connId, repo, groups, notNew: loaded }
-  rec.scm.statusBarCommands = [
-    {
-      command: AbapFsCommands.agitBranch,
-      arguments: [rec],
-      title: repo.branch_name.replace(/^\/?refs\/heads\//, "")
-    }
-  ]
-  return rec
+  const data: ScmData = { scm: gscm, connId, repo, groups, notNew: loaded }
+  setStatusCommand(data)
+  return data
 }
 
 export async function addRepo(connId: string, repo: GitRepo, addnew = false) {
