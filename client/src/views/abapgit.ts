@@ -12,7 +12,7 @@ import {
   env,
   Uri
 } from "vscode"
-import { GitRepo, ADTClient, objectPath, GitExternalInfo } from "abap-adt-api"
+import { GitRepo, ADTClient, objectPath } from "abap-adt-api"
 import { ADTSCHEME, getOrCreateServer } from "../adt/AdtServer"
 import { v1 } from "uuid"
 import { command, AbapFsCommands } from "../commands"
@@ -20,12 +20,11 @@ import { PACKAGE } from "../adt/operations/AdtObjectCreator"
 import { selectTransport } from "../adt/AdtTransports"
 import {
   chainTaskTransformers,
-  fieldReplacer,
   dependFieldReplacer,
   log,
   createTaskTransformer
 } from "../lib"
-import { simpleInputBox, quickPick } from "../lib"
+import { quickPick } from "../lib"
 import { addRepo, repoCredentials } from "../scm/abapGit"
 import { isNone, none, isSome } from "fp-ts/lib/Option"
 

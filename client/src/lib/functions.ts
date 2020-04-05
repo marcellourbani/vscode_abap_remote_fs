@@ -340,3 +340,11 @@ export const btoa = (s: string) => Buffer.from(s).toString("base64")
 export const atob = (s: string) => Buffer.from(s, "base64").toString()
 export const NSSLASH = "\u2215" // used to be hardcoded as "／", aka "\uFF0F"
 export const convertSlash = (x: string) => x && x.replace(/\//g, NSSLASH)
+export const asyncFilter = async <T>(
+  x: Iterable<T>,
+  filter: (x: T) => any
+): Promise<T[]> => {
+  const res: T[] = []
+  for (const i of x) if (await filter(i)) res.push(i)
+  return res
+}

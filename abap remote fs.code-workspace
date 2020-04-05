@@ -33,6 +33,7 @@
     "prettier.trailingComma": "none",
     "markdownlint.config": {
       "no-duplicate-header": false
-    }
+    },
+    "jest.disabledWorkspaceFolders": [".", "./client", "client"]
   }
 }

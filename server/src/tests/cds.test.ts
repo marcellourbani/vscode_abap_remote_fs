@@ -1,4 +1,4 @@
-import { cdsCompletionExtractor } from "./../cdsSyntax"
+import { cdsCompletionExtractor } from "../cdsSyntax"
 import { parseCDS, findNode } from "../cdsSyntax"
 import { Position } from "vscode-languageserver"
 import { ABAPCDSParser } from "abapcdsgrammar"

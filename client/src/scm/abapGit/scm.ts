@@ -113,7 +113,7 @@ const createScm = (connId: string, repo: GitRepo): ScmData => {
     {
       command: AbapFsCommands.agitBranch,
       arguments: [rec],
-      title: repo.branch_name
+      title: repo.branch_name.replace(/^\/?refs\/heads\//, "")
     }
   ]
   return rec

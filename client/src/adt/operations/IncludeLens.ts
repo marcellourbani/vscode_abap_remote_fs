@@ -12,7 +12,7 @@ import {
 import { AbapObject } from "../abap/AbapObject"
 import { ADTClient } from "abap-adt-api"
 import { fromUri } from "../AdtServer"
-import { command, AbapFsCommands } from "../../commands"
+import { AbapFsCommands } from "../../commands"
 import { isAbapNode } from "../../fs/AbapNode"
 import { PACKAGE } from "./AdtObjectCreator"
 
@@ -100,7 +100,7 @@ export class IncludeLensP implements CodeLensProvider {
       let mainProgramUri
       if (mainPrograms.length === 1)
         mainProgramUri = mainPrograms[0]["adtcore:uri"]
-      if (!mainProgramUri) {
+      if (!mainProgramUri && mainPrograms.length > 0) {
         const mainProg = await window.showQuickPick(
           mainPrograms.map(p => p["adtcore:name"]),
           {

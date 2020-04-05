@@ -1,4 +1,5 @@
 import { AbapObject } from "./AbapObject"
+import { ADTClient } from "abap-adt-api"
 
 export class AbapCds extends AbapObject {
   public getExtension(): string {
@@ -13,5 +14,8 @@ export class AbapCds extends AbapObject {
         return ".bdef.asbdef"
     }
     return ".cds" // should never happen...
+  }
+  public async getMainPrograms(client: ADTClient) {
+    return []
   }
 }

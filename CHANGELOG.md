@@ -18,7 +18,8 @@ Format based on [Keep a Changelog](http://keepachangelog.com/)
 
 - abapgit support for namespaced repos
 - abapGit transport selection for older systems
-  
+- main program removed for CDS types
+
 ## [0.7.20] 2020-04-01
 
 ### Added
