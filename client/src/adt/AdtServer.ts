@@ -363,6 +363,10 @@ export class AdtServer {
     return Promise.reject(new Error("Not an abap object"))
   }
 
+  private isLocked(uri: Uri) {
+    return !!LockManager.get().getLockId(uri)
+  }
+
   /**
    * finds the details of a node, and refreshes them from server if needed
    *
@@ -377,7 +381,7 @@ export class AdtServer {
     }
     if (linked) return linked
     const node = await this.findNodePromise(uri)
-    if (node.canRefresh()) {
+    if (node.canRefresh() && this.isLocked(uri)) {
       if (node.type === FileType.Directory) await this.refresh(node)
       else {
         const oldvers = getVersion(node)

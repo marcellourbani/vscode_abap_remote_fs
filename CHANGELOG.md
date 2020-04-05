@@ -19,6 +19,8 @@ Format based on [Keep a Changelog](http://keepachangelog.com/)
 - abapgit support for namespaced repos
 - abapGit transport selection for older systems
 - main program removed for CDS types
+- censor password for git repo access
+- no stat of locked files (should fix #88)
 
 ## [0.7.20] 2020-04-01
 

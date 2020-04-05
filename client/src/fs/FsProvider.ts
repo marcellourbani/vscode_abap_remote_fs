@@ -45,7 +45,7 @@ export class FsProvider implements FileSystemProvider {
     }
   }
 
-  public async readDirectory(uri: Uri): Promise<Array<[string, FileType]>> {
+  public async readDirectory(uri: Uri): Promise<[string, FileType][]> {
     try {
       const server = await getOrCreateServer(uri.authority)
       // on restart code might try to read a file before it read its parent directory

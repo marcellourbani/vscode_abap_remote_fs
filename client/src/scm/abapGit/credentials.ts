@@ -33,7 +33,8 @@ const isPrivate = async (data: ScmData, client: ADTClient) =>
     .then(i => i.access_mode === "PRIVATE")
 
 const validateInput = (x: string) => (x ? null : "Field is mandatory")
-const mandInbox = (prompt: string) => inputBox({ prompt, validateInput })
+const mandInbox = (prompt: string, password = false) =>
+  inputBox({ prompt, validateInput, password })
 
 export async function repoCredentials(repoUrl: string) {
   const cred: ScmCredentials = { user: getDefaultUser(repoUrl), password: "" }
@@ -48,7 +49,7 @@ export async function repoCredentials(repoUrl: string) {
     return x
   }
   const getUser = mandInbox(`Username for ${repoUrl}`)
-  const getPassword = mandInbox(`Password for ${repoUrl}`)
+  const getPassword = mandInbox(`Password for ${repoUrl}`, true)
   const task = chainTaskTransformers<ScmCredentials>(
     fieldReplacer("user", getUser, x => !x.user),
     createTaskTransformer(setDefaultUser(repoUrl)),
