@@ -246,7 +246,11 @@ export class GitCommands {
   private async switchBranch(data: ScmData) {
     const { password = "", user = "" } = data.credentials || {}
     const client = getServer(data.connId).client
-    const branch = await client.remoteRepoInfo(data.repo, user, password)
+    const branch = await client.gitExternalRepoInfo(
+      data.repo.url,
+      user,
+      password
+    )
     const candidates = branch.branches.map(b => {
       const o: QuickPickItem = {
         label: b.display_name,

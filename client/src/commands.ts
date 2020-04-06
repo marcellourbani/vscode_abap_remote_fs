@@ -27,8 +27,8 @@ import { IncludeLensP } from "./adt/operations/IncludeLens"
 import { runInSapGui } from "./adt/sapgui/sapgui"
 import { isAbapNode } from "./fs/AbapNode"
 import { storeTokens } from "./oauth"
+import { showAbapDoc } from "./views/help"
 
-const ABAPDOC = "ABAPDOC"
 const abapcmds: {
   name: string
   func: (...x: any[]) => any
@@ -142,25 +142,7 @@ export function openObject(server: AdtServer, uri: string) {
 export class AdtCommands {
   @command(AbapFsCommands.showDocumentation)
   private static async showAbapDoc() {
-    const editor = window.activeTextEditor
-    if (!editor) return
-    const uri = editor.document.uri
-    const sel = editor.selection.active
-    if (uri.scheme !== ADTSCHEME) return
-    const server = fromUri(uri)
-    const obj = await server.findAbapObject(uri)
-    const doc = await server.client.abapDocumentation(
-      obj.path,
-      editor.document.getText(),
-      sel.line + 1,
-      sel.character + 1
-    )
-    const panel = window.createWebviewPanel(ABAPDOC, "ABAP documentation", {
-      viewColumn: ViewColumn.Beside,
-      preserveFocus: false
-    })
-
-    panel.webview.html = doc
+    return showAbapDoc()
   }
 
   @command(AbapFsCommands.changeInclude)
