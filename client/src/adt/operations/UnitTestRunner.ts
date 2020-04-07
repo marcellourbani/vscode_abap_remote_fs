@@ -15,6 +15,7 @@ import {
   UnitTestAlert,
   UnitTestStackEntry
 } from "abap-adt-api"
+import { getTestAdapter } from "../../views/abapunit/register"
 
 let abapUnitcollection: DiagnosticCollection
 
@@ -41,7 +42,7 @@ async function abapUnitMain(uri: Uri) {
   }
   const uriTranslation: Map<string, string> = new Map()
   const server = fromUri(uri)
-  if (!server) return
+  if (!server) return rv
 
   async function basetovsc(url: string) {
     const [base, line] = parts(url, /([^#]*)(?:#.*start=([\d]+))?/)
@@ -108,8 +109,10 @@ export async function abapUnit(uri: Uri) {
       "ABAPfs unit test"
     )
   else abapUnitcollection.clear()
-  const results = await abapUnitMain(uri)
-  if (results) {
+  const rp = abapUnitMain(uri)
+  getTestAdapter(uri)?.load(rp.then(r => r.diag))
+  const results = await rp
+  if (results.classes) {
     const diagnostics = mapGet(results.diag, uri.toString(), [])
     diagnostics.unshift(
       createDiag(
