@@ -28,6 +28,7 @@ import { runInSapGui } from "./adt/sapgui/sapgui"
 import { isAbapNode } from "./fs/AbapNode"
 import { storeTokens } from "./oauth"
 import { showAbapDoc } from "./views/help"
+import { getTestAdapter } from "./views/abapunit"
 
 const abapcmds: {
   name: string
@@ -307,10 +308,16 @@ export class AdtCommands {
       log("Execute ABAP Unit tests")
       const uri = currentUri()
       if (!uri) return
-      await window.withProgress(
-        { location: ProgressLocation.Window, title: "Running ABAP UNIT" },
-        () => abapUnit(uri)
-      )
+
+      const adapter = getTestAdapter(uri)
+      if (adapter) {
+        commands.executeCommand("workbench.view.extension.test")
+        await adapter.runUnit(uri)
+      } else
+        await window.withProgress(
+          { location: ProgressLocation.Window, title: "Running ABAP UNIT" },
+          () => abapUnit(uri)
+        )
     } catch (e) {
       return window.showErrorMessage(e.toString())
     }

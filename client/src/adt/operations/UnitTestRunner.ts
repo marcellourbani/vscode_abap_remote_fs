@@ -15,7 +15,6 @@ import {
   UnitTestAlert,
   UnitTestStackEntry
 } from "abap-adt-api"
-import { getTestAdapter } from "../../views/abapunit/register"
 
 let abapUnitcollection: DiagnosticCollection
 
@@ -109,9 +108,7 @@ export async function abapUnit(uri: Uri) {
       "ABAPfs unit test"
     )
   else abapUnitcollection.clear()
-  const rp = abapUnitMain(uri)
-  getTestAdapter(uri)?.load(rp.then(r => r.diag))
-  const results = await rp
+  const results = await abapUnitMain(uri)
   if (results.classes) {
     const diagnostics = mapGet(results.diag, uri.toString(), [])
     diagnostics.unshift(

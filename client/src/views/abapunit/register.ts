@@ -13,6 +13,7 @@ export function getTestAdapter(uri: Uri) {
   if (!adapter) {
     adapter = new Adapter(uri.authority)
     ext.exports.registerTestAdapter(adapter)
+    testAdapters.set(uri.authority, adapter)
   }
   return adapter
 }
