@@ -34,7 +34,7 @@
     "markdownlint.config": {
       "no-duplicate-header": false
     },
-    "jest.disabledWorkspaceFolders": [".", "./client", "client"],
+    "jest.disabledWorkspaceFolders": ["."],
     "tslint.exclude": ["**/node_modules/**"]
   }
 }

@@ -34,23 +34,36 @@ const finished = (suite: TestSuiteInfo): TestLoadFinishedEvent => ({
   suite
 })
 
-const convertTestMethod = (c: UnitTestClass) => (
-  m: UnitTestMethod
-): TestInfo => {
-  return {
+interface AuMethod extends TestInfo {
+  classId: string
+}
+interface AuClass extends TestSuiteInfo {
+  children: AuMethod[]
+}
+interface AuRun extends TestSuiteInfo {
+  children: AuClass[]
+}
+interface AuRoot extends TestSuiteInfo {
+  children: AuRun[]
+}
+const convertTestMethod = (c: UnitTestClass) => (m: UnitTestMethod) => {
+  const met: AuMethod = {
     type: "test",
     id: methodId(c, m),
     label: m["adtcore:name"],
-    file: m["adtcore:uri"]
+    file: m["adtcore:uri"],
+    classId: classId(c)
   }
+  return met
 }
-const convertTestClass = (c: UnitTestClass): TestSuiteInfo => {
-  return {
+const convertTestClass = (c: UnitTestClass) => {
+  const cl: AuClass = {
     type: "suite",
     id: classId(c),
     label: c["adtcore:name"],
     children: c.testmethods.map(convertTestMethod(c))
   }
+  return cl
 }
 
 const convertClasses = (
@@ -58,11 +71,11 @@ const convertClasses = (
   key: string,
   classes: UnitTestClass[]
 ) => {
-  const suite: TestSuiteInfo = {
+  const suite: AuRun = {
     type: "suite",
     children: classes.map(convertTestClass),
     id: key,
-    label: obj.name
+    label: obj.name.replace(/\..*/, "")
   }
   return suite
 }
@@ -74,14 +87,13 @@ const methodState = (m: UnitTestMethod) => {
   return state
 }
 
-const isSuite = (x: any): x is TestSuiteInfo => x?.type === "suite"
-
 export class Adapter implements TestAdapter {
   private testStateEm = new EventEmitter<TestSuiteEvent | TestEvent>()
   private testEm = new EventEmitter<
     TestLoadStartedEvent | TestLoadFinishedEvent
   >()
-  private root: TestSuiteInfo = {
+  private aliases = new Map<string, string>()
+  private root: AuRoot = {
     type: "suite",
     id: this.connId,
     label: this.connId,
@@ -92,6 +104,18 @@ export class Adapter implements TestAdapter {
     //
   }
 
+  private findSuite(key: string) {
+    return this.root.children.find(c => c.id === key)
+  }
+  private addSuite(key: string, suite: AuRun, classes: UnitTestClass[]) {
+    const alias = [...this.aliases].find(a =>
+      classes.find(cl => classId(cl) === a[0])
+    )?.[1]
+
+    if (!alias) this.root.children.push(suite)
+    for (const cl of classes) this.aliases.set(classId(cl), alias || key)
+  }
+
   async runUnit(uri: Uri) {
     const key = uri.toString()
     this.testEm.fire({ type: "started" })
@@ -99,14 +123,17 @@ export class Adapter implements TestAdapter {
       const server = fromUri(uri)
       const object = await server.findAbapObject(uri)
       const testClasses = await server.client.runUnitTest(object.path)
-      let suite = this.root.children.find(c => c.id === key)
-      if (!isSuite(suite)) {
+      let suite = this.findSuite(key)
+      if (!suite) {
         suite = convertClasses(object, key, testClasses)
-        this.root.children.push(suite)
+        this.addSuite(key, suite, testClasses)
       }
       this.testEm.fire(finished(this.root))
       for (const c of testClasses)
         for (const t of c.testmethods) {
+          const u = await server.objectFinder.vscodeRange(t["adtcore:uri"])
+          // tslint:disable-next-line:no-console
+          console.log(u)
           this.testStateEm.fire({
             type: "test",
             test: methodId(c, t),
@@ -121,23 +148,17 @@ export class Adapter implements TestAdapter {
   async load(): Promise<void> {
     // nothing to do
   }
+
   async run(tests: string[]) {
     const roots = new Set<string>()
-    for (const test of tests)
-      if (test === this.root.id) {
-        for (const c of this.root.children) this.runUnit(Uri.parse(c.id))
-      } else
-        for (const suite of [...this.root.children].filter(isSuite)) {
-          let found = false
-          if (suite.id === test) found = true
-          else
-            for (const clas of suite.children || [])
-              if (clas.id === test) found = true
-              else if (isSuite(clas))
-                for (const met of clas.children)
-                  if (met.id === test) found = true
-          if (found) roots.add(suite?.id!)
-        }
+
+    if (tests.find(test => test === this.root.id))
+      for (const c of this.root.children) this.runUnit(Uri.parse(c.id))
+    else
+      for (const test of tests) {
+        const run = this.testRoot(test)
+        if (run) roots.add(run.id)
+      }
 
     for (const uri of roots) this.runUnit(Uri.parse(uri))
   }
@@ -151,5 +172,15 @@ export class Adapter implements TestAdapter {
   //   autorun?: Event<void> | undefined
   get testStates() {
     return this.testStateEm.event
+  }
+
+  private testRoot(test: string) {
+    const inClass = (clas: AuClass) =>
+      test === clas.id || !!clas.children.find(m => m.id === test)
+
+    const inRun = (run: AuRun) =>
+      run.id === test || !!run.children.find(inClass)
+
+    return this.root.children.find(inRun)
   }
 }

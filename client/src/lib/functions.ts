@@ -349,3 +349,36 @@ export const asyncFilter = async <T>(
   for (const i of x) if (await filter(i)) res.push(i)
   return res
 }
+
+interface AdtUriPartsInternal {
+  path: string
+  type?: string
+  name?: string
+  start?: { line: number; character: number }
+  end?: { line: number; character: number }
+}
+
+export const splitAdtUriInternal = <
+  T extends { path: string; query?: string; fragment?: string }
+>(
+  uri: T
+) => {
+  const path = uri.path
+  const uriParts: AdtUriPartsInternal = { path }
+  if (uri.query) {
+    for (const part of uri.query.split("&")) {
+      const [name, value] = part.split("=")
+      if (name === "start" || name === "end") {
+        const [line = "0", char = "0"] = value?.split(",")
+        uriParts[name] = { line: toInt(line), character: toInt(char) }
+      }
+    }
+  }
+  if (uri.fragment) {
+    for (const part of uri.fragment.split(";")) {
+      const [name, value] = part.split("=")
+      if (name === "name" || name === "type") uriParts[name] = value
+    }
+  }
+  return uriParts
+}

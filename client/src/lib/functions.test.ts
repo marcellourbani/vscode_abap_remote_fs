@@ -2,7 +2,8 @@ import {
   after,
   chainTaskTransformers,
   fieldReplacer,
-  dependFieldReplacer
+  dependFieldReplacer,
+  splitAdtUriInternal
 } from "./functions"
 import { none } from "fp-ts/lib/Option"
 import { right, left, isLeft, isRight } from "fp-ts/lib/Either"
@@ -38,9 +39,9 @@ function dependentInput<T1 extends Record<string, string>, T2>(
   }
 }
 test("compose text input and selections", async () => {
-  const base = { a: "", b: "b" }
+  const base2 = { a: "", b: "b" }
 
-  const single = await fieldReplacer("b", fakeselect("bb"))(base)()
+  const single = await fieldReplacer("b", fakeselect("bb"))(base2)()
   if (isRight(single)) {
     expect(single.right.a).toBe("")
   } else {
@@ -50,7 +51,7 @@ test("compose text input and selections", async () => {
     fieldReplacer("b", fakeselect("bb")),
     fieldReplacer("a", fakeselect("aa")),
     fieldReplacer("a", fakeselect("b"), isFalsey)
-  )(base)
+  )(base2)
 
   const both = await inputBoth()
   if (isLeft(both)) throw new Error("Unexpected none")
@@ -60,7 +61,7 @@ test("compose text input and selections", async () => {
     fieldReplacer("b", fakeselect()),
     fieldReplacer("a", fakeselect("aa")),
     fieldReplacer("a", fakeselect("b"), isFalsey)
-  )(base)
+  )(base2)
   const both2 = await inputBoth2()
   if (isRight(both2)) fail("Unexpected right")
   expect(isLeft(both2) && both2.left).toBe(none)
@@ -68,14 +69,14 @@ test("compose text input and selections", async () => {
     fieldReplacer("b", fakeselect("c", rejectPromise)),
     fieldReplacer("a", fakeselect("aa")),
     fieldReplacer("a", fakeselect("b"))
-  )(base)
+  )(base2)
   const both3 = await inputBoth3()
   if (isRight(both3)) fail("Unexpected right")
   else expect(both3.left.toString()).toBe("Error: foo")
 })
 
 test("compose dependent replacers", async () => {
-  const base = { a: "", b: "b" }
+  const base3 = { a: "", b: "b" }
   const _ = ""
   const changed = await chainTaskTransformers<A>(
     dependFieldReplacer("a", dependentInput("aa")),
@@ -83,7 +84,7 @@ test("compose dependent replacers", async () => {
     dependFieldReplacer("b", dependentInput<A, any>("suffix")),
     dependFieldReplacer("a", () => fakeselect("aa")),
     fieldReplacer("a", fakeselect("aa"))
-  )(base)()
+  )(base3)()
   if (isLeft(changed)) fail("Unexpected failure")
   else {
     expect(changed.right.a).toBe("aa")
@@ -99,6 +100,46 @@ test("compose dependent replacers", async () => {
     dependFieldReplacer("b", dependentInput<A, any>("suffix", rejectPromise2)),
     dependFieldReplacer("a", () => fakeselect("aa")),
     fieldReplacer("a", fakeselect("aa"))
-  )(base)()
+  )(base3)()
   if (isRight(changed2)) fail("Unexpected success")
+})
+
+const base = { path: "sap/bc/adt/oo/classes/zfoobar/includes/testclasses" }
+// /sap/bc/adt/oo/classes/zroman/includes/testclasses#type=CLAS%2FOLD;name=MULTIPLE%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20II
+test("split uri simple", () => {
+  const parts = splitAdtUriInternal(base)
+  expect(parts.path).toBe(base.path)
+})
+
+test("split uri fragment", () => {
+  let parts = splitAdtUriInternal({ ...base, fragment: "" })
+  expect(parts.path).toBe(base.path)
+  expect(parts.name).toBeFalsy()
+  expect(parts.type).toBeFalsy()
+  parts = splitAdtUriInternal({
+    ...base,
+    fragment: "type=CLAS/OLD;name=MULTIPLE                      II"
+  })
+  expect(parts.path).toBe(base.path)
+  expect(parts.name).toBe("MULTIPLE                      II")
+  expect(parts.type).toBe("CLAS/OLD")
+  parts = splitAdtUriInternal({ ...base, fragment: "foo;bar=1" })
+  expect(parts.path).toBe(base.path)
+  expect(parts.name).toBeFalsy()
+  expect(parts.type).toBeFalsy()
+})
+
+test("split uri start", () => {
+  let parts = splitAdtUriInternal({ ...base, query: "" })
+  expect(parts.path).toBe(base.path)
+  expect(parts.start).toBeFalsy()
+  parts = splitAdtUriInternal({
+    ...base,
+    query: "start=3,2"
+  })
+  expect(parts.path).toBe(base.path)
+  expect(parts.start).toBeDefined()
+  expect(parts.start?.line).toBe(3)
+  expect(parts.start?.character).toBe(2)
+  expect(parts.end).toBeFalsy()
 })

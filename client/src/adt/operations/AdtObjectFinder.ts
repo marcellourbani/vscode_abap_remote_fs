@@ -8,7 +8,14 @@ import {
   CreatableTypeIds
 } from "abap-adt-api"
 import { AdtServer } from "../AdtServer"
-import { window, QuickPickItem, workspace, commands } from "vscode"
+import {
+  window,
+  QuickPickItem,
+  workspace,
+  commands,
+  Uri,
+  Position
+} from "vscode"
 
 import {
   NodePath,
@@ -20,6 +27,7 @@ import {
 import { isAbapNode } from "../../fs/AbapNode"
 import { AbapObject } from "../abap/AbapObject"
 import { urlFromPath } from "vscode-abap-remote-fs-sharedapi"
+import { splitAdtUri } from "../../lib"
 
 interface SearchObjectType {
   name: string
@@ -97,12 +105,28 @@ export class AdtObjectFinder {
     }
   }
 
+  public async vscodeRange(uri: string) {
+    const u = splitAdtUri(uri)
+    const rval = { uri: "", start: u.start }
+    if (u.type && u.name) {
+      const frag = await this.server.client.fragmentMappings(
+        u.path,
+        u.type,
+        u.name
+      )
+      rval.uri = await this.vscodeUri(frag.uri, true)
+      rval.start = new Position(frag.line + 1, frag.column)
+    }
+    rval.uri = await this.vscodeUri(u.path, true)
+    return rval
+  }
+
   public async vscodeUri(uri: string, mainInclude: boolean) {
-    const path = await this.server.objectFinder.findObjectPath(uri)
+    const path = await this.findObjectPath(uri)
     let s = ""
 
     if (path.length) {
-      let nPath = await this.server.objectFinder.locateObject(path)
+      let nPath = await this.locateObject(path)
       if (nPath && nPath.node.isFolder && mainInclude)
         nPath = await findMainIncludeAsync(nPath, this.server.client)
       if (nPath) s = urlFromPath(this.server.connectionId, nPath.path)
