@@ -8,9 +8,10 @@ import {
   TestInfo
 } from "vscode-test-adapter-api"
 import { EventEmitter, Diagnostic, Uri } from "vscode"
-import { fromUri } from "../../adt/AdtServer"
+import { fromUri, AdtServer } from "../../adt/AdtServer"
 import { UnitTestClass, UnitTestMethod, UnitTestAlert } from "abap-adt-api"
 import { AbapObject } from "../../adt/abap/AbapObject"
+import { isAbapNode } from "../../fs/AbapNode"
 
 // const convertTestAlert = (m: UnitTestMethod) => {
 //   let num = 1
@@ -24,10 +25,10 @@ import { AbapObject } from "../../adt/abap/AbapObject"
 //   }
 // }
 
-const methodId = (c: UnitTestClass, m: UnitTestMethod) =>
-  `${c["adtcore:name"]}.${m["adtcore:name"]}`
+const classId = (c: UnitTestClass) => `${c["adtcore:uri"]}`
 
-const classId = (c: UnitTestClass) => `${c["adtcore:name"]}`
+const methodId = (c: UnitTestClass, m: UnitTestMethod) =>
+  `${classId(c)}.${m["adtcore:name"]}`
 
 const finished = (suite: TestSuiteInfo): TestLoadFinishedEvent => ({
   type: "finished",
@@ -46,34 +47,69 @@ interface AuRun extends TestSuiteInfo {
 interface AuRoot extends TestSuiteInfo {
   children: AuRun[]
 }
-const convertTestMethod = (c: UnitTestClass) => (m: UnitTestMethod) => {
+const convertTestMethod = async (
+  server: AdtServer,
+  c: UnitTestClass,
+  meth: UnitTestMethod
+) => {
+  const u = await server.objectFinder.vscodeRange(meth["adtcore:uri"])
   const met: AuMethod = {
     type: "test",
-    id: methodId(c, m),
-    label: m["adtcore:name"],
-    file: m["adtcore:uri"],
+    id: methodId(c, meth),
+    label: meth["adtcore:name"],
+    file: u.uri,
     classId: classId(c)
+  }
+  if (u.start) {
+    const node = server.findNode(Uri.parse(u.uri))
+    if (isAbapNode(node)) {
+      try {
+        if (!node.abapObject.structure)
+          await node.abapObject.loadMetadata(server.client)
+        const fu = node.abapObject.getContentsUri()
+        const source = (await node.fetchContents(server.client)).toString()
+        const result = await server.client.findDefinition(
+          fu,
+          source,
+          u.start.line + 1,
+          u.start.character,
+          u.start.character,
+          true
+        )
+        if (result.line) met.line = result.line - 1
+      } catch (error) {
+        throw error
+      }
+    }
   }
   return met
 }
-const convertTestClass = (c: UnitTestClass) => {
+const convertTestClass = async (server: AdtServer, c: UnitTestClass) => {
+  const children: AuMethod[] = []
+
+  for (const um of c.testmethods)
+    children.push(await convertTestMethod(server, c, um))
   const cl: AuClass = {
     type: "suite",
     id: classId(c),
     label: c["adtcore:name"],
-    children: c.testmethods.map(convertTestMethod(c))
+    children
   }
   return cl
 }
 
-const convertClasses = (
+const convertClasses = async (
+  server: AdtServer,
   obj: AbapObject,
   key: string,
   classes: UnitTestClass[]
 ) => {
+  const children = []
+  for (const clas of classes)
+    children.push(await convertTestClass(server, clas))
   const suite: AuRun = {
     type: "suite",
-    children: classes.map(convertTestClass),
+    children,
     id: key,
     label: obj.name.replace(/\..*/, "")
   }
@@ -125,15 +161,12 @@ export class Adapter implements TestAdapter {
       const testClasses = await server.client.runUnitTest(object.path)
       let suite = this.findSuite(key)
       if (!suite) {
-        suite = convertClasses(object, key, testClasses)
+        suite = await convertClasses(server, object, key, testClasses)
         this.addSuite(key, suite, testClasses)
       }
       this.testEm.fire(finished(this.root))
       for (const c of testClasses)
         for (const t of c.testmethods) {
-          const u = await server.objectFinder.vscodeRange(t["adtcore:uri"])
-          // tslint:disable-next-line:no-console
-          console.log(u)
           this.testStateEm.fire({
             type: "test",
             test: methodId(c, t),

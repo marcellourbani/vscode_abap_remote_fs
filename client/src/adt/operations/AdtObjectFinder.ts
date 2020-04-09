@@ -27,7 +27,7 @@ import {
 import { isAbapNode } from "../../fs/AbapNode"
 import { AbapObject } from "../abap/AbapObject"
 import { urlFromPath } from "vscode-abap-remote-fs-sharedapi"
-import { splitAdtUri } from "../../lib"
+import { splitAdtUri, vscPosition } from "../../lib"
 
 interface SearchObjectType {
   name: string
@@ -115,7 +115,7 @@ export class AdtObjectFinder {
         u.name
       )
       rval.uri = await this.vscodeUri(frag.uri, true)
-      rval.start = new Position(frag.line + 1, frag.column)
+      rval.start = vscPosition(frag.line, frag.column)
     }
     rval.uri = await this.vscodeUri(u.path, true)
     return rval

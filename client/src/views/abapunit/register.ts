@@ -1,4 +1,4 @@
-import { Adapter } from "./adapter"
+import { Adapter } from "./testAdapter"
 import { ExtensionContext, extensions, workspace, Uri } from "vscode"
 import { testExplorerExtensionId, TestHub } from "vscode-test-adapter-api"
 import { ADTSCHEME } from "../../adt/AdtServer"

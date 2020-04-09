@@ -127,11 +127,14 @@ export interface AdtUriParts {
   end?: Position
 }
 
+export const vscPosition = (adtLine: number, character: number) =>
+  new Position(adtLine - 1, character)
+
 export const splitAdtUri = (uri: string): AdtUriParts => {
   const { start, end, ...rest } = splitAdtUriInternal(Uri.parse(uri))
   return {
     ...rest,
-    start: start && new Position(start.line + 1, start.character),
-    end: end && new Position(end.line + 1, end.character)
+    start: start && vscPosition(start.line, start.character),
+    end: end && vscPosition(end.line, end.character)
   }
 }
