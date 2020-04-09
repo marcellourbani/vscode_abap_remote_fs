@@ -37,9 +37,11 @@ const finished = (suite: TestSuiteInfo): TestLoadFinishedEvent => ({
 
 interface AuMethod extends TestInfo {
   classId: string
+  aunitUri: string
 }
 interface AuClass extends TestSuiteInfo {
   children: AuMethod[]
+  aunitUri: string
 }
 interface AuRun extends TestSuiteInfo {
   children: AuClass[]
@@ -47,6 +49,13 @@ interface AuRun extends TestSuiteInfo {
 interface AuRoot extends TestSuiteInfo {
   children: AuRun[]
 }
+
+interface TestLookup {
+  run: AuRun
+  clas?: AuClass
+  method?: AuMethod
+}
+
 const convertTestMethod = async (
   server: AdtServer,
   c: UnitTestClass,
@@ -58,7 +67,8 @@ const convertTestMethod = async (
     id: methodId(c, meth),
     label: meth["adtcore:name"],
     file: u.uri,
-    classId: classId(c)
+    classId: classId(c),
+    aunitUri: meth["adtcore:uri"]
   }
   if (u.start) {
     const node = server.findNode(Uri.parse(u.uri))
@@ -93,7 +103,8 @@ const convertTestClass = async (server: AdtServer, c: UnitTestClass) => {
     type: "suite",
     id: classId(c),
     label: c["adtcore:name"],
-    children
+    children,
+    aunitUri: c["adtcore:uri"]
   }
   return cl
 }
@@ -152,17 +163,22 @@ export class Adapter implements TestAdapter {
     for (const cl of classes) this.aliases.set(classId(cl), alias || key)
   }
 
-  async runUnit(uri: Uri) {
+  async runUnit(uri: Uri, clas?: AuClass, method?: AuMethod) {
     const key = uri.toString()
     this.testEm.fire({ type: "started" })
     try {
       const server = fromUri(uri)
-      const object = await server.findAbapObject(uri)
-      const testClasses = await server.client.runUnitTest(object.path)
-      let suite = this.findSuite(key)
-      if (!suite) {
-        suite = await convertClasses(server, object, key, testClasses)
-        this.addSuite(key, suite, testClasses)
+      const path = method?.aunitUri || clas?.aunitUri
+      let testClasses
+      if (path) testClasses = await server.client.runUnitTest(path)
+      else {
+        const object = await server.findAbapObject(uri)
+        testClasses = await server.client.runUnitTest(object.path)
+        let suite = this.findSuite(key)
+        if (!suite) {
+          suite = await convertClasses(server, object, key, testClasses)
+          this.addSuite(key, suite, testClasses)
+        }
       }
       this.testEm.fire(finished(this.root))
       for (const c of testClasses)
@@ -183,17 +199,13 @@ export class Adapter implements TestAdapter {
   }
 
   async run(tests: string[]) {
-    const roots = new Set<string>()
-
     if (tests.find(test => test === this.root.id))
       for (const c of this.root.children) this.runUnit(Uri.parse(c.id))
     else
       for (const test of tests) {
-        const run = this.testRoot(test)
-        if (run) roots.add(run.id)
+        const hit = this.testLookup(test)
+        if (hit) this.runUnit(Uri.parse(hit?.run.id), hit.clas, hit.method)
       }
-
-    for (const uri of roots) this.runUnit(Uri.parse(uri))
   }
   cancel(): void {
     // not implemented yet
@@ -207,13 +219,24 @@ export class Adapter implements TestAdapter {
     return this.testStateEm.event
   }
 
-  private testRoot(test: string) {
-    const inClass = (clas: AuClass) =>
-      test === clas.id || !!clas.children.find(m => m.id === test)
+  private testLookup(test: string): TestLookup | undefined {
+    const inClass = (clas: AuClass) => {
+      if (test === clas.id) return { clas }
+      const method = clas.children.find(m => m.id === test)
+      if (method) return { clas, method }
+    }
 
-    const inRun = (run: AuRun) =>
-      run.id === test || !!run.children.find(inClass)
+    const inRun = (run: AuRun) => {
+      if (test === run.id) return { run }
+      for (const clas of run.children) {
+        const found = inClass(clas)
+        if (found) return { run, ...found }
+      }
+    }
 
-    return this.root.children.find(inRun)
+    for (const root of this.root.children) {
+      const found = inRun(root)
+      if (found) return found
+    }
   }
 }
