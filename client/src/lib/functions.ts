@@ -216,6 +216,22 @@ export const promiseQueue = <T>(initial: T) => {
   }
 }
 
+export const rememberFor = <T, K>(
+  ms: number,
+  f: (x: K) => T
+): ((x: K) => T) => {
+  const storage = new Map<K, { value: T; time: number }>()
+  return (k: K) => {
+    const time = new Date().getTime()
+    let last = storage.get(k)
+    if (!last || time - last.time > ms) {
+      last = { time, value: f(k) }
+      storage.set(k, last)
+    }
+    return last.value
+  }
+}
+
 export const debounce = <K, R>(frequency: number, cb: (x: K) => R) => {
   const calls = new Map<K, Promise<R>>()
   return (key: K) => {

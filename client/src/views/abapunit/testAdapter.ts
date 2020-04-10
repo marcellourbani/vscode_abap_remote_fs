@@ -105,28 +105,30 @@ const convertTestMethod = async (
     classId: classId(c),
     aunitUri: meth["adtcore:uri"]
   }
-  if (u.start) {
-    const node = server.findNode(Uri.parse(u.uri))
-    if (isAbapNode(node)) {
-      try {
-        if (!node.abapObject.structure)
-          await node.abapObject.loadMetadata(server.client)
-        const fu = node.abapObject.getContentsUri()
-        const source = (await node.fetchContents(server.client)).toString()
-        const result = await server.client.findDefinition(
-          fu,
-          source,
-          u.start.line + 1,
-          u.start.character,
-          u.start.character,
-          true
-        )
-        if (result.line) met.line = result.line - 1
-      } catch (error) {
-        throw error
+  if (u.start)
+    if (meth["adtcore:type"] === "PROG/OLI") met.line = u.start.line
+    else {
+      const node = server.findNode(Uri.parse(u.uri))
+      if (isAbapNode(node)) {
+        try {
+          if (!node.abapObject.structure)
+            await node.abapObject.loadMetadata(server.client)
+          const fu = node.abapObject.getContentsUri()
+          const source = (await node.fetchContents(server.client)).toString()
+          const result = await server.client.findDefinition(
+            fu,
+            source,
+            u.start.line + 1,
+            u.start.character,
+            u.start.character + met.label.length,
+            false
+          )
+          if (result.line) met.line = result.line - 1
+        } catch (error) {
+          throw error
+        }
       }
     }
-  }
   return met
 }
 const convertTestClass = async (server: AdtServer, c: UnitTestClass) => {

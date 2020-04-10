@@ -11,11 +11,10 @@
       "request": "launch",
       "runtimeExecutable": "${execPath}",
       "args": [
-        "--extensionDevelopmentPath=${workspaceFolder}"
+        "--extensionDevelopmentPath=${workspaceFolder}",
+        "--async-stack-traces"
       ],
-      "outFiles": [
-        "${workspaceFolder}/client/dist/**/*.js"
-      ],
+      "outFiles": ["${workspaceFolder}/client/dist/**/*.js"],
       "preLaunchTask": {
         "type": "npm",
         "script": "watch"
@@ -29,14 +28,10 @@
       "protocol": "inspector",
       "smartStep": true,
       "showAsyncStacks": true,
-      "skipFiles": [
-        "<node_internals>/**"
-      ],
+      "skipFiles": ["<node_internals>/**"],
       "port": 6009,
       "sourceMaps": true,
-      "outFiles": [
-        "${workspaceRoot}/server/dist/**/*.js"
-      ]
+      "outFiles": ["${workspaceRoot}/server/dist/**/*.js"]
     },
     {
       "name": "Extension Tests",
@@ -47,19 +42,14 @@
         "--extensionDevelopmentPath=${workspaceFolder}",
         "--extensionTestsPath=${workspaceFolder}/out/test"
       ],
-      "outFiles": [
-        "${workspaceFolder}/client/out/test/**/*.js"
-      ],
+      "outFiles": ["${workspaceFolder}/client/out/test/**/*.js"],
       "preLaunchTask": "npm: watch"
     }
   ],
   "compounds": [
     {
       "name": "Client + Server",
-      "configurations": [
-        "Client",
-        "Attach to Server"
-      ]
+      "configurations": ["Client", "Attach to Server"]
     }
   ]
 }
