@@ -5,13 +5,17 @@ import {
   TestLoadStartedEvent,
   TestLoadFinishedEvent,
   TestSuiteInfo,
-  TestInfo
+  TestInfo,
+  RetireEvent,
+  TestRunFinishedEvent,
+  TestRunStartedEvent
 } from "vscode-test-adapter-api"
-import { EventEmitter, Diagnostic, Uri } from "vscode"
-import { fromUri, AdtServer } from "../../adt/AdtServer"
-import { UnitTestClass, UnitTestMethod, UnitTestAlert } from "abap-adt-api"
+import { EventEmitter, Uri } from "vscode"
+import { fromUri, AdtServer, getServer } from "../../adt/AdtServer"
+import { UnitTestClass, UnitTestMethod } from "abap-adt-api"
 import { AbapObject } from "../../adt/abap/AbapObject"
 import { isAbapNode } from "../../fs/AbapNode"
+import { ActivationEvent } from "../../adt/operations/AdtObjectActivator"
 
 // const convertTestAlert = (m: UnitTestMethod) => {
 //   let num = 1
@@ -135,10 +139,13 @@ const methodState = (m: UnitTestMethod) => {
 }
 
 export class Adapter implements TestAdapter {
-  private testStateEm = new EventEmitter<TestSuiteEvent | TestEvent>()
+  private testStateEm = new EventEmitter<
+    TestSuiteEvent | TestEvent | TestRunStartedEvent | TestRunFinishedEvent
+  >()
   private testEm = new EventEmitter<
     TestLoadStartedEvent | TestLoadFinishedEvent
   >()
+  private retireEm = new EventEmitter<RetireEvent>()
   private aliases = new Map<string, string>()
   private root: AuRoot = {
     type: "suite",
@@ -146,7 +153,13 @@ export class Adapter implements TestAdapter {
     label: this.connId,
     children: []
   }
-  constructor(public connId: string) {}
+  onActivate(e: ActivationEvent) {
+    const key = this.aliases.get(e.activated.key)
+    if (key) this.retireEm.fire({ tests: [key] })
+  }
+  constructor(public connId: string) {
+    getServer(connId).activator.onActivate(this.onActivate.bind(this))
+  }
   dispose() {
     //
   }
@@ -170,9 +183,13 @@ export class Adapter implements TestAdapter {
       const server = fromUri(uri)
       const path = method?.aunitUri || clas?.aunitUri
       let testClasses
-      if (path) testClasses = await server.client.runUnitTest(path)
-      else {
+      if (path) {
+        this.testStateEm.fire({ type: "started", tests: [path] })
+        testClasses = await server.client.runUnitTest(path)
+      } else {
+        this.testStateEm.fire({ type: "started", tests: [key] })
         const object = await server.findAbapObject(uri)
+        this.aliases.set(object.getActivationSubject().key, key)
         testClasses = await server.client.runUnitTest(object.path)
         let suite = this.findSuite(key)
         if (!suite) {
@@ -181,6 +198,10 @@ export class Adapter implements TestAdapter {
         }
       }
       this.testEm.fire(finished(this.root))
+      this.testStateEm.fire({
+        type: "started",
+        tests: testClasses.flatMap(c => c.testmethods.map(m => methodId(c, m)))
+      })
       for (const c of testClasses)
         for (const t of c.testmethods) {
           this.testStateEm.fire({
@@ -189,6 +210,7 @@ export class Adapter implements TestAdapter {
             state: methodState(t)
           })
         }
+      this.testStateEm.fire({ type: "finished" })
     } catch (e) {
       this.testEm.fire({ type: "finished", errorMessage: e.toString() })
     }
@@ -213,7 +235,10 @@ export class Adapter implements TestAdapter {
   get tests() {
     return this.testEm.event
   }
-  //   retire?: Event<RetireEvent> | undefined
+
+  get retire() {
+    return this.retireEm.event
+  }
   //   autorun?: Event<void> | undefined
   get testStates() {
     return this.testStateEm.event

@@ -309,7 +309,6 @@ export class AdtCommands {
 
       const adapter = getTestAdapter(uri)
       if (adapter) {
-        commands.executeCommand("workbench.view.extension.test")
         await adapter.runUnit(uri)
       } else
         await window.withProgress(
