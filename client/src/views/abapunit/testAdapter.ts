@@ -17,7 +17,6 @@ import {
   Range,
   Position,
   DiagnosticSeverity,
-  DiagnosticCollection,
   languages
 } from "vscode"
 import { fromUri, AdtServer, getServer } from "../../adt/AdtServer"
@@ -30,7 +29,6 @@ import {
 import { AbapObject } from "../../adt/abap/AbapObject"
 import { isAbapNode } from "../../fs/AbapNode"
 import { ActivationEvent } from "../../adt/operations/AdtObjectActivator"
-import { cache } from "../../lib"
 
 const convertSeverity = (s: UnitTestSeverity) => {
   switch (s) {
@@ -51,7 +49,7 @@ const convertTestAlert = async (
 ) => {
   const severity = convertSeverity(alrt.severity)
   if (severity > maxSeverity) return
-  const [error, ...parents] = alrt.stack
+  const [error] = alrt.stack
   const { uri, start } = await server.objectFinder.vscodeRange(
     error["adtcore:uri"]
   )
@@ -146,6 +144,9 @@ const convertTestClass = async (server: AdtServer, c: UnitTestClass) => {
   return cl
 }
 
+const objLabel = (o: AbapObject) =>
+  `${o.type.replace(/\/.*/, "")} ${o.name.replace(/\..*/, "")}`
+
 const convertClasses = async (
   server: AdtServer,
   obj: AbapObject,
@@ -159,7 +160,7 @@ const convertClasses = async (
     type: "suite",
     children,
     id: key,
-    label: obj.name.replace(/\..*/, "")
+    label: objLabel(obj)
   }
   return suite
 }
@@ -200,7 +201,8 @@ export class Adapter implements TestAdapter {
   private findSuite(key: string) {
     return this.root.children.find(c => c.id === key)
   }
-  private addSuite(key: string, suite: AuRun, classes: UnitTestClass[]) {
+
+  private mergeSuite(key: string, classes: UnitTestClass[], suite: AuRun) {
     const alias = [...this.aliases].find(a =>
       classes.find(cl => classId(cl) === a[0])
     )?.[1]
@@ -209,57 +211,55 @@ export class Adapter implements TestAdapter {
     for (const cl of classes) this.aliases.set(classId(cl), alias || key)
   }
 
-  async runUnit(uri: Uri, clas?: AuClass, method?: AuMethod) {
+  private async runTest(uri: Uri, clas?: AuClass, method?: AuMethod) {
     const key = uri.toString()
+    const server = fromUri(uri)
+    const path = method?.aunitUri || clas?.aunitUri
+    let suite = this.findSuite(key)
+    let testClasses
+    if (path) testClasses = await server.client.runUnitTest(path)
+    else {
+      const object = await server.findAbapObject(uri)
+      this.aliases.set(object.getActivationSubject().key, key)
+      testClasses = await server.client.runUnitTest(object.path)
+      if (!suite) {
+        suite = await convertClasses(server, object, key, testClasses)
+        this.mergeSuite(key, testClasses, suite)
+      }
+    }
+    return testClasses
+  }
+
+  async runUnit(uri: Uri) {
     this.testEm.fire({ type: "started" })
     try {
-      const server = fromUri(uri)
-      const path = method?.aunitUri || clas?.aunitUri
-      const suite = this.findSuite(key)
-      let testClasses
-      if (path) {
-        this.testStateEm.fire({ type: "started", tests: [path] })
-        testClasses = await server.client.runUnitTest(path)
-      } else {
-        this.testStateEm.fire({ type: "started", tests: [key] })
-        const object = await server.findAbapObject(uri)
-        this.aliases.set(object.getActivationSubject().key, key)
-        testClasses = await server.client.runUnitTest(object.path)
-        if (!suite) {
-          const newSuite = await convertClasses(
-            server,
-            object,
-            key,
-            testClasses
-          )
-          this.addSuite(key, newSuite, testClasses)
-        }
-      }
-      if (suite)
-        this.testEm.fire(finished(this.root.children.find(c => c.id === key)))
-      else this.testEm.fire(finished(this.root))
-      this.testStateEm.fire({
-        type: "started",
-        tests: testClasses.flatMap(c => c.testmethods.map(m => methodId(c, m)))
-      })
-
+      const testClasses = await this.runTest(uri)
+      this.testEm.fire(finished(this.root))
       await this.updateTestStatus(testClasses)
-      this.testStateEm.fire({ type: "finished" })
-      await this.refreshAlerts(testClasses, server)
     } catch (e) {
       this.testEm.fire({ type: "finished", errorMessage: e.toString() })
     }
   }
 
-  private updateTestStatus(testClasses: UnitTestClass[]) {
-    for (const c of testClasses)
-      for (const t of c.testmethods) {
-        this.testStateEm.fire({
-          type: "test",
-          test: methodId(c, t),
-          state: methodState(t)
-        })
-      }
+  private async updateTestStatus(testClasses: UnitTestClass[]) {
+    this.testStateEm.fire({
+      type: "started",
+      tests: testClasses.flatMap(c => c.testmethods.map(m => methodId(c, m)))
+    })
+    try {
+      for (const c of testClasses)
+        for (const t of c.testmethods) {
+          this.testStateEm.fire({
+            type: "test",
+            test: methodId(c, t),
+            state: methodState(t)
+          })
+        }
+      await this.refreshAlerts(testClasses, getServer(this.connId))
+    } catch (error) {
+      // ignore
+    }
+    this.testStateEm.fire({ type: "finished" })
   }
   private alerts = languages.createDiagnosticCollection(
     `Abap Unit ${this.connId}`
@@ -287,13 +287,33 @@ export class Adapter implements TestAdapter {
   }
 
   async run(tests: string[]) {
-    if (tests.find(test => test === this.root.id))
-      for (const c of this.root.children) this.runUnit(Uri.parse(c.id))
-    else
-      for (const test of tests) {
-        const hit = this.testLookup(test)
-        if (hit) this.runUnit(Uri.parse(hit?.run.id), hit.clas, hit.method)
-      }
+    const testClasses: UnitTestClass[] = []
+    this.testStateEm.fire({
+      type: "started",
+      tests: []
+    })
+    try {
+      if (tests.find(test => test === this.root.id))
+        for (const c of this.root.children)
+          testClasses.push(...(await this.runTest(Uri.parse(c.id))))
+      else
+        for (const test of tests) {
+          const hit = this.testLookup(test)
+          if (hit)
+            testClasses.push(
+              ...(await this.runTest(
+                Uri.parse(hit?.run.id),
+                hit.clas,
+                hit.method
+              ))
+            )
+        }
+      await this.updateTestStatus(testClasses)
+    } catch (e) {
+      this.testStateEm.fire({
+        type: "finished"
+      })
+    }
   }
   cancel(): void {
     // not implemented yet
