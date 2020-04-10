@@ -5,7 +5,6 @@ import {
   window,
   commands,
   ProgressLocation,
-  ViewColumn,
   ExtensionContext
 } from "vscode"
 import {
@@ -208,8 +207,7 @@ export class AdtCommands {
           // if editor is dirty, save before activate
           if (editor && editor.document.isDirty) {
             const saved = await editor.document.save()
-            if (saved) await obj.loadMetadata(server.client)
-            else return
+            if (!saved) return
           } else if (!obj.structure) await obj.loadMetadata(server.client)
           await server.activator.activate(obj, uri)
           if (editor === window.activeTextEditor) {

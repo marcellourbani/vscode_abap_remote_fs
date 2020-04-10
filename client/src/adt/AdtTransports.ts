@@ -1,6 +1,7 @@
 import { window } from "vscode"
 import { ADTClient } from "abap-adt-api"
 import { fieldOrder } from "../lib"
+import { TransportStatus } from "./abap/AbapObject"
 
 export interface TransportSelection {
   cancelled: boolean
@@ -18,7 +19,7 @@ export async function selectTransport(
   devClass: string,
   client: ADTClient,
   forCreation: boolean = false,
-  current = "",
+  current: string | TransportStatus = "",
   transportLayer = ""
 ): Promise<TransportSelection> {
   const ti = await client.transportInfo(

@@ -2,8 +2,8 @@ import { none, isSome, isNone, Option } from "fp-ts/lib/Option"
 import { taskEither, TaskEither } from "fp-ts/lib/TaskEither"
 import { right, left } from "fp-ts/lib/Either"
 
-const isString = (x: any) => typeof x === "string"
-const isNumber = (x: any) => typeof x === "number"
+export const isString = (x: any) => typeof x === "string"
+export const isNumber = (x: any) => typeof x === "number"
 export const pick = <T, K extends keyof T>(name: K) => (x: T): T[K] => x[name]
 export const flat = <T>(a: T[][]): T[] =>
   a.reduce((res, current) => [...res, ...current], [])

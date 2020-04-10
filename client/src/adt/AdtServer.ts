@@ -23,7 +23,7 @@ import {
   isCreatableTypeId,
   session_types
 } from "abap-adt-api"
-import { isString } from "util"
+import { isString } from "../lib"
 import {
   findObjectInNodeByPath,
   abapObjectFromNode
@@ -444,7 +444,7 @@ export class AdtServer {
     // no need for transports for local objects
     if (transport === TransportStatus.LOCAL) return trSel("")
     // I might already have a transport number, but might be stale
-    let current = ""
+    let current: string | TransportStatus = ""
     if (isString(transport)) current = transport
     if (!obj.structure) await obj.loadMetadata(this.client)
     const uri = obj.getContentsUri()

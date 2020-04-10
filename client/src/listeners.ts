@@ -17,7 +17,7 @@ import { clearUTResultsIfLastRun } from "./adt/operations/UnitTestRunner"
 import { IncludeLensP } from "./adt/operations/IncludeLens"
 import { debounce } from "./lib"
 
-export const listenersubscribers: Array<(...x: any[]) => Disposable> = []
+export const listenersubscribers: ((...x: any[]) => Disposable)[] = []
 
 export const listener = <T>(event: Event<T>) => (
   target: any,
