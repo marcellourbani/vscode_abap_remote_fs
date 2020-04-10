@@ -10,31 +10,64 @@ import {
   TestRunFinishedEvent,
   TestRunStartedEvent
 } from "vscode-test-adapter-api"
-import { EventEmitter, Uri } from "vscode"
+import {
+  EventEmitter,
+  Uri,
+  Diagnostic,
+  Range,
+  Position,
+  DiagnosticSeverity,
+  DiagnosticCollection,
+  languages
+} from "vscode"
 import { fromUri, AdtServer, getServer } from "../../adt/AdtServer"
-import { UnitTestClass, UnitTestMethod } from "abap-adt-api"
+import {
+  UnitTestClass,
+  UnitTestMethod,
+  UnitTestSeverity,
+  UnitTestAlert
+} from "abap-adt-api"
 import { AbapObject } from "../../adt/abap/AbapObject"
 import { isAbapNode } from "../../fs/AbapNode"
 import { ActivationEvent } from "../../adt/operations/AdtObjectActivator"
+import { cache } from "../../lib"
 
-// const convertTestAlert = (m: UnitTestMethod) => {
-//   let num = 1
-//   return (a: UnitTestAlert): TestInfo => {
-//     return {
-//       type: "test",
-//       id: `${m["adtcore:name"]}${num++}`,
-//       label: a.details.join("/"),
-//       file: a.stack[0]!["adtcore:name"]
-//     }
-//   }
-// }
+const convertSeverity = (s: UnitTestSeverity) => {
+  switch (s) {
+    case UnitTestSeverity.critical:
+    case UnitTestSeverity.fatal:
+      return DiagnosticSeverity.Error
+    case UnitTestSeverity.tolerable:
+      return DiagnosticSeverity.Warning
+    case UnitTestSeverity.tolerant:
+      return DiagnosticSeverity.Information
+  }
+}
+
+const convertTestAlert = async (
+  server: AdtServer,
+  alrt: UnitTestAlert,
+  maxSeverity = DiagnosticSeverity.Warning
+) => {
+  const severity = convertSeverity(alrt.severity)
+  if (severity > maxSeverity) return
+  const [error, ...parents] = alrt.stack
+  const { uri, start } = await server.objectFinder.vscodeRange(
+    error["adtcore:uri"]
+  )
+  if (!start) return
+  const range = new Range(start, new Position(start.line, 1000))
+  const diagnostic = new Diagnostic(range, alrt.details.join("\n"), severity)
+  diagnostic.source = `Abap Unit ${server.connectionId}`
+  return { uri, diagnostic }
+}
 
 const classId = (c: UnitTestClass) => `${c["adtcore:uri"]}`
 
 const methodId = (c: UnitTestClass, m: UnitTestMethod) =>
   `${classId(c)}.${m["adtcore:name"]}`
 
-const finished = (suite: TestSuiteInfo): TestLoadFinishedEvent => ({
+const finished = (suite?: TestSuiteInfo): TestLoadFinishedEvent => ({
   type: "finished",
   suite
 })
@@ -182,6 +215,7 @@ export class Adapter implements TestAdapter {
     try {
       const server = fromUri(uri)
       const path = method?.aunitUri || clas?.aunitUri
+      const suite = this.findSuite(key)
       let testClasses
       if (path) {
         this.testStateEm.fire({ type: "started", tests: [path] })
@@ -191,29 +225,61 @@ export class Adapter implements TestAdapter {
         const object = await server.findAbapObject(uri)
         this.aliases.set(object.getActivationSubject().key, key)
         testClasses = await server.client.runUnitTest(object.path)
-        let suite = this.findSuite(key)
         if (!suite) {
-          suite = await convertClasses(server, object, key, testClasses)
-          this.addSuite(key, suite, testClasses)
+          const newSuite = await convertClasses(
+            server,
+            object,
+            key,
+            testClasses
+          )
+          this.addSuite(key, newSuite, testClasses)
         }
       }
-      this.testEm.fire(finished(this.root))
+      if (suite)
+        this.testEm.fire(finished(this.root.children.find(c => c.id === key)))
+      else this.testEm.fire(finished(this.root))
       this.testStateEm.fire({
         type: "started",
         tests: testClasses.flatMap(c => c.testmethods.map(m => methodId(c, m)))
       })
-      for (const c of testClasses)
-        for (const t of c.testmethods) {
-          this.testStateEm.fire({
-            type: "test",
-            test: methodId(c, t),
-            state: methodState(t)
-          })
-        }
+
+      await this.updateTestStatus(testClasses)
       this.testStateEm.fire({ type: "finished" })
+      await this.refreshAlerts(testClasses, server)
     } catch (e) {
       this.testEm.fire({ type: "finished", errorMessage: e.toString() })
     }
+  }
+
+  private updateTestStatus(testClasses: UnitTestClass[]) {
+    for (const c of testClasses)
+      for (const t of c.testmethods) {
+        this.testStateEm.fire({
+          type: "test",
+          test: methodId(c, t),
+          state: methodState(t)
+        })
+      }
+  }
+  private alerts = languages.createDiagnosticCollection(
+    `Abap Unit ${this.connId}`
+  )
+  private async refreshAlerts(testClasses: UnitTestClass[], server: AdtServer) {
+    this.alerts.clear()
+    const newAlerts = new Map<string, Diagnostic[]>()
+    for (const clas of testClasses)
+      for (const method of clas.testmethods) {
+        for (const alrt of method.alerts) {
+          const { uri, diagnostic } =
+            (await convertTestAlert(server, alrt)) || {}
+          if (uri && diagnostic) {
+            const fileDiags = newAlerts.get(uri) || []
+            if (fileDiags.length === 0) newAlerts.set(uri, fileDiags)
+            fileDiags.push(diagnostic)
+          }
+        }
+      }
+    for (const [uri, diags] of newAlerts) this.alerts.set(Uri.parse(uri), diags)
   }
 
   async load(): Promise<void> {

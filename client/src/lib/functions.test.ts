@@ -105,7 +105,6 @@ test("compose dependent replacers", async () => {
 })
 
 const base = { path: "sap/bc/adt/oo/classes/zfoobar/includes/testclasses" }
-// /sap/bc/adt/oo/classes/zroman/includes/testclasses#type=CLAS%2FOLD;name=MULTIPLE%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20%20II
 test("split uri simple", () => {
   const parts = splitAdtUriInternal(base)
   expect(parts.path).toBe(base.path)
@@ -137,6 +136,14 @@ test("split uri start", () => {
     ...base,
     query: "start=3,2"
   })
+  expect(parts.path).toBe(base.path)
+  expect(parts.start).toBeDefined()
+  expect(parts.start?.line).toBe(3)
+  expect(parts.start?.character).toBe(2)
+  expect(parts.end).toBeFalsy()
+})
+test("split uri start in fragment", () => {
+  const parts = splitAdtUriInternal({ ...base, fragment: "start=3,2" })
   expect(parts.path).toBe(base.path)
   expect(parts.start).toBeDefined()
   expect(parts.start?.line).toBe(3)

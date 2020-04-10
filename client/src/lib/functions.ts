@@ -358,6 +358,11 @@ interface AdtUriPartsInternal {
   end?: { line: number; character: number }
 }
 
+const splitPos = (pos: string) => {
+  const [line = "0", char = "0"] = pos?.split(",")
+  return { line: toInt(line), character: toInt(char) }
+}
+
 export const splitAdtUriInternal = <
   T extends { path: string; query?: string; fragment?: string }
 >(
@@ -368,16 +373,14 @@ export const splitAdtUriInternal = <
   if (uri.query) {
     for (const part of uri.query.split("&")) {
       const [name, value] = part.split("=")
-      if (name === "start" || name === "end") {
-        const [line = "0", char = "0"] = value?.split(",")
-        uriParts[name] = { line: toInt(line), character: toInt(char) }
-      }
+      if (name === "start" || name === "end") uriParts[name] = splitPos(value)
     }
   }
   if (uri.fragment) {
     for (const part of uri.fragment.split(";")) {
       const [name, value] = part.split("=")
       if (name === "name" || name === "type") uriParts[name] = value
+      if (name === "start" || name === "end") uriParts[name] = splitPos(value)
     }
   }
   return uriParts
