@@ -1,10 +1,10 @@
 import { UnitTestClass, UnitTestMethod } from "abap-adt-api"
 import { TestSuiteInfo, TestInfo, TestEvent } from "vscode-test-adapter-api"
 import { AdtServer, getServer, fromUri } from "../../adt/AdtServer"
-import { Uri, Position, Diagnostic } from "vscode"
+import { Uri, Position } from "vscode"
 import { isAbapNode, AbapObjectNode } from "../../fs/AbapNode"
 import { AbapObject } from "../../adt/abap/AbapObject"
-import { classesAlerts } from "./alerts"
+import { alertManagers } from "./alerts"
 
 const classId = (c: UnitTestClass) => `${c["adtcore:uri"]}`
 
@@ -28,7 +28,6 @@ interface AuRoot extends TestSuiteInfo {
 
 interface RunResult {
   testClasses: UnitTestClass[]
-  alerts: Map<string, Diagnostic[]>
   events: TestEvent[]
 }
 
@@ -49,10 +48,10 @@ const methodState = (m: UnitTestMethod) => {
 }
 
 export class UnitTestModel {
+  public readonly root: AuRoot
   private server: AdtServer
   private objSource = new Map<string, string>()
   private aliases = new Map<string, string>()
-  public readonly root: AuRoot
 
   constructor(private connId: string) {
     this.server = getServer(connId)
@@ -206,10 +205,10 @@ export class UnitTestModel {
       for (const u of uri) testClasses.push(...(await this.runAbapUnit(u)))
     else testClasses.push(...(await this.runAbapUnit(uri, clas, method)))
 
-    const alerts = await classesAlerts(testClasses, this.server)
+    alertManagers.get(this.connId).update(testClasses)
     const events = this.classesEvents(testClasses)
 
-    return { testClasses, alerts, events }
+    return { testClasses, events }
   }
 
   public async runTests(tests: string[]) {
@@ -228,9 +227,8 @@ export class UnitTestModel {
             ))
           )
       }
-    const alerts = await classesAlerts(testClasses, this.server)
     const events = this.classesEvents(testClasses)
-    return { testClasses, alerts, events }
+    return { testClasses, events }
   }
 
   private testLookup(test: string): TestLookup | undefined {

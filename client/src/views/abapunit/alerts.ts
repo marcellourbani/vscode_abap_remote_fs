@@ -1,6 +1,21 @@
-import { UnitTestSeverity, UnitTestAlert, UnitTestClass } from "abap-adt-api"
-import { DiagnosticSeverity, Range, Position, Diagnostic } from "vscode"
-import { AdtServer } from "../../adt/AdtServer"
+import {
+  UnitTestSeverity,
+  UnitTestAlert,
+  UnitTestClass,
+  UnitTestMethod
+} from "abap-adt-api"
+import {
+  DiagnosticSeverity,
+  Range,
+  Position,
+  Diagnostic,
+  languages,
+  DiagnosticCollection,
+  Uri,
+  workspace
+} from "vscode"
+import { AdtServer, getServer, ADTSCHEME } from "../../adt/AdtServer"
+import { cache } from "../../lib"
 
 export const convertSeverity = (s: UnitTestSeverity) => {
   switch (s) {
@@ -14,7 +29,7 @@ export const convertSeverity = (s: UnitTestSeverity) => {
   }
 }
 
-export const convertTestAlert = async (
+const convertTestAlert = async (
   server: AdtServer,
   alrt: UnitTestAlert,
   maxSeverity = DiagnosticSeverity.Warning
@@ -32,7 +47,7 @@ export const convertTestAlert = async (
   return { uri, diagnostic }
 }
 
-export const classesAlerts = async (
+const classesAlerts = async (
   testClasses: UnitTestClass[],
   server: AdtServer
 ) => {
@@ -51,3 +66,52 @@ export const classesAlerts = async (
     }
   return newAlerts
 }
+
+class AbapUnitAlertsManager {
+  private alerts: DiagnosticCollection
+  constructor(private connId: string) {
+    this.alerts = languages.createDiagnosticCollection(
+      `Abap Unit ${this.connId}`
+    )
+
+    workspace.onDidCloseTextDocument(d => {
+      const uri = d.uri
+      if (this.alerts.has(uri)) this.alerts.set(uri, [])
+    })
+  }
+
+  public update(testClasses: UnitTestClass[], withSummary = false) {
+    return classesAlerts(testClasses, getServer(this.connId)).then(alerts => {
+      this.alerts.clear()
+
+      for (const [uri, diags] of alerts) {
+        if (withSummary) {
+          const start = new Position(0, 0)
+          const range = new Range(start, start)
+          const methods = testClasses
+            .map(c => c.testmethods.length)
+            .reduce((x, y) => x + y, 0)
+          const methodFailed = (m: UnitTestMethod) =>
+            m.alerts.find(
+              a => convertSeverity(a.severity) === DiagnosticSeverity.Error
+            )
+          const failed = testClasses
+            .map(c => c.testmethods.filter(methodFailed).length)
+            .reduce((x, y) => x + y, 0)
+
+          const summary: Diagnostic = {
+            message: `ABAP Unit results:${testClasses.length} test classes ${methods} methods ${failed} failed`,
+            severity: DiagnosticSeverity.Information,
+            range
+          }
+          diags.unshift(summary)
+        }
+        this.alerts.set(Uri.parse(uri), diags)
+      }
+    })
+  }
+}
+
+export const alertManagers = cache(
+  (conn: string) => new AbapUnitAlertsManager(conn)
+)

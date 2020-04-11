@@ -10,10 +10,9 @@ import {
   TextDocumentWillSaveEvent
 } from "vscode"
 
-import { fromUri, ADTSCHEME, AdtServer } from "./adt/AdtServer"
+import { fromUri, ADTSCHEME } from "./adt/AdtServer"
 import { setDocumentLock, LockManager } from "./adt/operations/LockManager"
 import { AbapObject } from "./adt/abap/AbapObject"
-import { clearUTResultsIfLastRun } from "./adt/operations/UnitTestRunner"
 import { IncludeLensP } from "./adt/operations/IncludeLens"
 import { debounce } from "./lib"
 
@@ -29,8 +28,6 @@ export const listener = <T>(event: Event<T>) => (
 export async function documentClosedListener(doc: TextDocument) {
   const uri = doc.uri
   if (uri.scheme === ADTSCHEME) {
-    clearUTResultsIfLastRun(doc.uri)
-    const server = fromUri(uri)
     if (await LockManager.get().isLockedAsync(uri))
       await LockManager.get().unlock(uri)
   }
