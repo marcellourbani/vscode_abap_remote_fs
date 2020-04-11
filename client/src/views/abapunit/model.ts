@@ -1,10 +1,10 @@
 import { UnitTestClass, UnitTestMethod } from "abap-adt-api"
-import { TestSuiteInfo, TestInfo, TestEvent } from "vscode-test-adapter-api"
-import { AdtServer, getServer, fromUri } from "../../adt/AdtServer"
-import { Uri, Position } from "vscode"
-import { isAbapNode, AbapObjectNode } from "../../fs/AbapNode"
+import { Uri } from "vscode"
+import { TestEvent, TestInfo, TestSuiteInfo } from "vscode-test-adapter-api"
 import { AbapObject } from "../../adt/abap/AbapObject"
+import { AdtServer, fromUri, getServer } from "../../adt/AdtServer"
 import { alertManagers } from "./alerts"
+import { MethodLocator } from "./locator"
 
 const classId = (c: UnitTestClass) => `${c["adtcore:uri"]}`
 
@@ -14,6 +14,7 @@ const methodId = (c: UnitTestClass, m: UnitTestMethod) =>
 interface AuMethod extends TestInfo {
   classId: string
   aunitUri: string
+  objType: string
 }
 interface AuClass extends TestSuiteInfo {
   children: AuMethod[]
@@ -26,13 +27,17 @@ interface AuRoot extends TestSuiteInfo {
   children: AuRun[]
 }
 
+interface AuMethodEvent extends TestEvent {
+  test: AuMethod
+}
+
 interface RunResult {
   testClasses: UnitTestClass[]
-  events: TestEvent[]
+  events: AuMethodEvent[]
 }
 
 interface TestLookup {
-  run: AuRun
+  run?: AuRun
   clas?: AuClass
   method?: AuMethod
 }
@@ -49,12 +54,12 @@ const methodState = (m: UnitTestMethod) => {
 
 export class UnitTestModel {
   public readonly root: AuRoot
-  private server: AdtServer
-  private objSource = new Map<string, string>()
   private aliases = new Map<string, string>()
 
+  private locator: MethodLocator
+
   constructor(private connId: string) {
-    this.server = getServer(connId)
+    this.locator = new MethodLocator(this.connId)
     this.root = {
       type: "suite",
       id: this.connId,
@@ -72,7 +77,6 @@ export class UnitTestModel {
     key: string,
     classes: UnitTestClass[]
   ) {
-    this.objSource.clear()
     const children = []
     for (const clas of classes) children.push(await this.convertTestClass(clas))
     const suite: AuRun = {
@@ -99,61 +103,33 @@ export class UnitTestModel {
     return cl
   }
 
-  private async getSource(node: AbapObjectNode) {
-    const cached = this.objSource.get(node.abapObject.key)
-    if (cached) return cached
-    const source = (await node.fetchContents(this.server.client)).toString()
-    this.objSource.set(node.abapObject.key, source)
-    return source
-  }
-
-  private async methodImplementation(
-    method: AuMethod,
-    uri: string,
-    pos: Position
-  ) {
-    const node = this.server.findNode(Uri.parse(uri))
-    if (isAbapNode(node)) {
-      if (!node.abapObject.structure)
-        await node.abapObject.loadMetadata(this.server.client)
-      const fu = node.abapObject.getContentsUri()
-      const source = await this.getSource(node)
-      return this.server.client.findDefinition(
-        fu,
-        source,
-        pos.line + 1,
-        pos.character,
-        pos.character + method.label.length,
-        false
-      )
-    }
-  }
-
   private async convertTestMethod(c: UnitTestClass, meth: UnitTestMethod) {
-    const u = await this.server.objectFinder.vscodeRange(meth["adtcore:uri"])
+    const loc = await this.locator.methodLocation(
+      meth["adtcore:uri"],
+      meth["adtcore:type"]
+    )
     const met: AuMethod = {
       type: "test",
       id: methodId(c, meth),
       label: meth["adtcore:name"],
-      file: u.uri,
+      file: loc.uri,
+      line: loc.line,
       classId: classId(c),
-      aunitUri: meth["adtcore:uri"]
+      aunitUri: meth["adtcore:uri"],
+      objType: meth["adtcore:type"]
     }
-    if (u.start)
-      if (meth["adtcore:type"] === "PROG/OLI") met.line = u.start.line
-      else {
-        const impl = await this.methodImplementation(met, u.uri, u.start)
-        if (impl) met.line = impl.line - 1
-      }
     return met
   }
 
-  private mergeSuite(key: string, classes: UnitTestClass[], suite: AuRun) {
+  private mergeSuite(key: string, classes: UnitTestClass[], run: AuRun) {
     const alias = [...this.aliases].find(a =>
       classes.find(cl => classId(cl) === a[0])
     )?.[1]
 
-    if (!alias) this.root.children.push(suite)
+    const replaceSuite = (r: AuRun) => (r.id === alias ? run : r)
+
+    if (alias) this.root.children = this.root.children.map(replaceSuite)
+    else this.root.children.push(run)
     for (const cl of classes) this.aliases.set(classId(cl), alias || key)
   }
 
@@ -172,25 +148,69 @@ export class UnitTestModel {
       const object = await server.findAbapObject(uri)
       this.aliases.set(object.getActivationSubject().key, key)
       testClasses = await server.client.runUnitTest(object.path)
-      if (!suite) {
-        suite = await this.convertClasses(object, key, testClasses)
-        this.mergeSuite(key, testClasses, suite)
-      }
+      suite = await this.convertClasses(object, key, testClasses)
+      this.mergeSuite(key, testClasses, suite)
     }
     return testClasses
   }
 
-  private classesEvents(testClasses: UnitTestClass[]) {
-    const events: TestEvent[] = []
-    for (const c of testClasses)
-      for (const t of c.testmethods) {
-        events.push({
-          type: "test",
-          test: methodId(c, t),
-          state: methodState(t)
-        })
+  private async classesEvents(testClasses: UnitTestClass[], partial = false) {
+    const events: AuMethodEvent[] = []
+    for (const testclas of testClasses)
+      for (const testmet of testclas.testmethods) {
+        const event = this.methodEvent(testclas, testmet)
+
+        if (event) {
+          const loc = await this.locator.methodLocation(
+            testmet["adtcore:uri"],
+            testmet["adtcore:type"]
+          )
+          event.test.line = loc.line
+          event.test.file = loc.uri
+          events.push(event)
+        }
       }
+    if (partial) this.updateSkipped(events)
     return events
+  }
+
+  private async updateSkipped(ev: AuMethodEvent[]) {
+    const files = new Set<string>()
+    const runs = new Set<AuRun>()
+    // ev[0]!.test
+    for (const e of ev) {
+      if (e.test.file) files.add(e.test.file)
+      const { run } = this.testLookup(e.test.id)
+      if (run) runs.add(run)
+    }
+    for (const run of runs)
+      for (const clas of run.children)
+        for (const test of clas.children)
+          if (
+            test.file &&
+            files.has(test.file) &&
+            !ev.find(e => e.test.id === test.id)
+          ) {
+            const loc = await this.locator.methodLocation(
+              test.aunitUri,
+              test.objType
+            )
+            test.file = loc.uri
+            test.line = loc.line
+          }
+  }
+
+  private methodEvent(
+    testclas: UnitTestClass,
+    testmet: UnitTestMethod
+  ): AuMethodEvent | undefined {
+    const { method } = this.testLookup(methodId(testclas, testmet))
+    if (method)
+      return {
+        type: "test",
+        test: method,
+        state: methodState(testmet)
+      }
   }
 
   public run(uris: Uri[]): Promise<RunResult>
@@ -200,38 +220,39 @@ export class UnitTestModel {
     clas?: AuClass,
     method?: AuMethod
   ): Promise<RunResult> {
+    this.locator.clear()
     const testClasses: UnitTestClass[] = []
     if (Array.isArray(uri))
       for (const u of uri) testClasses.push(...(await this.runAbapUnit(u)))
     else testClasses.push(...(await this.runAbapUnit(uri, clas, method)))
 
     alertManagers.get(this.connId).update(testClasses)
-    const events = this.classesEvents(testClasses)
+    const events = await this.classesEvents(testClasses, !!clas)
 
     return { testClasses, events }
   }
 
   public async runTests(tests: string[]) {
+    this.locator.clear()
     const testClasses = []
+    let partial = false
     if (tests.find(test => test === this.root.id))
       return this.run(this.root.children.map(c => Uri.parse(c.id)))
     else
       for (const test of tests) {
-        const hit = this.testLookup(test)
-        if (hit)
+        const { run, clas, method } = this.testLookup(test)
+        if (run) {
+          if (clas) partial = true
           testClasses.push(
-            ...(await this.runAbapUnit(
-              Uri.parse(hit?.run.id),
-              hit.clas,
-              hit.method
-            ))
+            ...(await this.runAbapUnit(Uri.parse(run.id), clas, method))
           )
+        }
       }
-    const events = this.classesEvents(testClasses)
+    const events = await this.classesEvents(testClasses, partial)
     return { testClasses, events }
   }
 
-  private testLookup(test: string): TestLookup | undefined {
+  private testLookup(test: string): TestLookup {
     const inClass = (clas: AuClass) => {
       if (test === clas.id) return { clas }
       const method = clas.children.find(m => m.id === test)
@@ -250,5 +271,6 @@ export class UnitTestModel {
       const found = inRun(root)
       if (found) return found
     }
+    return {}
   }
 }

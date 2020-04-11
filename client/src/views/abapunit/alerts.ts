@@ -81,10 +81,10 @@ class AbapUnitAlertsManager {
   }
 
   public update(testClasses: UnitTestClass[], withSummary = false) {
-    return classesAlerts(testClasses, getServer(this.connId)).then(alerts => {
+    return classesAlerts(testClasses, getServer(this.connId)).then(clAlerts => {
       this.alerts.clear()
 
-      for (const [uri, diags] of alerts) {
+      for (const [uri, diags] of clAlerts) {
         if (withSummary) {
           const start = new Position(0, 0)
           const range = new Range(start, start)
