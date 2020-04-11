@@ -1,10 +1,11 @@
 import { UnitTestClass, UnitTestMethod } from "abap-adt-api"
-import { Uri } from "vscode"
+import { Uri, workspace } from "vscode"
 import { TestEvent, TestInfo, TestSuiteInfo } from "vscode-test-adapter-api"
 import { AbapObject } from "../../adt/abap/AbapObject"
-import { AdtServer, fromUri, getServer } from "../../adt/AdtServer"
+import { fromUri } from "../../adt/AdtServer"
 import { alertManagers } from "./alerts"
 import { MethodLocator } from "./locator"
+import { toInt } from "../../lib"
 
 const classId = (c: UnitTestClass) => `${c["adtcore:uri"]}`
 
@@ -210,6 +211,36 @@ export class UnitTestModel {
         type: "test",
         test: method,
         state: methodState(testmet)
+      }
+  }
+
+  public updateUri(test: string) {
+    const { run } = this.testLookup(test)
+    if (!run) return
+
+    for (const clas of run.children)
+      for (const method of clas.children) {
+        const lines = workspace.textDocuments
+          .find(d => decodeURIComponent(d.uri.toString()) === method.file)
+          ?.getText()
+          ?.split("\n")
+        if (lines) {
+          const candidates: number[] = []
+          for (const idx in lines)
+            if (
+              lines[idx]
+                .match(/\s*method\s*([^\.\s]*)\s*\./i)?.[1]
+                ?.toUpperCase() === method.label.toUpperCase()
+            )
+              candidates.push(toInt(idx))
+          let best = -1
+          const current = method.line || -1
+          for (const cand of candidates)
+            if (best < 0 || Math.abs(cand - current) < Math.abs(best - current))
+              best = cand
+
+          if (best >= 0) method.line = best
+        }
       }
   }
 

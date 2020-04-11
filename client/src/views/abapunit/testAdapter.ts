@@ -10,8 +10,8 @@ import {
   TestRunFinishedEvent,
   TestRunStartedEvent
 } from "vscode-test-adapter-api"
-import { EventEmitter, Uri } from "vscode"
-import { getServer } from "../../adt/AdtServer"
+import { EventEmitter, Uri, workspace, TextDocument } from "vscode"
+import { getServer, ADTSCHEME } from "../../adt/AdtServer"
 import { ActivationEvent } from "../../adt/operations/AdtObjectActivator"
 import { UnitTestModel } from "./model"
 import { isString } from "../../lib"
@@ -33,16 +33,19 @@ export class Adapter implements TestAdapter {
   >()
   private retireEm = new EventEmitter<RetireEvent>()
   private model: UnitTestModel
-  onActivate(e: ActivationEvent) {
-    const key = this.model.objectTestId(e.activated)
-    if (key) this.retireEm.fire({ tests: [key] })
-  }
+
   constructor(public connId: string) {
     this.model = new UnitTestModel(connId)
     getServer(connId).activator.onActivate(this.onActivate.bind(this))
   }
-  dispose() {
-    //
+
+  private async onActivate(e: ActivationEvent) {
+    const key = this.model.objectTestId(e.activated)
+    if (key) {
+      this.model.updateUri(key)
+      this.testEm.fire({ type: "finished", suite: this.model.root })
+      this.retireEm.fire({ tests: [key] })
+    }
   }
 
   async runUnit(uri: Uri) {
@@ -60,7 +63,7 @@ export class Adapter implements TestAdapter {
   }
 
   async load(): Promise<void> {
-    // nothing to do
+    // nothing to do, load happens on run really. Bit weird...
   }
 
   async run(tests: string[]) {
@@ -69,7 +72,6 @@ export class Adapter implements TestAdapter {
       this.testStateEm.fire({ type: "test", test, state: "running" })
     try {
       const { events } = await this.model.runTests(tests)
-      // this.testEm.fire({ type: "started" })
       this.testEm.fire({ type: "finished", suite: this.model.root })
       for (const e of events) this.testStateEm.fire(e)
       this.testStateEm.fire(runFinished)
@@ -79,7 +81,7 @@ export class Adapter implements TestAdapter {
     this.testStateEm.fire(runFinished)
   }
   cancel(): void {
-    // not implemented yet
+    // can't stop running unit tests yet
   }
   get tests() {
     return this.testEm.event
@@ -88,7 +90,7 @@ export class Adapter implements TestAdapter {
   get retire() {
     return this.retireEm.event
   }
-  //   autorun?: Event<void> | undefined
+
   get testStates() {
     return this.testStateEm.event
   }
