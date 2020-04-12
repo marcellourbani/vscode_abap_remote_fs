@@ -6,15 +6,11 @@ Is less capable and more buggy than Eclipse with ADT, but also more responsive, 
 
 ## Links
 
-[Getting started](https://github.com/marcellourbani/vscode_abap_remote_fs/wiki/getting-started)
-[wiki/documentation](https://github.com/marcellourbani/vscode_abap_remote_fs/wiki)
-[blog post by Leon Hassan](https://blogs.sap.com/2019/12/06/abap-development-in-vs-code)
+[Getting started](https://github.com/marcellourbani/vscode_abap_remote_fs/wiki/getting-started) [wiki/documentation](https://github.com/marcellourbani/vscode_abap_remote_fs/wiki) [blog post by Leon Hassan](https://blogs.sap.com/2019/12/06/abap-development-in-vs-code)
 
 **Unless your system is very modern (7.51 or later I think), write support will require you to install [this plugin](https://github.com/marcellourbani/abapfs_extensions)** in your dev server to enable. Browsing works even without it
 
-![anim](https://user-images.githubusercontent.com/2453277/47482169-ae0cc300-d82d-11e8-8d19-f55dd877c166.gif)
-![image](https://user-images.githubusercontent.com/2453277/47466602-dd99dc00-d7e9-11e8-97ed-28e23dfd8f90.png)
-syntax highlighting provided by [ABAP language extension](https://marketplace.visualstudio.com/items?itemName=larshp.vscode-abap), picture was too lame without it :)
+![anim](https://user-images.githubusercontent.com/2453277/47482169-ae0cc300-d82d-11e8-8d19-f55dd877c166.gif) ![image](https://user-images.githubusercontent.com/2453277/47466602-dd99dc00-d7e9-11e8-97ed-28e23dfd8f90.png) syntax highlighting provided by [ABAP language extension](https://marketplace.visualstudio.com/items?itemName=larshp.vscode-abap), picture was too lame without it :)
 
 Compatibility with [ABAPlint](https://marketplace.visualstudio.com/items?itemName=larshp.vscode-abaplint) is limited by different naming conventions
 
@@ -25,7 +21,8 @@ Compatibility with [ABAPlint](https://marketplace.visualstudio.com/items?itemNam
 - where used list
 - transport management
 - source control
-- abapGit integration
+- integrated with [abapGit](https://github.com/larshp/abapGit) (now using the scm view)
+- integrated with [test explorer](https://marketplace.visualstudio.com/items?itemName=hbenl.vscode-test-explorer)
 
 ![anim](https://user-images.githubusercontent.com/2453277/48232926-30a78d80-e3ab-11e8-8a12-00844431f9af.gif)
 
@@ -58,10 +55,4 @@ some icons found in client/images are from [Material design](https://material.io
 
 ## Disclaimer
 
-THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-SOFTWARE.
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.

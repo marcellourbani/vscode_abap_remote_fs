@@ -113,6 +113,8 @@ export class UnitTestModel {
       type: "test",
       id: methodId(c, meth),
       label: meth["adtcore:name"],
+      tooltip: meth.alerts.map(a => a.details.join("\n")).join("\n\n"),
+      description: meth.alerts[0]?.kind,
       file: loc.uri,
       line: loc.line,
       classId: classId(c),
