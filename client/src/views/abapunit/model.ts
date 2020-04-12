@@ -128,12 +128,14 @@ export class UnitTestModel {
     const alias = [...this.aliases].find(a =>
       classes.find(cl => classId(cl) === a[0])
     )?.[1]
-    const found = this.root.children.find(r => r.id === key || r.id === alias)
+
+    const { run: oldRun } = this.testLookup(key)
 
     const replaceSuite = (r: AuRun) =>
-      r.id === alias || r.id === key ? run : r
+      r.id === alias || r.id === oldRun?.id ? run : r
 
-    if (found) this.root.children = this.root.children.map(replaceSuite)
+    if (alias || oldRun)
+      this.root.children = this.root.children.map(replaceSuite)
     else this.root.children.push(run)
     for (const cl of classes) this.aliases.set(classId(cl), alias || key)
   }
