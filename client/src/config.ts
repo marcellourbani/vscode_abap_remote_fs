@@ -57,7 +57,8 @@ async function selectRemoteInt(remotes: RemoteConfig[]) {
       remote
     })),
     {
-      placeHolder: "Please choose an ABAP system"
+      placeHolder: "Please choose an ABAP system",
+      ignoreFocusOut: true
     }
   )
   return { remote: selection && selection.remote, userCancel: !selection }
@@ -81,7 +82,8 @@ export async function pickAdtRoot(uri?: Uri) {
   const item = await window.showQuickPick(
     [...roots.values()].map(root => {
       return { label: root.name, root } as RootItem
-    })
+    }),
+    { ignoreFocusOut: true }
   )
   if (item) return item.root
 }
@@ -226,7 +228,11 @@ export class RemoteManager {
     const conn = this.byId(connectionId)
     if (!conn) return
     const prompt = `Enter password for ${conn.username} on ${connectionId}`
-    const password = await window.showInputBox({ prompt, password: true })
+    const password = await window.showInputBox({
+      prompt,
+      password: true,
+      ignoreFocusOut: true
+    })
     return password
   }
 

@@ -39,16 +39,22 @@ export async function selectTransport(
 
   // select/create
   const CREATENEW = "Create a new transport"
-  const selection = await window.showQuickPick([
-    CREATENEW,
-    ...ti.TRANSPORTS.sort(fieldOrder("TRKORR", true)).map(
-      t => `${t.TRKORR} ${t.AS4TEXT}`
-    )
-  ])
+  const selection = await window.showQuickPick(
+    [
+      CREATENEW,
+      ...ti.TRANSPORTS.sort(fieldOrder("TRKORR", true)).map(
+        t => `${t.TRKORR} ${t.AS4TEXT}`
+      )
+    ],
+    { ignoreFocusOut: true }
+  )
 
   if (!selection) return trSel("", true)
   if (selection === CREATENEW) {
-    const text = await window.showInputBox({ prompt: "Request text" })
+    const text = await window.showInputBox({
+      prompt: "Request text",
+      ignoreFocusOut: true
+    })
     if (!text) return trSel("", true)
     return trSel(
       await client.createTransport(

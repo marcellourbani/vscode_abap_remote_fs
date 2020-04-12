@@ -336,7 +336,8 @@ export class AbapRevision
     if (!revisions) return {}
 
     const sel = await window.showQuickPick(revisions.map(revtoQP), {
-      placeHolder
+      placeHolder,
+      ignoreFocusOut: true
     })
     return { revision: sel && sel.revision, userCancel: !sel }
   }

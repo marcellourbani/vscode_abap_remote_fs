@@ -104,7 +104,8 @@ export class IncludeLensP implements CodeLensProvider {
         const mainProg = await window.showQuickPick(
           mainPrograms.map(p => p["adtcore:name"]),
           {
-            placeHolder: `Please select a main program for ${obj.name}`
+            placeHolder: `Please select a main program for ${obj.name}`,
+            ignoreFocusOut: true
           }
         )
         if (mainProg)

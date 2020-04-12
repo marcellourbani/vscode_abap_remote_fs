@@ -393,7 +393,7 @@ export class TransportsProvider implements TreeDataProvider<CollectionItem> {
       description: u.id,
       payload: u
     }))
-    const selected = await window.showQuickPick(users)
+    const selected = await window.showQuickPick(users, { ignoreFocusOut: true })
     return selected && selected.payload
   }
 

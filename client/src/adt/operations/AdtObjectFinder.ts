@@ -225,6 +225,7 @@ export class AdtObjectFinder {
       const empty: MySearchResult[] = []
       if (forType === PACKAGE) empty.push(new MySearchResult(this.EPMTYPACKAGE))
       const qp = window.createQuickPick()
+      qp.ignoreFocusOut = true
       const searchParent = async (e: string) => {
         qp.items =
           e.length >= 3

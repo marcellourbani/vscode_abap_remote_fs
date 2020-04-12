@@ -274,7 +274,10 @@ class AbapGitProvider implements TreeDataProvider<TreeItem> {
       PACKAGE
     )
     if (!pkg) return
-    const repoUrl = await window.showInputBox({ prompt: "Repository URL" })
+    const repoUrl = await window.showInputBox({
+      prompt: "Repository URL",
+      ignoreFocusOut: true
+    })
     if (!repoUrl) return
 
     const repoaccess = await this.getRemoteInfo(repoUrl, item.server.client)

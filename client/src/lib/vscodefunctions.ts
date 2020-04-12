@@ -30,7 +30,8 @@ export const inputBox = (
   token?: CancellationToken
 ): TaskEither<Error | typeof none, string> => async () => {
   try {
-    const result = await window.showInputBox(options, token)
+    const op = { ignoreFocusOut: true, ...options }
+    const result = await window.showInputBox(op, token)
     return result || result === "" ? right(result) : left(none)
   } catch (error) {
     return left(error)
@@ -90,7 +91,8 @@ export function quickPick<T extends QuickPickItem>(
     const pickItems = items as T[] // typescript fails to deal with the overload...
     if (pickItems.length === 0) return left(none)
 
-    const selection = await window.showQuickPick(pickItems, options, token)
+    const qo = { ignoreFocusOut: true, ...options }
+    const selection = await window.showQuickPick(pickItems, qo, token)
     if (selection !== undefined)
       return right(projector ? projector(selection) : selection)
     return left(none)

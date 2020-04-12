@@ -42,7 +42,9 @@ export async function selectObjectType(
   const types = parentType
     ? rawtypes.filter(t => parentTypeId(t.typeId) === parentType)
     : rawtypes
-  return window.showQuickPick(types.length > 0 ? types : rawtypes)
+  return window.showQuickPick(types.length > 0 ? types : rawtypes, {
+    ignoreFocusOut: true
+  })
 }
 
 export class AdtObjectCreator {
@@ -172,7 +174,7 @@ export class AdtObjectCreator {
       description: l.description,
       detail: l.data
     }))
-    return await window.showQuickPick(items)
+    return await window.showQuickPick(items, { ignoreFocusOut: true })
   }
 
   private async getPackageOptions(options: NewObjectOptions) {
@@ -182,11 +184,10 @@ export class AdtObjectCreator {
       options.name.match(/^\$/) ? "LOCAL" : "HOME"
     )
     if (!swcomp) return
-    const packagetype = (await window.showQuickPick([
-      "development",
-      "structure",
-      "main"
-    ])) as PackageTypes | undefined
+    const packagetype = (await window.showQuickPick(
+      ["development", "structure", "main"],
+      { ignoreFocusOut: true }
+    )) as PackageTypes | undefined
     if (!packagetype) return
     const layer = await this.selectTransportLayer()
     if (!layer) return
@@ -289,7 +290,12 @@ export class AdtObjectCreator {
     validateInput = (s: string) => ""
   ): Promise<string> {
     const res =
-      (await window.showInputBox({ prompt, validateInput, value })) || ""
+      (await window.showInputBox({
+        prompt,
+        validateInput,
+        value,
+        ignoreFocusOut: true
+      })) || ""
     return uppercase ? res.toUpperCase() : res
   }
 }

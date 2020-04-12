@@ -131,10 +131,7 @@ export class ClassHierarchyLensProvider implements CodeLensProvider {
     if (!obj.structure) await obj.loadMetadata(server.client)
     const doccache = ClassHierarchyLensProvider.caches.get(server.connectionId)
 
-    const lines = doc
-      .getText()
-      .toString()
-      .split("\n")
+    const lines = doc.getText().toString().split("\n")
 
     for (let idx = 0; idx < lines.length; idx++) {
       const line = lines[idx].replace(/".*/, "")
@@ -203,7 +200,7 @@ export class ClassHierarchyLensProvider implements CodeLensProvider {
       return i
     })
 
-    const relative = await window.showQuickPick(list)
+    const relative = await window.showQuickPick(list, { ignoreFocusOut: true })
     if (relative) await openObject(server, relative.uri)
   }
 

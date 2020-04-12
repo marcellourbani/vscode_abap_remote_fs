@@ -5,7 +5,6 @@ import {
   window,
   commands,
   ProgressLocation,
-  ViewColumn,
   ExtensionContext
 } from "vscode"
 import {
