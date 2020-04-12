@@ -8,10 +8,11 @@ import {
   ProgressLocation,
   QuickPickItem,
   QuickPickOptions,
-  Memento
+  Memento,
+  Position
 } from "vscode"
 import { none, None } from "fp-ts/lib/Option"
-import { isFn } from "./functions"
+import { isFn, splitAdtUriInternal } from "./functions"
 import { left, right } from "fp-ts/lib/Either"
 
 export const uriName = (uri: Uri) => uri.path.split("/").pop() || ""
@@ -117,5 +118,25 @@ export const createStore = <T>(name: string, store: Memento): Memento => {
       _map.set(key, value)
       return store.update(name, [..._map])
     }
+  }
+}
+
+export interface AdtUriParts {
+  path: string
+  type?: string
+  name?: string
+  start?: Position
+  end?: Position
+}
+
+export const vscPosition = (adtLine: number, character: number) =>
+  new Position(adtLine - 1, character)
+
+export const splitAdtUri = (uri: string): AdtUriParts => {
+  const { start, end, ...rest } = splitAdtUriInternal(Uri.parse(uri))
+  return {
+    ...rest,
+    start: start && vscPosition(start.line, start.character),
+    end: end && vscPosition(end.line, end.character)
   }
 }

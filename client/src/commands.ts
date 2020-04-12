@@ -27,6 +27,7 @@ import { runInSapGui } from "./adt/sapgui/sapgui"
 import { isAbapNode } from "./fs/AbapNode"
 import { storeTokens } from "./oauth"
 import { showAbapDoc } from "./views/help"
+import { getTestAdapter } from "./views/abapunit"
 
 const abapcmds: {
   name: string
@@ -206,8 +207,7 @@ export class AdtCommands {
           // if editor is dirty, save before activate
           if (editor && editor.document.isDirty) {
             const saved = await editor.document.save()
-            if (saved) await obj.loadMetadata(server.client)
-            else return
+            if (!saved) return
           } else if (!obj.structure) await obj.loadMetadata(server.client)
           await server.activator.activate(obj, uri)
           if (editor === window.activeTextEditor) {
@@ -306,10 +306,15 @@ export class AdtCommands {
       log("Execute ABAP Unit tests")
       const uri = currentUri()
       if (!uri) return
-      await window.withProgress(
-        { location: ProgressLocation.Window, title: "Running ABAP UNIT" },
-        () => abapUnit(uri)
-      )
+
+      const adapter = getTestAdapter(uri)
+      if (adapter) {
+        await adapter.runUnit(uri)
+      } else
+        await window.withProgress(
+          { location: ProgressLocation.Window, title: "Running ABAP UNIT" },
+          () => abapUnit(uri)
+        )
     } catch (e) {
       return window.showErrorMessage(e.toString())
     }

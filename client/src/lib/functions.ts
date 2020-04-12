@@ -1,8 +1,9 @@
-import { isString, isNumber } from "util"
 import { none, isSome, isNone, Option } from "fp-ts/lib/Option"
 import { taskEither, TaskEither } from "fp-ts/lib/TaskEither"
 import { right, left } from "fp-ts/lib/Either"
 
+export const isString = (x: any): x is string => typeof x === "string"
+export const isNumber = (x: any): x is number => typeof x === "number"
 export const pick = <T, K extends keyof T>(name: K) => (x: T): T[K] => x[name]
 export const flat = <T>(a: T[][]): T[] =>
   a.reduce((res, current) => [...res, ...current], [])
@@ -215,6 +216,22 @@ export const promiseQueue = <T>(initial: T) => {
   }
 }
 
+export const rememberFor = <T, K>(
+  ms: number,
+  f: (x: K) => T
+): ((x: K) => T) => {
+  const storage = new Map<K, { value: T; time: number }>()
+  return (k: K) => {
+    const time = new Date().getTime()
+    let last = storage.get(k)
+    if (!last || time - last.time > ms) {
+      last = { time, value: f(k) }
+      storage.set(k, last)
+    }
+    return last.value
+  }
+}
+
 export const debounce = <K, R>(frequency: number, cb: (x: K) => R) => {
   const calls = new Map<K, Promise<R>>()
   return (key: K) => {
@@ -347,4 +364,40 @@ export const asyncFilter = async <T>(
   const res: T[] = []
   for (const i of x) if (await filter(i)) res.push(i)
   return res
+}
+
+interface AdtUriPartsInternal {
+  path: string
+  type?: string
+  name?: string
+  start?: { line: number; character: number }
+  end?: { line: number; character: number }
+}
+
+const splitPos = (pos: string) => {
+  const [line = "0", char = "0"] = pos?.split(",")
+  return { line: toInt(line), character: toInt(char) }
+}
+
+export const splitAdtUriInternal = <
+  T extends { path: string; query?: string; fragment?: string }
+>(
+  uri: T
+) => {
+  const path = uri.path
+  const uriParts: AdtUriPartsInternal = { path }
+  if (uri.query) {
+    for (const part of uri.query.split("&")) {
+      const [name, value] = part.split("=")
+      if (name === "start" || name === "end") uriParts[name] = splitPos(value)
+    }
+  }
+  if (uri.fragment) {
+    for (const part of uri.fragment.split(";")) {
+      const [name, value] = part.split("=")
+      if (name === "name" || name === "type") uriParts[name] = value
+      if (name === "start" || name === "end") uriParts[name] = splitPos(value)
+    }
+  }
+  return uriParts
 }

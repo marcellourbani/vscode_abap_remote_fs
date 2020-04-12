@@ -4,7 +4,7 @@ test("call throttler", async () => {
   const numCalls = 9
   const key = "key"
   const calls: boolean[] = []
-  const results: Array<Promise<number>> = []
+  const results: Promise<number>[] = []
   const gencb = (i: number) => () =>
     new Promise<number>(resolve => {
       setTimeout(() => resolve(i), 10)

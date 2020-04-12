@@ -8,7 +8,14 @@ import {
   CreatableTypeIds
 } from "abap-adt-api"
 import { AdtServer } from "../AdtServer"
-import { window, QuickPickItem, workspace, commands } from "vscode"
+import {
+  window,
+  QuickPickItem,
+  workspace,
+  commands,
+  Uri,
+  Position
+} from "vscode"
 
 import {
   NodePath,
@@ -20,6 +27,7 @@ import {
 import { isAbapNode } from "../../fs/AbapNode"
 import { AbapObject } from "../abap/AbapObject"
 import { urlFromPath } from "vscode-abap-remote-fs-sharedapi"
+import { splitAdtUri, vscPosition, rememberFor } from "../../lib"
 
 interface SearchObjectType {
   name: string
@@ -82,9 +90,12 @@ export class AdtObjectFinder {
   public types?: Map<string, SearchObjectType>
   constructor(public readonly server: AdtServer) {}
 
-  public async findObjectPath(objPath: string) {
-    return this.server.client.findObjectPath(objPath)
-  }
+  public readonly findObjectPath = rememberFor(
+    10000,
+    async (objPath: string) => {
+      return this.server.client.findObjectPath(objPath)
+    }
+  )
 
   public async objectNode(objUri: string, mainInclude = true) {
     const path = await this.server.objectFinder.findObjectPath(objUri)
@@ -97,12 +108,30 @@ export class AdtObjectFinder {
     }
   }
 
+  public async vscodeRange(uri: string) {
+    const u = splitAdtUri(uri)
+    const rval = { uri: "", start: u.start }
+    if (u.type && u.name) {
+      const frag = await this.server.client.fragmentMappings(
+        u.path,
+        u.type,
+        u.name
+      )
+      rval.uri = await this.vscodeUri(frag.uri, true)
+      rval.start = vscPosition(frag.line, frag.column)
+    }
+    rval.uri = await this.vscodeUri(u.path, true)
+    return rval
+  }
+
   public async vscodeUri(uri: string, mainInclude: boolean) {
-    const path = await this.server.objectFinder.findObjectPath(uri)
+    const { path } = splitAdtUri(uri)
+
+    const objPath = await this.findObjectPath(path)
     let s = ""
 
-    if (path.length) {
-      let nPath = await this.server.objectFinder.locateObject(path)
+    if (objPath.length) {
+      let nPath = await this.locateObject(objPath)
       if (nPath && nPath.node.isFolder && mainInclude)
         nPath = await findMainIncludeAsync(nPath, this.server.client)
       if (nPath) s = urlFromPath(this.server.connectionId, nPath.path)
