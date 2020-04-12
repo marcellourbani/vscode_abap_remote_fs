@@ -285,6 +285,7 @@ export class UnitTestModel {
           )
         }
       }
+    alertManagers.get(this.connId).update(testClasses)
     const events = await this.classesEvents(testClasses, partial)
     return { testClasses, events }
   }
