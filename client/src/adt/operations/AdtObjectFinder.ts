@@ -1,4 +1,4 @@
-import { AbapObjectNode } from "../../fs/AbapNode"
+import { AbapObjectNode, AbapNode } from "../../fs/AbapNode"
 import { PACKAGE, TMPPACKAGE } from "./AdtObjectCreator"
 import {
   ADTClient,
@@ -15,11 +15,13 @@ import {
   findObjectInNode,
   findMainIncludeAsync,
   abapObjectFromNode,
-  findObjByPathAsync
+  findObjByPathAsync,
+  convertNodes
 } from "../abap/AbapObjectUtilities"
 import { isAbapNode } from "../../fs/AbapNode"
 import { AbapObject } from "../abap/AbapObject"
 import { urlFromPath } from "vscode-abap-remote-fs-sharedapi"
+import { RemoteManager } from "../../config"
 
 interface SearchObjectType {
   name: string
@@ -165,9 +167,16 @@ export class AdtObjectFinder {
       if (!child)
         child = await findObjByPathAsync(nodePath.node, uri, this.server)
       if (!child) child = findObjectInNode(nodePath.node, type, name)
-
+      if (!child && !root && isAbapNode(nodePath.node)) {
+        // might be someone else's local package
+        // child =
+        await this.findLocal(abapPath, nodePath.node)
+      }
       if (child)
-        nodePath = { node: child.node, path: `${nodePath.path}/${child.path}` }
+        nodePath = {
+          node: child.node,
+          path: `${nodePath.path}/${child.path}`
+        }
       else return
     }
     const n = nodePath.node
@@ -180,6 +189,53 @@ export class AdtObjectFinder {
         nodePath = { node: child.node, path: `${nodePath.path}/${child.path}` }
     }
     return nodePath
+  }
+
+  private async findLocal(
+    abapPath: PathStep[],
+    parent: AbapObjectNode
+  ): Promise<NodePath | undefined> {
+    if (
+      parent.abapObject.type !== PACKAGE ||
+      parent.abapObject.name !== TMPPACKAGE
+    )
+      return
+    const target = abapPath[abapPath.length - 1]?.["adtcore:uri"]
+    const root = abapPath[0]
+    if (!target || root["adtcore:name"] !== TMPPACKAGE) return
+    const me = RemoteManager.get()
+      .byId(this.server.connectionId)
+      ?.username.toUpperCase()
+    const owner = await (await this.server.client.objectStructure(target))
+      .metaData["adtcore:responsible"]
+    if (owner.toUpperCase() !== me) {
+      const adtnodes = await this.server.client.nodeContents(
+        PACKAGE,
+        TMPPACKAGE,
+        owner
+      )
+      const nodes = adtnodes.nodes.filter(n => n.OBJECT_URI === target)
+      if (nodes.length) {
+        const components = convertNodes({ ...adtnodes, nodes }, PACKAGE)
+        const froot = components[0]
+        const type = froot.types[0]
+        const object = type.objects[0]
+        const node = new AbapObjectNode(object)
+        const path = [froot.name, type.name].filter(x => x)
+        let curNode: AbapNode | undefined = parent
+        for (const p of path)
+          if (curNode && p) {
+            curNode = curNode.getChild(p)
+          }
+        if (curNode) {
+          curNode.setChild(object.vsName, node, true)
+          return {
+            node,
+            path: path.join("/")
+          }
+        }
+      }
+    }
   }
 
   public async displayNode(nodePath: NodePath) {

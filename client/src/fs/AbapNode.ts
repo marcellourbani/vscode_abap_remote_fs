@@ -116,7 +116,7 @@ export class AbapObjectNode implements FileStat, Iterable<[string, AbapNode]> {
   public setChild(
     name: string,
     child: AbapNode,
-    manual: boolean = true
+    manual: boolean = false
   ): AbapNode {
     if (!this.children || !this.isFolder)
       throw FileSystemError.FileNotADirectory(name)
