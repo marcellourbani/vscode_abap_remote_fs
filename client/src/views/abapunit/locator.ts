@@ -44,7 +44,8 @@ export class MethodLocator {
     const finder = getServer(this.connId).objectFinder
     const { uri, start } = await finder.vscodeRange(objectUri)
     if (start)
-      if (objectType === "PROG/OLI") return { uri, line: start.line }
+      if (objectType === "PROG/OLI" || objectType.match(/^CLAS\/OCN/))
+        return { uri, line: start.line }
       else {
         const impl = await this.methodImplementation(uri, start)
         // if (impl) met.line = impl.line - 1
