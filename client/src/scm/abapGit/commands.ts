@@ -5,7 +5,9 @@ import {
   Memento,
   window,
   commands,
-  QuickPickItem
+  QuickPickItem,
+  Uri,
+  SourceControlResourceDecorations
 } from "vscode"
 import { command, AbapFsCommands } from "../../commands"
 import {
@@ -13,11 +15,13 @@ import {
   fromSC,
   AgResState,
   isAgResState,
-  fromData,
+  fromGroup,
   UNSTAGED,
   STAGED,
   ScmData,
-  fileUri
+  fileUri,
+  IGNORED,
+  AgResGroup
 } from "./scm"
 import {
   after,
@@ -33,7 +37,7 @@ import {
 import { map, isNone, none, fromEither, isSome } from "fp-ts/lib/Option"
 import { getServer, fromUri } from "../../adt/AdtServer"
 import { dataCredentials, listPasswords, deletePassword } from "./credentials"
-import { GitStagingFile, GitStaging, objectPath } from "abap-adt-api"
+import { GitStagingFile, GitStaging } from "abap-adt-api"
 import { context } from "../../extension"
 import { selectTransport } from "../../adt/AdtTransports"
 import { pickAdtRoot } from "../../config"
@@ -46,14 +50,37 @@ const getStore = () => {
     commitStore = createStore("abapGitRepoCommit", context.globalState)
   return commitStore
 }
+
+let decorations: SourceControlResourceDecorations
+const statesEquals = (
+  x: SourceControlResourceState,
+  y: SourceControlResourceState
+) => y.resourceUri.toString() === x.resourceUri.toString()
+const hasState = (
+  group: SourceControlResourceGroup,
+  state: SourceControlResourceState
+) => !!group.resourceStates.find(x => statesEquals(x, state))
 const transfer = (
   source: SourceControlResourceGroup,
   target: SourceControlResourceGroup,
   items: SourceControlResourceState[]
 ) => {
-  target.resourceStates = [...target.resourceStates, ...items]
+  if (!decorations)
+    decorations = {
+      tooltip: "Resource modified on remote",
+      faded: true,
+      iconPath: Uri.file(context.asAbsolutePath("client/images/warning.svg"))
+    }
+  target.resourceStates = [
+    ...target.resourceStates,
+    ...items.map(i => {
+      if (target.id !== STAGED) return { ...i, decorations: {} }
+      if (source.id === IGNORED) return { ...i, decorations }
+      return i
+    })
+  ]
   source.resourceStates = source.resourceStates.filter(
-    x => !items.find(y => y.resourceUri.toString() === x.resourceUri.toString())
+    x => !items.find(y => statesEquals(x, y))
   )
 }
 
@@ -192,31 +219,49 @@ export class GitCommands {
   private static async addCmd(
     ...args: AgResState[] | SourceControlResourceGroup[]
   ) {
+    const findSource = (s: AgResState) => {
+      const unstGroup = s.data.groups.get(UNSTAGED)
+      return hasState(unstGroup, s) ? unstGroup : s.data.groups.get(IGNORED)
+    }
     const unstaged = args[0]
     if (isAgResState(unstaged)) {
       const data = unstaged.data
       const states = args as AgResState[]
-      transfer(data.groups.get(UNSTAGED), data.groups.get(STAGED), states)
+      const source = data.groups.get(unstaged.originalGroupId)
+      transfer(source, data.groups.get(STAGED), states)
     } else {
-      const data = fromData(unstaged)
+      const data = fromGroup(unstaged)
       if (data)
         transfer(unstaged, data.groups.get(STAGED), unstaged.resourceStates)
     }
   }
 
   @command(AbapFsCommands.agitRemove)
-  private static async removeCmd(
-    ...args: AgResState[] | SourceControlResourceGroup[]
-  ) {
+  private static async removeCmd(...args: AgResState[] | AgResGroup[]) {
+    const findTarget = (s: AgResState) => {
+      const unstGroup = s.data.groups.get(UNSTAGED)
+      return hasState(unstGroup, s) ? unstGroup : s.data.groups.get(IGNORED)
+    }
     const staged = args[0]
     if (isAgResState(staged)) {
       const data = staged.data
       const states = args as AgResState[]
-      transfer(data.groups.get(STAGED), data.groups.get(UNSTAGED), states)
+      const target = data.groups.get(staged.originalGroupId)
+      transfer(data.groups.get(STAGED), target, states)
     } else {
-      const data = fromData(staged)
-      if (data)
-        transfer(staged, data.groups.get(UNSTAGED), staged.resourceStates)
+      const data = fromGroup(staged)
+      if (data) {
+        const toUnStaged = staged.resourceStates.filter(
+          s => s.originalGroupId === UNSTAGED
+        )
+        const toIgnored = staged.resourceStates.filter(
+          s => s.originalGroupId === IGNORED
+        )
+        if (toUnStaged.length)
+          transfer(staged, data.groups.get(UNSTAGED), toUnStaged)
+        if (toIgnored.length)
+          transfer(staged, data.groups.get(IGNORED), toIgnored)
+      }
     }
   }
 

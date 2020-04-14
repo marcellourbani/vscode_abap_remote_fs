@@ -2,7 +2,7 @@
   "name": "vscode-abap-remote-fs",
   "displayName": "ABAP remote filesystem",
   "description": "Work on your ABAP code straight from the server",
-  "version": "0.7.26",
+  "version": "0.7.27",
   "publisher": "murbani",
   "license": "MIT",
   "icon": "client/images/abapfs_logo.png",
@@ -660,7 +660,7 @@
         {
           "command": "abapfs.addAbapGit",
           "group": "inline",
-          "when": "scmProvider =~ /abapGit_/ && scmResourceGroup == unstaged"
+          "when": "scmProvider =~ /abapGit_/ && scmResourceGroup != staged"
         },
         {
           "command": "abapfs.removeAbapGit",
@@ -687,7 +687,7 @@
         {
           "command": "abapfs.addAbapGit",
           "group": "inline",
-          "when": "scmProvider =~ /abapGit_/ && scmResourceGroup == unstaged"
+          "when": "scmProvider =~ /abapGit_/ && scmResourceGroup != staged"
         },
         {
           "command": "abapfs.removeAbapGit",
@@ -699,12 +699,12 @@
         {
           "command": "abapfs.addAbapGit",
           "group": "inline",
-          "when": "scmProvider =~ /abapGit_/ && scmResourceGroup == unstaged"
+          "when": "scmProvider =~ /abapGit_/ && scmResourceGroup != staged"
         },
         {
           "command": "abapfs.removeAbapGit",
           "group": "inline",
-          "when": "scmProvider =~ /abapGit_/ && scmResourceGroup == staged"
+          "when": "scmProvider =~ /abapGit_/ && scmResourceGroup != unstaged"
         }
       ],
       "explorer/context": [

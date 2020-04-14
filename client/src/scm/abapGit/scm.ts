@@ -27,12 +27,22 @@ export const IGNORED = "ignored"
 const GDESC: { [key: string]: string } = {
   staged: "STAGED CHANGES",
   unstaged: "CHANGES",
-  ignored: "IGNORED"
+  ignored: "Changed on remote"
 }
+
 export interface ScmCredentials {
   user: string
   password: string
 }
+export interface AgResState extends SourceControlResourceState {
+  data: ScmData
+  originalGroupId: string
+}
+
+export interface AgResGroup extends SourceControlResourceGroup {
+  resourceStates: AgResState[]
+}
+
 export interface ScmData {
   scm: SourceControl
   connId: string
@@ -41,9 +51,6 @@ export interface ScmData {
   notNew: boolean
   staging?: GitStaging
   credentials?: ScmCredentials
-}
-export interface AgResState extends SourceControlResourceState {
-  data: ScmData
 }
 export const isAgResState = (x: any): x is AgResState =>
   !!(x?.data?.connId && x.resourceUri)
@@ -57,7 +64,11 @@ export const scmData = (key: string) => scms.get(key)
 export const fileUri = (file: GitStagingFile) =>
   Uri.parse(`${file.path}${encodeURIComponent(file.name)}`)
 
-const resourceState = (data: ScmData, file: GitStagingFile): AgResState => {
+const resourceState = (
+  data: ScmData,
+  file: GitStagingFile,
+  originalGroupId: string
+): AgResState => {
   const resourceUri = fileUri(file)
   const local = file.links.find(l => l.rel.match(/localversion/))
   const remote = file.links.find(l => l.rel.match(/remoteversion/))
@@ -72,7 +83,7 @@ const resourceState = (data: ScmData, file: GitStagingFile): AgResState => {
         `abapGit#${data.repo.sapPackage} ${file.name} ↔ Local changes`
       ]
     }
-  const state = { resourceUri, command: cmd, data }
+  const state = { resourceUri, command: cmd, data, originalGroupId }
   return state
 }
 
@@ -90,7 +101,8 @@ export async function refresh(data: ScmData) {
     const group = data.groups.get(key)
     const state: SourceControlResourceState[] = []
     for (const obj of objs)
-      for (const file of obj.abapGitFiles) state.push(resourceState(data, file))
+      for (const file of obj.abapGitFiles)
+        state.push(resourceState(data, file, key))
     group.resourceStates = state
   }
   mapState(STAGED, staging.staged)
@@ -147,5 +159,5 @@ export const fromSC = (sc: SourceControl) => {
   return fromNullable(found)
 }
 
-export const fromData = (group: SourceControlResourceGroup) =>
+export const fromGroup = (group: SourceControlResourceGroup) =>
   [...scms.values()].find(s => [...s.groups].includes(group))
