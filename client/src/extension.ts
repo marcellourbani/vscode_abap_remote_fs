@@ -27,9 +27,10 @@ import { registerCommands } from "./commands"
 import { abapGitProvider } from "./views/abapgit"
 import { loadTokens, clearTokens } from "./oauth"
 import { registerAbapGit } from "./scm/abapGit"
+import { AbapFsApi, api } from "./api"
 export let context: ExtensionContext
 
-export function activate(ctx: ExtensionContext) {
+export async function activate(ctx: ExtensionContext): Promise<AbapFsApi> {
   context = ctx
   const startTime = new Date().getTime()
   log("activating ABAPfs...")
@@ -94,6 +95,7 @@ export function activate(ctx: ExtensionContext) {
   registerCommands(context)
   const elapsed = new Date().getTime() - startTime
   log(`Activated,pid=${process.pid}, activation time(ms):${elapsed}`)
+  return api
 }
 
 // this method is called when your extension is deactivated

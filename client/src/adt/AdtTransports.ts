@@ -1,7 +1,8 @@
 import { window } from "vscode"
-import { ADTClient } from "abap-adt-api"
-import { fieldOrder } from "../lib"
+import { ADTClient, TransportInfo } from "abap-adt-api"
+import { fieldOrder, withp } from "../lib"
 import { TransportStatus } from "./abap/AbapObject"
+import { TransportValidator } from "../api"
 
 export interface TransportSelection {
   cancelled: boolean
@@ -14,6 +15,43 @@ export const trSel = (
   cancelled,
   transport
 })
+
+async function selectOrCreate(
+  tranInfo: TransportInfo,
+  objContentPath: string,
+  client: ADTClient,
+  transportLayer = ""
+) {
+  // select/create
+  const CREATENEW = "Create a new transport"
+  const selection = await window.showQuickPick(
+    [
+      CREATENEW,
+      ...tranInfo.TRANSPORTS.sort(fieldOrder("TRKORR", true)).map(
+        t => `${t.TRKORR} ${t.AS4TEXT}`
+      )
+    ],
+    { ignoreFocusOut: true }
+  )
+
+  if (!selection) return trSel("", true)
+  if (selection === CREATENEW) {
+    const text = await window.showInputBox({
+      prompt: "Request text",
+      ignoreFocusOut: true
+    })
+    if (!text) return trSel("", true)
+    return trSel(
+      await client.createTransport(
+        objContentPath,
+        text,
+        tranInfo.DEVCLASS,
+        transportLayer
+      )
+    )
+  } else return trSel(selection.split(" ")[0])
+}
+
 export async function selectTransport(
   objContentPath: string,
   devClass: string,
@@ -38,32 +76,41 @@ export async function selectTransport(
   // if local, return an empty value
   if (ti.DLVUNIT === "LOCAL") return trSel("")
 
-  // select/create
-  const CREATENEW = "Create a new transport"
-  const selection = await window.showQuickPick(
-    [
-      CREATENEW,
-      ...ti.TRANSPORTS.sort(fieldOrder("TRKORR", true)).map(
-        t => `${t.TRKORR} ${t.AS4TEXT}`
-      )
-    ],
-    { ignoreFocusOut: true }
+  let selection = await selectOrCreate(
+    ti,
+    objContentPath,
+    client,
+    transportLayer
   )
-
-  if (!selection) return trSel("", true)
-  if (selection === CREATENEW) {
-    const text = await window.showInputBox({
-      prompt: "Request text",
-      ignoreFocusOut: true
-    })
-    if (!text) return trSel("", true)
-    return trSel(
-      await client.createTransport(
-        objContentPath,
-        text,
-        ti.DEVCLASS,
-        transportLayer
-      )
+  if (!selection.cancelled)
+    selection = await validate(
+      selection.transport,
+      ti.OBJECT,
+      ti.OBJECTNAME,
+      devClass
     )
-  } else return trSel(selection.split(" ")[0])
+  return selection
 }
+
+const validate = async (
+  transport: string,
+  type: string,
+  name: string,
+  devClass: string
+) => {
+  if (transportValidators.length > 0)
+    return await withp("validating", async () => {
+      for (const validator of transportValidators) {
+        if (!(await validator(transport, type, name, devClass))) {
+          window.showInformationMessage(
+            `Operation cancelled due to failed transport validation`
+          )
+          return trSel("", true)
+        }
+      }
+      return trSel(transport)
+    })
+  else return trSel(transport)
+}
+
+export const transportValidators: TransportValidator[] = []
