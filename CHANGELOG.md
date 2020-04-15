@@ -4,6 +4,17 @@ All notable changes to the "vscode-abap-remote-fs" extension will be documented 
 
 Format based on [Keep a Changelog](http://keepachangelog.com/)
 
+## [0.7.28] 2020-03-16
+
+### Added
+
+- override buttons in transport validation
+- cancellation token in external API
+
+### Fixed
+
+- language functions for namespaced objects
+
 ## [0.7.27] 2020-03-14
 
 ### Added

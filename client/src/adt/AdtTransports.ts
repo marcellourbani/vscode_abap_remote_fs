@@ -1,8 +1,9 @@
-import { window } from "vscode"
+import { window, ProgressLocation, CancellationToken } from "vscode"
 import { ADTClient, TransportInfo } from "abap-adt-api"
 import { fieldOrder, withp } from "../lib"
 import { TransportStatus } from "./abap/AbapObject"
 import { TransportValidator } from "../api"
+import { CancellationTokenSource } from "vscode-languageclient"
 
 export interface TransportSelection {
   cancelled: boolean
@@ -99,17 +100,24 @@ const validate = async (
   devClass: string
 ) => {
   if (transportValidators.length > 0)
-    return await withp("validating", async () => {
-      for (const validator of transportValidators) {
-        if (!(await validator(transport, type, name, devClass))) {
-          window.showInformationMessage(
-            `Operation cancelled due to failed transport validation`
-          )
-          return trSel("", true)
+    return await withp(
+      "validating",
+      async (_, token) => {
+        for (const validator of transportValidators) {
+          if (token?.isCancellationRequested) return trSel("", true)
+
+          if (!(await validator(transport, type, name, devClass, token))) {
+            if (!token?.isCancellationRequested)
+              window.showInformationMessage(
+                `Operation cancelled due to failed transport validation`
+              )
+            return trSel("", true)
+          }
         }
-      }
-      return trSel(transport)
-    })
+        return trSel(transport)
+      },
+      ProgressLocation.Notification
+    )
   else return trSel(transport)
 }
 

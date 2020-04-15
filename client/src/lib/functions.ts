@@ -379,24 +379,25 @@ const splitPos = (pos: string) => {
   return { line: toInt(line), character: toInt(char) }
 }
 
-export const splitAdtUriInternal = <
-  T extends { path: string; query?: string; fragment?: string }
->(
-  uri: T
-) => {
-  const path = uri.path
-  const uriParts: AdtUriPartsInternal = { path }
-  if (uri.query) {
-    for (const part of uri.query.split("&")) {
-      const [name, value] = part.split("=")
-      if (name === "start" || name === "end") uriParts[name] = splitPos(value)
+export const splitAdtUriInternal = (uri: string) => {
+  const uriParts: AdtUriPartsInternal = { path: uri }
+  const uparts = uri.match(/^([\w]+:\/\/)?([^#\?]+\/?)(?:\?([^#]*))?(?:#(.*))?/)
+  if (uparts) {
+    uriParts.path = uparts[2]
+    const query = uparts[3] ? decodeURIComponent(uparts[3]) : ""
+    const fragment = uparts[4] ? decodeURIComponent(uparts[4]) : ""
+    if (query) {
+      for (const part of query.split("&")) {
+        const [name, value] = part.split("=")
+        if (name === "start" || name === "end") uriParts[name] = splitPos(value)
+      }
     }
-  }
-  if (uri.fragment) {
-    for (const part of uri.fragment.split(";")) {
-      const [name, value] = part.split("=")
-      if (name === "name" || name === "type") uriParts[name] = value
-      if (name === "start" || name === "end") uriParts[name] = splitPos(value)
+    if (fragment) {
+      for (const part of fragment.split(";")) {
+        const [name, value] = part.split("=")
+        if (name === "name" || name === "type") uriParts[name] = value
+        if (name === "start" || name === "end") uriParts[name] = splitPos(value)
+      }
     }
   }
   return uriParts

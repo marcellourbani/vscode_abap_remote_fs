@@ -104,47 +104,56 @@ test("compose dependent replacers", async () => {
   if (isRight(changed2)) fail("Unexpected success")
 })
 
-const base = { path: "sap/bc/adt/oo/classes/zfoobar/includes/testclasses" }
+const base = "sap/bc/adt/oo/classes/zfoobar/includes/testclasses"
 test("split uri simple", () => {
   const parts = splitAdtUriInternal(base)
-  expect(parts.path).toBe(base.path)
+  expect(parts.path).toBe(base)
+  expect(parts.name).toBeUndefined()
+  expect(parts.start).toBeUndefined()
 })
 
 test("split uri fragment", () => {
-  let parts = splitAdtUriInternal({ ...base, fragment: "" })
-  expect(parts.path).toBe(base.path)
+  let parts = splitAdtUriInternal(`${base}#`)
+  expect(parts.path).toBe(base)
   expect(parts.name).toBeFalsy()
   expect(parts.type).toBeFalsy()
-  parts = splitAdtUriInternal({
-    ...base,
-    fragment: "type=CLAS/OLD;name=MULTIPLE                      II"
-  })
-  expect(parts.path).toBe(base.path)
+  parts = splitAdtUriInternal(
+    `${base}#type=${"CLAS/OLD"};name=${encodeURIComponent(
+      "MULTIPLE                      II"
+    )}`
+  )
+  expect(parts.path).toBe(base)
   expect(parts.name).toBe("MULTIPLE                      II")
   expect(parts.type).toBe("CLAS/OLD")
-  parts = splitAdtUriInternal({ ...base, fragment: "foo;bar=1" })
-  expect(parts.path).toBe(base.path)
+  parts = splitAdtUriInternal(`${base}#foo;bar=1`)
+  expect(parts.path).toBe(base)
   expect(parts.name).toBeFalsy()
   expect(parts.type).toBeFalsy()
 })
 
 test("split uri start", () => {
-  let parts = splitAdtUriInternal({ ...base, query: "" })
-  expect(parts.path).toBe(base.path)
+  let parts = splitAdtUriInternal(`${base}?`)
+  expect(parts.path).toBe(base)
   expect(parts.start).toBeFalsy()
-  parts = splitAdtUriInternal({
-    ...base,
-    query: "start=3,2"
-  })
-  expect(parts.path).toBe(base.path)
+  parts = splitAdtUriInternal(`${base}?start=3,2`)
+  expect(parts.path).toBe(base)
   expect(parts.start).toBeDefined()
   expect(parts.start?.line).toBe(3)
   expect(parts.start?.character).toBe(2)
   expect(parts.end).toBeFalsy()
 })
 test("split uri start in fragment", () => {
-  const parts = splitAdtUriInternal({ ...base, fragment: "start=3,2" })
-  expect(parts.path).toBe(base.path)
+  const parts = splitAdtUriInternal(`${base}#start=3,2`)
+  expect(parts.path).toBe(base)
+  expect(parts.start).toBeDefined()
+  expect(parts.start?.line).toBe(3)
+  expect(parts.start?.character).toBe(2)
+  expect(parts.end).toBeFalsy()
+})
+test("split namespaced uri start in fragment", () => {
+  const path = "/sap/bc/adt/vit/wb/object_type/ttypda/object_name/%2fFOO%2fBAR"
+  const parts = splitAdtUriInternal(`${path}#start=3,2`)
+  expect(parts.path).toBe(path)
   expect(parts.start).toBeDefined()
   expect(parts.start?.line).toBe(3)
   expect(parts.start?.character).toBe(2)

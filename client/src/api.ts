@@ -1,11 +1,12 @@
 import { transportValidators } from "./adt/AdtTransports"
-import { Disposable } from "vscode"
+import { Disposable, CancellationToken } from "vscode"
 
 export type TransportValidator = (
   transport: string,
   type: string,
   name: string,
-  devClass: string
+  devClass: string,
+  token?: CancellationToken
 ) => Promise<boolean>
 
 function registerTransportValidator(v: TransportValidator) {

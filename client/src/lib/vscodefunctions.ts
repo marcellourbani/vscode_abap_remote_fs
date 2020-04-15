@@ -12,7 +12,7 @@ import {
   Position
 } from "vscode"
 import { none, None } from "fp-ts/lib/Option"
-import { isFn, splitAdtUriInternal } from "./functions"
+import { isFn, splitAdtUriInternal, isUnDefined } from "./functions"
 import { left, right } from "fp-ts/lib/Either"
 
 export const uriName = (uri: Uri) => uri.path.split("/").pop() || ""
@@ -23,8 +23,13 @@ export const withp = <T>(
     progress?: Progress<{ message?: string; increment?: number }>,
     token?: CancellationToken
   ) => Promise<T>,
-  location = ProgressLocation.Window
-) => window.withProgress({ location, title }, cb)
+  location = ProgressLocation.Window,
+  cancellable?: boolean
+) => {
+  if (isUnDefined(cancellable))
+    cancellable = location === ProgressLocation.Notification
+  return window.withProgress({ location, title, cancellable }, cb)
+}
 
 export const inputBox = (
   options: InputBoxOptions,
@@ -133,7 +138,7 @@ export const vscPosition = (adtLine: number, character: number) =>
   new Position(adtLine - 1, character)
 
 export const splitAdtUri = (uri: string): AdtUriParts => {
-  const { start, end, ...rest } = splitAdtUriInternal(Uri.parse(uri))
+  const { start, end, ...rest } = splitAdtUriInternal(uri)
   return {
     ...rest,
     start: start && vscPosition(start.line, start.character),
