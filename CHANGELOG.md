@@ -4,32 +4,32 @@ All notable changes to the "vscode-abap-remote-fs" extension will be documented 
 
 Format based on [Keep a Changelog](http://keepachangelog.com/)
 
-## 0.7.27 2020-03-14
+## [0.7.27] 2020-03-14
 
 ### Added
 
 - expose API for transport validation
 - display and stage remotely changed files in abapGit
 
-## 0.7.25 2020-04-12
+## [0.7.25] 2020-04-12
 
 ### Fixed
 
 - test explorer bugs
 
-## 0.7.24 2020-04-12
+## [0.7.24] 2020-04-12
 
 ### Added
 
 - test explorer integraton
 
-## 0.7.23 2020-04-06
+## [0.7.23] 2020-04-06
 
 ### Added
 
 - help navigation (partial)
 
-## 0.7.22 2020-04-06
+## [0.7.22] 2020-04-06
 
 ### Added
 

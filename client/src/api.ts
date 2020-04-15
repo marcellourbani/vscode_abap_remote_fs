@@ -1,5 +1,5 @@
 import { transportValidators } from "./adt/AdtTransports"
-import { Disposable } from "vscode-languageclient"
+import { Disposable } from "vscode"
 
 export type TransportValidator = (
   transport: string,
