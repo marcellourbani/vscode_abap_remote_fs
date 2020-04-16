@@ -93,6 +93,19 @@ export async function selectTransport(
   return selection
 }
 
+const failedMsg = (token?: CancellationToken) => {
+  if (!token?.isCancellationRequested)
+    window.showInformationMessage(
+      `Operation cancelled due to failed transport validation`
+    )
+}
+const ACCEPT = "Accept"
+const CANCEL = "Cancel"
+const CONTINUE = "Continue"
+
+const onFailed = async (transport: string) =>
+  window.showInformationMessage(`Validation failed`, ACCEPT, CANCEL, CONTINUE)
+
 const validate = async (
   transport: string,
   type: string,
@@ -101,17 +114,30 @@ const validate = async (
 ) => {
   if (transportValidators.length > 0)
     return await withp(
-      "validating",
+      `validating transport ${transport}`,
       async (_, token) => {
         for (const validator of transportValidators) {
           if (token?.isCancellationRequested) return trSel("", true)
 
-          if (!(await validator(transport, type, name, devClass, token))) {
-            if (!token?.isCancellationRequested)
-              window.showInformationMessage(
-                `Operation cancelled due to failed transport validation`
-              )
-            return trSel("", true)
+          try {
+            const outcome = await validator(
+              transport,
+              type,
+              name,
+              devClass,
+              token
+            )
+            if (!outcome) {
+              failedMsg(token)
+              return trSel("", true)
+            }
+          } catch (error) {
+            switch (await onFailed(transport)) {
+              case ACCEPT:
+                return trSel(transport)
+              case CANCEL:
+                return trSel("", true)
+            }
           }
         }
         return trSel(transport)

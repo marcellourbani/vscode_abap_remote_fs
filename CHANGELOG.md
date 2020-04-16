@@ -4,6 +4,12 @@ All notable changes to the "vscode-abap-remote-fs" extension will be documented 
 
 Format based on [Keep a Changelog](http://keepachangelog.com/)
 
+## [0.7.29] 2020-03-16
+
+### Changed
+
+- better UI for external transport validation
+
 ## [0.7.28] 2020-03-16
 
 ### Added
