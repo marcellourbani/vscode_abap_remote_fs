@@ -44,9 +44,9 @@
     "watch": "concurrently --kill-others \"npm run watch-shared\" \"npm run watch-server\" \"npm run watch-client\"",
     "watch-server": "cd server&& npm run watch",
     "watch-client": "cd client&& npm run watch",
-    "watch-shared": "cd sharedapi&& npm run watch",
-    "clean": "rimraf out *.vsix node_modules sharedapi/out sharedapi/node_modules&& cd server && npm run clean&& cd ../client &&npm run clean && cd .. ",
-    "postinstall": "cd sharedapi&& npm i && npm run build && cd ../server && npm i && cd ../client && npm i"
+    "watch-shared": "cd modules/sharedapi&& npm run watch",
+    "clean": "rimraf out *.vsix node_modules modules/sharedapi/out modules/sharedapi/node_modules&& cd server && npm run clean&& cd ../client &&npm run clean && cd .. ",
+    "postinstall": "cd modules/sharedapi&& npm i && npm run build && cd ../../server && npm i && cd ../client && npm i"
   },
   "devDependencies": {
     "@types/mocha": "^7.0.2",

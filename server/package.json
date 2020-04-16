@@ -19,7 +19,7 @@
     "lodash": "^4.17.15",
     "method-call-logger": "^1.0.7",
     "request-debug": "^0.2.0",
-    "vscode-abap-remote-fs-sharedapi": "file:../sharedapi",
+    "vscode-abap-remote-fs-sharedapi": "file:../modules/sharedapi",
     "vscode-languageserver": "^5.2.1"
   },
   "devDependencies": {

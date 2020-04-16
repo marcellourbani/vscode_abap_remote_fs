@@ -4,7 +4,7 @@
     "out": true,
     "client": true,
     "server": true,
-    "sharedapi": true,
+    "modules": true,
     "node_modules": true,
     ".git": true
   },

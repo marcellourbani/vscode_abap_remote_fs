@@ -1,19 +1,19 @@
 {
   "folders": [
     {
+      "path": "."
+    },
+    {
       "path": "client"
     },
     {
       "path": "server"
     },
     {
-      "path": "sharedapi"
-    },
-    {
-      "path": "."
-    },
-    {
       "path": "wiki"
+    },
+    {
+      "path": "modules"
     }
   ],
   "settings": {

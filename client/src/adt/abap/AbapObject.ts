@@ -9,7 +9,6 @@ import {
   NodeCategory,
   NodeObjectType
 } from "abap-adt-api"
-import { isString } from "util"
 import { isNodeParent } from "abap-adt-api"
 import { PACKAGE } from "../operations/AdtObjectCreator"
 import { convertSlash } from "../../lib"

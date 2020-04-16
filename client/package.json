@@ -73,7 +73,7 @@
     "tmp-promise": "^2.0.2",
     "tough-cookie": "^4.0.0",
     "uuid": "^7.0.2",
-    "vscode-abap-remote-fs-sharedapi": "file:../sharedapi",
+    "vscode-abap-remote-fs-sharedapi": "file:../modules/sharedapi",
     "vscode-languageclient": "^6.1.3",
     "vscode-test-adapter-api": "^1.8.0"
   }
