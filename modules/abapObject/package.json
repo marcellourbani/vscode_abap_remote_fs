@@ -1,0 +1,19 @@
+{
+  "name": "abapobject",
+  "version": "1.0.0",
+  "description": "Abap object details",
+  "main": "out/index.js",
+  "scripts": {
+    "test": "jest"
+  },
+  "author": "Marcello Urbani",
+  "license": "MIT",
+  "devDependencies": {
+    "@types/jest": "^25.2.1",
+    "ts-jest": "^25.3.1",
+    "typescript": "^3.8.3"
+  },
+  "dependencies": {
+    "abap-adt-api": "^1.3.0"
+  }
+}

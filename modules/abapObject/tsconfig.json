@@ -1,0 +1,17 @@
+{
+  "compilerOptions": {
+    "experimentalDecorators": true,
+    "module": "commonjs",
+    "esModuleInterop": true,
+    "target": "ES2019",
+    "rootDir": "src",
+    "outDir": "out",
+    "lib": ["es2019"],
+    "sourceMap": true,
+    "strict": true,
+    "noUnusedLocals": false,
+    "composite": true
+  },
+  "include": ["src"],
+  "exclude": ["node_modules", ".vscode-test", "*.d.ts"]
+}

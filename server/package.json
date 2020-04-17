@@ -1,5 +1,6 @@
 {
   "name": "vscode-abap-remote-fs-server",
+  "displayName": "ABAPfs language server",
   "version": "1.0.0",
   "description": "Language server for ABAP remote filesystem",
   "repository": {

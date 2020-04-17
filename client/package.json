@@ -1,6 +1,6 @@
 {
   "name": "vscode-abap-remote-fs-client",
-  "displayName": "ABAP remote filesystem",
+  "displayName": "ABAP fs client",
   "description": "Work on your ABAP code straight from the server",
   "version": "0.7.1",
   "publisher": "murbani",

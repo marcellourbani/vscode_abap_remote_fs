@@ -2,7 +2,6 @@
 // https://jestjs.io/docs/en/configuration.html
 
 module.exports = {
-  name: "Client",
   // A set of global variables that need to be available in all test environments
   globals: {
     "ts-jest": {
@@ -11,10 +10,13 @@ module.exports = {
   },
 
   // An array of directory names to be searched recursively up from the requiring module's location
-  moduleDirectories: ["node_modules"],
+  moduleDirectories: [
+    "node_modules"
+  ],
 
   // An array of file extensions your modules use
   moduleFileExtensions: ["ts", "tsx", "js"],
+
 
   // The test environment that will be used for testing
   testEnvironment: "node",
@@ -26,4 +28,5 @@ module.exports = {
   transform: {
     "^.+\\.(ts|tsx)$": "ts-jest"
   }
+
 }
