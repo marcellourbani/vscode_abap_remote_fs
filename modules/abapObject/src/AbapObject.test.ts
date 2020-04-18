@@ -55,6 +55,10 @@ async function unsupportedAssertions(
   await expectException(() => cut.loadStructure(), "NoStructure")
   expect(cut.lockObject).toBe(cut)
   neverCalled(client)
+  expect(cut.createdBy).toBe("")
+  expect(cut.changedBy).toBe("")
+  expect(cut.createdAt).toBeUndefined()
+  expect(cut.changedAt).toBeUndefined()
 }
 
 async function supportedFolderAssertions(
@@ -71,11 +75,19 @@ async function supportedFolderAssertions(
   await expectException(() => cut.childComponents(), "NotSupported")
   expect(cut.lockObject).toBe(cut)
   neverCalled(client)
+  expect(cut.createdBy).toBe("")
+  expect(cut.changedBy).toBe("")
+  expect(cut.createdAt).toBeUndefined()
+  expect(cut.changedAt).toBeUndefined()
   client.objectStructure.mockReturnValue(Promise.resolve(sampleMetadata))
   const struc = await cut.loadStructure()
   expect(client.objectStructure).toBeCalledTimes(1)
   expect(struc).toEqual(sampleMetadata)
   expect(cut.structure).toEqual(sampleMetadata)
+  expect(cut.createdBy).toBe("DEVELOPER")
+  expect(cut.changedBy).toBe("DEVELOPER")
+  expect(cut.createdAt?.getTime()).toBe(1586736000000)
+  expect(cut.changedAt?.getTime()).toBe(1586763315000)
 }
 
 async function supportedFileAssertions(

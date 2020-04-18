@@ -34,6 +34,14 @@ export interface AbapObject {
   readonly fsName: string
   /** the object to lock when editing. i.e. the function group of a function */
   readonly lockObject: AbapObject
+  /** user who created the object. Only available after loading the metadata */
+  readonly createdBy: string
+  /** time of creation. Only available after loading the metadata */
+  readonly createdAt: Date | undefined
+  /** user who last changed the object. Only available after loading the metadata */
+  readonly changedBy: string
+  /** time of last change. Only available after loading the metadata */
+  readonly changedAt: Date | undefined
   /** reads the main objects available for this object */
   mainPrograms: () => Promise<MainInclude[]>
   /** whether we are able to write it */
@@ -81,7 +89,20 @@ export class AbapObjectBase implements AbapObject {
   get lockObject() {
     return this
   }
-
+  get createdBy() {
+    return this.structure?.metaData["adtcore:responsible"] || ""
+  }
+  get createdAt() {
+    const ts = this.structure?.metaData["adtcore:createdAt"]
+    return ts ? new Date(ts) : undefined
+  }
+  get changedBy() {
+    return this.structure?.metaData["adtcore:changedBy"] || ""
+  }
+  get changedAt() {
+    const ts = this.structure?.metaData["adtcore:changedAt"]
+    return ts ? new Date(ts) : undefined
+  }
   contentsPath() {
     if (this.expandable) throw ObjectErrors.notLeaf(this)
     // if (!this.structure &&) throw ObjectErrors.notLoaded(this)
