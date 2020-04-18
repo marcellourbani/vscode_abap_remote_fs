@@ -4,12 +4,15 @@
   "description": "Abap object details",
   "main": "out/index.js",
   "scripts": {
-    "test": "jest"
+    "test": "jest",
+    "build": "tsc",
+    "watch": "tsc -w"
   },
   "author": "Marcello Urbani",
   "license": "MIT",
   "devDependencies": {
     "@types/jest": "^25.2.1",
+    "@types/request-debug": "^0.2.0",
     "jest": "^25.3.0",
     "jest-mock-extended": "^1.0.8",
     "ts-jest": "^25.3.1",

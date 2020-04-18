@@ -1,0 +1,176 @@
+{
+  "objectUrl": "/sap/bc/adt/oo/classes/zcl_abapgit_user_exit",
+  "metaData": {
+    "class:final": false,
+    "class:abstract": false,
+    "class:visibility": "public",
+    "class:category": "generalObjectType",
+    "class:sharedMemoryEnabled": false,
+    "abapoo:modeled": false,
+    "abapsource:fixPointArithmetic": true,
+    "abapsource:activeUnicodeCheck": true,
+    "abapsource:sourceUri": "",
+    "adtcore:responsible": "DEVELOPER",
+    "adtcore:masterLanguage": "EN",
+    "adtcore:masterSystem": "NPL",
+    "adtcore:name": "ZCL_ABAPGIT_USER_EXIT",
+    "adtcore:type": "CLAS/OC",
+    "adtcore:changedAt": 1586763315000,
+    "adtcore:version": "active",
+    "adtcore:createdAt": 1586736000000,
+    "adtcore:changedBy": "DEVELOPER",
+    "adtcore:createdBy": "DEVELOPER",
+    "adtcore:description": "exit",
+    "adtcore:descriptionTextLimit": 60,
+    "adtcore:language": "EN"
+  },
+  "includes": [
+    {
+      "class:includeType": "definitions",
+      "abapsource:sourceUri": "includes/definitions",
+      "adtcore:name": "",
+      "adtcore:type": "CLAS/I",
+      "adtcore:changedAt": "2020-04-13T07:35:15Z",
+      "adtcore:version": "active",
+      "adtcore:createdAt": "2020-04-13T00:00:00Z",
+      "adtcore:changedBy": "DEVELOPER",
+      "adtcore:createdBy": "DEVELOPER",
+      "links": [
+        {
+          "href": "includes/definitions/versions",
+          "rel": "http://www.sap.com/adt/relations/versions"
+        },
+        {
+          "href": "includes/definitions",
+          "rel": "http://www.sap.com/adt/relations/source",
+          "type": "text/plain",
+          "etag": 202004130735150000
+        },
+        {
+          "href": "includes/definitions",
+          "rel": "http://www.sap.com/adt/relations/source",
+          "type": "text/html",
+          "etag": 202004130735150000
+        }
+      ]
+    },
+    {
+      "class:includeType": "implementations",
+      "abapsource:sourceUri": "includes/implementations",
+      "adtcore:name": "",
+      "adtcore:type": "CLAS/I",
+      "adtcore:changedAt": "2020-04-13T07:35:15Z",
+      "adtcore:version": "active",
+      "adtcore:createdAt": "2020-04-13T00:00:00Z",
+      "adtcore:changedBy": "DEVELOPER",
+      "adtcore:createdBy": "DEVELOPER",
+      "links": [
+        {
+          "href": "includes/implementations/versions",
+          "rel": "http://www.sap.com/adt/relations/versions"
+        },
+        {
+          "href": "includes/implementations",
+          "rel": "http://www.sap.com/adt/relations/source",
+          "type": "text/plain",
+          "etag": 202004130735150000
+        },
+        {
+          "href": "includes/implementations",
+          "rel": "http://www.sap.com/adt/relations/source",
+          "type": "text/html",
+          "etag": 202004130735150000
+        }
+      ]
+    },
+    {
+      "class:includeType": "macros",
+      "abapsource:sourceUri": "includes/macros",
+      "adtcore:name": "",
+      "adtcore:type": "CLAS/I",
+      "adtcore:changedAt": "2020-04-13T07:35:15Z",
+      "adtcore:version": "active",
+      "adtcore:createdAt": "2020-04-13T00:00:00Z",
+      "adtcore:changedBy": "DEVELOPER",
+      "adtcore:createdBy": "DEVELOPER",
+      "links": [
+        {
+          "href": "includes/macros/versions",
+          "rel": "http://www.sap.com/adt/relations/versions"
+        },
+        {
+          "href": "includes/macros",
+          "rel": "http://www.sap.com/adt/relations/source",
+          "type": "text/plain",
+          "etag": 202004130735150000
+        },
+        {
+          "href": "includes/macros",
+          "rel": "http://www.sap.com/adt/relations/source",
+          "type": "text/html",
+          "etag": 202004130735150000
+        }
+      ]
+    },
+    {
+      "class:includeType": "main",
+      "abapsource:sourceUri": "source/main",
+      "adtcore:name": "",
+      "adtcore:type": "CLAS/I",
+      "adtcore:changedAt": "2020-04-13T07:35:15Z",
+      "adtcore:version": "active",
+      "adtcore:createdAt": "2020-04-13T00:00:00Z",
+      "adtcore:changedBy": "DEVELOPER",
+      "adtcore:createdBy": "DEVELOPER",
+      "links": [
+        {
+          "href": "includes/main/versions",
+          "rel": "http://www.sap.com/adt/relations/versions"
+        },
+        {
+          "href": "source/main",
+          "rel": "http://www.sap.com/adt/relations/source",
+          "type": "text/plain",
+          "etag": 2.0200413073515003e22
+        },
+        {
+          "href": "source/main",
+          "rel": "http://www.sap.com/adt/relations/source",
+          "type": "text/html",
+          "etag": 2.0200413073515003e22
+        }
+      ]
+    }
+  ],
+  "links": [
+    {
+      "href": "objectstructure",
+      "rel": "http://www.sap.com/adt/relations/objectstructure",
+      "type": "application/vnd.sap.adt.objectstructure.v2+xml"
+    },
+    {
+      "href": "/sap/bc/adt/vit/wb/object_type/clasocx/object_name/ZCL_ABAPGIT_USER_EXIT",
+      "rel": "http://www.sap.com/adt/relations/sources/textelements",
+      "type": "application/vnd.sap.sapgui",
+      "title": "Text elements"
+    },
+    {
+      "href": "/sap/bc/adt/oo/classes/zcl_abapgit_user_exit/source/main?withAbapDocFromShortTexts=true",
+      "rel": "http://www.sap.com/adt/relations/sources/withabapdocfromshorttexts",
+      "type": "text/plain",
+      "title": "Source with ABAP Doc"
+    },
+    {
+      "href": "/sap/bc/adt/oo/classes/zcl_abapgit_user_exit/transports",
+      "rel": "http://www.sap.com/adt/relations/transport",
+      "type": "application/vnd.sap.as+xml;charset=utf-8;dataname=com.sap.adt.lock.result2",
+      "title": "Related Transport Requests"
+    },
+    {
+      "href": "/sap/bc/adt/classifications?uri=/sap/bc/adt/oo/classes/zcl_abapgit_user_exit",
+      "rel": "http://www.sap.com/adt/categories/classifications",
+      "type": "application/vnd.sap.adt.classifications+xml",
+      "title": "Classifications"
+    }
+  ]
+}

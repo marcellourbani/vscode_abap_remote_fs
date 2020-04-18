@@ -2,6 +2,8 @@ import { AbapObjectBase, AbapObject } from "./AbapObject"
 import { AbapObjectService } from "./AOService"
 import { mock, MockProxy } from "jest-mock-extended"
 import { isAbapObjectError, Kind } from "./AOError"
+import sampleNodeContents from "./sampledata/nodeContents1.json"
+import sampleMetadata from "./sampledata/classstructure1.json"
 
 async function expectException(fn: () => any, kind: Kind) {
   try {
@@ -33,7 +35,10 @@ async function packageAssertions(
   await expectException(() => cut.mainPrograms(), "NotLeaf")
   expect(cut.lockObject).toBe(cut)
   neverCalled(client)
-  cut.childComponents()
+  // const expected = await readJson("./sampledata/nodeContents1.json")
+  client.nodeContents.mockReturnValue(Promise.resolve(sampleNodeContents))
+  const result = await cut.childComponents()
+  expect(result).toEqual(sampleNodeContents)
   expect(client.nodeContents).toBeCalledTimes(1)
 }
 
@@ -66,8 +71,11 @@ async function supportedFolderAssertions(
   await expectException(() => cut.childComponents(), "NotSupported")
   expect(cut.lockObject).toBe(cut)
   neverCalled(client)
-  cut.loadStructure()
+  client.objectStructure.mockReturnValue(Promise.resolve(sampleMetadata))
+  const struc = await cut.loadStructure()
   expect(client.objectStructure).toBeCalledTimes(1)
+  expect(struc).toEqual(sampleMetadata)
+  expect(cut.structure).toEqual(sampleMetadata)
 }
 
 async function supportedFileAssertions(
@@ -80,8 +88,11 @@ async function supportedFileAssertions(
   await expectException(() => cut.loadStructure(), "NotSupported")
   expect(cut.lockObject).toBe(cut)
   neverCalled(client)
-  cut.read()
+  const sample = "Hello, World"
+  client.getObjectSource.mockReturnValue(Promise.resolve(sample))
+  const source = await cut.read()
   expect(client.getObjectSource).toBeCalledTimes(1)
+  expect(source).toBe(sample)
   cut.write("", "", "")
   expect(client.setObjectSource).toBeCalledTimes(1)
 }

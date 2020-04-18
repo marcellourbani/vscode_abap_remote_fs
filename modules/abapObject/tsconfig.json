@@ -3,15 +3,17 @@
     "experimentalDecorators": true,
     "module": "commonjs",
     "esModuleInterop": true,
+    "resolveJsonModule": true,
     "target": "ES2019",
     "rootDir": "src",
     "outDir": "out",
     "lib": ["es2019"],
+    "types": ["node"],
     "sourceMap": true,
     "strict": true,
     "noUnusedLocals": false,
     "composite": true
   },
-  "include": ["src"],
+  "include": ["src", "./src/sampledata/*.json"],
   "exclude": ["node_modules", ".vscode-test", "*.d.ts"]
 }
