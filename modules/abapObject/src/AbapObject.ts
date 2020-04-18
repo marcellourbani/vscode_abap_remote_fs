@@ -52,7 +52,17 @@ export interface AbapObject {
   read: () => Promise<string>
   childComponents: () => Promise<NodeStructure>
 }
-
+// tslint:disable:callable-types
+export interface AbapObjectConstructor {
+  new (
+    type: string,
+    name: string,
+    path: string,
+    expandable: boolean,
+    techName: string,
+    client: AbapObjectService
+  ): AbapObject
+}
 export const isAbapObject = (x: any): x is AbapObject => !!x?.[objectTag]
 
 export class AbapObjectBase implements AbapObject {
@@ -63,7 +73,7 @@ export class AbapObjectBase implements AbapObject {
     readonly path: string,
     readonly expandable: boolean,
     readonly techName: string,
-    private readonly client: AbapObjectService
+    protected readonly client: AbapObjectService
   ) {
     this.supported =
       this.type !== "IWSV" &&
@@ -72,7 +82,7 @@ export class AbapObjectBase implements AbapObject {
       )
   }
   structure?: AbapObjectStructure
-  private readonly supported: boolean
+  protected readonly supported: boolean
 
   get canBeWritten() {
     return this.supported && !this.expandable
@@ -80,7 +90,7 @@ export class AbapObjectBase implements AbapObject {
   get key() {
     return `${this.type} ${this.name}`
   }
-  get extension() {
+  get extension(): string {
     return this.expandable ? "" : this.supported ? ".abap" : ".txt"
   }
   get fsName() {
@@ -111,7 +121,7 @@ export class AbapObjectBase implements AbapObject {
     return this.path
   }
 
-  mainPrograms = async () => {
+  async mainPrograms() {
     if (!this.supported) throw ObjectErrors.NotSupported(this)
     if (this.expandable) throw ObjectErrors.notLeaf(this)
     return this.client.mainPrograms(this.path)

@@ -7,6 +7,7 @@ export type Kind =
   | "NotLeaf"
   | "NoChildren"
   | "NotSupported"
+  | "Invalid"
 
 export class AbapObjectError extends Error {
   [errorTag]: true
@@ -54,6 +55,12 @@ export const ObjectErrors = {
     new AbapObjectError(
       "NotSupported",
       o,
-      message || `Operation not supported for bject ${o.key}`
+      message || `Operation not supported for object ${o.key}`
+    ),
+  Invalid: (o: AbapObject, message?: string) =>
+    new AbapObjectError(
+      "Invalid",
+      o,
+      message || `Invalid data returned for object ${o.key}`
     )
 }

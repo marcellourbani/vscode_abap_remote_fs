@@ -11,8 +11,7 @@ import {
   ADTClient,
   isClassStructure,
   AbapClassStructure,
-  classIncludes,
-  ClassInclude
+  classIncludes
 } from "abap-adt-api"
 
 export class AbapClass extends AbapObject {
