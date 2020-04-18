@@ -8,7 +8,7 @@ import { AbapObjectService } from "./AOService"
 import { ObjectErrors } from "./AOError"
 const SAPGUIONLY = "Objects of this type are only supported in SAPGUI"
 const NSSLASH = "\u2215" // used to be hardcoded as "／", aka "\uFF0F"
-const convertSlash = (x: string) => x && x.replace(/\//g, NSSLASH)
+export const convertSlash = (x: string) => x && x.replace(/\//g, NSSLASH)
 
 const objectTag = Symbol("abapObject")
 
@@ -46,6 +46,8 @@ export interface AbapObject {
   mainPrograms: () => Promise<MainInclude[]>
   /** whether we are able to write it */
   readonly canBeWritten: boolean
+  /** whether the object has structure/metadata */
+  readonly hasStructure: boolean
   /** loads/updates the object metadata */
   loadStructure: () => Promise<AbapObjectStructure>
   write: (contents: string, lockId: string, transport: string) => Promise<void>
@@ -82,6 +84,7 @@ export class AbapObjectBase implements AbapObject {
       )
   }
   structure?: AbapObjectStructure
+  readonly hasStructure: boolean = true
   protected readonly supported: boolean
 
   get canBeWritten() {

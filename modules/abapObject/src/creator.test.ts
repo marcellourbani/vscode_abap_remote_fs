@@ -1,7 +1,12 @@
 import { create } from "."
 import { mock } from "jest-mock-extended"
 import { AbapObjectService } from "./AOService"
-import { isAbapClass, isAbapCds } from "./objectTypes"
+import {
+  isAbapClass,
+  isAbapCds,
+  isAbapInclude,
+  isAbapClassInclude
+} from "./objectTypes"
 
 test("Creates classes", () => {
   const client = mock<AbapObjectService>()
@@ -39,4 +44,29 @@ test("Creates cds", () => {
   )
   expect(isAbapCds(cut)).toBeTruthy()
   expect(cut.fsName).toBe("ZAPIDUMMY_METADATA.ddlx.asddlxs")
+})
+
+test("create Class include", () => {
+  const client = mock<AbapObjectService>()
+  const cut = create(
+    "CLAS/I",
+    "ZCL_ABAPGIT_USER_EXIT.main",
+    "/sap/bc/adt/oo/classes/zcl_abapgit_user_exit/source/main",
+    false,
+    "main",
+    client
+  )
+  expect(isAbapClassInclude(cut)).toBeTruthy()
+})
+test("create include", () => {
+  const client = mock<AbapObjectService>()
+  const cut = create(
+    "PROG/I",
+    "ZADTTESTINCLUDEINC",
+    "/sap/bc/adt/programs/includes/zadttestincludeinc",
+    false,
+    "ZADTTESTINCLUDEINC",
+    client
+  )
+  expect(isAbapInclude(cut)).toBeTruthy()
 })
