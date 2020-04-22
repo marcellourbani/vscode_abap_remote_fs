@@ -8,8 +8,10 @@ import { AbapObjectService } from "./AOService"
 import { ObjectErrors } from "./AOError"
 const SAPGUIONLY = "Objects of this type are only supported in SAPGUI"
 const NSSLASH = "\u2215" // used to be hardcoded as "／", aka "\uFF0F"
+export const PACKAGE = "DEVC/K"
+export const TMPPACKAGE = "$TMP"
+export const PACKAGEBASEPATH = "/sap/bc/adt/repository/nodestructure"
 export const convertSlash = (x: string) => x && x.replace(/\//g, NSSLASH)
-
 const objectTag = Symbol("abapObject")
 
 export interface AbapObject {

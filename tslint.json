@@ -16,5 +16,8 @@
     "triple-equals": true,
     "member-ordering": false
   },
+  "linterOptions": {
+    "exclude": ["*.d.ts"]
+  },
   "defaultSeverity": "warning"
 }
