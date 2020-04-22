@@ -1,13 +1,15 @@
 import { FileStat } from "vscode"
 import { AbapObject } from "../../abapObject"
-import { Child } from "."
+import { Folder } from "./folder"
 
 const tag = Symbol("abapFolder")
 
-export class AbapFolder implements FileStat {
+export class AbapFolder extends Folder {
   [tag] = true
   type = 2 // FileType.Directory
-  constructor(readonly object: AbapObject, readonly parent: FileStat) {}
+  constructor(readonly object: AbapObject, readonly parent: FileStat) {
+    super()
+  }
   get ctime() {
     if (this.object.structure)
       return this.object.structure.metaData["adtcore:createdAt"]
@@ -17,10 +19,6 @@ export class AbapFolder implements FileStat {
     if (this.object.structure)
       return this.object.structure.metaData["adtcore:changedAt"]
     return 0
-  }
-  children = new Map<string, Child>()
-  get size() {
-    return this.children.size
   }
 }
 

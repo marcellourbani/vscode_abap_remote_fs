@@ -1,12 +1,14 @@
-import { Folder } from "./folder"
+import { Folder, isFolder } from "./folder"
+import { create } from "../../abapObject/out"
 
 const createFile = () => ({ type: 1, mtime: 0, ctime: 0, size: 0 })
 
 test("folder iterator", () => {
   const folder = new Folder()
-  folder.set("foo", createFile())
+  const same = folder.set("foo", createFile())
+  expect(same).toBe(folder)
   folder.set("bar", createFile())
-  folder.set("foo", createFile(), true)
+  folder.set("foo", createFile(), false)
 
   expect(folder.size).toBe(2)
 
@@ -21,4 +23,33 @@ test("folder iterator", () => {
 
   // check a second run of the iterator yields all the children
   expect([...folder].length).toBe(2)
+})
+
+test("merging folders", () => {
+  const folder = new Folder()
+  folder.set("foo", new Folder(), false)
+  let tmp = new Folder()
+  tmp.set("barfile1", createFile())
+  tmp.set("barfile2", createFile())
+  folder.set("bar", tmp, true)
+  folder.set("baz", createFile(), false)
+  tmp = new Folder()
+  tmp.set("file1", createFile(), false)
+  tmp.set("file2", createFile(), false)
+
+  folder.merge([{ name: "foo", file: tmp }])
+
+  expect(folder.get("baz")).toBeUndefined()
+  const bar = folder.get("bar")
+  if (isFolder(bar)) {
+    expect(bar.get("barfile1")).toBeDefined()
+    expect(bar.get("barfile2")).toBeDefined()
+    expect(bar.size).toBe(2)
+  } else fail("removed manual folder")
+  const foo = folder.get("foo")
+  if (isFolder(foo)) {
+    expect(foo.get("file1")).toBeDefined()
+    expect(foo.get("file2")).toBeDefined()
+    expect(foo.size).toBe(2)
+  } else fail("folder replaced or removed")
 })
