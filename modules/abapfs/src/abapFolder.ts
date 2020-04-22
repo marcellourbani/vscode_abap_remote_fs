@@ -1,4 +1,4 @@
-import { FileStat, FileType } from "vscode"
+import { FileStat } from "vscode"
 import { AbapObject } from "../../abapObject"
 import { Child } from "."
 
@@ -6,7 +6,7 @@ const tag = Symbol("abapFolder")
 
 export class AbapFolder implements FileStat {
   [tag] = true
-  type = FileType.File
+  type = 2 // FileType.Directory
   constructor(readonly object: AbapObject, readonly parent: FileStat) {}
   get ctime() {
     if (this.object.structure)

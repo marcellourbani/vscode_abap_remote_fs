@@ -1,5 +1,5 @@
 import { Folder, AbapFsService, Child } from "./interfaces"
-import { FileType, FileStat } from "vscode"
+// import { FileType } from "vscode"
 import { create, PACKAGE, PACKAGEBASEPATH, TMPPACKAGE } from "../../abapObject"
 import { AbapFolder } from "./abapFolder"
 
@@ -12,7 +12,7 @@ export const LIBFOLDER = "System Library"
 export class Root implements Folder {
   [tag] = true
   get type() {
-    return FileType.Directory
+    return 2 //FileType.Directory
   }
 
   constructor(readonly connId: string, private service: AbapFsService) {

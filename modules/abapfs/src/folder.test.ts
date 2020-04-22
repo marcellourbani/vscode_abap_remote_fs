@@ -18,4 +18,7 @@ test("folder iterator", () => {
   }
   expect(keys.get("foo")).toBe(true)
   expect(keys.get("bar")).toBe(true)
+
+  // check a second run of the iterator yields all the children
+  expect([...folder].length).toBe(2)
 })

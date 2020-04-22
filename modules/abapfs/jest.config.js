@@ -4,6 +4,7 @@
 module.exports = {
   // A set of global variables that need to be available in all test environments
   globals: {
+    preset: "ts-jest",
     "ts-jest": {
       tsConfig: "tsconfig.json"
     }
