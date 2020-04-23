@@ -1,5 +1,4 @@
 import { Folder, isFolder } from "./folder"
-import { create } from "../../abapObject/out"
 
 const createFile = () => ({ type: 1, mtime: 0, ctime: 0, size: 0 })
 
