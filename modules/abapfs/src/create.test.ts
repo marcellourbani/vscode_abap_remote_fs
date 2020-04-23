@@ -45,3 +45,8 @@ test("find path root", async () => {
   expect(isFolder(root.byPath("/System Library/zchild/bar"))).toBe(false)
   expect(root.byPath("/$TMP/child/foo/2")).toBeUndefined()
 })
+
+test("expand single package", async () => {
+  const client = mock<AbapFsService>()
+  const root = createRoot("MYConn", client)
+})

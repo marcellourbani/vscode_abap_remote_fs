@@ -20,7 +20,7 @@ export class Folder implements Iterable<FolderItem>, FileStat {
     for (const [name, child] of mi) yield { name, file: child.file }
   }
   [tag] = true
-  type = 2 // FileType.Directory
+  type = FileType.Directory
   get ctime() {
     return refTime
   }
@@ -69,6 +69,18 @@ export class Folder implements Iterable<FolderItem>, FileStat {
       else if (isFolder(old?.file) && isFolder(file)) old?.file.merge([...file])
       // do something when I get a new leaf? or a leaf is replaced by a folder> Probably best to ignore
     }
+  }
+  protected byPathParts(parts: string[]): FileStat | undefined {
+    if (parts.length === 0) return this
+    const [first, ...rest] = parts
+    const next = this.get(first)
+    if (rest.length === 0) return next
+    if (isFolder(next)) return next.byPathParts(rest)
+  }
+  /** finds a subdirectory given a path */
+  byPath(path: string) {
+    const parts = path.split("/").filter(x => x)
+    return this.byPathParts(parts)
   }
 
   get size() {

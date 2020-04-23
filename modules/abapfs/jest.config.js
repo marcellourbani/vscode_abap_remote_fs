@@ -22,6 +22,10 @@ module.exports = {
   // The glob patterns Jest uses to detect test files
   testMatch: ["**/__tests__/*.+(ts|tsx|js)", "**/*.test.ts"],
 
+  moduleNameMapper: {
+    vscode: "<rootDir>/out/vscode_stub.js"
+  },
+
   // A map from regular expressions to paths to transformers
   transform: {
     "^.+\\.(ts|tsx)$": "ts-jest"

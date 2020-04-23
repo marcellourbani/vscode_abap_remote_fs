@@ -15,5 +15,5 @@
     "composite": true
   },
   "include": ["src", "./src/sampledata/*.json"],
-  "exclude": ["node_modules", ".vscode-test"]
+  "exclude": ["node_modules"]
 }
