@@ -7,8 +7,17 @@ import { AbapFile } from "./abapFile"
 
 const tag = Symbol("abapFolder")
 
-const strucType = (cont: NodeStructure) => (node: Node) =>
-  cont.objectTypes.find(t => t.OBJECT_TYPE === node.OBJECT_TYPE)
+const strucType = (cont: NodeStructure) => (node: Node) => {
+  const realType = cont.objectTypes.find(
+    t => t.OBJECT_TYPE === node.OBJECT_TYPE
+  )
+  if (realType?.OBJECT_TYPE_LABEL) return realType
+  // hack: some systems store the label for i.e. "PROG/P" on "DEVC/P"
+  if (realType) {
+    const aliasType = node.OBJECT_TYPE.replace(/^[^\/]+\//, "DEVC/")
+    return cont.objectTypes.find(t => t.OBJECT_TYPE === aliasType)
+  }
+}
 
 const strucCategory = (cont: NodeStructure) => (type?: NodeObjectType) =>
   type && cont.categories.find(c => c.CATEGORY === type.CATEGORY_TAG)
@@ -26,7 +35,6 @@ const subFolder = (parent: Folder, label?: string): Folder => {
 
 export class AbapFolder extends Folder {
   [tag] = true
-  type = 2 // FileType.Directory
   constructor(
     readonly object: AbapObject,
     readonly parent: FileStat,
@@ -53,7 +61,7 @@ export class AbapFolder extends Folder {
     const nodeIsValid = (n: Node) =>
       n.OBJECT_TYPE === PACKAGE || !n.OBJECT_TYPE.match(/DEVC\//)
     const validNodes = cont.nodes.filter(nodeIsValid)
-    for (const node of cont.nodes) {
+    for (const node of validNodes) {
       const type = getType(node)
       const category = getCat(type)
       let folder = subFolder(root, category?.CATEGORY_LABEL)
@@ -65,6 +73,7 @@ export class AbapFolder extends Folder {
 
       folder.set(object.fsName, child)
     }
+    this.merge([...root])
   }
 }
 

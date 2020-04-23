@@ -1,6 +1,7 @@
 import { AbapObjectBase, AbapObjectConstructor } from "./AbapObject"
 import { AbapObjectService } from "./AOService"
 import { Node } from "abap-adt-api"
+import { AbapObjectError } from "./AOError"
 
 const constructors = new Map<string, AbapObjectConstructor>()
 export const AbapObjectCreator = (...types: string[]) => (
@@ -17,6 +18,12 @@ export const create = (
   techName: string,
   client: AbapObjectService
 ) => {
+  if (!type || !path)
+    throw new AbapObjectError(
+      "Invalid",
+      undefined,
+      "Abap Object can't be created without a type and path"
+    )
   const cons = constructors.get(type) || AbapObjectBase
   return new cons(type, name, path, expandable, techName, client)
 }

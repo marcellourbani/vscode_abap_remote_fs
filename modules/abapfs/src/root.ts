@@ -1,8 +1,7 @@
 import { AbapFsService } from "./interfaces"
 import { create, PACKAGE, PACKAGEBASEPATH, TMPPACKAGE } from "../../abapObject"
 import { AbapFolder } from "./abapFolder"
-import { Folder, isFolder } from "./folder"
-import { FileStat } from "vscode"
+import { Folder } from "./folder"
 
 const tag = Symbol("fsRoot")
 
@@ -11,7 +10,7 @@ export const LIBFOLDER = "System Library"
 
 export class Root extends Folder {
   [tag] = true
-  constructor(readonly connId: string, private service: AbapFsService) {
+  constructor(readonly connId: string, service: AbapFsService) {
     super()
     const tmp = create(PACKAGE, TMPPACKAGE, PACKAGEBASEPATH, true, "", service)
     this.set(TMPFOLDER, new AbapFolder(tmp, this, service), true)
