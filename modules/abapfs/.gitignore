@@ -1,0 +1,4 @@
+node_modules
+out
+tsconfig.tsbuildinfo
+setenv.js

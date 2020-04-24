@@ -15,7 +15,9 @@ const strucType = (cont: NodeStructure) => (node: Node) => {
   // hack: some systems store the label for i.e. "PROG/P" on "DEVC/P"
   if (realType) {
     const aliasType = node.OBJECT_TYPE.replace(/^[^\/]+\//, "DEVC/")
-    return cont.objectTypes.find(t => t.OBJECT_TYPE === aliasType)
+    const fakeType = cont.objectTypes.find(t => t.OBJECT_TYPE === aliasType)
+    if (fakeType) fakeType.CATEGORY_TAG = realType.CATEGORY_TAG
+    return fakeType || realType
   }
 }
 
@@ -71,7 +73,7 @@ export class AbapFolder extends Folder {
         ? new AbapFolder(object, folder, this.service)
         : new AbapFile(object, folder, this.service)
 
-      folder.set(object.fsName, child)
+      folder.set(object.fsName, child, false)
     }
     this.merge([...root])
   }

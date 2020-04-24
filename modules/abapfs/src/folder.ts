@@ -11,27 +11,42 @@ export interface FolderItem {
   name: string
   file: FileStat
 }
+export interface PathItem {
+  path: string
+  file: FileStat
+}
 
 export const isFolder = (x: any): x is Folder => !!x?.[tag]
 export const isRefreshable = (f: any): f is Refreshable =>
   isFolder(f) && typeof (f as any).refresh === "function"
 
 export class Folder implements Iterable<FolderItem>, FileStat {
+  [tag] = true
+  type = FileType.Directory
+  private _children = new Map<string, Child>();
+
   *[Symbol.iterator](): Iterator<FolderItem> {
     const mi = this._children.entries()
     for (const [name, child] of mi) yield { name, file: child.file }
   }
-  [tag] = true
-  type = FileType.Directory
+  *expandPath(startPath = ""): Generator<PathItem> {
+    for (const child of this) {
+      const path = `${startPath}/${child.name}`
+      yield { path, file: child.file }
+      if (isFolder(child)) yield* child.expandPath(path)
+    }
+  }
   get ctime() {
     return refTime
   }
   get mtime() {
     return refTime
   }
-
-  private _children = new Map<string, Child>()
-
+  protected hasManual() {
+    for (const [_, child] of this._children) if (child.manual) return true
+    for (const [_, child] of this._children)
+      if (isFolder(child) && child.hasManual()) return true
+  }
   /** adds/replaces a child
    *  returns this to allow chaining
    *
@@ -55,13 +70,13 @@ export class Folder implements Iterable<FolderItem>, FileStat {
    * - leaves matching old ones are left alone
    */
   merge(items: FolderItem[]) {
-    const toRemove = [...this._children.entries()]
-      .filter(
-        ([name, child]) => !child.manual && !items.find(i => i.name === name)
-      )
-      .map(([name]) => name)
+    // clean missing
+    for (const [name, child] of this._children.entries()) {
+      if (child.manual || items.find(i => i.name === name)) continue
+      if (isFolder(child.file) && child.file.hasManual()) child.file.merge([])
+      else this._children.delete(name)
+    }
 
-    for (const name of toRemove) this._children.delete(name)
     for (const item of items) {
       const { name, file } = item
       const old = this._children.get(name)
@@ -85,19 +100,20 @@ export class Folder implements Iterable<FolderItem>, FileStat {
     return this.getNodeInt(parts)
   }
 
-  async getNodeAsyncInt(parts: string[]): Promise<FileStat | undefined> {
+  protected async getNodeAsyncInt(
+    parts: string[]
+  ): Promise<FileStat | undefined> {
     const node = this.getNodeInt(parts)
-    if (!node) {
-      let parent: FileStat | undefined = this
-      for (let idx = 0; idx < parts.length; idx++) {
-        if (isFolder(parent)) parent = parent.get(parts[idx])
-        else break
-        if (isRefreshable(parent))
-          return parent.getNodeAsyncInt(parts.slice(idx + 1))
-      }
-      if (isRefreshable(this)) await this.refresh()
-      return this.getNodeInt(parts)
+    if (node) return node
+    let parent: FileStat | undefined = this
+    for (let idx = 0; idx < parts.length; idx++) {
+      if (isFolder(parent)) parent = parent.get(parts[idx])
+      else break
+      if (isRefreshable(parent))
+        return parent.getNodeAsyncInt(parts.slice(idx + 1))
     }
+    if (isRefreshable(this)) await this.refresh()
+    return this.getNodeInt(parts)
   }
 
   getNodeAsync(path: string) {

@@ -1,9 +1,10 @@
 import { createRoot, isRoot, TMPFOLDER, LIBFOLDER } from "./root"
 import { AbapFsService } from "."
 import { mock } from "jest-mock-extended"
-import { isAbapFolder, AbapFolder } from "./abapFolder"
+import { isAbapFolder } from "./abapFolder"
 import { Folder, isFolder } from "./folder"
 import sampleNodeContents from "./testdata/nodeContents1.json"
+import { isAbapFile } from "./abapFile"
 const createFile = () => ({ type: 1, mtime: 0, ctime: 0, size: 0 })
 
 test("create root", async () => {
@@ -51,9 +52,12 @@ test("expand single package", async () => {
   const client = mock<AbapFsService>()
   client.nodeContents.mockReturnValueOnce(Promise.resolve(sampleNodeContents))
   const root = createRoot("MYConn", client)
-  const lib = root.get(LIBFOLDER)
-  if (!isAbapFolder(lib)) fail("wrong type")
-  await lib.refresh()
+  const tmpPackage = root.get(TMPFOLDER)
+  if (!isAbapFolder(tmpPackage)) fail("Tmp package expected to be a folder")
+  await tmpPackage.refresh()
+  expect(tmpPackage.size).toBe(1)
+  const lib = tmpPackage.get("Source Code Library")
+  if (!isFolder(lib)) fail("Source Code Library should be a folder")
   lib.set("foobar", createFile())
   expect(lib.size).toBe(3)
   const classes = lib.get("Classes")
@@ -66,7 +70,18 @@ test("expand single package", async () => {
     Promise.resolve({ categories: [], objectTypes: [], nodes: [] })
   )
   // non manual objects should be removed
-  await lib.refresh()
+  await tmpPackage.refresh()
   expect(lib.size).toBe(1)
   expect(lib.get("foobar")).toBeDefined()
+})
+
+test("expand package on demand", async () => {
+  const client = mock<AbapFsService>()
+  client.nodeContents.mockReturnValueOnce(Promise.resolve(sampleNodeContents))
+  const root = createRoot("MYConn", client)
+  const file = await root.getNodeAsync(
+    "/$TMP/Source Code Library/Classes/ZCL_CA_ALV/ZCL_CA_ALV.clas.abap"
+  )
+  expect(file).toBeDefined()
+  expect(isAbapFile(file)).toBe(true)
 })
