@@ -3,6 +3,13 @@ import { AbapObjectCreator } from "../creator"
 import { AbapClass } from "."
 import { ADTClient, classIncludes } from "abap-adt-api"
 const tag = Symbol("AbapClassInclude")
+const CLASSINCLUDES: any = {
+  testclasses: ".testclasses",
+  definitions: ".locals_def",
+  implementations: ".locals_imp",
+  macros: ".macros",
+  main: ""
+}
 
 @AbapObjectCreator("CLAS/I")
 export class AbapClassInclude extends AbapObjectBase {
@@ -13,16 +20,21 @@ export class AbapClassInclude extends AbapObjectBase {
   get expandable() {
     return false
   }
-  set expandable(x: boolean) {}
+  set expandable(x: boolean) {
+    //
+  }
   readonly hasStructure = false
   public parent?: AbapClass
   public setParent(parent: AbapClass) {
     this.parent = parent
   }
+  get extension() {
+    const type = CLASSINCLUDES[this.name.replace(/.*\./, "")] || ""
+    return `.clas${type}.abap`
+  }
   get fsName(): string {
-    return this.name
-      ? `${convertSlash(this.name.replace(/\..*/, ""))}${this.extension}`
-      : ""
+    const baseName = this.name.replace(/\..*/, "")
+    return this.name ? `${convertSlash(baseName)}${this.extension}` : ""
   }
   contentsPath() {
     const str = this.parent?.structure

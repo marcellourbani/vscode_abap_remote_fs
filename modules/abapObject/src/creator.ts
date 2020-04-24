@@ -2,6 +2,7 @@ import { AbapObjectBase, AbapObjectConstructor } from "./AbapObject"
 import { AbapObjectService } from "./AOService"
 import { Node } from "abap-adt-api"
 import { AbapObjectError } from "./AOError"
+import {} from "./objectTypes"
 
 const constructors = new Map<string, AbapObjectConstructor>()
 export const AbapObjectCreator = (...types: string[]) => (

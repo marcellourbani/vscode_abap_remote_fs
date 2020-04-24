@@ -4,6 +4,7 @@ import { mock } from "jest-mock-extended"
 import { isAbapFolder } from "./abapFolder"
 import { Folder, isFolder } from "./folder"
 import sampleNodeContents from "./testdata/nodeContents1.json"
+import sampleclas from "./testdata/zcl_ca_alv.json"
 import { isAbapFile } from "./abapFile"
 const createFile = () => ({ type: 1, mtime: 0, ctime: 0, size: 0 })
 
@@ -78,6 +79,7 @@ test("expand single package", async () => {
 test("expand package on demand", async () => {
   const client = mock<AbapFsService>()
   client.nodeContents.mockReturnValueOnce(Promise.resolve(sampleNodeContents))
+  client.objectStructure.mockReturnValueOnce(Promise.resolve(sampleclas))
   const root = createRoot("MYConn", client)
   const file = await root.getNodeAsync(
     "/$TMP/Source Code Library/Classes/ZCL_CA_ALV/ZCL_CA_ALV.clas.abap"

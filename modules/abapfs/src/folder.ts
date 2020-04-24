@@ -113,7 +113,10 @@ export class Folder implements Iterable<FolderItem>, FileStat {
         return parent.getNodeAsyncInt(parts.slice(idx + 1))
     }
     if (isRefreshable(this)) await this.refresh()
-    return this.getNodeInt(parts)
+    const [first, ...rest] = parts
+    const child = this.get(first)
+    if (rest.length === 0) return child
+    if (isFolder(child)) return child.getNodeAsyncInt(rest)
   }
 
   getNodeAsync(path: string) {

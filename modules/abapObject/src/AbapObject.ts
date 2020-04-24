@@ -120,8 +120,6 @@ export class AbapObjectBase implements AbapObject {
   }
   contentsPath() {
     if (this.expandable) throw ObjectErrors.notLeaf(this)
-    // if (!this.structure &&) throw ObjectErrors.notLoaded(this)
-    // return ADTClient.mainInclude(this.structure, false)
     if (!this.supported) throw ObjectErrors.NotSupported(this)
     return this.path
   }

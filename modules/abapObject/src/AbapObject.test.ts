@@ -4,6 +4,7 @@ import { mock, MockProxy } from "jest-mock-extended"
 import { isAbapObjectError, Kind } from "./AOError"
 import sampleNodeContents from "./sampledata/nodeContents1.json"
 import sampleMetadata from "./sampledata/classstructure1.json"
+import { create } from "."
 
 async function expectException(fn: () => any, kind: Kind) {
   try {
@@ -63,7 +64,8 @@ async function unsupportedAssertions(
 
 async function supportedFolderAssertions(
   cut: AbapObject,
-  client: MockProxy<AbapObjectService>
+  client: MockProxy<AbapObjectService>,
+  isClass = false
 ) {
   expect(cut.expandable).toBeTruthy()
   expect(cut.canBeWritten).toBeFalsy()
@@ -72,7 +74,8 @@ async function supportedFolderAssertions(
   await expectException(() => cut.read(), "NotLeaf")
   await expectException(() => cut.mainPrograms(), "NotLeaf")
   // classes do have children but need special handling
-  await expectException(() => cut.childComponents(), "NotSupported")
+  if (!isClass)
+    await expectException(() => cut.childComponents(), "NotSupported")
   expect(cut.lockObject).toBe(cut)
   neverCalled(client)
   expect(cut.createdBy).toBe("")
@@ -111,7 +114,7 @@ async function supportedFileAssertions(
 
 test("create $TMP package", async () => {
   const client = mock<AbapObjectService>()
-  const cut = new AbapObjectBase(
+  const cut = create(
     "DEVC/K",
     "$TMP",
     "/sap/bc/adt/repository/nodestructure",
@@ -126,7 +129,7 @@ test("create $TMP package", async () => {
 
 test("create dummy root package", async () => {
   const client = mock<AbapObjectService>()
-  const cut = new AbapObjectBase(
+  const cut = create(
     "DEVC/K",
     "",
     "/sap/bc/adt/repository/nodestructure",
@@ -141,7 +144,7 @@ test("create dummy root package", async () => {
 
 test("create $ABAPGIT package", async () => {
   const client = mock<AbapObjectService>()
-  const cut = new AbapObjectBase(
+  const cut = create(
     "DEVC/K",
     "$ABAPGIT",
     "/sap/bc/adt/packages/%24abapgit",
@@ -156,7 +159,7 @@ test("create $ABAPGIT package", async () => {
 
 test("create unsupported object", async () => {
   const client = mock<AbapObjectService>()
-  const cut = new AbapObjectBase(
+  const cut = create(
     "ENQU/DL",
     "EZABAPGIT",
     "/sap/bc/adt/vit/wb/object_type/enqudl/object_name/EZABAPGIT",
@@ -171,7 +174,7 @@ test("create unsupported object", async () => {
 
 test("create class", async () => {
   const client = mock<AbapObjectService>()
-  const cut = new AbapObjectBase(
+  const cut = create(
     "CLAS/OC",
     "ZCL_ABAPGIT_USER_EXIT",
     "/sap/bc/adt/oo/classes/zcl_abapgit_user_exit",
@@ -181,12 +184,12 @@ test("create class", async () => {
   )
   expect(cut.fsName).toBe("ZCL_ABAPGIT_USER_EXIT")
   expect(cut.key).toBe("CLAS/OC ZCL_ABAPGIT_USER_EXIT")
-  await supportedFolderAssertions(cut, client)
+  await supportedFolderAssertions(cut, client, true)
 })
 
-test("create class include", async () => {
+test("create class main include", async () => {
   const client = mock<AbapObjectService>()
-  const cut = new AbapObjectBase(
+  const cut = create(
     "CLAS/I",
     "ZCL_Z001_DPC_EXT.main",
     "/sap/bc/adt/oo/classes/zcl_z001_dpc_ext/source/main",
@@ -194,8 +197,24 @@ test("create class include", async () => {
     "main",
     client
   )
-  expect(cut.fsName).toBe("ZCL_Z001_DPC_EXT.main.abap")
+  expect(cut.fsName).toBe("ZCL_Z001_DPC_EXT.clas.abap")
   expect(cut.key).toBe("CLAS/I ZCL_Z001_DPC_EXT.main")
+  supportedFileAssertions(cut, client)
+  await expect(cut.contentsPath()).toBe(cut.path)
+})
+
+test("create class definitions include", async () => {
+  const client = mock<AbapObjectService>()
+  const cut = create(
+    "CLAS/I",
+    "ZCL_Z001_DPC_EXT.definitions",
+    "/sap/bc/adt/oo/classes/zcl_z001_dpc_ext/source/definitions",
+    false,
+    "definitions",
+    client
+  )
+  expect(cut.fsName).toBe("ZCL_Z001_DPC_EXT.clas.locals_def.abap")
+  expect(cut.key).toBe("CLAS/I ZCL_Z001_DPC_EXT.definitions")
   supportedFileAssertions(cut, client)
   await expect(cut.contentsPath()).toBe(cut.path)
 })
