@@ -6,6 +6,7 @@
   "scripts": {
     "test": "jest",
     "build": "tsc",
+    "clean": "rm -Rf node_modules out tsconfig.tsbuildinfo",
     "watch": "tsc -w"
   },
   "author": "Marcello Urbani",

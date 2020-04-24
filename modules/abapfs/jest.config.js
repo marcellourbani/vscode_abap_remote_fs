@@ -14,7 +14,7 @@ module.exports = {
   moduleDirectories: ["node_modules"],
 
   // An array of file extensions your modules use
-  moduleFileExtensions: ["ts", "tsx", "js"],
+  moduleFileExtensions: ["ts", "tsx", "js", "json"],
 
   // The test environment that will be used for testing
   testEnvironment: "node",
@@ -23,7 +23,7 @@ module.exports = {
   testMatch: ["**/__tests__/*.+(ts|tsx|js)", "**/*.test.ts"],
 
   moduleNameMapper: {
-    vscode: "<rootDir>/out/vscode_stub.js"
+    vscode: "<rootDir>/out/vscode_alias_for_test.js"
   },
 
   // A map from regular expressions to paths to transformers

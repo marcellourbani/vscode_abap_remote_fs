@@ -13,6 +13,8 @@ export interface FolderItem {
 }
 
 export const isFolder = (x: any): x is Folder => !!x?.[tag]
+export const isRefreshable = (f: any): f is Refreshable =>
+  isFolder(f) && typeof (f as any).refresh === "function"
 
 export class Folder implements Iterable<FolderItem>, FileStat {
   *[Symbol.iterator](): Iterator<FolderItem> {
@@ -70,20 +72,43 @@ export class Folder implements Iterable<FolderItem>, FileStat {
       // do something when I get a new leaf? or a leaf is replaced by a folder> Probably best to ignore
     }
   }
-  protected byPathParts(parts: string[]): FileStat | undefined {
+  protected getNodeInt(parts: string[]): FileStat | undefined {
     if (parts.length === 0) return this
     const [first, ...rest] = parts
     const next = this.get(first)
     if (rest.length === 0) return next
-    if (isFolder(next)) return next.byPathParts(rest)
+    if (isFolder(next)) return next.getNodeInt(rest)
   }
   /** finds a subdirectory given a path */
-  byPath(path: string) {
+  getNode(path: string) {
     const parts = path.split("/").filter(x => x)
-    return this.byPathParts(parts)
+    return this.getNodeInt(parts)
+  }
+
+  async getNodeAsyncInt(parts: string[]): Promise<FileStat | undefined> {
+    const node = this.getNodeInt(parts)
+    if (!node) {
+      let parent: FileStat | undefined = this
+      for (let idx = 0; idx < parts.length; idx++) {
+        if (isFolder(parent)) parent = parent.get(parts[idx])
+        else break
+        if (isRefreshable(parent))
+          return parent.getNodeAsyncInt(parts.slice(idx + 1))
+      }
+      if (isRefreshable(this)) await this.refresh()
+      return this.getNodeInt(parts)
+    }
+  }
+
+  getNodeAsync(path: string) {
+    const parts = path.split("/").filter(x => x)
+    return this.getNodeAsyncInt(parts)
   }
 
   get size() {
     return this._children.size
   }
+}
+interface Refreshable extends Folder {
+  refresh: () => Promise<void>
 }

@@ -37,14 +37,14 @@ test("find path root", async () => {
     lib.set("zchild", child)
   } else fail("Tmp folder undefined or unexpected type")
 
-  expect(root.byPath("/")).toBe(root)
-  expect(isFolder(root.byPath("/$TMP/child"))).toBe(true)
-  expect(isFolder(root.byPath("/System Library/zchild"))).toBe(true)
-  expect(root.byPath("/$TMP/child/foo")).toBeTruthy()
-  expect(root.byPath("/System Library/zchild/bar")).toBeTruthy()
-  expect(isFolder(root.byPath("/$TMP/child/foo"))).toBe(false)
-  expect(isFolder(root.byPath("/System Library/zchild/bar"))).toBe(false)
-  expect(root.byPath("/$TMP/child/foo/2")).toBeUndefined()
+  expect(root.getNode("/")).toBe(root)
+  expect(isFolder(root.getNode("/$TMP/child"))).toBe(true)
+  expect(isFolder(root.getNode("/System Library/zchild"))).toBe(true)
+  expect(root.getNode("/$TMP/child/foo")).toBeTruthy()
+  expect(root.getNode("/System Library/zchild/bar")).toBeTruthy()
+  expect(isFolder(root.getNode("/$TMP/child/foo"))).toBe(false)
+  expect(isFolder(root.getNode("/System Library/zchild/bar"))).toBe(false)
+  expect(root.getNode("/$TMP/child/foo/2")).toBeUndefined()
 })
 
 test("expand single package", async () => {
