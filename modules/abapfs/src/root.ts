@@ -42,7 +42,25 @@ export class Root extends Folder {
   }
 
   async findByAdtUri(uri: string, main = false) {
-    // TODO: extract query and fragment
+    const toMain = async (node?: PathItem) => {
+      if (node && isAbapFolder(node?.file) && main) {
+        if (node.file.size === 0) await node.file.refresh()
+        return node.file.mainInclude(node.path)
+      }
+      return node
+    }
+
+    const baseUrl = uri.replace(/[\?#].*/, "")
+    const path = this.adtToFs.get(baseUrl)
+    if (path) {
+      const file = this.getNode(path)
+      if (file) return toMain({ path, file })
+    }
+    return toMain(await this.findByAdtUriInt(baseUrl))
+  }
+
+  private adtToFs = new Map<string, string>()
+  private async findByAdtUriInt(uri: string) {
     const steps = await this.service.objectPath(uri)
     if (!steps.length) return
     // add a fake $TMP if neeeded
@@ -66,10 +84,6 @@ export class Root extends Folder {
         await file.refresh()
         node = findInFolder(node.file, node.path, step)
       }
-    }
-    if (isAbapFolder(node?.file) && main) {
-      if (node?.file.size === 0) await node.file.refresh()
-      return node?.file.mainInclude(node.path)
     }
     return node
   }
