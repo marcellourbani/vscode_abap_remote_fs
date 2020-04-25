@@ -19,7 +19,7 @@ export interface AbapObjectService {
   nodeContents: (type: NodeParents, name: string) => Promise<NodeStructure>
 }
 
-export class AbapClient implements AbapObjectService {
+export class AOService implements AbapObjectService {
   constructor(private client: ADTClient) {}
   mainPrograms(path: string) {
     return this.client.statelessClone.mainPrograms(path)

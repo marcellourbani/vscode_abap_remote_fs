@@ -1,11 +1,11 @@
-import { createRoot, isRoot, TMPFOLDER, LIBFOLDER } from "./root"
-import { AbapFsService } from "."
+import { createRoot, isRoot, TMPFOLDER, LIBFOLDER } from "../root"
+import { AbapFsService } from ".."
 import { mock } from "jest-mock-extended"
-import { isAbapFolder } from "./abapFolder"
-import { Folder, isFolder } from "./folder"
+import { isAbapFolder } from "../abapFolder"
+import { Folder, isFolder } from "../folder"
 import sampleNodeContents from "./testdata/nodeContents1.json"
 import sampleclas from "./testdata/zcl_ca_alv.json"
-import { isAbapFile } from "./abapFile"
+import { isAbapFile } from "../abapFile"
 const createFile = () => ({ type: 1, mtime: 0, ctime: 0, size: 0 })
 
 test("create root", async () => {

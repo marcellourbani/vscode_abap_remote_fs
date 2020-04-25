@@ -26,7 +26,7 @@ module.exports = {
   testMatch: ["**/__tests__/*.+(ts|tsx|js)", "**/*.test.ts"],
 
   moduleNameMapper: {
-    vscode: "<rootDir>/out/vscode_alias_for_test.js"
+    vscode: "<rootDir>/out/tests/vscode_alias_for_test.js"
   },
 
   // A map from regular expressions to paths to transformers

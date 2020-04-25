@@ -1,4 +1,4 @@
-import { Folder, isFolder } from "./folder"
+import { Folder, isFolder } from "../folder"
 
 const createFile = () => ({ type: 1, mtime: 0, ctime: 0, size: 0 })
 
