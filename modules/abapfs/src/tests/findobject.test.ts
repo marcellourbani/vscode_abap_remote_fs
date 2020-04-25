@@ -1,5 +1,5 @@
 import { getRootForTest } from "./connectServer"
-import { isAbapStat } from "../abapFile"
+import { isAbapStat, isAbapFile } from "../abapFile"
 
 test("find object in $TMP", async () => {
   const root = getRootForTest()
@@ -26,4 +26,8 @@ test("find main include in $TMP", async () => {
   expect(abapgit?.path).toBe(
     "/$TMP/$ABAPGIT/Source Code Library/Programs/ZABAPGIT/ZABAPGIT.prog.abap"
   )
+  if (!isAbapFile(abapgit?.file))
+    fail("Leaf node expected for main program include")
+  const source = await abapgit?.file.read()
+  expect(source?.match(/report ZABAPGIT\s*line-size\s*[\d]+/i)).toBeTruthy()
 })

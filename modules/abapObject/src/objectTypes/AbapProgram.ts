@@ -1,6 +1,7 @@
 import { AbapObjectCreator } from "../creator"
 import { AbapObjectBase } from ".."
-import { NodeStructure } from "abap-adt-api"
+import { NodeStructure, ADTClient } from "abap-adt-api"
+import { ObjectErrors } from "../AOError"
 
 const tag = Symbol("AbapProgram")
 @AbapObjectCreator("PROG/P")
@@ -16,15 +17,26 @@ export class AbapProgram extends AbapObjectBase {
     const valid = nodes.filter(
       n => n.OBJECT_TYPE === "PROG/I" && matchName(n.OBJECT_NAME)
     )
+    if (!this.structure)
+      throw ObjectErrors.noStructure(
+        this,
+        `metadata not loaded for ${this.key}`
+      )
+    const OBJECT_URI = ADTClient.mainInclude(this.structure, true)
     valid.unshift({
       OBJECT_TYPE: "PROG/I",
       OBJECT_NAME: `${this.name}`,
       TECH_NAME: "",
-      OBJECT_URI: `${this.path}/main`,
+      OBJECT_URI,
       EXPANDABLE: "",
       OBJECT_VIT_URI: ""
     })
     return { categories: [], objectTypes: [], nodes: valid }
+  }
+
+  async childComponents() {
+    if (!this.structure) await this.loadStructure()
+    return super.childComponents()
   }
 }
 

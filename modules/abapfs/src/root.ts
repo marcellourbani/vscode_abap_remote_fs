@@ -3,7 +3,6 @@ import { create, PACKAGE, PACKAGEBASEPATH, TMPPACKAGE } from "../../abapObject"
 import { AbapFolder, isAbapFolder } from "./abapFolder"
 import { Folder, PathItem } from "./folder"
 import { PathStep } from "abap-adt-api"
-import { isAbapStat } from "./abapFile"
 import { FileStat } from "vscode"
 
 const tag = Symbol("fsRoot")

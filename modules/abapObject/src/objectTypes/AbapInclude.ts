@@ -14,7 +14,7 @@ export class AbapInclude extends AbapObjectBase {
     parent: AbapObject | undefined,
     client: AbapObjectService
   ) {
-    path = path.replace(/\/source\/main.*/, "")
+    path = path
     super(type, name, path, expandable, techName, parent, client)
     this[tag] = true
   }

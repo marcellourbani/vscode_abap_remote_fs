@@ -24,6 +24,12 @@ export class AbapFile implements FileStat {
   }
 
   size = 0
+  read() {
+    return this.object.read()
+  }
+  write(contents: string, lockId: string, transportId = "") {
+    return this.object.write(contents, lockId, transportId)
+  }
 }
 
 export const isAbapFile = (x: any): x is AbapFile => !!x?.[tag]

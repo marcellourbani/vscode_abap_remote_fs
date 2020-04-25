@@ -2,7 +2,8 @@ import {
   AbapObjectStructure,
   MainInclude,
   NodeStructure,
-  isNodeParent
+  isNodeParent,
+  ADTClient
 } from "abap-adt-api"
 import { AbapObjectService } from "./AOService"
 import { ObjectErrors } from "./AOError"
