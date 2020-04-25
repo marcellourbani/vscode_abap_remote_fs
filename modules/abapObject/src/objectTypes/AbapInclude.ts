@@ -1,5 +1,5 @@
 import { AbapObjectCreator } from "../creator"
-import { AbapObjectBase } from ".."
+import { AbapObjectBase, AbapObject } from ".."
 import { AbapObjectService } from "../AOService"
 
 const tag = Symbol("AbapInclude")
@@ -11,10 +11,11 @@ export class AbapInclude extends AbapObjectBase {
     path: string,
     expandable: boolean,
     techName: string,
+    parent: AbapObject | undefined,
     client: AbapObjectService
   ) {
     path = path.replace(/\/source\/main.*/, "")
-    super(type, name, path, expandable, techName, client)
+    super(type, name, path, expandable, techName, parent, client)
     this[tag] = true
   }
   [tag]: boolean

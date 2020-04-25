@@ -64,6 +64,7 @@ export interface AbapObjectConstructor {
     path: string,
     expandable: boolean,
     techName: string,
+    parent: AbapObject | undefined,
     client: AbapObjectService
   ): AbapObject
 }
@@ -77,6 +78,7 @@ export class AbapObjectBase implements AbapObject {
     readonly path: string,
     readonly expandable: boolean,
     readonly techName: string,
+    readonly parent: AbapObject | undefined,
     protected readonly client: AbapObjectService
   ) {
     this.supported =

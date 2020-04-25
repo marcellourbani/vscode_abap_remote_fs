@@ -1,5 +1,6 @@
 // this will connect to a real server, and mostly rely on abapgit as sample data
 // tests might brek with future versions of abapgit
+// tested on 7.52, paths could change with releases
 
 import { ADTClient } from "abap-adt-api"
 import { isFolder, AFsService, createRoot, isAbapFile } from ".."
@@ -58,4 +59,20 @@ test("fm in $ABAPGIT", async () => {
     "/$TMP/$ABAPGIT/Source Code Library/Function Groups/ZABAPGIT_PARALLEL/Function Modules/Z_ABAPGIT_SERIALIZE_PARALLEL.fugr.abap"
   )
   expect(isAbapFile(func)).toBe(true)
+})
+
+test("SALV table", async () => {
+  const root = getRoot()
+  const incl = await root.getNodeAsync(
+    "/System Library/BASIS/SALV/SALV_OM/SALV_OM_OBJECTS/Source Code Library/Classes/CL_SALV_TABLE/CL_SALV_TABLE.clas.abap"
+  )
+  expect(isAbapFile(incl)).toBe(true)
+})
+
+test("namespaced object", async () => {
+  const root = getRoot()
+  const incl = await root.getNodeAsync(
+    "/System Library/∕SAPTRX∕EM_BASIS/∕SAPTRX∕ATIF/Source Code Library/Includes/∕SAPTRX∕CONSTANTS.prog.abap"
+  )
+  expect(isAbapFile(incl)).toBe(true)
 })

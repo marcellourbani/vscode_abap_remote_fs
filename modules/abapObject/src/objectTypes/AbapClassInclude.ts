@@ -1,7 +1,10 @@
-import { AbapObjectBase, convertSlash } from "../AbapObject"
+import { AbapObjectBase, convertSlash, AbapObject } from "../AbapObject"
 import { AbapObjectCreator } from "../creator"
 import { AbapClass } from "."
 import { ADTClient, classIncludes } from "abap-adt-api"
+import { isAbapClass } from "./AbapClass"
+import { AbapObjectService } from ".."
+import { AbapObjectError, ObjectErrors } from "../AOError"
 const tag = Symbol("AbapClassInclude")
 const CLASSINCLUDES: any = {
   testclasses: ".testclasses",
@@ -14,6 +17,28 @@ const CLASSINCLUDES: any = {
 @AbapObjectCreator("CLAS/I")
 export class AbapClassInclude extends AbapObjectBase {
   [tag] = true
+  constructor(
+    type: string,
+    name: string,
+    path: string,
+    expandable: boolean,
+    techName: string,
+    parent: AbapObject | undefined,
+    client: AbapObjectService
+  ) {
+    super(type, name, path, expandable, techName, parent, client)
+    if (!isAbapClass(parent))
+      throw ObjectErrors.Invalid(
+        this,
+        "Parent class is required for class includes"
+      )
+    if (!this.name.startsWith(parent.name))
+      throw ObjectErrors.Invalid(
+        this,
+        `Class include ${name} doesn't belong to class ${parent.name}`
+      )
+    this.parent = parent
+  }
   public get structure() {
     return undefined
   }
@@ -24,10 +49,7 @@ export class AbapClassInclude extends AbapObjectBase {
     //
   }
   readonly hasStructure = false
-  public parent?: AbapClass
-  public setParent(parent: AbapClass) {
-    this.parent = parent
-  }
+  readonly parent: AbapClass
   get extension() {
     const type = CLASSINCLUDES[this.name.replace(/.*\./, "")] || ""
     return `.clas${type}.abap`

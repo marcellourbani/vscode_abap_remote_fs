@@ -120,6 +120,7 @@ test("create $TMP package", async () => {
     "/sap/bc/adt/repository/nodestructure",
     true,
     "",
+    undefined,
     client
   )
   expect(cut.fsName).toBe("$TMP")
@@ -135,6 +136,7 @@ test("create dummy root package", async () => {
     "/sap/bc/adt/repository/nodestructure",
     true,
     "",
+    undefined,
     client
   )
   expect(cut.fsName).toBe("")
@@ -150,6 +152,7 @@ test("create $ABAPGIT package", async () => {
     "/sap/bc/adt/packages/%24abapgit",
     true,
     "",
+    undefined,
     client
   )
   expect(cut.fsName).toBe("$ABAPGIT")
@@ -165,6 +168,7 @@ test("create unsupported object", async () => {
     "/sap/bc/adt/vit/wb/object_type/enqudl/object_name/EZABAPGIT",
     false,
     "EZABAPGIT",
+    undefined,
     client
   )
   expect(cut.fsName).toBe("EZABAPGIT.txt")
@@ -180,12 +184,24 @@ test("create class", async () => {
     "/sap/bc/adt/oo/classes/zcl_abapgit_user_exit",
     true,
     "==============================CP",
+    undefined,
     client
   )
   expect(cut.fsName).toBe("ZCL_ABAPGIT_USER_EXIT")
   expect(cut.key).toBe("CLAS/OC ZCL_ABAPGIT_USER_EXIT")
   await supportedFolderAssertions(cut, client, true)
 })
+
+const createClas = (client: AbapObjectService) =>
+  create(
+    "CLAS/OC",
+    "ZCL_Z001_DPC_EXT",
+    "/sap/bc/adt/oo/classes/zcl_z001_dpc_ext",
+    false,
+    "main",
+    undefined,
+    client
+  )
 
 test("create class main include", async () => {
   const client = mock<AbapObjectService>()
@@ -195,6 +211,7 @@ test("create class main include", async () => {
     "/sap/bc/adt/oo/classes/zcl_z001_dpc_ext/source/main",
     false,
     "main",
+    createClas(client),
     client
   )
   expect(cut.fsName).toBe("ZCL_Z001_DPC_EXT.clas.abap")
@@ -211,6 +228,7 @@ test("create class definitions include", async () => {
     "/sap/bc/adt/oo/classes/zcl_z001_dpc_ext/source/definitions",
     false,
     "definitions",
+    createClas(client),
     client
   )
   expect(cut.fsName).toBe("ZCL_Z001_DPC_EXT.clas.locals_def.abap")

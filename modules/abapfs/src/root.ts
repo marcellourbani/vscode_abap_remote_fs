@@ -7,14 +7,16 @@ const tag = Symbol("fsRoot")
 
 export const TMPFOLDER = "$TMP"
 export const LIBFOLDER = "System Library"
+const createPkg = (name: string, service: AbapFsService) =>
+  create(PACKAGE, name, PACKAGEBASEPATH, true, "", undefined, service)
 
 export class Root extends Folder {
   [tag] = true
   constructor(readonly connId: string, service: AbapFsService) {
     super()
-    const tmp = create(PACKAGE, TMPPACKAGE, PACKAGEBASEPATH, true, "", service)
+    const tmp = createPkg(TMPPACKAGE, service)
     this.set(TMPFOLDER, new AbapFolder(tmp, this, service), true)
-    const main = create(PACKAGE, "", PACKAGEBASEPATH, true, "", service)
+    const main = createPkg("", service)
     this.set(LIBFOLDER, new AbapFolder(main, this, service), true)
   }
 }

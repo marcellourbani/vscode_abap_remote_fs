@@ -16,6 +16,7 @@ test("Creates classes", () => {
     "/sap/bc/adt/oo/classes/zcl_abapgit_user_exit",
     true,
     "==============================CP",
+    undefined,
     client
   )
   expect(isAbapClass(cut)).toBeTruthy()
@@ -29,6 +30,7 @@ test("Creates cds", () => {
     "/sap/bc/adt/ddic/ddl/sources/zapidummy_datadef",
     false,
     "ZAPIDUMMY_DATADEF",
+    undefined,
     client
   )
   expect(isAbapCds(cut)).toBeTruthy()
@@ -40,6 +42,7 @@ test("Creates cds", () => {
     "/sap/bc/adt/ddic/ddlx/sources/zapidummy_metadata",
     false,
     "ZAPIDUMMY_METADATA",
+    undefined,
     client
   )
   expect(isAbapCds(cut)).toBeTruthy()
@@ -48,12 +51,22 @@ test("Creates cds", () => {
 
 test("create Class include", () => {
   const client = mock<AbapObjectService>()
+  const clas = create(
+    "CLAS/OC",
+    "ZCL_ABAPGIT_USER_EXIT",
+    "/sap/bc/adt/oo/classes/zcl_abapgit_user_exit",
+    false,
+    "main",
+    undefined,
+    client
+  )
   const cut = create(
     "CLAS/I",
     "ZCL_ABAPGIT_USER_EXIT.main",
     "/sap/bc/adt/oo/classes/zcl_abapgit_user_exit/source/main",
     false,
     "main",
+    clas,
     client
   )
   expect(isAbapClassInclude(cut)).toBeTruthy()
@@ -66,6 +79,7 @@ test("create include", () => {
     "/sap/bc/adt/programs/includes/zadttestincludeinc",
     false,
     "ZADTTESTINCLUDEINC",
+    undefined,
     client
   )
   expect(isAbapInclude(cut)).toBeTruthy()
