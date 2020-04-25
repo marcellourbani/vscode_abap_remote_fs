@@ -7,19 +7,9 @@ import { AbapFsService } from "."
 
 const tag = Symbol("abapFolder")
 
-const strucType = (cont: NodeStructure) => (node: Node) => {
-  if (node.OBJECT_TYPE === PACKAGE) return
-  const realType = cont.objectTypes.find(
-    t => t.OBJECT_TYPE === node.OBJECT_TYPE
-  )
-  if (realType?.OBJECT_TYPE_LABEL) return realType
-  // hack: some systems store the label for i.e. "PROG/P" on "DEVC/P"
-  if (realType) {
-    const aliasType = node.OBJECT_TYPE.replace(/^[^\/]+\//, "DEVC/")
-    const fakeType = cont.objectTypes.find(t => t.OBJECT_TYPE === aliasType)
-    if (fakeType) fakeType.CATEGORY_TAG = realType.CATEGORY_TAG
-    return fakeType || realType
-  }
+const strucType = (cont: NodeStructure, obj: AbapObject) => (node: Node) => {
+  if (node.OBJECT_TYPE === PACKAGE || obj.type === "PROG/P") return
+  return cont.objectTypes.find(t => t.OBJECT_TYPE === node.OBJECT_TYPE)
 }
 
 const strucCategory = (cont: NodeStructure) => (type?: NodeObjectType) =>
@@ -59,13 +49,9 @@ export class AbapFolder extends Folder {
   async refresh() {
     const cont = await this.object.childComponents()
     const root = new Folder()
-    const getType = strucType(cont)
+    const getType = strucType(cont, this.object)
     const getCat = strucCategory(cont)
-    const nodeIsValid = (n: Node) =>
-      (n.OBJECT_TYPE === PACKAGE || !n.OBJECT_TYPE.match(/DEVC\//)) &&
-      !!n.OBJECT_URI
-    const validNodes = cont.nodes.filter(nodeIsValid)
-    for (const node of validNodes) {
+    for (const node of cont.nodes) {
       const type = getType(node)
       const category = getCat(type)
       let folder = subFolder(root, category?.CATEGORY_LABEL)

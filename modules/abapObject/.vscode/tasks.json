@@ -6,6 +6,7 @@
       "script": "watch",
       "group": "build",
       "problemMatcher": ["$tsc-watch"],
+      "isBackground": true,
       "label": "npm: watch",
       "detail": "tsc -w"
     }

@@ -1,7 +1,6 @@
 import { AbapObjectCreator } from "../creator"
 import { AbapObjectBase, AbapObject, AbapObjectService } from ".."
-import { AbapObjectError, ObjectErrors } from "../AOError"
-import { isAbapObject } from "../AbapObject"
+import { ObjectErrors } from "../AOError"
 
 const tag = Symbol("AbapFunction")
 @AbapObjectCreator("FUGR/FF")

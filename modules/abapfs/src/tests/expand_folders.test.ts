@@ -40,6 +40,22 @@ test("class in $ABAPGIT", async () => {
   expect(isAbapFile(definitions)).toBe(true)
 })
 
+test("Program $ABAPGIT", async () => {
+  const root = getRoot()
+  const prog = await root.getNodeAsync(
+    "/$TMP/$ABAPGIT/Source Code Library/Programs/ZABAPGIT"
+  )
+  expect(isFolder(prog)).toBe(true)
+  let main = root.getNode(
+    "/$TMP/$ABAPGIT/Source Code Library/Programs/ZABAPGIT/ZABAPGIT.prog.abap"
+  )
+  expect(main).toBeUndefined()
+  main = await root.getNodeAsync(
+    "/$TMP/$ABAPGIT/Source Code Library/Programs/ZABAPGIT/ZABAPGIT.prog.abap"
+  )
+  expect(isAbapFile(main)).toBe(true)
+})
+
 test("interface in $ABAPGIT_UI_CORE", async () => {
   const root = getRoot()
   const intf = await root.getNodeAsync(

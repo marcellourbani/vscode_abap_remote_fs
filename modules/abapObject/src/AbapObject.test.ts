@@ -39,8 +39,14 @@ async function packageAssertions(
   // const expected = await readJson("./sampledata/nodeContents1.json")
   client.nodeContents.mockReturnValue(Promise.resolve(sampleNodeContents))
   const result = await cut.childComponents()
-  expect(result).toEqual(sampleNodeContents)
   expect(client.nodeContents).toBeCalledTimes(1)
+  const found = result.nodes.find(n => n.OBJECT_NAME === "ZALV_EXAMPLE_1_BASIC")
+  expect(found).toBeTruthy()
+  const type = result.objectTypes.find(
+    t => t.OBJECT_TYPE === found?.OBJECT_TYPE
+  )
+  expect(type?.CATEGORY_TAG).toBeTruthy()
+  expect(type?.OBJECT_TYPE_LABEL).toBeTruthy()
 }
 
 async function unsupportedAssertions(

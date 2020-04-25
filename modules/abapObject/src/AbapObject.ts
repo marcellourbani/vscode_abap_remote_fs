@@ -155,9 +155,27 @@ export class AbapObjectBase implements AbapObject {
     if (!this.supported) return SAPGUIONLY
     return this.client.getObjectSource(this.contentsPath())
   }
+  protected filterInvalid(original: NodeStructure): NodeStructure {
+    const { nodes, objectTypes } = original
+    const valid = nodes.filter(
+      n =>
+        (n.OBJECT_TYPE === PACKAGE || !n.OBJECT_TYPE.match(/DEVC\//)) &&
+        !!n.OBJECT_URI
+    )
+    const types = objectTypes
+      .filter(t => t.OBJECT_TYPE === PACKAGE || !t.OBJECT_TYPE.match(/DEVC\//))
+      .map(t => {
+        if (t.OBJECT_TYPE_LABEL) return t
+        const aliasId = t.OBJECT_TYPE.replace(/^[^\/]+\//, "DEVC/")
+        const alias = objectTypes.find(ot => ot.OBJECT_TYPE === aliasId)
+        return alias ? { ...t, OBJECT_TYPE_LABEL: alias.OBJECT_TYPE_LABEL } : t
+      })
+    return { ...original, nodes: valid, objectTypes: types }
+  }
   async childComponents(): Promise<NodeStructure> {
     if (!this.expandable) throw ObjectErrors.isLeaf(this)
     if (!isNodeParent(this.type)) throw ObjectErrors.NotSupported(this)
-    return await this.client.nodeContents(this.type, this.name)
+    const unfiltered = await this.client.nodeContents(this.type, this.name)
+    return this.filterInvalid(unfiltered)
   }
 }
