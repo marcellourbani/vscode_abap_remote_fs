@@ -38,3 +38,24 @@ test("class in $ABAPGIT", async () => {
   )
   expect(isAbapFile(definitions)).toBe(true)
 })
+
+test("interface in $ABAPGIT_UI_CORE", async () => {
+  const root = getRoot()
+  const intf = await root.getNodeAsync(
+    "/$TMP/$ABAPGIT/$ABAPGIT_UI/$ABAPGIT_UI_CORE/Source Code Library/Interfaces/ZIF_ABAPGIT_HTML.intf.abap"
+  )
+  expect(isAbapFile(intf)).toBe(true)
+  // loading an interface loads the others in the same package...
+  const definitions = root.getNode(
+    "/$TMP/$ABAPGIT/$ABAPGIT_UI/$ABAPGIT_UI_CORE/Source Code Library/Interfaces/ZIF_ABAPGIT_GUI_SERVICES.intf.abap"
+  )
+  expect(isAbapFile(definitions)).toBe(true)
+})
+
+test("fm in $ABAPGIT", async () => {
+  const root = getRoot()
+  const func = await root.getNodeAsync(
+    "/$TMP/$ABAPGIT/Source Code Library/Function Groups/ZABAPGIT_PARALLEL/Function Modules/Z_ABAPGIT_SERIALIZE_PARALLEL.fugr.abap"
+  )
+  expect(isAbapFile(func)).toBe(true)
+})

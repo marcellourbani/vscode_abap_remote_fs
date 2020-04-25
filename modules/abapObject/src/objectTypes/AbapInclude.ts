@@ -18,6 +18,9 @@ export class AbapInclude extends AbapObjectBase {
     this[tag] = true
   }
   [tag]: boolean
+  get extension() {
+    return ".prog.abap"
+  }
 }
 
 export const isAbapInclude = (x: any): x is AbapInclude => !!x?.[tag]
