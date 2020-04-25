@@ -20,7 +20,7 @@ export interface AbapObjectService {
 }
 
 export class AOService implements AbapObjectService {
-  constructor(private client: ADTClient) {}
+  constructor(protected client: ADTClient) {}
   mainPrograms(path: string) {
     return this.client.statelessClone.mainPrograms(path)
   }

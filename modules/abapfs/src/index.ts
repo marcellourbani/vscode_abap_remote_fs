@@ -1,1 +1,5 @@
-export * from "./interfaces"
+export { createRoot, Root, isRoot } from "./root"
+export * from "./folder"
+export * from "./abapFolder"
+export * from "./abapFile"
+export * from "./AFsService"

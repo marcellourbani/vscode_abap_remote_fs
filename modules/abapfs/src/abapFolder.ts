@@ -1,13 +1,14 @@
 import { FileStat, FileSystemError } from "vscode"
 import { AbapObject, PACKAGE, fromNode } from "../../abapObject"
 import { Folder, isFolder } from "./folder"
-import { NodeStructure, Node, NodeObjectType, NodeCategory } from "abap-adt-api"
-import { AbapFsService } from "./interfaces"
+import { NodeStructure, Node, NodeObjectType } from "abap-adt-api"
 import { AbapFile } from "./abapFile"
+import { AbapFsService } from "."
 
 const tag = Symbol("abapFolder")
 
 const strucType = (cont: NodeStructure) => (node: Node) => {
+  if (node.OBJECT_TYPE === PACKAGE) return
   const realType = cont.objectTypes.find(
     t => t.OBJECT_TYPE === node.OBJECT_TYPE
   )
@@ -61,7 +62,8 @@ export class AbapFolder extends Folder {
     const getType = strucType(cont)
     const getCat = strucCategory(cont)
     const nodeIsValid = (n: Node) =>
-      n.OBJECT_TYPE === PACKAGE || !n.OBJECT_TYPE.match(/DEVC\//)
+      (n.OBJECT_TYPE === PACKAGE || !n.OBJECT_TYPE.match(/DEVC\//)) &&
+      !!n.OBJECT_URI
     const validNodes = cont.nodes.filter(nodeIsValid)
     for (const node of validNodes) {
       const type = getType(node)

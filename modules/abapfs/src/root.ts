@@ -1,4 +1,4 @@
-import { AbapFsService } from "./interfaces"
+import { AbapFsService } from "./AFsService"
 import { create, PACKAGE, PACKAGEBASEPATH, TMPPACKAGE } from "../../abapObject"
 import { AbapFolder } from "./abapFolder"
 import { Folder } from "./folder"
