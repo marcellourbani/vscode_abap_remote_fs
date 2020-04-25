@@ -1,27 +1,8 @@
-// this will connect to a real server, and mostly rely on abapgit as sample data
-// tests might brek with future versions of abapgit
-// tested on 7.52, paths could change with releases
-
-import { ADTClient } from "abap-adt-api"
-import { isFolder, AFsService, createRoot, isAbapFile } from ".."
-
-const getRoot = () => {
-  const {
-    ADT_SYSTEMID = "",
-    ADT_URL = "",
-    ADT_USER = "",
-    ADT_PASS = ""
-  } = process.env
-  if (ADT_URL && ADT_USER && ADT_PASS) {
-    const client = new ADTClient(ADT_URL, ADT_USER, ADT_PASS)
-    const service = new AFsService(client)
-    return createRoot(`adt_${ADT_SYSTEMID}`, service)
-  } else
-    throw new Error("Please set reuired environment variables in setenv.js")
-}
+import { isFolder, isAbapFile } from ".."
+import { getRootForTest } from "./connectServer"
 
 test("class in $ABAPGIT", async () => {
-  const root = getRoot()
+  const root = getRootForTest()
   const clas = await root.getNodeAsync(
     "/$TMP/$ABAPGIT/Source Code Library/Classes/ZCL_ABAPGIT_AUTH"
   )
@@ -41,7 +22,7 @@ test("class in $ABAPGIT", async () => {
 })
 
 test("Program $ABAPGIT", async () => {
-  const root = getRoot()
+  const root = getRootForTest()
   const prog = await root.getNodeAsync(
     "/$TMP/$ABAPGIT/Source Code Library/Programs/ZABAPGIT"
   )
@@ -57,7 +38,7 @@ test("Program $ABAPGIT", async () => {
 })
 
 test("interface in $ABAPGIT_UI_CORE", async () => {
-  const root = getRoot()
+  const root = getRootForTest()
   const intf = await root.getNodeAsync(
     "/$TMP/$ABAPGIT/$ABAPGIT_UI/$ABAPGIT_UI_CORE/Source Code Library/Interfaces/ZIF_ABAPGIT_HTML.intf.abap"
   )
@@ -70,7 +51,7 @@ test("interface in $ABAPGIT_UI_CORE", async () => {
 })
 
 test("fm in $ABAPGIT", async () => {
-  const root = getRoot()
+  const root = getRootForTest()
   const func = await root.getNodeAsync(
     "/$TMP/$ABAPGIT/Source Code Library/Function Groups/ZABAPGIT_PARALLEL/Function Modules/Z_ABAPGIT_SERIALIZE_PARALLEL.fugr.abap"
   )
@@ -78,7 +59,7 @@ test("fm in $ABAPGIT", async () => {
 })
 
 test("SALV table", async () => {
-  const root = getRoot()
+  const root = getRootForTest()
   const incl = await root.getNodeAsync(
     "/System Library/BASIS/SALV/SALV_OM/SALV_OM_OBJECTS/Source Code Library/Classes/CL_SALV_TABLE/CL_SALV_TABLE.clas.abap"
   )
@@ -86,7 +67,7 @@ test("SALV table", async () => {
 })
 
 test("namespaced object", async () => {
-  const root = getRoot()
+  const root = getRootForTest()
   const incl = await root.getNodeAsync(
     "/System Library/∕SAPTRX∕EM_BASIS/∕SAPTRX∕ATIF/Source Code Library/Includes/∕SAPTRX∕CONSTANTS.prog.abap"
   )

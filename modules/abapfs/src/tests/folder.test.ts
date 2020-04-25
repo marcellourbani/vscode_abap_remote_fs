@@ -24,6 +24,18 @@ test("folder iterator", () => {
   expect([...folder].length).toBe(2)
 })
 
+test("deep folder iterator", () => {
+  const folder = new Folder()
+  const inner = new Folder()
+  const deep = new Folder()
+  deep.set("deep", createFile())
+  inner.set("baz", deep)
+  folder.set("foo", createFile()).set("bar", inner).set("foobar", createFile())
+  const expanded = [...folder.expandPath()]
+  expect(expanded.length).toBe(5)
+  expect(expanded.find(e => (e.path = "/bar/baz/deep"))).toBeTruthy()
+})
+
 test("merging folders", () => {
   const folder = new Folder()
   folder.set("foo", new Folder(), false)

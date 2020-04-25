@@ -2,8 +2,8 @@ import { FileStat, FileSystemError } from "vscode"
 import { AbapObject, PACKAGE, fromNode } from "../../abapObject"
 import { Folder, isFolder } from "./folder"
 import { NodeStructure, Node, NodeObjectType } from "abap-adt-api"
-import { AbapFile } from "./abapFile"
-import { AbapFsService } from "."
+import { AbapFile, isAbapFile } from "./abapFile"
+import { AbapFsService, isAbapStat } from "."
 
 const tag = Symbol("abapFolder")
 
@@ -64,6 +64,26 @@ export class AbapFolder extends Folder {
       folder.set(object.fsName, child, false)
     }
     this.merge([...root])
+  }
+
+  mainInclude(myPath: string) {
+    if (this.object.type === PACKAGE) return
+    let first
+    for (const candidate of this.expandPath(myPath)) {
+      const { file } = candidate
+      if (!isAbapFile(file)) continue
+      if (file.object.path.match("/source/main")) return candidate
+      if (!first) first = candidate
+    }
+    return first
+  }
+
+  findAbapObject(type: string, name: string, pathPrefix: string) {
+    for (const child of this.expandPath(pathPrefix))
+      if (isAbapStat(child.file)) {
+        const obj = child.file.object
+        if (obj.type === type && obj.name === name) return child
+      }
   }
 }
 

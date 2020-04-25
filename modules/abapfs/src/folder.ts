@@ -33,7 +33,7 @@ export class Folder implements Iterable<FolderItem>, FileStat {
     for (const child of this) {
       const path = `${startPath}/${child.name}`
       yield { path, file: child.file }
-      if (isFolder(child)) yield* child.expandPath(path)
+      if (isFolder(child.file)) yield* child.file.expandPath(path)
     }
   }
   get ctime() {
@@ -41,11 +41,6 @@ export class Folder implements Iterable<FolderItem>, FileStat {
   }
   get mtime() {
     return refTime
-  }
-  protected hasManual() {
-    for (const [_, child] of this._children) if (child.manual) return true
-    for (const [_, child] of this._children)
-      if (isFolder(child) && child.hasManual()) return true
   }
   /** adds/replaces a child
    *  returns this to allow chaining
@@ -61,6 +56,28 @@ export class Folder implements Iterable<FolderItem>, FileStat {
     return this._children.get(name)?.file
   }
 
+  protected hasManual() {
+    for (const [_, child] of this._children) if (child.manual) return true
+    for (const [_, child] of this._children)
+      if (isFolder(child) && child.hasManual()) return true
+  }
+
+  /** finds a subdirectory given a path
+   *   Only works with nodes already seen
+   */
+  getNode(path: string) {
+    const parts = path.split("/").filter(x => x)
+    return this.getNodeInt(parts)
+  }
+  getNodeAsync(path: string) {
+    const parts = path.split("/").filter(x => x)
+    return this.getNodeAsyncInt(parts)
+  }
+
+  get size() {
+    return this._children.size
+  }
+
   /** Merges a folder structure
    *  We should never replace a node with a new one, only add/remove
    *
@@ -69,7 +86,7 @@ export class Folder implements Iterable<FolderItem>, FileStat {
    * - folders matching old ones are merged recursively
    * - leaves matching old ones are left alone
    */
-  merge(items: FolderItem[]) {
+  public merge(items: FolderItem[]) {
     // clean missing
     for (const [name, child] of this._children.entries()) {
       if (child.manual || items.find(i => i.name === name)) continue
@@ -94,11 +111,6 @@ export class Folder implements Iterable<FolderItem>, FileStat {
     if (rest.length === 0) return next
     if (isFolder(next)) return next.getNodeInt(rest)
   }
-  /** finds a subdirectory given a path */
-  getNode(path: string) {
-    const parts = path.split("/").filter(x => x)
-    return this.getNodeInt(parts)
-  }
 
   protected async getNodeAsyncInt(
     parts: string[]
@@ -117,15 +129,6 @@ export class Folder implements Iterable<FolderItem>, FileStat {
     const child = this.get(first)
     if (rest.length === 0) return child
     if (isFolder(child)) return child.getNodeAsyncInt(rest)
-  }
-
-  getNodeAsync(path: string) {
-    const parts = path.split("/").filter(x => x)
-    return this.getNodeAsyncInt(parts)
-  }
-
-  get size() {
-    return this._children.size
   }
 }
 interface Refreshable extends Folder {
