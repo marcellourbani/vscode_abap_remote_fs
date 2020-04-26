@@ -7,27 +7,28 @@ import {
   ProgressLocation,
   ExtensionContext
 } from "vscode"
-import {
-  fromUri,
-  AdtServer,
-  ADTSCHEME,
-  getOrCreateServer
-} from "./adt/AdtServer"
 import { pickAdtRoot, RemoteManager } from "./config"
 import { log } from "./lib"
 import { FavouritesProvider, FavItem } from "./views/favourites"
 import { findEditor } from "./langClient"
 import { showHideActivate } from "./listeners"
 import { abapUnit } from "./adt/operations/UnitTestRunner"
-import { isClassInclude } from "./adt/abap/AbapClassInclude"
 import { selectTransport } from "./adt/AdtTransports"
-import { LockManager } from "./adt/operations/LockManager"
 import { IncludeLensP } from "./adt/operations/IncludeLens"
 import { runInSapGui } from "./adt/sapgui/sapgui"
 import { isAbapNode } from "./fs/AbapNode"
 import { storeTokens } from "./oauth"
 import { showAbapDoc } from "./views/help"
 import { getTestAdapter } from "./views/abapunit"
+import {
+  ADTSCHEME,
+  getClient,
+  getRoot,
+  createUri,
+  uriRoot
+} from "./adt/conections"
+import { ADTClient } from "abap-adt-api"
+import { isAbapFolder, isAbapFile } from "abapfs"
 
 const abapcmds: {
   name: string
@@ -111,30 +112,26 @@ function currentUri() {
 function current() {
   const uri = currentUri()
   if (!uri) return
-  const server = fromUri(uri)
-  if (!server) return
-  return { uri, server }
+  const client = getClient(uri.authority)
+  return { uri, client }
 }
 
-export function openObject(server: AdtServer, uri: string) {
+export function openObject(connId: string, uri: string) {
   return window.withProgress(
     { location: ProgressLocation.Window, title: "Opening..." },
     async () => {
-      const path = await server.objectFinder.findObjectPath(uri)
-      if (path.length === 0) throw new Error("Object not found")
-      const nodePath = await server.objectFinder.locateObject(path)
-      if (!nodePath) throw new Error("Object not found in workspace")
-      if (
-        isAbapNode(nodePath.node) &&
-        nodePath.node.abapObject.type === PACKAGE
-      ) {
+      const root = getRoot(connId)
+      const { file, path } = (await root.findByAdtUri(uri, true)) || {}
+      if (!file || !path) throw new Error("Object not found in workspace")
+      if (isAbapFolder(file) && file.object.type === PACKAGE) {
         await commands.executeCommand(
           "revealInExplorer",
-          server.createUri(nodePath.path)
+          createUri(connId, path)
         )
-        return // Packages can't be opened perhaps could reveal it
-      } else if (nodePath) await server.objectFinder.displayNode(nodePath)
-      return nodePath
+        return
+      } else if (isAbapFile(file))
+        await workspace.openTextDocument(createUri(connId, path))
+      return file
     }
   )
 }
@@ -148,10 +145,10 @@ export class AdtCommands {
   @command(AbapFsCommands.changeInclude)
   private static async changeMain(uri: Uri) {
     const provider = IncludeLensP.get()
-    const server = fromUri(uri)
-    const obj = await server.findAbapObject(uri)
+    const root = uriRoot(uri)
+    const obj = await root.getNode(uri.path)
     if (!obj) return
-    const main = await provider.selectMain(obj, server.client, uri)
+    const main = await provider.selectMain(obj, uri)
     if (!main) return
     provider.setInclude(uri, main)
   }

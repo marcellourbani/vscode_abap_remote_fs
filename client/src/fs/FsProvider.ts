@@ -1,4 +1,4 @@
-import { fromUri, getOrCreateServer } from "../adt/AdtServer"
+import { getOrCreateRoot } from "../adt/conections"
 import {
   FileSystemError,
   FileChangeType,
@@ -11,6 +11,7 @@ import {
   FileType
 } from "vscode"
 import { log } from "../lib"
+import { isAbapFile, isAbapFolder, isFolder } from "abapfs"
 
 export class FsProvider implements FileSystemProvider {
   private static instance: FsProvider
@@ -34,11 +35,11 @@ export class FsProvider implements FileSystemProvider {
     // no .* files allowed here, no need to log that
     if (uri.path.match(/(^\.)|(\/\.)/)) throw FileSystemError.FileNotFound(uri)
     try {
-      const server = await getOrCreateServer(uri.authority)
-      if (uri.path === "/") {
-        return server.findNode(uri)
-      }
-      return await server.stat(uri)
+      const root = getOrCreateRoot(uri.authority)
+      const node = await root.getNodeAsync(uri.path)
+      if (isAbapFile(node)) await node.stat()
+      if (node) return node
+      throw FileSystemError.FileNotFound(uri)
     } catch (e) {
       log(`Error in stat of ${uri.toString()}\n${e.toString()}`)
       throw e
@@ -47,15 +48,11 @@ export class FsProvider implements FileSystemProvider {
 
   public async readDirectory(uri: Uri): Promise<[string, FileType][]> {
     try {
-      const server = await getOrCreateServer(uri.authority)
-      // on restart code might try to read a file before it read its parent directory
-      //  this might end up reloading the same directory many times, might want to fix it one day
-      const dir = await server.findNodePromise(uri)
-      await server.refreshDirIfNeeded(dir)
-      const contents = [...dir].map(
-        ([name, node]) => [name, node.type] as [string, FileType]
-      )
-      return contents
+      const root = getOrCreateRoot(uri.authority)
+      const node = await root.getNodeAsync(uri.path)
+      if (!isFolder(node)) throw FileSystemError.FileNotFound(uri)
+      if (isAbapFolder(node)) await node.refresh()
+      return [...node].map(i => [i.name, i.file.type])
     } catch (e) {
       log(`Error reading directory ${uri.toString()}\n${e.toString()}`)
       throw e
@@ -69,11 +66,14 @@ export class FsProvider implements FileSystemProvider {
   }
 
   public async readFile(uri: Uri): Promise<Uint8Array> {
-    const server = await getOrCreateServer(uri.authority)
-    const file = await server.findNodePromise(uri)
-
     try {
-      if (file && !file.isFolder) return await file.fetchContents(server.client)
+      const root = getOrCreateRoot(uri.authority)
+      const node = await root.getNodeAsync(uri.path)
+      if (isAbapFile(node)) {
+        const contents = await node.read()
+        const buf = Buffer.from(contents)
+        return buf
+      }
     } catch (error) {
       log(`Error reading file ${uri.toString()}\n${error.toString()}`)
     }
@@ -86,15 +86,16 @@ export class FsProvider implements FileSystemProvider {
     options: { create: boolean; overwrite: boolean }
   ): Promise<void> {
     try {
-      const server = await getOrCreateServer(uri.authority)
-      const file = server.findNode(uri)
-      if (!file && options.create)
-        throw FileSystemError.NoPermissions(
-          "Not a real filesystem, file creation is not supported"
-        )
-      if (!file) throw FileSystemError.FileNotFound(uri)
-      await server.saveFile(file, content, uri)
-      this.pEventEmitter.fire([{ type: FileChangeType.Changed, uri }])
+      const root = getOrCreateRoot(uri.authority)
+      const node = await root.getNodeAsync(uri.path)
+      if (isAbapFile(node)) {
+        // TODO: transport selection
+        const lock = root.lockManager.lockStatus(uri.path)
+        if (lock.status === "locked") {
+          await node.write(content.toString(), lock.LOCK_HANDLE)
+          this.pEventEmitter.fire([{ type: FileChangeType.Changed, uri }])
+        }
+      } else throw FileSystemError.FileNotFound(uri)
     } catch (e) {
       log(`Error writing file ${uri.toString()}\n${e.toString()}`)
       throw e
@@ -103,8 +104,18 @@ export class FsProvider implements FileSystemProvider {
 
   public async delete(uri: Uri, options: { recursive: boolean }) {
     try {
-      const server = await getOrCreateServer(uri.authority)
-      await server.delete(uri)
+      const root = getOrCreateRoot(uri.authority)
+      const node = await root.getNodeAsync(uri.path)
+      const lock = await root.lockManager.requestLock(uri.path)
+      if (lock.status === "locked") {
+        // TODO: transport selection
+        if (isAbapFolder(node) || isAbapFile(node))
+          return await node.delete(lock.LOCK_HANDLE, "")
+        else
+          throw FileSystemError.Unavailable(
+            "Delrtion not supported for this object"
+          )
+      } else throw FileSystemError.NoPermissions(`Unable to acquire lock`)
     } catch (e) {
       const msg = `Error deleting file ${uri.toString()}\n${e.toString()}`
       log(msg)

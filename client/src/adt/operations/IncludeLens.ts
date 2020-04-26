@@ -9,13 +9,11 @@ import {
   CodeLens,
   Range
 } from "vscode"
-import { AbapObject } from "../abap/AbapObject"
-import { ADTClient } from "abap-adt-api"
-import { fromUri } from "../AdtServer"
 import { AbapFsCommands } from "../../commands"
-import { isAbapNode } from "../../fs/AbapNode"
 import { PACKAGE } from "./AdtObjectCreator"
-
+import { uriRoot, getClient } from "../conections"
+import { isAbapFile, isAbapFolder, isFolder, AbapFile } from "abapfs"
+import { AbapObject } from "abapobject"
 export class IncludeLensP implements CodeLensProvider {
   public static get() {
     if (!this.instance) this.instance = new IncludeLensP()
@@ -52,14 +50,14 @@ export class IncludeLensP implements CodeLensProvider {
     const key = uri.toString()
 
     if (this.notInclude.get(key)) return
-
-    const server = fromUri(uri)
-    const [obj, parent] = await this.getObjectAndParent(uri)
-    if (!obj) return
+    // const file = uriRoot(uri).getNode(uri.path)
+    // if (!isAbapFile(file)) return
+    const { file, parent } = await this.getObjectAndParent(uri)
+    if (!file) return
     // if I opened this from a function group or program, set the main include to that
     if (parent && parent.type !== PACKAGE) mainProg = parent.path
     if (!mainProg) {
-      const mainPrograms = await obj.getMainPrograms(server.client)
+      const mainPrograms = await file.object.mainPrograms()
       mainProg =
         mainPrograms && mainPrograms[0] && mainPrograms[0]["adtcore:uri"]
     }
@@ -73,14 +71,13 @@ export class IncludeLensP implements CodeLensProvider {
 
     if (this.notInclude.get(key)) return
 
-    const server = fromUri(uri)
-    const [obj, parent] = await this.getObjectAndParent(uri)
-    if (!obj) return
+    const { file, parent } = this.getObjectAndParent(uri) || {}
+    if (!file) return
     // if I opened this from a function group or program, set the main include to that
     if (parent && parent.type !== PACKAGE) mainProg = parent.path
     if (!mainProg) {
       this.currentUri = uri
-      mainProg = await this.selectMain(obj, server.client, uri)
+      mainProg = await this.selectMain(file.object, uri)
     } else this.notInclude.set(uri.toString(), true)
     if (mainProg) {
       this.includes.set(uri.toString(), mainProg)
@@ -90,13 +87,9 @@ export class IncludeLensP implements CodeLensProvider {
     return mainProg
   }
 
-  public async selectMain(
-    obj: AbapObject,
-    client: ADTClient,
-    uri: Uri
-  ): Promise<string> {
+  public async selectMain(obj: AbapObject, uri: Uri): Promise<string> {
     try {
-      const mainPrograms = await obj.getMainPrograms(client)
+      const mainPrograms = await obj.mainPrograms()
       let mainProgramUri
       if (mainPrograms.length === 1)
         mainProgramUri = mainPrograms[0]["adtcore:uri"]
@@ -145,13 +138,19 @@ export class IncludeLensP implements CodeLensProvider {
     return lenses
   }
 
-  private async getObjectAndParent(uri: Uri) {
-    const server = fromUri(uri)
-    const obj = await server.findAbapObject(uri)
-    const h = server.findNodeHierarchy(uri)
-    const parentNode = h.find(n => isAbapNode(n) && n.abapObject !== obj)
-    const parent = parentNode && isAbapNode(parentNode) && parentNode.abapObject
-    return [obj, parent]
+  private getObjectAndParent(
+    uri: Uri
+  ): { file?: AbapFile; parent?: AbapObject } {
+    const root = uriRoot(uri)
+    const file = root.getNode(uri.path)
+    if (!isAbapFile(file)) return {}
+    const parts = uri.path.split("/")
+    for (let i = 1; i < parts.length - 1; i++) {
+      const parent = root.getNode(parts.slice(-i).join("/"))
+      if (isAbapFile(parent) || isAbapFolder(parent))
+        return { file, parent: parent.object }
+    }
+    return { file }
   }
 
   private hasMain(uri: Uri) {

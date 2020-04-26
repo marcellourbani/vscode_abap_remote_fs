@@ -1,5 +1,4 @@
 import { MainProgram, HttpLogEntry } from "vscode-abap-remote-fs-sharedapi"
-import { AbapObject } from "./adt/abap/AbapObject"
 import { log, channel, mongoApiLogger, mongoHttpLogger } from "./lib"
 import {
   AbapObjectDetail,
@@ -25,24 +24,24 @@ import {
   State,
   RevealOutputChannelOn
 } from "vscode-languageclient"
-import { ADTSCHEME, fromUri, getServer } from "./adt/AdtServer"
 export let client: LanguageClient
 import { join } from "path"
-import {
-  findMainIncludeAsync,
-  uriToNodePath
-} from "./adt/abap/AbapObjectUtilities"
-import { isAbapNode } from "./fs/AbapNode"
 import { FixProposal } from "abap-adt-api"
 import { fail } from "assert"
 import { command, AbapFsCommands } from "./commands"
 import { IncludeLensP } from "./adt/operations/IncludeLens"
 import { RemoteManager, formatKey } from "./config"
 import { futureToken } from "./oauth"
+import { getRoot, ADTSCHEME, uriRoot } from "./adt/conections"
+import { isAbapFile } from "abapfs"
+import { AbapObject } from "abapobject"
 
 async function getVSCodeUri(req: UriRequest): Promise<StringWrapper> {
-  const server = getServer(req.confKey)
-  return { s: await server.objectFinder.vscodeUri(req.uri, req.mainInclude) }
+  const root = getRoot(req.confKey)
+  const hit = await root.findByAdtUri(req.uri, req.mainInclude)
+  // ToDo: error message
+  if (!hit) throw new Error("fileNotFound")
+  return { s: urlFromPath(req.confKey, hit.path) }
 }
 export function findEditor(url: string) {
   return window.visibleTextEditors.find(
@@ -62,24 +61,19 @@ async function readObjectSource(uri: string) {
   if (source.source) return source
 
   const url = Uri.parse(uri)
-  const server = fromUri(url)
-  let nodep = uriToNodePath(url, await server.findNodePromise(url))
-  if (nodep.node.isFolder)
-    nodep = (await findMainIncludeAsync(nodep, server.client)) || nodep
-  if (nodep && !nodep.node.isFolder) {
-    source.url = urlFromPath(server.connectionId, nodep.path)
-    if (isAbapNode(nodep.node) && !nodep.node.abapObject.structure)
-      nodep.node.stat(server.client)
-    source.source = (await nodep.node.fetchContents(server.client)).toString()
-  }
-  return source
+  const root = uriRoot(url)
+  const file = (await root.getNodeAsync(url.path)) || {}
+  // ToDo: error message
+  if (!isAbapFile(file)) throw new Error("fileNotFound")
+  const code = await file.read()
+  return { source: code, url }
 }
 
 function objectDetail(obj: AbapObject, mainProgram?: string) {
   if (!obj) return
   const detail: AbapObjectDetail = {
     url: obj.path,
-    mainUrl: obj.getContentsUri(),
+    mainUrl: obj.contentsPath(),
     mainProgram,
     type: obj.type,
     name: obj.name
@@ -89,12 +83,13 @@ function objectDetail(obj: AbapObject, mainProgram?: string) {
 
 async function objectDetailFromUrl(url: string) {
   const uri = Uri.parse(url)
-  const server = fromUri(uri)
-  const obj = await server.findAbapObject(uri)
+  const root = uriRoot(uri)
+  const obj = await root.getNodeAsync(uri.path)
+  if (!isAbapFile(obj)) throw new Error("not found") // TODO error
   let mainProgram
-  if (obj.type === "PROG/I")
+  if (obj.object.type === "PROG/I")
     mainProgram = await IncludeLensP.get().guessMain(uri)
-  return objectDetail(obj, mainProgram)
+  return objectDetail(obj.object, mainProgram)
 }
 
 async function configFromKey(connId: string) {

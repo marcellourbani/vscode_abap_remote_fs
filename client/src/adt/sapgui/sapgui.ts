@@ -1,11 +1,12 @@
-import { AdtServer } from "./../AdtServer"
-import { RemoteConfig } from "../../config"
+import { RemoteConfig, RemoteManager } from "../../config"
 import { file } from "tmp-promise"
 import { writeAsync } from "fs-jetpack"
 import { log } from "../../lib"
 import { closeSync } from "fs"
 import opn = require("open")
 import { window, ProgressLocation } from "vscode"
+import { ADTClient } from "abap-adt-api"
+import { getClient } from "../conections"
 
 export interface SapGuiCommand {
   type: "Transaction" | "Report" | "SystemCommand"
@@ -33,25 +34,30 @@ function isLoadBalancing(config: guiConfig): config is LoadBalancingGuiConfig {
 }
 
 export async function runInSapGui(
-  server: AdtServer,
+  connId: string,
   getCmd: () => Promise<SapGuiCommand | undefined> | SapGuiCommand | undefined
 ) {
   await window.withProgress(
     { location: ProgressLocation.Window, title: "Opening SAPGui..." },
     async () => {
+      const config = RemoteManager.get().byId(connId)
+      if (!config) return
+      const client = getClient(connId)
+      // TODO error handling
+      const sapGui = SapGui.create(config)
       const cmd = await getCmd()
       if (cmd) {
         log("Running " + JSON.stringify(cmd))
-        server.sapGui.checkConfig()
-        const ticket = await server.getReentranceTicket()
-        await server.sapGui.startGui(cmd, ticket)
+        sapGui.checkConfig()
+        const ticket = await client.reentranceTicket()
+        await sapGui.startGui(cmd, ticket)
       }
     }
   )
 }
 
-export function showInGui(server: AdtServer, uri: string) {
-  return runInSapGui(server, () => ({
+export function showInGui(connId: string, uri: string) {
+  return runInSapGui(connId, () => ({
     type: "Transaction",
     command: "*SADT_START_WB_URI",
     parameters: [

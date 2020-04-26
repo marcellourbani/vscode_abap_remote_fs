@@ -74,6 +74,8 @@
     "tough-cookie": "^4.0.0",
     "uuid": "^7.0.2",
     "vscode-abap-remote-fs-sharedapi": "file:../modules/sharedapi",
+    "abapobject": "file:../modules/abapObject",
+    "abapfs": "file:../modules/abapfs",
     "vscode-languageclient": "^6.1.3",
     "vscode-test-adapter-api": "^1.8.0"
   }

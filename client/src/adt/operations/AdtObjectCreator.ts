@@ -20,8 +20,6 @@ import {
 import { CreatableTypes } from "abap-adt-api"
 import { Uri, window } from "vscode"
 import { AbapNode, isAbapNode } from "../../fs/AbapNode"
-import { abapObjectFromNode } from "../abap/AbapObjectUtilities"
-import { AdtServer } from "../AdtServer"
 import { selectTransport } from "../AdtTransports"
 import { fieldOrder, asyncFilter } from "../../lib"
 import { MySearchResult } from "./AdtObjectFinder"
