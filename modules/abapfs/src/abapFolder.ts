@@ -1,7 +1,12 @@
 import { FileStat, FileSystemError } from "vscode"
 import { AbapObject, PACKAGE, fromNode } from "../../abapObject"
 import { Folder, isFolder } from "./folder"
-import { NodeStructure, Node, NodeObjectType } from "abap-adt-api"
+import {
+  NodeStructure,
+  Node,
+  NodeObjectType,
+  isCreatableTypeId
+} from "abap-adt-api"
 import { AbapFile, isAbapFile } from "./abapFile"
 import { AbapFsService, isAbapStat } from "."
 
@@ -45,6 +50,15 @@ export class AbapFolder extends Folder {
       return this.object.structure.metaData["adtcore:changedAt"]
     return 0
   }
+
+  delete(lockId: string, transport: string) {
+    if (!isCreatableTypeId(this.object.type))
+      throw FileSystemError.NoPermissions(
+        "Only allowed to delete abap objects can be created"
+      )
+    return this.object.delete(lockId, transport)
+  }
+
   /** loads the children */
   async refresh() {
     const cont = await this.object.childComponents()

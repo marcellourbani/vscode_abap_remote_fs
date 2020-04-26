@@ -15,12 +15,16 @@ export interface AbapObjectService {
     lockId: string,
     transport: string
   ) => Promise<void>
+  delete: (path: string, lockId: string, transport: string) => Promise<void>
   getObjectSource: (path: string) => Promise<string>
   nodeContents: (type: NodeParents, name: string) => Promise<NodeStructure>
 }
 
 export class AOService implements AbapObjectService {
   constructor(protected client: ADTClient) {}
+  async delete(path: string, lockId: string, transport: string) {
+    this.client.statelessClone.deleteObject(path, lockId, transport)
+  }
   mainPrograms(path: string) {
     return this.client.statelessClone.mainPrograms(path)
   }

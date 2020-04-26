@@ -53,6 +53,7 @@ export interface AbapObject {
   readonly hasStructure: boolean
   /** loads/updates the object metadata */
   loadStructure: () => Promise<AbapObjectStructure>
+  delete: (lockId: string, transport: string) => Promise<void>
   write: (contents: string, lockId: string, transport: string) => Promise<void>
   read: () => Promise<string>
   childComponents: () => Promise<NodeStructure>
@@ -80,7 +81,7 @@ export class AbapObjectBase implements AbapObject {
     readonly expandable: boolean,
     readonly techName: string,
     readonly parent: AbapObject | undefined,
-    protected readonly client: AbapObjectService
+    protected readonly service: AbapObjectService
   ) {
     this.supported =
       this.type !== "IWSV" &&
@@ -130,21 +131,23 @@ export class AbapObjectBase implements AbapObject {
   async mainPrograms() {
     if (!this.supported) throw ObjectErrors.NotSupported(this)
     if (this.expandable) throw ObjectErrors.notLeaf(this)
-    return this.client.mainPrograms(this.path)
+    return this.service.mainPrograms(this.path)
   }
 
   async loadStructure(): Promise<AbapObjectStructure> {
     if (!this.expandable || !this.name) throw ObjectErrors.noStructure(this)
-    this.structure = await this.client.objectStructure(
+    this.structure = await this.service.objectStructure(
       this.path.replace(/\/source\/main$/, "")
     )
     return this.structure
   }
-
+  async delete(lockId: string, transport = "") {
+    return this.service.delete(this.path, lockId, transport)
+  }
   async write(contents: string, lockId: string, transport: string) {
     if (this.expandable) throw ObjectErrors.notLeaf(this)
     if (!this.supported) throw ObjectErrors.NotSupported(this)
-    await this.client.setObjectSource(
+    await this.service.setObjectSource(
       this.contentsPath(),
       contents,
       lockId,
@@ -154,7 +157,7 @@ export class AbapObjectBase implements AbapObject {
   async read() {
     if (this.expandable) throw ObjectErrors.notLeaf(this)
     if (!this.supported) return SAPGUIONLY
-    return this.client.getObjectSource(this.contentsPath())
+    return this.service.getObjectSource(this.contentsPath())
   }
   protected filterInvalid(original: NodeStructure): NodeStructure {
     const { nodes, objectTypes } = original
@@ -176,7 +179,7 @@ export class AbapObjectBase implements AbapObject {
   async childComponents(): Promise<NodeStructure> {
     if (!this.expandable) throw ObjectErrors.isLeaf(this)
     if (!isNodeParent(this.type)) throw ObjectErrors.NotSupported(this)
-    const unfiltered = await this.client.nodeContents(this.type, this.name)
+    const unfiltered = await this.service.nodeContents(this.type, this.name)
     return this.filterInvalid(unfiltered)
   }
 }
