@@ -48,6 +48,9 @@ export class AbapClassInclude extends AbapObjectBase {
   set expandable(x: boolean) {
     //
   }
+  get lockObject() {
+    return this.parent
+  }
   readonly hasStructure = false
   readonly parent: AbapClass
   get extension() {

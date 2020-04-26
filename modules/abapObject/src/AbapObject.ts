@@ -104,7 +104,7 @@ export class AbapObjectBase implements AbapObject {
   get fsName() {
     return `${convertSlash(this.name)}${this.extension}`
   }
-  get lockObject() {
+  get lockObject(): AbapObject {
     return this
   }
   get createdBy() {

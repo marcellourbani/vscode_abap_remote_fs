@@ -4,6 +4,7 @@ import { AbapFolder, isAbapFolder } from "./abapFolder"
 import { Folder, PathItem } from "./folder"
 import { PathStep } from "abap-adt-api"
 import { FileStat } from "vscode"
+import { LockManager } from "./lockManager"
 
 const tag = Symbol("fsRoot")
 
@@ -32,12 +33,14 @@ const findInFolder = (
 
 export class Root extends Folder {
   [tag] = true
+  lockManager: LockManager
   constructor(readonly connId: string, readonly service: AbapFsService) {
     super()
     const tmp = createPkg(TMPPACKAGE, service)
     this.set(TMPFOLDER, new AbapFolder(tmp, this, service), true)
     const main = createPkg("", service)
     this.set(LIBFOLDER, new AbapFolder(main, this, service), true)
+    this.lockManager = new LockManager(this)
   }
 
   async findByAdtUri(uri: string, main = false) {

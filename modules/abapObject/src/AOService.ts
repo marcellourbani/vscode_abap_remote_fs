@@ -33,7 +33,7 @@ export class AOService implements AbapObjectService {
     lockId: string,
     transport: string
   ) {
-    return this.client.setObjectSource(
+    return this.client.statelessClone.setObjectSource(
       contentsPath,
       contents,
       lockId,

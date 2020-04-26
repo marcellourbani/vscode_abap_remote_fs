@@ -1,12 +1,37 @@
 import { AOService, AbapObjectService } from "../../abapObject/out"
-import { PathStep } from "abap-adt-api"
+import { PathStep, AdtLock, session_types } from "abap-adt-api"
 
 export interface AbapFsService extends AbapObjectService {
   objectPath: (path: string) => Promise<PathStep[]>
+  lock(path: string): Promise<AdtLock>
+  unlock(path: string, lockHandle: string): Promise<void>
+  readonly sessionType: session_types
+  dropSession: () => Promise<void>
 }
 
 export class AFsService extends AOService implements AbapFsService {
   objectPath(path: string) {
-    return this.client.findObjectPath(path)
+    return this.client.statelessClone.findObjectPath(path)
+  }
+  lock(path: string) {
+    return this.client.lock(path)
+  }
+  async unlock(path: string, lockHandle: string) {
+    const oldstateful = this.client.stateful
+    this.client.stateful = session_types.stateful
+    try {
+      await this.client.unLock(path, lockHandle)
+    } catch (error) {
+      this.client.stateful = oldstateful
+      throw error
+    }
+  }
+
+  get sessionType() {
+    return this.client.stateful
+  }
+
+  dropSession() {
+    return this.client.dropSession()
   }
 }
