@@ -1,0 +1,14 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "type": "npm",
+      "script": "watch",
+      "group": "build",
+      "problemMatcher": ["$ts-webpack-watch"],
+      "isBackground": true,
+      "label": "npm: watch",
+      "detail": "webpack --mode none --env.development --watch --info-verbosity verbose"
+    }
+  ]
+}

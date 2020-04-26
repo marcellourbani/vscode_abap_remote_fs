@@ -150,6 +150,7 @@ export class RemoteManager {
       if (!conn.password) {
         conn.password = await this.getPassword(connectionId, conn.username)
       }
+      conn.name = connectionId
       this.connections.set(connectionId, conn)
     }
     return conn
