@@ -1,5 +1,5 @@
 import { RemoteManager, createClient } from "../config"
-import { AFsService, Root } from "abapfs"
+import { AFsService, Root, isAbapStat, AbapStat } from "abapfs"
 import { Uri, FileSystemError } from "vscode"
 import { ADTClient } from "abap-adt-api"
 export const ADTSCHEME = "adt"
@@ -72,4 +72,28 @@ export function createUri(connId: string, path: string, query: string = "") {
     path,
     query
   })
+}
+
+export function findAbapObject(uri: Uri) {
+  const file = uriRoot(uri).getNode(uri.path)
+  if (isAbapStat(file)) return file.object
+  throw new Error("Not an ABAP object")
+}
+
+export const pathSequence = (root: Root, uri: Uri | undefined): AbapStat[] => {
+  if (uri)
+    try {
+      const parts = uri.path.split("/")
+      let path = ""
+      const nodes: AbapStat[] = []
+      for (const part of parts) {
+        path = `${path}/${part}`
+        const hit = root.getNode(path)
+        if (isAbapStat(hit)) nodes.push()
+      }
+      return nodes
+    } catch (e) {
+      // ignore
+    }
+  return []
 }

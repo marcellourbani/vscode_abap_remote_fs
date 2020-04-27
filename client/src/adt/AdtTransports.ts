@@ -1,9 +1,7 @@
 import { window, ProgressLocation, CancellationToken } from "vscode"
 import { ADTClient, TransportInfo } from "abap-adt-api"
 import { fieldOrder, withp } from "../lib"
-import { TransportStatus } from "./abap/AbapObject"
 import { TransportValidator } from "../api"
-import { CancellationTokenSource } from "vscode-languageclient"
 
 export interface TransportSelection {
   cancelled: boolean
@@ -16,6 +14,12 @@ export const trSel = (
   cancelled,
   transport
 })
+
+export enum TransportStatus {
+  UNKNOWN,
+  REQUIRED,
+  LOCAL
+}
 
 async function selectOrCreate(
   tranInfo: TransportInfo,

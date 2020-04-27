@@ -1,4 +1,4 @@
-import { PACKAGE } from "./adt/operations/AdtObjectCreator"
+import { PACKAGE, AdtObjectCreator } from "./adt/operations/AdtObjectCreator"
 import {
   workspace,
   Uri,
@@ -15,8 +15,7 @@ import { showHideActivate } from "./listeners"
 import { abapUnit } from "./adt/operations/UnitTestRunner"
 import { selectTransport } from "./adt/AdtTransports"
 import { IncludeLensP } from "./adt/operations/IncludeLens"
-import { runInSapGui } from "./adt/sapgui/sapgui"
-import { isAbapNode } from "./fs/AbapNode"
+import { runInSapGui, SapGuiCommand } from "./adt/sapgui/sapgui"
 import { storeTokens } from "./oauth"
 import { showAbapDoc } from "./views/help"
 import { getTestAdapter } from "./views/abapunit"
@@ -25,10 +24,14 @@ import {
   getClient,
   getRoot,
   createUri,
-  uriRoot
+  uriRoot,
+  findAbapObject,
+  getOrCreateRoot
 } from "./adt/conections"
-import { ADTClient } from "abap-adt-api"
 import { isAbapFolder, isAbapFile } from "abapfs"
+import { AdtObjectActivator } from "./adt/operations/AdtObjectActivator"
+import { AdtObjectFinder } from "./adt/operations/AdtObjectFinder"
+import { isAbapClassInclude } from "abapobject"
 
 const abapcmds: {
   name: string
@@ -131,7 +134,7 @@ export function openObject(connId: string, uri: string) {
         return
       } else if (isAbapFile(file))
         await workspace.openTextDocument(createUri(connId, path))
-      return file
+      return { file, path }
     }
   )
 }
@@ -145,9 +148,8 @@ export class AdtCommands {
   @command(AbapFsCommands.changeInclude)
   private static async changeMain(uri: Uri) {
     const provider = IncludeLensP.get()
-    const root = uriRoot(uri)
-    const obj = await root.getNode(uri.path)
-    if (!obj) return
+    const obj = await findAbapObject(uri)
+    if (obj) return
     const main = await provider.selectMain(obj, uri)
     if (!main) return
     provider.setInclude(uri, main)
@@ -170,7 +172,7 @@ export class AdtCommands {
 
       log(`Connecting to server ${remote.name}`)
       // this might involve asking for a password...
-      await getOrCreateServer(remote.name) // if connection raises an exception don't mount any folder
+      await getOrCreateRoot(remote.name) // if connection raises an exception don't mount any folder
 
       await storeTokens()
 
@@ -194,21 +196,21 @@ export class AdtCommands {
   private static async activateCurrent(selector: Uri) {
     try {
       const uri = selector || currentUri()
-      const server = fromUri(uri)
-      if (!server) throw Error("ABAP connection not found for" + uri.toString())
+      const root = uriRoot(uri)
+      const activator = AdtObjectActivator.get(uri.authority)
       const editor = findEditor(uri.toString())
       await window.withProgress(
         { location: ProgressLocation.Window, title: "Activating..." },
         async () => {
-          const obj = await server.findAbapObject(uri)
+          const obj = findAbapObject(uri)
           // if editor is dirty, save before activate
           if (editor && editor.document.isDirty) {
             const saved = await editor.document.save()
             if (!saved) return
-          } else if (!obj.structure) await obj.loadMetadata(server.client)
-          await server.activator.activate(obj, uri)
+          } else if (!obj.structure) await obj.loadStructure() // TODO replace with stat?
+          await activator.activate(obj, uri)
           if (editor === window.activeTextEditor) {
-            await obj.loadMetadata(server.client)
+            await obj.loadStructure() // TODO replace with stat?
             await showHideActivate(editor)
           }
         }
@@ -221,15 +223,14 @@ export class AdtCommands {
   @command(AbapFsCommands.search)
   private static async searchAdtObject(uri: Uri | undefined) {
     // find the adt relevant namespace roots, and let the user pick one if needed
-    const root = await pickAdtRoot(uri)
-    if (!root) return
+    const adtRoot = await pickAdtRoot(uri)
+    if (!adtRoot) return
     try {
-      const server = fromUri(root.uri)
-      if (!server) throw new Error("Fatal error: invalid server connection") // this should NEVER happen!
-      const object = await server.objectFinder.findObject()
+      const connId = adtRoot.uri.authority
+      const object = await new AdtObjectFinder(connId).findObject()
       if (!object) return // user cancelled
       // found, show progressbar as opening might take a while
-      await openObject(server, object.uri)
+      await openObject(connId, object.uri)
     } catch (e) {
       return window.showErrorMessage(e.toString())
     }
@@ -239,10 +240,11 @@ export class AdtCommands {
   private static async createAdtObject(uri: Uri | undefined) {
     try {
       // find the adt relevant namespace roots, and let the user pick one if needed
-      const root = await pickAdtRoot(uri)
-      const server = root && fromUri(root.uri)
-      if (!server) return
-      const obj = await server.creator.createObject(uri)
+      const fsRoot = await pickAdtRoot(uri)
+      const connId = fsRoot?.uri.authority
+      if (!connId) return
+      const root = fsRoot && uriRoot(fsRoot.uri)
+      const obj = await new AdtObjectCreator(connId).createObject(uri)
       if (!obj) return // user aborted
       log(`Created object ${obj.type} ${obj.name}`)
 
@@ -250,9 +252,9 @@ export class AdtCommands {
       //   commands.executeCommand("workbench.files.action.refreshFilesExplorer")
       //   return // Packages can't be opened perhaps could reveal it?
       // }
-      const nodePath = await openObject(server, obj.path)
+      const nodePath = await openObject(connId, obj.path)
       if (nodePath) {
-        server.objectFinder.displayNode(nodePath)
+        new AdtObjectFinder(connId).displayNode(nodePath)
         try {
           await commands.executeCommand(
             "workbench.files.action.refreshFilesExplorer"
@@ -274,12 +276,16 @@ export class AdtCommands {
       log("Execute ABAP")
       const uri = currentUri()
       if (!uri) return
-      const root = await pickAdtRoot(uri)
-      const server = root && fromUri(root.uri)
-      if (!server) return
-      await runInSapGui(server, async () => {
-        const object = await server.findAbapObject(uri)
-        return object.getExecutionCommand()
+      const fsRoot = await pickAdtRoot(uri)
+      if (!fsRoot) return
+      await runInSapGui(uri.authority, async () => {
+        const object = findAbapObject(uri)
+        const command: SapGuiCommand = {
+          type: "Transaction",
+          command: "SADT_START_WB_URI",
+          parameters: [{ name: "D_OBJECT_URI", value: object.path }]
+        }
+        return command
       })
     } catch (e) {
       return window.showErrorMessage(e.toString())
@@ -321,11 +327,11 @@ export class AdtCommands {
   private static createTestInclude(uri?: Uri) {
     if (uri) {
       if (uri.scheme !== ADTSCHEME) return
-      return this.createTI(fromUri(uri), uri)
+      return this.createTI(uri)
     }
     const cur = current()
     if (!cur) return
-    return this.createTI(cur.server, cur.uri)
+    return this.createTI(cur.uri)
   }
 
   @command(AbapFsCommands.clearPassword)
@@ -333,50 +339,46 @@ export class AdtCommands {
     return RemoteManager.get().clearPasswordCmd(connectionId)
   }
 
-  private static async createTI(server: AdtServer, uri: Uri) {
-    const obj = await server.findAbapObject(uri)
+  private static async createTI(uri: Uri) {
+    const obj = await findAbapObject(uri)
     // only makes sense for classes
-    if (!isClassInclude(obj)) return
+    if (!isAbapClassInclude(obj)) return
     if (!obj.parent) return
-    const m = LockManager.get()
-    let lockId = m.getLockId(uri)
-    let lock
-    if (!lockId) {
-      lock = await m.lock(uri)
-      lockId = (lock && lock.LOCK_HANDLE) || ""
-    }
+    if (obj.parent.structure) await obj.loadStructure()
+    if (obj.parent.findInclude("testclasses"))
+      return window.showInformationMessage("Test include already exists")
+
+    const m = uriRoot(uri).lockManager
+    const lock = await m.requestLock(uri.path)
+    const lockId = lock.status === "locked" && lock.LOCK_HANDLE
     if (!lockId) {
       throw new Error(`Can't acquire a lock for ${obj.name}`)
     }
     try {
       let created
-      // check if I already have one
-      if (obj.parent.hasInclude("testclasses")) {
-        window.showInformationMessage("Test include already exists")
-      } else {
-        if (!obj.structure) await obj.loadMetadata(server.client)
-        const transport = await selectTransport(
-          obj.getContentsUri(),
-          "",
-          server.client,
-          true
-        )
-        if (transport.cancelled) return
-        const parentName = obj.parent.name
-        await server.runInSession(client =>
-          client.createTestInclude(parentName, lockId, transport.transport)
-        )
-        created = true
-      }
+      const client = getClient(uri.authority)
+
+      const transport = await selectTransport(
+        obj.contentsPath(),
+        "",
+        client,
+        true
+      )
+      if (transport.cancelled) return
+      const parentName = obj.parent.name
+      await client.createTestInclude(parentName, lockId, transport.transport)
+      created = true
+
+      // TODO locking logic
       // If I created the lock I remove it. Possible race condition here...
-      if (lock) await m.unlock(uri)
+      if (lock) await m.requestUnlock(uri.path)
       if (created) {
         if (window.activeTextEditor)
           showHideActivate(window.activeTextEditor, true)
         commands.executeCommand("workbench.files.action.refreshFilesExplorer")
       }
     } catch (e) {
-      if (lock) await m.unlock(uri)
+      if (lock) await m.requestUnlock(uri.path)
       log(e.toString())
       window.showErrorMessage(`Error creating class include`)
     }

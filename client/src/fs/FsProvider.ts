@@ -35,7 +35,7 @@ export class FsProvider implements FileSystemProvider {
     // no .* files allowed here, no need to log that
     if (uri.path.match(/(^\.)|(\/\.)/)) throw FileSystemError.FileNotFound(uri)
     try {
-      const root = getOrCreateRoot(uri.authority)
+      const root = await getOrCreateRoot(uri.authority)
       const node = await root.getNodeAsync(uri.path)
       if (isAbapFile(node)) await node.stat()
       if (node) return node
@@ -48,7 +48,7 @@ export class FsProvider implements FileSystemProvider {
 
   public async readDirectory(uri: Uri): Promise<[string, FileType][]> {
     try {
-      const root = getOrCreateRoot(uri.authority)
+      const root = await getOrCreateRoot(uri.authority)
       const node = await root.getNodeAsync(uri.path)
       if (!isFolder(node)) throw FileSystemError.FileNotFound(uri)
       if (isAbapFolder(node)) await node.refresh()
@@ -67,7 +67,7 @@ export class FsProvider implements FileSystemProvider {
 
   public async readFile(uri: Uri): Promise<Uint8Array> {
     try {
-      const root = getOrCreateRoot(uri.authority)
+      const root = await getOrCreateRoot(uri.authority)
       const node = await root.getNodeAsync(uri.path)
       if (isAbapFile(node)) {
         const contents = await node.read()
@@ -86,7 +86,7 @@ export class FsProvider implements FileSystemProvider {
     options: { create: boolean; overwrite: boolean }
   ): Promise<void> {
     try {
-      const root = getOrCreateRoot(uri.authority)
+      const root = await getOrCreateRoot(uri.authority)
       const node = await root.getNodeAsync(uri.path)
       if (isAbapFile(node)) {
         // TODO: transport selection
@@ -104,7 +104,7 @@ export class FsProvider implements FileSystemProvider {
 
   public async delete(uri: Uri, options: { recursive: boolean }) {
     try {
-      const root = getOrCreateRoot(uri.authority)
+      const root = await getOrCreateRoot(uri.authority)
       const node = await root.getNodeAsync(uri.path)
       const lock = await root.lockManager.requestLock(uri.path)
       if (lock.status === "locked") {

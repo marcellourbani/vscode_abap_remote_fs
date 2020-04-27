@@ -7,7 +7,6 @@ import {
   ObjectType,
   CreatableTypeIds
 } from "abap-adt-api"
-import { AdtServer } from "../AdtServer"
 import {
   window,
   QuickPickItem,
@@ -17,17 +16,12 @@ import {
   Position
 } from "vscode"
 
-import {
-  NodePath,
-  findObjectInNode,
-  findMainIncludeAsync,
-  abapObjectFromNode,
-  findObjByPathAsync
-} from "../abap/AbapObjectUtilities"
 import { isAbapNode } from "../../fs/AbapNode"
-import { AbapObject } from "../abap/AbapObject"
+import { AbapObject } from "abapobject"
 import { urlFromPath } from "vscode-abap-remote-fs-sharedapi"
 import { splitAdtUri, vscPosition, rememberFor } from "../../lib"
+import { getClient, uriRoot, getRoot, createUri } from "../conections"
+import { PathItem, isFolder, isAbapFolder, isAbapFile } from "abapfs"
 
 interface SearchObjectType {
   name: string
@@ -88,31 +82,18 @@ export class MySearchResult implements QuickPickItem, AdtSearchResult {
 // tslint:disable-next-line:max-classes-per-file
 export class AdtObjectFinder {
   public types?: Map<string, SearchObjectType>
-  constructor(public readonly server: AdtServer) {}
+  constructor(public readonly connId: string) {}
 
-  public readonly findObjectPath = rememberFor(
-    10000,
-    async (objPath: string) => {
-      return this.server.client.findObjectPath(objPath)
-    }
-  )
-
-  public async objectNode(objUri: string, mainInclude = true) {
-    const path = await this.server.objectFinder.findObjectPath(objUri)
-
-    if (path.length) {
-      let nPath = await this.server.objectFinder.locateObject(path)
-      if (nPath && nPath.node.isFolder && mainInclude)
-        nPath = await findMainIncludeAsync(nPath, this.server.client)
-      return nPath
-    }
+  public async vscodeUri(uri: string, main: boolean) {
+    const { path } = (await getRoot(this.connId).findByAdtUri(uri, true)) || {}
+    if (!path) throw new Error(`can't find an URL for ${uri}`)
+    return path
   }
-
   public async vscodeRange(uri: string) {
     const u = splitAdtUri(uri)
     const rval = { uri: "", start: u.start }
     if (u.type && u.name) {
-      const frag = await this.server.client.fragmentMappings(
+      const frag = await getClient(this.connId).fragmentMappings(
         u.path,
         u.type,
         u.name
@@ -124,104 +105,17 @@ export class AdtObjectFinder {
     return rval
   }
 
-  public async vscodeUri(uri: string, mainInclude: boolean) {
-    const { path } = splitAdtUri(uri)
-
-    const objPath = await this.findObjectPath(path)
-    let s = ""
-
-    if (objPath.length) {
-      let nPath = await this.locateObject(objPath)
-      if (nPath && nPath.node.isFolder && mainInclude)
-        nPath = await findMainIncludeAsync(nPath, this.server.client)
-      if (nPath) s = urlFromPath(this.server.connectionId, nPath.path)
-    }
-    return s
-  }
-
-  private async getRootNode(abapPath: PathStep[]) {
-    const firstName = abapPath[0]["adtcore:name"]
-    if (firstName === TMPPACKAGE) return
-    const tmpStep: PathStep = {
-      "adtcore:name": "",
-      "adtcore:uri": "",
-      "projectexplorer:category": "",
-      "adtcore:type": PACKAGE
-    }
-    if (!firstName.match(/^\$/)) return tmpStep
-    tmpStep["adtcore:name"] = TMPPACKAGE
-    if (firstName !== TMPPACKAGE) {
-      // hack for local packages not marked as children of $TMP
-      const tmp = findObjectInNode(this.server.root, PACKAGE, TMPPACKAGE)
-      if (tmp) {
-        let first = findObjectInNode(tmp.node, PACKAGE, TMPPACKAGE)
-        if (!first) {
-          await tmp.node.refresh(this.server.client)
-          first = findObjectInNode(tmp.node, PACKAGE, TMPPACKAGE)
-        }
-        if (!first) {
-          // package not in $TMP, should always be the case...
-          const fn = abapPath[0]
-          const obj: AbapObject = abapObjectFromNode({
-            OBJECT_TYPE: fn["adtcore:type"],
-            OBJECT_NAME: fn["adtcore:name"],
-            TECH_NAME: fn["adtcore:name"],
-            OBJECT_URI: fn["adtcore:uri"],
-            OBJECT_VIT_URI: "",
-            EXPANDABLE: "X"
-          })
-          tmp.node.setChild(obj.vsName, new AbapObjectNode(obj))
-        }
-      }
-    }
-
-    return tmpStep
-  }
-  public async locateObject(abapPath: PathStep[]) {
-    if (abapPath.length === 0) return
-    const children = [...abapPath]
-    const root = await this.getRootNode(abapPath)
-    if (root) children.unshift(root)
-
-    let nodePath: NodePath = { path: "", node: this.server.root }
-
-    for (const part of children) {
-      const name = part["adtcore:name"]
-      const type = part["adtcore:type"]
-      const uri = part["adtcore:uri"]
-
-      let child = findObjectInNode(nodePath.node, type, name)
-      if (!child)
-        child = await findObjByPathAsync(nodePath.node, uri, this.server)
-      if (!child) child = findObjectInNode(nodePath.node, type, name)
-
-      if (child)
-        nodePath = { node: child.node, path: `${nodePath.path}/${child.path}` }
-      else return
-    }
-    const n = nodePath.node
-    const l = abapPath[abapPath.length - 1]
-    if (isAbapNode(n) && n.isFolder && n.abapObject.path !== l["adtcore:uri"]) {
-      // might be looking for a child. Should only happen for classes and programs
-      // so one level will be enough
-      const child = await findObjByPathAsync(n, l["adtcore:uri"], this.server)
-      if (child)
-        nodePath = { node: child.node, path: `${nodePath.path}/${child.path}` }
-    }
-    return nodePath
-  }
-
-  public async displayNode(nodePath: NodePath) {
+  public async displayNode(nodePath: PathItem) {
     let uri
-    if (nodePath.node.isFolder) {
+    if (isFolder(nodePath.file)) {
       if (
-        isAbapNode(nodePath.node) &&
-        nodePath.node.abapObject.type.match(/DEVC/i)
+        isAbapFolder(nodePath.file) &&
+        nodePath.file.object.type.match(/DEVC/i)
       ) {
         window.showInformationMessage(`Can't open object ${nodePath.path}`)
         return
       }
-      const main = await findMainIncludeAsync(nodePath, this.server.client)
+      const main = await findMainIncludeAsync(nodePath)
       if (!main) {
         window.showInformationMessage(`Can't open object ${nodePath.path}`)
         return
@@ -229,7 +123,7 @@ export class AdtObjectFinder {
       uri = main.path
     } else uri = nodePath.path
     try {
-      const doc = await workspace.openTextDocument(this.server.createUri(uri))
+      const doc = await workspace.openTextDocument(createUri(this.connId, uri))
       await window.showTextDocument(doc)
       commands.executeCommand("workbench.files.action.showActiveFileInExplorer")
     } catch (e) {
@@ -258,7 +152,7 @@ export class AdtObjectFinder {
       const searchParent = async (e: string) => {
         qp.items =
           e.length >= 3
-            ? await this.search(e, this.server.client, objType)
+            ? await this.search(e, getClient(this.connId), objType)
             : empty
       }
 
@@ -291,5 +185,15 @@ export class AdtObjectFinder {
       raw.filter(r => !objType || objType === r["adtcore:type"]),
       client
     )
+  }
+}
+
+export const findMainIncludeAsync = async (item: PathItem) => {
+  if (isAbapFile(item.file)) return item
+  if (isAbapFolder(item.file)) {
+    const main = item.file.mainInclude(item.path)
+    if (main) return main
+    await item.file.refresh()
+    return item.file.mainInclude(item.path)
   }
 }

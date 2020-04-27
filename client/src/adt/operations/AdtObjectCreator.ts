@@ -22,7 +22,16 @@ import { Uri, window } from "vscode"
 import { AbapNode, isAbapNode } from "../../fs/AbapNode"
 import { selectTransport } from "../AdtTransports"
 import { fieldOrder, asyncFilter } from "../../lib"
-import { MySearchResult } from "./AdtObjectFinder"
+import { MySearchResult, AdtObjectFinder } from "./AdtObjectFinder"
+import {
+  getClient,
+  getRoot,
+  uriRoot,
+  pathSequence,
+  createUri
+} from "../conections"
+import { isAbapStat, AbapStat, isAbapFolder, isFolder } from "abapfs"
+import { fromNode } from "abapobject"
 
 export const PACKAGE = "DEVC/K"
 export const TMPPACKAGE = "$TMP"
@@ -48,12 +57,12 @@ export async function selectObjectType(
 export class AdtObjectCreator {
   private types?: ObjectType[]
 
-  constructor(private server: AdtServer) {}
+  constructor(private connId: string) {}
 
   public async getObjectTypes(uri: Uri): Promise<ObjectType[]> {
-    if (!this.types) this.types = await this.server.client.loadTypes()
-    const parent = this.server.findNode(uri)
-    let otype = parent && isAbapNode(parent) && parent.abapObject.type
+    if (!this.types) this.types = await getClient(this.connId).loadTypes()
+    const parent = getRoot(this.connId).getNode(uri.path)
+    let otype = parent && isAbapStat(parent) && parent.object.type
     if (otype === PACKAGE) otype = ""
     return this.types!.filter(x => x.PARENT_OBJECT_TYPE === otype)
   }
@@ -73,61 +82,52 @@ export class AdtObjectCreator {
     const transport = await selectTransport(
       objectPath(options.objtype, options.name, options.parentName),
       devclass,
-      this.server.client,
+      getClient(this.connId),
       true,
       undefined,
       layer
     )
     if (transport.cancelled) return
     options.transport = transport.transport
-    await this.server.client.createObject(options)
+    await getClient(this.connId).createObject(options)
 
-    const obj = abapObjectFromNode({
-      EXPANDABLE: "",
-      OBJECT_NAME: options.name,
-      OBJECT_TYPE: options.objtype,
-      OBJECT_URI: objectPath(options),
-      OBJECT_VIT_URI: "",
-      TECH_NAME: options.name
-    })
-    await obj.loadMetadata(this.server.client)
+    const obj = fromNode(
+      {
+        EXPANDABLE: "",
+        OBJECT_NAME: options.name,
+        OBJECT_TYPE: options.objtype,
+        OBJECT_URI: objectPath(options),
+        OBJECT_VIT_URI: "",
+        TECH_NAME: options.name
+      },
+      undefined,
+      getRoot(this.connId).service
+    )
+    await obj.loadStructure()
     return obj
   }
-  public guessParentByType(hierarchy: AbapNode[], type: ParentTypeIds): string {
-    // find latest package parent
-    const pn = hierarchy.find(n => isAbapNode(n) && n.abapObject.type === type)
-    // return package name or blank string
-    return (pn && isAbapNode(pn) && pn.abapObject.name) || ""
-  }
-
-  private getHierarchy(uri: Uri | undefined): AbapNode[] {
-    if (uri)
-      try {
-        return this.server.findNodeHierarchy(uri)
-      } catch (e) {
-        // ignore
-      }
-    return []
+  public guessParentByType(hierarchy: AbapStat[], type: ParentTypeIds): string {
+    return hierarchy.find(n => n.object.type === type)?.object.name || ""
   }
 
   private async guessOrSelectObjectType(
-    hierarchy: AbapNode[]
+    hierarchy: AbapStat[]
   ): Promise<CreatableType | undefined> {
     const base = hierarchy[0]
     // if I picked the root node,a direct descendent or a package just ask the user to select any object type
     // if not, for abap nodes pick child objetc types (if any)
     // for non-abap nodes if it's an object type guess the type from the children
     if (hierarchy.length > 2)
-      if (isAbapNode(base) && base.abapObject.type.match(/FUGR\/F/))
-        return selectObjectType(base.abapObject.type)
+      if (base.object.type.match(/FUGR\/F/))
+        return selectObjectType(base.object.type)
       else {
-        const child = base.isFolder
+        const child = isFolder(base)
           ? [...base]
-              .map(c => c[1])
-              .find(c => isAbapNode(c) && c.abapObject.type !== PACKAGE)
+              .map(c => c.file)
+              .find(c => isAbapStat(c) && c.object.type !== PACKAGE)
           : base
-        if (child && isAbapNode(child)) {
-          const typeid = child.abapObject.type as CreatableTypeIds
+        if (child && isAbapStat(child)) {
+          const typeid = child.object.type as CreatableTypeIds
           const guessed = CreatableTypes.get(typeid)
           if (guessed) return guessed
         }
@@ -162,11 +162,13 @@ export class AdtObjectCreator {
         objtype: objDetails.objtype as NonGroupTypeIds,
         packagename: objDetails.parentName
       }
-    return this.server.client.validateNewObject(validateOptions)
+    return getClient(this.connId).validateNewObject(validateOptions)
   }
 
   private async selectTransportLayer() {
-    const layers = await this.server.client.packageSearchHelp("transportlayers")
+    const layers = await getClient(this.connId).packageSearchHelp(
+      "transportlayers"
+    )
     const items = layers.map(l => ({
       label: l.name,
       description: l.description,
@@ -197,7 +199,7 @@ export class AdtObjectCreator {
     return packageData
   }
   private async askParent(parentType: string) {
-    const parent = await this.server.objectFinder.findObject(
+    const parent = await new AdtObjectFinder(this.connId).findObject(
       "Select parent",
       parentType
     )
@@ -206,7 +208,7 @@ export class AdtObjectCreator {
     return [parent.name, devclass]
   }
   private async getObjectDetails(uri: Uri | undefined): Promise<details> {
-    const hierarchy = this.getHierarchy(uri)
+    const hierarchy = pathSequence(getRoot(this.connId), uri)
     let devclass: string = this.guessParentByType(hierarchy, PACKAGE)
     const objType = await this.guessOrSelectObjectType(hierarchy)
     // user didn't pick one...
@@ -215,7 +217,7 @@ export class AdtObjectCreator {
     if (!name) return
     const description = await this.askInput("description", false)
     if (!description) return
-    const responsible = this.server.client.username.toUpperCase()
+    const responsible = getClient(this.connId).username.toUpperCase()
     const parentType = parentTypeId(objType.typeId)
     let parentName
     if (parentType !== PACKAGE) {
@@ -225,7 +227,7 @@ export class AdtObjectCreator {
     }
 
     if (!devclass) {
-      const packageResult = await this.server.objectFinder.findObject(
+      const packageResult = await new AdtObjectFinder(this.connId).findObject(
         "Select package",
         PACKAGE,
         objType.typeId
@@ -259,9 +261,13 @@ export class AdtObjectCreator {
   }
   private async findPackage(parent: MySearchResult) {
     if (parent.packageName) return parent.packageName
-    const path = await this.server.objectFinder.findObjectPath(parent.uri)
-    if (path.length > 1 && path[path.length - 2]["adtcore:type"] === PACKAGE)
-      return path[path.length - 2]["adtcore:name"]
+    const root = getRoot(this.connId)
+    const node = await root.findByAdtUri(parent.uri)
+    if (!node) return ""
+    const path = pathSequence(root, createUri(this.connId, node.path))
+    // TODO: check questionable assumpsions
+    if (path.length > 1 && path[path.length - 1].object.type === PACKAGE)
+      return path[path.length - 1].object.name
     return ""
   }
   private fixName(name: string, typeId: string, parentName: string): string {

@@ -1,5 +1,10 @@
 import { window, ViewColumn, Uri } from "vscode"
-import { ADTSCHEME, fromUri } from "../adt/AdtServer"
+import {
+  ADTSCHEME,
+  uriRoot,
+  getClient,
+  findAbapObject
+} from "../adt/conections"
 const ABAPDOC = "ABAPDOC"
 const jsHeader = `<script type="text/javascript">
 const vscode = acquireVsCodeApi();
@@ -22,9 +27,9 @@ export async function showAbapDoc() {
   const uri = editor.document.uri
   const sel = editor.selection.active
   if (uri.scheme !== ADTSCHEME) return
-  const server = fromUri(uri)
-  const obj = await server.findAbapObject(uri)
-  const doc = await server.client
+  const client = getClient(uri.authority)
+  const obj = await findAbapObject(uri)
+  const doc = await client
     .abapDocumentation(
       obj.path,
       editor.document.getText(),
@@ -45,9 +50,7 @@ export async function showAbapDoc() {
     switch (message.command) {
       case "click":
         const url = Uri.parse(message.uri)
-        const text = await server.client.httpClient.request(
-          `${url.path}?${url.query}`
-        )
+        const text = await client.httpClient.request(`${url.path}?${url.query}`)
         panel.webview.html = inject(text.body)
     }
   }, undefined)

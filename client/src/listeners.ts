@@ -10,11 +10,11 @@ import {
   TextDocumentWillSaveEvent
 } from "vscode"
 
-import { fromUri, ADTSCHEME } from "./adt/AdtServer"
-import { setDocumentLock, LockManager } from "./adt/operations/LockManager"
-import { AbapObject } from "./adt/abap/AbapObject"
 import { IncludeLensP } from "./adt/operations/IncludeLens"
 import { debounce } from "./lib"
+import { ADTSCHEME, uriRoot } from "./adt/conections"
+import { AbapObject } from "abapobject"
+import { isAbapFolder, isAbapStat } from "abapfs"
 
 export const listenersubscribers: ((...x: any[]) => Disposable)[] = []
 
@@ -27,9 +27,10 @@ export const listener = <T>(event: Event<T>) => (
 }
 export async function documentClosedListener(doc: TextDocument) {
   const uri = doc.uri
+  const root = uriRoot(uri)
   if (uri.scheme === ADTSCHEME) {
-    if (await LockManager.get().isLockedAsync(uri))
-      await LockManager.get().unlock(uri)
+    if ((await root.lockManager.finalStatus(uri.path)).status === "locked")
+      await root.lockManager.requestUnlock(uri.path)
   }
 }
 
@@ -40,7 +41,9 @@ export async function documentClosedListener(doc: TextDocument) {
 // after debouncing it will only process the last status
 const doclock = debounce(200, async (document: TextDocument) => {
   try {
-    await setDocumentLock(document, true)
+    // TODO: session timeouts,UI messages
+    const root = uriRoot(document.uri)
+    await root.lockManager.requestLock(document.uri.path)
   } finally {
     const editor = window.activeTextEditor
     if (editor && editor.document === document) showHideActivate(editor)
@@ -59,8 +62,11 @@ export async function documentChangedListener(event: TextDocumentChangeEvent) {
 export async function documentWillSave(e: TextDocumentWillSaveEvent) {
   const uri = e.document.uri
   if (uri.scheme !== ADTSCHEME) return
-  if (!e.document.isDirty)
-    await setDocumentLock({ ...e.document, isDirty: true }, true)
+  if (!e.document.isDirty) {
+    // TODO: session timeouts,UI messages
+    const root = uriRoot(e.document.uri)
+    await root.lockManager.requestLock(e.document.uri.path)
+  }
 }
 export function documentOpenListener(document: TextDocument) {
   const uri = document.uri
@@ -79,16 +85,18 @@ function isInactive(obj: AbapObject): boolean {
 
 export async function showHideActivate(editor?: TextEditor, refresh = false) {
   let shouldShow = false
-  const uri = editor && editor.document.uri
+  const uri = editor?.document.uri
   if (editor && uri && uri.scheme === ADTSCHEME)
     try {
+      const root = uriRoot(uri)
       shouldShow =
         editor.document.isDirty &&
-        (await LockManager.get().isLockedAsync(editor.document.uri))
+        (await root.lockManager.finalStatus(uri.path)).status === "locked"
       if (!shouldShow) {
-        const server = fromUri(uri)
-        const obj = await server.findAbapObject(uri)
-        if (refresh) await obj.loadMetadata(server.client)
+        const file = root.getNode(uri.path)
+        const obj = isAbapStat(file) && file.object
+        if (!obj) return
+        if (refresh) await obj.loadStructure()
         shouldShow = obj && isInactive(obj)
       }
     } catch (e) {
@@ -112,8 +120,6 @@ export async function activeTextEditorChangedListener(
 ) {
   try {
     if (editor && editor.document.uri.scheme === ADTSCHEME) {
-      const server = fromUri(editor.document.uri)
-      const obj = await server.findAbapObject(editor.document.uri)
       await showHideActivate(editor)
     }
   } catch (e) {
