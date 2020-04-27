@@ -1,5 +1,4 @@
 import { ScmData, ScmCredentials } from "./scm"
-import { getServer } from "../../adt/AdtServer"
 import { window, Memento } from "vscode"
 import {
   PasswordVault,
@@ -12,6 +11,7 @@ import {
 import { none, some, fromEither, Option, isSome } from "fp-ts/lib/Option"
 import { context } from "../../extension"
 import { ADTClient, GitRepo } from "abap-adt-api"
+import { getClient } from "../../adt/conections"
 
 let uStore: Memento
 const getUserStore = () => {
@@ -66,8 +66,8 @@ export async function dataCredentials(
   forPush = false
 ): Promise<Option<ScmCredentials>> {
   if (!data.credentials || !data.credentials?.password) {
-    const server = getServer(data.connId)
-    if (forPush || (await isPrivate(data, server.client))) {
+    const client = getClient(data.connId)
+    if (forPush || (await isPrivate(data, client))) {
       const cred = await repoCredentials(data.repo.url)
       if (isSome(cred)) data.credentials = cred.value
       return cred

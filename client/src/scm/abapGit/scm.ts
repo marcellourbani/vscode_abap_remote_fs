@@ -13,12 +13,12 @@ import {
   GitStaging
 } from "abap-adt-api"
 import { Cache, mapGet, cache } from "../../lib"
-import { getServer } from "../../adt/AdtServer"
 import { dataCredentials } from "./credentials"
 import { gitUrl } from "./documentProvider"
 import { AbapFsCommands } from "../../commands"
 import { isNone, fromNullable, Option, some } from "fp-ts/lib/Option"
 import { saveRepos } from "./storage"
+import { getClient } from "../../adt/conections"
 export { GitCommands } from "./commands" // triggers command registration
 
 export const STAGED = "staged"
@@ -88,14 +88,12 @@ const resourceState = (
 }
 
 export async function refresh(data: ScmData) {
-  const server = getServer(data.connId)
+  const client = getClient(data.connId)
   const credentials = await dataCredentials(data)
   if (isNone(credentials)) return
   const { user, password } = await credentials.value
-  const staging = await server.client.stageRepo(data.repo, user, password)
-  const repo = (await server.client.gitRepos()).find(
-    r => r.key === data.repo.key
-  )
+  const staging = await client.stageRepo(data.repo, user, password)
+  const repo = (await client.gitRepos()).find(r => r.key === data.repo.key)
   if (repo) data.repo = repo
   const mapState = (key: string, objs: GitStagingObject[]) => {
     const group = data.groups.get(key)

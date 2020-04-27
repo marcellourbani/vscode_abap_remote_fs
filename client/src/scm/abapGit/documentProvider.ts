@@ -1,8 +1,8 @@
 import { TextDocumentContentProvider, Uri, workspace } from "vscode"
-import { getServer } from "../../adt/AdtServer"
 import { scmKey, scmData, ScmData } from "./scm"
 import { atob, btoa } from "../../lib"
 import { GitStagingFile } from "abap-adt-api"
+import { getClient } from "../../adt/conections"
 const GITSCHEME = "ABAPGIT"
 
 class GitDocProvider implements TextDocumentContentProvider {
@@ -16,15 +16,9 @@ class GitDocProvider implements TextDocumentContentProvider {
 
     const gitScm = scmData(scmKey(uri.authority, key))
     if (!key || !path || !gitScm) throw new Error(`Invalid URL`)
-    const server = getServer(uri.authority)
-    if (!server) throw new Error(`No active connection for ${uri.authority}`)
-    // by now I can take for granted that login happened
+    const client = getClient(uri.authority)
     const { user, password } = gitScm.credentials || {}
-    return server.client.getObjectSource(
-      path.replace(/#/g, "%23"),
-      user,
-      password
-    )
+    return client.getObjectSource(path.replace(/#/g, "%23"), user, password)
   }
 }
 

@@ -1,26 +1,14 @@
-import { AbapObjectNode } from "../../fs/AbapNode"
-import { PACKAGE, TMPPACKAGE } from "./AdtObjectCreator"
+import { PACKAGE } from "./AdtObjectCreator"
 import {
   ADTClient,
-  PathStep,
   SearchResult,
   ObjectType,
   CreatableTypeIds
 } from "abap-adt-api"
-import {
-  window,
-  QuickPickItem,
-  workspace,
-  commands,
-  Uri,
-  Position
-} from "vscode"
+import { window, QuickPickItem, workspace, commands } from "vscode"
 
-import { isAbapNode } from "../../fs/AbapNode"
-import { AbapObject } from "abapobject"
-import { urlFromPath } from "vscode-abap-remote-fs-sharedapi"
-import { splitAdtUri, vscPosition, rememberFor } from "../../lib"
-import { getClient, uriRoot, getRoot, createUri } from "../conections"
+import { splitAdtUri, vscPosition } from "../../lib"
+import { getClient, getRoot, createUri } from "../conections"
 import { PathItem, isFolder, isAbapFolder, isAbapFile } from "abapfs"
 
 interface SearchObjectType {
@@ -84,7 +72,7 @@ export class AdtObjectFinder {
   public types?: Map<string, SearchObjectType>
   constructor(public readonly connId: string) {}
 
-  public async vscodeUri(uri: string, main: boolean) {
+  public async vscodeUri(uri: string) {
     const { path } = (await getRoot(this.connId).findByAdtUri(uri, true)) || {}
     if (!path) throw new Error(`can't find an URL for ${uri}`)
     return path
@@ -98,10 +86,10 @@ export class AdtObjectFinder {
         u.type,
         u.name
       )
-      rval.uri = await this.vscodeUri(frag.uri, true)
+      rval.uri = await this.vscodeUri(frag.uri)
       rval.start = vscPosition(frag.line, frag.column)
     }
-    rval.uri = await this.vscodeUri(u.path, true)
+    rval.uri = await this.vscodeUri(u.path)
     return rval
   }
 

@@ -35,7 +35,6 @@ import {
   quickPick
 } from "../../lib"
 import { map, isNone, none, fromEither, isSome } from "fp-ts/lib/Option"
-import { getServer, fromUri } from "../../adt/AdtServer"
 import { dataCredentials, listPasswords, deletePassword } from "./credentials"
 import { GitStagingFile, GitStaging } from "abap-adt-api"
 import { context } from "../../extension"
@@ -43,6 +42,7 @@ import { selectTransport } from "../../adt/AdtTransports"
 import { pickAdtRoot } from "../../config"
 import { isRight, isLeft } from "fp-ts/lib/Either"
 import { confirmPull, packageUri } from "../../views/abapgit"
+import { getClient, uriRoot } from "../../adt/conections"
 
 let commitStore: Memento
 const getStore = () => {
@@ -172,7 +172,7 @@ export class GitCommands {
     toPush.author = { name, email }
     toPush.committer = { name, email }
     toPush.comment = comment
-    const client = getServer(data.connId).client
+    const client = getClient(data.connId)
     try {
       await withp("Committing...", async () => {
         await client.pushRepo(data.repo, toPush, user, password)
@@ -194,16 +194,16 @@ export class GitCommands {
   private static async pullCmd(data: ScmData) {
     if (await confirmPull(data.repo.sapPackage))
       return withp("Pulling repo", async () => {
-        const server = await getServer(data.connId)
+        const client = await getClient(data.connId)
         await dataCredentials(data)
-        const uri = await packageUri(server.client, data.repo.sapPackage)
+        const uri = await packageUri(client, data.repo.sapPackage)
         const transport = await selectTransport(
           uri,
           data.repo.sapPackage,
-          server.client
+          client
         )
         if (transport.cancelled) return
-        const result = await server.client.gitPullRepo(
+        const result = await client.gitPullRepo(
           data.repo.key,
           data.repo.branch_name,
           transport.transport,
@@ -267,9 +267,9 @@ export class GitCommands {
 
   @command(AbapFsCommands.agitresetPwd)
   private static async resetCmd() {
-    const root = await pickAdtRoot()
-    const server = root && fromUri(root.uri)
-    const repos = server && (await server.client.gitRepos())
+    const fsRoot = await pickAdtRoot()
+    const client = fsRoot && getClient(fsRoot.uri.authority)
+    const repos = client && (await client.gitRepos())
     if (!repos || !repos.length) return
 
     const items = repos.map(repo => ({
@@ -290,7 +290,7 @@ export class GitCommands {
   @command(AbapFsCommands.agitBranch)
   private async switchBranch(data: ScmData) {
     const { password = "", user = "" } = data.credentials || {}
-    const client = getServer(data.connId).client
+    const client = getClient(data.connId)
     const branch = await client.gitExternalRepoInfo(
       data.repo.url,
       user,

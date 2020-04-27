@@ -14,8 +14,8 @@ import {
   Uri,
   workspace
 } from "vscode"
-import { AdtServer, getServer, ADTSCHEME } from "../../adt/AdtServer"
 import { cache } from "../../lib"
+import { AdtObjectFinder } from "../../adt/operations/AdtObjectFinder"
 
 export const convertSeverity = (s: UnitTestSeverity) => {
   switch (s) {
@@ -30,33 +30,30 @@ export const convertSeverity = (s: UnitTestSeverity) => {
 }
 
 const convertTestAlert = async (
-  server: AdtServer,
+  connId: string,
   alrt: UnitTestAlert,
   maxSeverity = DiagnosticSeverity.Warning
 ) => {
   const severity = convertSeverity(alrt.severity)
   if (severity > maxSeverity) return
   const [error] = alrt.stack
-  const { uri, start } = await server.objectFinder.vscodeRange(
+  const { uri, start } = await new AdtObjectFinder(connId).vscodeRange(
     error["adtcore:uri"]
   )
   if (!start) return
   const range = new Range(start, new Position(start.line, 1000))
   const diagnostic = new Diagnostic(range, alrt.details.join("\n"), severity)
-  diagnostic.source = `Abap Unit ${server.connectionId}`
+  diagnostic.source = `Abap Unit ${connId}`
   return { uri, diagnostic }
 }
 
-const classesAlerts = async (
-  testClasses: UnitTestClass[],
-  server: AdtServer
-) => {
+const classesAlerts = async (testClasses: UnitTestClass[], connId: string) => {
   const newAlerts = new Map<string, Diagnostic[]>()
   // ToDo: clear old alerts
   for (const clas of testClasses)
     for (const method of clas.testmethods) {
       for (const alrt of method.alerts) {
-        const { uri, diagnostic } = (await convertTestAlert(server, alrt)) || {}
+        const { uri, diagnostic } = (await convertTestAlert(connId, alrt)) || {}
         if (uri && diagnostic) {
           const fileDiags = newAlerts.get(uri) || []
           if (fileDiags.length === 0) newAlerts.set(uri, fileDiags)
@@ -81,7 +78,7 @@ class AbapUnitAlertsManager {
   }
 
   public update(testClasses: UnitTestClass[], withSummary = false) {
-    return classesAlerts(testClasses, getServer(this.connId)).then(clAlerts => {
+    return classesAlerts(testClasses, this.connId).then(clAlerts => {
       this.alerts.clear()
 
       for (const [uri, diags] of clAlerts) {

@@ -19,9 +19,8 @@ import {
 } from "abap-adt-api"
 import { CreatableTypes } from "abap-adt-api"
 import { Uri, window } from "vscode"
-import { AbapNode, isAbapNode } from "../../fs/AbapNode"
 import { selectTransport } from "../AdtTransports"
-import { fieldOrder, asyncFilter } from "../../lib"
+import { fieldOrder } from "../../lib"
 import { MySearchResult, AdtObjectFinder } from "./AdtObjectFinder"
 import {
   getClient,

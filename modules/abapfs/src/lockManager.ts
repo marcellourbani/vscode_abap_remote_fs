@@ -6,7 +6,12 @@ import { FileSystemError } from "vscode"
 export class LockManager {
   constructor(private root: Root) {}
   private fileObjects = new Map<string, string>()
-  private objects = new Map<string, LockObject>()
+  private objects = new Map<string, LockObject>();
+
+  *lockedPaths() {
+    for (const [path, key] of this.fileObjects)
+      if (this.objects.get(key)?.status.status !== "unlocked") yield path
+  }
 
   lockObject(path: string) {
     const key = this.fileObjects.get(path)

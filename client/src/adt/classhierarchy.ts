@@ -1,5 +1,4 @@
 import { AbapFsCommands, command, openObject } from "../commands"
-import { ADTSCHEME, fromUri, AdtServer, getServer } from "./AdtServer"
 import {
   TextDocument,
   Position,
@@ -14,6 +13,8 @@ import {
   ProgressLocation
 } from "vscode"
 import { asyncCache, cache } from "../lib"
+import { ADTClient } from "abap-adt-api"
+import { getClient, ADTSCHEME, findAbapObject } from "./conections"
 
 const ok = (type: string, name: string) =>
   `${type.toUpperCase()} ${name.toUpperCase()}`
@@ -45,7 +46,7 @@ interface ClassRelative extends QuickPickItem {
   type: string
   uri: string
 }
-function hierCache(server: AdtServer) {
+function hierCache(client: ADTClient) {
   const lastSeen = new Map<string, Hit>()
   const bodies = new Map<string, string>()
 
@@ -54,7 +55,7 @@ function hierCache(server: AdtServer) {
     if (!hit) return
     const body = bodies.get(hit.url)
     if (!body) return
-    const hier = await server.client.typeHierarchy(
+    const hier = await client.typeHierarchy(
       hit.url,
       body,
       hit.position.line + 1,
@@ -120,16 +121,17 @@ export class ClassHierarchyLensProvider implements CodeLensProvider {
     return this.instance
   }
   private static caches = cache((connId: string) =>
-    hierCache(getServer(connId))
+    hierCache(getClient(connId))
   )
   public async provideCodeLenses(doc: TextDocument, token: CancellationToken) {
     const lenses: CodeLens[] = []
     if (doc.uri.scheme !== ADTSCHEME) return
-    const server = fromUri(doc.uri)
-    const obj = await server.findAbapObject(doc.uri)
+    const client = getClient(doc.uri.authority)
+    const obj = await findAbapObject(doc.uri)
     if (!obj) return
-    if (!obj.structure) await obj.loadMetadata(server.client)
-    const doccache = ClassHierarchyLensProvider.caches.get(server.connectionId)
+    // TODO stat?
+    if (!obj.structure) await obj.loadStructure()
+    const doccache = ClassHierarchyLensProvider.caches.get(doc.uri.authority)
 
     const lines = doc.getText().toString().split("\n")
 
@@ -145,7 +147,7 @@ export class ClassHierarchyLensProvider implements CodeLensProvider {
       const key = ok(type, name)
 
       const { parents, children } = doccache(key, {
-        url: obj.getContentsUri(),
+        url: obj.contentsPath(),
         body: doc.getText().toString(),
         position
       })
@@ -185,8 +187,6 @@ export class ClassHierarchyLensProvider implements CodeLensProvider {
   }
   @command(AbapFsCommands.pickObject)
   private static async pickObject(pp: PickParams) {
-    const server = getServer(pp.conn)
-    if (!server) return
     const oc = ClassHierarchyLensProvider.caches.get(pp.conn)(pp.key)
     const list = (pp.parents ? oc.parents : oc.children).map(c => {
       const i: ClassRelative = {
@@ -201,7 +201,7 @@ export class ClassHierarchyLensProvider implements CodeLensProvider {
     })
 
     const relative = await window.showQuickPick(list, { ignoreFocusOut: true })
-    if (relative) await openObject(server, relative.uri)
+    if (relative) await openObject(pp.conn, relative.uri)
   }
 
   @command(AbapFsCommands.refreshHierarchy)

@@ -1,6 +1,6 @@
 import { RemoteManager, createClient } from "../config"
 import { AFsService, Root, isAbapStat, AbapStat } from "abapfs"
-import { Uri, FileSystemError } from "vscode"
+import { Uri, FileSystemError, workspace } from "vscode"
 import { ADTClient } from "abap-adt-api"
 export const ADTSCHEME = "adt"
 export const ADTURIPATTERN = /\/sap\/bc\/adt\//
@@ -31,7 +31,7 @@ async function create(connId: string) {
   return client
 }
 
-async function getOrCreateClient(connId: string) {
+export async function getOrCreateClient(connId: string) {
   let client = clients.get(connId)
   if (!client) {
     client = await create(connId)
@@ -66,7 +66,24 @@ export const getOrCreateRoot = async (connId: string) => {
   roots.set(connId, newRoot)
   return newRoot
 }
+export function restoreLocks() {
+  return Promise.all(
+    workspace.textDocuments.map(async doc => {
+      if (doc.uri.scheme !== ADTSCHEME || !doc.isDirty) return
+      return uriRoot(doc.uri).lockManager.requestLock(doc.uri.path)
+    })
+  )
+}
+export function hasLocks() {
+  for (const root of roots.values())
+    if (root.lockManager.lockedPaths().next().value) return true
+}
+export function disconnect() {
+  // TODO logout stateless too?
+  return Promise.all([...clients.values()].map(c => c.logout()))
+}
 
+// TODO move
 export function createUri(connId: string, path: string, query: string = "") {
   return Uri.parse("adt://" + connId).with({
     path,

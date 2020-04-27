@@ -15,10 +15,8 @@ import {
   documentOpenListener,
   documentWillSave
 } from "./listeners"
-import { disconnect, ADTSCHEME } from "./adt/AdtServer"
 import { log } from "./lib"
 import { client, LanguageCommands } from "./langClient"
-import { restoreLocks, LockManager } from "./adt/operations/LockManager"
 import { registerRevisionModel } from "./scm/abaprevision"
 import { AbapRevisionLensP } from "./scm/abaprevisionlens"
 import { IncludeLensP } from "./adt/operations/IncludeLens"
@@ -28,6 +26,7 @@ import { abapGitProvider } from "./views/abapgit"
 import { loadTokens, clearTokens } from "./oauth"
 import { registerAbapGit } from "./scm/abapGit"
 import { AbapFsApi, api } from "./api"
+import { ADTSCHEME, restoreLocks, disconnect, hasLocks } from "./adt/conections"
 export let context: ExtensionContext
 
 export async function activate(ctx: ExtensionContext): Promise<AbapFsApi> {
@@ -104,7 +103,7 @@ export async function activate(ctx: ExtensionContext): Promise<AbapFsApi> {
 // Locks will not be released until either explicitly closed or the session is terminates
 // an open session can leave sources locked without any UI able to release them (except SM12 and the like)
 export async function deactivate() {
-  if (LockManager.get().hasLocks())
+  if (hasLocks())
     window.showInformationMessage(
       "Locks will be dropped now. If the relevant editors are still open they will be restored later"
     )

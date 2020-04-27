@@ -1,4 +1,3 @@
-import { ADTSCHEME, fromUri, getOrCreateServer } from "../adt/AdtServer"
 import { command, AbapFsCommands } from "../commands"
 import {
   CodeLensProvider,
@@ -13,6 +12,7 @@ import {
 import { AbapRevision, revLabel } from "./abaprevision"
 import { uriName } from "../lib"
 import { RemoteManager } from "../config"
+import { ADTSCHEME, findAbapObject, getOrCreateRoot } from "../adt/conections"
 
 export class AbapRevisionLensP implements CodeLensProvider {
   public static get() {
@@ -41,8 +41,7 @@ export class AbapRevisionLensP implements CodeLensProvider {
     const uri = document.uri
     if (uri.scheme !== ADTSCHEME) return
     try {
-      const localServer = fromUri(uri)
-      const obj = await localServer.findAbapObject(uri)
+      const obj = await findAbapObject(uri)
       const { remote, userCancel } = await RemoteManager.get().selectConnection(
         undefined,
         r => r.name.toLowerCase() !== uri.authority
@@ -51,15 +50,14 @@ export class AbapRevisionLensP implements CodeLensProvider {
         if (userCancel) return
         else throw Error("No remote system available in configuration")
 
-      const remoteServer = await getOrCreateServer(remote.name)
-      if (!remoteServer)
-        throw Error(`Faild to connect to server ${remote.name}`)
+      const remoteRoot = await getOrCreateRoot(remote.name)
+      if (!remoteRoot) throw Error(`Faild to connect to server ${remote.name}`)
 
-      const path = await remoteServer.objectFinder.objectNode(obj.path)
+      const path = await remoteRoot.findByAdtUri(obj.path)
       if (!path) throw Error(`Object not found in remote ${remote.name}`)
 
       let remoteUri = uri.with({
-        authority: remoteServer.connectionId,
+        authority: remoteRoot.connId,
         path: path.path
       })
       const revp = AbapRevision.get()

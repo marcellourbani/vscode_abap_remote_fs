@@ -6,11 +6,11 @@ import {
 } from "vscode-abap-remote-fs-sharedapi"
 import { window, workspace, QuickPickItem, WorkspaceFolder, Uri } from "vscode"
 import { ADTClient, createSSLConfig } from "abap-adt-api"
-import { ADTSCHEME } from "./adt/AdtServer"
 import { readFileSync } from "fs"
 import { createProxy } from "method-call-logger"
 import { mongoApiLogger, mongoHttpLogger, PasswordVault } from "./lib"
 import { oauthLogin } from "./oauth"
+import { ADTSCHEME } from "./adt/conections"
 export interface RemoteConfig extends ClientConfiguration {
   sapGui: {
     disabled: boolean

@@ -2,8 +2,8 @@ import { Memento, ExtensionContext } from "vscode"
 import { GitRepo } from "abap-adt-api"
 import { mapGet, ArrayToMap } from "../../lib"
 import { addRepo } from "."
-import { getOrCreateServer } from "../../adt/AdtServer"
 import { ScmData } from "./scm"
+import { getOrCreateClient } from "../../adt/conections"
 
 const REPOSSTORAGEKEY = "abapGitRepos"
 
@@ -16,8 +16,8 @@ interface StoredRepo {
 let storage: Memento
 
 const connRepos = async (connId: string) =>
-  getOrCreateServer(connId).then(server =>
-    server.client.gitRepos().then(ArrayToMap("key"))
+  getOrCreateClient(connId).then(client =>
+    client.gitRepos().then(ArrayToMap("key"))
   )
 
 const loadRepos = async () => {
