@@ -1,8 +1,8 @@
 import { Adapter } from "./testAdapter"
 import { extensions, Uri } from "vscode"
 import { testExplorerExtensionId, TestHub } from "vscode-test-adapter-api"
-import { ADTSCHEME } from "../../adt/AdtServer"
 import { context } from "../../extension"
+import { ADTSCHEME } from "../../adt/conections"
 const testAdapters = new Map<string, Adapter>()
 
 export function getTestAdapter(uri: Uri) {

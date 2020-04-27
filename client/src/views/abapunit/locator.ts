@@ -1,18 +1,24 @@
-import { getServer } from "../../adt/AdtServer"
 import { Uri, Position } from "vscode"
-import { isAbapNode, AbapObjectNode } from "../../fs/AbapNode"
+import { getClient, getRoot } from "../../adt/conections"
+import {
+  AbapStat,
+  AbapFile,
+  isAbapStat,
+  isAbapFolder,
+  isAbapFile
+} from "abapfs"
+import { AdtObjectFinder } from "../../adt/operations/AdtObjectFinder"
 
 export class MethodLocator {
   private objSource = new Map<string, string>()
 
   constructor(private connId: string) {}
 
-  private async getSource(node: AbapObjectNode) {
-    const cached = this.objSource.get(node.abapObject.key)
+  private async getSource(node: AbapFile) {
+    const cached = this.objSource.get(node.object.key)
     if (cached) return cached
-    const client = getServer(this.connId).client
-    const source = (await node.fetchContents(client)).toString()
-    this.objSource.set(node.abapObject.key, source)
+    const source = await node.read()
+    this.objSource.set(node.object.key, source)
     return source
   }
 
@@ -21,15 +27,14 @@ export class MethodLocator {
   }
 
   private async methodImplementation(uri: string, pos: Position) {
-    const server = getServer(this.connId)
-    const node = server.findNode(Uri.parse(uri))
+    const root = getRoot(this.connId)
+    const node = root.getNode(Uri.parse(uri).path)
 
-    if (isAbapNode(node)) {
-      if (!node.abapObject.structure)
-        await node.abapObject.loadMetadata(server.client)
-      const contantsUrl = node.abapObject.getContentsUri()
+    if (isAbapFile(node)) {
+      if (!node.object.structure) await node.object.loadStructure()
+      const contantsUrl = node.object.contentsPath()
       const source = await this.getSource(node)
-      return server.client.findDefinition(
+      return getClient(this.connId).findDefinition(
         contantsUrl,
         source,
         pos.line + 1,
@@ -41,7 +46,7 @@ export class MethodLocator {
   }
 
   public async methodLocation(objectUri: string, objectType: string) {
-    const finder = getServer(this.connId).objectFinder
+    const finder = new AdtObjectFinder(this.connId)
     const { uri, start } = await finder.vscodeRange(objectUri)
     if (start)
       if (objectType === "PROG/OLI" || objectType.match(/^CLAS\/OCN/))

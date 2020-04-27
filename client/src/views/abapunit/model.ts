@@ -1,11 +1,11 @@
 import { UnitTestClass, UnitTestMethod } from "abap-adt-api"
 import { Uri, workspace } from "vscode"
 import { TestEvent, TestInfo, TestSuiteInfo } from "vscode-test-adapter-api"
-import { AbapObject } from "../../adt/abap/AbapObject"
-import { fromUri } from "../../adt/AdtServer"
 import { alertManagers } from "./alerts"
 import { MethodLocator } from "./locator"
 import { toInt } from "../../lib"
+import { AbapObject } from "abapobject"
+import { getClient, findAbapObject } from "../../adt/conections"
 
 const classId = (c: UnitTestClass) => `${c["adtcore:uri"]}`
 
@@ -146,15 +146,15 @@ export class UnitTestModel {
 
   private async runAbapUnit(uri: Uri, clas?: AuClass, method?: AuMethod) {
     const key = uri.toString()
-    const server = fromUri(uri)
+    const client = getClient(uri.authority)
     const path = method?.aunitUri || clas?.aunitUri
     let suite = this.findSuite(key)
     let testClasses
-    if (path) testClasses = await server.client.runUnitTest(path)
+    if (path) testClasses = await client.runUnitTest(path)
     else {
-      const object = await server.findAbapObject(uri)
-      this.aliases.set(object.getActivationSubject().key, key)
-      testClasses = await server.client.runUnitTest(object.path)
+      const object = await findAbapObject(uri)
+      this.aliases.set(object.lockObject.key, key)
+      testClasses = await client.runUnitTest(object.path)
       suite = await this.convertClasses(object, key, testClasses)
       this.mergeSuite(key, testClasses, suite)
     }

@@ -1,5 +1,4 @@
 import { isRight } from "fp-ts/lib/Either"
-import { AdtServer } from "./../adt/AdtServer"
 import {
   TreeDataProvider,
   TreeItem,
@@ -13,7 +12,6 @@ import {
   Uri
 } from "vscode"
 import { GitRepo, ADTClient, objectPath } from "abap-adt-api"
-import { ADTSCHEME, getOrCreateServer } from "../adt/AdtServer"
 import { v1 } from "uuid"
 import { command, AbapFsCommands } from "../commands"
 import { PACKAGE } from "../adt/operations/AdtObjectCreator"
@@ -27,6 +25,8 @@ import {
 import { quickPick } from "../lib"
 import { addRepo, repoCredentials } from "../scm/abapGit"
 import { isNone, none, isSome } from "fp-ts/lib/Option"
+import { getClient, ADTSCHEME, getOrCreateClient } from "../adt/conections"
+import { AdtObjectFinder } from "../adt/operations/AdtObjectFinder"
 
 const confirm = "Confirm"
 interface AbapGitItem extends TreeItem {
@@ -34,7 +34,7 @@ interface AbapGitItem extends TreeItem {
 }
 
 interface ServerItem extends TreeItem {
-  server: AdtServer
+  connId: string
   children: AbapGitItem[]
 }
 
@@ -65,14 +65,14 @@ class AbapGit {
   public unlink(repo: GitRepo, client: ADTClient) {
     return client.gitUnlinkRepo(repo.key)
   }
-  private async getServerItem(server: AdtServer) {
-    const repos = await server.client.gitRepos()
+  private async getServerItem(connId: string) {
+    const repos = await getClient(connId).gitRepos()
     const item: ServerItem = {
-      server,
+      connId,
       id: v1(),
       contextValue: "system",
       collapsibleState: TreeItemCollapsibleState.Expanded,
-      label: server.connectionId,
+      label: connId,
       children: repos.map(repo => this.gitItem(repo))
     }
     return item
@@ -96,9 +96,10 @@ class AbapGit {
       f => f.uri.scheme === ADTSCHEME
     )
     for (const f of folders) {
-      const server = await getOrCreateServer(f.uri.authority)
-      if (await server.client.featureDetails("abapGit Repositories"))
-        servers.push(await this.getServerItem(server))
+      const connId = f.uri.authority
+      await getOrCreateClient(connId)
+      if (await getClient(connId).featureDetails("abapGit Repositories"))
+        servers.push(await this.getServerItem(connId))
     }
     return servers
   }
@@ -153,18 +154,13 @@ class AbapGitProvider implements TreeDataProvider<TreeItem> {
   private async reveal(repoItem: AbapGitItem) {
     const pkg = repoItem.repo.sapPackage
     const server = this.repoServer(repoItem)
-    const candidates = await server.server.client.searchObject(pkg, "DEVC")
+    const candidates = await getClient(server.connId).searchObject(pkg, "DEVC")
     const found = candidates.find(c => c["adtcore:name"] === pkg)
     if (!found) return
-    const steps = await server.server.objectFinder.findObjectPath(
-      found?.["adtcore:uri"]
-    )
-    const path = await server.server.objectFinder.locateObject(steps)
-    if (!path) return
-    commands.executeCommand(
-      "revealInExplorer",
-      server.server.createUri(path.path)
-    )
+
+    const finder = await new AdtObjectFinder(server.connId)
+    const uri = await finder.vscodeUri(found["adtcore:uri"])
+    commands.executeCommand("revealInExplorer", uri)
   }
 
   private openRepo(repoItem: AbapGitItem) {
@@ -172,13 +168,13 @@ class AbapGitProvider implements TreeDataProvider<TreeItem> {
   }
 
   private addScm(repoItem: AbapGitItem) {
-    const server = this.repoServer(repoItem).server.connectionId
-    addRepo(server, repoItem.repo, true)
+    const connId = this.repoServer(repoItem).connId
+    addRepo(connId, repoItem.repo, true)
   }
 
   private async pull(repoItem: AbapGitItem) {
     if (!(await confirmPull(repoItem.repo.sapPackage))) return
-    const client = this.repoServer(repoItem).server.client
+    const client = getClient(this.repoServer(repoItem).connId)
 
     const uri = await packageUri(client, repoItem.repo.sapPackage)
     const transport = await selectTransport(
@@ -216,7 +212,7 @@ class AbapGitProvider implements TreeDataProvider<TreeItem> {
     )
     if (answer !== confirm) return
     const server = this.repoServer(repoItem)
-    await this.git.unlink(repoItem.repo, server.server.client)
+    await this.git.unlink(repoItem.repo, getClient(server.connId))
     await this.refresh()
   }
 
@@ -269,7 +265,7 @@ class AbapGitProvider implements TreeDataProvider<TreeItem> {
   }
 
   private async createRepo(item: ServerItem) {
-    const pkg = await item.server.objectFinder.findObject(
+    const pkg = await new AdtObjectFinder(item.connId).findObject(
       "Select package",
       PACKAGE
     )
@@ -280,12 +276,14 @@ class AbapGitProvider implements TreeDataProvider<TreeItem> {
     })
     if (!repoUrl) return
 
-    const repoaccess = await this.getRemoteInfo(repoUrl, item.server.client)
+    const client = getClient(item.connId)
+
+    const repoaccess = await this.getRemoteInfo(repoUrl, client)
 
     const transport = await selectTransport(
       objectPath(PACKAGE, pkg.name),
       pkg.name,
-      item.server.client
+      client
     )
     if (transport.cancelled) return
     if (!(await confirmPull(pkg.name))) return
@@ -295,7 +293,7 @@ class AbapGitProvider implements TreeDataProvider<TreeItem> {
         title: `Linking and pulling package ${pkg.name}`
       },
       async () => {
-        const result = await item.server.client.gitCreateRepo(
+        const result = await client.gitCreateRepo(
           pkg.name,
           repoUrl,
           repoaccess.branch,
@@ -308,7 +306,7 @@ class AbapGitProvider implements TreeDataProvider<TreeItem> {
           commands.executeCommand("workbench.files.action.refreshFilesExplorer")
         ])
         const created = this.children
-          .find(i => i.server.connectionId === item.server.connectionId)
+          .find(i => i.connId === item.connId)
           ?.children.find(r => r.repo.url === repoUrl)
         if (created) this.reveal(created)
         return result

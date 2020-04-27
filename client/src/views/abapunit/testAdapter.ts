@@ -10,9 +10,11 @@ import {
   TestRunFinishedEvent,
   TestRunStartedEvent
 } from "vscode-test-adapter-api"
-import { EventEmitter, Uri, workspace, TextDocument } from "vscode"
-import { getServer, ADTSCHEME } from "../../adt/AdtServer"
-import { ActivationEvent } from "../../adt/operations/AdtObjectActivator"
+import { EventEmitter, Uri } from "vscode"
+import {
+  ActivationEvent,
+  AdtObjectActivator
+} from "../../adt/operations/AdtObjectActivator"
 import { UnitTestModel } from "./model"
 import { isString } from "../../lib"
 
@@ -36,7 +38,7 @@ export class Adapter implements TestAdapter {
 
   constructor(public connId: string) {
     this.model = new UnitTestModel(connId)
-    getServer(connId).activator.onActivate(this.onActivate.bind(this))
+    AdtObjectActivator.get(connId).onActivate(this.onActivate.bind(this))
   }
 
   private async onActivate(e: ActivationEvent) {

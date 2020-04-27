@@ -1,11 +1,4 @@
 import {
-  ADTSCHEME,
-  fromUri,
-  getServer,
-  AdtServer,
-  ADTURIPATTERN
-} from "../adt/AdtServer"
-import {
   ExtensionContext,
   workspace,
   scm,
@@ -23,11 +16,18 @@ import {
 } from "vscode"
 import { Revision, classIncludes } from "abap-adt-api"
 import { command, AbapFsCommands } from "../commands"
-import { isClassInclude } from "../adt/abap/AbapClassInclude"
-import { NodePath } from "../adt/abap/AbapObjectUtilities"
-import { isAbapNode } from "../fs/AbapNode"
 import { log, parts } from "../lib"
 import { FsProvider } from "../fs/FsProvider"
+import {
+  ADTURIPATTERN,
+  ADTSCHEME,
+  getRoot,
+  getClient,
+  findAbapObject,
+  createUri
+} from "../adt/conections"
+import { isAbapClassInclude } from "abapobject"
+import { PathItem, isAbapStat } from "abapfs"
 
 const EXTREGEX = /(\.[^\/^\.]+)$/
 const EMPTYFILE = "empty"
@@ -184,9 +184,9 @@ export class AbapRevision
       )
       if (revision) revUri = AbapRevision.revisionUri(revision, uri)
     }
-    const server = getServer(uri.authority)
+    const client = getClient(uri.authority)
     const source: string = revUri.path.match(ADTURIPATTERN)
-      ? await server.client.getObjectSource(revUri.path.replace(EXTREGEX, ""))
+      ? await client.getObjectSource(revUri.path.replace(EXTREGEX, ""))
       : (
           await FsProvider.get().readFile(
             uri.with({ query: "", scheme: ADTSCHEME })
@@ -202,17 +202,18 @@ export class AbapRevision
     const cur = uri.toString()
     const [conn, recent] = this.sourceGroup(uri.authority, "recent")
     if (!recent.resourceStates.find(s => s.resourceUri.toString() === cur)) {
-      const server = fromUri(uri)
-      if (!server) return
+      const client = getClient(uri.authority)
+      const root = getRoot(uri.authority)
+      if (!client) return
       try {
-        const obj = await server.findAbapObject(uri)
+        const obj = await findAbapObject(uri)
         if (!obj) return
-        const include = isClassInclude(obj)
+        const include = isAbapClassInclude(obj)
           ? (obj.techName as classIncludes)
           : undefined
-        if (!obj.structure) await obj.loadMetadata(server.client)
+        if (!obj.structure) await obj.loadStructure()
         if (!obj.structure) return
-        const revisions = await server.client.revisions(obj.structure, include)
+        const revisions = await client.revisions(obj.structure, include)
         if (revisions.length > 1) this.addResource(conn, recent, uri, revisions)
       } catch (e) {
         log(e)
@@ -239,24 +240,25 @@ export class AbapRevision
 
   public async addTransport(
     transport: string,
-    server: AdtServer,
-    nodes: NodePath[],
+    connId: string,
+    nodes: PathItem[],
     filter: RegExp
   ) {
     if (nodes.length === 0 || !filter) return
-    const [conn, group] = this.sourceGroup(server.connectionId, transport)
+    const [conn, group] = this.sourceGroup(connId, transport)
     for (const node of nodes) {
-      if (!isAbapNode(node.node)) continue
-      const uri = server.createUri(node.path)
+      if (!isAbapStat(node.file)) continue
+      const uri = createUri(connId, node.path)
       if (this.findInGroup(uri, group)) continue
 
-      const obj = node.node.abapObject
-      const include = isClassInclude(obj)
+      const obj = node.file.object
+      const include = isAbapClassInclude(obj)
         ? (obj.techName as classIncludes)
         : undefined
-      if (!obj.structure) await obj.loadMetadata(server.client)
+      if (!obj.structure) await obj.loadStructure()
       if (!obj.structure) continue
-      const revisions = await server.client.revisions(obj.structure, include)
+      const client = getClient(connId)
+      const revisions = await client.revisions(obj.structure, include)
       this.addResource(conn, group, uri, revisions, filter)
     }
   }
@@ -369,12 +371,12 @@ export class AbapRevision
   }
 
   private static currentRevision(uri: Uri): Revision {
-    const server = fromUri(uri)
+    const client = getClient(uri.authority)
 
     return {
       uri: uri.path,
       date: Date(),
-      author: server.client.username,
+      author: client.username,
       version: CURRENTREV,
       versionTitle: CURRENTREV
     }

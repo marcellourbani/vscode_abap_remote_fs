@@ -1,17 +1,16 @@
-import { AbapNode, isAbapNode, AbapObjectNode } from "../fs/AbapNode"
 import {
   TreeDataProvider,
   TreeItem,
   TreeItemCollapsibleState,
   Uri,
   EventEmitter,
-  workspace
+  workspace,
+  FileStat
 } from "vscode"
-import { isString, isArray } from "util"
 import { path, fileAsync, readAsync } from "fs-jetpack"
-import { fromUri, AdtServer, ADTSCHEME } from "../adt/AdtServer"
-import { findMainIncludeAsync } from "../adt/abap/AbapObjectUtilities"
-import { NSSLASH } from "../lib"
+import { NSSLASH, isString } from "../lib"
+import { uriRoot, getRoot, ADTSCHEME } from "../adt/conections"
+import { isAbapFolder, AbapStat, isAbapStat, isFolder } from "abapfs"
 
 interface FavouriteCache {
   uri: string
@@ -74,17 +73,16 @@ export class FavItem extends TreeItem {
         if (cached) children.push(...cached.children)
         else {
           const uri = Uri.parse(favuri)
-          const server = fromUri(uri)
-          const node = await server.findNodePromise(uri)
-          if (children.length === 0) {
-            if (node.numChildren === 0 && node.canRefresh())
-              await node.refresh(server.client)
+          const root = uriRoot(uri)
+          const node = await root.getNodeAsync(uri.path)
+          if (children.length === 0 && isAbapFolder(node)) {
+            if (node?.size === 0) await node.refresh()
 
             const childnodes = [...node]
             for (const c of childnodes)
               children.push(
                 await favouriteFromUri(
-                  uri.with({ path: uri.path + "/" + c[0] }),
+                  uri.with({ path: uri.path + "/" + c.name }),
                   true
                 )
               )
@@ -146,15 +144,16 @@ class Favourite implements FavouriteIf {
   }
 }
 
-function nodeLabel(server: AdtServer, node: AbapNode, uri: Uri) {
-  const objName = (n: AbapObjectNode) => `${n.abapObject.vsName}`
-  if (isAbapNode(node)) return objName(node)
+function nodeLabel(connId: string, node: FileStat, uri: Uri) {
+  const objName = (n: AbapStat) => `${n.object.fsName}`
+  if (isAbapStat(node)) return objName(node)
   const curpath = uri.path.split("/")
   let label = curpath.pop() || ""
+  const root = getRoot(connId)
   while (curpath.length) {
     label = `${curpath.pop()}/${label}`
-    const n = server.findNode(uri.with({ path: curpath.join("/") }))
-    if (isAbapNode(n)) return `${objName(n)}/${label}`
+    const n = root.getNode(curpath.join("/"))
+    if (isAbapStat(n)) return `${objName(n)}/${label}`
   }
   return label
 }
@@ -163,19 +162,17 @@ async function favouriteFromUri(
   uri: Uri,
   dynamic: boolean
 ): Promise<Favourite> {
-  const server = fromUri(uri)
-  const node = await server.findNodePromise(uri)
-  const collapsibleState = node.isFolder
+  const root = getRoot(uri.authority)
+  const node = await root.getNodeAsync(uri.path)
+  if (!node) throw new Error(`Favourite not found:${uri.toString()}`)
+  const collapsibleState = isFolder(node)
     ? TreeItemCollapsibleState.Collapsed
     : TreeItemCollapsibleState.None
-  const label = nodeLabel(server, node, uri)
+  const label = nodeLabel(uri.authority, node, uri)
   let openUri = ""
-  if (node.isFolder) {
-    if (isAbapNode(node) && node.abapObject.type.match(/(CLAS)|(PROG)/)) {
-      const main = await findMainIncludeAsync(
-        { path: uri.path, node },
-        server.client
-      )
+  if (isFolder(node)) {
+    if (isAbapFolder(node) && node.object.type.match(/(CLAS)|(PROG)/)) {
+      const main = node.mainInclude(uri.path)
       openUri = main ? uri.with({ path: main.path }).toString() : ""
     }
   } else {
@@ -287,7 +284,7 @@ export class FavouritesProvider implements TreeDataProvider<FavItem> {
         this.storage,
         "json"
       )
-      if (isArray(saved))
+      if (Array.isArray(saved))
         for (const s of saved)
           root.set(
             s[0],

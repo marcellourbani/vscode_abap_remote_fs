@@ -69,11 +69,10 @@ export class MySearchResult implements QuickPickItem, AdtSearchResult {
 
 // tslint:disable-next-line:max-classes-per-file
 export class AdtObjectFinder {
-  public types?: Map<string, SearchObjectType>
   constructor(public readonly connId: string) {}
 
-  public async vscodeUri(uri: string) {
-    const { path } = (await getRoot(this.connId).findByAdtUri(uri, true)) || {}
+  public async vscodeUri(uri: string, main = true) {
+    const { path } = (await getRoot(this.connId).findByAdtUri(uri, main)) || {}
     if (!path) throw new Error(`can't find an URL for ${uri}`)
     return path
   }

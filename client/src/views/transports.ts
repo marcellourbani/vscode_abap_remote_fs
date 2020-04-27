@@ -1,7 +1,6 @@
 import { showInGui } from "./../adt/sapgui/sapgui"
 import { PACKAGE } from "../adt/operations/AdtObjectCreator"
 import { AbapRevision } from "../scm/abaprevision"
-import { AdtServer, getOrCreateServer } from "../adt/AdtServer"
 import {
   TreeDataProvider,
   TreeItem,
@@ -14,7 +13,6 @@ import {
   commands,
   env
 } from "vscode"
-import { ADTSCHEME, fromUri } from "../adt/AdtServer"
 import {
   TransportTarget,
   TransportRequest,
@@ -25,13 +23,15 @@ import {
   SAPRC
 } from "abap-adt-api"
 import { command, AbapFsCommands } from "../commands"
-import { isAbapNode } from "../fs/AbapNode"
-import {
-  findMainIncludeAsync,
-  allChildren,
-  NodePath
-} from "../adt/abap/AbapObjectUtilities"
 import { withp } from "../lib"
+import {
+  getClient,
+  ADTSCHEME,
+  getOrCreateClient,
+  getRoot,
+  createUri
+} from "../adt/conections"
+import { isFolder, isAbapStat, PathItem, isAbapFolder } from "abapfs"
 
 const currentUsers = new Map<string, string>()
 
@@ -52,8 +52,8 @@ class CollectionItem extends TreeItem {
 // tslint:disable: max-classes-per-file
 class ConnectionItem extends CollectionItem {
   private get user() {
-    const server = fromUri(this.uri)
-    return currentUsers.get(server.connectionId) || server.client.username
+    const client = getClient(this.uri.authority)
+    return currentUsers.get(this.uri.authority) || client.username
   }
 
   public get label() {
@@ -71,15 +71,15 @@ class ConnectionItem extends CollectionItem {
 
   public async getChildren() {
     if (this.children.length === 0 && !!this.uri) {
-      const server = fromUri(this.uri)
-      const transports = await server.client.userTransports(this.user)
+      const client = getClient(this.uri.authority)
+      const transports = await client.userTransports(this.user)
 
       for (const cat of ["workbench", "customizing"]) {
         const targets = (transports as any)[cat] as TransportTarget[]
         if (!targets.length) continue
         const coll = new CollectionItem(cat)
         for (const target of targets)
-          coll.addChild(new TargetItem(target, server))
+          coll.addChild(new TargetItem(target, this.uri.authority))
         this.children.push(coll)
       }
     }
@@ -88,7 +88,7 @@ class ConnectionItem extends CollectionItem {
 }
 
 class TargetItem extends CollectionItem {
-  constructor(target: TransportTarget, server: AdtServer) {
+  constructor(target: TransportTarget, connId: string) {
     super(`${target["tm:name"]} ${target["tm:desc"]}`)
 
     for (const cat of ["modifiable", "released"]) {
@@ -96,7 +96,7 @@ class TargetItem extends CollectionItem {
       if (!transports.length) continue
       const coll = new CollectionItem(cat)
       for (const transport of transports)
-        coll.addChild(new TransportItem(transport, server))
+        coll.addChild(new TransportItem(transport, connId))
       this.children.push(coll)
     }
   }
@@ -134,7 +134,7 @@ class TransportItem extends CollectionItem {
           tasks.push(tran)
           for (const task of tasks) {
             if (!TransportItem.isA(task)) continue // just to make ts happy
-            const reports = await task.server.client.transportRelease(
+            const reports = await getClient(task.connId).transportRelease(
               task.task["tm:number"]
             )
             const failure = reports.find(r => r["chkrun:status"] !== "released")
@@ -163,7 +163,7 @@ class TransportItem extends CollectionItem {
 
   constructor(
     public task: TransportTask,
-    public server: AdtServer,
+    public connId: string,
     public transport?: TransportItem
   ) {
     super(`${task["tm:number"]} ${task["tm:owner"]} ${task["tm:desc"]}`)
@@ -171,10 +171,10 @@ class TransportItem extends CollectionItem {
     this.collapsibleState = TreeItemCollapsibleState.Collapsed
     if (isTransport(task))
       for (const subTask of task.tasks) {
-        this.addChild(new TransportItem(subTask, server, this))
+        this.addChild(new TransportItem(subTask, connId, this))
       }
     for (const obj of task.objects) {
-      this.addChild(new ObjectItem(obj, server, this))
+      this.addChild(new ObjectItem(obj, connId, this))
     }
   }
 
@@ -195,7 +195,7 @@ class ObjectItem extends CollectionItem {
   public readonly typeId: symbol
   constructor(
     public readonly obj: TransportObject,
-    public readonly server: AdtServer,
+    public readonly connId: string,
     public readonly transport: TransportItem
   ) {
     super(`${obj["tm:pgmid"]} ${obj["tm:type"]} ${obj["tm:name"]}`)
@@ -206,7 +206,7 @@ class ObjectItem extends CollectionItem {
       this.command = {
         title: "Open",
         command: AbapFsCommands.openTransportObject,
-        arguments: [this.obj, this.server]
+        arguments: [this.obj, this.connId]
       }
   }
 
@@ -258,10 +258,8 @@ export class TransportsProvider implements TreeDataProvider<CollectionItem> {
       f => f.uri.scheme === ADTSCHEME
     )
     for (const f of folders) {
-      const server = await getOrCreateServer(f.uri.authority)
-      const hasTR = await server.client.featureDetails(
-        "Change and Transport System"
-      )
+      const client = await getOrCreateClient(f.uri.authority)
+      const hasTR = await client.featureDetails("Change and Transport System")
       if (
         hasTR &&
         hasTR.collection.find(
@@ -281,13 +279,13 @@ export class TransportsProvider implements TreeDataProvider<CollectionItem> {
   // tslint:disable: member-ordering
   private static async decodeTransportObject(
     obj: TransportObject,
-    server: AdtServer,
+    connId: string,
     main = true
   ) {
-    if (!obj || !server) return
-    let url
+    if (!obj) return
+    let url: string
     try {
-      url = await server.client.transportReference(
+      url = await getClient(connId).transportReference(
         obj["tm:pgmid"],
         obj["tm:type"],
         obj["tm:name"]
@@ -296,16 +294,9 @@ export class TransportsProvider implements TreeDataProvider<CollectionItem> {
       return
     }
     try {
-      const steps = await server.objectFinder.findObjectPath(url)
-      const path = await server.objectFinder.locateObject(steps)
-      if (!path) return
-      if (!main || !path.node.isFolder) return path
-
-      if (
-        isAbapNode(path.node) &&
-        path.node.abapObject.type.match(/(CLAS)|(PROG)/)
-      )
-        return await findMainIncludeAsync(path, server.client)
+      const root = getRoot(connId)
+      const path = await root.findByAdtUri(url, true)
+      return path
     } catch (e) {
       throw new Error(
         `Error locating object ${obj["tm:pgmid"]} ${obj["tm:type"]} ${
@@ -320,14 +311,14 @@ export class TransportsProvider implements TreeDataProvider<CollectionItem> {
     let displayed = false
     try {
       await withp("Opening diff...", async () => {
-        const path = await this.decodeTransportObject(item.obj, item.server)
-        if (!path || !path.path || !isAbapNode(path.node)) return
-        const uri = item.server.createUri(path.path)
-        const obj = path.node.abapObject
-        if (!obj.structure) await obj.loadMetadata(item.server.client)
+        const path = await this.decodeTransportObject(item.obj, item.connId)
+        if (!path || !path.path || !isAbapStat(path.file)) return
+        const uri = createUri(item.connId, path.path)
+        const obj = path.file.object
+        if (!obj.structure) await obj.loadStructure()
         if (!obj.structure) return
 
-        const revisions = await item.server.client.revisions(obj.structure)
+        const revisions = await getClient(item.connId).revisions(obj.structure)
         const beforeTr = revisions.find(
           r => !r.version.match(item.transport.revisionFilter)
         )
@@ -346,15 +337,15 @@ export class TransportsProvider implements TreeDataProvider<CollectionItem> {
   @command(AbapFsCommands.openTransportObject)
   private static async openTransportObject(
     obj: TransportObject,
-    server: AdtServer
+    connId: string
   ) {
     let displayed = false
     try {
       await withp("Opening object...", async () => {
-        const path = await this.decodeTransportObject(obj, server)
+        const path = await this.decodeTransportObject(obj, connId)
         if (!path || !path.path) return
         const uri = Uri.parse("adt://foo/").with({
-          authority: server.connectionId,
+          authority: connId,
           path: path.path
         })
 
@@ -375,7 +366,7 @@ export class TransportsProvider implements TreeDataProvider<CollectionItem> {
   @command(AbapFsCommands.deleteTransport)
   private static async deleteTransport(tran: TransportItem) {
     try {
-      await tran.server.client.transportDelete(tran.task["tm:number"])
+      await getClient(tran.connId).transportDelete(tran.task["tm:number"])
       this.refreshTransports()
     } catch (e) {
       window.showErrorMessage(e.toString())
@@ -387,8 +378,8 @@ export class TransportsProvider implements TreeDataProvider<CollectionItem> {
     TransportsProvider.get().refresh()
   }
 
-  private static async pickUser(client: ADTClient) {
-    const users = (await client.systemUsers()).map(u => ({
+  private static async pickUser(connId: string) {
+    const users = (await getClient(connId).systemUsers()).map(u => ({
       label: u.title,
       description: u.id,
       payload: u
@@ -400,9 +391,9 @@ export class TransportsProvider implements TreeDataProvider<CollectionItem> {
   @command(AbapFsCommands.transportOwner)
   private static async transportOwner(tran: TransportItem) {
     try {
-      const selected = await this.pickUser(tran.server.client)
+      const selected = await this.pickUser(tran.connId)
       if (selected && selected.id !== tran.task["tm:owner"]) {
-        await tran.server.client.transportSetOwner(
+        await getClient(tran.connId).transportSetOwner(
           tran.task["tm:number"],
           selected.id
         )
@@ -415,7 +406,7 @@ export class TransportsProvider implements TreeDataProvider<CollectionItem> {
 
   @command(AbapFsCommands.transportOpenGui)
   private static openTransportInGui(tran: TransportItem) {
-    return showInGui(tran.server, tran.task["tm:uri"])
+    return showInGui(tran.connId, tran.task["tm:uri"])
   }
 
   @command(AbapFsCommands.transportCopyNumber)
@@ -426,9 +417,9 @@ export class TransportsProvider implements TreeDataProvider<CollectionItem> {
   @command(AbapFsCommands.transportAddUser)
   private static async transportAddUser(tran: TransportItem) {
     try {
-      const selected = await this.pickUser(tran.server.client)
+      const selected = await this.pickUser(tran.connId)
       if (selected && selected.id !== tran.task["tm:owner"]) {
-        await tran.server.client.transportAddUser(
+        await getClient(tran.connId).transportAddUser(
           tran.task["tm:number"],
           selected.id
         )
@@ -453,14 +444,14 @@ export class TransportsProvider implements TreeDataProvider<CollectionItem> {
 
     if (!trobjects.length) return
 
-    const paths: NodePath[] = []
-    const addNode = async (node: NodePath) => {
-      if (isAbapNode(node.node) && node.node.abapObject.canBeWritten) {
+    const paths: PathItem[] = []
+    const addNode = async (node: PathItem) => {
+      if (isAbapStat(node.file) && node.file.object.canBeWritten) {
         if (paths.find(p => p.path === node.path)) return
         paths.push(node)
         await AbapRevision.get().addTransport(
           tran.label || transport,
-          tran.server,
+          tran.connId,
           [node],
           tran.revisionFilter
         )
@@ -480,19 +471,21 @@ export class TransportsProvider implements TreeDataProvider<CollectionItem> {
           try {
             const path = await this.decodeTransportObject(
               tro.obj,
-              tro.server,
+              tro.connId,
               false
             )
             if (!path) continue
-            if (path.node.isFolder) {
+            if (isAbapFolder(path.file)) {
               // expand folders to children
-              if (!isAbapNode(path.node)) continue
-              const obj = path.node.abapObject
+              if (!isAbapStat(path.file)) continue
+              const obj = path.file.object
               // for packages we don't really care about contents
               if (obj.type === PACKAGE) continue
+              const allChildren = (item: PathItem) =>
+                isFolder(item.file) ? [...item.file.expandPath(item.path)] : []
               let components = allChildren(path)
               if (components.length === 0) {
-                await path.node.refresh(tro.server.client)
+                await path.file.refresh()
                 components = allChildren(path)
               }
               for (const child of allChildren(path)) await addNode(child)
@@ -507,15 +500,14 @@ export class TransportsProvider implements TreeDataProvider<CollectionItem> {
 
   @command(AbapFsCommands.transportUser)
   private static async transportSelectUser(conn: ConnectionItem) {
-    const server = fromUri(conn.uri)
-    if (!server) return
-    const selected = await this.pickUser(server.client)
+    const connId = conn.uri.authority
+    const selected = await this.pickUser(connId)
 
     if (!selected) return
 
-    if (currentUsers.get(server.connectionId) === selected.id) return
+    if (currentUsers.get(connId) === selected.id) return
 
-    currentUsers.set(server.connectionId, selected.id)
+    currentUsers.set(connId, selected.id)
     this.refreshTransports()
   }
 }

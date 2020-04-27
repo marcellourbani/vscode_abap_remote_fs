@@ -280,12 +280,12 @@ export class AdtCommands {
       if (!fsRoot) return
       await runInSapGui(uri.authority, async () => {
         const object = findAbapObject(uri)
-        const command: SapGuiCommand = {
+        const cmd: SapGuiCommand = {
           type: "Transaction",
           command: "SADT_START_WB_URI",
           parameters: [{ name: "D_OBJECT_URI", value: object.path }]
         }
-        return command
+        return cmd
       })
     } catch (e) {
       return window.showErrorMessage(e.toString())
