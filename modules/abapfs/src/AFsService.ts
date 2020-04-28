@@ -13,14 +13,22 @@ export class AFsService extends AOService implements AbapFsService {
   objectPath(path: string) {
     return this.client.statelessClone.findObjectPath(path)
   }
-  lock(path: string) {
-    return this.client.lock(path)
+  async lock(path: string) {
+    const oldstateful = this.client.stateful
+    this.client.stateful = session_types.stateful
+    try {
+      return await this.client.lock(path)
+    } catch (error) {
+      this.client.stateful = oldstateful
+      throw error
+    }
   }
+
   async unlock(path: string, lockHandle: string) {
     const oldstateful = this.client.stateful
     this.client.stateful = session_types.stateful
     try {
-      await this.client.unLock(path, lockHandle)
+      return await this.client.unLock(path, lockHandle)
     } catch (error) {
       this.client.stateful = oldstateful
       throw error

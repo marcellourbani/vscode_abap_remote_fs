@@ -12,6 +12,8 @@ const missing = (connId: string) => {
   return FileSystemError.FileNotFound(`No ABAP server defined for ${connId}`)
 }
 
+export const abapUri = (u: Uri) => u.scheme === ADTSCHEME
+
 async function create(connId: string) {
   const manager = RemoteManager.get()
   const connection = await manager.byIdAsync(connId)
@@ -31,13 +33,13 @@ async function create(connId: string) {
   return client
 }
 
-export async function getOrCreateClient(connId: string) {
+export async function getOrCreateClient(connId: string, clone = true) {
   let client = clients.get(connId)
   if (!client) {
     client = await create(connId)
     clients.set(connId, client)
   }
-  return client.statelessClone
+  return clone ? client.statelessClone : client
 }
 
 export function getClient(connId: string) {
@@ -60,7 +62,7 @@ export const uriRoot = (uri: Uri) => {
 export const getOrCreateRoot = async (connId: string) => {
   const root = roots.get(connId)
   if (root) return root
-  const client = await getOrCreateClient(connId)
+  const client = await getOrCreateClient(connId, false)
   const service = new AFsService(client)
   const newRoot = new Root(connId, service)
   roots.set(connId, newRoot)

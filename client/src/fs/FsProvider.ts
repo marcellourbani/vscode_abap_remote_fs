@@ -94,7 +94,7 @@ export class FsProvider implements FileSystemProvider {
         if (lock.status === "locked") {
           await node.write(content.toString(), lock.LOCK_HANDLE)
           this.pEventEmitter.fire([{ type: FileChangeType.Changed, uri }])
-        }
+        } else throw new Error(`File ${uri.path} was not locked`)
       } else throw FileSystemError.FileNotFound(uri)
     } catch (e) {
       log(`Error writing file ${uri.toString()}\n${e.toString()}`)

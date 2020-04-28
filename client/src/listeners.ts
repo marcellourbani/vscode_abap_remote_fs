@@ -12,7 +12,7 @@ import {
 
 import { IncludeLensP } from "./adt/operations/IncludeLens"
 import { debounce } from "./lib"
-import { ADTSCHEME, uriRoot } from "./adt/conections"
+import { ADTSCHEME, uriRoot, abapUri } from "./adt/conections"
 import { AbapObject } from "abapobject"
 import { isAbapFolder, isAbapStat } from "abapfs"
 
@@ -26,6 +26,7 @@ export const listener = <T>(event: Event<T>) => (
   listenersubscribers.push(func)
 }
 export async function documentClosedListener(doc: TextDocument) {
+  if (!abapUri(doc.uri)) return
   const uri = doc.uri
   const root = uriRoot(uri)
   if (uri.scheme === ADTSCHEME) {
@@ -52,7 +53,7 @@ const doclock = debounce(200, async (document: TextDocument) => {
 
 export async function documentChangedListener(event: TextDocumentChangeEvent) {
   const uri = event.document.uri
-  if (uri.scheme !== ADTSCHEME) return
+  if (!abapUri(uri)) return
   // only need to (un)lock if the isDirty flag changed, which implies a status change without edits
   // will call anyway if dirty as locking is mandatory for saving
   if (event.contentChanges.length === 0 || event.document.isDirty)
