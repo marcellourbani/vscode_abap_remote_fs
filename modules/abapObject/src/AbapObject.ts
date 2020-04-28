@@ -2,8 +2,7 @@ import {
   AbapObjectStructure,
   MainInclude,
   NodeStructure,
-  isNodeParent,
-  ADTClient
+  isNodeParent
 } from "abap-adt-api"
 import { AbapObjectService } from "./AOService"
 import { ObjectErrors } from "./AOError"
@@ -155,13 +154,16 @@ export class AbapObjectBase implements AbapObject {
   }
   async write(contents: string, lockId: string, transport: string) {
     if (this.expandable) throw ObjectErrors.notLeaf(this)
-    if (!this.supported) throw ObjectErrors.NotSupported(this)
+    if (!this.canBeWritten) throw ObjectErrors.NotSupported(this)
     await this.service.setObjectSource(
       this.contentsPath(),
       contents,
       lockId,
       transport
     )
+    this.service.invalidateStructCache(this.path)
+    if (this.lockObject !== this)
+      this.service.invalidateStructCache(this.lockObject.path)
   }
   async read() {
     if (this.expandable) throw ObjectErrors.notLeaf(this)

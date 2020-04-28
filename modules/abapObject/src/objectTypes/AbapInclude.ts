@@ -18,7 +18,9 @@ export class AbapInclude extends AbapObjectBase {
     super(type, name, path, expandable, techName, parent, client)
     this[tag] = true
   }
+
   [tag]: boolean
+
   get extension() {
     return ".prog.abap"
   }

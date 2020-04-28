@@ -1,10 +1,11 @@
-import { AbapObjectBase, AbapObject } from "./AbapObject"
+import { AbapObject } from "./AbapObject"
 import { AbapObjectService } from "./AOService"
 import { mock, MockProxy } from "jest-mock-extended"
 import { isAbapObjectError, Kind } from "./AOError"
 import sampleNodeContents from "./sampledata/nodeContents1.json"
 import sampleMetadata from "./sampledata/classstructure1.json"
 import { create } from "."
+import { AbapClassInclude, isAbapClassInclude } from "./objectTypes"
 interface Counts {
   getObjectSource?: number
   mainPrograms?: number
@@ -120,14 +121,13 @@ async function supportedFolderAssertions(
 }
 
 async function supportedFileAssertions(
-  cut: AbapObject,
+  cut: AbapClassInclude,
   client: MockProxy<AbapObjectService>
 ) {
   expect(cut.expandable).toBeFalsy()
   expect(cut.canBeWritten).toBeTruthy()
   await expectException(() => cut.childComponents(), "NoChildren")
-  await expectException(() => cut.loadStructure(), "NotSupported")
-  expect(cut.lockObject).toBe(cut)
+  expect(cut.lockObject).toBe(cut.parent)
   neverCalled(client)
   const sample = "Hello, World"
   client.getObjectSource.mockReturnValue(Promise.resolve(sample))
@@ -135,7 +135,8 @@ async function supportedFileAssertions(
   expect(client.getObjectSource).toBeCalledTimes(1)
   expect(source).toBe(sample)
   cut.write("", "", "")
-  expect(client.setObjectSource).toBeCalledTimes(1)
+  await expect(client.setObjectSource).toBeCalledTimes(1)
+  expect(client.invalidateStructCache).toBeCalledTimes(2)
 }
 
 test("create $TMP package", async () => {
@@ -232,6 +233,7 @@ const createClas = (client: AbapObjectService) =>
 
 test("create class main include", async () => {
   const client = mock<AbapObjectService>()
+  client.objectStructure.mockResolvedValue(sampleMetadata)
   const cut = create(
     "CLAS/I",
     "ZCL_Z001_DPC_EXT.main",
@@ -241,9 +243,10 @@ test("create class main include", async () => {
     createClas(client),
     client
   )
+  if (!isAbapClassInclude(cut)) fail("Class include expected")
   expect(cut.fsName).toBe("ZCL_Z001_DPC_EXT.clas.abap")
   expect(cut.key).toBe("CLAS/I ZCL_Z001_DPC_EXT.main")
-  supportedFileAssertions(cut, client)
+  await supportedFileAssertions(cut, client)
   await expect(cut.contentsPath()).toBe(cut.path)
 })
 
@@ -258,8 +261,9 @@ test("create class definitions include", async () => {
     createClas(client),
     client
   )
+  if (!isAbapClassInclude(cut)) fail("Class include expected")
   expect(cut.fsName).toBe("ZCL_Z001_DPC_EXT.clas.locals_def.abap")
   expect(cut.key).toBe("CLAS/I ZCL_Z001_DPC_EXT.definitions")
-  supportedFileAssertions(cut, client)
+  await supportedFileAssertions(cut, client)
   await expect(cut.contentsPath()).toBe(cut.path)
 })

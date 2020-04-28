@@ -33,7 +33,8 @@ export class AbapFile implements FileStat {
   }
 
   size = 0
-  read() {
+  async read() {
+    if (!this.object.structure) await this.object.loadStructure()
     return this.object.read()
   }
   write(contents: string, lockId: string, transportId = "") {
