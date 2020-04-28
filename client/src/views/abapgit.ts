@@ -25,21 +25,28 @@ import {
 import { quickPick } from "../lib"
 import { addRepo, repoCredentials } from "../scm/abapGit"
 import { isNone, none, isSome } from "fp-ts/lib/Option"
-import { getClient, ADTSCHEME, getOrCreateClient } from "../adt/conections"
+import {
+  getClient,
+  ADTSCHEME,
+  getOrCreateClient,
+  createUri
+} from "../adt/conections"
 import { AdtObjectFinder } from "../adt/operations/AdtObjectFinder"
 
 const confirm = "Confirm"
 interface AbapGitItem extends TreeItem {
+  tag: "repo"
   repo: GitRepo
 }
 
 interface ServerItem extends TreeItem {
+  tag: "server"
   connId: string
   children: AbapGitItem[]
 }
 
 const isServerItem = (item: TreeItem): item is ServerItem =>
-  !!(item as any).server
+  (item as any).tag === "server"
 
 export const confirmPull = (pkg: string) =>
   window
@@ -68,6 +75,7 @@ class AbapGit {
   private async getServerItem(connId: string) {
     const repos = await getClient(connId).gitRepos()
     const item: ServerItem = {
+      tag: "server",
       connId,
       id: v1(),
       contextValue: "system",
@@ -82,6 +90,7 @@ class AbapGit {
     const canpush = !!repo.links.find(l => l.type === "push_link")
     const contextValue = canpush ? "repository_push" : "repository"
     return {
+      tag: "repo",
       repo,
       id: v1(),
       label: repo.sapPackage,
@@ -159,8 +168,8 @@ class AbapGitProvider implements TreeDataProvider<TreeItem> {
     if (!found) return
 
     const finder = await new AdtObjectFinder(server.connId)
-    const uri = await finder.vscodeUri(found["adtcore:uri"])
-    commands.executeCommand("revealInExplorer", uri)
+    const uri = await finder.vscodeUri(found["adtcore:uri"], false)
+    commands.executeCommand("revealInExplorer", createUri(server.connId, uri))
   }
 
   private openRepo(repoItem: AbapGitItem) {

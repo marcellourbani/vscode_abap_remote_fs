@@ -80,11 +80,7 @@ export class FsProvider implements FileSystemProvider {
     throw FileSystemError.Unavailable(uri)
   }
 
-  public async writeFile(
-    uri: Uri,
-    content: Uint8Array,
-    options: { create: boolean; overwrite: boolean }
-  ): Promise<void> {
+  public async writeFile(uri: Uri, content: Uint8Array): Promise<void> {
     try {
       const root = await getOrCreateRoot(uri.authority)
       const node = await root.getNodeAsync(uri.path)
@@ -93,6 +89,7 @@ export class FsProvider implements FileSystemProvider {
         const lock = root.lockManager.lockStatus(uri.path)
         if (lock.status === "locked") {
           await node.write(content.toString(), lock.LOCK_HANDLE)
+          await root.lockManager.requestUnlock(uri.path, true)
           this.pEventEmitter.fire([{ type: FileChangeType.Changed, uri }])
         } else throw new Error(`File ${uri.path} was not locked`)
       } else throw FileSystemError.FileNotFound(uri)

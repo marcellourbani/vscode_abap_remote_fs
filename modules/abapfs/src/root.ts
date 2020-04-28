@@ -27,6 +27,7 @@ const findInFolder = (
   return file.findAbapObject(
     step["adtcore:type"],
     step["adtcore:name"],
+    step["adtcore:uri"],
     `${name}`
   )
 }

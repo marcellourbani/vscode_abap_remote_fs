@@ -7,14 +7,17 @@ import {
   Uri,
   Disposable,
   Event,
-  TextDocumentWillSaveEvent
+  TextDocumentWillSaveEvent,
+  workspace
 } from "vscode"
 
 import { IncludeLensP } from "./adt/operations/IncludeLens"
 import { debounce } from "./lib"
-import { ADTSCHEME, uriRoot, abapUri } from "./adt/conections"
+import { ADTSCHEME, uriRoot, abapUri, getRoot } from "./adt/conections"
 import { AbapObject } from "abapobject"
 import { isAbapFolder, isAbapStat } from "abapfs"
+import { isCsrfError } from "abap-adt-api"
+import { LockStatus } from "abapfs/out/lockObject"
 
 export const listenersubscribers: ((...x: any[]) => Disposable)[] = []
 
@@ -35,6 +38,76 @@ export async function documentClosedListener(doc: TextDocument) {
   }
 }
 
+export async function reconnectExpired(uri: Uri) {
+  const ok = "Ok"
+  const lm = uriRoot(uri).lockManager
+
+  const resp = lm.lockedPaths().next().value
+    ? await window.showErrorMessage(
+        "Session expired, files can't be locked might be stale. Try to refresh locks?",
+        "Ok",
+        "Cancel"
+      )
+    : ok
+  if (resp === ok) {
+    await lm.restore()
+    return true
+  }
+  return false
+}
+
+type LockValidator = (l: LockStatus) => Promise<boolean>
+async function validateLock(lock: LockStatus) {
+  const ok = "Ok"
+  if (lock.status === "locked" && lock.IS_LINK_UP) {
+    const resp = await window.showWarningMessage(
+      `Object is locked, a new task will be created in ${lock.CORRUSER}'s ${lock.CORRNR} ${lock.CORRTEXT}`,
+      ok,
+      "Cancel"
+    )
+    return resp === ok
+  }
+  return true
+}
+
+export const isExpired = (error: any) =>
+  isCsrfError(error) ||
+  (error.message === "Session timed out" && error.err === 400)
+
+export async function setDocumentLock(
+  document: TextDocument,
+  interactive = false,
+  retry = true
+) {
+  const uri = document.uri
+  if (!abapUri(uri)) return
+
+  const lockManager = getRoot(uri.authority).lockManager
+
+  const cb = interactive ? validateLock : undefined
+  if (document.isDirty)
+    try {
+      const lock = await lockManager.requestLock(uri.path)
+      if (!validateLock(lock)) await lockManager.requestUnlock(uri.path)
+    } catch (e) {
+      if (isExpired(e)) {
+        if (retry && (await reconnectExpired(document.uri)))
+          setDocumentLock(document, interactive, false)
+      } else
+        window.showErrorMessage(
+          `${e.toString()}\nWon't be able to save changes`
+        )
+    }
+  else await lockManager.requestUnlock(uri.path)
+
+  return await lockManager.finalStatus(uri.path)
+}
+// when the extension is deactivated, all locks are dropped
+// try to restore them as needed
+export async function restoreLocks() {
+  return Promise.all(workspace.textDocuments.map(doc => setDocumentLock(doc)))
+}
+
 // debouncing is important for an edge case:
 // if the object is modified but not locked, undoing the changes and restoring the editor
 // would result in an attempt to lock (perhaps with an error or a request to select a transport)
@@ -42,9 +115,7 @@ export async function documentClosedListener(doc: TextDocument) {
 // after debouncing it will only process the last status
 const doclock = debounce(200, async (document: TextDocument) => {
   try {
-    // TODO: session timeouts,UI messages
-    const root = uriRoot(document.uri)
-    await root.lockManager.requestLock(document.uri.path)
+    await setDocumentLock(document)
   } finally {
     const editor = window.activeTextEditor
     if (editor && editor.document === document) showHideActivate(editor)
@@ -76,11 +147,7 @@ export function documentOpenListener(document: TextDocument) {
 }
 
 function isInactive(obj: AbapObject): boolean {
-  const inactive = !!(
-    obj &&
-    obj.structure &&
-    obj.structure.metaData["adtcore:version"] === "inactive"
-  )
+  const inactive = !!(obj.structure?.metaData["adtcore:version"] === "inactive")
   return inactive
 }
 

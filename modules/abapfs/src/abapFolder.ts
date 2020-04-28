@@ -92,11 +92,12 @@ export class AbapFolder extends Folder {
     return first
   }
 
-  findAbapObject(type: string, name: string, pathPrefix: string) {
+  findAbapObject(type: string, name: string, url: string, pathPrefix: string) {
     for (const child of this.expandPath(pathPrefix))
       if (isAbapStat(child.file)) {
         const obj = child.file.object
-        if (obj.type === type && obj.name === name) return child
+        if (obj.path === url || (obj.type === type && obj.name === name))
+          return child
       }
   }
 }

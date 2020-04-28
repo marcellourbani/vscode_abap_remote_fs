@@ -32,10 +32,10 @@ export class MethodLocator {
 
     if (isAbapFile(node)) {
       if (!node.object.structure) await node.object.loadStructure()
-      const contantsUrl = node.object.contentsPath()
+      const contentsUrl = node.object.contentsPath()
       const source = await this.getSource(node)
       return getClient(this.connId).findDefinition(
-        contantsUrl,
+        contentsUrl,
         source,
         pos.line + 1,
         pos.character,

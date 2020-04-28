@@ -13,7 +13,8 @@ import {
   documentChangedListener,
   documentClosedListener,
   documentOpenListener,
-  documentWillSave
+  documentWillSave,
+  restoreLocks
 } from "./listeners"
 import { log } from "./lib"
 import { client, LanguageCommands } from "./langClient"
@@ -26,7 +27,7 @@ import { abapGitProvider } from "./views/abapgit"
 import { loadTokens, clearTokens } from "./oauth"
 import { registerAbapGit } from "./scm/abapGit"
 import { AbapFsApi, api } from "./api"
-import { ADTSCHEME, restoreLocks, disconnect, hasLocks } from "./adt/conections"
+import { ADTSCHEME, disconnect, hasLocks } from "./adt/conections"
 export let context: ExtensionContext
 
 export async function activate(ctx: ExtensionContext): Promise<AbapFsApi> {

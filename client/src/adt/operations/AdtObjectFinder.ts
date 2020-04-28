@@ -74,7 +74,7 @@ export class AdtObjectFinder {
   public async vscodeUri(uri: string, main = true) {
     const { path } = (await getRoot(this.connId).findByAdtUri(uri, main)) || {}
     if (!path) throw new Error(`can't find an URL for ${uri}`)
-    return path
+    return createUri(this.connId, path).toString()
   }
   public async vscodeRange(uri: string) {
     const u = splitAdtUri(uri)

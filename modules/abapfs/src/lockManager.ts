@@ -36,8 +36,8 @@ export class LockManager {
     return this.lockObject(path).requestLock(path)
   }
 
-  requestUnlock(path: string) {
-    const request = this.lockObject(path).requestUnlock(path)
+  requestUnlock(path: string, immediate = false) {
+    const request = this.lockObject(path).requestUnlock(path, immediate)
     this.checkSession()
     return request
   }
@@ -48,6 +48,11 @@ export class LockManager {
 
   finalStatus(path: string) {
     return this.lockObject(path).finalStatus
+  }
+
+  /** used to restore locks after a session drop */
+  async restore() {
+    for (const obj of this.objects.values()) await obj.restore()
   }
 
   private noLocksOrPending() {

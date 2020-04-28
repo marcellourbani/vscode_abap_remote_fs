@@ -52,21 +52,28 @@ export class LockObject {
     return this.finalStatus
   }
 
-  async requestUnlock(path: string) {
+  async requestUnlock(path: string, immediate = false) {
     this.claims.delete(path)
-    await this.sync()
+    await this.sync(!immediate)
     return this.finalStatus
   }
 
-  private async sync() {
+  private async sync(wait = true) {
     const status = this.status.status
     if (this.claims.size && status === "unlocked") {
       return this.lock()
     } else if (this.claims.size === 0 && status === "locked") {
       // do not unlock if another lock request comes in within a second
-      await delay(1000)
+      if (wait) await delay(1000)
       if (this.claims.size === 0) return this.unlock()
     }
+  }
+  /** used to restore locks after a session drop */
+  async restore() {
+    if (this.status.status !== "locked") return
+    this.status = { status: "unlocked" }
+    await this.sync()
+    return this.finalStatus
   }
 
   private async unlock() {

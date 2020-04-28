@@ -196,7 +196,6 @@ export class AdtCommands {
   private static async activateCurrent(selector: Uri) {
     try {
       const uri = selector || currentUri()
-      const root = uriRoot(uri)
       const activator = AdtObjectActivator.get(uri.authority)
       const editor = findEditor(uri.toString())
       await window.withProgress(
@@ -207,7 +206,7 @@ export class AdtCommands {
           if (editor && editor.document.isDirty) {
             const saved = await editor.document.save()
             if (!saved) return
-          } else if (!obj.structure) await obj.loadStructure() // TODO replace with stat?
+          }
           await activator.activate(obj, uri)
           if (editor === window.activeTextEditor) {
             await obj.loadStructure() // TODO replace with stat?

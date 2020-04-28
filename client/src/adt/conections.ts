@@ -68,14 +68,14 @@ export const getOrCreateRoot = async (connId: string) => {
   roots.set(connId, newRoot)
   return newRoot
 }
-export function restoreLocks() {
-  return Promise.all(
-    workspace.textDocuments.map(async doc => {
-      if (doc.uri.scheme !== ADTSCHEME || !doc.isDirty) return
-      return uriRoot(doc.uri).lockManager.requestLock(doc.uri.path)
-    })
-  )
-}
+// export function restoreLocks() {
+//   return Promise.all(
+//     workspace.textDocuments.map(async doc => {
+//       if (doc.uri.scheme !== ADTSCHEME || !doc.isDirty) return
+//       return uriRoot(doc.uri).lockManager.requestLock(doc.uri.path)
+//     })
+//   )
+// }
 export function hasLocks() {
   for (const root of roots.values())
     if (root.lockManager.lockedPaths().next().value) return true
