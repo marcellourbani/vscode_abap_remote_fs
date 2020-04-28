@@ -22,12 +22,11 @@ export class AbapProgram extends AbapObjectBase {
         this,
         `metadata not loaded for ${this.key}`
       )
-    const OBJECT_URI = ADTClient.mainInclude(this.structure, true)
     valid.unshift({
       OBJECT_TYPE: "PROG/I",
       OBJECT_NAME: `${this.name}`,
       TECH_NAME: "",
-      OBJECT_URI,
+      OBJECT_URI: this.path,
       EXPANDABLE: "",
       OBJECT_VIT_URI: ""
     })

@@ -125,7 +125,16 @@ export class AbapObjectBase implements AbapObject {
   contentsPath() {
     if (this.expandable) throw ObjectErrors.notLeaf(this)
     if (!this.supported) throw ObjectErrors.NotSupported(this)
-    return this.path
+    if (!this.structure) throw ObjectErrors.noStructure(this)
+    const suffix =
+      this.structure?.metaData["abapsource:sourceUri"] ||
+      this.structure?.links?.find(
+        l =>
+          l.type === "text/plain" &&
+          l.rel === "http://www.sap.com/adt/relations/source"
+      )?.href
+    if (suffix) return suffix.match(/^\//) ? suffix : `${this.path}/${suffix}`
+    throw ObjectErrors.notLeaf(this)
   }
 
   async mainPrograms() {
@@ -135,7 +144,7 @@ export class AbapObjectBase implements AbapObject {
   }
 
   async loadStructure(): Promise<AbapObjectStructure> {
-    if (!this.expandable || !this.name) throw ObjectErrors.noStructure(this)
+    if (!this.name) throw ObjectErrors.noStructure(this)
     this.structure = await this.service.objectStructure(
       this.path.replace(/\/source\/main$/, "")
     )

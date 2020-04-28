@@ -5,6 +5,13 @@ import { isAbapObjectError, Kind } from "./AOError"
 import sampleNodeContents from "./sampledata/nodeContents1.json"
 import sampleMetadata from "./sampledata/classstructure1.json"
 import { create } from "."
+interface Counts {
+  getObjectSource?: number
+  mainPrograms?: number
+  nodeContents?: number
+  objectStructure?: number
+  setObjectSource?: number
+}
 
 async function expectException(fn: () => any, kind: Kind) {
   try {
@@ -16,12 +23,22 @@ async function expectException(fn: () => any, kind: Kind) {
   }
 }
 
-function neverCalled(client: MockProxy<AbapObjectService>) {
-  expect(client.getObjectSource).toBeCalledTimes(0)
-  expect(client.mainPrograms).toBeCalledTimes(0)
-  expect(client.nodeContents).toBeCalledTimes(0)
-  expect(client.objectStructure).toBeCalledTimes(0)
-  expect(client.setObjectSource).toBeCalledTimes(0)
+function neverCalled(client: MockProxy<AbapObjectService>, numbers?: Counts) {
+  const counts = {
+    ...{
+      getObjectSource: 0,
+      mainPrograms: 0,
+      nodeContents: 0,
+      objectStructure: 0,
+      setObjectSource: 0
+    },
+    ...numbers
+  }
+  expect(client.getObjectSource).toBeCalledTimes(counts.getObjectSource)
+  expect(client.mainPrograms).toBeCalledTimes(counts.mainPrograms)
+  expect(client.nodeContents).toBeCalledTimes(counts.nodeContents)
+  expect(client.objectStructure).toBeCalledTimes(counts.objectStructure)
+  expect(client.setObjectSource).toBeCalledTimes(counts.setObjectSource)
 }
 
 async function packageAssertions(
@@ -59,7 +76,7 @@ async function unsupportedAssertions(
   await expectException(() => cut.write("", "", ""), "NotSupported")
   await expectException(() => cut.mainPrograms(), "NotSupported")
   await expectException(() => cut.childComponents(), "NoChildren")
-  await expectException(() => cut.loadStructure(), "NoStructure")
+  // await expectException(() => cut.loadStructure(), "NoStructure")
   expect(cut.lockObject).toBe(cut)
   neverCalled(client)
   expect(cut.createdBy).toBe("")
@@ -75,23 +92,26 @@ async function supportedFolderAssertions(
 ) {
   expect(cut.expandable).toBeTruthy()
   expect(cut.canBeWritten).toBeFalsy()
+  expect(cut.lockObject).toBe(cut)
+  if (isClass) {
+    const struc = await cut.loadStructure()
+    expect(cut.structure).toEqual(sampleMetadata)
+    expect(cut.createdBy).toBe("DEVELOPER")
+    expect(cut.changedBy).toBe("DEVELOPER")
+    expect(cut.createdAt).toBeDefined()
+    expect(cut.changedAt).toBeDefined()
+    neverCalled(client, { objectStructure: 1 })
+  } else {
+    expect(cut.createdBy).toBe("")
+    expect(cut.changedBy).toBe("")
+    expect(cut.createdAt).toBeUndefined()
+    expect(cut.changedAt).toBeUndefined()
+    neverCalled(client)
+  }
   await expectException(() => cut.contentsPath(), "NotLeaf")
   await expectException(() => cut.write("", "", ""), "NotLeaf")
   await expectException(() => cut.read(), "NotLeaf")
   await expectException(() => cut.mainPrograms(), "NotLeaf")
-  // classes do have children but need special handling
-  if (!isClass)
-    await expectException(() => cut.childComponents(), "NotSupported")
-  expect(cut.lockObject).toBe(cut)
-  neverCalled(client)
-  expect(cut.createdBy).toBe("")
-  expect(cut.changedBy).toBe("")
-  expect(cut.createdAt).toBeUndefined()
-  expect(cut.changedAt).toBeUndefined()
-  client.objectStructure.mockReturnValue(Promise.resolve(sampleMetadata))
-  const struc = await cut.loadStructure()
-  expect(client.objectStructure).toBeCalledTimes(1)
-  expect(struc).toEqual(sampleMetadata)
   expect(cut.structure).toEqual(sampleMetadata)
   expect(cut.createdBy).toBe("DEVELOPER")
   expect(cut.changedBy).toBe("DEVELOPER")
@@ -184,6 +204,7 @@ test("create unsupported object", async () => {
 
 test("create class", async () => {
   const client = mock<AbapObjectService>()
+  client.objectStructure.mockResolvedValue(sampleMetadata)
   const cut = create(
     "CLAS/OC",
     "ZCL_ABAPGIT_USER_EXIT",

@@ -10,13 +10,13 @@ module.exports = {
   },
 
   // An array of directory names to be searched recursively up from the requiring module's location
-  moduleDirectories: [
-    "node_modules"
-  ],
+  moduleDirectories: ["node_modules"],
 
   // An array of file extensions your modules use
   moduleFileExtensions: ["ts", "tsx", "js"],
 
+  // The paths to modules that run some code to configure or set up the testing environment before each test
+  setupFiles: ["<rootDir>/setenv.js"],
 
   // The test environment that will be used for testing
   testEnvironment: "node",
@@ -28,5 +28,4 @@ module.exports = {
   transform: {
     "^.+\\.(ts|tsx)$": "ts-jest"
   }
-
 }
