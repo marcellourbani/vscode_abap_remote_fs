@@ -133,7 +133,9 @@ export function openObject(connId: string, uri: string) {
         )
         return
       } else if (isAbapFile(file))
-        await workspace.openTextDocument(createUri(connId, path))
+        await workspace
+          .openTextDocument(createUri(connId, path))
+          .then(window.showTextDocument)
       return { file, path }
     }
   )

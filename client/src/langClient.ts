@@ -66,7 +66,7 @@ async function readObjectSource(uri: string) {
   // ToDo: error message
   if (!isAbapFile(file)) throw new Error("fileNotFound")
   const code = await file.read()
-  return { source: code, url }
+  return { source: code, url: url.toString() }
 }
 
 function objectDetail(obj: AbapObject, mainProgram?: string) {
