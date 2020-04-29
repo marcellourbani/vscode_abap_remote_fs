@@ -33,8 +33,8 @@ export class AOService implements AbapObjectService {
 
   private structCache = new Map<string, Promise<AbapObjectStructure>>()
 
-  async delete(path: string, lockId: string, transport: string) {
-    this.client.statelessClone.deleteObject(path, lockId, transport)
+  delete(path: string, lockId: string, transport: string) {
+    return this.client.deleteObject(path, lockId, transport)
   }
 
   invalidateStructCache(uri: string) {

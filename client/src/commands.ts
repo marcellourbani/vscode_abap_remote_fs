@@ -15,7 +15,7 @@ import { showHideActivate } from "./listeners"
 import { abapUnit } from "./adt/operations/UnitTestRunner"
 import { selectTransport } from "./adt/AdtTransports"
 import { IncludeLensP } from "./adt/operations/IncludeLens"
-import { runInSapGui, SapGuiCommand } from "./adt/sapgui/sapgui"
+import { runInSapGui, SapGuiCommand, showInGui } from "./adt/sapgui/sapgui"
 import { storeTokens } from "./oauth"
 import { showAbapDoc } from "./views/help"
 import { getTestAdapter } from "./views/abapunit"
@@ -277,15 +277,16 @@ export class AdtCommands {
       if (!uri) return
       const fsRoot = await pickAdtRoot(uri)
       if (!fsRoot) return
-      await runInSapGui(uri.authority, async () => {
-        const object = findAbapObject(uri)
-        const cmd: SapGuiCommand = {
-          type: "Transaction",
-          command: "SADT_START_WB_URI",
-          parameters: [{ name: "D_OBJECT_URI", value: object.path }]
-        }
-        return cmd
-      })
+      await showInGui(uri.authority, uri.path)
+      // await runInSapGui(uri.authority, async () => {
+      //   const object = findAbapObject(uri)
+      //   const cmd: SapGuiCommand = {
+      //     type: "Transaction",
+      //     command: "SADT_START_WB_URI",
+      //     parameters: [{ name: "D_OBJECT_URI", value: object.path }]
+      //   }
+      //   return cmd
+      // })
     } catch (e) {
       return window.showErrorMessage(e.toString())
     }

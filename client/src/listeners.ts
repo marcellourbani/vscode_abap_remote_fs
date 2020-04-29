@@ -134,11 +134,8 @@ export async function documentChangedListener(event: TextDocumentChangeEvent) {
 export async function documentWillSave(e: TextDocumentWillSaveEvent) {
   const uri = e.document.uri
   if (uri.scheme !== ADTSCHEME) return
-  if (!e.document.isDirty) {
-    // TODO: session timeouts,UI messages
-    const root = uriRoot(e.document.uri)
-    await root.lockManager.requestLock(e.document.uri.path)
-  }
+  if (!e.document.isDirty)
+    await setDocumentLock({ ...e.document, isDirty: true }, true)
 }
 export function documentOpenListener(document: TextDocument) {
   const uri = document.uri

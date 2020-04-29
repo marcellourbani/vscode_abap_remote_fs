@@ -23,7 +23,7 @@ export class AbapProgram extends AbapObjectBase {
         `metadata not loaded for ${this.key}`
       )
     valid.unshift({
-      OBJECT_TYPE: "PROG/I",
+      OBJECT_TYPE: "PROG/P",
       OBJECT_NAME: `${this.name}`,
       TECH_NAME: "",
       OBJECT_URI: this.path,
@@ -33,8 +33,13 @@ export class AbapProgram extends AbapObjectBase {
     return { categories: [], objectTypes: [], nodes: valid }
   }
 
+  get extension() {
+    return this.expandable ? "" : ".prog.abap"
+  }
+
   async childComponents() {
     if (!this.structure) await this.loadStructure()
+    if (!this.expandable) return { nodes: [], categories: [], objectTypes: [] }
     return super.childComponents()
   }
 }

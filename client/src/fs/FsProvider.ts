@@ -1,4 +1,4 @@
-import { getOrCreateRoot } from "../adt/conections"
+import { getOrCreateRoot, selectTransportIfNeeded } from "../adt/conections"
 import {
   FileSystemError,
   FileChangeType,
@@ -85,10 +85,15 @@ export class FsProvider implements FileSystemProvider {
       const root = await getOrCreateRoot(uri.authority)
       const node = await root.getNodeAsync(uri.path)
       if (isAbapFile(node)) {
-        // TODO: transport selection
+        const trsel = await selectTransportIfNeeded(uri)
+        if (trsel.cancelled) return
         const lock = root.lockManager.lockStatus(uri.path)
         if (lock.status === "locked") {
-          await node.write(content.toString(), lock.LOCK_HANDLE)
+          await node.write(
+            content.toString(),
+            lock.LOCK_HANDLE,
+            trsel.transport
+          )
           await root.lockManager.requestUnlock(uri.path, true)
           this.pEventEmitter.fire([{ type: FileChangeType.Changed, uri }])
         } else throw new Error(`File ${uri.path} was not locked`)
@@ -104,13 +109,15 @@ export class FsProvider implements FileSystemProvider {
       const root = await getOrCreateRoot(uri.authority)
       const node = await root.getNodeAsync(uri.path)
       const lock = await root.lockManager.requestLock(uri.path)
+      // TODO: not working atm for programs
       if (lock.status === "locked") {
-        // TODO: transport selection
+        const trsel = await selectTransportIfNeeded(uri)
+        if (trsel.cancelled) return
         if (isAbapFolder(node) || isAbapFile(node))
-          return await node.delete(lock.LOCK_HANDLE, "")
+          return await node.delete(lock.LOCK_HANDLE, trsel.transport)
         else
           throw FileSystemError.Unavailable(
-            "Delrtion not supported for this object"
+            "Deletion not supported for this object"
           )
       } else throw FileSystemError.NoPermissions(`Unable to acquire lock`)
     } catch (e) {

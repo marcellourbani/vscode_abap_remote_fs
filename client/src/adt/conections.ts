@@ -1,7 +1,9 @@
 import { RemoteManager, createClient } from "../config"
-import { AFsService, Root, isAbapStat, AbapStat } from "abapfs"
+import { AFsService, Root, isAbapStat, AbapStat, isAbapFile } from "abapfs"
 import { Uri, FileSystemError, workspace } from "vscode"
 import { ADTClient } from "abap-adt-api"
+import { AbapObject, AbapObjectBase } from "abapobject"
+import { TransportStatus, trSel, selectTransport } from "./AdtTransports"
 export const ADTSCHEME = "adt"
 export const ADTURIPATTERN = /\/sap\/bc\/adt\//
 
@@ -115,4 +117,49 @@ export const pathSequence = (root: Root, uri: Uri | undefined): AbapStat[] => {
       // ignore
     }
   return []
+}
+
+interface TransportRequired {
+  status: TransportStatus.REQUIRED
+  transport: string
+}
+
+interface TransportSimple {
+  status: TransportStatus.LOCAL | TransportStatus.UNKNOWN
+}
+
+type TransportDetail = TransportRequired | TransportSimple
+
+const transportStatus = (uri: Uri): TransportDetail => {
+  const root = uriRoot(uri)
+  const file = root.getNode(uri.path)
+  if (!isAbapStat(file)) return { status: TransportStatus.UNKNOWN }
+  const status = root.lockManager.lockStatus(uri.path)
+  if (status.status === "locked") {
+    if (status.IS_LOCAL) return { status: TransportStatus.LOCAL }
+    return { status: TransportStatus.REQUIRED, transport: status.CORRNR || "" }
+  }
+  return { status: TransportStatus.UNKNOWN } // TODO different status?
+}
+
+export const selectTransportIfNeeded = async (uri: Uri) => {
+  const root = uriRoot(uri)
+  const file = root.getNode(uri.path)
+  if (!isAbapStat(file)) return trSel("")
+
+  const status = transportStatus(uri)
+  switch (status.status) {
+    case TransportStatus.LOCAL:
+      return trSel("")
+    case TransportStatus.REQUIRED:
+      return selectTransport(
+        file.object.contentsPath(),
+        "",
+        getClient(uri.authority),
+        false,
+        status.transport
+      )
+    case TransportStatus.UNKNOWN:
+      throw new Error("Unknown transport status. Object not locked?")
+  }
 }
