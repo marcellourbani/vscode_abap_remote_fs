@@ -1,0 +1,45 @@
+{
+    "objectUrl": "/sap/bc/adt/functions/groups/%2ffoo%2fbar/includes/%2ffoo%2flbartop",
+    "metaData": {
+        "abapsource:sourceUri": "source/main",
+        "adtcore:name": "/FOO/LBARTOP",
+        "adtcore:type": "FUGR/I",
+        "adtcore:changedAt": 1505384302000,
+        "adtcore:version": "active",
+        "adtcore:createdAt": 1505347200000,
+        "adtcore:changedBy": "DEVELOPER",
+        "adtcore:language": "EN",
+        "abapsource:activeUnicodeCheck": true,
+        "abapsource:fixPointArithmetic": true,
+        "adtcore:description": "",
+        "adtcore:descriptionTextLimit": 30,
+        "adtcore:masterLanguage": "",
+        "adtcore:masterSystem": "",
+        "adtcore:responsible": ""
+    },
+    "includes": [],
+    "links": [
+        {
+            "href": "source/main/versions",
+            "rel": "http://www.sap.com/adt/relations/versions"
+        },
+        {
+            "href": "source/main",
+            "rel": "http://www.sap.com/adt/relations/source",
+            "type": "text/plain",
+            "etag": 201709141018220000
+        },
+        {
+            "href": "source/main",
+            "rel": "http://www.sap.com/adt/relations/source",
+            "type": "text/html",
+            "etag": 201709141018220000
+        },
+        {
+            "href": "/sap/bc/adt/vit/wb/object_type/progpx/object_name/%2fFOO%2fSAPLBAR",
+            "rel": "http://www.sap.com/adt/relations/sources/textelements",
+            "type": "application/vnd.sap.sapgui",
+            "title": "Text elements"
+        }
+    ]
+}

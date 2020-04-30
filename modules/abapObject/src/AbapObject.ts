@@ -50,6 +50,15 @@ export interface AbapObject {
   readonly canBeWritten: boolean
   /** whether the object has structure/metadata */
   readonly hasStructure: boolean
+  /** objcect namespace
+   *  i.e. for /UI5/IF_ADT_REP_MODEL is /UI5/
+   */
+  readonly nameSpace: string
+  /** object base name
+   *   i.e. for /UI5/IF_ADT_REP_MODEL is IF_ADT_REP_MODEL
+   */
+  readonly baseName: string
+
   /** loads/updates the object metadata */
   loadStructure: () => Promise<AbapObjectStructure>
   delete: (lockId: string, transport: string) => Promise<void>
@@ -121,6 +130,13 @@ export class AbapObjectBase implements AbapObject {
     const ts = this.structure?.metaData["adtcore:changedAt"]
     return ts ? new Date(ts) : undefined
   }
+  get nameSpace() {
+    const m = this.name.match(/^(\/[^\/]+\/)/)
+    return (m && m[1]) || ""
+  }
+  get baseName() {
+    return this.name.replace(/^(\/[^\/]+\/)/, "")
+  }
   contentsPath() {
     if (this.expandable) throw ObjectErrors.notLeaf(this)
     if (!this.supported) throw ObjectErrors.NotSupported(this)
@@ -152,6 +168,7 @@ export class AbapObjectBase implements AbapObject {
   async delete(lockId: string, transport = "") {
     return this.service.delete(this.path, lockId, transport)
   }
+
   async write(contents: string, lockId: string, transport: string) {
     if (this.expandable) throw ObjectErrors.notLeaf(this)
     if (!this.canBeWritten) throw ObjectErrors.NotSupported(this)
@@ -165,11 +182,13 @@ export class AbapObjectBase implements AbapObject {
     if (this.lockObject !== this)
       this.service.invalidateStructCache(this.lockObject.path)
   }
+
   async read() {
     if (this.expandable) throw ObjectErrors.notLeaf(this)
     if (!this.supported) return SAPGUIONLY
     return this.service.getObjectSource(this.contentsPath())
   }
+
   protected filterInvalid(original: NodeStructure): NodeStructure {
     const { nodes, objectTypes } = original
     const valid = nodes.filter(
@@ -187,6 +206,7 @@ export class AbapObjectBase implements AbapObject {
       })
     return { ...original, nodes: valid, objectTypes: types }
   }
+
   async childComponents(): Promise<NodeStructure> {
     if (!this.expandable) throw ObjectErrors.isLeaf(this)
     if (!isNodeParent(this.type)) throw ObjectErrors.NotSupported(this)

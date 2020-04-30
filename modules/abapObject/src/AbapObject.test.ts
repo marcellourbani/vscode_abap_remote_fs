@@ -1,11 +1,17 @@
-import { AbapObject } from "./AbapObject"
+import { AbapObject, convertSlash } from "./AbapObject"
 import { AbapObjectService } from "./AOService"
 import { mock, MockProxy } from "jest-mock-extended"
 import { isAbapObjectError, Kind } from "./AOError"
 import sampleNodeContents from "./sampledata/nodeContents1.json"
 import sampleMetadata from "./sampledata/classstructure1.json"
+import sampleFuncIncludeMeta from "./sampledata/funcIncludestruct.json"
 import { create } from "."
-import { AbapClassInclude, isAbapClassInclude } from "./objectTypes"
+import {
+  AbapClassInclude,
+  isAbapClassInclude,
+  isAbapFunctionGroup,
+  isAbapInclude
+} from "./objectTypes"
 interface Counts {
   getObjectSource?: number
   mainPrograms?: number
@@ -266,4 +272,43 @@ test("create class definitions include", async () => {
   expect(cut.key).toBe("CLAS/I ZCL_Z001_DPC_EXT.definitions")
   await supportedFileAssertions(cut, client)
   await expect(cut.contentsPath()).toBe(cut.path)
+})
+
+const createGroup = (): [MockProxy<AbapObjectService>, AbapObject] => {
+  const client = mock<AbapObjectService>()
+  const group = create(
+    "FUGR/F",
+    "/FOO/BAR",
+    "/sap/bc/adt/functions/groups/%2ffoo%2fbar",
+    true,
+    "",
+    undefined,
+    client
+  )
+  return [client, group]
+}
+
+test("create function group", async () => {
+  const [client, cut] = createGroup()
+  if (!isAbapFunctionGroup(cut)) fail("Function group expected")
+  expect(cut.fsName).toBe(convertSlash("/FOO/BAR"))
+})
+
+test("contents uri of fg include", async () => {
+  const [client, group] = createGroup()
+  client.objectStructure.mockResolvedValue(sampleFuncIncludeMeta)
+  const cut = create(
+    "FUGR/I",
+    "/FOO/LBARTOP",
+    "/sap/bc/adt/functions/groups/%2ffoo%2fbar/includes/%2ffoo%2flbartop",
+    false,
+    "",
+    group,
+    client
+  )
+  if (!isAbapInclude(cut)) fail("Include expected")
+  await cut.loadStructure()
+  expect(cut.contentsPath()).toBe(
+    "/sap/bc/adt/functions/groups/%2ffoo%2fbar/includes/%2ffoo%2flbartop/source/main"
+  )
 })

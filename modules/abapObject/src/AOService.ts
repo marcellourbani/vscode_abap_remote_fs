@@ -50,10 +50,13 @@ export class AOService implements AbapObjectService {
     if (!structure) {
       structure = this.client.statelessClone.objectStructure(path)
       this.structCache.set(path, structure)
-      setTimeout(() => this.invalidateStructCache(path), 800)
+      structure.then(() =>
+        setTimeout(() => this.invalidateStructCache(path), 800)
+      )
     }
     return structure
   }
+
   setObjectSource(
     contentsPath: string,
     contents: string,
@@ -67,10 +70,20 @@ export class AOService implements AbapObjectService {
       transport
     )
   }
+
   getObjectSource(path: string) {
     return this.client.statelessClone.getObjectSource(path)
   }
+
+  private contentsCache = new Map<string, Promise<NodeStructure>>()
   nodeContents(type: NodeParents, name: string) {
-    return this.client.statelessClone.nodeContents(type, name)
+    const key = `${type} ${name}`
+    let next = this.contentsCache.get(key)
+    if (!next) {
+      next = this.client.statelessClone.nodeContents(type, name)
+      this.contentsCache.set(key, next)
+    }
+    next.then(() => this.contentsCache.delete(key))
+    return next
   }
 }

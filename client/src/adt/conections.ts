@@ -1,14 +1,15 @@
 import { RemoteManager, createClient } from "../config"
-import { AFsService, Root, isAbapStat, AbapStat, isAbapFile } from "abapfs"
-import { Uri, FileSystemError, workspace } from "vscode"
+import { AFsService, Root, isAbapStat, AbapStat } from "abapfs"
+import { Uri, FileSystemError } from "vscode"
 import { ADTClient } from "abap-adt-api"
-import { AbapObject, AbapObjectBase } from "abapobject"
 import { TransportStatus, trSel, selectTransport } from "./AdtTransports"
 export const ADTSCHEME = "adt"
 export const ADTURIPATTERN = /\/sap\/bc\/adt\//
 
 const roots = new Map<string, Root>()
 const clients = new Map<string, ADTClient>()
+const rootsP = new Map<string, Promise<Root>>()
+const clientsP = new Map<string, Promise<ADTClient>>()
 
 const missing = (connId: string) => {
   return FileSystemError.FileNotFound(`No ABAP server defined for ${connId}`)
@@ -38,7 +39,12 @@ async function create(connId: string) {
 export async function getOrCreateClient(connId: string, clone = true) {
   let client = clients.get(connId)
   if (!client) {
-    client = await create(connId)
+    let clientP = clientsP.get(connId)
+    if (!clientP) {
+      clientP = create(connId)
+      clientsP.set(connId, clientP)
+    }
+    client = await clientP
     clients.set(connId, client)
   }
   return clone ? client.statelessClone : client
@@ -64,20 +70,20 @@ export const uriRoot = (uri: Uri) => {
 export const getOrCreateRoot = async (connId: string) => {
   const root = roots.get(connId)
   if (root) return root
-  const client = await getOrCreateClient(connId, false)
-  const service = new AFsService(client)
-  const newRoot = new Root(connId, service)
-  roots.set(connId, newRoot)
-  return newRoot
+  let rootP = rootsP.get(connId)
+  if (!rootP) {
+    rootP = new Promise(async resolve => {
+      const client = await getOrCreateClient(connId, false)
+      const service = new AFsService(client)
+      const newRoot = new Root(connId, service)
+      roots.set(connId, newRoot)
+      resolve(newRoot)
+    })
+    rootsP.set(connId, rootP)
+  }
+  return rootP
 }
-// export function restoreLocks() {
-//   return Promise.all(
-//     workspace.textDocuments.map(async doc => {
-//       if (doc.uri.scheme !== ADTSCHEME || !doc.isDirty) return
-//       return uriRoot(doc.uri).lockManager.requestLock(doc.uri.path)
-//     })
-//   )
-// }
+
 export function hasLocks() {
   for (const root of roots.values())
     if (root.lockManager.lockedPaths().next().value) return true
@@ -152,13 +158,16 @@ export const selectTransportIfNeeded = async (uri: Uri) => {
     case TransportStatus.LOCAL:
       return trSel("")
     case TransportStatus.REQUIRED:
-      return selectTransport(
+      const trsel = await selectTransport(
         file.object.contentsPath(),
         "",
         getClient(uri.authority),
         false,
         status.transport
       )
+      if (trsel.cancelled) throw new Error("Transport required")
+      return trsel
+
     case TransportStatus.UNKNOWN:
       throw new Error("Unknown transport status. Object not locked?")
   }

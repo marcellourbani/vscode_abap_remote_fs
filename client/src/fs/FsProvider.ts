@@ -38,6 +38,7 @@ export class FsProvider implements FileSystemProvider {
       const root = await getOrCreateRoot(uri.authority)
       const node = await root.getNodeAsync(uri.path)
       if (isAbapFile(node)) await node.stat()
+      if (isAbapFolder(node)) await node.refresh()
       if (node) return node
       throw FileSystemError.FileNotFound(uri)
     } catch (e) {
@@ -51,7 +52,7 @@ export class FsProvider implements FileSystemProvider {
       const root = await getOrCreateRoot(uri.authority)
       const node = await root.getNodeAsync(uri.path)
       if (!isFolder(node)) throw FileSystemError.FileNotFound(uri)
-      if (isAbapFolder(node)) await node.refresh()
+      if (isAbapFolder(node) && node.size === 0) await node.refresh()
       return [...node].map(i => [i.name, i.file.type])
     } catch (e) {
       log(`Error reading directory ${uri.toString()}\n${e.toString()}`)
@@ -70,6 +71,7 @@ export class FsProvider implements FileSystemProvider {
       const root = await getOrCreateRoot(uri.authority)
       const node = await root.getNodeAsync(uri.path)
       if (isAbapFile(node)) {
+        if (!node.object.structure) await node.stat()
         const contents = await node.read()
         const buf = Buffer.from(contents)
         return buf
