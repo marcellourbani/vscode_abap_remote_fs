@@ -1,8 +1,9 @@
 import { RemoteManager, createClient } from "../config"
 import { AFsService, Root, isAbapStat, AbapStat } from "abapfs"
-import { Uri, FileSystemError } from "vscode"
+import { Uri, FileSystemError, FileStat } from "vscode"
 import { ADTClient } from "abap-adt-api"
 import { TransportStatus, trSel, selectTransport } from "./AdtTransports"
+import { log } from "console"
 export const ADTSCHEME = "adt"
 export const ADTURIPATTERN = /\/sap\/bc\/adt\//
 
@@ -107,16 +108,18 @@ export function findAbapObject(uri: Uri) {
   throw new Error("Not an ABAP object")
 }
 
-export const pathSequence = (root: Root, uri: Uri | undefined): AbapStat[] => {
+export const pathSequence = (root: Root, uri: Uri | undefined): FileStat[] => {
   if (uri)
     try {
       const parts = uri.path.split("/")
       let path = ""
-      const nodes: AbapStat[] = []
+      const nodes: FileStat[] = []
       for (const part of parts) {
-        path = `${path}/${part}`
+        const sep = path.substr(-1) === "/" ? "" : "/"
+        path = `${path}${sep}${part}`
         const hit = root.getNode(path)
-        if (isAbapStat(hit)) nodes.push()
+        if (!hit) log(`Incomplete path hierarchy for ${uri.path}`)
+        else nodes.unshift(hit)
       }
       return nodes
     } catch (e) {

@@ -18,7 +18,7 @@ import {
   isPackageType
 } from "abap-adt-api"
 import { CreatableTypes } from "abap-adt-api"
-import { Uri, window } from "vscode"
+import { Uri, window, FileStat } from "vscode"
 import { selectTransport } from "../AdtTransports"
 import { fieldOrder } from "../../lib"
 import { MySearchResult, AdtObjectFinder } from "./AdtObjectFinder"
@@ -29,7 +29,13 @@ import {
   pathSequence,
   createUri
 } from "../conections"
-import { isAbapStat, AbapStat, isAbapFolder, isFolder } from "abapfs"
+import {
+  isAbapStat,
+  AbapStat,
+  isAbapFolder,
+  isFolder,
+  isAbapFile
+} from "abapfs"
 import { fromNode } from "abapobject"
 
 export const PACKAGE = "DEVC/K"
@@ -105,33 +111,37 @@ export class AdtObjectCreator {
     await obj.loadStructure()
     return obj
   }
-  public guessParentByType(hierarchy: AbapStat[], type: ParentTypeIds): string {
-    return hierarchy.find(n => n.object.type === type)?.object.name || ""
+  public guessParentByType(hierarchy: FileStat[], type: ParentTypeIds): string {
+    return (
+      hierarchy.filter(isAbapStat).find(n => n.object.type === type)?.object
+        .name || ""
+    )
   }
 
   private async guessOrSelectObjectType(
-    hierarchy: AbapStat[]
+    hierarchy: FileStat[]
   ): Promise<CreatableType | undefined> {
-    const base = hierarchy[0]
-    // if I picked the root node,a direct descendent or a package just ask the user to select any object type
-    // if not, for abap nodes pick child objetc types (if any)
-    // for non-abap nodes if it's an object type guess the type from the children
-    if (hierarchy.length > 2)
-      if (base.object.type.match(/FUGR\/F/))
-        return selectObjectType(base.object.type)
-      else {
-        const child = isFolder(base)
-          ? [...base]
-              .map(c => c.file)
-              .find(c => isAbapStat(c) && c.object.type !== PACKAGE)
-          : base
-        if (child && isAbapStat(child)) {
-          const typeid = child.object.type as CreatableTypeIds
-          const guessed = CreatableTypes.get(typeid)
-          if (guessed) return guessed
+    const creatable = (file: FileStat) => {
+      const type = isAbapStat(file) && file.object.type
+      return (
+        type && type !== PACKAGE && CreatableTypes.get(type as CreatableTypeIds)
+      )
+    }
+    const first = hierarchy[0]
+    if (isAbapStat(first) && first.object.type === "FUGR/F")
+      return selectObjectType(first.object.type)
+
+    for (const file of hierarchy) {
+      const candidate = creatable(file)
+      if (candidate) return candidate
+      if (isFolder(file)) {
+        for (const child of file) {
+          const cc = creatable(child.file)
+          if (cc) return cc
         }
       }
-    // default...
+    }
+    // Can't guess ...
     return selectObjectType()
   }
 
@@ -265,8 +275,9 @@ export class AdtObjectCreator {
     if (!node) return ""
     const path = pathSequence(root, createUri(this.connId, node.path))
     // TODO: check questionable assumpsions
-    if (path.length > 1 && path[path.length - 1].object.type === PACKAGE)
-      return path[path.length - 1].object.name
+    const last = path.length > 1 && path[path.length - 1]
+    if (isAbapStat(last) && last.object.type === PACKAGE)
+      return last.object.name
     return ""
   }
   private fixName(name: string, typeId: string, parentName: string): string {
