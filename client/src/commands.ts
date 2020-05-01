@@ -134,7 +134,7 @@ export function openObject(connId: string, uri: string) {
         return
       } else if (isAbapFile(file))
         await workspace
-          .openTextDocument(createUri(connId, file.object.path))
+          .openTextDocument(createUri(connId, path))
           .then(window.showTextDocument)
       return { file, path }
     }
@@ -282,15 +282,6 @@ export class AdtCommands {
       const file = uriRoot(fsRoot.uri).getNode(uri.path)
       if (!isAbapStat(file) || !file.object.sapGuiUri) return
       await showInGui(fsRoot.uri.authority, file.object.sapGuiUri)
-      // await runInSapGui(uri.authority, async () => {
-      //   const object = findAbapObject(uri)
-      //   const cmd: SapGuiCommand = {
-      //     type: "Transaction",
-      //     command: "SADT_START_WB_URI",
-      //     parameters: [{ name: "D_OBJECT_URI", value: object.path }]
-      //   }
-      //   return cmd
-      // })
     } catch (e) {
       return window.showErrorMessage(e.toString())
     }
