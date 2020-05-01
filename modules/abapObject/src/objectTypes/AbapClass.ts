@@ -38,7 +38,7 @@ export class AbapClass extends AbapObjectBase {
         OBJECT_TYPE: include["adtcore:type"],
         TECH_NAME: inclType, // bit of a hack, used to match include metadata
         OBJECT_URI: sources.get(inclType) || "",
-        OBJECT_VIT_URI: "",
+        OBJECT_VIT_URI: this.sapGuiUri,
         EXPANDABLE: ""
       }
       if (include["abapsource:sourceUri"] === "source/main") nodes.unshift(node)

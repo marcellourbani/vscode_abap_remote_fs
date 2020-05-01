@@ -15,7 +15,7 @@ import { showHideActivate } from "./listeners"
 import { abapUnit } from "./adt/operations/UnitTestRunner"
 import { selectTransport } from "./adt/AdtTransports"
 import { IncludeLensP } from "./adt/operations/IncludeLens"
-import { runInSapGui, SapGuiCommand, showInGui } from "./adt/sapgui/sapgui"
+import { showInGui } from "./adt/sapgui/sapgui"
 import { storeTokens } from "./oauth"
 import { showAbapDoc } from "./views/help"
 import { getTestAdapter } from "./views/abapunit"
@@ -28,7 +28,7 @@ import {
   findAbapObject,
   getOrCreateRoot
 } from "./adt/conections"
-import { isAbapFolder, isAbapFile } from "abapfs"
+import { isAbapFolder, isAbapFile, isAbapStat } from "abapfs"
 import { AdtObjectActivator } from "./adt/operations/AdtObjectActivator"
 import { AdtObjectFinder } from "./adt/operations/AdtObjectFinder"
 import { isAbapClassInclude } from "abapobject"
@@ -134,7 +134,7 @@ export function openObject(connId: string, uri: string) {
         return
       } else if (isAbapFile(file))
         await workspace
-          .openTextDocument(createUri(connId, path))
+          .openTextDocument(createUri(connId, file.object.path))
           .then(window.showTextDocument)
       return { file, path }
     }
@@ -279,7 +279,9 @@ export class AdtCommands {
       if (!uri) return
       const fsRoot = await pickAdtRoot(uri)
       if (!fsRoot) return
-      await showInGui(uri.authority, uri.path)
+      const file = uriRoot(fsRoot.uri).getNode(uri.path)
+      if (!isAbapStat(file) || !file.object.sapGuiUri) return
+      await showInGui(fsRoot.uri.authority, file.object.sapGuiUri)
       // await runInSapGui(uri.authority, async () => {
       //   const object = findAbapObject(uri)
       //   const cmd: SapGuiCommand = {

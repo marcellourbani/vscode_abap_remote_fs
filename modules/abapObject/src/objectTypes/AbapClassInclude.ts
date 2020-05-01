@@ -25,9 +25,10 @@ export class AbapClassInclude extends AbapObjectBase {
     expandable: boolean,
     techName: string,
     parent: AbapObject | undefined,
+    sapGuiUri: string,
     client: AbapObjectService
   ) {
-    super(type, name, path, expandable, techName, parent, client)
+    super(type, name, path, expandable, techName, parent, sapGuiUri, client)
     if (!isAbapClass(parent))
       throw ObjectErrors.Invalid(
         this,

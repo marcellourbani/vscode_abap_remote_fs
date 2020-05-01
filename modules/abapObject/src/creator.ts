@@ -18,6 +18,7 @@ export const create = (
   expandable: boolean,
   techName: string,
   parent: AbapObject | undefined,
+  sapguiUri: string,
   client: AbapObjectService
 ) => {
   if (!type || !path)
@@ -27,7 +28,16 @@ export const create = (
       "Abap Object can't be created without a type and path"
     )
   const cons = constructors.get(type) || AbapObjectBase
-  return new cons(type, name, path, expandable, techName, parent, client)
+  return new cons(
+    type,
+    name,
+    path,
+    expandable,
+    techName,
+    parent,
+    sapguiUri,
+    client
+  )
 }
 
 export const fromNode = (
@@ -42,5 +52,6 @@ export const fromNode = (
     !!node.EXPANDABLE,
     node.TECH_NAME,
     parent,
+    node.OBJECT_VIT_URI,
     client
   )

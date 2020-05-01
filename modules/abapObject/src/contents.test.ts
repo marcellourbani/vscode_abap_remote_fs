@@ -17,6 +17,7 @@ export const getPackage = () => {
   if (ADT_URL && ADT_USER && ADT_PASS) {
     const client = new ADTClient(ADT_URL, ADT_USER, ADT_PASS)
     const service = new AOService(client)
+
     const pkg = create(
       "DEVC/K",
       "$ABAPGIT",
@@ -24,6 +25,7 @@ export const getPackage = () => {
       true,
       "",
       undefined,
+      "",
       service
     )
     return { pkg, service }

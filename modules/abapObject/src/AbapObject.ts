@@ -58,6 +58,8 @@ export interface AbapObject {
    *   i.e. for /UI5/IF_ADT_REP_MODEL is IF_ADT_REP_MODEL
    */
   readonly baseName: string
+  /** used to open the object in SAPGUI */
+  readonly sapGuiUri: string
 
   /** loads/updates the object metadata */
   loadStructure: () => Promise<AbapObjectStructure>
@@ -75,6 +77,7 @@ export interface AbapObjectConstructor {
     expandable: boolean,
     techName: string,
     parent: AbapObject | undefined,
+    sapGuiUri: string,
     client: AbapObjectService
   ): AbapObject
 }
@@ -89,6 +92,7 @@ export class AbapObjectBase implements AbapObject {
     readonly expandable: boolean,
     readonly techName: string,
     readonly parent: AbapObject | undefined,
+    readonly sapGuiUri: string,
     protected readonly service: AbapObjectService
   ) {
     this.supported =

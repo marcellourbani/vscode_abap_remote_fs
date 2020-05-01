@@ -28,7 +28,7 @@ export class AbapProgram extends AbapObjectBase {
       TECH_NAME: "",
       OBJECT_URI: this.path,
       EXPANDABLE: "",
-      OBJECT_VIT_URI: ""
+      OBJECT_VIT_URI: this.sapGuiUri
     })
     return { categories: [], objectTypes: [], nodes: valid }
   }

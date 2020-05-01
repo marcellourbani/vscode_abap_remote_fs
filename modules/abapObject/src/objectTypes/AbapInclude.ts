@@ -12,10 +12,11 @@ export class AbapInclude extends AbapObjectBase {
     expandable: boolean,
     techName: string,
     parent: AbapObject | undefined,
+    sapGuiUri: string,
     client: AbapObjectService
   ) {
     path = path.replace(/\/source\/main$/, "")
-    super(type, name, path, expandable, techName, parent, client)
+    super(type, name, path, expandable, techName, parent, sapGuiUri, client)
     this[tag] = true
   }
 

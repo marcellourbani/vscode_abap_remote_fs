@@ -17,6 +17,7 @@ test("Creates classes", () => {
     true,
     "==============================CP",
     undefined,
+    "",
     client
   )
   expect(isAbapClass(cut)).toBeTruthy()
@@ -31,6 +32,7 @@ test("Creates cds", () => {
     false,
     "ZAPIDUMMY_DATADEF",
     undefined,
+    "",
     client
   )
   expect(isAbapCds(cut)).toBeTruthy()
@@ -43,6 +45,7 @@ test("Creates cds", () => {
     false,
     "ZAPIDUMMY_METADATA",
     undefined,
+    "",
     client
   )
   expect(isAbapCds(cut)).toBeTruthy()
@@ -58,6 +61,7 @@ test("create Class include", () => {
     false,
     "main",
     undefined,
+    "",
     client
   )
   const cut = create(
@@ -67,6 +71,7 @@ test("create Class include", () => {
     false,
     "main",
     clas,
+    "",
     client
   )
   expect(isAbapClassInclude(cut)).toBeTruthy()
@@ -80,6 +85,7 @@ test("create include", () => {
     false,
     "ZADTTESTINCLUDEINC",
     undefined,
+    "",
     client
   )
   expect(isAbapInclude(cut)).toBeTruthy()

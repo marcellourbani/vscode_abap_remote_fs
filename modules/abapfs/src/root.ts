@@ -11,7 +11,7 @@ const tag = Symbol("fsRoot")
 export const TMPFOLDER = "$TMP"
 export const LIBFOLDER = "System Library"
 const createPkg = (name: string, service: AbapFsService) =>
-  create(PACKAGE, name, PACKAGEBASEPATH, true, "", undefined, service)
+  create(PACKAGE, name, PACKAGEBASEPATH, true, "", undefined, "", service)
 
 const findInFolder = (
   file: FileStat,

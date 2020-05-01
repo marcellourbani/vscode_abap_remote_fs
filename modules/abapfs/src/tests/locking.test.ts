@@ -1,5 +1,5 @@
 import { mock } from "jest-mock-extended"
-import { AbapFsService, createRoot, isAbapFile } from ".."
+import { AbapFsService, createRoot } from ".."
 import sampleNodeContents from "../testdata/nodeContents1.json"
 import sampleclas from "../testdata/zcl_ca_alv.json"
 import { delay } from "../lockObject"
