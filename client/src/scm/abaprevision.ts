@@ -26,7 +26,7 @@ import {
   findAbapObject,
   createUri
 } from "../adt/conections"
-import { isAbapClassInclude } from "abapobject"
+import { isAbapClassInclude, isAbapClass } from "abapobject"
 import { PathItem, isAbapStat } from "abapfs"
 
 const EXTREGEX = /(\.[^\/^\.]+)$/
@@ -208,12 +208,12 @@ export class AbapRevision
       try {
         const obj = await findAbapObject(uri)
         if (!obj) return
-        const include = isAbapClassInclude(obj)
-          ? (obj.techName as classIncludes)
-          : undefined
         if (!obj.structure) await obj.loadStructure()
-        if (!obj.structure) return
-        const revisions = await client.revisions(obj.structure, include)
+        const [include, structure] = isAbapClassInclude(obj)
+          ? [obj.techName as classIncludes, obj.parent.structure]
+          : [undefined, obj.structure]
+        if (!structure) return
+        const revisions = await client.revisions(structure, include)
         if (revisions.length > 1) this.addResource(conn, recent, uri, revisions)
       } catch (e) {
         log(e)
