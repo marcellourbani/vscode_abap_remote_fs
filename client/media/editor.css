@@ -1,0 +1,28 @@
+body {
+  justify-content: center;
+  align-items: center;
+  margin: 1em 2em;
+}
+
+body.vscode-dark th {
+  background-color: #0366d6;
+}
+body.vscode-dark td {
+  background-color: #222222;
+}
+
+body.vscode-light th {
+  background-color: #82acdb;
+}
+
+body.vscode-light td {
+  background-color: #d3d3d3;
+}
+
+td.flag {
+  text-align: center;
+}
+
+td.number {
+  text-align: right;
+}

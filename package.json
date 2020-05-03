@@ -2,7 +2,7 @@
   "name": "vscode-abap-remote-fs",
   "displayName": "ABAP remote filesystem",
   "description": "Work on your ABAP code straight from the server",
-  "version": "0.7.29",
+  "version": "0.8.0",
   "publisher": "murbani",
   "license": "MIT",
   "icon": "client/images/abapfs_logo.png",
@@ -41,12 +41,17 @@
     "webpack": "cd client && npm run webpack && cd ../server && npm run webpack",
     "build": "npm run webpack",
     "compile": "npm run webpack",
-    "watch": "concurrently --kill-others \"npm run watch-shared\" \"npm run watch-server\" \"npm run watch-client\"",
+    "watch": "concurrently --kill-others \"npm run watch-shared\" \"npm run watch-object\" \"npm run watch-abapfs\" \"npm run watch-server\" \"npm run watch-client\"",
     "watch-server": "cd server&& npm run watch",
     "watch-client": "cd client&& npm run watch",
     "watch-shared": "cd modules/sharedapi&& npm run watch",
+    "watch-object": "cd modules/abapObject&& npm run watch",
+    "watch-abapfs": "cd modules/abapfs&& npm run watch",
+    "inst_dep_sharedapi": "cd modules/sharedapi&& npm i && npm run build&& cd ../..",
+    "inst_dep_object": "cd modules/abapObject&& npm i && npm run build&& cd ../..",
+    "inst_dep_abapfs": "cd modules/abapfs&& npm i && npm run build&& cd ../..",
     "clean": "rimraf out *.vsix node_modules modules/sharedapi/out modules/sharedapi/node_modules&& cd server && npm run clean&& cd ../client &&npm run clean && cd .. ",
-    "postinstall": "cd modules/sharedapi&& npm i && npm run build && cd ../../server && npm i && cd ../client && npm i"
+    "postinstall": "npm run inst_dep_sharedapi && npm run inst_dep_object &&npm run inst_dep_abapfs && cd server && npm i && cd ../client && npm i"
   },
   "devDependencies": {
     "@types/mocha": "^7.0.2",
@@ -58,6 +63,17 @@
     "webpack-cli": "^3.3.11"
   },
   "contributes": {
+    "customEditors": [
+      {
+        "viewType": "abapfs.msagn",
+        "displayName": "Message Class",
+        "selector": [
+          {
+            "filenamePattern": "*.msagn.xml"
+          }
+        ]
+      }
+    ],
     "viewsContainers": {
       "activitybar": [
         {
@@ -887,5 +903,8 @@
         "editor.formatOnSaveTimeout": 5000
       }
     }
+  },
+  "dependencies": {
+    "html-entities": "^1.3.1"
   }
 }

@@ -28,6 +28,7 @@ import { loadTokens, clearTokens } from "./oauth"
 import { registerAbapGit } from "./scm/abapGit"
 import { AbapFsApi, api } from "./api"
 import { ADTSCHEME, disconnect, hasLocks } from "./adt/conections"
+import { MessagesProvider } from "./editors/messages"
 export let context: ExtensionContext
 
 export async function activate(ctx: ExtensionContext): Promise<AbapFsApi> {
@@ -85,6 +86,8 @@ export async function activate(ctx: ExtensionContext): Promise<AbapFsApi> {
       IncludeLensP.get()
     )
   )
+
+  sub.push(MessagesProvider.register(context))
 
   LanguageCommands.start(context)
 

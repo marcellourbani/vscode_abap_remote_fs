@@ -4,6 +4,17 @@ All notable changes to the "vscode-abap-remote-fs" extension will be documented 
 
 Format based on [Keep a Changelog](http://keepachangelog.com/)
 
+## [0.8.0] Unreleased
+
+### Changed
+
+- refactor all basic abap object and FS operation
+
+### Added
+
+- unit tests for some core functionality
+- custom editor for message classes (readonly)
+
 ## [0.7.29] 2020-03-16
 
 ### Changed
