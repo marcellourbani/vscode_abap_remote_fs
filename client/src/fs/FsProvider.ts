@@ -71,7 +71,6 @@ export class FsProvider implements FileSystemProvider {
       const root = await getOrCreateRoot(uri.authority)
       const node = await root.getNodeAsync(uri.path)
       if (isAbapFile(node)) {
-        if (!node.object.structure) await node.stat()
         const contents = await node.read()
         const buf = Buffer.from(contents)
         return buf

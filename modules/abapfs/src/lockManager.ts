@@ -1,7 +1,8 @@
 import { Root } from "./root"
 import { LockObject, delay } from "./lockObject"
-import { isAbapFile } from "./abapFile"
+import { isAbapFile, isAbapStat } from "./abapFile"
 import { FileSystemError } from "vscode"
+import { PACKAGE } from "../../abapObject/out"
 
 export class LockManager {
   constructor(private root: Root) {}
@@ -19,7 +20,8 @@ export class LockManager {
     if (lockObject) return lockObject
 
     const node = this.root.getNode(path)
-    if (!isAbapFile(node))
+
+    if (!isAbapStat(node))
       throw FileSystemError.FileNotFound(`Can't acquire lock for ${path}`)
 
     const toLock = node.object.lockObject

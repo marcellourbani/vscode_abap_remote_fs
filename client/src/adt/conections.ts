@@ -1,5 +1,5 @@
 import { RemoteManager, createClient } from "../config"
-import { AFsService, Root, isAbapStat, AbapStat } from "abapfs"
+import { AFsService, Root, isAbapStat, AbapStat, isAbapFolder } from "abapfs"
 import { Uri, FileSystemError, FileStat } from "vscode"
 import { ADTClient } from "abap-adt-api"
 import { TransportStatus, trSel, selectTransport } from "./AdtTransports"
@@ -161,13 +161,12 @@ export const selectTransportIfNeeded = async (uri: Uri) => {
     case TransportStatus.LOCAL:
       return trSel("")
     case TransportStatus.REQUIRED:
-      const trsel = await selectTransport(
-        file.object.contentsPath(),
-        "",
-        getClient(uri.authority),
-        false,
-        status.transport
-      )
+      const { transport } = status
+      const path = isAbapFolder(file)
+        ? file.object.path
+        : file.object.contentsPath()
+      const client = getClient(uri.authority)
+      const trsel = await selectTransport(path, "", client, false, transport)
       if (trsel.cancelled) throw new Error("Transport required")
       return trsel
 
