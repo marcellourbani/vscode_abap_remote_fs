@@ -354,7 +354,7 @@
       {
         "command": "abapfs.execute",
         "key": "F5",
-        "when": "editorTextFocus && editorLangId == abap"
+        "when": "editorTextFocus && resourceScheme == adt"
       },
       {
         "command": "abapfs.unittest",

@@ -3,6 +3,7 @@ import { isAbapStat, isAbapFile } from "../abapFile"
 
 test("find object in $TMP", async () => {
   const root = getRootForTest()
+  if (!root) return
   const abapgit = await root.findByAdtUri(
     "/sap/bc/adt/programs/programs/zabapgit"
   )
@@ -16,6 +17,7 @@ test("find object in $TMP", async () => {
 
 test("find main include in $TMP", async () => {
   const root = getRootForTest()
+  if (!root) return
   const abapgit = await root.findByAdtUri(
     "/sap/bc/adt/programs/programs/zabapgit",
     true

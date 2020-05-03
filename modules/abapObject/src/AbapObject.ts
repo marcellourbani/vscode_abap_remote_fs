@@ -6,7 +6,8 @@ import {
 } from "abap-adt-api"
 import { AbapObjectService } from "./AOService"
 import { ObjectErrors } from "./AOError"
-const SAPGUIONLY = "Objects of this type are only supported in SAPGUI"
+const SAPGUIONLY =
+  "Objects of this type are only supported in SAPGUI. Press F5 to edit in sapgui"
 const NSSLASH = "\u2215" // used to be hardcoded as "／", aka "\uFF0F"
 export const PACKAGE = "DEVC/K"
 export const TMPPACKAGE = "$TMP"
@@ -83,6 +84,13 @@ export interface AbapObjectConstructor {
 }
 export const isAbapObject = (x: any): x is AbapObject => !!x?.[objectTag]
 
+const followPath = (base: string, suffix: string) => {
+  if (suffix) {
+    if (suffix.match(/^\.\//))
+      return `${base.replace(/\/[^\/]*$/, "")}${suffix.substr(1)}`
+    return suffix.match(/^\//) ? suffix : `${base}/${suffix}`
+  }
+}
 export class AbapObjectBase implements AbapObject {
   readonly [objectTag]: true
   constructor(
@@ -151,8 +159,10 @@ export class AbapObjectBase implements AbapObject {
         l =>
           l.type === "text/plain" &&
           l.rel === "http://www.sap.com/adt/relations/source"
-      )?.href
-    if (suffix) return suffix.match(/^\//) ? suffix : `${this.path}/${suffix}`
+      )?.href ||
+      ""
+    const path = followPath(this.path, suffix)
+    if (path) return path
     throw ObjectErrors.notLeaf(this)
   }
 

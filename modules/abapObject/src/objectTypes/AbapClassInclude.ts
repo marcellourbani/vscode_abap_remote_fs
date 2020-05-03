@@ -4,7 +4,7 @@ import { AbapClass } from "."
 import { ADTClient, classIncludes, AbapObjectStructure } from "abap-adt-api"
 import { isAbapClass } from "./AbapClass"
 import { AbapObjectService } from ".."
-import { AbapObjectError, ObjectErrors } from "../AOError"
+import { ObjectErrors } from "../AOError"
 import { AbapSimpleStructure } from "abap-adt-api/build/api"
 const tag = Symbol("AbapClassInclude")
 const CLASSINCLUDES: any = {

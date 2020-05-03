@@ -1,5 +1,5 @@
 import { FileStat, FileSystemError } from "vscode"
-import { AbapObject, PACKAGE, fromNode } from "../../abapObject"
+import { AbapObject, PACKAGE, fromNode, convertSlash } from "../../abapObject"
 import { Folder, isFolder } from "./folder"
 import {
   NodeStructure,
@@ -22,6 +22,7 @@ const strucCategory = (cont: NodeStructure) => (type?: NodeObjectType) =>
 
 const subFolder = (parent: Folder, label?: string): Folder => {
   if (!label) return parent
+  label = convertSlash(label)
   const child = parent.get(label)
   if (isFolder(child)) return child
   if (child)

@@ -1,8 +1,10 @@
-import { isFolder, isAbapFile } from ".."
+import { isFolder, isAbapFile, isAbapStat } from ".."
 import { getRootForTest } from "./connectServer"
+import { convertSlash } from "../../../abapObject/out"
 
 test("class in $ABAPGIT", async () => {
   const root = getRootForTest()
+  if (!root) return
   const clas = await root.getNodeAsync(
     "/$TMP/$ABAPGIT/Source Code Library/Classes/ZCL_ABAPGIT_AUTH"
   )
@@ -23,6 +25,7 @@ test("class in $ABAPGIT", async () => {
 
 test("Program $ABAPGIT", async () => {
   const root = getRootForTest()
+  if (!root) return
   const prog = await root.getNodeAsync(
     "/$TMP/$ABAPGIT/Source Code Library/Programs/ZABAPGIT"
   )
@@ -39,6 +42,7 @@ test("Program $ABAPGIT", async () => {
 
 test("interface in $ABAPGIT_UI_CORE", async () => {
   const root = getRootForTest()
+  if (!root) return
   const intf = await root.getNodeAsync(
     "/$TMP/$ABAPGIT/$ABAPGIT_UI/$ABAPGIT_UI_CORE/Source Code Library/Interfaces/ZIF_ABAPGIT_HTML.intf.abap"
   )
@@ -52,6 +56,7 @@ test("interface in $ABAPGIT_UI_CORE", async () => {
 
 test("fm in $ABAPGIT", async () => {
   const root = getRootForTest()
+  if (!root) return
   const func = await root.getNodeAsync(
     "/$TMP/$ABAPGIT/Source Code Library/Function Groups/ZABAPGIT_PARALLEL/Function Modules/Z_ABAPGIT_SERIALIZE_PARALLEL.fugr.abap"
   )
@@ -60,6 +65,7 @@ test("fm in $ABAPGIT", async () => {
 
 test("SALV table", async () => {
   const root = getRootForTest()
+  if (!root) return
   const incl = await root.getNodeAsync(
     "/System Library/BASIS/SALV/SALV_OM/SALV_OM_OBJECTS/Source Code Library/Classes/CL_SALV_TABLE/CL_SALV_TABLE.clas.abap"
   )
@@ -68,8 +74,21 @@ test("SALV table", async () => {
 
 test("namespaced object", async () => {
   const root = getRootForTest()
+  if (!root) return
   const incl = await root.getNodeAsync(
     "/System Library/∕SAPTRX∕EM_BASIS/∕SAPTRX∕ATIF/Source Code Library/Includes/∕SAPTRX∕CONSTANTS.prog.abap"
   )
   expect(isAbapFile(incl)).toBe(true)
+})
+//
+
+test("gt parameters", async () => {
+  const root = getRootForTest()
+  if (!root) return
+  const para = await root.getNodeAsync(
+    "/System Library/BASIS/SCTS_REQ/Others/" +
+      convertSlash("SET/GET Parameters")
+  )
+  expect(isAbapStat(para)).toBe(false)
+  expect(para?.size).toBeGreaterThan(1)
 })

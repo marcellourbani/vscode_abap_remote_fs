@@ -18,6 +18,12 @@ export class AbapCds extends AbapObjectBase {
     }
     return ".cds" // should never happen...
   }
+  get expandable() {
+    return false
+  }
+  set expandable(_: boolean) {
+    // ignore
+  }
   public async mainPrograms() {
     return []
   }

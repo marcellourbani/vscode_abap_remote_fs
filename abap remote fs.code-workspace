@@ -13,7 +13,13 @@
       "path": "wiki"
     },
     {
-      "path": "modules"
+      "path": "modules/sharedapi"
+    },
+    {
+      "path": "modules/abapObject"
+    },
+    {
+      "path": "modules/abapfs"
     }
   ],
   "settings": {

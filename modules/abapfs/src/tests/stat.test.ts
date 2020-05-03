@@ -2,6 +2,7 @@ import { getRootForTest } from "./connectServer"
 import { isAbapStat, isAbapFile } from "../abapFile"
 test("stat program ", async () => {
   const root = getRootForTest()
+  if (!root) return
   const abapgit = await root.getNodeAsync(
     "/$TMP/$ABAPGIT/Source Code Library/Programs/ZABAPGIT/ZABAPGIT.prog.abap"
   )
@@ -12,6 +13,7 @@ test("stat program ", async () => {
 
 test("stat interface ", async () => {
   const root = getRootForTest()
+  if (!root) return
   const intf = await root.getNodeAsync(
     "/$TMP/Source Code Library/Interfaces/ZIF_APACK_MANIFEST.intf.abap"
   )

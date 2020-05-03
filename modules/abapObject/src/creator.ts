@@ -8,7 +8,11 @@ const constructors = new Map<string, AbapObjectConstructor>()
 export const AbapObjectCreator = (...types: string[]) => (
   target: AbapObjectConstructor
 ) => {
-  for (const t of types) constructors.set(t, target)
+  for (const t of types) {
+    if (constructors.has(t))
+      throw new Error(`Conflict assigning constructor for type ${t}`)
+    constructors.set(t, target)
+  }
 }
 
 export const create = (

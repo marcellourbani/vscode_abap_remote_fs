@@ -112,6 +112,7 @@ function currentUri() {
   if (uri.scheme !== ADTSCHEME) return
   return uri
 }
+
 function current() {
   const uri = currentUri()
   if (!uri) return
@@ -194,6 +195,7 @@ export class AdtCommands {
       return window.showErrorMessage(message)
     }
   }
+
   @command(AbapFsCommands.activate)
   private static async activateCurrent(selector: Uri) {
     try {

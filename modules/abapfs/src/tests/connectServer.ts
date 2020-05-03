@@ -15,6 +15,5 @@ export const getRootForTest = () => {
     const client = new ADTClient(ADT_URL, ADT_USER, ADT_PASS)
     const service = new AFsService(client)
     return createRoot(`adt_${ADT_SYSTEMID}`, service)
-  } else
-    throw new Error("Please set reuired environment variables in setenv.js")
+  }
 }
