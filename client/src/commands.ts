@@ -23,14 +23,16 @@ import {
   ADTSCHEME,
   getClient,
   getRoot,
-  createUri,
   uriRoot,
-  findAbapObject,
   getOrCreateRoot
 } from "./adt/conections"
 import { isAbapFolder, isAbapFile, isAbapStat } from "abapfs"
 import { AdtObjectActivator } from "./adt/operations/AdtObjectActivator"
-import { AdtObjectFinder } from "./adt/operations/AdtObjectFinder"
+import {
+  AdtObjectFinder,
+  createUri,
+  findAbapObject
+} from "./adt/operations/AdtObjectFinder"
 import { isAbapClassInclude } from "abapobject"
 
 const abapcmds: {

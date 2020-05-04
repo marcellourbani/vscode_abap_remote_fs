@@ -1,4 +1,4 @@
-import { getOrCreateRoot, selectTransportIfNeeded } from "../adt/conections"
+import { getOrCreateRoot } from "../adt/conections"
 import {
   FileSystemError,
   FileChangeType,
@@ -12,6 +12,7 @@ import {
 } from "vscode"
 import { log } from "../lib"
 import { isAbapFile, isAbapFolder, isFolder } from "abapfs"
+import { selectTransportIfNeeded } from "../adt/AdtTransports"
 
 export class FsProvider implements FileSystemProvider {
   private static instance: FsProvider
@@ -110,7 +111,6 @@ export class FsProvider implements FileSystemProvider {
       const root = await getOrCreateRoot(uri.authority)
       const node = await root.getNodeAsync(uri.path)
       const lock = await root.lockManager.requestLock(uri.path)
-      // TODO: not working atm for programs
       if (lock.status === "locked") {
         const trsel = await selectTransportIfNeeded(uri)
         if (trsel.cancelled) return

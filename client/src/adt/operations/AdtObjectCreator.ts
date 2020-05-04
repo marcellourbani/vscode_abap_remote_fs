@@ -21,14 +21,13 @@ import { CreatableTypes } from "abap-adt-api"
 import { Uri, window, FileStat } from "vscode"
 import { selectTransport } from "../AdtTransports"
 import { fieldOrder } from "../../lib"
-import { MySearchResult, AdtObjectFinder } from "./AdtObjectFinder"
 import {
-  getClient,
-  getRoot,
-  uriRoot,
+  MySearchResult,
+  AdtObjectFinder,
   pathSequence,
   createUri
-} from "../conections"
+} from "./AdtObjectFinder"
+import { getClient, getRoot } from "../conections"
 import {
   isAbapStat,
   AbapStat,
@@ -274,7 +273,6 @@ export class AdtObjectCreator {
     const node = await root.findByAdtUri(parent.uri)
     if (!node) return ""
     const path = pathSequence(root, createUri(this.connId, node.path))
-    // TODO: check questionable assumpsions
     const last = path.length > 1 && path[path.length - 1]
     if (isAbapStat(last) && last.object.type === PACKAGE)
       return last.object.name

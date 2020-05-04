@@ -5,7 +5,8 @@ import { alertManagers } from "./alerts"
 import { MethodLocator } from "./locator"
 import { toInt } from "../../lib"
 import { AbapObject } from "abapobject"
-import { getClient, findAbapObject } from "../../adt/conections"
+import { getClient } from "../../adt/conections"
+import { findAbapObject } from "../../adt/operations/AdtObjectFinder"
 
 const classId = (c: UnitTestClass) => `${c["adtcore:uri"]}`
 

@@ -12,7 +12,8 @@ import {
 import { AbapRevision, revLabel } from "./abaprevision"
 import { uriName } from "../lib"
 import { RemoteManager } from "../config"
-import { ADTSCHEME, findAbapObject, getOrCreateRoot } from "../adt/conections"
+import { ADTSCHEME, getOrCreateRoot } from "../adt/conections"
+import { findAbapObject } from "../adt/operations/AdtObjectFinder"
 
 export class AbapRevisionLensP implements CodeLensProvider {
   public static get() {

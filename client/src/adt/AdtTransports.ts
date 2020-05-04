@@ -1,7 +1,9 @@
-import { window, ProgressLocation, CancellationToken } from "vscode"
+import { window, ProgressLocation, CancellationToken, Uri } from "vscode"
 import { ADTClient, TransportInfo } from "abap-adt-api"
 import { fieldOrder, withp } from "../lib"
 import { TransportValidator } from "../api"
+import { uriRoot, getClient } from "./conections"
+import { isAbapStat, isAbapFolder } from "abapfs"
 
 export interface TransportSelection {
   cancelled: boolean
@@ -152,3 +154,50 @@ const validate = async (
 }
 
 export const transportValidators: TransportValidator[] = []
+
+interface TransportRequired {
+  status: TransportStatus.REQUIRED
+  transport: string
+}
+
+interface TransportSimple {
+  status: TransportStatus.LOCAL | TransportStatus.UNKNOWN
+}
+
+type TransportDetail = TransportRequired | TransportSimple
+
+const transportStatus = (uri: Uri): TransportDetail => {
+  const root = uriRoot(uri)
+  const file = root.getNode(uri.path)
+  if (!isAbapStat(file)) return { status: TransportStatus.UNKNOWN }
+  const status = root.lockManager.lockStatus(uri.path)
+  if (status.status === "locked") {
+    if (status.IS_LOCAL) return { status: TransportStatus.LOCAL }
+    return { status: TransportStatus.REQUIRED, transport: status.CORRNR || "" }
+  }
+  return { status: TransportStatus.UNKNOWN } // TODO different status?
+}
+
+export const selectTransportIfNeeded = async (uri: Uri) => {
+  const root = uriRoot(uri)
+  const file = root.getNode(uri.path)
+  if (!isAbapStat(file)) return trSel("")
+
+  const status = transportStatus(uri)
+  switch (status.status) {
+    case TransportStatus.LOCAL:
+      return trSel("")
+    case TransportStatus.REQUIRED:
+      const { transport } = status
+      const path = isAbapFolder(file)
+        ? file.object.path
+        : file.object.contentsPath()
+      const client = getClient(uri.authority)
+      const trsel = await selectTransport(path, "", client, false, transport)
+      if (trsel.cancelled) throw new Error("Transport required")
+      return trsel
+
+    case TransportStatus.UNKNOWN:
+      throw new Error("Unknown transport status. Object not locked?")
+  }
+}

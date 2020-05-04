@@ -33,24 +33,23 @@ function isLoadBalancing(config: guiConfig): config is LoadBalancingGuiConfig {
   return !!(config as LoadBalancingGuiConfig).messageServer
 }
 
-export async function runInSapGui(
+export function runInSapGui(
   connId: string,
   getCmd: () => Promise<SapGuiCommand | undefined> | SapGuiCommand | undefined
 ) {
-  await window.withProgress(
+  return window.withProgress(
     { location: ProgressLocation.Window, title: "Opening SAPGui..." },
     async () => {
       const config = RemoteManager.get().byId(connId)
       if (!config) return
       const client = getClient(connId)
-      // TODO error handling
       const sapGui = SapGui.create(config)
       const cmd = await getCmd()
       if (cmd) {
         log("Running " + JSON.stringify(cmd))
         sapGui.checkConfig()
         const ticket = await client.reentranceTicket()
-        await sapGui.startGui(cmd, ticket)
+        return sapGui.startGui(cmd, ticket)
       }
     }
   )

@@ -5,11 +5,25 @@ import {
   ObjectType,
   CreatableTypeIds
 } from "abap-adt-api"
-import { window, QuickPickItem, workspace, commands } from "vscode"
+import {
+  window,
+  QuickPickItem,
+  workspace,
+  commands,
+  Uri,
+  FileStat
+} from "vscode"
 
-import { splitAdtUri, vscPosition } from "../../lib"
-import { getClient, getRoot, createUri } from "../conections"
-import { PathItem, isFolder, isAbapFolder, isAbapFile } from "abapfs"
+import { splitAdtUri, vscPosition, log } from "../../lib"
+import { getClient, getRoot, uriRoot } from "../conections"
+import {
+  PathItem,
+  isFolder,
+  isAbapFolder,
+  isAbapFile,
+  isAbapStat,
+  Root
+} from "abapfs"
 
 interface SearchObjectType {
   name: string
@@ -145,7 +159,6 @@ export class AdtObjectFinder {
 
       qp.items = empty
       qp.items = [...empty]
-      // TODO debounce? Looks like VSC does it for me!
       qp.onDidChangeValue(async e => searchParent(e))
       qp.placeholder = prompt
       qp.onDidChangeSelection(e => {
@@ -183,4 +196,37 @@ export const findMainIncludeAsync = async (item: PathItem) => {
     await item.file.refresh()
     return item.file.mainInclude(item.path)
   }
+}
+
+export function createUri(connId: string, path: string, query: string = "") {
+  return Uri.parse("adt://" + connId).with({
+    path,
+    query
+  })
+}
+
+export function findAbapObject(uri: Uri) {
+  const file = uriRoot(uri).getNode(uri.path)
+  if (isAbapStat(file)) return file.object
+  throw new Error("Not an ABAP object")
+}
+
+export const pathSequence = (root: Root, uri: Uri | undefined): FileStat[] => {
+  if (uri)
+    try {
+      const parts = uri.path.split("/")
+      let path = ""
+      const nodes: FileStat[] = []
+      for (const part of parts) {
+        const sep = path.substr(-1) === "/" ? "" : "/"
+        path = `${path}${sep}${part}`
+        const hit = root.getNode(path)
+        if (!hit) log(`Incomplete path hierarchy for ${uri.path}`)
+        else nodes.unshift(hit)
+      }
+      return nodes
+    } catch (e) {
+      // ignore
+    }
+  return []
 }

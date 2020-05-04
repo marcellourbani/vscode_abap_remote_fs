@@ -49,7 +49,6 @@ const convertTestAlert = async (
 
 const classesAlerts = async (testClasses: UnitTestClass[], connId: string) => {
   const newAlerts = new Map<string, Diagnostic[]>()
-  // ToDo: clear old alerts
   for (const clas of testClasses)
     for (const method of clas.testmethods) {
       for (const alrt of method.alerts) {

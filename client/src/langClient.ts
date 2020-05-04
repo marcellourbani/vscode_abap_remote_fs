@@ -39,8 +39,7 @@ import { AbapObject } from "abapobject"
 async function getVSCodeUri(req: UriRequest): Promise<StringWrapper> {
   const root = getRoot(req.confKey)
   const hit = await root.findByAdtUri(req.uri, req.mainInclude)
-  // ToDo: error message
-  if (!hit) throw new Error("fileNotFound")
+  if (!hit) throw new Error(`File not found:${req.uri}`)
   return { s: urlFromPath(req.confKey, hit.path) }
 }
 export function findEditor(url: string) {
@@ -63,8 +62,7 @@ async function readObjectSource(uri: string) {
   const url = Uri.parse(uri)
   const root = uriRoot(url)
   const file = (await root.getNodeAsync(url.path)) || {}
-  // ToDo: error message
-  if (!isAbapFile(file)) throw new Error("fileNotFound")
+  if (!isAbapFile(file)) throw new Error(`File not found:${uri}`)
   const code = await file.read()
   return { source: code, url: url.toString() }
 }

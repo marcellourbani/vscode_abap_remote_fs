@@ -18,16 +18,10 @@ import { Revision, classIncludes } from "abap-adt-api"
 import { command, AbapFsCommands } from "../commands"
 import { log, parts } from "../lib"
 import { FsProvider } from "../fs/FsProvider"
-import {
-  ADTURIPATTERN,
-  ADTSCHEME,
-  getRoot,
-  getClient,
-  findAbapObject,
-  createUri
-} from "../adt/conections"
+import { ADTURIPATTERN, ADTSCHEME, getRoot, getClient } from "../adt/conections"
 import { isAbapClassInclude, isAbapClass } from "abapobject"
 import { PathItem, isAbapStat } from "abapfs"
+import { findAbapObject, createUri } from "../adt/operations/AdtObjectFinder"
 
 const EXTREGEX = /(\.[^\/^\.]+)$/
 const EMPTYFILE = "empty"

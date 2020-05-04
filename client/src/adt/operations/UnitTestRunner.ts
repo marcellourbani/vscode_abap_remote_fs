@@ -1,6 +1,7 @@
 import { Uri } from "vscode"
 import { alertManagers } from "../../views/abapunit"
-import { getClient, findAbapObject } from "../conections"
+import { getClient } from "../conections"
+import { findAbapObject } from "./AdtObjectFinder"
 
 export async function abapUnit(uri: Uri) {
   const object = await findAbapObject(uri)

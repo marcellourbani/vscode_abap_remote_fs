@@ -1,10 +1,6 @@
 import { window, ViewColumn, Uri } from "vscode"
-import {
-  ADTSCHEME,
-  uriRoot,
-  getClient,
-  findAbapObject
-} from "../adt/conections"
+import { ADTSCHEME, getClient } from "../adt/conections"
+import { findAbapObject } from "../adt/operations/AdtObjectFinder"
 const ABAPDOC = "ABAPDOC"
 const jsHeader = `<script type="text/javascript">
 const vscode = acquireVsCodeApi();

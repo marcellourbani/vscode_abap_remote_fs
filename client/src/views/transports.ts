@@ -28,10 +28,10 @@ import {
   getClient,
   ADTSCHEME,
   getOrCreateClient,
-  getRoot,
-  createUri
+  getRoot
 } from "../adt/conections"
 import { isFolder, isAbapStat, PathItem, isAbapFolder } from "abapfs"
+import { createUri } from "../adt/operations/AdtObjectFinder"
 
 const currentUsers = new Map<string, string>()
 

@@ -39,6 +39,8 @@ export class AbapFile implements FileStat {
     return this.object.read()
   }
   write(contents: string, lockId: string, transportId = "") {
+    if (!this.object.supported)
+      throw new Error(`Object ${this.object.key} can't be written `)
     return this.object.write(contents, lockId, transportId)
   }
 

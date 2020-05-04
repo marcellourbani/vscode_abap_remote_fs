@@ -1,9 +1,7 @@
 import { RemoteManager, createClient } from "../config"
-import { AFsService, Root, isAbapStat, AbapStat, isAbapFolder } from "abapfs"
-import { Uri, FileSystemError, FileStat } from "vscode"
+import { AFsService, Root } from "abapfs"
+import { Uri, FileSystemError } from "vscode"
 import { ADTClient } from "abap-adt-api"
-import { TransportStatus, trSel, selectTransport } from "./AdtTransports"
-import { log } from "console"
 export const ADTSCHEME = "adt"
 export const ADTURIPATTERN = /\/sap\/bc\/adt\//
 
@@ -90,87 +88,5 @@ export function hasLocks() {
     if (root.lockManager.lockedPaths().next().value) return true
 }
 export function disconnect() {
-  // TODO logout stateless too?
   return Promise.all([...clients.values()].map(c => c.logout()))
-}
-
-// TODO move
-export function createUri(connId: string, path: string, query: string = "") {
-  return Uri.parse("adt://" + connId).with({
-    path,
-    query
-  })
-}
-
-export function findAbapObject(uri: Uri) {
-  const file = uriRoot(uri).getNode(uri.path)
-  if (isAbapStat(file)) return file.object
-  throw new Error("Not an ABAP object")
-}
-
-export const pathSequence = (root: Root, uri: Uri | undefined): FileStat[] => {
-  if (uri)
-    try {
-      const parts = uri.path.split("/")
-      let path = ""
-      const nodes: FileStat[] = []
-      for (const part of parts) {
-        const sep = path.substr(-1) === "/" ? "" : "/"
-        path = `${path}${sep}${part}`
-        const hit = root.getNode(path)
-        if (!hit) log(`Incomplete path hierarchy for ${uri.path}`)
-        else nodes.unshift(hit)
-      }
-      return nodes
-    } catch (e) {
-      // ignore
-    }
-  return []
-}
-
-interface TransportRequired {
-  status: TransportStatus.REQUIRED
-  transport: string
-}
-
-interface TransportSimple {
-  status: TransportStatus.LOCAL | TransportStatus.UNKNOWN
-}
-
-type TransportDetail = TransportRequired | TransportSimple
-
-const transportStatus = (uri: Uri): TransportDetail => {
-  const root = uriRoot(uri)
-  const file = root.getNode(uri.path)
-  if (!isAbapStat(file)) return { status: TransportStatus.UNKNOWN }
-  const status = root.lockManager.lockStatus(uri.path)
-  if (status.status === "locked") {
-    if (status.IS_LOCAL) return { status: TransportStatus.LOCAL }
-    return { status: TransportStatus.REQUIRED, transport: status.CORRNR || "" }
-  }
-  return { status: TransportStatus.UNKNOWN } // TODO different status?
-}
-
-export const selectTransportIfNeeded = async (uri: Uri) => {
-  const root = uriRoot(uri)
-  const file = root.getNode(uri.path)
-  if (!isAbapStat(file)) return trSel("")
-
-  const status = transportStatus(uri)
-  switch (status.status) {
-    case TransportStatus.LOCAL:
-      return trSel("")
-    case TransportStatus.REQUIRED:
-      const { transport } = status
-      const path = isAbapFolder(file)
-        ? file.object.path
-        : file.object.contentsPath()
-      const client = getClient(uri.authority)
-      const trsel = await selectTransport(path, "", client, false, transport)
-      if (trsel.cancelled) throw new Error("Transport required")
-      return trsel
-
-    case TransportStatus.UNKNOWN:
-      throw new Error("Unknown transport status. Object not locked?")
-  }
 }

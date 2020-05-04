@@ -14,7 +14,8 @@ import {
 } from "vscode"
 import { asyncCache, cache } from "../lib"
 import { ADTClient } from "abap-adt-api"
-import { getClient, ADTSCHEME, findAbapObject } from "./conections"
+import { getClient, ADTSCHEME } from "./conections"
+import { findAbapObject } from "./operations/AdtObjectFinder"
 
 const ok = (type: string, name: string) =>
   `${type.toUpperCase()} ${name.toUpperCase()}`

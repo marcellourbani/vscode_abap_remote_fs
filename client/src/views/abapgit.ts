@@ -25,13 +25,8 @@ import {
 import { quickPick } from "../lib"
 import { addRepo, repoCredentials } from "../scm/abapGit"
 import { isNone, none, isSome } from "fp-ts/lib/Option"
-import {
-  getClient,
-  ADTSCHEME,
-  getOrCreateClient,
-  createUri
-} from "../adt/conections"
-import { AdtObjectFinder } from "../adt/operations/AdtObjectFinder"
+import { getClient, ADTSCHEME, getOrCreateClient } from "../adt/conections"
+import { AdtObjectFinder, createUri } from "../adt/operations/AdtObjectFinder"
 
 const confirm = "Confirm"
 interface AbapGitItem extends TreeItem {
