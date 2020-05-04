@@ -69,7 +69,9 @@ export class AbapFolder extends Folder {
     for (const node of cont.nodes) {
       const type = getType(node)
       const category = getCat(type)
-      let folder = subFolder(root, category?.CATEGORY_LABEL)
+      let folder = root
+      if (category?.CATEGORY_LABEL !== type?.OBJECT_TYPE_LABEL)
+        folder = subFolder(root, category?.CATEGORY_LABEL)
       folder = subFolder(folder, type?.OBJECT_TYPE_LABEL)
       const object = fromNode(node, this.object, this.service)
       const child = object.expandable

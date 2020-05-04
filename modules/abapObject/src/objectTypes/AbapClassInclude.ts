@@ -78,7 +78,7 @@ export class AbapClassInclude extends AbapObjectBase {
   get lockObject() {
     return this.parent
   }
-  readonly hasStructure = false
+
   readonly parent: AbapClass
   get extension() {
     const type = CLASSINCLUDES[this.name.replace(/.*\./, "")] || ""

@@ -92,3 +92,15 @@ test("gt parameters", async () => {
   expect(isAbapStat(para)).toBe(false)
   expect(para?.size).toBeGreaterThan(1)
 })
+
+test("Transformations", async () => {
+  const root = getRootForTest()
+  if (!root) return
+  const tran = await root.getNodeAsync(
+    "/$TMP/$ADTBACKEND/Transformations/ZABAPGIT_ST_REPO_INFO_EXT_REQ.xslt.xml"
+  )
+
+  if (!isAbapFile(tran)) fail("Transformaton should be a file")
+  const source = await tran.read()
+  expect(source.match(/sap\.transform/i)).toBeTruthy()
+})

@@ -49,8 +49,6 @@ export interface AbapObject {
   mainPrograms: () => Promise<MainInclude[]>
   /** whether we are able to write it */
   readonly canBeWritten: boolean
-  /** whether the object has structure/metadata */
-  readonly hasStructure: boolean
   /** objcect namespace
    *  i.e. for /UI5/IF_ADT_REP_MODEL is /UI5/
    */
@@ -61,6 +59,8 @@ export interface AbapObject {
   readonly baseName: string
   /** used to open the object in SAPGUI */
   readonly sapGuiUri: string
+  /** supported or only sapgui */
+  readonly supported: boolean
 
   /** loads/updates the object metadata */
   loadStructure: () => Promise<AbapObjectStructure>
@@ -106,12 +106,11 @@ export class AbapObjectBase implements AbapObject {
     this.supported =
       this.type !== "IWSV" &&
       !path.match(
-        "(/sap/bc/adt/vit)|(/sap/bc/adt/ddic/domains/)|(/sap/bc/adt/ddic/dataelements/)"
+        "(/sap/bc/adt/vit)|(/sap/bc/adt/ddic/domains/)|(/sap/bc/adt/ddic/dataelements/)|(/sap/bc/esproxy)"
       )
   }
   structure?: AbapObjectStructure
-  readonly hasStructure: boolean = true
-  protected readonly supported: boolean
+  readonly supported: boolean
 
   get canBeWritten() {
     return this.supported && !this.expandable

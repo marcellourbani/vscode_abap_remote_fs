@@ -29,12 +29,13 @@ export class AbapFile implements FileStat {
   }
 
   async stat() {
-    await this.object.loadStructure()
+    if (this.object.supported) await this.object.loadStructure()
   }
 
   size = 0
   async read() {
-    if (!this.object.structure) await this.object.loadStructure()
+    if (!this.object.structure && this.object.supported)
+      await this.object.loadStructure()
     return this.object.read()
   }
   write(contents: string, lockId: string, transportId = "") {

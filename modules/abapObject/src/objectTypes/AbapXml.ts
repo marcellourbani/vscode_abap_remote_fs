@@ -6,7 +6,14 @@ import {
 } from ".."
 const tag = Symbol("AbapXml")
 
-@AbapObjectCreator("MSAG/N")
+const extension = (type: string) => {
+  const tpext =
+    type === "MSAG/N" ? type.replace(/\//, "") : type.replace(/\/.*/, "")
+
+  return `.${tpext.toLowerCase()}.xml`
+}
+
+@AbapObjectCreator("MSAG/N", "XSLT/VT")
 export class AbapXml extends AbapObjectBase {
   [tag] = true
   constructor(
@@ -22,9 +29,10 @@ export class AbapXml extends AbapObjectBase {
     super(type, name, path, false, techName, parent, sapGuiUri, client)
   }
   get extension() {
-    return `.${this.type.replace(/\//, "").toLowerCase()}.xml`
+    return extension(this.type)
   }
   contentsPath() {
+    if (this.type === "XSLT/VT") return super.contentsPath()
     return this.path
   }
 }
