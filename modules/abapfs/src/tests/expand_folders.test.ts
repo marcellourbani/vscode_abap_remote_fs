@@ -104,3 +104,12 @@ test("Transformations", async () => {
   const source = await tran.read()
   expect(source.match(/sap\.transform/i)).toBeTruthy()
 })
+
+test("path for namespaced object", async () => {
+  const root = getRootForTest()
+  if (!root) return
+  const path = await root.getNodePathAsync(
+    "/System Library/∕SAPTRX∕EM_BASIS/∕SAPTRX∕ATIF/Source Code Library/Includes/∕SAPTRX∕CONSTANTS.prog.abap"
+  )
+  expect(path.length).toBe(7)
+})

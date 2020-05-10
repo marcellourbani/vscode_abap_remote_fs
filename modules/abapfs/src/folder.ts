@@ -62,16 +62,38 @@ export class Folder implements Iterable<FolderItem>, FileStat {
       if (isFolder(child) && child.hasManual()) return true
   }
 
-  /** finds a subdirectory given a path
+  /** finds a file/folder given a path
    *   Only works with nodes already seen
    */
-  getNode(path: string) {
+  getNode(path: string): FileStat | undefined {
     const parts = path.split("/").filter(x => x)
-    return this.getNodeInt(parts)
+    const nodePath = this.getNodePathInt(parts, "")
+    return nodePath[0]?.file
   }
-  getNodeAsync(path: string) {
+
+  /** finds a file/folder given a path
+   *   expanding nodes as needed
+   */
+  async getNodeAsync(path: string) {
     const parts = path.split("/").filter(x => x)
-    return this.getNodeAsyncInt(parts)
+    const item = await this.getPathAsyncInt(parts, "")
+    return item[0]?.file
+  }
+
+  /** finds a file/folder and all predecessos given a path
+   *   Only works with nodes already seen
+   */
+  getNodePath(path: string) {
+    const parts = path.split("/").filter(x => x)
+    return this.getNodePathInt(parts, "")
+  }
+
+  /** finds a file/folder and all predecessos given a path
+   *   expanding nodes as needed
+   */
+  getNodePathAsync(path: string) {
+    const parts = path.split("/").filter(x => x)
+    return this.getPathAsyncInt(parts, "")
   }
 
   get size() {
@@ -104,33 +126,54 @@ export class Folder implements Iterable<FolderItem>, FileStat {
       // do something when I get a new leaf? or a leaf is replaced by a folder> Probably best to ignore
     }
   }
-  protected getNodeInt(parts: string[]): FileStat | undefined {
-    if (parts.length === 0) return this
-    const [first, ...rest] = parts
-    const next = this.get(first)
-    if (rest.length === 0) return next
-    if (isFolder(next)) return next.getNodeInt(rest)
+
+  private getNodePathInt(parts: string[], start: string): PathItem[] {
+    let current: PathItem = { file: this, path: `${start || "/"}` }
+    const nodePath = [current]
+    for (const p of parts) {
+      const file = isFolder(current.file) && current.file.get(p)
+      if (!file) return []
+      const path = current.path === "/" ? `/${p}` : `${current.path}/${p}`
+      current = { file, path }
+      nodePath.unshift(current)
+    }
+    return nodePath
   }
 
-  protected async getNodeAsyncInt(
-    parts: string[]
-  ): Promise<FileStat | undefined> {
-    const node = this.getNodeInt(parts)
-    if (node) return node
-    let parent: FileStat | undefined = this
-    for (let idx = 0; idx < parts.length; idx++) {
-      if (isFolder(parent)) parent = parent.get(parts[idx])
-      else break
-      if (isRefreshable(parent))
-        return parent.getNodeAsyncInt(parts.slice(idx + 1))
+  private async getPathAsyncInt(
+    parts: string[],
+    start: string
+  ): Promise<PathItem[]> {
+    let nodePath = this.getNodePathInt(parts, start)
+    if (nodePath.length) return nodePath
+    let current: PathItem = { file: this, path: `${start || "/"}` }
+    nodePath = [current]
+    let refresh: (() => any) | undefined
+
+    for (const p of parts) {
+      if (isRefreshable(current.file)) {
+        const f = current.file
+        refresh = async () => {
+          await f.refresh()
+          refresh = undefined
+        }
+      }
+      if (isFolder(current.file)) {
+        let file = current.file.get(p)
+        if (!file && refresh) {
+          await refresh()
+          file = current.file.get(p)
+        }
+        if (!file) return []
+        const path = current.path === "/" ? `/${p}` : `${current.path}/${p}`
+        current = { file, path }
+        nodePath.unshift(current)
+      } else return []
     }
-    if (isRefreshable(this)) await this.refresh()
-    const [first, ...rest] = parts
-    const child = this.get(first)
-    if (rest.length === 0) return child
-    if (isFolder(child)) return child.getNodeAsyncInt(rest)
+    return nodePath
   }
 }
+
 interface Refreshable extends Folder {
   refresh: () => Promise<void>
 }

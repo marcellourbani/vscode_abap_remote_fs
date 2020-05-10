@@ -1,5 +1,5 @@
 import { getRootForTest } from "./connectServer"
-import { isAbapStat, isAbapFile } from "../abapFile"
+import { isAbapFile } from "../abapFile"
 test("stat program ", async () => {
   const root = getRootForTest()
   if (!root) return

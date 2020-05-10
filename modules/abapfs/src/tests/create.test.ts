@@ -1,6 +1,6 @@
 import { createRoot, isRoot, TMPFOLDER, LIBFOLDER } from "../root"
 import { AbapFsService } from ".."
-import { mock } from "jest-mock-extended"
+import { mock, MockProxy } from "jest-mock-extended"
 import { isAbapFolder } from "../abapFolder"
 import { Folder, isFolder } from "../folder"
 import sampleNodeContents from "../testdata/nodeContents1.json"
@@ -86,4 +86,76 @@ test("expand package on demand", async () => {
   )
   expect(file).toBeDefined()
   expect(isAbapFile(file)).toBe(true)
+})
+
+test("expand package hierarchy on demand", async () => {
+  const client = mock<AbapFsService>()
+  client.nodeContents.mockReturnValueOnce(Promise.resolve(sampleNodeContents))
+  client.objectStructure.mockReturnValueOnce(Promise.resolve(sampleclas))
+  const root = createRoot("MYConn", client)
+  const objpath =
+    "/$TMP/Source Code Library/Classes/ZCL_CA_ALV/ZCL_CA_ALV.clas.abap"
+  const path = await root.getNodePathAsync(objpath)
+  expect(path).toBeDefined()
+  expect(isAbapFile(path[0].file)).toBe(true)
+  const expectedPath = [
+    "/$TMP/Source Code Library/Classes/ZCL_CA_ALV/ZCL_CA_ALV.clas.abap",
+    "/$TMP/Source Code Library/Classes/ZCL_CA_ALV",
+    "/$TMP/Source Code Library/Classes",
+    "/$TMP/Source Code Library",
+    "/$TMP",
+    "/"
+  ]
+  const pah2 = root.getNodePath(objpath).map(x => x.path)
+  expect(pah2).toEqual(expectedPath)
+  expect(path.map(x => x.path)).toEqual(expectedPath)
+})
+
+const addNewClass = (client: MockProxy<AbapFsService>) => {
+  // simulate a creation
+  const { nodes } = sampleNodeContents
+  const clas = nodes.find(n => n.OBJECT_NAME === "ZCL_CA_ALV")
+  if (!clas) fail("not found")
+  clas.OBJECT_NAME = "ZCL_NEWLY_CREATED"
+  const nc = { ...sampleNodeContents, nodes: [clas] }
+  client.nodeContents.mockReturnValueOnce(Promise.resolve(nc))
+  let { metaData } = sampleclas
+  metaData = { ...metaData, "adtcore:name": "ZCL_NEWLY_CREATED" }
+  client.objectStructure.mockReturnValueOnce(
+    Promise.resolve({ ...sampleclas, metaData })
+  )
+}
+test("refresh on demand", async () => {
+  const objpath =
+    "/$TMP/Source Code Library/Classes/ZCL_CA_ALV/ZCL_CA_ALV.clas.abap"
+  const newobjpath =
+    "/$TMP/Source Code Library/Classes/ZCL_NEWLY_CREATED/ZCL_NEWLY_CREATED.clas.abap"
+  const expectedPath = [
+    "/$TMP/Source Code Library/Classes/ZCL_NEWLY_CREATED/ZCL_NEWLY_CREATED.clas.abap",
+    "/$TMP/Source Code Library/Classes/ZCL_NEWLY_CREATED",
+    "/$TMP/Source Code Library/Classes",
+    "/$TMP/Source Code Library",
+    "/$TMP",
+    "/"
+  ]
+  const client = mock<AbapFsService>()
+  client.nodeContents.mockReturnValue(Promise.resolve(sampleNodeContents))
+  client.objectStructure.mockReturnValueOnce(Promise.resolve(sampleclas))
+  const root = createRoot("MYConn", client)
+  const path = await root.getNodePathAsync(objpath)
+  expect(path).toBeDefined()
+  expect(isAbapFile(path[0].file)).toBe(true)
+
+  let newpath = await root.getNodePathAsync(newobjpath)
+  expect(newpath).toBeDefined()
+  expect(newpath.length).toBe(0)
+
+  // simulate a creation
+  addNewClass(client)
+
+  newpath = await root.getNodePathAsync(newobjpath)
+  expect(newpath).toBeDefined()
+  expect(newpath.map(x => x.path)).toEqual(expectedPath)
+  const pah2 = root.getNodePath(newobjpath)
+  expect(pah2).toEqual(newpath)
 })
