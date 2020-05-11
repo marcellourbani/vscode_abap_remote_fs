@@ -1,8 +1,10 @@
 import { ADTClient, isAdtError, inactiveObjectsInResults } from "abap-adt-api"
-import { IncludeLensP } from "./IncludeLens"
 import { Uri, EventEmitter } from "vscode"
 import { AbapObject } from "abapobject"
 import { getClient } from "../conections"
+import { IncludeLensP } from "../includes/lens"
+import { IncludeService } from "../includes/service"
+import { isUnDefined, isDefined } from "../../lib"
 
 export interface ActivationEvent {
   object: AbapObject
@@ -28,37 +30,52 @@ export class AdtObjectActivator {
     return this.emitter.event
   }
 
+  private async getMain(object: AbapObject, uri: Uri) {
+    const service = IncludeService.get(uri.authority)
+    if (!service.needMain(object)) return
+    const provider = IncludeLensP.get()
+    const main =
+      service.current(uri.path) || (await provider.switchIncludeIfMissing(uri))
+    return main?.["adtcore:uri"]
+  }
+
+  private async sibilings(object: AbapObject) {
+    const inactive = (await this.client.inactiveObjects()).map(r => r.object)
+    const parentUri = inactive.find(o => o?.["adtcore:uri"] === object.path)?.[
+      "adtcore:parentUri"
+    ]
+    if (!parentUri || inactive.length <= 1) return
+
+    return inactive
+      .filter(isDefined)
+      .filter(o => o?.["adtcore:parentUri"] === parentUri)
+  }
+
+  private async tryActivate(object: AbapObject, uri: Uri) {
+    const { name, path } = object.lockObject
+    let result
+    const mainProg = await this.getMain(object, uri)
+    result = await this.client.activate(name, path, mainProg)
+    if (!result.success) {
+      let inactives
+      if (result.inactive.length > 0)
+        inactives = inactiveObjectsInResults(result)
+      else inactives = await this.sibilings(object)
+      if (inactives) result = await this.client.activate(inactives)
+    }
+    return result
+  }
+
   public async activate(object: AbapObject, uri: Uri) {
     const inactive = object.lockObject
-    let result
-    let message
-    let mainProg: string | undefined
-    try {
-      result = await this.client.activate(inactive.name, inactive.path)
-      if (result.inactive.length > 0) {
-        const inactives = inactiveObjectsInResults(result)
-        result = await this.client.activate(inactives)
-      }
-    } catch (e) {
-      if (isAdtError(e) && e.type === "invalidMainProgram") {
-        const provider = IncludeLensP.get()
-        mainProg = await provider.selectIncludeIfNeeded(uri)
-        if (mainProg)
-          result = await this.client.activate(
-            inactive.name,
-            inactive.path,
-            mainProg
-          )
-      } else message = e.toString()
-    }
+    const result = await this.tryActivate(object, uri)
+    const mainProg = await this.getMain(object, uri)
     if (result && result.success) {
       this.emitter.fire({ object, uri, activated: inactive, mainProg })
-      // TODO perhaps a stat is better?
       await inactive.loadStructure()
     } else {
-      message =
+      const message =
         (result && result.messages[0] && result.messages[0].shortText) ||
-        message ||
         `Error activating ${object.name}`
       throw new Error(message)
     }

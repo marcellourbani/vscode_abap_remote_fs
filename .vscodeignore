@@ -24,3 +24,4 @@ client/.vscodeignore
 sharedapi/**
 wiki/**
 *.workspace
+modules

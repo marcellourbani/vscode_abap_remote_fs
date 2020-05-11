@@ -11,13 +11,13 @@ import {
   workspace
 } from "vscode"
 
-import { IncludeLensP } from "./adt/operations/IncludeLens"
 import { debounce } from "./lib"
 import { ADTSCHEME, uriRoot, abapUri, getRoot } from "./adt/conections"
 import { AbapObject } from "abapobject"
-import { isAbapFolder, isAbapStat } from "abapfs"
+import { isAbapStat } from "abapfs"
 import { isCsrfError } from "abap-adt-api"
 import { LockStatus } from "abapfs/out/lockObject"
+import { IncludeLensP } from "./adt/includes/lens"
 
 export const listenersubscribers: ((...x: any[]) => Disposable)[] = []
 
@@ -140,7 +140,7 @@ export async function documentWillSave(e: TextDocumentWillSaveEvent) {
 export function documentOpenListener(document: TextDocument) {
   const uri = document.uri
   if (uri.scheme !== ADTSCHEME) return
-  return IncludeLensP.get().selectIncludeIfNeeded(uri)
+  return IncludeLensP.get().switchIncludeIfMissing(uri)
 }
 
 function isInactive(obj: AbapObject): boolean {

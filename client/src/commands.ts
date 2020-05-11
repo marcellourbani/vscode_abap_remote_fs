@@ -14,7 +14,6 @@ import { findEditor } from "./langClient"
 import { showHideActivate } from "./listeners"
 import { abapUnit } from "./adt/operations/UnitTestRunner"
 import { selectTransport } from "./adt/AdtTransports"
-import { IncludeLensP } from "./adt/operations/IncludeLens"
 import { showInGui } from "./adt/sapgui/sapgui"
 import { storeTokens } from "./oauth"
 import { showAbapDoc } from "./views/help"
@@ -34,6 +33,7 @@ import {
   findAbapObject
 } from "./adt/operations/AdtObjectFinder"
 import { isAbapClassInclude } from "abapobject"
+import { IncludeLensP } from "./adt/includes" // resolve dependencies
 
 const abapcmds: {
   name: string
@@ -152,12 +152,7 @@ export class AdtCommands {
 
   @command(AbapFsCommands.changeInclude)
   private static async changeMain(uri: Uri) {
-    const provider = IncludeLensP.get()
-    const obj = await findAbapObject(uri)
-    if (obj) return
-    const main = await provider.selectMain(obj, uri)
-    if (!main) return
-    provider.setInclude(uri, main)
+    return IncludeLensP.get().switchInclude(uri)
   }
 
   @command(AbapFsCommands.connect)

@@ -29,12 +29,13 @@ import { join } from "path"
 import { FixProposal } from "abap-adt-api"
 import { fail } from "assert"
 import { command, AbapFsCommands } from "./commands"
-import { IncludeLensP } from "./adt/operations/IncludeLens"
 import { RemoteManager, formatKey } from "./config"
 import { futureToken } from "./oauth"
 import { getRoot, ADTSCHEME, uriRoot } from "./adt/conections"
 import { isAbapFile } from "abapfs"
 import { AbapObject } from "abapobject"
+import { IncludeService } from "./adt/includes/service"
+import { IncludeLensP } from "./adt/includes/lens"
 
 async function getVSCodeUri(req: UriRequest): Promise<StringWrapper> {
   const root = getRoot(req.confKey)
@@ -86,8 +87,8 @@ async function objectDetailFromUrl(url: string) {
   if (!isAbapFile(obj)) throw new Error("not found") // TODO error
   let mainProgram
   if (obj.object.type === "PROG/I")
-    mainProgram = await IncludeLensP.get().guessMain(uri)
-  return objectDetail(obj.object, mainProgram)
+    mainProgram = IncludeService.get(uri.authority).current(uri.path)
+  return objectDetail(obj.object, mainProgram?.["adtcore:uri"])
 }
 
 async function configFromKey(connId: string) {

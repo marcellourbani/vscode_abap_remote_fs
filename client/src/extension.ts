@@ -20,15 +20,16 @@ import { log } from "./lib"
 import { client, LanguageCommands } from "./langClient"
 import { registerRevisionModel } from "./scm/abaprevision"
 import { AbapRevisionLensP } from "./scm/abaprevisionlens"
-import { IncludeLensP } from "./adt/operations/IncludeLens"
 import { ClassHierarchyLensProvider } from "./adt/classhierarchy"
-import { registerCommands } from "./commands"
 import { abapGitProvider } from "./views/abapgit"
 import { loadTokens, clearTokens } from "./oauth"
 import { registerAbapGit } from "./scm/abapGit"
 import { AbapFsApi, api } from "./api"
 import { ADTSCHEME, disconnect, hasLocks } from "./adt/conections"
 import { MessagesProvider } from "./editors/messages"
+import { IncludeLensP } from "./adt/includes"
+import { registerCommands } from "./commands"
+
 export let context: ExtensionContext
 
 export async function activate(ctx: ExtensionContext): Promise<AbapFsApi> {

@@ -73,6 +73,7 @@ export const getOrCreateRoot = async (connId: string) => {
   if (!rootP) {
     rootP = new Promise(async resolve => {
       const client = await getOrCreateClient(connId, false)
+      // @ts-ignore
       const service = new AFsService(client)
       const newRoot = new Root(connId, service)
       roots.set(connId, newRoot)
