@@ -2,9 +2,8 @@ import { ADTClient, isAdtError, inactiveObjectsInResults } from "abap-adt-api"
 import { Uri, EventEmitter } from "vscode"
 import { AbapObject } from "abapobject"
 import { getClient } from "../conections"
-import { IncludeLensP } from "../includes/lens"
-import { IncludeService } from "../includes/service"
-import { isUnDefined, isDefined } from "../../lib"
+import { IncludeProvider, IncludeService } from "../includes"
+import { isDefined } from "../../lib"
 
 export interface ActivationEvent {
   object: AbapObject
@@ -33,7 +32,7 @@ export class AdtObjectActivator {
   private async getMain(object: AbapObject, uri: Uri) {
     const service = IncludeService.get(uri.authority)
     if (!service.needMain(object)) return
-    const provider = IncludeLensP.get()
+    const provider = IncludeProvider.get()
     const main =
       service.current(uri.path) || (await provider.switchIncludeIfMissing(uri))
     return main?.["adtcore:uri"]

@@ -10,13 +10,13 @@ import {
 } from "vscode"
 import { abapUri } from "../conections"
 import { IncludeService } from "./service"
-import { AbapFsCommands, command } from "../../commands"
 import { MainProgram } from "vscode-abap-remote-fs-sharedapi"
+import { AbapFsCommands } from "../../commands"
 
-export class IncludeLensP implements CodeLensProvider {
-  private static _instance: IncludeLensP
+export class IncludeProvider implements CodeLensProvider {
+  private static _instance: IncludeProvider
   static get() {
-    if (!this._instance) this._instance = new IncludeLensP()
+    if (!this._instance) this._instance = new IncludeProvider()
     return this._instance
   }
   private selectedEmitter = new EventEmitter<MainProgram>()
@@ -24,8 +24,7 @@ export class IncludeLensP implements CodeLensProvider {
   readonly onDidChangeCodeLenses = this.lensEmitter.event
   readonly onDidSelectInclude = this.selectedEmitter.event
 
-  async provideCodeLenses(document: TextDocument, token: CancellationToken) {
-    const lenses: CodeLens[] = []
+  async provideCodeLenses(document: TextDocument) {
     const { uri } = document
     if (!abapUri(uri)) return
     const service = IncludeService.get(uri.authority)
@@ -41,9 +40,7 @@ export class IncludeLensP implements CodeLensProvider {
       arguments: [uri, this]
     }
     const lens = new CodeLens(new Range(0, 0, 0, 0), changeInclude)
-    lenses.push(lens)
-
-    return lenses
+    return [lens]
   }
 
   private async selectInclude(uri: Uri) {
@@ -51,9 +48,9 @@ export class IncludeLensP implements CodeLensProvider {
     let candidates = await service.candidates(uri.path)
     const guessed = service.guessParent(uri.path)
     if (guessed) return guessed
-    if (candidates.length === 0)
+    if (!candidates?.length)
       candidates = await service.candidates(uri.path, true)
-    if (candidates.length === 0) return
+    if (!candidates?.length) return
     const sources = candidates.map(include => ({
       label: service.mainName(include),
       include

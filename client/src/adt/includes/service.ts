@@ -21,12 +21,12 @@ export class IncludeService {
     (connId: string) => new IncludeService(getRoot(connId))
   )
 
-  private includes = new Map<string, IncludeData | false>()
+  private includes = new Map<string, IncludeData>()
   private constructor(private root: Root) {}
 
   current(vsPath: string) {
     const data = this.includes.get(vsPath)
-    return (data && data.current) || undefined
+    return data?.current
   }
 
   needMain(obj: AbapObject) {
@@ -34,7 +34,7 @@ export class IncludeService {
   }
 
   includeData(vsPath: string) {
-    return this.includes.get(vsPath) || undefined
+    return this.includes.get(vsPath)
   }
 
   mainName(main: MainInclude) {
@@ -68,7 +68,6 @@ export class IncludeService {
 
   async candidates(vsPath: string, refresh = false) {
     const data = this.includes.get(vsPath)
-    if (data === false) return []
     if (data && !refresh) return data.candidates
 
     const file = await this.root.getNodeAsync(vsPath)
@@ -79,8 +78,8 @@ export class IncludeService {
         const includeUri = file.object.path
         this.includes.set(vsPath, { candidates, current, includeUri })
         return candidates
-      } else this.includes.set(vsPath, false)
+      }
 
-    return []
+    return
   }
 }

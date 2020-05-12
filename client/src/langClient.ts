@@ -34,8 +34,7 @@ import { futureToken } from "./oauth"
 import { getRoot, ADTSCHEME, uriRoot } from "./adt/conections"
 import { isAbapFile } from "abapfs"
 import { AbapObject } from "abapobject"
-import { IncludeService } from "./adt/includes/service"
-import { IncludeLensP } from "./adt/includes/lens"
+import { IncludeService, IncludeProvider } from "./adt/includes"
 
 async function getVSCodeUri(req: UriRequest): Promise<StringWrapper> {
   const root = getRoot(req.confKey)
@@ -175,7 +174,7 @@ export async function startLanguageClient(context: ExtensionContext) {
   )
   log("starting language client...")
 
-  IncludeLensP.get().onDidSelectInclude(includeChanged)
+  IncludeProvider.get().onDidSelectInclude(includeChanged)
 
   client.onDidChangeState(e => {
     if (e.newState === State.Running) {

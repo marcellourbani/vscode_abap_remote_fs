@@ -69,19 +69,17 @@ export interface AbapObject {
   read: () => Promise<string>
   childComponents: () => Promise<NodeStructure>
 }
-// tslint:disable:callable-types
-export interface AbapObjectConstructor {
-  new (
-    type: string,
-    name: string,
-    path: string,
-    expandable: boolean,
-    techName: string,
-    parent: AbapObject | undefined,
-    sapGuiUri: string,
-    client: AbapObjectService
-  ): AbapObject
-}
+
+export type AbapObjectConstructor = new (
+  type: string,
+  name: string,
+  path: string,
+  expandable: boolean,
+  techName: string,
+  parent: AbapObject | undefined,
+  sapGuiUri: string,
+  client: AbapObjectService
+) => AbapObject
 export const isAbapObject = (x: any): x is AbapObject => !!x?.[objectTag]
 
 const followPath = (base: string, suffix: string) => {

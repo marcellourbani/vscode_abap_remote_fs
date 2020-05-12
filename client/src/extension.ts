@@ -27,7 +27,7 @@ import { registerAbapGit } from "./scm/abapGit"
 import { AbapFsApi, api } from "./api"
 import { ADTSCHEME, disconnect, hasLocks } from "./adt/conections"
 import { MessagesProvider } from "./editors/messages"
-import { IncludeLensP } from "./adt/includes"
+import { IncludeProvider } from "./adt/includes"
 import { registerCommands } from "./commands"
 
 export let context: ExtensionContext
@@ -84,7 +84,7 @@ export async function activate(ctx: ExtensionContext): Promise<AbapFsApi> {
   sub.push(
     languages.registerCodeLensProvider(
       { language: "abap", scheme: ADTSCHEME },
-      IncludeLensP.get()
+      IncludeProvider.get()
     )
   )
 

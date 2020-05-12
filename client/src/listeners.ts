@@ -17,7 +17,7 @@ import { AbapObject } from "abapobject"
 import { isAbapStat } from "abapfs"
 import { isCsrfError } from "abap-adt-api"
 import { LockStatus } from "abapfs/out/lockObject"
-import { IncludeLensP } from "./adt/includes/lens"
+import { IncludeProvider } from "./adt/includes"
 
 export const listenersubscribers: ((...x: any[]) => Disposable)[] = []
 
@@ -140,7 +140,7 @@ export async function documentWillSave(e: TextDocumentWillSaveEvent) {
 export function documentOpenListener(document: TextDocument) {
   const uri = document.uri
   if (uri.scheme !== ADTSCHEME) return
-  return IncludeLensP.get().switchIncludeIfMissing(uri)
+  return IncludeProvider.get().switchIncludeIfMissing(uri)
 }
 
 function isInactive(obj: AbapObject): boolean {

@@ -33,7 +33,7 @@ import {
   findAbapObject
 } from "./adt/operations/AdtObjectFinder"
 import { isAbapClassInclude } from "abapobject"
-import { IncludeLensP } from "./adt/includes" // resolve dependencies
+import { IncludeProvider } from "./adt/includes" // resolve dependencies
 
 const abapcmds: {
   name: string
@@ -152,7 +152,7 @@ export class AdtCommands {
 
   @command(AbapFsCommands.changeInclude)
   private static async changeMain(uri: Uri) {
-    return IncludeLensP.get().switchInclude(uri)
+    return IncludeProvider.get().switchInclude(uri)
   }
 
   @command(AbapFsCommands.connect)
