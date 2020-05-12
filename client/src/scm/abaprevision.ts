@@ -14,12 +14,12 @@ import {
   window,
   QuickPickItem
 } from "vscode"
-import { Revision, classIncludes } from "abap-adt-api"
+import { Revision, classIncludes, ADTClient } from "abap-adt-api"
 import { command, AbapFsCommands } from "../commands"
 import { log, parts } from "../lib"
 import { FsProvider } from "../fs/FsProvider"
 import { ADTURIPATTERN, ADTSCHEME, getRoot, getClient } from "../adt/conections"
-import { isAbapClassInclude, isAbapClass } from "abapobject"
+import { isAbapClassInclude, isAbapClass, AbapObject } from "abapobject"
 import { PathItem, isAbapStat } from "abapfs"
 import { findAbapObject, createUri } from "../adt/operations/AdtObjectFinder"
 
@@ -190,6 +190,15 @@ export class AbapRevision
     return source
   }
 
+  public async objRevisions(obj: AbapObject, client: ADTClient) {
+    if (!obj.structure) await obj.loadStructure()
+    const [include, structure] = isAbapClassInclude(obj)
+      ? [obj.techName as classIncludes, obj.parent.structure]
+      : [undefined, obj.structure]
+    if (!structure) return []
+    return client.revisions(structure, include)
+  }
+
   public addDocument = async (uri: Uri) => {
     if (uri.scheme !== ADTSCHEME) return
     if (this.find(uri)[0]) return
@@ -202,12 +211,7 @@ export class AbapRevision
       try {
         const obj = await findAbapObject(uri)
         if (!obj) return
-        if (!obj.structure) await obj.loadStructure()
-        const [include, structure] = isAbapClassInclude(obj)
-          ? [obj.techName as classIncludes, obj.parent.structure]
-          : [undefined, obj.structure]
-        if (!structure) return
-        const revisions = await client.revisions(structure, include)
+        const revisions = await this.objRevisions(obj, client)
         if (revisions.length > 1) this.addResource(conn, recent, uri, revisions)
       } catch (e) {
         log(e)
@@ -246,13 +250,7 @@ export class AbapRevision
       if (this.findInGroup(uri, group)) continue
 
       const obj = node.file.object
-      const include = isAbapClassInclude(obj)
-        ? (obj.techName as classIncludes)
-        : undefined
-      if (!obj.structure) await obj.loadStructure()
-      if (!obj.structure) continue
-      const client = getClient(connId)
-      const revisions = await client.revisions(obj.structure, include)
+      const revisions = await this.objRevisions(obj, getClient(connId))
       this.addResource(conn, group, uri, revisions, filter)
     }
   }

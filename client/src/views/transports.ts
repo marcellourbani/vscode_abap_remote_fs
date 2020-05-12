@@ -315,21 +315,23 @@ export class TransportsProvider implements TreeDataProvider<CollectionItem> {
         if (!path || !path.path || !isAbapStat(path.file)) return
         const uri = createUri(item.connId, path.path)
         const obj = path.file.object
-        if (!obj.structure) await obj.loadStructure()
-        if (!obj.structure) return
+        const client = getClient(item.connId)
 
-        const revisions = await getClient(item.connId).revisions(obj.structure)
-        const beforeTr = revisions.find(
+        const revisions = await AbapRevision.get().objRevisions(obj, client)
+        const beforeTr = revisions?.find(
           r => !r.version.match(item.transport.revisionFilter)
         )
         if (!beforeTr) return
         displayed = true
         return AbapRevision.displayDiff(uri, beforeTr)
       })
-      if (!displayed) window.showInformationMessage("Object not found")
+      if (!displayed)
+        window.showInformationMessage(
+          `No previous version found for object ${item.label}`
+        )
     } catch (e) {
       window.showErrorMessage(
-        `Error displaying transport object: ${e.toString}`
+        `Error displaying transport object: ${e.toString()}`
       )
     }
   }
@@ -355,10 +357,13 @@ export class TransportsProvider implements TreeDataProvider<CollectionItem> {
           preserveFocus: false
         })
       })
-      if (!displayed) window.showInformationMessage("Object not found")
+      if (!displayed)
+        window.showInformationMessage(
+          `Object ${obj["tm:type"]} ${obj["tm:name"]} not found`
+        )
     } catch (e) {
       window.showErrorMessage(
-        `Error displaying transport object: ${e.toString}`
+        `Error displaying transport object: ${e.toString()}`
       )
     }
   }

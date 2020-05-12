@@ -38,13 +38,17 @@ export class IncludeService {
   }
 
   mainName(main: MainInclude) {
-    return decodeURIComponent(main["adtcore:name"].replace(/.*\//, ""))
+    return decodeURIComponent(main["adtcore:name"])
   }
 
   setInclude(vsPath: string, main: MainInclude) {
     const data = this.includes.get(vsPath)
     if (data) data.current = main
-    else log(`Can't set main program for path ${vsPath}`)
+    else {
+      const node = this.root.getNode(vsPath)
+      if (isAbapFile(node) && this.needMain(node.object))
+        log(`Can't set main program for path ${vsPath}`)
+    }
   }
 
   /** guesses the parent. Assumes the system already saw the include */
@@ -73,7 +77,7 @@ export class IncludeService {
     const file = await this.root.getNodeAsync(vsPath)
     if (isAbapFile(file))
       if (this.needMain(file.object)) {
-        const candidates = await file.object.mainPrograms()
+        const candidates: MainInclude[] = await file.object.mainPrograms()
         const current = data?.current || only(candidates)
         const includeUri = file.object.path
         this.includes.set(vsPath, { candidates, current, includeUri })
