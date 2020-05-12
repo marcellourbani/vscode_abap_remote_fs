@@ -48,6 +48,21 @@ export class FsProvider implements FileSystemProvider {
     }
   }
 
+  public async readFile(uri: Uri): Promise<Uint8Array> {
+    try {
+      const root = await getOrCreateRoot(uri.authority)
+      const node = await root.getNodeAsync(uri.path)
+      if (isAbapFile(node)) {
+        const contents = await node.read()
+        const buf = Buffer.from(contents)
+        return buf
+      }
+    } catch (error) {
+      log(`Error reading file ${uri.toString()}\n${error.toString()}`)
+    }
+    throw FileSystemError.Unavailable(uri)
+  }
+
   public async readDirectory(uri: Uri): Promise<[string, FileType][]> {
     try {
       const root = await getOrCreateRoot(uri.authority)
@@ -65,21 +80,6 @@ export class FsProvider implements FileSystemProvider {
     throw FileSystemError.NoPermissions(
       "Not a real filesystem, directory creation is not supported"
     )
-  }
-
-  public async readFile(uri: Uri): Promise<Uint8Array> {
-    try {
-      const root = await getOrCreateRoot(uri.authority)
-      const node = await root.getNodeAsync(uri.path)
-      if (isAbapFile(node)) {
-        const contents = await node.read()
-        const buf = Buffer.from(contents)
-        return buf
-      }
-    } catch (error) {
-      log(`Error reading file ${uri.toString()}\n${error.toString()}`)
-    }
-    throw FileSystemError.Unavailable(uri)
   }
 
   public async writeFile(uri: Uri, content: Uint8Array): Promise<void> {

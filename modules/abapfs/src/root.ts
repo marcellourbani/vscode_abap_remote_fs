@@ -13,6 +13,14 @@ export const LIBFOLDER = "System Library"
 const createPkg = (name: string, service: AbapFsService) =>
   create(PACKAGE, name, PACKAGEBASEPATH, true, "", undefined, "", service)
 
+const toMain = async (node: PathItem | undefined, main: boolean) => {
+  if (node && isAbapFolder(node?.file) && main) {
+    if (node.file.size === 0) await node.file.refresh()
+    return node.file.mainInclude(node.path)
+  }
+  return node
+}
+
 const findInFolder = (
   file: FileStat,
   name: string,
@@ -44,25 +52,20 @@ export class Root extends Folder {
     this.lockManager = new LockManager(this)
   }
 
-  async findByAdtUri(uri: string, main = false) {
-    const toMain = async (node?: PathItem) => {
-      if (node && isAbapFolder(node?.file) && main) {
-        if (node.file.size === 0) await node.file.refresh()
-        return node.file.mainInclude(node.path)
-      }
-      return node
-    }
+  private adtToFs = new Map<string, string>()
 
+  async findByAdtUri(uri: string, main = false) {
     const baseUrl = uri.replace(/[\?#].*/, "")
     const path = this.adtToFs.get(baseUrl)
     if (path) {
       const file = this.getNode(path)
-      if (file) return toMain({ path, file })
+      if (file) return toMain({ path, file }, main)
     }
-    return toMain(await this.findByAdtUriInt(baseUrl))
+    const node = await this.findByAdtUriInt(baseUrl)
+    if (node?.path) this.adtToFs.set(baseUrl, node.path)
+    return toMain(node, main)
   }
 
-  private adtToFs = new Map<string, string>()
   private async findByAdtUriInt(uri: string) {
     const steps = await this.service.objectPath(uri)
     if (!steps.length) return

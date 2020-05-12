@@ -5,6 +5,11 @@ import { AbapFolder, isAbapFolder } from "./abapFolder"
 import { isCreatableTypeId } from "abap-adt-api"
 const tag = Symbol("AbapFile")
 
+interface FileCache {
+  mtime: number
+  source: string
+}
+
 export class AbapFile implements FileStat {
   [tag] = true
   type = FileType.File
@@ -28,6 +33,9 @@ export class AbapFile implements FileStat {
     return this.object.structure?.metaData["adtcore:version"]
   }
 
+  private cache: FileCache | undefined
+  private timer: NodeJS.Timeout | undefined
+
   async stat() {
     if (this.object.supported) await this.object.loadStructure()
   }
@@ -36,8 +44,14 @@ export class AbapFile implements FileStat {
   async read() {
     if (!this.object.structure && this.object.supported)
       await this.object.loadStructure()
-    return this.object.read()
+    if (this.cache?.mtime === this.mtime) return this.cache.source
+    if (this.timer) clearTimeout(this.timer)
+    const source = await this.object.read()
+    this.cache = { source, mtime: this.mtime }
+    this.timer = setTimeout(() => (this.cache = undefined), 3000)
+    return source
   }
+
   write(contents: string, lockId: string, transportId = "") {
     if (!this.object.supported)
       throw new Error(`Object ${this.object.key} can't be written `)
