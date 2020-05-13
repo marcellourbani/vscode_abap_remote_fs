@@ -93,6 +93,7 @@ export class LockObject {
         this.status = { status: "unlocked" }
       } catch (error) {
         this.status = prevState
+        throw error
       }
     }
   }
@@ -111,6 +112,7 @@ export class LockObject {
       this.status = { ...lock, status: "locked" }
     } catch (error) {
       this.status = { status: "unlocked" }
+      throw error
     }
   }
 

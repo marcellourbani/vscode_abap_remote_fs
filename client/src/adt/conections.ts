@@ -89,5 +89,11 @@ export function hasLocks() {
     if (root.lockManager.lockedPaths().next().value) return true
 }
 export function disconnect() {
-  return Promise.all([...clients.values()].map(c => c.logout()))
+  const connected = [...clients.values()]
+  const main = connected.map(c => c.logout())
+  const clones = connected
+    .map(c => c.statelessClone)
+    .filter(c => c.loggedin)
+    .map(c => c.logout())
+  return Promise.all([...main, ...clones])
 }

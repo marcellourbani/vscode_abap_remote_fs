@@ -1,7 +1,7 @@
 import { AbapObjectBase, convertSlash, AbapObject } from "../AbapObject"
 import { AbapObjectCreator } from "../creator"
 import { AbapClass } from "."
-import { ADTClient, classIncludes, AbapObjectStructure } from "abap-adt-api"
+import { ADTClient, classIncludes } from "abap-adt-api"
 import { isAbapClass } from "./AbapClass"
 import { AbapObjectService } from ".."
 import { ObjectErrors } from "../AOError"
