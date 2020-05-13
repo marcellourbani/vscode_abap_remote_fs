@@ -113,5 +113,5 @@ export async function deactivate() {
       "Locks will be dropped now. If the relevant editors are still open they will be restored later"
     )
   commands.executeCommand("setContext", "abapfs:extensionActive", false)
-  await Promise.all([client && client.stop(), disconnect()])
+  return disconnect()
 }

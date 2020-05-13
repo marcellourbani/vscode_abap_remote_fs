@@ -1,8 +1,7 @@
 import { Root } from "./root"
 import { LockObject, delay } from "./lockObject"
-import { isAbapFile, isAbapStat } from "./abapFile"
+import { isAbapStat } from "./abapFile"
 import { FileSystemError } from "vscode"
-import { PACKAGE } from "../../abapObject/out"
 
 export class LockManager {
   constructor(private root: Root) {}
@@ -54,6 +53,7 @@ export class LockManager {
 
   /** used to restore locks after a session drop */
   async restore() {
+    this.root.service.login()
     for (const obj of this.objects.values()) await obj.restore()
   }
 

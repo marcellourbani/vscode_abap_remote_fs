@@ -24,11 +24,13 @@ async function create(connId: string) {
   if (connection.oauth || connection.password) {
     client = createClient(connection)
     await client.login() // raise exception for login issues
+    await client.statelessClone.login()
   } else {
     connection.password = (await manager.askPassword(connection.name)) || ""
     if (!connection.password) throw Error("Can't connect without a password")
     client = await createClient(connection)
     await client.login() // raise exception for login issues
+    await client.statelessClone.login()
     const { name, username, password } = connection
     await manager.savePassword(name, username, password)
   }
@@ -88,12 +90,13 @@ export function hasLocks() {
   for (const root of roots.values())
     if (root.lockManager.lockedPaths().next().value) return true
 }
-export function disconnect() {
+export async function disconnect() {
   const connected = [...clients.values()]
   const main = connected.map(c => c.logout())
   const clones = connected
     .map(c => c.statelessClone)
     .filter(c => c.loggedin)
     .map(c => c.logout())
-  return Promise.all([...main, ...clones])
+  await Promise.all([...main, ...clones])
+  return
 }
