@@ -81,7 +81,9 @@ export class AbapClassInclude extends AbapObjectBase {
 
   readonly parent: AbapClass
   get extension() {
-    const type = CLASSINCLUDES[this.name.replace(/.*\./, "")] || ""
+    let type = CLASSINCLUDES[this.techName]
+    if (!type && this.techName !== "main")
+      type = CLASSINCLUDES[this.name.replace(/.*\./, "")] || `.${this.techName}`
     return `.clas${type}.abap`
   }
   async loadStructure() {

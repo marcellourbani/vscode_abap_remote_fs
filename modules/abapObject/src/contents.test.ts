@@ -2,6 +2,7 @@ import { ADTClient } from "abap-adt-api"
 import { AOService } from "."
 import { create, fromNode } from "./creator"
 import { PACKAGEBASEPATH, AbapObject } from "./AbapObject"
+import { isAbapClass } from "./objectTypes"
 
 /** this will connect to a real server, and mostly rely on abapgit as sample data
  *   tests might brek with future versions of abapgit
@@ -163,4 +164,39 @@ test(
       expect(testSource.match(/for\s+testing/i)).toBeTruthy()
     }
   )
+)
+
+test(
+  "main include in CL_ABAP_TABLEDESCR",
+  runTest(async s => {
+    const clas = create(
+      "CLAS/OC",
+      "CL_ABAP_TABLEDESCR",
+      "/sap/bc/adt/oo/classes/cl_abap_tabledescr",
+      true,
+      "==============================CP",
+      undefined,
+      "/sap/bc/adt/vit/wb/object_type/clasoc/object_name/cl_abap_tabledescr",
+      s
+    )
+    if (!isAbapClass(clas)) fail("Error reading class CL_ABAP_TABLEDESCR")
+    await clas.loadStructure()
+    const main = clas.structure?.includes?.find(
+      i => i["class:includeType"] === "main"
+    )
+    expect(main).toBeDefined()
+    const src = main?.links.find(
+      l =>
+        l.rel === "http://www.sap.com/adt/relations/source" &&
+        l.type === "text/plain"
+    )
+    expect(src).toBeDefined()
+    const includes = await clas
+      .childComponents()
+      .then(st => st.nodes.map(n => fromNode(n, clas, s)))
+    const include = includes.find(
+      o => o.fsName === "CL_ABAP_TABLEDESCR.clas.localtypes.abap"
+    )
+    expect(include).toBeDefined()
+  })
 )

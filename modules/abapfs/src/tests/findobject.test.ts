@@ -35,3 +35,25 @@ test(
     expect(source?.match(/report ZABAPGIT\s*line-size\s*[\d]+/i)).toBeTruthy()
   })
 )
+
+test(
+  "main include in CL_ABAP_TABLEDESCR",
+  runTest(async root => {
+    const tabledesc = await root.findByAdtUri(
+      "/sap/bc/adt/oo/classes/cl_abap_tabledescr",
+      true
+    )
+    expect(tabledesc).toBeDefined()
+    if (!isAbapStat(tabledesc?.file)) fail("Abap Object expected")
+    expect(tabledesc?.file.object.name).toBe("CL_ABAP_TABLEDESCR.main")
+    expect(tabledesc?.path).toBe(
+      "/System Library/BASIS/SABP_MAIN/SABP_RTTI/Source Code Library/Classes/CL_ABAP_TABLEDESCR/CL_ABAP_TABLEDESCR.clas.abap"
+    )
+    if (!isAbapFile(tabledesc?.file))
+      fail("Leaf node expected for main program include")
+    const source = await tabledesc?.file.read()
+    expect(
+      source?.match(/class\s+CL_ABAP_TABLEDESCR\s+definition/i)
+    ).toBeTruthy()
+  })
+)

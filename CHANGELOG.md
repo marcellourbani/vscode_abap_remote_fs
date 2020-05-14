@@ -4,11 +4,12 @@ All notable changes to the "vscode-abap-remote-fs" extension will be documented 
 
 Format based on [Keep a Changelog](http://keepachangelog.com/)
 
-## [0.8.0] Unreleased
+## [0.8.0] 2020-05-14
 
 ### Changed
 
 - refactor all basic abap object and FS operation
+- fixed most locking issues
 
 ### Added
 
