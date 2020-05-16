@@ -1,4 +1,4 @@
-import { PACKAGE, AdtObjectCreator } from "./adt/operations/AdtObjectCreator"
+import { PACKAGE, AdtObjectCreator } from "../adt/operations/AdtObjectCreator"
 import {
   workspace,
   Uri,
@@ -7,106 +7,34 @@ import {
   ProgressLocation,
   ExtensionContext
 } from "vscode"
-import { pickAdtRoot, RemoteManager } from "./config"
-import { log } from "./lib"
-import { FavouritesProvider, FavItem } from "./views/favourites"
-import { findEditor } from "./langClient"
-import { showHideActivate } from "./listeners"
-import { abapUnit } from "./adt/operations/UnitTestRunner"
-import { selectTransport } from "./adt/AdtTransports"
-import { showInGui } from "./adt/sapgui/sapgui"
-import { storeTokens } from "./oauth"
-import { showAbapDoc } from "./views/help"
-import { getTestAdapter } from "./views/abapunit"
+import { pickAdtRoot, RemoteManager } from "../config"
+import { log } from "../lib"
+import { FavouritesProvider, FavItem } from "../views/favourites"
+import { findEditor } from "../langClient"
+import { showHideActivate } from "../listeners"
+import { abapUnit } from "../adt/operations/UnitTestRunner"
+import { selectTransport } from "../adt/AdtTransports"
+import { showInGui } from "../adt/sapgui/sapgui"
+import { storeTokens } from "../oauth"
+import { showAbapDoc } from "../views/help"
+import { getTestAdapter } from "../views/abapunit"
 import {
   ADTSCHEME,
   getClient,
   getRoot,
   uriRoot,
   getOrCreateRoot
-} from "./adt/conections"
+} from "../adt/conections"
 import { isAbapFolder, isAbapFile, isAbapStat } from "abapfs"
-import { AdtObjectActivator } from "./adt/operations/AdtObjectActivator"
+import { AdtObjectActivator } from "../adt/operations/AdtObjectActivator"
 import {
   AdtObjectFinder,
   createUri,
   findAbapObject
-} from "./adt/operations/AdtObjectFinder"
+} from "../adt/operations/AdtObjectFinder"
 import { isAbapClassInclude } from "abapobject"
-import { IncludeProvider } from "./adt/includes" // resolve dependencies
-
-const abapcmds: {
-  name: string
-  func: (...x: any[]) => any
-  target: any
-}[] = []
-
-export const command = (name: string) => (target: any, propertyKey: string) => {
-  const func = target[propertyKey]
-  abapcmds.push({ name, target, func })
-}
-
-export const registerCommands = (context: ExtensionContext) => {
-  for (const cmd of abapcmds)
-    context.subscriptions.push(
-      commands.registerCommand(cmd.name, cmd.func.bind(cmd.target))
-    )
-}
-
-export const AbapFsCommands = {
-  connect: "abapfs.connect",
-  activate: "abapfs.activate",
-  search: "abapfs.search",
-  create: "abapfs.create",
-  execute: "abapfs.execute",
-  unittest: "abapfs.unittest",
-  createtestinclude: "abapfs.createtestinclude",
-  quickfix: "abapfs.quickfix",
-  changeInclude: "abapfs:changeInclude",
-  showDocumentation: "abapfs.showdocu",
-  showObject: "abapfs.showObject",
-  clearPassword: "abapfs.clearPassword",
-  addfavourite: "abapfs.addfavourite",
-  deletefavourite: "abapfs.deletefavourite",
-  // classes
-  refreshHierarchy: "abapfs.refreshHierarchy",
-  pickObject: "abapfs.pickObject",
-  // revisions
-  clearScmGroup: "abapfs.clearScmGroup",
-  openrevstate: "abapfs.openrevstate",
-  opendiff: "abapfs.opendiff",
-  opendiffNormalized: "abapfs.opendiffNormalized",
-  changequickdiff: "abapfs.changequickdiff",
-  remotediff: "abapfs.remotediff",
-  comparediff: "abapfs.comparediff",
-  // transports
-  transportObjectDiff: "abapfs.transportObjectDiff",
-  openTransportObject: "abapfs.openTransportObject",
-  deleteTransport: "abapfs.deleteTransport",
-  refreshtransports: "abapfs.refreshtransports",
-  releaseTransport: "abapfs.releaseTransport",
-  transportOwner: "abapfs.transportOwner",
-  transportAddUser: "abapfs.transportAddUser",
-  transportRevision: "abapfs.transportRevision",
-  transportUser: "abapfs.transportUser",
-  transportCopyNumber: "abapfs.transportCopyNumber",
-  transportOpenGui: "abapfs.transportOpenGui",
-  // abapgit
-  agitRefreshRepos: "abapfs.refreshrepos",
-  agitReveal: "abapfs.revealPackage",
-  agitOpenRepo: "abapfs.openRepo",
-  agitPull: "abapfs.pullRepo",
-  agitCreate: "abapfs.createRepo",
-  agitUnlink: "abapfs.unlinkRepo",
-  agitAddScm: "abapfs.registerSCM",
-  agitRefresh: "abapfs.refreshAbapGit",
-  agitPullScm: "abapfs.pullAbapGit",
-  agitPush: "abapfs.pushAbapGit",
-  agitAdd: "abapfs.addAbapGit",
-  agitRemove: "abapfs.removeAbapGit",
-  agitresetPwd: "abapfs.resetAbapGitPwd",
-  agitBranch: "abapfs.switchBranch"
-}
+import { IncludeProvider } from "../adt/includes" // resolve dependencies
+import { command, AbapFsCommands } from "."
 
 function currentUri() {
   if (!window.activeTextEditor) return

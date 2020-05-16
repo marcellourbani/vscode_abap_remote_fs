@@ -1,6 +1,5 @@
 import { showInGui } from "./../adt/sapgui/sapgui"
 import { PACKAGE } from "../adt/operations/AdtObjectCreator"
-import { AbapRevision } from "../scm/abaprevision"
 import {
   TreeDataProvider,
   TreeItem,
@@ -18,7 +17,6 @@ import {
   TransportRequest,
   TransportTask,
   TransportObject,
-  ADTClient,
   TransportReleaseReport,
   SAPRC
 } from "abap-adt-api"
@@ -32,6 +30,8 @@ import {
 } from "../adt/conections"
 import { isFolder, isAbapStat, PathItem, isAbapFolder } from "abapfs"
 import { createUri } from "../adt/operations/AdtObjectFinder"
+import { AbapScm, displayRevDiff } from "../scm/abaprevisions"
+import { AbapRevisionService } from "../scm/abaprevisions/abaprevisionservice"
 
 const currentUsers = new Map<string, string>()
 
@@ -317,13 +317,15 @@ export class TransportsProvider implements TreeDataProvider<CollectionItem> {
         const obj = path.file.object
         const client = getClient(item.connId)
 
-        const revisions = await AbapRevision.get().objRevisions(obj, client)
+        const revisions = await AbapRevisionService.get(
+          item.connId
+        ).objRevisions(obj)
         const beforeTr = revisions?.find(
           r => !r.version.match(item.transport.revisionFilter)
         )
         if (!beforeTr) return
         displayed = true
-        return AbapRevision.displayDiff(uri, beforeTr)
+        return displayRevDiff(undefined, beforeTr, uri)
       })
       if (!displayed)
         window.showInformationMessage(
@@ -454,9 +456,8 @@ export class TransportsProvider implements TreeDataProvider<CollectionItem> {
       if (isAbapStat(node.file) && node.file.object.canBeWritten) {
         if (paths.find(p => p.path === node.path)) return
         paths.push(node)
-        await AbapRevision.get().addTransport(
+        await AbapScm.get(tran.connId).addTransport(
           tran.label || transport,
-          tran.connId,
           [node],
           tran.revisionFilter
         )

@@ -19,7 +19,6 @@ import { AbapFsCommands } from "../../commands"
 import { isNone, fromNullable, Option, some } from "fp-ts/lib/Option"
 import { saveRepos } from "./storage"
 import { getClient } from "../../adt/conections"
-export { GitCommands } from "./commands" // triggers command registration
 
 export const STAGED = "staged"
 export const UNSTAGED = "unstaged"

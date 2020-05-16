@@ -17,9 +17,8 @@ import {
   restoreLocks
 } from "./listeners"
 import { log } from "./lib"
-import { client, LanguageCommands } from "./langClient"
-import { registerRevisionModel } from "./scm/abaprevision"
-import { AbapRevisionLensP } from "./scm/abaprevisionlens"
+import { LanguageCommands } from "./langClient"
+import { registerRevisionModel, AbapRevisionLens } from "./scm/abaprevisions"
 import { ClassHierarchyLensProvider } from "./adt/classhierarchy"
 import { abapGitProvider } from "./views/abapgit"
 import { loadTokens, clearTokens } from "./oauth"
@@ -28,7 +27,7 @@ import { AbapFsApi, api } from "./api"
 import { ADTSCHEME, disconnect, hasLocks } from "./adt/conections"
 import { MessagesProvider } from "./editors/messages"
 import { IncludeProvider } from "./adt/includes"
-import { registerCommands } from "./commands"
+import { registerCommands } from "./commands/register"
 
 export let context: ExtensionContext
 
@@ -77,7 +76,7 @@ export async function activate(ctx: ExtensionContext): Promise<AbapFsApi> {
   sub.push(
     languages.registerCodeLensProvider(
       { language: "abap", scheme: ADTSCHEME },
-      AbapRevisionLensP.get()
+      AbapRevisionLens.get()
     )
   )
 

@@ -1,7 +1,6 @@
 import {
   CodeLensProvider,
   TextDocument,
-  CancellationToken,
   EventEmitter,
   CodeLens,
   Range,
