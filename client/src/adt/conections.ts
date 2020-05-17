@@ -7,8 +7,7 @@ export const ADTURIPATTERN = /\/sap\/bc\/adt\//
 
 const roots = new Map<string, Root>()
 const clients = new Map<string, ADTClient>()
-const rootsP = new Map<string, Promise<Root>>()
-const clientsP = new Map<string, Promise<ADTClient>>()
+const creations = new Map<string, Promise<void>>()
 
 const missing = (connId: string) => {
   return FileSystemError.FileNotFound(`No ABAP server defined for ${connId}`)
@@ -34,26 +33,32 @@ async function create(connId: string) {
     const { name, username, password } = connection
     await manager.savePassword(name, username, password)
   }
-  return client
+  // @ts-ignore
+  const service = new AFsService(client)
+  const newRoot = new Root(connId, service)
+  roots.set(connId, newRoot)
+  clients.set(connId, client)
+}
+
+function createIfMissing(connId: string) {
+  if (roots.get(connId)) return
+  let creation = creations.get(connId)
+  if (!creation) {
+    creation = create(connId)
+    creations.set(connId, creation)
+  }
+  creation.finally(() => creations.delete(connId))
+  return creation
 }
 
 export async function getOrCreateClient(connId: string, clone = true) {
-  let client = clients.get(connId)
-  if (!client) {
-    let clientP = clientsP.get(connId)
-    if (!clientP) {
-      clientP = create(connId)
-      clientsP.set(connId, clientP)
-    }
-    client = await clientP
-    clients.set(connId, client)
-  }
-  return clone ? client.statelessClone : client
+  if (!clients.has(connId)) await createIfMissing(connId)
+  return getClient(connId, clone)
 }
 
-export function getClient(connId: string) {
+export function getClient(connId: string, clone = true) {
   const client = clients.get(connId)
-  if (client) return client
+  if (client) return clone ? client.statelessClone : client
   throw missing(connId)
 }
 
@@ -69,21 +74,8 @@ export const uriRoot = (uri: Uri) => {
 }
 
 export const getOrCreateRoot = async (connId: string) => {
-  const root = roots.get(connId)
-  if (root) return root
-  let rootP = rootsP.get(connId)
-  if (!rootP) {
-    rootP = new Promise(async resolve => {
-      const client = await getOrCreateClient(connId, false)
-      // @ts-ignore
-      const service = new AFsService(client)
-      const newRoot = new Root(connId, service)
-      roots.set(connId, newRoot)
-      resolve(newRoot)
-    })
-    rootsP.set(connId, rootP)
-  }
-  return rootP
+  if (!roots.has(connId)) await createIfMissing(connId)
+  return getRoot(connId)
 }
 
 export function hasLocks() {

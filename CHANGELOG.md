@@ -4,6 +4,21 @@ All notable changes to the "vscode-abap-remote-fs" extension will be documented 
 
 Format based on [Keep a Changelog](http://keepachangelog.com/)
 
+## [0.8.2] 2020-05-17
+
+### Added
+
+- normalize diffs with AbapLint
+
+### Changed
+
+- refactor AABP scm
+
+### Fixed
+
+- #120 objects not found in transports
+- build modules before release
+
 ## [0.8.0] 2020-05-14
 
 ### Changed

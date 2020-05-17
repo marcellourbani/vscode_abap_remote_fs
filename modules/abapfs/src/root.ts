@@ -5,8 +5,14 @@ import { Folder, PathItem } from "./folder"
 import { PathStep } from "abap-adt-api"
 import { FileStat } from "vscode"
 import { LockManager } from "./lockManager"
+import { isAbapFile, isAbapStat } from "./abapFile"
 
 const tag = Symbol("fsRoot")
+
+interface AFItem extends PathItem {
+  file: AbapFolder
+}
+const isAFItem = (i: PathItem): i is AFItem => isAbapFolder(i.file)
 
 export const TMPFOLDER = "$TMP"
 export const LIBFOLDER = "System Library"
@@ -66,6 +72,16 @@ export class Root extends Folder {
     return toMain(node, main)
   }
 
+  private async childNode(node: AFItem, uri: string) {
+    const found = node.file.object.path
+    if (found !== uri && uri.startsWith(found)) {
+      if (!node.file.size) await node.file.refresh()
+      for (const n of node.file.expandPath(node.path))
+        if (isAbapStat(n.file) && n.file.object.path === uri) return n
+    }
+    return node
+  }
+
   private async findByAdtUriInt(uri: string) {
     const steps = await this.service.objectPath(uri)
     if (!steps.length) return
@@ -91,6 +107,8 @@ export class Root extends Folder {
         node = findInFolder(node.file, node.path, step)
       }
     }
+    // got the object, uri might be a subobject
+    if (node && isAFItem(node)) node = await this.childNode(node, uri)
     return node
   }
 
