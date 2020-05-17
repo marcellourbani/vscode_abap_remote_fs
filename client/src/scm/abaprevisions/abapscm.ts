@@ -46,15 +46,17 @@ const findRef = (revisions: Revision[], filter?: RegExp) => {
   const main = findMain(revisions, filter)
   if (!main) return
   const mainDate = toMs(main.date)
+  const match = (r: Revision) => !filter || r.version.match(filter)
   const before = (r: Revision) => toMs(r.date) < mainDate
+  const valid = (r: Revision) => before(r) && !match(r)
   const wayBefore = (r: Revision) => mainDate - toMs(r.date) > 90000
-  const reallybefore = revisions.find(
-    r => wayBefore(r) && !(filter && r.version.match(filter))
-  )
-  return (
-    reallybefore ||
-    revisions.find(r => before(r) && !(filter && r.version.match(filter)))
-  )
+  return revisions.filter(valid).reduce((sofar: Revision | undefined, next) => {
+    if (!sofar) return next
+    if (sofar.version && wayBefore(sofar)) return sofar
+    if (wayBefore(next) && !wayBefore(sofar)) return next
+    if (next.version && !sofar.version) return next
+    return sofar
+  }, undefined)
 }
 
 export class AbapScm {

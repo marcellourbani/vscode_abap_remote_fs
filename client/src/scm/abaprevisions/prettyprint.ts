@@ -16,7 +16,6 @@ function parse(name: string, abap: string): ABAPFile {
 let config: Config
 function getConfig() {
   if (!config) {
-    const foo: any = {}
     const rules = {
       sequential_blank: {
         lines: 4
@@ -36,10 +35,38 @@ function getConfig() {
   return config
 }
 
+const removeSpaces = (name: string, source: string) => {
+  const f = parse(name, source)
+  const lines: string[] = []
+  const line = { row: -1, end: -1, col: 0, text: "" }
+  for (const t of f.getTokens()) {
+    const row = t.getRow()
+    const col = t.getCol()
+    const str = t.getStr()
+    const endcol = t.getEnd().getCol()
+    if (line.row !== row) {
+      if (line.row !== -1) lines.push(line.text)
+      line.text = `${" ".repeat(col)}${str}`
+      line.col = endcol
+      line.row = row
+    } else {
+      if (str === ".") line.text = `${line.text}.`
+      if (col - line.col) line.text = `${line.text} ${str}`
+      else line.text = `${line.text} ${str}`
+      line.col = endcol
+    }
+  }
+  if (line.text && line.row > 0) lines.push(line.text)
+
+  return lines.join("\n")
+}
+
 export function prettyPrint(path: string, source: string) {
   const name = path.replace(/.*\//, "")
+  // const unspaced = removeSpaces(name, source)
   const f = parse(name, source)
-  const result = new PrettyPrinter(f, getConfig()).run()
+  const pp = new PrettyPrinter(f, getConfig())
+  const result = pp.run()
   if (source && !result)
     throw new Error(`Abaplint formatting failed for ${path}`)
   return result

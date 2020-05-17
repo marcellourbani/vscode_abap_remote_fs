@@ -295,7 +295,7 @@ export class TransportsProvider implements TreeDataProvider<CollectionItem> {
     }
     try {
       const root = getRoot(connId)
-      const path = await root.findByAdtUri(url, true)
+      const path = await root.findByAdtUri(url, main)
       return path
     } catch (e) {
       throw new Error(
