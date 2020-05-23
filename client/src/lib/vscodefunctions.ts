@@ -9,11 +9,13 @@ import {
   QuickPickItem,
   QuickPickOptions,
   Memento,
-  Position
+  Position,
+  Range
 } from "vscode"
 import { none, None } from "fp-ts/lib/Option"
 import { isFn, splitAdtUriInternal, isUnDefined } from "./functions"
 import { left, right } from "fp-ts/lib/Either"
+import { Range as ApiRange } from "abap-adt-api"
 
 export const uriName = (uri: Uri) => uri.path.split("/").pop() || ""
 
@@ -136,6 +138,12 @@ export interface AdtUriParts {
 
 export const vscPosition = (adtLine: number, character: number) =>
   new Position(adtLine - 1, character)
+
+export const rangeApi2Vsc = (r: ApiRange) =>
+  new Range(
+    vscPosition(r.start.line, r.start.column),
+    vscPosition(r.end.line, r.end.column)
+  )
 
 export const splitAdtUri = (uri: string): AdtUriParts => {
   const { start, end, ...rest } = splitAdtUriInternal(uri)

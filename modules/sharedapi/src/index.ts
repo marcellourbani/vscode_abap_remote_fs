@@ -8,7 +8,6 @@ export enum Methods {
   setSearchProgress = "vscabap.setSearchProgress",
   cancelSearch = "vscabap.cancelSearch",
   vsUri = "vscabap.vsUri",
-  quickFix = "vscabap.quickfix",
   updateMainProgram = "vscabap.updateMain",
   logCall = "vscabap.logCall",
   logHTTP = "vscabap.logHTTP",

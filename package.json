@@ -38,7 +38,7 @@
   "main": "./client/dist/extension",
   "scripts": {
     "vscode:prepublish": "cd client && npm run update-vscode && cd .. && npm run webpack",
-    "webpack": "npm run build_modules&&cd client && npm run webpack && cd ../server && npm run webpack",
+    "webpack": "npm run build_modules&&cd server && npm run webpack && cd ../client && npm run webpack",
     "build": "npm run webpack",
     "build_modules": "cd modules/abapObject&& npm run build&&cd ../abapfs&& npm run build&&cd ../sharedapi&& npm run build",
     "compile": "npm run webpack",

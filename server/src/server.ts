@@ -13,7 +13,7 @@ import { completion } from "./completion"
 import { findDefinition, findReferences, cancelSearch } from "./references"
 import { documentSymbols } from "./symbols"
 import { formatDocument } from "./documentformatter"
-import { codeActionHandler, resolveQuickFix } from "./codeActions"
+import { codeActionHandler } from "./codeActions"
 import { updateInclude } from "./objectManager"
 
 export const documents: TextDocuments = new TextDocuments()
@@ -92,7 +92,6 @@ documents.onDidChangeContent(change => syntaxCheck(change.document))
 connection.onCodeAction(codeActionHandler)
 // custom APIs exposed to the client
 connection.onRequest(Methods.cancelSearch, cancelSearch)
-connection.onRequest(Methods.quickFix, resolveQuickFix)
 connection.onRequest(Methods.updateMainProgram, updateInclude)
 
 documents.listen(connection)

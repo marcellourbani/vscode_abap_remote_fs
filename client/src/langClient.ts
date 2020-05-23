@@ -1,5 +1,11 @@
 import { MainProgram, HttpLogEntry } from "vscode-abap-remote-fs-sharedapi"
-import { log, channel, mongoApiLogger, mongoHttpLogger } from "./lib"
+import {
+  log,
+  channel,
+  mongoApiLogger,
+  mongoHttpLogger,
+  rangeApi2Vsc
+} from "./lib"
 import {
   AbapObjectDetail,
   Methods,
@@ -15,8 +21,9 @@ import {
   Uri,
   window,
   ProgressLocation,
-  TextEdit,
-  commands
+  commands,
+  workspace,
+  WorkspaceEdit
 } from "vscode"
 import {
   LanguageClient,
@@ -26,15 +33,15 @@ import {
 } from "vscode-languageclient"
 export let client: LanguageClient
 import { join } from "path"
-import { FixProposal } from "abap-adt-api"
-import { fail } from "assert"
+import { FixProposal, Delta } from "abap-adt-api"
 import { command, AbapFsCommands } from "./commands"
 import { RemoteManager, formatKey } from "./config"
 import { futureToken } from "./oauth"
-import { getRoot, ADTSCHEME, uriRoot } from "./adt/conections"
+import { getRoot, ADTSCHEME, uriRoot, getClient } from "./adt/conections"
 import { isAbapFile } from "abapfs"
 import { AbapObject } from "abapobject"
 import { IncludeService, IncludeProvider } from "./adt/includes"
+import * as R from "ramda"
 
 async function getVSCodeUri(req: UriRequest): Promise<StringWrapper> {
   const root = getRoot(req.confKey)
@@ -199,40 +206,44 @@ export class LanguageCommands {
   }
 
   public static async applyQuickFix(proposal: FixProposal, uri: string) {
-    try {
-      const edits = (await client.sendRequest(Methods.quickFix, {
-        proposal,
-        uri
-      })) as TextEdit[]
-      const editor = findEditor(uri)
+    const u = Uri.parse(uri)
+    const cl = getClient(u.authority)
 
-      const msg = (e?: Error) =>
-        window.showErrorMessage(
-          "Failed to apply ABAPfs fix to the document" + e ? e!.toString() : ""
-        )
+    const source = await readEditorObjectSource(uri)
 
-      if (editor && edits) {
-        const success = await editor.edit(mutator => {
-          for (const edit of edits) {
-            if (edit.range.start.character !== edit.range.end.character)
-              mutator.replace(
-                client.protocol2CodeConverter.asRange(edit.range),
-                edit.newText
-              )
-            else
-              mutator.insert(
-                client.protocol2CodeConverter.asPosition(edit.range.start),
-                "\n" + edit.newText + "\n"
-              )
-          }
-        })
+    const deltaLine = (d: Delta) => d.range.start.line
+    const sortDelta = R.sortWith<Delta>([
+      R.ascend(R.prop("uri")),
+      R.descend(deltaLine)
+    ])
 
-        if (success)
-          commands.executeCommand("editor.action.formatDocument", editor)
-        else msg()
-      }
-    } catch (e) {
-      fail(e)
+    const deltas = await cl.fixEdits(proposal, source.source).then(sortDelta)
+    if (!deltas || deltas.length === 0) return
+    const we = new WorkspaceEdit()
+    const touched = new Set<string>()
+
+    for (const d of deltas) {
+      const ur = await getVSCodeUri({
+        uri: d.uri,
+        confKey: u.authority,
+        mainInclude: true
+      })
+      if (!ur.s) continue
+      touched.add(ur.s)
+      const range = rangeApi2Vsc(d.range)
+      we.replace(Uri.parse(ur.s), range, d.content)
     }
+    const result = await workspace.applyEdit(we)
+
+    if (result)
+      for (const docUri of touched) {
+        const docs = [...workspace.textDocuments]
+        const key = Uri.parse(docUri).toString()
+        const doc = docs.find(d => d.uri.toString() === key)
+        if (doc) {
+          await window.showTextDocument(doc)
+          await commands.executeCommand("editor.action.formatDocument")
+        }
+      }
   }
 }

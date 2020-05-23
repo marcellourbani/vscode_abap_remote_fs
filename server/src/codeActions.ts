@@ -2,14 +2,11 @@ import {
   CodeActionParams,
   CodeAction,
   DiagnosticSeverity,
-  Command,
-  Position,
-  Range,
-  TextEdit
+  Command
 } from "vscode-languageserver"
 import { clientAndObjfromUrl } from "./utilities"
 import { log } from "./clientManager"
-import { FixProposal, Range as ApiRange, Location } from "abap-adt-api"
+import { FixProposal, Range as ApiRange } from "abap-adt-api"
 import { decodeEntity } from "./functions"
 
 export async function codeActionHandler(
@@ -65,28 +62,4 @@ async function quickfix(
     )
   )
   return actions
-}
-function convertLocation(loc: Location) {
-  return Position.create(loc.line - 1, loc.column)
-}
-function convertRange(apiRange: ApiRange) {
-  const { start, end } = apiRange
-
-  return Range.create(convertLocation(start), convertLocation(end))
-}
-
-export async function resolveQuickFix(parms: {
-  proposal: FixProposal
-  uri: string
-}) {
-  const co = await clientAndObjfromUrl(parms.uri, true)
-  if (!co) return
-  const deltas = await co.client.fixEdits(parms.proposal, co.source)
-  if (!deltas || deltas.length === 0) return
-
-  return deltas.map(d => {
-    if (d.range.start !== d.range.end)
-      return TextEdit.replace(convertRange(d.range), d.content)
-    else return TextEdit.insert(convertLocation(d.range.start), d.content)
-  })
 }
