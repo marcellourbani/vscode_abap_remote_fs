@@ -233,17 +233,6 @@ export class LanguageCommands {
       const range = rangeApi2Vsc(d.range)
       we.replace(Uri.parse(ur.s), range, d.content)
     }
-    const result = await workspace.applyEdit(we)
-
-    if (result)
-      for (const docUri of touched) {
-        const docs = [...workspace.textDocuments]
-        const key = Uri.parse(docUri).toString()
-        const doc = docs.find(d => d.uri.toString() === key)
-        if (doc) {
-          await window.showTextDocument(doc)
-          await commands.executeCommand("editor.action.formatDocument")
-        }
-      }
+    await workspace.applyEdit(we)
   }
 }

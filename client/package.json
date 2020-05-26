@@ -62,7 +62,7 @@
   "dependencies": {
     "@abaplint/core": "^2.32.20",
     "@types/tmp": "0.1.0",
-    "abap-adt-api": "^2.0.0",
+    "abap-adt-api": "^2.0.1",
     "abap_cloud_platform": "^1.0.2",
     "abapfs": "file:../modules/abapfs",
     "abapobject": "file:../modules/abapObject",

@@ -147,21 +147,37 @@ const toCommit = (data: ScmData) => {
 
   return toPush
 }
-
 const findSC = () => (target: any, propertyKey: string) => {
+  const original = target[propertyKey]
   target[propertyKey] = (x: SourceControl) => {
-    const y = map(target[propertyKey])(fromSC(x))
+    const y = map(original)(fromSC(x))
     if (isSome(y)) return y.value
+  }
+}
+
+const logErrors = (meth = "") => (target: any, propertyKey: string) => {
+  const original = target[propertyKey]
+  target[propertyKey] = async (...args: any[]) => {
+    try {
+      return await original(...args)
+    } catch (error) {
+      const message = `${error.toString()} in ${meth || propertyKey}`
+      window.showErrorMessage(message)
+    }
   }
 }
 
 export class GitCommands {
   @command(AbapFsCommands.agitRefresh)
+  @logErrors(AbapFsCommands.agitRefresh)
   @findSC()
   private static async refreshCmd(data: ScmData) {
-    return withp(`Refreshing ${data.repo.sapPackage}`, () => refresh(data))
+    return await withp(`Refreshing ${data.repo.sapPackage}`, () =>
+      refresh(data)
+    )
   }
   @command(AbapFsCommands.agitPush)
+  @logErrors(AbapFsCommands.agitPush)
   @findSC()
   private static async pushCmd(data: ScmData) {
     const toPush = toCommit(data)
@@ -190,6 +206,7 @@ export class GitCommands {
     }
   }
   @command(AbapFsCommands.agitPullScm)
+  @logErrors(AbapFsCommands.agitPullScm)
   @findSC()
   private static async pullCmd(data: ScmData) {
     if (await confirmPull(data.repo.sapPackage))
@@ -216,6 +233,7 @@ export class GitCommands {
   }
 
   @command(AbapFsCommands.agitAdd)
+  @logErrors(AbapFsCommands.agitAdd)
   private static async addCmd(
     ...args: AgResState[] | SourceControlResourceGroup[]
   ) {
@@ -237,6 +255,7 @@ export class GitCommands {
   }
 
   @command(AbapFsCommands.agitRemove)
+  @logErrors(AbapFsCommands.agitRemove)
   private static async removeCmd(...args: AgResState[] | AgResGroup[]) {
     const findTarget = (s: AgResState) => {
       const unstGroup = s.data.groups.get(UNSTAGED)
@@ -266,6 +285,7 @@ export class GitCommands {
   }
 
   @command(AbapFsCommands.agitresetPwd)
+  @logErrors(AbapFsCommands.agitresetPwd)
   private static async resetCmd() {
     const fsRoot = await pickAdtRoot()
     const client = fsRoot && getClient(fsRoot.uri.authority)
@@ -288,6 +308,7 @@ export class GitCommands {
     if (isRight(user)) await deletePassword(item.right.repo, user.right)
   }
   @command(AbapFsCommands.agitBranch)
+  @logErrors(AbapFsCommands.agitBranch)
   private async switchBranch(data: ScmData) {
     const { password = "", user = "" } = data.credentials || {}
     const client = getClient(data.connId)

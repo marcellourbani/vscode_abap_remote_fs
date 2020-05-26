@@ -4,11 +4,16 @@ All notable changes to the "vscode-abap-remote-fs" extension will be documented 
 
 Format based on [Keep a Changelog](http://keepachangelog.com/)
 
-## Unreleased
+## [0.8.3] 2020-05-26
 
 ### Fixed
 
 - apply source fixes in the right include
+- show errors in git scm commands
+
+### Changed
+
+- no automated code formatting on quickfix
 
 ## [0.8.2] 2020-05-17
 
@@ -18,7 +23,7 @@ Format based on [Keep a Changelog](http://keepachangelog.com/)
 
 ### Changed
 
-- refactor AABP scm
+- refactor ABAP scm
 
 ### Fixed
 
