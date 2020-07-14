@@ -4,6 +4,13 @@ All notable changes to the "vscode-abap-remote-fs" extension will be documented 
 
 Format based on [Keep a Changelog](http://keepachangelog.com/)
 
+## [0.8.4] 2020-07-14
+
+### Fixed
+
+- Missing text in unit test results
+- maximum length check in object creation
+
 ## [0.8.3] 2020-05-26
 
 ### Fixed

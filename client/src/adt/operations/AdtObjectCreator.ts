@@ -28,13 +28,7 @@ import {
   createUri
 } from "./AdtObjectFinder"
 import { getClient, getRoot } from "../conections"
-import {
-  isAbapStat,
-  AbapStat,
-  isAbapFolder,
-  isFolder,
-  isAbapFile
-} from "abapfs"
+import { isAbapStat, isFolder } from "abapfs"
 import { fromNode } from "abapobject"
 
 export const PACKAGE = "DEVC/K"
@@ -45,6 +39,12 @@ type details =
       devclass: string
     }
   | undefined
+
+const validateMaxLen = (max: number, mandatory = true) => (s: string) => {
+  if (mandatory && !s) return "Field is mandatory"
+  if (s.length <= max) return ""
+  return `Maximum current length of ${s.length} exceeds maximum (${max})`
+}
 
 export async function selectObjectType(
   parentType?: string
@@ -221,7 +221,7 @@ export class AdtObjectCreator {
     const objType = await this.guessOrSelectObjectType(hierarchy)
     // user didn't pick one...
     if (!objType) return
-    const name = await this.askName(objType.typeId)
+    const name = await this.askName(objType)
     if (!name) return
     const description = await this.askInput("description", false)
     if (!description) return
@@ -286,13 +286,13 @@ export class AdtObjectCreator {
       ? `L${parentName}${name}`
       : `/${parts[1]}/L${parts[2]}${name}`
   }
-  private askName(objType: CreatableTypeIds) {
-    if (objType === "FUGR/I")
+  private askName(objType: CreatableType) {
+    if (objType.typeId === "FUGR/I")
       return this.askInput("suffix", true, "", (s: string) =>
         s.match(/^[A-Za-z]\w\w$/) ? "" : "Suffix must be 3 character long"
       )
 
-    return this.askInput("name")
+    return this.askInput("name", true, "", validateMaxLen(objType.maxLen))
   }
 
   private async askInput(
