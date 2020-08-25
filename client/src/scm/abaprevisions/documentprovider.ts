@@ -83,7 +83,7 @@ export class AbapRevision implements TextDocumentContentProvider {
         const node = uriRoot(adtUri).getNode(adtUri.path)
         if (isAbapFile(node)) source = await node.object.read()
       }
-      if (selector.normalized) source = prettyPrint(uri.path, source)
+      if (selector.normalized) source = await prettyPrint(uri, source)
     }
     return source
   }

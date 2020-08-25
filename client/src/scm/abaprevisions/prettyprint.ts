@@ -6,6 +6,9 @@ import {
   PrettyPrinter,
   Config
 } from "@abaplint/core"
+import { Uri } from "vscode"
+import { getClient } from "../../adt/conections"
+import { RemoteManager } from "../../config"
 
 function parse(name: string, abap: string): ABAPFile {
   const reg = new Registry().addFile(new MemoryFile(name, abap)).parse()
@@ -35,39 +38,48 @@ function getConfig() {
   return config
 }
 
-const removeSpaces = (name: string, source: string) => {
-  const f = parse(name, source)
-  const lines: string[] = []
-  const line = { row: -1, end: -1, col: 0, text: "" }
-  for (const t of f.getTokens()) {
-    const row = t.getRow()
-    const col = t.getCol()
-    const str = t.getStr()
-    const endcol = t.getEnd().getCol()
-    if (line.row !== row) {
-      if (line.row !== -1) lines.push(line.text)
-      line.text = `${" ".repeat(col)}${str}`
-      line.col = endcol
-      line.row = row
-    } else {
-      if (str === ".") line.text = `${line.text}.`
-      if (col - line.col) line.text = `${line.text} ${str}`
-      else line.text = `${line.text} ${str}`
-      line.col = endcol
-    }
-  }
-  if (line.text && line.row > 0) lines.push(line.text)
 
-  return lines.join("\n")
+export const normalizeAbap = (source: string): string => {
+  return source
+    .split(/\n/)
+    .map(line => {
+      if (line.match(/^\*|^(\s*")/)) return line // whole comment
+      // comments and strings will be left alone, the rest will be converted to lower case
+      const stringsornot = line.split(/'/)
+      for (const i in stringsornot) {
+        if (Number(i) % 2) continue // string, nothing to do
+        const part = stringsornot[i]
+        const c = stringsornot[i].indexOf('"')
+        if (c >= 0) {
+          // comment
+          stringsornot[i] = part.substr(0, c).toLowerCase() + part.substr(c)
+          break
+        } else stringsornot[i] = part.toLowerCase()
+      }
+      return stringsornot.join("'")
+    })
+    .join("\n")
 }
 
-export function prettyPrint(path: string, source: string) {
+function abapLintPrettyPrint(path: string, source: string) {
   const name = path.replace(/.*\//, "")
-  // const unspaced = removeSpaces(name, source)
   const f = parse(name, source)
   const pp = new PrettyPrinter(f, getConfig())
   const result = pp.run()
   if (source && !result)
     throw new Error(`Abaplint formatting failed for ${path}`)
   return result
+}
+export function prettyPrint(uri: Uri, source: string) {
+  const { diff_formatter } = RemoteManager.get().byId(uri.authority) || {}
+  switch (diff_formatter) {
+    case "Simple":
+      return normalizeAbap(source)
+    case "AbapLint":
+      return abapLintPrettyPrint(uri.path, source)
+    case "ADT formatter":
+    default:
+      const client = getClient(uri.authority)
+      return client.prettyPrinter(source)
+  }
 }

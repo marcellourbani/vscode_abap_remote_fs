@@ -799,6 +799,15 @@
                   "title": "Custom certificate authority certificate",
                   "default": "/secrets/myCA.pem"
                 },
+                "diff_formatter": {
+                  "type": "string",
+                  "anyOf": [
+                    "ADT formatter",
+                    "AbapLint",
+                    "simple"
+                  ],
+                  "default": "ADT formatter"
+                },
                 "oauth": {
                   "type": "object",
                   "properties": {
