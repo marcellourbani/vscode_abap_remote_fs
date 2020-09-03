@@ -13,7 +13,7 @@ const extension = (type: string) => {
   return `.${tpext.toLowerCase()}.xml`
 }
 
-@AbapObjectCreator("MSAG/N", "XSLT/VT")
+@AbapObjectCreator("MSAG/N", "XSLT/VT", "HTTP")
 export class AbapXml extends AbapObjectBase {
   [tag] = true
   constructor(

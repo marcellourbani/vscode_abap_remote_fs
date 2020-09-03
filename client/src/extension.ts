@@ -28,6 +28,7 @@ import { ADTSCHEME, disconnect, hasLocks } from "./adt/conections"
 import { MessagesProvider } from "./editors/messages"
 import { IncludeProvider } from "./adt/includes"
 import { registerCommands } from "./commands/register"
+import { HttpProvider } from "./editors/httpprovider"
 
 export let context: ExtensionContext
 
@@ -88,6 +89,7 @@ export async function activate(ctx: ExtensionContext): Promise<AbapFsApi> {
   )
 
   sub.push(MessagesProvider.register(context))
+  sub.push(HttpProvider.register(context))
 
   LanguageCommands.start(context)
 

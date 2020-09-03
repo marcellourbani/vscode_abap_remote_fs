@@ -1,7 +1,8 @@
 {
   "folders": [
     {
-      "path": "."
+      "path": ".",
+      "name": "vscode-abap-remote-fs"
     },
     {
       "path": "client"
@@ -40,7 +41,11 @@
     "markdownlint.config": {
       "no-duplicate-header": false
     },
-    "jest.disabledWorkspaceFolders": ["."],
+    "jest.disabledWorkspaceFolders": [
+      "vscode-abap-remote-fs",
+      "wiki",
+      "sharedapi"
+    ],
     "tslint.exclude": ["**/node_modules/**"]
   }
 }

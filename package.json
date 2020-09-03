@@ -73,6 +73,15 @@
             "filenamePattern": "*.msagn.xml"
           }
         ]
+      },
+      {
+        "viewType": "abapfs.http",
+        "displayName": "HTTP service",
+        "selector": [
+          {
+            "filenamePattern": "*.http.xml"
+          }
+        ]
       }
     ],
     "viewsContainers": {

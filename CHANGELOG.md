@@ -4,7 +4,17 @@ All notable changes to the "vscode-abap-remote-fs" extension will be documented 
 
 Format based on [Keep a Changelog](http://keepachangelog.com/)
 
-## [0.8.5] 2020-07-14
+## [0.8.6] 2020-09-3
+
+### Added
+
+- Added HTTP services support
+
+### Fixed
+
+- fixed jest plugin configuration
+
+## [0.8.5] 2020-08-25
 
 ### Added
 

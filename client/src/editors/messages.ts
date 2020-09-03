@@ -12,7 +12,6 @@ import {
 import { parse } from "fast-xml-parser"
 import { AllHtmlEntities } from "html-entities"
 import path from "path"
-import { log } from "../lib"
 import { getClient } from "../adt/conections"
 
 const xmlNode = (xml: any, ...xmlpath: string[]) => {
@@ -55,7 +54,7 @@ export class MessagesProvider implements CustomTextEditorProvider {
     const provider = new MessagesProvider(context)
     return window.registerCustomEditorProvider("abapfs.msagn", provider)
   }
-  constructor(private context: ExtensionContext) {}
+  constructor(private context: ExtensionContext) { }
   resolveCustomTextEditor(
     document: TextDocument,
     panel: WebviewPanel,

@@ -18,7 +18,9 @@ body.vscode-light th {
 body.vscode-light td {
   background-color: #d3d3d3;
 }
-
+td {
+  padding-right: 10px;
+}
 td.flag {
   text-align: center;
 }
