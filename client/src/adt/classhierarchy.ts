@@ -111,7 +111,7 @@ const pickObj = (conn: string, key: string, title: string, parents = false) => {
   }
 }
 
-export class ClassHierarchyLensProvider implements CodeLensProvider {
+export class ClassHierarchyLensProvider implements CodeLensProvider<CodeLens> {
   private static emitter = new EventEmitter<void>()
   public get onDidChangeCodeLenses() {
     return ClassHierarchyLensProvider.emitter.event
@@ -126,10 +126,14 @@ export class ClassHierarchyLensProvider implements CodeLensProvider {
   )
   public async provideCodeLenses(doc: TextDocument, token: CancellationToken) {
     const lenses: CodeLens[] = []
-    if (doc.uri.scheme !== ADTSCHEME) return
+    return lenses
+  }
+  public async provideCodeLensess(doc: TextDocument, token: CancellationToken): Promise<CodeLens[]> {
+    const lenses: CodeLens[] = []
+    if (doc.uri.scheme !== ADTSCHEME) return lenses
     const client = getClient(doc.uri.authority)
     const obj = await findAbapObject(doc.uri)
-    if (!obj) return
+    if (!obj) return lenses
     // TODO stat?
     if (!obj.structure) await obj.loadStructure()
     const doccache = ClassHierarchyLensProvider.caches.get(doc.uri.authority)

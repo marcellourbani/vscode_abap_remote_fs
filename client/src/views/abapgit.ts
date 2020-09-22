@@ -59,8 +59,8 @@ export const packageUri = async (client: ADTClient, name: string) => {
   return cancreate
     ? objectPath(PACKAGE, name)
     : `/sap/bc/adt/vit/wb/object_type/devck/object_name/${encodeURIComponent(
-        name
-      )}`
+      name
+    )}`
 }
 
 class AbapGit {
@@ -129,7 +129,7 @@ interface RepoAccess {
 class AbapGitProvider implements TreeDataProvider<TreeItem> {
   private git = new AbapGit()
   private children: ServerItem[] = []
-  private emitter = new EventEmitter<TreeItem>()
+  private emitter = new EventEmitter<TreeItem | null>()
   private loaded = false
   private static instance: AbapGitProvider
   public onDidChangeTreeData = this.emitter.event
@@ -142,7 +142,7 @@ class AbapGitProvider implements TreeDataProvider<TreeItem> {
   public async refresh() {
     this.loaded = true
     this.children = await this.git.getGitEnabledServers()
-    this.emitter.fire()
+    this.emitter.fire(null)
   }
 
   public getTreeItem(element: TreeItem): TreeItem {

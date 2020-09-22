@@ -56,6 +56,7 @@ class ConnectionItem extends CollectionItem {
     return currentUsers.get(this.uri.authority) || client.username
   }
 
+  // @ts-ignore
   public get label() {
     return `${this.uri.authority.toUpperCase()} Transport of ${this.user.toUpperCase()}`
   }
@@ -157,6 +158,7 @@ class TransportItem extends CollectionItem {
     return !this.task["tm:status"].match(/[DL]/)
   }
 
+  // @ts-ignore
   public get contextValue() {
     return this.released ? "tr_released" : "tr_unreleased"
   }
@@ -239,7 +241,7 @@ export class TransportsProvider implements TreeDataProvider<CollectionItem> {
   }
 
   private root = this.newRoot()
-  private emitter = new EventEmitter<CollectionItem>()
+  private emitter = new EventEmitter<CollectionItem | null>()
 
   public getTreeItem(element: CollectionItem): TreeItem | Thenable<TreeItem> {
     return element || this.root
@@ -269,7 +271,7 @@ export class TransportsProvider implements TreeDataProvider<CollectionItem> {
         root.addChild(new ConnectionItem(f.uri))
     }
     this.root = root
-    this.emitter.fire()
+    this.emitter.fire(null)
   }
 
   private newRoot() {
@@ -299,8 +301,7 @@ export class TransportsProvider implements TreeDataProvider<CollectionItem> {
       return path
     } catch (e) {
       throw new Error(
-        `Error locating object ${obj["tm:pgmid"]} ${obj["tm:type"]} ${
-          obj["tm:name"]
+        `Error locating object ${obj["tm:pgmid"]} ${obj["tm:type"]} ${obj["tm:name"]
         }: ${e.toString()}`
       )
     }

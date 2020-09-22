@@ -60,6 +60,7 @@ export class FavItem extends TreeItem {
   get uri() {
     return this.favourite.uri
   }
+  // @ts-ignore
   get contextValue() {
     return this.favourite.dynamic ? "" : "favourite"
   }
@@ -223,7 +224,7 @@ export class FavouritesProvider implements TreeDataProvider<FavItem> {
   private storage?: string
 
   public refresh(): void {
-    this.emitter.fire()
+    this.emitter.fire(undefined)
   }
 
   public async getTreeItem(element: FavItem): Promise<TreeItem> {

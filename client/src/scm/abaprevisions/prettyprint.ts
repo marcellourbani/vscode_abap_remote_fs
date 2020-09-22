@@ -12,7 +12,7 @@ import { RemoteManager } from "../../config"
 
 function parse(name: string, abap: string): ABAPFile {
   const reg = new Registry().addFile(new MemoryFile(name, abap)).parse()
-  const objects = reg.getObjects().filter(ABAPObject.is)
+  const objects = [...reg.getObjects()].filter(ABAPObject.is)
   return objects[0]?.getABAPFiles()[0]
 }
 

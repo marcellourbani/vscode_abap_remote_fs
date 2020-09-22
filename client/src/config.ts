@@ -12,7 +12,7 @@ import { mongoApiLogger, mongoHttpLogger, PasswordVault } from "./lib"
 import { oauthLogin } from "./oauth"
 import { ADTSCHEME } from "./adt/conections"
 export interface RemoteConfig extends ClientConfiguration {
-  sapGui: {
+  sapGui?: {
     disabled: boolean
     routerString: string
     // load balancing
@@ -36,7 +36,7 @@ const connectedRoots = () => {
 }
 
 const config = (name: string, remote: RemoteConfig) => {
-  const conf = { url: "", ...remote, name, valid: true }
+  const conf = { ...remote, name, valid: true }
   conf.valid = !!(remote.url && remote.username && remote.password)
   if (conf.customCA && !conf.customCA.match(/-----BEGIN CERTIFICATE-----/gi))
     try {

@@ -100,7 +100,7 @@ export class SapGui {
         }
 
         return new SapGui(
-          gui && gui.disabled,
+          !!gui?.disabled,
           guiconf,
           config.username,
           config.name,

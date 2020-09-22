@@ -1,4 +1,4 @@
-import { parseHTTP } from "./httpprovider"
+import { parseHTTP } from "./httpparser"
 
 const SAMPLE_OBJECT = `<?xml version="1.0" encoding="utf-8"?><http:abap http:handler_id="YMU_HELLO_WORLD"
  http:handler_version="I" http:handler_serviceorder="01" http:handler_servicehandler="YCL_YMU_HELLO_WORLD"

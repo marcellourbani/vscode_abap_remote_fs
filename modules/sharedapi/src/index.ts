@@ -34,7 +34,7 @@ export interface ClientConfiguration {
   client: string
   language: string
   allowSelfSigned: boolean
-  customCA: string
+  customCA?: string
   diff_formatter: "ADT formatter" | "AbapLint" | "Simple"
   oauth?: {
     clientId: string

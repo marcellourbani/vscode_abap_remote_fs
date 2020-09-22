@@ -4,6 +4,14 @@ All notable changes to the "vscode-abap-remote-fs" extension will be documented 
 
 Format based on [Keep a Changelog](http://keepachangelog.com/)
 
+## Unreleased
+
+### Fixed
+
+- small nullability/typing bugs
+- fixed jest error when no connection set up
+- improved build scripts
+
 ## [0.8.6] 2020-09-3
 
 ### Added
