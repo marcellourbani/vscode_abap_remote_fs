@@ -4,7 +4,11 @@ All notable changes to the "vscode-abap-remote-fs" extension will be documented 
 
 Format based on [Keep a Changelog](http://keepachangelog.com/)
 
-## Unreleased
+## [0.8.7] 2020-09-23
+
+### Added
+
+- added ability to ignore transport validation
 
 ### Fixed
 

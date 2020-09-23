@@ -112,6 +112,9 @@ const CONTINUE = "Continue"
 const onFailed = async (transport: string) =>
   window.showInformationMessage(`Validation failed`, ACCEPT, CANCEL, CONTINUE)
 
+const onSkipped = async (transport: string) =>
+  window.showInformationMessage(`Accept transport?`, ACCEPT, CANCEL).then(r => r === ACCEPT ? trSel(transport) : trSel("", true))
+
 const validate = async (
   transport: string,
   type: string,
@@ -134,6 +137,7 @@ const validate = async (
               token
             )
             if (!outcome) {
+              if (token?.isCancellationRequested) return onSkipped(transport)
               failedMsg(token)
               return trSel("", true)
             }
