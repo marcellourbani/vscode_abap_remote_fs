@@ -111,7 +111,7 @@ const pickObj = (conn: string, key: string, title: string, parents = false) => {
   }
 }
 
-export class ClassHierarchyLensProvider implements CodeLensProvider<CodeLens> {
+export class ClassHierarchyLensProvider implements CodeLensProvider {
   private static emitter = new EventEmitter<void>()
   public get onDidChangeCodeLenses() {
     return ClassHierarchyLensProvider.emitter.event
