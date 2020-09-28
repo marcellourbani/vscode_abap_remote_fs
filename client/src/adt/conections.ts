@@ -25,12 +25,13 @@ async function create(connId: string) {
     await client.login() // raise exception for login issues
     await client.statelessClone.login()
   } else {
-    connection.password = (await manager.askPassword(connection.name)) || ""
-    if (!connection.password) throw Error("Can't connect without a password")
-    client = await createClient(connection)
+    const password = (await manager.askPassword(connection.name)) || ""
+    if (!password) throw Error("Can't connect without a password")
+    client = await createClient({ ...connection, password })
     await client.login() // raise exception for login issues
     await client.statelessClone.login()
-    const { name, username, password } = connection
+    connection.password = password
+    const { name, username } = connection
     await manager.savePassword(name, username, password)
   }
   // @ts-ignore
