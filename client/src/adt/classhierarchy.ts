@@ -124,11 +124,7 @@ export class ClassHierarchyLensProvider implements CodeLensProvider {
   private static caches = cache((connId: string) =>
     hierCache(getClient(connId))
   )
-  public async provideCodeLenses(doc: TextDocument, token: CancellationToken) {
-    const lenses: CodeLens[] = []
-    return lenses
-  }
-  public async provideCodeLensess(doc: TextDocument, token: CancellationToken): Promise<CodeLens[]> {
+  public async provideCodeLenses(doc: TextDocument, token: CancellationToken): Promise<CodeLens[]> {
     const lenses: CodeLens[] = []
     if (doc.uri.scheme !== ADTSCHEME) return lenses
     const client = getClient(doc.uri.authority)
