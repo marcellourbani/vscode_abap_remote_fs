@@ -4,6 +4,13 @@ All notable changes to the "vscode-abap-remote-fs" extension will be documented 
 
 Format based on [Keep a Changelog](http://keepachangelog.com/)
 
+## [0.8.9] 2020-10-16
+
+### Fixed
+
+- Class hierarchy
+- CI script
+
 ## [0.8.8] 2020-09-28
 
 ### Fixed

@@ -1,10 +1,7 @@
 on:
   push:
-    branches:
-      - master
-  release:
-    types:
-      - created
+    tags:
+      - "v*"
 
 jobs:
   build:
@@ -22,8 +19,6 @@ jobs:
       - run: npm install
       - name: Run tests
         run: npm test
-      - name: build
-        run: npm run createpackage
       - name: Publish
         if: success() && startsWith( github.ref, 'refs/tags/releases/') && matrix.os == 'ubuntu-latest'
         run: npm run deploy
