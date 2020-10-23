@@ -5,7 +5,8 @@ import {
   DidChangeConfigurationNotification,
   CompletionItem,
   CodeActionKind,
-  InitializeResult
+  InitializeResult,
+  TextDocumentSyncKind
 } from "vscode-languageserver"
 import { connection, log } from "./clientManager"
 import { syntaxCheck } from "./syntaxcheck"
@@ -15,8 +16,10 @@ import { documentSymbols } from "./symbols"
 import { formatDocument } from "./documentformatter"
 import { codeActionHandler } from "./codeActions"
 import { updateInclude } from "./objectManager"
-
-export const documents: TextDocuments = new TextDocuments()
+import {
+  TextDocument
+} from 'vscode-languageserver-textdocument';
+export const documents = new TextDocuments(TextDocument)
 
 let hasConfigurationCapability: boolean = false
 let hasWorkspaceFolderCapability: boolean = false
@@ -44,7 +47,7 @@ connection.onInitialize((params: InitializeParams) => {
 
   const result: InitializeResult = {
     capabilities: {
-      textDocumentSync: documents.syncKind,
+      textDocumentSync: TextDocumentSyncKind.Full,
       // Tell the client that the server supports code completion
       completionProvider: {
         resolveProvider: true

@@ -4,6 +4,18 @@ All notable changes to the "vscode-abap-remote-fs" extension will be documented 
 
 Format based on [Keep a Changelog](http://keepachangelog.com/)
 
+## [0.8.10] 2020-10-23
+
+### Added
+
+- run console application
+
+### Fixed
+
+- package creation
+- dependencies updates
+- abapgit support for latest plugin
+
 ## [0.8.9] 2020-10-16
 
 ### Fixed
