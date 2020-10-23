@@ -5,7 +5,7 @@ import {
   window,
   commands,
   ProgressLocation,
-  ExtensionContext
+  debug
 } from "vscode"
 import { pickAdtRoot, RemoteManager } from "../config"
 import { log } from "../lib"
@@ -148,6 +148,26 @@ export class AdtCommands {
     }
   }
 
+  @command(AbapFsCommands.runClass)
+  private static async runClass() {
+    try {
+      const uri = currentUri()
+      if (!uri) return
+      const client = getClient(uri.authority)
+      const fsRoot = await pickAdtRoot(uri)
+      if (!fsRoot) return
+      const file = uriRoot(fsRoot.uri).getNode(uri.path)
+      const clas = isAbapFile(file) && isAbapClassInclude(file.object) && file.object.parent
+      if (clas) {
+        const text = await client.runClass(clas.name)
+        log(text)
+      }
+    } catch (error) {
+      log(error)
+    }
+
+  }
+
   @command(AbapFsCommands.search)
   private static async searchAdtObject(uri: Uri | undefined) {
     // find the adt relevant namespace roots, and let the user pick one if needed
@@ -171,15 +191,14 @@ export class AdtCommands {
       const fsRoot = await pickAdtRoot(uri)
       const connId = fsRoot?.uri.authority
       if (!connId) return
-      const root = fsRoot && uriRoot(fsRoot.uri)
       const obj = await new AdtObjectCreator(connId).createObject(uri)
       if (!obj) return // user aborted
       log(`Created object ${obj.type} ${obj.name}`)
 
-      // if (obj.type === PACKAGE) {
-      //   commands.executeCommand("workbench.files.action.refreshFilesExplorer")
-      //   return // Packages can't be opened perhaps could reveal it?
-      // }
+      if (obj.type === PACKAGE) {
+        commands.executeCommand("workbench.files.action.refreshFilesExplorer")
+        return // Packages can't be opened perhaps could reveal it?
+      }
       const nodePath = await openObject(connId, obj.path)
       if (nodePath) {
         new AdtObjectFinder(connId).displayNode(nodePath)

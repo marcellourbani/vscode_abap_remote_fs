@@ -90,12 +90,15 @@ const followPath = (base: string, suffix: string) => {
   }
 }
 export class AbapObjectBase implements AbapObject {
+  public get expandable(): boolean {
+    return this._expandable
+  }
   readonly [objectTag]: true
   constructor(
     readonly type: string,
     readonly name: string,
     readonly path: string,
-    readonly expandable: boolean,
+    private readonly _expandable: boolean,
     readonly techName: string,
     readonly parent: AbapObject | undefined,
     readonly sapGuiUri: string,
@@ -107,7 +110,13 @@ export class AbapObjectBase implements AbapObject {
         "(/sap/bc/adt/vit)|(/sap/bc/adt/ddic/domains/)|(/sap/bc/adt/ddic/dataelements/)|(/sap/bc/esproxy)"
       )
   }
-  structure?: AbapObjectStructure
+  private _structure?: AbapObjectStructure
+  public get structure(): AbapObjectStructure | undefined {
+    return this._structure
+  }
+  public set structure(value: AbapObjectStructure | undefined) {
+    this._structure = value
+  }
   readonly supported: boolean
 
   get canBeWritten() {

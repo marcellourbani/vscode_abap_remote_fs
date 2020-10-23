@@ -144,6 +144,10 @@
         "title": "AbapFs Add favourite"
       },
       {
+        "command": "abapfs.runClass",
+        "title": "AbapFs Run console application"
+      },
+      {
         "command": "abapfs.deletefavourite",
         "title": "AbapFs delete favourite",
         "icon": {

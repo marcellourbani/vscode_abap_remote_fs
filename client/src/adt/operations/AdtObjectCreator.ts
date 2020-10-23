@@ -35,9 +35,9 @@ export const PACKAGE = "DEVC/K"
 export const TMPPACKAGE = "$TMP"
 type details =
   | {
-      options: NewObjectOptions
-      devclass: string
-    }
+    options: NewObjectOptions
+    devclass: string
+  }
   | undefined
 
 const validateMaxLen = (max: number, mandatory = true) => (s: string) => {
@@ -61,7 +61,7 @@ export async function selectObjectType(
 export class AdtObjectCreator {
   private types?: ObjectType[]
 
-  constructor(private connId: string) {}
+  constructor(private connId: string) { }
 
   public async getObjectTypes(uri: Uri): Promise<ObjectType[]> {
     if (!this.types) this.types = await getClient(this.connId).loadTypes()
@@ -107,7 +107,7 @@ export class AdtObjectCreator {
       undefined,
       getRoot(this.connId).service
     )
-    await obj.loadStructure()
+    if (options.objtype !== PACKAGE) await obj.loadStructure()
     return obj
   }
   public guessParentByType(hierarchy: FileStat[], type: ParentTypeIds): string {
@@ -182,6 +182,7 @@ export class AdtObjectCreator {
       description: l.description,
       detail: l.data
     }))
+    items.push({ label: "", description: "Blank", detail: "" })
     return await window.showQuickPick(items, { ignoreFocusOut: true })
   }
 

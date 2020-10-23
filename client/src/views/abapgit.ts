@@ -102,8 +102,12 @@ class AbapGit {
     for (const f of folders) {
       const connId = f.uri.authority
       await getOrCreateClient(connId)
-      if (await getClient(connId).featureDetails("abapGit Repositories"))
-        servers.push(await this.getServerItem(connId))
+      try {
+        if (await getClient(connId).featureDetails("abapGit Repositories"))
+          servers.push(await this.getServerItem(connId))
+      } catch (error) {
+        window.showErrorMessage(`Failed to load git repositories for ${connId}: ${error}`)
+      }
     }
     return servers
   }
@@ -306,9 +310,8 @@ class AbapGitProvider implements TreeDataProvider<TreeItem> {
           repoaccess.password
         )
         await Promise.all([
-          this.refresh(),
-          commands.executeCommand("workbench.files.action.refreshFilesExplorer")
-        ])
+          this.refresh()
+        ]).finally(() => commands.executeCommand("workbench.files.action.refreshFilesExplorer"))
         const created = this.children
           .find(i => i.connId === item.connId)
           ?.children.find(r => r.repo.url === repoUrl)

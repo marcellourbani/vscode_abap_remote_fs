@@ -14,8 +14,13 @@ const tag = Symbol("AbapClass")
 @AbapObjectCreator("CLAS/OC")
 export class AbapClass extends AbapObjectBase {
   [tag] = true
-  structure?: AbapClassStructure
-
+  private _cstructure: AbapClassStructure | undefined
+  public get structure(): AbapClassStructure | undefined {
+    return this._cstructure
+  }
+  public set structure(value: AbapClassStructure | undefined) {
+    this._cstructure = value
+  }
   public findInclude(name: classIncludes) {
     return this.structure?.includes.find(i => i["class:includeType"] === name)
   }
