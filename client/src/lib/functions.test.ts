@@ -3,11 +3,20 @@ import {
   chainTaskTransformers,
   fieldReplacer,
   dependFieldReplacer,
-  splitAdtUriInternal
+  splitAdtUriInternal,
+  RfsTaskEither,
+  rfsTryCatch,
+  rfsChain,
+  addField,
+  chainField,
+  addFieldTe,
+  chainFieldTE
 } from "./functions"
 import { none } from "fp-ts/lib/Option"
 import { right, left, isLeft, isRight } from "fp-ts/lib/Either"
-import { TaskEither } from "fp-ts/lib/TaskEither"
+import { pipe } from "fp-ts/lib/pipeable"
+import { chain } from "fp-ts/lib/TaskEither"
+import * as TE from "fp-ts/lib/TaskEither"
 const isFalsey = (x: any) => !x
 const rejectPromise = () => Promise.reject(new Error("foo"))
 
@@ -19,7 +28,7 @@ interface A extends Record<string, string> {
 const fakeselect = <T2>(
   x?: string,
   f?: () => Promise<T2>
-): TaskEither<Error | typeof none, string> => async () => {
+): RfsTaskEither<string> => async () => {
   if (f)
     try {
       await f()
@@ -32,7 +41,7 @@ const fakeselect = <T2>(
 function dependentInput<T1 extends Record<string, string>, T2>(
   x?: string,
   f?: () => Promise<T2>
-): (record: T1, field: keyof T1) => TaskEither<Error | typeof none, string> {
+): (record: T1, field: keyof T1) => RfsTaskEither<string> {
   return (record: T1, field: keyof T1) => {
     const old: string = record[field]
     return fakeselect(old + x, f)
@@ -158,4 +167,47 @@ test("split namespaced uri start in fragment", () => {
   expect(parts.start?.line).toBe(3)
   expect(parts.start?.character).toBe(2)
   expect(parts.end).toBeFalsy()
+})
+
+test("chain and field collection", async () => {
+  const addKey = addField("key", async <T extends { foo: number }>(x: T) => 3)
+  const myfn = pipe(
+    rfsTryCatch(async () => ({ foo: 1 })),
+    rfsChain(async x => ({ ...x, y: { bar: "baz" } })),
+    rfsChain(addKey),
+    rfsChain(addField("name", async x => `foobar ${x.y.bar}`)),
+    chainField("greeting", async x => `hello, ${x.name}`),
+  )
+
+  const result = await myfn()
+  if (isLeft(result)) throw result.left;
+  expect(result.right.foo).toBe(1)
+  expect(result.right.y.bar).toBe("baz")
+  expect(result.right.name).toBe("foobar baz")
+  expect(result.right.key).toBe(3)
+
+  const overridden = await pipe(
+    rfsTryCatch(async () => ({ foo: 1 })),
+    rfsChain(async x => ({ ...x, y: { bar: "baz" } })),
+    chainField("foo", async x => `bar`),
+  )()
+  if (isLeft(overridden)) throw overridden.left;
+  expect(overridden.right.foo).toBe("bar")
+  expect(overridden.right.y.bar).toBe("baz")
+})
+
+test("chain tasks", async () => {
+  const addKey = addFieldTe("key", <T extends { foo: number }>(x: T) => async () => right(3))
+  const myfn = pipe(
+    rfsTryCatch(async () => ({ foo: 1 })),
+    chain(addKey),
+    chain(addFieldTe("baz", () => async () => right("foobar"))),
+    chainFieldTE("bar", () => fakeselect("foo"))
+  )
+  const result = await myfn()
+  if (isLeft(result)) throw result.left;
+  expect(result.right.foo).toBe(1)
+  expect(result.right.baz).toBe("foobar")
+  expect(result.right.key).toBe(3)
+
 })

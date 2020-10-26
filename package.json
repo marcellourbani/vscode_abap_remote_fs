@@ -148,6 +148,10 @@
         "title": "AbapFs Run console application"
       },
       {
+        "command": "abapfs.creteCloudConnection",
+        "title": "AbapFs Create cloud connection"
+      },
+      {
         "command": "abapfs.deletefavourite",
         "title": "AbapFs delete favourite",
         "icon": {

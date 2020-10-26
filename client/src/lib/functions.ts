@@ -1,6 +1,8 @@
-import { none, isSome, isNone, Option } from "fp-ts/lib/Option"
-import { taskEither, TaskEither } from "fp-ts/lib/TaskEither"
-import { right, left } from "fp-ts/lib/Either"
+import { isSome, isNone, Option, None, fromNullable } from "fp-ts/lib/Option"
+import { chain, chainEitherK, map, taskEither, TaskEither, tryCatch } from "fp-ts/lib/TaskEither"
+import { right, left, Either } from "fp-ts/lib/Either"
+import { Lazy } from "fp-ts/lib/function"
+import { types } from "util"
 
 export const isString = (x: any): x is string => typeof x === "string"
 export const isNumber = (x: any): x is number => typeof x === "number"
@@ -16,20 +18,20 @@ export const flatMap = <T1, T2>(
 // only works if the property is an unique key
 export function ArrayToMap<T>(name: keyof T) {
   return (arr: T[]): Map<string, T> => {
-    return arr.reduce((map, current: T) => {
-      map.set(current[name], current)
-      return map
+    return arr.reduce((_map, current: T) => {
+      _map.set(current[name], current)
+      return _map
     }, new Map())
   }
 }
 
 // returns a function that gets the given property from a map
 export const selectMap = <T1, K extends keyof T1, T2>(
-  map: Map<string, T1>,
+  _map: Map<string, T1>,
   property: K,
   defval: T2
 ): ((index: string) => T2) => (index: string): T2 => {
-  const record = map && map.get(index)
+  const record = _map && _map.get(index)
   return ((record && record[property]) || defval) as T2
 }
 
@@ -43,14 +45,14 @@ export const isStr = (f: any): f is string => {
 }
 
 export const mapGet = <T1, T2>(
-  map: Map<T1, T2>,
+  _map: Map<T1, T2>,
   key: T1,
   init: (() => T2) | T2
 ): T2 => {
-  let result = map.get(key)
+  let result = _map.get(key)
   if (!result) {
     result = isFn(init) ? init() : init
-    map.set(key, result)
+    _map.set(key, result)
   }
 
   return result
@@ -253,13 +255,36 @@ export const debounce = <K, R>(frequency: number, cb: (x: K) => R) => {
 export const after = (time: number) =>
   new Promise(resolve => setTimeout(resolve, time))
 
-type leftType = Error | typeof none
+type LeftType = Error | None
 const isOption = <T>(x: any): x is Option<T> => isSome(x) || isNone(x)
+export const isNonNullable = <T>(x: T): x is NonNullable<T> => !(isUnDefined(x) || x === null)
+export type RfsEither<T> = Either<LeftType, T>
+export type RfsTaskEither<T> = TaskEither<LeftType, NonNullable<T>>
+export const nullToNone = <T>(x: T): RfsEither<NonNullable<T>> => {
+  const o = fromNullable(x)
+  if (isSome(o)) return right(o.value)
+  return left(o)
+}
+export const rfsTryCatch = <T>(f: Lazy<Promise<T | undefined>>): RfsTaskEither<T> => {
+  const x = tryCatch(f, e => types.isNativeError(e) ? e : new Error(`${(e as any)?.message || e}`))
+  return chainEitherK(nullToNone)(x)
+}
+export const rfsChain = <P, T>(f: (x: P) => Promise<T>) =>
+  chain((p: P) => rfsTryCatch(() => f(p)))
+export const addField = <K extends string, P, R>(name: K, f: (x: P) => Promise<R>) => async (x: P) =>
+  ({ ...x, [name]: await f(x) })
+export const chainField = <N extends string, P, R>(n: N, f: (x: P) => Promise<R>) =>
+  rfsChain(addField(n, f))
+export const addFieldTe = <K extends string, P, R>(name: K, f: (x: P) => RfsTaskEither<R>) =>
+  (x: P) => map((y: R) => ({ ...x, [name]: y }))(f(x))
+export const chainFieldTE = <N extends string, P, R>(n: N, f: (x: P) => RfsTaskEither<R>) =>
+  chain(addFieldTe(n, f))
 
-type TaskTransformer<T> = (x: T) => TaskEither<leftType, T>
+
+type TaskTransformer<T> = (x: T) => TaskEither<LeftType, T>
 export const createTaskTransformer = <T>(
   f: (y: T) => T | Option<T> | Promise<T | Option<T>>
-) => (x: T): TaskEither<leftType, T> => () => {
+) => (x: T): TaskEither<LeftType, T> => () => {
   const toProm = async () => f(x)
   return toProm()
     .then((r: T | Option<T>) => {
@@ -274,32 +299,32 @@ export const chainTaskTransformers = <T>(
   ...rest: TaskTransformer<T>[]
 ) => (y: T) => rest.reduce(taskEither.chain, first(y))
 
-const c = <T>(x: T): TaskEither<leftType, T> => async () => right(x)
-const d = <T>(f: (x: T) => T) => (z: T): TaskEither<leftType, T> => async () =>
+const c = <T>(x: T): TaskEither<LeftType, T> => async () => right(x)
+const d = <T>(f: (x: T) => T) => (z: T): TaskEither<LeftType, T> => async () =>
   right(f(z))
 export function fieldReplacer<T1>(
   field: keyof T1,
-  inputTask: TaskEither<leftType, T1[keyof T1]>,
+  inputTask: TaskEither<LeftType, T1[keyof T1]>,
   shouldReplace?: (x: T1) => boolean
-): <T2 extends T1>(x: T2) => TaskEither<leftType, T2>
+): <T2 extends T1>(x: T2) => TaskEither<LeftType, T2>
 export function fieldReplacer<T1, T2 extends T1>(
   field: keyof T1,
-  inputTask: TaskEither<leftType, T1[keyof T1]>,
+  inputTask: TaskEither<LeftType, T1[keyof T1]>,
   shouldReplace: (x: T1) => boolean,
   data: T2
-): TaskEither<leftType, T2>
+): TaskEither<LeftType, T2>
 export function fieldReplacer<T1, T2 extends T1>(
   field: keyof T1,
-  inputTask: TaskEither<leftType, T1[keyof T1]>,
+  inputTask: TaskEither<LeftType, T1[keyof T1]>,
   data: T2
-): TaskEither<leftType, T2>
+): TaskEither<LeftType, T2>
 export function fieldReplacer<T1, T2 extends string, T3 extends Record<T2, T1>>(
   field: T2,
-  inputTask: TaskEither<leftType, T1>,
+  inputTask: TaskEither<LeftType, T1>,
   data?: T3 | ((x: T3) => boolean),
   data2?: T3
 ) {
-  const createTask = (prev: T3): TaskEither<leftType, T3> => {
+  const createTask = (prev: T3): TaskEither<LeftType, T3> => {
     if (isFn(data) && !data(prev)) return async () => right(prev)
     return taskEither.chain(inputTask, iop => async () => {
       return right({ ...prev, [field]: iop })
@@ -312,39 +337,39 @@ export function fieldReplacer<T1, T2 extends string, T3 extends Record<T2, T1>>(
 
 export function dependFieldReplacer<T1>(
   field: keyof T1,
-  input: (data: T1, field: keyof T1) => TaskEither<leftType, T1[keyof T1]>,
+  input: (data: T1, field: keyof T1) => TaskEither<LeftType, T1[keyof T1]>,
   shouldReplace?: (x: T1) => boolean
-): <T2 extends T1>(x: T2) => TaskEither<leftType, T2>
+): <T2 extends T1>(x: T2) => TaskEither<LeftType, T2>
 export function dependFieldReplacer<
   T1,
   T2 extends string,
   T3 extends Record<T2, T1>
 >(
   field: T2,
-  input: (data: T3, field: T2) => TaskEither<leftType, T1[keyof T1]>,
+  input: (data: T3, field: T2) => TaskEither<LeftType, T1[keyof T1]>,
   shouldReplace: (x: T3) => boolean,
   data: T3
-): TaskEither<leftType, T3>
+): TaskEither<LeftType, T3>
 export function dependFieldReplacer<
   T1,
   T2 extends string,
   T3 extends Record<T2, T1>
 >(
   field: T2,
-  input: (data: T3, field: T2) => TaskEither<leftType, T1[keyof T1]>,
+  input: (data: T3, field: T2) => TaskEither<LeftType, T1[keyof T1]>,
   data: T3
-): TaskEither<leftType, T3>
+): TaskEither<LeftType, T3>
 export function dependFieldReplacer<
   T1,
   T2 extends string,
   T3 extends Record<T2, T1>
 >(
   field: T2,
-  input: (data: T3, field: T2) => TaskEither<leftType, T1[keyof T1]>,
+  input: (data: T3, field: T2) => TaskEither<LeftType, T1[keyof T1]>,
   data?: T3 | ((x: T3) => boolean),
   data2?: T3
 ) {
-  const createTask = (prev: T3): TaskEither<leftType, T3> => {
+  const createTask = (prev: T3): TaskEither<LeftType, T3> => {
     return taskEither.chain(input(prev, field), iop => async () => {
       if (isFn(data) && !data(prev)) return right(prev)
       return right({ ...prev, [field]: iop })
