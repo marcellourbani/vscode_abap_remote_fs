@@ -13,7 +13,7 @@ export const AbapFsCommands = {
   clearPassword: "abapfs.clearPassword",
   addfavourite: "abapfs.addfavourite",
   deletefavourite: "abapfs.deletefavourite",
-  createCloudConnection: "abapfs.creteCloudConnection",
+  createConnection: "abapfs.createConnection",
   // classes
   refreshHierarchy: "abapfs.refreshHierarchy",
   pickObject: "abapfs.pickObject",

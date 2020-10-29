@@ -1,4 +1,3 @@
-import { TaskEither, tryCatch, chainEitherK, chain } from "fp-ts/lib/TaskEither"
 import {
   window,
   InputBoxOptions,
@@ -13,12 +12,8 @@ import {
   OpenDialogOptions,
   QuickPickOptions
 } from "vscode"
-import { None, fromNullable, isSome } from "fp-ts/lib/Option"
 import { splitAdtUriInternal, isUnDefined, isFn, RfsTaskEither, rfsTryCatch, isNonNullable } from "./functions"
-import { Either, left, right } from "fp-ts/lib/Either"
 import { Range as ApiRange } from "abap-adt-api"
-import { Lazy } from "fp-ts/lib/function"
-import { types } from "util"
 
 
 export const uriName = (uri: Uri) => uri.path.split("/").pop() || ""
@@ -82,25 +77,25 @@ export function quickPick(
   projector?: undefined,
   token?: CancellationToken
 ): RfsTaskEither<string>
-export function quickPick<T extends QuickPickItem>(
+export function quickPick<T extends QuickPickItem, T2 = string>(
   items: recordPickSource<T>,
   options: QuickPickOptions | undefined,
-  projector: (item: T) => string,
+  projector: (item: T) => T2,
   token?: CancellationToken
-): RfsTaskEither<string>
+): RfsTaskEither<T2>
 export function quickPick<T extends QuickPickItem>(
   items: recordPickSource<T>,
   options?: QuickPickOptions,
   projector?: undefined,
   token?: CancellationToken
 ): RfsTaskEither<T>
-export function quickPick<T extends QuickPickItem>(
+export function quickPick<T extends QuickPickItem, T2 = string>(
   items: pickSource<T>,
   options?: QuickPickOptions,
-  projector?: (item: T) => string,
-  token?: CancellationToken): RfsTaskEither<string | T> {
+  projector?: (item: T) => T2,
+  token?: CancellationToken): RfsTaskEither<string | T | T2> {
 
-  return rfsTryCatch<string | T>(async () => {
+  return rfsTryCatch<T2 | T>(async () => {
     const qo = { ignoreFocusOut: true, ...options }
     const pickItems = await pickSourceToArray(items)
     const res = await window.showQuickPick(pickItems as T[], qo, token) // need to fool TS

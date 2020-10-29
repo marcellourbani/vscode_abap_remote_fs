@@ -265,19 +265,30 @@ export const nullToNone = <T>(x: T): RfsEither<NonNullable<T>> => {
   if (isSome(o)) return right(o.value)
   return left(o)
 }
+export const rfsTaskEither = <T>(x: T): RfsTaskEither<T> => async () => nullToNone(x)
 export const rfsTryCatch = <T>(f: Lazy<Promise<T | undefined>>): RfsTaskEither<T> => {
   const x = tryCatch(f, e => types.isNativeError(e) ? e : new Error(`${(e as any)?.message || e}`))
   return chainEitherK(nullToNone)(x)
 }
-export const rfsChain = <P, T>(f: (x: P) => Promise<T>) =>
+export const rfsChainE = <P, T>(f: (x: P) => Promise<T>) =>
   chain((p: P) => rfsTryCatch(() => f(p)))
-export const addField = <K extends string, P, R>(name: K, f: (x: P) => Promise<R>) => async (x: P) =>
-  ({ ...x, [name]: await f(x) })
-export const chainField = <N extends string, P, R>(n: N, f: (x: P) => Promise<R>) =>
-  rfsChain(addField(n, f))
+
+export const addField = <K extends string, P, R>(name: K, f: (x: P) => Promise<R>) =>
+  async (x: P): Promise<P & Record<K, R>> => {
+    const r: Record<K, R> = { [name]: await f(x) } as Record<K, R>
+    return { ...x, ...r }
+  }
+type RfsAddField<N extends string, P, R> = (x: RfsTaskEither<P>) => RfsTaskEither<P & Record<N, R>>
+
+export const chainField = <N extends string, P, R>(n: N, f: (x: P) => Promise<R>): RfsAddField<N, P, R> =>
+  rfsChainE(addField(n, f))
+
 export const addFieldTe = <K extends string, P, R>(name: K, f: (x: P) => RfsTaskEither<R>) =>
-  (x: P) => map((y: R) => ({ ...x, [name]: y }))(f(x))
-export const chainFieldTE = <N extends string, P, R>(n: N, f: (x: P) => RfsTaskEither<R>) =>
+  (x: P) => map((y: R) => {
+    const r = { [name]: y } as Record<K, R>
+    return ({ ...x, ...r })
+  })(f(x))
+export const chainFieldTE = <N extends string, P, R>(n: N, f: (x: P) => RfsTaskEither<R>): RfsAddField<N, P, R> =>
   chain(addFieldTe(n, f))
 
 
