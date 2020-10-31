@@ -1,21 +1,14 @@
 import {
   after,
-  chainTaskTransformers,
   fieldReplacer,
   dependFieldReplacer,
   splitAdtUriInternal,
-  RfsTaskEither,
-  rfsTryCatch,
-  rfsChainE,
-  addField,
-  chainField,
-  addFieldTe,
-  chainFieldTE
 } from "./functions"
 import { none } from "fp-ts/lib/Option"
 import { right, isLeft, isRight } from "fp-ts/lib/Either"
 import { pipe } from "fp-ts/lib/pipeable"
-import { chain } from "fp-ts/lib/TaskEither"
+import { chain, bind, bindTo, map } from "fp-ts/lib/TaskEither"
+import { RfsTaskEither, rfsTryCatch, chainTaskTransformers, addField, rfsChainE, rfsBind, LeftType, rfsBindReplace } from "./rfsTaskEither"
 const isFalsey = (x: any) => !x
 const rejectPromise = () => Promise.reject(new Error("foo"))
 
@@ -174,9 +167,9 @@ test("chain and field collection", async () => {
     rfsTryCatch(async () => ({ foo: 1 })),
     rfsChainE(async x => ({ ...x, y: { bar: "baz" } })),
     rfsChainE(addKey),
-    rfsChainE(addField("name", async (x) => `foobar ${x.y.bar}`)),
-    chainField("greeting", async x => `hello, ${x.name}`),
-    chainField("greetingbye", async x => `bye, ${x.name}`),
+    rfsBind("name", async x => `foobar ${x.y.bar}`),
+    rfsBind("greeting", async x => `hello, ${x.name}`),
+    rfsBind("greetingbye", async x => `bye, ${x.name}`),
   )
 
   const result = await myfn()
@@ -192,7 +185,7 @@ test("chain and field collection", async () => {
   const overridden = await pipe(
     rfsTryCatch(async () => ({ foo: 1 })),
     rfsChainE(async x => ({ ...x, y: { bar: "baz" } })),
-    chainField("foo", async x => `bar`),
+    rfsBindReplace("foo", async x => `bar`),
   )()
   if (isLeft(overridden)) throw overridden.left;
   expect(overridden.right.foo).toBe("bar")
@@ -200,23 +193,26 @@ test("chain and field collection", async () => {
 })
 
 test("chain tasks", async () => {
-  const addKey = addFieldTe("key", <T extends { foo: number }>(x: T) => async () => right(3))
+  const getKey = <T extends { foo: number }>(x: T) => rfsTryCatch(async () => 3)
   const myfn = pipe(
     rfsTryCatch(async () => ({ foo: 1 })),
-    chain(addKey),
-    chain(addFieldTe("baz", () => async () => right("foobar"))),
-    chainFieldTE("bar", () => fakeselect({ "foo": 1 })),
-    chainFieldTE("bar", () => fakeselect({ "bar": 2 })),
-    chainFieldTE("foobar", () => fakeselect({ "foobar": 3 })),
-    chainFieldTE("greeting", ({ bar }) => fakeselect("hello"))
+    bind("key", getKey),
+    bind("baz", () => async () => right("foobar")),
+    bind("bar", () => fakeselect({ "foo": 1 })),
+    chain(x => () => pipe(fakeselect({ "bar": 2 }), map(bar => ({ ...x, bar })))()),
+    // rfsChainE("bar", () => fakeselect({ "bar": 2 })),
+    bind("bar2", () => fakeselect({ "bar": 2 })),
+    bind("foobar", () => fakeselect({ "foobar": 3 })),
+    bind("greeting", ({ bar }) => fakeselect("hello"))
   )
   const result = await myfn()
   if (isLeft(result)) throw result.left;
   expect(result.right.foo).toBe(1)
   expect(result.right.baz).toBe("foobar")
   expect(result.right.key).toBe(3)
+  expect(result.right.bar2.bar).toBe(2)
   expect((result.right.bar as any).bar).toBe(2)
-  expect((result.right.foobar as any).foobar).toBe(3)
+  expect(result.right.foobar.foobar).toBe(3)
   expect(result.right.greeting).toBe("hello")
 })
 

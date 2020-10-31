@@ -12,8 +12,9 @@ import {
   OpenDialogOptions,
   QuickPickOptions
 } from "vscode"
-import { splitAdtUriInternal, isUnDefined, isFn, RfsTaskEither, rfsTryCatch, isNonNullable } from "./functions"
+import { splitAdtUriInternal, isUnDefined, isFn, isNonNullable } from "./functions"
 import { Range as ApiRange } from "abap-adt-api"
+import { RfsTaskEither, rfsTryCatch } from "./rfsTaskEither"
 
 
 export const uriName = (uri: Uri) => uri.path.split("/").pop() || ""
@@ -71,12 +72,19 @@ async function pickSourceToArray<T extends QuickPickItem>(sources: pickSource<T>
   if (isFn(sources)) return sources()
   return sources
 }
+
 export function quickPick(
   items: simplePickSource,
   options?: QuickPickOptions,
   projector?: undefined,
   token?: CancellationToken
 ): RfsTaskEither<string>
+export function quickPick<T>(
+  items: simplePickSource,
+  options: QuickPickOptions | undefined,
+  projector: (item: string) => T,
+  token?: CancellationToken
+): RfsTaskEither<T>
 export function quickPick<T extends QuickPickItem, T2 = string>(
   items: recordPickSource<T>,
   options: QuickPickOptions | undefined,

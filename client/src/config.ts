@@ -4,13 +4,17 @@ import {
   httpTraceUrl,
   SOURCE_CLIENT
 } from "vscode-abap-remote-fs-sharedapi"
-import { window, workspace, QuickPickItem, WorkspaceFolder, Uri } from "vscode"
+import { window, workspace, QuickPickItem, WorkspaceFolder, Uri, ConfigurationTarget } from "vscode"
 import { ADTClient, createSSLConfig } from "abap-adt-api"
 import { readFileSync } from "fs"
 import { createProxy } from "method-call-logger"
 import { mongoApiLogger, mongoHttpLogger, PasswordVault } from "./lib"
 import { oauthLogin } from "./oauth"
 import { ADTSCHEME } from "./adt/conections"
+
+const CONFIGROOT = "abapfs"
+const REMOTE = "remote"
+
 export interface RemoteConfig extends ClientConfiguration {
   sapGui?: {
     disabled: boolean
@@ -33,6 +37,38 @@ const connectedRoots = () => {
   )
   for (const r of roots) rootmap.set(formatKey(r.uri.authority), r)
   return rootmap
+}
+
+const targetRemotes = (target: ConfigurationTarget) => {
+  const remotes = workspace.getConfiguration(CONFIGROOT).inspect(REMOTE)
+  const select = () => {
+    switch (target) {
+      case ConfigurationTarget.Global:
+        return remotes?.globalValue || {}
+      case ConfigurationTarget.Workspace:
+        return remotes?.workspaceValue || {}
+      case ConfigurationTarget.WorkspaceFolder:
+        return remotes?.workspaceFolderValue || {}
+    }
+  }
+  return select() as Record<"string", RemoteConfig>
+}
+export const validateNewConfigId = (target: ConfigurationTarget) => {
+  const remotes = workspace.getConfiguration(CONFIGROOT)?.[REMOTE] || {}
+  const keys = Object.keys(targetRemotes(target)).map(formatKey)
+  return (key: string) => {
+    if (key.length < 3) return "Connection name must be at least 3 characters long"
+    if (!key.match(/^[\w\d-_]+$/i)) return "Unexpected character. Only letters, numbers, - and _ are allowed"
+    if (keys.find(k => k === formatKey(key))) return "Key already in use"
+  }
+}
+
+export const saveNewRemote = async (cfg: ClientConfiguration, target: ConfigurationTarget) => {
+  const validation = validateNewConfigId(target)(cfg.name)
+  if (validation) throw new Error(validation)
+  const currentConfig = workspace.getConfiguration(CONFIGROOT)
+  const remotes = { ...targetRemotes(target), [cfg.name]: cfg }
+  return currentConfig.update(REMOTE, remotes, target)
 }
 
 const config = (name: string, remote: RemoteConfig) => {
@@ -157,8 +193,8 @@ export class RemoteManager {
   }
 
   private remoteList(): RemoteConfig[] {
-    const userConfig = workspace.getConfiguration("abapfs")
-    const remote = userConfig.remote
+    const userConfig = workspace.getConfiguration(CONFIGROOT)
+    const remote = userConfig[REMOTE]
     if (!remote) throw new Error("No destination configured")
     return Object.keys(remote).map(name =>
       config(name, remote[name] as RemoteConfig)

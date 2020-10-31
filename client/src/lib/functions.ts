@@ -1,8 +1,6 @@
-import { isSome, isNone, Option, None, fromNullable } from "fp-ts/lib/Option"
-import { chain, chainEitherK, map, taskEither, TaskEither, tryCatch } from "fp-ts/lib/TaskEither"
-import { right, left, Either } from "fp-ts/lib/Either"
-import { Lazy } from "fp-ts/lib/function"
-import { types } from "util"
+import { taskEither, TaskEither } from "fp-ts/lib/TaskEither"
+import { right } from "fp-ts/lib/Either"
+import { LeftType } from "./rfsTaskEither"
 
 export const isString = (x: any): x is string => typeof x === "string"
 export const isNumber = (x: any): x is number => typeof x === "number"
@@ -255,64 +253,9 @@ export const debounce = <K, R>(frequency: number, cb: (x: K) => R) => {
 export const after = (time: number) =>
   new Promise(resolve => setTimeout(resolve, time))
 
-type LeftType = Error | None
-const isOption = <T>(x: any): x is Option<T> => isSome(x) || isNone(x)
 export const isNonNullable = <T>(x: T): x is NonNullable<T> => !(isUnDefined(x) || x === null)
-export type RfsEither<T> = Either<LeftType, T>
-export type RfsTaskEither<T> = TaskEither<LeftType, NonNullable<T>>
-export const nullToNone = <T>(x: T): RfsEither<NonNullable<T>> => {
-  const o = fromNullable(x)
-  if (isSome(o)) return right(o.value)
-  return left(o)
-}
-export const rfsTaskEither = <T>(x: T): RfsTaskEither<T> => async () => nullToNone(x)
-export const rfsTryCatch = <T>(f: Lazy<Promise<T | undefined>>): RfsTaskEither<T> => {
-  const x = tryCatch(f, e => types.isNativeError(e) ? e : new Error(`${(e as any)?.message || e}`))
-  return chainEitherK(nullToNone)(x)
-}
-export const rfsChainE = <P, T>(f: (x: P) => Promise<T>) =>
-  chain((p: P) => rfsTryCatch(() => f(p)))
-
-export const addField = <K extends string, P, R>(name: K, f: (x: P) => Promise<R>) =>
-  async (x: P): Promise<P & Record<K, R>> => {
-    const r: Record<K, R> = { [name]: await f(x) } as Record<K, R>
-    return { ...x, ...r }
-  }
-type RfsAddField<N extends string, P, R> = (x: RfsTaskEither<P>) => RfsTaskEither<P & Record<N, R>>
-
-export const chainField = <N extends string, P, R>(n: N, f: (x: P) => Promise<R>): RfsAddField<N, P, R> =>
-  rfsChainE(addField(n, f))
-
-export const addFieldTe = <K extends string, P, R>(name: K, f: (x: P) => RfsTaskEither<R>) =>
-  (x: P) => map((y: R) => {
-    const r = { [name]: y } as Record<K, R>
-    return ({ ...x, ...r })
-  })(f(x))
-export const chainFieldTE = <N extends string, P, R>(n: N, f: (x: P) => RfsTaskEither<R>): RfsAddField<N, P, R> =>
-  chain(addFieldTe(n, f))
 
 
-type TaskTransformer<T> = (x: T) => TaskEither<LeftType, T>
-export const createTaskTransformer = <T>(
-  f: (y: T) => T | Option<T> | Promise<T | Option<T>>
-) => (x: T): TaskEither<LeftType, T> => () => {
-  const toProm = async () => f(x)
-  return toProm()
-    .then((r: T | Option<T>) => {
-      if (isOption(r)) return isNone(r) ? left(r) : right(r.value)
-      else return right(r)
-    })
-    .catch(left)
-}
-
-export const chainTaskTransformers = <T>(
-  first: TaskTransformer<T>,
-  ...rest: TaskTransformer<T>[]
-) => (y: T) => rest.reduce(taskEither.chain, first(y))
-
-const c = <T>(x: T): TaskEither<LeftType, T> => async () => right(x)
-const d = <T>(f: (x: T) => T) => (z: T): TaskEither<LeftType, T> => async () =>
-  right(f(z))
 export function fieldReplacer<T1>(
   field: keyof T1,
   inputTask: TaskEither<LeftType, T1[keyof T1]>,
