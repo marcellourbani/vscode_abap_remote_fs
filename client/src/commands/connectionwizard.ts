@@ -8,25 +8,26 @@ import { ConfigurationTarget, QuickPickItem, Uri, workspace } from "vscode";
 import { ClientConfiguration } from "vscode-abap-remote-fs-sharedapi";
 import { saveNewRemote, validateNewConfigId } from "../config";
 import {
-    after, inputBox, isString, openDialog, quickPick, rfsChainE, rfsExtract, rfsTaskEither, RfsTaskEither,
+    after, askConfirmation, inputBox, isString, openDialog, quickPick, rfsChainE, rfsExtract, rfsTaskEither, RfsTaskEither,
     rfsTryCatch, rfsWrap
 } from "../lib";
 
-interface SimpleSource extends QuickPickItem { key: "LOADKEY" | "MANUAL" }
+interface SimpleSource extends QuickPickItem { key: "LOADKEY" | "MANUAL" | "NONCLOUD" }
 interface UrlSource extends QuickPickItem { key: "URL", url: string }
 type Source = SimpleSource | UrlSource
 const CONFIGSOURCES: Source[] = [
-    { label: "load service key", key: "LOADKEY" },
-    { label: "Europe Cloud trial", key: "URL", url: "https://api.cf.eu10.hana.ondemand.com" },
-    { label: "USA Cloud trial", key: "URL", url: "https://api.cf.us10.hana.ondemand.com" },
-    { label: "enter connection endpoint", key: "MANUAL" }]
+    { label: "Known application server", key: "NONCLOUD" },
+    { label: "Cloud instance - load service key from file", key: "LOADKEY" },
+    { label: "Cloud instance - Europe trial", key: "URL", url: "https://api.cf.eu10.hana.ondemand.com" },
+    { label: "Cloud instance - USA trial", key: "URL", url: "https://api.cf.us10.hana.ondemand.com" },
+    { label: "Cloud instance - enter connection endpoint", key: "MANUAL" }]
 
 const loadFile = (u: Uri): RfsTaskEither<string> =>
     rfsTryCatch(async () => workspace.fs.readFile(u).then(a => a.toString()))
 
 const selectEntity = <T extends { name: string }>(sources: CfResource<T>[], placeHolder: string) => {
     const source = sources.map(e => ({ label: e.entity.name, entity: e }))
-    return quickPick(source, { placeHolder }, s => s.entity)
+    return quickPick(source, { placeHolder, bypassIfSingle: true }, s => s.entity)
 }
 const findAbapTag = (tags: string[]) => tags && tags.find(t => t === "abapcp")
 const extractLink = (i: CfInfo) => i.links.login?.href ? { url: i.links.login?.href } : undefined
@@ -126,6 +127,45 @@ const configFromKey = async (key: AbapServiceKey) => {
     const languages = info.INSTALLED_LANGUAGES.map(l => l.ISOLANG.toLowerCase())
     return { config, languages }
 }
+const inputUrl = () => inputBox({
+    prompt: "Server base URL (same as the beginning of your Fiori pages)",
+    value: "http://localhost:8000",
+    validateInput: (url: string) => url && url.match(/^http(s)?:\/\/[\w\.]+(:\d+)?$/i) ? "" : "Format: http(s)://domain[:port], i.e. https://myserver.com:44311"
+})
+const ignoreSSL = <T extends { url: string }>({ url }: T) =>
+    url.match(/^https:\/\//i) ? askConfirmation("Allow self signed certificates (NOT SAFE!)") : rfsTaskEither(false)
+const inputClient = () => inputBox({
+    prompt: "Client",
+    validateInput: (x: string) => x !== "000" && x.match(/^\d\d\d$/) ? "" : "Client must be a 3 digit number number from 001 to 999"
+})
+const inputLanguage = () => inputBox({
+    prompt: "Enter connection language",
+    validateInput: (x: string) => x.match(/^[a-z][a-z]$/) ? "" : "Language code must be 2 lowercase letters"
+})
+
+const localConfig = () =>
+    pipe(rfsTaskEither({}),
+        bind("url", inputUrl),
+        bind("username", () => inputBox({ prompt: "User name" })),
+        // bind("password", () => inputBox({ prompt: "Password", password: true })),
+        bind("client", inputClient),
+        bind("language", inputLanguage),
+        bind("allowSelfSigned", ignoreSSL),
+        map(({ url, username, allowSelfSigned, client, language }) => {
+            const config: ClientConfiguration = {
+                name: "",
+                url,
+                username,
+                password: "",
+                language,
+                client,
+                allowSelfSigned,
+                diff_formatter: "ADT formatter"
+            }
+            return { config }
+        })
+    )
+
 const pickDestination = () => quickPick(["User", "Workspace"],
     { placeHolder: "Select destination file" },
     (d: any) => d === "User" ? ConfigurationTarget.Global : ConfigurationTarget.Workspace)
@@ -138,15 +178,26 @@ const saveCloudConfig = (cfg: RfsTaskEither<{ config: ClientConfiguration, langu
     pipe(cfg,
         bind("destination", pickDestination),
         bind("name", inputName),
-        bind("autoSave", _ => quickPick(["Yes", "No"], { placeHolder: "save credentials?" })),
+        bind("saveCredentials", _ => askConfirmation("save credentials?")),
         bind("language", c => quickPick(c.languages, { placeHolder: "Select language" })),
         map(x => {
-            const { config, autoSave, name, destination, language } = x
-            const oauth = config.oauth && { ...config.oauth, saveCredentials: autoSave === "Yes" }
+            const { config, saveCredentials, name, destination, language } = x
+            const oauth = config.oauth && { ...config.oauth, saveCredentials }
             const newConfig = { ...config, name, oauth, language }
             return saveNewRemote(newConfig, destination)
         })
     )
+const saveLocal = (cfg: RfsTaskEither<{ config: ClientConfiguration }>) =>
+    pipe(cfg,
+        bind("destination", pickDestination),
+        bind("name", inputName),
+        map(x => {
+            const { config, name, destination } = x
+            const newConfig = { ...config, name }
+            return saveNewRemote(newConfig, destination)
+        })
+    )
+
 const configFromFile = (name: RfsTaskEither<Uri>) => pipe(
     name,
     chain(loadFile),
@@ -163,13 +214,15 @@ export const createConnection = async () => {
         chain(x => async () => {
             switch (x.key) {
                 case "LOADKEY":
-                    return pipe(openDialog({ title: "Service Key" }), configFromFile)()
+                    return pipe(openDialog({ title: "Service Key" }), configFromFile, saveCloudConfig)()
                 case "MANUAL":
-                    return pipe(inputBox({ prompt: "Cloud instance endpoint" }), chain(configFromUrl))()
+                    return pipe(inputBox({ prompt: "Cloud instance endpoint" }), chain(configFromUrl), saveCloudConfig)()
                 case "URL":
-                    return configFromUrl(x.url)()
+                    return pipe(configFromUrl(x.url), saveCloudConfig)()
+                case "NONCLOUD":
+                    return pipe(localConfig(), saveLocal)()
             }
         }))
-    const result = rfsExtract(await pipe(source, saveCloudConfig)())
+    const result = rfsExtract(await source())
     return result
 }

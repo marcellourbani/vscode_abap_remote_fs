@@ -68,45 +68,54 @@ type pickSource<T extends QuickPickItem> =
   | simplePickSource
   | recordPickSource<T>
 
+interface RfsQuickPickOptions extends QuickPickOptions {
+  bypassIfSingle?: boolean
+}
+
 async function pickSourceToArray<T extends QuickPickItem>(sources: pickSource<T>): Promise<T[] | string[]> {
   if (isFn(sources)) return sources()
   return sources
 }
 
+export const askConfirmation = (placeHolder: string) =>
+  quickPick(["Yes", "No"], { placeHolder }, x => x === "Yes")
+
 export function quickPick(
   items: simplePickSource,
-  options?: QuickPickOptions,
+  options?: RfsQuickPickOptions,
   projector?: undefined,
   token?: CancellationToken
 ): RfsTaskEither<string>
 export function quickPick<T>(
   items: simplePickSource,
-  options: QuickPickOptions | undefined,
+  options: RfsQuickPickOptions | undefined,
   projector: (item: string) => T,
   token?: CancellationToken
 ): RfsTaskEither<T>
 export function quickPick<T extends QuickPickItem, T2 = string>(
   items: recordPickSource<T>,
-  options: QuickPickOptions | undefined,
+  options: RfsQuickPickOptions | undefined,
   projector: (item: T) => T2,
   token?: CancellationToken
 ): RfsTaskEither<T2>
 export function quickPick<T extends QuickPickItem>(
   items: recordPickSource<T>,
-  options?: QuickPickOptions,
+  options?: RfsQuickPickOptions,
   projector?: undefined,
   token?: CancellationToken
 ): RfsTaskEither<T>
 export function quickPick<T extends QuickPickItem, T2 = string>(
   items: pickSource<T>,
-  options?: QuickPickOptions,
+  options?: RfsQuickPickOptions,
   projector?: (item: T) => T2,
   token?: CancellationToken): RfsTaskEither<string | T | T2> {
 
   return rfsTryCatch<T2 | T>(async () => {
     const qo = { ignoreFocusOut: true, ...options }
-    const pickItems = await pickSourceToArray(items)
-    const res = await window.showQuickPick(pickItems as T[], qo, token) // need to fool TS
+    const pickItems = (await pickSourceToArray(items)) as T[] // need to fool TS
+    if (options?.bypassIfSingle && pickItems.length === 1)
+      return projector ? projector(pickItems[0]) : pickItems[0]
+    const res = await window.showQuickPick(pickItems, qo, token)
     if (isNonNullable(res)) return projector ? projector(res) : res
     return
   })
