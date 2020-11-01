@@ -4,6 +4,22 @@ Turns Visual studio code into an IDE for ABAP development, operating directly on
 
 Is less capable and more buggy than Eclipse with ADT, but also more responsive, and has a couple of extra features not found in Eclipse, like listing changed sources by transport and normalizing changes in diff views
 
+## Getting started
+
+The easiest way is to first create a connection with an ABAP server by running command
+
+> AbapFs Create connection
+
+and follow the instructions, then run command
+
+> AbapFs Connect to an ABAP system
+
+to connect to it. Your abap code will appear in the file tree on the left.
+
+You can also look up ABAP objects by name with command
+
+> AbapFs Search for object
+
 ## Links
 
 [Getting started](https://github.com/marcellourbani/vscode_abap_remote_fs/wiki/getting-started) [wiki/documentation](https://github.com/marcellourbani/vscode_abap_remote_fs/wiki) [blog post by Leon Hassan](https://blogs.sap.com/2019/12/06/abap-development-in-vs-code)

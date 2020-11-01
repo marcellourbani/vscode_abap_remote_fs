@@ -1,4 +1,3 @@
-import { TaskEither } from "fp-ts/lib/TaskEither"
 import {
   window,
   InputBoxOptions,
@@ -7,15 +6,16 @@ import {
   CancellationToken,
   ProgressLocation,
   QuickPickItem,
-  QuickPickOptions,
   Memento,
   Position,
-  Range
+  Range,
+  OpenDialogOptions,
+  QuickPickOptions
 } from "vscode"
-import { none, None } from "fp-ts/lib/Option"
-import { isFn, splitAdtUriInternal, isUnDefined } from "./functions"
-import { left, right } from "fp-ts/lib/Either"
+import { splitAdtUriInternal, isUnDefined, isFn, isNonNullable } from "./functions"
 import { Range as ApiRange } from "abap-adt-api"
+import { RfsTaskEither, rfsTryCatch } from "./rfsTaskEither"
+
 
 export const uriName = (uri: Uri) => uri.path.split("/").pop() || ""
 
@@ -32,19 +32,21 @@ export const withp = <T>(
     cancellable = location === ProgressLocation.Notification
   return window.withProgress({ location, title, cancellable }, cb)
 }
+interface MultiOpenOptions extends OpenDialogOptions { canSelectMany: true }
+interface SingleOpenOptions extends OpenDialogOptions { canSelectMany?: false }
+export function openDialog(options: SingleOpenOptions): RfsTaskEither<Uri>
+export function openDialog(options: MultiOpenOptions): RfsTaskEither<Uri[]>
+export function openDialog(options: OpenDialogOptions): RfsTaskEither<Uri[] | Uri> {
+  const openTask = async () => window.showOpenDialog(options)
+    .then(u => options.canSelectMany ? u : u?.[0])
+  return rfsTryCatch<Uri | Uri[]>(openTask)
+}
 
 export const inputBox = (
   options: InputBoxOptions,
   token?: CancellationToken
-): TaskEither<Error | typeof none, string> => async () => {
-  try {
-    const op = { ignoreFocusOut: true, ...options }
-    const result = await window.showInputBox(op, token)
-    return result || result === "" ? right(result) : left(none)
-  } catch (error) {
-    return left(error)
-  }
-}
+): RfsTaskEither<string> => rfsTryCatch(async () =>
+  await window.showInputBox({ ignoreFocusOut: true, ...options }, token))
 
 export function simpleInputBox(prompt: string, value = "", password = false) {
   return inputBox({ prompt, value, password })
@@ -66,45 +68,57 @@ type pickSource<T extends QuickPickItem> =
   | simplePickSource
   | recordPickSource<T>
 
+interface RfsQuickPickOptions extends QuickPickOptions {
+  bypassIfSingle?: boolean
+}
+
+async function pickSourceToArray<T extends QuickPickItem>(sources: pickSource<T>): Promise<T[] | string[]> {
+  if (isFn(sources)) return sources()
+  return sources
+}
+
+export const askConfirmation = (placeHolder: string) =>
+  quickPick(["Yes", "No"], { placeHolder }, x => x === "Yes")
+
 export function quickPick(
   items: simplePickSource,
-  options?: QuickPickOptions,
+  options?: RfsQuickPickOptions,
   projector?: undefined,
   token?: CancellationToken
-): TaskEither<Error | None, string>
-export function quickPick<T extends QuickPickItem>(
-  items: recordPickSource<T>,
-  options: QuickPickOptions | undefined,
-  projector: (item: QuickPickItem) => string,
+): RfsTaskEither<string>
+export function quickPick<T>(
+  items: simplePickSource,
+  options: RfsQuickPickOptions | undefined,
+  projector: (item: string) => T,
   token?: CancellationToken
-): TaskEither<Error | None, string>
+): RfsTaskEither<T>
+export function quickPick<T extends QuickPickItem, T2 = string>(
+  items: recordPickSource<T>,
+  options: RfsQuickPickOptions | undefined,
+  projector: (item: T) => T2,
+  token?: CancellationToken
+): RfsTaskEither<T2>
 export function quickPick<T extends QuickPickItem>(
   items: recordPickSource<T>,
-  options?: QuickPickOptions,
+  options?: RfsQuickPickOptions,
   projector?: undefined,
   token?: CancellationToken
-): TaskEither<Error | None, T>
-export function quickPick<T extends QuickPickItem>(
+): RfsTaskEither<T>
+export function quickPick<T extends QuickPickItem, T2 = string>(
   items: pickSource<T>,
-  options?: QuickPickOptions,
-  projector?: (item: QuickPickItem) => string,
-  token?: CancellationToken
-): TaskEither<Error | None, string | T> {
-  return async () => {
-    try {
-      items = isFn(items) ? await items() : await items
-    } catch (error) {
-      return left(error)
-    }
-    const pickItems = items as T[] // typescript fails to deal with the overload...
-    if (pickItems.length === 0) return left(none)
+  options?: RfsQuickPickOptions,
+  projector?: (item: T) => T2,
+  token?: CancellationToken): RfsTaskEither<string | T | T2> {
 
+  return rfsTryCatch<T2 | T>(async () => {
     const qo = { ignoreFocusOut: true, ...options }
-    const selection = await window.showQuickPick(pickItems, qo, token)
-    if (selection !== undefined)
-      return right(projector ? projector(selection) : selection)
-    return left(none)
-  }
+    const pickItems = (await pickSourceToArray(items)) as T[] // need to fool TS
+    if (options?.bypassIfSingle && pickItems.length === 1)
+      return projector ? projector(pickItems[0]) : pickItems[0]
+    const res = await window.showQuickPick(pickItems, qo, token)
+    if (isNonNullable(res)) return projector ? projector(res) : res
+    return
+  })
 }
 
 export const createStore = <T>(name: string, store: Memento): Memento => {

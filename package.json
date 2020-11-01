@@ -33,7 +33,8 @@
   ],
   "activationEvents": [
     "onFileSystem:adt",
-    "onCommand:abapfs.connect"
+    "onCommand:abapfs.connect",
+    "onCommand:abapfs.createConnection"
   ],
   "main": "./client/dist/extension",
   "scripts": {
@@ -126,6 +127,10 @@
       {
         "command": "abapfs.connect",
         "title": "AbapFs Connect to an ABAP system"
+      },
+      {
+        "command": "abapfs.createConnection",
+        "title": "AbapFs Create connection"
       },
       {
         "command": "abapfs.search",

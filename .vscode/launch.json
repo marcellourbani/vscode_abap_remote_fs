@@ -21,11 +21,11 @@
       }
     },
     {
-      "type": "node2",
+      "type": "node",
       "request": "attach",
       "name": "Attach to Server",
       "address": "localhost",
-      // "protocol": "inspector",
+      "protocol": "inspector",
       "smartStep": true,
       "showAsyncStacks": true,
       "skipFiles": ["<node_internals>/**"],

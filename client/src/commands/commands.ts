@@ -4,8 +4,7 @@ import {
   Uri,
   window,
   commands,
-  ProgressLocation,
-  debug
+  ProgressLocation
 } from "vscode"
 import { pickAdtRoot, RemoteManager } from "../config"
 import { log } from "../lib"
@@ -35,6 +34,7 @@ import {
 import { isAbapClassInclude } from "abapobject"
 import { IncludeProvider } from "../adt/includes" // resolve dependencies
 import { command, AbapFsCommands } from "."
+import { createConnection } from "./connectionwizard"
 
 function currentUri() {
   if (!window.activeTextEditor) return
@@ -81,6 +81,11 @@ export class AdtCommands {
   @command(AbapFsCommands.changeInclude)
   private static async changeMain(uri: Uri) {
     return IncludeProvider.get().switchInclude(uri)
+  }
+
+  @command(AbapFsCommands.createConnection)
+  private static createConnectionCommand() {
+    return createConnection()
   }
 
   @command(AbapFsCommands.connect)
