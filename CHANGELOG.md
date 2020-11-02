@@ -4,6 +4,14 @@ All notable changes to the "vscode-abap-remote-fs" extension will be documented 
 
 Format based on [Keep a Changelog](http://keepachangelog.com/)
 
+## [0.8.12] 2020-11-02
+
+### Added
+
+- create table
+- create service definition
+- display service definitions and bindings (as raw XML)
+
 ## [0.8.11] 2020-11-01
 
 ### Added

@@ -2,7 +2,7 @@ import { AbapObjectBase } from "../AbapObject"
 import { AbapObjectCreator } from ".."
 const tag = Symbol("AbapClass")
 
-@AbapObjectCreator("DDLS/DF", "DCLS/DL", "DDLX/EX", "BDEF/BDO")
+@AbapObjectCreator("DDLS/DF", "DCLS/DL", "DDLX/EX", "BDEF/BDO", "SRVD/SRV")
 export class AbapCds extends AbapObjectBase {
   [tag] = true
   get extension(): string {
@@ -15,6 +15,9 @@ export class AbapCds extends AbapObjectBase {
         return ".ddlx.asddlxs"
       case "BDEF/BDO":
         return ".bdef.asbdef"
+      case "SRVD/SRV": // not properly cds but similar syntax
+        return ".srvd.assrvd" // SAP uses srvd.srvdsrv, sticking to community abapgit
+
     }
     return ".cds" // should never happen...
   }
