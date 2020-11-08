@@ -9,6 +9,7 @@ Format based on [Keep a Changelog](http://keepachangelog.com/)
 ### Fixed
 
 - [#130 faforite expansion not working](https://github.com/marcellourbani/vscode_abap_remote_fs/issues/130)
+- treat authorizations and data elements as readable objects
 
 ## [0.8.12] 2020-11-02
 

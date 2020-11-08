@@ -107,7 +107,7 @@ export class AbapObjectBase implements AbapObject {
     this.supported =
       this.type !== "IWSV" &&
       !path.match(
-        "(/sap/bc/adt/vit)|(/sap/bc/adt/ddic/domains/)|(/sap/bc/adt/ddic/dataelements/)|(/sap/bc/esproxy)"
+        "(/sap/bc/adt/vit)|(/sap/bc/adt/ddic/domains/)|(/sap/bc/esproxy)"
       )
   }
   private _structure?: AbapObjectStructure
