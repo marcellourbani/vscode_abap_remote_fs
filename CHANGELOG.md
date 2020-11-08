@@ -4,6 +4,12 @@ All notable changes to the "vscode-abap-remote-fs" extension will be documented 
 
 Format based on [Keep a Changelog](http://keepachangelog.com/)
 
+## Unreleased
+
+### Fixed
+
+- [#130 faforite expansion not working](https://github.com/marcellourbani/vscode_abap_remote_fs/issues/130)
+
 ## [0.8.12] 2020-11-02
 
 ### Added

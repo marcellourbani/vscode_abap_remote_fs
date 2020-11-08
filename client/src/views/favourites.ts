@@ -56,13 +56,10 @@ export class FavItem extends TreeItem {
           arguments: [Uri.parse(favourite.openUri)]
         }
     }
+    this.contextValue = this.favourite.dynamic ? "" : "favourite"
   }
   get uri() {
     return this.favourite.uri
-  }
-  // @ts-ignore
-  get contextValue() {
-    return this.favourite.dynamic ? "" : "favourite"
   }
 
   public async getChildren() {
@@ -76,9 +73,8 @@ export class FavItem extends TreeItem {
           const uri = Uri.parse(favuri)
           const root = uriRoot(uri)
           const node = await root.getNodeAsync(uri.path)
-          if (children.length === 0 && isAbapFolder(node)) {
-            if (node?.size === 0) await node.refresh()
-
+          if (children.length === 0 && isFolder(node)) {
+            if (isAbapFolder(node)) if (node?.size === 0) await node.refresh()
             const childnodes = [...node]
             for (const c of childnodes)
               children.push(
