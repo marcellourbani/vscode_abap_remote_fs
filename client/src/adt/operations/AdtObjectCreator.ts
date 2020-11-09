@@ -15,12 +15,15 @@ import {
   hasPackageOptions,
   NewPackageOptions,
   PackageTypes,
-  isPackageType
+  isPackageType,
+  isBindingOptions,
+  NewBindingOptions,
+  BindinTypes
 } from "abap-adt-api"
 import { CreatableTypes } from "abap-adt-api"
 import { Uri, window, FileStat } from "vscode"
 import { selectTransport } from "../AdtTransports"
-import { fieldOrder } from "../../lib"
+import { fieldOrder, quickPick, rfsExtract, rfsTaskEither, rfsTryCatch } from "../../lib"
 import {
   MySearchResult,
   AdtObjectFinder,
@@ -30,6 +33,8 @@ import {
 import { getClient, getRoot } from "../conections"
 import { isAbapStat, isFolder } from "abapfs"
 import { fromNode } from "abapobject"
+import { pipe } from "fp-ts/lib/pipeable"
+import { bind, chain, map } from "fp-ts/lib/TaskEither"
 
 export const PACKAGE = "DEVC/K"
 export const TMPPACKAGE = "$TMP"
@@ -151,17 +156,26 @@ export class AdtObjectCreator {
         description: objDetails.description,
         fugrname: objDetails.parentName,
         objname: objDetails.name,
-        objtype: objDetails.objtype as GroupTypeIds
+        objtype: objDetails.objtype
       }
     else if (objDetails.objtype === PACKAGE && hasPackageOptions(objDetails)) {
       validateOptions = {
         description: objDetails.description,
         objname: objDetails.name,
-        objtype: objDetails.objtype as PackageTypeId,
+        objtype: objDetails.objtype,
         packagename: objDetails.parentName,
         swcomp: objDetails.swcomp,
         packagetype: objDetails.packagetype,
         transportLayer: objDetails.transportLayer
+      }
+    } else if (isBindingOptions(objDetails)) {
+      validateOptions = {
+        description: objDetails.description,
+        objname: objDetails.name,
+        objtype: objDetails.objtype,
+        package: objDetails.parentName,
+        serviceBindingVersion: "ODATA\\V2",
+        serviceDefinition: objDetails.service,
       }
     } else
       validateOptions = {
@@ -216,6 +230,25 @@ export class AdtObjectCreator {
     const devclass = await this.findPackage(parent)
     return [parent.name, devclass]
   }
+  private async getServiceOptions(options: NewObjectOptions) {
+    const types = BindinTypes.map(t => ({ label: t.description, payload: t }))
+    const finder = rfsTryCatch(() => new AdtObjectFinder(this.connId).findObject(
+      "Select Service definition", "SRVD/SRV"))
+    const serviceOptions = await pipe(rfsTaskEither({}),
+      bind("type", () => quickPick(types)),
+      bind("service", () => finder),
+      map(x => {
+        if (!x.service) return
+        const service = x.service.name
+        const { bindingtype, category } = x.type.payload
+        const opt = { ...options, bindingtype, category, service }
+        if (isBindingOptions(opt)) return opt
+        throw new Error("Unexpected Service binding option");
+      }),
+      chain(rfsTaskEither)
+    )()
+    return rfsExtract(serviceOptions)
+  }
   private async getObjectDetails(uri: Uri | undefined): Promise<details> {
     const hierarchy = pathSequence(getRoot(this.connId), uri)
     let devclass: string = this.guessParentByType(hierarchy, PACKAGE)
@@ -248,13 +281,18 @@ export class AdtObjectCreator {
     if ((!devclass || !parentName) && objType.typeId !== PACKAGE) return
     if (!parentName) parentName = ""
 
-    const options: NewObjectOptions | NewPackageOptions = {
+    const options: NewObjectOptions | NewPackageOptions | NewBindingOptions = {
       description,
       name: this.fixName(name, objType.typeId, parentName),
       objtype: objType.typeId,
       parentName,
       parentPath: objectPath(parentType, parentName, ""),
       responsible
+    }
+    if (options.objtype === "SRVB/SVB") {
+      const o = await this.getServiceOptions(options)
+      if (!o) return
+      return { devclass, options: o }
     }
     if (isPackageType(options.objtype)) {
       const pkgopt = await this.getPackageOptions(options)
