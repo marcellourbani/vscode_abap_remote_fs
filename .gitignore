@@ -14,5 +14,3 @@ server/node_modules
 tmp
 *.tsbuildinfo
 package-lock.json
-.DS_Store
-.gitignore

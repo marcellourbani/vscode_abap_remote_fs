@@ -39,6 +39,7 @@ Compatibility with [ABAPlint](https://marketplace.visualstudio.com/items?itemNam
 - source control
 - integrated with [abapGit](https://github.com/larshp/abapGit) (now using the scm view)
 - integrated with [test explorer](https://marketplace.visualstudio.com/items?itemName=hbenl.vscode-test-explorer)
+- Execute select-querys (Command "AbapFs Select Query")
 
 ![anim](https://user-images.githubusercontent.com/2453277/48232926-30a78d80-e3ab-11e8-8a12-00844431f9af.gif)
 
