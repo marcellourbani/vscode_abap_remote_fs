@@ -1,5 +1,4 @@
 import { window } from "vscode"
-import { isObject } from "util"
 
 export const CHANNELNAME = "ABAP FS"
 
