@@ -16,6 +16,7 @@ import { selectTransport } from "../adt/AdtTransports"
 import { showInGui } from "../adt/sapgui/sapgui"
 import { storeTokens } from "../oauth"
 import { showAbapDoc } from "../views/help"
+import { showQuery } from "../views/query/query"
 import { getTestAdapter } from "../views/abapunit"
 import {
   ADTSCHEME,
@@ -76,6 +77,11 @@ export class AdtCommands {
   @command(AbapFsCommands.showDocumentation)
   private static async showAbapDoc() {
     return showAbapDoc()
+  }
+
+  @command(AbapFsCommands.selectDB)
+  private static async selectDB() {
+    return showQuery()
   }
 
   @command(AbapFsCommands.changeInclude)

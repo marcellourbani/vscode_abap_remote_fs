@@ -9,6 +9,7 @@ export const AbapFsCommands = {
   quickfix: "abapfs.quickfix",
   changeInclude: "abapfs:changeInclude",
   showDocumentation: "abapfs.showdocu",
+  selectDB: "abapfs.selectDB",
   showObject: "abapfs.showObject",
   clearPassword: "abapfs.clearPassword",
   addfavourite: "abapfs.addfavourite",

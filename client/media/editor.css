@@ -7,6 +7,7 @@ body {
 body.vscode-dark th {
   background-color: #0366d6;
 }
+
 body.vscode-dark td {
   background-color: #222222;
 }
@@ -18,13 +19,31 @@ body.vscode-light th {
 body.vscode-light td {
   background-color: #d3d3d3;
 }
+
 td {
   padding-right: 10px;
 }
+
 td.flag {
   text-align: center;
 }
 
 td.number {
   text-align: right;
+}
+
+textarea {
+  background-color: var(--vscode-editor-background);
+  color: var(--vscode-editor-forground);
+}
+
+button {
+  background-color: var(--vscode-button-background);
+  color: var(--vscode-button-forground);
+}
+
+
+p.error {
+  color: var(--vscode-editorError-foreground);
+  background-color: var(--vscode-editorError-background);
 }

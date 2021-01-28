@@ -153,6 +153,10 @@
         "title": "AbapFs Run console application"
       },
       {
+        "command": "abapfs.selectDB",
+        "title": "AbapFs Select Query"
+      },
+      {
         "command": "abapfs.deletefavourite",
         "title": "AbapFs delete favourite",
         "icon": {
