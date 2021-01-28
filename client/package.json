@@ -12,7 +12,7 @@
   },
   "homepage": "https://github.com/marcellourbani/vscode_abap_remote_fs",
   "engines": {
-    "vscode": "^1.49.0"
+    "vscode": "^1.50.0"
   },
   "categories": [
     "Other"
@@ -43,7 +43,7 @@
     "@types/ramda": "^0.27.29",
     "@types/request-debug": "^0.2.0",
     "@types/uuid": "^8.3.0",
-    "@types/vscode": "^1.50.0",
+    "@types/vscode": "^1.52.0",
     "jest": "^26.6.0",
     "rimraf": "^3.0.2",
     "ts-jest": "^26.4.1",

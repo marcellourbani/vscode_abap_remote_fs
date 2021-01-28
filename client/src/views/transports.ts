@@ -114,6 +114,7 @@ const failuretext = (failure: TransportReleaseReport) =>
     .join(" ") || failure["chkrun:statusText"]
 
 class TransportItem extends CollectionItem {
+  label: string | undefined;
   public static isA(x: any): x is TransportItem {
     return x && (x as TransportItem).typeId === TransportItem.tranTypeId
   }

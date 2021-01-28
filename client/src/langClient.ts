@@ -118,8 +118,8 @@ async function setSearchProgress(searchProg: SearchProgress) {
       (progress, token) => {
         let current = 0
         let resPromise: () => void
-        const result = new Promise(resolve => {
-          resPromise = resolve
+        const result = new Promise<void>(resolve => {
+          resPromise = () => resolve
         })
         token.onCancellationRequested(async () => {
           setProgress = undefined
