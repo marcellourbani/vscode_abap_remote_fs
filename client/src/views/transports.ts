@@ -35,6 +35,20 @@ import { AbapRevisionService } from "../scm/abaprevisions/abaprevisionservice"
 
 const currentUsers = new Map<string, string>()
 
+const readTransports = async (connId: string, user: string) => {
+  const client = getClient(connId)
+  if (await client.hasTransportConfig()) {
+    const User = user.toUpperCase()
+    const configs = await client.transportConfigurations()
+    if (configs.length < 1) throw new Error("Transport configuration not found");
+    const { etag, link } = configs[0]
+    const config = await client.getTransportConfiguration(link)
+    if (config.User !== User) await client.setTransportsConfig(link, etag, { ...config, User })
+    return client.transportsByConfig(link)
+  }
+  else return client.userTransports(user)
+}
+
 class CollectionItem extends TreeItem {
   protected children: CollectionItem[] = []
   constructor(label: string) {
@@ -72,12 +86,11 @@ class ConnectionItem extends CollectionItem {
 
   public async getChildren() {
     if (this.children.length === 0 && !!this.uri) {
-      const client = getClient(this.uri.authority)
-      const transports = await client.userTransports(this.user)
+      const transports = await readTransports(this.uri.authority, this.user)
 
-      for (const cat of ["workbench", "customizing"]) {
+      for (const cat of ["workbench", "customizing", "transportofcopies"]) {
         const targets = (transports as any)[cat] as TransportTarget[]
-        if (!targets.length) continue
+        if (!targets?.length) continue
         const coll = new CollectionItem(cat)
         for (const target of targets)
           coll.addChild(new TargetItem(target, this.uri.authority))

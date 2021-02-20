@@ -4,9 +4,15 @@ All notable changes to the "vscode-abap-remote-fs" extension will be documented 
 
 Format based on [Keep a Changelog](http://keepachangelog.com/)
 
+## [0.9.1] 2021-02-20
+
+### Fixed
+
+- transport management for newer systems
+
 ## [0.9.0] 2021-01-28
 
-## Added
+### Added
 
 - select query (thanks dh4rry)
 
