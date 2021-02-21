@@ -21,7 +21,9 @@ import {
   ScmData,
   fileUri,
   IGNORED,
-  AgResGroup
+  AgResGroup,
+  scmData,
+  scmKey
 } from "./scm"
 import {
   after,
@@ -290,7 +292,7 @@ export class GitCommands {
     const fsRoot = await pickAdtRoot()
     const client = fsRoot && getClient(fsRoot.uri.authority)
     const repos = client && (await client.gitRepos())
-    if (!repos || !repos.length) return
+    if (!fsRoot || !repos?.length) return
 
     const items = repos.map(repo => ({
       repo,
@@ -305,7 +307,11 @@ export class GitCommands {
       candidates.map(c => c.account),
       { placeHolder: "Select Account" }
     )()
-    if (isRight(user)) await deletePassword(item.right.repo, user.right)
+    if (isRight(user)) {
+      await deletePassword(item.right.repo, user.right)
+      const credentials = scmData(scmKey(fsRoot?.uri.authority, item.right.repo.key))?.credentials
+      if (credentials && credentials.user === user.right) credentials.password = ""
+    }
   }
   @command(AbapFsCommands.agitBranch)
   @logErrors(AbapFsCommands.agitBranch)

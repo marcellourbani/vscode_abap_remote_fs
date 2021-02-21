@@ -1,5 +1,5 @@
 import { ScmData, ScmCredentials } from "./scm"
-import { window, Memento } from "vscode"
+import { Memento } from "vscode"
 import {
   PasswordVault,
   createStore,
@@ -8,7 +8,7 @@ import {
   createTaskTransformer,
   inputBox
 } from "../../lib"
-import { none, some, fromEither, Option, isSome } from "fp-ts/lib/Option"
+import { some, fromEither, Option, isSome } from "fp-ts/lib/Option"
 import { context } from "../../extension"
 import { ADTClient, GitRepo } from "abap-adt-api"
 import { getClient } from "../../adt/conections"
