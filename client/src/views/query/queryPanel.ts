@@ -178,10 +178,11 @@ function getNonce() {
     return text;
 }
 
-function getWebviewOptions(extensionUri: vscode.Uri): vscode.WebviewOptions {
+function getWebviewOptions(extensionUri: vscode.Uri): vscode.WebviewOptions & vscode.WebviewPanelOptions {
     return {
         // Enable javascript in the webview
         enableScripts: true,
+        retainContextWhenHidden: true,
 
         // And restrict the webview to only loading content from our extension's `media` directory.
         localResourceRoots: [vscode.Uri.joinPath(extensionUri, 'client/media')]

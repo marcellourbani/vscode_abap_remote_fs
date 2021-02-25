@@ -1,4 +1,4 @@
-import { window, ViewColumn, Uri } from "vscode"
+import { window } from "vscode"
 import { ADTSCHEME, getClient } from "../../adt/conections"
 import { findAbapObject } from "../../adt/operations/AdtObjectFinder"
 import { context } from "../../extension"
@@ -15,7 +15,7 @@ export async function showQuery() {
 
   let tablename = ""
 
-  if (obj.type == 'DDLS/DF' || obj.type == 'TABL/DT') {
+  if (obj.type === 'DDLS/DF' || obj.type === 'TABL/DT') {
     tablename = obj.name;
   }
 

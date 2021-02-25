@@ -9,9 +9,9 @@ function showResult(result) {
     var table = new Tabulator("#result-table", {
         data: result.values, //assign data to table
         columns: cols,
-        pagination: "local",
-        paginationSize: 10,
-        paginationSizeSelector: [10, 20, 50, 100]
+        // pagination: "local",
+        // paginationSize: 10,
+        // paginationSizeSelector: [10, 20, 50, 100]
     });
 
 }
