@@ -29,7 +29,8 @@
   ],
   "extensionDependencies": [
     "larshp.vscode-abap",
-    "hudakf.cds"
+    "hudakf.cds",
+    "auchenberg.vscode-browser-preview"
   ],
   "activationEvents": [
     "onFileSystem:adt",
@@ -828,6 +829,16 @@
                   "type": "string",
                   "title": "Custom certificate authority certificate",
                   "default": "/secrets/myCA.pem"
+                },
+                "useWebguiEmbedded": {
+                  "type": "boolean",
+                  "description": "Use Webgui for executing the code inside vscode",
+                  "default": "false"
+                },
+                "useWebguiInBrowser": {
+                  "type": "boolean",
+                  "description": "Use Webgui for executing the code in your default browser",
+                  "default": "false"
                 },
                 "diff_formatter": {
                   "type": "string",
