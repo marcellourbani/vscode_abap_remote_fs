@@ -242,7 +242,31 @@ export class AdtCommands {
       if (!fsRoot) return
       const file = uriRoot(fsRoot.uri).getNode(uri.path)
       if (!isAbapStat(file) || !file.object.sapGuiUri) return
-      await showInGui(fsRoot.uri.authority, file.object.sapGuiUri)
+      const config = RemoteManager.get().byId(fsRoot.uri.authority)
+
+      let transaction = '';
+      let dynprofield = '';
+      let okcode = '';
+      switch (file.object.type) {
+        case 'PROG/P':
+          transaction = 'SE38'
+          dynprofield = 'RS38M-PROGRAMM'
+          okcode = 'STRT'
+          break;
+        case 'FUGR/F':
+          transaction = 'SE37'
+        case 'CLAS/C':
+          transaction = 'SE24'
+          break;
+        default:
+          break;
+      }
+      if (config && (config.useWebguiEmbedded or config.useWebguiInBrowser)) {
+        const url = `${config?.url}sap/bc/gui/sap/its/webgui?sap-user=${config?.username}&sap-password=${config?.password}&language=${config?.language}&~transaction=*${transaction}%20${dynprofield}=${file.object.name};DYNP_OKCODE=${okcode}#...`;
+        commands.executeCommand(((config.useWebguiEmbedded) ? 'browser-preview.openPreview' : 'vscode.open'), ((config.useWebguiEmbedded) ? url : Uri.parse(url)));
+      } else {
+        await showInGui(fsRoot.uri.authority, file.object.sapGuiUri)
+      }
 
     } catch (e) {
       return window.showErrorMessage(e.toString())

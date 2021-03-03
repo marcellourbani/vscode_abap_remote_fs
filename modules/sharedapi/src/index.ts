@@ -35,7 +35,9 @@ export interface ClientConfiguration {
   language: string
   allowSelfSigned: boolean
   customCA?: string
-  diff_formatter: "ADT formatter" | "AbapLint" | "Simple"
+  diff_formatter: "ADT formatter" | "AbapLint" | "Simple",
+  useWebguiEmbedded: boolean
+  useWebguiInBrowser: boolean
   oauth?: {
     clientId: string
     clientSecret: string
