@@ -4,6 +4,7 @@ import {
   Uri,
   window,
   commands,
+  ViewColumn,
   ProgressLocation
 } from "vscode"
 import { pickAdtRoot, RemoteManager } from "../config"
@@ -230,6 +231,9 @@ export class AdtCommands {
 
   @command(AbapFsCommands.execute)
   private static async executeAbap() {
+    // commands.executeCommand('vscode.open', Uri.parse('https://localhost:50001/sap/bc/gui/sap/its/webgui?sap-user=developer&sap-password=Ldtf5432&language=EN&~transaction=*SE38%20RS38M-PROGRAMM=ZTEST;DYNP_OKCODE=STRT#...'));
+    //commands.executeCommand('browser-preview.openPreview', 'https://localhost:50001/sap/bc/gui/sap/its/webgui?sap-user=developer&sap-password=Ldtf5432&language=EN&~transaction=*SE38%20RS38M-PROGRAMM=ZTEST;DYNP_OKCODE=STRT#...');
+
     try {
       log("Execute ABAP")
       const uri = currentUri()
@@ -239,6 +243,7 @@ export class AdtCommands {
       const file = uriRoot(fsRoot.uri).getNode(uri.path)
       if (!isAbapStat(file) || !file.object.sapGuiUri) return
       await showInGui(fsRoot.uri.authority, file.object.sapGuiUri)
+
     } catch (e) {
       return window.showErrorMessage(e.toString())
     }
