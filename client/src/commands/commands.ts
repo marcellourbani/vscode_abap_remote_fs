@@ -231,8 +231,8 @@ export class AdtCommands {
 
   @command(AbapFsCommands.execute)
   private static async executeAbap() {
-    // commands.executeCommand('vscode.open', Uri.parse('https://localhost:50001/sap/bc/gui/sap/its/webgui?sap-user=developer&sap-password=Ldtf5432&language=EN&~transaction=*SE38%20RS38M-PROGRAMM=ZTEST;DYNP_OKCODE=STRT#...'));
-    //commands.executeCommand('browser-preview.openPreview', 'https://localhost:50001/sap/bc/gui/sap/its/webgui?sap-user=developer&sap-password=Ldtf5432&language=EN&~transaction=*SE38%20RS38M-PROGRAMM=ZTEST;DYNP_OKCODE=STRT#...');
+    // // commands.executeCommand('vscode.open', Uri.parse('https://localhost:50001/sap/bc/gui/sap/its/webgui?sap-user=kjaerj&sap-password=Fernando1.&language=EN&~transaction=*SE38%20RS38M-PROGRAMM=ZTEST;DYNP_OKCODE=STRT#...'));
+    // commands.executeCommand('browser-preview.openPreview', 'https://vhcalnplci.agilux.com.au:44300/sap/bc/gui/sap/its/webgui?sap-user=kjaerj&sap-password=Fernando1.&language=EN&~transaction=*SE38%20RS38M-PROGRAMM=ZTEST;DYNP_OKCODE=STRT#...');
 
     try {
       log("Execute ABAP")
@@ -242,31 +242,7 @@ export class AdtCommands {
       if (!fsRoot) return
       const file = uriRoot(fsRoot.uri).getNode(uri.path)
       if (!isAbapStat(file) || !file.object.sapGuiUri) return
-      const config = RemoteManager.get().byId(fsRoot.uri.authority)
-
-      let transaction = '';
-      let dynprofield = '';
-      let okcode = '';
-      switch (file.object.type) {
-        case 'PROG/P':
-          transaction = 'SE38'
-          dynprofield = 'RS38M-PROGRAMM'
-          okcode = 'STRT'
-          break;
-        case 'FUGR/F':
-          transaction = 'SE37'
-        case 'CLAS/C':
-          transaction = 'SE24'
-          break;
-        default:
-          break;
-      }
-      if (config && (config.useWebguiEmbedded or config.useWebguiInBrowser)) {
-        const url = `${config?.url}sap/bc/gui/sap/its/webgui?sap-user=${config?.username}&sap-password=${config?.password}&language=${config?.language}&~transaction=*${transaction}%20${dynprofield}=${file.object.name};DYNP_OKCODE=${okcode}#...`;
-        commands.executeCommand(((config.useWebguiEmbedded) ? 'browser-preview.openPreview' : 'vscode.open'), ((config.useWebguiEmbedded) ? url : Uri.parse(url)));
-      } else {
-        await showInGui(fsRoot.uri.authority, file.object.sapGuiUri)
-      }
+      await showInGui(fsRoot.uri.authority, file.object.sapGuiUri)
 
     } catch (e) {
       return window.showErrorMessage(e.toString())
