@@ -14,7 +14,7 @@ import { findEditor } from "../langClient"
 import { showHideActivate } from "../listeners"
 import { abapUnit } from "../adt/operations/UnitTestRunner"
 import { selectTransport } from "../adt/AdtTransports"
-import { showInGui } from "../adt/sapgui/sapgui"
+import { showInGui, executeInGui } from "../adt/sapgui/sapgui"
 import { storeTokens } from "../oauth"
 import { showAbapDoc } from "../views/help"
 import { showQuery } from "../views/query/query"
@@ -231,11 +231,25 @@ export class AdtCommands {
 
   @command(AbapFsCommands.execute)
   private static async executeAbap() {
-    // // commands.executeCommand('vscode.open', Uri.parse('https://localhost:50001/sap/bc/gui/sap/its/webgui?sap-user=kjaerj&sap-password=Fernando1.&language=EN&~transaction=*SE38%20RS38M-PROGRAMM=ZTEST;DYNP_OKCODE=STRT#...'));
-    // commands.executeCommand('browser-preview.openPreview', 'https://vhcalnplci.agilux.com.au:44300/sap/bc/gui/sap/its/webgui?sap-user=kjaerj&sap-password=Fernando1.&language=EN&~transaction=*SE38%20RS38M-PROGRAMM=ZTEST;DYNP_OKCODE=STRT#...');
-
     try {
       log("Execute ABAP")
+      const uri = currentUri()
+      if (!uri) return
+      const fsRoot = await pickAdtRoot(uri)
+      if (!fsRoot) return
+      const file = uriRoot(fsRoot.uri).getNode(uri.path)
+      if (!isAbapStat(file) || !file.object.sapGuiUri) return
+      await executeInGui(fsRoot.uri.authority, file.object.name, file.object.type)
+
+    } catch (e) {
+      return window.showErrorMessage(e.toString())
+    }
+  }
+
+  @command(AbapFsCommands.openInGui)
+  private static async openInGuiAbap() {
+    try {
+      log("Open ABAP in GUI")
       const uri = currentUri()
       if (!uri) return
       const fsRoot = await pickAdtRoot(uri)

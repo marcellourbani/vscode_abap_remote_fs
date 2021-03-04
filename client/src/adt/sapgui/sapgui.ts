@@ -48,25 +48,61 @@ export function runInSapGui(
       const sapGui = SapGui.create(config)
 
       const cmd = await getCmd()
-      switch (config.sapGui?.useWebGui) {
-        case "VSCODE":
-          return sapGui.runInWebView(config, cmd)
-          break;
-        case "BROWSER":
-          return sapGui.runInBrowser(config, cmd)
-        default:
-          const client = getClient(connId)
-          if (cmd) {
-            log("Running " + JSON.stringify(cmd))
-            sapGui.checkConfig()
-            const ticket = await client.reentranceTicket()
-            return sapGui.startGui(cmd, ticket)
-          }
-          break;
-      }
+      if (cmd) {
+        switch (config.sapGui?.useWebGui) {
+          case "VSCODE":
+            return sapGui.runInWebView(config, cmd)
+            break;
+          case "Browser":
+            return sapGui.runInBrowser(config, cmd)
+          default:
+            const client = getClient(connId)
+            if (cmd) {
+              log("Running " + JSON.stringify(cmd))
+              sapGui.checkConfig()
+              const ticket = await client.reentranceTicket()
+              return sapGui.startGui(cmd, ticket)
 
+              break;
+            }
+        }
+      }
+    })
+}
+
+export function executeInGui(connId: string, name: string, type: string) {
+  return runInSapGui(connId, () => {
+    let transaction = '';
+    let dynprofield = '';
+    let okcode = '';
+    switch (type) {
+      case 'PROG/P':
+        transaction = 'SE38'
+        dynprofield = 'RS38M-PROGRAMM'
+        okcode = 'STRT'
+        break;
+      case 'FUGR/FF':
+        transaction = 'SE37'
+        dynprofield = 'RS38L-NAME'
+        okcode = 'WB_EXEC'
+        break;
+      case 'CLAS/I':
+        transaction = 'SE24'
+        dynprofield = 'SEOCLASS-CLSNAME'
+        okcode = 'WB_EXEC'
+        break;
+      default:
+        break;
     }
-  )
+    return {
+      type: "Transaction",
+      command: `*${transaction}`,
+      parameters: [
+        { name: dynprofield, value: name },
+        { name: "DYNP_OKCODE", value: okcode }
+      ]
+    }
+  })
 }
 
 export function showInGui(connId: string, uri: string) {
@@ -178,18 +214,22 @@ export class SapGui {
     }
   }
 
-  public async runInWebView(config, cmd) {
-    const okCode = cmd.parameters.find((parameter) => parameter.name === 'DYNP_OKCODE')
-    const D_OBJECT_URI = cmd.parameters.find((parameter) => parameter.name === 'D_OBJECT_URI')
-    const url = (config.url.slice(-1) === '/') ? config.url : config.url + "/";
-    commands.executeCommand('browser-preview.openPreview', `${url}sap/bc/gui/sap/its/webgui?sap-user=${config.username}&sap-password=${config.password}&language=EN&~transaction=${cmd.command}%20D_OBJECT_URI=${D_OBJECT_URI.value};DYNP_OKCODE=${okCode.value}#...`);
+  public async runInWebView(config: RemoteConfig, cmd: SapGuiCommand) {
+    if (cmd.parameters) {
+      const okCode = cmd.parameters.find((parameter: { name: string; value: string }) => parameter.name === 'DYNP_OKCODE')
+      const D_OBJECT_URI = cmd.parameters.find((parameter: { name: string; value: string }) => parameter.name === 'D_OBJECT_URI')
+      const url = (config.url.slice(-1) === '/') ? config.url : config.url + "/";
+      commands.executeCommand('browser-preview.openPreview', `${url}sap/bc/gui/sap/its/webgui?sap-user=${config.username}&sap-password=${config.password}&language=EN&~transaction=${cmd.command}%20${D_OBJECT_URI?.name}=${D_OBJECT_URI!.value};DYNP_OKCODE=${okCode!.value}#...`);
+    }
     // commands.executeCommand('browser-preview.openPreview', 'https://vhcalnplci.agilux.com.au:44300/sap/bc/gui/sap/its/webgui?sap-user=kjaerj&sap-password=Fernando1.&language=EN&~transaction=*SE38%20RS38M-PROGRAMM=ZTEST;DYNP_OKCODE=STRT#...');  
   }
-  public async runInBrowser(config, cmd) {
-    const okCode = cmd.parameters.find((parameter) => parameter.name === 'DYNP_OKCODE')
-    const D_OBJECT_URI = cmd.parameters.find((parameter) => parameter.name === 'D_OBJECT_URI')
-    const url = (config.url.slice(-1) === '/') ? config.url : config.url + "/";
-    commands.executeCommand('vscode.open', Uri.parse(`${url}sap/bc/gui/sap/its/webgui?sap-user=${config.username}&sap-password=${config.password}&language=EN&~transaction=${cmd.command}%20D_OBJECT_URI=${D_OBJECT_URI.value};DYNP_OKCODE=${okCode.value}#...`));
+  public async runInBrowser(config: RemoteConfig, cmd: SapGuiCommand) {
+    if (cmd.parameters) {
+      const okCode = cmd.parameters.find((parameter: { name: string; value: string }) => parameter.name === 'DYNP_OKCODE')
+      const D_OBJECT_URI = cmd.parameters.find((parameter: { name: string; value: string }) => parameter.name !== 'DYNP_OKCODE')
+      const url = (config.url.slice(-1) === '/') ? config.url : config.url + "/";
+      commands.executeCommand('vscode.open', Uri.parse(`${url}sap/bc/gui/sap/its/webgui?sap-user=${config.username}&sap-password=${config.password}&language=EN&~transaction=${cmd.command}%20${D_OBJECT_URI?.name}=${D_OBJECT_URI!.value};DYNP_OKCODE=${okCode!.value}#...`));
+    }
   }
   private commandString(command: SapGuiCommand) {
     let params = ""

@@ -29,8 +29,7 @@
   ],
   "extensionDependencies": [
     "larshp.vscode-abap",
-    "hudakf.cds",
-    "auchenberg.vscode-browser-preview"
+    "hudakf.cds"
   ],
   "activationEvents": [
     "onFileSystem:adt",
