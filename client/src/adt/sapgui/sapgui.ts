@@ -7,7 +7,10 @@ import opn = require("open")
 import { window, ProgressLocation } from "vscode"
 import { ADTClient } from "abap-adt-api"
 import { getClient } from "../conections"
-
+import {
+  commands,
+  Uri
+} from "vscode"
 export interface SapGuiCommand {
   type: "Transaction" | "Report" | "SystemCommand"
   command: string
@@ -42,15 +45,26 @@ export function runInSapGui(
     async () => {
       const config = RemoteManager.get().byId(connId)
       if (!config) return
-      const client = getClient(connId)
       const sapGui = SapGui.create(config)
+
       const cmd = await getCmd()
-      if (cmd) {
-        log("Running " + JSON.stringify(cmd))
-        sapGui.checkConfig()
-        const ticket = await client.reentranceTicket()
-        return sapGui.startGui(cmd, ticket)
+      switch (config.sapGui?.useWebGui) {
+        case "VSCODE":
+          return sapGui.runInWebView(config, cmd)
+          break;
+        case "BROWSER":
+          return sapGui.runInBrowser(config, cmd)
+        default:
+          const client = getClient(connId)
+          if (cmd) {
+            log("Running " + JSON.stringify(cmd))
+            sapGui.checkConfig()
+            const ticket = await client.reentranceTicket()
+            return sapGui.startGui(cmd, ticket)
+          }
+          break;
       }
+
     }
   )
 }
@@ -164,34 +178,47 @@ export class SapGui {
     }
   }
 
+  public async runInWebView(config, cmd) {
+    const okCode = cmd.parameters.find((parameter) => parameter.name === 'DYNP_OKCODE')
+    const D_OBJECT_URI = cmd.parameters.find((parameter) => parameter.name === 'D_OBJECT_URI')
+    const url = (config.url.slice(-1) === '/') ? config.url : config.url + "/";
+    commands.executeCommand('browser-preview.openPreview', `${url}sap/bc/gui/sap/its/webgui?sap-user=${config.username}&sap-password=${config.password}&language=EN&~transaction=${cmd.command}%20D_OBJECT_URI=${D_OBJECT_URI.value};DYNP_OKCODE=${okCode.value}#...`);
+    // commands.executeCommand('browser-preview.openPreview', 'https://vhcalnplci.agilux.com.au:44300/sap/bc/gui/sap/its/webgui?sap-user=kjaerj&sap-password=Fernando1.&language=EN&~transaction=*SE38%20RS38M-PROGRAMM=ZTEST;DYNP_OKCODE=STRT#...');  
+  }
+  public async runInBrowser(config, cmd) {
+    const okCode = cmd.parameters.find((parameter) => parameter.name === 'DYNP_OKCODE')
+    const D_OBJECT_URI = cmd.parameters.find((parameter) => parameter.name === 'D_OBJECT_URI')
+    const url = (config.url.slice(-1) === '/') ? config.url : config.url + "/";
+    commands.executeCommand('vscode.open', Uri.parse(`${url}sap/bc/gui/sap/its/webgui?sap-user=${config.username}&sap-password=${config.password}&language=EN&~transaction=${cmd.command}%20D_OBJECT_URI=${D_OBJECT_URI.value};DYNP_OKCODE=${okCode.value}#...`));
+  }
   private commandString(command: SapGuiCommand) {
     let params = ""
     const addParm = (name: string, value: string) =>
-      (params = `${params}${name}=${value};`)
+      (params = `${params}${name} = ${value}; `)
     if (command.parameters)
       command.parameters.forEach(p => addParm(p.name, p.value))
     if (command.okCode) addParm("DYNP_OKCODE", command.okCode)
-    return `${command.command} ${params}`
+    return `${command.command} ${params} `
   }
 
   private createLauncherContent(command: SapGuiCommand, ticket: string) {
     this.checkConfig()
-    const loginTicket = ticket ? `at="MYSAPSSO2=${ticket}"` : ""
-    const lang = this.language ? `Language=${this.language}` : ""
+    const loginTicket = ticket ? `at = "MYSAPSSO2=${ticket}"` : ""
+    const lang = this.language ? `Language = ${this.language} ` : ""
     return `[System]
-guiparm="${this.connectionString}"
-Name=${this.systemname}
-Client=${this.config!.client}
-[User]
-Name=${this.user}
-${loginTicket}
-${lang}
-[Function]
-Type=${command.type}
-Command=${this.commandString(command)}
-[Configuration]
-GuiSize=Maximized
-[Options]
-Reuse=1`
+    guiparm = "${this.connectionString}"
+    Name = ${this.systemname}
+    Client = ${this.config!.client}
+    [User]
+    Name = ${this.user}
+    ${loginTicket}
+    ${lang}
+    [Function]
+    Type = ${command.type}
+    Command = ${this.commandString(command)}
+    [Configuration]
+    GuiSize = Maximized
+    [Options]
+    Reuse = 1`
   }
 }
