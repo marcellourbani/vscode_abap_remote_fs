@@ -130,7 +130,7 @@ const configFromKey = async (key: AbapServiceKey) => {
 const inputUrl = () => inputBox({
     prompt: "Server base URL (same as the beginning of your Fiori pages)",
     value: "http://localhost:8000",
-    validateInput: (url: string) => url && url.match(/^http(s)?:\/\/[\w\.]+(:\d+)?$/i) ? "" : "Format: http(s)://domain[:port], i.e. https://myserver.com:44311"
+    validateInput: (url: string) => url && url.match(/^http(s)?:\/\/[\w\.-]+(:\d+)?$/i) ? "" : "Format: http(s)://domain[:port], i.e. https://myserver.com:44311"
 })
 const ignoreSSL = <T extends { url: string }>({ url }: T) =>
     url.match(/^https:\/\//i) ? askConfirmation("Allow self signed certificates (NOT SAFE!)") : rfsTaskEither(false)
