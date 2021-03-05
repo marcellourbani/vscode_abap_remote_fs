@@ -4,7 +4,7 @@ const tag = Symbol("AbapClass")
 
 @AbapObjectCreator("DDLS/DF", "DCLS/DL", "DDLX/EX", "BDEF/BDO", "SRVD/SRV")
 export class AbapCds extends AbapObjectBase {
-  [tag] = true
+  public [tag] = true
   get extension(): string {
     switch (this.type) {
       case "DDLS/DF":
@@ -16,8 +16,7 @@ export class AbapCds extends AbapObjectBase {
       case "BDEF/BDO":
         return ".bdef.asbdef"
       case "SRVD/SRV": // not properly cds but similar syntax
-        return ".srvd.assrvd" // SAP uses srvd.srvdsrv, sticking to community abapgit
-
+        return ".srvd.srvdsrv"
     }
     return ".cds" // should never happen...
   }
