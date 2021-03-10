@@ -239,7 +239,10 @@ export class AdtCommands {
       if (!fsRoot) return
       const file = uriRoot(fsRoot.uri).getNode(uri.path)
       if (!isAbapStat(file) || !file.object.sapGuiUri) return
-      await executeInGui(fsRoot.uri.authority, file.object.name, file.object.type)
+      // We will do the split if we need it for classes
+      const uriSplit = file.object.sapGuiUri.split('/')
+      const name = (file.object.type !== 'CLAS/I') ? file.object.name : uriSplit[uriSplit.length - 1];
+      await executeInGui(fsRoot.uri.authority, name, file.object.type)
 
     } catch (e) {
       return window.showErrorMessage(e.toString())
