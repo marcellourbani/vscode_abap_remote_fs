@@ -266,11 +266,15 @@
       },
       {
         "command": "abapfs.execute",
-        "title": "AbapFs Open in SAPGUI"
+        "title": "AbapFs Execute code"
       },
       {
         "command": "abapfs.unittest",
         "title": "AbapFs run unit tests"
+      },
+      {
+        "command": "abapfs.openInGui",
+        "title": "AbapFs Show in GUI"
       },
       {
         "command": "abapfs.openTransportObject",
