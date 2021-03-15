@@ -4,11 +4,15 @@ All notable changes to the "vscode-abap-remote-fs" extension will be documented 
 
 Format based on [Keep a Changelog](http://keepachangelog.com/)
 
-## Unreleased
+## [0.9.3] 2021-03-15
 
 ### Fixed
 
 - clear cached git password on deletion
+- #146 allow hyphen in condifuration wizard
+- support SIA6 objects
+- fixed extension for service definitions
+- improved UX for query panel
 
 ## [0.9.2] 2021-02-20
 
