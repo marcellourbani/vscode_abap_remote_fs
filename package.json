@@ -266,11 +266,15 @@
       },
       {
         "command": "abapfs.execute",
-        "title": "AbapFs Open in SAPGUI"
+        "title": "AbapFs Execute code"
       },
       {
         "command": "abapfs.unittest",
         "title": "AbapFs run unit tests"
+      },
+      {
+        "command": "abapfs.openInGui",
+        "title": "AbapFs Show in GUI"
       },
       {
         "command": "abapfs.openTransportObject",
@@ -828,6 +832,16 @@
                   "type": "string",
                   "title": "Custom certificate authority certificate",
                   "default": "/secrets/myCA.pem"
+                },
+                "useWebguiEmbedded": {
+                  "type": "boolean",
+                  "description": "Use Webgui for executing the code inside vscode",
+                  "default": "false"
+                },
+                "useWebguiInBrowser": {
+                  "type": "boolean",
+                  "description": "Use Webgui for executing the code in your default browser",
+                  "default": "false"
                 },
                 "diff_formatter": {
                   "type": "string",

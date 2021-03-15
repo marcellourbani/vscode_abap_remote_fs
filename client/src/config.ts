@@ -26,6 +26,7 @@ export interface RemoteConfig extends ClientConfiguration {
     // individual server
     server: string
     systemNumber: string
+    useWebGui: "VSCODE" | "Browser"
   }
 }
 
