@@ -1,4 +1,3 @@
-import { showInGui } from "./../adt/sapgui/sapgui"
 import { PACKAGE } from "../adt/operations/AdtObjectCreator"
 import {
   TreeDataProvider,
@@ -32,6 +31,7 @@ import { isFolder, isAbapStat, PathItem, isAbapFolder } from "abapfs"
 import { createUri } from "../adt/operations/AdtObjectFinder"
 import { AbapScm, displayRevDiff } from "../scm/abaprevisions"
 import { AbapRevisionService } from "../scm/abaprevisions/abaprevisionservice"
+import { runInSapGui, showInGuiCb } from "../adt/sapgui/sapgui"
 
 const currentUsers = new Map<string, string>()
 
@@ -428,7 +428,7 @@ export class TransportsProvider implements TreeDataProvider<CollectionItem> {
 
   @command(AbapFsCommands.transportOpenGui)
   private static openTransportInGui(tran: TransportItem) {
-    return showInGui(tran.connId, tran.task["tm:uri"])
+    return runInSapGui(tran.connId, showInGuiCb(tran.task["tm:uri"]))
   }
 
   @command(AbapFsCommands.transportCopyNumber)

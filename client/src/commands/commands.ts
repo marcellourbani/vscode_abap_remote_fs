@@ -14,7 +14,7 @@ import { findEditor } from "../langClient"
 import { showHideActivate } from "../listeners"
 import { abapUnit } from "../adt/operations/UnitTestRunner"
 import { selectTransport } from "../adt/AdtTransports"
-import { showInGui, executeInGui } from "../adt/sapgui/sapgui"
+import { showInGuiCb, executeInGui, runInSapGui } from "../adt/sapgui/sapgui"
 import { storeTokens } from "../oauth"
 import { showAbapDoc } from "../views/help"
 import { showQuery } from "../views/query/query"
@@ -239,10 +239,7 @@ export class AdtCommands {
       if (!fsRoot) return
       const file = uriRoot(fsRoot.uri).getNode(uri.path)
       if (!isAbapStat(file) || !file.object.sapGuiUri) return
-      // We will do the split if we need it for classes
-      const uriSplit = file.object.sapGuiUri.split('/')
-      const name = (file.object.type !== 'CLAS/I') ? file.object.name : uriSplit[uriSplit.length - 1];
-      await executeInGui(fsRoot.uri.authority, name, file.object.type)
+      await executeInGui(fsRoot.uri.authority, file.object)
 
     } catch (e) {
       return window.showErrorMessage(e.toString())
@@ -259,8 +256,7 @@ export class AdtCommands {
       if (!fsRoot) return
       const file = uriRoot(fsRoot.uri).getNode(uri.path)
       if (!isAbapStat(file) || !file.object.sapGuiUri) return
-      await showInGui(fsRoot.uri.authority, file.object.sapGuiUri)
-
+      await runInSapGui(fsRoot.uri.authority, showInGuiCb(file.object.sapGuiUri))
     } catch (e) {
       return window.showErrorMessage(e.toString())
     }
