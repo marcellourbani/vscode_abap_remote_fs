@@ -229,7 +229,7 @@ export class AdtCommands {
     }
   }
 
-  @command(AbapFsCommands.execute)
+  @command(AbapFsCommands.runInGui)
   private static async executeAbap() {
     try {
       log("Execute ABAP")
@@ -249,7 +249,7 @@ export class AdtCommands {
     }
   }
 
-  @command(AbapFsCommands.openInGui)
+  @command(AbapFsCommands.execute)
   private static async openInGuiAbap() {
     try {
       log("Open ABAP in GUI")

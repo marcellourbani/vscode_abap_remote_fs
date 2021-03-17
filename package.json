@@ -266,15 +266,15 @@
       },
       {
         "command": "abapfs.execute",
-        "title": "AbapFs Execute code"
+        "title": "AbapFs Show in GUI"
       },
       {
         "command": "abapfs.unittest",
         "title": "AbapFs run unit tests"
       },
       {
-        "command": "abapfs.openInGui",
-        "title": "AbapFs Show in GUI"
+        "command": "abapfs.runInGui",
+        "title": "AbapFs execute code"
       },
       {
         "command": "abapfs.openTransportObject",
@@ -408,6 +408,11 @@
         "when": "editorTextFocus && resourceScheme == adt"
       },
       {
+        "command": "abapfs.runInGui",
+        "key": "Ctrl+Shift+F5",
+        "when": "editorTextFocus && resourceScheme == adt"
+      },
+      {
         "command": "abapfs.unittest",
         "key": "ctrl+shift+f11"
       },
@@ -513,6 +518,10 @@
         },
         {
           "command": "abapfs.execute",
+          "when": "hideCommands.never"
+        },
+        {
+          "command": "abapfs.runInGui",
           "when": "hideCommands.never"
         },
         {
@@ -833,16 +842,6 @@
                   "title": "Custom certificate authority certificate",
                   "default": "/secrets/myCA.pem"
                 },
-                "useWebguiEmbedded": {
-                  "type": "boolean",
-                  "description": "Use Webgui for executing the code inside vscode",
-                  "default": "false"
-                },
-                "useWebguiInBrowser": {
-                  "type": "boolean",
-                  "description": "Use Webgui for executing the code in your default browser",
-                  "default": "false"
-                },
                 "diff_formatter": {
                   "type": "string",
                   "anyOf": [
@@ -938,6 +937,21 @@
                     "routerString": {
                       "type": "string",
                       "description": "Router String"
+                    },
+                    "guiType": {
+                      "type": "string",
+                      "default": "SAPGUI",
+                      "description": "Use SAPGUI or Webgui",
+                      "enum": [
+                        "SAPGUI",
+                        "WEBGUI",
+                        "WEBGUI_EMBEDDED"
+                      ],
+                      "enumDescription": [
+                        "Use SAPgui for executing",
+                        "Use Webgui in your browser for executing",
+                        "Use Webgui embedded in vscode for executing"
+                      ]
                     }
                   }
                 }

@@ -49,11 +49,11 @@ export function runInSapGui(
 
       const cmd = await getCmd()
       if (cmd) {
-        switch (config.sapGui?.useWebGui) {
-          case "VSCODE":
+        switch (config.sapGui?.guiType) {
+          case "WEBGUI_EMBEDDED":
             return sapGui.runInWebView(config, cmd)
             break;
-          case "Browser":
+          case "WEBGUI":
             return sapGui.runInBrowser(config, cmd)
           default:
             const client = getClient(connId)
@@ -243,22 +243,22 @@ export class SapGui {
 
   private createLauncherContent(command: SapGuiCommand, ticket: string) {
     this.checkConfig()
-    const loginTicket = ticket ? `at = "MYSAPSSO2=${ticket}"` : ""
-    const lang = this.language ? `Language = ${this.language} ` : ""
+    const loginTicket = ticket ? `at="MYSAPSSO2=${ticket}"` : ""
+    const lang = this.language ? `Language=${this.language}` : ""
     return `[System]
-    guiparm = "${this.connectionString}"
-    Name = ${this.systemname}
-    Client = ${this.config!.client}
-    [User]
-    Name = ${this.user}
-    ${loginTicket}
-    ${lang}
-    [Function]
-    Type = ${command.type}
-    Command = ${this.commandString(command)}
-    [Configuration]
-    GuiSize = Maximized
-    [Options]
-    Reuse = 1`
+guiparm="${this.connectionString}"
+Name=${this.systemname}
+Client=${this.config!.client}
+[User]
+Name=${this.user}
+${loginTicket}
+${lang}
+[Function]
+Type=${command.type}
+Command=${this.commandString(command)}
+[Configuration]
+GuiSize=Maximized
+[Options]
+Reuse=1`
   }
 }

@@ -4,7 +4,7 @@ export const AbapFsCommands = {
   search: "abapfs.search",
   create: "abapfs.create",
   execute: "abapfs.execute",
-  openInGui: "abapfs.openInGui",
+  runInGui: "abapfs.runInGui",
   unittest: "abapfs.unittest",
   createtestinclude: "abapfs.createtestinclude",
   quickfix: "abapfs.quickfix",
