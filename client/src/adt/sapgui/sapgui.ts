@@ -7,10 +7,15 @@ import opn = require("open")
 import { window, ProgressLocation, extensions } from "vscode"
 import { getClient } from "../conections"
 import { AbapObject, isAbapClassInclude } from "abapobject";
+import puppeteer from "puppeteer-core";
 import {
   commands,
   Uri
 } from "vscode"
+import { ADTClient } from "abap-adt-api"
+
+const BROWSERPREVIEW = "auchenberg.vscode-browser-preview"
+
 export interface SapGuiCommand {
   type: "Transaction" | "Report" | "SystemCommand"
   command: string
@@ -49,13 +54,13 @@ export function runInSapGui(
 
       const cmd = await getCmd()
       if (cmd) {
+        const client = getClient(connId)
         switch (config.sapGui?.guiType) {
           case "WEBGUI_EMBEDDED":
-            return sapGui.runInBrowser(config, cmd, true)
+            return sapGui.runInBrowser(config, cmd, true, client)
           case "WEBGUI":
-            return sapGui.runInBrowser(config, cmd, false)
+            return sapGui.runInBrowser(config, cmd, false, client)
           default:
-            const client = getClient(connId)
             if (cmd) {
               log("Running " + JSON.stringify(cmd))
               sapGui.checkConfig()
@@ -215,11 +220,11 @@ export class SapGui {
   }
 
 
-  public async runInBrowser(config: RemoteConfig, cmd: SapGuiCommand, embedded: boolean) {
+  public async runInBrowser(config: RemoteConfig, cmd: SapGuiCommand, embedded: boolean, client: ADTClient) {
     if (embedded) {
-      const ext = extensions.getExtension<unknown>("auchenberg.vscode-browser-preview")
+      const ext = extensions.getExtension<unknown>(BROWSERPREVIEW)
       if (!ext) {
-        const args = encodeURIComponent(JSON.stringify([["auchenberg.vscode-browser-preview"]]))
+        const args = encodeURIComponent(JSON.stringify([[BROWSERPREVIEW]]))
         const exturl = Uri.parse(`command:workbench.extensions.action.showExtensionsWithIds?${args}`);
         window.showInformationMessage(`Embedded browser requires [Browser preview extension](${exturl})<br>showing in browser`)
       }
@@ -229,13 +234,27 @@ export class SapGui {
       const okCode = cmd.parameters.find((parameter: { name: string; value: string }) => parameter.name === 'DYNP_OKCODE')
       const D_OBJECT_URI = cmd.parameters.find((parameter: { name: string; value: string }) => parameter.name !== 'DYNP_OKCODE')
       const url = (config.url.slice(-1) === '/') ? config.url : config.url + "/";
-      const fullUrl = `${url}sap/bc/gui/sap/its/webgui?sap-user=${config.username}&sap-password=${config.password}&language=EN&~transaction=${cmd.command}%20${D_OBJECT_URI?.name}=${D_OBJECT_URI!.value};DYNP_OKCODE=${okCode!.value}#...`
-      if (embedded)
+      if (embedded) {
+        const fullUrl = `${url}sap/bc/gui/sap/its/webgui?sap-user=${config.username}&sap-password=${config.password}&language=EN&~transaction=${cmd.command}%20${D_OBJECT_URI?.name}=${D_OBJECT_URI!.value};DYNP_OKCODE=${okCode!.value}#...`
         commands.executeCommand('browser-preview.openPreview', fullUrl);
-      else
-        commands.executeCommand('vscode.open', Uri.parse(fullUrl));
+      }
+      else {
+        const fullUrl = `${url}sap/bc/gui/sap/its/webgui?~transaction=${cmd.command}%20${D_OBJECT_URI?.name}=${D_OBJECT_URI!.value};DYNP_OKCODE=${okCode!.value}`
+        const ticket = await client.reentranceTicket()
+        const browser = await puppeteer.launch({
+          headless: false, executablePath: "chrome",
+          ignoreDefaultArgs: ["--enable-automation", "--enable-blink-features=IdleDetection"],
+          args: ['--start-maximized']
+        })
+
+        const page = (await browser.pages())[0] || await browser.newPage()
+        await page.setExtraHTTPHeaders({ "sap-mysapsso": `${config.client}${ticket}`, "sap-mysapred": fullUrl })
+        await page.goto(`${url}sap/public/myssocntl`)
+        browser.disconnect()
+      }
     }
   }
+
   private commandString(command: SapGuiCommand) {
     let params = ""
     const addParm = (name: string, value: string) =>

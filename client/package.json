@@ -72,6 +72,7 @@
     "method-call-logger": "^1.0.7",
     "mongoose": "^5.10.9",
     "open": "^7.3.0",
+    "puppeteer-core": "^8.0.0",
     "ramda": "^0.27.1",
     "request-debug": "^0.2.0",
     "tmp-promise": "^3.0.2",
