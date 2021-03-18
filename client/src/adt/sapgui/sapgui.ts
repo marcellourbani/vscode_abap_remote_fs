@@ -4,7 +4,7 @@ import { writeAsync } from "fs-jetpack"
 import { log } from "../../lib"
 import { closeSync } from "fs"
 import opn = require("open")
-import { window, ProgressLocation } from "vscode"
+import { window, ProgressLocation, extensions } from "vscode"
 import { getClient } from "../conections"
 import { AbapObject, isAbapClassInclude } from "abapobject";
 import {
@@ -214,7 +214,17 @@ export class SapGui {
     }
   }
 
+
   public async runInBrowser(config: RemoteConfig, cmd: SapGuiCommand, embedded: boolean) {
+    if (embedded) {
+      const ext = extensions.getExtension<unknown>("auchenberg.vscode-browser-preview")
+      if (!ext) {
+        const args = encodeURIComponent(JSON.stringify([["auchenberg.vscode-browser-preview"]]))
+        const exturl = Uri.parse(`command:workbench.extensions.action.showExtensionsWithIds?${args}`);
+        window.showInformationMessage(`Embedded browser requires [Browser preview extension](${exturl})<br>showing in browser`)
+      }
+      embedded = !!ext
+    }
     if (cmd.parameters) {
       const okCode = cmd.parameters.find((parameter: { name: string; value: string }) => parameter.name === 'DYNP_OKCODE')
       const D_OBJECT_URI = cmd.parameters.find((parameter: { name: string; value: string }) => parameter.name !== 'DYNP_OKCODE')
