@@ -39,8 +39,12 @@ const readTransports = async (connId: string, user: string) => {
   const client = getClient(connId)
   if (await client.hasTransportConfig()) {
     const User = user.toUpperCase()
-    const configs = await client.transportConfigurations()
-    if (configs.length < 1) throw new Error("Transport configuration not found");
+    let configs = await client.transportConfigurations()
+    if (configs.length < 1) {
+      await client.createTransportsConfig()
+      configs = await client.transportConfigurations()
+      if (configs.length < 1) throw new Error("Transport configuration not found");
+    }
     const { etag, link } = configs[0]
     const config = await client.getTransportConfiguration(link)
     if (config.User !== User) await client.setTransportsConfig(link, etag, { ...config, User })
