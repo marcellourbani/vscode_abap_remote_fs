@@ -56,10 +56,10 @@ export function runInSapGui(
       if (cmd) {
         const client = getClient(connId)
         switch (config.sapGui?.guiType) {
-          case "WEBGUI_EMBEDDED":
-            return sapGui.runInBrowser(config, cmd, true, client)
-          case "WEBGUI":
-            return sapGui.runInBrowser(config, cmd, false, client)
+          case "WEBGUI_UNSAFE_EMBEDDED":
+          case "WEBGUI_UNSAFE":
+          case "WEBGUI_CONTROLLED":
+            return sapGui.runInBrowser(config, cmd, client)
           default:
             if (cmd) {
               log("Running " + JSON.stringify(cmd))
@@ -220,37 +220,55 @@ export class SapGui {
   }
 
 
-  public async runInBrowser(config: RemoteConfig, cmd: SapGuiCommand, embedded: boolean, client: ADTClient) {
-    if (embedded) {
+  public async runInBrowser(config: RemoteConfig, cmd: SapGuiCommand, client: ADTClient) {
+    let guitype = config.sapGui?.guiType
+    if (guitype === "WEBGUI_UNSAFE_EMBEDDED") {
       const ext = extensions.getExtension<unknown>(BROWSERPREVIEW)
       if (!ext) {
+        guitype = "WEBGUI_CONTROLLED"
         const args = encodeURIComponent(JSON.stringify([[BROWSERPREVIEW]]))
         const exturl = Uri.parse(`command:workbench.extensions.action.showExtensionsWithIds?${args}`);
         window.showInformationMessage(`Embedded browser requires [Browser preview extension](${exturl})<br>showing in browser`)
       }
-      embedded = !!ext
     }
     if (cmd.parameters) {
       const okCode = cmd.parameters.find((parameter: { name: string; value: string }) => parameter.name === 'DYNP_OKCODE')
       const D_OBJECT_URI = cmd.parameters.find((parameter: { name: string; value: string }) => parameter.name !== 'DYNP_OKCODE')
-      const url = (config.url.slice(-1) === '/') ? config.url : config.url + "/";
-      if (embedded) {
-        const fullUrl = `${url}sap/bc/gui/sap/its/webgui?sap-user=${config.username}&sap-password=${config.password}&language=EN&~transaction=${cmd.command}%20${D_OBJECT_URI?.name}=${D_OBJECT_URI!.value};DYNP_OKCODE=${okCode!.value}#...`
-        commands.executeCommand('browser-preview.openPreview', fullUrl);
+      const q: any = {
+        "~transaction": `${cmd.command} ${D_OBJECT_URI?.name}=${D_OBJECT_URI!.value};DYNP_OKCODE=${okCode?.value || ""}`,
       }
-      else {
-        const fullUrl = `${url}sap/bc/gui/sap/its/webgui?~transaction=${cmd.command}%20${D_OBJECT_URI?.name}=${D_OBJECT_URI!.value};DYNP_OKCODE=${okCode!.value}`
-        const ticket = await client.reentranceTicket()
-        const browser = await puppeteer.launch({
-          headless: false, executablePath: "chrome",
-          ignoreDefaultArgs: ["--enable-automation", "--enable-blink-features=IdleDetection"],
-          args: ['--start-maximized']
-        })
+      if (config.language) config.language = config.language
+      if (guitype !== "WEBGUI_CONTROLLED") {
+        q["sap-user"] = config.username
+        q["sap-password"] = config.password
+      }
+      const query = Object.keys(q).map(k => `${k}=${q[k]}`).join("&")
+      const url = Uri.parse(config.url).with({ path: "/sap/bc/gui/sap/its/webgui", query })
+      switch (guitype) {
+        case "WEBGUI_UNSAFE_EMBEDDED":
+          commands.executeCommand('browser-preview.openPreview', url.toString());
+          break;
+        case "WEBGUI_UNSAFE":
+          commands.executeCommand('vscode.open', url);
+          break;
+        default:
+          const ticket = await client.reentranceTicket()
+          const browser = await puppeteer.launch({
+            headless: false,
+            executablePath: config.sapGui?.browserPath || "chrome",
+            ignoreDefaultArgs: ["--enable-automation", "--enable-blink-features=IdleDetection"],
+            ignoreHTTPSErrors: !!config.allowSelfSigned,
+            // @ts-ignore
+            defaultViewport: null,
+            args: ['--start-maximized']
+          })
 
-        const page = (await browser.pages())[0] || await browser.newPage()
-        await page.setExtraHTTPHeaders({ "sap-mysapsso": `${config.client}${ticket}`, "sap-mysapred": fullUrl })
-        await page.goto(`${url}sap/public/myssocntl`)
-        browser.disconnect()
+          const page = (await browser.pages())[0] || await browser.newPage()
+          await page.setExtraHTTPHeaders({ "sap-mysapsso": `${config.client}${ticket}`, "sap-mysapred": url.toString() })
+          const logonUri = Uri.parse(config.url).with({ path: `/sap/public/myssocntl` }).toString()
+          await page.goto(logonUri)
+          browser.disconnect()
+          break;
       }
     }
   }

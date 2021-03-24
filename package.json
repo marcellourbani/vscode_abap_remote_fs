@@ -944,14 +944,21 @@
                       "description": "Use SAPGUI or Webgui",
                       "enum": [
                         "SAPGUI",
-                        "WEBGUI",
-                        "WEBGUI_EMBEDDED"
+                        "WEBGUI_CONTROLLED",
+                        "WEBGUI_UNSAFE",
+                        "WEBGUI_UNSAFE_EMBEDDED"
                       ],
-                      "enumDescription": [
+                      "markdownEnumDescriptions": [
                         "Use SAPgui for executing",
-                        "Use Webgui in your browser for executing",
-                        "Use Webgui embedded in vscode for executing"
+                        "Use Webgui in chrome for executing without exposing passwords",
+                        "Use Webgui in your browser for executing \n> $(warning) **might expose your password**",
+                        "Use Webgui embedded in vscode for executing \n> $(warning) **might expose your password**"
                       ]
+                    },
+                    "browserPath": {
+                      "type": "string",
+                      "default": "chrome",
+                      "description": "Browser path for controlled webgui"
                     }
                   }
                 }

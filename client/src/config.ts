@@ -14,7 +14,7 @@ import { ADTSCHEME } from "./adt/conections"
 
 const CONFIGROOT = "abapfs"
 const REMOTE = "remote"
-export type GuiType = "SAPGUI" | "WEBGUI" | "WEBGUI_EMBEDDED"
+export type GuiType = "SAPGUI" | "WEBGUI_CONTROLLED" | "WEBGUI_UNSAFE" | "WEBGUI_UNSAFE_EMBEDDED"
 
 export interface RemoteConfig extends ClientConfiguration {
   sapGui?: {
@@ -27,7 +27,8 @@ export interface RemoteConfig extends ClientConfiguration {
     // individual server
     server: string
     systemNumber: string
-    guiType: "SAPGUI" | "WEBGUI" | "WEBGUI_EMBEDDED"
+    guiType: GuiType
+    browserPath?: string
   }
 }
 
