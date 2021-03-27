@@ -85,7 +85,7 @@ class LocationManager {
   }
 
   public async locationFromUrl(url: ReferenceUri) {
-    if (url && url.start) {
+    if (url && url.start && url.uri) {
       const { uri, start, end, type, name } = url
       if (type && name) {
         let include
@@ -197,17 +197,23 @@ export function cancelSearch() {
   if (lastSearch) {
     lastSearch.cancel()
     lastSearch = undefined
-    setSearchProgress({ ended: true, hits: 0, progress: 100 })
+    // tslint:disable-next-line:no-empty
+    return setSearchProgress({ ended: true, hits: 0, progress: 100 }).catch(() => { })
   }
+}
+
+async function startSearch() {
+  await cancelSearch()
+  await setSearchProgress({ ended: false, hits: 0, progress: 0 })
+  lastSearch = new CancellationTokenSource()
+  return lastSearch
 }
 export async function findReferences(
   params: ReferenceParams,
   token: CancellationToken
 ) {
   if (!isAbap(params.textDocument.uri)) return
-  cancelSearch()
-  const mySearch = new CancellationTokenSource()
-  lastSearch = mySearch
+  const mySearch = await startSearch()
   const cancelled = () =>
     mySearch.token.isCancellationRequested || token.isCancellationRequested
 
@@ -247,7 +253,7 @@ export async function findReferences(
             if (cancelled()) return locations
             const location = await manager.locationFromUrl(sn.uri)
             if (location && !location.uri)
-              location.uri = await vscUrl(co.confKey, sn.uri.uri)
+              location.uri = await vscUrl(co.confKey, sn.uri.uri).catch(() => "")
             if (location && location.uri) locations.push(location)
             else warn("no reference found for", s.objectIdentifier, sn.uri.uri)
           }
@@ -256,11 +262,13 @@ export async function findReferences(
         warn("Exception in reference search:", e.toString()) // ignore
       }
       processed = processed + groups[group].length
-      setSearchProgress({
-        ended: processed === goodRefs.length,
-        hits: locations.length,
-        progress: (processed / goodRefs.length) * 100
-      })
+      if (!cancelled()) {
+        setSearchProgress({
+          ended: processed === goodRefs.length,
+          hits: locations.length,
+          progress: (processed / goodRefs.length) * 100
+        })
+      }
     }
   } catch (e) {
     warn("Exception in reference search:", e.toString()) // ignore

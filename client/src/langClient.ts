@@ -21,7 +21,6 @@ import {
   Uri,
   window,
   ProgressLocation,
-  commands,
   workspace,
   WorkspaceEdit
 } from "vscode"
@@ -115,21 +114,18 @@ async function setSearchProgress(searchProg: SearchProgress) {
         cancellable: true,
         title: "Where used list in progress - "
       },
-      (progress, token) => {
+      (progress, token) => new Promise((resolve, reject) => {
         let current = 0
-        let resPromise: () => void
-        const result = new Promise<void>(resolve => {
-          resPromise = () => resolve
-        })
         token.onCancellationRequested(async () => {
           setProgress = undefined
           await client.sendRequest(Methods.cancelSearch)
-          if (resPromise) resPromise()
+          resolve(undefined)
         })
         setProgress = (s: SearchProgress) => {
           if (s.ended) {
+            progress.report({ increment: 100, message: `Search completed,${s.hits} found` })
             setProgress = undefined
-            if (resPromise) resPromise()
+            resolve(undefined)
             return
           }
           progress.report({
@@ -138,9 +134,7 @@ async function setSearchProgress(searchProg: SearchProgress) {
           })
           current = s.progress
         }
-        setProgress(searchProg)
-        return result
-      }
+      })
     )
   }
 }

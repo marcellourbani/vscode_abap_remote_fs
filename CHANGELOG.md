@@ -1,6 +1,12 @@
 # Change Log
 
-## [0.10.0] 2021-03-34
+## [0.10.1] 2021-03-27
+
+### Fixed
+
+- [#151 find references fails to complete](https://github.com/marcellourbani/vscode_abap_remote_fs/issues/151)
+
+## [0.10.0] 2021-03-24
 
 ### Added
 
@@ -8,8 +14,8 @@
 
 ### Fixed
 
-- [#148](https://github.com/marcellourbani/vscode_abap_remote_fs/issues/148) create transport configuration when missing
-- [#147](https://github.com/marcellourbani/vscode_abap_remote_fs/issues/147) autologin,check if extenson is present
+- [#148 create transport configuration when missing](https://github.com/marcellourbani/vscode_abap_remote_fs/issues/148)
+- [#147 autologin,check if extenson is present](https://github.com/marcellourbani/vscode_abap_remote_fs/issues/147)
 
 ## [0.9.3] 2021-03-15
 
