@@ -160,7 +160,7 @@ function logHttp(entry: HttpLogEntry) {
 export async function startLanguageClient(context: ExtensionContext) {
   const module = context.asAbsolutePath(join("server", "dist", "server.js"))
   const transport = TransportKind.ipc
-  const options = { execArgv: ["--nolazy", "--inspect=6009"] }
+  const options = { execArgv: ["--nolazy", "--inspect=6010"] }
   log("creating language client...")
 
   client = new LanguageClient(
