@@ -61,6 +61,7 @@ export class Adapter implements TestAdapter {
       this.testStateEm.fire(runFinished)
     } catch (e) {
       this.testEm.fire({ type: "finished", errorMessage: e.toString() })
+      throw e
     }
   }
 

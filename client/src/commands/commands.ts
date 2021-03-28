@@ -281,13 +281,10 @@ export class AdtCommands {
       if (!uri) return
 
       const adapter = getTestAdapter(uri)
-      if (adapter) {
-        await adapter.runUnit(uri)
-      } else
-        await window.withProgress(
-          { location: ProgressLocation.Window, title: "Running ABAP UNIT" },
-          () => abapUnit(uri)
-        )
+      await window.withProgress(
+        { location: ProgressLocation.Window, title: "Running ABAP UNIT" },
+        () => adapter ? adapter.runUnit(uri) : abapUnit(uri)
+      )
     } catch (e) {
       return window.showErrorMessage(e.toString())
     }

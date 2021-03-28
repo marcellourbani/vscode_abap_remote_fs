@@ -1,5 +1,13 @@
 # Change Log
 
+## [0.10.2] 2021-03-28
+
+### Fixed
+
+- [#150 report errors running unit tests](https://github.com/marcellourbani/vscode_abap_remote_fs/issues/150)
+- better support for includes in unit tests
+- graceful degradation in unit test reporting
+
 ## [0.10.1] 2021-03-27
 
 ### Fixed
