@@ -58,6 +58,7 @@ function createFetchToken(conf: ClientConfiguration) {
 }
 
 export async function clientFromKey(key: string) {
+  key = decodeURIComponent(key)
   let client = clients.get(key)
   if (!client) {
     const conf = await readConfiguration(key)
