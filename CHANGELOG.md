@@ -1,6 +1,10 @@
 # Change Log
 
-## Unreleased
+## [0.10.3] 2021-03-30
+
+### Added
+
+- placeholder for servers without abapgit backend, with link
 
 ### Fixed
 

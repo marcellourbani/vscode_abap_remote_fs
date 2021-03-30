@@ -9,7 +9,7 @@ import {
   ProgressLocation,
   commands,
   env,
-  Uri
+  Uri,
 } from "vscode"
 import { GitRepo, ADTClient, objectPath } from "abap-adt-api"
 import { v1 } from "uuid"
@@ -38,6 +38,11 @@ interface ServerItem extends TreeItem {
   tag: "server"
   connId: string
   children: AbapGitItem[]
+}
+
+interface NoGitItem extends TreeItem {
+  tag: "nogit"
+  connId: string
 }
 
 const isServerItem = (item: TreeItem): item is ServerItem =>
@@ -80,6 +85,23 @@ class AbapGit {
     }
     return item
   }
+  private getNoGitItem(connId: string): NoGitItem {
+    const uri = 'https://github.com/abapGit/ADT_Backend'
+    return {
+      tag: "nogit",
+      connId,
+      id: v1(),
+      label: `${connId} ADT plugin not installed`,
+      description: `click to open ${uri}`,
+      tooltip: `click to open ${uri}`,
+      collapsibleState: TreeItemCollapsibleState.None,
+      command: {
+        command: "vscode.open",
+        title: "Open backend link",
+        arguments: [Uri.parse(uri)],
+      }
+    }
+  }
 
   private gitItem(repo: GitRepo): AbapGitItem {
     const canpush = !!repo.links.find(l => l.type === "push_link")
@@ -96,6 +118,7 @@ class AbapGit {
   }
   public async getGitEnabledServers() {
     const servers: ServerItem[] = []
+    const nogits: NoGitItem[] = []
     const folders = (workspace.workspaceFolders || []).filter(
       f => f.uri.scheme === ADTSCHEME
     )
@@ -105,11 +128,12 @@ class AbapGit {
       try {
         if (await getClient(connId).featureDetails("abapGit Repositories"))
           servers.push(await this.getServerItem(connId))
+        else nogits.push(this.getNoGitItem(connId))
       } catch (error) {
         window.showErrorMessage(`Failed to load git repositories for ${connId}: ${error}`)
       }
     }
-    return servers
+    return [servers, nogits]
   }
   public async getRemoteInfo(
     repoUrl: string,
@@ -132,11 +156,14 @@ interface RepoAccess {
 // tslint:disable-next-line: max-classes-per-file
 class AbapGitProvider implements TreeDataProvider<TreeItem> {
   private git = new AbapGit()
-  private children: ServerItem[] = []
+  private children: (ServerItem | NoGitItem)[] = []
   private emitter = new EventEmitter<TreeItem | null>()
   private loaded = false
   private static instance: AbapGitProvider
   public onDidChangeTreeData = this.emitter.event
+  private get gitChildren(): ServerItem[] {
+    return this.children.filter(isServerItem)
+  }
 
   public static get() {
     if (!this.instance) this.instance = new AbapGitProvider()
@@ -145,7 +172,8 @@ class AbapGitProvider implements TreeDataProvider<TreeItem> {
 
   public async refresh() {
     this.loaded = true
-    this.children = await this.git.getGitEnabledServers()
+    const [servers, nogit] = await this.git.getGitEnabledServers()
+    this.children = [...servers, ...nogit]
     this.emitter.fire(null)
   }
 
@@ -227,7 +255,7 @@ class AbapGitProvider implements TreeDataProvider<TreeItem> {
   private repoServer(repoItem: AbapGitItem) {
     const hasRepo = (s: ServerItem) =>
       !!s.children.find(r => r.id === repoItem.id)
-    const server = this.children.find(hasRepo)
+    const server = this.gitChildren.find(hasRepo)
     if (!server)
       throw new Error(
         `No server connection found for package ${repoItem.repo.sapPackage}`
@@ -312,7 +340,7 @@ class AbapGitProvider implements TreeDataProvider<TreeItem> {
         await Promise.all([
           this.refresh()
         ]).finally(() => commands.executeCommand("workbench.files.action.refreshFilesExplorer"))
-        const created = this.children
+        const created = this.gitChildren
           .find(i => i.connId === item.connId)
           ?.children.find(r => r.repo.url === repoUrl)
         if (created) this.reveal(created)
