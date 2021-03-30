@@ -5,6 +5,7 @@
 ### Fixed
 
 - [#141 changes to sapgui connections while connected](https://github.com/marcellourbani/vscode_abap_remote_fs/issues/141)
+- improved password deletion (cleanup cached value)
 
 ## [0.10.2] 2021-03-28
 

@@ -445,6 +445,14 @@
           "when": "abapfs:extensionActive"
         },
         {
+          "command": "abapfs.runClass",
+          "when": "abapfs:extensionActive"
+        },
+        {
+          "command": "abapfs.selectDB",
+          "when": "abapfs:extensionActive"
+        },
+        {
           "command": "abapfs.create",
           "when": "abapfs:extensionActive"
         },

@@ -11,6 +11,7 @@ import { createProxy } from "method-call-logger"
 import { log, mongoApiLogger, mongoHttpLogger, PasswordVault } from "./lib"
 import { oauthLogin } from "./oauth"
 import { ADTSCHEME } from "./adt/conections"
+import { connections } from "mongoose"
 
 const CONFIGROOT = "abapfs"
 const REMOTE = "remote"
@@ -172,14 +173,17 @@ export class RemoteManager {
     this.vault = new PasswordVault()
     workspace.onDidChangeConfiguration(this.configChanged, this)
   }
-  configChanged({ affectsConfiguration }: ConfigurationChangeEvent) {
+  private configChanged({ affectsConfiguration }: ConfigurationChangeEvent) {
     if (affectsConfiguration(CONFIGROOT)) {
       for (const [key, current] of this.connections.entries()) {
-        const incoming = this.remoteList().find(r => formatKey(r.name) === key)
-        if (incoming) {
-          // ignore any change to connection details, authentication and monitoring
-          current.diff_formatter = incoming.diff_formatter
-          current.sapGui = incoming.sapGui
+        if (!this.isConnected(key)) this.connections.delete(key)
+        else {
+          const incoming = this.loadRemote(key)
+          if (incoming) {
+            // ignore any change to connection details, authentication and monitoring
+            current.diff_formatter = incoming.diff_formatter
+            current.sapGui = incoming.sapGui
+          }
         }
       }
     }
@@ -198,7 +202,7 @@ export class RemoteManager {
     connectionId = formatKey(connectionId)
     let conn = this.connections.get(connectionId)
     if (!conn) {
-      conn = this.remoteList().find(r => formatKey(r.name) === connectionId)
+      conn = this.loadRemote(connectionId)
       if (!conn) return
       if (!conn.password) {
         conn.password = await this.getPassword(connectionId, conn.username)
@@ -216,6 +220,15 @@ export class RemoteManager {
     return Object.keys(remote).map(name =>
       config(name, remote[name] as RemoteConfig)
     )
+  }
+
+  private loadRemote(connectionId: string) {
+    connectionId = formatKey(connectionId)
+    return this.remoteList().find(r => formatKey(r.name) === connectionId)
+  }
+
+  private isConnected(connectionId: string) {
+    return connectedRoots().has(formatKey(connectionId))
   }
 
   public async selectConnection(
@@ -299,11 +312,12 @@ export class RemoteManager {
     }
     if (!connectionId) return
     connectionId = formatKey(connectionId)
-    const conn = this.remoteList().find(r => connectionId === formatKey(r.name))
+    const conn = this.loadRemote(connectionId)
     if (!conn) return // no connection found, should never happen
-    return this.clearPassword(
+    const deleted = await this.clearPassword(
       connectionId,
       conn.oauth?.clientId || conn.username
     )
+    if (deleted && !this.isConnected(connectionId)) this.connections.delete(connectionId)
   }
 }
