@@ -9,6 +9,7 @@ import { ClassComponent, Link } from "abap-adt-api"
 import { log } from "./clientManager"
 
 const typeMap: Map<string, SymbolKind> = new Map([
+  ["CLAS/I", SymbolKind.File],
   ["CLAS/OA", SymbolKind.Field],
   ["CLAS/OB", SymbolKind.Null], // alias
   ["CLAS/OC", SymbolKind.Class],

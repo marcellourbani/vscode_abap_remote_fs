@@ -4,11 +4,11 @@ import {
   httpTraceUrl,
   SOURCE_CLIENT
 } from "vscode-abap-remote-fs-sharedapi"
-import { window, workspace, QuickPickItem, WorkspaceFolder, Uri, ConfigurationTarget } from "vscode"
+import { window, workspace, QuickPickItem, WorkspaceFolder, Uri, ConfigurationTarget, Event, ConfigurationChangeEvent } from "vscode"
 import { ADTClient, createSSLConfig } from "abap-adt-api"
 import { readFileSync } from "fs"
 import { createProxy } from "method-call-logger"
-import { mongoApiLogger, mongoHttpLogger, PasswordVault } from "./lib"
+import { log, mongoApiLogger, mongoHttpLogger, PasswordVault } from "./lib"
 import { oauthLogin } from "./oauth"
 import { ADTSCHEME } from "./adt/conections"
 
@@ -170,7 +170,21 @@ export class RemoteManager {
 
   private constructor() {
     this.vault = new PasswordVault()
+    workspace.onDidChangeConfiguration(this.configChanged, this)
   }
+  configChanged({ affectsConfiguration }: ConfigurationChangeEvent) {
+    if (affectsConfiguration(CONFIGROOT)) {
+      for (const [key, current] of this.connections.entries()) {
+        const incoming = this.remoteList().find(r => formatKey(r.name) === key)
+        if (incoming) {
+          // ignore any change to connection details, authentication and monitoring
+          current.diff_formatter = incoming.diff_formatter
+          current.sapGui = incoming.sapGui
+        }
+      }
+    }
+  }
+
   public static get = () =>
     RemoteManager.instance || (RemoteManager.instance = new RemoteManager())
   public byId(connectionId: string): RemoteConfig | undefined {
