@@ -1,5 +1,11 @@
 # Change Log
 
+## [0.10.4] 2021-04-07
+
+### Fixed
+
+- setup/teardown errors in unit tests are now reported
+
 ## [0.10.3] 2021-03-30
 
 ### Added

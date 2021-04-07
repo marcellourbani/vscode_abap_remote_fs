@@ -47,19 +47,25 @@ const convertTestAlert = async (
   return { uri, diagnostic }
 }
 
+const addAlert = async (alrt: UnitTestAlert, connId: string, newAlerts: Map<string, Diagnostic[]>) => {
+  const { uri, diagnostic } = (await convertTestAlert(connId, alrt)) || {}
+  if (uri && diagnostic) {
+    const fileDiags = newAlerts.get(uri) || []
+    if (fileDiags.length === 0) newAlerts.set(uri, fileDiags)
+    fileDiags.push(diagnostic)
+  }
+}
+
 const classesAlerts = async (testClasses: UnitTestClass[], connId: string) => {
   const newAlerts = new Map<string, Diagnostic[]>()
-  for (const clas of testClasses)
-    for (const method of clas.testmethods) {
-      for (const alrt of method.alerts) {
-        const { uri, diagnostic } = (await convertTestAlert(connId, alrt)) || {}
-        if (uri && diagnostic) {
-          const fileDiags = newAlerts.get(uri) || []
-          if (fileDiags.length === 0) newAlerts.set(uri, fileDiags)
-          fileDiags.push(diagnostic)
-        }
-      }
-    }
+  for (const clas of testClasses) {
+    for (const alrt of clas.alerts)
+      await addAlert(alrt, connId, newAlerts)
+
+    for (const method of clas.testmethods)
+      for (const alrt of method.alerts)
+        await addAlert(alrt, connId, newAlerts)
+  }
   return newAlerts
 }
 

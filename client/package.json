@@ -60,7 +60,7 @@
   "dependencies": {
     "@abaplint/core": "^2.58.6",
     "@types/tmp": "0.2.0",
-    "abap-adt-api": "^2.6.0",
+    "abap-adt-api": "^2.7.0",
     "abap_cloud_platform": "^1.1.2",
     "abapfs": "file:../modules/abapfs",
     "abapobject": "file:../modules/abapObject",
@@ -70,7 +70,7 @@
     "fp-ts": "^2.8.4",
     "fs-jetpack": "^4.0.0",
     "method-call-logger": "^1.0.7",
-    "mongoose": "^5.10.9",
+    "mongoose": "^5.12.3",
     "open": "^7.3.0",
     "puppeteer-core": "^8.0.0",
     "ramda": "^0.27.1",
