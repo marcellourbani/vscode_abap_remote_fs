@@ -110,8 +110,13 @@
           "when": "abapfs:extensionActive"
         },
         {
+          "id": "abapfs.dumps",
+          "name": "Dumps",
+          "when": "abapfs:extensionActive"
+        },
+        {
           "id": "abapfs.abapgit",
-          "name": "abapGit ",
+          "name": "abapGit",
           "when": "abapfs:extensionActive"
         }
       ],

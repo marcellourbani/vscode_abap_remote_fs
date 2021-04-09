@@ -34,7 +34,7 @@ export interface RemoteConfig extends ClientConfiguration {
 }
 
 export const formatKey = (raw: string) => raw.toLowerCase()
-const connectedRoots = () => {
+export const connectedRoots = () => {
   const rootmap = new Map<string, WorkspaceFolder>()
   const roots = (workspace.workspaceFolders || []).filter(
     r => r.uri.scheme === ADTSCHEME
