@@ -1,16 +1,29 @@
 import { Dump, Feed } from "abap-adt-api";
-import { TreeDataProvider, TreeItem, TreeItemCollapsibleState } from "vscode";
+import { TreeDataProvider, TreeItem, TreeItemCollapsibleState, ViewColumn, window } from "vscode";
 import { getClient } from "../../adt/conections";
+import { AbapFsCommands, command } from "../../commands";
 import { connectedRoots } from "../../config";
 // tslint:disable:max-classes-per-file
 
 
 class DumpItem extends TreeItem {
     readonly tag: "dump"
+    dump: Dump;
     constructor(dump: Dump, connId: string) {
         const label = dump.categories.find(c => c.label === "ABAP runtime error")?.term || "dump"
         super(label, TreeItemCollapsibleState.None)
         this.tag = "dump"
+        this.dump = dump
+        this.command = {
+            title: "show dump",
+            command: AbapFsCommands.showDump,
+            arguments: [this]
+        }
+    }
+    @command(AbapFsCommands.showDump)
+    private static show(i: DumpItem) {
+        const panel = window.createWebviewPanel("DUMP", "ABAP Dump", ViewColumn.Active)
+        panel.webview.html = i.dump.text
     }
 }
 
