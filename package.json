@@ -84,6 +84,28 @@
         "label": "ABAP on server",
         "languages": [
           "abap"
+        ],
+        "configurationAttributes": {
+          "attach": {
+            "required": [
+              "root"
+            ],
+            "properties": {
+              "connId": {
+                "type": "string",
+                "description": "Absolute path to a text file.",
+                "default": "${command:pickAdtRootConn}"
+              }
+            }
+          }
+        },
+        "initialConfigurations": [
+          {
+            "type": "abap",
+            "request": "attach",
+            "name": "Attach to server",
+            "connId": "${command:pickAdtRootConn}"
+          }
         ]
       }
     ],
