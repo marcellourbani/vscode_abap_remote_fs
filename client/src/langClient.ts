@@ -96,7 +96,7 @@ async function objectDetailFromUrl(url: string) {
   return objectDetail(obj.object, mainProgram?.["adtcore:uri"])
 }
 
-async function configFromKey(connId: string) {
+export async function configFromKey(connId: string) {
   const { sapGui, ...cfg } = (await RemoteManager.get()).byId(connId)!
   return cfg
 }
