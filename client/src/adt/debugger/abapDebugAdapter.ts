@@ -3,7 +3,7 @@ import { InitializedEvent, LoggingDebugSession } from "vscode-debugadapter";
 import { DEBUGTYPE } from "./abapConfigurationProvider";
 import { DebugProtocol } from 'vscode-debugprotocol';
 import { getClient, getRoot } from "../conections";
-import { DebugAttach, Debuggee, isDebugListenerError } from "abap-adt-api";
+import { DebugAttach, Debuggee, isDebugListenerError, session_types } from "abap-adt-api";
 import { log, after } from "../../lib";
 import { isAbapFile } from "abapfs";
 export interface AbapDebugConfiguration extends DebugConfiguration {
@@ -33,6 +33,8 @@ export class AbapDebugSession extends LoggingDebugSession {
         this.active = true
         const client = getClient(this.connId)
         const sc = getClient(this.connId, false)
+        sc.stateful = session_types.stateful
+        sc.adtCoreDiscovery()
         const foo = async (debuggee: Debuggee) => {
             try {
                 // await after(130)
@@ -41,14 +43,17 @@ export class AbapDebugSession extends LoggingDebugSession {
                 log(JSON.stringify(bp))
                 const stack = await sc.debuggerStackTrace()
                 log(JSON.stringify(stack))
-                const variables = await sc.debuggerVariables([])
+                const variables = await sc.debuggerVariables(["SY-SUBRC", "SY"])
                 log(JSON.stringify(variables))
                 const cvariables = await sc.debuggerChildVariables()
                 log(JSON.stringify(cvariables))
                 await sc.debuggerStep("stepContinue")
+                sc.stateful = session_types.stateless
             } catch (error) {
                 log(`${error}`)
+                sc.stateful = session_types.stateless
             }
+            sc.adtCoreDiscovery()
         }
         while (this.active) {
             try {
@@ -74,7 +79,7 @@ export class AbapDebugSession extends LoggingDebugSession {
             const node = await root.getNodeAsync(uri.path)
             if (isAbapFile(node)) {
                 const objuri = node.object.contentsPath()
-                const clientId = `582:/A4H_001_developer_en/.adt/programs/programs/ztest/ztest.asprog` //`24:${this.connId}${uri.path}`
+                const clientId = `24:${this.connId}${uri.path}` // `582:/A4H_001_developer_en/.adt/programs/programs/ztest/ztest.asprog`
                 const bps = breakpoints.map(b => `${objuri}#start=${b.line}`)
                 const actualbps = await client.debuggerSetBreakpoints("user", this.terminalId, this.ideId, clientId, bps, this.username)
                 log(JSON.stringify(actualbps))
