@@ -1,11 +1,9 @@
-import { DebugConfiguration, DebugSession, Uri } from "vscode";
+import { DebugConfiguration, DebugSession } from "vscode";
 import { InitializedEvent, LoggingDebugSession } from "vscode-debugadapter";
 import { DEBUGTYPE } from "./abapConfigurationProvider";
 import { DebugProtocol } from 'vscode-debugprotocol';
-import { getClient, getRoot } from "../conections";
-import { log } from "../../lib";
-import { isAbapFile } from "abapfs";
 import { DebugService } from "./debugService";
+import { AbapDebugAdapterFactory } from "./AbapDebugAdapterFactory";
 
 export interface AbapDebugConfiguration extends DebugConfiguration {
     connId: string
@@ -15,25 +13,36 @@ export interface AbapDebugSessionCfg extends DebugSession {
 }
 
 export class AbapDebugSession extends LoggingDebugSession {
-    private connId: string;
-    service?: DebugService;
 
-    constructor({ configuration: { connId } }: AbapDebugSessionCfg) {
+    constructor(private connId: string, private readonly service: DebugService) {
         super(DEBUGTYPE)
-        this.connId = connId
     }
 
     protected async setBreakPointsRequest(response: DebugProtocol.SetBreakpointsResponse, args: DebugProtocol.SetBreakpointsArguments, request?: DebugProtocol.Request) {
         const { source: { path = "" }, breakpoints = [] } = args
-        if (path && this.service) {
+        if (path) {
             response.body = { breakpoints: await this.service.setBreakpoints(path, breakpoints) }
         }
         this.sendResponse(response)
     }
+    protected dispatchRequest(request: DebugProtocol.Request) {
+        super.dispatchRequest(request)
+    }
+
+    public async logOut() {
+        if (this.service) {
+            await this.service.logout()
+            AbapDebugAdapterFactory.instance.sessionClosed(this)
+        }
+    }
+
+    protected async disconnectRequest(response: DebugProtocol.DisconnectResponse, args: DebugProtocol.DisconnectArguments, request?: DebugProtocol.Request) {
+        await this.logOut()
+        super.disconnectRequest(response, args, request)
+    }
 
     protected async attachRequest(response: DebugProtocol.AttachResponse, args: DebugProtocol.AttachRequestArguments, request?: DebugProtocol.Request) {
         try {
-            this.service = await DebugService.create(this.connId)
             this.service.mainLoop()
             response.success = true
         } catch (error) {

@@ -11,18 +11,18 @@ import { join } from "path";
 
 let breakpointId = 1
 
-const convertBreakpoints = (name: string) => (bp: DebugBreakpoint): DebugProtocol.Breakpoint =>
-    ({ verified: true, id: breakpointId++, line: bp.uri.range.start.line })
+const convertBreakpoints = (bp: DebugBreakpoint): DebugProtocol.Breakpoint =>
+    ({ verified: true, id: breakpointId++, line: bp.uri.range.start.line, source: { name: "abap", adapterData: bp } })
 
 
 export class DebugService {
     private active: boolean = false;
+    private listening = false
     private ideId: string;
     private username: string
 
     constructor(private connId: string, private client: ADTClient, private terminalId: string) {
-        // this.terminalId = "71999B60AA6349CF91D0A23773B3C728"
-        this.ideId = md5(connId)// "796B6D15B9A1BEC388DA0C50010D2F62"
+        this.ideId = md5(connId)
         this.username = client.username.toUpperCase()
     }
 
@@ -39,7 +39,9 @@ export class DebugService {
     public async mainLoop() {
         while (this.active) {
             try {
+                this.listening = true
                 const debuggee = await this.client.statelessClone.debuggerListen("user", this.terminalId, this.ideId, this.username)
+                this.listening = false
                 if (!debuggee) continue
                 if (isDebugListenerError(debuggee)) {
                     // reconnect
@@ -63,7 +65,7 @@ export class DebugService {
             const bps = breakpoints.map(b => `${objuri}#start=${b.line}`)
             const actualbps = await this.client.statelessClone.debuggerSetBreakpoints(
                 "user", this.terminalId, this.ideId, clientId, bps, this.username)
-            return actualbps.map(convertBreakpoints(path))
+            return actualbps.map(convertBreakpoints)
         }
         return []
 
@@ -116,6 +118,15 @@ export class DebugService {
         this.active = false
         await this.client.dropSession()
         await this.client.statelessClone.debuggerDeleteListener("user", this.terminalId, this.ideId, this.username)
+    }
+    public async logout() {
+        this.active = false
+        if (this.listening)
+            await this.client.debuggerDeleteListener("user", this.terminalId, this.ideId, this.username)
+        const ignore = () => undefined
+        if (this.client.loggedin) {
+            return this.client.logout().catch(ignore)
+        }
     }
 }
 

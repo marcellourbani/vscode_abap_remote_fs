@@ -1,16 +1,12 @@
-import { debug, DebugAdapterDescriptor, DebugAdapterDescriptorFactory, DebugAdapterInlineImplementation, DebugConfigurationProviderTriggerKind, DebugSession, ExtensionContext } from "vscode"
+import { debug, DebugConfigurationProviderTriggerKind, DebugSession, ExtensionContext } from "vscode"
 import { AbapConfigurationProvider, DEBUGTYPE } from "./abapConfigurationProvider"
-import { AbapDebugSession, AbapDebugSessionCfg } from "./abapDebugAdapter";
+import { AbapDebugAdapterFactory } from "./AbapDebugAdapterFactory"
 
-class AbapDebugAdapterFactory implements DebugAdapterDescriptorFactory {
+export const LogOutPendingDebuggers = () => AbapDebugAdapterFactory.instance.closeSessions()
 
-    createDebugAdapterDescriptor(session: AbapDebugSessionCfg): DebugAdapterDescriptor {
-        return new DebugAdapterInlineImplementation(new AbapDebugSession(session));
-    }
-}
 export const registerAbapDebugger = (context: ExtensionContext) => {
     const provider = new AbapConfigurationProvider()
     const providerReg = debug.registerDebugConfigurationProvider(DEBUGTYPE, provider, DebugConfigurationProviderTriggerKind.Dynamic)
-    const factoryReg = debug.registerDebugAdapterDescriptorFactory(DEBUGTYPE, new AbapDebugAdapterFactory())
+    const factoryReg = debug.registerDebugAdapterDescriptorFactory(DEBUGTYPE, AbapDebugAdapterFactory.instance)
     context.subscriptions.push(factoryReg, providerReg)
 }
