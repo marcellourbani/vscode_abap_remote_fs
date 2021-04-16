@@ -1,16 +1,14 @@
 import { ADTClient, DebugAttach, Debuggee, DebugStack, DebugStackInfo, DebugStep, DebugStepType, isDebuggerBreakpoint, isDebugListenerError, session_types } from "abap-adt-api";
 import { newClientFromKey, md5 } from "./functions";
 import { readFileSync } from "fs";
-import { log } from "../../lib";
+import { createAdtUri, log } from "../../lib";
 import { DebugProtocol } from "vscode-debugprotocol";
 import { Disposable, EventEmitter, Uri } from "vscode";
 import { getRoot } from "../conections";
 import { isAbapFile, isFolder } from "abapfs";
 import { homedir } from "os";
 import { join } from "path";
-import { Source, StackFrame, StoppedEvent, TerminatedEvent } from "vscode-debugadapter";
-
-let breakpointId = 1
+import { Breakpoint, Source, StackFrame, StoppedEvent, TerminatedEvent } from "vscode-debugadapter";
 
 export interface DebuggerUI {
     Confirmator: (message: string) => Thenable<boolean>
@@ -25,7 +23,8 @@ export class DebugService {
     private notifier: EventEmitter<DebugProtocol.Event> = new EventEmitter()
     private listeners: Disposable[] = []
     private stackTrace: StackFrame[] = [];
-    private breakpoints = new Map<string, DebugProtocol.Breakpoint[]>()
+    private breakpoints = new Map<string, Breakpoint[]>()
+    public readonly THREADID = 1;
 
     constructor(private connId: string, private client: ADTClient, private terminalId: string, private ui: DebuggerUI) {
         this.ideId = md5(connId)
@@ -115,13 +114,11 @@ export class DebugService {
                     "user", this.terminalId, this.ideId, clientId, bps, this.username)
                 return breakpoints.map(bp => {
                     const actual = actualbps.find(a => isDebuggerBreakpoint(a) && a.uri.range.start.line === bp.line)
-                    if (actual) return {
-                        verified: true,
-                        id: breakpointId++,
-                        line: bp.line,
-                        source: { ...source, adapterData: actual }
+                    if (actual) {
+                        const src = new Source(source.name || "", source.path)
+                        return new Breakpoint(true, bp.line, 0, src)
                     }
-                    return { verified: false }
+                    return new Breakpoint(false)
                 })
             } catch (error) {
                 log(error.message)
@@ -136,7 +133,7 @@ export class DebugService {
             const attach = await this.client.debuggerAttach("user", debuggee.DEBUGGEE_ID, this.username, true)
             const bp = attach.reachedBreakpoints[0]
             await this.updateStack()
-            this.notifier.fire(new StoppedEvent("breakpoint"))
+            this.notifier.fire(new StoppedEvent("breakpoint", this.THREADID))
         } catch (error) {
             log(`${error}`)
             this.stopDebugging()
@@ -153,16 +150,27 @@ export class DebugService {
     }
 
     public async debuggerStep(stepType: DebugStepType, url?: string) {
-        const res = await this.baseDebuggerStep(stepType, url)
-        await this.updateStack()
-        return res
+        try {
+            const res = await this.baseDebuggerStep(stepType, url)
+            if (res.isSteppingPossible) {
+                await this.updateStack()
+                this.notifier.fire(new StoppedEvent("breakpoint", this.THREADID))
+            }
+            return res
+        } catch (error) {
+            if (error.properties["com.sap.adt.communicationFramework.subType"] === "debuggeeEnded") {
+                this.stopDebugging()
+            } else
+                this.ui.ShowError(error.message)
+        }
     }
 
     private async updateStack() {
         const stackInfo = await this.client.debuggerStackTrace().catch(() => undefined)
         const createFrame = (path: string, line: number, id: number) => {
             const name = path.replace(/.*\//, "")
-            const source = new Source(name, path)
+            const fullPath = createAdtUri(this.connId, path).toString()
+            const source = new Source(name, fullPath)
             const frame = new StackFrame(id, name, source, line)
             return frame
         }
@@ -174,9 +182,9 @@ export class DebugService {
                     if (!item) return
                     if (isFolder(item.file)) {
                         const child = [...item.file].find(i => isAbapFile(i.file) && i.file.object.contentsPath() === s.uri.uri)
-                        if (child) return createFrame(`${item.path}/${child.name}`, s.line, id)
+                        if (child) return createFrame(`${item.path}/${child.name}`, s.line, id + 1)
                     }
-                    else if (isAbapFile(item.file)) return createFrame(item.path, s.line, id)
+                    else if (isAbapFile(item.file)) return createFrame(item.path, s.line, id + 1)
                 } catch (error) {
                     log(error)
                 }
@@ -185,20 +193,11 @@ export class DebugService {
             this.stackTrace = (await Promise.all(stackp)).filter(s => s instanceof StackFrame)
         }
     }
-    private async updateDebugState(state: DebugStep | DebugAttach) {
-        const bp = state.reachedBreakpoints?.[0]
-        if (!bp) return
-        const stack = await this.client.debuggerStackTrace()
-        log(JSON.stringify(stack))
-        const variables = await this.client.debuggerVariables(["SY-SUBRC", "SY"])
-        log(JSON.stringify(variables))
-        const cvariables = await this.client.debuggerChildVariables()
-        log(JSON.stringify(cvariables))
-    }
 
     public async stopDebugging() {
         this.active = false
         await this.client.dropSession()
+        this.notifier.fire(new TerminatedEvent())
         if (this.listening)
             await this.client.statelessClone.debuggerDeleteListener("user", this.terminalId, this.ideId, this.username)
     }

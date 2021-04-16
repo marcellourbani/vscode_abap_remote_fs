@@ -42,7 +42,7 @@ export class AbapDebugSession extends LoggingDebugSession {
     }
 
     protected threadsRequest(response: DebugProtocol.ThreadsResponse): void {
-        response.body = { threads: [new Thread(1, "Single thread")] }
+        response.body = { threads: [new Thread(this.service.THREADID, "Single thread")] }
         this.sendResponse(response)
     }
 
@@ -70,6 +70,7 @@ export class AbapDebugSession extends LoggingDebugSession {
     protected async disconnectRequest(response: DebugProtocol.DisconnectResponse, args: DebugProtocol.DisconnectArguments, request?: DebugProtocol.Request) {
         await this.logOut()
         super.disconnectRequest(response, args, request)
+        this.sendResponse(response)
     }
 
     protected async attachRequest(response: DebugProtocol.AttachResponse, args: DebugProtocol.AttachRequestArguments, request?: DebugProtocol.Request) {
@@ -93,12 +94,13 @@ export class AbapDebugSession extends LoggingDebugSession {
             stackFrames,
             totalFrames: stackFrames.length
         }
+        this.sendResponse(response)
     }
 
     protected breakpointLocationsRequest(response: DebugProtocol.BreakpointLocationsResponse, args: DebugProtocol.BreakpointLocationsArguments, request?: DebugProtocol.Request): void {
         if (args.source.path) {
             const bps = this.service.getBreakpoints(args.source.path);
-            response.body = { breakpoints: bps.map(col => ({ line: args.line, column: col.column })) };
+            response.body = { breakpoints: bps.map(_ => ({ line: args.line, column: 0 })) };
         } else response.body = { breakpoints: [] };
 
         this.sendResponse(response)
@@ -121,21 +123,12 @@ export class AbapDebugSession extends LoggingDebugSession {
 
     protected initializeRequest(response: DebugProtocol.InitializeResponse, args: DebugProtocol.InitializeRequestArguments): void {
         response.body = {
-            // supportsBreakpointLocationsRequest: true,
+            supportsBreakpointLocationsRequest: true,
             supportsCancelRequest: true,
             supportsStepInTargetsRequest: true,
             supportsConfigurationDoneRequest: true,
             supportsTerminateRequest: true,
             supportsSetVariable: true,
-            // supportsInstructionBreakpoints: true,
-
-
-            // supportsEvaluateForHovers: true,
-            // supportsStepBack: true,
-            // supportsDataBreakpoints: true,
-            // supportsCompletionsRequest : true,
-            // supportsExceptionFilterOptions : true,
-            // supportsExceptionInfoRequest : true,
         }
 
         this.sendResponse(response)
