@@ -1,5 +1,5 @@
 import { DebugAdapterDescriptor, DebugAdapterDescriptorFactory, DebugAdapterInlineImplementation, window } from "vscode";
-import { AbapDebugSession, AbapDebugSessionCfg } from "./abapDebugAdapter";
+import { AbapDebugSession, AbapDebugSessionCfg } from "./abapDebugSession";
 import { DebuggerUI, DebugService } from "./debugService";
 
 const ui: DebuggerUI = {

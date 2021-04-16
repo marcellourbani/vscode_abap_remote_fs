@@ -1,14 +1,14 @@
-import { ADTClient, DebugAttach, Debuggee, DebugStep, DebugStepType, isDebuggerBreakpoint, isDebugListenerError, session_types } from "abap-adt-api";
+import { ADTClient, DebugAttach, Debuggee, DebugStack, DebugStackInfo, DebugStep, DebugStepType, isDebuggerBreakpoint, isDebugListenerError, session_types } from "abap-adt-api";
 import { newClientFromKey, md5 } from "./functions";
 import { readFileSync } from "fs";
 import { log } from "../../lib";
 import { DebugProtocol } from "vscode-debugprotocol";
 import { Disposable, EventEmitter, Uri } from "vscode";
 import { getRoot } from "../conections";
-import { isAbapFile } from "abapfs";
+import { isAbapFile, isFolder } from "abapfs";
 import { homedir } from "os";
 import { join } from "path";
-import { StoppedEvent, TerminatedEvent } from "vscode-debugadapter";
+import { Source, StackFrame, StoppedEvent, TerminatedEvent } from "vscode-debugadapter";
 
 let breakpointId = 1
 
@@ -24,14 +24,19 @@ export class DebugService {
     private username: string
     private notifier: EventEmitter<DebugProtocol.Event> = new EventEmitter()
     private listeners: Disposable[] = []
-
-    addListener(listener: (e: DebugProtocol.Event) => any, thisArg?: any) {
-        return this.notifier.event(listener, thisArg, this.listeners)
-    }
+    private stackTrace: StackFrame[] = [];
+    private breakpoints = new Map<string, DebugProtocol.Breakpoint[]>()
 
     constructor(private connId: string, private client: ADTClient, private terminalId: string, private ui: DebuggerUI) {
         this.ideId = md5(connId)
         this.username = client.username.toUpperCase()
+    }
+    addListener(listener: (e: DebugProtocol.Event) => any, thisArg?: any) {
+        return this.notifier.event(listener, thisArg, this.listeners)
+    }
+
+    getStack() {
+        return this.stackTrace
     }
 
     public static async create(connId: string, ui: DebuggerUI) {
@@ -60,6 +65,7 @@ export class DebugService {
                 }
                 await this.onBreakpointReached(debuggee)
             } catch (error) {
+                if (!this.active) return
                 if (error.properties["com.sap.adt.communicationFramework.subType"]) {
                     const txt = error?.properties?.conflictText || "Debugger conflict detected"
                     const message = `${txt} Take over debugging?`
@@ -85,7 +91,16 @@ export class DebugService {
         }
     }
 
+    public getBreakpoints(path: string) {
+        return this.breakpoints.get(path) || [];
+    }
     public async setBreakpoints(source: DebugProtocol.Source, breakpoints: DebugProtocol.SourceBreakpoint[]) {
+        const bps = await this.setBreakpointsInt(source, breakpoints)
+        if (source.path) this.breakpoints.set(source.path, bps)
+        return bps
+    }
+
+    private async setBreakpointsInt(source: DebugProtocol.Source, breakpoints: DebugProtocol.SourceBreakpoint[]) {
         breakpoints ||= []
         if (!source.path) return []
         const uri = Uri.parse(source.path)
@@ -120,15 +135,8 @@ export class DebugService {
         try {
             const attach = await this.client.debuggerAttach("user", debuggee.DEBUGGEE_ID, this.username, true)
             const bp = attach.reachedBreakpoints[0]
-            this.notifier.fire(new StoppedEvent("breakpoint reached"))
-            log(JSON.stringify(bp))
-            const stack = await this.client.debuggerStackTrace()
-            log(JSON.stringify(stack))
-            const variables = await this.client.debuggerVariables(["SY-SUBRC", "SY"])
-            log(JSON.stringify(variables))
-            const cvariables = await this.client.debuggerChildVariables()
-            log(JSON.stringify(cvariables))
-            await this.client.debuggerStep("stepContinue")
+            await this.updateStack()
+            this.notifier.fire(new StoppedEvent("breakpoint"))
         } catch (error) {
             log(`${error}`)
             this.stopDebugging()
@@ -146,8 +154,36 @@ export class DebugService {
 
     public async debuggerStep(stepType: DebugStepType, url?: string) {
         const res = await this.baseDebuggerStep(stepType, url)
-        if (res.reachedBreakpoints?.length) await this.updateDebugState(res)
+        await this.updateStack()
         return res
+    }
+
+    private async updateStack() {
+        const stackInfo = await this.client.debuggerStackTrace().catch(() => undefined)
+        const createFrame = (path: string, line: number, id: number) => {
+            const name = path.replace(/.*\//, "")
+            const source = new Source(name, path)
+            const frame = new StackFrame(id, name, source, line)
+            return frame
+        }
+        if (stackInfo) {
+            const root = getRoot(this.connId)
+            const stackp = stackInfo.stack.map(async (s, id) => {
+                try {
+                    const item = await root.findByAdtUri(s.uri.uri, false)
+                    if (!item) return
+                    if (isFolder(item.file)) {
+                        const child = [...item.file].find(i => isAbapFile(i.file) && i.file.object.contentsPath() === s.uri.uri)
+                        if (child) return createFrame(`${item.path}/${child.name}`, s.line, id)
+                    }
+                    else if (isAbapFile(item.file)) return createFrame(item.path, s.line, id)
+                } catch (error) {
+                    log(error)
+                }
+            })
+            // @ts-ignore
+            this.stackTrace = (await Promise.all(stackp)).filter(s => s instanceof StackFrame)
+        }
     }
     private async updateDebugState(state: DebugStep | DebugAttach) {
         const bp = state.reachedBreakpoints?.[0]
