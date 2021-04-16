@@ -1,5 +1,5 @@
 import { DebugConfiguration, DebugSession } from "vscode";
-import { InitializedEvent, LoggingDebugSession } from "vscode-debugadapter";
+import { InitializedEvent, LoggingDebugSession, StoppedEvent } from "vscode-debugadapter";
 import { DEBUGTYPE } from "./abapConfigurationProvider";
 import { DebugProtocol } from 'vscode-debugprotocol';
 import { DebugService } from "./debugService";
