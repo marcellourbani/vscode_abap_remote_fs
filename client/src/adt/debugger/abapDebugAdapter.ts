@@ -16,13 +16,14 @@ export class AbapDebugSession extends LoggingDebugSession {
 
     constructor(private connId: string, private readonly service: DebugService) {
         super(DEBUGTYPE)
+        service.addListener(e => {
+            this.sendEvent(e)
+        })
     }
 
     protected async setBreakPointsRequest(response: DebugProtocol.SetBreakpointsResponse, args: DebugProtocol.SetBreakpointsArguments, request?: DebugProtocol.Request) {
-        const { source: { path = "" }, breakpoints = [] } = args
-        if (path) {
-            response.body = { breakpoints: await this.service.setBreakpoints(path, breakpoints) }
-        }
+        const { source, breakpoints = [] } = args
+        response.body = { breakpoints: await this.service.setBreakpoints(source, breakpoints) }
         this.sendResponse(response)
     }
     protected dispatchRequest(request: DebugProtocol.Request) {

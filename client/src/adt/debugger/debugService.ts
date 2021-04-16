@@ -1,13 +1,14 @@
-import { ADTClient, DebugAttach, DebugBreakpoint, Debuggee, DebugStep, DebugStepType, isDebugListenerError, session_types } from "abap-adt-api";
+import { ADTClient, DebugAttach, DebugBreakpoint, Debuggee, DebugStep, DebugStepType, isDebuggerBreakpoint, isDebugListenerError, session_types } from "abap-adt-api";
 import { newClientFromKey, md5 } from "./functions";
 import { readFileSync } from "fs";
 import { log } from "../../lib";
 import { DebugProtocol } from "vscode-debugprotocol";
-import { Uri } from "vscode";
+import { Disposable, EventEmitter, Uri } from "vscode";
 import { getRoot } from "../conections";
 import { isAbapFile } from "abapfs";
 import { homedir } from "os";
 import { join } from "path";
+import { StoppedEvent } from "vscode-debugadapter";
 
 let breakpointId = 1
 
@@ -20,6 +21,12 @@ export class DebugService {
     private listening = false
     private ideId: string;
     private username: string
+    private notifier: EventEmitter<DebugProtocol.Event> = new EventEmitter()
+    private listeners: Disposable[] = []
+
+    addListener(listener: (e: DebugProtocol.Event) => any, thisArg?: any) {
+        return this.notifier.event(listener, thisArg, this.listeners)
+    }
 
     constructor(private connId: string, private client: ADTClient, private terminalId: string) {
         this.ideId = md5(connId)
@@ -55,17 +62,32 @@ export class DebugService {
         }
     }
 
-    public async setBreakpoints(path: string, breakpoints: DebugProtocol.SourceBreakpoint[] = []) {
-        const uri = Uri.parse(path)
+    public async setBreakpoints(source: DebugProtocol.Source, breakpoints: DebugProtocol.SourceBreakpoint[]) {
+        breakpoints ||= []
+        if (!source.path) return []
+        const uri = Uri.parse(source.path)
         const root = getRoot(this.connId)
         const node = await root.getNodeAsync(uri.path)
         if (isAbapFile(node)) {
             const objuri = node.object.contentsPath()
             const clientId = `24:${this.connId}${uri.path}` // `582:/A4H_001_developer_en/.adt/programs/programs/ztest/ztest.asprog`
             const bps = breakpoints.map(b => `${objuri}#start=${b.line}`)
-            const actualbps = await this.client.statelessClone.debuggerSetBreakpoints(
-                "user", this.terminalId, this.ideId, clientId, bps, this.username)
-            return actualbps.map(convertBreakpoints)
+            try {
+                const actualbps = await this.client.statelessClone.debuggerSetBreakpoints(
+                    "user", this.terminalId, this.ideId, clientId, bps, this.username)
+                return breakpoints.map(bp => {
+                    const actual = actualbps.find(a => isDebuggerBreakpoint(a) && a.uri.range.start.line === bp.line)
+                    if (actual) return {
+                        verified: true,
+                        id: breakpointId++,
+                        line: bp.line,
+                        source: { ...source, adapterData: actual }
+                    }
+                    return { verified: false }
+                })
+            } catch (error) {
+                log(error.message)
+            }
         }
         return []
 
@@ -75,6 +97,7 @@ export class DebugService {
         try {
             const attach = await this.client.debuggerAttach("user", debuggee.DEBUGGEE_ID, this.username, true)
             const bp = attach.reachedBreakpoints[0]
+            this.notifier.fire(new StoppedEvent("breakpoint reached"))
             log(JSON.stringify(bp))
             const stack = await this.client.debuggerStackTrace()
             log(JSON.stringify(stack))
