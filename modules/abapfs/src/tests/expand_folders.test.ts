@@ -60,9 +60,7 @@ test(
 test(
   "fm in $ABAPGIT",
   runTest(async root => {
-    const func = await root.getNodeAsync(
-      "/$TMP/$ABAPGIT/Source Code Library/Function Groups/ZABAPGIT_PARALLEL/Function Modules/Z_ABAPGIT_SERIALIZE_PARALLEL.fugr.abap"
-    )
+    const func = await root.getNodeAsync("/$TMP/$ABAPGIT/$ABAPGIT_OBJECTS/$ABAPGIT_OBJECTS_CORE/Source Code Library/Function Groups/ZABAPGIT_PARALLEL/Function Modules/Z_ABAPGIT_SERIALIZE_PARALLEL.fugr.abap")
     expect(isAbapFile(func)).toBe(true)
   })
 )
@@ -92,7 +90,10 @@ test(
   runTest(async root => {
     const para = await root.getNodeAsync(
       "/System Library/BASIS/SCTS_REQ/Others/" +
-        convertSlash("SET/GET Parameters")
+      convertSlash("SET/GET Parameters")
+    ) || await root.getNodeAsync(
+      "/System Library/BASIS/SCTS_REQ/" + // in hana 1909 has a different path
+      convertSlash("SET/GET Parameters")
     )
     expect(isAbapStat(para)).toBe(false)
     expect(para?.size).toBeGreaterThan(1)

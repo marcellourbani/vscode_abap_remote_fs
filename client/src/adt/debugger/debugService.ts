@@ -9,6 +9,7 @@ import { isAbapFile, isFolder } from "abapfs";
 import { homedir } from "os";
 import { join } from "path";
 import { Breakpoint, Source, StackFrame, StoppedEvent, TerminatedEvent } from "vscode-debugadapter";
+import { vsCodeUri } from "../../langClient";
 
 export interface DebuggerUI {
     Confirmator: (message: string) => Thenable<boolean>
@@ -169,8 +170,8 @@ export class DebugService {
         const stackInfo = await this.client.debuggerStackTrace().catch(() => undefined)
         const createFrame = (path: string, line: number, id: number) => {
             const name = path.replace(/.*\//, "")
-            const fullPath = createAdtUri(this.connId, path).toString()
-            const source = new Source(name, fullPath)
+            // const fullPath = createAdtUri(this.connId, path).toString()
+            const source = new Source(name, path)
             const frame = new StackFrame(id, name, source, line)
             return frame
         }
@@ -178,15 +179,11 @@ export class DebugService {
             const root = getRoot(this.connId)
             const stackp = stackInfo.stack.map(async (s, id) => {
                 try {
-                    const item = await root.findByAdtUri(s.uri.uri, false)
-                    if (!item) return
-                    if (isFolder(item.file)) {
-                        const child = [...item.file].find(i => isAbapFile(i.file) && i.file.object.contentsPath() === s.uri.uri)
-                        if (child) return createFrame(`${item.path}/${child.name}`, s.line, id + 1)
-                    }
-                    else if (isAbapFile(item.file)) return createFrame(item.path, s.line, id + 1)
+                    const path = await vsCodeUri(this.connId, s.uri.uri, false, true)
+                    return createFrame(path, s.line, id)
                 } catch (error) {
                     log(error)
+                    return createFrame("unknown", 0, id)
                 }
             })
             // @ts-ignore

@@ -42,12 +42,30 @@ import { AbapObject } from "abapobject"
 import { IncludeService, IncludeProvider } from "./adt/includes"
 import * as R from "ramda"
 
-async function getVSCodeUri(req: UriRequest): Promise<StringWrapper> {
-  const root = getRoot(req.confKey)
-  const hit = await root.findByAdtUri(req.uri, req.mainInclude)
-  if (!hit) throw new Error(`File not found:${req.uri}`)
-  return { s: urlFromPath(req.confKey, hit.path) }
+const uriErrors = new Map<string, boolean>()
+const uriError = (uri: string) => new Error(`File not found:${uri}`)
+export async function vsCodeUri(confKey: string, uri: string, mainInclude: boolean, cacheErrors = false): Promise<string> {
+  const key = `${confKey}_${uri}_${mainInclude}`
+  if (cacheErrors && uriErrors.get(key)) throw uriError(uri)
+  const root = getRoot(confKey)
+  try {
+    const hit = await root.findByAdtUri(uri, mainInclude)
+    if (!hit) {
+      if (cacheErrors) uriErrors.set(key, true)
+      throw uriError(uri)
+    }
+    return urlFromPath(confKey, hit.path)
+  } catch (error) {
+    if (cacheErrors) uriErrors.set(key, true)
+    throw error;
+  }
 }
+
+async function getVSCodeUri({ confKey, uri, mainInclude }: UriRequest): Promise<StringWrapper> {
+  const s = await vsCodeUri(confKey, uri, mainInclude)
+  return { s }
+}
+
 export function findEditor(url: string) {
   return window.visibleTextEditors.find(
     e =>

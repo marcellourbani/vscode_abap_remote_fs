@@ -3,7 +3,7 @@
     "experimentalDecorators": true,
     "module": "commonjs",
     "esModuleInterop": true,
-    "target": "ES6",
+    "target": "ES2019",
     "rootDir": "src",
     "outDir": "out",
     "lib": ["es2019"],
