@@ -12,9 +12,15 @@ export interface AbapDebugSessionCfg extends DebugSession {
     configuration: AbapDebugConfiguration
 }
 
+interface Variable {
+    id: string,
+    name: string
+}
+
 export class AbapDebugSession extends LoggingDebugSession {
     private sub: Disposable;
-    private variableHandles = new Handles<string>();
+    private variableHandles = new Handles<Variable>();
+    private scopes: DebugProtocol.Scope[] = [];
 
     constructor(private connId: string, private readonly service: DebugService) {
         super(DEBUGTYPE)
@@ -106,18 +112,31 @@ export class AbapDebugSession extends LoggingDebugSession {
         this.sendResponse(response)
     }
 
-    protected scopesRequest(response: DebugProtocol.ScopesResponse, args: DebugProtocol.ScopesArguments): void {
-
-        response.body = {
-            scopes: [
-                new Scope("Local", this.variableHandles.create("local"), false),
-                new Scope("Global", this.variableHandles.create("global"), true)
-            ]
-        };
+    protected async scopesRequest(response: DebugProtocol.ScopesResponse, args: DebugProtocol.ScopesArguments) {
+        if (!this.scopes.length) {
+            const hierarchies = await this.service.getRootHierarchies()
+            this.scopes = hierarchies.map(h => {
+                const name = h.CHILD_NAME || h.CHILD_ID
+                const handler = this.variableHandles.create({ id: h.CHILD_ID, name })
+                return new Scope(name, handler, true)
+            })
+        }
+        response.body = { scopes: this.scopes }
         this.sendResponse(response);
     }
 
     protected async variablesRequest(response: DebugProtocol.VariablesResponse, args: DebugProtocol.VariablesArguments, request?: DebugProtocol.Request) {
+        const vari = this.variableHandles.get(args.variablesReference)
+        if (vari) {
+            const children = await this.service.childVariables(vari.id)
+            const variables: DebugProtocol.Variable[] = children.variables.map(v => ({
+                name: v.NAME,
+                value: v.VALUE,
+                type: "string",
+                variablesReference: this.variableHandles.create({ name: v.NAME, id: v.ID })
+            }))
+            response.body = { variables }
+        }
         this.sendResponse(response);
     }
 

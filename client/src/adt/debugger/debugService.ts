@@ -1,4 +1,4 @@
-import { ADTClient, DebugAttach, Debuggee, DebugStack, DebugStackInfo, DebugStep, DebugStepType, isDebuggerBreakpoint, isDebugListenerError, session_types } from "abap-adt-api";
+import { ADTClient, DebugAttach, DebugChildVariablesHierarchy, Debuggee, DebugStack, DebugStackInfo, DebugStep, DebugStepType, isDebuggerBreakpoint, isDebugListenerError, session_types } from "abap-adt-api";
 import { newClientFromKey, md5 } from "./functions";
 import { readFileSync } from "fs";
 import { createAdtUri, log } from "../../lib";
@@ -39,6 +39,11 @@ export class DebugService {
         return this.stackTrace
     }
 
+    async getRootHierarchies(): Promise<DebugChildVariablesHierarchy[]> {
+        const scopes = await this.client.debuggerChildVariables(["@ROOT"])
+        return scopes.hierarchies
+    }
+
     public static async create(connId: string, ui: DebuggerUI) {
         const client = await newClientFromKey(connId)
         if (!client) throw new Error(`Unable to create client for${connId}`);
@@ -47,6 +52,17 @@ export class DebugService {
         const cfgfile = join(homedir(), ".SAP/ABAPDebugging/terminalId")
         const terminalId = readFileSync(cfgfile).toString("utf8")// "71999B60AA6349CF91D0A23773B3C728"
         return new DebugService(connId, client, terminalId, ui)
+    }
+
+    async childVariables(id: string) {
+        return this.client.debuggerChildVariables([id])
+    }
+
+    private stopListener(norestart = true) {
+        if (norestart) {
+            this.active = false
+        }
+        return this.client.statelessClone.debuggerDeleteListener("user", this.terminalId, this.ideId, this.username)
     }
 
     public async mainLoop() {
@@ -58,7 +74,7 @@ export class DebugService {
                 this.listening = true
                 const debuggee = await this.client.statelessClone.debuggerListen("user", this.terminalId, this.ideId, this.username)
                     .finally(() => this.listening = false)
-                if (!debuggee) continue
+                if (!debuggee || !this.active) continue
                 if (isDebugListenerError(debuggee)) {
                     // reconnect
                     break
@@ -73,7 +89,7 @@ export class DebugService {
                     const resp = await this.ui.Confirmator(message)
                     if (resp)
                         try {
-                            await this.client.statelessClone.debuggerDeleteListener("user", this.terminalId, this.ideId, this.username)
+                            await this.stopListener(false)
                         } catch (error2) {
                             log(JSON.stringify(error2))
                         }
@@ -193,17 +209,15 @@ export class DebugService {
 
     public async stopDebugging() {
         this.active = false
-        await this.client.dropSession()
         this.notifier.fire(new TerminatedEvent())
-        if (this.listening)
-            await this.client.statelessClone.debuggerDeleteListener("user", this.terminalId, this.ideId, this.username)
     }
     public async logout() {
         this.active = false
         if (this.listening)
-            await this.client.debuggerDeleteListener("user", this.terminalId, this.ideId, this.username)
+            await this.stopListener()
         const ignore = () => undefined
         if (this.client.loggedin) {
+            await this.client.dropSession()
             return this.client.logout().catch(ignore)
         }
     }
