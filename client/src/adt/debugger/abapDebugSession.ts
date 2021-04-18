@@ -19,8 +19,6 @@ interface Variable {
 
 export class AbapDebugSession extends LoggingDebugSession {
     private sub: Disposable;
-    private variableHandles = new Handles<Variable>();
-    private scopes: DebugProtocol.Scope[] = [];
 
     constructor(private connId: string, private readonly service: DebugService) {
         super(DEBUGTYPE)
@@ -75,7 +73,6 @@ export class AbapDebugSession extends LoggingDebugSession {
 
     protected async disconnectRequest(response: DebugProtocol.DisconnectResponse, args: DebugProtocol.DisconnectArguments, request?: DebugProtocol.Request) {
         await this.logOut()
-        super.disconnectRequest(response, args, request)
         this.sendResponse(response)
     }
 
@@ -113,30 +110,12 @@ export class AbapDebugSession extends LoggingDebugSession {
     }
 
     protected async scopesRequest(response: DebugProtocol.ScopesResponse, args: DebugProtocol.ScopesArguments) {
-        if (!this.scopes.length) {
-            const hierarchies = await this.service.getRootHierarchies()
-            this.scopes = hierarchies.map(h => {
-                const name = h.CHILD_NAME || h.CHILD_ID
-                const handler = this.variableHandles.create({ id: h.CHILD_ID, name })
-                return new Scope(name, handler, true)
-            })
-        }
-        response.body = { scopes: this.scopes }
+        response.body = { scopes: await this.service.getScopes() }
         this.sendResponse(response);
     }
 
     protected async variablesRequest(response: DebugProtocol.VariablesResponse, args: DebugProtocol.VariablesArguments, request?: DebugProtocol.Request) {
-        const vari = this.variableHandles.get(args.variablesReference)
-        if (vari) {
-            const children = await this.service.childVariables(vari.id)
-            const variables: DebugProtocol.Variable[] = children.variables.map(v => ({
-                name: v.NAME,
-                value: v.VALUE,
-                type: "string",
-                variablesReference: this.variableHandles.create({ name: v.NAME, id: v.ID })
-            }))
-            response.body = { variables }
-        }
+        response.body = { variables: await this.service.getVariables(args.variablesReference) }
         this.sendResponse(response);
     }
 

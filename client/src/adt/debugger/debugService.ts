@@ -1,20 +1,28 @@
-import { ADTClient, DebugAttach, DebugChildVariablesHierarchy, Debuggee, DebugStack, DebugStackInfo, DebugStep, DebugStepType, isDebuggerBreakpoint, isDebugListenerError, session_types } from "abap-adt-api";
+import {
+    ADTClient, Debuggee, DebugStepType, isDebuggerBreakpoint,
+    debugMetaIsComplex, isDebugListenerError, session_types
+} from "abap-adt-api";
 import { newClientFromKey, md5 } from "./functions";
 import { readFileSync } from "fs";
 import { createAdtUri, log } from "../../lib";
 import { DebugProtocol } from "vscode-debugprotocol";
 import { Disposable, EventEmitter, Uri } from "vscode";
 import { getRoot } from "../conections";
-import { isAbapFile, isFolder } from "abapfs";
+import { isAbapFile, } from "abapfs";
 import { homedir } from "os";
 import { join } from "path";
-import { Breakpoint, Source, StackFrame, StoppedEvent, TerminatedEvent } from "vscode-debugadapter";
+import { Breakpoint, Handles, Scope, Source, StackFrame, StoppedEvent, TerminatedEvent } from "vscode-debugadapter";
 import { vsCodeUri } from "../../langClient";
 
 export interface DebuggerUI {
     Confirmator: (message: string) => Thenable<boolean>
     ShowError: (message: string) => any
 }
+interface Variable {
+    id: string,
+    name: string
+}
+
 
 export class DebugService {
     private active: boolean = false;
@@ -25,7 +33,9 @@ export class DebugService {
     private listeners: Disposable[] = []
     private stackTrace: StackFrame[] = [];
     private breakpoints = new Map<string, Breakpoint[]>()
+    private variableHandles = new Handles<Variable>();
     public readonly THREADID = 1;
+    scopes: Scope[] = [];
 
     constructor(private connId: string, private client: ADTClient, private terminalId: string, private ui: DebuggerUI) {
         this.ideId = md5(connId)
@@ -39,9 +49,31 @@ export class DebugService {
         return this.stackTrace
     }
 
-    async getRootHierarchies(): Promise<DebugChildVariablesHierarchy[]> {
-        const scopes = await this.client.debuggerChildVariables(["@ROOT"])
-        return scopes.hierarchies
+    async getScopes() {
+        if (!this.scopes.length) {
+            const { hierarchies } = await this.client.debuggerChildVariables(["@ROOT"])
+            this.scopes = hierarchies.map(h => {
+                const name = h.CHILD_NAME || h.CHILD_ID
+                const handler = this.variableHandles.create({ id: h.CHILD_ID, name })
+                return new Scope(name, handler, true)
+            })
+        }
+        return this.scopes
+    }
+
+    async getVariables(parentid: number) {
+        const vari = this.variableHandles.get(parentid)
+        if (vari) {
+            const children = await this.client.debuggerChildVariables([vari.id])
+            const variables: DebugProtocol.Variable[] = children.variables.map(v => ({
+                name: `${v.NAME}`,
+                value: debugMetaIsComplex(v.META_TYPE) ? v.META_TYPE : `${v.VALUE}`,
+                variablesReference: debugMetaIsComplex(v.META_TYPE) ? this.variableHandles.create({ name: v.NAME, id: v.ID }) : 0,
+                memoryReference: `${v.ID}`
+            }))
+            return variables
+        }
+        return []
     }
 
     public static async create(connId: string, ui: DebuggerUI) {
@@ -52,10 +84,6 @@ export class DebugService {
         const cfgfile = join(homedir(), ".SAP/ABAPDebugging/terminalId")
         const terminalId = readFileSync(cfgfile).toString("utf8")// "71999B60AA6349CF91D0A23773B3C728"
         return new DebugService(connId, client, terminalId, ui)
-    }
-
-    async childVariables(id: string) {
-        return this.client.debuggerChildVariables([id])
     }
 
     private stopListener(norestart = true) {
@@ -212,14 +240,12 @@ export class DebugService {
         this.notifier.fire(new TerminatedEvent())
     }
     public async logout() {
-        this.active = false
-        if (this.listening)
-            await this.stopListener()
         const ignore = () => undefined
-        if (this.client.loggedin) {
-            await this.client.dropSession()
-            return this.client.logout().catch(ignore)
-        }
+        this.active = false
+        const proms: Promise<any>[] = []
+        if (this.listening) proms.push(this.stopListener().catch(ignore))
+        if (this.client.loggedin)
+            proms.push(this.client.dropSession().catch(ignore).then(() => this.client.logout().catch(ignore)))
+        await Promise.all(proms)
     }
 }
-
