@@ -1,6 +1,7 @@
 // keytar depends on a native module shipped in vscode
 // this loads only the type definitions
 import * as keytarType from "./keytar"
+import * as winRegistryType from "vscode-windows-registry";
 
 // get the module from vscode. This is not an official API, might break at some point
 // this is required because keytar includes a binary we can't include
@@ -16,6 +17,11 @@ function getCodeModule<T>(moduleName: string): T | undefined {
   } catch (err) {
     return undefined
   }
+}
+let winRegistry: typeof winRegistryType | undefined
+export const loadWindowsRegistry = () => {
+  if (!winRegistry) winRegistry = getCodeModule<typeof winRegistryType>("vscode-windows-registry")
+  return winRegistry
 }
 
 let keytar: typeof keytarType | undefined

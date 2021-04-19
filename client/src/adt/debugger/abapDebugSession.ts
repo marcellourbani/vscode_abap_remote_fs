@@ -12,11 +12,6 @@ export interface AbapDebugSessionCfg extends DebugSession {
     configuration: AbapDebugConfiguration
 }
 
-interface Variable {
-    id: string,
-    name: string
-}
-
 export class AbapDebugSession extends LoggingDebugSession {
     private sub: Disposable;
 
@@ -110,7 +105,7 @@ export class AbapDebugSession extends LoggingDebugSession {
     }
 
     protected async scopesRequest(response: DebugProtocol.ScopesResponse, args: DebugProtocol.ScopesArguments) {
-        response.body = { scopes: await this.service.getScopes() }
+        response.body = { scopes: await this.service.getScopes(args.frameId) }
         this.sendResponse(response);
     }
 

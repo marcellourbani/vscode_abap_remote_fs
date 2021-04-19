@@ -1,18 +1,19 @@
 import {
     ADTClient, Debuggee, DebugStepType, isDebuggerBreakpoint,
-    debugMetaIsComplex, isDebugListenerError, session_types
+    debugMetaIsComplex, isDebugListenerError, session_types, DebugMetaType, DebugVariable
 } from "abap-adt-api";
 import { newClientFromKey, md5 } from "./functions";
-import { readFileSync } from "fs";
-import { createAdtUri, log } from "../../lib";
+import { readFileSync, writeFileSync } from "fs";
+import { loadWindowsRegistry, log } from "../../lib";
 import { DebugProtocol } from "vscode-debugprotocol";
 import { Disposable, EventEmitter, Uri } from "vscode";
 import { getRoot } from "../conections";
 import { isAbapFile, } from "abapfs";
 import { homedir } from "os";
 import { join } from "path";
-import { Breakpoint, Handles, Scope, Source, StackFrame, StoppedEvent, TerminatedEvent } from "vscode-debugadapter";
+import { Breakpoint, Handles, Scope, Source, StoppedEvent, TerminatedEvent } from "vscode-debugadapter";
 import { vsCodeUri } from "../../langClient";
+import { v1 } from "uuid";
 
 export interface DebuggerUI {
     Confirmator: (message: string) => Thenable<boolean>
@@ -20,7 +21,38 @@ export interface DebuggerUI {
 }
 interface Variable {
     id: string,
-    name: string
+    name: string,
+    meta?: DebugMetaType,
+    lines?: number
+}
+
+const variableValue = (v: DebugVariable) => {
+    if (v.META_TYPE === "table") return `${v.TECHNICAL_TYPE || v.META_TYPE} ${v.TABLE_LINES} lines`
+    if (debugMetaIsComplex(v.META_TYPE)) return v.META_TYPE
+    return `${v.VALUE}`
+}
+
+const getOrCreateTerminalId = async () => {
+    if (process.platform === "win32") {
+        const reg = loadWindowsRegistry()
+        const terminalId = reg && reg.GetStringRegKey("HKEY_CURRENT_USER", "Software\\SAP\\ABAP Debugging", "TerminalID")
+        if (!terminalId) throw new Error("Unable to read terminal ID from windows registry");
+        return terminalId
+    } else {
+        const cfgfile = join(homedir(), ".SAP/ABAPDebugging/terminalId")
+        try {
+            return readFileSync(cfgfile).toString("utf8")
+        } catch (error) {
+            const terminalId = v1()
+            writeFileSync(cfgfile, terminalId)
+            return terminalId
+        }
+    }
+}
+
+interface StackFrame extends DebugProtocol.StackFrame {
+    stackPosition: number
+    stackUri?: string
 }
 
 
@@ -49,7 +81,11 @@ export class DebugService {
         return this.stackTrace
     }
 
-    async getScopes() {
+    async getScopes(frameId: number) {
+        const currentStack = this.stackTrace.find(s => s.id === frameId)
+        if (currentStack && !isNaN(currentStack.stackPosition)) {
+            await this.client.debuggerGoToStack(currentStack.stackUri || currentStack.stackPosition)
+        }
         if (!this.scopes.length) {
             const { hierarchies } = await this.client.debuggerChildVariables(["@ROOT"])
             this.scopes = hierarchies.map(h => {
@@ -61,14 +97,25 @@ export class DebugService {
         return this.scopes
     }
 
+    private async childVariables(parent: Variable) {
+        if (parent.meta === "table") {
+            if (!parent.lines) return []
+            const keys = [...Array(parent.lines).keys()].map(k => `${parent.id}[${k + 1}]`)
+            return this.client.debuggerVariables(keys)
+        }
+        return this.client.debuggerChildVariables([parent.id]).then(r => r.variables)
+    }
+
     async getVariables(parentid: number) {
         const vari = this.variableHandles.get(parentid)
         if (vari) {
-            const children = await this.client.debuggerChildVariables([vari.id])
-            const variables: DebugProtocol.Variable[] = children.variables.map(v => ({
+            const children = await this.childVariables(vari)
+            const variables: DebugProtocol.Variable[] = children.map(v => ({
                 name: `${v.NAME}`,
-                value: debugMetaIsComplex(v.META_TYPE) ? v.META_TYPE : `${v.VALUE}`,
-                variablesReference: debugMetaIsComplex(v.META_TYPE) ? this.variableHandles.create({ name: v.NAME, id: v.ID }) : 0,
+                value: variableValue(v),
+                variablesReference: debugMetaIsComplex(v.META_TYPE) ?
+                    this.variableHandles.create({ name: v.NAME, id: v.ID, meta: v.META_TYPE, lines: v.TABLE_LINES })
+                    : 0,
                 memoryReference: `${v.ID}`
             }))
             return variables
@@ -81,8 +128,7 @@ export class DebugService {
         if (!client) throw new Error(`Unable to create client for${connId}`);
         client.stateful = session_types.stateful
         await client.adtCoreDiscovery()
-        const cfgfile = join(homedir(), ".SAP/ABAPDebugging/terminalId")
-        const terminalId = readFileSync(cfgfile).toString("utf8")// "71999B60AA6349CF91D0A23773B3C728"
+        const terminalId = await getOrCreateTerminalId()
         return new DebugService(connId, client, terminalId, ui)
     }
 
@@ -97,8 +143,6 @@ export class DebugService {
         this.active = true
         while (this.active) {
             try {
-                // const foo = await this.client.statelessClone.debuggerListeners("user", this.terminalId, this.ideId, this.username)
-                // log(JSON.stringify(foo))
                 this.listening = true
                 const debuggee = await this.client.statelessClone.debuggerListen("user", this.terminalId, this.ideId, this.username)
                     .finally(() => this.listening = false)
@@ -212,26 +256,26 @@ export class DebugService {
 
     private async updateStack() {
         const stackInfo = await this.client.debuggerStackTrace().catch(() => undefined)
-        const createFrame = (path: string, line: number, id: number) => {
+        const createFrame = (path: string, line: number, id: number, stackPosition: number, stackUri?: string) => {
             const name = path.replace(/.*\//, "")
             // const fullPath = createAdtUri(this.connId, path).toString()
             const source = new Source(name, path)
-            const frame = new StackFrame(id, name, source, line)
+            const frame: StackFrame = { id, name, source, line, column: 0, stackPosition }
             return frame
         }
         if (stackInfo) {
-            const root = getRoot(this.connId)
             const stackp = stackInfo.stack.map(async (s, id) => {
                 try {
                     const path = await vsCodeUri(this.connId, s.uri.uri, false, true)
-                    return createFrame(path, s.line, id)
+                    const stackUri = "stackUri" in s ? s.stackUri : undefined
+                    return createFrame(path, s.line, id, s.stackPosition, stackUri)
                 } catch (error) {
                     log(error)
-                    return createFrame("unknown", 0, id)
+                    return createFrame("unknown", 0, id, NaN)
                 }
             })
             // @ts-ignore
-            this.stackTrace = (await Promise.all(stackp)).filter(s => s instanceof StackFrame)
+            this.stackTrace = (await Promise.all(stackp)).filter(s => !!s)
         }
     }
 
