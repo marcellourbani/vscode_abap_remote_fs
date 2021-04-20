@@ -114,14 +114,19 @@ export class AbapDebugSession extends LoggingDebugSession {
         this.sendResponse(response);
     }
 
+    protected async evaluateRequest(response: DebugProtocol.EvaluateResponse, args: DebugProtocol.EvaluateArguments, request?: DebugProtocol.Request) {
+        const v = await this.service.evaluate(args.expression)
+        if (v) response.body = v
+        this.sendResponse(response);
+    }
+
     protected initializeRequest(response: DebugProtocol.InitializeResponse, args: DebugProtocol.InitializeRequestArguments): void {
         response.body = {
             supportsBreakpointLocationsRequest: true,
             supportsCancelRequest: true,
             supportsStepInTargetsRequest: true,
             supportsConfigurationDoneRequest: true,
-            supportsTerminateRequest: true,
-            supportsSetVariable: true,
+            supportsTerminateRequest: true
         }
 
         this.sendResponse(response)

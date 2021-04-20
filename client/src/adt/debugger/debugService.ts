@@ -55,7 +55,6 @@ interface StackFrame extends DebugProtocol.StackFrame {
     stackUri?: string
 }
 
-
 export class DebugService {
     private active: boolean = false;
     private listening = false
@@ -64,10 +63,10 @@ export class DebugService {
     private notifier: EventEmitter<DebugProtocol.Event> = new EventEmitter()
     private listeners: Disposable[] = []
     private stackTrace: StackFrame[] = [];
+    private currentStackId?: number
     private breakpoints = new Map<string, Breakpoint[]>()
     private variableHandles = new Handles<Variable>();
     public readonly THREADID = 1;
-    scopes: Scope[] = [];
 
     constructor(private connId: string, private client: ADTClient, private terminalId: string, private ui: DebuggerUI) {
         this.ideId = md5(connId)
@@ -83,18 +82,17 @@ export class DebugService {
 
     async getScopes(frameId: number) {
         const currentStack = this.stackTrace.find(s => s.id === frameId)
-        if (currentStack && !isNaN(currentStack.stackPosition)) {
+        if (currentStack && !isNaN(currentStack.stackPosition) && frameId !== this.currentStackId) {
             await this.client.debuggerGoToStack(currentStack.stackUri || currentStack.stackPosition)
+            this.currentStackId = frameId
         }
-        if (!this.scopes.length) {
-            const { hierarchies } = await this.client.debuggerChildVariables(["@ROOT"])
-            this.scopes = hierarchies.map(h => {
-                const name = h.CHILD_NAME || h.CHILD_ID
-                const handler = this.variableHandles.create({ id: h.CHILD_ID, name })
-                return new Scope(name, handler, true)
-            })
-        }
-        return this.scopes
+        const { hierarchies } = await this.client.debuggerChildVariables(["@ROOT"])
+        const scopes = hierarchies.map(h => {
+            const name = h.CHILD_NAME || h.CHILD_ID
+            const handler = this.variableHandles.create({ id: h.CHILD_ID, name })
+            return new Scope(name, handler, true)
+        })
+        return scopes
     }
 
     private async childVariables(parent: Variable) {
@@ -104,6 +102,13 @@ export class DebugService {
             return this.client.debuggerVariables(keys)
         }
         return this.client.debuggerChildVariables([parent.id]).then(r => r.variables)
+    }
+
+    async evaluate(expression: string) {
+        const v = await this.client.debuggerVariables([expression])
+        if (!v[0]) return
+        const variablesReference = this.variableHandles.create({ id: v[0].ID, name: v[0].NAME, lines: v[0].TABLE_LINES, meta: v[0].META_TYPE })
+        return { result: variableValue(v[0]), variablesReference }
     }
 
     async getVariables(parentid: number) {
@@ -199,9 +204,9 @@ export class DebugService {
             const clientId = `24:${this.connId}${uri.path}` // `582:/A4H_001_developer_en/.adt/programs/programs/ztest/ztest.asprog`
             const bps = breakpoints.map(b => `${objuri}#start=${b.line}`)
             try {
-                const actualbps = await this.client.statelessClone.debuggerSetBreakpoints(
+                const actualbps = await this.client.debuggerSetBreakpoints(
                     "user", this.terminalId, this.ideId, clientId, bps, this.username)
-                return breakpoints.map(bp => {
+                const confirmed = breakpoints.map(bp => {
                     const actual = actualbps.find(a => isDebuggerBreakpoint(a) && a.uri.range.start.line === bp.line)
                     if (actual) {
                         const src = new Source(source.name || "", source.path)
@@ -209,6 +214,7 @@ export class DebugService {
                     }
                     return new Breakpoint(false)
                 })
+                return confirmed
             } catch (error) {
                 log(error.message)
             }
@@ -241,10 +247,8 @@ export class DebugService {
     public async debuggerStep(stepType: DebugStepType, url?: string) {
         try {
             const res = await this.baseDebuggerStep(stepType, url)
-            if (res.isSteppingPossible) {
-                await this.updateStack()
-                this.notifier.fire(new StoppedEvent("breakpoint", this.THREADID))
-            }
+            await this.updateStack()
+            this.notifier.fire(new StoppedEvent("breakpoint", this.THREADID))
             return res
         } catch (error) {
             if (error.properties["com.sap.adt.communicationFramework.subType"] === "debuggeeEnded") {
@@ -256,6 +260,8 @@ export class DebugService {
 
     private async updateStack() {
         const stackInfo = await this.client.debuggerStackTrace().catch(() => undefined)
+        this.currentStackId = 0
+        this.variableHandles.reset()
         const createFrame = (path: string, line: number, id: number, stackPosition: number, stackUri?: string) => {
             const name = path.replace(/.*\//, "")
             // const fullPath = createAdtUri(this.connId, path).toString()
