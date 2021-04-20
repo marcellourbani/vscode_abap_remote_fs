@@ -1,4 +1,4 @@
-import { Schema, model, connect } from "mongoose"
+import { Schema, model, connect, Mongoose } from "mongoose"
 import { RemoteManager } from "../config"
 import { MethodCall } from "method-call-logger"
 import { log } from "./logger"
@@ -77,7 +77,7 @@ const httpSchema = new Schema({
 })
 
 class MongoClient {
-  private connection: Promise<typeof import("mongoose")>
+  private connection: Promise<Mongoose>
   private pendingRequests = new Map([
     [SOURCE_CLIENT, new Map<number, HttpRequest>()],
     [SOURCE_SERVER, new Map<number, HttpRequest>()]
