@@ -59,7 +59,7 @@
     "webpack-watch-changed": "^1.0.0"
   },
   "dependencies": {
-    "@abaplint/core": "^2.58.6",
+    "@abaplint/core": "2.74.0",
     "@types/tmp": "0.2.0",
     "abap-adt-api": "^2.10.0",
     "abap_cloud_platform": "^1.1.2",
@@ -71,6 +71,8 @@
     "fp-ts": "^2.8.4",
     "fs-jetpack": "^4.0.0",
     "method-call-logger": "^1.0.7",
+    "mongodb-client-encryption": "^1.2.3",
+    "mongoose": "^5.12.5",
     "open": "^7.3.0",
     "puppeteer-core": "^8.0.0",
     "ramda": "^0.27.1",
