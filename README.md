@@ -4,6 +4,8 @@ Turns Visual studio code into an IDE for ABAP development, operating directly on
 
 Is less capable and more buggy than Eclipse with ADT, but also more responsive, and has a couple of extra features not found in Eclipse, like listing changed sources by transport and normalizing changes in diff views
 
+> **Now with debugging support (buggy, only tested on Linux) !!**
+
 ## Getting started
 
 The easiest way is to first create a connection with an ABAP server by running command
@@ -37,6 +39,8 @@ Compatibility with [ABAPlint](https://marketplace.visualstudio.com/items?itemNam
 - where used list
 - transport management
 - source control
+- debugging
+- view short dumps
 - integrated with [abapGit](https://github.com/larshp/abapGit) (now using the scm view)
 - integrated with [test explorer](https://marketplace.visualstudio.com/items?itemName=hbenl.vscode-test-explorer)
 - execute select queries (Command "AbapFs Select Query")

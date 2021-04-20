@@ -1,5 +1,11 @@
 # Change Log
 
+## [0.12.0] 2021-04-20
+
+### Added
+
+- Debugging (only tested in Linux)
+
 ## [0.11.0] 2021-04-09
 
 ### Added
