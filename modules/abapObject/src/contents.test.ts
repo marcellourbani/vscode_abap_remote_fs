@@ -16,7 +16,7 @@ const getRootForTest = () => {
     ADT_PASS = ""
   } = process.env
   if (ADT_URL && ADT_USER && ADT_PASS) {
-    const client = new ADTClient(ADT_URL, ADT_USER, ADT_PASS)
+    const client = new ADTClient(ADT_URL, ADT_USER, ADT_PASS, undefined, undefined, { rejectUnauthorized: false })
     const service = new AOService(client)
     return { service, client }
   }
@@ -131,7 +131,7 @@ test(
   "class include in $ABAPGIT",
   runObjTest(
     "CLAS/OC",
-    "ZCL_ABAPGIT_DEPENDENCIES",
+    "ZCL_ABAPGIT_AUTH",// replaced class with one in current $ABAPGIT package
     async (service, pkg, obj) => {
       expect(obj).toBeDefined()
       expect(obj.expandable).toBe(true)
@@ -150,7 +150,7 @@ test(
       expect(main.contentsPath()).toMatch(/\/source\/main/)
       const source = await main.read()
       expect(
-        source.match(/CLASS\s+zcl_abapgit_dependencies\s+DEFINITION/i)
+        source.match(/CLASS\s+zcl_abapgit_auth\s+DEFINITION/i)
       ).toBeTruthy()
 
       const testClasses = fromNode(

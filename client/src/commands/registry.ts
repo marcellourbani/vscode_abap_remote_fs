@@ -20,6 +20,7 @@ export const AbapFsCommands = {
   // classes
   refreshHierarchy: "abapfs.refreshHierarchy",
   pickObject: "abapfs.pickObject",
+  pickAdtRootConn: "abapfs.pickAdtRootConn",
   runClass: "abapfs.runClass",
   // revisions
   clearScmGroup: "abapfs.clearScmGroup",

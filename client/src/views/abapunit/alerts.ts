@@ -12,7 +12,8 @@ import {
   languages,
   DiagnosticCollection,
   Uri,
-  workspace
+  workspace,
+  window
 } from "vscode"
 import { cache } from "../../lib"
 import { AdtObjectFinder } from "../../adt/operations/AdtObjectFinder"
@@ -48,12 +49,15 @@ const convertTestAlert = async (
 }
 
 const addAlert = async (alrt: UnitTestAlert, connId: string, newAlerts: Map<string, Diagnostic[]>) => {
-  const { uri, diagnostic } = (await convertTestAlert(connId, alrt)) || {}
-  if (uri && diagnostic) {
-    const fileDiags = newAlerts.get(uri) || []
-    if (fileDiags.length === 0) newAlerts.set(uri, fileDiags)
-    fileDiags.push(diagnostic)
+  if (alrt.stack.length) {
+    const { uri, diagnostic } = (await convertTestAlert(connId, alrt)) || {}
+    if (uri && diagnostic) {
+      const fileDiags = newAlerts.get(uri) || []
+      if (fileDiags.length === 0) newAlerts.set(uri, fileDiags)
+      fileDiags.push(diagnostic)
+    }
   }
+  else window.showErrorMessage(alrt.details.join("\n"))
 }
 
 const classesAlerts = async (testClasses: UnitTestClass[], connId: string) => {

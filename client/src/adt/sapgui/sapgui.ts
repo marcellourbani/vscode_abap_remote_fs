@@ -267,7 +267,7 @@ export class SapGui {
           await page.setExtraHTTPHeaders({ "sap-mysapsso": `${config.client}${ticket}`, "sap-mysapred": url.toString() })
           const logonUri = Uri.parse(config.url).with({ path: `/sap/public/myssocntl` }).toString()
           await page.goto(logonUri)
-          browser.disconnect()
+          // browser.disconnect()
           break;
       }
     }

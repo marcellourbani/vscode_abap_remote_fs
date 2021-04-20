@@ -4,7 +4,6 @@ import {
   Uri,
   window,
   commands,
-  ViewColumn,
   ProgressLocation
 } from "vscode"
 import { pickAdtRoot, RemoteManager } from "../config"
@@ -158,6 +157,13 @@ export class AdtCommands {
     } catch (e) {
       return window.showErrorMessage(e.toString())
     }
+  }
+  @command(AbapFsCommands.pickAdtRootConn)
+  private static async pickRoot() {
+    const uri = currentUri()
+    const fsRoot = await pickAdtRoot(uri)
+    if (!fsRoot) return
+    return fsRoot.uri.authority
   }
 
   @command(AbapFsCommands.runClass)

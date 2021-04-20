@@ -30,6 +30,7 @@ import { IncludeProvider } from "./adt/includes"
 import { registerCommands } from "./commands/register"
 import { HttpProvider } from "./editors/httpprovider"
 import { dumpProvider } from "./views/dumps/dumps"
+import { registerAbapDebugger } from "./adt/debugger"
 
 export let context: ExtensionContext
 
@@ -92,6 +93,7 @@ export async function activate(ctx: ExtensionContext): Promise<AbapFsApi> {
 
   sub.push(MessagesProvider.register(context))
   sub.push(HttpProvider.register(context))
+  registerAbapDebugger(context)
 
   LanguageCommands.start(context)
 

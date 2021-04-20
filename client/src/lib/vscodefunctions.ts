@@ -15,6 +15,7 @@ import {
 import { splitAdtUriInternal, isUnDefined, isFn, isNonNullable } from "./functions"
 import { Range as ApiRange } from "abap-adt-api"
 import { RfsTaskEither, rfsTryCatch } from "./rfsTaskEither"
+import { ADTSCHEME } from "../adt/conections"
 
 
 export const uriName = (uri: Uri) => uri.path.split("/").pop() || ""
@@ -167,3 +168,6 @@ export const splitAdtUri = (uri: string): AdtUriParts => {
     end: end && vscPosition(end.line, end.character)
   }
 }
+
+export const createAdtUri = (authority: string, path: string, query?: string, fragment?: string) =>
+  Uri.parse(`${ADTSCHEME}://${authority}`).with({ path, query, fragment })

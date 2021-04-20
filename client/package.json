@@ -44,6 +44,7 @@
     "@types/request-debug": "^0.2.0",
     "@types/uuid": "^8.3.0",
     "@types/vscode": "^1.52.0",
+    "@types/vscode-windows-registry": "^1.0.0",
     "jest": "^26.6.0",
     "rimraf": "^3.0.2",
     "ts-jest": "^26.4.1",
@@ -60,7 +61,7 @@
   "dependencies": {
     "@abaplint/core": "^2.58.6",
     "@types/tmp": "0.2.0",
-    "abap-adt-api": "^2.8.0",
+    "abap-adt-api": "^2.10.0",
     "abap_cloud_platform": "^1.1.2",
     "abapfs": "file:../modules/abapfs",
     "abapobject": "file:../modules/abapObject",

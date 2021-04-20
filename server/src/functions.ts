@@ -1,5 +1,8 @@
-import { isString, isNumber } from "util"
 import { AllHtmlEntities } from "html-entities"
+
+export const isString = (x: any): x is string => typeof x === "string"
+export const isNumber = (x: any): x is number => typeof x === "number"
+
 export const memoize = <P, R>(
   base: (p: P) => Promise<R>
 ): ((p: P) => Promise<R>) => {
