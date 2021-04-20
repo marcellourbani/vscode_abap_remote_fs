@@ -4,7 +4,7 @@ import {
 } from "abap-adt-api";
 import { newClientFromKey, md5 } from "./functions";
 import { readFileSync, writeFileSync } from "fs";
-import { loadWindowsRegistry, log } from "../../lib";
+import { log } from "../../lib";
 import { DebugProtocol } from "vscode-debugprotocol";
 import { Disposable, EventEmitter, Uri } from "vscode";
 import { getRoot } from "../conections";
@@ -14,6 +14,7 @@ import { join } from "path";
 import { Breakpoint, Handles, Scope, Source, StoppedEvent, TerminatedEvent } from "vscode-debugadapter";
 import { vsCodeUri } from "../../langClient";
 import { v1 } from "uuid";
+import { getWinRegistryReader } from "./winregistry";
 
 export interface DebuggerUI {
     Confirmator: (message: string) => Thenable<boolean>
@@ -34,8 +35,8 @@ const variableValue = (v: DebugVariable) => {
 
 const getOrCreateTerminalId = async () => {
     if (process.platform === "win32") {
-        const reg = loadWindowsRegistry()
-        const terminalId = reg && reg.GetStringRegKey("HKEY_CURRENT_USER", "Software\\SAP\\ABAP Debugging", "TerminalID")
+        const reg = getWinRegistryReader()
+        const terminalId = reg && reg("HKEY_CURRENT_USER", "Software\\SAP\\ABAP Debugging", "TerminalID")
         if (!terminalId) throw new Error("Unable to read terminal ID from windows registry");
         return terminalId
     } else {

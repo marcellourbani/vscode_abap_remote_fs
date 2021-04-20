@@ -29,7 +29,8 @@
   ],
   "extensionDependencies": [
     "larshp.vscode-abap",
-    "hudakf.cds"
+    "hudakf.cds",
+    "murbani.winregistry"
   ],
   "activationEvents": [
     "onFileSystem:adt",
