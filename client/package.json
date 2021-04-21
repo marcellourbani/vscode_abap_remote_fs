@@ -59,7 +59,7 @@
     "webpack-watch-changed": "^1.0.0"
   },
   "dependencies": {
-    "@abaplint/core": "2.74.0",
+    "@abaplint/core": "^2.74.7",
     "@types/tmp": "0.2.0",
     "abap-adt-api": "^2.10.0",
     "abap_cloud_platform": "^1.1.2",

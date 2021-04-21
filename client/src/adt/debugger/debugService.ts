@@ -3,7 +3,7 @@ import {
     debugMetaIsComplex, isDebugListenerError, session_types, DebugMetaType, DebugVariable
 } from "abap-adt-api";
 import { newClientFromKey, md5 } from "./functions";
-import { readFileSync, writeFileSync } from "fs";
+import { readFileSync, writeFileSync, existsSync, mkdirSync } from "fs";
 import { log } from "../../lib";
 import { DebugProtocol } from "vscode-debugprotocol";
 import { Disposable, EventEmitter, Uri } from "vscode";
@@ -40,11 +40,13 @@ const getOrCreateTerminalId = async () => {
         if (!terminalId) throw new Error("Unable to read terminal ID from windows registry");
         return terminalId
     } else {
-        const cfgfile = join(homedir(), ".SAP/ABAPDebugging/terminalId")
+        const cfgpath = join(homedir(), ".SAP/ABAPDebugging")
+        const cfgfile = join(cfgpath, "terminalId")
         try {
             return readFileSync(cfgfile).toString("utf8")
         } catch (error) {
-            const terminalId = v1()
+            const terminalId = v1().replace(/-/g, "").toUpperCase()
+            if (!existsSync(cfgpath)) mkdirSync(cfgpath, { recursive: true })
             writeFileSync(cfgfile, terminalId)
             return terminalId
         }

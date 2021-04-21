@@ -1,5 +1,16 @@
 # Change Log
 
+## [0.12.9] 2021-04-21
+
+### Added
+
+- Debugging in windows
+- dynamic debugger configuration (run and debug)
+
+### Fixed
+
+- small bugs which prevented activation of the plugin
+
 ## [0.12.0] 2021-04-20
 
 ### Added
