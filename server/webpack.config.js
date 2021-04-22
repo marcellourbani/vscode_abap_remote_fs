@@ -1,28 +1,32 @@
 //@ts-check
 
-'use strict';
+"use strict"
 
-const path = require('path');
+const path = require("path")
+const TerserPlugin = require("terser-webpack-plugin")
 
 /**@type {import('webpack').Configuration}*/
 const config = {
-  target: 'node', // vscode extensions run in a Node.js-context 📖 -> https://webpack.js.org/configuration/node/
+  target: "node", // vscode extensions run in a Node.js-context 📖 -> https://webpack.js.org/configuration/node/
 
-  entry: './src/server.ts', // the entry point of this extension, 📖 -> https://webpack.js.org/configuration/entry-context/
+  entry: "./src/server.ts", // the entry point of this extension, 📖 -> https://webpack.js.org/configuration/entry-context/
   output: {
     // the bundle is stored in the 'dist' folder (check package.json), 📖 -> https://webpack.js.org/configuration/output/
-    path: path.resolve(__dirname, 'dist'),
-    filename: 'server.js',
-    libraryTarget: 'commonjs2',
-    devtoolModuleFilenameTemplate: '../[resource-path]'
+    path: path.resolve(__dirname, "dist"),
+    filename: "server.js",
+    libraryTarget: "commonjs2",
+    devtoolModuleFilenameTemplate: "../[resource-path]"
   },
-  devtool: 'source-map',
+  devtool: "source-map",
   externals: {
-    vscode: 'commonjs' // the vscode-module is created on-the-fly and must be excluded. Add other modules that cannot be webpack'ed, 📖 -> https://webpack.js.org/configuration/externals/
+    vscode: "commonjs" // the vscode-module is created on-the-fly and must be excluded. Add other modules that cannot be webpack'ed, 📖 -> https://webpack.js.org/configuration/externals/
   },
   resolve: {
     // support reading TypeScript and JavaScript files, 📖 -> https://github.com/TypeStrong/ts-loader
-    extensions: ['.ts', '.js']
+    extensions: [".ts", ".js"]
+  },
+  watchOptions: {
+    ignored: /node_modules|out/
   },
   module: {
     rules: [
@@ -31,11 +35,36 @@ const config = {
         exclude: /node_modules/,
         use: [
           {
-            loader: 'ts-loader'
+            loader: "ts-loader"
           }
         ]
       }
     ]
   }
-};
-module.exports = config;
+}
+/**@type {import('webpack').Configuration}*/
+const prodConfig = {
+  ...config,
+  name: "production",
+  mode: "production",
+  optimization: {
+    minimizer: [
+      compiler => {
+        new TerserPlugin({
+          parallel: true,
+          terserOptions: {
+            keep_classnames: true
+          }
+        }).apply(compiler)
+      }
+    ]
+  }
+}
+/**@type {import('webpack').Configuration}*/
+const devConfig = {
+  ...config,
+  name: "development",
+  mode: "development",
+  infrastructureLogging: { level: "verbose" }
+}
+module.exports = [devConfig, prodConfig]

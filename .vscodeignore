@@ -25,3 +25,8 @@ sharedapi/**
 wiki/**
 *.workspace
 modules
+**/*.map
+.github
+.vscode
+jest.config.js
+abap remote fs.code-workspace
