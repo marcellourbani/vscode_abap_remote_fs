@@ -1,6 +1,6 @@
 import {
     ADTClient, Debuggee, DebugStepType, isDebuggerBreakpoint,
-    debugMetaIsComplex, isDebugListenerError, session_types, DebugMetaType, DebugVariable
+    debugMetaIsComplex, isDebugListenerError, session_types, DebugMetaType, DebugVariable, DebugBreakpoint
 } from "abap-adt-api";
 import { newClientFromKey, md5 } from "./functions";
 import { readFileSync, writeFileSync, existsSync, mkdirSync } from "fs";
@@ -11,10 +11,16 @@ import { getRoot } from "../conections";
 import { isAbapFile, } from "abapfs";
 import { homedir } from "os";
 import { join } from "path";
-import { Breakpoint, Handles, Scope, Source, StoppedEvent, TerminatedEvent } from "vscode-debugadapter";
+import { Breakpoint, Handles, Scope, Source, StoppedEvent } from "vscode-debugadapter";
 import { vsCodeUri } from "../../langClient";
 import { v1 } from "uuid";
 import { getWinRegistryReader } from "./winregistry";
+
+export interface RequestTerminationEvent {
+    event: "adtrequesttermination"
+}
+export const isRequestTerminationEvent = (e: any): e is RequestTerminationEvent => e?.event === "adtrequesttermination"
+const requestTermination = (): RequestTerminationEvent => ({ event: "adtrequesttermination" })
 
 export interface DebuggerUI {
     Confirmator: (message: string) => Thenable<boolean>
@@ -58,24 +64,36 @@ interface StackFrame extends DebugProtocol.StackFrame {
     stackUri?: string
 }
 
+class AdtBreakpoint extends Breakpoint {
+    constructor(verified: boolean, readonly adtBp?: DebugBreakpoint, line?: number, column?: number, source?: Source) {
+        super(verified, line, column, source)
+    }
+}
+
+// tslint:disable-next-line:max-classes-per-file
 export class DebugService {
     private active: boolean = false;
-    private listening = false
+    private attached: boolean = false;
+    private killed = false
     private ideId: string;
     private username: string
-    private notifier: EventEmitter<DebugProtocol.Event> = new EventEmitter()
+    private notifier: EventEmitter<DebugProtocol.Event | RequestTerminationEvent> = new EventEmitter()
     private listeners: Disposable[] = []
     private stackTrace: StackFrame[] = [];
     private currentStackId?: number
-    private breakpoints = new Map<string, Breakpoint[]>()
+    private breakpoints = new Map<string, AdtBreakpoint[]>()
     private variableHandles = new Handles<Variable>();
     public readonly THREADID = 1;
-
-    constructor(private connId: string, private client: ADTClient, private terminalId: string, private ui: DebuggerUI) {
-        this.ideId = md5(connId)
-        this.username = client.username.toUpperCase()
+    private get client() {
+        if (this.killed) throw new Error("Disconnected");
+        return this._client
     }
-    addListener(listener: (e: DebugProtocol.Event) => any, thisArg?: any) {
+
+    constructor(private connId: string, private _client: ADTClient, private terminalId: string, private ui: DebuggerUI) {
+        this.ideId = md5(connId)
+        this.username = _client.username.toUpperCase()
+    }
+    addListener(listener: (e: DebugProtocol.Event | RequestTerminationEvent) => any, thisArg?: any) {
         return this.notifier.event(listener, thisArg, this.listeners)
     }
 
@@ -101,7 +119,7 @@ export class DebugService {
     private async childVariables(parent: Variable) {
         if (parent.meta === "table") {
             if (!parent.lines) return []
-            const keys = [...Array(parent.lines).keys()].map(k => `${parent.id}[${k + 1}]`)
+            const keys = [...Array(parent.lines).keys()].map(k => `${parent.id.replace(/\[\]$/, "")}[${k + 1}]`)
             return this.client.debuggerVariables(keys)
         }
         return this.client.debuggerChildVariables([parent.id]).then(r => r.variables)
@@ -144,16 +162,14 @@ export class DebugService {
         if (norestart) {
             this.active = false
         }
-        return this.client.statelessClone.debuggerDeleteListener("user", this.terminalId, this.ideId, this.username)
+        return this._client.statelessClone.debuggerDeleteListener("user", this.terminalId, this.ideId, this.username)
     }
 
     public async mainLoop() {
         this.active = true
         while (this.active) {
             try {
-                this.listening = true
                 const debuggee = await this.client.statelessClone.debuggerListen("user", this.terminalId, this.ideId, this.username)
-                    .finally(() => this.listening = false)
                 if (!debuggee || !this.active) continue
                 if (isDebugListenerError(debuggee)) {
                     // reconnect
@@ -174,14 +190,12 @@ export class DebugService {
                             log(JSON.stringify(error2))
                         }
                     else {
-                        this.notifier.fire(new TerminatedEvent(false))
-                        this.active = false
+                        this.stopDebugging()
                     }
                 }
                 else {
                     this.ui.ShowError(`Error listening to debugger: ${error.message || error}`)
-                    this.notifier.fire(new TerminatedEvent(false))
-                    this.active = false
+                    this.stopDebugging()
                 }
             }
         }
@@ -211,11 +225,11 @@ export class DebugService {
                     "user", this.terminalId, this.ideId, clientId, bps, this.username)
                 const confirmed = breakpoints.map(bp => {
                     const actual = actualbps.find(a => isDebuggerBreakpoint(a) && a.uri.range.start.line === bp.line)
-                    if (actual) {
+                    if (actual && isDebuggerBreakpoint(actual)) {
                         const src = new Source(source.name || "", source.path)
-                        return new Breakpoint(true, bp.line, 0, src)
+                        return new AdtBreakpoint(true, actual, bp.line, 0, src)
                     }
-                    return new Breakpoint(false)
+                    return new AdtBreakpoint(false)
                 })
                 return confirmed
             } catch (error) {
@@ -228,8 +242,9 @@ export class DebugService {
 
     private async onBreakpointReached(debuggee: Debuggee) {
         try {
-            const attach = await this.client.debuggerAttach("user", debuggee.DEBUGGEE_ID, this.username, true)
-            const bp = attach.reachedBreakpoints[0]
+            if (!this.attached)
+                await this.client.debuggerAttach("user", debuggee.DEBUGGEE_ID, this.username, true)
+            this.attached = true
             await this.updateStack()
             this.notifier.fire(new StoppedEvent("breakpoint", this.THREADID))
         } catch (error) {
@@ -255,7 +270,7 @@ export class DebugService {
             return res
         } catch (error) {
             if (error.properties["com.sap.adt.communicationFramework.subType"] === "debuggeeEnded") {
-                this.stopDebugging()
+                // this.stopDebugging() keep debugging
             } else
                 this.ui.ShowError(error.message)
         }
@@ -267,7 +282,6 @@ export class DebugService {
         this.variableHandles.reset()
         const createFrame = (path: string, line: number, id: number, stackPosition: number, stackUri?: string) => {
             const name = path.replace(/.*\//, "")
-            // const fullPath = createAdtUri(this.connId, path).toString()
             const source = new Source(name, path)
             const frame: StackFrame = { id, name, source, line, column: 0, stackPosition }
             return frame
@@ -288,17 +302,26 @@ export class DebugService {
         }
     }
 
-    public async stopDebugging() {
+    public stopDebugging() {
         this.active = false
-        this.notifier.fire(new TerminatedEvent())
+        this.notifier.fire(requestTermination())
     }
     public async logout() {
         const ignore = () => undefined
         this.active = false
-        const proms: Promise<any>[] = []
-        if (this.listening) proms.push(this.stopListener().catch(ignore))
-        if (this.client.loggedin)
-            proms.push(this.client.dropSession().catch(ignore).then(() => this.client.logout().catch(ignore)))
+        this.attached = false
+        const client = this.client
+        const deleteBreakpoints = async (source: string) => {
+            const dels = this.breakpoints.get(source)?.map(async b =>
+                b.adtBp && client.debuggerDeleteBreakpoints(b.adtBp, "user", this.terminalId, this.ideId, this.username))
+            return Promise.all(dels || [])
+        }
+        const proms: Promise<any>[] = [...this.breakpoints.keys()].map(deleteBreakpoints)
+        this.killed = true
+        const stop = this.stopListener().catch(ignore)
+        proms.push(stop)
+        if (client.loggedin)
+            proms.push(stop.then(() => client.dropSession().catch(ignore).then(() => client.logout().catch(ignore))))
         await Promise.all(proms)
     }
 }

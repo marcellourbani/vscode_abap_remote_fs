@@ -1,5 +1,17 @@
 # Change Log
 
+## [0.12.12] 2021-04-27
+
+### Added
+
+- Don't stop debugger when debuggee terminates
+- kill debug session on error
+- basic hover support
+
+### Fixed
+
+- preserve classnames for abaplint
+
 ## [0.12.9] 2021-04-21
 
 ### Added

@@ -1,8 +1,8 @@
 import { DebugConfiguration, DebugSession, Disposable } from "vscode";
-import { InitializedEvent, LoggingDebugSession, Thread } from "vscode-debugadapter";
+import { InitializedEvent, LoggingDebugSession, TerminatedEvent, Thread } from "vscode-debugadapter";
 import { DEBUGTYPE } from "./abapConfigurationProvider";
 import { DebugProtocol } from 'vscode-debugprotocol';
-import { DebugService } from "./debugService";
+import { DebugService, isRequestTerminationEvent } from "./debugService";
 import { AbapDebugAdapterFactory } from "./AbapDebugAdapterFactory";
 
 export interface AbapDebugConfiguration extends DebugConfiguration {
@@ -18,7 +18,12 @@ export class AbapDebugSession extends LoggingDebugSession {
     constructor(private connId: string, private readonly service: DebugService) {
         super(DEBUGTYPE)
         this.sub = service.addListener(e => {
-            this.sendEvent(e)
+            if (isRequestTerminationEvent(e)) {
+                this.logOut()
+                this.sendEvent(new TerminatedEvent())
+            }
+            else
+                this.sendEvent(e)
         })
     }
 
@@ -126,7 +131,8 @@ export class AbapDebugSession extends LoggingDebugSession {
             supportsCancelRequest: true,
             supportsStepInTargetsRequest: true,
             supportsConfigurationDoneRequest: true,
-            supportsTerminateRequest: true
+            supportsTerminateRequest: true,
+            supportsEvaluateForHovers: true
         }
 
         this.sendResponse(response)
