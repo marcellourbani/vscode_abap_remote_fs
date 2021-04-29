@@ -102,6 +102,7 @@ export class DebugService {
     }
 
     async getScopes(frameId: number) {
+        this.variableHandles.reset()
         const currentStack = this.stackTrace.find(s => s.id === frameId)
         if (currentStack && !isNaN(currentStack.stackPosition) && frameId !== this.currentStackId) {
             await this.client.debuggerGoToStack(currentStack.stackUri || currentStack.stackPosition)
@@ -245,6 +246,7 @@ export class DebugService {
             if (!this.attached)
                 await this.client.debuggerAttach("user", debuggee.DEBUGGEE_ID, this.username, true)
             this.attached = true
+            await this.client.debuggerSaveSettings({})
             await this.updateStack()
             this.notifier.fire(new StoppedEvent("breakpoint", this.THREADID))
         } catch (error) {
@@ -270,6 +272,10 @@ export class DebugService {
             return res
         } catch (error) {
             if (error.properties["com.sap.adt.communicationFramework.subType"] === "debuggeeEnded") {
+                await this.client.dropSession()
+                this.client.stateful = session_types.stateful
+                await this.client.adtCoreDiscovery()
+                this.attached = false
                 // this.stopDebugging() keep debugging
             } else
                 this.ui.ShowError(error.message)
@@ -279,7 +285,6 @@ export class DebugService {
     private async updateStack() {
         const stackInfo = await this.client.debuggerStackTrace().catch(() => undefined)
         this.currentStackId = 0
-        this.variableHandles.reset()
         const createFrame = (path: string, line: number, id: number, stackPosition: number, stackUri?: string) => {
             const name = path.replace(/.*\//, "")
             const source = new Source(name, path)

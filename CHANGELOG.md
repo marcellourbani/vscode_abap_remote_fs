@@ -1,5 +1,11 @@
 # Change Log
 
+## [0.12.13] 2021-04-29
+
+### Fixed
+
+- [#156 improved debugger session handling](https://github.com/marcellourbani/vscode_abap_remote_fs/issues/156)
+
 ## [0.12.12] 2021-04-27
 
 ### Added
