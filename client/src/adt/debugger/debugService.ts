@@ -1,20 +1,22 @@
 import {
     ADTClient, Debuggee, DebugStepType, isDebuggerBreakpoint,
     debugMetaIsComplex, isDebugListenerError, session_types, DebugMetaType, DebugVariable, DebugBreakpoint, DebuggingMode
-} from "abap-adt-api";
-import { newClientFromKey, md5 } from "./functions";
-import { readFileSync, writeFileSync, existsSync, mkdirSync } from "fs";
-import { log } from "../../lib";
-import { DebugProtocol } from "vscode-debugprotocol";
-import { Disposable, EventEmitter, Uri } from "vscode";
-import { getRoot } from "../conections";
-import { isAbapFile, } from "abapfs";
-import { homedir } from "os";
-import { join } from "path";
-import { Breakpoint, Handles, Scope, Source, StoppedEvent } from "vscode-debugadapter";
-import { vsCodeUri } from "../../langClient";
-import { v1 } from "uuid";
-import { getWinRegistryReader } from "./winregistry";
+} from "abap-adt-api"
+import { newClientFromKey, md5 } from "./functions"
+import { readFileSync, writeFileSync, existsSync, mkdirSync } from "fs"
+import { log } from "../../lib"
+import { DebugProtocol } from "vscode-debugprotocol"
+import { Disposable, EventEmitter, Uri } from "vscode"
+import { getRoot } from "../conections"
+import { isAbapFile, } from "abapfs"
+import { homedir } from "os"
+import { join } from "path"
+import { Breakpoint, Handles, Scope, Source, StoppedEvent } from "vscode-debugadapter"
+import { vsCodeUri } from "../../langClient"
+import { v1 } from "uuid"
+import { getWinRegistryReader } from "./winregistry"
+
+const ATTACHTIMEOUT = "autoAttachTimeout"
 
 export interface RequestTerminationEvent {
     event: "adtrequesttermination"
@@ -43,7 +45,7 @@ const getOrCreateTerminalId = async () => {
     if (process.platform === "win32") {
         const reg = getWinRegistryReader()
         const terminalId = reg && reg("HKEY_CURRENT_USER", "Software\\SAP\\ABAP Debugging", "TerminalID")
-        if (!terminalId) throw new Error("Unable to read terminal ID from windows registry");
+        if (!terminalId) throw new Error("Unable to read terminal ID from windows registry")
         return terminalId
     } else {
         const cfgpath = join(homedir(), ".SAP/ABAPDebugging")
@@ -70,22 +72,30 @@ class AdtBreakpoint extends Breakpoint {
     }
 }
 
+const errorType = (err: any) => {
+    const exceptionType = err?.properties?.["com.sap.adt.communicationFramework.subType"]
+    if (!exceptionType && `${err.response.body}`.match(/Connection timed out/)) return ATTACHTIMEOUT
+    return exceptionType
+
+}
+
 // tslint:disable-next-line:max-classes-per-file
 export class DebugService {
-    private active: boolean = false;
-    private attached: boolean = false;
+    private active: boolean = false
+    private attached: boolean = false
     private killed = false
-    private ideId: string;
+    private ideId: string
     private notifier: EventEmitter<DebugProtocol.Event | RequestTerminationEvent> = new EventEmitter()
     private listeners: Disposable[] = []
-    private stackTrace: StackFrame[] = [];
+    private stackTrace: StackFrame[] = []
     private currentStackId?: number
     private breakpoints = new Map<string, AdtBreakpoint[]>()
-    private variableHandles = new Handles<Variable>();
+    private variableHandles = new Handles<Variable>()
     private readonly mode: DebuggingMode
-    public readonly THREADID = 1;
+    public readonly THREADID = 1
+    private doRefresh?: NodeJS.Timeout
     private get client() {
-        if (this.killed) throw new Error("Disconnected");
+        if (this.killed) throw new Error("Disconnected")
         return this._client
     }
 
@@ -154,7 +164,7 @@ export class DebugService {
 
     public static async create(connId: string, ui: DebuggerUI, username: string, terminalMode: boolean) {
         const client = await newClientFromKey(connId)
-        if (!client) throw new Error(`Unable to create client for${connId}`);
+        if (!client) throw new Error(`Unable to create client for${connId}`)
         client.stateful = session_types.stateful
         await client.adtCoreDiscovery()
         const terminalId = await getOrCreateTerminalId()
@@ -183,31 +193,39 @@ export class DebugService {
                 await this.onBreakpointReached(debuggee)
             } catch (error) {
                 if (!this.active) return
-                if (error.properties["com.sap.adt.communicationFramework.subType"]) {
-                    const txt = error?.properties?.conflictText || "Debugger conflict detected"
-                    const message = `${txt} Take over debugging?`
-                    // const resp = await window.showQuickPick(["YES", "NO"], { placeHolder })
-                    const resp = await this.ui.Confirmator(message)
-                    if (resp)
-                        try {
-                            await this.stopListener(false)
-                        } catch (error2) {
-                            log(JSON.stringify(error2))
+                // autoAttachTimeout
+                const exceptionType = errorType(error)
+                switch (exceptionType) {
+                    case "conflictNotification":
+                    case "conflictDetected":
+                        const txt = error?.properties?.conflictText || "Debugger conflict detected"
+                        const message = `${txt} Take over debugging?`
+                        // const resp = await window.showQuickPick(["YES", "NO"], { placeHolder })
+                        const resp = await this.ui.Confirmator(message)
+                        if (resp)
+                            try {
+                                await this.stopListener(false)
+                            } catch (error2) {
+                                log(JSON.stringify(error2))
+                            }
+                        else {
+                            this.refresh()
+                            this.stopDebugging()
                         }
-                    else {
+                        break
+                    case ATTACHTIMEOUT:
+                        this.refresh()
+                        break
+                    default:
+                        this.ui.ShowError(`Error listening to debugger: ${error.message || error}`)
                         this.stopDebugging()
-                    }
-                }
-                else {
-                    this.ui.ShowError(`Error listening to debugger: ${error.message || error}`)
-                    this.stopDebugging()
                 }
             }
         }
     }
 
     public getBreakpoints(path: string) {
-        return this.breakpoints.get(path) || [];
+        return this.breakpoints.get(path) || []
     }
     public async setBreakpoints(source: DebugProtocol.Source, breakpoints: DebugProtocol.SourceBreakpoint[]) {
         const bps = await this.setBreakpointsInt(source, breakpoints)
@@ -252,10 +270,15 @@ export class DebugService {
             await this.client.debuggerSaveSettings({})
             await this.updateStack()
             this.notifier.fire(new StoppedEvent("breakpoint", this.THREADID))
+            this.doRefresh = setTimeout(() => this.refresh(), 60000)
         } catch (error) {
             log(`${error}`)
             this.stopDebugging()
         }
+    }
+    refresh(): void {
+        this.doRefresh = undefined
+        this.client.debuggerVariables(["SY-SUBRC"]).catch(() => undefined)
     }
 
     private async baseDebuggerStep(stepType: DebugStepType, url?: string) {
@@ -268,19 +291,20 @@ export class DebugService {
 
     public async debuggerStep(stepType: DebugStepType, url?: string) {
         try {
+            if (this.doRefresh) clearTimeout(this.doRefresh)
+            this.doRefresh = undefined
             const res = await this.baseDebuggerStep(stepType, url)
             await this.updateStack()
             this.notifier.fire(new StoppedEvent("breakpoint", this.THREADID))
             return res
         } catch (error) {
-            if (error.properties["com.sap.adt.communicationFramework.subType"] === "debuggeeEnded") {
+            if (error?.properties?.["com.sap.adt.communicationFramework.subType"] === "debuggeeEnded") {
                 await this.client.dropSession()
                 this.client.stateful = session_types.stateful
                 await this.client.adtCoreDiscovery()
                 this.attached = false
-                // this.stopDebugging() keep debugging
             } else
-                this.ui.ShowError(error.message)
+                this.ui.ShowError(error?.message || "unknown error in debugger stepping")
         }
     }
 
@@ -318,6 +342,7 @@ export class DebugService {
         const wasactive = this.active
         this.active = false
         this.attached = false
+        if (this.killed) return
         const client = this.client
         const delbp = (bp: DebugBreakpoint) =>
             client.debuggerDeleteBreakpoints(bp, this.mode, this.terminalId, this.ideId, this.username)

@@ -1,11 +1,14 @@
 # Change Log
 
-## Unreleased
+## [0.12.14] 2021-05-09
 
 ### Added
 
 - debug for other user
 - terminal based debugging
+- better handling of debugger sessions
+- debugger keepalive
+- security fixes (updated dependencies)
 
 ## [0.12.13] 2021-04-29
 

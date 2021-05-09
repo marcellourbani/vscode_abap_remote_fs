@@ -57,6 +57,8 @@
         "label": "All open Issues",
         "query": "state:open repo:${owner}/${repository} sort:created-desc"
       }
-    ]
+    ],
+    "javascript.format.semicolons": "remove",
+    "typescript.format.semicolons": "remove"
   }
 }
