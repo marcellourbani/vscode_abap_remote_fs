@@ -14,8 +14,8 @@ export class AbapDebugAdapterFactory implements DebugAdapterDescriptorFactory {
     private constructor() { }
 
     async createDebugAdapterDescriptor(session: AbapDebugSessionCfg): Promise<DebugAdapterDescriptor> {
-        const connId = session.configuration.connId
-        const service = await DebugService.create(connId, ui)
+        const { connId, debugUser, terminalMode } = session.configuration
+        const service = await DebugService.create(connId, ui, debugUser, terminalMode)
         const abapSession = new AbapDebugSession(connId, service)
         this.loggedinSessions.push(abapSession)
         return new DebugAdapterInlineImplementation(abapSession);

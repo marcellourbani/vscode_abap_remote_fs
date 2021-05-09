@@ -6,7 +6,9 @@ import { DebugService, isRequestTerminationEvent } from "./debugService";
 import { AbapDebugAdapterFactory } from "./AbapDebugAdapterFactory";
 
 export interface AbapDebugConfiguration extends DebugConfiguration {
-    connId: string
+    connId: string,
+    debugUser: string,
+    terminalMode: boolean
 }
 export interface AbapDebugSessionCfg extends DebugSession {
     configuration: AbapDebugConfiguration

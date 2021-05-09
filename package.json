@@ -70,7 +70,7 @@
     "rimraf": "^3.0.2",
     "tslint": "^6.1.0",
     "typescript": "^3.8.3",
-    "vsce": "^1.87.1",
+    "vsce": "^1.88.0",
     "webpack-cli": "^3.3.11"
   },
   "contributes": {
@@ -96,6 +96,16 @@
                 "type": "string",
                 "description": "Absolute path to a text file.",
                 "default": "${command:abapfs.pickAdtRootConn}"
+              },
+              "debugUser": {
+                "type": "string",
+                "description": "User to debug for (defaults to current user)",
+                "default": ""
+              },
+              "terminalMode": {
+                "type": "boolean",
+                "description": "Terminal mode",
+                "default": false
               }
             }
           }

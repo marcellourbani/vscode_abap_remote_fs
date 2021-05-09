@@ -1,5 +1,12 @@
 # Change Log
 
+## Unreleased
+
+### Added
+
+- debug for other user
+- terminal based debugging
+
 ## [0.12.13] 2021-04-29
 
 ### Fixed
