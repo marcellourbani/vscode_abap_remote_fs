@@ -17,6 +17,7 @@ export const AbapFsCommands = {
   deletefavourite: "abapfs.deletefavourite",
   createConnection: "abapfs.createConnection",
   showDump: "abapfs.showDump",
+  refreshDumps: "abapfs.refreshDumps",
   // classes
   refreshHierarchy: "abapfs.refreshHierarchy",
   pickObject: "abapfs.pickObject",

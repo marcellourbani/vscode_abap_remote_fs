@@ -333,6 +333,14 @@
         "title": "AbapFs Open transportable object"
       },
       {
+        "command": "abapfs.refreshDumps",
+        "title": "Refresh dumps",
+        "icon": {
+          "dark": "client/images/dark/icon-refresh.svg",
+          "light": "client/images/light/icon-refresh.svg"
+        }
+      },
+      {
         "command": "abapfs.transportCopyNumber",
         "title": "Copy transport number to clipboard",
         "icon": {
@@ -654,6 +662,11 @@
         }
       ],
       "view/item/context": [
+        {
+          "command": "abapfs.refreshDumps",
+          "group": "inline",
+          "when": "view == abapfs.dumps && viewItem == system"
+        },
         {
           "command": "abapfs.deletefavourite",
           "group": "inline",

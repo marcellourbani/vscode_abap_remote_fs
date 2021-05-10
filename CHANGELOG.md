@@ -1,5 +1,12 @@
 # Change Log
 
+## [0.12.15] 2021-05-11
+
+### Added
+
+- refresh dumps
+- navigate in dumps
+
 ## [0.12.14] 2021-05-09
 
 ### Added
