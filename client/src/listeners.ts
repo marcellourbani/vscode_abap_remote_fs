@@ -48,10 +48,10 @@ export async function reconnectExpired(uri: Uri) {
 
   const resp = lm.lockedPaths().next().value
     ? await window.showErrorMessage(
-        "Session expired, files can't be locked might be stale. Try to refresh locks?",
-        "Ok",
-        "Cancel"
-      )
+      "Session expired, files can't be locked might be stale. Try to refresh locks?",
+      "Ok",
+      "Cancel"
+    )
     : ok
   if (resp === ok) {
     await lm.restore()
@@ -158,9 +158,8 @@ export async function showHideActivate(editor?: TextEditor, refresh = false) {
   if (editor && uri && uri.scheme === ADTSCHEME)
     try {
       const root = uriRoot(uri)
-      shouldShow =
-        editor.document.isDirty &&
-        (await root.lockManager.finalStatus(uri.path)).status === "locked"
+      const lockStatus = await root.lockManager.finalStatus(uri.path)
+      shouldShow = editor.document.isDirty && lockStatus.status === "locked"
       if (!shouldShow) {
         const file = root.getNode(uri.path)
         const obj = isAbapStat(file) && file.object

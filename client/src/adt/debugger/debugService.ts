@@ -309,7 +309,7 @@ export class DebugService {
     }
 
     private async updateStack() {
-        const stackInfo = await this.client.debuggerStackTrace().catch(() => undefined)
+        const stackInfo = await this.client.debuggerStackTrace(false).catch(() => undefined)
         this.currentStackId = 0
         const createFrame = (path: string, line: number, id: number, stackPosition: number, stackUri?: string) => {
             const name = path.replace(/.*\//, "")
@@ -320,7 +320,7 @@ export class DebugService {
         if (stackInfo) {
             const stackp = stackInfo.stack.map(async (s, id) => {
                 try {
-                    const path = await vsCodeUri(this.connId, s.uri.uri, false, true)
+                    const path = await vsCodeUri(this.connId, s.uri.uri, true, true)
                     const stackUri = "stackUri" in s ? s.stackUri : undefined
                     return createFrame(path, s.line, id, s.stackPosition, stackUri)
                 } catch (error) {

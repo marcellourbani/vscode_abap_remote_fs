@@ -1,9 +1,9 @@
-import { DebugConfiguration, DebugSession, Disposable } from "vscode";
-import { InitializedEvent, LoggingDebugSession, TerminatedEvent, Thread } from "vscode-debugadapter";
-import { DEBUGTYPE } from "./abapConfigurationProvider";
-import { DebugProtocol } from 'vscode-debugprotocol';
-import { DebugService, isRequestTerminationEvent } from "./debugService";
-import { AbapDebugAdapterFactory } from "./AbapDebugAdapterFactory";
+import { commands, DebugConfiguration, DebugSession, Disposable } from "vscode"
+import { InitializedEvent, LoggingDebugSession, TerminatedEvent, Thread } from "vscode-debugadapter"
+import { DEBUGTYPE } from "./abapConfigurationProvider"
+import { DebugProtocol } from 'vscode-debugprotocol'
+import { DebugService, isRequestTerminationEvent } from "./debugService"
+import { AbapDebugAdapterFactory } from "./AbapDebugAdapterFactory"
 
 export interface AbapDebugConfiguration extends DebugConfiguration {
     connId: string,
@@ -15,15 +15,19 @@ export interface AbapDebugSessionCfg extends DebugSession {
 }
 
 export class AbapDebugSession extends LoggingDebugSession {
-    private sub: Disposable;
+    private sub: Disposable
+    private static sessions = new Map<string, AbapDebugSession>()
+    static byConnection(connId: string) {
+        return AbapDebugSession.sessions.get(connId)
+    }
 
     constructor(private connId: string, private readonly service: DebugService) {
         super(DEBUGTYPE)
+        if (AbapDebugSession.sessions.has(connId)) throw new Error(`Debug session already running on ${connId}`)
+        AbapDebugSession.sessions.set(connId, this)
         this.sub = service.addListener(e => {
-            if (isRequestTerminationEvent(e)) {
-                this.logOut()
-                this.sendEvent(new TerminatedEvent())
-            }
+            if (isRequestTerminationEvent(e))
+                this.logOut(true)
             else
                 this.sendEvent(e)
         })
@@ -39,12 +43,14 @@ export class AbapDebugSession extends LoggingDebugSession {
     }
 
 
-    public async logOut() {
+    public async logOut(notify = false) {
+        AbapDebugSession.sessions.delete(this.connId)
         if (this.service) {
             this.sub.dispose()
             await this.service.logout()
             AbapDebugAdapterFactory.instance.sessionClosed(this)
         }
+        if (notify) this.sendEvent(new TerminatedEvent())
     }
 
     protected threadsRequest(response: DebugProtocol.ThreadsResponse): void {
@@ -53,23 +59,23 @@ export class AbapDebugSession extends LoggingDebugSession {
     }
 
     protected stepInRequest(response: DebugProtocol.StepInResponse, args: DebugProtocol.StepInArguments): void {
-        this.service.debuggerStep("stepInto");
-        this.sendResponse(response);
+        this.service.debuggerStep("stepInto")
+        this.sendResponse(response)
     }
 
     protected continueRequest(response: DebugProtocol.ContinueResponse, args: DebugProtocol.ContinueArguments): void {
-        this.service.debuggerStep("stepContinue");
-        this.sendResponse(response);
+        this.service.debuggerStep("stepContinue")
+        this.sendResponse(response)
     }
 
     protected nextRequest(response: DebugProtocol.NextResponse, args: DebugProtocol.NextArguments): void {
-        this.service.debuggerStep("stepOver");
-        this.sendResponse(response);
+        this.service.debuggerStep("stepOver")
+        this.sendResponse(response)
     }
 
     protected stepOutRequest(response: DebugProtocol.StepOutResponse, args: DebugProtocol.StepOutArguments): void {
-        this.service.debuggerStep("stepReturn");
-        this.sendResponse(response);
+        this.service.debuggerStep("stepReturn")
+        this.sendResponse(response)
     }
 
 
@@ -104,27 +110,27 @@ export class AbapDebugSession extends LoggingDebugSession {
 
     protected breakpointLocationsRequest(response: DebugProtocol.BreakpointLocationsResponse, args: DebugProtocol.BreakpointLocationsArguments, request?: DebugProtocol.Request): void {
         if (args.source.path) {
-            const bps = this.service.getBreakpoints(args.source.path);
-            response.body = { breakpoints: bps.map(_ => ({ line: args.line, column: 0 })) };
-        } else response.body = { breakpoints: [] };
+            const bps = this.service.getBreakpoints(args.source.path)
+            response.body = { breakpoints: bps.map(_ => ({ line: args.line, column: 0 })) }
+        } else response.body = { breakpoints: [] }
 
         this.sendResponse(response)
     }
 
     protected async scopesRequest(response: DebugProtocol.ScopesResponse, args: DebugProtocol.ScopesArguments) {
         response.body = { scopes: await this.service.getScopes(args.frameId) }
-        this.sendResponse(response);
+        this.sendResponse(response)
     }
 
     protected async variablesRequest(response: DebugProtocol.VariablesResponse, args: DebugProtocol.VariablesArguments, request?: DebugProtocol.Request) {
         response.body = { variables: await this.service.getVariables(args.variablesReference) }
-        this.sendResponse(response);
+        this.sendResponse(response)
     }
 
     protected async evaluateRequest(response: DebugProtocol.EvaluateResponse, args: DebugProtocol.EvaluateArguments, request?: DebugProtocol.Request) {
         const v = await this.service.evaluate(args.expression)
         if (v) response.body = v
-        this.sendResponse(response);
+        this.sendResponse(response)
     }
 
     protected initializeRequest(response: DebugProtocol.InitializeResponse, args: DebugProtocol.InitializeRequestArguments): void {
@@ -138,7 +144,7 @@ export class AbapDebugSession extends LoggingDebugSession {
         }
 
         this.sendResponse(response)
-        this.sendEvent(new InitializedEvent());
+        this.sendEvent(new InitializedEvent())
     }
 
 }

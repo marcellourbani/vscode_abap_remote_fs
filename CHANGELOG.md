@@ -1,5 +1,12 @@
 # Change Log
 
+## [0.12.16] 2021-05-13
+
+### Fixed
+
+- better debugger session handling (forbid multiple instances on same connection)
+- fixed bug in debugger stack trace resolution
+
 ## [0.12.15] 2021-05-11
 
 ### Added
