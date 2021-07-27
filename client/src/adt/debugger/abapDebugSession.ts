@@ -85,13 +85,8 @@ export class AbapDebugSession extends LoggingDebugSession {
     }
 
     protected async attachRequest(response: DebugProtocol.AttachResponse, args: DebugProtocol.AttachRequestArguments, request?: DebugProtocol.Request) {
-        try {
-            this.service.mainLoop()
-            response.success = true
-        } catch (error) {
-            response.message = `Failed to connect debugger for ${this.connId}:${error.message}`
-            response.success = false
-        }
+        this.service.mainLoop()
+        response.success = true
         this.sendResponse(response)
     }
 

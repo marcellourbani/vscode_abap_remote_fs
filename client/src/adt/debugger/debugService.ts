@@ -17,6 +17,7 @@ import { v1 } from "uuid"
 import { getWinRegistryReader } from "./winregistry"
 
 const ATTACHTIMEOUT = "autoAttachTimeout"
+const sessionNumbers = new Map<string, number>()
 
 export interface RequestTerminationEvent {
     event: "adtrequesttermination"
@@ -94,6 +95,7 @@ export class DebugService {
     private readonly mode: DebuggingMode
     public readonly THREADID = 1
     private doRefresh?: NodeJS.Timeout
+    sessionNumber: number
     private get client() {
         if (this.killed) throw new Error("Disconnected")
         return this._client
@@ -101,6 +103,8 @@ export class DebugService {
 
     constructor(private connId: string, private _client: ADTClient, private terminalId: string,
         private username: string, terminalMode: boolean, private ui: DebuggerUI) {
+        this.sessionNumber = (sessionNumbers.get(connId) || 0) + 1
+        sessionNumbers.set(connId, this.sessionNumber)
         this.ideId = md5(connId)
         this.mode = terminalMode ? "terminal" : "user"
         if (!this.username) this.username = _client.username.toUpperCase()
@@ -184,12 +188,16 @@ export class DebugService {
         while (this.active) {
             try {
                 const c = this._client.statelessClone
+                log(`Debugger ${this.sessionNumber} listening on connection  ${this.connId}`)
                 const debuggee = await c.debuggerListen(this.mode, this.terminalId, this.ideId, this.username)
                 if (!debuggee || !this.active) continue
+                log(`Debugger ${this.sessionNumber} disconnected`)
                 if (isDebugListenerError(debuggee)) {
+                    log(`Debugger ${this.sessionNumber} reconnecting to ${this.connId}`)
                     // reconnect
                     break
                 }
+                log(`Debugger ${this.sessionNumber} on connection  ${this.connId} reached a breakpoint`)
                 await this.onBreakpointReached(debuggee)
             } catch (error) {
                 if (!this.active) return
@@ -204,7 +212,7 @@ export class DebugService {
                         const resp = await this.ui.Confirmator(message)
                         if (resp)
                             try {
-                                await this.stopListener(false)
+                                await this.stopListener(true)
                             } catch (error2) {
                                 log(JSON.stringify(error2))
                             }
@@ -241,7 +249,7 @@ export class DebugService {
         const node = await root.getNodeAsync(uri.path)
         if (isAbapFile(node)) {
             const objuri = node.object.contentsPath()
-            const clientId = `24:${this.connId}${uri.path}` // `582:/A4H_001_developer_en/.adt/programs/programs/ztest/ztest.asprog`
+            const clientId = `24:${this.connId}${uri.path}`
             const bps = breakpoints.map(b => `${objuri}#start=${b.line}`)
             try {
                 const actualbps = await this.client.debuggerSetBreakpoints(this.mode, this.terminalId, this.ideId, clientId, bps, this.username)

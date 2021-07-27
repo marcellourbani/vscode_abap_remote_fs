@@ -1,4 +1,5 @@
 import { DebugAdapterDescriptor, DebugAdapterDescriptorFactory, DebugAdapterInlineImplementation, window } from "vscode"
+import { log } from "../../lib"
 import { AbapDebugSession, AbapDebugSessionCfg } from "./abapDebugSession"
 import { DebuggerUI, DebugService } from "./debugService"
 
@@ -26,6 +27,7 @@ export class AbapDebugAdapterFactory implements DebugAdapterDescriptorFactory {
         const service = await DebugService.create(connId, ui, debugUser, terminalMode)
         const abapSession = new AbapDebugSession(connId, service)
         this.loggedinSessions.push(abapSession)
+        log(`Debug session started for ${connId}, ${this.loggedinSessions.length} active sessions`)
         return new DebugAdapterInlineImplementation(abapSession)
     }
 
