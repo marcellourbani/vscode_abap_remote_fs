@@ -87,8 +87,7 @@ class MongoClient {
   }
   constructor(name: string, mongoUrl: string) {
     this.connection = connect(
-      `${mongoUrl.replace(/\/$/, "")}/${this.formatDbName(name)}`,
-      { useNewUrlParser: true }
+      `${mongoUrl.replace(/\/$/, "")}/${this.formatDbName(name)}`
     ).then(async mongo => {
       mongo.model(CALLLOG, callSchema)
       mongo.model(HTTPLOG, httpSchema)

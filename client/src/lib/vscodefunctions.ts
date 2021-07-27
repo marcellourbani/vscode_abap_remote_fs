@@ -130,6 +130,7 @@ export const createStore = <T>(name: string, store: Memento): Memento => {
     }
   }
   return {
+    keys: () => [..._map.keys()],
     get: (key: string, defValue?: T) => {
       load()
       return _map.get(key) || defValue
