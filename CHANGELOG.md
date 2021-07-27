@@ -1,5 +1,11 @@
 # Change Log
 
+## [0.12.17] 2021-05-13
+
+### Fixed
+
+- bug in debugger session handling
+
 ## [0.12.16] 2021-05-13
 
 ### Fixed
