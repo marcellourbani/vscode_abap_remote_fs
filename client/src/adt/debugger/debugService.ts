@@ -1,10 +1,10 @@
 import {
     ADTClient, Debuggee, DebugStepType, isDebuggerBreakpoint,
-    debugMetaIsComplex, isDebugListenerError, session_types, DebugMetaType, DebugVariable, DebugBreakpoint, DebuggingMode, DebuggerScope
+    debugMetaIsComplex, isDebugListenerError, session_types, DebugMetaType, DebugVariable, DebugBreakpoint, DebuggingMode, DebuggerScope, DebugListenerError
 } from "abap-adt-api"
 import { newClientFromKey, md5 } from "./functions"
 import { readFileSync, writeFileSync, existsSync, mkdirSync } from "fs"
-import { log } from "../../lib"
+import { log, after } from "../../lib"
 import { DebugProtocol } from "vscode-debugprotocol"
 import { Disposable, EventEmitter, Uri } from "vscode"
 import { getRoot } from "../conections"
@@ -183,13 +183,42 @@ export class DebugService {
         return c.debuggerDeleteListener(this.mode, this.terminalId, this.ideId, this.username)
     }
 
-    public async mainLoop() {
+    public async fireMainLoop(): Promise<boolean | PromiseLike<boolean>> {
+        let starting = this.client.statelessClone.debuggerListen(this.mode, this.terminalId, this.ideId, this.username)
+        const limit = after(1000).then(() => true)
+        const listening = await Promise.race([starting, limit])
+            .catch(async e => {
+                if (errorType(e) === "conflictDetected") {
+                    const txt = e?.properties?.conflictText || "Debugger conflict detected"
+                    const message = `${txt} Take over debugging?`
+                    const resp = await this.ui.Confirmator(message)
+                    if (resp)
+                        try {
+                            await this.stopListener(false)
+                            starting = this.client.statelessClone.debuggerListen(this.mode, this.terminalId, this.ideId, this.username)
+                            return true
+                        } catch (error2) {
+                            log(error2?.message || error2)
+                        }
+                    else this.refresh()
+                }
+                else {
+                    this.ui.ShowError(`Error listening to debugger: ${e.message || e}`)
+                }
+            })
+        if (listening === true) this.mainLoop(starting)
+        return listening === true
+    }
+
+
+    private async mainLoop(first: Promise<DebugListenerError | Debuggee | undefined> | undefined) {
         this.active = true
         while (this.active) {
             try {
                 const c = this._client.statelessClone
                 log(`Debugger ${this.sessionNumber} listening on connection  ${this.connId}`)
-                const debuggee = await c.debuggerListen(this.mode, this.terminalId, this.ideId, this.username)
+                const debuggee = await (first || c.debuggerListen(this.mode, this.terminalId, this.ideId, this.username))
+                first = undefined
                 if (!debuggee || !this.active) continue
                 log(`Debugger ${this.sessionNumber} disconnected`)
                 if (isDebugListenerError(debuggee)) {
@@ -207,19 +236,8 @@ export class DebugService {
                     case "conflictNotification":
                     case "conflictDetected":
                         const txt = error?.properties?.conflictText || "Debugger conflict detected"
-                        const message = `${txt} Take over debugging?`
-                        // const resp = await window.showQuickPick(["YES", "NO"], { placeHolder })
-                        const resp = await this.ui.Confirmator(message)
-                        if (resp)
-                            try {
-                                await this.stopListener(true)
-                            } catch (error2) {
-                                log(JSON.stringify(error2))
-                            }
-                        else {
-                            this.refresh()
-                            this.stopDebugging()
-                        }
+                        this.stopDebugging()
+                        this.ui.ShowError(txt)
                         break
                     case ATTACHTIMEOUT:
                         this.refresh()
@@ -311,6 +329,17 @@ export class DebugService {
     refresh(): void {
         this.doRefresh = undefined
         this.client.debuggerVariables(["SY-SUBRC"]).catch(() => undefined)
+    }
+
+    async setVariable(reference: number, name: string, inputValue: string) {
+        try {
+            const h = this.variableHandles.get(reference)
+            const variable = `${h?.name}-${name}`.toUpperCase()
+            const value = await this.client.debuggerSetVariableValue(variable, inputValue)
+            return { value, success: true }
+        } catch (error) {
+            return { value: "", success: false }
+        }
     }
 
     private async baseDebuggerStep(stepType: DebugStepType, url?: string) {

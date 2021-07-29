@@ -472,22 +472,22 @@
     "keybindings": [
       {
         "command": "abapfs.execute",
-        "key": "Ctrl+Shift+F5",
-        "when": "editorTextFocus && resourceScheme == adt && debug"
-      },
-      {
-        "command": "abapfs.runInGui",
         "key": "Ctrl+Shift+F6",
         "when": "editorTextFocus && resourceScheme == adt"
       },
       {
+        "command": "abapfs.runInGui",
+        "key": "Ctrl+Shift+F5",
+        "when": "editorTextFocus && resourceScheme == adt"
+      },
+      {
         "command": "abapfs.goToCursor",
-        "key": "Ctrl+Shift+F11",
+        "key": "ctrl+shift+f9",
         "when": "editorTextFocus && resourceScheme == adt && debugState != 'inactive'"
       },
       {
         "command": "abapfs.continueToCursor",
-        "key": "Shitf.F8",
+        "key": "ctrl+shift+f7",
         "when": "editorTextFocus && resourceScheme == adt && debugState != 'inactive'"
       },
       {

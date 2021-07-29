@@ -90,8 +90,10 @@ export class AbapDebugSession extends LoggingDebugSession {
     }
 
     protected async attachRequest(response: DebugProtocol.AttachResponse, args: DebugProtocol.AttachRequestArguments, request?: DebugProtocol.Request) {
-        this.service.mainLoop()
-        response.success = true
+        response.success = await this.service.fireMainLoop()
+        if (!response.success) {
+            response.message = "Could not attach to process"
+        }
         this.sendResponse(response)
     }
 
@@ -121,6 +123,12 @@ export class AbapDebugSession extends LoggingDebugSession {
         response.body = { scopes: await this.service.getScopes(args.frameId) }
         this.sendResponse(response)
     }
+    protected async setVariableRequest(response: DebugProtocol.SetVariableResponse, args: DebugProtocol.SetVariableArguments, request?: DebugProtocol.Request) {
+        const { value, success } = await this.service.setVariable(args.variablesReference, args.name, args.value)
+        response.body = { value }
+        response.success = success
+        this.sendResponse(response)
+    }
 
     protected async variablesRequest(response: DebugProtocol.VariablesResponse, args: DebugProtocol.VariablesArguments, request?: DebugProtocol.Request) {
         response.body = { variables: await this.service.getVariables(args.variablesReference) }
@@ -140,7 +148,8 @@ export class AbapDebugSession extends LoggingDebugSession {
             supportsStepInTargetsRequest: true,
             supportsConfigurationDoneRequest: true,
             supportsTerminateRequest: true,
-            supportsEvaluateForHovers: true
+            supportsEvaluateForHovers: true,
+            supportsSetVariable: true,
         }
 
         this.sendResponse(response)
