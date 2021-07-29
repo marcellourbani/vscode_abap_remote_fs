@@ -43,6 +43,9 @@ export const AbapFsCommands = {
   transportUser: "abapfs.transportUser",
   transportCopyNumber: "abapfs.transportCopyNumber",
   transportOpenGui: "abapfs.transportOpenGui",
+  // debugger
+  goToCursor: "abapfs.goToCursor",
+  continueToCursor: "abapfs.continueToCursor",
   // abapgit
   agitRefreshRepos: "abapfs.refreshrepos",
   agitReveal: "abapfs.revealPackage",

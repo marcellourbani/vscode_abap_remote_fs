@@ -4,7 +4,7 @@ Turns Visual studio code into an IDE for ABAP development, operating directly on
 
 Is less capable and more buggy than Eclipse with ADT, but also more responsive, and has a couple of extra features not found in Eclipse, like listing changed sources by transport and normalizing changes in diff views
 
-> **Now with debugging support (buggy, only tested on Linux) !!**
+> **Keyboard shortcuts changed F5 now starts debugger**
 
 ## Getting started
 
@@ -24,9 +24,9 @@ You can also look up ABAP objects by name with command
 
 ## Links
 
-* [Getting started](https://github.com/marcellourbani/vscode_abap_remote_fs/wiki/getting-started) 
-* [wiki/documentation](https://github.com/marcellourbani/vscode_abap_remote_fs/wiki) 
-* [blog post by Leon Hassan](https://blogs.sap.com/2019/12/06/abap-development-in-vs-code)
+- [Getting started](https://github.com/marcellourbani/vscode_abap_remote_fs/wiki/getting-started)
+- [wiki/documentation](https://github.com/marcellourbani/vscode_abap_remote_fs/wiki)
+- [blog post by Leon Hassan](https://blogs.sap.com/2019/12/06/abap-development-in-vs-code)
 
 **Unless your system is very modern (7.51 or later I think), write support will require you to install [this plugin](https://github.com/marcellourbani/abapfs_extensions)** in your dev server to enable. Browsing works even without it
 

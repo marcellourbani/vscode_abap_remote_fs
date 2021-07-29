@@ -257,13 +257,23 @@ export class DebugService {
         return []
 
     }
+
     private async syncBreakpoints(node: AbapFile, breakpoints: DebugProtocol.SourceBreakpoint[], path: string, name?: string) {
         const objuri = node.object.contentsPath()
+        const bps = breakpoints.map(b => `${objuri}#start=${b.line}`)
         const uri = Uri.parse(path)
         const clientId = `24:${this.connId}${uri.path}`
         const oldbps = this.getBreakpoints(path)
-        const bps = breakpoints.map(b => `${objuri}#start=${b.line}`)
-        const actualbps = await this.client.statelessClone.debuggerSetBreakpoints(this.mode, this.terminalId, this.ideId, clientId, bps, this.username)
+        let actualbps = await this.client.statelessClone.debuggerSetBreakpoints(this.mode, this.terminalId, this.ideId, clientId, bps, this.username)
+        const conditional = breakpoints.filter(b => b.condition)
+        if (conditional.length) {
+            const newbps = actualbps.filter(isDebuggerBreakpoint).map(b => {
+                const cond = conditional.find(c => c.line === b.uri.range.start.line)
+                if (cond?.condition) return { ...b, condition: cond.condition }
+                return b
+            })
+            actualbps = await this.client.statelessClone.debuggerSetBreakpoints(this.mode, this.terminalId, this.ideId, clientId, newbps, this.username)
+        }
         if (this.attached) {
             const confbps = actualbps.filter(isDebuggerBreakpoint)
             await this.client.debuggerSetBreakpoints(this.mode, this.terminalId, this.ideId, clientId, confbps, this.username, "debugger")
@@ -282,12 +292,6 @@ export class DebugService {
             return new AdtBreakpoint(false)
         })
         return confirmed
-    }
-    async deleteExisting(source: DebugProtocol.Source, breakpoints: DebugProtocol.SourceBreakpoint[]) {
-        const currentbps = source.path && this.breakpoints.get(source.path) || []
-        const toDelete = currentbps.filter(bp => (breakpoints.find(b => b.line === bp.adtBp?.uri.range.start.line)))
-        // await this.client.debuggerDeleteBreakpoints(this.mode, this.terminalId, this.ideId, bp.uri, this.username)
-        throw new Error("Method not implemented.")
     }
 
     private async onBreakpointReached(debuggee: Debuggee) {

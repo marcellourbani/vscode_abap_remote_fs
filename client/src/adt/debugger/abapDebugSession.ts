@@ -1,9 +1,14 @@
-import { commands, DebugConfiguration, DebugSession, Disposable } from "vscode"
-import { InitializedEvent, LoggingDebugSession, TerminatedEvent, Thread } from "vscode-debugadapter"
+import { commands, DebugConfiguration, DebugSession, Disposable, window } from "vscode"
+import { InitializedEvent, LoggingDebugSession, StoppedEvent, TerminatedEvent, Thread } from "vscode-debugadapter"
 import { DEBUGTYPE } from "./abapConfigurationProvider"
 import { DebugProtocol } from 'vscode-debugprotocol'
 import { DebugService, isRequestTerminationEvent } from "./debugService"
 import { AbapDebugAdapterFactory } from "./AbapDebugAdapterFactory"
+import { AbapFsCommands, command } from "../../commands"
+import { currentEditState } from "../../commands/commands"
+import { DebugStepType } from "abap-adt-api"
+import { getRoot } from "../conections"
+import { isAbapFile } from "abapfs"
 
 export interface AbapDebugConfiguration extends DebugConfiguration {
     connId: string,
@@ -140,6 +145,33 @@ export class AbapDebugSession extends LoggingDebugSession {
 
         this.sendResponse(response)
         this.sendEvent(new InitializedEvent())
+    }
+
+
+
+    private static async cursorAction(stepType: DebugStepType) {
+        const s = currentEditState()
+        if (!s?.client || !s.line || !s.uri) return
+        const session = AbapDebugSession.byConnection(s.uri.authority)
+        if (!session) return
+        try {
+            const root = getRoot(s.uri.authority)
+            const n = root.getNode(s.uri.path)
+            if (!isAbapFile(n)) return
+            const uri = `${n.object.contentsPath()}#start=${s.line + 1}`
+            await session.service.debuggerStep(stepType, uri)
+            session.sendEvent(new StoppedEvent("goto"))
+        } catch (error) {
+            window.showErrorMessage(error?.message || `Error jumping to statement`)
+        }
+    }
+    @command(AbapFsCommands.goToCursor)
+    private static async runToCursor() {
+        return AbapDebugSession.cursorAction("stepJumpToLine")
+    }
+    @command(AbapFsCommands.continueToCursor)
+    private static continueToCursor() {
+        return AbapDebugSession.cursorAction("stepRunToLine")
     }
 
 }

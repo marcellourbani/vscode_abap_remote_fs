@@ -459,18 +459,36 @@
       {
         "command": "abapfs.clearPassword",
         "title": "AbapFs forget connection password"
+      },
+      {
+        "command": "abapfs.goToCursor",
+        "title": "AbapFs Go to statement"
+      },
+      {
+        "command": "abapfs.continueToCursor",
+        "title": "AbapFs Continue to cursor"
       }
     ],
     "keybindings": [
       {
         "command": "abapfs.execute",
-        "key": "F5",
-        "when": "editorTextFocus && resourceScheme == adt"
+        "key": "Ctrl+Shift+F5",
+        "when": "editorTextFocus && resourceScheme == adt && debug"
       },
       {
         "command": "abapfs.runInGui",
-        "key": "Ctrl+Shift+F5",
+        "key": "Ctrl+Shift+F6",
         "when": "editorTextFocus && resourceScheme == adt"
+      },
+      {
+        "command": "abapfs.goToCursor",
+        "key": "Ctrl+Shift+F11",
+        "when": "editorTextFocus && resourceScheme == adt && debugState != 'inactive'"
+      },
+      {
+        "command": "abapfs.continueToCursor",
+        "key": "Shitf.F8",
+        "when": "editorTextFocus && resourceScheme == adt && debugState != 'inactive'"
       },
       {
         "command": "abapfs.unittest",

@@ -1,5 +1,22 @@
 # Change Log
 
+## Unreleased
+
+### Fixed
+
+- set/delete breakpoints while debugging
+- debugger session handling bugs
+
+### Added
+
+- conditional breakpoints
+- debugger jump to line
+- debugger run to line
+
+### Changed
+
+- keymappings for sapgui integration
+
 ## [0.12.17] 2021-05-13
 
 ### Fixed

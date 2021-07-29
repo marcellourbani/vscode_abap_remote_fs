@@ -44,11 +44,12 @@ function currentUri() {
   return uri
 }
 
-function current() {
+export function currentEditState() {
   const uri = currentUri()
   if (!uri) return
   const client = getClient(uri.authority)
-  return { uri, client }
+  const line = window.activeTextEditor?.selection.active.line
+  return { uri, client, line }
 }
 
 export function openObject(connId: string, uri: string) {
@@ -302,7 +303,7 @@ export class AdtCommands {
       if (uri.scheme !== ADTSCHEME) return
       return this.createTI(uri)
     }
-    const cur = current()
+    const cur = currentEditState()
     if (!cur) return
     return this.createTI(cur.uri)
   }
