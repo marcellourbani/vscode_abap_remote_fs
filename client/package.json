@@ -61,8 +61,8 @@
   "dependencies": {
     "@abaplint/core": "^2.74.9",
     "@types/tmp": "0.2.0",
-    "abap-adt-api": "^2.10.1",
     "abap_cloud_platform": "^1.1.2",
+    "abap-adt-api": "^2.10.1",
     "abapfs": "file:../modules/abapfs",
     "abapobject": "file:../modules/abapObject",
     "client-oauth2": "^4.3.3",
@@ -70,6 +70,7 @@
     "fast-xml-parser": "^3.17.6",
     "fp-ts": "^2.8.4",
     "fs-jetpack": "^4.0.0",
+    "html-entities": "^1.4.0",
     "method-call-logger": "^1.0.7",
     "mongodb-client-encryption": "^1.2.3",
     "mongoose": "^5.12.5",

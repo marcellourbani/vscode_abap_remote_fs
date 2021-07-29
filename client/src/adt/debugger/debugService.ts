@@ -1,6 +1,6 @@
 import {
     ADTClient, Debuggee, DebugStepType, isDebuggerBreakpoint,
-    debugMetaIsComplex, isDebugListenerError, session_types, DebugMetaType, DebugVariable, DebugBreakpoint, DebuggingMode
+    debugMetaIsComplex, isDebugListenerError, session_types, DebugMetaType, DebugVariable, DebugBreakpoint, DebuggingMode, DebuggerScope
 } from "abap-adt-api"
 import { newClientFromKey, md5 } from "./functions"
 import { readFileSync, writeFileSync, existsSync, mkdirSync } from "fs"
@@ -8,7 +8,7 @@ import { log } from "../../lib"
 import { DebugProtocol } from "vscode-debugprotocol"
 import { Disposable, EventEmitter, Uri } from "vscode"
 import { getRoot } from "../conections"
-import { isAbapFile, } from "abapfs"
+import { AbapFile, isAbapFile, } from "abapfs"
 import { homedir } from "os"
 import { join } from "path"
 import { Breakpoint, Handles, Scope, Source, StoppedEvent } from "vscode-debugadapter"
@@ -248,26 +248,46 @@ export class DebugService {
         const root = getRoot(this.connId)
         const node = await root.getNodeAsync(uri.path)
         if (isAbapFile(node)) {
-            const objuri = node.object.contentsPath()
-            const clientId = `24:${this.connId}${uri.path}`
-            const bps = breakpoints.map(b => `${objuri}#start=${b.line}`)
             try {
-                const actualbps = await this.client.debuggerSetBreakpoints(this.mode, this.terminalId, this.ideId, clientId, bps, this.username)
-                const confirmed = breakpoints.map(bp => {
-                    const actual = actualbps.find(a => isDebuggerBreakpoint(a) && a.uri.range.start.line === bp.line)
-                    if (actual && isDebuggerBreakpoint(actual)) {
-                        const src = new Source(source.name || "", source.path)
-                        return new AdtBreakpoint(true, actual, bp.line, 0, src)
-                    }
-                    return new AdtBreakpoint(false)
-                })
-                return confirmed
+                return await this.syncBreakpoints(node, breakpoints, source.path, source.name)
             } catch (error) {
                 log(error.message)
             }
         }
         return []
 
+    }
+    private async syncBreakpoints(node: AbapFile, breakpoints: DebugProtocol.SourceBreakpoint[], path: string, name?: string) {
+        const objuri = node.object.contentsPath()
+        const uri = Uri.parse(path)
+        const clientId = `24:${this.connId}${uri.path}`
+        const oldbps = this.getBreakpoints(path)
+        const bps = breakpoints.map(b => `${objuri}#start=${b.line}`)
+        const actualbps = await this.client.statelessClone.debuggerSetBreakpoints(this.mode, this.terminalId, this.ideId, clientId, bps, this.username)
+        if (this.attached) {
+            const confbps = actualbps.filter(isDebuggerBreakpoint)
+            await this.client.debuggerSetBreakpoints(this.mode, this.terminalId, this.ideId, clientId, confbps, this.username, "debugger")
+            const deleted = oldbps.map(o => o.adtBp).filter(o => o && !breakpoints.find(b => b.line === o.uri.range.start.line))
+            for (const bp of deleted) {
+                await this.client.statelessClone.debuggerDeleteBreakpoints(bp!, "user", this.terminalId, this.ideId, this.username)
+                await this.client.debuggerDeleteBreakpoints(bp!, "user", this.terminalId, this.ideId, this.username, "debugger")
+            }
+        }
+        const confirmed = breakpoints.map(bp => {
+            const actual = actualbps.find(a => isDebuggerBreakpoint(a) && a.uri.range.start.line === bp.line)
+            if (actual && isDebuggerBreakpoint(actual)) {
+                const src = new Source(name || "", path)
+                return new AdtBreakpoint(true, actual, bp.line, 0, src)
+            }
+            return new AdtBreakpoint(false)
+        })
+        return confirmed
+    }
+    async deleteExisting(source: DebugProtocol.Source, breakpoints: DebugProtocol.SourceBreakpoint[]) {
+        const currentbps = source.path && this.breakpoints.get(source.path) || []
+        const toDelete = currentbps.filter(bp => (breakpoints.find(b => b.line === bp.adtBp?.uri.range.start.line)))
+        // await this.client.debuggerDeleteBreakpoints(this.mode, this.terminalId, this.ideId, bp.uri, this.username)
+        throw new Error("Method not implemented.")
     }
 
     private async onBreakpointReached(debuggee: Debuggee) {
