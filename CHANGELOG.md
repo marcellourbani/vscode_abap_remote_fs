@@ -1,5 +1,16 @@
 # Change Log
 
+## [0.13.1] 2021-07-30
+
+### Fixed
+
+- unique terminal id per workspace
+- change value of simple variables
+
+### Added
+
+- SY in debugger
+
 ## [0.13.0] 2021-07-30
 
 ### Fixed

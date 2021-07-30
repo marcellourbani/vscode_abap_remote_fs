@@ -6,7 +6,7 @@ import { newClientFromKey, md5 } from "./functions"
 import { readFileSync, writeFileSync, existsSync, mkdirSync } from "fs"
 import { log, after } from "../../lib"
 import { DebugProtocol } from "vscode-debugprotocol"
-import { Disposable, EventEmitter, Uri } from "vscode"
+import { Disposable, EventEmitter, Uri, workspace } from "vscode"
 import { getRoot } from "../conections"
 import { AbapFile, isAbapFile, } from "abapfs"
 import { homedir } from "os"
@@ -15,6 +15,7 @@ import { Breakpoint, Handles, Scope, Source, StoppedEvent } from "vscode-debugad
 import { vsCodeUri } from "../../langClient"
 import { v1 } from "uuid"
 import { getWinRegistryReader } from "./winregistry"
+import { context } from "../../extension"
 
 const ATTACHTIMEOUT = "autoAttachTimeout"
 const sessionNumbers = new Map<string, number>()
@@ -40,6 +41,14 @@ const variableValue = (v: DebugVariable) => {
     if (v.META_TYPE === "table") return `${v.TECHNICAL_TYPE || v.META_TYPE} ${v.TABLE_LINES} lines`
     if (debugMetaIsComplex(v.META_TYPE)) return v.META_TYPE
     return `${v.VALUE}`
+}
+
+const getOrCreateIdeId = (): string => {
+    const ideId = context.workspaceState.get("adt.ideId")
+    if (typeof ideId === "string") return ideId
+    const newIdeId = v1().replace(/-/g, "").toUpperCase()
+    context.workspaceState.update("adt.ideId", newIdeId)
+    return newIdeId
 }
 
 const getOrCreateTerminalId = async () => {
@@ -105,7 +114,7 @@ export class DebugService {
         private username: string, terminalMode: boolean, private ui: DebuggerUI) {
         this.sessionNumber = (sessionNumbers.get(connId) || 0) + 1
         sessionNumbers.set(connId, this.sessionNumber)
-        this.ideId = md5(connId)
+        this.ideId = getOrCreateIdeId()
         this.mode = terminalMode ? "terminal" : "user"
         if (!this.username) this.username = _client.username.toUpperCase()
     }
@@ -130,6 +139,7 @@ export class DebugService {
             const handler = this.variableHandles.create({ id: h.CHILD_ID, name })
             return new Scope(name, handler, true)
         })
+        scopes.push(new Scope("SY", this.variableHandles.create({ id: "SY", name: "SY" }), true))
         return scopes
     }
 
@@ -235,7 +245,7 @@ export class DebugService {
                 switch (exceptionType) {
                     case "conflictNotification":
                     case "conflictDetected":
-                        const txt = error?.properties?.conflictText || "Debugger conflict detected"
+                        const txt = error?.properties?.conflictText || "Debugger terminated by another session/user"
                         this.stopDebugging()
                         this.ui.ShowError(txt)
                         break
@@ -334,7 +344,7 @@ export class DebugService {
     async setVariable(reference: number, name: string, inputValue: string) {
         try {
             const h = this.variableHandles.get(reference)
-            const variable = `${h?.name}-${name}`.toUpperCase()
+            const variable = h.id.match(/^@/) ? name : `${h?.name}-${name}`.toUpperCase()
             const value = await this.client.debuggerSetVariableValue(variable, inputValue)
             return { value, success: true }
         } catch (error) {
