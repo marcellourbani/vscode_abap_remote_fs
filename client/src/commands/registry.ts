@@ -16,9 +16,12 @@ export const AbapFsCommands = {
   addfavourite: "abapfs.addfavourite",
   deletefavourite: "abapfs.deletefavourite",
   createConnection: "abapfs.createConnection",
+  showDump: "abapfs.showDump",
+  refreshDumps: "abapfs.refreshDumps",
   // classes
   refreshHierarchy: "abapfs.refreshHierarchy",
   pickObject: "abapfs.pickObject",
+  pickAdtRootConn: "abapfs.pickAdtRootConn",
   runClass: "abapfs.runClass",
   // revisions
   clearScmGroup: "abapfs.clearScmGroup",
@@ -40,6 +43,9 @@ export const AbapFsCommands = {
   transportUser: "abapfs.transportUser",
   transportCopyNumber: "abapfs.transportCopyNumber",
   transportOpenGui: "abapfs.transportOpenGui",
+  // debugger
+  goToCursor: "abapfs.goToCursor",
+  continueToCursor: "abapfs.continueToCursor",
   // abapgit
   agitRefreshRepos: "abapfs.refreshrepos",
   agitReveal: "abapfs.revealPackage",

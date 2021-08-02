@@ -2,7 +2,7 @@
   "name": "vscode-abap-remote-fs",
   "displayName": "ABAP remote filesystem",
   "description": "Work on your ABAP code straight from the server",
-  "version": "0.10.3",
+  "version": "0.13.1",
   "publisher": "murbani",
   "license": "MIT",
   "icon": "client/images/abapfs_logo.png",
@@ -29,7 +29,8 @@
   ],
   "extensionDependencies": [
     "larshp.vscode-abap",
-    "hudakf.cds"
+    "hudakf.cds",
+    "murbani.winregistry"
   ],
   "activationEvents": [
     "onFileSystem:adt",
@@ -69,10 +70,56 @@
     "rimraf": "^3.0.2",
     "tslint": "^6.1.0",
     "typescript": "^3.8.3",
-    "vsce": "^1.79.5",
+    "vsce": "^1.88.0",
     "webpack-cli": "^3.3.11"
   },
   "contributes": {
+    "breakpoints": [
+      {
+        "language": "abap"
+      }
+    ],
+    "debuggers": [
+      {
+        "type": "abap",
+        "label": "ABAP on server",
+        "languages": [
+          "abap"
+        ],
+        "configurationAttributes": {
+          "attach": {
+            "required": [
+              "root"
+            ],
+            "properties": {
+              "connId": {
+                "type": "string",
+                "description": "Absolute path to a text file.",
+                "default": "${command:abapfs.pickAdtRootConn}"
+              },
+              "debugUser": {
+                "type": "string",
+                "description": "User to debug for (defaults to current user)",
+                "default": ""
+              },
+              "terminalMode": {
+                "type": "boolean",
+                "description": "Terminal mode",
+                "default": false
+              }
+            }
+          }
+        },
+        "initialConfigurations": [
+          {
+            "type": "abap",
+            "request": "attach",
+            "name": "Attach to server",
+            "connId": "${command:abapfs.pickAdtRootConn}"
+          }
+        ]
+      }
+    ],
     "customEditors": [
       {
         "viewType": "abapfs.msagn",
@@ -110,8 +157,13 @@
           "when": "abapfs:extensionActive"
         },
         {
+          "id": "abapfs.dumps",
+          "name": "Dumps",
+          "when": "abapfs:extensionActive"
+        },
+        {
           "id": "abapfs.abapgit",
-          "name": "abapGit ",
+          "name": "abapGit",
           "when": "abapfs:extensionActive"
         }
       ],
@@ -281,6 +333,14 @@
         "title": "AbapFs Open transportable object"
       },
       {
+        "command": "abapfs.refreshDumps",
+        "title": "Refresh dumps",
+        "icon": {
+          "dark": "client/images/dark/icon-refresh.svg",
+          "light": "client/images/light/icon-refresh.svg"
+        }
+      },
+      {
         "command": "abapfs.transportCopyNumber",
         "title": "Copy transport number to clipboard",
         "icon": {
@@ -399,18 +459,36 @@
       {
         "command": "abapfs.clearPassword",
         "title": "AbapFs forget connection password"
+      },
+      {
+        "command": "abapfs.goToCursor",
+        "title": "AbapFs Go to statement"
+      },
+      {
+        "command": "abapfs.continueToCursor",
+        "title": "AbapFs Continue to cursor"
       }
     ],
     "keybindings": [
       {
         "command": "abapfs.execute",
-        "key": "F5",
+        "key": "Ctrl+Shift+F6",
         "when": "editorTextFocus && resourceScheme == adt"
       },
       {
         "command": "abapfs.runInGui",
         "key": "Ctrl+Shift+F5",
         "when": "editorTextFocus && resourceScheme == adt"
+      },
+      {
+        "command": "abapfs.goToCursor",
+        "key": "ctrl+shift+f9",
+        "when": "editorTextFocus && resourceScheme == adt && debugState != 'inactive'"
+      },
+      {
+        "command": "abapfs.continueToCursor",
+        "key": "ctrl+shift+f7",
+        "when": "editorTextFocus && resourceScheme == adt && debugState != 'inactive'"
       },
       {
         "command": "abapfs.unittest",
@@ -602,6 +680,11 @@
         }
       ],
       "view/item/context": [
+        {
+          "command": "abapfs.refreshDumps",
+          "group": "inline",
+          "when": "view == abapfs.dumps && viewItem == system"
+        },
         {
           "command": "abapfs.deletefavourite",
           "group": "inline",
@@ -985,8 +1068,5 @@
         "editor.formatOnSave": true
       }
     }
-  },
-  "dependencies": {
-    "html-entities": "^1.3.1"
   }
 }

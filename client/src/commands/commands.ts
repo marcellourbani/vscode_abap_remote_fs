@@ -4,7 +4,6 @@ import {
   Uri,
   window,
   commands,
-  ViewColumn,
   ProgressLocation
 } from "vscode"
 import { pickAdtRoot, RemoteManager } from "../config"
@@ -45,11 +44,12 @@ function currentUri() {
   return uri
 }
 
-function current() {
+export function currentEditState() {
   const uri = currentUri()
   if (!uri) return
   const client = getClient(uri.authority)
-  return { uri, client }
+  const line = window.activeTextEditor?.selection.active.line
+  return { uri, client, line }
 }
 
 export function openObject(connId: string, uri: string) {
@@ -158,6 +158,13 @@ export class AdtCommands {
     } catch (e) {
       return window.showErrorMessage(e.toString())
     }
+  }
+  @command(AbapFsCommands.pickAdtRootConn)
+  private static async pickRoot() {
+    const uri = currentUri()
+    const fsRoot = await pickAdtRoot(uri)
+    if (!fsRoot) return
+    return fsRoot.uri.authority
   }
 
   @command(AbapFsCommands.runClass)
@@ -296,7 +303,7 @@ export class AdtCommands {
       if (uri.scheme !== ADTSCHEME) return
       return this.createTI(uri)
     }
-    const cur = current()
+    const cur = currentEditState()
     if (!cur) return
     return this.createTI(cur.uri)
   }

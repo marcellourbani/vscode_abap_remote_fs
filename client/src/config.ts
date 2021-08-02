@@ -8,10 +8,9 @@ import { window, workspace, QuickPickItem, WorkspaceFolder, Uri, ConfigurationTa
 import { ADTClient, createSSLConfig } from "abap-adt-api"
 import { readFileSync } from "fs"
 import { createProxy } from "method-call-logger"
-import { log, mongoApiLogger, mongoHttpLogger, PasswordVault } from "./lib"
+import { mongoApiLogger, mongoHttpLogger, PasswordVault } from "./lib"
 import { oauthLogin } from "./oauth"
 import { ADTSCHEME } from "./adt/conections"
-import { connections } from "mongoose"
 
 const CONFIGROOT = "abapfs"
 const REMOTE = "remote"
@@ -34,7 +33,7 @@ export interface RemoteConfig extends ClientConfiguration {
 }
 
 export const formatKey = (raw: string) => raw.toLowerCase()
-const connectedRoots = () => {
+export const connectedRoots = () => {
   const rootmap = new Map<string, WorkspaceFolder>()
   const roots = (workspace.workspaceFolders || []).filter(
     r => r.uri.scheme === ADTSCHEME

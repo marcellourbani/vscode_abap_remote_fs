@@ -272,81 +272,85 @@ class AbapGitProvider implements TreeDataProvider<TreeItem> {
     }
     try {
       const ri = await this.git.getRemoteInfo(repoUrl, client)
-      if (ri.access_mode === "PRIVATE") {
-        const getBranches = (x: RepoAccess) => async () =>
-          (
-            await this.git.getRemoteInfo(repoUrl, client, x.user, x.password)
-          ).branches.map(b => b.name)
+      const isPrivate = ri.access_mode === "PRIVATE"
+      const getBranches = (x: RepoAccess) => async () => {
+        const branches = isPrivate ? (await this.git.getRemoteInfo(repoUrl, client, x.user, x.password)).branches
+          : ri.branches
+        return branches.map(b => b.name)
+      }
 
-        const placeHolder = "select branch"
-        const replaceBranch = dependFieldReplacer<RepoAccess>("branch", x =>
-          quickPick(getBranches(x), { placeHolder })
-        )
+      const placeHolder = "select branch"
+      const replaceBranch = dependFieldReplacer<RepoAccess>("branch", x =>
+        quickPick(getBranches(x), { placeHolder })
+      )
 
-        const newAccess = await chainTaskTransformers<RepoAccess>(
-          createTaskTransformer(async x => {
-            const cred = await repoCredentials(repoUrl)
-            if (isNone(cred)) throw none
-            if (isSome(cred)) x = { ...x, ...cred.value }
-            return x
-          }),
-          replaceBranch
-        )(access)()
-        if (isRight(newAccess)) return newAccess.right
-      } else access.branch = ri && ri.branches[0] && ri.branches[0].name
+      const newAccess = await chainTaskTransformers<RepoAccess>(
+        createTaskTransformer(async x => {
+          if (!isPrivate) return x
+          const cred = await repoCredentials(repoUrl)
+          if (isNone(cred)) throw none
+          if (isSome(cred)) x = { ...x, ...cred.value }
+          return x
+        }),
+        replaceBranch
+      )(access)()
+      if (isRight(newAccess)) return newAccess.right
     } catch (e) {
       log(e.toString())
     }
     return access
   }
 
+  private async createRepoInternal(item: ServerItem, client: ADTClient, pkgname: string, repoUrl: string, repoaccess: RepoAccess, transport: string) {
+    const result = await client.gitCreateRepo(
+      pkgname,
+      repoUrl,
+      repoaccess.branch,
+      transport,
+      repoaccess.user,
+      repoaccess.password
+    )
+    await Promise.all([
+      this.refresh()
+    ]).finally(() => commands.executeCommand("workbench.files.action.refreshFilesExplorer"))
+    const created = this.gitChildren
+      .find(i => i.connId === item.connId)
+      ?.children.find(r => r.repo.url === repoUrl)
+    if (created) this.reveal(created)
+    return result
+
+  }
+
   private async createRepo(item: ServerItem) {
-    const pkg = await new AdtObjectFinder(item.connId).findObject(
-      "Select package",
-      PACKAGE
-    )
-    if (!pkg) return
-    const repoUrl = await window.showInputBox({
-      prompt: "Repository URL",
-      ignoreFocusOut: true
-    })
-    if (!repoUrl) return
+    try {
+      const pkg = await new AdtObjectFinder(item.connId).findObject(
+        "Select package",
+        PACKAGE
+      )
+      if (!pkg) return
+      const repoUrl = await window.showInputBox({
+        prompt: "Repository URL",
+        ignoreFocusOut: true
+      })
+      if (!repoUrl) return
 
-    const client = getClient(item.connId)
+      const client = getClient(item.connId)
 
-    const repoaccess = await this.getRemoteInfo(repoUrl, client)
+      const repoaccess = await this.getRemoteInfo(repoUrl, client)
 
-    const transport = await selectTransport(
-      objectPath(PACKAGE, pkg.name),
-      pkg.name,
-      client
-    )
-    if (transport.cancelled) return
-    if (!(await confirmPull(pkg.name))) return
-    return await window.withProgress(
-      {
-        location: ProgressLocation.Window,
-        title: `Linking and pulling package ${pkg.name}`
-      },
-      async () => {
-        const result = await client.gitCreateRepo(
-          pkg.name,
-          repoUrl,
-          repoaccess.branch,
-          transport.transport,
-          repoaccess.user,
-          repoaccess.password
-        )
-        await Promise.all([
-          this.refresh()
-        ]).finally(() => commands.executeCommand("workbench.files.action.refreshFilesExplorer"))
-        const created = this.gitChildren
-          .find(i => i.connId === item.connId)
-          ?.children.find(r => r.repo.url === repoUrl)
-        if (created) this.reveal(created)
-        return result
-      }
-    )
+      const transport = await selectTransport(
+        objectPath(PACKAGE, pkg.name),
+        pkg.name,
+        client
+      )
+      if (transport.cancelled) return
+      if (!(await confirmPull(pkg.name))) return
+      return await this.createRepoInternal(item, client, pkg.name, repoUrl, repoaccess, transport.transport)
+
+    } catch (error) {
+      window.showErrorMessage(`Error creating or pulling repository: ${error.message}`)
+      this.refresh()
+    }
   }
 
   @command(AbapFsCommands.agitRefreshRepos)

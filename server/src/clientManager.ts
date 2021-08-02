@@ -1,6 +1,6 @@
 import { ADTClient, createSSLConfig } from "abap-adt-api"
 import { createConnection, ProposedFeatures } from "vscode-languageserver"
-import { isString, isError } from "util"
+import { types } from "util"
 import { readConfiguration, sendLog, sendHttpLog } from "./clientapis"
 import {
   ClientConfiguration,
@@ -11,6 +11,7 @@ import {
 } from "vscode-abap-remote-fs-sharedapi"
 import { createProxy, MethodCall } from "method-call-logger"
 import { LogPhase, LogData } from "request-debug"
+import { isString } from "./functions"
 const clients: Map<string, ADTClient> = new Map()
 
 export const connection = createConnection(ProposedFeatures.all)
@@ -94,7 +95,7 @@ function convertParams(...params: any) {
   let msg = ""
   for (const x of params) {
     try {
-      if (isError(x)) msg += `\nError ${x.name}\n${x.message}\n\n${x.stack}\n`
+      if (types.isNativeError(x)) msg += `\nError ${x.name}\n${x.message}\n\n${x.stack}\n`
       else msg += isString(x) ? x : JSON.stringify(x)
     } catch (e) {
       msg += x.toString()

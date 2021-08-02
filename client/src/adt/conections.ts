@@ -2,6 +2,7 @@ import { RemoteManager, createClient } from "../config"
 import { AFsService, Root } from "abapfs"
 import { Uri, FileSystemError } from "vscode"
 import { ADTClient } from "abap-adt-api"
+import { LogOutPendingDebuggers } from "./debugger"
 export const ADTSCHEME = "adt"
 export const ADTURIPATTERN = /\/sap\/bc\/adt\//
 
@@ -90,6 +91,6 @@ export async function disconnect() {
     .map(c => c.statelessClone)
     .filter(c => c.loggedin)
     .map(c => c.logout())
-  await Promise.all([...main, ...clones])
+  await Promise.all([...main, ...clones, ...LogOutPendingDebuggers()])
   return
 }

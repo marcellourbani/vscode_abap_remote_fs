@@ -19,10 +19,26 @@ export const LIBFOLDER = "System Library"
 const createPkg = (name: string, service: AbapFsService) =>
   create(PACKAGE, name, PACKAGEBASEPATH, true, "", undefined, "", service)
 
-const toMain = async (node: PathItem | undefined, main: boolean) => {
-  if (node && isAbapFolder(node?.file) && main) {
+const toInclude = async (node: PathItem | undefined, adtPath: string, main: boolean) => {
+  if (node && isAbapFolder(node?.file) && (main || node.path !== adtPath)) {
     if (node.file.size === 0) await node.file.refresh()
-    return node.file.mainInclude(node.path)
+    for (const i of node.file.expandPath(node.path))
+      if (isAbapFile(i.file) && i.file.object.structure && i.file.object.contentsPath() === adtPath)
+        return i
+
+    for (const i of node.file.expandPath(node.path))
+      if (isAbapFile(i.file) && !i.file.object.structure) {
+        try {
+          await node.file.object.loadStructure()
+          if (i.file.object.contentsPath() === adtPath)
+            return i
+        } catch (error) {
+          // ignore
+        }
+      }
+
+    if (main)
+      return node.file.mainInclude(node.path)
   }
   return node
 }
@@ -65,11 +81,11 @@ export class Root extends Folder {
     const path = this.adtToFs.get(baseUrl)
     if (path) {
       const file = this.getNode(path)
-      if (file) return toMain({ path, file }, main)
+      if (file) return toInclude({ path, file }, baseUrl, main)
     }
     const node = await this.findByAdtUriInt(baseUrl)
     if (node?.path) this.adtToFs.set(baseUrl, node.path)
-    return toMain(node, main)
+    return toInclude(node, baseUrl, main)
   }
 
   private async childNode(node: AFItem, uri: string) {

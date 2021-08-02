@@ -4,6 +4,8 @@ Turns Visual studio code into an IDE for ABAP development, operating directly on
 
 Is less capable and more buggy than Eclipse with ADT, but also more responsive, and has a couple of extra features not found in Eclipse, like listing changed sources by transport and normalizing changes in diff views
 
+> **Keyboard shortcuts changed F5 now starts debugger**
+
 ## Getting started
 
 The easiest way is to first create a connection with an ABAP server by running command
@@ -22,13 +24,15 @@ You can also look up ABAP objects by name with command
 
 ## Links
 
-[Getting started](https://github.com/marcellourbani/vscode_abap_remote_fs/wiki/getting-started) [wiki/documentation](https://github.com/marcellourbani/vscode_abap_remote_fs/wiki) [blog post by Leon Hassan](https://blogs.sap.com/2019/12/06/abap-development-in-vs-code)
+- [Getting started](https://github.com/marcellourbani/vscode_abap_remote_fs/wiki/getting-started)
+- [wiki/documentation](https://github.com/marcellourbani/vscode_abap_remote_fs/wiki)
+- [blog post by Leon Hassan](https://blogs.sap.com/2019/12/06/abap-development-in-vs-code)
 
 **Unless your system is very modern (7.51 or later I think), write support will require you to install [this plugin](https://github.com/marcellourbani/abapfs_extensions)** in your dev server to enable. Browsing works even without it
 
 ![anim](https://user-images.githubusercontent.com/2453277/47482169-ae0cc300-d82d-11e8-8d19-f55dd877c166.gif) ![image](https://user-images.githubusercontent.com/2453277/47466602-dd99dc00-d7e9-11e8-97ed-28e23dfd8f90.png) syntax highlighting provided by [ABAP language extension](https://marketplace.visualstudio.com/items?itemName=larshp.vscode-abap), picture was too lame without it :)
 
-Compatibility with [ABAPlint](https://marketplace.visualstudio.com/items?itemName=larshp.vscode-abaplint) is limited by different naming conventions
+Compatibility with [abaplint](https://marketplace.visualstudio.com/items?itemName=larshp.vscode-abaplint) is limited by different naming conventions
 
 ## Features
 
@@ -37,6 +41,8 @@ Compatibility with [ABAPlint](https://marketplace.visualstudio.com/items?itemNam
 - where used list
 - transport management
 - source control
+- debugging
+- view short dumps
 - integrated with [abapGit](https://github.com/larshp/abapGit) (now using the scm view)
 - integrated with [test explorer](https://marketplace.visualstudio.com/items?itemName=hbenl.vscode-test-explorer)
 - execute select queries (Command "AbapFs Select Query")

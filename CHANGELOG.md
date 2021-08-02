@@ -1,5 +1,110 @@
 # Change Log
 
+## [0.13.1] 2021-07-30
+
+### Fixed
+
+- unique terminal id per workspace
+- change value of simple variables
+
+### Added
+
+- SY in debugger
+
+## [0.13.0] 2021-07-30
+
+### Fixed
+
+- set/delete breakpoints while debugging
+- debugger session handling bugs
+
+### Added
+
+- conditional breakpoints
+- debugger jump to line
+- debugger run to line
+
+### Changed
+
+- keymappings for sapgui integration
+
+## [0.12.17] 2021-05-13
+
+### Fixed
+
+- bug in debugger session handling
+
+## [0.12.16] 2021-05-13
+
+### Fixed
+
+- better debugger session handling (forbid multiple instances on same connection)
+- fixed bug in debugger stack trace resolution
+
+## [0.12.15] 2021-05-11
+
+### Added
+
+- refresh dumps
+- navigate in dumps
+
+## [0.12.14] 2021-05-09
+
+### Added
+
+- debug for other user
+- terminal based debugging
+- better handling of debugger sessions
+- debugger keepalive
+- security fixes (updated dependencies)
+
+## [0.12.13] 2021-04-29
+
+### Fixed
+
+- [#156 improved debugger session handling](https://github.com/marcellourbani/vscode_abap_remote_fs/issues/156)
+
+## [0.12.12] 2021-04-27
+
+### Added
+
+- Don't stop debugger when debuggee terminates
+- kill debug session on error
+- basic hover support
+
+### Fixed
+
+- preserve classnames for abaplint
+
+## [0.12.9] 2021-04-21
+
+### Added
+
+- Debugging in windows
+- dynamic debugger configuration (run and debug)
+
+### Fixed
+
+- small bugs which prevented activation of the plugin
+
+## [0.12.0] 2021-04-20
+
+### Added
+
+- Debugging (only tested in Linux)
+
+## [0.11.0] 2021-04-09
+
+### Added
+
+- Dumps view
+
+## [0.10.4] 2021-04-07
+
+### Fixed
+
+- setup/teardown errors in unit tests are now reported
+
 ## [0.10.3] 2021-03-30
 
 ### Added

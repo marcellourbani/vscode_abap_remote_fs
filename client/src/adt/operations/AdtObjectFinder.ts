@@ -11,7 +11,8 @@ import {
   workspace,
   commands,
   Uri,
-  FileStat
+  FileStat,
+  Range
 } from "vscode"
 
 import { splitAdtUri, vscPosition, log } from "../../lib"
@@ -83,7 +84,7 @@ export class MySearchResult implements QuickPickItem, AdtSearchResult {
 
 // tslint:disable-next-line:max-classes-per-file
 export class AdtObjectFinder {
-  constructor(public readonly connId: string) {}
+  constructor(public readonly connId: string) { }
 
   public async vscodeUri(uri: string, main = true) {
     const { path } = (await getRoot(this.connId).findByAdtUri(uri, main)) || {}
@@ -104,6 +105,31 @@ export class AdtObjectFinder {
     }
     rval.uri = await this.vscodeUri(u.path)
     return rval
+  }
+
+  public async vscodeUriFromAdt(adtUri: string) {
+    const prefixRe = /adt:\/\/[^\/]+\/sap\/bc\/adt/
+    if (adtUri.match(prefixRe)) {
+      const base = adtUri.replace(prefixRe, "/sap/bc/adt")
+      const { uri, start } = await this.vscodeRange(base)
+      return { uri: Uri.parse(uri), start }
+    } else {
+      throw new Error(`Unrxpected ADT URI format for ${adtUri}`)
+    }
+
+  }
+
+  public async displayAdtUri(adtUri: string) {
+    try {
+      const { uri, start } = await this.vscodeUriFromAdt(adtUri) || {}
+      if (uri && start) {
+        const document = await workspace.openTextDocument(uri)
+        const selection = start ? new Range(start, start) : undefined
+        window.showTextDocument(document, { selection })
+      }
+    } catch (error) {
+      window.showErrorMessage(`Failed to open document ofr object ${adtUri}:\n${error?.message || error}`)
+    }
   }
 
   public async displayNode(nodePath: PathItem) {
