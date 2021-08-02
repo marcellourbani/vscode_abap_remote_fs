@@ -21,13 +21,12 @@ import { IncludeProvider } from "./adt/includes"
 
 export const listenersubscribers: ((...x: any[]) => Disposable)[] = []
 
-export const listener = <T>(event: Event<T>) => (
-  target: any,
-  propertyKey: string
-) => {
-  const func = () => event(target[propertyKey].bind(target))
-  listenersubscribers.push(func)
-}
+export const listener =
+  <T>(event: Event<T>) =>
+  (target: any, propertyKey: string) => {
+    const func = () => event(target[propertyKey].bind(target))
+    listenersubscribers.push(func)
+  }
 export async function documentClosedListener(doc: TextDocument) {
   if (!abapUri(doc.uri)) return
   try {
@@ -48,10 +47,10 @@ export async function reconnectExpired(uri: Uri) {
 
   const resp = lm.lockedPaths().next().value
     ? await window.showErrorMessage(
-      "Session expired, files can't be locked might be stale. Try to refresh locks?",
-      "Ok",
-      "Cancel"
-    )
+        "Session expired, files can't be locked might be stale. Try to refresh locks?",
+        "Ok",
+        "Cancel"
+      )
     : ok
   if (resp === ok) {
     await lm.restore()
@@ -98,9 +97,16 @@ export async function setDocumentLock(
         if (retry && (await reconnectExpired(document.uri)))
           setDocumentLock(document, interactive, false)
       } else
-        window.showErrorMessage(
-          `${e.toString()}\nWon't be able to save changes`
-        )
+        window
+          .showErrorMessage(
+            `${e.toString()}\nWon't be able to save changes\nDo you want to refresh from server?`,
+            ...["Yes", "No"]
+          )
+          .then(async answer => {
+            if (answer === "Yes") {
+              await commands.executeCommand("workbench.action.files.revert")
+            }
+          })
     }
   else await lockManager.requestUnlock(uri.path)
 

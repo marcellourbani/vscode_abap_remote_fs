@@ -1,11 +1,5 @@
 import { PACKAGE, AdtObjectCreator } from "../adt/operations/AdtObjectCreator"
-import {
-  workspace,
-  Uri,
-  window,
-  commands,
-  ProgressLocation
-} from "vscode"
+import { workspace, Uri, window, commands, ProgressLocation } from "vscode"
 import { pickAdtRoot, RemoteManager } from "../config"
 import { log } from "../lib"
 import { FavouritesProvider, FavItem } from "../views/favourites"
@@ -139,6 +133,7 @@ export class AdtCommands {
       const uri = selector || currentUri()
       const activator = AdtObjectActivator.get(uri.authority)
       const editor = findEditor(uri.toString())
+      //await commands.executeCommand("setContext", "abapfs:showActivate", false)
       await window.withProgress(
         { location: ProgressLocation.Window, title: "Activating..." },
         async () => {
@@ -156,7 +151,11 @@ export class AdtCommands {
         }
       )
     } catch (e) {
-      return window.showErrorMessage(e.toString())
+      if (!e.message.includes("is currently editing")) {
+        return window.showErrorMessage(e.toString())
+      } else {
+        await AdtCommands.activateCurrent(selector)
+      }
     }
   }
   @command(AbapFsCommands.pickAdtRootConn)
@@ -176,7 +175,10 @@ export class AdtCommands {
       const fsRoot = await pickAdtRoot(uri)
       if (!fsRoot) return
       const file = uriRoot(fsRoot.uri).getNode(uri.path)
-      const clas = isAbapFile(file) && isAbapClassInclude(file.object) && file.object.parent
+      const clas =
+        isAbapFile(file) &&
+        isAbapClassInclude(file.object) &&
+        file.object.parent
       if (clas) {
         const text = await client.runClass(clas.name)
         log(text)
@@ -184,7 +186,6 @@ export class AdtCommands {
     } catch (error) {
       log(error)
     }
-
   }
 
   @command(AbapFsCommands.search)
@@ -247,7 +248,6 @@ export class AdtCommands {
       const file = uriRoot(fsRoot.uri).getNode(uri.path)
       if (!isAbapStat(file) || !file.object.sapGuiUri) return
       await executeInGui(fsRoot.uri.authority, file.object)
-
     } catch (e) {
       return window.showErrorMessage(e.toString())
     }
@@ -263,7 +263,10 @@ export class AdtCommands {
       if (!fsRoot) return
       const file = uriRoot(fsRoot.uri).getNode(uri.path)
       if (!isAbapStat(file) || !file.object.sapGuiUri) return
-      await runInSapGui(fsRoot.uri.authority, showInGuiCb(file.object.sapGuiUri))
+      await runInSapGui(
+        fsRoot.uri.authority,
+        showInGuiCb(file.object.sapGuiUri)
+      )
     } catch (e) {
       return window.showErrorMessage(e.toString())
     }
@@ -290,7 +293,7 @@ export class AdtCommands {
       const adapter = getTestAdapter(uri)
       await window.withProgress(
         { location: ProgressLocation.Window, title: "Running ABAP UNIT" },
-        () => adapter ? adapter.runUnit(uri) : abapUnit(uri)
+        () => (adapter ? adapter.runUnit(uri) : abapUnit(uri))
       )
     } catch (e) {
       return window.showErrorMessage(e.toString())
