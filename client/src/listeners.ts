@@ -8,7 +8,8 @@ import {
   Disposable,
   Event,
   TextDocumentWillSaveEvent,
-  workspace
+  workspace,
+  languages
 } from "vscode"
 
 import { debounce, log } from "./lib"
@@ -105,6 +106,7 @@ export async function setDocumentLock(
           .then(async answer => {
             if (answer === "Yes") {
               await commands.executeCommand("workbench.action.files.revert")
+              await showHideActivate(window.activeTextEditor)
             }
           })
     }
@@ -128,6 +130,7 @@ const doclock = debounce(200, async (document: TextDocument) => {
     await setDocumentLock(document)
   } finally {
     const editor = window.activeTextEditor
+
     if (editor && editor.document === document) showHideActivate(editor)
   }
 })
@@ -172,6 +175,10 @@ export async function showHideActivate(editor?: TextEditor, refresh = false) {
         if (!obj) return
         if (refresh) await obj.loadStructure()
         shouldShow = obj && isInactive(obj)
+      }
+      const diag = languages.getDiagnostics(uri)
+      if (diag.filter(diagObj => diagObj.severity === 0).length > 0) {
+        shouldShow = false
       }
     } catch (e) {
       shouldShow = false
