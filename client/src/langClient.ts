@@ -32,7 +32,7 @@ import {
 } from "vscode-languageclient"
 export let client: LanguageClient
 import { join } from "path"
-import { FixProposal, Delta } from "abap-adt-api"
+import { FixProposal, Delta, RenameRefactoring } from "abap-adt-api"
 import { command, AbapFsCommands } from "./commands"
 import { RemoteManager, formatKey } from "./config"
 import { futureToken } from "./oauth"
@@ -44,7 +44,12 @@ import * as R from "ramda"
 
 const uriErrors = new Map<string, boolean>()
 const uriError = (uri: string) => new Error(`File not found:${uri}`)
-export async function vsCodeUri(confKey: string, uri: string, mainInclude: boolean, cacheErrors = false): Promise<string> {
+export async function vsCodeUri(
+  confKey: string,
+  uri: string,
+  mainInclude: boolean,
+  cacheErrors = false
+): Promise<string> {
   const key = `${confKey}_${uri}_${mainInclude}`
   if (cacheErrors && uriErrors.get(key)) throw uriError(uri)
   const root = getRoot(confKey)
@@ -57,11 +62,15 @@ export async function vsCodeUri(confKey: string, uri: string, mainInclude: boole
     return urlFromPath(confKey, hit.path)
   } catch (error) {
     if (cacheErrors) uriErrors.set(key, true)
-    throw error;
+    throw error
   }
 }
 
-async function getVSCodeUri({ confKey, uri, mainInclude }: UriRequest): Promise<StringWrapper> {
+async function getVSCodeUri({
+  confKey,
+  uri,
+  mainInclude
+}: UriRequest): Promise<StringWrapper> {
   const s = await vsCodeUri(confKey, uri, mainInclude)
   return { s }
 }
@@ -132,27 +141,31 @@ async function setSearchProgress(searchProg: SearchProgress) {
         cancellable: true,
         title: "Where used list in progress - "
       },
-      (progress, token) => new Promise((resolve, reject) => {
-        let current = 0
-        token.onCancellationRequested(async () => {
-          setProgress = undefined
-          await client.sendRequest(Methods.cancelSearch)
-          resolve(undefined)
-        })
-        setProgress = (s: SearchProgress) => {
-          if (s.ended) {
-            progress.report({ increment: 100, message: `Search completed,${s.hits} found` })
+      (progress, token) =>
+        new Promise((resolve, reject) => {
+          let current = 0
+          token.onCancellationRequested(async () => {
             setProgress = undefined
+            await client.sendRequest(Methods.cancelSearch)
             resolve(undefined)
-            return
-          }
-          progress.report({
-            increment: s.progress - current,
-            message: `Searching usage references, ${s.hits} hits found so far`
           })
-          current = s.progress
-        }
-      })
+          setProgress = (s: SearchProgress) => {
+            if (s.ended) {
+              progress.report({
+                increment: 100,
+                message: `Search completed,${s.hits} found`
+              })
+              setProgress = undefined
+              resolve(undefined)
+              return
+            }
+            progress.report({
+              increment: s.progress - current,
+              message: `Searching usage references, ${s.hits} hits found so far`
+            })
+            current = s.progress
+          }
+        })
     )
   }
 }

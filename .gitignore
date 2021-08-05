@@ -15,3 +15,5 @@ tmp
 *.tsbuildinfo
 package-lock.json
 bookmarks.json
+client/pnpm-lock.yaml
+pnpm-lock.yaml

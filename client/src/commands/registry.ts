@@ -8,6 +8,7 @@ export const AbapFsCommands = {
   unittest: "abapfs.unittest",
   createtestinclude: "abapfs.createtestinclude",
   quickfix: "abapfs.quickfix",
+  rename: "abapfs.rename",
   changeInclude: "abapfs:changeInclude",
   showDocumentation: "abapfs.showdocu",
   selectDB: "abapfs.selectDB",

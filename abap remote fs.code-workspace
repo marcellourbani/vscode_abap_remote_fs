@@ -21,6 +21,9 @@
     },
     {
       "path": "modules/abapfs"
+    },
+    {
+      "path": "../abap-adt-api"
     }
   ],
   "settings": {
