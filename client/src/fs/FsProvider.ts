@@ -10,7 +10,7 @@ import {
   FileStat,
   FileType
 } from "vscode"
-import { log } from "../lib"
+import { caughtToString, log } from "../lib"
 import { isAbapFile, isAbapFolder, isFolder } from "abapfs"
 import { selectTransportIfNeeded } from "../adt/AdtTransports"
 
@@ -43,7 +43,7 @@ export class FsProvider implements FileSystemProvider {
       if (node) return node
       throw FileSystemError.FileNotFound(uri)
     } catch (e) {
-      log(`Error in stat of ${uri.toString()}\n${e.toString()}`)
+      log(`Error in stat of ${uri.toString()}\n${caughtToString(e)}`)
       throw e
     }
   }
@@ -58,7 +58,7 @@ export class FsProvider implements FileSystemProvider {
         return buf
       }
     } catch (error) {
-      log(`Error reading file ${uri.toString()}\n${error.toString()}`)
+      log(`Error reading file ${uri.toString()}\n${caughtToString(error)}`)
     }
     throw FileSystemError.Unavailable(uri)
   }
@@ -71,7 +71,7 @@ export class FsProvider implements FileSystemProvider {
       if (isAbapFolder(node) && node.size === 0) await node.refresh()
       return [...node].map(i => [i.name, i.file.type])
     } catch (e) {
-      log(`Error reading directory ${uri.toString()}\n${e.toString()}`)
+      log(`Error reading directory ${uri.toString()}\n${caughtToString(e)}`)
       throw e
     }
   }
@@ -101,7 +101,7 @@ export class FsProvider implements FileSystemProvider {
         } else throw new Error(`File ${uri.path} was not locked`)
       } else throw FileSystemError.FileNotFound(uri)
     } catch (e) {
-      log(`Error writing file ${uri.toString()}\n${e.toString()}`)
+      log(`Error writing file ${uri.toString()}\n${caughtToString(e)}`)
       throw e
     }
   }
@@ -122,7 +122,7 @@ export class FsProvider implements FileSystemProvider {
           )
       } else throw FileSystemError.NoPermissions(`Unable to acquire lock`)
     } catch (e) {
-      const msg = `Error deleting file ${uri.toString()}\n${e.toString()}`
+      const msg = `Error deleting file ${uri.toString()}\n${caughtToString(e)}`
       log(msg)
       throw new Error(msg)
     }
