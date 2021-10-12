@@ -385,9 +385,9 @@ export const splitAdtUriInternal = (uri: string) => {
   return uriParts
 }
 
-export const caughtToString = (e: any) => {
+export const caughtToString = (e: any, defaultMsg: string = "") => {
   if (types.isNativeError(e)) return e.message
   if (typeof e === "object" && typeof e.toString === "function") return e.toString()
   if (typeof e === "object" && typeof e.message === "string") return e.message
-  return `${e}`
+  return defaultMsg || `${e}`
 }

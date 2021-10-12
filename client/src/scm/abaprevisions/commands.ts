@@ -8,6 +8,7 @@ import { revisionUri } from "./documentprovider"
 import { RemoteManager, formatKey } from "../../config"
 import { isAbapFile } from "abapfs"
 import { AGroup, AState } from "./abapscm"
+import { caughtToString } from "../../lib"
 
 interface RevisionItem extends QuickPickItem {
   label: string
@@ -102,7 +103,7 @@ export class AbapRevisionCommands {
         text
       )
     } catch (e) {
-      window.showErrorMessage(e.toString())
+      window.showErrorMessage(caughtToString(e))
     }
   }
 

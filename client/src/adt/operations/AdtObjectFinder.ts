@@ -15,7 +15,7 @@ import {
   Range
 } from "vscode"
 
-import { splitAdtUri, vscPosition, log } from "../../lib"
+import { splitAdtUri, vscPosition, log, caughtToString } from "../../lib"
 import { getClient, getRoot, uriRoot } from "../conections"
 import {
   PathItem,
@@ -128,7 +128,7 @@ export class AdtObjectFinder {
         window.showTextDocument(document, { selection })
       }
     } catch (error) {
-      window.showErrorMessage(`Failed to open document ofr object ${adtUri}:\n${error?.message || error}`)
+      window.showErrorMessage(`Failed to open document ofr object ${adtUri}:\n${caughtToString(error)}`)
     }
   }
 

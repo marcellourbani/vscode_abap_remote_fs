@@ -34,7 +34,8 @@ import {
   createTaskTransformer,
   createStore,
   inputBox,
-  quickPick
+  quickPick,
+  caughtToString
 } from "../../lib"
 import { map, isNone, none, fromEither, isSome } from "fp-ts/lib/Option"
 import { dataCredentials, listPasswords, deletePassword } from "./credentials"
@@ -163,7 +164,7 @@ const logErrors = (meth = "") => (target: any, propertyKey: string) => {
     try {
       return await original(...args)
     } catch (error) {
-      const message = `${error.toString()} in ${meth || propertyKey}`
+      const message = `${caughtToString(error)} in ${meth || propertyKey}`
       window.showErrorMessage(message)
     }
   }
@@ -204,7 +205,7 @@ export class GitCommands {
         GitCommands.refreshCmd(data)
       )
     } catch (error) {
-      throw new Error(`Error during commit:${error.toString()}`)
+      throw new Error(`Error during commit:${caughtToString(error)}`)
     }
   }
   @command(AbapFsCommands.agitPullScm)

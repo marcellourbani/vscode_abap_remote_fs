@@ -35,7 +35,10 @@ const config = {
         exclude: [/node_modules/, /.*\.test\.(d\.)[tj]s/],
         use: [
           {
-            loader: "ts-loader"
+            loader: "ts-loader",
+            options: {
+              transpileOnly: false
+            }
           }
         ]
       }

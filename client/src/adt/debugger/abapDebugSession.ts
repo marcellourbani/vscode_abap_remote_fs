@@ -9,6 +9,7 @@ import { currentEditState } from "../../commands/commands"
 import { DebugStepType } from "abap-adt-api"
 import { getRoot } from "../conections"
 import { isAbapFile } from "abapfs"
+import { caughtToString } from "../../lib"
 
 export interface AbapDebugConfiguration extends DebugConfiguration {
     connId: string,
@@ -171,7 +172,7 @@ export class AbapDebugSession extends LoggingDebugSession {
             await session.service.debuggerStep(stepType, uri)
             session.sendEvent(new StoppedEvent("goto"))
         } catch (error) {
-            window.showErrorMessage(error?.message || `Error jumping to statement`)
+            window.showErrorMessage(caughtToString(error, `Error jumping to statement`))
         }
     }
     @command(AbapFsCommands.goToCursor)

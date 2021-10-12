@@ -7,7 +7,7 @@ import {
   ProgressLocation
 } from "vscode"
 import { pickAdtRoot, RemoteManager } from "../config"
-import { log } from "../lib"
+import { caughtToString, log } from "../lib"
 import { FavouritesProvider, FavItem } from "../views/favourites"
 import { findEditor } from "../langClient"
 import { showHideActivate } from "../listeners"
@@ -36,6 +36,7 @@ import { isAbapClassInclude } from "abapobject"
 import { IncludeProvider } from "../adt/includes" // resolve dependencies
 import { command, AbapFsCommands } from "."
 import { createConnection } from "./connectionwizard"
+import { types } from "util"
 
 function currentUri() {
   if (!window.activeTextEditor) return
@@ -123,12 +124,13 @@ export class AdtCommands {
 
       log(`Connected to server ${remote.name}`)
     } catch (e) {
-      if (e.response) log(e.response.body)
+      const body = typeof e === "object" && (e as any)?.response?.body
+      if (body) log(body)
       const isMissing = (e: any) =>
         !!`${e}`.match("name.*org.freedesktop.secrets")
       const message = isMissing(e)
         ? `Password storage not supported. Please install gnome-keyring or add a password to the connection`
-        : `Failed to connect to ${name}:${e.toString()}`
+        : `Failed to connect to ${name}:${caughtToString(e)}`
       return window.showErrorMessage(message)
     }
   }
@@ -156,7 +158,7 @@ export class AdtCommands {
         }
       )
     } catch (e) {
-      return window.showErrorMessage(e.toString())
+      return window.showErrorMessage(caughtToString(e))
     }
   }
   @command(AbapFsCommands.pickAdtRootConn)
@@ -182,7 +184,7 @@ export class AdtCommands {
         log(text)
       }
     } catch (error) {
-      log(error)
+      log(caughtToString(error))
     }
 
   }
@@ -199,7 +201,7 @@ export class AdtCommands {
       // found, show progressbar as opening might take a while
       await openObject(connId, object.uri)
     } catch (e) {
-      return window.showErrorMessage(e.toString())
+      return window.showErrorMessage(caughtToString(e))
     }
   }
 
@@ -231,8 +233,9 @@ export class AdtCommands {
         }
       }
     } catch (e) {
-      log("Exception in createAdtObject:", e.stack)
-      return window.showErrorMessage(e.toString())
+      const stack = types.isNativeError(e) ? e.stack || "" : ""
+      log("Exception in createAdtObject:", stack)
+      return window.showErrorMessage(caughtToString(e))
     }
   }
 
@@ -249,7 +252,7 @@ export class AdtCommands {
       await executeInGui(fsRoot.uri.authority, file.object)
 
     } catch (e) {
-      return window.showErrorMessage(e.toString())
+      return window.showErrorMessage(caughtToString(e))
     }
   }
 
@@ -265,7 +268,7 @@ export class AdtCommands {
       if (!isAbapStat(file) || !file.object.sapGuiUri) return
       await runInSapGui(fsRoot.uri.authority, showInGuiCb(file.object.sapGuiUri))
     } catch (e) {
-      return window.showErrorMessage(e.toString())
+      return window.showErrorMessage(caughtToString(e))
     }
   }
 
@@ -293,7 +296,7 @@ export class AdtCommands {
         () => adapter ? adapter.runUnit(uri) : abapUnit(uri)
       )
     } catch (e) {
-      return window.showErrorMessage(e.toString())
+      return window.showErrorMessage(caughtToString(e))
     }
   }
 
@@ -353,7 +356,7 @@ export class AdtCommands {
       }
     } catch (e) {
       if (lock) await m.requestUnlock(uri.path)
-      log(e.toString())
+      log(caughtToString(e))
       window.showErrorMessage(`Error creating class include`)
     }
   }
