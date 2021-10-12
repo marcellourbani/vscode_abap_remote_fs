@@ -3,7 +3,7 @@ import { objectIsValid } from "vscode-abap-remote-fs-sharedapi"
 import { TextDocument, Diagnostic } from "vscode-languageserver"
 import { getObject, vscUrl } from "./objectManager"
 import { sourceRange, decodeSeverity, clientAndObjfromUrl } from "./utilities"
-import { callThrottler } from "./functions"
+import { callThrottler, caughtToString } from "./functions"
 import { memoize } from "lodash"
 
 const oldDiagKeys = new Map<string, string[]>()
@@ -69,7 +69,7 @@ async function runSyntaxCheck(document: TextDocument) {
       })
     }
   } catch (e) {
-    log("Exception in syntax check:", e.toString()) // ignore
+    log("Exception in syntax check:", caughtToString(e)) // ignore
   }
   for (const diag of diagmap)
     connection.sendDiagnostics({ uri: diag[0], diagnostics: diag[1] })

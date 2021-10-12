@@ -6,7 +6,7 @@ import {
 } from "vscode-languageserver"
 import { clientAndObjfromUrl, ClientAndObject } from "./utilities"
 import { log } from "./clientManager"
-import { isAbap, callThrottler, isCdsView } from "./functions"
+import { isAbap, callThrottler, isCdsView, caughtToString } from "./functions"
 import { CompletionProposal, ADTClient } from "abap-adt-api"
 import { cdsCompletionExtractor } from "./cdsSyntax"
 
@@ -100,7 +100,7 @@ export async function completion(params: CompletionParams) {
     if (isCdsView(params.textDocument.uri))
       items = await cdsCompletion(co, params.position)
   } catch (e) {
-    log("Exception in completion:", e.toString()) // ignore
+    log("Exception in completion:", caughtToString(e)) // ignore
   }
   const isInComplete = (compl: CompletionItem[]) => {
     if (compl.length > 10) return true
