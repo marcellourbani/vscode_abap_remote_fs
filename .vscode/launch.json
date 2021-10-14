@@ -9,6 +9,7 @@
       "name": "Client",
       "type": "extensionHost",
       "request": "launch",
+      "skipFiles": ["<node_internals>/**", "async_hooks.js"],
       "runtimeExecutable": "${execPath}",
       "args": [
         "--extensionDevelopmentPath=${workspaceFolder}",

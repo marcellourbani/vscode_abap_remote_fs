@@ -43,7 +43,7 @@
     "@types/ramda": "^0.27.29",
     "@types/request-debug": "^0.2.0",
     "@types/uuid": "^8.3.0",
-    "@types/vscode": "^1.52.0",
+    "@types/vscode": "^1.61.0",
     "@types/vscode-windows-registry": "^1.0.0",
     "jest": "^27.2.5",
     "rimraf": "^3.0.2",
