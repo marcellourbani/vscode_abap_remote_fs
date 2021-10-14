@@ -48,8 +48,8 @@ function createIfMissing(connId: string) {
   if (!creation) {
     creation = create(connId)
     creations.set(connId, creation)
+    creation.finally(() => creations.delete(connId))
   }
-  creation.finally(() => creations.delete(connId))
   return creation
 }
 
