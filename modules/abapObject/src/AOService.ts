@@ -29,7 +29,7 @@ export interface AbapObjectService {
 }
 
 export class AOService implements AbapObjectService {
-  constructor(protected client: ADTClient) {}
+  constructor(protected client: ADTClient) { }
 
   private structCache = new Map<string, Promise<AbapObjectStructure>>()
 
@@ -82,8 +82,8 @@ export class AOService implements AbapObjectService {
     if (!next) {
       next = this.client.statelessClone.nodeContents(type, name)
       this.contentsCache.set(key, next)
+      next.then(() => this.contentsCache.delete(key))
     }
-    next.then(() => this.contentsCache.delete(key))
     return next
   }
 }

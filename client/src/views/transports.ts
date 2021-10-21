@@ -20,7 +20,7 @@ import {
   SAPRC
 } from "abap-adt-api"
 import { command, AbapFsCommands } from "../commands"
-import { withp } from "../lib"
+import { caughtToString, withp } from "../lib"
 import {
   getClient,
   ADTSCHEME,
@@ -43,7 +43,7 @@ const readTransports = async (connId: string, user: string) => {
     if (configs.length < 1) {
       await client.createTransportsConfig()
       configs = await client.transportConfigurations()
-      if (configs.length < 1) throw new Error("Transport configuration not found");
+      if (configs.length < 1) throw new Error("Transport configuration not found")
     }
     const { etag, link } = configs[0]
     const config = await client.getTransportConfiguration(link)
@@ -131,7 +131,7 @@ const failuretext = (failure: TransportReleaseReport) =>
     .join(" ") || failure["chkrun:statusText"]
 
 class TransportItem extends CollectionItem {
-  label: string | undefined;
+  label: string | undefined
   public static isA(x: any): x is TransportItem {
     return x && (x as TransportItem).typeId === TransportItem.tranTypeId
   }
@@ -167,7 +167,7 @@ class TransportItem extends CollectionItem {
       )
       commands.executeCommand(AbapFsCommands.refreshtransports)
     } catch (e) {
-      window.showErrorMessage(e.toString())
+      window.showErrorMessage(caughtToString(e))
     }
   }
   public readonly typeId: symbol
@@ -320,7 +320,7 @@ export class TransportsProvider implements TreeDataProvider<CollectionItem> {
     } catch (e) {
       throw new Error(
         `Error locating object ${obj["tm:pgmid"]} ${obj["tm:type"]} ${obj["tm:name"]
-        }: ${e.toString()}`
+        }: ${caughtToString(e)}`
       )
     }
   }
@@ -352,7 +352,7 @@ export class TransportsProvider implements TreeDataProvider<CollectionItem> {
         )
     } catch (e) {
       window.showErrorMessage(
-        `Error displaying transport object: ${e.toString()}`
+        `Error displaying transport object: ${caughtToString(e)}`
       )
     }
   }
@@ -384,7 +384,7 @@ export class TransportsProvider implements TreeDataProvider<CollectionItem> {
         )
     } catch (e) {
       window.showErrorMessage(
-        `Error displaying transport object: ${e.toString()}`
+        `Error displaying transport object: ${caughtToString(e)}`
       )
     }
   }
@@ -395,7 +395,7 @@ export class TransportsProvider implements TreeDataProvider<CollectionItem> {
       await getClient(tran.connId).transportDelete(tran.task["tm:number"])
       this.refreshTransports()
     } catch (e) {
-      window.showErrorMessage(e.toString())
+      window.showErrorMessage(caughtToString(e))
     }
   }
 
@@ -426,7 +426,7 @@ export class TransportsProvider implements TreeDataProvider<CollectionItem> {
         this.refreshTransports()
       }
     } catch (e) {
-      window.showErrorMessage(e.toString())
+      window.showErrorMessage(caughtToString(e))
     }
   }
 
@@ -452,7 +452,7 @@ export class TransportsProvider implements TreeDataProvider<CollectionItem> {
         this.refreshTransports()
       }
     } catch (e) {
-      window.showErrorMessage(e.toString())
+      window.showErrorMessage(caughtToString(e))
     }
   }
 
@@ -516,7 +516,7 @@ export class TransportsProvider implements TreeDataProvider<CollectionItem> {
               for (const child of allChildren(path)) await addNode(child)
             } else await addNode(path)
           } catch (e) {
-            window.showErrorMessage(e.toString())
+            window.showErrorMessage(caughtToString(e))
           }
         }
       }

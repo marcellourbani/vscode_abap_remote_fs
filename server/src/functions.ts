@@ -1,4 +1,5 @@
 import { AllHtmlEntities } from "html-entities"
+import { types } from "util"
 
 export const isString = (x: any): x is string => typeof x === "string"
 export const isNumber = (x: any): x is number => typeof x === "number"
@@ -102,4 +103,11 @@ export const callThrottler = <T>() => {
 
     return current
   }
+}
+
+export const caughtToString = (e: any) => {
+  if (types.isNativeError(e)) return e.message
+  if (typeof e === "object" && typeof e.toString === "function") return e.toString()
+  if (typeof e === "object" && typeof e.message === "string") return e.message
+  return `${e}`
 }

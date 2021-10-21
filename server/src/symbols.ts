@@ -1,4 +1,4 @@
-import { isAbap, parts } from "./functions"
+import { caughtToString, isAbap, parts } from "./functions"
 import {
   DocumentSymbolParams,
   DocumentSymbol,
@@ -118,7 +118,7 @@ export async function documentSymbols(params: DocumentSymbolParams) {
         if (sym) symbols.push(sym)
     }
   } catch (e) {
-    log("Exception in document symbol:", e.toString()) // ignore
+    log("Exception in document symbol:", caughtToString(e)) // ignore
   }
   return symbols
 }

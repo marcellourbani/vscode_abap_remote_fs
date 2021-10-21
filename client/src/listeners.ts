@@ -11,7 +11,7 @@ import {
   workspace
 } from "vscode"
 
-import { debounce, log } from "./lib"
+import { caughtToString, debounce, log } from "./lib"
 import { ADTSCHEME, uriRoot, abapUri, getRoot } from "./adt/conections"
 import { AbapObject } from "abapobject"
 import { isAbapStat } from "abapfs"
@@ -38,7 +38,7 @@ export async function documentClosedListener(doc: TextDocument) {
         await root.lockManager.requestUnlock(uri.path)
     }
   } catch (error) {
-    log(error.toString())
+    log(caughtToString(error))
   }
 }
 
@@ -99,7 +99,7 @@ export async function setDocumentLock(
           setDocumentLock(document, interactive, false)
       } else
         window.showErrorMessage(
-          `${e.toString()}\nWon't be able to save changes`
+          `${caughtToString(e)}\nWon't be able to save changes`
         )
     }
   else await lockManager.requestUnlock(uri.path)

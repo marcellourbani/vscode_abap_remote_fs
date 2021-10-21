@@ -18,7 +18,7 @@ import { vscUrl } from "./objectManager"
 import { groupBy } from "lodash"
 import { log, warn } from "./clientManager"
 import { getObjectSource, setSearchProgress } from "./clientapis"
-import { isAbap, memoize, parts, toInt, hashParms } from "./functions"
+import { isAbap, memoize, parts, toInt, hashParms, caughtToString } from "./functions"
 
 export async function findDefinition(
   impl: boolean,
@@ -67,7 +67,7 @@ export async function findDefinition(
     }
     return l
   } catch (e) {
-    log("Exception in find definition:", e.toString()) // ignore
+    log("Exception in find definition:", caughtToString(e)) // ignore
   }
 }
 
@@ -259,7 +259,7 @@ export async function findReferences(
           }
         }
       } catch (e) {
-        warn("Exception in reference search:", e.toString()) // ignore
+        warn("Exception in reference search:", caughtToString(e)) // ignore
       }
       processed = processed + groups[group].length
       if (!cancelled()) {
@@ -271,7 +271,7 @@ export async function findReferences(
       }
     }
   } catch (e) {
-    warn("Exception in reference search:", e.toString()) // ignore
+    warn("Exception in reference search:", caughtToString(e)) // ignore
   }
   cancelSearch() // just for cleanup
   return locations

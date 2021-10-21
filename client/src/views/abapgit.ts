@@ -20,7 +20,8 @@ import {
   chainTaskTransformers,
   dependFieldReplacer,
   log,
-  createTaskTransformer
+  createTaskTransformer,
+  caughtToString
 } from "../lib"
 import { quickPick } from "../lib"
 import { addRepo, repoCredentials } from "../scm/abapGit"
@@ -296,7 +297,7 @@ class AbapGitProvider implements TreeDataProvider<TreeItem> {
       )(access)()
       if (isRight(newAccess)) return newAccess.right
     } catch (e) {
-      log(e.toString())
+      log(caughtToString(e))
     }
     return access
   }
@@ -348,7 +349,7 @@ class AbapGitProvider implements TreeDataProvider<TreeItem> {
       return await this.createRepoInternal(item, client, pkg.name, repoUrl, repoaccess, transport.transport)
 
     } catch (error) {
-      window.showErrorMessage(`Error creating or pulling repository: ${error.message}`)
+      window.showErrorMessage(`Error creating or pulling repository: ${caughtToString(error)}`)
       this.refresh()
     }
   }

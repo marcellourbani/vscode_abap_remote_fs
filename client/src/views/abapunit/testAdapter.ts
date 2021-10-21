@@ -16,7 +16,7 @@ import {
   AdtObjectActivator
 } from "../../adt/operations/AdtObjectActivator"
 import { UnitTestModel } from "./model"
-import { isString } from "../../lib"
+import { caughtToString, isString } from "../../lib"
 
 const finished = (suite?: TestSuiteInfo): TestLoadFinishedEvent => ({
   type: "finished",
@@ -60,7 +60,7 @@ export class Adapter implements TestAdapter {
       for (const e of events) this.testStateEm.fire(e)
       this.testStateEm.fire(runFinished)
     } catch (e) {
-      this.testEm.fire({ type: "finished", errorMessage: e.toString() })
+      this.testEm.fire({ type: "finished", errorMessage: caughtToString(e) })
       throw e
     }
   }

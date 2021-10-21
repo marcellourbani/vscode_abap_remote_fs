@@ -13,6 +13,7 @@ import {
 import { LogPhase, LogData, RequestData, ResponseData } from "request-debug"
 import { Headers } from "request"
 import { session_types } from "abap-adt-api"
+import { caughtToString } from "."
 
 const CALLLOG = "callLog"
 const HTTPLOG = "httpLog"
@@ -128,7 +129,7 @@ class MongoClient {
           const doc = new logmodel(this.toCallLog(call, source, statelessClone))
           await doc.save()
         } catch (error) {
-          log(error.message || error.toString())
+          log(caughtToString(error))
         }
       })
   }

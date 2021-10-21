@@ -1,10 +1,10 @@
 import {
     ADTClient, Debuggee, DebugStepType, isDebuggerBreakpoint,
-    debugMetaIsComplex, isDebugListenerError, session_types, DebugMetaType, DebugVariable, DebugBreakpoint, DebuggingMode, DebuggerScope, DebugListenerError
+    debugMetaIsComplex, isDebugListenerError, session_types, DebugMetaType, DebugVariable, DebugBreakpoint, DebuggingMode, DebuggerScope, DebugListenerError, isAdtError
 } from "abap-adt-api"
 import { newClientFromKey, md5 } from "./functions"
 import { readFileSync, writeFileSync, existsSync, mkdirSync } from "fs"
-import { log, after } from "../../lib"
+import { log, after, caughtToString } from "../../lib"
 import { DebugProtocol } from "vscode-debugprotocol"
 import { Disposable, EventEmitter, Uri, workspace } from "vscode"
 import { getRoot } from "../conections"
@@ -82,7 +82,7 @@ class AdtBreakpoint extends Breakpoint {
     }
 }
 
-const errorType = (err: any) => {
+const errorType = (err: any): string | undefined => {
     const exceptionType = err?.properties?.["com.sap.adt.communicationFramework.subType"]
     if (!exceptionType && `${err.response.body}`.match(/Connection timed out/)) return ATTACHTIMEOUT
     return exceptionType
@@ -208,7 +208,7 @@ export class DebugService {
                             starting = this.client.statelessClone.debuggerListen(this.mode, this.terminalId, this.ideId, this.username)
                             return true
                         } catch (error2) {
-                            log(error2?.message || error2)
+                            log(caughtToString(error2))
                         }
                     else this.refresh()
                 }
@@ -240,21 +240,25 @@ export class DebugService {
                 await this.onBreakpointReached(debuggee)
             } catch (error) {
                 if (!this.active) return
-                // autoAttachTimeout
-                const exceptionType = errorType(error)
-                switch (exceptionType) {
-                    case "conflictNotification":
-                    case "conflictDetected":
-                        const txt = error?.properties?.conflictText || "Debugger terminated by another session/user"
-                        this.stopDebugging()
-                        this.ui.ShowError(txt)
-                        break
-                    case ATTACHTIMEOUT:
-                        this.refresh()
-                        break
-                    default:
-                        this.ui.ShowError(`Error listening to debugger: ${error.message || error}`)
-                        this.stopDebugging()
+                if (!isAdtError(error)) {
+                    this.ui.ShowError(`Error listening to debugger: ${caughtToString(error)}`)
+                } else {
+                    // autoAttachTimeout
+                    const exceptionType = errorType(error)
+                    switch (exceptionType) {
+                        case "conflictNotification":
+                        case "conflictDetected":
+                            const txt = error?.properties?.conflictText || "Debugger terminated by another session/user"
+                            this.stopDebugging()
+                            this.ui.ShowError(txt)
+                            break
+                        case ATTACHTIMEOUT:
+                            this.refresh()
+                            break
+                        default:
+                            this.ui.ShowError(`Error listening to debugger: ${error.message || error}`)
+                            this.stopDebugging()
+                    }
                 }
             }
         }
@@ -279,7 +283,7 @@ export class DebugService {
             try {
                 return await this.syncBreakpoints(node, breakpoints, source.path, source.name)
             } catch (error) {
-                log(error.message)
+                log(caughtToString(error))
             }
         }
         return []
@@ -369,13 +373,17 @@ export class DebugService {
             this.notifier.fire(new StoppedEvent("breakpoint", this.THREADID))
             return res
         } catch (error) {
-            if (error?.properties?.["com.sap.adt.communicationFramework.subType"] === "debuggeeEnded") {
-                await this.client.dropSession()
-                this.client.stateful = session_types.stateful
-                await this.client.adtCoreDiscovery()
-                this.attached = false
-            } else
-                this.ui.ShowError(error?.message || "unknown error in debugger stepping")
+            if (!isAdtError(error)) {
+                this.ui.ShowError(`Error in debugger stepping: ${caughtToString(error)}`)
+            } else {
+                if (error?.properties?.["com.sap.adt.communicationFramework.subType"] === "debuggeeEnded") {
+                    await this.client.dropSession()
+                    this.client.stateful = session_types.stateful
+                    await this.client.adtCoreDiscovery()
+                    this.attached = false
+                } else
+                    this.ui.ShowError(error?.message || "unknown error in debugger stepping")
+            }
         }
     }
 
@@ -395,7 +403,7 @@ export class DebugService {
                     const stackUri = "stackUri" in s ? s.stackUri : undefined
                     return createFrame(path, s.line, id, s.stackPosition, stackUri)
                 } catch (error) {
-                    log(error)
+                    log(caughtToString(error))
                     return createFrame("unknown", 0, id, NaN)
                 }
             })
