@@ -18,7 +18,8 @@ import { codeActionHandler } from "./codeActions"
 import { updateInclude } from "./objectManager"
 import {
   TextDocument
-} from 'vscode-languageserver-textdocument';
+} from 'vscode-languageserver-textdocument'
+import { renameHandler } from "./rename"
 export const documents = new TextDocuments(TextDocument)
 
 let hasConfigurationCapability: boolean = false
@@ -53,6 +54,7 @@ connection.onInitialize((params: InitializeParams) => {
         resolveProvider: true
       },
       definitionProvider: true,
+      renameProvider: true,
       implementationProvider: {
         documentSelector: [{ scheme: ADTSCHEME, language: "abap" }]
       },
@@ -93,9 +95,11 @@ connection.onDocumentSymbol(documentSymbols)
 connection.onDocumentFormatting(formatDocument)
 documents.onDidChangeContent(change => syntaxCheck(change.document))
 connection.onCodeAction(codeActionHandler)
+connection.onRenameRequest(renameHandler)
 // custom APIs exposed to the client
 connection.onRequest(Methods.cancelSearch, cancelSearch)
 connection.onRequest(Methods.updateMainProgram, updateInclude)
 
 documents.listen(connection)
 connection.listen()
+
