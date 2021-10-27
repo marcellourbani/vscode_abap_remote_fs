@@ -6,7 +6,7 @@ import {
 } from "vscode-languageserver"
 import { clientAndObjfromUrl } from "./utilities"
 import { log } from "./clientManager"
-import { FixProposal, Range as ApiRange } from "abap-adt-api"
+import { FixProposal } from "abap-adt-api"
 import { decodeEntity } from "./functions"
 
 export async function codeActionHandler(
