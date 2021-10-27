@@ -1,5 +1,11 @@
 # Change Log
 
+## [0.14.0] 2021-10-27
+
+### Added
+
+- rename support (thanks to Jakob Kjaer)
+
 ## [0.13.1] 2021-07-30
 
 ### Fixed
