@@ -50,7 +50,7 @@ export class AOService implements AbapObjectService {
     if (!structure) {
       structure = this.client.statelessClone.objectStructure(path)
       this.structCache.set(path, structure)
-      structure.then(() =>
+      structure.finally(() =>
         setTimeout(() => this.invalidateStructCache(path), 800)
       )
     }
@@ -82,7 +82,7 @@ export class AOService implements AbapObjectService {
     if (!next) {
       next = this.client.statelessClone.nodeContents(type, name)
       this.contentsCache.set(key, next)
-      next.then(() => this.contentsCache.delete(key))
+      next.finally(() => this.contentsCache.delete(key))
     }
     return next
   }
