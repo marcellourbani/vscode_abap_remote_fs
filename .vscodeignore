@@ -30,3 +30,4 @@ modules
 .vscode
 jest.config.js
 abap remote fs.code-workspace
+/node_modules

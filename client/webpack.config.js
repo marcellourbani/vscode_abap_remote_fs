@@ -7,7 +7,7 @@ const TerserPlugin = require("terser-webpack-plugin")
 
 /**@type {import('webpack').Configuration}*/
 const config = {
-  target: "node", // vscode extensions run in a Node.js-context 📖 -> https://webpack.js.org/configuration/node/
+  target: "web", // vscode extensions run in a Node.js-context 📖 -> https://webpack.js.org/configuration/node/
 
   entry: "./src/extension.ts", // the entry point of this extension, 📖 -> https://webpack.js.org/configuration/entry-context/
   output: {
@@ -23,7 +23,14 @@ const config = {
   },
   resolve: {
     // support reading TypeScript and JavaScript files, 📖 -> https://github.com/TypeStrong/ts-loader
-    extensions: [".ts", ".js"]
+    extensions: [".ts", ".js"],
+    fallback:{
+      crypto: require.resolve("crypto-browserify"),
+      // fs: require.resolve("fs-browserify"),
+      path: require.resolve("path-browserify"),
+      https: require.resolve("https-browserify"),
+      stream: require.resolve("stream-browserify")
+    }
   },
   watchOptions: {
     ignored: /node_modules|out/

@@ -1,4 +1,4 @@
-import { Schema, model, connect } from "mongoose"
+// import { Schema, model, connect } from "mongoose"
 import { RemoteManager } from "../config"
 import { MethodCall } from "method-call-logger"
 import { log } from "./logger"
@@ -11,13 +11,13 @@ import {
   httpTraceUrl
 } from "vscode-abap-remote-fs-sharedapi"
 // import { LogPhase, LogData, RequestData, ResponseData } from "request-debug"
-import { Headers } from "request"
+// import { Headers } from "request"
 import { session_types } from "abap-adt-api"
 import { caughtToString } from "."
 
 const CALLLOG = "callLog"
 const HTTPLOG = "httpLog"
-const { Types } = Schema
+// const { Types } = Schema
 
 interface CallLog {
   start: number
@@ -49,33 +49,33 @@ interface HttpLog extends HttpRequest {
   responseBody: any
 }
 
-const callSchema = new Schema({
-  start: { type: Types.Number, required: true, index: true },
-  methodName: { type: Types.String, required: true, index: true },
-  source: { type: Types.String, required: true, index: true },
-  statelessClone: { type: Types.Boolean, required: true, index: false },
-  callType: { type: Types.String, required: true, index: false },
-  duration: { type: Types.Number, required: true, index: false },
-  failed: { type: Types.Boolean, required: true, index: false },
-  resolvedPromise: { type: Types.Boolean, required: true, index: false },
-  callDetails: { type: Types.Mixed, required: true, index: false }
-})
+// const callSchema = new Schema({
+//   start: { type: Types.Number, required: true, index: true },
+//   methodName: { type: Types.String, required: true, index: true },
+//   source: { type: Types.String, required: true, index: true },
+//   statelessClone: { type: Types.Boolean, required: true, index: false },
+//   callType: { type: Types.String, required: true, index: false },
+//   duration: { type: Types.Number, required: true, index: false },
+//   failed: { type: Types.Boolean, required: true, index: false },
+//   resolvedPromise: { type: Types.Boolean, required: true, index: false },
+//   callDetails: { type: Types.Mixed, required: true, index: false }
+// })
 
-const httpSchema = new Schema({
-  start: { type: Types.Number, required: true, index: true },
-  source: { type: Types.String, required: true, index: true },
-  stateful: { type: Types.Boolean, required: true, index: false },
-  duration: { type: Types.Number, required: true, index: false },
-  // unknownResponse: { type: Types.Boolean, required: true, index: false },
-  debugId: { type: Types.Number, required: true, index: true },
-  method: { type: Types.String, required: true, index: true },
-  statusCode: { type: Types.Number, required: true, index: true },
-  uri: { type: Types.String, required: true, index: true },
-  headers: { type: Types.Mixed, required: true, index: false },
-  requestBody: { type: Types.Mixed, required: false, index: false },
-  responseHeaders: { type: Types.Mixed, required: true, index: false },
-  responseBody: { type: Types.Mixed, required: false, index: false }
-})
+// const httpSchema = new Schema({
+//   start: { type: Types.Number, required: true, index: true },
+//   source: { type: Types.String, required: true, index: true },
+//   stateful: { type: Types.Boolean, required: true, index: false },
+//   duration: { type: Types.Number, required: true, index: false },
+//   // unknownResponse: { type: Types.Boolean, required: true, index: false },
+//   debugId: { type: Types.Number, required: true, index: true },
+//   method: { type: Types.String, required: true, index: true },
+//   statusCode: { type: Types.Number, required: true, index: true },
+//   uri: { type: Types.String, required: true, index: true },
+//   headers: { type: Types.Mixed, required: true, index: false },
+//   requestBody: { type: Types.Mixed, required: false, index: false },
+//   responseHeaders: { type: Types.Mixed, required: true, index: false },
+//   responseBody: { type: Types.Mixed, required: false, index: false }
+// })
 // TODO: fix call logging
 // class MongoClient {
 //   private connection: Promise<typeof import("mongoose")>
