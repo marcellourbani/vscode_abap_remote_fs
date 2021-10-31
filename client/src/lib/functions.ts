@@ -1,7 +1,6 @@
 import { taskEither, TaskEither } from "fp-ts/lib/TaskEither"
 import { right } from "fp-ts/lib/Either"
 import { LeftType } from "./rfsTaskEither"
-import { types } from "util"
 
 export const isString = (x: any): x is string => typeof x === "string"
 export const isNumber = (x: any): x is number => typeof x === "number"
@@ -386,8 +385,10 @@ export const splitAdtUriInternal = (uri: string) => {
 }
 
 export const caughtToString = (e: any, defaultMsg: string = "") => {
-  if (types.isNativeError(e)) return e.message
+  if (isNativeError(e)) return e.message
   if (typeof e === "object" && typeof e.toString === "function") return e.toString()
   if (typeof e === "object" && typeof e.message === "string") return e.message
   return defaultMsg || `${e}`
 }
+
+export const isNativeError = (e: unknown): e is Error => !!e && e instanceof Error

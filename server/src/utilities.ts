@@ -1,11 +1,10 @@
 import { DiagnosticSeverity, TextDocument, Range } from "vscode-languageserver"
-import { isString } from "util"
 import { ADTClient } from "abap-adt-api"
 import { AbapObjectDetail } from "vscode-abap-remote-fs-sharedapi"
 import { clientKeyFromUrl, clientFromKey } from "./clientManager"
 import { getObject } from "./objectManager"
 import { getEditorObjectSource } from "./clientapis"
-import { toInt, parts } from "./functions"
+import { toInt, parts, isString } from "./functions"
 
 const startIdent = /^((<?[\w]+>?)|(\/\w+\/\w+))/
 const endIdent = /((<?[\w]+>?)|(\/\w+\/\w+))$/

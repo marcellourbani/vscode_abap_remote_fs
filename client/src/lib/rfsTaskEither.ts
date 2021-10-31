@@ -1,9 +1,8 @@
 import { Either, isLeft, isRight, left, right } from "fp-ts/lib/Either"
 import { Lazy, pipe } from "fp-ts/lib/function"
-import { fold } from "fp-ts/lib/IOEither"
 import { fromNullable, isNone, isSome, none, None, Option } from "fp-ts/lib/Option"
 import { bind, chain, chainEitherK, map, taskEither, TaskEither, tryCatch } from "fp-ts/lib/TaskEither"
-import { types } from "util"
+import { isNativeError } from "."
 
 export type LeftType = Error | None
 const isOption = <T>(x: any): x is Option<T> => isSome(x) || isNone(x)
@@ -21,7 +20,7 @@ export const nullToNone = <T>(x: T): RfsEither<NonNullable<T>> => {
 }
 export const rfsTaskEither = <T>(x: T): RfsTaskEither<T> => async () => nullToNone(x)
 export const rfsTryCatch = <T>(f: Lazy<Promise<T | undefined>>): RfsTaskEither<T> => {
-    const x = tryCatch(f, e => types.isNativeError(e) ? e : new Error(`${(e as any)?.message || e}`))
+    const x = tryCatch(f, e => isNativeError(e) ? e : new Error(`${(e as any)?.message || e}`))
     return chainEitherK(nullToNone)(x)
 }
 export const rfsWrap = <T, R>(f: (x: T) => R | Promise<R>) => (x: T) => rfsTryCatch(async () => f(x))

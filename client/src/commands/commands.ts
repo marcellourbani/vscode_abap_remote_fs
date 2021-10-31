@@ -7,7 +7,7 @@ import {
   ProgressLocation
 } from "vscode"
 import { pickAdtRoot, RemoteManager } from "../config"
-import { caughtToString, log } from "../lib"
+import { caughtToString, isNativeError, log } from "../lib"
 import { FavouritesProvider, FavItem } from "../views/favourites"
 import { findEditor } from "../langClient"
 import { showHideActivate } from "../listeners"
@@ -36,7 +36,6 @@ import { isAbapClassInclude } from "abapobject"
 import { IncludeProvider } from "../adt/includes" // resolve dependencies
 import { command, AbapFsCommands } from "."
 import { createConnection } from "./connectionwizard"
-import { types } from "util"
 
 function currentUri() {
   if (!window.activeTextEditor) return
@@ -233,7 +232,7 @@ export class AdtCommands {
         }
       }
     } catch (e) {
-      const stack = types.isNativeError(e) ? e.stack || "" : ""
+      const stack = isNativeError(e) ? e.stack || "" : ""
       log("Exception in createAdtObject:", stack)
       return window.showErrorMessage(caughtToString(e))
     }

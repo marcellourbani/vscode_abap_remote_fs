@@ -1,7 +1,6 @@
 import { TextEdit, DocumentFormattingParams } from "vscode-languageserver"
 import { clientAndObjfromUrl } from "./utilities"
-import { isString } from "util"
-import { isAbap } from "./functions"
+import { isAbap, isString } from "./functions"
 
 export async function formatDocument(params: DocumentFormattingParams) {
   if (!isAbap(params.textDocument.uri)) return
