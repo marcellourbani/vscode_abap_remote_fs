@@ -12,7 +12,9 @@ const getRootForTest = () => {
     ADT_PASS = ""
   } = process.env
   if (ADT_URL && ADT_USER && ADT_PASS) {
-    const client = new ADTClient(ADT_URL, ADT_USER, ADT_PASS, undefined, undefined, { rejectUnauthorized: false })
+    // TODO fix axios
+    // const client = new ADTClient(ADT_URL, ADT_USER, ADT_PASS, undefined, undefined, { rejectUnauthorized: false })
+    const client = new ADTClient(ADT_URL, ADT_USER, ADT_PASS, undefined, undefined, {})
     const service = new AFsService(client)
     return { root: createRoot(`adt_${ADT_SYSTEMID}`, service), client }
   }

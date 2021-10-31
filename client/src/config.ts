@@ -8,7 +8,9 @@ import { window, workspace, QuickPickItem, WorkspaceFolder, Uri, ConfigurationTa
 import { ADTClient, createSSLConfig } from "abap-adt-api"
 import { readFileSync } from "fs"
 import { createProxy } from "method-call-logger"
-import { mongoApiLogger, mongoHttpLogger, PasswordVault } from "./lib"
+// TODO fix call logging
+// import { mongoApiLogger, mongoHttpLogger, PasswordVault } from "./lib"
+import { mongoHttpLogger, PasswordVault } from "./lib"
 import { oauthLogin } from "./oauth"
 import { ADTSCHEME } from "./adt/conections"
 
@@ -128,17 +130,18 @@ export async function pickAdtRoot(uri?: Uri) {
 }
 
 function loggedProxy(client: ADTClient, conf: RemoteConfig) {
-  if (!clientTraceUrl(conf)) return client
-  const logger = mongoApiLogger(conf.name, SOURCE_CLIENT, false)
-  const cloneLogger = mongoApiLogger(conf.name, SOURCE_CLIENT, true)
-  if (!(logger && cloneLogger)) return client
+  return client // TODO fix call logging
+  // if (!clientTraceUrl(conf)) return client
+  // const logger = mongoApiLogger(conf.name, SOURCE_CLIENT, false)
+  // const cloneLogger = mongoApiLogger(conf.name, SOURCE_CLIENT, true)
+  // if (!(logger && cloneLogger)) return client
 
-  const clone = createProxy(client.statelessClone, cloneLogger)
+  // const clone = createProxy(client.statelessClone, cloneLogger)
 
-  return createProxy(client, logger, {
-    resolvePromises: true,
-    getterOverride: new Map([["statelessClone", () => clone]])
-  })
+  // return createProxy(client, logger, {
+  //   resolvePromises: true,
+  //   getterOverride: new Map([["statelessClone", () => clone]])
+  // })
 }
 const httpLogger = (conf: RemoteConfig) => {
   const mongoUrl = httpTraceUrl(conf)
@@ -150,7 +153,8 @@ export function createClient(conf: RemoteConfig) {
   const sslconf = conf.url.match(/https:/i)
     ? createSSLConfig(conf.allowSelfSigned, conf.customCA)
     : {}
-  sslconf.debugCallback = httpLogger(conf)
+  // TODO fix call logging
+  // sslconf.debugCallback = httpLogger(conf)
   const password = oauthLogin(conf) || conf.password
   const client = new ADTClient(
     conf.url,

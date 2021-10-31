@@ -53,10 +53,12 @@ const getOrCreateIdeId = (): string => {
 
 const getOrCreateTerminalId = async () => {
     if (process.platform === "win32") {
-        const reg = getWinRegistryReader()
-        const terminalId = reg && reg("HKEY_CURRENT_USER", "Software\\SAP\\ABAP Debugging", "TerminalID")
-        if (!terminalId) throw new Error("Unable to read terminal ID from windows registry")
-        return terminalId
+        // TODO: use winregistry to get the terminal id
+        // const reg = getWinRegistryReader()
+        // const terminalId = reg && reg("HKEY_CURRENT_USER", "Software\\SAP\\ABAP Debugging", "TerminalID")
+        // if (!terminalId) throw new Error("Unable to read terminal ID from windows registry")
+        // return terminalId
+        return ""
     } else {
         const cfgpath = join(homedir(), ".SAP/ABAPDebugging")
         const cfgfile = join(cfgpath, "terminalId")

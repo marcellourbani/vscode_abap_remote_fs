@@ -16,7 +16,9 @@ const getRootForTest = () => {
     ADT_PASS = ""
   } = process.env
   if (ADT_URL && ADT_USER && ADT_PASS) {
-    const client = new ADTClient(ADT_URL, ADT_USER, ADT_PASS, undefined, undefined, { rejectUnauthorized: false })
+    // TODO: fix axios support
+    // const client = new ADTClient(ADT_URL, ADT_USER, ADT_PASS, undefined, undefined, { rejectUnauthorized: false })
+    const client = new ADTClient(ADT_URL, ADT_USER, ADT_PASS, undefined, undefined, {})
     const service = new AOService(client)
     return { service, client }
   }

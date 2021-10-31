@@ -10,7 +10,7 @@ import {
   Methods
 } from "vscode-abap-remote-fs-sharedapi"
 import { createProxy, MethodCall } from "method-call-logger"
-import { LogPhase, LogData } from "request-debug"
+// import { LogPhase, LogData } from "request-debug"
 import { isString } from "./functions"
 const clients: Map<string, ADTClient> = new Map()
 
@@ -48,9 +48,10 @@ function loggedProxy(client: ADTClient, conf: ClientConfiguration) {
 }
 
 function debugCallBack(conf: ClientConfiguration) {
-  if (httpTraceUrl(conf))
-    return (type: LogPhase, data: LogData) =>
-      sendHttpLog({ source: SOURCE_SERVER, type, data, connection: conf.name })
+  // TODO: fix call logging
+  // if (httpTraceUrl(conf))
+  //   return (type: LogPhase, data: LogData) =>
+  //     sendHttpLog({ source: SOURCE_SERVER, type, data, connection: conf.name })
 }
 function createFetchToken(conf: ClientConfiguration) {
   if (conf.oauth)
@@ -67,7 +68,8 @@ export async function clientFromKey(key: string) {
       const sslconf = conf.url.match(/https:/i)
         ? createSSLConfig(conf.allowSelfSigned, conf.customCA)
         : {}
-      sslconf.debugCallback = debugCallBack(conf)
+      // TODO: fix call logging after axios support
+      // sslconf.debugCallback = debugCallBack(conf)
       const pwdOrFetch = createFetchToken(conf) || conf.password
       client = new ADTClient(
         conf.url,

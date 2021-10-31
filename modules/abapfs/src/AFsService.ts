@@ -29,7 +29,8 @@ export class AFsService extends AOService implements AbapFsService {
     const oldstateful = this.client.stateful
     this.client.stateful = session_types.stateful
     try {
-      return await this.client.unLock(path, lockHandle)
+      // TODO maybe fix for axios
+      await this.client.unLock(path, lockHandle)
     } catch (error) {
       this.client.stateful = oldstateful
       throw error

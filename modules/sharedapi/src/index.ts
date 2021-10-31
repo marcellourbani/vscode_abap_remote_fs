@@ -1,5 +1,5 @@
 import { MethodCall } from "method-call-logger"
-import { LogPhase, LogData } from "request-debug"
+// import { LogPhase, LogData } from "request-debug"
 export enum Methods {
   objectDetails = "vscabap.objDetails",
   readConfiguration = "vscabap.readConfig",
@@ -91,8 +91,9 @@ export interface LogEntry {
 export interface HttpLogEntry {
   connection: string
   source: Sources
-  type: LogPhase
-  data: LogData
+  // TODO: fix call logging
+  type: any // LogPhase
+  data: any // LogData
 }
 
 export const urlFromPath = (configKey: string, path: string) =>

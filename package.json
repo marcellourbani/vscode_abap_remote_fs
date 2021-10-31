@@ -29,8 +29,7 @@
   ],
   "extensionDependencies": [
     "larshp.vscode-abap",
-    "hudakf.cds",
-    "murbani.winregistry"
+    "hudakf.cds"
   ],
   "activationEvents": [
     "onFileSystem:adt",
@@ -38,6 +37,7 @@
     "onCommand:abapfs.createConnection"
   ],
   "main": "./client/dist/extension",
+  "browser": "./client/dist/extension.js",
   "scripts": {
     "vscode:prepublish": "cd client && cd .. && npm run webpack",
     "webpack": "npm run build_modules&&cd server && npm run webpack && cd ../client && npm run webpack",

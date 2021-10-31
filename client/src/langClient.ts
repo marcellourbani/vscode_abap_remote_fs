@@ -2,7 +2,7 @@ import { MainProgram, HttpLogEntry } from "vscode-abap-remote-fs-sharedapi"
 import {
   log,
   channel,
-  mongoApiLogger,
+  // mongoApiLogger, // TODO fix call logging
   mongoHttpLogger,
   rangeApi2Vsc
 } from "./lib"
@@ -57,7 +57,7 @@ export async function vsCodeUri(confKey: string, uri: string, mainInclude: boole
     return urlFromPath(confKey, hit.path)
   } catch (error) {
     if (cacheErrors) uriErrors.set(key, true)
-    throw error;
+    throw error
   }
 }
 
@@ -162,12 +162,14 @@ async function includeChanged(prog: MainProgram) {
 }
 
 function logCall(entry: LogEntry) {
-  const logger = mongoApiLogger(entry.connection, entry.source, entry.fromClone)
-  if (logger) logger(entry.call)
+  // TOOD: fix api logging
+  // const logger = mongoApiLogger(entry.connection, entry.source, entry.fromClone)
+  // if (logger) logger(entry.call)
 }
 function logHttp(entry: HttpLogEntry) {
-  const logger = mongoHttpLogger(entry.connection, entry.source)
-  if (logger) logger(entry.type, entry.data)
+  // TODO fix call logging
+  // const logger = mongoHttpLogger(entry.connection, entry.source)
+  // if (logger) logger(entry.type, entry.data)
 }
 export async function startLanguageClient(context: ExtensionContext) {
   const module = context.asAbsolutePath(join("server", "dist", "server.js"))
