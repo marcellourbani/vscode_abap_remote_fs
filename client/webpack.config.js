@@ -24,12 +24,25 @@ const config = {
   resolve: {
     // support reading TypeScript and JavaScript files, 📖 -> https://github.com/TypeStrong/ts-loader
     extensions: [".ts", ".js"],
-    fallback:{
-      crypto: require.resolve("crypto-browserify"),
-      // fs: require.resolve("fs-browserify"),
-      path: require.resolve("path-browserify"),
-      https: require.resolve("https-browserify"),
-      stream: require.resolve("stream-browserify")
+    fallback: {
+      crypto: false,
+      util: false,
+      child_process: false,
+      net: false,
+      zlib: false,
+      os: false,
+      url: false,
+      tls: false,
+      dns: false,
+      assert: false,
+      readline: false,
+      querystring: false,
+      constants: false,
+      http: false,
+      fs: false,
+      path: false,
+      https: false,
+      stream: false,
     }
   },
   watchOptions: {
