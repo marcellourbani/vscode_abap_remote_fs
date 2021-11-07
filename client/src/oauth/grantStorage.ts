@@ -1,4 +1,3 @@
-import { Token } from "client-oauth2"
 import { context } from "../extension"
 
 export interface TokenData {
@@ -6,6 +5,7 @@ export interface TokenData {
   accessToken: string
   refreshToken: string
 }
+type Token = TokenData
 
 const KEY = "oauth_grants"
 const tokens = new Map<string, TokenData>()

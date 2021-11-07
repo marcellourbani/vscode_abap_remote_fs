@@ -35,7 +35,7 @@ import {
 import { isAbapClassInclude } from "abapobject"
 import { IncludeProvider } from "../adt/includes" // resolve dependencies
 import { command, AbapFsCommands } from "."
-import { createConnection } from "./connectionwizard"
+// import { createConnection } from "./connectionwizard"
 
 function currentUri() {
   if (!window.activeTextEditor) return
@@ -90,10 +90,10 @@ export class AdtCommands {
     return IncludeProvider.get().switchInclude(uri)
   }
 
-  @command(AbapFsCommands.createConnection)
-  private static createConnectionCommand() {
-    return createConnection()
-  }
+  // @command(AbapFsCommands.createConnection)
+  // private static createConnectionCommand() {
+  //   return createConnection()
+  // }
 
   @command(AbapFsCommands.connect)
   private static async connectAdtServer(selector: any) {

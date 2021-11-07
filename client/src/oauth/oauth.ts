@@ -1,10 +1,14 @@
-import ClientOAuth2, { Token } from "client-oauth2"
 import { getToken, setToken, TokenData, strip } from "./grantStorage"
 import { RemoteConfig, formatKey, RemoteManager } from "../config"
-import { loginServer, cfCodeGrant } from "abap_cloud_platform"
+// import { loginServer, cfCodeGrant } from "abap_cloud_platform"
 import { after, cache } from "../lib"
 import { some, none, toUndefined } from "fp-ts/lib/Option"
 
+interface Token {
+  accessToken: string
+  refreshToken: string
+  tokenType: string
+}
 const pendingGrants = new Map<string, Promise<Token>>()
 export const futureToken = async (connId: string) => {
   const oldGrant = getToken(connId)
@@ -33,18 +37,19 @@ const fromVault = async (conf: RemoteConfig) => {
   try {
     const tp = await RemoteManager.get().getPassword(conf.name, clientId)
     const td = tp && deserializeToken(tp)
-    if (!td) return none
-    const oauth = new ClientOAuth2({
-      authorizationUri: `${loginUrl}/oauth/authorize`,
-      accessTokenUri: `${loginUrl}/oauth/token`,
-      redirectUri: "http://localhost/notfound",
-      clientId,
-      clientSecret
-    })
-    const token = await oauth
-      .createToken(td.accessToken, td.refreshToken, td.tokenType, {})
-      .refresh()
-    return some(strip(token))
+    // if (!td) 
+    return none
+    // const oauth = new ClientOAuth2({
+    //   authorizationUri: `${loginUrl}/oauth/authorize`,
+    //   accessTokenUri: `${loginUrl}/oauth/token`,
+    //   redirectUri: "http://localhost/notfound",
+    //   clientId,
+    //   clientSecret
+    // })
+    // const token = await oauth
+    //   .createToken(td.accessToken, td.refreshToken, td.tokenType, {})
+    //   .refresh()
+    // return some(strip(token))
   } catch (error) {
     return none
   }
@@ -62,20 +67,21 @@ export function oauthLogin(conf: RemoteConfig) {
       setToken(connId, oldGrant)
       return oldGrant.accessToken
     }
+    throw new Error("User logon timed out")
 
-    const server = loginServer()
-    const grant = cfCodeGrant(loginUrl, clientId, clientSecret, server)
-    const timeout = after(60000).then(() => {
-      server.server.close()
-      throw new Error("User logon timed out")
-    })
-    const pendingGrant = Promise.race([grant, timeout])
-    pendingGrants.set(formatKey(connId), pendingGrant)
-    const result = await pendingGrant
-    if (result) setToken(connId, result)
-    pendingGrants.delete(formatKey(connId))
-    if (saveCredentials) toVault(conf, result)
-    return result.accessToken
+    // const server = loginServer()
+    // const grant = cfCodeGrant(loginUrl, clientId, clientSecret, server)
+    // const timeout = after(60000).then(() => {
+    //   server.server.close()
+    //   throw new Error("User logon timed out")
+    // })
+    // const pendingGrant = Promise.race([grant, timeout])
+    // // pendingGrants.set(formatKey(connId), pendingGrant)
+    // // const result = await pendingGrant
+    // // if (result) setToken(connId, result)
+    // pendingGrants.delete(formatKey(connId))
+    // if (saveCredentials) toVault(conf, result)
+    // return result.accessToken
   }
 }
 const logins = cache(oauthLogin)

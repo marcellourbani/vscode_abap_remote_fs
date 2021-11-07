@@ -6,7 +6,7 @@
   "version": "0.2.0",
   "configurations": [
     {
-      "name": "Extension Tests in VS Code",
+      "name": "Extension Tests in VS Code - web",
       "type": "extensionHost",
       "debugWebWorkerHost": true,
       "request": "launch",

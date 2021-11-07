@@ -16,10 +16,9 @@ import {
   SearchProgress,
   LogEntry
 } from "vscode-abap-remote-fs-sharedapi"
-import {
+import vscode, {
   ExtensionContext,
   Uri,
-  window,
   ProgressLocation,
   workspace,
   WorkspaceEdit
@@ -67,7 +66,7 @@ async function getVSCodeUri({ confKey, uri, mainInclude }: UriRequest): Promise<
 }
 
 export function findEditor(url: string) {
-  return window.visibleTextEditors.find(
+  return vscode.window.visibleTextEditors.find(
     e =>
       e.document.uri.scheme === ADTSCHEME && e.document.uri.toString() === url
   )
@@ -126,7 +125,7 @@ let setProgress: ((prog: SearchProgress) => void) | undefined
 async function setSearchProgress(searchProg: SearchProgress) {
   if (setProgress) setProgress(searchProg)
   else if (!searchProg.ended) {
-    window.withProgress(
+    vscode.window.withProgress(
       {
         location: ProgressLocation.Notification,
         cancellable: true,

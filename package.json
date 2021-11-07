@@ -27,7 +27,7 @@
     "filesystem",
     "remote"
   ],
-  "extensionDependencies": [
+  "_extensionDependencies": [
     "larshp.vscode-abap",
     "hudakf.cds"
   ],

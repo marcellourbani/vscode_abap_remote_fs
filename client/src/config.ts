@@ -4,7 +4,7 @@ import {
   httpTraceUrl,
   SOURCE_CLIENT
 } from "vscode-abap-remote-fs-sharedapi"
-import { window, workspace, QuickPickItem, WorkspaceFolder, Uri, ConfigurationTarget, Event, ConfigurationChangeEvent } from "vscode"
+import vscode, { workspace, QuickPickItem, WorkspaceFolder, Uri, ConfigurationTarget, Event, ConfigurationChangeEvent } from "vscode"
 import { ADTClient, createSSLConfig } from "abap-adt-api"
 import { readFileSync } from "fs"
 import { createProxy } from "method-call-logger"
@@ -91,7 +91,7 @@ const config = (name: string, remote: RemoteConfig) => {
 async function selectRemoteInt(remotes: RemoteConfig[]) {
   if (remotes.length <= 1) return { remote: remotes[0], userCancel: false }
 
-  const selection = await window.showQuickPick(
+  const selection = await vscode.window.showQuickPick(
     remotes.map(remote => ({
       label: remote.name,
       description: remote.name,
@@ -120,7 +120,7 @@ export async function pickAdtRoot(uri?: Uri) {
     if (root) return root
   }
 
-  const item = await window.showQuickPick(
+  const item = await vscode.window.showQuickPick(
     [...roots.values()].map(root => {
       return { label: root.name, root } as RootItem
     }),
@@ -298,7 +298,7 @@ export class RemoteManager {
     const conn = this.byId(connectionId)
     if (!conn) return
     const prompt = `Enter password for ${conn.username} on ${connectionId}`
-    const password = await window.showInputBox({
+    const password = await vscode.window.showInputBox({
       prompt,
       password: true,
       ignoreFocusOut: true

@@ -105,7 +105,7 @@ export class DebugService {
     private variableHandles = new Handles<Variable>()
     private readonly mode: DebuggingMode
     public readonly THREADID = 1
-    private doRefresh?: NodeJS.Timeout
+    private doRefresh?: NodeJS.Timeout | number
     sessionNumber: number
     private get client() {
         if (this.killed) throw new Error("Disconnected")
@@ -368,6 +368,7 @@ export class DebugService {
 
     public async debuggerStep(stepType: DebugStepType, url?: string) {
         try {
+            // @ts-ignore
             if (this.doRefresh) clearTimeout(this.doRefresh)
             this.doRefresh = undefined
             const res = await this.baseDebuggerStep(stepType, url)

@@ -60,11 +60,9 @@
   "dependencies": {
     "@abaplint/core": "^2.74.9",
     "@types/tmp": "0.2.0",
-    "abap_cloud_platform": "^1.1.2",
-    "abap-adt-api": "^3.0.0",
+    "abap-adt-api": "^4.1.0",
     "abapfs": "file:../modules/abapfs",
     "abapobject": "file:../modules/abapObject",
-    "client-oauth2": "^4.3.3",
     "event-stream": "4.0.1",
     "fast-xml-parser": "^3.17.6",
     "fp-ts": "^2.8.4",

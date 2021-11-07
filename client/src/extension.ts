@@ -1,8 +1,7 @@
 import { TransportsProvider } from "./views/transports"
 import { FavouritesProvider } from "./views/favourites"
 import { FsProvider } from "./fs/FsProvider"
-import {
-  window as vscwindow,
+import vscode, {
   commands,
   workspace,
   ExtensionContext,
@@ -56,21 +55,21 @@ export async function activate(ctx: ExtensionContext): Promise<AbapFsApi> {
   // closed document listener, for locking
   sub.push(workspace.onDidCloseTextDocument(documentClosedListener))
   // Editor changed listener, updates context and icons
-  sub.push(vscwindow.onDidChangeActiveTextEditor(activeTextEditorChangedListener))
+  sub.push(vscode.window.onDidChangeActiveTextEditor(activeTextEditorChangedListener))
 
   registerRevisionModel(context)
 
   const fav = FavouritesProvider.get()
   fav.storagePath = context.globalStoragePath
-  sub.push(vscwindow.registerTreeDataProvider("abapfs.favorites", fav))
+  sub.push(vscode.window.registerTreeDataProvider("abapfs.favorites", fav))
   sub.push(
-    vscwindow.registerTreeDataProvider(
+    vscode.window.registerTreeDataProvider(
       "abapfs.transports",
       TransportsProvider.get()
     )
   )
-  sub.push(vscwindow.registerTreeDataProvider("abapfs.abapgit", abapGitProvider))
-  sub.push(vscwindow.registerTreeDataProvider("abapfs.dumps", dumpProvider))
+  sub.push(vscode.window.registerTreeDataProvider("abapfs.abapgit", abapGitProvider))
+  sub.push(vscode.window.registerTreeDataProvider("abapfs.dumps", dumpProvider))
   sub.push(
     languages.registerCodeLensProvider(
       { language: "abap", scheme: ADTSCHEME },
@@ -114,7 +113,7 @@ export async function activate(ctx: ExtensionContext): Promise<AbapFsApi> {
 // an open session can leave sources locked without any UI able to release them (except SM12 and the like)
 export async function deactivate() {
   if (hasLocks())
-    vscwindow.showInformationMessage(
+    vscode.window.showInformationMessage(
       "Locks will be dropped now. If the relevant editors are still open they will be restored later"
     )
   commands.executeCommand("setContext", "abapfs:extensionActive", false)
