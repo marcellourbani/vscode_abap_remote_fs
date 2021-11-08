@@ -23,13 +23,13 @@ import vscode, {
   workspace,
   WorkspaceEdit
 } from "vscode"
-import {
-  LanguageClient,
-  TransportKind,
-  State,
-  RevealOutputChannelOn
-} from "vscode-languageclient"
-export let client: LanguageClient
+// import {
+//   LanguageClient,
+//   TransportKind,
+//   State,
+//   RevealOutputChannelOn
+// } from "vscode-languageclient"
+// export let client: LanguageClient
 import { join } from "path"
 import { FixProposal, Delta } from "abap-adt-api"
 import { command, AbapFsCommands } from "./commands"
@@ -135,7 +135,7 @@ async function setSearchProgress(searchProg: SearchProgress) {
         let current = 0
         token.onCancellationRequested(async () => {
           setProgress = undefined
-          await client.sendRequest(Methods.cancelSearch)
+          // await client.sendRequest(Methods.cancelSearch)
           resolve(undefined)
         })
         setProgress = (s: SearchProgress) => {
@@ -157,7 +157,7 @@ async function setSearchProgress(searchProg: SearchProgress) {
 }
 
 async function includeChanged(prog: MainProgram) {
-  await client.sendRequest(Methods.updateMainProgram, prog)
+  // await client.sendRequest(Methods.updateMainProgram, prog)
 }
 
 function logCall(entry: LogEntry) {
@@ -171,45 +171,45 @@ function logHttp(entry: HttpLogEntry) {
   // if (logger) logger(entry.type, entry.data)
 }
 export async function startLanguageClient(context: ExtensionContext) {
-  const module = context.asAbsolutePath(join("server", "dist", "server.js"))
-  const transport = TransportKind.ipc
-  const options = { execArgv: ["--nolazy", "--inspect=6010"] }
-  log("creating language client...")
+  // const module = context.asAbsolutePath(join("server", "dist", "server.js"))
+  // const transport = TransportKind.ipc
+  // const options = { execArgv: ["--nolazy", "--inspect=6010"] }
+  // log("creating language client...")
 
-  client = new LanguageClient(
-    "ABAPFS_LC",
-    "Abap FS Language client",
-    {
-      run: { module, transport },
-      debug: { module, transport, options }
-    },
-    {
-      documentSelector: [
-        { language: "abap", scheme: ADTSCHEME },
-        { language: "abap_cds", scheme: ADTSCHEME }
-      ],
-      outputChannel: channel,
-      revealOutputChannelOn: RevealOutputChannelOn.Warn
-    }
-  )
-  log("starting language client...")
+  // client = new LanguageClient(
+  //   "ABAPFS_LC",
+  //   "Abap FS Language client",
+  //   {
+  //     run: { module, transport },
+  //     debug: { module, transport, options }
+  //   },
+  //   {
+  //     documentSelector: [
+  //       { language: "abap", scheme: ADTSCHEME },
+  //       { language: "abap_cds", scheme: ADTSCHEME }
+  //     ],
+  //     outputChannel: channel,
+  //     revealOutputChannelOn: RevealOutputChannelOn.Warn
+  //   }
+  // )
+  // log("starting language client...")
 
-  IncludeProvider.get().onDidSelectInclude(includeChanged)
+  // IncludeProvider.get().onDidSelectInclude(includeChanged)
 
-  client.onDidChangeState(e => {
-    if (e.newState === State.Running) {
-      client.onRequest(Methods.readConfiguration, configFromKey)
-      client.onRequest(Methods.objectDetails, objectDetailFromUrl)
-      client.onRequest(Methods.readEditorObjectSource, readEditorObjectSource)
-      client.onRequest(Methods.readObjectSourceOrMain, readObjectSource)
-      client.onRequest(Methods.vsUri, getVSCodeUri)
-      client.onRequest(Methods.setSearchProgress, setSearchProgress)
-      client.onRequest(Methods.logCall, logCall)
-      client.onRequest(Methods.logHTTP, logHttp)
-      client.onRequest(Methods.getToken, getToken)
-    }
-  })
-  client.start()
+  // client.onDidChangeState(e => {
+  //   if (e.newState === State.Running) {
+  //     client.onRequest(Methods.readConfiguration, configFromKey)
+  //     client.onRequest(Methods.objectDetails, objectDetailFromUrl)
+  //     client.onRequest(Methods.readEditorObjectSource, readEditorObjectSource)
+  //     client.onRequest(Methods.readObjectSourceOrMain, readObjectSource)
+  //     client.onRequest(Methods.vsUri, getVSCodeUri)
+  //     client.onRequest(Methods.setSearchProgress, setSearchProgress)
+  //     client.onRequest(Methods.logCall, logCall)
+  //     client.onRequest(Methods.logHTTP, logHttp)
+  //     client.onRequest(Methods.getToken, getToken)
+  //   }
+  // })
+  // client.start()
 }
 
 export class LanguageCommands {

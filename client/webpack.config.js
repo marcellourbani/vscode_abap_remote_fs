@@ -42,7 +42,7 @@ const config = {
       fs: false,
       path: false,
       https: false,
-      stream: false,
+      stream: false
     }
   },
   watchOptions: {

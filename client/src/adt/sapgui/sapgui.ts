@@ -1,13 +1,13 @@
 import { RemoteConfig, RemoteManager } from "../../config"
-import { file } from "tmp-promise"
-import { writeAsync } from "fs-jetpack"
+// import { file } from "tmp-promise"
+// import { writeAsync } from "fs-jetpack"
 import { log } from "../../lib"
 import { closeSync } from "fs"
 import opn = require("open")
 import { window, ProgressLocation, extensions } from "vscode"
 import { getClient } from "../conections"
-import { AbapObject, isAbapClassInclude } from "abapobject";
-import puppeteer from "puppeteer-core";
+import { AbapObject, isAbapClassInclude } from "abapobject"
+import puppeteer from "puppeteer-core"
 import {
   commands,
   Uri
@@ -73,31 +73,31 @@ export function runInSapGui(
 }
 
 export function executeInGui(connId: string, object: AbapObject) {
-  if (isAbapClassInclude(object) && object.parent) object = object.parent;
+  if (isAbapClassInclude(object) && object.parent) object = object.parent
   return runInSapGui(connId, () => {
-    const { type, name } = object;
-    let transaction = '';
-    let dynprofield = '';
-    let okcode = '';
+    const { type, name } = object
+    let transaction = ''
+    let dynprofield = ''
+    let okcode = ''
     switch (type) {
       case 'PROG/P':
         transaction = 'SE38'
         dynprofield = 'RS38M-PROGRAMM'
         okcode = 'STRT'
-        break;
+        break
       case 'FUGR/FF':
         transaction = 'SE37'
         dynprofield = 'RS38L-NAME'
         okcode = 'WB_EXEC'
-        break;
+        break
       case 'CLAS/OC':
         transaction = 'SE24'
         dynprofield = 'SEOCLASS-CLSNAME'
         okcode = 'WB_EXEC'
-        break;
+        break
       default:
         return showInGuiCb(object.sapGuiUri)()
-        break;
+        break
     }
     return {
       type: "Transaction",
@@ -196,27 +196,27 @@ export class SapGui {
 
   public async startGui(command: SapGuiCommand, ticket: string) {
     const content = this.createLauncherContent(command, ticket)
-    const win32 = process.platform === "win32"
-    const linux = process.platform === "linux"
-    const shortcut = await file({
-      postfix: ".sap",
-      prefix: "abapfs_shortcut_",
-      keep: win32
-    })
-    await writeAsync(shortcut.path, content)
+    const win32 = process?.platform === "win32"
+    const linux = process?.platform === "linux"
+    // const shortcut = await file({
+    //   postfix: ".sap",
+    //   prefix: "abapfs_shortcut_",
+    //   keep: win32
+    // })
+    // await writeAsync(shortcut.path, content)
     // windows won't open this if still open...
-    if (win32) closeSync(shortcut.fd)
-    try {
-      // workaround for bug in opn trying to use /xdg-open...
-      const options: any = {}
-      if (linux) options.app = "xdg-open"
+    // if (win32) closeSync(shortcut.fd)
+    // try {
+    //   // workaround for bug in opn trying to use /xdg-open...
+    //   const options: any = {}
+    //   if (linux) options.app = "xdg-open"
 
-      await opn(shortcut.path, options)
-      // delete after opening sapgui, only in windows
-      if (win32) setTimeout(() => shortcut.cleanup(), 50000)
-    } catch (e) {
-      log("Error executing file", shortcut.path)
-    }
+    //   await opn(shortcut.path, options)
+    //   // delete after opening sapgui, only in windows
+    //   if (win32) setTimeout(() => shortcut.cleanup(), 50000)
+    // } catch (e) {
+    //   log("Error executing file", shortcut.path)
+    // }
   }
 
 
@@ -227,7 +227,7 @@ export class SapGui {
       if (!ext) {
         guitype = "WEBGUI_CONTROLLED"
         const args = encodeURIComponent(JSON.stringify([[BROWSERPREVIEW]]))
-        const exturl = Uri.parse(`command:workbench.extensions.action.showExtensionsWithIds?${args}`);
+        const exturl = Uri.parse(`command:workbench.extensions.action.showExtensionsWithIds?${args}`)
         window.showInformationMessage(`Embedded browser requires [Browser preview extension](${exturl})<br>showing in browser`)
       }
     }
@@ -246,11 +246,11 @@ export class SapGui {
       const url = Uri.parse(config.url).with({ path: "/sap/bc/gui/sap/its/webgui", query })
       switch (guitype) {
         case "WEBGUI_UNSAFE_EMBEDDED":
-          commands.executeCommand('browser-preview.openPreview', url.toString());
-          break;
+          commands.executeCommand('browser-preview.openPreview', url.toString())
+          break
         case "WEBGUI_UNSAFE":
-          commands.executeCommand('vscode.open', url);
-          break;
+          commands.executeCommand('vscode.open', url)
+          break
         default:
           const ticket = await client.reentranceTicket()
           const browser = await puppeteer.launch({
@@ -268,7 +268,7 @@ export class SapGui {
           const logonUri = Uri.parse(config.url).with({ path: `/sap/public/myssocntl` }).toString()
           await page.goto(logonUri)
           // browser.disconnect()
-          break;
+          break
       }
     }
   }

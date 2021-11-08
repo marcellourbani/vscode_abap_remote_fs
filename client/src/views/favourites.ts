@@ -7,7 +7,7 @@ import {
   workspace,
   FileStat
 } from "vscode"
-import { path, fileAsync, readAsync } from "fs-jetpack"
+// import { path, fileAsync, readAsync } from "fs-jetpack"
 import { NSSLASH, isString } from "../lib"
 import { uriRoot, getRoot, ADTSCHEME } from "../adt/conections"
 import { isAbapFolder, AbapStat, isAbapStat, isFolder } from "abapfs"
@@ -196,9 +196,9 @@ export class FavouritesProvider implements TreeDataProvider<FavItem> {
   private static instance?: FavouritesProvider
 
   public set storagePath(storagePath: string | undefined) {
-    this.storage = storagePath
-      ? path(storagePath, "favourites.json")
-      : undefined
+    // this.storage = storagePath
+    //   ? path(storagePath, "favourites.json")
+    //   : undefined
   }
 
   private rootI?: Map<string, Favourite[]>
@@ -276,23 +276,23 @@ export class FavouritesProvider implements TreeDataProvider<FavItem> {
 
   private async readFavourite() {
     const root: Map<string, Favourite[]> = new Map()
-    if (this.storage) {
-      const saved: [string, FavouriteIf[]][] = await readAsync(
-        this.storage,
-        "json"
-      )
-      if (Array.isArray(saved))
-        for (const s of saved)
-          root.set(
-            s[0],
-            s[1].map(f => new Favourite(f))
-          )
-    }
+    // if (this.storage) {
+    //   const saved: [string, FavouriteIf[]][] = await readAsync(
+    //     this.storage,
+    //     "json"
+    //   )
+    //   if (Array.isArray(saved))
+    //     for (const s of saved)
+    //       root.set(
+    //         s[0],
+    //         s[1].map(f => new Favourite(f))
+    //       )
+    // }
     return root
   }
 
   private async save() {
     const root = await this.root
-    if (this.storage) fileAsync(this.storage, { content: [...root] })
+    // if (this.storage) fileAsync(this.storage, { content: [...root] })
   }
 }

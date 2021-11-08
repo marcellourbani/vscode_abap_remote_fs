@@ -10,7 +10,7 @@ const getRootForTest = () => {
     ADT_URL = "",
     ADT_USER = "",
     ADT_PASS = ""
-  } = process.env
+  } = process?.env
   if (ADT_URL && ADT_USER && ADT_PASS) {
     // TODO fix axios
     // const client = new ADTClient(ADT_URL, ADT_USER, ADT_PASS, undefined, undefined, { rejectUnauthorized: false })

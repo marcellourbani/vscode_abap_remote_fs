@@ -52,7 +52,7 @@ const getOrCreateIdeId = (): string => {
 }
 
 const getOrCreateTerminalId = async () => {
-    if (process.platform === "win32") {
+    if (process?.platform === "win32") {
         // TODO: use winregistry to get the terminal id
         // const reg = getWinRegistryReader()
         // const terminalId = reg && reg("HKEY_CURRENT_USER", "Software\\SAP\\ABAP Debugging", "TerminalID")
