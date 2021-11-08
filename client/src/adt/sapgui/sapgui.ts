@@ -7,7 +7,6 @@ import opn = require("open")
 import { window, ProgressLocation, extensions } from "vscode"
 import { getClient } from "../conections"
 import { AbapObject, isAbapClassInclude } from "abapobject"
-import puppeteer from "puppeteer-core"
 import {
   commands,
   Uri
@@ -253,20 +252,20 @@ export class SapGui {
           break
         default:
           const ticket = await client.reentranceTicket()
-          const browser = await puppeteer.launch({
-            headless: false,
-            executablePath: config.sapGui?.browserPath || "chrome",
-            ignoreDefaultArgs: ["--enable-automation", "--enable-blink-features=IdleDetection"],
-            ignoreHTTPSErrors: !!config.allowSelfSigned,
-            // @ts-ignore
-            defaultViewport: null,
-            args: ['--start-maximized']
-          })
+          // const browser = await puppeteer.launch({
+          //   headless: false,
+          //   executablePath: config.sapGui?.browserPath || "chrome",
+          //   ignoreDefaultArgs: ["--enable-automation", "--enable-blink-features=IdleDetection"],
+          //   ignoreHTTPSErrors: !!config.allowSelfSigned,
+          //   // @ts-ignore
+          //   defaultViewport: null,
+          //   args: ['--start-maximized']
+          // })
 
-          const page = (await browser.pages())[0] || await browser.newPage()
-          await page.setExtraHTTPHeaders({ "sap-mysapsso": `${config.client}${ticket}`, "sap-mysapred": url.toString() })
-          const logonUri = Uri.parse(config.url).with({ path: `/sap/public/myssocntl` }).toString()
-          await page.goto(logonUri)
+          // const page = (await browser.pages())[0] || await browser.newPage()
+          // await page.setExtraHTTPHeaders({ "sap-mysapsso": `${config.client}${ticket}`, "sap-mysapred": url.toString() })
+          // const logonUri = Uri.parse(config.url).with({ path: `/sap/public/myssocntl` }).toString()
+          // await page.goto(logonUri)
           // browser.disconnect()
           break
       }

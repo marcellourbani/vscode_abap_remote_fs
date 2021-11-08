@@ -101,8 +101,8 @@ export async function activate(ctx: ExtensionContext): Promise<AbapFsApi> {
   registerAbapGit(context)
 
   registerCommands(context)
-  const elapsed = new Date().getTime() - startTime
-  log(`Activated,pid=${process?.pid}, activation time(ms):${elapsed}`)
+  // const elapsed = new Date().getTime() - startTime
+  // log(`Activated,pid=${process?.pid}, activation time(ms):${elapsed}`)
   return api
 }
 
