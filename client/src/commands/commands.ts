@@ -99,7 +99,7 @@ export class AdtCommands {
   private static async connectAdtServer(selector: any) {
     let name = ""
     try {
-      const connectionID = selector && selector.connection
+      const connectionID = selector?.connection
       const manager = RemoteManager.get()
       const { remote, userCancel } = await manager.selectConnection(
         connectionID

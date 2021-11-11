@@ -1,7 +1,6 @@
 // keytar depends on a native module shipped in vscode
 // this loads only the type definitions
 import * as keytarType from "./keytar"
-import * as winRegistryType from "vscode-windows-registry";
 
 // get the module from vscode. This is not an official API, might break at some point
 // this is required because keytar includes a binary we can't include
@@ -19,12 +18,12 @@ function getCodeModule<T>(moduleName: string): T | undefined {
   }
 }
 
-let keytar: typeof keytarType | undefined
+const keytar: typeof keytarType | undefined = undefined
 const keytarErr = () => new Error("Error accessing system secure store")
 
 export class PasswordVault {
   constructor() {
-    if (!keytar) keytar = getCodeModule<typeof keytarType>("keytar")
+    // dumb rule from eslint
   }
 
   getPassword(service: string, account: string) {

@@ -170,10 +170,8 @@ export function createClient(conf: RemoteConfig) {
 export class RemoteManager {
   private static instance: RemoteManager
   private connections = new Map<string, RemoteConfig>()
-  private vault: PasswordVault
 
   private constructor() {
-    this.vault = new PasswordVault()
     workspace.onDidChangeConfiguration(this.configChanged, this)
   }
   private configChanged({ affectsConfiguration }: ConfigurationChangeEvent) {
@@ -256,11 +254,8 @@ export class RemoteManager {
       if (selected.userCancel) return selected
       remote = selected.remote
     }
-    if (remote && !remote.password)
-      remote.password = await this.getPassword(
-        formatKey(remote.name),
-        remote.username
-      )
+    // if (remote && !remote.password)
+    //   remote.password = await this.getPassword(formatKey(remote.name), remote.username)
 
     return { remote, userCancel: false }
   }
@@ -271,27 +266,27 @@ export class RemoteManager {
     password: string
   ) {
     connectionId = formatKey(connectionId)
-    const result = await this.vault.setPassword(
-      `vscode.abapfs.${connectionId}`,
-      userName,
-      password
-    )
+    // const result = await this.vault.setPassword(
+    //   `vscode.abapfs.${connectionId}`,
+    //   userName,
+    //   password
+    // )
     const conn = this.byId(connectionId)
     if (conn) conn.password = password
-    return result
+    // return result
   }
 
   public clearPassword(connectionId: string, userName: string) {
-    return this.vault.deletePassword(
-      `vscode.abapfs.${formatKey(connectionId)}`,
-      userName
-    )
+    // return this.vault.deletePassword(
+    //   `vscode.abapfs.${formatKey(connectionId)}`,
+    //   userName
+    // )
   }
 
   public async getPassword(connectionId: string, userName: string) {
     const key = `vscode.abapfs.${formatKey(connectionId)}`
-    const password = await this.vault.getPassword(key, userName)
-    return password || ""
+    // const password = await this.vault.getPassword(key, userName)
+    return ""
   }
 
   public async askPassword(connectionId: string) {
@@ -317,10 +312,10 @@ export class RemoteManager {
     connectionId = formatKey(connectionId)
     const conn = this.loadRemote(connectionId)
     if (!conn) return // no connection found, should never happen
-    const deleted = await this.clearPassword(
-      connectionId,
-      conn.oauth?.clientId || conn.username
-    )
-    if (deleted && !this.isConnected(connectionId)) this.connections.delete(connectionId)
+    // const deleted = await this.clearPassword(
+    //   connectionId,
+    //   conn.oauth?.clientId || conn.username
+    // )
+    // if (deleted && !this.isConnected(connectionId)) this.connections.delete(connectionId)
   }
 }
