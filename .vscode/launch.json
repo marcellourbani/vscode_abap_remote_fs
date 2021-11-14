@@ -6,6 +6,18 @@
   "version": "0.2.0",
   "configurations": [
     {
+      "name": "Proxy",
+      "console": "integratedTerminal",
+      "internalConsoleOptions": "neverOpen",
+      "program": "${workspaceFolder}/codeproxy.js",
+      "request": "launch",
+      "restart": true,
+      "outFiles": ["${workspaceFolder}/*.js"],
+      "runtimeExecutable": "nodemon",
+      "skipFiles": ["<node_internals>/**"],
+      "type": "pwa-node"
+    },
+    {
       "name": "Extension Tests in VS Code - web",
       "type": "extensionHost",
       "debugWebWorkerHost": true,
