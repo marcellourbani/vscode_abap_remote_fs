@@ -1,6 +1,6 @@
 import { AbapObject } from "../../abapObject"
 import { AdtLock } from "abap-adt-api"
-import { AFsService, AbapFsService } from "./AFsService"
+import { AbapFsService } from "./AFsService"
 
 export interface Locked extends AdtLock {
   status: "locked"
@@ -14,7 +14,7 @@ export interface Locking {
 }
 export interface Unlocking extends AdtLock {
   status: "unlocking"
-  unlocked: Promise<void>
+  unlocked: Promise<string>
 }
 
 export type LockStatus = Locked | Unlocked | Locking | Unlocking
@@ -22,7 +22,7 @@ export type LockStatus = Locked | Unlocked | Locking | Unlocking
 export const delay = (t: number) => new Promise(r => setTimeout(r, t))
 
 export class LockObject {
-  constructor(private object: AbapObject, private service: AbapFsService) {}
+  constructor(private object: AbapObject, private service: AbapFsService) { }
   get key() {
     return this.object.key
   }

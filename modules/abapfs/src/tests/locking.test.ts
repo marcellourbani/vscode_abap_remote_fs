@@ -29,6 +29,7 @@ const mockClient = () => {
     if (locks.get(path) !== handle) throw new Error(`Lock ID not matching`)
     await delay(50)
     locks.delete(path)
+    return ""
   })
   return client
 }

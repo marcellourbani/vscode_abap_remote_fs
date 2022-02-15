@@ -5,7 +5,7 @@ import {
   SOURCE_CLIENT
 } from "vscode-abap-remote-fs-sharedapi"
 import { window, workspace, QuickPickItem, WorkspaceFolder, Uri, ConfigurationTarget, Event, ConfigurationChangeEvent } from "vscode"
-import { ADTClient, createSSLConfig } from "abap-adt-api"
+import { ADTClient, createSSLConfig, LogCallback } from "abap-adt-api"
 import { readFileSync } from "fs"
 import { createProxy } from "method-call-logger"
 import { mongoApiLogger, mongoHttpLogger, PasswordVault } from "./lib"
@@ -140,7 +140,7 @@ function loggedProxy(client: ADTClient, conf: RemoteConfig) {
     getterOverride: new Map([["statelessClone", () => clone]])
   })
 }
-const httpLogger = (conf: RemoteConfig) => {
+const httpLogger = (conf: RemoteConfig): LogCallback | undefined => {
   const mongoUrl = httpTraceUrl(conf)
   if (!mongoUrl) return undefined
   return mongoHttpLogger(conf.name, SOURCE_CLIENT)

@@ -143,7 +143,7 @@ export async function documentWillSave(e: TextDocumentWillSaveEvent) {
 }
 export function documentOpenListener(document: TextDocument) {
   const uri = document.uri
-  if (uri.scheme !== ADTSCHEME) return
+  if (uri.scheme !== ADTSCHEME || document.isClosed) return
   return IncludeProvider.get().switchIncludeIfMissing(uri)
 }
 

@@ -4,7 +4,7 @@ import { PathStep, AdtLock, session_types } from "abap-adt-api"
 export interface AbapFsService extends AbapObjectService {
   objectPath: (path: string) => Promise<PathStep[]>
   lock(path: string): Promise<AdtLock>
-  unlock(path: string, lockHandle: string): Promise<void>
+  unlock(path: string, lockHandle: string): Promise<string>
   readonly sessionType: session_types
   dropSession: () => Promise<void>
   login: () => Promise<void>

@@ -57,7 +57,7 @@ export async function vsCodeUri(confKey: string, uri: string, mainInclude: boole
     return urlFromPath(confKey, hit.path)
   } catch (error) {
     if (cacheErrors) uriErrors.set(key, true)
-    throw error;
+    throw error
   }
 }
 
@@ -167,7 +167,7 @@ function logCall(entry: LogEntry) {
 }
 function logHttp(entry: HttpLogEntry) {
   const logger = mongoHttpLogger(entry.connection, entry.source)
-  if (logger) logger(entry.type, entry.data)
+  if (logger) logger(entry.data)
 }
 export async function startLanguageClient(context: ExtensionContext) {
   const module = context.asAbsolutePath(join("server", "dist", "server.js"))

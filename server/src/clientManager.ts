@@ -1,4 +1,4 @@
-import { ADTClient, createSSLConfig } from "abap-adt-api"
+import { ADTClient, createSSLConfig, LogData } from "abap-adt-api"
 import { createConnection, ProposedFeatures } from "vscode-languageserver"
 import { types } from "util"
 import { readConfiguration, sendLog, sendHttpLog } from "./clientapis"
@@ -10,7 +10,6 @@ import {
   Methods
 } from "vscode-abap-remote-fs-sharedapi"
 import { createProxy, MethodCall } from "method-call-logger"
-import { LogPhase, LogData } from "request-debug"
 import { isString } from "./functions"
 const clients: Map<string, ADTClient> = new Map()
 
@@ -49,8 +48,8 @@ function loggedProxy(client: ADTClient, conf: ClientConfiguration) {
 
 function debugCallBack(conf: ClientConfiguration) {
   if (httpTraceUrl(conf))
-    return (type: LogPhase, data: LogData) =>
-      sendHttpLog({ source: SOURCE_SERVER, type, data, connection: conf.name })
+    return (data: LogData) =>
+      sendHttpLog({ source: SOURCE_SERVER, data, connection: conf.name })
 }
 function createFetchToken(conf: ClientConfiguration) {
   if (conf.oauth)

@@ -1,5 +1,5 @@
 import { MethodCall } from "method-call-logger"
-import { LogPhase, LogData } from "request-debug"
+import { LogData } from "abap-adt-api"
 export enum Methods {
   objectDetails = "vscabap.objDetails",
   readConfiguration = "vscabap.readConfig",
@@ -91,7 +91,6 @@ export interface LogEntry {
 export interface HttpLogEntry {
   connection: string
   source: Sources
-  type: LogPhase
   data: LogData
 }
 

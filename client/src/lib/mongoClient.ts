@@ -1,19 +1,12 @@
-import { Schema, model, connect } from "mongoose"
+import { Schema, connect } from "mongoose"
 import { RemoteManager } from "../config"
 import { MethodCall } from "method-call-logger"
 import { log } from "./logger"
 import { cache } from "./functions"
-import {
-  clientTraceUrl,
-  SOURCE_CLIENT,
-  SOURCE_SERVER,
-  Sources,
-  httpTraceUrl
-} from "vscode-abap-remote-fs-sharedapi"
-import { LogPhase, LogData, RequestData, ResponseData } from "request-debug"
-import { Headers } from "request"
-import { session_types } from "abap-adt-api"
+import { clientTraceUrl, Sources, httpTraceUrl } from "vscode-abap-remote-fs-sharedapi"
+import { LogCallback, LogData, session_types } from "abap-adt-api"
 import { caughtToString } from "."
+import { AxiosRequestHeaders } from "axios"
 
 const CALLLOG = "callLog"
 const HTTPLOG = "httpLog"
@@ -37,12 +30,12 @@ interface HttpRequest {
   stateful: boolean
   method: string
   uri: string
-  headers: Headers
+  headers: AxiosRequestHeaders
   requestBody: any
   debugId: number
 }
 interface HttpLog extends HttpRequest {
-  responseHeaders: Headers
+  responseHeaders: AxiosRequestHeaders
   duration: number
   statusCode: number
   // unknownResponse: boolean
@@ -79,10 +72,6 @@ const httpSchema = new Schema({
 
 class MongoClient {
   private connection: Promise<typeof import("mongoose")>
-  private pendingRequests = new Map([
-    [SOURCE_CLIENT, new Map<number, HttpRequest>()],
-    [SOURCE_SERVER, new Map<number, HttpRequest>()]
-  ])
   private formatDbName(name: string): string {
     return `abapfs_${name.replace(/[\\\/\*\?\"<>\|\s,#]/g, "_").toLowerCase()}`
   }
@@ -134,9 +123,9 @@ class MongoClient {
       })
   }
 
-  private toHttpRequest(request: RequestData, source: string): HttpRequest {
-    const { body: requestBody, ...rest } = request
-    const s = request.headers["X-sap-adt-sessiontype"]
+  private toHttpRequest(logdata: LogData, source: string): HttpRequest {
+    const { body: requestBody, ...rest } = logdata.request
+    const s = logdata.request.headers["X-sap-adt-sessiontype"]
     const stateful = s === session_types.stateful || s === session_types.keep
 
     return {
@@ -144,44 +133,29 @@ class MongoClient {
       requestBody,
       source,
       stateful,
-      start: new Date().getTime()
+      start: new Date().getTime(),
+      debugId: logdata.id
     }
   }
-  public httpLog(type: LogPhase, data: LogData, source: Sources) {
-    const pendingRequests = this.pendingRequests.get(source)
-    if (!pendingRequests) return
+
+  public httpLog(data: LogData, source: Sources) {
     this.connection.then(async mongo => {
-      switch (type) {
-        case "request":
-          const request = this.toHttpRequest(data as RequestData, source)
-          pendingRequests.set(data.debugId, request)
-          break
-        case "response":
-          const oldRequest = pendingRequests.get(data.debugId)
-          pendingRequests.delete(data.debugId)
-          if (!oldRequest)
-            log(`Response received for unknown request ${data.debugId}`)
-          else {
-            const {
-              headers: responseHeaders,
-              statusCode,
-              body: responseBody
-            } = data as ResponseData
-            const response: HttpLog = {
-              ...oldRequest,
-              statusCode,
-              duration: new Date().getTime() - oldRequest.start,
-              responseHeaders,
-              responseBody
-            }
-            const logmodel = mongo.model(HTTPLOG)
-            const doc = new logmodel(response)
-            await doc.save()
-          }
-          break
-        default:
-          log(`Unexpected request type logged: ${type}`)
+      const request = this.toHttpRequest(data, source)
+      const {
+        headers: responseHeaders,
+        statusCode,
+        body: responseBody
+      } = data.response
+      const response: HttpLog = {
+        ...request,
+        statusCode,
+        duration: new Date().getTime() - request.start,
+        responseHeaders,
+        responseBody
       }
+      const logmodel = mongo.model(HTTPLOG)
+      const doc = new logmodel(response)
+      await doc.save()
     })
   }
 }
@@ -202,8 +176,8 @@ export const mongoApiLogger = (
   if (mongo) return (call: MethodCall) => mongo.log(call, source, clone)
 }
 
-export const mongoHttpLogger = (name: string, source: Sources) => {
+export const mongoHttpLogger = (name: string, source: Sources): LogCallback | undefined => {
   const mongo = mongoClients.get(name)
   if (mongo)
-    return (type: LogPhase, data: LogData) => mongo.httpLog(type, data, source)
+    return (data: LogData) => mongo.httpLog(data, source)
 }

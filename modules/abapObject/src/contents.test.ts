@@ -3,6 +3,7 @@ import { AOService } from "."
 import { create, fromNode } from "./creator"
 import { PACKAGEBASEPATH, AbapObject } from "./AbapObject"
 import { isAbapClass } from "./objectTypes"
+import { Agent } from "https"
 
 /** this will connect to a real server, and mostly rely on abapgit as sample data
  *   tests might brek with future versions of abapgit
@@ -16,7 +17,8 @@ const getRootForTest = () => {
     ADT_PASS = ""
   } = process.env
   if (ADT_URL && ADT_USER && ADT_PASS) {
-    const client = new ADTClient(ADT_URL, ADT_USER, ADT_PASS, undefined, undefined, { rejectUnauthorized: false })
+    const options = ADT_URL.match(/^https/i) ? { httpsAgent: new Agent({ rejectUnauthorized: false }) } : {}
+    const client = new ADTClient(ADT_URL, ADT_USER, ADT_PASS, undefined, undefined, options)
     const service = new AOService(client)
     return { service, client }
   }

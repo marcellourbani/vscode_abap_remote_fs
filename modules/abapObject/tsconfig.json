@@ -12,7 +12,8 @@
     "sourceMap": true,
     "strict": true,
     "noUnusedLocals": false,
-    "composite": true
+    "composite": true,
+    "skipLibCheck": true
   },
   "include": ["src", "./src/sampledata/*.json"],
   "exclude": ["node_modules", ".vscode-test", "*.d.ts"]

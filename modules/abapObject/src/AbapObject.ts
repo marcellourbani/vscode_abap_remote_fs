@@ -7,7 +7,7 @@ import {
 import { AbapObjectService } from "./AOService"
 import { ObjectErrors } from "./AOError"
 const SAPGUIONLY =
-  "Objects of this type are only supported in SAPGUI. Press F5 to edit in sapgui"
+  "Objects of this type are only supported in SAPGUI. Press Ctrl+Shift+F6 to edit in sapgui"
 const NSSLASH = "\u2215" // used to be hardcoded as "／", aka "\uFF0F"
 export const PACKAGE = "DEVC/K"
 export const TMPPACKAGE = "$TMP"

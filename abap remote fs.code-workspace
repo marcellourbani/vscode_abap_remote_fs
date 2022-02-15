@@ -34,7 +34,8 @@
       "**/.project": true,
       "**/.settings": true,
       "**/.factorypath": true,
-      "**/node_modules/**": true
+      "**/node_modules/**": true,
+      "**/tmp/**": true
     },
     "prettier.arrowParens": "avoid",
     "prettier.proseWrap": "never",
