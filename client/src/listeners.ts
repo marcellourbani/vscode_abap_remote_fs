@@ -141,11 +141,6 @@ export async function documentWillSave(e: TextDocumentWillSaveEvent) {
   if (!e.document.isDirty)
     await setDocumentLock({ ...e.document, isDirty: true }, true)
 }
-export function documentOpenListener(document: TextDocument) {
-  const uri = document.uri
-  if (uri.scheme !== ADTSCHEME || document.isClosed) return
-  return IncludeProvider.get().switchIncludeIfMissing(uri)
-}
 
 function isInactive(obj: AbapObject): boolean {
   const inactive = !!(obj.structure?.metaData["adtcore:version"] === "inactive")

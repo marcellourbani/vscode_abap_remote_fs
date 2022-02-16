@@ -1,5 +1,16 @@
 # Change Log
 
+## [1.0.0] 2021-10-27
+
+### Changed
+
+- replaced request with Axios based abap-adt-api
+
+### fixed
+
+- bug in include selection lens
+- buumped a few dependencies
+
 ## [0.14.0] 2021-10-27
 
 ### Added

@@ -12,7 +12,6 @@ import {
   activeTextEditorChangedListener,
   documentChangedListener,
   documentClosedListener,
-  documentOpenListener,
   documentWillSave,
   restoreLocks
 } from "./listeners"
@@ -51,8 +50,6 @@ export async function activate(ctx: ExtensionContext): Promise<AbapFsApi> {
   // change document listener, for locking (and possibly validation in future)
   sub.push(workspace.onDidChangeTextDocument(documentChangedListener))
   sub.push(workspace.onWillSaveTextDocument(documentWillSave))
-  // opened document listener, for main program
-  sub.push(workspace.onDidOpenTextDocument(documentOpenListener))
   // closed document listener, for locking
   sub.push(workspace.onDidCloseTextDocument(documentClosedListener))
   // Editor changed listener, updates context and icons
