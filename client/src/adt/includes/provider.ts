@@ -81,4 +81,12 @@ export class IncludeProvider implements CodeLensProvider {
     return newInclude
   }
 
+  async switchIncludeIfMissing(uri: Uri) {
+    if (!abapUri(uri)) return
+    const service = IncludeService.get(uri.authority)
+    const current = service.current(uri.path)
+    if (current) return current
+    return this.switchInclude(uri)
+  }
+
 }
