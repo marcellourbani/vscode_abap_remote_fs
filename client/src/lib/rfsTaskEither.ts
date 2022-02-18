@@ -37,7 +37,8 @@ export const rfsBindReplace = <N extends string, A, B>(name: N, f: (x: A) => B |
 
 export const addField = <K extends string, P, R>(name: K, f: (x: P) => Promise<R>) =>
     async (x: P): Promise<P & Record<K, R>> => {
-        const r: Record<K, R> = { [name]: await f(x) } as Record<K, R>
+        const rr: R = await f(x)
+        const r = { [name]: rr } as Record<K, R>
         return { ...x, ...r }
     }
 
