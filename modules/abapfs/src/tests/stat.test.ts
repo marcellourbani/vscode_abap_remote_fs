@@ -1,5 +1,7 @@
 import { runTest } from "./connectServer"
 import { isAbapFile } from "../abapFile"
+import { mock } from "jest-mock-extended"
+
 test(
   "stat program ",
   runTest(async root => {
