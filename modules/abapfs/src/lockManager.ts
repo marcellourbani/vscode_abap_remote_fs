@@ -2,9 +2,10 @@ import { Root } from "./root"
 import { LockObject, delay } from "./lockObject"
 import { isAbapStat } from "./abapFile"
 import { FileSystemError } from "vscode"
+import { isCsrfError } from "abap-adt-api"
 
 export class LockManager {
-  constructor(private root: Root) {}
+  constructor(private root: Root) { }
   private fileObjects = new Map<string, string>()
   private objects = new Map<string, LockObject>();
 
@@ -39,8 +40,17 @@ export class LockManager {
 
   requestUnlock(path: string, immediate = false) {
     const request = this.lockObject(path).requestUnlock(path, immediate)
+    request.catch(e => {
+      if (isCsrfError(e)) this.dropall()
+      throw e
+    })
     this.checkSession()
     return request
+  }
+  dropall() {
+    this.objects.clear()
+    this.fileObjects.clear()
+    this.root.service.dropSession()
   }
 
   lockStatus(path: string) {

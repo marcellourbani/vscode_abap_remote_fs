@@ -1,7 +1,8 @@
 {
-    "files.exclude": {
-        "node_modules": true,
-        "dist": true,
-        "out": true
-    }
+  "files.exclude": {
+    "node_modules": true,
+    "dist": true,
+    "out": true
+  },
+  "jest.jestCommandLine": "npx jest"
 }

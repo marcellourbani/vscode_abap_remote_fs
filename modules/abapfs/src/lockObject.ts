@@ -1,5 +1,5 @@
 import { AbapObject } from "../../abapObject"
-import { AdtLock } from "abap-adt-api"
+import { AdtLock, isCsrfError } from "abap-adt-api"
 import { AbapFsService } from "./AFsService"
 
 export interface Locked extends AdtLock {
@@ -92,6 +92,7 @@ export class LockObject {
         await unlocked
         this.status = { status: "unlocked" }
       } catch (error) {
+        if (isCsrfError(error)) { }
         this.status = prevState
         throw error
       }

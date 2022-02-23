@@ -9,6 +9,9 @@ import { log } from "./clientManager"
 import { isAbap, callThrottler, isCdsView, caughtToString } from "./functions"
 import { CompletionProposal, ADTClient } from "abap-adt-api"
 import { cdsCompletionExtractor } from "./cdsSyntax"
+import { formatItem } from "./completionutils"
+
+const INTERFACEROLE = 58 // sccmp_role_intftype in abap
 
 const completionKey = (url: string, p: Position) =>
   `${url} ${p.line} ${p.character}`
@@ -27,40 +30,10 @@ const proposals = (
 const isSupported = (x: string) => isAbap(x) || isCdsView(x)
 
 async function abapCompletion(co: ClientAndObject, pos: Position) {
-  const InterfaceRole = 58 // sccmp_role_intftype in abap
   const { client, obj, source } = co
-  const items: CompletionItem[] = []
   const rawItems = await proposals(client, obj.mainUrl, pos, source)
   const line = source.split(/\n/)[pos.line] || ""
-  const before = line.substr(0, pos.character)
-  rawItems.forEach(i => {
-    const lastChar = before.substr(-i.PREFIXLENGTH, 1)
-    const isMethodCall = !!before.substr(-(i.PREFIXLENGTH + 2)).match(/^[-=]>/)
-    const label =
-      i.IDENTIFIER + (i.ROLE === InterfaceRole && isMethodCall ? "~" : "")
-    let insertText = label
-    // fix namespaces
-    const match = label.match(/^(\/\w+\/)/)
-    if (match) {
-      let len = match[1].length
-      len = i.PREFIXLENGTH >= len ? len : lastChar === "/" ? 1 : 0
-      if (len) insertText = insertText.substr(len)
-    }
-    // fix field-symbols
-    if (label[0] === "<") {
-      if (line[pos.character - i.PREFIXLENGTH] === "<")
-        insertText = insertText.substr(1)
-      if (line[pos.character] === ">")
-        insertText = insertText.substr(0, insertText.length - 1)
-    }
-    const item: CompletionItem = {
-      label,
-      insertText,
-      sortText: `${i.LOCATION}  ${i.IDENTIFIER}`,
-      data: i
-    }
-    items.push(item)
-  })
+  const items: CompletionItem[] = rawItems.map(formatItem(line, pos.character))
   return items
 }
 async function cdsCompletion(co: ClientAndObject, pos: Position) {
