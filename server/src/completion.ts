@@ -11,8 +11,6 @@ import { CompletionProposal, ADTClient } from "abap-adt-api"
 import { cdsCompletionExtractor } from "./cdsSyntax"
 import { formatItem } from "./completionutils"
 
-const INTERFACEROLE = 58 // sccmp_role_intftype in abap
-
 const completionKey = (url: string, p: Position) =>
   `${url} ${p.line} ${p.character}`
 const throttler = callThrottler<CompletionProposal[]>()
@@ -33,7 +31,7 @@ async function abapCompletion(co: ClientAndObject, pos: Position) {
   const { client, obj, source } = co
   const rawItems = await proposals(client, obj.mainUrl, pos, source)
   const line = source.split(/\n/)[pos.line] || ""
-  const items: CompletionItem[] = rawItems.map(formatItem(line, pos.character))
+  const items: CompletionItem[] = rawItems.map(formatItem(line, pos))
   return items
 }
 async function cdsCompletion(co: ClientAndObject, pos: Position) {
