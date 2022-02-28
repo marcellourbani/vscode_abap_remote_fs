@@ -1,6 +1,12 @@
 # Change Log
 
-## [1.0.0] 2021-10-27
+## [1.1.0] 2022-02-28
+
+### Added
+
+- stateful session keepalive
+
+## [1.0.0] 2022-02-17
 
 ### Changed
 
