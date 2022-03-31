@@ -1,5 +1,6 @@
 import { TransportsProvider } from "./views/transports"
 import { FavouritesProvider } from "./views/favourites"
+import { atcProvider } from "./views/abaptestcockpit"
 import { FsProvider } from "./fs/FsProvider"
 import {
   window,
@@ -68,6 +69,7 @@ export async function activate(ctx: ExtensionContext): Promise<AbapFsApi> {
   )
   sub.push(window.registerTreeDataProvider("abapfs.abapgit", abapGitProvider))
   sub.push(window.registerTreeDataProvider("abapfs.dumps", dumpProvider))
+  sub.push(window.registerTreeDataProvider("abapfs.atcFinds", atcProvider))
   sub.push(
     languages.registerCodeLensProvider(
       { language: "abap", scheme: ADTSCHEME },

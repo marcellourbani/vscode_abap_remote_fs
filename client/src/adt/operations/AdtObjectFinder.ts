@@ -114,7 +114,7 @@ export class AdtObjectFinder {
       const { uri, start } = await this.vscodeRange(base)
       return { uri: Uri.parse(uri), start }
     } else {
-      throw new Error(`Unrxpected ADT URI format for ${adtUri}`)
+      throw new Error(`Unexpected ADT URI format for ${adtUri}`)
     }
 
   }

@@ -162,6 +162,11 @@
           "when": "abapfs:extensionActive"
         },
         {
+          "id": "abapfs.atcFinds",
+          "name": "ATC finds",
+          "when": "abapfs:extensionActive"
+        },
+        {
           "id": "abapfs.abapgit",
           "name": "abapGit",
           "when": "abapfs:extensionActive"
@@ -467,6 +472,14 @@
       {
         "command": "abapfs.continueToCursor",
         "title": "AbapFs Continue to cursor"
+      },
+      {
+        "command": "abapfs.atcChecks",
+        "title": "Clear",
+        "icon": {
+          "dark": "$(testing-run-icon)",
+          "light": "$(testing-run-icon)"
+        }
       }
     ],
     "keybindings": [
@@ -492,7 +505,13 @@
       },
       {
         "command": "abapfs.unittest",
-        "key": "ctrl+shift+f11"
+        "key": "ctrl+shift+f11",
+        "when": "editorTextFocus && resourceScheme == adt && editorLangId == abap "
+      },
+      {
+        "command": "abapfs.atcChecks",
+        "key": "ctrl+shift+f2",
+        "when": "editorTextFocus && resourceScheme == adt && editorLangId == abap "
       },
       {
         "command": "abapfs.showdocu",

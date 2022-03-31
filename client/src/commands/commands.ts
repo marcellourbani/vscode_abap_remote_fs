@@ -4,7 +4,9 @@ import {
   Uri,
   window,
   commands,
-  ProgressLocation
+  ProgressLocation,
+  FileSystemError,
+  CancellationError
 } from "vscode"
 import { pickAdtRoot, RemoteManager } from "../config"
 import { caughtToString, log } from "../lib"
@@ -37,6 +39,7 @@ import { IncludeProvider } from "../adt/includes" // resolve dependencies
 import { command, AbapFsCommands } from "."
 import { createConnection } from "./connectionwizard"
 import { types } from "util"
+import { atcProvider } from "../views/abaptestcockpit"
 
 function currentUri() {
   if (!window.activeTextEditor) return
@@ -294,6 +297,22 @@ export class AdtCommands {
       await window.withProgress(
         { location: ProgressLocation.Window, title: "Running ABAP UNIT" },
         () => adapter ? adapter.runUnit(uri) : abapUnit(uri)
+      )
+    } catch (e) {
+      return window.showErrorMessage(caughtToString(e))
+    }
+  }
+
+  @command(AbapFsCommands.atcChecks)
+  private static async runAtc() {
+    try {
+      log("Execute Abap Test cockpit")
+      const state = await currentEditState()
+      if (!state) return
+
+      await window.withProgress(
+        { location: ProgressLocation.Window, title: "Running ABAP Test cockpit" },
+        () => atcProvider.runInspector(state.uri, state.client)
       )
     } catch (e) {
       return window.showErrorMessage(caughtToString(e))

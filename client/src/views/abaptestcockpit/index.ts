@@ -1,0 +1,1 @@
+export { atcProvider } from "./view"

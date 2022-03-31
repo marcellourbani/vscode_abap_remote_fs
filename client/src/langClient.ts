@@ -68,8 +68,7 @@ async function getVSCodeUri({ confKey, uri, mainInclude }: UriRequest): Promise<
 
 export function findEditor(url: string) {
   return window.visibleTextEditors.find(
-    e =>
-      e.document.uri.scheme === ADTSCHEME && e.document.uri.toString() === url
+    e => e.document.uri.scheme === ADTSCHEME && e.document.uri.toString() === url
   )
 }
 async function readEditorObjectSource(url: string) {

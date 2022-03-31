@@ -18,6 +18,7 @@ export const AbapFsCommands = {
   createConnection: "abapfs.createConnection",
   showDump: "abapfs.showDump",
   refreshDumps: "abapfs.refreshDumps",
+  atcChecks: "abapfs.atcChecks",
   // classes
   refreshHierarchy: "abapfs.refreshHierarchy",
   pickObject: "abapfs.pickObject",
@@ -34,6 +35,7 @@ export const AbapFsCommands = {
   // transports
   transportObjectDiff: "abapfs.transportObjectDiff",
   openTransportObject: "abapfs.openTransportObject",
+  openLocation: "abapfs.openLocation",
   deleteTransport: "abapfs.deleteTransport",
   refreshtransports: "abapfs.refreshtransports",
   releaseTransport: "abapfs.releaseTransport",

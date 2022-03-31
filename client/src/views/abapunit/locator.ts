@@ -1,14 +1,11 @@
 import { Uri, Position } from "vscode"
 import { getClient, getRoot } from "../../adt/conections"
 import {
-  AbapStat,
   AbapFile,
-  isAbapStat,
-  isAbapFolder,
   isAbapFile
 } from "abapfs"
 import { AdtObjectFinder } from "../../adt/operations/AdtObjectFinder"
-import { IncludeProvider, IncludeService } from "../../adt/includes"
+import { IncludeService } from "../../adt/includes"
 import { AbapObject } from "abapobject"
 
 export class MethodLocator {

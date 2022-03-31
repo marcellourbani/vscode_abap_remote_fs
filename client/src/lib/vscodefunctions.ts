@@ -12,7 +12,7 @@ import {
   OpenDialogOptions,
   QuickPickOptions
 } from "vscode"
-import { splitAdtUriInternal, isUnDefined, isFn, isNonNullable } from "./functions"
+import { splitAdtUriInternal, isUnDefined, isFn, isNonNullable, caughtToString } from "./functions"
 import { Range as ApiRange } from "abap-adt-api"
 import { RfsTaskEither, rfsTryCatch } from "./rfsTaskEither"
 import { ADTSCHEME } from "../adt/conections"
@@ -42,6 +42,9 @@ export function openDialog(options: OpenDialogOptions): RfsTaskEither<Uri[] | Ur
     .then(u => options.canSelectMany ? u : u?.[0])
   return rfsTryCatch<Uri | Uri[]>(openTask)
 }
+
+export const showErrorMessage = (error: unknown, defaultMsg = "") =>
+  window.showErrorMessage(caughtToString(error, defaultMsg))
 
 export const inputBox = (
   options: InputBoxOptions,
