@@ -1,9 +1,11 @@
 import { PACKAGE } from "./AdtObjectCreator"
 import {
   ADTClient,
-  SearchResult,
+  CreatableTypeIds,
+  FragmentLocation,
   ObjectType,
-  CreatableTypeIds
+  SearchResult,
+  UriParts
 } from "abap-adt-api"
 import {
   window,
@@ -15,7 +17,7 @@ import {
   Range
 } from "vscode"
 
-import { splitAdtUri, vscPosition, log, caughtToString } from "../../lib"
+import { splitAdtUri, vscPosition, log, caughtToString, promCache } from "../../lib"
 import { getClient, getRoot, uriRoot } from "../conections"
 import {
   PathItem,
@@ -85,25 +87,28 @@ export class MySearchResult implements QuickPickItem, AdtSearchResult {
 // tslint:disable-next-line:max-classes-per-file
 export class AdtObjectFinder {
   constructor(public readonly connId: string) { }
+  private fragCache = promCache<FragmentLocation>()
 
   public async vscodeUri(uri: string, main = true) {
     const { path } = (await getRoot(this.connId).findByAdtUri(uri, main)) || {}
     if (!path) throw new Error(`can't find an URL for ${uri}`)
     return createUri(this.connId, path).toString()
   }
-  public async vscodeRange(uri: string) {
+
+  public clearCaches() {
+    this.fragCache = promCache()
+  }
+
+  public async vscodeRange(uri: string | UriParts, useFragCache = false) {
     const u = splitAdtUri(uri)
     const rval = { uri: "", start: u.start }
     if (u.type && u.name) {
-      const frag = await getClient(this.connId).fragmentMappings(
-        u.path,
-        u.type,
-        u.name
-      )
+      const getFrag = () => getClient(this.connId).fragmentMappings(u.path, u.type!, u.name!)
+      const frag = await this.fragCache(`${u.path}_${u.type}_${u.name}`, getFrag, !useFragCache)
       rval.uri = await this.vscodeUri(frag.uri)
-      rval.start = vscPosition(frag.line, frag.column)
+      rval.start = vscPosition(frag.line + (u.start?.line || 0), frag.column)
     }
-    rval.uri = await this.vscodeUri(u.path)
+    else rval.uri = await this.vscodeUri(u.path)
     return rval
   }
 

@@ -12,8 +12,8 @@ import {
   OpenDialogOptions,
   QuickPickOptions
 } from "vscode"
-import { splitAdtUriInternal, isUnDefined, isFn, isNonNullable, caughtToString } from "./functions"
-import { Range as ApiRange } from "abap-adt-api"
+import { splitAdtUriInternal, isUnDefined, isFn, isNonNullable, caughtToString, isString } from "./functions"
+import { Range as ApiRange, UriParts } from "abap-adt-api"
 import { RfsTaskEither, rfsTryCatch } from "./rfsTaskEither"
 import { ADTSCHEME } from "../adt/conections"
 
@@ -164,12 +164,26 @@ export const rangeApi2Vsc = (r: ApiRange) =>
     vscPosition(r.end.line, r.end.column)
   )
 
-export const splitAdtUri = (uri: string): AdtUriParts => {
-  const { start, end, ...rest } = splitAdtUriInternal(uri)
-  return {
-    ...rest,
-    start: start && vscPosition(start.line, start.character),
-    end: end && vscPosition(end.line, end.character)
+export const splitAdtUri = (uri: string | UriParts): AdtUriParts => {
+  if (isString(uri)) {
+    const { start, end, ...rest } = splitAdtUriInternal(uri)
+    return {
+      ...rest,
+      start: start && vscPosition(start.line, start.character),
+      end: end && vscPosition(end.line, end.character)
+    }
+  }
+  else {
+    const { range: { start, end }, hashparms } = uri
+    const parts: AdtUriParts = {
+      path: uri.uri,
+      start: start && vscPosition(start.line, start.column),
+      type: hashparms?.type,
+      name: hashparms?.name,
+    }
+    if (end && (end.line !== start.line || end.column !== start.column))
+      parts.end = vscPosition(end.line, end.column)
+    return parts
   }
 }
 

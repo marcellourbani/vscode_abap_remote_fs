@@ -13,7 +13,9 @@ export const getVariant = async (client: ADTClient, connectionId: string) => {
 export const runInspector = async (uri: Uri, variant: string, client: ADTClient) => {
     const object = await findAbapObject(uri)
     const run = await client.createAtcRun(variant, object.contentsPath())
-    return client.atcWorklists(run.id, run.timestamp, run.id)
+    const LASTRUN = "99999999999999999999999999999999"
+    const worklist = client.atcWorklists(run.id, run.timestamp, LASTRUN)
+    return worklist
 }
 
 

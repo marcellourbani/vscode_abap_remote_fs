@@ -2,6 +2,7 @@ import { taskEither, TaskEither } from "fp-ts/lib/TaskEither"
 import { right } from "fp-ts/lib/Either"
 import { LeftType } from "./rfsTaskEither"
 import { types } from "util"
+import { Task } from "fp-ts/lib/Task"
 
 export const isString = (x: any): x is string => typeof x === "string"
 export const isNumber = (x: any): x is number => typeof x === "number"
@@ -32,6 +33,20 @@ export const selectMap = <T1, K extends keyof T1, T2>(
 ): ((index: string) => T2) => (index: string): T2 => {
   const record = _map && _map.get(index)
   return ((record && record[property]) || defval) as T2
+}
+
+export const promCache = <T>() => {
+  const m = new Map<string, Promise<T>>()
+  return (key: string, f: Task<T>, refresh = false): Promise<T> => {
+    if (!refresh) {
+      const cached = m.get(key)
+      if (cached) return cached
+    }
+    const newp = f()
+    m.set(key, newp)
+    newp.catch(() => m.delete(key))
+    return newp
+  }
 }
 
 // tslint:disable-next-line: ban-types

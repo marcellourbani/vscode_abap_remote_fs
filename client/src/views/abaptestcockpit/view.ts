@@ -1,6 +1,8 @@
 import { ADTClient, AtcWorkList, UriParts } from "abap-adt-api"
+import { string } from "fp-ts"
 import { Task } from "fp-ts/lib/Task"
 import { commands, EventEmitter, Position, Selection, ThemeColor, ThemeIcon, TreeDataProvider, TreeItem, TreeItemCollapsibleState, Uri, window, workspace } from "vscode"
+import { AdtObjectFinder } from "../../adt/operations/AdtObjectFinder"
 import { AbapFsCommands, command } from "../../commands"
 import { vsCodeUri } from "../../langClient"
 import { showErrorMessage } from "../../lib"
@@ -32,8 +34,10 @@ class AtcRoot extends TreeItem {
 
 class AtcSystem extends TreeItem {
     children: AtcObject[] = []
-    setWorklist(worklist: AtcWorkList) {
-        this.children = worklist.objects.map(o => new AtcObject(o, this))
+    async setWorklist(worklist: AtcWorkList) {
+        const finder = new AdtObjectFinder(this.connectionId)
+        this.children = []
+        for (const object of worklist.objects) this.children.push(await AtcObject.create(object, this, finder))
     }
     constructor(public readonly connectionId: string, public readonly variant: string, public readonly parent: AtcRoot) {
         super(connectionId, TreeItemCollapsibleState.Expanded)
@@ -42,14 +46,22 @@ class AtcSystem extends TreeItem {
 
 class AtcObject extends TreeItem {
     children: AtcFind[] = []
-    constructor(public readonly object: AtcWLobject, public readonly parent: AtcSystem) {
+    static async create(object: AtcWLobject, parent: AtcSystem, finder: AdtObjectFinder) {
+        const obj = new AtcObject(object, parent, finder)
+        for (const f of object.findings) {
+            const { uri, start } = await finder.vscodeRange(f.location)
+            const finding = new AtcFind(f, obj, uri, start)
+            obj.children.push(finding)
+        }
+        return obj
+    }
+    constructor(public readonly object: AtcWLobject, public readonly parent: AtcSystem, finder: AdtObjectFinder) {
         super(`${object.type} ${object.name}`, TreeItemCollapsibleState.Expanded)
-        this.children = object.findings.map(f => new AtcFind(f, this))
     }
 }
 class AtcFind extends TreeItem {
     children: AtcFind[] = []
-    constructor(public readonly finding: AtcWLFinding, public readonly parent: AtcObject) {
+    constructor(public readonly finding: AtcWLFinding, public readonly parent: AtcObject, uri: string, start?: Position) {
         super(finding.checkTitle, TreeItemCollapsibleState.None)
         if (finding.quickfixInfo)
             this.iconPath = new ThemeIcon("issue-opened", new ThemeColor("list.warningForeground"))
@@ -59,7 +71,7 @@ class AtcFind extends TreeItem {
         this.command = {
             title: "Open",
             command: AbapFsCommands.openLocation,
-            arguments: [parent.parent.connectionId, finding.location]
+            arguments: [uri, start]
         }
     }
 }
@@ -81,20 +93,18 @@ class AtcProvider implements TreeDataProvider<AtcNode>{
     async runInspector(uri: Uri, client: ADTClient) {
         const system = await this.root.child(uri.authority, () => getVariant(client, uri.authority))
         const worklist = await runInspector(uri, system.variant, client)
-        system.setWorklist(worklist)
+        await system.setWorklist(worklist)
         this.emitter.fire(system)
         commands.executeCommand("abapfs.atcFinds.focus")
     }
 
     @command(AbapFsCommands.openLocation)
-    private async OpenLocation(connId: string, location: UriParts) {
+    private async OpenLocation(uri: string, pos?: Position) {
         try {
-            const uri = await vsCodeUri(connId, location.uri, false)
             const uriP = Uri.parse(uri)
             const document = await workspace.openTextDocument(uriP)
             const doc = await window.showTextDocument(document, { preserveFocus: false })
-            const pos = new Position(location.range.start.line - 1, location.range.start.column)
-            doc.selection = new Selection(pos, pos)
+            if (pos) doc.selection = new Selection(pos, pos)
         } catch (error) {
             showErrorMessage(error)
         }
