@@ -1,6 +1,6 @@
 import { TransportsProvider } from "./views/transports"
 import { FavouritesProvider } from "./views/favourites"
-import { atcProvider } from "./views/abaptestcockpit"
+import { atcProvider, registerSCIDecorator } from "./views/abaptestcockpit"
 import { FsProvider } from "./fs/FsProvider"
 import {
   window,
@@ -101,6 +101,7 @@ export async function activate(ctx: ExtensionContext): Promise<AbapFsApi> {
   registerAbapGit(context)
 
   registerCommands(context)
+  registerSCIDecorator(context)
   const elapsed = new Date().getTime() - startTime
   log(`Activated,pid=${process.pid}, activation time(ms):${elapsed}`)
   return api
