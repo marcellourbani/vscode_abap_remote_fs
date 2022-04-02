@@ -6,9 +6,9 @@ import {
 } from "./functions"
 import { none } from "fp-ts/lib/Option"
 import { right, isLeft, isRight } from "fp-ts/lib/Either"
-import { pipe } from "fp-ts/lib/pipeable"
-import { chain, bind, bindTo, map } from "fp-ts/lib/TaskEither"
-import { RfsTaskEither, rfsTryCatch, chainTaskTransformers, addField, rfsChainE, rfsBind, LeftType, rfsBindReplace } from "./rfsTaskEither"
+import { chain, bind, map } from "fp-ts/lib/TaskEither"
+import { RfsTaskEither, rfsTryCatch, chainTaskTransformers, addField, rfsChainE, rfsBind, rfsBindReplace } from "./rfsTaskEither"
+import { pipe } from "fp-ts/lib/function"
 const isFalsey = (x: any) => !x
 const rejectPromise = () => Promise.reject(new Error("foo"))
 
@@ -174,7 +174,7 @@ test("chain and field collection", async () => {
 
   const result = await myfn()
 
-  if (isLeft(result)) throw result.left;
+  if (isLeft(result)) throw result.left
   expect(result.right.foo).toBe(1)
   expect(result.right.y.bar).toBe("baz")
   expect(result.right.name).toBe("foobar baz")
@@ -187,7 +187,7 @@ test("chain and field collection", async () => {
     rfsChainE(async x => ({ ...x, y: { bar: "baz" } })),
     rfsBindReplace("foo", async x => `bar`),
   )()
-  if (isLeft(overridden)) throw overridden.left;
+  if (isLeft(overridden)) throw overridden.left
   expect(overridden.right.foo).toBe("bar")
   expect(overridden.right.y.bar).toBe("baz")
 })
@@ -206,7 +206,7 @@ test("chain tasks", async () => {
     bind("greeting", ({ bar }) => fakeselect("hello"))
   )
   const result = await myfn()
-  if (isLeft(result)) throw result.left;
+  if (isLeft(result)) throw result.left
   expect(result.right.foo).toBe(1)
   expect(result.right.baz).toBe("foobar")
   expect(result.right.key).toBe(3)

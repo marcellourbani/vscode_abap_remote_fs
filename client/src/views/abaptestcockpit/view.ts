@@ -1,11 +1,11 @@
-import { ADTClient, AtcWorkList, UriParts } from "abap-adt-api"
-import { pipe } from "fp-ts/lib/function"
+import { ADTClient, AtcProposal, AtcWorkList } from "abap-adt-api"
 import { Task } from "fp-ts/lib/Task"
-import { commands, EventEmitter, Position, Selection, ThemeColor, ThemeIcon, TreeDataProvider, TreeItem, TreeItemCollapsibleState, Uri, window, workspace } from "vscode"
+import { commands, EventEmitter, Position, QuickPickOptions, Selection, ThemeColor, ThemeIcon, TreeDataProvider, TreeItem, TreeItemCollapsibleState, Uri, window, workspace } from "vscode"
 import { getClient } from "../../adt/conections"
 import { AdtObjectFinder } from "../../adt/operations/AdtObjectFinder"
 import { AbapFsCommands, command } from "../../commands"
-import { showErrorMessage } from "../../lib"
+import { showErrorMessage, inputBox, quickPick, rfsTryCatch, fieldReplacer, chainTaskTransformers, rfsExtract, RfsTaskEither } from "../../lib"
+import { pickUser } from "../utilities"
 import { getVariant, runInspector, runInspectorByAdtUrl } from "./codeinspector"
 import { triggerUpdateDecorations } from "./decorations"
 type AtcWLobject = AtcWorkList["objects"][0]
@@ -19,6 +19,8 @@ export interface FindingMarker {
 }
 
 export const hasExemption = (f: AtcWLFinding) => !!f.exemptionApproval
+
+
 
 class AtcRoot extends TreeItem {
     systems = new Map<string, AtcSystem>()
@@ -73,7 +75,7 @@ class AtcObject extends TreeItem {
 class AtcFind extends TreeItem {
     children: AtcFind[] = []
     constructor(public readonly finding: AtcWLFinding, public readonly parent: AtcObject, public readonly uri: string, public readonly start?: Position) {
-        super(finding.checkTitle, TreeItemCollapsibleState.None)
+        super(finding.messageTitle, TreeItemCollapsibleState.None)
         if (finding.quickfixInfo) {
             this.iconPath = new ThemeIcon("issue-opened", new ThemeColor("list.warningForeground"))
             this.contextValue = "finding"
@@ -82,7 +84,7 @@ class AtcFind extends TreeItem {
             this.contextValue = "finding_exempted"
             this.iconPath = new ThemeIcon("check", new ThemeColor("notebookStatusSuccessIcon.foreground"))
         }
-        this.description = finding.messageTitle
+        this.description = finding.checkTitle
         this.command = {
             title: "Open",
             command: AbapFsCommands.openLocation,
@@ -140,6 +142,20 @@ class AtcProvider implements TreeDataProvider<AtcNode>{
 
 }
 
+const inputJustification = fieldReplacer("justification", inputBox({ prompt: "Justification" }))
+const inputReason = fieldReplacer("reason", quickPick(
+    [{ label: "False Positive", value: "FPOS" }, { label: "Other", value: "OTHR" }],
+    { placeHolder: "Select Reason" }, x => x.value))
+const notifyOn = fieldReplacer("notify", quickPick(
+    [{ label: "On rejection", value: "on_rejection" }, { label: "Always", value: "always" }, { label: "Never", value: "never" }],
+    { placeHolder: "Select Reason" }, x => x.value))
+const approver = (connId: string) => fieldReplacer("approver", rfsTryCatch(() => pickUser(connId, "Select approver").then(a => a?.id)))
+const selectKey = <K extends string, T extends Record<K, boolean>>(keys: K[], r: T, options: QuickPickOptions): RfsTaskEither<K> => {
+    keys.filter(k => r[k])
+    if (keys.length <= 1) return rfsTryCatch(async () => keys[0])
+    return quickPick(keys, options)
+}
+
 class Commands {
     @command(AbapFsCommands.openLocation)
     private async OpenLocation(uri: string, pos?: Position) {
@@ -161,11 +177,10 @@ class Commands {
             if (client.isProposalMessage(proposal)) throw new Error("Exemption proposal expected")
             proposal.restriction.enabled = true
             proposal.restriction.singlefinding = true
-            proposal.justification = "please ignore"
-            proposal.reason = "FPOS"
-            proposal.approver = "BWDEVELOPER"
-            // TODO input details
-            await client.atcRequestExemption(proposal)
+            const actualResult = await chainTaskTransformers<AtcProposal>(inputReason, approver(item.parent.parent.connectionId), notifyOn, inputJustification)(proposal)()
+            const actual = rfsExtract(actualResult)
+            if (!actual) return
+            await client.atcRequestExemption(actual)
         } catch (error) {
             showErrorMessage(error)
         }
@@ -173,7 +188,27 @@ class Commands {
     @command(AbapFsCommands.atcRequestExemptionAll)
     private async RequestExemptionAll(item: AtcFind) {
         try {
-            // TODO: implement
+            const client = getClient(item.parent.parent.connectionId)
+            if (!item.finding.quickfixInfo) throw new Error("No info available - exemption requested?")
+            const proposal = await client.atcExemptProposal(item.finding.quickfixInfo)
+            if (client.isProposalMessage(proposal)) throw new Error("Exemption proposal expected")
+            proposal.restriction.enabled = true
+            const target = rfsExtract(await selectKey(["object", "package", "subobject"],
+                proposal.restriction.rangeOfFindings.restrictByObject,
+                { placeHolder: "Select target object" })())
+            if (!target) return
+            proposal.restriction.rangeOfFindings.restrictByObject.target = target
+            const targetmsg = rfsExtract(await selectKey(["check", "message"],
+                proposal.restriction.rangeOfFindings.restrictByCheck,
+                { placeHolder: "Select target object" })())
+            if (!targetmsg) return
+            proposal.restriction.rangeOfFindings.restrictByCheck.target = targetmsg
+
+            const actualResult = await chainTaskTransformers<AtcProposal>(inputReason, approver(item.parent.parent.connectionId), notifyOn, inputJustification)(proposal)()
+            const actual = rfsExtract(actualResult)
+            if (!actual) return
+            proposal.restriction.singlefinding = true
+            await client.atcRequestExemption(actual)
         } catch (error) {
             showErrorMessage(error)
         }

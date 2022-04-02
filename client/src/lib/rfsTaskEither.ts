@@ -1,6 +1,5 @@
-import { Either, isLeft, isRight, left, right } from "fp-ts/lib/Either"
+import { Either, isRight, left, right } from "fp-ts/lib/Either"
 import { Lazy, pipe } from "fp-ts/lib/function"
-import { fold } from "fp-ts/lib/IOEither"
 import { fromNullable, isNone, isSome, none, None, Option } from "fp-ts/lib/Option"
 import { bind, chain, chainEitherK, map, taskEither, TaskEither, tryCatch } from "fp-ts/lib/TaskEither"
 import { types } from "util"
