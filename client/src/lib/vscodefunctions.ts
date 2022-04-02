@@ -56,11 +56,11 @@ export function simpleInputBox(prompt: string, value = "", password = false) {
   return inputBox({ prompt, value, password })
 }
 
-type simplePickSource =
-  | string[]
-  | Promise<string[]>
-  | (() => string[])
-  | (() => Promise<string[]>)
+type simplePickSource<T extends string = string> =
+  | T[]
+  | Promise<T[]>
+  | (() => T[])
+  | (() => Promise<T[]>)
 
 type recordPickSource<T extends QuickPickItem> =
   | T[]
@@ -68,15 +68,15 @@ type recordPickSource<T extends QuickPickItem> =
   | (() => T[])
   | (() => Promise<T[]>)
 
-type pickSource<T extends QuickPickItem> =
-  | simplePickSource
+type pickSource<T extends QuickPickItem, T2 extends string> =
+  | simplePickSource<T2>
   | recordPickSource<T>
 
 interface RfsQuickPickOptions extends QuickPickOptions {
   bypassIfSingle?: boolean
 }
 
-async function pickSourceToArray<T extends QuickPickItem>(sources: pickSource<T>): Promise<T[] | string[]> {
+async function pickSourceToArray<T extends QuickPickItem, T2 extends string>(sources: pickSource<T, T2>): Promise<T[] | T2[]> {
   if (isFn(sources)) return sources()
   return sources
 }
@@ -84,12 +84,12 @@ async function pickSourceToArray<T extends QuickPickItem>(sources: pickSource<T>
 export const askConfirmation = (placeHolder: string) =>
   quickPick(["Yes", "No"], { placeHolder }, x => x === "Yes")
 
-export function quickPick(
-  items: simplePickSource,
+export function quickPick<T extends string>(
+  items: simplePickSource<T>,
   options?: RfsQuickPickOptions,
   projector?: undefined,
   token?: CancellationToken
-): RfsTaskEither<string>
+): RfsTaskEither<T>
 export function quickPick<T>(
   items: simplePickSource,
   options: RfsQuickPickOptions | undefined,
@@ -108,11 +108,11 @@ export function quickPick<T extends QuickPickItem>(
   projector?: undefined,
   token?: CancellationToken
 ): RfsTaskEither<T>
-export function quickPick<T extends QuickPickItem, T2 = string>(
-  items: pickSource<T>,
+export function quickPick<T extends QuickPickItem, T2 = string, T3 extends string = string>(
+  items: pickSource<T, T3>,
   options?: RfsQuickPickOptions,
   projector?: (item: T) => T2,
-  token?: CancellationToken): RfsTaskEither<string | T | T2> {
+  token?: CancellationToken): RfsTaskEither<T3 | T | T2> {
 
   return rfsTryCatch<T2 | T>(async () => {
     const qo = { ignoreFocusOut: true, ...options }
