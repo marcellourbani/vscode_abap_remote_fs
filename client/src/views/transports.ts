@@ -33,6 +33,7 @@ import { AbapScm, displayRevDiff } from "../scm/abaprevisions"
 import { AbapRevisionService } from "../scm/abaprevisions/abaprevisionservice"
 import { runInSapGui, showInGuiCb } from "../adt/sapgui/sapgui"
 import { atcProvider } from "./abaptestcockpit"
+import { pickUser } from "./utilities"
 
 const currentUsers = new Map<string, string>()
 
@@ -405,20 +406,10 @@ export class TransportsProvider implements TreeDataProvider<CollectionItem> {
     TransportsProvider.get().refresh()
   }
 
-  private static async pickUser(connId: string) {
-    const users = (await getClient(connId).systemUsers()).map(u => ({
-      label: u.title,
-      description: u.id,
-      payload: u
-    }))
-    const selected = await window.showQuickPick(users, { ignoreFocusOut: true })
-    return selected && selected.payload
-  }
-
   @command(AbapFsCommands.transportOwner)
   private static async transportOwner(tran: TransportItem) {
     try {
-      const selected = await this.pickUser(tran.connId)
+      const selected = await pickUser(tran.connId)
       if (selected && selected.id !== tran.task["tm:owner"]) {
         await getClient(tran.connId).transportSetOwner(
           tran.task["tm:number"],
@@ -449,7 +440,7 @@ export class TransportsProvider implements TreeDataProvider<CollectionItem> {
   @command(AbapFsCommands.transportAddUser)
   private static async transportAddUser(tran: TransportItem) {
     try {
-      const selected = await this.pickUser(tran.connId)
+      const selected = await pickUser(tran.connId)
       if (selected && selected.id !== tran.task["tm:owner"]) {
         await getClient(tran.connId).transportAddUser(
           tran.task["tm:number"],
@@ -532,7 +523,7 @@ export class TransportsProvider implements TreeDataProvider<CollectionItem> {
   @command(AbapFsCommands.transportUser)
   private static async transportSelectUser(conn: ConnectionItem) {
     const connId = conn.uri.authority
-    const selected = await this.pickUser(connId)
+    const selected = await pickUser(connId)
 
     if (!selected) return
 
