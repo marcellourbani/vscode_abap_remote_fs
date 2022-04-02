@@ -46,10 +46,17 @@ class AtcRoot extends TreeItem {
 
 class AtcSystem extends TreeItem {
     children: AtcObject[] = []
-    async setWorklist(worklist: AtcWorkList) {
-        const finder = new AdtObjectFinder(this.connectionId)
-        this.children = []
-        for (const object of worklist.objects) this.children.push(await AtcObject.create(object, this, finder))
+    refresh: Task<void> = async () => { }
+    async load(task: Task<AtcWorkList>) {
+        this.refresh = async () => {
+            const wl = await task()
+            const finder = new AdtObjectFinder(this.connectionId)
+            this.children = []
+            for (const object of wl.objects) this.children.push(await AtcObject.create(object, this, finder))
+            triggerUpdateDecorations()
+            atcProvider.emitter.fire(this)
+        }
+        return this.refresh()
     }
     constructor(public readonly connectionId: string, public readonly variant: string, public readonly parent: AtcRoot) {
         super(connectionId, TreeItemCollapsibleState.Expanded)
@@ -124,39 +131,36 @@ class AtcProvider implements TreeDataProvider<AtcNode>{
     async runInspectorByAdtUrl(uri: string, connectionId: string) {
         const client = getClient(connectionId)
         const system = await this.root.child(connectionId, () => getVariant(client, connectionId))
-        const worklist = await runInspectorByAdtUrl(uri, system.variant, client)
-        await system.setWorklist(worklist)
-        triggerUpdateDecorations()
-        this.emitter.fire(system)
+        await system.load(() => runInspectorByAdtUrl(uri, system.variant, client))
         commands.executeCommand("abapfs.atcFinds.focus")
     }
 
     async runInspector(uri: Uri, client: ADTClient) {
         const system = await this.root.child(uri.authority, () => getVariant(client, uri.authority))
-        const worklist = await runInspector(uri, system.variant, client)
-        await system.setWorklist(worklist)
-        triggerUpdateDecorations()
-        this.emitter.fire(system)
+        await system.load(() => runInspector(uri, system.variant, client))
         commands.executeCommand("abapfs.atcFinds.focus")
     }
 
 }
 
-const inputJustification = fieldReplacer("justification", inputBox({ prompt: "Justification" }))
-const inputReason = fieldReplacer("reason", quickPick(
-    [{ label: "False Positive", value: "FPOS" }, { label: "Other", value: "OTHR" }],
-    { placeHolder: "Select Reason" }, x => x.value))
-const notifyOn = fieldReplacer("notify", quickPick(
-    [{ label: "On rejection", value: "on_rejection" }, { label: "Always", value: "always" }, { label: "Never", value: "never" }],
-    { placeHolder: "Select Reason" }, x => x.value))
-const approver = (connId: string) => fieldReplacer("approver", rfsTryCatch(() => pickUser(connId, "Select approver").then(a => a?.id)))
+const selectors = (connId: string) => ({
+    inputJustification: fieldReplacer("justification", inputBox({ prompt: "Justification" })),
+    inputReason: fieldReplacer("reason", quickPick(
+        [{ label: "False Positive", value: "FPOS" }, { label: "Other", value: "OTHR" }],
+        { placeHolder: "Select Reason" }, x => x.value)),
+    notifyOn: fieldReplacer("notify", quickPick(
+        [{ label: "On rejection", value: "on_rejection" }, { label: "Always", value: "always" }, { label: "Never", value: "never" }],
+        { placeHolder: "Select Reason" }, x => x.value)),
+    approver: fieldReplacer("approver", rfsTryCatch(() => pickUser(connId, "Select approver").then(a => a?.id))),
+})
+
 const selectKey = <K extends string, T extends Record<K, boolean>>(keys: K[], r: T, options: QuickPickOptions): RfsTaskEither<K> => {
     keys.filter(k => r[k])
     if (keys.length <= 1) return rfsTryCatch(async () => keys[0])
     return quickPick(keys, options)
 }
-
 class Commands {
+
     @command(AbapFsCommands.openLocation)
     private async OpenLocation(uri: string, pos?: Position) {
         try {
@@ -177,10 +181,12 @@ class Commands {
             if (client.isProposalMessage(proposal)) throw new Error("Exemption proposal expected")
             proposal.restriction.enabled = true
             proposal.restriction.singlefinding = true
-            const actualResult = await chainTaskTransformers<AtcProposal>(inputReason, approver(item.parent.parent.connectionId), notifyOn, inputJustification)(proposal)()
+            const { inputReason, approver, notifyOn, inputJustification } = selectors(item.parent.parent.connectionId)
+            const actualResult = await chainTaskTransformers<AtcProposal>(inputReason, approver, notifyOn, inputJustification)(proposal)()
             const actual = rfsExtract(actualResult)
             if (!actual) return
             await client.atcRequestExemption(actual)
+            await item.parent.parent.refresh()
         } catch (error) {
             showErrorMessage(error)
         }
@@ -193,6 +199,7 @@ class Commands {
             const proposal = await client.atcExemptProposal(item.finding.quickfixInfo)
             if (client.isProposalMessage(proposal)) throw new Error("Exemption proposal expected")
             proposal.restriction.enabled = true
+            const { inputReason, approver, notifyOn, inputJustification } = selectors(item.parent.parent.connectionId)
             const target = rfsExtract(await selectKey(["object", "package", "subobject"],
                 proposal.restriction.rangeOfFindings.restrictByObject,
                 { placeHolder: "Select target object" })())
@@ -204,11 +211,12 @@ class Commands {
             if (!targetmsg) return
             proposal.restriction.rangeOfFindings.restrictByCheck.target = targetmsg
 
-            const actualResult = await chainTaskTransformers<AtcProposal>(inputReason, approver(item.parent.parent.connectionId), notifyOn, inputJustification)(proposal)()
+            const actualResult = await chainTaskTransformers<AtcProposal>(inputReason, approver, notifyOn, inputJustification)(proposal)()
             const actual = rfsExtract(actualResult)
             if (!actual) return
             proposal.restriction.singlefinding = true
             await client.atcRequestExemption(actual)
+            await item.parent.parent.refresh()
         } catch (error) {
             showErrorMessage(error)
         }

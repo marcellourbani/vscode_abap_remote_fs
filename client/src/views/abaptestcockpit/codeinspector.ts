@@ -19,6 +19,7 @@ export const runInspectorByAdtUrl = async (uri: string, variant: string, client:
 
 export const runInspector = async (uri: Uri, variant: string, client: ADTClient) => {
     const object = await findAbapObject(uri)
+    if (!object.structure) await object.loadStructure()
     return runInspectorByAdtUrl(object.contentsPath(), variant, client)
 }
 
