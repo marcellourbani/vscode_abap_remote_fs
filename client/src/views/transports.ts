@@ -32,6 +32,7 @@ import { createUri } from "../adt/operations/AdtObjectFinder"
 import { AbapScm, displayRevDiff } from "../scm/abaprevisions"
 import { AbapRevisionService } from "../scm/abaprevisions/abaprevisionservice"
 import { runInSapGui, showInGuiCb } from "../adt/sapgui/sapgui"
+import { atcProvider } from "./abaptestcockpit"
 
 const currentUsers = new Map<string, string>()
 
@@ -438,6 +439,11 @@ export class TransportsProvider implements TreeDataProvider<CollectionItem> {
   @command(AbapFsCommands.transportCopyNumber)
   private static copyTransportNumber(tran: TransportItem) {
     env.clipboard.writeText(tran.task["tm:number"])
+  }
+
+  @command(AbapFsCommands.transportRunAtc)
+  private static runAtdOnTransport(tran: TransportItem) {
+    atcProvider.runInspectorByAdtUrl(tran.task["tm:uri"], tran.connId)
   }
 
   @command(AbapFsCommands.transportAddUser)

@@ -354,6 +354,11 @@
         }
       },
       {
+        "command": "abapfs.transportRunAtc",
+        "title": "Run test cockpit on transport",
+        "icon": "(run)"
+      },
+      {
         "command": "abapfs.transportOpenGui",
         "title": "Open transport in GUI"
       },
@@ -475,11 +480,26 @@
       },
       {
         "command": "abapfs.atcChecks",
-        "title": "Clear",
+        "title": "Run ABAP Test cockpit",
         "icon": {
           "dark": "$(testing-run-icon)",
           "light": "$(testing-run-icon)"
         }
+      },
+      {
+        "command": "abapfs.atcShowDocumentation",
+        "title": "Show documentation",
+        "icon": "$(book)"
+      },
+      {
+        "command": "abapfs.atcRequestExemption",
+        "title": "Request Exemption on this check",
+        "icon": "$(check)"
+      },
+      {
+        "command": "abapfs.atcRequestExemptionAll",
+        "title": "Request Exemption on multiple objects",
+        "icon": "$(check-all)"
       }
     ],
     "keybindings": [
@@ -740,6 +760,11 @@
           "when": "view == abapfs.transports && viewItem =~ /tr_(un)?released/ "
         },
         {
+          "command": "abapfs.transportRunAtc",
+          "group": "inline",
+          "when": "view == abapfs.transports && viewItem =~ /tr_(un)?released/ "
+        },
+        {
           "command": "abapfs.transportObjectDiff",
           "group": "inline",
           "when": "view == abapfs.transports && viewItem == tr_object"
@@ -783,6 +808,21 @@
           "command": "abapfs.openRepo",
           "group": "context",
           "when": "view == abapfs.abapgit && viewItem == repository || view == abapfs.abapgit && viewItem == repository_push"
+        },
+        {
+          "command": "abapfs.atcRequestExemption",
+          "group": "inline",
+          "when": "view == abapfs.atcFinds && viewItem == finding"
+        },
+        {
+          "command": "abapfs.atcRequestExemptionAll",
+          "group": "inline",
+          "when": "view == abapfs.atcFinds && viewItem == finding"
+        },
+        {
+          "command": "abapfs.atcShowDocumentation",
+          "group": "inline",
+          "when": "view == abapfs.atcFinds && viewItem == finding || view == abapfs.atcFinds && viewItem == finding_exempted "
         }
       ],
       "view/title": [

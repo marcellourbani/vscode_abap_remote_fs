@@ -18,7 +18,11 @@ export const AbapFsCommands = {
   createConnection: "abapfs.createConnection",
   showDump: "abapfs.showDump",
   refreshDumps: "abapfs.refreshDumps",
+  // atc
   atcChecks: "abapfs.atcChecks",
+  atcRequestExemption: "abapfs.atcRequestExemption",
+  atcRequestExemptionAll: "abapfs.atcRequestExemptionAll",
+  atcShowDocumentation: "abapfs.atcShowDocumentation",
   // classes
   refreshHierarchy: "abapfs.refreshHierarchy",
   pickObject: "abapfs.pickObject",
@@ -44,6 +48,7 @@ export const AbapFsCommands = {
   transportRevision: "abapfs.transportRevision",
   transportUser: "abapfs.transportUser",
   transportCopyNumber: "abapfs.transportCopyNumber",
+  transportRunAtc: "abapfs.transportRunAtc",
   transportOpenGui: "abapfs.transportOpenGui",
   // debugger
   goToCursor: "abapfs.goToCursor",

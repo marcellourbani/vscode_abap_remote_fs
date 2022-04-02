@@ -1,11 +1,12 @@
 import { ADTClient, AtcWorkList, UriParts } from "abap-adt-api"
-import { string } from "fp-ts"
+import { pipe } from "fp-ts/lib/function"
 import { Task } from "fp-ts/lib/Task"
 import { commands, EventEmitter, Position, Selection, ThemeColor, ThemeIcon, TreeDataProvider, TreeItem, TreeItemCollapsibleState, Uri, window, workspace } from "vscode"
+import { getClient } from "../../adt/conections"
 import { AdtObjectFinder } from "../../adt/operations/AdtObjectFinder"
 import { AbapFsCommands, command } from "../../commands"
 import { showErrorMessage } from "../../lib"
-import { getVariant, runInspector } from "./codeinspector"
+import { getVariant, runInspector, runInspectorByAdtUrl } from "./codeinspector"
 import { triggerUpdateDecorations } from "./decorations"
 type AtcWLobject = AtcWorkList["objects"][0]
 type AtcWLFinding = AtcWLobject["findings"][0]
@@ -62,6 +63,7 @@ class AtcObject extends TreeItem {
             const finding = new AtcFind(f, obj, uri, start)
             obj.children.push(finding)
         }
+        obj.contextValue = object.findings.find(f => !!f.quickfixInfo) ? "object" : "object_exempted"
         return obj
     }
     constructor(public readonly object: AtcWLobject, public readonly parent: AtcSystem, finder: AdtObjectFinder) {
@@ -72,10 +74,14 @@ class AtcFind extends TreeItem {
     children: AtcFind[] = []
     constructor(public readonly finding: AtcWLFinding, public readonly parent: AtcObject, public readonly uri: string, public readonly start?: Position) {
         super(finding.checkTitle, TreeItemCollapsibleState.None)
-        if (finding.quickfixInfo)
+        if (finding.quickfixInfo) {
             this.iconPath = new ThemeIcon("issue-opened", new ThemeColor("list.warningForeground"))
-        else
+            this.contextValue = "finding"
+        }
+        else {
+            this.contextValue = "finding_exempted"
             this.iconPath = new ThemeIcon("check", new ThemeColor("notebookStatusSuccessIcon.foreground"))
+        }
         this.description = finding.messageTitle
         this.command = {
             title: "Open",
@@ -113,6 +119,16 @@ class AtcProvider implements TreeDataProvider<AtcNode>{
         return findings
     }
 
+    async runInspectorByAdtUrl(uri: string, connectionId: string) {
+        const client = getClient(connectionId)
+        const system = await this.root.child(connectionId, () => getVariant(client, connectionId))
+        const worklist = await runInspectorByAdtUrl(uri, system.variant, client)
+        await system.setWorklist(worklist)
+        triggerUpdateDecorations()
+        this.emitter.fire(system)
+        commands.executeCommand("abapfs.atcFinds.focus")
+    }
+
     async runInspector(uri: Uri, client: ADTClient) {
         const system = await this.root.child(uri.authority, () => getVariant(client, uri.authority))
         const worklist = await runInspector(uri, system.variant, client)
@@ -122,6 +138,9 @@ class AtcProvider implements TreeDataProvider<AtcNode>{
         commands.executeCommand("abapfs.atcFinds.focus")
     }
 
+}
+
+class Commands {
     @command(AbapFsCommands.openLocation)
     private async OpenLocation(uri: string, pos?: Position) {
         try {
@@ -133,6 +152,41 @@ class AtcProvider implements TreeDataProvider<AtcNode>{
             showErrorMessage(error)
         }
     }
+    @command(AbapFsCommands.atcRequestExemption)
+    private async RequestExemption(item: AtcFind) {
+        try {
+            const client = getClient(item.parent.parent.connectionId)
+            if (!item.finding.quickfixInfo) throw new Error("No info available - exemption requested?")
+            const proposal = await client.atcExemptProposal(item.finding.quickfixInfo)
+            if (client.isProposalMessage(proposal)) throw new Error("Exemption proposal expected")
+            proposal.restriction.enabled = true
+            proposal.restriction.singlefinding = true
+            proposal.justification = "please ignore"
+            proposal.reason = "FPOS"
+            proposal.approver = "BWDEVELOPER"
+            // TODO input details
+            await client.atcRequestExemption(proposal)
+        } catch (error) {
+            showErrorMessage(error)
+        }
+    }
+    @command(AbapFsCommands.atcRequestExemptionAll)
+    private async RequestExemptionAll(item: AtcFind) {
+        try {
+            // TODO: implement
+        } catch (error) {
+            showErrorMessage(error)
+        }
+    }
+    @command(AbapFsCommands.atcShowDocumentation)
+    private async ShowDocumentation(item: AtcFind) {
+        try {
+            // TODO: show item.finding.link.href
+        } catch (error) {
+            showErrorMessage(error)
+        }
+    }
+
 }
 
 export const atcProvider = new AtcProvider()
