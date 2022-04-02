@@ -20,6 +20,7 @@ export const AbapFsCommands = {
   refreshDumps: "abapfs.refreshDumps",
   // atc
   atcChecks: "abapfs.atcChecks",
+  atcRefresh: "abapfs.atcRefresh",
   atcRequestExemption: "abapfs.atcRequestExemption",
   atcRequestExemptionAll: "abapfs.atcRequestExemptionAll",
   atcShowDocumentation: "abapfs.atcShowDocumentation",

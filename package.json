@@ -487,6 +487,11 @@
         }
       },
       {
+        "command": "abapfs.atcRefresh",
+        "title": "Refresh",
+        "icon": "$(refresh)"
+      },
+      {
         "command": "abapfs.atcShowDocumentation",
         "title": "Show documentation",
         "icon": "$(book)"
@@ -548,6 +553,9 @@
       "commandPalette": [
         {
           "command": "abapfs.connect"
+        },
+        {
+          "command": "abapfs.createConnection"
         },
         {
           "command": "abapfs.resetAbapGitPwd",
@@ -716,6 +724,42 @@
         {
           "command": "abapfs.transportOpenGui",
           "when": "hideCommands.never"
+        },
+        {
+          "command": "abapfs.refreshDumps",
+          "when": "hideCommands.never"
+        },
+        {
+          "command": "abapfs.transportRunAtc",
+          "when": "hideCommands.never"
+        },
+        {
+          "command": "abapfs.goToCursor",
+          "when": "hideCommands.never"
+        },
+        {
+          "command": "abapfs.continueToCursor",
+          "when": "hideCommands.never"
+        },
+        {
+          "command": "abapfs.atcChecks",
+          "when": "hideCommands.never"
+        },
+        {
+          "command": "abapfs.atcRefresh",
+          "when": "hideCommands.never"
+        },
+        {
+          "command": "abapfs.atcShowDocumentation",
+          "when": "hideCommands.never"
+        },
+        {
+          "command": "abapfs.atcRequestExemption",
+          "when": "hideCommands.never"
+        },
+        {
+          "command": "abapfs.atcRequestExemptionAll",
+          "when": "hideCommands.never"
         }
       ],
       "view/item/context": [
@@ -822,7 +866,12 @@
         {
           "command": "abapfs.atcShowDocumentation",
           "group": "inline",
-          "when": "view == abapfs.atcFinds && viewItem == finding || view == abapfs.atcFinds && viewItem == finding_exempted "
+          "when": "view == abapfs.atcFinds && viewItem == finding || view == abapfs.atcFinds && viewItem == finding_exempted"
+        },
+        {
+          "command": "abapfs.atcRefresh",
+          "group": "inline",
+          "when": "view == abapfs.atcFinds"
         }
       ],
       "view/title": [

@@ -191,6 +191,22 @@ class Commands {
             showErrorMessage(error)
         }
     }
+    @command(AbapFsCommands.atcRefresh)
+    private async RatcRefresh(item: AtcNode) {
+        if (item instanceof AtcSystem) {
+            return item.refresh()
+        }
+        if (item instanceof AtcObject) {
+            return item.parent.refresh()
+        }
+        if (item instanceof AtcFind) {
+            return item.parent.parent.refresh()
+        }
+        if (item instanceof AtcRoot) {
+            return Promise.all(item.children.map(i => i.refresh()))
+        }
+    }
+
     @command(AbapFsCommands.atcRequestExemptionAll)
     private async RequestExemptionAll(item: AtcFind) {
         try {
@@ -199,6 +215,7 @@ class Commands {
             const proposal = await client.atcExemptProposal(item.finding.quickfixInfo)
             if (client.isProposalMessage(proposal)) throw new Error("Exemption proposal expected")
             proposal.restriction.enabled = true
+            proposal.restriction.singlefinding = false
             const { inputReason, approver, notifyOn, inputJustification } = selectors(item.parent.parent.connectionId)
             const target = rfsExtract(await selectKey(["object", "package", "subobject"],
                 proposal.restriction.rangeOfFindings.restrictByObject,
@@ -214,7 +231,6 @@ class Commands {
             const actualResult = await chainTaskTransformers<AtcProposal>(inputReason, approver, notifyOn, inputJustification)(proposal)()
             const actual = rfsExtract(actualResult)
             if (!actual) return
-            proposal.restriction.singlefinding = true
             await client.atcRequestExemption(actual)
             await item.parent.parent.refresh()
         } catch (error) {
