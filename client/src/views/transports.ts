@@ -433,8 +433,15 @@ export class TransportsProvider implements TreeDataProvider<CollectionItem> {
   }
 
   @command(AbapFsCommands.transportRunAtc)
-  private static runAtdOnTransport(tran: TransportItem) {
-    atcProvider.runInspectorByAdtUrl(tran.task["tm:uri"], tran.connId)
+  private static async runAtdOnTransport(tran: TransportItem) {
+    try {
+      await window.withProgress(
+        { location: ProgressLocation.Window, title: `Running ABAP Test cockpit on ${tran.task["tm:number"]}` },
+        () => atcProvider.runInspectorByAdtUrl(tran.task["tm:uri"], tran.connId)
+      )
+    } catch (e) {
+      return window.showErrorMessage(caughtToString(e))
+    }
   }
 
   @command(AbapFsCommands.transportAddUser)

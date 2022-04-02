@@ -306,7 +306,6 @@ export class AdtCommands {
   @command(AbapFsCommands.atcChecks)
   private static async runAtc() {
     try {
-      log("Execute Abap Test cockpit")
       const state = await currentEditState()
       if (!state) return
 

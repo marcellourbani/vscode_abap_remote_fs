@@ -356,7 +356,7 @@
       {
         "command": "abapfs.transportRunAtc",
         "title": "Run test cockpit on transport",
-        "icon": "(run)"
+        "icon": "$(run)"
       },
       {
         "command": "abapfs.transportOpenGui",
@@ -481,10 +481,7 @@
       {
         "command": "abapfs.atcChecks",
         "title": "Run ABAP Test cockpit",
-        "icon": {
-          "dark": "$(testing-run-icon)",
-          "light": "$(testing-run-icon)"
-        }
+        "icon": "$(testing-run-icon)"
       },
       {
         "command": "abapfs.atcRefresh",

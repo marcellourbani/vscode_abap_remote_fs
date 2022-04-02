@@ -1,6 +1,6 @@
 import { ADTClient, AtcProposal, AtcWorkList } from "abap-adt-api"
 import { Task } from "fp-ts/lib/Task"
-import { commands, EventEmitter, Position, QuickPickOptions, Selection, ThemeColor, ThemeIcon, TreeDataProvider, TreeItem, TreeItemCollapsibleState, Uri, window, workspace } from "vscode"
+import { commands, EventEmitter, Position, ProgressLocation, QuickPickOptions, Selection, ThemeColor, ThemeIcon, TreeDataProvider, TreeItem, TreeItemCollapsibleState, Uri, window, workspace } from "vscode"
 import { getClient } from "../../adt/conections"
 import { AdtObjectFinder } from "../../adt/operations/AdtObjectFinder"
 import { AbapFsCommands, command } from "../../commands"
@@ -8,6 +8,8 @@ import { showErrorMessage, inputBox, quickPick, rfsTryCatch, fieldReplacer, chai
 import { pickUser } from "../utilities"
 import { getVariant, runInspector, runInspectorByAdtUrl } from "./codeinspector"
 import { triggerUpdateDecorations } from "./decorations"
+import * as R from "ramda"
+
 type AtcWLobject = AtcWorkList["objects"][0]
 type AtcWLFinding = AtcWLobject["findings"][0]
 // tslint:disable:max-classes-per-file
@@ -44,6 +46,15 @@ class AtcRoot extends TreeItem {
     }
 }
 
+const items = [
+    { id: 1, name: 'Al', country: 'AA' },
+    { id: 2, name: 'Connie', country: 'BB' },
+    { id: 3, name: 'Doug', country: 'CC' },
+    { id: 4, name: 'Zen', country: 'BB' },
+    { id: 5, name: 'DatGGboi', country: 'AA' },
+    { id: 6, name: 'Connie', country: 'AA' },
+]
+
 class AtcSystem extends TreeItem {
     children: AtcObject[] = []
     refresh: Task<void> = async () => { }
@@ -52,7 +63,12 @@ class AtcSystem extends TreeItem {
             const wl = await task()
             const finder = new AdtObjectFinder(this.connectionId)
             this.children = []
-            for (const object of wl.objects) this.children.push(await AtcObject.create(object, this, finder))
+
+            const objects = R.sortWith<AtcWLobject>([
+                R.ascend(R.prop("type")),
+                R.ascend(R.prop("name"))])
+                (wl.objects.filter(o => o.findings.length > 0))
+            for (const object of objects) this.children.push(await AtcObject.create(object, this, finder))
             triggerUpdateDecorations()
             atcProvider.emitter.fire(this)
         }
@@ -67,11 +83,17 @@ class AtcObject extends TreeItem {
     children: AtcFind[] = []
     static async create(object: AtcWLobject, parent: AtcSystem, finder: AdtObjectFinder) {
         const obj = new AtcObject(object, parent, finder)
+        const children: AtcFind[] = []
         for (const f of object.findings) {
             const { uri, start } = await finder.vscodeRange(f.location)
             const finding = new AtcFind(f, obj, uri, start)
-            obj.children.push(finding)
+            children.push(finding)
         }
+
+        obj.children = R.sortWith<AtcFind>([
+            R.ascend(R.prop("uri")),
+            R.ascend(f => f.start?.line || 0)])
+            (children)
         obj.contextValue = object.findings.find(f => !!f.quickfixInfo) ? "object" : "object_exempted"
         return obj
     }
@@ -166,8 +188,8 @@ class Commands {
         try {
             const uriP = Uri.parse(uri)
             const document = await workspace.openTextDocument(uriP)
-            const doc = await window.showTextDocument(document, { preserveFocus: false })
-            if (pos) doc.selection = new Selection(pos, pos)
+            const selection = pos && new Selection(pos, pos)
+            await window.showTextDocument(document, { preserveFocus: false, selection })
         } catch (error) {
             showErrorMessage(error)
         }
@@ -193,17 +215,26 @@ class Commands {
     }
     @command(AbapFsCommands.atcRefresh)
     private async RatcRefresh(item: AtcNode) {
-        if (item instanceof AtcSystem) {
-            return item.refresh()
-        }
-        if (item instanceof AtcObject) {
-            return item.parent.refresh()
-        }
-        if (item instanceof AtcFind) {
-            return item.parent.parent.refresh()
-        }
-        if (item instanceof AtcRoot) {
-            return Promise.all(item.children.map(i => i.refresh()))
+        try {
+            await window.withProgress(
+                { location: ProgressLocation.Window, title: `Refreshing ABAP Test cockpit` },
+                async () => {
+                    if (item instanceof AtcSystem) {
+                        return item.refresh()
+                    }
+                    if (item instanceof AtcObject) {
+                        return item.parent.refresh()
+                    }
+                    if (item instanceof AtcFind) {
+                        return item.parent.parent.refresh()
+                    }
+                    if (item instanceof AtcRoot) {
+                        return Promise.all(item.children.map(i => i.refresh()))
+                    }
+                }
+            )
+        } catch (e) {
+            showErrorMessage(e)
         }
     }
 
