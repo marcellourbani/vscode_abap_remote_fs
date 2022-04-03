@@ -1,5 +1,11 @@
 # Change Log
 
+## [1.2.0] 2022-03-04
+
+### Added
+
+- Abap test cockpit support
+
 ## [1.1.0] 2022-02-28
 
 ### Added

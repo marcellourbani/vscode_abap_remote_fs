@@ -9,6 +9,7 @@ import { pickUser } from "../utilities"
 import { getVariant, runInspector, runInspectorByAdtUrl } from "./codeinspector"
 import { triggerUpdateDecorations } from "./decorations"
 import * as R from "ramda"
+import { ATCDocumentation } from "./documentation"
 
 type AtcWLobject = AtcWorkList["objects"][0]
 type AtcWLFinding = AtcWLobject["findings"][0]
@@ -271,7 +272,10 @@ class Commands {
     @command(AbapFsCommands.atcShowDocumentation)
     private async ShowDocumentation(item: AtcFind) {
         try {
-            // TODO: show item.finding.link.href
+            const connId = item.parent.parent.connectionId
+            const url = item.finding.link.href
+            await ATCDocumentation.get().showDocumentation({ connId, url })
+            commands.executeCommand("abapfs.views.atcdocs.focus")
         } catch (error) {
             showErrorMessage(error)
         }

@@ -31,6 +31,7 @@ import { registerCommands } from "./commands/register"
 import { HttpProvider } from "./editors/httpprovider"
 import { dumpProvider } from "./views/dumps/dumps"
 import { registerAbapDebugger } from "./adt/debugger"
+import { ATCDocumentation } from "./views/abaptestcockpit/documentation"
 
 export let context: ExtensionContext
 
@@ -89,6 +90,8 @@ export async function activate(ctx: ExtensionContext): Promise<AbapFsApi> {
       IncludeProvider.get()
     )
   )
+
+  sub.push(window.registerWebviewViewProvider(ATCDocumentation.viewType, ATCDocumentation.get()))
 
   sub.push(MessagesProvider.register(context))
   sub.push(HttpProvider.register(context))

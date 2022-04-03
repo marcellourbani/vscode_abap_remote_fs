@@ -156,7 +156,7 @@ export interface AdtUriParts {
 }
 
 export const vscPosition = (adtLine: number, character: number) =>
-  new Position(adtLine - 1, character)
+  new Position(adtLine >= 1 ? adtLine - 1 : 0, character)
 
 export const rangeApi2Vsc = (r: ApiRange) =>
   new Range(

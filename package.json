@@ -147,9 +147,27 @@
           "title": "Abap FS",
           "icon": "client/images/abapfs_activitybar.svg"
         }
+      ],
+      "panel": [
+        {
+          "id": "abapfsPanel",
+          "title": "ATC docs",
+          "icon": "${book}"
+        }
       ]
     },
     "views": {
+      "abapfsPanel": [
+        {
+          "type": "webview",
+          "id": "abapfs.views.atcdocs",
+          "name": "ATC documentation",
+          "when": "abapfs:extensionActive",
+          "contextualTitle": "ATC documentation",
+          "visibility": "visible",
+          "icon": "${book}"
+        }
+      ],
       "abapfs": [
         {
           "id": "abapfs.transports",
