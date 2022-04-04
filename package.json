@@ -151,7 +151,7 @@
       "panel": [
         {
           "id": "abapfsPanel",
-          "title": "ATC docs",
+          "title": "ABAP FS",
           "icon": "${book}"
         }
       ]

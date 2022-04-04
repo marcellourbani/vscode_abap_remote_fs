@@ -23,8 +23,6 @@ export interface FindingMarker {
 
 export const hasExemption = (f: AtcWLFinding) => !!f.exemptionApproval
 
-
-
 class AtcRoot extends TreeItem {
     systems = new Map<string, AtcSystem>()
     constructor(label: string, private parent: AtcProvider) {
@@ -92,6 +90,7 @@ class AtcObject extends TreeItem {
         }
 
         obj.children = R.sortWith<AtcFind>([
+            R.ascend(f => f.finding.priority),
             R.ascend(R.prop("uri")),
             R.ascend(f => f.start?.line || 0)])
             (children)
@@ -107,18 +106,25 @@ class AtcFind extends TreeItem {
     constructor(public readonly finding: AtcWLFinding, public readonly parent: AtcObject, public readonly uri: string, public readonly start?: Position) {
         super(finding.messageTitle, TreeItemCollapsibleState.None)
         if (finding.quickfixInfo) {
-            this.iconPath = new ThemeIcon("issue-opened", new ThemeColor("list.warningForeground"))
+            this.iconPath = new ThemeIcon("issue-opened", this.iconColor())
             this.contextValue = "finding"
         }
         else {
             this.contextValue = "finding_exempted"
-            this.iconPath = new ThemeIcon("check", new ThemeColor("notebookStatusSuccessIcon.foreground"))
+            this.iconPath = new ThemeIcon("check", this.iconColor())
         }
         this.description = finding.checkTitle
         this.command = {
             title: "Open",
             command: AbapFsCommands.openLocation,
             arguments: [uri, start]
+        }
+    }
+    iconColor() {
+        switch (this.finding.priority) {
+            case 1: return new ThemeColor("list.errorForeground")
+            case 2: return new ThemeColor("list.warningForeground")
+            default: return new ThemeColor("list.deemphasizedForeground")
         }
     }
 }

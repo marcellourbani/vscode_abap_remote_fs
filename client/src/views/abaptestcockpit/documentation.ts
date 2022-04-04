@@ -32,9 +32,11 @@ export class ATCDocumentation implements WebviewViewProvider {
         }
     }
     private async getHtmlForWebview(): Promise<string> {
-        if (!this.documentation) return `<body>No document selected</body>`
-        const client = getClient(this.documentation.connId)
-        const doc = await client.httpClient.request(this.documentation.url)
-        return doc.body
+        if (this.documentation) {
+            const client = getClient(this.documentation.connId)
+            const doc = await client.httpClient.request(this.documentation.url)
+            return doc.body
+        }
+        return `<body>No document selected</body>`
     }
 }
