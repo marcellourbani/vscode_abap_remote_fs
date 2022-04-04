@@ -1,5 +1,11 @@
 # Change Log
 
+## [1.2.2] 2022-03-04
+
+### Added
+
+- object tooltip in ATC find
+
 ## [1.2.1] 2022-03-04
 
 ### Added

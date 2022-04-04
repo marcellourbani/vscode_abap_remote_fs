@@ -23,10 +23,10 @@ function updateDecorations() {
     const infos = markers.filter(m => !hasExemption(m.finding) && m.finding.priority !== 2 && m.finding.priority !== 1).map(toDecoration)
     const warnings = markers.filter(m => !hasExemption(m.finding) && m.finding.priority === 2).map(toDecoration)
     const errors = markers.filter(m => !hasExemption(m.finding) && m.finding.priority === 1).map(toDecoration)
+    editor.setDecorations(decorators.exempted, exempt)
+    editor.setDecorations(decorators.info, infos)
     editor.setDecorations(decorators.warning, warnings)
     editor.setDecorations(decorators.error, errors)
-    editor.setDecorations(decorators.info, infos)
-    editor.setDecorations(decorators.exempted, exempt)
 }
 
 export function triggerUpdateDecorations() {

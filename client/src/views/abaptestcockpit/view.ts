@@ -10,6 +10,7 @@ import { getVariant, runInspector, runInspectorByAdtUrl } from "./codeinspector"
 import { triggerUpdateDecorations } from "./decorations"
 import * as R from "ramda"
 import { ATCDocumentation } from "./documentation"
+import { AbapFile } from "abapfs"
 
 type AtcWLobject = AtcWorkList["objects"][0]
 type AtcWLFinding = AtcWLobject["findings"][0]
@@ -56,6 +57,7 @@ const items = [
 
 class AtcSystem extends TreeItem {
     children: AtcObject[] = []
+    // tslint:disable-next-line:no-empty
     refresh: Task<void> = async () => { }
     async load(task: Task<AtcWorkList>) {
         this.refresh = async () => {
@@ -81,11 +83,11 @@ class AtcSystem extends TreeItem {
 class AtcObject extends TreeItem {
     children: AtcFind[] = []
     static async create(object: AtcWLobject, parent: AtcSystem, finder: AdtObjectFinder) {
-        const obj = new AtcObject(object, parent, finder)
+        const obj = new AtcObject(object, parent)
         const children: AtcFind[] = []
         for (const f of object.findings) {
-            const { uri, start } = await finder.vscodeRange(f.location)
-            const finding = new AtcFind(f, obj, uri, start)
+            const { uri, start, file } = await finder.vscodeRange(f.location)
+            const finding = new AtcFind(f, obj, uri, start, file)
             children.push(finding)
         }
 
@@ -97,13 +99,13 @@ class AtcObject extends TreeItem {
         obj.contextValue = object.findings.find(f => !!f.quickfixInfo) ? "object" : "object_exempted"
         return obj
     }
-    constructor(public readonly object: AtcWLobject, public readonly parent: AtcSystem, finder: AdtObjectFinder) {
+    constructor(public readonly object: AtcWLobject, public readonly parent: AtcSystem) {
         super(`${object.type} ${object.name}`, TreeItemCollapsibleState.Expanded)
     }
 }
 class AtcFind extends TreeItem {
     children: AtcFind[] = []
-    constructor(public readonly finding: AtcWLFinding, public readonly parent: AtcObject, public readonly uri: string, public readonly start?: Position) {
+    constructor(public readonly finding: AtcWLFinding, public readonly parent: AtcObject, public readonly uri: string, public readonly start?: Position, file?: AbapFile) {
         super(finding.messageTitle, TreeItemCollapsibleState.None)
         if (finding.quickfixInfo) {
             this.iconPath = new ThemeIcon("issue-opened", this.iconColor())
@@ -114,6 +116,7 @@ class AtcFind extends TreeItem {
             this.iconPath = new ThemeIcon("check", this.iconColor())
         }
         this.description = finding.checkTitle
+        if (file) this.tooltip = `${file.object.type} ${file.object.name}`
         this.command = {
             title: "Open",
             command: AbapFsCommands.openLocation,

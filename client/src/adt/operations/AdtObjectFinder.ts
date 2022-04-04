@@ -25,7 +25,8 @@ import {
   isAbapFolder,
   isAbapFile,
   isAbapStat,
-  Root
+  Root,
+  AbapFile
 } from "abapfs"
 
 interface SearchObjectType {
@@ -89,10 +90,16 @@ export class AdtObjectFinder {
   constructor(public readonly connId: string) { }
   private fragCache = promCache<FragmentLocation>()
 
-  public async vscodeUri(uri: string, main = true) {
-    const { path } = (await getRoot(this.connId).findByAdtUri(uri, main)) || {}
+  public async vscodeUriWithFile(uri: string, main = true) {
+    const { path, file } = (await getRoot(this.connId).findByAdtUri(uri, main)) || {}
     if (!path) throw new Error(`can't find an URL for ${uri}`)
-    return createUri(this.connId, path).toString()
+    const url = createUri(this.connId, path).toString()
+    return { uri: url, file }
+  }
+
+  public async vscodeUri(uri: string, main = true) {
+    const uf = await this.vscodeUriWithFile(uri, main)
+    return uf.uri
   }
 
   public clearCaches() {
@@ -101,14 +108,20 @@ export class AdtObjectFinder {
 
   public async vscodeRange(uri: string | UriParts, useFragCache = false) {
     const u = splitAdtUri(uri)
-    const rval = { uri: "", start: u.start }
+    const rval = { uri: "", start: u.start, file: undefined as AbapFile | undefined }
     if (u.type && u.name) {
       const getFrag = () => getClient(this.connId).fragmentMappings(u.path, u.type!, u.name!)
       const frag = await this.fragCache(`${u.path}_${u.type}_${u.name}`, getFrag, !useFragCache)
-      rval.uri = await this.vscodeUri(frag.uri)
+      const uf = await this.vscodeUriWithFile(frag.uri)
+      rval.uri = uf.uri
+      if (isAbapFile(uf.file)) rval.file = uf.file // should always be an abapfile at this point
       rval.start = vscPosition(frag.line + (u.start?.line || 0), frag.column)
     }
-    else rval.uri = await this.vscodeUri(u.path)
+    else {
+      const uf = await this.vscodeUriWithFile(u.path)
+      if (isAbapFile(uf.file)) rval.file = uf.file // should always be an abapfile at this point
+      rval.uri = uf.uri
+    }
     return rval
   }
 
