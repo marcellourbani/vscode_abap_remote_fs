@@ -20,10 +20,13 @@ export const AbapFsCommands = {
   refreshDumps: "abapfs.refreshDumps",
   // atc
   atcChecks: "abapfs.atcChecks",
+  atcIgnore: "abapfs.atcIgnore",
   atcRefresh: "abapfs.atcRefresh",
   atcRequestExemption: "abapfs.atcRequestExemption",
   atcRequestExemptionAll: "abapfs.atcRequestExemptionAll",
   atcShowDocumentation: "abapfs.atcShowDocumentation",
+  atcAutoRefreshOn: "abapfs.atcAutoRefreshOn",
+  atcAutoRefreshOff: "abapfs.atcAutoRefreshOff",
   // classes
   refreshHierarchy: "abapfs.refreshHierarchy",
   pickObject: "abapfs.pickObject",

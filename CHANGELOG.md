@@ -1,5 +1,15 @@
 # Change Log
 
+## [1.3.0] 2022-03-07
+
+### Added
+
+- auto ignore ATC findings
+
+### Fixed
+
+- manually enter ATC approver (might not exist in local system)
+
 ## [1.2.2] 2022-03-04
 
 ### Added

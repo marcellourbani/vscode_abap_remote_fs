@@ -502,6 +502,21 @@
         "icon": "$(testing-run-icon)"
       },
       {
+        "command": "abapfs.atcAutoRefreshOn",
+        "title": "Enable refresh on activation",
+        "icon": "$(sync-ignored)"
+      },
+      {
+        "command": "abapfs.atcAutoRefreshOff",
+        "title": "Disable refresh on activation",
+        "icon": "$(sync)"
+      },
+      {
+        "command": "abapfs.atcIgnore",
+        "title": "Try to ignore this result",
+        "icon": "$(exclude)"
+      },
+      {
         "command": "abapfs.atcRefresh",
         "title": "Refresh",
         "icon": "$(refresh)"
@@ -765,6 +780,18 @@
           "when": "hideCommands.never"
         },
         {
+          "command": "abapfs.atcAutoRefreshOn",
+          "when": "hideCommands.never"
+        },
+        {
+          "command": "abapfs.atcAutoRefreshOff",
+          "when": "hideCommands.never"
+        },
+        {
+          "command": "abapfs.atcIgnore",
+          "when": "hideCommands.never"
+        },
+        {
           "command": "abapfs.atcShowDocumentation",
           "when": "hideCommands.never"
         },
@@ -887,9 +914,29 @@
           "command": "abapfs.atcRefresh",
           "group": "inline",
           "when": "view == abapfs.atcFinds"
+        },
+        {
+          "command": "abapfs.atcIgnore",
+          "group": "inline",
+          "when": "view == abapfs.atcFinds && viewItem == finding"
         }
       ],
       "view/title": [
+        {
+          "command": "abapfs.atcRefresh",
+          "group": "navigation",
+          "when": "view == abapfs.atcFinds"
+        },
+        {
+          "command": "abapfs.atcAutoRefreshOn",
+          "group": "navigation",
+          "when": "view == abapfs.atcFinds && !abapfs:atc:autorefreshOn"
+        },
+        {
+          "command": "abapfs.atcAutoRefreshOff",
+          "group": "navigation",
+          "when": "view == abapfs.atcFinds && abapfs:atc:autorefreshOn"
+        },
         {
           "command": "abapfs.refreshtransports",
           "group": "navigation",

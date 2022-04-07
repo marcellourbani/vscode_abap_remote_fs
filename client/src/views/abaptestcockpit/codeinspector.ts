@@ -1,7 +1,11 @@
-import { ADTClient } from "abap-adt-api"
+import { ADTClient, AtcWorkList } from "abap-adt-api"
 import { Uri } from "vscode"
+import { getClient } from "../../adt/conections"
 import { findAbapObject } from "../../adt/operations/AdtObjectFinder"
+import { decodeEntity } from "../../lib"
 
+export type AtcWLobject = AtcWorkList["objects"][0]
+export type AtcWLFinding = AtcWLobject["findings"][0]
 export const getVariant = async (client: ADTClient, connectionId: string) => {
     const customizing = await client.atcCustomizing()
     const variant = customizing.properties.find(x => x.name === "systemCheckVariant")
@@ -24,3 +28,24 @@ export const runInspector = async (uri: Uri, variant: string, client: ADTClient)
 }
 
 
+export const extractPragma = async (connId: string, finding: AtcWLFinding) => {
+    const client = getClient(connId)
+    const response = await client.httpClient.request(finding.link.href)
+    const pcmatch = response.body.match(/([^>]+)pseudo comment\s+([^<]+)/)
+    const prefix = finding.checkTitle.match(/SLIN/) ? "EC " : ""
+    if (pcmatch && !pcmatch[1].match(/can(\s*)not/i)) {
+        return decodeEntity(pcmatch[2]).split(" or ").map(s => {
+            if (s.startsWith('"')) return s
+            if (s.startsWith('#')) return `"${s}`
+            return `"#${prefix}${s}`
+        })
+    }
+    const prmatch = response.body.match(/([^>]+)pragma\s+([^<]+)/)
+    if (prmatch && !prmatch[1].match(/can(\s*)not/i)) {
+        return decodeEntity(prmatch[2]).split(" or ").map(s => {
+            if (s.startsWith('#')) return s
+            return `#${prefix}${s}`
+        })
+    }
+    return []
+}

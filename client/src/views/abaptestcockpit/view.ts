@@ -1,19 +1,19 @@
 import { ADTClient, AtcProposal, AtcWorkList } from "abap-adt-api"
 import { Task } from "fp-ts/lib/Task"
-import { commands, EventEmitter, Position, ProgressLocation, QuickPickOptions, Selection, ThemeColor, ThemeIcon, TreeDataProvider, TreeItem, TreeItemCollapsibleState, Uri, window, workspace } from "vscode"
+import { commands, Disposable, EventEmitter, Position, ProgressLocation, QuickPickOptions, Range, Selection, TextEdit, ThemeColor, ThemeIcon, TreeDataProvider, TreeItem, TreeItemCollapsibleState, Uri, window, workspace, WorkspaceEdit } from "vscode"
 import { getClient } from "../../adt/conections"
 import { AdtObjectFinder } from "../../adt/operations/AdtObjectFinder"
 import { AbapFsCommands, command } from "../../commands"
 import { showErrorMessage, inputBox, quickPick, rfsTryCatch, fieldReplacer, chainTaskTransformers, rfsExtract, RfsTaskEither } from "../../lib"
-import { pickUser } from "../utilities"
-import { getVariant, runInspector, runInspectorByAdtUrl } from "./codeinspector"
+import { AtcWLFinding, AtcWLobject, extractPragma, getVariant, runInspector, runInspectorByAdtUrl } from "./codeinspector"
 import { triggerUpdateDecorations } from "./decorations"
 import * as R from "ramda"
 import { ATCDocumentation } from "./documentation"
 import { AbapFile } from "abapfs"
+import { AdtObjectActivator } from "../../adt/operations/AdtObjectActivator"
 
-type AtcWLobject = AtcWorkList["objects"][0]
-type AtcWLFinding = AtcWLobject["findings"][0]
+
+
 // tslint:disable:max-classes-per-file
 
 export interface FindingMarker {
@@ -136,6 +136,9 @@ type AtcNode = AtcRoot | AtcSystem | AtcObject | AtcFind
 class AtcProvider implements TreeDataProvider<AtcNode>{
     emitter = new EventEmitter<AtcNode | undefined>()
     root = new AtcRoot("systems", this)
+    private autoRefresh = false
+    activationListeners = new Map<string, Disposable>()
+
     get onDidChangeTreeData() {
         return this.emitter.event
     }
@@ -144,6 +147,25 @@ class AtcProvider implements TreeDataProvider<AtcNode>{
     }
     async getChildren(element?: AtcNode): Promise<AtcNode[]> {
         return element ? element.children : this.root.children
+    }
+
+    setAutoRefresh(enabled: boolean) {
+        this.autoRefresh = enabled
+        commands.executeCommand("setContext", "abapfs:atc:autorefreshOn", enabled)
+        if (enabled) {
+            for (const s of this.root.children) {
+                if (this.activationListeners.has(s.connectionId)) continue
+                const listener = AdtObjectActivator.get(s.connectionId).onActivate(e => {
+                    const h = s.children.find(o => o.object.name === e.object.name && o.object.objectTypeId === e.object.type)
+                    if (h) atcRefresh()
+                })
+                this.activationListeners.set(s.connectionId, listener)
+            }
+        }
+        else {
+            for (const [connectionId, listener] of this.activationListeners) listener.dispose()
+            this.activationListeners.clear()
+        }
     }
 
     public markers(uri: Uri) {
@@ -165,12 +187,14 @@ class AtcProvider implements TreeDataProvider<AtcNode>{
         const system = await this.root.child(connectionId, () => getVariant(client, connectionId))
         await system.load(() => runInspectorByAdtUrl(uri, system.variant, client))
         commands.executeCommand("abapfs.atcFinds.focus")
+        this.setAutoRefresh(this.autoRefresh)
     }
 
     async runInspector(uri: Uri, client: ADTClient) {
         const system = await this.root.child(uri.authority, () => getVariant(client, uri.authority))
         await system.load(() => runInspector(uri, system.variant, client))
         commands.executeCommand("abapfs.atcFinds.focus")
+        this.setAutoRefresh(this.autoRefresh)
     }
 
 }
@@ -183,13 +207,40 @@ const selectors = (connId: string) => ({
     notifyOn: fieldReplacer("notify", quickPick(
         [{ label: "On rejection", value: "on_rejection" }, { label: "Always", value: "always" }, { label: "Never", value: "never" }],
         { placeHolder: "Select Reason" }, x => x.value)),
-    approver: fieldReplacer("approver", rfsTryCatch(() => pickUser(connId, "Select approver").then(a => a?.id))),
+    approver: fieldReplacer("approver", inputBox({ prompt: "Enter approver user ID" })),
 })
 
 const selectKey = <K extends string, T extends Record<K, boolean>>(keys: K[], r: T, options: QuickPickOptions): RfsTaskEither<K> => {
     keys.filter(k => r[k])
     if (keys.length <= 1) return rfsTryCatch(async () => keys[0])
     return quickPick(keys, options)
+}
+
+const atcRefresh = async (item?: AtcNode) => {
+    try {
+        await window.withProgress(
+            { location: ProgressLocation.Window, title: `Refreshing ABAP Test cockpit` },
+            async () => {
+                if (item instanceof AtcSystem) {
+                    return item.refresh()
+                }
+                if (item instanceof AtcObject) {
+                    return item.parent.refresh()
+                }
+                if (item instanceof AtcFind) {
+                    return item.parent.parent.refresh()
+                }
+                if (item instanceof AtcRoot) {
+                    return Promise.all(item.children.map(i => i.refresh()))
+                }
+                if (!item) {
+                    return Promise.all(atcProvider.root.children.map(i => i.refresh()))
+                }
+            }
+        )
+    } catch (e) {
+        showErrorMessage(e)
+    }
 }
 class Commands {
 
@@ -203,6 +254,43 @@ class Commands {
         } catch (error) {
             showErrorMessage(error)
         }
+    }
+
+    @command(AbapFsCommands.atcIgnore)
+    private async tryIgnoreFinfing(finding?: AtcFind) {
+        const pos = finding?.start
+        if (!pos) {
+            window.showInformationMessage(`Position information is missing.`)
+            return
+        }
+        const pragmas = await extractPragma(finding.parent.parent.connectionId, finding.finding)
+        if (!pragmas.length) {
+            window.showInformationMessage(`Can't find a pragma or pseudocomment`)
+            return
+        }
+        const pragma = pragmas.length === 1 ? pragmas[0] : rfsExtract(await quickPick(pragmas, { placeHolder: "Select pragma" })())
+        if (!pragma) return
+        const uriP = Uri.parse(finding.uri)
+        const document = await workspace.openTextDocument(uriP)
+        const lines = document.getText().split("\n")
+        const line = lines[pos.line]
+        if (line.includes(pragma)) {
+            window.showInformationMessage(`Pragma or pseudocomment ${pragma} already included`)
+            return
+        }
+        const selection = pos && new Selection(pos, pos)
+        const edit = new WorkspaceEdit()
+        edit.insert(uriP, new Position(pos.line, line.length), ` ${pragma}`)
+        workspace.applyEdit(edit)
+        await window.showTextDocument(document, { preserveFocus: false, selection })
+    }
+    @command(AbapFsCommands.atcAutoRefreshOn)
+    private async auroRefreshOn() {
+        atcProvider.setAutoRefresh(true)
+    }
+    @command(AbapFsCommands.atcAutoRefreshOff)
+    private async auroRefreshOff() {
+        atcProvider.setAutoRefresh(false)
     }
     @command(AbapFsCommands.atcRequestExemption)
     private async RequestExemption(item: AtcFind) {
@@ -224,28 +312,8 @@ class Commands {
         }
     }
     @command(AbapFsCommands.atcRefresh)
-    private async RatcRefresh(item: AtcNode) {
-        try {
-            await window.withProgress(
-                { location: ProgressLocation.Window, title: `Refreshing ABAP Test cockpit` },
-                async () => {
-                    if (item instanceof AtcSystem) {
-                        return item.refresh()
-                    }
-                    if (item instanceof AtcObject) {
-                        return item.parent.refresh()
-                    }
-                    if (item instanceof AtcFind) {
-                        return item.parent.parent.refresh()
-                    }
-                    if (item instanceof AtcRoot) {
-                        return Promise.all(item.children.map(i => i.refresh()))
-                    }
-                }
-            )
-        } catch (e) {
-            showErrorMessage(e)
-        }
+    private async atcRefresh(item?: AtcNode) {
+        atcRefresh(item)
     }
 
     @command(AbapFsCommands.atcRequestExemptionAll)

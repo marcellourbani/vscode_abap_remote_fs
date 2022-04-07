@@ -1,6 +1,7 @@
 import { taskEither, TaskEither } from "fp-ts/lib/TaskEither"
 import { right } from "fp-ts/lib/Either"
 import { LeftType } from "./rfsTaskEither"
+import { AllHtmlEntities } from "html-entities"
 import { types } from "util"
 import { Task } from "fp-ts/lib/Task"
 
@@ -406,3 +407,16 @@ export const caughtToString = (e: any, defaultMsg: string = "") => {
   if (typeof e === "object" && typeof e.message === "string") return e.message
   return defaultMsg || `${e}`
 }
+export const [decodeEntity, encodeEntity] = (() => {
+  let entities: AllHtmlEntities | undefined
+  return [
+    (s: string) => {
+      if (!entities) entities = new AllHtmlEntities()
+      return entities.decode(s)
+    },
+    (s: string) => {
+      if (!entities) entities = new AllHtmlEntities()
+      return entities.encode(s)
+    }
+  ]
+})()
