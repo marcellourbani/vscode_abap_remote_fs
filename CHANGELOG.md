@@ -1,10 +1,17 @@
 # Change Log
 
+## [1.3.1] 2022-03-07
+
+### Fixed
+
+- decode details for ATC findings
+
 ## [1.3.0] 2022-03-07
 
 ### Added
 
 - auto ignore ATC findings
+- refresh ATC findings on activatioon
 
 ### Fixed
 
