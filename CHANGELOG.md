@@ -1,5 +1,15 @@
 # Change Log
 
+## Unreleased
+
+### Added
+
+- default ATC approver
+
+### Fixed
+
+- some edge case in atc ignore
+
 ## [1.3.1] 2022-03-07
 
 ### Fixed

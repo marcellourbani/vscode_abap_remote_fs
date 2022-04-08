@@ -1093,6 +1093,11 @@
                   "maxLength": 2,
                   "default": "en"
                 },
+                "atcapprover": {
+                  "type": "string",
+                  "description": "Default ATC approver",
+                  "default": ""
+                },
                 "allowSelfSigned": {
                   "type": "boolean",
                   "title": "Do not validate SSL certificates (lowers the connection security)",

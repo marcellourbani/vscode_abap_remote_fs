@@ -17,6 +17,7 @@ const REMOTE = "remote"
 export type GuiType = "SAPGUI" | "WEBGUI_CONTROLLED" | "WEBGUI_UNSAFE" | "WEBGUI_UNSAFE_EMBEDDED"
 
 export interface RemoteConfig extends ClientConfiguration {
+  atcapprover?: string,
   sapGui?: {
     disabled: boolean
     routerString: string

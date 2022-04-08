@@ -5,12 +5,13 @@ import { getClient } from "../../adt/conections"
 import { AdtObjectFinder } from "../../adt/operations/AdtObjectFinder"
 import { AbapFsCommands, command } from "../../commands"
 import { showErrorMessage, inputBox, quickPick, rfsTryCatch, fieldReplacer, chainTaskTransformers, rfsExtract, RfsTaskEither } from "../../lib"
-import { AtcWLFinding, AtcWLobject, extractPragma, getVariant, runInspector, runInspectorByAdtUrl } from "./codeinspector"
+import { AtcWLFinding, AtcWLobject, findingPragmas, getVariant, runInspector, runInspectorByAdtUrl } from "./codeinspector"
 import { triggerUpdateDecorations } from "./decorations"
 import * as R from "ramda"
 import { ATCDocumentation } from "./documentation"
 import { AbapFile } from "abapfs"
 import { AdtObjectActivator } from "../../adt/operations/AdtObjectActivator"
+import { RemoteManager } from "../../config"
 
 
 
@@ -207,7 +208,7 @@ const selectors = (connId: string) => ({
     notifyOn: fieldReplacer("notify", quickPick(
         [{ label: "On rejection", value: "on_rejection" }, { label: "Always", value: "always" }, { label: "Never", value: "never" }],
         { placeHolder: "Select Reason" }, x => x.value)),
-    approver: fieldReplacer("approver", inputBox({ prompt: "Enter approver user ID" })),
+    approver: (value?: string) => fieldReplacer("approver", inputBox({ prompt: "Enter approver user ID", value })),
 })
 
 const selectKey = <K extends string, T extends Record<K, boolean>>(keys: K[], r: T, options: QuickPickOptions): RfsTaskEither<K> => {
@@ -263,7 +264,7 @@ class Commands {
             window.showInformationMessage(`Position information is missing.`)
             return
         }
-        const pragmas = await extractPragma(finding.parent.parent.connectionId, finding.finding)
+        const pragmas = await findingPragmas(finding.parent.parent.connectionId, finding.finding)
         if (!pragmas.length) {
             window.showInformationMessage(`Can't find a pragma or pseudocomment`)
             return
@@ -296,13 +297,14 @@ class Commands {
     private async RequestExemption(item: AtcFind) {
         try {
             const client = getClient(item.parent.parent.connectionId)
+            const aapprover = RemoteManager.get().byId(item.parent.parent.connectionId)?.atcapprover
             if (!item.finding.quickfixInfo) throw new Error("No info available - exemption requested?")
             const proposal = await client.atcExemptProposal(item.finding.quickfixInfo)
             if (client.isProposalMessage(proposal)) throw new Error("Exemption proposal expected")
             proposal.restriction.enabled = true
             proposal.restriction.singlefinding = true
             const { inputReason, approver, notifyOn, inputJustification } = selectors(item.parent.parent.connectionId)
-            const actualResult = await chainTaskTransformers<AtcProposal>(inputReason, approver, notifyOn, inputJustification)(proposal)()
+            const actualResult = await chainTaskTransformers<AtcProposal>(inputReason, approver(aapprover), notifyOn, inputJustification)(proposal)()
             const actual = rfsExtract(actualResult)
             if (!actual) return
             await client.atcRequestExemption(actual)
@@ -336,8 +338,8 @@ class Commands {
                 { placeHolder: "Select target object" })())
             if (!targetmsg) return
             proposal.restriction.rangeOfFindings.restrictByCheck.target = targetmsg
-
-            const actualResult = await chainTaskTransformers<AtcProposal>(inputReason, approver, notifyOn, inputJustification)(proposal)()
+            const aapprover = RemoteManager.get().byId(item.parent.parent.connectionId)?.atcapprover
+            const actualResult = await chainTaskTransformers<AtcProposal>(inputReason, approver(aapprover), notifyOn, inputJustification)(proposal)()
             const actual = rfsExtract(actualResult)
             if (!actual) return
             await client.atcRequestExemption(actual)
