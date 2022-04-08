@@ -5,6 +5,7 @@
 ### Added
 
 - default ATC approver
+- navigation in ATC documentation
 
 ### Fixed
 

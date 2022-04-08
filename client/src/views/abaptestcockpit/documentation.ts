@@ -1,5 +1,7 @@
-import { CancellationToken, ExtensionContext, Webview, WebviewView, WebviewViewProvider, WebviewViewResolveContext } from "vscode"
+import { CancellationToken, ExtensionContext, Uri, Webview, WebviewView, WebviewViewProvider, WebviewViewResolveContext } from "vscode"
 import { getClient } from "../../adt/conections"
+import { AdtObjectFinder } from "../../adt/operations/AdtObjectFinder"
+import { injectUrlHandler } from "../utilities"
 
 export interface DocumentationItem {
     url: string,
@@ -17,13 +19,28 @@ export class ATCDocumentation implements WebviewViewProvider {
     }
     private view: WebviewView | undefined
     private documentation: DocumentationItem | undefined
-    async resolveWebviewView(webviewView: WebviewView, context: WebviewViewResolveContext<unknown>, token: CancellationToken) {
-        this.view = webviewView
+    async resolveWebviewView(panel: WebviewView, context: WebviewViewResolveContext<unknown>, token: CancellationToken) {
+        this.view = panel
 
-        webviewView.webview.options = {
+        panel.webview.options = {
             enableScripts: true,
         }
-        webviewView.webview.html = await this.getHtmlForWebview()
+        panel.webview.html = await this.getHtmlForWebview()
+        panel.webview.onDidReceiveMessage(async message => {
+            switch (message.command) {
+                case "click":
+                    if (!this.documentation) return
+                    const client = getClient(this.documentation.connId)
+                    const url = Uri.parse(message.uri)
+                    if (url.scheme.toLowerCase() === "adt") {
+                        new AdtObjectFinder(this.documentation.connId).displayAdtUri(message.uri)
+                    }
+                    else {
+                        const text = await client.httpClient.request(`${url.path}?${url.query}`)
+                        panel.webview.html = injectUrlHandler(text.body)
+                    }
+            }
+        }, undefined)
     }
     public async showDocumentation(documentation: DocumentationItem) {
         this.documentation = documentation
@@ -35,7 +52,7 @@ export class ATCDocumentation implements WebviewViewProvider {
         if (this.documentation) {
             const client = getClient(this.documentation.connId)
             const doc = await client.httpClient.request(this.documentation.url)
-            return doc.body
+            return injectUrlHandler(doc.body)
         }
         return `<body>No document selected</body>`
     }

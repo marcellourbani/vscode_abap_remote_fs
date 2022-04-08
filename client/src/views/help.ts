@@ -1,21 +1,8 @@
 import { window, ViewColumn, Uri } from "vscode"
 import { ADTSCHEME, getClient } from "../adt/conections"
-import { findAbapObject } from "../adt/operations/AdtObjectFinder"
+import { AdtObjectFinder, findAbapObject } from "../adt/operations/AdtObjectFinder"
+import { injectUrlHandler } from "./utilities"
 const ABAPDOC = "ABAPDOC"
-const jsHeader = `<script type="text/javascript">
-const vscode = acquireVsCodeApi();
-function abapClick(uri) {
-    vscode.postMessage({
-        command: 'click',
-        uri: uri
-    });
-};
-</script>`
-
-const inject = (x: string) =>
-  x
-    .replace(/<head>/i, `<head>${jsHeader}`)
-    .replace(/href\s*=\s*("[^"]*")/gi, "onClick='abapClick($1)'")
 
 export async function showAbapDoc() {
   const editor = window.activeTextEditor
@@ -32,7 +19,7 @@ export async function showAbapDoc() {
       sel.line + 1,
       sel.character + 1
     )
-    .then(inject)
+    .then(injectUrlHandler)
   const panel = window.createWebviewPanel(
     ABAPDOC,
     "ABAP documentation",
@@ -46,8 +33,13 @@ export async function showAbapDoc() {
     switch (message.command) {
       case "click":
         const url = Uri.parse(message.uri)
-        const text = await client.httpClient.request(`${url.path}?${url.query}`)
-        panel.webview.html = inject(text.body)
+        if (url.scheme.toLowerCase() === "adt") {
+          new AdtObjectFinder(uri.authority).displayAdtUri(message.uri)
+        }
+        else {
+          const text = await client.httpClient.request(`${url.path}?${url.query}`)
+          panel.webview.html = injectUrlHandler(text.body)
+        }
     }
   }, undefined)
 
