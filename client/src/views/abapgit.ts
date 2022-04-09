@@ -197,7 +197,7 @@ class AbapGitProvider implements TreeDataProvider<TreeItem> {
 
     const finder = await new AdtObjectFinder(server.connId)
     const uri = await finder.vscodeUri(found["adtcore:uri"], false)
-    commands.executeCommand("revealInExplorer", createUri(server.connId, uri))
+    commands.executeCommand("revealInExplorer", uri)
   }
 
   private openRepo(repoItem: AbapGitItem) {
