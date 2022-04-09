@@ -8,7 +8,7 @@ export const extractPragmas = (text: string) => {
         const example = text.match(m)
         if (example) return example[1]
         if (s.startsWith('"')) return s
-        if (s.startsWith('#')) return `"${s}`
+        if (s.startsWith('#')) return isPragma ? s : `"${s}`
         if (isPragma || s.startsWith("EC ")) return `#${s}`
         return `"#${"EC "}${s}`
     }

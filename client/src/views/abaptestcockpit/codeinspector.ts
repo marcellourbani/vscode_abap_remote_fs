@@ -2,7 +2,6 @@ import { ADTClient, AtcWorkList } from "abap-adt-api"
 import { Uri } from "vscode"
 import { getClient } from "../../adt/conections"
 import { findAbapObject } from "../../adt/operations/AdtObjectFinder"
-import { decodeEntity } from "../../lib"
 import { extractPragmas } from "./functions"
 
 export type AtcWLobject = AtcWorkList["objects"][0]
@@ -35,3 +34,4 @@ export const findingPragmas = async (connId: string, finding: AtcWLFinding) => {
     const response = await client.httpClient.request(finding.link.href)
     return extractPragmas(response.body)
 }
+

@@ -6,6 +6,7 @@
 
 - default ATC approver
 - navigation in ATC documentation
+- track editor changes dor ATC decorations
 
 ### Fixed
 

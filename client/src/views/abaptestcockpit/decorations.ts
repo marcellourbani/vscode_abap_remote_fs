@@ -1,6 +1,6 @@
-import { DecorationOptions, ExtensionContext, Range, ThemeColor, window, workspace } from "vscode"
+import { DecorationOptions, ExtensionContext, Position, Range, window, workspace } from "vscode"
 import { atcProvider } from "."
-import { FindingMarker, hasExemption } from "./view"
+import { AtcFind, hasExemption } from "./view"
 let timeout: NodeJS.Timeout | undefined
 
 const empty = window.createTextEditorDecorationType({})
@@ -12,13 +12,15 @@ const decorators = {
 }
 
 
-const toDecoration = (m: FindingMarker): DecorationOptions =>
+const toDecoration = (m: AtcFind): DecorationOptions =>
     ({ range: new Range(m.start, m.start), hoverMessage: m.finding.messageTitle })
 
+const fileFindings = new Map<string, AtcFind[]>()
 function updateDecorations() {
     const editor = window.activeTextEditor
     if (!editor) return
-    const markers = atcProvider.markers(editor.document.uri)
+
+    const markers = fileFindings.get(editor.document.uri.toString()) || []
     const exempt = markers.filter(m => hasExemption(m.finding)).map(toDecoration)
     const infos = markers.filter(m => !hasExemption(m.finding) && m.finding.priority !== 2 && m.finding.priority !== 1).map(toDecoration)
     const warnings = markers.filter(m => !hasExemption(m.finding) && m.finding.priority === 2).map(toDecoration)
@@ -36,6 +38,7 @@ export function triggerUpdateDecorations() {
     }
     timeout = setTimeout(updateDecorations, 100)
 }
+
 export function registerSCIDecorator(context: ExtensionContext) {
     const decoratorConfig = {
         light: {
@@ -61,12 +64,33 @@ export function registerSCIDecorator(context: ExtensionContext) {
 
     workspace.onDidChangeTextDocument(event => {
         if (window.activeTextEditor && event.document === window.activeTextEditor.document) {
-            triggerUpdateDecorations()
+            for (const finding of fileFindings.get(event.document.uri.toString()) || []) {
+                finding.applyEdits(event.contentChanges)
+            }
         }
     }, null, context.subscriptions)
+
+    workspace.onDidSaveTextDocument(event => {
+        for (const finding of fileFindings.get(event.uri.toString()) || []) finding.savePosition()
+
+    })
+    workspace.onDidCloseTextDocument(event => {
+        for (const finding of fileFindings.get(event.uri.toString()) || []) finding.cancelEdits()
+
+    })
 
     window.onDidChangeActiveTextEditor(() => {
         if (window.activeTextEditor) triggerUpdateDecorations()
     }, null, context.subscriptions)
+    atcProvider.onDidChangeTreeData(() => {
+        const findings = atcProvider.findings()
+        fileFindings.clear()
+        for (const finding of findings) {
+            const current = fileFindings.get(finding.uri)
+            if (current) current.push(finding)
+            else fileFindings.set(finding.uri, [finding])
+        }
+        triggerUpdateDecorations()
+    })
 }
 

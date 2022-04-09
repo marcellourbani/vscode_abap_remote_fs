@@ -23,7 +23,7 @@ export class ATCDocumentation implements WebviewViewProvider {
         this.view = panel
 
         panel.webview.options = {
-            enableScripts: true,
+            enableScripts: true
         }
         panel.webview.html = await this.getHtmlForWebview()
         panel.webview.onDidReceiveMessage(async message => {

@@ -25,7 +25,7 @@ export async function showAbapDoc() {
     "ABAP documentation",
     ViewColumn.Beside,
     {
-      enableScripts: true
+      enableScripts: true, enableFindWidget: true
     }
   )
 
