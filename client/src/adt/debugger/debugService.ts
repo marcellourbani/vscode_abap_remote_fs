@@ -193,8 +193,19 @@ export class DebugService {
         return c.debuggerDeleteListener(this.mode, this.terminalId, this.ideId, this.username)
     }
 
+    private debuggerListen() {
+        log(`>>>debugger listener starting`)
+        const listener = this.client.statelessClone.debuggerListen(this.mode, this.terminalId, this.ideId, this.username)
+        listener.then((d) => {
+            if (!d) log(`<<<debugger listener returned undefined`)
+            else if (isDebugListenerError(d)) log(`<<<debugger listener returned error ${d.message}`)
+            else log(`<<<debugger listener reached ${d.DEBUGGEE_ID}`)
+        }, (e) => log(`<<<debugger listener failed ${e?.message || e}`))
+        return listener
+    }
+
     public async fireMainLoop(): Promise<boolean | PromiseLike<boolean>> {
-        let starting = this.client.statelessClone.debuggerListen(this.mode, this.terminalId, this.ideId, this.username)
+        let starting = this.debuggerListen()
         const limit = after(1000).then(() => true)
         const listening = await Promise.race([starting, limit])
             .catch(async e => {
@@ -205,7 +216,7 @@ export class DebugService {
                     if (resp)
                         try {
                             await this.stopListener(false)
-                            starting = this.client.statelessClone.debuggerListen(this.mode, this.terminalId, this.ideId, this.username)
+                            starting = this.debuggerListen()
                             return true
                         } catch (error2) {
                             log(caughtToString(error2))
@@ -227,7 +238,7 @@ export class DebugService {
             try {
                 const c = this._client.statelessClone
                 log(`Debugger ${this.sessionNumber} listening on connection  ${this.connId}`)
-                const debuggee = await (first || c.debuggerListen(this.mode, this.terminalId, this.ideId, this.username))
+                const debuggee = await (first || this.debuggerListen())
                 first = undefined
                 if (!debuggee || !this.active) continue
                 log(`Debugger ${this.sessionNumber} disconnected`)
