@@ -1,6 +1,8 @@
-import { CancellationToken, ExtensionContext, Uri, Webview, WebviewView, WebviewViewProvider, WebviewViewResolveContext } from "vscode"
+import { CancellationToken, commands, Uri, WebviewView, WebviewViewProvider, WebviewViewResolveContext } from "vscode"
 import { getClient } from "../../adt/conections"
 import { AdtObjectFinder } from "../../adt/operations/AdtObjectFinder"
+import { AbapFsCommands, command } from "../../commands"
+import { History } from "../history"
 import { injectUrlHandler } from "../utilities"
 
 export interface DocumentationItem {
@@ -10,6 +12,7 @@ export interface DocumentationItem {
 
 export class ATCDocumentation implements WebviewViewProvider {
     public static readonly viewType = 'abapfs.views.atcdocs'
+    private history = new History<DocumentationItem>()
     private static instance: ATCDocumentation | undefined
     public static get() {
         if (!ATCDocumentation.instance) {
@@ -18,42 +21,62 @@ export class ATCDocumentation implements WebviewViewProvider {
         return ATCDocumentation.instance
     }
     private view: WebviewView | undefined
-    private documentation: DocumentationItem | undefined
+    private get documentation() {
+        return this.history.current
+    }
+    private async navigateTo(uri: string) {
+        if (!this.documentation || !this.view) return
+        const url = Uri.parse(uri)
+        if (url.scheme.toLowerCase() === "adt") {
+            new AdtObjectFinder(this.documentation.connId).displayAdtUri(uri)
+        }
+        else {
+            this.history.append({ connId: this.documentation.connId, url: `${url.path}?${url.query}` })
+            await this.getHtmlForWebview()
+        }
+    }
     async resolveWebviewView(panel: WebviewView, context: WebviewViewResolveContext<unknown>, token: CancellationToken) {
         this.view = panel
 
         panel.webview.options = {
             enableScripts: true
         }
-        panel.webview.html = await this.getHtmlForWebview()
+        await this.getHtmlForWebview()
         panel.webview.onDidReceiveMessage(async message => {
             switch (message.command) {
                 case "click":
-                    if (!this.documentation) return
-                    const client = getClient(this.documentation.connId)
-                    const url = Uri.parse(message.uri)
-                    if (url.scheme.toLowerCase() === "adt") {
-                        new AdtObjectFinder(this.documentation.connId).displayAdtUri(message.uri)
-                    }
-                    else {
-                        const text = await client.httpClient.request(`${url.path}?${url.query}`)
-                        panel.webview.html = injectUrlHandler(text.body)
-                    }
+                    this.navigateTo(message.uri)
             }
         }, undefined)
     }
     public async showDocumentation(documentation: DocumentationItem) {
-        this.documentation = documentation
-        if (this.view) {
-            this.view.webview.html = await this.getHtmlForWebview()
-        }
+        this.history = new History(documentation)
+        return this.getHtmlForWebview()
     }
-    private async getHtmlForWebview(): Promise<string> {
+    private async getHtmlForWebview(): Promise<void> {
+        if (!this.view) return
+        commands.executeCommand("setContext", "abapfs:atcdoc:navigation:next", this.history.hasNext)
+        commands.executeCommand("setContext", "abapfs:atcdoc:navigation:back", this.history.hasPrevious)
         if (this.documentation) {
             const client = getClient(this.documentation.connId)
             const doc = await client.httpClient.request(this.documentation.url)
-            return injectUrlHandler(doc.body)
+            this.view.webview.html = injectUrlHandler(doc.body)
         }
-        return `<body>No document selected</body>`
+        else this.view.webview.html = `<body>No document selected</body>`
+    }
+
+    @command(AbapFsCommands.atcDocHistoryBack)
+    private static async back() {
+        const instance = ATCDocumentation.get()
+        instance.history.back()
+        if (instance.view) await instance.getHtmlForWebview()
+
+    }
+    @command(AbapFsCommands.atcDocHistoryForward)
+    private static async forward() {
+        const instance = ATCDocumentation.get()
+        instance.history.forward()
+        if (instance.view) await instance.getHtmlForWebview()
+
     }
 }

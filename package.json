@@ -502,6 +502,18 @@
         "icon": "$(testing-run-icon)"
       },
       {
+        "command": "abapfs.atcDocHistoryForward",
+        "title": "Next document",
+        "enablement": "abapfs:atcdoc:navigation:next",
+        "icon": "$(arrow-right)"
+      },
+      {
+        "command": "abapfs.atcDocHistoryBack",
+        "title": "Previous document",
+        "enablement": "abapfs:atcdoc:navigation:back",
+        "icon": "$(arrow-left)"
+      },
+      {
         "command": "abapfs.atcAutoRefreshOn",
         "title": "Enable refresh on activation",
         "icon": "$(sync-ignored)"
@@ -773,11 +785,11 @@
         },
         {
           "command": "abapfs.atcChecks",
-          "when": "hideCommands.never"
+          "when": "abapfs:extensionActive"
         },
         {
           "command": "abapfs.atcRefresh",
-          "when": "hideCommands.never"
+          "when": "abapfs:extensionActive"
         },
         {
           "command": "abapfs.atcAutoRefreshOn",
@@ -801,6 +813,14 @@
         },
         {
           "command": "abapfs.atcRequestExemptionAll",
+          "when": "hideCommands.never"
+        },
+        {
+          "command": "abapfs.atcDocHistoryForward",
+          "when": "hideCommands.never"
+        },
+        {
+          "command": "abapfs.atcDocHistoryBack",
           "when": "hideCommands.never"
         }
       ],
@@ -926,6 +946,16 @@
           "command": "abapfs.atcRefresh",
           "group": "navigation",
           "when": "view == abapfs.atcFinds"
+        },
+        {
+          "command": "abapfs.atcDocHistoryBack",
+          "group": "navigation@1",
+          "when": "view == abapfs.views.atcdocs"
+        },
+        {
+          "command": "abapfs.atcDocHistoryForward",
+          "group": "navigation@2",
+          "when": "view == abapfs.views.atcdocs"
         },
         {
           "command": "abapfs.atcAutoRefreshOn",

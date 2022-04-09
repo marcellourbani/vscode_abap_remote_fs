@@ -73,11 +73,11 @@ export function registerSCIDecorator(context: ExtensionContext) {
     workspace.onDidSaveTextDocument(event => {
         for (const finding of fileFindings.get(event.uri.toString()) || []) finding.savePosition()
 
-    })
+    }, null, context.subscriptions)
     workspace.onDidCloseTextDocument(event => {
         for (const finding of fileFindings.get(event.uri.toString()) || []) finding.cancelEdits()
 
-    })
+    }, null, context.subscriptions)
 
     window.onDidChangeActiveTextEditor(() => {
         if (window.activeTextEditor) triggerUpdateDecorations()

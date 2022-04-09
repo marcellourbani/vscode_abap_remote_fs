@@ -1,6 +1,6 @@
 import { Dump, Feed } from "abap-adt-api"
 import { EventEmitter, Range, TreeDataProvider, TreeItem, TreeItemCollapsibleState, Uri, ViewColumn, window, workspace } from "vscode"
-import { getClient } from "../../adt/conections"
+import { getClient, getOrCreateClient } from "../../adt/conections"
 import { AdtObjectFinder } from "../../adt/operations/AdtObjectFinder"
 import { AbapFsCommands, command } from "../../commands"
 import { connectedRoots } from "../../config"
@@ -63,7 +63,7 @@ class SystemItem extends TreeItem {
         dumpProvider.emitter.fire(node)
     }
     async children() {
-        const client = getClient(this.connId)
+        const client = await getOrCreateClient(this.connId)
         if (!this.dumpFeed) {
             const feeds = await client.feeds()
             this.dumpFeed = feeds.find(f => f.href === '/sap/bc/adt/runtime/dumps') || "none"
