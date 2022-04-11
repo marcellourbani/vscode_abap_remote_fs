@@ -1,4 +1,4 @@
-import { commands, DebugConfiguration, DebugSession, Disposable, window } from "vscode"
+import { DebugConfiguration, DebugSession, Disposable, window } from "vscode"
 import { InitializedEvent, LoggingDebugSession, StoppedEvent, TerminatedEvent, Thread } from "vscode-debugadapter"
 import { DEBUGTYPE } from "./abapConfigurationProvider"
 import { DebugProtocol } from 'vscode-debugprotocol'

@@ -1,12 +1,12 @@
 import {
     ADTClient, Debuggee, DebugStepType, isDebuggerBreakpoint,
-    debugMetaIsComplex, isDebugListenerError, session_types, DebugMetaType, DebugVariable, DebugBreakpoint, DebuggingMode, DebuggerScope, DebugListenerError, isAdtError
+    debugMetaIsComplex, isDebugListenerError, session_types, DebugMetaType, DebugVariable, DebugBreakpoint, DebuggingMode, DebugListenerError, isAdtError
 } from "abap-adt-api"
-import { newClientFromKey, md5 } from "./functions"
+import { newClientFromKey } from "./functions"
 import { readFileSync, writeFileSync, existsSync, mkdirSync } from "fs"
 import { log, after, caughtToString } from "../../lib"
 import { DebugProtocol } from "vscode-debugprotocol"
-import { Disposable, EventEmitter, Uri, workspace } from "vscode"
+import { Disposable, EventEmitter, Uri } from "vscode"
 import { getRoot } from "../conections"
 import { AbapFile, isAbapFile, } from "abapfs"
 import { homedir } from "os"
@@ -83,11 +83,14 @@ class AdtBreakpoint extends Breakpoint {
 }
 
 const errorType = (err: any): string | undefined => {
-    const exceptionType = err?.properties?.["com.sap.adt.communicationFramework.subType"]
-    if (!exceptionType && `${err.response.body}`.match(/Connection timed out/)) return ATTACHTIMEOUT
-    return exceptionType
-
+    try {
+        const exceptionType = err?.properties?.["com.sap.adt.communicationFramework.subType"]
+        if (!exceptionType && `${err.response.body}`.match(/Connection timed out/)) return ATTACHTIMEOUT
+        return exceptionType
+    } catch (error) {/**/ }
 }
+
+const isConflictError = (e: any) => (errorType(e) || "").match(/conflictNotification|conflictDetected/)
 
 // tslint:disable-next-line:max-classes-per-file
 export class DebugService {
@@ -185,7 +188,7 @@ export class DebugService {
         return new DebugService(connId, client, terminalId, username, terminalMode, ui)
     }
 
-    private stopListener(norestart = true) {
+    private async stopListener(norestart = true) {
         if (norestart) {
             this.active = false
         }
@@ -194,14 +197,7 @@ export class DebugService {
     }
 
     private debuggerListen() {
-        log(`>>>debugger listener starting`)
-        const listener = this.client.statelessClone.debuggerListen(this.mode, this.terminalId, this.ideId, this.username)
-        listener.then((d) => {
-            if (!d) log(`<<<debugger listener returned undefined`)
-            else if (isDebugListenerError(d)) log(`<<<debugger listener returned error ${d.message}`)
-            else log(`<<<debugger listener reached ${d.DEBUGGEE_ID}`)
-        }, (e) => log(`<<<debugger listener failed ${e?.message || e}`))
-        return listener
+        return this.client.statelessClone.debuggerListen(this.mode, this.terminalId, this.ideId, this.username)
     }
 
     public async fireMainLoop(): Promise<boolean | PromiseLike<boolean>> {
@@ -224,7 +220,7 @@ export class DebugService {
                     else this.refresh()
                 }
                 else {
-                    this.ui.ShowError(`Error listening to debugger: ${e.message || e}`)
+                    this.ui.ShowError(`Error listening to debugger: ${caughtToString(e)}`)
                 }
             })
         if (listening === true) this.mainLoop(starting)
@@ -236,7 +232,6 @@ export class DebugService {
         this.active = true
         while (this.active) {
             try {
-                const c = this._client.statelessClone
                 log(`Debugger ${this.sessionNumber} listening on connection  ${this.connId}`)
                 const debuggee = await (first || this.debuggerListen())
                 first = undefined
@@ -260,15 +255,15 @@ export class DebugService {
                         case "conflictNotification":
                         case "conflictDetected":
                             const txt = error?.properties?.conflictText || "Debugger terminated by another session/user"
-                            this.stopDebugging()
                             this.ui.ShowError(txt)
+                            await this.stopDebugging(false)
                             break
                         case ATTACHTIMEOUT:
                             this.refresh()
                             break
                         default:
-                            this.ui.ShowError(`Error listening to debugger: ${error.message || error}`)
-                            this.stopDebugging()
+                            const quit = await this.ui.Confirmator(`Error listening to debugger: ${caughtToString(error)} Close session?`)
+                            if (quit) await this.stopDebugging()
                     }
                 }
             }
@@ -348,7 +343,7 @@ export class DebugService {
             this.doRefresh = setTimeout(() => this.refresh(), 60000)
         } catch (error) {
             log(`${error}`)
-            this.stopDebugging()
+            await this.stopDebugging()
         }
     }
     refresh(): void {
@@ -418,15 +413,20 @@ export class DebugService {
                     return createFrame("unknown", 0, id, NaN)
                 }
             })
-            // @ts-ignore
             this.stackTrace = (await Promise.all(stackp)).filter(s => !!s)
         }
     }
 
-    public stopDebugging() {
+    public async stopDebugging(stopDebugger = true) {
         this.active = false
+        if (stopDebugger) {
+            const c = this.client.statelessClone
+            const running = await c.debuggerListeners("user", this.terminalId, this.ideId, this.username).catch(isConflictError)
+            if (running) await this.stopListener()
+        }
         this.notifier.fire(requestTermination())
     }
+
     public async logout() {
         const ignore = () => undefined
         const wasactive = this.active
