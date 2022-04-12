@@ -2,14 +2,13 @@ import { DebugConfiguration, DebugSession, Disposable, window } from "vscode"
 import { InitializedEvent, LoggingDebugSession, StoppedEvent, Thread } from "vscode-debugadapter"
 import { DEBUGTYPE } from "./abapConfigurationProvider"
 import { DebugProtocol } from 'vscode-debugprotocol'
-import { DebugService } from "./debugService"
-import { AbapDebugAdapterFactory } from "./AbapDebugAdapterFactory"
 import { AbapFsCommands, command } from "../../commands"
 import { currentEditState } from "../../commands/commands"
 import { DebugStepType } from "abap-adt-api"
 import { getRoot } from "../conections"
 import { isAbapFile } from "abapfs"
 import { caughtToString } from "../../lib"
+import { DebugListener } from "./debugListener"
 
 export interface AbapDebugConfiguration extends DebugConfiguration {
     connId: string,
@@ -27,11 +26,14 @@ export class AbapDebugSession extends LoggingDebugSession {
         return AbapDebugSession.sessions.get(connId)
     }
 
-    constructor(private connId: string, private readonly service: DebugService) {
+    constructor(private connId: string, private readonly listener: DebugListener) {
         super(DEBUGTYPE)
         if (AbapDebugSession.sessions.has(connId)) throw new Error(`Debug session already running on ${connId}`)
         AbapDebugSession.sessions.set(connId, this)
-        this.sub = service.addListener(e => this.sendEvent(e))
+        this.sub = listener.addListener(e => this.sendEvent(e))
+    }
+    private get services() {
+        return this.listener.activeServices().map(([id, s]) => s)
     }
 
     protected dispatchRequest(request: DebugProtocol.Request) {
@@ -39,43 +41,43 @@ export class AbapDebugSession extends LoggingDebugSession {
     }
     protected async setBreakPointsRequest(response: DebugProtocol.SetBreakpointsResponse, args: DebugProtocol.SetBreakpointsArguments, request?: DebugProtocol.Request) {
         const { source, breakpoints = [] } = args
-        response.body = { breakpoints: await this.service.setBreakpoints(source, breakpoints) }
+        const bpps = await this.listener.breakpointManager.setBreakpoints(source, breakpoints)
+        response.body = { breakpoints: bpps }
         this.sendResponse(response)
     }
 
 
     public async logOut() {
         AbapDebugSession.sessions.delete(this.connId)
-        if (this.service) {
-            this.sub.dispose()
-            await this.service.logout()
-            AbapDebugAdapterFactory.instance.sessionClosed(this)
-        }
-
+        await Promise.all(this.listener.activeServices().map(([id, s]) => s.logout()))
     }
 
     protected threadsRequest(response: DebugProtocol.ThreadsResponse): void {
-        response.body = { threads: [new Thread(this.service.THREADID, "Single thread")] }
+        response.body = { threads: this.listener.activeServices().map(([id, s]) => new Thread(id, `${s.debuggee.DEBUGGEE_ID} ${id}`)) }
         this.sendResponse(response)
     }
 
     protected stepInRequest(response: DebugProtocol.StepInResponse, args: DebugProtocol.StepInArguments): void {
-        this.service.debuggerStep("stepInto")
+        const service = this.listener.service(args.threadId)
+        service.debuggerStep("stepInto")
         this.sendResponse(response)
     }
 
     protected continueRequest(response: DebugProtocol.ContinueResponse, args: DebugProtocol.ContinueArguments): void {
-        this.service.debuggerStep("stepContinue")
+        const service = this.listener.service(args.threadId)
+        service.debuggerStep("stepContinue")
         this.sendResponse(response)
     }
 
     protected nextRequest(response: DebugProtocol.NextResponse, args: DebugProtocol.NextArguments): void {
-        this.service.debuggerStep("stepOver")
+        const service = this.listener.service(args.threadId)
+        service.debuggerStep("stepOver")
         this.sendResponse(response)
     }
 
     protected stepOutRequest(response: DebugProtocol.StepOutResponse, args: DebugProtocol.StepOutArguments): void {
-        this.service.debuggerStep("stepReturn")
+        const service = this.listener.service(args.threadId)
+        service.debuggerStep("stepReturn")
         this.sendResponse(response)
     }
 
@@ -86,7 +88,7 @@ export class AbapDebugSession extends LoggingDebugSession {
     }
 
     protected async attachRequest(response: DebugProtocol.AttachResponse, args: DebugProtocol.AttachRequestArguments, request?: DebugProtocol.Request) {
-        response.success = await this.service.fireMainLoop()
+        response.success = await this.listener.fireMainLoop()
         if (!response.success) {
             response.message = "Could not attach to process"
         }
@@ -98,7 +100,8 @@ export class AbapDebugSession extends LoggingDebugSession {
     }
 
     protected stackTraceRequest(response: DebugProtocol.StackTraceResponse, args: DebugProtocol.StackTraceArguments): void {
-        const stackFrames = this.service.getStack()
+        const service = this.listener.service(args.threadId)
+        const stackFrames = service.getStack()
         response.body = {
             stackFrames,
             totalFrames: stackFrames.length
@@ -107,8 +110,9 @@ export class AbapDebugSession extends LoggingDebugSession {
     }
 
     protected breakpointLocationsRequest(response: DebugProtocol.BreakpointLocationsResponse, args: DebugProtocol.BreakpointLocationsArguments, request?: DebugProtocol.Request): void {
+        const service = this.listener.service()
         if (args.source.path) {
-            const bps = this.service.getBreakpoints(args.source.path)
+            const bps = this.listener.breakpointManager.getBreakpoints(args.source.path)
             response.body = { breakpoints: bps.map(_ => ({ line: args.line, column: 0 })) }
         } else response.body = { breakpoints: [] }
 
@@ -116,23 +120,27 @@ export class AbapDebugSession extends LoggingDebugSession {
     }
 
     protected async scopesRequest(response: DebugProtocol.ScopesResponse, args: DebugProtocol.ScopesArguments) {
-        response.body = { scopes: await this.service.getScopes(args.frameId) }
+        const service = this.listener.service() // TODO: threadId
+        response.body = { scopes: await service.getScopes(args.frameId) }
         this.sendResponse(response)
     }
     protected async setVariableRequest(response: DebugProtocol.SetVariableResponse, args: DebugProtocol.SetVariableArguments, request?: DebugProtocol.Request) {
-        const { value, success } = await this.service.setVariable(args.variablesReference, args.name, args.value)
+        const service = this.listener.service()
+        const { value, success } = await service.setVariable(args.variablesReference, args.name, args.value)
         response.body = { value }
         response.success = success
         this.sendResponse(response)
     }
 
     protected async variablesRequest(response: DebugProtocol.VariablesResponse, args: DebugProtocol.VariablesArguments, request?: DebugProtocol.Request) {
-        response.body = { variables: await this.service.getVariables(args.variablesReference) }
+        const service = this.listener.service()
+        response.body = { variables: await service.getVariables(args.variablesReference) }
         this.sendResponse(response)
     }
 
     protected async evaluateRequest(response: DebugProtocol.EvaluateResponse, args: DebugProtocol.EvaluateArguments, request?: DebugProtocol.Request) {
-        const v = await this.service.evaluate(args.expression)
+        const service = this.listener.service()
+        const v = await service.evaluate(args.expression)
         if (v) response.body = v
         this.sendResponse(response)
     }
@@ -164,7 +172,7 @@ export class AbapDebugSession extends LoggingDebugSession {
             const n = root.getNode(s.uri.path)
             if (!isAbapFile(n)) return
             const uri = `${n.object.contentsPath()}#start=${s.line + 1}`
-            await session.service.debuggerStep(stepType, uri)
+            await session.listener.service().debuggerStep(stepType, uri)
             session.sendEvent(new StoppedEvent("goto"))
         } catch (error) {
             window.showErrorMessage(caughtToString(error, `Error jumping to statement`))

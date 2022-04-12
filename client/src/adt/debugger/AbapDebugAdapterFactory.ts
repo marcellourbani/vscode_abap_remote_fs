@@ -1,7 +1,8 @@
 import { DebugAdapterDescriptor, DebugAdapterDescriptorFactory, DebugAdapterInlineImplementation, window } from "vscode"
 import { log } from "../../lib"
 import { AbapDebugSession, AbapDebugSessionCfg } from "./abapDebugSession"
-import { DebuggerUI, DebugService } from "./debugService"
+import { DebugListener } from "./debugListener"
+import { DebuggerUI } from "./debugService"
 
 const ui: DebuggerUI = {
     Confirmator: (message: string) => window.showErrorMessage(message, "YES", "NO").then(x => x === "YES"),
@@ -24,8 +25,8 @@ export class AbapDebugAdapterFactory implements DebugAdapterDescriptorFactory {
                 await old.logOut()
             } else abort()
         }
-        const service = await DebugService.create(connId, ui, debugUser, terminalMode)
-        const abapSession = new AbapDebugSession(connId, service)
+        const litener = await DebugListener.create(connId, ui, debugUser, terminalMode)
+        const abapSession = new AbapDebugSession(connId, litener)
         this.loggedinSessions.push(abapSession)
         log(`Debug session started for ${connId}, ${this.loggedinSessions.length} active sessions`)
         return new DebugAdapterInlineImplementation(abapSession)
@@ -36,7 +37,7 @@ export class AbapDebugAdapterFactory implements DebugAdapterDescriptorFactory {
     }
 
     closeSessions() {
-        return this.loggedinSessions.map(s => s.logOut())
+        return this.loggedinSessions.flatMap(s => s.logOut())
     }
 
     static get instance() {

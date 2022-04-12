@@ -10,6 +10,9 @@ import { StoppedEvent, TerminatedEvent } from "vscode-debugadapter"
 import { v1 } from "uuid"
 import { getWinRegistryReader } from "./winregistry"
 import { context } from "../../extension"
+import { DebugService, isAdtEvent } from "./debugService"
+import { isUndefined } from "abap-adt-api/build/utilities"
+import { BreakpointManager } from "./breakpointManager"
 
 type ConflictResult = { with: "none" } | { with: "other" | "myself", message?: string }
 
@@ -60,31 +63,35 @@ const errorType = (err: any): string | undefined => {
 const isConflictError = (e: any) => (errorType(e) || "").match(/conflictNotification|conflictDetected/)
 
 export class DebugListener {
+    readonly ideId: string
     private active: boolean = false
-    private attached: boolean = false
     private killed = false
-    private ideId: string
     private notifier: EventEmitter<DebugProtocol.Event> = new EventEmitter()
     private listeners: Disposable[] = []
-    private readonly mode: DebuggingMode
-    public readonly THREADID = 1
-    private doRefresh?: NodeJS.Timeout
+    readonly mode: DebuggingMode
+    readonly breakpointManager
+    private nextthreadid = 1
     sessionNumber: number
-    private get client() {
+    private services = new Map<number, DebugService>()
+
+    public get client() {
         if (this.killed) throw new Error("Disconnected")
         return this._client
     }
 
-    constructor(private connId: string, private _client: ADTClient, private terminalId: string,
-        private username: string, terminalMode: boolean, private ui: DebuggerUI) {
+    activeServices() {
+        return [...this.services]
+    }
+
+
+    constructor(readonly connId: string, private _client: ADTClient, readonly terminalId: string,
+        readonly username: string, terminalMode: boolean, private ui: DebuggerUI) {
         this.sessionNumber = (sessionNumbers.get(connId) || 0) + 1
         sessionNumbers.set(connId, this.sessionNumber)
         this.ideId = getOrCreateIdeId()
         this.mode = terminalMode ? "terminal" : "user"
         if (!this.username) this.username = _client.username.toUpperCase()
-    }
-    addListener(listener: (e: DebugProtocol.Event) => any, thisArg?: any) {
-        return this.notifier.event(listener, thisArg, this.listeners)
+        this.breakpointManager = new BreakpointManager(this)
     }
 
     public static async create(connId: string, ui: DebuggerUI, username: string, terminalMode: boolean) {
@@ -92,6 +99,16 @@ export class DebugListener {
         if (!client) throw new Error(`Unable to get client for${connId}`)
         const terminalId = await getOrCreateTerminalId()
         return new DebugListener(connId, client, terminalId, username, terminalMode, ui)
+    }
+
+    addListener(listener: (e: DebugProtocol.Event) => any, thisArg?: any) {
+        return this.notifier.event(listener, thisArg, this.listeners)
+    }
+
+    service(threadid?: number) {
+        const service = isUndefined(threadid) ? [...this.services.values()][0] : this.services.get(threadid)
+        if (!service) throw new Error(`No service for threadid ${threadid}`)
+        return service
     }
 
     private async stopListener(norestart = true) {
@@ -114,7 +131,7 @@ export class DebugListener {
             throw error
         }
         try {
-            await this.client.statelessClone.debuggerListeners(this.mode, this.terminalId, this.ideId, this.username)
+            await this.client.statelessClone.debuggerListeners(this.mode, this.terminalId, "", this.username)
         } catch (error: any) {
             if (isConflictError(error)) return { with: "myself", message: error?.properties?.conflictText }
             throw error
@@ -191,16 +208,20 @@ export class DebugListener {
         }
     }
 
-
-
-
     private async onBreakpointReached(debuggee: Debuggee) {
         try {
-            if (!this.attached)
-                await this.client.debuggerAttach(this.mode, debuggee.DEBUGGEE_ID, this.username, true)
-            this.attached = true
-            await this.client.debuggerSaveSettings({})
-            this.notifier.fire(new StoppedEvent("breakpoint", this.THREADID))
+            const threadid = this.nextthreadid++
+            const service = await DebugService.create(this.connId,
+                this.ui, this.username, this.mode === "terminal", this.terminalId, this.ideId, debuggee, threadid)
+            this.services.set(threadid, service)
+            await service.attach()
+            service.addListener(e => {
+                if (isAdtEvent(e)) {
+                    if (e.adtEventType === "detached") this.services.delete(threadid)
+                } else
+                    this.notifier.fire(e)
+            })
+            this.notifier.fire(new StoppedEvent("breakpoint", threadid))
         } catch (error) {
             log(`${error}`)
             await this.stopDebugging()
@@ -220,7 +241,6 @@ export class DebugListener {
     public async logout() {
         const ignore = () => undefined
         this.active = false
-        this.attached = false
         if (this.killed) return
         const client = this.client
         const stop = this.hasConflict().then(r => { if (r.with === "myself") return this.stopListener().catch(ignore) }, ignore)
