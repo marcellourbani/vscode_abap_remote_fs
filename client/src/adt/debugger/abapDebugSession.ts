@@ -1,8 +1,8 @@
 import { DebugConfiguration, DebugSession, Disposable, window } from "vscode"
-import { InitializedEvent, LoggingDebugSession, StoppedEvent, TerminatedEvent, Thread } from "vscode-debugadapter"
+import { InitializedEvent, LoggingDebugSession, StoppedEvent, Thread } from "vscode-debugadapter"
 import { DEBUGTYPE } from "./abapConfigurationProvider"
 import { DebugProtocol } from 'vscode-debugprotocol'
-import { DebugService, isRequestTerminationEvent } from "./debugService"
+import { DebugService } from "./debugService"
 import { AbapDebugAdapterFactory } from "./AbapDebugAdapterFactory"
 import { AbapFsCommands, command } from "../../commands"
 import { currentEditState } from "../../commands/commands"
@@ -31,12 +31,7 @@ export class AbapDebugSession extends LoggingDebugSession {
         super(DEBUGTYPE)
         if (AbapDebugSession.sessions.has(connId)) throw new Error(`Debug session already running on ${connId}`)
         AbapDebugSession.sessions.set(connId, this)
-        this.sub = service.addListener(e => {
-            if (isRequestTerminationEvent(e))
-                this.logOut(true)
-            else
-                this.sendEvent(e)
-        })
+        this.sub = service.addListener(e => this.sendEvent(e))
     }
 
     protected dispatchRequest(request: DebugProtocol.Request) {
@@ -49,14 +44,14 @@ export class AbapDebugSession extends LoggingDebugSession {
     }
 
 
-    public async logOut(notify = false) {
+    public async logOut() {
         AbapDebugSession.sessions.delete(this.connId)
         if (this.service) {
             this.sub.dispose()
             await this.service.logout()
             AbapDebugAdapterFactory.instance.sessionClosed(this)
         }
-        if (notify) this.sendEvent(new TerminatedEvent())
+
     }
 
     protected threadsRequest(response: DebugProtocol.ThreadsResponse): void {

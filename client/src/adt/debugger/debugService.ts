@@ -1,6 +1,6 @@
 import {
     ADTClient, Debuggee, DebugStepType, isDebuggerBreakpoint,
-    debugMetaIsComplex, isDebugListenerError, session_types, DebugMetaType, DebugVariable, DebugBreakpoint, DebuggingMode, DebugListenerError, isAdtError
+    debugMetaIsComplex, isDebugListenerError, session_types, DebugMetaType, DebugVariable, DebugBreakpoint, DebuggingMode, isAdtError
 } from "abap-adt-api"
 import { newClientFromKey } from "./functions"
 import { readFileSync, writeFileSync, existsSync, mkdirSync } from "fs"
@@ -11,20 +11,16 @@ import { getRoot } from "../conections"
 import { AbapFile, isAbapFile, } from "abapfs"
 import { homedir } from "os"
 import { join } from "path"
-import { Breakpoint, Handles, Scope, Source, StoppedEvent } from "vscode-debugadapter"
+import { Breakpoint, Handles, Scope, Source, StoppedEvent, TerminatedEvent } from "vscode-debugadapter"
 import { vsCodeUri } from "../../langClient"
 import { v1 } from "uuid"
 import { getWinRegistryReader } from "./winregistry"
 import { context } from "../../extension"
 
+type ConflictResult = { with: "none" } | { with: "other" | "myself", message?: string }
+
 const ATTACHTIMEOUT = "autoAttachTimeout"
 const sessionNumbers = new Map<string, number>()
-
-export interface RequestTerminationEvent {
-    event: "adtrequesttermination"
-}
-export const isRequestTerminationEvent = (e: any): e is RequestTerminationEvent => e?.event === "adtrequesttermination"
-const requestTermination = (): RequestTerminationEvent => ({ event: "adtrequesttermination" })
 
 export interface DebuggerUI {
     Confirmator: (message: string) => Thenable<boolean>
@@ -98,7 +94,7 @@ export class DebugService {
     private attached: boolean = false
     private killed = false
     private ideId: string
-    private notifier: EventEmitter<DebugProtocol.Event | RequestTerminationEvent> = new EventEmitter()
+    private notifier: EventEmitter<DebugProtocol.Event> = new EventEmitter()
     private listeners: Disposable[] = []
     private stackTrace: StackFrame[] = []
     private currentStackId?: number
@@ -121,7 +117,7 @@ export class DebugService {
         this.mode = terminalMode ? "terminal" : "user"
         if (!this.username) this.username = _client.username.toUpperCase()
     }
-    addListener(listener: (e: DebugProtocol.Event | RequestTerminationEvent) => any, thisArg?: any) {
+    addListener(listener: (e: DebugProtocol.Event) => any, thisArg?: any) {
         return this.notifier.event(listener, thisArg, this.listeners)
     }
 
@@ -200,41 +196,56 @@ export class DebugService {
         return this.client.statelessClone.debuggerListen(this.mode, this.terminalId, this.ideId, this.username)
     }
 
-    public async fireMainLoop(): Promise<boolean | PromiseLike<boolean>> {
-        let starting = this.debuggerListen()
-        const limit = after(1000).then(() => true)
-        const listening = await Promise.race([starting, limit])
-            .catch(async e => {
-                if (errorType(e) === "conflictDetected") {
-                    const txt = e?.properties?.conflictText || "Debugger conflict detected"
-                    const message = `${txt} Take over debugging?`
-                    const resp = await this.ui.Confirmator(message)
-                    if (resp)
-                        try {
-                            await this.stopListener(false)
-                            starting = this.debuggerListen()
-                            return true
-                        } catch (error2) {
-                            log(caughtToString(error2))
-                        }
-                    else this.refresh()
-                }
-                else {
-                    this.ui.ShowError(`Error listening to debugger: ${caughtToString(e)}`)
-                }
-            })
-        if (listening === true) this.mainLoop(starting)
-        return listening === true
+    private async hasConflict(): Promise<ConflictResult> {
+        try {
+            await this.client.statelessClone.debuggerListeners(this.mode, this.terminalId, this.ideId, this.username)
+        } catch (error: any) {
+            if (isConflictError(error)) return { with: "other", message: error?.properties?.conflictText }
+            throw error
+        }
+        try {
+            await this.client.statelessClone.debuggerListeners(this.mode, this.terminalId, this.ideId, this.username)
+        } catch (error: any) {
+            if (isConflictError(error)) return { with: "myself", message: error?.properties?.conflictText }
+            throw error
+        }
+        return { with: "none" }
+    }
+
+    public async fireMainLoop(): Promise<boolean> {
+        try {
+            const conflict = await this.hasConflict()
+            switch (conflict.with) {
+                case "myself":
+                    await this.stopListener()
+                    this.mainLoop()
+                    return true
+                case "other":
+                    const resp = await this.ui.Confirmator(`${conflict.message || "Debugger conflict detected"} Take over debugging?`)
+                    if (resp) {
+                        await this.stopListener(false)
+                        this.mainLoop()
+                        return true
+                    }
+                    return false
+                case "none":
+                    this.mainLoop()
+                    return true
+            }
+        } catch (error) {
+            this.ui.ShowError(`Error listening to debugger: ${caughtToString(error)}`)
+            return false
+        }
+
     }
 
 
-    private async mainLoop(first: Promise<DebugListenerError | Debuggee | undefined> | undefined) {
+    private async mainLoop() {
         this.active = true
         while (this.active) {
             try {
                 log(`Debugger ${this.sessionNumber} listening on connection  ${this.connId}`)
-                const debuggee = await (first || this.debuggerListen())
-                first = undefined
+                const debuggee = await this.debuggerListen()
                 if (!debuggee || !this.active) continue
                 log(`Debugger ${this.sessionNumber} disconnected`)
                 if (isDebugListenerError(debuggee)) {
@@ -424,16 +435,16 @@ export class DebugService {
             const running = await c.debuggerListeners("user", this.terminalId, this.ideId, this.username).catch(isConflictError)
             if (running) await this.stopListener()
         }
-        this.notifier.fire(requestTermination())
+        this.notifier.fire(new TerminatedEvent())
     }
 
     public async logout() {
         const ignore = () => undefined
-        const wasactive = this.active
         this.active = false
         this.attached = false
         if (this.killed) return
         const client = this.client
+        const stop = this.hasConflict().then(r => { if (r.with === "myself") return this.stopListener().catch(ignore) }, ignore)
         const delbp = (bp: DebugBreakpoint) =>
             client.debuggerDeleteBreakpoints(bp, this.mode, this.terminalId, this.ideId, this.username)
         const deleteBreakpoints = async (source: string) => {
@@ -441,11 +452,12 @@ export class DebugService {
             return Promise.all(dels || [])
         }
         const proms: Promise<any>[] = [...this.breakpoints.keys()].map(deleteBreakpoints)
-        this.killed = true
-        const stop = wasactive ? this.stopListener().catch(ignore) : Promise.resolve()
         proms.push(stop)
+        this.killed = true
+
+        const logout = () => Promise.all([client.logout(), client.statelessClone.logout()])
         if (client.loggedin)
-            proms.push(stop.then(() => client.dropSession().catch(ignore).then(() => client.logout().catch(ignore))))
+            proms.push(stop.then(() => client.dropSession(), ignore).then(logout, ignore))
         await Promise.all(proms)
     }
 }

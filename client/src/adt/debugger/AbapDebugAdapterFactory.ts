@@ -21,7 +21,7 @@ export class AbapDebugAdapterFactory implements DebugAdapterDescriptorFactory {
             const abort = () => { throw new Error("ABAP Debug starting aborted") }
             const resp = await window.showInformationMessage("Debug session already running, terminate and replace?", "Yes", "No")
             if (resp === "Yes") {
-                await old.logOut(true)// .then(() => after(1000))
+                await old.logOut()
             } else abort()
         }
         const service = await DebugService.create(connId, ui, debugUser, terminalMode)
