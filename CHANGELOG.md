@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+### Fixed
+
+- improved debugger session handling
+
+## [1.3.2] 2022-03-09
+
 ### Added
 
 - default ATC approver
