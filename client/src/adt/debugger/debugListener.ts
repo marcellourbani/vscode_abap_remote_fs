@@ -70,9 +70,9 @@ export class DebugListener {
     private listeners: Disposable[] = []
     readonly mode: DebuggingMode
     readonly breakpointManager
-    private nextthreadid = 1
     sessionNumber: number
     private services = new Map<number, DebugService>()
+    listening = false
 
     public get client() {
         if (this.killed) throw new Error("Disconnected")
@@ -172,7 +172,9 @@ export class DebugListener {
         while (this.active) {
             try {
                 log(`Debugger ${this.sessionNumber} listening on connection  ${this.connId}`)
+                this.listening = true
                 const debuggee = await this.debuggerListen()
+                this.listening = false
                 if (!debuggee || !this.active) continue
                 log(`Debugger ${this.sessionNumber} disconnected`)
                 if (isDebugListenerError(debuggee)) {
@@ -183,6 +185,7 @@ export class DebugListener {
                 log(`Debugger ${this.sessionNumber} on connection  ${this.connId} reached a breakpoint`)
                 await this.onBreakpointReached(debuggee)
             } catch (error) {
+                this.listening = false
                 if (!this.active) return
                 if (!isAdtError(error)) {
                     this.ui.ShowError(`Error listening to debugger: ${caughtToString(error)}`)
@@ -210,7 +213,7 @@ export class DebugListener {
 
     private async onBreakpointReached(debuggee: Debuggee) {
         try {
-            const threadid = this.nextthreadid++
+            const threadid = this.nextthreadid()
             const service = await DebugService.create(this.connId,
                 this.ui, this.username, this.mode === "terminal", this.terminalId, this.ideId, debuggee, threadid)
             this.services.set(threadid, service)
@@ -228,6 +231,15 @@ export class DebugListener {
         }
     }
 
+    nextthreadid(): number {
+        if (this.services.size === 0) return 1
+        const indexes = [...this.services.keys()]
+        const max = Math.max(...indexes)
+        if (max < this.services.size) for (let i = 1; i < max; i++)
+            if (!this.services.has(i)) return i
+        return max + 1
+    }
+
     public async stopDebugging(stopDebugger = true) {
         this.active = false
         if (stopDebugger) {
@@ -242,14 +254,15 @@ export class DebugListener {
         const ignore = () => undefined
         this.active = false
         if (this.killed) return
-        const client = this.client
-        const stop = this.hasConflict().then(r => { if (r.with === "myself") return this.stopListener().catch(ignore) }, ignore)
-        const proms: Promise<any>[] = [stop]
+        const stop = this.listening && this.stopListener().catch(ignore)
+        await stop
+        if (this.listening) await this.stopListener()
+        const stopServices = [...this.services.values()].map(s => s.logout().catch(ignore))
+        this.services.clear()
+        const proms: Promise<any>[] = [...stopServices]
+        if (stop) proms.push(stop)
         this.killed = true
 
-        const logout = () => Promise.all([client.logout(), client.statelessClone.logout()])
-        if (client.loggedin)
-            proms.push(stop.then(() => client.dropSession(), ignore).then(logout, ignore))
         await Promise.all(proms)
     }
 }

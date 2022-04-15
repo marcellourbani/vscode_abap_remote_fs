@@ -9,6 +9,7 @@ import { getRoot } from "../conections"
 import { isAbapFile } from "abapfs"
 import { caughtToString } from "../../lib"
 import { DebugListener } from "./debugListener"
+import { frameThread } from "./debugService"
 
 export interface AbapDebugConfiguration extends DebugConfiguration {
     connId: string,
@@ -20,7 +21,6 @@ export interface AbapDebugSessionCfg extends DebugSession {
 }
 
 export class AbapDebugSession extends LoggingDebugSession {
-    private sub: Disposable
     private static sessions = new Map<string, AbapDebugSession>()
     static byConnection(connId: string) {
         return AbapDebugSession.sessions.get(connId)
@@ -30,10 +30,7 @@ export class AbapDebugSession extends LoggingDebugSession {
         super(DEBUGTYPE)
         if (AbapDebugSession.sessions.has(connId)) throw new Error(`Debug session already running on ${connId}`)
         AbapDebugSession.sessions.set(connId, this)
-        this.sub = listener.addListener(e => this.sendEvent(e))
-    }
-    private get services() {
-        return this.listener.activeServices().map(([id, s]) => s)
+        listener.addListener(e => this.sendEvent(e))
     }
 
     protected dispatchRequest(request: DebugProtocol.Request) {
@@ -48,8 +45,8 @@ export class AbapDebugSession extends LoggingDebugSession {
 
 
     public async logOut() {
+        await this.listener.logout()
         AbapDebugSession.sessions.delete(this.connId)
-        await Promise.all(this.listener.activeServices().map(([id, s]) => s.logout()))
     }
 
     protected threadsRequest(response: DebugProtocol.ThreadsResponse): void {
@@ -59,25 +56,25 @@ export class AbapDebugSession extends LoggingDebugSession {
 
     protected stepInRequest(response: DebugProtocol.StepInResponse, args: DebugProtocol.StepInArguments): void {
         const service = this.listener.service(args.threadId)
-        service.debuggerStep("stepInto")
+        service.debuggerStep("stepInto", args.threadId)
         this.sendResponse(response)
     }
 
     protected continueRequest(response: DebugProtocol.ContinueResponse, args: DebugProtocol.ContinueArguments): void {
         const service = this.listener.service(args.threadId)
-        service.debuggerStep("stepContinue")
+        service.debuggerStep("stepContinue", args.threadId)
         this.sendResponse(response)
     }
 
     protected nextRequest(response: DebugProtocol.NextResponse, args: DebugProtocol.NextArguments): void {
         const service = this.listener.service(args.threadId)
-        service.debuggerStep("stepOver")
+        service.debuggerStep("stepOver", args.threadId)
         this.sendResponse(response)
     }
 
     protected stepOutRequest(response: DebugProtocol.StepOutResponse, args: DebugProtocol.StepOutArguments): void {
         const service = this.listener.service(args.threadId)
-        service.debuggerStep("stepReturn")
+        service.debuggerStep("stepReturn", args.threadId)
         this.sendResponse(response)
     }
 
@@ -110,7 +107,6 @@ export class AbapDebugSession extends LoggingDebugSession {
     }
 
     protected breakpointLocationsRequest(response: DebugProtocol.BreakpointLocationsResponse, args: DebugProtocol.BreakpointLocationsArguments, request?: DebugProtocol.Request): void {
-        const service = this.listener.service()
         if (args.source.path) {
             const bps = this.listener.breakpointManager.getBreakpoints(args.source.path)
             response.body = { breakpoints: bps.map(_ => ({ line: args.line, column: 0 })) }
@@ -120,7 +116,7 @@ export class AbapDebugSession extends LoggingDebugSession {
     }
 
     protected async scopesRequest(response: DebugProtocol.ScopesResponse, args: DebugProtocol.ScopesArguments) {
-        const service = this.listener.service() // TODO: threadId
+        const service = this.listener.service(frameThread(args.frameId))
         response.body = { scopes: await service.getScopes(args.frameId) }
         this.sendResponse(response)
     }
@@ -172,7 +168,8 @@ export class AbapDebugSession extends LoggingDebugSession {
             const n = root.getNode(s.uri.path)
             if (!isAbapFile(n)) return
             const uri = `${n.object.contentsPath()}#start=${s.line + 1}`
-            await session.listener.service().debuggerStep(stepType, uri)
+            const service = session.listener.service() // TODO: threadId
+            await service.debuggerStep(stepType, 1, uri)
             session.sendEvent(new StoppedEvent("goto"))
         } catch (error) {
             window.showErrorMessage(caughtToString(error, `Error jumping to statement`))

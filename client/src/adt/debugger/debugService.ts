@@ -1,17 +1,15 @@
 import {
-    ADTClient, Debuggee, DebugStepType, isDebuggerBreakpoint,
-    debugMetaIsComplex, session_types, DebugMetaType, DebugVariable, DebugBreakpoint, DebuggingMode, isAdtError
+    ADTClient, Debuggee, DebugStepType, debugMetaIsComplex, session_types, DebugMetaType, DebugVariable,
+    DebuggingMode, isAdtError
 } from "abap-adt-api"
 import { newClientFromKey } from "./functions"
 import { log, caughtToString } from "../../lib"
 import { DebugProtocol } from "vscode-debugprotocol"
 import { Disposable, EventEmitter, Uri } from "vscode"
-import { getRoot } from "../conections"
-import { AbapFile, isAbapFile, } from "abapfs"
-import { Breakpoint, Handles, Scope, Source, StoppedEvent, TerminatedEvent } from "vscode-debugadapter"
+import { Handles, Scope, Source, StoppedEvent, TerminatedEvent } from "vscode-debugadapter"
 import { vsCodeUri } from "../../langClient"
 import { isObject } from "abap-adt-api/build/utilities"
-
+const STACK_THREAD_MULTIPLIER = 10000
 
 const ATTACHTIMEOUT = "autoAttachTimeout"
 const sessionNumbers = new Map<string, number>()
@@ -47,6 +45,8 @@ const errorType = (err: any): string | undefined => {
     } catch (error) {/**/ }
 }
 
+export const frameThread = (frameId: number) => Math.floor(frameId / STACK_THREAD_MULTIPLIER)
+
 const isConflictError = (e: any) => (errorType(e) || "").match(/conflictNotification|conflictDetected/)
 interface AdtEvent {
     adtEventType: "detached",
@@ -62,7 +62,6 @@ export class DebugService {
     private currentStackId?: number
     private variableHandles = new Handles<Variable>()
     private readonly mode: DebuggingMode
-    public readonly THREADID = 1
     private doRefresh?: NodeJS.Timeout
     sessionNumber: number
 
@@ -180,13 +179,13 @@ export class DebugService {
         return this.client.debuggerStep(stepType)
     }
 
-    public async debuggerStep(stepType: DebugStepType, url?: string) {
+    public async debuggerStep(stepType: DebugStepType, threadId: number, url?: string) {
         try {
             if (this.doRefresh) clearTimeout(this.doRefresh)
             this.doRefresh = undefined
             const res = await this.baseDebuggerStep(stepType, url)
             await this.updateStack()
-            this.notifier.fire(new StoppedEvent("breakpoint", this.THREADID))
+            this.notifier.fire(new StoppedEvent("breakpoint", threadId))
             return res
         } catch (error) {
             if (!isAdtError(error)) {
@@ -194,7 +193,7 @@ export class DebugService {
             } else {
                 if (error?.properties?.["com.sap.adt.communicationFramework.subType"] === "debuggeeEnded") {
                     await this.client.dropSession()
-                    this.notifier.fire({ adtEventType: "detached", threadId: this.threadId })
+                    this.notifier.fire({ adtEventType: "detached", threadId })
                 } else
                     this.ui.ShowError(error?.message || "unknown error in debugger stepping")
             }
@@ -203,7 +202,7 @@ export class DebugService {
 
     private async updateStack() {
         const stackInfo = await this.client.debuggerStackTrace(false).catch(() => undefined)
-        this.currentStackId = 0
+        this.currentStackId = STACK_THREAD_MULTIPLIER * this.threadId
         const createFrame = (path: string, line: number, id: number, stackPosition: number, stackUri?: string) => {
             const name = path.replace(/.*\//, "")
             const source = new Source(name, path)
@@ -212,6 +211,7 @@ export class DebugService {
         }
         if (stackInfo) {
             const stackp = stackInfo.stack.map(async (s, id) => {
+                id = id + this.threadId * STACK_THREAD_MULTIPLIER
                 try {
                     const path = await vsCodeUri(this.connId, s.uri.uri, true, true)
                     const stackUri = "stackUri" in s ? s.stackUri : undefined
