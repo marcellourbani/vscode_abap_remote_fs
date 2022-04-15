@@ -5,7 +5,7 @@ import {
 import { newClientFromKey } from "./functions"
 import { log, caughtToString } from "../../lib"
 import { DebugProtocol } from "vscode-debugprotocol"
-import { Disposable, EventEmitter, Uri } from "vscode"
+import { Disposable, EventEmitter } from "vscode"
 import { Handles, Scope, Source, StoppedEvent, TerminatedEvent } from "vscode-debugadapter"
 import { vsCodeUri } from "../../langClient"
 import { isObject } from "abap-adt-api/build/utilities"
@@ -20,6 +20,7 @@ export interface DebuggerUI {
 }
 interface Variable {
     id: string,
+    threadId: number,
     name: string,
     meta?: DebugMetaType,
     lines?: number
@@ -53,6 +54,8 @@ interface AdtEvent {
     threadId: number
 }
 export const isAdtEvent = (e: any): e is AdtEvent => isObject(e) && e.adtEventType === "detached"
+const isDebugVariable = (v: DebugVariable | { id: string; name: string }): v is DebugVariable => "ID" in v
+
 // tslint:disable-next-line:max-classes-per-file
 export class DebugService {
     private killed = false
@@ -60,7 +63,7 @@ export class DebugService {
     private listeners: Disposable[] = []
     private stackTrace: StackFrame[] = []
     private currentStackId?: number
-    private variableHandles = new Handles<Variable>()
+    private variableHandles = new Handles<Variable>(STACK_THREAD_MULTIPLIER * this.threadId)
     private readonly mode: DebuggingMode
     private doRefresh?: NodeJS.Timeout
     sessionNumber: number
@@ -102,8 +105,14 @@ export class DebugService {
         return this.stackTrace
     }
 
+    createVariable(v: DebugVariable | { id: string, name: string }) {
+        if (isDebugVariable(v))
+            return this.variableHandles.create({ id: v.ID, name: v.NAME, lines: v.TABLE_LINES, meta: v.META_TYPE, threadId: this.threadId })
+        return this.variableHandles.create({ id: v.id, name: v.name, threadId: this.threadId })
+    }
+
     async getScopes(frameId: number) {
-        this.variableHandles.reset()
+        this.variableHandles = new Handles(STACK_THREAD_MULTIPLIER * this.threadId)
         const currentStack = this.stackTrace.find(s => s.id === frameId)
         if (currentStack && !isNaN(currentStack.stackPosition) && frameId !== this.currentStackId) {
             await this.client.debuggerGoToStack(currentStack.stackUri || currentStack.stackPosition)
@@ -112,10 +121,11 @@ export class DebugService {
         const { hierarchies } = await this.client.debuggerChildVariables(["@ROOT"])
         const scopes = hierarchies.map(h => {
             const name = h.CHILD_NAME || h.CHILD_ID
-            const handler = this.variableHandles.create({ id: h.CHILD_ID, name })
+            const handler = this.createVariable({ id: h.CHILD_ID, name })
             return new Scope(name, handler, true)
         })
-        scopes.push(new Scope("SY", this.variableHandles.create({ id: "SY", name: "SY" }), true))
+        const syhandler = this.createVariable({ id: "SY", name: "SY" })
+        scopes.push(new Scope("SY", syhandler, true))
         return scopes
     }
 
@@ -131,7 +141,7 @@ export class DebugService {
     async evaluate(expression: string) {
         const v = await this.client.debuggerVariables([expression])
         if (!v[0]) return
-        const variablesReference = this.variableHandles.create({ id: v[0].ID, name: v[0].NAME, lines: v[0].TABLE_LINES, meta: v[0].META_TYPE })
+        const variablesReference = this.createVariable(v[0])
         return { result: variableValue(v[0]), variablesReference }
     }
 
@@ -142,9 +152,7 @@ export class DebugService {
             const variables: DebugProtocol.Variable[] = children.map(v => ({
                 name: `${v.NAME}`,
                 value: variableValue(v),
-                variablesReference: debugMetaIsComplex(v.META_TYPE) ?
-                    this.variableHandles.create({ name: v.NAME, id: v.ID, meta: v.META_TYPE, lines: v.TABLE_LINES })
-                    : 0,
+                variablesReference: debugMetaIsComplex(v.META_TYPE) ? this.createVariable(v) : 0,
                 memoryReference: `${v.ID}`
             }))
             return variables
@@ -241,3 +249,5 @@ export class DebugService {
         await this.client.logout()
     }
 }
+
+

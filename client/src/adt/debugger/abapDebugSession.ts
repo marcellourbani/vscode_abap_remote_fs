@@ -22,6 +22,7 @@ export interface AbapDebugSessionCfg extends DebugSession {
 
 export class AbapDebugSession extends LoggingDebugSession {
     private static sessions = new Map<string, AbapDebugSession>()
+    currentVariableThread: number = 0
     static byConnection(connId: string) {
         return AbapDebugSession.sessions.get(connId)
     }
@@ -54,27 +55,29 @@ export class AbapDebugSession extends LoggingDebugSession {
         this.sendResponse(response)
     }
 
-    protected stepInRequest(response: DebugProtocol.StepInResponse, args: DebugProtocol.StepInArguments): void {
+    protected async stepInRequest(response: DebugProtocol.StepInResponse, args: DebugProtocol.StepInArguments): Promise<void> {
         const service = this.listener.service(args.threadId)
-        service.debuggerStep("stepInto", args.threadId)
+        await service.debuggerStep("stepInto", args.threadId)
         this.sendResponse(response)
     }
 
-    protected continueRequest(response: DebugProtocol.ContinueResponse, args: DebugProtocol.ContinueArguments): void {
+    protected async continueRequest(response: DebugProtocol.ContinueResponse, args: DebugProtocol.ContinueArguments): Promise<void> {
         const service = this.listener.service(args.threadId)
-        service.debuggerStep("stepContinue", args.threadId)
+        await service.debuggerStep("stepContinue", args.threadId)
+        if (!response.body) response.body = {}
+        response.body.allThreadsContinued = false
         this.sendResponse(response)
     }
 
-    protected nextRequest(response: DebugProtocol.NextResponse, args: DebugProtocol.NextArguments): void {
+    protected async nextRequest(response: DebugProtocol.NextResponse, args: DebugProtocol.NextArguments): Promise<void> {
         const service = this.listener.service(args.threadId)
-        service.debuggerStep("stepOver", args.threadId)
+        await service.debuggerStep("stepOver", args.threadId)
         this.sendResponse(response)
     }
 
-    protected stepOutRequest(response: DebugProtocol.StepOutResponse, args: DebugProtocol.StepOutArguments): void {
+    protected async stepOutRequest(response: DebugProtocol.StepOutResponse, args: DebugProtocol.StepOutArguments): Promise<void> {
         const service = this.listener.service(args.threadId)
-        service.debuggerStep("stepReturn", args.threadId)
+        await service.debuggerStep("stepReturn", args.threadId)
         this.sendResponse(response)
     }
 
@@ -116,29 +119,35 @@ export class AbapDebugSession extends LoggingDebugSession {
     }
 
     protected async scopesRequest(response: DebugProtocol.ScopesResponse, args: DebugProtocol.ScopesArguments) {
-        const service = this.listener.service(frameThread(args.frameId))
+        this.currentVariableThread = frameThread(args.frameId)
+        const service = this.listener.service(this.currentVariableThread)
         response.body = { scopes: await service.getScopes(args.frameId) }
         this.sendResponse(response)
     }
     protected async setVariableRequest(response: DebugProtocol.SetVariableResponse, args: DebugProtocol.SetVariableArguments, request?: DebugProtocol.Request) {
-        const service = this.listener.service()
-        const { value, success } = await service.setVariable(args.variablesReference, args.name, args.value)
+        const { value, success } = await this.currentService.setVariable(args.variablesReference, args.name, args.value)
         response.body = { value }
         response.success = success
         this.sendResponse(response)
     }
 
     protected async variablesRequest(response: DebugProtocol.VariablesResponse, args: DebugProtocol.VariablesArguments, request?: DebugProtocol.Request) {
-        const service = this.listener.service()
-        response.body = { variables: await service.getVariables(args.variablesReference) }
+        response.body = { variables: await this.currentService.getVariables(args.variablesReference) }
         this.sendResponse(response)
     }
 
     protected async evaluateRequest(response: DebugProtocol.EvaluateResponse, args: DebugProtocol.EvaluateArguments, request?: DebugProtocol.Request) {
-        const service = this.listener.service()
-        const v = await service.evaluate(args.expression)
+        const v = await this.currentService.evaluate(args.expression)
         if (v) response.body = v
         this.sendResponse(response)
+    }
+
+    get currentService() {
+        try {
+            return this.listener.service(this.currentVariableThread)
+        } catch (error) {
+            return this.listener.service()
+        }
     }
 
     protected initializeRequest(response: DebugProtocol.InitializeResponse, args: DebugProtocol.InitializeRequestArguments): void {
