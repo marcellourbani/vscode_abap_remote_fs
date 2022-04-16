@@ -1,16 +1,16 @@
 import { ADTClient, Debuggee, isDebugListenerError, DebuggingMode, isAdtError } from "abap-adt-api"
 import { readFileSync, writeFileSync, existsSync, mkdirSync } from "fs"
-import { log, caughtToString } from "../../lib"
+import { log, caughtToString, ignore } from "../../lib"
 import { DebugProtocol } from "vscode-debugprotocol"
 import { Disposable, EventEmitter } from "vscode"
 import { getOrCreateClient } from "../conections"
 import { homedir } from "os"
 import { join } from "path"
-import { StoppedEvent, TerminatedEvent } from "vscode-debugadapter"
+import { StoppedEvent, TerminatedEvent, ThreadEvent } from "vscode-debugadapter"
 import { v1 } from "uuid"
 import { getWinRegistryReader } from "./winregistry"
 import { context } from "../../extension"
-import { DebugService, isAdtEvent } from "./debugService"
+import { DebugService } from "./debugService"
 import { isUndefined } from "abap-adt-api/build/utilities"
 import { BreakpointManager } from "./breakpointManager"
 
@@ -18,6 +18,8 @@ type ConflictResult = { with: "none" } | { with: "other" | "myself", message?: s
 
 const ATTACHTIMEOUT = "autoAttachTimeout"
 const sessionNumbers = new Map<string, number>()
+
+export const THREAD_EXITED = "exited"
 
 export interface DebuggerUI {
     Confirmator: (message: string) => Thenable<boolean>
@@ -106,7 +108,7 @@ export class DebugListener {
     }
 
     service(threadid?: number) {
-        const service = isUndefined(threadid) ? [...this.services.values()][0] : this.services.get(threadid)
+        const service = isUndefined(threadid) ? this.services.values().next().value : this.services.get(threadid)
         if (!service) throw new Error(`No service for threadid ${threadid}`)
         return service
     }
@@ -120,7 +122,12 @@ export class DebugListener {
     }
 
     private debuggerListen() {
-        return this.client.statelessClone.debuggerListen(this.mode, this.terminalId, this.ideId, this.username)
+        try {
+            this.listening = true
+            return this.client.statelessClone.debuggerListen(this.mode, this.terminalId, this.ideId, this.username)
+        } finally {
+            this.listening = false
+        }
     }
 
     private async hasConflict(): Promise<ConflictResult> {
@@ -166,15 +173,14 @@ export class DebugListener {
 
     }
 
-
     private async mainLoop() {
         this.active = true
+        let startTime = 0
         while (this.active) {
             try {
                 log(`Debugger ${this.sessionNumber} listening on connection  ${this.connId}`)
-                this.listening = true
+                startTime = new Date().getTime()
                 const debuggee = await this.debuggerListen()
-                this.listening = false
                 if (!debuggee || !this.active) continue
                 log(`Debugger ${this.sessionNumber} disconnected`)
                 if (isDebugListenerError(debuggee)) {
@@ -185,7 +191,6 @@ export class DebugListener {
                 log(`Debugger ${this.sessionNumber} on connection  ${this.connId} reached a breakpoint`)
                 await this.onBreakpointReached(debuggee)
             } catch (error) {
-                this.listening = false
                 if (!this.active) return
                 if (!isAdtError(error)) {
                     this.ui.ShowError(`Error listening to debugger: ${caughtToString(error)}`)
@@ -203,11 +208,24 @@ export class DebugListener {
                             // this.refresh()
                             break
                         default:
-                            const quit = await this.ui.Confirmator(`Error listening to debugger: ${caughtToString(error)} Close session?`)
-                            if (quit) await this.stopDebugging()
+                            const elapsed = new Date().getTime() - startTime
+                            if (elapsed < 50000) { // greater is likely a timeout
+                                const quit = await this.ui.Confirmator(`Error listening to debugger: ${caughtToString(error)} Close session?`)
+                                if (quit) await this.stopDebugging()
+                            }
                     }
                 }
             }
+        }
+    }
+
+    private async stopThread(threadid: number) {
+        const thread = this.services.get(threadid)
+        this.services.delete(threadid)
+        if (thread) {
+            await this.breakpointManager.removeAllBreakpoints(thread).catch(ignore)
+            await thread.client.debuggerStep("stepContinue").catch(ignore)
+            await thread.logout()
         }
     }
 
@@ -219,10 +237,8 @@ export class DebugListener {
             this.services.set(threadid, service)
             await service.attach()
             service.addListener(e => {
-                if (isAdtEvent(e)) {
-                    if (e.adtEventType === "detached") this.services.delete(threadid)
-                } else
-                    this.notifier.fire(e)
+                if (e instanceof ThreadEvent && e.body.reason === THREAD_EXITED) this.stopThread(threadid)
+                this.notifier.fire(e)
             })
             this.notifier.fire(new StoppedEvent("breakpoint", threadid))
         } catch (error) {
@@ -242,26 +258,18 @@ export class DebugListener {
 
     public async stopDebugging(stopDebugger = true) {
         this.active = false
-        if (stopDebugger) {
-            const c = this.client.statelessClone
-            const running = await c.debuggerListeners("user", this.terminalId, this.ideId, this.username).catch(isConflictError)
-            if (running) await this.stopListener()
-        }
         this.notifier.fire(new TerminatedEvent())
     }
 
     public async logout() {
-        const ignore = () => undefined
         this.active = false
         if (this.killed) return
+        this.killed = true
         const stop = this.listening && this.stopListener().catch(ignore)
         await stop
         if (this.listening) await this.stopListener()
-        const stopServices = [...this.services.values()].map(s => s.logout().catch(ignore))
-        this.services.clear()
+        const stopServices = [...this.services.keys()].map(s => this.stopThread(s))
         const proms: Promise<any>[] = [...stopServices]
-        if (stop) proms.push(stop)
-        this.killed = true
 
         await Promise.all(proms)
     }

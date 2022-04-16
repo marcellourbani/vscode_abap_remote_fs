@@ -11,6 +11,8 @@ export const pick = <T, K extends keyof T>(name: K) => (x: T): T[K] => x[name]
 export const flat = <T>(a: T[][]): T[] =>
   a.reduce((res, current) => [...res, ...current], [])
 
+export const ignore = () => {/* make linter happy */ }
+
 export const flatMap = <T1, T2>(
   arr: T1[],
   cb: (c: T1, idx?: number, arrref?: T1[]) => T2[]

@@ -3,12 +3,12 @@ import {
     DebuggingMode, isAdtError
 } from "abap-adt-api"
 import { newClientFromKey } from "./functions"
-import { log, caughtToString } from "../../lib"
+import { log, caughtToString, ignore } from "../../lib"
 import { DebugProtocol } from "vscode-debugprotocol"
 import { Disposable, EventEmitter } from "vscode"
-import { Handles, Scope, Source, StoppedEvent, TerminatedEvent } from "vscode-debugadapter"
+import { Handles, Scope, Source, StoppedEvent, ThreadEvent } from "vscode-debugadapter"
 import { vsCodeUri } from "../../langClient"
-import { isObject } from "abap-adt-api/build/utilities"
+import { THREAD_EXITED } from "./debugListener"
 const STACK_THREAD_MULTIPLIER = 10000
 
 const ATTACHTIMEOUT = "autoAttachTimeout"
@@ -53,13 +53,13 @@ interface AdtEvent {
     adtEventType: "detached",
     threadId: number
 }
-export const isAdtEvent = (e: any): e is AdtEvent => isObject(e) && e.adtEventType === "detached"
+
 const isDebugVariable = (v: DebugVariable | { id: string; name: string }): v is DebugVariable => "ID" in v
 
 // tslint:disable-next-line:max-classes-per-file
 export class DebugService {
     private killed = false
-    private notifier: EventEmitter<DebugProtocol.Event | AdtEvent> = new EventEmitter()
+    private notifier: EventEmitter<DebugProtocol.Event> = new EventEmitter()
     private listeners: Disposable[] = []
     private stackTrace: StackFrame[] = []
     private currentStackId?: number
@@ -97,7 +97,7 @@ export class DebugService {
         await this.updateStack()
     }
 
-    addListener(listener: (e: DebugProtocol.Event | AdtEvent) => any, thisArg?: any) {
+    addListener(listener: (e: DebugProtocol.Event) => any, thisArg?: any) {
         return this.notifier.event(listener, thisArg, this.listeners)
     }
 
@@ -161,13 +161,6 @@ export class DebugService {
     }
 
 
-    private async stopListener() {
-        const c = this._client.statelessClone
-        return c.debuggerDeleteListener(this.mode, this.terminalId, this.ideId, this.username)
-    }
-
-
-
     async setVariable(reference: number, name: string, inputValue: string) {
         try {
             const h = this.variableHandles.get(reference)
@@ -199,11 +192,9 @@ export class DebugService {
             if (!isAdtError(error)) {
                 this.ui.ShowError(`Error in debugger stepping: ${caughtToString(error)}`)
             } else {
-                if (error?.properties?.["com.sap.adt.communicationFramework.subType"] === "debuggeeEnded") {
-                    await this.client.dropSession()
-                    this.notifier.fire({ adtEventType: "detached", threadId })
-                } else
+                if (error?.properties?.["com.sap.adt.communicationFramework.subType"] !== "debuggeeEnded")
                     this.ui.ShowError(error?.message || "unknown error in debugger stepping")
+                this.notifier.fire(new ThreadEvent(THREAD_EXITED, threadId))
             }
         }
     }
@@ -233,20 +224,12 @@ export class DebugService {
         }
     }
 
-    public async stopDebugging(stopDebugger = true) {
-        if (stopDebugger) {
-            const c = this.client.statelessClone
-            const running = await c.debuggerListeners("user", this.terminalId, this.ideId, this.username).catch(isConflictError)
-            if (running) await this.stopListener()
-        }
-        this.notifier.fire(new TerminatedEvent())
-    }
-
     public async logout() {
         if (this.killed) return
+        const client = this.client
         this.killed = true
-        await this.client.statelessClone.logout()
-        await this.client.logout()
+        await client.statelessClone.logout().catch(ignore)
+        await client.logout()
     }
 }
 

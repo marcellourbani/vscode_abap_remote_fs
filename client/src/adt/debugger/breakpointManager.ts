@@ -3,9 +3,10 @@ import { AbapFile, isAbapFile } from "abapfs"
 import { Uri } from "vscode"
 import { Breakpoint, Source } from "vscode-debugadapter"
 import { DebugProtocol } from "vscode-debugprotocol"
-import { log, caughtToString } from "../../lib"
+import { log, caughtToString, ignore } from "../../lib"
 import { getClient, getRoot } from "../conections"
 import { DebugListener } from "./debugListener"
+import { DebugService } from "./debugService"
 
 class AdtBreakpoint extends Breakpoint {
     constructor(verified: boolean, readonly adtBp?: DebugBreakpoint, line?: number, column?: number, source?: Source) {
@@ -51,6 +52,13 @@ export class BreakpointManager {
         }
         return []
 
+    }
+    async removeAllBreakpoints(thread: DebugService) {
+        for (const path of this.breakpoints.keys()) {
+            const oldbps = this.getBreakpoints(path)
+            for (const bp of oldbps)
+                if (bp.adtBp) await thread.client.debuggerDeleteBreakpoints(bp.adtBp, "user", this.terminalId, this.ideId, this.username, "debugger").catch(ignore)
+        }
     }
     private async syncBreakpoints(node: AbapFile, breakpoints: DebugProtocol.SourceBreakpoint[], path: string, name?: string) {
         const objuri = node.object.contentsPath()
