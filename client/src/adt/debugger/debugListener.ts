@@ -1,6 +1,6 @@
 import { ADTClient, Debuggee, isDebugListenerError, DebuggingMode, isAdtError } from "abap-adt-api"
 import { readFileSync, writeFileSync, existsSync, mkdirSync } from "fs"
-import { log, caughtToString, ignore } from "../../lib"
+import { log, caughtToString, ignore, isUnDefined, firstInMap } from "../../lib"
 import { DebugProtocol } from "vscode-debugprotocol"
 import { Disposable, EventEmitter } from "vscode"
 import { getOrCreateClient } from "../conections"
@@ -11,8 +11,8 @@ import { v1 } from "uuid"
 import { getWinRegistryReader } from "./winregistry"
 import { context } from "../../extension"
 import { DebugService } from "./debugService"
-import { isUndefined } from "abap-adt-api/build/utilities"
 import { BreakpointManager } from "./breakpointManager"
+import { VariableManager } from "./variableManager"
 
 type ConflictResult = { with: "none" } | { with: "other" | "myself", message?: string }
 
@@ -72,6 +72,7 @@ export class DebugListener {
     private listeners: Disposable[] = []
     readonly mode: DebuggingMode
     readonly breakpointManager
+    readonly variableManager
     sessionNumber: number
     private services = new Map<number, DebugService>()
     listening = false
@@ -94,6 +95,7 @@ export class DebugListener {
         this.mode = terminalMode ? "terminal" : "user"
         if (!this.username) this.username = _client.username.toUpperCase()
         this.breakpointManager = new BreakpointManager(this)
+        this.variableManager = new VariableManager(this)
     }
 
     public static async create(connId: string, ui: DebuggerUI, username: string, terminalMode: boolean) {
@@ -107,10 +109,13 @@ export class DebugListener {
         return this.notifier.event(listener, thisArg, this.listeners)
     }
 
-    service(threadid?: number) {
-        const service = isUndefined(threadid) ? this.services.values().next().value : this.services.get(threadid)
+    service(threadid?: number): DebugService {
+        const service = isUnDefined(threadid) ? firstInMap(this.services)?.[1] : this.services.get(threadid)
         if (!service) throw new Error(`No service for threadid ${threadid}`)
         return service
+    }
+    hasService(threadid: number): boolean {
+        return this.services.has(threadid)
     }
 
     private async stopListener(norestart = true) {
@@ -132,13 +137,13 @@ export class DebugListener {
 
     private async hasConflict(): Promise<ConflictResult> {
         try {
-            await this.client.statelessClone.debuggerListeners(this.mode, this.terminalId, this.ideId, this.username)
+            await this.client.debuggerListeners(this.mode, this.terminalId, this.ideId, this.username)
         } catch (error: any) {
             if (isConflictError(error)) return { with: "other", message: error?.properties?.conflictText }
             throw error
         }
         try {
-            await this.client.statelessClone.debuggerListeners(this.mode, this.terminalId, "", this.username)
+            await this.client.debuggerListeners(this.mode, this.terminalId, "", this.username)
         } catch (error: any) {
             if (isConflictError(error)) return { with: "myself", message: error?.properties?.conflictText }
             throw error
@@ -189,7 +194,7 @@ export class DebugListener {
                     break
                 }
                 log(`Debugger ${this.sessionNumber} on connection  ${this.connId} reached a breakpoint`)
-                await this.onBreakpointReached(debuggee)
+                this.onBreakpointReached(debuggee)
             } catch (error) {
                 if (!this.active) return
                 if (!isAdtError(error)) {
@@ -231,9 +236,10 @@ export class DebugListener {
 
     private async onBreakpointReached(debuggee: Debuggee) {
         try {
-            const threadid = this.nextthreadid()
             const service = await DebugService.create(this.connId,
-                this.ui, this.username, this.mode === "terminal", this.terminalId, this.ideId, debuggee, threadid)
+                this.ui, this.username, this.mode, debuggee)
+            const threadid = this.nextthreadid()
+            service.threadId = threadid
             this.services.set(threadid, service)
             await service.attach()
             service.addListener(e => {

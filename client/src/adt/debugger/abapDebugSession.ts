@@ -9,7 +9,6 @@ import { getRoot } from "../conections"
 import { isAbapFile } from "abapfs"
 import { caughtToString } from "../../lib"
 import { DebugListener } from "./debugListener"
-import { frameThread } from "./debugService"
 
 export interface AbapDebugConfiguration extends DebugConfiguration {
     connId: string,
@@ -22,7 +21,6 @@ export interface AbapDebugSessionCfg extends DebugSession {
 
 export class AbapDebugSession extends LoggingDebugSession {
     private static sessions = new Map<string, AbapDebugSession>()
-    currentVariableThread: number = 0
     static byConnection(connId: string) {
         return AbapDebugSession.sessions.get(connId)
     }
@@ -119,35 +117,25 @@ export class AbapDebugSession extends LoggingDebugSession {
     }
 
     protected async scopesRequest(response: DebugProtocol.ScopesResponse, args: DebugProtocol.ScopesArguments) {
-        this.currentVariableThread = frameThread(args.frameId)
-        const service = this.listener.service(this.currentVariableThread)
-        response.body = { scopes: await service.getScopes(args.frameId) }
+        response.body = { scopes: await this.listener.variableManager.getScopes(args.frameId) }
         this.sendResponse(response)
     }
     protected async setVariableRequest(response: DebugProtocol.SetVariableResponse, args: DebugProtocol.SetVariableArguments, request?: DebugProtocol.Request) {
-        const { value, success } = await this.currentService.setVariable(args.variablesReference, args.name, args.value)
+        const { value, success } = await this.listener.variableManager.setVariable(args.variablesReference, args.name, args.value)
         response.body = { value }
         response.success = success
         this.sendResponse(response)
     }
 
     protected async variablesRequest(response: DebugProtocol.VariablesResponse, args: DebugProtocol.VariablesArguments, request?: DebugProtocol.Request) {
-        response.body = { variables: await this.currentService.getVariables(args.variablesReference) }
+        response.body = { variables: await this.listener.variableManager.getVariables(args.variablesReference) }
         this.sendResponse(response)
     }
 
     protected async evaluateRequest(response: DebugProtocol.EvaluateResponse, args: DebugProtocol.EvaluateArguments, request?: DebugProtocol.Request) {
-        const v = await this.currentService.evaluate(args.expression)
+        const v = await this.listener.variableManager.evaluate(args.expression)
         if (v) response.body = v
         this.sendResponse(response)
-    }
-
-    get currentService() {
-        try {
-            return this.listener.service(this.currentVariableThread)
-        } catch (error) {
-            return this.listener.service()
-        }
     }
 
     protected initializeRequest(response: DebugProtocol.InitializeResponse, args: DebugProtocol.InitializeRequestArguments): void {

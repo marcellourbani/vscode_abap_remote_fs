@@ -13,6 +13,11 @@ export const flat = <T>(a: T[][]): T[] =>
 
 export const ignore = () => {/* make linter happy */ }
 
+export const firstInMap = <K, V>(map: Map<K, V>): [K, V] | undefined => {
+  const first = map.entries().next()
+  if (!first.done) return first.value
+}
+
 export const flatMap = <T1, T2>(
   arr: T1[],
   cb: (c: T1, idx?: number, arrref?: T1[]) => T2[]

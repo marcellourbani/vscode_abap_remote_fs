@@ -9,6 +9,7 @@ import * as R from "ramda"
 import { AbapFile } from "abapfs"
 import { AdtObjectActivator } from "../../adt/operations/AdtObjectActivator"
 import { atcRefresh } from "./commands"
+import { AbapObjectBase } from "abapobject/out/AbapObject"
 
 // tslint:disable:max-classes-per-file
 
@@ -162,7 +163,9 @@ class AtcProvider implements TreeDataProvider<AtcNode>{
             for (const s of this.root.children) {
                 if (this.activationListeners.has(s.connectionId)) continue
                 const listener = AdtObjectActivator.get(s.connectionId).onActivate(e => {
-                    const h = s.children.find(o => o.object.name === e.object.name && o.object.objectTypeId === e.object.type)
+                    const parent = e.object instanceof AbapObjectBase ? e.object.parent : undefined
+                    const h = s.children.find(o => (o.object.name === e.object.name && o.object.objectTypeId === e.object.type)
+                        || (o.object.name === parent?.name && o.object.objectTypeId === parent?.type))
                     if (h) atcRefresh()
                 })
                 this.activationListeners.set(s.connectionId, listener)
