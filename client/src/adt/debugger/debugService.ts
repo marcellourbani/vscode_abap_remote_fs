@@ -18,7 +18,7 @@ interface StackFrame extends DebugProtocol.StackFrame {
     stackUri?: string
 }
 
-export const frameThread = (frameId: number) => Math.floor(frameId / STACK_THREAD_MULTIPLIER)
+export const idThread = (frameId: number) => Math.floor(frameId / STACK_THREAD_MULTIPLIER)
 
 
 export class DebugService {

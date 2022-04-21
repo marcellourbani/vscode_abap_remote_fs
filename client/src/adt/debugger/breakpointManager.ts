@@ -61,6 +61,7 @@ export class BreakpointManager {
         }
     }
     private async syncBreakpoints(node: AbapFile, breakpoints: DebugProtocol.SourceBreakpoint[], path: string, name?: string) {
+        if (!node.object.structure) await node.object.loadStructure()
         const objuri = node.object.contentsPath()
         const bps = breakpoints.map(b => `${objuri}#start=${b.line}`)
         const uri = Uri.parse(path)

@@ -21,6 +21,7 @@ export interface AbapDebugSessionCfg extends DebugSession {
 
 export class AbapDebugSession extends LoggingDebugSession {
     private static sessions = new Map<string, AbapDebugSession>()
+    threadid: number = 0
     static byConnection(connId: string) {
         return AbapDebugSession.sessions.get(connId)
     }
@@ -49,7 +50,7 @@ export class AbapDebugSession extends LoggingDebugSession {
     }
 
     protected threadsRequest(response: DebugProtocol.ThreadsResponse): void {
-        response.body = { threads: this.listener.activeServices().map(([id, s]) => new Thread(id, `${s.debuggee.DEBUGGEE_ID} ${id}`)) }
+        response.body = { threads: this.listener.activeServices().map(([id, s]) => new Thread(id, `${s.debuggee.NAME} ${id}`)) }
         this.sendResponse(response)
     }
 
@@ -98,6 +99,7 @@ export class AbapDebugSession extends LoggingDebugSession {
     }
 
     protected stackTraceRequest(response: DebugProtocol.StackTraceResponse, args: DebugProtocol.StackTraceArguments): void {
+        this.threadid = args.threadId
         const service = this.listener.service(args.threadId)
         const stackFrames = service.getStack()
         response.body = {
@@ -133,7 +135,7 @@ export class AbapDebugSession extends LoggingDebugSession {
     }
 
     protected async evaluateRequest(response: DebugProtocol.EvaluateResponse, args: DebugProtocol.EvaluateArguments, request?: DebugProtocol.Request) {
-        const v = await this.listener.variableManager.evaluate(args.expression)
+        const v = await this.listener.variableManager.evaluate(args.expression, this.threadid)
         if (v) response.body = v
         this.sendResponse(response)
     }
