@@ -165,7 +165,7 @@ export class AbapDebugSession extends LoggingDebugSession {
             const n = root.getNode(s.uri.path)
             if (!isAbapFile(n)) return
             const uri = `${n.object.contentsPath()}#start=${s.line + 1}`
-            const service = session.listener.service() // TODO: threadId
+            const service = await session.listener.currentservice() // TODO: threadId
             await service.debuggerStep(stepType, 1, uri)
             session.sendEvent(new StoppedEvent("goto"))
         } catch (error) {

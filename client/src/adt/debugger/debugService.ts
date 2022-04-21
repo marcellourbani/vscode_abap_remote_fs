@@ -6,9 +6,7 @@ import { Disposable, EventEmitter } from "vscode"
 import { Source, StoppedEvent, ThreadEvent } from "vscode-debugadapter"
 import { vsCodeUri } from "../../langClient"
 import { THREAD_EXITED } from "./debugListener"
-export const STACK_THREAD_MULTIPLIER = 10000
-
-const ATTACHTIMEOUT = "autoAttachTimeout"
+export const STACK_THREAD_MULTIPLIER = 1000000000000
 
 export interface DebuggerUI {
     Confirmator: (message: string) => Thenable<boolean>

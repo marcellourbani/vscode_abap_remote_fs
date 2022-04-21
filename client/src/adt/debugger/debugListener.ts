@@ -76,6 +76,8 @@ export class DebugListener {
     sessionNumber: number
     private services = new Map<number, DebugService>()
     listening = false
+    private currentThreadId?: number
+    private threadCreation?: Promise<void>
 
     public get client() {
         if (this.killed) throw new Error("Disconnected")
@@ -109,10 +111,15 @@ export class DebugListener {
         return this.notifier.event(listener, thisArg, this.listeners)
     }
 
-    service(threadid?: number): DebugService {
-        const service = isUnDefined(threadid) ? firstInMap(this.services)?.[1] : this.services.get(threadid)
+    service(threadid: number): DebugService {
+        const service = this.services.get(threadid)
         if (!service) throw new Error(`No service for threadid ${threadid}`)
+        this.currentThreadId = threadid
         return service
+    }
+    async currentservice() {
+        await this.threadCreation
+        return this.service(this.currentThreadId || 0)
     }
     hasService(threadid: number): boolean {
         return this.services.has(threadid)
@@ -227,6 +234,7 @@ export class DebugListener {
     private async stopThread(threadid: number) {
         const thread = this.services.get(threadid)
         this.services.delete(threadid)
+        if (this.currentThreadId === threadid) this.currentThreadId = undefined
         if (thread) {
             await this.breakpointManager.removeAllBreakpoints(thread).catch(ignore)
             await thread.client.debuggerStep("stepContinue").catch(ignore)
@@ -241,12 +249,17 @@ export class DebugListener {
             const threadid = this.nextthreadid()
             service.threadId = threadid
             this.services.set(threadid, service)
-            await service.attach()
-            service.addListener(e => {
-                if (e instanceof ThreadEvent && e.body.reason === THREAD_EXITED) this.stopThread(threadid)
-                this.notifier.fire(e)
-            })
-            this.notifier.fire(new StoppedEvent("breakpoint", threadid))
+            const creation = (async () => {
+                await service.attach()
+                service.addListener(e => {
+                    if (e instanceof ThreadEvent && e.body.reason === THREAD_EXITED) this.stopThread(threadid)
+                    this.notifier.fire(e)
+                })
+                this.currentThreadId = threadid
+                this.notifier.fire(new StoppedEvent("breakpoint", threadid))
+            })()
+            this.threadCreation = creation.finally(() => this.threadCreation = undefined)
+            await creation
         } catch (error) {
             log(`${error}`)
             await this.stopDebugging()
