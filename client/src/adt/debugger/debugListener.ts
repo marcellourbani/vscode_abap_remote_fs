@@ -1,4 +1,4 @@
-import { ADTClient, Debuggee, isDebugListenerError, DebuggingMode, isAdtError } from "abap-adt-api"
+import { ADTClient, Debuggee, isDebugListenerError, DebuggingMode, isAdtError, session_types } from "abap-adt-api"
 import { readFileSync, writeFileSync, existsSync, mkdirSync } from "fs"
 import { log, caughtToString, ignore, isUnDefined, firstInMap } from "../../lib"
 import { DebugProtocol } from "vscode-debugprotocol"
@@ -10,9 +10,11 @@ import { StoppedEvent, TerminatedEvent, ThreadEvent } from "vscode-debugadapter"
 import { v1 } from "uuid"
 import { getWinRegistryReader } from "./winregistry"
 import { context } from "../../extension"
-import { DebugService } from "./debugService"
+import { DebugService, isEnded } from "./debugService"
 import { BreakpointManager } from "./breakpointManager"
 import { VariableManager } from "./variableManager"
+import { configFromKey } from "../../langClient"
+import { newClientFromKey } from "./functions"
 
 type ConflictResult = { with: "none" } | { with: "other" | "myself", message?: string }
 
@@ -78,6 +80,7 @@ export class DebugListener {
     listening = false
     private currentThreadId?: number
     private threadCreation?: Promise<void>
+    maxThreads = 4
 
     public get client() {
         if (this.killed) throw new Error("Disconnected")
@@ -143,14 +146,15 @@ export class DebugListener {
     }
 
     private async hasConflict(): Promise<ConflictResult> {
+        const client = (await newClientFromKey(this.connId)) || this.client
         try {
-            await this.client.debuggerListeners(this.mode, this.terminalId, this.ideId, this.username)
+            await client.debuggerListeners(this.mode, this.terminalId, this.ideId, this.username)
         } catch (error: any) {
             if (isConflictError(error)) return { with: "other", message: error?.properties?.conflictText }
             throw error
         }
         try {
-            await this.client.debuggerListeners(this.mode, this.terminalId, "", this.username)
+            await client.debuggerListeners(this.mode, this.terminalId, "", this.username)
         } catch (error: any) {
             if (isConflictError(error)) return { with: "myself", message: error?.properties?.conflictText }
             throw error
@@ -187,6 +191,8 @@ export class DebugListener {
 
     private async mainLoop() {
         this.active = true
+        const cfg = await configFromKey(this.connId)
+        this.maxThreads = cfg.maxDebugThreads || 4
         let startTime = 0
         while (this.active) {
             try {
@@ -244,6 +250,7 @@ export class DebugListener {
 
     private async onBreakpointReached(debuggee: Debuggee) {
         try {
+            if (this.services.size >= this.maxThreads) return this.resume(debuggee)
             const service = await DebugService.create(this.connId,
                 this.ui, this.username, this.mode, debuggee)
             const threadid = this.nextthreadid()
@@ -261,6 +268,20 @@ export class DebugListener {
             this.threadCreation = creation.finally(() => this.threadCreation = undefined)
             await creation
         } catch (error) {
+            log(`${error}`)
+            await this.stopDebugging()
+        }
+    }
+    private async resume(debuggee: Debuggee) {
+        try {
+            const client = await newClientFromKey(this.connId)
+            if (!client) throw new Error("Failed to connect to debuggee")
+            client.stateful = session_types.stateful
+            await client.debuggerAttach(this.mode, debuggee.DEBUGGEE_ID, this.username, true)
+            while (true)
+                await client.debuggerStep("stepContinue")
+        } catch (error) {
+            if (isEnded(error)) return
             log(`${error}`)
             await this.stopDebugging()
         }
@@ -284,9 +305,11 @@ export class DebugListener {
         this.active = false
         if (this.killed) return
         this.killed = true
-        const stop = this.listening && this.stopListener().catch(ignore)
-        await stop
-        if (this.listening) await this.stopListener()
+        if (this.listening) await this.stopListener().catch(ignore)
+        // else {
+        //     const conflict = await this.hasConflict()
+        //     if (conflict.with === "myself") await this.stopListener().catch(ignore)
+        // }
         const stopServices = [...this.services.keys()].map(s => this.stopThread(s))
         const proms: Promise<any>[] = [...stopServices]
 

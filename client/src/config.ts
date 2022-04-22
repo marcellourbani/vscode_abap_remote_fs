@@ -18,6 +18,7 @@ export type GuiType = "SAPGUI" | "WEBGUI_CONTROLLED" | "WEBGUI_UNSAFE" | "WEBGUI
 
 export interface RemoteConfig extends ClientConfiguration {
   atcapprover?: string,
+  maxDebugThreads?: number,
   sapGui?: {
     disabled: boolean
     routerString: string
@@ -31,6 +32,12 @@ export interface RemoteConfig extends ClientConfiguration {
     guiType: GuiType
     browserPath?: string
   }
+}
+const defaultConfig: Partial<RemoteConfig> = {
+  maxDebugThreads: 4,
+  allowSelfSigned: false,
+  customCA: "",
+  diff_formatter: "ADT formatter"
 }
 
 export const formatKey = (raw: string) => raw.toLowerCase()
@@ -76,7 +83,7 @@ export const saveNewRemote = async (cfg: ClientConfiguration, target: Configurat
 }
 
 const config = (name: string, remote: RemoteConfig) => {
-  const conf = { ...remote, name, valid: true }
+  const conf = { ...defaultConfig, ...remote, name, valid: true }
   conf.valid = !!(remote.url && remote.username && remote.password)
   if (conf.customCA && !conf.customCA.match(/-----BEGIN CERTIFICATE-----/gi))
     try {

@@ -19,7 +19,7 @@ interface StackFrame extends DebugProtocol.StackFrame {
 }
 
 export const idThread = (frameId: number) => Math.floor(frameId / STACK_THREAD_MULTIPLIER)
-
+export const isEnded = (error: any) => (error instanceof Object) && error?.properties?.["com.sap.adt.communicationFramework.subType"] === "debuggeeEnded"
 
 export class DebugService {
     private killed = false
@@ -88,7 +88,7 @@ export class DebugService {
             if (!isAdtError(error)) {
                 this.ui.ShowError(`Error in debugger stepping: ${caughtToString(error)}`)
             } else {
-                if (error?.properties?.["com.sap.adt.communicationFramework.subType"] !== "debuggeeEnded")
+                if (!isEnded(error))
                     this.ui.ShowError(error?.message || "unknown error in debugger stepping")
                 this.notifier.fire(new ThreadEvent(THREAD_EXITED, threadId))
             }
