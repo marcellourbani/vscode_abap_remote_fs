@@ -80,13 +80,19 @@ export class VariableManager {
         }
         return client.debuggerChildVariables([parent.id]).then(r => r.variables)
     }
-    async evaluate(expression: string, threadId: number) {
-        const client = this.client(threadId)
-        if (!client) return
-        const v = await client.debuggerVariables([expression])
-        if (!v[0]) return
-        const variablesReference = this.createVariable(threadId, v[0])
-        return { result: variableValue(v[0]), variablesReference }
+    async evaluate(expression: string, frameId?: number): Promise<DebugProtocol.EvaluateResponse["body"] | undefined> {
+        try {
+            const threadId = frameId && idThread(frameId)
+            if (!threadId) return
+            const client = this.client(threadId)
+            if (!client) return
+            const v = await client.debuggerVariables([expression])
+            if (!v[0]) return
+            const variablesReference = this.createVariable(threadId, v[0])
+            return { result: variableValue(v[0]), variablesReference }
+        } catch (error) {
+            return
+        }
     }
 
     async getVariables(parentid: number) {

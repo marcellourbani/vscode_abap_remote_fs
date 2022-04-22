@@ -21,7 +21,6 @@ export interface AbapDebugSessionCfg extends DebugSession {
 
 export class AbapDebugSession extends LoggingDebugSession {
     private static sessions = new Map<string, AbapDebugSession>()
-    threadid: number = 0
     static byConnection(connId: string) {
         return AbapDebugSession.sessions.get(connId)
     }
@@ -99,7 +98,6 @@ export class AbapDebugSession extends LoggingDebugSession {
     }
 
     protected stackTraceRequest(response: DebugProtocol.StackTraceResponse, args: DebugProtocol.StackTraceArguments): void {
-        this.threadid = args.threadId
         const service = this.listener.service(args.threadId)
         const stackFrames = service.getStack()
         response.body = {
@@ -135,8 +133,9 @@ export class AbapDebugSession extends LoggingDebugSession {
     }
 
     protected async evaluateRequest(response: DebugProtocol.EvaluateResponse, args: DebugProtocol.EvaluateArguments, request?: DebugProtocol.Request) {
-        const v = await this.listener.variableManager.evaluate(args.expression, this.threadid)
+        const v = await this.listener.variableManager.evaluate(args.expression, args.frameId)
         if (v) response.body = v
+        else response.success = false
         this.sendResponse(response)
     }
 
