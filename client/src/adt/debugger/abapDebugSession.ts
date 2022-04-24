@@ -5,7 +5,7 @@ import { DebugProtocol } from 'vscode-debugprotocol'
 import { AbapFsCommands, command } from "../../commands"
 import { currentEditState } from "../../commands/commands"
 import { DebugStepType } from "abap-adt-api"
-import { getRoot } from "../conections"
+import { ADTSCHEME, getRoot } from "../conections"
 import { isAbapFile } from "abapfs"
 import { caughtToString } from "../../lib"
 import { DebugListener } from "./debugListener"
@@ -20,6 +20,7 @@ export interface AbapDebugSessionCfg extends DebugSession {
 }
 
 export class AbapDebugSession extends LoggingDebugSession {
+    private closed?: () => void
     private static sessions = new Map<string, AbapDebugSession>()
     static byConnection(connId: string) {
         return AbapDebugSession.sessions.get(connId)
@@ -46,7 +47,12 @@ export class AbapDebugSession extends LoggingDebugSession {
     public async logOut() {
         await this.listener.logout()
         AbapDebugSession.sessions.delete(this.connId)
+        if (this.closed) this.closed()
     }
+    public onClose(closeCb: () => void) {
+        this.closed = closeCb
+    }
+
 
     protected threadsRequest(response: DebugProtocol.ThreadsResponse): void {
         response.body = { threads: this.listener.activeServices().map(([id, s]) => new Thread(id, `${s.debuggee.NAME} ${id}`)) }
@@ -158,7 +164,7 @@ export class AbapDebugSession extends LoggingDebugSession {
 
     private static async cursorAction(stepType: DebugStepType) {
         const s = currentEditState()
-        if (!s?.client || !s.line || !s.uri) return
+        if (!s?.line || !s?.uri || s.uri.scheme !== ADTSCHEME) return
         const session = AbapDebugSession.byConnection(s.uri.authority)
         if (!session) return
         try {
@@ -168,7 +174,6 @@ export class AbapDebugSession extends LoggingDebugSession {
             const uri = `${n.object.contentsPath()}#start=${s.line + 1}`
             const service = await session.listener.currentservice() // TODO: threadId
             await service.debuggerStep(stepType, 1, uri)
-            session.sendEvent(new StoppedEvent("goto"))
         } catch (error) {
             window.showErrorMessage(caughtToString(error, `Error jumping to statement`))
         }

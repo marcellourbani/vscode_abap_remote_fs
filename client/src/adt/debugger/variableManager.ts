@@ -29,7 +29,7 @@ export class VariableManager {
         if (handle) return handle
         return this.resetHandle(threadId)
     }
-    private resetHandle(threadId: number) {
+    public resetHandle(threadId: number) {
         const handle = new Handles<Variable>(STACK_THREAD_MULTIPLIER * threadId)
         this.handles.set(threadId, handle)
         return handle

@@ -189,7 +189,8 @@ class AtcProvider implements TreeDataProvider<AtcNode>{
         this.setAutoRefresh(this.autoRefresh)
     }
 
-    async runInspector(uri: Uri, client: ADTClient) {
+    async runInspector(uri: Uri) {
+        const client = getClient(uri.authority)
         const system = await this.root.child(uri.authority, () => getVariant(client, uri.authority))
         await system.load(() => runInspector(uri, system.variant, client))
         commands.executeCommand("abapfs.atcFinds.focus")

@@ -777,11 +777,11 @@
         },
         {
           "command": "abapfs.goToCursor",
-          "when": "hideCommands.never"
+          "when": "abapfs:extensionActive && resourceScheme == adt && debugState != 'inactive'"
         },
         {
           "command": "abapfs.continueToCursor",
-          "when": "hideCommands.never"
+          "when": "abapfs:extensionActive && resourceScheme == adt && debugState != 'inactive'"
         },
         {
           "command": "abapfs.atcChecks",

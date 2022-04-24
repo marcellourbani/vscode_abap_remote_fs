@@ -1,6 +1,12 @@
 # Change Log
 
-## [1.3.3] 2022-03-12
+## Unreleased
+
+### Added
+
+- multi debugger threads
+
+## [1.3.3] 2022-04-12
 
 ### Fixed
 
@@ -18,13 +24,13 @@
 
 - some edge case in atc ignore
 
-## [1.3.1] 2022-03-07
+## [1.3.1] 2022-04-07
 
 ### Fixed
 
 - decode details for ATC findings
 
-## [1.3.0] 2022-03-07
+## [1.3.0] 2022-04-07
 
 ### Added
 
@@ -35,19 +41,19 @@
 
 - manually enter ATC approver (might not exist in local system)
 
-## [1.2.2] 2022-03-04
+## [1.2.2] 2022-04-04
 
 ### Added
 
 - object tooltip in ATC find
 
-## [1.2.1] 2022-03-04
+## [1.2.1] 2022-05-04
 
 ### Added
 
 - ATC support in older systems
 
-## [1.2.0] 2022-03-04
+## [1.2.0] 2022-04-03
 
 ### Added
 

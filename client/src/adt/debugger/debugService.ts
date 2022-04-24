@@ -5,7 +5,7 @@ import { DebugProtocol } from "vscode-debugprotocol"
 import { Disposable, EventEmitter } from "vscode"
 import { Source, StoppedEvent, ThreadEvent } from "vscode-debugadapter"
 import { vsCodeUri } from "../../langClient"
-import { THREAD_EXITED } from "./debugListener"
+import { DebugListener, THREAD_EXITED } from "./debugListener"
 export const STACK_THREAD_MULTIPLIER = 1000000000000
 
 export interface DebuggerUI {
@@ -26,8 +26,13 @@ export class DebugService {
     private notifier: EventEmitter<DebugProtocol.Event> = new EventEmitter()
     private listeners: Disposable[] = []
     private _stackTrace: StackFrame[] = []
-    private doRefresh?: NodeJS.Timeout
     public threadId: number = 0
+
+    constructor(private connId: string,
+        private _client: ADTClient,
+        private listener: DebugListener,
+        readonly debuggee: Debuggee,
+        private ui: DebuggerUI) { }
 
     get client() {
         if (this.killed) throw new Error("Disconnected")
@@ -36,22 +41,20 @@ export class DebugService {
     get stackTrace() {
         return this._stackTrace
     }
-
-    constructor(private connId: string,
-        private _client: ADTClient,
-        private username: string,
-        private readonly mode: DebuggingMode,
-        readonly debuggee: Debuggee,
-        private ui: DebuggerUI) {
-        if (!this.username) this.username = _client.username.toUpperCase()
+    private get mode() {
+        return this.listener.mode
     }
 
-    public static async create(connId: string, ui: DebuggerUI, username: string, mode: DebuggingMode, debuggee: Debuggee) {
+    private get username() {
+        return this.listener.username
+    }
+
+    public static async create(connId: string, ui: DebuggerUI, listener: DebugListener, debuggee: Debuggee) {
         const client = await newClientFromKey(connId)
         if (!client) throw new Error(`Unable to create client for${connId}`)
         client.stateful = session_types.stateful
         await client.adtCoreDiscovery()
-        const service = new DebugService(connId, client, username, mode, debuggee, ui)
+        const service = new DebugService(connId, client, listener, debuggee, ui)
         return service
     }
     public async attach() {
@@ -78,11 +81,12 @@ export class DebugService {
 
     public async debuggerStep(stepType: DebugStepType, threadId: number, url?: string) {
         try {
-            if (this.doRefresh) clearTimeout(this.doRefresh)
-            this.doRefresh = undefined
             const res = await this.baseDebuggerStep(stepType, url)
-            await this.updateStack()
-            this.notifier.fire(new StoppedEvent("breakpoint", threadId))
+            if (stepType === "stepJumpToLine") this.notifier.fire(new StoppedEvent("goto", threadId))
+            else {
+                await this.updateStack()
+                this.notifier.fire(new StoppedEvent("step", threadId))
+            }
             return res
         } catch (error) {
             if (!isAdtError(error)) {
@@ -97,6 +101,7 @@ export class DebugService {
 
     private async updateStack() {
         const stackInfo = await this.client.debuggerStackTrace(false).catch(() => undefined)
+        this.listener.variableManager.resetHandle(this.threadId)
         const createFrame = (path: string, line: number, id: number, stackPosition: number, stackUri?: string) => {
             const name = path.replace(/.*\//, "")
             const source = new Source(name, path)

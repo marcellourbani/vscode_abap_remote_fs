@@ -51,9 +51,8 @@ function currentUri() {
 export function currentEditState() {
   const uri = currentUri()
   if (!uri) return
-  const client = getClient(uri.authority)
   const line = window.activeTextEditor?.selection.active.line
-  return { uri, client, line }
+  return { uri, line }
 }
 
 export function openObject(connId: string, uri: string) {
@@ -311,7 +310,7 @@ export class AdtCommands {
 
       await window.withProgress(
         { location: ProgressLocation.Window, title: "Running ABAP Test cockpit" },
-        () => atcProvider.runInspector(state.uri, state.client)
+        () => atcProvider.runInspector(state.uri)
       )
     } catch (e) {
       return window.showErrorMessage(caughtToString(e))

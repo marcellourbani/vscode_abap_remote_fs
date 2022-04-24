@@ -25,9 +25,10 @@ export class AbapDebugAdapterFactory implements DebugAdapterDescriptorFactory {
                 await old.logOut()
             } else abort()
         }
-        const litener = await DebugListener.create(connId, ui, debugUser, terminalMode)
-        const abapSession = new AbapDebugSession(connId, litener)
+        const listener = await DebugListener.create(connId, ui, debugUser, terminalMode)
+        const abapSession = new AbapDebugSession(connId, listener)
         this.loggedinSessions.push(abapSession)
+        abapSession.onClose(() => this.sessionClosed(abapSession))
         log(`Debug session started for ${connId}, ${this.loggedinSessions.length} active sessions`)
         return new DebugAdapterInlineImplementation(abapSession)
     }
