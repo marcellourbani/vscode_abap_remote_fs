@@ -1,14 +1,11 @@
-import { DebugConfiguration, DebugSession, Disposable, window } from "vscode"
-import { InitializedEvent, LoggingDebugSession, StoppedEvent, Thread } from "vscode-debugadapter"
+import { DebugConfiguration, DebugSession, Uri } from "vscode"
+import { InitializedEvent, LoggingDebugSession, Thread } from "vscode-debugadapter"
 import { DEBUGTYPE } from "./abapConfigurationProvider"
 import { DebugProtocol } from 'vscode-debugprotocol'
-import { AbapFsCommands, command } from "../../commands"
-import { currentEditState } from "../../commands/commands"
-import { DebugStepType } from "abap-adt-api"
-import { ADTSCHEME, getRoot } from "../conections"
+import { getRoot } from "../conections"
 import { isAbapFile } from "abapfs"
 import { caughtToString } from "../../lib"
-import { DebugListener } from "./debugListener"
+import { DebugListener, errorType } from "./debugListener"
 
 export interface AbapDebugConfiguration extends DebugConfiguration {
     connId: string,
@@ -22,6 +19,7 @@ export interface AbapDebugSessionCfg extends DebugSession {
 export class AbapDebugSession extends LoggingDebugSession {
     private closed?: () => void
     private static sessions = new Map<string, AbapDebugSession>()
+    private lasttargetId = 0
     static byConnection(connId: string) {
         return AbapDebugSession.sessions.get(connId)
     }
@@ -145,9 +143,48 @@ export class AbapDebugSession extends LoggingDebugSession {
         this.sendResponse(response)
     }
 
+    protected async gotoRequest(response: DebugProtocol.GotoResponse, args: DebugProtocol.GotoArguments, request?: DebugProtocol.Request) {
+        response.success = false
+        const target = this.targets.get(args.targetId)
+        this.targets.delete(args.targetId)
+        if (target?.instructionPointerReference) {
+            try {
+                const service = this.listener.service(args.threadId)
+                await service.debuggerStep("stepJumpToLine", args.threadId, target.instructionPointerReference)
+                response.success = true
+            } catch (error) {
+                response.message = errorType(error) === "stepNotPossible" ? "Can't jump to this location" : caughtToString(error)
+            }
+        }
+        this.sendResponse(response)
+    }
+    private targets = new Map<number, DebugProtocol.GotoTarget>()
+    protected async gotoTargetsRequest(response: DebugProtocol.GotoTargetsResponse, args: DebugProtocol.GotoTargetsArguments, request?: DebugProtocol.Request) {
+        response.success = false
+        try {
+
+            if (args.source?.path) {
+                const uri = Uri.parse(args.source.path)
+                const root = getRoot(this.connId)
+                const n = await root.getNodeAsync(uri.path)
+                if (isAbapFile(n)) {
+                    const id = this.lasttargetId++
+                    if (!n.object.structure) await n.object.loadStructure()
+                    const url = `${n.object.contentsPath()}#start=${args.line}`
+                    const target = { id, label: args.source.name || "", line: args.line, instructionPointerReference: url }
+                    this.targets.set(id, target)
+                    response.success = true
+                    response.body = { targets: [target] }
+                }
+            }
+        } catch (error) { /* */ }
+        this.sendResponse(response)
+    }
+
     protected initializeRequest(response: DebugProtocol.InitializeResponse, args: DebugProtocol.InitializeRequestArguments): void {
         response.body = {
             supportsBreakpointLocationsRequest: true,
+            supportsGotoTargetsRequest: true,
             supportsCancelRequest: true,
             supportsStepInTargetsRequest: true,
             supportsConfigurationDoneRequest: true,
@@ -158,33 +195,6 @@ export class AbapDebugSession extends LoggingDebugSession {
 
         this.sendResponse(response)
         this.sendEvent(new InitializedEvent())
-    }
-
-
-
-    private static async cursorAction(stepType: DebugStepType) {
-        const s = currentEditState()
-        if (!s?.line || !s?.uri || s.uri.scheme !== ADTSCHEME) return
-        const session = AbapDebugSession.byConnection(s.uri.authority)
-        if (!session) return
-        try {
-            const root = getRoot(s.uri.authority)
-            const n = root.getNode(s.uri.path)
-            if (!isAbapFile(n)) return
-            const uri = `${n.object.contentsPath()}#start=${s.line + 1}`
-            const service = await session.listener.currentservice() // TODO: threadId
-            await service.debuggerStep(stepType, 1, uri)
-        } catch (error) {
-            window.showErrorMessage(caughtToString(error, `Error jumping to statement`))
-        }
-    }
-    @command(AbapFsCommands.goToCursor)
-    private static async runToCursor() {
-        return AbapDebugSession.cursorAction("stepJumpToLine")
-    }
-    @command(AbapFsCommands.continueToCursor)
-    private static continueToCursor() {
-        return AbapDebugSession.cursorAction("stepRunToLine")
     }
 
 }

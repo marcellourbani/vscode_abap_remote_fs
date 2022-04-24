@@ -3,7 +3,7 @@ import { AbapFile, isAbapFile } from "abapfs"
 import { Uri } from "vscode"
 import { Breakpoint, Source } from "vscode-debugadapter"
 import { DebugProtocol } from "vscode-debugprotocol"
-import { log, caughtToString, ignore } from "../../lib"
+import { log, caughtToString, ignore, isDefined } from "../../lib"
 import { getClient, getRoot } from "../conections"
 import { DebugListener } from "./debugListener"
 import { DebugService } from "./debugService"
@@ -68,6 +68,9 @@ export class BreakpointManager {
         const clientId = `24:${this.listener.connId}${uri.path}`
         const oldbps = this.getBreakpoints(path)
         const client = getClient(this.listener.connId)
+        const deleted = oldbps.map(o => o.adtBp).filter(isDefined).filter(o => breakpoints.find(b => b.line === o.uri.range.start.line))
+        for (const bp of deleted)
+            await client.statelessClone.debuggerDeleteBreakpoints(bp, "user", this.terminalId, this.ideId, this.username).catch(ignore)
         let actualbps = await client.statelessClone.debuggerSetBreakpoints(this.mode, this.terminalId, this.ideId, clientId, bps, this.username)
         const conditional = breakpoints.filter(b => b.condition)
         if (conditional.length) {
@@ -78,13 +81,10 @@ export class BreakpointManager {
             })
             actualbps = await client.statelessClone.debuggerSetBreakpoints(this.mode, this.terminalId, this.ideId, clientId, newbps, this.username)
         }
-        const deleted = oldbps.map(o => o.adtBp).filter(o => o && !breakpoints.find(b => b.line === o.uri.range.start.line))
-        for (const bp of deleted)
-            await client.statelessClone.debuggerDeleteBreakpoints(bp!, "user", this.terminalId, this.ideId, this.username)
         for (const [id, conn] of this.listener.activeServices()) {
-            await conn.client.debuggerSetBreakpoints(this.mode, this.terminalId, this.ideId, clientId, bps, this.username, "debugger")
             for (const bp of deleted)
-                await conn.client.debuggerDeleteBreakpoints(bp!, "user", this.terminalId, this.ideId, this.username, "debugger")
+                await conn.client.debuggerDeleteBreakpoints(bp, "user", this.terminalId, this.ideId, this.username, "debugger").catch(ignore)
+            await conn.client.debuggerSetBreakpoints(this.mode, this.terminalId, this.ideId, clientId, bps, this.username, "debugger").catch(ignore)
         }
 
         const confirmed = breakpoints.map(bp => {

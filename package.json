@@ -489,14 +489,6 @@
         "title": "AbapFs forget connection password"
       },
       {
-        "command": "abapfs.goToCursor",
-        "title": "AbapFs Go to statement"
-      },
-      {
-        "command": "abapfs.continueToCursor",
-        "title": "AbapFs Continue to cursor"
-      },
-      {
         "command": "abapfs.atcChecks",
         "title": "Run ABAP Test cockpit",
         "icon": "$(testing-run-icon)"
@@ -561,13 +553,8 @@
         "when": "editorTextFocus && resourceScheme == adt"
       },
       {
-        "command": "abapfs.goToCursor",
-        "key": "ctrl+shift+f9",
-        "when": "editorTextFocus && resourceScheme == adt && debugState != 'inactive'"
-      },
-      {
-        "command": "abapfs.continueToCursor",
-        "key": "ctrl+shift+f7",
+        "command": "debug.jumpToCursor",
+        "key": "shift+f12",
         "when": "editorTextFocus && resourceScheme == adt && debugState != 'inactive'"
       },
       {
@@ -774,14 +761,6 @@
         {
           "command": "abapfs.transportRunAtc",
           "when": "hideCommands.never"
-        },
-        {
-          "command": "abapfs.goToCursor",
-          "when": "abapfs:extensionActive && resourceScheme == adt && debugState != 'inactive'"
-        },
-        {
-          "command": "abapfs.continueToCursor",
-          "when": "abapfs:extensionActive && resourceScheme == adt && debugState != 'inactive'"
         },
         {
           "command": "abapfs.atcChecks",

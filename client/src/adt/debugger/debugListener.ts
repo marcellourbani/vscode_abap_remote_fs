@@ -56,7 +56,7 @@ const getOrCreateTerminalId = async () => {
     }
 }
 
-const errorType = (err: any): string | undefined => {
+export const errorType = (err: any): string | undefined => {
     try {
         const exceptionType = err?.properties?.["com.sap.adt.communicationFramework.subType"]
         if (!exceptionType && `${err.response.body}`.match(/Connection timed out/)) return ATTACHTIMEOUT
@@ -311,6 +311,10 @@ export class DebugListener {
         if (this.killed) return
         this.killed = true
         if (this.listening) await this.stopListener().catch(ignore)
+        else {
+            const conflict = await this.hasConflict()
+            if (conflict.with === "myself") await this.stopListener().catch(ignore)
+        }
         const stopServices = [...this.services.keys()].map(s => this.stopThread(s))
         const proms: Promise<any>[] = [...stopServices]
 

@@ -3,9 +3,9 @@ import { newClientFromKey } from "./functions"
 import { log, caughtToString, ignore } from "../../lib"
 import { DebugProtocol } from "vscode-debugprotocol"
 import { Disposable, EventEmitter } from "vscode"
-import { Source, StoppedEvent, ThreadEvent } from "vscode-debugadapter"
+import { ContinuedEvent, Source, StoppedEvent, ThreadEvent } from "vscode-debugadapter"
 import { vsCodeUri } from "../../langClient"
-import { DebugListener, THREAD_EXITED } from "./debugListener"
+import { DebugListener, errorType, THREAD_EXITED } from "./debugListener"
 export const STACK_THREAD_MULTIPLIER = 1000000000000
 
 export interface DebuggerUI {
@@ -19,7 +19,7 @@ interface StackFrame extends DebugProtocol.StackFrame {
 }
 
 export const idThread = (frameId: number) => Math.floor(frameId / STACK_THREAD_MULTIPLIER)
-export const isEnded = (error: any) => (error instanceof Object) && error?.properties?.["com.sap.adt.communicationFramework.subType"] === "debuggeeEnded"
+export const isEnded = (error: any) => errorType(error) === "debuggeeEnded"
 
 export class DebugService {
     private killed = false
@@ -71,9 +71,10 @@ export class DebugService {
         return this._stackTrace
     }
 
-    private async baseDebuggerStep(stepType: DebugStepType, url?: string) {
+    private async baseDebuggerStep(threadId: number, stepType: DebugStepType, url?: string) {
         if (stepType === "stepRunToLine" || stepType === "stepJumpToLine") {
             if (!url) throw new Error(`Bebugger step${stepType} requires a target`)
+            if (stepType === "stepRunToLine") this.notifier.fire(new ContinuedEvent(threadId))
             return this.client.debuggerStep(stepType, url)
         }
         return this.client.debuggerStep(stepType)
@@ -81,17 +82,15 @@ export class DebugService {
 
     public async debuggerStep(stepType: DebugStepType, threadId: number, url?: string) {
         try {
-            const res = await this.baseDebuggerStep(stepType, url)
-            if (stepType === "stepJumpToLine") this.notifier.fire(new StoppedEvent("goto", threadId))
-            else {
-                await this.updateStack()
-                this.notifier.fire(new StoppedEvent("step", threadId))
-            }
+            const res = await this.baseDebuggerStep(threadId, stepType, url)
+            await this.updateStack()
+            this.notifier.fire(new StoppedEvent("step", threadId))
             return res
         } catch (error) {
             if (!isAdtError(error)) {
                 this.ui.ShowError(`Error in debugger stepping: ${caughtToString(error)}`)
             } else {
+                if (stepType === "stepRunToLine" || stepType === "stepJumpToLine") throw error
                 if (!isEnded(error))
                     this.ui.ShowError(error?.message || "unknown error in debugger stepping")
                 this.notifier.fire(new ThreadEvent(THREAD_EXITED, threadId))
@@ -132,5 +131,4 @@ export class DebugService {
         await client.logout()
     }
 }
-
 

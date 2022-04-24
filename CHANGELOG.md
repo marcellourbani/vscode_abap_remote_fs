@@ -1,10 +1,12 @@
 # Change Log
 
-## Unreleased
+## [1.4.0] 2022-04-25
 
 ### Added
 
 - multi debugger threads
+- proper support for jump to cursor
+- jump to cursor bound to shift-f12, like sapgui
 
 ## [1.3.3] 2022-04-12
 
