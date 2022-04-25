@@ -1,5 +1,11 @@
 # Change Log
 
+## [1.4.1] 2022-04-25
+
+### Fixed
+
+- debug breakpoint sync
+
 ## [1.4.0] 2022-04-25
 
 ### Added
@@ -7,6 +13,10 @@
 - multi debugger threads
 - proper support for jump to cursor
 - jump to cursor bound to shift-f12, like sapgui
+
+### Changes
+
+- removed run to curson and go to cursor commands
 
 ## [1.3.3] 2022-04-12
 
