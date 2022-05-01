@@ -51,7 +51,6 @@ export class VariableManager {
     }
     async getScopes(frameId: number) {
         const threadId = idThread(frameId)
-        this.resetHandle(threadId)
         const client = this.client(threadId)
         if (!client) return []
         const currentStack = this.stackTrace(threadId).find(s => s.id === frameId)
@@ -88,11 +87,14 @@ export class VariableManager {
             if (!client) return
             const v = await client.debuggerVariables([expression])
             if (!v[0]) return
-            const variablesReference = this.createVariable(threadId, v[0])
-            return { result: variableValue(v[0]), variablesReference }
+            return { result: variableValue(v[0]), variablesReference: this.variableReference(v[0], threadId) }
         } catch (error) {
             return
         }
+    }
+
+    private variableReference(v: DebugVariable, threadId: number) {
+        return debugMetaIsComplex(v.META_TYPE) ? this.createVariable(threadId, v) : 0
     }
 
     async getVariables(parentid: number) {
@@ -103,7 +105,7 @@ export class VariableManager {
             const variables: DebugProtocol.Variable[] = children.map(v => ({
                 name: `${v.NAME}`,
                 value: variableValue(v),
-                variablesReference: debugMetaIsComplex(v.META_TYPE) ? this.createVariable(vari.threadId, v) : 0,
+                variablesReference: this.variableReference(v, vari.threadId),
                 memoryReference: `${v.ID}`
             }))
             return variables

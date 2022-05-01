@@ -377,6 +377,7 @@ interface AdtUriPartsInternal {
   name?: string
   start?: { line: number; character: number }
   end?: { line: number; character: number }
+  fragparms: Record<string, string>
 }
 
 const splitPos = (pos: string) => {
@@ -385,7 +386,7 @@ const splitPos = (pos: string) => {
 }
 
 export const splitAdtUriInternal = (uri: string) => {
-  const uriParts: AdtUriPartsInternal = { path: uri }
+  const uriParts: AdtUriPartsInternal = { path: uri, fragparms: {} }
   const uparts = uri.match(/^([\w]+:\/\/)?([^#\?]+\/?)(?:\?([^#]*))?(?:#(.*))?/)
   if (uparts) {
     uriParts.path = uparts[2]
@@ -401,7 +402,8 @@ export const splitAdtUriInternal = (uri: string) => {
       for (const part of fragment.split(";")) {
         const [name, value] = part.split("=")
         if (name === "name" || name === "type") uriParts[name] = value
-        if (name === "start" || name === "end") uriParts[name] = splitPos(value)
+        else if (name === "start" || name === "end") uriParts[name] = splitPos(value)
+        else uriParts.fragparms[name] = value
       }
     }
   }

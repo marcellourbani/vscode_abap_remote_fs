@@ -77,7 +77,6 @@ export class Adapter implements TestAdapter {
       const { events } = await this.model.runTests(tests)
       this.testEm.fire({ type: "finished", suite: this.model.root })
       for (const e of events) this.testStateEm.fire(e)
-      this.testStateEm.fire(runFinished)
     } catch (e) {
       // do nothing
     }

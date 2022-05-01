@@ -46,6 +46,7 @@ export class AbapRevisionLens implements CodeLensProvider {
     const quickDiff = new CodeLens(rng, {
       command: AbapFsCommands.changequickdiff,
       title,
+      tooltip: current?.versionTitle,
       arguments: [doc.uri]
     })
     const compareDiff = new CodeLens(rng, {

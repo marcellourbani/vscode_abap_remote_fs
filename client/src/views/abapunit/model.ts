@@ -1,4 +1,4 @@
-import { UnitTestClass, UnitTestMethod } from "abap-adt-api"
+import { UnitTestClass, UnitTestMethod, uriPartsToString } from "abap-adt-api"
 import { Uri, workspace } from "vscode"
 import { TestEvent, TestInfo, TestSuiteInfo } from "vscode-test-adapter-api"
 import { alertManagers } from "./alerts"
@@ -92,9 +92,10 @@ export class UnitTestModel {
 
   private async convertTestClass(c: UnitTestClass) {
     const children: AuMethod[] = []
-
+    const client = getClient(this.connId)
+    const source = await client.getObjectSource(c.navigationUri || c["adtcore:uri"])
     for (const um of c.testmethods)
-      children.push(await this.convertTestMethod(c, um))
+      children.push(await this.convertTestMethod(c, um, source))
     const cl: AuClass = {
       type: "suite",
       id: classId(c),
@@ -105,11 +106,16 @@ export class UnitTestModel {
     return cl
   }
 
-  private async convertTestMethod(c: UnitTestClass, meth: UnitTestMethod) {
-    const loc = await this.locator.methodLocation(
-      meth["adtcore:uri"],
-      meth["adtcore:type"]
-    )
+  private async methodLocation(murl: string, source: string) {
+    const client = getClient(this.connId)
+    const marker = await client.unitTestOccurrenceMarkers(murl, source)
+    const uri = marker[1] ? uriPartsToString(marker[1].location) : murl
+    return this.locator.methodLocation(uri)
+  }
+
+  private async convertTestMethod(c: UnitTestClass, meth: UnitTestMethod, source: string) {
+    const aunitUri = meth.navigationUri || meth["adtcore:uri"]
+    const loc = await this.methodLocation(aunitUri, source)
     const met: AuMethod = {
       type: "test",
       id: methodId(c, meth),
@@ -119,7 +125,7 @@ export class UnitTestModel {
       file: loc.uri,
       line: loc.line,
       classId: classId(c),
-      aunitUri: meth["adtcore:uri"],
+      aunitUri,
       objType: meth["adtcore:type"]
     }
     return met
@@ -151,11 +157,11 @@ export class UnitTestModel {
     const path = method?.aunitUri || clas?.aunitUri
     let suite = this.findSuite(key)
     let testClasses
-    if (path) testClasses = await client.runUnitTest(path)
+    if (path) testClasses = await client.unitTestRun(path)
     else {
       const object = await findAbapObject(uri)
       this.aliases.set(object.lockObject.key, key)
-      testClasses = await client.runUnitTest(object.path)
+      testClasses = await client.unitTestRun(object.path)
       suite = await this.convertClasses(object, key, testClasses)
       this.mergeSuite(key, testClasses, suite)
     }
@@ -167,16 +173,7 @@ export class UnitTestModel {
     for (const testclas of testClasses)
       for (const testmet of testclas.testmethods) {
         const event = this.methodEvent(testclas, testmet)
-
-        if (event) {
-          const loc = await this.locator.methodLocation(
-            testmet["adtcore:uri"],
-            testmet["adtcore:type"]
-          )
-          event.test.line = loc.line
-          event.test.file = loc.uri
-          events.push(event)
-        }
+        if (event) events.push(event)
       }
     if (partial) this.updateSkipped(events)
     return events
@@ -192,20 +189,20 @@ export class UnitTestModel {
       if (run) runs.add(run)
     }
     for (const run of runs)
-      for (const clas of run.children)
+      for (const clas of run.children) {
+        const client = getClient(this.connId)
+        const source = await client.getObjectSource(clas.aunitUri)
         for (const test of clas.children)
           if (
             test.file &&
             files.has(test.file) &&
             !ev.find(e => e.test.id === test.id)
           ) {
-            const loc = await this.locator.methodLocation(
-              test.aunitUri,
-              test.objType
-            )
+            const loc = await this.methodLocation(test.aunitUri, source)
             test.file = loc.uri
             test.line = loc.line
           }
+      }
   }
 
   private methodEvent(

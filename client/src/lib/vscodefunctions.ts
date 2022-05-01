@@ -153,6 +153,7 @@ export interface AdtUriParts {
   name?: string
   start?: Position
   end?: Position
+  fragparms: Record<string, string>
 }
 
 export const vscPosition = (adtLine: number, character: number) =>
@@ -180,6 +181,7 @@ export const splitAdtUri = (uri: string | UriParts): AdtUriParts => {
       start: start && vscPosition(start.line, start.column),
       type: hashparms?.type,
       name: hashparms?.name,
+      fragparms: {}
     }
     if (end && (end.line !== start.line || end.column !== start.column))
       parts.end = vscPosition(end.line, end.column)

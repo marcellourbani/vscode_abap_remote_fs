@@ -2,7 +2,7 @@ import { Root } from "./root"
 import { LockObject, delay } from "./lockObject"
 import { isAbapStat } from "./abapFile"
 import { FileSystemError } from "vscode"
-import { isCsrfError } from "abap-adt-api"
+import { isAdtError, isCsrfError } from "abap-adt-api"
 
 export class LockManager {
   constructor(private root: Root) { }
@@ -35,7 +35,16 @@ export class LockManager {
   }
 
   requestLock(path: string) {
-    return this.lockObject(path).requestLock(path)
+    return this.lockObject(path).requestLock(path).catch(async (error) => {
+      if (isAdtError(error) && error.err === 401 || isCsrfError(error)) throw new Error(await this.relogin())
+      throw error
+    })
+  }
+
+  async relogin() {
+    await this.dropall(true)?.catch(() => {/* */ })
+    const result = await this.root.service.login().then(() => "successful", () => "failed")
+    return (`All locks dropped due to expired sessions - login ${result}`)
   }
 
   requestUnlock(path: string, immediate = false) {
@@ -47,10 +56,10 @@ export class LockManager {
     this.checkSession()
     return request
   }
-  dropall() {
+  dropall(expired = false) {
     this.objects.clear()
     this.fileObjects.clear()
-    this.root.service.dropSession()
+    if (!expired) return this.root.service.dropSession()
   }
 
   lockStatus(path: string) {

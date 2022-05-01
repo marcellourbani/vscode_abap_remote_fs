@@ -5,6 +5,6 @@ import { findAbapObject } from "./AdtObjectFinder"
 
 export async function abapUnit(uri: Uri) {
   const object = await findAbapObject(uri)
-  const testClasses = await getClient(uri.authority).runUnitTest(object.path)
+  const testClasses = await getClient(uri.authority).unitTestRun(object.path)
   alertManagers.get(uri.authority).update(testClasses, true)
 }

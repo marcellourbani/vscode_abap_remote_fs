@@ -54,24 +54,10 @@ export class MethodLocator {
     }
   }
 
-  public async methodLocation(objectUri: string, objectType: string) {
+  public async methodLocation(objectUri: string) {
     const finder = new AdtObjectFinder(this.connId)
     const { uri, start } = await finder.vscodeRange(objectUri)
-    if (start)
-      if (objectType === "PROG/OLI" || objectType === "PROG/I" || objectType.match(/^CLAS\/OCN/))
-        return { uri, line: start.line }
-      else {
-        try {
-          const impl = await this.methodImplementation(uri, start)
-          if (impl) {
-            if (impl.url === uri) return { uri, line: impl.line - 1 }
-            const implLoc = await finder.vscodeRange(impl.url)
-            if (implLoc) return { uri: implLoc.uri, line: impl.line - 1 }
-          }
-        } catch (error) {
-          return { uri, line: start.line }
-        }
-      }
+    if (start) return { uri, line: start.line }
     return { uri }
   }
 }

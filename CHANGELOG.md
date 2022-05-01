@@ -1,5 +1,18 @@
 # Change Log
 
+## [1.4.2] 2022-05-01
+
+### Added
+
+- tooltip in version lenses
+- improverd session handling and locking
+
+### Fixed
+
+- test explorer in newer systems
+- bug in debugger variables handling/evaluation
+- fixed evaluation in debugger console
+
 ## [1.4.1] 2022-04-25
 
 ### Fixed
