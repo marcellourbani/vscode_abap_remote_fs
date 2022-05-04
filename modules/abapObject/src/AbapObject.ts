@@ -167,7 +167,7 @@ export class AbapObjectBase implements AbapObject {
           l.rel === "http://www.sap.com/adt/relations/source"
       )?.href ||
       ""
-    const path = followPath(this.path, suffix)
+    const path = this.path?.endsWith(suffix) ? this.path : followPath(this.path, suffix)
     if (path) return path
     throw ObjectErrors.notLeaf(this)
   }
