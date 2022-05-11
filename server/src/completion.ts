@@ -22,7 +22,10 @@ const proposals = (
 ) => {
   const key = completionKey(url, p)
   return throttler(key, () =>
-    client.codeCompletion(url, source, p.line + 1, p.character)
+    client.codeCompletion(url, source, p.line + 1, p.character).catch(e => {
+      log(`Completion error: ${caughtToString(e)}`)
+      return []
+    })
   )
 }
 const isSupported = (x: string) => isAbap(x) || isCdsView(x)
@@ -60,9 +63,9 @@ async function cdsCompletion(co: ClientAndObject, pos: Position) {
   return items
 }
 export async function completion(params: CompletionParams) {
-  if (!isSupported(params.textDocument.uri)) return
-  let items: CompletionItem[] = []
   try {
+    if (!isSupported(params.textDocument.uri)) return
+    let items: CompletionItem[] = []
     const co = await clientAndObjfromUrl(params.textDocument.uri)
     if (!co) return items
 
@@ -70,22 +73,22 @@ export async function completion(params: CompletionParams) {
       items = await abapCompletion(co, params.position)
     if (isCdsView(params.textDocument.uri))
       items = await cdsCompletion(co, params.position)
+    const isInComplete = (compl: CompletionItem[]) => {
+      if (compl.length > 10) return true
+      if (compl.length === 0) return false
+      // special handling for "type table of"
+      let found = false
+
+      compl.some(c => {
+        const match = c.label.match(/type( table of)?/i)
+        if (match && match[1]) found = true
+        return found || !match
+      })
+
+      return !found
+    }
+    return CompletionList.create(items, isInComplete(items))
   } catch (e) {
     log("Exception in completion:", caughtToString(e)) // ignore
   }
-  const isInComplete = (compl: CompletionItem[]) => {
-    if (compl.length > 10) return true
-    if (compl.length === 0) return false
-    // special handling for "type table of"
-    let found = false
-
-    compl.some(c => {
-      const match = c.label.match(/type( table of)?/i)
-      if (match && match[1]) found = true
-      return found || !match
-    })
-
-    return !found
-  }
-  return CompletionList.create(items, isInComplete(items))
 }
