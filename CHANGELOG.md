@@ -1,5 +1,29 @@
 # Change Log
 
+## [1.4.6] 2022-05-23
+
+### Fixed
+
+- debudgger now properly shown as busy during steps
+
+## [1.4.5] 2022-05-11
+
+### Fixed
+
+- improved language server error handling
+
+## [1.4.4] 2022-05-04
+
+### Fixed
+
+- fixed bug in object path determination
+
+## [1.4.3] 2022-05-03
+
+### Fixed
+
+- improved autologin
+
 ## [1.4.2] 2022-05-01
 
 ### Added

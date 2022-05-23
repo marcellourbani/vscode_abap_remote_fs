@@ -1,4 +1,4 @@
-import { ADTClient, Debuggee, DebugStepType, session_types, DebuggingMode, isAdtError } from "abap-adt-api"
+import { ADTClient, Debuggee, DebugStepType, session_types, isAdtError } from "abap-adt-api"
 import { newClientFromKey } from "./functions"
 import { log, caughtToString, ignore } from "../../lib"
 import { DebugProtocol } from "vscode-debugprotocol"
@@ -50,7 +50,7 @@ export class DebugService {
     }
 
     public static async create(connId: string, ui: DebuggerUI, listener: DebugListener, debuggee: Debuggee) {
-        const client = await newClientFromKey(connId)
+        const client = await newClientFromKey(connId, { timeout: 7200000 })
         if (!client) throw new Error(`Unable to create client for${connId}`)
         client.stateful = session_types.stateful
         await client.adtCoreDiscovery()
@@ -72,9 +72,9 @@ export class DebugService {
     }
 
     private async baseDebuggerStep(threadId: number, stepType: DebugStepType, url?: string) {
+        this.notifier.fire(new ContinuedEvent(threadId))
         if (stepType === "stepRunToLine" || stepType === "stepJumpToLine") {
             if (!url) throw new Error(`Bebugger step${stepType} requires a target`)
-            if (stepType === "stepRunToLine") this.notifier.fire(new ContinuedEvent(threadId))
             return this.client.debuggerStep(stepType, url)
         }
         return this.client.debuggerStep(stepType)
