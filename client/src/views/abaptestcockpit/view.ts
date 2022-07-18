@@ -1,6 +1,6 @@
 import { ADTClient, AtcWorkList } from "abap-adt-api"
 import { Task } from "fp-ts/lib/Task"
-import { commands, Disposable, EventEmitter, Position, TextDocumentContentChangeEvent, ThemeColor, ThemeIcon, TreeDataProvider, TreeItem, TreeItemCollapsibleState, Uri } from "vscode"
+import { commands, Disposable, EventEmitter, Position, TextDocumentContentChangeEvent, ThemeColor, ThemeIcon, TreeDataProvider, TreeItem, TreeItemCollapsibleState, Uri, window } from "vscode"
 import { getClient } from "../../adt/conections"
 import { AdtObjectFinder } from "../../adt/operations/AdtObjectFinder"
 import { AbapFsCommands } from "../../commands"
@@ -10,6 +10,7 @@ import { AbapFile } from "abapfs"
 import { AdtObjectActivator } from "../../adt/operations/AdtObjectActivator"
 import { atcRefresh } from "./commands"
 import { AbapObjectBase } from "abapobject/out/AbapObject"
+import { log } from "../../lib"
 
 // tslint:disable:max-classes-per-file
 
@@ -47,6 +48,10 @@ export class AtcSystem extends TreeItem {
     children: AtcObject[] = []
     // tslint:disable-next-line:no-empty
     refresh: Task<void> = async () => { }
+    get hasErrors() {
+        for (const o of this.children) if (o.hasError) return true
+        return false
+    }
     async load(task: Task<AtcWorkList>) {
         this.refresh = async () => {
             const wl = await task()
@@ -69,13 +74,19 @@ export class AtcSystem extends TreeItem {
 
 export class AtcObject extends TreeItem {
     children: AtcFind[] = []
+    hasError: boolean = false
     static async create(object: AtcWLobject, parent: AtcSystem, finder: AdtObjectFinder) {
         const obj = new AtcObject(object, parent)
         const children: AtcFind[] = []
         for (const f of object.findings) {
-            const { uri, start, file } = await finder.vscodeRange(f.location)
-            const finding = new AtcFind(f, obj, uri, start || new Position(0, 0), file)
-            children.push(finding)
+            try {
+                const { uri, start, file } = await finder.vscodeRange(f.location)
+                const finding = new AtcFind(f, obj, uri, start || new Position(0, 0), file)
+                children.push(finding)
+            } catch (error) {
+                log(`Error resolving finding location ${f.location.uri}`)
+                obj.hasError = true
+            }
         }
 
         obj.children = R.sortWith<AtcFind>([
@@ -114,13 +125,13 @@ export class AtcFind extends TreeItem {
     constructor(public readonly finding: AtcWLFinding, public readonly parent: AtcObject, public readonly uri: string, private _start: Position, file?: AbapFile) {
         super(finding.messageTitle, TreeItemCollapsibleState.None)
         this.unSavedStart = _start
-        if (finding.quickfixInfo) {
-            this.iconPath = new ThemeIcon("issue-opened", this.iconColor())
-            this.contextValue = "finding"
-        }
-        else {
+        if (hasExemption(finding)) {
             this.contextValue = "finding_exempted"
             this.iconPath = new ThemeIcon("check", this.iconColor())
+        }
+        else {
+            this.iconPath = new ThemeIcon("issue-opened", this.iconColor())
+            this.contextValue = "finding"
         }
         this.description = finding.checkTitle
         if (file) this.tooltip = `${file.object.type} ${file.object.name}`
@@ -181,12 +192,17 @@ class AtcProvider implements TreeDataProvider<AtcNode>{
         return [...this.root.systems.values()].flatMap(s => s.children.flatMap(o => o.children))
     }
 
+    reportError(system: AtcSystem) {
+        if (system.hasErrors) window.showErrorMessage("Errors during ATC analysis, some issues won't be reported see ABAPFS logs for details.")
+    }
+
     async runInspectorByAdtUrl(uri: string, connectionId: string) {
         const client = getClient(connectionId)
         const system = await this.root.child(connectionId, () => getVariant(client, connectionId))
         await system.load(() => runInspectorByAdtUrl(uri, system.variant, client))
         commands.executeCommand("abapfs.atcFinds.focus")
         this.setAutoRefresh(this.autoRefresh)
+        this.reportError(system)
     }
 
     async runInspector(uri: Uri) {
@@ -195,6 +211,7 @@ class AtcProvider implements TreeDataProvider<AtcNode>{
         await system.load(() => runInspector(uri, system.variant, client))
         commands.executeCommand("abapfs.atcFinds.focus")
         this.setAutoRefresh(this.autoRefresh)
+        this.reportError(system)
     }
 
 }
