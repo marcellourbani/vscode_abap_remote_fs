@@ -5,7 +5,7 @@ import { ObjectErrors } from "../AOError"
 const tag = Symbol("AbapFunction")
 @AbapObjectCreator("FUGR/FF")
 export class AbapFunction extends AbapObjectBase {
-  [tag]: boolean
+  [tag] = true
   get extension() {
     return ".fugr.abap"
   }

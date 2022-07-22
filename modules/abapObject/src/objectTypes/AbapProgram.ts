@@ -6,7 +6,7 @@ import { ObjectErrors } from "../AOError"
 const tag = Symbol("AbapProgram")
 @AbapObjectCreator("PROG/P")
 export class AbapProgram extends AbapObjectBase {
-  [tag]: boolean
+  [tag] = true
   protected filterInvalid(original: NodeStructure): NodeStructure {
     const { nodes } = original
     const matchName = (n: string) =>

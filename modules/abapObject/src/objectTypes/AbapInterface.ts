@@ -4,7 +4,7 @@ import { AbapObjectBase } from ".."
 const tag = Symbol("AbapInterface")
 @AbapObjectCreator("INTF/OI")
 export class AbapInterface extends AbapObjectBase {
-  [tag]: boolean
+  [tag] = true
   get extension() {
     return ".intf.abap"
   }
