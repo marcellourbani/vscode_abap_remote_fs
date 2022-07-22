@@ -93,7 +93,7 @@ export class AbapObjectBase implements AbapObject {
   public get expandable(): boolean {
     return this._expandable
   }
-  readonly [objectTag]: true
+  readonly [objectTag]: true = true
   constructor(
     readonly type: string,
     readonly name: string,
