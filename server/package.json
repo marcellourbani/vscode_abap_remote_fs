@@ -13,7 +13,7 @@
   "author": "Marcello Urbani",
   "license": "MIT",
   "dependencies": {
-    "abap-adt-api": "^5.0.3",
+    "abap-adt-api": "^5.0.4",
     "abapcdsgrammar": "0.0.7",
     "antlr4ts": "0.5.0-alpha.3",
     "html-entities": "^1.4.0",
