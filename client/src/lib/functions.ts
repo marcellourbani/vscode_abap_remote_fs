@@ -222,7 +222,7 @@ export const asyncCache = <TK, TP, TAK>(
 }
 
 export const promiseQueue = <T>(initial: T) => {
-  let current = Promise.resolve(initial)
+  let current: Promise<T> = Promise.resolve(initial)
   let last = initial
 
   return (cb?: (c: T) => Promise<T>, onErr?: (e: Error) => void) => {
