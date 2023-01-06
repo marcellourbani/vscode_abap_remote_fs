@@ -21,6 +21,7 @@ export interface FindingMarker {
 }
 
 export const hasExemption = (f: AtcWLFinding) => !!f.exemptionApproval
+export const approvedExemption = (f: AtcWLFinding) => f.exemptionApproval === "-"
 
 export class AtcRoot extends TreeItem {
     systems = new Map<string, AtcSystem>()
@@ -43,11 +44,39 @@ export class AtcRoot extends TreeItem {
         return x instanceof AtcRoot
     }
 }
+interface ResFinding extends AtcWLFinding {
+    fileuri?: string
+    start?: Position
+    file?: AbapFile
+}
+interface ResObject extends AtcWLobject {
+    findings: ResFinding[]
+}
+const zeroPos = new Position(0, 0)
+
+const resolveObjects = async (base: AtcWLobject[], finder: AdtObjectFinder): Promise<ResObject[]> => {
+    const result: ResObject[] = []
+    for (const o of base) {
+        const findings: ResFinding[] = []
+        for (const f of o.findings) {
+            try {
+                const { uri, start, file } = await finder.vscodeRange(f.location)
+                findings.push({ ...f, start, file, fileuri: uri })
+            } catch (error) {
+                log(`Error resolving finding location ${f.location.uri}`)
+                findings.push(f)
+            }
+        }
+        result.push({ ...o, findings })
+    }
+    return result
+}
 
 export class AtcSystem extends TreeItem {
     children: AtcObject[] = []
-    // tslint:disable-next-line:no-empty
-    refresh: Task<void> = async () => { }
+    refresh: Task<void> = async () => { /* */ }
+    objects: ResObject[] = []
+
     get hasErrors() {
         for (const o of this.children) if (o.hasError) return true
         return false
@@ -62,10 +91,22 @@ export class AtcSystem extends TreeItem {
                 R.ascend(R.prop("type")),
                 R.ascend(R.prop("name"))])
                 (wl.objects.filter(o => o.findings.length > 0))
-            for (const object of objects) this.children.push(await AtcObject.create(object, this, finder))
+            this.objects = await resolveObjects(objects, finder)
+            this.createChildren()
             atcProvider.emitter.fire(this)
         }
         return this.refresh()
+    }
+    createChildren() {
+        this.children = []
+        for (const o of this.objects) {
+            const relevant = o.findings.filter(f => !!f.fileuri)
+            if (relevant.length) {
+                const obj = new AtcObject(o, this)
+                obj.children = relevant.map(r => new AtcFind(r, obj, r.fileuri!, r.start || zeroPos, r.file))
+                this.children.push(obj)
+            }
+        }
     }
     constructor(public readonly connectionId: string, public readonly variant: string, public readonly parent: AtcRoot) {
         super(connectionId, TreeItemCollapsibleState.Expanded)
@@ -75,28 +116,6 @@ export class AtcSystem extends TreeItem {
 export class AtcObject extends TreeItem {
     children: AtcFind[] = []
     hasError: boolean = false
-    static async create(object: AtcWLobject, parent: AtcSystem, finder: AdtObjectFinder) {
-        const obj = new AtcObject(object, parent)
-        const children: AtcFind[] = []
-        for (const f of object.findings) {
-            try {
-                const { uri, start, file } = await finder.vscodeRange(f.location)
-                const finding = new AtcFind(f, obj, uri, start || new Position(0, 0), file)
-                children.push(finding)
-            } catch (error) {
-                log(`Error resolving finding location ${f.location.uri}`)
-                obj.hasError = true
-            }
-        }
-
-        obj.children = R.sortWith<AtcFind>([
-            R.ascend(f => f.finding.priority),
-            R.ascend(R.prop("uri")),
-            R.ascend(f => f.start?.line || 0)])
-            (children)
-        obj.contextValue = object.findings.find(f => !!f.quickfixInfo) ? "object" : "object_exempted"
-        return obj
-    }
     constructor(public readonly object: AtcWLobject, public readonly parent: AtcSystem) {
         super(`${object.type} ${object.name}`, TreeItemCollapsibleState.Expanded)
     }
