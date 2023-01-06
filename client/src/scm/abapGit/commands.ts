@@ -86,14 +86,13 @@ const transfer = (
     x => !items.find(y => statesEquals(x, y))
   )
 }
-
 const validateInput = (x: string) => (x ? null : "Field is mandatory")
 const getCommitDetails = async (data: ScmData) => {
   const cred = await dataCredentials(data, true)
   if (isNone(cred)) return none
   const repoid = `${data.connId}_${data.repo.sapPackage}`
   const { committer = "", committerEmail = cred.value.user } =
-    getStore().get(repoid) || {}
+    getStore().get<{ committer: string, committerEmail: string }>(repoid) || {}
   const comment = data.scm.inputBox.value
   const commitdata = { ...cred.value, name: "", email: "", comment }
   const getUser = inputBox({
