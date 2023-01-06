@@ -161,12 +161,20 @@ class Commands {
         return tryIgnoreFinfing(finding)
     }
     @command(AbapFsCommands.atcAutoRefreshOn)
-    private async auroRefreshOn() {
+    private async autoRefreshOn() {
         atcProvider.setAutoRefresh(true)
     }
     @command(AbapFsCommands.atcAutoRefreshOff)
-    private async auroRefreshOff() {
+    private async autoRefreshOff() {
         atcProvider.setAutoRefresh(false)
+    }
+    @command(AbapFsCommands.atcFilterExemptOn)
+    private async exemptFilterOn() {
+        atcProvider.setExemptFilter(true)
+    }
+    @command(AbapFsCommands.atcFilterExemptOff)
+    private async exemptFilterOff() {
+        atcProvider.setExemptFilter(false)
     }
     @command(AbapFsCommands.atcRequestExemption)
     private async RequestExemption(item: AtcFind) {

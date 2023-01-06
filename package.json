@@ -506,6 +506,16 @@
         "icon": "$(arrow-left)"
       },
       {
+        "command": "abapfs.atcFilterExemptOff",
+        "title": "Enable refresh on activation",
+        "icon": "$(filter-filled)"
+      },
+      {
+        "command": "abapfs.atcFilterExemptOn",
+        "title": "Enable refresh on activation",
+        "icon": "$(filter)"
+      },
+      {
         "command": "abapfs.atcAutoRefreshOn",
         "title": "Enable refresh on activation",
         "icon": "$(sync-ignored)"
@@ -771,6 +781,14 @@
           "when": "abapfs:extensionActive"
         },
         {
+          "command": "abapfs.atcFilterExemptOn",
+          "when": "abapfs:extensionActive"
+        },
+        {
+          "command": "abapfs.atcFilterExemptOff",
+          "when": "abapfs:extensionActive"
+        },
+        {
           "command": "abapfs.atcAutoRefreshOn",
           "when": "hideCommands.never"
         },
@@ -945,6 +963,16 @@
           "command": "abapfs.atcAutoRefreshOff",
           "group": "navigation",
           "when": "view == abapfs.atcFinds && abapfs:atc:autorefreshOn"
+        },
+        {
+          "command": "abapfs.atcFilterExemptOn",
+          "group": "navigation",
+          "when": "view == abapfs.atcFinds && !abapfs:atc:exemptFilterOn"
+        },
+        {
+          "command": "abapfs.atcFilterExemptOff",
+          "group": "navigation",
+          "when": "view == abapfs.atcFinds && abapfs:atc:exemptFilterOn"
         },
         {
           "command": "abapfs.refreshtransports",

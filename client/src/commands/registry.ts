@@ -29,6 +29,8 @@ export const AbapFsCommands = {
   atcAutoRefreshOff: "abapfs.atcAutoRefreshOff",
   atcDocHistoryForward: "abapfs.atcDocHistoryForward",
   atcDocHistoryBack: "abapfs.atcDocHistoryBack",
+  atcFilterExemptOn: "abapfs.atcFilterExemptOn",
+  atcFilterExemptOff: "abapfs.atcFilterExemptOff",
   // classes
   refreshHierarchy: "abapfs.refreshHierarchy",
   pickObject: "abapfs.pickObject",

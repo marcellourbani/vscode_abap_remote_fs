@@ -25,6 +25,9 @@ export const approvedExemption = (f: AtcWLFinding) => f.exemptionApproval === "-
 
 export class AtcRoot extends TreeItem {
     systems = new Map<string, AtcSystem>()
+    get filterExempt() {
+        return this.parent.exemptFilter
+    }
     constructor(label: string, private parent: AtcProvider) {
         super(label, TreeItemCollapsibleState.Expanded)
     }
@@ -92,21 +95,21 @@ export class AtcSystem extends TreeItem {
                 R.ascend(R.prop("name"))])
                 (wl.objects.filter(o => o.findings.length > 0))
             this.objects = await resolveObjects(objects, finder)
-            this.createChildren()
-            atcProvider.emitter.fire(this)
+            this.updateChildren()
         }
         return this.refresh()
     }
-    createChildren() {
+    updateChildren() {
         this.children = []
         for (const o of this.objects) {
-            const relevant = o.findings.filter(f => !!f.fileuri)
+            const relevant = o.findings.filter(f => !!f.fileuri && (!this.parent.filterExempt || !approvedExemption(f)))
             if (relevant.length) {
                 const obj = new AtcObject(o, this)
                 obj.children = relevant.map(r => new AtcFind(r, obj, r.fileuri!, r.start || zeroPos, r.file))
                 this.children.push(obj)
             }
         }
+        atcProvider.emitter.fire(this)
     }
     constructor(public readonly connectionId: string, public readonly variant: string, public readonly parent: AtcRoot) {
         super(connectionId, TreeItemCollapsibleState.Expanded)
@@ -175,6 +178,10 @@ class AtcProvider implements TreeDataProvider<AtcNode>{
     root = new AtcRoot("systems", this)
     private autoRefresh = false
     activationListeners = new Map<string, Disposable>()
+    exemptFilter: boolean = true
+    constructor() {
+        this.setExemptFilter(true)
+    }
 
     get onDidChangeTreeData() {
         return this.emitter.event
@@ -184,6 +191,12 @@ class AtcProvider implements TreeDataProvider<AtcNode>{
     }
     async getChildren(element?: AtcNode): Promise<AtcNode[]> {
         return element ? element.children : this.root.children
+    }
+
+    setExemptFilter(enabled: boolean) {
+        this.exemptFilter = enabled
+        commands.executeCommand("setContext", "abapfs:atc:exemptFilterOn", enabled)
+        for (const s of this.root.children) s.updateChildren()
     }
 
     setAutoRefresh(enabled: boolean) {
