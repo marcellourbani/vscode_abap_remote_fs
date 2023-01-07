@@ -9,48 +9,44 @@
       "name": "Client",
       "type": "extensionHost",
       "request": "launch",
-      "skipFiles": ["<node_internals>/**", "async_hooks.js"],
+      "skipFiles": [
+        "<node_internals>/**",
+        "async_hooks.js"
+      ],
       "runtimeExecutable": "${execPath}",
       "args": [
         "--extensionDevelopmentPath=${workspaceFolder}",
         "--async-stack-traces"
       ],
-      "outFiles": ["${workspaceFolder}/client/dist/**/*.js"],
-      "preLaunchTask": {
-        "type": "npm",
-        "script": "watch"
-      }
+      "outFiles": [
+        "${workspaceFolder}/client/dist/**/*.js"
+      ],
+      "preLaunchTask": "watch client"
     },
     {
       "type": "node",
       "request": "attach",
       "name": "Attach to Server",
       "address": "localhost",
-      "protocol": "inspector",
       "smartStep": true,
       "showAsyncStacks": true,
-      "skipFiles": ["<node_internals>/**"],
+      "skipFiles": [
+        "<node_internals>/**"
+      ],
       "port": 6010,
       "sourceMaps": true,
-      "outFiles": ["${workspaceRoot}/server/dist/**/*.js"]
-    },
-    {
-      "name": "Extension Tests",
-      "type": "extensionHost",
-      "request": "launch",
-      "runtimeExecutable": "${execPath}",
-      "args": [
-        "--extensionDevelopmentPath=${workspaceFolder}",
-        "--extensionTestsPath=${workspaceFolder}/out/test"
-      ],
-      "outFiles": ["${workspaceFolder}/client/out/test/**/*.js"],
-      "preLaunchTask": "npm: watch"
+      "outFiles": [
+        "${workspaceRoot}/server/dist/**/*.js"
+      ]
     }
   ],
   "compounds": [
     {
       "name": "Client + Server",
-      "configurations": ["Client", "Attach to Server"]
+      "configurations": [
+        "Client",
+        "Attach to Server"
+      ]
     }
   ]
 }

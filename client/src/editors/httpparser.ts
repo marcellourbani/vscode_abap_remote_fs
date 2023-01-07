@@ -1,4 +1,4 @@
-import { parse } from "fast-xml-parser"
+import { XMLParser } from "fast-xml-parser"
 
 interface HttpService {
     handlerClass: string,
@@ -7,13 +7,14 @@ interface HttpService {
     text: string,
     url: string,
 }
+const parser = new XMLParser({
+    ignoreAttributes: false,
+    trimValues: false,
+    parseAttributeValue: true
+})
 
 export const parseHTTP = (s: string): HttpService => {
-    const raw = parse(s, {
-        ignoreAttributes: false,
-        trimValues: false,
-        parseAttributeValue: true
-    })
+    const raw = parser.parse(s)
     const {
         "@_http:handler_servicehandler": handlerClass = "",
         "@_adtcore:responsible": author = "",

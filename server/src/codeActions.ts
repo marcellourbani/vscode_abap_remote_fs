@@ -7,7 +7,7 @@ import {
 import { clientAndObjfromUrl } from "./utilities"
 import { log } from "./clientManager"
 import { FixProposal } from "abap-adt-api"
-import { decodeEntity } from "./functions"
+import { decode } from "html-entities"
 
 export async function codeActionHandler(
   parms: CodeActionParams
@@ -59,7 +59,7 @@ async function quickfix(
       }
     const actions = allProposals.map(p =>
       CodeAction.create(
-        decodeEntity(p["adtcore:name"]),
+        decode(p["adtcore:name"]),
         Command.create("fix", "abapfs.quickfix", p, uri)
       )
     )

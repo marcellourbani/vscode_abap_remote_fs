@@ -5,69 +5,88 @@
   "tasks": [
     {
       "type": "npm",
+      "label": "watch abapObject",
       "script": "watch",
-      "problemMatcher": [
-        // "$ts-webpack-watch",
-        "$tslint-webpack-watch",
-        {
-          //   "base": "$tsc-watch",
-          "base": "$ts-webpack-watch",
-          "fileLocation": "absolute",
-          // "fileLocation": ["relative", "${workspaceFolder}/client"],
-          "pattern": [
-            {
-              "regexp": "^\\[\\d\\]\\s*(ERROR)\\s*in\\s*(?:\\.\\.?\\/)?(?:\\.\\.\\/)?([^\\s].*)\\s*(\\d+):(\\d+).*$",
-              "file": 2,
-              "line": 3,
-              "column": 4,
-              "severity": 1
-              //   "code": 1
-            },
-            {
-              "regexp": "^\\[\\d\\]\\s*(.*)$",
-              "message": 1
-            }
-          ]
-        },
-        {
-          //   "base": "$tsc-watch",
-          "base": "$ts-webpack-watch",
-          "fileLocation": "absolute",
-          "pattern": [
-            {
-              "regexp": "^\\[\\d\\]\\s*(ERROR|WARNING)\\s*in\\s*(.*)",
-              "severity": 1,
-              "file": 2
-            },
-            {
-              "regexp": "^\\[\\d\\]\\s*(.*)$"
-            },
-            {
-              "regexp": "^\\[\\d\\]\\s*(\\[tsl\\])?[^\\(]*\\((\\d+),(\\d+)",
-              "line": 2,
-              "column": 3
-            },
-            {
-              "regexp": "^\\[\\d\\]\\s*(TS\\d+):\\s*(.*)",
-              "code": 1,
-              "message": 2
-            }
-          ],
-          "background": {
-            "activeOnStart": true,
-            "beginsPattern": "^\\[\\d\\]\\s*\\[webpack-cli\\].*File.*was modified",
-            "endsPattern": "^\\[\\d\\]\\s*\\[webpack-cli\\].*watching files for updates"
-          }
-        }
-      ],
+      "path": "modules/abapObject/",
+      "problemMatcher": "$tsc-watch",
       "isBackground": true,
       "presentation": {
         "reveal": "never"
       },
       "group": {
         "kind": "build",
-        "isDefault": true
+        "isDefault": false
       }
+    },
+    {
+      "type": "npm",
+      "label": "watch abapfs",
+      "script": "watch",
+      "path": "modules/abapfs/",
+      "problemMatcher": "$tsc-watch",
+      "isBackground": true,
+      "presentation": {
+        "reveal": "never"
+      },
+      "group": {
+        "kind": "build",
+        "isDefault": false
+      },
+      "dependsOn": [
+        "watch abapObject"
+      ]
+    },
+    {
+      "type": "npm",
+      "label": "watch sharedapi",
+      "script": "watch",
+      "path": "modules/sharedapi/",
+      "problemMatcher": "$tsc-watch",
+      "isBackground": true,
+      "presentation": {
+        "reveal": "never"
+      },
+      "group": {
+        "kind": "build",
+        "isDefault": false
+      }
+    },
+    {
+      "type": "npm",
+      "label": "watch server",
+      "script": "watch",
+      "path": "server/",
+      "problemMatcher": "$ts-webpack-watch",
+      "isBackground": true,
+      "presentation": {
+        "reveal": "never"
+      },
+      "group": {
+        "kind": "build",
+        "isDefault": false
+      },
+      "dependsOn": [
+        "watch sharedapi",
+        "watch abapfs"
+      ]
+    },
+    {
+      "type": "npm",
+      "label": "watch client",
+      "script": "watch",
+      "path": "client/",
+      "problemMatcher": "$ts-webpack-watch",
+      "isBackground": true,
+      "presentation": {
+        "reveal": "never"
+      },
+      "group": {
+        "kind": "build",
+        "isDefault": false
+      },
+      "dependsOn": [
+        "watch server"
+      ]
     }
   ]
 }

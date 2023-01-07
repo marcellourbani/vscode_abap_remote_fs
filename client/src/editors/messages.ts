@@ -9,11 +9,15 @@ import {
   Uri,
   ViewColumn
 } from "vscode"
-import { parse } from "fast-xml-parser"
-import { AllHtmlEntities } from "html-entities"
+import { XMLParser } from "fast-xml-parser"
+import { decode } from "html-entities"
 import path from "path"
 import { getClient } from "../adt/conections"
 
+const parser = new XMLParser({
+  parseAttributeValue: true,
+  ignoreAttributes: false
+})
 const xmlNode = (xml: any, ...xmlpath: string[]) => {
   xmlpath = xmlpath.flatMap(x => x.split("/")).filter(x => x)
   let cur = xml
@@ -28,11 +32,7 @@ const xmlArray = (xml: any, ...xmlpath: string[]) => {
 }
 
 const parseMessages = (source: string) => {
-  const ent = new AllHtmlEntities()
-  const raw = parse(source, {
-    parseAttributeValue: true,
-    ignoreAttributes: false
-  })
+  const raw = parser.parse(source)
   const rawMessages = xmlArray(raw, "mc:messageClass", "mc:messages")
   return rawMessages.map(m => {
     const link = xmlArray(m, "atom:link").find(
@@ -42,7 +42,7 @@ const parseMessages = (source: string) => {
     )?.["@_href"]
     return {
       number: m["@_mc:msgno"],
-      text: ent.decode(m["@_mc:msgtext"]),
+      text: decode(m["@_mc:msgtext"]),
       selfexplainatory: m["@_mc:selfexplainatory"],
       link
     }

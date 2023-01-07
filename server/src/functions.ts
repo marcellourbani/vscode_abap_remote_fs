@@ -1,4 +1,3 @@
-import { AllHtmlEntities } from "html-entities"
 import { types } from "util"
 
 export const isString = (x: any): x is string => typeof x === "string"
@@ -31,20 +30,6 @@ export function toInt(raw: any): number {
   if (isNaN(n)) return 0
   return n
 }
-
-export const [decodeEntity, encodeEntity] = (() => {
-  let entities: AllHtmlEntities | undefined
-  return [
-    (s: string) => {
-      if (!entities) entities = new AllHtmlEntities()
-      return entities.decode(s)
-    },
-    (s: string) => {
-      if (!entities) entities = new AllHtmlEntities()
-      return entities.encode(s)
-    }
-  ]
-})()
 
 export const hashParms = (uri: string): any => {
   const parms: any = {}
