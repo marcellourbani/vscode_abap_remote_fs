@@ -1,5 +1,17 @@
 # Change Log
 
+## [1.5.3] 1023-01-09
+
+### Fixed
+
+- quickdiff
+
+## [1.5.0] 1023-01-06
+
+### Added
+
+- filter exempted ATC results
+
 ## [1.4.6] 2022-05-23
 
 ### Fixed

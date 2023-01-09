@@ -18,6 +18,7 @@ import { Revision } from "abap-adt-api"
 import { AbapRevision, ADTREVISIONSCHEME } from "./documentprovider"
 import { abapUri } from "../../adt/conections"
 import { AbapQuickDiff } from "./quickdiff"
+import { connectedRoots } from "../../config"
 
 const RECENT = "recent"
 
@@ -131,8 +132,9 @@ export class AbapScm {
   })
   private constructor(readonly connId: string) {
     this.service = AbapRevisionService.get(connId)
+    const folder = connectedRoots().get(connId)?.uri
     const id = `ABAP ${connId}`
-    this.sc = scm.createSourceControl(id, id)
+    this.sc = scm.createSourceControl(id, id, folder)
     this.sc.quickDiffProvider = AbapQuickDiff.get()
   }
   private static scms = cache((connId: string) => new AbapScm(connId))
