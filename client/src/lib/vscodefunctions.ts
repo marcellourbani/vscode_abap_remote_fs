@@ -164,6 +164,10 @@ export const rangeApi2Vsc = (r: ApiRange) =>
     vscPosition(r.start.line, r.start.column),
     vscPosition(r.end.line, r.end.column)
   )
+export const lineRange = (line: number) => new Range(
+  vscPosition(line, 0),
+  vscPosition(line, 1)
+)
 
 export const splitAdtUri = (uri: string | UriParts): AdtUriParts => {
   if (isString(uri)) {

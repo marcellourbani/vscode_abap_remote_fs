@@ -1,4 +1,4 @@
-import { Root, isAbapFile, AbapFile, isAbapStat } from "abapfs"
+import { Root, isAbapFile, isAbapStat } from "abapfs"
 import { cache, log } from "../../lib"
 import { getRoot } from "../conections"
 import { MainInclude } from "abap-adt-api"
@@ -22,7 +22,7 @@ export class IncludeService {
   )
 
   private includes = new Map<string, IncludeData>()
-  private constructor(private root: Root) {}
+  private constructor(private root: Root) { }
 
   current(vsPath: string) {
     const data = this.includes.get(vsPath)

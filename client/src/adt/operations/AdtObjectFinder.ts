@@ -232,7 +232,7 @@ export class AdtObjectFinder {
   }
 }
 
-export const findMainIncludeAsync = async (item: PathItem) => {
+const findMainIncludeAsync = async (item: PathItem) => {
   if (isAbapFile(item.file)) return item
   if (isAbapFolder(item.file)) {
     const main = item.file.mainInclude(item.path)

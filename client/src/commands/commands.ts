@@ -13,7 +13,7 @@ import { caughtToString, log } from "../lib"
 import { FavouritesProvider, FavItem } from "../views/favourites"
 import { findEditor } from "../langClient"
 import { showHideActivate } from "../listeners"
-import { abapUnit } from "../adt/operations/UnitTestRunner"
+import { abapUnit, UnitTestRunner } from "../adt/operations/UnitTestRunner"
 import { selectTransport } from "../adt/AdtTransports"
 import { showInGuiCb, executeInGui, runInSapGui } from "../adt/sapgui/sapgui"
 import { storeTokens } from "../oauth"
@@ -40,6 +40,7 @@ import { command, AbapFsCommands } from "."
 import { createConnection } from "./connectionwizard"
 import { types } from "util"
 import { atcProvider } from "../views/abaptestcockpit"
+import { context } from "../extension"
 
 function currentUri() {
   if (!window.activeTextEditor) return
@@ -123,6 +124,8 @@ export class AdtCommands {
         uri: Uri.parse("adt://" + remote.name),
         name: remote.name + "(ABAP)"
       })
+      context.subscriptions.push(UnitTestRunner.get(connectionID).controller)
+
 
       log(`Connected to server ${remote.name}`)
     } catch (e) {
