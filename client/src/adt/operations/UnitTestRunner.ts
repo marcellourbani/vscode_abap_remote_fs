@@ -1,15 +1,12 @@
-import { Uri, tests, TestRunProfileKind, TestRunRequest, CancellationToken, TestController, TestItem, TestMessage, MarkdownString, commands, TestItemCollection, TestRun } from "vscode"
-import { alertManagers } from "../../views/abapunit"
-import { getClient, getRoot } from "../conections"
-import { findAbapObject } from "./AdtObjectFinder"
+import { Uri, tests, TestRunProfileKind, TestRunRequest, TestController, TestItem, TestMessage, MarkdownString, commands, TestItemCollection, TestRun } from "vscode"
+import { getClient, getRoot, uriRoot } from "../conections"
 import { IncludeService } from "../includes"
-import { isAbapFile } from "abapfs"
+import { isAbapFile, isAbapStat, isFolder } from "abapfs"
 import { UnitTestAlert, UnitTestAlertKind, UnitTestClass, UnitTestMethod, uriPartsToString } from "abap-adt-api"
-import { cache, lineRange, log } from "../../lib"
-import { MethodLocator } from "../../views/abapunit/locator"
-import { AbapObject } from "abapobject"
+import { cache, lineRange } from "../../lib"
+import { AbapObject, isAbapClassInclude } from "abapobject"
+import { AdtObjectFinder } from "./AdtObjectFinder"
 
-const locators = cache((connId: string) => new MethodLocator(connId))
 const classId = (cl: UnitTestClass) => `C_${cl["adtcore:type"]} ${cl["adtcore:name"]}`
 const methodId = (meth: UnitTestMethod) => `M_${meth["adtcore:name"]}`
 const objectKey = (object: AbapObject) => `O_${object.key}`
@@ -18,11 +15,13 @@ const splitKey = (k: string) => {
   if (key && value) return { key, value }
 }
 
-const mergeTestItems = (coll: TestItemCollection, items: TestItem[]) => {
+const mergeTestItems = (coll: TestItemCollection, items: TestItem[], removeOld = true) => {
   const ids = new Set(items.map(i => i.id))
   const toRemove: string[] = []
-  for (const [id, _] of coll) if (!ids.has(id)) toRemove.push(id)
-  for (const id of toRemove) coll.delete(id)
+  if (removeOld) {
+    for (const [id, _] of coll) if (!ids.has(id)) toRemove.push(id)
+    for (const id of toRemove) coll.delete(id)
+  }
   for (const item of items) coll.add(item)
 }
 
@@ -33,7 +32,22 @@ const getObject = async (uri: Uri) => {
     const file = mo?.file
     if (isAbapFile(file)) return file.object
   }
-  return findAbapObject(uri)
+  const nodepath = uriRoot(uri).getNodePath(uri.path)
+  const last = nodepath[0]
+  if (!isAbapStat(last.file)) throw new Error("Failed to retrieve object for test path")
+  const obj = last.file.object
+
+  if (isAbapClassInclude(last.file.object)) {
+    if (last.file.object.path.match(/main$/)) return last.file.object
+    const prev = nodepath[1]
+    if (isFolder(prev.file))
+      return [...prev.file]
+        .map(x => x.file)
+        .filter(isAbapStat)
+        .find(x => x.object.path.match(/main$/))?.object || obj
+  }
+
+  return obj
 }
 
 const convertAlert = (alert: UnitTestAlert): TestMessage => new TestMessage(new MarkdownString(`${alert.details.join("<br>")}`, true))
@@ -42,64 +56,71 @@ const methodOutcome = (meth: UnitTestMethod) => {
   return ({ messages: meth.alerts.map(convertAlert), passed })
 }
 
-export async function abapUnit(uri: Uri) {
-  const object = await getObject(uri)
-  const testClasses = await getClient(uri.authority).unitTestRun(object.path)
-  alertManagers.get(uri.authority).update(testClasses, true)
-  commands.executeCommand("workbench.view.testing.focus")
-  await UnitTestRunner.get(uri.authority).addResults(uri, object, testClasses)
-}
+// export async function abapUnit(uri: Uri) {
+//   await UnitTestRunner.get(uri.authority).addResults(uri)
+// }
 
 const setMethodResult = (run: TestRun, meth: UnitTestMethod, item: TestItem) => {
   const outcome = methodOutcome(meth)
   if (outcome.passed)
-    run.passed(item, meth.executionTime)
+    run.passed(item, meth.executionTime * 1000)
   else
-    run.failed(item, outcome.messages, meth.executionTime)
+    run.failed(item, outcome.messages, meth.executionTime * 1000)
 }
 
-const setClassResult = (run: TestRun, clas: UnitTestClass, item: TestItem) => {
+const setClassResult = async (run: TestRun, clas: UnitTestClass, parent: TestItem, ctrl: TestController) => {
   const ids = new Set(clas.testmethods.map(methodId))
+  let source: string | undefined
   for (const m of clas.testmethods) {
-    const mi = item.children.get(methodId(m))
+    const mi = parent.children.get(methodId(m))
     if (mi) {
       setMethodResult(run, m, mi)
+    } else {
+      if (!source) {
+        const client = getClient(parent.uri!.authority)
+        source = await client.getObjectSource(clas.navigationUri || clas["adtcore:uri"])
+      }
+      const nmi = await createMethodItem(ctrl, parent, m, parent.uri!, source)
+      parent.children.add(nmi)
+      setMethodResult(run, m, nmi)
     }
-    // TODO
   }
-  const toRemove = [...item.children].filter(c => !ids.has(c[0]))
-  toRemove.forEach(i => item.children.delete(i[0]))
+  const toRemove = [...parent.children].filter(c => !ids.has(c[0]))
+  toRemove.forEach(i => parent.children.delete(i[0]))
 }
 
-const setObjectResult = (run: TestRun, classes: UnitTestClass[], item: TestItem) => {
+const setObjectResult = async (run: TestRun, classes: UnitTestClass[], parent: TestItem, ctrl: TestController) => {
   const ids = new Set(classes.map(classId))
   for (const c of classes) {
-    const ci = item.children.get(classId(c))
+    const ci = parent.children.get(classId(c))
     if (ci) {
-      setClassResult(run, c, ci)
+      await setClassResult(run, c, ci, ctrl)
+    } else {
+      const nci = await createClassItem(ctrl, parent, c, parent.uri!)
+      parent.children.add(nci)
+      await setClassResult(run, c, nci, ctrl)
     }
-    // TODO
   }
-  const toRemove = [...item.children].filter(c => !ids.has(c[0]))
-  toRemove.forEach(i => item.children.delete(i[0]))
+  const toRemove = [...parent.children].filter(c => !ids.has(c[0]))
+  toRemove.forEach(i => parent.children.delete(i[0]))
 }
 
-const setResults = (run: TestRun, classes: UnitTestClass[], item: TestItem) => {
+const setResults = (run: TestRun, classes: UnitTestClass[], item: TestItem, ctrl: TestController) => {
   switch (splitKey(item.id)?.key) {
-    case "O":
-      return setObjectResult(run, classes, item)
     case "C":
-      return setClassResult(run, classes[0], item)
+      if (classes.length === 1)
+        return setClassResult(run, classes[0], item, ctrl)
     case "M":
-      return setMethodResult(run, classes[0].testmethods[0], item)
+      if (classes.length === 1 && classes[0].testmethods.length === 1)
+        return setMethodResult(run, classes[0].testmethods[0], item)
   }
+  let obj = item
+  while (obj.parent) obj = obj.parent
+  return setObjectResult(run, classes, obj, ctrl)
 }
 
 
-const runHandler = (runner: UnitTestRunner) => async (
-  request: TestRunRequest,
-  cancellation: CancellationToken
-) => {
+const runHandler = (runner: UnitTestRunner) => async (request: TestRunRequest) => {
   const included = request.include || [...runner.controller.items].map(x => x[1])
   const connId = included[0].uri?.authority
   if (!connId) {
@@ -117,7 +138,7 @@ const runHandler = (runner: UnitTestRunner) => async (
       if (!tuPath) throw new Error("Unit test Uri not found")
       const classes = await getClient(connId).unitTestRun(tuPath)
       runner.setAuPaths(classes)
-      await setResults(run, classes, i)
+      await setResults(run, classes, i, runner.controller)
     }
   } finally {
     run.end()
@@ -130,21 +151,11 @@ const runonTestTree = (root: Readonly<TestItem[]>, cb: (i: TestItem) => unknown)
     runonTestTree([...i.children].map(c => c[1]), cb)
   }
 }
-const dummyRunHandler = async (ctrl: TestController, root: TestItemCollection, classes: UnitTestClass[]) => {
-  const runclasses = [...ctrl.items].map(c => c[1])
-  const request = new TestRunRequest(runclasses)
-  const run = ctrl.createTestRun(request, "initial", false)
-  for (const clas of classes) {
-    const clasTI = root.get(classId(clas))
-    if (!clasTI) continue
-    for (const meth of clas.testmethods) {
-      const methTI = clasTI.children.get(methodId(meth))
-      if (!methTI) continue
-      run.started(methTI)
-      setMethodResult(run, meth, methTI)
-    }
-  }
-  run.end()
+const methodLocation = async (connId: string, objectUri: string) => {
+  const finder = new AdtObjectFinder(connId)
+  const { uri, start } = await finder.vscodeRange(objectUri)
+  if (start) return { uri, line: start.line }
+  return { uri }
 }
 
 const createMethodItem = async (c: TestController, parent: TestItem, meth: UnitTestMethod, uri: Uri, source: string) => {
@@ -152,7 +163,7 @@ const createMethodItem = async (c: TestController, parent: TestItem, meth: UnitT
   const client = getClient(uri.authority)
   const marker = await client.unitTestOccurrenceMarkers(aunitUri, source)
   const adturi = marker[1] ? uriPartsToString(marker[1].location) : aunitUri
-  const l = await locators.get(uri.authority).methodLocation(adturi)
+  const l = await methodLocation(uri.authority, adturi)
   const muri = Uri.parse(l.uri)
   const item = parent.children.get(methodId(meth)) || c.createTestItem(methodId(meth), `${meth["adtcore:name"]}`, muri)
   if (l.line || l.line === 0) item.range = lineRange(l.line + 1)
@@ -166,15 +177,6 @@ const createClassItem = async (c: TestController, parent: TestItem, cl: UnitTest
   const item = parent.children.get(classId(cl)) || c.createTestItem(classId(cl), `${cl["adtcore:type"]} ${cl["adtcore:name"]}`, uri)
   const children: TestItem[] = []
   for (const meth of cl.testmethods) children.push(await createMethodItem(c, item, meth, uri, source))
-  mergeTestItems(item.children, children)
-  return item
-}
-
-const getOrCreateObjectItem = async (c: TestController, object: AbapObject, classes: UnitTestClass[], uri: Uri) => {
-  const item = c.items.get(objectKey(object)) || c.createTestItem(objectKey(object), object.key, uri)
-  const children: TestItem[] = []
-  for (const cl of classes) children.push(await createClassItem(c, item, cl, uri))
-  c.items.add(item)
   mergeTestItems(item.children, children)
   return item
 }
@@ -207,10 +209,18 @@ export class UnitTestRunner {
     }
   }
 
-  async addResults(uri: Uri, object: AbapObject, classes: UnitTestClass[]) {
-    const root = await getOrCreateObjectItem(this.controller, object, classes, uri)
+  async addResults(uri: Uri) {
+    commands.executeCommand("workbench.view.testing.focus")
+    const object = await getObject(uri)
+    const current = this.controller.items.get(objectKey(object)) || this.controller.createTestItem(objectKey(object), object.key, uri)
+    this.controller.items.add(current)
     this.aunitPaths.set(objectKey(object), object.path)
-    this.setAuPaths(classes)
-    await dummyRunHandler(this.controller, root.children, classes)
+    await runHandler(this)(new TestRunRequest([current]))
+    // } else {
+    //   const root = await getOrCreateObjectItem(this.controller, object, classes, uri)
+    //   this.aunitPaths.set(objectKey(object), object.path)
+    //   this.setAuPaths(classes)
+    //   await dummyRunHandler(this.controller, root.children, classes)
+    // }
   }
 }

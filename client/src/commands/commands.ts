@@ -13,13 +13,12 @@ import { caughtToString, log } from "../lib"
 import { FavouritesProvider, FavItem } from "../views/favourites"
 import { findEditor } from "../langClient"
 import { showHideActivate } from "../listeners"
-import { abapUnit, UnitTestRunner } from "../adt/operations/UnitTestRunner"
+import { UnitTestRunner } from "../adt/operations/UnitTestRunner"
 import { selectTransport } from "../adt/AdtTransports"
 import { showInGuiCb, executeInGui, runInSapGui } from "../adt/sapgui/sapgui"
 import { storeTokens } from "../oauth"
 import { showAbapDoc } from "../views/help"
 import { showQuery } from "../views/query/query"
-import { getTestAdapter } from "../views/abapunit"
 import {
   ADTSCHEME,
   getClient,
@@ -295,10 +294,9 @@ export class AdtCommands {
       const uri = currentUri()
       if (!uri) return
 
-      const adapter = getTestAdapter(uri)
       await window.withProgress(
         { location: ProgressLocation.Window, title: "Running ABAP UNIT" },
-        () => adapter ? adapter.runUnit(uri) : abapUnit(uri)
+        () => UnitTestRunner.get(uri.authority).addResults(uri)
       )
     } catch (e) {
       return window.showErrorMessage(caughtToString(e))
