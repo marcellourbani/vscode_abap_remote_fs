@@ -3,12 +3,12 @@ import { getClient, getRoot, uriRoot } from "../conections"
 import { IncludeService } from "../includes"
 import { isAbapFile, isAbapStat, isFolder } from "abapfs"
 import { UnitTestAlert, UnitTestAlertKind, UnitTestClass, UnitTestMethod, uriPartsToString } from "abap-adt-api"
-import { cache, lineRange } from "../../lib"
+import { lineRange } from "../../lib"
 import { AbapObject, isAbapClassInclude } from "abapobject"
 import { AdtObjectFinder } from "./AdtObjectFinder"
 
 const classId = (cl: UnitTestClass) => `C_${cl["adtcore:type"]} ${cl["adtcore:name"]}`
-const className = (cl: UnitTestClass) => `${cl["adtcore:type"]} ${cl["adtcore:name"]}`
+const className = (cl: UnitTestClass) => `Class ${cl["adtcore:name"]}`
 const methodId = (meth: UnitTestMethod) => `M_${meth["adtcore:name"]}`
 const objectKey = (object: AbapObject) => `O_${object.key}`
 const splitKey = (k: string) => {
@@ -52,7 +52,7 @@ const getObject = async (uri: Uri) => {
 }
 
 interface AlertCollection { alerts: UnitTestAlert[], executionTime?: number }
-const convertAlert = (alert: UnitTestAlert): TestMessage => new TestMessage(new MarkdownString(`${alert.details.join("<br>")}`, true))
+const convertAlert = (alert: UnitTestAlert): TestMessage => new TestMessage(new MarkdownString(`${alert.title}<br>${alert.details.join("<br>")}`, true))
 const itemOutcome = (meth: AlertCollection) => {
   const passed = !meth.alerts.filter(a => a.kind !== UnitTestAlertKind.warning).length
   return ({ messages: meth.alerts.map(convertAlert), passed })
