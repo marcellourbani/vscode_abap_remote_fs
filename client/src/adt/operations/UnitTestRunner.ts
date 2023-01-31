@@ -8,6 +8,7 @@ import { AbapObject, isAbapClassInclude } from "abapobject"
 import { AdtObjectFinder } from "./AdtObjectFinder"
 
 const classId = (cl: UnitTestClass) => `C_${cl["adtcore:type"]} ${cl["adtcore:name"]}`
+const className = (cl: UnitTestClass) => `${cl["adtcore:type"]} ${cl["adtcore:name"]}`
 const methodId = (meth: UnitTestMethod) => `M_${meth["adtcore:name"]}`
 const objectKey = (object: AbapObject) => `O_${object.key}`
 const splitKey = (k: string) => {
@@ -50,18 +51,15 @@ const getObject = async (uri: Uri) => {
   return obj
 }
 
+interface AlertCollection { alerts: UnitTestAlert[], executionTime?: number }
 const convertAlert = (alert: UnitTestAlert): TestMessage => new TestMessage(new MarkdownString(`${alert.details.join("<br>")}`, true))
-const methodOutcome = (meth: UnitTestMethod) => {
+const itemOutcome = (meth: AlertCollection) => {
   const passed = !meth.alerts.filter(a => a.kind !== UnitTestAlertKind.warning).length
   return ({ messages: meth.alerts.map(convertAlert), passed })
 }
 
-// export async function abapUnit(uri: Uri) {
-//   await UnitTestRunner.get(uri.authority).addResults(uri)
-// }
-
 const setMethodResult = (run: TestRun, meth: UnitTestMethod, item: TestItem) => {
-  const outcome = methodOutcome(meth)
+  const outcome = itemOutcome(meth)
   if (outcome.passed)
     run.passed(item, meth.executionTime * 1000)
   else
@@ -71,6 +69,13 @@ const setMethodResult = (run: TestRun, meth: UnitTestMethod, item: TestItem) => 
 const setClassResult = async (run: TestRun, clas: UnitTestClass, parent: TestItem, ctrl: TestController) => {
   const ids = new Set(clas.testmethods.map(methodId))
   let source: string | undefined
+  if (clas.alerts?.length) {
+    const outcome = itemOutcome(clas)
+    if (outcome.passed)
+      run.passed(parent)
+    else
+      run.failed(parent, outcome.messages)
+  }
   for (const m of clas.testmethods) {
     const mi = parent.children.get(methodId(m))
     if (mi) {
@@ -174,7 +179,11 @@ const createMethodItem = async (c: TestController, parent: TestItem, meth: UnitT
 const createClassItem = async (c: TestController, parent: TestItem, cl: UnitTestClass, uri: Uri) => {
   const client = getClient(uri.authority)
   const source = await client.getObjectSource(cl.navigationUri || cl["adtcore:uri"])
-  const item = parent.children.get(classId(cl)) || c.createTestItem(classId(cl), `${cl["adtcore:type"]} ${cl["adtcore:name"]}`, uri)
+  const aunitUri = cl.navigationUri || cl["adtcore:uri"]
+  const l = await methodLocation(uri.authority, aunitUri)
+  const muri = Uri.parse(l.uri)
+  const item = parent.children.get(classId(cl)) || c.createTestItem(classId(cl), className(cl), muri)
+  if (l.line || l.line === 0) item.range = lineRange(l.line + 1)
   const children: TestItem[] = []
   for (const meth of cl.testmethods) children.push(await createMethodItem(c, item, meth, uri, source))
   mergeTestItems(item.children, children)
@@ -216,11 +225,5 @@ export class UnitTestRunner {
     this.controller.items.add(current)
     this.aunitPaths.set(objectKey(object), object.path)
     await runHandler(this)(new TestRunRequest([current]))
-    // } else {
-    //   const root = await getOrCreateObjectItem(this.controller, object, classes, uri)
-    //   this.aunitPaths.set(objectKey(object), object.path)
-    //   this.setAuPaths(classes)
-    //   await dummyRunHandler(this.controller, root.children, classes)
-    // }
   }
 }
