@@ -1,4 +1,4 @@
-import { extractPragmas } from "./functions"
+import { extractPragmas, insertPosition } from "./functions"
 
 
 test("extract pseudocomment notext", async () => {
@@ -52,4 +52,24 @@ test("Pragma as code", async () => {
     const doc = "<p>Details of Analysis</p><p> Syntax check warning. After a structure enhancement, the semantics of the assignment or comparison may change. Internal message code: MESSAGE G:O</p><p>The semantics of the assignment or the comparison might change after a structure enhancement.</p><p>One of the structures can be enhanced. The enhancement could change the semantics of the assignment.</p><p>One of the structures can be enhanced. Even though the enhancement cannot cause a syntax error, multiple naming of components, for example, could change the assignment semantics.</p><p>Troubleshooting: This warning is triggered because the data type <CODE>/BTI/TE_ST_CUSTFVALS</CODE> can be deeply enhanced. In SE11, you can set this data type to &quot;cannot be enhanced&quot;.</p><p>This message can be handled using a pragma (refer to <a href=\"https://mysite.com/sap/public/bc/abap/docu?sap-language=EN&sap-client=100&format=ECLIPSE&object=ABENPRAGMA\"> Pragmas</a>).</p><p>Pragma (compulsory parameters highlighted):</p><p><CODE>ENH_OK</CODE></p>"
     const x = await extractPragmas(doc)
     expect(x).toEqual(["##ENH_OK"])
+})
+
+test("Pragma insert", async () => {
+    const pos = insertPosition("    catch cx_root into lo_ex.", "##CATCH_ALL")
+    expect(pos).toBe(28)
+})
+
+test("Pragma insert with comments", async () => {
+    const pos = insertPosition('    catch cx_root into lo_ex. "whatever', "##CATCH_ALL")
+    expect(pos).toBe(28)
+})
+
+test("pseudocomment insert", async () => {
+    const pos = insertPosition("  SELECT * FROM mara INTO TABLE itab.", '"#EC CI_NOWHERE')
+    expect(pos).toBe(37)
+})
+
+test("pseudocomment insert with comments", async () => {
+    const pos = insertPosition('  SELECT * FROM mara INTO TABLE itab."whatever', '"#EC CI_NOWHERE')
+    expect(pos).toBe(37)
 })

@@ -33,3 +33,9 @@ export const extractPragmas = (text: string) => {
     }
     return []
 }
+
+export const insertPosition = (line: string, pragma: string) => {
+    line = line.replace(/\r$/, "")
+    if (!pragma.match(/^##/)) return line.replace(/".*/, "").length
+    return line.replace(/".*/, "").replace(/\.\s*/, "").length
+}

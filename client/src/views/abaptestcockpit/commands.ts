@@ -7,6 +7,7 @@ import { ATCDocumentation } from "./documentation"
 import { AtcFind, AtcNode, AtcObject, atcProvider, AtcRoot, AtcSystem } from "./view"
 import { findingPragmas } from "./codeinspector"
 import { AbapFsCommands, command } from "../../commands"
+import { insertPosition } from "./functions"
 const openLocation = async (finding?: AtcFind) => {
     try {
         if (!finding) return
@@ -30,19 +31,19 @@ const tryIgnoreFinfing = async (finding?: AtcFind) => {
         window.showInformationMessage(`Can't find a pragma or pseudocomment`)
         return
     }
-    const pragma = pragmas.length === 1 ? pragmas[0] : rfsExtract(await quickPick(pragmas, { placeHolder: "Select pragma" })())
+    const pragma = pragmas.length === 1 ? pragmas[0] : rfsExtract(await quickPick(pragmas, { placeHolder: "Select override" })())
     if (!pragma) return
     const uriP = Uri.parse(finding.uri)
     const document = await workspace.openTextDocument(uriP)
     const lines = document.getText().split("\n")
     const line = lines[pos.line]
-    if (line.includes(pragma)) {
+    if (line.includes(pragma.replace(/^"/, ""))) {
         window.showInformationMessage(`Pragma or pseudocomment ${pragma} already included`)
         return
     }
     const selection = pos && new Selection(pos, pos)
     const edit = new WorkspaceEdit()
-    edit.insert(uriP, new Position(pos.line, line.length), ` ${pragma}`)
+    edit.insert(uriP, new Position(pos.line, insertPosition(line, pragma)), ` ${pragma}`)
     workspace.applyEdit(edit)
     await window.showTextDocument(document, { preserveFocus: false, selection })
 }
