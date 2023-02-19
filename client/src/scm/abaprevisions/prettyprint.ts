@@ -9,12 +9,7 @@ import {
 import { Uri } from "vscode"
 import { getClient } from "../../adt/conections"
 import { RemoteManager } from "../../config"
-
-function parse(name: string, abap: string): ABAPFile {
-  const reg = new Registry().addFile(new MemoryFile(name, abap)).parse()
-  const objects = [...reg.getObjects()].filter(ABAPObject.is)
-  return objects[0]?.getABAPFiles()[0]
-}
+import { parseAbapFile } from "../../lib"
 
 let config: Config
 function getConfig() {
@@ -48,11 +43,11 @@ export const normalizeAbap = (source: string): string => {
       const stringsornot = line.split(/'/)
       for (const i in stringsornot) {
         if (Number(i) % 2) continue // string, nothing to do
-        const part = stringsornot[i]
-        const c = stringsornot[i].indexOf('"')
+        const part = stringsornot[i] || ""
+        const c = stringsornot[i]?.indexOf('"') || -1
         if (c >= 0) {
           // comment
-          stringsornot[i] = part.substr(0, c).toLowerCase() + part.substr(c)
+          stringsornot[i] = part.substring(0, c).toLowerCase() + part.substring(c)
           break
         } else stringsornot[i] = part.toLowerCase()
       }
@@ -63,9 +58,8 @@ export const normalizeAbap = (source: string): string => {
 
 function abapLintPrettyPrint(path: string, source: string) {
   const name = path.replace(/.*\//, "")
-  const f = parse(name, source)
-  const pp = new PrettyPrinter(f, getConfig())
-  const result = pp.run()
+  const f = parseAbapFile(name, source)
+  const result = f && new PrettyPrinter(f, getConfig()).run()
   if (source && !result)
     throw new Error(`Abaplint formatting failed for ${path}`)
   return result

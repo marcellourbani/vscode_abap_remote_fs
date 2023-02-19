@@ -2,12 +2,13 @@
   "compilerOptions": {
     "experimentalDecorators": true,
     "module": "commonjs",
-    "target": "ES2019",
+    "target": "ES2021",
     "outDir": "out",
     "lib": [
-      "es6"
+      "es2021"
     ],
     "sourceMap": true,
+    "noUncheckedIndexedAccess": true,
     /* Strict Type-Checking Option */
     "strict": true /* enable all strict type-checking options */,
     /* Additional Checks */

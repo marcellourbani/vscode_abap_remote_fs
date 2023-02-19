@@ -56,7 +56,7 @@ async function selectOrCreate(
         transportLayer
       )
     )
-  } else return trSel(selection.split(" ")[0])
+  } else return trSel(selection.split(" ")[0] || "")
 }
 
 export async function selectTransport(

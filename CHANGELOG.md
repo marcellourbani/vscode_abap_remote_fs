@@ -1,5 +1,22 @@
 # Change Log
 
+## [1.6.4] 1023-02-19
+
+### Fixed
+
+- pragma positioning in ATC
+- improved null checks
+
+## [1.6.0] 1023-01-31
+
+### Added
+
+- native test API support
+
+### Removed
+
+### Test explorer support
+
 ## [1.5.3] 1023-01-09
 
 ### Fixed

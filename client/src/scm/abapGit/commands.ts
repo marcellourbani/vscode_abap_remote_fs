@@ -239,17 +239,13 @@ export class GitCommands {
   private static async addCmd(
     ...args: AgResState[] | SourceControlResourceGroup[]
   ) {
-    const findSource = (s: AgResState) => {
-      const unstGroup = s.data.groups.get(UNSTAGED)
-      return hasState(unstGroup, s) ? unstGroup : s.data.groups.get(IGNORED)
-    }
     const unstaged = args[0]
     if (isAgResState(unstaged)) {
       const data = unstaged.data
       const states = args as AgResState[]
       const source = data.groups.get(unstaged.originalGroupId)
       transfer(source, data.groups.get(STAGED), states)
-    } else {
+    } else if (unstaged) {
       const data = fromGroup(unstaged)
       if (data)
         transfer(unstaged, data.groups.get(STAGED), unstaged.resourceStates)
@@ -269,7 +265,7 @@ export class GitCommands {
       const states = args as AgResState[]
       const target = data.groups.get(staged.originalGroupId)
       transfer(data.groups.get(STAGED), target, states)
-    } else {
+    } else if (staged) {
       const data = fromGroup(staged)
       if (data) {
         const toUnStaged = staged.resourceStates.filter(

@@ -221,7 +221,7 @@ export class AdtObjectCreator {
     }
     return packageData
   }
-  private async askParent(parentType: string) {
+  private async askParent(parentType: string): Promise<[string, string]> {
     const parent = await new AdtObjectFinder(this.connId).findObject(
       "Select parent",
       parentType
@@ -243,7 +243,7 @@ export class AdtObjectCreator {
         const { bindingtype, category } = x.type.payload
         const opt = { ...options, bindingtype, category, service }
         if (isBindingOptions(opt)) return opt
-        throw new Error("Unexpected Service binding option");
+        throw new Error("Unexpected Service binding option")
       }),
       chain(rfsTaskEither)
     )()

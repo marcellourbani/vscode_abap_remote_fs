@@ -36,7 +36,7 @@ const tryIgnoreFinfing = async (finding?: AtcFind) => {
     const uriP = Uri.parse(finding.uri)
     const document = await workspace.openTextDocument(uriP)
     const lines = document.getText().split("\n")
-    const line = lines[pos.line]
+    const line = lines[pos.line] || ""
     if (line.includes(pragma.replace(/^"/, ""))) {
         window.showInformationMessage(`Pragma or pseudocomment ${pragma} already included`)
         return

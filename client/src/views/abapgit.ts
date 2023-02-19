@@ -117,7 +117,7 @@ class AbapGit {
       collapsibleState: TreeItemCollapsibleState.None
     }
   }
-  public async getGitEnabledServers() {
+  public async getGitEnabledServers(): Promise<[ServerItem[], NoGitItem[]]> {
     const servers: ServerItem[] = []
     const nogits: NoGitItem[] = []
     const folders = (workspace.workspaceFolders || []).filter(

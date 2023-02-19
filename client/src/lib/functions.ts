@@ -4,6 +4,7 @@ import { LeftType } from "./rfsTaskEither"
 import { decode, encode } from "html-entities"
 import { types } from "util"
 import { Task } from "fp-ts/lib/Task"
+import { ABAPFile, ABAPObject, MemoryFile, Registry } from "@abaplint/core"
 
 export const isString = (x: any): x is string => typeof x === "string"
 export const isNumber = (x: any): x is number => typeof x === "number"
@@ -13,6 +14,11 @@ export const flat = <T>(a: T[][]): T[] =>
 
 export const ignore = () => {/* make linter happy */ }
 
+export function parseAbapFile(name: string, abap: string): ABAPFile | undefined {
+  const reg = new Registry().addFile(new MemoryFile(name, abap)).parse()
+  const objects = [...reg.getObjects()].filter(ABAPObject.is)
+  return objects[0]?.getABAPFiles()[0]
+}
 export const firstInMap = <K, V>(map: Map<K, V>): [K, V] | undefined => {
   const first = map.entries().next()
   if (!first.done) return first.value
@@ -389,18 +395,18 @@ export const splitAdtUriInternal = (uri: string) => {
   const uriParts: AdtUriPartsInternal = { path: uri, fragparms: {} }
   const uparts = uri.match(/^([\w]+:\/\/)?([^#\?]+\/?)(?:\?([^#]*))?(?:#(.*))?/)
   if (uparts) {
-    uriParts.path = uparts[2]
+    uriParts.path = uparts[2] || ""
     const query = uparts[3] ? decodeURIComponent(uparts[3]) : ""
     const fragment = uparts[4] ? decodeURIComponent(uparts[4]) : ""
     if (query) {
       for (const part of query.split("&")) {
-        const [name, value] = part.split("=")
+        const [name, value = ""] = part.split("=")
         if (name === "start" || name === "end") uriParts[name] = splitPos(value)
       }
     }
     if (fragment) {
       for (const part of fragment.split(";")) {
-        const [name, value] = part.split("=")
+        const [name = "", value = ""] = part.split("=")
         if (name === "name" || name === "type") uriParts[name] = value
         else if (name === "start" || name === "end") uriParts[name] = splitPos(value)
         else uriParts.fragparms[name] = value

@@ -35,14 +35,14 @@ const getObject = async (uri: Uri) => {
   }
   const nodepath = uriRoot(uri).getNodePath(uri.path)
   const last = nodepath[0]
-  if (!isAbapStat(last.file)) throw new Error("Failed to retrieve object for test path")
+  if (!last || !isAbapStat(last?.file)) throw new Error("Failed to retrieve object for test path")
   const obj = last.file.object
 
-  if (isAbapClassInclude(last.file.object)) {
-    if (last.file.object.path.match(/main$/)) return last.file.object
+  if (isAbapClassInclude(obj)) {
+    if (obj.path.match(/main$/)) return obj
     const prev = nodepath[1]
-    if (isFolder(prev.file))
-      return [...prev.file]
+    if (isFolder(prev?.file))
+      return [...prev!.file]
         .map(x => x.file)
         .filter(isAbapStat)
         .find(x => x.object.path.match(/main$/))?.object || obj
@@ -114,10 +114,12 @@ const setResults = (run: TestRun, classes: UnitTestClass[], item: TestItem, ctrl
   switch (splitKey(item.id)?.key) {
     case "C":
       if (classes.length === 1)
-        return setClassResult(run, classes[0], item, ctrl)
+        return setClassResult(run, classes[0]!, item, ctrl)
     case "M":
-      if (classes.length === 1 && classes[0].testmethods.length === 1)
-        return setMethodResult(run, classes[0].testmethods[0], item)
+      if (classes.length === 1 && classes[0]!.testmethods.length === 1) {
+        const m = classes[0]!.testmethods[0]
+        return m && setMethodResult(run, m, item)
+      }
   }
   let obj = item
   while (obj.parent) obj = obj.parent
@@ -127,7 +129,7 @@ const setResults = (run: TestRun, classes: UnitTestClass[], item: TestItem, ctrl
 
 const runHandler = (runner: UnitTestRunner) => async (request: TestRunRequest) => {
   const included = request.include || [...runner.controller.items].map(x => x[1])
-  const connId = included[0].uri?.authority
+  const connId = included[0]?.uri?.authority
   if (!connId) {
     throw new Error("No valid test found in request")
   }

@@ -73,3 +73,8 @@ test("pseudocomment insert with comments", async () => {
     const pos = insertPosition('  SELECT * FROM mara INTO TABLE itab."whatever', '"#EC CI_NOWHERE')
     expect(pos).toBe(37)
 })
+
+test("Pragma ignore strings", async () => {
+    const pos = insertPosition(`    data:f value '""',i value '" x'. "foo""'"'`, "##CATCH_ALL")
+    expect(pos).toBe(35)
+})

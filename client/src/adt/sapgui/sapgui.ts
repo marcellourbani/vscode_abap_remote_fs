@@ -6,8 +6,8 @@ import { closeSync } from "fs"
 import opn = require("open")
 import { window, ProgressLocation, extensions } from "vscode"
 import { getClient } from "../conections"
-import { AbapObject, isAbapClassInclude } from "abapobject";
-import puppeteer from "puppeteer-core";
+import { AbapObject, isAbapClassInclude } from "abapobject"
+import puppeteer from "puppeteer-core"
 import {
   commands,
   Uri
@@ -73,31 +73,31 @@ export function runInSapGui(
 }
 
 export function executeInGui(connId: string, object: AbapObject) {
-  if (isAbapClassInclude(object) && object.parent) object = object.parent;
+  if (isAbapClassInclude(object) && object.parent) object = object.parent
   return runInSapGui(connId, () => {
-    const { type, name } = object;
-    let transaction = '';
-    let dynprofield = '';
-    let okcode = '';
+    const { type, name } = object
+    let transaction = ''
+    let dynprofield = ''
+    let okcode = ''
     switch (type) {
       case 'PROG/P':
         transaction = 'SE38'
         dynprofield = 'RS38M-PROGRAMM'
         okcode = 'STRT'
-        break;
+        break
       case 'FUGR/FF':
         transaction = 'SE37'
         dynprofield = 'RS38L-NAME'
         okcode = 'WB_EXEC'
-        break;
+        break
       case 'CLAS/OC':
         transaction = 'SE24'
         dynprofield = 'SEOCLASS-CLSNAME'
         okcode = 'WB_EXEC'
-        break;
+        break
       default:
         return showInGuiCb(object.sapGuiUri)()
-        break;
+        break
     }
     return {
       type: "Transaction",
@@ -143,10 +143,10 @@ export class SapGui {
         )
       } else {
         // use the config if found, try to guess if not
-        const [server, port] = (
+        const [server = "", port = ""] = (
           config.url.match(/https?:\/\/([^:]+):([0-9]+)/i) || ["", "", "8000"]
         ).splice(1)
-        const systemID = port.match(/\n\n$/) ? port.substr(-2) : "00"
+        const systemID = port?.match(/\n\n$/) ? port?.slice(-2) : "00"
         const guiconf: ServerGuiConfig = {
           server: (gui && gui.server) || server,
           systemNumber: (gui && gui.systemNumber) || systemID,
@@ -227,7 +227,7 @@ export class SapGui {
       if (!ext) {
         guitype = "WEBGUI_CONTROLLED"
         const args = encodeURIComponent(JSON.stringify([[BROWSERPREVIEW]]))
-        const exturl = Uri.parse(`command:workbench.extensions.action.showExtensionsWithIds?${args}`);
+        const exturl = Uri.parse(`command:workbench.extensions.action.showExtensionsWithIds?${args}`)
         window.showInformationMessage(`Embedded browser requires [Browser preview extension](${exturl})<br>showing in browser`)
       }
     }
@@ -246,11 +246,11 @@ export class SapGui {
       const url = Uri.parse(config.url).with({ path: "/sap/bc/gui/sap/its/webgui", query })
       switch (guitype) {
         case "WEBGUI_UNSAFE_EMBEDDED":
-          commands.executeCommand('browser-preview.openPreview', url.toString());
-          break;
+          commands.executeCommand('browser-preview.openPreview', url.toString())
+          break
         case "WEBGUI_UNSAFE":
-          commands.executeCommand('vscode.open', url);
-          break;
+          commands.executeCommand('vscode.open', url)
+          break
         default:
           const ticket = await client.reentranceTicket()
           const browser = await puppeteer.launch({
@@ -268,7 +268,7 @@ export class SapGui {
           const logonUri = Uri.parse(config.url).with({ path: `/sap/public/myssocntl` }).toString()
           await page.goto(logonUri)
           // browser.disconnect()
-          break;
+          break
       }
     }
   }

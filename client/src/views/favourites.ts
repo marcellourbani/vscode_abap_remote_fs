@@ -235,7 +235,7 @@ export class FavouritesProvider implements TreeDataProvider<FavItem> {
         f => f.uri.scheme === ADTSCHEME
       )
       if (folders.length === 1) {
-        const fav = root.get(folders[0].uri.authority)
+        const fav = root.get(folders[0]!.uri.authority)
         if (fav) favRoot.children.push(...fav)
       } else
         for (const f of folders) {

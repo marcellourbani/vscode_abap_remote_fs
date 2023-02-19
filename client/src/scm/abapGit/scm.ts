@@ -127,7 +127,7 @@ const createScm = (connId: string, repo: GitRepo): ScmData => {
   )
   gscm.inputBox.placeholder = `Message ${repo.branch_name}`
   const groups = cache((groupKey: string) => {
-    const group = gscm.createResourceGroup(groupKey, GDESC[groupKey])
+    const group = gscm.createResourceGroup(groupKey, GDESC[groupKey] || "")
     group.hideWhenEmpty = true
     return group
   })

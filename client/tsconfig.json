@@ -3,12 +3,13 @@
     "experimentalDecorators": true,
     "module": "commonjs",
     "esModuleInterop": true,
-    "target": "ES2019",
+    "target": "ES2021",
     "rootDir": "src",
     "outDir": "out",
     "lib": [
-      "es2019"
+      "es2021"
     ],
+    "noUncheckedIndexedAccess": true,
     "sourceMap": true,
     "strict": true,
     "noUnusedLocals": false,

@@ -118,7 +118,7 @@ export function quickPick<T extends QuickPickItem, T2 = string, T3 extends strin
     const qo = { ignoreFocusOut: true, ...options }
     const pickItems = (await pickSourceToArray(items)) as T[] // need to fool TS
     if (options?.bypassIfSingle && pickItems.length === 1)
-      return projector ? projector(pickItems[0]) : pickItems[0]
+      return projector ? projector(pickItems[0]!) : pickItems[0]!
     const res = await window.showQuickPick(pickItems, qo, token)
     if (isNonNullable(res)) return projector ? projector(res) : res
     return

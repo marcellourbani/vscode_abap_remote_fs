@@ -30,7 +30,7 @@ function dependentInput<T1 extends Record<string, string>, T2>(
   f?: () => Promise<T2>
 ): (record: T1, field: keyof T1) => RfsTaskEither<string> {
   return (record: T1, field: keyof T1) => {
-    const old: string = record[field]
+    const old: string = record[field] || ""
     return fakeselect(old + x, f)
   }
 }

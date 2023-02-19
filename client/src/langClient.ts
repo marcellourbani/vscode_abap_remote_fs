@@ -44,6 +44,7 @@ import * as R from "ramda"
 
 const uriErrors = new Map<string, boolean>()
 const uriError = (uri: string) => new Error(`File not found:${uri}`)
+
 export async function vsCodeUri(confKey: string, uri: string, mainInclude: boolean, cacheErrors = false): Promise<string> {
   const key = `${confKey}_${uri}_${mainInclude}`
   if (cacheErrors && uriErrors.get(key)) throw uriError(uri)

@@ -137,10 +137,10 @@ export class ClassHierarchyLensProvider implements CodeLensProvider {
     const lines = doc.getText().toString().split("\n")
 
     for (let idx = 0; idx < lines.length; idx++) {
-      const line = lines[idx].replace(/".*/, "")
-      const match = line.match(CLASSREGEX)
+      const line = lines[idx]?.replace(/".*/, "")
+      const match = line?.match(CLASSREGEX)
       if (!match) continue
-      const [type, name] = match.slice(1)
+      const [type, name = ""] = match.slice(1)
       if (!type) continue
       const char = match[0].indexOf(name)
       const position = new Position(idx, char)
