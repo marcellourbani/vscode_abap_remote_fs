@@ -14,6 +14,7 @@ interface Variable {
 
 const variableValue = (v: DebugVariable) => {
     if (v.META_TYPE === "table") return `${v.TECHNICAL_TYPE || v.META_TYPE} ${v.TABLE_LINES} lines`
+    if (v.META_TYPE === "objectref") return v.VALUE
     if (debugMetaIsComplex(v.META_TYPE)) return v.META_TYPE
     return `${v.VALUE}`
 }
