@@ -97,14 +97,9 @@ const setClassResult = async (run: TestRun, clas: UnitTestClass, parent: TestIte
 const setObjectResult = async (run: TestRun, classes: UnitTestClass[], parent: TestItem, ctrl: TestController) => {
   const ids = new Set(classes.map(classId))
   for (const c of classes) {
-    const ci = parent.children.get(classId(c))
-    if (ci) {
-      await setClassResult(run, c, ci, ctrl)
-    } else {
-      const nci = await createClassItem(ctrl, parent, c, parent.uri!)
-      parent.children.add(nci)
-      await setClassResult(run, c, nci, ctrl)
-    }
+    const nci = await createClassItem(ctrl, parent, c, parent.uri!)
+    parent.children.add(nci)
+    await setClassResult(run, c, nci, ctrl)
   }
   const toRemove = [...parent.children].filter(c => !ids.has(c[0]))
   toRemove.forEach(i => parent.children.delete(i[0]))

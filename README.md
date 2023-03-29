@@ -70,6 +70,21 @@ You will end up with one or more server connections like this in your vs code co
 }
 ```
 
+## Access over RFC
+
+Not supported, but an user provided a [workaround](https://github.com/andwehrm/rfc-connector)
+
+## Proxy support
+
+There's no direct support for proxies in the application, but you can use the builtin proxy in vscode, just use the option 'Use the proxy support for extensions.' If you only want to do it for a single system you can do it in its workspace (and save it, which is a good idea anyway)
+
+```json
+{
+  "http.proxySupport": "on",
+  "http.proxy": "http://localhost:3128"
+}
+```
+
 ## License
 
 MIT license applies
