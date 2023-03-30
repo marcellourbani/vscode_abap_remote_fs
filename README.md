@@ -85,6 +85,8 @@ There's no direct support for proxies in the application, but you can use the bu
 }
 ```
 
+![image](https://user-images.githubusercontent.com/2453277/228667375-2c0d189e-3e08-4cbe-8307-721a7d4454f8.png)
+
 ## License
 
 MIT license applies
