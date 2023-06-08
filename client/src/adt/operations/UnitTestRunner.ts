@@ -91,7 +91,7 @@ const removeObsolete = (parent: TestItem, ids: Set<string>) =>
         .forEach(i => parent.children.delete(i[0]))
 
 const setMethodResult = (run: TestRun, meth: UtMethod, item: TestItem) => {
-    const outcome = itemOutcome(meth)
+    const outcome = methodOutcome(meth)
     item.range = meth.range
     if (outcome.passed)
         run.passed(item, meth.executionTime * 1000)
@@ -101,7 +101,7 @@ const setMethodResult = (run: TestRun, meth: UtMethod, item: TestItem) => {
 
 const setClassResult = (run: TestRun, c: UtClass, parent: TestItem, ctrl: TestController) => {
     const nci = getOrCreateSubItem(ctrl, parent, c)
-    const outcome = itemOutcome(c)
+    const outcome = classOutcome(c)
     parent.children.add(nci)
     nci.range = c.range
     const mids = new Set(c.testmethods.map(m => m.uri))
@@ -153,11 +153,16 @@ const runUnitUrl = async (connId: string, path: string): Promise<UtClass[]> => {
     return classes
 }
 
-interface AlertCollection { alerts: UnitTestAlert[], executionTime?: number }
 const convertAlert = (alert: UnitTestAlert): TestMessage => new TestMessage(new MarkdownString(`${alert.title}<br>${alert.details.join("<br>")}`, true))
-const itemOutcome = (meth: AlertCollection) => {
-    const passed = !meth.alerts.filter(a => a.kind !== UnitTestAlertKind.warning).length
-    return ({ messages: meth.alerts.map(convertAlert), passed })
+const classOutcome = (item: UtClass) => {
+    const missMethods = item.testmethods.length === 0
+    const errors = item.alerts.filter(a => a.kind !== UnitTestAlertKind.warning)
+    const passed = errors.length === 0 && !missMethods
+    return ({ messages: item.alerts.map(convertAlert), passed })
+}
+const methodOutcome = (item: UtMethod | UtClass) => {
+    const passed = !item.alerts.filter(a => a.kind !== UnitTestAlertKind.warning).length
+    return ({ messages: item.alerts.map(convertAlert), passed })
 }
 
 const setResults = (run: TestRun, classes: UtClass[], item: TestItem, ctrl: TestController, resType: TestResType) => {
