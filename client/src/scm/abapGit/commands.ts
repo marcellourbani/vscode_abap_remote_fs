@@ -35,10 +35,11 @@ import {
   createStore,
   inputBox,
   quickPick,
-  caughtToString
+  caughtToString,
+  askConfirmation
 } from "../../lib"
 import { map, isNone, none, fromEither, isSome } from "fp-ts/lib/Option"
-import { dataCredentials, listPasswords, deletePassword } from "./credentials"
+import { dataCredentials, listPasswords, deletePassword, deleteDefaultUser } from "./credentials"
 import { GitStagingFile, GitStaging } from "abap-adt-api"
 import { context } from "../../extension"
 import { selectTransport } from "../../adt/AdtTransports"
@@ -305,8 +306,15 @@ export class GitCommands {
     )()
     if (isRight(user)) {
       await deletePassword(item.right.repo, user.right)
+      const deluser = await askConfirmation("Delete user too?")()
       const credentials = scmData(scmKey(fsRoot?.uri.authority, item.right.repo.key))?.credentials
-      if (credentials && credentials.user === user.right) credentials.password = ""
+      if (credentials && credentials.user === user.right) {
+        credentials.password = ""
+        if (isRight(deluser) && deluser.right) {
+          credentials.user = ""
+          deleteDefaultUser(item.right.repo.url)
+        }
+      }
     }
   }
   @command(AbapFsCommands.agitBranch)

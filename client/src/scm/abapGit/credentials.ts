@@ -26,6 +26,8 @@ const setDefaultUser = (repoUrl: string) => (cred: ScmCredentials) => {
   return cred
 }
 
+export const deleteDefaultUser = (repoUrl: string) => getUserStore().update(repoUrl, "")
+
 const pwdService = (repoUrl: string) => `vscode.abapgit${repoUrl}`
 const isPrivate = async (data: ScmData, client: ADTClient) =>
   client
