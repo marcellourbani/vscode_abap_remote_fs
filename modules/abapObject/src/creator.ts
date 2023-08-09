@@ -2,7 +2,7 @@ import { AbapObjectBase, AbapObjectConstructor, AbapObject } from "./AbapObject"
 import { AbapObjectService } from "./AOService"
 import { Node } from "abap-adt-api"
 import { AbapObjectError } from "./AOError"
-import {} from "./objectTypes"
+import { } from "./objectTypes"
 
 const constructors = new Map<string, AbapObjectConstructor>()
 export const AbapObjectCreator = (...types: string[]) => (
@@ -23,7 +23,8 @@ export const create = (
   techName: string,
   parent: AbapObject | undefined,
   sapguiUri: string,
-  client: AbapObjectService
+  client: AbapObjectService,
+  owner = ""
 ) => {
   if (!type || !path)
     throw new AbapObjectError(
@@ -40,7 +41,8 @@ export const create = (
     techName,
     parent,
     sapguiUri,
-    client
+    client,
+    owner
   )
 }
 

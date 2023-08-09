@@ -61,6 +61,7 @@ export interface AbapObject {
   readonly sapGuiUri: string
   /** supported or only sapgui */
   readonly supported: boolean
+  readonly owner?: string
 
   /** loads/updates the object metadata */
   loadStructure: () => Promise<AbapObjectStructure>
@@ -102,7 +103,8 @@ export class AbapObjectBase implements AbapObject {
     readonly techName: string,
     readonly parent: AbapObject | undefined,
     readonly sapGuiUri: string,
-    protected readonly service: AbapObjectService
+    protected readonly service: AbapObjectService,
+    readonly owner?: string
   ) {
     this.supported =
       this.type !== "IWSV" &&
@@ -230,7 +232,7 @@ export class AbapObjectBase implements AbapObject {
   async childComponents(): Promise<NodeStructure> {
     if (!this.expandable) throw ObjectErrors.isLeaf(this)
     if (!isNodeParent(this.type)) throw ObjectErrors.NotSupported(this)
-    const unfiltered = await this.service.nodeContents(this.type, this.name)
+    const unfiltered = await this.service.nodeContents(this.type, this.name, this.owner)
     return this.filterInvalid(unfiltered)
   }
 }
