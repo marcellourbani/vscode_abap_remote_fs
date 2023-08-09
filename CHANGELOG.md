@@ -1,5 +1,11 @@
 # Change Log
 
+## [1.6.5] 1023-08-09
+
+### Added
+
+- support local objects owned by others
+
 ## [1.6.4] 1023-02-19
 
 ### Fixed

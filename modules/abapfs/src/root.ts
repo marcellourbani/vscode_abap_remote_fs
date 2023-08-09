@@ -20,6 +20,7 @@ const createPkg = (name: string, service: AbapFsService, owner?: string) =>
   create(PACKAGE, name, PACKAGEBASEPATH, true, "", undefined, "", service, owner)
 
 const namedFolder = (owner?: string, folder = TMPFOLDER) => owner ? `${folder}_${owner}` : folder
+const extractOwner = (n: string) => n.match(/\$tmp_(.*)/i)?.[1]
 
 const toInclude = async (node: PathItem | undefined, adtPath: string, main: boolean) => {
   if (node && isAbapFolder(node?.file) && (main || node.path !== adtPath)) {
@@ -103,6 +104,20 @@ export class Root extends Folder {
     return node
   }
 
+  async getNodeAsync(path: string) {
+    const first = path.split("/").filter(x => x)?.[0]
+    if (first) {
+      // if belongs to the $TMP of another user, add it to the root
+      const owner = extractOwner(first)
+      if (owner && !this.getNode(first)) {
+        const tmp = new AbapFolder(createPkg(TMPFOLDER, this.service, owner), this, this.service)
+        this.set(first, tmp, true)
+        await tmp.refresh()
+      }
+    }
+    return super.getNodeAsync(path)
+  }
+
   private async getOwnerIfrelevant(steps: PathStep[], uri: string) {
     const { "adtcore:type": type, "adtcore:name": name } = steps[0]
     if (type === PACKAGE && name.match(/^\$/)) {
@@ -150,7 +165,7 @@ export class Root extends Folder {
       const hit = findInFolder(file, `/${name}`, step)
       if (hit) return hit
     }
-    const [_, owner] = step["adtcore:name"].match(/\$tmp_(.*)/i) || []
+    const owner = extractOwner(step["adtcore:name"])
     if (owner) {
       const tmp = createPkg(TMPFOLDER, this.service, owner)
       this.set(step["adtcore:name"], new AbapFolder(tmp, this, this.service), true)
