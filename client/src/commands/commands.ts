@@ -4,9 +4,7 @@ import {
   Uri,
   window,
   commands,
-  ProgressLocation,
-  FileSystemError,
-  CancellationError
+  ProgressLocation
 } from "vscode"
 import { pickAdtRoot, RemoteManager } from "../config"
 import { caughtToString, log } from "../lib"

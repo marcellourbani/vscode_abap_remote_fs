@@ -16,8 +16,11 @@ const isAFItem = (i: PathItem): i is AFItem => isAbapFolder(i.file)
 
 export const TMPFOLDER = "$TMP"
 export const LIBFOLDER = "System Library"
-const createPkg = (name: string, service: AbapFsService) =>
-  create(PACKAGE, name, PACKAGEBASEPATH, true, "", undefined, "", service)
+const createPkg = (name: string, service: AbapFsService, owner?: string) =>
+  create(PACKAGE, name, PACKAGEBASEPATH, true, "", undefined, "", service, owner)
+
+const namedFolder = (owner?: string, folder = TMPFOLDER) => owner ? `${folder}_${owner}` : folder
+const extractOwner = (n: string) => n.match(/\$tmp_(.*)/i)?.[1]
 
 const toInclude = async (node: PathItem | undefined, adtPath: string, main: boolean) => {
   if (node && isAbapFolder(node?.file) && (main || node.path !== adtPath)) {
@@ -46,20 +49,23 @@ const toInclude = async (node: PathItem | undefined, adtPath: string, main: bool
 const findInFolder = (
   file: FileStat,
   name: string,
-  step: PathStep
+  step: PathStep,
+  owner?: string
 ): PathItem | undefined => {
   if (!isAbapFolder(file)) return
-  if (
-    file.object.type === step["adtcore:type"] &&
-    file.object.name === step["adtcore:name"]
-  )
-    return { file, path: `${name}` }
-  return file.findAbapObject(
-    step["adtcore:type"],
-    step["adtcore:name"],
-    step["adtcore:uri"],
-    `${name}`
-  )
+  const { "adtcore:type": steptype, "adtcore:name": stepname, "adtcore:uri": stepuri } = step
+
+  // special handling for user specific TMP
+  if (owner && file.object.type === PACKAGE && file.object.name === TMPFOLDER) {
+    const objname = namedFolder(file.object.owner, file.object.name)
+    if (file.object.type === steptype && objname === stepname)
+      return { file, path: `${name}` }
+  }
+  else {
+    if (file.object.type === steptype && file.object.name === stepname)
+      return { file, path: `${name}` }
+    return file.findAbapObject(steptype, stepname, stepuri, `${name}`)
+  }
 }
 
 export class Root extends Folder {
@@ -98,19 +104,45 @@ export class Root extends Folder {
     return node
   }
 
+  async getNodeAsync(path: string) {
+    const first = path.split("/").filter(x => x)?.[0]
+    if (first) {
+      // if belongs to the $TMP of another user, add it to the root
+      const owner = extractOwner(first)
+      if (owner && !this.getNode(first)) {
+        const tmp = new AbapFolder(createPkg(TMPFOLDER, this.service, owner), this, this.service)
+        this.set(first, tmp, true)
+        await tmp.refresh()
+      }
+    }
+    return super.getNodeAsync(path)
+  }
+
+  private async getOwnerIfrelevant(steps: PathStep[], uri: string) {
+    const { "adtcore:type": type, "adtcore:name": name } = steps[0]
+    if (type === PACKAGE && name.match(/^\$/)) {
+      // add support for other user's tmp objects
+      const od = await this.service.objectStructure(uri)
+      const owner = od.metaData["adtcore:responsible"]
+      if (owner !== this.service.user) return owner
+    }
+  }
+
   private async findByAdtUriInt(uri: string) {
     const steps = await this.service.objectPath(uri)
     if (!steps.length) return
+    const owner = await this.getOwnerIfrelevant(steps, uri)
     // add a fake $TMP if neeeded
     const { "adtcore:type": type, "adtcore:name": name } = steps[0]
     if (type === PACKAGE && name !== TMPFOLDER && name.match(/^\$/))
       steps.unshift({
-        "adtcore:name": TMPFOLDER,
+        "adtcore:name": namedFolder(owner),
         "adtcore:type": PACKAGE,
         "adtcore:uri": PACKAGEBASEPATH,
         "projectexplorer:category": ""
       })
-
+    else if (type === PACKAGE && name === TMPFOLDER && owner)
+      steps[0]["adtcore:name"] = namedFolder(owner)
     const [first, ...next] = steps
     let node = await this.findRoot(first)
     for (const step of next) {
@@ -133,10 +165,15 @@ export class Root extends Folder {
       const hit = findInFolder(file, `/${name}`, step)
       if (hit) return hit
     }
+    const owner = extractOwner(step["adtcore:name"])
+    if (owner) {
+      const tmp = createPkg(TMPFOLDER, this.service, owner)
+      this.set(step["adtcore:name"], new AbapFolder(tmp, this, this.service), true)
+    }
     for (const { file, name } of this) {
       if (!isAbapFolder(file)) continue
       await file.refresh()
-      const hit = findInFolder(file, `/${name}`, step)
+      const hit = findInFolder(file, `/${name}`, step, owner)
       if (hit) return hit
     }
   }

@@ -8,6 +8,7 @@ export interface AbapFsService extends AbapObjectService {
   readonly sessionType: session_types
   dropSession: () => Promise<void>
   login: () => Promise<void>
+  readonly user: string
 }
 
 export class AFsService extends AOService implements AbapFsService {
@@ -38,6 +39,10 @@ export class AFsService extends AOService implements AbapFsService {
 
   get sessionType() {
     return this.client.stateful
+  }
+
+  get user() {
+    return this.client.username
   }
 
   login() {
