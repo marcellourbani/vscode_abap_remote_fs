@@ -119,12 +119,22 @@ export class Root extends Folder {
   }
 
   private async getOwnerIfrelevant(steps: PathStep[], uri: string) {
-    const { "adtcore:type": type, "adtcore:name": name } = steps[0]
-    if (type === PACKAGE && name.match(/^\$/)) {
-      // add support for other user's tmp objects
-      const od = await this.service.objectStructure(uri)
-      const owner = od.metaData["adtcore:responsible"]
-      if (owner !== this.service.user) return owner
+    try {
+      const { "adtcore:type": type, "adtcore:name": name } = steps[0]
+      if (type === PACKAGE && name.match(/^\$/)) {
+        // add support for other user's tmp objects
+        const od = await this.service.objectStructure(uri).catch(
+          e => {
+            const u = steps.slice(-2)[1]?.["adtcore:uri"]
+            if (!u) throw e
+            return this.service.objectStructure(u)
+          }
+        )
+        const owner = od.metaData["adtcore:responsible"]
+        if (owner !== this.service.user) return owner
+      }
+    } catch (error) {
+      return
     }
   }
 
