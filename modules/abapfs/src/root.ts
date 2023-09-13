@@ -19,7 +19,7 @@ export const LIBFOLDER = "System Library"
 const createPkg = (name: string, service: AbapFsService, owner?: string) =>
   create(PACKAGE, name, PACKAGEBASEPATH, true, "", undefined, "", service, owner)
 
-const namedFolder = (owner?: string, folder = TMPFOLDER) => owner ? `${folder}_${owner}` : folder
+const namedFolder = (owner?: string, folder = TMPFOLDER) => owner ? `${folder}_${owner.toUpperCase()}` : folder
 const extractOwner = (n: string) => n.match(/\$tmp_(.*)/i)?.[1]
 
 const toInclude = async (node: PathItem | undefined, adtPath: string, main: boolean) => {
@@ -107,15 +107,19 @@ export class Root extends Folder {
   async getNodeAsync(path: string) {
     const first = path.split("/").filter(x => x)?.[0]
     if (first) {
-      // if belongs to the $TMP of another user, add it to the root
+      // if belongs to the $TMP of another user, add it to the root - blacklist myself to avoid duplications
       const owner = extractOwner(first)
-      if (owner && !this.getNode(first)) {
+      if (owner && !this.isMe(owner) && !this.getNode(first)) {
         const tmp = new AbapFolder(createPkg(TMPFOLDER, this.service, owner), this, this.service)
         this.set(first, tmp, true)
         await tmp.refresh()
       }
     }
     return super.getNodeAsync(path)
+  }
+
+  private isMe(owner: string) {
+    return !owner || owner.toLowerCase() === this.service.user.toLowerCase()
   }
 
   private async getOwnerIfrelevant(steps: PathStep[], uri: string) {
@@ -131,7 +135,7 @@ export class Root extends Folder {
           }
         )
         const owner = od.metaData["adtcore:responsible"]
-        if (owner !== this.service.user) return owner
+        if (!this.isMe(owner)) return owner
       }
     } catch (error) {
       return
