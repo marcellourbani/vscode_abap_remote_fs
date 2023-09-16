@@ -1,19 +1,19 @@
 # Change Log
 
-## [1.6.5] 1023-08-09
+## [1.6.5] 2023-08-09
 
 ### Added
 
 - support local objects owned by others
 
-## [1.6.4] 1023-02-19
+## [1.6.4] 2023-02-19
 
 ### Fixed
 
 - pragma positioning in ATC
 - improved null checks
 
-## [1.6.0] 1023-01-31
+## [1.6.0] 2023-01-31
 
 ### Added
 
@@ -23,13 +23,13 @@
 
 ### Test explorer support
 
-## [1.5.3] 1023-01-09
+## [1.5.3] 2023-01-09
 
 ### Fixed
 
 - quickdiff
 
-## [1.5.0] 1023-01-06
+## [1.5.0] 2023-01-06
 
 ### Added
 
