@@ -983,7 +983,7 @@
         {
           "command": "abapfs.activate",
           "group": "navigation",
-          "when": "resourceScheme == adt && editorLangId =~ /abap|cds/ && abapfs:showActivate "
+          "when": "resourceScheme == adt && editorLangId =~ /abap|cds|xml/ && abapfs:showActivate "
         }
       ],
       "scm/title": [

@@ -1,5 +1,15 @@
 # Change Log
 
+## [1.6.9] 2023-09-i7
+
+### Added
+
+- activation suppot for xml files
+
+### Changed
+
+- extension for xslt transformations
+
 ## [1.6.5] 2023-08-09
 
 ### Added

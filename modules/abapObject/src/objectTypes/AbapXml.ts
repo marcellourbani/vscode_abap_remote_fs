@@ -10,6 +10,8 @@ const extension = (type: string) => {
   const tpext =
     type === "MSAG/N" ? type.replace(/\//, "") : type.replace(/\/.*/, "")
 
+  if (tpext === "XSLT") return ".xslt.source.xml"
+
   return `.${tpext.toLowerCase()}.xml`
 }
 
