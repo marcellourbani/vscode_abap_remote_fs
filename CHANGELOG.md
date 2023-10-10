@@ -1,6 +1,12 @@
 # Change Log
 
-## [1.6.9] 2023-09-i7
+## [1.6.10] 2023-10-10
+
+### Fixed
+
+- replaced keytar with vscode secure storage
+
+## [1.6.9] 2023-09-17
 
 ### Added
 
