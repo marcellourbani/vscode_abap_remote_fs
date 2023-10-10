@@ -40,7 +40,7 @@ const mandInbox = (prompt: string, password = false) =>
 
 export async function repoCredentials(repoUrl: string) {
   const cred: ScmCredentials = { user: getDefaultUser(repoUrl), password: "" }
-  const vault = new PasswordVault()
+  const vault = PasswordVault.get()
   const pwdFromVault = async (x: ScmCredentials) => {
     if (x.user)
       x.password = (await vault.getPassword(pwdService(repoUrl), x.user)) || ""
@@ -81,11 +81,11 @@ export async function dataCredentials(
 }
 
 export const deletePassword = (repo: GitRepo, user: string) => {
-  const vault = new PasswordVault()
+  const vault = PasswordVault.get()
   return vault.deletePassword(pwdService(repo.url), user)
 }
 
 export const listPasswords = (repo: GitRepo) => {
-  const vault = new PasswordVault()
-  return vault.acounts(pwdService(repo.url))
+  const vault = PasswordVault.get()
+  return vault.accounts(pwdService(repo.url))
 }

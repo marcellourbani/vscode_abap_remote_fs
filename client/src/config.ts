@@ -177,7 +177,7 @@ export class RemoteManager {
   private vault: PasswordVault
 
   private constructor() {
-    this.vault = new PasswordVault()
+    this.vault = PasswordVault.get()
     workspace.onDidChangeConfiguration(this.configChanged, this)
   }
   private configChanged({ affectsConfiguration }: ConfigurationChangeEvent) {
@@ -285,11 +285,12 @@ export class RemoteManager {
     return result
   }
 
-  public clearPassword(connectionId: string, userName: string) {
-    return this.vault.deletePassword(
+  public async clearPassword(connectionId: string, userName: string) {
+    await this.vault.deletePassword(
       `vscode.abapfs.${formatKey(connectionId)}`,
       userName
     )
+    return true
   }
 
   public async getPassword(connectionId: string, userName: string) {

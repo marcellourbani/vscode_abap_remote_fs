@@ -16,7 +16,7 @@ import {
   documentWillSave,
   restoreLocks
 } from "./listeners"
-import { log } from "./lib"
+import { PasswordVault, log } from "./lib"
 import { LanguageCommands } from "./langClient"
 import { registerRevisionModel, AbapRevisionLens } from "./scm/abaprevisions"
 import { ClassHierarchyLensProvider } from "./adt/classhierarchy"
@@ -39,6 +39,7 @@ export async function activate(ctx: ExtensionContext): Promise<AbapFsApi> {
   context = ctx
   const startTime = new Date().getTime()
   log("activating ABAPfs...")
+  new PasswordVault(ctx)
   loadTokens()
   clearTokens()
   const sub = context.subscriptions
