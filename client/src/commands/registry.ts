@@ -44,6 +44,7 @@ export const AbapFsCommands = {
   changequickdiff: "abapfs.changequickdiff",
   remotediff: "abapfs.remotediff",
   comparediff: "abapfs.comparediff",
+  mergeEditor: "abapfs.openMergeEditor",
   // transports
   transportObjectDiff: "abapfs.transportObjectDiff",
   openTransportObject: "abapfs.openTransportObject",
