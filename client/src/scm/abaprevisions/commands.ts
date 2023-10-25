@@ -22,24 +22,42 @@ const revItems = (revisions: Revision[]): RevisionItem[] =>
     revision: r
   }))
 
+const loadRevisions = async (uri: Uri, withRefresh = true) => {
+  const service = AbapRevisionService.get(uri.authority)
+  const revisions = await service.uriRevisions(uri, withRefresh)
+  return revisions || []
+}
+
+const pickRevision = async (revisions: Revision[], title = "Select version") => {
+  if (!revisions.length) return
+  if (revisions.length === 1) return revisions[0]
+  const selected = await window.showQuickPick(revItems(revisions), { placeHolder: title })
+  return selected?.revision || false
+}
+
 const selectRevision = async (
   uri: Uri,
   title = "Select version",
   withRefresh = true
 ) => {
-  const service = AbapRevisionService.get(uri.authority)
-  const revisions = await service.uriRevisions(uri, false)
-  if (!revisions?.length) return
-  if (revisions.length === 1) return revisions[0]
-  const selected = await window.showQuickPick(revItems(revisions), {
-    placeHolder: title
-  })
-  return selected?.revision || false
+  const revisions = await loadRevisions(uri, withRefresh)
+  return pickRevision(revisions, title)
 }
 const CURRENTREV = "current"
 
 const diffTitle = (uri: Uri, lvers: string, rvers: string) =>
   `${uri.path.split("/").pop() || uri.toString()} ${lvers}->${rvers}`
+
+const pickCommonAncestor = (locals: Revision[], localVer: Revision, remotes: Revision[], remoteVer: Revision) => {
+  const localTime = new Date(localVer.date).getTime()
+  const possibleLocals = locals.filter(l => new Date(l.date).getTime() < localTime)
+  const remoteTime = new Date(remoteVer.date).getTime()
+  const possibleRemotes = remotes.filter(l => new Date(l.date).getTime() < remoteTime)
+  for (const l of possibleLocals)
+    if (possibleRemotes.find(r => r.version && r.version === l.version)) return l
+  return pickRevision(possibleLocals, "Unable to determine common ancestor, please select base for comparison")
+}
+
 
 export const displayRevDiff = (
   rightRev: Revision | undefined,
@@ -116,6 +134,52 @@ export class AbapRevisionCommands {
     if (!rightRev) return
     displayRevDiff(rightRev, leftRev, uri)
   }
+
+  @command(AbapFsCommands.mergeEditor)
+  private static async mergeConflicts(uri: Uri) {
+    if (!abapUri(uri)) return
+    try {
+      const file = uriRoot(uri).getNode(uri.path)
+      if (!isAbapFile(file)) return
+      const { remote, userCancel } = await RemoteManager.get().selectConnection(
+        undefined,
+        r => r.name.toLowerCase() !== uri.authority
+      )
+      if (!remote)
+        if (userCancel) return
+        else throw Error("No remote system available in configuration")
+
+      const remoteRoot = await getOrCreateRoot(formatKey(remote.name))
+      if (!remoteRoot) throw Error(`Faild to connect to server ${remote.name}`)
+
+      const path = await remoteRoot.findByAdtUri(file.object.path)
+      if (!path) throw Error(`Object not found in remote ${remote.name}`)
+
+      const remoteUri = uri.with({ authority: remoteRoot.connId, path: path.path })
+
+      const remotes = await loadRevisions(remoteUri, true)
+      const remoteVer = await pickRevision(remotes, "Remote version")
+      if (!remoteVer) return
+      const locals = await loadRevisions(uri, true)
+      const localVer = await pickRevision(locals, "Local version")
+      if (!localVer) return
+      const baseVer = await pickCommonAncestor(locals, localVer, remotes, remoteVer)
+      if (!baseVer) return
+      const base = revisionUri(uri, baseVer)
+
+      const description = uri.path.replace(/.*\//, "")
+
+      const options = {
+        base,
+        input1: { uri: revisionUri(uri, localVer), title: uri.authority, description, detail: localVer.version },
+        input2: { uri: revisionUri(remoteUri, remoteVer), title: remoteUri.authority, description, detail: remoteVer.version },
+        output: uri
+      }
+      return commands.executeCommand<void>("_open.mergeEditor", options)
+    } catch (e) {
+      window.showErrorMessage(caughtToString(e))
+    }
+  }
   @command(AbapFsCommands.clearScmGroup)
   private static clearGroup(group: AGroup) {
     group.resourceStates = []
@@ -149,3 +213,4 @@ export class AbapRevisionCommands {
     })
   }
 }
+

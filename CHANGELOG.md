@@ -1,5 +1,11 @@
 # Change Log
 
+## [1.7.0] 2023-10-25
+
+### Added
+
+- merge editor support
+
 ## [1.6.10] 2023-10-10
 
 ### Fixed

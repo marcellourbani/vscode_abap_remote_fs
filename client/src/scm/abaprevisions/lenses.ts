@@ -60,7 +60,12 @@ export class AbapRevisionLens implements CodeLensProvider {
       arguments: [doc.uri]
     })
 
-    return [quickDiff, compareDiff, remoteDiff]
+    const merge = new CodeLens(rng, {
+      command: AbapFsCommands.mergeEditor,
+      title: "merge conflicts with remote",
+      arguments: [doc.uri]
+    })
+    return [quickDiff, compareDiff, remoteDiff, merge]
   }
   private emitter = new EventEmitter<void>()
   private static instance?: AbapRevisionLens
