@@ -29,7 +29,8 @@ import { AdtObjectActivator } from "../adt/operations/AdtObjectActivator"
 import {
   AdtObjectFinder,
   createUri,
-  findAbapObject
+  findAbapObject,
+  uriAbapFile
 } from "../adt/operations/AdtObjectFinder"
 import { isAbapClassInclude } from "abapobject"
 import { IncludeProvider } from "../adt/includes" // resolve dependencies
@@ -39,11 +40,15 @@ import { types } from "util"
 import { atcProvider } from "../views/abaptestcockpit"
 import { context } from "../extension"
 
-function currentUri() {
+export function currentUri() {
   if (!window.activeTextEditor) return
   const uri = window.activeTextEditor.document.uri
   if (uri.scheme !== ADTSCHEME) return
   return uri
+}
+export function currentAbapFile() {
+  const uri = currentUri()
+  return uriAbapFile(uri)
 }
 
 export function currentEditState() {
@@ -82,8 +87,8 @@ export class AdtCommands {
   }
 
   @command(AbapFsCommands.selectDB)
-  private static async selectDB() {
-    return showQuery()
+  private static async selectDB(table?: string) {
+    return showQuery(table)
   }
 
   @command(AbapFsCommands.changeInclude)
@@ -283,6 +288,16 @@ export class AdtCommands {
   @command(AbapFsCommands.deletefavourite)
   private static deleteFavourite(node: FavItem) {
     FavouritesProvider.get().deleteFavourite(node)
+  }
+
+  @command(AbapFsCommands.tableContents)
+  private static showTableContents() {
+    const file = currentAbapFile()
+    if (!file) {
+      window.showInformationMessage("Unable to determine the table to display")
+      return
+    }
+    commands.executeCommand(AbapFsCommands.selectDB, file.object.name)
   }
 
   @command(AbapFsCommands.unittest)

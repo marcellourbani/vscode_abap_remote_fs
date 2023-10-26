@@ -26,7 +26,8 @@ import {
   isAbapFile,
   isAbapStat,
   Root,
-  AbapFile
+  AbapFile,
+  AbapStat
 } from "abapfs"
 
 interface SearchObjectType {
@@ -253,6 +254,16 @@ export function findAbapObject(uri: Uri) {
   const file = uriRoot(uri).getNode(uri.path)
   if (isAbapStat(file)) return file.object
   throw new Error("Not an ABAP object")
+}
+
+export const uriAbapFile = (uri?: Uri): AbapStat | undefined => {
+  try {
+    if (!uri) return
+    const root = uriRoot(uri)
+    const file = root.getNode(uri.path)
+    if (isAbapStat(file)) return file
+  } catch (error) {
+  }
 }
 
 export const pathSequence = (root: Root, uri: Uri | undefined): FileStat[] => {

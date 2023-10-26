@@ -1,4 +1,4 @@
-import * as vscode from 'vscode';
+import * as vscode from 'vscode'
 import { ADTClient } from "abap-adt-api"
 /**
  * Manages cat coding webview panels
@@ -7,26 +7,27 @@ export class QueryPanel {
     /**
      * Track the currently panel. Only allow a single panel to exist at a time.
      */
-    public static currentPanel: QueryPanel | undefined;
+    public static currentPanel: QueryPanel | undefined
 
     public static readonly viewType = 'ABAPQuery';
 
-    private readonly _panel: vscode.WebviewPanel;
-    private readonly _extensionUri: vscode.Uri;
+    private readonly _panel: vscode.WebviewPanel
+    private readonly _extensionUri: vscode.Uri
     private _disposables: vscode.Disposable[] = [];
 
-    private _client: ADTClient;
-    private _table: string;
+    private _client: ADTClient
+    private _table: string
 
     public static createOrShow(extensionUri: vscode.Uri, client: ADTClient, table: string) {
         const column = vscode.window.activeTextEditor
             ? vscode.window.activeTextEditor.viewColumn
-            : undefined;
+            : undefined
 
         // If we already have a panel, show it.
         if (QueryPanel.currentPanel) {
-            QueryPanel.currentPanel._panel.reveal(column);
-            return;
+            if (table) QueryPanel.currentPanel.setTable(table)
+            QueryPanel.currentPanel._panel.reveal(column)
+            return
         }
 
         // Otherwise, create a new panel.
@@ -35,23 +36,23 @@ export class QueryPanel {
             'Query',
             column || vscode.ViewColumn.One,
             getWebviewOptions(extensionUri),
-        );
+        )
 
-        QueryPanel.currentPanel = new QueryPanel(panel, extensionUri, client, table);
+        QueryPanel.currentPanel = new QueryPanel(panel, extensionUri, client, table)
     }
 
 
     private constructor(panel: vscode.WebviewPanel, extensionUri: vscode.Uri, client: ADTClient, table: string) {
-        this._panel = panel;
-        this._client = client;
-        this._extensionUri = extensionUri;
-        this._table = table;
+        this._panel = panel
+        this._client = client
+        this._extensionUri = extensionUri
+        this._table = table
         // Set the webview's initial html content
-        this._update();
+        this._update()
 
         // Listen for when the panel is disposed
         // This happens when the user closes the panel or when the panel is closed programatically
-        this._panel.onDidDispose(() => this.dispose(), null, this._disposables);
+        this._panel.onDidDispose(() => this.dispose(), null, this._disposables)
 
         // Update the content based on view changes
         this._panel.onDidChangeViewState(
@@ -62,7 +63,7 @@ export class QueryPanel {
             },
             null,
             this._disposables
-        );
+        )
 
         // Handle messages from the webview
         this._panel.webview.onDidReceiveMessage(
@@ -70,70 +71,75 @@ export class QueryPanel {
                 switch (message.command) {
                     case 'execute':
                         client.runQuery(message.query, message.rowCount).then(resp => {
-                            this.showResult(JSON.stringify(resp));
+                            this.showResult(JSON.stringify(resp))
                         }).catch(error => {
-                            this.showError(error.localizedMessage);
+                            this.showError(error.localizedMessage)
                         }
                         )
-                        return;
+                        return
                 }
             },
             null,
             this._disposables
-        );
+        )
+    }
+
+    public setTable(table: string) {
+        this._table = table
+        this._update()
     }
 
     public showResult(data: string) {
         // Send a message to the webview webview.
         // You can send any JSON serializable data.
-        this._panel.webview.postMessage({ command: 'result', data: data });
+        this._panel.webview.postMessage({ command: 'result', data: data })
     }
 
     public showError(errorMsg: string) {
         // Send a message to the webview webview.
         // You can send any JSON serializable data.
-        this._panel.webview.postMessage({ command: 'error', data: errorMsg });
+        this._panel.webview.postMessage({ command: 'error', data: errorMsg })
     }
 
     public dispose() {
-        QueryPanel.currentPanel = undefined;
+        QueryPanel.currentPanel = undefined
 
         // Clean up our resources
-        this._panel.dispose();
+        this._panel.dispose()
 
         while (this._disposables.length) {
-            const x = this._disposables.pop();
+            const x = this._disposables.pop()
             if (x) {
-                x.dispose();
+                x.dispose()
             }
         }
     }
 
     private _update() {
-        const webview = this._panel.webview;
+        const webview = this._panel.webview
 
         // Vary the webview's content based on where it is located in the editor.
-        this._panel.title = "Query";
-        this._panel.webview.html = this._getHtmlForWebview(webview, this._table);
+        this._panel.title = "Query"
+        this._panel.webview.html = this._getHtmlForWebview(webview, this._table)
     }
 
     private _getHtmlForWebview(webview: vscode.Webview, tableName: string) {
         // Local path to main script run in the webview
-        const scriptPathOnDisk = vscode.Uri.joinPath(this._extensionUri, 'client/media', 'query.js');
+        const scriptPathOnDisk = vscode.Uri.joinPath(this._extensionUri, 'client/media', 'query.js')
 
         // And the uri we use to load this script in the webview
-        const scriptUri = webview.asWebviewUri(scriptPathOnDisk);
+        const scriptUri = webview.asWebviewUri(scriptPathOnDisk)
 
         // Local path to css styles
         //const styleResetPath = vscode.Uri.joinPath(this._extensionUri, 'client/media', 'reset.css');
-        const stylesPathMainPath = vscode.Uri.joinPath(this._extensionUri, 'client/media', 'editor.css');
+        const stylesPathMainPath = vscode.Uri.joinPath(this._extensionUri, 'client/media', 'editor.css')
 
         // Uri to load styles into webview
         //const stylesResetUri = webview.asWebviewUri(styleResetPath);
-        const stylesMainUri = webview.asWebviewUri(stylesPathMainPath);
+        const stylesMainUri = webview.asWebviewUri(stylesPathMainPath)
 
         // Use a nonce to only allow specific scripts to be run
-        const nonce = getNonce();
+        const nonce = getNonce()
 
         return `<!DOCTYPE html>
 			<html lang="en">
@@ -165,17 +171,17 @@ export class QueryPanel {
                 <div id="result-table"></div>
                 <script nonce="${nonce}" src="${scriptUri}"></script>
 			</body>
-			</html>`;
+			</html>`
     }
 }
 
 function getNonce() {
-    let text = '';
-    const possible = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
+    let text = ''
+    const possible = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789'
     for (let i = 0; i < 32; i++) {
-        text += possible.charAt(Math.floor(Math.random() * possible.length));
+        text += possible.charAt(Math.floor(Math.random() * possible.length))
     }
-    return text;
+    return text
 }
 
 function getWebviewOptions(extensionUri: vscode.Uri): vscode.WebviewOptions & vscode.WebviewPanelOptions {
@@ -186,5 +192,5 @@ function getWebviewOptions(extensionUri: vscode.Uri): vscode.WebviewOptions & vs
 
         // And restrict the webview to only loading content from our extension's `media` directory.
         localResourceRoots: [vscode.Uri.joinPath(extensionUri, 'client/media')]
-    };
+    }
 }

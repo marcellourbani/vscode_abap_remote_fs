@@ -11,13 +11,14 @@ import {
   workspace
 } from "vscode"
 
-import { caughtToString, debounce, log } from "./lib"
+import { caughtToString, debounce, log, viewableObjecttypes } from "./lib"
 import { ADTSCHEME, uriRoot, abapUri, getRoot } from "./adt/conections"
 import { AbapObject } from "abapobject"
 import { isAbapStat } from "abapfs"
 import { isCsrfError } from "abap-adt-api"
 import { LockStatus } from "abapfs/out/lockObject"
 import { IncludeProvider } from "./adt/includes"
+import { uriAbapFile } from "./adt/operations/AdtObjectFinder"
 
 export const listenersubscribers: ((...x: any[]) => Disposable)[] = []
 
@@ -147,24 +148,31 @@ function isInactive(obj: AbapObject): boolean {
   return inactive
 }
 
+function showHidedbIcon(editor?: TextEditor) {
+  try {
+    const type = uriAbapFile(editor?.document.uri)?.object.type
+    commands.executeCommand("setContext", "abapfs:showTableContentIcon", viewableObjecttypes.has(type))
+  } catch (error) { }
+}
+
 export async function showHideActivate(editor?: TextEditor, refresh = false) {
   let shouldShow = false
   const uri = editor?.document.uri
-  if (editor && uri && uri.scheme === ADTSCHEME)
-    try {
-      const root = uriRoot(uri)
-      const lockStatus = await root.lockManager.finalStatus(uri.path)
-      shouldShow = editor.document.isDirty && lockStatus.status === "locked"
-      if (!shouldShow) {
-        const file = root.getNode(uri.path)
-        const obj = isAbapStat(file) && file.object
-        if (!obj) return
-        if (refresh) await obj.loadStructure()
-        shouldShow = obj && isInactive(obj)
-      }
-    } catch (e) {
-      shouldShow = false
+  if (!(uri && abapUri(uri))) return
+  try {
+    const root = uriRoot(uri)
+    const lockStatus = await root.lockManager.finalStatus(uri.path)
+    shouldShow = editor.document.isDirty && lockStatus.status === "locked"
+    if (!shouldShow) {
+      const file = root.getNode(uri.path)
+      const obj = isAbapStat(file) && file.object
+      if (!obj) return
+      if (refresh) await obj.loadStructure()
+      shouldShow = obj && isInactive(obj)
     }
+  } catch (e) {
+    shouldShow = false
+  }
   // race condition, active editor might have changed while async operation was pending
   if (editor !== window.activeTextEditor) return
   await commands.executeCommand("setContext", "abapfs:showActivate", shouldShow)
@@ -181,6 +189,7 @@ export async function activationStateListener(uri: Uri) {
 export async function activeTextEditorChangedListener(
   editor: TextEditor | undefined
 ) {
+  showHidedbIcon(editor)
   try {
     if (editor && editor.document.uri.scheme === ADTSCHEME) {
       await showHideActivate(editor)
