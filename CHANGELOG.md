@@ -1,5 +1,11 @@
 # Change Log
 
+## [1.7.1] 2023-10-25
+
+### Added
+
+- query icon in table objects
+
 ## [1.7.0] 2023-10-25
 
 ### Added
