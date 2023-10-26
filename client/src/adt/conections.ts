@@ -1,5 +1,5 @@
 import { RemoteManager, createClient } from "../config"
-import { AFsService, Root } from "abapfs"
+import { AFsService, AbapStat, Root, isAbapStat } from "abapfs"
 import { Uri, FileSystemError } from "vscode"
 import { ADTClient } from "abap-adt-api"
 import { LogOutPendingDebuggers } from "./debugger"
@@ -14,7 +14,7 @@ const missing = (connId: string) => {
   return FileSystemError.FileNotFound(`No ABAP server defined for ${connId}`)
 }
 
-export const abapUri = (u: Uri) => u.scheme === ADTSCHEME
+export const abapUri = (u?: Uri) => u?.scheme === ADTSCHEME
 
 async function create(connId: string) {
   const manager = RemoteManager.get()
@@ -71,8 +71,18 @@ export const getRoot = (connId: string) => {
 }
 
 export const uriRoot = (uri: Uri) => {
-  if (uri && uri.scheme === ADTSCHEME) return getRoot(uri.authority)
+  if (abapUri(uri)) return getRoot(uri.authority)
   throw missing(uri.toString())
+}
+
+export const uriAbapFile = (uri?: Uri): AbapStat | undefined => {
+  try {
+    if (!uri) return
+    const root = uriRoot(uri)
+    const file = root.getNode(uri.path)
+    if (isAbapStat(file)) return file
+  } catch (error) {
+  }
 }
 
 export const getOrCreateRoot = async (connId: string) => {

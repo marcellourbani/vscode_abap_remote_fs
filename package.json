@@ -226,6 +226,12 @@
         "title": "AbapFs Select Query"
       },
       {
+        "command": "abapfs.tableContents",
+        "title": "AbapFs Show table contents",
+        "group": "navigation@-10",
+        "icon": "$(database)"
+      },
+      {
         "command": "abapfs.deletefavourite",
         "title": "AbapFs delete favourite",
         "icon": {
@@ -651,6 +657,10 @@
           "when": "hideCommands.never"
         },
         {
+          "command": "abapfs.tableContents",
+          "when": "hideCommands.never"
+        },
+        {
           "command": "abapfs.registerSCM",
           "when": "hideCommands.never"
         },
@@ -984,6 +994,12 @@
           "command": "abapfs.activate",
           "group": "navigation",
           "when": "resourceScheme == adt && editorLangId =~ /abap|cds|xml/ && abapfs:showActivate "
+        }
+      ],
+      "editor/title/run": [
+        {
+          "command": "abapfs.tableContents",
+          "when": "resourceScheme == adt && abapfs:showTableContentIcon"
         }
       ],
       "scm/title": [

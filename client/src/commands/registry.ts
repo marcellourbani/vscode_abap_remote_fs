@@ -18,6 +18,7 @@ export const AbapFsCommands = {
   createConnection: "abapfs.createConnection",
   showDump: "abapfs.showDump",
   refreshDumps: "abapfs.refreshDumps",
+  tableContents: "abapfs.tableContents",
   // atc
   atcChecks: "abapfs.atcChecks",
   atcIgnore: "abapfs.atcIgnore",

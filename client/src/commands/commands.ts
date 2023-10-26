@@ -22,7 +22,8 @@ import {
   getClient,
   getRoot,
   uriRoot,
-  getOrCreateRoot
+  getOrCreateRoot,
+  uriAbapFile
 } from "../adt/conections"
 import { isAbapFolder, isAbapFile, isAbapStat } from "abapfs"
 import { AdtObjectActivator } from "../adt/operations/AdtObjectActivator"
@@ -39,11 +40,15 @@ import { types } from "util"
 import { atcProvider } from "../views/abaptestcockpit"
 import { context } from "../extension"
 
-function currentUri() {
+export function currentUri() {
   if (!window.activeTextEditor) return
   const uri = window.activeTextEditor.document.uri
   if (uri.scheme !== ADTSCHEME) return
   return uri
+}
+export function currentAbapFile() {
+  const uri = currentUri()
+  return uriAbapFile(uri)
 }
 
 export function currentEditState() {
@@ -283,6 +288,16 @@ export class AdtCommands {
   @command(AbapFsCommands.deletefavourite)
   private static deleteFavourite(node: FavItem) {
     FavouritesProvider.get().deleteFavourite(node)
+  }
+
+  @command(AbapFsCommands.tableContents)
+  private static showTableContents() {
+    const file = currentAbapFile()
+    if (!file) {
+      window.showInformationMessage("Unable to determine the table to display")
+      return
+    }
+    commands.executeCommand(AbapFsCommands.selectDB, file.object.baseName)
   }
 
   @command(AbapFsCommands.unittest)
