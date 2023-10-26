@@ -75,16 +75,6 @@ export const uriRoot = (uri: Uri) => {
   throw missing(uri.toString())
 }
 
-export const uriAbapFile = (uri?: Uri): AbapStat | undefined => {
-  try {
-    if (!uri) return
-    const root = uriRoot(uri)
-    const file = root.getNode(uri.path)
-    if (isAbapStat(file)) return file
-  } catch (error) {
-  }
-}
-
 export const getOrCreateRoot = async (connId: string) => {
   if (!roots.has(connId)) await createIfMissing(connId)
   return getRoot(connId)

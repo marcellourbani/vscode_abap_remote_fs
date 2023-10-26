@@ -11,13 +11,14 @@ import {
   workspace
 } from "vscode"
 
-import { caughtToString, debounce, log } from "./lib"
-import { ADTSCHEME, uriRoot, abapUri, getRoot, uriAbapFile } from "./adt/conections"
+import { caughtToString, debounce, log, viewableObjecttypes } from "./lib"
+import { ADTSCHEME, uriRoot, abapUri, getRoot } from "./adt/conections"
 import { AbapObject } from "abapobject"
 import { isAbapStat } from "abapfs"
 import { isCsrfError } from "abap-adt-api"
 import { LockStatus } from "abapfs/out/lockObject"
 import { IncludeProvider } from "./adt/includes"
+import { uriAbapFile } from "./adt/operations/AdtObjectFinder"
 
 export const listenersubscribers: ((...x: any[]) => Disposable)[] = []
 
@@ -146,8 +147,6 @@ function isInactive(obj: AbapObject): boolean {
   const inactive = !!(obj.structure?.metaData["adtcore:version"] === "inactive")
   return inactive
 }
-
-const viewableObjecttypes: Set<string | undefined> = new Set(["TABL/DT", 'VIEW/DV'])
 
 function showHidedbIcon(editor?: TextEditor) {
   try {

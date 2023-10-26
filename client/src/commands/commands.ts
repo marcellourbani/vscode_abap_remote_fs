@@ -22,15 +22,15 @@ import {
   getClient,
   getRoot,
   uriRoot,
-  getOrCreateRoot,
-  uriAbapFile
+  getOrCreateRoot
 } from "../adt/conections"
 import { isAbapFolder, isAbapFile, isAbapStat } from "abapfs"
 import { AdtObjectActivator } from "../adt/operations/AdtObjectActivator"
 import {
   AdtObjectFinder,
   createUri,
-  findAbapObject
+  findAbapObject,
+  uriAbapFile
 } from "../adt/operations/AdtObjectFinder"
 import { isAbapClassInclude } from "abapobject"
 import { IncludeProvider } from "../adt/includes" // resolve dependencies
@@ -87,8 +87,8 @@ export class AdtCommands {
   }
 
   @command(AbapFsCommands.selectDB)
-  private static async selectDB() {
-    return showQuery()
+  private static async selectDB(table?: string) {
+    return showQuery(table)
   }
 
   @command(AbapFsCommands.changeInclude)
@@ -297,7 +297,7 @@ export class AdtCommands {
       window.showInformationMessage("Unable to determine the table to display")
       return
     }
-    commands.executeCommand(AbapFsCommands.selectDB, file.object.baseName)
+    commands.executeCommand(AbapFsCommands.selectDB, file.object.name)
   }
 
   @command(AbapFsCommands.unittest)

@@ -1,24 +1,20 @@
 import { window } from "vscode"
-import { ADTSCHEME, getClient } from "../../adt/conections"
+import { ADTSCHEME, abapUri, getClient } from "../../adt/conections"
 import { findAbapObject } from "../../adt/operations/AdtObjectFinder"
 import { context } from "../../extension"
 import { QueryPanel } from "./queryPanel"
+import { viewableObjecttypes } from "../../lib"
+import { currentAbapFile, currentUri } from "../../commands/commands"
 
-export async function showQuery() {
-  const editor = window.activeTextEditor
-  if (!editor) return
-  const uri = editor.document.uri
-  const sel = editor.selection.active
-  if (uri.scheme !== ADTSCHEME) return
+export async function showQuery(table?: string) {
+  const uri = currentUri()
+  if (!(uri && abapUri(uri))) return
   const client = getClient(uri.authority)
-  const obj = await findAbapObject(uri)
-
-  let tablename = ""
-
-  if (obj.type === 'DDLS/DF' || obj.type === 'TABL/DT') {
-    tablename = obj.name;
+  if (table) QueryPanel.createOrShow(context.extensionUri, client, table)
+  else {
+    const obj = await findAbapObject(uri)
+    const tablename = viewableObjecttypes.has(obj.type) ? obj.name : ""
+    QueryPanel.createOrShow(context.extensionUri, client, tablename)
   }
-
-  QueryPanel.createOrShow(context.extensionUri, client, tablename);
 
 }
