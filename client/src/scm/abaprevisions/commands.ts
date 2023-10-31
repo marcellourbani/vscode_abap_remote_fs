@@ -1,8 +1,8 @@
 import { command, AbapFsCommands } from "../../commands"
-import { Uri, QuickPickItem, window, commands, workspace } from "vscode"
-import { abapUri, uriRoot, getOrCreateRoot } from "../../adt/conections"
+import { Uri, QuickPickItem, window, commands, workspace, ProgressLocation } from "vscode"
+import { abapUri, uriRoot, getOrCreateRoot, getClient } from "../../adt/conections"
 import { AbapRevisionService, revLabel } from "./abaprevisionservice"
-import { Revision } from "abap-adt-api"
+import { ADTClient, Revision } from "abap-adt-api"
 import { AbapQuickDiff } from "./quickdiff"
 import { revisionUri } from "./documentprovider"
 import { RemoteManager, formatKey } from "../../config"
@@ -58,6 +58,17 @@ const pickCommonAncestor = (locals: Revision[], localVer: Revision, remotes: Rev
   return pickRevision(possibleLocals, "Unable to determine common ancestor, please select base for comparison")
 }
 
+const wasChanged = async (client: ADTClient, state: AState): Promise<boolean> => {
+  try {
+    if (!state.refRevision) return false
+    const ref = await client.getObjectSource(state.refRevision.uri)
+    const rev = await client.getObjectSource(state.mainRevision.uri)
+    if (ref !== rev) return true
+  } catch (error) {
+    return true // safer to assume it was changed
+  }
+  return false
+}
 
 export const displayRevDiff = (
   rightRev: Revision | undefined,
@@ -184,6 +195,37 @@ export class AbapRevisionCommands {
   private static clearGroup(group: AGroup) {
     group.resourceStates = []
   }
+  @command(AbapFsCommands.filterScmGroup)
+  private static filterGroup(group: AGroup) {
+    window.withProgress({ location: ProgressLocation.Notification, cancellable: true, title: "checking diffs" }, async (prog, tok) => {
+      const nextState: AState[] = []
+      const unchanged: AState[] = []
+      let count = 0
+      const scm = group.resourceStates[0]?.ascm
+      if (!scm) return
+      const client = getClient(scm.connId)
+      for (const s of group.resourceStates) {
+        if (tok.isCancellationRequested) return
+        const increment = count * 100 / group.resourceStates.length
+        const message = s.resourceUri.path.replace(/.*\//, "")
+        prog.report({ message, increment })
+        const found = await wasChanged(client, s)
+        if (found) nextState.push(s)
+        else unchanged.push(s)
+        count++
+      }
+
+      group.resourceStates = nextState
+      if (unchanged.length) {
+        const label = `unchanged ${group.label}`
+        const ugroup = await scm.getGroup(label)
+        const toAdd = unchanged.filter(s => !ugroup.resourceStates.includes(s))
+        ugroup.resourceStates = [...ugroup.resourceStates, ...toAdd]
+      }
+
+    })
+  }
+
   @command(AbapFsCommands.opendiff)
   private static async openDiff(state: AState, select = true) {
     const uri = state.resourceUri

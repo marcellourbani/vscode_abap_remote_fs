@@ -39,6 +39,7 @@ export const AbapFsCommands = {
   runClass: "abapfs.runClass",
   // revisions
   clearScmGroup: "abapfs.clearScmGroup",
+  filterScmGroup: "abapfs.filterScmGroup",
   openrevstate: "abapfs.openrevstate",
   opendiff: "abapfs.opendiff",
   opendiffNormalized: "abapfs.opendiffNormalized",

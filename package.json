@@ -234,10 +234,7 @@
       {
         "command": "abapfs.deletefavourite",
         "title": "AbapFs delete favourite",
-        "icon": {
-          "dark": "client/images/dark/icon-delete.svg",
-          "light": "client/images/light/icon-delete.svg"
-        }
+        "icon": "$(trash)"
       },
       {
         "command": "abapfs.activate",
@@ -282,10 +279,7 @@
       {
         "command": "abapfs.unlinkRepo",
         "title": "Unlink abapGit Repo",
-        "icon": {
-          "dark": "client/images/dark/icon-delete.svg",
-          "light": "client/images/light/icon-delete.svg"
-        }
+        "icon": "$(trash)"
       },
       {
         "command": "abapfs.registerSCM",
@@ -383,10 +377,7 @@
       {
         "command": "abapfs.deleteTransport",
         "title": "Delete transport",
-        "icon": {
-          "dark": "client/images/dark/icon-delete.svg",
-          "light": "client/images/light/icon-delete.svg"
-        }
+        "icon": "$(trash)"
       },
       {
         "command": "abapfs.revealPackage",
@@ -467,18 +458,17 @@
       {
         "command": "abapfs.transportRevision",
         "title": "Add transport to source control",
-        "icon": {
-          "dark": "client/images/dark/icon-repo.svg",
-          "light": "client/images/light/icon-repo.svg"
-        }
+        "icon": "$(versions)"
       },
       {
         "command": "abapfs.clearScmGroup",
         "title": "Clear",
-        "icon": {
-          "dark": "client/images/dark/icon-delete.svg",
-          "light": "client/images/light/icon-delete.svg"
-        }
+        "icon": "$(trash)"
+      },
+      {
+        "command": "abapfs.filterScmGroup",
+        "title": "Filter unchanged",
+        "icon": "$(filter)"
       },
       {
         "command": "abapfs.showdocu",
@@ -1020,6 +1010,11 @@
         }
       ],
       "scm/resourceGroup/context": [
+        {
+          "command": "abapfs.filterScmGroup",
+          "group": "inline",
+          "when": "scmProvider =~ /^ABAP/ && scmResourceGroup != recent && scmResourceGroup =~ /^(?!unchanged)/"
+        },
         {
           "command": "abapfs.clearScmGroup",
           "group": "inline",

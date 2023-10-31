@@ -69,6 +69,10 @@ export class AbapScm {
     return this.emitter.event
   }
 
+  public async getGroup(label: string) {
+    return this.groups.get(label)
+  }
+
   public async addRecentDocument(uri: Uri) {
     const recent = this.groups.get(RECENT)
     const state = findState(recent, uri)
