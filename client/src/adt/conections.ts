@@ -1,6 +1,6 @@
 import { RemoteManager, createClient } from "../config"
 import { AFsService, AbapStat, Root, isAbapStat } from "abapfs"
-import { Uri, FileSystemError } from "vscode"
+import { Uri, FileSystemError, workspace } from "vscode"
 import { ADTClient } from "abap-adt-api"
 import { LogOutPendingDebuggers } from "./debugger"
 export const ADTSCHEME = "adt"
@@ -94,3 +94,6 @@ export async function disconnect() {
   await Promise.all([...main, ...clones, ...LogOutPendingDebuggers()])
   return
 }
+
+export const rootIsConnected = (connId: string) =>
+  !!workspace.workspaceFolders?.find(f => f.uri.scheme === ADTSCHEME && f.uri.authority === connId?.toLowerCase())

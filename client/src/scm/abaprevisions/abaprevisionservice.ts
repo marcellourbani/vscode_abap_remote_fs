@@ -32,10 +32,10 @@ export class AbapRevisionService {
     return revisions
   }
 
-  public uriRevisions(uri: Uri, refresh: boolean) {
+  public async uriRevisions(uri: Uri, refresh: boolean) {
     if (!abapUri(uri)) return
     if (!uri.path.match(/\.abap/)) return
-    const node = getRoot(this.connId).getNode(uri.path)
+    const node = await getRoot(this.connId).getNodeAsync(uri.path)
     if (!isAbapFile(node)) return
     return this.objRevisions(node.object, refresh)
   }

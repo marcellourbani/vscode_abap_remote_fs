@@ -1,6 +1,6 @@
 import { command, AbapFsCommands } from "../../commands"
 import { Uri, QuickPickItem, window, commands, workspace, ProgressLocation } from "vscode"
-import { abapUri, uriRoot, getOrCreateRoot, getClient } from "../../adt/conections"
+import { abapUri, uriRoot, getOrCreateRoot, getClient, ADTSCHEME, rootIsConnected } from "../../adt/conections"
 import { AbapRevisionService, revLabel } from "./abaprevisionservice"
 import { ADTClient, Revision } from "abap-adt-api"
 import { AbapQuickDiff } from "./quickdiff"
@@ -9,11 +9,31 @@ import { RemoteManager, formatKey } from "../../config"
 import { isAbapFile } from "abapfs"
 import { AGroup, AState } from "./abapscm"
 import { caughtToString } from "../../lib"
+import * as t from "io-ts"
+import { isRight } from "fp-ts/lib/Either"
+import { vsCodeUri } from "../../langClient"
 
 interface RevisionItem extends QuickPickItem {
   label: string
   revision: Revision
 }
+
+const revision = t.type({
+  uri: t.string,
+  date: t.string,
+  author: t.string,
+  version: t.string,
+  versionTitle: t.string
+})
+const conflictDetails = t.type({
+  conflicting: t.string,
+  transport: t.string,
+  uri: t.string,
+  incoming: revision,
+  conflict: revision
+})
+
+type ConflictDetails = t.TypeOf<typeof conflictDetails>
 const revItems = (revisions: Revision[]): RevisionItem[] =>
   revisions.map((r, i) => ({
     label: revLabel(r, `revision ${i}`),
@@ -146,7 +166,20 @@ export class AbapRevisionCommands {
     displayRevDiff(rightRev, leftRev, uri)
   }
 
-  @command(AbapFsCommands.mergeEditor)
+  private static async showMerge(uri: Uri, incomingUri: Uri, incomings: Revision[], locals: Revision[], incoming: Revision, conflict: Revision) {
+    const baseVer = await pickCommonAncestor(locals, conflict, incomings, incoming)
+    if (!baseVer) return
+    const base = revisionUri(uri, baseVer)
+
+    const description = uri.path.replace(/.*\//, "")
+
+    const input1 = { uri: revisionUri(incomingUri, incoming), title: `Incoming (${incomingUri.authority})`, description, detail: incoming.version }
+    const input2 = { uri: revisionUri(uri, conflict), title: `Current (${uri.authority})`, description, detail: conflict.version }
+    const options = { base, input1, input2, output: uri }
+    return commands.executeCommand<void>("_open.mergeEditor", options)
+
+  }
+
   private static async mergeConflicts(uri: Uri) {
     if (!abapUri(uri)) return
     try {
@@ -174,22 +207,34 @@ export class AbapRevisionCommands {
       const locals = await loadRevisions(uri, true)
       const localVer = await pickRevision(locals, "Local version")
       if (!localVer) return
-      const baseVer = await pickCommonAncestor(locals, localVer, remotes, remoteVer)
-      if (!baseVer) return
-      const base = revisionUri(uri, baseVer)
-
-      const description = uri.path.replace(/.*\//, "")
-
-      const options = {
-        base,
-        input1: { uri: revisionUri(uri, localVer), title: uri.authority, description, detail: localVer.version },
-        input2: { uri: revisionUri(remoteUri, remoteVer), title: remoteUri.authority, description, detail: remoteVer.version },
-        output: uri
-      }
-      return commands.executeCommand<void>("_open.mergeEditor", options)
+      return this.showMerge(uri, remoteUri, remotes, locals, remoteVer, localVer)
     } catch (e) {
       window.showErrorMessage(caughtToString(e))
     }
+  }
+  private static async mergeEditorByDetails(details: ConflictDetails) {
+    const remConnId = details.transport.substring(0, 3).toLowerCase()
+    const connId = details.conflicting.substring(0, 3).toLowerCase()
+    if (!rootIsConnected(connId)) {
+      window.showErrorMessage(`Unable to show merge, connection ${connId} is not part of this workspace`)
+      return
+    }
+    await getOrCreateRoot(remConnId)
+    await getOrCreateRoot(connId)
+    const path = await vsCodeUri(connId, details.uri, true, true)
+    const uri = Uri.parse(path)
+    const incomingUri = uri.with({ authority: remConnId })
+    const locals = await loadRevisions(uri, true)
+    const incoming = await loadRevisions(incomingUri, true)
+    return this.showMerge(uri, incomingUri, incoming, locals, details.incoming, details.conflict)
+  }
+
+  @command(AbapFsCommands.mergeEditor)
+  private static async mergeEditor(uri: Uri | ConflictDetails) {
+    const details = conflictDetails.decode(uri)
+    if (isRight(details)) this.mergeEditorByDetails(details.right)
+    if (uri instanceof Uri)
+      this.mergeConflicts(uri)
   }
   @command(AbapFsCommands.clearScmGroup)
   private static clearGroup(group: AGroup) {
