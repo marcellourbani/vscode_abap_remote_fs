@@ -9,6 +9,7 @@ tsconfig.json
 vsc-extension-quickstart.md
 tslint.json
 tmp/**
+**/tmp/**
 server/**
 !server/dist/server.js
 client/dist/*.map
@@ -30,3 +31,4 @@ modules
 .vscode
 jest.config.js
 abap remote fs.code-workspace
+*.cpuprofile

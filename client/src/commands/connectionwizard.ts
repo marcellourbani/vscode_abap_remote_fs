@@ -1,16 +1,14 @@
-import { AbapServiceKey, cfCodeGrant, CfEntity, CfInfo, cfInfo, cfInstanceServiceKeyCreate, cfInstanceServiceKeys, CfOrganizationEntity, cfOrganizations, cfPasswordGrant, CfResource, CfServiceEntity, CfServiceInstanceEntity, cfServiceInstances, cfServices, CfSpaceEntity, cfSpaces, getAbapSystemInfo, getAbapUserInfo, isAbapEntity, isAbapServiceKey, loginServer } from "abap_cloud_platform";
-import { Token } from "client-oauth2";
-import { isLeft } from "fp-ts/Either";
-import { pipe } from "fp-ts/lib/function";
-import { none } from "fp-ts/lib/Option";
-import { bind, chain, map } from "fp-ts/lib/TaskEither";
-import { ConfigurationTarget, QuickPickItem, Uri, workspace } from "vscode";
-import { ClientConfiguration } from "vscode-abap-remote-fs-sharedapi";
-import { saveNewRemote, validateNewConfigId } from "../config";
+import { AbapServiceKey, cfCodeGrant, CfInfo, cfInfo, cfInstanceServiceKeyCreate, cfInstanceServiceKeys, cfOrganizations, cfPasswordGrant, CfResource, CfServiceEntity, CfServiceInstanceEntity, cfServiceInstances, cfServices, cfSpaces, getAbapSystemInfo, getAbapUserInfo, isAbapEntity, isAbapServiceKey, loginServer } from "abap_cloud_platform"
+import { Token } from "client-oauth2"
+import { pipe } from "fp-ts/lib/function"
+import { bind, chain, map } from "fp-ts/lib/TaskEither"
+import { ConfigurationTarget, QuickPickItem, Uri, workspace } from "vscode"
+import { ClientConfiguration } from "vscode-abap-remote-fs-sharedapi"
+import { saveNewRemote, validateNewConfigId } from "../config"
 import {
     after, askConfirmation, inputBox, isString, openDialog, quickPick, rfsChainE, rfsExtract, rfsTaskEither, RfsTaskEither,
     rfsTryCatch, rfsWrap
-} from "../lib";
+} from "../lib"
 
 interface SimpleSource extends QuickPickItem { key: "LOADKEY" | "MANUAL" | "NONCLOUD" }
 interface UrlSource extends QuickPickItem { key: "URL", url: string }
@@ -60,7 +58,7 @@ const entitySelector = (endpoint: string, instance: CfResource<CfServiceInstance
             const key = await cfInstanceServiceKeyCreate(endpoint, instance, s.name, token)
             if (isAbapEntity(key.entity)) return key.entity.credentials
         }
-        throw new Error("Invalid key");
+        throw new Error("Invalid key")
     }
 
 const selectKey = (endpoint: string, username: string, password: string) => {
@@ -204,7 +202,7 @@ const configFromFile = (name: RfsTaskEither<Uri>) => pipe(
     map((f) => {
         const key = JSON.parse(f)
         if (isAbapServiceKey(key)) return { key }
-        throw new Error("File is not an ABAP service key");
+        throw new Error("File is not an ABAP service key")
     }),
     chain(rfsWrap(x => configFromKey(x.key)))
 )

@@ -22,7 +22,10 @@
   ],
   "exclude": [
     "node_modules",
-    ".vscode-test"
+    ".vscode-test",
+    "*.d.ts",
+    "tmp",
+    "*.test.ts",
   ],
   "references": [
     {
