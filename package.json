@@ -206,6 +206,10 @@
         "title": "AbapFs Search for object"
       },
       {
+        "command": "abapfs.exportToJson",
+        "title": "Export to JSON (clipboard)"
+      },
+      {
         "command": "abapfs.create",
         "title": "AbapFs Create object"
       },
@@ -1090,6 +1094,12 @@
           "command": "abapfs.search",
           "when": "resourceScheme == adt",
           "group": "4_search@1"
+        }
+      ],
+      "debug/variables/context": [
+        {
+          "command": "abapfs.exportToJson",
+          "when": "debugType == abap"
         }
       ]
     },

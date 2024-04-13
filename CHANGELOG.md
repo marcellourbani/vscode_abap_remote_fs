@@ -1,5 +1,11 @@
 # Change Log
 
+## [1.7.6] 2024-04-13
+
+### Added
+
+-export debug object as JSON
+
 ## [1.7.2] 2023-10-31
 
 ### Added

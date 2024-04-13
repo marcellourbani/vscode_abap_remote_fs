@@ -19,6 +19,9 @@ export interface AbapDebugSessionCfg extends DebugSession {
 export class AbapDebugSession extends LoggingDebugSession {
     private closed?: () => void
     private static sessions = new Map<string, AbapDebugSession>()
+    public static get activeSessions() {
+        return this.sessions.size
+    }
     private lasttargetId = 0
     static byConnection(connId: string) {
         return AbapDebugSession.sessions.get(connId)
