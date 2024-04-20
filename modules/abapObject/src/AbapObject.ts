@@ -2,6 +2,7 @@ import {
   AbapObjectStructure,
   MainInclude,
   NodeStructure,
+  ObjectVersion,
   isNodeParent
 } from "abap-adt-api"
 import { AbapObjectService } from "./AOService"
@@ -47,6 +48,7 @@ export interface AbapObject {
   readonly changedAt: Date | undefined
   /** reads the main objects available for this object */
   mainPrograms: () => Promise<MainInclude[]>
+  readonly parent: AbapObject | undefined,
   /** whether we are able to write it */
   readonly canBeWritten: boolean
   /** objcect namespace
@@ -64,12 +66,14 @@ export interface AbapObject {
   readonly owner?: string
 
   /** loads/updates the object metadata */
-  loadStructure: () => Promise<AbapObjectStructure>
+  loadStructure: (refresh?: boolean, version?: ObjectVersion) => Promise<AbapObjectStructure>
   delete: (lockId: string, transport: string) => Promise<void>
   write: (contents: string, lockId: string, transport: string) => Promise<void>
   read: () => Promise<string>
   childComponents: () => Promise<NodeStructure>
 }
+
+const ignoreErr = () => { }
 
 export type AbapObjectConstructor = new (
   type: string,
@@ -180,11 +184,10 @@ export class AbapObjectBase implements AbapObject {
     return this.service.mainPrograms(this.path)
   }
 
-  async loadStructure(): Promise<AbapObjectStructure> {
+  async loadStructure(refresh = false, version?: ObjectVersion): Promise<AbapObjectStructure> {
     if (!this.name) throw ObjectErrors.noStructure(this)
-    this.structure = await this.service.objectStructure(
-      this.path.replace(/\/source\/main$/, "")
-    )
+    const base = this.path.replace(/\/source\/main$/, "")
+    this.structure = await this.service.objectStructure(base, refresh, version)
     return this.structure
   }
   async delete(lockId: string, transport = "") {
@@ -203,6 +206,8 @@ export class AbapObjectBase implements AbapObject {
     this.service.invalidateStructCache(this.path)
     if (this.lockObject !== this)
       this.service.invalidateStructCache(this.lockObject.path)
+    if (this.parent && this.parent.type !== PACKAGE)
+      await this.parent.loadStructure()
   }
 
   async read() {

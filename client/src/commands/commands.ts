@@ -222,6 +222,7 @@ export class AdtCommands {
       const obj = await new AdtObjectCreator(connId).createObject(uri)
       if (!obj) return // user aborted
       log(`Created object ${obj.type} ${obj.name}`)
+      await obj.loadStructure()
 
       if (obj.type === PACKAGE) {
         commands.executeCommand("workbench.files.action.refreshFilesExplorer")

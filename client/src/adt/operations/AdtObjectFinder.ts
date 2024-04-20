@@ -103,6 +103,11 @@ export class AdtObjectFinder {
     return uf.uri
   }
 
+  public async vscodeObject(uri: string, main = true) {
+    const { file } = await this.vscodeUriWithFile(uri, main)
+    if (isAbapStat(file)) return file.object
+  }
+
   public clearCaches() {
     this.fragCache = promCache()
   }

@@ -31,7 +31,7 @@ import {
   createUri
 } from "./AdtObjectFinder"
 import { getClient, getRoot } from "../conections"
-import { isAbapStat, isFolder } from "abapfs"
+import { isAbapFolder, isAbapStat, isFolder } from "abapfs"
 import { fromNode } from "abapobject"
 import { pipe } from "fp-ts/lib/pipeable"
 import { bind, chain, map } from "fp-ts/lib/TaskEither"
@@ -75,7 +75,13 @@ export class AdtObjectCreator {
     if (otype === PACKAGE) otype = ""
     return this.types!.filter(x => x.PARENT_OBJECT_TYPE === otype)
   }
-
+  private async getAndRefreshParent(options: NewObjectOptions) {
+    if (options.objtype !== "FUGR/FF") return
+    const finder = new AdtObjectFinder(this.connId)
+    const { file, uri } = await finder.vscodeUriWithFile(options.parentPath, false)
+    if (isAbapFolder(file)) await file.refresh()
+    if (isAbapStat(file)) return file.object
+  }
   /**
    * Creates an ABAP object asking the user for unknown details
    * Tries to guess object type and parent/package from URI
@@ -99,7 +105,7 @@ export class AdtObjectCreator {
     if (transport.cancelled) return
     options.transport = transport.transport
     await getClient(this.connId).createObject(options)
-
+    const parent = await this.getAndRefreshParent(objDetails.options)
     const obj = fromNode(
       {
         EXPANDABLE: "",
@@ -109,12 +115,13 @@ export class AdtObjectCreator {
         OBJECT_VIT_URI: "",
         TECH_NAME: options.name
       },
-      undefined,
+      parent,
       getRoot(this.connId).service
     )
     if (options.objtype !== PACKAGE) await obj.loadStructure()
     return obj
   }
+
   public guessParentByType(hierarchy: FileStat[], type: ParentTypeIds): string {
     return (
       hierarchy.filter(isAbapStat).find(n => n.object.type === type)?.object

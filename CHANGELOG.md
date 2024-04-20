@@ -1,5 +1,11 @@
 # Change Log
 
+## [1.7.7] 2024-04-20
+
+### Fixed
+
+- editing newly created FM
+
 ## [1.7.6] 2024-04-13
 
 ### Added

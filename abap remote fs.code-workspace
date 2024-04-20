@@ -34,8 +34,7 @@
       "**/.project": true,
       "**/.settings": true,
       "**/.factorypath": true,
-      "**/node_modules/**": true,
-      "**/tmp/**": true
+      "**/node_modules/**": true
     },
     "prettier.arrowParens": "avoid",
     "prettier.proseWrap": "never",
@@ -48,7 +47,9 @@
       "wiki",
       "sharedapi"
     ],
-    "tslint.exclude": ["**/node_modules/**"],
+    "tslint.exclude": [
+      "**/node_modules/**"
+    ],
     "githubIssues.queries": [
       {
         "label": "My Issues",

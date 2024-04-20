@@ -3,7 +3,8 @@ import {
   AbapObjectStructure,
   NodeStructure,
   ADTClient,
-  NodeParents
+  NodeParents,
+  ObjectVersion
 } from "abap-adt-api"
 
 export interface AbapObjectService {
@@ -11,7 +12,7 @@ export interface AbapObjectService {
   /** Loads the object metadata
    *    As will be called way too often, we will cache it for a second
    */
-  objectStructure: (path: string) => Promise<AbapObjectStructure>
+  objectStructure: (path: string, refresh?: boolean, version?: ObjectVersion) => Promise<AbapObjectStructure>
   /** invalidate structure cache
    *    to be invoked after changing operations.
    *    will happen automatically on write
@@ -31,28 +32,30 @@ export interface AbapObjectService {
 export class AOService implements AbapObjectService {
   constructor(protected client: ADTClient) { }
 
-  private structCache = new Map<string, Promise<AbapObjectStructure>>()
+  private activeStructCache = new Map<string, Promise<AbapObjectStructure>>()
 
   delete(path: string, lockId: string, transport: string) {
     return this.client.deleteObject(path, lockId, transport)
   }
 
   invalidateStructCache(uri: string) {
-    this.structCache.delete(uri)
+    this.activeStructCache.delete(uri)
   }
 
   mainPrograms(path: string) {
     return this.client.statelessClone.mainPrograms(path)
   }
 
-  objectStructure(path: string) {
-    let structure = this.structCache.get(path)
+  objectStructure(path: string, refresh = false, version?: ObjectVersion) {
+    if (refresh) this.activeStructCache.delete(path)
+    let structure = this.activeStructCache.get(path)
     if (!structure) {
-      structure = this.client.statelessClone.objectStructure(path)
-      this.structCache.set(path, structure)
-      structure.finally(() =>
-        setTimeout(() => this.invalidateStructCache(path), 800)
-      )
+      structure = this.client.statelessClone.objectStructure(path, version)
+      this.activeStructCache.set(path, structure)
+      if (!version || version === "active")
+        structure.finally(() =>
+          setTimeout(() => this.invalidateStructCache(path), 800)
+        )
     }
     return structure
   }
