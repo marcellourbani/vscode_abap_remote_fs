@@ -278,6 +278,7 @@ test("create class main include", async () => {
 
 test("create class definitions include", async () => {
   const client = mock<AbapObjectService>()
+  client.objectStructure.mockResolvedValue(classMetaData())
   const cut = create(
     "CLAS/I",
     "ZCL_Z001_DPC_EXT.definitions",
@@ -291,7 +292,7 @@ test("create class definitions include", async () => {
   if (!isAbapClassInclude(cut)) fail("Class include expected")
   expect(cut.fsName).toBe("ZCL_Z001_DPC_EXT.clas.locals_def.abap")
   expect(cut.key).toBe("CLAS/I ZCL_Z001_DPC_EXT.definitions")
-  await supportedFileAssertions(cut, client)
+  await supportedFileAssertions(cut, client, false)
   expect(cut.contentsPath()).toBe(cut.path)
 })
 
