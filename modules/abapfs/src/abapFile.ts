@@ -2,7 +2,7 @@ import { FileStat, FileType, FileSystemError } from "vscode"
 import { AbapObject } from "../../abapObject"
 import { AbapFsService } from "."
 import { AbapFolder, isAbapFolder } from "./abapFolder"
-import { isCreatableTypeId } from "abap-adt-api"
+import { ObjectVersion, isCreatableTypeId } from "abap-adt-api"
 const tag = Symbol("AbapFile")
 
 interface FileCache {
@@ -17,33 +17,33 @@ export class AbapFile implements FileStat {
     readonly object: AbapObject,
     readonly parent: FileStat,
     private service: AbapFsService
-  ) {}
+  ) { }
   get ctime() {
-    if (this.object.structure)
-      return this.object.structure.metaData["adtcore:createdAt"]
-    return 0
+    return this.object.structure?.metaData["adtcore:createdAt"] ?? 0
   }
   get mtime() {
-    if (this.object.structure)
-      return this.object.structure.metaData["adtcore:changedAt"]
-    return 0
+    return this.object.modtime
   }
 
-  get version() {
-    return this.object.structure?.metaData["adtcore:version"]
+  get version(): ObjectVersion | undefined {
+    return this.object.version
   }
 
   private cache: FileCache | undefined
   private timer: NodeJS.Timeout | undefined
 
   async stat() {
-    if (this.object.supported) await this.object.loadStructure()
+    if (this.object.supported) {
+      await this.object.loadStructure()
+      const inactive = this.object.structure?.links?.find(l => l.rel === "http://www.sap.com/adt/relations/objectstates")
+      if (inactive) await this.object.loadStructure(true, "inactive")
+    }
   }
 
   size = 0
   async read() {
     if (!this.object.structure && this.object.supported)
-      await this.object.loadStructure()
+      await this.stat()
     if (this.cache?.mtime === this.mtime) return this.cache.source
     if (this.timer) clearTimeout(this.timer)
     const source = await this.object.read()

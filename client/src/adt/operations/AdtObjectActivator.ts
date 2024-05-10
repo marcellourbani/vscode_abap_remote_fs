@@ -13,13 +13,13 @@ export interface ActivationEvent {
 }
 
 export class AdtObjectActivator {
-  constructor(private client: ADTClient) {}
+  constructor(private client: ADTClient) { }
   private static instances = new Map<string, AdtObjectActivator>()
   private emitter = new EventEmitter<ActivationEvent>()
   public static get(connId: string) {
     let instance = this.instances.get(connId)
     if (!instance) {
-      instance = new AdtObjectActivator(getClient(connId))
+      instance = new AdtObjectActivator(getClient(connId, false))
       this.instances.set(connId, instance)
     }
     return instance
@@ -54,7 +54,7 @@ export class AdtObjectActivator {
     const { name, path } = object.lockObject
     let result
     const mainProg = await this.getMain(object, uri)
-    result = await this.client.activate(name, path, mainProg)
+    result = await this.client.activate(name, path, mainProg, true)
     if (!result.success) {
       let inactives
       if (result.inactive.length > 0)

@@ -18,7 +18,7 @@ class GitDocProvider implements TextDocumentContentProvider {
     if (!key || !path || !gitScm) throw new Error(`Invalid URL`)
     const client = getClient(uri.authority)
     const { user, password } = gitScm.credentials || {}
-    return client.getObjectSource(path.replace(/#/g, "%23"), user, password)
+    return client.getObjectSource(path.replace(/#/g, "%23"), { gitUser: user, gitPassword: password })
   }
 }
 
