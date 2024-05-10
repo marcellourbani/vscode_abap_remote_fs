@@ -18,7 +18,6 @@ export class AbapFile implements FileStat {
     readonly parent: FileStat,
     private service: AbapFsService
   ) { }
-  _mtime = 0
   get ctime() {
     return this.object.structure?.metaData["adtcore:createdAt"] ?? 0
   }

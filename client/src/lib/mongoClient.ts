@@ -6,7 +6,7 @@ import { cache } from "./functions"
 import { clientTraceUrl, Sources, httpTraceUrl } from "vscode-abap-remote-fs-sharedapi"
 import { LogCallback, LogData, session_types } from "abap-adt-api"
 import { caughtToString } from "."
-import { AxiosRequestHeaders } from "axios"
+import { AxiosRequestHeaders, RawAxiosRequestHeaders } from "axios"
 
 const CALLLOG = "callLog"
 const HTTPLOG = "httpLog"
@@ -30,12 +30,12 @@ interface HttpRequest {
   stateful: boolean
   method: string
   uri: string
-  headers: AxiosRequestHeaders
+  headers: Record<string, string | string[] | number>
   requestBody: any
   debugId: number
 }
 interface HttpLog extends HttpRequest {
-  responseHeaders: AxiosRequestHeaders
+  responseHeaders: Record<string, string | string[] | number>
   duration: number
   statusCode: number
   // unknownResponse: boolean

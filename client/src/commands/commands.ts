@@ -39,6 +39,7 @@ import { createConnection } from "./connectionwizard"
 import { types } from "util"
 import { atcProvider } from "../views/abaptestcockpit"
 import { context } from "../extension"
+import { FsProvider } from "../fs/FsProvider"
 
 export function currentUri() {
   if (!window.activeTextEditor) return
@@ -159,7 +160,7 @@ export class AdtCommands {
           }
           await activator.activate(obj, uri)
           if (editor === window.activeTextEditor) {
-            await obj.loadStructure() // TODO replace with stat?
+            await workspace.fs.stat(uri)
             await showHideActivate(editor)
           }
         }
