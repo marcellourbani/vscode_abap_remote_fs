@@ -199,7 +199,7 @@ const runHandler = (runner: UnitTestRunner) => async (request: TestRunRequest) =
             if (excluded(i)) continue
             const classes = await runUnitUrl(connId, i.id)
             runner.setUrlTypes(classes)
-            const obj = (i: TestItem): TestItem => runner.getUrlType(i.id) === TestResType.object ? i : obj(i.parent!)
+            const obj = (i: TestItem): TestItem => runner.getUrlType(i.id) === TestResType.object || !i.parent ? i : obj(i.parent)
             const resType = runner.getUrlType(i.id)
             const actualResType = resType === TestResType.method && (classes.length > 1 || classes[0] && classes[0].testmethods.length > 1) ? TestResType.object : resType
             setResults(run, classes, obj(i), runner.controller, actualResType)
