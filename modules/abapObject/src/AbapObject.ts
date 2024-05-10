@@ -53,17 +53,19 @@ export interface AbapObject {
   readonly canBeWritten: boolean
   /** objcect namespace
    *  i.e. for /UI5/IF_ADT_REP_MODEL is /UI5/
-   */
+  */
   readonly nameSpace: string
   /** object base name
    *   i.e. for /UI5/IF_ADT_REP_MODEL is IF_ADT_REP_MODEL
-   */
+  */
   readonly baseName: string
   /** used to open the object in SAPGUI */
   readonly sapGuiUri: string
   /** supported or only sapgui */
   readonly supported: boolean
   readonly owner?: string
+  readonly modtime: number
+  readonly version: ObjectVersion | undefined
 
   /** loads/updates the object metadata */
   loadStructure: (refresh?: boolean, version?: ObjectVersion) => Promise<AbapObjectStructure>
@@ -120,6 +122,9 @@ export class AbapObjectBase implements AbapObject {
   public get structure(): AbapObjectStructure | undefined {
     return this._structure
   }
+  get modtime() {
+    return this.structure?.metaData["adtcore:changedAt"] ?? 0
+  }
   public set structure(value: AbapObjectStructure | undefined) {
     this._structure = value
   }
@@ -136,6 +141,10 @@ export class AbapObjectBase implements AbapObject {
   }
   get fsName() {
     return `${convertSlash(this.name)}${this.extension}`
+  }
+  get version(): ObjectVersion | undefined {
+    const version = this.structure?.metaData["adtcore:version"]
+    if (version === "active" || version === "inactive") return version
   }
   get lockObject(): AbapObject {
     return this
@@ -183,12 +192,21 @@ export class AbapObjectBase implements AbapObject {
     if (this.expandable) throw ObjectErrors.notLeaf(this)
     return this.service.mainPrograms(this.path)
   }
-
+  private _loadstprom: Promise<AbapObjectStructure> | undefined = undefined
   async loadStructure(refresh = false, version?: ObjectVersion): Promise<AbapObjectStructure> {
-    if (!this.name) throw ObjectErrors.noStructure(this)
-    const base = this.path.replace(/\/source\/main$/, "")
-    this.structure = await this.service.objectStructure(base, refresh, version)
-    return this.structure
+    if (!this._loadstprom) {
+      const loader = async () => {
+        if (!this.name) throw ObjectErrors.noStructure(this)
+        const base = this.path.replace(/\/source\/main$/, "")
+        const structure = await this.service.objectStructure(base, refresh, version)
+        const metaData = structure.metaData
+        if (!this.structure || metaData["adtcore:changedAt"] >= this.modtime)
+          this.structure = structure
+        return this.structure
+      }
+      this._loadstprom = loader().finally(() => this._loadstprom = undefined)
+    }
+    return this._loadstprom
   }
   async delete(lockId: string, transport = "") {
     return this.service.delete(this.path, lockId, transport)
@@ -211,9 +229,11 @@ export class AbapObjectBase implements AbapObject {
   }
 
   async read() {
+    await this._loadstprom
     if (this.expandable) throw ObjectErrors.notLeaf(this)
     if (!this.supported) return SAPGUIONLY
-    return this.service.getObjectSource(this.contentsPath())
+    const version = this.version === "inactive" ? "inactive" : undefined
+    return this.service.getObjectSource(this.contentsPath(), version)
   }
 
   protected filterInvalid(original: NodeStructure): NodeStructure {
