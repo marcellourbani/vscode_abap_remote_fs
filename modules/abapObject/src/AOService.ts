@@ -26,7 +26,7 @@ export interface AbapObjectService {
   ) => Promise<void>
   delete: (path: string, lockId: string, transport: string) => Promise<void>
   getObjectSource: (path: string, version?: ObjectVersion) => Promise<string>
-  nodeContents: (type: NodeParents, name: string, owner?: string) => Promise<NodeStructure>
+  nodeContents: (type: NodeParents, name: string, owner?: string, parents?: number[], refresh?: boolean) => Promise<NodeStructure>
 }
 
 export class AOService implements AbapObjectService {
@@ -79,11 +79,11 @@ export class AOService implements AbapObjectService {
   }
 
   private contentsCache = new Map<string, Promise<NodeStructure>>()
-  nodeContents(type: NodeParents, name: string, owner?: string) {
+  nodeContents(type: NodeParents, name: string, owner?: string, parents?: number[], refresh = false) {
     const key = `${type} ${name}`
     let next = this.contentsCache.get(key)
     if (!next) {
-      next = this.client.statelessClone.nodeContents(type, name, owner)
+      next = this.client.statelessClone.nodeContents(type, name, owner, undefined, refresh, parents)
       this.contentsCache.set(key, next)
       next.finally(() => this.contentsCache.delete(key))
     }

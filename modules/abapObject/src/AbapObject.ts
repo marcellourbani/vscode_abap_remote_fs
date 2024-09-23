@@ -96,7 +96,9 @@ const followPath = (base: string, suffix: string) => {
     return suffix.match(/^\//) ? suffix : `${base}/${suffix}`
   }
 }
+const dd = Symbol.for("debug.description")
 export class AbapObjectBase implements AbapObject {
+  [dd] = () => `${this.constructor.name} ${this.type} ${this.name}`
   public get expandable(): boolean {
     return this._expandable
   }

@@ -1,6 +1,12 @@
 # Change Log
 
+## [1.7.12] 2024-09-23
+
+### Fixed
+
 ## [1.7.7] 2024-04-20
+
+- workaround for broken function groups
 
 ### Fixed
 
