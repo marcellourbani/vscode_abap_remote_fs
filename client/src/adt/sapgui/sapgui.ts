@@ -257,7 +257,7 @@ export class SapGui {
             headless: false,
             executablePath: config.sapGui?.browserPath || "chrome",
             ignoreDefaultArgs: ["--enable-automation", "--enable-blink-features=IdleDetection"],
-            ignoreHTTPSErrors: !!config.allowSelfSigned,
+            acceptInsecureCerts: !!config.allowSelfSigned,
             // @ts-ignore
             defaultViewport: null,
             args: ['--start-maximized']
