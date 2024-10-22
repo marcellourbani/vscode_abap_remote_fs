@@ -1,4 +1,4 @@
-import { ADTClient, AtcWorkList } from "abap-adt-api"
+import { AtcWorkList } from "abap-adt-api"
 import { Task } from "fp-ts/lib/Task"
 import { commands, Disposable, EventEmitter, Position, TextDocumentContentChangeEvent, ThemeColor, ThemeIcon, TreeDataProvider, TreeItem, TreeItemCollapsibleState, Uri, window } from "vscode"
 import { getClient } from "../../adt/conections"

@@ -81,6 +81,7 @@
     "tmp-promise": "^3.0.3",
     "tough-cookie": "^4.1.2",
     "uuid": "^9.0.0",
+    "v8-inspect-profiler": "^0.1.0",
     "vscode-abap-remote-fs-sharedapi": "file:../modules/sharedapi",
     "vscode-debugadapter": "^1.51.0",
     "vscode-debugprotocol": "^1.51.0",

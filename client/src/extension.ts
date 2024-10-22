@@ -32,6 +32,7 @@ import { HttpProvider } from "./editors/httpprovider"
 import { dumpProvider } from "./views/dumps/dumps"
 import { registerAbapDebugger } from "./adt/debugger"
 import { ATCDocumentation } from "./views/abaptestcockpit/documentation"
+import { tracesProvider } from "./views/traces"
 
 export let context: ExtensionContext
 
@@ -72,6 +73,7 @@ export async function activate(ctx: ExtensionContext): Promise<AbapFsApi> {
   sub.push(window.registerTreeDataProvider("abapfs.abapgit", abapGitProvider))
   sub.push(window.registerTreeDataProvider("abapfs.dumps", dumpProvider))
   sub.push(window.registerTreeDataProvider("abapfs.atcFinds", atcProvider))
+  sub.push(window.registerTreeDataProvider("abapfs.traces", tracesProvider))
   sub.push(
     languages.registerCodeLensProvider(
       { language: "abap", scheme: ADTSCHEME },

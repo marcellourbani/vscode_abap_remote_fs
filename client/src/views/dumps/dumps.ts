@@ -1,6 +1,6 @@
 import { Dump, Feed } from "abap-adt-api"
-import { EventEmitter, Range, TreeDataProvider, TreeItem, TreeItemCollapsibleState, Uri, ViewColumn, window, workspace } from "vscode"
-import { getClient, getOrCreateClient } from "../../adt/conections"
+import { EventEmitter, TreeDataProvider, TreeItem, TreeItemCollapsibleState, ViewColumn, window } from "vscode"
+import { getOrCreateClient } from "../../adt/conections"
 import { AdtObjectFinder } from "../../adt/operations/AdtObjectFinder"
 import { AbapFsCommands, command } from "../../commands"
 import { connectedRoots } from "../../config"

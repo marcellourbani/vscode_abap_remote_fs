@@ -179,6 +179,11 @@
           "when": "abapfs:extensionActive"
         },
         {
+          "id": "abapfs.traces",
+          "name": "Traces",
+          "when": "abapfs:extensionActive"
+        },
+        {
           "id": "abapfs.abapgit",
           "name": "abapGit",
           "when": "abapfs:extensionActive"
