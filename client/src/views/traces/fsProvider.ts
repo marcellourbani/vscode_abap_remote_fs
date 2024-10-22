@@ -10,11 +10,11 @@ const loadProfile = async (uri: Uri, run: TraceRunItem) => {
     const client = getClient(uri.authority)
     const id = adtProfileId(uri)
     if (run.detailed) {
-        const statements = await client.tracesStatements(id)
+        const statements = await client.tracesStatements(id, { withSystemEvents: true, withDetails: true })
         return convertStatements(run.run, statements)
     }
 
-    const hitlist = await client.tracesHitList(id)
+    const hitlist = await client.tracesHitList(id, true)
     return convertRun(run.run, hitlist)
 }
 

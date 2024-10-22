@@ -8,11 +8,11 @@ export const convertStatements = (run: TraceRun, resp: TraceStatementResponse): 
     const callLevels: ProfileNode[] = []
     const nodes = resp.statements.map((s, id) => {
         const { context = "", name = "", uri = "", objectReferenceQuery = "" } = s.callingProgram || {}
-        const { hitCount, traceEventNetTime, index, grossTime } = s
+        const { hitCount, traceEventNetTime, index, grossTime, description, callingProgram } = s
         const node: ProfileNode = {
             id: id + 1,
             callFrame: {
-                functionName: context || name,
+                functionName: description || context || name,
                 scriptId: "0",
                 url: uri || objectReferenceQuery,
                 lineNumber: -1,
@@ -24,36 +24,40 @@ export const convertStatements = (run: TraceRun, resp: TraceStatementResponse): 
         callLevels[s.callLevel] = node
         callLevels[s.callLevel - 1]?.children?.push(node.id)
         return node
-        // TODO collect locations, parent-child relationships
     })
-    const samples = nodes.map(n => n.id)
-    const timeDeltas = resp.statements.map(n => n.traceEventNetTime.time)
+    const maxnodeId = nodes[nodes.length - 1]?.id || 0
+    const samples = [1, ...nodes.map(n => n.id < maxnodeId ? n.id + 1 : n.id)]
+    const timeDeltas = [0, ...resp.statements.map(n => n.traceEventNetTime.time)]
+    // const samples = nodes.map(n => n.id)
+    // const timeDeltas = resp.statements.map(n => n.traceEventNetTime.time)
     const selfTime = total(timeDeltas)
     const endTime = startTime + selfTime
+    for (const n of nodes) if (n.children?.find(c => c < n.id)) console.log("boo")
     return { startTime, endTime, nodes, samples, timeDeltas }
 }
 export const convertRun = (run: TraceRun, hitlist: TraceHitList): Profile => {
     const startTime = run.published.getTime()
     const nodes = hitlist.entries.map((e, id) => {
         const { context = "", name = "", uri = "", objectReferenceQuery = "" } = e.callingProgram || {}
-        const { hitCount, traceEventNetTime, index, grossTime } = e
-        return {
+        const { hitCount, traceEventNetTime, index, grossTime, description } = e
+        const node: ProfileNode = {
             id: id + 1,
             callFrame: {
-                functionName: context || name,
+                functionName: description,//context || name,
                 scriptId: "0",
                 url: uri || objectReferenceQuery,
                 lineNumber: -1,
                 columnNumber: -1
             },
             hitCount,
-            children: [],
-            locationId: 0
+            children: []
         }
-        // TODO collect locations
+        return node
     })
-    const samples = nodes.map(n => n.id)
-    const timeDeltas = hitlist.entries.map(n => n.traceEventNetTime.time)
+
+    const maxnodeId = nodes[nodes.length - 1]?.id || 0
+    const samples = [1, ...nodes.map(n => n.id < maxnodeId ? n.id + 1 : n.id)]
+    const timeDeltas = [0, ...hitlist.entries.map(n => n.traceEventNetTime.time)]
     const selfTime = total(timeDeltas)
     const endTime = startTime + selfTime
     return { startTime, endTime, nodes, samples, timeDeltas }

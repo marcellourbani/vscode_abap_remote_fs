@@ -4,7 +4,6 @@ import { getClient, getOrCreateClient } from "../../adt/conections"
 import { TraceRequest, TraceRun } from "abap-adt-api/build/api/tracetypes"
 import { cache } from "../../lib"
 import { openCommand } from "./commands"
-import { adtProfileUri } from "./fsProvider"
 const icons = cache((id: string) => new ThemeIcon(id))
 const configToolTip = (config: TraceRequest) => {
     const admin = config.authors.find(a => a.role === "admin")?.name || ""
@@ -74,7 +73,7 @@ class ConfigFolder extends TreeItem {
     }
     iconPath = icons.get("gear")
     async children() {
-        const client = getClient(this.connId)
+        const client = await getOrCreateClient(this.connId)
         const { requests } = await client.tracesListRequests()
         return requests.map(c => new Configuration(this.connId, c))
     }
@@ -88,9 +87,9 @@ class RunsFolder extends TreeItem {
     }
     iconPath = icons.get("files")
     async children() {
-        const client = getClient(this.connId)
+        const client = await getOrCreateClient(this.connId)
         const { runs } = await client.tracesList()
-        this.runs = runs.map(r => new TraceRunItem(this.connId, r))
+        this.runs = runs.map(r => new TraceRunItem(this.connId, r)).sort((a, b) => b.run.published.getTime() - a.run.published.getTime())
         return this.runs
     }
     public async getRun(id: string) {
