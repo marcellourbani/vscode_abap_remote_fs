@@ -1,11 +1,10 @@
 import { EventEmitter, MarkdownString, ThemeIcon, TreeDataProvider, TreeItem, TreeItemCollapsibleState } from "vscode"
 import { connectedRoots } from "../../config"
-import { getClient } from "../../adt/conections"
+import { getClient, getOrCreateClient } from "../../adt/conections"
 import { TraceRequest, TraceRun } from "abap-adt-api/build/api/tracetypes"
 import { cache } from "../../lib"
-import { adtProfileUri } from "./documentprovider"
-import { AbapFsCommands } from "../../commands"
 import { openCommand } from "./commands"
+import { adtProfileUri } from "./fsProvider"
 const icons = cache((id: string) => new ThemeIcon(id))
 const configToolTip = (config: TraceRequest) => {
     const admin = config.authors.find(a => a.role === "admin")?.name || ""
@@ -57,12 +56,13 @@ class Configuration extends TreeItem {
 export class TraceRunItem extends TreeItem {
     constructor(readonly connId: string, readonly run: TraceRun) {
         super(`${run.title} ${run.published.toLocaleString()} ${run.extendedData.objectName}`, TreeItemCollapsibleState.None)
-        this.command = openCommand(this)
+        if (!this.error) this.command = openCommand(this)
         this.tooltip = runToolTip(run)
     }
     id = this.run.id
-
-    iconPath = icons.get(this.run.extendedData.isAggregated ? "file" : "file-binary")
+    error = this.run.extendedData.state.value === "E"
+    detailed = !this.run.extendedData.isAggregated
+    iconPath = icons.get(this.error ? "error" : this.run.extendedData.isAggregated ? "file" : "file-binary")
     children() {
         return []
     }
@@ -82,7 +82,7 @@ class ConfigFolder extends TreeItem {
 
 class RunsFolder extends TreeItem {
     readonly tag = "config"
-    runs: TraceRunItem[] = []
+    runs: TraceRunItem[] | undefined
     constructor(private connId: string) {
         super("Runs", TreeItemCollapsibleState.Expanded)
     }
@@ -93,9 +93,10 @@ class RunsFolder extends TreeItem {
         this.runs = runs.map(r => new TraceRunItem(this.connId, r))
         return this.runs
     }
-    public getRun(id: string) {
+    public async getRun(id: string) {
+        const runs = this.runs || await this.children()
         id = decodeURIComponent(id)
-        return this.runs.find(r => decodeURIComponent(r.id) === id)
+        return runs.find(r => decodeURIComponent(r.id) === id)
     }
 }
 
@@ -138,6 +139,7 @@ class TracesProvider implements TreeDataProvider<Item>{
 
 export const tracesProvider = new TracesProvider()
 
-export const findRun = (connId: string, id: string) => {
+export const findRun = async (connId: string, id: string) => {
+    await getOrCreateClient(connId)//in case the tree is not displayed yet
     return tracesProvider.root(connId)?.runs.getRun(id)
 }

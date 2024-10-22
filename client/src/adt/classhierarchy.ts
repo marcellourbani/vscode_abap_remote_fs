@@ -127,7 +127,6 @@ export class ClassHierarchyLensProvider implements CodeLensProvider {
   public async provideCodeLenses(doc: TextDocument, token: CancellationToken): Promise<CodeLens[]> {
     const lenses: CodeLens[] = []
     if (doc.uri.scheme !== ADTSCHEME) return lenses
-    const client = getClient(doc.uri.authority)
     const obj = await findAbapObject(doc.uri)
     if (!obj) return lenses
     // TODO stat?

@@ -152,7 +152,7 @@ export class AdtCommands {
       await window.withProgress(
         { location: ProgressLocation.Window, title: "Activating..." },
         async () => {
-          const obj = findAbapObject(uri)
+          const obj = await findAbapObject(uri)
           // if editor is dirty, save before activate
           if (editor && editor.document.isDirty) {
             const saved = await editor.document.save()
