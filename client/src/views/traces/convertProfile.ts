@@ -1,10 +1,11 @@
 import { TraceHitList, TraceRun, TraceStatementResponse } from "abap-adt-api/build/api/tracetypes"
 import { Profile, ProfileNode } from "v8-inspect-profiler"
-import { splitAdtUri } from "../../lib"
+// import { splitAdtUri } from "../../lib"
 
-const objectLink = (connId: string, uri: string, id: number) => `command:abapfs.showObject?connId=${connId}&uri=${encodeURIComponent(uri)}`
+const objectLink = (connId: string, uri: string, id: number) => `command:abapfs.showObject?${encodeURIComponent(JSON.stringify({ connId, uri }))}`
 const total = (addendi: number[]) => addendi.reduce((a, b) => a + b, 0)
-const uriLine = (uri: string) => splitAdtUri(uri).start?.line ?? -1
+// const uriLine = (uri: string) => splitAdtUri(uri).start?.line ?? -1
+const uriLine = (uri: string) => -1
 export const convertStatements = (run: TraceRun, resp: TraceStatementResponse, connId: string): Profile => {
     const startTime = run.published.getTime()
     const callLevels: ProfileNode[] = []
@@ -27,12 +28,11 @@ export const convertStatements = (run: TraceRun, resp: TraceStatementResponse, c
         }
         callLevels[s.callLevel] = node
         callLevels[s.callLevel - 1]?.children?.push(node.id)
+        // const child = callLevels[s.callLevel - 1]
+        // if (child) node.children = [child.id]
+        // callLevels[s.callLevel] = node        
         return node
     })
-        .map(c => {
-            if (c.children?.length) return c
-            return { ...c, children: undefined }
-        })
     const maxnodeId = nodes[nodes.length - 1]?.id || 0
     const samples = [1, ...nodes.map(n => n.id < maxnodeId ? n.id + 1 : n.id)]
     const timeDeltas = [0, ...resp.statements.map(n => n.traceEventNetTime.time)]

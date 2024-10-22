@@ -1,5 +1,11 @@
 # Change Log
 
+## [1.7.14] 2024-10-23
+
+### Added
+
+- display performance traces
+
 ## [1.7.12] 2024-09-23
 
 ### Fixed
