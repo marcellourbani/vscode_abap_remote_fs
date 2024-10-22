@@ -1,10 +1,11 @@
-import { CancellationToken, Command, Event, EventEmitter, MarkdownString, ProviderResult, ThemeIcon, TreeDataProvider, TreeItem, TreeItemCollapsibleState, TreeItemLabel, Uri } from "vscode"
+import { EventEmitter, MarkdownString, ThemeIcon, TreeDataProvider, TreeItem, TreeItemCollapsibleState } from "vscode"
 import { connectedRoots } from "../../config"
 import { getClient } from "../../adt/conections"
-import { TraceRequestList } from "abap-adt-api"
 import { TraceRequest, TraceRun } from "abap-adt-api/build/api/tracetypes"
 import { cache } from "../../lib"
+import { adtProfileUri } from "./documentprovider"
 import { AbapFsCommands } from "../../commands"
+import { openCommand } from "./commands"
 const icons = cache((id: string) => new ThemeIcon(id))
 const configToolTip = (config: TraceRequest) => {
     const admin = config.authors.find(a => a.role === "admin")?.name || ""
@@ -53,10 +54,10 @@ class Configuration extends TreeItem {
     iconPath = icons.get("gear")
     children() { return [] }
 }
-export class Run extends TreeItem {
+export class TraceRunItem extends TreeItem {
     constructor(readonly connId: string, readonly run: TraceRun) {
         super(`${run.title} ${run.published.toLocaleString()} ${run.extendedData.objectName}`, TreeItemCollapsibleState.None)
-        this.command = { title: "Open", command: AbapFsCommands.openTrace, arguments: [this] }
+        this.command = openCommand(this)
         this.tooltip = runToolTip(run)
     }
     id = this.run.id
@@ -81,6 +82,7 @@ class ConfigFolder extends TreeItem {
 
 class RunsFolder extends TreeItem {
     readonly tag = "config"
+    runs: TraceRunItem[] = []
     constructor(private connId: string) {
         super("Runs", TreeItemCollapsibleState.Expanded)
     }
@@ -88,17 +90,21 @@ class RunsFolder extends TreeItem {
     async children() {
         const client = getClient(this.connId)
         const { runs } = await client.tracesList()
-        console.log(runs)
-        return runs.map(r => new Run(this.connId, r))
+        this.runs = runs.map(r => new TraceRunItem(this.connId, r))
+        return this.runs
+    }
+    public getRun(id: string) {
+        id = decodeURIComponent(id)
+        return this.runs.find(r => decodeURIComponent(r.id) === id)
     }
 }
 
 
 class SystemFolder extends TreeItem {
     readonly tag = "system"
-    private runs: RunsFolder
+    readonly runs: RunsFolder
     private configs: ConfigFolder
-    constructor(private connId: string) {
+    constructor(readonly connId: string) {
         super(connId, TreeItemCollapsibleState.Expanded)
         this.runs = new RunsFolder(connId)
         this.configs = new ConfigFolder(connId)
@@ -112,7 +118,7 @@ class SystemFolder extends TreeItem {
     }
 }
 
-type Item = SystemFolder | ConfigFolder | RunsFolder | Configuration | Run
+type Item = SystemFolder | ConfigFolder | RunsFolder | Configuration | TraceRunItem
 
 class TracesProvider implements TreeDataProvider<Item>{
     readonly emitter = new EventEmitter<Item | Item[] | undefined>()
@@ -125,6 +131,13 @@ class TracesProvider implements TreeDataProvider<Item>{
         return this.roots
     }
     private roots = [...connectedRoots().keys()].map(r => new SystemFolder(r))
+    public root(connId: string) {
+        return this.roots.find(r => r.connId === connId)
+    }
 }
 
 export const tracesProvider = new TracesProvider()
+
+export const findRun = (connId: string, id: string) => {
+    return tracesProvider.root(connId)?.runs.getRun(id)
+}
