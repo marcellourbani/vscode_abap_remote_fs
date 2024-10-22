@@ -1,9 +1,10 @@
-import { EventEmitter, MarkdownString, ThemeIcon, TreeDataProvider, TreeItem, TreeItemCollapsibleState } from "vscode"
+import { EventEmitter, MarkdownString, ThemeIcon, TreeDataProvider, TreeItem, TreeItemCollapsibleState, Uri } from "vscode"
 import { connectedRoots } from "../../config"
 import { getClient, getOrCreateClient } from "../../adt/conections"
 import { TraceRequest, TraceRun } from "abap-adt-api/build/api/tracetypes"
 import { cache } from "../../lib"
 import { openCommand } from "./commands"
+import { adtProfileUri } from "./fsProvider"
 const icons = cache((id: string) => new ThemeIcon(id))
 const configToolTip = (config: TraceRequest) => {
     const admin = config.authors.find(a => a.role === "admin")?.name || ""
@@ -44,6 +45,7 @@ const runToolTip = (run: TraceRun) => {
 }
 
 class Configuration extends TreeItem {
+    readonly contextValue = "configuration"
     constructor(readonly connId: string, readonly config: Readonly<TraceRequest>) {
         const label = `${config.title} ${config.extendedData.host} ${config.published.toLocaleString()}`
         super(label, TreeItemCollapsibleState.None)
@@ -53,9 +55,13 @@ class Configuration extends TreeItem {
     children() { return [] }
 }
 export class TraceRunItem extends TreeItem {
+    readonly contextValue = "run"
     constructor(readonly connId: string, readonly run: TraceRun) {
         super(`${run.title} ${run.published.toLocaleString()} ${run.extendedData.objectName}`, TreeItemCollapsibleState.None)
-        if (!this.error) this.command = openCommand(this)
+        if (!this.error) {
+            const uri = adtProfileUri(this)
+            this.command = openCommand(uri)
+        }
         this.tooltip = runToolTip(run)
     }
     id = this.run.id
@@ -67,7 +73,7 @@ export class TraceRunItem extends TreeItem {
     }
 }
 class ConfigFolder extends TreeItem {
-    readonly tag = "config"
+    readonly contextValue = "configfolder"
     constructor(private connId: string) {
         super("Configurations", TreeItemCollapsibleState.Expanded)
     }
@@ -80,7 +86,7 @@ class ConfigFolder extends TreeItem {
 }
 
 class RunsFolder extends TreeItem {
-    readonly tag = "config"
+    readonly contextValue = "runfolder"
     runs: TraceRunItem[] | undefined
     constructor(private connId: string) {
         super("Runs", TreeItemCollapsibleState.Expanded)
@@ -101,9 +107,9 @@ class RunsFolder extends TreeItem {
 
 
 class SystemFolder extends TreeItem {
-    readonly tag = "system"
+    readonly contextValue = "system"
     readonly runs: RunsFolder
-    private configs: ConfigFolder
+    readonly configs: ConfigFolder
     constructor(readonly connId: string) {
         super(connId, TreeItemCollapsibleState.Expanded)
         this.runs = new RunsFolder(connId)
@@ -118,15 +124,15 @@ class SystemFolder extends TreeItem {
     }
 }
 
-type Item = SystemFolder | ConfigFolder | RunsFolder | Configuration | TraceRunItem
+export type TraceView = SystemFolder | ConfigFolder | RunsFolder | Configuration | TraceRunItem
 
-class TracesProvider implements TreeDataProvider<Item>{
-    readonly emitter = new EventEmitter<Item | Item[] | undefined>()
+class TracesProvider implements TreeDataProvider<TraceView>{
+    readonly emitter = new EventEmitter<TraceView | TraceView[] | undefined>()
     readonly onDidChangeTreeData = this.emitter.event
-    getTreeItem(element: Item): Item {
+    getTreeItem(element: TraceView): TraceView {
         return element
     }
-    async getChildren(element?: Item): Promise<Item[]> {
+    async getChildren(element?: TraceView): Promise<TraceView[]> {
         if (element) return element.children()
         return this.roots
     }

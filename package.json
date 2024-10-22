@@ -548,6 +548,16 @@
         "command": "abapfs.atcRequestExemptionAll",
         "title": "Request Exemption on multiple objects",
         "icon": "$(check-all)"
+      },
+      {
+        "command": "abapfs.refreshTraces",
+        "title": "Refresh",
+        "icon": "$(refresh)"
+      },
+      {
+        "command": "abapfs.deleteTrace",
+        "title": "Delete",
+        "icon": "$(trash)"
       }
     ],
     "keybindings": [
@@ -934,6 +944,16 @@
           "command": "abapfs.atcRefresh",
           "group": "inline",
           "when": "view == abapfs.atcFinds"
+        },
+        {
+          "command": "abapfs.refreshTraces",
+          "group": "inline",
+          "when": "view == abapfs.traces && ( viewItem == system || viewItem == configfolder || viewItem == runfolder )"
+        },
+        {
+          "command": "abapfs.deleteTrace",
+          "group": "inline",
+          "when": "view == abapfs.traces && ( viewItem == run || viewItem == configuration )"
         },
         {
           "command": "abapfs.atcIgnore",

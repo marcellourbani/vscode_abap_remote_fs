@@ -78,7 +78,8 @@ export const AbapFsCommands = {
   agitresetPwd: "abapfs.resetAbapGitPwd",
   agitBranch: "abapfs.switchBranch",
   //traces
-  openTrace: "abapfs.openTrace"
+  refreshTraces: "abapfs.refreshTraces",
+  deleteTrace: "abapfs.deleteTrace",
 }
 
 export const abapcmds: {
