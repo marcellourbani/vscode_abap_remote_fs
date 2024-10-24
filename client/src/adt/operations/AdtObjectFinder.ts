@@ -255,8 +255,8 @@ export function createUri(connId: string, path: string, query: string = "") {
   })
 }
 
-export function findAbapObject(uri: Uri) {
-  const file = uriRoot(uri).getNode(uri.path)
+export async function findAbapObject(uri: Uri) {
+  const file = await uriRoot(uri).getNodeAsync(uri.path)
   if (isAbapStat(file)) return file.object
   throw new Error("Not an ABAP object")
 }

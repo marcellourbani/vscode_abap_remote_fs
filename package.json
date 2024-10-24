@@ -2,7 +2,7 @@
   "name": "vscode-abap-remote-fs",
   "displayName": "ABAP remote filesystem",
   "description": "Work on your ABAP code straight from the server",
-  "version": "1.7.13",
+  "version": "1.7.14",
   "publisher": "murbani",
   "license": "MIT",
   "icon": "client/images/abapfs_logo.png",
@@ -176,6 +176,11 @@
         {
           "id": "abapfs.atcFinds",
           "name": "ATC finds",
+          "when": "abapfs:extensionActive"
+        },
+        {
+          "id": "abapfs.traces",
+          "name": "Traces",
           "when": "abapfs:extensionActive"
         },
         {
@@ -543,6 +548,16 @@
         "command": "abapfs.atcRequestExemptionAll",
         "title": "Request Exemption on multiple objects",
         "icon": "$(check-all)"
+      },
+      {
+        "command": "abapfs.refreshTraces",
+        "title": "Refresh",
+        "icon": "$(refresh)"
+      },
+      {
+        "command": "abapfs.deleteTrace",
+        "title": "Delete",
+        "icon": "$(trash)"
       }
     ],
     "keybindings": [
@@ -929,6 +944,16 @@
           "command": "abapfs.atcRefresh",
           "group": "inline",
           "when": "view == abapfs.atcFinds"
+        },
+        {
+          "command": "abapfs.refreshTraces",
+          "group": "inline",
+          "when": "view == abapfs.traces && ( viewItem == system || viewItem == configfolder || viewItem == runfolder )"
+        },
+        {
+          "command": "abapfs.deleteTrace",
+          "group": "inline",
+          "when": "view == abapfs.traces && ( viewItem == run || viewItem == configuration )"
         },
         {
           "command": "abapfs.atcIgnore",

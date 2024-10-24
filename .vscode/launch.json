@@ -30,6 +30,7 @@
       "address": "localhost",
       "smartStep": true,
       "showAsyncStacks": true,
+      "restart": true,
       "skipFiles": [
         "<node_internals>/**"
       ],

@@ -76,7 +76,10 @@ export const AbapFsCommands = {
   agitAdd: "abapfs.addAbapGit",
   agitRemove: "abapfs.removeAbapGit",
   agitresetPwd: "abapfs.resetAbapGitPwd",
-  agitBranch: "abapfs.switchBranch"
+  agitBranch: "abapfs.switchBranch",
+  //traces
+  refreshTraces: "abapfs.refreshTraces",
+  deleteTrace: "abapfs.deleteTrace",
 }
 
 export const abapcmds: {

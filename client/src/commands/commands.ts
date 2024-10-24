@@ -4,12 +4,14 @@ import {
   Uri,
   window,
   commands,
-  ProgressLocation
+  ProgressLocation,
+  Position,
+  Range
 } from "vscode"
 import { pickAdtRoot, RemoteManager } from "../config"
-import { caughtToString, log } from "../lib"
+import { caughtToString, lineRange, log, splitAdtUri } from "../lib"
 import { FavouritesProvider, FavItem } from "../views/favourites"
-import { findEditor } from "../langClient"
+import { findEditor, vsCodeUri } from "../langClient"
 import { showHideActivate } from "../listeners"
 import { UnitTestRunner } from "../adt/operations/UnitTestRunner"
 import { selectTransport } from "../adt/AdtTransports"
@@ -80,7 +82,10 @@ export function openObject(connId: string, uri: string) {
     }
   )
 }
-
+interface ShowObjectArgument {
+  connId: string,
+  uri: string
+}
 export class AdtCommands {
   @command(AbapFsCommands.showDocumentation)
   private static async showAbapDoc() {
@@ -152,7 +157,7 @@ export class AdtCommands {
       await window.withProgress(
         { location: ProgressLocation.Window, title: "Activating..." },
         async () => {
-          const obj = findAbapObject(uri)
+          const obj = await findAbapObject(uri)
           // if editor is dirty, save before activate
           if (editor && editor.document.isDirty) {
             const saved = await editor.document.save()
@@ -247,7 +252,15 @@ export class AdtCommands {
       return window.showErrorMessage(caughtToString(e))
     }
   }
-
+  @command(AbapFsCommands.showObject)
+  private static async showObject(arg: ShowObjectArgument) {
+    const p = splitAdtUri(arg.uri)
+    const path = await vsCodeUri(arg.connId, arg.uri, true, true)
+    const uri = Uri.parse(path)
+    const doc = await workspace.openTextDocument(uri)
+    const selection = p.start?.line ? lineRange(p.start?.line + 1) : undefined
+    window.showTextDocument(doc, { selection })
+  }
   @command(AbapFsCommands.runInGui)
   private static async executeAbap() {
     try {
