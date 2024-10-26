@@ -77,7 +77,7 @@ async function validateLock(lock: LockStatus) {
 
 export const isExpired = (error: any) =>
   isCsrfError(error) ||
-  (error.message === "Session timed out" && error.err === 400)
+  (error.err === 400 && `${error.message}`.match(/Session.*timed.*out/i))
 
 export async function setDocumentLock(
   document: TextDocument,

@@ -1,5 +1,11 @@
 # Change Log
 
+## Unreleased
+
+### Fixed
+
+- reconnect expired sessions
+
 ## [1.7.14] 2024-10-23
 
 ### Added
