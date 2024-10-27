@@ -1,6 +1,10 @@
 # Change Log
 
-## Unreleased
+## [1.7.16] 2024-10-27
+
+### Added
+
+- extract method
 
 ### Fixed
 
