@@ -1,5 +1,4 @@
 import { DiagnosticSeverity, TextDocument, Range } from "vscode-languageserver"
-import { isString } from "util"
 import { ADTClient } from "abap-adt-api"
 import { AbapObjectDetail } from "vscode-abap-remote-fs-sharedapi"
 import { clientKeyFromUrl, clientFromKey } from "./clientManager"
@@ -9,6 +8,8 @@ import { toInt, parts } from "./functions"
 
 const startIdent = /^((<?[\w]+>?)|(\/\w+\/\w+))/
 const endIdent = /((<?[\w]+>?)|(\/\w+\/\w+))$/
+
+export const rangeIsEmpty = (r: Range) => r.start.line === r.end.line && r.start.character === r.end.character
 
 export function decodeSeverity(severity: string) {
   switch (severity) {
@@ -24,6 +25,8 @@ export function decodeSeverity(severity: string) {
   }
   return DiagnosticSeverity.Warning
 }
+
+export const isString = (s: unknown) => typeof s === "string"
 
 export function sourceRange(
   document: TextDocument | string,

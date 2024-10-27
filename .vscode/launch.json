@@ -30,7 +30,10 @@
       "address": "localhost",
       "smartStep": true,
       "showAsyncStacks": true,
-      "restart": true,
+      "restart": {
+        "delay": 2000,
+        "maxAttempts": 100
+      },
       "skipFiles": [
         "<node_internals>/**"
       ],

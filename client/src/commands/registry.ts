@@ -20,6 +20,7 @@ export const AbapFsCommands = {
   refreshDumps: "abapfs.refreshDumps",
   tableContents: "abapfs.tableContents",
   exportToJson: "abapfs.exportToJson",
+  extractMethod: "abapfs.extractMethod",
   // atc
   atcChecks: "abapfs.atcChecks",
   atcIgnore: "abapfs.atcIgnore",

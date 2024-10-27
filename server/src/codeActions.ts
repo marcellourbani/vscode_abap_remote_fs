@@ -2,9 +2,10 @@ import {
   CodeActionParams,
   CodeAction,
   DiagnosticSeverity,
-  Command
+  Command,
+  CodeActionKind
 } from "vscode-languageserver"
-import { clientAndObjfromUrl } from "./utilities"
+import { clientAndObjfromUrl, rangeIsEmpty } from "./utilities"
 import { log } from "./clientManager"
 import { FixProposal } from "abap-adt-api"
 import { decode } from "html-entities"
@@ -12,9 +13,13 @@ import { decode } from "html-entities"
 export async function codeActionHandler(
   parms: CodeActionParams
 ): Promise<CodeAction[] | undefined> {
-  if (!parms.context.diagnostics.length) return
-  return quickfix(parms)
+  const quickfixes = parms.context.diagnostics.length ? await quickfix(parms) || [] : []
+  if (rangeIsEmpty(parms.range)) return quickfixes
+  return [...quickfixes, createExtractmethod(parms)]
 }
+
+const createExtractmethod = (parms: CodeActionParams) => CodeAction.create("Extract method", Command.create("extractMethod", "abapfs.extractMethod", parms.textDocument.uri, parms.range), CodeActionKind.RefactorExtract)
+
 const shouldAdd = (newProposal: FixProposal, existing: FixProposal[]) => {
   const propType = newProposal["adtcore:type"]
   if (propType.match(/dialog|rename_quickfix/i)) return false

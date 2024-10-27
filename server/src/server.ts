@@ -66,7 +66,7 @@ connection.onInitialize((params: InitializeParams) => {
 
   if (hasLiteral)
     result.capabilities.codeActionProvider = {
-      codeActionKinds: [CodeActionKind.QuickFix]
+      codeActionKinds: [CodeActionKind.QuickFix, CodeActionKind.RefactorExtract]
     }
   return result
 })

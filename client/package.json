@@ -61,7 +61,7 @@
     "@abaplint/core": "^2.102.65",
     "@types/tmp": "0.2.3",
     "abap_cloud_platform": "^1.1.3",
-    "abap-adt-api": "^6.1.0",
+    "abap-adt-api": "^6.2.0",
     "abapfs": "file:../modules/abapfs",
     "abapobject": "file:../modules/abapObject",
     "client-oauth2": "^4.3.3",
