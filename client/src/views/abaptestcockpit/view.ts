@@ -12,8 +12,6 @@ import { atcRefresh } from "./commands"
 import { AbapObjectBase } from "abapobject/out/AbapObject"
 import { log } from "../../lib"
 
-// tslint:disable:max-classes-per-file
-
 export interface FindingMarker {
     finding: AtcWLFinding,
     uri: string,
@@ -173,7 +171,7 @@ export class AtcFind extends TreeItem {
 }
 
 export type AtcNode = AtcRoot | AtcSystem | AtcObject | AtcFind
-class AtcProvider implements TreeDataProvider<AtcNode>{
+class AtcProvider implements TreeDataProvider<AtcNode> {
     emitter = new EventEmitter<AtcNode | undefined>()
     root = new AtcRoot("systems", this)
     private autoRefresh = false

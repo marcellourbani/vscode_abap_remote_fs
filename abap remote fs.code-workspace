@@ -47,9 +47,6 @@
       "wiki",
       "sharedapi"
     ],
-    "tslint.exclude": [
-      "**/node_modules/**"
-    ],
     "githubIssues.queries": [
       {
         "label": "My Issues",

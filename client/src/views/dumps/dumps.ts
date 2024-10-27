@@ -4,7 +4,6 @@ import { getOrCreateClient } from "../../adt/conections"
 import { AdtObjectFinder } from "../../adt/operations/AdtObjectFinder"
 import { AbapFsCommands, command } from "../../commands"
 import { connectedRoots } from "../../config"
-// tslint:disable:max-classes-per-file
 
 const jsFooter = `<script type="text/javascript">
 const vscode = acquireVsCodeApi();
@@ -75,7 +74,7 @@ class SystemItem extends TreeItem {
 }
 
 type Item = SystemItem | DumpItem
-class DumpProvider implements TreeDataProvider<Item>{
+class DumpProvider implements TreeDataProvider<Item> {
     private systems = new Map<string, SystemItem>();
     emitter = new EventEmitter<Item>()
     get onDidChangeTreeData() {

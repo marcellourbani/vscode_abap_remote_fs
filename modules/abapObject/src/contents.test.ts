@@ -29,7 +29,6 @@ export const runTest = (f: (s: AOService) => Promise<void>) => {
   const { service, client } = getRootForTest()
   return async () => {
     if (!service || !client) {
-      // tslint:disable-next-line:no-console
       console.log("Connection not configured, no test was run")
       return
     }

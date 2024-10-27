@@ -86,7 +86,6 @@ export class MySearchResult implements QuickPickItem, AdtSearchResult {
   }
 }
 
-// tslint:disable-next-line:max-classes-per-file
 export class AdtObjectFinder {
   constructor(public readonly connId: string) { }
   private fragCache = promCache<FragmentLocation>()

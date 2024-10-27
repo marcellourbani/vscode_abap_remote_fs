@@ -8,7 +8,6 @@ test("call throttler", async () => {
   const gencb = (i: number) => () =>
     new Promise<number>(resolve => {
       setTimeout(() => resolve(i), 10)
-      // tslint:disable-next-line: no-console
       console.log("called:" + i)
       calls[i] = true
     })

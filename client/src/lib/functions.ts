@@ -63,7 +63,6 @@ export const promCache = <T>() => {
   }
 }
 
-// tslint:disable-next-line: ban-types
 export const isFn = (f: any): f is Function => {
   return typeof f === "function"
 }

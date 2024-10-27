@@ -24,7 +24,6 @@ export const runTest = (f: (c: Root) => Promise<void>) => {
   const { root, client } = getRootForTest()
   return async () => {
     if (!root || !client) {
-      // tslint:disable-next-line:no-console
       console.log("Connection not configured, no test was run")
       return
     }

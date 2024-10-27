@@ -26,7 +26,7 @@ export function decodeSeverity(severity: string) {
   return DiagnosticSeverity.Warning
 }
 
-export const isString = (s: unknown) => typeof s === "string"
+export const isString = (s: unknown): s is string => typeof s === "string"
 
 export function sourceRange(
   document: TextDocument | string,

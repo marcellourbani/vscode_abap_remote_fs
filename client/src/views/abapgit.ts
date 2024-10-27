@@ -154,7 +154,6 @@ interface RepoAccess {
   cancelled: boolean
 }
 
-// tslint:disable-next-line: max-classes-per-file
 class AbapGitProvider implements TreeDataProvider<TreeItem> {
   private git = new AbapGit()
   private children: (ServerItem | NoGitItem)[] = []

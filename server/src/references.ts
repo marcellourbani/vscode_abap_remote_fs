@@ -197,7 +197,6 @@ export function cancelSearch() {
   if (lastSearch) {
     lastSearch.cancel()
     lastSearch = undefined
-    // tslint:disable-next-line:no-empty
     return setSearchProgress({ ended: true, hits: 0, progress: 100 }).catch(() => { })
   }
 }

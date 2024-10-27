@@ -14,7 +14,6 @@ class AdtBreakpoint extends Breakpoint {
     }
 }
 
-// tslint:disable-next-line:max-classes-per-file
 export class BreakpointManager {
     private breakpoints = new Map<string, AdtBreakpoint[]>()
     constructor(private readonly listener: DebugListener) { }

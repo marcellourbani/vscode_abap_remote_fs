@@ -76,7 +76,6 @@ class CollectionItem extends TreeItem {
   }
 }
 
-// tslint:disable: max-classes-per-file
 class ConnectionItem extends CollectionItem {
   private get user() {
     const client = getClient(this.uri.authority)
@@ -305,7 +304,6 @@ export class TransportsProvider implements TreeDataProvider<CollectionItem> {
     return new CollectionItem("root")
   }
 
-  // tslint:disable: member-ordering
   private static async decodeTransportObject(
     obj: TransportObject,
     connId: string,
