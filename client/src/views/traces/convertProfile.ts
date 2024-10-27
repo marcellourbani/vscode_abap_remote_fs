@@ -1,5 +1,6 @@
 import { TraceHitList, TraceRun, TraceStatementResponse } from "abap-adt-api/build/api/tracetypes"
 import { Profile, ProfileNode } from "v8-inspect-profiler"
+import { log } from "../../lib"
 // import { splitAdtUri } from "../../lib"
 
 const objectLink = (connId: string, uri: string, id: number) => `command:abapfs.showObject?${encodeURIComponent(JSON.stringify({ connId, uri }))}`
@@ -36,11 +37,11 @@ export const convertStatements = (run: TraceRun, resp: TraceStatementResponse, c
     const maxnodeId = nodes[nodes.length - 1]?.id || 0
     const samples = [1, ...nodes.map(n => n.id < maxnodeId ? n.id + 1 : n.id)]
     const timeDeltas = [0, ...resp.statements.map(n => n.traceEventNetTime.time)]
-    // const samples = nodes.map(n => n.id)
+    // const samples = nodes.map(n => n.id) 
     // const timeDeltas = resp.statements.map(n => n.traceEventNetTime.time)
     const selfTime = total(timeDeltas)
     const endTime = startTime + selfTime
-    for (const n of nodes) if (n.children?.find(c => c < n.id)) console.log("boo")
+    for (const n of nodes) if (n.children?.find(c => c < n.id)) log(`Unexpected child ID in profile`)
     return { startTime, endTime, nodes, samples, timeDeltas }
 }
 

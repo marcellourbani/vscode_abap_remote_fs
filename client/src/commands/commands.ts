@@ -5,11 +5,11 @@ import {
   window,
   commands,
   ProgressLocation,
-  Position,
-  Range
+  Range,
+  FileChangeType
 } from "vscode"
 import { pickAdtRoot, RemoteManager } from "../config"
-import { caughtToString, lineRange, log, splitAdtUri } from "../lib"
+import { caughtToString, inputBox, lineRange, log, rangeVscToApi, splitAdtUri } from "../lib"
 import { FavouritesProvider, FavItem } from "../views/favourites"
 import { findEditor, vsCodeUri } from "../langClient"
 import { showHideActivate } from "../listeners"
@@ -87,6 +87,27 @@ interface ShowObjectArgument {
   uri: string
 }
 export class AdtCommands {
+  @command(AbapFsCommands.extractMethod)
+  private static async extractMethod(url: string, range: Range) {
+    const uri = Uri.parse(url)
+    const client = getClient(uri.authority)
+    const root = getRoot(uri.authority)
+    const file = await root.getNodeAsync(uri.path)
+    if (isAbapFile(file)) {
+      const o = file.object
+      const proposal = await client.extractMethodEvaluate(o.path, rangeVscToApi(range))
+      const methodName = await window.showInputBox({ prompt: "Method name" })
+      if (!methodName) return
+      const transport = await selectTransport(o.path, "", client)
+      if (transport.cancelled) return
+      proposal.genericRefactoring.transport = transport.transport
+      proposal.name = methodName
+      const preview = await client.extractMethodPreview(proposal)
+      await client.extractMethodExecute(preview)
+      FsProvider.get().notifyChanges([{ type: FileChangeType.Changed, uri }])
+    }
+
+  }
   @command(AbapFsCommands.showDocumentation)
   private static async showAbapDoc() {
     return showAbapDoc()
