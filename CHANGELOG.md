@@ -1,5 +1,11 @@
 # Change Log
 
+## [1.7.16] 2024-10-29
+
+### Added
+
+- toggle normalization in diff
+
 ## [1.7.15] 2024-10-27
 
 ### Added
