@@ -456,6 +456,11 @@
         }
       },
       {
+        "command": "abapfs.togglediffNormalize",
+        "title": "Toggle code normalization",
+        "icon": "$(law)"
+      },
+      {
         "command": "abapfs.transportObjectDiff",
         "title": "Diff with current version",
         "icon": {
@@ -761,6 +766,10 @@
           "when": "hideCommands.never"
         },
         {
+          "command": "abapfs.togglediffNormalize",
+          "when": "hideCommands.never"
+        },
+        {
           "command": "abapfs.clearScmGroup",
           "when": "hideCommands.never"
         },
@@ -1012,6 +1021,11 @@
           "command": "abapfs.activate",
           "group": "navigation",
           "when": "resourceScheme == adt && editorLangId =~ /abap|cds|xml/ && abapfs:showActivate "
+        },
+        {
+          "command": "abapfs.togglediffNormalize",
+          "group": "navigation",
+          "when": "isInDiffEditor && editorLangId =~ /abap/"
         }
       ],
       "editor/title/run": [

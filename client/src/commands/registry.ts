@@ -45,6 +45,7 @@ export const AbapFsCommands = {
   openrevstate: "abapfs.openrevstate",
   opendiff: "abapfs.opendiff",
   opendiffNormalized: "abapfs.opendiffNormalized",
+  togglediffNormalize: "abapfs.togglediffNormalize",
   changequickdiff: "abapfs.changequickdiff",
   remotediff: "abapfs.remotediff",
   comparediff: "abapfs.comparediff",

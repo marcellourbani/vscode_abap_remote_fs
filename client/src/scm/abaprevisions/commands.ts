@@ -1,5 +1,5 @@
 import { command, AbapFsCommands } from "../../commands"
-import { Uri, QuickPickItem, window, commands, workspace, ProgressLocation } from "vscode"
+import { Uri, QuickPickItem, window, commands, workspace, ProgressLocation, TabInputTextDiff } from "vscode"
 import { abapUri, uriRoot, getOrCreateRoot, getClient, ADTSCHEME, rootIsConnected } from "../../adt/conections"
 import { AbapRevisionService, revLabel } from "./abaprevisionservice"
 import { ADTClient, Revision } from "abap-adt-api"
@@ -8,7 +8,7 @@ import { revisionUri } from "./documentprovider"
 import { RemoteManager, formatKey } from "../../config"
 import { isAbapFile } from "abapfs"
 import { AGroup, AState } from "./abapscm"
-import { caughtToString } from "../../lib"
+import { caughtToString, atob, btoa } from "../../lib"
 import * as t from "io-ts"
 import { isRight } from "fp-ts/lib/Either"
 import { vsCodeUri } from "../../langClient"
@@ -289,6 +289,24 @@ export class AbapRevisionCommands {
       state.resourceUri,
       true
     )
+  }
+
+  @command(AbapFsCommands.togglediffNormalize)
+  private static toggleDiffNormalize() {
+    try {
+      const tab = window.tabGroups.activeTabGroup.activeTab
+      const toggleNorm = (u: Uri) => {
+        const o = u.fragment ? JSON.parse(atob(u.fragment)) : {}
+        o.normalized = !o.normalized
+        return u.with({ fragment: btoa(JSON.stringify(o)) })
+      }
+      if (tab?.input instanceof TabInputTextDiff) {
+        const { original, modified } = tab.input
+        return commands.executeCommand<void>("vscode.diff", toggleNorm(original), toggleNorm(modified), tab.label)
+      } else window.showInformationMessage("Unable to normalize this comparison")
+    } catch (error) {
+      window.showErrorMessage(caughtToString(error))
+    }
   }
 
   @command(AbapFsCommands.openrevstate)
