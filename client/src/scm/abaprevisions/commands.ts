@@ -4,7 +4,7 @@ import { abapUri, uriRoot, getOrCreateRoot, getClient, ADTSCHEME, rootIsConnecte
 import { AbapRevisionService, revLabel } from "./abaprevisionservice"
 import { ADTClient, Revision } from "abap-adt-api"
 import { AbapQuickDiff } from "./quickdiff"
-import { revisionUri } from "./documentprovider"
+import { decodeRevisioUrl, revisionUri } from "./documentprovider"
 import { RemoteManager, formatKey } from "../../config"
 import { isAbapFile } from "abapfs"
 import { AGroup, AState } from "./abapscm"
@@ -46,6 +46,31 @@ const loadRevisions = async (uri: Uri, withRefresh = true) => {
   const service = AbapRevisionService.get(uri.authority)
   const revisions = await service.uriRevisions(uri, withRefresh)
   return revisions || []
+}
+interface UriRevisions { uri: Uri, normalized: boolean, revision: Revision, revisions: Revision[] }
+export const versionRevisions = async (v: Uri, refresh = false): Promise<UriRevisions | undefined> => {
+  const decoded = decodeRevisioUrl(v)
+  if (decoded) {
+    const { uri, revision, normalized } = decoded
+    const revisions = await loadRevisions(uri, refresh)
+    const found = revisions.find(r => r.uri === revision.uri)
+    if (found) return { uri, revision, revisions, normalized }
+  }
+}
+
+const currentRevisions = async () => {
+  const tab = window.tabGroups.activeTabGroup.activeTab
+  if (tab?.input instanceof TabInputTextDiff) {
+    const { original, modified } = tab.input
+    const lefts = await versionRevisions(original)
+    const leftindex = lefts?.revisions.findIndex(r => r.uri === lefts.revision.uri) ?? -1
+    const rights = leftindex >= 0 ? await versionRevisions(modified) : undefined
+    const rightindex = rights?.revisions.findIndex(r => r.uri === rights.revision.uri) ?? -1
+    if (!lefts || !rights || rightindex < 0 || leftindex < 0) return
+
+    return { lefts, rights, leftindex, rightindex }
+  }
+
 }
 
 const pickRevision = async (revisions: Revision[], title = "Select version") => {
@@ -161,9 +186,46 @@ export class AbapRevisionCommands {
     if (!abapUri(uri)) return
     const leftRev = await selectRevision(uri, "Select version for left pane")
     if (!leftRev) return
-    const rightRev = await selectRevision(uri, "Select version for right pane")
+    const rightRev = await selectRevision(uri, "Select version for right pane", false)
     if (!rightRev) return
     displayRevDiff(rightRev, leftRev, uri)
+  }
+  @command(AbapFsCommands.prevRevLeft)
+  private async prevLeft() {
+    const current = await currentRevisions()
+    if (current) {
+      const left = current.lefts.revisions[current.leftindex + 1]
+      if (left) return displayRevDiff(current.rights.revision, left, current.lefts.uri, current.lefts.normalized)
+    }
+    return window.showWarningMessage("Failed to determine version")
+  }
+  @command(AbapFsCommands.prevRevRight)
+  private async prevRight() {
+    const current = await currentRevisions()
+    if (current) {
+      const right = current.rights.revisions[current.rightindex + 1]
+      if (right) return displayRevDiff(right, current.lefts.revision, current.lefts.uri, current.lefts.normalized)
+    }
+    return window.showWarningMessage("Failed to determine version")
+  }
+  @command(AbapFsCommands.nextRevLeft)
+  private async nextLeft() {
+    const current = await currentRevisions()
+    if (current) {
+      const left = current.lefts.revisions[current.leftindex - 1]
+      if (left) return displayRevDiff(current.rights.revision, left, current.lefts.uri, current.lefts.normalized)
+    }
+    return window.showWarningMessage("Failed to determine version")
+
+  }
+  @command(AbapFsCommands.nextRevRight)
+  private async nextRight() {
+    const current = await currentRevisions()
+    if (current) {
+      const right = current.rights.revisions[current.rightindex - 1]
+      if (right) return displayRevDiff(right, current.lefts.revision, current.lefts.uri, current.lefts.normalized)
+    }
+    return window.showWarningMessage("Failed to determine version")
   }
 
   private static async showMerge(uri: Uri, incomingUri: Uri, incomings: Revision[], locals: Revision[], incoming: Revision, conflict: Revision) {

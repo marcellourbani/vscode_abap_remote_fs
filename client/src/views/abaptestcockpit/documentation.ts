@@ -4,6 +4,8 @@ import { AdtObjectFinder } from "../../adt/operations/AdtObjectFinder"
 import { AbapFsCommands, command } from "../../commands"
 import { History } from "../history"
 import { injectUrlHandler } from "../utilities"
+import { setContext } from "../../context"
+
 
 export interface DocumentationItem {
     url: string,
@@ -55,8 +57,8 @@ export class ATCDocumentation implements WebviewViewProvider {
     }
     private async getHtmlForWebview(): Promise<void> {
         if (!this.view) return
-        commands.executeCommand("setContext", "abapfs:atcdoc:navigation:next", this.history.hasNext)
-        commands.executeCommand("setContext", "abapfs:atcdoc:navigation:back", this.history.hasPrevious)
+        setContext("abapfs:atcdoc:navigation:next", this.history.hasNext)
+        setContext("abapfs:atcdoc:navigation:back", this.history.hasPrevious)
         if (this.documentation) {
             const client = getClient(this.documentation.connId)
             const doc = await client.httpClient.request(this.documentation.url)

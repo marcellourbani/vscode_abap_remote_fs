@@ -4,7 +4,6 @@ import { atcProvider, registerSCIDecorator } from "./views/abaptestcockpit"
 import { FsProvider } from "./fs/FsProvider"
 import {
   window,
-  commands,
   workspace,
   ExtensionContext,
   languages
@@ -33,6 +32,7 @@ import { dumpProvider } from "./views/dumps/dumps"
 import { registerAbapDebugger } from "./adt/debugger"
 import { ATCDocumentation } from "./views/abaptestcockpit/documentation"
 import { tracesProvider } from "./views/traces"
+import { setContext } from "./context"
 
 export let context: ExtensionContext
 
@@ -102,7 +102,7 @@ export async function activate(ctx: ExtensionContext): Promise<AbapFsApi> {
 
   LanguageCommands.start(context)
 
-  commands.executeCommand("setContext", "abapfs:extensionActive", true)
+  setContext("abapfs:extensionActive", true)
   restoreLocks()
   registerAbapGit(context)
 
@@ -123,6 +123,6 @@ export async function deactivate() {
     window.showInformationMessage(
       "Locks will be dropped now. If the relevant editors are still open they will be restored later"
     )
-  commands.executeCommand("setContext", "abapfs:extensionActive", false)
+  setContext("abapfs:extensionActive", false)
   return disconnect()
 }

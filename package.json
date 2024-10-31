@@ -456,6 +456,30 @@
         }
       },
       {
+        "command": "abapfs.prevRevLeft",
+        "title": "Previous revision(left pane)",
+        "icon": "$(arrow-left)",
+        "enablement": "abapfs:enableLeftPrevRev"
+      },
+      {
+        "command": "abapfs.nextRevLeft",
+        "title": "Next revision(left pane)",
+        "icon": "$(arrow-right)",
+        "enablement": "abapfs:enableLeftNextRev"
+      },
+      {
+        "command": "abapfs.prevRevRight",
+        "title": "Previous revision(right pane)",
+        "icon": "$(arrow-left)",
+        "enablement": "abapfs:enableRightPrevRev"
+      },
+      {
+        "command": "abapfs.nextRevRight",
+        "title": "Next revision(right pane)",
+        "icon": "$(arrow-right)",
+        "enablement": "abapfs:enableRightNextRev"
+      },
+      {
         "command": "abapfs.togglediffNormalize",
         "title": "Toggle code normalization",
         "icon": "$(law)"
@@ -770,6 +794,22 @@
           "when": "hideCommands.never"
         },
         {
+          "command": "abapfs.prevRevLeft",
+          "when": "hideCommands.never"
+        },
+        {
+          "command": "abapfs.nextRevLeft",
+          "when": "hideCommands.never"
+        },
+        {
+          "command": "abapfs.prevRevRight",
+          "when": "hideCommands.never"
+        },
+        {
+          "command": "abapfs.nextRevRight",
+          "when": "hideCommands.never"
+        },
+        {
           "command": "abapfs.clearScmGroup",
           "when": "hideCommands.never"
         },
@@ -1025,7 +1065,27 @@
         {
           "command": "abapfs.togglediffNormalize",
           "group": "navigation",
-          "when": "isInDiffEditor && editorLangId =~ /abap/"
+          "when": "isInDiffEditor && resourceScheme == adt_revision && editorLangId =~ /abap/"
+        },
+        {
+          "command": "abapfs.prevRevLeft",
+          "group": "navigation@1",
+          "when": "isInDiffEditor && resourceScheme == adt_revision"
+        },
+        {
+          "command": "abapfs.nextRevLeft",
+          "group": "navigation@2",
+          "when": "isInDiffEditor && resourceScheme == adt_revision"
+        },
+        {
+          "command": "abapfs.prevRevRight",
+          "group": "navigation@3",
+          "when": "isInDiffEditor && resourceScheme == adt_revision"
+        },
+        {
+          "command": "abapfs.nextRevRight",
+          "group": "navigation@4",
+          "when": "isInDiffEditor && resourceScheme == adt_revision"
         }
       ],
       "editor/title/run": [

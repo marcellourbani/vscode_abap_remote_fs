@@ -23,6 +23,12 @@ type Selector = SimpleSelector | QuickDiffSelector
 const isQuickDiff = (s: Selector): s is QuickDiffSelector =>
   s.type === "quickdiff"
 
+interface RevisionDetails {
+  uri: Uri,
+  revision: Revision,
+  normalized: boolean
+}
+
 export function revisionUri(uri: Uri, revision?: Revision, normalized = false) {
   if (!abapUri(uri)) return
   const selector: SimpleSelector = {
@@ -33,6 +39,18 @@ export function revisionUri(uri: Uri, revision?: Revision, normalized = false) {
   }
   const fragment = btoa(JSON.stringify(selector))
   return uri.with({ scheme: ADTREVISIONSCHEME, fragment })
+}
+
+export const decodeRevisioUrl = (uri: Uri): RevisionDetails | undefined => {
+  if (uri.scheme !== ADTREVISIONSCHEME) return
+  try {
+    const selector: Selector = JSON.parse(atob(uri.fragment))
+    if (isQuickDiff(selector) || !selector.revision) return
+    const { revision, normalized } = selector
+    return { uri: uri.with({ scheme: ADTSCHEME, fragment: selector.origFragment }), revision, normalized }
+  } catch (error) {
+    return
+  }
 }
 
 export const quickDiffUri = (uri: Uri) => {
