@@ -8,7 +8,8 @@ import {
   Disposable,
   Event,
   TextDocumentWillSaveEvent,
-  workspace
+  workspace,
+  TabInputTextDiff
 } from "vscode"
 
 import { caughtToString, debounce, log, viewableObjecttypes } from "./lib"
@@ -17,8 +18,9 @@ import { AbapObject } from "abapobject"
 import { isAbapStat } from "abapfs"
 import { isCsrfError } from "abap-adt-api"
 import { LockStatus } from "abapfs/out/lockObject"
-import { IncludeProvider } from "./adt/includes"
 import { uriAbapFile } from "./adt/operations/AdtObjectFinder"
+import { versionRevisions } from "./scm/abaprevisions"
+import { setContext } from "./context"
 
 export const listenersubscribers: ((...x: any[]) => Disposable)[] = []
 
@@ -151,7 +153,7 @@ function isInactive(obj: AbapObject): boolean {
 function showHidedbIcon(editor?: TextEditor) {
   try {
     const type = uriAbapFile(editor?.document.uri)?.object.type
-    commands.executeCommand("setContext", "abapfs:showTableContentIcon", viewableObjecttypes.has(type))
+    setContext("abapfs:showTableContentIcon", viewableObjecttypes.has(type))
   } catch (error) { }
 }
 
@@ -175,7 +177,7 @@ export async function showHideActivate(editor?: TextEditor, refresh = false) {
   }
   // race condition, active editor might have changed while async operation was pending
   if (editor !== window.activeTextEditor) return
-  await commands.executeCommand("setContext", "abapfs:showActivate", shouldShow)
+  await setContext("abapfs:showActivate", shouldShow)
 }
 export async function activationStateListener(uri: Uri) {
   const editor = window.activeTextEditor
@@ -185,11 +187,42 @@ export async function activationStateListener(uri: Uri) {
     await showHideActivate(editor)
   }
 }
-
+const setRevisionContext = (leftprev: boolean, leftnext: boolean, rightprev: boolean, rightnext: boolean) => {
+  setContext("abapfs:enableLeftNextRev", leftnext)
+  setContext("abapfs:enableLeftPrevRev", leftprev)
+  setContext("abapfs:enableRightNextRev", rightnext)
+  setContext("abapfs:enableRightPrevRev", rightprev)
+}
+const enableRevNavigation = async (editor: TextEditor | undefined) => {
+  if (editor) {
+    const firstlast = async (u: Uri): Promise<[boolean, boolean]> => {
+      const v = await versionRevisions(u)
+      if (!v) return [false, false]
+      const { revision, revisions } = v
+      const idx = revisions.findIndex(r => r.uri === revision.uri)
+      const hasNext = idx > 0
+      const hasprev = idx >= 0 && idx < revisions.length - 1
+      return [hasprev, hasNext]
+    }
+    try {
+      const tab = window.tabGroups.activeTabGroup.activeTab
+      if (tab?.input instanceof TabInputTextDiff) {
+        const { original, modified } = tab.input
+        const lefts = await firstlast(original)
+        const rights = await firstlast(modified)
+        if (rights && lefts) return setRevisionContext(...lefts, ...rights)
+      }
+    } catch (error) {
+      // on error just disable all
+    }
+  }
+  return setRevisionContext(false, false, false, false)
+}
 export async function activeTextEditorChangedListener(
   editor: TextEditor | undefined
 ) {
   showHidedbIcon(editor)
+  enableRevNavigation(editor)
   try {
     if (editor && editor.document.uri.scheme === ADTSCHEME) {
       await showHideActivate(editor)

@@ -10,7 +10,8 @@ import {
   Position,
   Range,
   OpenDialogOptions,
-  QuickPickOptions
+  QuickPickOptions,
+  commands
 } from "vscode"
 import { splitAdtUriInternal, isUnDefined, isFn, isNonNullable, caughtToString, isString } from "./functions"
 import { Range as ApiRange, UriParts } from "abap-adt-api"

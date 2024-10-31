@@ -1,5 +1,11 @@
 # Change Log
 
+## [1.7.17] 2024-10-30
+
+### Added
+
+- previous/next versions in diff
+
 ## [1.7.16] 2024-10-29
 
 ### Added

@@ -11,6 +11,7 @@ import { AdtObjectActivator } from "../../adt/operations/AdtObjectActivator"
 import { atcRefresh } from "./commands"
 import { AbapObjectBase } from "abapobject/out/AbapObject"
 import { log } from "../../lib"
+import { setContext } from "../../context"
 
 export interface FindingMarker {
     finding: AtcWLFinding,
@@ -193,13 +194,13 @@ class AtcProvider implements TreeDataProvider<AtcNode> {
 
     setExemptFilter(enabled: boolean) {
         this.exemptFilter = enabled
-        commands.executeCommand("setContext", "abapfs:atc:exemptFilterOn", enabled)
+        setContext("abapfs:atc:exemptFilterOn", enabled)
         for (const s of this.root.children) s.updateChildren()
     }
 
     setAutoRefresh(enabled: boolean) {
         this.autoRefresh = enabled
-        commands.executeCommand("setContext", "abapfs:atc:autorefreshOn", enabled)
+        setContext("abapfs:atc:autorefreshOn", enabled)
         if (enabled) {
             for (const s of this.root.children) {
                 if (this.activationListeners.has(s.connectionId)) continue
