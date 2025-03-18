@@ -1,4 +1,4 @@
-import { ADTClient, createSSLConfig, LogData } from "abap-adt-api"
+import { ADTClient, createSSLConfig, LogData, session_types } from "abap-adt-api"
 import { createConnection, ProposedFeatures } from "vscode-languageserver"
 import { types } from "util"
 import { readConfiguration, sendLog, sendHttpLog } from "./clientapis"
@@ -57,28 +57,42 @@ function createFetchToken(conf: ClientConfiguration) {
       connection.sendRequest(Methods.getToken, conf.name) as Promise<string>
 }
 
+const refreshClient = (key: string, conf: ClientConfiguration) => {
+  const oldClient = clients.get(key)
+  const sslconf = conf.url.match(/https:/i)
+    ? createSSLConfig(conf.allowSelfSigned, conf.customCA)
+    : {}
+  sslconf.debugCallback = debugCallBack(conf)
+  const pwdOrFetch = createFetchToken(conf) || conf.password
+  const baseclient = new ADTClient(
+    conf.url,
+    conf.username,
+    pwdOrFetch,
+    conf.client,
+    conf.language,
+    sslconf
+  )
+  baseclient.stateful = session_types.stateful
+  const traceUrl = clientTraceUrl(conf)
+  const client = traceUrl ? loggedProxy(baseclient, conf) : baseclient
+  clients.set(key, client)
+  if (oldClient) {
+    setTimeout(() => {
+      oldClient.stateful = session_types.stateless
+      oldClient.logout()
+    }, 2000)
+  }
+}
+
 export async function clientFromKey(key: string) {
   key = decodeURIComponent(key)
   let client = clients.get(key)
   if (!client) {
     const conf = await readConfiguration(key)
     if (conf) {
-      const sslconf = conf.url.match(/https:/i)
-        ? createSSLConfig(conf.allowSelfSigned, conf.customCA)
-        : {}
-      sslconf.debugCallback = debugCallBack(conf)
-      const pwdOrFetch = createFetchToken(conf) || conf.password
-      client = new ADTClient(
-        conf.url,
-        conf.username,
-        pwdOrFetch,
-        conf.client,
-        conf.language,
-        sslconf
-      )
-      const traceUrl = clientTraceUrl(conf)
-      if (traceUrl) client = loggedProxy(client, conf)
-      clients.set(key, client)
+      refreshClient(key, conf)
+      // as clients are stateful, they will expire, usually in 10 minutes. So we need to refresh them every 4 minutes
+      setInterval(() => refreshClient(key, conf), 240000)
     }
   }
   return client

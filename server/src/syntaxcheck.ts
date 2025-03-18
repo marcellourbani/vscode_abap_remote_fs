@@ -42,7 +42,7 @@ async function runSyntaxCheck(document: TextDocument) {
     }
 
     const source = document.getText()
-    const checks = await co.client.syntaxCheck(
+    const checks = await co.client.statelessClone.syntaxCheck(
       obj.url,
       obj.mainUrl,
       source,
