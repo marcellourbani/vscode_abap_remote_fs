@@ -1,5 +1,11 @@
 # Change Log
 
+## 1.7.18
+
+### Patch Changes
+
+- d9421f7: faster completion
+
 ## [1.7.17] 2024-10-30
 
 ### Added
