@@ -41,6 +41,13 @@ const config = {
             }
           }
         ]
+      }, {
+        test: /\.(node)$/i,
+        use: [
+          {
+            loader: 'file-loader',
+          }
+        ]
       }
     ]
   }
