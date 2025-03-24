@@ -50,7 +50,7 @@ async function quickfix(
         if (!co) co = await clientAndObjfromUrl(parms.textDocument.uri, true)
         if (!co || !co.client) return
         try {
-          const proposals = await co.client.fixProposals(
+          const proposals = await co.client.statelessClone.fixProposals(
             co.obj.mainUrl,
             co.source,
             d.range.start.line + 1,

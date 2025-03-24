@@ -8,7 +8,7 @@ export const renameHandler = async (params: RenameParams, token: CancellationTok
     const { textDocument, newName, position } = params
     const co = await clientAndObjfromUrl(textDocument.uri)
     if (!isAbap(textDocument.uri) || !co) return {}
-    const renameEvaluateResult = await co.client.renameEvaluate(co.obj.mainUrl, position.line + 1, position.character, position.character)
+    const renameEvaluateResult = await co.client.statelessClone.renameEvaluate(co.obj.mainUrl, position.line + 1, position.character, position.character)
     renameEvaluateResult.newName = newName
     const changes: Record<string, TextEdit[]> = {}
     for (const obj of renameEvaluateResult.affectedObjects) {

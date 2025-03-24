@@ -109,7 +109,7 @@ export async function documentSymbols(params: DocumentSymbolParams) {
       const [part] = parts(co.obj.url, pattern)
       const classUri = co.obj.url.replace(pattern, "")
 
-      const component = await co.client.classComponents(classUri)
+      const component = await co.client.statelessClone.classComponents(classUri)
       const localComp = filterComp(component, part)
 
       for (const sym of localComp.map(c => convertComponent(c, true)))

@@ -34,7 +34,7 @@ export async function findDefinition(
       params.position.line + 1,
       params.position.character
     )
-    const result = await co.client.findDefinition(
+    const result = await co.client.statelessClone.findDefinition(
       co.obj.mainUrl,
       co.source,
       range.start.line + 1,
@@ -80,8 +80,8 @@ class LocationManager {
   ])
 
   constructor(private conKey: string, private client: ADTClient) {
-    this.classes = memoize(c => this.client.classComponents(c))
-    this.sources = memoize(c => this.client.getObjectSource(c))
+    this.classes = memoize(c => this.client.statelessClone.classComponents(c))
+    this.sources = memoize(c => this.client.statelessClone.getObjectSource(c))
   }
 
   public async locationFromUrl(url: ReferenceUri) {
@@ -221,7 +221,7 @@ export async function findReferences(
     const co = await clientAndObjfromUrl(params.textDocument.uri, false)
     if (!co) return
     const manager = new LocationManager(co.confKey, co.client)
-    const references = await co.client.usageReferences(
+    const references = await co.client.statelessClone.usageReferences(
       co.obj.mainUrl,
       params.position.line + 1,
       params.position.character
@@ -234,7 +234,7 @@ export async function findReferences(
     let processed = 0
     for (const group of Object.keys(groups)) {
       try {
-        const snippets = await co.client.usageReferenceSnippets(groups[group])
+        const snippets = await co.client.statelessClone.usageReferenceSnippets(groups[group])
         for (const s of snippets) {
           if (s.snippets.length === 0) {
             const ref = references.find(

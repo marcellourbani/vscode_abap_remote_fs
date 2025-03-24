@@ -8,7 +8,7 @@ export async function formatDocument(params: DocumentFormattingParams) {
   const edits: TextEdit[] = []
   const co = await clientAndObjfromUrl(params.textDocument.uri, true)
   if (co) {
-    const newText = await co.client.prettyPrinter(co.source)
+    const newText = await co.client.statelessClone.prettyPrinter(co.source)
     if (isString(newText) && newText) {
       const diff = Math.abs(newText.length - co.source.length) / newText.length
       // sanity check: if length changed more than 20% ingore

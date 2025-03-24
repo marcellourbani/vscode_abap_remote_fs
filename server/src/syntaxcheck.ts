@@ -30,7 +30,7 @@ async function runSyntaxCheck(document: TextDocument) {
     // no object or include without a main program
     if (!obj || !objectIsValid(obj)) return
 
-    const getSource = memoize((c: string) => co.client.getObjectSource(c))
+    const getSource = memoize((c: string) => co.client.statelessClone.getObjectSource(c))
     const getUri = memoize((uri: string) => vscUrl(co.confKey, uri, false))
     const getdiag = (key: string) => {
       let diag = diagmap.get(key)
