@@ -1,5 +1,12 @@
 # Change Log
 
+## 1.7.19
+
+### Patch Changes
+
+- 4106420: fixed bugs in language server introduced in last version
+- 43ec40e: improved build : bump versions, removed superfluous files from package
+
 ## 1.7.18
 
 ### Patch Changes
