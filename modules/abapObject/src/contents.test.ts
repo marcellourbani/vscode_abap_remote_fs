@@ -4,6 +4,7 @@ import { create, fromNode } from "./creator"
 import { PACKAGEBASEPATH, AbapObject } from "./AbapObject"
 import { isAbapClass } from "./objectTypes"
 import { Agent } from "https"
+import { mock } from "jest-mock-extended" // forces loading jest 
 
 /** this will connect to a real server, and mostly rely on abapgit as sample data
  *   tests might brek with future versions of abapgit
