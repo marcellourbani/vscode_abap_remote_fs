@@ -1,11 +1,14 @@
 .vscode/**
+**/.vscode/**
 .vscode-test/**
 out/test/**
 out/**/*.map
 src/**
 node_modules/**
-.changesets
+.changesets/**
+**/.gitignore
 .gitignore
+**/jest.config.js
 tsconfig.json
 vsc-extension-quickstart.md
 tslint.json

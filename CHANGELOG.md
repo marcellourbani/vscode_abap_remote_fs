@@ -1,5 +1,11 @@
 # Change Log
 
+## 1.7.20
+
+### Patch Changes
+
+- 15bd5ee: Fix export to JSON of nested tables in debugger
+
 ## 1.7.19
 
 ### Patch Changes

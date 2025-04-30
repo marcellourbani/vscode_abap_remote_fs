@@ -104,7 +104,7 @@ export class VariableManager {
                 return str
             case "table":
                 const outlines: any[] = []
-                const keys = [...Array(v.TABLE_LINES).keys()].map(k => `${v.NAME}[${k + 1}]`)
+                const keys = [...Array(v.TABLE_LINES).keys()].map(k => `${v.ID}[${k + 1}]`)
                 const linevars = await client.debuggerVariables(keys)
                 for (const lv of linevars) {
                     const line = await this.dumpJson(client, lv)

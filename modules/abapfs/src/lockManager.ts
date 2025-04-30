@@ -2,7 +2,7 @@ import { Root } from "./root"
 import { LockObject, delay } from "./lockObject"
 import { isAbapStat } from "./abapFile"
 import { FileSystemError } from "vscode"
-import { isAdtError, isCsrfError } from "abap-adt-api"
+import { isLoginError, isCsrfError } from "abap-adt-api"
 
 export class LockManager {
   constructor(private root: Root) { }
@@ -36,7 +36,7 @@ export class LockManager {
 
   requestLock(path: string) {
     return this.lockObject(path).requestLock(path).catch(async (error) => {
-      if (isAdtError(error) && error.err === 401 || isCsrfError(error)) throw new Error(await this.relogin())
+      if (isLoginError(error)) throw new Error(await this.relogin())
       throw error
     })
   }
