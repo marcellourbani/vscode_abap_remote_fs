@@ -1,5 +1,5 @@
 import { AbapObject } from "../../abapObject"
-import { AdtLock, isCsrfError } from "abap-adt-api"
+import { AdtLock, isLoginError, isAdtError } from "abap-adt-api"
 import { AbapFsService } from "./AFsService"
 
 export interface Locked extends AdtLock {
@@ -92,8 +92,10 @@ export class LockObject {
         await unlocked
         this.status = { status: "unlocked" }
       } catch (error) {
-        if (isCsrfError(error)) { }
-        this.status = prevState
+        if (isAdtError(error) && isLoginError(error)) {
+          this.status = { status: "unlocked" }
+          this.service.dropSession()
+        } else this.status = prevState
         throw error
       }
     }

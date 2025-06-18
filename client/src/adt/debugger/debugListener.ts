@@ -1,4 +1,4 @@
-import { ADTClient, Debuggee, isDebugListenerError, DebuggingMode, isAdtError, session_types } from "abap-adt-api"
+import { ADTClient, Debuggee, isDebugListenerError, DebuggingMode, isAdtError, session_types, isLoginError } from "abap-adt-api"
 import { readFileSync, writeFileSync, existsSync, mkdirSync } from "fs"
 import { log, caughtToString, ignore, isUnDefined, firstInMap } from "../../lib"
 import { DebugProtocol } from "vscode-debugprotocol"
@@ -210,8 +210,11 @@ export class DebugListener {
                 this.onBreakpointReached(debuggee)
             } catch (error) {
                 if (!this.active) return
+                // if (isLoginError(error)) await 2
                 if (!isAdtError(error)) {
                     this.ui.ShowError(`Error listening to debugger: ${caughtToString(error)}`)
+                    // await this.stopDebugging().catch(ignore)
+                    // break
                 } else {
                     // autoAttachTimeout
                     const exceptionType = errorType(error)

@@ -94,13 +94,25 @@ const diffTitle = (uri: Uri, lvers: string, rvers: string) =>
   `${uri.path.split("/").pop() || uri.toString()} ${lvers}->${rvers}`
 
 const pickCommonAncestor = (locals: Revision[], localVer: Revision, remotes: Revision[], remoteVer: Revision) => {
-  const localTime = new Date(localVer.date).getTime()
-  const possibleLocals = locals.filter(l => new Date(l.date).getTime() < localTime)
-  const remoteTime = new Date(remoteVer.date).getTime()
-  const possibleRemotes = remotes.filter(l => new Date(l.date).getTime() < remoteTime)
-  for (const l of possibleLocals)
-    if (possibleRemotes.find(r => r.version && r.version === l.version)) return l
-  return pickRevision(possibleLocals, "Unable to determine common ancestor, please select base for comparison")
+  const manual = (possibles: Revision[]) => {
+    const title = "Unable to determine common ancestor, please select base for comparison"
+    if (possibles.length) return pickRevision(possibles, title)
+    if (locals.length) return pickRevision(locals,)
+    window.showInformationMessage("Unable to find a base for the merge")
+  }
+  try {
+    const localTime = new Date(localVer.date).getTime()
+    const possibleLocals = locals.filter(l => new Date(l.date).getTime() < localTime)
+    const remoteTime = new Date(remoteVer.date).getTime()
+    const possRemotes = remotes.filter(r => new Date(r.date).getTime() < remoteTime)
+    for (const l of possibleLocals)
+      if (possRemotes.find(r => r.version && r.version === l.version)) return l
+    return manual(possibleLocals)
+  } catch (error) {
+    window.showErrorMessage(caughtToString(error))
+    return manual([])
+
+  }
 }
 
 const wasChanged = async (client: ADTClient, state: AState): Promise<boolean> => {
