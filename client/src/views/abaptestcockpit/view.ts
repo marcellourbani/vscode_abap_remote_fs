@@ -33,10 +33,9 @@ export class AtcRoot extends TreeItem {
     get children() {
         return [...this.systems.values()]
     }
-    async child(key: string, creator: Task<string>) {
+    async child(key: string, variant: string) {
         const cached = this.systems.get(key)
         if (cached) return cached
-        const variant = await creator()
         const system = new AtcSystem(key, variant, this)
         this.systems.set(key, system)
         this.parent.emitter.fire(undefined)
@@ -229,16 +228,19 @@ class AtcProvider implements TreeDataProvider<AtcNode> {
 
     async runInspectorByAdtUrl(uri: string, connectionId: string) {
         const client = getClient(connectionId)
-        const system = await this.root.child(connectionId, () => getVariant(client, connectionId))
+        const { checkVariant } = await getVariant(client, connectionId)
+        const system = await this.root.child(connectionId, checkVariant)
         await system.load(() => runInspectorByAdtUrl(uri, system.variant, client))
         commands.executeCommand("abapfs.atcFinds.focus")
         this.setAutoRefresh(this.autoRefresh)
         this.reportError(system)
     }
 
-    async runInspector(uri: Uri) {
+    async runInspector(uri: Uri, setvariant: (variant: string) => void) {
         const client = getClient(uri.authority)
-        const system = await this.root.child(uri.authority, () => getVariant(client, uri.authority))
+        const { variant, checkVariant } = await getVariant(client, uri.authority)
+        setvariant(variant)
+        const system = await this.root.child(uri.authority, checkVariant)
         await system.load(() => runInspector(uri, system.variant, client))
         commands.executeCommand("abapfs.atcFinds.focus")
         this.setAutoRefresh(this.autoRefresh)

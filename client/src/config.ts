@@ -18,6 +18,7 @@ export type GuiType = "SAPGUI" | "WEBGUI_CONTROLLED" | "WEBGUI_UNSAFE" | "WEBGUI
 
 export interface RemoteConfig extends ClientConfiguration {
   atcapprover?: string,
+  atcVariant?: string,
   maxDebugThreads?: number,
   sapGui?: {
     disabled: boolean

@@ -3,15 +3,23 @@ import { Uri } from "vscode"
 import { getClient } from "../../adt/conections"
 import { findAbapObject } from "../../adt/operations/AdtObjectFinder"
 import { extractPragmas } from "./functions"
+import { RemoteManager } from "../../config"
 
 export type AtcWLobject = AtcWorkList["objects"][0]
 export type AtcWLFinding = AtcWLobject["findings"][0]
+
 export const getVariant = async (client: ADTClient, connectionId: string) => {
+    const connection = RemoteManager.get().byId(connectionId)
+    if (connection?.atcVariant) {
+        const checkVariant = connection.atcVariant && await client.atcCheckVariant(`${connection.atcVariant}`)
+        if (!checkVariant) throw new Error(`No ATC variant found for system ${connectionId}`)
+        return { variant: connection.atcVariant, checkVariant }
+    }
     const customizing = await client.atcCustomizing()
     const variant = customizing.properties.find(x => x.name === "systemCheckVariant")
     const checkVariant = variant && await client.atcCheckVariant(`${variant.value}`)
     if (!checkVariant) throw new Error(`No ATC variant found for system ${connectionId}`)
-    return checkVariant
+    return { variant: `${variant.value}`, checkVariant }
 }
 
 export const runInspectorByAdtUrl = async (uri: string, variant: string, client: ADTClient) => {

@@ -1253,6 +1253,11 @@
                   "description": "Default ATC approver",
                   "default": ""
                 },
+                "atcVariant": {
+                  "type": "string",
+                  "description": "Default ATC variant",
+                  "default": ""
+                },
                 "allowSelfSigned": {
                   "type": "boolean",
                   "title": "Do not validate SSL certificates (lowers the connection security)",
