@@ -1,5 +1,15 @@
 # Change Log
 
+## 1.8.0
+
+### Minor Changes
+
+- bd45791: add support for custom atc variant
+
+### Patch Changes
+
+- 55580f3: fix local objects from other users
+
 ## 1.7.20
 
 ### Patch Changes
