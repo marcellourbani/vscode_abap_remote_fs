@@ -43,6 +43,8 @@
   ],
   "main": "./client/dist/extension",
   "scripts": {
+    "newchangeset": "npx @changesets/cli",
+    "changesetvers": "npx @changesets/cli version",
     "vscode:prepublish": "cd client && cd .. && npm run webpack",
     "webpack": "npm run build_modules&&cd server && npm run webpack && cd ../client && npm run webpack",
     "build": "npm run webpack",

@@ -122,12 +122,19 @@ export class Root extends Folder {
     return !owner || owner.toLowerCase() === this.service.user.toLowerCase()
   }
 
+  private baseUrl(url: string) {
+    if (url.match("^/sap/bc/adt/oo/classes/.*")) return url.replace(/(\/source\/main)|(\/includes\/).*/, "")
+    return url.replace(/\/source\/main.*$/, "")
+  }
+
   private async getOwnerIfrelevant(steps: PathStep[], uri: string) {
     try {
+
       const { "adtcore:type": type, "adtcore:name": name } = steps[0]
       if (type === PACKAGE && name.match(/^\$/)) {
-        // add support for other user's tmp objects
-        const od = await this.service.objectStructure(uri).catch(
+        // add support for other user's tmp objects - the relevant uri is the first child of $TMP, or the object itself
+        const owneruri = (name === "$TMP" ? steps[1]?.["adtcore:uri"] : steps[0]?.["adtcore:uri"]) || uri
+        const od = await this.service.objectStructure(this.baseUrl(owneruri)).catch(
           e => {
             const u = steps.slice(-2)[1]?.["adtcore:uri"]
             if (!u) throw e
