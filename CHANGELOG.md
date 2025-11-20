@@ -1,5 +1,11 @@
 # Change Log
 
+## 1.9.0
+
+### Minor Changes
+
+- 0ba1178: Added progress bar to json exporte
+
 ## 1.8.0
 
 ### Minor Changes
