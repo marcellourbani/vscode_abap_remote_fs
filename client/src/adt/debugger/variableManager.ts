@@ -4,7 +4,7 @@ import { DebugProtocol } from "vscode-debugprotocol"
 import { DebugListener } from "./debugListener"
 import { idThread, STACK_THREAD_MULTIPLIER } from "./debugService"
 import { AbapFsCommands, command } from "../../commands"
-import { env, window } from "vscode"
+import { env, window, ProgressLocation } from "vscode"
 import { AbapDebugSession } from "./abapDebugSession"
 
 interface Variable {
@@ -124,6 +124,20 @@ export class VariableManager {
         }
     }
 
+    async dumpJsonWithProgress(client: ADTClient, name: string | DebugVariable) {
+        const vname = typeof name === "string" ? name : name.NAME
+        return window.withProgress(
+            {
+                location: ProgressLocation.Notification,
+                title: `Exporting to JSON ${vname}`
+            },
+            async () => {
+                const json = await this.dumpJson(client, name)
+                return json
+            }
+        )
+    }
+
     private static currentClient(variablesReference: number): [VariableManager, ADTClient] | undefined {
         const vm = VariableManager.lastCalled
         if (!vm) return
@@ -141,7 +155,7 @@ export class VariableManager {
             return
         }
         if (AbapDebugSession.activeSessions > 1) window.showWarningMessage("Multiple debug session detected. might export from wrong one")
-        const json = await vm.dumpJson(client, arg.variable.name)
+        const json = await vm.dumpJsonWithProgress(client, arg.variable.name)
         env.clipboard.writeText(JSON.stringify(json, null, 1))
 
     }
@@ -153,7 +167,7 @@ export class VariableManager {
             if (!client) return
             const jse = expression.match(/^json\((.*)\)\s*$/)
             if (jse?.[1]) {
-                const json = await this.dumpJson(client, jse[1])
+                const json = await this.dumpJsonWithProgress(client, jse[1])
                 return { result: JSON.stringify(json, null, 1), variablesReference: 0 }
             }
             const v = await client.debuggerVariables([expression])
