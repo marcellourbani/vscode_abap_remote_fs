@@ -33,6 +33,7 @@ import { registerAbapDebugger } from "./adt/debugger"
 import { ATCDocumentation } from "./views/abaptestcockpit/documentation"
 import { tracesProvider } from "./views/traces"
 import { setContext } from "./context"
+import { registerChatTools } from "./adt/ai/tools"
 
 export let context: ExtensionContext
 
@@ -108,6 +109,7 @@ export async function activate(ctx: ExtensionContext): Promise<AbapFsApi> {
 
   registerCommands(context)
   registerSCIDecorator(context)
+  registerChatTools(context)
   const elapsed = new Date().getTime() - startTime
   log(`Activated,pid=${process.pid}, activation time(ms):${elapsed}`)
   return api
