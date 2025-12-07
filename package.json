@@ -1214,7 +1214,7 @@
         "displayName": "Search Abap objects",
         "canBeReferencedInPrompt": true,
         "toolReferenceName": "abap_search",
-        "modelDescription": "Search abap objects, like classes, programs and tables. adt filesystems aren't indexed and don't support cli tools. Your only chance to figure out what is available is to ask this tool. Each hit will have an object name, a type and an url. The url is not the actual object url, but will redirect the editor to the right one. **NEVER** use file_search or grep_search in adt filesystems, as they are not indexed and will return no results. Use this tool instead.",
+        "modelDescription": "Search abap objects, like classes, programs and tables. adt filesystems aren't indexed and don't support cli tools. Your only chance to figure out what is available is to ask this tool. Each hit will have an object name, a type and an url. The url is not the actual object url, but will redirect the editor to the right one.",
         "when": "resourceScheme == adt",
         "inputSchema": {
           "type": "object",

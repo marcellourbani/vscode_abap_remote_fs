@@ -36,7 +36,8 @@ const agentsMD = `# AGENTS.md
 This folder is a virtual filesystem used by the ABAP Remote FS extension to allow editing code stored on a server.
 CLI tools like grep, find and others can't operate on these files, so this will break any standard search tool.
 
-**CRITICAL** always use tool abap_search to search ABAP code, never use standard tools that operate on the filesystem.`
+**CRITICAL** always use tool abap_search to search ABAP code, never use standard tools that operate on the filesystem.
+**IMPORTANT** the results of abap_search are links that can be opened in the editor. this extension allows the editor to open adt:// links directly.`
 
 export const templates: Template[] = [
   {
