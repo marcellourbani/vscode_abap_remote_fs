@@ -1210,6 +1210,26 @@
     },
     "languageModelTools": [
       {
+        "name": "abap_unit",
+        "displayName": "Run ABAP Unit Tests",
+        "canBeReferencedInPrompt": true,
+        "toolReferenceName": "abap_unit",
+        "modelDescription": "Run ABAP Unit tests in the current class or program. Returns the test results including passed and failed tests with error messages and stack traces.",
+        "when": "resourceScheme == adt",
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "url": {
+              "type": "string",
+              "description": "Url of the class or program to run the tests of. Most likely the current file's URL."
+            }
+          },
+          "required": [
+            "url"
+          ]
+        }
+      },
+      {
         "name": "abap_search",
         "displayName": "Search Abap objects",
         "canBeReferencedInPrompt": true,
