@@ -47,7 +47,7 @@ export async function activate(ctx: ExtensionContext): Promise<AbapFsApi> {
   const sub = context.subscriptions
   // register the filesystem type
   sub.push(
-    workspace.registerFileSystemProvider(ADTSCHEME, FsProvider.get(), {
+    workspace.registerFileSystemProvider(ADTSCHEME, FsProvider.get(ctx), {
       isCaseSensitive: true
     })
   )
