@@ -30,7 +30,7 @@ export class ActivateTool implements LanguageModelTool<ActivateInput> {
       { location: ProgressLocation.Window, title: "Activating..." },
       async () => {
         const [path] = await uriRoot(uri).getNodePathAsync(uri.path)
-        const object = isAbapFile(path?.file) && path.file.object
+        const object = isAbapFile(path?.file) && path?.file?.object
         if (!object) throw new Error("Failed to retrieve object for activation")
         const activator = AdtObjectActivator.get(uri.authority)
         await activator.activate(object, uri)

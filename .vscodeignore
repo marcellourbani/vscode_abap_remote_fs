@@ -36,3 +36,5 @@ modules
 jest.config.js
 abap remote fs.code-workspace
 *.cpuprofile
+.markdownlint.jsonc
+.changeset

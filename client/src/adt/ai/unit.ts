@@ -31,7 +31,7 @@ export class UnitTool implements LanguageModelTool<UnitInput> {
       { location: ProgressLocation.Window, title: "Running ABAP UNIT" },
       async () => {
         const [path] = await uriRoot(uri).getNodePathAsync(uri.path)
-        const object = isAbapFile(path?.file) && path.file.object
+        const object = isAbapFile(path?.file) && path?.file?.object
         if (!object)
           throw new Error("Failed to retrieve object for unit test run")
         const struct = await object.loadStructure()
