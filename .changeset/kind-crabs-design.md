@@ -1,5 +1,5 @@
 ---
-"vscode-abap-remote-fs": patch
+"vscode-abap-remote-fs": minor
 ---
 
-add an unit test ai tool
+add an unit test ai tool for copilot

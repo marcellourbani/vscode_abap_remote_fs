@@ -1230,6 +1230,26 @@
         }
       },
       {
+        "name": "abap_activate",
+        "displayName": "Activate ABAP objects - equivalent of compiling",
+        "canBeReferencedInPrompt": true,
+        "toolReferenceName": "abap_activate",
+        "modelDescription": "Activate ABAP objects in the given URL. Activation is similar to compiling in other programming languages. It checks the code for syntax errors and makes it executable in the ABAP runtime environment. Returns a list of activated objects and any activation errors encountered.",
+        "when": "resourceScheme == adt",
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "url": {
+              "type": "string",
+              "description": "Url of the object to activate. Usually the current file's URL."
+            }
+          },
+          "required": [
+            "url"
+          ]
+        }
+      },
+      {
         "name": "abap_search",
         "displayName": "Search Abap objects",
         "canBeReferencedInPrompt": true,
@@ -1241,7 +1261,7 @@
           "properties": {
             "name": {
               "type": "string",
-              "description": "Name of the object to search for. Can contain the * wildcard one or more times"
+              "description": "Name of the object to search for. Can contain the * wildcard one or more times, but no regular expressions"
             },
             "url": {
               "type": "string",

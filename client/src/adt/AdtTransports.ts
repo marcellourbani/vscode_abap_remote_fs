@@ -113,7 +113,9 @@ const onFailed = async (transport: string) =>
   window.showInformationMessage(`Validation failed`, ACCEPT, CANCEL, CONTINUE)
 
 const onSkipped = async (transport: string) =>
-  window.showInformationMessage(`Accept transport?`, ACCEPT, CANCEL).then(r => r === ACCEPT ? trSel(transport) : trSel("", true))
+  window
+    .showInformationMessage(`Accept transport?`, ACCEPT, CANCEL)
+    .then(r => (r === ACCEPT ? trSel(transport) : trSel("", true)))
 
 const validate = async (
   transport: string,
@@ -186,7 +188,6 @@ export const selectTransportIfNeeded = async (uri: Uri) => {
   const root = uriRoot(uri)
   const file = root.getNode(uri.path)
   if (!isAbapStat(file)) return trSel("")
-
   const status = transportStatus(uri)
   switch (status.status) {
     case TransportStatus.LOCAL:

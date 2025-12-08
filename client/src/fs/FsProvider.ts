@@ -15,6 +15,7 @@ import { caughtToString, log } from "../lib"
 import { isAbapFile, isAbapFolder, isFolder } from "abapfs"
 import { selectTransportIfNeeded } from "../adt/AdtTransports"
 import { LocalFsProvider } from "./LocalFsProvider"
+import { LockStatus } from "abapfs/out/lockObject"
 
 export class FsProvider implements FileSystemProvider {
   private static instance: FsProvider
@@ -122,10 +123,16 @@ export class FsProvider implements FileSystemProvider {
   public async writeFile(uri: Uri, content: Uint8Array): Promise<void> {
     if (LocalFsProvider.useLocalStorage(uri))
       return this.localProvider.writeFile(uri, content, undefined)
+    let needUnlocking = false
     try {
       const root = await getOrCreateRoot(uri.authority)
       const node = await root.getNodeAsync(uri.path)
       if (isAbapFile(node)) {
+        const oldlock = (await root.lockManager.finalStatus(uri.path)).status
+        if (oldlock === "unlocked") {
+          await root.lockManager.requestLock(uri.path)
+          needUnlocking = true
+        }
         const trsel = await selectTransportIfNeeded(uri)
         if (trsel.cancelled) return
         const lock = root.lockManager.lockStatus(uri.path)
@@ -141,6 +148,10 @@ export class FsProvider implements FileSystemProvider {
       } else throw FileSystemError.FileNotFound(uri)
     } catch (e) {
       log(`Error writing file ${uri.toString()}\n${caughtToString(e)}`)
+      if (needUnlocking)
+        await getOrCreateRoot(uri.authority)
+          .then(r => r.lockManager.requestUnlock(uri.path, true))
+          .catch(() => undefined)
       throw e
     }
   }

@@ -1,5 +1,5 @@
 ---
-"vscode-abap-remote-fs": patch
+"vscode-abap-remote-fs": minor
 ---
 
 add an activation tool for copilot
