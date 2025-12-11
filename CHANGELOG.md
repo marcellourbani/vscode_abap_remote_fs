@@ -1,5 +1,11 @@
 # Change Log
 
+## 1.10.1
+
+### Patch Changes
+
+- d890582: integrate ai unit tests with vscode ui
+
 ## 1.10.0
 
 ### Minor Changes
