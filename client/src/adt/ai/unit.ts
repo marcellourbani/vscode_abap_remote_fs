@@ -14,6 +14,7 @@ import {
 import { getClient, uriRoot } from "../conections"
 import { isAbapFile } from "abapfs"
 import { AdtObjectActivator } from "../operations/AdtObjectActivator"
+import { UnitTestRunner } from "../operations/UnitTestRunner"
 
 interface UnitInput {
   url: string
@@ -26,7 +27,6 @@ export class UnitTool implements LanguageModelTool<UnitInput> {
   ): Promise<LanguageModelToolResult> {
     const { url } = options.input
     const uri = Uri.parse(url)
-    const client = getClient(uri.authority)
     const results = await window.withProgress(
       { location: ProgressLocation.Window, title: "Running ABAP UNIT" },
       async () => {
@@ -38,7 +38,7 @@ export class UnitTool implements LanguageModelTool<UnitInput> {
           const activator = AdtObjectActivator.get(uri.authority)
           await activator.activate(object, uri)
         }
-        const results = await client.unitTestRun(object.path)
+        const results = await UnitTestRunner.get(uri.authority).addResults(uri)
         return results
       }
     )

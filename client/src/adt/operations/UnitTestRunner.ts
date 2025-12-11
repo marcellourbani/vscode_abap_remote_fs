@@ -210,39 +210,44 @@ const setResults = (
   }
 }
 
-const runHandler = (runner: UnitTestRunner) => async (request: TestRunRequest) => {
-  const included = request.include || [...runner.controller.items].map(x => x[1])
-  const connId = included[0]?.uri?.authority
-  if (!connId) {
-    throw new Error("No valid test found in request")
-  }
-  const run = runner.controller.createTestRun(request, undefined, false)
-  const excluded = (i: TestItem) => request.exclude?.find(ii => i === ii)
-  try {
-    runonTestTree(included, t => run.enqueued(t))
-    runonTestTree(
-      included.filter(x => !excluded(x)),
-      t => run.started(t)
-    )
-    runonTestTree(included.filter(excluded), t => run.skipped(t))
-    for (const i of included) {
-      if (excluded(i)) continue
-      const classes = await runUnitUrl(connId, i.id)
-      runner.setUrlTypes(classes)
-      const obj = (i: TestItem): TestItem =>
-        runner.getUrlType(i.id) === TestResType.object || !i.parent ? i : obj(i.parent)
-      const resType = runner.getUrlType(i.id)
-      const actualResType =
-        resType === TestResType.method &&
-        (classes.length > 1 || (classes[0] && classes[0].testmethods.length > 1))
-          ? TestResType.object
-          : resType
-      setResults(run, classes, obj(i), runner.controller, actualResType)
+const runHandler =
+  (runner: UnitTestRunner, cb?: (results: UtClass[]) => void) =>
+  async (request: TestRunRequest) => {
+    const allclasses: UtClass[] = []
+    const included = request.include || [...runner.controller.items].map(x => x[1])
+    const connId = included[0]?.uri?.authority
+    if (!connId) {
+      throw new Error("No valid test found in request")
     }
-  } finally {
-    run.end()
+    const run = runner.controller.createTestRun(request, undefined, false)
+    const excluded = (i: TestItem) => request.exclude?.find(ii => i === ii)
+    try {
+      runonTestTree(included, t => run.enqueued(t))
+      runonTestTree(
+        included.filter(x => !excluded(x)),
+        t => run.started(t)
+      )
+      runonTestTree(included.filter(excluded), t => run.skipped(t))
+      for (const i of included) {
+        if (excluded(i)) continue
+        const classes = await runUnitUrl(connId, i.id)
+        allclasses.push(...classes)
+        runner.setUrlTypes(classes)
+        const obj = (i: TestItem): TestItem =>
+          runner.getUrlType(i.id) === TestResType.object || !i.parent ? i : obj(i.parent)
+        const resType = runner.getUrlType(i.id)
+        const actualResType =
+          resType === TestResType.method &&
+          (classes.length > 1 || (classes[0] && classes[0].testmethods.length > 1))
+            ? TestResType.object
+            : resType
+        setResults(run, classes, obj(i), runner.controller, actualResType)
+      }
+    } finally {
+      run.end()
+    }
+    if (cb) cb(allclasses)
   }
-}
 
 export class UnitTestRunner {
   private static instances = new Map<string, UnitTestRunner>()
@@ -284,6 +289,11 @@ export class UnitTestRunner {
       this.controller.createTestItem(objectKey(object), object.key, uri)
     this.controller.items.add(current)
     this.urlTypes.set(objectKey(object), TestResType.object)
-    await runHandler(this)(new TestRunRequest([current]))
+    const classes: UtClass[] = []
+    const cb = (results: UtClass[]) => {
+      classes.push(...results)
+    }
+    await runHandler(this, cb)(new TestRunRequest([current]))
+    return classes
   }
 }
