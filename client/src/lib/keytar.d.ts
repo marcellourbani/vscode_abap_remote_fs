@@ -9,7 +9,7 @@
  *
  * @returns A promise for the password string.
  */
-export declare function getPassword(service: string, account: string): Promise<string | null>;
+export declare function getPassword(service: string, account: string): Promise<string | null>
 
 /**
  * Add the password for the service and account to the keychain.
@@ -20,7 +20,11 @@ export declare function getPassword(service: string, account: string): Promise<s
  *
  * @returns A promise for the set password completion.
  */
-export declare function setPassword(service: string, account: string, password: string): Promise<void>;
+export declare function setPassword(
+  service: string,
+  account: string,
+  password: string
+): Promise<void>
 
 /**
  * Delete the stored password for the service and account.
@@ -30,7 +34,7 @@ export declare function setPassword(service: string, account: string, password: 
  *
  * @returns A promise for the deletion status. True on success.
  */
-export declare function deletePassword(service: string, account: string): Promise<boolean>;
+export declare function deletePassword(service: string, account: string): Promise<boolean>
 
 /**
  * Find a password for the service in the keychain.
@@ -39,7 +43,7 @@ export declare function deletePassword(service: string, account: string): Promis
  *
  * @returns A promise for the password string.
  */
-export declare function findPassword(service: string): Promise<string | null>;
+export declare function findPassword(service: string): Promise<string | null>
 
 /**
  * Find all accounts and passwords for `service` in the keychain.
@@ -48,4 +52,6 @@ export declare function findPassword(service: string): Promise<string | null>;
  *
  * @returns A promise for the array of found credentials.
  */
-export declare function findCredentials(service: string): Promise<{ account: string, password: string }[]>;
+export declare function findCredentials(
+  service: string
+): Promise<{ account: string; password: string }[]>

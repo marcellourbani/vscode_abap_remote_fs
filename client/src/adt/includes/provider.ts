@@ -1,12 +1,4 @@
-import {
-  CodeLensProvider,
-  TextDocument,
-  EventEmitter,
-  CodeLens,
-  Range,
-  window,
-  Uri
-} from "vscode"
+import { CodeLensProvider, TextDocument, EventEmitter, CodeLens, Range, window, Uri } from "vscode"
 import { abapUri } from "../conections"
 import { IncludeService } from "./service"
 import { MainProgram } from "vscode-abap-remote-fs-sharedapi"
@@ -30,9 +22,7 @@ export class IncludeProvider implements CodeLensProvider {
     const candidates = await service.candidates(uri.path)
     if (!candidates) return
     const current = service.current(uri.path)
-    const title = current
-      ? `main program:${service.mainName(current!)}`
-      : "Select main program"
+    const title = current ? `main program:${service.mainName(current!)}` : "Select main program"
     const changeInclude = {
       command: AbapFsCommands.changeInclude,
       title,
@@ -48,17 +38,13 @@ export class IncludeProvider implements CodeLensProvider {
     let candidates = await service.candidates(uri.path)
     const guessed = service.guessParent(uri.path)
     if (guessed) return guessed
-    if (!candidates?.length)
-      candidates = await service.candidates(uri.path, true)
+    if (!candidates?.length) candidates = await service.candidates(uri.path, true)
     if (!candidates?.length) return
     const sources = candidates.map(include => ({
       label: service.mainName(include),
       include
     }))
-    const placeHolder = `Please select a main program for ${uri.path.replace(
-      /.*\//,
-      ""
-    )}`
+    const placeHolder = `Please select a main program for ${uri.path.replace(/.*\//, "")}`
     const main = await window.showQuickPick(sources, { placeHolder })
     return main?.include
   }
@@ -73,8 +59,7 @@ export class IncludeProvider implements CodeLensProvider {
       if (newInclude["adtcore:uri"] !== previous?.["adtcore:uri"]) {
         const { "adtcore:uri": mainProgramUri } = newInclude
         const { includeUri } = service.includeData(uri.path) || {}
-        if (includeUri)
-          this.selectedEmitter.fire({ includeUri, mainProgramUri })
+        if (includeUri) this.selectedEmitter.fire({ includeUri, mainProgramUri })
       }
       this.lensEmitter.fire()
     }
@@ -88,5 +73,4 @@ export class IncludeProvider implements CodeLensProvider {
     if (current) return current
     return this.switchInclude(uri)
   }
-
 }

@@ -7,15 +7,7 @@ import {
   SearchResult,
   UriParts
 } from "abap-adt-api"
-import {
-  window,
-  QuickPickItem,
-  workspace,
-  commands,
-  Uri,
-  FileStat,
-  Range
-} from "vscode"
+import { window, QuickPickItem, workspace, commands, Uri, FileStat, Range } from "vscode"
 
 import { splitAdtUri, vscPosition, log, caughtToString, promCache } from "../../lib"
 import { getClient, getRoot, uriRoot } from "../conections"
@@ -44,10 +36,7 @@ interface AdtSearchResult {
 }
 
 export class MySearchResult implements QuickPickItem, AdtSearchResult {
-  public static async createResults(
-    results: SearchResult[],
-    client: ADTClient
-  ) {
+  public static async createResults(results: SearchResult[], client: ADTClient) {
     const myresults = results.map(r => new MySearchResult(r))
     if (myresults.find(r => !r.description)) {
       if (!this.types) this.types = await client.loadTypes()
@@ -59,8 +48,7 @@ export class MySearchResult implements QuickPickItem, AdtSearchResult {
         })
     }
     myresults.forEach(typ => {
-      if (!typ.packageName)
-        typ.packageName = typ.type === PACKAGE ? typ.name : "unknown"
+      if (!typ.packageName) typ.packageName = typ.type === PACKAGE ? typ.name : "unknown"
     })
     return myresults
   }
@@ -87,7 +75,7 @@ export class MySearchResult implements QuickPickItem, AdtSearchResult {
 }
 
 export class AdtObjectFinder {
-  constructor(public readonly connId: string) { }
+  constructor(public readonly connId: string) {}
   private fragCache = promCache<FragmentLocation>()
 
   public async vscodeUriWithFile(uri: string, main = true) {
@@ -121,8 +109,7 @@ export class AdtObjectFinder {
       rval.uri = uf.uri
       if (isAbapFile(uf.file)) rval.file = uf.file // should always be an abapfile at this point
       rval.start = vscPosition(frag.line + (u.start?.line || 0), frag.column)
-    }
-    else {
+    } else {
       const uf = await this.vscodeUriWithFile(u.path)
       if (isAbapFile(uf.file)) rval.file = uf.file // should always be an abapfile at this point
       rval.uri = uf.uri
@@ -139,29 +126,27 @@ export class AdtObjectFinder {
     } else {
       throw new Error(`Unexpected ADT URI format for ${adtUri}`)
     }
-
   }
 
   public async displayAdtUri(adtUri: string) {
     try {
-      const { uri, start } = await this.vscodeUriFromAdt(adtUri) || {}
+      const { uri, start } = (await this.vscodeUriFromAdt(adtUri)) || {}
       if (uri && start) {
         const document = await workspace.openTextDocument(uri)
         const selection = start ? new Range(start, start) : undefined
         window.showTextDocument(document, { selection })
       }
     } catch (error) {
-      window.showErrorMessage(`Failed to open document ofr object ${adtUri}:\n${caughtToString(error)}`)
+      window.showErrorMessage(
+        `Failed to open document ofr object ${adtUri}:\n${caughtToString(error)}`
+      )
     }
   }
 
   public async displayNode(nodePath: PathItem) {
     let uri
     if (isFolder(nodePath.file)) {
-      if (
-        isAbapFolder(nodePath.file) &&
-        nodePath.file.object.type.match(/DEVC/i)
-      ) {
+      if (isAbapFolder(nodePath.file) && nodePath.file.object.type.match(/DEVC/i)) {
         window.showInformationMessage(`Can't open object ${nodePath.path}`)
         return
       }
@@ -177,9 +162,7 @@ export class AdtObjectFinder {
       await window.showTextDocument(doc)
       commands.executeCommand("workbench.files.action.showActiveFileInExplorer")
     } catch (e) {
-      window.showErrorMessage(
-        `Error displaying object ${nodePath.path}.Type not supported?`
-      )
+      window.showErrorMessage(`Error displaying object ${nodePath.path}.Type not supported?`)
     }
   }
   EPMTYPACKAGE = {
@@ -200,10 +183,7 @@ export class AdtObjectFinder {
       const qp = window.createQuickPick()
       qp.ignoreFocusOut = true
       const searchParent = async (e: string) => {
-        qp.items =
-          e.length >= 3
-            ? await this.search(e, getClient(this.connId), objType)
-            : empty
+        qp.items = e.length >= 3 ? await this.search(e, getClient(this.connId), objType) : empty
       }
 
       qp.items = empty
@@ -266,8 +246,7 @@ export const uriAbapFile = (uri?: Uri): AbapStat | undefined => {
     const root = uriRoot(uri)
     const file = root.getNode(uri.path)
     if (isAbapStat(file)) return file
-  } catch (error) {
-  }
+  } catch (error) {}
 }
 
 export const pathSequence = (root: Root, uri: Uri | undefined): FileStat[] => {

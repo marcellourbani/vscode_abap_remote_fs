@@ -83,11 +83,7 @@ export class AbapScm {
     }
   }
 
-  public async addTransport(
-    transport: string,
-    nodes: PathItem[],
-    filter: RegExp
-  ) {
+  public async addTransport(transport: string, nodes: PathItem[], filter: RegExp) {
     if (nodes.length === 0 || !filter) return
     const group = this.groups.get(transport)
     for (const node of nodes) {
@@ -101,12 +97,7 @@ export class AbapScm {
     }
   }
 
-  private addResource(
-    group: AGroup,
-    uri: Uri,
-    revisions: Revision[],
-    filter?: RegExp
-  ) {
+  private addResource(group: AGroup, uri: Uri, revisions: Revision[], filter?: RegExp) {
     const mainRevision = findMain(revisions, filter)
     if (!mainRevision) return
     const refRevision = findRef(revisions, filter)
@@ -150,9 +141,7 @@ export function registerRevisionModel(context: ExtensionContext) {
   workspace.registerTextDocumentContentProvider(ADTREVISIONSCHEME, c)
   context.subscriptions.push(
     workspace.onDidOpenTextDocument(
-      doc =>
-        abapUri(doc.uri) &&
-        AbapScm.get(doc.uri.authority).addRecentDocument(doc.uri)
+      doc => abapUri(doc.uri) && AbapScm.get(doc.uri.authority).addRecentDocument(doc.uri)
     )
   )
 }

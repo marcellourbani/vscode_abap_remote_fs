@@ -25,9 +25,7 @@ export class FsProvider implements FileSystemProvider {
     // forward local provider file changes to this provider so that the extension
     // gets notified about changes from the local storage
     this.context.subscriptions.push(
-      this.localProvider.onDidChangeFile(changes =>
-        this.pEventEmitter.fire(changes)
-      )
+      this.localProvider.onDidChangeFile(changes => this.pEventEmitter.fire(changes))
     )
   }
   public static get(context?: ExtensionContext) {
@@ -47,8 +45,7 @@ export class FsProvider implements FileSystemProvider {
       readonly excludes: readonly string[]
     }
   ): Disposable {
-    if (LocalFsProvider.useLocalStorage(uri))
-      return this.localProvider.watch(uri, options)
+    if (LocalFsProvider.useLocalStorage(uri)) return this.localProvider.watch(uri, options)
     return new Disposable(() => undefined)
   }
 
@@ -57,8 +54,7 @@ export class FsProvider implements FileSystemProvider {
   }
 
   public async stat(uri: Uri): Promise<FileStat> {
-    if (LocalFsProvider.useLocalStorage(uri))
-      return this.localProvider.stat(uri)
+    if (LocalFsProvider.useLocalStorage(uri)) return this.localProvider.stat(uri)
     try {
       const root = await getOrCreateRoot(uri.authority)
       const node = await root.getNodeAsync(uri.path)
@@ -73,8 +69,7 @@ export class FsProvider implements FileSystemProvider {
   }
 
   public async readFile(uri: Uri): Promise<Uint8Array> {
-    if (LocalFsProvider.useLocalStorage(uri))
-      return this.localProvider.readFile(uri)
+    if (LocalFsProvider.useLocalStorage(uri)) return this.localProvider.readFile(uri)
     try {
       const root = await getOrCreateRoot(uri.authority)
       const node = await root.getNodeAsync(uri.path)
@@ -90,17 +85,13 @@ export class FsProvider implements FileSystemProvider {
   }
 
   public async readDirectory(uri: Uri): Promise<[string, FileType][]> {
-    if (LocalFsProvider.useLocalStorage(uri))
-      return this.localProvider.readDirectory(uri)
+    if (LocalFsProvider.useLocalStorage(uri)) return this.localProvider.readDirectory(uri)
     try {
       const root = await getOrCreateRoot(uri.authority)
       const node = await root.getNodeAsync(uri.path)
       if (!isFolder(node)) throw FileSystemError.FileNotFound(uri)
       if (isAbapFolder(node) && node.size === 0) await node.refresh()
-      const files: [string, FileType][] = [...node].map(i => [
-        i.name,
-        i.file.type
-      ])
+      const files: [string, FileType][] = [...node].map(i => [i.name, i.file.type])
       if (uri.path === "/") {
         const localfiles = await this.localProvider.readDirectory(uri)
         return [...files, ...localfiles]
@@ -113,8 +104,7 @@ export class FsProvider implements FileSystemProvider {
   }
 
   public createDirectory(uri: Uri): void | Thenable<void> {
-    if (LocalFsProvider.useLocalStorage(uri))
-      return this.localProvider.createDirectory(uri)
+    if (LocalFsProvider.useLocalStorage(uri)) return this.localProvider.createDirectory(uri)
     throw FileSystemError.NoPermissions(
       "Not a real filesystem, directory creation is not supported"
     )
@@ -137,11 +127,7 @@ export class FsProvider implements FileSystemProvider {
         if (trsel.cancelled) return
         const lock = root.lockManager.lockStatus(uri.path)
         if (lock.status === "locked") {
-          await node.write(
-            content.toString(),
-            lock.LOCK_HANDLE,
-            trsel.transport
-          )
+          await node.write(content.toString(), lock.LOCK_HANDLE, trsel.transport)
           await root.lockManager.requestUnlock(uri.path, true)
           this.pEventEmitter.fire([{ type: FileChangeType.Changed, uri }])
         } else throw new Error(`File ${uri.path} was not locked`)
@@ -157,8 +143,7 @@ export class FsProvider implements FileSystemProvider {
   }
 
   public async delete(uri: Uri, options: { recursive: boolean }) {
-    if (LocalFsProvider.useLocalStorage(uri))
-      return this.localProvider.delete(uri, options)
+    if (LocalFsProvider.useLocalStorage(uri)) return this.localProvider.delete(uri, options)
     try {
       const root = await getOrCreateRoot(uri.authority)
       const node = await root.getNodeAsync(uri.path)
@@ -168,10 +153,7 @@ export class FsProvider implements FileSystemProvider {
         if (trsel.cancelled) return
         if (isAbapFolder(node) || isAbapFile(node))
           return await node.delete(lock.LOCK_HANDLE, trsel.transport)
-        else
-          throw FileSystemError.Unavailable(
-            "Deletion not supported for this object"
-          )
+        else throw FileSystemError.Unavailable("Deletion not supported for this object")
       } else throw FileSystemError.NoPermissions(`Unable to acquire lock`)
     } catch (e) {
       const msg = `Error deleting file ${uri.toString()}\n${caughtToString(e)}`
@@ -180,11 +162,7 @@ export class FsProvider implements FileSystemProvider {
     }
   }
 
-  public rename(
-    oldUri: Uri,
-    newUri: Uri,
-    options: { overwrite: boolean }
-  ): void | Thenable<void> {
+  public rename(oldUri: Uri, newUri: Uri, options: { overwrite: boolean }): void | Thenable<void> {
     if (LocalFsProvider.useLocalStorage(oldUri))
       return this.localProvider.rename(oldUri, newUri, options)
     throw new Error("Method not implemented.")

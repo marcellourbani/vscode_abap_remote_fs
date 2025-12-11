@@ -20,8 +20,7 @@ import { templates } from "./initialtemplates"
 export class LocalFsProvider implements FileSystemProvider {
   private localStorage: LocalStorage
   constructor(private readonly context: ExtensionContext) {
-    if (!context.storageUri)
-      throw new Error("Storage URI is required for LocalFsProvider")
+    if (!context.storageUri) throw new Error("Storage URI is required for LocalFsProvider")
     this.localStorage = new LocalStorage(context.storageUri)
   }
   public static useLocalStorage(uri: Uri): boolean {
@@ -46,14 +45,11 @@ export class LocalFsProvider implements FileSystemProvider {
       .then(resolved => {
         if (disposed) return
         const pattern = options?.recursive ? "**/*" : "*"
-        watcher = workspace.createFileSystemWatcher(
-          new RelativePattern(resolved, pattern)
-        )
+        watcher = workspace.createFileSystemWatcher(new RelativePattern(resolved, pattern))
         const mapAndFire = (type: FileChangeType, u: Uri) => {
           // compute path relative to resolved root
           let rel = u.path
-          if (rel.startsWith(resolved.path))
-            rel = rel.substring(resolved.path.length)
+          if (rel.startsWith(resolved.path)) rel = rel.substring(resolved.path.length)
           if (!rel.startsWith("/")) rel = `/${rel}`
           const remote = Uri.parse(`${uri.scheme}://${uri.authority}${rel}`)
           this.pEventEmitter.fire([{ type, uri: remote }])
@@ -101,10 +97,7 @@ export class LocalFsProvider implements FileSystemProvider {
     const resolved = await this.localStorage.resolveUri(uri)
     await workspace.fs.writeFile(resolved, content as Uint8Array)
   }
-  async delete(
-    uri: Uri,
-    options?: { recursive?: boolean } | unknown
-  ): Promise<void> {
+  async delete(uri: Uri, options?: { recursive?: boolean } | unknown): Promise<void> {
     const resolved = await this.localStorage.resolveUri(uri)
     await workspace.fs.delete(resolved, options as any)
   }
@@ -117,11 +110,7 @@ export class LocalFsProvider implements FileSystemProvider {
     const rNew = await this.localStorage.resolveUri(newuri)
     await workspace.fs.rename(rOld, rNew, options as any)
   }
-  async copy?(
-    source: Uri,
-    destination: Uri,
-    options?: { overwrite?: boolean }
-  ): Promise<void> {
+  async copy?(source: Uri, destination: Uri, options?: { overwrite?: boolean }): Promise<void> {
     const rSrc = await this.localStorage.resolveUri(source)
     const rDst = await this.localStorage.resolveUri(destination)
     await workspace.fs.copy(rSrc, rDst, options as any)

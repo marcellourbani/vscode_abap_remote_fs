@@ -2,12 +2,7 @@ import { TransportsProvider } from "./views/transports"
 import { FavouritesProvider } from "./views/favourites"
 import { atcProvider, registerSCIDecorator } from "./views/abaptestcockpit"
 import { FsProvider } from "./fs/FsProvider"
-import {
-  window,
-  workspace,
-  ExtensionContext,
-  languages
-} from "vscode"
+import { window, workspace, ExtensionContext, languages } from "vscode"
 import {
   activeTextEditorChangedListener,
   documentChangedListener,
@@ -65,12 +60,7 @@ export async function activate(ctx: ExtensionContext): Promise<AbapFsApi> {
   const fav = FavouritesProvider.get()
   fav.storagePath = context.globalStoragePath
   sub.push(window.registerTreeDataProvider("abapfs.favorites", fav))
-  sub.push(
-    window.registerTreeDataProvider(
-      "abapfs.transports",
-      TransportsProvider.get()
-    )
-  )
+  sub.push(window.registerTreeDataProvider("abapfs.transports", TransportsProvider.get()))
   sub.push(window.registerTreeDataProvider("abapfs.abapgit", abapGitProvider))
   sub.push(window.registerTreeDataProvider("abapfs.dumps", dumpProvider))
   sub.push(window.registerTreeDataProvider("abapfs.atcFinds", atcProvider))

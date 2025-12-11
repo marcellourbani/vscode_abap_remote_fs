@@ -85,7 +85,7 @@ export const AbapFsCommands = {
   agitBranch: "abapfs.switchBranch",
   //traces
   refreshTraces: "abapfs.refreshTraces",
-  deleteTrace: "abapfs.deleteTrace",
+  deleteTrace: "abapfs.deleteTrace"
 }
 
 export const abapcmds: {

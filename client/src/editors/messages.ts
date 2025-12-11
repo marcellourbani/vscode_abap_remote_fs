@@ -36,9 +36,7 @@ const parseMessages = (source: string) => {
   const rawMessages = xmlArray(raw, "mc:messageClass", "mc:messages")
   return rawMessages.map(m => {
     const link = xmlArray(m, "atom:link").find(
-      l =>
-        l["@_rel"] ===
-        "http://www.sap.com/adt/relations/messageclasses/messages/longtext"
+      l => l["@_rel"] === "http://www.sap.com/adt/relations/messageclasses/messages/longtext"
     )?.["@_href"]
     return {
       number: m["@_mc:msgno"],
@@ -54,12 +52,8 @@ export class MessagesProvider implements CustomTextEditorProvider {
     const provider = new MessagesProvider(context)
     return window.registerCustomEditorProvider("abapfs.msagn", provider)
   }
-  constructor(private context: ExtensionContext) { }
-  resolveCustomTextEditor(
-    document: TextDocument,
-    panel: WebviewPanel,
-    token: CancellationToken
-  ) {
+  constructor(private context: ExtensionContext) {}
+  resolveCustomTextEditor(document: TextDocument, panel: WebviewPanel, token: CancellationToken) {
     panel.webview.options = { enableScripts: true, enableCommandUris: true }
     panel.webview.onDidReceiveMessage(async message => {
       if (message?.type === "doc" && message?.url) {
@@ -92,9 +86,7 @@ export class MessagesProvider implements CustomTextEditorProvider {
       .join("\n")
 
     const styleUri = webview.asWebviewUri(
-      Uri.file(
-        path.join(this.context.extensionPath, "client/media", "editor.css")
-      )
+      Uri.file(path.join(this.context.extensionPath, "client/media", "editor.css"))
     )
 
     return `<!DOCTYPE html>

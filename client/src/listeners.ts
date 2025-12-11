@@ -24,13 +24,12 @@ import { setContext } from "./context"
 
 export const listenersubscribers: ((...x: any[]) => Disposable)[] = []
 
-export const listener = <T>(event: Event<T>) => (
-  target: any,
-  propertyKey: string
-) => {
-  const func = () => event(target[propertyKey].bind(target))
-  listenersubscribers.push(func)
-}
+export const listener =
+  <T>(event: Event<T>) =>
+  (target: any, propertyKey: string) => {
+    const func = () => event(target[propertyKey].bind(target))
+    listenersubscribers.push(func)
+  }
 export async function documentClosedListener(doc: TextDocument) {
   if (!abapUri(doc.uri)) return
   try {
@@ -51,10 +50,10 @@ export async function reconnectExpired(uri: Uri) {
 
   const resp = lm.lockedPaths().next().value
     ? await window.showErrorMessage(
-      "Session expired, files can't be locked might be stale. Try to refresh locks?",
-      "Ok",
-      "Cancel"
-    )
+        "Session expired, files can't be locked might be stale. Try to refresh locks?",
+        "Ok",
+        "Cancel"
+      )
     : ok
   if (resp === ok) {
     await lm.restore()
@@ -78,14 +77,9 @@ async function validateLock(lock: LockStatus) {
 }
 
 export const isExpired = (error: any) =>
-  isCsrfError(error) ||
-  (error.err === 400 && `${error.message}`.match(/Session.*timed.*out/i))
+  isCsrfError(error) || (error.err === 400 && `${error.message}`.match(/Session.*timed.*out/i))
 
-export async function setDocumentLock(
-  document: TextDocument,
-  interactive = false,
-  retry = true
-) {
+export async function setDocumentLock(document: TextDocument, interactive = false, retry = true) {
   const uri = document.uri
   if (!abapUri(uri)) return
 
@@ -100,10 +94,7 @@ export async function setDocumentLock(
       if (isExpired(e)) {
         if (retry && (await reconnectExpired(document.uri)))
           setDocumentLock(document, interactive, false)
-      } else
-        window.showErrorMessage(
-          `${caughtToString(e)}\nWon't be able to save changes`
-        )
+      } else window.showErrorMessage(`${caughtToString(e)}\nWon't be able to save changes`)
     }
   else await lockManager.requestUnlock(uri.path)
 
@@ -134,15 +125,13 @@ export async function documentChangedListener(event: TextDocumentChangeEvent) {
   if (!abapUri(uri)) return
   // only need to (un)lock if the isDirty flag changed, which implies a status change without edits
   // will call anyway if dirty as locking is mandatory for saving
-  if (event.contentChanges.length === 0 || event.document.isDirty)
-    doclock(event.document)
+  if (event.contentChanges.length === 0 || event.document.isDirty) doclock(event.document)
 }
 // if the document is dirty it's probably locked already. If not, lock it
 export async function documentWillSave(e: TextDocumentWillSaveEvent) {
   const uri = e.document.uri
   if (uri.scheme !== ADTSCHEME) return
-  if (!e.document.isDirty)
-    await setDocumentLock({ ...e.document, isDirty: true }, true)
+  if (!e.document.isDirty) await setDocumentLock({ ...e.document, isDirty: true }, true)
 }
 
 function isInactive(obj: AbapObject): boolean {
@@ -154,7 +143,7 @@ function showHidedbIcon(editor?: TextEditor) {
   try {
     const type = uriAbapFile(editor?.document.uri)?.object.type
     setContext("abapfs:showTableContentIcon", viewableObjecttypes.has(type))
-  } catch (error) { }
+  } catch (error) {}
 }
 
 export async function showHideActivate(editor?: TextEditor, refresh = false) {
@@ -187,7 +176,12 @@ export async function activationStateListener(uri: Uri) {
     await showHideActivate(editor)
   }
 }
-const setRevisionContext = (leftprev: boolean, leftnext: boolean, rightprev: boolean, rightnext: boolean) => {
+const setRevisionContext = (
+  leftprev: boolean,
+  leftnext: boolean,
+  rightprev: boolean,
+  rightnext: boolean
+) => {
   setContext("abapfs:enableLeftNextRev", leftnext)
   setContext("abapfs:enableLeftPrevRev", leftprev)
   setContext("abapfs:enableRightNextRev", rightnext)
@@ -218,9 +212,7 @@ const enableRevNavigation = async (editor: TextEditor | undefined) => {
   }
   return setRevisionContext(false, false, false, false)
 }
-export async function activeTextEditorChangedListener(
-  editor: TextEditor | undefined
-) {
+export async function activeTextEditorChangedListener(editor: TextEditor | undefined) {
   showHidedbIcon(editor)
   enableRevNavigation(editor)
   try {

@@ -61,7 +61,8 @@
     "inst_dep_object": "cd modules/abapObject&& npm i && npm run build&& cd ../..",
     "inst_dep_abapfs": "cd modules/abapfs&& npm i && npm run build&& cd ../..",
     "clean": "rimraf out *.vsix node_modules modules/sharedapi/out modules/sharedapi/node_modules&& cd server && npm run clean&& cd ../client &&npm run clean && cd .. ",
-    "postinstall": "npm run inst_dep_sharedapi && npm run inst_dep_object &&npm run inst_dep_abapfs && cd server && npm i && cd ../client && npm i"
+    "postinstall": "npm run inst_dep_sharedapi && npm run inst_dep_object &&npm run inst_dep_abapfs && cd server && npm i && cd ../client && npm i",
+    "format": "prettier --write \"client/src/**/*.ts\" \"modules/abapfs/src/**/*.ts\" \"modules/abapObject/src/**/*.ts\" \"modules/sharedapi/src/**/*.ts\" \"server/src/**/*.ts\""
   },
   "devDependencies": {
     "@types/mocha": "^7.0.2",

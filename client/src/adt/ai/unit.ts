@@ -32,8 +32,7 @@ export class UnitTool implements LanguageModelTool<UnitInput> {
       async () => {
         const [path] = await uriRoot(uri).getNodePathAsync(uri.path)
         const object = isAbapFile(path?.file) && path?.file?.object
-        if (!object)
-          throw new Error("Failed to retrieve object for unit test run")
+        if (!object) throw new Error("Failed to retrieve object for unit test run")
         const struct = await object.loadStructure()
         if (struct.metaData["adtcore:version"] === "inactive") {
           const activator = AdtObjectActivator.get(uri.authority)
@@ -55,10 +54,7 @@ export class UnitTool implements LanguageModelTool<UnitInput> {
     const client = getClient(uri.authority)
     if (client)
       return {
-        invocationMessage: `Running abap unit on ${options.input.url.replace(
-          /.*\//,
-          ""
-        )}`
+        invocationMessage: `Running abap unit on ${options.input.url.replace(/.*\//, "")}`
       }
     throw new Error(`No ABAP filesystem registered for ${uri.authority}`)
   }

@@ -61,16 +61,12 @@ const unique = (base: string, values: string[]): string => {
 }
 
 const initializeFolder = async (uri: Uri, target: string) => {
-  const folderUri = await createFolderIfMissing(
-    Uri.joinPath(uri, connectionsFolder, target)
-  )
+  const folderUri = await createFolderIfMissing(Uri.joinPath(uri, connectionsFolder, target))
 
   for (const t of templates) {
     const readc = async () => {
       try {
-        const content = await workspace.fs.readFile(
-          Uri.joinPath(uri, templatesFolder, t.name)
-        )
+        const content = await workspace.fs.readFile(Uri.joinPath(uri, templatesFolder, t.name))
         return content
       } catch (error) {
         return new TextEncoder().encode(t.content)
@@ -98,9 +94,7 @@ export class LocalStorage {
     await initializeMainStorage(this.root)
     const configUri = Uri.joinPath(this.root, configFile)
     const raw = await workspace.fs.readFile(configUri)
-    const parsed = mappingStatus.decode(
-      JSON.parse(new TextDecoder().decode(raw))
-    )
+    const parsed = mappingStatus.decode(JSON.parse(new TextDecoder().decode(raw)))
     if (isLeft(parsed)) throw new Error("Invalid configuration")
     const config = parsed.right
     for (const [k, v] of Object.entries(config.mappings)) {
@@ -117,21 +111,15 @@ export class LocalStorage {
       const folderUri = await initializeFolder(this.root, target)
       this.roots.set(folder.uri.authority, folderUri)
       config.mappings[folder.uri.authority] = target
-      workspace.fs.writeFile(
-        configUri,
-        new TextEncoder().encode(JSON.stringify(config))
-      )
+      workspace.fs.writeFile(configUri, new TextEncoder().encode(JSON.stringify(config)))
     }
     this.initialized = true
   }
   public async resolveUri(uri: Uri): Promise<Uri> {
     if (!this.initialized) await this.initialize()
     const root = this.roots.get(uri.authority)
-    if (!root)
-      throw new Error(`No local storage for connection ${uri.authority}`)
-    const relativePath = uri.path.startsWith("/")
-      ? uri.path.substring(1)
-      : uri.path
+    if (!root) throw new Error(`No local storage for connection ${uri.authority}`)
+    const relativePath = uri.path.startsWith("/") ? uri.path.substring(1) : uri.path
     return Uri.joinPath(root, relativePath)
   }
 }

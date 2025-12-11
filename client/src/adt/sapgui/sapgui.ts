@@ -8,10 +8,7 @@ import { window, ProgressLocation, extensions } from "vscode"
 import { getClient } from "../conections"
 import { AbapObject, isAbapClassInclude } from "abapobject"
 import puppeteer from "puppeteer-core"
-import {
-  commands,
-  Uri
-} from "vscode"
+import { commands, Uri } from "vscode"
 import { ADTClient } from "abap-adt-api"
 
 const BROWSERPREVIEW = "auchenberg.vscode-browser-preview"
@@ -69,31 +66,32 @@ export function runInSapGui(
             }
         }
       }
-    })
+    }
+  )
 }
 
 export function executeInGui(connId: string, object: AbapObject) {
   if (isAbapClassInclude(object) && object.parent) object = object.parent
   return runInSapGui(connId, () => {
     const { type, name } = object
-    let transaction = ''
-    let dynprofield = ''
-    let okcode = ''
+    let transaction = ""
+    let dynprofield = ""
+    let okcode = ""
     switch (type) {
-      case 'PROG/P':
-        transaction = 'SE38'
-        dynprofield = 'RS38M-PROGRAMM'
-        okcode = 'STRT'
+      case "PROG/P":
+        transaction = "SE38"
+        dynprofield = "RS38M-PROGRAMM"
+        okcode = "STRT"
         break
-      case 'FUGR/FF':
-        transaction = 'SE37'
-        dynprofield = 'RS38L-NAME'
-        okcode = 'WB_EXEC'
+      case "FUGR/FF":
+        transaction = "SE37"
+        dynprofield = "RS38L-NAME"
+        okcode = "WB_EXEC"
         break
-      case 'CLAS/OC':
-        transaction = 'SE24'
-        dynprofield = 'SEOCLASS-CLSNAME'
-        okcode = 'WB_EXEC'
+      case "CLAS/OC":
+        transaction = "SE24"
+        dynprofield = "SEOCLASS-CLSNAME"
+        okcode = "WB_EXEC"
         break
       default:
         return showInGuiCb(object.sapGuiUri)()
@@ -134,13 +132,7 @@ export class SapGui {
           client: config.client
         }
 
-        return new SapGui(
-          gui.disabled,
-          guiconf,
-          config.username,
-          config.name,
-          config.language
-        )
+        return new SapGui(gui.disabled, guiconf, config.username, config.name, config.language)
       } else {
         // use the config if found, try to guess if not
         const [server = "", port = ""] = (
@@ -154,13 +146,7 @@ export class SapGui {
           client: config.client
         }
 
-        return new SapGui(
-          !!gui?.disabled,
-          guiconf,
-          config.username,
-          config.name,
-          config.language
-        )
+        return new SapGui(!!gui?.disabled, guiconf, config.username, config.name, config.language)
       }
     } catch {
       return new SapGui(false)
@@ -190,8 +176,7 @@ export class SapGui {
   }
 
   public checkConfig() {
-    if (this.disabled || !this.config)
-      throw new Error("SAPGUI was not configured or disabled")
+    if (this.disabled || !this.config) throw new Error("SAPGUI was not configured or disabled")
   }
 
   public async startGui(command: SapGuiCommand, ticket: string) {
@@ -219,7 +204,6 @@ export class SapGui {
     }
   }
 
-
   public async runInBrowser(config: RemoteConfig, cmd: SapGuiCommand, client: ADTClient) {
     let guitype = config.sapGui?.guiType
     if (guitype === "WEBGUI_UNSAFE_EMBEDDED") {
@@ -227,29 +211,41 @@ export class SapGui {
       if (!ext) {
         guitype = "WEBGUI_CONTROLLED"
         const args = encodeURIComponent(JSON.stringify([[BROWSERPREVIEW]]))
-        const exturl = Uri.parse(`command:workbench.extensions.action.showExtensionsWithIds?${args}`)
-        window.showInformationMessage(`Embedded browser requires [Browser preview extension](${exturl})<br>showing in browser`)
+        const exturl = Uri.parse(
+          `command:workbench.extensions.action.showExtensionsWithIds?${args}`
+        )
+        window.showInformationMessage(
+          `Embedded browser requires [Browser preview extension](${exturl})<br>showing in browser`
+        )
       }
     }
     if (cmd.parameters) {
-      const okCode = cmd.parameters.find((parameter: { name: string; value: string }) => parameter.name === 'DYNP_OKCODE')
-      const D_OBJECT_URI = cmd.parameters.find((parameter: { name: string; value: string }) => parameter.name !== 'DYNP_OKCODE')
+      const okCode = cmd.parameters.find(
+        (parameter: { name: string; value: string }) => parameter.name === "DYNP_OKCODE"
+      )
+      const D_OBJECT_URI = cmd.parameters.find(
+        (parameter: { name: string; value: string }) => parameter.name !== "DYNP_OKCODE"
+      )
       const q: any = {
-        "~transaction": `${cmd.command} ${D_OBJECT_URI?.name}=${D_OBJECT_URI!.value};DYNP_OKCODE=${okCode?.value || ""}`,
+        "~transaction": `${cmd.command} ${D_OBJECT_URI?.name}=${D_OBJECT_URI!.value};DYNP_OKCODE=${
+          okCode?.value || ""
+        }`
       }
       if (config.language) config.language = config.language
       if (guitype !== "WEBGUI_CONTROLLED") {
         q["sap-user"] = config.username
         q["sap-password"] = config.password
       }
-      const query = Object.keys(q).map(k => `${k}=${q[k]}`).join("&")
+      const query = Object.keys(q)
+        .map(k => `${k}=${q[k]}`)
+        .join("&")
       const url = Uri.parse(config.url).with({ path: "/sap/bc/gui/sap/its/webgui", query })
       switch (guitype) {
         case "WEBGUI_UNSAFE_EMBEDDED":
-          commands.executeCommand('browser-preview.openPreview', url.toString())
+          commands.executeCommand("browser-preview.openPreview", url.toString())
           break
         case "WEBGUI_UNSAFE":
-          commands.executeCommand('vscode.open', url)
+          commands.executeCommand("vscode.open", url)
           break
         default:
           const ticket = await client.reentranceTicket()
@@ -260,11 +256,14 @@ export class SapGui {
             acceptInsecureCerts: !!config.allowSelfSigned,
             // @ts-ignore
             defaultViewport: null,
-            args: ['--start-maximized']
+            args: ["--start-maximized"]
           })
 
-          const page = (await browser.pages())[0] || await browser.newPage()
-          await page.setExtraHTTPHeaders({ "sap-mysapsso": `${config.client}${ticket}`, "sap-mysapred": url.toString() })
+          const page = (await browser.pages())[0] || (await browser.newPage())
+          await page.setExtraHTTPHeaders({
+            "sap-mysapsso": `${config.client}${ticket}`,
+            "sap-mysapred": url.toString()
+          })
           const logonUri = Uri.parse(config.url).with({ path: `/sap/public/myssocntl` }).toString()
           await page.goto(logonUri)
           // browser.disconnect()
@@ -275,10 +274,8 @@ export class SapGui {
 
   private commandString(command: SapGuiCommand) {
     let params = ""
-    const addParm = (name: string, value: string) =>
-      (params = `${params}${name} = ${value}; `)
-    if (command.parameters)
-      command.parameters.forEach(p => addParm(p.name, p.value))
+    const addParm = (name: string, value: string) => (params = `${params}${name} = ${value}; `)
+    if (command.parameters) command.parameters.forEach(p => addParm(p.name, p.value))
     if (command.okCode) addParm("DYNP_OKCODE", command.okCode)
     return `${command.command} ${params} `
   }

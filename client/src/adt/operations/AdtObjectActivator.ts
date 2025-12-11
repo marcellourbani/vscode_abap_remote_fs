@@ -13,7 +13,7 @@ export interface ActivationEvent {
 }
 
 export class AdtObjectActivator {
-  constructor(private client: ADTClient) { }
+  constructor(private client: ADTClient) {}
   private static instances = new Map<string, AdtObjectActivator>()
   private emitter = new EventEmitter<ActivationEvent>()
   public static get(connId: string) {
@@ -33,21 +33,16 @@ export class AdtObjectActivator {
     const service = IncludeService.get(uri.authority)
     if (!service.needMain(object)) return
     const provider = IncludeProvider.get()
-    const main =
-      service.current(uri.path) || (await provider.switchIncludeIfMissing(uri))
+    const main = service.current(uri.path) || (await provider.switchIncludeIfMissing(uri))
     return main?.["adtcore:uri"]
   }
 
   private async sibilings(object: AbapObject) {
     const inactive = (await this.client.inactiveObjects()).map(r => r.object)
-    const parentUri = inactive.find(o => o?.["adtcore:uri"] === object.path)?.[
-      "adtcore:parentUri"
-    ]
+    const parentUri = inactive.find(o => o?.["adtcore:uri"] === object.path)?.["adtcore:parentUri"]
     if (!parentUri || inactive.length <= 1) return
 
-    return inactive
-      .filter(isDefined)
-      .filter(o => o?.["adtcore:parentUri"] === parentUri)
+    return inactive.filter(isDefined).filter(o => o?.["adtcore:parentUri"] === parentUri)
   }
 
   private async tryActivate(object: AbapObject, uri: Uri) {
@@ -57,8 +52,7 @@ export class AdtObjectActivator {
     result = await this.client.activate(name, path, mainProg, true)
     if (!result.success) {
       let inactives
-      if (result.inactive.length > 0)
-        inactives = inactiveObjectsInResults(result)
+      if (result.inactive.length > 0) inactives = inactiveObjectsInResults(result)
       else inactives = await this.sibilings(object)
       if (inactives) result = await this.client.activate(inactives)
     }

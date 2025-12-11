@@ -20,12 +20,11 @@ interface QuickDiffSelector {
   origFragment?: string
 }
 type Selector = SimpleSelector | QuickDiffSelector
-const isQuickDiff = (s: Selector): s is QuickDiffSelector =>
-  s.type === "quickdiff"
+const isQuickDiff = (s: Selector): s is QuickDiffSelector => s.type === "quickdiff"
 
 interface RevisionDetails {
-  uri: Uri,
-  revision: Revision,
+  uri: Uri
+  revision: Revision
   normalized: boolean
 }
 
@@ -47,7 +46,11 @@ export const decodeRevisioUrl = (uri: Uri): RevisionDetails | undefined => {
     const selector: Selector = JSON.parse(atob(uri.fragment))
     if (isQuickDiff(selector) || !selector.revision) return
     const { revision, normalized } = selector
-    return { uri: uri.with({ scheme: ADTSCHEME, fragment: selector.origFragment }), revision, normalized }
+    return {
+      uri: uri.with({ scheme: ADTSCHEME, fragment: selector.origFragment }),
+      revision,
+      normalized
+    }
   } catch (error) {
     return
   }
@@ -101,7 +104,7 @@ export class AbapRevision implements TextDocumentContentProvider {
         const node = uriRoot(adtUri).getNode(adtUri.path)
         if (isAbapFile(node)) source = await node.object.read()
       }
-      if (selector.normalized) source = await prettyPrint(uri, source) || ""
+      if (selector.normalized) source = (await prettyPrint(uri, source)) || ""
     }
     return source
   }

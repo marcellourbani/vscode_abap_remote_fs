@@ -16,9 +16,7 @@ import { documentSymbols } from "./symbols"
 import { formatDocument } from "./documentformatter"
 import { codeActionHandler } from "./codeActions"
 import { updateInclude } from "./objectManager"
-import {
-  TextDocument
-} from 'vscode-languageserver-textdocument'
+import { TextDocument } from "vscode-languageserver-textdocument"
 import { renameHandler } from "./rename"
 export const documents = new TextDocuments(TextDocument)
 
@@ -33,9 +31,7 @@ connection.onInitialize((params: InitializeParams) => {
 
   // Does the client support the `workspace/configuration` request?
   // If not, we will fall back using global settings
-  hasConfigurationCapability = !!(
-    capabilities.workspace && !!capabilities.workspace.configuration
-  )
+  hasConfigurationCapability = !!(capabilities.workspace && !!capabilities.workspace.configuration)
   hasWorkspaceFolderCapability = !!(
     capabilities.workspace && !!capabilities.workspace.workspaceFolders
   )
@@ -74,10 +70,7 @@ connection.onInitialize((params: InitializeParams) => {
 connection.onInitialized(() => {
   if (hasConfigurationCapability) {
     // Register for all configuration changes.
-    connection.client.register(
-      DidChangeConfigurationNotification.type,
-      undefined
-    )
+    connection.client.register(DidChangeConfigurationNotification.type, undefined)
   }
   if (hasWorkspaceFolderCapability) {
     connection.workspace.onDidChangeWorkspaceFolders(event => {
@@ -102,4 +95,3 @@ connection.onRequest(Methods.updateMainProgram, updateInclude)
 
 documents.listen(connection)
 connection.listen()
-

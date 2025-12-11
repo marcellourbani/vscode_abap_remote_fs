@@ -1,11 +1,5 @@
 import { MainProgram, HttpLogEntry } from "vscode-abap-remote-fs-sharedapi"
-import {
-  log,
-  channel,
-  mongoApiLogger,
-  mongoHttpLogger,
-  rangeApi2Vsc
-} from "./lib"
+import { log, channel, mongoApiLogger, mongoHttpLogger, rangeApi2Vsc } from "./lib"
 import {
   AbapObjectDetail,
   Methods,
@@ -16,20 +10,8 @@ import {
   SearchProgress,
   LogEntry
 } from "vscode-abap-remote-fs-sharedapi"
-import {
-  ExtensionContext,
-  Uri,
-  window,
-  ProgressLocation,
-  workspace,
-  WorkspaceEdit
-} from "vscode"
-import {
-  LanguageClient,
-  TransportKind,
-  State,
-  RevealOutputChannelOn
-} from "vscode-languageclient"
+import { ExtensionContext, Uri, window, ProgressLocation, workspace, WorkspaceEdit } from "vscode"
+import { LanguageClient, TransportKind, State, RevealOutputChannelOn } from "vscode-languageclient"
 export let client: LanguageClient
 import { join } from "path"
 import { FixProposal, Delta } from "abap-adt-api"
@@ -45,7 +27,12 @@ import * as R from "ramda"
 const uriErrors = new Map<string, boolean>()
 const uriError = (uri: string) => new Error(`File not found:${uri}`)
 
-export async function vsCodeUri(confKey: string, uri: string, mainInclude: boolean, cacheErrors = false): Promise<string> {
+export async function vsCodeUri(
+  confKey: string,
+  uri: string,
+  mainInclude: boolean,
+  cacheErrors = false
+): Promise<string> {
   const key = `${confKey}_${uri}_${mainInclude}`
   if (cacheErrors && uriErrors.get(key)) throw uriError(uri)
   const root = getRoot(confKey)
@@ -132,27 +119,28 @@ async function setSearchProgress(searchProg: SearchProgress) {
         cancellable: true,
         title: "Where used list in progress - "
       },
-      (progress, token) => new Promise((resolve, reject) => {
-        let current = 0
-        token.onCancellationRequested(async () => {
-          setProgress = undefined
-          await client.sendRequest(Methods.cancelSearch)
-          resolve(undefined)
-        })
-        setProgress = (s: SearchProgress) => {
-          if (s.ended) {
-            progress.report({ increment: 100, message: `Search completed,${s.hits} found` })
+      (progress, token) =>
+        new Promise((resolve, reject) => {
+          let current = 0
+          token.onCancellationRequested(async () => {
             setProgress = undefined
+            await client.sendRequest(Methods.cancelSearch)
             resolve(undefined)
-            return
-          }
-          progress.report({
-            increment: s.progress - current,
-            message: `Searching usage references, ${s.hits} hits found so far`
           })
-          current = s.progress
-        }
-      })
+          setProgress = (s: SearchProgress) => {
+            if (s.ended) {
+              progress.report({ increment: 100, message: `Search completed,${s.hits} found` })
+              setProgress = undefined
+              resolve(undefined)
+              return
+            }
+            progress.report({
+              increment: s.progress - current,
+              message: `Searching usage references, ${s.hits} hits found so far`
+            })
+            current = s.progress
+          }
+        })
     )
   }
 }
@@ -224,10 +212,7 @@ export class LanguageCommands {
     const source = await readEditorObjectSource(uri)
 
     const deltaLine = (d: Delta) => d.range.start.line
-    const sortDelta = R.sortWith<Delta>([
-      R.ascend(R.prop("uri")),
-      R.descend(deltaLine)
-    ])
+    const sortDelta = R.sortWith<Delta>([R.ascend(R.prop("uri")), R.descend(deltaLine)])
 
     const deltas = await cl.fixEdits(proposal, source.source).then(sortDelta)
     if (!deltas || deltas.length === 0) return

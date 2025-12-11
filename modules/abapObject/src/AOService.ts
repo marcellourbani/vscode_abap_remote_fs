@@ -12,7 +12,11 @@ export interface AbapObjectService {
   /** Loads the object metadata
    *    As will be called way too often, we will cache it for a second
    */
-  objectStructure: (path: string, refresh?: boolean, version?: ObjectVersion) => Promise<AbapObjectStructure>
+  objectStructure: (
+    path: string,
+    refresh?: boolean,
+    version?: ObjectVersion
+  ) => Promise<AbapObjectStructure>
   /** invalidate structure cache
    *    to be invoked after changing operations.
    *    will happen automatically on write
@@ -26,11 +30,17 @@ export interface AbapObjectService {
   ) => Promise<void>
   delete: (path: string, lockId: string, transport: string) => Promise<void>
   getObjectSource: (path: string, version?: ObjectVersion) => Promise<string>
-  nodeContents: (type: NodeParents, name: string, owner?: string, parents?: number[], refresh?: boolean) => Promise<NodeStructure>
+  nodeContents: (
+    type: NodeParents,
+    name: string,
+    owner?: string,
+    parents?: number[],
+    refresh?: boolean
+  ) => Promise<NodeStructure>
 }
 
 export class AOService implements AbapObjectService {
-  constructor(protected client: ADTClient) { }
+  constructor(protected client: ADTClient) {}
 
   private activeStructCache = new Map<string, Promise<AbapObjectStructure>>()
 
@@ -53,25 +63,13 @@ export class AOService implements AbapObjectService {
       structure = this.client.statelessClone.objectStructure(path, version)
       this.activeStructCache.set(path, structure)
       if (!version || version === "active")
-        structure.finally(() =>
-          setTimeout(() => this.invalidateStructCache(path), 800)
-        )
+        structure.finally(() => setTimeout(() => this.invalidateStructCache(path), 800))
     }
     return structure
   }
 
-  setObjectSource(
-    contentsPath: string,
-    contents: string,
-    lockId: string,
-    transport: string
-  ) {
-    return this.client.setObjectSource(
-      contentsPath,
-      contents,
-      lockId,
-      transport
-    )
+  setObjectSource(contentsPath: string, contents: string, lockId: string, transport: string) {
+    return this.client.setObjectSource(contentsPath, contents, lockId, transport)
   }
 
   getObjectSource(path: string, version?: ObjectVersion) {
@@ -79,7 +77,13 @@ export class AOService implements AbapObjectService {
   }
 
   private contentsCache = new Map<string, Promise<NodeStructure>>()
-  nodeContents(type: NodeParents, name: string, owner?: string, parents?: number[], refresh = false) {
+  nodeContents(
+    type: NodeParents,
+    name: string,
+    owner?: string,
+    parents?: number[],
+    refresh = false
+  ) {
     const key = `${type} ${name}`
     let next = this.contentsCache.get(key)
     if (!next) {

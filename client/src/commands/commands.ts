@@ -1,13 +1,5 @@
 import { PACKAGE, AdtObjectCreator } from "../adt/operations/AdtObjectCreator"
-import {
-  workspace,
-  Uri,
-  window,
-  commands,
-  ProgressLocation,
-  Range,
-  FileChangeType
-} from "vscode"
+import { workspace, Uri, window, commands, ProgressLocation, Range, FileChangeType } from "vscode"
 import { pickAdtRoot, RemoteManager } from "../config"
 import { caughtToString, inputBox, lineRange, log, rangeVscToApi, splitAdtUri } from "../lib"
 import { FavouritesProvider, FavItem } from "../views/favourites"
@@ -19,13 +11,7 @@ import { showInGuiCb, executeInGui, runInSapGui } from "../adt/sapgui/sapgui"
 import { storeTokens } from "../oauth"
 import { showAbapDoc } from "../views/help"
 import { showQuery } from "../views/query/query"
-import {
-  ADTSCHEME,
-  getClient,
-  getRoot,
-  uriRoot,
-  getOrCreateRoot
-} from "../adt/conections"
+import { ADTSCHEME, getClient, getRoot, uriRoot, getOrCreateRoot } from "../adt/conections"
 import { isAbapFolder, isAbapFile, isAbapStat } from "abapfs"
 import { AdtObjectActivator } from "../adt/operations/AdtObjectActivator"
 import {
@@ -69,21 +55,16 @@ export function openObject(connId: string, uri: string) {
       const { file, path } = (await root.findByAdtUri(uri, true)) || {}
       if (!file || !path) throw new Error("Object not found in workspace")
       if (isAbapFolder(file) && file.object.type === PACKAGE) {
-        await commands.executeCommand(
-          "revealInExplorer",
-          createUri(connId, path)
-        )
+        await commands.executeCommand("revealInExplorer", createUri(connId, path))
         return
       } else if (isAbapFile(file))
-        await workspace
-          .openTextDocument(createUri(connId, path))
-          .then(window.showTextDocument)
+        await workspace.openTextDocument(createUri(connId, path)).then(window.showTextDocument)
       return { file, path }
     }
   )
 }
 interface ShowObjectArgument {
-  connId: string,
+  connId: string
   uri: string
 }
 export class AdtCommands {
@@ -106,7 +87,6 @@ export class AdtCommands {
       await client.extractMethodExecute(preview)
       FsProvider.get().notifyChanges([{ type: FileChangeType.Changed, uri }])
     }
-
   }
   @command(AbapFsCommands.showDocumentation)
   private static async showAbapDoc() {
@@ -134,12 +114,9 @@ export class AdtCommands {
     try {
       const connectionID = selector && selector.connection
       const manager = RemoteManager.get()
-      const { remote, userCancel } = await manager.selectConnection(
-        connectionID
-      )
+      const { remote, userCancel } = await manager.selectConnection(connectionID)
       if (!remote)
-        if (!userCancel)
-          throw Error("No remote configuration available in settings")
+        if (!userCancel) throw Error("No remote configuration available in settings")
         else return
       name = remote.name
 
@@ -155,13 +132,11 @@ export class AdtCommands {
       })
       context.subscriptions.push(UnitTestRunner.get(connectionID).controller)
 
-
       log(`Connected to server ${remote.name}`)
     } catch (e) {
       const body = typeof e === "object" && (e as any)?.response?.body
       if (body) log(body)
-      const isMissing = (e: any) =>
-        !!`${e}`.match("name.*org.freedesktop.secrets")
+      const isMissing = (e: any) => !!`${e}`.match("name.*org.freedesktop.secrets")
       const message = isMissing(e)
         ? `Password storage not supported. Please install gnome-keyring or add a password to the connection`
         : `Failed to connect to ${name}:${caughtToString(e)}`
@@ -220,7 +195,6 @@ export class AdtCommands {
     } catch (error) {
       log(caughtToString(error))
     }
-
   }
 
   @command(AbapFsCommands.search)
@@ -259,9 +233,7 @@ export class AdtCommands {
       if (nodePath) {
         new AdtObjectFinder(connId).displayNode(nodePath)
         try {
-          await commands.executeCommand(
-            "workbench.files.action.refreshFilesExplorer"
-          )
+          await commands.executeCommand("workbench.files.action.refreshFilesExplorer")
           log("workspace refreshed")
         } catch (e) {
           log("error refreshing workspace")
@@ -293,7 +265,6 @@ export class AdtCommands {
       const file = uriRoot(fsRoot.uri).getNode(uri.path)
       if (!isAbapStat(file) || !file.object.sapGuiUri) return
       await executeInGui(fsRoot.uri.authority, file.object)
-
     } catch (e) {
       return window.showErrorMessage(caughtToString(e))
     }
@@ -360,8 +331,9 @@ export class AdtCommands {
 
       await window.withProgress(
         { location: ProgressLocation.Window, title: "Running ABAP Test cockpit" },
-        (progress) => {
-          const setvariant = (variant: string) => progress.report({ message: "Using variant " + variant })
+        progress => {
+          const setvariant = (variant: string) =>
+            progress.report({ message: "Using variant " + variant })
           return atcProvider.runInspector(state.uri, setvariant)
         }
       )
@@ -405,12 +377,7 @@ export class AdtCommands {
       let created
       const client = getClient(uri.authority)
 
-      const transport = await selectTransport(
-        obj.contentsPath(),
-        "",
-        client,
-        true
-      )
+      const transport = await selectTransport(obj.contentsPath(), "", client, true)
       if (transport.cancelled) return
       const parentName = obj.parent.name
       await client.createTestInclude(parentName, lockId, transport.transport)
@@ -420,8 +387,7 @@ export class AdtCommands {
       // If I created the lock I remove it. Possible race condition here...
       if (lock) await m.requestUnlock(uri.path)
       if (created) {
-        if (window.activeTextEditor)
-          showHideActivate(window.activeTextEditor, true)
+        if (window.activeTextEditor) showHideActivate(window.activeTextEditor, true)
         commands.executeCommand("workbench.files.action.refreshFilesExplorer")
       }
     } catch (e) {

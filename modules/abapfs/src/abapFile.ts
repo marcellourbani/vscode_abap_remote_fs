@@ -17,7 +17,7 @@ export class AbapFile implements FileStat {
     readonly object: AbapObject,
     readonly parent: FileStat,
     private service: AbapFsService
-  ) { }
+  ) {}
   get ctime() {
     return this.object.structure?.metaData["adtcore:createdAt"] ?? 0
   }
@@ -35,15 +35,16 @@ export class AbapFile implements FileStat {
   async stat() {
     if (this.object.supported) {
       await this.object.loadStructure()
-      const inactive = this.object.structure?.links?.find(l => l.rel === "http://www.sap.com/adt/relations/objectstates")
+      const inactive = this.object.structure?.links?.find(
+        l => l.rel === "http://www.sap.com/adt/relations/objectstates"
+      )
       if (inactive) await this.object.loadStructure(true, "inactive")
     }
   }
 
   size = 0
   async read() {
-    if (!this.object.structure && this.object.supported)
-      await this.stat()
+    if (!this.object.structure && this.object.supported) await this.stat()
     if (this.cache?.mtime === this.mtime) return this.cache.source
     if (this.timer) clearTimeout(this.timer)
     const source = await this.object.read()
@@ -53,21 +54,17 @@ export class AbapFile implements FileStat {
   }
 
   write(contents: string, lockId: string, transportId = "") {
-    if (!this.object.supported)
-      throw new Error(`Object ${this.object.key} can't be written `)
+    if (!this.object.supported) throw new Error(`Object ${this.object.key} can't be written `)
     return this.object.write(contents, lockId, transportId)
   }
 
   delete(lockId: string, transport: string) {
     if (!isCreatableTypeId(this.object.type))
-      throw FileSystemError.NoPermissions(
-        "Only allowed to delete abap objects can be created"
-      )
+      throw FileSystemError.NoPermissions("Only allowed to delete abap objects can be created")
     return this.object.delete(lockId, transport)
   }
 }
 
 export const isAbapFile = (x: any): x is AbapFile => !!x?.[tag]
 export type AbapStat = AbapFile | AbapFolder
-export const isAbapStat = (x: any): x is AbapStat =>
-  isAbapFile(x) || isAbapFolder(x)
+export const isAbapStat = (x: any): x is AbapStat => isAbapFile(x) || isAbapFolder(x)
