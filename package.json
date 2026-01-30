@@ -2,7 +2,7 @@
   "name": "vscode-abap-remote-fs",
   "displayName": "ABAP remote filesystem",
   "description": "Work on your ABAP code straight from the server",
-  "version": "1.10.1",
+  "version": "2.0.0",
   "publisher": "murbani",
   "publishConfig": {
     "access": "restricted",
@@ -16,7 +16,7 @@
   },
   "homepage": "https://github.com/marcellourbani/vscode_abap_remote_fs",
   "engines": {
-    "vscode": "^1.39.0"
+    "vscode": "^1.90.0"
   },
   "categories": [
     "Other"
@@ -29,7 +29,11 @@
     "ABAP",
     "sap",
     "filesystem",
-    "remote"
+    "remote",
+    "copilot",
+    "embedded-gui",
+    "sap-gui",
+    "automation"
   ],
   "extensionDependencies": [
     "larshp.vscode-abap",
@@ -39,12 +43,11 @@
   "activationEvents": [
     "onFileSystem:adt",
     "onCommand:abapfs.connect",
-    "onCommand:abapfs.createConnection"
+    "onCommand:abapfs.connectionManager",
+    "onCommand:abapfs.runInEmbeddedGui"
   ],
   "main": "./client/dist/extension",
   "scripts": {
-    "newchangeset": "npx @changesets/cli",
-    "changesetvers": "npx @changesets/cli version",
     "vscode:prepublish": "cd client && cd .. && npm run webpack",
     "webpack": "npm run build_modules&&cd server && npm run webpack && cd ../client && npm run webpack",
     "build": "npm run webpack",
@@ -61,13 +64,12 @@
     "inst_dep_object": "cd modules/abapObject&& npm i && npm run build&& cd ../..",
     "inst_dep_abapfs": "cd modules/abapfs&& npm i && npm run build&& cd ../..",
     "clean": "rimraf out *.vsix node_modules modules/sharedapi/out modules/sharedapi/node_modules&& cd server && npm run clean&& cd ../client &&npm run clean && cd .. ",
-    "postinstall": "npm run inst_dep_sharedapi && npm run inst_dep_object &&npm run inst_dep_abapfs && cd server && npm i && cd ../client && npm i",
-    "format": "prettier --write \"client/src/**/*.ts\" \"modules/abapfs/src/**/*.ts\" \"modules/abapObject/src/**/*.ts\" \"modules/sharedapi/src/**/*.ts\" \"server/src/**/*.ts\""
+    "postinstall": "npm run inst_dep_sharedapi && npm run inst_dep_object &&npm run inst_dep_abapfs && cd server && npm i && cd ../client && npm i"
   },
   "devDependencies": {
     "@types/mocha": "^7.0.2",
-    "@types/node": "^13.9.5",
-    "@vscode/vsce": "^3.7.1",
+    "@types/node": "^18.11.18",
+    "@vscode/vsce": "^3.3.0",
     "concurrently": "^6.3.0",
     "ovsx": "^0.10.1",
     "rimraf": "^3.0.2",
@@ -173,96 +175,2073 @@
         {
           "id": "abapfs.transports",
           "name": "Transports",
-          "when": "abapfs:extensionActive"
+          "when": "abapfs:extensionActive",
+          "icon": "$(package)"
         },
         {
           "id": "abapfs.dumps",
           "name": "Dumps",
-          "when": "abapfs:extensionActive"
+          "when": "abapfs:extensionActive",
+          "icon": "$(bug)"
         },
         {
           "id": "abapfs.atcFinds",
           "name": "ATC finds",
-          "when": "abapfs:extensionActive"
+          "when": "abapfs:extensionActive",
+          "icon": "$(warning)"
         },
         {
           "id": "abapfs.traces",
           "name": "Traces",
-          "when": "abapfs:extensionActive"
+          "when": "abapfs:extensionActive",
+          "icon": "$(pulse)"
         },
         {
           "id": "abapfs.abapgit",
           "name": "abapGit",
-          "when": "abapfs:extensionActive"
+          "when": "abapfs:extensionActive",
+          "icon": "$(git-branch)"
+        },
+        {
+          "id": "abapfs.feedInbox",
+          "name": "Feed Inbox",
+          "when": "abapfs:extensionActive",
+          "icon": "$(inbox)"
         }
       ],
       "explorer": [
         {
           "id": "abapfs.favorites",
           "name": "Favorites",
-          "when": "abapfs:extensionActive"
+          "when": "abapfs:extensionActive",
+          "icon": "$(star)"
         }
       ]
     },
-    "commands": [
+    "languageModelTools": [
       {
-        "command": "abapfs.connect",
-        "title": "AbapFs Connect to an ABAP system"
+        "name": "search_abap_objects",
+        "displayName": "Search ABAP Objects",
+        "modelDescription": "PRECISE PATTERN MATCHING search for ALL ABAP objects (BOTH standard SAP and custom Z*/Y* objects) by exact name patterns. USE THIS WHEN: 1) You know exact/partial object names (e.g., 'Z*CHARACTERISTIC*', 'BAPI_USER*', 'CL_BCS*'), 2) Searching for SAP standard objects (BAPI*, CL_*, /SAP/*), 3) Need guaranteed exact matches, 4) User provides specific naming patterns. CUSTOM OBJECTS: ALWAYS start with Z* or Y* (e.g., 'Z*ARTICLE*', not '*ARTICLE*'). Supports wildcards ('*USER*', 'BAPI_*'). PARALLEL CALLS: Search multiple patterns simultaneously. MANDATORY BEFORE CODE GENERATION: Your training data is outdated - ALWAYS verify objects exist before writing code. Search first, read signatures with get_abap_object_lines, then generate. WARNING: Unverified code WILL fail at runtime. Supports FUNC, CLAS, TABL, PROG, INTF, DTEL, DDLS, DOMA, TTYP, ENQU, MSAG, FUGR, DEVC, TRAN, VIEW, SICF, WDYN, SPRX, XSLT, TRANSFORMATIONS, SUSH, SUSC, PINF, ENHC, ENHS, BADI, BADII, SAMC, SAPC, SFSW, SFBF, SFBS, JOBD, NROB.",
+        "canBeReferencedInPrompt": true,
+        "toolReferenceName": "abap-search",
+        "icon": "$(search)",
+        "userDescription": "Search for ABAP objects in the SAP system",
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "pattern": {
+              "type": "string",
+              "description": "Search pattern for object names. Supports wildcards (* and ?). START WITH Z* FOR CUSTOM OBJECTS (Z*invoice*, not *invoice*) Examples: 'USER', '*CUSTOMER*', 'BAPI_*',Z*ART*"
+            },
+            "types": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "enum": [
+                  "FUNC",
+                  "CLAS",
+                  "TABL",
+                  "PROG",
+                  "INTF",
+                  "DTEL",
+                  "DDLS",
+                  "DOMA",
+                  "TTYP",
+                  "ENQU",
+                  "MSAG",
+                  "FUGR",
+                  "DEVC",
+                  "TRAN",
+                  "VIEW",
+                  "SICF",
+                  "WDYN",
+                  "SPRX",
+                  "XSLT",
+                  "TRANSFORMATIONS",
+                  "SUSH",
+                  "SUSC",
+                  "PINF",
+                  "ENHC",
+                  "ENHS",
+                  "BADI",
+                  "BADII",
+                  "SAMC",
+                  "SAPC",
+                  "SFSW",
+                  "SFBF",
+                  "SFBS",
+                  "JOBD",
+                  "NROB",
+                  "ENHO"
+                ]
+              },
+              "description": "Object types to search for.Must provide type or list of types."
+            },
+            "maxResults": {
+              "type": "number",
+              "default": 20,
+              "description": "Maximum number of results to return"
+            },
+            "connectionId": {
+              "type": "string",
+              "description": "SAP connection ID (e.g., 'dev100')"
+            }
+          },
+          "required": [
+            "pattern",
+            "types",
+            "connectionId"
+          ]
+        },
+        "tags": [
+          "abap-fs"
+        ]
       },
       {
-        "command": "abapfs.createConnection",
-        "title": "AbapFs Create connection"
+        "name": "get_abap_object_lines",
+        "displayName": "Get ABAP Object Lines",
+        "modelDescription": "Retrieve ACTIVE source code from ABAP objects. Returns function signatures, class definitions, method parameters. AMBIGUITY RESOLUTION: Use 'objectType' parameter when object name exists in multiple types (e.g., MATNR exists as both DTEL and DOMA - specify 'DOMA' to get domain). METHOD EXTRACTION: For classes, use 'methodName' parameter to extract only that specific method (e.g., methodName='FACTORY' returns just the FACTORY method code). PARALLEL CALLS: Read multiple objects simultaneously. MANDATORY BEFORE CODE GENERATION: Your training data has incorrect parameters - ALWAYS read exact signatures before calling functions/methods. Never guess parameters. WARNING: Unverified parameters WILL fail at runtime. Note: Shows committed code only, not unsaved local edits.",
+        "canBeReferencedInPrompt": true,
+        "toolReferenceName": "abap-lines",
+        "icon": "$(file-code)",
+        "userDescription": "Get source code lines from ABAP objects",
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "objectName": {
+              "type": "string",
+              "description": "Name of the ABAP object to retrieve lines from"
+            },
+            "objectType": {
+              "type": "string",
+              "enum": [
+                "FUNC",
+                "CLAS",
+                "TABL",
+                "PROG",
+                "INTF",
+                "DTEL",
+                "DDLS",
+                "DOMA",
+                "TTYP",
+                "ENQU",
+                "MSAG",
+                "FUGR",
+                "DEVC",
+                "TRAN",
+                "VIEW",
+                "SICF",
+                "WDYN",
+                "SPRX",
+                "XSLT",
+                "TRANSFORMATIONS",
+                "SUSH",
+                "SUSC",
+                "PINF",
+                "ENHC",
+                "ENHS",
+                "BADI",
+                "BADII",
+                "SAMC",
+                "SAPC",
+                "SFSW",
+                "SFBF",
+                "SFBS",
+                "JOBD",
+                "NROB"
+              ],
+              "description": "Optional: Specific object type to avoid ambiguity. FUNC=Function Modules, CLAS=Classes, TABL=Database Tables, PROG=Reports/Programs, INTF=Interfaces, DTEL=Data Elements, DDLS=CDS Views, DOMA=Domains, TTYP=Table Types/Structures, ENQU=Lock Objects, MSAG=Message Classes, FUGR=Function Groups, DEVC=Packages, TRAN=Transactions, VIEW=Views, SICF=ICF Services, WDYN=Web Dynpro, SPRX=Proxies, XSLT=XSLT Programs, TRANSFORMATIONS=Simple Transformations, SUSH=Authorization Objects, SUSC=Authorization Object Classes, PINF=Package Interfaces, ENHC=Enhancement Implementations, ENHS=Enhancement Spots, BADI=BAdI Definitions, BADII=BAdI Implementations, SAMC=AMC Classes, SAPC=APC Classes, SFSW=Switch Framework, SFBF=Business Functions, SFBS=Business Function Sets, JOBD=Job Definitions, NROB=Number Range Objects"
+            },
+            "methodName": {
+              "type": "string",
+              "description": "FOR CLASSES ONLY: Extract only this specific method. Returns complete method code from METHOD xxx. to ENDMETHOD. Example: 'FACTORY', 'CONSTRUCTOR', 'IF_INTERFACE~METHOD_NAME'. Ignores startLine/lineCount when used."
+            },
+            "startLine": {
+              "type": "number",
+              "default": 1,
+              "description": "Starting line number (1-based, like VS Code). Use 1 for first line, 2 for second line, etc."
+            },
+            "lineCount": {
+              "type": "number",
+              "default": 50,
+              "description": "Number of lines to retrieve"
+            },
+            "connectionId": {
+              "type": "string",
+              "description": "SAP connection ID (e.g., 'dev100')"
+            }
+          },
+          "required": [
+            "objectName",
+            "connectionId"
+          ]
+        },
+        "tags": [
+          "abap-fs"
+        ]
+      },
+      {
+        "name": "search_abap_object_lines",
+        "displayName": "Search ABAP Object Lines",
+        "modelDescription": "Search text within ABAP source code using literal text or regex. Returns matching lines with context. Supports patterns: \\bICT\\b (word boundaries), METHOD.*restrict (pattern matching), [A-Z]+ (character classes). PARALLEL CALLS: Search multiple objects simultaneously. Prefer this over VSCode grep for ABAP code. Supports wildcards with maxObjects parameter (max 10). CLASS STRUCTURE DISCOVERY: Use regex '^\\s*(CLASS-)?METHODS?\\s+\\w+' with contextLines=0 to list all methods in a class - returns method names with line numbers. IMPORTANT Note: Searches committed code only, not unsaved local edits.",
+        "canBeReferencedInPrompt": true,
+        "toolReferenceName": "abap-search-lines",
+        "icon": "$(search-stop)",
+        "userDescription": "Search for text within ABAP object source code",
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "objectName": {
+              "type": "string",
+              "description": "Name of the ABAP object to search within. Supports wildcards (*) to search multiple objects - use maxObjects to control how many"
+            },
+            "searchTerm": {
+              "type": "string",
+              "description": "Text or regex pattern to search for within the object's source code. Use literal text for simple searches or regex patterns for advanced matching (e.g., \\bICT\\b for word boundaries, METHOD.*restrict for patterns, etc.,)"
+            },
+            "contextLines": {
+              "type": "number",
+              "default": 3,
+              "description": "Number of context lines to include before and after each match"
+            },
+            "connectionId": {
+              "type": "string",
+              "description": "SAP connection ID (e.g., 'dev100')"
+            },
+            "isRegexp": {
+              "type": "boolean",
+              "default": false,
+              "description": "Enable powerful regex pattern matching. When true, searchTerm is treated as a regular expression supporting word boundaries (\\bword\\b), patterns (METHOD.*restrict), character classes ([A-Z]+), and more. When false, uses fast literal text matching."
+            },
+            "maxObjects": {
+              "type": "number",
+              "default": 1,
+              "minimum": 1,
+              "maximum": 10,
+              "description": "Maximum number of matching objects to search when using wildcards in objectName. Set to 1 for single object search, increase (max 10) to search multiple matching objects in one call. Only applies when objectName contains wildcards like 'Z*' or 'BAPI_*'."
+            }
+          },
+          "required": [
+            "objectName",
+            "searchTerm",
+            "connectionId"
+          ]
+        },
+        "tags": [
+          "abap-fs"
+        ]
+      },
+      {
+        "name": "get_abap_object_info",
+        "displayName": "Get ABAP Object Info",
+        "modelDescription": "Get metadata information about an ABAP object including its type, total lines, and cache status. Use this tool when you need to understand what kind of object you're working with before retrieving its content. CALL MULTIPLE OBJECTS IN PARALLEL: When checking info for multiple objects, call this tool for each object simultaneously in parallel to gather metadata faster.",
+        "canBeReferencedInPrompt": true,
+        "toolReferenceName": "abap-info",
+        "icon": "$(info)",
+        "userDescription": "Get metadata information about ABAP objects",
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "objectName": {
+              "type": "string",
+              "description": "Name of the ABAP object to get information about"
+            },
+            "connectionId": {
+              "type": "string",
+              "description": "SAP connection ID (e.g., 'dev100')"
+            }
+          },
+          "required": [
+            "objectName",
+            "connectionId"
+          ]
+        },
+        "tags": [
+          "abap-fs"
+        ]
+      },
+      {
+        "name": "get_batch_lines",
+        "displayName": "Get Batch Lines",
+        "modelDescription": "Retrieve lines from multiple ABAP objects in a single efficient operation. Use this tool when you need to examine several objects at once for comparison or comprehensive analysis.Do not use this tool to see the code changes you just made since your changes will not be committed to SAP until user explicitly saves it.To see local changes you just made, use in-built VSCode tools",
+        "canBeReferencedInPrompt": true,
+        "toolReferenceName": "abap-batch",
+        "icon": "$(list-tree)",
+        "userDescription": "Get source code lines from multiple ABAP objects at once",
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "requests": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "objectName": {
+                    "type": "string",
+                    "description": "Name of the ABAP object"
+                  },
+                  "startLine": {
+                    "type": "number",
+                    "default": 0,
+                    "description": "Starting line number (0-based)"
+                  },
+                  "lineCount": {
+                    "type": "number",
+                    "default": 10,
+                    "description": "Number of lines to retrieve"
+                  }
+                },
+                "required": [
+                  "objectName"
+                ]
+              },
+              "description": "Array of requests, each specifying an object and line range"
+            },
+            "connectionId": {
+              "type": "string",
+              "description": "SAP connection ID (e.g., 'dev100')"
+            }
+          },
+          "required": [
+            "requests",
+            "connectionId"
+          ]
+        },
+        "tags": [
+          "abap-fs"
+        ]
+      },
+      {
+        "name": "get_object_by_uri",
+        "displayName": "Get ABAP Object by URI",
+        "modelDescription": "Direct access to ABAP objects using their ADT URI paths. This bypasses the object name resolution and directly accesses the object content. Use this when you have the exact URI path from search results. CALL MULTIPLE URIs IN PARALLEL: When you have multiple URIs from search results, call this tool for each URI simultaneously in parallel to retrieve content faster.",
+        "canBeReferencedInPrompt": true,
+        "toolReferenceName": "abap-uri",
+        "icon": "$(link)",
+        "userDescription": "Direct access to ABAP objects via URI paths",
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "uri": {
+              "type": "string",
+              "description": "The ADT URI path of the ABAP object (e.g., '/sap/bc/adt/programs/programs/ztest')"
+            },
+            "startLine": {
+              "type": "number",
+              "default": 0,
+              "description": "Starting line number (0-based)"
+            },
+            "lineCount": {
+              "type": "number",
+              "default": 50,
+              "description": "Number of lines to retrieve"
+            },
+            "connectionId": {
+              "type": "string",
+              "description": "SAP connection ID (e.g., 'dev100')"
+            }
+          },
+          "required": [
+            "uri",
+            "connectionId"
+          ]
+        },
+        "tags": [
+          "abap-fs"
+        ]
+      },
+      {
+        "name": "create_object_programmatically",
+        "displayName": "Create ABAP Object Programmatically",
+        "modelDescription": "Creates new ABAP objects (classes, reports, function groups, etc.) programmatically without manual dialogs. Use this when the user wants to create new ABAP objects. Supports various object types including reports, classes, function groups, interfaces, data elements, and more.",
+        "canBeReferencedInPrompt": true,
+        "toolReferenceName": "abap-create",
+        "icon": "$(add)",
+        "userDescription": "Create new ABAP objects programmatically",
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "objectType": {
+              "type": "string",
+              "description": "Object type. Supports all SAP creatable object types including: 'PROG/P' (report), 'CLAS/OC' (class), 'FUGR/F' (function group), 'INTF/OI' (interface), 'DTEL/DE' (data element), 'TYPE/TY' (type group), 'TABL/DT' (database table), 'DDLS' (CDS view), 'DOMA' (domain), 'TTYP' (table type), 'ENQU/EQ' (lock object), 'MSAG/N' (message class), 'DEVC/K' (package), 'VIEW/V' (view), and many others. Use the format: TYPE/SUBTYPE"
+            },
+            "name": {
+              "type": "string",
+              "description": "Object name (e.g., 'ZTEST_REPORT'). For database tables (TABL/DT), name must be 14 characters or less for logical database compatibility. For other objects, ensure you don't exceed allowed object length limits"
+            },
+            "description": {
+              "type": "string",
+              "description": "Object description (max 60 characters – shorten or truncate if longer; SAP short text limit)"
+            },
+            "packageName": {
+              "type": "string",
+              "default": "$TMP",
+              "description": "Package name (default: '$TMP')"
+            },
+            "parentName": {
+              "type": "string",
+              "description": "Optional parent object for includes/methods"
+            },
+            "connectionId": {
+              "type": "string",
+              "description": "SAP connection ID (e.g., 'dev100')"
+            },
+            "additionalOptions": {
+              "type": "object",
+              "description": "Additional options for specific object types",
+              "properties": {
+                "serviceDefinition": {
+                  "type": "string",
+                  "description": "Service definition for service bindings"
+                },
+                "bindingType": {
+                  "type": "string",
+                  "description": "Binding type for service bindings"
+                },
+                "bindingCategory": {
+                  "type": "string",
+                  "description": "Binding category for service bindings"
+                },
+                "softwareComponent": {
+                  "type": "string",
+                  "description": "Software component for packages"
+                },
+                "packageType": {
+                  "type": "string",
+                  "description": "Package type"
+                },
+                "transportLayer": {
+                  "type": "string",
+                  "description": "Transport layer"
+                },
+                "transportRequest": {
+                  "type": "object",
+                  "description": "Transport request configuration",
+                  "properties": {
+                    "type": {
+                      "type": "string",
+                      "enum": [
+                        "new",
+                        "existing"
+                      ],
+                      "description": "Type of transport request: 'new' to create a new one, 'existing' to use an existing one"
+                    },
+                    "number": {
+                      "type": "string",
+                      "description": "Transport request number (required for type 'existing')"
+                    },
+                    "description": {
+                      "type": "string",
+                      "description": "Description for new transport request (required for type 'new')"
+                    }
+                  },
+                  "required": [
+                    "type"
+                  ],
+                  "oneOf": [
+                    {
+                      "properties": {
+                        "type": {
+                          "const": "existing"
+                        },
+                        "number": {
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "type",
+                        "number"
+                      ]
+                    },
+                    {
+                      "properties": {
+                        "type": {
+                          "const": "new"
+                        },
+                        "description": {
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "type",
+                        "description"
+                      ]
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "required": [
+            "objectType",
+            "name",
+            "description",
+            "connectionId"
+          ]
+        },
+        "tags": [
+          "abap-fs"
+        ]
+      },
+      {
+        "name": "get_abap_object_url",
+        "displayName": "Get ABAP Object URL",
+        "modelDescription": "Generate SAP GUI URL for ABAP objects (reports, classes, functions) that can be used with browser automation tools. Returns a properly formatted WebGUI URL that opens the object in the correct SAP transaction (SE38 for reports, SE24 for classes, SE37 for functions). The URL includes authentication parameters and can be used for automated testing and interaction. CALL MULTIPLE OBJECTS IN PARALLEL: When generating URLs for multiple objects, call this tool for each object simultaneously in parallel. Use this tool when you need a URL for browser automation instead of opening the object directly in VS Code.",
+        "canBeReferencedInPrompt": true,
+        "toolReferenceName": "abap-object-url",
+        "icon": "$(link)",
+        "userDescription": "Generate SAP GUI URL for ABAP objects for browser automation",
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "objectName": {
+              "type": "string",
+              "description": "Name of the ABAP object (e.g., 'ZXX_ARTICLE_REPORT')"
+            },
+            "objectType": {
+              "type": "string",
+              "default": "PROG/P",
+              "description": "Object type: 'PROG/P' (report), 'CLAS/OC' (class), 'FUGR/FF' (function)"
+            },
+            "connectionId": {
+              "type": "string",
+              "description": "SAP connection ID"
+            }
+          },
+          "required": [
+            "objectName",
+            "connectionId"
+          ]
+        },
+        "tags": [
+          "abap-fs"
+        ]
+      },
+      {
+        "name": "get_abap_object_workspace_uri",
+        "displayName": "Get ABAP Object Workspace URI",
+        "modelDescription": "Get the VS Code workspace URI for a specific ABAP object so it can be accessed directly. Returns the adt:// workspace URI that can be used with standard VS Code file operations like replace_string_in_file. Use this tool only when you need to modify/edit objects in editor, or when user asks to open a file in the editor. CALL MULTIPLE OBJECTS IN PARALLEL: When getting URIs for multiple objects, call this tool for each object simultaneously in parallel. All parameters are mandatory to ensure exact object identification. NOTE: For function modules, use the parent function group name with 'FUGR/F' type instead of 'FUGR/FF'.",
+        "canBeReferencedInPrompt": true,
+        "toolReferenceName": "abap-workspace-uri",
+        "icon": "$(link)",
+        "userDescription": "Get workspace URI for ABAP objects for direct file access",
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "objectName": {
+              "type": "string",
+              "description": "Exact name of the ABAP object to open (e.g., 'ZXX_ARTICLE_REPORT', 'ZCL_MY_CLASS'). Must be exact match, no wildcards."
+            },
+            "objectType": {
+              "type": "string",
+              "description": "Exact object type to disambiguate objects with same name (e.g., 'PROG/P' for reports, 'CLAS/OC' for classes, 'FUGR/F' for function groups, 'INTF/OI' for interfaces). Required to avoid opening wrong object. For function modules, use the parent function group name with 'FUGR/F' type."
+            },
+            "connectionId": {
+              "type": "string",
+              "description": "SAP connection ID (e.g., 'dev100')"
+            }
+          },
+          "required": [
+            "objectName",
+            "objectType",
+            "connectionId"
+          ]
+        },
+        "tags": [
+          "abap-fs"
+        ]
+      },
+      {
+        "name": "create_mermaid_diagram",
+        "displayName": "Create Mermaid Diagram",
+        "modelDescription": "Create and display Mermaid diagrams in an interactive webview with zoom controls. Supports flowcharts, sequence diagrams, class diagrams, state machines, ER diagrams, user journeys, Gantt charts, pie charts, and more. Displays diagrams at 200% zoom by default for optimal viewing. Users can adjust zoom in smooth 20% increments and save diagrams using the webview controls.",
+        "canBeReferencedInPrompt": true,
+        "toolReferenceName": "mermaid-create",
+        "icon": "$(graph)",
+        "userDescription": "Create professional diagrams in interactive webview with zoom controls",
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "code": {
+              "type": "string",
+              "description": "The Mermaid diagram code to render"
+            },
+            "diagramType": {
+              "type": "string",
+              "enum": [
+                "flowchart",
+                "sequence",
+                "class",
+                "state",
+                "er",
+                "journey",
+                "gantt",
+                "pie",
+                "gitgraph",
+                "mindmap",
+                "timeline",
+                "sankey",
+                "xychart",
+                "block",
+                "packet",
+                "auto"
+              ],
+              "description": "The type of diagram to create (auto-detect if not specified)"
+            },
+            "theme": {
+              "type": "string",
+              "enum": [
+                "default",
+                "dark",
+                "forest",
+                "neutral"
+              ],
+              "description": "Visual theme for the diagram"
+            }
+          },
+          "required": [
+            "code"
+          ]
+        },
+        "tags": [
+          "abap-fs"
+        ]
+      },
+      {
+        "name": "validate_mermaid_syntax",
+        "displayName": "Validate Mermaid Syntax",
+        "modelDescription": "Validate Mermaid diagram syntax without rendering. Fast syntax checking for code validation and error detection.",
+        "canBeReferencedInPrompt": true,
+        "toolReferenceName": "mermaid-validate",
+        "icon": "$(check)",
+        "userDescription": "Validate diagram syntax before rendering",
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "code": {
+              "type": "string",
+              "description": "The Mermaid diagram code to validate"
+            },
+            "suppressErrors": {
+              "type": "boolean",
+              "description": "Return false instead of throwing errors for invalid syntax",
+              "default": true
+            }
+          },
+          "required": [
+            "code"
+          ]
+        },
+        "tags": [
+          "abap-fs"
+        ]
+      },
+      {
+        "name": "get_mermaid_documentation",
+        "displayName": "Get Mermaid Documentation",
+        "modelDescription": "Get comprehensive documentation for Mermaid diagram types, syntax examples, and supported features. Essential for understanding how to create different types of diagrams.",
+        "canBeReferencedInPrompt": true,
+        "toolReferenceName": "mermaid-docs",
+        "icon": "$(book)",
+        "userDescription": "Get syntax documentation and examples",
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "diagramType": {
+              "type": "string",
+              "enum": [
+                "all",
+                "flowchart",
+                "sequence",
+                "class",
+                "state",
+                "er",
+                "journey",
+                "gantt",
+                "pie",
+                "gitgraph",
+                "mindmap",
+                "timeline",
+                "sankey",
+                "xychart",
+                "block",
+                "packet"
+              ],
+              "description": "Specific diagram type to get documentation for (all for complete documentation)",
+              "default": "all"
+            },
+            "includeExamples": {
+              "type": "boolean",
+              "description": "Include syntax examples in the documentation",
+              "default": true
+            }
+          }
+        },
+        "tags": [
+          "abap-fs"
+        ]
+      },
+      {
+        "name": "detect_mermaid_diagram_type",
+        "displayName": "Detect Mermaid Diagram Type",
+        "modelDescription": "Automatically detect the type of Mermaid diagram from code content. Useful for validation and proper processing.",
+        "canBeReferencedInPrompt": true,
+        "toolReferenceName": "mermaid-detect",
+        "icon": "$(search-fuzzy)",
+        "userDescription": "Auto-detect diagram type from code",
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "code": {
+              "type": "string",
+              "description": "The Mermaid diagram code to analyze"
+            }
+          },
+          "required": [
+            "code"
+          ]
+        },
+        "tags": [
+          "abap-fs"
+        ]
+      },
+      {
+        "name": "create_test_documentation",
+        "displayName": "Create Test Documentation",
+        "modelDescription": "Creates professional Word documents from Playwright test screenshots organized by scenarios. Perfect for generating test documentation reports with screenshots, descriptions, and scenario-based organization. Takes screenshot file paths captured during testing and creates a structured document with proper formatting.",
+        "canBeReferencedInPrompt": true,
+        "toolReferenceName": "test-docs",
+        "icon": "$(file-text)",
+        "userDescription": "Generate Word test documentation from screenshots",
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "scenarios": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "scenarioId": {
+                    "type": "number",
+                    "description": "Unique scenario identifier (1, 2, 3...)"
+                  },
+                  "scenarioName": {
+                    "type": "string",
+                    "description": "Name of the test scenario (e.g., 'Happy Path Login', 'Error Handling')"
+                  },
+                  "scenarioDescription": {
+                    "type": "string",
+                    "description": "Detailed description of what this scenario tests"
+                  },
+                  "screenshots": {
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "properties": {
+                        "filePath": {
+                          "type": "string",
+                          "description": "Full file path to the screenshot (e.g., 'C:\\Users\\...\\screenshot.png')"
+                        },
+                        "description": {
+                          "type": "string",
+                          "description": "Description of what the screenshot shows"
+                        }
+                      },
+                      "required": [
+                        "filePath",
+                        "description"
+                      ]
+                    },
+                    "description": "Array of screenshots for this scenario"
+                  }
+                },
+                "required": [
+                  "scenarioId",
+                  "scenarioName",
+                  "scenarioDescription",
+                  "screenshots"
+                ]
+              },
+              "description": "Array of test scenarios with their screenshots"
+            },
+            "reportTitle": {
+              "type": "string",
+              "description": "Title for the test documentation report (optional, defaults to 'Test Documentation Report')"
+            },
+            "testDate": {
+              "type": "string",
+              "description": "Date of testing in DD-MM-YYYY format (optional, defaults to current date)"
+            }
+          },
+          "required": [
+            "scenarios"
+          ]
+        },
+        "tags": [
+          "abap-fs"
+        ]
+      },
+      {
+        "name": "execute_data_query",
+        "displayName": "Execute Data Query",
+        "modelDescription": "Execute ABAP SQL queries OR display structured data in interactive webviews. ⚠️ IMPORTANT: ALWAYS call get_abap_sql_syntax tool FIRST to understand ABAP SQL syntax before constructing queries. Supports: 1) SQL execution, 2) Sorting, 3) Filtering, 4) Row range extraction. Can query SAP or display external data (JIRA, tasks, etc.). For internal mode, rowRange is MANDATORY. Always provide meaningful titles. Use displayMode UI by default.",
+        "canBeReferencedInPrompt": true,
+        "toolReferenceName": "sap-data",
+        "icon": "$(database)",
+        "userDescription": "Execute SQL queries, display structured data, and visualize in interactive tables",
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "sql": {
+              "type": "string",
+              "description": "The SQL query to execute (e.g., 'SELECT * FROM mara WHERE matnr LIKE 'MAT%''). OPTIONAL if webviewId or data provided. MANDATORY if no webviewId and no data (new SQL query)"
+            },
+            "data": {
+              "type": "object",
+              "properties": {
+                "columns": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "name": {
+                        "type": "string",
+                        "description": "Column name (required)"
+                      },
+                      "type": {
+                        "type": "string",
+                        "description": "SAP-like data type: 'C' (char), 'I' (int), 'D' (date), 'T' (time), 'F' (float), etc. (required)"
+                      },
+                      "description": {
+                        "type": "string",
+                        "description": "Human-readable column description (optional)"
+                      }
+                    },
+                    "required": [
+                      "name",
+                      "type"
+                    ]
+                  },
+                  "minItems": 1,
+                  "description": "Array of column definitions"
+                },
+                "values": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "description": "Row data as key-value pairs matching column names"
+                  },
+                  "description": "Array of row data objects"
+                }
+              },
+              "required": [
+                "columns",
+                "values"
+              ],
+              "description": "Direct data input instead of SQL query (mutually exclusive with sql). Use this to display JIRA issues, task lists, or any structured data"
+            },
+            "displayMode": {
+              "type": "string",
+              "enum": [
+                "internal",
+                "ui"
+              ],
+              "description": "How to handle results: 'internal' returns data to you for analysis (rowRange mandatory), 'ui' displays in interactive webview for user"
+            },
+            "webviewId": {
+              "type": "string",
+              "description": "Optional: ID of existing webview to manipulate. If provided, you can sort/filter existing data without re-querying SAP. If not provided, creates new webview with new SQL query"
+            },
+            "connectionId": {
+              "type": "string",
+              "description": "SAP connection ID"
+            },
+            "title": {
+              "type": "string",
+              "description": "Custom title for webviews. Use meaningful descriptions like 'All Articles from MARA', 'Articles Created by John.Doe', 'JIRA Issues - High Priority', etc. This helps users understand what data they're looking at. The title will be updated even for existing webviews when provided."
+            },
+            "maxRows": {
+              "type": "number",
+              "minimum": 1,
+              "maximum": 50000,
+              "description": "Safety limit on rows after SQL execution (default: 1000). This is NOT added to your SQL - it's applied after query execution to prevent system overload. NOTE: ABAP SQL 'UP TO x ROWS' clauses don't work via ADT - use this maxRows parameter instead to control how many records are fetched"
+            },
+            "rowRange": {
+              "type": "object",
+              "properties": {
+                "start": {
+                  "type": "number",
+                  "minimum": 0,
+                  "description": "Starting row index (0-based). Applied AFTER sorting and filtering"
+                },
+                "end": {
+                  "type": "number",
+                  "minimum": 1,
+                  "description": "Ending row index (exclusive). Applied AFTER sorting and filtering. Range size (end-start) cannot exceed 1000 rows for internal mode safety."
+                }
+              },
+              "required": [
+                "start",
+                "end"
+              ],
+              "description": "Row range to extract AFTER all processing. MANDATORY for internal mode to prevent accidental large data transfers. Range size cannot exceed 1000 rows for safety. Example: {start: 0, end: 10} gets first 10 rows after sorting/filtering"
+            },
+            "sortColumns": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "column": {
+                    "type": "string",
+                    "description": "Column name to sort by (case-sensitive, use exact SAP field names)"
+                  },
+                  "direction": {
+                    "type": "string",
+                    "enum": [
+                      "asc",
+                      "desc"
+                    ],
+                    "description": "Sort direction: 'asc' for ascending, 'desc' for descending"
+                  }
+                },
+                "required": [
+                  "column",
+                  "direction"
+                ]
+              },
+              "description": "Optional: Apply multiple column sorting in sequence (first sort has highest priority). Example: [{'column': 'MATNR', 'direction': 'asc'}, {'column': 'WERKS', 'direction': 'desc'}] sorts by MATNR ascending, then WERKS descending for ties"
+            },
+            "filters": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "column": {
+                    "type": "string",
+                    "description": "Column name to filter"
+                  },
+                  "value": {
+                    "type": "string",
+                    "description": "Filter value (supports wildcards * and ?)"
+                  }
+                },
+                "required": [
+                  "column",
+                  "value"
+                ]
+              },
+              "description": "Optional: Apply filters to results. Supports wildcards: 'MAT*' matches anything starting with MAT, '*ABC*' contains ABC"
+            },
+            "resetSorting": {
+              "type": "boolean",
+              "description": "Optional: Clear all existing sorting before applying new sorts. Use when you want to start fresh"
+            },
+            "resetFilters": {
+              "type": "boolean",
+              "description": "Optional: Clear all existing filters before applying new filters. Use when you want to start fresh"
+            }
+          },
+          "required": [
+            "displayMode",
+            "connectionId"
+          ],
+          "anyOf": [
+            {
+              "properties": {
+                "displayMode": {
+                  "const": "ui"
+                }
+              }
+            },
+            {
+              "properties": {
+                "displayMode": {
+                  "const": "internal"
+                }
+              },
+              "required": [
+                "rowRange"
+              ]
+            }
+          ]
+        },
+        "tags": [
+          "abap-fs"
+        ]
+      },
+      {
+        "name": "get_abap_sql_syntax",
+        "displayName": "Get ABAP SQL Syntax",
+        "modelDescription": "MANDATORY CALL BEFORE execute_data_query: Get comprehensive ABAP SQL syntax documentation covering all differences between standard SQL and ABAP SQL. YOU MUST call this tool FIRST before calling execute_data_query to understand ABAP-specific syntax rules, reserved keywords, field naming conventions, table name formats, and proper query construction. This prevents syntax errors in SQL queries. No parameters needed - simply call to get the full syntax guide.",
+        "canBeReferencedInPrompt": true,
+        "toolReferenceName": "abap-sql-syntax",
+        "icon": "$(book)",
+        "userDescription": "Get ABAP SQL syntax documentation before writing queries",
+        "inputSchema": {
+          "type": "object",
+          "properties": {}
+        },
+        "tags": [
+          "abap-fs"
+        ]
+      },
+      {
+        "name": "run_atc_analysis",
+        "displayName": "Run ATC Analysis",
+        "modelDescription": "Run ABAP Test Cockpit analysis to identify code quality issues, performance problems, bugs. Run only when user explicitly requests ATC. Updates visual UI and returns structured results. PARALLEL CALLS: Analyze multiple objects simultaneously. Accepts object name/type, URI paths, or active file.",
+        "canBeReferencedInPrompt": true,
+        "toolReferenceName": "atc-analysis",
+        "icon": "$(testing-run-icon)",
+        "userDescription": "Run ABAP Test Cockpit analysis with AI integration",
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "objectName": {
+              "type": "string",
+              "description": "Specific ABAP object name to analyze (e.g., 'ZDUMMY1', 'ZCL_MY_CLASS')"
+            },
+            "objectType": {
+              "type": "string",
+              "description": "Object type (e.g., 'PROG/P' for reports, 'CLAS/OC' for classes). Used with objectName for precise targeting"
+            },
+            "objectUri": {
+              "type": "string",
+              "description": "Direct ADT URI path (e.g., 'adt://dev100/sap/bc/adt/programs/programs/zdummy1'). Takes precedence over objectName if provided"
+            },
+            "connectionId": {
+              "type": "string",
+              "description": "SAP connection ID (required with objectName)"
+            },
+            "useActiveFile": {
+              "type": "boolean",
+              "default": false,
+              "description": "Use currently active ABAP file if no specific object is provided. Set to True only if the code file is open in editor and to not require explicit object specification. Always prefer using object name or URI rather than active editor, consider this as last resort"
+            },
+            "scope": {
+              "type": "string",
+              "enum": [
+                "object",
+                "package",
+                "transport"
+              ],
+              "description": "Analysis scope (future enhancement) - currently only 'object' is supported"
+            }
+          },
+          "anyOf": [
+            {
+              "required": [
+                "objectUri"
+              ]
+            },
+            {
+              "required": [
+                "objectName",
+                "connectionId"
+              ]
+            },
+            {
+              "properties": {
+                "useActiveFile": {
+                  "const": true
+                }
+              }
+            }
+          ]
+        },
+        "tags": [
+          "abap-fs"
+        ]
+      },
+      {
+        "name": "get_atc_decorations",
+        "displayName": "Get ATC Decorations",
+        "modelDescription": "Access current ATC visual decorations (error/warning/info highlights) visible in the editor. Returns the current state of code quality highlights that users can see as colored lines in their editor. Use this to understand what issues are currently highlighted or to analyze the visual feedback provided by ATC analysis. Complements the run_atc_analysis tool by showing what decorations are already applied.",
+        "canBeReferencedInPrompt": true,
+        "toolReferenceName": "atc-decorations",
+        "icon": "$(symbol-color)",
+        "userDescription": "Access current ATC visual decorations in editor",
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "fileUri": {
+              "type": "string",
+              "description": "Optional specific file URI to get decorations for. If not provided, returns decorations for all files with ATC highlights"
+            }
+          }
+        },
+        "tags": [
+          "abap-fs"
+        ]
+      },
+      {
+        "name": "manage_text_elements",
+        "displayName": "Manage Text Elements",
+        "modelDescription": "Tool for managing text elements (symbols) in ABAP objects: programs, classes, and function groups. Text elements are translatable string literals used for user interface texts, messages, and labels. Use this tool to retrieve existing text elements and display them to users, create or change text elements.",
+        "canBeReferencedInPrompt": true,
+        "toolReferenceName": "text-elements-manager",
+        "icon": "$(symbol-text)",
+        "userDescription": "Manage text elements in ABAP programs, classes, and function groups",
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "objectName": {
+              "type": "string",
+              "description": "Name of the ABAP object to manage text elements for (e.g., 'ZPROGRAM', 'ZCL_CLASS', 'ZFG_GROUP')"
+            },
+            "objectType": {
+              "type": "string",
+              "enum": [
+                "PROGRAM",
+                "CLASS",
+                "FUNCTION_GROUP"
+              ],
+              "description": "Type of ABAP object: 'PROGRAM' for reports/programs, 'CLASS' for classes, 'FUNCTION_GROUP' for function groups"
+            },
+            "action": {
+              "type": "string",
+              "enum": [
+                "read",
+                "create",
+                "update"
+              ],
+              "description": "Action to perform: 'read' to get existing text elements, 'create' to add new ones, 'update' to modify existing ones"
+            },
+            "textElements": {
+              "type": "array",
+              "description": "Array of text elements (required for create/update actions)",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "id": {
+                    "type": "string",
+                    "description": "Text element ID (e.g., '001', '002', 'BTN')",
+                    "pattern": "^[A-Z0-9_]{1,8}$"
+                  },
+                  "text": {
+                    "type": "string",
+                    "description": "Text content for the element",
+                    "maxLength": 255
+                  },
+                  "maxLength": {
+                    "type": "number",
+                    "description": "Optional maximum length constraint for the text",
+                    "minimum": 1,
+                    "maximum": 255
+                  }
+                },
+                "required": [
+                  "id",
+                  "text"
+                ]
+              },
+              "minItems": 1
+            },
+            "connectionId": {
+              "type": "string",
+              "description": "SAP connection ID (uses active if omitted)"
+            }
+          },
+          "required": [
+            "objectName",
+            "objectType",
+            "connectionId",
+            "action"
+          ]
+        },
+        "tags": [
+          "abap-fs"
+        ]
+      },
+      {
+        "name": "open_object",
+        "displayName": "Open ABAP Object",
+        "modelDescription": "Opens any ABAP object in the VS Code editor by searching for it by name. Use this when users want to view, edit, or examine ABAP objects like classes, programs, function modules, etc. The object will be opened in the editor and become visible in the file explorer. CALL MULTIPLE OBJECTS IN PARALLEL: When user needs to see multiple related objects, call this tool for each object simultaneously in parallel to open them all at once. Supports all ABAP object types.",
+        "canBeReferencedInPrompt": true,
+        "toolReferenceName": "abap-open",
+        "icon": "$(file-code)",
+        "userDescription": "Open ABAP objects in editor by name",
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "objectName": {
+              "type": "string",
+              "description": "Name of the ABAP object to open (e.g., 'ZCL_MY_CLASS', 'BAPI_USER_GET_DETAIL')"
+            },
+            "objectType": {
+              "type": "string",
+              "description": "Optional object type for precision (e.g., 'CLAS/OC', 'PROG/P', 'FUNC/FF')"
+            },
+            "connectionId": {
+              "type": "string",
+              "description": "SAP system connection ID (e.g., 'dev100')"
+            }
+          },
+          "required": [
+            "objectName",
+            "connectionId"
+          ]
+        },
+        "tags": [
+          "abap-fs"
+        ]
+      },
+      {
+        "name": "run_unit_tests",
+        "displayName": "Run ABAP Unit Tests",
+        "modelDescription": "Executes unit tests for an ABAP object and displays results in VS Code's Testing view. Use this when users want to run unit tests, or check test coverage for ABAP classes, programs, or other objects with unit tests. Results appear in the native VS Code Testing panel with pass/fail status.",
+        "canBeReferencedInPrompt": true,
+        "toolReferenceName": "abap-test",
+        "icon": "$(beaker)",
+        "userDescription": "Run unit tests for ABAP objects",
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "objectName": {
+              "type": "string",
+              "description": "Name of the ABAP object to test (e.g., 'ZCL_MY_CLASS')"
+            },
+            "connectionId": {
+              "type": "string",
+              "description": "SAP system connection ID (e.g., 'dev100')"
+            }
+          },
+          "required": [
+            "objectName",
+            "connectionId"
+          ]
+        },
+        "tags": [
+          "abap-fs"
+        ]
+      },
+      {
+        "name": "create_test_include",
+        "displayName": "Create Test Include",
+        "modelDescription": "Creates a test include (unit test class) for an existing ABAP class. Use this when users want to add unit tests, create test classes, or set up testing infrastructure for ABAP classes. The test include will be created as part of the class structure and opened in the editor automatically. Requires both className and connectionId parameters.",
+        "canBeReferencedInPrompt": true,
+        "toolReferenceName": "test-include",
+        "icon": "$(beaker)",
+        "userDescription": "Create unit test class for ABAP classes",
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "className": {
+              "type": "string",
+              "description": "Name of the ABAP class to create test include for (e.g., 'ZCL_MY_CLASS')"
+            },
+            "connectionId": {
+              "type": "string",
+              "description": "SAP system connection ID (e.g., 'dev100')"
+            }
+          },
+          "required": [
+            "className",
+            "connectionId"
+          ]
+        },
+        "tags": [
+          "abap-fs"
+        ]
+      },
+      {
+        "name": "manage_transport_requests",
+        "displayName": "Manage Transport Requests",
+        "modelDescription": "Manage SAP transport requests: get transport details by number, get transports by user, get objects in transport, compare transports. IMPORTANT WORKAROUND for older SAP systems: If this tool returns compatibility errors, you must query transport data directly using the execute_data_query tool with SAP tables: E070, E071, E071K etc.",
+        "canBeReferencedInPrompt": true,
+        "toolReferenceName": "transport-requests",
+        "icon": "$(package)",
+        "userDescription": "Manage SAP transport requests - get details, objects, and compare transports",
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "action": {
+              "type": "string",
+              "enum": [
+                "get_user_transports",
+                "get_transport_details",
+                "get_transport_objects",
+                "compare_transports"
+              ],
+              "description": "Action to perform: get_user_transports (get transports for user), get_transport_details (get details for transport), get_transport_objects (get objects in transport), compare_transports (compare multiple transports)"
+            },
+            "connectionId": {
+              "type": "string",
+              "description": "SAP system connection ID (e.g., 'dev100')"
+            },
+            "transportNumber": {
+              "type": "string",
+              "description": "Transport number for get_transport_details and get_transport_objects actions"
+            },
+            "transportNumbers": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              },
+              "description": "Array of transport numbers for compare_transports action (minimum 2 required)"
+            },
+            "user": {
+              "type": "string",
+              "description": "Username for get_user_transports action (optional, defaults to current user)"
+            }
+          },
+          "required": [
+            "action",
+            "connectionId"
+          ],
+          "anyOf": [
+            {
+              "properties": {
+                "action": {
+                  "const": "get_user_transports"
+                }
+              }
+            },
+            {
+              "properties": {
+                "action": {
+                  "const": "get_transport_details"
+                }
+              },
+              "required": [
+                "transportNumber"
+              ]
+            },
+            {
+              "properties": {
+                "action": {
+                  "const": "get_transport_objects"
+                }
+              },
+              "required": [
+                "transportNumber"
+              ]
+            },
+            {
+              "properties": {
+                "action": {
+                  "const": "compare_transports"
+                }
+              },
+              "required": [
+                "transportNumbers"
+              ]
+            }
+          ]
+        },
+        "tags": [
+          "abap-fs"
+        ]
+      },
+      {
+        "name": "abap_debug_session",
+        "displayName": "ABAP Debug Session",
+        "modelDescription": "Start, stop, or check status of ABAP debugging sessions. Use action='start' to begin debugging, action='stop' to end, action='status' to check current state.",
+        "canBeReferencedInPrompt": true,
+        "toolReferenceName": "debug-session",
+        "icon": "$(debug-alt)",
+        "userDescription": "Manage ABAP debugging sessions",
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "connectionId": {
+              "type": "string",
+              "description": "SAP connection ID"
+            },
+            "action": {
+              "type": "string",
+              "enum": [
+                "start",
+                "stop",
+                "status"
+              ],
+              "default": "start",
+              "description": "Action to perform"
+            },
+            "debugUser": {
+              "type": "string",
+              "description": "User to debug for (optional)"
+            },
+            "terminalMode": {
+              "type": "boolean",
+              "default": false,
+              "description": "Use terminal mode debugging"
+            }
+          },
+          "required": [
+            "connectionId"
+          ]
+        },
+        "tags": [
+          "abap-fs"
+        ]
+      },
+      {
+        "name": "abap_debug_breakpoint",
+        "displayName": "ABAP Debug Breakpoint",
+        "modelDescription": "Set or remove breakpoints in ABAP code. Supports conditional breakpoints. Use action='set' to add breakpoints, action='remove' to clear them. IMPORTANT: filePath MUST be the full workspace URI format (e.g., 'adt://dev100/System Library/ZXXX/Source Code Library/Programs/ZPROGRAM/ZPROGRAM.prog.abap'). Use get_abap_object_workspace_uri tool first to get the correct URI.",
+        "canBeReferencedInPrompt": true,
+        "toolReferenceName": "debug-breakpoint",
+        "icon": "$(debug-breakpoint)",
+        "userDescription": "Manage breakpoints in ABAP code",
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "connectionId": {
+              "type": "string",
+              "description": "SAP connection ID"
+            },
+            "filePath": {
+              "type": "string",
+              "description": "Full workspace URI for the ABAP source file. MUST use format: adt://connectionId/path/to/file.prog.abap. Get this URI using get_abap_object_workspace_uri tool."
+            },
+            "lineNumbers": {
+              "type": "array",
+              "items": {
+                "type": "number"
+              },
+              "description": "Line numbers for breakpoints"
+            },
+            "condition": {
+              "type": "string",
+              "description": "Conditional breakpoint expression (optional)"
+            },
+            "action": {
+              "type": "string",
+              "enum": [
+                "set",
+                "remove"
+              ],
+              "default": "set",
+              "description": "Set or remove breakpoints"
+            }
+          },
+          "required": [
+            "connectionId",
+            "filePath",
+            "lineNumbers"
+          ]
+        },
+        "tags": [
+          "abap-fs"
+        ]
+      },
+      {
+        "name": "abap_debug_step",
+        "displayName": "ABAP Debug Step",
+        "modelDescription": "Control ABAP debugging execution flow. stepType: 'continue' (F5), 'stepOver' (F6), 'stepInto' (F7), 'stepReturn' (F8), 'jumpToLine' (jump to specific line).",
+        "canBeReferencedInPrompt": true,
+        "toolReferenceName": "debug-step",
+        "icon": "$(debug-step-over)",
+        "userDescription": "Control debugging execution flow",
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "connectionId": {
+              "type": "string",
+              "description": "SAP connection ID"
+            },
+            "stepType": {
+              "type": "string",
+              "enum": [
+                "continue",
+                "stepInto",
+                "stepOver",
+                "stepReturn",
+                "jumpToLine"
+              ],
+              "description": "Type of debug step to execute"
+            },
+            "threadId": {
+              "type": "number",
+              "default": 1,
+              "description": "Debug thread ID"
+            },
+            "targetLine": {
+              "type": "number",
+              "description": "Target line for jumpToLine operation"
+            }
+          },
+          "required": [
+            "connectionId",
+            "stepType"
+          ]
+        },
+        "tags": [
+          "abap-fs"
+        ]
+      },
+      {
+        "name": "abap_debug_variable",
+        "displayName": "ABAP Debug Variable",
+        "modelDescription": "Enhanced ABAP variable inspection with advanced filtering and expansion. IMPORTANT: You MUST first call abap_debug_stack to get valid frameId values - frame IDs are large numbers like 1000000000000, NOT 0. Features: 1) FILTER MODE: Use 'filter' for table content filtering. 2) PATTERN SEARCH: Use 'filterPattern' to find variables by name (e.g., 'LT_*' for all tables). 3) AUTO-EXPAND: Use 'expandStructures=true' to show all structure components, 'expandTables=true' to show table contents inline. 4) VARIABLE LIMITS: Use 'maxVariables' (default 100) to control scope display size. Supports advanced filters, regex patterns, and comprehensive data inspection.",
+        "canBeReferencedInPrompt": true,
+        "toolReferenceName": "debug-variable",
+        "icon": "$(variable-group)",
+        "userDescription": "Inspect variables and evaluate expressions during debugging",
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "connectionId": {
+              "type": "string",
+              "description": "SAP connection ID"
+            },
+            "threadId": {
+              "type": "number",
+              "default": 1,
+              "description": "Debug thread ID (usually 1 for single-threaded debugging)"
+            },
+            "frameId": {
+              "type": "number",
+              "description": "Stack frame ID from abap_debug_stack tool. REQUIRED - get this value by calling abap_debug_stack first. Frame IDs are large numbers like 1000000000000."
+            },
+            "variableName": {
+              "type": "string",
+              "description": "Specific variable name to inspect"
+            },
+            "expression": {
+              "type": "string",
+              "description": "ABAP expression to evaluate"
+            },
+            "rowStart": {
+              "type": "number",
+              "default": 0,
+              "description": "Start row for internal table data (0-based)"
+            },
+            "rowCount": {
+              "type": "number",
+              "default": 50,
+              "description": "Number of rows to return from table"
+            },
+            "filter": {
+              "type": "string",
+              "description": "Filter condition for internal table content"
+            },
+            "scopeName": {
+              "type": "string",
+              "description": "Specific scope to inspect (e.g., 'Local Variables', 'SY')"
+            },
+            "maxVariables": {
+              "type": "number",
+              "default": 100,
+              "description": "Maximum variables to show in scope listings"
+            },
+            "filterPattern": {
+              "type": "string",
+              "description": "Pattern to filter variable names (e.g., 'LT_*' for all tables, 'LS_*' for structures)"
+            },
+            "expandStructures": {
+              "type": "boolean",
+              "default": false,
+              "description": "Automatically expand structure components inline"
+            },
+            "expandTables": {
+              "type": "boolean",
+              "default": false,
+              "description": "Show first few table rows inline"
+            }
+          },
+          "required": [
+            "connectionId",
+            "frameId"
+          ]
+        },
+        "tags": [
+          "abap-fs"
+        ]
+      },
+      {
+        "name": "abap_debug_stack",
+        "displayName": "ABAP Debug Stack",
+        "modelDescription": "Display the current call stack during ABAP debugging. Shows frame IDs, method names, source files, and line numbers. Use frame IDs with variable inspection tool.",
+        "canBeReferencedInPrompt": true,
+        "toolReferenceName": "debug-stack",
+        "icon": "$(call-hierarchy)",
+        "userDescription": "Display the current call stack",
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "connectionId": {
+              "type": "string",
+              "description": "SAP connection ID"
+            },
+            "threadId": {
+              "type": "number",
+              "default": 1,
+              "description": "Debug thread ID"
+            }
+          },
+          "required": [
+            "connectionId"
+          ]
+        },
+        "tags": [
+          "abap-fs"
+        ]
+      },
+      {
+        "name": "abap_debug_status",
+        "displayName": "ABAP Debug Status",
+        "modelDescription": "Check the status of ABAP debugging sessions. Shows active sessions, thread information, current execution state, and available operations.",
+        "canBeReferencedInPrompt": true,
+        "toolReferenceName": "debug-status",
+        "icon": "$(debug-console)",
+        "userDescription": "Check debugging session status",
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "connectionId": {
+              "type": "string",
+              "description": "SAP connection ID"
+            }
+          },
+          "required": [
+            "connectionId"
+          ]
+        },
+        "tags": [
+          "abap-fs"
+        ]
+      },
+      {
+        "name": "analyze_abap_dumps",
+        "displayName": "Analyze ABAP Dumps",
+        "modelDescription": "Analyze ABAP runtime dumps for troubleshooting. Actions: 'list_dumps' (shows available dumps with ID, error type, timestamp, content size), 'analyze_dump' (detailed analysis of specific dump by ID with safe HTML structure analysis). Use dump IDs from list to analyze specific errors. Provides structured dump data for AI-powered root cause analysis and fix suggestions.",
+        "canBeReferencedInPrompt": true,
+        "toolReferenceName": "abap-dumps",
+        "icon": "$(bug)",
+        "userDescription": "Analyze ABAP runtime dumps and errors",
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "action": {
+              "type": "string",
+              "enum": [
+                "list_dumps",
+                "analyze_dump"
+              ],
+              "description": "Action to perform: list_dumps (show available dumps) or analyze_dump (analyze specific dump)"
+            },
+            "connectionId": {
+              "type": "string",
+              "description": "SAP connection ID"
+            },
+            "dumpId": {
+              "type": "string",
+              "description": "Dump ID for analyze_dump action (required for analyze_dump)"
+            },
+            "maxResults": {
+              "type": "number",
+              "description": "Maximum number of dumps to return for list_dumps (default: 20, max: 100)"
+            },
+            "includeFullContent": {
+              "type": "boolean",
+              "description": "Include full HTML dump content for AI analysis (for analyze_dump action)"
+            }
+          },
+          "required": [
+            "action",
+            "connectionId"
+          ]
+        },
+        "tags": [
+          "abap-fs"
+        ]
+      },
+      {
+        "name": "analyze_abap_traces",
+        "displayName": "Analyze ABAP Traces",
+        "modelDescription": "Analyze ABAP performance traces for optimization. Actions: 'list_runs' (recent trace runs with performance summary), 'list_configurations' (available trace configs), 'analyze_run' (detailed analysis with bottleneck detection), 'get_statements' (statement-level performance data for non-aggregated traces; automatically returns hitlist data if trace is aggregated), 'get_hitlist' (hit count and timing analysis for aggregated traces). Automatically identifies database bottlenecks, ABAP processing issues, and performance hotspots. Perfect for performance optimization and bottleneck analysis.",
+        "canBeReferencedInPrompt": true,
+        "toolReferenceName": "abap-traces",
+        "icon": "$(pulse)",
+        "userDescription": "Analyze ABAP performance traces for optimization",
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "action": {
+              "type": "string",
+              "enum": [
+                "list_runs",
+                "list_configurations",
+                "analyze_run",
+                "get_statements",
+                "get_hitlist"
+              ],
+              "description": "Action to perform: list_runs, list_configurations, analyze_run, get_statements (auto-switches to hitlist if trace is aggregated), or get_hitlist"
+            },
+            "connectionId": {
+              "type": "string",
+              "description": "SAP connection ID"
+            },
+            "traceId": {
+              "type": "string",
+              "description": "Full trace ID path for analyze_run, get_statements, get_hitlist actions (required for these actions). MUST be the complete path with URL encoding preserved (e.g., '/sap/bc/adt/runtime/traces/abaptraces/sapkada01_KAD_52%2cAT520019'). DO NOT use partial paths, unencoded commas, or just the trace name."
+            },
+            "maxResults": {
+              "type": "number",
+              "description": "Maximum number of results for listing actions (default: 20)"
+            },
+            "includeDetails": {
+              "type": "boolean",
+              "description": "Include detailed performance data where applicable"
+            }
+          },
+          "required": [
+            "action",
+            "connectionId"
+          ]
+        },
+        "tags": [
+          "abap-fs"
+        ]
+      },
+      {
+        "name": "find_where_used",
+        "displayName": "Find Where Used",
+        "modelDescription": "Find all references and usage locations for ABAP objects, methods, variables, and symbols. Performs where-used analysis to locate all places where an object or symbol is referenced across the system. Can search by object name, specific symbols within objects, or precise line/character positions. Returns structured reference data with object details, locations, and optional code snippets showing usage context. IMPORTANT: For large result sets (1000+ references), use pagination (startIndex) and filtering to efficiently navigate results. Custom Z/Y objects are often at the end of result sets - use filters to find them without requesting thousands of results.",
+        "canBeReferencedInPrompt": true,
+        "toolReferenceName": "abap-where-used",
+        "icon": "$(references)",
+        "userDescription": "Find where ABAP objects and symbols are used",
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "objectName": {
+              "type": "string",
+              "description": "Name of the ABAP object to find references for"
+            },
+            "objectType": {
+              "type": "string",
+              "description": "Optional: Object type to avoid ambiguity (e.g., 'CLAS/OC', 'PROG/P')"
+            },
+            "searchTerm": {
+              "type": "string",
+              "description": "Optional: Specific symbol/method/variable to search for within the object"
+            },
+            "line": {
+              "type": "number",
+              "description": "Optional: Specific line number for context-sensitive search (1-based)"
+            },
+            "character": {
+              "type": "number",
+              "description": "Optional: Character position for precise symbol search (0-based)"
+            },
+            "connectionId": {
+              "type": "string",
+              "description": "SAP connection ID"
+            },
+            "maxResults": {
+              "type": "number",
+              "description": "Maximum number of references to return (default: 50)"
+            },
+            "includeSnippets": {
+              "type": "boolean",
+              "description": "Include code snippets showing usage context. WARNING: Requesting snippets for >50 results can be slow. Default: false. Set to true only when really needed,especially for large result sets."
+            },
+            "startIndex": {
+              "type": "number",
+              "description": "Start from this result index (0-based). Use for pagination to skip earlier results and access later ones. Example: startIndex=5000 to get results starting from position 5000. Essential for navigating large result sets efficiently."
+            },
+            "filter": {
+              "type": "object",
+              "description": "Filter criteria to narrow down results. Use to find specific objects without retrieving thousands of results. Especially useful for finding custom Z/Y objects in large result sets.",
+              "properties": {
+                "objectNamePattern": {
+                  "type": "string",
+                  "description": "Filter by object name pattern with wildcards. Examples: 'Z*' (starts with Z), '*CUSTOM*' (contains CUSTOM), 'ZMD_*' (starts with ZMD_). Use to find custom objects efficiently."
+                },
+                "objectTypes": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  },
+                  "description": "Filter by specific object types. Examples: ['PROG/P'] (only programs), ['CLAS/OC', 'INTF/OI'] (classes and interfaces)"
+                },
+                "excludeSystemObjects": {
+                  "type": "boolean",
+                  "description": "Exclude SAP standard objects (objects not starting with Z or Y). Very useful for finding only custom code in large result sets. Default: false"
+                }
+              }
+            }
+          },
+          "required": [
+            "objectName",
+            "connectionId"
+          ]
+        },
+        "tags": [
+          "abap-fs"
+        ]
+      },
+      {
+        "name": "get_sap_system_info",
+        "displayName": "Get SAP System Info",
+        "modelDescription": "Get SAP system info: client details (T000), system type (S/4HANA or ECC), SAP release (SVERS), and optionally software components (CVERS). System type is ALWAYS detected even with includeComponents=false - no need to request components just to check if it's S/4HANA or ECC.",
+        "canBeReferencedInPrompt": true,
+        "toolReferenceName": "sap-system-info",
+        "icon": "$(server)",
+        "userDescription": "Get SAP system information (current client, system type, components, release)",
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "connectionId": {
+              "type": "string",
+              "description": "SAP connection ID (e.g., 'dev100'). Required parameter to identify which SAP system to query."
+            },
+            "includeComponents": {
+              "type": "boolean",
+              "default": false,
+              "description": "Whether to include the full list of software components (from CVERS). Default is false to reduce response size. System type (S/4HANA vs ECC) is always detected regardless of this setting."
+            }
+          },
+          "required": [
+            "connectionId"
+          ]
+        },
+        "tags": [
+          "abap-fs"
+        ]
+      },
+      {
+        "name": "get_connected_systems",
+        "displayName": "Get Connected SAP Systems",
+        "modelDescription": "Get list of SAP system connection IDs currently connected in VS Code. Use this FIRST when you don't know which connectionId to use - it returns the available connection IDs that can be passed to other ABAP FS tools. No parameters required.",
+        "canBeReferencedInPrompt": true,
+        "toolReferenceName": "connected-systems",
+        "icon": "$(plug)",
+        "userDescription": "List all connected SAP systems",
+        "inputSchema": {
+          "type": "object",
+          "properties": {},
+          "required": []
+        },
+        "tags": [
+          "abap-fs"
+        ]
+      },
+      {
+        "name": "get_version_history",
+        "displayName": "Get Version History",
+        "modelDescription": "Get revision history for ABAP objects, retrieve code at specific historical versions, or compare versions. Actions: 'list_versions' (default - shows version history with dates, authors, transports), 'get_version_source' (retrieves complete source code at a specific version number), 'compare_versions' (compares two versions and shows added/removed lines). Version numbers are 1-based where 1 = most recent. Use to answer 'who changed this?', 'what changed?', 'show me the old version', 'compare versions'.",
+        "canBeReferencedInPrompt": true,
+        "toolReferenceName": "version-history",
+        "icon": "$(history)",
+        "userDescription": "Get version history, retrieve historical code, or compare versions",
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "objectName": {
+              "type": "string",
+              "description": "Name of the ABAP object to get version history for"
+            },
+            "objectType": {
+              "type": "string",
+              "description": "Optional: Object type for disambiguation (e.g., 'CLAS/OC', 'PROG/P')"
+            },
+            "connectionId": {
+              "type": "string",
+              "description": "SAP connection ID (e.g., 'dev100')"
+            },
+            "action": {
+              "type": "string",
+              "enum": [
+                "list_versions",
+                "get_version_source",
+                "compare_versions"
+              ],
+              "default": "list_versions",
+              "description": "Action to perform: list_versions (show history), get_version_source (get code at version), compare_versions (diff two versions)"
+            },
+            "versionNumber": {
+              "type": "number",
+              "description": "For get_version_source: which version to retrieve (1 = most recent, 2 = second most recent, etc.)"
+            },
+            "version1": {
+              "type": "number",
+              "description": "For compare_versions: first version number (1 = most recent)"
+            },
+            "version2": {
+              "type": "number",
+              "description": "For compare_versions: second version number to compare against"
+            },
+            "maxVersions": {
+              "type": "number",
+              "default": 20,
+              "description": "Maximum versions to show in list_versions (default 20)"
+            }
+          },
+          "required": [
+            "objectName",
+            "connectionId"
+          ]
+        },
+        "tags": [
+          "abap-fs"
+        ]
+      }
+    ],
+    "commands": [
+      {
+        "command": "abapfs.showCopilotLogs",
+        "title": "Show ABAP FS Logs",
+        "category": "ABAP FS"
+      },
+      {
+        "command": "abapfs.clearCopilotLogs",
+        "title": "Clear ABAP FS Logs",
+        "category": "ABAP FS"
+      },
+      {
+        "command": "abapfs.listAdtFeeds",
+        "title": "List Available ADT Feeds",
+        "category": "ABAP FS",
+        "icon": "$(rss)"
+      },
+      {
+        "command": "abapfs.configureFeeds",
+        "title": "Configure Feeds",
+        "category": "ABAP FS",
+        "icon": "$(settings-gear)"
+      },
+      {
+        "command": "abapfs.refreshFeedInbox",
+        "title": "Refresh Feed Inbox",
+        "category": "ABAP FS",
+        "icon": "$(refresh)"
+      },
+      {
+        "command": "abapfs.markAllFeedsRead",
+        "title": "Mark All Feed Entries as Read",
+        "category": "ABAP FS",
+        "icon": "$(check-all)"
+      },
+      {
+        "command": "abapfs.markFeedFolderRead",
+        "title": "Mark Feed Folder as Read",
+        "category": "ABAP FS",
+        "icon": "$(check)"
+      },
+      {
+        "command": "abapfs.deleteFeedEntry",
+        "title": "Delete Feed Entry",
+        "category": "ABAP FS",
+        "icon": "$(trash)"
+      },
+      {
+        "command": "abapfs.clearFeedFolder",
+        "title": "Clear Feed Folder",
+        "category": "ABAP FS",
+        "icon": "$(clear-all)"
+      },
+      {
+        "command": "abapfs.connect",
+        "title": "Connect to an ABAP system",
+        "category": "ABAP FS"
+      },
+      {
+        "command": "abapfs.disconnect",
+        "title": "Disconnect from all ABAP systems",
+        "category": "ABAP FS"
+      },
+      {
+        "command": "abapfs.connectionManager",
+        "title": "Connection Manager",
+        "category": "ABAP FS"
       },
       {
         "command": "abapfs.search",
-        "title": "AbapFs Search for object"
+        "title": "Search for object",
+        "category": "ABAP FS"
+      },
+      {
+        "command": "abapfs.refreshSystemInfoCache",
+        "title": "Refresh SAP System Info Cache",
+        "category": "ABAP FS",
+        "icon": "$(refresh)"
+      },
+      {
+        "command": "abapfs.compareWithOtherSystem",
+        "title": "Compare With another SAP System",
+        "category": "ABAP FS",
+        "icon": "$(diff)"
       },
       {
         "command": "abapfs.exportToJson",
-        "title": "Export to JSON (clipboard)"
+        "title": "Export to JSON (clipboard)",
+        "category": "ABAP FS"
       },
       {
         "command": "abapfs.create",
-        "title": "AbapFs Create object"
+        "title": "Create object",
+        "category": "ABAP FS"
       },
       {
         "command": "abapfs.createtestinclude",
-        "title": "AbapFs Create test class include"
+        "title": "Create test class include",
+        "category": "ABAP FS"
+      },
+      {
+        "command": "abapfs.unittest",
+        "title": "Run ABAP Unit Tests",
+        "category": "ABAP FS",
+        "icon": "$(beaker)"
       },
       {
         "command": "abapfs.addfavourite",
-        "title": "AbapFs Add favourite"
+        "title": "Add favourite",
+        "icon": "$(add)"
       },
       {
         "command": "abapfs.runClass",
-        "title": "AbapFs Run console application"
+        "title": "Run console application",
+        "category": "ABAP FS"
       },
       {
         "command": "abapfs.selectDB",
-        "title": "AbapFs Select Query"
+        "title": "Select Query",
+        "category": "ABAP FS"
       },
       {
         "command": "abapfs.tableContents",
-        "title": "AbapFs Show table contents",
+        "title": "Show table contents",
         "group": "navigation@-10",
         "icon": "$(database)"
       },
       {
         "command": "abapfs.deletefavourite",
-        "title": "AbapFs delete favourite",
+        "title": "Delete favourite",
         "icon": "$(trash)"
       },
       {
         "command": "abapfs.activate",
-        "title": "AbapFs Activate current object (will also save if dirty)",
+        "title": "Activate current object (will also save if dirty)",
         "icon": {
           "dark": "client/images/activate_single.svg",
           "light": "client/images/activate_single.svg"
         }
       },
       {
+        "command": "abapfs.visualizeDependencyGraph",
+        "title": "Visualize Dependency Graph",
+        "category": "ABAP FS",
+        "icon": "$(graph)"
+      },
+      {
+        "command": "abapfs.cleanCode",
+        "title": "Clean ABAP Code with ABAP Cleaner",
+        "category": "ABAP FS",
+        "icon": "$(symbol-ruler)"
+      },
+      {
+        "command": "abapfs.setupCleaner",
+        "title": "Setup ABAP Cleaner Integration",
+        "category": "ABAP FS",
+        "icon": "$(settings-gear)"
+      },
+      {
         "command": "abapfs.refreshtransports",
-        "title": "AbapFs refresh transports",
+        "title": "Refresh transports",
         "icon": {
           "dark": "client/images/dark/icon-refresh.svg",
           "light": "client/images/light/icon-refresh.svg"
@@ -347,23 +2326,36 @@
       },
       {
         "command": "abapfs.resetAbapGitPwd",
-        "title": "AbapFs forget git password"
-      },
-      {
-        "command": "abapfs.execute",
-        "title": "AbapFs Show in GUI"
-      },
-      {
-        "command": "abapfs.unittest",
-        "title": "AbapFs run unit tests"
+        "title": "Forget git password",
+        "category": "ABAP FS"
       },
       {
         "command": "abapfs.runInGui",
-        "title": "AbapFs execute code"
+        "title": "Open in native SAP GUI desktop application",
+        "category": "ABAP FS",
+        "icon": "$(desktop-download)"
+      },
+      {
+        "command": "abapfs.runInEmbeddedGui",
+        "title": "Open SAP GUI in embedded WebView",
+        "category": "ABAP FS",
+        "icon": "$(play-circle)"
+      },
+      {
+        "command": "abapfs.runTransaction",
+        "title": "Run SAP Transaction",
+        "category": "ABAP FS",
+        "icon": "$(run)"
+      },
+      {
+        "command": "abapfs.execute",
+        "title": "Open SAP GUI in external web browser",
+        "category": "ABAP FS",
+        "icon": "$(globe)"
       },
       {
         "command": "abapfs.openTransportObject",
-        "title": "AbapFs Open transportable object"
+        "title": "Open transportable object"
       },
       {
         "command": "abapfs.refreshDumps",
@@ -429,7 +2421,7 @@
       },
       {
         "command": "abapfs.quickfix",
-        "title": "apply fix"
+        "title": "Apply fix"
       },
       {
         "command": "abapfs.transportUser",
@@ -521,11 +2513,13 @@
       },
       {
         "command": "abapfs.clearPassword",
-        "title": "AbapFs forget connection password"
+        "title": "Forget connection password",
+        "category": "ABAP FS"
       },
       {
         "command": "abapfs.atcChecks",
         "title": "Run ABAP Test cockpit",
+        "category": "ABAP FS",
         "icon": "$(testing-run-icon)"
       },
       {
@@ -542,12 +2536,14 @@
       },
       {
         "command": "abapfs.atcFilterExemptOff",
-        "title": "Enable refresh on activation",
+        "title": "Show exempted findings",
+        "category": "ABAP FS",
         "icon": "$(filter-filled)"
       },
       {
         "command": "abapfs.atcFilterExemptOn",
-        "title": "Enable refresh on activation",
+        "title": "Hide exempted findings",
+        "category": "ABAP FS",
         "icon": "$(filter)"
       },
       {
@@ -568,6 +2564,7 @@
       {
         "command": "abapfs.atcRefresh",
         "title": "Refresh",
+        "category": "ABAP FS",
         "icon": "$(refresh)"
       },
       {
@@ -586,6 +2583,12 @@
         "icon": "$(check-all)"
       },
       {
+        "command": "abapfs.manageTextElements",
+        "title": "Text Elements Manager",
+        "icon": "$(symbol-text)",
+        "category": "ABAP FS"
+      },
+      {
         "command": "abapfs.refreshTraces",
         "title": "Refresh",
         "icon": "$(refresh)"
@@ -594,6 +2597,18 @@
         "command": "abapfs.deleteTrace",
         "title": "Delete",
         "icon": "$(trash)"
+      },
+      {
+        "command": "abapfs.showVpnHelp",
+        "title": "Show Corporate Network Connection Help",
+        "category": "ABAP FS",
+        "icon": "$(question)"
+      },
+      {
+        "command": "abapfs.refreshWhitelist",
+        "title": "Refresh SAP System Whitelist",
+        "category": "ABAP FS",
+        "icon": "$(refresh)"
       }
     ],
     "keybindings": [
@@ -608,14 +2623,14 @@
         "when": "editorTextFocus && resourceScheme == adt"
       },
       {
+        "command": "abapfs.runInEmbeddedGui",
+        "key": "Ctrl+Shift+F7",
+        "when": "editorTextFocus && resourceScheme == adt"
+      },
+      {
         "command": "debug.jumpToCursor",
         "key": "shift+f12",
         "when": "editorTextFocus && resourceScheme == adt && debugState != 'inactive'"
-      },
-      {
-        "command": "abapfs.unittest",
-        "key": "ctrl+shift+f11",
-        "when": "editorTextFocus && resourceScheme == adt && editorLangId == abap "
       },
       {
         "command": "abapfs.atcChecks",
@@ -631,6 +2646,11 @@
         "command": "abapfs.activate",
         "key": "alt+shift+f3",
         "when": "resourceScheme == adt && editorLangId =~ /abap|cds/ && abapfs:showActivate"
+      },
+      {
+        "command": "abapfs.cleanCode",
+        "key": "ctrl+shift+alt+f",
+        "when": "editorTextFocus && resourceScheme == adt && editorLangId == abap && abapfs.cleanerAvailable"
       }
     ],
     "menus": {
@@ -639,7 +2659,7 @@
           "command": "abapfs.connect"
         },
         {
-          "command": "abapfs.createConnection"
+          "command": "abapfs.connectionManager"
         },
         {
           "command": "abapfs.resetAbapGitPwd",
@@ -654,6 +2674,30 @@
           "when": "abapfs:extensionActive"
         },
         {
+          "command": "abapfs.refreshSystemInfoCache",
+          "when": "abapfs:extensionActive"
+        },
+        {
+          "command": "abapfs.runTransaction",
+          "when": "abapfs:extensionActive"
+        },
+        {
+          "command": "abapfs.listAdtFeeds",
+          "when": "abapfs:extensionActive"
+        },
+        {
+          "command": "abapfs.configureFeeds",
+          "when": "abapfs:extensionActive"
+        },
+        {
+          "command": "abapfs.refreshFeedInbox",
+          "when": "abapfs:extensionActive"
+        },
+        {
+          "command": "abapfs.markAllFeedsRead",
+          "when": "abapfs:extensionActive"
+        },
+        {
           "command": "abapfs.runClass",
           "when": "abapfs:extensionActive"
         },
@@ -663,6 +2707,10 @@
         },
         {
           "command": "abapfs.create",
+          "when": "abapfs:extensionActive"
+        },
+        {
+          "command": "abapfs.unittest",
           "when": "abapfs:extensionActive"
         },
         {
@@ -739,15 +2787,15 @@
         },
         {
           "command": "abapfs.execute",
-          "when": "hideCommands.never"
+          "when": "resourceScheme == adt && editorLangId == abap"
         },
         {
           "command": "abapfs.runInGui",
-          "when": "hideCommands.never"
+          "when": "resourceScheme == adt && editorLangId == abap"
         },
         {
-          "command": "abapfs.unittest",
-          "when": "abapfs:extensionActive"
+          "command": "abapfs.runInEmbeddedGui",
+          "when": "resourceScheme == adt && editorLangId == abap"
         },
         {
           "command": "abapfs.openTransportObject",
@@ -888,6 +2936,14 @@
         {
           "command": "abapfs.atcDocHistoryBack",
           "when": "hideCommands.never"
+        },
+        {
+          "command": "abapfs.cleanCode",
+          "when": "abapfs.cleanerAvailable"
+        },
+        {
+          "command": "abapfs.setupCleaner",
+          "when": "abapfs:extensionActive"
         }
       ],
       "view/item/context": [
@@ -1015,6 +3071,19 @@
           "command": "abapfs.atcIgnore",
           "group": "inline",
           "when": "view == abapfs.atcFinds && viewItem == finding"
+        },
+        {
+          "command": "abapfs.markFeedFolderRead",
+          "when": "view == abapfs.feedInbox && viewItem == feedFolder",
+          "group": "inline"
+        },
+        {
+          "command": "abapfs.clearFeedFolder",
+          "when": "view == abapfs.feedInbox && viewItem == feedFolder"
+        },
+        {
+          "command": "abapfs.deleteFeedEntry",
+          "when": "view == abapfs.feedInbox && viewItem == feedEntry"
         }
       ],
       "view/title": [
@@ -1062,6 +3131,16 @@
           "command": "abapfs.refreshrepos",
           "group": "navigation",
           "when": "view == abapfs.abapgit"
+        },
+        {
+          "command": "abapfs.refreshFeedInbox",
+          "group": "navigation",
+          "when": "view == abapfs.feedInbox"
+        },
+        {
+          "command": "abapfs.markAllFeedsRead",
+          "group": "navigation",
+          "when": "view == abapfs.feedInbox"
         }
       ],
       "editor/title": [
@@ -1069,6 +3148,26 @@
           "command": "abapfs.activate",
           "group": "navigation",
           "when": "resourceScheme == adt && editorLangId =~ /abap|cds|xml/ && abapfs:showActivate "
+        },
+        {
+          "command": "abapfs.cleanCode",
+          "group": "navigation@0.7",
+          "when": "resourceScheme == adt && editorLangId == abap && abapfs.cleanerAvailable && !inChat"
+        },
+        {
+          "command": "abapfs.runInEmbeddedGui",
+          "group": "navigation@1",
+          "when": "resourceScheme == adt && editorLangId =~ /abap|cds/ && !inChat"
+        },
+        {
+          "command": "abapfs.runInGui",
+          "group": "navigation@2",
+          "when": "resourceScheme == adt && editorLangId =~ /abap|cds/ && !inChat"
+        },
+        {
+          "command": "abapfs.execute",
+          "group": "navigation@3",
+          "when": "resourceScheme == adt && editorLangId =~ /abap|cds/ && !inChat"
         },
         {
           "command": "abapfs.togglediffNormalize",
@@ -1200,6 +3299,11 @@
           "command": "abapfs.search",
           "when": "resourceScheme == adt",
           "group": "4_search@1"
+        },
+        {
+          "command": "abapfs.compareWithOtherSystem",
+          "when": "resourceScheme == adt",
+          "group": "3_compare@1"
         }
       ],
       "debug/variables/context": [
@@ -1207,79 +3311,35 @@
           "command": "abapfs.exportToJson",
           "when": "debugType == abap"
         }
+      ],
+      "editor/context": [
+        {
+          "command": "abapfs.activate",
+          "when": "resourceScheme == adt && editorLangId =~ /abap|cds|xml/ && abapfs:showActivate",
+          "group": "1_activation@1"
+        },
+        {
+          "command": "abapfs.manageTextElements",
+          "when": "resourceScheme == adt && editorLangId == abap",
+          "group": "2_analysis@1"
+        },
+        {
+          "command": "abapfs.visualizeDependencyGraph",
+          "when": "resourceScheme == adt && editorLangId == abap",
+          "group": "2_analysis@2"
+        },
+        {
+          "command": "abapfs.compareWithOtherSystem",
+          "when": "resourceScheme == adt && editorLangId == abap",
+          "group": "2_analysis@3"
+        },
+        {
+          "command": "abapfs.cleanCode",
+          "when": "resourceScheme == adt && editorLangId == abap && abapfs.cleanerAvailable",
+          "group": "3_codeTools@1"
+        }
       ]
     },
-    "languageModelTools": [
-      {
-        "name": "abap_unit",
-        "displayName": "Run ABAP Unit Tests",
-        "canBeReferencedInPrompt": true,
-        "toolReferenceName": "abap_unit",
-        "modelDescription": "Run ABAP Unit tests in the current class or program. Returns the test results including passed and failed tests with error messages and stack traces.",
-        "when": "resourceScheme == adt",
-        "inputSchema": {
-          "type": "object",
-          "properties": {
-            "url": {
-              "type": "string",
-              "description": "Url of the class or program to run the tests of. Most likely the current file's URL."
-            }
-          },
-          "required": [
-            "url"
-          ]
-        }
-      },
-      {
-        "name": "abap_activate",
-        "displayName": "Activate ABAP objects - equivalent of compiling",
-        "canBeReferencedInPrompt": true,
-        "toolReferenceName": "abap_activate",
-        "modelDescription": "Activate ABAP objects in the given URL. Activation is similar to compiling in other programming languages. It checks the code for syntax errors and makes it executable in the ABAP runtime environment. Returns a list of activated objects and any activation errors encountered.",
-        "when": "resourceScheme == adt",
-        "inputSchema": {
-          "type": "object",
-          "properties": {
-            "url": {
-              "type": "string",
-              "description": "Url of the object to activate. Usually the current file's URL."
-            }
-          },
-          "required": [
-            "url"
-          ]
-        }
-      },
-      {
-        "name": "abap_search",
-        "displayName": "Search Abap objects",
-        "canBeReferencedInPrompt": true,
-        "toolReferenceName": "abap_search",
-        "modelDescription": "Search abap objects, like classes, programs and tables. adt filesystems aren't indexed and don't support cli tools. Your only chance to figure out what is available is to ask this tool. Each hit will have an object name, a type and an url. The url is not the actual object url, but will redirect the editor to the right one.",
-        "when": "resourceScheme == adt",
-        "inputSchema": {
-          "type": "object",
-          "properties": {
-            "name": {
-              "type": "string",
-              "description": "Name of the object to search for. Can contain the * wildcard one or more times, but no regular expressions"
-            },
-            "url": {
-              "type": "string",
-              "description": "Base url of the system to search in. The current file's URL is fine"
-            },
-            "type": {
-              "type": "string",
-              "description": "Type of the object to search for. Leave empty to search all types. Any ABAP type can be used, e.g. CLAS/OC, PROG/P, TABL/T, FUGR/F, FUGR/FF, etc. Use FUGR/FF for functions"
-            }
-          },
-          "required": [
-            "name",
-            "url"
-          ]
-        }
-      }
-    ],
     "configuration": {
       "title": "ABAP-FS configuration",
       "properties": {
@@ -1300,11 +3360,6 @@
                   "type": "string",
                   "description": "User name",
                   "default": "developer"
-                },
-                "password": {
-                  "type": "string",
-                  "description": "Password",
-                  "default": ""
                 },
                 "client": {
                   "type": "string",
@@ -1476,16 +3531,210 @@
               ]
             }
           }
+        },
+        "abapfs.copilot.professionalNotifications": {
+          "type": "boolean",
+          "default": false,
+          "description": "😴 I am boring - Keep notifications professional (disable fun emoji prefixes)"
+        },
+        "abapfs.mcpServer.autoStart": {
+          "type": "boolean",
+          "default": false,
+          "description": "Automatically start the MCP server when the extension activates. The MCP server allows external AI clients (Cursor, Claude Desktop) to use ABAP FS tools."
+        },
+        "abapfs.mcpServer.port": {
+          "type": "integer",
+          "default": 4847,
+          "minimum": 1024,
+          "maximum": 65535,
+          "description": "Port number for the MCP server. Change if the default port conflicts with other services."
+        },
+        "abapfs.embeddedGui": {
+          "type": "object",
+          "description": "Configuration for embedded SAP GUI for HTML functionality",
+          "properties": {
+            "autoRefresh": {
+              "type": "boolean",
+              "default": true,
+              "description": "Automatically refresh embedded GUI when ABAP code changes"
+            },
+            "defaultPosition": {
+              "type": "string",
+              "enum": [
+                "beside",
+                "active",
+                "one",
+                "two",
+                "three"
+              ],
+              "default": "beside",
+              "description": "Default position for embedded GUI panels"
+            },
+            "browserPath": {
+              "type": "string",
+              "description": "Custom path to Chrome/Chromium browser for general use (leave empty for auto-detection)"
+            }
+          },
+          "additionalProperties": false
+        },
+        "abapfs.cleaner": {
+          "type": "object",
+          "description": "Configuration for ABAP Cleaner integration (https://github.com/SAP/abap-cleaner)",
+          "properties": {
+            "enabled": {
+              "type": "boolean",
+              "default": false,
+              "description": "Enable ABAP Cleaner integration for automatic code formatting"
+            },
+            "executablePath": {
+              "type": "string",
+              "default": "",
+              "description": "Full path to abap-cleanerc.exe (command line version). Example: C:\\tools\\abap-cleaner\\abap-cleanerc.exe"
+            },
+            "profilePath": {
+              "type": "string",
+              "default": "",
+              "description": "Optional path to custom cleanup profile (.cfj file). Leave empty to use default profile"
+            },
+            "targetRelease": {
+              "type": "string",
+              "default": "latest",
+              "enum": [
+                "7.02",
+                "7.03",
+                "7.40",
+                "7.50",
+                "7.51",
+                "7.52",
+                "7.53",
+                "7.54",
+                "7.55",
+                "7.56",
+                "7.57",
+                "latest"
+              ],
+              "description": "Target ABAP release for cleanup rules (determines which language features to use)"
+            },
+            "showStatistics": {
+              "type": "boolean",
+              "default": true,
+              "description": "Show cleanup statistics after processing (number of changes made)"
+            },
+            "showAppliedRules": {
+              "type": "boolean",
+              "default": false,
+              "description": "Show which cleanup rules were applied (verbose output)"
+            },
+            "cleanOnSave": {
+              "type": "boolean",
+              "default": false,
+              "description": "Automatically clean ABAP code when saving files"
+            },
+            "lineRange": {
+              "type": "object",
+              "description": "Optional line range specification for partial cleaning",
+              "properties": {
+                "enabled": {
+                  "type": "boolean",
+                  "default": false,
+                  "description": "Enable line range cleaning (clean only selected lines)"
+                },
+                "expandRange": {
+                  "type": "boolean",
+                  "default": true,
+                  "description": "Automatically expand range to include complete statements"
+                }
+              },
+              "additionalProperties": false
+            },
+            "timeout": {
+              "type": "number",
+              "default": 30000,
+              "minimum": 5000,
+              "maximum": 300000,
+              "description": "Timeout in milliseconds for cleanup operations (30000ms = 30 seconds)"
+            }
+          },
+          "additionalProperties": false
+        },
+        "abapfs.feedSubscriptions": {
+          "type": "object",
+          "description": "Feed subscriptions and polling configuration for SAP systems. Configure via 'ABAP FS: Configure Feeds' command.",
+          "default": {},
+          "additionalProperties": {
+            "type": "object",
+            "description": "Feed configuration for a specific system",
+            "additionalProperties": {
+              "type": "object",
+              "description": "Configuration for a specific feed",
+              "properties": {
+                "enabled": {
+                  "type": "boolean",
+                  "description": "Whether this feed is enabled for polling",
+                  "default": false
+                },
+                "pollingInterval": {
+                  "type": "number",
+                  "description": "Polling interval in seconds (min: 120, max: 86400)",
+                  "minimum": 120,
+                  "maximum": 86400,
+                  "default": 300
+                },
+                "notifications": {
+                  "type": "boolean",
+                  "description": "Show notifications for new entries",
+                  "default": true
+                },
+                "notificationLevel": {
+                  "type": "string",
+                  "enum": [
+                    "all",
+                    "error",
+                    "warning",
+                    "info"
+                  ],
+                  "description": "Notification level filter",
+                  "default": "all"
+                },
+                "query": {
+                  "type": "string",
+                  "description": "Custom query filter for this feed",
+                  "default": ""
+                },
+                "useDefaultQuery": {
+                  "type": "boolean",
+                  "description": "Use the default query provided by the feed",
+                  "default": true
+                }
+              },
+              "required": [
+                "enabled",
+                "pollingInterval",
+                "notifications",
+                "notificationLevel",
+                "useDefaultQuery"
+              ],
+              "additionalProperties": false
+            }
+          }
         }
       }
     },
     "configurationDefaults": {
       "[abap]": {
-        "editor.formatOnSave": true
-      }
+        "editor.formatOnSave": true,
+        "files.autoSave": "off"
+      },
+      "editor.hover.delay": 700,
+      "editor.hover.above": false,
+      "files.refactoring.autoSave": false
     }
   },
   "dependencies": {
-    "@changesets/cli": "^2.28.1"
+    "@changesets/cli": "^2.28.1",
+    "applicationinsights": "^3.10.0",
+    "cors": "^2.8.5",
+    "express": "^4.18.2",
+    "xml2js": "^0.6.2"
   }
 }

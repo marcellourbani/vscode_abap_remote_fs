@@ -33,9 +33,11 @@ const mockClient = () => {
   })
   return client
 }
-const curStat = (root: Root) => (path: string) => root.lockManager.lockStatus(path).status
+const curStat = (root: Root) => (path: string) =>
+  root.lockManager.lockStatus(path).status
 const main = "/$TMP/Source Code Library/Classes/ZCL_CA_ALV/ZCL_CA_ALV.clas.abap"
-const localdef = "/$TMP/Source Code Library/Classes/ZCL_CA_ALV/ZCL_CA_ALV.clas.locals_def.abap"
+const localdef =
+  "/$TMP/Source Code Library/Classes/ZCL_CA_ALV/ZCL_CA_ALV.clas.locals_def.abap"
 
 test("lock/unlock class members", async () => {
   const client = mockClient()

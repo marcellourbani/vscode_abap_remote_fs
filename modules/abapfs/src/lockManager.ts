@@ -5,7 +5,7 @@ import { FileSystemError } from "vscode"
 import { isLoginError, isCsrfError } from "abap-adt-api"
 
 export class LockManager {
-  constructor(private root: Root) {}
+  constructor(private root: Root) { }
   private fileObjects = new Map<string, string>()
   private objects = new Map<string, LockObject>();
 
@@ -21,7 +21,8 @@ export class LockManager {
 
     const node = this.root.getNode(path)
 
-    if (!isAbapStat(node)) throw FileSystemError.FileNotFound(`Can't acquire lock for ${path}`)
+    if (!isAbapStat(node))
+      throw FileSystemError.FileNotFound(`Can't acquire lock for ${path}`)
 
     const toLock = node.object.lockObject
     this.fileObjects.set(path, toLock.key)
@@ -34,23 +35,16 @@ export class LockManager {
   }
 
   requestLock(path: string) {
-    return this.lockObject(path)
-      .requestLock(path)
-      .catch(async error => {
-        if (isLoginError(error)) throw new Error(await this.relogin())
-        throw error
-      })
+    return this.lockObject(path).requestLock(path).catch(async (error) => {
+      if (isLoginError(error)) throw new Error(await this.relogin())
+      throw error
+    })
   }
 
   async relogin() {
-    await this.dropall(true)?.catch(() => {
-      /* */
-    })
-    const result = await this.root.service.login().then(
-      () => "successful",
-      () => "failed"
-    )
-    return `All locks dropped due to expired sessions - login ${result}`
+    await this.dropall(true)?.catch(() => {/* */ })
+    const result = await this.root.service.login().then(() => "successful", () => "failed")
+    return (`All locks dropped due to expired sessions - login ${result}`)
   }
 
   requestUnlock(path: string, immediate = false) {
@@ -83,7 +77,8 @@ export class LockManager {
   }
 
   private noLocksOrPending() {
-    for (const obj of this.objects.values()) if (obj.status.status !== "unlocked") return false
+    for (const obj of this.objects.values())
+      if (obj.status.status !== "unlocked") return false
     return true
   }
   private async checkSession() {

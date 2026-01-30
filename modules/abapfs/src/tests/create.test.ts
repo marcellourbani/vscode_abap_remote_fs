@@ -93,7 +93,8 @@ test("expand package hierarchy on demand", async () => {
   client.nodeContents.mockReturnValueOnce(Promise.resolve(sampleNodeContents))
   client.objectStructure.mockReturnValueOnce(Promise.resolve(sampleclas))
   const root = createRoot("MYConn", client)
-  const objpath = "/$TMP/Source Code Library/Classes/ZCL_CA_ALV/ZCL_CA_ALV.clas.abap"
+  const objpath =
+    "/$TMP/Source Code Library/Classes/ZCL_CA_ALV/ZCL_CA_ALV.clas.abap"
   const path = await root.getNodePathAsync(objpath)
   expect(path).toBeDefined()
   expect(isAbapFile(path[0].file)).toBe(true)
@@ -120,10 +121,13 @@ const addNewClass = (client: MockProxy<AbapFsService>) => {
   client.nodeContents.mockReturnValueOnce(Promise.resolve(nc))
   let { metaData } = sampleclas
   metaData = { ...metaData, "adtcore:name": "ZCL_NEWLY_CREATED" }
-  client.objectStructure.mockReturnValueOnce(Promise.resolve({ ...sampleclas, metaData }))
+  client.objectStructure.mockReturnValueOnce(
+    Promise.resolve({ ...sampleclas, metaData })
+  )
 }
 test("refresh on demand", async () => {
-  const objpath = "/$TMP/Source Code Library/Classes/ZCL_CA_ALV/ZCL_CA_ALV.clas.abap"
+  const objpath =
+    "/$TMP/Source Code Library/Classes/ZCL_CA_ALV/ZCL_CA_ALV.clas.abap"
   const newobjpath =
     "/$TMP/Source Code Library/Classes/ZCL_NEWLY_CREATED/ZCL_NEWLY_CREATED.clas.abap"
   const expectedPath = [

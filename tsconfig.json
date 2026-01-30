@@ -9,6 +9,9 @@
     ],
     "sourceMap": true,
     "noUncheckedIndexedAccess": true,
+    /* Incremental Compilation */
+    "incremental": true,
+    "tsBuildInfoFile": ".tsbuildinfo",
     /* Strict Type-Checking Option */
     "strict": true /* enable all strict type-checking options */,
     /* Additional Checks */

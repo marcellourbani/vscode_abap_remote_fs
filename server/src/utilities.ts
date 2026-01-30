@@ -9,8 +9,7 @@ import { toInt, parts } from "./functions"
 const startIdent = /^((<?[\w]+>?)|(\/\w+\/\w+))/
 const endIdent = /((<?[\w]+>?)|(\/\w+\/\w+))$/
 
-export const rangeIsEmpty = (r: Range) =>
-  r.start.line === r.end.line && r.start.character === r.end.character
+export const rangeIsEmpty = (r: Range) => r.start.line === r.end.line && r.start.character === r.end.character
 
 export function decodeSeverity(severity: string) {
   switch (severity) {
@@ -54,7 +53,10 @@ export function sourceRange(
 }
 
 export function rangeFromUri(uri: string): Range | undefined {
-  const [startl, startc, endl, endc] = parts(uri, /\#(?:.*;)?start=(\d+),(\d+);end=(\d+),(\d+)/)
+  const [startl, startc, endl, endc] = parts(
+    uri,
+    /\#(?:.*;)?start=(\d+),(\d+);end=(\d+),(\d+)/
+  )
   if (endc)
     return {
       start: { line: toInt(startl) - 1, character: toInt(startc) },

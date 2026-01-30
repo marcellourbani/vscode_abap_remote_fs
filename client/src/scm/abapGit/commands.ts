@@ -50,15 +50,20 @@ import { getClient, uriRoot } from "../../adt/conections"
 
 let commitStore: Memento
 const getStore = () => {
-  if (!commitStore) commitStore = createStore("abapGitRepoCommit", context.globalState)
+  if (!commitStore)
+    commitStore = createStore("abapGitRepoCommit", context.globalState)
   return commitStore
 }
 
 let decorations: SourceControlResourceDecorations
-const statesEquals = (x: SourceControlResourceState, y: SourceControlResourceState) =>
-  y.resourceUri.toString() === x.resourceUri.toString()
-const hasState = (group: SourceControlResourceGroup, state: SourceControlResourceState) =>
-  !!group.resourceStates.find(x => statesEquals(x, state))
+const statesEquals = (
+  x: SourceControlResourceState,
+  y: SourceControlResourceState
+) => y.resourceUri.toString() === x.resourceUri.toString()
+const hasState = (
+  group: SourceControlResourceGroup,
+  state: SourceControlResourceState
+) => !!group.resourceStates.find(x => statesEquals(x, state))
 const transfer = (
   source: SourceControlResourceGroup,
   target: SourceControlResourceGroup,
@@ -78,7 +83,9 @@ const transfer = (
       return i
     })
   ]
-  source.resourceStates = source.resourceStates.filter(x => !items.find(y => statesEquals(x, y)))
+  source.resourceStates = source.resourceStates.filter(
+    x => !items.find(y => statesEquals(x, y))
+  )
 }
 const validateInput = (x: string) => (x ? null : "Field is mandatory")
 const getCommitDetails = async (data: ScmData) => {
@@ -86,7 +93,7 @@ const getCommitDetails = async (data: ScmData) => {
   if (isNone(cred)) return none
   const repoid = `${data.connId}_${data.repo.sapPackage}`
   const { committer = "", committerEmail = cred.value.user } =
-    getStore().get<{ committer: string; committerEmail: string }>(repoid) || {}
+    getStore().get<{ committer: string, committerEmail: string }>(repoid) || {}
   const comment = data.scm.inputBox.value
   const commitdata = { ...cred.value, name: "", email: "", comment }
   const getUser = inputBox({
@@ -117,7 +124,8 @@ const getCommitDetails = async (data: ScmData) => {
 const toCommit = (data: ScmData) => {
   if (!data.staging || !data.groups.get(STAGED).resourceStates.length) return
 
-  const all = (data.staging && [...data.staging.unstaged, ...data.staging.staged]) || []
+  const all =
+    (data.staging && [...data.staging.unstaged, ...data.staging.staged]) || []
   const toPush: GitStaging = {
     ...data.staging,
     staged: [],
@@ -150,26 +158,26 @@ const findSC = () => (target: any, propertyKey: string) => {
   }
 }
 
-const logErrors =
-  (meth = "") =>
-  (target: any, propertyKey: string) => {
-    const original = target[propertyKey]
-    target[propertyKey] = async (...args: any[]) => {
-      try {
-        return await original(...args)
-      } catch (error) {
-        const message = `${caughtToString(error)} in ${meth || propertyKey}`
-        window.showErrorMessage(message)
-      }
+const logErrors = (meth = "") => (target: any, propertyKey: string) => {
+  const original = target[propertyKey]
+  target[propertyKey] = async (...args: any[]) => {
+    try {
+      return await original(...args)
+    } catch (error) {
+      const message = `${caughtToString(error)} in ${meth || propertyKey}`
+      window.showErrorMessage(message)
     }
   }
+}
 
 export class GitCommands {
   @command(AbapFsCommands.agitRefresh)
   @logErrors(AbapFsCommands.agitRefresh)
   @findSC()
   private static async refreshCmd(data: ScmData) {
-    return await withp(`Refreshing ${data.repo.sapPackage}`, () => refresh(data))
+    return await withp(`Refreshing ${data.repo.sapPackage}`, () =>
+      refresh(data)
+    )
   }
   @command(AbapFsCommands.agitPush)
   @logErrors(AbapFsCommands.agitPush)
@@ -193,7 +201,9 @@ export class GitCommands {
         "Ok"
       )
       // errors will be ignored
-      withp("Waiting commit", () => after(7000)).then(() => GitCommands.refreshCmd(data))
+      withp("Waiting commit", () => after(7000)).then(() =>
+        GitCommands.refreshCmd(data)
+      )
     } catch (error) {
       throw new Error(`Error during commit:${caughtToString(error)}`)
     }
@@ -207,7 +217,11 @@ export class GitCommands {
         const client = await getClient(data.connId)
         await dataCredentials(data)
         const uri = await packageUri(client, data.repo.sapPackage)
-        const transport = await selectTransport(uri, data.repo.sapPackage, client)
+        const transport = await selectTransport(
+          uri,
+          data.repo.sapPackage,
+          client
+        )
         if (transport.cancelled) return
         const result = await client.gitPullRepo(
           data.repo.key,
@@ -223,7 +237,9 @@ export class GitCommands {
 
   @command(AbapFsCommands.agitAdd)
   @logErrors(AbapFsCommands.agitAdd)
-  private static async addCmd(...args: AgResState[] | SourceControlResourceGroup[]) {
+  private static async addCmd(
+    ...args: AgResState[] | SourceControlResourceGroup[]
+  ) {
     const unstaged = args[0]
     if (isAgResState(unstaged)) {
       const data = unstaged.data
@@ -232,7 +248,8 @@ export class GitCommands {
       transfer(source, data.groups.get(STAGED), states)
     } else if (unstaged) {
       const data = fromGroup(unstaged)
-      if (data) transfer(unstaged, data.groups.get(STAGED), unstaged.resourceStates)
+      if (data)
+        transfer(unstaged, data.groups.get(STAGED), unstaged.resourceStates)
     }
   }
 
@@ -252,10 +269,16 @@ export class GitCommands {
     } else if (staged) {
       const data = fromGroup(staged)
       if (data) {
-        const toUnStaged = staged.resourceStates.filter(s => s.originalGroupId === UNSTAGED)
-        const toIgnored = staged.resourceStates.filter(s => s.originalGroupId === IGNORED)
-        if (toUnStaged.length) transfer(staged, data.groups.get(UNSTAGED), toUnStaged)
-        if (toIgnored.length) transfer(staged, data.groups.get(IGNORED), toIgnored)
+        const toUnStaged = staged.resourceStates.filter(
+          s => s.originalGroupId === UNSTAGED
+        )
+        const toIgnored = staged.resourceStates.filter(
+          s => s.originalGroupId === IGNORED
+        )
+        if (toUnStaged.length)
+          transfer(staged, data.groups.get(UNSTAGED), toUnStaged)
+        if (toIgnored.length)
+          transfer(staged, data.groups.get(IGNORED), toIgnored)
       }
     }
   }
@@ -299,7 +322,11 @@ export class GitCommands {
   private async switchBranch(data: ScmData) {
     const { password = "", user = "" } = data.credentials || {}
     const client = getClient(data.connId)
-    const branch = await client.gitExternalRepoInfo(data.repo.url, user, password)
+    const branch = await client.gitExternalRepoInfo(
+      data.repo.url,
+      user,
+      password
+    )
     const candidates = branch.branches.map(b => {
       const o: QuickPickItem = {
         label: b.display_name,
@@ -313,7 +340,13 @@ export class GitCommands {
     if (isLeft(selection)) return
     const sel = selection.right
     if (sel.description)
-      await client.switchRepoBranch(data.repo, sel.description, false, user, password)
+      await client.switchRepoBranch(
+        data.repo,
+        sel.description,
+        false,
+        user,
+        password
+      )
     else {
       const branchName = await inputBox({
         prompt: "Branch name",

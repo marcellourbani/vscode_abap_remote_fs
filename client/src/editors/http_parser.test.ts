@@ -13,18 +13,20 @@ const SAMPLE_OBJECT = `<?xml version="1.0" encoding="utf-8"?><http:abap http:han
  xmlns:adtcore="http://www.sap.com/adt/core"/>`
 
 interface HttpService {
-  handlerClass: string
-  author: string
-  name: string
-  text: string
-  url: string
+    handlerClass: string,
+    author: string,
+    name: string,
+    text: string,
+    url: string,
 }
 
+
 test("Parse http definition", () => {
-  const service = parseHTTP(SAMPLE_OBJECT)
-  expect(service.author).toBe("CB0000000083")
-  expect(service.handlerClass).toBe("YCL_YMU_HELLO_WORLD")
-  expect(service.url).toBe("/sap/bc/http/sap/ymu_hello_world/")
-  expect(service.name).toBe("YMU_HELLO_WORLD")
-  expect(service.text).toBe("Hello")
+
+    const service = parseHTTP(SAMPLE_OBJECT)
+    expect(service.author).toBe("CB0000000083")
+    expect(service.handlerClass).toBe("YCL_YMU_HELLO_WORLD")
+    expect(service.url).toBe("/sap/bc/http/sap/ymu_hello_world/")
+    expect(service.name).toBe("YMU_HELLO_WORLD")
+    expect(service.text).toBe("Hello")
 })

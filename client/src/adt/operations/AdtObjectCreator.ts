@@ -21,10 +21,16 @@ import {
   BindinTypes
 } from "abap-adt-api"
 import { CreatableTypes } from "abap-adt-api"
-import { Uri, window, FileStat } from "vscode"
+import { Uri, FileStat } from "vscode"
+import { funWindow as window } from "../../services/funMessenger"
 import { selectTransport } from "../AdtTransports"
-import { fieldOrder, quickPick, rfsExtract, rfsTaskEither, rfsTryCatch } from "../../lib"
-import { MySearchResult, AdtObjectFinder, pathSequence, createUri } from "./AdtObjectFinder"
+import { fieldOrder, quickPick, rfsExtract, rfsTaskEither, rfsTryCatch, log } from "../../lib"
+import {
+  MySearchResult,
+  AdtObjectFinder,
+  pathSequence,
+  createUri
+} from "./AdtObjectFinder"
 import { getClient, getRoot } from "../conections"
 import { isAbapFolder, isAbapStat, isFolder } from "abapfs"
 import { fromNode } from "abapobject"
@@ -35,22 +41,24 @@ export const PACKAGE = "DEVC/K"
 export const TMPPACKAGE = "$TMP"
 type details =
   | {
-      options: NewObjectOptions
-      devclass: string
-    }
+    options: NewObjectOptions
+    devclass: string
+  }
   | undefined
 
-const validateMaxLen =
-  (max: number, mandatory = true) =>
-  (s: string) => {
-    if (mandatory && !s) return "Field is mandatory"
-    if (s.length <= max) return ""
-    return `Maximum current length of ${s.length} exceeds maximum (${max})`
-  }
+const validateMaxLen = (max: number, mandatory = true) => (s: string) => {
+  if (mandatory && !s) return "Field is mandatory"
+  if (s.length <= max) return ""
+  return `Maximum current length of ${s.length} exceeds maximum (${max})`
+}
 
-export async function selectObjectType(parentType?: string): Promise<CreatableType | undefined> {
+export async function selectObjectType(
+  parentType?: string
+): Promise<CreatableType | undefined> {
   const rawtypes = [...CreatableTypes.values()].sort(fieldOrder("label"))
-  const types = parentType ? rawtypes.filter(t => parentTypeId(t.typeId) === parentType) : rawtypes
+  const types = parentType
+    ? rawtypes.filter(t => parentTypeId(t.typeId) === parentType)
+    : rawtypes
   return window.showQuickPick(types.length > 0 ? types : rawtypes, {
     ignoreFocusOut: true
   })
@@ -59,7 +67,7 @@ export async function selectObjectType(parentType?: string): Promise<CreatableTy
 export class AdtObjectCreator {
   private types?: ObjectType[]
 
-  constructor(private connId: string) {}
+  constructor(private connId: string) { }
 
   public async getObjectTypes(uri: Uri): Promise<ObjectType[]> {
     if (!this.types) this.types = await getClient(this.connId).loadTypes()
@@ -82,47 +90,89 @@ export class AdtObjectCreator {
    * @param uri Creates an ABAP object
    */
   public async createObject(uri: Uri | undefined) {
-    const objDetails = await this.getObjectDetails(uri)
-    if (!objDetails) return
-    const { options, devclass } = objDetails
-    await this.validateObject(options)
-    const layer = hasPackageOptions(options) ? options.transportLayer : ""
-    const transport = await selectTransport(
-      objectPath(options.objtype, options.name, options.parentName),
-      devclass,
-      getClient(this.connId),
-      true,
-      undefined,
-      layer
-    )
-    if (transport.cancelled) return
-    options.transport = transport.transport
-    await getClient(this.connId).createObject(options)
-    const parent = await this.getAndRefreshParent(objDetails.options)
-    const obj = fromNode(
-      {
-        EXPANDABLE: "",
-        OBJECT_NAME: options.name,
-        OBJECT_TYPE: options.objtype,
-        OBJECT_URI: objectPath(options),
-        OBJECT_VIT_URI: "",
-        TECH_NAME: options.name
-      },
-      parent,
-      getRoot(this.connId).service
-    )
-    if (options.objtype !== PACKAGE) await obj.loadStructure()
-    return obj
+    
+    try {
+      const objDetails = await this.getObjectDetails(uri)
+      
+      if (!objDetails) {
+        log("No object details returned - user cancelled or error");
+        return;
+      }
+      
+      const { options, devclass } = objDetails
+      
+      await this.validateObject(options)
+      
+      const layer = hasPackageOptions(options) ? options.transportLayer : ""
+      
+      const transport = await selectTransport(
+        objectPath(options.objtype, options.name, options.parentName),
+        devclass,
+        getClient(this.connId),
+        true,
+        undefined,
+        layer
+      )
+      //log("Step 5: Transport selection completed");
+      //log("transport: " + JSON.stringify(transport, null, 2));
+      
+      if (transport.cancelled) {
+        log("Transport selection cancelled - exiting");
+        return;
+      }
+      
+      options.transport = transport.transport
+     // log("Step 6: About to call ADT createObject API");
+     // log("Final options: " + JSON.stringify(options, null, 2));
+      
+      await getClient(this.connId).createObject(options)
+      //log("Step 7: ADT createObject API call completed");
+      
+      const parent = await this.getAndRefreshParent(objDetails.options)
+      //log("Step 8: Parent refreshed");
+      
+      const obj = fromNode(
+        {
+          EXPANDABLE: "",
+          OBJECT_NAME: options.name,
+          OBJECT_TYPE: options.objtype,
+          OBJECT_URI: objectPath(options),
+          OBJECT_VIT_URI: "",
+          TECH_NAME: options.name
+        },
+        parent,
+        getRoot(this.connId).service
+      )
+      //log("Step 9: Object node created");
+      
+      if (options.objtype !== PACKAGE) await obj.loadStructure()
+      //log("Step 10: Object structure loaded (if not package)");
+      //log("Final object: " + JSON.stringify({ name: obj.name, type: obj.type }, null, 2));
+      //log("=== CREATE OBJECT SUCCESS ===");
+      
+      return obj
+    } catch (error) {
+      log("ERROR in createObject: " + error);
+      log("=== CREATE OBJECT ERROR ===");
+      throw error;
+    }
   }
 
   public guessParentByType(hierarchy: FileStat[], type: ParentTypeIds): string {
-    return hierarchy.filter(isAbapStat).find(n => n.object.type === type)?.object.name || ""
+    return (
+      hierarchy.filter(isAbapStat).find(n => n.object.type === type)?.object
+        .name || ""
+    )
   }
 
-  private async guessOrSelectObjectType(hierarchy: FileStat[]): Promise<CreatableType | undefined> {
+  private async guessOrSelectObjectType(
+    hierarchy: FileStat[]
+  ): Promise<CreatableType | undefined> {
     const creatable = (file: FileStat) => {
       const type = isAbapStat(file) && file.object.type
-      return type && type !== PACKAGE && CreatableTypes.get(type as CreatableTypeIds)
+      return (
+        type && type !== PACKAGE && CreatableTypes.get(type as CreatableTypeIds)
+      )
     }
     const first = hierarchy[0]
     if (isAbapStat(first) && first.object.type === "FUGR/F")
@@ -168,7 +218,7 @@ export class AdtObjectCreator {
         objtype: objDetails.objtype,
         package: objDetails.parentName,
         serviceBindingVersion: "ODATA\\V2",
-        serviceDefinition: objDetails.service
+        serviceDefinition: objDetails.service,
       }
     } else
       validateOptions = {
@@ -181,7 +231,9 @@ export class AdtObjectCreator {
   }
 
   private async selectTransportLayer() {
-    const layers = await getClient(this.connId).packageSearchHelp("transportlayers")
+    const layers = await getClient(this.connId).packageSearchHelp(
+      "transportlayers"
+    )
     const items = layers.map(l => ({
       label: l.name,
       description: l.description,
@@ -198,9 +250,10 @@ export class AdtObjectCreator {
       options.name.match(/^\$/) ? "LOCAL" : "HOME"
     )
     if (!swcomp) return
-    const packagetype = (await window.showQuickPick(["development", "structure", "main"], {
-      ignoreFocusOut: true
-    })) as PackageTypes | undefined
+    const packagetype = (await window.showQuickPick(
+      ["development", "structure", "main"],
+      { ignoreFocusOut: true }
+    )) as PackageTypes | undefined
     if (!packagetype) return
     const layer = await this.selectTransportLayer()
     if (!layer) return
@@ -212,18 +265,19 @@ export class AdtObjectCreator {
     return packageData
   }
   private async askParent(parentType: string): Promise<[string, string]> {
-    const parent = await new AdtObjectFinder(this.connId).findObject("Select parent", parentType)
+    const parent = await new AdtObjectFinder(this.connId).findObject(
+      "Select parent",
+      parentType
+    )
     if (!parent) return ["", ""]
     const devclass = await this.findPackage(parent)
     return [parent.name, devclass]
   }
   private async getServiceOptions(options: NewObjectOptions) {
     const types = BindinTypes.map(t => ({ label: t.description, payload: t }))
-    const finder = rfsTryCatch(() =>
-      new AdtObjectFinder(this.connId).findObject("Select Service definition", "SRVD/SRV")
-    )
-    const serviceOptions = await pipe(
-      rfsTaskEither({}),
+    const finder = rfsTryCatch(() => new AdtObjectFinder(this.connId).findObject(
+      "Select Service definition", "SRVD/SRV"))
+    const serviceOptions = await pipe(rfsTaskEither({}),
       bind("type", () => quickPick(types)),
       bind("service", () => finder),
       map(x => {
@@ -302,14 +356,17 @@ export class AdtObjectCreator {
     if (!node) return ""
     const path = pathSequence(root, createUri(this.connId, node.path))
     const last = path.length > 1 && path[path.length - 1]
-    if (isAbapStat(last) && last.object.type === PACKAGE) return last.object.name
+    if (isAbapStat(last) && last.object.type === PACKAGE)
+      return last.object.name
     return ""
   }
   private fixName(name: string, typeId: string, parentName: string): string {
     if (typeId !== "FUGR/I") return name
     const parts = parentName.split("/")
 
-    return parts.length < 3 ? `L${parentName}${name}` : `/${parts[1]}/L${parts[2]}${name}`
+    return parts.length < 3
+      ? `L${parentName}${name}`
+      : `/${parts[1]}/L${parts[2]}${name}`
   }
   private askName(objType: CreatableType) {
     if (objType.typeId === "FUGR/I")

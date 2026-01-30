@@ -4,16 +4,8 @@ import {
   httpTraceUrl,
   SOURCE_CLIENT
 } from "vscode-abap-remote-fs-sharedapi"
-import {
-  window,
-  workspace,
-  QuickPickItem,
-  WorkspaceFolder,
-  Uri,
-  ConfigurationTarget,
-  Event,
-  ConfigurationChangeEvent
-} from "vscode"
+import { workspace, QuickPickItem, WorkspaceFolder, Uri, ConfigurationTarget, Event, ConfigurationChangeEvent } from "vscode"
+import { funWindow as window } from "./services/funMessenger"
 import { ADTClient, createSSLConfig, LogCallback } from "abap-adt-api"
 import { readFileSync } from "fs"
 import { createProxy } from "method-call-logger"
@@ -26,9 +18,9 @@ const REMOTE = "remote"
 export type GuiType = "SAPGUI" | "WEBGUI_CONTROLLED" | "WEBGUI_UNSAFE" | "WEBGUI_UNSAFE_EMBEDDED"
 
 export interface RemoteConfig extends ClientConfiguration {
-  atcapprover?: string
-  atcVariant?: string
-  maxDebugThreads?: number
+  atcapprover?: string,
+  atcVariant?: string,
+  maxDebugThreads?: number,
   sapGui?: {
     disabled: boolean
     routerString: string
@@ -53,7 +45,9 @@ const defaultConfig: Partial<RemoteConfig> = {
 export const formatKey = (raw: string) => raw.toLowerCase()
 export const connectedRoots = () => {
   const rootmap = new Map<string, WorkspaceFolder>()
-  const roots = (workspace.workspaceFolders || []).filter(r => r.uri.scheme === ADTSCHEME)
+  const roots = (workspace.workspaceFolders || []).filter(
+    r => r.uri.scheme === ADTSCHEME
+  )
   for (const r of roots) rootmap.set(formatKey(r.uri.authority), r)
   return rootmap
 }
@@ -77,8 +71,7 @@ export const validateNewConfigId = (target: ConfigurationTarget) => {
   const keys = Object.keys(targetRemotes(target)).map(formatKey)
   return (key: string) => {
     if (key.length < 3) return "Connection name must be at least 3 characters long"
-    if (!key.match(/^[\w\d-_]+$/i))
-      return "Unexpected character. Only letters, numbers, - and _ are allowed"
+    if (!key.match(/^[\w\d-_]+$/i)) return "Unexpected character. Only letters, numbers, - and _ are allowed"
     if (keys.find(k => k === formatKey(key))) return "Key already in use"
   }
 }
@@ -93,7 +86,7 @@ export const saveNewRemote = async (cfg: ClientConfiguration, target: Configurat
 
 const config = (name: string, remote: RemoteConfig) => {
   const conf = { ...defaultConfig, ...remote, name, valid: true }
-  conf.valid = !!(remote.url && remote.username && remote.password)
+  conf.valid = !!(remote.url && remote.username)  // ✅ SECURITY FIX: Removed password validation from settings
   if (conf.customCA && !conf.customCA.match(/-----BEGIN CERTIFICATE-----/gi))
     try {
       conf.customCA = readFileSync(conf.customCA).toString()
@@ -126,7 +119,8 @@ interface RootItem extends QuickPickItem {
 
 export async function pickAdtRoot(uri?: Uri) {
   const roots = connectedRoots()
-  if (roots.size === 0) throw new Error("No ABAP filesystem mounted in current workspace")
+  if (roots.size === 0)
+    throw new Error("No ABAP filesystem mounted in current workspace")
 
   if (roots.size === 1) return [...roots.values()][0] // no need to pick if only one root is mounted
   if (uri) {
@@ -204,21 +198,27 @@ export class RemoteManager {
     }
   }
 
-  public static get = () => RemoteManager.instance || (RemoteManager.instance = new RemoteManager())
+  public static get = () =>
+    RemoteManager.instance || (RemoteManager.instance = new RemoteManager())
   public byId(connectionId: string): RemoteConfig | undefined {
     connectionId = formatKey(connectionId)
     return this.connections.get(connectionId)
   }
 
-  public async byIdAsync(connectionId: string): Promise<RemoteConfig | undefined> {
+  public async byIdAsync(
+    connectionId: string
+  ): Promise<RemoteConfig | undefined> {
     connectionId = formatKey(connectionId)
     let conn = this.connections.get(connectionId)
     if (!conn) {
       conn = this.loadRemote(connectionId)
       if (!conn) return
+      
+      // 🔐 SECURITY FIX: Always get password from secure storage only
       if (!conn.password) {
         conn.password = await this.getPassword(connectionId, conn.username)
       }
+      
       conn.name = connectionId
       this.connections.set(connectionId, conn)
     }
@@ -229,7 +229,9 @@ export class RemoteManager {
     const userConfig = workspace.getConfiguration(CONFIGROOT)
     const remote = userConfig[REMOTE]
     if (!remote) throw new Error("No destination configured")
-    return Object.keys(remote).map(name => config(name, remote[name] as RemoteConfig))
+    return Object.keys(remote).map(name =>
+      config(name, remote[name] as RemoteConfig)
+    )
   }
 
   private loadRemote(connectionId: string) {
@@ -264,21 +266,35 @@ export class RemoteManager {
       remote = selected.remote
     }
     if (remote && !remote.password)
-      remote.password = await this.getPassword(formatKey(remote.name), remote.username)
+      remote.password = await this.getPassword(
+        formatKey(remote.name),
+        remote.username
+      )
 
     return { remote, userCancel: false }
   }
 
-  public async savePassword(connectionId: string, userName: string, password: string) {
+  public async savePassword(
+    connectionId: string,
+    userName: string,
+    password: string
+  ) {
     connectionId = formatKey(connectionId)
-    const result = await this.vault.setPassword(`vscode.abapfs.${connectionId}`, userName, password)
+    const result = await this.vault.setPassword(
+      `vscode.abapfs.${connectionId}`,
+      userName,
+      password
+    )
     const conn = this.byId(connectionId)
     if (conn) conn.password = password
     return result
   }
 
   public async clearPassword(connectionId: string, userName: string) {
-    await this.vault.deletePassword(`vscode.abapfs.${formatKey(connectionId)}`, userName)
+    await this.vault.deletePassword(
+      `vscode.abapfs.${formatKey(connectionId)}`,
+      userName
+    )
     return true
   }
 
@@ -311,7 +327,11 @@ export class RemoteManager {
     connectionId = formatKey(connectionId)
     const conn = this.loadRemote(connectionId)
     if (!conn) return // no connection found, should never happen
-    const deleted = await this.clearPassword(connectionId, conn.oauth?.clientId || conn.username)
+    const deleted = await this.clearPassword(
+      connectionId,
+      conn.oauth?.clientId || conn.username
+    )
     if (deleted && !this.isConnected(connectionId)) this.connections.delete(connectionId)
   }
+
 }

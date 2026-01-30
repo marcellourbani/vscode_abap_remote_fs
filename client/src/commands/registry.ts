@@ -1,10 +1,13 @@
 export const AbapFsCommands = {
   connect: "abapfs.connect",
+  disconnect: "abapfs.disconnect",
   activate: "abapfs.activate",
   search: "abapfs.search",
   create: "abapfs.create",
   execute: "abapfs.execute",
   runInGui: "abapfs.runInGui",
+  runInEmbeddedGui: "abapfs.runInEmbeddedGui",
+  runTransaction: "abapfs.runTransaction",
   unittest: "abapfs.unittest",
   createtestinclude: "abapfs.createtestinclude",
   quickfix: "abapfs.quickfix",
@@ -16,6 +19,7 @@ export const AbapFsCommands = {
   addfavourite: "abapfs.addfavourite",
   deletefavourite: "abapfs.deletefavourite",
   createConnection: "abapfs.createConnection",
+  connectionManager: "abapfs.connectionManager",
   showDump: "abapfs.showDump",
   refreshDumps: "abapfs.refreshDumps",
   tableContents: "abapfs.tableContents",
@@ -34,6 +38,8 @@ export const AbapFsCommands = {
   atcDocHistoryBack: "abapfs.atcDocHistoryBack",
   atcFilterExemptOn: "abapfs.atcFilterExemptOn",
   atcFilterExemptOff: "abapfs.atcFilterExemptOff",
+  // text elements
+  manageTextElements: "abapfs.manageTextElements",
   // classes
   refreshHierarchy: "abapfs.refreshHierarchy",
   pickObject: "abapfs.pickObject",
@@ -85,8 +91,29 @@ export const AbapFsCommands = {
   agitBranch: "abapfs.switchBranch",
   //traces
   refreshTraces: "abapfs.refreshTraces",
-  deleteTrace: "abapfs.deleteTrace"
+  deleteTrace: "abapfs.deleteTrace",
+  // programmatic commands
+  createObjectProgrammatically: "abapfs.createObjectProgrammatically",
+  // ABAP Cleaner commands
+  cleanCode: "abapfs.cleanCode",
+  setupCleaner: "abapfs.setupCleaner",
+  // Feed commands
+  configureFeeds: "abapfs.configureFeeds",
+  refreshFeedInbox: "abapfs.refreshFeedInbox",
+  viewFeedEntry: "abapfs.viewFeedEntry",
+  markAllFeedsRead: "abapfs.markAllFeedsRead",
+  markFeedFolderRead: "abapfs.markFeedFolderRead",
+  deleteFeedEntry: "abapfs.deleteFeedEntry",
+  clearFeedFolder: "abapfs.clearFeedFolder",
+  showFeedInbox: "abapfs.showFeedInbox",
+  // System info
+  refreshSystemInfoCache: "abapfs.refreshSystemInfoCache",
 }
+
+// Import text elements commands
+import { manageTextElementsCommand } from './textElementsCommands';
+// Import feed commands
+import { configureFeedsCommand } from './configureFeeds';
 
 export const abapcmds: {
   name: string
@@ -98,3 +125,16 @@ export const command = (name: string) => (target: any, propertyKey: string) => {
   const func = target[propertyKey]
   abapcmds.push({ name, target, func })
 }
+
+// Manual command registrations (for commands not using @command decorator)
+abapcmds.push({
+  name: AbapFsCommands.manageTextElements,
+  func: manageTextElementsCommand,
+  target: null
+});
+
+abapcmds.push({
+  name: AbapFsCommands.configureFeeds,
+  func: configureFeedsCommand,
+  target: null
+});

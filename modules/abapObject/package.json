@@ -20,6 +20,6 @@
     "typescript": "^4.9.4"
   },
   "dependencies": {
-    "abap-adt-api": "^6.2.1"
+    "abap-adt-api": "^7.0.0"
   }
 }

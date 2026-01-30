@@ -3,7 +3,9 @@ import { types } from "util"
 export const isString = (x: any): x is string => typeof x === "string"
 export const isNumber = (x: any): x is number => typeof x === "number"
 
-export const memoize = <P, R>(base: (p: P) => Promise<R>): ((p: P) => Promise<R>) => {
+export const memoize = <P, R>(
+  base: (p: P) => Promise<R>
+): ((p: P) => Promise<R>) => {
   const cache: Map<P, R> = new Map()
   return async (param: P) => {
     let result = cache.get(param)
@@ -35,7 +37,8 @@ export const hashParms = (uri: string): any => {
   const uriHashArgs: string[] = (hash && hash.split(/;/)) || []
   for (const arg of uriHashArgs) {
     const argTuple = arg.split(/=/, 2)
-    if (argTuple.length > 1) parms[argTuple[0]] = decodeURIComponent(argTuple[1])
+    if (argTuple.length > 1)
+      parms[argTuple[0]] = decodeURIComponent(argTuple[1])
   }
   return parms
 }

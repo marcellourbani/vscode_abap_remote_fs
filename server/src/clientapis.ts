@@ -41,7 +41,11 @@ export async function getObjectSource(uri: string) {
   return source
 }
 
-export async function getVSCodeUri(confKey: string, uri: string, mainInclude: boolean) {
+export async function getVSCodeUri(
+  confKey: string,
+  uri: string,
+  mainInclude: boolean
+) {
   const req: UriRequest = { confKey, uri, mainInclude }
   const s = (await connection.sendRequest(Methods.vsUri, req)) as StringWrapper
   return (s && s.s) || ""

@@ -1,4 +1,9 @@
-import { AbapObjectCreator, AbapObjectBase, AbapObject, AbapObjectService } from ".."
+import {
+  AbapObjectCreator,
+  AbapObjectBase,
+  AbapObject,
+  AbapObjectService
+} from ".."
 const tag = Symbol("AbapSimple")
 
 @AbapObjectCreator("TABL/DT", "TABL/DS", "SRFC", "TRAN/T", "PARA/R")

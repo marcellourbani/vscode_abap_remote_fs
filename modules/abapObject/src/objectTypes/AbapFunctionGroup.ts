@@ -19,7 +19,7 @@ export class AbapFunctionGroup extends AbapObjectBase {
     return { categories: [], objectTypes, nodes: valid }
   }
 
-  async childComponents(): Promise<NodeStructure> {
+  async childComponents(includeIncludes?: boolean): Promise<NodeStructure> {
     try {
       const unfiltered = await this.service.nodeContents(this.type, this.name, this.owner)
       return this.filterInvalid(unfiltered)
@@ -27,14 +27,14 @@ export class AbapFunctionGroup extends AbapObjectBase {
       // workaround for error expanding function groups in some systems
       // get the root node and the relevant children only
       const root = await this.service.nodeContents(this.type, this.name, this.owner, [0])
-      const parents = root.objectTypes
-        .filter(t => t.OBJECT_TYPE === "FUGR/FF" || t.OBJECT_TYPE === "FUGR/I")
-        .map(t => Number.parseInt(t.NODE_ID))
+      const parents = root.objectTypes.filter(t => t.OBJECT_TYPE === "FUGR/FF" || t.OBJECT_TYPE === "FUGR/I").map(t => Number.parseInt(t.NODE_ID))
       const unfiltered = await this.service.nodeContents(this.type, this.name, this.owner, parents)
       unfiltered.objectTypes = root.objectTypes // for some reason it gets better descriptions like this
       return this.filterInvalid(unfiltered)
+
     }
   }
 }
 
-export const isAbapFunctionGroup = (x: any): x is AbapFunctionGroup => !!x?.[tag]
+export const isAbapFunctionGroup = (x: any): x is AbapFunctionGroup =>
+  !!x?.[tag]

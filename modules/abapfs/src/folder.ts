@@ -58,7 +58,8 @@ export class Folder implements Iterable<FolderItem>, FileStat {
 
   protected hasManual() {
     for (const [_, child] of this._children) if (child.manual) return true
-    for (const [_, child] of this._children) if (isFolder(child) && child.hasManual()) return true
+    for (const [_, child] of this._children)
+      if (isFolder(child) && child.hasManual()) return true
   }
 
   /** finds a file/folder given a path
@@ -139,7 +140,10 @@ export class Folder implements Iterable<FolderItem>, FileStat {
     return nodePath
   }
 
-  private async getPathAsyncInt(parts: string[], start: string): Promise<PathItem[]> {
+  private async getPathAsyncInt(
+    parts: string[],
+    start: string
+  ): Promise<PathItem[]> {
     let nodePath = this.getNodePathInt(parts, start)
     if (nodePath.length) return nodePath
     let current: PathItem = { file: this, path: `${start || "/"}` }

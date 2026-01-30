@@ -1,0 +1,789 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Feed Configuration</title>
+    <style>
+        body {
+            font-family: var(--vscode-font-family);
+            font-size: var(--vscode-font-size);
+            color: var(--vscode-foreground);
+            background-color: var(--vscode-editor-background);
+            padding: 20px;
+            margin: 0;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        h1 {
+            font-size: 24px;
+            font-weight: 600;
+            margin-bottom: 10px;
+        }
+
+        .subtitle {
+            color: var(--vscode-descriptionForeground);
+            margin-bottom: 30px;
+        }
+
+        .system-selector {
+            margin-bottom: 30px;
+        }
+
+        .system-buttons {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            margin-top: 10px;
+        }
+
+        .system-btn {
+            padding: 10px 20px;
+            background-color: var(--vscode-button-secondaryBackground);
+            color: var(--vscode-button-secondaryForeground);
+            border: 1px solid var(--vscode-button-border);
+            border-radius: 4px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .system-btn:hover {
+            background-color: var(--vscode-button-secondaryHoverBackground);
+        }
+
+        .system-btn.active {
+            background-color: var(--vscode-button-background);
+            color: var(--vscode-button-foreground);
+            border-color: var(--vscode-button-background);
+        }
+
+        .bulk-actions {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+
+        .btn {
+            padding: 8px 16px;
+            background-color: var(--vscode-button-secondaryBackground);
+            color: var(--vscode-button-secondaryForeground);
+            border: 1px solid var(--vscode-button-border);
+            border-radius: 4px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .btn:hover {
+            background-color: var(--vscode-button-secondaryHoverBackground);
+        }
+
+        .btn-primary {
+            background-color: var(--vscode-button-background);
+            color: var(--vscode-button-foreground);
+            border-color: var(--vscode-button-background);
+        }
+
+        .btn-primary:hover {
+            background-color: var(--vscode-button-hoverBackground);
+        }
+
+        .btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        .loading {
+            text-align: center;
+            padding: 40px;
+            color: var(--vscode-descriptionForeground);
+        }
+
+        .error {
+            color: var(--vscode-errorForeground);
+            background-color: var(--vscode-inputValidation-errorBackground);
+            border: 1px solid var(--vscode-inputValidation-errorBorder);
+            padding: 12px;
+            border-radius: 4px;
+            margin-bottom: 20px;
+        }
+
+        .feeds-container {
+            display: none;
+        }
+
+        .feeds-container.active {
+            display: block;
+        }
+
+        .feed-item {
+            background-color: var(--vscode-editor-background);
+            border: 1px solid var(--vscode-panel-border);
+            border-radius: 6px;
+            padding: 20px;
+            margin-bottom: 15px;
+        }
+
+        .feed-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 15px;
+        }
+
+        .feed-title {
+            font-size: 16px;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .feed-icon {
+            font-size: 18px;
+        }
+
+        .feed-toggle {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .switch {
+            position: relative;
+            display: inline-block;
+            width: 44px;
+            height: 24px;
+        }
+
+        .switch input {
+            opacity: 0;
+            width: 0;
+            height: 0;
+        }
+
+        .slider {
+            position: absolute;
+            cursor: pointer;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-color: var(--vscode-input-background);
+            border: 1px solid var(--vscode-input-border);
+            transition: .4s;
+            border-radius: 24px;
+        }
+
+        .slider:before {
+            position: absolute;
+            content: "";
+            height: 16px;
+            width: 16px;
+            left: 3px;
+            bottom: 3px;
+            background-color: var(--vscode-foreground);
+            transition: .4s;
+            border-radius: 50%;
+        }
+
+        input:checked + .slider {
+            background-color: var(--vscode-button-background);
+            border-color: var(--vscode-button-background);
+        }
+
+        input:checked + .slider:before {
+            transform: translateX(20px);
+            background-color: white;
+        }
+
+        .feed-details {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 15px;
+        }
+
+        .form-group {
+            display: flex;
+            flex-direction: column;
+        }
+
+        .form-group.full-width {
+            grid-column: 1 / -1;
+        }
+
+        label {
+            font-weight: 500;
+            margin-bottom: 6px;
+            display: block;
+        }
+
+        input[type="number"],
+        input[type="text"],
+        select,
+        textarea {
+            padding: 8px;
+            background-color: var(--vscode-input-background);
+            color: var(--vscode-input-foreground);
+            border: 1px solid var(--vscode-input-border);
+            border-radius: 4px;
+            font-family: var(--vscode-font-family);
+            font-size: var(--vscode-font-size);
+        }
+
+        input[type="number"]:focus,
+        input[type="text"]:focus,
+        select:focus,
+        textarea:focus {
+            outline: none;
+            border-color: var(--vscode-focusBorder);
+        }
+
+        textarea {
+            min-height: 80px;
+            resize: vertical;
+            font-family: var(--vscode-editor-font-family);
+        }
+
+        .help-text {
+            font-size: 12px;
+            color: var(--vscode-descriptionForeground);
+            margin-top: 4px;
+        }
+
+        .validation-error {
+            color: var(--vscode-errorForeground);
+            font-size: 12px;
+            margin-top: 4px;
+        }
+
+        .feed-meta {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 15px;
+            margin-top: 10px;
+            padding-top: 10px;
+            border-top: 1px solid var(--vscode-panel-border);
+            font-size: 13px;
+            color: var(--vscode-descriptionForeground);
+        }
+
+        .feed-meta-item {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+
+        .query-variants {
+            margin-top: 10px;
+        }
+
+        .variant-btn {
+            display: inline-block;
+            padding: 4px 12px;
+            margin-right: 8px;
+            margin-bottom: 8px;
+            background-color: var(--vscode-button-secondaryBackground);
+            color: var(--vscode-button-secondaryForeground);
+            border: 1px solid var(--vscode-button-border);
+            border-radius: 3px;
+            cursor: pointer;
+            font-size: 12px;
+        }
+
+        .variant-btn:hover {
+            background-color: var(--vscode-button-secondaryHoverBackground);
+        }
+
+        .save-section {
+            position: sticky;
+            bottom: 0;
+            background-color: var(--vscode-editor-background);
+            padding: 20px 0;
+            border-top: 1px solid var(--vscode-panel-border);
+            margin-top: 30px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .save-status {
+            color: var(--vscode-descriptionForeground);
+        }
+
+        .save-status.success {
+            color: var(--vscode-testing-iconPassed);
+        }
+
+        .save-status.error {
+            color: var(--vscode-errorForeground);
+        }
+
+        @media (max-width: 768px) {
+            .feed-details {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>📡 Feed Configuration</h1>
+        <p class="subtitle">Configure which feeds to monitor and set polling preferences for each SAP system.</p>
+
+        <div class="system-selector">
+            <h2>Select System</h2>
+            <div class="system-buttons" id="systemButtons">
+                <div class="loading">Loading systems...</div>
+            </div>
+        </div>
+
+        <div id="error" class="error" style="display: none;"></div>
+
+        <div id="feedsContainer" class="feeds-container">
+            <div class="bulk-actions">
+                <button class="btn" id="enableAllBtn">Enable All</button>
+                <button class="btn" id="disableAllBtn">Disable All</button>
+                <button class="btn" id="resetDefaultsBtn">Reset to Defaults</button>
+            </div>
+
+            <div id="feedsList">
+                <div class="loading">Loading feeds...</div>
+            </div>
+
+            <div class="save-section">
+                <div class="save-status" id="saveStatus"></div>
+                <button class="btn btn-primary" id="saveBtn">Save Configuration</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const vscode = acquireVsCodeApi();
+        
+        let state = {
+            systems: [],
+            selectedSystem: null,
+            feeds: [],
+            config: {},
+            loading: false,
+            error: null
+        };
+
+        // Initialize
+        function init() {
+            vscode.postMessage({ command: 'loadSystems' });
+            
+            // Setup event listeners
+            document.getElementById('enableAllBtn').addEventListener('click', () => bulkAction('enableAll'));
+            document.getElementById('disableAllBtn').addEventListener('click', () => bulkAction('disableAll'));
+            document.getElementById('resetDefaultsBtn').addEventListener('click', () => bulkAction('resetDefaults'));
+            document.getElementById('saveBtn').addEventListener('click', saveConfiguration);
+        }
+
+        // Handle messages from extension
+        window.addEventListener('message', event => {
+            const message = event.data;
+            
+            switch (message.command) {
+                case 'systemsLoaded':
+                    state.systems = message.data;
+                    renderSystemButtons();
+                    break;
+                    
+                case 'feedsLoaded':
+                    state.feeds = message.data.feeds;
+                    state.config = message.data.config;
+                    renderFeeds();
+                    break;
+                    
+                case 'saveSuccess':
+                    showSaveStatus('Configuration saved successfully', 'success');
+                    break;
+                    
+                case 'saveError':
+                    showSaveStatus('Failed to save: ' + message.data, 'error');
+                    break;
+                    
+                case 'error':
+                    showError(message.data);
+                    break;
+            }
+        });
+
+        // Render system buttons
+        function renderSystemButtons() {
+            const container = document.getElementById('systemButtons');
+            container.innerHTML = '';
+            
+            if (state.systems.length === 0) {
+                container.innerHTML = '<div class="loading">No connected systems found</div>';
+                return;
+            }
+            
+            state.systems.forEach(systemId => {
+                const btn = document.createElement('button');
+                btn.className = 'system-btn';
+                btn.textContent = systemId;
+                btn.addEventListener('click', () => selectSystem(systemId));
+                container.appendChild(btn);
+            });
+        }
+
+        // Select system
+        function selectSystem(systemId) {
+            state.selectedSystem = systemId;
+            
+            // Update button states
+            document.querySelectorAll('.system-btn').forEach(btn => {
+                btn.classList.toggle('active', btn.textContent === systemId);
+            });
+            
+            // Load feeds for this system
+            document.getElementById('feedsContainer').classList.remove('active');
+            document.getElementById('feedsList').innerHTML = '<div class="loading">Loading feeds...</div>';
+            
+            vscode.postMessage({ 
+                command: 'loadFeeds',
+                data: { systemId }
+            });
+            
+            document.getElementById('feedsContainer').classList.add('active');
+        }
+
+        // Render feeds
+        function renderFeeds() {
+            const container = document.getElementById('feedsList');
+            container.innerHTML = '';
+            
+            if (state.feeds.length === 0) {
+                container.innerHTML = '<div class="loading">No feeds available for this system</div>';
+                return;
+            }
+            
+            state.feeds.forEach(feed => {
+                const feedItem = createFeedItem(feed);
+                container.appendChild(feedItem);
+            });
+        }
+
+        // Create feed item element
+        function createFeedItem(feed) {
+            const feedConfig = state.config[feed.title] || getDefaultConfig(feed);
+            
+            const div = document.createElement('div');
+            div.className = 'feed-item';
+            
+            div.innerHTML = `
+                <div class="feed-header">
+                    <div class="feed-title">
+                        <span class="feed-icon">${escapeHtml(getFeedIcon(feed.feedType))}</span>
+                        <span>${escapeHtml(feed.title)}</span>
+                    </div>
+                    <div class="feed-toggle">
+                        <label class="switch">
+                            <input type="checkbox" ${feedConfig.enabled ? 'checked' : ''} 
+                                   onchange="toggleFeed('${escapeAttr(feed.title)}', this.checked)">
+                            <span class="slider"></span>
+                        </label>
+                        <span id="status-${escapeAttr(feed.title)}">${feedConfig.enabled ? 'Enabled' : 'Disabled'}</span>
+                    </div>
+                </div>
+                
+                <div class="feed-details">
+                    <div class="form-group">
+                        <label for="interval-${escapeAttr(feed.title)}">Polling Interval (seconds)</label>
+                        <input type="number" 
+                               id="interval-${escapeAttr(feed.title)}"
+                               value="${feedConfig.pollingInterval}" 
+                               min="120" 
+                               max="86400"
+                               onchange="updateConfig('${escapeAttr(feed.title)}', 'pollingInterval', parseInt(this.value))">
+                        <span class="help-text">Min: 2 minutes (120s), Max: 24 hours (86400s)</span>
+                        <span class="validation-error" id="interval-error-${escapeAttr(feed.title)}"></span>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label>
+                            <input type="checkbox" 
+                                   ${feedConfig.notifications ? 'checked' : ''}
+                                   onchange="updateConfig('${escapeAttr(feed.title)}', 'notifications', this.checked)">
+                            Show Notifications
+                        </label>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label>
+                            <input type="checkbox" 
+                                   ${feedConfig.useDefaultQuery ? 'checked' : ''}
+                                   onchange="updateConfig('${escapeAttr(feed.title)}', 'useDefaultQuery', this.checked)">
+                            Use Default Query
+                        </label>
+                    </div>
+                    
+                    <div class="form-group full-width">
+                        <label for="query-${escapeAttr(feed.title)}">Custom Query</label>
+                        <textarea id="query-${escapeAttr(feed.title)}"
+                                  ${feedConfig.useDefaultQuery ? 'disabled' : ''}
+                                  onchange="updateConfig('${escapeAttr(feed.title)}', 'query', this.value)">${feedConfig.query || ''}</textarea>
+                        ${feed.queryIsObligatory ? '<span class="help-text">⚠️ This feed requires a query</span>' : ''}
+                        ${feed.queryVariants && feed.queryVariants.length > 0 ? renderQueryVariants(feed) : ''}
+                    </div>
+                </div>
+                
+                <div class="feed-meta">
+                    <div class="feed-meta-item">
+                        <span>📍 Path:</span>
+                        <code>${escapeHtml(feed.href)}</code>
+                    </div>
+                    ${feed.refresh ? `
+                        <div class="feed-meta-item">
+                            <span>🔄 Default Refresh:</span>
+                            <span>${escapeHtml(feed.refresh.value)} ${escapeHtml(feed.refresh.unit)}</span>
+                        </div>
+                    ` : ''}
+                    ${feed.paging ? `
+                        <div class="feed-meta-item">
+                            <span>📄 Page Size:</span>
+                            <span>${escapeHtml(feed.paging)} entries</span>
+                        </div>
+                    ` : ''}
+                </div>
+            `;
+            
+            return div;
+        }
+
+        // Render query variants
+        function renderQueryVariants(feed) {
+            if (!feed.queryVariants || feed.queryVariants.length === 0) return '';
+            
+            let html = '<div class="query-variants"><label>Quick Templates:</label>';
+            feed.queryVariants.forEach(variant => {
+                html += `<button class="variant-btn" onclick="applyQueryVariant('${escapeAttr(feed.title)}', '${escapeAttr(variant.queryString)}')">${escapeHtml(variant.title)}${variant.isDefault ? ' ⭐' : ''}</button>`;
+            });
+            html += '</div>';
+            return html;
+        }
+
+        // Apply query variant
+        function applyQueryVariant(feedTitle, query) {
+            const textarea = document.getElementById(`query-${feedTitle}`);
+            const checkbox = document.getElementById(`useDefaultQuery-${feedTitle}`);
+            
+            if (textarea) {
+                textarea.value = query;
+                textarea.disabled = false;
+                updateConfig(feedTitle, 'query', query);
+            }
+            
+            // Untick "use default query" checkbox when template is selected
+            if (checkbox) {
+                checkbox.checked = false;
+                updateConfig(feedTitle, 'useDefaultQuery', false);
+            }
+        }
+
+        // Get default config for feed
+        function getDefaultConfig(feed) {
+            // Get system's default refresh interval
+            let defaultInterval = feed.refresh 
+                ? convertRefreshToSeconds(feed.refresh.value, feed.refresh.unit)
+                : 120;  // Changed from 300 to 120 (2 minutes)
+            
+            // For ATC, keep the system default (usually 24hrs), otherwise use 120s minimum
+            if (feed.title.toLowerCase().includes('atc')) {
+                // ATC keeps its system default
+                defaultInterval = Math.max(defaultInterval, 120);
+            } else {
+                // Other feeds: default to 120s
+                defaultInterval = 120;
+            }
+            
+            return {
+                enabled: false,
+                pollingInterval: defaultInterval,
+                notifications: true,
+                query: feed.defaultQuery || '',
+                useDefaultQuery: feed.title === 'ABAP Runtime Errors' ? false : true  // Dumps: blank by default
+            };
+        }
+
+        // Convert refresh interval to seconds
+        function convertRefreshToSeconds(value, unit) {
+            switch(unit.toLowerCase()) {
+                case 'seconds': case 'second': return value;
+                case 'minutes': case 'minute': return value * 60;
+                case 'hours': case 'hour': return value * 3600;
+                default: return value * 60; // default to minutes
+            }
+        }
+
+        // Toggle feed
+        function toggleFeed(feedTitle, enabled) {
+            updateConfig(feedTitle, 'enabled', enabled);
+            // Update the status text
+            const statusSpan = document.getElementById(`status-${feedTitle}`);
+            if (statusSpan) {
+                statusSpan.textContent = enabled ? 'Enabled' : 'Disabled';
+            }
+        }
+
+        // Update config
+        function updateConfig(feedTitle, key, value) {
+            if (!state.config[feedTitle]) {
+                const feed = state.feeds.find(f => f.title === feedTitle);
+                state.config[feedTitle] = getDefaultConfig(feed);
+            }
+            
+            state.config[feedTitle][key] = value;
+            
+            // Validate polling interval
+            if (key === 'pollingInterval') {
+                validatePollingInterval(feedTitle, value);
+            }
+            
+            // Handle useDefaultQuery toggle
+            if (key === 'useDefaultQuery') {
+                const textarea = document.getElementById(`query-${feedTitle}`);
+                if (textarea) {
+                    textarea.disabled = value;
+                }
+            }
+        }
+
+        // Validate polling interval
+        function validatePollingInterval(feedTitle, value) {
+            const errorSpan = document.getElementById(`interval-error-${feedTitle}`);
+            const input = document.getElementById(`interval-${feedTitle}`);
+            
+            if (value < 120) {
+                errorSpan.textContent = 'Minimum interval is 2 minutes (120 seconds)';
+                input.style.borderColor = 'var(--vscode-inputValidation-errorBorder)';
+            } else if (value > 86400) {
+                errorSpan.textContent = 'Maximum interval is 24 hours (86400 seconds)';
+                input.style.borderColor = 'var(--vscode-inputValidation-errorBorder)';
+            } else {
+                errorSpan.textContent = '';
+                input.style.borderColor = '';
+            }
+        }
+
+        // Bulk actions
+        function bulkAction(action) {
+            state.feeds.forEach(feed => {
+                if (!state.config[feed.title]) {
+                    state.config[feed.title] = getDefaultConfig(feed);
+                }
+                
+                switch(action) {
+                    case 'enableAll':
+                        state.config[feed.title].enabled = true;
+                        break;
+                    case 'disableAll':
+                        state.config[feed.title].enabled = false;
+                        break;
+                    case 'resetDefaults':
+                        state.config[feed.title] = getDefaultConfig(feed);
+                        break;
+                }
+            });
+            
+            renderFeeds();
+        }
+
+        // Save configuration
+        function saveConfiguration() {
+            // Validate all intervals
+            let hasErrors = false;
+            state.feeds.forEach(feed => {
+                const config = state.config[feed.title];
+                if (config) {
+                    if (config.pollingInterval < 120 || config.pollingInterval > 86400) {
+                        hasErrors = true;
+                    }
+                }
+            });
+            
+            if (hasErrors) {
+                showSaveStatus('Please fix validation errors before saving', 'error');
+                return;
+            }
+            
+            vscode.postMessage({
+                command: 'saveConfig',
+                data: {
+                    systemId: state.selectedSystem,
+                    config: state.config
+                }
+            });
+            
+            showSaveStatus('Hang on..Saving...', '');
+        }
+
+        // Show save status
+        function showSaveStatus(message, type) {
+            const status = document.getElementById('saveStatus');
+            status.textContent = message;
+            status.className = 'save-status ' + type;
+            
+            if (type) {
+                setTimeout(() => {
+                    status.textContent = '';
+                    status.className = 'save-status';
+                }, 3000);
+            }
+        }
+
+        // Show error
+        function showError(message) {
+            const errorDiv = document.getElementById('error');
+            errorDiv.textContent = message;
+            errorDiv.style.display = 'block';
+            
+            setTimeout(() => {
+                errorDiv.style.display = 'none';
+            }, 5000);
+        }
+
+        // Utility functions
+        function escapeHtml(str) {
+            if (str === undefined || str === null) return '';
+            return String(str)
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;')
+                .replace(/'/g, '&#039;');
+        }
+        
+        function escapeAttr(str) {
+            if (str === undefined || str === null) return '';
+            const s = String(str);
+            if (s === undefined || typeof s !== 'string') return '';
+            return s.replace(/'/g, "\\'").replace(/"/g, '\\"');
+        }
+
+        function getFeedIcon(feedType) {
+            const icons = {
+                'dumps': '💥',
+                'atc': '✅',
+                'gateway_error': '🌐',
+                'system_messages': 'ℹ️',
+                'uri_errors': '🔗',
+                'rap_contract': '🛡️',
+                'eee_error': '📡',
+                'unknown': '📰'
+            };
+            return icons[feedType] || icons['unknown'];
+        }
+
+        // Initialize on load
+        init();
+    </script>
+</body>
+</html>
+

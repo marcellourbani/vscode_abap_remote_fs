@@ -17,7 +17,8 @@ import { ADTClient } from "abap-adt-api"
 import { getClient, ADTSCHEME } from "./conections"
 import { findAbapObject } from "./operations/AdtObjectFinder"
 
-const ok = (type: string, name: string) => `${type.toUpperCase()} ${name.toUpperCase()}`
+const ok = (type: string, name: string) =>
+  `${type.toUpperCase()} ${name.toUpperCase()}`
 
 interface CallParams {
   url: string
@@ -83,7 +84,12 @@ function hierCache(client: ADTClient) {
 }
 
 const CLASSREGEX = /^\s*((?:class)|(?:interface))\s+((?:\/\w+\/)?\w+)/i
-const refreshHier = (uri: Uri, key: string, title: string, parents = false) => ({
+const refreshHier = (
+  uri: Uri,
+  key: string,
+  title: string,
+  parents = false
+) => ({
   command: AbapFsCommands.refreshHierarchy,
   title,
   arguments: [
@@ -115,7 +121,9 @@ export class ClassHierarchyLensProvider implements CodeLensProvider {
     if (!this.instance) this.instance = new ClassHierarchyLensProvider()
     return this.instance
   }
-  private static caches = cache((connId: string) => hierCache(getClient(connId)))
+  private static caches = cache((connId: string) =>
+    hierCache(getClient(connId))
+  )
   public async provideCodeLenses(doc: TextDocument, token: CancellationToken): Promise<CodeLens[]> {
     const lenses: CodeLens[] = []
     if (doc.uri.scheme !== ADTSCHEME) return lenses
@@ -162,10 +170,16 @@ export class ClassHierarchyLensProvider implements CodeLensProvider {
       }
       if (children.length)
         lenses.push(
-          new CodeLens(new Range(position, endpos), pickObj(doc.uri.authority, key, "Select Child"))
+          new CodeLens(
+            new Range(position, endpos),
+            pickObj(doc.uri.authority, key, "Select Child")
+          )
         )
       lenses.push(
-        new CodeLens(new Range(position, endpos), refreshHier(doc.uri, key, "Refresh Children"))
+        new CodeLens(
+          new Range(position, endpos),
+          refreshHier(doc.uri, key, "Refresh Children")
+        )
       )
     }
 
@@ -194,13 +208,17 @@ export class ClassHierarchyLensProvider implements CodeLensProvider {
   private static refreshHier(p: RefreshParams) {
     const targ = p.parents ? "parent" : "child"
     const title = `Loading ${targ} classes...`
-    window.withProgress({ location: ProgressLocation.Window, title }, async () => {
-      const ocache = ClassHierarchyLensProvider.caches.get(p.connId)(p.key)
-      const result = await (p.parents
-        ? ocache.refreshParents(p.key, true)
-        : ocache.refreshChildren(p.key, true))
-      if (!result || !result.length) window.showInformationMessage(`No ${targ} found`)
-      ClassHierarchyLensProvider.emitter.fire()
-    })
+    window.withProgress(
+      { location: ProgressLocation.Notification, title },
+      async () => {
+        const ocache = ClassHierarchyLensProvider.caches.get(p.connId)(p.key)
+        const result = await (p.parents
+          ? ocache.refreshParents(p.key, true)
+          : ocache.refreshChildren(p.key, true))
+        if (!result || !result.length)
+          window.showInformationMessage(`No ${targ} found`)
+        ClassHierarchyLensProvider.emitter.fire()
+      }
+    )
   }
 }

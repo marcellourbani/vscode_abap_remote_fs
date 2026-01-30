@@ -33,19 +33,19 @@ const abaplint = `{
 
 const agentsMD = `# AGENTS.md
 
-This folder is a virtual filesystem used by the ABAP Remote FS extension to allow editing code stored on a server.
-CLI tools like grep,ls,find find and others can't operate on these files
-most standard search tool won't work either
-You're still able to read and write files normally, and to navigate the filesystem, but should do it sparingly as it's rather slow
+This folder is a virtual filesystem used by the ABAP FS extension to allow editing code stored on a server.
+CLI tools like grep, ls, find and others can't operate on these files.
+Most standard search tools won't work either.
+You're still able to read and write files normally, and to navigate the filesystem, but should do it sparingly as it's rather slow.
 
-**CRITICAL** always use tool abap_search to search ABAP code, never use standard tools that operate on the filesystem, like grep, fileSearch or lietDirectory in this folder.
+**CRITICAL** always use tool abap_search to search ABAP code, never use standard tools that operate on the filesystem, like grep, fileSearch or listDirectory in this folder.
 
-The best way to find out if a class works correctly is running unit tests with tool abap_unit
+The best way to find out if a class works correctly is running unit tests with tool abap_unit.
 
-**CRITICAL** files need to be locked before they get saved. Always wait a second between modifying a file and saving it
+**CRITICAL** files need to be locked before they get saved. Always wait a second between modifying a file and saving it.
 
 **CRITICAL** file changes are only relevant once activated. Always activate files after writing them. 
-Note that you might have to modify several includes before you can activate them
+Note that you might have to modify several includes before you can activate them.
 `
 
 export const templates: Template[] = [

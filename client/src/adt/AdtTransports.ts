@@ -1,4 +1,5 @@
-import { window, ProgressLocation, CancellationToken, Uri } from "vscode"
+import { ProgressLocation, CancellationToken, Uri } from "vscode"
+import { funWindow as window } from "../services/funMessenger"
 import { ADTClient, TransportInfo } from "abap-adt-api"
 import { fieldOrder, withp } from "../lib"
 import { TransportValidator } from "../api"
@@ -9,7 +10,10 @@ export interface TransportSelection {
   cancelled: boolean
   transport: string
 }
-export const trSel = (transport: string, cancelled: boolean = false): TransportSelection => ({
+export const trSel = (
+  transport: string,
+  cancelled: boolean = false
+): TransportSelection => ({
   cancelled,
   transport
 })
@@ -31,7 +35,9 @@ async function selectOrCreate(
   const selection = await window.showQuickPick(
     [
       CREATENEW,
-      ...tranInfo.TRANSPORTS.sort(fieldOrder("TRKORR", true)).map(t => `${t.TRKORR} ${t.AS4TEXT}`)
+      ...tranInfo.TRANSPORTS.sort(fieldOrder("TRKORR", true)).map(
+        t => `${t.TRKORR} ${t.AS4TEXT}`
+      )
     ],
     { ignoreFocusOut: true }
   )
@@ -44,7 +50,12 @@ async function selectOrCreate(
     })
     if (!text) return trSel("", true)
     return trSel(
-      await client.createTransport(objContentPath, text, tranInfo.DEVCLASS, transportLayer)
+      await client.createTransport(
+        objContentPath,
+        text,
+        tranInfo.DEVCLASS,
+        transportLayer
+      )
     )
   } else return trSel(selection.split(" ")[0] || "")
 }
@@ -57,7 +68,11 @@ export async function selectTransport(
   current: string | TransportStatus = "",
   transportLayer = ""
 ): Promise<TransportSelection> {
-  const ti = await client.transportInfo(objContentPath, devClass, forCreation ? "I" : "")
+  const ti = await client.transportInfo(
+    objContentPath,
+    devClass,
+    forCreation ? "I" : ""
+  )
   // if I have a lock return the locking transport
   // will probably be a task but should be fine
 
@@ -69,15 +84,27 @@ export async function selectTransport(
   // if local, return an empty value
   if (ti.DLVUNIT === "LOCAL") return trSel("")
 
-  let selection = await selectOrCreate(ti, objContentPath, client, transportLayer)
+  let selection = await selectOrCreate(
+    ti,
+    objContentPath,
+    client,
+    transportLayer
+  )
   if (!selection.cancelled)
-    selection = await validate(selection.transport, ti.OBJECT, ti.OBJECTNAME, devClass)
+    selection = await validate(
+      selection.transport,
+      ti.OBJECT,
+      ti.OBJECTNAME,
+      devClass
+    )
   return selection
 }
 
 const failedMsg = (token?: CancellationToken) => {
   if (!token?.isCancellationRequested)
-    window.showInformationMessage(`Operation cancelled due to failed transport validation`)
+    window.showInformationMessage(
+      `Operation cancelled due to failed transport validation`
+    )
 }
 const ACCEPT = "Accept"
 const CANCEL = "Cancel"
@@ -87,11 +114,14 @@ const onFailed = async (transport: string) =>
   window.showInformationMessage(`Validation failed`, ACCEPT, CANCEL, CONTINUE)
 
 const onSkipped = async (transport: string) =>
-  window
-    .showInformationMessage(`Accept transport?`, ACCEPT, CANCEL)
-    .then(r => (r === ACCEPT ? trSel(transport) : trSel("", true)))
+  window.showInformationMessage(`Accept transport?`, ACCEPT, CANCEL).then(r => r === ACCEPT ? trSel(transport) : trSel("", true))
 
-const validate = async (transport: string, type: string, name: string, devClass: string) => {
+const validate = async (
+  transport: string,
+  type: string,
+  name: string,
+  devClass: string
+) => {
   if (transportValidators.length > 0)
     return await withp(
       `validating transport ${transport}`,
@@ -100,7 +130,13 @@ const validate = async (transport: string, type: string, name: string, devClass:
           if (token?.isCancellationRequested) return trSel("", true)
 
           try {
-            const outcome = await validator(transport, type, name, devClass, token)
+            const outcome = await validator(
+              transport,
+              type,
+              name,
+              devClass,
+              token
+            )
             if (!outcome) {
               if (token?.isCancellationRequested) return onSkipped(transport)
               failedMsg(token)
@@ -151,13 +187,16 @@ export const selectTransportIfNeeded = async (uri: Uri) => {
   const root = uriRoot(uri)
   const file = root.getNode(uri.path)
   if (!isAbapStat(file)) return trSel("")
+
   const status = transportStatus(uri)
   switch (status.status) {
     case TransportStatus.LOCAL:
       return trSel("")
     case TransportStatus.REQUIRED:
       const { transport } = status
-      const path = isAbapFolder(file) ? file.object.path : file.object.contentsPath()
+      const path = isAbapFolder(file)
+        ? file.object.path
+        : file.object.contentsPath()
       const client = getClient(uri.authority)
       const trsel = await selectTransport(path, "", client, false, transport)
       if (trsel.cancelled) throw new Error("Transport required")

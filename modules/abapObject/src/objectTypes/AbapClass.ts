@@ -32,7 +32,7 @@ export class AbapClass extends AbapObjectBase {
     return this.structure
   }
 
-  public async childComponents(): Promise<NodeStructure> {
+  public async childComponents(includeIncludes?: boolean): Promise<NodeStructure> {
     const nodes: Node[] = []
     const structure = this.structure || (await this.loadStructure())
     const sources = ADTClient.classIncludes(structure)

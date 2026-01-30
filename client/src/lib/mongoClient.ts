@@ -76,16 +76,28 @@ class MongoClient {
     return `abapfs_${name.replace(/[\\\/\*\?\"<>\|\s,#]/g, "_").toLowerCase()}`
   }
   constructor(name: string, mongoUrl: string) {
-    this.connection = connect(`${mongoUrl.replace(/\/$/, "")}/${this.formatDbName(name)}`).then(
-      async mongo => {
-        mongo.model(CALLLOG, callSchema)
-        mongo.model(HTTPLOG, httpSchema)
-        return mongo
-      }
-    )
+    this.connection = connect(
+      `${mongoUrl.replace(/\/$/, "")}/${this.formatDbName(name)}`
+    ).then(async mongo => {
+      mongo.model(CALLLOG, callSchema)
+      mongo.model(HTTPLOG, httpSchema)
+      return mongo
+    })
   }
-  private toCallLog(call: MethodCall, source: string, statelessClone: boolean): CallLog {
-    const { methodName, callType, start, duration, failed, resolvedPromise, ...callDetails } = call
+  private toCallLog(
+    call: MethodCall,
+    source: string,
+    statelessClone: boolean
+  ): CallLog {
+    const {
+      methodName,
+      callType,
+      start,
+      duration,
+      failed,
+      resolvedPromise,
+      ...callDetails
+    } = call
     return {
       start,
       callType,
@@ -129,7 +141,11 @@ class MongoClient {
   public httpLog(data: LogData, source: Sources) {
     this.connection.then(async mongo => {
       const request = this.toHttpRequest(data, source)
-      const { headers: responseHeaders, statusCode, body: responseBody } = data.response
+      const {
+        headers: responseHeaders,
+        statusCode,
+        body: responseBody
+      } = data.response
       const response: HttpLog = {
         ...request,
         statusCode,
@@ -151,12 +167,17 @@ const mongoClients = cache((name: string) => {
   return new MongoClient(conf.name, mongoUrl)
 })
 
-export const mongoApiLogger = (name: string, source: string, clone: boolean) => {
+export const mongoApiLogger = (
+  name: string,
+  source: string,
+  clone: boolean
+) => {
   const mongo = mongoClients.get(name)
   if (mongo) return (call: MethodCall) => mongo.log(call, source, clone)
 }
 
 export const mongoHttpLogger = (name: string, source: Sources): LogCallback | undefined => {
   const mongo = mongoClients.get(name)
-  if (mongo) return (data: LogData) => mongo.httpLog(data, source)
+  if (mongo)
+    return (data: LogData) => mongo.httpLog(data, source)
 }

@@ -1,0 +1,49 @@
+{
+  "_comment": "=== SAP SYSTEM WHITELIST CONFIGURATION ===",
+  "_usage": "This file controls which SAP systems and users can connect to SAP with ABAP FS",
+  "_telemetry": "It also enables telemetry developer grouping - multiple user IDs of SAME person are grouped together in analytics",
+  "_allowedDomains": "Wildcard patterns for allowed SAP system hostnames and ADT domains (case-insensitive matching)",
+  "_developers_purpose": "Each developer object represents ONE person with their multiple user IDs across different systems",
+  "_developers_grouping": "All userIds within one developer object will be tracked as the SAME person in telemetry (anonimized)",
+  "_warning": "DO NOT mix different people's IDs in one developer object - this will incorrectly group them as one person!",
+  "_example_john": "If John has IDs 'john.doe', 'j0d0o3e', 'john.d' - put all THREE in one developer object",
+  "_example_wrong": "WRONG: Putting John's and Jane's IDs together in one developer object",
+  
+  "version": {
+    "minimumExtensionVersion": "1.2.3"
+  },
+  
+  "allowedDomains": [
+    "*sapdev*",
+    "*sapqa*",
+    "*sapprd*",
+    "*saptest*"
+  ],
+  
+  "developers": [
+    {
+      "manager": "Team_Lead_Name",
+      "userIds": [
+        "john.doe",
+        "j0d0o3e",
+        "john.d"
+      ]
+    },
+    {
+      "manager": "Another_Manager",
+      "userIds": [
+        "jane.smith",
+        "j0s0m1h"
+      ]
+    },
+    {
+      "manager": "Third_Manager",
+      "userIds": [
+        "bob.jones",
+        "b0j0n2s",
+        "robert.jones"
+      ]
+    }
+  ]
+}
+

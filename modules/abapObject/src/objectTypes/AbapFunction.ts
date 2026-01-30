@@ -21,9 +21,15 @@ export class AbapFunction extends AbapObjectBase {
   ) {
     super(type, name, path, expandable, techName, parent, sapGuiUri, client)
     if (parent?.type !== "FUGR/F")
-      throw ObjectErrors.Invalid(this, "Parent function group is required for function modules")
+      throw ObjectErrors.Invalid(
+        this,
+        "Parent function group is required for function modules"
+      )
     if (!this.path.toLowerCase().startsWith(parent.path.toLowerCase()))
-      throw ObjectErrors.Invalid(this, `Function ${name} doesn't belong to group ${parent.name}`)
+      throw ObjectErrors.Invalid(
+        this,
+        `Function ${name} doesn't belong to group ${parent.name}`
+      )
 
     this.parent = parent
   }

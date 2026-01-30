@@ -22,19 +22,24 @@ export type LockStatus = Locked | Unlocked | Locking | Unlocking
 export const delay = (t: number) => new Promise(r => setTimeout(r, t))
 
 export class LockObject {
-  constructor(private object: AbapObject, private service: AbapFsService) {}
+  constructor(private object: AbapObject, private service: AbapFsService) { }
   get key() {
     return this.object.key
   }
 
   status: LockStatus = { status: "unlocked" }
   public get pending() {
-    if (this.status.status === "locking") return this.status.locked.then(() => undefined)
-    if (this.status.status === "unlocking") return this.status.unlocked.then(() => undefined)
+    if (this.status.status === "locking")
+      return this.status.locked.then(() => undefined)
+    if (this.status.status === "unlocking")
+      return this.status.unlocked.then(() => undefined)
   }
   get finalStatus() {
     const fs = async (): Promise<Locked | Unlocked> => {
-      while (this.status.status === "locking" || this.status.status === "unlocking") {
+      while (
+        this.status.status === "locking" ||
+        this.status.status === "unlocking"
+      ) {
         await this.pending
       }
       return this.status
@@ -74,7 +79,10 @@ export class LockObject {
   private async unlock() {
     if (this.status.status === "locked") {
       const prevState = this.status
-      const unlocked = this.service.unlock(this.object.lockObject.path, this.status.LOCK_HANDLE)
+      const unlocked = this.service.unlock(
+        this.object.lockObject.path,
+        this.status.LOCK_HANDLE
+      )
       this.status = {
         ...this.status,
         status: "unlocking",
@@ -84,8 +92,7 @@ export class LockObject {
         await unlocked
         this.status = { status: "unlocked" }
       } catch (error) {
-        if (isCsrfError(error)) {
-        }
+        if (isCsrfError(error)) { }
         this.status = prevState
         throw error
       }

@@ -1,5 +1,9 @@
 import { caughtToString, isAbap, parts } from "./functions"
-import { DocumentSymbolParams, DocumentSymbol, SymbolKind } from "vscode-languageserver"
+import {
+  DocumentSymbolParams,
+  DocumentSymbol,
+  SymbolKind
+} from "vscode-languageserver"
 import { clientAndObjfromUrl, rangeFromUri } from "./utilities"
 import { ClassComponent, Link } from "abap-adt-api"
 import { log } from "./clientManager"
@@ -50,7 +54,9 @@ function convertComponent(comp: ClassComponent, definition: boolean) {
 
   const mainLink = definition ? dLink : iLink
   const suffix =
-    (definition && iLink && " definition") || (!definition && dLink && " implementation") || ""
+    (definition && iLink && " definition") ||
+    (!definition && dLink && " implementation") ||
+    ""
 
   const range = mainLink && rangeFromUri(mainLink.href)
   if (range) {
@@ -74,7 +80,8 @@ function convertComponent(comp: ClassComponent, definition: boolean) {
 function filterComp(comp: ClassComponent, part: string): ClassComponent[] {
   const components: ClassComponent[] = []
   const linkfilter = (p: string) => (l: Link) => l.href.indexOf(p) >= 0
-  const hasPart = (c: ClassComponent, p: string) => !!c.links.find(linkfilter(p))
+  const hasPart = (c: ClassComponent, p: string) =>
+    !!c.links.find(linkfilter(p))
   const filterPart = (c: ClassComponent, p: string) => {
     const newc = { ...c }
     newc.links = c.links.filter(linkfilter(p))
@@ -105,8 +112,10 @@ export async function documentSymbols(params: DocumentSymbolParams) {
       const component = await co.client.statelessClone.classComponents(classUri)
       const localComp = filterComp(component, part)
 
-      for (const sym of localComp.map(c => convertComponent(c, true))) if (sym) symbols.push(sym)
-      for (const sym of localComp.map(c => convertComponent(c, false))) if (sym) symbols.push(sym)
+      for (const sym of localComp.map(c => convertComponent(c, true)))
+        if (sym) symbols.push(sym)
+      for (const sym of localComp.map(c => convertComponent(c, false)))
+        if (sym) symbols.push(sym)
     }
   } catch (e) {
     log("Exception in document symbol:", caughtToString(e)) // ignore

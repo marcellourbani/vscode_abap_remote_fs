@@ -7,7 +7,8 @@ const GITSCHEME = "ABAPGIT"
 
 class GitDocProvider implements TextDocumentContentProvider {
   async provideTextDocumentContent(uri: Uri) {
-    if (uri.scheme !== GITSCHEME) throw new Error(`Unexpected URI scheme ${uri.scheme}`)
+    if (uri.scheme !== GITSCHEME)
+      throw new Error(`Unexpected URI scheme ${uri.scheme}`)
     const { key = "", path = "" } = JSON.parse(atob(uri.query)) as {
       path: string
       key: string
@@ -17,10 +18,7 @@ class GitDocProvider implements TextDocumentContentProvider {
     if (!key || !path || !gitScm) throw new Error(`Invalid URL`)
     const client = getClient(uri.authority)
     const { user, password } = gitScm.credentials || {}
-    return client.getObjectSource(path.replace(/#/g, "%23"), {
-      gitUser: user,
-      gitPassword: password
-    })
+    return client.getObjectSource(path.replace(/#/g, "%23"), { gitUser: user, gitPassword: password })
   }
 }
 

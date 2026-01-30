@@ -1,4 +1,5 @@
-import { window, ViewColumn, Uri } from "vscode"
+import { ViewColumn, Uri } from "vscode"
+import { funWindow as window } from "../services/funMessenger"
 import { ADTSCHEME, getClient } from "../adt/conections"
 import { AdtObjectFinder, findAbapObject } from "../adt/operations/AdtObjectFinder"
 import { injectUrlHandler } from "./utilities"
@@ -13,12 +14,21 @@ export async function showAbapDoc() {
   const client = getClient(uri.authority)
   const obj = await findAbapObject(uri)
   const doc = await client
-    .abapDocumentation(obj.path, editor.document.getText(), sel.line + 1, sel.character + 1)
+    .abapDocumentation(
+      obj.path,
+      editor.document.getText(),
+      sel.line + 1,
+      sel.character + 1
+    )
     .then(injectUrlHandler)
-  const panel = window.createWebviewPanel(ABAPDOC, "ABAP documentation", ViewColumn.Beside, {
-    enableScripts: true,
-    enableFindWidget: true
-  })
+  const panel = window.createWebviewPanel(
+    ABAPDOC,
+    "ABAP documentation",
+    ViewColumn.Beside,
+    {
+      enableScripts: true, enableFindWidget: true
+    }
+  )
 
   panel.webview.onDidReceiveMessage(async message => {
     switch (message.command) {
@@ -26,7 +36,8 @@ export async function showAbapDoc() {
         const url = Uri.parse(message.uri)
         if (url.scheme.toLowerCase() === "adt") {
           new AdtObjectFinder(uri.authority).displayAdtUri(message.uri)
-        } else {
+        }
+        else {
           const text = await client.httpClient.request(`${url.path}?${url.query}`)
           panel.webview.html = injectUrlHandler(text.body)
         }

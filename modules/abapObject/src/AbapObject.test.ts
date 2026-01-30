@@ -48,7 +48,10 @@ function neverCalled(client: MockProxy<AbapObjectService>, numbers?: Counts) {
   expect(client.setObjectSource).toBeCalledTimes(counts.setObjectSource)
 }
 
-async function packageAssertions(cut: AbapObject, client: MockProxy<AbapObjectService>) {
+async function packageAssertions(
+  cut: AbapObject,
+  client: MockProxy<AbapObjectService>
+) {
   expect(cut.expandable).toBeTruthy()
   expect(cut.canBeWritten).toBeFalsy()
   await expectException(() => cut.contentsPath(), "NotLeaf")
@@ -63,12 +66,17 @@ async function packageAssertions(cut: AbapObject, client: MockProxy<AbapObjectSe
   expect(client.nodeContents).toBeCalledTimes(1)
   const found = result.nodes.find(n => n.OBJECT_NAME === "ZALV_EXAMPLE_1_BASIC")
   expect(found).toBeTruthy()
-  const type = result.objectTypes.find(t => t.OBJECT_TYPE === found?.OBJECT_TYPE)
+  const type = result.objectTypes.find(
+    t => t.OBJECT_TYPE === found?.OBJECT_TYPE
+  )
   expect(type?.CATEGORY_TAG).toBeTruthy()
   expect(type?.OBJECT_TYPE_LABEL).toBeTruthy()
 }
 
-async function unsupportedAssertions(cut: AbapObject, client: MockProxy<AbapObjectService>) {
+async function unsupportedAssertions(
+  cut: AbapObject,
+  client: MockProxy<AbapObjectService>
+) {
   expect(cut.expandable).toBeFalsy()
   expect(cut.canBeWritten).toBeFalsy()
   await expectException(() => cut.contentsPath(), "NotSupported")
@@ -135,7 +143,8 @@ async function supportedFileAssertions(
   expect(source).toBe(sample)
   cut.write("", "", "")
   expect(client.setObjectSource).toBeCalledTimes(1)
-  if (checkinvalidate) expect(client.invalidateStructCache).toBeCalledTimes(2)
+  if (checkinvalidate)
+    expect(client.invalidateStructCache).toBeCalledTimes(2)
 }
 
 test("create $TMP package", async () => {
@@ -241,9 +250,8 @@ const classMetaData = () => {
   let old
   do {
     old = cur
-    cur = cur
-      .replace(/ZCL_ABAPGIT_USER_EXIT/, "ZCL_Z001_DPC_EXT")
-      .replace(/zcl_abapgit_user_exit/, "zcl_z001_dpc_ext")
+    cur = cur.replace(/ZCL_ABAPGIT_USER_EXIT/, "ZCL_Z001_DPC_EXT").replace(/zcl_abapgit_user_exit/, "zcl_z001_dpc_ext")
+
   } while (old !== cur)
   return JSON.parse(cur)
 }

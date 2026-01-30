@@ -14,7 +14,7 @@
   "license": "MIT",
   "devDependencies": {
     "method-call-logger": "^1.0.7",
-    "abap-adt-api": "^6.2.1",
+    "abap-adt-api": "^7.0.0",
     "typescript": "^4.9.4"
   }
 }

@@ -1,4 +1,9 @@
-import { CompletionParams, CompletionItem, CompletionList, Position } from "vscode-languageserver"
+import {
+  CompletionParams,
+  CompletionItem,
+  CompletionList,
+  Position
+} from "vscode-languageserver"
 import { clientAndObjfromUrl, ClientAndObject } from "./utilities"
 import { log } from "./clientManager"
 import { isAbap, callThrottler, isCdsView, caughtToString } from "./functions"
@@ -6,9 +11,15 @@ import { CompletionProposal, ADTClient } from "abap-adt-api"
 import { cdsCompletionExtractor } from "./cdsSyntax"
 import { formatItem } from "./completionutils"
 
-const completionKey = (url: string, p: Position) => `${url} ${p.line} ${p.character}`
+const completionKey = (url: string, p: Position) =>
+  `${url} ${p.line} ${p.character}`
 const throttler = callThrottler<CompletionProposal[]>()
-const proposals = (client: ADTClient, url: string, p: Position, source: string) => {
+const proposals = (
+  client: ADTClient,
+  url: string,
+  p: Position,
+  source: string
+) => {
   const key = completionKey(url, p)
   return throttler(key, () =>
     client.codeCompletion(url, source, p.line + 1, p.character).catch(e => {
@@ -38,7 +49,9 @@ async function cdsCompletion(co: ClientAndObject, pos: Position) {
     const elements = await client.ddicRepositoryAccess(`${prefix}*`)
     for (const element of elements) add(element.name)
   } else if (sources.length) {
-    const elements = await client.ddicRepositoryAccess(sources.map(s => `${s}.`))
+    const elements = await client.ddicRepositoryAccess(
+      sources.map(s => `${s}.`)
+    )
     for (const element of elements) {
       if (element.name.startsWith(prefix)) add(element.name)
       else {
@@ -56,8 +69,10 @@ export async function completion(params: CompletionParams) {
     const co = await clientAndObjfromUrl(params.textDocument.uri)
     if (!co) return items
 
-    if (isAbap(params.textDocument.uri)) items = await abapCompletion(co, params.position)
-    if (isCdsView(params.textDocument.uri)) items = await cdsCompletion(co, params.position)
+    if (isAbap(params.textDocument.uri))
+      items = await abapCompletion(co, params.position)
+    if (isCdsView(params.textDocument.uri))
+      items = await cdsCompletion(co, params.position)
     const isInComplete = (compl: CompletionItem[]) => {
       if (compl.length > 10) return true
       if (compl.length === 0) return false

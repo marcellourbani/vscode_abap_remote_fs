@@ -34,12 +34,13 @@ export class AbapQuickDiff implements QuickDiffProvider {
     const revisions = await service.uriRevisions(uri, false)
     if (!revisions || revisions.length < 2) return
     const reference =
-      revisions.find(r => toMs(revisions[0]!.date) - toMs(r.date) > 90000) || revisions[1]!
+      revisions.find(r => toMs(revisions[0]!.date) - toMs(r.date) > 90000) ||
+      revisions[1]!
     if (!reference) return
     this.currents.set(uritxt, reference)
     return quickDiffUri(uri)
   }
-  private constructor() {}
+  private constructor() { }
   private static instance: AbapQuickDiff | undefined
   private currents = new Map<string, Revision>()
 }

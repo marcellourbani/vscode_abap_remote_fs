@@ -10,8 +10,7 @@ import {
   workspace,
   FileChangeType,
   RelativePattern,
-  FileSystemWatcher,
-  FilePermission
+  FileSystemWatcher
 } from "vscode"
 import { LocalStorage } from "./localStorage"
 import { ADTSCHEME } from "../adt/conections"
@@ -19,10 +18,12 @@ import { templates } from "./initialtemplates"
 
 export class LocalFsProvider implements FileSystemProvider {
   private localStorage: LocalStorage
+  
   constructor(private readonly context: ExtensionContext) {
-    if (!context.storageUri) throw new Error("Storage URI is required for LocalFsProvider")
-    this.localStorage = new LocalStorage(context.storageUri)
+    // Use globalStorageUri - always available, shared across workspaces
+    this.localStorage = new LocalStorage(context.globalStorageUri)
   }
+  
   public static useLocalStorage(uri: Uri): boolean {
     if (uri.scheme !== ADTSCHEME) return false
     const templatenames = templates.map(t => `/${t.name}`)
@@ -64,6 +65,7 @@ export class LocalFsProvider implements FileSystemProvider {
       watcher?.dispose()
     })
   }
+  
   public get onDidChangeFile() {
     return this.pEventEmitter.event
   }
@@ -73,6 +75,7 @@ export class LocalFsProvider implements FileSystemProvider {
     const resolved = await this.localStorage.resolveUri(uri)
     return workspace.fs.stat(resolved)
   }
+  
   async readDirectory(uri: Uri): Promise<[string, FileType][]> {
     try {
       const resolved = await this.localStorage.resolveUri(uri)
@@ -82,13 +85,16 @@ export class LocalFsProvider implements FileSystemProvider {
       return []
     }
   }
+  
   async createDirectory(uri: Uri): Promise<void> {
     const resolved = await this.localStorage.resolveUri(uri)
     await workspace.fs.createDirectory(resolved)
   }
+  
   async readFile(uri: Uri): Promise<Uint8Array> {
     return this.localStorage.resolveUri(uri).then(r => workspace.fs.readFile(r))
   }
+  
   async writeFile(
     uri: Uri,
     content: unknown,
@@ -97,10 +103,12 @@ export class LocalFsProvider implements FileSystemProvider {
     const resolved = await this.localStorage.resolveUri(uri)
     await workspace.fs.writeFile(resolved, content as Uint8Array)
   }
+  
   async delete(uri: Uri, options?: { recursive?: boolean } | unknown): Promise<void> {
     const resolved = await this.localStorage.resolveUri(uri)
     await workspace.fs.delete(resolved, options as any)
   }
+  
   async rename(
     olduri: Uri,
     newuri: Uri,
@@ -110,6 +118,7 @@ export class LocalFsProvider implements FileSystemProvider {
     const rNew = await this.localStorage.resolveUri(newuri)
     await workspace.fs.rename(rOld, rNew, options as any)
   }
+  
   async copy?(source: Uri, destination: Uri, options?: { overwrite?: boolean }): Promise<void> {
     const rSrc = await this.localStorage.resolveUri(source)
     const rDst = await this.localStorage.resolveUri(destination)

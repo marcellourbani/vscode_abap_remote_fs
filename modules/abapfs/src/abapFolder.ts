@@ -1,7 +1,12 @@
 import { FileStat, FileSystemError } from "vscode"
 import { AbapObject, PACKAGE, fromNode, convertSlash } from "../../abapObject"
 import { Folder, isFolder } from "./folder"
-import { NodeStructure, Node, NodeObjectType, isCreatableTypeId } from "abap-adt-api"
+import {
+  NodeStructure,
+  Node,
+  NodeObjectType,
+  isCreatableTypeId
+} from "abap-adt-api"
 import { AbapFile, isAbapFile } from "./abapFile"
 import { AbapFsService, isAbapStat } from "."
 
@@ -20,7 +25,8 @@ const subFolder = (parent: Folder, label?: string): Folder => {
   label = convertSlash(label)
   const child = parent.get(label)
   if (isFolder(child)) return child
-  if (child) throw FileSystemError.FileNotADirectory("Name clash between abap objects")
+  if (child)
+    throw FileSystemError.FileNotADirectory("Name clash between abap objects")
   const newChild = new Folder()
   parent.set(label, newChild, false)
   return newChild
@@ -36,17 +42,21 @@ export class AbapFolder extends Folder {
     super()
   }
   get ctime() {
-    if (this.object.structure) return this.object.structure.metaData["adtcore:createdAt"]
+    if (this.object.structure)
+      return this.object.structure.metaData["adtcore:createdAt"]
     return 0
   }
   get mtime() {
-    if (this.object.structure) return this.object.structure.metaData["adtcore:changedAt"]
+    if (this.object.structure)
+      return this.object.structure.metaData["adtcore:changedAt"]
     return 0
   }
 
   delete(lockId: string, transport: string) {
     if (!isCreatableTypeId(this.object.type))
-      throw FileSystemError.NoPermissions("Only allowed to delete abap objects can be created")
+      throw FileSystemError.NoPermissions(
+        "Only allowed to delete abap objects can be created"
+      )
     return this.object.delete(lockId, transport)
   }
 
@@ -89,7 +99,8 @@ export class AbapFolder extends Folder {
     for (const child of this.expandPath(pathPrefix))
       if (isAbapStat(child.file)) {
         const obj = child.file.object
-        if (obj.path === url || (obj.type === type && obj.name === name)) return child
+        if (obj.path === url || (obj.type === type && obj.name === name))
+          return child
       }
   }
 }

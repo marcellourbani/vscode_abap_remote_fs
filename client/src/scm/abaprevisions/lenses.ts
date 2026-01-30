@@ -1,4 +1,11 @@
-import { CodeLensProvider, TextDocument, EventEmitter, Uri, Range, CodeLens } from "vscode"
+import {
+  CodeLensProvider,
+  TextDocument,
+  EventEmitter,
+  Uri,
+  Range,
+  CodeLens
+} from "vscode"
 import { abapUri } from "../../adt/conections"
 import { AbapQuickDiff } from "./quickdiff"
 import { AbapRevisionService, revLabel } from "./abaprevisionservice"
@@ -30,7 +37,9 @@ export class AbapRevisionLens implements CodeLensProvider {
 
   async provideCodeLenses(doc: TextDocument) {
     if (!abapUri(doc.uri)) return
-    const revisions = await AbapRevisionService.get(doc.uri.authority).uriRevisions(doc.uri, false)
+    const revisions = await AbapRevisionService.get(
+      doc.uri.authority
+    ).uriRevisions(doc.uri, false)
     if (!revisions?.length) return
     const current = await currentQd(doc.uri, revisions)
     const title = `showing quickdiff with:${revLabel(current, "none selected")}`

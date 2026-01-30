@@ -6,7 +6,12 @@ import {
   Command,
   scm
 } from "vscode"
-import { GitRepo, GitStagingObject, GitStagingFile, GitStaging } from "abap-adt-api"
+import {
+  GitRepo,
+  GitStagingObject,
+  GitStagingFile,
+  GitStaging
+} from "abap-adt-api"
 import { Cache, mapGet, cache } from "../../lib"
 import { dataCredentials } from "./credentials"
 import { gitUrl } from "./documentProvider"
@@ -46,11 +51,13 @@ export interface ScmData {
   staging?: GitStaging
   credentials?: ScmCredentials
 }
-export const isAgResState = (x: any): x is AgResState => !!(x?.data?.connId && x.resourceUri)
+export const isAgResState = (x: any): x is AgResState =>
+  !!(x?.data?.connId && x.resourceUri)
 
 const scms = new Map<string, ScmData>()
 
-export const scmKey = (connId: string, repoKey: string) => `abapGit_${connId}_${repoKey}`
+export const scmKey = (connId: string, repoKey: string) =>
+  `abapGit_${connId}_${repoKey}`
 
 export const scmData = (key: string) => scms.get(key)
 export const fileUri = (file: GitStagingFile) =>
@@ -91,7 +98,8 @@ export async function refresh(data: ScmData) {
     const group = data.groups.get(key)
     const state: SourceControlResourceState[] = []
     for (const obj of objs)
-      for (const file of obj.abapGitFiles) state.push(resourceState(data, file, key))
+      for (const file of obj.abapGitFiles)
+        state.push(resourceState(data, file, key))
     group.resourceStates = state
   }
   mapState(STAGED, staging.staged)
@@ -130,12 +138,15 @@ const createScm = (connId: string, repo: GitRepo): ScmData => {
 }
 
 export async function addRepo(connId: string, repo: GitRepo, addnew = false) {
-  const gitScm = mapGet(scms, scmKey(connId, repo.key), () => createScm(connId, repo))
+  const gitScm = mapGet(scms, scmKey(connId, repo.key), () =>
+    createScm(connId, repo)
+  )
   gitScm.groups.get(STAGED)
   gitScm.groups.get(UNSTAGED)
   gitScm.groups.get(IGNORED)
   if (!addnew) gitScm.notNew = true
-  if (addnew && !gitScm.notNew) await refresh(gitScm).then(() => saveRepos(scms))
+  if (addnew && !gitScm.notNew)
+    await refresh(gitScm).then(() => saveRepos(scms))
   return gitScm
 }
 

@@ -1,8 +1,9 @@
 import { Uri, workspace } from "vscode"
 import * as t from "io-ts"
-import { isLeft, isRight } from "fp-ts/lib/Either"
+import { isLeft } from "fp-ts/lib/Either"
 import { ADTSCHEME } from "../adt/conections"
 import { templates } from "./initialtemplates"
+
 const configFile = "folderMap.json"
 const templatesFolder = "templates"
 const connectionsFolder = "connections"
@@ -51,6 +52,7 @@ export const initializeMainStorage = async (uri: Uri) => {
     new TextEncoder().encode(JSON.stringify(status))
   )
 }
+
 const unique = (base: string, values: string[]): string => {
   if (!values.includes(base)) return base
   for (let counter = 1; counter < 1000; counter++) {
@@ -84,12 +86,14 @@ export class LocalStorage {
   private initialized = false
   private initializing?: Promise<void> = undefined
   constructor(private root: Uri) {}
+  
   private async initialize() {
     if (this.initializing) return this.initializing
     this.initializing = this._initialize()
     await this.initializing
     this.initializing = undefined
   }
+  
   private async _initialize() {
     await initializeMainStorage(this.root)
     const configUri = Uri.joinPath(this.root, configFile)
@@ -115,6 +119,7 @@ export class LocalStorage {
     }
     this.initialized = true
   }
+  
   public async resolveUri(uri: Uri): Promise<Uri> {
     if (!this.initialized) await this.initialize()
     const root = this.roots.get(uri.authority)

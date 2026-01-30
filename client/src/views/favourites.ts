@@ -24,7 +24,11 @@ export class FavItem extends TreeItem {
   public favourite: Favourite
   private children?: FavItem[]
 
-  constructor(uri: string, label: string, collapsibleState?: TreeItemCollapsibleState)
+  constructor(
+    uri: string,
+    label: string,
+    collapsibleState?: TreeItemCollapsibleState
+  )
   constructor(favourite: Favourite)
   constructor(
     favourite: Favourite | string,
@@ -74,7 +78,10 @@ export class FavItem extends TreeItem {
             const childnodes = [...node]
             for (const c of childnodes)
               children.push(
-                await favouriteFromUri(uri.with({ path: uri.path + "/" + c.name }), true)
+                await favouriteFromUri(
+                  uri.with({ path: uri.path + "/" + c.name }),
+                  true
+                )
               )
           }
         }
@@ -95,7 +102,8 @@ interface FavouriteIf {
 }
 
 const fixold = (x: string) => x.replace(/\uFF0F/g, NSSLASH)
-const fixoldu = (x: string) => x.replace(/\%EF\%BC\%8F/g, encodeURIComponent(NSSLASH))
+const fixoldu = (x: string) =>
+  x.replace(/\%EF\%BC\%8F/g, encodeURIComponent(NSSLASH))
 
 class Favourite implements FavouriteIf {
   public readonly label: string
@@ -146,7 +154,10 @@ function nodeLabel(connId: string, node: FileStat, uri: Uri) {
   return label
 }
 
-async function favouriteFromUri(uri: Uri, dynamic: boolean): Promise<Favourite> {
+async function favouriteFromUri(
+  uri: Uri,
+  dynamic: boolean
+): Promise<Favourite> {
   const root = getRoot(uri.authority)
   const node = await root.getNodeAsync(uri.path)
   if (!node) throw new Error(`Favourite not found:${uri.toString()}`)
@@ -177,13 +188,16 @@ async function favouriteFromUri(uri: Uri, dynamic: boolean): Promise<Favourite> 
 
 export class FavouritesProvider implements TreeDataProvider<FavItem> {
   public static get() {
-    if (!FavouritesProvider.instance) FavouritesProvider.instance = new FavouritesProvider()
+    if (!FavouritesProvider.instance)
+      FavouritesProvider.instance = new FavouritesProvider()
     return FavouritesProvider.instance
   }
   private static instance?: FavouritesProvider
 
   public set storagePath(storagePath: string | undefined) {
-    this.storage = storagePath ? path(storagePath, "favourites.json") : undefined
+    this.storage = storagePath
+      ? path(storagePath, "favourites.json")
+      : undefined
   }
 
   private rootI?: Map<string, Favourite[]>
@@ -216,7 +230,9 @@ export class FavouritesProvider implements TreeDataProvider<FavItem> {
     if (!element) {
       const favRoot = new Favourite("", "")
       const root = await this.root
-      const folders = (workspace.workspaceFolders || []).filter(f => f.uri.scheme === ADTSCHEME)
+      const folders = (workspace.workspaceFolders || []).filter(
+        f => f.uri.scheme === ADTSCHEME
+      )
       if (folders.length === 1) {
         const fav = root.get(folders[0]!.uri.authority)
         if (fav) favRoot.children.push(...fav)
@@ -260,7 +276,10 @@ export class FavouritesProvider implements TreeDataProvider<FavItem> {
   private async readFavourite() {
     const root: Map<string, Favourite[]> = new Map()
     if (this.storage) {
-      const saved: [string, FavouriteIf[]][] = await readAsync(this.storage, "json")
+      const saved: [string, FavouriteIf[]][] = await readAsync(
+        this.storage,
+        "json"
+      )
       if (Array.isArray(saved))
         for (const s of saved)
           root.set(

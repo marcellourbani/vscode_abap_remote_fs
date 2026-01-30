@@ -18,7 +18,8 @@ const getUserStore = () => {
   if (!uStore) uStore = createStore("abapGitRepoUsers", context.globalState)
   return uStore
 }
-export const getDefaultUser = (repoUrl: string) => `${getUserStore().get(repoUrl) || ""}`
+export const getDefaultUser = (repoUrl: string) =>
+  `${getUserStore().get(repoUrl) || ""}`
 
 const setDefaultUser = (repoUrl: string) => (cred: ScmCredentials) => {
   getUserStore().update(repoUrl, cred.user)
@@ -29,7 +30,9 @@ export const deleteDefaultUser = (repoUrl: string) => getUserStore().update(repo
 
 const pwdService = (repoUrl: string) => `vscode.abapgit${repoUrl}`
 const isPrivate = async (data: ScmData, client: ADTClient) =>
-  client.gitExternalRepoInfo(data.repo.url).then(i => i.access_mode === "PRIVATE")
+  client
+    .gitExternalRepoInfo(data.repo.url)
+    .then(i => i.access_mode === "PRIVATE")
 
 const validateInput = (x: string) => (x ? null : "Field is mandatory")
 const mandInbox = (prompt: string, password = false) =>
@@ -39,7 +42,8 @@ export async function repoCredentials(repoUrl: string) {
   const cred: ScmCredentials = { user: getDefaultUser(repoUrl), password: "" }
   const vault = PasswordVault.get()
   const pwdFromVault = async (x: ScmCredentials) => {
-    if (x.user) x.password = (await vault.getPassword(pwdService(repoUrl), x.user)) || ""
+    if (x.user)
+      x.password = (await vault.getPassword(pwdService(repoUrl), x.user)) || ""
     return x
   }
   const savePwd = (x: ScmCredentials) => {
@@ -69,7 +73,8 @@ export async function dataCredentials(
       const cred = await repoCredentials(data.repo.url)
       if (isSome(cred)) data.credentials = cred.value
       return cred
-    } else data.credentials = { user: getDefaultUser(data.repo.url), password: "" }
+    } else
+      data.credentials = { user: getDefaultUser(data.repo.url), password: "" }
   }
 
   return some(data.credentials)

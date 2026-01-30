@@ -8,15 +8,11 @@ import { ABAPFile, ABAPObject, MemoryFile, Registry } from "@abaplint/core"
 
 export const isString = (x: any): x is string => typeof x === "string"
 export const isNumber = (x: any): x is number => typeof x === "number"
-export const pick =
-  <T, K extends keyof T>(name: K) =>
-  (x: T): T[K] =>
-    x[name]
-export const flat = <T>(a: T[][]): T[] => a.reduce((res, current) => [...res, ...current], [])
+export const pick = <T, K extends keyof T>(name: K) => (x: T): T[K] => x[name]
+export const flat = <T>(a: T[][]): T[] =>
+  a.reduce((res, current) => [...res, ...current], [])
 
-export const ignore = () => {
-  /* make linter happy */
-}
+export const ignore = () => {/* make linter happy */ }
 
 export function parseAbapFile(name: string, abap: string): ABAPFile | undefined {
   const reg = new Registry().addFile(new MemoryFile(name, abap)).parse()
@@ -28,8 +24,10 @@ export const firstInMap = <K, V>(map: Map<K, V>): [K, V] | undefined => {
   if (!first.done) return first.value
 }
 
-export const flatMap = <T1, T2>(arr: T1[], cb: (c: T1, idx?: number, arrref?: T1[]) => T2[]) =>
-  flat(arr.map(cb))
+export const flatMap = <T1, T2>(
+  arr: T1[],
+  cb: (c: T1, idx?: number, arrref?: T1[]) => T2[]
+) => flat(arr.map(cb))
 // given an array of objects returns a map indexed by a property
 // only works if the property is an unique key
 export function ArrayToMap<T>(name: keyof T) {
@@ -42,16 +40,14 @@ export function ArrayToMap<T>(name: keyof T) {
 }
 
 // returns a function that gets the given property from a map
-export const selectMap =
-  <T1, K extends keyof T1, T2>(
-    _map: Map<string, T1>,
-    property: K,
-    defval: T2
-  ): ((index: string) => T2) =>
-  (index: string): T2 => {
-    const record = _map && _map.get(index)
-    return ((record && record[property]) || defval) as T2
-  }
+export const selectMap = <T1, K extends keyof T1, T2>(
+  _map: Map<string, T1>,
+  property: K,
+  defval: T2
+): ((index: string) => T2) => (index: string): T2 => {
+  const record = _map && _map.get(index)
+  return ((record && record[property]) || defval) as T2
+}
 
 export const promCache = <T>() => {
   const m = new Map<string, Promise<T>>()
@@ -75,7 +71,11 @@ export const isStr = (f: any): f is string => {
   return typeof f === "string"
 }
 
-export const mapGet = <T1, T2>(_map: Map<T1, T2>, key: T1, init: (() => T2) | T2): T2 => {
+export const mapGet = <T1, T2>(
+  _map: Map<T1, T2>,
+  key: T1,
+  init: (() => T2) | T2
+): T2 => {
   let result = _map.get(key)
   if (!result) {
     result = isFn(init) ? init() : init
@@ -90,10 +90,10 @@ export const stringOrder = (s1: any, s2: any) => {
   return s2 > s1 ? -1 : 0
 }
 
-export const fieldOrder =
-  <T>(fieldName: keyof T, inverse: boolean = false) =>
-  (a1: T, a2: T) =>
-    stringOrder(a1[fieldName], a2[fieldName]) * (inverse ? -1 : 1)
+export const fieldOrder = <T>(fieldName: keyof T, inverse: boolean = false) => (
+  a1: T,
+  a2: T
+) => stringOrder(a1[fieldName], a2[fieldName]) * (inverse ? -1 : 1)
 
 export function parts(whole: any, pattern: RegExp): string[] {
   if (!isString(whole)) return []
@@ -110,7 +110,8 @@ export function toInt(raw: any): number {
   return n
 }
 export const isUnDefined = (x: any): x is undefined => typeof x === "undefined"
-export const isDefined = <T>(x: T | undefined): x is T => typeof x !== "undefined"
+export const isDefined = <T>(x: T | undefined): x is T =>
+  typeof x !== "undefined"
 export const eatPromiseException = async <T>(p: Promise<T>) => {
   try {
     return await p
@@ -118,15 +119,15 @@ export const eatPromiseException = async <T>(p: Promise<T>) => {
     // ignore
   }
 }
-export const eatException =
-  (cb: (...args: any[]) => any) =>
-  (...args: any[]) => {
-    try {
-      return cb(...args)
-    } catch (e) {
-      return
-    }
+export const eatException = (cb: (...args: any[]) => any) => (
+  ...args: any[]
+) => {
+  try {
+    return cb(...args)
+  } catch (e) {
+    return
   }
+}
 // synchronous. awaiting would defeat the purpose
 export const createMutex = () => {
   const m: Map<string, Promise<any>> = new Map()
@@ -246,7 +247,10 @@ export const promiseQueue = <T>(initial: T) => {
   }
 }
 
-export const rememberFor = <T, K>(ms: number, f: (x: K) => T): ((x: K) => T) => {
+export const rememberFor = <T, K>(
+  ms: number,
+  f: (x: K) => T
+): ((x: K) => T) => {
   const storage = new Map<K, { value: T; time: number }>()
   return (k: K) => {
     const time = new Date().getTime()
@@ -275,9 +279,11 @@ export const debounce = <K, R>(frequency: number, cb: (x: K) => R) => {
   }
 }
 
-export const after = (time: number) => new Promise(resolve => setTimeout(resolve, time))
+export const after = (time: number) =>
+  new Promise(resolve => setTimeout(resolve, time))
 
 export const isNonNullable = <T>(x: T): x is NonNullable<T> => !(isUnDefined(x) || x === null)
+
 
 export function fieldReplacer<T1>(
   field: keyof T1,
@@ -317,18 +323,30 @@ export function dependFieldReplacer<T1>(
   input: (data: T1, field: keyof T1) => TaskEither<LeftType, T1[keyof T1]>,
   shouldReplace?: (x: T1) => boolean
 ): <T2 extends T1>(x: T2) => TaskEither<LeftType, T2>
-export function dependFieldReplacer<T1, T2 extends string, T3 extends Record<T2, T1>>(
+export function dependFieldReplacer<
+  T1,
+  T2 extends string,
+  T3 extends Record<T2, T1>
+>(
   field: T2,
   input: (data: T3, field: T2) => TaskEither<LeftType, T1[keyof T1]>,
   shouldReplace: (x: T3) => boolean,
   data: T3
 ): TaskEither<LeftType, T3>
-export function dependFieldReplacer<T1, T2 extends string, T3 extends Record<T2, T1>>(
+export function dependFieldReplacer<
+  T1,
+  T2 extends string,
+  T3 extends Record<T2, T1>
+>(
   field: T2,
   input: (data: T3, field: T2) => TaskEither<LeftType, T1[keyof T1]>,
   data: T3
 ): TaskEither<LeftType, T3>
-export function dependFieldReplacer<T1, T2 extends string, T3 extends Record<T2, T1>>(
+export function dependFieldReplacer<
+  T1,
+  T2 extends string,
+  T3 extends Record<T2, T1>
+>(
   field: T2,
   input: (data: T3, field: T2) => TaskEither<LeftType, T1[keyof T1]>,
   data?: T3 | ((x: T3) => boolean),
@@ -349,7 +367,10 @@ export const btoa = (s: string) => Buffer.from(s).toString("base64")
 export const atob = (s: string) => Buffer.from(s, "base64").toString()
 export const NSSLASH = "\u2215" // used to be hardcoded as "／", aka "\uFF0F"
 export const convertSlash = (x: string) => x && x.replace(/\//g, NSSLASH)
-export const asyncFilter = async <T>(x: Iterable<T>, filter: (x: T) => any): Promise<T[]> => {
+export const asyncFilter = async <T>(
+  x: Iterable<T>,
+  filter: (x: T) => any
+): Promise<T[]> => {
   const res: T[] = []
   for (const i of x) if (await filter(i)) res.push(i)
   return res

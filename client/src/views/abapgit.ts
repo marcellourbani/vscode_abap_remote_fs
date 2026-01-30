@@ -9,7 +9,7 @@ import {
   ProgressLocation,
   commands,
   env,
-  Uri
+  Uri,
 } from "vscode"
 import { GitRepo, ADTClient, objectPath } from "abap-adt-api"
 import { v1 } from "uuid"
@@ -46,7 +46,8 @@ interface NoGitItem extends TreeItem {
   connId: string
 }
 
-const isServerItem = (item: TreeItem): item is ServerItem => (item as any).tag === "server"
+const isServerItem = (item: TreeItem): item is ServerItem =>
+  (item as any).tag === "server"
 
 export const confirmPull = (pkg: string) =>
   window
@@ -58,10 +59,14 @@ export const confirmPull = (pkg: string) =>
     .then(r => r === confirm)
 
 export const packageUri = async (client: ADTClient, name: string) => {
-  const cancreate = await client.collectionFeatureDetails("/sap/bc/adt/packages")
+  const cancreate = await client.collectionFeatureDetails(
+    "/sap/bc/adt/packages"
+  )
   return cancreate
     ? objectPath(PACKAGE, name)
-    : `/sap/bc/adt/vit/wb/object_type/devck/object_name/${encodeURIComponent(name)}`
+    : `/sap/bc/adt/vit/wb/object_type/devck/object_name/${encodeURIComponent(
+      name
+    )}`
 }
 
 class AbapGit {
@@ -82,7 +87,7 @@ class AbapGit {
     return item
   }
   private getNoGitItem(connId: string): NoGitItem {
-    const uri = "https://github.com/abapGit/ADT_Backend"
+    const uri = 'https://github.com/abapGit/ADT_Backend'
     return {
       tag: "nogit",
       connId,
@@ -94,7 +99,7 @@ class AbapGit {
       command: {
         command: "vscode.open",
         title: "Open backend link",
-        arguments: [Uri.parse(uri)]
+        arguments: [Uri.parse(uri)],
       }
     }
   }
@@ -115,7 +120,9 @@ class AbapGit {
   public async getGitEnabledServers(): Promise<[ServerItem[], NoGitItem[]]> {
     const servers: ServerItem[] = []
     const nogits: NoGitItem[] = []
-    const folders = (workspace.workspaceFolders || []).filter(f => f.uri.scheme === ADTSCHEME)
+    const folders = (workspace.workspaceFolders || []).filter(
+      f => f.uri.scheme === ADTSCHEME
+    )
     for (const f of folders) {
       const connId = f.uri.authority
       await getOrCreateClient(connId)
@@ -129,7 +136,12 @@ class AbapGit {
     }
     return [servers, nogits]
   }
-  public async getRemoteInfo(repoUrl: string, client: ADTClient, user = "", password = "") {
+  public async getRemoteInfo(
+    repoUrl: string,
+    client: ADTClient,
+    user = "",
+    password = ""
+  ) {
     const remote = await client.gitExternalRepoInfo(repoUrl, user, password)
     return remote
   }
@@ -201,13 +213,17 @@ class AbapGitProvider implements TreeDataProvider<TreeItem> {
     const client = getClient(this.repoServer(repoItem).connId)
 
     const uri = await packageUri(client, repoItem.repo.sapPackage)
-    const transport = await selectTransport(uri, repoItem.repo.sapPackage, client)
+    const transport = await selectTransport(
+      uri,
+      repoItem.repo.sapPackage,
+      client
+    )
     if (transport.cancelled) return
     const ri = await this.getRemoteInfo(repoItem.repo.url, client)
     if (!ri) return
     return await window.withProgress(
       {
-        location: ProgressLocation.Window,
+        location: ProgressLocation.Notification,
         title: `Pulling repo ${repoItem.repo.sapPackage}`
       },
       async () => {
@@ -237,10 +253,13 @@ class AbapGitProvider implements TreeDataProvider<TreeItem> {
   }
 
   private repoServer(repoItem: AbapGitItem) {
-    const hasRepo = (s: ServerItem) => !!s.children.find(r => r.id === repoItem.id)
+    const hasRepo = (s: ServerItem) =>
+      !!s.children.find(r => r.id === repoItem.id)
     const server = this.gitChildren.find(hasRepo)
     if (!server)
-      throw new Error(`No server connection found for package ${repoItem.repo.sapPackage}`)
+      throw new Error(
+        `No server connection found for package ${repoItem.repo.sapPackage}`
+      )
     return server
   }
 
@@ -255,8 +274,7 @@ class AbapGitProvider implements TreeDataProvider<TreeItem> {
       const ri = await this.git.getRemoteInfo(repoUrl, client)
       const isPrivate = ri.access_mode === "PRIVATE"
       const getBranches = (x: RepoAccess) => async () => {
-        const branches = isPrivate
-          ? (await this.git.getRemoteInfo(repoUrl, client, x.user, x.password)).branches
+        const branches = isPrivate ? (await this.git.getRemoteInfo(repoUrl, client, x.user, x.password)).branches
           : ri.branches
         return branches.map(b => b.name)
       }
@@ -283,14 +301,7 @@ class AbapGitProvider implements TreeDataProvider<TreeItem> {
     return access
   }
 
-  private async createRepoInternal(
-    item: ServerItem,
-    client: ADTClient,
-    pkgname: string,
-    repoUrl: string,
-    repoaccess: RepoAccess,
-    transport: string
-  ) {
+  private async createRepoInternal(item: ServerItem, client: ADTClient, pkgname: string, repoUrl: string, repoaccess: RepoAccess, transport: string) {
     const result = await client.gitCreateRepo(
       pkgname,
       repoUrl,
@@ -299,19 +310,23 @@ class AbapGitProvider implements TreeDataProvider<TreeItem> {
       repoaccess.user,
       repoaccess.password
     )
-    await Promise.all([this.refresh()]).finally(() =>
-      commands.executeCommand("workbench.files.action.refreshFilesExplorer")
-    )
+    await Promise.all([
+      this.refresh()
+    ]).finally(() => commands.executeCommand("workbench.files.action.refreshFilesExplorer"))
     const created = this.gitChildren
       .find(i => i.connId === item.connId)
       ?.children.find(r => r.repo.url === repoUrl)
     if (created) this.reveal(created)
     return result
+
   }
 
   private async createRepo(item: ServerItem) {
     try {
-      const pkg = await new AdtObjectFinder(item.connId).findObject("Select package", PACKAGE)
+      const pkg = await new AdtObjectFinder(item.connId).findObject(
+        "Select package",
+        PACKAGE
+      )
       if (!pkg) return
       const repoUrl = await window.showInputBox({
         prompt: "Repository URL",
@@ -323,17 +338,15 @@ class AbapGitProvider implements TreeDataProvider<TreeItem> {
 
       const repoaccess = await this.getRemoteInfo(repoUrl, client)
 
-      const transport = await selectTransport(objectPath(PACKAGE, pkg.name), pkg.name, client)
+      const transport = await selectTransport(
+        objectPath(PACKAGE, pkg.name),
+        pkg.name,
+        client
+      )
       if (transport.cancelled) return
       if (!(await confirmPull(pkg.name))) return
-      return await this.createRepoInternal(
-        item,
-        client,
-        pkg.name,
-        repoUrl,
-        repoaccess,
-        transport.transport
-      )
+      return await this.createRepoInternal(item, client, pkg.name, repoUrl, repoaccess, transport.transport)
+
     } catch (error) {
       window.showErrorMessage(`Error creating or pulling repository: ${caughtToString(error)}`)
       this.refresh()

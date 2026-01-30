@@ -30,7 +30,10 @@ export class AbapClassInclude extends AbapObjectBase {
   ) {
     super(type, name, path, expandable, techName, parent, sapGuiUri, client)
     if (!isAbapClass(parent))
-      throw ObjectErrors.Invalid(this, "Parent class is required for class includes")
+      throw ObjectErrors.Invalid(
+        this,
+        "Parent class is required for class includes"
+      )
     if (!this.name.startsWith(parent.name))
       throw ObjectErrors.Invalid(
         this,
@@ -40,17 +43,22 @@ export class AbapClassInclude extends AbapObjectBase {
   }
   public get structure() {
     const { includes, metaData } = this.parent.structure || {}
-    const include = includes?.find(i => i["class:includeType"] === this.techName)
+    const include = includes?.find(
+      i => i["class:includeType"] === this.techName
+    )
     if (!include || !metaData) return
     const { links, ...meta } = include
     const structure: AbapSimpleStructure = {
       objectUrl: "",
       links: include.links,
       metaData: {
-        "abapsource:activeUnicodeCheck": metaData["abapsource:activeUnicodeCheck"],
-        "abapsource:fixPointArithmetic": metaData["abapsource:fixPointArithmetic"],
+        "abapsource:activeUnicodeCheck":
+          metaData["abapsource:activeUnicodeCheck"],
+        "abapsource:fixPointArithmetic":
+          metaData["abapsource:fixPointArithmetic"],
         "adtcore:description": metaData["adtcore:description"],
-        "adtcore:descriptionTextLimit": metaData["adtcore:descriptionTextLimit"],
+        "adtcore:descriptionTextLimit":
+          metaData["adtcore:descriptionTextLimit"],
         "adtcore:language": metaData["adtcore:language"],
         "adtcore:masterLanguage": metaData["adtcore:masterLanguage"],
         "adtcore:masterSystem": metaData["adtcore:masterSystem"],
@@ -89,7 +97,9 @@ export class AbapClassInclude extends AbapObjectBase {
   contentsPath() {
     const str = this.parent?.structure
     if (str) {
-      const include = ADTClient.classIncludes(str).get(this.techName as classIncludes)
+      const include = ADTClient.classIncludes(str).get(
+        this.techName as classIncludes
+      )
       return include || this.path
     }
     return this.path

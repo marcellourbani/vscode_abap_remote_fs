@@ -10,9 +10,11 @@ import {
 import { ParseTree, ParseTreeListener, TerminalNode } from "antlr4ts/tree"
 import { Position } from "vscode-languageserver"
 
-export const isRuleContext = (tree: ParseTree): tree is ParserRuleContext => !!(tree as any).start
+export const isRuleContext = (tree: ParseTree): tree is ParserRuleContext =>
+  !!(tree as any).start
 
-export const isTerminal = (tree: ParseTree): tree is TerminalNode => !!(tree as any).symbol
+export const isTerminal = (tree: ParseTree): tree is TerminalNode =>
+  !!(tree as any).symbol
 
 export const terminalType = (t: ParseTree) => isTerminal(t) && t.symbol.type
 
@@ -21,7 +23,8 @@ export const vscPosition = (line: number, character: number): Position => ({
   character
 })
 
-const tokenStartPosition = (t: Token): Position => vscPosition(t.line, t.charPositionInLine)
+const tokenStartPosition = (t: Token): Position =>
+  vscPosition(t.line, t.charPositionInLine)
 
 const tokenStopPosition = (t: Token): Position =>
   vscPosition(t.line, t.stopIndex - t.startIndex + t.charPositionInLine)
@@ -52,10 +55,15 @@ export function positionInContext(ctx: ParserRuleContext, position: Position) {
   return start.line < position.line && stop.line > position.line
 }
 
-export function findNode(ctx: ParserRuleContext, pos: Position): ParserRuleContext | undefined {
+export function findNode(
+  ctx: ParserRuleContext,
+  pos: Position
+): ParserRuleContext | undefined {
   if (positionInContext(ctx, pos))
     if (ctx.children) {
-      const child = ctx.children.filter(isRuleContext).find(c => positionInContext(c, pos))
+      const child = ctx.children
+        .filter(isRuleContext)
+        .find(c => positionInContext(c, pos))
       const leaf = child && findNode(child, pos)
       return leaf || ctx
     } else return ctx
@@ -92,7 +100,10 @@ const completionItemDetector = (
       if (completionRules.has(ctx.ruleIndex)) {
         if (ctx.start.type === ABAPCDSLexer.IDENTIFIER) {
           notify(ctx, sources)
-          if (ctx.ruleIndex === ABAPCDSParser.RULE_data_source && ctx.start.text)
+          if (
+            ctx.ruleIndex === ABAPCDSParser.RULE_data_source &&
+            ctx.start.text
+          )
             sources = [...sources, ctx.start.text]
         }
       }

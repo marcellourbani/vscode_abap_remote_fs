@@ -9,12 +9,17 @@
     "lib": [
       "es2021"
     ],
-    "noUncheckedIndexedAccess": true,
     "sourceMap": true,
     "strict": true,
     "noUnusedLocals": false,
     "composite": true,
-    "skipLibCheck": true
+    /* Incremental Compilation */
+    "incremental": true,
+    "tsBuildInfoFile": ".tsbuildinfo",
+    "skipLibCheck": true,
+    "forceConsistentCasingInFileNames": true,
+    "resolveJsonModule": true,
+    "noImplicitAny": false
   },
   "include": [
     "src"

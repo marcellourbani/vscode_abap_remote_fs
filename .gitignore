@@ -15,3 +15,15 @@ tmp
 *.tsbuildinfo
 bookmarks.json
 *.cpuprofile
+.github/copilot-instructions.md
+# Webpack cache directories
+client/node_modules/.cache/
+server/node_modules/.cache/
+
+# Generated JavaScript files (compiled from TypeScript)
+client/src/**/*.js
+client/src/**/*.js.map
+server/src/**/*.js
+server/src/**/*.js.map
+modules/*/src/**/*.js
+modules/*/src/**/*.js.map

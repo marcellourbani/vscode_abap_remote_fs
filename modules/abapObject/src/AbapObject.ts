@@ -8,7 +8,7 @@ import {
 import { AbapObjectService } from "./AOService"
 import { ObjectErrors } from "./AOError"
 const SAPGUIONLY =
-  "Objects of this type are only supported in SAPGUI. Press Ctrl+Shift+F6 to edit in sapgui"
+  "This object type is not supported in VS Code. It is being opened in SAP GUI instead.\n Please wait, this can take a few seconds.."
 const NSSLASH = "\u2215" // used to be hardcoded as "／", aka "\uFF0F"
 export const PACKAGE = "DEVC/K"
 export const TMPPACKAGE = "$TMP"
@@ -48,16 +48,16 @@ export interface AbapObject {
   readonly changedAt: Date | undefined
   /** reads the main objects available for this object */
   mainPrograms: () => Promise<MainInclude[]>
-  readonly parent: AbapObject | undefined
+  readonly parent: AbapObject | undefined,
   /** whether we are able to write it */
   readonly canBeWritten: boolean
   /** objcect namespace
    *  i.e. for /UI5/IF_ADT_REP_MODEL is /UI5/
-   */
+  */
   readonly nameSpace: string
   /** object base name
    *   i.e. for /UI5/IF_ADT_REP_MODEL is IF_ADT_REP_MODEL
-   */
+  */
   readonly baseName: string
   /** used to open the object in SAPGUI */
   readonly sapGuiUri: string
@@ -72,10 +72,10 @@ export interface AbapObject {
   delete: (lockId: string, transport: string) => Promise<void>
   write: (contents: string, lockId: string, transport: string) => Promise<void>
   read: () => Promise<string>
-  childComponents: () => Promise<NodeStructure>
+  childComponents: (includeIncludes?: boolean) => Promise<NodeStructure>
 }
 
-const ignoreErr = () => {}
+const ignoreErr = () => { }
 
 export type AbapObjectConstructor = new (
   type: string,
@@ -91,7 +91,8 @@ export const isAbapObject = (x: any): x is AbapObject => !!x?.[objectTag]
 
 const followPath = (base: string, suffix: string) => {
   if (suffix) {
-    if (suffix.match(/^\.\//)) return `${base.replace(/\/[^\/]*$/, "")}${suffix.substr(1)}`
+    if (suffix.match(/^\.\//))
+      return `${base.replace(/\/[^\/]*$/, "")}${suffix.substr(1)}`
     return suffix.match(/^\//) ? suffix : `${base}/${suffix}`
   }
 }
@@ -115,7 +116,9 @@ export class AbapObjectBase implements AbapObject {
   ) {
     this.supported =
       this.type !== "IWSV" &&
-      !path.match("(/sap/bc/adt/vit)|(/sap/bc/adt/ddic/domains/)|(/sap/bc/esproxy)")
+      !path.match(
+        "(/sap/bc/adt/vit)|(/sap/bc/adt/ddic/domains/)|(/sap/bc/esproxy)"
+      )
   }
   private _structure?: AbapObjectStructure
   public get structure(): AbapObjectStructure | undefined {
@@ -176,7 +179,9 @@ export class AbapObjectBase implements AbapObject {
     const suffix =
       this.structure?.metaData["abapsource:sourceUri"] ||
       this.structure?.links?.find(
-        l => l.type === "text/plain" && l.rel === "http://www.sap.com/adt/relations/source"
+        l =>
+          l.type === "text/plain" &&
+          l.rel === "http://www.sap.com/adt/relations/source"
       )?.href ||
       ""
     const path = this.path?.endsWith(suffix) ? this.path : followPath(this.path, suffix)
@@ -201,7 +206,7 @@ export class AbapObjectBase implements AbapObject {
           this.structure = structure
         return this.structure
       }
-      this._loadstprom = loader().finally(() => (this._loadstprom = undefined))
+      this._loadstprom = loader().finally(() => this._loadstprom = undefined)
     }
     return this._loadstprom
   }
@@ -212,10 +217,17 @@ export class AbapObjectBase implements AbapObject {
   async write(contents: string, lockId: string, transport: string) {
     if (this.expandable) throw ObjectErrors.notLeaf(this)
     if (!this.canBeWritten) throw ObjectErrors.NotSupported(this)
-    await this.service.setObjectSource(this.contentsPath(), contents, lockId, transport)
+    await this.service.setObjectSource(
+      this.contentsPath(),
+      contents,
+      lockId,
+      transport
+    )
     this.service.invalidateStructCache(this.path)
-    if (this.lockObject !== this) this.service.invalidateStructCache(this.lockObject.path)
-    if (this.parent && this.parent.type !== PACKAGE) await this.parent.loadStructure()
+    if (this.lockObject !== this)
+      this.service.invalidateStructCache(this.lockObject.path)
+    if (this.parent && this.parent.type !== PACKAGE)
+      await this.parent.loadStructure()
   }
 
   async read() {
@@ -226,10 +238,12 @@ export class AbapObjectBase implements AbapObject {
     return this.service.getObjectSource(this.contentsPath(), version)
   }
 
-  protected filterInvalid(original: NodeStructure): NodeStructure {
+  protected filterInvalid(original: NodeStructure, includeIncludes?: boolean): NodeStructure {
     const { nodes, objectTypes } = original
     const valid = nodes.filter(
-      n => (n.OBJECT_TYPE === PACKAGE || !n.OBJECT_TYPE.match(/DEVC\//)) && !!n.OBJECT_URI
+      n =>
+        (n.OBJECT_TYPE === PACKAGE || !n.OBJECT_TYPE.match(/DEVC\//)) &&
+        !!n.OBJECT_URI
     )
     const types = objectTypes
       .filter(t => t.OBJECT_TYPE === PACKAGE || !t.OBJECT_TYPE.match(/DEVC\//))
@@ -242,10 +256,10 @@ export class AbapObjectBase implements AbapObject {
     return { ...original, nodes: valid, objectTypes: types }
   }
 
-  async childComponents(): Promise<NodeStructure> {
+  async childComponents(includeIncludes?: boolean): Promise<NodeStructure> {
     if (!this.expandable) throw ObjectErrors.isLeaf(this)
     if (!isNodeParent(this.type)) throw ObjectErrors.NotSupported(this)
     const unfiltered = await this.service.nodeContents(this.type, this.name, this.owner)
-    return this.filterInvalid(unfiltered)
+    return this.filterInvalid(unfiltered, includeIncludes)
   }
 }

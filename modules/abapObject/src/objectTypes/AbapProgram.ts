@@ -4,35 +4,52 @@ import { NodeStructure, ADTClient } from "abap-adt-api"
 import { ObjectErrors } from "../AOError"
 
 const tag = Symbol("AbapProgram")
+
 @AbapObjectCreator("PROG/P")
 export class AbapProgram extends AbapObjectBase {
   [tag] = true
-  protected filterInvalid(original: NodeStructure): NodeStructure {
+  protected filterInvalid(original: NodeStructure, includeIncludes?: boolean): NodeStructure {
+    if (!this.structure)
+      throw ObjectErrors.noStructure(
+        this,
+        `metadata not loaded for ${this.key}`
+      )
+    
     const { nodes } = original
-    const matchName = (n: string) =>
-      n === this.name ||
-      (n.startsWith(this.name) && n.length === this.name.length + 3 && n.match(/[A-Z][0-9][0-9]$/))
-    const valid = nodes.filter(n => n.OBJECT_TYPE === "PROG/I" && matchName(n.OBJECT_NAME))
-    if (!this.structure) throw ObjectErrors.noStructure(this, `metadata not loaded for ${this.key}`)
-    valid.unshift({
+    
+    // Main program node - always include this
+    const mainProgramNode = {
       OBJECT_TYPE: "PROG/P",
       OBJECT_NAME: `${this.name}`,
       TECH_NAME: "",
       OBJECT_URI: this.path,
       EXPANDABLE: "",
       OBJECT_VIT_URI: this.sapGuiUri
-    })
-    return { categories: [], objectTypes: [], nodes: valid }
+    }
+    
+    // If includeIncludes is true (called from activator), return includes + main program
+    if (includeIncludes) {
+      const includeNodes = nodes.filter(
+        n => n.OBJECT_TYPE === "PROG/I" &&
+             n.OBJECT_NAME &&
+             n.OBJECT_URI
+      )
+      // Return main program + all includes
+      return { categories: [], objectTypes: [], nodes: [mainProgramNode, ...includeNodes] }
+    }
+    
+    // Otherwise (filesystem operations), return only the program itself
+    return { categories: [], objectTypes: [], nodes: [mainProgramNode] }
   }
 
   get extension() {
     return this.expandable ? "" : ".prog.abap"
   }
 
-  async childComponents() {
+  async childComponents(includeIncludes?: boolean) {
     if (!this.structure) await this.loadStructure()
     if (!this.expandable) return { nodes: [], categories: [], objectTypes: [] }
-    return super.childComponents()
+    return super.childComponents(includeIncludes)
   }
 }
 

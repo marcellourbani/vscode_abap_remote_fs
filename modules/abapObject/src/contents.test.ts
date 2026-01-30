@@ -4,18 +4,21 @@ import { create, fromNode } from "./creator"
 import { PACKAGEBASEPATH, AbapObject } from "./AbapObject"
 import { isAbapClass } from "./objectTypes"
 import { Agent } from "https"
-import { mock } from "jest-mock-extended" // forces loading jest
+import { mock } from "jest-mock-extended" // forces loading jest 
 
 /** this will connect to a real server, and mostly rely on abapgit as sample data
  *   tests might brek with future versions of abapgit
  *   tested on 7.52, paths could change with releases
  */
 const getRootForTest = () => {
-  const { ADT_SYSTEMID = "", ADT_URL = "", ADT_USER = "", ADT_PASS = "" } = process.env
+  const {
+    ADT_SYSTEMID = "",
+    ADT_URL = "",
+    ADT_USER = "",
+    ADT_PASS = ""
+  } = process.env
   if (ADT_URL && ADT_USER && ADT_PASS) {
-    const options = ADT_URL.match(/^https/i)
-      ? { httpsAgent: new Agent({ rejectUnauthorized: false }) }
-      : {}
+    const options = ADT_URL.match(/^https/i) ? { httpsAgent: new Agent({ rejectUnauthorized: false }) } : {}
     const client = new ADTClient(ADT_URL, ADT_USER, ADT_PASS, undefined, undefined, options)
     const service = new AOService(client)
     return { service, client }
@@ -40,7 +43,16 @@ export const runTest = (f: (s: AOService) => Promise<void>) => {
 }
 
 const getPackage = (name: string, service: AOService) => {
-  return create("DEVC/K", name, PACKAGEBASEPATH, true, "", undefined, "", service)
+  return create(
+    "DEVC/K",
+    name,
+    PACKAGEBASEPATH,
+    true,
+    "",
+    undefined,
+    "",
+    service
+  )
 }
 
 const runPkgTest = (f: (s: AOService, pkg: AbapObject) => Promise<void>) =>
@@ -57,7 +69,9 @@ const runObjTest = (
   runPkgTest(async (service, pkg) => {
     const children = await pkg.childComponents()
 
-    const objdef = children.nodes.find(n => n.OBJECT_TYPE === type && n.OBJECT_NAME === name)
+    const objdef = children.nodes.find(
+      n => n.OBJECT_TYPE === type && n.OBJECT_NAME === name
+    )
 
     expect(objdef).toBeDefined()
     const obj = fromNode(objdef!, pkg, service)
@@ -79,7 +93,9 @@ test(
     expect(include).toBeDefined()
     const struc = await include.loadStructure()
     expect(struc === include.structure).toBe(true)
-    expect(include.contentsPath()).toBe("/sap/bc/adt/programs/programs/zabapgit/source/main")
+    expect(include.contentsPath()).toBe(
+      "/sap/bc/adt/programs/programs/zabapgit/source/main"
+    )
     const source = await include.read()
     expect(source.match(/report\s*zabapgit\s*line-size\s*\d+/i)).toBeTruthy()
   })
@@ -117,7 +133,7 @@ test(
   "class include in $ABAPGIT",
   runObjTest(
     "CLAS/OC",
-    "ZCL_ABAPGIT_AUTH", // replaced class with one in current $ABAPGIT package
+    "ZCL_ABAPGIT_AUTH",// replaced class with one in current $ABAPGIT package
     async (service, pkg, obj) => {
       expect(obj).toBeDefined()
       expect(obj.expandable).toBe(true)
@@ -127,11 +143,17 @@ test(
 
       const childNodes = await (await obj.childComponents()).nodes
 
-      const main = fromNode(childNodes.find(n => n.TECH_NAME === "main")!, obj, service)
+      const main = fromNode(
+        childNodes.find(n => n.TECH_NAME === "main")!,
+        obj,
+        service
+      )
 
       expect(main.contentsPath()).toMatch(/\/source\/main/)
       const source = await main.read()
-      expect(source.match(/CLASS\s+zcl_abapgit_auth\s+DEFINITION/i)).toBeTruthy()
+      expect(
+        source.match(/CLASS\s+zcl_abapgit_auth\s+DEFINITION/i)
+      ).toBeTruthy()
 
       const testClasses = fromNode(
         childNodes.find(n => n.TECH_NAME === "testclasses")!,
@@ -161,16 +183,22 @@ test(
     )
     if (!isAbapClass(clas)) fail("Error reading class CL_ABAP_TABLEDESCR")
     await clas.loadStructure()
-    const main = clas.structure?.includes?.find(i => i["class:includeType"] === "main")
+    const main = clas.structure?.includes?.find(
+      i => i["class:includeType"] === "main"
+    )
     expect(main).toBeDefined()
     const src = main?.links.find(
-      l => l.rel === "http://www.sap.com/adt/relations/source" && l.type === "text/plain"
+      l =>
+        l.rel === "http://www.sap.com/adt/relations/source" &&
+        l.type === "text/plain"
     )
     expect(src).toBeDefined()
     const includes = await clas
       .childComponents()
       .then(st => st.nodes.map(n => fromNode(n, clas, s)))
-    const include = includes.find(o => o.fsName === "CL_ABAP_TABLEDESCR.clas.localtypes.abap")
+    const include = includes.find(
+      o => o.fsName === "CL_ABAP_TABLEDESCR.clas.localtypes.abap"
+    )
     expect(include).toBeDefined()
   })
 )

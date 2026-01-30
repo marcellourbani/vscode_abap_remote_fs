@@ -22,6 +22,7 @@ client/out/**
 client/package.json
 client/package-lock.json
 client/src/**
+client/media/**
 client/tsconfig.json
 client/tsconfig.tsbuildinfo
 client/webpack.config.js
@@ -36,5 +37,8 @@ modules
 jest.config.js
 abap remote fs.code-workspace
 *.cpuprofile
-.markdownlint.jsonc
-.changeset
+*.vsix
+build-and-install.bat
+diff.txt
+.changeset/**
+data/**

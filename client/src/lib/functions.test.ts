@@ -1,16 +1,13 @@
-import { after, fieldReplacer, dependFieldReplacer, splitAdtUriInternal } from "./functions"
+import {
+  after,
+  fieldReplacer,
+  dependFieldReplacer,
+  splitAdtUriInternal,
+} from "./functions"
 import { none } from "fp-ts/lib/Option"
 import { right, isLeft, isRight } from "fp-ts/lib/Either"
 import { chain, bind, map } from "fp-ts/lib/TaskEither"
-import {
-  RfsTaskEither,
-  rfsTryCatch,
-  chainTaskTransformers,
-  addField,
-  rfsChainE,
-  rfsBind,
-  rfsBindReplace
-} from "./rfsTaskEither"
+import { RfsTaskEither, rfsTryCatch, chainTaskTransformers, addField, rfsChainE, rfsBind, rfsBindReplace } from "./rfsTaskEither"
 import { pipe } from "fp-ts/lib/function"
 const isFalsey = (x: any) => !x
 const rejectPromise = () => Promise.reject(new Error("foo"))
@@ -20,11 +17,13 @@ interface A extends Record<string, string> {
   b: string
 }
 
-const fakeselect = <T1, T2 = string>(x?: T2, f?: () => Promise<T1>): RfsTaskEither<T2> =>
-  rfsTryCatch(async () => {
-    if (f) await f()
-    return after(1).then(() => x)
-  })
+const fakeselect = <T1, T2 = string>(
+  x?: T2,
+  f?: () => Promise<T1>
+): RfsTaskEither<T2> => rfsTryCatch(async () => {
+  if (f) await f()
+  return after(1).then(() => x)
+})
 
 function dependentInput<T1 extends Record<string, string>, T2>(
   x?: string,
@@ -36,7 +35,7 @@ function dependentInput<T1 extends Record<string, string>, T2>(
   }
 }
 test("fakeselect", async () => {
-  const x = await fakeselect({ foobar: 3 })()
+  const x = await fakeselect({ "foobar": 3 })()
   if (isRight(x)) expect(x.right.foobar).toBe(3)
   else throw new Error(`${x.left}`)
 })
@@ -120,7 +119,9 @@ test("split uri fragment", () => {
   expect(parts.name).toBeFalsy()
   expect(parts.type).toBeFalsy()
   parts = splitAdtUriInternal(
-    `${base}#type=${"CLAS/OLD"};name=${encodeURIComponent("MULTIPLE                      II")}`
+    `${base}#type=${"CLAS/OLD"};name=${encodeURIComponent(
+      "MULTIPLE                      II"
+    )}`
   )
   expect(parts.path).toBe(base)
   expect(parts.name).toBe("MULTIPLE                      II")
@@ -168,7 +169,7 @@ test("chain and field collection", async () => {
     rfsChainE(addKey),
     rfsBind("name", async x => `foobar ${x.y.bar}`),
     rfsBind("greeting", async x => `hello, ${x.name}`),
-    rfsBind("greetingbye", async x => `bye, ${x.name}`)
+    rfsBind("greetingbye", async x => `bye, ${x.name}`),
   )
 
   const result = await myfn()
@@ -184,7 +185,7 @@ test("chain and field collection", async () => {
   const overridden = await pipe(
     rfsTryCatch(async () => ({ foo: 1 })),
     rfsChainE(async x => ({ ...x, y: { bar: "baz" } })),
-    rfsBindReplace("foo", async x => `bar`)
+    rfsBindReplace("foo", async x => `bar`),
   )()
   if (isLeft(overridden)) throw overridden.left
   expect(overridden.right.foo).toBe("bar")
@@ -197,17 +198,11 @@ test("chain tasks", async () => {
     rfsTryCatch(async () => ({ foo: 1 })),
     bind("key", getKey),
     bind("baz", () => async () => right("foobar")),
-    bind("bar", () => fakeselect({ foo: 1 })),
-    chain(
-      x => () =>
-        pipe(
-          fakeselect({ bar: 2 }),
-          map(bar => ({ ...x, bar }))
-        )()
-    ),
+    bind("bar", () => fakeselect({ "foo": 1 })),
+    chain(x => () => pipe(fakeselect({ "bar": 2 }), map(bar => ({ ...x, bar })))()),
     // rfsChainE("bar", () => fakeselect({ "bar": 2 })),
-    bind("bar2", () => fakeselect({ bar: 2 })),
-    bind("foobar", () => fakeselect({ foobar: 3 })),
+    bind("bar2", () => fakeselect({ "bar": 2 })),
+    bind("foobar", () => fakeselect({ "foobar": 3 })),
     bind("greeting", ({ bar }) => fakeselect("hello"))
   )
   const result = await myfn()
@@ -222,22 +217,19 @@ test("chain tasks", async () => {
 })
 
 test("chain structures", async () => {
-  interface I1 {
-    key: string
-  }
+  interface I1 { key: string }
   type T2 = { foo: string }
-  interface I3 {
-    bar: string
-  }
+  interface I3 { bar: string }
   const f1 = async <T>(x: T): Promise<I1> => ({ key: "key" })
   const f2 = async ({ x }: { x: I1 }): Promise<T2> => ({ foo: `x:${x.key}` })
-  const f3 = async ({ x, y }: { x: I1; y: T2 }): Promise<T2> => ({ foo: `x:${x.key},y:${y.foo}` })
+  const f3 = async ({ x, y }: { x: I1, y: T2 }): Promise<T2> => ({ foo: `x:${x.key},y:${y.foo}` })
   const result = await pipe(
     async () => ({}),
     async x => addField("x", f1)(await x()),
-    async x => addField("y", f2)((await x) as { x: I1 }),
-    async x => addField("z", f1)(await x)
+    async x => addField("y", f2)(await x as { x: I1 }),
+    async x => addField("z", f1)(await x),
   )
   expect(result.x.key).toBe("key")
   expect(result.y.foo).toBe("x:key")
 })
+

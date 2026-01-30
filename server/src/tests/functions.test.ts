@@ -14,10 +14,12 @@ test("call throttler", async () => {
 
   const throttler = callThrottler<number>()
 
-  for (let idx = 0; idx < numCalls; idx++) results[idx] = throttler(key, gencb(idx))
+  for (let idx = 0; idx < numCalls; idx++)
+    results[idx] = throttler(key, gencb(idx))
   expect(await results[0]).toBe(0)
   expect(await results[numCalls - 1]).toBe(numCalls - 1)
-  for (let idx = 1; idx < numCalls - 1; idx++) expect(await results[idx]).toBe(numCalls - 1)
+  for (let idx = 1; idx < numCalls - 1; idx++)
+    expect(await results[idx]).toBe(numCalls - 1)
   for (let idx = 1; idx < numCalls - 1; idx++) expect(calls[idx]).toBeFalsy()
   expect(calls[0]).toBe(true)
   expect(calls[numCalls - 1]).toBe(true)

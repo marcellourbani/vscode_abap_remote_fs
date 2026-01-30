@@ -6,11 +6,14 @@ import { Agent } from "https"
  *   tested on 7.52, paths could change with releases
  */
 const getRootForTest = () => {
-  const { ADT_SYSTEMID = "", ADT_URL = "", ADT_USER = "", ADT_PASS = "" } = process.env
+  const {
+    ADT_SYSTEMID = "",
+    ADT_URL = "",
+    ADT_USER = "",
+    ADT_PASS = ""
+  } = process.env
   if (ADT_URL && ADT_USER && ADT_PASS) {
-    const options = ADT_URL.match(/^https/i)
-      ? { httpsAgent: new Agent({ rejectUnauthorized: false }) }
-      : {}
+    const options = ADT_URL.match(/^https/i) ? { httpsAgent: new Agent({ rejectUnauthorized: false }) } : {}
     const client = new ADTClient(ADT_URL, ADT_USER, ADT_PASS, undefined, undefined, options)
     const service = new AFsService(client)
     return { root: createRoot(`adt_${ADT_SYSTEMID}`, service), client }

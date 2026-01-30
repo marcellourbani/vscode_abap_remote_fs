@@ -56,7 +56,8 @@ export function oauthLogin(conf: RemoteConfig) {
   return async () => {
     const connId = formatKey(conf.name)
     let oldGrant = getToken(connId)
-    if (saveCredentials && !oldGrant) oldGrant = toUndefined(await fromVault(conf))
+    if (saveCredentials && !oldGrant)
+      oldGrant = toUndefined(await fromVault(conf))
     if (oldGrant) {
       setToken(connId, oldGrant)
       return oldGrant.accessToken

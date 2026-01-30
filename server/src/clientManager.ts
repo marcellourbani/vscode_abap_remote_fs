@@ -14,10 +14,14 @@ import { isString } from "./functions"
 const clients: Map<string, ADTClient> = new Map()
 
 export const connection = createConnection(ProposedFeatures.all)
-export const error = (...params: any) => connection.console.error(convertParams(...params))
-export const warn = (...params: any) => connection.console.warn(convertParams(...params))
-export const info = (...params: any) => connection.console.info(convertParams(...params))
-export const log = (...params: any) => connection.console.log(convertParams(...params))
+export const error = (...params: any) =>
+  connection.console.error(convertParams(...params))
+export const warn = (...params: any) =>
+  connection.console.warn(convertParams(...params))
+export const info = (...params: any) =>
+  connection.console.info(convertParams(...params))
+export const log = (...params: any) =>
+  connection.console.log(convertParams(...params))
 
 export function clientKeyFromUrl(url: string) {
   const match = url.match(/adt:\/\/([^\/]*)/)
@@ -31,7 +35,8 @@ function loggedProxy(client: ADTClient, conf: ClientConfiguration) {
     fromClone: false
   }
   const logger = (call: MethodCall) => sendLog({ ...temp, call })
-  const cloneLogger = (call: MethodCall) => sendLog({ ...temp, call, fromClone: true })
+  const cloneLogger = (call: MethodCall) =>
+    sendLog({ ...temp, call, fromClone: true })
 
   const clone = createProxy(client.statelessClone, cloneLogger)
 
@@ -43,11 +48,13 @@ function loggedProxy(client: ADTClient, conf: ClientConfiguration) {
 
 function debugCallBack(conf: ClientConfiguration) {
   if (httpTraceUrl(conf))
-    return (data: LogData) => sendHttpLog({ source: SOURCE_SERVER, data, connection: conf.name })
+    return (data: LogData) =>
+      sendHttpLog({ source: SOURCE_SERVER, data, connection: conf.name })
 }
 function createFetchToken(conf: ClientConfiguration) {
   if (conf.oauth)
-    return () => connection.sendRequest(Methods.getToken, conf.name) as Promise<string>
+    return () =>
+      connection.sendRequest(Methods.getToken, conf.name) as Promise<string>
 }
 
 const refreshClient = (key: string, conf: ClientConfiguration) => {
