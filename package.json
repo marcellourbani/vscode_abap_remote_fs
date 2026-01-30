@@ -2079,6 +2079,56 @@
         "tags": [
           "abap-fs"
         ]
+        },
+      {
+        "name": "manage_subagents",
+        "displayName": "Manage AI Subagents",
+        "modelDescription": "ABAP-SPECIFIC: Configure AI subagents for optimized ABAP development ONLY. Subagents delegate ABAP tasks to cheaper/faster models to REDUCE COSTS.\n\n💰 COST-CRITICAL MODEL SELECTION RULES:\nThe ENTIRE PURPOSE of subagents is cost optimization. You MUST follow these rules:\n\n1. TIER 1 AGENTS (discoverer, reader, creator, visualizer, documenter) - MUST use CHEAPEST models:\n   - PREFERRED: 'Claude Haiku 4.5', 'Gemini 3 Flash (Preview)', 'GPT-4o'\n   - These do simple tasks (search, read, create shells) - expensive models are wasteful\n\n2. TIER 2 AGENTS (usage-analyzer, quality-checker, historian, debugger, troubleshooter, data-analyst) - Use MID-TIER models:\n   - PREFERRED: 'GPT-4o', 'Claude Sonnet 4', 'Gemini 2.5 Pro'\n   - These need reasoning but not premium intelligence\n\n3. TIER 3 AGENTS (orchestrator, code-reviewer) - MAY use premium models WITH USER CONSENT:\n   - OPTIONS: 'Claude Sonnet 4', 'Claude Sonnet 4.5', 'GPT-5'\n   - ⚠️ STOP AND ASK USER before selecting 'Claude Opus 4.5', 'GPT-5.1', 'GPT-5.2' or any '-Max' models\n   - Explain: 'Premium models like Claude Opus 4.5 are significantly more expensive. Are you sure you want to use this for the orchestrator/code-reviewer? Sonnet 4.5 is usually sufficient.'\n\n🚫 FORBIDDEN without explicit user approval:\n- Using Opus/Max models for ANY Tier 1 or Tier 2 agent\n- Using premium models when user hasn't been warned about costs\n- Proceeding with expensive configuration if user seems unaware of cost implications\n\n⚠️ USER CONSENT REQUIRED: NEVER enable, disable, or configure without EXPLICIT user approval. Always explain cost implications first.\n\n🎓 GUIDE NEW USERS: Explain the tier system and cost implications before configuring. Use 'list_agents', 'list_models', and 'list_tools' to show options.\n\nActions: 'get_status' (SAFE), 'list_agents' (SAFE), 'list_models' (SAFE), 'list_tools' (SAFE), 'validate' (SAFE), 'enable' (NEEDS APPROVAL), 'disable' (NEEDS APPROVAL), 'configure' (NEEDS APPROVAL + COST CHECK), 'regenerate' (NEEDS APPROVAL).",
+        "canBeReferencedInPrompt": true,
+        "toolReferenceName": "subagents",
+        "icon": "$(hubot)",
+        "userDescription": "Configure AI subagents for cost-optimized ABAP development (requires explicit user consent)",
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "action": {
+              "type": "string",
+              "enum": [
+                "enable",
+                "disable",
+                "get_status",
+                "list_models",
+                "list_agents",
+                "list_tools",
+                "configure",
+                "validate",
+                "regenerate"
+              ],
+              "description": "Action to perform: enable/disable subagents, get_status, list_models, list_agents, list_tools, configure models, validate configuration, regenerate files"
+            },
+            "configurations": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "agentId": {
+                    "type": "string",
+                    "description": "Agent ID (e.g., 'abap-discoverer', 'abap-reader')"
+                  },
+                  "model": {
+                    "type": "string",
+                    "description": "Model ID to use for this agent"
+                  }
+                },
+                "required": ["agentId", "model"]
+              },
+              "description": "For 'configure' action: array of {agentId, model} pairs to set"
+            }
+          },
+          "required": [
+            "action"
+          ]
+        }
       }
     ],
     "commands": [
@@ -3656,6 +3706,21 @@
             }
           },
           "additionalProperties": false
+        },
+        "abapfs.subagents.enabled": {
+          "type": "boolean",
+          "default": false,
+          "scope": "resource",
+          "description": "Enable AI subagents for optimized ABAP analysis. When enabled, Copilot delegates specialized tasks to cheaper/faster models, reducing costs significantly."
+        },
+        "abapfs.subagents.models": {
+          "type": "object",
+          "default": {},
+          "scope": "resource",
+          "description": "Model selection per agent. Keys are agent IDs (e.g., 'abap-discoverer'), values are model IDs. Configure via 'ABAP FS: Configure Subagents' command.",
+          "additionalProperties": {
+            "type": "string"
+          }
         },
         "abapfs.feedSubscriptions": {
           "type": "object",

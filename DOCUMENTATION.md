@@ -17,7 +17,35 @@ This documentation covers all features in detail. The goal: make ABAP developmen
   - [Troubleshooting](#troubleshooting)
 - [1. Editor, AI Integration \& Chat](#1-editor-ai-integration--chat)
   - [1.1 ABAP Language Model Tools (AI Assistant Features)](#11-abap-language-model-tools-ai-assistant-features)
-  - [1.2 Enhanced Hover Information](#12-enhanced-hover-information)
+- [1.2 AI Subagents for Optimized ABAP Development](#12-ai-subagents-for-optimized-abap-development)
+  - [What Are AI Subagents?](#what-are-ai-subagents)
+    - [🎯 Better Output Quality](#-better-output-quality)
+    - [📊 Context Window Management](#-context-window-management)
+    - [💰 Cost Efficiency (Secondary Benefit)](#-cost-efficiency-secondary-benefit)
+  - [Available Subagents](#available-subagents)
+  - [How It Works](#how-it-works-1)
+    - [How Users Invoke Subagents](#how-users-invoke-subagents)
+    - [How Orchestrator Delegates](#how-orchestrator-delegates)
+  - [Setup Instructions](#setup-instructions-1)
+    - [Step 1: Configure Models via Copilot](#step-1-configure-models-via-copilot)
+    - [Step 2: Enable Subagents](#step-2-enable-subagents)
+    - [Step 3: Enable VS Code Setting (if prompted)](#step-3-enable-vs-code-setting-if-prompted)
+  - [Managing Subagents](#managing-subagents)
+    - [Check Status](#check-status)
+    - [Disable Subagents](#disable-subagents)
+    - [Change Models](#change-models)
+    - [List Available Models](#list-available-models)
+    - [List Available Tools](#list-available-tools)
+  - [Customizing Agent Tools](#customizing-agent-tools)
+  - [Advantages](#advantages)
+  - [What to Be Aware Of](#what-to-be-aware-of)
+  - [Troubleshooting](#troubleshooting-1)
+    - ["Cannot enable subagents - missing models"](#cannot-enable-subagents---missing-models)
+    - [Agent files show validation errors](#agent-files-show-validation-errors)
+    - [Subagents auto-disabled](#subagents-auto-disabled)
+    - [Ghost files in explorer after disable](#ghost-files-in-explorer-after-disable)
+    - [Delegation not using custom agents](#delegation-not-using-custom-agents)
+  - [1.3 Enhanced Hover Information](#13-enhanced-hover-information)
 - [2. SAP GUI Integration](#2-sap-gui-integration)
   - [2.1 Embedded SAP GUI (WebView)](#21-embedded-sap-gui-webview)
   - [2.2 Native Desktop SAP GUI](#22-native-desktop-sap-gui)
@@ -311,7 +339,9 @@ All 30+ ABAP FS Language Model Tools are exposed via MCP, including:
 
 28. **get_version_history** - Get version history, retrieve code at historical versions, or compare versions (see Section 8.2)
 
-29. **Debugging Tools (for Copilot):** -- Needs more work to stabilize
+29. **manage_subagents** - Configure AI subagents for cost-optimized ABAP development (see Section 1.2 for full details)
+
+30. **Debugging Tools (for Copilot):** -- Needs more work to stabilize
 
 - **abap_debug_session** - Start/stop debugging
 
@@ -325,7 +355,232 @@ All 30+ ABAP FS Language Model Tools are exposed via MCP, including:
 
 - **abap_debug_status** - Check debug status
 
-## 1.2 Enhanced Hover Information
+# 1.2 AI Subagents for Optimized ABAP Development
+
+**Purpose:** Delegate specialized ABAP tasks to focused AI agents for better output quality, context window management, and cost efficiency
+
+## What Are AI Subagents?
+
+AI Subagents are specialized AI assistants that handle specific ABAP tasks. When you delegate work to subagents instead of having your main agent do everything, you get:
+
+### 🎯 Better Output Quality
+Subagents are **focused specialists**. When a code review is delegated to `abap-code-reviewer`, it's thorough and comprehensive because:
+- The agent has a focused system prompt optimized for code review
+- It's not distracted by other tasks or conversation history
+- It has access only to the tools it needs
+
+**Real-world example:** When asked to "describe this report and review the code", the main agent may provide a surface-level review. But when it delegates the review to `abap-code-reviewer`, the review is significantly more detailed and catches more issues.
+
+### 📊 Context Window Management  
+Every message, tool result, and response consumes context window tokens. When the main agent does everything:
+- Large code blocks fill up context fast
+- Previous conversation history accumulates
+- Eventually the model "forgets" earlier context
+
+With subagents:
+- Heavy lifting happens in **separate context windows**
+- Main agent only receives **summarized results**
+- Your main conversation stays focused and responsive
+
+### 💰 Cost Efficiency (Secondary Benefit)
+While not the primary goal, using cheaper models for simple tasks reduces costs:
+
+| Task Type | Example | Recommended Model Tier |
+|-----------|---------|----------------------|
+| Search/Discovery | "Find all classes starting with ZCL_MD" | 🟢 Tier 1 (Cheap/Fast) |
+| Code Reading | "What does the FACTORY method do?" | 🟢 Tier 1 (Cheap/Fast) |
+| Analysis | "Where is this class used?" | 🟡 Tier 2 (Mid-tier) |
+| Quality Checks | "Run ATC on this class" | 🟡 Tier 2 (Mid-tier) |
+| Code Review | "Review this implementation" | 🔴 Tier 3 (Premium) |
+| Orchestration | Complex multi-step tasks | 🔴 Tier 3 (Premium) |
+
+⚠️ **Important:** Frequently-used agents (like `abap-discoverer`, `abap-reader`) should use cheaper models. Using premium models for every subagent defeats the cost benefit.
+
+## Available Subagents
+
+| Agent | Purpose | Tier |
+|-------|---------|------|
+| `abap-orchestrator` | Main coordinator - routes tasks, writes all code | 🔴 3 |
+| `abap-code-reviewer` | Deep code review - security, performance, best practices | 🔴 3 |
+| `abap-usage-analyzer` | Where-used analysis, dependencies, change impact | 🟡 2 |
+| `abap-quality-checker` | ATC analysis, unit tests, code health | 🟡 2 |
+| `abap-historian` | Version history, transport requests | 🟡 2 |
+| `abap-debugger` | Runtime debugging - breakpoints, stepping | 🟡 2 |
+| `abap-troubleshooter` | Analyze dumps, traces, performance issues | 🟡 2 |
+| `abap-data-analyst` | Query SAP tables, analyze data patterns | 🟡 2 |
+| `abap-discoverer` | Find ABAP objects by name/pattern | 🟢 1 |
+| `abap-reader` | Read and extract info from source code | 🟢 1 |
+| `abap-creator` | Create new ABAP objects (shells) | 🟢 1 |
+| `abap-visualizer` | Create diagrams from code | 🟢 1 |
+| `abap-documenter` | Generate technical documentation | 🟢 1 |
+
+## How It Works
+
+1. **Agent Files**: Each subagent is defined in a `.agent.md` file in your workspace under `.github/agents/`
+2. **Model Assignment**: Each agent file specifies which AI model to use
+3. **Tool Restrictions**: Agents only have access to specific tools they need
+4. **User Invocation**: You can invoke agents directly with `@agent-name` in chat
+5. **Delegation**: The orchestrator (or even the default Agent mode) can delegate tasks to other agents using `runSubagent`. If it doesn't - just ask.
+
+### How Users Invoke Subagents
+
+In GitHub Copilot Chat, type `@` followed by the agent name:
+
+```
+@abap-discoverer find all function modules starting with Z_BAPI
+@abap-quality-checker run ATC on ZCL_MY_CLASS
+@abap-historian show version history for ZPROGRAM
+```
+
+The agent will use its configured (cheaper) model instead of your main chat model.
+
+### How Orchestrator Delegates
+
+When you use `@abap-orchestrator` for a complex task (or even the default Agent mode), it can delegate subtasks:
+
+```
+User: @abap-orchestrator analyze ZCL_ARTICLE_HANDLER and suggest improvements
+
+Orchestrator thinking:
+1. Need to find related classes → delegate to abap-discoverer (Haiku - cheap)
+2. Need to read the code → delegate to abap-reader (Haiku - cheap)  
+3. Need usage analysis → delegate to abap-usage-analyzer (GPT-4o - mid)
+4. Synthesize findings and write recommendations → do myself (Sonnet - smart)
+```
+
+## Setup Instructions
+
+### Step 1: Configure Models via Copilot
+
+Ask Copilot to configure subagent models:
+
+```
+"Configure subagents for ABAP development"
+```
+
+Copilot will:
+1. Show available models with cost tiers
+2. Suggest appropriate models for each agent
+3. Ask for your confirmation before applying
+
+**Example tier assignments:**
+- **Tier 1** (discoverer, reader, creator, visualizer, documenter): `Claude Haiku 4.5` or `Gemini 3 Flash`
+- **Tier 2** (usage-analyzer, quality-checker, historian, debugger, troubleshooter, data-analyst): `GPT-4o` or `Claude Sonnet 4`
+- **Tier 3** (orchestrator, code-reviewer): `Claude Sonnet 4.5` or `GPT-5`
+
+### Step 2: Enable Subagents
+
+Ask Copilot:
+```
+"Enable subagents"
+```
+
+This will:
+1. Verify all models are configured
+2. Create/restore agent files in `.github/agents/`
+3. Validate the files for errors
+4. Prompt to enable the required VS Code setting (if needed)
+
+### Step 3: Enable VS Code Setting (if prompted)
+
+When enabling, you may see a notification asking to enable `chat.customAgentInSubagent.enabled`. Click "Enable Setting" to allow the orchestrator to delegate to your custom agents.
+
+## Managing Subagents
+
+### Check Status
+```
+"Show subagent status"
+```
+
+### Disable Subagents
+```
+"Disable subagents"
+```
+Agent files are preserved in `agents_disabled/` folder and restored when you re-enable.
+
+### Change Models
+```
+"Change abap-discoverer to use GPT-4o"
+```
+
+### List Available Models
+```
+"What models can I use for subagents?"
+```
+
+### List Available Tools
+```
+"List available tools for subagents"
+```
+
+## Customizing Agent Tools
+
+Each agent has a default set of tools defined in its `.agent.md` file. You can customize these:
+
+1. **Open the agent file**: `.github/agents/abap-discoverer.agent.md`
+2. **Find the `tools:` line**
+3. **Edit the tool list** as needed 
+-   OR 
+- Just ask Copilot to do it
+
+**Example:**
+```yaml
+tools: ['aragana.abap-copilot/abap-search', 'aragana.abap-copilot/abap-info']
+```
+
+**Important:** If you customize agent.md files, your changes are preserved:
+- When you **disable** subagents, the folder is renamed to `agents_disabled/` (not deleted)
+- When you **re-enable**, your customizations are restored
+- When you **change models**, only the `model:` line is updated
+
+To see all available tool names, ask Copilot: `"List available tools for subagents"`
+
+## Advantages
+
+✅ **Better Output Quality**: Specialized agents produce more thorough, focused results than a general-purpose agent multitasking
+
+✅ **Context Window Management**: Heavy operations happen in separate contexts - your main conversation stays lean and responsive
+
+✅ **Specialization**: Each agent has a focused system prompt and limited tools optimized for its domain
+
+✅ **Cost Efficiency**: Route frequent/simple tasks to cheaper models (but this is secondary to quality and context benefits)
+
+✅ **Faster Responses**: Smaller models with focused prompts respond faster for specialized tasks
+
+✅ **Flexibility**: Change models anytime without losing your customizations
+
+✅ **User Control**: You decide which models to use for each agent tier
+
+## What to Be Aware Of
+
+⚠️ **Model Availability**: Some models shown in the list may not work (e.g., "GPT-4o mini"). The system validates and auto-disables if errors are detected.
+
+⚠️ **VS Code Setting Required**: `chat.customAgentInSubagent.enabled` must be true for delegation to work, otherwise main agent's model may be used for all subagents which can result in a lot of premium request usage.
+
+⚠️ **Workspace-Specific**: Settings and agent files are per-workspace, not global
+
+⚠️ **Agent Files in Git**: The `.github/agents/` folder will appear in your version control - add to `.gitignore` if you don't want to share
+
+⚠️ **Frequently-Used Agents**: Agents like `abap-discoverer` and `abap-reader` get called often - using expensive models for these defeats the cost benefit
+
+## Troubleshooting
+
+### "Cannot enable subagents - missing models"
+All 13 agents must have models configured. Ask Copilot to configure missing agents.
+
+### Agent files show validation errors
+Some model names aren't valid for agent files. Try a different model (e.g., use `Claude Haiku 4.5` instead of `GPT-4o mini`).
+
+### Subagents auto-disabled
+This happens when configured models become unavailable. Reconfigure with available models.
+
+### Ghost files in explorer after disable
+This is a VS Code refresh issue. The extension refreshes the explorer automatically, but occasionally you may need to collapse/expand the folder.
+
+### Delegation not using custom agents
+Make sure `chat.customAgentInSubagent.enabled` is set to `true` in your VS Code settings.
+
+## 1.3 Enhanced Hover Information
 
 **Purpose:** Rich contextual information on hover over ABAP code
 

@@ -116,6 +116,10 @@ export async function registerAllTools(context: vscode.ExtensionContext): Promis
   const { registerVersionHistoryTool } = await import('./versionHistoryTool');
   registerVersionHistoryTool(context);
 
+  // 16. Subagent Configuration Tool
+  const { registerSubagentConfigTool } = await import('./subagentConfigTool');
+  registerSubagentConfigTool(context);
+
   // Initialize WebviewManager singleton (required for data query tool)
   const { WebviewManager } = await import('../webviewManager');
   WebviewManager.getInstance(context);

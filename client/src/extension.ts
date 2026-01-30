@@ -121,6 +121,10 @@ export async function activate(ctx: ExtensionContext): Promise<AbapFsApi> {
       
       // Register Language Model Tools for proper AI integration (includes Mermaid tools)
       await registerAllTools(context);
+
+      // Validate and regenerate subagent files if enabled
+      const { validateSubagentsOnStartup } = await import('./services/lm-tools/subagentConfigTool');
+      await validateSubagentsOnStartup(context);
            
       // Register ABAP Cleaner feature
       registerCleanerCommands(context);
