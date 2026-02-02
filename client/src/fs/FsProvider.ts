@@ -24,7 +24,7 @@ export class FsProvider implements FileSystemProvider {
   private static instance: FsProvider
   private editorContentCache = new Map<string, string>() // Track editor content to prevent server overwrites
   private localProvider: LocalFsProvider
-  
+
   private constructor(private context: ExtensionContext) {
     this.localProvider = new LocalFsProvider(context)
     // forward local provider file changes to this provider so that the extension
@@ -33,7 +33,7 @@ export class FsProvider implements FileSystemProvider {
       this.localProvider.onDidChangeFile(changes => this.pEventEmitter.fire(changes))
     )
   }
-  
+
   public static get(context?: ExtensionContext) {
     if (!FsProvider.instance) {
       if (context) {
@@ -44,12 +44,12 @@ export class FsProvider implements FileSystemProvider {
     }
     return FsProvider.instance
   }
-  
+
   public get onDidChangeFile() {
     return this.pEventEmitter.event
   }
   private pEventEmitter = new EventEmitter<FileChangeEvent[]>()
-  
+
   public watch(
     uri: Uri,
     options: {
@@ -68,17 +68,17 @@ export class FsProvider implements FileSystemProvider {
   public async stat(uri: Uri): Promise<FileStat> {
     // Local storage for .* files and template files
     if (LocalFsProvider.useLocalStorage(uri)) return this.localProvider.stat(uri)
-    
+
     try {
       const root = await getOrCreateRoot(uri.authority)
       const node = await root.getNodeAsync(uri.path)
-      if (!node) throw FileSystemError.FileNotFound(uri)      
+      if (!node) throw FileSystemError.FileNotFound(uri)
       if (isAbapFile(node)) await node.stat()
       if (isAbapFolder(node)) await node.refresh()
       return node
     } catch (e) {
       // Don't log FileNotFound errors for method names/debug artifacts to reduce noise
-      if (!(e instanceof FileSystemError && e.name === 'FileNotFound (FileSystemError)')) {
+      if (!(e instanceof FileSystemError && e.name === "FileNotFound (FileSystemError)")) {
       }
       throw e
     }
@@ -86,7 +86,7 @@ export class FsProvider implements FileSystemProvider {
 
   public async readFile(uri: Uri): Promise<Uint8Array> {
     if (LocalFsProvider.useLocalStorage(uri)) return this.localProvider.readFile(uri)
-    
+
     try {
       const root = await getOrCreateRoot(uri.authority)
       const node = await root.getNodeAsync(uri.path)
@@ -95,11 +95,11 @@ export class FsProvider implements FileSystemProvider {
         const activeEditor = window.activeTextEditor
         const visibleEditors = window.visibleTextEditors
         const targetUri = uri.toString()
-        
+
         const activeMatches = activeEditor?.document.uri.toString() === targetUri
         const visibleEditor = visibleEditors.find(e => e.document.uri.toString() === targetUri)
         const visibleMatches = !!visibleEditor
-        
+
         if (activeMatches || visibleMatches) {
           const editor = activeMatches ? activeEditor : visibleEditor
           const editorText = editor!.document.getText()
@@ -113,29 +113,28 @@ export class FsProvider implements FileSystemProvider {
             return Buffer.from(cachedEditorContent)
           }
         }
-        
+
         const contents = await node.read()
-        
+
         // Check if this is a SAPGUI-only object and auto-trigger
-        if (contents.includes('This object type is not supported in VS Code')) {
+        if (contents.includes("This object type is not supported in VS Code")) {
           // Automatically trigger runInGui command
           // Use setTimeout to ensure the document is opened first so URI context is available
           setTimeout(() => {
-            commands.executeCommand('abapfs.runInGui')
+            commands.executeCommand("abapfs.runInGui")
           }, 1000)
         }
-        
+
         const buf = Buffer.from(contents)
         return buf
       }
-    } catch (error) {
-    }
+    } catch (error) {}
     throw FileSystemError.Unavailable(uri)
   }
 
   public async readDirectory(uri: Uri): Promise<[string, FileType][]> {
     if (LocalFsProvider.useLocalStorage(uri)) return this.localProvider.readDirectory(uri)
-    
+
     try {
       const root = await getOrCreateRoot(uri.authority)
       const node = await root.getNodeAsync(uri.path)
@@ -162,40 +161,35 @@ export class FsProvider implements FileSystemProvider {
 
   public async writeFile(uri: Uri, content: Uint8Array): Promise<void> {
     if (LocalFsProvider.useLocalStorage(uri)) return this.localProvider.writeFile(uri, content, {})
-    
+
     let needUnlocking = false
     try {
       const root = await getOrCreateRoot(uri.authority)
       const node = await root.getNodeAsync(uri.path)
       if (isAbapFile(node)) {
-        
         const uriString = uri.toString()
-        
+
         // Check if this save was triggered by a non-manual operation
         const saveReason = getSaveReason(uriString)
         if (saveReason === undefined || saveReason !== TextDocumentSaveReason.Manual) {
           clearSaveReason(uriString)
           return // Block any save that isn't explicitly manual
         }
-        
+
         clearSaveReason(uriString)
-        
+
         // Auto-lock if not already locked
         const oldlock = (await root.lockManager.finalStatus(uri.path)).status
         if (oldlock === "unlocked") {
           await root.lockManager.requestLock(uri.path)
           needUnlocking = true
         }
-        
+
         const trsel = await selectTransportIfNeeded(uri)
         if (trsel.cancelled) return
         const lock = root.lockManager.lockStatus(uri.path)
         if (lock.status === "locked") {
-          await node.write(
-            content.toString(),
-            lock.LOCK_HANDLE,
-            trsel.transport
-          )
+          await node.write(content.toString(), lock.LOCK_HANDLE, trsel.transport)
           await root.lockManager.requestUnlock(uri.path, true)
           this.pEventEmitter.fire([{ type: FileChangeType.Changed, uri }])
         } else throw new Error(`File ${uri.path} was not locked`)
@@ -212,7 +206,7 @@ export class FsProvider implements FileSystemProvider {
 
   public async delete(uri: Uri, options: { recursive: boolean }) {
     if (LocalFsProvider.useLocalStorage(uri)) return this.localProvider.delete(uri, options)
-    
+
     try {
       const root = await getOrCreateRoot(uri.authority)
       const node = await root.getNodeAsync(uri.path)
@@ -222,10 +216,7 @@ export class FsProvider implements FileSystemProvider {
         if (trsel.cancelled) return
         if (isAbapFolder(node) || isAbapFile(node))
           return await node.delete(lock.LOCK_HANDLE, trsel.transport)
-        else
-          throw FileSystemError.Unavailable(
-            "Deletion not supported for this object"
-          )
+        else throw FileSystemError.Unavailable("Deletion not supported for this object")
       } else throw FileSystemError.NoPermissions(`Unable to acquire lock`)
     } catch (e) {
       log(`[DELETE ERROR] URI: ${uri.toString()}, Error: ${caughtToString(e)}`)
@@ -234,11 +225,7 @@ export class FsProvider implements FileSystemProvider {
     }
   }
 
-  public rename(
-    oldUri: Uri,
-    newUri: Uri,
-    options: { overwrite: boolean }
-  ): void | Thenable<void> {
+  public rename(oldUri: Uri, newUri: Uri, options: { overwrite: boolean }): void | Thenable<void> {
     throw new Error("Method not implemented.")
   }
 }

@@ -16,9 +16,7 @@ import { documentSymbols } from "./symbols"
 import { formatDocument } from "./documentformatter"
 import { codeActionHandler } from "./codeActions"
 import { updateInclude } from "./objectManager"
-import {
-  TextDocument
-} from 'vscode-languageserver-textdocument'
+import { TextDocument } from "vscode-languageserver-textdocument"
 import { renameHandler } from "./rename"
 export const documents = new TextDocuments(TextDocument)
 
@@ -33,9 +31,7 @@ connection.onInitialize((params: InitializeParams) => {
 
   // Does the client support the `workspace/configuration` request?
   // If not, we will fall back using global settings
-  hasConfigurationCapability = !!(
-    capabilities.workspace && !!capabilities.workspace.configuration
-  )
+  hasConfigurationCapability = !!(capabilities.workspace && !!capabilities.workspace.configuration)
   hasWorkspaceFolderCapability = !!(
     capabilities.workspace && !!capabilities.workspace.workspaceFolders
   )
@@ -74,10 +70,7 @@ connection.onInitialize((params: InitializeParams) => {
 connection.onInitialized(() => {
   if (hasConfigurationCapability) {
     // Register for all configuration changes.
-    connection.client.register(
-      DidChangeConfigurationNotification.type,
-      undefined
-    )
+    connection.client.register(DidChangeConfigurationNotification.type, undefined)
   }
   if (hasWorkspaceFolderCapability) {
     connection.workspace.onDidChangeWorkspaceFolders(event => {
@@ -89,8 +82,8 @@ connection.onInitialized(() => {
 connection.onCompletion(completion)
 connection.onCompletionResolve((c: CompletionItem) => c)
 // Eclipse ADT style: Ctrl+Click goes to implementation first, then declaration
-connection.onDefinition(findDefinition.bind(null, true))  // Swapped: now shows implementation
-connection.onImplementation(findDefinition.bind(null, false))  // Swapped: now shows declaration
+connection.onDefinition(findDefinition.bind(null, true)) // Swapped: now shows implementation
+connection.onImplementation(findDefinition.bind(null, false)) // Swapped: now shows declaration
 connection.onReferences(findReferences)
 connection.onDocumentSymbol(documentSymbols)
 connection.onDocumentFormatting(formatDocument)
@@ -101,17 +94,19 @@ documents.onDidSave(e => {
   // Cross-file syntax refresh for include <-> program relationships
   // Check for "Includes" or "Programs" in the workspace path (case-insensitive, URL-encoded)
   const uri = e.document.uri.toLowerCase()
-  const isInclude = uri.includes('/includes/') || uri.includes('%2fincludes%2f')
-  const isProgram = !isInclude && (uri.includes('/programs/') || uri.includes('%2fprograms%2f'))
-  
+  const isInclude = uri.includes("/includes/") || uri.includes("%2fincludes%2f")
+  const isProgram = !isInclude && (uri.includes("/programs/") || uri.includes("%2fprograms%2f"))
+
   // Delay to ensure SAP has processed the save before checking related files
   setTimeout(() => {
     if (isInclude) {
       // Include saved: re-check all open programs
       for (const doc of documents.all()) {
         const docUri = doc.uri.toLowerCase()
-        const docIsProgram = !docUri.includes('/includes/') && !docUri.includes('%2fincludes%2f') &&
-                            (docUri.includes('/programs/') || docUri.includes('%2fprograms%2f'))
+        const docIsProgram =
+          !docUri.includes("/includes/") &&
+          !docUri.includes("%2fincludes%2f") &&
+          (docUri.includes("/programs/") || docUri.includes("%2fprograms%2f"))
         if (doc.uri !== e.document.uri && docIsProgram) {
           syntaxCheck(doc)
         }
@@ -120,7 +115,7 @@ documents.onDidSave(e => {
       // Program saved: re-check all open includes
       for (const doc of documents.all()) {
         const docUri = doc.uri.toLowerCase()
-        const docIsInclude = docUri.includes('/includes/') || docUri.includes('%2fincludes%2f')
+        const docIsInclude = docUri.includes("/includes/") || docUri.includes("%2fincludes%2f")
         if (doc.uri !== e.document.uri && docIsInclude) {
           syntaxCheck(doc)
         }
@@ -140,4 +135,3 @@ connection.onRequest(Methods.triggerSyntaxCheck, (uri: string) => {
 
 documents.listen(connection)
 connection.listen()
-

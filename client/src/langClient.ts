@@ -1,11 +1,5 @@
 import { MainProgram, HttpLogEntry } from "vscode-abap-remote-fs-sharedapi"
-import {
-  log,
-  channel,
-  mongoApiLogger,
-  mongoHttpLogger,
-  rangeApi2Vsc
-} from "./lib"
+import { log, channel, mongoApiLogger, mongoHttpLogger, rangeApi2Vsc } from "./lib"
 import {
   AbapObjectDetail,
   Methods,
@@ -16,14 +10,7 @@ import {
   SearchProgress,
   LogEntry
 } from "vscode-abap-remote-fs-sharedapi"
-import {
-  ExtensionContext,
-  Uri,
-  window,
-  ProgressLocation,
-  workspace,
-  WorkspaceEdit
-} from "vscode"
+import { ExtensionContext, Uri, window, ProgressLocation, workspace, WorkspaceEdit } from "vscode"
 import {
   LanguageClient,
   TransportKind,
@@ -45,7 +32,12 @@ import * as R from "ramda"
 const uriErrors = new Map<string, boolean>()
 const uriError = (uri: string) => new Error(`File not found:${uri}`)
 
-export async function vsCodeUri(confKey: string, uri: string, mainInclude: boolean, cacheErrors = false): Promise<string> {
+export async function vsCodeUri(
+  confKey: string,
+  uri: string,
+  mainInclude: boolean,
+  cacheErrors = false
+): Promise<string> {
   const isContextualInclude = /\/source\/main/i.test(uri)
   const normalizedUri = isContextualInclude
     ? uri.replace(/\/source\/main(?:[?#].*)?$/i, "") || uri
@@ -118,12 +110,12 @@ async function objectDetailFromUrl(url: string) {
   const root = uriRoot(uri)
   const obj = await root.getNodeAsync(uri.path)
   if (!isAbapFile(obj)) throw new Error("not found") // TODO error
-  
+
   // Load structure if not already loaded (required for contentsPath())
   if (!obj.object.structure) {
     await obj.object.loadStructure()
   }
-  
+
   let mainProgram
   if (obj.object.type === "PROG/I")
     mainProgram = IncludeService.get(uri.authority).current(uri.path)
@@ -148,27 +140,28 @@ async function setSearchProgress(searchProg: SearchProgress) {
         cancellable: true,
         title: "Where used list in progress - "
       },
-      (progress, token) => new Promise((resolve, reject) => {
-        let current = 0
-        token.onCancellationRequested(async () => {
-          setProgress = undefined
-          await client.sendRequest(Methods.cancelSearch)
-          resolve(undefined)
-        })
-        setProgress = (s: SearchProgress) => {
-          if (s.ended) {
-            progress.report({ increment: 100, message: `Search completed,${s.hits} found` })
+      (progress, token) =>
+        new Promise((resolve, reject) => {
+          let current = 0
+          token.onCancellationRequested(async () => {
             setProgress = undefined
+            await client.sendRequest(Methods.cancelSearch)
             resolve(undefined)
-            return
-          }
-          progress.report({
-            increment: s.progress - current,
-            message: `Searching usage references, ${s.hits} hits found so far`
           })
-          current = s.progress
-        }
-      })
+          setProgress = (s: SearchProgress) => {
+            if (s.ended) {
+              progress.report({ increment: 100, message: `Search completed,${s.hits} found` })
+              setProgress = undefined
+              resolve(undefined)
+              return
+            }
+            progress.report({
+              increment: s.progress - current,
+              message: `Searching usage references, ${s.hits} hits found so far`
+            })
+            current = s.progress
+          }
+        })
     )
   }
 }
@@ -196,7 +189,7 @@ export async function startLanguageClient(context: ExtensionContext) {
   const module = context.asAbsolutePath(join("server", "dist", "server.js"))
   const transport = TransportKind.ipc
   const options = { execArgv: ["--nolazy", "--inspect=6010"] }
- // log("creating language client...")
+  // log("creating language client...")
 
   client = new LanguageClient(
     "ABAPFS_LC",
@@ -246,10 +239,7 @@ export class LanguageCommands {
     const source = await readEditorObjectSource(uri)
 
     const deltaLine = (d: Delta) => d.range.start.line
-    const sortDelta = R.sortWith<Delta>([
-      R.ascend(R.prop("uri")),
-      R.descend(deltaLine)
-    ])
+    const sortDelta = R.sortWith<Delta>([R.ascend(R.prop("uri")), R.descend(deltaLine)])
 
     const deltas = await cl.fixEdits(proposal, source.source).then(sortDelta)
     if (!deltas || deltas.length === 0) return

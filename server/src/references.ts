@@ -20,21 +20,14 @@ import { log, warn } from "./clientManager"
 import { getObjectSource, setSearchProgress } from "./clientapis"
 import { isAbap, memoize, parts, toInt, hashParms, caughtToString } from "./functions"
 
-export async function findDefinition(
-  impl: boolean,
-  params: TextDocumentPositionParams
-) {
+export async function findDefinition(impl: boolean, params: TextDocumentPositionParams) {
   if (!isAbap(params.textDocument.uri)) return
   let co: any = null
   try {
     co = await clientAndObjfromUrl(params.textDocument.uri)
     if (!co) return
 
-    const range = sourceRange(
-      co.source,
-      params.position.line + 1,
-      params.position.character
-    )
+    const range = sourceRange(co.source, params.position.line + 1, params.position.character)
 
     const result = await co.client.statelessClone.findDefinition(
       co.obj.mainUrl,
@@ -68,9 +61,7 @@ export async function findDefinition(
       range: sourceRange(source, result.line, result.column)
     }
     return l
-  } catch (e) {
-    
-  }
+  } catch (e) {}
 }
 
 class LocationManager {
@@ -81,7 +72,10 @@ class LocationManager {
     ["CLAS/OSO", /^(?:(?=[^*"])[^"]*)?protected\s+section(?:\s|\n|\.)/i]
   ])
 
-  constructor(private conKey: string, private client: ADTClient) {
+  constructor(
+    private conKey: string,
+    private client: ADTClient
+  ) {
     this.classes = memoize(c => this.client.statelessClone.classComponents(c))
     this.sources = memoize(c => this.client.statelessClone.getObjectSource(c))
   }
@@ -151,21 +145,15 @@ class LocationManager {
   }
 
   private findLink(include: ClassComponent) {
-    const link = include.links.find(
-      l => !!(l.rel && l.href && l.rel.match("implementationBlock"))
-    )
+    const link = include.links.find(l => !!(l.rel && l.href && l.rel.match("implementationBlock")))
     if (link) return link
-    return include.links.find(
-      l => !!(l.rel && l.href && l.rel.match("definitionBlock"))
-    )
+    return include.links.find(l => !!(l.rel && l.href && l.rel.match("definitionBlock")))
   }
 
   private async findInclude(name: string, type: string, uri: string) {
     let include
     if (type && name) {
-      const match = uri.match(
-        /(\/sap\/bc\/adt\/oo\/(?:classes|interfaces)\/.*)\/source\/main/
-      )
+      const match = uri.match(/(\/sap\/bc\/adt\/oo\/(?:classes|interfaces)\/.*)\/source\/main/)
       if (match) {
         const main = await this.classes(match[1])
         if (main) {
@@ -199,7 +187,7 @@ export function cancelSearch() {
   if (lastSearch) {
     lastSearch.cancel()
     lastSearch = undefined
-    return setSearchProgress({ ended: true, hits: 0, progress: 100 }).catch(() => { })
+    return setSearchProgress({ ended: true, hits: 0, progress: 100 }).catch(() => {})
   }
 }
 
@@ -209,14 +197,10 @@ async function startSearch() {
   lastSearch = new CancellationTokenSource()
   return lastSearch
 }
-export async function findReferences(
-  params: ReferenceParams,
-  token: CancellationToken
-) {
+export async function findReferences(params: ReferenceParams, token: CancellationToken) {
   if (!isAbap(params.textDocument.uri)) return
   const mySearch = await startSearch()
-  const cancelled = () =>
-    mySearch.token.isCancellationRequested || token.isCancellationRequested
+  const cancelled = () => mySearch.token.isCancellationRequested || token.isCancellationRequested
 
   const locations: Location[] = []
   try {
@@ -239,9 +223,7 @@ export async function findReferences(
         const snippets = await co.client.statelessClone.usageReferenceSnippets(groups[group])
         for (const s of snippets) {
           if (s.snippets.length === 0) {
-            const ref = references.find(
-              r => r.objectIdentifier === s.objectIdentifier
-            )
+            const ref = references.find(r => r.objectIdentifier === s.objectIdentifier)
             if (ref)
               try {
                 const loc = await manager.locationFromRef(ref)

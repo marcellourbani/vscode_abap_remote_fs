@@ -1,10 +1,5 @@
 import { cache } from "../../lib"
-import {
-  ADTClient,
-  classIncludes,
-  Revision,
-  AbapObjectStructure
-} from "abap-adt-api"
+import { ADTClient, classIncludes, Revision, AbapObjectStructure } from "abap-adt-api"
 import { getClient, abapUri, getRoot } from "../../adt/conections"
 import { AbapObject, isAbapClassInclude } from "abapobject"
 import { Uri } from "vscode"
@@ -45,8 +40,7 @@ export class AbapRevisionService {
     structure: AbapObjectStructure,
     include?: classIncludes
   ) {
-    const prom =
-      this.pending.get(key) || this.client.revisions(structure, include)
+    const prom = this.pending.get(key) || this.client.revisions(structure, include)
     this.pending.set(key, prom)
     prom.finally(() => this.pending.delete(key))
     return prom
@@ -58,7 +52,5 @@ export class AbapRevisionService {
   }
   private revisions = new Map<string, Revision[]>()
   private pending = new Map<string, Promise<Revision[]>>()
-  private static services = cache(
-    (connId: string) => new AbapRevisionService(connId)
-  )
+  private static services = cache((connId: string) => new AbapRevisionService(connId))
 }

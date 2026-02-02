@@ -17,12 +17,10 @@ export class IncludeService {
     return this.services.get(connId)
   }
 
-  private static services = cache(
-    (connId: string) => new IncludeService(getRoot(connId))
-  )
+  private static services = cache((connId: string) => new IncludeService(getRoot(connId)))
 
   private includes = new Map<string, IncludeData>()
-  private constructor(private root: Root) { }
+  private constructor(private root: Root) {}
 
   current(vsPath: string) {
     const data = this.includes.get(vsPath)
@@ -61,13 +59,10 @@ export class IncludeService {
       .map(p => p.file)
       .find(isAbapStat)
     if (!dad || dad.object.type === PACKAGE) return
-    const main = data?.candidates.find(
-      c => c["adtcore:uri"] === dad.object.path
-    )
+    const main = data?.candidates.find(c => c["adtcore:uri"] === dad.object.path)
     if (main) return main
     const { name, type, path } = dad.object
-    if (dad)
-      return { "adtcore:name": name, "adtcore:type": type, "adtcore:uri": path }
+    if (dad) return { "adtcore:name": name, "adtcore:type": type, "adtcore:uri": path }
   }
 
   async candidates(vsPath: string, refresh = false) {

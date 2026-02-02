@@ -3,37 +3,39 @@
  * Similar to WebviewManager but specialized for diagram viewing
  */
 
-import * as vscode from 'vscode';
-import { funWindow as window } from './funMessenger';
-import { logCommands } from './abapCopilotLogger';
+import * as vscode from "vscode"
+import { funWindow as window } from "./funMessenger"
+import { logCommands } from "./abapCopilotLogger"
 
 export interface DiagramViewResult {
-  webviewId: string;
-  action: 'created';
+  webviewId: string
+  action: "created"
 }
 
 export class DiagramWebviewManager {
-  private static instance: DiagramWebviewManager;
-  private static isInitialized = false;
-  private extensionUri: vscode.Uri;
-  private webviews = new Map<string, vscode.WebviewPanel>();
+  private static instance: DiagramWebviewManager
+  private static isInitialized = false
+  private extensionUri: vscode.Uri
+  private webviews = new Map<string, vscode.WebviewPanel>()
 
   private constructor(extensionUri: vscode.Uri) {
-    this.extensionUri = extensionUri;
+    this.extensionUri = extensionUri
   }
 
   public static initialize(extensionUri: vscode.Uri): void {
     if (!DiagramWebviewManager.instance) {
-      DiagramWebviewManager.instance = new DiagramWebviewManager(extensionUri);
-      DiagramWebviewManager.isInitialized = true;
+      DiagramWebviewManager.instance = new DiagramWebviewManager(extensionUri)
+      DiagramWebviewManager.isInitialized = true
     }
   }
 
   public static getInstance(): DiagramWebviewManager {
     if (!DiagramWebviewManager.isInitialized) {
-      throw new Error('DiagramWebviewManager not initialized. Call initialize() first in the extension activation.');
+      throw new Error(
+        "DiagramWebviewManager not initialized. Call initialize() first in the extension activation."
+      )
     }
-    return DiagramWebviewManager.instance;
+    return DiagramWebviewManager.instance
   }
 
   /**
@@ -42,65 +44,57 @@ export class DiagramWebviewManager {
   public async displayDiagram(
     svg: string,
     diagramType: string,
-    title: string = 'Mermaid Diagram'
+    title: string = "Mermaid Diagram"
   ): Promise<DiagramViewResult> {
-    
-    const webviewId = `diagram-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
-    
+    const webviewId = `diagram-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`
 
     // Create webview panel
-    const panel = window.createWebviewPanel(
-      'diagramViewer',
-      title,
-      vscode.ViewColumn.One,
-      {
-        enableScripts: true,
-        localResourceRoots: [
-          vscode.Uri.joinPath(this.extensionUri, 'client', 'dist', 'media'),
-          vscode.Uri.joinPath(this.extensionUri, 'client', 'media')
-        ],
-        retainContextWhenHidden: true
-      }
-    );
+    const panel = window.createWebviewPanel("diagramViewer", title, vscode.ViewColumn.One, {
+      enableScripts: true,
+      localResourceRoots: [
+        vscode.Uri.joinPath(this.extensionUri, "client", "dist", "media"),
+        vscode.Uri.joinPath(this.extensionUri, "client", "media")
+      ],
+      retainContextWhenHidden: true
+    })
 
     // Store webview reference
-    this.webviews.set(webviewId, panel);
+    this.webviews.set(webviewId, panel)
 
     // Set up message handler
-    this.setupMessageHandler(panel, webviewId);
+    this.setupMessageHandler(panel, webviewId)
 
     // Generate HTML content
-    panel.webview.html = this.getWebviewContent(panel.webview, svg, diagramType, title);
+    panel.webview.html = this.getWebviewContent(panel.webview, svg, diagramType, title)
 
     // Handle disposal
     panel.onDidDispose(() => {
-      this.webviews.delete(webviewId);
-    });
-
+      this.webviews.delete(webviewId)
+    })
 
     return {
       webviewId,
-      action: 'created'
-    };
+      action: "created"
+    }
   }
 
   private setupMessageHandler(panel: vscode.WebviewPanel, webviewId: string): void {
-    panel.webview.onDidReceiveMessage(async (message) => {
+    panel.webview.onDidReceiveMessage(async message => {
       try {
         switch (message.command) {
-          case 'saveDiagram':
-            await this.handleSaveDiagram(message.svg, message.filename);
-            break;
-          case 'log':
+          case "saveDiagram":
+            await this.handleSaveDiagram(message.svg, message.filename)
+            break
+          case "log":
             //logCommands.info(`[DIAGRAM_WEBVIEW] ${webviewId}: ${message.message}`);
-            break;
+            break
           default:
-           // logCommands.warn(`[DIAGRAM_WEBVIEW] Unknown command: ${message.command}`);
+          // logCommands.warn(`[DIAGRAM_WEBVIEW] Unknown command: ${message.command}`);
         }
       } catch (error) {
-        logCommands.error(`[DIAGRAM_WEBVIEW] Error handling message:`, error);
+        logCommands.error(`[DIAGRAM_WEBVIEW] Error handling message:`, error)
       }
-    });
+    })
   }
 
   private async handleSaveDiagram(svg: string, filename: string): Promise<void> {
@@ -108,24 +102,29 @@ export class DiagramWebviewManager {
       const saveUri = await window.showSaveDialog({
         defaultUri: vscode.Uri.file(filename || `mermaid-diagram-${Date.now()}.svg`),
         filters: {
-          'SVG Files': ['svg'],
-          'All Files': ['*']
+          "SVG Files": ["svg"],
+          "All Files": ["*"]
         },
-        title: 'Save Mermaid Diagram'
-      });
+        title: "Save Mermaid Diagram"
+      })
 
       if (saveUri) {
-        await vscode.workspace.fs.writeFile(saveUri, Buffer.from(svg, 'utf8'));
-        window.showInformationMessage(`✅ Diagram saved to: ${saveUri.fsPath}`);
-        logCommands.info(`[DIAGRAM_WEBVIEW] Diagram saved to: ${saveUri.fsPath}`);
+        await vscode.workspace.fs.writeFile(saveUri, Buffer.from(svg, "utf8"))
+        window.showInformationMessage(`✅ Diagram saved to: ${saveUri.fsPath}`)
+        logCommands.info(`[DIAGRAM_WEBVIEW] Diagram saved to: ${saveUri.fsPath}`)
       }
     } catch (error) {
-      logCommands.error('[DIAGRAM_WEBVIEW] Failed to save diagram:', error);
-      window.showErrorMessage(`Failed to save diagram: ${error}`);
+      logCommands.error("[DIAGRAM_WEBVIEW] Failed to save diagram:", error)
+      window.showErrorMessage(`Failed to save diagram: ${error}`)
     }
   }
 
-  private getWebviewContent(webview: vscode.Webview, svg: string, diagramType: string, title: string): string {
+  private getWebviewContent(
+    webview: vscode.Webview,
+    svg: string,
+    diagramType: string,
+    title: string
+  ): string {
     return `<!DOCTYPE html>
 <html lang="en">
 <head>
@@ -242,15 +241,15 @@ export class DiagramWebviewManager {
         </div>
     </div>
 
-    <script src="${webview.asWebviewUri(vscode.Uri.joinPath(this.extensionUri, 'client', 'dist', 'media', 'diagramViewer.js'))}"></script>
+    <script src="${webview.asWebviewUri(vscode.Uri.joinPath(this.extensionUri, "client", "dist", "media", "diagramViewer.js"))}"></script>
 </body>
-</html>`;
+</html>`
   }
 
   public dispose(): void {
     for (const panel of this.webviews.values()) {
-      panel.dispose();
+      panel.dispose()
     }
-    this.webviews.clear();
+    this.webviews.clear()
   }
 }

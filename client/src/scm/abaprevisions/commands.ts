@@ -1,7 +1,14 @@
 import { command, AbapFsCommands } from "../../commands"
 import { Uri, QuickPickItem, commands, workspace, ProgressLocation, TabInputTextDiff } from "vscode"
 import { funWindow as window } from "../../services/funMessenger"
-import { abapUri, uriRoot, getOrCreateRoot, getClient, ADTSCHEME, rootIsConnected } from "../../adt/conections"
+import {
+  abapUri,
+  uriRoot,
+  getOrCreateRoot,
+  getClient,
+  ADTSCHEME,
+  rootIsConnected
+} from "../../adt/conections"
 import { AbapRevisionService, revLabel } from "./abaprevisionservice"
 import { ADTClient, Revision } from "abap-adt-api"
 import { AbapQuickDiff } from "./quickdiff"
@@ -48,8 +55,16 @@ const loadRevisions = async (uri: Uri, withRefresh = true) => {
   const revisions = await service.uriRevisions(uri, withRefresh)
   return revisions || []
 }
-interface UriRevisions { uri: Uri, normalized: boolean, revision: Revision, revisions: Revision[] }
-export const versionRevisions = async (v: Uri, refresh = false): Promise<UriRevisions | undefined> => {
+interface UriRevisions {
+  uri: Uri
+  normalized: boolean
+  revision: Revision
+  revisions: Revision[]
+}
+export const versionRevisions = async (
+  v: Uri,
+  refresh = false
+): Promise<UriRevisions | undefined> => {
   const decoded = decodeRevisioUrl(v)
   if (decoded) {
     const { uri, revision, normalized } = decoded
@@ -71,7 +86,6 @@ const currentRevisions = async () => {
 
     return { lefts, rights, leftindex, rightindex }
   }
-
 }
 
 const pickRevision = async (revisions: Revision[], title = "Select version") => {
@@ -81,11 +95,7 @@ const pickRevision = async (revisions: Revision[], title = "Select version") => 
   return selected?.revision || false
 }
 
-const selectRevision = async (
-  uri: Uri,
-  title = "Select version",
-  withRefresh = true
-) => {
+const selectRevision = async (uri: Uri, title = "Select version", withRefresh = true) => {
   const revisions = await loadRevisions(uri, withRefresh)
   return pickRevision(revisions, title)
 }
@@ -94,14 +104,22 @@ const CURRENTREV = "current"
 const diffTitle = (uri: Uri, lvers: string, rvers: string) =>
   `${uri.path.split("/").pop() || uri.toString()} ${lvers}->${rvers}`
 
-const pickCommonAncestor = (locals: Revision[], localVer: Revision, remotes: Revision[], remoteVer: Revision) => {
+const pickCommonAncestor = (
+  locals: Revision[],
+  localVer: Revision,
+  remotes: Revision[],
+  remoteVer: Revision
+) => {
   const localTime = new Date(localVer.date).getTime()
   const possibleLocals = locals.filter(l => new Date(l.date).getTime() < localTime)
   const remoteTime = new Date(remoteVer.date).getTime()
   const possibleRemotes = remotes.filter(l => new Date(l.date).getTime() < remoteTime)
   for (const l of possibleLocals)
     if (possibleRemotes.find(r => r.version && r.version === l.version)) return l
-  return pickRevision(possibleLocals, "Unable to determine common ancestor, please select base for comparison")
+  return pickRevision(
+    possibleLocals,
+    "Unable to determine common ancestor, please select base for comparison"
+  )
 }
 
 const wasChanged = async (client: ADTClient, state: AState): Promise<boolean> => {
@@ -196,7 +214,13 @@ export class AbapRevisionCommands {
     const current = await currentRevisions()
     if (current) {
       const left = current.lefts.revisions[current.leftindex + 1]
-      if (left) return displayRevDiff(current.rights.revision, left, current.lefts.uri, current.lefts.normalized)
+      if (left)
+        return displayRevDiff(
+          current.rights.revision,
+          left,
+          current.lefts.uri,
+          current.lefts.normalized
+        )
     }
     return window.showWarningMessage("Failed to determine version")
   }
@@ -205,7 +229,13 @@ export class AbapRevisionCommands {
     const current = await currentRevisions()
     if (current) {
       const right = current.rights.revisions[current.rightindex + 1]
-      if (right) return displayRevDiff(right, current.lefts.revision, current.lefts.uri, current.lefts.normalized)
+      if (right)
+        return displayRevDiff(
+          right,
+          current.lefts.revision,
+          current.lefts.uri,
+          current.lefts.normalized
+        )
     }
     return window.showWarningMessage("Failed to determine version")
   }
@@ -214,33 +244,60 @@ export class AbapRevisionCommands {
     const current = await currentRevisions()
     if (current) {
       const left = current.lefts.revisions[current.leftindex - 1]
-      if (left) return displayRevDiff(current.rights.revision, left, current.lefts.uri, current.lefts.normalized)
+      if (left)
+        return displayRevDiff(
+          current.rights.revision,
+          left,
+          current.lefts.uri,
+          current.lefts.normalized
+        )
     }
     return window.showWarningMessage("Failed to determine version")
-
   }
   @command(AbapFsCommands.nextRevRight)
   private async nextRight() {
     const current = await currentRevisions()
     if (current) {
       const right = current.rights.revisions[current.rightindex - 1]
-      if (right) return displayRevDiff(right, current.lefts.revision, current.lefts.uri, current.lefts.normalized)
+      if (right)
+        return displayRevDiff(
+          right,
+          current.lefts.revision,
+          current.lefts.uri,
+          current.lefts.normalized
+        )
     }
     return window.showWarningMessage("Failed to determine version")
   }
 
-  private static async showMerge(uri: Uri, incomingUri: Uri, incomings: Revision[], locals: Revision[], incoming: Revision, conflict: Revision) {
+  private static async showMerge(
+    uri: Uri,
+    incomingUri: Uri,
+    incomings: Revision[],
+    locals: Revision[],
+    incoming: Revision,
+    conflict: Revision
+  ) {
     const baseVer = await pickCommonAncestor(locals, conflict, incomings, incoming)
     if (!baseVer) return
     const base = revisionUri(uri, baseVer)
 
     const description = uri.path.replace(/.*\//, "")
 
-    const input1 = { uri: revisionUri(incomingUri, incoming), title: `Incoming (${incomingUri.authority})`, description, detail: incoming.version }
-    const input2 = { uri: revisionUri(uri, conflict), title: `Current (${uri.authority})`, description, detail: conflict.version }
+    const input1 = {
+      uri: revisionUri(incomingUri, incoming),
+      title: `Incoming (${incomingUri.authority})`,
+      description,
+      detail: incoming.version
+    }
+    const input2 = {
+      uri: revisionUri(uri, conflict),
+      title: `Current (${uri.authority})`,
+      description,
+      detail: conflict.version
+    }
     const options = { base, input1, input2, output: uri }
     return commands.executeCommand<void>("_open.mergeEditor", options)
-
   }
 
   private static async mergeConflicts(uri: Uri) {
@@ -279,7 +336,9 @@ export class AbapRevisionCommands {
     const remConnId = details.transport.substring(0, 3).toLowerCase()
     const connId = details.conflicting.substring(0, 3).toLowerCase()
     if (!rootIsConnected(connId)) {
-      window.showErrorMessage(`Unable to show merge, connection ${connId} is not part of this workspace`)
+      window.showErrorMessage(
+        `Unable to show merge, connection ${connId} is not part of this workspace`
+      )
       return
     }
     await getOrCreateRoot(remConnId)
@@ -296,8 +355,7 @@ export class AbapRevisionCommands {
   private static async mergeEditor(uri: Uri | ConflictDetails) {
     const details = conflictDetails.decode(uri)
     if (isRight(details)) this.mergeEditorByDetails(details.right)
-    if (uri instanceof Uri)
-      this.mergeConflicts(uri)
+    if (uri instanceof Uri) this.mergeConflicts(uri)
   }
   @command(AbapFsCommands.clearScmGroup)
   private static clearGroup(group: AGroup) {
@@ -305,33 +363,35 @@ export class AbapRevisionCommands {
   }
   @command(AbapFsCommands.filterScmGroup)
   private static filterGroup(group: AGroup) {
-    window.withProgress({ location: ProgressLocation.Notification, cancellable: true, title: "checking diffs" }, async (prog, tok) => {
-      const nextState: AState[] = []
-      const unchanged: AState[] = []
-      let count = 0
-      const scm = group.resourceStates[0]?.ascm
-      if (!scm) return
-      const client = getClient(scm.connId)
-      for (const s of group.resourceStates) {
-        if (tok.isCancellationRequested) return
-        const increment = count * 100 / group.resourceStates.length
-        const message = s.resourceUri.path.replace(/.*\//, "")
-        prog.report({ message, increment })
-        const found = await wasChanged(client, s)
-        if (found) nextState.push(s)
-        else unchanged.push(s)
-        count++
-      }
+    window.withProgress(
+      { location: ProgressLocation.Notification, cancellable: true, title: "checking diffs" },
+      async (prog, tok) => {
+        const nextState: AState[] = []
+        const unchanged: AState[] = []
+        let count = 0
+        const scm = group.resourceStates[0]?.ascm
+        if (!scm) return
+        const client = getClient(scm.connId)
+        for (const s of group.resourceStates) {
+          if (tok.isCancellationRequested) return
+          const increment = (count * 100) / group.resourceStates.length
+          const message = s.resourceUri.path.replace(/.*\//, "")
+          prog.report({ message, increment })
+          const found = await wasChanged(client, s)
+          if (found) nextState.push(s)
+          else unchanged.push(s)
+          count++
+        }
 
-      group.resourceStates = nextState
-      if (unchanged.length) {
-        const label = `unchanged ${group.label}`
-        const ugroup = await scm.getGroup(label)
-        const toAdd = unchanged.filter(s => !ugroup.resourceStates.includes(s))
-        ugroup.resourceStates = [...ugroup.resourceStates, ...toAdd]
+        group.resourceStates = nextState
+        if (unchanged.length) {
+          const label = `unchanged ${group.label}`
+          const ugroup = await scm.getGroup(label)
+          const toAdd = unchanged.filter(s => !ugroup.resourceStates.includes(s))
+          ugroup.resourceStates = [...ugroup.resourceStates, ...toAdd]
+        }
       }
-
-    })
+    )
   }
 
   @command(AbapFsCommands.opendiff)
@@ -346,12 +406,7 @@ export class AbapRevisionCommands {
 
   @command(AbapFsCommands.opendiffNormalized)
   private static openDiffNormalized(state: AState) {
-    return displayRevDiff(
-      state.mainRevision,
-      state.refRevision,
-      state.resourceUri,
-      true
-    )
+    return displayRevDiff(state.mainRevision, state.refRevision, state.resourceUri, true)
   }
 
   @command(AbapFsCommands.togglediffNormalize)
@@ -365,7 +420,12 @@ export class AbapRevisionCommands {
       }
       if (tab?.input instanceof TabInputTextDiff) {
         const { original, modified } = tab.input
-        return commands.executeCommand<void>("vscode.diff", toggleNorm(original), toggleNorm(modified), tab.label)
+        return commands.executeCommand<void>(
+          "vscode.diff",
+          toggleNorm(original),
+          toggleNorm(modified),
+          tab.label
+        )
       } else window.showInformationMessage("Unable to normalize this comparison")
     } catch (error) {
       window.showErrorMessage(caughtToString(error))
@@ -381,4 +441,3 @@ export class AbapRevisionCommands {
     })
   }
 }
-

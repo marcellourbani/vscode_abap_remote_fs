@@ -1,8 +1,4 @@
-import {
-  AbapObjectDetail,
-  objectIsValid,
-  MainProgram
-} from "vscode-abap-remote-fs-sharedapi"
+import { AbapObjectDetail, objectIsValid, MainProgram } from "vscode-abap-remote-fs-sharedapi"
 import { getObjectDetails, getVSCodeUri } from "./clientapis"
 import { syntaxCheck } from "./syntaxcheck"
 import { documents } from "./server"
@@ -29,11 +25,7 @@ export async function getObject(uri: string) {
   return object
 }
 
-export async function vscUrl(
-  confKey: string,
-  uri: string,
-  main: boolean = true
-) {
+export async function vscUrl(confKey: string, uri: string, main: boolean = true) {
   const isContextualInclude = /\/source\/main/i.test(uri)
   const normalizedUri = isContextualInclude
     ? uri.replace(/\/source\/main(?:[?#].*)?$/i, "") || uri
@@ -41,10 +33,10 @@ export async function vscUrl(
   const key = `${confKey} ${normalizedUri} ${main || isContextualInclude}`
   let vsurl = vsurlCache.get(key)
   if (!vsurl && vsurl !== "") {
-   // console.log(`vscUrl - requesting for confKey: ${confKey}, uri: ${uri}, main: ${main}`)
+    // console.log(`vscUrl - requesting for confKey: ${confKey}, uri: ${uri}, main: ${main}`)
     const targetMain = main || isContextualInclude
     vsurl = await getVSCodeUri(confKey, normalizedUri, targetMain)
-   // console.log(`vscUrl - getVSCodeUri returned: ${vsurl}`)
+    // console.log(`vscUrl - getVSCodeUri returned: ${vsurl}`)
     vsurlCache.set(key, vsurl)
   }
   return vsurl

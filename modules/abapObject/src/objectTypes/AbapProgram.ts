@@ -9,14 +9,10 @@ const tag = Symbol("AbapProgram")
 export class AbapProgram extends AbapObjectBase {
   [tag] = true
   protected filterInvalid(original: NodeStructure, includeIncludes?: boolean): NodeStructure {
-    if (!this.structure)
-      throw ObjectErrors.noStructure(
-        this,
-        `metadata not loaded for ${this.key}`
-      )
-    
+    if (!this.structure) throw ObjectErrors.noStructure(this, `metadata not loaded for ${this.key}`)
+
     const { nodes } = original
-    
+
     // Main program node - always include this
     const mainProgramNode = {
       OBJECT_TYPE: "PROG/P",
@@ -26,18 +22,16 @@ export class AbapProgram extends AbapObjectBase {
       EXPANDABLE: "",
       OBJECT_VIT_URI: this.sapGuiUri
     }
-    
+
     // If includeIncludes is true (called from activator), return includes + main program
     if (includeIncludes) {
       const includeNodes = nodes.filter(
-        n => n.OBJECT_TYPE === "PROG/I" &&
-             n.OBJECT_NAME &&
-             n.OBJECT_URI
+        n => n.OBJECT_TYPE === "PROG/I" && n.OBJECT_NAME && n.OBJECT_URI
       )
       // Return main program + all includes
       return { categories: [], objectTypes: [], nodes: [mainProgramNode, ...includeNodes] }
     }
-    
+
     // Otherwise (filesystem operations), return only the program itself
     return { categories: [], objectTypes: [], nodes: [mainProgramNode] }
   }

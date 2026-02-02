@@ -24,7 +24,7 @@ export class PasswordVault {
   deletePassword(service: string, account: string) {
     return this.context.secrets.delete(`${service}:${account}`)
   }
-  async accounts(service: string): Promise<{ account: string, password: string }[]> {
+  async accounts(service: string): Promise<{ account: string; password: string }[]> {
     return [] //TODO:implement or remove
   }
   static get() {

@@ -64,7 +64,8 @@
     "inst_dep_object": "cd modules/abapObject&& npm i && npm run build&& cd ../..",
     "inst_dep_abapfs": "cd modules/abapfs&& npm i && npm run build&& cd ../..",
     "clean": "rimraf out *.vsix node_modules modules/sharedapi/out modules/sharedapi/node_modules&& cd server && npm run clean&& cd ../client &&npm run clean && cd .. ",
-    "postinstall": "npm run inst_dep_sharedapi && npm run inst_dep_object &&npm run inst_dep_abapfs && cd server && npm i && cd ../client && npm i"
+    "postinstall": "npm run inst_dep_sharedapi && npm run inst_dep_object &&npm run inst_dep_abapfs && cd server && npm i && cd ../client && npm i",
+    "format": "prettier --write \"client/src/**/*.ts\" \"modules/abapfs/src/**/*.ts\" \"modules/abapObject/src/**/*.ts\" \"modules/sharedapi/src/**/*.ts\" \"server/src/**/*.ts\""
   },
   "devDependencies": {
     "@types/mocha": "^7.0.2",
@@ -2079,7 +2080,7 @@
         "tags": [
           "abap-fs"
         ]
-        },
+      },
       {
         "name": "manage_subagents",
         "displayName": "Manage AI Subagents",
@@ -2120,7 +2121,10 @@
                     "description": "Model ID to use for this agent"
                   }
                 },
-                "required": ["agentId", "model"]
+                "required": [
+                  "agentId",
+                  "model"
+                ]
               },
               "description": "For 'configure' action: array of {agentId, model} pairs to set"
             }
@@ -3800,6 +3804,7 @@
     "applicationinsights": "^3.10.0",
     "cors": "^2.8.5",
     "express": "^4.18.2",
+    "prettier": "^3.8.1",
     "xml2js": "^0.6.2"
   }
 }

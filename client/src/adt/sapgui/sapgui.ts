@@ -8,10 +8,7 @@ import { ProgressLocation, extensions } from "vscode"
 import { funWindow as window } from "../../services/funMessenger"
 import { getClient } from "../conections"
 import { AbapObject, isAbapClassInclude } from "abapobject"
-import {
-  commands,
-  Uri
-} from "vscode"
+import { commands, Uri } from "vscode"
 import * as vscode from "vscode"
 import { ADTClient } from "abap-adt-api"
 
@@ -68,31 +65,32 @@ export function runInSapGui(
             }
         }
       }
-    })
+    }
+  )
 }
 
 export function executeInGui(connId: string, object: AbapObject) {
   if (isAbapClassInclude(object) && object.parent) object = object.parent
   return runInSapGui(connId, () => {
     const { type, name } = object
-    let transaction = ''
-    let dynprofield = ''
-    let okcode = ''
+    let transaction = ""
+    let dynprofield = ""
+    let okcode = ""
     switch (type) {
-      case 'PROG/P':
-        transaction = 'SE38'
-        dynprofield = 'RS38M-PROGRAMM'
-        okcode = 'STRT'
+      case "PROG/P":
+        transaction = "SE38"
+        dynprofield = "RS38M-PROGRAMM"
+        okcode = "STRT"
         break
-      case 'FUGR/FF':
-        transaction = 'SE37'
-        dynprofield = 'RS38L-NAME'
-        okcode = 'WB_EXEC'
+      case "FUGR/FF":
+        transaction = "SE37"
+        dynprofield = "RS38L-NAME"
+        okcode = "WB_EXEC"
         break
-      case 'CLAS/OC':
-        transaction = 'SE24'
-        dynprofield = 'SEOCLASS-CLSNAME'
-        okcode = 'WB_EXEC'
+      case "CLAS/OC":
+        transaction = "SE24"
+        dynprofield = "SEOCLASS-CLSNAME"
+        okcode = "WB_EXEC"
         break
       default:
         return showInGuiCb(object.sapGuiUri)()
@@ -133,13 +131,7 @@ export class SapGui {
           client: config.client
         }
 
-        return new SapGui(
-          gui.disabled,
-          guiconf,
-          config.username,
-          config.name,
-          config.language
-        )
+        return new SapGui(gui.disabled, guiconf, config.username, config.name, config.language)
       } else {
         // use the config if found, try to guess if not
         const [server = "", port = ""] = (
@@ -153,13 +145,7 @@ export class SapGui {
           client: config.client
         }
 
-        return new SapGui(
-          !!gui?.disabled,
-          guiconf,
-          config.username,
-          config.name,
-          config.language
-        )
+        return new SapGui(!!gui?.disabled, guiconf, config.username, config.name, config.language)
       }
     } catch {
       return new SapGui(false)
@@ -189,8 +175,7 @@ export class SapGui {
   }
 
   public checkConfig() {
-    if (this.disabled || !this.config)
-      throw new Error("SAPGUI was not configured or disabled")
+    if (this.disabled || !this.config) throw new Error("SAPGUI was not configured or disabled")
   }
 
   public async startGui(command: SapGuiCommand, ticket: string) {
@@ -218,62 +203,71 @@ export class SapGui {
     }
   }
 
-
   public async runInBrowser(config: RemoteConfig, cmd: SapGuiCommand, client: ADTClient) {
     let guitype = config.sapGui?.guiType
-    
+
     // WebView doesn't need Live Preview extension - remove the check
     if (cmd.parameters) {
-      const okCode = cmd.parameters.find((parameter: { name: string; value: string }) => parameter.name === 'DYNP_OKCODE')
-      const D_OBJECT_URI = cmd.parameters.find((parameter: { name: string; value: string }) => parameter.name !== 'DYNP_OKCODE')
-      
+      const okCode = cmd.parameters.find(
+        (parameter: { name: string; value: string }) => parameter.name === "DYNP_OKCODE"
+      )
+      const D_OBJECT_URI = cmd.parameters.find(
+        (parameter: { name: string; value: string }) => parameter.name !== "DYNP_OKCODE"
+      )
+
       const q: any = {
-        "~transaction": `${cmd.command} ${D_OBJECT_URI?.name}=${D_OBJECT_URI!.value};DYNP_OKCODE=${okCode?.value || ""}`,
+        "~transaction": `${cmd.command} ${D_OBJECT_URI?.name}=${D_OBJECT_URI!.value};DYNP_OKCODE=${okCode?.value || ""}`
       }
       if (config.language) config.language = config.language
       q["saml2"] = "disabled"
-      const query = Object.keys(q).map(k => `${k}=${q[k]}`).join("&")
+      const query = Object.keys(q)
+        .map(k => `${k}=${q[k]}`)
+        .join("&")
       const url = Uri.parse(config.url).with({ path: "/sap/bc/gui/sap/its/webgui", query })
-      
+
       switch (guitype) {
         case "WEBGUI_UNSAFE_EMBEDDED":
           // Use direct WebGUI URL (no SSO ticket - user will login manually in webview)
           // Import and use WebView panel
-          const { SapGuiPanel } = await import('../../views/sapgui/SapGuiPanel')
-          const objectParam = D_OBJECT_URI?.value || 'SAP_GUI'
-          
+          const { SapGuiPanel } = await import("../../views/sapgui/SapGuiPanel")
+          const objectParam = D_OBJECT_URI?.value || "SAP_GUI"
+
           // Get extension context more reliably
           let extensionUri: vscode.Uri
           try {
-            const extension = vscode.extensions.getExtension('murbani.vscode-abap-remote-fs')
+            const extension = vscode.extensions.getExtension("murbani.vscode-abap-remote-fs")
             if (extension) {
               extensionUri = extension.extensionUri
             } else {
               // Fallback: try alternative extension ID
-              const altExtension = vscode.extensions.getExtension('abap-copilot')
+              const altExtension = vscode.extensions.getExtension("abap-copilot")
               extensionUri = altExtension?.extensionUri || vscode.Uri.file(__dirname)
             }
           } catch (error) {
             extensionUri = vscode.Uri.file(__dirname)
           }
-          
-          const detectedObjectType = cmd.command.includes('SE38') ? 'PROG/P' : 
-            cmd.command.includes('SE24') ? 'CLAS/OC' :
-            cmd.command.includes('SE37') ? 'FUGR/FF' : 'PROG/P'
-          
+
+          const detectedObjectType = cmd.command.includes("SE38")
+            ? "PROG/P"
+            : cmd.command.includes("SE24")
+              ? "CLAS/OC"
+              : cmd.command.includes("SE37")
+                ? "FUGR/FF"
+                : "PROG/P"
+
           const panel = SapGuiPanel.createOrShow(
             extensionUri,
             client,
-            config.name || 'SAP',
+            config.name || "SAP",
             objectParam,
             detectedObjectType
           )
-          
+
           // Load direct WebGUI URL (will show login screen immediately)
           panel.loadDirectWebGuiUrl(url.toString())
           break
         case "WEBGUI_UNSAFE":
-          commands.executeCommand('vscode.open', url)
+          commands.executeCommand("vscode.open", url)
           break
         default:
           // For WEBGUI_CONTROLLED mode, fall back to opening in default browser
@@ -283,19 +277,18 @@ export class SapGui {
           } catch (error) {
             return
           }
-          
-          const controlledBaseUrl = config.sapGui?.server ? 
-            `${config.url.startsWith('https') ? 'https' : 'https'}://${config.sapGui.server}` : 
-            config.url
-          
-          
-          const authenticatedUrl2 = Uri.parse(controlledBaseUrl).with({ 
+
+          const controlledBaseUrl = config.sapGui?.server
+            ? `${config.url.startsWith("https") ? "https" : "https"}://${config.sapGui.server}`
+            : config.url
+
+          const authenticatedUrl2 = Uri.parse(controlledBaseUrl).with({
             path: `/sap/public/myssocntl`,
             query: `sap-mysapsso=${config.client}${ticket2}&sap-mysapred=${encodeURIComponent(url.toString())}`
           })
-          
-         // log('🌐 Opening SAP GUI in default browser: ' + authenticatedUrl2.toString())
-          commands.executeCommand('vscode.open', authenticatedUrl2)
+
+          // log('🌐 Opening SAP GUI in default browser: ' + authenticatedUrl2.toString())
+          commands.executeCommand("vscode.open", authenticatedUrl2)
           break
       }
     }
@@ -303,10 +296,8 @@ export class SapGui {
 
   private commandString(command: SapGuiCommand) {
     let params = ""
-    const addParm = (name: string, value: string) =>
-      (params = `${params}${name} = ${value}; `)
-    if (command.parameters)
-      command.parameters.forEach(p => addParm(p.name, p.value))
+    const addParm = (name: string, value: string) => (params = `${params}${name} = ${value}; `)
+    if (command.parameters) command.parameters.forEach(p => addParm(p.name, p.value))
     if (command.okCode) addParm("DYNP_OKCODE", command.okCode)
     return `${command.command} ${params} `
   }

@@ -16,9 +16,7 @@ interface StoredRepo {
 let storage: Memento
 
 const connRepos = async (connId: string) =>
-  getOrCreateClient(connId).then(client =>
-    client.gitRepos().then(ArrayToMap("key"))
-  )
+  getOrCreateClient(connId).then(client => client.gitRepos().then(ArrayToMap("key")))
 
 const loadRepos = async () => {
   const stored: StoredRepo[] = storage.get(REPOSSTORAGEKEY, [])

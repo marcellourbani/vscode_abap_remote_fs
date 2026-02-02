@@ -1,11 +1,4 @@
-import {
-  ABAPFile,
-  Registry,
-  MemoryFile,
-  ABAPObject,
-  PrettyPrinter,
-  Config
-} from "@abaplint/core"
+import { ABAPFile, Registry, MemoryFile, ABAPObject, PrettyPrinter, Config } from "@abaplint/core"
 import { Uri } from "vscode"
 import { getClient } from "../../adt/conections"
 import { RemoteManager } from "../../config"
@@ -33,7 +26,6 @@ function getConfig() {
   return config
 }
 
-
 export const normalizeAbap = (source: string): string => {
   return source
     .split(/\n/)
@@ -60,8 +52,7 @@ function abapLintPrettyPrint(path: string, source: string) {
   const name = path.replace(/.*\//, "")
   const f = parseAbapFile(name, source)
   const result = f && new PrettyPrinter(f, getConfig()).run()
-  if (source && !result)
-    throw new Error(`Abaplint formatting failed for ${path}`)
+  if (source && !result) throw new Error(`Abaplint formatting failed for ${path}`)
   return result
 }
 export function prettyPrint(uri: Uri, source: string) {

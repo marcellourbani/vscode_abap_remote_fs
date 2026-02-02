@@ -26,72 +26,68 @@ export function setToken(connId: string, token: TokenData) {
 
 export async function storeTokens() {
   try {
-    const vault = PasswordVault.get();
-    const tokenEntries = [...tokens.entries()];
-    
+    const vault = PasswordVault.get()
+    const tokenEntries = [...tokens.entries()]
+
     // Store each token securely using VSCode secrets API
     for (const [connId, token] of tokenEntries) {
-      await vault.setPassword('oauth-tokens', connId, JSON.stringify(strip(token)));
+      await vault.setPassword("oauth-tokens", connId, JSON.stringify(strip(token)))
     }
-    
+
     // Clear from global state (legacy cleanup)
-    await context.globalState.update(KEY, undefined);
-    
+    await context.globalState.update(KEY, undefined)
   } catch (error) {
-    log(`❌ Failed to store OAuth tokens securely: ${error}`);
+    log(`❌ Failed to store OAuth tokens securely: ${error}`)
     // Fallback to old method to maintain functionality
-    const t = [...tokens.entries()];
-    return context.globalState.update(KEY, t);
+    const t = [...tokens.entries()]
+    return context.globalState.update(KEY, t)
   }
 }
 
 export async function clearTokens() {
   try {
-    const vault = PasswordVault.get();
-    const tokenEntries = [...tokens.entries()];
-    
+    const vault = PasswordVault.get()
+    const tokenEntries = [...tokens.entries()]
+
     // Clear from secure storage
     for (const [connId] of tokenEntries) {
-      await vault.deletePassword('oauth-tokens', connId);
+      await vault.deletePassword("oauth-tokens", connId)
     }
-    
+
     // Clear from memory
-    tokens.clear();
-    
+    tokens.clear()
+
     // Clear from global state (legacy cleanup)
-    await context.globalState.update(KEY, undefined);
-    
+    await context.globalState.update(KEY, undefined)
   } catch (error) {
-    log(`❌ Failed to clear OAuth tokens securely: ${error}`);
+    log(`❌ Failed to clear OAuth tokens securely: ${error}`)
     // Fallback to old method
-    context.globalState.update(KEY, undefined);
+    context.globalState.update(KEY, undefined)
   }
 }
 
 export async function loadTokens() {
   try {
-    const vault = PasswordVault.get();
-    
+    const vault = PasswordVault.get()
+
     // First try to load from secure storage
     // Note: We can't enumerate secrets, so we'll migrate from global state if needed
-    const legacyEntries: [string, Token][] = context.globalState.get(KEY, []);
-    
+    const legacyEntries: [string, Token][] = context.globalState.get(KEY, [])
+
     if (legacyEntries.length > 0) {
-      
       // Migrate legacy tokens to secure storage
       for (const [connId, token] of legacyEntries) {
-        tokens.set(connId, strip(token));
-        await vault.setPassword('oauth-tokens', connId, JSON.stringify(strip(token)));
+        tokens.set(connId, strip(token))
+        await vault.setPassword("oauth-tokens", connId, JSON.stringify(strip(token)))
       }
-      
+
       // Clear legacy storage after migration
-      await context.globalState.update(KEY, undefined);
+      await context.globalState.update(KEY, undefined)
     }
-    
   } catch (error) {
-    log(`❌ Failed to load OAuth tokens securely, falling back: ${error}`);
+    log(`❌ Failed to load OAuth tokens securely, falling back: ${error}`)
     // Fallback to legacy method
-    const entries: [string, Token][] = context.globalState.get(KEY, []);
-    entries.forEach(e => tokens.set(...e));
+    const entries: [string, Token][] = context.globalState.get(KEY, [])
+    entries.forEach(e => tokens.set(...e))
   }
 }

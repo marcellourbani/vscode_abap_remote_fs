@@ -12,7 +12,15 @@ import {
 import * as vscode from "vscode"
 import { funWindow as window } from "../services/funMessenger"
 import { pickAdtRoot, RemoteManager } from "../config"
-import { caughtToString, inputBox, lineRange, log, rangeVscToApi, splitAdtUri, channel } from "../lib"
+import {
+  caughtToString,
+  inputBox,
+  lineRange,
+  log,
+  rangeVscToApi,
+  splitAdtUri,
+  channel
+} from "../lib"
 import { FavouritesProvider, FavItem } from "../views/favourites"
 import { findEditor, vsCodeUri } from "../langClient"
 import { showHideActivate } from "../listeners"
@@ -73,7 +81,7 @@ export function openObject(connId: string, uri: string, objectType?: string) {
     async () => {
       const root = getRoot(connId)
       let result = await root.findByAdtUri(uri, true)
-      
+
       // If not found, try refreshing the workspace (for newly created objects)
       if (!result) {
         try {
@@ -84,26 +92,22 @@ export function openObject(connId: string, uri: string, objectType?: string) {
           // Refresh failed or still not found
         }
       }
-      
+
       const { file, path } = result || {}
-      if (!file || !path) throw new Error("Object not found in workspace. Try refreshing the explorer.")
-      
+      if (!file || !path)
+        throw new Error("Object not found in workspace. Try refreshing the explorer.")
+
       if (isAbapFolder(file) && file.object.type === PACKAGE) {
-        await commands.executeCommand(
-          "revealInExplorer",
-          createUri(connId, path)
-        )
+        await commands.executeCommand("revealInExplorer", createUri(connId, path))
         return
       } else if (isAbapFile(file)) {
         const fileUri = createUri(connId, path)
-        
+
         // For message classes, force open with custom editor
-        if (objectType === 'MSAG/N' || path.endsWith('.msagn.xml')) {
-          await commands.executeCommand('vscode.openWith', fileUri, 'abapfs.msagn')
+        if (objectType === "MSAG/N" || path.endsWith(".msagn.xml")) {
+          await commands.executeCommand("vscode.openWith", fileUri, "abapfs.msagn")
         } else {
-          await workspace
-            .openTextDocument(fileUri)
-            .then(window.showTextDocument)
+          await workspace.openTextDocument(fileUri).then(window.showTextDocument)
         }
       }
       return { file, path }
@@ -111,7 +115,7 @@ export function openObject(connId: string, uri: string, objectType?: string) {
   )
 }
 interface ShowObjectArgument {
-  connId: string,
+  connId: string
   uri: string
 }
 export class AdtCommands {
@@ -134,7 +138,6 @@ export class AdtCommands {
       await client.extractMethodExecute(preview)
       FsProvider.get().notifyChanges([{ type: FileChangeType.Changed, uri }])
     }
-
   }
   @command(AbapFsCommands.showDocumentation)
   private static async showAbapDoc() {
@@ -167,12 +170,9 @@ export class AdtCommands {
     try {
       const connectionID = selector && selector.connection
       const manager = RemoteManager.get()
-      const { remote, userCancel } = await manager.selectConnection(
-        connectionID
-      )
+      const { remote, userCancel } = await manager.selectConnection(connectionID)
       if (!remote)
-        if (!userCancel)
-          throw Error("No remote configuration available in settings")
+        if (!userCancel) throw Error("No remote configuration available in settings")
         else return
       name = remote.name
 
@@ -186,13 +186,10 @@ export class AdtCommands {
         name: remote.name + "(ABAP)"
       })
       extensionContext.subscriptions.push(UnitTestRunner.get(connectionID).controller)
-
-
     } catch (e) {
       const body = typeof e === "object" && (e as any)?.response?.body
       if (body) log(body)
-      const isMissing = (e: any) =>
-        !!`${e}`.match("name.*org.freedesktop.secrets")
+      const isMissing = (e: any) => !!`${e}`.match("name.*org.freedesktop.secrets")
       const message = isMissing(e)
         ? `Password storage not supported. Please install gnome-keyring or add a password to the connection`
         : `Failed to connect to ${name}:${caughtToString(e)}`
@@ -203,7 +200,6 @@ export class AdtCommands {
   @command(AbapFsCommands.disconnect)
   private static async disconnectAdtServer(selector?: any) {
     try {
-      
       // Show confirmation dialog
       const choice = await window.showWarningMessage(
         "This will disconnect from all ABAP systems and remove them from the workspace. Continue?",
@@ -211,40 +207,36 @@ export class AdtCommands {
         "Disconnect",
         "Cancel"
       )
-      
+
       if (choice !== "Disconnect") {
         return
       }
 
       // Get all current ABAP workspace folders
-      const abapFolders = workspace.workspaceFolders?.filter(
-        folder => folder.uri.scheme === ADTSCHEME
-      ) || []
+      const abapFolders =
+        workspace.workspaceFolders?.filter(folder => folder.uri.scheme === ADTSCHEME) || []
 
       // Log out from all connections and clear cached data
       await disconnect()
-      
+
       // Remove all ABAP folders from workspace
       if (abapFolders.length > 0) {
-        const startIndex = workspace.workspaceFolders?.findIndex(
-          folder => folder.uri.scheme === ADTSCHEME
-        ) ?? 0
-        
+        const startIndex =
+          workspace.workspaceFolders?.findIndex(folder => folder.uri.scheme === ADTSCHEME) ?? 0
+
         workspace.updateWorkspaceFolders(
-          startIndex, 
+          startIndex,
           abapFolders.length // Remove all ABAP folders
         )
-        
       }
 
       // Clear any cached tokens
       clearTokens()
-      
+
       // Refresh file explorer to reflect changes
       await commands.executeCommand("workbench.files.action.refreshFilesExplorer")
-      
+
       window.showInformationMessage("✅ Disconnected from all ABAP systems")
-      
     } catch (e) {
       const message = `Failed to disconnect: ${caughtToString(e)}`
       return window.showErrorMessage(message)
@@ -257,54 +249,58 @@ export class AdtCommands {
       const uri = selector || currentUri()
       logTelemetry("command_activate_called", { connectionId: uri?.authority })
       if (!uri) {
-        throw new Error('No ABAP file is currently open')
+        throw new Error("No ABAP file is currently open")
       }
-      
+
       const activator = AdtObjectActivator.get(uri.authority)
       const editor = findEditor(uri.toString())
-      
+
       await window.withProgress(
         { location: ProgressLocation.Notification, title: "Activating..." },
-        async (progress) => {
+        async progress => {
           // Wait for any pending Copilot changes to complete
           await new Promise(resolve => setTimeout(resolve, 3000))
-          
+
           progress.report({ message: "Validating object..." })
           const obj = await findAbapObject(uri)
-          
+
           // Enhanced save logic with better error handling
           if (editor && editor.document.isDirty) {
             progress.report({ message: "Saving changes..." })
             const saved = await editor.document.save()
             if (!saved) {
-              throw new Error('Failed to save file before activation. Please save manually and try again.')
+              throw new Error(
+                "Failed to save file before activation. Please save manually and try again."
+              )
             }
             // Small delay to ensure save is completed
             await new Promise(resolve => setTimeout(resolve, 100))
           }
-          
+
           progress.report({ message: "Activating object..." })
           const { ok, summary } = await activator.activate(obj, uri)
           if (!ok) {
-            throw new Error(summary || 'Activation failed; see ABAP FS output for details')
+            throw new Error(summary || "Activation failed; see ABAP FS output for details")
           }
-          
+
           if (editor === window.activeTextEditor) {
             await workspace.fs.stat(uri)
             await showHideActivate(editor)
           }
         }
       )
-      
+
       // Show success message
-      const objectName = uri.path.split('/').pop() || 'Object'
+      const objectName = uri.path.split("/").pop() || "Object"
       window.showInformationMessage(`✅ ${objectName} activated successfully`)
-      
     } catch (e) {
       const errorMessage = caughtToString(e)
 
-      const action = await window.showErrorMessage(`Activation failed: ${errorMessage}`, 'Show activation log')
-      if (action === 'Show activation log') {
+      const action = await window.showErrorMessage(
+        `Activation failed: ${errorMessage}`,
+        "Show activation log"
+      )
+      if (action === "Show activation log") {
         channel.show(true)
       }
       // Don't re-throw or show additional notifications - user already saw the summary
@@ -336,7 +332,6 @@ export class AdtCommands {
     } catch (error) {
       log(caughtToString(error))
     }
-
   }
 
   @command(AbapFsCommands.search)
@@ -377,9 +372,7 @@ export class AdtCommands {
       if (nodePath) {
         new AdtObjectFinder(connId).displayNode(nodePath)
         try {
-          await commands.executeCommand(
-            "workbench.files.action.refreshFilesExplorer"
-          )
+          await commands.executeCommand("workbench.files.action.refreshFilesExplorer")
         } catch (e) {
           //log("error refreshing workspace")
         }
@@ -393,15 +386,15 @@ export class AdtCommands {
   /**
    * Creates an ABAP object programmatically for AI/automation purposes
    * Uses the exact same logic as createObject() but with programmatic selections
-   * 
+   *
    * @example
    * // Create a new ABAP report with new transport request
-   * await vscode.commands.executeCommand('abapfs.createObjectProgrammatically', 
+   * await vscode.commands.executeCommand('abapfs.createObjectProgrammatically',
    *   'PROG/P', 'ZTEST_REPORT', 'test:do not use', 'ZXXX', undefined, undefined, {
    *     transportRequest: { type: 'new', description: 'Test transport - do not move' }
    *   });
-   * 
-   * @example  
+   *
+   * @example
    * // Create a new class with existing transport request
    * await vscode.commands.executeCommand('abapfs.createObjectProgrammatically',
    *   'CLAS/OC', 'ZCL_TEST', 'Test class', 'ZXXX', undefined, undefined, {
@@ -421,65 +414,69 @@ export class AdtCommands {
       serviceDefinition?: string
       bindingType?: string
       bindingCategory?: string
-      // For packages  
+      // For packages
       softwareComponent?: string
       packageType?: PackageTypes
       transportLayer?: string
       // For transport requests
       transportRequest?: {
-        type: 'new' | 'existing'
-        number?: string        // For existing transport
-        description?: string   // For new transport
+        type: "new" | "existing"
+        number?: string // For existing transport
+        description?: string // For new transport
       }
     }
   ) {
     try {
-      
       // Use current connection or specified one
       const connId = connectionId || (await pickAdtRoot())?.uri.authority
       if (!connId) return
-      
 
       // Create a special AdtObjectCreator that uses programmatic selections
       const creator = new AdtObjectCreator(connId)
-      
+
       // Override the key methods based on AdtObjectCreator analysis
-      
+
       // 1. Override askInput for name and description prompts
-      creator['askInput'] = async (prompt: string, uppercase: boolean = true, value = ""): Promise<string> => {
-        if (prompt.toLowerCase().includes('name')) {
+      creator["askInput"] = async (
+        prompt: string,
+        uppercase: boolean = true,
+        value = ""
+      ): Promise<string> => {
+        if (prompt.toLowerCase().includes("name")) {
           const result = uppercase ? name.toUpperCase() : name
           return result
-        } else if (prompt.toLowerCase().includes('description')) {
+        } else if (prompt.toLowerCase().includes("description")) {
           const result = uppercase ? description.toUpperCase() : description
           return result
         }
         return value
       }
-      
+
       // 2. Override guessParentByType - THIS IS THE KEY METHOD that prevents package popup
-      creator['guessParentByType'] = (hierarchy: any[], type: string): string => {
-        if (type === 'DEVC/K') { // PACKAGE type - this is what prevents the "Select package" dialog
+      creator["guessParentByType"] = (hierarchy: any[], type: string): string => {
+        if (type === "DEVC/K") {
+          // PACKAGE type - this is what prevents the "Select package" dialog
           return packageName
         }
         // For other types, use original logic
-        const original = hierarchy.filter((n: any) => n.object?.type === type)?.[0]?.object?.name || ""
+        const original =
+          hierarchy.filter((n: any) => n.object?.type === type)?.[0]?.object?.name || ""
         return original
       }
-      
+
       // 3. Override guessOrSelectObjectType to return the specified object type
-      creator['guessOrSelectObjectType'] = async (hierarchy: any[]): Promise<any> => {
-        const CreatableTypes = await import('abap-adt-api').then(m => m.CreatableTypes)
+      creator["guessOrSelectObjectType"] = async (hierarchy: any[]): Promise<any> => {
+        const CreatableTypes = await import("abap-adt-api").then(m => m.CreatableTypes)
         const objType = CreatableTypes.get(objectType)
         if (objType) {
           return { typeId: objectType, label: objType.label, maxLen: objType.maxLen }
         }
         throw new Error(`Unknown object type: ${objectType}`)
       }
-      
+
       // 4. Let ADT handle transport selection naturally - just call createObject
       const obj = await creator.createObject(undefined)
-      
+
       if (!obj) {
         log(`❌ Object creation was cancelled or failed`)
         return {
@@ -510,14 +507,12 @@ export class AdtCommands {
       if (nodePath) {
         new AdtObjectFinder(connId).displayNode(nodePath)
         try {
-          await commands.executeCommand(
-            "workbench.files.action.refreshFilesExplorer"
-          )
+          await commands.executeCommand("workbench.files.action.refreshFilesExplorer")
         } catch (e) {
           //log("error refreshing workspace")
         }
       }
-      
+
       return {
         success: true,
         object: obj,
@@ -529,8 +524,7 @@ export class AdtCommands {
     } catch (e) {
       const stack = types.isNativeError(e) ? e.stack || "" : ""
       const errorMessage = caughtToString(e)
-      
-      
+
       // ⚡ PROGRAMMATIC API: Return structured error result, don't show UI popups
       // This is used by AI systems that need to handle the response programmatically
       if (errorMessage.includes("already exists")) {
@@ -542,7 +536,7 @@ export class AdtCommands {
           objectType: objectType
         }
       }
-      
+
       // For other errors, return structured error response
       return {
         success: false,
@@ -574,25 +568,29 @@ export class AdtCommands {
       logTelemetry("command_sap_gui_desktop_called", { connectionId: fsRoot.uri.authority })
       const file = uriRoot(fsRoot.uri).getNode(uri.path)
       if (!isAbapStat(file) || !file.object.sapGuiUri) return
-      
+
       // 🎯 FORCE native SAP GUI by bypassing runInSapGui routing
       const config = RemoteManager.get().byId(fsRoot.uri.authority)
       if (!config) {
-        window.showErrorMessage('Connection configuration not found')
+        window.showErrorMessage("Connection configuration not found")
         return
       }
-      
+
       // Create SapGui instance and call startGui directly (no routing check)
-      const { SapGui } = await import('../adt/sapgui/sapgui')
+      const { SapGui } = await import("../adt/sapgui/sapgui")
       const sapGui = SapGui.create(config)
       const client = getClient(fsRoot.uri.authority)
-      
-      const { SapGuiPanel } = await import('../views/sapgui/SapGuiPanel')
+
+      const { SapGuiPanel } = await import("../views/sapgui/SapGuiPanel")
       const transactionInfo = SapGuiPanel.getTransactionInfo(file.object.type, file.object.name)
-      
+
       // For non-standard types, fall back to URI-based approach
       let cmd = transactionInfo.sapGuiCommand
-      if (file.object.type !== 'PROG/P' && file.object.type !== 'FUGR/FF' && file.object.type !== 'CLAS/OC') {
+      if (
+        file.object.type !== "PROG/P" &&
+        file.object.type !== "FUGR/FF" &&
+        file.object.type !== "CLAS/OC"
+      ) {
         cmd = {
           type: "Transaction" as const,
           command: "*SADT_START_WB_URI",
@@ -602,11 +600,10 @@ export class AdtCommands {
           ]
         }
       }
-      
+
       // Get ticket and call native SAP GUI directly (bypasses routing)
       const ticket = await client.reentranceTicket()
       await sapGui.startGui(cmd, ticket)
-
     } catch (e) {
       return window.showErrorMessage(caughtToString(e))
     }
@@ -624,42 +621,40 @@ export class AdtCommands {
         window.showErrorMessage("No ABAP file is currently open")
         return
       }
-      
+
       const fsRoot = await pickAdtRoot(uri)
       if (!fsRoot) {
         return
       }
       logTelemetry("command_sap_gui_embedded_called", { connectionId: fsRoot.uri.authority })
-      
+
       const file = uriRoot(fsRoot.uri).getNode(uri.path)
       if (!isAbapStat(file)) {
         window.showErrorMessage("Current file is not an ABAP object")
         return
       }
-      
 
       // Import the SAP GUI Panel and authentication utilities
       let SapGuiPanel, runInSapGui
       try {
-        const sapGuiPanelModule = await import('../views/sapgui/SapGuiPanel')
+        const sapGuiPanelModule = await import("../views/sapgui/SapGuiPanel")
         SapGuiPanel = sapGuiPanelModule.SapGuiPanel
-        
-        const sapGuiModule = await import('../adt/sapgui/sapgui')
+
+        const sapGuiModule = await import("../adt/sapgui/sapgui")
         runInSapGui = sapGuiModule.runInSapGui
       } catch (importError) {
         throw importError
       }
-      
-      
+
       // Get the remote configuration for authentication
       const config = RemoteManager.get().byId(fsRoot.uri.authority)
       if (!config) {
         window.showErrorMessage(`Connection configuration not found for ${fsRoot.uri.authority}`)
         return
       }
-      
+
       // Check if embedded GUI is configured
-      if (config.sapGui?.guiType !== 'WEBGUI_UNSAFE_EMBEDDED') {
+      if (config.sapGui?.guiType !== "WEBGUI_UNSAFE_EMBEDDED") {
         await runInSapGui(fsRoot.uri.authority, () => ({
           type: "Transaction" as const,
           command: "*SE38",
@@ -670,17 +665,16 @@ export class AdtCommands {
         }))
         return
       }
-      
-      
+
       // Get extension URI more reliably
       let extensionUri: Uri
       try {
-        const extension = extensions.getExtension('murbani.vscode-abap-remote-fs')
+        const extension = extensions.getExtension("murbani.vscode-abap-remote-fs")
         if (extension) {
           extensionUri = extension.extensionUri
         } else {
           // Fallback: try alternative extension ID
-          const altExtension = extensions.getExtension('abap-copilot')
+          const altExtension = extensions.getExtension("abap-copilot")
           if (altExtension) {
             extensionUri = altExtension.extensionUri
           } else {
@@ -690,7 +684,7 @@ export class AdtCommands {
       } catch (error) {
         extensionUri = Uri.file(__dirname)
       }
-      
+
       // Create the panel first
       const panel = SapGuiPanel.createOrShow(
         extensionUri,
@@ -699,36 +693,33 @@ export class AdtCommands {
         file.object.name,
         file.object.type
       )
-      
+
       // Build target URL using simple WebGUI format (no SSO ticket needed)
-      let baseUrl = config.url.replace(/\/sap\/bc\/adt.*$/, '') // Remove ADT path, keep base
-      
+      let baseUrl = config.url.replace(/\/sap\/bc\/adt.*$/, "") // Remove ADT path, keep base
+
       // Ensure HTTPS is used (fix certificate issues for hover etc.)
-      if (!baseUrl.startsWith('https://') && !baseUrl.startsWith('http://')) {
-        baseUrl = 'https://' + baseUrl
-      } else if (baseUrl.startsWith('http://')) {
-        baseUrl = baseUrl.replace('http://', 'https://')
+      if (!baseUrl.startsWith("https://") && !baseUrl.startsWith("http://")) {
+        baseUrl = "https://" + baseUrl
+      } else if (baseUrl.startsWith("http://")) {
+        baseUrl = baseUrl.replace("http://", "https://")
       }
-      
-      
+
       // 🎯 USE CENTRALIZED transaction mapping - NO MORE DUPLICATION! 🎉
       const transactionInfo = SapGuiPanel.getTransactionInfo(file.object.type, file.object.name)
-      
-      
+
       // Use the cleaned object name from transaction info (removes .main suffix for classes)
       const cleanedObjectName = transactionInfo.sapGuiCommand.parameters[0].value
-      
+
       // Use the dynamic WebGUI URL format with correct transaction
-      const webguiUrl = `${baseUrl}/sap/bc/gui/sap/its/webgui?` +
+      const webguiUrl =
+        `${baseUrl}/sap/bc/gui/sap/its/webgui?` +
         `%7etransaction=%2a${transactionInfo.transaction}%20${transactionInfo.dynprofield}%3d${cleanedObjectName}%3bDYNP_OKCODE%3d${transactionInfo.okcode}` +
         `&sap-client=${config.client}` +
-        `&sap-language=${config.language || 'EN'}` +
+        `&sap-language=${config.language || "EN"}` +
         `&saml2=disabled`
-      
-      
+
       // Load the direct URL in the WebView panel (authentication will be handled by cookies)
       panel.loadDirectWebGuiUrl(webguiUrl)
-
     } catch (e) {
       //log(`Error in executeAbapEmbedded: ${caughtToString(e)}`)
       return window.showErrorMessage(`Failed to open embedded GUI: ${caughtToString(e)}`)
@@ -745,44 +736,45 @@ export class AdtCommands {
       // 1. Select system
       const fsRoot = await pickAdtRoot()
       if (!fsRoot) return
-      
+
       const connectionId = fsRoot.uri.authority
       const config = RemoteManager.get().byId(connectionId)
       if (!config) {
-        window.showErrorMessage('Connection configuration not found')
+        window.showErrorMessage("Connection configuration not found")
         return
       }
-      
+
       const client = getClient(connectionId)
-      
+
       // 2. Search for transaction code with QuickPick that allows Enter
       const quickPick = window.createQuickPick()
-      quickPick.placeholder = 'Type transaction code (e.g., MM43, SE16N) and press Enter, or search for transactions...'
+      quickPick.placeholder =
+        "Type transaction code (e.g., MM43, SE16N) and press Enter, or search for transactions..."
       quickPick.matchOnDescription = true
       quickPick.matchOnDetail = true
       quickPick.ignoreFocusOut = true
-      
-      let currentInput = ''
-      
+
+      let currentInput = ""
+
       // Function to perform search using ADT client
       const performSearch = async (searchTerm: string) => {
         if (!searchTerm || searchTerm.length < 3) {
           quickPick.items = []
           return
         }
-        
+
         quickPick.busy = true
         try {
           const query = searchTerm.toUpperCase() + "*"
           const raw = await client.searchObject(query, "TRAN/T")
-          
+
           // Import MySearchResult to format results properly
-          const { MySearchResult } = await import('../adt/operations/AdtObjectFinder')
+          const { MySearchResult } = await import("../adt/operations/AdtObjectFinder")
           const results = await MySearchResult.createResults(raw, client)
-          
+
           quickPick.items = results.map(r => ({
             label: `$(symbol-event) ${r.name}`,
-            description: r.description || '',
+            description: r.description || "",
             detail: `Package: ${r.packageName}`,
             tcode: r.name
           }))
@@ -792,9 +784,9 @@ export class AdtCommands {
           quickPick.busy = false
         }
       }
-      
+
       // Handle input changes
-      quickPick.onDidChangeValue(async (value) => {
+      quickPick.onDidChangeValue(async value => {
         currentInput = value
         if (value.length >= 3) {
           await performSearch(value)
@@ -802,12 +794,12 @@ export class AdtCommands {
           quickPick.items = []
         }
       })
-      
+
       // Handle selection
       quickPick.onDidAccept(async () => {
         const selected = quickPick.selectedItems[0]
-        let tcodeToRun = ''
-        
+        let tcodeToRun = ""
+
         if (selected) {
           // User selected from list
           tcodeToRun = (selected as any).tcode
@@ -815,128 +807,133 @@ export class AdtCommands {
           // User pressed Enter without selecting - use typed value
           tcodeToRun = currentInput.toUpperCase()
         }
-        
+
         quickPick.hide()
-        
+
         if (!tcodeToRun) return
-        
+
         logTelemetry("command_run_transaction_called", { connectionId })
-        
+
         // 3. Execute transaction based on guiType preference
-        const guiType = config.sapGui?.guiType || 'SAPGUI'
-        
+        const guiType = config.sapGui?.guiType || "SAPGUI"
+
         switch (guiType) {
-          case 'WEBGUI_UNSAFE_EMBEDDED':
+          case "WEBGUI_UNSAFE_EMBEDDED":
             // Embedded webview
             await AdtCommands.launchTransactionInEmbeddedGui(config, client, tcodeToRun)
             break
-            
-          case 'WEBGUI_UNSAFE':
-          case 'WEBGUI_CONTROLLED':
+
+          case "WEBGUI_UNSAFE":
+          case "WEBGUI_CONTROLLED":
             // External browser
             await AdtCommands.launchTransactionInBrowser(config, client, tcodeToRun)
             break
-            
-          case 'SAPGUI':
+
+          case "SAPGUI":
           default:
             // Native SAP GUI
             await AdtCommands.launchTransactionInNativeGui(config, client, tcodeToRun)
             break
         }
       })
-      
+
       quickPick.onDidHide(() => quickPick.dispose())
       quickPick.show()
-      
     } catch (e) {
       return window.showErrorMessage(`Failed to run transaction: ${caughtToString(e)}`)
     }
   }
-  
+
   /**
    * Launch transaction in embedded webview
    */
   private static async launchTransactionInEmbeddedGui(config: any, client: any, tcode: string) {
     try {
       // Build base URL
-      let baseUrl = config.url.replace(/\/sap\/bc\/adt.*$/, '')
-      
+      let baseUrl = config.url.replace(/\/sap\/bc\/adt.*$/, "")
+
       // Ensure HTTPS
-      if (!baseUrl.startsWith('https://') && !baseUrl.startsWith('http://')) {
-        baseUrl = 'https://' + baseUrl
-      } else if (baseUrl.startsWith('http://')) {
-        baseUrl = baseUrl.replace('http://', 'https://')
+      if (!baseUrl.startsWith("https://") && !baseUrl.startsWith("http://")) {
+        baseUrl = "https://" + baseUrl
+      } else if (baseUrl.startsWith("http://")) {
+        baseUrl = baseUrl.replace("http://", "https://")
       }
-      
+
       // Direct WebGUI URL for transaction (no SSO, user will login manually)
-      const webguiUrl = `${baseUrl}/sap/bc/gui/sap/its/webgui?` +
+      const webguiUrl =
+        `${baseUrl}/sap/bc/gui/sap/its/webgui?` +
         `%7etransaction=%2a${tcode}` +
         `&sap-client=${config.client}` +
-        `&sap-language=${config.language || 'EN'}` +
+        `&sap-language=${config.language || "EN"}` +
         `&saml2=disabled`
-      
-      const { SapGuiPanel } = await import('../views/sapgui/SapGuiPanel')
-      
+
+      const { SapGuiPanel } = await import("../views/sapgui/SapGuiPanel")
+
       let extensionUri: vscode.Uri
       try {
-        const extension = vscode.extensions.getExtension('murbani.vscode-abap-remote-fs')
-        extensionUri = extension?.extensionUri || vscode.extensions.getExtension('abap-copilot')?.extensionUri || vscode.Uri.file(__dirname)
+        const extension = vscode.extensions.getExtension("murbani.vscode-abap-remote-fs")
+        extensionUri =
+          extension?.extensionUri ||
+          vscode.extensions.getExtension("abap-copilot")?.extensionUri ||
+          vscode.Uri.file(__dirname)
       } catch {
         extensionUri = vscode.Uri.file(__dirname)
       }
-      
+
       const panel = SapGuiPanel.createOrShow(
         extensionUri,
         client,
-        config.name || 'SAP',
+        config.name || "SAP",
         tcode,
-        'TRAN'
+        "TRAN"
       )
-      
+
       panel.loadDirectWebGuiUrl(webguiUrl)
     } catch (error) {
-      window.showErrorMessage(`Failed to open transaction in embedded GUI: ${caughtToString(error)}`)
+      window.showErrorMessage(
+        `Failed to open transaction in embedded GUI: ${caughtToString(error)}`
+      )
     }
   }
-  
+
   /**
    * Launch transaction in external browser
    */
   private static async launchTransactionInBrowser(config: any, client: any, tcode: string) {
     try {
       const ticket = await client.reentranceTicket()
-      
-      const baseUrl = config.sapGui?.server ? 
-        `${config.url.startsWith('https') ? 'https' : 'https'}://${config.sapGui.server}` : 
-        config.url
-      
-      const tcodeUrl = `${baseUrl}/sap/bc/gui/sap/its/webgui?~transaction=*${tcode}&sap-client=${config.client}&sap-language=${config.language || 'EN'}&saml2=disabled`
-      
-      const authenticatedUrl = Uri.parse(baseUrl).with({ 
+
+      const baseUrl = config.sapGui?.server
+        ? `${config.url.startsWith("https") ? "https" : "https"}://${config.sapGui.server}`
+        : config.url
+
+      const tcodeUrl = `${baseUrl}/sap/bc/gui/sap/its/webgui?~transaction=*${tcode}&sap-client=${config.client}&sap-language=${config.language || "EN"}&saml2=disabled`
+
+      const authenticatedUrl = Uri.parse(baseUrl).with({
         path: `/sap/public/myssocntl`,
         query: `sap-mysapsso=${config.client}${ticket}&sap-mysapred=${encodeURIComponent(tcodeUrl)}`
       })
-      
-      commands.executeCommand('vscode.open', authenticatedUrl)
+
+      commands.executeCommand("vscode.open", authenticatedUrl)
     } catch (error) {
       window.showErrorMessage(`Failed to open transaction in browser: ${caughtToString(error)}`)
     }
   }
-  
+
   /**
    * Launch transaction in native SAP GUI
    */
   private static async launchTransactionInNativeGui(config: any, client: any, tcode: string) {
     try {
-      const { SapGui } = await import('../adt/sapgui/sapgui')
+      const { SapGui } = await import("../adt/sapgui/sapgui")
       const sapGui = SapGui.create(config)
-      
+
       const cmd = {
         type: "Transaction" as const,
         command: `*${tcode}`,
         parameters: []
       }
-      
+
       const ticket = await client.reentranceTicket()
       await sapGui.startGui(cmd, ticket)
     } catch (error) {
@@ -954,39 +951,38 @@ export class AdtCommands {
       logTelemetry("command_sap_gui_browser_called", { connectionId: fsRoot.uri.authority })
       const file = uriRoot(fsRoot.uri).getNode(uri.path)
       if (!isAbapStat(file) || !file.object.sapGuiUri) return
-      
+
       // 🎯 FORCE browser opening by bypassing runInSapGui routing
       const config = RemoteManager.get().byId(fsRoot.uri.authority)
       if (!config) {
-        window.showErrorMessage('Connection configuration not found')
+        window.showErrorMessage("Connection configuration not found")
         return
       }
-      
+
       // Build direct WebGUI URL with authentication
-      let baseUrl = config.url.replace(/\/sap\/bc\/adt.*$/, '')
-      
+      let baseUrl = config.url.replace(/\/sap\/bc\/adt.*$/, "")
+
       // Ensure HTTPS
-      if (!baseUrl.startsWith('https://') && !baseUrl.startsWith('http://')) {
-        baseUrl = 'https://' + baseUrl
-      } else if (baseUrl.startsWith('http://')) {
-        baseUrl = baseUrl.replace('http://', 'https://')
+      if (!baseUrl.startsWith("https://") && !baseUrl.startsWith("http://")) {
+        baseUrl = "https://" + baseUrl
+      } else if (baseUrl.startsWith("http://")) {
+        baseUrl = baseUrl.replace("http://", "https://")
       }
-      
+
       // 🎯 USE CENTRALIZED transaction mapping - NO MORE DUPLICATION! 🎉
-      const { SapGuiPanel } = await import('../views/sapgui/SapGuiPanel')
+      const { SapGuiPanel } = await import("../views/sapgui/SapGuiPanel")
       const transactionInfo = SapGuiPanel.getTransactionInfo(file.object.type, file.object.name)
-      
+
       // Build simple WebGUI URL (same format as WebView uses)
-      const browserUrl = `${baseUrl}/sap/bc/gui/sap/its/webgui?` +
+      const browserUrl =
+        `${baseUrl}/sap/bc/gui/sap/its/webgui?` +
         `%7etransaction=%2a${transactionInfo.transaction}%20${transactionInfo.dynprofield}%3d${file.object.name}%3bDYNP_OKCODE%3d${transactionInfo.okcode}` +
         `&sap-client=${config.client}` +
-        `&sap-language=${config.language || 'EN'}` +
+        `&sap-language=${config.language || "EN"}` +
         `&saml2=disabled`
-      
-      
-      // Open in external browser - user will authenticate themselves
-      commands.executeCommand('vscode.open', Uri.parse(browserUrl))
 
+      // Open in external browser - user will authenticate themselves
+      commands.executeCommand("vscode.open", Uri.parse(browserUrl))
     } catch (e) {
       return window.showErrorMessage(caughtToString(e))
     }
@@ -1021,7 +1017,9 @@ export class AdtCommands {
       // Use provided URI (from language model tool) or current active editor
       const uri = targetUri || currentUri()
       if (!uri) {
-        window.showErrorMessage("No ABAP file specified. Please open an ABAP file or provide object details.")
+        window.showErrorMessage(
+          "No ABAP file specified. Please open an ABAP file or provide object details."
+        )
         return
       }
 
@@ -1073,10 +1071,10 @@ export class AdtCommands {
         title: "Creating test include...",
         cancellable: false
       },
-      async (progress) => {
+      async progress => {
         try {
           progress.report({ message: "Validating class..." })
-          
+
           const obj = await findAbapObject(uri)
           // only makes sense for classes
           if (!isAbapClassInclude(obj)) {
@@ -1098,20 +1096,15 @@ export class AdtCommands {
           if (!lockId) {
             throw new Error(`Can't acquire a lock for ${obj.name}`)
           }
-          
+
           try {
             let created
             const client = getClient(uri.authority)
 
             progress.report({ message: "Selecting transport..." })
-            const transport = await selectTransport(
-              obj.contentsPath(),
-              "",
-              client,
-              true
-            )
+            const transport = await selectTransport(obj.contentsPath(), "", client, true)
             if (transport.cancelled) return
-            
+
             progress.report({ message: "Creating test include on SAP..." })
             const parentName = obj.parent.name
             await client.createTestInclude(parentName, lockId, transport.transport)
@@ -1119,14 +1112,14 @@ export class AdtCommands {
 
             progress.report({ message: "Releasing lock..." })
             if (lock) await m.requestUnlock(uri.path)
-            
+
             if (created) {
               progress.report({ message: "Refreshing structure..." })
               // Force fresh reload by invalidating cache first
               const root = uriRoot(uri)
               root.service.invalidateStructCache(obj.parent.path)
               await obj.parent.loadStructure() // Fetch fresh structure from SAP
-              
+
               progress.report({ message: "Opening test include..." })
               // Find the newly created test include
               const testInclude = obj.parent.findInclude("testclasses")
@@ -1134,7 +1127,7 @@ export class AdtCommands {
                 // Get the test include URI from the structure
                 const testIncludeUri = testInclude["abapsource:sourceUri"] || "includes/testclasses"
                 const fullTestPath = `${obj.parent.path}/${testIncludeUri}`
-                
+
                 try {
                   // Open the test include (like create object command)
                   const nodePath = await openObject(uri.authority, fullTestPath)
@@ -1146,7 +1139,7 @@ export class AdtCommands {
                   // Fallback to manual refresh if opening fails
                 }
               }
-              
+
               progress.report({ message: "Refreshing file explorer..." })
               // Refresh file explorer
               await commands.executeCommand("workbench.files.action.refreshFilesExplorer")
@@ -1170,9 +1163,11 @@ export class AdtCommands {
   @command(AbapFsCommands.refreshSystemInfoCache)
   private static async refreshSystemInfoCache() {
     try {
-      const { clearSystemInfoCache } = await import('../services/sapSystemInfo')
+      const { clearSystemInfoCache } = await import("../services/sapSystemInfo")
       clearSystemInfoCache()
-      window.showInformationMessage('SAP system info cache cleared. Next request will fetch fresh data.')
+      window.showInformationMessage(
+        "SAP system info cache cleared. Next request will fetch fresh data."
+      )
     } catch (e) {
       window.showErrorMessage(`Failed to clear cache: ${caughtToString(e)}`)
     }

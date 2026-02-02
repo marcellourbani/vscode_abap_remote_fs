@@ -86,14 +86,14 @@ export class LocalStorage {
   private initialized = false
   private initializing?: Promise<void> = undefined
   constructor(private root: Uri) {}
-  
+
   private async initialize() {
     if (this.initializing) return this.initializing
     this.initializing = this._initialize()
     await this.initializing
     this.initializing = undefined
   }
-  
+
   private async _initialize() {
     await initializeMainStorage(this.root)
     const configUri = Uri.joinPath(this.root, configFile)
@@ -119,7 +119,7 @@ export class LocalStorage {
     }
     this.initialized = true
   }
-  
+
   public async resolveUri(uri: Uri): Promise<Uri> {
     if (!this.initialized) await this.initialize()
     const root = this.roots.get(uri.authority)

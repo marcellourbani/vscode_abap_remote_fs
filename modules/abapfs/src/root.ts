@@ -19,7 +19,8 @@ export const LIBFOLDER = "System Library"
 const createPkg = (name: string, service: AbapFsService, owner?: string) =>
   create(PACKAGE, name, PACKAGEBASEPATH, true, "", undefined, "", service, owner)
 
-const namedFolder = (owner?: string, folder = TMPFOLDER) => owner ? `${folder}_${owner.toUpperCase()}` : folder
+const namedFolder = (owner?: string, folder = TMPFOLDER) =>
+  owner ? `${folder}_${owner.toUpperCase()}` : folder
 const extractOwner = (n: string) => n.match(/\$tmp_(.*)/i)?.[1]
 
 const toInclude = async (node: PathItem | undefined, adtPath: string, main: boolean) => {
@@ -33,15 +34,13 @@ const toInclude = async (node: PathItem | undefined, adtPath: string, main: bool
       if (isAbapFile(i.file) && !i.file.object.structure) {
         try {
           await node.file.object.loadStructure()
-          if (i.file.object.contentsPath() === adtPath)
-            return i
+          if (i.file.object.contentsPath() === adtPath) return i
         } catch (error) {
           // ignore
         }
       }
 
-    if (main)
-      return node.file.mainInclude(node.path)
+    if (main) return node.file.mainInclude(node.path)
   }
   return node
 }
@@ -58,10 +57,8 @@ const findInFolder = (
   // special handling for user specific TMP
   if (owner && file.object.type === PACKAGE && file.object.name === TMPFOLDER) {
     const objname = namedFolder(file.object.owner, file.object.name)
-    if (file.object.type === steptype && objname === stepname)
-      return { file, path: `${name}` }
-  }
-  else {
+    if (file.object.type === steptype && objname === stepname) return { file, path: `${name}` }
+  } else {
     if (file.object.type === steptype && file.object.name === stepname)
       return { file, path: `${name}` }
     return file.findAbapObject(steptype, stepname, stepuri, `${name}`)
@@ -71,7 +68,10 @@ const findInFolder = (
 export class Root extends Folder {
   [tag] = true
   lockManager: LockManager
-  constructor(readonly connId: string, readonly service: AbapFsService) {
+  constructor(
+    readonly connId: string,
+    readonly service: AbapFsService
+  ) {
     super()
     const tmp = createPkg(TMPPACKAGE, service)
     this.set(TMPFOLDER, new AbapFolder(tmp, this, service), true)
@@ -111,12 +111,12 @@ export class Root extends Folder {
       // if belongs to the $TMP of another user, add it to the root - blacklist myself to avoid duplications
       const owner = extractOwner(first)
       // Debug: Log when trying to create TMP folder
-      if (owner && owner.toUpperCase() === 'USER') {
+      if (owner && owner.toUpperCase() === "USER") {
         console.log(`[DEBUG] Attempting to create $TMP_USER folder - path: ${path}`)
-        console.trace('[DEBUG] Stack trace for $TMP_USER creation')
+        console.trace("[DEBUG] Stack trace for $TMP_USER creation")
       }
       // Skip if owner is the literal string "USER" (test/example data) or if it's the current user
-      if (owner && owner.toUpperCase() !== 'USER' && !this.isMe(owner) && !this.getNode(first)) {
+      if (owner && owner.toUpperCase() !== "USER" && !this.isMe(owner) && !this.getNode(first)) {
         const tmp = new AbapFolder(createPkg(TMPFOLDER, this.service, owner), this, this.service)
         this.set(first, tmp, true)
         await tmp.refresh()
@@ -130,7 +130,8 @@ export class Root extends Folder {
   }
 
   private baseUrl(url: string) {
-    if (url.match("^/sap/bc/adt/oo/classes/.*")) return url.replace(/(\/source\/main)|(\/includes\/).*/, "")
+    if (url.match("^/sap/bc/adt/oo/classes/.*"))
+      return url.replace(/(\/source\/main)|(\/includes\/).*/, "")
     return url.replace(/\/source\/main.*$/, "")
   }
 
@@ -139,14 +140,13 @@ export class Root extends Folder {
       const { "adtcore:type": type, "adtcore:name": name } = steps[0]
       if (type === PACKAGE && name.match(/^\$/)) {
         // add support for other user's tmp objects - the relevant uri is the first child of $TMP, or the object itself
-        const owneruri = (name === "$TMP" ? steps[1]?.["adtcore:uri"] : steps[0]?.["adtcore:uri"]) || uri
-        const od = await this.service.objectStructure(this.baseUrl(owneruri)).catch(
-          e => {
-            const u = steps.slice(-2)[1]?.["adtcore:uri"]
-            if (!u) throw e
-            return this.service.objectStructure(u)
-          }
-        )
+        const owneruri =
+          (name === "$TMP" ? steps[1]?.["adtcore:uri"] : steps[0]?.["adtcore:uri"]) || uri
+        const od = await this.service.objectStructure(this.baseUrl(owneruri)).catch(e => {
+          const u = steps.slice(-2)[1]?.["adtcore:uri"]
+          if (!u) throw e
+          return this.service.objectStructure(u)
+        })
         const owner = od.metaData["adtcore:responsible"]
         if (!this.isMe(owner)) return owner
       }

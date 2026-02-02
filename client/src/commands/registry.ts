@@ -107,13 +107,13 @@ export const AbapFsCommands = {
   clearFeedFolder: "abapfs.clearFeedFolder",
   showFeedInbox: "abapfs.showFeedInbox",
   // System info
-  refreshSystemInfoCache: "abapfs.refreshSystemInfoCache",
+  refreshSystemInfoCache: "abapfs.refreshSystemInfoCache"
 }
 
 // Import text elements commands
-import { manageTextElementsCommand } from './textElementsCommands';
+import { manageTextElementsCommand } from "./textElementsCommands"
 // Import feed commands
-import { configureFeedsCommand } from './configureFeeds';
+import { configureFeedsCommand } from "./configureFeeds"
 
 export const abapcmds: {
   name: string
@@ -131,10 +131,10 @@ abapcmds.push({
   name: AbapFsCommands.manageTextElements,
   func: manageTextElementsCommand,
   target: null
-});
+})
 
 abapcmds.push({
   name: AbapFsCommands.configureFeeds,
   func: configureFeedsCommand,
   target: null
-});
+})

@@ -1,11 +1,15 @@
-import * as vscode from 'vscode';
-import { funWindow as window } from '../services/funMessenger';
-import { getClient, getRoot } from '../adt/conections';
-import { getTextElementsSafe, updateTextElementsWithTransport, TextElement } from '../adt/textElements';
-import { logCommands } from '../services/abapCopilotLogger';
-import { session_types } from "abap-adt-api";
-import { logTelemetry } from '../services/telemetry';
-import { isAbapFile } from 'abapfs';
+import * as vscode from "vscode"
+import { funWindow as window } from "../services/funMessenger"
+import { getClient, getRoot } from "../adt/conections"
+import {
+  getTextElementsSafe,
+  updateTextElementsWithTransport,
+  TextElement
+} from "../adt/textElements"
+import { logCommands } from "../services/abapCopilotLogger"
+import { session_types } from "abap-adt-api"
+import { logTelemetry } from "../services/telemetry"
+import { isAbapFile } from "abapfs"
 
 /**
  * Manage Text Elements Command
@@ -15,71 +19,75 @@ import { isAbapFile } from 'abapfs';
 export async function manageTextElementsCommand(uri?: vscode.Uri): Promise<void> {
   try {
     // Determine program name from context - ONLY from open ABAP files
-    let objectName: string | undefined;
-    let sourceUri: vscode.Uri | undefined;
-    
+    let objectName: string | undefined
+    let sourceUri: vscode.Uri | undefined
+
     if (uri) {
       // Called from context menu or specific file
-      if (uri.scheme !== 'adt') {
-        window.showErrorMessage('Text Elements Manager only works with ABAP files. Please open an ABAP file first.');
-        return;
+      if (uri.scheme !== "adt") {
+        window.showErrorMessage(
+          "Text Elements Manager only works with ABAP files. Please open an ABAP file first."
+        )
+        return
       }
-      sourceUri = uri;
+      sourceUri = uri
     } else {
       // Called from command palette - get from active editor
-      const activeEditor = window.activeTextEditor;
-      if (!activeEditor || activeEditor.document.uri.scheme !== 'adt') {
-        window.showErrorMessage('Text Elements Manager only works with ABAP files. Please open an ABAP file first.');
-        return;
+      const activeEditor = window.activeTextEditor
+      if (!activeEditor || activeEditor.document.uri.scheme !== "adt") {
+        window.showErrorMessage(
+          "Text Elements Manager only works with ABAP files. Please open an ABAP file first."
+        )
+        return
       }
-      sourceUri = activeEditor.document.uri;
+      sourceUri = activeEditor.document.uri
     }
 
     if (!sourceUri) {
-      window.showErrorMessage('Could not determine ABAP file.');
-      return;
+      window.showErrorMessage("Could not determine ABAP file.")
+      return
     }
 
     // Check if this is an include FIRST - before extracting program name
     try {
-      const root = getRoot(sourceUri.authority);
-      const file = await root.getNodeAsync(sourceUri.path);
-      
-      if (isAbapFile(file) && file.object.type === 'PROG/I') {
+      const root = getRoot(sourceUri.authority)
+      const file = await root.getNodeAsync(sourceUri.path)
+
+      if (isAbapFile(file) && file.object.type === "PROG/I") {
         // This is an include - get main program
-        const mainPrograms = await file.object.mainPrograms();
-        
+        const mainPrograms = await file.object.mainPrograms()
+
         if (mainPrograms && mainPrograms.length > 0) {
-          const mainProg = mainPrograms[0];
-          
+          const mainProg = mainPrograms[0]
+
           // Use adtcore:name directly - it's more reliable than parsing URIs
-          const mainProgName = mainProg['adtcore:name'];
-          
+          const mainProgName = mainProg["adtcore:name"]
+
           if (mainProgName) {
-            objectName = mainProgName + '.prog.abap';
+            objectName = mainProgName + ".prog.abap"
           }
         }
       } else {
         // Not an include - extract from current URI
-        objectName = extractProgramNameFromUri(sourceUri.toString()) || undefined;
+        objectName = extractProgramNameFromUri(sourceUri.toString()) || undefined
       }
     } catch (error) {
-      logCommands.error(`Error resolving object: ${error}`);
+      logCommands.error(`Error resolving object: ${error}`)
       // Fallback to extracting from current URI
-      objectName = extractProgramNameFromUri(sourceUri.toString()) || undefined;
+      objectName = extractProgramNameFromUri(sourceUri.toString()) || undefined
     }
 
     if (!objectName) {
-      window.showErrorMessage('Could not determine program name from the current ABAP file.');
-      return;
+      window.showErrorMessage("Could not determine program name from the current ABAP file.")
+      return
     }
 
     logTelemetry("command_text_elements_manager_called", { connectionId: sourceUri.authority })
 
-    await showTextElementsEditor(objectName.trim(), sourceUri);
+    await showTextElementsEditor(objectName.trim(), sourceUri)
   } catch (error) {
-    logCommands.error(`Error opening text elements manager: ${error}`);
-    window.showErrorMessage(`Failed to open text elements manager: ${error}`);
+    logCommands.error(`Error opening text elements manager: ${error}`)
+    window.showErrorMessage(`Failed to open text elements manager: ${error}`)
   }
 }
 
@@ -88,108 +96,112 @@ export async function manageTextElementsCommand(uri?: vscode.Uri): Promise<void>
  */
 async function showTextElementsEditor(programName: string, sourceUri: vscode.Uri): Promise<void> {
   // Get ADT connection - get active connection or ask user
-  const activeEditor = window.activeTextEditor;
-  let connectionId: string;
-  
-  if (activeEditor && activeEditor.document.uri.scheme === 'adt') {
-    connectionId = activeEditor.document.uri.authority;
+  const activeEditor = window.activeTextEditor
+  let connectionId: string
+
+  if (activeEditor && activeEditor.document.uri.scheme === "adt") {
+    connectionId = activeEditor.document.uri.authority
   } else {
-    window.showErrorMessage('No ADT connection available. Please open an ABAP file first.');
-    return;
+    window.showErrorMessage("No ADT connection available. Please open an ABAP file first.")
+    return
   }
-  
-  const client = getClient(connectionId);
+
+  const client = getClient(connectionId)
   if (!client) {
-    window.showErrorMessage('No ADT connection available. Please connect to an SAP system first.');
-    return;
+    window.showErrorMessage("No ADT connection available. Please connect to an SAP system first.")
+    return
   }
 
   // Show progress while loading
-  await window.withProgress({
-    location: vscode.ProgressLocation.Notification,
-    title: `Loading text elements for ${programName}...`,
-    cancellable: false
-  }, async (progress) => {
-    try {
-      progress.report({ increment: 30, message: 'Fetching text elements...' });
-      
-      const result = await getTextElementsSafe(client, programName);
-      
-      progress.report({ increment: 70, message: 'Opening editor...' });
-      
-      // Create and show text elements manager webview
-      await createTextElementsWebview(programName, result.textElements, connectionId, sourceUri);
-      
-    } catch (error) {
-      // Check if it's a "Resource does not exist" error - fallback to SAP GUI for old systems
-      const errorMessage = String(error);
-      if (errorMessage.includes('Resource') && errorMessage.includes('does not exist')) {
-        progress.report({ increment: 50, message: 'Falling back to SAP GUI...' });
-        
-        // Use existing logic to determine object type and build SAP GUI URL for text elements
-        await openTextElementsInSapGui(programName, connectionId);
-        
-        window.showInformationMessage(
-          `Text elements ADT API not available for this system. Opened text elements editor in SAP GUI instead.`
-        );
-      } else {
-        throw error;
+  await window.withProgress(
+    {
+      location: vscode.ProgressLocation.Notification,
+      title: `Loading text elements for ${programName}...`,
+      cancellable: false
+    },
+    async progress => {
+      try {
+        progress.report({ increment: 30, message: "Fetching text elements..." })
+
+        const result = await getTextElementsSafe(client, programName)
+
+        progress.report({ increment: 70, message: "Opening editor..." })
+
+        // Create and show text elements manager webview
+        await createTextElementsWebview(programName, result.textElements, connectionId, sourceUri)
+      } catch (error) {
+        // Check if it's a "Resource does not exist" error - fallback to SAP GUI for old systems
+        const errorMessage = String(error)
+        if (errorMessage.includes("Resource") && errorMessage.includes("does not exist")) {
+          progress.report({ increment: 50, message: "Falling back to SAP GUI..." })
+
+          // Use existing logic to determine object type and build SAP GUI URL for text elements
+          await openTextElementsInSapGui(programName, connectionId)
+
+          window.showInformationMessage(
+            `Text elements ADT API not available for this system. Opened text elements editor in SAP GUI instead.`
+          )
+        } else {
+          throw error
+        }
       }
     }
-  });
+  )
 }
 
 /**
  * Open text elements editor in SAP GUI as fallback for old systems
  * Reuses existing SAP GUI infrastructure
  */
-export async function openTextElementsInSapGui(programName: string, connectionId: string): Promise<void> {
+export async function openTextElementsInSapGui(
+  programName: string,
+  connectionId: string
+): Promise<void> {
   try {
-    
-    const { parseObjectName } = await import('../adt/textElements');
-    const { SapGuiPanel } = await import('../views/sapgui/SapGuiPanel');
-    const { getClient } = await import('../adt/conections');
-    
+    const { parseObjectName } = await import("../adt/textElements")
+    const { SapGuiPanel } = await import("../views/sapgui/SapGuiPanel")
+    const { getClient } = await import("../adt/conections")
+
     // Parse object name to determine type
-    const objectInfo = parseObjectName(programName);
-    
+    const objectInfo = parseObjectName(programName)
+
     // Map to SAP GUI object types
-    let sapGuiObjectType: string;
+    let sapGuiObjectType: string
     switch (objectInfo.type) {
-      case 'CLASS':
-        sapGuiObjectType = 'CLAS/OC';
-        break;
-      case 'FUNCTION_GROUP':
-        sapGuiObjectType = 'FUGR/FF';
-        break;
-      case 'FUNCTION_MODULE':
+      case "CLASS":
+        sapGuiObjectType = "CLAS/OC"
+        break
+      case "FUNCTION_GROUP":
+        sapGuiObjectType = "FUGR/FF"
+        break
+      case "FUNCTION_MODULE":
         // Individual function modules use SE37 with the FM name directly
-        sapGuiObjectType = 'FUNC/FM';
-        break;
-      case 'PROGRAM':
+        sapGuiObjectType = "FUNC/FM"
+        break
+      case "PROGRAM":
       default:
-        sapGuiObjectType = 'PROG/P';
-        break;
+        sapGuiObjectType = "PROG/P"
+        break
     }
-       
+
     // Get extension URI (same as working embedded GUI)
-    let extensionUri: vscode.Uri;
+    let extensionUri: vscode.Uri
     try {
-      const extension = vscode.extensions.getExtension('murbani.vscode-abap-remote-fs');
+      const extension = vscode.extensions.getExtension("murbani.vscode-abap-remote-fs")
       if (extension) {
-        extensionUri = extension.extensionUri;
+        extensionUri = extension.extensionUri
       } else {
-        const altExtension = vscode.extensions.getExtension('abap-copilot');
+        const altExtension = vscode.extensions.getExtension("abap-copilot")
         if (altExtension) {
-          extensionUri = altExtension.extensionUri;
+          extensionUri = altExtension.extensionUri
         } else {
-          extensionUri = vscode.Uri.file(__dirname);
+          extensionUri = vscode.Uri.file(__dirname)
         }
       }
     } catch (error) {
-      extensionUri = vscode.Uri.file(__dirname);
+      extensionUri = vscode.Uri.file(__dirname)
     }
-    
+
     // Create panel using the exact same working logic
     const panel = SapGuiPanel.createOrShow(
       extensionUri,
@@ -197,61 +209,63 @@ export async function openTextElementsInSapGui(programName: string, connectionId
       connectionId,
       objectInfo.cleanName,
       sapGuiObjectType
-    );
-    
+    )
+
     // Build text elements URL
-    const baseUrl = await panel.buildWebGuiUrl();
-    
+    const baseUrl = await panel.buildWebGuiUrl()
+
     // For text elements, we need different approaches for different object types
-    let textElementsUrl: string;
-    
-    if (sapGuiObjectType === 'CLAS/OC') {
+    let textElementsUrl: string
+
+    if (sapGuiObjectType === "CLAS/OC") {
       // For classes: Use SE24 (Class Builder) with class name prefilled
-      const { RemoteManager } = await import('../config');
-      const config = RemoteManager.get().byId(connectionId);
+      const { RemoteManager } = await import("../config")
+      const config = RemoteManager.get().byId(connectionId)
       if (!config) {
-        throw new Error(`Connection configuration not found for ${connectionId}`);
+        throw new Error(`Connection configuration not found for ${connectionId}`)
       }
-      
-      let baseUrlForSE24 = config.url.replace(/\/sap\/bc\/adt.*$/, '');
-      if (!baseUrlForSE24.startsWith('https://') && !baseUrlForSE24.startsWith('http://')) {
-        baseUrlForSE24 = 'https://' + baseUrlForSE24;
-      } else if (baseUrlForSE24.startsWith('http://')) {
-        baseUrlForSE24 = baseUrlForSE24.replace('http://', 'https://');
+
+      let baseUrlForSE24 = config.url.replace(/\/sap\/bc\/adt.*$/, "")
+      if (!baseUrlForSE24.startsWith("https://") && !baseUrlForSE24.startsWith("http://")) {
+        baseUrlForSE24 = "https://" + baseUrlForSE24
+      } else if (baseUrlForSE24.startsWith("http://")) {
+        baseUrlForSE24 = baseUrlForSE24.replace("http://", "https://")
       }
-      
+
       // Use SE24 (Class Builder) with class name prefilled
-      textElementsUrl = `${baseUrlForSE24}/sap/bc/gui/sap/its/webgui?` +
+      textElementsUrl =
+        `${baseUrlForSE24}/sap/bc/gui/sap/its/webgui?` +
         `~transaction=SE24 SEOCLASS-CLSNAME=${objectInfo.cleanName}` +
         `&sap-client=${config.client}` +
-        `&sap-language=${config.language || 'EN'}` +
-        `&saml2=disabled`;
-        
-    } else if (sapGuiObjectType === 'FUGR/FF' || sapGuiObjectType === 'FUNC/FM') {
+        `&sap-language=${config.language || "EN"}` +
+        `&saml2=disabled`
+    } else if (sapGuiObjectType === "FUGR/FF" || sapGuiObjectType === "FUNC/FM") {
       // For function modules and function groups: SE37 with TEXT okcode
-      textElementsUrl = baseUrl.replace('DYNP_OKCODE%3dWB_EXEC', 'DYNP_OKCODE%3dTEXT');
-      
+      textElementsUrl = baseUrl.replace("DYNP_OKCODE%3dWB_EXEC", "DYNP_OKCODE%3dTEXT")
     } else {
       // For programs: SE38 with TEXT okcode works fine
-      textElementsUrl = baseUrl.replace('DYNP_OKCODE%3dSTRT', 'DYNP_OKCODE%3dTEXT');
+      textElementsUrl = baseUrl.replace("DYNP_OKCODE%3dSTRT", "DYNP_OKCODE%3dTEXT")
     }
-    
-    
+
     // Load the text elements URL directly
-    panel.loadDirectWebGuiUrl(textElementsUrl);
-        
+    panel.loadDirectWebGuiUrl(textElementsUrl)
   } catch (error) {
-    logCommands.error(`❌ Error opening SAP GUI text elements: ${error}`);
-    throw error;
+    logCommands.error(`❌ Error opening SAP GUI text elements: ${error}`)
+    throw error
   }
 }
 
 /**
  * Create and show text elements manager webview
  */
-async function createTextElementsWebview(programName: string, textElements: TextElement[], connectionId: string, sourceUri: vscode.Uri): Promise<void> {
+async function createTextElementsWebview(
+  programName: string,
+  textElements: TextElement[],
+  connectionId: string,
+  sourceUri: vscode.Uri
+): Promise<void> {
   const panel = window.createWebviewPanel(
-    'textElementsManager',
+    "textElementsManager",
     `Text Elements Manager - ${programName}`,
     vscode.ViewColumn.One,
     {
@@ -259,37 +273,42 @@ async function createTextElementsWebview(programName: string, textElements: Text
       retainContextWhenHidden: true,
       localResourceRoots: []
     }
-  );
+  )
 
   // Set webview HTML content
-  panel.webview.html = getTextElementsWebviewContent(programName, textElements);
+  panel.webview.html = getTextElementsWebviewContent(programName, textElements)
 
   // Handle messages from webview
-  panel.webview.onDidReceiveMessage(async (message) => {
+  panel.webview.onDidReceiveMessage(async message => {
     switch (message.command) {
       // 🚫 DISABLED: Save functionality disabled due to lock handle issues
-      
-      case 'save':
-        await handleSaveTextElements(programName, message.textElements, panel, connectionId, sourceUri);
-        break;
-      
-      case 'refresh':
-        await handleRefreshTextElements(programName, panel, connectionId);
-        break;
+
+      case "save":
+        await handleSaveTextElements(
+          programName,
+          message.textElements,
+          panel,
+          connectionId,
+          sourceUri
+        )
+        break
+
+      case "refresh":
+        await handleRefreshTextElements(programName, panel, connectionId)
+        break
       // 🚫 DISABLED: Add/Delete functionality disabled
-      
-      case 'add':
+
+      case "add":
         // Add empty row - handled in webview
-        break;
-      case 'delete':
+        break
+      case "delete":
         // Delete row - handled in webview
-        break;
-      
+        break
     }
-  });
+  })
 
   // Show the panel
-  panel.reveal();
+  panel.reveal()
 }
 
 /**
@@ -298,93 +317,100 @@ async function createTextElementsWebview(programName: string, textElements: Text
  */
 
 async function handleSaveTextElements(
-  programName: string, 
-  textElements: TextElement[], 
+  programName: string,
+  textElements: TextElement[],
   panel: vscode.WebviewPanel,
   connectionId: string,
   sourceUri: vscode.Uri
 ): Promise<void> {
   try {
     // Get client using the connectionId from the original context - get original client, not clone
-    const client = getClient(connectionId, false); // false = don't clone, get original client
+    const client = getClient(connectionId, false) // false = don't clone, get original client
     if (!client) {
-      window.showErrorMessage(`No ADT connection available for ${connectionId}.`);
-      return;
+      window.showErrorMessage(`No ADT connection available for ${connectionId}.`)
+      return
     }
-    client.stateful = session_types.stateful;       
+    client.stateful = session_types.stateful
 
-    await window.withProgress({
-      location: vscode.ProgressLocation.Notification,
-      title: `Saving text elements for ${programName}...`,
-      cancellable: false
-    }, async (progress) => {
-      progress.report({ increment: 30, message: 'Validating...' });
-      
-      // Filter out empty text elements
-      const validTextElements = textElements.filter(te => te.id && te.text);
-      
-      if (validTextElements.length === 0) {
-        throw new Error('No valid text elements to save');
+    await window.withProgress(
+      {
+        location: vscode.ProgressLocation.Notification,
+        title: `Saving text elements for ${programName}...`,
+        cancellable: false
+      },
+      async progress => {
+        progress.report({ increment: 30, message: "Validating..." })
+
+        // Filter out empty text elements
+        const validTextElements = textElements.filter(te => te.id && te.text)
+
+        if (validTextElements.length === 0) {
+          throw new Error("No valid text elements to save")
+        }
+
+        progress.report({ increment: 60, message: "Saving to SAP system..." })
+        //changed below line to not use lock manager version of function
+        await updateTextElementsWithTransport(
+          client,
+          programName,
+          validTextElements,
+          sourceUri.toString()
+        )
+
+        progress.report({ increment: 100, message: "Saved successfully" })
       }
+    )
 
-      progress.report({ increment: 60, message: 'Saving to SAP system...' });
-      //changed below line to not use lock manager version of function
-      await updateTextElementsWithTransport(client, programName, validTextElements, sourceUri.toString());
-      
-      progress.report({ increment: 100, message: 'Saved successfully' });
-    });
+    window.showInformationMessage(`Text elements saved successfully for ${programName}`)
 
-    window.showInformationMessage(`Text elements saved successfully for ${programName}`);
-    
     // Send success message to webview
-    panel.webview.postMessage({ command: 'saveSuccess' });
-    
+    panel.webview.postMessage({ command: "saveSuccess" })
   } catch (error) {
-    logCommands.error(`Error saving text elements: ${error}`);
-    window.showErrorMessage(`Failed to save text elements: ${error}`);
-    
+    logCommands.error(`Error saving text elements: ${error}`)
+    window.showErrorMessage(`Failed to save text elements: ${error}`)
+
     // Send error message to webview
-    panel.webview.postMessage({ command: 'saveError', error: String(error) });
+    panel.webview.postMessage({ command: "saveError", error: String(error) })
   }
 }
-
 
 /**
  * Handle refreshing text elements from webview
  */
 async function handleRefreshTextElements(
-  programName: string, 
+  programName: string,
   panel: vscode.WebviewPanel,
   connectionId: string
 ): Promise<void> {
   try {
     // Get client using the connectionId from the original context
-    const client = getClient(connectionId);
+    const client = getClient(connectionId)
     if (!client) {
-      window.showErrorMessage(`No ADT connection available for ${connectionId}.`);
-      panel.webview.postMessage({ command: 'refreshError', error: `No ADT connection available for ${connectionId}` });
-      return;
+      window.showErrorMessage(`No ADT connection available for ${connectionId}.`)
+      panel.webview.postMessage({
+        command: "refreshError",
+        error: `No ADT connection available for ${connectionId}`
+      })
+      return
     }
 
     // Reload text elements from SAP
-    const result = await getTextElementsSafe(client, programName);
-    
+    const result = await getTextElementsSafe(client, programName)
+
     // Send updated data to webview
     panel.webview.postMessage({
-      command: 'refresh',
+      command: "refresh",
       textElements: result.textElements
-    });
-    
-    
+    })
   } catch (error: any) {
-    logCommands.error(`Error refreshing text elements: ${error}`);
-    window.showErrorMessage(`Failed to refresh text elements: ${error.message}`);
-    
+    logCommands.error(`Error refreshing text elements: ${error}`)
+    window.showErrorMessage(`Failed to refresh text elements: ${error.message}`)
+
     // Send error message to webview
-    panel.webview.postMessage({ 
-      command: 'refreshError', 
+    panel.webview.postMessage({
+      command: "refreshError",
       error: error.message || String(error)
-    });
+    })
   }
 }
 
@@ -392,7 +418,7 @@ async function handleRefreshTextElements(
  * Extract object name from ADT URI for programs, classes, and function groups
  * Handles URL-encoded namespace objects (e.g., %E2%88%95UGI4%E2%88%95 -> /UGI4/)
  * Also handles division slash (∕) normalization to forward slash (/)
- * 
+ *
  * Function Group URI patterns handled:
  * - .../Function Groups/FG_NAME/FG_NAME.fugr.abap (direct function group file)
  * - .../Function Groups/FG_NAME/Function Modules/MODULE_NAME.fugr.abap (function module in group)
@@ -401,71 +427,73 @@ async function handleRefreshTextElements(
 function extractProgramNameFromUri(uriString: string): string | null {
   try {
     // Class pattern: adt://system/path/to/Classes/CLASS_NAME/CLASS_NAME.clas.abap
-    const classMatches = uriString.match(/\/Classes\/([^\/]+)\/[^\/]+\.clas\.abap/i);
+    const classMatches = uriString.match(/\/Classes\/([^\/]+)\/[^\/]+\.clas\.abap/i)
     if (classMatches && classMatches[1]) {
-      let decodedName = decodeURIComponent(classMatches[1]);
+      let decodedName = decodeURIComponent(classMatches[1])
       // Normalize division slash (∕) to forward slash (/) for SAP compatibility
-      decodedName = decodedName.replace(/∕/g, '/');
-      return decodedName + '.clas.abap';  // Include extension for type detection
+      decodedName = decodedName.replace(/∕/g, "/")
+      return decodedName + ".clas.abap" // Include extension for type detection
     }
 
     // Function Group pattern 1: adt://system/path/to/Function Groups/FG_NAME/FG_NAME.fugr.abap
-    const fgMatches = uriString.match(/\/Function.*Groups?\/([^\/]+)\/[^\/]+\.fugr\.abap/i);
+    const fgMatches = uriString.match(/\/Function.*Groups?\/([^\/]+)\/[^\/]+\.fugr\.abap/i)
     if (fgMatches && fgMatches[1]) {
-      let decodedName = decodeURIComponent(fgMatches[1]);
+      let decodedName = decodeURIComponent(fgMatches[1])
       // Normalize division slash (∕) to forward slash (/) for SAP compatibility
-      decodedName = decodedName.replace(/∕/g, '/');
-      return decodedName + '.fugr.abap';  // Include extension for type detection
+      decodedName = decodedName.replace(/∕/g, "/")
+      return decodedName + ".fugr.abap" // Include extension for type detection
     }
 
     // Function Group pattern 2: adt://system/path/to/Function Groups/FG_NAME/Function Modules/MODULE_NAME.fugr.abap
-    const fgModuleMatches = uriString.match(/\/Function.*Groups?\/[^\/]+\/Function.*Modules?\/([^\/]+)\.fugr\.abap/i);
+    const fgModuleMatches = uriString.match(
+      /\/Function.*Groups?\/[^\/]+\/Function.*Modules?\/([^\/]+)\.fugr\.abap/i
+    )
     if (fgModuleMatches && fgModuleMatches[1]) {
-      let decodedName = decodeURIComponent(fgModuleMatches[1]);
+      let decodedName = decodeURIComponent(fgModuleMatches[1])
       // For function modules, we want the actual function module name, not the function group
       // So we return it as .func.abap to distinguish from function groups
-      decodedName = decodedName.replace(/∕/g, '/');
-      return decodedName + '.func.abap';  // Use .func.abap to distinguish from function groups
+      decodedName = decodedName.replace(/∕/g, "/")
+      return decodedName + ".func.abap" // Use .func.abap to distinguish from function groups
     }
 
     // Program pattern: adt://system/path/to/Programs/PROGRAM_NAME/PROGRAM_NAME.prog.abap
-    const progMatches = uriString.match(/\/Programs\/([^\/]+)\/[^\/]+\.prog\.abap/i);
+    const progMatches = uriString.match(/\/Programs\/([^\/]+)\/[^\/]+\.prog\.abap/i)
     if (progMatches && progMatches[1]) {
-      let decodedName = decodeURIComponent(progMatches[1]);
+      let decodedName = decodeURIComponent(progMatches[1])
       // Normalize division slash (∕) to forward slash (/) for SAP compatibility
-      decodedName = decodedName.replace(/∕/g, '/');
-      return decodedName + '.prog.abap';  // Include extension for type detection
+      decodedName = decodedName.replace(/∕/g, "/")
+      return decodedName + ".prog.abap" // Include extension for type detection
     }
 
     // Alternative patterns without extension
-    const altClassMatches = uriString.match(/\/Classes\/([^\/\?]+)/i);
+    const altClassMatches = uriString.match(/\/Classes\/([^\/\?]+)/i)
     if (altClassMatches && altClassMatches[1]) {
-      let decodedName = decodeURIComponent(altClassMatches[1]);
+      let decodedName = decodeURIComponent(altClassMatches[1])
       // Normalize division slash (∕) to forward slash (/) for SAP compatibility
-      decodedName = decodedName.replace(/∕/g, '/');
-      return decodedName.toUpperCase();
+      decodedName = decodedName.replace(/∕/g, "/")
+      return decodedName.toUpperCase()
     }
 
-    const altFgMatches = uriString.match(/\/Function.*Groups?\/([^\/\?]+)/i);
+    const altFgMatches = uriString.match(/\/Function.*Groups?\/([^\/\?]+)/i)
     if (altFgMatches && altFgMatches[1]) {
-      let decodedName = decodeURIComponent(altFgMatches[1]);
+      let decodedName = decodeURIComponent(altFgMatches[1])
       // Normalize division slash (∕) to forward slash (/) for SAP compatibility
-      decodedName = decodedName.replace(/∕/g, '/');
-      return decodedName.toUpperCase() + '.fugr.abap';  // Add extension for function group type detection
+      decodedName = decodedName.replace(/∕/g, "/")
+      return decodedName.toUpperCase() + ".fugr.abap" // Add extension for function group type detection
     }
 
-    const altProgMatches = uriString.match(/\/Programs\/([^\/\?]+)/i);
+    const altProgMatches = uriString.match(/\/Programs\/([^\/\?]+)/i)
     if (altProgMatches && altProgMatches[1]) {
-      let decodedName = decodeURIComponent(altProgMatches[1]);
+      let decodedName = decodeURIComponent(altProgMatches[1])
       // Normalize division slash (∕) to forward slash (/) for SAP compatibility
-      decodedName = decodedName.replace(/∕/g, '/');
-      return decodedName.toUpperCase();
+      decodedName = decodedName.replace(/∕/g, "/")
+      return decodedName.toUpperCase()
     }
 
-    return null;
+    return null
   } catch (error) {
-    logCommands.error(`Error extracting object name from URI: ${error}`);
-    return null;
+    logCommands.error(`Error extracting object name from URI: ${error}`)
+    return null
   }
 }
 
@@ -473,8 +501,8 @@ function extractProgramNameFromUri(uriString: string): string | null {
  * Generate HTML content for text elements webview
  */
 function getTextElementsWebviewContent(programName: string, textElements: TextElement[]): string {
-  const textElementsJson = JSON.stringify(textElements);
-  
+  const textElementsJson = JSON.stringify(textElements)
+
   return `<!DOCTYPE html>
 <html lang="en">
 <head>
@@ -867,5 +895,5 @@ function getTextElementsWebviewContent(programName: string, textElements: TextEl
         renderTable();
     </script>
 </body>
-</html>`;
+</html>`
 }

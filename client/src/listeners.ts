@@ -43,13 +43,12 @@ export function clearSaveReason(uri: string) {
 
 export const listenersubscribers: ((...x: any[]) => Disposable)[] = []
 
-export const listener = <T>(event: Event<T>) => (
-  target: any,
-  propertyKey: string
-) => {
-  const func = () => event(target[propertyKey].bind(target))
-  listenersubscribers.push(func)
-}
+export const listener =
+  <T>(event: Event<T>) =>
+  (target: any, propertyKey: string) => {
+    const func = () => event(target[propertyKey].bind(target))
+    listenersubscribers.push(func)
+  }
 export async function documentClosedListener(doc: TextDocument) {
   if (!abapUri(doc.uri)) return
   try {
@@ -59,8 +58,7 @@ export async function documentClosedListener(doc: TextDocument) {
       if ((await root.lockManager.finalStatus(uri.path)).status === "locked")
         await root.lockManager.requestUnlock(uri.path)
     }
-  } catch (error) {
-  }
+  } catch (error) {}
 }
 
 export async function reconnectExpired(uri: Uri) {
@@ -69,10 +67,10 @@ export async function reconnectExpired(uri: Uri) {
 
   const resp = lm.lockedPaths().next().value
     ? await window.showErrorMessage(
-      "Session expired, files can't be locked might be stale. Try to refresh locks?",
-      "Ok",
-      "Cancel"
-    )
+        "Session expired, files can't be locked might be stale. Try to refresh locks?",
+        "Ok",
+        "Cancel"
+      )
     : ok
   if (resp === ok) {
     await lm.restore()
@@ -96,8 +94,7 @@ async function validateLock(lock: LockStatus) {
 }
 
 export const isExpired = (error: any) =>
-  isCsrfError(error) ||
-  (error.err === 400 && `${error.message}`.match(/Session.*timed.*out/i))
+  isCsrfError(error) || (error.err === 400 && `${error.message}`.match(/Session.*timed.*out/i))
 
 export async function setDocumentLock(
   document: TextDocument,
@@ -107,27 +104,24 @@ export async function setDocumentLock(
   const uri = document.uri
   if (!abapUri(uri)) return
 
-
   const lockManager = getRoot(uri.authority).lockManager
 
   const cb = interactive ? validateLock : undefined
   if (document.isDirty)
     try {
-      
       const lock = await lockManager.requestLock(uri.path)
       if (!validateLock(lock)) {
         await lockManager.requestUnlock(uri.path)
-        const error = new Error('Lock validation failed')
+        const error = new Error("Lock validation failed")
         if (interactive) {
           window.showErrorMessage(`Lock validation failed\nWon't be able to save changes`)
         }
         throw error
       }
     } catch (e) {
-      
       // Enhanced error logging for debugging
-      if (e && typeof e === 'object') {
-        const errorObj = e as any; // Use any to safely access error properties
+      if (e && typeof e === "object") {
+        const errorObj = e as any // Use any to safely access error properties
         //   message: errorObj.message,
         //   status: errorObj.status || errorObj.response?.status,
         //   statusText: errorObj.statusText || errorObj.response?.statusText,
@@ -135,19 +129,17 @@ export async function setDocumentLock(
         //   errno: errorObj.errno
         // })}`)
       }
-      
+
       if (isExpired(e)) {
         if (retry && (await reconnectExpired(document.uri)))
           return setDocumentLock(document, interactive, false)
       }
-      
+
       // Handle error notifications based on interactive flag
       if (interactive) {
-        window.showErrorMessage(
-          `${caughtToString(e)}\nWon't be able to save changes`
-        )
+        window.showErrorMessage(`${caughtToString(e)}\nWon't be able to save changes`)
       }
-      
+
       // Always throw the error so caller can handle it
       throw e
     }
@@ -160,14 +152,12 @@ export async function setDocumentLock(
       const lock = await lockManager.requestLock(uri.path)
       if (!validateLock(lock)) {
         await lockManager.requestUnlock(uri.path)
-        const error = new Error('Lock validation failed for interactive save')
+        const error = new Error("Lock validation failed for interactive save")
         window.showErrorMessage(`Lock validation failed\nWon't be able to save changes`)
         throw error
       }
     } catch (e) {
-      window.showErrorMessage(
-        `${caughtToString(e)}\nWon't be able to save changes`
-      )
+      window.showErrorMessage(`${caughtToString(e)}\nWon't be able to save changes`)
       throw e
     }
   }
@@ -199,52 +189,51 @@ const doclock = debounce(200, async (document: TextDocument) => {
 export async function documentChangedListener(event: TextDocumentChangeEvent) {
   const uri = event.document.uri
   if (!abapUri(uri)) return
-  
+
   // 🤖 COPILOT DETECTION: Check if content changed without isDirty being set
   const document = event.document
   const hasContentChanges = event.contentChanges.length > 0
   const isDocumentDirty = document.isDirty
-  
+
   if (hasContentChanges && !isDocumentDirty) {
     // Content changed but isDirty is false = Likely Copilot!
-    
+
     // Check if this looks like an Undo action (entire document replacement)
-    const isLikelyUndo = event.contentChanges.some(change => 
-      change.range.start.line === 0 && 
-      change.range.end.line >= document.lineCount - 1
-    );
-    
+    const isLikelyUndo = event.contentChanges.some(
+      change => change.range.start.line === 0 && change.range.end.line >= document.lineCount - 1
+    )
+
     if (isLikelyUndo) {
       // Skip counting this as a change since it's an undo
-      return;
+      return
     }
-    
+
     const totalLinesChanged = event.contentChanges.reduce((sum, change) => {
       const insertedLines = (change.text.match(/\n/g) || []).length
       const deletedLines = change.range.end.line - change.range.start.line
       // Use total modifications: inserted + deleted lines
       return sum + insertedLines + deletedLines
     }, 0)
-    
+
     // Only log if significant change (filter out minor edits)
     if (totalLinesChanged > 0) {
       const action = `Number of code lines changed: ${totalLinesChanged}`
       // Extract connectionId from document URI
       const connectionId = uri.authority
-      logTelemetry(action, { connectionId }) 
+      logTelemetry(action, { connectionId })
     }
   }
-  
+
   // DISABLED: Prevent automatic locking on document changes
   // Let VS Code handle staging, only lock when user explicitly saves
-  
+
   // Note: We don't call doclock(event.document) anymore
   // This prevents premature locking before user decides to keep AI changes
 }
 // if the document is dirty it's probably locked already. If not, lock it
 export async function documentWillSave(e: TextDocumentWillSaveEvent) {
   const uri = e.document.uri
-  
+
   if (uri.scheme !== ADTSCHEME) {
     return
   }
@@ -263,8 +252,7 @@ export async function documentWillSave(e: TextDocumentWillSaveEvent) {
     return
   }
 
-
- // Defer the save operation until the lock is acquired.
+  // Defer the save operation until the lock is acquired.
   e.waitUntil(
     (async () => {
       try {
@@ -278,7 +266,6 @@ export async function documentWillSave(e: TextDocumentWillSaveEvent) {
       }
     })()
   )
-
 }
 
 function isInactive(obj: AbapObject): boolean {
@@ -290,7 +277,7 @@ function showHidedbIcon(editor?: TextEditor) {
   try {
     const type = uriAbapFile(editor?.document.uri)?.object.type
     setContext("abapfs:showTableContentIcon", viewableObjecttypes.has(type))
-  } catch (error) { }
+  } catch (error) {}
 }
 
 export async function showHideActivate(editor?: TextEditor, refresh = false) {
@@ -305,14 +292,20 @@ export async function showHideActivate(editor?: TextEditor, refresh = false) {
 
     // Show activate button for any ABAP object that can be activated
     // This includes programs, classes, function groups, interfaces, etc.
-    const activatableTypes = ['PROG/P', 'CLAS/OC', 'FUGR/FF', 'INTF/OI', 'FUGR/I', 'PROG/I']
-    shouldShow = activatableTypes.includes(obj.type) || obj.type.endsWith('/P') || obj.type.endsWith('/OC') || obj.type.endsWith('/FF')
+    const activatableTypes = ["PROG/P", "CLAS/OC", "FUGR/FF", "INTF/OI", "FUGR/I", "PROG/I"]
+    shouldShow =
+      activatableTypes.includes(obj.type) ||
+      obj.type.endsWith("/P") ||
+      obj.type.endsWith("/OC") ||
+      obj.type.endsWith("/FF")
 
     // If not obviously activatable, check if it's an ABAP development object
     if (!shouldShow) {
       // Show for any object that has activation status (inactive objects definitely need activation)
       if (refresh) await obj.loadStructure()
-      shouldShow = obj && (isInactive(obj) || Boolean(obj.structure?.metaData?.hasOwnProperty("adtcore:version")))
+      shouldShow =
+        obj &&
+        (isInactive(obj) || Boolean(obj.structure?.metaData?.hasOwnProperty("adtcore:version")))
     }
   } catch (e) {
     // If there's an error, still show the button for ABAP files - better safe than sorry
@@ -330,7 +323,12 @@ export async function activationStateListener(uri: Uri) {
     await showHideActivate(editor)
   }
 }
-const setRevisionContext = (leftprev: boolean, leftnext: boolean, rightprev: boolean, rightnext: boolean) => {
+const setRevisionContext = (
+  leftprev: boolean,
+  leftnext: boolean,
+  rightprev: boolean,
+  rightnext: boolean
+) => {
   setContext("abapfs:enableLeftNextRev", leftnext)
   setContext("abapfs:enableLeftPrevRev", leftprev)
   setContext("abapfs:enableRightNextRev", rightnext)
@@ -361,48 +359,45 @@ const enableRevNavigation = async (editor: TextEditor | undefined) => {
   }
   return setRevisionContext(false, false, false, false)
 }
-export async function activeTextEditorChangedListener(
-  editor: TextEditor | undefined
-) {
+export async function activeTextEditorChangedListener(editor: TextEditor | undefined) {
   showHidedbIcon(editor)
   enableRevNavigation(editor)
-  
+
   // Update feature availability contexts (consolidated for performance)
   if (editor) {
-    const { updateCleanerContext } = await import('./services/cleanerCommands');
-    updateCleanerContext();
+    const { updateCleanerContext } = await import("./services/cleanerCommands")
+    updateCleanerContext()
     // Note: updateFillContext requires context parameter, handled separately in its own listener
   }
-  
+
   try {
     if (editor && editor.document.uri.scheme === ADTSCHEME) {
-      
       // If the document has unsaved changes, do not refresh its state from the server.
       // This prevents overwriting local changes (especially programmatic ones from tools).
       //if (editor.document.isDirty) {
       //  return;
       //}
-      
+
       await showHideActivate(editor)
-      
+
       // Trigger syntax check when switching to ADT file
       try {
-        const { triggerSyntaxCheck } = await import('./langClient');
-        await triggerSyntaxCheck(editor.document.uri.toString());
+        const { triggerSyntaxCheck } = await import("./langClient")
+        await triggerSyntaxCheck(editor.document.uri.toString())
       } catch (syntaxError) {
         // Syntax check is optional - don't break if it fails
       }
-      
+
       // 🎯 NEW: Update enhancement decorations for ABAP files
-       try {
-          const { updateEnhancementDecorations } = await import('./views/enhancementDecorations');
-          await updateEnhancementDecorations(editor);
-       } catch (enhError) {
-      //   // Enhancement decorations are optional - don't break if they fail
-         log(`⚠️ Enhancement decorations failed: ${enhError}`);
-       }
+      try {
+        const { updateEnhancementDecorations } = await import("./views/enhancementDecorations")
+        await updateEnhancementDecorations(editor)
+      } catch (enhError) {
+        //   // Enhancement decorations are optional - don't break if they fail
+        log(`⚠️ Enhancement decorations failed: ${enhError}`)
+      }
     }
   } catch (e) {
     await showHideActivate() // reset
-  } 
+  }
 }
