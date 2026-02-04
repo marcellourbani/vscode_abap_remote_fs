@@ -137,7 +137,6 @@ async function getLanguageModel(
       return null
     }
 
-    log(`💓 Selected model: ${model.name} (${model.vendor})`)
     return model
   } catch (error) {
     log(`💓 Error getting language model: ${error}`)
@@ -152,7 +151,6 @@ function getAbapFsTools(): vscode.LanguageModelToolInformation[] {
   try {
     const allTools = Array.from(vscode.lm.tools)
     const abapTools = allTools.filter(tool => tool.tags.includes(ABAP_FS_TAG))
-    log(`💓 Found ${abapTools.length} ABAP FS tools (of ${allTools.length} total)`)
     return abapTools
   } catch (error) {
     log(`💓 Error getting LM tools: ${error}`)
@@ -225,8 +223,6 @@ export async function runHeartbeatLM(
           const toolName = part.name
           toolsUsed.push(toolName)
 
-          log(`💓 Tool call: ${toolName}`)
-
           try {
             // Execute the tool
             const toolResult = await vscode.lm.invokeTool(
@@ -298,7 +294,6 @@ export async function runHeartbeatLM(
     }
 
     const durationMs = Date.now() - startTime
-    log(`💓 Heartbeat completed in ${durationMs}ms, used ${toolsUsed.length} tools`)
 
     // Parse the response
     const parsed = parseHeartbeatResponse(fullResponse, config.ackMaxChars)
