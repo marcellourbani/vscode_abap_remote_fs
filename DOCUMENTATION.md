@@ -45,7 +45,41 @@ This documentation covers all features in detail. The goal: make ABAP developmen
     - [Subagents auto-disabled](#subagents-auto-disabled)
     - [Ghost files in explorer after disable](#ghost-files-in-explorer-after-disable)
     - [Delegation not using custom agents](#delegation-not-using-custom-agents)
-  - [1.3 Enhanced Hover Information](#13-enhanced-hover-information)
+- [1.3 Heartbeat - Background Monitoring \& Reminders](#13-heartbeat---background-monitoring--reminders)
+  - [What is Heartbeat?](#what-is-heartbeat)
+    - [🔔 Personal Reminders (any reminder, not just SAP!)](#-personal-reminders-any-reminder-not-just-sap)
+    - [📊 SAP System Monitoring](#-sap-system-monitoring)
+  - [How It Works](#how-it-works-2)
+  - [Setup Instructions](#setup-instructions-2)
+    - [Step 1: Configure Heartbeat Model](#step-1-configure-heartbeat-model)
+    - [Step 2: Enable via Copilot or Settings](#step-2-enable-via-copilot-or-settings)
+    - [Step 3: Add Monitoring Tasks](#step-3-add-monitoring-tasks)
+  - [Status Bar Indicator](#status-bar-indicator)
+  - [Task Types](#task-types)
+    - [🔔 Reminders (One-time)](#-reminders-one-time)
+    - [📊 Monitoring Tasks (Recurring)](#-monitoring-tasks-recurring)
+    - [Task Properties](#task-properties)
+  - [Example Tasks](#example-tasks)
+    - [Monitor for ST22 Dumps](#monitor-for-st22-dumps)
+    - [Watch Transport Until Released](#watch-transport-until-released)
+    - [Scheduled Reminder (SAP-related)](#scheduled-reminder-sap-related)
+    - [Personal Reminder (non-SAP)](#personal-reminder-non-sap)
+  - [Managing Heartbeat via Copilot](#managing-heartbeat-via-copilot)
+    - [Check Status](#check-status-1)
+    - [Add Tasks](#add-tasks)
+    - [List Tasks](#list-tasks)
+    - [Remove Tasks](#remove-tasks)
+    - [Trigger Manual Check](#trigger-manual-check)
+    - [Stop Service](#stop-service)
+  - [Timezone Handling](#timezone-handling)
+  - [Cooldown \& Deduplication](#cooldown--deduplication)
+  - [Troubleshooting](#troubleshooting-2)
+    - [Service not starting](#service-not-starting)
+    - [Tasks not being checked](#tasks-not-being-checked)
+    - [Too many alerts](#too-many-alerts)
+    - [Missing heartbeat.json](#missing-heartbeatjson)
+    - [Model errors](#model-errors)
+  - [1.4 Enhanced Hover Information](#14-enhanced-hover-information)
 - [2. SAP GUI Integration](#2-sap-gui-integration)
   - [2.1 Embedded SAP GUI (WebView)](#21-embedded-sap-gui-webview)
   - [2.2 Native Desktop SAP GUI](#22-native-desktop-sap-gui)
@@ -450,6 +484,8 @@ Orchestrator thinking:
 
 ## Setup Instructions
 
+> 📁 **Workspace-Level Configuration:** Subagent configuration is stored at the **workspace level** (in `.vscode/settings.json` and `.github/agents/`), not in your global VS Code settings. This allows different subagent configurations for different projects.
+
 ### Step 1: Configure Models via Copilot
 
 Ask Copilot to configure subagent models:
@@ -580,8 +616,315 @@ This is a VS Code refresh issue. The extension refreshes the explorer automatica
 ### Delegation not using custom agents
 Make sure `chat.customAgentInSubagent.enabled` is set to `true` in your VS Code settings.
 
-## 1.3 Enhanced Hover Information
+# 1.3 Heartbeat - Background Monitoring & Reminders
 
+> ⚠️ **BETA FEATURE** - This feature is in beta. Please report any issues.
+
+**Purpose:** A personal background assistant that periodically monitors your SAP systems and sends you reminders
+
+## What is Heartbeat?
+
+Heartbeat is a lightweight background service that runs an AI agent at configurable intervals. It can:
+
+### 🔔 Personal Reminders (any reminder, not just SAP!)
+- "Remind me in 30 minutes to take a break"
+- "Remind me at 3pm about the meeting"
+- "Remind me tomorrow morning to drink water"
+- "Remind me to check transport K900123 after lunch"
+
+### 📊 SAP System Monitoring
+- "Alert me when new ST22 dumps appear"
+- "Watch transport XYZ until it's released"
+- "Every 5 minutes, check if my job finished"
+
+The heartbeat agent uses a **cost-effective model** (configurable) to perform these background checks without interrupting your work.
+
+## How It Works
+
+```
+┌─────────────────┐     Every X min      ┌──────────────────┐                    ┌─────────────┐
+│  Heartbeat      │ ───────────────────► │  Heartbeat LLM   │ ◄────────────────► │  ABAP FS    │
+│  Service        │     (configurable)   │  (cheap model)   │     Uses tools     │  Tools      │
+└─────────────────┘                      └──────────────────┘                    └─────────────┘
+         │                                        │
+         │                                        ▼
+         │                               ┌──────────────────┐
+         └──────────────────────────────►│  heartbeat.json  │ (task definitions)
+                                         └──────────────────┘
+```
+
+1. **Service runs periodically** at your configured interval (e.g., every 5 minutes)
+2. **Reads watchlist** from `heartbeat.json` in your workspace
+3. **LLM processes tasks** - executes SQL queries, checks conditions, follows instructions
+4. **Alerts you** only when something new or important happens
+5. **Updates task state** to track what's been checked and notified
+
+## Setup Instructions
+
+> 📁 **Workspace-Level Settings:** Heartbeat configuration is stored at the **workspace level** (in `.vscode/settings.json`), not in your global VS Code settings. This allows different heartbeat configurations for different projects.
+
+### Step 1: Configure Heartbeat Model
+
+Open VS Code Settings (`Ctrl+,`) and configure:
+
+```json
+{
+  "abapfs.heartbeat.model": "GPT-4o mini",
+  "abapfs.heartbeat.every": "5m",
+  "abapfs.heartbeat.enabled": true
+}
+```
+
+| Setting | Description | Default |
+|---------|-------------|---------|
+| `abapfs.heartbeat.enabled` | Enable/disable the service | `false` |
+| `abapfs.heartbeat.model` | AI model to use (use cheap models!) | Required |
+| `abapfs.heartbeat.every` | Check interval (e.g., "5m", "1h", "30s") | `"5m"` |
+| `abapfs.heartbeat.activeHours` | Only run during these hours | `"08:00-18:00"` |
+| `abapfs.heartbeat.maxConsecutiveErrors` | Auto-pause after N errors | `20` |
+
+**Recommended Models (cost-effective):**
+- `GPT-4o mini (copilot)` ⭐
+- `Claude Haiku 4 (copilot)`
+- `GPT-4o (copilot)`
+
+### Step 2: Enable via Copilot or Settings
+
+**Option A - Via Copilot Chat:**
+```
+"Start the heartbeat service"
+```
+
+Copilot will check configuration and start the service.
+
+**Option B - Via Settings:**
+Set `abapfs.heartbeat.enabled` to `true` - the service auto-starts.
+
+### Step 3: Add Monitoring Tasks
+
+Ask Copilot to add tasks:
+```
+"Remind me tomorrow at 10am to review transport K900123"
+"Monitor DEV100 for new ST22 dumps and alert me"
+"Watch transport DEVK900001 until it's released"
+```
+
+Copilot uses the `manage_heartbeat` tool to add tasks to your watchlist.
+
+## Status Bar Indicator
+
+When heartbeat is running, you'll see a pulsing heart ❤️ in the status bar:
+
+| Status | Meaning |
+|--------|---------|
+| ❤️ (pulsing) | Heartbeat active, waiting for next check |
+| ❤️ beat... | Currently running a check |
+| ❤️ zzz | Paused (due to errors or outside active hours) |
+| (hidden) | Service stopped |
+
+**Click the heart** to open `heartbeat.json` and view/edit tasks directly.
+
+## Task Types
+
+### 🔔 Reminders (One-time)
+
+Simple reminders that notify you once and auto-remove:
+
+```
+"Remind me in 2 hours to check the batch job"
+"Remind me tomorrow at 9am about the meeting"
+```
+
+**How it works:**
+- Task has `reminderOnly: true`
+- Task has `startAt` set to the reminder time
+- Heartbeat ignores until `startAt` passes
+- Once due, notifies you and removes the task
+
+### 📊 Monitoring Tasks (Recurring)
+
+Continuous monitoring with configurable conditions:
+
+```
+"Monitor for new ST22 dumps in QA100"
+"Alert me when transport K900123 is released"
+"Check if more than 100 users are locked"
+```
+
+**How it works:**
+- Task has SQL query or tool instructions
+- Heartbeat checks every interval
+- Compares against previous findings
+- Only alerts on **new** issues (not previously notified)
+- Updates `lastResult` and `lastNotifiedFindings` after each check
+
+### Task Properties
+
+| Property | Description |
+|----------|-------------|
+| `id` | Unique task identifier |
+| `description` | What the task monitors/reminds |
+| `connectionId` | SAP system to monitor (e.g., "dev100") |
+| `enabled` | Whether task is active |
+| `category` | `transport`, `dump`, `job`, `reminder`, `custom` |
+| `priority` | `high`, `medium`, `low` |
+| `sampleQuery` | SQL query for heartbeat LLM to execute |
+| `checkInstructions` | Step-by-step instructions for heartbeat LLM |
+| `startAt` | ISO timestamp - don't check until this time |
+| `reminderOnly` | If true, notify once and auto-remove |
+| `removeWhenDone` | Auto-remove when condition is met |
+| `cooldownMinutes` | Don't re-notify within this period |
+| `alertThreshold` | Only alert if count exceeds this |
+
+## Example Tasks
+
+### Monitor for ST22 Dumps
+```json
+{
+  "id": "task-st22-dumps",
+  "description": "Monitor for new ST22 runtime dumps",
+  "connectionId": "your-system-id",
+  "category": "dump",
+  "priority": "high",
+  "checkInstructions": [
+    "Use analyze_abap_dumps tool with action 'list_dumps'",
+    "Compare dump IDs against lastNotifiedFindings",
+    "Only alert for GENUINELY NEW dumps",
+    "Update lastNotifiedFindings with current dump IDs"
+  ],
+  "cooldownMinutes": 30
+}
+```
+
+### Watch Transport Until Released
+```json
+{
+  "id": "task-watch-transport",
+  "description": "Watch transport DEVK900001 for release",
+  "connectionId": "your-system-id",
+  "category": "transport",
+  "sampleQuery": "SELECT trkorr, trstatus FROM e070 WHERE trkorr = 'DEVK900001'",
+  "checkInstructions": [
+    "Execute the SQL query",
+    "If trstatus = 'R', notify user and remove task",
+    "If still 'D', update lastResult silently"
+  ],
+  "removeWhenDone": true
+}
+```
+
+### Scheduled Reminder (SAP-related)
+```json
+{
+  "id": "task-reminder-123",
+  "description": "Review transport release process",
+  "category": "reminder",
+  "startAt": "2026-02-05T10:00:00.000Z",
+  "reminderOnly": true
+}
+```
+
+### Personal Reminder (non-SAP)
+```json
+{
+  "id": "task-break-reminder",
+  "description": "Take a break and stretch! 🧘",
+  "category": "reminder",
+  "startAt": "2026-02-04T15:00:00.000Z",
+  "reminderOnly": true
+}
+```
+
+## Managing Heartbeat via Copilot
+
+### Check Status
+```
+"What's the heartbeat status?"
+```
+Shows: running state, configured model, interval, task count, statistics.
+
+### Add Tasks
+```
+"Add a task to monitor for stuck transports older than 7 days"
+"Remind me tomorrow at 2pm to deploy the fix"
+```
+
+### List Tasks
+```
+"Show me the heartbeat watchlist"
+"What tasks are being monitored?"
+```
+
+### Remove Tasks
+```
+"Remove the transport monitoring task"
+"Delete reminder task-123"
+```
+
+### Trigger Manual Check
+```
+"Trigger a heartbeat check now"
+```
+
+### Stop Service
+```
+"Stop the heartbeat service"
+```
+
+## Timezone Handling
+
+⚠️ **Important:** When scheduling tasks or interpreting SAP dates/times, consider the SAP system's timezone.
+
+Copilot will automatically:
+1. Query system timezone using `get_sap_system_info`
+2. Convert your local time references to correct ISO timestamps
+3. Store tasks with UTC timestamps in `startAt`
+
+**Example:**
+- You say: "Remind me tomorrow at 10am" 
+- Copilot checks: SAP system timezone (e.g., UTC+2)
+- Copilot stores: `startAt: "2026-02-05T08:00:00.000Z"` (adjusted for timezone)
+
+## Cooldown & Deduplication
+
+To avoid spamming you with repeated alerts:
+
+1. **Cooldown Period**: After alerting, task won't re-alert for `cooldownMinutes`
+2. **Finding Tracking**: `lastNotifiedFindings` stores what was already reported
+3. **Delta Detection**: Only NEW issues trigger alerts
+
+**Example:**
+- First check: 5 dumps found → Alert: "5 new dumps!"
+- Second check: Same 5 dumps → No alert (already notified)
+- Third check: 7 dumps (2 new) → Alert: "2 new dumps!"
+
+## Troubleshooting
+
+### Service not starting
+- Check `abapfs.heartbeat.model` is configured
+- Check `abapfs.heartbeat.enabled` is `true`
+- Look for errors in VS Code Output → "ABAP FS"
+
+### Tasks not being checked
+- Verify `heartbeat.json` exists in workspace root
+- Check task has `enabled: true`
+- Check `startAt` hasn't passed yet (for scheduled tasks)
+- Check you're within `activeHours`
+
+### Too many alerts
+- Increase `cooldownMinutes` on the task
+- Set `alertThreshold` to filter low-count issues
+- Add more specific conditions in `checkInstructions`
+
+### Missing heartbeat.json
+- The file is created automatically when you add your first task
+- Or create manually in workspace root
+
+### Model errors
+- Some models may not work well for heartbeat
+- Try `GPT-4o mini (copilot)` - most reliable for background tasks
+
+## 1.4 Enhanced Hover Information
 **Purpose:** Rich contextual information on hover over ABAP code
 
 **How to Use:**

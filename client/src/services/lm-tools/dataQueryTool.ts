@@ -73,14 +73,28 @@ export class ExecuteDataQueryTool implements vscode.LanguageModelTool<IExecuteDa
       throw new Error('displayMode must be either "internal" or "ui"')
     }
 
-    if (displayMode === "internal" && webviewId) {
-      throw new Error(
-        '❌ LOGICAL CONFLICT: displayMode "internal" is for data processing without UI, but webviewId was provided. Use displayMode "ui" to work with existing webviews, or remove webviewId for internal processing.'
-      )
+    // Internal mode validations
+    if (displayMode === "internal") {
+      if (!sql) {
+        throw new Error(
+          '❌ Internal mode requires SQL query. Use displayMode "ui" to display data or work with webviews.'
+        )
+      }
+      if (webviewId) {
+        throw new Error(
+          '❌ LOGICAL CONFLICT: displayMode "internal" is for SQL execution without UI. Use displayMode "ui" to work with webviews.'
+        )
+      }
+      if (data) {
+        throw new Error(
+          '❌ LOGICAL CONFLICT: displayMode "internal" is for SQL execution only. Use displayMode "ui" to display data to user.'
+        )
+      }
     }
 
-    if (!webviewId && !sql && !data) {
-      throw new Error("Either SQL query, direct data, or existing webviewId must be provided")
+    // UI mode validations
+    if (displayMode === "ui" && !webviewId && !sql && !data) {
+      throw new Error("UI mode requires SQL query, direct data, or existing webviewId")
     }
 
     if (sql && data) {
@@ -239,105 +253,13 @@ export class ExecuteDataQueryTool implements vscode.LanguageModelTool<IExecuteDa
       const isNewData = !webviewId || !!sql || !!data
 
       if (displayMode === "internal") {
-        const webviewManager = WebviewManager.getInstance()
-
-        if (isNewData && (sql || data)) {
-          const tempWebviewResult = await webviewManager.createOrUpdateWebview(
-            data ||
-              (await (async () => {
-                let targetConnectionId = connectionId || "default"
-                const { getClient } = await import("../../adt/conections")
-                const client = getClient(targetConnectionId)
-                if (!client) {
-                  throw new Error(`No client found for connection: ${targetConnectionId}`)
-                }
-                return client
-              })()),
-            data ? "DATA_INPUT" : sql!,
-            data ? "" : connectionId || "default",
-            undefined,
-            title,
-            maxRows,
-            undefined,
-            sortColumns as SortColumn[],
-            filters as ColumnFilter[],
-            resetSorting,
-            resetFilters
-          )
-
-          const processedData = await webviewManager.getWebviewData(
-            tempWebviewResult.webviewId,
-            rowRange as RowRange
-          )
-
-          if (!webviewId) {
-            webviewManager.closeWebview(tempWebviewResult.webviewId)
-          }
-
-          const rowCount = processedData?.values?.length || 0
-          const columnCount = processedData?.columns?.length || 0
-          const totalRows = tempWebviewResult.state?.totalRows || 0
-
-          const response = {
-            data: processedData,
-            state: {
-              totalRows,
-              returnedRows: rowCount,
-              appliedSorting: sortColumns || [],
-              appliedFilters: filters || [],
-              webviewId: webviewId || null,
-              isNewData,
-              rowRange
-            }
-          }
-
-          return new vscode.LanguageModelToolResult([
-            new vscode.LanguageModelTextPart(
-              `Query processed successfully. Returned ${rowCount} of ${totalRows} total rows with ${columnCount} columns.`
-            ),
-            new vscode.LanguageModelTextPart(
-              `State: ${sortColumns?.length || 0} sort(s), ${filters?.length || 0} filter(s) applied.`
-            ),
-            new vscode.LanguageModelTextPart(JSON.stringify(response, null, 2))
-          ])
-        } else {
-          const result = await webviewManager.manipulateWebview(
-            webviewId!,
-            rowRange as RowRange,
-            sortColumns as SortColumn[],
-            filters as ColumnFilter[],
-            resetSorting,
-            resetFilters
-          )
-
-          const rowCount = result.data?.values?.length || 0
-          const columnCount = result.data?.columns?.length || 0
-          const totalRows = result.state?.totalRows || 0
-
-          const response = {
-            data: result.data,
-            state: {
-              totalRows,
-              returnedRows: rowCount,
-              appliedSorting: sortColumns || [],
-              appliedFilters: filters || [],
-              webviewId,
-              isNewData: false,
-              rowRange
-            }
-          }
-
-          return new vscode.LanguageModelToolResult([
-            new vscode.LanguageModelTextPart(
-              `Query processed successfully. Returned ${rowCount} of ${totalRows} total rows with ${columnCount} columns.`
-            ),
-            new vscode.LanguageModelTextPart(
-              `State: ${sortColumns?.length || 0} sort(s), ${filters?.length || 0} filter(s) applied.`
-            ),
-            new vscode.LanguageModelTextPart(JSON.stringify(response, null, 2))
-          ])
-        }
+        // ====================================================================
+        // INTERNAL MODE: Direct SQL execution WITHOUT webview
+        // No UI involved - execute query and return results to Copilot
+        // ====================================================================
+        return await this.executeQueryDirectly(sql!, connectionId, rowRange, maxRows)
       } else {
+        // UI MODE
         const webviewManager = WebviewManager.getInstance()
 
         let result
@@ -484,6 +406,71 @@ export class ExecuteDataQueryTool implements vscode.LanguageModelTool<IExecuteDa
       // If check fails, allow query to proceed (don't block on errors)
       console.warn("Production guard check failed:", error)
       return { action: "proceed" }
+    }
+  }
+
+  /**
+   * Execute SQL query directly without webview - for internal mode
+   */
+  private async executeQueryDirectly(
+    sql: string,
+    connectionId: string | undefined,
+    rowRange: { start: number; end: number } | undefined,
+    maxRows: number | undefined
+  ): Promise<vscode.LanguageModelToolResult> {
+    const targetConnectionId = connectionId || "default"
+    const { getClient } = await import("../../adt/conections")
+    const client = getClient(targetConnectionId)
+
+    if (!client) {
+      throw new Error(`No client found for connection: ${targetConnectionId}`)
+    }
+
+    // Calculate limit based on rowRange
+    const limit = rowRange ? rowRange.end + 1 : maxRows || 100
+
+    try {
+      // Execute query directly
+      const result = await client.runQuery(sql, limit, true)
+
+      if (!result || !result.columns) {
+        return new vscode.LanguageModelToolResult([
+          new vscode.LanguageModelTextPart("Query returned no results or empty result set.")
+        ])
+      }
+
+      // Apply row range if specified
+      let values = result.values || []
+      const totalRows = values.length
+
+      if (rowRange) {
+        values = values.slice(rowRange.start, rowRange.end)
+      }
+
+      const response = {
+        data: {
+          columns: result.columns,
+          values: values
+        },
+        state: {
+          totalRows,
+          returnedRows: values.length,
+          rowRange
+        }
+      }
+
+      return new vscode.LanguageModelToolResult([
+        new vscode.LanguageModelTextPart(
+          `Query executed. Returned ${values.length} of ${totalRows} rows with ${result.columns.length} columns.`
+        ),
+        new vscode.LanguageModelTextPart(JSON.stringify(response, null, 2))
+      ])
+    } catch (error: any) {
+      // Return SQL error to Copilot so it can fix and retry
+      const errorMessage = error?.message || String(error)
+      return new vscode.LanguageModelToolResult([
+        new vscode.LanguageModelTextPart(`❌ SQL Error: ${errorMessage}`)
+      ])
     }
   }
 }

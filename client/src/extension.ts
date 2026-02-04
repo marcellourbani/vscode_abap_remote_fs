@@ -265,6 +265,27 @@ export async function activate(ctx: ExtensionContext): Promise<AbapFsApi> {
     log(`⚠️ Dependency graph said 'I can\'t even': ${error}`)
   }
 
+  // 💓 Register Heartbeat Commands
+  try {
+    const { HeartbeatWatchlist } = await import("./services/heartbeat/heartbeatWatchlist")
+    context.subscriptions.push(
+      commands.registerCommand("abapfs.openHeartbeatJson", async () => {
+        const filePath = HeartbeatWatchlist.getFilePath()
+        if (filePath) {
+          const doc = await workspace.openTextDocument(filePath)
+          await window.showTextDocument(doc)
+        } else {
+          window.showWarningMessage(
+            "No heartbeat.json file found. Open a folder-based workspace first."
+          )
+        }
+      })
+    )
+    log("💓 Heartbeat watchlist command registered - Your personal SAP nanny awaits")
+  } catch (error) {
+    log(`⚠️ Heartbeat command registration failed: ${error}`)
+  }
+
   registerSCIDecorator(context)
 
   // 🎯 Initialize Enhancement Decorations

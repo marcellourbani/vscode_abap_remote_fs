@@ -1146,25 +1146,6 @@
           "required": [
             "displayMode",
             "connectionId"
-          ],
-          "anyOf": [
-            {
-              "properties": {
-                "displayMode": {
-                  "const": "ui"
-                }
-              }
-            },
-            {
-              "properties": {
-                "displayMode": {
-                  "const": "internal"
-                }
-              },
-              "required": [
-                "rowRange"
-              ]
-            }
           ]
         },
         "tags": [
@@ -1227,28 +1208,8 @@
                 "transport"
               ],
               "description": "Analysis scope (future enhancement) - currently only 'object' is supported"
+            }          
             }
-          },
-          "anyOf": [
-            {
-              "required": [
-                "objectUri"
-              ]
-            },
-            {
-              "required": [
-                "objectName",
-                "connectionId"
-              ]
-            },
-            {
-              "properties": {
-                "useActiveFile": {
-                  "const": true
-                }
-              }
-            }
-          ]
         },
         "tags": [
           "abap-fs"
@@ -1489,45 +1450,6 @@
           "required": [
             "action",
             "connectionId"
-          ],
-          "anyOf": [
-            {
-              "properties": {
-                "action": {
-                  "const": "get_user_transports"
-                }
-              }
-            },
-            {
-              "properties": {
-                "action": {
-                  "const": "get_transport_details"
-                }
-              },
-              "required": [
-                "transportNumber"
-              ]
-            },
-            {
-              "properties": {
-                "action": {
-                  "const": "get_transport_objects"
-                }
-              },
-              "required": [
-                "transportNumber"
-              ]
-            },
-            {
-              "properties": {
-                "action": {
-                  "const": "compare_transports"
-                }
-              },
-              "required": [
-                "transportNumbers"
-              ]
-            }
           ]
         },
         "tags": [
@@ -1978,11 +1900,11 @@
       {
         "name": "get_sap_system_info",
         "displayName": "Get SAP System Info",
-        "modelDescription": "Get SAP system info: client details (T000), system type (S/4HANA or ECC), SAP release (SVERS), and optionally software components (CVERS). System type is ALWAYS detected even with includeComponents=false - no need to request components just to check if it's S/4HANA or ECC.",
+        "modelDescription": "Get SAP system info: client details (T000), system type (S/4HANA or ECC), SAP release (SVERS), timezone configuration (TTZCU/TTZZ), and optionally software components (CVERS). Timezone info includes the system timezone ID, UTC offset, DST rules, and human-readable description - essential for scheduling tasks at correct times. System type is ALWAYS detected even with includeComponents=false.",
         "canBeReferencedInPrompt": true,
         "toolReferenceName": "sap-system-info",
         "icon": "$(server)",
-        "userDescription": "Get SAP system information (current client, system type, components, release)",
+        "userDescription": "Get SAP system information (current client, system type, timezone, components, release)",
         "inputSchema": {
           "type": "object",
           "properties": {
@@ -1993,7 +1915,7 @@
             "includeComponents": {
               "type": "boolean",
               "default": false,
-              "description": "Whether to include the full list of software components (from CVERS). Default is false to reduce response size. System type (S/4HANA vs ECC) is always detected regardless of this setting."
+              "description": "Whether to include the full list of software components (from CVERS). Default is false to reduce response size. System type (S/4HANA vs ECC) and timezone are always included regardless of this setting."
             }
           },
           "required": [
@@ -2133,9 +2055,141 @@
             "action"
           ]
         }
+      },
+      {
+        "name": "manage_heartbeat",
+        "displayName": "Manage Heartbeat",
+        "modelDescription": "Control the heartbeat service - your personal background assistant that monitors SAP systems and sends reminders.\n\n⚠️ BEFORE ADDING TASKS: Always call 'status' first to check if heartbeat is running and properly configured (model must be set).\n\n⚠️ TIME WORDS LIKE 'TOMORROW', 'LATER', 'IN AN HOUR': You MUST use 'startAt' with an ISO timestamp! IMPORTANT: First call get_sap_system_info to get the SAP system's timezone, then calculate the correct ISO timestamp based on that timezone. Example: if DEV100 is UTC+2 and user says 'tomorrow at 10am', calculate 10:00 in UTC+2 = 08:00 UTC.\n\n⚠️ DUMP MONITORING: For ST22/dump monitoring, set checkInstructions to use 'analyze_abap_dumps' tool, NOT direct SQL. The analyze_abap_dumps tool is specifically designed for this.\n\n⚠️ TIMEZONE HANDLING: When setting up monitoring tasks, always consider the SAP system's timezone (available via get_sap_system_info). The HB model should also use this timezone when interpreting dates/times from SAP.\n\nUSE CASES:\n- 'Remind me tomorrow at 10am' → Get system timezone first, then set startAt accordingly + reminderOnly=true\n- 'Monitor transport until released' → sampleQuery with E070 + removeWhenDone=true\n- 'Alert me if dumps appear' → category='dump' + checkInstructions=['Use analyze_abap_dumps with action list_dumps', 'Compare against lastNotifiedFindings']\n\nSERVICE CONTROL:\n- status: Check if running, what model is configured (CALL THIS FIRST)\n- start: Start service (will auto-enable in settings, but model must be pre-configured)\n- stop/trigger/history\n\nADDING TASKS:\n- 'description': What to monitor or remind about\n- 'startAt': ISO timestamp - task is IGNORED until this time passes (consider SAP system timezone!)\n- 'reminderOnly': true = notify once and auto-remove (for reminders)\n- 'sampleQuery': SQL for HB model to execute (for transport/table monitoring)\n- 'checkInstructions': Step-by-step for HB model (use tool names like 'analyze_abap_dumps')\n- 'category': transport/dump/job/idoc/performance/reminder/custom\n- 'connectionId': Which SAP system to monitor\n- 'cooldownMinutes': Don't re-notify within this period\n- 'removeWhenDone': Auto-remove when condition is met",
+        "canBeReferencedInPrompt": true,
+        "toolReferenceName": "heartbeat",
+        "icon": "$(pulse)",
+        "userDescription": "Personal assistant for reminders and background SAP monitoring",
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "action": {
+              "type": "string",
+              "enum": [
+                "status",
+                "start",
+                "stop",
+                "trigger",
+                "history",
+                "add_task",
+                "remove_task",
+                "update_task",
+                "enable_task",
+                "disable_task",
+                "list_tasks",
+                "get_watchlist"
+              ],
+              "description": "Action to perform"
+            },
+            "reason": {
+              "type": "string",
+              "description": "For 'trigger': reason for manual heartbeat. For 'add_task': why this task was added (context for HB model)"
+            },
+            "count": {
+              "type": "number",
+              "description": "For 'history': number of entries to show"
+            },
+            "description": {
+              "type": "string",
+              "description": "For 'add_task': task description (what to monitor)"
+            },
+            "condition": {
+              "type": "string",
+              "description": "For 'add_task': specific condition to check (optional)"
+            },
+            "connectionId": {
+              "type": "string",
+              "description": "For 'add_task': SAP connection ID for this task"
+            },
+            "removeWhenDone": {
+              "type": "boolean",
+              "description": "For 'add_task': auto-remove task when condition is met"
+            },
+            "sampleQuery": {
+              "type": "string",
+              "description": "For 'add_task': Pre-built SQL query for HB model to execute directly (e.g., SELECT FROM E070 WHERE...)"
+            },
+            "checkInstructions": {
+              "type": "array",
+              "items": { "type": "string" },
+              "description": "For 'add_task': Step-by-step instructions for HB model to follow"
+            },
+            "priority": {
+              "type": "string",
+              "enum": ["high", "medium", "low"],
+              "description": "For 'add_task': Task priority (high=immediate alert, low=can batch)"
+            },
+            "category": {
+              "type": "string",
+              "enum": ["transport", "dump", "job", "idoc", "performance", "reminder", "custom"],
+              "description": "For 'add_task': Task category for grouping"
+            },
+            "alertThreshold": {
+              "type": "number",
+              "description": "For 'add_task': Only alert if count exceeds this threshold"
+            },
+            "cooldownMinutes": {
+              "type": "number",
+              "description": "For 'add_task': Don't re-notify within this many minutes"
+            },
+            "expiresAt": {
+              "type": "string",
+              "description": "For 'add_task': Auto-remove task after this ISO timestamp"
+            },
+            "maxChecks": {
+              "type": "number",
+              "description": "For 'add_task': Auto-remove after this many checks"
+            },
+            "startAt": {
+              "type": "string",
+              "description": "For 'add_task': Don't check until this ISO timestamp (for scheduled reminders like 'remind me tomorrow at 10am')"
+            },
+            "reminderOnly": {
+              "type": "boolean",
+              "description": "For 'add_task': Simple reminder - just notify once and auto-remove"
+            },
+            "taskId": {
+              "type": "string",
+              "description": "For 'remove_task', 'update_task', 'enable_task', 'disable_task': task ID or description"
+            },
+            "result": {
+              "type": "string",
+              "description": "For 'update_task': result of the check to record in lastResult"
+            },
+            "lastNotifiedAt": {
+              "type": "string",
+              "description": "For 'update_task': ISO timestamp when user was last notified"
+            },
+            "lastNotifiedFindings": {
+              "type": "string",
+              "description": "For 'update_task': Summary of what was included in last notification (IDs, counts)"
+            },
+            "modifiedBy": {
+              "type": "string",
+              "enum": ["user", "heartbeat", "agent"],
+              "description": "For 'add_task', 'update_task': who is making the change"
+            }
+          },
+          "required": [
+            "action"
+          ]
+        },
+        "tags": [
+          "abap-fs"
+        ]
       }
     ],
     "commands": [
+      {
+        "command": "abapfs.openHeartbeatJson",
+        "title": "Open Heartbeat Watchlist",
+        "category": "ABAP FS",
+        "icon": "$(heart)"
+      },
       {
         "command": "abapfs.showCopilotLogs",
         "title": "Show ABAP FS Logs",
@@ -3725,6 +3779,86 @@
           "additionalProperties": {
             "type": "string"
           }
+        },
+         "abapfs.heartbeat.enabled": {
+          "type": "boolean",
+          "default": false,
+          "scope": "resource",
+          "description": "Enable heartbeat: periodic LLM monitoring using heartbeat.json watchlist. Background agent checks tasks at configured intervals."
+        },
+        "abapfs.heartbeat.every": {
+          "type": "string",
+          "default": "30m",
+          "scope": "resource",
+          "description": "Heartbeat interval (e.g., '5m', '30m', '1h'). Minimum: 1m, recommended: 5-30m."
+        },
+        "abapfs.heartbeat.model": {
+          "type": "string",
+          "default": "",
+          "scope": "resource",
+          "description": "Language model to use for heartbeat (e.g., 'Claude Sonnet 4', 'GPT-4o'). Leave empty for auto-selection."
+        },
+        "abapfs.heartbeat.prompt": {
+          "type": "string",
+          "default": "",
+          "scope": "resource",
+          "description": "Custom heartbeat prompt. If empty, uses heartbeat.json watchlist to build prompt."
+        },
+        "abapfs.heartbeat.ackMaxChars": {
+          "type": "number",
+          "default": 300,
+          "minimum": 0,
+          "maximum": 1000,
+          "scope": "resource",
+          "description": "Max chars allowed after HEARTBEAT_OK before treating as an alert."
+        },
+        "abapfs.heartbeat.maxHistory": {
+          "type": "number",
+          "default": 100,
+          "minimum": 10,
+          "maximum": 1000,
+          "scope": "resource",
+          "description": "Maximum heartbeat history entries to keep."
+        },
+        "abapfs.heartbeat.maxConsecutiveErrors": {
+          "type": "number",
+          "default": 20,
+          "minimum": 1,
+          "maximum": 50,
+          "scope": "resource",
+          "description": "Auto-pause heartbeat after this many consecutive errors."
+        },
+        "abapfs.heartbeat.activeHours": {
+          "type": "object",
+          "default": null,
+          "scope": "resource",
+          "description": "Restrict heartbeat to active hours (local time). Set start/end in 24h format (e.g., '08:00', '22:00').",
+          "properties": {
+            "start": {
+              "type": "string",
+              "description": "Start time in 24h format (e.g., '08:00')"
+            },
+            "end": {
+              "type": "string",
+              "description": "End time in 24h format (e.g., '22:00' or '24:00')"
+            },
+            "timezone": {
+              "type": "string",
+              "description": "Timezone: 'local', 'utc', or IANA timezone (e.g., 'America/New_York')"
+            }
+          }
+        },
+        "abapfs.heartbeat.notifyOnAlert": {
+          "type": "boolean",
+          "default": true,
+          "scope": "resource",
+          "description": "Show VS Code notification when heartbeat finds something that needs attention."
+        },
+        "abapfs.heartbeat.notifyOnError": {
+          "type": "boolean",
+          "default": true,
+          "scope": "resource",
+          "description": "Show VS Code notification when heartbeat encounters an error."
         },
         "abapfs.feedSubscriptions": {
           "type": "object",
