@@ -115,6 +115,16 @@ export async function registerAllTools(context: vscode.ExtensionContext): Promis
   // 16. Subagent Configuration Tool
   registerSubagentConfigTool(context)
 
+  // 17. Heartbeat Tool (OpenClaw-style periodic LLM monitoring)
+  const { registerHeartbeatTool, initializeHeartbeatService } = await import("../heartbeat")
+  registerHeartbeatTool(context)
+
+  // Initialize heartbeat service (will auto-start if enabled in config)
+  const heartbeatService = initializeHeartbeatService(context)
+  const heartbeatConfig = vscode.workspace.getConfiguration("abapfs.heartbeat")
+  if (heartbeatConfig.get("enabled", false)) {
+    heartbeatService.start()
+  }
   // Initialize WebviewManager singleton (required for data query tool)
   WebviewManager.getInstance(context)
 }

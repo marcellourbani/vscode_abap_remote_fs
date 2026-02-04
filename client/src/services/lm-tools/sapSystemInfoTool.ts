@@ -74,34 +74,30 @@ export class SAPSystemInfoTool implements vscode.LanguageModelTool<ISAPSystemInf
       // Get system information (with caching) - connectionId lookup is done internally
       const systemInfo = await getSAPSystemInfo(connectionId, includeComponents)
 
-      // Format as readable text
-      const formattedText = formatSAPSystemInfoAsText(systemInfo)
+      // Create concise summary
+      let summary = `SAP System: ${connectionId.toUpperCase()}\n`
+      summary += `- Type: ${systemInfo.systemType}\n`
+      summary += `- Release: ${systemInfo.sapRelease || "N/A"}\n`
 
-      // Create summary for the result
-      const componentCount = systemInfo.softwareComponents.length
-      const sapBasis = systemInfo.softwareComponents.find(c => c.component === "SAP_BASIS")
-
-      let summary = `Successfully retrieved SAP system information for connection: ${connectionId}\n`
-      summary += `- System Type: ${systemInfo.systemType}\n`
-      summary += `- SAP Release: ${systemInfo.sapRelease || "N/A"}\n`
-      if (sapBasis) {
-        summary += `- SAP_BASIS: ${sapBasis.release} SP${sapBasis.extRelease || "N/A"}\n`
-      }
       if (systemInfo.currentClient) {
-        summary += `- Current Client: ${systemInfo.currentClient.clientNumber} (${systemInfo.currentClient.clientName})\n`
+        summary += `- Client: ${systemInfo.currentClient.clientNumber} (${systemInfo.currentClient.clientName})\n`
       }
-      if (includeComponents) {
-        summary += `- Software components: ${componentCount}`
-      } else {
-        summary += `- Software components: Not requested (use includeComponents=true to get full list)`
+
+      if (systemInfo.timezone) {
+        summary += `- Timezone: ${systemInfo.timezone.timezone} (${systemInfo.timezone.description}), ${systemInfo.timezone.utcOffset}`
+        if (systemInfo.timezone.dstRule !== "NONE") {
+          summary += `, DST: ${systemInfo.timezone.dstRule}`
+        }
+        summary += "\n"
+      }
+
+      if (includeComponents && systemInfo.softwareComponents.length > 0) {
+        summary += `- Components: ${systemInfo.softwareComponents.length} installed\n`
       }
 
       return new vscode.LanguageModelToolResult([
         new vscode.LanguageModelTextPart(summary),
-        new vscode.LanguageModelTextPart(formattedText),
-        new vscode.LanguageModelTextPart(
-          `\n\n📋 Raw Data (JSON):\n${JSON.stringify(systemInfo, null, 2)}`
-        )
+        new vscode.LanguageModelTextPart(JSON.stringify(systemInfo, null, 2))
       ])
     } catch (error: any) {
       const errorMsg = error?.localizedMessage || error?.message || String(error)

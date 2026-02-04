@@ -45,6 +45,21 @@ export class ManageTransportRequestsTool implements vscode.LanguageModelTool<IMa
   ) {
     const { action, connectionId, transportNumber, transportNumbers, user } = options.input
 
+    // Validate required parameters based on action
+    switch (action) {
+      case "get_transport_details":
+      case "get_transport_objects":
+        if (!transportNumber) {
+          throw new Error(`transportNumber is required for ${action} action`)
+        }
+        break
+      case "compare_transports":
+        if (!transportNumbers || transportNumbers.length < 2) {
+          throw new Error("At least 2 transport numbers are required for compare_transports action")
+        }
+        break
+    }
+
     let actionDescription = ""
     switch (action) {
       case "get_user_transports":

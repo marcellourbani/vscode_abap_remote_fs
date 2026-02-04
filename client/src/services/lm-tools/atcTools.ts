@@ -41,6 +41,21 @@ export class RunATCAnalysisTool implements vscode.LanguageModelTool<IRunATCAnaly
   ) {
     const { objectName, objectType, objectUri, connectionId, useActiveFile } = options.input
 
+    // Validate: must have objectUri, objectName+connectionId, or useActiveFile
+    if (objectUri) {
+      if (!objectUri.startsWith("adt://")) {
+        throw new Error("objectUri must be a valid ADT URI (adt://system/path)")
+      }
+    } else if (objectName) {
+      if (!connectionId) {
+        throw new Error("connectionId is required when specifying objectName")
+      }
+    } else if (!useActiveFile) {
+      throw new Error(
+        "No target specified. Provide objectName+connectionId, objectUri, or set useActiveFile to true."
+      )
+    }
+
     let target = "active file"
     if (objectName) {
       target = objectType ? `${objectType} ${objectName}` : objectName
