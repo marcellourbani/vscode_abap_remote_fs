@@ -80,12 +80,14 @@ function buildHeartbeatPrompt(config: HeartbeatConfig): string {
     lines.push("## YOUR RESPONSE:")
     lines.push("")
     lines.push(
-      `If ALL tasks were checked and there's NOTHING to tell the user → respond with: ${HEARTBEAT_OK_TOKEN}`
+      `If ALL tasks were checked and there's NOTHING to tell the user → respond with EXACTLY: ${HEARTBEAT_OK_TOKEN}`
     )
+    lines.push("(No quotes, no markdown, no punctuation, no extra text - just that single token)")
     lines.push("")
     lines.push(
       "If there ARE things to tell the user (reminders, new issues) → write a helpful message describing them."
     )
+    lines.push(`Do NOT include ${HEARTBEAT_OK_TOKEN} in alert messages.`)
     lines.push("")
     lines.push("**Remember: Check every task, update every task, but only ALERT when needed.**")
   } else {
