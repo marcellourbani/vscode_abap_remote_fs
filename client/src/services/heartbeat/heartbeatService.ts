@@ -56,8 +56,25 @@ export class HeartbeatService {
       if (e.affectsConfiguration("abapfs.heartbeat")) {
         const config = vscode.workspace.getConfiguration("abapfs.heartbeat")
         const enabled = config.get<boolean>("enabled", false)
+        const model = config.get<string>("model", "")
 
         if (enabled && !this.isRunning) {
+          // Check if model is configured before starting
+          if (!model || model.trim().length === 0) {
+            // No model configured - disable and notify user
+            config.update("enabled", false, vscode.ConfigurationTarget.Workspace)
+            vscode.window
+              .showWarningMessage(
+                'Heartbeat requires a model to be configured. Please set "abapfs.heartbeat.model" first (workspace level), then enable heartbeat.',
+                "Open Settings"
+              )
+              .then(selection => {
+                if (selection === "Open Settings") {
+                  vscode.commands.executeCommand("workbench.action.openWorkspaceSettings", "abapfs.heartbeat.model")
+                }
+              })
+            return
+          }
           // Enabling - start the service
           this.start()
         } else if (!enabled && this.isRunning) {
