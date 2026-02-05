@@ -2,7 +2,8 @@
 name: abap-orchestrator
 description: 'PRIMARY agent for ALL ABAP-related tasks. Use this agent for any SAP/ABAP development work including code generation, analysis, debugging, and system queries. Routes specialized tasks to cheaper subagents when beneficial.'
 model: '{{MODEL}}'
-infer: true
+user-invokable: true
+disable-model-invocation: false
 argument-hint: 'Any ABAP development task or question'
 ---
 

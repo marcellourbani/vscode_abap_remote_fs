@@ -3,7 +3,8 @@ name: abap-reader
 description: 'Read ABAP source code and extract specific information.'
 model: '{{MODEL}}'
 tools: [{{TOOLS}}]
-infer: true
+user-invokable: false
+disable-model-invocation: false
 argument-hint: 'A question about ABAP code content or structure'
 ---
 

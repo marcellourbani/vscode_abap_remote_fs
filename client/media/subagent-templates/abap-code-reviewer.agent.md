@@ -2,7 +2,8 @@
 name: abap-code-reviewer
 description: 'Deep ABAP code review expert. Analyzes code for best practices, security, performance, and design issues.'
 model: '{{MODEL}}'
-infer: true
+user-invokable: false
+disable-model-invocation: false
 argument-hint: 'An ABAP Object URI (VSCode ADT URI) or code to review, optionally with focus areas'
 ---
 

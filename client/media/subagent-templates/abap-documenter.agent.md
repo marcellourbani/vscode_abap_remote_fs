@@ -3,7 +3,8 @@ name: abap-documenter
 description: 'Generate documentation for ABAP objects.'
 model: '{{MODEL}}'
 tools: [{{TOOLS}}]
-infer: true
+user-invokable: false
+disable-model-invocation: false
 argument-hint: 'Object to document and documentation type needed'
 ---
 

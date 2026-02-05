@@ -3,7 +3,8 @@ name: abap-historian
 description: 'Analyze code history, versions, and transport requests.'
 model: '{{MODEL}}'
 tools: [{{TOOLS}}]
-infer: true
+user-invokable: false
+disable-model-invocation: false
 argument-hint: 'A question about code history, versions, or transports'
 ---
 

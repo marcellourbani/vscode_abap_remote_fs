@@ -3,7 +3,8 @@ name: abap-quality-checker
 description: 'Check ABAP code quality using ATC analysis and unit tests.'
 model: '{{MODEL}}'
 tools: [{{TOOLS}}]
-infer: true
+user-invokable: false
+disable-model-invocation: false
 argument-hint: 'A question about code quality, ATC results, or unit tests'
 ---
 
