@@ -232,7 +232,7 @@ export function isWithinActiveHours(config?: ActiveHoursConfig): boolean {
  */
 export function parseHeartbeatResponse(
   response: string,
-  ackMaxChars: number
+  _ackMaxChars: number
 ): {
   isAck: boolean
   cleanedResponse: string
@@ -240,30 +240,13 @@ export function parseHeartbeatResponse(
 } {
   const trimmed = response.trim()
 
-  // Check if HEARTBEAT_OK is at start or end
-  const startsWithOk = trimmed.startsWith(HEARTBEAT_OK_TOKEN)
-  const endsWithOk = trimmed.endsWith(HEARTBEAT_OK_TOKEN)
+  // Simple check: if response contains HEARTBEAT_OK, it's an ack
+  const containsToken = trimmed.toUpperCase().includes(HEARTBEAT_OK_TOKEN)
 
-  if (!startsWithOk && !endsWithOk) {
-    // No HEARTBEAT_OK token - this is an alert
-    return { isAck: false, cleanedResponse: trimmed, hasAlert: true }
+  if (containsToken) {
+    return { isAck: true, cleanedResponse: "", hasAlert: false }
   }
 
-  // Remove HEARTBEAT_OK from start or end
-  let cleaned = trimmed
-  if (startsWithOk) {
-    cleaned = cleaned.substring(HEARTBEAT_OK_TOKEN.length).trim()
-  }
-  if (endsWithOk && cleaned.endsWith(HEARTBEAT_OK_TOKEN)) {
-    cleaned = cleaned.substring(0, cleaned.length - HEARTBEAT_OK_TOKEN.length).trim()
-  }
-
-  // If remaining content is small enough, it's an ack
-  const isAck = cleaned.length <= ackMaxChars
-
-  return {
-    isAck,
-    cleanedResponse: cleaned,
-    hasAlert: !isAck && cleaned.length > 0
-  }
+  // No token = alert
+  return { isAck: false, cleanedResponse: trimmed, hasAlert: true }
 }
