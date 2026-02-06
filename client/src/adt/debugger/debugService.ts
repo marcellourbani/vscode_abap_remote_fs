@@ -60,16 +60,16 @@ export class DebugService {
     const client = await newClientFromKey(connId, { timeout: 7200000 })
     if (!client) throw new Error(`Unable to create client for${connId}`)
     client.stateful = session_types.stateful
-    client.adtCoreDiscovery().catch(() => {
-      /* ignore discovery errors */
-    })
+    await client.adtCoreDiscovery()
     const service = new DebugService(connId, client, listener, debuggee, ui)
     return service
   }
   public async attach() {
     await this.client.debuggerAttach(this.mode, this.debuggee.DEBUGGEE_ID, this.username, true)
     // Fire saveSettings in background - not critical for attach
-    this.client.debuggerSaveSettings({}).catch(() => {})
+    this.client.debuggerSaveSettings({}).catch(e => {
+      log(caughtToString(e))
+    })
     await this.updateStack()
   }
 
@@ -131,6 +131,7 @@ export class DebugService {
           const stackUri = "stackUri" in s ? s.stackUri : undefined
           return createFrame(path, s.line, id, s.stackPosition, stackUri)
         } catch (error) {
+          log(caughtToString(error))
           return createFrame("unknown", 0, id, NaN)
         }
       })

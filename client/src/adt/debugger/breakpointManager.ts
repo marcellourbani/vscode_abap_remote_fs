@@ -3,7 +3,7 @@ import { AbapFile, isAbapFile } from "abapfs"
 import { Uri } from "vscode"
 import { Breakpoint, Source } from "@vscode/debugadapter"
 import { DebugProtocol } from "@vscode/debugprotocol"
-import { ignore, isDefined } from "../../lib"
+import { caughtToString, ignore, isDefined, log } from "../../lib"
 import { getClient, getRoot } from "../conections"
 import { DebugListener } from "./debugListener"
 import { DebugService } from "./debugService"
@@ -65,8 +65,9 @@ export class BreakpointManager {
     if (isAbapFile(node)) {
       try {
         return await this.syncBreakpoints(node, breakpoints, source.path, source.name)
-      } catch (error) {}
-    } else {
+      } catch (error) {
+        log(caughtToString(error))
+      }
     }
     return []
   }
@@ -136,9 +137,9 @@ export class BreakpointManager {
       await client.statelessClone
         .debuggerDeleteBreakpoints(bp, "user", this.terminalId, this.ideId, this.username)
         .catch(ignore)
-    let actualbps: any[] = []
-    try {
-      actualbps = await client.statelessClone.debuggerSetBreakpoints(
+    let actualbps: DebugBreakpoint[] = []
+    actualbps = await client.statelessClone
+      .debuggerSetBreakpoints(
         this.mode,
         this.terminalId,
         this.ideId,
@@ -150,9 +151,10 @@ export class BreakpointManager {
         false,
         objuri
       )
-    } catch (error) {
-      actualbps = []
-    }
+      .then(
+        bps => bps.filter(isDebuggerBreakpoint),
+        () => []
+      )
     const conditional = breakpoints.filter(b => b.condition)
     let newbps: (string | DebugBreakpoint)[] = bps
     if (conditional.length) {
@@ -161,18 +163,23 @@ export class BreakpointManager {
         if (cond?.condition) return { ...b, condition: cond.condition }
         return b
       })
-      actualbps = await client.statelessClone.debuggerSetBreakpoints(
-        this.mode,
-        this.terminalId,
-        this.ideId,
-        clientId,
-        newbps,
-        this.username,
-        "external",
-        false,
-        false,
-        objuri
-      )
+      actualbps = await client.statelessClone
+        .debuggerSetBreakpoints(
+          this.mode,
+          this.terminalId,
+          this.ideId,
+          clientId,
+          newbps,
+          this.username,
+          "external",
+          false,
+          false,
+          objuri
+        )
+        .then(
+          bps => bps.filter(isDebuggerBreakpoint),
+          () => []
+        )
     }
     for (const [id, conn] of this.listener.activeServices()) {
       for (const bp of deleted)
@@ -186,8 +193,8 @@ export class BreakpointManager {
             "debugger"
           )
           .catch(ignore)
-      try {
-        await conn.client.debuggerSetBreakpoints(
+      await conn.client
+        .debuggerSetBreakpoints(
           this.mode,
           this.terminalId,
           this.ideId,
@@ -199,7 +206,7 @@ export class BreakpointManager {
           false,
           objuri
         )
-      } catch (error) {}
+        .catch(ignore)
     }
 
     const confirmed = breakpoints.map(bp => {
