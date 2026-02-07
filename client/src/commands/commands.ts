@@ -863,7 +863,6 @@ export class AdtCommands {
         `&sap-language=${config.language || "EN"}` +
         `&saml2=disabled`
 
-
       let extensionUri: vscode.Uri
       try {
         const extension = vscode.extensions.getExtension("murbani.vscode-abap-remote-fs")
@@ -1033,8 +1032,12 @@ export class AdtCommands {
       if (!state) return
 
       await window.withProgress(
-        { location: ProgressLocation.Notification, title: "Running ABAP Test cockpit" },
-        () => atcProvider.runInspector(state.uri)
+        { location: ProgressLocation.Window, title: "Running ABAP Test cockpit" },
+        progress => {
+          const setvariant = (variant: string) =>
+            progress.report({ message: "Using variant " + variant })
+          return atcProvider.runInspector(state.uri, setvariant)
+        }
       )
     } catch (e) {
       return window.showErrorMessage(caughtToString(e))

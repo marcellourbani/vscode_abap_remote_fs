@@ -4,7 +4,6 @@
     "target": "ES2019",
     "rootDir": "src",
     "moduleResolution": "node",
-   "ignoreDeprecations": "6.0",
     "outDir": "./out",
     "sourceMap": true,
     "strict": true,
@@ -16,7 +15,9 @@
     "skipLibCheck": true,
     "esModuleInterop": true
   },
-  "include": ["src"],
+  "include": [
+    "src"
+  ],
   "exclude": [
     "node_modules",
     ".vscode-test"

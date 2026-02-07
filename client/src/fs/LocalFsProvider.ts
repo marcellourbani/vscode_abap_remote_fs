@@ -20,6 +20,8 @@ export class LocalFsProvider implements FileSystemProvider {
   private localStorage: LocalStorage
 
   constructor(private readonly context: ExtensionContext) {
+    // TODO: add configuration
+    if (context.storageUri) this.localStorage = new LocalStorage(context.storageUri)
     // Use globalStorageUri - always available, shared across workspaces
     this.localStorage = new LocalStorage(context.globalStorageUri)
   }

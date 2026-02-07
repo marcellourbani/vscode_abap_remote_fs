@@ -42,6 +42,7 @@ import { SapSystemValidator } from "./services/sapSystemValidator"
 import { listAdtFeedsCommand } from "./commands/listAdtFeeds"
 import { validateSubagentsOnStartup } from "./services/lm-tools/subagentConfigTool"
 import { initializeMcpServer } from "./services/mcpServer"
+import { registerChatTools } from "./adt/ai/tools"
 // Import commands to ensure @command decorators are executed
 import "./commands"
 export let context: ExtensionContext
@@ -277,7 +278,9 @@ export async function activate(ctx: ExtensionContext): Promise<AbapFsApi> {
       `⚠️ Enhancement decorations refused to cooperate: ${error} (they're artists, they're temperamental)`
     )
   }
-
+  registerChatTools(context)
+  const elapsed = new Date().getTime() - startTime
+  log(`Activated,pid=${process.pid}, activation time(ms):${elapsed}`)
   return api
 }
 

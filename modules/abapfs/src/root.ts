@@ -83,8 +83,7 @@ export class Root extends Folder {
   private adtToFs = new Map<string, string>()
 
   async findByAdtUri(uri: string, main = false) {
-    let fixedUri = uri
-    const baseUrl = fixedUri.replace(/[\?#].*/, "")
+    const baseUrl = uri.replace(/[\?#].*/, "")
     const path = this.adtToFs.get(baseUrl)
     if (path) {
       const file = this.getNode(path)

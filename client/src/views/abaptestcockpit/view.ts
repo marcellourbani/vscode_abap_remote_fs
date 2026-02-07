@@ -290,9 +290,10 @@ class AtcProvider implements TreeDataProvider<AtcNode> {
     this.reportError(system)
   }
 
-  async runInspector(uri: Uri) {
+  async runInspector(uri: Uri, setvariant?: (variant: string) => void) {
     const client = getClient(uri.authority)
     const { checkVariant } = await getVariant(client, uri.authority)
+    if (setvariant) setvariant(checkVariant)
     const system = await this.root.child(uri.authority, checkVariant)
     await system.load(() => runInspector(uri, system.variant, client))
     commands.executeCommand("abapfs.atcFinds.focus")

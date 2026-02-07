@@ -41,10 +41,7 @@
     "murbani.winregistry"
   ],
   "activationEvents": [
-    "onFileSystem:adt",
-    "onCommand:abapfs.connect",
-    "onCommand:abapfs.connectionManager",
-    "onCommand:abapfs.runInEmbeddedGui"
+    "onFileSystem:adt"
   ],
   "main": "./client/dist/extension",
   "scripts": {
@@ -2205,7 +2202,7 @@
       },
       {
         "command": "abapfs.search",
-        "title": "Search for object",
+        "title": "ABAP Search for object",
         "category": "ABAP FS"
       },
       {
@@ -2216,7 +2213,7 @@
       },
       {
         "command": "abapfs.compareWithOtherSystem",
-        "title": "Compare With another SAP System",
+        "title": "ABAP Compare With another SAP System",
         "category": "ABAP FS",
         "icon": "$(diff)"
       },
@@ -2227,12 +2224,12 @@
       },
       {
         "command": "abapfs.create",
-        "title": "Create object",
+        "title": "ABAP Create object",
         "category": "ABAP FS"
       },
       {
         "command": "abapfs.createtestinclude",
-        "title": "Create test class include",
+        "title": "ABAP Create test class include",
         "category": "ABAP FS"
       },
       {
@@ -2243,12 +2240,12 @@
       },
       {
         "command": "abapfs.addfavourite",
-        "title": "Add favourite",
+        "title": "ABAP Add favourite",
         "icon": "$(add)"
       },
       {
         "command": "abapfs.runClass",
-        "title": "Run console application",
+        "title": "ABAP Run console application",
         "category": "ABAP FS"
       },
       {

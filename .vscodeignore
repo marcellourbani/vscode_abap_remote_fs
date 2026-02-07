@@ -42,3 +42,4 @@ build-and-install.bat
 diff.txt
 .changeset/**
 data/**
+.markdownlint.jsonc

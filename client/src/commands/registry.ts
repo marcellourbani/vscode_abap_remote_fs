@@ -1,3 +1,6 @@
+import { configureFeedsCommand } from "./configureFeeds"
+import { manageTextElementsCommand } from "./textElementsCommands"
+
 export const AbapFsCommands = {
   connect: "abapfs.connect",
   disconnect: "abapfs.disconnect",
@@ -109,11 +112,6 @@ export const AbapFsCommands = {
   // System info
   refreshSystemInfoCache: "abapfs.refreshSystemInfoCache"
 }
-
-// Import text elements commands
-import { manageTextElementsCommand } from "./textElementsCommands"
-// Import feed commands
-import { configureFeedsCommand } from "./configureFeeds"
 
 export const abapcmds: {
   name: string

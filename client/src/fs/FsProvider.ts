@@ -79,6 +79,7 @@ export class FsProvider implements FileSystemProvider {
     } catch (e) {
       // Don't log FileNotFound errors for method names/debug artifacts to reduce noise
       if (!(e instanceof FileSystemError && e.name === "FileNotFound (FileSystemError)")) {
+        log(`Error in stat of ${uri?.toString()}\n${caughtToString(e)}`)
       }
       throw e
     }
@@ -195,6 +196,7 @@ export class FsProvider implements FileSystemProvider {
         } else throw new Error(`File ${uri.path} was not locked`)
       } else throw FileSystemError.FileNotFound(uri)
     } catch (e) {
+      log(`Error writing file ${uri.toString()}\n${caughtToString(e)}`)
       // Clean up lock if we acquired it and write failed
       if (needUnlocking)
         await getOrCreateRoot(uri.authority)
@@ -226,6 +228,8 @@ export class FsProvider implements FileSystemProvider {
   }
 
   public rename(oldUri: Uri, newUri: Uri, options: { overwrite: boolean }): void | Thenable<void> {
+    if (LocalFsProvider.useLocalStorage(oldUri))
+      return this.localProvider.rename(oldUri, newUri, options)
     throw new Error("Method not implemented.")
   }
 }
