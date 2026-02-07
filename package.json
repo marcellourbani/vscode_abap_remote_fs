@@ -41,7 +41,10 @@
     "murbani.winregistry"
   ],
   "activationEvents": [
-    "onFileSystem:adt"
+    "onFileSystem:adt",
+    "onCommand:abapfs.connect",
+    "onCommand:abapfs.connectionManager",
+    "onCommand:abapfs.runInEmbeddedGui"
   ],
   "main": "./client/dist/extension",
   "scripts": {
@@ -1205,8 +1208,8 @@
                 "transport"
               ],
               "description": "Analysis scope (future enhancement) - currently only 'object' is supported"
-            }          
             }
+          }
         },
         "tags": [
           "abap-fs"
@@ -2112,17 +2115,31 @@
             },
             "checkInstructions": {
               "type": "array",
-              "items": { "type": "string" },
+              "items": {
+                "type": "string"
+              },
               "description": "For 'add_task': Step-by-step instructions for HB model to follow"
             },
             "priority": {
               "type": "string",
-              "enum": ["high", "medium", "low"],
+              "enum": [
+                "high",
+                "medium",
+                "low"
+              ],
               "description": "For 'add_task': Task priority (high=immediate alert, low=can batch)"
             },
             "category": {
               "type": "string",
-              "enum": ["transport", "dump", "job", "idoc", "performance", "reminder", "custom"],
+              "enum": [
+                "transport",
+                "dump",
+                "job",
+                "idoc",
+                "performance",
+                "reminder",
+                "custom"
+              ],
               "description": "For 'add_task': Task category for grouping"
             },
             "alertThreshold": {
@@ -2167,7 +2184,11 @@
             },
             "modifiedBy": {
               "type": "string",
-              "enum": ["user", "heartbeat", "agent"],
+              "enum": [
+                "user",
+                "heartbeat",
+                "agent"
+              ],
               "description": "For 'add_task', 'update_task': who is making the change"
             }
           },
@@ -3783,7 +3804,7 @@
             "type": "string"
           }
         },
-         "abapfs.heartbeat.enabled": {
+        "abapfs.heartbeat.enabled": {
           "type": "boolean",
           "default": false,
           "scope": "resource",
