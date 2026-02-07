@@ -6,7 +6,7 @@
 import * as vscode from "vscode"
 import { funWindow as window } from "../funMessenger"
 import { getSearchService } from "../abapSearchService"
-import { abapUri } from "../../adt/conections"
+import { abapUri, getClient } from "../../adt/conections"
 import { logTelemetry } from "../telemetry"
 import { getOptimalObjectURI, resolveCorrectURI, getObjectEnhancements } from "./shared"
 
@@ -60,7 +60,6 @@ async function getCompleteTableStructure(
   objectUri: string
 ): Promise<string> {
   try {
-    const { getClient } = await import("../../adt/conections")
     const client = getClient(connectionId)
 
     const mainTableURI = getOptimalObjectURI("TABL/TA", objectUri)

@@ -6,6 +6,9 @@
 import * as vscode from "vscode"
 import { funWindow as window } from "../funMessenger"
 import { logTelemetry } from "../telemetry"
+import { SapGuiPanel } from "../../views/sapgui/SapGuiPanel"
+import { RemoteManager } from "../../config"
+import { ADTClient } from "abap-adt-api"
 
 // ============================================================================
 // INTERFACE
@@ -57,9 +60,6 @@ export class GetAbapObjectUrlTool implements vscode.LanguageModelTool<IGetAbapOb
     }
 
     try {
-      const { SapGuiPanel } = await import("../../views/sapgui/SapGuiPanel")
-      const { RemoteManager } = await import("../../config")
-
       let activeConnectionId = connectionId
 
       if (!activeConnectionId) {
@@ -75,8 +75,6 @@ export class GetAbapObjectUrlTool implements vscode.LanguageModelTool<IGetAbapOb
       if (!config) {
         throw new Error(`Connection configuration not found for ID: ${activeConnectionId}`)
       }
-
-      const { ADTClient } = await import("abap-adt-api")
 
       const client = new ADTClient(
         config.url,

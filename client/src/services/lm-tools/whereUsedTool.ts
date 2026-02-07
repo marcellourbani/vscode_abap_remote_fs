@@ -7,6 +7,7 @@ import * as vscode from "vscode"
 import { getSearchService } from "../abapSearchService"
 import { getOptimalObjectURI } from "./shared"
 import { logTelemetry } from "../telemetry"
+import { getClient } from "../../adt/conections"
 
 // ============================================================================
 // INTERFACE

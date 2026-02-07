@@ -1,16 +1,17 @@
 import { ADTClient } from "abap-adt-api"
 import { fullParse } from "abap-adt-api/build/utilities"
 import { randomBytes } from "crypto"
+import { log } from "../lib"
 
 // Import logging
-const log = (message: string) => {
+const copilotlog = (message: string) => {
   // Use the same pattern as other files
   try {
     const { logCommands } = require("../services/abapCopilotLogger")
     logCommands.info(message)
   } catch {
     // Fallback if logger not available
-    console.log(`[TextElements] ${message}`)
+    log(`[TextElements] ${message}`)
   }
 }
 
@@ -88,7 +89,7 @@ export function parseObjectName(objectName: string, explicitType?: string): Obje
     try {
       cleanName = decodeURIComponent(cleanName)
     } catch (error) {
-      log(`Failed to URL decode '${objectName}': ${error}`)
+      copilotlog(`Failed to URL decode '${objectName}': ${error}`)
       // Continue with original name if decoding fails
     }
   }

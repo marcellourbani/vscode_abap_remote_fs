@@ -21,6 +21,7 @@ import {
   AbapFile,
   AbapStat
 } from "abapfs"
+import { context } from "../../extension"
 
 interface AdtSearchResult {
   uri: string
@@ -174,7 +175,6 @@ export class AdtObjectFinder {
     prompt: string = "Search an ABAP object",
     forceTypeSelection: boolean = false
   ): Promise<MySearchResult | undefined> {
-    const context = (await import("../../extension")).context
     const skipTypeSelectionKey = "abapfs.searchSkipTypeSelection"
     const skipTypeSelection = context.globalState.get<boolean>(skipTypeSelectionKey)
     const savedTypesKey = "abapfs.searchTypeFilter"
@@ -230,7 +230,6 @@ export class AdtObjectFinder {
    */
   private async selectObjectTypes(): Promise<string[] | undefined> {
     const storageKey = "abapfs.searchTypeFilter"
-    const context = (await import("../../extension")).context
     const previousSelection = context.globalState.get<string[]>(storageKey) || []
 
     // All SAP object types supported by ADT search
@@ -369,8 +368,6 @@ export class AdtObjectFinder {
     forType?: CreatableTypeIds,
     typeFilter?: string[]
   ): Promise<MySearchResult | undefined> {
-    const context = (await import("../../extension")).context
-
     const o = await new Promise<MySearchResult>(async resolve => {
       const empty: MySearchResult[] = []
       if (forType === PACKAGE) empty.push(new MySearchResult(this.EPMTYPACKAGE))

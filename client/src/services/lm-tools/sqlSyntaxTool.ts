@@ -4,8 +4,11 @@
  */
 
 import * as vscode from "vscode"
+import * as path from "path"
+import * as fs from "fs"
 import { logTelemetry } from "../telemetry"
 import { logCommands } from "../abapCopilotLogger"
+import { context } from "../../extension"
 
 // ============================================================================
 // TOOL CLASS
@@ -41,10 +44,6 @@ export class GetABAPSQLSyntaxTool implements vscode.LanguageModelTool<{}> {
     logTelemetry("tool_get_abap_sql_syntax_called")
 
     try {
-      const context = (await import("../../extension")).context
-      const path = await import("path")
-      const fs = await import("fs")
-
       const syntaxFilePath = path.join(
         context.extensionPath,
         "client",

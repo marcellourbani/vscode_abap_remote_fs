@@ -5,8 +5,9 @@
 
 import * as vscode from "vscode"
 import { funWindow as window } from "../funMessenger"
-import { abapUri } from "../../adt/conections"
+import { abapUri, getClient } from "../../adt/conections"
 import { logTelemetry } from "../telemetry"
+import { readTransports } from "../../views/transports"
 
 // ============================================================================
 // INTERFACE
@@ -97,7 +98,6 @@ export class ManageTransportRequestsTool implements vscode.LanguageModelTool<IMa
         actualConnectionId = actualConnectionId.toLowerCase()
       }
 
-      const { getClient } = await import("../../adt/conections")
       const client = getClient(actualConnectionId)
 
       switch (action) {
@@ -140,7 +140,6 @@ export class ManageTransportRequestsTool implements vscode.LanguageModelTool<IMa
     try {
       const targetUser = user || client.username
 
-      const { readTransports } = await import("../../views/transports")
       const transports = await readTransports(connectionId, targetUser)
 
       let result = `Transport Requests for User: ${targetUser.toUpperCase()}\n`

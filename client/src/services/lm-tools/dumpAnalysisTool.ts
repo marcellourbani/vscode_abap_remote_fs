@@ -5,6 +5,7 @@
 
 import * as vscode from "vscode"
 import { logTelemetry } from "../telemetry"
+import { getClient } from "../../adt/conections"
 
 // ============================================================================
 // INTERFACE
@@ -74,7 +75,6 @@ export class ABAPDumpAnalysisTool implements vscode.LanguageModelTool<IDumpAnaly
       // connectionId is now mandatory
       const actualConnectionId = connectionId.toLowerCase()
 
-      const { getClient } = await import("../../adt/conections")
       const client = getClient(actualConnectionId)
 
       // Validate required parameters based on action

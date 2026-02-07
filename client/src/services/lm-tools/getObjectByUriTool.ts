@@ -6,7 +6,7 @@
 import * as vscode from "vscode"
 import { funWindow as window } from "../funMessenger"
 import { getSearchService } from "../abapSearchService"
-import { abapUri } from "../../adt/conections"
+import { abapUri, getClient } from "../../adt/conections"
 import { logTelemetry } from "../telemetry"
 import { getOptimalObjectURI, resolveCorrectURI } from "./shared"
 
@@ -74,7 +74,6 @@ export class GetObjectByURITool implements vscode.LanguageModelTool<IGetObjectBy
         actualConnectionId = activeEditor.document.uri.authority
       }
 
-      const { getClient } = await import("../../adt/conections")
       const client = getClient(actualConnectionId)
 
       let sourceContent = ""

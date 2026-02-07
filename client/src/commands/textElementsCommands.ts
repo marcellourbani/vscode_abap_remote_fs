@@ -10,6 +10,9 @@ import { logCommands } from "../services/abapCopilotLogger"
 import { session_types } from "abap-adt-api"
 import { logTelemetry } from "../services/telemetry"
 import { isAbapFile } from "abapfs"
+import { parseObjectName } from "../adt/textElements"
+import { SapGuiPanel } from "../views/sapgui/SapGuiPanel"
+import { RemoteManager } from "../config"
 
 /**
  * Manage Text Elements Command
@@ -158,12 +161,11 @@ export async function openTextElementsInSapGui(
   connectionId: string
 ): Promise<void> {
   try {
-    const { parseObjectName } = await import("../adt/textElements")
-    const { SapGuiPanel } = await import("../views/sapgui/SapGuiPanel")
-    const { getClient } = await import("../adt/conections")
-
     // Parse object name to determine type
     const objectInfo = parseObjectName(programName)
+
+    // Get ADT client
+    const client = getClient(connectionId)
 
     // Map to SAP GUI object types
     let sapGuiObjectType: string
@@ -203,13 +205,7 @@ export async function openTextElementsInSapGui(
     }
 
     // Create panel using the exact same working logic
-    const panel = SapGuiPanel.createOrShow(
-      extensionUri,
-      getClient(connectionId),
-      connectionId,
-      objectInfo.cleanName,
-      sapGuiObjectType
-    )
+    const panel = SapGuiPanel.createOrShow(extensionUri, client, sapGuiObjectType)
 
     // Build text elements URL
     const baseUrl = await panel.buildWebGuiUrl()
@@ -219,7 +215,6 @@ export async function openTextElementsInSapGui(
 
     if (sapGuiObjectType === "CLAS/OC") {
       // For classes: Use SE24 (Class Builder) with class name prefilled
-      const { RemoteManager } = await import("../config")
       const config = RemoteManager.get().byId(connectionId)
       if (!config) {
         throw new Error(`Connection configuration not found for ${connectionId}`)

@@ -6,6 +6,7 @@
 import * as vscode from "vscode"
 import { logCommands } from "../abapCopilotLogger"
 import { logTelemetry } from "../telemetry"
+import { getClient } from "../../adt/conections"
 
 // ============================================================================
 // INTERFACE

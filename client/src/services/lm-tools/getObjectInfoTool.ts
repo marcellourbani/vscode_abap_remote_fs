@@ -8,6 +8,7 @@ import { funWindow as window } from "../funMessenger"
 import { getSearchService } from "../abapSearchService"
 import { abapUri } from "../../adt/conections"
 import { logTelemetry } from "../telemetry"
+import { getClient } from "../../adt/conections"
 import { getOptimalObjectURI, getObjectEnhancements } from "./shared"
 import { getTableStructureFromDD, getAppendStructuresFromDD } from "./getObjectLinesTool"
 
@@ -57,7 +58,6 @@ async function getCompleteTableStructure(
   objectUri: string
 ): Promise<string> {
   try {
-    const { getClient } = await import("../../adt/conections")
     const client = getClient(connectionId)
 
     const mainTableURI = getOptimalObjectURI("TABL/TA", objectUri)
@@ -189,9 +189,6 @@ export class GetABAPObjectInfoTool implements vscode.LanguageModelTool<IGetABAPO
       ) {
         if (objectInfo.uri) {
           try {
-            const { getClient } = await import("../../adt/conections")
-            const client = getClient(actualConnectionId)
-
             let completeStructure = ""
 
             if (objectInfo.type === "TTYP/DA" || objectInfo.type === "TTYP") {
@@ -270,7 +267,6 @@ export class GetABAPObjectInfoTool implements vscode.LanguageModelTool<IGetABAPO
       let enhancementInfo = ""
 
       if (objectInfo.uri) {
-        const { getClient } = await import("../../adt/conections")
         const client = getClient(actualConnectionId)
 
         const optimalUri = getOptimalObjectURI(objectInfo.type, objectInfo.uri)

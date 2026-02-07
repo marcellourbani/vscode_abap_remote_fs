@@ -8,6 +8,7 @@ import { funWindow as window } from "../funMessenger"
 import { getSearchService } from "../abapSearchService"
 import { abapUri } from "../../adt/conections"
 import { logTelemetry } from "../telemetry"
+import { getClient } from "../../adt/conections"
 import { getOptimalObjectURI, resolveCorrectURI } from "./shared"
 
 // ============================================================================
@@ -105,7 +106,6 @@ export class GetBatchLinesTool implements vscode.LanguageModelTool<IBatchLinesPa
               }
             }
 
-            const { getClient } = await import("../../adt/conections")
             const client = getClient(finalConnectionId)
 
             let sourceContent = ""

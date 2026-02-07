@@ -3,6 +3,9 @@ import { funWindow as window } from "../funMessenger"
 import { logCommands } from "../abapCopilotLogger"
 import { session_types } from "abap-adt-api"
 import { logTelemetry } from "../telemetry"
+import { getClient, abapUri } from "../../adt/conections"
+import { getTextElementsSafe, updateTextElementsWithTransport } from "../../adt/textElements"
+import { openTextElementsInSapGui } from "../../commands/textElementsCommands"
 
 // Text Elements Tool Interfaces
 export interface IManageTextElementsParameters {
@@ -73,9 +76,7 @@ export class ManageTextElementsTool implements vscode.LanguageModelTool<IManageT
     // logCommands.info(`📖 Manage Text Elements Tool: ${action} for ${objectName}`);
 
     try {
-      // Import the connection and text elements API
-      const { getClient, abapUri } = await import("../../adt/conections")
-      // const { getTextElementsSafe, updateTextElementsWithTransport } = await import('../adt/textElements');
+      // Connection and text elements API imported statically at module top
 
       // Resolve connectionId - same pattern as other language model tools
       let actualConnectionId = connectionId
@@ -107,7 +108,6 @@ export class ManageTextElementsTool implements vscode.LanguageModelTool<IManageT
         // For both CREATE and UPDATE, merge with existing text elements to avoid data loss
         let finalTextElements = textElements
         try {
-          const { getTextElementsSafe } = await import("../../adt/textElements")
           const existingResult = await getTextElementsSafe(client, objectName, objectType)
           const existingElements = existingResult.textElements
 
@@ -154,9 +154,6 @@ export class ManageTextElementsTool implements vscode.LanguageModelTool<IManageT
     objectType?: string,
     connectionId?: string
   ): Promise<vscode.LanguageModelToolResult> {
-    const { getTextElementsSafe, parseObjectName, getTextElementsUrlFromObjectInfo } =
-      await import("../../adt/textElements")
-
     try {
       // Use explicit object type when provided, fallback to detection when not
       const result = await getTextElementsSafe(client, objectName, objectType)
@@ -187,7 +184,6 @@ export class ManageTextElementsTool implements vscode.LanguageModelTool<IManageT
         }
 
         // Call the existing SAP GUI fallback function with proper object type
-        const { openTextElementsInSapGui } = await import("../../commands/textElementsCommands")
         await openTextElementsInSapGui(
           objectName +
             (objectType === "CLASS"
@@ -221,10 +217,7 @@ export class ManageTextElementsTool implements vscode.LanguageModelTool<IManageT
     textElements: Array<{ id: string; text: string; maxLength?: number }>,
     action: "create" | "update"
   ): Promise<vscode.LanguageModelToolResult> {
-    // Import the transport-aware function
-    const { updateTextElementsWithTransport } = await import("../../adt/textElements")
-
-    // Create/update text elements using our transport-aware API with explicit object type when available
+    // Transport-aware function imported statically at module top
     await updateTextElementsWithTransport(client, objectName, textElements, objectType)
 
     let resultText = `**✏️ Text Elements ${action === "create" ? "Created" : "Updated"} for ${objectName}** ✅\n\n`

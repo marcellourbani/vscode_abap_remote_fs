@@ -23,14 +23,13 @@ export class AdtObjectActivator {
   private static instances = new Map<string, AdtObjectActivator>()
   private emitter = new EventEmitter<ActivationEvent>()
   public static get(connId: string) {
-    let instance = this.instances.get(connId)
-    if (!instance) {
-      let stateless_client = getClient(connId, false)
-      // stateful_client.stateful = session_types.stateful
-      instance = new AdtObjectActivator(stateless_client)
-      this.instances.set(connId, instance)
-    }
-    return instance
+    const instance = this.instances.get(connId)
+    if (instance) return instance
+    const stateless_client = getClient(connId, false)
+    // stateful_client.stateful = session_types.stateful
+    const newinstance = new AdtObjectActivator(stateless_client)
+    this.instances.set(connId, newinstance)
+    return newinstance
   }
 
   public get onActivate() {
@@ -86,7 +85,7 @@ export class AdtObjectActivator {
           // Only return valid objects with required fields
           return obj["adtcore:uri"] && obj["adtcore:name"] ? obj : null
         })
-        .filter(obj => obj !== null) // Remove invalid objects
+        .filter((obj: unknown) => obj !== null) // Remove invalid objects
 
       return parsedObjects
     } catch (error) {
@@ -269,7 +268,7 @@ export class AdtObjectActivator {
       title: "Multiple inactive objects found - Select which ones to activate"
     })
 
-    return selected ? selected.map(item => item.object) : null
+    return selected ? selected.map((item: any) => item.object) : null
   }
 
   private async tryActivate(object: AbapObject, uri: Uri) {

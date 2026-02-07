@@ -1,5 +1,8 @@
 import { PACKAGE, AdtObjectCreator } from "../adt/operations/AdtObjectCreator"
-import { CreatableTypeIds, PackageTypes } from "abap-adt-api"
+import { CreatableTypeIds, PackageTypes, CreatableTypes } from "abap-adt-api"
+import { MySearchResult } from "../adt/operations/AdtObjectFinder"
+import { SapGuiPanel } from "../views/sapgui/SapGuiPanel"
+import { clearSystemInfoCache } from "../services/sapSystemInfo"
 import {
   workspace,
   Uri,
@@ -56,6 +59,7 @@ import { types } from "util"
 import { atcProvider } from "../views/abaptestcockpit"
 import { FsProvider } from "../fs/FsProvider"
 import { logTelemetry } from "../services/telemetry"
+import { SapGui } from "../adt/sapgui/sapgui"
 
 export function currentUri() {
   if (!window.activeTextEditor) return
@@ -176,6 +180,7 @@ export class AdtCommands {
         else return
       name = remote.name
 
+      log(`Connecting to server ${remote.name}`)
       // this might involve asking for a password...
       await getOrCreateRoot(remote.name) // if connection raises an exception don't mount any folder
 
@@ -186,6 +191,7 @@ export class AdtCommands {
         name: remote.name + "(ABAP)"
       })
       extensionContext.subscriptions.push(UnitTestRunner.get(connectionID).controller)
+      log(`Connected to server ${remote.name}`)
     } catch (e) {
       const body = typeof e === "object" && (e as any)?.response?.body
       if (body) log(body)
@@ -328,6 +334,7 @@ export class AdtCommands {
       const clas = isAbapFile(file) && isAbapClassInclude(file.object) && file.object.parent
       if (clas) {
         const text = await client.runClass(clas.name)
+        log(text)
       }
     } catch (error) {
       log(caughtToString(error))
@@ -362,6 +369,7 @@ export class AdtCommands {
       if (!connId) return
       const obj = await new AdtObjectCreator(connId).createObject(uri)
       if (!obj) return // user aborted
+      log(`Created object ${obj.type} ${obj.name}`)
       await obj.loadStructure()
 
       if (obj.type === PACKAGE) {
@@ -373,12 +381,14 @@ export class AdtCommands {
         new AdtObjectFinder(connId).displayNode(nodePath)
         try {
           await commands.executeCommand("workbench.files.action.refreshFilesExplorer")
+          log("workspace refreshed")
         } catch (e) {
-          //log("error refreshing workspace")
+          log("error refreshing workspace")
         }
       }
     } catch (e) {
       const stack = types.isNativeError(e) ? e.stack || "" : ""
+      log("Exception in createAdtObject:", stack)
       return window.showErrorMessage(caughtToString(e))
     }
   }
@@ -466,7 +476,6 @@ export class AdtCommands {
 
       // 3. Override guessOrSelectObjectType to return the specified object type
       creator["guessOrSelectObjectType"] = async (hierarchy: any[]): Promise<any> => {
-        const CreatableTypes = await import("abap-adt-api").then(m => m.CreatableTypes)
         const objType = CreatableTypes.get(objectType)
         if (objType) {
           return { typeId: objectType, label: objType.label, maxLen: objType.maxLen }
@@ -561,6 +570,7 @@ export class AdtCommands {
   @command(AbapFsCommands.runInGui)
   private static async executeAbap() {
     try {
+      log("Execute ABAP")
       const uri = currentUri()
       if (!uri) return
       const fsRoot = await pickAdtRoot(uri)
@@ -577,11 +587,9 @@ export class AdtCommands {
       }
 
       // Create SapGui instance and call startGui directly (no routing check)
-      const { SapGui } = await import("../adt/sapgui/sapgui")
       const sapGui = SapGui.create(config)
       const client = getClient(fsRoot.uri.authority)
 
-      const { SapGuiPanel } = await import("../views/sapgui/SapGuiPanel")
       const transactionInfo = SapGuiPanel.getTransactionInfo(file.object.type, file.object.name)
 
       // For non-standard types, fall back to URI-based approach
@@ -635,16 +643,6 @@ export class AdtCommands {
       }
 
       // Import the SAP GUI Panel and authentication utilities
-      let SapGuiPanel, runInSapGui
-      try {
-        const sapGuiPanelModule = await import("../views/sapgui/SapGuiPanel")
-        SapGuiPanel = sapGuiPanelModule.SapGuiPanel
-
-        const sapGuiModule = await import("../adt/sapgui/sapgui")
-        runInSapGui = sapGuiModule.runInSapGui
-      } catch (importError) {
-        throw importError
-      }
 
       // Get the remote configuration for authentication
       const config = RemoteManager.get().byId(fsRoot.uri.authority)
@@ -768,8 +766,6 @@ export class AdtCommands {
           const query = searchTerm.toUpperCase() + "*"
           const raw = await client.searchObject(query, "TRAN/T")
 
-          // Import MySearchResult to format results properly
-          const { MySearchResult } = await import("../adt/operations/AdtObjectFinder")
           const results = await MySearchResult.createResults(raw, client)
 
           quickPick.items = results.map(r => ({
@@ -867,7 +863,6 @@ export class AdtCommands {
         `&sap-language=${config.language || "EN"}` +
         `&saml2=disabled`
 
-      const { SapGuiPanel } = await import("../views/sapgui/SapGuiPanel")
 
       let extensionUri: vscode.Uri
       try {
@@ -970,7 +965,6 @@ export class AdtCommands {
       }
 
       // 🎯 USE CENTRALIZED transaction mapping - NO MORE DUPLICATION! 🎉
-      const { SapGuiPanel } = await import("../views/sapgui/SapGuiPanel")
       const transactionInfo = SapGuiPanel.getTransactionInfo(file.object.type, file.object.name)
 
       // Build simple WebGUI URL (same format as WebView uses)

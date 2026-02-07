@@ -7,6 +7,8 @@ import * as vscode from "vscode"
 import { funWindow as window } from "../funMessenger"
 import { getSearchService } from "../abapSearchService"
 import { logTelemetry } from "../telemetry"
+import { getOrCreateRoot, abapUri } from "../../adt/conections"
+import { atcProvider } from "../../views/abaptestcockpit"
 
 // ============================================================================
 // INTERFACES
@@ -105,7 +107,6 @@ export class RunATCAnalysisTool implements vscode.LanguageModelTool<IRunATCAnaly
           throw new Error(`Could not get URI for ABAP object: ${objectName}`)
         }
 
-        const { getOrCreateRoot } = await import("../../adt/conections")
         const root = await getOrCreateRoot(actualConnectionId)
         const { path } = (await root.findByAdtUri(objectInfo.uri, true)) || {}
 
@@ -123,7 +124,6 @@ export class RunATCAnalysisTool implements vscode.LanguageModelTool<IRunATCAnaly
           )
         }
 
-        const { abapUri } = await import("../../adt/conections")
         if (!abapUri(activeEditor.document.uri)) {
           throw new Error(
             "Active file is not an ABAP document. Please open an ABAP file or provide objectName/objectUri."

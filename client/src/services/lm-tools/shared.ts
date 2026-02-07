@@ -1,3 +1,5 @@
+import { getClient } from "../../adt/conections"
+
 /**
  * Shared utilities and types for ABAP Language Model Tools
  */
@@ -53,7 +55,6 @@ export async function resolveCorrectURI(
   connectionId: string
 ): Promise<string> {
   try {
-    const { getClient } = await import("../../adt/conections")
     const client = getClient(connectionId)
 
     const pathSteps = await client.findObjectPath(originalUri)

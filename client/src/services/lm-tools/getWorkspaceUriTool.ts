@@ -5,6 +5,7 @@
 
 import * as vscode from "vscode"
 import { logTelemetry } from "../telemetry"
+import { getClient, getOrCreateRoot } from "../../adt/conections"
 
 // ============================================================================
 // INTERFACE
@@ -58,9 +59,6 @@ export class GetAbapObjectWorkspaceUriTool implements vscode.LanguageModelTool<I
     }
 
     try {
-      const { getClient } = await import("../../adt/conections")
-      const { getOrCreateRoot } = await import("../../adt/conections")
-
       const client = getClient(connectionId)
 
       const results = await client.searchObject(objectName, objectType)

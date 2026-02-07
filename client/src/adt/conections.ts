@@ -4,6 +4,8 @@ import { Uri, FileSystemError, workspace } from "vscode"
 import { ADTClient } from "abap-adt-api"
 import { LogOutPendingDebuggers } from "./debugger"
 import { SapSystemValidator } from "../services/sapSystemValidator"
+import { LocalFsProvider } from "../fs/LocalFsProvider"
+import { log } from "../lib"
 export const ADTSCHEME = "adt"
 export const ADTURIPATTERN = /\/sap\/bc\/adt\//
 
@@ -15,7 +17,7 @@ const missing = (connId: string) => {
   return FileSystemError.FileNotFound(`No ABAP server defined for ${connId}`)
 }
 
-export const abapUri = (u?: Uri) => u?.scheme === ADTSCHEME
+export const abapUri = (u?: Uri) => u?.scheme === ADTSCHEME && !LocalFsProvider.useLocalStorage(u)
 
 async function create(connId: string) {
   const manager = RemoteManager.get()
@@ -23,14 +25,14 @@ async function create(connId: string) {
   if (!connection) throw Error(`Connection not found ${connId}`)
 
   // 🔐 VALIDATE SYSTEM ACCESS BEFORE CLIENT CREATION
-  console.log(`🔍 Validating SAP system access for connection: ${connId}`)
+  log(`🔍 Validating SAP system access for connection: ${connId}`)
   const validator = SapSystemValidator.getInstance()
   await validator.validateSystemAccess(
     connection.url,
     connection.sapGui?.server,
     connection.username
   )
-  console.log(`✅ SAP system validation passed for: ${connId}`)
+  log(`✅ SAP system validation passed for: ${connId}`)
 
   let client
   if (connection.oauth || connection.password) {
@@ -67,7 +69,7 @@ async function create(connId: string) {
         }
       } catch (error) {
         // Log error but don't break connection establishment
-        console.log(`⚠️ Failed to add Content-Type interceptor: ${error}`)
+        log(`⚠️ Failed to add Content-Type interceptor: ${error}`)
       }
     }
 
@@ -112,7 +114,7 @@ async function create(connId: string) {
         }
       } catch (error) {
         // Log error but don't break connection establishment
-        console.log(`⚠️ Failed to add Content-Type interceptor: ${error}`)
+        log(`⚠️ Failed to add Content-Type interceptor: ${error}`)
       }
     }
 

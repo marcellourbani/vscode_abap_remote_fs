@@ -7,7 +7,7 @@
 import * as vscode from "vscode"
 import { funWindow as window } from "../funMessenger"
 import { getSearchService } from "../abapSearchService"
-import { abapUri } from "../../adt/conections"
+import { abapUri, getClient } from "../../adt/conections"
 import { logTelemetry } from "../telemetry"
 import { getOptimalObjectURI, resolveCorrectURI, getObjectEnhancements } from "./shared"
 
@@ -155,7 +155,6 @@ async function getCompleteTableStructure(
   objectUri: string
 ): Promise<string> {
   try {
-    const { getClient } = await import("../../adt/conections")
     const client = getClient(connectionId)
 
     const mainTableURI = getOptimalObjectURI("TABL/TA", objectUri)
@@ -438,7 +437,6 @@ export class GetABAPObjectLinesTool implements vscode.LanguageModelTool<IGetABAP
         objectInfo.type === "TTYP"
       ) {
         try {
-          const { getClient } = await import("../../adt/conections")
           const client = getClient(actualConnectionId)
 
           let completeStructure = ""
@@ -495,7 +493,6 @@ export class GetABAPObjectLinesTool implements vscode.LanguageModelTool<IGetABAP
       }
 
       // Standard object processing for non-table objects
-      const { getClient } = await import("../../adt/conections")
       const client = getClient(actualConnectionId)
 
       let sourceContent = ""
@@ -636,7 +633,7 @@ export class GetABAPObjectLinesTool implements vscode.LanguageModelTool<IGetABAP
       ])
     }
   }
-  catch(error) {
+  catch(error: any) {
     throw new Error(`Failed to get lines from ABAP object: ${String(error)}`)
   }
 }

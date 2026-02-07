@@ -6,6 +6,8 @@
 import * as vscode from "vscode"
 import { logTelemetry } from "../telemetry"
 import { WebviewManager, RowRange, SortColumn, ColumnFilter } from "../webviewManager"
+import { getClient } from "../../adt/conections"
+import { getSAPSystemInfo } from "../sapSystemInfo"
 
 // ============================================================================
 // INTERFACE
@@ -246,7 +248,6 @@ export class ExecuteDataQueryTool implements vscode.LanguageModelTool<IExecuteDa
             data ||
               (await (async () => {
                 let targetConnectionId = connectionId || "default"
-                const { getClient } = await import("../../adt/conections")
                 const client = getClient(targetConnectionId)
                 if (!client) {
                   throw new Error(`No client found for connection: ${targetConnectionId}`)
@@ -358,7 +359,6 @@ export class ExecuteDataQueryTool implements vscode.LanguageModelTool<IExecuteDa
             )
           } else if (sql) {
             let targetConnectionId = connectionId || "default"
-            const { getClient } = await import("../../adt/conections")
             const client = getClient(targetConnectionId)
             if (!client) {
               throw new Error(`No client found for connection: ${targetConnectionId}`)
@@ -445,8 +445,6 @@ export class ExecuteDataQueryTool implements vscode.LanguageModelTool<IExecuteDa
   ): Promise<{ action: "proceed" | "ui_only" | "cancel" }> {
     try {
       // Get system info (cached, so fast)
-      const { getSAPSystemInfo } = await import("../sapSystemInfo")
-
       const systemInfo = await getSAPSystemInfo(connectionId)
 
       // Check if production (category 'P' or contains 'Production')

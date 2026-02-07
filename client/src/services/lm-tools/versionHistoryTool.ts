@@ -7,6 +7,9 @@ import * as vscode from "vscode"
 import { getSearchService } from "../abapSearchService"
 import { logTelemetry } from "../telemetry"
 import { Revision } from "abap-adt-api"
+import { getOrCreateRoot, getClient } from "../../adt/conections"
+import { isAbapFile } from "abapfs"
+import { isAbapClassInclude } from "abapobject"
 
 // ============================================================================
 // INTERFACES
@@ -169,7 +172,6 @@ export class VersionHistoryTool implements vscode.LanguageModelTool<IVersionHist
       throw new Error(`Could not get URI for ABAP object: ${objectName}.`)
     }
 
-    const { getOrCreateRoot, getClient } = await import("../../adt/conections")
     const root = await getOrCreateRoot(connectionId.toLowerCase())
     const result = await root.findByAdtUri(objectInfo.uri, true)
 
@@ -177,7 +179,6 @@ export class VersionHistoryTool implements vscode.LanguageModelTool<IVersionHist
       throw new Error(`Could not resolve object: ${objectName}`)
     }
 
-    const { isAbapFile } = await import("abapfs")
     if (!isAbapFile(result.file)) {
       throw new Error(`Not an ABAP file: ${objectName}`)
     }

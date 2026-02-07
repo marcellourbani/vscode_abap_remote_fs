@@ -6,6 +6,10 @@
 import * as vscode from "vscode"
 import { getSearchService } from "../abapSearchService"
 import { logTelemetry } from "../telemetry"
+import { getOrCreateRoot } from "../../adt/conections"
+import { uriAbapFile } from "../../adt/operations/AdtObjectFinder"
+import { isAbapClass } from "abapobject"
+import { UnitTestRunner } from "../../adt/operations/UnitTestRunner"
 
 // ============================================================================
 // INTERFACES
@@ -82,8 +86,6 @@ export class CreateTestIncludeTool implements vscode.LanguageModelTool<ICreateTe
 
       const workspaceUri = vscode.Uri.parse(`adt://${connectionId.toLowerCase()}${result.path}`)
 
-      const { uriAbapFile } = await import("../../adt/operations/AdtObjectFinder")
-      const { isAbapClass } = await import("abapobject")
       const abapFile = uriAbapFile(workspaceUri)
       if (abapFile?.object?.parent && isAbapClass(abapFile.object.parent)) {
         if (!abapFile.object.parent.structure) {
@@ -175,7 +177,6 @@ export class RunUnitTestsTool implements vscode.LanguageModelTool<IRunUnitTestsP
       const workspaceUri = vscode.Uri.parse(`adt://${connectionId.toLowerCase()}${result.path}`)
 
       // Use the new method that returns results
-      const { UnitTestRunner } = await import("../../adt/operations/UnitTestRunner")
       const testResults = await UnitTestRunner.get(connectionId.toLowerCase()).addResultsWithReturn(
         workspaceUri
       )

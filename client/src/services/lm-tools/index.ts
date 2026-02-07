@@ -4,6 +4,40 @@
  */
 
 import * as vscode from "vscode"
+import { registerMermaidTools } from "./mermaidTools"
+import { registerDumpAnalysisTool } from "./dumpAnalysisTool"
+import { registerTraceAnalysisTool } from "./traceAnalysisTool"
+import { registerWhereUsedTool } from "./whereUsedTool"
+import { registerSearchObjectsTool } from "./searchObjectsTool"
+import { registerGetObjectLinesTool } from "./getObjectLinesTool"
+import { registerSearchObjectLinesTool } from "./searchObjectLinesTool"
+import { registerGetObjectInfoTool } from "./getObjectInfoTool"
+import { registerGetBatchLinesTool } from "./getBatchLinesTool"
+import { registerGetObjectByUriTool } from "./getObjectByUriTool"
+import { registerCreateObjectTool } from "./createObjectTool"
+import { registerOpenObjectTool } from "./openObjectTool"
+import { registerGetWorkspaceUriTool } from "./getWorkspaceUriTool"
+import { registerGetObjectUrlTool } from "./getObjectUrlTool"
+import { registerUnitTestTools } from "./unitTestTools"
+import { registerAtcTools } from "./atcTools"
+import { registerTransportTool } from "./transportTool"
+import { registerDataQueryTool } from "./dataQueryTool"
+import { registerSqlSyntaxTool } from "./sqlSyntaxTool"
+import { registerTestDocumentationTool } from "./testDocumentationTool"
+import { ManageTextElementsTool } from "./textElementsTools"
+import { registerSAPSystemInfoTool } from "./sapSystemInfoTool"
+import { registerConnectedSystemsTool } from "./connectedSystemsTool"
+import {
+  ABAPDebugSessionTool,
+  ABAPBreakpointTool,
+  ABAPDebugStepTool,
+  ABAPDebugVariableTool,
+  ABAPDebugStackTool,
+  ABAPDebugStatusTool
+} from "./abapDebuggerTool"
+import { registerVersionHistoryTool } from "./versionHistoryTool"
+import { registerSubagentConfigTool } from "./subagentConfigTool"
+import { WebviewManager } from "../webviewManager"
 
 /**
  * Register all language model tools
@@ -13,28 +47,14 @@ export async function registerAllTools(context: vscode.ExtensionContext): Promis
   // Already available via: import { ... } from './lm-tools/shared'
 
   // 1. Mermaid Tools (4 tools)
-  const { registerMermaidTools } = await import("./mermaidTools")
   registerMermaidTools(context)
 
   // 2. Analysis Tools
-  const { registerDumpAnalysisTool } = await import("./dumpAnalysisTool")
-  const { registerTraceAnalysisTool } = await import("./traceAnalysisTool")
-  const { registerWhereUsedTool } = await import("./whereUsedTool")
   registerDumpAnalysisTool(context)
   registerTraceAnalysisTool(context)
   registerWhereUsedTool(context)
 
   // 3. Core Object Tools
-  const { registerSearchObjectsTool } = await import("./searchObjectsTool")
-  const { registerGetObjectLinesTool } = await import("./getObjectLinesTool")
-  const { registerSearchObjectLinesTool } = await import("./searchObjectLinesTool")
-  const { registerGetObjectInfoTool } = await import("./getObjectInfoTool")
-  const { registerGetBatchLinesTool } = await import("./getBatchLinesTool")
-  const { registerGetObjectByUriTool } = await import("./getObjectByUriTool")
-  const { registerCreateObjectTool } = await import("./createObjectTool")
-  const { registerOpenObjectTool } = await import("./openObjectTool")
-  const { registerGetWorkspaceUriTool } = await import("./getWorkspaceUriTool")
-  const { registerGetObjectUrlTool } = await import("./getObjectUrlTool")
   registerSearchObjectsTool(context)
   registerGetObjectLinesTool(context)
   registerSearchObjectLinesTool(context)
@@ -47,52 +67,35 @@ export async function registerAllTools(context: vscode.ExtensionContext): Promis
   registerGetObjectUrlTool(context)
 
   // 4. Unit Test Tools
-  const { registerUnitTestTools } = await import("./unitTestTools")
   registerUnitTestTools(context)
 
   // 5. ATC Tools
-  const { registerAtcTools } = await import("./atcTools")
   registerAtcTools(context)
 
   // 6. Transport Tool
-  const { registerTransportTool } = await import("./transportTool")
   registerTransportTool(context)
 
   // 8. Data Query Tool
-  const { registerDataQueryTool } = await import("./dataQueryTool")
   registerDataQueryTool(context)
 
   // 9. SQL Syntax Tool
-  const { registerSqlSyntaxTool } = await import("./sqlSyntaxTool")
   registerSqlSyntaxTool(context)
 
   // 10. Test Documentation Tool
-  const { registerTestDocumentationTool } = await import("./testDocumentationTool")
   registerTestDocumentationTool(context)
 
   // 11. Text Elements
-  const { ManageTextElementsTool } = await import("./textElementsTools")
   context.subscriptions.push(
     vscode.lm.registerTool("manage_text_elements", new ManageTextElementsTool())
   )
 
   // 12. SAP System Info Tool
-  const { registerSAPSystemInfoTool } = await import("./sapSystemInfoTool")
   registerSAPSystemInfoTool(context)
 
   // 13. Connected Systems Tool (for MCP clients to discover available connections)
-  const { registerConnectedSystemsTool } = await import("./connectedSystemsTool")
   registerConnectedSystemsTool(context)
 
   // 14. Debugger Tools (6 tools)
-  const {
-    ABAPDebugSessionTool,
-    ABAPBreakpointTool,
-    ABAPDebugStepTool,
-    ABAPDebugVariableTool,
-    ABAPDebugStackTool,
-    ABAPDebugStatusTool
-  } = await import("./abapDebuggerTool")
   context.subscriptions.push(
     vscode.lm.registerTool("abap_debug_session", new ABAPDebugSessionTool())
   )
@@ -107,14 +110,11 @@ export async function registerAllTools(context: vscode.ExtensionContext): Promis
   context.subscriptions.push(vscode.lm.registerTool("abap_debug_status", new ABAPDebugStatusTool()))
 
   // 15. Version History Tool
-  const { registerVersionHistoryTool } = await import("./versionHistoryTool")
   registerVersionHistoryTool(context)
 
   // 16. Subagent Configuration Tool
-  const { registerSubagentConfigTool } = await import("./subagentConfigTool")
   registerSubagentConfigTool(context)
 
   // Initialize WebviewManager singleton (required for data query tool)
-  const { WebviewManager } = await import("../webviewManager")
   WebviewManager.getInstance(context)
 }

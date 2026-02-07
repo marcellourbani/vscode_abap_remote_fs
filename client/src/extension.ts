@@ -39,6 +39,9 @@ import { AppInsightsService } from "./services/appInsightsService"
 import { MermaidWebviewManager } from "./services/MermaidWebviewManager"
 import { DiagramWebviewManager } from "./services/DiagramWebviewManager"
 import { SapSystemValidator } from "./services/sapSystemValidator"
+import { listAdtFeedsCommand } from "./commands/listAdtFeeds"
+import { validateSubagentsOnStartup } from "./services/lm-tools/subagentConfigTool"
+import { initializeMcpServer } from "./services/mcpServer"
 // Import commands to ensure @command decorators are executed
 import "./commands"
 export let context: ExtensionContext
@@ -95,7 +98,6 @@ export async function activate(ctx: ExtensionContext): Promise<AbapFsApi> {
     log("✅ ABAP Hover Provider ready to whisper sweet nothings about your code")
 
     // Register List ADT Feeds command
-    const { listAdtFeedsCommand } = await import("./commands/listAdtFeeds")
     context.subscriptions.push(commands.registerCommand("abapfs.listAdtFeeds", listAdtFeedsCommand))
 
     const { copilotLogger } = require("./services/abapCopilotLogger")
@@ -115,7 +117,6 @@ export async function activate(ctx: ExtensionContext): Promise<AbapFsApi> {
     await registerAllTools(context)
 
     // Validate and regenerate subagent files if enabled
-    const { validateSubagentsOnStartup } = await import("./services/lm-tools/subagentConfigTool")
     await validateSubagentsOnStartup(context)
 
     // Register ABAP Cleaner feature
@@ -123,7 +124,6 @@ export async function activate(ctx: ExtensionContext): Promise<AbapFsApi> {
     setupCleanerContextMonitoring(context)
 
     // Initialize MCP Server for external AI clients (Cursor, etc.)
-    const { initializeMcpServer } = await import("./services/mcpServer")
     await initializeMcpServer(context)
 
     log("🚀 ABAP FS services are GO! Houston, we have liftoff! 🌙")
