@@ -3708,6 +3708,12 @@
           },
           "additionalProperties": false
         },
+        "abapfs.localfs.preferGlobal": {
+          "type": "boolean",
+          "default": false,
+          "scope": "resource",
+          "description": "Store non-abap files in a global folder, shared by all workspaces. Defaults to false, which means files are stored in a hidden folder inside each workspace. Enabling this allows sharing files like AI agent configurations across multiple workspaces"
+        },
         "abapfs.subagents.enabled": {
           "type": "boolean",
           "default": false,

@@ -117,16 +117,14 @@ export async function activate(ctx: ExtensionContext): Promise<AbapFsApi> {
     // Register Language Model Tools for proper AI integration (includes Mermaid tools)
     await registerAllTools(context)
 
-    // Validate and regenerate subagent files if enabled
-    await validateSubagentsOnStartup(context)
-
     // Register ABAP Cleaner feature
     registerCleanerCommands(context)
     setupCleanerContextMonitoring(context)
 
     // Initialize MCP Server for external AI clients (Cursor, etc.)
     await initializeMcpServer(context)
-
+    // Validate and regenerate subagent files if enabled, but only do that in background
+    setImmediate(() => validateSubagentsOnStartup(context))
     log("🚀 ABAP FS services are GO! Houston, we have liftoff! 🌙")
     // ABAP FS Integration - End
   } catch (error) {

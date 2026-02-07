@@ -57,7 +57,7 @@ export const connectedRoots = () => {
   for (const r of roots) rootmap.set(formatKey(r.uri.authority), r)
   return rootmap
 }
-
+export const getConfig = () => workspace.getConfiguration(CONFIGROOT)
 const targetRemotes = (target: ConfigurationTarget) => {
   const remotes = workspace.getConfiguration(CONFIGROOT).inspect(REMOTE)
   const select = () => {

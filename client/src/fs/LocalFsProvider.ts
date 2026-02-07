@@ -15,15 +15,15 @@ import {
 import { LocalStorage } from "./localStorage"
 import { ADTSCHEME } from "../adt/conections"
 import { templates } from "./initialtemplates"
+import { getConfig } from "../config"
 
 export class LocalFsProvider implements FileSystemProvider {
   private localStorage: LocalStorage
 
   constructor(private readonly context: ExtensionContext) {
-    // TODO: add configuration
-    if (context.storageUri) this.localStorage = new LocalStorage(context.storageUri)
-    // Use globalStorageUri - always available, shared across workspaces
-    this.localStorage = new LocalStorage(context.globalStorageUri)
+    const preferGlobal = getConfig().get("abapfs.localfs.preferGlobal")
+    const url = preferGlobal || !context.storageUri ? context.globalStorageUri : context.storageUri
+    this.localStorage = new LocalStorage(url)
   }
 
   public static useLocalStorage(uri: Uri): boolean {
