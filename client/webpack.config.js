@@ -30,10 +30,6 @@ const config = {
   externals: {
     vscode: "commonjs vscode", // the vscode-module is created on-the-fly and must be excluded. Add other modules that cannot be webpack'ed, 📖 -> https://webpack.js.org/configuration/externals/
     "@playwright/mcp": "commonjs @playwright/mcp",
-    "@modelcontextprotocol/sdk/server/mcp.js": "commonjs @modelcontextprotocol/sdk/server/mcp.js",
-    "@modelcontextprotocol/sdk/server/sse.js": "commonjs @modelcontextprotocol/sdk/server/sse.js",
-    "@modelcontextprotocol/sdk/server/streamableHttp.js": "commonjs @modelcontextprotocol/sdk/server/streamableHttp.js",
-    "zod": "commonjs zod"
   },
   resolve: {
     // support reading TypeScript and JavaScript files, 📖 -> https://github.com/TypeStrong/ts-loader
@@ -75,6 +71,13 @@ const config = {
             loader: 'file-loader',
           }
         ]
+      },
+      // Handle ESM modules that use .js extensions in imports (like @modelcontextprotocol/sdk)
+      {
+        test: /\.m?js$/,
+        resolve: {
+          fullySpecified: false
+        }
       }
     ]
   }
