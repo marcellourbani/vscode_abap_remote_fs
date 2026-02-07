@@ -25,11 +25,20 @@ export interface SAPSoftwareComponent {
   componentType: string
 }
 
+export interface SAPTimezoneInfo {
+  timezone: string // e.g., "CAT"
+  description: string // e.g., "Central Africa"
+  utcOffset: string // e.g., "UTC+2"
+  dstRule: string // e.g., "NONE" or DST rule name
+  rawOffset: string // e.g., "P0200" (raw from SAP)
+}
+
 export interface SAPSystemInfo {
   sapRelease: string
   systemType: SAPSystemType
   currentClient: SAPClientInfo | null
   softwareComponents: SAPSoftwareComponent[]
+  timezone: SAPTimezoneInfo | null
   queryTimestamp: string
 }
 
@@ -175,6 +184,7 @@ export async function getSAPSystemInfo(
     systemType: "Unknown",
     currentClient: null,
     softwareComponents: [],
+    timezone: null,
     queryTimestamp: new Date().toISOString()
   }
 
@@ -244,6 +254,46 @@ export async function getSAPSystemInfo(
     console.warn("Failed to query SVERS:", error)
   }
 
+  // Query Timezone - TTZCU (system timezone) + TTZZ (timezone details) + TTZZT (descriptions)
+  try {
+    // Get system timezone from TTZCU
+    const ttzSql = `SELECT cu~TZONESYS, z~ZONERULE, z~DSTRULE, t~DESCRIPT
+      FROM ttzcu AS cu 
+      INNER JOIN ttzz AS z ON cu~TZONESYS = z~TZONE
+      INNER JOIN ttzzt AS t ON z~TZONE = t~TZONE
+      WHERE cu~FLAGACTIVE = 'X' AND t~LANGU = 'E'`
+    const ttzResult = await client.runQuery(ttzSql, 1, true)
+
+    if (
+      ttzResult &&
+      ttzResult.values &&
+      Array.isArray(ttzResult.values) &&
+      ttzResult.values.length > 0
+    ) {
+      const row = ttzResult.values[0]
+      const rawOffset = row.ZONERULE || ""
+
+      // Parse offset (e.g., "P0200" -> "UTC+2", "M0500" -> "UTC-5")
+      let utcOffset = rawOffset
+      if (rawOffset.startsWith("P") || rawOffset.startsWith("M")) {
+        const sign = rawOffset.startsWith("P") ? "+" : "-"
+        const hours = parseInt(rawOffset.substring(1, 3), 10)
+        const minutes = parseInt(rawOffset.substring(3, 5), 10)
+        utcOffset = `UTC${sign}${hours}${minutes > 0 ? ":" + minutes.toString().padStart(2, "0") : ""}`
+      }
+
+      result.timezone = {
+        timezone: row.TZONESYS || "",
+        description: row.DESCRIPT || "",
+        utcOffset,
+        dstRule: row.DSTRULE || "NONE",
+        rawOffset
+      }
+    }
+  } catch (error) {
+    console.warn("Failed to query timezone:", error)
+  }
+
   // Store in cache (always with full data)
   systemInfoCache.set(cacheKey, {
     data: result,
@@ -287,6 +337,16 @@ export function formatSAPSystemInfoAsText(info: SAPSystemInfo): string {
     output += "\n"
   } else {
     output += `🏢 CURRENT CLIENT: No client information available\n\n`
+  }
+
+  // Timezone Information
+  if (info.timezone) {
+    output += `🌍 SYSTEM TIMEZONE\n`
+    output += `${"-".repeat(40)}\n`
+    output += `• Timezone: ${info.timezone.timezone} (${info.timezone.description})\n`
+    output += `• UTC Offset: ${info.timezone.utcOffset}\n`
+    output += `• DST Rule: ${info.timezone.dstRule === "NONE" ? "No daylight saving time" : info.timezone.dstRule}\n`
+    output += "\n"
   }
 
   // Software Components (only shown if included)
