@@ -4,14 +4,13 @@ import { writeAsync } from "fs-jetpack"
 import { log } from "../../lib"
 import { closeSync } from "fs"
 import opn = require("open")
-import { window, ProgressLocation, extensions } from "vscode"
+import { ProgressLocation, extensions } from "vscode"
+import { funWindow as window } from "../../services/funMessenger"
 import { getClient } from "../conections"
 import { AbapObject, isAbapClassInclude } from "abapobject"
-import puppeteer from "puppeteer-core"
 import { commands, Uri } from "vscode"
+import * as vscode from "vscode"
 import { ADTClient } from "abap-adt-api"
-
-const BROWSERPREVIEW = "auchenberg.vscode-browser-preview"
 
 export interface SapGuiCommand {
   type: "Transaction" | "Report" | "SystemCommand"
@@ -43,7 +42,7 @@ export function runInSapGui(
   getCmd: () => Promise<SapGuiCommand | undefined> | SapGuiCommand | undefined
 ) {
   return window.withProgress(
-    { location: ProgressLocation.Window, title: "Opening SAPGui..." },
+    { location: ProgressLocation.Notification, title: "Opening SAPGui..." },
     async () => {
       const config = RemoteManager.get().byId(connId)
       if (!config) return
@@ -59,7 +58,7 @@ export function runInSapGui(
             return sapGui.runInBrowser(config, cmd, client)
           default:
             if (cmd) {
-              log("Running " + JSON.stringify(cmd))
+              // log("Running " + JSON.stringify(cmd))
               sapGui.checkConfig()
               const ticket = await client.reentranceTicket()
               return sapGui.startGui(cmd, ticket)
@@ -206,19 +205,8 @@ export class SapGui {
 
   public async runInBrowser(config: RemoteConfig, cmd: SapGuiCommand, client: ADTClient) {
     let guitype = config.sapGui?.guiType
-    if (guitype === "WEBGUI_UNSAFE_EMBEDDED") {
-      const ext = extensions.getExtension<unknown>(BROWSERPREVIEW)
-      if (!ext) {
-        guitype = "WEBGUI_CONTROLLED"
-        const args = encodeURIComponent(JSON.stringify([[BROWSERPREVIEW]]))
-        const exturl = Uri.parse(
-          `command:workbench.extensions.action.showExtensionsWithIds?${args}`
-        )
-        window.showInformationMessage(
-          `Embedded browser requires [Browser preview extension](${exturl})<br>showing in browser`
-        )
-      }
-    }
+
+    // WebView doesn't need Live Preview extension - remove the check
     if (cmd.parameters) {
       const okCode = cmd.parameters.find(
         (parameter: { name: string; value: string }) => parameter.name === "DYNP_OKCODE"
@@ -226,47 +214,81 @@ export class SapGui {
       const D_OBJECT_URI = cmd.parameters.find(
         (parameter: { name: string; value: string }) => parameter.name !== "DYNP_OKCODE"
       )
+
       const q: any = {
-        "~transaction": `${cmd.command} ${D_OBJECT_URI?.name}=${D_OBJECT_URI!.value};DYNP_OKCODE=${
-          okCode?.value || ""
-        }`
+        "~transaction": `${cmd.command} ${D_OBJECT_URI?.name}=${D_OBJECT_URI!.value};DYNP_OKCODE=${okCode?.value || ""}`
       }
       if (config.language) config.language = config.language
-      if (guitype !== "WEBGUI_CONTROLLED") {
-        q["sap-user"] = config.username
-        q["sap-password"] = config.password
-      }
+      q["saml2"] = "disabled"
       const query = Object.keys(q)
         .map(k => `${k}=${q[k]}`)
         .join("&")
       const url = Uri.parse(config.url).with({ path: "/sap/bc/gui/sap/its/webgui", query })
+
       switch (guitype) {
         case "WEBGUI_UNSAFE_EMBEDDED":
-          commands.executeCommand("browser-preview.openPreview", url.toString())
+          // Use direct WebGUI URL (no SSO ticket - user will login manually in webview)
+          // Import and use WebView panel
+          const { SapGuiPanel } = await import("../../views/sapgui/SapGuiPanel")
+          const objectParam = D_OBJECT_URI?.value || "SAP_GUI"
+
+          // Get extension context more reliably
+          let extensionUri: vscode.Uri
+          try {
+            const extension = vscode.extensions.getExtension("murbani.vscode-abap-remote-fs")
+            if (extension) {
+              extensionUri = extension.extensionUri
+            } else {
+              // Fallback: try alternative extension ID
+              const altExtension = vscode.extensions.getExtension("abap-copilot")
+              extensionUri = altExtension?.extensionUri || vscode.Uri.file(__dirname)
+            }
+          } catch (error) {
+            extensionUri = vscode.Uri.file(__dirname)
+          }
+
+          const detectedObjectType = cmd.command.includes("SE38")
+            ? "PROG/P"
+            : cmd.command.includes("SE24")
+              ? "CLAS/OC"
+              : cmd.command.includes("SE37")
+                ? "FUGR/FF"
+                : "PROG/P"
+
+          const panel = SapGuiPanel.createOrShow(
+            extensionUri,
+            client,
+            config.name || "SAP",
+            objectParam,
+            detectedObjectType
+          )
+
+          // Load direct WebGUI URL (will show login screen immediately)
+          panel.loadDirectWebGuiUrl(url.toString())
           break
         case "WEBGUI_UNSAFE":
           commands.executeCommand("vscode.open", url)
           break
         default:
-          const ticket = await client.reentranceTicket()
-          const browser = await puppeteer.launch({
-            headless: false,
-            executablePath: config.sapGui?.browserPath || "chrome",
-            ignoreDefaultArgs: ["--enable-automation", "--enable-blink-features=IdleDetection"],
-            acceptInsecureCerts: !!config.allowSelfSigned,
-            // @ts-ignore
-            defaultViewport: null,
-            args: ["--start-maximized"]
+          // For WEBGUI_CONTROLLED mode, fall back to opening in default browser
+          let ticket2: string
+          try {
+            ticket2 = await client.reentranceTicket()
+          } catch (error) {
+            return
+          }
+
+          const controlledBaseUrl = config.sapGui?.server
+            ? `${config.url.startsWith("https") ? "https" : "https"}://${config.sapGui.server}`
+            : config.url
+
+          const authenticatedUrl2 = Uri.parse(controlledBaseUrl).with({
+            path: `/sap/public/myssocntl`,
+            query: `sap-mysapsso=${config.client}${ticket2}&sap-mysapred=${encodeURIComponent(url.toString())}`
           })
 
-          const page = (await browser.pages())[0] || (await browser.newPage())
-          await page.setExtraHTTPHeaders({
-            "sap-mysapsso": `${config.client}${ticket}`,
-            "sap-mysapred": url.toString()
-          })
-          const logonUri = Uri.parse(config.url).with({ path: `/sap/public/myssocntl` }).toString()
-          await page.goto(logonUri)
-          // browser.disconnect()
+          // log('🌐 Opening SAP GUI in default browser: ' + authenticatedUrl2.toString())
+          commands.executeCommand("vscode.open", authenticatedUrl2)
           break
       }
     }

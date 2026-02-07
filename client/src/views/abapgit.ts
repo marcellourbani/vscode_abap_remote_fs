@@ -207,7 +207,7 @@ class AbapGitProvider implements TreeDataProvider<TreeItem> {
     if (!ri) return
     return await window.withProgress(
       {
-        location: ProgressLocation.Window,
+        location: ProgressLocation.Notification,
         title: `Pulling repo ${repoItem.repo.sapPackage}`
       },
       async () => {

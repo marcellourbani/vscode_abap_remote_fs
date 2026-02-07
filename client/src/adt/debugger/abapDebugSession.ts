@@ -1,7 +1,7 @@
 import { DebugConfiguration, DebugSession, Uri } from "vscode"
-import { InitializedEvent, LoggingDebugSession, Thread } from "vscode-debugadapter"
+import { InitializedEvent, LoggingDebugSession, Thread } from "@vscode/debugadapter"
 import { DEBUGTYPE } from "./abapConfigurationProvider"
-import { DebugProtocol } from "vscode-debugprotocol"
+import { DebugProtocol } from "@vscode/debugprotocol"
 import { getRoot } from "../conections"
 import { isAbapFile } from "abapfs"
 import { caughtToString } from "../../lib"
@@ -27,7 +27,14 @@ export class AbapDebugSession extends LoggingDebugSession {
     return AbapDebugSession.sessions.get(connId)
   }
 
-  constructor(private connId: string, private readonly listener: DebugListener) {
+  public get debugListener() {
+    return this.listener
+  }
+
+  constructor(
+    private connId: string,
+    private readonly listener: DebugListener
+  ) {
     super(DEBUGTYPE)
     if (AbapDebugSession.sessions.has(connId))
       throw new Error(`Debug session already running on ${connId}`)

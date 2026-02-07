@@ -1,5 +1,5 @@
 import { SystemUser } from "abap-adt-api"
-import { window } from "vscode"
+import { funWindow as window } from "../services/funMessenger"
 import { getClient } from "../adt/conections"
 
 export async function pickUser(

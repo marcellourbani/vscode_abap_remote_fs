@@ -68,7 +68,10 @@ const findInFolder = (
 export class Root extends Folder {
   [tag] = true
   lockManager: LockManager
-  constructor(readonly connId: string, readonly service: AbapFsService) {
+  constructor(
+    readonly connId: string,
+    readonly service: AbapFsService
+  ) {
     super()
     const tmp = createPkg(TMPPACKAGE, service)
     this.set(TMPFOLDER, new AbapFolder(tmp, this, service), true)
@@ -106,7 +109,13 @@ export class Root extends Folder {
     if (first) {
       // if belongs to the $TMP of another user, add it to the root - blacklist myself to avoid duplications
       const owner = extractOwner(first)
-      if (owner && !this.isMe(owner) && !this.getNode(first)) {
+      // Debug: Log when trying to create TMP folder
+      if (owner && owner.toUpperCase() === "USER") {
+        console.log(`[DEBUG] Attempting to create $TMP_USER folder - path: ${path}`)
+        console.trace("[DEBUG] Stack trace for $TMP_USER creation")
+      }
+      // Skip if owner is the literal string "USER" (test/example data) or if it's the current user
+      if (owner && owner.toUpperCase() !== "USER" && !this.isMe(owner) && !this.getNode(first)) {
         const tmp = new AbapFolder(createPkg(TMPFOLDER, this.service, owner), this, this.service)
         this.set(first, tmp, true)
         await tmp.refresh()

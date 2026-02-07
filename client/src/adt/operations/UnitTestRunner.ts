@@ -25,6 +25,7 @@ import {
 import { lineRange } from "../../lib"
 import { AbapObject, isAbapClassInclude } from "abapobject"
 import { AdtObjectFinder } from "./AdtObjectFinder"
+import { logTelemetry } from "../../services/telemetry"
 
 type UnitTarget = UnitTestClass | UnitTestMethod
 type UtMethod = {
@@ -50,6 +51,31 @@ enum TestResType {
   object,
   class,
   method
+}
+
+// Exported types for LM tools
+export interface TestMethodResult {
+  name: string
+  passed: boolean
+  executionTime: number
+  alerts: { kind: string; title: string; details: string[] }[]
+}
+
+export interface TestClassResult {
+  name: string
+  passed: boolean
+  methods: TestMethodResult[]
+  alerts: { kind: string; title: string; details: string[] }[]
+}
+
+export interface UnitTestResults {
+  objectName: string
+  totalTests: number
+  passed: number
+  failed: number
+  totalTime: number
+  allPassed: boolean
+  classes: TestClassResult[]
 }
 
 const objectKey = (object: AbapObject) => object.path
@@ -214,7 +240,8 @@ const runHandler =
   (runner: UnitTestRunner, cb?: (results: UtClass[]) => void) =>
   async (request: TestRunRequest) => {
     const allclasses: UtClass[] = []
-    const included = request.include || [...runner.controller.items].map(x => x[1])
+    const included: readonly TestItem[] =
+      request.include || [...runner.controller.items].map(x => x[1])
     const connId = included[0]?.uri?.authority
     if (!connId) {
       throw new Error("No valid test found in request")
@@ -281,7 +308,8 @@ export class UnitTestRunner {
     }
   }
 
-  async addResults(uri: Uri) {
+  async addResults(uri: Uri): Promise<UtClass[]> {
+    logTelemetry("command_run_abap_unit_tests_called", { connectionId: uri.authority })
     commands.executeCommand("workbench.view.testing.focus")
     const object = await getObject(uri)
     const current =
@@ -295,5 +323,88 @@ export class UnitTestRunner {
     }
     await runHandler(this, cb)(new TestRunRequest([current]))
     return classes
+  }
+
+  /**
+   * Run unit tests and return structured results for LM tools
+   * Also updates the VS Code Testing UI
+   */
+  async addResultsWithReturn(uri: Uri): Promise<UnitTestResults> {
+    logTelemetry("command_run_abap_unit_tests_called", { connectionId: uri.authority })
+    commands.executeCommand("workbench.view.testing.focus")
+    const object = await getObject(uri)
+    const current =
+      this.controller.items.get(objectKey(object)) ||
+      this.controller.createTestItem(objectKey(object), object.key, uri)
+    this.controller.items.add(current)
+    this.urlTypes.set(objectKey(object), TestResType.object)
+
+    // Run tests and capture results
+    const classes = await runUnitUrl(this.connId, current.id)
+    this.setUrlTypes(classes)
+
+    // Update UI
+    const run = this.controller.createTestRun(new TestRunRequest([current]), undefined, false)
+    try {
+      setObjectResult(run, classes, current, this.controller)
+    } finally {
+      run.end()
+    }
+
+    // Build structured results for LM tool
+    return this.buildTestResults(classes, object.key)
+  }
+
+  private buildTestResults(classes: UtClass[], objectName: string): UnitTestResults {
+    let totalTests = 0
+    let passed = 0
+    let failed = 0
+    let totalTime = 0
+    const testClasses: TestClassResult[] = []
+
+    for (const c of classes) {
+      const classResult: TestClassResult = {
+        name: c.name,
+        passed: true,
+        methods: [],
+        alerts: c.alerts.map(a => ({ kind: a.kind, title: a.title, details: a.details }))
+      }
+
+      for (const m of c.testmethods) {
+        totalTests++
+        totalTime += m.executionTime
+        const methodPassed = !m.alerts.some(a => a.kind !== UnitTestAlertKind.warning)
+
+        if (methodPassed) {
+          passed++
+        } else {
+          failed++
+          classResult.passed = false
+        }
+
+        classResult.methods.push({
+          name: m.name,
+          passed: methodPassed,
+          executionTime: m.executionTime,
+          alerts: m.alerts.map(a => ({ kind: a.kind, title: a.title, details: a.details }))
+        })
+      }
+
+      if (c.alerts.some(a => a.kind !== UnitTestAlertKind.warning)) {
+        classResult.passed = false
+      }
+
+      testClasses.push(classResult)
+    }
+
+    return {
+      objectName,
+      totalTests,
+      passed,
+      failed,
+      totalTime,
+      allPassed: failed === 0 && totalTests > 0,
+      classes: testClasses
+    }
   }
 }

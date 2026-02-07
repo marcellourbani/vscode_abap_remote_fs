@@ -1,13 +1,6 @@
 import { command, AbapFsCommands } from "../../commands"
-import {
-  Uri,
-  QuickPickItem,
-  window,
-  commands,
-  workspace,
-  ProgressLocation,
-  TabInputTextDiff
-} from "vscode"
+import { Uri, QuickPickItem, commands, workspace, ProgressLocation, TabInputTextDiff } from "vscode"
+import { funWindow as window } from "../../services/funMessenger"
 import {
   abapUri,
   uriRoot,

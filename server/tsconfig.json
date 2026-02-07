@@ -9,10 +9,15 @@
     "strict": true,
     // "noUnusedLocals": true,
     "composite": true,
+    /* Incremental Compilation */
+    "incremental": true,
+    "tsBuildInfoFile": ".tsbuildinfo",
     "skipLibCheck": true,
     "esModuleInterop": true
   },
-  "include": ["src"],
+  "include": [
+    "src"
+  ],
   "exclude": [
     "node_modules",
     ".vscode-test"

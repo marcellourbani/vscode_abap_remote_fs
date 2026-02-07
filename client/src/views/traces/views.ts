@@ -8,7 +8,7 @@ import {
   Uri
 } from "vscode"
 import { connectedRoots } from "../../config"
-import { getClient, getOrCreateClient } from "../../adt/conections"
+import { getOrCreateClient } from "../../adt/conections"
 import { TraceRequest, TraceRun } from "abap-adt-api/build/api/tracetypes"
 import { cache } from "../../lib"
 import { openCommand } from "./commands"
@@ -78,7 +78,10 @@ const runToolTip = (run: TraceRun) => {
 
 class Configuration extends TreeItem {
   readonly contextValue = "configuration"
-  constructor(readonly connId: string, readonly config: Readonly<TraceRequest>) {
+  constructor(
+    readonly connId: string,
+    readonly config: Readonly<TraceRequest>
+  ) {
     const label = `${config.title} ${config.extendedData.host} ${config.published.toLocaleString()}`
     super(label, TreeItemCollapsibleState.None)
     this.tooltip = configToolTip(config)
@@ -90,7 +93,10 @@ class Configuration extends TreeItem {
 }
 export class TraceRunItem extends TreeItem {
   readonly contextValue = "run"
-  constructor(readonly connId: string, readonly run: TraceRun) {
+  constructor(
+    readonly connId: string,
+    readonly run: TraceRun
+  ) {
     super(
       `${run.title} ${run.published.toLocaleString()} ${run.extendedData.objectName}`,
       TreeItemCollapsibleState.None

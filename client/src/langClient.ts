@@ -11,7 +11,12 @@ import {
   LogEntry
 } from "vscode-abap-remote-fs-sharedapi"
 import { ExtensionContext, Uri, window, ProgressLocation, workspace, WorkspaceEdit } from "vscode"
-import { LanguageClient, TransportKind, State, RevealOutputChannelOn } from "vscode-languageclient"
+import {
+  LanguageClient,
+  TransportKind,
+  State,
+  RevealOutputChannelOn
+} from "vscode-languageclient/node"
 export let client: LanguageClient
 import { join } from "path"
 import { FixProposal, Delta } from "abap-adt-api"
@@ -33,20 +38,30 @@ export async function vsCodeUri(
   mainInclude: boolean,
   cacheErrors = false
 ): Promise<string> {
-  const key = `${confKey}_${uri}_${mainInclude}`
+  const isContextualInclude = /\/source\/main/i.test(uri)
+  const normalizedUri = isContextualInclude
+    ? uri.replace(/\/source\/main(?:[?#].*)?$/i, "") || uri
+    : uri
+  const effectiveMain = mainInclude || isContextualInclude
+
+  const key = `${confKey}_${normalizedUri}_${effectiveMain}`
   if (cacheErrors && uriErrors.get(key)) throw uriError(uri)
+
+  const tryUris = [normalizedUri, uri]
   const root = getRoot(confKey)
-  try {
-    const hit = await root.findByAdtUri(uri, mainInclude)
-    if (!hit) {
-      if (cacheErrors) uriErrors.set(key, true)
-      throw uriError(uri)
+  let lastError: any
+
+  for (const u of tryUris) {
+    try {
+      const hit = await root.findByAdtUri(u, effectiveMain)
+      if (hit) return urlFromPath(confKey, hit.path)
+    } catch (error) {
+      lastError = error
     }
-    return urlFromPath(confKey, hit.path)
-  } catch (error) {
-    if (cacheErrors) uriErrors.set(key, true)
-    throw error
   }
+
+  if (cacheErrors) uriErrors.set(key, true)
+  throw lastError || uriError(uri)
 }
 
 async function getVSCodeUri({ confKey, uri, mainInclude }: UriRequest): Promise<StringWrapper> {
@@ -95,6 +110,12 @@ async function objectDetailFromUrl(url: string) {
   const root = uriRoot(uri)
   const obj = await root.getNodeAsync(uri.path)
   if (!isAbapFile(obj)) throw new Error("not found") // TODO error
+
+  // Load structure if not already loaded (required for contentsPath())
+  if (!obj.object.structure) {
+    await obj.object.loadStructure()
+  }
+
   let mainProgram
   if (obj.object.type === "PROG/I")
     mainProgram = IncludeService.get(uri.authority).current(uri.path)
@@ -149,6 +170,13 @@ async function includeChanged(prog: MainProgram) {
   await client.sendRequest(Methods.updateMainProgram, prog)
 }
 
+// Trigger syntax check for a specific URI (used when switching editors)
+export async function triggerSyntaxCheck(uri: string) {
+  if (client && client.state === State.Running) {
+    await client.sendRequest(Methods.triggerSyntaxCheck, uri)
+  }
+}
+
 function logCall(entry: LogEntry) {
   const logger = mongoApiLogger(entry.connection, entry.source, entry.fromClone)
   if (logger) logger(entry.call)
@@ -161,7 +189,7 @@ export async function startLanguageClient(context: ExtensionContext) {
   const module = context.asAbsolutePath(join("server", "dist", "server.js"))
   const transport = TransportKind.ipc
   const options = { execArgv: ["--nolazy", "--inspect=6010"] }
-  log("creating language client...")
+  // log("creating language client...")
 
   client = new LanguageClient(
     "ABAPFS_LC",
@@ -179,7 +207,6 @@ export async function startLanguageClient(context: ExtensionContext) {
       revealOutputChannelOn: RevealOutputChannelOn.Warn
     }
   )
-  log("starting language client...")
 
   IncludeProvider.get().onDidSelectInclude(includeChanged)
 

@@ -22,7 +22,10 @@ export type LockStatus = Locked | Unlocked | Locking | Unlocking
 export const delay = (t: number) => new Promise(r => setTimeout(r, t))
 
 export class LockObject {
-  constructor(private object: AbapObject, private service: AbapFsService) {}
+  constructor(
+    private object: AbapObject,
+    private service: AbapFsService
+  ) {}
   get key() {
     return this.object.key
   }

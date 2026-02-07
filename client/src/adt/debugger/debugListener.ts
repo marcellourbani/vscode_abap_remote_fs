@@ -8,12 +8,12 @@ import {
 } from "abap-adt-api"
 import { readFileSync, writeFileSync, existsSync, mkdirSync } from "fs"
 import { log, caughtToString, ignore, isUnDefined, firstInMap } from "../../lib"
-import { DebugProtocol } from "vscode-debugprotocol"
+import { DebugProtocol } from "@vscode/debugprotocol"
 import { Disposable, EventEmitter } from "vscode"
 import { getOrCreateClient } from "../conections"
 import { homedir } from "os"
 import { join } from "path"
-import { StoppedEvent, TerminatedEvent, ThreadEvent } from "vscode-debugadapter"
+import { StoppedEvent, TerminatedEvent, ThreadEvent } from "@vscode/debugadapter"
 import { v1 } from "uuid"
 import { getWinRegistryReader } from "./winregistry"
 import { context } from "../../extension"
@@ -219,8 +219,12 @@ export class DebugListener {
 
   private async mainLoop() {
     this.active = true
-    const cfg = await configFromKey(this.connId)
-    this.maxThreads = cfg.maxDebugThreads || 4
+    try {
+      const cfg = await configFromKey(this.connId)
+      this.maxThreads = cfg.maxDebugThreads || 4
+    } catch (error) {
+      this.maxThreads = 4
+    }
     let startTime = 0
     while (this.active) {
       try {
@@ -349,5 +353,10 @@ export class DebugListener {
     const proms: Promise<any>[] = [...stopServices]
 
     await Promise.all(proms)
+
+    // Dispose all event listeners to prevent memory leaks
+    this.listeners.forEach(l => l.dispose())
+    this.listeners = []
+    this.notifier.dispose()
   }
 }

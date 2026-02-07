@@ -1,10 +1,11 @@
 import { ADTClient, debugMetaIsComplex, DebugMetaType, DebugVariable } from "abap-adt-api"
-import { Handles, Scope } from "vscode-debugadapter"
-import { DebugProtocol } from "vscode-debugprotocol"
+import { Handles, Scope } from "@vscode/debugadapter"
+import { DebugProtocol } from "@vscode/debugprotocol"
 import { DebugListener } from "./debugListener"
 import { idThread, STACK_THREAD_MULTIPLIER } from "./debugService"
 import { AbapFsCommands, command } from "../../commands"
-import { env, window, ProgressLocation } from "vscode"
+import { env, ProgressLocation } from "vscode"
+import { funWindow as window } from "../../services/funMessenger"
 import { AbapDebugSession } from "./abapDebugSession"
 
 interface Variable {

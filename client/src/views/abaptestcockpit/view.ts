@@ -11,9 +11,9 @@ import {
   TreeDataProvider,
   TreeItem,
   TreeItemCollapsibleState,
-  Uri,
-  window
+  Uri
 } from "vscode"
+import { funWindow as window } from "../../services/funMessenger"
 import { getClient } from "../../adt/conections"
 import { AdtObjectFinder } from "../../adt/operations/AdtObjectFinder"
 import { AbapFsCommands } from "../../commands"
@@ -46,7 +46,10 @@ export class AtcRoot extends TreeItem {
   get filterExempt() {
     return this.parent.exemptFilter
   }
-  constructor(label: string, private parent: AtcProvider) {
+  constructor(
+    label: string,
+    private parent: AtcProvider
+  ) {
     super(label, TreeItemCollapsibleState.Expanded)
   }
   get children() {
@@ -148,7 +151,10 @@ export class AtcSystem extends TreeItem {
 export class AtcObject extends TreeItem {
   children: AtcFind[] = []
   hasError: boolean = false
-  constructor(public readonly object: AtcWLobject, public readonly parent: AtcSystem) {
+  constructor(
+    public readonly object: AtcWLobject,
+    public readonly parent: AtcSystem
+  ) {
     super(`${object.type} ${object.name}`, TreeItemCollapsibleState.Expanded)
   }
 }
@@ -284,10 +290,10 @@ class AtcProvider implements TreeDataProvider<AtcNode> {
     this.reportError(system)
   }
 
-  async runInspector(uri: Uri, setvariant: (variant: string) => void) {
+  async runInspector(uri: Uri, setvariant?: (variant: string) => void) {
     const client = getClient(uri.authority)
-    const { variant, checkVariant } = await getVariant(client, uri.authority)
-    setvariant(variant)
+    const { checkVariant } = await getVariant(client, uri.authority)
+    if (setvariant) setvariant(checkVariant)
     const system = await this.root.child(uri.authority, checkVariant)
     await system.load(() => runInspector(uri, system.variant, client))
     commands.executeCommand("abapfs.atcFinds.focus")

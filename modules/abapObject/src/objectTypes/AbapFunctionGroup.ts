@@ -19,7 +19,7 @@ export class AbapFunctionGroup extends AbapObjectBase {
     return { categories: [], objectTypes, nodes: valid }
   }
 
-  async childComponents(): Promise<NodeStructure> {
+  async childComponents(includeIncludes?: boolean): Promise<NodeStructure> {
     try {
       const unfiltered = await this.service.nodeContents(this.type, this.name, this.owner)
       return this.filterInvalid(unfiltered)

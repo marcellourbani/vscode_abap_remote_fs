@@ -22,11 +22,13 @@ import { isAbap, memoize, parts, toInt, hashParms, caughtToString } from "./func
 
 export async function findDefinition(impl: boolean, params: TextDocumentPositionParams) {
   if (!isAbap(params.textDocument.uri)) return
+  let co: any = null
   try {
-    const co = await clientAndObjfromUrl(params.textDocument.uri)
+    co = await clientAndObjfromUrl(params.textDocument.uri)
     if (!co) return
 
     const range = sourceRange(co.source, params.position.line + 1, params.position.character)
+
     const result = await co.client.statelessClone.findDefinition(
       co.obj.mainUrl,
       co.source,
@@ -59,9 +61,7 @@ export async function findDefinition(impl: boolean, params: TextDocumentPosition
       range: sourceRange(source, result.line, result.column)
     }
     return l
-  } catch (e) {
-    log("Exception in find definition:", caughtToString(e)) // ignore
-  }
+  } catch (e) {}
 }
 
 class LocationManager {
@@ -72,7 +72,10 @@ class LocationManager {
     ["CLAS/OSO", /^(?:(?=[^*"])[^"]*)?protected\s+section(?:\s|\n|\.)/i]
   ])
 
-  constructor(private conKey: string, private client: ADTClient) {
+  constructor(
+    private conKey: string,
+    private client: ADTClient
+  ) {
     this.classes = memoize(c => this.client.statelessClone.classComponents(c))
     this.sources = memoize(c => this.client.statelessClone.getObjectSource(c))
   }

@@ -1,4 +1,5 @@
-import { DecorationOptions, ExtensionContext, Position, Range, window, workspace } from "vscode"
+import { DecorationOptions, ExtensionContext, Position, Range, workspace } from "vscode"
+import { funWindow as window } from "../../services/funMessenger"
 import { atcProvider } from "."
 import { AtcFind, hasExemption } from "./view"
 let timeout: NodeJS.Timeout | undefined
@@ -17,6 +18,76 @@ const toDecoration = (m: AtcFind): DecorationOptions => ({
 })
 
 const fileFindings = new Map<string, AtcFind[]>()
+
+/**
+ * Get current decoration state for Copilot/AI analysis
+ * @param fileUri Optional specific file URI to get decorations for
+ * @returns Decoration data for the file(s)
+ */
+export function getATCDecorations(fileUri?: string) {
+  if (fileUri) {
+    const findings = fileFindings.get(fileUri) || []
+    return {
+      fileUri,
+      decorations: findings.map(finding => ({
+        line: finding.start.line + 1, // Convert to 1-based for display
+        character: finding.start.character + 1,
+        priority: finding.finding.priority,
+        priorityText:
+          finding.finding.priority === 1
+            ? "Error"
+            : finding.finding.priority === 2
+              ? "Warning"
+              : "Info",
+        message: finding.finding.messageTitle,
+        checkTitle: finding.finding.checkTitle,
+        hasExemption: !!finding.finding.exemptionApproval,
+        decorationType: !!finding.finding.exemptionApproval
+          ? "exempted"
+          : finding.finding.priority === 1
+            ? "error"
+            : finding.finding.priority === 2
+              ? "warning"
+              : "info"
+      }))
+    }
+  }
+
+  // Return all files with decorations
+  const allDecorations: Record<string, any> = {}
+  for (const [uri, findings] of fileFindings.entries()) {
+    allDecorations[uri] = findings.map(finding => ({
+      line: finding.start.line + 1,
+      character: finding.start.character + 1,
+      priority: finding.finding.priority,
+      priorityText:
+        finding.finding.priority === 1
+          ? "Error"
+          : finding.finding.priority === 2
+            ? "Warning"
+            : "Info",
+      message: finding.finding.messageTitle,
+      checkTitle: finding.finding.checkTitle,
+      hasExemption: !!finding.finding.exemptionApproval,
+      decorationType: !!finding.finding.exemptionApproval
+        ? "exempted"
+        : finding.finding.priority === 1
+          ? "error"
+          : finding.finding.priority === 2
+            ? "warning"
+            : "info"
+    }))
+  }
+
+  return {
+    totalFiles: fileFindings.size,
+    totalFindings: Array.from(fileFindings.values()).reduce(
+      (sum, findings) => sum + findings.length,
+      0
+    ),
+    decorations: allDecorations
+  }
+}
 function updateDecorations() {
   const editor = window.activeTextEditor
   if (!editor) return

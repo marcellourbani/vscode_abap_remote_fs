@@ -1,49 +1,214 @@
-body {
-  justify-content: center;
-  align-items: center;
-  margin: 1em 2em;
+/* Base layout */
+body { margin: 12px 16px; color: var(--vscode-editor-foreground); background: var(--vscode-editor-background); }
+
+/* Inputs */
+textarea, input, select { background: var(--vscode-input-background); color: var(--vscode-input-foreground); border: 1px solid var(--vscode-input-border); }
+
+/* Buttons */
+button { background: var(--vscode-button-background); color: var(--vscode-button-foreground); border: 1px solid var(--vscode-button-border, transparent); }
+button:hover { background: var(--vscode-button-hoverBackground); }
+
+/* Error text */
+p.error { color: var(--vscode-editorError-foreground); background: var(--vscode-editorError-background); }
+
+/* Toolbar */
+.adb-root { display: flex; flex-direction: column; gap: 10px; }
+.adb-toolbar { display: flex; justify-content: space-between; gap: 12px; align-items: flex-start; border-bottom: 1px solid var(--vscode-editorWidget-border); padding-bottom: 6px; position: relative; flex-wrap: wrap; }
+.adb-object { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; position: relative; }
+.adb-actions { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+.adb-actions-row2 { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; margin-top: 6px; }
+.adb-actions input { width: 80px; }
+
+/* Search results popup */
+.adb-search-results { display: none; max-height: 240px; overflow: auto; border: 1px solid var(--vscode-editorWidget-border); padding: 6px; background: var(--vscode-editorWidget-background); position: absolute; top: 36px; left: 0; z-index: 10; min-width: 420px; box-shadow: 0 2px 8px rgba(0,0,0,0.3); }
+.adb-ul { list-style: none; padding: 0; margin: 0; }
+.adb-li { padding: 4px 6px; cursor: pointer; border-radius: 3px; }
+.adb-li:hover { background: var(--vscode-list-hoverBackground); }
+
+/* Panels */
+.adb-panel { border: 1px solid var(--vscode-editorWidget-border); padding: 8px; background: var(--vscode-editor-background); }
+.adb-sqlbox { width: 100%; height: 10em; font-family: var(--vscode-editor-font-family, Consolas, monospace); font-size: 12px; }
+
+/* Fields header */
+.adb-fields-header { 
+  display: flex; 
+  gap: 8px; 
+  align-items: center; 
+  padding: 6px 8px; 
+  border-bottom: 1px solid var(--vscode-editorWidget-border); 
+  background: var(--vscode-titleBar-activeBackground); 
+}
+.adb-fields-pager { 
+  display: flex; 
+  gap: 4px; 
+  align-items: center; 
 }
 
-body.vscode-dark th {
-  background-color: #0366d6;
+/* Criteria */
+.adb-crit-table { width: 100%; border-collapse: collapse; }
+.adb-crit-table th, .adb-crit-table td { border-bottom: 1px solid var(--vscode-editorWidget-border); padding: 6px; }
+.adb-crit-table th { text-align: left; background: var(--vscode-titleBar-activeBackground); color: var(--vscode-titleBar-activeForeground); }
+
+/* Load more */
+.adb-loadmore { display: flex; justify-content: center; padding: 8px; }
+
+/* Busy indicator - position at top */
+.adb-busy { 
+  position: fixed;
+  top: 50px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 1000;
+  display: flex; 
+  align-items: center; 
+  gap: 8px; 
+  padding: 8px 16px; 
+  background: var(--vscode-editor-background); 
+  border: 1px solid var(--vscode-editorWidget-border); 
+  border-radius: 4px; 
+  box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+}
+.adb-spinner { 
+  width: 16px; 
+  height: 16px; 
+  border: 2px solid var(--vscode-editorWidget-border); 
+  border-top: 2px solid var(--vscode-button-background); 
+  border-radius: 50%; 
+  animation: spin 1s linear infinite; 
+}
+@keyframes spin { 
+  0% { transform: rotate(0deg); } 
+  100% { transform: rotate(360deg); } 
 }
 
-body.vscode-dark td {
-  background-color: #222222;
+/* --- Tabulator: compact, modern, one-line rows --- */
+/* Result table container - ensure proper sizing */
+/* Result table container - let webview handle scrolling */
+/* Result table container - let it grow naturally */
+#result-table {
+  width: 100%;
+  border: none; /* Remove container border */
+  overflow: visible; /* Let content determine size */
 }
 
-body.vscode-light th {
-  background-color: #82acdb;
+.tabulator {
+  background-color: transparent; /* Use webview background */
+  color: var(--vscode-editor-foreground);
+  font-family: var(--vscode-editor-font-family, Segoe UI, Arial, sans-serif);
+  font-size: 12px;
+  width: 100%;
+  border: 1px solid var(--vscode-editorWidget-border); /* Add border to Tabulator itself */
 }
 
-body.vscode-light td {
-  background-color: #d3d3d3;
-}
-
-td {
-  padding-right: 10px;
-}
-
-td.flag {
-  text-align: center;
-}
-
-td.number {
-  text-align: right;
-}
-
-textarea {
-  background-color: var(--vscode-editor-background);
-  color: var(--vscode-editor-forground);
-}
-
+/* Buttons - make them bigger */
 button {
-  background-color: var(--vscode-button-background);
-  color: var(--vscode-button-forground);
+  background: var(--vscode-button-background);
+  color: var(--vscode-button-foreground);
+  border: 1px solid var(--vscode-button-border, transparent);
+  padding: 8px 16px; /* Increased padding for bigger buttons */
+  border-radius: 4px;
+  font-size: 13px; /* Slightly larger font */
+  cursor: pointer;
 }
 
+button:hover {
+  background: var(--vscode-button-hoverBackground);
+}
 
-p.error {
-  color: var(--vscode-editorError-foreground);
-  background-color: var(--vscode-editorError-background);
+.tabulator-header {
+  background-color: var(--vscode-titleBar-activeBackground, #2b2b2b);
+  border-bottom: 1px solid var(--vscode-editorWidget-border, #3c3c3c);
+}
+
+.tabulator-col, .tabulator-col-row-handle {
+  border-right: 1px solid var(--vscode-editorWidget-border, #3c3c3c);
+}
+
+.tabulator-cell {
+  border-right: 1px solid var(--vscode-editorWidget-border, #3c3c3c);
+}
+
+.tabulator-col .tabulator-col-title {
+  white-space: nowrap;
+/*/*  overflow:scroll; /* Don't hide column titles */
+  text-overflow: clip; /* Don't add ellipsis to headers */
+  min-width: 100px; /* Ensure minimum readable width */
+}
+
+/* Header filters */
+.tabulator-header .tabulator-col .tabulator-header-filter {
+  padding: 4px 6px;
+}
+
+.tabulator-header input[type="search"],
+.tabulator-header input[type="text"],
+.tabulator-header .tabulator-header-filter input {
+  background: var(--vscode-input-background);
+  color: var(--vscode-input-foreground);
+  border: 1px solid var(--vscode-input-border, #3c3c3c);
+  border-radius: 4px;
+  height: 22px;
+  padding: 0 6px;
+}
+
+/* Let Tabulator handle sizing, just ensure no wrapping */
+.tabulator-row .tabulator-cell {
+  white-space: nowrap !important;
+  overflow: hidden !important;
+  text-overflow: ellipsis !important;
+  padding: 2px 4px; /* Add minimal padding */
+  line-height: 22px; /* Ensure text is vertically centered */
+}
+
+/* Gridlines */
+.tabulator-row, .tabulator-col {
+  border-right: 1px solid var(--vscode-editorWidget-border, #3c3c3c);
+  border-bottom: 1px solid var(--vscode-editorWidget-border, #3c3c3c);
+}
+.tabulator-header {
+  border-bottom: 1px solid var(--vscode-editorWidget-border, #3c3c3c);
+}
+
+/* Table scrolling */
+.tabulator .tabulator-tableholder { 
+  overflow: auto; /* Both horizontal and vertical scroll */
+}
+
+/* Pagination (if enabled later) and footer area */
+.tabulator-footer {
+  background: var(--vscode-titleBar-activeBackground, #2b2b2b);
+  border-top: 1px solid var(--vscode-editorWidget-border, #3c3c3c);
+}
+
+/* Buttons to match VSCode theme */
+.tabulator .tabulator-page,
+.tabulator .tabulator-pages button {
+  background: var(--vscode-button-secondaryBackground, #3a3d41);
+  color: var(--vscode-button-foreground, #fff);
+  border: 1px solid var(--vscode-button-border, transparent);
+}
+
+/* Ensure Tabulator gridlines are visible and not overridden by VS Code defaults */
+.tabulator {
+    border: 1px solid var(--vscode-editorWidget-border, #454545) !important;
+}
+.tabulator .tabulator-header, .tabulator .tabulator-row {
+    border-bottom: 1px solid var(--vscode-editorWidget-border, #454545) !important;
+}
+.tabulator .tabulator-cell {
+    border-right: 1px solid var(--vscode-editorWidget-border, #454545) !important;
+}
+
+/* Ensure context menus are visible */
+.tabulator-menu {
+    background-color: var(--vscode-menu-background) !important;
+    border: 1px solid var(--vscode-menu-border) !important;
+    color: var(--vscode-menu-foreground) !important;
+    z-index: 10000 !important; /* Ensure it's on top */
+}
+.tabulator-menu-item {
+    color: var(--vscode-menu-foreground) !important;
+}
+.tabulator-menu-item:hover {
+    background-color: var(--vscode-menu-selectionBackground) !important;
 }

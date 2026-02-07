@@ -26,10 +26,17 @@ export async function getObject(uri: string) {
 }
 
 export async function vscUrl(confKey: string, uri: string, main: boolean = true) {
-  const key = `${confKey} ${uri} ${main}`
+  const isContextualInclude = /\/source\/main/i.test(uri)
+  const normalizedUri = isContextualInclude
+    ? uri.replace(/\/source\/main(?:[?#].*)?$/i, "") || uri
+    : uri
+  const key = `${confKey} ${normalizedUri} ${main || isContextualInclude}`
   let vsurl = vsurlCache.get(key)
   if (!vsurl && vsurl !== "") {
-    vsurl = await getVSCodeUri(confKey, uri, main)
+    // console.log(`vscUrl - requesting for confKey: ${confKey}, uri: ${uri}, main: ${main}`)
+    const targetMain = main || isContextualInclude
+    vsurl = await getVSCodeUri(confKey, normalizedUri, targetMain)
+    // console.log(`vscUrl - getVSCodeUri returned: ${vsurl}`)
     vsurlCache.set(key, vsurl)
   }
   return vsurl

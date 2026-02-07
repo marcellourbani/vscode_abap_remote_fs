@@ -8,7 +8,7 @@ import {
 import { AbapObjectService } from "./AOService"
 import { ObjectErrors } from "./AOError"
 const SAPGUIONLY =
-  "Objects of this type are only supported in SAPGUI. Press Ctrl+Shift+F6 to edit in sapgui"
+  "This object type is not supported in VS Code. It is being opened in SAP GUI instead.\n Please wait, this can take a few seconds.."
 const NSSLASH = "\u2215" // used to be hardcoded as "／", aka "\uFF0F"
 export const PACKAGE = "DEVC/K"
 export const TMPPACKAGE = "$TMP"
@@ -72,7 +72,7 @@ export interface AbapObject {
   delete: (lockId: string, transport: string) => Promise<void>
   write: (contents: string, lockId: string, transport: string) => Promise<void>
   read: () => Promise<string>
-  childComponents: () => Promise<NodeStructure>
+  childComponents: (includeIncludes?: boolean) => Promise<NodeStructure>
 }
 
 const ignoreErr = () => {}
@@ -226,7 +226,7 @@ export class AbapObjectBase implements AbapObject {
     return this.service.getObjectSource(this.contentsPath(), version)
   }
 
-  protected filterInvalid(original: NodeStructure): NodeStructure {
+  protected filterInvalid(original: NodeStructure, includeIncludes?: boolean): NodeStructure {
     const { nodes, objectTypes } = original
     const valid = nodes.filter(
       n => (n.OBJECT_TYPE === PACKAGE || !n.OBJECT_TYPE.match(/DEVC\//)) && !!n.OBJECT_URI
@@ -242,10 +242,10 @@ export class AbapObjectBase implements AbapObject {
     return { ...original, nodes: valid, objectTypes: types }
   }
 
-  async childComponents(): Promise<NodeStructure> {
+  async childComponents(includeIncludes?: boolean): Promise<NodeStructure> {
     if (!this.expandable) throw ObjectErrors.isLeaf(this)
     if (!isNodeParent(this.type)) throw ObjectErrors.NotSupported(this)
     const unfiltered = await this.service.nodeContents(this.type, this.name, this.owner)
-    return this.filterInvalid(unfiltered)
+    return this.filterInvalid(unfiltered, includeIncludes)
   }
 }

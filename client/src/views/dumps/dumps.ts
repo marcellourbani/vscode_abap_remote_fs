@@ -4,9 +4,9 @@ import {
   TreeDataProvider,
   TreeItem,
   TreeItemCollapsibleState,
-  ViewColumn,
-  window
+  ViewColumn
 } from "vscode"
+import { funWindow as window } from "../../services/funMessenger"
 import { getOrCreateClient } from "../../adt/conections"
 import { AdtObjectFinder } from "../../adt/operations/AdtObjectFinder"
 import { AbapFsCommands, command } from "../../commands"
@@ -66,7 +66,10 @@ class SystemItem extends TreeItem {
   readonly tag = "system"
   private dumpFeed?: Feed | "none"
   contextValue = "system"
-  constructor(label: string, private connId: string) {
+  constructor(
+    label: string,
+    private connId: string
+  ) {
     super(label, TreeItemCollapsibleState.Expanded)
   }
   @command(AbapFsCommands.refreshDumps)

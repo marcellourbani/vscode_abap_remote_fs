@@ -21,9 +21,10 @@ import {
   BindinTypes
 } from "abap-adt-api"
 import { CreatableTypes } from "abap-adt-api"
-import { Uri, window, FileStat } from "vscode"
+import { Uri, FileStat } from "vscode"
+import { funWindow as window } from "../../services/funMessenger"
 import { selectTransport } from "../AdtTransports"
-import { fieldOrder, quickPick, rfsExtract, rfsTaskEither, rfsTryCatch } from "../../lib"
+import { fieldOrder, quickPick, rfsExtract, rfsTaskEither, rfsTryCatch, log } from "../../lib"
 import { MySearchResult, AdtObjectFinder, pathSequence, createUri } from "./AdtObjectFinder"
 import { getClient, getRoot } from "../conections"
 import { isAbapFolder, isAbapStat, isFolder } from "abapfs"
@@ -82,37 +83,71 @@ export class AdtObjectCreator {
    * @param uri Creates an ABAP object
    */
   public async createObject(uri: Uri | undefined) {
-    const objDetails = await this.getObjectDetails(uri)
-    if (!objDetails) return
-    const { options, devclass } = objDetails
-    await this.validateObject(options)
-    const layer = hasPackageOptions(options) ? options.transportLayer : ""
-    const transport = await selectTransport(
-      objectPath(options.objtype, options.name, options.parentName),
-      devclass,
-      getClient(this.connId),
-      true,
-      undefined,
-      layer
-    )
-    if (transport.cancelled) return
-    options.transport = transport.transport
-    await getClient(this.connId).createObject(options)
-    const parent = await this.getAndRefreshParent(objDetails.options)
-    const obj = fromNode(
-      {
-        EXPANDABLE: "",
-        OBJECT_NAME: options.name,
-        OBJECT_TYPE: options.objtype,
-        OBJECT_URI: objectPath(options),
-        OBJECT_VIT_URI: "",
-        TECH_NAME: options.name
-      },
-      parent,
-      getRoot(this.connId).service
-    )
-    if (options.objtype !== PACKAGE) await obj.loadStructure()
-    return obj
+    try {
+      const objDetails = await this.getObjectDetails(uri)
+
+      if (!objDetails) {
+        log("No object details returned - user cancelled or error")
+        return
+      }
+
+      const { options, devclass } = objDetails
+
+      await this.validateObject(options)
+
+      const layer = hasPackageOptions(options) ? options.transportLayer : ""
+
+      const transport = await selectTransport(
+        objectPath(options.objtype, options.name, options.parentName),
+        devclass,
+        getClient(this.connId),
+        true,
+        undefined,
+        layer
+      )
+      //log("Step 5: Transport selection completed");
+      //log("transport: " + JSON.stringify(transport, null, 2));
+
+      if (transport.cancelled) {
+        log("Transport selection cancelled - exiting")
+        return
+      }
+
+      options.transport = transport.transport
+      // log("Step 6: About to call ADT createObject API");
+      // log("Final options: " + JSON.stringify(options, null, 2));
+
+      await getClient(this.connId).createObject(options)
+      //log("Step 7: ADT createObject API call completed");
+
+      const parent = await this.getAndRefreshParent(objDetails.options)
+      //log("Step 8: Parent refreshed");
+
+      const obj = fromNode(
+        {
+          EXPANDABLE: "",
+          OBJECT_NAME: options.name,
+          OBJECT_TYPE: options.objtype,
+          OBJECT_URI: objectPath(options),
+          OBJECT_VIT_URI: "",
+          TECH_NAME: options.name
+        },
+        parent,
+        getRoot(this.connId).service
+      )
+      //log("Step 9: Object node created");
+
+      if (options.objtype !== PACKAGE) await obj.loadStructure()
+      //log("Step 10: Object structure loaded (if not package)");
+      //log("Final object: " + JSON.stringify({ name: obj.name, type: obj.type }, null, 2));
+      //log("=== CREATE OBJECT SUCCESS ===");
+
+      return obj
+    } catch (error) {
+      log("ERROR in createObject: " + error)
+      log("=== CREATE OBJECT ERROR ===")
+      throw error
+    }
   }
 
   public guessParentByType(hierarchy: FileStat[], type: ParentTypeIds): string {

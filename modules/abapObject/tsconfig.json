@@ -13,6 +13,9 @@
     "strict": true,
     "noUnusedLocals": false,
     "composite": true,
+    /* Incremental Compilation */
+    "incremental": true,
+    "tsBuildInfoFile": ".tsbuildinfo",
     "skipLibCheck": true
   },
   "include": ["src", "./src/sampledata/*.json"],

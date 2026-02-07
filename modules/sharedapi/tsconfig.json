@@ -11,6 +11,9 @@
     // "outFile": "./",                       /* Concatenate and emit output to single file. */
     "outDir": "out" /* Redirect output structure to the directory. */,
     "rootDir": "src" /* Specify the root directory of input files. Use to control the output directory structure with --outDir. */,
+    /* Incremental Compilation */
+    "incremental": true,
+    "tsBuildInfoFile": ".tsbuildinfo",
     /* Strict Type-Checking Options */
     "strict": true /* Enable all strict type-checking options. */,
     "esModuleInterop": true /* Enables emit interoperability between CommonJS and ES Modules via creation of namespace objects for all imports. Implies 'allowSyntheticDefaultImports'. */

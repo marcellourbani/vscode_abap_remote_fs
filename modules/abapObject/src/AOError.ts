@@ -11,7 +11,11 @@ export type Kind =
 
 export class AbapObjectError extends Error {
   [errorTag]: true
-  constructor(readonly kind: Kind, readonly sourceObject: AbapObject | undefined, message: string) {
+  constructor(
+    readonly kind: Kind,
+    readonly sourceObject: AbapObject | undefined,
+    message: string
+  ) {
     super(message)
     this[errorTag] = true
   }

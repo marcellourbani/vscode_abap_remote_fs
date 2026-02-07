@@ -6,10 +6,10 @@ import {
   QuickPickOptions,
   Selection,
   Uri,
-  window,
   workspace,
   WorkspaceEdit
 } from "vscode"
+import { funWindow as window } from "../../services/funMessenger"
 import { getClient } from "../../adt/conections"
 import { RemoteManager } from "../../config"
 import {
@@ -190,7 +190,7 @@ const showDocumentation = async (item: AtcFind) => {
 export const atcRefresh = async (item?: AtcNode) => {
   try {
     await window.withProgress(
-      { location: ProgressLocation.Window, title: `Refreshing ABAP Test cockpit` },
+      { location: ProgressLocation.Notification, title: `Refreshing ABAP Test cockpit` },
       async () => {
         if (item instanceof AtcSystem) {
           return item.refresh()

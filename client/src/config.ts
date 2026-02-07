@@ -5,7 +5,6 @@ import {
   SOURCE_CLIENT
 } from "vscode-abap-remote-fs-sharedapi"
 import {
-  window,
   workspace,
   QuickPickItem,
   WorkspaceFolder,
@@ -14,6 +13,7 @@ import {
   Event,
   ConfigurationChangeEvent
 } from "vscode"
+import { funWindow as window } from "./services/funMessenger"
 import { ADTClient, createSSLConfig, LogCallback } from "abap-adt-api"
 import { readFileSync } from "fs"
 import { createProxy } from "method-call-logger"
@@ -93,7 +93,7 @@ export const saveNewRemote = async (cfg: ClientConfiguration, target: Configurat
 
 const config = (name: string, remote: RemoteConfig) => {
   const conf = { ...defaultConfig, ...remote, name, valid: true }
-  conf.valid = !!(remote.url && remote.username && remote.password)
+  conf.valid = !!(remote.url && remote.username) // ✅ SECURITY FIX: Removed password validation from settings
   if (conf.customCA && !conf.customCA.match(/-----BEGIN CERTIFICATE-----/gi))
     try {
       conf.customCA = readFileSync(conf.customCA).toString()
@@ -216,9 +216,12 @@ export class RemoteManager {
     if (!conn) {
       conn = this.loadRemote(connectionId)
       if (!conn) return
+
+      // 🔐 SECURITY FIX: Always get password from secure storage only
       if (!conn.password) {
         conn.password = await this.getPassword(connectionId, conn.username)
       }
+
       conn.name = connectionId
       this.connections.set(connectionId, conn)
     }

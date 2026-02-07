@@ -1,4 +1,5 @@
-import { window, ViewColumn, Uri } from "vscode"
+import { ViewColumn, Uri } from "vscode"
+import { funWindow as window } from "../services/funMessenger"
 import { ADTSCHEME, getClient } from "../adt/conections"
 import { AdtObjectFinder, findAbapObject } from "../adt/operations/AdtObjectFinder"
 import { injectUrlHandler } from "./utilities"

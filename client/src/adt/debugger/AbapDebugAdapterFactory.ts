@@ -1,9 +1,9 @@
 import {
   DebugAdapterDescriptor,
   DebugAdapterDescriptorFactory,
-  DebugAdapterInlineImplementation,
-  window
+  DebugAdapterInlineImplementation
 } from "vscode"
+import { funWindow as window } from "../../services/funMessenger"
 import { log } from "../../lib"
 import { AbapDebugSession, AbapDebugSessionCfg } from "./abapDebugSession"
 import { DebugListener } from "./debugListener"

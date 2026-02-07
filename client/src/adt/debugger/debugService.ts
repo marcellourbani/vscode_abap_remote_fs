@@ -1,9 +1,9 @@
 import { ADTClient, Debuggee, DebugStepType, session_types, isAdtError } from "abap-adt-api"
 import { newClientFromKey } from "./functions"
 import { log, caughtToString, ignore } from "../../lib"
-import { DebugProtocol } from "vscode-debugprotocol"
+import { DebugProtocol } from "@vscode/debugprotocol"
 import { Disposable, EventEmitter } from "vscode"
-import { ContinuedEvent, Source, StoppedEvent, ThreadEvent } from "vscode-debugadapter"
+import { ContinuedEvent, Source, StoppedEvent, ThreadEvent } from "@vscode/debugadapter"
 import { vsCodeUri } from "../../langClient"
 import { DebugListener, errorType, THREAD_EXITED } from "./debugListener"
 export const STACK_THREAD_MULTIPLIER = 1000000000000
@@ -66,7 +66,10 @@ export class DebugService {
   }
   public async attach() {
     await this.client.debuggerAttach(this.mode, this.debuggee.DEBUGGEE_ID, this.username, true)
-    await this.client.debuggerSaveSettings({})
+    // Fire saveSettings in background - not critical for attach
+    this.client.debuggerSaveSettings({}).catch(e => {
+      log(caughtToString(e))
+    })
     await this.updateStack()
   }
 
@@ -140,6 +143,10 @@ export class DebugService {
     if (this.killed) return
     const client = this.client
     this.killed = true
+    // Dispose all event listeners to prevent memory leaks
+    this.listeners.forEach(l => l.dispose())
+    this.listeners = []
+    this.notifier.dispose()
     await client.statelessClone.logout().catch(ignore)
     await client.logout()
   }

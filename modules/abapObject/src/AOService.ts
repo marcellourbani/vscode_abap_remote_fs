@@ -43,6 +43,7 @@ export class AOService implements AbapObjectService {
   constructor(protected client: ADTClient) {}
 
   private activeStructCache = new Map<string, Promise<AbapObjectStructure>>()
+  private readonly MAX_STRUCT_CACHE_SIZE = 100 // Prevent unlimited growth
 
   delete(path: string, lockId: string, transport: string) {
     return this.client.deleteObject(path, lockId, transport)
@@ -60,10 +61,18 @@ export class AOService implements AbapObjectService {
     if (refresh) this.activeStructCache.delete(path)
     let structure = this.activeStructCache.get(path)
     if (!structure) {
+      // Performance: Check cache size and evict oldest if needed
+      if (this.activeStructCache.size >= this.MAX_STRUCT_CACHE_SIZE) {
+        const oldestKey = this.activeStructCache.keys().next().value
+        if (oldestKey) {
+          this.activeStructCache.delete(oldestKey)
+        }
+      }
+
       structure = this.client.statelessClone.objectStructure(path, version)
       this.activeStructCache.set(path, structure)
       if (!version || version === "active")
-        structure.finally(() => setTimeout(() => this.invalidateStructCache(path), 800))
+        structure.finally(() => setTimeout(() => this.invalidateStructCache(path), 600000))
     }
     return structure
   }
@@ -84,7 +93,7 @@ export class AOService implements AbapObjectService {
     parents?: number[],
     refresh = false
   ) {
-    const key = `${type} ${name}`
+    const key = `${type} ${name} ${owner || ""}`
     let next = this.contentsCache.get(key)
     if (!next) {
       next = this.client.statelessClone.nodeContents(type, name, owner, undefined, refresh, parents)

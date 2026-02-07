@@ -194,7 +194,7 @@ export class ClassHierarchyLensProvider implements CodeLensProvider {
   private static refreshHier(p: RefreshParams) {
     const targ = p.parents ? "parent" : "child"
     const title = `Loading ${targ} classes...`
-    window.withProgress({ location: ProgressLocation.Window, title }, async () => {
+    window.withProgress({ location: ProgressLocation.Notification, title }, async () => {
       const ocache = ClassHierarchyLensProvider.caches.get(p.connId)(p.key)
       const result = await (p.parents
         ? ocache.refreshParents(p.key, true)

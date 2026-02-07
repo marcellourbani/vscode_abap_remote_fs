@@ -1,4 +1,5 @@
-import { window, ProgressLocation, CancellationToken, Uri } from "vscode"
+import { ProgressLocation, CancellationToken, Uri } from "vscode"
+import { funWindow as window } from "../services/funMessenger"
 import { ADTClient, TransportInfo } from "abap-adt-api"
 import { fieldOrder, withp } from "../lib"
 import { TransportValidator } from "../api"
@@ -151,6 +152,7 @@ export const selectTransportIfNeeded = async (uri: Uri) => {
   const root = uriRoot(uri)
   const file = root.getNode(uri.path)
   if (!isAbapStat(file)) return trSel("")
+
   const status = transportStatus(uri)
   switch (status.status) {
     case TransportStatus.LOCAL:

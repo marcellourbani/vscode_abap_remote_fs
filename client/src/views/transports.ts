@@ -44,7 +44,7 @@ const getTransportConfig = async (client: ADTClient) => {
   return newconfigs[0]
 }
 
-const readTransports = async (connId: string, user: string) => {
+export const readTransports = async (connId: string, user: string) => {
   const client = getClient(connId)
   if (await client.hasTransportConfig()) {
     const User = user.toUpperCase()
@@ -140,7 +140,7 @@ class TransportItem extends CollectionItem {
     try {
       const transport = tran.task["tm:number"]
       await window.withProgress(
-        { location: ProgressLocation.Window, title: `Releasing ${transport}` },
+        { location: ProgressLocation.Notification, title: `Releasing ${transport}` },
         async () => {
           // before releasing the main transports, release subtasks if
           //  - not released
@@ -176,7 +176,11 @@ class TransportItem extends CollectionItem {
     return this.released ? "tr_released" : "tr_unreleased"
   }
 
-  constructor(public task: TransportTask, public connId: string, public transport?: TransportItem) {
+  constructor(
+    public task: TransportTask,
+    public connId: string,
+    public transport?: TransportItem
+  ) {
     super(`${task["tm:number"]} ${task["tm:owner"]} ${task["tm:desc"]}`)
     this.typeId = TransportItem.tranTypeId
     this.collapsibleState = TreeItemCollapsibleState.Collapsed
@@ -395,7 +399,7 @@ export class TransportsProvider implements TreeDataProvider<CollectionItem> {
     try {
       await window.withProgress(
         {
-          location: ProgressLocation.Window,
+          location: ProgressLocation.Notification,
           title: `Running ABAP Test cockpit on ${tran.task["tm:number"]}`
         },
         () => atcProvider.runInspectorByAdtUrl(tran.task["tm:uri"], tran.connId)

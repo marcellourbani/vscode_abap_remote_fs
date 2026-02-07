@@ -4,9 +4,9 @@ import {
   TextDocument,
   Webview,
   Uri,
-  ExtensionContext,
-  window
+  ExtensionContext
 } from "vscode"
+import { funWindow as window } from "../services/funMessenger"
 import path from "path"
 import { parseHTTP } from "./httpparser"
 
