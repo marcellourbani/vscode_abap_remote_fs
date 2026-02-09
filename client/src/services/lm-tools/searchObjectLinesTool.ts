@@ -12,7 +12,8 @@ import {
   getOptimalObjectURI,
   resolveCorrectURI,
   getObjectEnhancements,
-  getTableTypeFromDD
+  getTableTypeFromDD,
+  getTableStructureFromDD
 } from "./shared"
 
 // ============================================================================
@@ -51,7 +52,17 @@ async function getCompleteTableStructure(
       try {
         mainStructure = await client.getObjectSource(finalUri)
       } catch (finalError) {
-        return `Could not retrieve table structure for ${objectName}: ${finalError}`
+        // Fallback to DD query
+        try {
+          const tableFields = await getTableStructureFromDD(client, objectName)
+          if (tableFields) {
+            mainStructure = tableFields
+          } else {
+            return `Could not retrieve table structure for ${objectName}: ${finalError}`
+          }
+        } catch (ddError) {
+          return `Could not retrieve table structure for ${objectName}: ${ddError}`
+        }
       }
     }
 

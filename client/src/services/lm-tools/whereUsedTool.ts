@@ -155,11 +155,17 @@ export class ABAPWhereUsedTool implements vscode.LanguageModelTool<IWhereUsedPar
           objectSource = await client.getObjectSource(objectInfo.uri)
           mainUrl = objectInfo.uri
         } catch (fallbackError) {
-          return new vscode.LanguageModelToolResult([
-            new vscode.LanguageModelTextPart(
-              `Could not access source for object: ${objectName}. Error: ${fallbackError}`
-            )
-          ])
+          // If searchTerm is provided, we need the source to find it - fail
+          if (searchTerm) {
+            return new vscode.LanguageModelToolResult([
+              new vscode.LanguageModelTextPart(
+                `Could not access source for object: ${objectName}. Error: ${fallbackError}`
+              )
+            ])
+          }
+          // Otherwise, continue without source - will default to line 1, char 0
+          // mainUrl remains as objectInfo.uri which was set earlier
+          objectSource = ""
         }
       }
 

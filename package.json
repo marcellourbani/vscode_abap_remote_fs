@@ -3680,6 +3680,12 @@
           "default": "",
           "description": "API key for MCP server authentication. When set, clients must include this key in the Authorization header (Bearer token). Leave empty to allow unauthenticated local access (not recommended for shared machines)."
         },
+        "abapfs.autoOpenUnsupportedInGui": {
+          "type": "boolean",
+          "default": true,
+          "scope": "application",
+          "description": "Automatically open unsupported object types in SAP GUI. When disabled, shows a message with instructions to manually open using Ctrl+Shift+F5."
+        },
         "abapfs.embeddedGui": {
           "type": "object",
           "description": "Configuration for embedded SAP GUI for HTML functionality",

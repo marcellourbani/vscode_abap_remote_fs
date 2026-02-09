@@ -12,7 +12,8 @@ import {
   window,
   TextDocumentSaveReason,
   commands,
-  ExtensionContext
+  ExtensionContext,
+  workspace
 } from "vscode"
 import { caughtToString, log } from "../lib"
 import { isAbapFile, isAbapFolder, isFolder } from "abapfs"
@@ -117,13 +118,32 @@ export class FsProvider implements FileSystemProvider {
 
         const contents = await node.read()
 
-        // Check if this is a SAPGUI-only object and auto-trigger
+        // Check if this is a SAPGUI-only object and handle based on setting
         if (contents.includes("This object type is not supported in VS Code")) {
-          // Automatically trigger runInGui command
-          // Use setTimeout to ensure the document is opened first so URI context is available
-          setTimeout(() => {
-            commands.executeCommand("abapfs.runInGui")
-          }, 1000)
+          const autoOpen = workspace.getConfiguration("abapfs").get<boolean>("autoOpenUnsupportedInGui", true)
+          
+          if (autoOpen) {
+            // Automatically trigger runInGui command
+            // Use setTimeout to ensure the document is opened first so URI context is available
+            setTimeout(() => {
+              commands.executeCommand("abapfs.runInGui")
+            }, 1000)
+          } else {
+            // Show message with action buttons
+            setTimeout(async () => {
+              const choice = await window.showInformationMessage(
+                "This object type is not supported in VS Code.",
+                "Open in SAP GUI",
+                "Always Auto Open"
+              )
+              if (choice === "Open in SAP GUI") {
+                commands.executeCommand("abapfs.runInGui")
+              } else if (choice === "Always Auto Open") {
+                await workspace.getConfiguration("abapfs").update("autoOpenUnsupportedInGui", true, true)
+                commands.executeCommand("abapfs.runInGui")
+              }
+            }, 500)
+          }
         }
 
         const buf = Buffer.from(contents)

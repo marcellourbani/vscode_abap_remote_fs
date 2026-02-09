@@ -11,6 +11,7 @@ This documentation covers all features in detail. The goal: make ABAP developmen
     - [1. Enable MCP Server in VS Code](#1-enable-mcp-server-in-vs-code)
     - [2. Connect to SAP System](#2-connect-to-sap-system)
     - [3. Configure Your AI Tool](#3-configure-your-ai-tool)
+    - [Using API Key Authentication](#using-api-key-authentication)
     - [4. Verify Connection](#4-verify-connection)
   - [Limitations](#limitations)
   - [Available Tools](#available-tools)
@@ -203,14 +204,18 @@ Open VS Code Settings (`Ctrl+,`) and search for `mcpServer`:
 
 - **`abapfs.mcpServer.autoStart`**: Set to `true` to start MCP server automatically
 - **`abapfs.mcpServer.port`**: Default is `4847` (change if port conflicts)
+- **`abapfs.mcpServer.apiKey`**: Optional API key for authentication (recommended for shared machines)
 
 Alternatively, add to your `settings.json`:
 ```json
 {
   "abapfs.mcpServer.autoStart": true,
-  "abapfs.mcpServer.port": 4847
+  "abapfs.mcpServer.port": 4847,
+  "abapfs.mcpServer.apiKey": "your-secret-key-here"
 }
 ```
+
+> ⚠️ **Security Note:** If you're on a shared machine or exposing the MCP server beyond localhost, set an API key to prevent unauthorized access to your SAP system.
 
 Reload VS Code after changing settings. You'll see a notification: "🔌 MCP Server running on port 4847"
 
@@ -246,6 +251,26 @@ Add to Claude's config file:
 
 **For other MCP clients:**
 Use the Streamable HTTP endpoint: `http://localhost:4847/mcp`
+
+### Using API Key Authentication
+
+If you've configured an API key in VS Code (`abapfs.mcpServer.apiKey`), your MCP client must include it in requests using a Bearer token in the `Authorization` header.
+
+**For clients that support headers:**
+```json
+{
+  "mcpServers": {
+    "abap-fs": {
+      "url": "http://localhost:4847/mcp",
+      "headers": {
+        "Authorization": "Bearer your-secret-key-here"
+      }
+    }
+  }
+}
+```
+
+**Note:** Without a valid API key, requests will receive a `401 Unauthorized` response. The `/health` endpoint is always accessible without authentication for connectivity checks.
 
 ### 4. Verify Connection
 
@@ -288,6 +313,10 @@ All 30+ ABAP FS Language Model Tools are exposed via MCP, including:
 - Ensure VS Code is connected to an SAP system
 - Check that the MCP server notification appeared on VS Code startup
 - Verify your AI tool's MCP configuration points to the correct URL
+
+**401 Unauthorized errors:**
+- If you've set `abapfs.mcpServer.apiKey`, ensure your MCP client is sending the correct `Authorization: Bearer <your-key>` header
+- Check that the API key in your client config exactly matches the one in VS Code settings
 
 # 1. Editor, AI Integration & Chat
 
@@ -946,6 +975,11 @@ To avoid spamming you with repeated alerts:
 - Class/method signatures/implementations
 
 # 2. SAP GUI Integration
+
+> **Setting: `abapfs.autoOpenUnsupportedInGui`** (default: `true`)  
+> When you open an object type not supported in VS Code (e.g., certain dictionary objects, Web Dynpro, etc.), this setting controls the behavior:
+> - **`true`** (default): Automatically opens the object in SAP GUI
+> - **`false`**: Shows a message with options to "Open in SAP GUI" or "Always Auto Open"
 
 ## 2.1 Embedded SAP GUI (WebView)
 
