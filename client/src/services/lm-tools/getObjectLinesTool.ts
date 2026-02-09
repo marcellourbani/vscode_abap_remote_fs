@@ -9,145 +9,20 @@ import { funWindow as window } from "../funMessenger"
 import { getSearchService } from "../abapSearchService"
 import { abapUri, getClient } from "../../adt/conections"
 import { logTelemetry } from "../telemetry"
-import { getOptimalObjectURI, resolveCorrectURI, getObjectEnhancements } from "./shared"
-
-async function getTableTypeFromDD(client: any, typeName: string): Promise<string> {
-  const sql = `SELECT l~TYPENAME, l~ROWTYPE, l~ROWKIND, l~DATATYPE, l~LENG, l~DECIMALS, t~DDTEXT FROM DD40L AS l INNER JOIN DD40T AS t ON l~TYPENAME = t~TYPENAME WHERE l~TYPENAME = '${typeName.toUpperCase()}' AND l~AS4LOCAL = 'A' AND t~DDLANGUAGE = 'E' AND t~AS4LOCAL = 'A'`
-
-  const result = await client.runQuery(sql, 100, true)
-
-  if (!result || !result.values || result.values.length === 0) {
-    return ""
-  }
-
-  let structure = `Table Type from DD40L/DD40T:\n`
-  result.values.forEach((row: any) => {
-    structure += `Type Name: ${row.TYPENAME}\n`
-    if (row.DDTEXT) structure += `Description: ${row.DDTEXT}\n`
-    structure += `Line Type (ROWTYPE): ${row.ROWTYPE}\n`
-    structure += `Row Kind: ${row.ROWKIND}\n`
-    if (row.DATATYPE) {
-      structure += `Data Type: ${row.DATATYPE}`
-      if (row.LENG) structure += `(${row.LENG})`
-      if (row.DECIMALS) structure += ` DECIMALS ${row.DECIMALS}`
-      structure += `\n`
-    }
-    structure += `\n💡 This is a table type that references line type ${row.ROWTYPE}. To see the actual fields, query the line type structure.`
-  })
-
-  return structure
-}
+import {
+  getOptimalObjectURI,
+  resolveCorrectURI,
+  getObjectEnhancements,
+  getTableTypeFromDD,
+  getTableStructureFromDD,
+  getAppendStructuresFromDD,
+  getDataElementFromDD,
+  getDomainFromDD
+} from "./shared"
 
 // ============================================================================
-// HELPER FUNCTIONS - EXPORTED FOR REUSE
+// LOCAL COMPLETE TABLE STRUCTURE (uses enhancement URIs - different from shared)
 // ============================================================================
-
-export async function getTableStructureFromDD(client: any, objectName: string): Promise<string> {
-  const sql = `SELECT TABNAME, FIELDNAME, ROLLNAME, DOMNAME, POSITION, KEYFLAG, MANDATORY, CHECKTABLE, INTTYPE, INTLEN, PRECFIELD, ROUTPUTLEN, DATATYPE, LENG, OUTPUTLEN, DECIMALS, DDTEXT, LOWERCASE, SIGNFLAG, LANGFLAG, VALEXI, ENTITYTAB, CONVEXIT FROM DD03M WHERE TABNAME = '${objectName.toUpperCase()}' AND DDLANGUAGE = 'E' ORDER BY POSITION`
-
-  const result = await client.runQuery(sql, 1000, true)
-
-  if (!result || !result.values || result.values.length === 0) {
-    return ""
-  }
-
-  let structure = `Fields from DD03M (Data Dictionary with Text):\n`
-  result.values.forEach((row: any) => {
-    const fieldName = row.FIELDNAME || ""
-    const dataElement = row.ROLLNAME || ""
-    const domain = row.DOMNAME || ""
-    const description = row.DDTEXT || ""
-    const keyFlag = row.KEYFLAG === "X" ? " [KEY]" : ""
-    const mandatory = row.MANDATORY === "X" ? " [MANDATORY]" : ""
-    const intType = row.INTTYPE || ""
-    const intLen = row.INTLEN || ""
-    const dataType = row.DATATYPE || ""
-    const length = row.LENG || ""
-    const decimals = row.DECIMALS || ""
-
-    structure += `${fieldName}: ${intType || dataType}`
-    if (intLen || length) structure += `(${intLen || length})`
-    if (decimals) structure += ` DECIMALS(${decimals})`
-    if (description) structure += ` - ${description}`
-    if (dataElement) structure += ` [DE:${dataElement}]`
-    if (domain) structure += ` [DOM:${domain}]`
-    structure += `${keyFlag}${mandatory}\n`
-  })
-
-  return structure
-}
-
-export async function getAppendStructuresFromDD(
-  client: any,
-  tableName: string
-): Promise<Array<{ name: string; fields: number }>> {
-  // Query DD02L to find all append structures for this table
-  const sql = `SELECT TABNAME, TABCLASS FROM DD02L WHERE SQLTAB = '${tableName.toUpperCase()}' AND TABCLASS = 'APPEND' AND AS4LOCAL = 'A'`
-
-  const result = await client.runQuery(sql, 100, true)
-
-  if (!result || !result.values || result.values.length === 0) {
-    return []
-  }
-
-  const appendStructures: Array<{ name: string; fields: number }> = []
-
-  for (const row of result.values) {
-    const appendName = row.TABNAME || ""
-    if (appendName) {
-      // Count fields in this append structure
-      const fieldCountSql = `SELECT COUNT(*) AS CNT FROM DD03L WHERE TABNAME = '${appendName}' AND AS4LOCAL = 'A' AND FIELDNAME <> '.INCLUDE'`
-      try {
-        const fieldResult = await client.runQuery(fieldCountSql, 1, true)
-        const fieldCount = fieldResult?.values?.[0]?.CNT || 0
-        appendStructures.push({ name: appendName, fields: parseInt(fieldCount, 10) })
-      } catch {
-        appendStructures.push({ name: appendName, fields: 0 })
-      }
-    }
-  }
-
-  return appendStructures
-}
-
-async function getDataElementFromDD(client: any, dataElementName: string): Promise<string> {
-  const sql = `SELECT ROLLNAME, DOMNAME, DATATYPE, LENG, DECIMALS FROM DD04L WHERE ROLLNAME = '${dataElementName.toUpperCase()}' AND AS4LOCAL = 'A'`
-
-  const result = await client.runQuery(sql, 100, true)
-
-  if (!result || !result.values || result.values.length === 0) {
-    return ""
-  }
-
-  let structure = `Data Element from DD04L:\n`
-  result.values.forEach((row: any) => {
-    structure += `Element: ${row.ROLLNAME}\n`
-    structure += `Domain: ${row.DOMNAME}\n`
-    structure += `Data Type: ${row.DATATYPE}(${row.LENG})`
-    if (row.DECIMALS) structure += ` DECIMALS ${row.DECIMALS}`
-    structure += `\n`
-  })
-
-  return structure
-}
-
-async function getDomainFromDD(client: any, domainName: string): Promise<string> {
-  const headerSql = `SELECT DOMNAME, DATATYPE, LENG, DECIMALS FROM DD01L WHERE DOMNAME = '${domainName.toUpperCase()}' AND AS4LOCAL = 'A'`
-
-  const headerResult = await client.runQuery(headerSql, 10, true)
-
-  let structure = `Domain from DD01L:\n`
-
-  if (headerResult && headerResult.values && headerResult.values.length > 0) {
-    const header = headerResult.values[0]
-    structure += `Domain: ${header.DOMNAME}\n`
-    structure += `Data Type: ${header.DATATYPE}(${header.LENG})`
-    if (header.DECIMALS) structure += ` DECIMALS ${header.DECIMALS}`
-    structure += `\n`
-  }
-
-  return structure
-}
 
 async function getCompleteTableStructure(
   connectionId: string,

@@ -402,9 +402,9 @@ export class ExecuteDataQueryTool implements vscode.LanguageModelTool<IExecuteDa
 
       return { action: choice.action as "proceed" | "ui_only" }
     } catch (error) {
-      // If check fails, allow query to proceed (don't block on errors)
+      // If check fails, block query execution (fail-closed for security)
       console.warn("Production guard check failed:", error)
-      return { action: "proceed" }
+      return { action: "cancel" }
     }
   }
 

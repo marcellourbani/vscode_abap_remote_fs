@@ -8,7 +8,12 @@ import { funWindow as window } from "../funMessenger"
 import { getSearchService } from "../abapSearchService"
 import { abapUri, getClient } from "../../adt/conections"
 import { logTelemetry } from "../telemetry"
-import { getOptimalObjectURI, resolveCorrectURI, getObjectEnhancements } from "./shared"
+import {
+  getOptimalObjectURI,
+  resolveCorrectURI,
+  getObjectEnhancements,
+  getTableTypeFromDD
+} from "./shared"
 
 // ============================================================================
 // INTERFACE
@@ -24,35 +29,8 @@ export interface ISearchABAPObjectLinesParameters {
 }
 
 // ============================================================================
-// HELPER FUNCTIONS
+// LOCAL HELPER FUNCTIONS (unique implementation using getObjectEnhancements)
 // ============================================================================
-
-async function getTableTypeFromDD(client: any, typeName: string): Promise<string> {
-  const sql = `SELECT l~TYPENAME, l~ROWTYPE, l~ROWKIND, l~DATATYPE, l~LENG, l~DECIMALS, t~DDTEXT FROM DD40L AS l INNER JOIN DD40T AS t ON l~TYPENAME = t~TYPENAME WHERE l~TYPENAME = '${typeName.toUpperCase()}' AND l~AS4LOCAL = 'A' AND t~DDLANGUAGE = 'E' AND t~AS4LOCAL = 'A'`
-
-  const result = await client.runQuery(sql, 100, true)
-
-  if (!result || !result.values || result.values.length === 0) {
-    return ""
-  }
-
-  let structure = `Table Type from DD40L/DD40T:\n`
-  result.values.forEach((row: any) => {
-    structure += `Type Name: ${row.TYPENAME}\n`
-    if (row.DDTEXT) structure += `Description: ${row.DDTEXT}\n`
-    structure += `Line Type (ROWTYPE): ${row.ROWTYPE}\n`
-    structure += `Row Kind: ${row.ROWKIND}\n`
-    if (row.DATATYPE) {
-      structure += `Data Type: ${row.DATATYPE}`
-      if (row.LENG) structure += `(${row.LENG})`
-      if (row.DECIMALS) structure += ` DECIMALS ${row.DECIMALS}`
-      structure += `\n`
-    }
-    structure += `\n💡 This is a table type that references line type ${row.ROWTYPE}. To see the actual fields, query the line type structure.`
-  })
-
-  return structure
-}
 
 async function getCompleteTableStructure(
   connectionId: string,

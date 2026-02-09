@@ -2,7 +2,7 @@
   "name": "vscode-abap-remote-fs",
   "displayName": "ABAP remote filesystem",
   "description": "Work on your ABAP code straight from the server",
-  "version": "2.0.0",
+  "version": "2.0.1",
   "publisher": "murbani",
   "publishConfig": {
     "access": "restricted",
@@ -3674,6 +3674,11 @@
           "minimum": 1024,
           "maximum": 65535,
           "description": "Port number for the MCP server. Change if the default port conflicts with other services."
+        },
+        "abapfs.mcpServer.apiKey": {
+          "type": "string",
+          "default": "",
+          "description": "API key for MCP server authentication. When set, clients must include this key in the Authorization header (Bearer token). Leave empty to allow unauthenticated local access (not recommended for shared machines)."
         },
         "abapfs.embeddedGui": {
           "type": "object",
