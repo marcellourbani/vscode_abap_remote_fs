@@ -21,6 +21,7 @@ import { StreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/
 import { isInitializeRequest } from "@modelcontextprotocol/sdk/types.js"
 import { randomUUID } from "crypto"
 import { z } from "zod"
+import { log } from "../lib"
 
 // ============================================================================
 // TYPES
@@ -67,6 +68,7 @@ function validateApiKey(req: http.IncomingMessage): boolean {
   // If no API key is configured, allow access (for backwards compatibility)
   // but log a warning
   if (!settings.apiKey) {
+    log("No API key configured for the MCP server. Consider configuring a random key and passing it in your MCP client. Allowing anyway..")
     return true
   }
 
