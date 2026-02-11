@@ -70,7 +70,10 @@ export class HeartbeatService {
               )
               .then(selection => {
                 if (selection === "Open Settings") {
-                  vscode.commands.executeCommand("workbench.action.openWorkspaceSettings", "abapfs.heartbeat.model")
+                  vscode.commands.executeCommand(
+                    "workbench.action.openWorkspaceSettings",
+                    "abapfs.heartbeat.model"
+                  )
                 }
               })
             return

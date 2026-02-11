@@ -268,9 +268,9 @@ export class ABAPDebugSessionTool implements vscode.LanguageModelTool<IDebugSess
 
       return { action: "proceed" }
     } catch (error) {
-      // If check fails, allow debugging to proceed (don't block on errors)
+      // If check fails, block debugging (fail-closed for security)
       console.warn("Production guard check failed:", error)
-      return { action: "proceed" }
+      return { action: "cancel" }
     }
   }
 }

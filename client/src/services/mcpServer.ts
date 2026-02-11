@@ -21,6 +21,7 @@ import { StreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/
 import { isInitializeRequest } from "@modelcontextprotocol/sdk/types.js"
 import { randomUUID } from "crypto"
 import { z } from "zod"
+import { log } from "../lib"
 
 // ============================================================================
 // TYPES
@@ -48,12 +49,48 @@ const state: McpServerState = {
 /**
  * Get MCP server settings from VS Code configuration
  */
-function getMcpSettings(): { autoStart: boolean; port: number } {
+function getMcpSettings(): { autoStart: boolean; port: number; apiKey: string } {
   const config = vscode.workspace.getConfiguration("abapfs.mcpServer")
   return {
     autoStart: config.get<boolean>("autoStart", false),
-    port: config.get<number>("port", 4847)
+    port: config.get<number>("port", 4847),
+    apiKey: config.get<string>("apiKey", "")
   }
+}
+
+/**
+ * Validate the API key from the request Authorization header.
+ * Returns true if authentication passes, false otherwise.
+ */
+function validateApiKey(req: http.IncomingMessage): boolean {
+  const settings = getMcpSettings()
+
+  // If no API key is configured, allow access (for backwards compatibility)
+  // but log a warning
+  if (!settings.apiKey) {
+    log("No API key configured for the MCP server. Consider configuring a random key and passing it in your MCP client. Allowing anyway..")
+    return true
+  }
+
+  const authHeader = req.headers["authorization"]
+  if (!authHeader) {
+    return false
+  }
+
+  // Support both "Bearer <token>" and plain "<token>" formats
+  const token = authHeader.startsWith("Bearer ") ? authHeader.slice(7) : authHeader
+
+  // Constant-time comparison to prevent timing attacks
+  if (token.length !== settings.apiKey.length) {
+    return false
+  }
+
+  let result = 0
+  for (let i = 0; i < token.length; i++) {
+    result |= token.charCodeAt(i) ^ settings.apiKey.charCodeAt(i)
+  }
+
+  return result === 0
 }
 
 // ============================================================================
@@ -295,7 +332,7 @@ async function startHttpServer(): Promise<void> {
     // CORS headers for cross-origin requests
     res.setHeader("Access-Control-Allow-Origin", "*")
     res.setHeader("Access-Control-Allow-Methods", "GET, POST, DELETE, OPTIONS")
-    res.setHeader("Access-Control-Allow-Headers", "Content-Type, mcp-session-id")
+    res.setHeader("Access-Control-Allow-Headers", "Content-Type, mcp-session-id, Authorization")
     res.setHeader("Access-Control-Expose-Headers", "mcp-session-id")
 
     if (req.method === "OPTIONS") {
@@ -306,10 +343,27 @@ async function startHttpServer(): Promise<void> {
 
     const url = new URL(req.url || "/", `http://localhost:${state.port}`)
 
-    // Health check endpoint
+    // Health check endpoint (no auth required)
     if (url.pathname === "/health") {
       res.writeHead(200, { "Content-Type": "application/json" })
       res.end(JSON.stringify({ status: "ok", server: "abap-fs-mcp" }))
+      return
+    }
+
+    // Authentication check for all other endpoints
+    if (!validateApiKey(req)) {
+      res.writeHead(401, { "Content-Type": "application/json" })
+      res.end(
+        JSON.stringify({
+          jsonrpc: "2.0",
+          error: {
+            code: -32001,
+            message:
+              "Unauthorized: Invalid or missing API key. Set the API key in the Authorization header (Bearer <token>)."
+          },
+          id: null
+        })
+      )
       return
     }
 
