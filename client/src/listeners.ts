@@ -58,7 +58,9 @@ export async function documentClosedListener(doc: TextDocument) {
       if ((await root.lockManager.finalStatus(uri.path)).status === "locked")
         await root.lockManager.requestUnlock(uri.path)
     }
-  } catch (error) {}
+  } catch (error) {
+    log(caughtToString(error))
+  }
 }
 
 export async function reconnectExpired(uri: Uri) {

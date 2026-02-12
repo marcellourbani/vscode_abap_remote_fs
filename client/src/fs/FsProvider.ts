@@ -25,7 +25,6 @@ export class FsProvider implements FileSystemProvider {
   private static instance: FsProvider
   private editorContentCache = new Map<string, string>() // Track editor content to prevent server overwrites
   private localProvider: LocalFsProvider
-
   private constructor(private context: ExtensionContext) {
     this.localProvider = new LocalFsProvider(context)
     // forward local provider file changes to this provider so that the extension
@@ -34,23 +33,16 @@ export class FsProvider implements FileSystemProvider {
       this.localProvider.onDidChangeFile(changes => this.pEventEmitter.fire(changes))
     )
   }
-
   public static get(context?: ExtensionContext) {
-    if (!FsProvider.instance) {
-      if (context) {
-        FsProvider.instance = new FsProvider(context)
-      } else {
-        throw new Error("FsProvider not initialized, context is required")
-      }
-    }
+    if (!FsProvider.instance)
+      if (context) FsProvider.instance = new FsProvider(context)
+      else throw new Error("FsProvider not initialized, context is required")
     return FsProvider.instance
   }
-
   public get onDidChangeFile() {
     return this.pEventEmitter.event
   }
   private pEventEmitter = new EventEmitter<FileChangeEvent[]>()
-
   public watch(
     uri: Uri,
     options: {
@@ -69,7 +61,6 @@ export class FsProvider implements FileSystemProvider {
   public async stat(uri: Uri): Promise<FileStat> {
     // Local storage for .* files and template files
     if (LocalFsProvider.useLocalStorage(uri)) return this.localProvider.stat(uri)
-
     try {
       const root = await getOrCreateRoot(uri.authority)
       const node = await root.getNodeAsync(uri.path)
@@ -79,16 +70,14 @@ export class FsProvider implements FileSystemProvider {
       return node
     } catch (e) {
       // Don't log FileNotFound errors for method names/debug artifacts to reduce noise
-      if (!(e instanceof FileSystemError && e.name === "FileNotFound (FileSystemError)")) {
+      if (!(e instanceof FileSystemError && e.name === "FileNotFound (FileSystemError)"))
         log(`Error in stat of ${uri?.toString()}\n${caughtToString(e)}`)
-      }
       throw e
     }
   }
 
   public async readFile(uri: Uri): Promise<Uint8Array> {
     if (LocalFsProvider.useLocalStorage(uri)) return this.localProvider.readFile(uri)
-
     try {
       const root = await getOrCreateRoot(uri.authority)
       const node = await root.getNodeAsync(uri.path)
@@ -120,8 +109,10 @@ export class FsProvider implements FileSystemProvider {
 
         // Check if this is a SAPGUI-only object and handle based on setting
         if (contents.includes("This object type is not supported in VS Code")) {
-          const autoOpen = workspace.getConfiguration("abapfs").get<boolean>("autoOpenUnsupportedInGui", true)
-          
+          const autoOpen = workspace
+            .getConfiguration("abapfs")
+            .get<boolean>("autoOpenUnsupportedInGui", true)
+
           if (autoOpen) {
             // Automatically trigger runInGui command
             // Use setTimeout to ensure the document is opened first so URI context is available
@@ -139,7 +130,9 @@ export class FsProvider implements FileSystemProvider {
               if (choice === "Open in SAP GUI") {
                 commands.executeCommand("abapfs.runInGui")
               } else if (choice === "Always Auto Open") {
-                await workspace.getConfiguration("abapfs").update("autoOpenUnsupportedInGui", true, true)
+                await workspace
+                  .getConfiguration("abapfs")
+                  .update("autoOpenUnsupportedInGui", true, true)
                 commands.executeCommand("abapfs.runInGui")
               }
             }, 500)
@@ -149,13 +142,14 @@ export class FsProvider implements FileSystemProvider {
         const buf = Buffer.from(contents)
         return buf
       }
-    } catch (error) {}
+    } catch (error) {
+      log(`Error reading file ${uri?.toString()}\n${caughtToString(error)}`)
+    }
     throw FileSystemError.Unavailable(uri)
   }
 
   public async readDirectory(uri: Uri): Promise<[string, FileType][]> {
     if (LocalFsProvider.useLocalStorage(uri)) return this.localProvider.readDirectory(uri)
-
     try {
       const root = await getOrCreateRoot(uri.authority)
       const node = await root.getNodeAsync(uri.path)
@@ -181,8 +175,8 @@ export class FsProvider implements FileSystemProvider {
   }
 
   public async writeFile(uri: Uri, content: Uint8Array): Promise<void> {
-    if (LocalFsProvider.useLocalStorage(uri)) return this.localProvider.writeFile(uri, content, {})
-
+    if (LocalFsProvider.useLocalStorage(uri))
+      return this.localProvider.writeFile(uri, content, undefined)
     let needUnlocking = false
     try {
       const root = await getOrCreateRoot(uri.authority)
@@ -205,7 +199,6 @@ export class FsProvider implements FileSystemProvider {
           await root.lockManager.requestLock(uri.path)
           needUnlocking = true
         }
-
         const trsel = await selectTransportIfNeeded(uri)
         if (trsel.cancelled) return
         const lock = root.lockManager.lockStatus(uri.path)
@@ -228,7 +221,6 @@ export class FsProvider implements FileSystemProvider {
 
   public async delete(uri: Uri, options: { recursive: boolean }) {
     if (LocalFsProvider.useLocalStorage(uri)) return this.localProvider.delete(uri, options)
-
     try {
       const root = await getOrCreateRoot(uri.authority)
       const node = await root.getNodeAsync(uri.path)
