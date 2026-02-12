@@ -292,7 +292,6 @@ export class SapConnectionManager {
       if (connection.sapGui.messageServerPort)
         cleaned.sapGui.messageServerPort = connection.sapGui.messageServerPort
       if (connection.sapGui.group) cleaned.sapGui.group = connection.sapGui.group
-      if (connection.sapGui.browserPath) cleaned.sapGui.browserPath = connection.sapGui.browserPath
     }
 
     // Handle OAuth if present
@@ -312,7 +311,6 @@ export class SapConnectionManager {
       sapGui.messageServerPort ||
       sapGui.group ||
       sapGui.routerString ||
-      sapGui.browserPath ||
       sapGui.guiType !== "SAPGUI"
     )
   }
@@ -1405,13 +1403,6 @@ export class SapConnectionManager {
                         <div class="help-text">SAProuter connection string if required</div>
                     </div>
                 </div>
-                <div class="form-row conditional-field" id="browserPathField">
-                    <div class="form-group">
-                        <label for="sapGui_browserPath">Browser Path</label>
-                        <input type="text" id="sapGui_browserPath" name="sapGui.browserPath" placeholder="C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe">
-                        <div class="help-text">For controlled WebGUI mode only</div>
-                    </div>
-                </div>
                 </div>
             </div>
 
@@ -1498,12 +1489,6 @@ export class SapConnectionManager {
                 const connectionForm = document.getElementById('connectionForm');
                 if (connectionForm) {
                     connectionForm.addEventListener('submit', handleFormSubmit);
-                }
-
-                // GUI Type change handler - only add if element exists
-                const guiTypeElement = document.getElementById('sapGui_guiType');
-                if (guiTypeElement) {
-                    guiTypeElement.addEventListener('change', handleGuiTypeChange);
                 }
                 
                 // SAP GUI connection type change handler - only add if element exists
@@ -1751,7 +1736,6 @@ export class SapConnectionManager {
                 }
 
                 modal.style.display = 'flex';
-                handleGuiTypeChange(); // Show/hide conditional fields
             }
 
             function closeEditor() {
@@ -1802,8 +1786,6 @@ export class SapConnectionManager {
                     document.getElementById('sapGui_messageServerPort').value = conn.sapGui.messageServerPort || '';
                     document.getElementById('sapGui_group').value = conn.sapGui.group || '';
                     document.getElementById('sapGui_routerString').value = conn.sapGui.routerString || '';
-                    document.getElementById('sapGui_browserPath').value = conn.sapGui.browserPath || '';
-                    handleGuiTypeChange(); // Update conditional field visibility
                 } else {
                     // Default to direct server and clear all fields
                     document.getElementById('sapGui_connectionType').value = 'DIRECT';
@@ -1813,24 +1795,12 @@ export class SapConnectionManager {
                     document.getElementById('sapGui_messageServerPort').value = '';
                     document.getElementById('sapGui_group').value = '';
                     document.getElementById('sapGui_routerString').value = '';
-                    document.getElementById('sapGui_browserPath').value = '';
                     handleSapGuiConnectionTypeChange();
                 }
 
                 // Handle OAuth for cloud connections
                 if (conn.oauth) {
                     // OAuth credentials are maintained automatically
-                }
-            }
-
-            function handleGuiTypeChange() {
-                const guiType = document.getElementById('sapGui_guiType').value;
-                const browserPathField = document.getElementById('browserPathField');
-                
-                if (guiType === 'WEBGUI_CONTROLLED') {
-                    browserPathField.classList.add('show');
-                } else {
-                    browserPathField.classList.remove('show');
                 }
             }
             
@@ -1917,8 +1887,7 @@ export class SapConnectionManager {
                         messageServer: formData.get('sapGui.messageServer') || undefined,
                         messageServerPort: formData.get('sapGui.messageServerPort') || undefined,
                         group: formData.get('sapGui.group') || undefined,
-                        routerString: formData.get('sapGui.routerString') || undefined,
-                        browserPath: formData.get('sapGui.browserPath') || undefined
+                        routerString: formData.get('sapGui.routerString') || undefined
                     }
                 };
                 

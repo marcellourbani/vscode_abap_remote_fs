@@ -1,6 +1,9 @@
 This documentation covers all features in detail. The goal: make ABAP development faster, more intelligent, and less frustrating.
 
-> **🔌 Using a non-GitHub Copilot AI tool?** (Cursor, Claude Code, Windsurf, Claude Desktop, etc.)  
+> **� GitHub Repository:** [github.com/marcellourbani/vscode_abap_remote_fs](https://github.com/marcellourbani/vscode_abap_remote_fs)  
+> Report issues, contribute, or browse source code.
+
+> **�🔌 Using a non-GitHub Copilot AI tool?** (Cursor, Claude Code, Windsurf, Claude Desktop, etc.)  
 > See [MCP Server for External AI Tools](#mcp-server-for-external-ai-tools) to use ABAP FS tools with your preferred AI assistant.
 
 - [Installation Steps](#installation-steps)
@@ -160,6 +163,7 @@ This documentation covers all features in detail. The goal: make ABAP developmen
      - **Bulk Operations** - Edit multiple connections at once, bulk username changes
      - **Cloud Support** - Create connections from BTP Service Key or Endpoint
    - Save to User settings (global) or Workspace settings (project-specific)
+   - Important: If you know other people who have already setup the same SAP systems, you can ask them to export their connections and import them. UserIDs and passwords won't be exported. Then you can select the connections and update your user ID in mass.
    - Passwords stored securely in OS credential manager (not in settings files)
 
 4. **Connect to SAP systems**

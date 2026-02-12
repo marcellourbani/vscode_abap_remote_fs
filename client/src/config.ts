@@ -40,7 +40,6 @@ export interface RemoteConfig extends ClientConfiguration {
     server: string
     systemNumber: string
     guiType: GuiType
-    browserPath?: string
   }
 }
 const defaultConfig: Partial<RemoteConfig> = {

@@ -47,6 +47,18 @@ const config = {
           noErrorOnMissing: true,
           force: true,
           priority: 0
+        },
+        {
+          from: "../DOCUMENTATION.md",
+          to: "DOCUMENTATION.md",
+          noErrorOnMissing: false,
+          force: true
+        },
+        {
+          from: "media/ABAP-FS-SETTINGS.md",
+          to: "ABAP-FS-SETTINGS.md",
+          noErrorOnMissing: false,
+          force: true
         }
       ]
     })
