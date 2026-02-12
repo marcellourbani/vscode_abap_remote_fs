@@ -491,15 +491,14 @@ While not the primary goal, using cheaper models for simple tasks reduces costs:
 
 ### How Users Invoke Subagents
 
-In GitHub Copilot Chat, type `@` followed by the agent name:
+In GitHub Copilot Chat, type `@` followed by the agent name or choose Agent from dropdown.
 
 ```
-@abap-discoverer find all function modules starting with Z_BAPI
-@abap-quality-checker run ATC on ZCL_MY_CLASS
-@abap-historian show version history for ZPROGRAM
+@abap-orchestrator find all function modules starting with Z_BAPI
+
 ```
 
-The agent will use its configured (cheaper) model instead of your main chat model.
+Only orchestrator will be available for users to select in chat. Other subagents will be automaticlaly called by the orchestrator based on the tasks. This is to avoid clutter in chat mode dropdown. If you need other subagents to be available for direct calling, ask Copilot and it will be able to modify the corresponding agents.md file!!
 
 ### How Orchestrator Delegates
 

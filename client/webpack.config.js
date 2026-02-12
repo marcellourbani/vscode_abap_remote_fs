@@ -50,13 +50,7 @@ const config = {
         },
         {
           from: "../DOCUMENTATION.md",
-          to: "DOCUMENTATION.md",
-          noErrorOnMissing: false,
-          force: true
-        },
-        {
-          from: "media/ABAP-FS-SETTINGS.md",
-          to: "ABAP-FS-SETTINGS.md",
+          to: "media/DOCUMENTATION.md",
           noErrorOnMissing: false,
           force: true
         }

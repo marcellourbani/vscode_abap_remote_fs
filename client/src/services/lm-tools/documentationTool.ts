@@ -161,8 +161,9 @@ export class ABAPFSDocumentationTool implements vscode.LanguageModelTool<IDocume
     }
     
     const extensionPath = extension.extensionPath
-    const docsPath = path.join(extensionPath, "DOCUMENTATION.md")
-    const settingsPath = path.join(extensionPath, "ABAP-FS-SETTINGS.md")
+    // Files are copied by webpack to client/dist/media during build
+    const docsPath = path.join(extensionPath, "client", "dist", "media", "DOCUMENTATION.md")
+    const settingsPath = path.join(extensionPath, "client", "dist", "media", "ABAP-FS-SETTINGS.md")
     
     let result = ""
     
