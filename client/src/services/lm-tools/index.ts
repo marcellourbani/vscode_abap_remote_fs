@@ -18,6 +18,7 @@ import { registerCreateObjectTool } from "./createObjectTool"
 import { registerOpenObjectTool } from "./openObjectTool"
 import { registerGetWorkspaceUriTool } from "./getWorkspaceUriTool"
 import { registerGetObjectUrlTool } from "./getObjectUrlTool"
+import { registerDocumentationTool } from "./documentationTool"
 import { registerUnitTestTools } from "./unitTestTools"
 import { registerAtcTools } from "./atcTools"
 import { registerTransportTool } from "./transportTool"
@@ -66,13 +67,16 @@ export async function registerAllTools(context: vscode.ExtensionContext): Promis
   registerGetWorkspaceUriTool(context)
   registerGetObjectUrlTool(context)
 
-  // 4. Unit Test Tools
+  // 4. Documentation Tool
+  registerDocumentationTool(context)
+
+  // 5. Unit Test Tools
   registerUnitTestTools(context)
 
-  // 5. ATC Tools
+  // 6. ATC Tools
   registerAtcTools(context)
 
-  // 6. Transport Tool
+  // 7. Transport Tool
   registerTransportTool(context)
 
   // 8. Data Query Tool

@@ -8,6 +8,7 @@ node_modules/**
 .changesets/**
 **/.gitignore
 .gitignore
+DOCUMENTATION.md
 **/jest.config.js
 tsconfig.json
 vsc-extension-quickstart.md

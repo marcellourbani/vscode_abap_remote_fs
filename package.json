@@ -2057,6 +2057,50 @@
         }
       },
       {
+        "name": "abap_fs_documentation",
+        "displayName": "ABAP FS Documentation & Settings",
+        "modelDescription": "Access ABAP FS extension documentation and settings reference. You are the brand ambassador for this extension and its powerful features. Be enthusiastic but honest - sell the value without exaggerating. You MUST ALWAYS verify documentation first before telling users how features or settings work. If you give wrong information (global vs workspace setting, for example), it will fail and user will give up and move on. Be the expert guide who helps users discover and configure features that will genuinely improve their ABAP development workflow.\n- PROACTIVELY suggest relevant features based on context. \n- Educate users about capabilities they might not know about - this extension has 30+ tools!\n- Help users find the right settings to make the extension work for their needs\n- CRITICAL RULES:\n- SETTINGS SCOPE: ALWAYS check scope before suggesting/modifying settings - 'application' = User Settings (global), 'resource' = Workspace Settings (project-specific). Wrong scope = won't work!\n- USER APPROVAL: You can modify Global or Workspace settings yourself but NEVER modify settings without explicit user consent\n- EXTERNAL REFERENCES: Only reference official GitHub repo: https://github.com/marcellourbani/vscode_abap_remote_fs - NO dummy links!",
+        "canBeReferencedInPrompt": true,
+        "toolReferenceName": "abapfs-docs",
+        "icon": "$(book)",
+        "userDescription": "Access ABAP FS extension documentation and settings reference",
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "action": {
+              "type": "string",
+              "enum": [
+                "get_documentation",
+                "search_documentation",
+                "get_settings",
+                "search_settings"
+              ],
+              "description": "Action to perform: get_documentation (read DOCUMENTATION.md lines), search_documentation (search in DOCUMENTATION.md), get_settings (read ABAP-FS-SETTINGS.md lines), search_settings (search in ABAP-FS-SETTINGS.md)"
+            },
+            "searchQuery": {
+              "type": "string",
+              "description": "Required for search_* actions. Case-insensitive search term to find in the documentation or settings files"
+            },
+            "startLine": {
+              "type": "number",
+              "default": 1,
+              "description": "For get_* actions: Starting line number (1-based). Use 1 for first line"
+            },
+            "lineCount": {
+              "type": "number",
+              "default": 50,
+              "description": "For get_* actions: Number of lines to retrieve. For search_* actions: context lines around each match"
+            }
+          },
+          "required": [
+            "action"
+          ]
+        },
+        "tags": [
+          "abap-fs"
+        ]
+      },
+      {
         "name": "manage_heartbeat",
         "displayName": "Manage Heartbeat",
         "modelDescription": "Control the heartbeat service - your personal background assistant that monitors SAP systems and sends reminders.\n\n⚠️ BEFORE ADDING TASKS: Always call 'status' first to check if heartbeat is running and properly configured (model must be set).\n\n⚠️ TIME WORDS LIKE 'TOMORROW', 'LATER', 'IN AN HOUR': You MUST use 'startAt' with an ISO timestamp! IMPORTANT: First call get_sap_system_info to get the SAP system's timezone, then calculate the correct ISO timestamp based on that timezone. Example: if DEV100 is UTC+2 and user says 'tomorrow at 10am', calculate 10:00 in UTC+2 = 08:00 UTC.\n\n⚠️ DUMP MONITORING: For ST22/dump monitoring, set checkInstructions to use 'analyze_abap_dumps' tool, NOT direct SQL. The analyze_abap_dumps tool is specifically designed for this.\n\n⚠️ TIMEZONE HANDLING: When setting up monitoring tasks, always consider the SAP system's timezone (available via get_sap_system_info). The HB model should also use this timezone when interpreting dates/times from SAP.\n\nUSE CASES:\n- 'Remind me tomorrow at 10am' → Get system timezone first, then set startAt accordingly + reminderOnly=true\n- 'Monitor transport until released' → sampleQuery with E070 + removeWhenDone=true\n- 'Alert me if dumps appear' → category='dump' + checkInstructions=['Use analyze_abap_dumps with action list_dumps', 'Compare against lastNotifiedFindings']\n\nSERVICE CONTROL:\n- status: Check if running, what model is configured (CALL THIS FIRST)\n- start: Start service (will auto-enable in settings, but model must be pre-configured)\n- stop/trigger/history\n\nADDING TASKS:\n- 'description': What to monitor or remind about\n- 'startAt': ISO timestamp - task is IGNORED until this time passes (consider SAP system timezone!)\n- 'reminderOnly': true = notify once and auto-remove (for reminders)\n- 'sampleQuery': SQL for HB model to execute (for transport/table monitoring)\n- 'checkInstructions': Step-by-step for HB model (use tool names like 'analyze_abap_dumps')\n- 'category': transport/dump/job/idoc/performance/reminder/custom\n- 'connectionId': Which SAP system to monitor\n- 'cooldownMinutes': Don't re-notify within this period\n- 'removeWhenDone': Auto-remove when condition is met",
@@ -3642,11 +3686,6 @@
                         "Use Webgui in your browser for executing \n> $(warning) **might expose your password**",
                         "Use Webgui embedded in vscode for executing \n> $(warning) **might expose your password**"
                       ]
-                    },
-                    "browserPath": {
-                      "type": "string",
-                      "default": "chrome",
-                      "description": "Browser path for controlled webgui"
                     }
                   }
                 }
@@ -3685,34 +3724,6 @@
           "default": true,
           "scope": "application",
           "description": "Automatically open unsupported object types in SAP GUI. When disabled, shows a message with instructions to manually open using Ctrl+Shift+F5."
-        },
-        "abapfs.embeddedGui": {
-          "type": "object",
-          "description": "Configuration for embedded SAP GUI for HTML functionality",
-          "properties": {
-            "autoRefresh": {
-              "type": "boolean",
-              "default": true,
-              "description": "Automatically refresh embedded GUI when ABAP code changes"
-            },
-            "defaultPosition": {
-              "type": "string",
-              "enum": [
-                "beside",
-                "active",
-                "one",
-                "two",
-                "three"
-              ],
-              "default": "beside",
-              "description": "Default position for embedded GUI panels"
-            },
-            "browserPath": {
-              "type": "string",
-              "description": "Custom path to Chrome/Chromium browser for general use (leave empty for auto-detection)"
-            }
-          },
-          "additionalProperties": false
         },
         "abapfs.cleaner": {
           "type": "object",

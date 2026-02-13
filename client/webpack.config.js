@@ -47,6 +47,12 @@ const config = {
           noErrorOnMissing: true,
           force: true,
           priority: 0
+        },
+        {
+          from: "../DOCUMENTATION.md",
+          to: "media/DOCUMENTATION.md",
+          noErrorOnMissing: false,
+          force: true
         }
       ]
     })
