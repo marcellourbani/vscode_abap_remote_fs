@@ -353,7 +353,8 @@ export class AdtObjectActivator {
       if (result && result.success) {
         //log(`✅ ACTIVATE SUCCESS: firing event and loading structure`)
         this.emitter.fire({ object, uri, activated: inactive, mainProg })
-        await inactive.loadStructure()
+        await inactive.loadStructure(true)
+        // await object.loadStructure(true)
         return { ok: true }
       } else {
         const normText = (v: any): string => {

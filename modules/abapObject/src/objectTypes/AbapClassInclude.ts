@@ -78,8 +78,8 @@ export class AbapClassInclude extends AbapObjectBase {
       type = CLASSINCLUDES[this.name.replace(/.*\./, "")] || `.${this.techName}`
     return `.clas${type}.abap`
   }
-  async loadStructure() {
-    await this.parent.loadStructure()
+  async loadStructure(refresh = false) {
+    await this.parent.loadStructure(refresh)
     return this.structure!
   }
   get fsName(): string {

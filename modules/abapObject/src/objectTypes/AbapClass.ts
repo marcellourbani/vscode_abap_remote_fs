@@ -25,8 +25,8 @@ export class AbapClass extends AbapObjectBase {
     return this.structure?.includes.find(i => i["class:includeType"] === name)
   }
 
-  async loadStructure(): Promise<AbapClassStructure> {
-    const structure = await super.loadStructure()
+  async loadStructure(refresh = false): Promise<AbapClassStructure> {
+    const structure = await super.loadStructure(refresh)
     if (!isClassStructure(structure)) throw ObjectErrors.NotSupported(this)
     this.structure = structure
     return this.structure

@@ -49,7 +49,7 @@ export class AbapFile implements FileStat {
     if (this.timer) clearTimeout(this.timer)
     const source = await this.object.read()
     this.cache = { source, mtime: this.mtime }
-    this.timer = setTimeout(() => (this.cache = undefined), 30000)
+    this.timer = setTimeout(() => (this.cache = undefined), 3000)
     return source
   }
 

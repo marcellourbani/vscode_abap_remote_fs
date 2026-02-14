@@ -43,8 +43,14 @@ import { listAdtFeedsCommand } from "./commands/listAdtFeeds"
 import { validateSubagentsOnStartup } from "./services/lm-tools/subagentConfigTool"
 import { initializeMcpServer } from "./services/mcpServer"
 import { registerChatTools } from "./adt/ai/tools"
+import { initializeEnhancementDecorations } from "./views/enhancementDecorations"
+import { clearSystemInfoCache } from "./services/sapSystemInfo"
+import { HeartbeatWatchlist } from "./services/heartbeat/heartbeatWatchlist"
+import { visualizeDependencyGraph } from "./services/dependencyGraph"
+
 // Import commands to ensure @command decorators are executed
 import "./commands"
+
 export let context: ExtensionContext
 
 // Feed polling service instance (module-level for deactivation)
@@ -255,7 +261,6 @@ export async function activate(ctx: ExtensionContext): Promise<AbapFsApi> {
 
   // 📊 Register Dependency Graph Command
   try {
-    const { visualizeDependencyGraph } = await import("./services/dependencyGraph")
     context.subscriptions.push(
       commands.registerCommand("abapfs.visualizeDependencyGraph", visualizeDependencyGraph)
     )
@@ -266,7 +271,6 @@ export async function activate(ctx: ExtensionContext): Promise<AbapFsApi> {
 
   // 💓 Register Heartbeat Commands
   try {
-    const { HeartbeatWatchlist } = await import("./services/heartbeat/heartbeatWatchlist")
     context.subscriptions.push(
       commands.registerCommand("abapfs.openHeartbeatJson", async () => {
         const filePath = HeartbeatWatchlist.getFilePath()
@@ -289,7 +293,6 @@ export async function activate(ctx: ExtensionContext): Promise<AbapFsApi> {
 
   // 🎯 Initialize Enhancement Decorations
   try {
-    const { initializeEnhancementDecorations } = await import("./views/enhancementDecorations")
     initializeEnhancementDecorations(context)
     log("🎯 Enhancement decorations initialized - Making your code look fancy since 2024")
   } catch (error) {
@@ -323,7 +326,6 @@ export async function deactivate() {
 
   // Clear SAP system info cache
   try {
-    const { clearSystemInfoCache } = await import("./services/sapSystemInfo")
     clearSystemInfoCache()
     log("🧹 SAP system info cache cleared - It's like it never happened *whistles innocently*")
   } catch (e) {
