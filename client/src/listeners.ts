@@ -201,46 +201,40 @@ export async function documentChangedListener(event: TextDocumentChangeEvent) {
   // restored original locking without copilot detection
 
   // // 🤖 COPILOT DETECTION: Check if content changed without isDirty being set
-  // const document = event.document
-  // const hasContentChanges = event.contentChanges.length > 0
-  // const isDocumentDirty = document.isDirty
+  const document = event.document
+  const hasContentChanges = event.contentChanges.length > 0
+  const isDocumentDirty = document.isDirty
 
-  // if (hasContentChanges && !isDocumentDirty) {
-  //   // Content changed but isDirty is false = Likely Copilot!
+  if (hasContentChanges && !isDocumentDirty) {
+    // Content changed but isDirty is false = Likely Copilot!
 
-  //   // Check if this looks like an Undo action (entire document replacement)
-  //   const isLikelyUndo = event.contentChanges.some(
-  //     change => change.range.start.line === 0 && change.range.end.line >= document.lineCount - 1
-  //   )
+    // Check if this looks like an Undo action (entire document replacement)
+    const isLikelyUndo = event.contentChanges.some(
+      change => change.range.start.line === 0 && change.range.end.line >= document.lineCount - 1
+    )
 
-  //   if (isLikelyUndo) {
-  //     // Skip counting this as a change since it's an undo
-  //     return
-  //   }
+    if (isLikelyUndo) {
+      // Skip counting this as a change since it's an undo
+      return
+    }
 
-  //   const totalLinesChanged = event.contentChanges.reduce((sum, change) => {
-  //     const insertedLines = (change.text.match(/\n/g) || []).length
-  //     const deletedLines = change.range.end.line - change.range.start.line
-  //     // Use total modifications: inserted + deleted lines
-  //     return sum + insertedLines + deletedLines
-  //   }, 0)
+    const totalLinesChanged = event.contentChanges.reduce((sum, change) => {
+      const insertedLines = (change.text.match(/\n/g) || []).length
+      const deletedLines = change.range.end.line - change.range.start.line
+      // Use total modifications: inserted + deleted lines
+      return sum + insertedLines + deletedLines
+    }, 0)
 
-  //   // Only log if significant change (filter out minor edits)
-  //   if (totalLinesChanged > 0) {
-  //     const action = `Number of code lines changed: ${totalLinesChanged}`
-  //     // Extract connectionId from document URI
-  //     const connectionId = uri.authority
-  //     logTelemetry(action, { connectionId })
-  //   }
-  // }
-
-  // // DISABLED: Prevent automatic locking on document changes
-  // // Let VS Code handle staging, only lock when user explicitly saves
-
-  // // Note: We don't call doclock(event.document) anymore
-  // // This prevents premature locking before user decides to keep AI changes
+    // Only log if significant change (filter out minor edits)
+    if (totalLinesChanged > 0) {
+      const action = `Number of code lines changed: ${totalLinesChanged}`
+      // Extract connectionId from document URI
+      const connectionId = uri.authority
+      logTelemetry(action, { connectionId })
+    }
+  }
 }
-// if the document is dirty it's probably locked already. If not, lock it
+
 export async function documentWillSave(e: TextDocumentWillSaveEvent) {
   const uri = e.document.uri
 
@@ -289,18 +283,6 @@ export async function showHideActivate(editor?: TextEditor, refresh = false) {
       const file = root.getNode(uri.path)
       const obj = isAbapStat(file) && file.object
       if (!obj) return
-
-      // // Show activate button for any ABAP object that can be activated
-      // // This includes programs, classes, function groups, interfaces, etc.
-      // const activatableTypes = ["PROG/P", "CLAS/OC", "FUGR/FF", "INTF/OI", "FUGR/I", "PROG/I"]
-      // shouldShow =
-      //   activatableTypes.includes(obj.type) ||
-      //   obj.type.endsWith("/P") ||
-      //   obj.type.endsWith("/OC") ||
-      //   obj.type.endsWith("/FF")
-
-      // // If not obviously activatable, check if it's an ABAP development object
-      // if (!shouldShow)
       // Show for any object that has activation status (inactive objects definitely need activation)
       if (refresh) await obj.loadStructure()
       // shouldShow = obj && (isInactive(obj) || Boolean(obj.structure?.metaData?.hasOwnProperty("adtcore:version")))

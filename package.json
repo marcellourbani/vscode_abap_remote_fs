@@ -2,7 +2,7 @@
   "name": "vscode-abap-remote-fs",
   "displayName": "ABAP remote filesystem",
   "description": "Work on your ABAP code straight from the server",
-  "version": "2.0.4",
+  "version": "2.0.5",
   "publisher": "murbani",
   "publishConfig": {
     "access": "restricted",
@@ -2788,6 +2788,11 @@
         "when": "editorTextFocus && resourceScheme == adt"
       },
       {
+        "command": "abapfs.unittest",
+        "key": "ctrl+shift+f11",
+        "when": "editorTextFocus && resourceScheme == adt"
+      },
+      {
         "command": "abapfs.runInGui",
         "key": "Ctrl+Shift+F5",
         "when": "editorTextFocus && resourceScheme == adt"
@@ -2821,6 +2826,10 @@
         "command": "abapfs.cleanCode",
         "key": "ctrl+shift+alt+f",
         "when": "editorTextFocus && resourceScheme == adt && editorLangId == abap && abapfs.cleanerAvailable"
+      },
+      {
+        "command": "abapfs.search",
+        "key": "ctrl+alt+;"
       }
     ],
     "menus": {

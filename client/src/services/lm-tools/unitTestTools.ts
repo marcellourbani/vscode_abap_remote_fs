@@ -7,9 +7,11 @@ import * as vscode from "vscode"
 import { getSearchService } from "../abapSearchService"
 import { logTelemetry } from "../telemetry"
 import { getOrCreateRoot } from "../../adt/conections"
-import { uriAbapFile } from "../../adt/operations/AdtObjectFinder"
+import { createUri, uriAbapFile } from "../../adt/operations/AdtObjectFinder"
 import { isAbapClass } from "abapobject"
 import { UnitTestRunner } from "../../adt/operations/UnitTestRunner"
+import { isAbapFile, isAbapStat, PathItem } from "abapfs"
+import { AdtObjectActivator } from "../../adt/operations/AdtObjectActivator"
 
 // ============================================================================
 // INTERFACES
@@ -144,6 +146,17 @@ export class RunUnitTestsTool implements vscode.LanguageModelTool<IRunUnitTestsP
     }
   }
 
+  private async activate(path: PathItem, connectionId: string) {
+    const object = isAbapFile(path?.file) && path?.file?.object
+    if (!object) throw new Error("Failed to retrieve object for unit test run")
+    const struct = await object.loadStructure()
+    if (struct.metaData["adtcore:version"] === "inactive") {
+      const uri = createUri(connectionId, path.path)
+      const activator = AdtObjectActivator.get(connectionId)
+      await activator.activate(object, uri)
+    }
+  }
+
   async invoke(
     options: vscode.LanguageModelToolInvocationOptions<IRunUnitTestsParameters>,
     _token: vscode.CancellationToken
@@ -165,8 +178,6 @@ export class RunUnitTestsTool implements vscode.LanguageModelTool<IRunUnitTestsP
       if (!objectInfo.uri) {
         throw new Error(`Could not get URI for ABAP object: ${objectName}.`)
       }
-
-      const { getOrCreateRoot } = await import("../../adt/conections")
       const root = await getOrCreateRoot(connectionId.toLowerCase())
       const result = await root.findByAdtUri(objectInfo.uri, true)
 
@@ -175,6 +186,8 @@ export class RunUnitTestsTool implements vscode.LanguageModelTool<IRunUnitTestsP
       }
 
       const workspaceUri = vscode.Uri.parse(`adt://${connectionId.toLowerCase()}${result.path}`)
+
+      await this.activate(result, connectionId) // if was saved recently we need to activate first. Activation errors will bubble up
 
       // Use the new method that returns results
       const testResults = await UnitTestRunner.get(connectionId.toLowerCase()).addResultsWithReturn(
