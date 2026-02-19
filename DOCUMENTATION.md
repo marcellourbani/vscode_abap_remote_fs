@@ -304,7 +304,8 @@ All 30+ ABAP FS Language Model Tools are exposed via MCP, including:
 - `run_atc_analysis` - Run ATC checks
 - `execute_data_query` - Run SQL queries
 - `manage_transport_requests` - Transport management
-- And many more...
+- `abap_activate` - Activate abap objects
+- And many more...``
 
 ## Troubleshooting
 

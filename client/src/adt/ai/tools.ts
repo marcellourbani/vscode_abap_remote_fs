@@ -4,8 +4,8 @@ import { UnitTool } from "./unit"
 import { ActivateTool } from "./activate"
 
 export const registerChatTools = (context: ExtensionContext) => {
+  context.subscriptions.push(lm.registerTool("abap_activate", new ActivateTool()))
   return // duplicates, I guess
   context.subscriptions.push(lm.registerTool("abap_search", new SearchTool()))
   context.subscriptions.push(lm.registerTool("abap_unit", new UnitTool()))
-  context.subscriptions.push(lm.registerTool("abap_activate", new ActivateTool()))
 }

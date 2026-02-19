@@ -100,7 +100,14 @@ export const AGENT_REGISTRY: AgentMeta[] = [
     description: "ATC analysis, unit tests, code health checks",
     tier: 2,
     defaultModel: "",
-    tools: ["atc-analysis", "atc-decorations", "abap-test", "test-include", "abap-info"],
+    tools: [
+      "atc-analysis",
+      "atc-decorations",
+      "abap-test",
+      "abap_activate",
+      "test-include",
+      "abap-info"
+    ],
     templateFile: "abap-quality-checker.agent.md"
   },
   {
@@ -136,7 +143,14 @@ export const AGENT_REGISTRY: AgentMeta[] = [
     description: "Analyze dumps, traces, performance issues",
     tier: 2,
     defaultModel: "",
-    tools: ["abap-dumps", "abap-traces", "abap-lines", "abap-info", "abap-search-lines"],
+    tools: [
+      "abap-dumps",
+      "abap-traces",
+      "abap-lines",
+      "abap-info",
+      "abap-search-lines",
+      "abap_activate"
+    ],
     templateFile: "abap-troubleshooter.agent.md"
   },
   {
@@ -154,7 +168,7 @@ export const AGENT_REGISTRY: AgentMeta[] = [
     description: "Create new ABAP objects (blank shells)",
     tier: 1,
     defaultModel: "",
-    tools: ["abap-create", "connected-systems", "abap-search"],
+    tools: ["abap-create", "connected-systems", "abap-search", "abap_activate", "abap-test"],
     templateFile: "abap-creator.agent.md"
   },
   {
