@@ -2,7 +2,7 @@
   "name": "vscode-abap-remote-fs",
   "displayName": "ABAP remote filesystem",
   "description": "Work on your ABAP code straight from the server",
-  "version": "2.0.6",
+  "version": "2.0.7",
   "publisher": "murbani",
   "publishConfig": {
     "access": "restricted",
@@ -3848,9 +3848,23 @@
         },
         "abapfs.subagents.models": {
           "type": "object",
-          "default": {},
+          "default": {
+            "abap-discoverer": "",
+            "abap-reader": "",
+            "abap-creator": "",
+            "abap-visualizer": "",
+            "abap-documenter": "",
+            "abap-usage-analyzer": "",
+            "abap-quality-checker": "",
+            "abap-historian": "",
+            "abap-debugger": "",
+            "abap-troubleshooter": "",
+            "abap-data-analyst": "",
+            "abap-orchestrator": "",
+            "abap-code-reviewer": ""
+          },
           "scope": "resource",
-          "description": "Model selection per agent. Keys are agent IDs (e.g., 'abap-discoverer'), values are model IDs. Configure via 'ABAP FS: Configure Subagents' command.",
+          "description": "Model selection per agent. Keys are agent IDs (e.g., 'abap-discoverer'), values are model IDs. Ask Copilot to configure this.",
           "additionalProperties": {
             "type": "string"
           }

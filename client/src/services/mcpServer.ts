@@ -62,13 +62,18 @@ function getMcpSettings(): { autoStart: boolean; port: number; apiKey: string } 
  * Validate the API key from the request Authorization header.
  * Returns true if authentication passes, false otherwise.
  */
+let apiKeyWarningLogged = false
+
 function validateApiKey(req: http.IncomingMessage): boolean {
   const settings = getMcpSettings()
 
   // If no API key is configured, allow access (for backwards compatibility)
-  // but log a warning
+  // but log a warning once per session
   if (!settings.apiKey) {
-    log("No API key configured for the MCP server. Consider configuring a random key and passing it in your MCP client. Allowing anyway..")
+    if (!apiKeyWarningLogged) {
+      log("No API key configured for the MCP server. Consider configuring a random key and passing it in your MCP client. Allowing anyway..")
+      apiKeyWarningLogged = true
+    }
     return true
   }
 
