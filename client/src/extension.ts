@@ -47,6 +47,7 @@ import { initializeEnhancementDecorations } from "./views/enhancementDecorations
 import { clearSystemInfoCache } from "./services/sapSystemInfo"
 import { HeartbeatWatchlist } from "./services/heartbeat/heartbeatWatchlist"
 import { visualizeDependencyGraph } from "./services/dependencyGraph"
+import { checkUpgradeNotification } from "./services/upgradeNotification"
 
 // Import commands to ensure @command decorators are executed
 import "./commands"
@@ -301,6 +302,10 @@ export async function activate(ctx: ExtensionContext): Promise<AbapFsApi> {
     )
   }
   registerChatTools(context)
+
+  // Check for v1 → v2 upgrade and show notification + status bar hint
+  checkUpgradeNotification(context)
+
   const elapsed = new Date().getTime() - startTime
   log(`Activated,pid=${process.pid}, activation time(ms):${elapsed}`)
   return api
