@@ -84,7 +84,7 @@ The main setting for configuring SAP system connections. This is an object where
 - `SAPGUI` - Use desktop SAP GUI (default, most secure)
 - `WEBGUI_CONTROLLED` - Use WebGUI in default browser (secure, no password exposure)
 - `WEBGUI_UNSAFE` - Use WebGUI in default browser (⚠️ may expose password in URL)
-- `WEBGUI_UNSAFE_EMBEDDED` - Use WebGUI embedded in VS Code (⚠️ may expose password)
+- `WEBGUI_UNSAFE_EMBEDDED` - Use WebGUI embedded in VS Code (⚠️ may expose password). If this shows a blank page, see `abapfs.sapGui.useIntegratedBrowser` below.
 
 **Example Configuration:**
 ```json
@@ -165,6 +165,23 @@ The MCP (Model Context Protocol) server allows external AI tools like Cursor, Cl
 ```json
 {
   "abapfs.autoOpenUnsupportedInGui": true
+}
+```
+
+### `abapfs.sapGui.useIntegratedBrowser`
+
+| Property | Type | Default | Scope | Description |
+|----------|------|---------|-------|-------------|
+| `useIntegratedBrowser` | boolean | `false` | resource | Use VS Code's integrated browser (Simple Browser) instead of the embedded WebView for SAP GUI. Enable this if the embedded WebView shows a blank page due to SAP clickjacking frame protection. |
+
+When enabled, all embedded SAP GUI actions (toolbar button, command palette, Run Transaction) will open in VS Code's Simple Browser instead of a webview iframe. This avoids clickjacking restrictions that some SAP systems enforce.
+
+> **Related VS Code setting:** `simpleBrowser.useIntegratedBrowser` (experimental, desktop only) — controls whether VS Code's Simple Browser itself uses the integrated browser engine instead of a webview. Enabling both settings together may provide the best compatibility.
+
+**Example:**
+```json
+{
+  "abapfs.sapGui.useIntegratedBrowser": true
 }
 ```
 
