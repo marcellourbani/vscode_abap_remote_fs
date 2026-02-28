@@ -137,7 +137,6 @@ export class ABAPWhereUsedTool implements vscode.LanguageModelTool<IWhereUsedPar
       }
 
       // Get the client and object source for where-used analysis
-      const { getClient } = await import("../../adt/conections")
       const client = getClient(actualConnectionId)
 
       // Get object source to determine the main URL and perform where-used search
@@ -319,7 +318,7 @@ export class ABAPWhereUsedTool implements vscode.LanguageModelTool<IWhereUsedPar
           const beforeCount = filteredRefs.length
           filteredRefs = filteredRefs.filter((ref: any) => {
             const objType = ref["adtcore:type"] || ""
-            return filter.objectTypes!.includes(objType)
+            return filter?.objectTypes?.includes(objType)
           })
           filterStats.byObjectType = beforeCount - filteredRefs.length
         }

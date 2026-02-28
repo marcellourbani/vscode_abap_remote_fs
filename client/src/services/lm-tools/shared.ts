@@ -432,7 +432,6 @@ export async function getObjectEnhancements(
       return cached.result
     }
 
-    const { getClient } = await import("../../adt/conections")
     const client = getClient(connectionId)
 
     // Ensure we have a proper source/main path

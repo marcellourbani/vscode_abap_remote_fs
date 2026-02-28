@@ -14,6 +14,21 @@ import { funWindow as window } from "../services/funMessenger"
 import { RemoteConfig, GuiType, validateNewConfigId, formatKey } from "../config"
 import { logCommands } from "../services/abapCopilotLogger"
 import { logTelemetry } from "../services/telemetry"
+import { PasswordVault } from "../lib"
+import {
+  isAbapServiceKey,
+  cfCodeGrant,
+  getAbapSystemInfo,
+  getAbapUserInfo,
+  loginServer,
+  cfInfo,
+  cfPasswordGrant,
+  cfOrganizations,
+  cfSpaces,
+  cfServices,
+  cfServiceInstances,
+  cfInstanceServiceKeys
+} from "abap_cloud_platform"
 
 interface ConnectionData extends RemoteConfig {
   // All fields from RemoteConfig are inherited
@@ -356,7 +371,6 @@ export class SapConnectionManager {
       }
 
       // Clear password from secure storage
-      const { PasswordVault } = await import("../lib")
       const vault = PasswordVault.get()
       if (removed) {
         await vault.deletePassword(`vscode.abapfs.${formatKey(connectionId)}`, removed.username)
@@ -405,7 +419,6 @@ export class SapConnectionManager {
       const serviceKey = JSON.parse(serviceKeyJson)
 
       // Validate it's an ABAP service key
-      const { isAbapServiceKey } = await import("abap_cloud_platform")
       if (!isAbapServiceKey(serviceKey)) {
         throw new Error("Invalid ABAP service key format")
       }
@@ -417,8 +430,6 @@ export class SapConnectionManager {
       } = serviceKey
 
       // Get system info to determine name
-      const { cfCodeGrant, getAbapSystemInfo, getAbapUserInfo, loginServer } =
-        await import("abap_cloud_platform")
       const server = loginServer()
       const grant = await cfCodeGrant(loginUrl, clientid, clientsecret, server)
       const user = await getAbapUserInfo(url, grant.accessToken)
@@ -464,20 +475,9 @@ export class SapConnectionManager {
   private async createCloudConnectionFromEndpoint(endpoint: string, target: "user" | "workspace") {
     try {
       // This will guide the user through the Cloud Foundry login flow
-      const vscode = await import("vscode")
+      // vscode is already statically imported above
 
-      // Import cloud platform utilities
-      const {
-        cfInfo,
-        cfPasswordGrant,
-        cfOrganizations,
-        cfSpaces,
-        cfServices,
-        cfServiceInstances,
-        cfInstanceServiceKeys,
-        getAbapSystemInfo,
-        getAbapUserInfo
-      } = await import("abap_cloud_platform")
+      // Import cloud platform utilities (static imports above)
 
       // Get CF info
       const info = await cfInfo(endpoint)
@@ -772,7 +772,6 @@ export class SapConnectionManager {
       await config.update("remote", updatedRemotes, configTarget)
 
       // Clear passwords from secure storage
-      const { PasswordVault } = await import("../lib")
       const vault = PasswordVault.get()
       for (const name of connectionNames) {
         const conn = currentRemotes[name]

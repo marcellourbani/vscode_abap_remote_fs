@@ -194,7 +194,6 @@ export class VersionHistoryTool implements vscode.LanguageModelTool<IVersionHist
     }
 
     const client = getClient(connectionId.toLowerCase())
-    const { isAbapClassInclude } = await import("abapobject")
 
     let include: string | undefined
     let structure = obj.structure

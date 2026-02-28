@@ -2,6 +2,7 @@ import { ADTClient } from "abap-adt-api"
 import { fullParse } from "abap-adt-api/build/utilities"
 import { randomBytes } from "crypto"
 import { log } from "../lib"
+import { selectTransport } from "./AdtTransports"
 
 // Import logging
 const copilotlog = (message: string) => {
@@ -669,7 +670,6 @@ export async function updateTextElementsWithTransport(
       transportToUse = lockResult.transportInfo.corrNr
     } else if (!lockResult.isLocal) {
       // Object needs transport but none assigned - trigger transport selection
-      const { selectTransport } = await import("./AdtTransports")
 
       // Get object path for transport info - use same logic as text elements URL
       const objContentPath = getTextElementsUrl(objectName, objectType).replace(

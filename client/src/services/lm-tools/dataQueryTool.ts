@@ -418,7 +418,6 @@ export class ExecuteDataQueryTool implements vscode.LanguageModelTool<IExecuteDa
     maxRows: number | undefined
   ): Promise<vscode.LanguageModelToolResult> {
     const targetConnectionId = connectionId || "default"
-    const { getClient } = await import("../../adt/conections")
     const client = getClient(targetConnectionId)
 
     if (!client) {

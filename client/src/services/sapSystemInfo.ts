@@ -1,3 +1,6 @@
+import { getClient } from "../adt/conections"
+import { RemoteManager } from "../config"
+
 /**
  * SAP System Information Service
  * Retrieves comprehensive system information from SAP tables
@@ -147,8 +150,7 @@ export async function getSAPSystemInfo(
   includeComponents: boolean = false
 ): Promise<SAPSystemInfo> {
   // Import dependencies
-  const { getClient } = await import("../adt/conections")
-  const { RemoteManager } = await import("../config")
+  // static imports used instead
 
   // Get client and config
   const client = getClient(connectionId)

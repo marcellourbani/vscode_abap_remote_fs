@@ -7,6 +7,8 @@ import * as vscode from "vscode"
 import { funWindow as window } from "../services/funMessenger"
 import { logCommands } from "../services/abapCopilotLogger"
 import { uriAbapFile } from "../adt/operations/AdtObjectFinder"
+import { getObjectEnhancements } from "../services/lm-tools/shared"
+import { getOrCreateRoot } from "../adt/conections"
 
 // Enhancement decoration types
 let enhancementDecorationType: vscode.TextEditorDecorationType
@@ -112,7 +114,6 @@ export async function updateEnhancementDecorations(editor: vscode.TextEditor) {
 
     if (!enhancementResult) {
       // Get enhancement information (no code needed for decorations)
-      const { getObjectEnhancements } = await import("../services/lm-tools/shared")
       enhancementResult = await getObjectEnhancements(objectUri, connectionId, false)
 
       // Cache the result for 60 minutes
@@ -206,8 +207,6 @@ export async function showEnhancementSource(
 ) {
   try {
     // Get enhancement data to retrieve the enhancement URI
-    const { getObjectEnhancements } = await import("../services/lm-tools/shared")
-
     // Reconstruct the proper objectUri (similar to decoration function)
     const activeEditor = window.activeTextEditor
     if (!activeEditor) {
@@ -215,7 +214,7 @@ export async function showEnhancementSource(
       return
     }
 
-    const { uriAbapFile } = await import("../adt/operations/AdtObjectFinder")
+    // uriAbapFile imported at top
     const abapFile = uriAbapFile(activeEditor.document.uri)
     if (!abapFile?.object) {
       window.showErrorMessage("Could not get ABAP object from active editor")
@@ -239,7 +238,7 @@ export async function showEnhancementSource(
     const cleanEnhancementUri = enhancement.uri.split("#")[0].replace("/source/main", "")
 
     // Build the workspace URI similar to GetAbapObjectWorkspaceUriTool logic
-    const { getOrCreateRoot } = await import("../adt/conections")
+    // getOrCreateRoot imported at top
     const root = await getOrCreateRoot(connectionId)
 
     // Find the workspace path for this enhancement URI
