@@ -87,9 +87,9 @@ export class LockManager {
     return true
   }
   private async checkSession() {
-    if (!this.noLocksOrPending) {
+    if (this.noLocksOrPending()) {
       await delay(500)
-      if (!this.noLocksOrPending) this.root.service.dropSession()
+      if (this.noLocksOrPending()) this.root.service.dropSession()
     }
   }
 }

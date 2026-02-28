@@ -57,6 +57,7 @@ export class LockObject {
   }
 
   private async sync(wait = true) {
+    if (this.pending) await this.pending
     const status = this.status.status
     if (this.claims.size && status === "unlocked") {
       return this.lock()
