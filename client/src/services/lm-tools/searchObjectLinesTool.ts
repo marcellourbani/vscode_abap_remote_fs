@@ -228,7 +228,6 @@ export class SearchABAPObjectLinesTool implements vscode.LanguageModelTool<ISear
             objectInfo.type === "TTYP"
           ) {
             try {
-              const { getClient } = await import("../../adt/conections")
               const client = getClient(actualConnectionId)
 
               let completeStructure = ""
@@ -295,7 +294,6 @@ export class SearchABAPObjectLinesTool implements vscode.LanguageModelTool<ISear
             }
           }
 
-          const { getClient } = await import("../../adt/conections")
           const client = getClient(actualConnectionId)
 
           let sourceContent = ""

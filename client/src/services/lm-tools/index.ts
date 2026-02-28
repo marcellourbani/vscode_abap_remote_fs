@@ -39,6 +39,7 @@ import {
 import { registerVersionHistoryTool } from "./versionHistoryTool"
 import { registerSubagentConfigTool } from "./subagentConfigTool"
 import { WebviewManager } from "../webviewManager"
+import { registerHeartbeatTool, initializeHeartbeatService } from "../heartbeat"
 
 /**
  * Register all language model tools
@@ -120,7 +121,6 @@ export async function registerAllTools(context: vscode.ExtensionContext): Promis
   registerSubagentConfigTool(context)
 
   // 17. Heartbeat Tool (OpenClaw-style periodic LLM monitoring)
-  const { registerHeartbeatTool, initializeHeartbeatService } = await import("../heartbeat")
   registerHeartbeatTool(context)
 
   // Initialize heartbeat service (will auto-start if enabled in config)

@@ -1,9 +1,11 @@
 import * as vscode from "vscode"
 import { funWindow as window } from "./funMessenger"
-import { getClient } from "../adt/conections"
+import { getClient, getOrCreateRoot } from "../adt/conections"
 import { caughtToString, log } from "../lib"
 import { UsageReference } from "abap-adt-api"
 import { WebviewManager } from "./webviewManager"
+import { isAbapFile } from "abapfs"
+import { getOptimalObjectURI } from "./lm-tools/shared"
 
 export interface GraphNode {
   id: string
@@ -477,8 +479,7 @@ export async function visualizeDependencyGraph(uri?: vscode.Uri) {
         progress.report({ increment: 20, message: "Getting object details..." })
 
         // Get object details from filesystem root (with retry for intermittent failures)
-        const { getOrCreateRoot } = await import("../adt/conections")
-        const { isAbapFile } = await import("abapfs")
+        // getOrCreateRoot and isAbapFile statically imported at top
 
         const root = await getOrCreateRoot(uri!.authority)
 
@@ -520,7 +521,6 @@ export async function visualizeDependencyGraph(uri?: vscode.Uri) {
         let mainUrl = node.object.contentsPath()
         // Use getOptimalObjectURI logic for correct where-used URL (for tables, etc)
         try {
-          const { getOptimalObjectURI } = await import("./lm-tools/shared")
           mainUrl = getOptimalObjectURI(node.object.type, mainUrl)
         } catch (e) {
           // fallback: use original mainUrl

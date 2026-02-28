@@ -6,6 +6,7 @@
 import * as vscode from "vscode"
 import { funWindow as window } from "../funMessenger"
 import { logTelemetry } from "../telemetry"
+import { TestDocumentCreator } from "../testDocumentCreator"
 
 // ============================================================================
 // INTERFACE
@@ -67,7 +68,6 @@ export class CreateTestDocumentationTool implements vscode.LanguageModelTool<ICr
     logTelemetry("tool_create_test_documentation_called")
 
     try {
-      const { TestDocumentCreator } = await import("../testDocumentCreator")
       const creator = new TestDocumentCreator()
 
       const documentBuffer = await creator.createDocument({

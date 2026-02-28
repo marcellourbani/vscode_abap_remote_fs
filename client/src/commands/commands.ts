@@ -919,7 +919,6 @@ export class AdtCommands {
    */
   private static async launchTransactionInNativeGui(config: any, client: any, tcode: string) {
     try {
-      const { SapGui } = await import("../adt/sapgui/sapgui")
       const sapGui = SapGui.create(config)
 
       const cmd = {
@@ -952,23 +951,12 @@ export class AdtCommands {
         window.showErrorMessage("Connection configuration not found")
         return
       }
-
-      // Build direct WebGUI URL with authentication
-      let baseUrl = config.url.replace(/\/sap\/bc\/adt.*$/, "")
-
-      // Ensure HTTPS
-      if (!baseUrl.startsWith("https://") && !baseUrl.startsWith("http://")) {
-        baseUrl = "https://" + baseUrl
-      } else if (baseUrl.startsWith("http://")) {
-        baseUrl = baseUrl.replace("http://", "https://")
-      }
-
       // 🎯 USE CENTRALIZED transaction mapping - NO MORE DUPLICATION! 🎉
       const transactionInfo = SapGuiPanel.getTransactionInfo(file.object.type, file.object.name)
 
       // Build simple WebGUI URL (same format as WebView uses)
       const browserUrl =
-        `${baseUrl}/sap/bc/gui/sap/its/webgui?` +
+        `${config.url}/sap/bc/gui/sap/its/webgui?` +
         `%7etransaction=%2a${transactionInfo.transaction}%20${transactionInfo.dynprofield}%3d${file.object.name}%3bDYNP_OKCODE%3d${transactionInfo.okcode}` +
         `&sap-client=${config.client}` +
         `&sap-language=${config.language || "EN"}` +
@@ -1160,7 +1148,6 @@ export class AdtCommands {
   @command(AbapFsCommands.refreshSystemInfoCache)
   private static async refreshSystemInfoCache() {
     try {
-      const { clearSystemInfoCache } = await import("../services/sapSystemInfo")
       clearSystemInfoCache()
       window.showInformationMessage(
         "SAP system info cache cleared. Next request will fetch fresh data."

@@ -3,6 +3,7 @@ import { funWindow as window } from "../../services/funMessenger"
 import { ADTClient } from "abap-adt-api"
 import { log } from "../../lib"
 import { RemoteManager } from "../../config"
+import { runInSapGui } from "../../adt/sapgui/sapgui"
 
 /**
  * Manages embedded SAP GUI webview panels for ABAP execution
@@ -186,8 +187,7 @@ export class SapGuiPanel {
       this.showProgress("Loading SAP GUI for HTML...")
 
       // Reuse existing SAP GUI infrastructure
-      const { runInSapGui } = await import("../../adt/sapgui/sapgui")
-      const { RemoteManager } = await import("../../config")
+      // runInSapGui and RemoteManager are statically imported above
 
       const originalConfig = RemoteManager.get().byId(this._connectionId)
       if (!originalConfig) {
@@ -501,7 +501,6 @@ export class SapGuiPanel {
       this.showProgress("Refreshing authentication...")
 
       // Get fresh configuration and regenerate authenticated URL
-      const { RemoteManager } = await import("../../config")
       const config = RemoteManager.get().byId(this._connectionId)
       if (!config) {
         throw new Error("Connection configuration not found")

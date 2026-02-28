@@ -79,7 +79,6 @@ export class ABAPTraceAnalysisTool implements vscode.LanguageModelTool<ITraceAna
       // connectionId is now mandatory
       const actualConnectionId = connectionId.toLowerCase()
 
-      const { getClient } = await import("../../adt/conections")
       const client = getClient(actualConnectionId)
 
       // Validate required parameters based on action
