@@ -86,6 +86,7 @@ This documentation covers all features in detail. The goal: make ABAP developmen
   - [1.4 Enhanced Hover Information](#14-enhanced-hover-information)
 - [2. SAP GUI Integration](#2-sap-gui-integration)
   - [2.1 Embedded SAP GUI (WebView)](#21-embedded-sap-gui-webview)
+    - [Blank Page / Clickjacking Issues](#blank-page--clickjacking-issues)
   - [2.2 Native Desktop SAP GUI](#22-native-desktop-sap-gui)
   - [2.3 Web Browser SAP GUI](#23-web-browser-sap-gui)
 - [3. Object Management](#3-object-management)
@@ -1014,6 +1015,32 @@ To avoid spamming you with repeated alerts:
 - Proper SAP GUI configuration in connection settings
 
 **Keyboard Shortcut:** Ctrl+Shift+F7
+
+### Blank Page / Clickjacking Issues
+
+If the embedded WebView shows a **blank white page**, your SAP system likely has clickjacking frame protection enabled (`ClickjackingFramingProtection.js`). This is a server-side SAP security feature that prevents SAP WebGUI from rendering inside an iframe — the extension cannot override it.
+
+You may also see these errors in the browser console:
+- `ClickjackingFramingProtection.js: Ignored call to 'alert()'. The document is sandboxed`
+- `Potential permissions policy violation: fullscreen is not allowed in this document`
+
+**Solution: Use VS Code's Integrated Browser**
+
+Enable the setting `abapfs.sapGui.useIntegratedBrowser` to open SAP GUI in VS Code's built-in Simple Browser instead of the embedded webview. The Simple Browser does not use iframes, so clickjacking protection does not apply.
+
+1. Open VS Code Settings (`Ctrl+,`)
+2. Search for `useIntegratedBrowser`
+3. Enable **Abapfs > Sap Gui: Use Integrated Browser**
+
+```json
+{
+  "abapfs.sapGui.useIntegratedBrowser": true
+}
+```
+
+This affects all embedded SAP GUI usage — the toolbar button, the command palette command, and the Run Transaction command.
+
+> **Tip:** VS Code also has an experimental setting **`simpleBrowser.useIntegratedBrowser`** that controls whether the Simple Browser uses VS Code's integrated browser engine instead of a webview. Enabling it may further improve compatibility on desktop. Note: this is a VS Code setting (not an ABAP FS setting) and is marked as experimental.
 
 ## 2.2 Native Desktop SAP GUI
 
