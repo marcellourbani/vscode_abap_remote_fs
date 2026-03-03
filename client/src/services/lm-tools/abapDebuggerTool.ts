@@ -16,10 +16,10 @@ import * as vscode from "vscode"
 import { funWindow as window } from "../funMessenger"
 import { DebugProtocol } from "@vscode/debugprotocol"
 import { AbapDebugSession } from "../../adt/debugger/abapDebugSession"
-import { DebugListener } from "../../adt/debugger/debugListener"
 import { logCommands } from "./../abapCopilotLogger"
 import { logTelemetry } from "./../telemetry"
-import { log, caughtToString } from "../../lib"
+import { caughtToString } from "../../lib"
+import { getSAPSystemInfo } from "../sapSystemInfo"
 
 // Helper for detailed debug logging - disabled, can be enabled when debugging the debugger!!
 const debugLog = (tool: string, message: string, data?: any) => {
@@ -233,8 +233,6 @@ export class ABAPDebugSessionTool implements vscode.LanguageModelTool<IDebugSess
     connectionId: string
   ): Promise<{ action: "proceed" | "cancel" }> {
     try {
-      const { getSAPSystemInfo } = await import("../sapSystemInfo")
-
       const systemInfo = await getSAPSystemInfo(connectionId)
 
       // Check if production (category 'P' or contains 'Production')

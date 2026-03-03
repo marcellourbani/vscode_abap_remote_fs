@@ -78,7 +78,6 @@ export class CreateTestIncludeTool implements vscode.LanguageModelTool<ICreateTe
         throw new Error(`Could not get URI for ABAP class: ${className}.`)
       }
 
-      const { getOrCreateRoot } = await import("../../adt/conections")
       const root = await getOrCreateRoot(connectionId.toLowerCase())
       const result = await root.findByAdtUri(classInfo.uri, true)
 

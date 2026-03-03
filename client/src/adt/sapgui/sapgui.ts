@@ -11,6 +11,7 @@ import { AbapObject, isAbapClassInclude } from "abapobject"
 import { commands, Uri } from "vscode"
 import * as vscode from "vscode"
 import { ADTClient } from "abap-adt-api"
+import { SapGuiPanel } from "../../views/sapgui/SapGuiPanel"
 
 export interface SapGuiCommand {
   type: "Transaction" | "Report" | "SystemCommand"
@@ -228,8 +229,6 @@ export class SapGui {
       switch (guitype) {
         case "WEBGUI_UNSAFE_EMBEDDED":
           // Use direct WebGUI URL (no SSO ticket - user will login manually in webview)
-          // Import and use WebView panel
-          const { SapGuiPanel } = await import("../../views/sapgui/SapGuiPanel")
           const objectParam = D_OBJECT_URI?.value || "SAP_GUI"
 
           // Get extension context more reliably

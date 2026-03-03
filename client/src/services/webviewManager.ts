@@ -2,6 +2,10 @@ import * as vscode from "vscode"
 import { funWindow as window } from "./funMessenger"
 import { ADTClient } from "abap-adt-api"
 import { log } from "../lib"
+import { getClient } from "../adt/conections"
+import { fetchWhereUsedData, buildGraphData, mergeGraphData, applyFilters } from "./dependencyGraph"
+import { AdtObjectFinder } from "../adt/operations/AdtObjectFinder"
+import { getSearchService } from "./abapSearchService"
 
 /**
  * Webview metadata stored in globalState
@@ -774,9 +778,7 @@ export class WebviewManager {
     panel: vscode.WebviewPanel
   ): Promise<void> {
     try {
-      const { getClient } = await import("../adt/conections")
-      const { fetchWhereUsedData, buildGraphData, mergeGraphData, applyFilters } =
-        await import("./dependencyGraph")
+      // dependencies imported statically above
 
       switch (message.command) {
         case "ready":
@@ -793,8 +795,7 @@ export class WebviewManager {
         case "openObject":
           // Open ABAP object in editor at the exact usage location
           try {
-            const { AdtObjectFinder } = await import("../adt/operations/AdtObjectFinder")
-            const { getClient } = await import("../adt/conections")
+            // AdtObjectFinder and getClient imported statically above
             const finder = new AdtObjectFinder(connectionId)
             const client = getClient(connectionId.toLowerCase())
             let adtUri = message.uri || message.objectUri || message.adtUri
@@ -876,7 +877,6 @@ export class WebviewManager {
               )
             } else {
               // Fallback: search by name/type
-              const { getSearchService } = await import("./abapSearchService")
               const searcher = getSearchService(connectionId.toLowerCase())
 
               // For function modules (FUGR/FF), search as FUNC type
@@ -904,7 +904,6 @@ export class WebviewManager {
               )
             }
           } catch (error) {
-            const { log } = await import("../lib")
             log(`[DependencyGraph] openObject: error: ${error}`)
             window.showErrorMessage(`Failed to open object: ${error}`)
           }
@@ -923,7 +922,6 @@ export class WebviewManager {
 
             if (!objectUri || !objectUri.startsWith("/sap/bc/adt")) {
               // Fallback: search for object
-              const { getSearchService } = await import("./abapSearchService")
               const searcher = getSearchService(connectionId.toLowerCase())
 
               // Try with the original type first

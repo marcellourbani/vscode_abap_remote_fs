@@ -9,6 +9,7 @@ import { getSearchService } from "../abapSearchService"
 import { logTelemetry } from "../telemetry"
 import { getOrCreateRoot, abapUri } from "../../adt/conections"
 import { atcProvider } from "../../views/abaptestcockpit"
+import { getATCDecorations } from "../../views/abaptestcockpit/decorations"
 
 // ============================================================================
 // INTERFACES
@@ -153,7 +154,7 @@ export class RunATCAnalysisTool implements vscode.LanguageModelTool<IRunATCAnaly
         )
       }
 
-      const { atcProvider } = await import("../../views/abaptestcockpit")
+      // atcProvider is imported statically at top
 
       const existingEditor = window.visibleTextEditors.find(
         editor => editor.document.uri.toString() === targetUri.toString()
@@ -329,8 +330,6 @@ export class GetATCDecorationsTool implements vscode.LanguageModelTool<IGetATCDe
     logTelemetry("tool_get_atc_decorations_called", { connectionId })
 
     try {
-      const { getATCDecorations } = await import("../../views/abaptestcockpit/decorations")
-
       const decorationData = getATCDecorations(fileUri)
 
       let resultText = ""

@@ -130,11 +130,18 @@ class MongoClient {
     this.connection.then(async mongo => {
       const request = this.toHttpRequest(data, source)
       const { headers: responseHeaders, statusCode, body: responseBody } = data.response
+      const unbool = <A>(x: A | boolean): A | string => (typeof x === "boolean" ? `${x}` : x)
+      const filteredResponseHeaders: Record<string, string | number | string[]> =
+        Object.fromEntries(
+          Object.entries(responseHeaders)
+            .map(([k, v]) => [`${k}`, unbool(v)])
+            .filter(([_, v]) => v !== null)
+        )
       const response: HttpLog = {
         ...request,
         statusCode,
         duration: new Date().getTime() - request.start,
-        responseHeaders,
+        responseHeaders: filteredResponseHeaders,
         responseBody
       }
       const logmodel = mongo.model(HTTPLOG)
