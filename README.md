@@ -9,7 +9,7 @@
     - [Installation Steps (Will need to follow slightly different steps for custom builds)](#installation-steps-will-need-to-follow-slightly-different-steps-for-custom-builds)
   - [✨ Key Features](#-key-features)
     - [🤖 AI Integration \& Chat](#-ai-integration--chat)
-    - [� MCP Server (For Non-GitHub Copilot Users)](#-mcp-server-for-non-github-copilot-users)
+    - [📚 MCP Server (For Non-GitHub Copilot Users)](#-mcp-server-for-non-github-copilot-users)
     - [�🔍 Object Management](#-object-management)
     - [🖥️ SAP GUI Integration](#️-sap-gui-integration)
     - [📊 Data \& Analysis](#-data--analysis)
@@ -101,6 +101,11 @@ For comprehensive documentation covering all features in detail, see [DOCUMENTAT
 - **30+ Language Model Tools** - Backend tools that GitHub Copilot uses automatically
 - **Autonomous Agent Mode** - AI explores your codebase independently without manual navigation
 - **Context-Aware Assistance** - AI understands your SAP system structure and objects
+- **AI Skills** - Specialized knowledge packs that Copilot loads automatically when relevant:
+  - **Clean ABAP** - SAP's official coding standards, distilled for AI
+  - **Code Writing Process** - Structured 6-step process for building ABAP solutions
+  - **Performance (ECC/HANA)** - System-specific optimization rules
+  - **SAP Research** - How to navigate and find anything in an SAP system
 - Ask questions like:
   - "Where is BAPI_USER_GET_DETAIL used?"
   - "Show me the code for ZCL_MY_CLASS"
@@ -108,7 +113,7 @@ For comprehensive documentation covering all features in detail, see [DOCUMENTAT
   - "Run ATC and explain the findings"
   - "Create a new class with unit tests"
 
-### � MCP Server (For Non-GitHub Copilot Users)
+### 📚 MCP Server (For Non-GitHub Copilot Users)
 
 - **Works with Cursor, Claude Code, Windsurf, Claude Desktop** - Any MCP-compatible AI tool
 - **All 30+ tools exposed** - Read code, search, run tests, analyze dumps, etc.
@@ -459,6 +464,7 @@ If you only want proxy for a specific system, configure it in that workspace's s
 - **[docx](https://github.com/dolanmiu/docx)** (MIT) - Word document generation
 - **[Application Insights](https://github.com/Microsoft/ApplicationInsights-node.js)** (MIT) - Telemetry SDK
 - **[Cytoscape.js](https://github.com/cytoscape/cytoscape.js)** (MIT) - Dependency Graph
+- **[SAP Clean ABAP Style Guide](https://github.com/SAP/styleguides)** (CC BY 3.0) - Clean ABAP coding rules (distilled for AI skill)
 
 See THIRD_PARTY_LICENSES.md for complete license details.
 

@@ -49,7 +49,16 @@ This documentation covers all features in detail. The goal: make ABAP developmen
     - [Subagents auto-disabled](#subagents-auto-disabled)
     - [Ghost files in explorer after disable](#ghost-files-in-explorer-after-disable)
     - [Delegation not using custom agents](#delegation-not-using-custom-agents)
-- [1.3 Heartbeat - Background Monitoring \& Reminders](#13-heartbeat---background-monitoring--reminders)
+- [1.3 AI Skills](#13-ai-skills)
+  - [How Skills Work](#how-skills-work)
+  - [Available Skills](#available-skills)
+    - [Clean ABAP (`/clean-abap`)](#clean-abap-clean-abap)
+    - [Code Writing Process (`/abap-code-writing`)](#code-writing-process-abap-code-writing)
+    - [Performance - ECC (`/abap-performance-ecc`)](#performance---ecc-abap-performance-ecc)
+    - [Performance - HANA (`/abap-performance-hana`)](#performance---hana-abap-performance-hana)
+    - [SAP Research (`/abap-research`)](#sap-research-abap-research)
+  - [Using Skills](#using-skills)
+- [1.4 Heartbeat - Background Monitoring \& Reminders](#14-heartbeat---background-monitoring--reminders)
   - [What is Heartbeat?](#what-is-heartbeat)
     - [🔔 Personal Reminders (any reminder, not just SAP!)](#-personal-reminders-any-reminder-not-just-sap)
     - [📊 SAP System Monitoring](#-sap-system-monitoring)
@@ -83,7 +92,7 @@ This documentation covers all features in detail. The goal: make ABAP developmen
     - [Too many alerts](#too-many-alerts)
     - [Missing heartbeat.json](#missing-heartbeatjson)
     - [Model errors](#model-errors)
-  - [1.4 Enhanced Hover Information](#14-enhanced-hover-information)
+  - [1.5 Enhanced Hover Information](#15-enhanced-hover-information)
 - [2. SAP GUI Integration](#2-sap-gui-integration)
   - [2.1 Embedded SAP GUI (WebView)](#21-embedded-sap-gui-webview)
     - [Blank Page / Clickjacking Issues](#blank-page--clickjacking-issues)
@@ -650,7 +659,45 @@ This is a VS Code refresh issue. The extension refreshes the explorer automatica
 ### Delegation not using custom agents
 Make sure `chat.customAgentInSubagent.enabled` is set to `true` in your VS Code settings.
 
-# 1.3 Heartbeat - Background Monitoring & Reminders
+# 1.3 AI Skills
+
+**Purpose:** Specialized knowledge packs that Copilot loads automatically when your task matches the skill's domain. Skills teach Copilot ABAP best practices, coding processes, performance patterns, and system navigation techniques without you having to explain them every time.
+
+## How Skills Work
+
+Skills use VS Code's progressive disclosure system:
+1. **Always visible:** Copilot sees the skill name and description (lightweight metadata)
+2. **Loaded when relevant:** When your prompt matches a skill's domain, Copilot loads the full instructions into context
+3. **On-demand resources:** Skills can reference additional files that load only when needed
+
+This means you can have many skills installed without bloating every conversation — only relevant skills are loaded.
+
+## Available Skills
+
+### Clean ABAP (`/clean-abap`)
+SAP's official [Clean ABAP Style Guide](https://github.com/SAP/styleguides) distilled into ~350 AI-optimized rules. Covers naming conventions, modern syntax, class/method design, error handling, formatting, comments, and unit testing patterns. Loaded automatically when writing or reviewing ABAP code.
+
+### Code Writing Process (`/abap-code-writing`)
+A structured 6-step process for building ABAP solutions — from requirement understanding through system exploration, architecture planning, research, detailed design, and finally code writing. Ensures the AI validates requirements with you, checks for standard SAP functionality before building custom, and verifies every object and parameter against the live system before writing a single line of code.
+
+### Performance - ECC (`/abap-performance-ecc`)
+Performance best practices for ECC systems on traditional databases (Oracle, DB2, MSSQL, MaxDB). Covers simple SQL patterns, aggressive buffering, index awareness, internal table optimization, and ECC-specific anti-patterns. The AI checks the system type first and loads this skill only for non-HANA systems.
+
+### Performance - HANA (`/abap-performance-hana`)
+Performance best practices for S/4HANA systems. Covers code pushdown, CDS views, AMDP, complex SQL with aggregations, and the HANA-specific mindset of "push everything to the database." The AI checks the system type first and loads this skill only for HANA-based systems.
+
+### SAP Research (`/abap-research`)
+Teaches the AI to navigate SAP systems like a senior developer. Instead of hardcoded steps, it provides the detective mindset: which metadata tables catalog what (TSTCT for transactions, T100 for messages, TADIR for all objects, DD03L for table fields, etc.), thinking patterns for common research problems (finding tcodes from screenshots, tracing error messages to code, reverse-looking up tables from field names), and research principles (wildcard strategies for case-sensitive text, package clustering, following the chain).
+
+## Using Skills
+
+**Automatic:** Skills load automatically when Copilot determines your prompt matches the skill's domain. No action needed.
+
+**Manual:** Type `/` in the chat input to see available skills as slash commands. Select a skill to invoke it explicitly (e.g., `/clean-abap review this class` or `/abap-research find the transaction for this screen`).
+
+**Configure:** Use the command palette (`Ctrl+Shift+P`) → **Configure Skills** to see which skills are available and toggle them.
+
+# 1.4 Heartbeat - Background Monitoring & Reminders
 
 > ⚠️ **BETA FEATURE** - This feature is in beta. Please report any issues.
 
@@ -958,7 +1005,7 @@ To avoid spamming you with repeated alerts:
 - Some models may not work well for heartbeat
 - Try `GPT-4o mini (copilot)` - most reliable for background tasks
 
-## 1.4 Enhanced Hover Information
+## 1.5 Enhanced Hover Information
 **Purpose:** Rich contextual information on hover over ABAP code
 
 **How to Use:**

@@ -130,6 +130,20 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 ```
 
+## SAP Clean ABAP Style Guide
+
+The Clean ABAP skill included in this extension contains rules distilled from the SAP Clean ABAP Style Guide.
+
+**Source:** https://github.com/SAP/styleguides  
+**License:** Creative Commons Attribution 3.0 Unported (CC BY 3.0)  
+**Copyright:** © SAP SE
+
+This work is a derivative of the SAP Clean ABAP Style Guide, adapted and distilled for use as an AI agent skill. The original work is licensed under the Creative Commons Attribution 3.0 Unported License.
+
+To view a copy of this license, visit https://creativecommons.org/licenses/by/3.0/
+
+Changes made: The original human-oriented style guide (~5000 lines) was distilled into a compact, AI-optimized ruleset (~350 rules) suitable for automated code generation and review. All rationale, discussion, and verbose examples were removed; only the actionable rules and minimal code examples were retained.
+
 ## Additional Dependencies
 
 This project also includes various other open source dependencies as listed in package.json. Each dependency retains its original license as specified in its respective package.

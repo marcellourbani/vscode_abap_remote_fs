@@ -121,6 +121,8 @@ Before writing ANY code, confirm:
 ### Step 5: Write Code
 Only NOW do you write the code, using verified information.
 
+> For the full detailed process, the `abap-code-writing` skill provides expanded guidance for each step.
+
 ### Example: "Write code to create a sales order"
 
 ✅ **CORRECT approach:**
