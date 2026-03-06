@@ -1,7 +1,7 @@
 ---
 name: abap-research
 description: Techniques for navigating and finding objects in SAP systems. Use when searching for transactions, programs, FMs, classes, error messages, BAPIs, tables, custom objects, or anything in an unfamiliar SAP system. Teaches the mindset and metadata knowledge a senior ABAP developer uses to find anything in any system. Load this skill when the user asks to find something and direct search doesn't work, or when investigating errors, screenshots, or unknown functionality.
-argument-hint: '[what to find in the SAP system and how to find ABAP stuff effectively]'
+argument-hint: '[what to find in the SAP system]'
 user-invokable: true
 disable-model-invocation: false
 ---
