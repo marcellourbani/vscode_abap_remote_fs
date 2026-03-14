@@ -57,12 +57,13 @@ export class LockObject {
   }
 
   private async sync(wait = true) {
-    if (this.pending) await this.pending
     const status = this.status.status
-    if (this.claims.size && status === "unlocked") {
+    if ((this.claims.size && status === "unlocked") || status === "unlocking") {
+      if (this.pending) await this.pending
       return this.lock()
-    } else if (this.claims.size === 0 && status === "locked") {
+    } else if (this.claims.size === 0 && (status === "locked" || status === "locking")) {
       // do not unlock if another lock request comes in within a second
+      if (this.pending) await this.pending
       if (wait) await delay(1000)
       if (this.claims.size === 0) return this.unlock()
     }
