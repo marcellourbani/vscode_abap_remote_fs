@@ -2,7 +2,7 @@
   "name": "vscode-abap-remote-fs",
   "displayName": "ABAP remote filesystem",
   "description": "Work on your ABAP code straight from the server",
-  "version": "2.0.7",
+  "version": "2.0.8",
   "publisher": "murbani",
   "publishConfig": {
     "access": "restricted",
