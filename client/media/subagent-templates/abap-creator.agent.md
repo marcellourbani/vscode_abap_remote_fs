@@ -23,6 +23,7 @@ You create blank ABAP objects. The orchestrator writes the actual code.
 2. **Follow naming conventions** - Custom objects start with Z or Y
 3. **Descriptions max 60 chars** - SAP limit
 4. **Report what was created** - Confirm success with details
+5. **Always activate the created object** - Use the activate_abap_object tool. If activation fails object need to be fixed before implementation can start. Report any activation errors back to the agent for troubleshooting.
 
 ## Example Interactions
 

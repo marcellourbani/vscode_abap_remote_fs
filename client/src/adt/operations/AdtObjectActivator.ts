@@ -271,7 +271,7 @@ export class AdtObjectActivator {
     return selected ? selected.map((item: any) => item.object) : null
   }
 
-  private async tryActivate(object: AbapObject, uri: Uri) {
+  private async tryActivate(object: AbapObject, uri: Uri, interactive: boolean) {
     const { name, path } = object.lockObject
     let result
     const mainProg = await this.getMain(object, uri)
@@ -293,7 +293,9 @@ export class AdtObjectActivator {
     // If we have inactive related objects, show selection dialog BEFORE main activation
     if (relatedObjects.length > 1) {
       // Show user selection dialog for which objects to activate
-      const selectedObjects = await this.showActivationSelectionDialog(relatedObjects)
+      const selectedObjects = interactive
+        ? await this.showActivationSelectionDialog(relatedObjects)
+        : relatedObjects
 
       if (selectedObjects && selectedObjects.length > 0) {
         // Activate all selected objects (including main object)
@@ -343,11 +345,15 @@ export class AdtObjectActivator {
     return result
   }
 
-  public async activate(object: AbapObject, uri: Uri): Promise<{ ok: boolean; summary?: string }> {
+  public async activate(
+    object: AbapObject,
+    uri: Uri,
+    interactive = true
+  ): Promise<{ ok: boolean; summary?: string }> {
     const inactive = object.lockObject
 
     try {
-      const result = await this.tryActivate(object, uri)
+      const result = await this.tryActivate(object, uri, interactive)
       const mainProg = await this.getMain(object, uri)
 
       if (result && result.success) {

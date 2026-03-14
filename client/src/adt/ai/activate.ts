@@ -33,7 +33,7 @@ export class ActivateTool implements LanguageModelTool<ActivateInput> {
         const object = isAbapFile(path?.file) && path?.file?.object
         if (!object) throw new Error("Failed to retrieve object for activation")
         const activator = AdtObjectActivator.get(uri.authority)
-        await activator.activate(object, uri)
+        await activator.activate(object, uri, false)
       }
     )
     const contentText = [`Activation successful for ${url}`]
