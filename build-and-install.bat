@@ -12,7 +12,7 @@ if %errorlevel% neq 0 (
 echo ✅ Compilation successful!
 
 echo 📦 Packaging extension...
-call npx vsce package --allow-star-activation --allow-missing-repository --out "abap-fs-v2.0.8.vsix" 
+call npx vsce package --allow-star-activation --allow-missing-repository --out "abap-fs-v2.0.9.vsix" 
 if %errorlevel% neq 0 (
     echo ❌ Packaging failed!
     pause
@@ -21,7 +21,7 @@ if %errorlevel% neq 0 (
 echo ✅ Packaging successful!
 
 echo 🔧 Installing extension to VS Code...
-call code --install-extension "abap-fs-v2.0.8.vsix" --force
+call code --install-extension "abap-fs-v2.0.9.vsix" --force
 if %errorlevel% neq 0 (
     echo ❌ Installation failed!
     pause
