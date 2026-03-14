@@ -13,6 +13,8 @@ export type AbapFsContexts =
   | "abapfs:enableLeftNextRev"
   | "abapfs:enableRightPrevRev"
   | "abapfs:enableRightNextRev"
+  | "abapfs:blameActive"
+  | "abapfs:blameAvailable"
 
 export const setContext = (key: AbapFsContexts, value: unknown) =>
   commands.executeCommand("setContext", key, value)

@@ -2,7 +2,7 @@
 name: abap-code-writing
 description: Structured process for building ABAP solutions. Use BEFORE writing any ABAP code — reports, classes, function modules, enhancements, or full processes. Guides through requirement validation, system exploration, architecture planning, research of existing objects, and detailed design before any code is written.
 argument-hint: '[description of what to build in ABAP]'
-user-invokable: true
+user-invocable: true
 disable-model-invocation: false
 ---
 

@@ -26,6 +26,7 @@ import { LocalFsProvider } from "./fs/LocalFsProvider"
 import { triggerSyntaxCheck } from "./langClient"
 import { updateEnhancementDecorations } from "./views/enhancementDecorations"
 import { updateCleanerContext } from "./services/cleanerCommands"
+import { onBlameActiveEditorChanged, onBlameDocumentChanged } from "./views/blameGutter"
 
 // Global tracking of save reasons to coordinate between documentWillSave and writeFile
 const pendingSaveReasons = new Map<string, TextDocumentSaveReason>()
@@ -200,6 +201,9 @@ export async function documentChangedListener(event: TextDocumentChangeEvent) {
   if (event.contentChanges.length === 0 || event.document.isDirty) doclock(event.document)
   // restored original locking without copilot detection
 
+  // Blame: auto-hide on dirty
+  onBlameDocumentChanged(event)
+
   // // 🤖 COPILOT DETECTION: Check if content changed without isDirty being set
   const document = event.document
   const hasContentChanges = event.contentChanges.length > 0
@@ -371,6 +375,9 @@ export async function activeTextEditorChangedListener(editor: TextEditor | undef
         //   // Enhancement decorations are optional - don't break if they fail
         log(`⚠️ Enhancement decorations failed: ${enhError}`)
       }
+
+      // 📋 Update blame gutter state
+      onBlameActiveEditorChanged(editor)
     }
   } catch (e) {
     await showHideActivate() // reset

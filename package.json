@@ -2,7 +2,7 @@
   "name": "vscode-abap-remote-fs",
   "displayName": "ABAP remote filesystem",
   "description": "Work on your ABAP code straight from the server",
-  "version": "2.0.7",
+  "version": "2.0.9",
   "publisher": "murbani",
   "publishConfig": {
     "access": "restricted",
@@ -2270,7 +2270,6 @@
         "canBeReferencedInPrompt": true,
         "toolReferenceName": "abap_activate",
         "modelDescription": "Activate ABAP objects in the given URL. Activation is similar to compiling in other programming languages. It checks the code for syntax errors and makes it executable in the ABAP runtime environment. Returns a list of activated objects and any activation errors encountered.",
-        "when": "resourceScheme == adt",
         "inputSchema": {
           "type": "object",
           "properties": {
@@ -2442,6 +2441,18 @@
         "title": "Clean ABAP Code with ABAP Cleaner",
         "category": "ABAP FS",
         "icon": "$(symbol-ruler)"
+      },
+      {
+        "command": "abapfs.showBlame",
+        "title": "Show Blame",
+        "category": "ABAP FS",
+        "icon": "$(git-commit)"
+      },
+      {
+        "command": "abapfs.hideBlame",
+        "title": "Hide Blame",
+        "category": "ABAP FS",
+        "icon": "$(eye-closed)"
       },
       {
         "command": "abapfs.setupCleaner",
@@ -2870,6 +2881,16 @@
       {
         "command": "abapfs.search",
         "key": "ctrl+alt+;"
+      },
+      {
+        "command": "abapfs.showBlame",
+        "key": "ctrl+alt+b",
+        "when": "resourceScheme == adt && editorLangId == abap && abapfs:blameAvailable && !abapfs:blameActive"
+      },
+      {
+        "command": "abapfs.hideBlame",
+        "key": "ctrl+alt+b",
+        "when": "resourceScheme == adt && editorLangId == abap && abapfs:blameActive"
       }
     ],
     "menus": {
@@ -2946,6 +2967,14 @@
         },
         {
           "command": "abapfs.activate",
+          "when": "hideCommands.never"
+        },
+        {
+          "command": "abapfs.showBlame",
+          "when": "hideCommands.never"
+        },
+        {
+          "command": "abapfs.hideBlame",
           "when": "hideCommands.never"
         },
         {
@@ -3363,6 +3392,16 @@
         }
       ],
       "editor/title": [
+        {
+          "command": "abapfs.showBlame",
+          "group": "navigation@0.5",
+          "when": "resourceScheme == adt && editorLangId == abap && abapfs:blameAvailable && !abapfs:blameActive && !inChat"
+        },
+        {
+          "command": "abapfs.hideBlame",
+          "group": "navigation@0.5",
+          "when": "resourceScheme == adt && editorLangId == abap && abapfs:blameActive && !inChat"
+        },
         {
           "command": "abapfs.activate",
           "group": "navigation",

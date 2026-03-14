@@ -94,6 +94,49 @@ export function processTemplate(
 }
 
 // ============================================================================
+// MIGRATION
+// ============================================================================
+
+/**
+ * Fix deprecated "user-invokable" frontmatter key in agent files.
+ * VS Code corrected the spelling to "user-invocable" and deprecated the old form.
+ * For users who already have agent files with the old spelling, this replaces it
+ * so that validation does not reject the files.
+ */
+async function migrateInvokableSpelling(workspaceUri: vscode.Uri): Promise<number> {
+  let fixed = 0
+  const folders = [
+    vscode.Uri.joinPath(workspaceUri, ".github", "agents"),
+    vscode.Uri.joinPath(workspaceUri, ".github", "agents_disabled")
+  ]
+
+  for (const dir of folders) {
+    let entries: [string, vscode.FileType][]
+    try {
+      entries = await vscode.workspace.fs.readDirectory(dir)
+    } catch {
+      continue // folder doesn't exist
+    }
+
+    for (const [name, type] of entries) {
+      if (type !== vscode.FileType.File || !name.endsWith(".agent.md")) continue
+      const fileUri = vscode.Uri.joinPath(dir, name)
+      try {
+        const raw = Buffer.from(await vscode.workspace.fs.readFile(fileUri)).toString("utf8")
+        if (raw.includes("user-invokable")) {
+          const updated = raw.replace(/user-invokable/g, "user-invocable")
+          await vscode.workspace.fs.writeFile(fileUri, Buffer.from(updated, "utf8"))
+          fixed++
+        }
+      } catch {
+        // skip unreadable files
+      }
+    }
+  }
+  return fixed
+}
+
+// ============================================================================
 // FILE OPERATIONS
 // ============================================================================
 
@@ -349,6 +392,13 @@ export async function enableSubagentsCore(context: vscode.ExtensionContext): Pro
     fileStatus = `Restored ${restoreResult.restored} agent files from agents_disabled folder (with updated model configurations).`
   } else {
     fileStatus = `Created ${restoreResult.created} new agent files.`
+  }
+
+  // Fix deprecated "user-invokable" → "user-invocable" before validation
+  try {
+    await migrateInvokableSpelling(workspaceFolder)
+  } catch {
+    // Non-critical
   }
 
   await new Promise(resolve => setTimeout(resolve, 500))

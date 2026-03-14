@@ -35,6 +35,7 @@
     "watch": "webpack --config-name development --watch --progress"
   },
   "devDependencies": {
+    "@types/diff": "^7.0.2",
     "@types/jest": "^29.2.5",
     "@types/mocha": "^10.0.1",
     "@types/mongoose": "^5.7.36",
@@ -69,6 +70,7 @@
     "applicationinsights": "^3.9.0",
     "chromadb": "^3.0.17",
     "client-oauth2": "^4.3.3",
+    "diff": "^8.0.3",
     "docx": "^9.5.1",
     "event-stream": "4.0.1",
     "fast-xml-parser": "^4.0.13",

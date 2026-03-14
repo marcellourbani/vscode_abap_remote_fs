@@ -3,7 +3,7 @@ name: abap-data-analyst
 description: 'Query SAP database tables and analyze data.'
 model: '{{MODEL}}'
 tools: [{{TOOLS}}]
-user-invokable: false
+user-invocable: false
 disable-model-invocation: false
 argument-hint: 'A question about SAP data or a query request'
 ---

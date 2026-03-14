@@ -3,7 +3,7 @@ name: abap-troubleshooter
 description: 'Analyze runtime dumps and performance traces.'
 model: '{{MODEL}}'
 tools: [{{TOOLS}}]
-user-invokable: false
+user-invocable: false
 disable-model-invocation: false
 argument-hint: 'A question about dumps, errors, or performance issues'
 ---

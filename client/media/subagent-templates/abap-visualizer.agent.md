@@ -3,7 +3,7 @@ name: abap-visualizer
 description: 'Create visual diagrams from ABAP code structures.'
 model: '{{MODEL}}'
 tools: [{{TOOLS}}]
-user-invokable: false
+user-invocable: false
 disable-model-invocation: false
 argument-hint: 'Object(s) to visualize and diagram type needed'
 ---

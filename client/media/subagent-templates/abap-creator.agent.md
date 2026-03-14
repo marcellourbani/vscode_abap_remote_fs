@@ -3,7 +3,7 @@ name: abap-creator
 description: 'Create new ABAP objects - classes, reports, function groups, etc.'
 model: '{{MODEL}}'
 tools: [{{TOOLS}}]
-user-invokable: false
+user-invocable: false
 disable-model-invocation: false
 argument-hint: 'Object type and name to create, plus package info'
 ---

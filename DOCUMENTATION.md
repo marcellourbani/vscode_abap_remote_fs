@@ -6,6 +6,8 @@ This documentation covers all features in detail. The goal: make ABAP developmen
 > **�🔌 Using a non-GitHub Copilot AI tool?** (Cursor, Claude Code, Windsurf, Claude Desktop, etc.)  
 > See [MCP Server for External AI Tools](#mcp-server-for-external-ai-tools) to use ABAP FS tools with your preferred AI assistant.
 
+> **GitHub Copilot (and other AI tools, once MCP is enabled and connected) has access to this documentation. Simply install ABAP FS extension, restart VS Code, setup MCP (optional) and ask AI to tell you about the ABAP FS features, how to set it up and how to use each feature and it can guide you!**
+
 - [Installation Steps](#installation-steps)
   - [Updates](#updates)
 - [MCP Server for External AI Tools](#mcp-server-for-external-ai-tools)
@@ -121,6 +123,7 @@ This documentation covers all features in detail. The goal: make ABAP developmen
 - [8. Version Control](#8-version-control)
   - [8.1 abapGit Integration](#81-abapgit-integration)
   - [8.2 ABAP Revision History](#82-abap-revision-history)
+  - [8.3 Blame Gutter](#83-blame-gutter)
 - [9. Testing Features](#9-testing-features)
   - [9.1 Run Unit Tests](#91-run-unit-tests)
   - [9.2 Create Test Classes](#92-create-test-classes)
@@ -1875,6 +1878,66 @@ The `get_version_history` tool provides three actions:
 - "Compare version 1 and version 3 of ZCL_MY_CLASS"
 
 - "What changed between the last two versions of ZTEST_PROGRAM?"
+
+## 8.3 Blame Gutter
+
+**Purpose:** GitLens-style inline blame annotations showing who last changed each line, when, and in which transport
+
+**How to Use:**
+
+- Click the **blame icon** ($(git-commit)) in the editor title bar OR
+
+- Press **Ctrl+Alt+B** with an ABAP file open OR
+
+- Command palette: ABAP FS: Show Blame
+
+**Features:**
+
+- Per-line attribution — author, date, and transport number shown inline after each line
+
+- Transport description shown inline (e.g., `JSMITH · Jan 15, 2026 · KD1K900123 — S 8000005926: Fix pricing logic`)
+
+- Color-coded left border per author for quick visual grouping
+
+- Consecutive lines by the same author/transport are grouped with a `│` continuation marker
+
+- All annotations are column-aligned (start at the same position regardless of line length)
+
+- Hover tooltip with full date and transport details
+
+- Per-file state — blame can be active on one file while another file shows no blame
+
+- Auto-hides when you start editing (document becomes dirty)
+
+- Show Blame button reappears after undo returns the document to clean state
+
+- Cached results — re-opening blame on the same file is instant
+
+- Cache invalidated on save (version history may have changed)
+
+- Cancellable progress notification while fetching version history
+
+**How It Works:**
+
+Blame walks backward through the SAP version history (same algorithm as `git blame`):
+
+1. Fetches all versions of the object from SAP
+2. Starting from the newest version, diffs each consecutive pair (newer vs older)
+3. Lines that were added/changed in the newer version → attributed to that version's author
+4. Lines that are identical in both → carried forward to check against the next older version
+5. Lines still unattributed after all versions → attributed to the oldest version
+
+Version sources are fetched in parallel batches for performance.
+
+**Requirements:**
+
+- Object must have version history in SAP (objects in $TMP with no transports have no versions)
+
+- Document must not be dirty (unsaved changes)
+
+- ABAP files only (`.abap` language)
+
+**Keyboard Shortcut:** Ctrl+Alt+B (toggles show/hide)
 
 # 9. Testing Features
 

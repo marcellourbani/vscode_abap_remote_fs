@@ -144,7 +144,7 @@ export class FsProvider implements FileSystemProvider {
     } catch (e) {
       // Don't log FileNotFound errors for method names/debug artifacts to reduce noise
       if (!(e instanceof FileSystemError && e.name === "FileNotFound (FileSystemError)"))
-        log(`Error in stat of ${uri?.toString()}\n${caughtToString(e)}`)
+        log.debug(`Error in stat of ${uri?.toString()}\n${caughtToString(e)}`)
       throw e
     }
   }
@@ -164,7 +164,7 @@ export class FsProvider implements FileSystemProvider {
         return buf
       }
     } catch (error) {
-      log(`Error reading file ${uri?.toString()}\n${caughtToString(error)}`)
+      log.debug(`Error reading file ${uri?.toString()}\n${caughtToString(error)}`)
     }
     throw FileSystemError.Unavailable(uri)
   }

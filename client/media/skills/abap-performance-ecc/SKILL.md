@@ -2,7 +2,7 @@
 name: abap-performance-ecc
 description: ABAP performance best practices for ECC / traditional database systems (Oracle, DB2,MSSQL, MaxDB). Use when writing or reviewing ABAP code on NON-HANA systems.IMPORTANT: First use the SAP system info tool to check the system type — if the system is S/4HANA or runs on HANA DB, load the abap-performance-hana skill instead. Covers database access, buffering, internal table optimization, and ECC-specific patterns.
 argument-hint: '[ABAP code to optimize on ECC]'
-user-invokable: true
+user-invocable: true
 disable-model-invocation: false
 ---
 

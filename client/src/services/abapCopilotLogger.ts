@@ -8,7 +8,7 @@ import { channel as abapFSChannel } from "../lib/logger" // Reuse existing ABAP 
 
 class ABAPCopilotLogger {
   private static instance: ABAPCopilotLogger
-  private outputChannel: vscode.OutputChannel
+  private outputChannel: vscode.LogOutputChannel
 
   private constructor() {
     // Reuse the existing ABAP FS output channel instead of creating a new one
@@ -22,47 +22,34 @@ class ABAPCopilotLogger {
     return ABAPCopilotLogger.instance
   }
 
-  private formatMessage(level: string, component: string, message: string): string {
-    const now = new Date()
-    const year = now.getFullYear()
-    const month = String(now.getMonth() + 1).padStart(2, "0")
-    const day = String(now.getDate()).padStart(2, "0")
-    const hours = String(now.getHours()).padStart(2, "0")
-    const minutes = String(now.getMinutes()).padStart(2, "0")
-    const seconds = String(now.getSeconds()).padStart(2, "0")
-    const ms = String(now.getMilliseconds()).padStart(3, "0")
-    const timestamp = `${year}-${month}-${day}T${hours}:${minutes}:${seconds}.${ms}`
-    return `[${timestamp}] [${level}] [${component}] ${message}`
+  private formatMessage(component: string, message: string): string {   
+    return `[${component}] ${message}`
   }
 
   public info(component: string, message: string) {
-    const formatted = this.formatMessage("INFO", component, message)
-    this.outputChannel.appendLine(formatted)
-    console.log(formatted)
+    const formatted = this.formatMessage(component, message)
+    this.outputChannel.info(formatted)
   }
 
   public warn(component: string, message: string) {
-    const formatted = this.formatMessage("WARN", component, message)
-    this.outputChannel.appendLine(formatted)
-    console.warn(formatted)
+    const formatted = this.formatMessage(component, message)
+    this.outputChannel.warn(formatted)
   }
 
   public error(component: string, message: string, error?: any) {
-    let formatted = this.formatMessage("ERROR", component, message)
+    let formatted = this.formatMessage(component, message)
     if (error) {
       formatted += `\n  Error: ${error}`
       if (error.stack) {
         formatted += `\n  Stack: ${error.stack}`
       }
     }
-    this.outputChannel.appendLine(formatted)
-    console.error(formatted)
+    this.outputChannel.error(formatted)
   }
 
   public debug(component: string, message: string) {
-    const formatted = this.formatMessage("DEBUG", component, message)
-    this.outputChannel.appendLine(formatted)
-    console.debug(formatted)
+    const formatted = this.formatMessage(component, message)
+    this.outputChannel.debug(formatted)
   }
 
   public trace(component: string, operation: string, data?: any) {
@@ -70,9 +57,8 @@ class ABAPCopilotLogger {
     if (data) {
       message += ` | Data: ${JSON.stringify(data, null, 2)}`
     }
-    const formatted = this.formatMessage("TRACE", component, message)
-    this.outputChannel.appendLine(formatted)
-    console.debug(formatted)
+    const formatted = this.formatMessage(component, message)
+    this.outputChannel.trace(formatted)
   }
 
   public show() {

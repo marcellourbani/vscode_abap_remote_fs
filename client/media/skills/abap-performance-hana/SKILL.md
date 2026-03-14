@@ -2,7 +2,7 @@
 name: abap-performance-hana
 description: ABAP performance best practices for S/4HANA and HANA database systems.Use when writing or reviewing ABAP code on HANA-based systems.IMPORTANT: First use the SAP system info tool to check the system type — if the system is ECC or runs on a traditional database (Oracle, DB2, MSSQL), load the abap-performance-ecc skill instead. Covers code pushdown, CDS views, AMDP, advanced SQL, and HANA-optimized patterns.
 argument-hint: '[ABAP code to optimize on HANA]'
-user-invokable: true
+user-invocable: true
 disable-model-invocation: false
 ---
 
