@@ -121,6 +121,10 @@ Before writing ANY code, confirm:
 ### Step 5: Write Code
 Only NOW do you write the code, using verified information.
 
+### Step 6: Activate
+
+After writing, activate the code to check for syntax errors. Fix any activation issue before moving on
+
 > For the full detailed process, the `abap-code-writing` skill provides expanded guidance for each step.
 
 ### Example: "Write code to create a sales order"
