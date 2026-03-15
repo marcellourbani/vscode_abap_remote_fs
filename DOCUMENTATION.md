@@ -692,6 +692,9 @@ Performance best practices for S/4HANA systems. Covers code pushdown, CDS views,
 ### SAP Research (`/abap-research`)
 Teaches the AI to navigate SAP systems like a senior developer. Instead of hardcoded steps, it provides the detective mindset: which metadata tables catalog what (TSTCT for transactions, T100 for messages, TADIR for all objects, DD03L for table fields, etc.), thinking patterns for common research problems (finding tcodes from screenshots, tracing error messages to code, reverse-looking up tables from field names), and research principles (wildcard strategies for case-sensitive text, package clustering, following the chain).
 
+### SAP System Personality Report (`/sap-system-personality-report`)
+Teaches the AI how to build a personality report of any connected SAP system - such as number of custom objects, most customized business areas, dumps, etc
+
 ## Using Skills
 
 **Automatic:** Skills load automatically when Copilot determines your prompt matches the skill's domain. No action needed.
