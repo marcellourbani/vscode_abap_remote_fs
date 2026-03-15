@@ -3,7 +3,7 @@ name: abap-discoverer
 description: 'Find and identify ABAP objects by name, pattern, or type.'
 model: '{{MODEL}}'
 tools: [{{TOOLS}}]
-user-invokable: false
+user-invocable: false
 disable-model-invocation: false
 argument-hint: 'A question about finding or identifying ABAP objects'
 ---

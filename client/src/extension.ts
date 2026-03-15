@@ -44,6 +44,7 @@ import { validateSubagentsOnStartup } from "./services/lm-tools/subagentConfigTo
 import { initializeMcpServer } from "./services/mcpServer"
 import { registerChatTools } from "./adt/ai/tools"
 import { initializeEnhancementDecorations } from "./views/enhancementDecorations"
+import { initializeBlameGutter } from "./views/blameGutter"
 import { clearSystemInfoCache } from "./services/sapSystemInfo"
 import { HeartbeatWatchlist } from "./services/heartbeat/heartbeatWatchlist"
 import { visualizeDependencyGraph } from "./services/dependencyGraph"
@@ -301,13 +302,21 @@ export async function activate(ctx: ExtensionContext): Promise<AbapFsApi> {
       `⚠️ Enhancement decorations refused to cooperate: ${error} (they're artists, they're temperamental)`
     )
   }
+
+  // 📋 Initialize Blame Gutter
+  try {
+    initializeBlameGutter(context)
+    log("📋 Blame gutter initialized — Ready to point fingers at your colleagues' code")
+  } catch (error) {
+    log(`⚠️ Blame gutter initialization failed: ${error}`)
+  }
   registerChatTools(context)
 
   // Check for v1 → v2 upgrade and show notification + status bar hint
   checkUpgradeNotification(context)
 
   const elapsed = new Date().getTime() - startTime
-  log(`Activated,pid=${process.pid}, activation time(ms):${elapsed}`)
+  log.debug(`Activated,pid=${process.pid}, activation time(ms):${elapsed}`)
   return api
 }
 

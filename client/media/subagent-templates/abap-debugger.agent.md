@@ -3,7 +3,7 @@ name: abap-debugger
 description: 'Control ABAP debugging sessions - breakpoints, stepping, variables.'
 model: '{{MODEL}}'
 tools: [{{TOOLS}}]
-user-invokable: false
+user-invocable: false
 disable-model-invocation: false
 argument-hint: 'A debugging task or question about runtime state'
 ---

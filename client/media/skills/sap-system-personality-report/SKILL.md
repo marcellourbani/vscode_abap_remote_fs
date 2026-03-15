@@ -2,7 +2,7 @@
 name: sap-system-personality-report
 description: Generate a comprehensive SAP System Personality Report. Analyzes custom code landscape, functional footprint, development activity, health metrics, and package breakdown. Use when a user asks to characterize a system, understand a system, get a system overview, system report, system personality, or "what does this system do?" Collects data via SQL queries and presents results in a structured webview.
 argument-hint: '[connectionId of the SAP system to analyze]'
-user-invokable: true
+user-invocable: true
 disable-model-invocation: false
 ---
 

@@ -3,7 +3,7 @@ name: abap-usage-analyzer
 description: 'Analyze where ABAP objects are used, dependencies, and change impact.'
 model: '{{MODEL}}'
 tools: [{{TOOLS}}]
-user-invokable: false
+user-invocable: false
 disable-model-invocation: false
 argument-hint: 'A question about where an object is used or change impact'
 ---

@@ -109,6 +109,9 @@ export const AbapFsCommands = {
   deleteFeedEntry: "abapfs.deleteFeedEntry",
   clearFeedFolder: "abapfs.clearFeedFolder",
   showFeedInbox: "abapfs.showFeedInbox",
+  // Blame
+  showBlame: "abapfs.showBlame",
+  hideBlame: "abapfs.hideBlame",
   // System info
   refreshSystemInfoCache: "abapfs.refreshSystemInfoCache"
 }

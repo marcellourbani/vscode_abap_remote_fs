@@ -2,7 +2,7 @@
 name: clean-abap
 description: Clean ABAP coding standards and best practices. Use when writing ABAP code, reviewing ABAP code, or refactoring ABAP code to ensure it follows SAP's official Clean ABAP style guide. Covers naming conventions, modern language constructs, class/method design, error handling, formatting, comments, and unit testing patterns.
 argument-hint: '[ABAP code task or ABAP code review request]'
-user-invokable: true
+user-invocable: true
 disable-model-invocation: false
 ---
 
