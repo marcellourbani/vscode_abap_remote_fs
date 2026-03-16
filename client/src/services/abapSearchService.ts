@@ -66,6 +66,7 @@ export class searchService {
               "SUSC", // Authorization Object Classes
               "PINF", // Package Interfaces
               "ENHC", // Enhancement Implementations
+              "ENHO", // Enhancement Implementations
               "ENHS", // Enhancement Spots
               "BADI", // BAdI Definitions
               "BADII", // BAdI Implementations

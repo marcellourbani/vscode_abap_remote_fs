@@ -284,6 +284,11 @@ export class AdtObjectFinder {
         picked: previousSelection.includes("ENHO/XHB")
       },
       {
+        type: "ENHO/XHH",
+        label: "Enhancement Implementations",
+        picked: previousSelection.includes("ENHO/XHH")
+      },
+      {
         type: "ENHS/XS",
         label: "Enhancement Spots",
         picked: previousSelection.includes("ENHS/XS")
