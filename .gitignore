@@ -17,6 +17,7 @@ bookmarks.json
 *.cpuprofile
 .github/copilot-instructions.md
 .github/agents/
+.github/agents_disabled/
 .github/skills/
 # Webpack cache directories
 client/node_modules/.cache/
