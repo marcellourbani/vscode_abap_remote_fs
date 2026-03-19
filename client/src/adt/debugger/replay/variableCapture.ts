@@ -92,8 +92,8 @@ async function expandOneLevel(
       structIds.push(v.ID)
     } else if (v.META_TYPE === "table") {
       const lines = v.TABLE_LINES || 0
-      if (lines > 0 && lines <= RECORDING_MAX_TABLE_ROWS) {
-        tableSpecs.push({ id: v.ID, rows: lines })
+      if (lines > 0) {
+        tableSpecs.push({ id: v.ID, rows: Math.min(lines, RECORDING_MAX_TABLE_ROWS) })
       }
     }
   }
@@ -169,9 +169,8 @@ function buildCapturedTree(varId: string, varTree: Map<string, VarNode>): Captur
     if (v.META_TYPE === "table" && cv.children.length < (v.TABLE_LINES || 0)) {
       cv.skipReason = `Captured ${cv.children.length} of ${v.TABLE_LINES} rows`
     }
-  } else if (v.META_TYPE === "table" && (v.TABLE_LINES || 0) > RECORDING_MAX_TABLE_ROWS) {
-    cv.skipped = true
-    cv.skipReason = `Skipped: ${v.TABLE_LINES} rows (exceeds recording limit)`
+  } else if (v.META_TYPE === "table" && (v.TABLE_LINES || 0) > 0 && node.children.size === 0) {
+    cv.skipReason = `No rows captured (table may have been empty at deeper depth levels)`
   }
 
   return cv
