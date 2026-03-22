@@ -159,14 +159,7 @@
               }
             }
           }
-        },
-        "initialConfigurations": [
-          {
-            "type": "abap-replay",
-            "request": "launch",
-            "name": "Replay ABAP Recording"
-          }
-        ]
+        }
       }
     ],
     "customEditors": [
