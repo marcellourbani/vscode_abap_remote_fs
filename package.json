@@ -756,7 +756,7 @@
             },
             "objectType": {
               "type": "string",
-              "description": "Exact object type to disambiguate objects with same name (e.g., 'PROG/P' for reports, 'CLAS/OC' for classes, 'FUGR/F' for function groups, 'INTF/OI' for interfaces). Required to avoid opening wrong object. For function modules, use the parent function group name with 'FUGR/F' type."
+              "description": "Exact object type to disambiguate objects with same name (e.g., 'PROG/P' for reports, 'CLAS/OC' for classes, 'FUGR/F' for function groups, 'INTF/OI' for interfaces). Required to avoid opening wrong object. For function modules, use the parent function group name with 'FUGR/F' type. Use full type, example: ENHO/XHH (correct) vs ENHO (may fail)"
             },
             "connectionId": {
               "type": "string",
