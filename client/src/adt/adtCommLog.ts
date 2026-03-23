@@ -1,6 +1,8 @@
 import { ViewColumn, WebviewPanel } from "vscode"
 import { funWindow as window } from "../services/funMessenger"
 import { context } from "../extension"
+import { client } from "../langClient"
+import { Methods } from "vscode-abap-remote-fs-sharedapi"
 import * as path from "path"
 import * as fs from "fs"
 
@@ -112,6 +114,9 @@ export function openCommLogCommand() {
   // Push every change instantly
   const unsub = subscribe(sendSnapshot)
 
+  // Notify language server to start forwarding its ADT calls
+  try { client?.sendNotification(Methods.commLogToggle, true) } catch { /* server not ready */ }
+
   currentPanel.webview.onDidReceiveMessage(msg => {
     switch (msg.command) {
       case "ready":
@@ -127,6 +132,8 @@ export function openCommLogCommand() {
     unsub()
     if (notifyTimer) { clearTimeout(notifyTimer); notifyTimer = undefined }
     currentPanel = undefined
+    // Notify language server to stop forwarding
+    try { client?.sendNotification(Methods.commLogToggle, false) } catch { /* server not ready */ }
     // Clear log entries — no point keeping data nobody can see
     entries.length = 0
   })

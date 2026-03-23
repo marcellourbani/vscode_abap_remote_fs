@@ -7,7 +7,8 @@ import {
   clientTraceUrl,
   httpTraceUrl,
   SOURCE_SERVER,
-  Methods
+  Methods,
+  CommLogEntryData
 } from "vscode-abap-remote-fs-sharedapi"
 import { createProxy, MethodCall } from "method-call-logger"
 import { isString } from "./functions"
@@ -50,6 +51,101 @@ function createFetchToken(conf: ClientConfiguration) {
     return () => connection.sendRequest(Methods.getToken, conf.name) as Promise<string>
 }
 
+/** Whether the client has the comm-log webview open */
+let commLogActive = false
+export function setCommLogActive(active: boolean) { commLogActive = active }
+
+const MAX_PAYLOAD = 2 * 1024 * 1024
+function serializePayload(data: any): string | undefined {
+  if (data === undefined || data === null) return undefined
+  try {
+    const str = typeof data === "string" ? data : JSON.stringify(data)
+    return str.length > MAX_PAYLOAD
+      ? str.substring(0, MAX_PAYLOAD) + `\n\n--- TRUNCATED (${str.length} chars total) ---`
+      : str
+  } catch { return "[unserializable]" }
+}
+
+function extractHeaders(headers: any): Record<string, string> | undefined {
+  if (!headers || typeof headers !== "object") return undefined
+  const result: Record<string, string> = {}
+  const raw = typeof headers.toJSON === "function" ? headers.toJSON() : headers
+  for (const [key, val] of Object.entries(raw)) {
+    if (val !== undefined && val !== null) result[key] = String(val)
+  }
+  return Object.keys(result).length ? result : undefined
+}
+
+/** Attach axios interceptors to forward ADT HTTP traffic to the client comm log */
+function addCommLogInterceptor(adtClient: ADTClient, connId: string) {
+  try {
+    const httpClient = adtClient.httpClient as any
+    if (
+      httpClient?.httpclient?.axios?.interceptors &&
+      typeof httpClient.httpclient.axios.interceptors === "object"
+    ) {
+      const axios = httpClient.httpclient.axios
+
+      // Only stamp start time on request — actual logging happens on response
+      axios.interceptors.request.use((config: any) => {
+        if (config && typeof config === "object") {
+          config._adtLogStart = Date.now()
+        }
+        return config
+      })
+
+      axios.interceptors.response.use(
+        (response: any) => {
+          if (response?.config && commLogActive) {
+            try {
+              const now = Date.now()
+              const start = response.config._adtLogStart
+              const entry: CommLogEntryData = {
+                connId,
+                method: (response.config.method || "GET").toUpperCase(),
+                url: response.config.url || "",
+                params: response.config.params && typeof response.config.params === "object" ? { ...response.config.params } : undefined,
+                requestBody: serializePayload(response.config.data),
+                requestHeaders: extractHeaders(response.config.headers),
+                responseHeaders: extractHeaders(response.headers),
+                status: response.status,
+                responseBody: serializePayload(response.data),
+                duration: start ? now - start : undefined,
+                startTime: start, endTime: now, error: false
+              }
+              connection.sendNotification(Methods.commLogEntry, entry)
+            } catch { /* never break HTTP */ }
+          }
+          return response
+        },
+        (error: any) => {
+          if (error?.config && commLogActive) {
+            try {
+              const now = Date.now()
+              const start = error.config._adtLogStart
+              const entry: CommLogEntryData = {
+                connId,
+                method: (error.config.method || "GET").toUpperCase(),
+                url: error.config.url || "",
+                params: error.config.params && typeof error.config.params === "object" ? { ...error.config.params } : undefined,
+                requestBody: serializePayload(error.config.data),
+                requestHeaders: extractHeaders(error.config.headers),
+                responseHeaders: extractHeaders(error.response?.headers),
+                status: error.response?.status || "ERR",
+                responseBody: serializePayload(error.response?.data),
+                duration: start ? now - start : undefined,
+                startTime: start, endTime: now, error: true
+              }
+              connection.sendNotification(Methods.commLogEntry, entry)
+            } catch { /* never break HTTP */ }
+          }
+          return Promise.reject(error)
+        }
+      )
+    }
+  } catch { /* ignore interceptor setup failure */ }
+}
+
 const refreshClient = (key: string, conf: ClientConfiguration) => {
   const oldClient = clients.get(key)
   const sslconf = conf.url.match(/https:/i)
@@ -68,6 +164,8 @@ const refreshClient = (key: string, conf: ClientConfiguration) => {
   baseclient.stateful = session_types.stateful
   const traceUrl = clientTraceUrl(conf)
   const client = traceUrl ? loggedProxy(baseclient, conf) : baseclient
+  addCommLogInterceptor(baseclient, key)
+  addCommLogInterceptor(baseclient.statelessClone, key)
   clients.set(key, client)
   if (oldClient) {
     setTimeout(() => {

@@ -12,7 +12,9 @@ export enum Methods {
   logCall = "vscabap.logCall",
   logHTTP = "vscabap.logHTTP",
   getToken = "vscabap.getToken",
-  triggerSyntaxCheck = "vscabap.triggerSyntaxCheck"
+  triggerSyntaxCheck = "vscabap.triggerSyntaxCheck",
+  commLogEntry = "vscabap.commLogEntry",
+  commLogToggle = "vscabap.commLogToggle"
 }
 
 export type Sources = "client" | "server"
@@ -103,3 +105,20 @@ export function objectIsValid(obj?: AbapObjectDetail) {
 }
 
 export const stripExtension = (u: string) => u.replace(/\.abap/, "")
+
+/** Comm log entry forwarded from server to client */
+export interface CommLogEntryData {
+  connId: string
+  method: string
+  url: string
+  params: Record<string, string> | undefined
+  requestBody: string | undefined
+  requestHeaders: Record<string, string> | undefined
+  responseHeaders: Record<string, string> | undefined
+  status: number | string | undefined
+  responseBody: string | undefined
+  duration: number | undefined
+  startTime: number
+  endTime: number | undefined
+  error: boolean
+}

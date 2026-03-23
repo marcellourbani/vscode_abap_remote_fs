@@ -8,7 +8,7 @@ import {
   InitializeResult,
   TextDocumentSyncKind
 } from "vscode-languageserver"
-import { connection, log } from "./clientManager"
+import { connection, log, setCommLogActive } from "./clientManager"
 import { syntaxCheck } from "./syntaxcheck"
 import { completion } from "./completion"
 import { findDefinition, findReferences, cancelSearch } from "./references"
@@ -131,6 +131,9 @@ connection.onRequest(Methods.updateMainProgram, updateInclude)
 connection.onRequest(Methods.triggerSyntaxCheck, (uri: string) => {
   const doc = documents.get(uri)
   if (doc) syntaxCheck(doc)
+})
+connection.onNotification(Methods.commLogToggle, (active: boolean) => {
+  setCommLogActive(active)
 })
 
 documents.listen(connection)

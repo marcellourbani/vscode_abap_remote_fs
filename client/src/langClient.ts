@@ -1,4 +1,4 @@
-import { MainProgram, HttpLogEntry } from "vscode-abap-remote-fs-sharedapi"
+import { MainProgram, HttpLogEntry, CommLogEntryData } from "vscode-abap-remote-fs-sharedapi"
 import { log, channel, mongoApiLogger, mongoHttpLogger, rangeApi2Vsc } from "./lib"
 import {
   AbapObjectDetail,
@@ -24,6 +24,7 @@ import { command, AbapFsCommands } from "./commands"
 import { RemoteManager, formatKey } from "./config"
 import { futureToken } from "./oauth"
 import { getRoot, ADTSCHEME, uriRoot, getClient } from "./adt/conections"
+import { addLogEntry, isLogging } from "./adt/adtCommLog"
 import { isAbapFile } from "abapfs"
 import { AbapObject } from "abapobject"
 import { IncludeService, IncludeProvider } from "./adt/includes"
@@ -221,6 +222,9 @@ export async function startLanguageClient(context: ExtensionContext) {
       client.onRequest(Methods.logCall, logCall)
       client.onRequest(Methods.logHTTP, logHttp)
       client.onRequest(Methods.getToken, getToken)
+      client.onNotification(Methods.commLogEntry, (entry: CommLogEntryData) => {
+        if (isLogging()) addLogEntry(entry)
+      })
     }
   })
   client.start()
