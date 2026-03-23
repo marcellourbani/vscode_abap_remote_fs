@@ -1,5 +1,6 @@
 import { configureFeedsCommand } from "./configureFeeds"
 import { manageTextElementsCommand } from "./textElementsCommands"
+import { openCommLogCommand } from "../adt/adtCommLog"
 
 export const AbapFsCommands = {
   connect: "abapfs.connect",
@@ -113,7 +114,9 @@ export const AbapFsCommands = {
   showBlame: "abapfs.showBlame",
   hideBlame: "abapfs.hideBlame",
   // System info
-  refreshSystemInfoCache: "abapfs.refreshSystemInfoCache"
+  refreshSystemInfoCache: "abapfs.refreshSystemInfoCache",
+  // Communication log
+  commLog: "abapfs.commLog"
 }
 
 export const abapcmds: {
@@ -137,5 +140,11 @@ abapcmds.push({
 abapcmds.push({
   name: AbapFsCommands.configureFeeds,
   func: configureFeedsCommand,
+  target: null
+})
+
+abapcmds.push({
+  name: AbapFsCommands.commLog,
+  func: openCommLogCommand,
   target: null
 })

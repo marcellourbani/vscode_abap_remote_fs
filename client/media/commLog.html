@@ -1,0 +1,432 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ADT Communication Log</title>
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body {
+  font-family: var(--vscode-font-family, 'Segoe UI', sans-serif);
+  font-size: var(--vscode-font-size, 13px);
+  color: var(--vscode-foreground);
+  background: var(--vscode-editor-background);
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+}
+
+/* ── Toolbar ── */
+.toolbar {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 8px 16px;
+  background: var(--vscode-sideBar-background);
+  border-bottom: 1px solid var(--vscode-panel-border);
+  flex-shrink: 0;
+  flex-wrap: wrap;
+}
+.toolbar h2 { font-size: 14px; white-space: nowrap; }
+.toolbar-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  flex: 1;
+}
+.count-badge {
+  background: var(--vscode-badge-background);
+  color: var(--vscode-badge-foreground);
+  padding: 2px 8px;
+  border-radius: 10px;
+  font-size: 11px;
+  white-space: nowrap;
+}
+.toolbar select, .toolbar input[type="text"] {
+  background: var(--vscode-input-background);
+  color: var(--vscode-input-foreground);
+  border: 1px solid var(--vscode-input-border);
+  padding: 3px 6px;
+  border-radius: 3px;
+  font-size: 12px;
+}
+.toolbar input[type="text"] { width: 180px; }
+.toolbar button {
+  background: var(--vscode-button-secondaryBackground, var(--vscode-button-background));
+  color: var(--vscode-button-secondaryForeground, var(--vscode-button-foreground));
+  border: none;
+  padding: 4px 10px;
+  border-radius: 3px;
+  cursor: pointer;
+  font-size: 12px;
+  white-space: nowrap;
+}
+.toolbar button:hover { opacity: 0.85; }
+.autoscroll-label {
+  font-size: 12px;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  white-space: nowrap;
+  user-select: none;
+}
+
+/* ── Log container ── */
+.log-container {
+  flex: 1;
+  overflow-y: auto;
+  padding: 4px 8px;
+}
+
+/* ── Entry row ── */
+.entry {
+  border: 1px solid var(--vscode-panel-border);
+  border-radius: 4px;
+  margin-bottom: 3px;
+  overflow: hidden;
+}
+.entry-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 5px 10px;
+  cursor: pointer;
+  user-select: none;
+  font-family: var(--vscode-editor-font-family, monospace);
+  font-size: 12px;
+  line-height: 1.4;
+}
+.entry-header:hover { background: var(--vscode-list-hoverBackground); }
+
+.entry.ok .entry-header { border-left: 3px solid #4ec9b0; }
+.entry.err .entry-header { border-left: 3px solid #f44747; }
+.entry.pending .entry-header { border-left: 3px solid #dcdcaa; }
+
+.entry-method {
+  font-weight: bold;
+  min-width: 48px;
+}
+.entry-method.get { color: #4ec9b0; }
+.entry-method.post { color: #569cd6; }
+.entry-method.put { color: #dcdcaa; }
+.entry-method.delete { color: #f44747; }
+.entry-method.patch { color: #ce9178; }
+
+.entry-url { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.entry-conn { color: var(--vscode-descriptionForeground); font-size: 11px; }
+.entry-status { min-width: 32px; text-align: right; }
+.entry-status.s2xx { color: #4ec9b0; }
+.entry-status.s4xx { color: #dcdcaa; }
+.entry-status.s5xx { color: #f44747; }
+.entry-duration { color: var(--vscode-descriptionForeground); min-width: 60px; text-align: right; font-size: 11px; }
+.entry-time { color: var(--vscode-descriptionForeground); font-size: 11px; min-width: 80px; }
+.entry-download {
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: var(--vscode-textLink-foreground);
+  font-size: 12px;
+  padding: 0 4px;
+  opacity: 0;
+  transition: opacity 0.15s;
+}
+.entry-header:hover .entry-download { opacity: 1; }
+
+.chevron {
+  transition: transform 0.15s;
+  font-size: 10px;
+  min-width: 14px;
+}
+.entry.expanded .chevron { transform: rotate(90deg); }
+
+/* ── Expanded detail ── */
+.entry-detail {
+  display: none;
+  border-top: 1px solid var(--vscode-panel-border);
+}
+.entry.expanded .entry-detail { display: block; }
+
+.detail-section {
+  padding: 6px 12px;
+}
+.detail-section h4 {
+  font-size: 11px;
+  text-transform: uppercase;
+  color: var(--vscode-descriptionForeground);
+  margin-bottom: 4px;
+  letter-spacing: 0.5px;
+}
+.detail-section pre {
+  background: var(--vscode-textCodeBlock-background, rgba(0,0,0,0.15));
+  padding: 8px;
+  border-radius: 3px;
+  overflow-x: auto;
+  white-space: pre-wrap;
+  word-break: break-all;
+  font-family: var(--vscode-editor-font-family, monospace);
+  font-size: 12px;
+  line-height: 1.5;
+  max-height: 400px;
+  overflow-y: auto;
+}
+.detail-params {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 2px 12px;
+  font-size: 12px;
+}
+.detail-params .key { color: #569cd6; font-weight: bold; }
+.detail-params .val { color: var(--vscode-foreground); word-break: break-all; }
+</style>
+</head>
+<body>
+<div class="toolbar">
+  <h2>📡 ADT Communication Log</h2>
+  <div class="toolbar-actions">
+    <span id="count" class="count-badge">0 requests</span>
+    <select id="filterConn" title="Filter by system">
+      <option value="">All systems</option>
+    </select>
+    <select id="filterStatus" title="Filter by status">
+      <option value="">All statuses</option>
+      <option value="ok">✅ Success (2xx)</option>
+      <option value="err">❌ Errors</option>
+      <option value="pending">⏳ Pending</option>
+    </select>
+    <input id="filterUrl" type="text" placeholder="Filter by URL..." title="Filter by URL path" />
+    <button id="btnClear" title="Clear all entries">🗑️ Clear</button>
+    <button id="btnDownloadAll" title="Download all visible entries as JSON">⬇️ Download All</button>
+    <label class="autoscroll-label"><input type="checkbox" id="chkAutoscroll" checked /> Auto-scroll</label>
+  </div>
+</div>
+<div id="log" class="log-container"></div>
+<script>
+(function() {
+  const vscode = acquireVsCodeApi();
+  let allEntries = [];
+  let autoScroll = true;
+
+  document.getElementById('chkAutoscroll').addEventListener('change', function(e) {
+    autoScroll = e.target.checked;
+  });
+
+  // ── Filters ──
+  const filterConn = document.getElementById('filterConn');
+  const filterStatus = document.getElementById('filterStatus');
+  const filterUrl = document.getElementById('filterUrl');
+  filterConn.addEventListener('change', renderAll);
+  filterStatus.addEventListener('change', renderAll);
+  let filterUrlTimer;
+  filterUrl.addEventListener('input', function() {
+    clearTimeout(filterUrlTimer);
+    filterUrlTimer = setTimeout(renderAll, 200);
+  });
+
+  // ── Buttons ──
+  document.getElementById('btnClear').addEventListener('click', function() {
+    allEntries = [];
+    renderAll();
+    vscode.postMessage({ command: 'clear' });
+  });
+
+  document.getElementById('btnDownloadAll').addEventListener('click', function() {
+    var visible = getFiltered();
+    downloadJson(visible, 'adt-comm-log-' + new Date().toISOString().replace(/[:.]/g, '-') + '.json');
+  });
+
+  // ── Message handling ──
+  window.addEventListener('message', function(e) {
+    var msg = e.data;
+    if (msg.type === 'snapshot') {
+      allEntries = msg.entries;
+      updateConnFilter();
+      renderAll();
+    }
+  });
+
+  window.addEventListener('load', function() {
+    vscode.postMessage({ command: 'ready' });
+  });
+
+  // ── Rendering ──
+  var logEl = document.getElementById('log');
+  var countEl = document.getElementById('count');
+
+  function getFiltered() {
+    var list = allEntries;
+    var conn = filterConn.value;
+    var status = filterStatus.value;
+    var url = filterUrl.value.toLowerCase();
+    if (conn) list = list.filter(function(e) { return e.connId === conn; });
+    if (status === 'ok') list = list.filter(function(e) { return e.status && !e.error && typeof e.status === 'number' && e.status >= 200 && e.status < 300; });
+    if (status === 'err') list = list.filter(function(e) { return e.error || (typeof e.status === 'number' && e.status >= 400); });
+    if (status === 'pending') list = list.filter(function(e) { return e.status === undefined; });
+    if (url) list = list.filter(function(e) { return e.url.toLowerCase().includes(url); });
+    return list;
+  }
+
+  function updateConnFilter() {
+    var conns = [];
+    var seen = {};
+    allEntries.forEach(function(e) {
+      if (!seen[e.connId]) { seen[e.connId] = true; conns.push(e.connId); }
+    });
+    conns.sort();
+    var cur = filterConn.value;
+    filterConn.innerHTML = '<option value="">All systems</option>' +
+      conns.map(function(c) { return '<option value="' + esc(c) + '"' + (c === cur ? ' selected' : '') + '>' + esc(c) + '</option>'; }).join('');
+  }
+
+  function renderAll() {
+    var filtered = getFiltered();
+    countEl.textContent = filtered.length + ' request' + (filtered.length !== 1 ? 's' : '');
+
+    // Remember expanded state
+    var expanded = {};
+    logEl.querySelectorAll('.entry.expanded').forEach(function(el) { expanded[el.dataset.id] = true; });
+
+    logEl.innerHTML = filtered.map(function(e) { return renderEntry(e, !!expanded[String(e.id)]); }).join('');
+
+    if (autoScroll) logEl.scrollTop = logEl.scrollHeight;
+  }
+
+  function renderHeaders(headers) {
+    if (!headers || Object.keys(headers).length === 0) return '';
+    var html = '<div class="detail-params">';
+    Object.keys(headers).forEach(function(k) {
+      html += '<span class="key">' + esc(k) + '</span><span class="val">' + esc(String(headers[k])) + '</span>';
+    });
+    html += '</div>';
+    return html;
+  }
+
+  function renderEntry(e, isExpanded) {
+    var cls = e.error ? 'err' : (e.status === undefined ? 'pending' : 'ok');
+    var methodCls = esc(e.method.toLowerCase());
+    var statusStr = e.status !== undefined ? esc(String(e.status)) : '⏳';
+    var statusCls = typeof e.status === 'number' ? (e.status < 300 ? 's2xx' : e.status < 500 ? 's4xx' : 's5xx') : '';
+    var dur = e.duration !== undefined ? e.duration + 'ms' : '...';
+    var time = formatTime(e.startTime);
+    var exp = isExpanded ? ' expanded' : '';
+
+    var detail = '';
+    // Params
+    if (e.params && Object.keys(e.params).length) {
+      detail += '<div class="detail-section"><h4>Query Parameters</h4><div class="detail-params">';
+      Object.keys(e.params).forEach(function(k) {
+        detail += '<span class="key">' + esc(k) + '</span><span class="val">' + esc(String(e.params[k])) + '</span>';
+      });
+      detail += '</div></div>';
+    }
+    // Request headers
+    if (e.requestHeaders && Object.keys(e.requestHeaders).length) {
+      detail += '<div class="detail-section"><h4>Request Headers</h4>' + renderHeaders(e.requestHeaders) + '</div>';
+    }
+    // Request body
+    if (e.requestBody) {
+      detail += '<div class="detail-section"><h4>Request Body</h4><pre>' + formatAndHighlight(e.requestBody) + '</pre></div>';
+    }
+    // Response headers
+    if (e.responseHeaders && Object.keys(e.responseHeaders).length) {
+      detail += '<div class="detail-section"><h4>Response Headers</h4>' + renderHeaders(e.responseHeaders) + '</div>';
+    }
+    // Response body
+    if (e.responseBody) {
+      detail += '<div class="detail-section"><h4>Response Body</h4><pre>' + formatAndHighlight(e.responseBody) + '</pre></div>';
+    }
+    if (!detail && e.status === undefined) {
+      detail = '<div class="detail-section" style="color:var(--vscode-descriptionForeground);font-style:italic;">Waiting for response...</div>';
+    }
+    if (!detail) {
+      detail = '<div class="detail-section" style="color:var(--vscode-descriptionForeground);font-style:italic;">No payload data</div>';
+    }
+
+    return '<div class="entry ' + cls + exp + '" data-id="' + e.id + '">' +
+      '<div class="entry-header" onclick="window._commLogToggle(this)">' +
+        '<span class="chevron">▶</span>' +
+        '<span class="entry-time">' + time + '</span>' +
+        '<span class="entry-conn">[' + esc(e.connId) + ']</span>' +
+        '<span class="entry-method ' + methodCls + '">' + esc(e.method) + '</span>' +
+        '<span class="entry-url" title="' + esc(e.url) + '">' + esc(e.url) + '</span>' +
+        '<span class="entry-status ' + statusCls + '">' + statusStr + '</span>' +
+        '<span class="entry-duration">' + dur + '</span>' +
+        '<button class="entry-download" onclick="event.stopPropagation(); window._commLogDownloadSingle(' + e.id + ')" title="Download this request">⬇️</button>' +
+      '</div>' +
+      '<div class="entry-detail">' + detail + '</div>' +
+    '</div>';
+  }
+
+  // ── Formatting ──
+  function formatTime(ts) {
+    var d = new Date(ts);
+    return d.toLocaleTimeString('en-GB', { hour12: false }) + '.' + String(d.getMilliseconds()).padStart(3, '0');
+  }
+
+  function esc(s) {
+    if (!s) return '';
+    return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+  }
+
+  function formatAndHighlight(raw) {
+    if (!raw) return '';
+    // Try XML formatting
+    if (raw.trimStart().startsWith('<')) {
+      try { return esc(formatXml(raw)); } catch(e) {}
+    }
+    // Try JSON formatting
+    if (raw.trimStart().startsWith('{') || raw.trimStart().startsWith('[')) {
+      try { return esc(JSON.stringify(JSON.parse(raw), null, 2)); } catch(e) {}
+    }
+    return esc(raw);
+  }
+
+  function formatXml(xml) {
+    var formatted = '';
+    var indent = 0;
+    var parts = xml.replace(/>\s*</g, '><').split(/(<[^>]+>)/);
+    for (var i = 0; i < parts.length; i++) {
+      var part = parts[i];
+      if (!part.trim()) continue;
+      if (part.startsWith('</')) {
+        indent = Math.max(indent - 1, 0);
+        formatted += '  '.repeat(indent) + part + '\n';
+      } else if (part.startsWith('<') && part.endsWith('/>')) {
+        formatted += '  '.repeat(indent) + part + '\n';
+      } else if (part.startsWith('<?')) {
+        formatted += part + '\n';
+      } else if (part.startsWith('<') && !part.startsWith('</')) {
+        formatted += '  '.repeat(indent) + part + '\n';
+        indent++;
+      } else {
+        formatted += '  '.repeat(indent) + part + '\n';
+      }
+    }
+    return formatted.trim();
+  }
+
+  // ── Download ──
+  function downloadJson(entries, filename) {
+    var blob = new Blob([JSON.stringify(entries, null, 2)], { type: 'application/json' });
+    var url = URL.createObjectURL(blob);
+    var a = document.createElement('a');
+    a.href = url;
+    a.download = filename;
+    a.click();
+    URL.revokeObjectURL(url);
+  }
+
+  // Expose to onclick handlers
+  window._commLogToggle = function(headerEl) {
+    headerEl.parentElement.classList.toggle('expanded');
+  };
+  window._commLogDownloadSingle = function(id) {
+    var entry = allEntries.find(function(e) { return e.id === id; });
+    if (!entry) return;
+    downloadJson(entry, 'adt-request-' + id + '.json');
+  };
+})();
+</script>
+</body>
+</html>

@@ -2314,6 +2314,12 @@
         "icon": "$(settings-gear)"
       },
       {
+        "command": "abapfs.commLog",
+        "title": "ADT Communication Log",
+        "category": "ABAP FS",
+        "icon": "$(radio-tower)"
+      },
+      {
         "command": "abapfs.refreshFeedInbox",
         "title": "Refresh Feed Inbox",
         "category": "ABAP FS",
@@ -2927,6 +2933,10 @@
         },
         {
           "command": "abapfs.configureFeeds",
+          "when": "abapfs:extensionActive"
+        },
+        {
+          "command": "abapfs.commLog",
           "when": "abapfs:extensionActive"
         },
         {
