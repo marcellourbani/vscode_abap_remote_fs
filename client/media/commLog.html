@@ -224,11 +224,18 @@ body {
     filterUrlTimer = setTimeout(renderAll, 200);
   });
 
+  var clearPending = false;
+
   // ── Buttons ──
   document.getElementById('btnClear').addEventListener('click', function() {
+    clearPending = true;
     allEntries = [];
+    filterConn.value = '';
+    filterStatus.value = '';
+    filterUrl.value = '';
     renderAll();
     vscode.postMessage({ command: 'clear' });
+    setTimeout(function() { clearPending = false; }, 300);
   });
 
   document.getElementById('btnDownloadAll').addEventListener('click', function() {
@@ -274,7 +281,7 @@ body {
       if (!seen[e.connId]) { seen[e.connId] = true; conns.push(e.connId); }
     });
     conns.sort();
-    var cur = filterConn.value;
+    var cur = clearPending ? '' : filterConn.value;
     filterConn.innerHTML = '<option value="">All systems</option>' +
       conns.map(function(c) { return '<option value="' + esc(c) + '"' + (c === cur ? ' selected' : '') + '>' + esc(c) + '</option>'; }).join('');
   }

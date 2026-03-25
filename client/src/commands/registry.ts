@@ -1,6 +1,6 @@
 import { configureFeedsCommand } from "./configureFeeds"
 import { manageTextElementsCommand } from "./textElementsCommands"
-import { openCommLogCommand } from "../adt/adtCommLog"
+import { commands } from "vscode"
 
 export const AbapFsCommands = {
   connect: "abapfs.connect",
@@ -145,6 +145,6 @@ abapcmds.push({
 
 abapcmds.push({
   name: AbapFsCommands.commLog,
-  func: openCommLogCommand,
+  func: () => commands.executeCommand("abapfs.views.commLog.focus"),
   target: null
 })

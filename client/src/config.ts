@@ -14,7 +14,7 @@ import {
   ConfigurationChangeEvent
 } from "vscode"
 import { funWindow as window } from "./services/funMessenger"
-import { ADTClient, createSSLConfig, LogCallback } from "abap-adt-api"
+import { ADTClient, createSSLConfig, LogCallback, LogData } from "abap-adt-api"
 import { readFileSync } from "fs"
 import { createProxy } from "method-call-logger"
 import { mongoApiLogger, mongoHttpLogger, PasswordVault } from "./lib"
@@ -161,11 +161,55 @@ const httpLogger = (conf: RemoteConfig): LogCallback | undefined => {
   return mongoHttpLogger(conf.name, SOURCE_CLIENT)
 }
 
+/** Cap payload size for comm log to avoid memory issues */
+const MAX_COMM_LOG_PAYLOAD = 2 * 1024 * 1024
+function capPayload(body: string | undefined): string | undefined {
+  if (!body || body.length <= MAX_COMM_LOG_PAYLOAD) return body
+  return body.substring(0, MAX_COMM_LOG_PAYLOAD) + `\n\n--- TRUNCATED (${body.length} chars total) ---`
+}
+
+/** Convert LogData (from abap-adt-api) to our AdtLogEntry format for the comm log */
+function logDataToCommEntry(data: LogData, connId: string) {
+  const { addLogEntry, isLogging } = require("./adt/adtCommLog")
+  if (!isLogging()) return
+  const rh: Record<string, string> = {}
+  if (data.response?.headers) {
+    for (const [k, v] of Object.entries(data.response.headers)) {
+      if (v !== undefined && v !== null) rh[k] = String(v)
+    }
+  }
+  addLogEntry({
+    connId,
+    method: data.request.method,
+    url: data.request.uri,
+    params: Object.keys(data.request.params || {}).length ? data.request.params : undefined,
+    requestBody: capPayload(data.request.body),
+    requestHeaders: Object.keys(data.request.headers || {}).length ? data.request.headers : undefined,
+    responseHeaders: Object.keys(rh).length ? rh : undefined,
+    status: data.error ? (data.response?.statusCode || "ERR") : data.response.statusCode,
+    responseBody: capPayload(data.response?.body),
+    duration: data.duration,
+    startTime: data.startTime.getTime(),
+    endTime: data.startTime.getTime() + data.duration,
+    error: !!data.error
+  })
+}
+
+/** Build a debugCallback that chains MongoDB tracing and comm log */
+function buildDebugCallback(conf: RemoteConfig): LogCallback {
+  const mongoLogger = httpLogger(conf)
+  const connId = conf.name
+  return (data: LogData) => {
+    if (mongoLogger) mongoLogger(data)
+    try { logDataToCommEntry(data, connId) } catch { /* never break HTTP */ }
+  }
+}
+
 export function createClient(conf: RemoteConfig) {
   const sslconf = conf.url.match(/https:/i)
     ? createSSLConfig(conf.allowSelfSigned, conf.customCA)
     : {}
-  sslconf.debugCallback = httpLogger(conf)
+  sslconf.debugCallback = buildDebugCallback(conf)
   const password = oauthLogin(conf) || conf.password
   const client = new ADTClient(
     conf.url,

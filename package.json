@@ -177,10 +177,26 @@
           "id": "abapfsPanel",
           "title": "ABAP FS",
           "icon": "${book}"
+        },
+        {
+          "id": "abapfsCommLog",
+          "title": "ADT Communication Log",
+          "icon": "$(radio-tower)"
         }
       ]
     },
     "views": {
+      "abapfsCommLog": [
+        {
+          "type": "webview",
+          "id": "abapfs.views.commLog",
+          "name": "ADT Communication Log",
+          "when": "abapfs:extensionActive",
+          "contextualTitle": "ADT Communication Log",
+          "visibility": "visible",
+          "icon": "$(radio-tower)"
+        }
+      ],
       "abapfsPanel": [
         {
           "type": "webview",

@@ -42,108 +42,60 @@ function loggedProxy(client: ADTClient, conf: ClientConfiguration) {
   })
 }
 
-function debugCallBack(conf: ClientConfiguration) {
-  if (httpTraceUrl(conf))
-    return (data: LogData) => sendHttpLog({ source: SOURCE_SERVER, data, connection: conf.name })
-}
 function createFetchToken(conf: ClientConfiguration) {
   if (conf.oauth)
     return () => connection.sendRequest(Methods.getToken, conf.name) as Promise<string>
 }
 
-/** Whether the client has the comm-log webview open */
+/** Whether the client has the comm-log panel open */
 let commLogActive = false
 export function setCommLogActive(active: boolean) { commLogActive = active }
 
-const MAX_PAYLOAD = 2 * 1024 * 1024
-function serializePayload(data: any): string | undefined {
-  if (data === undefined || data === null) return undefined
-  try {
-    const str = typeof data === "string" ? data : JSON.stringify(data)
-    return str.length > MAX_PAYLOAD
-      ? str.substring(0, MAX_PAYLOAD) + `\n\n--- TRUNCATED (${str.length} chars total) ---`
-      : str
-  } catch { return "[unserializable]" }
+/** Cap payload size for comm log to avoid memory issues */
+const MAX_COMM_LOG_PAYLOAD = 2 * 1024 * 1024
+function capPayload(body: string | undefined): string | undefined {
+  if (!body || body.length <= MAX_COMM_LOG_PAYLOAD) return body
+  return body.substring(0, MAX_COMM_LOG_PAYLOAD) + `\n\n--- TRUNCATED (${body.length} chars total) ---`
 }
 
-function extractHeaders(headers: any): Record<string, string> | undefined {
-  if (!headers || typeof headers !== "object") return undefined
-  const result: Record<string, string> = {}
-  const raw = typeof headers.toJSON === "function" ? headers.toJSON() : headers
-  for (const [key, val] of Object.entries(raw)) {
-    if (val !== undefined && val !== null) result[key] = String(val)
-  }
-  return Object.keys(result).length ? result : undefined
-}
-
-/** Attach axios interceptors to forward ADT HTTP traffic to the client comm log */
-function addCommLogInterceptor(adtClient: ADTClient, connId: string) {
+/** Forward a LogData entry from the server to the client comm log via LSP notification */
+function sendCommLogEntry(data: LogData, connId: string) {
+  if (!commLogActive) return
   try {
-    const httpClient = adtClient.httpClient as any
-    if (
-      httpClient?.httpclient?.axios?.interceptors &&
-      typeof httpClient.httpclient.axios.interceptors === "object"
-    ) {
-      const axios = httpClient.httpclient.axios
-
-      // Only stamp start time on request — actual logging happens on response
-      axios.interceptors.request.use((config: any) => {
-        if (config && typeof config === "object") {
-          config._adtLogStart = Date.now()
-        }
-        return config
-      })
-
-      axios.interceptors.response.use(
-        (response: any) => {
-          if (response?.config && commLogActive) {
-            try {
-              const now = Date.now()
-              const start = response.config._adtLogStart
-              const entry: CommLogEntryData = {
-                connId,
-                method: (response.config.method || "GET").toUpperCase(),
-                url: response.config.url || "",
-                params: response.config.params && typeof response.config.params === "object" ? { ...response.config.params } : undefined,
-                requestBody: serializePayload(response.config.data),
-                requestHeaders: extractHeaders(response.config.headers),
-                responseHeaders: extractHeaders(response.headers),
-                status: response.status,
-                responseBody: serializePayload(response.data),
-                duration: start ? now - start : undefined,
-                startTime: start, endTime: now, error: false
-              }
-              connection.sendNotification(Methods.commLogEntry, entry)
-            } catch { /* never break HTTP */ }
-          }
-          return response
-        },
-        (error: any) => {
-          if (error?.config && commLogActive) {
-            try {
-              const now = Date.now()
-              const start = error.config._adtLogStart
-              const entry: CommLogEntryData = {
-                connId,
-                method: (error.config.method || "GET").toUpperCase(),
-                url: error.config.url || "",
-                params: error.config.params && typeof error.config.params === "object" ? { ...error.config.params } : undefined,
-                requestBody: serializePayload(error.config.data),
-                requestHeaders: extractHeaders(error.config.headers),
-                responseHeaders: extractHeaders(error.response?.headers),
-                status: error.response?.status || "ERR",
-                responseBody: serializePayload(error.response?.data),
-                duration: start ? now - start : undefined,
-                startTime: start, endTime: now, error: true
-              }
-              connection.sendNotification(Methods.commLogEntry, entry)
-            } catch { /* never break HTTP */ }
-          }
-          return Promise.reject(error)
-        }
-      )
+    const rh: Record<string, string> = {}
+    if (data.response?.headers) {
+      for (const [k, v] of Object.entries(data.response.headers)) {
+        if (v !== undefined && v !== null) rh[k] = String(v)
+      }
     }
-  } catch { /* ignore interceptor setup failure */ }
+    const entry: CommLogEntryData = {
+      connId,
+      method: data.request.method,
+      url: data.request.uri,
+      params: Object.keys(data.request.params || {}).length ? data.request.params : undefined,
+      requestBody: capPayload(data.request.body),
+      requestHeaders: Object.keys(data.request.headers || {}).length ? data.request.headers : undefined,
+      responseHeaders: Object.keys(rh).length ? rh : undefined,
+      status: data.error ? (data.response?.statusCode || "ERR") : data.response.statusCode,
+      responseBody: capPayload(data.response?.body),
+      duration: data.duration,
+      startTime: data.startTime.getTime(),
+      endTime: data.startTime.getTime() + data.duration,
+      error: !!data.error
+    }
+    connection.sendNotification(Methods.commLogEntry, entry)
+  } catch { /* never break HTTP pipeline for logging */ }
+}
+
+/** Build a debugCallback that chains MongoDB tracing and comm log forwarding */
+function buildServerDebugCallback(conf: ClientConfiguration, connId: string): (data: LogData) => void {
+  const mongoLogger = httpTraceUrl(conf)
+    ? (data: LogData) => sendHttpLog({ source: SOURCE_SERVER, data, connection: conf.name })
+    : undefined
+  return (data: LogData) => {
+    if (mongoLogger) mongoLogger(data)
+    sendCommLogEntry(data, connId)
+  }
 }
 
 const refreshClient = (key: string, conf: ClientConfiguration) => {
@@ -151,7 +103,7 @@ const refreshClient = (key: string, conf: ClientConfiguration) => {
   const sslconf = conf.url.match(/https:/i)
     ? createSSLConfig(conf.allowSelfSigned, conf.customCA)
     : {}
-  sslconf.debugCallback = debugCallBack(conf)
+  sslconf.debugCallback = buildServerDebugCallback(conf, key)
   const pwdOrFetch = createFetchToken(conf) || conf.password
   const baseclient = new ADTClient(
     conf.url,
@@ -164,8 +116,6 @@ const refreshClient = (key: string, conf: ClientConfiguration) => {
   baseclient.stateful = session_types.stateful
   const traceUrl = clientTraceUrl(conf)
   const client = traceUrl ? loggedProxy(baseclient, conf) : baseclient
-  addCommLogInterceptor(baseclient, key)
-  addCommLogInterceptor(baseclient.statelessClone, key)
   clients.set(key, client)
   if (oldClient) {
     setTimeout(() => {

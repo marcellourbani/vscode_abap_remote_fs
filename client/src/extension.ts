@@ -26,6 +26,7 @@ import { HttpProvider } from "./editors/httpprovider"
 import { dumpProvider } from "./views/dumps/dumps"
 import { registerAbapDebugger } from "./adt/debugger"
 import { ATCDocumentation } from "./views/abaptestcockpit/documentation"
+import { CommLogPanel } from "./adt/adtCommLog"
 import { tracesProvider } from "./views/traces"
 import { FeedStateManager } from "./services/feeds/feedStateManager"
 import { FeedPollingService } from "./services/feeds/feedPollingService"
@@ -248,6 +249,7 @@ export async function activate(ctx: ExtensionContext): Promise<AbapFsApi> {
   )
 
   sub.push(window.registerWebviewViewProvider(ATCDocumentation.viewType, ATCDocumentation.get()))
+  sub.push(window.registerWebviewViewProvider(CommLogPanel.viewType, CommLogPanel.get()))
 
   sub.push(MessagesProvider.register(context))
   sub.push(HttpProvider.register(context))
