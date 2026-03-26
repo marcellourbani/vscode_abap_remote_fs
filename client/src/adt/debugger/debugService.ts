@@ -61,6 +61,7 @@ export class DebugService {
     if (!client) throw new Error(`Unable to create client for${connId}`)
     client.stateful = session_types.stateful
     await client.adtCoreDiscovery()
+    log(`DebugService.create: discovery done`)
     const service = new DebugService(connId, client, listener, debuggee, ui)
     return service
   }

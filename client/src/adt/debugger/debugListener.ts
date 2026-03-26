@@ -157,15 +157,27 @@ export class DebugListener {
     return c.debuggerDeleteListener(this.mode, this.terminalId, this.ideId, this.username)
   }
 
-  private debuggerListen() {
+  private async debuggerListen() {
+    this.listening = true
     try {
-      this.listening = true
-      return this.client.statelessClone.debuggerListen(
+      const result = await this.client.statelessClone.debuggerListen(
         this.mode,
         this.terminalId,
         this.ideId,
         this.username
       )
+      // SAP returns conflict notifications as a normal Debuggee object (not an error),
+      // but with DBGEE_KIND indicating it's not a real breakpoint. The library's
+      // isDebugListenerError() only catches exception responses, not these.
+      // Treat any non-DEBUGGEE kind as a listener error so the loop reconnects.
+      if (result && !isDebugListenerError(result)) {
+        const kind: string = (result as any).DBGEE_KIND || ""
+        if (kind && kind !== "DEBUGGEE") {
+          log(`debuggerListen: received non-breakpoint debuggee kind="${kind}", treating as listener error`)
+          return { conflictText: kind, "com.sap.adt.communicationFramework.subType": kind } as any
+        }
+      }
+      return result
     } finally {
       this.listening = false
     }
@@ -239,7 +251,7 @@ export class DebugListener {
           break
         }
         log(`Debugger ${this.sessionNumber} on connection  ${this.connId} reached a breakpoint`)
-        this.onBreakpointReached(debuggee)
+        await this.onBreakpointReached(debuggee)
       } catch (error) {
         if (!this.active) return
         if (!isAdtError(error)) {
@@ -344,11 +356,21 @@ export class DebugListener {
     this.active = false
     if (this.killed) return
     this.killed = true
+<<<<<<< Updated upstream
     if (this.listening) await this.stopListener().catch(ignore)
     else {
       const conflict = await this.hasConflict()
       if (conflict.with === "myself") await this.stopListener().catch(ignore)
     }
+=======
+    // Stop recording if active
+    if (this._recorder?.isRecording) {
+      await this._recorder.stopRecording().catch(ignore)
+      this._recorder = undefined
+    }
+    // Always delete the listener from SAP on logout
+    await this.stopListener().catch(ignore)
+>>>>>>> Stashed changes
     const stopServices = [...this.services.keys()].map(s => this.stopThread(s))
     const proms: Promise<any>[] = [...stopServices]
 
