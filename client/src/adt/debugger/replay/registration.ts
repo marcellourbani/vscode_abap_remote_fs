@@ -34,13 +34,11 @@ export function registerReplayDebugger(context: ExtensionContext) {
       if (session.type !== DEBUGTYPE) return
       const connId = session.configuration?.connId
       if (!connId) return
+      const abapSession = AbapDebugSession.byConnection(connId)
       // Check if there's still a recording listener for this connection
-      for (const s of AbapDebugSession.allSessions()) {
-        if (s.debugListener?.isRecording) {
-          log(`onDidTerminateDebugSession: auto-stopping recording for ${connId}`)
-          autoStopRecording(s.debugListener)
-          return
-        }
+      if (abapSession?.debugListener?.isRecording) {
+        log(`onDidTerminateDebugSession: auto-stopping recording for ${connId}`)
+        autoStopRecording(abapSession.debugListener)
       }
     })
   )
