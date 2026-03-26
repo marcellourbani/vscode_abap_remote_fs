@@ -97,6 +97,11 @@ export interface HttpLogEntry {
   data: LogData
 }
 
+export interface CommLogTogglePayload {
+  active: boolean
+  connId: string
+}
+
 export const urlFromPath = (configKey: string, path: string) => `adt://${configKey}${path}`
 
 export function objectIsValid(obj?: AbapObjectDetail) {
@@ -109,16 +114,5 @@ export const stripExtension = (u: string) => u.replace(/\.abap/, "")
 /** Comm log entry forwarded from server to client */
 export interface CommLogEntryData {
   connId: string
-  method: string
-  url: string
-  params: Record<string, string> | undefined
-  requestBody: string | undefined
-  requestHeaders: Record<string, string> | undefined
-  responseHeaders: Record<string, string> | undefined
-  status: number | string | undefined
-  responseBody: string | undefined
-  duration: number | undefined
-  startTime: number
-  endTime: number | undefined
-  error: boolean
+  logData: LogData
 }

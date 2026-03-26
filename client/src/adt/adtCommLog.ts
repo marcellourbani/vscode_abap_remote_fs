@@ -1,9 +1,20 @@
-import { CancellationToken, WebviewView, WebviewViewProvider, WebviewViewResolveContext } from "vscode"
+import {
+  CancellationToken,
+  commands,
+  WebviewView,
+  WebviewViewProvider,
+  WebviewViewResolveContext
+} from "vscode"
 import { context } from "../extension"
 import { client } from "../langClient"
 import { Methods } from "vscode-abap-remote-fs-sharedapi"
 import * as path from "path"
 import * as fs from "fs"
+import { LogData } from "abap-adt-api/build/requestLogger"
+import { ignore } from "../lib"
+import { AbapFsCommands, command } from "../commands"
+import { pickAdtRoot } from "../config"
+import { ADTSCHEME } from "./conections"
 
 // ── In-memory log store ──────────────────────────────────────────────
 
@@ -25,6 +36,90 @@ export interface AdtLogEntry {
 }
 
 const MAX_ENTRIES = 2000
+
+export class CallLogger {
+  private static instances = new Map<string, CallLogger>()
+  private serveractive = false
+  entries: AdtLogEntry[] = []
+  public static get(connId: string) {
+    return this.instances.get(connId)!
+  }
+
+  private constructor(private connId: string) {
+    this.activateServer(true)
+  }
+  private activateServer(active: boolean) {
+    if (active !== this.serveractive) {
+      this.serveractive = active
+      client
+        ?.sendNotification(Methods.commLogToggle, { active, connId: this.connId })
+        .then(() => (this.serveractive = active), ignore)
+    }
+  }
+  public static getOrCreate(connId: string) {
+    if (this.instances.has(connId)) return this.instances.get(connId)!
+    const logger = new CallLogger(connId)
+    this.instances.set(connId, logger)
+    logger.activateServer(true)
+    return logger
+  }
+  @command(AbapFsCommands.activateCommLog)
+  public static async activateLogging() {
+    const folder = await pickAdtRoot()
+    if (!folder || folder.uri.scheme !== ADTSCHEME) return
+    const connId = folder.uri.authority
+    this.getOrCreate(connId)
+    commands.executeCommand("abapfs.views.commLog.focus")
+  }
+  @command(AbapFsCommands.deactivateCommLog)
+  public static async deactivateLogging() {
+    const folder = await pickAdtRoot()
+    if (!folder || folder.uri.scheme !== ADTSCHEME) return
+    const connId = folder.uri.authority
+    const logger = this.instances.get(connId)
+    if (!logger) return
+    logger.activateServer(false)
+    this.instances.delete(connId)
+  }
+  public static stopLogging() {
+    for (const logger of this.instances.values()) logger.activateServer(false)
+    this.instances.clear()
+  }
+  public add(data: LogData) {
+    const rh: Record<string, string> = {}
+    if (data.response?.headers) {
+      for (const [k, v] of Object.entries(data.response.headers))
+        if (v !== undefined && v !== null) rh[k] = `${v}`
+    }
+    addLogEntry({
+      connId: this.connId,
+      method: data.request.method,
+      url: data.request.uri,
+      params: Object.keys(data.request.params || {}).length ? data.request.params : undefined,
+      requestBody: capPayload(data.request.body),
+      requestHeaders: Object.keys(data.request.headers || {}).length
+        ? data.request.headers
+        : undefined,
+      responseHeaders: Object.keys(rh).length ? rh : undefined,
+      status: data.error ? data.response?.statusCode || "ERR" : data.response.statusCode,
+      responseBody: capPayload(data.response?.body),
+      duration: data.duration,
+      startTime: data.startTime.getTime(),
+      endTime: data.startTime.getTime() + data.duration,
+      error: !!data.error
+    })
+  }
+}
+
+/** Cap payload size for comm log to avoid memory issues */
+const MAX_COMM_LOG_PAYLOAD = 2 * 1024 * 1024
+function capPayload(body: string | undefined): string | undefined {
+  if (!body || body.length <= MAX_COMM_LOG_PAYLOAD) return body
+  return (
+    body.substring(0, MAX_COMM_LOG_PAYLOAD) + `\n\n--- TRUNCATED (${body.length} chars total) ---`
+  )
+}
+
 let nextId = 1
 const entries: AdtLogEntry[] = []
 const listeners: Set<() => void> = new Set()
@@ -53,11 +148,6 @@ let notifyTimer: ReturnType<typeof setTimeout> | undefined
 function subscribe(fn: () => void): () => void {
   listeners.add(fn)
   return () => listeners.delete(fn)
-}
-
-/** Returns true when the comm-log panel is visible (logging is active) */
-export function isLogging(): boolean {
-  return CommLogPanel.isVisible()
 }
 
 // ── Panel (WebviewViewProvider) ──────────────────────────────────────
@@ -103,7 +193,9 @@ export class CommLogPanel implements WebviewViewProvider {
       if (!this.view) return
       try {
         this.view.webview.postMessage({ type: "snapshot", entries })
-      } catch { /* panel not ready */ }
+      } catch {
+        /* panel not ready */
+      }
     }
 
     this.unsub = subscribe(sendSnapshot)
@@ -121,21 +213,17 @@ export class CommLogPanel implements WebviewViewProvider {
       }
     })
 
-    // Toggle server-side logging when panel visibility changes
-    panel.onDidChangeVisibility(() => {
-      const visible = panel.visible
-      try { client?.sendNotification(Methods.commLogToggle, visible) } catch { /* server not ready */ }
-      if (visible) sendSnapshot()
-    })
-
-    // Notify server on initial show
-    try { client?.sendNotification(Methods.commLogToggle, true) } catch { /* server not ready */ }
-
     panel.onDidDispose(() => {
-      if (this.unsub) { this.unsub(); this.unsub = undefined }
-      if (notifyTimer) { clearTimeout(notifyTimer); notifyTimer = undefined }
+      if (this.unsub) {
+        this.unsub()
+        this.unsub = undefined
+      }
+      if (notifyTimer) {
+        clearTimeout(notifyTimer)
+        notifyTimer = undefined
+      }
       this.view = undefined
-      try { client?.sendNotification(Methods.commLogToggle, false) } catch { /* server not ready */ }
+      CallLogger.stopLogging()
       entries.length = 0
     })
   }

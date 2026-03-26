@@ -2330,8 +2330,14 @@
         "icon": "$(settings-gear)"
       },
       {
-        "command": "abapfs.commLog",
-        "title": "ADT Communication Log",
+        "command": "abapfs.activateCommLog",
+        "title": "Activate ADT Communication Log",
+        "category": "ABAP FS",
+        "icon": "$(radio-tower)"
+      },
+      {
+        "command": "abapfs.deactivateCommLog",
+        "title": "Deactivate ADT Communication Log",
         "category": "ABAP FS",
         "icon": "$(radio-tower)"
       },
@@ -2952,7 +2958,11 @@
           "when": "abapfs:extensionActive"
         },
         {
-          "command": "abapfs.commLog",
+          "command": "abapfs.activateCommLog",
+          "when": "abapfs:extensionActive"
+        },
+        {
+          "command": "abapfs.deactivateCommLog",
           "when": "abapfs:extensionActive"
         },
         {

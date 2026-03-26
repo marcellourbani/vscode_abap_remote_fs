@@ -116,7 +116,8 @@ export const AbapFsCommands = {
   // System info
   refreshSystemInfoCache: "abapfs.refreshSystemInfoCache",
   // Communication log
-  commLog: "abapfs.commLog"
+  activateCommLog: "abapfs.activateCommLog",
+  deactivateCommLog: "abapfs.deactivateCommLog"
 }
 
 export const abapcmds: {
@@ -140,11 +141,5 @@ abapcmds.push({
 abapcmds.push({
   name: AbapFsCommands.configureFeeds,
   func: configureFeedsCommand,
-  target: null
-})
-
-abapcmds.push({
-  name: AbapFsCommands.commLog,
-  func: () => commands.executeCommand("abapfs.views.commLog.focus"),
   target: null
 })

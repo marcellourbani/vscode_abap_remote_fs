@@ -1,4 +1,4 @@
-import { Methods } from "vscode-abap-remote-fs-sharedapi"
+import { CommLogTogglePayload, Methods } from "vscode-abap-remote-fs-sharedapi"
 import {
   TextDocuments,
   InitializeParams,
@@ -132,9 +132,7 @@ connection.onRequest(Methods.triggerSyntaxCheck, (uri: string) => {
   const doc = documents.get(uri)
   if (doc) syntaxCheck(doc)
 })
-connection.onNotification(Methods.commLogToggle, (active: boolean) => {
-  setCommLogActive(active)
-})
+connection.onNotification(Methods.commLogToggle, setCommLogActive)
 
 documents.listen(connection)
 connection.listen()
