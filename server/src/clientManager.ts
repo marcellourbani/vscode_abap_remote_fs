@@ -5,9 +5,9 @@ import { readConfiguration, sendLog, sendHttpLog } from "./clientapis"
 import {
   ClientConfiguration,
   clientTraceUrl,
-  httpTraceUrl,
   SOURCE_SERVER,
-  Methods
+  Methods,
+  CommLogTogglePayload
 } from "vscode-abap-remote-fs-sharedapi"
 import { createProxy, MethodCall } from "method-call-logger"
 import { isString } from "./functions"
@@ -41,13 +41,23 @@ function loggedProxy(client: ADTClient, conf: ClientConfiguration) {
   })
 }
 
-function debugCallBack(conf: ClientConfiguration) {
-  if (httpTraceUrl(conf))
-    return (data: LogData) => sendHttpLog({ source: SOURCE_SERVER, data, connection: conf.name })
-}
 function createFetchToken(conf: ClientConfiguration) {
   if (conf.oauth)
     return () => connection.sendRequest(Methods.getToken, conf.name) as Promise<string>
+}
+
+/** Whether the client has the comm-log panel open */
+const activeConnections = new Set<string>()
+export function setCommLogActive(active: CommLogTogglePayload) {
+  if (active.active) activeConnections.add(active.connId)
+  else activeConnections.delete(active.connId)
+}
+
+/** Build a debugCallback that chains MongoDB tracing and comm log forwarding */
+function buildServerDebugCallback(connId: string) {
+  return (logData: LogData) =>
+    activeConnections.has(connId) &&
+    connection.sendNotification(Methods.commLogEntry, { logData, connId })
 }
 
 const refreshClient = (key: string, conf: ClientConfiguration) => {
@@ -55,7 +65,7 @@ const refreshClient = (key: string, conf: ClientConfiguration) => {
   const sslconf = conf.url.match(/https:/i)
     ? createSSLConfig(conf.allowSelfSigned, conf.customCA)
     : {}
-  sslconf.debugCallback = debugCallBack(conf)
+  sslconf.debugCallback = buildServerDebugCallback(key)
   const pwdOrFetch = createFetchToken(conf) || conf.password
   const baseclient = new ADTClient(
     conf.url,

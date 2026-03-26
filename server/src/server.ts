@@ -1,4 +1,4 @@
-import { Methods } from "vscode-abap-remote-fs-sharedapi"
+import { CommLogTogglePayload, Methods } from "vscode-abap-remote-fs-sharedapi"
 import {
   TextDocuments,
   InitializeParams,
@@ -8,7 +8,7 @@ import {
   InitializeResult,
   TextDocumentSyncKind
 } from "vscode-languageserver"
-import { connection, log } from "./clientManager"
+import { connection, log, setCommLogActive } from "./clientManager"
 import { syntaxCheck } from "./syntaxcheck"
 import { completion } from "./completion"
 import { findDefinition, findReferences, cancelSearch } from "./references"
@@ -132,6 +132,7 @@ connection.onRequest(Methods.triggerSyntaxCheck, (uri: string) => {
   const doc = documents.get(uri)
   if (doc) syntaxCheck(doc)
 })
+connection.onNotification(Methods.commLogToggle, setCommLogActive)
 
 documents.listen(connection)
 connection.listen()

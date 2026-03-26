@@ -2,7 +2,7 @@
   "name": "vscode-abap-remote-fs",
   "displayName": "ABAP remote filesystem",
   "description": "Work on your ABAP code straight from the server",
-  "version": "2.0.10",
+  "version": "2.1.0",
   "publisher": "murbani",
   "publishConfig": {
     "access": "restricted",
@@ -195,10 +195,26 @@
           "id": "abapfsPanel",
           "title": "ABAP FS",
           "icon": "${book}"
+        },
+        {
+          "id": "abapfsCommLog",
+          "title": "ADT Communication Log",
+          "icon": "$(radio-tower)"
         }
       ]
     },
     "views": {
+      "abapfsCommLog": [
+        {
+          "type": "webview",
+          "id": "abapfs.views.commLog",
+          "name": "ADT Communication Log",
+          "when": "abapfs:extensionActive",
+          "contextualTitle": "ADT Communication Log",
+          "visibility": "visible",
+          "icon": "$(radio-tower)"
+        }
+      ],
       "abapfsPanel": [
         {
           "type": "webview",
@@ -774,7 +790,7 @@
             },
             "objectType": {
               "type": "string",
-              "description": "Exact object type to disambiguate objects with same name (e.g., 'PROG/P' for reports, 'CLAS/OC' for classes, 'FUGR/F' for function groups, 'INTF/OI' for interfaces). Required to avoid opening wrong object. For function modules, use the parent function group name with 'FUGR/F' type."
+              "description": "Exact object type to disambiguate objects with same name (e.g., 'PROG/P' for reports, 'CLAS/OC' for classes, 'FUGR/F' for function groups, 'INTF/OI' for interfaces). Required to avoid opening wrong object. For function modules, use the parent function group name with 'FUGR/F' type. Use full type, example: ENHO/XHH (correct) vs ENHO (may fail)"
             },
             "connectionId": {
               "type": "string",
@@ -2350,6 +2366,18 @@
         "icon": "$(settings-gear)"
       },
       {
+        "command": "abapfs.activateCommLog",
+        "title": "Activate ADT Communication Log",
+        "category": "ABAP FS",
+        "icon": "$(radio-tower)"
+      },
+      {
+        "command": "abapfs.deactivateCommLog",
+        "title": "Deactivate ADT Communication Log",
+        "category": "ABAP FS",
+        "icon": "$(radio-tower)"
+      },
+      {
         "command": "abapfs.refreshFeedInbox",
         "title": "Refresh Feed Inbox",
         "category": "ABAP FS",
@@ -2972,6 +3000,14 @@
         },
         {
           "command": "abapfs.configureFeeds",
+          "when": "abapfs:extensionActive"
+        },
+        {
+          "command": "abapfs.activateCommLog",
+          "when": "abapfs:extensionActive"
+        },
+        {
+          "command": "abapfs.deactivateCommLog",
           "when": "abapfs:extensionActive"
         },
         {

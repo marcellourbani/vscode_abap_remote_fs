@@ -1,5 +1,6 @@
 import { configureFeedsCommand } from "./configureFeeds"
 import { manageTextElementsCommand } from "./textElementsCommands"
+import { commands } from "vscode"
 
 export const AbapFsCommands = {
   connect: "abapfs.connect",
@@ -113,7 +114,10 @@ export const AbapFsCommands = {
   showBlame: "abapfs.showBlame",
   hideBlame: "abapfs.hideBlame",
   // System info
-  refreshSystemInfoCache: "abapfs.refreshSystemInfoCache"
+  refreshSystemInfoCache: "abapfs.refreshSystemInfoCache",
+  // Communication log
+  activateCommLog: "abapfs.activateCommLog",
+  deactivateCommLog: "abapfs.deactivateCommLog"
 }
 
 export const abapcmds: {

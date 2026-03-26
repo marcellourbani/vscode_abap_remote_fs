@@ -19,10 +19,10 @@ bookmarks.json
 .github/agents/
 .github/agents_disabled/
 .github/skills/
+.vscode/
 # Webpack cache directories
 client/node_modules/.cache/
 server/node_modules/.cache/
-
 # Generated JavaScript files (compiled from TypeScript)
 client/src/**/*.js
 client/src/**/*.js.map

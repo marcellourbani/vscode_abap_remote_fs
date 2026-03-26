@@ -1,4 +1,4 @@
-import { MainProgram, HttpLogEntry } from "vscode-abap-remote-fs-sharedapi"
+import { MainProgram, HttpLogEntry, CommLogEntryData } from "vscode-abap-remote-fs-sharedapi"
 import { log, channel, mongoApiLogger, mongoHttpLogger, rangeApi2Vsc } from "./lib"
 import {
   AbapObjectDetail,
@@ -19,11 +19,12 @@ import {
 } from "vscode-languageclient/node"
 export let client: LanguageClient
 import { join } from "path"
-import { FixProposal, Delta } from "abap-adt-api"
+import { FixProposal, Delta, LogData } from "abap-adt-api"
 import { command, AbapFsCommands } from "./commands"
 import { RemoteManager, formatKey } from "./config"
 import { futureToken } from "./oauth"
 import { getRoot, ADTSCHEME, uriRoot, getClient } from "./adt/conections"
+import { CallLogger } from "./adt/adtCommLog"
 import { isAbapFile } from "abapfs"
 import { AbapObject } from "abapobject"
 import { IncludeService, IncludeProvider } from "./adt/includes"
@@ -185,6 +186,12 @@ function logHttp(entry: HttpLogEntry) {
   const logger = mongoHttpLogger(entry.connection, entry.source)
   if (logger) logger(entry.data)
 }
+
+const hidrateLogData = (entry: LogData): LogData => ({
+  ...entry,
+  startTime: new Date(entry.startTime)
+})
+
 export async function startLanguageClient(context: ExtensionContext) {
   const module = context.asAbsolutePath(join("server", "dist", "server.js"))
   const transport = TransportKind.ipc
@@ -221,6 +228,9 @@ export async function startLanguageClient(context: ExtensionContext) {
       client.onRequest(Methods.logCall, logCall)
       client.onRequest(Methods.logHTTP, logHttp)
       client.onRequest(Methods.getToken, getToken)
+      client.onNotification(Methods.commLogEntry, (entry: CommLogEntryData) =>
+        CallLogger.get(entry.connId)?.add(hidrateLogData(entry.logData))
+      )
     }
   })
   client.start()
