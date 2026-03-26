@@ -177,10 +177,26 @@
           "id": "abapfsPanel",
           "title": "ABAP FS",
           "icon": "${book}"
+        },
+        {
+          "id": "abapfsCommLog",
+          "title": "ADT Communication Log",
+          "icon": "$(radio-tower)"
         }
       ]
     },
     "views": {
+      "abapfsCommLog": [
+        {
+          "type": "webview",
+          "id": "abapfs.views.commLog",
+          "name": "ADT Communication Log",
+          "when": "abapfs:extensionActive",
+          "contextualTitle": "ADT Communication Log",
+          "visibility": "visible",
+          "icon": "$(radio-tower)"
+        }
+      ],
       "abapfsPanel": [
         {
           "type": "webview",
@@ -2314,6 +2330,18 @@
         "icon": "$(settings-gear)"
       },
       {
+        "command": "abapfs.activateCommLog",
+        "title": "Activate ADT Communication Log",
+        "category": "ABAP FS",
+        "icon": "$(radio-tower)"
+      },
+      {
+        "command": "abapfs.deactivateCommLog",
+        "title": "Deactivate ADT Communication Log",
+        "category": "ABAP FS",
+        "icon": "$(radio-tower)"
+      },
+      {
         "command": "abapfs.refreshFeedInbox",
         "title": "Refresh Feed Inbox",
         "category": "ABAP FS",
@@ -2927,6 +2955,14 @@
         },
         {
           "command": "abapfs.configureFeeds",
+          "when": "abapfs:extensionActive"
+        },
+        {
+          "command": "abapfs.activateCommLog",
+          "when": "abapfs:extensionActive"
+        },
+        {
+          "command": "abapfs.deactivateCommLog",
           "when": "abapfs:extensionActive"
         },
         {

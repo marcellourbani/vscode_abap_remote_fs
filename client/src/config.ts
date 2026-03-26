@@ -14,12 +14,13 @@ import {
   ConfigurationChangeEvent
 } from "vscode"
 import { funWindow as window } from "./services/funMessenger"
-import { ADTClient, createSSLConfig, LogCallback } from "abap-adt-api"
+import { ADTClient, createSSLConfig, LogCallback, LogData } from "abap-adt-api"
 import { readFileSync } from "fs"
 import { createProxy } from "method-call-logger"
 import { mongoApiLogger, mongoHttpLogger, PasswordVault } from "./lib"
 import { oauthLogin } from "./oauth"
 import { ADTSCHEME } from "./adt/conections"
+import { CallLogger } from "./adt/adtCommLog"
 
 const CONFIGROOT = "abapfs"
 const REMOTE = "remote"
@@ -161,11 +162,26 @@ const httpLogger = (conf: RemoteConfig): LogCallback | undefined => {
   return mongoHttpLogger(conf.name, SOURCE_CLIENT)
 }
 
+/** Build a debugCallback that chains MongoDB tracing and comm log */
+function buildDebugCallback(conf: RemoteConfig): LogCallback {
+  const mongoLogger = httpLogger(conf)
+  const connId = conf.name
+  return (data: LogData) => {
+    if (mongoLogger) mongoLogger(data)
+    try {
+      const logger = CallLogger.get(connId)
+      if (logger) logger.add(data)
+    } catch {
+      /* never break HTTP */
+    }
+  }
+}
+
 export function createClient(conf: RemoteConfig) {
   const sslconf = conf.url.match(/https:/i)
     ? createSSLConfig(conf.allowSelfSigned, conf.customCA)
     : {}
-  sslconf.debugCallback = httpLogger(conf)
+  sslconf.debugCallback = buildDebugCallback(conf)
   const password = oauthLogin(conf) || conf.password
   const client = new ADTClient(
     conf.url,

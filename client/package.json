@@ -64,7 +64,7 @@
     "@vscode/debugadapter": "^1.68.0",
     "@vscode/debugprotocol": "^1.68.0",
     "abap_cloud_platform": "^1.1.4",
-    "abap-adt-api": "^7.0.0",
+    "abap-adt-api": "^7.1.2",
     "abapfs": "file:../modules/abapfs",
     "abapobject": "file:../modules/abapObject",
     "applicationinsights": "^3.9.0",
