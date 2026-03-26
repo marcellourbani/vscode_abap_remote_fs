@@ -4,7 +4,7 @@ import { DEBUGTYPE } from "./abapConfigurationProvider"
 import { DebugProtocol } from "@vscode/debugprotocol"
 import { getRoot } from "../conections"
 import { isAbapFile } from "abapfs"
-import { caughtToString } from "../../lib"
+import { caughtToString, log } from "../../lib"
 import { DebugListener, errorType } from "./debugListener"
 
 export interface AbapDebugConfiguration extends DebugConfiguration {
@@ -56,7 +56,31 @@ export class AbapDebugSession extends LoggingDebugSession {
     this.sendResponse(response)
   }
 
+  public static allSessions(): IterableIterator<AbapDebugSession> {
+    return AbapDebugSession.sessions.values()
+  }
+
   public async logOut() {
+    // Stop recording and prompt to save BEFORE cleaning up
+    if (this.listener.isRecording) {
+      try {
+        const recording = await this.listener.stopRecording()
+        if (recording && recording.totalSteps > 0) {
+          const { saveRecording } = await import("./replay/recordingIO")
+          const { funWindow: window } = await import("../../services/funMessenger")
+          const action = await window.showInformationMessage(
+            `Debug session ended. Save recording (${recording.totalSteps} steps)?`,
+            "Save",
+            "Discard"
+          )
+          if (action === "Save") {
+            await saveRecording(recording)
+          }
+        }
+      } catch (e) {
+        log(`Failed to save recording: ${caughtToString(e)}`)
+      }
+    }
     await this.listener.logout()
     AbapDebugSession.sessions.delete(this.connId)
     if (this.closed) this.closed()

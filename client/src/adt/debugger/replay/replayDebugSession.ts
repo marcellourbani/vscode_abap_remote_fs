@@ -80,8 +80,10 @@ export class ReplayDebugSession extends LoggingDebugSession {
   // -- Threads --
 
   protected threadsRequest(response: DebugProtocol.ThreadsResponse): void {
+    const snap = this.snapshot
+    const threadLabel = snap ? ` [thread ${snap.threadId}]` : ""
     response.body = {
-      threads: [new Thread(REPLAY_THREAD_ID, `⏺ Recording Replay — step ${this.currentStep + 1}/${this.totalSteps} — all step buttons = next step`)]
+      threads: [new Thread(REPLAY_THREAD_ID, `\u23fa Replay \u2014 step ${this.currentStep + 1}/${this.totalSteps}${threadLabel}`)]
     }
     this.sendResponse(response)
   }
@@ -93,6 +95,11 @@ export class ReplayDebugSession extends LoggingDebugSession {
     _args: DebugProtocol.StackTraceArguments
   ): void {
     const snap = this.snapshot
+    if (!snap) {
+      response.body = { stackFrames: [], totalFrames: 0 }
+      this.sendResponse(response)
+      return
+    }
     const frames: DebugProtocol.StackFrame[] = snap.stack.map((f, idx) => {
       const sourceRef = this.getSourceRef(f.sourcePath)
       const source = new Source(f.name, f.sourcePath)
@@ -124,11 +131,17 @@ export class ReplayDebugSession extends LoggingDebugSession {
     response: DebugProtocol.ScopesResponse,
     args: DebugProtocol.ScopesArguments
   ): void {
+    const snap = this.snapshot
+    if (!snap) {
+      response.body = { scopes: [] }
+      this.sendResponse(response)
+      return
+    }
     // Scopes are only captured for the top frame (frame 0).
     // For other frames, return empty scopes.
     const isTopFrame = args.frameId === 0
     if (isTopFrame) {
-      response.body = { scopes: this.variableManager.getScopes(this.snapshot) }
+      response.body = { scopes: this.variableManager.getScopes(snap) }
     } else {
       response.body = { scopes: [] }
     }
@@ -149,7 +162,14 @@ export class ReplayDebugSession extends LoggingDebugSession {
     response: DebugProtocol.EvaluateResponse,
     args: DebugProtocol.EvaluateArguments
   ): void {
-    const result = this.variableManager.evaluate(args.expression, this.snapshot)
+    const snap = this.snapshot
+    if (!snap) {
+      response.success = false
+      response.message = "No snapshot available"
+      this.sendResponse(response)
+      return
+    }
+    const result = this.variableManager.evaluate(args.expression, snap)
     if (result) {
       response.body = result
     } else {
@@ -190,7 +210,12 @@ export class ReplayDebugSession extends LoggingDebugSession {
     _args: DebugProtocol.ContinueArguments
   ): void {
     this.sendResponse(response)
-    this.stepTo(this.totalSteps)
+    // If already at last step, terminate. Otherwise jump to last step.
+    if (this.currentStep >= this.totalSteps - 1) {
+      this.sendEvent(new TerminatedEvent())
+    } else {
+      this.stepTo(this.totalSteps - 1)
+    }
   }
 
   // -- Backward stepping --

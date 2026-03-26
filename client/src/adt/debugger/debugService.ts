@@ -6,7 +6,6 @@ import { Disposable, EventEmitter } from "vscode"
 import { ContinuedEvent, Source, StoppedEvent, ThreadEvent } from "@vscode/debugadapter"
 import { vsCodeUri } from "../../langClient"
 import { DebugListener, errorType, THREAD_EXITED } from "./debugListener"
-import { getActiveRecorder } from "./replay/registration"
 import { CapturedStackFrame } from "./replay/types"
 
 interface RawStackEntry {
@@ -67,21 +66,29 @@ export class DebugService {
     listener: DebugListener,
     debuggee: Debuggee
   ) {
+    log(`DebugService.create: connId="${connId}", debuggee=${debuggee.DEBUGGEE_ID}`)
     const client = await newClientFromKey(connId, { timeout: 7200000 })
-    if (!client) throw new Error(`Unable to create client for${connId}`)
+    if (!client) throw new Error(`Unable to create client for ${connId}`)
     client.stateful = session_types.stateful
+    log(`DebugService.create: running adtCoreDiscovery`)
     await client.adtCoreDiscovery()
+    log(`DebugService.create: success`)
     const service = new DebugService(connId, client, listener, debuggee, ui)
     return service
   }
   public async attach() {
+    log(`DebugService.attach: attaching to ${this.debuggee.DEBUGGEE_ID}`)
     await this.client.debuggerAttach(this.mode, this.debuggee.DEBUGGEE_ID, this.username, true)
+    log(`DebugService.attach: attached, saving settings`)
     // Fire saveSettings in background - not critical for attach
     this.client.debuggerSaveSettings({}).catch(e => {
-      log(caughtToString(e))
+      log(`debuggerSaveSettings failed: ${caughtToString(e)}`)
     })
+    log(`DebugService.attach: updating stack`)
     await this.updateStack()
+    log(`DebugService.attach: stack updated, capturing replay`)
     await this.awaitReplayCapture(this.threadId)
+    log(`DebugService.attach: done`)
   }
 
   addListener(listener: (e: DebugProtocol.Event) => any, thisArg?: any) {
@@ -159,7 +166,8 @@ export class DebugService {
 
   private async awaitReplayCapture(threadId: number): Promise<void> {
     if (this.killed) return
-    const recorder = getActiveRecorder()
+    if (!this.listener.shouldRecordThread(threadId)) return
+    const recorder = this.listener.recorder
     if (!recorder?.isRecording) return
     const stackFrames = this.buildCapturedStack()
     try {

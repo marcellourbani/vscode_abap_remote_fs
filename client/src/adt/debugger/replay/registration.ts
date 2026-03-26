@@ -1,21 +1,11 @@
 import { commands, debug, DebugConfigurationProviderTriggerKind, ExtensionContext, Uri } from "vscode"
 import { ReplayAdapterFactory, ReplayConfigurationProvider, REPLAY_DEBUG_TYPE } from "./replayAdapterFactory"
 import { DEBUGTYPE } from "../abapConfigurationProvider"
-import { DebugRecorder } from "./debugRecorder"
+import { AbapDebugSession } from "../abapDebugSession"
 import { saveRecording, loadRecordingFromUri } from "./recordingIO"
 import { funWindow as window } from "../../../services/funMessenger"
 import { log } from "../../../lib"
-
-/** Singleton recorder shared across debug sessions */
-let activeRecorder: DebugRecorder | undefined
-
-export function getActiveRecorder(): DebugRecorder | undefined {
-  return activeRecorder
-}
-
-export function setActiveRecorder(recorder: DebugRecorder | undefined) {
-  activeRecorder = recorder
-}
+import { DebugListener } from "../debugListener"
 
 /**
  * Registers the replay debugger adapter, configuration provider, and commands.
@@ -37,22 +27,26 @@ export function registerReplayDebugger(context: ExtensionContext) {
     commands.registerCommand("abapfs.startRecording", startRecordingCommand),
     commands.registerCommand("abapfs.stopRecording", stopRecordingCommand),
     commands.registerCommand("abapfs.replaySession", replaySessionCommand),
-    // Auto-stop recording when the live ABAP debug session terminates
+    // Safety net: auto-stop recording when ABAP debug session terminates
+    // Primary auto-stop is in AbapDebugSession.logOut(), but disconnectRequest
+    // may not always fire (e.g., VS Code force-closes the session)
     debug.onDidTerminateDebugSession(session => {
-      if (session.type === DEBUGTYPE && activeRecorder?.isRecording) {
-        log("ABAP debug session ended, auto-stopping recording")
-        autoStopRecording()
+      if (session.type !== DEBUGTYPE) return
+      const connId = session.configuration?.connId
+      if (!connId) return
+      // Check if there's still a recording listener for this connection
+      for (const s of AbapDebugSession.allSessions()) {
+        if (s.debugListener?.isRecording) {
+          log(`onDidTerminateDebugSession: auto-stopping recording for ${connId}`)
+          autoStopRecording(s.debugListener)
+          return
+        }
       }
     })
   )
 }
 
 async function startRecordingCommand() {
-  if (activeRecorder?.isRecording) {
-    window.showInformationMessage("Already recording")
-    return
-  }
-
   // Find the active ABAP debug session
   const session = debug.activeDebugSession
   if (!session || session.type !== DEBUGTYPE) {
@@ -66,21 +60,32 @@ async function startRecordingCommand() {
     return
   }
 
-  activeRecorder = new DebugRecorder()
-  activeRecorder.startRecording(connId)
+  const abapSession = AbapDebugSession.byConnection(connId)
+  if (!abapSession) {
+    window.showErrorMessage("Cannot find ABAP debug session")
+    return
+  }
+
+  const listener = abapSession.debugListener
+  if (listener.isRecording) {
+    window.showInformationMessage("Already recording")
+    return
+  }
+
+  listener.startRecording()
   window.showInformationMessage("⏺ Recording started")
 }
 
 async function stopRecordingCommand() {
-  if (!activeRecorder?.isRecording) {
+  const listener = findRecordingListener()
+  if (!listener) {
     window.showInformationMessage("No active recording")
     return
   }
 
-  const recording = await activeRecorder.stopRecording()
-  activeRecorder = undefined
+  const recording = await listener.stopRecording()
 
-  if (!recording || recording.totalSteps === 0) {
+  if (!recording) {
     window.showInformationMessage("No steps recorded")
     return
   }
@@ -116,17 +121,37 @@ async function replaySessionCommand(fileUri?: Uri) {
   }
 }
 
-async function autoStopRecording() {
-  if (!activeRecorder) return
-  const recording = await activeRecorder.stopRecording()
-  activeRecorder = undefined
-  if (!recording || recording.totalSteps === 0) return
-  const action = await window.showInformationMessage(
-    `Debug session ended. Save recording (${recording.totalSteps} steps)?`,
-    "Save",
-    "Discard"
-  )
-  if (action === "Save") {
-    await saveRecording(recording)
+/** Find the DebugListener that is currently recording (if any) */
+function findRecordingListener(): DebugListener | undefined {
+  // Try active session first
+  const session = debug.activeDebugSession
+  if (session?.type === DEBUGTYPE) {
+    const connId = session.configuration?.connId
+    if (connId) {
+      const abapSession = AbapDebugSession.byConnection(connId)
+      if (abapSession?.debugListener?.isRecording) return abapSession.debugListener
+    }
+  }
+  // Fall back: scan all sessions
+  for (const s of AbapDebugSession.allSessions()) {
+    if (s.debugListener?.isRecording) return s.debugListener
+  }
+  return undefined
+}
+
+async function autoStopRecording(listener: DebugListener) {
+  try {
+    const recording = await listener.stopRecording()
+    if (!recording) return
+    const action = await window.showInformationMessage(
+      `Debug session ended. Save recording (${recording.totalSteps} steps)?`,
+      "Save",
+      "Discard"
+    )
+    if (action === "Save") {
+      await saveRecording(recording)
+    }
+  } catch (e) {
+    log(`autoStopRecording failed: ${e}`)
   }
 }

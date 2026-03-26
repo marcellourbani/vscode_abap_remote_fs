@@ -35,20 +35,20 @@ export class DebugRecorder {
     stackInfo: CapturedStackFrame[]
   ): Promise<void> {
     if (!this.recording) return
-    if (this.snapshots.length >= this.options.maxSteps) {
-      this.recording = false
-      window.showWarningMessage(
-        `Recording stopped: reached ${this.options.maxSteps} step limit`
-      )
-      return
-    }
 
     try {
       const scopes = await captureScopesBatched(client, this.options)
-      const changedVars = this.detectChanges(scopes)
+      const changedVars = this.detectChanges(scopes, threadId)
       await this.cacheSources(stackInfo)
 
       if (!this.recording) return // stopped during async capture
+      if (this.snapshots.length >= this.options.maxSteps) {
+        this.recording = false
+        window.showWarningMessage(
+          `Recording stopped: reached ${this.options.maxSteps} step limit`
+        )
+        return
+      }
       this.snapshots.push({
         stepNumber: this.snapshots.length,
         timestamp: Date.now(),
@@ -62,10 +62,14 @@ export class DebugRecorder {
     }
   }
 
-  private detectChanges(currentScopes: CapturedScope[]): string[] {
-    if (this.snapshots.length === 0) return []
-    const prev = this.snapshots[this.snapshots.length - 1]
-    return diffScopeVariables(prev.scopes, currentScopes)
+  private detectChanges(currentScopes: CapturedScope[], threadId: number): string[] {
+    // Compare against last snapshot from the same thread to avoid cross-thread noise
+    for (let i = this.snapshots.length - 1; i >= 0; i--) {
+      if (this.snapshots[i].threadId === threadId) {
+        return diffScopeVariables(this.snapshots[i].scopes, currentScopes)
+      }
+    }
+    return []
   }
 
   private async cacheSources(stack: CapturedStackFrame[]): Promise<void> {

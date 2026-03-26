@@ -4,6 +4,8 @@ import { DebugRecording } from "./types"
 import { log, caughtToString } from "../../../lib"
 import { funWindow as window } from "../../../services/funMessenger"
 
+import * as path from "path"
+
 const RECORDING_FILTER = {
   "ABAP Debug Recordings": ["abaprecord"]
 }
@@ -88,5 +90,5 @@ function isValidRecording(r: any): r is DebugRecording {
 function buildDefaultFilename(recording: DebugRecording): string {
   const date = new Date().toISOString().slice(0, 10)
   const obj = recording.objectName || recording.connectionId
-  return `${obj}-${date}.abaprecord`
+  return path.join(os.homedir(), `${obj}-${date}.abaprecord`)
 }
