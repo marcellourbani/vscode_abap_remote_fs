@@ -22,6 +22,7 @@ import { BreakpointManager } from "./breakpointManager"
 import { VariableManager } from "./variableManager"
 import { configFromKey } from "../../langClient"
 import { newClientFromKey } from "./functions"
+import { DebugRecorder } from "./replay/debugRecorder"
 
 type ConflictResult = { with: "none" } | { with: "other" | "myself"; message?: string }
 
@@ -92,6 +93,7 @@ export class DebugListener {
   private currentThreadId?: number
   private threadCreation?: Promise<void>
   maxThreads = 4
+  private _recorder: DebugRecorder | undefined
 
   public get client() {
     if (this.killed) throw new Error("Disconnected")
@@ -100,6 +102,33 @@ export class DebugListener {
 
   activeServices() {
     return [...this.services]
+  }
+
+  get recorder(): DebugRecorder | undefined {
+    return this._recorder
+  }
+
+  get isRecording(): boolean {
+    return !!this._recorder?.isRecording
+  }
+
+  /** Start recording on this listener. */
+  startRecording(): void {
+    if (this._recorder?.isRecording) return
+    this._recorder = new DebugRecorder()
+    this._recorder.startRecording(this.connId)
+  }
+
+  async stopRecording() {
+    const recorder = this._recorder
+    this._recorder = undefined
+    if (!recorder?.isRecording) return undefined
+    return recorder.stopRecording()
+  }
+
+  /** Returns true if this thread should be recorded */
+  shouldRecordThread(_threadId: number): boolean {
+    return !!this._recorder?.isRecording
   }
 
   constructor(
@@ -157,27 +186,15 @@ export class DebugListener {
     return c.debuggerDeleteListener(this.mode, this.terminalId, this.ideId, this.username)
   }
 
-  private async debuggerListen() {
-    this.listening = true
+  private debuggerListen() {
     try {
-      const result = await this.client.statelessClone.debuggerListen(
+      this.listening = true
+      return this.client.statelessClone.debuggerListen(
         this.mode,
         this.terminalId,
         this.ideId,
         this.username
       )
-      // SAP returns conflict notifications as a normal Debuggee object (not an error),
-      // but with DBGEE_KIND indicating it's not a real breakpoint. The library's
-      // isDebugListenerError() only catches exception responses, not these.
-      // Treat any non-DEBUGGEE kind as a listener error so the loop reconnects.
-      if (result && !isDebugListenerError(result)) {
-        const kind: string = (result as any).DBGEE_KIND || ""
-        if (kind && kind !== "DEBUGGEE") {
-          log(`debuggerListen: received non-breakpoint debuggee kind="${kind}", treating as listener error`)
-          return { conflictText: kind, "com.sap.adt.communicationFramework.subType": kind } as any
-        }
-      }
-      return result
     } finally {
       this.listening = false
     }
@@ -251,7 +268,7 @@ export class DebugListener {
           break
         }
         log(`Debugger ${this.sessionNumber} on connection  ${this.connId} reached a breakpoint`)
-        await this.onBreakpointReached(debuggee)
+        this.onBreakpointReached(debuggee)
       } catch (error) {
         if (!this.active) return
         if (!isAdtError(error)) {
@@ -299,6 +316,7 @@ export class DebugListener {
   private async onBreakpointReached(debuggee: Debuggee) {
     try {
       if (this.services.size >= this.maxThreads) return this.resume(debuggee)
+      log(`onBreakpointReached: creating service for ${debuggee.DEBUGGEE_ID}`)
       const service = await DebugService.create(this.connId, this.ui, this, debuggee)
       const threadid = this.nextthreadid()
       service.threadId = threadid
@@ -314,8 +332,9 @@ export class DebugListener {
       })()
       this.threadCreation = creation.finally(() => (this.threadCreation = undefined))
       await creation
-    } catch (error) {
-      log(`${error}`)
+    } catch (error: any) {
+      const details = error?.properties ? JSON.stringify(error.properties) : ""
+      log(`onBreakpointReached FAILED: ${caughtToString(error)} ${details}`)
       await this.stopDebugging()
     }
   }
@@ -356,18 +375,16 @@ export class DebugListener {
     this.active = false
     if (this.killed) return
     this.killed = true
-    if (this.listening) await this.stopListener().catch(ignore)
-    else {
-      const conflict = await this.hasConflict()
-      if (conflict.with === "myself") await this.stopListener().catch(ignore)
-    }
     // Stop recording if active
     if (this._recorder?.isRecording) {
       await this._recorder.stopRecording().catch(ignore)
       this._recorder = undefined
     }
-    // Always delete the listener from SAP on logout
-    await this.stopListener().catch(ignore)
+    if (this.listening) await this.stopListener().catch(ignore)
+    else {
+      const conflict = await this.hasConflict()
+      if (conflict.with === "myself") await this.stopListener().catch(ignore)
+    }
     const stopServices = [...this.services.keys()].map(s => this.stopThread(s))
     const proms: Promise<any>[] = [...stopServices]
 
