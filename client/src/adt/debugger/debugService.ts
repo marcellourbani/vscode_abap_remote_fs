@@ -72,8 +72,7 @@ export class DebugService {
     client.stateful = session_types.stateful
     log(`DebugService.create: running adtCoreDiscovery`)
     await client.adtCoreDiscovery()
-    log(`DebugService.create: success`)
-    log(`DebugService.create: discovery done`)
+    log(`DebugService.create: ready`)
     const service = new DebugService(connId, client, listener, debuggee, ui)
     return service
   }
@@ -199,7 +198,7 @@ export class DebugService {
     this.listeners.forEach(l => l.dispose())
     this.listeners = []
     this.notifier.dispose()
-    await client.statelessClone.logout().catch(ignore)
+    await client.statelessClone.logout().catch(e => log(`DebugService.logout: statelessClone logout failed: ${caughtToString(e)}`))
     await client.logout()
   }
 }
