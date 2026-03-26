@@ -6,6 +6,14 @@ import { Disposable, EventEmitter } from "vscode"
 import { ContinuedEvent, Source, StoppedEvent, ThreadEvent } from "@vscode/debugadapter"
 import { vsCodeUri } from "../../langClient"
 import { DebugListener, errorType, THREAD_EXITED } from "./debugListener"
+import { CapturedStackFrame } from "./replay/types"
+
+interface RawStackEntry {
+  adtUri: string
+  line: number
+  stackPosition: number
+  stackUri?: string
+}
 export const STACK_THREAD_MULTIPLIER = 1000000000000
 
 export interface DebuggerUI {
@@ -26,6 +34,7 @@ export class DebugService {
   private notifier: EventEmitter<DebugProtocol.Event> = new EventEmitter()
   private listeners: Disposable[] = []
   private _stackTrace: StackFrame[] = []
+  private _rawStack: RawStackEntry[] = []
   public threadId: number = 0
 
   constructor(
@@ -57,20 +66,29 @@ export class DebugService {
     listener: DebugListener,
     debuggee: Debuggee
   ) {
+    log(`DebugService.create: connId="${connId}", debuggee=${debuggee.DEBUGGEE_ID}`)
     const client = await newClientFromKey(connId, { timeout: 7200000 })
-    if (!client) throw new Error(`Unable to create client for${connId}`)
+    if (!client) throw new Error(`Unable to create client for ${connId}`)
     client.stateful = session_types.stateful
+    log(`DebugService.create: running adtCoreDiscovery`)
     await client.adtCoreDiscovery()
+    log(`DebugService.create: success`)
     const service = new DebugService(connId, client, listener, debuggee, ui)
     return service
   }
   public async attach() {
+    log(`DebugService.attach: attaching to ${this.debuggee.DEBUGGEE_ID}`)
     await this.client.debuggerAttach(this.mode, this.debuggee.DEBUGGEE_ID, this.username, true)
+    log(`DebugService.attach: attached, saving settings`)
     // Fire saveSettings in background - not critical for attach
     this.client.debuggerSaveSettings({}).catch(e => {
-      log(caughtToString(e))
+      log(`debuggerSaveSettings failed: ${caughtToString(e)}`)
     })
+    log(`DebugService.attach: updating stack`)
     await this.updateStack()
+    log(`DebugService.attach: stack updated, capturing replay`)
+    await this.awaitReplayCapture(this.threadId)
+    log(`DebugService.attach: done`)
   }
 
   addListener(listener: (e: DebugProtocol.Event) => any, thisArg?: any) {
@@ -84,7 +102,7 @@ export class DebugService {
   private async baseDebuggerStep(threadId: number, stepType: DebugStepType, url?: string) {
     this.notifier.fire(new ContinuedEvent(threadId))
     if (stepType === "stepRunToLine" || stepType === "stepJumpToLine") {
-      if (!url) throw new Error(`Bebugger step${stepType} requires a target`)
+      if (!url) throw new Error(`Debugger step ${stepType} requires a target`)
       return this.client.debuggerStep(stepType, url)
     }
     return this.client.debuggerStep(stepType)
@@ -94,6 +112,7 @@ export class DebugService {
     try {
       const res = await this.baseDebuggerStep(threadId, stepType, url)
       await this.updateStack()
+      await this.awaitReplayCapture(threadId)
       this.notifier.fire(new StoppedEvent("step", threadId))
       return res
     } catch (error) {
@@ -124,6 +143,12 @@ export class DebugService {
       return frame
     }
     if (stackInfo) {
+      this._rawStack = stackInfo.stack.map(s => ({
+        adtUri: s.uri.uri,
+        line: s.line,
+        stackPosition: s.stackPosition,
+        stackUri: "stackUri" in s ? s.stackUri : undefined
+      }))
       const stackp = stackInfo.stack.map(async (s, id) => {
         id = id + this.threadId * STACK_THREAD_MULTIPLIER
         try {
@@ -137,6 +162,32 @@ export class DebugService {
       })
       this._stackTrace = (await Promise.all(stackp)).filter(s => !!s)
     }
+  }
+
+  private async awaitReplayCapture(threadId: number): Promise<void> {
+    if (this.killed) return
+    if (!this.listener.shouldRecordThread(threadId)) return
+    const recorder = this.listener.recorder
+    if (!recorder?.isRecording) return
+    const stackFrames = this.buildCapturedStack()
+    try {
+      await recorder.captureSnapshot(this.client, threadId, stackFrames)
+    } catch (e) {
+      log(`Replay capture error: ${caughtToString(e)}`)
+    }
+  }
+
+  private buildCapturedStack(): CapturedStackFrame[] {
+    return this._stackTrace.map((f, idx) => {
+      const raw = this._rawStack[idx]
+      return {
+        name: f.name,
+        sourcePath: f.source?.path || "",
+        adtUri: raw?.adtUri || "",
+        line: f.line,
+        stackPosition: f.stackPosition
+      }
+    })
   }
 
   public async logout() {

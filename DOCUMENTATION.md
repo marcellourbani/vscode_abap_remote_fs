@@ -59,6 +59,7 @@ This documentation covers all features in detail. The goal: make ABAP developmen
     - [Performance - ECC (`/abap-performance-ecc`)](#performance---ecc-abap-performance-ecc)
     - [Performance - HANA (`/abap-performance-hana`)](#performance---hana-abap-performance-hana)
     - [SAP Research (`/abap-research`)](#sap-research-abap-research)
+    - [SAP System Personality Report (`/sap-system-personality-report`)](#sap-system-personality-report-sap-system-personality-report)
   - [Using Skills](#using-skills)
 - [1.4 Heartbeat - Background Monitoring \& Reminders](#14-heartbeat---background-monitoring--reminders)
   - [What is Heartbeat?](#what-is-heartbeat)
@@ -115,6 +116,13 @@ This documentation covers all features in detail. The goal: make ABAP developmen
   - [4.4 Where-Used Analysis](#44-where-used-analysis)
 - [5. Debugging Features](#5-debugging-features)
   - [5.1 ABAP Debugging](#51-abap-debugging)
+  - [5.2 Debug Recording \& Replay](#52-debug-recording--replay)
+    - [Why?](#why)
+    - [Recording a Debug Session](#recording-a-debug-session)
+    - [Replaying a Recording](#replaying-a-recording)
+    - [Limitations](#limitations-1)
+    - [Commands](#commands)
+    - [File Format](#file-format)
 - [6. Data Query \& Visualization](#6-data-query--visualization)
   - [6.1 SQL Query Execution](#61-sql-query-execution)
 - [7. Transport Management](#7-transport-management)
@@ -1670,6 +1678,134 @@ files, editing, saving changes and during activation
 - Jump to cursor: Shift+F12
 
 - Standard VS Code debugging shortcuts work
+
+> 💡 **See also:** [5.2 Debug Recording & Replay](#52-debug-recording--replay) — record your debug session and replay it offline with step-back support.
+
+## 5.2 Debug Recording & Replay
+
+> ⚠️ **BETA FEATURE** - This feature is in beta. Please report any issues.
+
+**Purpose:** Record a live ABAP debug session and replay it offline with full step-back support — like a DVR for debugging
+
+### Why?
+
+Debugging complex ABAP logic often requires stepping through many lines, then realizing you went too far. In a live session you can't go back — you have to restart and step through everything again. With recording & replay:
+
+1. **Record** while debugging normally (each step is slightly slower due to variable capture)
+2. **Save** the recording as a `.abaprecord` file
+3. **Replay** anytime — offline, no SAP connection needed — with forward AND backward stepping
+4. **Share** recordings with colleagues ("here's what happens at step 23")
+
+### Recording a Debug Session
+
+**How to Use:**
+
+1. Start a normal ABAP debug session (set breakpoints, attach, etc.)
+
+2. Run command: **ABAP: Start Debug Recording** (Command Palette)
+
+3. Debug normally — step over, step into, continue to breakpoints
+
+4. Run command: **ABAP: Stop Debug Recording**
+
+5. Choose **Save** when prompted → saves as `.abaprecord` file
+
+**What Gets Recorded:**
+
+Each step captures:
+
+- Full stack trace with source file references
+
+- All variable names, values, and types across all scopes (Local, Global, SY)
+
+- Structure components (expanded automatically)
+
+- Table rows (up to 2000 rows per table, auto-skipped beyond that)
+
+- Source file contents (for offline viewing)
+
+**How Recording Works:**
+
+Recording uses a batched breadth-first capture algorithm that fetches variable data from SAP in as few HTTP calls as possible:
+
+- All scope variables are fetched in a single API call
+
+- All structures at each depth level are expanded in a single API call
+
+- All table rows across all tables are fetched in a single batch
+
+- Depth is configurable (default: 4 levels deep) via `CaptureOptions.maxDepth`
+
+This typically results in 5–8 HTTP calls per step (~1–3 seconds), compared to the naive sequential approach that would require 20–100+ calls.
+
+**Important:** Recording blocks the step button until variable capture completes. Each step takes ~1–3 seconds instead of being instant. This is by design — once you step in SAP, the previous step's variable data is erased from the server and cannot be recovered.
+
+### Replaying a Recording
+
+**How to Use:**
+
+1. Run command: **ABAP: Replay Debug Recording** (Command Palette) OR
+
+2. The command opens the native OS file picker filtered to `.abaprecord` files
+
+3. Select the recording file
+
+4. A replay debug session starts — you see the code, stack, and variables exactly as recorded
+
+**Replay Controls:**
+
+- **Step Forward** (F7 / F10 / F11) — all step buttons advance to the next recorded snapshot
+
+- **Step Back** (Shift+F7 / Shift+F11) — go to the previous snapshot
+
+- **Continue** (F5) — jump to the end of the recording and terminate
+
+- **Reverse Continue** — jump to the first snapshot
+
+- **Terminate** — close the replay session
+
+> 💡 VS Code always shows Step Over, Step Into, and Step Out buttons. In replay mode, all three do the same thing: advance to the next recorded step.
+
+**Replay Features:**
+
+- Full variable inspection — expand structures, browse table rows
+
+- Expression evaluation for simple variable lookups
+
+- Hover evaluation for variable values
+
+- Source code displayed from cached recording data (no SAP connection needed)
+
+
+### Limitations
+
+- **Tables > 2000 rows** are truncated during recording — the first 2000 rows are captured, the rest are skipped (marked with a skip reason in replay)
+
+- **Depth limit** — structures/tables beyond the configured depth (default 4 levels) are not expanded
+
+- **Source files** may show `[source unavailable]` if the source couldn't be cached during recording
+
+- **No conditional breakpoints** in replay — you can only step through what was recorded
+
+- **Recording file size** can be large for sessions with many steps or large variables
+
+### Commands
+
+| Command | Description |
+|---------|-------------|
+| `ABAP: Start Debug Recording` | Begin recording the active debug session |
+| `ABAP: Stop Debug Recording` | Stop recording and optionally save |
+| `ABAP: Replay Debug Recording` | Open and replay a `.abaprecord` file |
+
+### File Format
+
+Recordings are saved as `.abaprecord` files (JSON format) containing:
+
+- Recording metadata (date, connection, duration)
+
+- Array of snapshots (one per step), each with stack trace, scopes, and variables
+
+- Cached source file contents for offline viewing
 
 # 6. Data Query & Visualization
 

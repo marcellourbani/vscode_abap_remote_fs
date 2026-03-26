@@ -142,6 +142,24 @@
             "connId": "${command:abapfs.pickAdtRootConn}"
           }
         ]
+      },
+      {
+        "type": "abap-replay",
+        "label": "ABAP Replay Debugger",
+        "languages": [
+          "abap"
+        ],
+        "configurationAttributes": {
+          "launch": {
+            "properties": {
+              "recordingPath": {
+                "type": "string",
+                "description": "Path to an .abaprecord file",
+                "default": ""
+              }
+            }
+          }
+        }
       }
     ],
     "customEditors": [
@@ -2302,6 +2320,24 @@
     ],
     "commands": [
       {
+        "command": "abapfs.startRecording",
+        "title": "Start Debug Recording",
+        "category": "ABAP Replay",
+        "icon": "$(record)"
+      },
+      {
+        "command": "abapfs.stopRecording",
+        "title": "Stop Debug Recording",
+        "category": "ABAP Replay",
+        "icon": "$(debug-stop)"
+      },
+      {
+        "command": "abapfs.replaySession",
+        "title": "Replay Debug Recording",
+        "category": "ABAP Replay",
+        "icon": "$(debug-reverse-continue)"
+      },
+      {
         "command": "abapfs.openHeartbeatJson",
         "title": "Open Heartbeat Watchlist",
         "category": "ABAP FS",
@@ -2925,6 +2961,15 @@
       "commandPalette": [
         {
           "command": "abapfs.connect"
+        },
+        {
+          "command": "abapfs.startRecording"
+        },
+        {
+          "command": "abapfs.stopRecording"
+        },
+        {
+          "command": "abapfs.replaySession"
         },
         {
           "command": "abapfs.connectionManager"
