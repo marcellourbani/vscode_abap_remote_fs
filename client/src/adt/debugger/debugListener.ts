@@ -356,13 +356,11 @@ export class DebugListener {
     this.active = false
     if (this.killed) return
     this.killed = true
-<<<<<<< Updated upstream
     if (this.listening) await this.stopListener().catch(ignore)
     else {
       const conflict = await this.hasConflict()
       if (conflict.with === "myself") await this.stopListener().catch(ignore)
     }
-=======
     // Stop recording if active
     if (this._recorder?.isRecording) {
       await this._recorder.stopRecording().catch(ignore)
@@ -370,7 +368,6 @@ export class DebugListener {
     }
     // Always delete the listener from SAP on logout
     await this.stopListener().catch(ignore)
->>>>>>> Stashed changes
     const stopServices = [...this.services.keys()].map(s => this.stopThread(s))
     const proms: Promise<any>[] = [...stopServices]
 
