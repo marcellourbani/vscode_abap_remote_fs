@@ -16,7 +16,7 @@
 import * as https from "https"
 import { readFileSync, existsSync } from "fs"
 import { AuthResult, CertAuthConfig } from "./types"
-import { PasswordVault } from "../lib"
+import { PasswordVault, log } from "../lib"
 import { formatKey } from "../config"
 
 const VAULT_SERVICE = "vscode.abapfs.cert"
@@ -53,8 +53,10 @@ export async function buildCertAuth(
   skipSsl: boolean,
   customCA?: string
 ): Promise<AuthResult> {
+  log.debug(`[cert] buildCertAuth starting for ${connId}`)
   const allowedExts = /\.(pem|crt|cer|key|p12|pfx)$/i
   const isPkcs12 = /\.(p12|pfx)$/i.test(certConfig.certPath || "")
+  log.debug(`[cert] certPath=${certConfig.certPath}, keyPath=${certConfig.keyPath}, isPkcs12=${isPkcs12}`)
   if (!certConfig.certPath || !allowedExts.test(certConfig.certPath) || !existsSync(certConfig.certPath)) {
     throw new Error(`Client certificate not found or invalid extension: ${certConfig.certPath}`)
   }
@@ -98,9 +100,7 @@ export async function buildCertAuth(
 
   const agent = new https.Agent(agentOptions)
 
-  // ADTClient still requires a username/password. For cert auth the server
-  // authenticates via TLS so we pass a dummy password. The username from
-  // the connection config is used for display/logging only.
+  log.debug(`[cert] buildCertAuth complete for ${connId}: agent created, hasPassphrase=${!!passphrase}, hasCA=${!!caPath}`)
   return {
     passwordOrFetcher: "x509-cert-auth",
     httpsAgent: agent,

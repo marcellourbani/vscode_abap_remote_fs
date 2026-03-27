@@ -29,7 +29,7 @@ import { randomBytes, createHash } from "crypto"
 import * as vscode from "vscode"
 import { AuthResult } from "./types"
 import { OAuthOnPremConfig } from "vscode-abap-remote-fs-sharedapi"
-import { PasswordVault } from "../lib"
+import { PasswordVault, log } from "../lib"
 import { formatKey } from "../config"
 
 const VAULT_SERVICE = "vscode.abapfs.oauth_onprem"
@@ -44,16 +44,24 @@ interface TokenSet {
 async function storeTokens(connId: string, tokens: TokenSet): Promise<void> {
   const vault = PasswordVault.get()
   await vault.setPassword(VAULT_SERVICE, formatKey(connId), JSON.stringify(tokens))
+  log.debug(`[oauth-onprem] Stored tokens for ${connId}, expiresAt=${new Date(tokens.expiresAt).toISOString()}`)
 }
 
 /** Retrieve stored tokens. */
 async function getTokens(connId: string): Promise<TokenSet | null> {
   const vault = PasswordVault.get()
   const raw = await vault.getPassword(VAULT_SERVICE, formatKey(connId))
-  if (!raw) return null
+  if (!raw) {
+    log.debug(`[oauth-onprem] No cached tokens for ${connId}`)
+    return null
+  }
   try {
-    return JSON.parse(raw) as TokenSet
-  } catch {
+    const tokens = JSON.parse(raw) as TokenSet
+    const remainingMs = tokens.expiresAt - Date.now()
+    log.debug(`[oauth-onprem] Retrieved cached tokens for ${connId}, expires in ${Math.round(remainingMs / 1000)}s`)
+    return tokens
+  } catch (e) {
+    log.debug(`[oauth-onprem] Failed to parse cached tokens for ${connId}: ${e}`)
     return null
   }
 }
@@ -62,6 +70,7 @@ async function getTokens(connId: string): Promise<TokenSet | null> {
 export async function clearOAuthOnPremTokens(connId: string): Promise<void> {
   const vault = PasswordVault.get()
   await vault.deletePassword(VAULT_SERVICE, formatKey(connId))
+  log.debug(`[oauth-onprem] Cleared tokens for ${connId}`)
 }
 
 /**
@@ -99,6 +108,7 @@ async function authorizeInteractive(
       const error = url.searchParams.get("error")
 
       if (error) {
+        log.debug(`[oauth-onprem] SAP returned OAuth error: ${error} — ${url.searchParams.get("error_description") || ""}`)
         res.writeHead(200, { "Content-Type": "text/html", [cspHeader]: cspValue })
         res.end("<html><body><h2>Authentication Failed</h2><p>SAP returned an error. You can close this tab.</p></body></html>")
         clearTimeout(timer)
@@ -108,6 +118,7 @@ async function authorizeInteractive(
       }
 
       if (!code || receivedState !== state) {
+        log.debug(`[oauth-onprem] State mismatch or missing code: receivedState=${receivedState}, expectedState=${state}, hasCode=${!!code}`)
         res.writeHead(400, { "Content-Type": "text/html", [cspHeader]: cspValue })
         res.end("<html><body><h2>Invalid Response</h2><p>Missing authorization code or state mismatch.</p></body></html>")
         clearTimeout(timer)
@@ -122,12 +133,14 @@ async function authorizeInteractive(
         const tokens = await exchangeCodeForTokens(
           sapUrl, sapClient, config, code, codeVerifier, addr.port, skipSsl
         )
+        log.debug(`[oauth-onprem] Token exchange successful, accessToken length=${tokens.accessToken.length}`)
         res.writeHead(200, { "Content-Type": "text/html", [cspHeader]: cspValue })
         res.end("<html><body><h2>Authentication Successful</h2><p>You can close this tab and return to VS Code.</p></body></html>")
         clearTimeout(timer)
         server.close()
         resolve(tokens)
       } catch (err: any) {
+        log.debug(`[oauth-onprem] Token exchange failed: ${err.message}`)
         res.writeHead(200, { "Content-Type": "text/html", [cspHeader]: cspValue })
         res.end(`<html><body><h2>Token Exchange Failed</h2><p>${escapeHtml(err.message)}</p></body></html>`)
         clearTimeout(timer)
@@ -236,9 +249,11 @@ async function refreshTokens(
   }
 
   const tokenUrl = `${sapUrl}/sap/bc/sec/oauth2/token?sap-client=${encodeURIComponent(sapClient)}`
+  log.debug(`[oauth-onprem] Refreshing tokens at: ${tokenUrl}`)
   const resp = await doPost(tokenUrl, body.toString(), skipSsl)
 
   if (!resp.ok) {
+    log.debug(`[oauth-onprem] Token refresh HTTP error: ${resp.status}`)
     throw new Error(`Token refresh failed: HTTP ${resp.status}`)
   }
 
@@ -266,6 +281,7 @@ export async function buildOAuthOnPremAuth(
   config: OAuthOnPremConfig,
   skipSsl: boolean,
 ): Promise<AuthResult> {
+  log.debug(`[oauth-onprem] buildOAuthOnPremAuth starting for ${connId}, clientId=${config.clientId}`)
   // Resolve client secret from vault if not inline
   if (!config.clientSecret) {
     const vault = PasswordVault.get()
@@ -281,19 +297,22 @@ export async function buildOAuthOnPremAuth(
       // Try refresh
       if (tokens.refreshToken) {
         try {
+          log.debug(`[oauth-onprem] Token expired, attempting refresh for ${connId}`)
           tokens = await refreshTokens(sapUrl, sapClient, config, tokens.refreshToken, skipSsl)
           await storeTokens(connId, tokens)
-        } catch {
-          // Refresh failed — need interactive login
+        } catch (e) {
+          log.debug(`[oauth-onprem] Token refresh failed for ${connId}, will do interactive login: ${e}`)
           tokens = null
         }
       } else {
+        log.debug(`[oauth-onprem] Token expired and no refresh token for ${connId}`)
         tokens = null
       }
     }
   }
 
   if (!tokens) {
+    log.debug(`[oauth-onprem] No valid tokens, starting interactive login for ${connId}`)
     tokens = await authorizeInteractive(sapUrl, sapClient, config, skipSsl)
     await storeTokens(connId, tokens)
   }
@@ -301,6 +320,7 @@ export async function buildOAuthOnPremAuth(
   // Return a token fetcher that auto-refreshes
   const fetchToken = createTokenFetcher(connId, sapUrl, sapClient, config, skipSsl)
 
+  log.debug(`[oauth-onprem] buildOAuthOnPremAuth complete for ${connId}`)
   return {
     passwordOrFetcher: fetchToken,
   }
@@ -326,6 +346,7 @@ function createTokenFetcher(
 
     // Refresh if expired (60s buffer)
     if (tokens.expiresAt < Date.now() + 60_000 && tokens.refreshToken) {
+      log.debug(`[oauth-onprem] Token near expiry in fetcher, refreshing for ${connId}`)
       // Mutex: only one refresh at a time per connection
       let pending = refreshLocks.get(connId)
       if (!pending) {
@@ -339,7 +360,8 @@ function createTokenFetcher(
       }
       try {
         tokens = await pending
-      } catch {
+      } catch (e) {
+        log.debug(`[oauth-onprem] Token refresh failed in fetcher for ${connId}: ${e}`)
         throw new Error("OAuth token refresh failed — reconnect required")
       }
     }

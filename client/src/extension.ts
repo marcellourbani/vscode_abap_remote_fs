@@ -50,6 +50,7 @@ import { clearSystemInfoCache } from "./services/sapSystemInfo"
 import { HeartbeatWatchlist } from "./services/heartbeat/heartbeatWatchlist"
 import { visualizeDependencyGraph } from "./services/dependencyGraph"
 import { checkUpgradeNotification } from "./services/upgradeNotification"
+import { initializeReviewPrompt } from "./services/reviewPrompt"
 
 // Import commands to ensure @command decorators are executed
 import "./commands"
@@ -316,6 +317,13 @@ export async function activate(ctx: ExtensionContext): Promise<AbapFsApi> {
 
   // Check for v1 → v2 upgrade and show notification + status bar hint
   checkUpgradeNotification(context)
+
+  // Initialize review prompt (rate on Marketplace after sustained usage)
+  try {
+    initializeReviewPrompt(context)
+  } catch {
+    // Non-critical — never break extension activation
+  }
 
   const elapsed = new Date().getTime() - startTime
   log.debug(`Activated,pid=${process.pid}, activation time(ms):${elapsed}`)

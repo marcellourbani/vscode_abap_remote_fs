@@ -21,7 +21,7 @@
 import * as http from "http"
 import { randomBytes } from "crypto"
 import { AuthResult } from "./types"
-import { PasswordVault } from "../lib"
+import { PasswordVault, log } from "../lib"
 import { formatKey } from "../config"
 import * as vscode from "vscode"
 
@@ -35,23 +35,36 @@ export async function storeSsoCookies(connId: string, cookies: string[]): Promis
   const vault = PasswordVault.get()
   await vault.setPassword(VAULT_SERVICE, formatKey(connId), JSON.stringify(cookies))
   await vault.setPassword(VAULT_TS_SERVICE, formatKey(connId), String(Date.now()))
+  log.debug(`[browser-sso] Stored ${cookies.length} cookies for ${connId}`)
 }
 
 /** Retrieve stored SSO cookies (returns empty if expired). */
 export async function getSsoCookies(connId: string): Promise<string[]> {
   const vault = PasswordVault.get()
   const raw = await vault.getPassword(VAULT_SERVICE, formatKey(connId))
-  if (!raw) return []
+  if (!raw) {
+    log.debug(`[browser-sso] No cached cookies for ${connId}`)
+    return []
+  }
   // Check timestamp — consider expired after TTL
   const tsRaw = await vault.getPassword(VAULT_TS_SERVICE, formatKey(connId))
   if (tsRaw) {
     const storedAt = parseInt(tsRaw, 10)
-    if (Date.now() - storedAt > SSO_COOKIE_TTL_MS) return []
+    const ageMs = Date.now() - storedAt
+    if (ageMs > SSO_COOKIE_TTL_MS) {
+      log.debug(`[browser-sso] Cookies expired for ${connId} (age=${Math.round(ageMs / 1000)}s, ttl=${SSO_COOKIE_TTL_MS / 1000}s)`)
+      return []
+    }
   }
   try {
     const parsed = JSON.parse(raw)
-    return Array.isArray(parsed) ? parsed : []
-  } catch { return [] }
+    const result = Array.isArray(parsed) ? parsed : []
+    log.debug(`[browser-sso] Retrieved ${result.length} cached cookies for ${connId}`)
+    return result
+  } catch (e) {
+    log.debug(`[browser-sso] Failed to parse cached cookies for ${connId}: ${e}`)
+    return []
+  }
 }
 
 /** Clear stored SSO cookies. */
@@ -59,6 +72,7 @@ export async function clearSsoCookies(connId: string): Promise<void> {
   const vault = PasswordVault.get()
   await vault.deletePassword(VAULT_SERVICE, formatKey(connId))
   await vault.deletePassword(VAULT_TS_SERVICE, formatKey(connId))
+  log.debug(`[browser-sso] Cleared cached cookies for ${connId}`)
 }
 
 /**
@@ -121,18 +135,21 @@ export function startCookieCaptureServer(
               .filter((c: string) => c.includes("=") && c.length <= 4096)
 
             if (cookies.length === 0) {
+              log.debug(`[browser-sso] POST received but no cookies extracted`)
               res.writeHead(200, { "Content-Type": "application/json" })
               res.end(JSON.stringify({ message: "No cookies received. Make sure you are logged in." }))
               return
             }
 
+            log.debug(`[browser-sso] Captured ${cookies.length} cookies: ${cookies.map(c => c.split("=")[0]).join(",")}`)
             res.writeHead(200, { "Content-Type": "application/json" })
             res.end(JSON.stringify({ message: `Captured ${cookies.length} cookies. You can close this tab.` }))
 
             clearTimeout(timer)
             server.close()
             resolve(cookies)
-          } catch {
+          } catch (e) {
+            log.debug(`[browser-sso] Failed to parse POST body: ${e}`)
             res.writeHead(400, { "Content-Type": "application/json" })
             res.end(JSON.stringify({ message: "Invalid request" }))
           }
@@ -149,12 +166,14 @@ export function startCookieCaptureServer(
       const addr = server.address() as { port: number }
       const helperUrl = `http://127.0.0.1:${addr.port}/${token}`
 
-      // Open in the user's default browser with fallback notification
+      // Open in the user's default browser; only show notification as fallback
       import("open")
         .then(m => (m.default || m)(helperUrl))
-        .catch(() => {})
         .then(() => {
-          // Notify the user via the injected callback (no runtime require("vscode"))
+          log.debug(`[browser-sso] Browser opened successfully for: ${helperUrl}`)
+        })
+        .catch((err) => {
+          log.debug(`[browser-sso] Failed to open browser (${err}), showing notification fallback`)
           if (notifyUser) notifyUser(helperUrl)
         })
     })
@@ -193,13 +212,16 @@ export async function buildBrowserSsoAuth(
   sapUrl: string,
   sapClient: string,
 ): Promise<AuthResult> {
+  log.debug(`[browser-sso] buildBrowserSsoAuth starting for ${connId}`)
   let cookies = await getSsoCookies(connId)
   if (cookies.length === 0) {
+    log.debug(`[browser-sso] No cached cookies, starting cookie capture for ${connId}`)
     const loginUrl = `${sapUrl}/sap/bc/adt/discovery?sap-client=${encodeURIComponent(sapClient)}`
     cookies = await startCookieCaptureServer(loginUrl, 120_000, vscodeSsoNotify)
     await storeSsoCookies(connId, cookies)
   }
 
+  log.debug(`[browser-sso] buildBrowserSsoAuth complete for ${connId}: ${cookies.length} cookies`)
   return {
     passwordOrFetcher: "browser-sso",
     headers: { Cookie: cookies.map(c => c.replace(/[\r\n\x00-\x1f]/g, "")).join("; ") },
@@ -214,11 +236,13 @@ export async function refreshBrowserSsoAuth(
   sapUrl: string,
   sapClient: string,
 ): Promise<AuthResult> {
+  log.debug(`[browser-sso] refreshBrowserSsoAuth starting for ${connId}`)
   await clearSsoCookies(connId)
   const loginUrl = `${sapUrl}/sap/bc/adt/discovery?sap-client=${encodeURIComponent(sapClient)}`
   const cookies = await startCookieCaptureServer(loginUrl, 120_000, vscodeSsoNotify)
   await storeSsoCookies(connId, cookies)
 
+  log.debug(`[browser-sso] refreshBrowserSsoAuth complete for ${connId}: ${cookies.length} cookies`)
   return {
     passwordOrFetcher: "browser-sso",
     headers: { Cookie: cookies.map(c => c.replace(/[\r\n\x00-\x1f]/g, "")).join("; ") },

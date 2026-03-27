@@ -89,12 +89,14 @@ const refreshClient = async (key: string, conf: ClientConfiguration) => {
 
   const authMethod = conf.authMethod || "basic"
   let pwdOrFetch: string | (() => Promise<string>)
+  log(`[server] refreshClient: key=${key}, authMethod=${authMethod}`)
 
   if (authMethod !== "basic" && !conf.oauth) {
-    // For cert/kerberos/browser_sso, get auth headers from client extension
     const authHeaders = await fetchAuthHeaders(conf.name)
+    log(`[server] refreshClient: authHeaders received for ${key}: ${authHeaders ? Object.keys(authHeaders).join(",") : "null"}`)
 
     if (authMethod === "cert") {
+      log(`[server] refreshClient: reconstructing cert agent for ${key}`)
       // Reconstruct httpsAgent from cert paths returned by the client
       if (authHeaders && authHeaders._certAuth) {
         try {
@@ -130,8 +132,7 @@ const refreshClient = async (key: string, conf: ClientConfiguration) => {
       }
       pwdOrFetch = "cert-auth"
     } else if (authMethod === "oauth_onprem" && authHeaders?.Authorization) {
-      // On-premise OAuth: client provides a Bearer token via the Authorization header.
-      // We create a token fetcher that requests fresh tokens from the client on each refresh.
+      log(`[server] refreshClient: setting up OAuth on-prem token fetcher for ${key}`)
       const currentToken = authHeaders.Authorization.replace(/^Bearer\s+/i, "")
       pwdOrFetch = () =>
         fetchAuthHeaders(conf.name).then(h => {

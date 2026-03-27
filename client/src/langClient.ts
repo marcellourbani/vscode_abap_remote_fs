@@ -141,9 +141,9 @@ async function getAuthHeaders(
   const authMethod = (conn as any).authMethod || "basic"
   switch (authMethod) {
     case "kerberos": {
-      // Always re-negotiate via PowerShell SSPI — SSPI is cheap and ensures
-      // cookies are always fresh for the server's 4-minute refresh cycle
       try {
+        const { log: libLog } = await import("./lib")
+        libLog.debug(`[langClient] getAuthHeaders: re-negotiating kerberos for ${connId}`)
         const { refreshKerberosAuth } = await import("./auth/kerberos")
         const result = await refreshKerberosAuth(
           connId,
@@ -152,33 +152,38 @@ async function getAuthHeaders(
           conn.client,
           !!conn.allowSelfSigned
         )
+        libLog.debug(`[langClient] getAuthHeaders: kerberos refresh success for ${connId}`)
         return result.headers
       } catch (e) {
-        // Log the failure but don't crash — server will continue with stale cookies or fail gracefully
-        const { log } = await import("./lib")
-        log(`⚠️ Kerberos re-negotiation failed for ${connId}: ${e}`)
-        // Return whatever we have cached
+        const { log: libLog } = await import("./lib")
+        libLog.debug(`[langClient] getAuthHeaders: kerberos re-negotiation failed for ${connId}: ${e}`)
         const { getKerberosCookies } = await import("./auth/kerberos")
         const cookies = await getKerberosCookies(connId)
+        libLog.debug(`[langClient] getAuthHeaders: falling back to ${cookies.length} cached cookies for ${connId}`)
         return cookies.length > 0
           ? { Cookie: cookies.map((c: string) => c.replace(/[\r\n\x00-\x1f]/g, "")).join("; ") }
           : undefined
       }
     }
     case "browser_sso": {
+      const { log: libLog } = await import("./lib")
+      libLog.debug(`[langClient] getAuthHeaders: checking browser_sso cookies for ${connId}`)
       const { getSsoCookies } = await import("./auth/browserSso")
       const cookies = await getSsoCookies(connId)
-      if (cookies.length > 0) return { Cookie: cookies.map((c: string) => c.replace(/[\r\n\x00-\x1f]/g, "")).join("; ") }
-      // Cookies missing/expired — log warning, server will surface auth failure
-      const { log } = await import("./lib")
-      log(`⚠️ Browser SSO session expired for ${connId}. User should disconnect and reconnect to re-authenticate.`)
+      if (cookies.length > 0) {
+        libLog.debug(`[langClient] getAuthHeaders: returning ${cookies.length} browser_sso cookies for ${connId}`)
+        return { Cookie: cookies.map((c: string) => c.replace(/[\r\n\x00-\x1f]/g, "")).join("; ") }
+      }
+      libLog.debug(`[langClient] getAuthHeaders: browser_sso cookies missing/expired for ${connId}`)
       return undefined
     }
     case "cert": {
-      // For cert auth, return cert paths + passphrase so server can reconstruct httpsAgent.
-      // IPC channel is local stdio between co-located processes running as the same OS user,
-      // so threat model is equivalent to reading from the vault directly.
-      if (!(conn as any).certAuth) return undefined
+      const { log: libLog } = await import("./lib")
+      if (!(conn as any).certAuth) {
+        libLog.debug(`[langClient] getAuthHeaders: cert auth config missing for ${connId}`)
+        return undefined
+      }
+      libLog.debug(`[langClient] getAuthHeaders: returning cert paths for ${connId}`)
       const { getCertPassphrase } = await import("./auth/certificate")
       const passphrase = await getCertPassphrase(connId)
       return {
@@ -191,23 +196,25 @@ async function getAuthHeaders(
       }
     }
     case "oauth_onprem": {
-      // For on-premise OAuth, the server needs a fresh Bearer token.
-      // The token fetcher handles auto-refresh.
+      const { log: libLog } = await import("./lib")
+      libLog.debug(`[langClient] getAuthHeaders: fetching oauth_onprem token for ${connId}`)
       const { buildOAuthOnPremAuth } = await import("./auth/oauthOnPrem")
       const oauthConf = (conn as any).oauthOnPrem
-      if (!oauthConf) return undefined
+      if (!oauthConf) {
+        libLog.debug(`[langClient] getAuthHeaders: oauth_onprem config missing for ${connId}`)
+        return undefined
+      }
       try {
         const result = await buildOAuthOnPremAuth(
           connId, conn.url, conn.client, oauthConf, !!conn.allowSelfSigned
         )
-        // Get the current token to pass as a header
         if (typeof result.passwordOrFetcher === "function") {
           const token = await result.passwordOrFetcher()
+          libLog.debug(`[langClient] getAuthHeaders: returning Bearer token for ${connId}`)
           return { Authorization: `Bearer ${token}` }
         }
       } catch (e) {
-        const { log } = await import("./lib")
-        log(`⚠️ OAuth on-premise token fetch failed for ${connId}: ${e}`)
+        libLog.debug(`[langClient] getAuthHeaders: oauth_onprem token fetch failed for ${connId}: ${e}`)
       }
       return undefined
     }

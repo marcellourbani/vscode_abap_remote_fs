@@ -17,7 +17,7 @@ import { funWindow as window } from "./services/funMessenger"
 import { ADTClient, createSSLConfig, LogCallback, LogData } from "abap-adt-api"
 import { readFileSync } from "fs"
 import { createProxy } from "method-call-logger"
-import { mongoApiLogger, mongoHttpLogger, PasswordVault } from "./lib"
+import { mongoApiLogger, mongoHttpLogger, PasswordVault, log } from "./lib"
 import { oauthLogin } from "./oauth"
 import { ADTSCHEME } from "./adt/conections"
 import { CallLogger } from "./adt/adtCommLog"
@@ -214,6 +214,7 @@ export async function createAuthenticatedClient(
   const authMethod = conf.authMethod || "basic"
 
   if (authMethod === "basic" || conf.oauth) {
+    log.debug(`[auth] createAuthenticatedClient: delegating to createClient for ${conf.name} (${authMethod})`)
     return createClient(conf)
   }
 
@@ -224,6 +225,7 @@ export async function createAuthenticatedClient(
 
   switch (authMethod) {
     case "cert": {
+      log.debug(`[auth] Building cert auth for ${conf.name}`)
       if (!conf.certAuth) throw new Error("Certificate auth config missing")
       const result = await buildCertAuth(
         conf.name,
@@ -245,6 +247,7 @@ export async function createAuthenticatedClient(
       return loggedProxy(client, conf)
     }
     case "kerberos": {
+      log.debug(`[auth] Building kerberos/SSO auth for ${conf.name}`)
       const result = await buildKerberosAuth(
         conf.name,
         conf.kerberosAuth,       // Optional — PowerShell SSPI handles auth automatically
@@ -265,6 +268,7 @@ export async function createAuthenticatedClient(
       return loggedProxy(client, conf)
     }
     case "browser_sso": {
+      log.debug(`[auth] Building browser SSO auth for ${conf.name}`)
       const result = await buildBrowserSsoAuth(
         conf.name,
         conf.url,
@@ -283,6 +287,7 @@ export async function createAuthenticatedClient(
       return loggedProxy(client, conf)
     }
     case "oauth_onprem": {
+      log.debug(`[auth] Building OAuth on-prem auth for ${conf.name}`)
       if (!conf.oauthOnPrem)
         throw new Error("On-premise OAuth config missing (clientId required)")
       const result = await buildOAuthOnPremAuth(
@@ -303,6 +308,7 @@ export async function createAuthenticatedClient(
       return loggedProxy(client, conf)
     }
     default:
+      log.debug(`[auth] createAuthenticatedClient: falling back to createClient for ${conf.name} (${authMethod})`)
       return createClient(conf)
   }
 }

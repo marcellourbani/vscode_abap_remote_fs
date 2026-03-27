@@ -1371,12 +1371,12 @@ export class SapConnectionManager {
                         <label for="authMethod">Authentication Method *</label>
                         <select id="authMethod" name="authMethod">
                             <option value="basic" selected>Basic (Username/Password)</option>
-                            <option value="cert">X.509 Client Certificate</option>
-                            <option value="kerberos">Kerberos / SPNEGO (Windows SSO only)</option>
-                            <option value="browser_sso">Browser SSO (Cookie Capture)</option>
-                            <option value="oauth_onprem">OAuth 2.0 (On-Premise SAP)</option>
+                            <option value="cert">X.509 Client Certificate ⚗️ Experimental</option>
+                            <option value="kerberos">Kerberos / SPNEGO (Windows SSO) ⚗️ Experimental</option>
+                            <option value="browser_sso">Browser SSO (Cookie Capture) ⚗️ Experimental</option>
+                            <option value="oauth_onprem">OAuth 2.0 (On-Premise SAP) ⚗️ Experimental</option>
                         </select>
-                        <div class="help-text">How this SAP system authenticates users</div>
+                        <div class="help-text" id="authMethodHelp">How this SAP system authenticates users</div>
                     </div>
                     <div class="form-group">
                         <label for="username">Username *</label>
@@ -1927,10 +1927,10 @@ export class SapConnectionManager {
             function getAuthMethodLabel(method) {
                 const labels = {
                     'basic': 'Basic',
-                    'cert': 'Certificate',
-                    'kerberos': 'Kerberos',
-                    'browser_sso': 'Browser SSO',
-                    'oauth_onprem': 'OAuth (On-Prem)',
+                    'cert': '⚗️ Certificate',
+                    'kerberos': '⚗️ Kerberos',
+                    'browser_sso': '⚗️ Browser SSO',
+                    'oauth_onprem': '⚗️ OAuth (On-Prem)',
                     'oauth': 'OAuth (Cloud)'
                 };
                 return labels[method] || method;
@@ -1951,14 +1951,19 @@ export class SapConnectionManager {
                 browserSsoFields.classList.remove('show');
                 oauthOnPremFields.classList.remove('show');
 
+                const experimentalNote = '⚗️ Experimental — if you encounter issues, please report them at github.com/marcellourbani/vscode_abap_remote_fs';
+                const authMethodHelp = document.getElementById('authMethodHelp');
+
                 // Show the relevant section and update help text
                 switch (method) {
                     case 'basic':
                         usernameHelp.textContent = 'Password will be requested on first connection and stored securely in OS credential manager';
+                        authMethodHelp.textContent = 'How this SAP system authenticates users';
                         break;
                     case 'cert':
                         certFields.classList.add('show');
                         usernameHelp.textContent = 'SAP user mapped to the certificate (for display/logging)';
+                        authMethodHelp.textContent = experimentalNote;
                         break;
                     case 'kerberos':
                         // Kerberos uses Windows SSPI — only supported on Windows
@@ -1975,14 +1980,17 @@ export class SapConnectionManager {
                         }
                         kerberosFields.classList.add('show');
                         usernameHelp.textContent = 'SAP user mapped to the Kerberos principal (for display/logging)';
+                        authMethodHelp.textContent = experimentalNote;
                         break;
                     case 'browser_sso':
                         browserSsoFields.classList.add('show');
                         usernameHelp.textContent = 'SAP user associated with the SSO session (for display/logging)';
+                        authMethodHelp.textContent = experimentalNote;
                         break;
                     case 'oauth_onprem':
                         oauthOnPremFields.classList.add('show');
                         usernameHelp.textContent = 'SAP user for display/logging (authentication handled by OAuth)';
+                        authMethodHelp.textContent = experimentalNote;
                         break;
                 }
             }

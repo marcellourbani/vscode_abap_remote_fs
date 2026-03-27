@@ -144,6 +144,41 @@ To view a copy of this license, visit https://creativecommons.org/licenses/by/3.
 
 Changes made: The original human-oriented style guide (~5000 lines) was distilled into a compact, AI-optimized ruleset (~350 rules) suitable for automated code generation and review. All rationale, discussion, and verbose examples were removed; only the actionable rules and minimal code examples were retained.
 
+## ABAP MCP Server (Authentication Architecture Reference)
+
+The multi-method authentication implementation in this extension (Kerberos/SPNEGO, X.509 Certificate, Browser SSO, OAuth 2.0 on-premise) was designed using the authentication architecture from the ABAP MCP Server project as a reference.
+
+**Source:** https://github.com/chandrashekhar-mahajan/abap-mcp-server
+**Author:** Chandrashekhar Mahajan
+**License:** MIT License
+**Copyright:** (c) 2026 Chandrashekhar Mahajan
+
+```
+MIT License
+
+Copyright (c) 2026 Chandrashekhar Mahajan
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+```
+
+The implementation in this extension is a clean-room rewrite adapted for the VS Code extension context (PasswordVault integration, webview connection manager, language server IPC, debugger client), but the overall authentication strategy architecture — particularly the PowerShell SSPI approach for Kerberos/SPNEGO, the cookie-capture pattern for Browser SSO, and the PKCE flow for on-premise OAuth — was informed by the ABAP MCP Server's design.
+
 ## Additional Dependencies
 
 This project also includes various other open source dependencies as listed in package.json. Each dependency retains its original license as specified in its respective package.

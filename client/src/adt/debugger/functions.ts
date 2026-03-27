@@ -9,6 +9,7 @@ import { createHash } from "crypto"
 import { getKerberosCookies } from "../../auth/kerberos"
 import { getSsoCookies } from "../../auth/browserSso"
 import { getCertPassphrase } from "../../auth/certificate"
+import { log } from "../../lib"
 
 export const md5 = (s: string) => createHash("md5").update(s).digest("hex")
 
@@ -22,14 +23,17 @@ async function getDebuggerAuthHeaders(
 ): Promise<Record<string, string> | undefined> {
   const authMethod = (conf as any).authMethod || "basic"
   const connId = formatKey(conf.name)
+  log.debug(`[debugger] getDebuggerAuthHeaders: ${authMethod} for ${connId}`)
   switch (authMethod) {
     case "kerberos": {
       const cookies = await getKerberosCookies(connId)
+      log.debug(`[debugger] kerberos: ${cookies.length} cached cookies for ${connId}`)
       if (cookies.length > 0) return { Cookie: cookies.map(c => c.replace(/[\r\n\x00-\x1f]/g, "")).join("; ") }
       return undefined
     }
     case "browser_sso": {
       const cookies = await getSsoCookies(connId)
+      log.debug(`[debugger] browser_sso: ${cookies.length} cached cookies for ${connId}`)
       if (cookies.length > 0) return { Cookie: cookies.map(c => c.replace(/[\r\n\x00-\x1f]/g, "")).join("; ") }
       return undefined
     }
@@ -47,6 +51,7 @@ export async function newClientFromKey(key: string, options: Partial<ClientOptio
 
     const authMethod = (conf as any).authMethod || "basic"
     let pwdOrFetch: string | (() => Promise<string>)
+    log.debug(`[debugger] newClientFromKey: authMethod=${authMethod} for ${key}`)
 
     if (authMethod === "cert" && !conf.oauth) {
       // Reconstruct httpsAgent from cert paths
