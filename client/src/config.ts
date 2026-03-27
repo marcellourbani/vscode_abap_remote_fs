@@ -21,6 +21,15 @@ import { mongoApiLogger, mongoHttpLogger, PasswordVault } from "./lib"
 import { oauthLogin } from "./oauth"
 import { ADTSCHEME } from "./adt/conections"
 import { CallLogger } from "./adt/adtCommLog"
+import {
+  buildCertAuth,
+  buildKerberosAuth,
+  buildBrowserSsoAuth,
+  clearCertPassphrase,
+  clearKerberosCookies,
+  clearSsoCookies
+} from "./auth"
+import { buildOAuthOnPremAuth, clearOAuthOnPremTokens } from "./auth/oauthOnPrem"
 
 const CONFIGROOT = "abapfs"
 const REMOTE = "remote"
@@ -194,6 +203,110 @@ export function createClient(conf: RemoteConfig) {
   return loggedProxy(client, conf)
 }
 
+/**
+ * Create an ADTClient using the appropriate authentication method.
+ * For basic auth and oauth, delegates to createClient.
+ * For cert/kerberos/browser_sso, builds the auth result and configures the client.
+ */
+export async function createAuthenticatedClient(
+  conf: RemoteConfig
+): Promise<ADTClient> {
+  const authMethod = conf.authMethod || "basic"
+
+  if (authMethod === "basic" || conf.oauth) {
+    return createClient(conf)
+  }
+
+  const sslconf: any = conf.url.match(/https:/i)
+    ? createSSLConfig(conf.allowSelfSigned, conf.customCA)
+    : {}
+  sslconf.debugCallback = buildDebugCallback(conf)
+
+  switch (authMethod) {
+    case "cert": {
+      if (!conf.certAuth) throw new Error("Certificate auth config missing")
+      const result = await buildCertAuth(
+        conf.name,
+        conf.certAuth,
+        !!conf.allowSelfSigned,
+        conf.customCA
+      )
+      if (result.httpsAgent) sslconf.httpsAgent = result.httpsAgent
+      if (result.headers)
+        sslconf.headers = { ...sslconf.headers, ...result.headers }
+      const client = new ADTClient(
+        conf.url,
+        conf.username,
+        result.passwordOrFetcher,
+        conf.client,
+        conf.language,
+        sslconf
+      )
+      return loggedProxy(client, conf)
+    }
+    case "kerberos": {
+      const result = await buildKerberosAuth(
+        conf.name,
+        conf.kerberosAuth,       // Optional — PowerShell SSPI handles auth automatically
+        conf.url,
+        conf.client,
+        !!conf.allowSelfSigned
+      )
+      if (result.headers)
+        sslconf.headers = { ...sslconf.headers, ...result.headers }
+      const client = new ADTClient(
+        conf.url,
+        conf.username,
+        result.passwordOrFetcher,
+        conf.client,
+        conf.language,
+        sslconf
+      )
+      return loggedProxy(client, conf)
+    }
+    case "browser_sso": {
+      const result = await buildBrowserSsoAuth(
+        conf.name,
+        conf.url,
+        conf.client
+      )
+      if (result.headers)
+        sslconf.headers = { ...sslconf.headers, ...result.headers }
+      const client = new ADTClient(
+        conf.url,
+        conf.username,
+        result.passwordOrFetcher,
+        conf.client,
+        conf.language,
+        sslconf
+      )
+      return loggedProxy(client, conf)
+    }
+    case "oauth_onprem": {
+      if (!conf.oauthOnPrem)
+        throw new Error("On-premise OAuth config missing (clientId required)")
+      const result = await buildOAuthOnPremAuth(
+        conf.name,
+        conf.url,
+        conf.client,
+        conf.oauthOnPrem,
+        !!conf.allowSelfSigned
+      )
+      const client = new ADTClient(
+        conf.url,
+        conf.username,
+        result.passwordOrFetcher,
+        conf.client,
+        conf.language,
+        sslconf
+      )
+      return loggedProxy(client, conf)
+    }
+    default:
+      return createClient(conf)
+  }
+}
+
 export class RemoteManager {
   private static instance: RemoteManager
   private connections = new Map<string, RemoteConfig>()
@@ -232,8 +345,9 @@ export class RemoteManager {
       conn = this.loadRemote(connectionId)
       if (!conn) return
 
-      // 🔐 SECURITY FIX: Always get password from secure storage only
-      if (!conn.password) {
+      // Only fetch password from vault for basic auth (other methods use different secrets)
+      const authMethod = conn.authMethod || "basic"
+      if (authMethod === "basic" && !conn.password) {
         conn.password = await this.getPassword(connectionId, conn.username)
       }
 
@@ -281,8 +395,12 @@ export class RemoteManager {
       if (selected.userCancel) return selected
       remote = selected.remote
     }
-    if (remote && !remote.password)
-      remote.password = await this.getPassword(formatKey(remote.name), remote.username)
+    if (remote && !remote.password) {
+      const authMethod = (remote as any).authMethod || "basic"
+      if (authMethod === "basic") {
+        remote.password = await this.getPassword(formatKey(remote.name), remote.username)
+      }
+    }
 
     return { remote, userCancel: false }
   }
@@ -331,5 +449,10 @@ export class RemoteManager {
     if (!conn) return // no connection found, should never happen
     const deleted = await this.clearPassword(connectionId, conn.oauth?.clientId || conn.username)
     if (deleted && !this.isConnected(connectionId)) this.connections.delete(connectionId)
+    // Also clear auth-method-specific secrets
+    await clearCertPassphrase(connectionId).catch(() => {})
+    await clearKerberosCookies(connectionId).catch(() => {})
+    await clearSsoCookies(connectionId).catch(() => {})
+    await clearOAuthOnPremTokens(connectionId).catch(() => {})
   }
 }

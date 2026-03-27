@@ -10,8 +10,14 @@
  */
 
 import * as vscode from "vscode"
+import { randomBytes } from "crypto"
 import { funWindow as window } from "../services/funMessenger"
 import { RemoteConfig, GuiType, validateNewConfigId, formatKey } from "../config"
+import { AuthMethod, AUTH_METHOD_LABELS } from "../auth"
+import { clearCertPassphrase } from "../auth/certificate"
+import { clearKerberosCookies } from "../auth/kerberos"
+import { clearSsoCookies } from "../auth/browserSso"
+import { clearOAuthOnPremTokens } from "../auth/oauthOnPrem"
 import { logCommands } from "../services/abapCopilotLogger"
 import { logTelemetry } from "../services/telemetry"
 import { PasswordVault } from "../lib"
@@ -236,6 +242,16 @@ export class SapConnectionManager {
       // Note: Password is NOT stored in settings for security
       // It will be requested on first connection and stored in OS credential manager
 
+      // Store OAuth on-premise client secret in vault (not in settings.json)
+      if ((connection as any).authMethod === "oauth_onprem" && (connection as any).oauthOnPrem?.clientSecret) {
+        const vault = PasswordVault.get()
+        await vault.setPassword(
+          "vscode.abapfs.oauth_onprem_secret",
+          formatKey(connectionId),
+          (connection as any).oauthOnPrem.clientSecret
+        )
+      }
+
       this.panel.webview.postMessage({
         type: "success",
         message: `Connection "${connectionId}" saved successfully`
@@ -271,6 +287,7 @@ export class SapConnectionManager {
   }
 
   private cleanConnectionObject(connection: ConnectionData): RemoteConfig {
+    const authMethod = (connection as any).authMethod || "basic"
     const cleaned: any = {
       url: connection.url,
       username: connection.username,
@@ -281,13 +298,52 @@ export class SapConnectionManager {
       diff_formatter: connection.diff_formatter || "ADT formatter"
     }
 
-    // IMPORTANT: Password field must be present but empty - actual password stored in OS credential manager
+    // Save auth method (omit if basic for backward compatibility)
+    if (authMethod !== "basic") {
+      cleaned.authMethod = authMethod
+    }
 
     // Add optional fields only if they have values
     if (connection.atcapprover) cleaned.atcapprover = connection.atcapprover
     if (connection.atcVariant) cleaned.atcVariant = connection.atcVariant
     if (connection.maxDebugThreads) cleaned.maxDebugThreads = connection.maxDebugThreads
     if (connection.customCA) cleaned.customCA = connection.customCA
+
+    // Certificate auth config (paths only — passphrase in OS vault)
+    if (authMethod === "cert" && (connection as any).certAuth) {
+      const cert = (connection as any).certAuth
+      if (cert.certPath || cert.keyPath) {
+        cleaned.certAuth = {
+          certPath: cert.certPath || "",
+          keyPath: cert.keyPath || "",
+          ...(cert.caPath ? { caPath: cert.caPath } : {})
+        }
+      }
+    }
+
+    // Kerberos auth config (all fields optional)
+    if (authMethod === "kerberos") {
+      const kerb = (connection as any).kerberosAuth
+      if (kerb && (kerb.sapHostname || kerb.realm || kerb.spn)) {
+        cleaned.kerberosAuth = {
+          ...(kerb.sapHostname ? { sapHostname: kerb.sapHostname } : {}),
+          ...(kerb.realm ? { realm: kerb.realm } : {}),
+          ...(kerb.spn ? { spn: kerb.spn } : {})
+        }
+      }
+    }
+
+    // OAuth on-premise config
+    if (authMethod === "oauth_onprem" && (connection as any).oauthOnPrem) {
+      const oa = (connection as any).oauthOnPrem
+      if (oa.clientId) {
+        cleaned.oauthOnPrem = {
+          clientId: oa.clientId,
+          ...(oa.scope && oa.scope !== "SAP_ADT" ? { scope: oa.scope } : {})
+          // clientSecret is NOT stored in settings.json — stored in OS credential manager
+        }
+      }
+    }
 
     // Handle sapGui configuration
     if (connection.sapGui && this.hasSapGuiValues(connection.sapGui)) {
@@ -296,7 +352,6 @@ export class SapConnectionManager {
         guiType: connection.sapGui.guiType || "SAPGUI"
       }
 
-      // Add optional sapGui fields
       if (connection.sapGui.server) cleaned.sapGui.server = connection.sapGui.server
       if (connection.sapGui.systemNumber)
         cleaned.sapGui.systemNumber = connection.sapGui.systemNumber
@@ -314,7 +369,6 @@ export class SapConnectionManager {
       cleaned.oauth = connection.oauth
     }
 
-    // Cast to RemoteConfig - password field will be populated from credential manager at runtime
     return cleaned as RemoteConfig
   }
 
@@ -374,6 +428,13 @@ export class SapConnectionManager {
       const vault = PasswordVault.get()
       if (removed) {
         await vault.deletePassword(`vscode.abapfs.${formatKey(connectionId)}`, removed.username)
+        // Clear auth-method-specific secrets
+        const connKey = formatKey(connectionId)
+        await clearCertPassphrase(connKey).catch(() => {})
+        await clearKerberosCookies(connKey).catch(() => {})
+        await clearSsoCookies(connKey).catch(() => {})
+        await clearOAuthOnPremTokens(connKey).catch(() => {})
+        try { await vault.deletePassword("vscode.abapfs.oauth_onprem_secret", connKey) } catch {}
       }
 
       this.panel.webview.postMessage({
@@ -596,11 +657,20 @@ export class SapConnectionManager {
       // Sanitize connections for export - clear username and password values but keep fields.
       const sanitizedConnections: Record<string, any> = {}
       for (const [name, conn] of Object.entries(rawConnections)) {
-        sanitizedConnections[name] = {
+        const sanitized: any = {
           ...conn,
           username: "", // Clear value but keep field for import compatibility
           password: "" // Clear value but keep field for import compatibility
         }
+        // Remove OAuth secrets from export
+        if (sanitized.oauth) {
+          sanitized.oauth = { ...sanitized.oauth, clientSecret: "" }
+        }
+        // Strip cert file paths (may reveal internal infrastructure)
+        if (sanitized.certAuth) {
+          sanitized.certAuth = { certPath: "", keyPath: "" }
+        }
+        sanitizedConnections[name] = sanitized
       }
 
       const json = JSON.stringify(sanitizedConnections, null, 2)
@@ -638,7 +708,31 @@ export class SapConnectionManager {
 
   private async importFromJson(jsonContent: string, target: "user" | "workspace") {
     try {
-      const connections = JSON.parse(jsonContent)
+      const rawParsed = JSON.parse(jsonContent)
+
+      // Validate and sanitize: only accept plain objects as connection maps
+      if (typeof rawParsed !== "object" || Array.isArray(rawParsed) || rawParsed === null) {
+        throw new Error("Invalid format: expected an object mapping connection names to configs")
+      }
+
+      // Run each imported connection through cleanConnectionObject to strip
+      // unknown fields and validate structure
+      const sanitized: Record<string, any> = {}
+      for (const [name, rawConn] of Object.entries(rawParsed)) {
+        if (typeof rawConn !== "object" || rawConn === null) continue
+        const conn = rawConn as any
+        // Validate URL format before saving
+        if (conn.url) {
+          try {
+            const u = new URL(conn.url)
+            if (u.protocol !== "http:" && u.protocol !== "https:") continue
+          } catch {
+            logCommands.warn(`Skipping imported connection "${name}": invalid URL`)
+            continue
+          }
+        }
+        sanitized[name] = this.cleanConnectionObject(conn)
+      }
 
       const configTarget =
         target === "user" ? vscode.ConfigurationTarget.Global : vscode.ConfigurationTarget.Workspace
@@ -649,14 +743,14 @@ export class SapConnectionManager {
           ? (config.inspect("remote")?.globalValue as Record<string, RemoteConfig>) || {}
           : (config.inspect("remote")?.workspaceValue as Record<string, RemoteConfig>) || {}
 
-      // Merge imported connections with existing
-      const merged = { ...currentRemotes, ...connections }
+      // Merge sanitized connections with existing
+      const merged = { ...currentRemotes, ...sanitized }
 
       await config.update("remote", merged, configTarget)
 
       this.panel.webview.postMessage({
         type: "success",
-        message: `Imported ${Object.keys(connections).length} connection(s) successfully`
+        message: `Imported ${Object.keys(sanitized).length} connection(s) successfully`
       })
 
       logTelemetry("command_connection_manager_import_json_called")
@@ -771,12 +865,18 @@ export class SapConnectionManager {
 
       await config.update("remote", updatedRemotes, configTarget)
 
-      // Clear passwords from secure storage
+      // Clear passwords and auth-specific secrets from secure storage
       const vault = PasswordVault.get()
       for (const name of connectionNames) {
         const conn = currentRemotes[name]
         if (conn) {
           await vault.deletePassword(`vscode.abapfs.${formatKey(name)}`, conn.username)
+          const connKey = formatKey(name)
+          await clearCertPassphrase(connKey).catch(() => {})
+          await clearKerberosCookies(connKey).catch(() => {})
+          await clearSsoCookies(connKey).catch(() => {})
+          await clearOAuthOnPremTokens(connKey).catch(() => {})
+          try { await vault.deletePassword("vscode.abapfs.oauth_onprem_secret", connKey) } catch {}
         }
       }
 
@@ -798,6 +898,7 @@ export class SapConnectionManager {
 
   private getHtmlForWebview(webview: vscode.Webview) {
     const nonce = getNonce()
+    const platform = JSON.stringify(process.platform)
 
     return `<!DOCTYPE html>
         <html lang="en">
@@ -896,6 +997,7 @@ export class SapConnectionManager {
             </div>
 
             <script nonce="${nonce}">
+                const PLATFORM = ${platform};
                 ${this.getScript()}
             </script>
         </body>
@@ -1266,9 +1368,20 @@ export class SapConnectionManager {
                 </div>
                 <div class="form-row">
                     <div class="form-group">
+                        <label for="authMethod">Authentication Method *</label>
+                        <select id="authMethod" name="authMethod">
+                            <option value="basic" selected>Basic (Username/Password)</option>
+                            <option value="cert">X.509 Client Certificate</option>
+                            <option value="kerberos">Kerberos / SPNEGO (Windows SSO only)</option>
+                            <option value="browser_sso">Browser SSO (Cookie Capture)</option>
+                            <option value="oauth_onprem">OAuth 2.0 (On-Premise SAP)</option>
+                        </select>
+                        <div class="help-text">How this SAP system authenticates users</div>
+                    </div>
+                    <div class="form-group">
                         <label for="username">Username *</label>
                         <input type="text" id="username" name="username" required>
-                        <div class="help-text">Password will be requested on first connection and stored securely in OS credential manager</div>
+                        <div class="help-text" id="usernameHelp">Password will be requested on first connection and stored securely in OS credential manager</div>
                     </div>
                 </div>
                 <div class="form-row">
@@ -1281,6 +1394,114 @@ export class SapConnectionManager {
                         <label for="language">Language *</label>
                         <input type="text" id="language" name="language" required pattern="[a-z]{2}" maxlength="2" minlength="2" value="en" style="text-transform: lowercase;">
                         <div class="help-text">2 lowercase letters (e.g., en, de, fr)</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Certificate Auth Fields -->
+            <div class="form-section conditional-field" id="certAuthFields">
+                <h3>Certificate Configuration</h3>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="certAuth_certPath">Client Certificate Path (PEM) <em>(required)</em></label>
+                        <input type="text" id="certAuth_certPath" name="certAuth.certPath" placeholder="/path/to/client-cert.pem">
+                        <div class="help-text">Path to the X.509 client certificate file</div>
+                    </div>
+                    <div class="form-group">
+                        <label for="certAuth_keyPath">Private Key Path (PEM) <em>(required)</em></label>
+                        <input type="text" id="certAuth_keyPath" name="certAuth.keyPath" placeholder="/path/to/client-key.pem">
+                        <div class="help-text">Path to the private key file</div>
+                    </div>
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="certAuth_caPath">CA Certificate Path (Optional)</label>
+                        <input type="text" id="certAuth_caPath" name="certAuth.caPath" placeholder="/path/to/ca-cert.pem">
+                        <div class="help-text">For verifying the SAP server certificate</div>
+                    </div>
+                </div>
+                <div class="form-row">
+                    <div class="help-text" style="padding: 8px; background: var(--vscode-textBlockQuote-background); border-radius: 4px;">
+                        <strong>Note:</strong> If your private key has a passphrase, it will be requested on first connection and stored securely in the OS credential manager.
+                        The certificate must be mapped to a SAP user via CERTRULE or STRUST.
+                    </div>
+                </div>
+            </div>
+
+            <!-- Kerberos Auth Fields -->
+            <div class="form-section conditional-field" id="kerberosAuthFields">
+                <h3>Kerberos Configuration</h3>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="kerberosAuth_sapHostname">SAP Server Hostname <em>(optional)</em></label>
+                        <input type="text" id="kerberosAuth_sapHostname" name="kerberosAuth.sapHostname" placeholder="sapserver.corp.example.com">
+                        <div class="help-text">Not required — Windows SSPI handles auth automatically. Only needed if you want to override the SPN.</div>
+                    </div>
+                    <div class="form-group">
+                        <label for="kerberosAuth_realm">Kerberos Realm (Optional)</label>
+                        <input type="text" id="kerberosAuth_realm" name="kerberosAuth.realm" placeholder="CORP.EXAMPLE.COM" style="text-transform: uppercase;">
+                        <div class="help-text">Auto-detected from hostname if omitted</div>
+                    </div>
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="kerberosAuth_spn">SPN Override (Optional)</label>
+                        <input type="text" id="kerberosAuth_spn" name="kerberosAuth.spn" placeholder="HTTP/sapserver.corp.example.com@CORP.EXAMPLE.COM">
+                        <div class="help-text">Full Service Principal Name. Leave blank to auto-generate from hostname + realm</div>
+                    </div>
+                </div>
+                <div class="form-row">
+                    <div class="help-text" style="padding: 8px; background: var(--vscode-textBlockQuote-background); border-radius: 4px;">
+                        <strong>Prerequisites:</strong> Windows domain-joined machine with a valid Kerberos TGT (e.g. SAP Secure Login Client running).
+                        SAP ICF service must have SPNego authentication enabled.
+                        Run <code>klist</code> in a terminal to verify your Kerberos ticket.
+                        No additional software or packages need to be installed — this uses Windows built-in SSPI.
+                    </div>
+                </div>
+            </div>
+
+            <!-- Browser SSO Info -->
+            <div class="form-section conditional-field" id="browserSsoFields">
+                <h3>Browser SSO</h3>
+                <div class="form-row">
+                    <div class="help-text" style="padding: 8px; background: var(--vscode-textBlockQuote-background); border-radius: 4px;">
+                        <strong>How it works:</strong> When you connect, a browser window will open to your SAP system's login page.
+                        After you complete SSO authentication (SAML, Kerberos, etc.) via your Identity Provider,
+                        you'll paste the session cookies back to complete the connection.
+                        Cookies are stored securely in the OS credential manager.
+                        <br><br>No additional configuration needed — just make sure your browser can reach the SAP system and your SSO is working.
+                    </div>
+                </div>
+            </div>
+
+            <!-- OAuth On-Premise Fields -->
+            <div class="form-section conditional-field" id="oauthOnPremFields">
+                <h3>OAuth 2.0 Configuration (On-Premise)</h3>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="oauthOnPrem_clientId">OAuth Client ID <em>(required)</em></label>
+                        <input type="text" id="oauthOnPrem_clientId" name="oauthOnPrem.clientId" placeholder="MY_ADT_CLIENT">
+                        <div class="help-text">Client ID registered in SAP transaction SOAUTH2</div>
+                    </div>
+                    <div class="form-group">
+                        <label for="oauthOnPrem_clientSecret">Client Secret (Optional)</label>
+                        <input type="password" id="oauthOnPrem_clientSecret" name="oauthOnPrem.clientSecret" placeholder="">
+                        <div class="help-text">Optional with PKCE. If set, stored securely in OS credential manager</div>
+                    </div>
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="oauthOnPrem_scope">OAuth Scope (Optional)</label>
+                        <input type="text" id="oauthOnPrem_scope" name="oauthOnPrem.scope" placeholder="SAP_ADT" value="SAP_ADT">
+                        <div class="help-text">Default: SAP_ADT. Only change if your OAuth client uses a different scope</div>
+                    </div>
+                </div>
+                <div class="form-row">
+                    <div class="help-text" style="padding: 8px; background: var(--vscode-textBlockQuote-background); border-radius: 4px;">
+                        <strong>Prerequisites:</strong> SAP OAuth 2.0 must be configured (transaction SOAUTH2).
+                        An OAuth client must be registered with redirect URI: <code>http://localhost:&lt;port&gt;/callback</code>
+                        (any localhost port). Uses Authorization Code + PKCE flow with automatic token refresh.
+                        <br><br>On first connect, a browser window opens for SAP login. After authentication, tokens are stored securely and refreshed automatically.
                     </div>
                 </div>
             </div>
@@ -1508,6 +1729,12 @@ export class SapConnectionManager {
                     allowSelfSignedElement.addEventListener('change', handleAllowSelfSignedChange);
                 }
                 
+                // Auth method change handler
+                const authMethodElement = document.getElementById('authMethod');
+                if (authMethodElement) {
+                    authMethodElement.addEventListener('change', handleAuthMethodChange);
+                }
+                
                 // Modal close buttons - only add if elements exist
                 const closeEditorBtn = document.getElementById('closeEditorBtn');
                 if (closeEditorBtn) {
@@ -1580,6 +1807,7 @@ export class SapConnectionManager {
                                 <th><input type="checkbox" id="selectAll"></th>
                                 <th>Name</th>
                                 <th>URL</th>
+                                <th>Auth</th>
                                 <th>Username</th>
                                 <th>Client</th>
                                 <th>Language</th>
@@ -1594,9 +1822,10 @@ export class SapConnectionManager {
                         <tbody>
                             \${Object.entries(conns).map(([name, conn]) => \`
                                 <tr>
-                                    <td><input type="checkbox" class="row-checkbox" data-name="\${name}"></td>
+                                    <td><input type="checkbox" class="row-checkbox" data-name="\${escapeHtml(name)}"></td>
                                     <td><span class="connection-name">\${escapeHtml(name)}</span></td>
                                     <td>\${escapeHtml(conn.url || '')}</td>
+                                    <td><span class="gui-badge">\${getAuthMethodLabel(conn.authMethod || (conn.oauth ? 'oauth' : 'basic'))}</span></td>
                                     <td>\${escapeHtml(conn.username || '')}</td>
                                     <td>\${escapeHtml(conn.client || '')}</td>
                                     <td>\${formatValue(conn.language, 'en')}</td>
@@ -1607,8 +1836,8 @@ export class SapConnectionManager {
                                     <td>\${formatValue(conn.maxDebugThreads, 4)}</td>
                                     <td>
                                         <div class="connection-actions">
-                                            <button class="btn btn-small btn-secondary edit-btn" data-name="\${name}" title="Edit">✏️</button>
-                                            <button class="btn btn-small btn-danger delete-btn" data-name="\${name}" title="Delete">🗑️</button>
+                                            <button class="btn btn-small btn-secondary edit-btn" data-name="\${escapeHtml(name)}" title="Edit">\u270f\ufe0f</button>
+                                            <button class="btn btn-small btn-danger delete-btn" data-name="\${escapeHtml(name)}" title="Delete">\ud83d\uddd1\ufe0f</button>
                                         </div>
                                     </td>
                                 </tr>
@@ -1695,6 +1924,69 @@ export class SapConnectionManager {
                 return labels[type] || type;
             }
 
+            function getAuthMethodLabel(method) {
+                const labels = {
+                    'basic': 'Basic',
+                    'cert': 'Certificate',
+                    'kerberos': 'Kerberos',
+                    'browser_sso': 'Browser SSO',
+                    'oauth_onprem': 'OAuth (On-Prem)',
+                    'oauth': 'OAuth (Cloud)'
+                };
+                return labels[method] || method;
+            }
+
+            function handleAuthMethodChange() {
+                const method = document.getElementById('authMethod').value;
+                const certFields = document.getElementById('certAuthFields');
+                const kerberosFields = document.getElementById('kerberosAuthFields');
+                const browserSsoFields = document.getElementById('browserSsoFields');
+                const oauthOnPremFields = document.getElementById('oauthOnPremFields');
+                const usernameHelp = document.getElementById('usernameHelp');
+                const formError = document.getElementById('formError');
+
+                // Hide all auth-specific sections
+                certFields.classList.remove('show');
+                kerberosFields.classList.remove('show');
+                browserSsoFields.classList.remove('show');
+                oauthOnPremFields.classList.remove('show');
+
+                // Show the relevant section and update help text
+                switch (method) {
+                    case 'basic':
+                        usernameHelp.textContent = 'Password will be requested on first connection and stored securely in OS credential manager';
+                        break;
+                    case 'cert':
+                        certFields.classList.add('show');
+                        usernameHelp.textContent = 'SAP user mapped to the certificate (for display/logging)';
+                        break;
+                    case 'kerberos':
+                        // Kerberos uses Windows SSPI — only supported on Windows
+                        if (PLATFORM !== 'win32') {
+                            document.getElementById('authMethod').value = 'basic';
+                            handleAuthMethodChange();
+                            if (formError) {
+                                formError.textContent = 'Kerberos / SPNEGO authentication is only supported on Windows (requires domain-joined machine with Kerberos TGT).';
+                                formError.style.display = 'block';
+                            } else {
+                                alert('Kerberos / SPNEGO is only supported on Windows.');
+                            }
+                            return;
+                        }
+                        kerberosFields.classList.add('show');
+                        usernameHelp.textContent = 'SAP user mapped to the Kerberos principal (for display/logging)';
+                        break;
+                    case 'browser_sso':
+                        browserSsoFields.classList.add('show');
+                        usernameHelp.textContent = 'SAP user associated with the SSO session (for display/logging)';
+                        break;
+                    case 'oauth_onprem':
+                        oauthOnPremFields.classList.add('show');
+                        usernameHelp.textContent = 'SAP user for display/logging (authentication handled by OAuth)';
+                        break;
+                }
+            }
+
             function openEditor(connectionKey = null, connection = null) {
                 editingConnectionKey = connectionKey;
                 const modal = document.getElementById('editorModal');
@@ -1727,6 +2019,8 @@ export class SapConnectionManager {
                     document.getElementById('language').value = 'en';
                     document.getElementById('diff_formatter').value = 'ADT formatter';
                     document.getElementById('maxDebugThreads').value = '4';
+                    document.getElementById('authMethod').value = 'basic';
+                    handleAuthMethodChange(); // Reset auth fields visibility
                     document.getElementById('sapGui_enabled').checked = true;
                     document.getElementById('sapGui_guiType').value = 'WEBGUI_UNSAFE_EMBEDDED';
                     document.getElementById('sapGui_connectionType').value = 'DIRECT';
@@ -1759,6 +2053,32 @@ export class SapConnectionManager {
                 document.getElementById('maxDebugThreads').value = conn.maxDebugThreads || 4;
                 document.getElementById('allowSelfSigned').checked = conn.allowSelfSigned || false;
                 handleAllowSelfSignedChange(); // Update conditional field visibility
+
+                // Auth method
+                const authMethod = conn.authMethod || 'basic';
+                document.getElementById('authMethod').value = authMethod;
+                handleAuthMethodChange();
+
+                // Certificate auth fields
+                if (conn.certAuth) {
+                    document.getElementById('certAuth_certPath').value = conn.certAuth.certPath || '';
+                    document.getElementById('certAuth_keyPath').value = conn.certAuth.keyPath || '';
+                    document.getElementById('certAuth_caPath').value = conn.certAuth.caPath || '';
+                }
+
+                // Kerberos auth fields
+                if (conn.kerberosAuth) {
+                    document.getElementById('kerberosAuth_sapHostname').value = conn.kerberosAuth.sapHostname || '';
+                    document.getElementById('kerberosAuth_realm').value = conn.kerberosAuth.realm || '';
+                    document.getElementById('kerberosAuth_spn').value = conn.kerberosAuth.spn || '';
+                }
+
+                // OAuth on-premise fields
+                if (conn.oauthOnPrem) {
+                    document.getElementById('oauthOnPrem_clientId').value = conn.oauthOnPrem.clientId || '';
+                    document.getElementById('oauthOnPrem_clientSecret').value = ''; // Never pre-fill secrets
+                    document.getElementById('oauthOnPrem_scope').value = conn.oauthOnPrem.scope || 'SAP_ADT';
+                }
                 
                 // Clear optional fields, then set if they exist
                 document.getElementById('atcapprover').value = conn.atcapprover || '';
@@ -1865,6 +2185,29 @@ export class SapConnectionManager {
                         return;
                     }
                 }
+
+                // Validate auth-method-specific required fields
+                const authMethod = formData.get('authMethod') || 'basic';
+                if (authMethod === 'cert') {
+                    const certPath = formData.get('certAuth.certPath');
+                    const keyPath = formData.get('certAuth.keyPath');
+                    // keyPath is only required for PEM certs, not for PKCS#12 (.p12/.pfx)
+                    const isPkcs12 = certPath && /\.(p12|pfx)$/i.test(certPath);
+                    if (!certPath || (!keyPath && !isPkcs12)) {
+                        formError.textContent = isPkcs12 ? 'Certificate authentication requires a Certificate Path.' : 'Certificate authentication requires both Certificate Path and Private Key Path.';
+                        formError.style.display = 'block';
+                        return;
+                    }
+                }
+                // No mandatory fields for kerberos — Windows SSPI uses UseDefaultCredentials automatically
+                if (authMethod === 'oauth_onprem') {
+                    const clientId = formData.get('oauthOnPrem.clientId');
+                    if (!clientId) {
+                        formError.textContent = 'OAuth On-Premise requires an OAuth Client ID (configured in SAP transaction SOAUTH2).';
+                        formError.style.display = 'block';
+                        return;
+                    }
+                }
                 
                 const connection = {
                     url: formData.get('url'),
@@ -1875,9 +2218,25 @@ export class SapConnectionManager {
                     allowSelfSigned: formData.get('allowSelfSigned') === 'on',
                     diff_formatter: formData.get('diff_formatter') || 'ADT formatter',
                     maxDebugThreads: parseInt(formData.get('maxDebugThreads')) || 4,
+                    authMethod: formData.get('authMethod') || 'basic',
                     atcapprover: formData.get('atcapprover') || undefined,
                     atcVariant: formData.get('atcVariant') || undefined,
                     customCA: formData.get('customCA') || undefined,
+                    certAuth: {
+                        certPath: formData.get('certAuth.certPath') || '',
+                        keyPath: formData.get('certAuth.keyPath') || '',
+                        caPath: formData.get('certAuth.caPath') || undefined
+                    },
+                    kerberosAuth: {
+                        sapHostname: formData.get('kerberosAuth.sapHostname') || '',
+                        realm: formData.get('kerberosAuth.realm') || undefined,
+                        spn: formData.get('kerberosAuth.spn') || undefined
+                    },
+                    oauthOnPrem: {
+                        clientId: formData.get('oauthOnPrem.clientId') || '',
+                        clientSecret: formData.get('oauthOnPrem.clientSecret') || undefined,
+                        scope: formData.get('oauthOnPrem.scope') || 'SAP_ADT'
+                    },
                     sapGui: {
                         disabled: formData.get('sapGui.enabled') !== 'on', // Inverted logic - enabled checkbox -> disabled flag
                         guiType: formData.get('sapGui.guiType') || 'SAPGUI',
@@ -2070,7 +2429,7 @@ export class SapConnectionManager {
             function escapeHtml(text) {
                 const div = document.createElement('div');
                 div.textContent = text;
-                return div.innerHTML;
+                return div.innerHTML.replace(/"/g, '&quot;').replace(/'/g, '&#39;');
             }
 
             // Make functions globally accessible
@@ -2101,12 +2460,7 @@ export class SapConnectionManager {
 }
 
 function getNonce() {
-  let text = ""
-  const possible = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789"
-  for (let i = 0; i < 32; i++) {
-    text += possible.charAt(Math.floor(Math.random() * possible.length))
-  }
-  return text
+  return randomBytes(24).toString("hex")
 }
 
 /**

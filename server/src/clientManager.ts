@@ -1,6 +1,8 @@
 import { ADTClient, createSSLConfig, LogData, session_types } from "abap-adt-api"
 import { createConnection, ProposedFeatures } from "vscode-languageserver"
 import { types } from "util"
+import * as https from "https"
+import { readFileSync, existsSync } from "fs"
 import { readConfiguration, sendLog, sendHttpLog } from "./clientapis"
 import {
   ClientConfiguration,
@@ -46,6 +48,24 @@ function createFetchToken(conf: ClientConfiguration) {
     return () => connection.sendRequest(Methods.getToken, conf.name) as Promise<string>
 }
 
+/** Fetch auth headers from the client extension for non-basic auth methods. */
+async function fetchAuthHeaders(
+  connName: string
+): Promise<Record<string, string> | undefined> {
+  try {
+    const headers = await connection.sendRequest(
+      Methods.getAuthHeaders,
+      connName
+    )
+    if (headers && typeof headers === "object") {
+      return headers as Record<string, string>
+    }
+  } catch {
+    // Client may not support this method (older version) — fall back silently
+  }
+  return undefined
+}
+
 /** Whether the client has the comm-log panel open */
 const activeConnections = new Set<string>()
 export function setCommLogActive(active: CommLogTogglePayload) {
@@ -60,13 +80,78 @@ function buildServerDebugCallback(connId: string) {
     connection.sendNotification(Methods.commLogEntry, { logData, connId })
 }
 
-const refreshClient = (key: string, conf: ClientConfiguration) => {
+const refreshClient = async (key: string, conf: ClientConfiguration) => {
   const oldClient = clients.get(key)
-  const sslconf = conf.url.match(/https:/i)
+  const sslconf: any = conf.url.match(/https:/i)
     ? createSSLConfig(conf.allowSelfSigned, conf.customCA)
     : {}
   sslconf.debugCallback = buildServerDebugCallback(key)
-  const pwdOrFetch = createFetchToken(conf) || conf.password
+
+  const authMethod = conf.authMethod || "basic"
+  let pwdOrFetch: string | (() => Promise<string>)
+
+  if (authMethod !== "basic" && !conf.oauth) {
+    // For cert/kerberos/browser_sso, get auth headers from client extension
+    const authHeaders = await fetchAuthHeaders(conf.name)
+
+    if (authMethod === "cert") {
+      // Reconstruct httpsAgent from cert paths returned by the client
+      if (authHeaders && authHeaders._certAuth) {
+        try {
+          const certInfo = JSON.parse(authHeaders._certAuth)
+          const allowedExts = /\.(pem|crt|cer|key|p12|pfx)$/i
+          const agentOptions: https.AgentOptions = {
+            rejectUnauthorized: !conf.allowSelfSigned,
+            keepAlive: true,
+          }
+          // Handle .p12/.pfx (PKCS#12) vs PEM cert+key
+          if (/\.(p12|pfx)$/i.test(certInfo.certPath || "")) {
+            if (certInfo.certPath && allowedExts.test(certInfo.certPath) && existsSync(certInfo.certPath))
+              agentOptions.pfx = readFileSync(certInfo.certPath)
+          } else {
+            if (certInfo.certPath && allowedExts.test(certInfo.certPath) && existsSync(certInfo.certPath))
+              agentOptions.cert = readFileSync(certInfo.certPath)
+            if (certInfo.keyPath && allowedExts.test(certInfo.keyPath) && existsSync(certInfo.keyPath))
+              agentOptions.key = readFileSync(certInfo.keyPath)
+          }
+          // Passphrase received from client over local stdio IPC (same OS user)
+          if (certInfo.passphrase)
+            agentOptions.passphrase = certInfo.passphrase
+          if (certInfo.caPath && allowedExts.test(certInfo.caPath) && existsSync(certInfo.caPath))
+            agentOptions.ca = readFileSync(certInfo.caPath)
+          sslconf.httpsAgent = new https.Agent(agentOptions)
+        } catch (e) {
+          warn(`Failed to reconstruct cert httpsAgent for ${key}: ${e}`)
+          // Don't create a broken client — propagate the error
+          throw new Error(`Certificate auth setup failed for ${key}: ${e}`)
+        }
+      } else {
+        warn(`Cert auth configured for ${key} but no cert paths received — language features will fail`)
+      }
+      pwdOrFetch = "cert-auth"
+    } else if (authMethod === "oauth_onprem" && authHeaders?.Authorization) {
+      // On-premise OAuth: client provides a Bearer token via the Authorization header.
+      // We create a token fetcher that requests fresh tokens from the client on each refresh.
+      const currentToken = authHeaders.Authorization.replace(/^Bearer\s+/i, "")
+      pwdOrFetch = () =>
+        fetchAuthHeaders(conf.name).then(h => {
+          const t = h?.Authorization?.replace(/^Bearer\s+/i, "")
+          return t || currentToken
+        })
+    } else {
+      if (authHeaders) {
+        // Strip internal metadata key before spreading as HTTP headers
+        const { _certAuth, ...httpHeaders } = authHeaders
+        sslconf.headers = { ...sslconf.headers, ...httpHeaders }
+      } else if (authMethod === "kerberos" || authMethod === "browser_sso") {
+        warn(`${authMethod} auth headers missing for ${key} — user may need to reconnect`)
+      }
+      pwdOrFetch = `${authMethod}-auth`
+    }
+  } else {
+    pwdOrFetch = createFetchToken(conf) || conf.password
+  }
+
   const baseclient = new ADTClient(
     conf.url,
     conf.username,
@@ -93,7 +178,7 @@ export async function clientFromKey(key: string) {
   if (!client) {
     const conf = await readConfiguration(key)
     if (conf) {
-      refreshClient(key, conf)
+      await refreshClient(key, conf)
       // as clients are stateful, they will expire, usually in 10 minutes. So we need to refresh them every 4 minutes
       setInterval(() => refreshClient(key, conf), 240000)
     }

@@ -131,6 +131,91 @@ async function getToken(connId: string) {
   return futureToken(formatKey(connId))
 }
 
+/** Provide auth headers (cookies etc.) to the language server for non-basic auth. */
+async function getAuthHeaders(
+  connId: string
+): Promise<Record<string, string> | undefined> {
+  connId = formatKey(connId)
+  const conn = RemoteManager.get().byId(connId)
+  if (!conn) return undefined
+  const authMethod = (conn as any).authMethod || "basic"
+  switch (authMethod) {
+    case "kerberos": {
+      // Always re-negotiate via PowerShell SSPI — SSPI is cheap and ensures
+      // cookies are always fresh for the server's 4-minute refresh cycle
+      try {
+        const { refreshKerberosAuth } = await import("./auth/kerberos")
+        const result = await refreshKerberosAuth(
+          connId,
+          (conn as any).kerberosAuth,
+          conn.url,
+          conn.client,
+          !!conn.allowSelfSigned
+        )
+        return result.headers
+      } catch (e) {
+        // Log the failure but don't crash — server will continue with stale cookies or fail gracefully
+        const { log } = await import("./lib")
+        log(`⚠️ Kerberos re-negotiation failed for ${connId}: ${e}`)
+        // Return whatever we have cached
+        const { getKerberosCookies } = await import("./auth/kerberos")
+        const cookies = await getKerberosCookies(connId)
+        return cookies.length > 0
+          ? { Cookie: cookies.map((c: string) => c.replace(/[\r\n\x00-\x1f]/g, "")).join("; ") }
+          : undefined
+      }
+    }
+    case "browser_sso": {
+      const { getSsoCookies } = await import("./auth/browserSso")
+      const cookies = await getSsoCookies(connId)
+      if (cookies.length > 0) return { Cookie: cookies.map((c: string) => c.replace(/[\r\n\x00-\x1f]/g, "")).join("; ") }
+      // Cookies missing/expired — log warning, server will surface auth failure
+      const { log } = await import("./lib")
+      log(`⚠️ Browser SSO session expired for ${connId}. User should disconnect and reconnect to re-authenticate.`)
+      return undefined
+    }
+    case "cert": {
+      // For cert auth, return cert paths + passphrase so server can reconstruct httpsAgent.
+      // IPC channel is local stdio between co-located processes running as the same OS user,
+      // so threat model is equivalent to reading from the vault directly.
+      if (!(conn as any).certAuth) return undefined
+      const { getCertPassphrase } = await import("./auth/certificate")
+      const passphrase = await getCertPassphrase(connId)
+      return {
+        _certAuth: JSON.stringify({
+          certPath: (conn as any).certAuth.certPath || "",
+          keyPath: (conn as any).certAuth.keyPath || "",
+          caPath: (conn as any).certAuth.caPath || undefined,
+          passphrase: passphrase || undefined,
+        }),
+      }
+    }
+    case "oauth_onprem": {
+      // For on-premise OAuth, the server needs a fresh Bearer token.
+      // The token fetcher handles auto-refresh.
+      const { buildOAuthOnPremAuth } = await import("./auth/oauthOnPrem")
+      const oauthConf = (conn as any).oauthOnPrem
+      if (!oauthConf) return undefined
+      try {
+        const result = await buildOAuthOnPremAuth(
+          connId, conn.url, conn.client, oauthConf, !!conn.allowSelfSigned
+        )
+        // Get the current token to pass as a header
+        if (typeof result.passwordOrFetcher === "function") {
+          const token = await result.passwordOrFetcher()
+          return { Authorization: `Bearer ${token}` }
+        }
+      } catch (e) {
+        const { log } = await import("./lib")
+        log(`⚠️ OAuth on-premise token fetch failed for ${connId}: ${e}`)
+      }
+      return undefined
+    }
+    default:
+      return undefined
+  }
+}
+
 let setProgress: ((prog: SearchProgress) => void) | undefined
 async function setSearchProgress(searchProg: SearchProgress) {
   if (setProgress) setProgress(searchProg)
@@ -228,6 +313,7 @@ export async function startLanguageClient(context: ExtensionContext) {
       client.onRequest(Methods.logCall, logCall)
       client.onRequest(Methods.logHTTP, logHttp)
       client.onRequest(Methods.getToken, getToken)
+      client.onRequest(Methods.getAuthHeaders, getAuthHeaders)
       client.onNotification(Methods.commLogEntry, (entry: CommLogEntryData) =>
         CallLogger.get(entry.connId)?.add(hidrateLogData(entry.logData))
       )

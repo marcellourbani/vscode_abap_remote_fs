@@ -12,6 +12,7 @@ export enum Methods {
   logCall = "vscabap.logCall",
   logHTTP = "vscabap.logHTTP",
   getToken = "vscabap.getToken",
+  getAuthHeaders = "vscabap.getAuthHeaders",
   triggerSyntaxCheck = "vscabap.triggerSyntaxCheck",
   commLogEntry = "vscabap.commLogEntry",
   commLogToggle = "vscabap.commLogToggle"
@@ -29,6 +30,33 @@ export interface AbapObjectDetail {
   name: string
 }
 
+/** Supported authentication methods for SAP connections. */
+export type AuthMethod = "basic" | "cert" | "kerberos" | "browser_sso" | "oauth_onprem"
+
+/** X.509 client certificate configuration (paths only — passphrase in vault). */
+export interface CertAuthConfig {
+  certPath: string
+  keyPath: string
+  caPath?: string
+}
+
+/** Kerberos/SPNEGO configuration (all fields optional — PowerShell SSPI uses UseDefaultCredentials). */
+export interface KerberosAuthConfig {
+  sapHostname?: string
+  realm?: string
+  spn?: string
+}
+
+/** On-premise SAP OAuth 2.0 configuration (SOAUTH2). */
+export interface OAuthOnPremConfig {
+  /** OAuth client ID registered in SOAUTH2. */
+  clientId: string
+  /** OAuth client secret (optional if PKCE is used). */
+  clientSecret?: string
+  /** OAuth scope (default: SAP_ADT). */
+  scope?: string
+}
+
 export interface ClientConfiguration {
   name: string
   url: string
@@ -39,6 +67,14 @@ export interface ClientConfiguration {
   allowSelfSigned: boolean
   customCA?: string
   diff_formatter: "ADT formatter" | "AbapLint" | "Simple"
+  /** Authentication method. Defaults to "basic" when omitted (backward compatible). */
+  authMethod?: AuthMethod
+  /** Certificate auth config (only when authMethod === "cert"). */
+  certAuth?: CertAuthConfig
+  /** Kerberos auth config (only when authMethod === "kerberos"). */
+  kerberosAuth?: KerberosAuthConfig
+  /** On-premise OAuth config (only when authMethod === "oauth_onprem"). */
+  oauthOnPrem?: OAuthOnPremConfig
   oauth?: {
     clientId: string
     clientSecret: string
