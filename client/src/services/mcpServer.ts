@@ -334,14 +334,9 @@ async function startHttpServer(): Promise<void> {
   state.port = settings.port
 
   state.httpServer = http.createServer(async (req, res) => {
-    // CORS headers for cross-origin requests
-    res.setHeader("Access-Control-Allow-Origin", "*")
-    res.setHeader("Access-Control-Allow-Methods", "GET, POST, DELETE, OPTIONS")
-    res.setHeader("Access-Control-Allow-Headers", "Content-Type, mcp-session-id, Authorization")
-    res.setHeader("Access-Control-Expose-Headers", "mcp-session-id")
 
     if (req.method === "OPTIONS") {
-      res.writeHead(200)
+      res.writeHead(405)
       res.end()
       return
     }
