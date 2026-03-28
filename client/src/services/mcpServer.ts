@@ -505,7 +505,7 @@ async function startHttpServer(): Promise<void> {
         }
       })
 
-      state.httpServer!.listen(port, () => {
+      state.httpServer!.listen(port, "127.0.0.1", () => {
         resolve(port)
       })
     })
