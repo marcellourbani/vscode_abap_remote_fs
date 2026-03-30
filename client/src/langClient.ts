@@ -131,6 +131,98 @@ async function getToken(connId: string) {
   return futureToken(formatKey(connId))
 }
 
+/** Provide auth headers (cookies etc.) to the language server for non-basic auth. */
+async function getAuthHeaders(
+  connId: string
+): Promise<Record<string, string> | undefined> {
+  connId = formatKey(connId)
+  const conn = RemoteManager.get().byId(connId)
+  if (!conn) return undefined
+  const authMethod = (conn as any).authMethod || "basic"
+  switch (authMethod) {
+    case "kerberos": {
+      try {
+        const { log: libLog } = await import("./lib")
+        libLog.debug(`[langClient] getAuthHeaders: re-negotiating kerberos for ${connId}`)
+        const { refreshKerberosAuth } = await import("./auth/kerberos")
+        const result = await refreshKerberosAuth(
+          connId,
+          (conn as any).kerberosAuth,
+          conn.url,
+          conn.client,
+          !!conn.allowSelfSigned
+        )
+        libLog.debug(`[langClient] getAuthHeaders: kerberos refresh success for ${connId}`)
+        return result.headers
+      } catch (e) {
+        const { log: libLog } = await import("./lib")
+        libLog.debug(`[langClient] getAuthHeaders: kerberos re-negotiation failed for ${connId}: ${e}`)
+        const { getKerberosCookies } = await import("./auth/kerberos")
+        const cookies = await getKerberosCookies(connId)
+        libLog.debug(`[langClient] getAuthHeaders: falling back to ${cookies.length} cached cookies for ${connId}`)
+        return cookies.length > 0
+          ? { Cookie: cookies.map((c: string) => c.replace(/[\r\n\x00-\x1f]/g, "")).join("; ") }
+          : undefined
+      }
+    }
+    case "browser_sso": {
+      const { log: libLog } = await import("./lib")
+      libLog.debug(`[langClient] getAuthHeaders: checking browser_sso cookies for ${connId}`)
+      const { getSsoCookies } = await import("./auth/browserSso")
+      const cookies = await getSsoCookies(connId)
+      if (cookies.length > 0) {
+        libLog.debug(`[langClient] getAuthHeaders: returning ${cookies.length} browser_sso cookies for ${connId}`)
+        return { Cookie: cookies.map((c: string) => c.replace(/[\r\n\x00-\x1f]/g, "")).join("; ") }
+      }
+      libLog.debug(`[langClient] getAuthHeaders: browser_sso cookies missing/expired for ${connId}`)
+      return undefined
+    }
+    case "cert": {
+      const { log: libLog } = await import("./lib")
+      if (!(conn as any).certAuth) {
+        libLog.debug(`[langClient] getAuthHeaders: cert auth config missing for ${connId}`)
+        return undefined
+      }
+      libLog.debug(`[langClient] getAuthHeaders: returning cert paths for ${connId}`)
+      const { getCertPassphrase } = await import("./auth/certificate")
+      const passphrase = await getCertPassphrase(connId)
+      return {
+        _certAuth: JSON.stringify({
+          certPath: (conn as any).certAuth.certPath || "",
+          keyPath: (conn as any).certAuth.keyPath || "",
+          caPath: (conn as any).certAuth.caPath || undefined,
+          passphrase: passphrase || undefined,
+        }),
+      }
+    }
+    case "oauth_onprem": {
+      const { log: libLog } = await import("./lib")
+      libLog.debug(`[langClient] getAuthHeaders: fetching oauth_onprem token for ${connId}`)
+      const { buildOAuthOnPremAuth } = await import("./auth/oauthOnPrem")
+      const oauthConf = (conn as any).oauthOnPrem
+      if (!oauthConf) {
+        libLog.debug(`[langClient] getAuthHeaders: oauth_onprem config missing for ${connId}`)
+        return undefined
+      }
+      try {
+        const result = await buildOAuthOnPremAuth(
+          connId, conn.url, conn.client, oauthConf, !!conn.allowSelfSigned
+        )
+        if (typeof result.passwordOrFetcher === "function") {
+          const token = await result.passwordOrFetcher()
+          libLog.debug(`[langClient] getAuthHeaders: returning Bearer token for ${connId}`)
+          return { Authorization: `Bearer ${token}` }
+        }
+      } catch (e) {
+        libLog.debug(`[langClient] getAuthHeaders: oauth_onprem token fetch failed for ${connId}: ${e}`)
+      }
+      return undefined
+    }
+    default:
+      return undefined
+  }
+}
+
 let setProgress: ((prog: SearchProgress) => void) | undefined
 async function setSearchProgress(searchProg: SearchProgress) {
   if (setProgress) setProgress(searchProg)
@@ -228,6 +320,7 @@ export async function startLanguageClient(context: ExtensionContext) {
       client.onRequest(Methods.logCall, logCall)
       client.onRequest(Methods.logHTTP, logHttp)
       client.onRequest(Methods.getToken, getToken)
+      client.onRequest(Methods.getAuthHeaders, getAuthHeaders)
       client.onNotification(Methods.commLogEntry, (entry: CommLogEntryData) =>
         CallLogger.get(entry.connId)?.add(hidrateLogData(entry.logData))
       )

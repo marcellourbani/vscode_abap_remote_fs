@@ -3716,6 +3716,82 @@
                   "maxLength": 2,
                   "default": "en"
                 },
+                "authMethod": {
+                  "type": "string",
+                  "description": "Authentication method for this SAP system",
+                  "enum": [
+                    "basic",
+                    "cert",
+                    "kerberos",
+                    "browser_sso",
+                    "oauth_onprem"
+                  ],
+                  "markdownEnumDescriptions": [
+                    "Username/Password (default)",
+                    "X.509 Client Certificate (mutual TLS)",
+                    "Kerberos/SPNEGO SSO (Windows domain auth)",
+                    "Browser SSO (SAML/Kerberos via browser cookie capture)",
+                    "OAuth 2.0 Authorization Code + PKCE (on-premise SAP via SOAUTH2)"
+                  ],
+                  "default": "basic"
+                },
+                "certAuth": {
+                  "type": "object",
+                  "description": "X.509 client certificate configuration (when authMethod is 'cert')",
+                  "properties": {
+                    "certPath": {
+                      "type": "string",
+                      "description": "Path to client certificate PEM file"
+                    },
+                    "keyPath": {
+                      "type": "string",
+                      "description": "Path to private key PEM file (not required for PKCS#12 .p12/.pfx files)"
+                    },
+                    "caPath": {
+                      "type": "string",
+                      "description": "Path to CA certificate for SAP server verification"
+                    }
+                  },
+                  "required": [
+                    "certPath"
+                  ]
+                },
+                "kerberosAuth": {
+                  "type": "object",
+                  "description": "Kerberos/SPNEGO configuration (when authMethod is 'kerberos'). All fields are optional — authentication uses Windows SSPI via UseDefaultCredentials automatically. These fields are reserved for future SPN customization.",
+                  "properties": {
+                    "sapHostname": {
+                      "type": "string",
+                      "description": "SAP server FQDN (optional, not required for standard SSPI auth)"
+                    },
+                    "realm": {
+                      "type": "string",
+                      "description": "Kerberos realm (optional, auto-detected)"
+                    },
+                    "spn": {
+                      "type": "string",
+                      "description": "Full Service Principal Name override (optional)"
+                    }
+                  }
+                },
+                "oauthOnPrem": {
+                  "type": "object",
+                  "description": "On-premise SAP OAuth 2.0 configuration (when authMethod is 'oauth_onprem'). Requires SOAUTH2 setup on SAP system.",
+                  "properties": {
+                    "clientId": {
+                      "type": "string",
+                      "description": "OAuth client ID registered in SAP transaction SOAUTH2"
+                    },
+                    "scope": {
+                      "type": "string",
+                      "description": "OAuth scope (default: SAP_ADT)",
+                      "default": "SAP_ADT"
+                    }
+                  },
+                  "required": [
+                    "clientId"
+                  ]
+                },
                 "atcapprover": {
                   "type": "string",
                   "description": "Default ATC approver",
