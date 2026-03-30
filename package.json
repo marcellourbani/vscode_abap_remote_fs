@@ -328,7 +328,8 @@
                   "SFBS",
                   "JOBD",
                   "NROB",
-                  "ENHO"
+                  "ENHO",
+                  "SUSO"
                 ]
               },
               "description": "Object types to search for.Must provide type or list of types."
