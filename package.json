@@ -262,6 +262,12 @@
           "name": "Feed Inbox",
           "when": "abapfs:extensionActive",
           "icon": "$(inbox)"
+        },
+        {
+          "id": "abapfs.objectProperty",
+          "name": "Object Property",
+          "when": "abapfs:extensionActive",
+          "icon": "$(symbol-property)"
         }
       ],
       "explorer": [

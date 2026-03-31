@@ -50,6 +50,7 @@ import { clearSystemInfoCache } from "./services/sapSystemInfo"
 import { HeartbeatWatchlist } from "./services/heartbeat/heartbeatWatchlist"
 import { visualizeDependencyGraph } from "./services/dependencyGraph"
 import { checkUpgradeNotification } from "./services/upgradeNotification"
+import { ObjectPropertyProvider } from "./views/objectProperties"
 
 // Import commands to ensure @command decorators are executed
 import "./commands"
@@ -162,12 +163,21 @@ export async function activate(ctx: ExtensionContext): Promise<AbapFsApi> {
 
   const fav = FavouritesProvider.get()
   fav.storagePath = context.globalStoragePath
+  const objectPropertyProvider = ObjectPropertyProvider.get()
   sub.push(window.registerTreeDataProvider("abapfs.favorites", fav))
   sub.push(window.registerTreeDataProvider("abapfs.transports", TransportsProvider.get()))
   sub.push(window.registerTreeDataProvider("abapfs.abapgit", abapGitProvider))
   sub.push(window.registerTreeDataProvider("abapfs.dumps", dumpProvider))
   sub.push(window.registerTreeDataProvider("abapfs.atcFinds", atcProvider))
   sub.push(window.registerTreeDataProvider("abapfs.traces", tracesProvider))
+  const objectPropertyView = window.createTreeView("abapfs.objectProperty", {
+    treeDataProvider: objectPropertyProvider,
+    showCollapseAll: false,
+    canSelectMany: false
+  })
+  objectPropertyProvider.bindView(objectPropertyView)
+  sub.push(objectPropertyProvider)
+  sub.push(objectPropertyView)
 
   // Initialize Feed State Manager and Polling Service
   const feedStateManager = new FeedStateManager(context)
