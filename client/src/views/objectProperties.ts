@@ -10,10 +10,9 @@ import {
   workspace,
   Disposable
 } from "vscode"
-import { TransportInfo } from "abap-adt-api"
+import { TransportInfo, MainInclude } from "abap-adt-api"
 import { isAbapStat } from "abapfs"
 import { LockStatus } from "abapfs/out/lockObject"
-import { MainInclude } from "abap-adt-api"
 import { AbapObject } from "abapobject"
 import { AbapFsCommands } from "../commands"
 import { getClient, uriRoot, abapUri } from "../adt/conections"
@@ -22,17 +21,28 @@ import { readTransports } from "./transports"
 
 type PropertyNode = PropertyValueItem | TransportPropertyItem | TransportRequestChildItem
 
-type TransportEntry = Record<string, any>
+// --- Simple TTL cache ---
 
-type CachedTransports = {
-  expiresAt: number
-  promise: Promise<any>
+class TtlCache<V> {
+  private store = new Map<string, { value: V; expiresAt: number }>()
+  constructor(private ttlMs: number) {}
+
+  get(key: string): V | undefined {
+    const entry = this.store.get(key)
+    if (entry && entry.expiresAt > Date.now()) return entry.value
+    this.store.delete(key)
+    return undefined
+  }
+
+  set(key: string, value: V) {
+    this.store.set(key, { value, expiresAt: Date.now() + this.ttlMs })
+  }
+
+  delete(key: string) { this.store.delete(key) }
+  clear() { this.store.clear() }
 }
 
-type CachedTransportChildren = {
-  expiresAt: number
-  children: PropertyNode[]
-}
+// --- Tree items ---
 
 class PropertyValueItem extends TreeItem {
   constructor(
@@ -73,40 +83,32 @@ class TransportRequestChildItem extends TreeItem {
 }
 
 class TransportPropertyItem extends PropertyValueItem {
-  private static readonly transportCache = new Map<string, CachedTransports>()
-  private static readonly childrenCache = new Map<string, CachedTransportChildren>()
-  private static readonly cacheTtlMs = 30000
+  private static readonly transportCache = new TtlCache<Promise<any>>(30000)
+  private static readonly childrenCache = new TtlCache<PropertyNode[]>(30000)
 
   public readonly connId: string
   public readonly user: string
   public readonly task: Record<string, string>
-  private transportChildren?: PropertyNode[]
 
   public static clearTransportCache() {
     this.transportCache.clear()
     this.childrenCache.clear()
   }
 
-  private cacheKey() {
+  private get cacheKey() {
     return `${this.connId}:${this.user.toUpperCase()}:${this.task["tm:number"]}`
   }
 
   private static readTransportsCached(connId: string, user: string) {
     const key = `${connId}:${user.toUpperCase()}`
-    const now = Date.now()
     const cached = this.transportCache.get(key)
-    if (cached && cached.expiresAt > now) return cached.promise
+    if (cached) return cached
 
     const promise = readTransports(connId, user).catch(error => {
       this.transportCache.delete(key)
       throw error
     })
-
-    this.transportCache.set(key, {
-      expiresAt: now + this.cacheTtlMs,
-      promise
-    })
-
+    this.transportCache.set(key, promise)
     return promise
   }
 
@@ -134,56 +136,25 @@ class TransportPropertyItem extends PropertyValueItem {
   }
 
   public async getChildren(): Promise<PropertyNode[]> {
-    if (this.transportChildren) return this.transportChildren
-
-    const childCache = TransportPropertyItem.childrenCache.get(this.cacheKey())
-    if (childCache && childCache.expiresAt > Date.now()) {
-      this.transportChildren = childCache.children
-      return childCache.children
-    }
+    const cached = TransportPropertyItem.childrenCache.get(this.cacheKey)
+    if (cached) return cached
 
     try {
       const transports = await TransportPropertyItem.readTransportsCached(this.connId, this.user)
       const context = findTransportContext(transports, this.task["tm:number"])
-
-      if (!context) {
-        const fallbackChildren: PropertyNode[] = []
-        this.transportChildren = fallbackChildren
-        TransportPropertyItem.childrenCache.set(this.cacheKey(), {
-          expiresAt: Date.now() + TransportPropertyItem.cacheTtlMs,
-          children: fallbackChildren
-        })
-        return fallbackChildren
-      }
-
-      const children: PropertyNode[] = []
-
-      if (context.tasks.length > 0) {
-        context.tasks.forEach((task: TransportEntry) => {
-          children.push(
-            new TransportRequestChildItem(
-              this.connId,
-              task["tm:number"],
-              task["tm:desc"] || ""
-            )
-          )
-        })
-      }
-
-      this.transportChildren = children
-      TransportPropertyItem.childrenCache.set(this.cacheKey(), {
-        expiresAt: Date.now() + TransportPropertyItem.cacheTtlMs,
-        children
-      })
+      const children: PropertyNode[] = (context?.tasks ?? []).map(
+        (task: Record<string, any>) =>
+          new TransportRequestChildItem(this.connId, task["tm:number"], task["tm:desc"] || "")
+      )
+      TransportPropertyItem.childrenCache.set(this.cacheKey, children)
       return children
-    } catch (error) {
-      this.transportChildren = [
-        new PropertyValueItem("Transport details", "Unable to load subtasks", "", "warning")
-      ]
-      return this.transportChildren
+    } catch {
+      return [new PropertyValueItem("Transport details", "Unable to load subtasks", "", "warning")]
     }
   }
 }
+
+// --- Helpers ---
 
 type PropertySnapshot = {
   description?: string
@@ -191,7 +162,7 @@ type PropertySnapshot = {
   items: PropertyNode[]
 }
 
-const stringifyValue = (value: unknown) => {
+const stringifyValue = (value: unknown): string => {
   if (value === undefined || value === null || value === "") return "-"
   if (value instanceof Date) return value.toLocaleString()
   if (typeof value === "boolean") return value ? "Yes" : "No"
@@ -211,8 +182,7 @@ const pushIfValue = (
 
 const currentMainProgram = async (object: AbapObject) => {
   if (object.type !== "PROG/I") return undefined
-  const mainPrograms = await object.mainPrograms().catch(() => [] as MainInclude[])
-  return mainPrograms[0]
+  return (await object.mainPrograms().catch(() => [] as MainInclude[]))[0]
 }
 
 const resolveTransportInfo = async (
@@ -221,37 +191,34 @@ const resolveTransportInfo = async (
 ): Promise<TransportInfo | undefined> => {
   try {
     return await getClient(connId).transportInfo(object.contentsPath(), "", "")
-  } catch (error) {
+  } catch {
     return undefined
   }
 }
 
-const friendlyTypeLabel = (object: AbapObject, mainProgram?: MainInclude) => {
-  const typeMap: Record<string, string> = {
-    "CLAS/OC": "Class",
-    "CLAS/OM": "Class Method",
-    "INTF/OI": "Interface",
-    "PROG/P": "Program",
-    "PROG/I": mainProgram ? "Include" : "Program Include",
-    "FUGR/F": "Function Group",
-    "FUGR/FF": "Function Module",
-    "DEVC/K": "Package",
-    "TABL/DT": "Database Table",
-    "DDLS/DF": "CDS View",
-    "MSAG/N": "Message Class",
-    "TTYP/TT": "Table Type",
-    "DOMA/DO": "Domain",
-    "DTEL/DE": "Data Element",
-    "VIEW/V": "Dictionary View",
-    "TRAN/T": "Transaction"
-  }
-
-  return typeMap[object.type] || object.type
+const TYPE_LABELS: Record<string, string | ((mp?: MainInclude) => string)> = {
+  "CLAS/OC": "Class",
+  "CLAS/OM": "Class Method",
+  "INTF/OI": "Interface",
+  "PROG/P": "Program",
+  "PROG/I": (mp) => mp ? "Include" : "Program Include",
+  "FUGR/F": "Function Group",
+  "FUGR/FF": "Function Module",
+  "DEVC/K": "Package",
+  "TABL/DT": "Database Table",
+  "DDLS/DF": "CDS View",
+  "MSAG/N": "Message Class",
+  "TTYP/TT": "Table Type",
+  "DOMA/DO": "Domain",
+  "DTEL/DE": "Data Element",
+  "VIEW/V": "Dictionary View",
+  "TRAN/T": "Transaction"
 }
 
 const combinedTypeLabel = (object: AbapObject, mainProgram?: MainInclude) => {
-  const friendly = friendlyTypeLabel(object, mainProgram)
-  return friendly === object.type ? friendly : `${friendly} (${object.type})`
+  const entry = TYPE_LABELS[object.type]
+  const friendly = typeof entry === "function" ? entry(mainProgram) : entry
+  return friendly ? `${friendly} (${object.type})` : object.type
 }
 
 const objectDescription = (object: AbapObject) => {
@@ -259,16 +226,14 @@ const objectDescription = (object: AbapObject) => {
   return meta["adtcore:description"] || meta["adtcore:name"] || ""
 }
 
-const packageName = (transportInfo: TransportInfo | undefined) => transportInfo?.DEVCLASS || ""
-
-const currentTransport = (lockStatus: LockStatus, transportInfo: TransportInfo | undefined) => {
-  const number =
-    lockStatus.status === "locked" ? lockStatus.CORRNR || "" : transportInfo?.LOCKS?.HEADER?.TRKORR || ""
+const currentTransport = (lockStatus: LockStatus, transportInfo?: TransportInfo) => {
+  const locked = lockStatus.status === "locked"
+  const number = (locked ? lockStatus.CORRNR : transportInfo?.LOCKS?.HEADER?.TRKORR) || ""
   if (!number) return { number: "", description: "" }
 
   const description =
-    (lockStatus.status === "locked" ? lockStatus.CORRTEXT || "" : "") ||
-    transportInfo?.TRANSPORTS?.find(entry => entry.TRKORR === number)?.AS4TEXT ||
+    (locked && lockStatus.CORRTEXT) ||
+    transportInfo?.TRANSPORTS?.find(e => e.TRKORR === number)?.AS4TEXT ||
     transportInfo?.LOCKS?.HEADER?.AS4TEXT ||
     ""
   return { number, description }
@@ -276,26 +241,14 @@ const currentTransport = (lockStatus: LockStatus, transportInfo: TransportInfo |
 
 const findTransportContext = (transports: any, number: string) => {
   for (const category of ["workbench", "customizing", "transportofcopies"]) {
-    const targets = (transports as any)?.[category] || []
-    for (const target of targets) {
+    for (const target of transports?.[category] || []) {
       for (const status of ["modifiable", "released"]) {
-        const requests = target?.[status] || []
-        for (const request of requests) {
+        for (const request of target?.[status] || []) {
           if (request?.["tm:number"] === number) {
-            return {
-              request,
-              tasks: request.tasks || [],
-              isTask: false
-            }
+            return { request, tasks: request.tasks || [], isTask: false }
           }
-
-          const tasks = request?.tasks || []
-          if (tasks.some((task: TransportEntry) => task?.["tm:number"] === number)) {
-            return {
-              request,
-              tasks,
-              isTask: true
-            }
+          if ((request?.tasks || []).some((t: any) => t?.["tm:number"] === number)) {
+            return { request, tasks: request.tasks || [], isTask: true }
           }
         }
       }
@@ -303,20 +256,16 @@ const findTransportContext = (transports: any, number: string) => {
   }
 }
 
-const combinedTransportLabel = (number: string, description: string) => {
-  if (!number) return ""
-  return description ? `${number} (${description})` : number
-}
+const transportRequestUri = (transportNumber: string) =>
+  transportNumber
+    ? `/sap/bc/adt/vit/wb/object_type/${encodeURIComponent("    rq")}/object_name/${encodeURIComponent(transportNumber)}`
+    : ""
 
-const transportRequestUri = (transportNumber: string) => {
-  if (!transportNumber) return ""
-  return `/sap/bc/adt/vit/wb/object_type/${encodeURIComponent("    rq")}/object_name/${encodeURIComponent(transportNumber)}`
-}
+// --- Tree data provider ---
 
 export class ObjectPropertyProvider implements TreeDataProvider<PropertyNode>, Disposable {
   public static get() {
-    if (!this.instance) this.instance = new ObjectPropertyProvider()
-    return this.instance
+    return (this.instance ??= new ObjectPropertyProvider())
   }
 
   private static instance?: ObjectPropertyProvider
@@ -328,13 +277,17 @@ export class ObjectPropertyProvider implements TreeDataProvider<PropertyNode>, D
   private refreshHandle?: NodeJS.Timeout
   private refreshGeneration = 0
   private pendingForceRefresh = false
+  private lastUri?: string
 
   public readonly onDidChangeTreeData: Event<PropertyNode | undefined | null | void> =
     this.emitter.event
 
   private constructor() {
     this.disposables.push(
-      window.onDidChangeActiveTextEditor(() => this.scheduleRefresh(true)),
+      window.onDidChangeActiveTextEditor(editor => {
+        const uri = editor?.document.uri.toString()
+        if (uri !== this.lastUri) this.scheduleRefresh(true)
+      }),
       workspace.onDidChangeTextDocument(event => {
         if (event.document === window.activeTextEditor?.document) this.scheduleRefresh()
       }),
@@ -361,7 +314,7 @@ export class ObjectPropertyProvider implements TreeDataProvider<PropertyNode>, D
 
   public dispose() {
     if (this.refreshHandle) clearTimeout(this.refreshHandle)
-    this.disposables.forEach(disposable => disposable.dispose())
+    this.disposables.forEach(d => d.dispose())
   }
 
   public getTreeItem(element: PropertyNode): TreeItem {
@@ -375,7 +328,7 @@ export class ObjectPropertyProvider implements TreeDataProvider<PropertyNode>, D
   }
 
   public scheduleRefresh(force = false) {
-    this.pendingForceRefresh = this.pendingForceRefresh || force
+    this.pendingForceRefresh ||= force
     if (this.refreshHandle) clearTimeout(this.refreshHandle)
     this.refreshHandle = setTimeout(() => {
       this.refreshHandle = undefined
@@ -413,13 +366,12 @@ export class ObjectPropertyProvider implements TreeDataProvider<PropertyNode>, D
   }
 
   private async buildSnapshot(force = false): Promise<PropertySnapshot> {
-    const editor = window.activeTextEditor
-    const uri = editor?.document.uri
+    const uri = window.activeTextEditor?.document.uri
+    this.lastUri = uri?.toString()
     if (!(uri && abapUri(uri))) {
       return {
         items: [],
-        message: "Open an ABAP object from an ADT connection to inspect its properties.",
-        description: undefined
+        message: "Open an ABAP object from an ADT connection to inspect its properties."
       }
     }
 
@@ -428,8 +380,7 @@ export class ObjectPropertyProvider implements TreeDataProvider<PropertyNode>, D
     if (!isAbapStat(node)) {
       return {
         items: [],
-        message: "The active editor is not backed by an ABAP repository object.",
-        description: undefined
+        message: "The active editor is not backed by an ABAP repository object."
       }
     }
 
@@ -443,12 +394,10 @@ export class ObjectPropertyProvider implements TreeDataProvider<PropertyNode>, D
     ])
 
     const transport = currentTransport(lockStatus, transportInfo)
-
-    const user = lockStatus.status === "locked" ? lockStatus.CORRUSER || getClient(uri.authority).username : getClient(uri.authority).username
-    const items = this.buildItems(uri.authority, user, object, transport, transportInfo, mainProgram)
+    const user = (lockStatus.status === "locked" && lockStatus.CORRUSER) || getClient(uri.authority).username
 
     return {
-      items,
+      items: this.buildItems(uri.authority, user, object, transport, transportInfo, mainProgram),
       description: object.name
     }
   }
@@ -465,29 +414,20 @@ export class ObjectPropertyProvider implements TreeDataProvider<PropertyNode>, D
 
     pushIfValue(items, "Name", object.name, { icon: "symbol-object" })
     pushIfValue(items, "Description", objectDescription(object), { icon: "note" })
-    pushIfValue(items, "Package", packageName(transportInfo), { icon: "package" })
+    pushIfValue(items, "Package", transportInfo?.DEVCLASS, { icon: "package" })
     pushIfValue(items, "Type", combinedTypeLabel(object, mainProgram), { icon: "symbol-class" })
     pushIfValue(items, "Created At", object.createdAt, { icon: "history" })
     pushIfValue(items, "Created By", object.createdBy, { icon: "person" })
     pushIfValue(items, "Modified At", object.changedAt, { icon: "history" })
     pushIfValue(items, "Modified By", object.changedBy, { icon: "person" })
 
-    const transportLabel = combinedTransportLabel(transport.number, transport.description)
-    const transportUri = transportRequestUri(transport.number)
-    if (transportLabel && transportUri) {
+    if (transport.number) {
+      const label = transport.description
+        ? `${transport.number} (${transport.description})`
+        : transport.number
       items.push(
-        new TransportPropertyItem(
-            transportLabel,
-          connId,
-          user,
-          transport.number,
-          transportUri
-        )
+        new TransportPropertyItem(label, connId, user, transport.number, transportRequestUri(transport.number))
       )
-    } else {
-      pushIfValue(items, "Transport", transportLabel, {
-        icon: "package"
-      })
     }
 
     return items
