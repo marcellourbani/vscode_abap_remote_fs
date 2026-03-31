@@ -15,10 +15,24 @@ import { isAbapStat } from "abapfs"
 import { LockStatus } from "abapfs/out/lockObject"
 import { MainInclude } from "abap-adt-api"
 import { AbapObject } from "abapobject"
+import { AbapFsCommands } from "../commands"
 import { getClient, uriRoot, abapUri } from "../adt/conections"
 import { caughtToString, log } from "../lib"
+import { readTransports } from "./transports"
 
-type PropertyNode = PropertyValueItem
+type PropertyNode = PropertyValueItem | TransportPropertyItem | TransportRequestChildItem
+
+type TransportEntry = Record<string, any>
+
+type CachedTransports = {
+  expiresAt: number
+  promise: Promise<any>
+}
+
+type CachedTransportChildren = {
+  expiresAt: number
+  children: PropertyNode[]
+}
 
 class PropertyValueItem extends TreeItem {
   constructor(
@@ -32,6 +46,142 @@ class PropertyValueItem extends TreeItem {
     this.tooltip = `${key}: ${value || "-"}`
     this.iconPath = new ThemeIcon(icon)
     this.contextValue = "objectPropertyValue"
+  }
+}
+
+class TransportRequestChildItem extends TreeItem {
+  public readonly connId: string
+  public readonly task: Record<string, string>
+
+  constructor(connId: string, transportNumber: string, description: string) {
+    super(transportNumber, TreeItemCollapsibleState.None)
+    this.connId = connId
+    this.description = description || "-"
+    this.tooltip = description ? `${transportNumber}: ${description}` : transportNumber
+    this.iconPath = new ThemeIcon("package")
+    this.contextValue = "objectPropertyValue"
+    this.task = {
+      "tm:number": transportNumber,
+      "tm:uri": transportRequestUri(transportNumber)
+    }
+    this.command = {
+      title: "Open transport in GUI",
+      command: AbapFsCommands.transportOpenGui,
+      arguments: [this]
+    }
+  }
+}
+
+class TransportPropertyItem extends PropertyValueItem {
+  private static readonly transportCache = new Map<string, CachedTransports>()
+  private static readonly childrenCache = new Map<string, CachedTransportChildren>()
+  private static readonly cacheTtlMs = 30000
+
+  public readonly connId: string
+  public readonly user: string
+  public readonly task: Record<string, string>
+  private transportChildren?: PropertyNode[]
+
+  public static clearTransportCache() {
+    this.transportCache.clear()
+    this.childrenCache.clear()
+  }
+
+  private cacheKey() {
+    return `${this.connId}:${this.user.toUpperCase()}:${this.task["tm:number"]}`
+  }
+
+  private static readTransportsCached(connId: string, user: string) {
+    const key = `${connId}:${user.toUpperCase()}`
+    const now = Date.now()
+    const cached = this.transportCache.get(key)
+    if (cached && cached.expiresAt > now) return cached.promise
+
+    const promise = readTransports(connId, user).catch(error => {
+      this.transportCache.delete(key)
+      throw error
+    })
+
+    this.transportCache.set(key, {
+      expiresAt: now + this.cacheTtlMs,
+      promise
+    })
+
+    return promise
+  }
+
+  constructor(
+    label: string,
+    connId: string,
+    user: string,
+    transportNumber: string,
+    transportUri: string
+  ) {
+    super("Transport", label, transportNumber, "package")
+    this.connId = connId
+    this.user = user
+    this.task = {
+      "tm:number": transportNumber,
+      "tm:uri": transportUri
+    }
+    this.contextValue = "objectPropertyTransport"
+    this.collapsibleState = TreeItemCollapsibleState.Collapsed
+    this.command = {
+      title: "Open transport in GUI",
+      command: AbapFsCommands.transportOpenGui,
+      arguments: [this]
+    }
+  }
+
+  public async getChildren(): Promise<PropertyNode[]> {
+    if (this.transportChildren) return this.transportChildren
+
+    const childCache = TransportPropertyItem.childrenCache.get(this.cacheKey())
+    if (childCache && childCache.expiresAt > Date.now()) {
+      this.transportChildren = childCache.children
+      return childCache.children
+    }
+
+    try {
+      const transports = await TransportPropertyItem.readTransportsCached(this.connId, this.user)
+      const context = findTransportContext(transports, this.task["tm:number"])
+
+      if (!context) {
+        const fallbackChildren: PropertyNode[] = []
+        this.transportChildren = fallbackChildren
+        TransportPropertyItem.childrenCache.set(this.cacheKey(), {
+          expiresAt: Date.now() + TransportPropertyItem.cacheTtlMs,
+          children: fallbackChildren
+        })
+        return fallbackChildren
+      }
+
+      const children: PropertyNode[] = []
+
+      if (context.tasks.length > 0) {
+        context.tasks.forEach((task: TransportEntry) => {
+          children.push(
+            new TransportRequestChildItem(
+              this.connId,
+              task["tm:number"],
+              task["tm:desc"] || ""
+            )
+          )
+        })
+      }
+
+      this.transportChildren = children
+      TransportPropertyItem.childrenCache.set(this.cacheKey(), {
+        expiresAt: Date.now() + TransportPropertyItem.cacheTtlMs,
+        children
+      })
+      return children
+    } catch (error) {
+      this.transportChildren = [
+        new PropertyValueItem("Transport details", "Unable to load subtasks", "", "warning")
+      ]
+      return this.transportChildren
+    }
   }
 }
 
@@ -124,9 +274,43 @@ const currentTransport = (lockStatus: LockStatus, transportInfo: TransportInfo |
   return { number, description }
 }
 
+const findTransportContext = (transports: any, number: string) => {
+  for (const category of ["workbench", "customizing", "transportofcopies"]) {
+    const targets = (transports as any)?.[category] || []
+    for (const target of targets) {
+      for (const status of ["modifiable", "released"]) {
+        const requests = target?.[status] || []
+        for (const request of requests) {
+          if (request?.["tm:number"] === number) {
+            return {
+              request,
+              tasks: request.tasks || [],
+              isTask: false
+            }
+          }
+
+          const tasks = request?.tasks || []
+          if (tasks.some((task: TransportEntry) => task?.["tm:number"] === number)) {
+            return {
+              request,
+              tasks,
+              isTask: true
+            }
+          }
+        }
+      }
+    }
+  }
+}
+
 const combinedTransportLabel = (number: string, description: string) => {
   if (!number) return ""
   return description ? `${number} (${description})` : number
+}
+
+const transportRequestUri = (transportNumber: string) => {
+  if (!transportNumber) return ""
+  return `/sap/bc/adt/vit/wb/object_type/${encodeURIComponent("    rq")}/object_name/${encodeURIComponent(transportNumber)}`
 }
 
 export class ObjectPropertyProvider implements TreeDataProvider<PropertyNode>, Disposable {
@@ -184,8 +368,10 @@ export class ObjectPropertyProvider implements TreeDataProvider<PropertyNode>, D
     return element
   }
 
-  public getChildren(element?: PropertyNode): PropertyNode[] {
-    return element ? [] : this.items
+  public getChildren(element?: PropertyNode): PropertyNode[] | Promise<PropertyNode[]> {
+    if (!element) return this.items
+    if (element instanceof TransportPropertyItem) return element.getChildren()
+    return []
   }
 
   public scheduleRefresh(force = false) {
@@ -256,7 +442,10 @@ export class ObjectPropertyProvider implements TreeDataProvider<PropertyNode>, D
       currentMainProgram(object)
     ])
 
-    const items = this.buildItems(object, lockStatus, transportInfo, mainProgram)
+    const transport = currentTransport(lockStatus, transportInfo)
+
+    const user = lockStatus.status === "locked" ? lockStatus.CORRUSER || getClient(uri.authority).username : getClient(uri.authority).username
+    const items = this.buildItems(uri.authority, user, object, transport, transportInfo, mainProgram)
 
     return {
       items,
@@ -265,12 +454,13 @@ export class ObjectPropertyProvider implements TreeDataProvider<PropertyNode>, D
   }
 
   private buildItems(
+    connId: string,
+    user: string,
     object: AbapObject,
-    lockStatus: LockStatus,
+    transport: { number: string; description: string },
     transportInfo: TransportInfo | undefined,
     mainProgram: MainInclude | undefined
   ): PropertyNode[] {
-    const transport = currentTransport(lockStatus, transportInfo)
     const items: PropertyValueItem[] = []
 
     pushIfValue(items, "Name", object.name, { icon: "symbol-object" })
@@ -281,9 +471,24 @@ export class ObjectPropertyProvider implements TreeDataProvider<PropertyNode>, D
     pushIfValue(items, "Created By", object.createdBy, { icon: "person" })
     pushIfValue(items, "Modified At", object.changedAt, { icon: "history" })
     pushIfValue(items, "Modified By", object.changedBy, { icon: "person" })
-    pushIfValue(items, "Transport", combinedTransportLabel(transport.number, transport.description), {
-      icon: "package"
-    })
+
+    const transportLabel = combinedTransportLabel(transport.number, transport.description)
+    const transportUri = transportRequestUri(transport.number)
+    if (transportLabel && transportUri) {
+      items.push(
+        new TransportPropertyItem(
+            transportLabel,
+          connId,
+          user,
+          transport.number,
+          transportUri
+        )
+      )
+    } else {
+      pushIfValue(items, "Transport", transportLabel, {
+        icon: "package"
+      })
+    }
 
     return items
   }
