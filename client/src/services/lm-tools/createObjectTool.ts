@@ -4,6 +4,7 @@
  */
 
 import * as vscode from "vscode"
+import { registerToolWithRegistry } from "./toolRegistry"
 import { logTelemetry } from "../telemetry"
 
 // ============================================================================
@@ -152,6 +153,6 @@ export class CreateABAPObjectTool implements vscode.LanguageModelTool<ICreateObj
 
 export function registerCreateObjectTool(context: vscode.ExtensionContext): void {
   context.subscriptions.push(
-    vscode.lm.registerTool("create_object_programmatically", new CreateABAPObjectTool())
+    registerToolWithRegistry("create_object_programmatically", new CreateABAPObjectTool())
   )
 }

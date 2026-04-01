@@ -4,6 +4,7 @@
  */
 
 import * as vscode from "vscode"
+import { registerToolWithRegistry } from "./toolRegistry"
 import { funWindow as window } from "../funMessenger"
 import { logTelemetry } from "../telemetry"
 import { SapGuiPanel } from "../../views/sapgui/SapGuiPanel"
@@ -127,6 +128,6 @@ export class GetAbapObjectUrlTool implements vscode.LanguageModelTool<IGetAbapOb
 
 export function registerGetObjectUrlTool(context: vscode.ExtensionContext): void {
   context.subscriptions.push(
-    vscode.lm.registerTool("get_abap_object_url", new GetAbapObjectUrlTool())
+    registerToolWithRegistry("get_abap_object_url", new GetAbapObjectUrlTool())
   )
 }

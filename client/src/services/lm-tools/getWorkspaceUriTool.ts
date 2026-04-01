@@ -4,6 +4,7 @@
  */
 
 import * as vscode from "vscode"
+import { registerToolWithRegistry } from "./toolRegistry"
 import { logTelemetry } from "../telemetry"
 import { getClient, getOrCreateRoot } from "../../adt/conections"
 
@@ -109,6 +110,6 @@ export class GetAbapObjectWorkspaceUriTool implements vscode.LanguageModelTool<I
 
 export function registerGetWorkspaceUriTool(context: vscode.ExtensionContext): void {
   context.subscriptions.push(
-    vscode.lm.registerTool("get_abap_object_workspace_uri", new GetAbapObjectWorkspaceUriTool())
+    registerToolWithRegistry("get_abap_object_workspace_uri", new GetAbapObjectWorkspaceUriTool())
   )
 }

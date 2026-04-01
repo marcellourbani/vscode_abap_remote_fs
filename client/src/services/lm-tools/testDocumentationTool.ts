@@ -4,6 +4,7 @@
  */
 
 import * as vscode from "vscode"
+import { registerToolWithRegistry } from "./toolRegistry"
 import { funWindow as window } from "../funMessenger"
 import { logTelemetry } from "../telemetry"
 import { TestDocumentCreator } from "../testDocumentCreator"
@@ -137,6 +138,6 @@ export class CreateTestDocumentationTool implements vscode.LanguageModelTool<ICr
 
 export function registerTestDocumentationTool(context: vscode.ExtensionContext): void {
   context.subscriptions.push(
-    vscode.lm.registerTool("create_test_documentation", new CreateTestDocumentationTool())
+    registerToolWithRegistry("create_test_documentation", new CreateTestDocumentationTool())
   )
 }

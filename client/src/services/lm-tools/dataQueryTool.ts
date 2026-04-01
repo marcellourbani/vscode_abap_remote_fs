@@ -4,6 +4,7 @@
  */
 
 import * as vscode from "vscode"
+import { registerToolWithRegistry } from "./toolRegistry"
 import { logTelemetry } from "../telemetry"
 import { WebviewManager, RowRange, SortColumn, ColumnFilter } from "../webviewManager"
 import { getClient } from "../../adt/conections"
@@ -479,6 +480,6 @@ export class ExecuteDataQueryTool implements vscode.LanguageModelTool<IExecuteDa
 
 export function registerDataQueryTool(context: vscode.ExtensionContext): void {
   context.subscriptions.push(
-    vscode.lm.registerTool("execute_data_query", new ExecuteDataQueryTool())
+    registerToolWithRegistry("execute_data_query", new ExecuteDataQueryTool())
   )
 }

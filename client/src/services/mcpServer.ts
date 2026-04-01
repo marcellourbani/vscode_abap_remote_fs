@@ -22,6 +22,7 @@ import { isInitializeRequest } from "@modelcontextprotocol/sdk/types.js"
 import { randomUUID } from "crypto"
 import { z } from "zod"
 import { log } from "../lib"
+import { toolRegistry } from "./lm-tools/toolRegistry"
 
 // ============================================================================
 // TYPES
@@ -237,22 +238,31 @@ function createMcpServer(): McpServer {
       },
       async (args: Record<string, unknown>) => {
         try {
-          // Create a cancellation token (MCP doesn't provide one, so we create a dummy)
           const tokenSource = new vscode.CancellationTokenSource()
 
-          // Invoke the VS Code LM tool
-          // toolInvocationToken can be undefined when invoked outside of chat context
-          const result = await vscode.lm.invokeTool(
-            toolName,
-            {
-              input: args,
-              toolInvocationToken: undefined
-            },
-            tokenSource.token
-          )
+          // Look up the tool instance from our shared registry so we can
+          // call invoke() directly, bypassing vscode.lm.invokeTool() and
+          // its prepareInvocation confirmation dialog pipeline.
+          const registeredTool = toolRegistry.get(toolName)
+          let result: vscode.LanguageModelToolResult
 
-          // Convert LanguageModelToolResult to MCP tool result
-          // The LM result contains content parts that we need to serialize
+          if (registeredTool) {
+            const invokeResult = await registeredTool.invoke(
+              { input: args, toolInvocationToken: undefined } as vscode.LanguageModelToolInvocationOptions<any>,
+              tokenSource.token
+            )
+            if (!invokeResult) {
+              throw new Error(`Tool ${toolName} returned no result`)
+            }
+            result = invokeResult
+          } else {
+            result = await vscode.lm.invokeTool(
+              toolName,
+              { input: args, toolInvocationToken: undefined },
+              tokenSource.token
+            )
+          }
+
           const textParts: string[] = []
 
           for await (const part of result.content) {
@@ -266,7 +276,6 @@ function createMcpServer(): McpServer {
                 textParts.push(JSON.stringify(partWithValue.value))
               }
             } else {
-              // For other part types, try to JSON stringify them
               textParts.push(JSON.stringify(part))
             }
           }

@@ -7,6 +7,7 @@
  */
 
 import * as vscode from "vscode"
+import { registerToolWithRegistry } from "./toolRegistry"
 import { connectedRoots } from "../../config"
 
 // ============================================================================
@@ -69,6 +70,6 @@ export class ConnectedSystemsTool implements vscode.LanguageModelTool<IConnected
 
 export function registerConnectedSystemsTool(context: vscode.ExtensionContext): void {
   context.subscriptions.push(
-    vscode.lm.registerTool("get_connected_systems", new ConnectedSystemsTool())
+    registerToolWithRegistry("get_connected_systems", new ConnectedSystemsTool())
   )
 }
