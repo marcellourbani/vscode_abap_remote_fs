@@ -5,6 +5,7 @@
  */
 
 import * as vscode from "vscode"
+import { registerToolWithRegistry } from "./toolRegistry"
 import { funWindow as window } from "../funMessenger"
 import { getSearchService } from "../abapSearchService"
 import { abapUri, getClient } from "../../adt/conections"
@@ -518,6 +519,6 @@ export class GetABAPObjectLinesTool implements vscode.LanguageModelTool<IGetABAP
  */
 export function registerGetObjectLinesTool(context: vscode.ExtensionContext) {
   context.subscriptions.push(
-    vscode.lm.registerTool("get_abap_object_lines", new GetABAPObjectLinesTool())
+    registerToolWithRegistry("get_abap_object_lines", new GetABAPObjectLinesTool())
   )
 }

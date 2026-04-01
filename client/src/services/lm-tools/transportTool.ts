@@ -4,6 +4,7 @@
  */
 
 import * as vscode from "vscode"
+import { registerToolWithRegistry } from "./toolRegistry"
 import { funWindow as window } from "../funMessenger"
 import { abapUri, getClient } from "../../adt/conections"
 import { logTelemetry } from "../telemetry"
@@ -624,6 +625,6 @@ export class ManageTransportRequestsTool implements vscode.LanguageModelTool<IMa
 
 export function registerTransportTool(context: vscode.ExtensionContext): void {
   context.subscriptions.push(
-    vscode.lm.registerTool("manage_transport_requests", new ManageTransportRequestsTool())
+    registerToolWithRegistry("manage_transport_requests", new ManageTransportRequestsTool())
   )
 }
