@@ -96,6 +96,9 @@
       },
       {
         "path": "./client/dist/media/skills/sap-system-personality-report/SKILL.md"
+      },
+      {
+        "path": "./client/dist/media/skills/sap-customizing/SKILL.md"
       }
     ],
     "breakpoints": [
