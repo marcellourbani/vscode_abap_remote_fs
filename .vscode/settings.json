@@ -8,6 +8,5 @@
   // "javascript.format.enable": false,
   "typescript.locale": "en",
   "gitlens.codeLens.enabled": false,
-  "editor.fontLigatures": true,
-  "typescript.tsdk": "node_modules\\typescript\\lib"
+  "editor.fontLigatures": true
 }
