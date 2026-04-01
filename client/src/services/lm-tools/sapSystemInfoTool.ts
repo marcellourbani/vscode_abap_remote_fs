@@ -4,6 +4,7 @@
  */
 
 import * as vscode from "vscode"
+import { registerToolWithRegistry } from "./toolRegistry"
 import { getSAPSystemInfo, formatSAPSystemInfoAsText } from "../sapSystemInfo"
 
 // ============================================================================
@@ -111,5 +112,5 @@ export class SAPSystemInfoTool implements vscode.LanguageModelTool<ISAPSystemInf
 // ============================================================================
 
 export function registerSAPSystemInfoTool(context: vscode.ExtensionContext): void {
-  context.subscriptions.push(vscode.lm.registerTool("get_sap_system_info", new SAPSystemInfoTool()))
+  context.subscriptions.push(registerToolWithRegistry("get_sap_system_info", new SAPSystemInfoTool()))
 }

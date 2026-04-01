@@ -1,11 +1,12 @@
-import { ExtensionContext, lm } from "vscode"
+import { ExtensionContext } from "vscode"
 import { SearchTool } from "./search"
 import { UnitTool } from "./unit"
 import { ActivateTool } from "./activate"
+import { registerToolWithRegistry } from "../../services/lm-tools/toolRegistry"
 
 export const registerChatTools = (context: ExtensionContext) => {
-  context.subscriptions.push(lm.registerTool("abap_activate", new ActivateTool()))
+  context.subscriptions.push(registerToolWithRegistry("abap_activate", new ActivateTool()))
   return // duplicates, I guess
-  context.subscriptions.push(lm.registerTool("abap_search", new SearchTool()))
-  context.subscriptions.push(lm.registerTool("abap_unit", new UnitTool()))
+  context.subscriptions.push(registerToolWithRegistry("abap_search", new SearchTool()))
+  context.subscriptions.push(registerToolWithRegistry("abap_unit", new UnitTool()))
 }

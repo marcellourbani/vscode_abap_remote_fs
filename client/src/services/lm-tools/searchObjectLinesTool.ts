@@ -4,6 +4,7 @@
  */
 
 import * as vscode from "vscode"
+import { registerToolWithRegistry } from "./toolRegistry"
 import { funWindow as window } from "../funMessenger"
 import { getSearchService } from "../abapSearchService"
 import { abapUri, getClient } from "../../adt/conections"
@@ -493,6 +494,6 @@ export class SearchABAPObjectLinesTool implements vscode.LanguageModelTool<ISear
 
 export function registerSearchObjectLinesTool(context: vscode.ExtensionContext): void {
   context.subscriptions.push(
-    vscode.lm.registerTool("search_abap_object_lines", new SearchABAPObjectLinesTool())
+    registerToolWithRegistry("search_abap_object_lines", new SearchABAPObjectLinesTool())
   )
 }

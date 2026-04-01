@@ -73,6 +73,7 @@ export class DebugService {
     log(`DebugService.create: running adtCoreDiscovery`)
     await client.adtCoreDiscovery()
     log(`DebugService.create: success`)
+    log(`DebugService.create: discovery done`)
     const service = new DebugService(connId, client, listener, debuggee, ui)
     return service
   }

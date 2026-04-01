@@ -4,6 +4,7 @@
  */
 
 import * as vscode from "vscode"
+import { registerToolWithRegistry } from "./toolRegistry"
 import { funWindow as window } from "../funMessenger"
 import { getSearchService } from "../abapSearchService"
 import { abapUri, getClient } from "../../adt/conections"
@@ -248,5 +249,5 @@ export class GetObjectByURITool implements vscode.LanguageModelTool<IGetObjectBy
 // ============================================================================
 
 export function registerGetObjectByUriTool(context: vscode.ExtensionContext): void {
-  context.subscriptions.push(vscode.lm.registerTool("get_object_by_uri", new GetObjectByURITool()))
+  context.subscriptions.push(registerToolWithRegistry("get_object_by_uri", new GetObjectByURITool()))
 }

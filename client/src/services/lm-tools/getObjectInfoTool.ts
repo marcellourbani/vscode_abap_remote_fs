@@ -4,6 +4,7 @@
  */
 
 import * as vscode from "vscode"
+import { registerToolWithRegistry } from "./toolRegistry"
 import { funWindow as window } from "../funMessenger"
 import { getSearchService } from "../abapSearchService"
 import { abapUri } from "../../adt/conections"
@@ -249,6 +250,6 @@ export class GetABAPObjectInfoTool implements vscode.LanguageModelTool<IGetABAPO
 
 export function registerGetObjectInfoTool(context: vscode.ExtensionContext): void {
   context.subscriptions.push(
-    vscode.lm.registerTool("get_abap_object_info", new GetABAPObjectInfoTool())
+    registerToolWithRegistry("get_abap_object_info", new GetABAPObjectInfoTool())
   )
 }

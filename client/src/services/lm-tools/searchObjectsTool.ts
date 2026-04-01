@@ -5,6 +5,7 @@
  */
 
 import * as vscode from "vscode"
+import { registerToolWithRegistry } from "./toolRegistry"
 import { funWindow as window } from "../funMessenger"
 import { getSearchService } from "../abapSearchService"
 import { abapUri } from "../../adt/conections"
@@ -150,6 +151,6 @@ export class SearchABAPObjectsTool implements vscode.LanguageModelTool<ISearchAB
  */
 export function registerSearchObjectsTool(context: vscode.ExtensionContext) {
   context.subscriptions.push(
-    vscode.lm.registerTool("search_abap_objects", new SearchABAPObjectsTool())
+    registerToolWithRegistry("search_abap_objects", new SearchABAPObjectsTool())
   )
 }

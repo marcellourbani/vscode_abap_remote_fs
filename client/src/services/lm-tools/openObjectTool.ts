@@ -4,6 +4,7 @@
  */
 
 import * as vscode from "vscode"
+import { registerToolWithRegistry } from "./toolRegistry"
 import { getSearchService } from "../abapSearchService"
 import { openObject } from "../../commands/commands"
 import { logTelemetry } from "../telemetry"
@@ -96,5 +97,5 @@ export class OpenObjectTool implements vscode.LanguageModelTool<IOpenObjectParam
 // ============================================================================
 
 export function registerOpenObjectTool(context: vscode.ExtensionContext): void {
-  context.subscriptions.push(vscode.lm.registerTool("open_object", new OpenObjectTool()))
+  context.subscriptions.push(registerToolWithRegistry("open_object", new OpenObjectTool()))
 }

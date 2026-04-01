@@ -315,6 +315,11 @@ export class AdtObjectFinder {
         picked: previousSelection.includes("SUSO/SO")
       },
       {
+        type: "SUSO/B",
+        label: "Authorization Object Sets",
+        picked: previousSelection.includes("SUSO/B")
+      },
+      {
         type: "SUSC/SC",
         label: "Authorization Object Classes",
         picked: previousSelection.includes("SUSC/SC")

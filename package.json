@@ -96,6 +96,9 @@
       },
       {
         "path": "./client/dist/media/skills/sap-system-personality-report/SKILL.md"
+      },
+      {
+        "path": "./client/dist/media/skills/sap-customizing/SKILL.md"
       }
     ],
     "breakpoints": [
@@ -334,7 +337,8 @@
                   "SFBS",
                   "JOBD",
                   "NROB",
-                  "ENHO"
+                  "ENHO",
+                  "SUSO"
                 ]
               },
               "description": "Object types to search for.Must provide type or list of types."

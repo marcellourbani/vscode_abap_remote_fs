@@ -10,6 +10,7 @@
  */
 
 import * as vscode from "vscode"
+import { registerToolWithRegistry } from "./toolRegistry"
 import {
   AGENT_REGISTRY,
   getSubagentSettings,
@@ -557,7 +558,7 @@ let isHandlingConfigChange = false
 
 export function registerSubagentConfigTool(context: vscode.ExtensionContext): void {
   context.subscriptions.push(
-    vscode.lm.registerTool("manage_subagents", new SubagentConfigTool(context))
+    registerToolWithRegistry("manage_subagents", new SubagentConfigTool(context))
   )
 
   context.subscriptions.push(
