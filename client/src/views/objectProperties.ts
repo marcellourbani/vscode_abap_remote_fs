@@ -6,20 +6,28 @@ import {
   TreeItem,
   TreeItemCollapsibleState,
   TreeView,
+  Uri,
   window,
   workspace,
   Disposable
 } from "vscode"
-import { TransportInfo, MainInclude } from "abap-adt-api"
+import { TransportInfo, MainInclude, Revision } from "abap-adt-api"
 import { isAbapStat } from "abapfs"
 import { LockStatus } from "abapfs/out/lockObject"
 import { AbapObject } from "abapobject"
 import { AbapFsCommands } from "../commands"
 import { getClient, uriRoot, abapUri } from "../adt/conections"
 import { caughtToString, log } from "../lib"
+import { AbapRevisionService, revLabel } from "../scm/abaprevisions/abaprevisionservice"
+import { revisionUri } from "../scm/abaprevisions/documentprovider"
 import { readTransports } from "./transports"
 
-type PropertyNode = PropertyValueItem | TransportPropertyItem | TransportRequestChildItem
+type PropertyNode =
+  | PropertyValueItem
+  | TransportPropertyItem
+  | TransportRequestChildItem
+  | HistoryPropertyItem
+  | RevisionChildItem
 
 // --- Simple TTL cache ---
 
@@ -154,6 +162,65 @@ class TransportPropertyItem extends PropertyValueItem {
   }
 }
 
+class RevisionChildItem extends TreeItem {
+  public readonly revision: Revision
+
+  constructor(private readonly uri: Uri, revision: Revision, index: number, forceInactive = false) {
+    super(revisionLabel(revision, index), TreeItemCollapsibleState.None)
+    this.revision = revision
+    const inactive = forceInactive || isInactiveRevision(revision)
+    this.description = inactive
+      ? "Unactivated"
+      : revisionDescription(revision)
+    this.tooltip = [
+      `Transport: ${revision.version || "-"}`,
+      `Title: ${revision.versionTitle || "-"}`,
+      `Author: ${revision.author || "-"}`,
+      `Date: ${revision.date || "-"}`,
+      `Status: ${inactive ? "Unactivated" : "Active"}`
+    ].join("\n")
+    this.iconPath = new ThemeIcon("history")
+    this.contextValue = "objectPropertyRevision"
+    this.command = {
+      title: "Compare with current version",
+      command: "vscode.diff",
+      arguments: [
+        revisionUri(uri, revision),
+        uri,
+        `${uri.path.split("/").pop() || uri.toString()} ${revisionLabel(revision, index)}->current`
+      ]
+    }
+  }
+}
+
+class HistoryPropertyItem extends TreeItem {
+  constructor(
+    private readonly uri: Uri,
+    private readonly revisions: Revision[],
+    private readonly objectInactive: boolean
+  ) {
+    super("History", TreeItemCollapsibleState.Collapsed)
+    this.description = revisions.length ? `${revisions.length} revisions` : "No revisions"
+    this.tooltip = revisions.length
+      ? `Version history for the current object (${revisions.length} revisions)`
+      : "No version history available for the current object"
+    this.iconPath = new ThemeIcon("history")
+    this.contextValue = "objectPropertyHistory"
+  }
+
+  public getChildren(): PropertyNode[] {
+    if (!this.revisions.length) {
+      return [new PropertyValueItem("History", "No version history available", "", "info")]
+    }
+
+    const revisions = sortRevisionsForDisplay(this.revisions)
+    return revisions.map(
+      (revision, index) =>
+        new RevisionChildItem(this.uri, revision, index, this.objectInactive && index === 0)
+    )
+  }
+}
+
 // --- Helpers ---
 
 type PropertySnapshot = {
@@ -170,7 +237,7 @@ const stringifyValue = (value: unknown): string => {
 }
 
 const pushIfValue = (
-  target: PropertyValueItem[],
+  target: PropertyNode[],
   key: string,
   value: unknown,
   options?: { copyValue?: string; icon?: string }
@@ -261,6 +328,42 @@ const transportRequestUri = (transportNumber: string) =>
     ? `/sap/bc/adt/vit/wb/object_type/${encodeURIComponent("    rq")}/object_name/${encodeURIComponent(transportNumber)}`
     : ""
 
+const isInactiveRevision = (revision: Revision) => {
+  const version = revision.version?.toLowerCase() || ""
+  const versionTitle = revision.versionTitle?.toLowerCase() || ""
+  const uri = revision.uri?.toLowerCase() || ""
+  return (
+    version === "inactive" ||
+    versionTitle === "inactive" ||
+    versionTitle === "unactivated" ||
+    uri.includes("version=inactive")
+  )
+}
+
+const revisionDescription = (revision: Revision) =>
+  revision.versionTitle || `${revision.author || ""} ${revision.date || ""}`.trim() || "-"
+
+const revisionLabel = (revision: Revision, index: number) => {
+  const label = revLabel(revision, `Revision ${index + 1}`)
+  if (!isInactiveRevision(revision)) return label
+
+  const genericInactive = ["inactive", "unactivated", "unactivated changes", "inactive version"]
+  return genericInactive.includes(label.trim().toLowerCase())
+    ? revision.version || `Revision ${index + 1}`
+    : label
+}
+
+const sortRevisionsForDisplay = (revisions: Revision[]) =>
+  [...revisions].sort((left, right) => Number(isInactiveRevision(right)) - Number(isInactiveRevision(left)))
+
+const loadRevisionHistory = async (uri: Uri, force = false): Promise<Revision[]> => {
+  try {
+    return (await AbapRevisionService.get(uri.authority).uriRevisions(uri, force)) || []
+  } catch {
+    return []
+  }
+}
+
 // --- Tree data provider ---
 
 export class ObjectPropertyProvider implements TreeDataProvider<PropertyNode>, Disposable {
@@ -321,6 +424,7 @@ export class ObjectPropertyProvider implements TreeDataProvider<PropertyNode>, D
   public getChildren(element?: PropertyNode): PropertyNode[] | Promise<PropertyNode[]> {
     if (!element) return this.items
     if (element instanceof TransportPropertyItem) return element.getChildren()
+    if (element instanceof HistoryPropertyItem) return element.getChildren()
     return []
   }
 
@@ -383,30 +487,34 @@ export class ObjectPropertyProvider implements TreeDataProvider<PropertyNode>, D
     const object = node.object
     if (force || !object.structure) await object.loadStructure(force)
 
-    const [lockStatus, transportInfo, mainProgram] = await Promise.all([
+    const [lockStatus, transportInfo, mainProgram, revisions] = await Promise.all([
       root.lockManager.finalStatus(uri.path),
       resolveTransportInfo(uri.authority, object),
-      currentMainProgram(object)
+      currentMainProgram(object),
+      loadRevisionHistory(uri, force)
     ])
 
     const transport = currentTransport(lockStatus, transportInfo)
     const user = (lockStatus.status === "locked" && lockStatus.CORRUSER) || getClient(uri.authority).username
 
     return {
-      items: this.buildItems(uri.authority, user, object, transport, transportInfo, mainProgram),
+      items: this.buildItems(uri, uri.authority, user, object, transport, transportInfo, mainProgram, revisions),
       description: object.name
     }
   }
 
   private buildItems(
+    uri: Uri,
     connId: string,
     user: string,
     object: AbapObject,
     transport: { number: string; description: string },
     transportInfo: TransportInfo | undefined,
-    mainProgram: MainInclude | undefined
+    mainProgram: MainInclude | undefined,
+    revisions: Revision[]
   ): PropertyNode[] {
-    const items: PropertyValueItem[] = []
+    const items: PropertyNode[] = []
+      const objectInactive = object.structure?.metaData["adtcore:version"] === "inactive"
 
     pushIfValue(items, "Name", object.name, { icon: "symbol-object" })
     pushIfValue(items, "Description", objectDescription(object), { icon: "note" })
@@ -425,6 +533,8 @@ export class ObjectPropertyProvider implements TreeDataProvider<PropertyNode>, D
         new TransportPropertyItem(label, connId, user, transport.number, transportRequestUri(transport.number))
       )
     }
+
+    items.push(new HistoryPropertyItem(uri, revisions, objectInactive))
 
     return items
   }
