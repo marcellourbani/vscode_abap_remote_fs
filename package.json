@@ -2,7 +2,7 @@
   "name": "vscode-abap-remote-fs",
   "displayName": "ABAP remote filesystem",
   "description": "Work on your ABAP code straight from the server",
-  "version": "2.2.0",
+  "version": "2.2.2",
   "publisher": "murbani",
   "publishConfig": {
     "access": "restricted",
@@ -96,6 +96,9 @@
       },
       {
         "path": "./client/dist/media/skills/sap-system-personality-report/SKILL.md"
+      },
+      {
+        "path": "./client/dist/media/skills/sap-customizing/SKILL.md"
       }
     ],
     "breakpoints": [
@@ -262,6 +265,12 @@
           "name": "Feed Inbox",
           "when": "abapfs:extensionActive",
           "icon": "$(inbox)"
+        },
+        {
+          "id": "abapfs.objectProperty",
+          "name": "Object Property",
+          "when": "abapfs:extensionActive",
+          "icon": "$(symbol-property)"
         }
       ],
       "explorer": [
@@ -328,7 +337,8 @@
                   "SFBS",
                   "JOBD",
                   "NROB",
-                  "ENHO"
+                  "ENHO",
+                  "SUSO"
                 ]
               },
               "description": "Object types to search for.Must provide type or list of types."

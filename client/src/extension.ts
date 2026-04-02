@@ -50,6 +50,8 @@ import { clearSystemInfoCache } from "./services/sapSystemInfo"
 import { HeartbeatWatchlist } from "./services/heartbeat/heartbeatWatchlist"
 import { visualizeDependencyGraph } from "./services/dependencyGraph"
 import { checkUpgradeNotification } from "./services/upgradeNotification"
+import { disableVirtualToolGrouping } from "./services/virtualToolsFix"
+import { ObjectPropertyProvider } from "./views/objectProperties"
 
 // Import commands to ensure @command decorators are executed
 import "./commands"
@@ -92,7 +94,7 @@ export async function activate(ctx: ExtensionContext): Promise<AbapFsApi> {
   clearTokens()
   const sub = context.subscriptions
 
-  // ABAP Intelligence Integration - Start
+  // 🧠 ABAP Intelligence Integration - Start
   try {
     log("🧠 ABAP Intelligence features booting up... *elevator music plays*")
 
@@ -162,12 +164,21 @@ export async function activate(ctx: ExtensionContext): Promise<AbapFsApi> {
 
   const fav = FavouritesProvider.get()
   fav.storagePath = context.globalStoragePath
+  const objectPropertyProvider = ObjectPropertyProvider.get()
   sub.push(window.registerTreeDataProvider("abapfs.favorites", fav))
   sub.push(window.registerTreeDataProvider("abapfs.transports", TransportsProvider.get()))
   sub.push(window.registerTreeDataProvider("abapfs.abapgit", abapGitProvider))
   sub.push(window.registerTreeDataProvider("abapfs.dumps", dumpProvider))
   sub.push(window.registerTreeDataProvider("abapfs.atcFinds", atcProvider))
   sub.push(window.registerTreeDataProvider("abapfs.traces", tracesProvider))
+  const objectPropertyView = window.createTreeView("abapfs.objectProperty", {
+    treeDataProvider: objectPropertyProvider,
+    showCollapseAll: false,
+    canSelectMany: false
+  })
+  objectPropertyProvider.bindView(objectPropertyView)
+  sub.push(objectPropertyProvider)
+  sub.push(objectPropertyView)
 
   // Initialize Feed State Manager and Polling Service
   const feedStateManager = new FeedStateManager(context)
@@ -319,6 +330,10 @@ export async function activate(ctx: ExtensionContext): Promise<AbapFsApi> {
 
   const elapsed = new Date().getTime() - startTime
   log.debug(`Activated,pid=${process.pid}, activation time(ms):${elapsed}`)
+
+  // Delay the virtual tools fix so VS Code and Copilot are fully loaded
+  // (the reset command is slow during early activation but fast once everything is ready)
+  setTimeout(() => disableVirtualToolGrouping(ctx), 10000)
   return api
 }
 

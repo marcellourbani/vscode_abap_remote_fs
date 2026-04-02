@@ -4,6 +4,7 @@
  */
 
 import * as vscode from "vscode"
+import { registerToolWithRegistry } from "./toolRegistry"
 import * as fs from "fs"
 import * as path from "path"
 
@@ -220,6 +221,6 @@ export class ABAPFSDocumentationTool implements vscode.LanguageModelTool<IDocume
 
 export function registerDocumentationTool(context: vscode.ExtensionContext): void {
   context.subscriptions.push(
-    vscode.lm.registerTool("abap_fs_documentation", new ABAPFSDocumentationTool())
+    registerToolWithRegistry("abap_fs_documentation", new ABAPFSDocumentationTool())
   )
 }

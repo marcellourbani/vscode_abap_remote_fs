@@ -4,6 +4,7 @@
  */
 
 import * as vscode from "vscode"
+import { registerToolWithRegistry } from "./toolRegistry"
 import { registerMermaidTools } from "./mermaidTools"
 import { registerDumpAnalysisTool } from "./dumpAnalysisTool"
 import { registerTraceAnalysisTool } from "./traceAnalysisTool"
@@ -91,7 +92,7 @@ export async function registerAllTools(context: vscode.ExtensionContext): Promis
 
   // 11. Text Elements
   context.subscriptions.push(
-    vscode.lm.registerTool("manage_text_elements", new ManageTextElementsTool())
+    registerToolWithRegistry("manage_text_elements", new ManageTextElementsTool())
   )
 
   // 12. SAP System Info Tool
@@ -102,17 +103,17 @@ export async function registerAllTools(context: vscode.ExtensionContext): Promis
 
   // 14. Debugger Tools (6 tools)
   context.subscriptions.push(
-    vscode.lm.registerTool("abap_debug_session", new ABAPDebugSessionTool())
+    registerToolWithRegistry("abap_debug_session", new ABAPDebugSessionTool())
   )
   context.subscriptions.push(
-    vscode.lm.registerTool("abap_debug_breakpoint", new ABAPBreakpointTool())
+    registerToolWithRegistry("abap_debug_breakpoint", new ABAPBreakpointTool())
   )
-  context.subscriptions.push(vscode.lm.registerTool("abap_debug_step", new ABAPDebugStepTool()))
+  context.subscriptions.push(registerToolWithRegistry("abap_debug_step", new ABAPDebugStepTool()))
   context.subscriptions.push(
-    vscode.lm.registerTool("abap_debug_variable", new ABAPDebugVariableTool())
+    registerToolWithRegistry("abap_debug_variable", new ABAPDebugVariableTool())
   )
-  context.subscriptions.push(vscode.lm.registerTool("abap_debug_stack", new ABAPDebugStackTool()))
-  context.subscriptions.push(vscode.lm.registerTool("abap_debug_status", new ABAPDebugStatusTool()))
+  context.subscriptions.push(registerToolWithRegistry("abap_debug_stack", new ABAPDebugStackTool()))
+  context.subscriptions.push(registerToolWithRegistry("abap_debug_status", new ABAPDebugStatusTool()))
 
   // 15. Version History Tool
   registerVersionHistoryTool(context)
