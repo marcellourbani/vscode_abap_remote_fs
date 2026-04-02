@@ -1,5 +1,5 @@
 import * as vscode from "vscode"
-import { NOTEBOOK_TYPE, CellResult } from "./types"
+import { NOTEBOOK_TYPE, CellResult, SQL_LANGUAGE_ID } from "./types"
 import { resolveConnection, ResolvedConnection } from "./connectionResolver"
 import { executeSqlCell } from "./sqlCellExecutor"
 import { executeJsCell } from "./jsCellExecutor"
@@ -22,7 +22,7 @@ export class AbapNotebookController {
       NOTEBOOK_TYPE,
       "SAP Data Workbook"
     )
-    this.controller.supportedLanguages = ["sql", "javascript"]
+    this.controller.supportedLanguages = [SQL_LANGUAGE_ID, "javascript"]
     this.controller.supportsExecutionOrder = true
     this.controller.executeHandler = this.executeHandler.bind(this)
     this.controller.interruptHandler = this.interruptHandler.bind(this)
@@ -166,7 +166,8 @@ export class AbapNotebookController {
 
       let cellResult: CellResult
 
-      if (language === "sql") {
+      const isSql = language === SQL_LANGUAGE_ID
+      if (isSql) {
         cellResult = await executeSqlCell(
           code, connection.client, cell.index, results, maxRows
         )
@@ -176,7 +177,7 @@ export class AbapNotebookController {
 
       if (!ended) {
         results.set(cell.index, cellResult)
-        const output = language === "sql"
+        const output = isSql
           ? renderSqlOutput(cellResult)
           : renderJsOutput(cellResult)
         endExec(true, output)

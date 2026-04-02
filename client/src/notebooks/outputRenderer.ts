@@ -17,19 +17,12 @@ export function renderSqlOutput(cellResult: CellResult): vscode.NotebookCellOutp
   const displayRows = rows.slice(0, DISPLAY_ROW_LIMIT)
   const truncated = rows.length > DISPLAY_ROW_LIMIT
 
-  const CSV_INLINE_LIMIT = 100_000
-  const items: vscode.NotebookCellOutputItem[] = [
+  return new vscode.NotebookCellOutput([
     vscode.NotebookCellOutputItem.text(
-      buildHtmlTable(colNames, displayRows, totalRows, truncated, rows.length > CSV_INLINE_LIMIT),
+      buildHtmlTable(colNames, displayRows, totalRows, truncated),
       "text/html"
     )
-  ]
-
-  if (rows.length <= CSV_INLINE_LIMIT) {
-    items.push(vscode.NotebookCellOutputItem.text(buildCsv(colNames, rows), "text/csv"))
-  }
-
-  return new vscode.NotebookCellOutput(items)
+  ])
 }
 
 export function renderJsOutput(cellResult: CellResult): vscode.NotebookCellOutput {
@@ -48,22 +41,15 @@ export function renderJsOutput(cellResult: CellResult): vscode.NotebookCellOutpu
   }
 
   if (isTabularData(val)) {
-    const CSV_INLINE_LIMIT = 100_000
     const colNames = Object.keys(val[0])
     const displayRows = val.slice(0, DISPLAY_ROW_LIMIT)
     const truncated = val.length > DISPLAY_ROW_LIMIT
-    const csvSkipped = val.length > CSV_INLINE_LIMIT
     parts.push(
       vscode.NotebookCellOutputItem.text(
-        buildHtmlTable(colNames, displayRows, val.length, truncated, csvSkipped),
+        buildHtmlTable(colNames, displayRows, val.length, truncated),
         "text/html"
       )
     )
-    if (!csvSkipped) {
-      parts.push(
-        vscode.NotebookCellOutputItem.text(buildCsv(colNames, val), "text/csv")
-      )
-    }
   } else {
     let text: string
     if (typeof val === "string") {
@@ -111,8 +97,7 @@ function buildHtmlTable(
   colNames: string[],
   rows: Record<string, unknown>[],
   totalRows: number,
-  truncated: boolean,
-  csvSkipped = false
+  truncated: boolean
 ): string {
   const headerCells = colNames.map(c => `<th>${esc(c)}</th>`).join("")
   const bodyRows = rows.map(row => {
@@ -121,7 +106,7 @@ function buildHtmlTable(
   }).join("\n")
 
   const footerNote = truncated
-    ? `<p style="color:#888;font-size:12px;">Showing ${rows.length} of ${totalRows} rows. Full data in CSV output and available to subsequent cells.</p>`
+    ? `<p style="color:#888;font-size:12px;">Showing ${rows.length} of ${totalRows} rows. Full data available to subsequent cells.</p>`
     : `<p style="color:#888;font-size:12px;">${totalRows} row${totalRows !== 1 ? "s" : ""}</p>`
 
   return `<style>
@@ -134,27 +119,5 @@ function buildHtmlTable(
 <thead><tr>${headerCells}</tr></thead>
 <tbody>${bodyRows}</tbody>
 </table>
-${footerNote}
-${csvSkipped
-    ? `<p style="font-size:11px;color:#888;">Result set too large for inline CSV (${totalRows} rows). Use a JavaScript cell to process or export the data.</p>`
-    : `<p style="font-size:11px;color:#888;">Right-click the cell output → "Save Cell Output As..." to export all ${totalRows} rows as CSV.</p>`}`
-}
-
-function buildCsv(colNames: string[], rows: Record<string, unknown>[]): string {
-  const header = colNames.map(c => csvEscape(c)).join(",")
-  const dataRows = rows.map(row =>
-    colNames.map(c => csvEscape(String(row[c] ?? ""))).join(",")
-  )
-  return [header, ...dataRows].join("\n")
-}
-
-function csvEscape(val: string): string {
-  let safe = val
-  if (/^[=+\-@\t\r]/.test(safe)) {
-    safe = "'" + safe
-  }
-  if (safe.includes(",") || safe.includes('"') || safe.includes("\n")) {
-    return '"' + safe.replace(/"/g, '""') + '"'
-  }
-  return safe
+${footerNote}`
 }

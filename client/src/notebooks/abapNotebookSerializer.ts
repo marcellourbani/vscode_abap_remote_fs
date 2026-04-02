@@ -1,15 +1,15 @@
 import * as vscode from "vscode"
-import { NOTEBOOK_TYPE, AbapNotebookDocument, AbapNotebookCell, CellType } from "./types"
+import { NOTEBOOK_TYPE, AbapNotebookDocument, AbapNotebookCell, CellType, SQL_LANGUAGE_ID } from "./types"
 import { log } from "../lib"
 
 const CELL_TYPE_TO_LANGUAGE: Record<CellType, string> = {
-  sql: "sql",
+  sql: SQL_LANGUAGE_ID,
   javascript: "javascript",
   markdown: "markdown"
 }
 
 const LANGUAGE_TO_CELL_TYPE: Record<string, CellType> = {
-  sql: "sql",
+  [SQL_LANGUAGE_ID]: "sql",
   javascript: "javascript",
   markdown: "markdown"
 }

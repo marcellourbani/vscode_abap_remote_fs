@@ -79,6 +79,12 @@
     "webpack-cli": "^5.0.1"
   },
   "contributes": {
+    "languages": [
+      {
+        "id": "abap-sql",
+        "aliases": ["ABAP SQL"]
+      }
+    ],
     "notebooks": [
       {
         "type": "sap-data-workbook",

@@ -3,6 +3,8 @@ export const FILE_EXTENSION = ".sapwb"
 
 export type CellType = "sql" | "javascript" | "markdown"
 
+export const SQL_LANGUAGE_ID = "abap-sql"
+
 export interface AbapNotebookCell {
   type: CellType
   content: string

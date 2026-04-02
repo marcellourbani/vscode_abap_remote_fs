@@ -1,7 +1,7 @@
 import * as vscode from "vscode"
 import { registerNotebookSerializer } from "./abapNotebookSerializer"
 import { AbapNotebookController } from "./abapNotebookController"
-import { NOTEBOOK_TYPE } from "./types"
+import { NOTEBOOK_TYPE, SQL_LANGUAGE_ID } from "./types"
 import { log } from "../lib"
 
 let controller: AbapNotebookController | undefined
@@ -52,7 +52,7 @@ async function createNewNotebook(): Promise<void> {
     new vscode.NotebookCellData(
       vscode.NotebookCellKind.Code,
       "SELECT * FROM t000",
-      "sql"
+      SQL_LANGUAGE_ID
     )
   ])
   data.metadata = { version: 1, connectionId: "", title: "" }
