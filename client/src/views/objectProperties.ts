@@ -288,9 +288,6 @@ export class ObjectPropertyProvider implements TreeDataProvider<PropertyNode>, D
         const uri = editor?.document.uri.toString()
         if (uri !== this.lastUri) this.scheduleRefresh(true)
       }),
-      workspace.onDidChangeTextDocument(event => {
-        if (event.document === window.activeTextEditor?.document) this.scheduleRefresh()
-      }),
       workspace.onDidSaveTextDocument(document => {
         if (document === window.activeTextEditor?.document) this.scheduleRefresh(true)
       }),
@@ -340,7 +337,6 @@ export class ObjectPropertyProvider implements TreeDataProvider<PropertyNode>, D
 
   public async refresh(force = false) {
     const generation = ++this.refreshGeneration
-    if (this.view) this.view.message = "Loading object properties..."
 
     try {
       const snapshot = await this.buildSnapshot(force)
