@@ -1,0 +1,183 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta http-equiv="Content-Security-Policy"
+    content="default-src 'none'; script-src {{CSP_SOURCE}}; style-src {{CSP_SOURCE}} 'unsafe-inline'; font-src {{CSP_SOURCE}};">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Execute ABAP Code</title>
+  <style>
+    body {
+      font-family: var(--vscode-editor-font-family);
+      font-size: var(--vscode-editor-font-size);
+      color: var(--vscode-editor-foreground);
+      background: var(--vscode-editor-background);
+      padding: 12px 20px;
+      margin: 0;
+    }
+    h2 { margin: 0 0 12px 0; font-size: 18px; font-weight: 600; }
+    .toolbar {
+      display: flex;
+      gap: 8px;
+      align-items: center;
+      margin-bottom: 10px;
+      flex-wrap: wrap;
+    }
+    select, button {
+      font-family: var(--vscode-editor-font-family);
+      font-size: 13px;
+      padding: 5px 12px;
+      border-radius: 3px;
+      border: 1px solid var(--vscode-input-border);
+      background: var(--vscode-input-background);
+      color: var(--vscode-input-foreground);
+    }
+    button {
+      background: var(--vscode-button-background);
+      color: var(--vscode-button-foreground);
+      border: none;
+      cursor: pointer;
+      font-weight: 600;
+    }
+    button:hover { background: var(--vscode-button-hoverBackground); }
+    button:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+    .run-btn { min-width: 100px; }
+    .clear-btn {
+      background: var(--vscode-button-secondaryBackground);
+      color: var(--vscode-button-secondaryForeground);
+    }
+    textarea {
+      width: 100%;
+      box-sizing: border-box;
+      font-family: var(--vscode-editor-font-family);
+      font-size: var(--vscode-editor-font-size);
+      line-height: 1.5;
+      padding: 10px;
+      border: 1px solid var(--vscode-input-border);
+      background: var(--vscode-input-background);
+      color: var(--vscode-input-foreground);
+      border-radius: 4px;
+      resize: vertical;
+      min-height: 60px;
+      tab-size: 2;
+    }
+    textarea:focus { outline: 1px solid var(--vscode-focusBorder); }
+    .output-section {
+      margin-top: 14px;
+      display: none;
+    }
+    .output-section.visible { display: block; }
+    .output-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 6px;
+    }
+    .output-header h3 { margin: 0; font-size: 14px; font-weight: 600; }
+    .output-meta { font-size: 12px; color: var(--vscode-descriptionForeground); }
+    .output-box {
+      white-space: pre-wrap;
+      font-family: var(--vscode-editor-font-family);
+      font-size: var(--vscode-editor-font-size);
+      padding: 10px;
+      border-radius: 4px;
+      border: 1px solid var(--vscode-panel-border);
+      background: var(--vscode-textBlockQuote-background);
+      max-height: 500px;
+      overflow: auto;
+    }
+    .output-box.success { border-left: 3px solid var(--vscode-testing-iconPassed); }
+    .output-box.error { border-left: 3px solid var(--vscode-testing-iconFailed); }
+    .spinner {
+      display: none;
+      margin-left: 8px;
+      font-size: 13px;
+      color: var(--vscode-descriptionForeground);
+    }
+    .spinner.visible { display: inline; }
+    .confirm-overlay {
+      display: none;
+      position: fixed;
+      top: 0; left: 0; right: 0; bottom: 0;
+      background: rgba(0,0,0,0.5);
+      z-index: 100;
+      justify-content: center;
+      align-items: center;
+    }
+    .confirm-overlay.visible { display: flex; }
+    .confirm-dialog {
+      background: var(--vscode-editor-background);
+      border: 1px solid var(--vscode-panel-border);
+      border-radius: 6px;
+      padding: 20px;
+      max-width: 600px;
+      width: 90%;
+      box-shadow: 0 4px 20px rgba(0,0,0,0.3);
+    }
+    .confirm-dialog h3 { margin: 0 0 12px 0; color: var(--vscode-editorWarning-foreground); }
+    .confirm-dialog .system-tag {
+      display: inline-block;
+      padding: 2px 8px;
+      background: var(--vscode-badge-background);
+      color: var(--vscode-badge-foreground);
+      border-radius: 3px;
+      font-weight: 600;
+      font-size: 13px;
+    }
+    .confirm-dialog pre {
+      background: var(--vscode-textBlockQuote-background);
+      padding: 10px;
+      border-radius: 4px;
+      max-height: 200px;
+      overflow: auto;
+      font-size: 12px;
+      margin: 10px 0;
+    }
+    .confirm-buttons { display: flex; gap: 8px; justify-content: flex-end; margin-top: 14px; }
+    .confirm-buttons .cancel-btn {
+      background: var(--vscode-button-secondaryBackground);
+      color: var(--vscode-button-secondaryForeground);
+    }
+    .warning-text { font-size: 12px; color: var(--vscode-editorWarning-foreground); margin: 8px 0; }
+  </style>
+</head>
+<body>
+  <h2>Execute ABAP Code</h2>
+
+  <div class="toolbar">
+    <select id="systemSelect"><option value="">Loading systems...</option></select>
+    <button class="run-btn" id="runBtn" disabled>Run</button>
+    <button class="clear-btn" id="clearBtn">Clear</button>
+    <span class="spinner" id="spinner">Executing...</span>
+  </div>
+
+  <textarea id="codeInput" rows="6" placeholder="Enter ABAP code here...&#10;&#10;Example: SELECT COUNT(*) FROM mara INTO @DATA(lv_count). WRITE lv_count." spellcheck="false"></textarea>
+
+  <div class="output-section" id="outputSection">
+    <div class="output-header">
+      <h3 id="outputTitle">Output</h3>
+      <span class="output-meta" id="outputMeta"></span>
+    </div>
+    <div class="output-box" id="outputBox"></div>
+  </div>
+
+  <div class="confirm-overlay" id="confirmOverlay">
+    <div class="confirm-dialog">
+      <h3>Confirm ABAP Execution</h3>
+      <p>You are about to execute ABAP code on:</p>
+      <p><span class="system-tag" id="confirmSystem"></span></p>
+      <p class="warning-text">This code will be compiled and executed on the SAP server under your user authorizations.</p>
+      <pre id="confirmCode"></pre>
+      <div class="confirm-buttons">
+        <button class="cancel-btn" id="confirmCancel">Cancel</button>
+        <button class="run-btn" id="confirmRun">Execute</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="{{SCRIPT_URI}}"></script>
+</body>
+</html>

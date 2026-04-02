@@ -2486,6 +2486,11 @@
         "category": "ABAP FS"
       },
       {
+        "command": "abapfs.executeAbapCode",
+        "title": "Execute ABAP Code (REPL)",
+        "category": "ABAP FS"
+      },
+      {
         "command": "abapfs.tableContents",
         "title": "Show table contents",
         "group": "navigation@-10",
