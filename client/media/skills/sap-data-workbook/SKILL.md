@@ -1,0 +1,106 @@
+---
+name: sap-data-workbook
+description: Create SAP Data Workbooks (.sapwb) for SAP data analysis. Use when the user asks to analyze SAP data, create data quality checks, build reports, compare tables, profile data, or any multi-step SAP data exploration. Workbooks have SQL cells (ABAP SQL against SAP) and JavaScript cells (process results). They save as files and can be re-run.
+argument-hint: '[what data to analyze or report to build]'
+user-invocable: true
+disable-model-invocation: false
+---
+
+# SAP Data Workbook — SAP Data Analysis Made Reproducible
+
+You create `.sapwb` files — VS Code notebooks with SQL and JavaScript cells that query SAP and process results. The user opens the file and clicks "Run All."
+
+## When To Create a Workbook
+
+Create a workbook when the user wants to:
+- Analyze SAP data (multi-table, aggregations, comparisons)
+- Build a data quality check or report
+- Profile table data (row counts, distributions, outliers)
+- Compare data across criteria (e.g., "vendors with vs without recent orders")
+- Any task requiring multiple queries where later queries depend on earlier results
+
+## File Format
+
+`.sapwb` files are JSON with this exact structure:
+
+```json
+{
+  "version": 1,
+  "connectionId": "dev100",
+  "title": "Descriptive Title",
+  "cells": [
+    { "type": "markdown", "content": "# Title\nExplanation" },
+    { "type": "sql", "content": "SELECT matnr, mtart FROM mara WHERE mtart = 'FERT'" },
+    { "type": "javascript", "content": "const rows = cells[1].result;\nconst first = rows[0];\nreturn first.MATNR;" },
+    { "type": "sql", "content": "SELECT matnr, werks FROM marc WHERE matnr = ${cells[2].result}" }
+  ]
+}
+```
+
+## Critical Rules
+
+1. **Get the connectionId first.** Call `get_connected_systems` to find available system IDs. Use the first one if only one exists.
+
+2. **Get ABAP SQL syntax.** Call `get_abap_sql_syntax` before writing SQL cells. ABAP SQL differs from standard SQL (tilde for table~field, no semicolons, etc.).
+
+3. **Cell types are exactly:** `"sql"`, `"javascript"`, or `"markdown"`. No other values.
+
+4. **SQL cells** execute ABAP SQL via ADT. Only SELECT and WITH are allowed. No DML.
+
+5. **JavaScript cells** run in a sandbox. They access previous cell results via `cells[N].result`:
+   - SQL cell results are arrays of objects: `[{FIELD1: "val", FIELD2: "val"}, ...]`
+   - JS cell results are whatever the cell returns
+   - Use `return` to produce a result that subsequent cells can reference
+
+6. **SQL interpolation:** SQL cells can reference previous results with `${cells[N].result.path}`. This resolves before execution. **Strings are single-quoted automatically — do NOT add your own quotes around interpolation expressions.** Arrays are joined with commas (each element auto-quoted). Numbers are inserted bare.
+
+7. **maxRows** is optional per SQL cell (default 1000). Set it to however many rows the user needs. This maps directly to ADT's maxRows parameter: `{ "type": "sql", "content": "...", "maxRows": 50000 }`
+
+8. **Start every workbook with a markdown cell** explaining what it does.
+
+9. **File path:** Write to the user's workspace root or a `notebooks/` subfolder.
+
+## Cell Referencing Examples
+
+```javascript
+// Access SQL results (array of row objects)
+const allRows = cells[1].result;              // full array
+const firstRow = cells[1].result[0];          // first row
+const value = cells[1].result[0].MATNR;       // specific field
+
+// Access JS cell results
+const count = cells[2].result;                // if cell 2 returned a number
+const obj = cells[2].result.vendorIds;        // if cell 2 returned an object
+
+// Use in SQL interpolation (quotes added automatically for strings — do NOT wrap in quotes)
+// "SELECT ... WHERE matnr = ${cells[2].result}"
+// "SELECT ... WHERE lifnr IN (${cells[3].result.ids})"  -- arrays auto-join with commas
+```
+
+## Example: Data Quality Workbook
+
+```json
+{
+  "version": 1,
+  "connectionId": "dev100",
+  "title": "Material Master Data Quality Check",
+  "cells": [
+    {
+      "type": "markdown",
+      "content": "# Material Master Data Quality\nChecks for materials missing descriptions, invalid UoM, and orphaned records."
+    },
+    {
+      "type": "sql",
+      "content": "SELECT matnr, mtart, matkl, meins FROM mara WHERE ersda > '20250101'"
+    },
+    {
+      "type": "javascript",
+      "content": "const materials = cells[1].result;\nconst noUoM = materials.filter(m => !m.MEINS || m.MEINS.trim() === '');\nconst noGroup = materials.filter(m => !m.MATKL || m.MATKL.trim() === '');\nreturn {\n  total: materials.length,\n  missingUoM: noUoM.length,\n  missingGroup: noGroup.length,\n  issues: [...noUoM.slice(0, 10), ...noGroup.slice(0, 10)]\n};"
+    },
+    {
+      "type": "markdown",
+      "content": "## Results Summary\nThe JavaScript cell above returns counts and sample issues. Review the output for materials that need attention."
+    }
+  ]
+}
+```

@@ -44,7 +44,8 @@
     "onFileSystem:adt",
     "onCommand:abapfs.connect",
     "onCommand:abapfs.connectionManager",
-    "onCommand:abapfs.runInEmbeddedGui"
+    "onCommand:abapfs.runInEmbeddedGui",
+    "onNotebook:sap-data-workbook"
   ],
   "main": "./client/dist/extension",
   "scripts": {
@@ -78,6 +79,17 @@
     "webpack-cli": "^5.0.1"
   },
   "contributes": {
+    "notebooks": [
+      {
+        "type": "sap-data-workbook",
+        "displayName": "SAP Data Workbook",
+        "selector": [
+          {
+            "filenamePattern": "*.sapwb"
+          }
+        ]
+      }
+    ],
     "chatSkills": [
       {
         "path": "./client/dist/media/skills/clean-abap/SKILL.md"
@@ -99,6 +111,9 @@
       },
       {
         "path": "./client/dist/media/skills/sap-customizing/SKILL.md"
+      },
+      {
+        "path": "./client/dist/media/skills/sap-data-workbook/SKILL.md"
       }
     ],
     "breakpoints": [
@@ -2483,6 +2498,16 @@
       {
         "command": "abapfs.selectDB",
         "title": "Select Query",
+        "category": "ABAP FS"
+      },
+      {
+        "command": "abapfs.newAbapNotebook",
+        "title": "New SAP Data Workbook",
+        "category": "ABAP FS"
+      },
+      {
+        "command": "abapfs.notebookChangeConnection",
+        "title": "SAP Data Workbook: Change SAP System",
         "category": "ABAP FS"
       },
       {
