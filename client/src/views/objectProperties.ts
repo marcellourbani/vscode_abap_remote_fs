@@ -51,8 +51,12 @@ class TtlCache<V> {
     this.store.set(key, { value, expiresAt: Date.now() + this.ttlMs })
   }
 
-  delete(key: string) { this.store.delete(key) }
-  clear() { this.store.clear() }
+  delete(key: string) {
+    this.store.delete(key)
+  }
+  clear() {
+    this.store.clear()
+  }
 }
 
 // --- Tree items ---
@@ -184,9 +188,7 @@ class RevisionChildItem extends TreeItem {
     this.revisionKey = revision.uri || `${revision.version || ""}:${revision.date || ""}:${index}`
     this.displayIndex = index
     const inactive = forceInactive || isInactiveRevision(revision)
-    this.description = inactive
-      ? "Unactivated"
-      : revisionDescription(revision)
+    this.description = inactive ? "Unactivated" : revisionDescription(revision)
     this.tooltip = [
       `Transport: ${revision.version || "-"}`,
       `Title: ${revision.versionTitle || "-"}`,
@@ -210,11 +212,16 @@ class RevisionChildItem extends TreeItem {
 }
 
 class CompareSelectedHistoryItem extends TreeItem {
-  constructor(uri: Uri, selectedCount: number, leftRevision?: Revision, leftIndex?: number, rightRevision?: Revision, rightIndex?: number) {
+  constructor(
+    uri: Uri,
+    selectedCount: number,
+    leftRevision?: Revision,
+    leftIndex?: number,
+    rightRevision?: Revision,
+    rightIndex?: number
+  ) {
     super("Compare selected", TreeItemCollapsibleState.None)
-    this.description = selectedCount
-      ? `${selectedCount} selected`
-      : "Select 2 revisions"
+    this.description = selectedCount ? `${selectedCount} selected` : "Select 2 revisions"
     this.tooltip = "Compare two checked history entries"
     this.iconPath = new ThemeIcon("diff")
     this.contextValue = "objectPropertyHistoryCompare"
@@ -309,7 +316,7 @@ const TYPE_LABELS: Record<string, string | ((mp?: MainInclude) => string)> = {
   "CLAS/OM": "Class Method",
   "INTF/OI": "Interface",
   "PROG/P": "Program",
-  "PROG/I": (mp) => mp ? "Include" : "Program Include",
+  "PROG/I": mp => (mp ? "Include" : "Program Include"),
   "FUGR/F": "Function Group",
   "FUGR/FF": "Function Module",
   "DEVC/K": "Package",
@@ -395,7 +402,9 @@ const revisionLabel = (revision: Revision, index: number) => {
 }
 
 const sortRevisionsForDisplay = (revisions: Revision[]) =>
-  [...revisions].sort((left, right) => Number(isInactiveRevision(right)) - Number(isInactiveRevision(left)))
+  [...revisions].sort(
+    (left, right) => Number(isInactiveRevision(right)) - Number(isInactiveRevision(left))
+  )
 
 const loadRevisionHistory = async (uri: Uri, force = false): Promise<Revision[]> => {
   try {
@@ -530,14 +539,22 @@ export class ObjectPropertyProvider implements TreeDataProvider<PropertyNode>, D
   }
 
   public scheduleRefresh(force = false) {
+    if (!this.view?.visible) {
+      // Do not schedule background refresh when the tree view is hidden.
+      return
+    }
+
     this.pendingForceRefresh ||= force
     if (this.refreshHandle) clearTimeout(this.refreshHandle)
-    this.refreshHandle = setTimeout(() => {
-      this.refreshHandle = undefined
-      const shouldForce = this.pendingForceRefresh
-      this.pendingForceRefresh = false
-      void this.refresh(shouldForce)
-    }, force ? 0 : 250)
+    this.refreshHandle = setTimeout(
+      () => {
+        this.refreshHandle = undefined
+        const shouldForce = this.pendingForceRefresh
+        this.pendingForceRefresh = false
+        void this.refresh(shouldForce)
+      },
+      force ? 0 : 250
+    )
   }
 
   public async refresh(force = false) {
@@ -600,12 +617,31 @@ export class ObjectPropertyProvider implements TreeDataProvider<PropertyNode>, D
     ])
 
     const transport = currentTransport(lockStatus, transportInfo)
-    const user = (lockStatus.status === "locked" && lockStatus.CORRUSER) || getClient(uri.authority).username
+    const user =
+      (lockStatus.status === "locked" && lockStatus.CORRUSER) || getClient(uri.authority).username
 
     return {
-      items: this.buildItems(uri, uri.authority, user, object, transport, transportInfo, mainProgram, revisions),
+      items: this.buildItems(
+        uri,
+        uri.authority,
+        user,
+        object,
+        transport,
+        transportInfo,
+        mainProgram,
+        revisions
+      ),
       description: object.name
     }
+  }
+  private extractFunctionType(object: AbapObject): string | undefined {
+    const meta = object.structure?.metaData
+    if (
+      meta &&
+      "fmodule:processingType" in meta &&
+      typeof meta["fmodule:processingType"] === "string"
+    )
+      return meta["fmodule:processingType"]
   }
 
   private buildItems(
@@ -621,11 +657,12 @@ export class ObjectPropertyProvider implements TreeDataProvider<PropertyNode>, D
     const items: PropertyNode[] = []
     const objectInactive = object.structure?.metaData["adtcore:version"] === "inactive"
     this.historyUri = uri
-
+    const functionType = this.extractFunctionType(object)
     pushIfValue(items, "Name", object.name, { icon: "symbol-object" })
     pushIfValue(items, "Description", objectDescription(object), { icon: "note" })
     pushIfValue(items, "Package", transportInfo?.DEVCLASS, { icon: "package" })
     pushIfValue(items, "Type", combinedTypeLabel(object, mainProgram), { icon: "symbol-class" })
+    pushIfValue(items, "Function type", functionType)
     pushIfValue(items, "Created At", object.createdAt, { icon: "history" })
     pushIfValue(items, "Created By", object.createdBy, { icon: "person" })
     pushIfValue(items, "Modified At", object.changedAt, { icon: "history" })
@@ -636,7 +673,13 @@ export class ObjectPropertyProvider implements TreeDataProvider<PropertyNode>, D
         ? `${transport.number} (${transport.description})`
         : transport.number
       items.push(
-        new TransportPropertyItem(label, connId, user, transport.number, transportRequestUri(transport.number))
+        new TransportPropertyItem(
+          label,
+          connId,
+          user,
+          transport.number,
+          transportRequestUri(transport.number)
+        )
       )
     }
 
@@ -675,7 +718,9 @@ export class ObjectPropertyProvider implements TreeDataProvider<PropertyNode>, D
           changed = true
         }
       } else if (this.selectedRevisionKeys.includes(item.revisionKey)) {
-        this.selectedRevisionKeys = this.selectedRevisionKeys.filter(key => key !== item.revisionKey)
+        this.selectedRevisionKeys = this.selectedRevisionKeys.filter(
+          key => key !== item.revisionKey
+        )
         this.selectedRevisions.delete(item.revisionKey)
         changed = true
       }
