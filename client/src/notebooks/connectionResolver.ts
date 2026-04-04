@@ -1,5 +1,5 @@
 import * as vscode from "vscode"
-import { connectedRoots, formatKey } from "../config"
+import { connectedRoots } from "../config"
 import { getClient } from "../adt/conections"
 import { ADTClient } from "abap-adt-api"
 
@@ -8,9 +8,7 @@ export interface ResolvedConnection {
   client: ADTClient
 }
 
-export async function resolveConnection(
-  requestedId: string | undefined
-): Promise<ResolvedConnection> {
+export async function resolveConnection(): Promise<ResolvedConnection> {
   const roots = connectedRoots()
   const connectedIds = Array.from(roots.keys())
 
@@ -20,61 +18,33 @@ export async function resolveConnection(
     )
   }
 
-  const normalizedRequest = requestedId ? formatKey(requestedId) : undefined
-
-  if (normalizedRequest && connectedIds.includes(normalizedRequest)) {
-    try {
-      return { connectionId: normalizedRequest, client: getClient(normalizedRequest) }
-    } catch (err: any) {
-      throw new NotebookConnectionError(
-        `System '${requestedId}' connection failed: ${err.message || err}. Reconnect and try again.`
-      )
-    }
-  }
-
-  if (connectedIds.length === 1) {
-    const onlyId = connectedIds[0]
-    if (normalizedRequest && normalizedRequest !== onlyId) {
-      const use = await vscode.window.showInformationMessage(
-        `Notebook targets '${requestedId}' which isn't connected. Run on '${onlyId}'?`,
-        "Yes",
-        "Cancel"
-      )
-      if (use !== "Yes") {
-        throw new NotebookConnectionError("Execution cancelled by user.")
-      }
-    }
-    try {
-      return { connectionId: onlyId, client: getClient(onlyId) }
-    } catch (err: any) {
-      throw new NotebookConnectionError(
-        `System '${onlyId}' connection failed: ${err.message || err}. Reconnect and try again.`
-      )
-    }
-  }
-
   const picked = await vscode.window.showQuickPick(
-    connectedIds.map(id => ({
-      label: id,
-      description: id === normalizedRequest ? "(requested)" : ""
-    })),
+    connectedIds.map(id => ({ label: id })),
     {
-      placeHolder: normalizedRequest
-        ? `'${requestedId}' not connected. Pick a system:`
-        : "Pick a SAP system for this notebook:",
+      placeHolder: "Pick a SAP system for this Run:",
       ignoreFocusOut: true
     }
   )
-
   if (!picked) {
     throw new NotebookConnectionError("No system selected. Execution cancelled.")
   }
 
+  const selectedId = picked.label
+
+  const confirm = await vscode.window.showWarningMessage(
+    `Run workbook on SAP system "${selectedId}"?`,
+    { modal: true },
+    "Yes, run"
+  )
+  if (confirm !== "Yes, run") {
+    throw new NotebookConnectionError("Execution cancelled by user.")
+  }
+
   try {
-    return { connectionId: picked.label, client: getClient(picked.label) }
+    return { connectionId: selectedId, client: getClient(selectedId) }
   } catch (err: any) {
     throw new NotebookConnectionError(
-      `System '${picked.label}' connection failed: ${err.message || err}. Reconnect and try again.`
+      `System '${selectedId}' connection failed: ${err.message || err}. Reconnect and try again.`
     )
   }
 }

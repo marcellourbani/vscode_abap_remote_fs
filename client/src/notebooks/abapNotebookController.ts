@@ -15,6 +15,7 @@ export class AbapNotebookController {
   private readonly runGeneration = new Map<string, number>()
   private statusBarItem: vscode.StatusBarItem | undefined
   private editorListener: vscode.Disposable | undefined
+  private lastActiveNotebookKey: string | undefined
 
   constructor() {
     this.controller = vscode.notebooks.createNotebookController(
@@ -29,10 +30,22 @@ export class AbapNotebookController {
 
     this.editorListener = vscode.window.onDidChangeActiveNotebookEditor(editor => {
       if (editor && editor.notebook.notebookType === NOTEBOOK_TYPE) {
-        const conn = this.notebookConnections.get(editor.notebook.uri.toString())
+        const notebookKey = editor.notebook.uri.toString()
+        if (this.lastActiveNotebookKey && this.lastActiveNotebookKey !== notebookKey) {
+          // Switched to a different notebook — clear the old one
+          this.notebookConnections.delete(this.lastActiveNotebookKey)
+        }
+        if (!this.lastActiveNotebookKey || this.lastActiveNotebookKey !== notebookKey) {
+          // Coming back from a non-notebook or a different notebook — clear this one too
+          this.notebookConnections.delete(notebookKey)
+        }
+        this.lastActiveNotebookKey = notebookKey
+        const conn = this.notebookConnections.get(notebookKey)
         if (conn) this.updateStatusBar(conn.connectionId)
         else this.hideStatusBar()
       } else {
+        // Left the notebook — mark it so next return clears cache
+        this.lastActiveNotebookKey = undefined
         this.hideStatusBar()
       }
     })
@@ -49,7 +62,7 @@ export class AbapNotebookController {
     const key = notebook.uri.toString()
     const ac = this.runningAbortControllers.get(key)
     if (ac) ac.abort()
-    log(`SAP Data Workbook: interrupted execution for ${key}`)
+    log.debug(`SAP Data Workbook: interrupted execution for ${key}`)
   }
 
   private async executeHandler(
@@ -164,6 +177,15 @@ export class AbapNotebookController {
       const code = cell.document.getText()
       const maxRows = cell.metadata?.maxRows as number | undefined
 
+      if (language !== SQL_LANGUAGE_ID && language !== "javascript") {
+        endExec(false, renderErrorOutput(
+          `Unsupported cell language "${language}". Only "abap-sql" and "javascript" cells can be executed.`
+        ))
+        cancelListener.dispose()
+        abortSignal.removeEventListener("abort", onAbort)
+        return false
+      }
+
       let cellResult: CellResult
 
       const isSql = language === SQL_LANGUAGE_ID
@@ -184,7 +206,7 @@ export class AbapNotebookController {
       }
     } catch (error: any) {
       const msg = error?.message || String(error)
-      log(`SAP Data Workbook cell ${cell.index} error: ${msg}`)
+      log.debug(`SAP Data Workbook cell ${cell.index} error: ${msg}`)
       endExec(false, renderErrorOutput(error instanceof Error ? error : new Error(msg)))
     }
 
@@ -200,11 +222,7 @@ export class AbapNotebookController {
     const existing = this.notebookConnections.get(notebookKey)
     if (existing) return existing
 
-    const metadata = notebook.metadata as Record<string, any> | undefined
-    const raw = metadata?.connectionId
-    const requestedId = typeof raw === "string" && raw.trim() ? raw.trim() : undefined
-
-    const connection = await resolveConnection(requestedId)
+    const connection = await resolveConnection()
     this.notebookConnections.set(notebookKey, connection)
     return connection
   }
@@ -212,32 +230,30 @@ export class AbapNotebookController {
   private updateStatusBar(connectionId: string): void {
     if (!this.statusBarItem) {
       this.statusBarItem = vscode.window.createStatusBarItem(
-        vscode.StatusBarAlignment.Right,
+        vscode.StatusBarAlignment.Left,
         100
       )
     }
-    this.statusBarItem.text = `$(database) SAP: ${connectionId}`
-    this.statusBarItem.tooltip = `SAP Data Workbook connected to: ${connectionId}`
-    this.statusBarItem.command = "abapfs.notebookChangeConnection"
+    this.statusBarItem.text = `$(database) SAP Data Notebook System: ${connectionId}`
+    this.statusBarItem.tooltip = `Connected to: ${connectionId} — click to disconnect`
+    this.statusBarItem.command = "abapfs.notebookClearConnection"
     this.statusBarItem.show()
+    log.debug(`📒 [Controller] statusBar shown: SAP: ${connectionId}`)
   }
 
   private hideStatusBar(): void {
     this.statusBarItem?.hide()
+    log.debug(`📒 [Controller] statusBar hidden`)
   }
 
-  resetConnection(notebookUri?: string): void {
-    if (notebookUri) {
-      this.notebookConnections.delete(notebookUri)
-      this.cellResults.delete(notebookUri)
-    } else {
-      this.notebookConnections.clear()
-      this.cellResults.clear()
-    }
+  clearCachedConnection(notebookUri: string): void {
+    log.debug(`📒 [Controller] clearCachedConnection: ${notebookUri}`)
+    this.notebookConnections.delete(notebookUri)
     this.hideStatusBar()
   }
 
   clearResults(notebookUri: string): void {
+    log.debug(`📒 [Controller] clearResults: ${notebookUri}`)
     this.cellResults.delete(notebookUri)
     this.notebookConnections.delete(notebookUri)
     this.executionCounters.delete(notebookUri)

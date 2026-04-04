@@ -13,7 +13,6 @@ export interface AbapNotebookCell {
 
 export interface AbapNotebookDocument {
   version: number
-  connectionId?: string
   title?: string
   cells: AbapNotebookCell[]
 }
