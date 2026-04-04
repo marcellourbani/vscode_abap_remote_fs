@@ -205,12 +205,10 @@ export class FsProvider implements FileSystemProvider {
       const node = await root.getNodeAsync(uri.path)
       if (isAbapFile(node)) {
         handleTelemetry(uri)
-        // Auto-lock if not already locked
+        // Always request lock to add claim - prevents deferred unlock race condition
         const oldlock = (await root.lockManager.finalStatus(uri.path)).status
-        if (oldlock === "unlocked") {
-          await root.lockManager.requestLock(uri.path)
-          needUnlocking = true
-        }
+        await root.lockManager.requestLock(uri.path)
+        needUnlocking = oldlock === "unlocked"
 
         const trsel = await selectTransportIfNeeded(uri)
         if (trsel.cancelled) return
