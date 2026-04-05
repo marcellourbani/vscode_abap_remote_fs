@@ -104,7 +104,6 @@
       runBtn.textContent = "Running..."
     } else {
       runBtn.textContent = "Run"
-      systemSelect.value = ""
       updateRunButton()
     }
   }

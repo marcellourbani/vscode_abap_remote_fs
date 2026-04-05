@@ -77,12 +77,13 @@ CLASS zcl_abap_repl IMPLEMENTATION.
 
 
   METHOD handle_get.
+    DATA(lv_prod) = COND string( WHEN is_production_system( ) = abap_true
+                                  THEN 'true' ELSE 'false' ).
     DATA(lv_json) = |\{"status":"ready","version":"{ c_version }",| &&
                     |"user":"{ sy-uname }",| &&
                     |"system":"{ sy-sysid }",| &&
                     |"client":"{ sy-mandt }",| &&
-                    |"production":{ COND #( WHEN is_production_system( ) = abap_true
-                                            THEN 'true' ELSE 'false' ) }\}|.
+                    |"production":{ lv_prod }\}|.
     set_json_response( server = server iv_json = lv_json ).
   ENDMETHOD.
 
@@ -118,11 +119,11 @@ CLASS zcl_abap_repl IMPLEMENTATION.
       RETURN.
     ENDIF.
 
-    " Unescape JSON string
-    REPLACE ALL OCCURRENCES OF '\\n' IN lv_code WITH cl_abap_char_utilities=>newline.
-    REPLACE ALL OCCURRENCES OF '\\t' IN lv_code WITH cl_abap_char_utilities=>horizontal_tab.
-    REPLACE ALL OCCURRENCES OF '\\"' IN lv_code WITH '"'.
-    REPLACE ALL OCCURRENCES OF '\\\\' IN lv_code WITH '\'.
+    " Unescape JSON string (order matters: \\ must be last)
+    REPLACE ALL OCCURRENCES OF |\\n| IN lv_code WITH cl_abap_char_utilities=>newline.
+    REPLACE ALL OCCURRENCES OF |\\t| IN lv_code WITH cl_abap_char_utilities=>horizontal_tab.
+    REPLACE ALL OCCURRENCES OF |\\"| IN lv_code WITH |"|.
+    REPLACE ALL OCCURRENCES OF |\\\\| IN lv_code WITH |\\|.
 
     IF is_production_system( ) = abap_true.
       set_json_response(
@@ -150,11 +151,12 @@ CLASS zcl_abap_repl IMPLEMENTATION.
       iv_runtime = lv_runtime
     ).
 
-    DATA(lv_safe_output) = escape_for_json( lv_output ).
+    DATA(lv_safe_output) = lv_output.
     DATA(lv_safe_error) = escape_for_json( lv_error ).
 
-    DATA(lv_json) = |\{"success":{ COND #( WHEN lv_error IS INITIAL
-                                            THEN 'true' ELSE 'false' ) },| &&
+    DATA(lv_success) = COND string( WHEN lv_error IS INITIAL
+                                     THEN 'true' ELSE 'false' ).
+    DATA(lv_json) = |\{"success":{ lv_success },| &&
                     |"output":"{ lv_safe_output }",| &&
                     |"error":"{ lv_safe_error }",| &&
                     |"runtime_ms":{ lv_runtime }\}|.
@@ -191,9 +193,21 @@ CLASS zcl_abap_repl IMPLEMENTATION.
           RETURN.
         ENDIF.
 
-        GENERATE REPORT lv_repname.
+        GENERATE REPORT lv_repname
+          MESSAGE DATA(lv_gen_msg)
+          LINE    DATA(lv_gen_line)
+          WORD    DATA(lv_gen_word).
         IF sy-subrc <> 0.
-          ev_error = |Compilation failed for { lv_repname }. Check ABAP syntax.|.
+          " Subtract 1 because we prepend "REPORT lv_repname." as line 1
+          DATA(lv_user_line) = lv_gen_line - 1.
+          DATA(lv_err_detail) = lv_gen_msg.
+          IF lv_user_line > 0.
+            lv_err_detail = |Line { lv_user_line }: { lv_gen_msg }|.
+          ENDIF.
+          IF lv_gen_word IS NOT INITIAL.
+            lv_err_detail = lv_err_detail && ' (near "' && lv_gen_word && '")'.
+          ENDIF.
+          ev_error = 'Syntax error: ' && lv_err_detail.
           DELETE REPORT lv_repname.
           RETURN.
         ENDIF.
@@ -225,11 +239,20 @@ CLASS zcl_abap_repl IMPLEMENTATION.
               OTHERS             = 3.
 
           IF sy-subrc = 0.
+            DATA lt_out_lines TYPE TABLE OF string.
             LOOP AT lt_asci INTO DATA(lv_asci_line).
+              DATA(lv_trimmed) = CONV string( lv_asci_line ).
+              " Strip trailing spaces from char255
+              WHILE strlen( lv_trimmed ) > 0 AND substring( val = lv_trimmed off = strlen( lv_trimmed ) - 1 len = 1 ) = ` `.
+                lv_trimmed = substring( val = lv_trimmed off = 0 len = strlen( lv_trimmed ) - 1 ).
+              ENDWHILE.
+              APPEND lv_trimmed TO lt_out_lines.
+            ENDLOOP.
+            LOOP AT lt_out_lines INTO DATA(lv_out_line).
               IF ev_output IS NOT INITIAL.
-                ev_output = ev_output && cl_abap_char_utilities=>newline.
+                ev_output = ev_output && |\\n|.
               ENDIF.
-              ev_output = ev_output && lv_asci_line.
+              ev_output = ev_output && escape_for_json( lv_out_line ).
             ENDLOOP.
           ENDIF.
         ENDIF.
@@ -282,9 +305,12 @@ CLASS zcl_abap_repl IMPLEMENTATION.
     ls_log-extnumber = |REPL { sy-uname } { sy-datum } { sy-uzeit }|.
 
     CALL FUNCTION 'BAL_LOG_CREATE'
-      EXPORTING  i_s_log      = ls_log
-      IMPORTING  e_log_handle = lv_handle
-      EXCEPTIONS OTHERS       = 1.
+      EXPORTING
+        i_s_log      = ls_log
+      IMPORTING
+        e_log_handle = lv_handle
+      EXCEPTIONS
+        OTHERS       = 1.
 
     IF sy-subrc = 0.
       ls_msg-msgty = COND #( WHEN iv_error IS INITIAL THEN 'S' ELSE 'E' ).
@@ -298,40 +324,63 @@ CLASS zcl_abap_repl IMPLEMENTATION.
       ls_msg-msgv1 = iv_code(lv_len).
 
       CALL FUNCTION 'BAL_LOG_MSG_ADD'
-        EXPORTING  i_log_handle = lv_handle
-                   i_s_msg      = ls_msg
-        EXCEPTIONS OTHERS       = 1.
+        EXPORTING
+          i_log_handle = lv_handle
+          i_s_msg      = ls_msg
+        EXCEPTIONS
+          OTHERS       = 1.
 
       CALL FUNCTION 'BAL_DB_SAVE'
-        EXPORTING  i_save_all = abap_true
-        EXCEPTIONS OTHERS     = 1.
+        EXPORTING
+          i_save_all = abap_true
+        EXCEPTIONS
+          OTHERS     = 1.
     ENDIF.
   ENDMETHOD.
 
 
   METHOD set_json_response.
     server->response->set_status( code = iv_status reason = '' ).
-    server->response->set_content_type( 'application/json' ).
+    server->response->set_content_type( 'text/plain' ).
     server->response->set_cdata( iv_json ).
   ENDMETHOD.
 
 
   METHOD escape_for_json.
-    rv_escaped = iv_text.
-    IF rv_escaped IS INITIAL.
-      RETURN.
-    ENDIF.
-    REPLACE ALL OCCURRENCES OF '\' IN rv_escaped WITH '\\'.
-    REPLACE ALL OCCURRENCES OF '"' IN rv_escaped WITH '\"'.
-    IF cl_abap_char_utilities=>cr_lf IS NOT INITIAL.
-      REPLACE ALL OCCURRENCES OF cl_abap_char_utilities=>cr_lf IN rv_escaped WITH '\n'.
-    ENDIF.
-    IF cl_abap_char_utilities=>newline IS NOT INITIAL.
-      REPLACE ALL OCCURRENCES OF cl_abap_char_utilities=>newline IN rv_escaped WITH '\n'.
-    ENDIF.
-    IF cl_abap_char_utilities=>horizontal_tab IS NOT INITIAL.
-      REPLACE ALL OCCURRENCES OF cl_abap_char_utilities=>horizontal_tab IN rv_escaped WITH '\t'.
-    ENDIF.
+    DATA: lv_char   TYPE c LENGTH 1,
+          lv_result TYPE string,
+          lv_pos    TYPE i,
+          lv_len    TYPE i,
+          lv_cr     TYPE c LENGTH 1.
+
+    " Carriage return: first char of CR+LF
+    lv_cr = substring( val = cl_abap_char_utilities=>cr_lf off = 0 len = 1 ).
+
+    lv_len = strlen( iv_text ).
+    DO lv_len TIMES.
+      lv_pos = sy-index - 1.
+      lv_char = substring( val = iv_text off = lv_pos len = 1 ).
+      CASE lv_char.
+        WHEN '\'.
+          lv_result = lv_result && |\\\\|.
+        WHEN '"'.
+          lv_result = lv_result && |\\"|.
+        WHEN cl_abap_char_utilities=>newline.
+          lv_result = lv_result && |\n|.
+        WHEN lv_cr.
+          CONTINUE. " Skip CR, LF follows
+        WHEN cl_abap_char_utilities=>horizontal_tab.
+          lv_result = lv_result && |\t|.
+        WHEN OTHERS.
+          IF lv_char = ' '.
+            lv_result = lv_result && | |.
+          ELSE.
+            lv_result = lv_result && lv_char.
+          ENDIF.
+      ENDCASE.
+    ENDDO.
+
+    rv_escaped = lv_result.
   ENDMETHOD.
 
 ENDCLASS.

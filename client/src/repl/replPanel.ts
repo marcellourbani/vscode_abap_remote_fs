@@ -120,7 +120,8 @@ export class ReplPanel {
             output: "",
             error: `REPL service not available on '${connectionId}'. ` +
               `Deploy ZCL_ABAP_REPL and create SICF service '/sap/bc/z_abap_repl'. ` +
-              `See the setup guide in the repl/ folder.`,
+              `Run command "ABAP REPL Setup Guide" for instructions.`,
+
             runtime_ms: 0
           }
         })
@@ -131,10 +132,13 @@ export class ReplPanel {
       try {
         // Both checks must agree it's NOT production. If either says production, block.
         const sapSaysNotProd = health.production === false
+        log.debug(`ABAP REPL health.production=${health.production}, sapSaysNotProd=${sapSaysNotProd}`)
         const sysInfo = await getSAPSystemInfo(connectionId.toLowerCase())
         const cat = sysInfo.currentClient?.category
         const sysInfoSaysNotProd = !!cat && cat !== "Production" && !cat.startsWith("P")
+        log.debug(`ABAP REPL sysInfo category="${cat}", sysInfoSaysNotProd=${sysInfoSaysNotProd}`)
         isProduction = !(sapSaysNotProd && sysInfoSaysNotProd)
+        log.debug(`ABAP REPL final isProduction=${isProduction}`)
       } catch (e) {
         log(`ABAP REPL production check failed: ${e instanceof Error ? e.message : String(e)}`)
         // Can't verify — block (fail-closed)

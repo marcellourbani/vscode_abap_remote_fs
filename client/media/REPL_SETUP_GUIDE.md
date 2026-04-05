@@ -1,5 +1,9 @@
 # ABAP REPL — SAP-Side Setup Guide
 
+> ⚠️ **Experimental Feature** — The ABAP REPL is experimental and may change or be removed in future versions. Use with caution.
+
+> 🔒 **Production Systems Blocked** — The REPL intentionally refuses to execute on production SAP clients. This is a hardcoded security restriction. It is designed for development and test systems only.
+
 ## What You're Installing
 
 One ABAP class (`ZCL_ABAP_REPL`) and one SICF service node (`Z_ABAP_REPL`). Nothing else. No database tables, no function modules, no config tables.
@@ -20,7 +24,7 @@ One ABAP class (`ZCL_ABAP_REPL`) and one SICF service node (`Z_ABAP_REPL`). Noth
 6. Go to the **Interfaces** tab → Add: **IF_HTTP_EXTENSION**
 7. Go to the **Source** tab (Source code-based view)
 8. Delete all generated code
-9. Paste the ENTIRE contents of `ZCL_ABAP_REPL.abap` from this folder
+9. Paste the ENTIRE contents of [`ZCL_ABAP_REPL.abap`](ZCL_ABAP_REPL.abap)
 10. **Activate** (Ctrl+F3)
 
 ### Option B: Via ABAP FS in VS Code

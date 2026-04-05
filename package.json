@@ -2491,6 +2491,11 @@
         "category": "ABAP FS"
       },
       {
+        "command": "abapfs.abapReplSetupGuide",
+        "title": "ABAP REPL Setup Guide",
+        "category": "ABAP FS"
+      },
+      {
         "command": "abapfs.tableContents",
         "title": "Show table contents",
         "group": "navigation@-10",
@@ -2976,6 +2981,9 @@
       "commandPalette": [
         {
           "command": "abapfs.connect"
+        },
+        {
+           "command": "abapfs.abapReplSetupGuide"
         },
         {
           "command": "abapfs.startRecording"
