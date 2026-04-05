@@ -16,10 +16,13 @@ import {
   workspace
 } from "vscode"
 import { caughtToString, log } from "../lib"
-import { isAbapFile, isAbapFolder, isFolder } from "abapfs"
+import { AbapFile, isAbapFile, isAbapFolder, isFolder, Root } from "abapfs"
 import { getSaveReason, clearSaveReason } from "../listeners"
 import { selectTransportIfNeeded } from "../adt/AdtTransports"
 import { LocalFsProvider } from "./LocalFsProvider"
+import { assert } from "console"
+import { isHttpError } from "abap-adt-api"
+import { ReloginError } from "abapfs/out/lockManager"
 
 const loadFromEditor = async (
   uri: Uri,
@@ -196,6 +199,31 @@ export class FsProvider implements FileSystemProvider {
     )
   }
 
+  private async writewithRelogin(
+    root: Root,
+    uri: Uri,
+    node: AbapFile,
+    content: string,
+    transportId?: string
+  ) {
+    const lock = root.lockManager.lockStatus(uri.path)
+    if (lock.status !== "locked") throw new Error("File is not locked")
+    try {
+      await node.write(content.toString(), lock.LOCK_HANDLE, transportId)
+    } catch (error) {
+      if (isHttpError(error) && error.status >= 400 && error.status < 500) {
+        log(`Error writing file ${uri.toString()}\n${caughtToString(error)}\nAttempting relogin`)
+        await root.lockManager.relogin().catch(e => {
+          if (!ReloginError.isReloginError(e)) throw e
+        })
+        const newlock = await root.lockManager.requestLock(uri.path)
+        if (newlock.status !== "locked") throw new Error("File is not locked after relogin")
+        await node.write(content.toString(), newlock.LOCK_HANDLE, transportId)
+      } else throw error
+    }
+    await root.lockManager.requestUnlock(uri.path, true)
+  }
+
   public async writeFile(uri: Uri, content: Uint8Array): Promise<void> {
     if (LocalFsProvider.useLocalStorage(uri))
       return this.localProvider.writeFile(uri, content, undefined)
@@ -209,15 +237,10 @@ export class FsProvider implements FileSystemProvider {
         const oldlock = (await root.lockManager.finalStatus(uri.path)).status
         await root.lockManager.requestLock(uri.path)
         needUnlocking = oldlock === "unlocked"
-
         const trsel = await selectTransportIfNeeded(uri)
         if (trsel.cancelled) return
-        const lock = root.lockManager.lockStatus(uri.path)
-        if (lock.status === "locked") {
-          await node.write(content.toString(), lock.LOCK_HANDLE, trsel.transport)
-          await root.lockManager.requestUnlock(uri.path, true)
-          this.pEventEmitter.fire([{ type: FileChangeType.Changed, uri }])
-        } else throw new Error(`File ${uri.path} was not locked`)
+        await this.writewithRelogin(root, uri, node, content.toString(), trsel.transport)
+        this.pEventEmitter.fire([{ type: FileChangeType.Changed, uri }])
       } else throw FileSystemError.FileNotFound(uri)
     } catch (e) {
       log(`Error writing file ${uri.toString()}\n${caughtToString(e)}`)
