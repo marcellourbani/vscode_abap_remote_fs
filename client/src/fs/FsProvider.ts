@@ -15,39 +15,13 @@ import {
   ExtensionContext,
   workspace
 } from "vscode"
-import { caughtToString, log } from "../lib"
-import { isAbapFile, isAbapFolder, isFolder } from "abapfs"
+import { after, caughtToString, log } from "../lib"
+import { AbapFile, isAbapFile, isAbapFolder, isFolder, Root } from "abapfs"
 import { getSaveReason, clearSaveReason } from "../listeners"
 import { selectTransportIfNeeded } from "../adt/AdtTransports"
 import { LocalFsProvider } from "./LocalFsProvider"
-
-const loadFromEditor = async (
-  uri: Uri,
-  editorContentCache: Map<string, string>
-): Promise<Buffer | undefined> => {
-  // Check if editor has unsaved content (including Copilot changes)
-  const activeEditor = window.activeTextEditor
-  const visibleEditors = window.visibleTextEditors
-  const targetUri = uri.toString()
-
-  const activeMatches = activeEditor?.document.uri.toString() === targetUri
-  const visibleEditor = visibleEditors.find(e => e.document.uri.toString() === targetUri)
-  const visibleMatches = !!visibleEditor
-
-  if (activeMatches || visibleMatches) {
-    const editor = activeMatches ? activeEditor : visibleEditor
-    const editorText = editor!.document.getText()
-    // Cache the editor content to prevent future server overwrites
-    editorContentCache.set(targetUri, editorText)
-    return Buffer.from(editorText)
-  } else {
-    // Check if we have cached editor content from a previous call
-    const cachedEditorContent = editorContentCache.get(targetUri)
-    if (cachedEditorContent) {
-      return Buffer.from(cachedEditorContent)
-    }
-  }
-}
+import { isHttpError } from "abap-adt-api"
+import { ReloginError } from "abapfs/out/lockManager"
 
 const openInGui = (uri: Uri, contents: string) => {
   if (contents.includes("This object type is not supported in VS Code")) {
@@ -95,6 +69,7 @@ const handleTelemetry = (uri: Uri) => {
   } catch (e) {}
 }
 export class FsProvider implements FileSystemProvider {
+  private overwriteRejected = new Set<string>()
   private static instance: FsProvider
   // private editorContentCache = new Map<string, string>() // Track editor content to prevent server overwrites
   private localProvider: LocalFsProvider
@@ -131,6 +106,12 @@ export class FsProvider implements FileSystemProvider {
     this.pEventEmitter.fire(changes)
   }
 
+  private isOpenDirtyDocument(uri: Uri) {
+    return workspace.textDocuments.some(
+      document => document.uri.toString() === uri.toString() && document.isDirty
+    )
+  }
+
   public async stat(uri: Uri): Promise<FileStat> {
     // Local storage for .* files and template files
     if (LocalFsProvider.useLocalStorage(uri)) return this.localProvider.stat(uri)
@@ -138,7 +119,7 @@ export class FsProvider implements FileSystemProvider {
       const root = await getOrCreateRoot(uri.authority)
       const node = await root.getNodeAsync(uri.path)
       if (!node) throw FileSystemError.FileNotFound(uri)
-      if (isAbapFile(node)) await node.stat()
+      if (isAbapFile(node) && !this.isOpenDirtyDocument(uri)) await node.stat()
       if (isAbapFolder(node)) await node.refresh()
       return node
     } catch (e) {
@@ -155,8 +136,6 @@ export class FsProvider implements FileSystemProvider {
       const root = await getOrCreateRoot(uri.authority)
       const node = await root.getNodeAsync(uri.path)
       if (isAbapFile(node)) {
-        // const fromEditor = await loadFromEditor(uri, this.editorContentCache)
-        // if (fromEditor) return fromEditor
         const contents = await node.read()
         openInGui(uri, contents)
 
@@ -196,6 +175,51 @@ export class FsProvider implements FileSystemProvider {
     )
   }
 
+  private async askOverwrite(uri: Uri) {
+    const choice = await window.showWarningMessage(
+      "The SAP object was changed while not locked. Overwrite changes made by others?",
+      "Overwrite",
+      "Cancel"
+    )
+    if (choice === "Overwrite") this.overwriteRejected.delete(uri.toString())
+    else {
+      this.overwriteRejected.add(uri.toString())
+      throw new Error(
+        `Save cancelled because the file changed during relogin. Change time before relogin`
+      )
+    }
+  }
+
+  private async writewithRelogin(
+    root: Root,
+    uri: Uri,
+    node: AbapFile,
+    content: string,
+    transportId?: string
+  ) {
+    const previousChangeTime = node.mtime
+    const lock = root.lockManager.lockStatus(uri.path)
+    if (lock.status !== "locked") throw new Error("File is not locked")
+    try {
+      if (this.overwriteRejected.has(uri.toString())) await this.askOverwrite(uri)
+      await node.write(content.toString(), lock.LOCK_HANDLE, transportId)
+    } catch (error) {
+      if (isHttpError(error) && error.status >= 400 && error.status < 500) {
+        log(`Error writing file ${uri.toString()}\n${caughtToString(error)}\nAttempting relogin`)
+        await root.lockManager.relogin().catch(e => {
+          if (!ReloginError.isReloginError(e)) throw e
+        })
+        await node.stat()
+        if (node.mtime !== previousChangeTime) await this.askOverwrite(uri)
+        const newlock = await root.lockManager.requestLock(uri.path)
+        if (newlock.status !== "locked") throw new Error("File is not locked after relogin")
+        await node.write(content.toString(), newlock.LOCK_HANDLE, transportId)
+      } else throw error
+      this.overwriteRejected.delete(uri.toString())
+    }
+    await root.lockManager.requestUnlock(uri.path, true)
+  }
+
   public async writeFile(uri: Uri, content: Uint8Array): Promise<void> {
     if (LocalFsProvider.useLocalStorage(uri))
       return this.localProvider.writeFile(uri, content, undefined)
@@ -205,21 +229,14 @@ export class FsProvider implements FileSystemProvider {
       const node = await root.getNodeAsync(uri.path)
       if (isAbapFile(node)) {
         handleTelemetry(uri)
-        // Auto-lock if not already locked
+        // Always request lock to add claim - prevents deferred unlock race condition
         const oldlock = (await root.lockManager.finalStatus(uri.path)).status
-        if (oldlock === "unlocked") {
-          await root.lockManager.requestLock(uri.path)
-          needUnlocking = true
-        }
-
+        await root.lockManager.requestLock(uri.path)
+        needUnlocking = oldlock === "unlocked"
         const trsel = await selectTransportIfNeeded(uri)
         if (trsel.cancelled) return
-        const lock = root.lockManager.lockStatus(uri.path)
-        if (lock.status === "locked") {
-          await node.write(content.toString(), lock.LOCK_HANDLE, trsel.transport)
-          await root.lockManager.requestUnlock(uri.path, true)
-          this.pEventEmitter.fire([{ type: FileChangeType.Changed, uri }])
-        } else throw new Error(`File ${uri.path} was not locked`)
+        await this.writewithRelogin(root, uri, node, content.toString(), trsel.transport)
+        this.pEventEmitter.fire([{ type: FileChangeType.Changed, uri }])
       } else throw FileSystemError.FileNotFound(uri)
     } catch (e) {
       log(`Error writing file ${uri.toString()}\n${caughtToString(e)}`)
