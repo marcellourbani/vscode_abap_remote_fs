@@ -2,7 +2,7 @@
   "name": "vscode-abap-remote-fs",
   "displayName": "ABAP remote filesystem",
   "description": "Work on your ABAP code straight from the server",
-  "version": "2.3.0",
+  "version": "2.4.0",
   "publisher": "murbani",
   "publishConfig": {
     "access": "restricted",
@@ -82,7 +82,9 @@
     "languages": [
       {
         "id": "abap-sql",
-        "aliases": ["ABAP SQL"]
+        "aliases": [
+          "ABAP SQL"
+        ]
       }
     ],
     "notebooks": [
@@ -4222,7 +4224,9 @@
             "id": "abapfs.walkthrough.skipGettingStarted",
             "title": "Already Familiar? Skip Ahead",
             "description": "Already know the basics? Jump to another walkthrough:\n\n[ABAP FS Views & Tools](command:workbench.action.openWalkthrough?%22murbani.vscode-abap-remote-fs%23abapfs.viewsAndTools%22) — Transports, debugging, ATC, unit tests, dumps, traces, version history.\n\n[AI Tools for ABAP](command:workbench.action.openWalkthrough?%22murbani.vscode-abap-remote-fs%23abapfs.aiTools%22) — Use Copilot or any AI client with your SAP system.\n\n[Advanced & Power Features](command:workbench.action.openWalkthrough?%22murbani.vscode-abap-remote-fs%23abapfs.advanced%22) — MCP server, debug recording, subagents, heartbeat.\n\nReopen anytime: **Help** menu → **Welcome**.",
-            "media": { "markdown": "client/dist/media/walkthrough/w1-skip.md" },
+            "media": {
+              "markdown": "client/dist/media/walkthrough/w1-skip.md"
+            },
             "completionEvents": []
           },
           {
@@ -4321,7 +4325,9 @@
             "id": "abapfs.walkthrough.skipViewsTools",
             "title": "Already Know the Views? Skip Ahead",
             "description": "Already familiar with the views and tools? Jump ahead:\n\n[AI Tools for ABAP](command:workbench.action.openWalkthrough?%22murbani.vscode-abap-remote-fs%23abapfs.aiTools%22) — Use Copilot or any AI client with your SAP system.\n\n[Advanced & Power Features](command:workbench.action.openWalkthrough?%22murbani.vscode-abap-remote-fs%23abapfs.advanced%22) — MCP server, debug recording, subagents, heartbeat.\n\nNew here? Start with [Getting Started](command:workbench.action.openWalkthrough?%22murbani.vscode-abap-remote-fs%23abapfs.gettingStarted%22).\n\nReopen anytime: **Help** menu → **Welcome**.",
-            "media": { "markdown": "client/dist/media/walkthrough/w2-skip.md" },
+            "media": {
+              "markdown": "client/dist/media/walkthrough/w2-skip.md"
+            },
             "completionEvents": []
           },
           {
@@ -4424,7 +4430,9 @@
             "id": "abapfs.walkthrough.skipAiTools",
             "title": "Already Using AI Tools? Skip Ahead",
             "description": "Already familiar with the AI tools? Jump ahead:\n\n[Advanced & Power Features](command:workbench.action.openWalkthrough?%22murbani.vscode-abap-remote-fs%23abapfs.advanced%22) — MCP server, debug recording, subagents, heartbeat.\n\nOr go back to [Getting Started](command:workbench.action.openWalkthrough?%22murbani.vscode-abap-remote-fs%23abapfs.gettingStarted%22) or [Views & Tools](command:workbench.action.openWalkthrough?%22murbani.vscode-abap-remote-fs%23abapfs.viewsAndTools%22).\n\nReopen anytime: **Help** menu → **Welcome**.",
-            "media": { "markdown": "client/dist/media/walkthrough/w3-skip.md" },
+            "media": {
+              "markdown": "client/dist/media/walkthrough/w3-skip.md"
+            },
             "completionEvents": []
           },
           {
@@ -4570,7 +4578,9 @@
             "id": "abapfs.walkthrough.skipAdvanced",
             "title": "Other Walkthroughs",
             "description": "Looking for something else?\n\n[Getting Started with ABAP FS](command:workbench.action.openWalkthrough?%22murbani.vscode-abap-remote-fs%23abapfs.gettingStarted%22) — Connect, search, edit, activate, browse data.\n\n[ABAP FS Views & Tools](command:workbench.action.openWalkthrough?%22murbani.vscode-abap-remote-fs%23abapfs.viewsAndTools%22) — Transports, debugging, ATC, unit tests, dumps, traces.\n\n[AI Tools for ABAP](command:workbench.action.openWalkthrough?%22murbani.vscode-abap-remote-fs%23abapfs.aiTools%22) — Use Copilot or any AI client with your SAP system.\n\nReopen anytime: **Help** menu → **Welcome**.",
-            "media": { "markdown": "client/dist/media/walkthrough/w4-skip.md" },
+            "media": {
+              "markdown": "client/dist/media/walkthrough/w4-skip.md"
+            },
             "completionEvents": []
           },
           {
