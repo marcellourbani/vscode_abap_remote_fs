@@ -6,6 +6,7 @@ import { saveRecording, loadRecordingFromUri } from "./recordingIO"
 import { funWindow as window } from "../../../services/funMessenger"
 import { log } from "../../../lib"
 import { DebugListener } from "../debugListener"
+import { logTelemetry } from "../../../services/telemetry"
 
 /**
  * Registers the replay debugger adapter, configuration provider, and commands.
@@ -45,6 +46,7 @@ export function registerReplayDebugger(context: ExtensionContext) {
 }
 
 async function startRecordingCommand() {
+  logTelemetry("command_start_recording_called")
   // Find the active ABAP debug session
   const session = debug.activeDebugSession
   if (!session || session.type !== DEBUGTYPE) {
@@ -75,6 +77,7 @@ async function startRecordingCommand() {
 }
 
 async function stopRecordingCommand() {
+  logTelemetry("command_stop_recording_called")
   const listener = findRecordingListener()
   if (!listener) {
     window.showInformationMessage("No active recording")
@@ -99,6 +102,7 @@ async function stopRecordingCommand() {
 }
 
 async function replaySessionCommand(fileUri?: Uri) {
+  logTelemetry("command_replay_session_called")
   let recording
   if (fileUri) {
     recording = await loadRecordingFromUri(fileUri)

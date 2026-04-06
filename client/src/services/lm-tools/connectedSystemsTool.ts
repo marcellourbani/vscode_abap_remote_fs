@@ -8,6 +8,7 @@
 
 import * as vscode from "vscode"
 import { registerToolWithRegistry } from "./toolRegistry"
+import { logTelemetry } from "../telemetry"
 import { connectedRoots } from "../../config"
 
 // ============================================================================
@@ -42,6 +43,7 @@ export class ConnectedSystemsTool implements vscode.LanguageModelTool<IConnected
     _options: vscode.LanguageModelToolInvocationOptions<IConnectedSystemsParameters>,
     _token: vscode.CancellationToken
   ): Promise<vscode.LanguageModelToolResult> {
+    logTelemetry("tool_get_connected_systems_called")
     try {
       const roots = connectedRoots()
       const connectionIds = Array.from(roots.keys())

@@ -13,6 +13,7 @@ import { AbapRevisionService } from "../scm/abaprevisions/abaprevisionservice"
 import { abapUri, getClient, ADTSCHEME } from "../adt/conections"
 import { setContext } from "../context"
 import { log } from "../lib"
+import { logTelemetry } from "../services/telemetry"
 
 // ============================================================================
 // TYPES
@@ -292,6 +293,7 @@ function clearBlameDecorations(editor?: vscode.TextEditor) {
  * Called from the "Show Blame" editor/title button.
  */
 export async function showBlame() {
+  logTelemetry("command_show_blame_called")
   const editor = vscode.window.activeTextEditor
   if (!editor || editor.document.uri.scheme !== ADTSCHEME) return
   if (!abapUri(editor.document.uri)) return
@@ -404,6 +406,7 @@ export async function showBlame() {
  * Called from the "Hide Blame" editor/title button.
  */
 export async function hideBlame() {
+  logTelemetry("command_hide_blame_called")
   const editor = vscode.window.activeTextEditor
   if (editor) {
     const cacheKey = editor.document.uri.toString()
