@@ -50,6 +50,7 @@ import { clearSystemInfoCache } from "./services/sapSystemInfo"
 import { HeartbeatWatchlist } from "./services/heartbeat/heartbeatWatchlist"
 import { visualizeDependencyGraph } from "./services/dependencyGraph"
 import { checkUpgradeNotification } from "./services/upgradeNotification"
+import { registerAbapNotebooks } from "./notebooks"
 import { disableVirtualToolGrouping } from "./services/virtualToolsFix"
 import { ObjectPropertyProvider } from "./views/objectProperties"
 
@@ -131,6 +132,9 @@ export async function activate(ctx: ExtensionContext): Promise<AbapFsApi> {
     // Register ABAP Cleaner feature
     registerCleanerCommands(context)
     setupCleanerContextMonitoring(context)
+
+    // Initialize SAP Data Workbook (.sapwb)
+    registerAbapNotebooks(context)
 
     // Initialize MCP Server for external AI clients (Cursor, etc.)
     await initializeMcpServer(context)
