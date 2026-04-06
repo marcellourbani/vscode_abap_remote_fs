@@ -125,6 +125,7 @@ interface ShowObjectArgument {
 export class AdtCommands {
   @command(AbapFsCommands.extractMethod)
   private static async extractMethod(url: string, range: Range) {
+    logTelemetry("command_extract_method_called")
     const uri = Uri.parse(url)
     const client = getClient(uri.authority)
     const root = getRoot(uri.authority)
@@ -145,11 +146,13 @@ export class AdtCommands {
   }
   @command(AbapFsCommands.showDocumentation)
   private static async showAbapDoc() {
+    logTelemetry("command_show_documentation_called")
     return showAbapDoc()
   }
 
   @command(AbapFsCommands.selectDB)
   private static async selectDB(table?: string) {
+    logTelemetry("command_select_db_called")
     return showQuery(table)
   }
 
@@ -170,6 +173,7 @@ export class AdtCommands {
 
   @command(AbapFsCommands.connect)
   private static async connectAdtServer(selector: any) {
+    logTelemetry("command_connect_called")
     let name = ""
     try {
       const connectionID = selector && selector.connection
@@ -205,6 +209,7 @@ export class AdtCommands {
 
   @command(AbapFsCommands.disconnect)
   private static async disconnectAdtServer(selector?: any) {
+    logTelemetry("command_disconnect_called")
     try {
       // Show confirmation dialog
       const choice = await window.showWarningMessage(
@@ -324,6 +329,7 @@ export class AdtCommands {
 
   @command(AbapFsCommands.runClass)
   private static async runClass() {
+    logTelemetry("command_run_class_called")
     try {
       const uri = currentUri()
       if (!uri) return
@@ -560,6 +566,7 @@ export class AdtCommands {
 
   @command(AbapFsCommands.showObject)
   private static async showObject(arg: ShowObjectArgument) {
+    logTelemetry("command_show_object_called")
     const p = splitAdtUri(arg.uri)
     const path = await vsCodeUri(arg.connId, arg.uri, true, true)
     const uri = Uri.parse(path)
@@ -971,12 +978,13 @@ export class AdtCommands {
 
   @command(AbapFsCommands.addfavourite)
   private static addFavourite(uri: Uri | undefined) {
-    // find the adt relevant namespace roots, and let the user pick one if needed
+    logTelemetry("command_add_favourite_called")
     if (uri) FavouritesProvider.get().addFavourite(uri)
   }
 
   @command(AbapFsCommands.deletefavourite)
   private static deleteFavourite(node: FavItem) {
+    logTelemetry("command_delete_favourite_called")
     FavouritesProvider.get().deleteFavourite(node)
   }
 
@@ -1015,6 +1023,7 @@ export class AdtCommands {
 
   @command(AbapFsCommands.atcChecks)
   private static async runAtc() {
+    logTelemetry("command_atc_checks_called")
     try {
       const state = await currentEditState()
       if (!state) return

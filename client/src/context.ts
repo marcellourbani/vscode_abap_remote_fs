@@ -7,7 +7,6 @@ export type AbapFsContexts =
   | "abapfs:atcdoc:navigation:back"
   | "abapfs:atcdoc:navigation:next"
   | "abapfs:extensionActive"
-  | "abapfs:extensionActive"
   | "abapfs:showTableContentIcon"
   | "abapfs:enableLeftPrevRev"
   | "abapfs:enableLeftNextRev"

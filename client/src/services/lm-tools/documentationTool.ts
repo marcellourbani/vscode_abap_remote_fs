@@ -5,6 +5,7 @@
 
 import * as vscode from "vscode"
 import { registerToolWithRegistry } from "./toolRegistry"
+import { logTelemetry } from "../telemetry"
 import * as fs from "fs"
 import * as path from "path"
 
@@ -153,8 +154,9 @@ export class ABAPFSDocumentationTool implements vscode.LanguageModelTool<IDocume
     options: vscode.LanguageModelToolInvocationOptions<IDocumentationToolParameters>,
     _token: vscode.CancellationToken
   ): Promise<vscode.LanguageModelToolResult> {
+    logTelemetry("tool_abapfs_documentation_called")
     const { action, searchQuery, startLine = 1, lineCount = 50 } = options.input
-    
+
     // Get extension path
     const extension = vscode.extensions.getExtension("murbani.vscode-abap-remote-fs")
     if (!extension) {
