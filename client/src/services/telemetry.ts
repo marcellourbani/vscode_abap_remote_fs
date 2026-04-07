@@ -182,6 +182,10 @@ export class TelemetryService {
  * Convenience function for logging telemetry
  * @param action - Action description (e.g., "command_activate_called", "tool_create_test_include_called")
  */
+function shouldCountForReviewPrompt(action: string): boolean {
+  return action.startsWith("command_") || action.startsWith("tool_")
+}
+
 export function logTelemetry(
   action: string,
   options?: {
@@ -197,8 +201,10 @@ export function logTelemetry(
     // Send to App Insights with context
     AppInsightsService.getInstance().track(action, options)
 
-    // Bump review prompt usage counter
-    incrementReviewCounter()
+    // Only explicit user actions should count toward the review prompt.
+    if (shouldCountForReviewPrompt(action)) {
+      incrementReviewCounter()
+    }
   } catch (error) {
     // Silently fail - telemetry should never break functionality
     console.error("Telemetry logging failed:", error)
