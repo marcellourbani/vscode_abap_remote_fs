@@ -35,7 +35,7 @@ import { setContext } from "./context"
 import { AbapHoverProviderV2 } from "./providers/hoverProvider"
 import { registerAllTools } from "./services/lm-tools"
 import { registerCleanerCommands, setupCleanerContextMonitoring } from "./services/cleanerCommands"
-import { TelemetryService } from "./services/telemetry"
+import { TelemetryService, logTelemetry } from "./services/telemetry"
 import { AppInsightsService } from "./services/appInsightsService"
 import { MermaidWebviewManager } from "./services/MermaidWebviewManager"
 import { DiagramWebviewManager } from "./services/DiagramWebviewManager"
@@ -50,6 +50,8 @@ import { clearSystemInfoCache } from "./services/sapSystemInfo"
 import { HeartbeatWatchlist } from "./services/heartbeat/heartbeatWatchlist"
 import { visualizeDependencyGraph } from "./services/dependencyGraph"
 import { checkUpgradeNotification } from "./services/upgradeNotification"
+import { registerAbapNotebooks } from "./notebooks"
+import { showWelcomeWalkthrough } from "./services/walkthroughService"
 import { disableVirtualToolGrouping } from "./services/virtualToolsFix"
 import { ObjectPropertyProvider } from "./views/objectProperties"
 
@@ -131,6 +133,9 @@ export async function activate(ctx: ExtensionContext): Promise<AbapFsApi> {
     // Register ABAP Cleaner feature
     registerCleanerCommands(context)
     setupCleanerContextMonitoring(context)
+
+    // Initialize SAP Data Workbook (.sapwb)
+    registerAbapNotebooks(context)
 
     // Initialize MCP Server for external AI clients (Cursor, etc.)
     await initializeMcpServer(context)
@@ -277,7 +282,10 @@ export async function activate(ctx: ExtensionContext): Promise<AbapFsApi> {
   // 📊 Register Dependency Graph Command
   try {
     context.subscriptions.push(
-      commands.registerCommand("abapfs.visualizeDependencyGraph", visualizeDependencyGraph)
+      commands.registerCommand("abapfs.visualizeDependencyGraph", () => {
+        logTelemetry("command_dependency_graph_called")
+        return visualizeDependencyGraph()
+      })
     )
     log("📊 Dependency graph ready to expose your spaghetti architecture 🍝")
   } catch (error) {
@@ -288,6 +296,7 @@ export async function activate(ctx: ExtensionContext): Promise<AbapFsApi> {
   try {
     context.subscriptions.push(
       commands.registerCommand("abapfs.openHeartbeatJson", async () => {
+        logTelemetry("command_open_heartbeat_json_called")
         const filePath = HeartbeatWatchlist.getFilePath()
         if (filePath) {
           const doc = await workspace.openTextDocument(filePath)
@@ -325,8 +334,21 @@ export async function activate(ctx: ExtensionContext): Promise<AbapFsApi> {
   }
   registerChatTools(context)
 
+  // Walkthrough helper: open Copilot chat with a pre-filled query
+  sub.push(
+    commands.registerCommand("abapfs.openChatWithQuery", (query: string) => {
+      commands.executeCommand("workbench.action.chat.open", {
+        query,
+        isPartialQuery: true
+      })
+    })
+  )
+
   // Check for v1 → v2 upgrade and show notification + status bar hint
   checkUpgradeNotification(context)
+
+  // Show Getting Started walkthrough on first install
+  showWelcomeWalkthrough(context)
 
   const elapsed = new Date().getTime() - startTime
   log.debug(`Activated,pid=${process.pid}, activation time(ms):${elapsed}`)

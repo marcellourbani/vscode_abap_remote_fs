@@ -5,6 +5,7 @@
 
 import * as vscode from "vscode"
 import { registerToolWithRegistry } from "./toolRegistry"
+import { logTelemetry } from "../telemetry"
 import { getSAPSystemInfo, formatSAPSystemInfoAsText } from "../sapSystemInfo"
 
 // ============================================================================
@@ -59,6 +60,9 @@ export class SAPSystemInfoTool implements vscode.LanguageModelTool<ISAPSystemInf
     options: vscode.LanguageModelToolInvocationOptions<ISAPSystemInfoParameters>,
     _token: vscode.CancellationToken
   ): Promise<vscode.LanguageModelToolResult> {
+    const { logTelemetry } = await import("../telemetry")
+    logTelemetry("tool_get_sap_system_info_called")
+    logTelemetry("tool_get_sap_system_info_called", { connectionId: options.input.connectionId })
     let { connectionId, includeComponents } = options.input
 
     if (!connectionId) {

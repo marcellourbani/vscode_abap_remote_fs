@@ -7,10 +7,12 @@ import { FeedSubscriptions, SystemFeedConfig } from "../services/feeds/feedTypes
 import { context } from "../extension"
 import * as path from "path"
 import * as fs from "fs"
+import { logTelemetry } from "../services/telemetry"
 
 let currentPanel: WebviewPanel | undefined
 
 export async function configureFeedsCommand() {
+  logTelemetry("command_configure_feeds_called")
   // If panel already exists and not disposed, reveal it
   if (currentPanel) {
     try {

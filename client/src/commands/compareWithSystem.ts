@@ -7,11 +7,13 @@ import * as vscode from "vscode"
 import { funWindow as window } from "../services/funMessenger"
 import { ADTSCHEME } from "../adt/conections"
 import { connectedRoots, formatKey } from "../config"
+import { logTelemetry } from "../services/telemetry"
 
 /**
  * Compare current ABAP object with same object in another connected system
  */
 export async function compareWithOtherSystem(uri?: vscode.Uri): Promise<void> {
+  logTelemetry("command_compare_with_system_called")
   try {
     // Get the source URI (from context menu or active editor)
     let sourceUri: vscode.Uri | undefined = uri

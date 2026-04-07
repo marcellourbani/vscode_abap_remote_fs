@@ -177,6 +177,66 @@ export class TelemetryService {
   }
 }
 
+
+const toolContextKeys: Record<string, string> = {
+  // Search & discovery
+  tool_search_abap_objects_called: "abapfs:toolUsed:search",
+  tool_search_abap_object_lines_called: "abapfs:toolUsed:searchLines",
+  // Reading source code
+  tool_get_abap_object_lines_called: "abapfs:toolUsed:read",
+  tool_get_batch_lines_called: "abapfs:toolUsed:read",
+  tool_get_object_by_uri_called: "abapfs:toolUsed:read",
+  // Object metadata
+  tool_get_abap_object_info_called: "abapfs:toolUsed:objectInfo",
+  tool_get_abap_object_workspace_uri_called: "abapfs:toolUsed:objectInfo",
+  tool_get_abap_object_url_called: "abapfs:toolUsed:objectInfo",
+  tool_open_object_called: "abapfs:toolUsed:openObject",
+  // Where-used analysis
+  tool_find_where_used_called: "abapfs:toolUsed:whereUsed",
+  // Version history
+  tool_version_history_called: "abapfs:toolUsed:versionHistory",
+  // Data query
+  tool_execute_data_query_called: "abapfs:toolUsed:dataQuery",
+  tool_get_abap_sql_syntax_called: "abapfs:toolUsed:dataQuery",
+  // ATC / quality
+  tool_run_atc_analysis_called: "abapfs:toolUsed:atc",
+  tool_get_atc_decorations_called: "abapfs:toolUsed:atc",
+  // Unit tests
+  tool_run_unit_tests_called: "abapfs:toolUsed:unitTests",
+  tool_create_test_include_called: "abapfs:toolUsed:unitTests",
+  tool_create_test_documentation_called: "abapfs:toolUsed:unitTests",
+  // Transports
+  tool_manage_transport_requests_called: "abapfs:toolUsed:transports",
+  // Object creation
+  tool_create_abap_object_called: "abapfs:toolUsed:createObject",
+  // Text elements
+  tool_manage_text_elements_called: "abapfs:toolUsed:textElements",
+  // Debugging (grouped — 6 debug tools + dump + trace analysis)
+  tool_debug_session_called: "abapfs:toolUsed:debug",
+  tool_debug_breakpoint_called: "abapfs:toolUsed:debug",
+  tool_debug_step_called: "abapfs:toolUsed:debug",
+  tool_debug_variable_called: "abapfs:toolUsed:debug",
+  tool_debug_stack_called: "abapfs:toolUsed:debug",
+  tool_debug_status_called: "abapfs:toolUsed:debug",
+  tool_analyze_abap_dumps_called: "abapfs:toolUsed:dumpAnalysis",
+  tool_analyze_abap_traces_called: "abapfs:toolUsed:traceAnalysis",
+  // Mermaid diagrams
+  tool_create_mermaid_diagram_called: "abapfs:toolUsed:mermaid",
+  tool_validate_mermaid_syntax_called: "abapfs:toolUsed:mermaid",
+  tool_get_mermaid_documentation_called: "abapfs:toolUsed:mermaid",
+  tool_detect_mermaid_diagram_type_called: "abapfs:toolUsed:mermaid",
+  // System info & connected systems
+  tool_get_sap_system_info_called: "abapfs:toolUsed:systemInfo",
+  tool_get_connected_systems_called: "abapfs:toolUsed:connectedSystems",
+  // Heartbeat & subagents
+  tool_manage_heartbeat_called: "abapfs:toolUsed:heartbeat",
+  tool_manage_subagents_called: "abapfs:toolUsed:subagents",
+  // Documentation
+  tool_abapfs_documentation_called: "abapfs:toolUsed:documentation",
+  // Activate
+  tool_abap_activate_called: "abapfs:toolUsed:activate"
+}
+
 /**
  * Convenience function for logging telemetry
  * @param action - Action description (e.g., "command_activate_called", "tool_create_test_include_called")
@@ -195,6 +255,12 @@ export function logTelemetry(
 
     // Send to App Insights with context
     AppInsightsService.getInstance().track(action, options)
+
+    // Set walkthrough context keys for specific tool invocations
+    const contextKey = toolContextKeys[action]
+    if (contextKey) {
+      vscode.commands.executeCommand("setContext", contextKey, true)
+    }
   } catch (error) {
     // Silently fail - telemetry should never break functionality
     console.error("Telemetry logging failed:", error)
