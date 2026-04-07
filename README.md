@@ -8,9 +8,12 @@
 - Works with GitHub Copilot, Cursor, Claude Code, Windsurf and more (via MCP)
 - Full development workflow: code, debug, test, ATC, transports, dumps — all in VS Code
 
-<!-- [![Demo](https://img.youtube.com/vi/DD4fUH3fiZg/1.jpg)](https://www.youtube.com/watch?v=DD4fUH3fiZg) -->
+## Demo
 
----
+
+<video src="https://github.com/user-attachments/assets/bd4f4c20-f2a0-4dad-a75e-6ac26f629d5c" width="600" controls></video>
+
+
 
 - [ABAP FS 🚀](#abap-fs-)
   - [🎯 What Makes This Different?](#-what-makes-this-different)
