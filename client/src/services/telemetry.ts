@@ -9,6 +9,7 @@ import * as path from "path"
 import * as os from "os"
 import * as crypto from "crypto"
 import { AppInsightsService } from "./appInsightsService"
+import { incrementReviewCounter } from "./reviewPrompt"
 
 interface TelemetryEntry {
   timestamp: string // ISO format
@@ -261,6 +262,9 @@ export function logTelemetry(
     if (contextKey) {
       vscode.commands.executeCommand("setContext", contextKey, true)
     }
+
+    // Bump review prompt usage counter
+    incrementReviewCounter()
   } catch (error) {
     // Silently fail - telemetry should never break functionality
     console.error("Telemetry logging failed:", error)
