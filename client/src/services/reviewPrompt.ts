@@ -40,6 +40,7 @@ let extensionContext: vscode.ExtensionContext | undefined
 let promptTimer: ReturnType<typeof setTimeout> | undefined
 let promptShownThisSession = false
 let statusBarCreated = false
+let reviewStatusBarItem: vscode.StatusBarItem | undefined
 
 // ─── Public API ──────────────────────────────────────────────────────────────
 
@@ -76,7 +77,7 @@ export function initializeReviewPrompt(context: vscode.ExtensionContext): void {
 }
 
 /**
- * Call from logTelemetry() on every tool/command invocation to bump the counter.
+ * Call for review-eligible command/tool usage to bump the counter.
  */
 export function incrementReviewCounter(): void {
   try {
@@ -144,8 +145,12 @@ function showReviewPrompt(): void {
       if (choice === "⭐ Rate Now") {
         vscode.env.openExternal(vscode.Uri.parse(MARKETPLACE_URL))
         ctx.globalState.update(STATE_NEVER_SHOW_AGAIN, true)
+        ctx.globalState.update(STATE_STATUSBAR_DISMISSED, true)
+        disposeReviewStatusBar()
       } else if (choice === "Never Show Again") {
         ctx.globalState.update(STATE_NEVER_SHOW_AGAIN, true)
+        ctx.globalState.update(STATE_STATUSBAR_DISMISSED, true)
+        disposeReviewStatusBar()
       } else {
         // "Remind Me Later" or dismissed (X) — reset tracking so the cycle restarts
         ctx.globalState.update(STATE_USAGE_COUNT, undefined)
@@ -160,8 +165,17 @@ function showReviewPrompt(): void {
   }
 }
 
+function disposeReviewStatusBar(): void {
+  if (reviewStatusBarItem) {
+    reviewStatusBarItem.dispose()
+    reviewStatusBarItem = undefined
+  }
+  statusBarCreated = false
+}
+
 function showReviewStatusBar(context: vscode.ExtensionContext): void {
   const item = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Left, 900)
+  reviewStatusBarItem = item
   item.text = "$(star) Rate ABAP FS"
   item.tooltip = "Enjoying ABAP Remote FS? Click to rate on the Marketplace!"
   item.command = "abapfs.openReviewMarketplace"
@@ -171,7 +185,7 @@ function showReviewStatusBar(context: vscode.ExtensionContext): void {
   const cmd = vscode.commands.registerCommand("abapfs.openReviewMarketplace", () => {
     vscode.env.openExternal(vscode.Uri.parse(MARKETPLACE_URL))
     context.globalState.update(STATE_STATUSBAR_DISMISSED, true)
-    item.dispose()
+    disposeReviewStatusBar()
   })
   context.subscriptions.push(cmd)
 }
