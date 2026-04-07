@@ -31,6 +31,7 @@ import { AuthResult } from "./types"
 import { OAuthOnPremConfig } from "vscode-abap-remote-fs-sharedapi"
 import { PasswordVault, log } from "../lib"
 import { formatKey } from "../config"
+import { errorMessage } from "./utils"
 
 const VAULT_SERVICE = "vscode.abapfs.oauth_onprem"
 
@@ -38,6 +39,63 @@ interface TokenSet {
   accessToken: string
   refreshToken: string
   expiresAt: number // epoch ms
+}
+
+interface OAuthTokenResponse {
+  access_token?: unknown
+  refresh_token?: unknown
+  expires_in?: unknown
+}
+
+function normalizeStoredTokenSet(value: unknown): TokenSet | null {
+  if (!value || typeof value !== "object") {
+    return null
+  }
+
+  const candidate = value as Partial<TokenSet>
+  if (typeof candidate.accessToken !== "string" || typeof candidate.expiresAt !== "number") {
+    return null
+  }
+
+  return {
+    accessToken: candidate.accessToken,
+    refreshToken: typeof candidate.refreshToken === "string" ? candidate.refreshToken : "",
+    expiresAt: candidate.expiresAt,
+  }
+}
+
+function getCallbackPort(server: http.Server): number {
+  const address = server.address()
+  if (!address || typeof address === "string") {
+    throw new Error("OAuth callback server did not expose a TCP port")
+  }
+  return address.port
+}
+
+function parseExpiresInSeconds(value: unknown): number {
+  if (typeof value === "number" && Number.isFinite(value)) {
+    return value
+  }
+  if (typeof value === "string") {
+    const parsed = Number(value)
+    if (Number.isFinite(parsed)) {
+      return parsed
+    }
+  }
+  return 3600
+}
+
+function parseTokenSet(body: string): TokenSet {
+  const data = JSON.parse(body) as OAuthTokenResponse
+  if (!data.access_token || typeof data.access_token !== "string") {
+    throw new Error(`Token response missing access_token: ${body.substring(0, 200)}`)
+  }
+
+  return {
+    accessToken: data.access_token,
+    refreshToken: typeof data.refresh_token === "string" ? data.refresh_token : "",
+    expiresAt: Date.now() + parseExpiresInSeconds(data.expires_in) * 1000,
+  }
 }
 
 /** Store tokens securely in the OS credential manager. */
@@ -56,7 +114,11 @@ async function getTokens(connId: string): Promise<TokenSet | null> {
     return null
   }
   try {
-    const tokens = JSON.parse(raw) as TokenSet
+    const parsed = JSON.parse(raw) as unknown
+    const tokens = normalizeStoredTokenSet(parsed)
+    if (!tokens) {
+      return null
+    }
     const remainingMs = tokens.expiresAt - Date.now()
     log.debug(`[oauth-onprem] Retrieved cached tokens for ${connId}, expires in ${Math.round(remainingMs / 1000)}s`)
     return tokens
@@ -129,9 +191,14 @@ async function authorizeInteractive(
 
       // Exchange code for tokens
       try {
-        const addr = server.address() as { port: number }
         const tokens = await exchangeCodeForTokens(
-          sapUrl, sapClient, config, code, codeVerifier, addr.port, skipSsl
+          sapUrl,
+          sapClient,
+          config,
+          code,
+          codeVerifier,
+          getCallbackPort(server),
+          skipSsl
         )
         log.debug(`[oauth-onprem] Token exchange successful, accessToken length=${tokens.accessToken.length}`)
         res.writeHead(200, { "Content-Type": "text/html", [cspHeader]: cspValue })
@@ -139,10 +206,11 @@ async function authorizeInteractive(
         clearTimeout(timer)
         server.close()
         resolve(tokens)
-      } catch (err: any) {
-        log.debug(`[oauth-onprem] Token exchange failed: ${err.message}`)
+      } catch (err) {
+        const message = errorMessage(err)
+        log.debug(`[oauth-onprem] Token exchange failed: ${message}`)
         res.writeHead(200, { "Content-Type": "text/html", [cspHeader]: cspValue })
-        res.end(`<html><body><h2>Token Exchange Failed</h2><p>${escapeHtml(err.message)}</p></body></html>`)
+        res.end(`<html><body><h2>Token Exchange Failed</h2><p>${escapeHtml(message)}</p></body></html>`)
         clearTimeout(timer)
         server.close()
         reject(err)
@@ -151,8 +219,7 @@ async function authorizeInteractive(
 
     // Listen on a random port on loopback
     server.listen(0, "127.0.0.1", () => {
-      const addr = server.address() as { port: number }
-      const redirectUri = `http://localhost:${addr.port}/callback`
+      const redirectUri = `http://localhost:${getCallbackPort(server)}/callback`
 
       const params = new URLSearchParams({
         response_type: "code",
@@ -217,15 +284,7 @@ async function exchangeCodeForTokens(
     throw new Error(`Token exchange failed: HTTP ${resp.status} — ${resp.body.substring(0, 200)}`)
   }
 
-  const data = JSON.parse(resp.body)
-  if (!data.access_token || typeof data.access_token !== "string") {
-    throw new Error(`Token response missing access_token: ${resp.body.substring(0, 200)}`)
-  }
-  return {
-    accessToken: data.access_token,
-    refreshToken: data.refresh_token || "",
-    expiresAt: Date.now() + (data.expires_in || 3600) * 1000,
-  }
+  return parseTokenSet(resp.body)
 }
 
 /**
@@ -257,14 +316,10 @@ async function refreshTokens(
     throw new Error(`Token refresh failed: HTTP ${resp.status}`)
   }
 
-  const data = JSON.parse(resp.body)
-  if (!data.access_token || typeof data.access_token !== "string") {
-    throw new Error(`Token refresh response missing access_token: ${resp.body.substring(0, 200)}`)
-  }
+  const tokens = parseTokenSet(resp.body)
   return {
-    accessToken: data.access_token,
-    refreshToken: data.refresh_token || refreshToken,
-    expiresAt: Date.now() + (data.expires_in || 3600) * 1000,
+    ...tokens,
+    refreshToken: tokens.refreshToken || refreshToken,
   }
 }
 
@@ -400,8 +455,8 @@ function doPost(
     const req = https.request(options, (res) => {
       let data = ""
       const maxSize = 1024 * 1024 // 1 MB response limit
-      res.on("data", (chunk: string) => {
-        data += chunk
+      res.on("data", (chunk: Buffer) => {
+        data += chunk.toString("utf8")
         if (data.length > maxSize) {
           req.destroy()
           reject(new Error("OAuth token response too large (>1MB)"))

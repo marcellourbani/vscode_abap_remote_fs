@@ -24,6 +24,7 @@ import { execFile } from "child_process"
 import { AuthResult, KerberosAuthConfig } from "./types"
 import { PasswordVault, log } from "../lib"
 import { formatKey } from "../config"
+import { buildCookieHeaders, errorMessage, sanitizeCookie, toStringArray } from "./utils"
 
 const VAULT_SERVICE = "vscode.abapfs.kerberos"
 
@@ -56,7 +57,7 @@ export async function getKerberosCookies(connId: string): Promise<string[]> {
   }
   try {
     const parsed = JSON.parse(raw)
-    const result = Array.isArray(parsed) ? parsed : []
+    const result = toStringArray(parsed)
     log.debug(`[kerberos] Retrieved ${result.length} cached cookies for ${connId}`)
     return result
   } catch (e) {
@@ -93,6 +94,10 @@ function buildNegotiateScript(skipSsl: boolean): string {
     `[Console]::OutputEncoding = [System.Text.Encoding]::UTF8`,
     ``,
     `function DoRequest($uri, $useDefaultCreds, $cert) {`,
+    `  if ($TargetSpn) {`,
+    `    [System.Net.AuthenticationManager]::CustomTargetNameDictionary[$uri.AbsoluteUri] = $TargetSpn`,
+    `    [System.Net.AuthenticationManager]::CustomTargetNameDictionary[$uri.GetLeftPart([System.UriPartial]::Authority)] = $TargetSpn`,
+    `  }`,
     `  $req = [System.Net.HttpWebRequest]::Create($uri)`,
     `  $req.Method = 'GET'`,
     `  $req.AllowAutoRedirect = $false`,
@@ -193,11 +198,50 @@ function buildNegotiateScript(skipSsl: boolean): string {
 }
 
 interface NegotiateResult {
-  method: string       // "kerberos" or "certificate"
+  method: "kerberos" | "certificate"
   status: number
   cookies: string[]
   authHeader?: string
   certSubject?: string // which cert worked (for certificate method)
+}
+
+interface NegotiateFailureResult {
+  error: string
+  phase1Status?: number
+  phase1Auth?: string
+  certsFound?: number
+  certsTried?: string[]
+}
+
+type PowerShellNegotiateResult = NegotiateResult | NegotiateFailureResult
+
+function normalizeKerberosSpn(value: string): string {
+  return value.trim()
+}
+
+function buildKerberosSpn(
+  kerberosConfig: KerberosAuthConfig | undefined,
+  sapBaseUrl: string
+): string | undefined {
+  const explicitSpn = kerberosConfig?.spn?.trim()
+  if (explicitSpn) {
+    return normalizeKerberosSpn(explicitSpn)
+  }
+
+  const sapHostname = kerberosConfig?.sapHostname?.trim()
+  const realm = kerberosConfig?.realm?.trim().toUpperCase()
+  if (!sapHostname && !realm) {
+    return undefined
+  }
+
+  const baseHost = sapHostname || new URL(sapBaseUrl).hostname
+  return `HTTP/${baseHost}${realm ? `@${realm}` : ""}`
+}
+
+function isNegotiateFailureResult(
+  result: PowerShellNegotiateResult
+): result is NegotiateFailureResult {
+  return "error" in result
 }
 
 /**
@@ -211,15 +255,20 @@ interface NegotiateResult {
 function runPowerShellNegotiate(
   url: string,
   skipSsl: boolean,
+  targetSpn?: string,
 ): Promise<NegotiateResult> {
   return new Promise((resolve, reject) => {
     const safeUrl = url.replace(/'/g, "''")
+    const safeTargetSpn = targetSpn ? targetSpn.replace(/'/g, "''") : undefined
     const script = buildNegotiateScript(skipSsl)
     const finalScript = script.replace(
       "param([string]$TargetUrl)",
-      `$TargetUrl = '${safeUrl}'`
+      [
+        `$TargetUrl = '${safeUrl}'`,
+        `$TargetSpn = ${safeTargetSpn ? `'${safeTargetSpn}'` : "$null"}`,
+      ].join("\n")
     )
-    log.debug(`[sso] Launching PowerShell SSO handshake for: ${url}`)
+    log.debug(`[sso] Launching PowerShell SSO handshake for: ${url}${targetSpn ? `, targetSpn=${targetSpn}` : ""}`)
     const child = execFile(
       "powershell.exe",
       ["-NoProfile", "-NonInteractive", "-Command", finalScript],
@@ -234,13 +283,13 @@ function runPowerShellNegotiate(
         if (stderr) log.debug(`[sso] PowerShell stderr: ${stderr.substring(0, 300)}`)
         log.debug(`[sso] PowerShell raw output: ${stdout.substring(0, 600)}`)
         try {
-          const result = JSON.parse(stdout.trim())
-          if (result.error && result.error !== "All SSO methods failed") {
+          const result = JSON.parse(stdout.trim()) as PowerShellNegotiateResult
+          if (isNegotiateFailureResult(result) && result.error !== "All SSO methods failed") {
             log.debug(`[sso] Script error: ${result.error}`)
             reject(new Error(`Windows SSO failed: ${result.error}`))
             return
           }
-          if (result.error === "All SSO methods failed") {
+          if (isNegotiateFailureResult(result) && result.error === "All SSO methods failed") {
             // Structured failure — build a descriptive error
             const p1 = `Phase 1 (Kerberos/NTLM): HTTP ${result.phase1Status}, WWW-Authenticate: ${result.phase1Auth || "absent"}`
             const p2 = `Phase 2 (Certificate): found ${result.certsFound || 0} certs in Windows store`
@@ -259,6 +308,10 @@ function runPowerShellNegotiate(
             ))
             return
           }
+          if (isNegotiateFailureResult(result)) {
+            reject(new Error(`Windows SSO failed: ${result.error}`))
+            return
+          }
           log.debug(`[sso] Success via ${result.method}: HTTP ${result.status}, cookies=${(result.cookies || []).length}${result.certSubject ? `, cert=${result.certSubject}` : ""}`)
           resolve({
             method: result.method || "unknown",
@@ -268,7 +321,7 @@ function runPowerShellNegotiate(
             certSubject: result.certSubject || undefined,
           })
         } catch (e) {
-          log.debug(`[sso] Failed to parse PowerShell output: ${e}`)
+          log.debug(`[sso] Failed to parse PowerShell output: ${errorMessage(e)}`)
           reject(new Error(`Failed to parse SSO result: ${stdout.substring(0, 200)}`))
         }
       }
@@ -292,7 +345,7 @@ function isTrackingCookie(name: string): boolean {
  * Tries Kerberos/NTLM first, then falls back to Windows cert store (SLC).
  */
 async function negotiateWithSap(
-  _config: KerberosAuthConfig | undefined,
+  kerberosConfig: KerberosAuthConfig | undefined,
   sapBaseUrl: string,
   sapClient: string,
   skipSsl: boolean,
@@ -309,12 +362,13 @@ async function negotiateWithSap(
   }
 
   const url = `${sapBaseUrl}/sap/bc/adt/discovery?sap-client=${encodeURIComponent(sapClient)}`
-  log.debug(`[sso] Starting Windows SSO negotiation with: ${url}`)
-  const result = await runPowerShellNegotiate(url, skipSsl)
+  const targetSpn = buildKerberosSpn(kerberosConfig, sapBaseUrl)
+  log.debug(`[sso] Starting Windows SSO negotiation with: ${url}${targetSpn ? `, targetSpn=${targetSpn}` : ""}`)
+  const result = await runPowerShellNegotiate(url, skipSsl, targetSpn)
 
   // Filter out SAP tracking cookies (sap-usercontext etc.) — these are sent on ALL
   // responses including 401 failures and do NOT indicate successful authentication.
-  const allCookies = result.cookies.map(c => c.replace(/[\r\n\x00-\x1f]/g, ""))
+  const allCookies = result.cookies.map(cookie => sanitizeCookie(cookie))
   const sessionCookies = allCookies.filter(c => !isTrackingCookie(c.split("=")[0]))
 
   log.debug(`[sso] Cookies: total=${allCookies.length}, session=${sessionCookies.length} (${sessionCookies.map(c => c.split("=")[0]).join(",")})`)
@@ -353,10 +407,12 @@ export async function buildKerberosAuth(
   const cookies = await negotiateWithSap(kerberosConfig, sapBaseUrl, sapClient, skipSsl)
   await storeKerberosCookies(connId, cookies)
 
+  const headers = buildCookieHeaders(cookies)
+
   log.debug(`[sso] buildKerberosAuth complete for ${connId}: ${cookies.length} cookies`)
   return {
     passwordOrFetcher: "kerberos-sso",
-    headers: { Cookie: cookies.map(c => c.replace(/[\r\n\x00-\x1f]/g, "")).join("; ") },
+    ...(headers ? { headers } : {}),
   }
 }
 
@@ -375,9 +431,11 @@ export async function refreshKerberosAuth(
   const cookies = await negotiateWithSap(kerberosConfig, sapBaseUrl, sapClient, skipSsl)
   await storeKerberosCookies(connId, cookies)
 
+  const headers = buildCookieHeaders(cookies)
+
   log.debug(`[sso] refreshKerberosAuth complete for ${connId}: ${cookies.length} cookies`)
   return {
     passwordOrFetcher: "kerberos-sso",
-    headers: { Cookie: cookies.map(c => c.replace(/[\r\n\x00-\x1f]/g, "")).join("; ") },
+    ...(headers ? { headers } : {}),
   }
 }

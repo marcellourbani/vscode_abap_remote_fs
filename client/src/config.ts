@@ -2,8 +2,12 @@ import {
   ClientConfiguration,
   clientTraceUrl,
   httpTraceUrl,
+  hasCertAuthConfig,
+  hasOAuthOnPremConfig,
+  getAuthMethod,
   SOURCE_CLIENT
 } from "vscode-abap-remote-fs-sharedapi"
+import type { Agent } from "https"
 import {
   workspace,
   QuickPickItem,
@@ -35,23 +39,35 @@ const CONFIGROOT = "abapfs"
 const REMOTE = "remote"
 export type GuiType = "SAPGUI" | "WEBGUI_CONTROLLED" | "WEBGUI_UNSAFE" | "WEBGUI_UNSAFE_EMBEDDED"
 
+export interface SapGuiConfig {
+  disabled?: boolean
+  routerString?: string
+  // load balancing
+  messageServer?: string
+  messageServerPort?: string
+  group?: string
+  // individual server
+  server?: string
+  systemNumber?: string
+  guiType?: GuiType
+}
+
+type ClientSslConfig = ReturnType<typeof createSSLConfig> & {
+  debugCallback?: LogCallback
+  httpsAgent?: Agent
+  headers?: Record<string, string>
+}
+
 export interface RemoteConfig extends ClientConfiguration {
   atcapprover?: string
   atcVariant?: string
   maxDebugThreads?: number
-  sapGui?: {
-    disabled: boolean
-    routerString: string
-    // load balancing
-    messageServer: string
-    messageServerPort: string
-    group: string
-    // individual server
-    server: string
-    systemNumber: string
-    guiType: GuiType
-  }
+  sapGui?: SapGuiConfig
 }
+
+export type StoredRemoteConfig = Omit<RemoteConfig, "name">
+export type StoredRemoteMap = Record<string, StoredRemoteConfig>
+
 const defaultConfig: Partial<RemoteConfig> = {
   maxDebugThreads: 4,
   allowSelfSigned: false,
@@ -79,8 +95,15 @@ const targetRemotes = (target: ConfigurationTarget) => {
         return remotes?.workspaceFolderValue || {}
     }
   }
-  return select() as Record<"string", RemoteConfig>
+  return select() as StoredRemoteMap
 }
+
+function toStoredRemoteConfig(cfg: ClientConfiguration): StoredRemoteConfig {
+  const { name, ...storedConfig } = cfg
+  void name
+  return storedConfig as StoredRemoteConfig
+}
+
 export const validateNewConfigId = (target: ConfigurationTarget) => {
   const remotes = workspace.getConfiguration(CONFIGROOT)?.[REMOTE] || {}
   const keys = Object.keys(targetRemotes(target)).map(formatKey)
@@ -96,11 +119,11 @@ export const saveNewRemote = async (cfg: ClientConfiguration, target: Configurat
   const validation = validateNewConfigId(target)(cfg.name)
   if (validation) throw new Error(validation)
   const currentConfig = workspace.getConfiguration(CONFIGROOT)
-  const remotes = { ...targetRemotes(target), [cfg.name]: cfg }
+  const remotes = { ...targetRemotes(target), [cfg.name]: toStoredRemoteConfig(cfg) }
   return currentConfig.update(REMOTE, remotes, target)
 }
 
-const config = (name: string, remote: RemoteConfig) => {
+const config = (name: string, remote: StoredRemoteConfig) => {
   const conf = { ...defaultConfig, ...remote, name, valid: true }
   conf.valid = !!(remote.url && remote.username) // ✅ SECURITY FIX: Removed password validation from settings
   if (conf.customCA && !conf.customCA.match(/-----BEGIN CERTIFICATE-----/gi))
@@ -165,6 +188,15 @@ function loggedProxy(client: ADTClient, conf: RemoteConfig) {
     getterOverride: new Map([["statelessClone", () => clone]])
   })
 }
+
+function createClientSslConfig(conf: RemoteConfig): ClientSslConfig {
+  const sslconf: ClientSslConfig = conf.url.match(/https:/i)
+    ? createSSLConfig(conf.allowSelfSigned, conf.customCA)
+    : {}
+  sslconf.debugCallback = buildDebugCallback(conf)
+  return sslconf
+}
+
 const httpLogger = (conf: RemoteConfig): LogCallback | undefined => {
   const mongoUrl = httpTraceUrl(conf)
   if (!mongoUrl) return undefined
@@ -187,10 +219,7 @@ function buildDebugCallback(conf: RemoteConfig): LogCallback {
 }
 
 export function createClient(conf: RemoteConfig) {
-  const sslconf = conf.url.match(/https:/i)
-    ? createSSLConfig(conf.allowSelfSigned, conf.customCA)
-    : {}
-  sslconf.debugCallback = buildDebugCallback(conf)
+  const sslconf = createClientSslConfig(conf)
   const password = oauthLogin(conf) || conf.password
   const client = new ADTClient(
     conf.url,
@@ -211,22 +240,19 @@ export function createClient(conf: RemoteConfig) {
 export async function createAuthenticatedClient(
   conf: RemoteConfig
 ): Promise<ADTClient> {
-  const authMethod = conf.authMethod || "basic"
+  const authMethod = getAuthMethod(conf)
 
   if (authMethod === "basic" || conf.oauth) {
     log.debug(`[auth] createAuthenticatedClient: delegating to createClient for ${conf.name} (${authMethod})`)
     return createClient(conf)
   }
 
-  const sslconf: any = conf.url.match(/https:/i)
-    ? createSSLConfig(conf.allowSelfSigned, conf.customCA)
-    : {}
-  sslconf.debugCallback = buildDebugCallback(conf)
+  const sslconf = createClientSslConfig(conf)
 
   switch (authMethod) {
     case "cert": {
       log.debug(`[auth] Building cert auth for ${conf.name}`)
-      if (!conf.certAuth) throw new Error("Certificate auth config missing")
+      if (!hasCertAuthConfig(conf)) throw new Error("Certificate auth config missing")
       const result = await buildCertAuth(
         conf.name,
         conf.certAuth,
@@ -288,7 +314,7 @@ export async function createAuthenticatedClient(
     }
     case "oauth_onprem": {
       log.debug(`[auth] Building OAuth on-prem auth for ${conf.name}`)
-      if (!conf.oauthOnPrem)
+      if (!hasOAuthOnPremConfig(conf))
         throw new Error("On-premise OAuth config missing (clientId required)")
       const result = await buildOAuthOnPremAuth(
         conf.name,
@@ -352,7 +378,7 @@ export class RemoteManager {
       if (!conn) return
 
       // Only fetch password from vault for basic auth (other methods use different secrets)
-      const authMethod = conn.authMethod || "basic"
+      const authMethod = getAuthMethod(conn)
       if (authMethod === "basic" && !conn.password) {
         conn.password = await this.getPassword(connectionId, conn.username)
       }
@@ -367,7 +393,7 @@ export class RemoteManager {
     const userConfig = workspace.getConfiguration(CONFIGROOT)
     const remote = userConfig[REMOTE]
     if (!remote) throw new Error("No destination configured")
-    return Object.keys(remote).map(name => config(name, remote[name] as RemoteConfig))
+    return Object.keys(remote).map(name => config(name, remote[name] as StoredRemoteConfig))
   }
 
   private loadRemote(connectionId: string) {
@@ -402,7 +428,7 @@ export class RemoteManager {
       remote = selected.remote
     }
     if (remote && !remote.password) {
-      const authMethod = (remote as any).authMethod || "basic"
+      const authMethod = getAuthMethod(remote)
       if (authMethod === "basic") {
         remote.password = await this.getPassword(formatKey(remote.name), remote.username)
       }

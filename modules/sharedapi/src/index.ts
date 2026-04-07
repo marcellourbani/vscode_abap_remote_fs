@@ -32,6 +32,7 @@ export interface AbapObjectDetail {
 
 /** Supported authentication methods for SAP connections. */
 export type AuthMethod = "basic" | "cert" | "kerberos" | "browser_sso" | "oauth_onprem"
+export type NonBasicAuthMethod = Exclude<AuthMethod, "basic">
 
 /** X.509 client certificate configuration (paths only — passphrase in vault). */
 export interface CertAuthConfig {
@@ -55,6 +56,20 @@ export interface OAuthOnPremConfig {
   clientSecret?: string
   /** OAuth scope (default: SAP_ADT). */
   scope?: string
+}
+
+/** HTTP headers forwarded from the extension host to the language server. */
+export type AuthHttpHeaders = Readonly<Record<string, string>>
+
+/** Certificate material sent to the language server to reconstruct an https.Agent. */
+export interface CertAuthTransport extends CertAuthConfig {
+  passphrase?: string
+}
+
+/** Auth metadata returned by the extension host for non-basic authentication methods. */
+export interface AuthHeadersResponse {
+  httpHeaders?: AuthHttpHeaders
+  certAuth?: CertAuthTransport
 }
 
 export interface ClientConfiguration {
@@ -87,6 +102,30 @@ export interface ClientConfiguration {
     http_calls: boolean
   }
 }
+
+export const getAuthMethod = (config: Pick<ClientConfiguration, "authMethod">): AuthMethod =>
+  config.authMethod || "basic"
+
+export type ClientConfigurationWithAuth<M extends AuthMethod> = ClientConfiguration & {
+  authMethod: M
+}
+
+export type CertClientConfiguration = ClientConfigurationWithAuth<"cert"> & {
+  certAuth: CertAuthConfig
+}
+
+export type OAuthOnPremClientConfiguration = ClientConfigurationWithAuth<"oauth_onprem"> & {
+  oauthOnPrem: OAuthOnPremConfig
+}
+
+export const hasCertAuthConfig = (
+  config: ClientConfiguration
+): config is CertClientConfiguration => getAuthMethod(config) === "cert" && !!config.certAuth
+
+export const hasOAuthOnPremConfig = (
+  config: ClientConfiguration
+): config is OAuthOnPremClientConfiguration =>
+  getAuthMethod(config) === "oauth_onprem" && !!config.oauthOnPrem
 
 export const clientTraceUrl = (conf: ClientConfiguration) =>
   conf.trace && conf.trace.api_methods && conf.trace.mongoUrl

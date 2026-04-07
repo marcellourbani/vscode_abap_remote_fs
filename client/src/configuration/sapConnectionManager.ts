@@ -12,8 +12,16 @@
 import * as vscode from "vscode"
 import { randomBytes } from "crypto"
 import { funWindow as window } from "../services/funMessenger"
-import { RemoteConfig, GuiType, validateNewConfigId, formatKey } from "../config"
-import { AuthMethod, AUTH_METHOD_LABELS } from "../auth"
+import {
+  RemoteConfig,
+  GuiType,
+  SapGuiConfig,
+  StoredRemoteConfig,
+  StoredRemoteMap,
+  validateNewConfigId,
+  formatKey
+} from "../config"
+import { AUTH_METHOD_LABELS } from "../auth"
 import { clearCertPassphrase } from "../auth/certificate"
 import { clearKerberosCookies } from "../auth/kerberos"
 import { clearSsoCookies } from "../auth/browserSso"
@@ -35,9 +43,178 @@ import {
   cfServiceInstances,
   cfInstanceServiceKeys
 } from "abap_cloud_platform"
+import { getAuthMethod } from "vscode-abap-remote-fs-sharedapi"
 
-interface ConnectionData extends RemoteConfig {
-  // All fields from RemoteConfig are inherited
+type ConnectionTarget = "user" | "workspace"
+type StoredConnection = StoredRemoteConfig
+type StoredRemotes = StoredRemoteMap
+
+type ConnectionInput = Partial<StoredConnection> & Pick<StoredConnection, "url" | "username" | "client">
+
+interface ConnectionData extends ConnectionInput {
+  name: string
+}
+
+interface ReadyMessage {
+  type: "ready"
+}
+
+interface LoadConnectionsMessage {
+  type: "loadConnections"
+}
+
+interface SaveConnectionMessage {
+  type: "saveConnection"
+  connectionId: string
+  connection: ConnectionData
+  target: ConnectionTarget
+  isEdit: boolean
+}
+
+interface DeleteConnectionMessage {
+  type: "deleteConnection" | "confirmDeleteConnection"
+  connectionId: string
+  target: ConnectionTarget
+}
+
+interface ExportConnectionsMessage {
+  type: "exportConnections"
+  target: ConnectionTarget
+}
+
+interface ImportFromJsonMessage {
+  type: "importFromJson"
+  jsonContent: string
+  target: ConnectionTarget
+}
+
+interface CreateCloudConnectionFromServiceKeyMessage {
+  type: "createCloudConnection"
+  cloudType: "serviceKey"
+  serviceKey: string
+  target: ConnectionTarget
+}
+
+interface CreateCloudConnectionFromEndpointMessage {
+  type: "createCloudConnection"
+  cloudType: "endpoint"
+  endpoint: string
+  target: ConnectionTarget
+}
+
+interface ConfirmBulkDeleteMessage {
+  type: "confirmBulkDelete"
+  connectionNames: string[]
+  target: ConnectionTarget
+}
+
+interface RequestBulkUsernameEditMessage {
+  type: "requestBulkUsernameEdit"
+  connectionNames: string[]
+  target: ConnectionTarget
+}
+
+interface BulkEditUsernameMessage {
+  type: "bulkEditUsername"
+  connectionNames: string[]
+  newUsername: string
+  target: ConnectionTarget
+}
+
+interface BulkDeleteMessage {
+  type: "bulkDelete"
+  connectionNames: string[]
+  target: ConnectionTarget
+}
+
+type ConnectionManagerMessage =
+  | ReadyMessage
+  | LoadConnectionsMessage
+  | SaveConnectionMessage
+  | DeleteConnectionMessage
+  | ExportConnectionsMessage
+  | ImportFromJsonMessage
+  | CreateCloudConnectionFromServiceKeyMessage
+  | CreateCloudConnectionFromEndpointMessage
+  | ConfirmBulkDeleteMessage
+  | RequestBulkUsernameEditMessage
+  | BulkEditUsernameMessage
+  | BulkDeleteMessage
+
+interface AbapCloudServiceKey {
+  url: string
+  uaa: {
+    clientid: string
+    clientsecret: string
+    url: string
+  }
+}
+
+interface AbapSystemLanguage {
+  ISOLANG?: string
+}
+
+interface AbapSystemInfo {
+  SYSID: string
+  INSTALLED_LANGUAGES: AbapSystemLanguage[]
+}
+
+interface AbapUserInfo {
+  UNAME: string
+  MANDT: string
+}
+
+interface CloudEntityWithName {
+  entity: {
+    name: string
+  }
+}
+
+interface CloudEntityWithCredentials extends CloudEntityWithName {
+  entity: {
+    name: string
+    credentials: unknown
+  }
+}
+
+const OAUTH_ONPREM_SECRET_SERVICE = "vscode.abapfs.oauth_onprem_secret"
+
+function readStoredRemotes(
+  config: vscode.WorkspaceConfiguration,
+  target: ConnectionTarget
+): StoredRemotes {
+  return target === "user"
+    ? (config.inspect("remote")?.globalValue as StoredRemotes) || {}
+    : (config.inspect("remote")?.workspaceValue as StoredRemotes) || {}
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null
+}
+
+function isConnectionInput(value: unknown): value is ConnectionInput {
+  if (!isRecord(value)) {
+    return false
+  }
+
+  return (
+    typeof value.url === "string" &&
+    typeof value.username === "string" &&
+    typeof value.client === "string"
+  )
+}
+
+function hasNamedEntity<T extends { entity?: unknown }>(value: T): value is T & CloudEntityWithName {
+  if (!isRecord(value) || !isRecord(value.entity)) {
+    return false
+  }
+  return typeof value.entity.name === "string"
+}
+
+function hasCredentialsEntity<T extends { entity?: unknown }>(
+  value: T
+): value is T & CloudEntityWithCredentials {
+  return hasNamedEntity(value) && "credentials" in value.entity
 }
 
 export class SapConnectionManager {
@@ -58,7 +235,7 @@ export class SapConnectionManager {
 
     // Handle messages from the webview
     this.panel.webview.onDidReceiveMessage(
-      message => {
+      (message: ConnectionManagerMessage) => {
         this.handleMessage(message)
       },
       null,
@@ -98,7 +275,7 @@ export class SapConnectionManager {
     this.panel.webview.html = this.getHtmlForWebview(webview)
   }
 
-  private async handleMessage(message: any) {
+  private async handleMessage(message: ConnectionManagerMessage) {
     switch (message.type) {
       case "ready":
         // Webview is ready, send initial data
@@ -162,8 +339,8 @@ export class SapConnectionManager {
 
   private async sendConnectionsToWebview() {
     const config = vscode.workspace.getConfiguration("abapfs")
-    const userRemotes = (config.inspect("remote")?.globalValue as Record<string, any>) || {}
-    const workspaceRemotes = (config.inspect("remote")?.workspaceValue as Record<string, any>) || {}
+    const userRemotes = readStoredRemotes(config, "user")
+    const workspaceRemotes = readStoredRemotes(config, "workspace")
 
     this.panel.webview.postMessage({
       type: "connections",
@@ -177,20 +354,17 @@ export class SapConnectionManager {
   private async saveConnection(
     connectionId: string,
     connection: ConnectionData,
-    target: "user" | "workspace",
+    target: ConnectionTarget,
     isEdit: boolean
   ) {
-    let backupRemotes: Record<string, RemoteConfig> | undefined
+    let backupRemotes: StoredRemotes | undefined
 
     try {
       const configTarget =
         target === "user" ? vscode.ConfigurationTarget.Global : vscode.ConfigurationTarget.Workspace
 
       const config = vscode.workspace.getConfiguration("abapfs")
-      const currentRemotes =
-        target === "user"
-          ? (config.inspect("remote")?.globalValue as Record<string, RemoteConfig>) || {}
-          : (config.inspect("remote")?.workspaceValue as Record<string, RemoteConfig>) || {}
+      const currentRemotes = readStoredRemotes(config, target)
 
       // Backup current state for rollback
       backupRemotes = { ...currentRemotes }
@@ -230,10 +404,7 @@ export class SapConnectionManager {
 
       // Verify the save was successful by reading it back
       const verifyConfig = vscode.workspace.getConfiguration("abapfs")
-      const savedRemotes =
-        target === "user"
-          ? (verifyConfig.inspect("remote")?.globalValue as Record<string, RemoteConfig>) || {}
-          : (verifyConfig.inspect("remote")?.workspaceValue as Record<string, RemoteConfig>) || {}
+      const savedRemotes = readStoredRemotes(verifyConfig, target)
 
       if (!savedRemotes[connectionId]) {
         throw new Error("Verification failed: Connection not found after save")
@@ -243,12 +414,12 @@ export class SapConnectionManager {
       // It will be requested on first connection and stored in OS credential manager
 
       // Store OAuth on-premise client secret in vault (not in settings.json)
-      if ((connection as any).authMethod === "oauth_onprem" && (connection as any).oauthOnPrem?.clientSecret) {
+      if (getAuthMethod(connection) === "oauth_onprem" && connection.oauthOnPrem?.clientSecret) {
         const vault = PasswordVault.get()
         await vault.setPassword(
-          "vscode.abapfs.oauth_onprem_secret",
+          OAUTH_ONPREM_SECRET_SERVICE,
           formatKey(connectionId),
-          (connection as any).oauthOnPrem.clientSecret
+          connection.oauthOnPrem.clientSecret
         )
       }
 
@@ -286,9 +457,9 @@ export class SapConnectionManager {
     }
   }
 
-  private cleanConnectionObject(connection: ConnectionData): RemoteConfig {
-    const authMethod = (connection as any).authMethod || "basic"
-    const cleaned: any = {
+  private cleanConnectionObject(connection: ConnectionInput): StoredConnection {
+    const authMethod = getAuthMethod(connection)
+    const cleaned: StoredConnection = {
       url: connection.url,
       username: connection.username,
       password: "", // Empty string - actual password stored in OS credential manager only
@@ -310,8 +481,8 @@ export class SapConnectionManager {
     if (connection.customCA) cleaned.customCA = connection.customCA
 
     // Certificate auth config (paths only — passphrase in OS vault)
-    if (authMethod === "cert" && (connection as any).certAuth) {
-      const cert = (connection as any).certAuth
+    if (authMethod === "cert" && connection.certAuth) {
+      const cert = connection.certAuth
       if (cert.certPath || cert.keyPath) {
         cleaned.certAuth = {
           certPath: cert.certPath || "",
@@ -323,7 +494,7 @@ export class SapConnectionManager {
 
     // Kerberos auth config (all fields optional)
     if (authMethod === "kerberos") {
-      const kerb = (connection as any).kerberosAuth
+      const kerb = connection.kerberosAuth
       if (kerb && (kerb.sapHostname || kerb.realm || kerb.spn)) {
         cleaned.kerberosAuth = {
           ...(kerb.sapHostname ? { sapHostname: kerb.sapHostname } : {}),
@@ -334,8 +505,8 @@ export class SapConnectionManager {
     }
 
     // OAuth on-premise config
-    if (authMethod === "oauth_onprem" && (connection as any).oauthOnPrem) {
-      const oa = (connection as any).oauthOnPrem
+    if (authMethod === "oauth_onprem" && connection.oauthOnPrem) {
+      const oa = connection.oauthOnPrem
       if (oa.clientId) {
         cleaned.oauthOnPrem = {
           clientId: oa.clientId,
@@ -369,10 +540,14 @@ export class SapConnectionManager {
       cleaned.oauth = connection.oauth
     }
 
-    return cleaned as RemoteConfig
+    return cleaned
   }
 
-  private hasSapGuiValues(sapGui: any): boolean {
+  private hasSapGuiValues(sapGui: SapGuiConfig | undefined): boolean {
+    if (!sapGui) {
+      return false
+    }
+
     return !!(
       sapGui.server ||
       sapGui.systemNumber ||
@@ -384,18 +559,15 @@ export class SapConnectionManager {
     )
   }
 
-  private async deleteConnection(connectionId: string, target: "user" | "workspace") {
-    let backupRemotes: Record<string, RemoteConfig> | undefined
+  private async deleteConnection(connectionId: string, target: ConnectionTarget) {
+    let backupRemotes: StoredRemotes | undefined
 
     try {
       const configTarget =
         target === "user" ? vscode.ConfigurationTarget.Global : vscode.ConfigurationTarget.Workspace
 
       const config = vscode.workspace.getConfiguration("abapfs")
-      const currentRemotes =
-        target === "user"
-          ? (config.inspect("remote")?.globalValue as Record<string, RemoteConfig>) || {}
-          : (config.inspect("remote")?.workspaceValue as Record<string, RemoteConfig>) || {}
+      const currentRemotes = readStoredRemotes(config, target)
 
       // Backup current state for rollback
       backupRemotes = { ...currentRemotes }
@@ -415,10 +587,7 @@ export class SapConnectionManager {
 
       // Verify deletion
       const verifyConfig = vscode.workspace.getConfiguration("abapfs")
-      const savedRemotes =
-        target === "user"
-          ? (verifyConfig.inspect("remote")?.globalValue as Record<string, RemoteConfig>) || {}
-          : (verifyConfig.inspect("remote")?.workspaceValue as Record<string, RemoteConfig>) || {}
+      const savedRemotes = readStoredRemotes(verifyConfig, target)
 
       if (savedRemotes[connectionId]) {
         throw new Error("Verification failed: Connection still exists after deletion")
@@ -434,7 +603,7 @@ export class SapConnectionManager {
         await clearKerberosCookies(connKey).catch(() => {})
         await clearSsoCookies(connKey).catch(() => {})
         await clearOAuthOnPremTokens(connKey).catch(() => {})
-        try { await vault.deletePassword("vscode.abapfs.oauth_onprem_secret", connKey) } catch {}
+        try { await vault.deletePassword(OAUTH_ONPREM_SECRET_SERVICE, connKey) } catch {}
       }
 
       this.panel.webview.postMessage({
@@ -473,35 +642,38 @@ export class SapConnectionManager {
 
   private async createCloudConnectionFromServiceKey(
     serviceKeyJson: string,
-    target: "user" | "workspace"
+    target: ConnectionTarget
   ) {
     try {
       // Parse service key
-      const serviceKey = JSON.parse(serviceKeyJson)
+      const serviceKey = JSON.parse(serviceKeyJson) as unknown
 
       // Validate it's an ABAP service key
       if (!isAbapServiceKey(serviceKey)) {
         throw new Error("Invalid ABAP service key format")
       }
 
+      const parsedServiceKey = serviceKey as AbapCloudServiceKey
+
       // Extract connection details from service key
       const {
         url,
         uaa: { clientid, clientsecret, url: loginUrl }
-      } = serviceKey
+      } = parsedServiceKey
 
       // Get system info to determine name
       const server = loginServer()
       const grant = await cfCodeGrant(loginUrl, clientid, clientsecret, server)
-      const user = await getAbapUserInfo(url, grant.accessToken)
-      const info = await getAbapSystemInfo(url, grant.accessToken)
+      const user = (await getAbapUserInfo(url, grant.accessToken)) as AbapUserInfo
+      const info = (await getAbapSystemInfo(url, grant.accessToken)) as AbapSystemInfo
       server.server.close()
 
       // Create connection configuration (password not included - stored in credential manager only)
-      const connection: any = {
+      const connection: ConnectionData = {
         name: info.SYSID,
         url,
         username: user.UNAME,
+        password: "",
         language: "en",
         client: user.MANDT,
         allowSelfSigned: false,
@@ -518,9 +690,7 @@ export class SapConnectionManager {
       this.panel.webview.postMessage({
         type: "cloudConnectionCreated",
         connection: connection,
-        availableLanguages: info.INSTALLED_LANGUAGES.map(
-          (l: any) => l.ISOLANG?.toLowerCase() || "en"
-        )
+        availableLanguages: info.INSTALLED_LANGUAGES.map(language => language.ISOLANG?.toLowerCase() || "en")
       })
 
       logTelemetry("command_connection_manager_cloud_connection_created")
@@ -533,7 +703,7 @@ export class SapConnectionManager {
     }
   }
 
-  private async createCloudConnectionFromEndpoint(endpoint: string, target: "user" | "workspace") {
+  private async createCloudConnectionFromEndpoint(endpoint: string, target: ConnectionTarget) {
     try {
       // This will guide the user through the Cloud Foundry login flow
       // vscode is already statically imported above
@@ -615,13 +785,13 @@ export class SapConnectionManager {
       }
 
       // Filter for keys with valid names and credentials
-      const validKeys = keys.filter(k => k.entity && typeof (k.entity as any).name === "string")
+      const validKeys = keys.filter(hasNamedEntity)
       if (validKeys.length === 0) {
         throw new Error("No valid service keys found")
       }
 
       const keyItems = validKeys.map(k => ({
-        label: (k.entity as any).name,
+        label: k.entity.name,
         key: k
       }))
       const selectedKey = await window.showQuickPick(keyItems, {
@@ -630,7 +800,11 @@ export class SapConnectionManager {
       if (!selectedKey) return
 
       // Extract credentials from the selected key
-      const credentials = (selectedKey.key.entity as any).credentials
+      if (!hasCredentialsEntity(selectedKey.key)) {
+        throw new Error("Selected key has no credentials")
+      }
+
+      const credentials = selectedKey.key.entity.credentials
       if (!credentials) {
         throw new Error("Selected key has no credentials")
       }
@@ -646,18 +820,15 @@ export class SapConnectionManager {
     }
   }
 
-  private async exportConnections(target: "user" | "workspace") {
+  private async exportConnections(target: ConnectionTarget) {
     try {
       const config = vscode.workspace.getConfiguration("abapfs")
-      const rawConnections =
-        target === "user"
-          ? ((config.inspect("remote")?.globalValue || {}) as Record<string, any>)
-          : ((config.inspect("remote")?.workspaceValue || {}) as Record<string, any>)
+      const rawConnections = readStoredRemotes(config, target)
 
       // Sanitize connections for export - clear username and password values but keep fields.
-      const sanitizedConnections: Record<string, any> = {}
+      const sanitizedConnections: StoredRemotes = {}
       for (const [name, conn] of Object.entries(rawConnections)) {
-        const sanitized: any = {
+        const sanitized: StoredConnection = {
           ...conn,
           username: "", // Clear value but keep field for import compatibility
           password: "" // Clear value but keep field for import compatibility
@@ -706,23 +877,26 @@ export class SapConnectionManager {
     }
   }
 
-  private async importFromJson(jsonContent: string, target: "user" | "workspace") {
+  private async importFromJson(jsonContent: string, target: ConnectionTarget) {
     try {
-      const rawParsed = JSON.parse(jsonContent)
+      const rawParsed = JSON.parse(jsonContent) as unknown
 
       // Validate and sanitize: only accept plain objects as connection maps
-      if (typeof rawParsed !== "object" || Array.isArray(rawParsed) || rawParsed === null) {
+      if (!isRecord(rawParsed) || Array.isArray(rawParsed)) {
         throw new Error("Invalid format: expected an object mapping connection names to configs")
       }
 
       // Run each imported connection through cleanConnectionObject to strip
       // unknown fields and validate structure
-      const sanitized: Record<string, any> = {}
+      const sanitized: StoredRemotes = {}
       for (const [name, rawConn] of Object.entries(rawParsed)) {
-        if (typeof rawConn !== "object" || rawConn === null) continue
-        const conn = rawConn as any
+        if (!isConnectionInput(rawConn)) {
+          logCommands.warn(`Skipping imported connection "${name}": missing required fields`)
+          continue
+        }
+        const conn = rawConn
         // Validate URL format before saving
-        if (conn.url) {
+        if (typeof conn.url === "string") {
           try {
             const u = new URL(conn.url)
             if (u.protocol !== "http:" && u.protocol !== "https:") continue
@@ -738,10 +912,7 @@ export class SapConnectionManager {
         target === "user" ? vscode.ConfigurationTarget.Global : vscode.ConfigurationTarget.Workspace
 
       const config = vscode.workspace.getConfiguration("abapfs")
-      const currentRemotes =
-        target === "user"
-          ? (config.inspect("remote")?.globalValue as Record<string, RemoteConfig>) || {}
-          : (config.inspect("remote")?.workspaceValue as Record<string, RemoteConfig>) || {}
+      const currentRemotes = readStoredRemotes(config, target)
 
       // Merge sanitized connections with existing
       const merged = { ...currentRemotes, ...sanitized }
@@ -1435,19 +1606,19 @@ export class SapConnectionManager {
                     <div class="form-group">
                         <label for="kerberosAuth_sapHostname">SAP Server Hostname <em>(optional)</em></label>
                         <input type="text" id="kerberosAuth_sapHostname" name="kerberosAuth.sapHostname" placeholder="sapserver.corp.example.com">
-                        <div class="help-text">Not required — Windows SSPI handles auth automatically. Only needed if you want to override the SPN.</div>
+                      <div class="help-text">Optional hostname used when auto-generating the Kerberos target SPN. Leave blank to use the host from the connection URL.</div>
                     </div>
                     <div class="form-group">
                         <label for="kerberosAuth_realm">Kerberos Realm (Optional)</label>
                         <input type="text" id="kerberosAuth_realm" name="kerberosAuth.realm" placeholder="CORP.EXAMPLE.COM" style="text-transform: uppercase;">
-                        <div class="help-text">Auto-detected from hostname if omitted</div>
+                      <div class="help-text">Optional realm suffix for the generated SPN. Leave blank to let Windows resolve the realm.</div>
                     </div>
                 </div>
                 <div class="form-row">
                     <div class="form-group">
                         <label for="kerberosAuth_spn">SPN Override (Optional)</label>
                         <input type="text" id="kerberosAuth_spn" name="kerberosAuth.spn" placeholder="HTTP/sapserver.corp.example.com@CORP.EXAMPLE.COM">
-                        <div class="help-text">Full Service Principal Name. Leave blank to auto-generate from hostname + realm</div>
+                      <div class="help-text">Exact target SPN to use for the Windows SSPI handshake. Overrides the hostname + realm fields.</div>
                     </div>
                 </div>
                 <div class="form-row">

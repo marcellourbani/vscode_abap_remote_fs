@@ -13,12 +13,22 @@
  * so the language server can also reference them.
  */
 
+import type { Agent } from "https"
+import type { AuthHttpHeaders, AuthMethod } from "vscode-abap-remote-fs-sharedapi"
+
 // Re-export canonical types from sharedapi rather than duplicating them
-export type { AuthMethod, CertAuthConfig, KerberosAuthConfig } from "vscode-abap-remote-fs-sharedapi"
+export type {
+  AuthMethod,
+  AuthHttpHeaders,
+  CertAuthConfig,
+  CertAuthTransport,
+  KerberosAuthConfig,
+  OAuthOnPremConfig
+} from "vscode-abap-remote-fs-sharedapi"
 
 export const AUTH_METHODS = ["basic", "cert", "kerberos", "browser_sso", "oauth_onprem"] as const
 
-export const AUTH_METHOD_LABELS: Record<string, string> = {
+export const AUTH_METHOD_LABELS: Record<AuthMethod, string> = {
   basic: "Basic (Username/Password)",
   cert: "X.509 Client Certificate",
   kerberos: "Kerberos / SPNEGO (SSO)",
@@ -31,7 +41,7 @@ export interface AuthResult {
   /** Password string or async token fetcher for ADTClient constructor. */
   passwordOrFetcher: string | (() => Promise<string>)
   /** Custom HTTPS agent (for certificate auth). */
-  httpsAgent?: import("https").Agent
+  httpsAgent?: Agent
   /** Extra headers to inject on every request (e.g. cookies). */
-  headers?: Record<string, string>
+  headers?: AuthHttpHeaders
 }

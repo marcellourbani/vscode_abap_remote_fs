@@ -2,16 +2,16 @@
  * Browser SSO Authentication
  *
  * For SAP systems using SAML 2.0 or Kerberos SSO where direct protocol
- * integration isn't feasible. Opens a browser window to the SAP system,
- * lets the IdP authenticate the user, then captures session cookies via
- * a local HTTP callback server.
+ * integration isn't feasible. Opens a local helper page in the browser,
+ * lets the user authenticate against the SAP system in a separate tab,
+ * then captures pasted session cookies via a local HTTP callback server.
  *
  * Flow:
  *  1. Extension starts a local HTTP server on a random port
- *  2. Opens the SAP system URL in the user's default browser
- *  3. Browser authenticates via IdP (SAML/Kerberos/etc.)
- *  4. After successful auth, user clicks a bookmarklet or the extension
- *     helper page extracts cookies and POSTs them to localhost callback
+ *  2. Opens the local helper page in the user's default browser
+ *  3. User opens the SAP system from the helper page and authenticates via IdP
+ *  4. User pastes the resulting cookies into the helper page, which POSTs
+ *     them back to the localhost callback
  *  5. Extension captures MYSAPSSO2 / SAP_SESSIONID cookies
  *  6. Subsequent ADT requests use those cookies
  *
@@ -24,11 +24,39 @@ import { AuthResult } from "./types"
 import { PasswordVault, log } from "../lib"
 import { formatKey } from "../config"
 import * as vscode from "vscode"
+import { buildCookieHeaders, sanitizeCookie, toStringArray } from "./utils"
 
 const VAULT_SERVICE = "vscode.abapfs.browsersso"
 
 const SSO_COOKIE_TTL_MS = 30 * 60 * 1000 // 30 minutes — SAP session cookies typically expire in 30-60 min
 const VAULT_TS_SERVICE = "vscode.abapfs.browsersso.ts"
+const captureLocks = new Map<string, Promise<string[]>>()
+
+interface CookieCaptureRequest {
+  cookies?: string
+}
+
+function getListeningPort(server: http.Server): number {
+  const address = server.address()
+  if (!address || typeof address === "string") {
+    throw new Error("Cookie capture server did not expose a TCP port")
+  }
+  return address.port
+}
+
+function captureCookiesOnce(connId: string, loginUrl: string): Promise<string[]> {
+  let pending = captureLocks.get(connId)
+  if (!pending) {
+    pending = startCookieCaptureServer(loginUrl, 120_000, vscodeSsoNotify)
+      .then(async cookies => {
+        await storeSsoCookies(connId, cookies)
+        return cookies
+      })
+      .finally(() => captureLocks.delete(connId))
+    captureLocks.set(connId, pending)
+  }
+  return pending
+}
 
 /** Store SSO cookies securely (with timestamp). */
 export async function storeSsoCookies(connId: string, cookies: string[]): Promise<void> {
@@ -53,12 +81,13 @@ export async function getSsoCookies(connId: string): Promise<string[]> {
     const ageMs = Date.now() - storedAt
     if (ageMs > SSO_COOKIE_TTL_MS) {
       log.debug(`[browser-sso] Cookies expired for ${connId} (age=${Math.round(ageMs / 1000)}s, ttl=${SSO_COOKIE_TTL_MS / 1000}s)`)
+      await clearSsoCookies(connId)
       return []
     }
   }
   try {
     const parsed = JSON.parse(raw)
-    const result = Array.isArray(parsed) ? parsed : []
+    const result = toStringArray(parsed)
     log.debug(`[browser-sso] Retrieved ${result.length} cached cookies for ${connId}`)
     return result
   } catch (e) {
@@ -110,9 +139,10 @@ export function startCookieCaptureServer(
       if (req.method === "POST" && req.url === `/${token}/cookies`) {
         let body = ""
         let rejected = false
-        req.on("data", (chunk: string) => {
+        req.on("data", (chunk: Buffer) => {
+          const chunkText = chunk.toString("utf8")
           // Check before appending to reliably enforce the limit
-          if (rejected || body.length + chunk.length > 8192) {
+          if (rejected || body.length + chunkText.length > 8192) {
             if (!rejected) {
               rejected = true
               res.writeHead(413)
@@ -121,18 +151,18 @@ export function startCookieCaptureServer(
             }
             return
           }
-          body += chunk
+          body += chunkText
         })
         req.on("end", () => {
           if (rejected) return
           try {
-            const data = JSON.parse(body)
+            const data = JSON.parse(body) as CookieCaptureRequest
             // Sanitize cookies: strip CR/LF to prevent HTTP header injection 
-            const cookieString: string = data.cookies || ""
+            const cookieString = typeof data.cookies === "string" ? data.cookies : ""
             const cookies = cookieString
               .split(";")
-              .map((c: string) => c.replace(/[\r\n]/g, "").replace(/[\x00-\x1f]/g, "").trim())
-              .filter((c: string) => c.includes("=") && c.length <= 4096)
+              .map(cookie => sanitizeCookie(cookie))
+              .filter(cookie => cookie.includes("=") && cookie.length <= 4096)
 
             if (cookies.length === 0) {
               log.debug(`[browser-sso] POST received but no cookies extracted`)
@@ -163,8 +193,7 @@ export function startCookieCaptureServer(
 
     // Listen on a random available port on loopback only
     server.listen(0, "127.0.0.1", () => {
-      const addr = server.address() as { port: number }
-      const helperUrl = `http://127.0.0.1:${addr.port}/${token}`
+      const helperUrl = `http://127.0.0.1:${getListeningPort(server)}/${token}`
 
       // Open in the user's default browser; only show notification as fallback
       import("open")
@@ -217,14 +246,15 @@ export async function buildBrowserSsoAuth(
   if (cookies.length === 0) {
     log.debug(`[browser-sso] No cached cookies, starting cookie capture for ${connId}`)
     const loginUrl = `${sapUrl}/sap/bc/adt/discovery?sap-client=${encodeURIComponent(sapClient)}`
-    cookies = await startCookieCaptureServer(loginUrl, 120_000, vscodeSsoNotify)
-    await storeSsoCookies(connId, cookies)
+    cookies = await captureCookiesOnce(connId, loginUrl)
   }
+
+  const headers = buildCookieHeaders(cookies)
 
   log.debug(`[browser-sso] buildBrowserSsoAuth complete for ${connId}: ${cookies.length} cookies`)
   return {
     passwordOrFetcher: "browser-sso",
-    headers: { Cookie: cookies.map(c => c.replace(/[\r\n\x00-\x1f]/g, "")).join("; ") },
+    ...(headers ? { headers } : {}),
   }
 }
 
@@ -238,14 +268,16 @@ export async function refreshBrowserSsoAuth(
 ): Promise<AuthResult> {
   log.debug(`[browser-sso] refreshBrowserSsoAuth starting for ${connId}`)
   await clearSsoCookies(connId)
+  captureLocks.delete(connId)
   const loginUrl = `${sapUrl}/sap/bc/adt/discovery?sap-client=${encodeURIComponent(sapClient)}`
-  const cookies = await startCookieCaptureServer(loginUrl, 120_000, vscodeSsoNotify)
-  await storeSsoCookies(connId, cookies)
+  const cookies = await captureCookiesOnce(connId, loginUrl)
+
+  const headers = buildCookieHeaders(cookies)
 
   log.debug(`[browser-sso] refreshBrowserSsoAuth complete for ${connId}: ${cookies.length} cookies`)
   return {
     passwordOrFetcher: "browser-sso",
-    headers: { Cookie: cookies.map(c => c.replace(/[\r\n\x00-\x1f]/g, "")).join("; ") },
+    ...(headers ? { headers } : {}),
   }
 }
 
