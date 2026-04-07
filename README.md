@@ -1,16 +1,27 @@
 # ABAP FS 🚀
 
+**A VS Code extension that gives AI assistants real, live access to your SAP system — reads actual code, queries live tables, runs tests, debugs, and understands your custom objects.**
+
+> Ask "How does BAPI_USER_GET_DETAIL work?" and the AI finds the function, reads the code, checks where it's used, and examines related objects — without you opening anything manually.
+
+- 39 specialized AI tools giving Copilot deep SAP awareness
+- Works with GitHub Copilot, Cursor, Claude Code, Windsurf and more (via MCP)
+- Full development workflow: code, debug, test, ATC, transports, dumps — all in VS Code
+
+<!-- [![Demo](https://img.youtube.com/vi/DD4fUH3fiZg/1.jpg)](https://www.youtube.com/watch?v=DD4fUH3fiZg) -->
+
+---
+
 - [ABAP FS 🚀](#abap-fs-)
-  - [AI-Powered ABAP Development in VS Code](#ai-powered-abap-development-in-vs-code)
   - [🎯 What Makes This Different?](#-what-makes-this-different)
-  - [� Documentation](#-documentation)
-  - [�🚀 Installation](#-installation)
+  - [📖 Documentation](#-documentation)
+  - [🚀 Installation](#-installation)
     - [Prerequisites](#prerequisites)
     - [Installation Steps (Will need to follow slightly different steps for custom builds)](#installation-steps-will-need-to-follow-slightly-different-steps-for-custom-builds)
   - [✨ Key Features](#-key-features)
     - [🤖 AI Integration \& Chat](#-ai-integration--chat)
     - [📚 MCP Server (For Non-GitHub Copilot Users)](#-mcp-server-for-non-github-copilot-users)
-    - [�🔍 Object Management](#-object-management)
+    - [🔍 Object Management](#-object-management)
     - [🖥️ SAP GUI Integration](#️-sap-gui-integration)
     - [📊 Data \& Analysis](#-data--analysis)
     - [🧪 Debugging \& Testing](#-debugging--testing)
@@ -18,7 +29,7 @@
     - [📦 Transport \& Version Control](#-transport--version-control)
     - [🔧 Developer Tools](#-developer-tools)
   - [📚 How It Works](#-how-it-works)
-    - [AI Language Model Tools (26+ tools)](#ai-language-model-tools-26-tools)
+    - [AI Language Model Tools (39 tools)](#ai-language-model-tools-39-tools)
     - [Commands (Manual Execution)](#commands-manual-execution)
   - [🔒 For Organization Administrators](#-for-organization-administrators)
     - [1. SAP System Whitelist (Optional Access Control)](#1-sap-system-whitelist-optional-access-control)
@@ -27,10 +38,6 @@
     - [Proxy Support](#proxy-support)
   - [⚠️ Limitations](#️-limitations)
     - [Third-Party Libraries](#third-party-libraries)
-
-## AI-Powered ABAP Development in VS Code
-
-ABAP FS is a VS Code extension that brings AI-powered ABAP development to Visual Studio Code. It provides comprehensive AI integration through GitHub Copilot's Language Model Tools API (with [MCP support](DOCUMENTATION.md#mcp-server-for-external-ai-tools) for Cursor, Claude Code, Windsurf, Claude Desktop, and other AI tools). 30+ specialized tools give your AI assistant deep SAP system awareness—searching objects, reading code, running tests, executing queries, and more.
 
 ## 🎯 What Makes This Different?
 
@@ -44,15 +51,15 @@ ABAP FS is a VS Code extension that brings AI-powered ABAP development to Visual
 
 **Built for Reality**: Features like automatic fallbacks for older SAP systems, optional whitelist-based access control, and telemetry reflect real-world development needs.
 
-## � Documentation
+## 📖 Documentation
 
 For comprehensive documentation covering all features in detail, see [DOCUMENTATION.md](DOCUMENTATION.md).
 
-## �🚀 Installation
+## 🚀 Installation
 
 ### Prerequisites
 
-- VS Code 1.39.0 or higher
+- VS Code 1.90.0 or higher
 - SAP system with ADT (ABAP Development Tools) enabled
 - GitHub Copilot subscription (for AI features)
 
@@ -88,24 +95,34 @@ For comprehensive documentation covering all features in detail, see [DOCUMENTAT
    - Expand views: Transports, Dumps, ATC Finds, Traces, abapGit
    - Try: `Ctrl+Shift+P` → **ABAP FS: Search for object**
 
-5. **Agents setup - Recommended for AI coding**
-   - connect to an ABAP system
-   - open copilot and type "configure subagent models"
-   - open editor configuration and activate setting "abapfs.subagents.enabled"
-   - in copilot, choose the most appropriate agent for the task. abap-orchestrator is a good default
+5. **Follow the Getting Started Walkthrough**
+   - A walkthrough appears automatically on first install
+   - If you missed it: `Ctrl+Shift+P` → **Get Started: Open Walkthrough...** → search for "ABAP"
+   - Covers 4 stages: Connection basics → Core features → AI & Copilot → Advanced tools
+
+6. **Agents setup - Recommended for AI coding**
+   - Connect to an ABAP system
+   - Open Copilot and type "configure subagent models"
+   - Open editor configuration and activate setting "abapfs.subagents.enabled"
+   - In Copilot, choose the most appropriate agent for the task. abap-orchestrator is a good default
 
 ## ✨ Key Features
 
 ### 🤖 AI Integration & Chat
 
-- **30+ Language Model Tools** - Backend tools that GitHub Copilot uses automatically
+- **39 Language Model Tools** - Backend tools that GitHub Copilot uses automatically
 - **Autonomous Agent Mode** - AI explores your codebase independently without manual navigation
+- **AI Subagents** - Delegate ABAP tasks to specialized agents (discoverer, reader, creator, code-reviewer, etc.) with configurable models for cost optimization
 - **Context-Aware Assistance** - AI understands your SAP system structure and objects
+- **Heartbeat Monitoring** - Background service that monitors SAP systems and sends reminders (dump alerts, transport watches, scheduled reminders)
 - **AI Skills** - Specialized knowledge packs that Copilot loads automatically when relevant:
   - **Clean ABAP** - SAP's official coding standards, distilled for AI
   - **Code Writing Process** - Structured 6-step process for building ABAP solutions
   - **Performance (ECC/HANA)** - System-specific optimization rules
   - **SAP Research** - How to navigate and find anything in an SAP system
+  - **SAP Customizing** - Navigate SPRO/IMG and trace customizing to storage tables
+  - **SAP Data Workbook** - Create multi-step data analysis notebooks
+  - **System Personality Report** - Analyze and characterize any connected SAP system
 - Ask questions like:
   - "Where is BAPI_USER_GET_DETAIL used?"
   - "Show me the code for ZCL_MY_CLASS"
@@ -116,12 +133,12 @@ For comprehensive documentation covering all features in detail, see [DOCUMENTAT
 ### 📚 MCP Server (For Non-GitHub Copilot Users)
 
 - **Works with Cursor, Claude Code, Windsurf, Claude Desktop** - Any MCP-compatible AI tool
-- **All 30+ tools exposed** - Read code, search, run tests, analyze dumps, etc.
+- **All 39 tools exposed** - Read code, search, run tests, analyze dumps, etc.
 - **Read-only limitation** - MCP tools can read but cannot edit ABAP files directly (apply changes manually in VS Code)
 - **VS Code as host** - VS Code stays open as the SAP connection bridge
 - See [MCP Server Documentation](DOCUMENTATION.md#mcp-server-for-external-ai-tools) for setup and full limitations
 
-### �🔍 Object Management
+### 🔍 Object Management
 
 - **Unified Object Search** - Search all SAP object types with wildcards (30+ types supported)
 - **Programmatic Object Creation** - Create classes, programs, function groups, tables, CDS views, and more
@@ -139,13 +156,16 @@ For comprehensive documentation covering all features in detail, see [DOCUMENTAT
 ### 📊 Data & Analysis
 
 - **SQL Query Browser** - Execute ABAP SQL with interactive results (sorting, filtering, export). Production system guard prompts before sending data to Copilot.
+- **SAP Data Workbooks** - VS Code notebooks (`.sapwb` files) with ABAP SQL, JavaScript, and Markdown cells for multi-step data analysis
 - **Runtime Dump Analysis** - AI-assisted error investigation with root cause analysis
 - **Performance Trace Analysis** - Automatic bottleneck detection and optimization suggestions
+- **Dependency Graph** - Interactive visual where-used graph with expandable nodes, filtering, and export
 - **Flow Diagrams** - Generate Mermaid diagrams (flowcharts, sequence diagrams, class diagrams, etc.)
 
 ### 🧪 Debugging & Testing
 
 - **ABAP Debugger** - Full debugging with breakpoints, variable inspection, call stack. Production guard warns about security/stability risks.
+- **Debug Recording & Replay** - Record live debug sessions and replay offline with full step-back support — like a DVR for debugging. Share `.abaprecord` files with colleagues.
 - **Advanced Variable Inspection** - Pattern-based filtering (`LT_*`), auto-expand, scope inspection
 - **Unit Test Runner** - Execute and view unit test results
 - **Test Class Creation** - Generate test includes for classes
@@ -163,17 +183,22 @@ For comprehensive documentation covering all features in detail, see [DOCUMENTAT
 - **Transport Management** - View, compare, release transports with AI assistance
 - **abapGit Integration** - Git version control for ABAP objects
 - **Revision History** - View and compare object versions
+- **Blame Gutter** - GitLens-style inline annotations showing who changed each line, when, and in which transport (`Ctrl+Alt+B`)
 
 ### 🔧 Developer Tools
 
+- **SAP Connection Manager** - Modern webview UI for managing connections with import/export, bulk operations, and BTP cloud support
+- **ADT Communication Log** - Capture and visualize all HTTP traffic between VS Code and SAP for debugging and troubleshooting
 - **ADT Feed Reader** - Monitor SAP system events (dumps, ATC findings, messages) in real-time
 - **Message Class Editor** - Visual table-based editor for message classes
 - **Regex Code Search** - Advanced search within source code with regex patterns
+- **Cross-System Comparison** - Compare ABAP objects across different SAP systems side-by-side
+- **Getting Started Walkthrough** - Interactive 4-stage guide from basics to advanced AI features
 - **Custom Editors** - Specialized editors for HTTP services and message classes
 
 ## 📚 How It Works
 
-### AI Language Model Tools (26+ tools)
+### AI Language Model Tools (39 tools)
 
 Copilot automatically uses these tools when you ask questions:
 

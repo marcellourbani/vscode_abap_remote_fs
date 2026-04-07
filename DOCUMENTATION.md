@@ -60,6 +60,8 @@ This documentation covers all features in detail. The goal: make ABAP developmen
     - [Performance - HANA (`/abap-performance-hana`)](#performance---hana-abap-performance-hana)
     - [SAP Research (`/abap-research`)](#sap-research-abap-research)
     - [SAP System Personality Report (`/sap-system-personality-report`)](#sap-system-personality-report-sap-system-personality-report)
+    - [SAP Customizing (`/sap-customizing`)](#sap-customizing-sap-customizing)
+    - [SAP Data Workbook (`/sap-data-workbook`)](#sap-data-workbook-sap-data-workbook)
   - [Using Skills](#using-skills)
 - [1.4 Heartbeat - Background Monitoring \& Reminders](#14-heartbeat---background-monitoring--reminders)
   - [What is Heartbeat?](#what-is-heartbeat)
@@ -96,6 +98,8 @@ This documentation covers all features in detail. The goal: make ABAP developmen
     - [Missing heartbeat.json](#missing-heartbeatjson)
     - [Model errors](#model-errors)
   - [1.5 Enhanced Hover Information](#15-enhanced-hover-information)
+  - [1.6 SAP Data Workbooks (.sapwb)](#16-sap-data-workbooks-sapwb)
+  - [1.7 Getting Started Walkthrough](#17-getting-started-walkthrough)
 - [2. SAP GUI Integration](#2-sap-gui-integration)
   - [2.1 Embedded SAP GUI (WebView)](#21-embedded-sap-gui-webview)
     - [Blank Page / Clickjacking Issues](#blank-page--clickjacking-issues)
@@ -154,6 +158,8 @@ This documentation covers all features in detail. The goal: make ABAP developmen
   - [11.11 Message Class Editor](#1111-message-classeditor)
   - [11.12 SAP Connection Manager](#1112-sap-connection-manager)
   - [11.13 Dependency Graph Visualizer](#1113-dependency-graph-visualizer)
+  - [11.14 ADT Communication Log](#1114-adt-communication-log)
+  - [11.15 Virtual Tool Grouping Fix](#1115-virtual-tool-grouping-fix)
   - [⚠️ Important Considerations](#️-important-considerations)
   - [🎯 Key Differences: Commands vs Tools](#-key-differences-commands-vs-tools)
     - [Commands (User-Invoked Manually):](#commands-user-invoked-manually)
@@ -206,7 +212,7 @@ This documentation covers all features in detail. The goal: make ABAP developmen
 
 > **Prerequisites:** Complete the [Installation Steps](#installation-steps) first. You need VS Code with ABAP FS installed and configured with your SAP system connections before setting up MCP.
 
-**Why MCP?** ABAP FS includes 30+ Language Model Tools that provide deep SAP integration - searching objects, reading code, running tests, executing queries, and more. These tools are natively available to **GitHub Copilot** in VS Code. However, if you use other AI assistants like **Cursor**, **Claude Code**, **Windsurf**, **Claude Desktop**, or any MCP-compatible client, they cannot access VS Code's Language Model Tools directly.
+**Why MCP?** ABAP FS includes 39 Language Model Tools that provide deep SAP integration - searching objects, reading code, running tests, executing queries, and more. These tools are natively available to **GitHub Copilot** in VS Code. However, if you use other AI assistants like **Cursor**, **Claude Code**, **Windsurf**, **Claude Desktop**, or any MCP-compatible client, they cannot access VS Code's Language Model Tools directly.
 
 The **MCP (Model Context Protocol) Server** bridges this gap by exposing all ABAP FS tools via a local HTTP endpoint that any MCP-compatible AI client can connect to.
 
@@ -317,7 +323,7 @@ In your AI tool, you should now see ABAP FS tools available. Try asking:
 
 ## Available Tools
 
-All 30+ ABAP FS Language Model Tools are exposed via MCP, including:
+All 39 ABAP FS Language Model Tools are exposed via MCP, including:
 - `search_abap_objects` - Search for ABAP objects by pattern
 - `get_abap_object_lines` - Read source code from objects
 - `find_where_used` - Where-used analysis
@@ -703,6 +709,12 @@ Teaches the AI to navigate SAP systems like a senior developer. Instead of hardc
 ### SAP System Personality Report (`/sap-system-personality-report`)
 Teaches the AI how to build a personality report of any connected SAP system - such as number of custom objects, most customized business areas, dumps, etc
 
+### SAP Customizing (`/sap-customizing`)
+Teaches the AI how to navigate and understand SAP Customizing (SPRO/IMG). Instead of guessing which tables store which configuration, the AI uses systematic lookup procedures: tracing from SPRO activities to storage objects (via CUS_IMGACH, CUS_ACTH, CUS_ACTOBJ), reverse-looking up tables to find their SPRO activity, walking the SPRO tree to find menu paths (via TNODEIMG/TNODEIMGR), and looking up domain coded values (DD07T). Loaded automatically when you ask about customizing settings, SPRO activities, configuration tables, maintenance views, or view clusters.
+
+### SAP Data Workbook (`/sap-data-workbook`)
+Teaches the AI how to create `.sapwb` data workbook files — VS Code notebooks with ABAP SQL and JavaScript cells for multi-step SAP data analysis. Loaded automatically when you ask the AI to analyze SAP data, build data quality checks, create reports, compare tables, or profile data. See [SAP Data Workbooks](#16-sap-data-workbooks-sapwb) for full details on the workbook feature itself.
+
 ## Using Skills
 
 **Automatic:** Skills load automatically when Copilot determines your prompt matches the skill's domain. No action needed.
@@ -1020,6 +1032,7 @@ To avoid spamming you with repeated alerts:
 - Try `GPT-4o mini (copilot)` - most reliable for background tasks
 
 ## 1.5 Enhanced Hover Information
+
 **Purpose:** Rich contextual information on hover over ABAP code
 
 **How to Use:**
@@ -1039,6 +1052,98 @@ To avoid spamming you with repeated alerts:
 - Function module signatures/definitions
 
 - Class/method signatures/implementations
+
+## 1.6 SAP Data Workbooks (.sapwb)
+
+**Purpose:** VS Code notebooks for multi-step SAP data analysis — combine ABAP SQL queries, JavaScript processing, and Markdown documentation in a single reusable file
+
+**How to Use:**
+
+- Ask Copilot: "Create a .sapwb workbook to analyze material master data quality" OR
+
+- Command palette: **ABAP FS: New SAP Data Workbook** OR
+
+- Create a file with `.sapwb` extension manually
+
+**Cell Types:**
+
+1. **Markdown** — Documentation, explanations, and section headers
+
+2. **ABAP SQL** — Query SAP data (SELECT and WITH statements only, no DML)
+
+3. **JavaScript** — Process and filter results from previous cells
+
+**Features:**
+
+- **Variable interpolation** — Reference earlier cell results in SQL: `SELECT * FROM mara WHERE matnr = ${cells[1].result.MATNR}`. Strings are auto-quoted, arrays auto-joined for IN clauses.
+
+- **Cell references** — JavaScript cells access previous results via `cells[N].result` (0-indexed)
+
+- **Row limits** — Configurable per cell (default 1000)
+
+- **Connection picker** — Prompts to select which SAP system to query
+
+- **Isolated JavaScript** — JS cells run in a worker thread with a 30-second timeout for safety
+
+- **Reusable** — Save the workbook file, share with colleagues, re-run anytime
+
+**Example Workbook:**
+
+```
+Cell 1 (Markdown):  # Material Data Quality Check
+Cell 2 (ABAP SQL):  SELECT matnr, mtart, meins FROM mara WHERE mtart = 'FERT'
+Cell 3 (JavaScript): const rows = cells[1].result;
+                     return rows.filter(r => !r.MEINS).length + " materials missing UoM";
+Cell 4 (ABAP SQL):  SELECT matnr, werks FROM marc WHERE matnr IN (${cells[1].result.map(r => r.MATNR)})
+```
+
+**Limitations:**
+
+- SQL cells support SELECT and WITH only — no INSERT, UPDATE, DELETE
+
+- Single string literals limited to 255 characters (SAP ADT limitation)
+
+- Avoid interpolating arrays with more than 10 values into IN clauses — use a JavaScript cell to filter instead
+
+- Cannot abort a SQL query mid-flight on the SAP side (UI shows "Interrupted" immediately but the SAP-side query completes)
+
+**Commands:**
+
+| Command | Description |
+|---------|-------------|
+| `ABAP FS: New SAP Data Workbook` | Create a new .sapwb file |
+| `ABAP FS: Clear Notebook Connection` | Disconnect SAP system for current workbook |
+| `ABAP FS: Set Cell Max Rows` | Configure row limit for current cell |
+
+## 1.7 Getting Started Walkthrough
+
+**Purpose:** Interactive step-by-step guide that introduces new users to ABAP FS features
+
+**How It Works:**
+
+- Automatically shown once on first installation
+
+- Uses VS Code's native walkthrough system with rich Markdown content
+
+- Covers four progressive stages, from basics to advanced AI features
+
+**Walkthrough Stages:**
+
+1. **Getting Connected** — Activate the extension, connect to SAP, navigate objects, search, run transactions, launch SAP GUI
+
+2. **Core Features** — ABAP Cleaner, ATC analysis, blame annotations, debugging, dump analysis, traces, transports, unit tests
+
+3. **AI & Copilot** — Introduction to AI integration, AI-powered search, data queries, diagrams, dump analysis, where-used analysis, version history, unit tests, skills
+
+4. **Advanced** — Communication log, cross-system comparison, debug recording & replay, dependency graphs, feed inbox, heartbeat monitoring, MCP setup, subagents, text elements
+
+**Re-opening the Walkthrough:**
+
+If you dismissed the walkthrough and want to see it again:
+
+- Command palette: **Help: Welcome** → select "ABAP FS" from the walkthrough list
+
+- Or: Command palette → **Get Started: Open Walkthrough...** → search for "ABAP"
 
 # 2. SAP GUI Integration
 
@@ -2911,6 +3016,89 @@ Visual Editor Features:
 - Works on all object types (classes, programs, functions, etc.)
 
 **Location:** Right-click menu → Visualize Dependency Graph
+
+## 11.14 ADT Communication Log
+
+**Purpose:** Capture and visualize all HTTP requests/responses between VS Code and SAP ADT — for debugging network issues, troubleshooting slow operations, and understanding what happens under the hood
+
+**How to Use:**
+
+- Command palette: **ABAP FS: Activate Communication Log** → select which SAP connection to log
+
+- The Communication Log panel appears in the bottom panel area
+
+- To stop logging: **ABAP FS: Deactivate Communication Log**
+
+**Features:**
+
+- **Real-time capture** — Every HTTP request/response between VS Code and SAP is logged as it happens
+
+- **Filtering:**
+  - By system (dropdown of all logged connections)
+  - By HTTP status (Success 2xx, Errors 4xx/5xx, Pending)
+  - By URL (text search with 200ms debounce)
+
+- **Entry details** — Click any entry to expand and see:
+  - Query parameters
+  - Request/response headers
+  - Request/response bodies (XML and JSON are syntax-highlighted)
+  - Duration in milliseconds
+
+- **Auto-scroll** — Toggle to automatically follow new entries
+
+- **Export** — Download all visible entries or single entries as JSON for sharing or analysis
+
+- **Clear** — Reset all log entries
+
+**Storage:**
+
+- In-memory circular buffer (max 2000 entries) — not persisted to disk
+
+- Entries are lost when you deactivate the log or close VS Code
+
+**When to Use:**
+
+- Debugging slow SAP operations (check which API calls take the longest)
+
+- Troubleshooting connection issues (see exact HTTP errors)
+
+- Understanding extension behavior (see what ADT APIs are called for each action)
+
+- Reporting bugs (export the log and attach to issue reports)
+
+**Commands:**
+
+| Command | Description |
+|---------|-------------|
+| `ABAP FS: Activate Communication Log` | Start logging for a specific SAP connection |
+| `ABAP FS: Deactivate Communication Log` | Stop logging and clear entries |
+
+## 11.15 Virtual Tool Grouping Fix
+
+**Purpose:** Ensure all 39 ABAP FS AI tools remain visible to GitHub Copilot by disabling VS Code's experimental tool grouping
+
+**What is this?**
+
+VS Code has an experimental setting (`github.copilot.chat.virtualTools.threshold`) that groups extension tools into virtual categories when the number of tools exceeds a threshold. When active, Copilot often fails to activate these groups, making ABAP FS tools invisible to the AI — it simply cannot see or use them.
+
+**How It Works:**
+
+- On extension activation, ABAP FS checks the `github.copilot.chat.virtualTools.threshold` setting
+
+- If the threshold is greater than 0 (grouping is active), a warning dialog appears:
+  - **"Disable Grouping & Reload"** — Sets the threshold to 0 at both global and workspace level, resets tool groups, and reloads VS Code
+  - **"Remind Me Next Time"** — Defers the prompt to next activation
+  - **"Don't Ask Again"** — Permanently suppresses the prompt
+
+**Why It Matters:**
+
+ABAP FS registers 39 specialized tools for AI interactions (search objects, read code, run tests, execute queries, manage transports, etc.). When VS Code groups these tools, Copilot typically cannot discover or activate the groups, effectively disabling all AI-powered features. Setting the threshold to 0 disables grouping entirely, ensuring all tools are always available.
+
+**Setting Modified:**
+
+- `github.copilot.chat.virtualTools.threshold` → set to `0` (both global and workspace level)
+
+**Note:** This prompt only appears if VS Code's experimental grouping feature is active. Most users will never see it.
 
 ## ⚠️ Important Considerations
 
