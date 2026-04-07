@@ -2,7 +2,7 @@ import { TransportsProvider } from "./views/transports"
 import { FavouritesProvider } from "./views/favourites"
 import { atcProvider, registerSCIDecorator } from "./views/abaptestcockpit"
 import { FsProvider } from "./fs/FsProvider"
-import { window, workspace, ExtensionContext, languages, commands } from "vscode"
+import { workspace, ExtensionContext, languages, commands } from "vscode"
 import {
   activeTextEditorChangedListener,
   documentChangedListener,
@@ -54,6 +54,7 @@ import { registerAbapNotebooks } from "./notebooks"
 import { showWelcomeWalkthrough } from "./services/walkthroughService"
 import { disableVirtualToolGrouping } from "./services/virtualToolsFix"
 import { ObjectPropertyProvider } from "./views/objectProperties"
+import { funWindow as window } from "./services/funMessenger"
 
 // Import commands to ensure @command decorators are executed
 import "./commands"

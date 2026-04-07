@@ -23,6 +23,7 @@ import { randomUUID } from "crypto"
 import { z } from "zod"
 import { log } from "../lib"
 import { toolRegistry } from "./lm-tools/toolRegistry"
+import { funWindow as window } from "./funMessenger"
 
 // ============================================================================
 // TYPES
@@ -521,7 +522,7 @@ async function startHttpServer(): Promise<void> {
     state.isRunning = true
 
     // Show notification to user
-    vscode.window.showInformationMessage(
+    window.showInformationMessage(
       `🔌 ABAP MCP Server running on port ${actualPort}. External AI clients can connect to http://localhost:${actualPort}/mcp`
     )
   } catch (error) {
@@ -573,7 +574,7 @@ export async function initializeMcpServer(context: vscode.ExtensionContext): Pro
     })
   } catch (error) {
     // Don't throw - MCP server is optional, extension should still work
-    vscode.window.showWarningMessage(
+    window.showWarningMessage(
       `MCP Server failed to start: ${error instanceof Error ? error.message : String(error)}`
     )
   }

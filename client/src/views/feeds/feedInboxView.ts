@@ -4,7 +4,6 @@ import {
   TreeItemCollapsibleState,
   EventEmitter,
   Event,
-  window,
   ViewColumn,
   WebviewPanel,
   Uri,
@@ -17,6 +16,7 @@ import { getFeedTypeIcon, getSeverityIcon } from "../../services/feeds/feedParse
 import { AbapFsCommands, command } from "../../commands"
 import { AdtObjectFinder } from "../../adt/operations/AdtObjectFinder"
 import { log } from "../../lib"
+import { funWindow as window } from "../../services/funMessenger"
 
 /**
  * System node in feed tree

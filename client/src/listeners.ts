@@ -7,7 +7,6 @@ import {
   Uri,
   Disposable,
   Event,
-  window,
   workspace,
   TabInputTextDiff
 } from "vscode"
@@ -28,6 +27,7 @@ import { updateEnhancementDecorations } from "./views/enhancementDecorations"
 import { updateCleanerContext } from "./services/cleanerCommands"
 import { onBlameActiveEditorChanged, onBlameDocumentChanged } from "./views/blameGutter"
 import { ReloginError } from "abapfs/out/lockManager"
+import { funWindow as window } from "./services/funMessenger"
 
 // Global tracking of save reasons to coordinate between documentWillSave and writeFile
 const pendingSaveReasons = new Map<string, TextDocumentSaveReason>()

@@ -2,6 +2,7 @@ import * as vscode from "vscode"
 import { connectedRoots } from "../config"
 import { getClient } from "../adt/conections"
 import { ADTClient } from "abap-adt-api"
+import { funWindow as window } from "../services/funMessenger"
 
 export interface ResolvedConnection {
   connectionId: string
@@ -18,7 +19,7 @@ export async function resolveConnection(): Promise<ResolvedConnection> {
     )
   }
 
-  const picked = await vscode.window.showQuickPick(
+  const picked = await window.showQuickPick(
     connectedIds.map(id => ({ label: id })),
     {
       placeHolder: "Pick a SAP system for this Run:",
@@ -31,7 +32,7 @@ export async function resolveConnection(): Promise<ResolvedConnection> {
 
   const selectedId = picked.label
 
-  const confirm = await vscode.window.showWarningMessage(
+  const confirm = await window.showWarningMessage(
     `Run workbook on SAP system "${selectedId}"?`,
     { modal: true },
     "Yes, run"

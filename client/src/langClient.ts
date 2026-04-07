@@ -10,7 +10,7 @@ import {
   SearchProgress,
   LogEntry
 } from "vscode-abap-remote-fs-sharedapi"
-import { ExtensionContext, Uri, window, ProgressLocation, workspace, WorkspaceEdit } from "vscode"
+import { ExtensionContext, Uri, ProgressLocation, workspace, WorkspaceEdit } from "vscode"
 import {
   LanguageClient,
   TransportKind,
@@ -29,6 +29,7 @@ import { isAbapFile } from "abapfs"
 import { AbapObject } from "abapobject"
 import { IncludeService, IncludeProvider } from "./adt/includes"
 import * as R from "ramda"
+import { funWindow as window } from "./services/funMessenger"
 
 const uriErrors = new Map<string, boolean>()
 const uriError = (uri: string) => new Error(`File not found:${uri}`)

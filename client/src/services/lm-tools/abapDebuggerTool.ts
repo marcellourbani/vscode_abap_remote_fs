@@ -249,7 +249,7 @@ export class ABAPDebugSessionTool implements vscode.LanguageModelTool<IDebugSess
         ? `${connectionId.toUpperCase()} (Client ${systemInfo.currentClient.clientNumber}: ${systemInfo.currentClient.clientName})`
         : connectionId.toUpperCase()
 
-      const choice = await vscode.window.showWarningMessage(
+      const choice = await window.showWarningMessage(
         `⚠️ PRODUCTION SYSTEM DETECTED\n\n` +
           `Copilot wants to start debugging on: ${clientInfo}\n\n` +
           `⚠️ Security Risk: Debugging may expose sensitive data.\n` +

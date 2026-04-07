@@ -5,6 +5,7 @@ import { executeSqlCell } from "./sqlCellExecutor"
 import { executeJsCell } from "./jsCellExecutor"
 import { renderSqlOutput, renderJsOutput, renderErrorOutput } from "./outputRenderer"
 import { log } from "../lib"
+import { funWindow as window } from "../services/funMessenger"
 
 export class AbapNotebookController {
   private readonly controller: vscode.NotebookController
@@ -28,7 +29,7 @@ export class AbapNotebookController {
     this.controller.executeHandler = this.executeHandler.bind(this)
     this.controller.interruptHandler = this.interruptHandler.bind(this)
 
-    this.editorListener = vscode.window.onDidChangeActiveNotebookEditor(editor => {
+    this.editorListener = window.onDidChangeActiveNotebookEditor(editor => {
       if (editor && editor.notebook.notebookType === NOTEBOOK_TYPE) {
         const notebookKey = editor.notebook.uri.toString()
         if (this.lastActiveNotebookKey && this.lastActiveNotebookKey !== notebookKey) {
@@ -90,7 +91,7 @@ export class AbapNotebookController {
     try {
       connection = await this.ensureConnection(notebook)
     } catch (error: any) {
-      vscode.window.showErrorMessage(error.message)
+      window.showErrorMessage(error.message)
       if (this.runGeneration.get(notebookKey) === generation) {
         this.runningAbortControllers.delete(notebookKey)
       }
@@ -229,7 +230,7 @@ export class AbapNotebookController {
 
   private updateStatusBar(connectionId: string): void {
     if (!this.statusBarItem) {
-      this.statusBarItem = vscode.window.createStatusBarItem(
+      this.statusBarItem = window.createStatusBarItem(
         vscode.StatusBarAlignment.Left,
         100
       )

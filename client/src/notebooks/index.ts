@@ -4,6 +4,7 @@ import { AbapNotebookController } from "./abapNotebookController"
 import { registerCellStatusBar } from "./cellStatusBar"
 import { NOTEBOOK_TYPE, SQL_LANGUAGE_ID } from "./types"
 import { log } from "../lib"
+import { funWindow as window } from "../services/funMessenger"
 
 let controller: AbapNotebookController | undefined
 
@@ -25,10 +26,10 @@ export function registerAbapNotebooks(context: vscode.ExtensionContext): void {
 
   context.subscriptions.push(
     vscode.commands.registerCommand("abapfs.notebookClearConnection", () => {
-      const notebook = vscode.window.activeNotebookEditor?.notebook
+      const notebook = window.activeNotebookEditor?.notebook
       if (notebook && notebook.notebookType === NOTEBOOK_TYPE) {
         controller?.clearCachedConnection(notebook.uri.toString())
-        vscode.window.showInformationMessage(
+        window.showInformationMessage(
           "SAP connection cleared. Next cell execution will prompt for a system."
         )
       }
@@ -78,7 +79,7 @@ async function createNewNotebook(): Promise<void> {
   data.metadata = { version: 1, title: "" }
 
   const doc = await vscode.workspace.openNotebookDocument(NOTEBOOK_TYPE, data)
-  await vscode.window.showNotebookDocument(doc)
+  await window.showNotebookDocument(doc)
 }
 
 async function correctSqlLanguages(notebook: vscode.NotebookDocument): Promise<void> {
