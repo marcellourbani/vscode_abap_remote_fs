@@ -1081,11 +1081,33 @@ To avoid spamming you with repeated alerts:
 
 - **Row limits** — Configurable per cell (default 1000)
 
-- **Connection picker** — Prompts to select which SAP system to query
+- **Per-cell system selection** — Each SQL cell execution prompts you to select which SAP system to run against. This means you can query DEV in one cell and QAS in the next, enabling cross-system data comparison within a single workbook.
+
+- **Run All** — When running all cells at once, you are prompted once for a system and all SQL cells in that run use it.
+
+- **Cross-system data comparison** — Run the same query against different systems by executing cells individually with different system selections, then use a JavaScript cell to compare the results. This is the foundation for drift detection across your SAP landscape.
 
 - **Isolated JavaScript** — JS cells run in a worker thread with a 30-second timeout for safety
 
-- **Reusable** — Save the workbook file, share with colleagues, re-run anytime
+- **Reusable** — Save the workbook file, share with colleagues, re-run anytime. No system IDs are stored in the file, so the same workbook works for anyone regardless of their system naming conventions.
+
+**Cross-System Data Comparison Example:**
+
+```
+Cell 1 (Markdown):  # Pricing Condition Comparison: DEV vs QAS
+Cell 2 (ABAP SQL):  SELECT KSCHL, VKORG, MATNR, KBETR FROM A005 WHERE KSCHL = 'ZPR1'
+                     → Run this cell, select DEV100
+Cell 3 (ABAP SQL):  SELECT KSCHL, VKORG, MATNR, KBETR FROM A005 WHERE KSCHL = 'ZPR1'
+                     → Run this cell, select QAS200
+Cell 4 (JavaScript): const dev = cells[1].result;
+                     const qa = cells[2].result;
+                     const devMap = new Map(dev.map(r => [r.KSCHL+r.VKORG+r.MATNR, r]));
+                     const diffs = qa.filter(r => {
+                       const d = devMap.get(r.KSCHL+r.VKORG+r.MATNR);
+                       return d && d.KBETR !== r.KBETR;
+                     });
+                     return diffs.map(r => ({...r, DEV_KBETR: devMap.get(r.KSCHL+r.VKORG+r.MATNR).KBETR}));
+```
 
 **Example Workbook:**
 
@@ -1112,7 +1134,6 @@ Cell 4 (ABAP SQL):  SELECT matnr, werks FROM marc WHERE matnr IN (${cells[1].res
 | Command | Description |
 |---------|-------------|
 | `ABAP FS: New SAP Data Workbook` | Create a new .sapwb file |
-| `ABAP FS: Clear Notebook Connection` | Disconnect SAP system for current workbook |
 | `ABAP FS: Set Cell Max Rows` | Configure row limit for current cell |
 
 ## 1.7 Getting Started Walkthrough
