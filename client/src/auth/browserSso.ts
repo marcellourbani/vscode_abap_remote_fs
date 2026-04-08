@@ -20,6 +20,7 @@
 
 import * as http from "http"
 import { randomBytes } from "crypto"
+import open from "open"
 import { AuthResult } from "./types"
 import { PasswordVault, log } from "../lib"
 import { formatKey } from "../config"
@@ -117,7 +118,7 @@ export async function clearSsoCookies(connId: string): Promise<void> {
  *
  * @param sapUrl     The SAP URL to open in the browser for SSO
  * @param timeoutMs  Max wait time (default 120 seconds)
- * @param notifyUser Optional callback to show the helper URL to the user (avoids runtime require("vscode"))
+ * @param notifyUser Optional callback to show the helper URL to the user if browser launch fails
  */
 export function startCookieCaptureServer(
   sapUrl: string,
@@ -196,8 +197,7 @@ export function startCookieCaptureServer(
       const helperUrl = `http://127.0.0.1:${getListeningPort(server)}/${token}`
 
       // Open in the user's default browser; only show notification as fallback
-      import("open")
-        .then(m => (m.default || m)(helperUrl))
+      open(helperUrl)
         .then(() => {
           log.debug(`[browser-sso] Browser opened successfully for: ${helperUrl}`)
         })
