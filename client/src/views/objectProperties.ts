@@ -23,6 +23,7 @@ import { caughtToString, log } from "../lib"
 import { AbapRevisionService, revLabel } from "../scm/abaprevisions/abaprevisionservice"
 import { revisionUri } from "../scm/abaprevisions/documentprovider"
 import { readTransports } from "./transports"
+import { getCombinedObjectTypeLabel } from "./objectTypeLabels"
 
 const OBJECT_PROPERTY_COMPARE_COMMAND = "abapfs.objectPropertyCompareSelectedInline"
 
@@ -311,29 +312,8 @@ const resolveTransportInfo = async (
   }
 }
 
-const TYPE_LABELS: Record<string, string | ((mp?: MainInclude) => string)> = {
-  "CLAS/OC": "Class",
-  "CLAS/OM": "Class Method",
-  "INTF/OI": "Interface",
-  "PROG/P": "Program",
-  "PROG/I": mp => (mp ? "Include" : "Program Include"),
-  "FUGR/F": "Function Group",
-  "FUGR/FF": "Function Module",
-  "DEVC/K": "Package",
-  "TABL/DT": "Database Table",
-  "DDLS/DF": "CDS View",
-  "MSAG/N": "Message Class",
-  "TTYP/TT": "Table Type",
-  "DOMA/DO": "Domain",
-  "DTEL/DE": "Data Element",
-  "VIEW/V": "Dictionary View",
-  "TRAN/T": "Transaction"
-}
-
 const combinedTypeLabel = (object: AbapObject, mainProgram?: MainInclude) => {
-  const entry = TYPE_LABELS[object.type]
-  const friendly = typeof entry === "function" ? entry(mainProgram) : entry
-  return friendly ? `${friendly} (${object.type})` : object.type
+  return getCombinedObjectTypeLabel(object.type, mainProgram)
 }
 
 const objectDescription = (object: AbapObject) => {
