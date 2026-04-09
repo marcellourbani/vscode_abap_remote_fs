@@ -852,6 +852,7 @@ export class AdtCommands {
         if (!tcodeToRun) return
 
         logTelemetry("command_run_transaction_called", { connectionId })
+        await AdtCommands.autoStartDebuggerIfNeeded(connectionId)
 
         // 3. Execute transaction based on guiType preference
         const guiType = config.sapGui?.guiType || "SAPGUI"
@@ -859,24 +860,19 @@ export class AdtCommands {
         switch (guiType) {
           case "WEBGUI_UNSAFE_EMBEDDED":
             // Embedded webview
-            await AdtCommands.launchTransactionInEmbeddedGui(
-              connectionId,
-              config,
-              client,
-              tcodeToRun
-            )
+            await AdtCommands.launchTransactionInEmbeddedGui(config, client, tcodeToRun)
             break
 
           case "WEBGUI_UNSAFE":
           case "WEBGUI_CONTROLLED":
             // External browser
-            await AdtCommands.launchTransactionInBrowser(connectionId, config, client, tcodeToRun)
+            await AdtCommands.launchTransactionInBrowser(config, client, tcodeToRun)
             break
 
           case "SAPGUI":
           default:
             // Native SAP GUI
-            await AdtCommands.launchTransactionInNativeGui(connectionId, config, client, tcodeToRun)
+            await AdtCommands.launchTransactionInNativeGui(config, client, tcodeToRun)
             break
         }
       })
@@ -891,10 +887,8 @@ export class AdtCommands {
   /**
    * Launch transaction in embedded webview
    */
-  private static async launchTransactionInEmbeddedGui( connectionId: string, config: any, client: any, tcode: string ) {
+  private static async launchTransactionInEmbeddedGui(config: any, client: any, tcode: string) {
     try {
-      await AdtCommands.autoStartDebuggerIfNeeded(connectionId)
-
       // Build base URL
       let baseUrl = config.url.replace(/\/sap\/bc\/adt.*$/, "")
 
@@ -943,10 +937,8 @@ export class AdtCommands {
   /**
    * Launch transaction in external browser
    */
-  private static async launchTransactionInBrowser( connectionId: string, config: any, client: any, tcode: string ) {
+  private static async launchTransactionInBrowser(config: any, client: any, tcode: string) {
     try {
-      await AdtCommands.autoStartDebuggerIfNeeded(connectionId)
-
       const ticket = await client.reentranceTicket()
 
       const baseUrl = config.sapGui?.server
@@ -969,10 +961,8 @@ export class AdtCommands {
   /**
    * Launch transaction in native SAP GUI
    */
-  private static async launchTransactionInNativeGui( connectionId: string, config: any, client: any, tcode: string ) {
+  private static async launchTransactionInNativeGui(config: any, client: any, tcode: string) {
     try {
-      await AdtCommands.autoStartDebuggerIfNeeded(connectionId)
-
       const sapGui = SapGui.create(config)
 
       const cmd = {
