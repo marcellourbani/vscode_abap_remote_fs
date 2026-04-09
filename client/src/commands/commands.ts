@@ -60,6 +60,7 @@ import { atcProvider } from "../views/abaptestcockpit"
 import { FsProvider } from "../fs/FsProvider"
 import { logTelemetry } from "../services/telemetry"
 import { SapGui } from "../adt/sapgui/sapgui"
+import { AbapDebugSession } from "../adt/debugger/abapDebugSession"
 
 export function currentUri() {
   if (!window.activeTextEditor) return
@@ -123,6 +124,36 @@ interface ShowObjectArgument {
   uri: string
 }
 export class AdtCommands {
+  private static hasEnabledAbapBreakpoints(connectionId: string) {
+    return vscode.debug.breakpoints.some(
+      breakpoint =>
+        breakpoint.enabled &&
+        breakpoint instanceof vscode.SourceBreakpoint &&
+        breakpoint.location.uri.scheme === ADTSCHEME &&
+        breakpoint.location.uri.authority === connectionId
+    )
+  }
+
+  private static async autoStartDebuggerIfNeeded(connectionId: string) {
+    if (AbapDebugSession.byConnection(connectionId)) return
+    if (!AdtCommands.hasEnabledAbapBreakpoints(connectionId)) return
+
+    const started = await vscode.debug.startDebugging(undefined, {
+      type: "abap",
+      request: "attach",
+      name: "Auto Attach to server",
+      connId: connectionId,
+      debugUser: "",
+      terminalMode: false
+    })
+
+    if (!started) {
+      throw new Error("Failed to auto-start ABAP debugger")
+    }
+
+    await new Promise(resolve => setTimeout(resolve, 500))
+  }
+
   @command(AbapFsCommands.extractMethod)
   private static async extractMethod(url: string, range: Range) {
     logTelemetry("command_extract_method_called")
@@ -593,6 +624,8 @@ export class AdtCommands {
         return
       }
 
+      await AdtCommands.autoStartDebuggerIfNeeded(fsRoot.uri.authority)
+
       // Create SapGui instance and call startGui directly (no routing check)
       const sapGui = SapGui.create(config)
       const client = getClient(fsRoot.uri.authority)
@@ -660,6 +693,7 @@ export class AdtCommands {
 
       // Check if embedded GUI is configured
       if (config.sapGui?.guiType !== "WEBGUI_UNSAFE_EMBEDDED") {
+        await AdtCommands.autoStartDebuggerIfNeeded(fsRoot.uri.authority)
         await runInSapGui(fsRoot.uri.authority, () => ({
           type: "Transaction" as const,
           command: "*SE38",
@@ -670,6 +704,8 @@ export class AdtCommands {
         }))
         return
       }
+
+      await AdtCommands.autoStartDebuggerIfNeeded(fsRoot.uri.authority)
 
       // Get extension URI more reliably
       let extensionUri: Uri
@@ -823,19 +859,24 @@ export class AdtCommands {
         switch (guiType) {
           case "WEBGUI_UNSAFE_EMBEDDED":
             // Embedded webview
-            await AdtCommands.launchTransactionInEmbeddedGui(config, client, tcodeToRun)
+            await AdtCommands.launchTransactionInEmbeddedGui(
+              connectionId,
+              config,
+              client,
+              tcodeToRun
+            )
             break
 
           case "WEBGUI_UNSAFE":
           case "WEBGUI_CONTROLLED":
             // External browser
-            await AdtCommands.launchTransactionInBrowser(config, client, tcodeToRun)
+            await AdtCommands.launchTransactionInBrowser(connectionId, config, client, tcodeToRun)
             break
 
           case "SAPGUI":
           default:
             // Native SAP GUI
-            await AdtCommands.launchTransactionInNativeGui(config, client, tcodeToRun)
+            await AdtCommands.launchTransactionInNativeGui(connectionId, config, client, tcodeToRun)
             break
         }
       })
@@ -850,8 +891,10 @@ export class AdtCommands {
   /**
    * Launch transaction in embedded webview
    */
-  private static async launchTransactionInEmbeddedGui(config: any, client: any, tcode: string) {
+  private static async launchTransactionInEmbeddedGui( connectionId: string, config: any, client: any, tcode: string ) {
     try {
+      await AdtCommands.autoStartDebuggerIfNeeded(connectionId)
+
       // Build base URL
       let baseUrl = config.url.replace(/\/sap\/bc\/adt.*$/, "")
 
@@ -900,8 +943,10 @@ export class AdtCommands {
   /**
    * Launch transaction in external browser
    */
-  private static async launchTransactionInBrowser(config: any, client: any, tcode: string) {
+  private static async launchTransactionInBrowser( connectionId: string, config: any, client: any, tcode: string ) {
     try {
+      await AdtCommands.autoStartDebuggerIfNeeded(connectionId)
+
       const ticket = await client.reentranceTicket()
 
       const baseUrl = config.sapGui?.server
@@ -924,8 +969,10 @@ export class AdtCommands {
   /**
    * Launch transaction in native SAP GUI
    */
-  private static async launchTransactionInNativeGui(config: any, client: any, tcode: string) {
+  private static async launchTransactionInNativeGui( connectionId: string, config: any, client: any, tcode: string ) {
     try {
+      await AdtCommands.autoStartDebuggerIfNeeded(connectionId)
+
       const sapGui = SapGui.create(config)
 
       const cmd = {
@@ -958,6 +1005,7 @@ export class AdtCommands {
         window.showErrorMessage("Connection configuration not found")
         return
       }
+      await AdtCommands.autoStartDebuggerIfNeeded(fsRoot.uri.authority)
       // 🎯 USE CENTRALIZED transaction mapping - NO MORE DUPLICATION! 🎉
       const transactionInfo = SapGuiPanel.getTransactionInfo(file.object.type, file.object.name)
 
