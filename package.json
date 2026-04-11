@@ -2514,11 +2514,6 @@
         "category": "ABAP FS"
       },
       {
-        "command": "abapfs.notebookClearConnection",
-        "title": "SAP Data Workbook: Disconnect SAP System",
-        "category": "ABAP FS"
-      },
-      {
         "command": "abapfs.notebookSetCellMaxRows",
         "title": "SAP Data Workbook: Set Cell Row Limit",
         "category": "ABAP FS"
