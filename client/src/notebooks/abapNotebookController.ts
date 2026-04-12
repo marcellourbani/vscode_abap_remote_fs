@@ -1,6 +1,6 @@
 import * as vscode from "vscode"
 import { NOTEBOOK_TYPE, CellResult, SQL_LANGUAGE_ID } from "./types"
-import { resolveConnection, ResolvedConnection } from "./connectionResolver"
+import { resolveConnection, ResolvedConnection, NotebookConnectionError } from "./connectionResolver"
 import { executeSqlCell } from "./sqlCellExecutor"
 import { executeJsCell } from "./jsCellExecutor"
 import { renderSqlOutput, renderJsOutput, renderErrorOutput } from "./outputRenderer"
@@ -10,13 +10,9 @@ import { funWindow as window } from "../services/funMessenger"
 export class AbapNotebookController {
   private readonly controller: vscode.NotebookController
   private readonly cellResults = new Map<string, Map<number, CellResult>>()
-  private readonly notebookConnections = new Map<string, ResolvedConnection>()
   private readonly executionCounters = new Map<string, number>()
   private readonly runningAbortControllers = new Map<string, AbortController>()
   private readonly runGeneration = new Map<string, number>()
-  private statusBarItem: vscode.StatusBarItem | undefined
-  private editorListener: vscode.Disposable | undefined
-  private lastActiveNotebookKey: string | undefined
 
   constructor() {
     this.controller = vscode.notebooks.createNotebookController(
@@ -28,34 +24,10 @@ export class AbapNotebookController {
     this.controller.supportsExecutionOrder = true
     this.controller.executeHandler = this.executeHandler.bind(this)
     this.controller.interruptHandler = this.interruptHandler.bind(this)
-
-    this.editorListener = window.onDidChangeActiveNotebookEditor(editor => {
-      if (editor && editor.notebook.notebookType === NOTEBOOK_TYPE) {
-        const notebookKey = editor.notebook.uri.toString()
-        if (this.lastActiveNotebookKey && this.lastActiveNotebookKey !== notebookKey) {
-          // Switched to a different notebook — clear the old one
-          this.notebookConnections.delete(this.lastActiveNotebookKey)
-        }
-        if (!this.lastActiveNotebookKey || this.lastActiveNotebookKey !== notebookKey) {
-          // Coming back from a non-notebook or a different notebook — clear this one too
-          this.notebookConnections.delete(notebookKey)
-        }
-        this.lastActiveNotebookKey = notebookKey
-        const conn = this.notebookConnections.get(notebookKey)
-        if (conn) this.updateStatusBar(conn.connectionId)
-        else this.hideStatusBar()
-      } else {
-        // Left the notebook — mark it so next return clears cache
-        this.lastActiveNotebookKey = undefined
-        this.hideStatusBar()
-      }
-    })
   }
 
   dispose(): void {
     this.controller.dispose()
-    this.statusBarItem?.dispose()
-    this.editorListener?.dispose()
     for (const ac of this.runningAbortControllers.values()) ac.abort()
   }
 
@@ -87,18 +59,26 @@ export class AbapNotebookController {
     const abortController = new AbortController()
     this.runningAbortControllers.set(notebookKey, abortController)
 
-    let connection: ResolvedConnection | undefined
-    try {
-      connection = await this.ensureConnection(notebook)
-    } catch (error: any) {
-      window.showErrorMessage(error.message)
-      if (this.runGeneration.get(notebookKey) === generation) {
-        this.runningAbortControllers.delete(notebookKey)
-      }
-      return
-    }
+    const hasSqlCells = cells.some(c => c.document.languageId === SQL_LANGUAGE_ID)
+    const isMultiCellRun = cells.length > 1
 
-    this.updateStatusBar(connection.connectionId)
+    // For multi-cell runs (Run All / shift-select): prompt once, use for all SQL cells.
+    // For single-cell runs: prompt per SQL cell inside executeCell.
+    let sharedConnection: ResolvedConnection | undefined
+    if (isMultiCellRun && hasSqlCells) {
+      try {
+        sharedConnection = await resolveConnection()
+      } catch (error: any) {
+        // Only show error popup for real failures, not user cancellations
+        if (!(error instanceof NotebookConnectionError)) {
+          vscode.window.showErrorMessage(`Connection failed: ${error.message || error}`)
+        }
+        if (this.runGeneration.get(notebookKey) === generation) {
+          this.runningAbortControllers.delete(notebookKey)
+        }
+        return
+      }
+    }
 
     let failed = false
     for (const cell of cells) {
@@ -113,7 +93,7 @@ export class AbapNotebookController {
       }
 
       const success = await this.executeCell(
-        cell, connection, results, notebookKey, abortController.signal
+        cell, results, notebookKey, abortController.signal, sharedConnection
       )
       if (!success) failed = true
     }
@@ -132,10 +112,10 @@ export class AbapNotebookController {
 
   private async executeCell(
     cell: vscode.NotebookCell,
-    connection: ResolvedConnection,
     results: Map<number, CellResult>,
     notebookKey: string,
-    abortSignal: AbortSignal
+    abortSignal: AbortSignal,
+    sharedConnection?: ResolvedConnection
   ): Promise<boolean> {
     const exec = this.controller.createNotebookCellExecution(cell)
     let ended = false
@@ -191,6 +171,22 @@ export class AbapNotebookController {
 
       const isSql = language === SQL_LANGUAGE_ID
       if (isSql) {
+        // For SQL cells: use the shared connection (Run All) or prompt for one (single cell)
+        let connection: ResolvedConnection
+        if (sharedConnection) {
+          connection = sharedConnection
+        } else {
+          try {
+            connection = await resolveConnection()
+          } catch (error: any) {
+            endExec(false, renderErrorOutput(
+              error instanceof NotebookConnectionError ? error : new Error(`Connection failed: ${error.message || error}`)
+            ))
+            cancelListener.dispose()
+            abortSignal.removeEventListener("abort", onAbort)
+            return false
+          }
+        }
         cellResult = await executeSqlCell(
           code, connection.client, cell.index, results, maxRows
         )
@@ -216,47 +212,9 @@ export class AbapNotebookController {
     return success
   }
 
-  private async ensureConnection(
-    notebook: vscode.NotebookDocument
-  ): Promise<ResolvedConnection> {
-    const notebookKey = notebook.uri.toString()
-    const existing = this.notebookConnections.get(notebookKey)
-    if (existing) return existing
-
-    const connection = await resolveConnection()
-    this.notebookConnections.set(notebookKey, connection)
-    return connection
-  }
-
-  private updateStatusBar(connectionId: string): void {
-    if (!this.statusBarItem) {
-      this.statusBarItem = window.createStatusBarItem(
-        vscode.StatusBarAlignment.Left,
-        100
-      )
-    }
-    this.statusBarItem.text = `$(database) SAP Data Notebook System: ${connectionId}`
-    this.statusBarItem.tooltip = `Connected to: ${connectionId} — click to disconnect`
-    this.statusBarItem.command = "abapfs.notebookClearConnection"
-    this.statusBarItem.show()
-    log.debug(`📒 [Controller] statusBar shown: SAP: ${connectionId}`)
-  }
-
-  private hideStatusBar(): void {
-    this.statusBarItem?.hide()
-    log.debug(`📒 [Controller] statusBar hidden`)
-  }
-
-  clearCachedConnection(notebookUri: string): void {
-    log.debug(`📒 [Controller] clearCachedConnection: ${notebookUri}`)
-    this.notebookConnections.delete(notebookUri)
-    this.hideStatusBar()
-  }
-
   clearResults(notebookUri: string): void {
     log.debug(`📒 [Controller] clearResults: ${notebookUri}`)
     this.cellResults.delete(notebookUri)
-    this.notebookConnections.delete(notebookUri)
     this.executionCounters.delete(notebookUri)
     const ac = this.runningAbortControllers.get(notebookUri)
     if (ac) ac.abort()

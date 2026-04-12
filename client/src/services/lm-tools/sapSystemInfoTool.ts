@@ -61,7 +61,6 @@ export class SAPSystemInfoTool implements vscode.LanguageModelTool<ISAPSystemInf
     _token: vscode.CancellationToken
   ): Promise<vscode.LanguageModelToolResult> {
     const { logTelemetry } = await import("../telemetry")
-    logTelemetry("tool_get_sap_system_info_called")
     logTelemetry("tool_get_sap_system_info_called", { connectionId: options.input.connectionId })
     let { connectionId, includeComponents } = options.input
 

@@ -25,22 +25,9 @@ export function registerAbapNotebooks(context: vscode.ExtensionContext): void {
   )
 
   context.subscriptions.push(
-    vscode.commands.registerCommand("abapfs.notebookClearConnection", () => {
-      const notebook = window.activeNotebookEditor?.notebook
-      if (notebook && notebook.notebookType === NOTEBOOK_TYPE) {
-        controller?.clearCachedConnection(notebook.uri.toString())
-        window.showInformationMessage(
-          "SAP connection cleared. Next cell execution will prompt for a system."
-        )
-      }
-    })
-  )
-
-  context.subscriptions.push(
     vscode.workspace.onDidOpenNotebookDocument(notebook => {
       if (notebook.notebookType !== NOTEBOOK_TYPE) return
       log.debug(`📒 [Index] onDidOpenNotebookDocument: ${notebook.uri.toString()}`)
-      controller?.clearCachedConnection(notebook.uri.toString())
       correctSqlLanguages(notebook)
     })
   )
