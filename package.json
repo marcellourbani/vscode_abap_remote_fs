@@ -122,6 +122,9 @@
       },
       {
         "path": "./client/dist/media/skills/sap-data-workbook/SKILL.md"
+      },
+      {
+        "path": "./client/dist/media/skills/adt-api-discovery/SKILL.md"
       }
     ],
     "breakpoints": [
@@ -2332,6 +2335,30 @@
         ]
       },
       {
+        "name": "adt_discovery_export",
+        "displayName": "ADT Discovery Export",
+        "modelDescription": "Export the full ADT discovery tree from a connected SAP system into markdown files in the workspace. Creates a folder with: README.md (overview), workspaces.md (all discovery workspaces, collections, template links), core-discovery.md (core discovery entries), res-app-classes.md (all RES_APP classes from SEOMETAREL). Use these files together with the adt-api-discovery skill and other ABAP tools to investigate any ADT REST API endpoint — trace handler classes, read Simple Transformations, and determine request/response XML schemas.",
+        "canBeReferencedInPrompt": true,
+        "toolReferenceName": "adt-discovery",
+        "icon": "$(telescope)",
+        "userDescription": "Export ADT API discovery data to markdown files for AI-assisted endpoint investigation",
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "connectionId": {
+              "type": "string",
+              "description": "SAP connection ID (e.g., 'dev100')"
+            }
+          },
+          "required": [
+            "connectionId"
+          ]
+        },
+        "tags": [
+          "abap-fs"
+        ]
+      },
+      {
         "name": "abap_activate",
         "displayName": "Activate ABAP objects - equivalent of compiling",
         "canBeReferencedInPrompt": true,
@@ -2511,11 +2538,6 @@
       {
         "command": "abapfs.newAbapNotebook",
         "title": "New SAP Data Workbook",
-        "category": "ABAP FS"
-      },
-      {
-        "command": "abapfs.notebookClearConnection",
-        "title": "SAP Data Workbook: Disconnect SAP System",
         "category": "ABAP FS"
       },
       {
