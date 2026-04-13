@@ -335,7 +335,7 @@ export class ObjectSearchViewProvider implements WebviewViewProvider {
       </div>
       <div id="error" class="error" hidden></div>
       <ul id="results" class="results"></ul>
-      <div class="hint">Uses the existing object search logic and saved type filter.</div>
+      <div class="hint">Uses the existing object search logic and saved type filter. Manage filters with the filter button in the toolbar.</div>
     </div>
     <script nonce="${nonce}">
       const vscode = acquireVsCodeApi()
@@ -348,6 +348,10 @@ export class ObjectSearchViewProvider implements WebviewViewProvider {
       const filters = document.getElementById("filters")
       let searchTimer
       let currentConnectionId = undefined
+
+      const pluralize = (count, singular, plural = singular + "s") => {
+        return count + " " + (count === 1 ? singular : plural)
+      }
 
       const postSearch = () => {
         vscode.postMessage({
@@ -447,7 +451,7 @@ export class ObjectSearchViewProvider implements WebviewViewProvider {
           }
 
           const typeCount = Array.isArray(message.typeFilter) ? message.typeFilter.length : 0
-          filterInfo.textContent = typeCount > 0 ? typeCount + " type filter" + (typeCount === 1 ? "" : "s") : "All types"
+          filterInfo.textContent = typeCount > 0 ? pluralize(typeCount, "type filter") : "All types"
           if (!message.hasConnections) {
             status.textContent = "Mount an ABAP system to search"
             renderResults([])
@@ -468,7 +472,7 @@ export class ObjectSearchViewProvider implements WebviewViewProvider {
           } else if ((message.items || []).length === 0) {
             status.textContent = "No matching objects"
           } else {
-            status.textContent = message.items.length + " object" + (message.items.length === 1 ? "" : "s")
+            status.textContent = pluralize(message.items.length, "object")
           }
         }
       })

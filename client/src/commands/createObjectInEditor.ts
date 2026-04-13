@@ -480,9 +480,9 @@ async function browseServiceDefinition(connId: string): Promise<string> {
 function validateName(type: CreateObjectTypeOption, name: string): string {
   if (!name) return "Field is mandatory"
   if (type.usesSuffix)
-    return /^[A-Za-z]\w\w$/.test(name) ? "" : "Suffix must be 3 character long"
+    return /^[A-Za-z]\w\w$/.test(name) ? "" : "Suffix must be 3 characters long"
   if (name.length <= type.maxLen) return ""
-  return `Maximum current length of ${name.length} exceeds maximum (${type.maxLen})`
+  return `Name length of ${name.length} exceeds maximum (${type.maxLen})`
 }
 
 function normalizeInput(input: CreateObjectFormInput): CreateObjectFormInput {

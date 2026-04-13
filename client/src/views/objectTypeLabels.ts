@@ -14,7 +14,7 @@ const TYPE_LABELS: Record<string, TypeLabel> = {
   "DEVC/K": "Package",
   "TABL/DT": "Database Table",
   "TABL/DS": "Structure",
-  "DDLS/DF": "CDS Data Definition",
+  "DDLS/DF": "CDS View",
   "STOB/DO": "CDS Entity",
   "STOB/ST": "Simple Transformation",
   "MSAG/N": "Message Class",
