@@ -41,6 +41,7 @@ import { registerVersionHistoryTool } from "./versionHistoryTool"
 import { registerSubagentConfigTool } from "./subagentConfigTool"
 import { WebviewManager } from "../webviewManager"
 import { registerHeartbeatTool, initializeHeartbeatService } from "../heartbeat"
+import { registerAdtDiscoveryTool } from "./adtDiscoveryTool"
 
 /**
  * Register all language model tools
@@ -123,6 +124,9 @@ export async function registerAllTools(context: vscode.ExtensionContext): Promis
 
   // 17. Heartbeat Tool (OpenClaw-style periodic LLM monitoring)
   registerHeartbeatTool(context)
+
+  // 18. ADT Discovery Tool
+  registerAdtDiscoveryTool(context)
 
   // Initialize heartbeat service (will auto-start if enabled in config)
   const heartbeatService = initializeHeartbeatService(context)
