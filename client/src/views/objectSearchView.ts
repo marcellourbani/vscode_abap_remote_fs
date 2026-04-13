@@ -43,12 +43,14 @@ export class ObjectSearchViewProvider implements WebviewViewProvider {
   private searchGeneration = 0
 
   private constructor() {
-    window.onDidChangeActiveTextEditor(() => {
-      this.postState().catch(() => undefined)
-    })
-    workspace.onDidChangeWorkspaceFolders(() => {
-      this.postState().catch(() => undefined)
-    })
+    context.subscriptions.push(
+      window.onDidChangeActiveTextEditor(() => {
+        this.postState().catch(() => undefined)
+      }),
+      workspace.onDidChangeWorkspaceFolders(() => {
+        this.postState().catch(() => undefined)
+      })
+    )
   }
 
   public async resolveWebviewView(

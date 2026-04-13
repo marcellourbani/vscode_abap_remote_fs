@@ -91,7 +91,7 @@ export function parseAbapDocumentSymbols(document: vscode.TextDocument): vscode.
       const segment = (ci >= 0 ? remaining.slice(0, ci) : remaining).trimStart()
       remaining = ci >= 0 ? remaining.slice(ci + 1).trimStart() : ""
       if (expect) {
-        const nm = /^([\w\/]+)/.exec(segment)
+        const nm = /^([\w\/~$]+)/.exec(segment)
         if (nm && !METHOD_SPEC_KEYWORDS.has(nm[1].toUpperCase())) {
           addDeclaration(nm[1], vscode.SymbolKind.Method, chainKind!, lineIdx)
           expect = false

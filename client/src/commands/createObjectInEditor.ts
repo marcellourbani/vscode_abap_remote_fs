@@ -972,7 +972,7 @@ function getWebviewHtml(
           clearTimeout(packageSuggestionTimer);
         }
         packageSuggestionTimer = setTimeout(() => {
-          post('searchPackages', { query: packageName.value });
+          post('searchPackages', { query: el.packageName.value });
         }, 180);
       }
 
