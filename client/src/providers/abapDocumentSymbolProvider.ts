@@ -121,7 +121,7 @@ export function parseAbapDocumentSymbols(document: vscode.TextDocument): vscode.
   function closeScope(lineIdx: number) {
     const sym = scopeStack.pop()
     if (sym) {
-      if (reusedImplementationScopes.delete(sym)) return
+      reusedImplementationScopes.delete(sym)
       const lineText = document.lineAt(lineIdx).text
       sym.range = new vscode.Range(sym.range.start, new vscode.Position(lineIdx, lineText.length))
     }
