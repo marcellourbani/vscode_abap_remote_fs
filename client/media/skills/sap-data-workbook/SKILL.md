@@ -38,8 +38,8 @@ Mandatory: You MUST follow steps 1→2→3 in order. Do NOT create the file with
   "cells": [
     { "type": "markdown", "content": "# Title\nExplanation" },
     { "type": "abap-sql", "content": "SELECT matnr, mtart FROM mara WHERE mtart = 'FERT'" },
-    { "type": "javascript", "content": "const rows = cells[1].result;\nconst first = rows[0];\nreturn first.MATNR;" },
-    { "type": "abap-sql", "content": "SELECT matnr, werks FROM marc WHERE matnr = ${cells[2].result}" }
+    { "type": "javascript", "content": "const rows = cells[1].result;\nreturn rows.map(r => ({ MATNR: r.MATNR, MTART: r.MTART }));" },
+    { "type": "abap-sql", "content": "SELECT matnr, werks FROM marc WHERE matnr = ${cells[2].result[0].MATNR}" }
   ]
 }
 ```
@@ -48,18 +48,20 @@ Mandatory: You MUST follow steps 1→2→3 in order. Do NOT create the file with
 
 1. **Get ABAP SQL syntax.** Call `get_abap_sql_syntax` before writing SQL cells. ABAP SQL differs from standard SQL (tilde for table~field, no semicolons, etc.).
 
-3. **Cell types are exactly:** `"abap-sql"`, `"javascript"`, or `"markdown"`. No other values.
+2. **Cell types are exactly:** `"abap-sql"`, `"javascript"`, or `"markdown"`. No other values.
 
-4. **SQL cells** execute ABAP SQL via ADT. Only SELECT and WITH are allowed. No DML. No semicolons.
+3. **SQL cells** execute ABAP SQL via ADT. Only SELECT and WITH are allowed. No DML. No semicolons.
 
-5. **JavaScript cells** run in an isolated worker thread. They access previous cell results via `cells[N].result`:
+4. **JavaScript cells** run in an isolated worker thread. They access previous cell results via `cells[N].result`:
+   - `cells[N]` is **0-based and includes ALL cells** (markdown, SQL, and JS). A workbook starting with a markdown cell means the first SQL cell is `cells[1]`, not `cells[0]`.
    - SQL cell results are arrays of objects: `[{FIELD1: "val", FIELD2: "val"}, ...]`
    - JS cell results are whatever the cell returns
-   - Use `return` to produce a result that subsequent cells can reference
+   - Always end with `return <value>`. A JS cell with no `return` outputs `undefined`. Use `return null` if no value is needed.
+   - **Output rendering:** returning an **array of objects** renders as a table (preferred for tabular data). Returning a **plain object with nested arrays** does NOT render as a table. Returning a **string** renders as text. `console.log()` appears as diagnostic output above the result — do not rely on it for primary output.
 
-6. **SQL interpolation:** SQL cells can reference previous results with `${cells[N].result.path}`. This resolves before execution. **Strings are single-quoted automatically — do NOT add your own quotes around interpolation expressions.** Arrays are joined with commas (each element auto-quoted). Numbers are inserted bare.
+5. **SQL interpolation:** SQL cells can reference previous results with `${cells[N].result.path}`. This resolves before execution. **Strings are single-quoted automatically — do NOT add your own quotes around interpolation expressions.** Arrays are joined with commas (each element auto-quoted). Numbers are inserted bare.
 
-7. **SAP 255-character SQL literal limit.** SAP ADT rejects any SQL where a single literal exceeds 255 characters. This means interpolating large arrays into `IN (...)` clauses WILL FAIL. **Never interpolate arrays that could have more than ~10 values into SQL.** Instead, use a JavaScript cell to loop in small batches and filter the results programmatically. For example, instead of `SELECT ... WHERE matnr IN (${cells[1].result.ids})`, write a JS cell that takes the full result set and filters it using `cells[1].result`.
+6. **SAP 255-character SQL literal limit.** SAP ADT rejects any SQL where a single literal exceeds 255 characters. This means interpolating large arrays into `IN (...)` clauses WILL FAIL. **Never interpolate arrays that could have more than ~10 values into SQL.** Instead, use a JavaScript cell to loop in small batches and filter the results programmatically. For example, instead of `SELECT ... WHERE matnr IN (${cells[1].result.ids})`, write a JS cell that takes the full result set and filters it using `cells[1].result`.
 
 7. **maxRows** is optional per SQL cell (default 1000). Set it to however many rows the user needs. This maps directly to ADT's maxRows parameter: `{ "type": "abap-sql", "content": "...", "maxRows": 50000 }`
 

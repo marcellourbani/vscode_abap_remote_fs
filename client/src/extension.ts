@@ -56,6 +56,7 @@ import { showWelcomeWalkthrough } from "./services/walkthroughService"
 import { disableVirtualToolGrouping } from "./services/virtualToolsFix"
 import { ObjectPropertyProvider } from "./views/objectProperties"
 import { ObjectSearchViewProvider } from "./views/objectSearchView"
+import { initializeReviewPrompt } from "./services/reviewPrompt"
 
 // Import commands to ensure @command decorators are executed
 import "./commands"
@@ -358,6 +359,13 @@ export async function activate(ctx: ExtensionContext): Promise<AbapFsApi> {
 
   // Show Getting Started walkthrough on first install
   showWelcomeWalkthrough(context)
+
+  // Initialize review prompt (rate on Marketplace after sustained usage)
+  try {
+    initializeReviewPrompt(context)
+  } catch {
+    // Non-critical — never break extension activation
+  }
 
   const elapsed = new Date().getTime() - startTime
   log.debug(`Activated,pid=${process.pid}, activation time(ms):${elapsed}`)

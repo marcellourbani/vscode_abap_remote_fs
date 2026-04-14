@@ -18,10 +18,30 @@ export async function resolveConnection(): Promise<ResolvedConnection> {
     )
   }
 
+  if (connectedIds.length === 1) {
+    // Only one system connected — skip the QuickPick, go straight to confirmation
+    const onlyId = connectedIds[0]
+    const confirm = await vscode.window.showWarningMessage(
+      `Run on SAP system "${onlyId}"?`,
+      { modal: true },
+      "Yes, run"
+    )
+    if (confirm !== "Yes, run") {
+      throw new NotebookConnectionError("Execution cancelled by user.")
+    }
+    try {
+      return { connectionId: onlyId, client: getClient(onlyId) }
+    } catch (err: any) {
+      throw new NotebookConnectionError(
+        `System '${onlyId}' connection failed: ${err.message || err}. Reconnect and try again.`
+      )
+    }
+  }
+
   const picked = await vscode.window.showQuickPick(
     connectedIds.map(id => ({ label: id })),
     {
-      placeHolder: "Pick a SAP system for this Run:",
+      placeHolder: "Select SAP system to run against:",
       ignoreFocusOut: true
     }
   )
@@ -32,7 +52,7 @@ export async function resolveConnection(): Promise<ResolvedConnection> {
   const selectedId = picked.label
 
   const confirm = await vscode.window.showWarningMessage(
-    `Run workbook on SAP system "${selectedId}"?`,
+    `Run on SAP system "${selectedId}"?`,
     { modal: true },
     "Yes, run"
   )
