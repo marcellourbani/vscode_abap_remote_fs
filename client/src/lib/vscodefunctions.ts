@@ -1,5 +1,4 @@
 import {
-  window,
   InputBoxOptions,
   Uri,
   Progress,
@@ -24,6 +23,7 @@ import {
 import { Range as ApiRange, UriParts } from "abap-adt-api"
 import { RfsTaskEither, rfsTryCatch } from "./rfsTaskEither"
 import { ADTSCHEME } from "../adt/conections"
+import { funWindow as window } from "../services/funMessenger"
 
 export const uriName = (uri: Uri) => uri.path.split("/").pop() || ""
 

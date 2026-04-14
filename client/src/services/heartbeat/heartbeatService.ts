@@ -19,6 +19,7 @@ import {
   formatDuration
 } from "./heartbeatTypes"
 import { log } from "../../lib"
+import { funWindow as window } from "../funMessenger"
 
 /**
  * 💓 Heartbeat Service
@@ -63,7 +64,7 @@ export class HeartbeatService {
           if (!model || model.trim().length === 0) {
             // No model configured - disable and notify user
             config.update("enabled", false, vscode.ConfigurationTarget.Workspace)
-            vscode.window
+            window
               .showWarningMessage(
                 'Heartbeat requires a model to be configured. Please set "abapfs.heartbeat.model" first (workspace level), then enable heartbeat.',
                 "Open Settings"
@@ -97,7 +98,7 @@ export class HeartbeatService {
    * Initialize the status bar item
    */
   private initStatusBar(): void {
-    this.statusBarItem = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Right, 100)
+    this.statusBarItem = window.createStatusBarItem(vscode.StatusBarAlignment.Right, 100)
     this.statusBarItem.command = "abapfs.openHeartbeatJson"
     this.statusBarItem.tooltip = "Heartbeat - Click to open watchlist"
     this.context.subscriptions.push(this.statusBarItem)
@@ -468,14 +469,14 @@ export class HeartbeatService {
     const truncated = message.length > 200 ? message.substring(0, 200) + "..." : message
 
     if (type === "error") {
-      vscode.window.showErrorMessage(`💓 Heartbeat: ${truncated}`)
+      window.showErrorMessage(`💓 Heartbeat: ${truncated}`)
     } else {
-      vscode.window
+      window
         .showInformationMessage(`💓 Heartbeat Alert: ${truncated}`, "View Details")
         .then(selection => {
           if (selection === "View Details") {
             // Open output channel or show full message
-            vscode.window.showInformationMessage(message, { modal: true })
+            window.showInformationMessage(message, { modal: true })
           }
         })
     }

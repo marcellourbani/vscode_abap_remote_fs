@@ -20,6 +20,7 @@ import {
   getExtensionId,
   buildFullToolName
 } from "./subagentRegistry"
+import { funWindow as window } from "./funMessenger"
 
 // ============================================================================
 // TEMPLATE OPERATIONS
@@ -156,7 +157,7 @@ export async function refreshExplorer(): Promise<void> {
  * Close any open editors for agent files to prevent ghost references
  */
 export async function closeAgentEditors(workspaceUri: vscode.Uri): Promise<void> {
-  for (const tabGroup of vscode.window.tabGroups.all) {
+  for (const tabGroup of window.tabGroups.all) {
     for (const tab of tabGroup.tabs) {
       if (tab.input instanceof vscode.TabInputText) {
         const uri = tab.input.uri
@@ -168,7 +169,7 @@ export async function closeAgentEditors(workspaceUri: vscode.Uri): Promise<void>
           filePath.includes(".github/agents_disabled/")
         ) {
           try {
-            await vscode.window.tabGroups.close(tab)
+            await window.tabGroups.close(tab)
           } catch {
             // Tab might already be closed
           }
@@ -415,7 +416,7 @@ export async function enableSubagentsCore(context: vscode.ExtensionContext): Pro
   const customAgentEnabled = chatConfig.get<boolean>("customAgentInSubagent.enabled", false)
 
   if (!customAgentEnabled) {
-    const action = await vscode.window.showWarningMessage(
+    const action = await window.showWarningMessage(
       'CRITICAL:Subagents enabled, but "chat.customAgentInSubagent.enabled" is not set. ' +
         "This setting is required for Copilot to use your custom agents when delegating tasks.",
       "Enable Setting",
@@ -428,7 +429,7 @@ export async function enableSubagentsCore(context: vscode.ExtensionContext): Pro
         true,
         vscode.ConfigurationTarget.Global
       )
-      vscode.window.showInformationMessage(
+      window.showInformationMessage(
         "Setting enabled! Restart VS Code and then custom agents will be used for task delegation."
       )
     }

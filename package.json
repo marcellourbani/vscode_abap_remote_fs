@@ -122,6 +122,9 @@
       },
       {
         "path": "./client/dist/media/skills/sap-data-workbook/SKILL.md"
+      },
+      {
+        "path": "./client/dist/media/skills/adt-api-discovery/SKILL.md"
       }
     ],
     "breakpoints": [
@@ -437,9 +440,11 @@
                 "SFBF",
                 "SFBS",
                 "JOBD",
-                "NROB"
+                "NROB",
+                "ENHO",
+                "SUSO"
               ],
-              "description": "Optional: Specific object type to avoid ambiguity. FUNC=Function Modules, CLAS=Classes, TABL=Database Tables, PROG=Reports/Programs, INTF=Interfaces, DTEL=Data Elements, DDLS=CDS Views, DOMA=Domains, TTYP=Table Types/Structures, ENQU=Lock Objects, MSAG=Message Classes, FUGR=Function Groups, DEVC=Packages, TRAN=Transactions, VIEW=Views, SICF=ICF Services, WDYN=Web Dynpro, SPRX=Proxies, XSLT=XSLT Programs, TRANSFORMATIONS=Simple Transformations, SUSH=Authorization Objects, SUSC=Authorization Object Classes, PINF=Package Interfaces, ENHC=Enhancement Implementations, ENHS=Enhancement Spots, BADI=BAdI Definitions, BADII=BAdI Implementations, SAMC=AMC Classes, SAPC=APC Classes, SFSW=Switch Framework, SFBF=Business Functions, SFBS=Business Function Sets, JOBD=Job Definitions, NROB=Number Range Objects"
+              "description": "Optional: Specific object type to avoid ambiguity."
             },
             "methodName": {
               "type": "string",
@@ -534,6 +539,48 @@
             "objectName": {
               "type": "string",
               "description": "Name of the ABAP object to get information about"
+            },
+            "objectType": {
+              "type": "string",
+              "enum": [
+                "FUNC",
+                "CLAS",
+                "TABL",
+                "PROG",
+                "INTF",
+                "DTEL",
+                "DDLS",
+                "DOMA",
+                "TTYP",
+                "ENQU",
+                "MSAG",
+                "FUGR",
+                "DEVC",
+                "TRAN",
+                "VIEW",
+                "SICF",
+                "WDYN",
+                "SPRX",
+                "XSLT",
+                "TRANSFORMATIONS",
+                "SUSH",
+                "SUSC",
+                "PINF",
+                "ENHC",
+                "ENHS",
+                "BADI",
+                "BADII",
+                "SAMC",
+                "SAPC",
+                "SFSW",
+                "SFBF",
+                "SFBS",
+                "JOBD",
+                "NROB",
+                "ENHO",
+                "SUSO"
+              ],
+              "description": "Optional: Narrow search to a specific object type to resolve ambiguity when the same name exists in multiple types (e.g., MATNR exists as both DTEL and DOMA). FUNC=Function Modules, CLAS=Classes, TABL=Database Tables, PROG=Reports/Programs, INTF=Interfaces, DTEL=Data Elements, DDLS=CDS Views, DOMA=Domains, TTYP=Table Types, ENQU=Lock Objects, MSAG=Message Classes, FUGR=Function Groups, DEVC=Packages, TRAN=Transactions, VIEW=Views, SICF=ICF Services, WDYN=Web Dynpro, SPRX=Proxies, XSLT=XSLT Programs, TRANSFORMATIONS=Simple Transformations, SUSH=Authorization Objects, SUSC=Authorization Object Classes, PINF=Package Interfaces, ENHC=Enhancement Implementations, ENHS=Enhancement Spots, BADI=BAdI Definitions, BADII=BAdI Implementations, SAMC=AMC Classes, SAPC=APC Classes, SFSW=Switch Framework, SFBF=Business Functions, SFBS=Business Function Sets, JOBD=Job Definitions, NROB=Number Range Objects, ENHO=Enhancement Implementations, SUSO=Authorization Object Sets"
             },
             "connectionId": {
               "type": "string",
@@ -2332,6 +2379,30 @@
         ]
       },
       {
+        "name": "adt_discovery_export",
+        "displayName": "ADT Discovery Export",
+        "modelDescription": "Export the full ADT discovery tree from a connected SAP system into markdown files in the workspace. Creates a folder with: README.md (overview), workspaces.md (all discovery workspaces, collections, template links), core-discovery.md (core discovery entries), res-app-classes.md (all RES_APP classes from SEOMETAREL). Use these files together with the adt-api-discovery skill and other ABAP tools to investigate any ADT REST API endpoint — trace handler classes, read Simple Transformations, and determine request/response XML schemas.",
+        "canBeReferencedInPrompt": true,
+        "toolReferenceName": "adt-discovery",
+        "icon": "$(telescope)",
+        "userDescription": "Export ADT API discovery data to markdown files for AI-assisted endpoint investigation",
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "connectionId": {
+              "type": "string",
+              "description": "SAP connection ID (e.g., 'dev100')"
+            }
+          },
+          "required": [
+            "connectionId"
+          ]
+        },
+        "tags": [
+          "abap-fs"
+        ]
+      },
+      {
         "name": "abap_activate",
         "displayName": "Activate ABAP objects - equivalent of compiling",
         "canBeReferencedInPrompt": true,
@@ -2511,11 +2582,6 @@
       {
         "command": "abapfs.newAbapNotebook",
         "title": "New SAP Data Workbook",
-        "category": "ABAP FS"
-      },
-      {
-        "command": "abapfs.notebookClearConnection",
-        "title": "SAP Data Workbook: Disconnect SAP System",
         "category": "ABAP FS"
       },
       {

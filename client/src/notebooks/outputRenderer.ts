@@ -1,6 +1,7 @@
 import * as vscode from "vscode"
 import { CellResult, DISPLAY_ROW_LIMIT } from "./types"
 
+
 export function renderSqlOutput(cellResult: CellResult): vscode.NotebookCellOutput {
   if (!Array.isArray(cellResult.result) || cellResult.result.length === 0) {
     return textOutput("Query returned 0 rows.")
@@ -67,9 +68,12 @@ export function renderJsOutput(cellResult: CellResult): vscode.NotebookCellOutpu
   return new vscode.NotebookCellOutput(parts)
 }
 
+
 export function renderErrorOutput(error: Error | string): vscode.NotebookCellOutput {
-  const err = typeof error === "string" ? new Error(error) : error
-  return new vscode.NotebookCellOutput([vscode.NotebookCellOutputItem.error(err)])
+  const message = typeof error === "string" ? error : error.message || String(error)
+  return new vscode.NotebookCellOutput([
+    vscode.NotebookCellOutputItem.text(`❌ ${message}`, "text/plain")
+  ])
 }
 
 function textOutput(text: string): vscode.NotebookCellOutput {

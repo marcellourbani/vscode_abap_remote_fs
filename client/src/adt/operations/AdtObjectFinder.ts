@@ -7,7 +7,7 @@ import {
   SearchResult,
   UriParts
 } from "abap-adt-api"
-import { window, QuickPickItem, workspace, commands, Uri, FileStat, Range, ThemeIcon } from "vscode"
+import { QuickPickItem, workspace, commands, Uri, FileStat, Range, ThemeIcon } from "vscode"
 
 import { splitAdtUri, vscPosition, log, caughtToString, promCache } from "../../lib"
 import { getClient, getRoot, uriRoot } from "../conections"
@@ -22,6 +22,7 @@ import {
   AbapStat
 } from "abapfs"
 import { context } from "../../extension"
+import { funWindow as window } from "../../services/funMessenger"
 
 interface AdtSearchResult {
   uri: string

@@ -1,6 +1,7 @@
 import * as vscode from "vscode"
 import { NOTEBOOK_TYPE, AbapNotebookDocument, AbapNotebookCell, CellType, SQL_LANGUAGE_ID } from "./types"
 import { log } from "../lib"
+import { funWindow as window } from "../services/funMessenger"
 
 const CELL_TYPE_TO_LANGUAGE: Record<CellType, string> = {
   sql: SQL_LANGUAGE_ID,
@@ -125,7 +126,7 @@ function parseNotebookJson(text: string): ParseResult {
     } catch (e2: any) {
       log.debug(`📒 [Parser] JSON.parse after fix also failed: ${e2.message}`)
       log.debug(`Warning: .sapwb file contains invalid JSON: ${e2.message}`)
-      vscode.window.showWarningMessage(
+      window.showWarningMessage(
         "SAP Data Workbook file contains invalid JSON. Original content will be preserved on save."
       )
       return { doc: { version: 1, cells: [] }, corrupt: true }

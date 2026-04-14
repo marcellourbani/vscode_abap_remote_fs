@@ -3,7 +3,6 @@ import {
   SourceControlResourceState,
   SourceControl,
   Memento,
-  window,
   commands,
   QuickPickItem,
   Uri,
@@ -47,6 +46,7 @@ import { pickAdtRoot } from "../../config"
 import { isRight, isLeft } from "fp-ts/lib/Either"
 import { confirmPull, packageUri } from "../../views/abapgit"
 import { getClient, uriRoot } from "../../adt/conections"
+import { funWindow as window } from "../../services/funMessenger"
 
 let commitStore: Memento
 const getStore = () => {
