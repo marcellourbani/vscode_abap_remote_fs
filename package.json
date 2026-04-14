@@ -2,7 +2,7 @@
   "name": "vscode-abap-remote-fs",
   "displayName": "ABAP remote filesystem",
   "description": "Work on your ABAP code straight from the server",
-  "version": "2.4.0",
+  "version": "2.4.1",
   "publisher": "murbani",
   "publishConfig": {
     "access": "restricted",
@@ -449,9 +449,11 @@
                 "SFBF",
                 "SFBS",
                 "JOBD",
-                "NROB"
+                "NROB",
+                "ENHO",
+                "SUSO"
               ],
-              "description": "Optional: Specific object type to avoid ambiguity. FUNC=Function Modules, CLAS=Classes, TABL=Database Tables, PROG=Reports/Programs, INTF=Interfaces, DTEL=Data Elements, DDLS=CDS Views, DOMA=Domains, TTYP=Table Types/Structures, ENQU=Lock Objects, MSAG=Message Classes, FUGR=Function Groups, DEVC=Packages, TRAN=Transactions, VIEW=Views, SICF=ICF Services, WDYN=Web Dynpro, SPRX=Proxies, XSLT=XSLT Programs, TRANSFORMATIONS=Simple Transformations, SUSH=Authorization Objects, SUSC=Authorization Object Classes, PINF=Package Interfaces, ENHC=Enhancement Implementations, ENHS=Enhancement Spots, BADI=BAdI Definitions, BADII=BAdI Implementations, SAMC=AMC Classes, SAPC=APC Classes, SFSW=Switch Framework, SFBF=Business Functions, SFBS=Business Function Sets, JOBD=Job Definitions, NROB=Number Range Objects"
+              "description": "Optional: Specific object type to avoid ambiguity."
             },
             "methodName": {
               "type": "string",
@@ -546,6 +548,48 @@
             "objectName": {
               "type": "string",
               "description": "Name of the ABAP object to get information about"
+            },
+            "objectType": {
+              "type": "string",
+              "enum": [
+                "FUNC",
+                "CLAS",
+                "TABL",
+                "PROG",
+                "INTF",
+                "DTEL",
+                "DDLS",
+                "DOMA",
+                "TTYP",
+                "ENQU",
+                "MSAG",
+                "FUGR",
+                "DEVC",
+                "TRAN",
+                "VIEW",
+                "SICF",
+                "WDYN",
+                "SPRX",
+                "XSLT",
+                "TRANSFORMATIONS",
+                "SUSH",
+                "SUSC",
+                "PINF",
+                "ENHC",
+                "ENHS",
+                "BADI",
+                "BADII",
+                "SAMC",
+                "SAPC",
+                "SFSW",
+                "SFBF",
+                "SFBS",
+                "JOBD",
+                "NROB",
+                "ENHO",
+                "SUSO"
+              ],
+              "description": "Optional: Narrow search to a specific object type to resolve ambiguity when the same name exists in multiple types (e.g., MATNR exists as both DTEL and DOMA). FUNC=Function Modules, CLAS=Classes, TABL=Database Tables, PROG=Reports/Programs, INTF=Interfaces, DTEL=Data Elements, DDLS=CDS Views, DOMA=Domains, TTYP=Table Types, ENQU=Lock Objects, MSAG=Message Classes, FUGR=Function Groups, DEVC=Packages, TRAN=Transactions, VIEW=Views, SICF=ICF Services, WDYN=Web Dynpro, SPRX=Proxies, XSLT=XSLT Programs, TRANSFORMATIONS=Simple Transformations, SUSH=Authorization Objects, SUSC=Authorization Object Classes, PINF=Package Interfaces, ENHC=Enhancement Implementations, ENHS=Enhancement Spots, BADI=BAdI Definitions, BADII=BAdI Implementations, SAMC=AMC Classes, SAPC=APC Classes, SFSW=Switch Framework, SFBF=Business Functions, SFBS=Business Function Sets, JOBD=Job Definitions, NROB=Number Range Objects, ENHO=Enhancement Implementations, SUSO=Authorization Object Sets"
             },
             "connectionId": {
               "type": "string",

@@ -9,7 +9,6 @@ import {
   TreeItemCollapsibleState,
   TreeView,
   Uri,
-  window,
   workspace,
   Disposable
 } from "vscode"
@@ -24,6 +23,7 @@ import { AbapRevisionService, revLabel } from "../scm/abaprevisions/abaprevision
 import { revisionUri } from "../scm/abaprevisions/documentprovider"
 import { readTransports } from "./transports"
 import { getCombinedObjectTypeLabel } from "./objectTypeLabels"
+import { funWindow as window } from "../services/funMessenger"
 
 const OBJECT_PROPERTY_COMPARE_COMMAND = "abapfs.objectPropertyCompareSelectedInline"
 

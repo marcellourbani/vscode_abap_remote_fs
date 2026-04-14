@@ -5,6 +5,7 @@ import { getClient } from "../conections"
 import { IncludeProvider, IncludeService } from "../includes"
 import { isDefined, channel } from "../../lib"
 import { session_types } from "abap-adt-api"
+import { funWindow as window } from "../../services/funMessenger"
 
 // Log activation errors to ABAP FS output channel
 const logError = (message: string) => {
@@ -252,8 +253,6 @@ export class AdtObjectActivator {
   }
 
   private async showActivationSelectionDialog(objects: any[]) {
-    const { window } = require("vscode")
-
     // Create quick pick items
     const items = objects.map(obj => ({
       label: obj["adtcore:name"],

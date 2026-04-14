@@ -4,6 +4,7 @@ import { AbapNotebookController } from "./abapNotebookController"
 import { registerCellStatusBar } from "./cellStatusBar"
 import { NOTEBOOK_TYPE, SQL_LANGUAGE_ID } from "./types"
 import { log } from "../lib"
+import { funWindow as window } from "../services/funMessenger"
 
 let controller: AbapNotebookController | undefined
 
@@ -65,7 +66,7 @@ async function createNewNotebook(): Promise<void> {
   data.metadata = { version: 1, title: "" }
 
   const doc = await vscode.workspace.openNotebookDocument(NOTEBOOK_TYPE, data)
-  await vscode.window.showNotebookDocument(doc)
+  await window.showNotebookDocument(doc)
 }
 
 async function correctSqlLanguages(notebook: vscode.NotebookDocument): Promise<void> {
