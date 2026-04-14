@@ -28,6 +28,7 @@ import {
   writeAgentFile,
   refreshExplorer
 } from "../subagentFileOps"
+import { funWindow as window } from "../funMessenger"
 
 // ============================================================================
 // TOOL IMPLEMENTATION
@@ -618,7 +619,7 @@ async function handleManualModelChange(context: vscode.ExtensionContext): Promis
 
   if (updated > 0) {
     await refreshExplorer()
-    vscode.window.showInformationMessage(
+    window.showInformationMessage(
       `Updated ${updated} agent file(s) with new model configurations.`
     )
   }
@@ -632,26 +633,26 @@ async function handleManualSettingsChange(context: vscode.ExtensionContext): Pro
 
     if (!result.success) {
       if (result.error === "no_workspace") {
-        vscode.window.showErrorMessage("Cannot enable subagents: No workspace folder found.")
+        window.showErrorMessage("Cannot enable subagents: No workspace folder found.")
       } else if (result.error === "missing_models") {
-        vscode.window.showErrorMessage(
+        window.showErrorMessage(
           `Cannot enable subagents: ${result.missingModels!.length} agent(s) have no model configured. ` +
             `Ask Copilot to "configure subagent models" first.`
         )
       } else if (result.error === "validation_failed") {
         const agents = result.fileErrors!.map(e => e.agentId).join(", ")
-        vscode.window.showErrorMessage(
+        window.showErrorMessage(
           `Subagents auto-disabled: Invalid model names detected for: ${agents}. ` +
             `Ask Copilot to "configure subagent models" with valid models.`
         )
       }
     } else {
-      vscode.window.showInformationMessage(`Subagents enabled. ${result.fileStatus}`)
+      window.showInformationMessage(`Subagents enabled. ${result.fileStatus}`)
     }
   } else {
     const result = await disableSubagentsCore()
     if (result.preserved) {
-      vscode.window.showInformationMessage(
+      window.showInformationMessage(
         "Subagents disabled. Agent files preserved in agents_disabled folder."
       )
     }
@@ -680,7 +681,7 @@ async function handleModelChange(context: vscode.ExtensionContext): Promise<void
     const invalidModels = unavailable.filter(u => u.configuredModel)
     const modelNames = invalidModels.map(u => u.configuredModel).join(", ")
 
-    vscode.window.showWarningMessage(
+    window.showWarningMessage(
       `Subagents AUTO-DISABLED: Model(s) no longer available: ${modelNames}. Agent files preserved in agents_disabled folder.`,
       "OK"
     )
@@ -723,10 +724,10 @@ export async function validateSubagentsOnStartup(context: vscode.ExtensionContex
 
     const message = `Subagents have been DISABLED: ${unavailable.length} agent(s) have invalid/missing models.`
 
-    const action = await vscode.window.showWarningMessage(message, "View Details", "Dismiss")
+    const action = await window.showWarningMessage(message, "View Details", "Dismiss")
 
     if (action === "View Details") {
-      vscode.window.showInformationMessage(
+      window.showInformationMessage(
         `${details}To re-enable subagents:\n1. Ask Copilot to "list models" to see available models\n2. Ask Copilot to "configure subagent models"\n3. Ask Copilot to "enable subagents"`
       )
     }

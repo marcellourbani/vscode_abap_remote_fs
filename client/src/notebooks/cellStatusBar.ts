@@ -1,5 +1,6 @@
 import * as vscode from "vscode"
 import { NOTEBOOK_TYPE, SQL_LANGUAGE_ID, DEFAULT_MAX_ROWS } from "./types"
+import { funWindow as window } from "../services/funMessenger"
 
 /**
  * Provides a clickable status bar item on each SQL cell showing the current maxRows limit.
@@ -39,7 +40,7 @@ export function registerCellStatusBar(context: vscode.ExtensionContext): void {
       "abapfs.notebookSetCellMaxRows",
       async (cell: vscode.NotebookCell) => {
         const current: number = cell.metadata?.maxRows ?? DEFAULT_MAX_ROWS
-        const input = await vscode.window.showInputBox({
+        const input = await window.showInputBox({
           title: "Set Max Rows for SQL Cell",
           prompt: "Maximum number of rows to fetch from SAP for this cell",
           value: String(current),

@@ -6,7 +6,6 @@ import {
   workspace,
   Uri,
   EventEmitter,
-  window,
   ProgressLocation,
   commands,
   env
@@ -22,6 +21,7 @@ import {
   TransportConfigurationEntry
 } from "abap-adt-api"
 import { command, AbapFsCommands } from "../commands"
+import { funWindow as window } from "../services/funMessenger"
 import { caughtToString, withp } from "../lib"
 import { getClient, ADTSCHEME, getOrCreateClient, getRoot } from "../adt/conections"
 import { isFolder, isAbapStat, PathItem, isAbapFolder } from "abapfs"

@@ -5,6 +5,7 @@ import { executeSqlCell } from "./sqlCellExecutor"
 import { executeJsCell } from "./jsCellExecutor"
 import { renderSqlOutput, renderJsOutput, renderErrorOutput } from "./outputRenderer"
 import { log } from "../lib"
+import { funWindow as window } from "../services/funMessenger"
 
 export class AbapNotebookController {
   private readonly controller: vscode.NotebookController
