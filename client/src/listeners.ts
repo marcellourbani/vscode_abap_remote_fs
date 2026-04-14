@@ -226,6 +226,7 @@ function showHidedbIcon(editor?: TextEditor) {
   try {
     const type = uriAbapFile(editor?.document.uri)?.object.type
     setContext("abapfs:showTableContentIcon", viewableObjecttypes.has(type))
+    setContext("abapfs:activeEditorIsTable", type === "TABL/DT")
   } catch (error) {}
 }
 

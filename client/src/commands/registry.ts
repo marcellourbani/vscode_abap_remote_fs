@@ -1,5 +1,6 @@
 import { configureFeedsCommand } from "./configureFeeds"
 import { manageTextElementsCommand } from "./textElementsCommands"
+import { publishServiceBindingCommand } from "./publishServiceBinding"
 import { commands } from "vscode"
 
 export const AbapFsCommands = {
@@ -117,7 +118,10 @@ export const AbapFsCommands = {
   refreshSystemInfoCache: "abapfs.refreshSystemInfoCache",
   // Communication log
   activateCommLog: "abapfs.activateCommLog",
-  deactivateCommLog: "abapfs.deactivateCommLog"
+  deactivateCommLog: "abapfs.deactivateCommLog",
+  // RAP Generator
+  rapGenFromEditor: "abapfs.rapGenFromEditor",
+  publishServiceBinding: "abapfs.publishServiceBinding"
 }
 
 export const abapcmds: {
@@ -141,5 +145,11 @@ abapcmds.push({
 abapcmds.push({
   name: AbapFsCommands.configureFeeds,
   func: configureFeedsCommand,
+  target: null
+})
+
+abapcmds.push({
+  name: AbapFsCommands.publishServiceBinding,
+  func: publishServiceBindingCommand,
   target: null
 })

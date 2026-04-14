@@ -14,6 +14,7 @@ export type AbapFsContexts =
   | "abapfs:enableRightNextRev"
   | "abapfs:blameActive"
   | "abapfs:blameAvailable"
+  | "abapfs:activeEditorIsTable"
 
 export const setContext = (key: AbapFsContexts, value: unknown) =>
   commands.executeCommand("setContext", key, value)

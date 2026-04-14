@@ -1,0 +1,576 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<style>
+  :root {
+    --input-bg: var(--vscode-input-background);
+    --input-fg: var(--vscode-input-foreground);
+    --input-border: var(--vscode-input-border, var(--vscode-widget-border, #444));
+    --btn-bg: var(--vscode-button-background);
+    --btn-fg: var(--vscode-button-foreground);
+    --btn-hover: var(--vscode-button-hoverBackground);
+    --btn-sec-bg: var(--vscode-button-secondaryBackground);
+    --btn-sec-fg: var(--vscode-button-secondaryForeground);
+    --err: var(--vscode-errorForeground, #f44);
+    --ok: var(--vscode-charts-green, #4c4);
+    --warn: var(--vscode-editorWarning-foreground, #fa4);
+    --link: var(--vscode-textLink-foreground);
+    --desc: var(--vscode-descriptionForeground);
+    --sep: var(--vscode-widget-border, #333);
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: var(--vscode-font-family);
+    font-size: var(--vscode-font-size, 13px);
+    color: var(--vscode-foreground);
+    padding: 8px;
+    overflow-y: auto;
+  }
+  label {
+    display: block;
+    font-size: 11px;
+    color: var(--desc);
+    margin: 8px 0 2px 0;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+  }
+  label:first-of-type { margin-top: 0; }
+  input, select {
+    width: 100%;
+    padding: 4px 6px;
+    background: var(--input-bg);
+    color: var(--input-fg);
+    border: 1px solid var(--input-border);
+    border-radius: 2px;
+    font-family: inherit;
+    font-size: inherit;
+  }
+  input:focus, select:focus {
+    outline: 1px solid var(--vscode-focusBorder);
+  }
+  input:read-only {
+    opacity: 0.6;
+  }
+  .row { display: flex; gap: 6px; }
+  .row > * { flex: 1; min-width: 0; }
+  .btn-row { display: flex; gap: 6px; margin-top: 10px; }
+  button {
+    padding: 4px 10px;
+    border: none;
+    border-radius: 2px;
+    cursor: pointer;
+    font-family: inherit;
+    font-size: inherit;
+  }
+  .btn-primary { background: var(--btn-bg); color: var(--btn-fg); flex: 1; }
+  .btn-primary:hover { background: var(--btn-hover); }
+  .btn-secondary { background: var(--btn-sec-bg); color: var(--btn-sec-fg); }
+  .btn-secondary:hover { opacity: 0.9; }
+  button:disabled { opacity: 0.5; cursor: default; }
+  #status {
+    margin-top: 8px;
+    padding: 4px 6px;
+    border-radius: 2px;
+    font-size: 12px;
+    display: none;
+  }
+  #status.error { display: block; background: rgba(255,68,68,0.15); color: var(--err); }
+  #status.ok { display: block; background: rgba(68,204,68,0.15); color: var(--ok); }
+  #status.warn { display: block; background: rgba(255,170,68,0.15); color: var(--warn); }
+  #status.info { display: block; background: rgba(68,170,255,0.15); color: var(--link); }
+  .section-title {
+    font-weight: 600;
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    color: var(--desc);
+    border-bottom: 1px solid var(--sep);
+    padding: 6px 0 3px 0;
+    margin: 10px 0 2px 0;
+  }
+  #preview-list {
+    margin-top: 6px;
+    font-size: 12px;
+    max-height: 200px;
+    overflow-y: auto;
+  }
+  #preview-list .obj,
+  #generated-list .obj {
+    padding: 2px 0;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+  }
+  #preview-list .obj-name,
+  #generated-list .obj-name {
+    color: var(--link);
+    cursor: pointer;
+    text-decoration: underline;
+  }
+  #preview-list .obj-type,
+  #generated-list .obj-type {
+    color: var(--desc);
+    font-size: 11px;
+  }
+  #preview-list .obj-op,
+  #generated-list .obj-op {
+    font-size: 10px;
+    padding: 1px 4px;
+    border-radius: 2px;
+    background: var(--btn-sec-bg);
+    color: var(--btn-sec-fg);
+  }
+  #form-section { display: none; }
+  #generated-section { display: none; }
+  .spin::after { content: "⏳"; }
+</style>
+</head>
+<body>
+
+<!-- STEP 1: Input -->
+<div id="input-section">
+  <label for="system">System</label>
+  <select id="system"><option value="">Loading...</option></select>
+
+  <label for="table">Database Table</label>
+  <input id="table" placeholder="e.g. ZTRAVEL" spellcheck="false"/>
+
+  <label for="package">Package</label>
+  <input id="package" value="$TMP" spellcheck="false"/>
+
+  <label for="gentype">Service Type</label>
+  <select id="gentype">
+    <option value="uiservice">OData UI Service</option>
+    <option value="webapiservice">OData Web API Service</option>
+  </select>
+
+  <div class="btn-row">
+    <button class="btn-primary" id="btn-load">Load Defaults</button>
+  </div>
+</div>
+
+<!-- STEP 2: Edit names -->
+<div id="form-section">
+  <div class="section-title">General</div>
+  <label for="f-desc">Description</label>
+  <input id="f-desc"/>
+
+  <div class="section-title">Business Object</div>
+  <label for="f-cds">CDS View Entity</label>
+  <input id="f-cds"/>
+  <label for="f-entity">Entity Name <span style="color:var(--desc);font-weight:normal">(optional alias)</span></label>
+  <input id="f-entity" placeholder="Leave empty for default"/>
+
+  <div class="section-title">Behavior</div>
+  <label for="f-impltype">Implementation Type <span style="color:var(--desc);font-weight:normal">(server-determined)</span></label>
+  <input id="f-impltype" readonly title="Set by the RAP Generator based on the table structure"/>
+  <label for="f-implclass">Implementation Class</label>
+  <input id="f-implclass"/>
+  <label for="f-draft">Draft Table</label>
+  <input id="f-draft"/>
+
+  <div class="section-title">Service Projection</div>
+  <label for="f-proj">Projection View</label>
+  <input id="f-proj"/>
+
+  <div class="section-title">Business Service</div>
+  <label for="f-srvd">Service Definition</label>
+  <input id="f-srvd"/>
+  <div class="row">
+    <div>
+      <label for="f-srvb">Service Binding</label>
+      <input id="f-srvb"/>
+    </div>
+    <div>
+      <label for="f-bindtype">Binding Type</label>
+      <select id="f-bindtype">
+        <option>OData V4 - UI</option>
+        <option>OData V4 - Web API</option>
+        <option>OData V2 - UI</option>
+        <option>OData V2 - Web API</option>
+      </select>
+    </div>
+  </div>
+
+  <div class="btn-row">
+    <button class="btn-secondary" id="btn-back">← Back</button>
+    <button class="btn-secondary" id="btn-validate">Validate</button>
+    <button class="btn-secondary" id="btn-preview">Preview</button>
+    <button class="btn-primary" id="btn-generate">Generate</button>
+  </div>
+
+  <div id="preview-list"></div>
+</div>
+
+<!-- STEP 3: Result -->
+<div id="generated-section">
+  <div class="section-title">Generated Objects</div>
+  <div id="generated-list"></div>
+  <div class="btn-row">
+    <button class="btn-secondary" id="btn-publish">Publish Service</button>
+    <button class="btn-primary" id="btn-new">New Generation</button>
+  </div>
+</div>
+
+<div id="status"></div>
+
+<script>
+(function() {
+  const vscode = acquireVsCodeApi();
+  const $ = id => document.getElementById(id);
+
+  // Elements
+  const elSystem = $("system");
+  const elTable = $("table");
+  const elPackage = $("package");
+  const elGenType = $("gentype");
+  const elStatus = $("status");
+  const btnLoad = $("btn-load");
+  const btnBack = $("btn-back");
+  const btnValidate = $("btn-validate");
+  const btnPreview = $("btn-preview");
+  const btnGenerate = $("btn-generate");
+  const btnPublish = $("btn-publish");
+  const btnNew = $("btn-new");
+
+  // Sections
+  const secInput = $("input-section");
+  const secForm = $("form-section");
+  const secGenerated = $("generated-section");
+
+  // State
+  let currentContent = null;
+  let lastSrvbName = null;
+  let currentSection = "input";
+  let generatedObjects = [];
+  let previewObjects = [];
+
+  function saveState() {
+    vscode.setState({
+      section: currentSection,
+      system: elSystem.value,
+      table: elTable.value,
+      pkg: elPackage.value,
+      gentype: elGenType.value,
+      srvbName: lastSrvbName,
+      generatedObjects,
+      previewObjects,
+      form: currentSection !== "input" ? {
+        desc: $("f-desc").value,
+        cds: $("f-cds").value,
+        entity: $("f-entity").value,
+        impltype: $("f-impltype").value,
+        implclass: $("f-implclass").value,
+        draft: $("f-draft").value,
+        proj: $("f-proj").value,
+        srvd: $("f-srvd").value,
+        srvb: $("f-srvb").value,
+        bindtype: $("f-bindtype").value
+      } : null
+    });
+  }
+
+  function showSection(sec) {
+    currentSection = sec;
+    secInput.style.display = sec === "input" ? "block" : "none";
+    secForm.style.display = sec === "form" ? "block" : "none";
+    secGenerated.style.display = sec === "generated" ? "block" : "none";
+    saveState();
+  }
+
+  function status(text, severity) {
+    elStatus.textContent = text;
+    // Map 'warning' from API to 'warn' CSS class
+    elStatus.className = severity === "warning" ? "warn" : (severity || "");
+    // Clear any inline display override from clearStatus()
+    elStatus.style.display = "";
+  }
+
+  function clearStatus() {
+    elStatus.className = "";
+    elStatus.textContent = "";
+  }
+
+  function busy(btn, isBusy) {
+    btn.disabled = isBusy;
+    if (isBusy) {
+      if (!btn.dataset.origText) btn.dataset.origText = btn.textContent;
+      btn.textContent = "Working...";
+    } else {
+      btn.textContent = btn.dataset.origText || btn.textContent;
+    }
+  }
+
+  function gatherContent() {
+    const entityName = $("f-entity").value.trim();
+    const dataModelEntity = { cdsName: $("f-cds").value };
+    if (entityName) dataModelEntity.entityName = entityName;
+    return {
+      metadata: { package: elPackage.value.trim().toUpperCase(), masterLanguage: "EN" },
+      general: {
+        referenceObjectName: elTable.value.trim().toUpperCase(),
+        description: $("f-desc").value
+      },
+      businessObject: {
+        dataModelEntity,
+        behavior: {
+          implementationType: $("f-impltype").value,
+          implementationClass: $("f-implclass").value,
+          draftTable: $("f-draft").value
+        }
+      },
+      serviceProjection: { name: $("f-proj").value },
+      businessService: {
+        serviceDefinition: { name: $("f-srvd").value },
+        serviceBinding: { name: $("f-srvb").value, bindingType: $("f-bindtype").value }
+      }
+    };
+  }
+
+  function populateForm(c) {
+    $("f-desc").value = c.general?.description || "";
+    $("f-cds").value = c.businessObject?.dataModelEntity?.cdsName || "";
+    $("f-entity").value = c.businessObject?.dataModelEntity?.entityName || "";
+    $("f-impltype").value = c.businessObject?.behavior?.implementationType || "Managed";
+    $("f-implclass").value = c.businessObject?.behavior?.implementationClass || "";
+    $("f-draft").value = c.businessObject?.behavior?.draftTable || "";
+    $("f-proj").value = c.serviceProjection?.name || "";
+    $("f-srvd").value = c.businessService?.serviceDefinition?.name || "";
+    $("f-srvb").value = c.businessService?.serviceBinding?.name || "";
+    $("f-bindtype").value = c.businessService?.serviceBinding?.bindingType || "OData V4 - UI";
+  }
+
+  function renderObjectList(targetId, objects, clickable) {
+    const el = $(targetId);
+    el.innerHTML = "";
+    for (const obj of objects) {
+      const div = document.createElement("div");
+      div.className = "obj";
+      if (obj.description) {
+        const op = document.createElement("span");
+        op.className = "obj-op";
+        op.textContent = obj.description;
+        div.appendChild(op);
+      }
+      const name = document.createElement("span");
+      const canClick = clickable && (obj.name || obj.uri);
+      name.className = canClick ? "obj-name" : "";
+      name.textContent = obj.name || obj.uri;
+      if (canClick) {
+        name.addEventListener("click", () => {
+          vscode.postMessage({ command: "openObject", connId: elSystem.value, name: obj.name, type: obj.type, uri: obj.uri });
+        });
+      }
+      div.appendChild(name);
+      if (obj.type) {
+        const type = document.createElement("span");
+        type.className = "obj-type";
+        type.textContent = obj.type;
+        div.appendChild(type);
+      }
+      el.appendChild(div);
+    }
+  }
+
+  // ── Button Handlers ─────────────────────────────
+
+  btnLoad.addEventListener("click", () => {
+    const sys = elSystem.value;
+    const tbl = elTable.value.trim().toUpperCase();
+    const pkg = elPackage.value.trim().toUpperCase();
+    if (!sys) { status("Select a system", "error"); return; }
+    if (!tbl) { status("Enter a table name", "error"); return; }
+    if (!pkg) { status("Enter a package name", "error"); return; }
+    clearStatus();
+    elTable.value = tbl;
+    elPackage.value = pkg;
+    busy(btnLoad, true);
+    vscode.postMessage({ command: "loadDefaults", connId: sys, tableName: tbl, packageName: pkg, generatorId: elGenType.value });
+  });
+
+  btnBack.addEventListener("click", () => {
+    clearStatus();
+    $("preview-list").innerHTML = "";
+    showSection("input");
+  });
+
+  btnValidate.addEventListener("click", () => {
+    clearStatus();
+    busy(btnValidate, true);
+    vscode.postMessage({
+      command: "validate",
+      connId: elSystem.value,
+      tableName: elTable.value.trim().toUpperCase(),
+      content: gatherContent(),
+      generatorId: elGenType.value
+    });
+  });
+
+  btnPreview.addEventListener("click", () => {
+    clearStatus();
+    busy(btnPreview, true);
+    vscode.postMessage({
+      command: "preview",
+      connId: elSystem.value,
+      tableName: elTable.value.trim().toUpperCase(),
+      content: gatherContent(),
+      generatorId: elGenType.value
+    });
+  });
+
+  btnGenerate.addEventListener("click", () => {
+    clearStatus();
+    busy(btnGenerate, true);
+    vscode.postMessage({
+      command: "generate",
+      connId: elSystem.value,
+      tableName: elTable.value.trim().toUpperCase(),
+      content: gatherContent(),
+      generatorId: elGenType.value
+    });
+  });
+
+  btnPublish.addEventListener("click", () => {
+    if (!lastSrvbName) { status("No service binding to publish", "error"); return; }
+    clearStatus();
+    busy(btnPublish, true);
+    vscode.postMessage({ command: "publish", connId: elSystem.value, srvbName: lastSrvbName });
+  });
+
+  btnNew.addEventListener("click", () => {
+    clearStatus();
+    lastSrvbName = null;
+    generatedObjects = [];
+    previewObjects = [];
+    $("generated-list").innerHTML = "";
+    $("preview-list").innerHTML = "";
+    showSection("input");
+  });
+
+  // ── Message Handler ─────────────────────────────
+
+  window.addEventListener("message", e => {
+    const msg = e.data;
+    switch (msg.type) {
+      case "systems": {
+        elSystem.innerHTML = "";
+        if (msg.systems.length === 0) {
+          elSystem.innerHTML = '<option value="">No systems connected</option>';
+        } else {
+          for (const s of msg.systems) {
+            const opt = document.createElement("option");
+            opt.value = s;
+            opt.textContent = s.toUpperCase();
+            elSystem.appendChild(opt);
+          }
+        }
+        // Restore saved system selection
+        if (window.__restoreSystem) {
+          elSystem.value = window.__restoreSystem;
+          delete window.__restoreSystem;
+        }
+        break;
+      }
+      case "prefill": {
+        elSystem.value = msg.connId;
+        elTable.value = msg.tableName;
+        showSection("input");
+        clearStatus();
+        break;
+      }
+      case "defaults": {
+        busy(btnLoad, false);
+        currentContent = msg.content;
+        populateForm(msg.content);
+        clearStatus();
+        showSection("form");
+        break;
+      }
+      case "validation": {
+        busy(btnValidate, false);
+        const r = msg.result;
+        status(r.shortText || (r.severity === "ok" ? "Validation passed" : ""), r.severity);
+        break;
+      }
+      case "preview": {
+        busy(btnPreview, false);
+        previewObjects = msg.objects || [];
+        renderObjectList("preview-list", previewObjects, false);
+        if (previewObjects.length === 0) {
+          status("No objects to preview", "warn");
+        } else {
+          status(previewObjects.length + " object(s) will be created", "ok");
+        }
+        saveState();
+        break;
+      }
+      case "generated": {
+        busy(btnGenerate, false);
+        lastSrvbName = msg.srvbName || null;
+        generatedObjects = msg.objects || [];
+        renderObjectList("generated-list", generatedObjects, true);
+        showSection("generated");
+        status(generatedObjects.length + " object(s) generated successfully", "ok");
+        break;
+      }
+      case "published": {
+        busy(btnPublish, false);
+        status("Service published successfully", "ok");
+        break;
+      }
+      case "cancelled": {
+        busy(btnGenerate, false);
+        status("Generation cancelled", "warn");
+        break;
+      }
+      case "error": {
+        busy(btnLoad, false);
+        busy(btnValidate, false);
+        busy(btnPreview, false);
+        busy(btnGenerate, false);
+        busy(btnPublish, false);
+        status(msg.text, "error");
+        break;
+      }
+    }
+  });
+
+  // ── Init ────────────────────────────────────────
+  const saved = vscode.getState();
+  if (saved && saved.section !== "input") {
+    // Restore state
+    elTable.value = saved.table || "";
+    elPackage.value = saved.pkg || "$TMP";
+    elGenType.value = saved.gentype || "uiservice";
+    lastSrvbName = saved.srvbName || null;
+    generatedObjects = saved.generatedObjects || [];
+    previewObjects = saved.previewObjects || [];
+    if (saved.form) {
+      $("f-desc").value = saved.form.desc || "";
+      $("f-cds").value = saved.form.cds || "";
+      $("f-entity").value = saved.form.entity || "";
+      $("f-impltype").value = saved.form.impltype || "Managed";
+      $("f-implclass").value = saved.form.implclass || "";
+      $("f-draft").value = saved.form.draft || "";
+      $("f-proj").value = saved.form.proj || "";
+      $("f-srvd").value = saved.form.srvd || "";
+      $("f-srvb").value = saved.form.srvb || "";
+      $("f-bindtype").value = saved.form.bindtype || "OData V4 - UI";
+    }
+    if (previewObjects.length > 0) renderObjectList("preview-list", previewObjects, false);
+    if (generatedObjects.length > 0) renderObjectList("generated-list", generatedObjects, true);
+    showSection(saved.section);
+    // Still request systems to populate the dropdown, then select the saved one
+    vscode.postMessage({ command: "ready" });
+    // Defer system selection until systems arrive
+    window.__restoreSystem = saved.system;
+  } else {
+    showSection("input");
+    vscode.postMessage({ command: "ready" });
+  }
+})();
+</script>
+</body>
+</html>
