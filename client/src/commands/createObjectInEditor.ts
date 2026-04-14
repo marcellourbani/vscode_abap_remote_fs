@@ -1,5 +1,4 @@
-import * as vscode from "vscode"
-import { FileStat, Uri, ViewColumn, WebviewPanel, commands } from "vscode"
+import { FileStat, ProgressLocation, Uri, ViewColumn, WebviewPanel, commands } from "vscode"
 import {
   BindinTypes,
   CreatableType,
@@ -187,7 +186,7 @@ function postPanelMessage(command: string, payload: Record<string, unknown> = {}
 
 async function handleSubmit(connId: string, input: CreateObjectFormInput) {
   const obj = await window.withProgress(
-    { location: vscode.ProgressLocation.Notification, title: "Creating ABAP object..." },
+    { location: ProgressLocation.Notification, title: "Creating ABAP object..." },
     async () => createObjectFromForm(connId, input)
   )
 
@@ -489,7 +488,7 @@ function normalizeInput(input: CreateObjectFormInput): CreateObjectFormInput {
   return {
     ...input,
     name: input.name.trim().toUpperCase(),
-    description: input.description.trim().toUpperCase(),
+    description: input.description.trim(),
     packageName: input.packageName.trim().toUpperCase(),
     parentName: input.parentName?.trim().toUpperCase() || "",
     softwareComponent: input.softwareComponent?.trim().toUpperCase() || "",

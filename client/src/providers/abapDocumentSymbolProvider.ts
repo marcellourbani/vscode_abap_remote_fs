@@ -1,7 +1,7 @@
 import * as vscode from "vscode"
 import { ADTSCHEME } from "../adt/conections"
 
-// Strip ABAP inline comments (after an unquoted ")
+// strip ABAP inline comments at the first ".
 function stripComment(line: string): string {
   const idx = line.indexOf('"')
   return idx >= 0 ? line.slice(0, idx) : line
