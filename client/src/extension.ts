@@ -20,7 +20,7 @@ import { registerAbapGit } from "./scm/abapGit"
 import { AbapFsApi, api } from "./api"
 import { ADTSCHEME, disconnect, hasLocks } from "./adt/conections"
 import { MessagesProvider } from "./editors/messages"
-import { IncludeProvider } from "./adt/includes"
+import { IncludeProvider, IncludeDefinitionProvider } from "./adt/includes"
 import { registerCommands } from "./commands/register"
 import { HttpProvider } from "./editors/httpprovider"
 import { dumpProvider } from "./views/dumps/dumps"
@@ -262,6 +262,13 @@ export async function activate(ctx: ExtensionContext): Promise<AbapFsApi> {
     languages.registerCodeLensProvider(
       { language: "abap", scheme: ADTSCHEME },
       IncludeProvider.get()
+    )
+  )
+
+  sub.push(
+    languages.registerDefinitionProvider(
+      { language: "abap", scheme: ADTSCHEME },
+      IncludeDefinitionProvider.get()
     )
   )
 
