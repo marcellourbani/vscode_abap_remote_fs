@@ -7,6 +7,7 @@ export const AbapFsCommands = {
   connect: "abapfs.connect",
   disconnect: "abapfs.disconnect",
   activate: "abapfs.activate",
+  activateMultiple: "abapfs.activateMultiple",
   search: "abapfs.search",
   create: "abapfs.create",
   createInEditor: "abapfs.createInEditor",
