@@ -172,7 +172,7 @@ The MCP (Model Context Protocol) server allows external AI tools like Cursor, Cl
 
 | Property | Type | Default | Scope | Description |
 |----------|------|---------|-------|-------------|
-| `useIntegratedBrowser` | boolean | `false` | resource | Use VS Code's integrated browser (Simple Browser) instead of the embedded WebView for SAP GUI. Enable this if the embedded WebView shows a blank page due to SAP clickjacking frame protection. |
+| `useIntegratedBrowser` | boolean | `true` | resource | Use VS Code's integrated browser (Simple Browser) instead of the embedded WebView for SAP GUI. Enable this if the embedded WebView shows a blank page due to SAP clickjacking frame protection. Enabled by default |
 
 When enabled, all embedded SAP GUI actions (toolbar button, command palette, Run Transaction) will open in VS Code's Simple Browser instead of a webview iframe. This avoids clickjacking restrictions that some SAP systems enforce.
 
