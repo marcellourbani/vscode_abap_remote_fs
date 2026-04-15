@@ -26,6 +26,8 @@ interface InactiveObjectEntry {
   user?: string
 }
 
+type InactiveObjectLike = InactiveObjectEntry | Record<string, any>
+
 export class AdtObjectActivator {
   constructor(private client: ADTClient) {}
   private static instances = new Map<string, AdtObjectActivator>()
@@ -312,13 +314,22 @@ export class AdtObjectActivator {
     return parts.filter(Boolean).join(" • ")
   }
 
-  private async showActivationSelectionDialog(entries: InactiveObjectEntry[]) {
+  private toInactiveObjectEntry(entry: InactiveObjectLike): InactiveObjectEntry {
+    if ("object" in entry) {
+      return entry as InactiveObjectEntry
+    }
+
+    return { object: entry }
+  }
+
+  private async showActivationSelectionDialog(entries: InactiveObjectLike[]) {
+    const normalizedEntries = entries.map(entry => this.toInactiveObjectEntry(entry))
     const groupedEntries = new Map<
       string,
       { order: string; task: string; description: string; entries: InactiveObjectEntry[] }
     >()
 
-    for (const entry of entries) {
+    for (const entry of normalizedEntries) {
       const group = this.transportGrouping(entry)
       const existing = groupedEntries.get(group.key)
       if (existing) {
@@ -367,7 +378,7 @@ export class AdtObjectActivator {
       matchOnDescription: true,
       matchOnDetail: true,
       placeHolder: "Select unactivated objects grouped by transport order",
-      title: `Select unactivated objects (${entries.length} found)`
+      title: `Select unactivated objects (${normalizedEntries.length} found)`
     })
 
     return selected ? selected.map((item: any) => item.entry.object) : null
