@@ -257,6 +257,15 @@
       ],
       "abapfs": [
         {
+          "type": "webview",
+          "id": "abapfs.views.objectSearch",
+          "name": "Object Search",
+          "when": "abapfs:extensionActive",
+          "contextualTitle": "Object Search",
+          "visibility": "collapsed",
+          "icon": "$(search)"
+        },
+        {
           "id": "abapfs.transports",
           "name": "Transports",
           "when": "abapfs:extensionActive",
@@ -2554,6 +2563,12 @@
         "category": "ABAP FS"
       },
       {
+        "command": "abapfs.createInEditor",
+        "title": "ABAP Create object (editor)",
+        "category": "ABAP FS",
+        "icon": "$(package)"
+      },
+      {
         "command": "abapfs.createtestinclude",
         "title": "ABAP Create test class include",
         "category": "ABAP FS"
@@ -3145,6 +3160,10 @@
           "when": "abapfs:extensionActive"
         },
         {
+          "command": "abapfs.createInEditor",
+          "when": "abapfs:extensionActive"
+        },
+        {
           "command": "abapfs.unittest",
           "when": "abapfs:extensionActive"
         },
@@ -3531,6 +3550,11 @@
       ],
       "view/title": [
         {
+          "command": "abapfs.createInEditor",
+          "group": "navigation@3",
+          "when": "view == workbench.explorer.fileView && abapfs:extensionActive"
+        },
+        {
           "command": "abapfs.atcRefresh",
           "group": "navigation",
           "when": "view == abapfs.atcFinds"
@@ -3740,6 +3764,11 @@
         },
         {
           "command": "abapfs.create",
+          "when": "resourceScheme == adt",
+          "group": "2_workspace@1"
+        },
+        {
+          "command": "abapfs.createInEditor",
           "when": "resourceScheme == adt",
           "group": "2_workspace@1"
         },

@@ -33,6 +33,7 @@ import { FeedPollingService } from "./services/feeds/feedPollingService"
 import { initializeFeedInboxProvider } from "./views/feeds/feedInboxView"
 import { setContext } from "./context"
 import { AbapHoverProviderV2 } from "./providers/hoverProvider"
+import { AbapDocumentSymbolProvider } from "./providers/abapDocumentSymbolProvider"
 import { registerAllTools } from "./services/lm-tools"
 import { registerCleanerCommands, setupCleanerContextMonitoring } from "./services/cleanerCommands"
 import { TelemetryService, logTelemetry } from "./services/telemetry"
@@ -54,6 +55,7 @@ import { registerAbapNotebooks } from "./notebooks"
 import { showWelcomeWalkthrough } from "./services/walkthroughService"
 import { disableVirtualToolGrouping } from "./services/virtualToolsFix"
 import { ObjectPropertyProvider } from "./views/objectProperties"
+import { ObjectSearchViewProvider } from "./views/objectSearchView"
 import { funWindow as window } from "./services/funMessenger"
 import { initializeReviewPrompt } from "./services/reviewPrompt"
 
@@ -110,6 +112,7 @@ export async function activate(ctx: ExtensionContext): Promise<AbapFsApi> {
     const adtSelector = { language: "abap", scheme: ADTSCHEME }
 
     sub.push(languages.registerHoverProvider([abapSelector, adtSelector], hoverProvider))
+    sub.push(languages.registerDocumentSymbolProvider([adtSelector], new AbapDocumentSymbolProvider()))
 
     log("✅ ABAP Hover Provider ready to whisper sweet nothings about your code")
 
@@ -268,6 +271,12 @@ export async function activate(ctx: ExtensionContext): Promise<AbapFsApi> {
 
   sub.push(window.registerWebviewViewProvider(ATCDocumentation.viewType, ATCDocumentation.get()))
   sub.push(window.registerWebviewViewProvider(CommLogPanel.viewType, CommLogPanel.get()))
+  sub.push(
+    window.registerWebviewViewProvider(
+      ObjectSearchViewProvider.viewType,
+      ObjectSearchViewProvider.get()
+    )
+  )
 
   sub.push(MessagesProvider.register(context))
   sub.push(HttpProvider.register(context))

@@ -1,4 +1,5 @@
 import { configureFeedsCommand } from "./configureFeeds"
+import { createObjectInEditorCommand } from "./createObjectInEditor"
 import { manageTextElementsCommand } from "./textElementsCommands"
 import { commands } from "vscode"
 
@@ -8,6 +9,7 @@ export const AbapFsCommands = {
   activate: "abapfs.activate",
   search: "abapfs.search",
   create: "abapfs.create",
+  createInEditor: "abapfs.createInEditor",
   execute: "abapfs.execute",
   runInGui: "abapfs.runInGui",
   runInEmbeddedGui: "abapfs.runInEmbeddedGui",
@@ -132,6 +134,12 @@ export const command = (name: string) => (target: any, propertyKey: string) => {
 }
 
 // Manual command registrations (for commands not using @command decorator)
+abapcmds.push({
+  name: AbapFsCommands.createInEditor,
+  func: createObjectInEditorCommand,
+  target: null
+})
+
 abapcmds.push({
   name: AbapFsCommands.manageTextElements,
   func: manageTextElementsCommand,
