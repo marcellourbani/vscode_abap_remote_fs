@@ -10,6 +10,7 @@
 
 import * as vscode from "vscode"
 import { log } from "../lib"
+import { funWindow as window } from "./funMessenger"
 
 const FULL_SETTING_ID = "github.copilot.chat.virtualTools.threshold"
 const RESET_COMMAND = "github.copilot.debug.resetVirtualToolGroups"
@@ -36,7 +37,7 @@ export async function disableVirtualToolGrouping(
     }
 
     // Ask the user before changing anything
-    const selection = await vscode.window.showWarningMessage(
+    const selection = await window.showWarningMessage(
       "VS Code's experimental \"virtual tool grouping\" is active (threshold: "
         + effectiveValue
         + "). This groups extension tools and Copilot often fails to activate the groups, "
@@ -65,7 +66,7 @@ export async function disableVirtualToolGrouping(
     }
 
     // Show progress while applying changes — settings updates trigger config change events across all extensions which takes a moment
-    await vscode.window.withProgress(
+    await window.withProgress(
       { location: vscode.ProgressLocation.Notification, title: "Disabling virtual tool grouping..." },
       async (progress) => {
         progress.report({ message: "Updating settings..." })

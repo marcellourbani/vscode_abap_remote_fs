@@ -9,7 +9,6 @@ import {
   Disposable,
   FileStat,
   FileType,
-  window,
   TextDocumentSaveReason,
   commands,
   ExtensionContext,
@@ -22,6 +21,7 @@ import { selectTransportIfNeeded } from "../adt/AdtTransports"
 import { LocalFsProvider } from "./LocalFsProvider"
 import { isHttpError } from "abap-adt-api"
 import { ReloginError } from "abapfs/out/lockManager"
+import { funWindow as window } from "../services/funMessenger"
 
 const openInGui = (uri: Uri, contents: string) => {
   if (contents.includes("This object type is not supported in VS Code")) {

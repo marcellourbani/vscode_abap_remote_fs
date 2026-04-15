@@ -3,6 +3,7 @@
  */
 
 import * as vscode from "vscode"
+import { funWindow as window } from "./funMessenger"
 
 const MARKETPLACE_URL =
   "https://marketplace.visualstudio.com/items?itemName=murbani.vscode-abap-remote-fs"
@@ -34,7 +35,7 @@ export function checkUpgradeNotification(context: vscode.ExtensionContext): void
 // ─── Notification ────────────────────────────────────────────────────────────
 
 function showUpgradeNotification(): void {
-  vscode.window
+  window
     .showInformationMessage(
       "🚀 ABAP Remote FS has been upgraded to v2 with powerful AI features! " +
         "Simply ask GitHub Copilot (in Agent mode) to tell you about them.",
@@ -54,7 +55,7 @@ function showBlinkingStatusBar(context: vscode.ExtensionContext): void {
   if (context.globalState.get<boolean>(STATE_UPGRADE_DISMISSED)) return
 
   // Create status bar item
-  const item = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Left, 1000)
+  const item = window.createStatusBarItem(vscode.StatusBarAlignment.Left, 1000)
   item.command = "abapfs.openUpgradeMarketplace"
   item.tooltip = "ABAP Remote FS v2 — Click to learn about new AI features or just ask Copilot!"
   context.subscriptions.push(item)

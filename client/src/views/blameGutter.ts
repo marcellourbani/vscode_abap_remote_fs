@@ -14,6 +14,7 @@ import { abapUri, getClient, ADTSCHEME } from "../adt/conections"
 import { setContext } from "../context"
 import { log } from "../lib"
 import { logTelemetry } from "../services/telemetry"
+import { funWindow as window } from "../services/funMessenger"
 
 // ============================================================================
 // TYPES
@@ -173,7 +174,7 @@ function makeBlameInfo(rev: Revision, lineNumber: number): BlameInfo {
 
 function ensureDecorationType(): vscode.TextEditorDecorationType {
   if (!blameDecorationType) {
-    blameDecorationType = vscode.window.createTextEditorDecorationType({
+    blameDecorationType = window.createTextEditorDecorationType({
       isWholeLine: true,
       rangeBehavior: vscode.DecorationRangeBehavior.ClosedClosed
     })
@@ -294,19 +295,19 @@ function clearBlameDecorations(editor?: vscode.TextEditor) {
  */
 export async function showBlame() {
   logTelemetry("command_show_blame_called")
-  const editor = vscode.window.activeTextEditor
+  const editor = window.activeTextEditor
   if (!editor || editor.document.uri.scheme !== ADTSCHEME) return
   if (!abapUri(editor.document.uri)) return
 
   if (editor.document.isDirty) {
-    vscode.window.showWarningMessage("Cannot show blame while the document has unsaved changes.")
+    window.showWarningMessage("Cannot show blame while the document has unsaved changes.")
     return
   }
 
   const uri = editor.document.uri
   const cacheKey = uri.toString()
 
-  await vscode.window.withProgress(
+  await window.withProgress(
     {
       location: vscode.ProgressLocation.Notification,
       title: "Computing blame...",
@@ -333,7 +334,7 @@ export async function showBlame() {
         if (token.isCancellationRequested) return
 
         if (!revisions || revisions.length === 0) {
-          vscode.window.showInformationMessage(
+          window.showInformationMessage(
             "No version history available for this object. Objects in $TMP that were never transported have no versions."
           )
           return
@@ -387,7 +388,7 @@ export async function showBlame() {
         })
 
         // Verify editor is still active and same document
-        if (vscode.window.activeTextEditor !== editor) return
+        if (window.activeTextEditor !== editor) return
 
         blameActiveUris.add(cacheKey)
         updateBlameContext(editor)
@@ -395,7 +396,7 @@ export async function showBlame() {
       } catch (err) {
         const msg = err instanceof Error ? err.message : String(err)
         log(`Blame computation failed: ${msg}`)
-        vscode.window.showErrorMessage(`Failed to compute blame: ${msg}`)
+        window.showErrorMessage(`Failed to compute blame: ${msg}`)
       }
     }
   )
@@ -407,7 +408,7 @@ export async function showBlame() {
  */
 export async function hideBlame() {
   logTelemetry("command_hide_blame_called")
-  const editor = vscode.window.activeTextEditor
+  const editor = window.activeTextEditor
   if (editor) {
     const cacheKey = editor.document.uri.toString()
     blameActiveUris.delete(cacheKey)
@@ -449,7 +450,7 @@ export function onBlameDocumentChanged(event: vscode.TextDocumentChangeEvent) {
   // If blame is active for this file and there are actual content changes, auto-hide
   if (blameActiveUris.has(cacheKey) && event.contentChanges.length > 0) {
     blameActiveUris.delete(cacheKey)
-    const editor = vscode.window.activeTextEditor
+    const editor = window.activeTextEditor
     if (editor && editor.document === event.document) {
       clearBlameDecorations(editor)
       updateBlameContext(editor)
@@ -469,7 +470,7 @@ export function onBlameDocumentSaved(document: vscode.TextDocument) {
   // Invalidate cache — the version history likely changed
   blameCache.delete(document.uri.toString())
   // Update button availability (doc should now be clean)
-  const editor = vscode.window.activeTextEditor
+  const editor = window.activeTextEditor
   if (editor && editor.document === document) {
     updateBlameContext(editor)
   }
@@ -495,7 +496,7 @@ function updateBlameContext(editor?: vscode.TextEditor) {
 }
 
 function updateBlameAvailableForDocument(document: vscode.TextDocument) {
-  const editor = vscode.window.activeTextEditor
+  const editor = window.activeTextEditor
   if (editor && editor.document === document) {
     updateBlameContext(editor)
   }
