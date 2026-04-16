@@ -2,11 +2,12 @@
 // https://jestjs.io/docs/en/configuration.html
 
 module.exports = {
-  // name: "Client",
   // A set of global variables that need to be available in all test environments
   globals: {
     "ts-jest": {
-      tsConfig: "tsconfig.json"
+      tsconfig: "tsconfig.json",
+      isolatedModules: true,  // transpile-only, skip type-checking (10-20x faster)
+      diagnostics: false       // skip diagnostics during test runs
     }
   },
 
