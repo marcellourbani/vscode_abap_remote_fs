@@ -3,9 +3,10 @@ import { CapturedVariable, CapturedScope, CaptureOptions, DEFAULT_CAPTURE_OPTION
 import { log, caughtToString } from "../../../lib"
 
 /** Max IDs per single ADT API call to avoid server overload */
-const MAX_IDS_PER_CALL = 200
+const MAX_IDS_PER_CALL = 500
 
-/** Max table rows to auto-capture during recording (no prompt) */
+/** Max table rows to auto-capture during recording */
+
 const RECORDING_MAX_TABLE_ROWS = 2000
 
 /**
@@ -100,9 +101,30 @@ async function expandOneLevel(
 
   if (structIds.length === 0 && tableSpecs.length === 0) return false
 
-  // Expand all structures at this level (1 HTTP call)
-  if (structIds.length > 0) {
-    const structResult = await batchedChildVariables(client, structIds)
+  // Run structure expansion and table row fetching in parallel
+  const structPromise = structIds.length > 0
+    ? batchedChildVariables(client, structIds)
+    : Promise.resolve(null)
+
+  // Build table row keys
+  const allKeys: string[] = []
+  const keyToTableId = new Map<string, string>()
+  for (const spec of tableSpecs) {
+    const cleanId = spec.id.replace(/\[\]$/, "")
+    for (let i = 1; i <= spec.rows; i++) {
+      const key = `${cleanId}[${i}]`
+      allKeys.push(key)
+      keyToTableId.set(key, spec.id)
+    }
+  }
+  const tablePromise = allKeys.length > 0
+    ? batchedVariables(client, allKeys)
+    : Promise.resolve([])
+
+  const [structResult, rowVars] = await Promise.all([structPromise, tablePromise])
+
+  // Apply structure results
+  if (structResult) {
     const grouped = groupByParent(structIds, structResult.hierarchies, structResult.variables)
     for (const [parentId, children] of grouped) {
       const parentNode = varTree.get(parentId)
@@ -115,27 +137,14 @@ async function expandOneLevel(
     }
   }
 
-  // Fetch all table rows at this level (1 HTTP call, batched across all tables)
-  if (tableSpecs.length > 0) {
-    const allKeys: string[] = []
-    const keyToTableId = new Map<string, string>()
-    for (const spec of tableSpecs) {
-      const cleanId = spec.id.replace(/\[\]$/, "")
-      for (let i = 1; i <= spec.rows; i++) {
-        const key = `${cleanId}[${i}]`
-        allKeys.push(key)
-        keyToTableId.set(key, spec.id)
-      }
-    }
-    const rowVars = await batchedVariables(client, allKeys)
-    for (const rowVar of rowVars) {
-      const tableId = keyToTableId.get(rowVar.ID) || inferTableId(rowVar.ID)
-      const tableNode = varTree.get(tableId)
-      if (!tableNode) continue
-      const rowNode: VarNode = { variable: rowVar, children: new Map(), depth }
-      tableNode.children.set(rowVar.ID, rowNode)
-      varTree.set(rowVar.ID, rowNode)
-    }
+  // Apply table row results
+  for (const rowVar of rowVars) {
+    const tableId = keyToTableId.get(rowVar.ID) || inferTableId(rowVar.ID)
+    const tableNode = varTree.get(tableId)
+    if (!tableNode) continue
+    const rowNode: VarNode = { variable: rowVar, children: new Map(), depth }
+    tableNode.children.set(rowVar.ID, rowNode)
+    varTree.set(rowVar.ID, rowNode)
   }
 
   return true
@@ -193,11 +202,14 @@ async function batchedChildVariables(
   if (ids.length <= MAX_IDS_PER_CALL) {
     return client.debuggerChildVariables(ids)
   }
+  const batches: string[][] = []
+  for (let i = 0; i < ids.length; i += MAX_IDS_PER_CALL) {
+    batches.push(ids.slice(i, i + MAX_IDS_PER_CALL))
+  }
+  const results = await Promise.all(batches.map(batch => client.debuggerChildVariables(batch)))
   const allHierarchies: DebugChildVariablesHierarchy[] = []
   const allVariables: DebugVariable[] = []
-  for (let i = 0; i < ids.length; i += MAX_IDS_PER_CALL) {
-    const batch = ids.slice(i, i + MAX_IDS_PER_CALL)
-    const result = await client.debuggerChildVariables(batch)
+  for (const result of results) {
     allHierarchies.push(...result.hierarchies)
     allVariables.push(...result.variables)
   }
@@ -212,15 +224,18 @@ async function batchedVariables(
   if (ids.length <= MAX_IDS_PER_CALL) {
     return client.debuggerVariables(ids)
   }
-  const all: DebugVariable[] = []
+  const batches: string[][] = []
   for (let i = 0; i < ids.length; i += MAX_IDS_PER_CALL) {
-    const batch = ids.slice(i, i + MAX_IDS_PER_CALL)
-    try {
-      const result = await client.debuggerVariables(batch)
-      all.push(...result)
-    } catch (error) {
-      log(`Failed batch variables ${i + 1}-${i + batch.length}: ${caughtToString(error)}`)
-      break
+    batches.push(ids.slice(i, i + MAX_IDS_PER_CALL))
+  }
+  const results = await Promise.allSettled(batches.map(batch => client.debuggerVariables(batch)))
+  const all: DebugVariable[] = []
+  for (let i = 0; i < results.length; i++) {
+    const result = results[i]
+    if (result.status === "fulfilled") {
+      all.push(...result.value)
+    } else {
+      log(`Failed batch variables ${i * MAX_IDS_PER_CALL + 1}-${Math.min((i + 1) * MAX_IDS_PER_CALL, ids.length)}: ${caughtToString(result.reason)}`)
     }
   }
   return all
