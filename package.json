@@ -2458,6 +2458,18 @@
         "icon": "$(debug-reverse-continue)"
       },
       {
+        "command": "abapfs.compressRecording",
+        "title": "Compress Debug Recording",
+        "category": "ABAP Replay",
+        "icon": "$(file-zip)"
+      },
+      {
+        "command": "abapfs.decompressRecording",
+        "title": "Decompress Debug Recording",
+        "category": "ABAP Replay",
+        "icon": "$(file)"
+      },
+      {
         "command": "abapfs.openHeartbeatJson",
         "title": "Open Heartbeat Watchlist",
         "category": "ABAP FS",
@@ -3115,6 +3127,12 @@
         },
         {
           "command": "abapfs.publishServiceBinding"
+        },
+        {
+          "command": "abapfs.compressRecording"
+        },
+        {
+          "command": "abapfs.decompressRecording"
         },
         {
           "command": "abapfs.startRecording"

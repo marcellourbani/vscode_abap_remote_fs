@@ -6,7 +6,7 @@ import { getRoot } from "../conections"
 import { isAbapFile } from "abapfs"
 import { caughtToString, log } from "../../lib"
 import { DebugListener, errorType } from "./debugListener"
-import { saveRecording } from "./replay/recordingIO"
+import { saveRecording, saveRecordingCompressed } from "./replay/recordingIO"
 import { funWindow as window } from "../../services/funMessenger"
 
 export interface AbapDebugConfiguration extends DebugConfiguration {
@@ -71,10 +71,13 @@ export class AbapDebugSession extends LoggingDebugSession {
           const action = await window.showInformationMessage(
             `Debug session ended. Save recording (${recording.totalSteps} steps)?`,
             "Save",
+            "Compress & Save",
             "Discard"
           )
           if (action === "Save") {
             await saveRecording(recording)
+          } else if (action === "Compress & Save") {
+            await saveRecordingCompressed(recording)
           }
         }
       } catch (e) {
