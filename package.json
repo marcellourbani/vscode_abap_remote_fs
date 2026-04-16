@@ -2,7 +2,7 @@
   "name": "vscode-abap-remote-fs",
   "displayName": "ABAP remote filesystem",
   "description": "Work on your ABAP code straight from the server",
-  "version": "2.4.1",
+  "version": "2.4.2",
   "publisher": "murbani",
   "publishConfig": {
     "access": "restricted",
@@ -300,6 +300,13 @@
           "name": "Feed Inbox",
           "when": "abapfs:extensionActive",
           "icon": "$(inbox)"
+        },
+        {
+          "type": "webview",
+          "id": "abapfs.rapGenerator",
+          "name": "RAP Generator",
+          "when": "abapfs:extensionActive",
+          "icon": "$(wand)"
         },
         {
           "id": "abapfs.objectProperty",
@@ -3015,6 +3022,18 @@
         "category": "ABAP FS"
       },
       {
+        "command": "abapfs.rapGenFromEditor",
+        "title": "Generate RAP UI Service from Table...",
+        "icon": "$(wand)",
+        "category": "ABAP FS"
+      },
+      {
+        "command": "abapfs.publishServiceBinding",
+        "title": "Publish Service Binding",
+        "icon": "$(cloud-upload)",
+        "category": "ABAP FS"
+      },
+      {
         "command": "abapfs.refreshTraces",
         "title": "Refresh",
         "icon": "$(refresh)"
@@ -3102,6 +3121,12 @@
       "commandPalette": [
         {
           "command": "abapfs.connect"
+        },
+        {
+          "command": "abapfs.rapGenFromEditor"
+        },
+        {
+          "command": "abapfs.publishServiceBinding"
         },
         {
           "command": "abapfs.compressRecording"
@@ -3837,6 +3862,11 @@
           "command": "abapfs.cleanCode",
           "when": "resourceScheme == adt && editorLangId == abap && abapfs.cleanerAvailable",
           "group": "3_codeTools@1"
+        },
+        {
+          "command": "abapfs.rapGenFromEditor",
+          "when": "resourceScheme == adt && abapfs:activeEditorIsTable",
+          "group": "4_rapGenerator@1"
         }
       ]
     },
@@ -4029,8 +4059,8 @@
         },
         "abapfs.sapGui.useIntegratedBrowser": {
           "type": "boolean",
-          "default": false,
-          "markdownDescription": "Use VS Code's integrated browser instead of the embedded WebView for SAP GUI. Enable this if the embedded WebView shows a blank page (e.g. due to SAP clickjacking frame protection)."
+          "default": true,
+          "markdownDescription": "Use VS Code's integrated browser instead of the embedded WebView for SAP GUI. Disable this if you prefer Webviews but Webviews can show a blank page (e.g. due to SAP clickjacking frame protection)."
         },
         "abapfs.copilot.professionalNotifications": {
           "type": "boolean",
