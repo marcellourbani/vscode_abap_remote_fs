@@ -302,6 +302,13 @@
           "icon": "$(inbox)"
         },
         {
+          "type": "webview",
+          "id": "abapfs.rapGenerator",
+          "name": "RAP Generator",
+          "when": "abapfs:extensionActive",
+          "icon": "$(wand)"
+        },
+        {
           "id": "abapfs.objectProperty",
           "name": "Object Property",
           "when": "abapfs:extensionActive",
@@ -3003,6 +3010,18 @@
         "category": "ABAP FS"
       },
       {
+        "command": "abapfs.rapGenFromEditor",
+        "title": "Generate RAP UI Service from Table...",
+        "icon": "$(wand)",
+        "category": "ABAP FS"
+      },
+      {
+        "command": "abapfs.publishServiceBinding",
+        "title": "Publish Service Binding",
+        "icon": "$(cloud-upload)",
+        "category": "ABAP FS"
+      },
+      {
         "command": "abapfs.refreshTraces",
         "title": "Refresh",
         "icon": "$(refresh)"
@@ -3090,6 +3109,12 @@
       "commandPalette": [
         {
           "command": "abapfs.connect"
+        },
+        {
+          "command": "abapfs.rapGenFromEditor"
+        },
+        {
+          "command": "abapfs.publishServiceBinding"
         },
         {
           "command": "abapfs.startRecording"
@@ -3819,6 +3844,11 @@
           "command": "abapfs.cleanCode",
           "when": "resourceScheme == adt && editorLangId == abap && abapfs.cleanerAvailable",
           "group": "3_codeTools@1"
+        },
+        {
+          "command": "abapfs.rapGenFromEditor",
+          "when": "resourceScheme == adt && abapfs:activeEditorIsTable",
+          "group": "4_rapGenerator@1"
         }
       ]
     },

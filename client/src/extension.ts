@@ -49,6 +49,7 @@ import { initializeEnhancementDecorations } from "./views/enhancementDecorations
 import { initializeBlameGutter } from "./views/blameGutter"
 import { clearSystemInfoCache } from "./services/sapSystemInfo"
 import { HeartbeatWatchlist } from "./services/heartbeat/heartbeatWatchlist"
+import { RapGeneratorPanel } from "./views/rapGenerator/rapGeneratorView"
 import { visualizeDependencyGraph } from "./services/dependencyGraph"
 import { checkUpgradeNotification } from "./services/upgradeNotification"
 import { registerAbapNotebooks } from "./notebooks"
@@ -181,6 +182,7 @@ export async function activate(ctx: ExtensionContext): Promise<AbapFsApi> {
   sub.push(window.registerTreeDataProvider("abapfs.dumps", dumpProvider))
   sub.push(window.registerTreeDataProvider("abapfs.atcFinds", atcProvider))
   sub.push(window.registerTreeDataProvider("abapfs.traces", tracesProvider))
+  sub.push(window.registerWebviewViewProvider(RapGeneratorPanel.viewType, RapGeneratorPanel.get()))
   const objectPropertyView = window.createTreeView("abapfs.objectProperty", {
     treeDataProvider: objectPropertyProvider,
     showCollapseAll: false,

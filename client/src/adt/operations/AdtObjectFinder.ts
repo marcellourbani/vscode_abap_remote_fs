@@ -135,7 +135,7 @@ export class AdtObjectFinder {
       }
     } catch (error) {
       window.showErrorMessage(
-        `Failed to open document ofr object ${adtUri}:\n${caughtToString(error)}`
+        `Failed to open document for object ${adtUri}:\n${caughtToString(error)}`
       )
     }
   }
