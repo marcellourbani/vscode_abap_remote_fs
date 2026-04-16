@@ -4041,8 +4041,8 @@
         },
         "abapfs.sapGui.useIntegratedBrowser": {
           "type": "boolean",
-          "default": false,
-          "markdownDescription": "Use VS Code's integrated browser instead of the embedded WebView for SAP GUI. Enable this if the embedded WebView shows a blank page (e.g. due to SAP clickjacking frame protection)."
+          "default": true,
+          "markdownDescription": "Use VS Code's integrated browser instead of the embedded WebView for SAP GUI. Disable this if you prefer Webviews but Webviews can show a blank page (e.g. due to SAP clickjacking frame protection)."
         },
         "abapfs.copilot.professionalNotifications": {
           "type": "boolean",
