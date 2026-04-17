@@ -66,7 +66,7 @@ function getMcpSettings(): { autoStart: boolean; port: number; apiKey: string } 
  */
 let apiKeyWarningLogged = false
 
-function validateApiKey(req: http.IncomingMessage): boolean {
+export function validateApiKey(req: http.IncomingMessage): boolean {
   const settings = getMcpSettings()
 
   // If no API key is configured, allow access (for backwards compatibility)
@@ -108,7 +108,7 @@ function validateApiKey(req: http.IncomingMessage): boolean {
  * Convert a JSON Schema property to a Zod schema.
  * This is a simplified converter that handles the most common cases.
  */
-function jsonSchemaPropertyToZod(
+export function jsonSchemaPropertyToZod(
   propSchema: Record<string, unknown>,
   isRequired: boolean
 ): z.ZodTypeAny {
@@ -178,7 +178,7 @@ function jsonSchemaPropertyToZod(
 /**
  * Convert a full JSON Schema (with properties) to a Zod object schema.
  */
-function jsonSchemaToZod(
+export function jsonSchemaToZod(
   jsonSchema: Record<string, unknown> | undefined
 ): Record<string, z.ZodTypeAny> {
   if (!jsonSchema) {

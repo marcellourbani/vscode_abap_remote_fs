@@ -2,7 +2,7 @@
   "name": "vscode-abap-remote-fs",
   "displayName": "ABAP remote filesystem",
   "description": "Work on your ABAP code straight from the server",
-  "version": "2.4.1",
+  "version": "2.4.3",
   "publisher": "murbani",
   "publishConfig": {
     "access": "restricted",
@@ -257,6 +257,15 @@
       ],
       "abapfs": [
         {
+          "type": "webview",
+          "id": "abapfs.views.objectSearch",
+          "name": "Object Search",
+          "when": "abapfs:extensionActive",
+          "contextualTitle": "Object Search",
+          "visibility": "collapsed",
+          "icon": "$(search)"
+        },
+        {
           "id": "abapfs.transports",
           "name": "Transports",
           "when": "abapfs:extensionActive",
@@ -291,6 +300,13 @@
           "name": "Feed Inbox",
           "when": "abapfs:extensionActive",
           "icon": "$(inbox)"
+        },
+        {
+          "type": "webview",
+          "id": "abapfs.rapGenerator",
+          "name": "RAP Generator",
+          "when": "abapfs:extensionActive",
+          "icon": "$(wand)"
         },
         {
           "id": "abapfs.objectProperty",
@@ -2442,6 +2458,18 @@
         "icon": "$(debug-reverse-continue)"
       },
       {
+        "command": "abapfs.compressRecording",
+        "title": "Compress Debug Recording",
+        "category": "ABAP Replay",
+        "icon": "$(file-zip)"
+      },
+      {
+        "command": "abapfs.decompressRecording",
+        "title": "Decompress Debug Recording",
+        "category": "ABAP Replay",
+        "icon": "$(file)"
+      },
+      {
         "command": "abapfs.openHeartbeatJson",
         "title": "Open Heartbeat Watchlist",
         "category": "ABAP FS",
@@ -2552,6 +2580,12 @@
         "command": "abapfs.create",
         "title": "ABAP Create object",
         "category": "ABAP FS"
+      },
+      {
+        "command": "abapfs.createInEditor",
+        "title": "ABAP Create object (editor)",
+        "category": "ABAP FS",
+        "icon": "$(package)"
       },
       {
         "command": "abapfs.createtestinclude",
@@ -2988,6 +3022,18 @@
         "category": "ABAP FS"
       },
       {
+        "command": "abapfs.rapGenFromEditor",
+        "title": "Generate RAP UI Service from Table...",
+        "icon": "$(wand)",
+        "category": "ABAP FS"
+      },
+      {
+        "command": "abapfs.publishServiceBinding",
+        "title": "Publish Service Binding",
+        "icon": "$(cloud-upload)",
+        "category": "ABAP FS"
+      },
+      {
         "command": "abapfs.refreshTraces",
         "title": "Refresh",
         "icon": "$(refresh)"
@@ -3077,6 +3123,18 @@
           "command": "abapfs.connect"
         },
         {
+          "command": "abapfs.rapGenFromEditor"
+        },
+        {
+          "command": "abapfs.publishServiceBinding"
+        },
+        {
+          "command": "abapfs.compressRecording"
+        },
+        {
+          "command": "abapfs.decompressRecording"
+        },
+        {
           "command": "abapfs.startRecording"
         },
         {
@@ -3142,6 +3200,10 @@
         },
         {
           "command": "abapfs.create",
+          "when": "abapfs:extensionActive"
+        },
+        {
+          "command": "abapfs.createInEditor",
           "when": "abapfs:extensionActive"
         },
         {
@@ -3531,6 +3593,11 @@
       ],
       "view/title": [
         {
+          "command": "abapfs.createInEditor",
+          "group": "navigation@3",
+          "when": "view == workbench.explorer.fileView && abapfs:extensionActive"
+        },
+        {
           "command": "abapfs.atcRefresh",
           "group": "navigation",
           "when": "view == abapfs.atcFinds"
@@ -3744,6 +3811,11 @@
           "group": "2_workspace@1"
         },
         {
+          "command": "abapfs.createInEditor",
+          "when": "resourceScheme == adt",
+          "group": "2_workspace@1"
+        },
+        {
           "command": "abapfs.addfavourite",
           "when": "resourceScheme == adt",
           "group": "2_workspace@1"
@@ -3790,6 +3862,11 @@
           "command": "abapfs.cleanCode",
           "when": "resourceScheme == adt && editorLangId == abap && abapfs.cleanerAvailable",
           "group": "3_codeTools@1"
+        },
+        {
+          "command": "abapfs.rapGenFromEditor",
+          "when": "resourceScheme == adt && abapfs:activeEditorIsTable",
+          "group": "4_rapGenerator@1"
         }
       ]
     },
@@ -3982,8 +4059,8 @@
         },
         "abapfs.sapGui.useIntegratedBrowser": {
           "type": "boolean",
-          "default": false,
-          "markdownDescription": "Use VS Code's integrated browser instead of the embedded WebView for SAP GUI. Enable this if the embedded WebView shows a blank page (e.g. due to SAP clickjacking frame protection)."
+          "default": true,
+          "markdownDescription": "Use VS Code's integrated browser instead of the embedded WebView for SAP GUI. Disable this if you prefer Webviews but Webviews can show a blank page (e.g. due to SAP clickjacking frame protection)."
         },
         "abapfs.copilot.professionalNotifications": {
           "type": "boolean",

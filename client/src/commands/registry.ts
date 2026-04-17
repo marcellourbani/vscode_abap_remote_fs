@@ -1,5 +1,7 @@
 import { configureFeedsCommand } from "./configureFeeds"
+import { createObjectInEditorCommand } from "./createObjectInEditor"
 import { manageTextElementsCommand } from "./textElementsCommands"
+import { publishServiceBindingCommand } from "./publishServiceBinding"
 import { commands } from "vscode"
 
 export const AbapFsCommands = {
@@ -8,6 +10,7 @@ export const AbapFsCommands = {
   activate: "abapfs.activate",
   search: "abapfs.search",
   create: "abapfs.create",
+  createInEditor: "abapfs.createInEditor",
   execute: "abapfs.execute",
   runInGui: "abapfs.runInGui",
   runInEmbeddedGui: "abapfs.runInEmbeddedGui",
@@ -117,7 +120,10 @@ export const AbapFsCommands = {
   refreshSystemInfoCache: "abapfs.refreshSystemInfoCache",
   // Communication log
   activateCommLog: "abapfs.activateCommLog",
-  deactivateCommLog: "abapfs.deactivateCommLog"
+  deactivateCommLog: "abapfs.deactivateCommLog",
+  // RAP Generator
+  rapGenFromEditor: "abapfs.rapGenFromEditor",
+  publishServiceBinding: "abapfs.publishServiceBinding"
 }
 
 export const abapcmds: {
@@ -133,6 +139,12 @@ export const command = (name: string) => (target: any, propertyKey: string) => {
 
 // Manual command registrations (for commands not using @command decorator)
 abapcmds.push({
+  name: AbapFsCommands.createInEditor,
+  func: createObjectInEditorCommand,
+  target: null
+})
+
+abapcmds.push({
   name: AbapFsCommands.manageTextElements,
   func: manageTextElementsCommand,
   target: null
@@ -141,5 +153,11 @@ abapcmds.push({
 abapcmds.push({
   name: AbapFsCommands.configureFeeds,
   func: configureFeedsCommand,
+  target: null
+})
+
+abapcmds.push({
+  name: AbapFsCommands.publishServiceBinding,
+  func: publishServiceBindingCommand,
   target: null
 })
