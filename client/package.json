@@ -73,7 +73,7 @@
     "diff": "^8.0.3",
     "docx": "^9.5.1",
     "event-stream": "4.0.1",
-    "fast-xml-parser": "^5.5.10",
+    "fast-xml-parser": "^5.7.1",
     "fp-ts": "^2.13.1",
     "fs-jetpack": "^5.1.0",
     "html-entities": "^2.3.3",
