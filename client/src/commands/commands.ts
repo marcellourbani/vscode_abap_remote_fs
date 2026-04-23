@@ -68,6 +68,21 @@ export function currentUri() {
   if (uri.scheme !== ADTSCHEME) return
   return uri
 }
+
+async function saveDirtyAdtDocuments(connectionId: string) {
+  const dirtyDocuments = workspace.textDocuments.filter(
+    document =>
+      document.isDirty && document.uri.scheme === ADTSCHEME && document.uri.authority === connectionId
+  )
+
+  for (const document of dirtyDocuments) {
+    const saved = await document.save()
+    if (!saved) {
+      throw new Error(`Failed to save ${document.uri.path} before activation.`)
+    }
+  }
+}
+
 export function currentAbapFile() {
   const uri = currentUri()
   return uriAbapFile(uri)
@@ -347,6 +362,71 @@ export class AdtCommands {
       }
       // Don't re-throw or show additional notifications - user already saw the summary
       return
+    }
+  }
+
+  @command(AbapFsCommands.activateMultiple)
+  private static async activateMultiple(selector?: Uri) {
+    try {
+      const activeUri = selector || currentUri()
+      const fsRoot = await pickAdtRoot(activeUri)
+      const connectionId = activeUri?.authority || fsRoot?.uri.authority
+
+      if (!connectionId) {
+        throw new Error("No ABAP connection available")
+      }
+
+      const activator = AdtObjectActivator.get(connectionId)
+
+      const result = await window.withProgress(
+        { location: ProgressLocation.Notification, title: "Loading unactivated objects..." },
+        async progress => {
+          progress.report({ message: "Saving pending changes..." })
+          await saveDirtyAdtDocuments(connectionId)
+
+          progress.report({ message: "Loading unactivated objects..." })
+          const activationResult = await activator.activateMultiple(true)
+
+          if (activationResult.ok) {
+            progress.report({ message: "Refreshing explorer..." })
+            await commands.executeCommand("workbench.files.action.refreshFilesExplorer")
+
+            const editor = window.activeTextEditor
+            if (editor?.document.uri.scheme === ADTSCHEME && editor.document.uri.authority === connectionId) {
+              await showHideActivate(editor, true)
+            }
+          }
+
+          return activationResult
+        }
+      )
+
+      if (result.cancelled) {
+        return
+      }
+
+      if (!result.ok) {
+        throw new Error(result.summary || "Activation failed; see ABAP FS output for details")
+      }
+
+      if (!result.availableCount) {
+        window.showInformationMessage("No unactivated objects found")
+        return
+      }
+
+      window.showInformationMessage(
+        `✅ Activated ${result.selectedCount || 0} object${result.selectedCount === 1 ? "" : "s"}`
+      )
+    } catch (e) {
+      const errorMessage = caughtToString(e)
+
+      const action = await window.showErrorMessage(
+        `Multiple activation failed: ${errorMessage}`,
+        "Show activation log"
+      )
+      if (action === "Show activation log") {
+        channel.show(true)
+      }
     }
   }
 

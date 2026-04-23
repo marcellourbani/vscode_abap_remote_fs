@@ -2643,6 +2643,15 @@
         }
       },
       {
+        "command": "abapfs.activateMultiple",
+        "title": "Load unactivated objects",
+        "category": "ABAP FS",
+        "icon": {
+          "dark": "client/images/activate_multi.svg",
+          "light": "client/images/activate_multi.svg"
+        }
+      },
+      {
         "command": "abapfs.visualizeDependencyGraph",
         "title": "Visualize Dependency Graph",
         "category": "ABAP FS",
@@ -3227,6 +3236,10 @@
           "when": "hideCommands.never"
         },
         {
+          "command": "abapfs.activateMultiple",
+          "when": "abapfs:extensionActive"
+        },
+        {
           "command": "abapfs.showBlame",
           "when": "hideCommands.never"
         },
@@ -3655,6 +3668,11 @@
       ],
       "editor/title": [
         {
+          "command": "abapfs.activateMultiple",
+          "group": "navigation@0.4",
+          "when": "resourceScheme == adt && editorLangId =~ /abap|cds|xml/ && !inChat"
+        },
+        {
           "command": "abapfs.showBlame",
           "group": "navigation@0.5",
           "when": "resourceScheme == adt && editorLangId == abap && abapfs:blameAvailable && !abapfs:blameActive && !inChat"
@@ -3816,6 +3834,11 @@
           "group": "2_workspace@1"
         },
         {
+          "command": "abapfs.activateMultiple",
+          "when": "resourceScheme == adt",
+          "group": "1_activation@2"
+        },
+        {
           "command": "abapfs.addfavourite",
           "when": "resourceScheme == adt",
           "group": "2_workspace@1"
@@ -3842,6 +3865,11 @@
           "command": "abapfs.activate",
           "when": "resourceScheme == adt && editorLangId =~ /abap|cds|xml/ && abapfs:showActivate",
           "group": "1_activation@1"
+        },
+        {
+          "command": "abapfs.activateMultiple",
+          "when": "resourceScheme == adt && editorLangId =~ /abap|cds|xml/",
+          "group": "1_activation@2"
         },
         {
           "command": "abapfs.manageTextElements",
