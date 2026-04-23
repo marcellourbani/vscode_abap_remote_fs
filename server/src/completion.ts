@@ -154,28 +154,41 @@ export async function completionResolve(item: CompletionItem): Promise<Completio
 
 /**
  * Convert ADT's full insertion text into a VS Code snippet with tab stops.
- * ADT returns text like:
- *   ADD_TO_QUEUE(\n  EXPORTING\n    iv_huident = \niv_huident\n    iv_lgnum = \niv_lgnum\n  IMPORTING\n    ev_print_data = \nev_print_data\n)
- * The parameter name is echoed on the next line as a suggested value.
- * We strip those echo lines and leave clean empty tab stops: iv_huident = ${1}
+ * ADT returns text in two known formats depending on system:
+ *   Format A: "param = \necho_value\n" (echo on next line)
+ *   Format B: "param =                  " inline ABAP comment"
+ * We normalize both to "param = " and add tab stops.
  */
 function convertToSnippet(fullText: string, identifier: string): string | undefined {
   // If the full text doesn't contain parentheses, it's not a method call
   if (!fullText.includes("(")) return undefined
 
-  // ADT echoes the parameter name as a suggested value on the line after the assignment.
-  // Strip those echo-value lines: "= \nPARAM_NAME" → "= "
-  const cleanedText = fullText.replace(/(=)[ \t]*\r?\n\w+/g, "$1 ")
+  log("[convertToSnippet] raw fullText:", JSON.stringify(fullText))
+
+  // Normalize line endings to \n
+  let text = fullText.replace(/\r\n/g, "\n")
+
+  // Format A: ADT echoes the parameter name on the line after the assignment.
+  // Strip: "= \n<echo_value>" → "= "
+  text = text.replace(/(=[ \t]*\n)[^\n]*/g, "$1")
+
+  // Format B: ADT puts an inline ABAP comment (" ...") after "= " on the same line.
+  // Strip: "= <spaces>" comment" → "= "
+  text = text.replace(/(=)\s*"[^\n]*/g, "$1 ")
+
+  log("[convertToSnippet] cleanedText:", JSON.stringify(text))
 
   let tabIndex = 0
-  // Add empty tab stops after "= " on non-commented parameter lines (lines starting with spaces)
-  const snippet = cleanedText.replace(
+  // Add tab stops after "= " on non-commented parameter lines
+  const snippet = text.replace(
     /^(\s+\w[^\n]*=[ \t]*)$/gm,
     (_match, paramLine) => {
       tabIndex++
       return `${paramLine}\${${tabIndex}}`
     }
   )
+
+  log("[convertToSnippet] tabIndex:", tabIndex, "snippet:", JSON.stringify(snippet?.substring(0, 300)))
 
   if (tabIndex === 0) return undefined
 
