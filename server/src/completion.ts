@@ -154,10 +154,11 @@ export async function completionResolve(item: CompletionItem): Promise<Completio
 
 /**
  * Convert ADT's full insertion text into a VS Code snippet with tab stops.
- * ADT returns text in two known formats depending on system:
- *   Format A: "param = \necho_value\n" (echo on next line)
- *   Format B: "param =                  " inline ABAP comment"
- * We normalize both to "param = " and add tab stops.
+ * ADT returns text in three known formats depending on system/method:
+ *   Format A: multiline, echo on next line: "param = \necho_value\n"
+ *   Format B: multiline, inline ABAP comment: "param =                  " comment"
+ *   Format C: single-line: "method( param =  )."
+ * We normalize all to "param = " and add tab stops.
  */
 function convertToSnippet(fullText: string, identifier: string): string | undefined {
   // If the full text doesn't contain parentheses, it's not a method call
@@ -165,26 +166,28 @@ function convertToSnippet(fullText: string, identifier: string): string | undefi
 
   log("[convertToSnippet] raw fullText:", JSON.stringify(fullText))
 
-  // Normalize line endings to \n
+  // Normalize line endings
   let text = fullText.replace(/\r\n/g, "\n")
 
-  // Format A: ADT echoes the parameter name on the line after the assignment.
-  // Strip: "= \n<echo_value>" → "= "
+  // Format A: strip echoed parameter value on next line: "= \n<echo>" → "= \n"
   text = text.replace(/(=[ \t]*\n)[^\n]*/g, "$1")
 
-  // Format B: ADT puts an inline ABAP comment (" ...") after "= " on the same line.
-  // Strip: "= <spaces>" comment" → "= "
+  // Format B: strip inline ABAP comment after "=": "= <spaces>" comment" → "= "
   text = text.replace(/(=)\s*"[^\n]*/g, "$1 ")
 
   log("[convertToSnippet] cleanedText:", JSON.stringify(text))
 
   let tabIndex = 0
-  // Add tab stops after "= " on non-commented parameter lines
+  // Replace all empty assignment slots (value is only whitespace before ")", ",", or end-of-line)
+  // Works for both multiline (Format A/B) and single-line (Format C)
   const snippet = text.replace(
-    /^(\s+\w[^\n]*=[ \t]*)$/gm,
-    (_match, paramLine) => {
+    /(\b\w+)([ \t]*=[ \t]*)(?=[ \t]*[),\n]|[ \t]*$)/gm,
+    (match, paramName, equals, offset, str) => {
+      // Skip assignments on commented-out lines (line starts with optional spaces then *)
+      const lineStart = str.lastIndexOf("\n", offset - 1) + 1
+      if (/^\s*\*/.test(str.substring(lineStart, offset + paramName.length))) return match
       tabIndex++
-      return `${paramLine}\${${tabIndex}}`
+      return `${paramName}${equals}\${${tabIndex}}`
     }
   )
 
@@ -192,7 +195,6 @@ function convertToSnippet(fullText: string, identifier: string): string | undefi
 
   if (tabIndex === 0) return undefined
 
-  // Add final tab stop
   return snippet + `\$0`
 }
 
