@@ -64,16 +64,16 @@
     "@vscode/debugadapter": "^1.68.0",
     "@vscode/debugprotocol": "^1.68.0",
     "abap_cloud_platform": "^1.1.4",
-    "abap-adt-api": "^8.0.1",
+    "abap-adt-api": "^8.3.0",
     "abapfs": "file:../modules/abapfs",
     "abapobject": "file:../modules/abapObject",
-    "applicationinsights": "^3.9.0",
+    "applicationinsights": "^3.14.0",
     "chromadb": "^3.0.17",
     "client-oauth2": "^4.3.3",
     "diff": "^8.0.3",
     "docx": "^9.5.1",
     "event-stream": "4.0.1",
-    "fast-xml-parser": "^5.5.10",
+    "fast-xml-parser": "^5.7.2",
     "fp-ts": "^2.13.1",
     "fs-jetpack": "^5.1.0",
     "html-entities": "^2.3.3",
@@ -93,6 +93,6 @@
     "vscode-languageclient": "^9.0.1",
     "vscode-test-adapter-api": "^1.9.0",
     "xml2js": "^0.6.2",
-    "zod": "^3.25.11"
+    "zod": "^3.25.76"
   }
 }

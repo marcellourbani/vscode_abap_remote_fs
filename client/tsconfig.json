@@ -9,6 +9,9 @@
     "lib": [
       "es2021"
     ],
+    "types": [
+      "jest"
+    ],
     "sourceMap": true,
     "strict": true,
     "noUnusedLocals": false,

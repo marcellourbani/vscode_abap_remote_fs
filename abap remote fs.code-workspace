@@ -91,6 +91,7 @@
     "typescript.format.insertSpaceBeforeFunctionParenthesis": false,
     "typescript.format.placeOpenBraceOnNewLineForControlBlocks": false,
     "typescript.format.placeOpenBraceOnNewLineForFunctions": false,
-    "typescript.preferences.quoteStyle": "auto"
+    "typescript.preferences.quoteStyle": "auto",
+    "httpyac.testControllerEnabled": false
   }
 }

@@ -54,67 +54,10 @@ export class AdtObjectActivator {
     return main?.["adtcore:uri"]
   }
 
-  private async getFallbackInactiveObjects(): Promise<InactiveObjectEntry[]> {
-    try {
-      // Access the underlying HTTP client to make a raw request
-      const httpClient = (this.client as any).httpClient
-      if (!httpClient || !httpClient.request) {
-        return []
-      }
-
-      // Make raw HTTP request with generic XML accept header to get adtcore format
-      const response = await httpClient.request("/sap/bc/adt/activation/inactiveobjects", {
-        headers: { Accept: "application/xml" }
-      })
-
-      // Parse adtcore XML manually
-      const xmlText = response.body
-      if (!xmlText || !xmlText.includes("adtcore:objectReference")) {
-        return []
-      }
-
-      // Simple regex parsing for adtcore:objectReference elements
-      const objectRefRegex = /<adtcore:objectReference[^>]*\/>/g
-      const matches = xmlText.match(objectRefRegex) || []
-
-      const parsedObjects = matches
-        .map((match: string) => {
-          const uriMatch = match.match(/adtcore:uri="([^"]*)"/)
-          const typeMatch = match.match(/adtcore:type="([^"]*)"/)
-          const nameMatch = match.match(/adtcore:name="([^"]*)"/)
-          const parentUriMatch = match.match(/adtcore:parentUri="([^"]*)"/)
-
-          // Create object that matches the structure expected by the activate API
-          const obj = {
-            "adtcore:uri": uriMatch ? uriMatch[1] : "",
-            "adtcore:type": typeMatch ? typeMatch[1] : "",
-            "adtcore:name": nameMatch ? nameMatch[1] : "",
-            "adtcore:parentUri": parentUriMatch ? parentUriMatch[1] : undefined
-          }
-
-          // Only return valid objects with required fields
-          return obj["adtcore:uri"] && obj["adtcore:name"] ? { object: obj } : null
-        })
-        .filter((obj: unknown) => obj !== null) // Remove invalid objects
-
-      return parsedObjects
-    } catch (error) {
-      return []
-    }
-  }
 
   private async getAllInactiveEntries(): Promise<InactiveObjectEntry[]> {
     const rawInactive = await this.client.inactiveObjects()
-    let allInactive = rawInactive.filter(r => r.object) as InactiveObjectEntry[]
-
-    if (allInactive.length === 0) {
-      const fallbackInactive = await this.getFallbackInactiveObjects()
-      if (fallbackInactive.length > 0) {
-        allInactive = fallbackInactive
-      }
-    }
-
-    return allInactive
+    return rawInactive.filter(r => r.object) as InactiveObjectEntry[]
   }
 
   private async getAllInactiveObjects() {
