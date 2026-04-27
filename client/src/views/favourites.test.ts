@@ -3,65 +3,89 @@
  * Covers FavItem, FavouritesProvider and the fixold/fixoldu helpers (via Favourite).
  */
 
-jest.mock("vscode", () => {
-  return {
-    TreeItem: class TreeItem {
-      public label: string
-      public collapsibleState: number
-      public command: any
-      public contextValue: string = ""
-      constructor(label: string, collapsibleState?: number) {
-        this.label = label
-        this.collapsibleState = collapsibleState ?? 0
-      }
-    },
-    TreeItemCollapsibleState: { None: 0, Collapsed: 1, Expanded: 2 },
-    EventEmitter: jest.fn().mockImplementation(() => ({
-      event: {},
-      fire: jest.fn(),
-    })),
-    Uri: {
-      parse: jest.fn((s: string) => ({
-        toString: () => s,
-        authority: s.replace(/.*?:\/\//, "").split("/")[0] ?? "",
-        path: "/" + (s.split("/").slice(3).join("/") || ""),
-        scheme: s.split(":")[0],
-        with: jest.fn(({ path }: any) => ({ toString: () => `adt://dev100${path}`, authority: "dev100", path })),
+jest.mock(
+  "vscode",
+  () => {
+    return {
+      TreeItem: class TreeItem {
+        public label: string
+        public collapsibleState: number
+        public command: any
+        public contextValue: string = ""
+        constructor(label: string, collapsibleState?: number) {
+          this.label = label
+          this.collapsibleState = collapsibleState ?? 0
+        }
+      },
+      TreeItemCollapsibleState: { None: 0, Collapsed: 1, Expanded: 2 },
+      EventEmitter: jest.fn().mockImplementation(() => ({
+        event: {},
+        fire: jest.fn()
       })),
-    },
-    workspace: {
-      workspaceFolders: [],
-    },
-    FileStat: {},
-  }
-}, { virtual: true })
+      Uri: {
+        parse: jest.fn((s: string) => ({
+          toString: () => s,
+          authority: s.replace(/.*?:\/\//, "").split("/")[0] ?? "",
+          path: "/" + (s.split("/").slice(3).join("/") || ""),
+          scheme: s.split(":")[0],
+          with: jest.fn(({ path }: any) => ({
+            toString: () => `adt://dev100${path}`,
+            authority: "dev100",
+            path
+          }))
+        }))
+      },
+      workspace: {
+        workspaceFolders: []
+      },
+      FileStat: {}
+    }
+  },
+  { virtual: true }
+)
 
-jest.mock("fs-jetpack", () => ({
-  path: jest.fn((...parts: string[]) => parts.join("/")),
-  fileAsync: jest.fn(),
-  readAsync: jest.fn().mockResolvedValue(null),
-}), { virtual: true })
+jest.mock(
+  "fs-jetpack",
+  () => ({
+    path: jest.fn((...parts: string[]) => parts.join("/")),
+    fileAsync: jest.fn(),
+    readAsync: jest.fn().mockResolvedValue(null)
+  }),
+  { virtual: true }
+)
 
-jest.mock("../lib", () => ({
-  NSSLASH: "/",
-  isString: (v: any) => typeof v === "string",
-}), { virtual: true })
+jest.mock(
+  "../lib",
+  () => ({
+    NSSLASH: "/",
+    isString: (v: any) => typeof v === "string"
+  }),
+  { virtual: true }
+)
 
-jest.mock("../adt/conections", () => ({
-  uriRoot: jest.fn(() => ({
-    getNodeAsync: jest.fn().mockResolvedValue(undefined),
-  })),
-  getRoot: jest.fn(),
-  ADTSCHEME: "adt",
-}), { virtual: true })
+jest.mock(
+  "../adt/conections",
+  () => ({
+    uriRoot: jest.fn(() => ({
+      getNodeAsync: jest.fn().mockResolvedValue(undefined)
+    })),
+    getRoot: jest.fn(),
+    ADTSCHEME: "adt"
+  }),
+  { virtual: true }
+)
 
-jest.mock("abapfs", () => ({
-  isAbapFolder: jest.fn(),
-  isAbapStat: jest.fn(),
-  isFolder: jest.fn(),
-}), { virtual: true })
+jest.mock(
+  "abapfs",
+  () => ({
+    isAbapFolder: jest.fn(),
+    isAbapStat: jest.fn(),
+    isFolder: jest.fn()
+  }),
+  { virtual: true }
+)
 
-import { FavItem, FavouritesProvider } from "./favourites"
+import { FavItem, FavouritesProvider, Favourite } from "./favourites"
 
 const { TreeItemCollapsibleState } = require("vscode")
 
@@ -87,15 +111,15 @@ describe("FavItem – string constructor (dynamic)", () => {
 })
 
 describe("FavItem – Favourite constructor (non-dynamic)", () => {
-  const makeFav = (openUri = "") => ({
-    uri: "adt://dev100/pkg/class",
-    label: "ZCL_DEMO",
-    collapsibleState: TreeItemCollapsibleState.None,
-    children: [],
-    openUri,
-    isContainer: false,
-    dynamic: false,
-  })
+  const makeFav = (openUri = "") =>
+    new Favourite({
+      uri: "adt://dev100/pkg/class",
+      label: "ZCL_DEMO",
+      collapsibleState: TreeItemCollapsibleState.None,
+      children: [],
+      openUri,
+      isContainer: false
+    })
 
   it("creates FavItem with command when openUri provided", () => {
     const fav = makeFav("adt://dev100/pkg/class/source/main")
@@ -114,7 +138,7 @@ describe("FavItem – Favourite constructor (non-dynamic)", () => {
   })
 
   it("returns empty children from getChildren when no uri", async () => {
-    const fav = { ...makeFav(), uri: "", children: [] }
+    const fav = new Favourite({ ...makeFav(), uri: "", children: [] })
     const item = new FavItem(fav)
     const children = await item.getChildren()
     expect(children).toEqual([])
@@ -132,17 +156,14 @@ describe("FavItem – Favourite constructor (non-dynamic)", () => {
 describe("FavItem – fixold character normalization", () => {
   it("replaces full-width slash (\uFF0F) in label via Favourite", () => {
     // The fixold function replaces \uFF0F with NSSLASH (/)
-    const fav = {
+    const fav = new Favourite({
       uri: "adt://dev100/foo",
       label: "NS\uFF0FSLASH",
       collapsibleState: TreeItemCollapsibleState.None,
       children: [],
       openUri: "",
-      isContainer: false,
-      dynamic: false,
-    }
-    // We can observe the fix happens by inspecting the FavItem's favourite.label
-    // FavItem re-creates Favourite internally if passed a plain object
+      isContainer: false
+    })
     const item = new FavItem(fav)
     // The label on the TreeItem itself is set from favourite.label after fixold
     expect(item.favourite.label).not.toContain("\uFF0F")
@@ -176,21 +197,24 @@ describe("FavouritesProvider", () => {
 
   it("storagePath setter assigns storage path", () => {
     const provider = FavouritesProvider.get()
-    expect(() => { provider.storagePath = "/some/path" }).not.toThrow()
-    expect(() => { provider.storagePath = undefined }).not.toThrow()
+    expect(() => {
+      provider.storagePath = "/some/path"
+    }).not.toThrow()
+    expect(() => {
+      provider.storagePath = undefined
+    }).not.toThrow()
   })
 
   it("getTreeItem returns element", async () => {
     const provider = FavouritesProvider.get()
-    const fav = {
+    const fav = new Favourite({
       uri: "adt://dev100/foo",
       label: "Foo",
       collapsibleState: TreeItemCollapsibleState.None,
       children: [],
       openUri: "",
-      isContainer: false,
-      dynamic: true,
-    }
+      isContainer: false
+    })
     const item = new FavItem(fav)
     const result = await provider.getTreeItem(item)
     expect(result).toBe(item)
@@ -211,7 +235,19 @@ describe("FavouritesProvider", () => {
     ]
     const { readAsync } = require("fs-jetpack")
     ;(readAsync as jest.Mock).mockResolvedValueOnce([
-      ["dev100", [{ label: "ZCL_TEST", uri: "adt://dev100/pkg/zcl_test", collapsibleState: 0, children: [], openUri: "", isContainer: false }]]
+      [
+        "dev100",
+        [
+          {
+            label: "ZCL_TEST",
+            uri: "adt://dev100/pkg/zcl_test",
+            collapsibleState: 0,
+            children: [],
+            openUri: "",
+            isContainer: false
+          }
+        ]
+      ]
     ])
     ;(FavouritesProvider as any).instance = undefined
     const provider = FavouritesProvider.get()
@@ -224,15 +260,14 @@ describe("FavouritesProvider", () => {
     const { workspace } = require("vscode")
     ;(workspace as any).workspaceFolders = []
     const provider = FavouritesProvider.get()
-    const fav = {
+    const fav = new Favourite({
       uri: "adt://unknown/foo",
       label: "Foo",
       collapsibleState: 0,
       children: [],
       openUri: "",
-      isContainer: false,
-      dynamic: false,
-    }
+      isContainer: false
+    })
     const item = new FavItem(fav)
     await expect(provider.deleteFavourite(item)).resolves.toBeUndefined()
   })

@@ -201,62 +201,21 @@ export class ManageTransportRequestsTool implements vscode.LanguageModelTool<IMa
     transportNumber: string
   ): Promise<vscode.LanguageModelToolResult> {
     try {
-      const headers = {
-        Accept: "application/vnd.sap.adt.transportorganizer.v1+xml",
-        "Cache-Control": "no-cache",
-        "X-sap-adt-profiling": "server-time"
-      }
-
-      const response = await client.httpClient.request(
-        `/sap/bc/adt/cts/transportrequests/${transportNumber}`,
-        {
-          method: "GET",
-          headers
-        }
-      )
-
-      const xmlContent = response?.body || response
-
-      if (!xmlContent || typeof xmlContent !== "string") {
-        return new vscode.LanguageModelToolResult([
-          new vscode.LanguageModelTextPart(
-            `Transport ${transportNumber} not found or SAP system may not support this feature. Please try using the Transport Organizer view instead.`
-          )
-        ])
-      }
-
-      const transportData = this.parseTransportXML(xmlContent)
-
-      if (!xmlContent.includes(transportNumber)) {
-        return new vscode.LanguageModelToolResult([
-          new vscode.LanguageModelTextPart(
-            `⚠️ **SYSTEM COMPATIBILITY ISSUE**\n\n` +
-              `Requested transport: **${transportNumber}**\n` +
-              `System returned unrelated transport: **${transportData.number}**\n\n` +
-              `❌ **The requested transport was not found in the response!**\n\n` +
-              `This means your SAP system does not support direct transport lookup via the ADT API. ` +
-              `This feature requires specific SAP system versions/configurations.\n\n` +
-              `**Please use the Transport Organizer view in VS Code instead** to access transport information for this system.`
-          )
-        ])
-      }
+      const transportData = await client.transportDetails(transportNumber)
 
       let result = `Transport Details: ${transportNumber}\n`
       result += `${"=".repeat(60)}\n`
-      result += `📋 **Number**: ${transportData.number}\n`
-      result += `👤 **Owner**: ${transportData.owner}\n`
-      result += `📝 **Description**: ${transportData.description}\n`
-      result += `📊 **Status**: ${transportData.status} (${transportData.statusText})\n`
-      result += `📅 **Type**: ${transportData.type}\n`
-      result += `🎯 **Target**: ${transportData.target} - ${transportData.targetDesc}\n`
-      result += `📅 **Last Changed**: ${transportData.lastChanged}\n`
+      result += `📋 **Number**: ${transportData["tm:number"]}\n`
+      result += `👤 **Owner**: ${transportData["tm:owner"]}\n`
+      result += `📝 **Description**: ${transportData["tm:desc"]}\n`
+      result += `📊 **Status**: ${transportData["tm:status"]}\n`
       result += `📦 **Objects**: ${transportData.objects.length}\n\n`
 
       if (transportData.tasks.length > 0) {
         result += `📋 **Tasks** (${transportData.tasks.length}):\n`
         for (const task of transportData.tasks) {
-          result += `  • **${task.number}** - ${task.owner} - ${task.description}\n`
-          result += `    Status: ${task.status} | Objects: ${task.objects.length}\n`
+          result += `  • **${task["tm:number"]}** - ${task["tm:owner"]} - ${task["tm:desc"]}\n`
+          result += `    Status: ${task["tm:status"]} | Objects: ${task.objects.length}\n`
         }
         result += "\n"
       }
@@ -264,7 +223,7 @@ export class ManageTransportRequestsTool implements vscode.LanguageModelTool<IMa
       if (transportData.objects.length > 0) {
         result += `📦 **Objects** (${transportData.objects.length}):\n`
         for (const obj of transportData.objects) {
-          result += `  • **${obj.name}** (${obj.type}) - ${obj.description}\n`
+          result += `  • **${obj["tm:name"]}** (${obj["tm:type"]}) - ${obj["tm:obj_info"]}\n`
         }
       }
 
@@ -287,44 +246,7 @@ export class ManageTransportRequestsTool implements vscode.LanguageModelTool<IMa
     transportNumber: string
   ): Promise<vscode.LanguageModelToolResult> {
     try {
-      const headers = {
-        Accept: "application/vnd.sap.adt.transportorganizer.v1+xml",
-        "Cache-Control": "no-cache"
-      }
-
-      const response = await client.httpClient.request(
-        `/sap/bc/adt/cts/transportrequests/${transportNumber}`,
-        {
-          method: "GET",
-          headers
-        }
-      )
-
-      const xmlContent = response?.body || response
-
-      if (!xmlContent || typeof xmlContent !== "string") {
-        return new vscode.LanguageModelToolResult([
-          new vscode.LanguageModelTextPart(
-            `Transport ${transportNumber} not found or SAP system may not support this feature.`
-          )
-        ])
-      }
-
-      const transportData = this.parseTransportXML(xmlContent)
-
-      if (!xmlContent.includes(transportNumber)) {
-        return new vscode.LanguageModelToolResult([
-          new vscode.LanguageModelTextPart(
-            `⚠️ **SYSTEM COMPATIBILITY ISSUE**\n\n` +
-              `Requested transport: **${transportNumber}**\n` +
-              `System returned unrelated transport: **${transportData.number}**\n\n` +
-              `❌ **The requested transport was not found in the response!**\n\n` +
-              `This means your SAP system does not support direct transport lookup via the ADT API. ` +
-              `This feature requires specific SAP system versions/configurations.\n\n` +
-              `**Please use the Transport Organizer view in VS Code instead** to access transport information for this system.`
-          )
-        ])
-      }
+      const transportData = await client.transportDetails(transportNumber)
 
       const allObjects: any[] = []
 
@@ -334,14 +256,14 @@ export class ManageTransportRequestsTool implements vscode.LanguageModelTool<IMa
 
       for (const task of transportData.tasks) {
         allObjects.push(
-          ...task.objects.map((obj: any) => ({ ...obj, source: `task_${task.number}` }))
+          ...task.objects.map((obj: any) => ({ ...obj, source: `task_${task["tm:number"]}` }))
         )
       }
 
       let result = `Objects in Transport: ${transportNumber}\n`
       result += `${"=".repeat(60)}\n`
-      result += `👤 **Main Owner**: ${transportData.owner}\n`
-      result += `📝 **Description**: ${transportData.description}\n`
+      result += `👤 **Main Owner**: ${transportData["tm:owner"]}\n`
+      result += `📝 **Description**: ${transportData["tm:desc"]}\n`
       result += `📦 **Total Objects**: ${allObjects.length} (includes main transport + all task objects)\n`
       result += `📋 **Tasks**: ${transportData.tasks.length}\n\n`
 
@@ -350,11 +272,11 @@ export class ManageTransportRequestsTool implements vscode.LanguageModelTool<IMa
       } else {
         if (transportData.objects.length > 0) {
           result += `📋 **MAIN TRANSPORT** (${transportData.objects.length} objects):\n`
-          result += `  👤 Owner: ${transportData.owner}\n`
-          result += `  📊 Status: ${transportData.status}\n\n`
+          result += `  👤 Owner: ${transportData["tm:owner"]}\n`
+          result += `  📊 Status: ${transportData["tm:status"]}\n\n`
 
           const mainObjectsByType = transportData.objects.reduce((acc: any, obj: any) => {
-            const type = obj.type
+            const type = obj["tm:type"]
             if (!acc[type]) acc[type] = []
             acc[type].push(obj)
             return acc
@@ -363,21 +285,21 @@ export class ManageTransportRequestsTool implements vscode.LanguageModelTool<IMa
           for (const [type, objects] of Object.entries(mainObjectsByType)) {
             result += `  🗂️ **${type}** (${(objects as any[]).length} objects):\n`
             for (const obj of objects as any[]) {
-              result += `    • **${obj.name}** - ${obj.description}\n`
+              result += `    • **${obj["tm:name"]}** - ${obj["tm:obj_info"]}\n`
             }
           }
           result += "\n"
         }
 
         for (const task of transportData.tasks) {
-          result += `📋 **TASK ${task.number}** (${task.objects.length} objects):\n`
-          result += `  👤 Owner: ${task.owner}\n`
-          result += `  📝 Description: ${task.description}\n`
-          result += `  📊 Status: ${task.status}\n\n`
+          result += `📋 **TASK ${task["tm:number"]}** (${task.objects.length} objects):\n`
+          result += `  👤 Owner: ${task["tm:owner"]}\n`
+          result += `  📝 Description: ${task["tm:desc"]}\n`
+          result += `  📊 Status: ${task["tm:status"]}\n\n`
 
           if (task.objects.length > 0) {
             const taskObjectsByType = task.objects.reduce((acc: any, obj: any) => {
-              const type = obj.type
+              const type = obj["tm:type"]
               if (!acc[type]) acc[type] = []
               acc[type].push(obj)
               return acc
@@ -386,7 +308,7 @@ export class ManageTransportRequestsTool implements vscode.LanguageModelTool<IMa
             for (const [type, objects] of Object.entries(taskObjectsByType)) {
               result += `  🗂️ **${type}** (${(objects as any[]).length} objects):\n`
               for (const obj of objects as any[]) {
-                result += `    • **${obj.name}** - ${obj.description}\n`
+                result += `    • **${obj["tm:name"]}** - ${obj["tm:obj_info"]}\n`
               }
             }
           } else {
@@ -420,38 +342,8 @@ export class ManageTransportRequestsTool implements vscode.LanguageModelTool<IMa
 
       for (const transportNumber of transportNumbers) {
         try {
-          const headers = {
-            Accept: "application/vnd.sap.adt.transportorganizer.v1+xml",
-            "Cache-Control": "no-cache"
-          }
-
-          const response = await client.httpClient.request(
-            `/sap/bc/adt/cts/transportrequests/${transportNumber}`,
-            {
-              method: "GET",
-              headers
-            }
-          )
-
-          const xmlContent = response?.body || response
-          if (xmlContent && typeof xmlContent === "string") {
-            if (!xmlContent.includes(transportNumber)) {
-              return new vscode.LanguageModelToolResult([
-                new vscode.LanguageModelTextPart(
-                  `⚠️ **SYSTEM COMPATIBILITY ISSUE**\n\n` +
-                    `Requested transport: **${transportNumber}**\n` +
-                    `The requested transport was not found in the system response.\n\n` +
-                    `❌ **This SAP system does not support direct transport lookup via the ADT API.**\n\n` +
-                    `This feature requires specific SAP system versions/configurations.\n\n` +
-                    `**Please use the Transport Organizer view in VS Code instead** to access transport information for this system.`
-                )
-              ])
-            }
-            const transportData = this.parseTransportXML(xmlContent)
-            transports.push(transportData)
-          } else {
-            notFound.push(transportNumber)
-          }
+          const transportData = await client.transportDetails(transportNumber)
+          transports.push(transportData)
         } catch (error) {
           notFound.push(transportNumber)
         }
@@ -479,9 +371,9 @@ export class ManageTransportRequestsTool implements vscode.LanguageModelTool<IMa
           objects.push(...task.objects)
         }
         return {
-          number: transport.number,
-          owner: transport.owner,
-          description: transport.description,
+          number: transport["tm:number"],
+          owner: transport["tm:owner"],
+          description: transport["tm:desc"],
           objects: objects
         }
       })
@@ -489,7 +381,7 @@ export class ManageTransportRequestsTool implements vscode.LanguageModelTool<IMa
       const allUniqueObjects = new Set<string>()
       transportObjects.forEach(tr => {
         tr.objects.forEach((obj: any) => {
-          allUniqueObjects.add(`${obj.pgmid}.${obj.type}.${obj.name}`)
+          allUniqueObjects.add(`${obj["tm:pgmid"]}.${obj["tm:type"]}.${obj["tm:name"]}`)
         })
       })
 
@@ -508,13 +400,13 @@ export class ManageTransportRequestsTool implements vscode.LanguageModelTool<IMa
 
         transportObjects.forEach(tr => {
           const hasObject = tr.objects.some(
-            (obj: any) => `${obj.pgmid}.${obj.type}.${obj.name}` === objKey
+            (obj: any) => `${obj["tm:pgmid"]}.${obj["tm:type"]}.${obj["tm:name"]}` === objKey
           )
           if (hasObject) {
             transportsWithObject.push(tr.number)
             if (!sampleObject) {
               sampleObject = tr.objects.find(
-                (obj: any) => `${obj.pgmid}.${obj.type}.${obj.name}` === objKey
+                (obj: any) => `${obj["tm:pgmid"]}.${obj["tm:type"]}.${obj["tm:name"]}` === objKey
               )
             }
           }
@@ -533,7 +425,7 @@ export class ManageTransportRequestsTool implements vscode.LanguageModelTool<IMa
       if (commonObjects.length > 0) {
         result += `🤝 **COMMON OBJECTS** (${commonObjects.length}) - Objects in ALL transports:\n`
         commonObjects.forEach(obj => {
-          result += `  • **${obj.name}** (${obj.type}) - ${obj.description}\n`
+          result += `  • **${obj["tm:name"]}** (${obj["tm:type"]}) - ${obj["tm:obj_info"]}\n`
         })
         result += "\n"
       } else {
@@ -544,7 +436,7 @@ export class ManageTransportRequestsTool implements vscode.LanguageModelTool<IMa
         if (objects.length > 0) {
           result += `🔹 **Unique to ${trNum}** (${objects.length} objects):\n`
           objects.forEach(obj => {
-            result += `  • **${obj.name}** (${obj.type}) - ${obj.description}\n`
+            result += `  • **${obj["tm:name"]}** (${obj["tm:type"]}) - ${obj["tm:obj_info"]}\n`
           })
           result += "\n"
         }
@@ -554,68 +446,6 @@ export class ManageTransportRequestsTool implements vscode.LanguageModelTool<IMa
     } catch (error) {
       throw new Error(`Failed to compare transports: ${String(error)}`)
     }
-  }
-
-  private parseTransportXML(xmlContent: string): any {
-    const transport: any = {
-      number: this.extractValue(xmlContent, "tm:number"),
-      owner: this.extractValue(xmlContent, "tm:owner"),
-      description: this.extractValue(xmlContent, "tm:desc"),
-      status: this.extractValue(xmlContent, "tm:status"),
-      statusText: this.extractValue(xmlContent, "tm:status_text"),
-      type: this.extractValue(xmlContent, "tm:type"),
-      target: this.extractValue(xmlContent, "tm:target"),
-      targetDesc: this.extractValue(xmlContent, "tm:target_desc"),
-      lastChanged: this.extractValue(xmlContent, "tm:lastchanged_timestamp"),
-      objects: [],
-      tasks: []
-    }
-
-    const objectMatches = xmlContent.match(/<tm:abap_object[^>]*>(.*?)<\/tm:abap_object>/gs) || []
-    for (const objMatch of objectMatches) {
-      if (!objMatch.includes("<tm:task")) {
-        transport.objects.push({
-          name: this.extractValue(objMatch, "tm:name"),
-          type: this.extractValue(objMatch, "tm:type"),
-          pgmid: this.extractValue(objMatch, "tm:pgmid"),
-          description:
-            this.extractValue(objMatch, "tm:obj_desc") || this.extractValue(objMatch, "tm:obj_info")
-        })
-      }
-    }
-
-    const taskMatches = xmlContent.match(/<tm:task[^>]*>(.*?)<\/tm:task>/gs) || []
-    for (const taskMatch of taskMatches) {
-      const task = {
-        number: this.extractValue(taskMatch, "tm:number"),
-        owner: this.extractValue(taskMatch, "tm:owner"),
-        description: this.extractValue(taskMatch, "tm:desc"),
-        status: this.extractValue(taskMatch, "tm:status"),
-        objects: [] as any[]
-      }
-
-      const taskObjectMatches = taskMatch.match(/<tm:abap_object[^>]*\/>/g) || []
-      for (const taskObjMatch of taskObjectMatches) {
-        task.objects.push({
-          name: this.extractValue(taskObjMatch, "tm:name"),
-          type: this.extractValue(taskObjMatch, "tm:type"),
-          pgmid: this.extractValue(taskObjMatch, "tm:pgmid"),
-          description:
-            this.extractValue(taskObjMatch, "tm:obj_desc") ||
-            this.extractValue(taskObjMatch, "tm:obj_info")
-        })
-      }
-
-      transport.tasks.push(task)
-    }
-
-    return transport
-  }
-
-  private extractValue(xml: string, attribute: string): string {
-    const regex = new RegExp(`${attribute}="([^"]*)"`, "i")
-    const match = xml.match(regex)
-    return match ? match[1] : ""
   }
 }
 

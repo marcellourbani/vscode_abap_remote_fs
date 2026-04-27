@@ -1,9 +1,3 @@
-import { configureFeedsCommand } from "./configureFeeds"
-import { createObjectInEditorCommand } from "./createObjectInEditor"
-import { manageTextElementsCommand } from "./textElementsCommands"
-import { publishServiceBindingCommand } from "./publishServiceBinding"
-import { commands } from "vscode"
-
 export const AbapFsCommands = {
   connect: "abapfs.connect",
   disconnect: "abapfs.disconnect",
@@ -137,28 +131,3 @@ export const command = (name: string) => (target: any, propertyKey: string) => {
   const func = target[propertyKey]
   abapcmds.push({ name, target, func })
 }
-
-// Manual command registrations (for commands not using @command decorator)
-abapcmds.push({
-  name: AbapFsCommands.createInEditor,
-  func: createObjectInEditorCommand,
-  target: null
-})
-
-abapcmds.push({
-  name: AbapFsCommands.manageTextElements,
-  func: manageTextElementsCommand,
-  target: null
-})
-
-abapcmds.push({
-  name: AbapFsCommands.configureFeeds,
-  func: configureFeedsCommand,
-  target: null
-})
-
-abapcmds.push({
-  name: AbapFsCommands.publishServiceBinding,
-  func: publishServiceBindingCommand,
-  target: null
-})

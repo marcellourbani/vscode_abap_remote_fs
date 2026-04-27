@@ -1,10 +1,8 @@
-import { ADTClient, AdtLock, TextElement, TextElementsResult, textElementsUrl as apiTextElementsUrl } from "abap-adt-api"
+import { ADTClient, AdtLock, TextElement, TextElementsResult } from "abap-adt-api"
 import { log } from "../lib"
 import { selectTransport } from "./AdtTransports"
 
 export type { TextElement, TextElementsResult }
-
-
 
 export interface LockResult {
   lockHandle: string
@@ -115,9 +113,12 @@ export function parseObjectName(objectName: string, explicitType?: string): Obje
  */
 function objectInfoToAdtType(type: ObjectType): string {
   switch (type) {
-    case ObjectType.CLASS: return "CLAS"
-    case ObjectType.FUNCTION_GROUP: return "FUGR"
-    default: return "PROG"
+    case ObjectType.CLASS:
+      return "CLAS"
+    case ObjectType.FUNCTION_GROUP:
+      return "FUGR"
+    default:
+      return "PROG"
   }
 }
 
@@ -125,7 +126,7 @@ function objectInfoToAdtType(type: ObjectType): string {
  * Get text elements base URL based on object info using the abap-adt-api helper.
  */
 export function getTextElementsUrlFromObjectInfo(objectInfo: ObjectInfo): string {
-  return apiTextElementsUrl(objectInfoToAdtType(objectInfo.type), objectInfo.cleanName)
+  return ADTClient.textElementsUrl(objectInfoToAdtType(objectInfo.type), objectInfo.cleanName)
 }
 
 /**
@@ -217,10 +218,9 @@ export async function updateTextElements(
   try {
     await setTextElements(connection, objectName, textElements, lockResult.lockHandle)
   } catch (error) {
-    await connection.unLock(
-      getTextElementsBaseUrl(objectName),
-      lockResult.lockHandle
-    ).catch(() => undefined)
+    await connection
+      .unLock(getTextElementsBaseUrl(objectName), lockResult.lockHandle)
+      .catch(() => undefined)
     throw error
   }
 }

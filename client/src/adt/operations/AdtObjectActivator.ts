@@ -1,10 +1,15 @@
-import { ADTClient, isAdtError, inactiveObjectsInResults } from "abap-adt-api"
+import {
+  ADTClient,
+  isAdtError,
+  inactiveObjectsInResults,
+  InactiveObjectRecord,
+  InactiveObjectElement
+} from "abap-adt-api"
 import { Uri, EventEmitter, QuickPickItemKind } from "vscode"
 import { AbapObject } from "abapobject"
 import { getClient } from "../conections"
 import { IncludeProvider, IncludeService } from "../includes"
 import { isDefined, channel } from "../../lib"
-import { session_types } from "abap-adt-api"
 import { funWindow as window } from "../../services/funMessenger"
 
 // Log activation errors to ABAP FS output channel
@@ -18,15 +23,6 @@ export interface ActivationEvent {
   activated: AbapObject
   mainProg?: string
 }
-
-interface InactiveObjectEntry {
-  object: Record<string, any>
-  transport?: Record<string, any>
-  deleted?: boolean
-  user?: string
-}
-
-type InactiveObjectLike = InactiveObjectEntry | Record<string, any>
 
 export class AdtObjectActivator {
   constructor(private client: ADTClient) {}
@@ -54,10 +50,12 @@ export class AdtObjectActivator {
     return main?.["adtcore:uri"]
   }
 
-
-  private async getAllInactiveEntries(): Promise<InactiveObjectEntry[]> {
+  private async getAllInactiveEntries(): Promise<InactiveObjectRecord[]> {
     const rawInactive = await this.client.inactiveObjects()
-    return rawInactive.filter(r => r.object) as InactiveObjectEntry[]
+    const tofilter = rawInactive.length
+      ? rawInactive
+      : await this.client.inactiveObjects("application/xml")
+    return rawInactive.filter(r => r.object)
   }
 
   private async getAllInactiveObjects() {
@@ -218,10 +216,12 @@ export class AdtObjectActivator {
     return uri?.split("/").filter(Boolean).pop() || ""
   }
 
-  private transportGrouping(entry: InactiveObjectEntry) {
+  private transportGrouping(entry: InactiveObjectRecord) {
     const transport = entry.transport
     const task =
-      transport?.["adtcore:name"] || this.transportId(transport?.["adtcore:uri"]) || "Without transport"
+      transport?.["adtcore:name"] ||
+      this.transportId(transport?.["adtcore:uri"]) ||
+      "Without transport"
     const order = this.transportId(transport?.["adtcore:parentUri"]) || task
     const description = `${transport?.["adtcore:description"] || ""}`.trim()
     return {
@@ -233,46 +233,39 @@ export class AdtObjectActivator {
   }
 
   private formatGroupLabel(group: { order: string; task: string; description: string }) {
-    const transportLabel = group.order === group.task ? group.task : `${group.order} / ${group.task}`
+    const transportLabel =
+      group.order === group.task ? group.task : `${group.order} / ${group.task}`
     return group.description ? `${transportLabel}  ${group.description}` : transportLabel
   }
 
   private formatObjectDescription(
-    entry: InactiveObjectEntry,
+    entry: InactiveObjectRecord,
     group: { order: string; task: string; description: string }
   ) {
-    const parts = [`${entry.object["adtcore:type"] || ""}`]
-    const transportLabel = group.order === group.task ? group.task : `${group.order} / ${group.task}`
+    const parts = [`${entry.object?.["adtcore:type"] || ""}`]
+    const transportLabel =
+      group.order === group.task ? group.task : `${group.order} / ${group.task}`
     if (transportLabel) parts.push(transportLabel)
-    if (entry.deleted) parts.push("deleted")
-    if (entry.user) parts.push(entry.user)
+    if (entry.object?.deleted) parts.push("deleted")
+    if (entry.object?.user) parts.push(entry.object.user)
     return parts.filter(Boolean).join(" • ")
   }
 
   private formatObjectDetail(
-    entry: InactiveObjectEntry,
+    entry: InactiveObjectRecord,
     group: { order: string; task: string; description: string }
   ) {
-    const parts = [group.description, entry.object["adtcore:uri"]]
+    const parts = [group.description, entry.object?.["adtcore:uri"]]
     return parts.filter(Boolean).join(" • ")
   }
 
-  private toInactiveObjectEntry(entry: InactiveObjectLike): InactiveObjectEntry {
-    if ("object" in entry) {
-      return entry as InactiveObjectEntry
-    }
-
-    return { object: entry }
-  }
-
-  private async showActivationSelectionDialog(entries: InactiveObjectLike[]) {
-    const normalizedEntries = entries.map(entry => this.toInactiveObjectEntry(entry))
+  private async showActivationSelectionDialog(entries: InactiveObjectRecord[]) {
     const groupedEntries = new Map<
       string,
-      { order: string; task: string; description: string; entries: InactiveObjectEntry[] }
+      { order: string; task: string; description: string; entries: InactiveObjectRecord[] }
     >()
 
-    for (const entry of normalizedEntries) {
+    for (const entry of entries) {
       const group = this.transportGrouping(entry)
       const existing = groupedEntries.get(group.key)
       if (existing) {
@@ -291,16 +284,16 @@ export class AdtObjectActivator {
       .flatMap(group => {
         const objectItems = [...group.entries]
           .sort((left, right) => {
-            const typeCompare = `${left.object["adtcore:type"] || ""}`.localeCompare(
-              `${right.object["adtcore:type"] || ""}`
+            const typeCompare = `${left?.object?.["adtcore:type"] || ""}`.localeCompare(
+              `${right?.object?.["adtcore:type"] || ""}`
             )
             if (typeCompare !== 0) return typeCompare
-            return `${left.object["adtcore:name"] || ""}`.localeCompare(
-              `${right.object["adtcore:name"] || ""}`
+            return `${left?.object?.["adtcore:name"] || ""}`.localeCompare(
+              `${right?.object?.["adtcore:name"] || ""}`
             )
           })
           .map(entry => ({
-            label: `  ${entry.object["adtcore:name"]}`,
+            label: `  ${entry.object?.["adtcore:name"]}`,
             description: this.formatObjectDescription(entry, group),
             detail: this.formatObjectDetail(entry, group),
             picked: false,
@@ -316,12 +309,12 @@ export class AdtObjectActivator {
         ]
       })
 
-    const selected = await window.showQuickPick(items as any, {
+    const selected = await window.showQuickPick(items, {
       canPickMany: true,
       matchOnDescription: true,
       matchOnDetail: true,
       placeHolder: "Select unactivated objects grouped by transport order",
-      title: `Select unactivated objects (${normalizedEntries.length} found)`
+      title: `Select unactivated objects (${entries.length} found)`
     })
 
     return selected ? selected.map((item: any) => item.entry.object) : null
@@ -339,7 +332,7 @@ export class AdtObjectActivator {
       .map((m: any) => {
         const textRaw = m.shortText || m.longText || m.message || m.msg || ""
         const text = normText(textRaw).trim()
-        if (!text) return undefined as any
+        if (!text) return undefined
         const href: string | undefined = m.href
         let target = ""
 
@@ -452,8 +445,8 @@ export class AdtObjectActivator {
       }
     } catch (error) {
       if (isAdtError(error)) {
-        const status = (error as any).statusCode || (error as any).type || "ADT error"
-        const body = (error as any).response?.body || (error as any).message || ""
+        const status = error.response?.status || error.type || "ADT error"
+        const body = error.response?.body || error.message || ""
         const bodyText = typeof body === "string" ? body : JSON.stringify(body)
         const trimmed = bodyText.length > 800 ? `${bodyText.slice(0, 800)}…` : bodyText
         logError(`❌ Multiple activation ADT error status=${status} body=${trimmed}`)
@@ -562,8 +555,8 @@ export class AdtObjectActivator {
     } catch (error) {
       // Enhanced error handling: surface ADT response body/status when present
       if (isAdtError(error)) {
-        const status = (error as any).statusCode || (error as any).type || "ADT error"
-        const body = (error as any).response?.body || (error as any).message || ""
+        const status = error.response?.status || error.type || "ADT error"
+        const body = error.response?.body || error.message || ""
         const bodyText = typeof body === "string" ? body : JSON.stringify(body)
         const trimmed = bodyText.length > 800 ? `${bodyText.slice(0, 800)}…` : bodyText
         logError(`❌ Activation ADT error status=${status} body=${trimmed}`)

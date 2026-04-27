@@ -1,13 +1,19 @@
-jest.mock("vscode", () => ({
-  EventEmitter: jest.fn().mockImplementation(() => ({
-    event: jest.fn(),
-    fire: jest.fn()
-  })),
-  ProgressLocation: { Notification: 15 },
-  Position: jest.fn().mockImplementation((line: number, char: number) => ({ line, character: char })),
-  Range: jest.fn().mockImplementation((start: any, end: any) => ({ start, end })),
-  CodeLens: jest.fn().mockImplementation((range: any, cmd: any) => ({ range, command: cmd }))
-}), { virtual: true })
+jest.mock(
+  "vscode",
+  () => ({
+    EventEmitter: jest.fn().mockImplementation(() => ({
+      event: jest.fn(),
+      fire: jest.fn()
+    })),
+    ProgressLocation: { Notification: 15 },
+    Position: jest
+      .fn()
+      .mockImplementation((line: number, char: number) => ({ line, character: char })),
+    Range: jest.fn().mockImplementation((start: any, end: any) => ({ start, end })),
+    CodeLens: jest.fn().mockImplementation((range: any, cmd: any) => ({ range, command: cmd }))
+  }),
+  { virtual: true }
+)
 
 jest.mock("../commands", () => ({
   AbapFsCommands: {
@@ -33,7 +39,12 @@ jest.mock("../lib", () => ({
   }),
   cache: jest.fn((fn: any) => {
     const map = new Map()
-    return { get: (k: string) => { if (!map.has(k)) map.set(k, fn(k)); return map.get(k) } }
+    return {
+      get: (k: string) => {
+        if (!map.has(k)) map.set(k, fn(k))
+        return map.get(k)
+      }
+    }
   })
 }))
 
@@ -56,6 +67,7 @@ jest.mock("../services/funMessenger", () => ({
 }))
 
 import { ClassHierarchyLensProvider } from "./classhierarchy"
+import { findAbapObject } from "./operations/AdtObjectFinder"
 
 describe("ClassHierarchyLensProvider", () => {
   it("is a singleton - get() returns same instance", () => {
@@ -81,7 +93,6 @@ describe("ClassHierarchyLensProvider", () => {
   })
 
   it("provideCodeLenses returns empty array when no ABAP object found", async () => {
-    const { findAbapObject } = await import("./operations/AdtObjectFinder")
     ;(findAbapObject as jest.Mock).mockResolvedValueOnce(null)
 
     const provider = ClassHierarchyLensProvider.get()
@@ -95,7 +106,6 @@ describe("ClassHierarchyLensProvider", () => {
   })
 
   it("provideCodeLenses returns code lenses for class declarations", async () => {
-    const { findAbapObject } = await import("./operations/AdtObjectFinder")
     ;(findAbapObject as jest.Mock).mockResolvedValueOnce({
       structure: { adtcore: {} },
       loadStructure: jest.fn(),
@@ -115,7 +125,6 @@ describe("ClassHierarchyLensProvider", () => {
   })
 
   it("provideCodeLenses handles INTERFACE declarations", async () => {
-    const { findAbapObject } = await import("./operations/AdtObjectFinder")
     ;(findAbapObject as jest.Mock).mockResolvedValueOnce({
       structure: {},
       loadStructure: jest.fn(),
@@ -133,7 +142,6 @@ describe("ClassHierarchyLensProvider", () => {
   })
 
   it("CLASSREGEX skips comment lines", async () => {
-    const { findAbapObject } = await import("./operations/AdtObjectFinder")
     ;(findAbapObject as jest.Mock).mockResolvedValueOnce({
       structure: {},
       loadStructure: jest.fn(),
@@ -146,7 +154,10 @@ describe("ClassHierarchyLensProvider", () => {
       uri: { scheme: "adt", authority: "myconn", path: "/ZCL_X.clas.abap" },
       getText: jest.fn().mockReturnValue('  " CLASS FAKE_CLASS.\n  CLASS REAL_CLASS DEFINITION.\n')
     }
-    const lenses = await provider.provideCodeLenses(doc, { isCancellationRequested: false, onCancellationRequested: jest.fn() } as any)
+    const lenses = await provider.provideCodeLenses(doc, {
+      isCancellationRequested: false,
+      onCancellationRequested: jest.fn()
+    } as any)
     // Only REAL_CLASS line should generate lenses
     const labels = lenses.map((l: any) => l.command?.arguments?.[0]?.key)
     expect(labels.every((k: string) => !k?.includes("FAKE_CLASS"))).toBe(true)

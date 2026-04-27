@@ -92,6 +92,11 @@
     "typescript.format.placeOpenBraceOnNewLineForControlBlocks": false,
     "typescript.format.placeOpenBraceOnNewLineForFunctions": false,
     "typescript.preferences.quoteStyle": "auto",
-    "httpyac.testControllerEnabled": false
+    "httpyac.testControllerEnabled": false,
+    "jest.enable": true,
+    "jest.runMode": {
+      "type": "on-save",
+      "testFileOnly": true
+    }
   }
 }

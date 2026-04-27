@@ -102,9 +102,8 @@ async function expandOneLevel(
   if (structIds.length === 0 && tableSpecs.length === 0) return false
 
   // Run structure expansion and table row fetching in parallel
-  const structPromise = structIds.length > 0
-    ? batchedChildVariables(client, structIds)
-    : Promise.resolve(null)
+  const structPromise =
+    structIds.length > 0 ? batchedChildVariables(client, structIds) : Promise.resolve(null)
 
   // Build table row keys
   const allKeys: string[] = []
@@ -117,9 +116,7 @@ async function expandOneLevel(
       keyToTableId.set(key, spec.id)
     }
   }
-  const tablePromise = allKeys.length > 0
-    ? batchedVariables(client, allKeys)
-    : Promise.resolve([])
+  const tablePromise = allKeys.length > 0 ? batchedVariables(client, allKeys) : Promise.resolve([])
 
   const [structResult, rowVars] = await Promise.all([structPromise, tablePromise])
 
@@ -187,7 +184,10 @@ function buildCapturedTree(varId: string, varTree: Map<string, VarNode>): Captur
 
 // ── Batched API helpers ──
 
-interface TableSpec { id: string; rows: number }
+interface TableSpec {
+  id: string
+  rows: number
+}
 
 interface BatchedChildResult {
   hierarchies: DebugChildVariablesHierarchy[]
@@ -217,10 +217,7 @@ async function batchedChildVariables(
 }
 
 /** Call debuggerVariables in sub-batches if needed */
-async function batchedVariables(
-  client: ADTClient,
-  ids: string[]
-): Promise<DebugVariable[]> {
+async function batchedVariables(client: ADTClient, ids: string[]): Promise<DebugVariable[]> {
   if (ids.length <= MAX_IDS_PER_CALL) {
     return client.debuggerVariables(ids)
   }
@@ -235,7 +232,9 @@ async function batchedVariables(
     if (result.status === "fulfilled") {
       all.push(...result.value)
     } else {
-      log(`Failed batch variables ${i * MAX_IDS_PER_CALL + 1}-${Math.min((i + 1) * MAX_IDS_PER_CALL, ids.length)}: ${caughtToString(result.reason)}`)
+      log(
+        `Failed batch variables ${i * MAX_IDS_PER_CALL + 1}-${Math.min((i + 1) * MAX_IDS_PER_CALL, ids.length)}: ${caughtToString(result.reason)}`
+      )
     }
   }
   return all
