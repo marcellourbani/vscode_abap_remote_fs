@@ -130,6 +130,40 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 ```
 
+## GitLens
+
+This extension adapts non-Plus file annotation rendering patterns from GitLens for the `gitlens` blame render mode.
+
+**Source:** https://github.com/gitkraken/vscode-gitlens
+**License:** MIT License
+**Copyright:** (c) GitKraken
+
+Adapted areas include fixed-width blame gutter styling, compact follower-line rendering, and age-based heatmap edge treatment. No code from any GitLens `plus` directory is used.
+
+```
+MIT License
+
+Copyright (c) GitKraken
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+```
+
 ## SAP Clean ABAP Style Guide
 
 The Clean ABAP skill included in this extension contains rules distilled from the SAP Clean ABAP Style Guide.
