@@ -2156,9 +2156,13 @@ The `get_version_history` tool provides three actions:
 
 - Command palette: ABAP FS: Show Blame
 
+- Optional: switch between the original inline layout and the GitLens-inspired blame lane with the `abapfs.blame.renderMode` setting
+
 **Features:**
 
 - Per-line attribution — author, date, and transport number shown inline after each line
+
+- Two render modes — `classic` keeps the current inline-after-code layout, `gitlens` moves blame into a fixed lane before the code
 
 - Transport description shown inline (e.g., `JSMITH · Jan 15, 2026 · KD1K900123 — S 8000005926: Fix pricing logic`)
 
@@ -2201,6 +2205,8 @@ Version sources are fetched in parallel batches for performance.
 - Document must not be dirty (unsaved changes)
 
 - ABAP files only (`.abap` language)
+
+- Render mode is controlled by the `abapfs.blame.renderMode` setting (`classic` or `gitlens`)
 
 **Keyboard Shortcut:** Ctrl+Alt+B (toggles show/hide)
 

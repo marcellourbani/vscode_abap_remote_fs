@@ -493,6 +493,7 @@ If you only want proxy for a specific system, configure it in that workspace's s
 - **[docx](https://github.com/dolanmiu/docx)** (MIT) - Word document generation
 - **[Application Insights](https://github.com/Microsoft/ApplicationInsights-node.js)** (MIT) - Telemetry SDK
 - **[Cytoscape.js](https://github.com/cytoscape/cytoscape.js)** (MIT) - Dependency Graph
+- **[GitLens](https://github.com/gitkraken/vscode-gitlens)** (MIT) - The `gitlens` blame render mode adapts non-Plus blame gutter styling patterns and defaults from the MIT-licensed GitLens project
 - **[SAP Clean ABAP Style Guide](https://github.com/SAP/styleguides)** (CC BY 3.0) - Clean ABAP coding rules (distilled for AI skill)
 
 See THIRD_PARTY_LICENSES.md for complete license details.
