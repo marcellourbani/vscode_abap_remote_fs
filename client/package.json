@@ -87,7 +87,7 @@
     "ramda": "^0.28.0",
     "tmp-promise": "^3.0.3",
     "tough-cookie": "^4.1.4",
-    "uuid": "^9.0.0",
+    "uuid": "^14.0.0",
     "v8-inspect-profiler": "^0.1.0",
     "vscode-abap-remote-fs-sharedapi": "file:../modules/sharedapi",
     "vscode-languageclient": "^9.0.1",
