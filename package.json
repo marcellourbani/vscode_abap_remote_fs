@@ -4233,6 +4233,20 @@
             "type": "string"
           }
         },
+        "abapfs.blame.renderMode": {
+          "type": "string",
+          "default": "gitlens",
+          "scope": "application",
+          "enum": [
+            "classic",
+            "gitlens"
+          ],
+          "enumDescriptions": [
+            "Use the existing ABAP FS blame layout with annotations aligned after the code.",
+            "Use a GitLens-inspired fixed blame lane before the code with grouped blame blocks."
+          ],
+          "description": "Choose how file blame annotations are rendered in the editor. This setting is global and applies across all workspaces."
+        },
         "abapfs.heartbeat.enabled": {
           "type": "boolean",
           "default": false,
@@ -4376,6 +4390,62 @@
         }
       }
     },
+    "colors": [
+      {
+        "id": "abapfs.blameGutterBackgroundColor",
+        "description": "Specifies the background color of the ABAP FS GitLens-style blame annotations.",
+        "defaults": {
+          "dark": "#FFFFFF13",
+          "light": "#0000000C",
+          "highContrast": "#FFFFFF13"
+        }
+      },
+      {
+        "id": "abapfs.blameGutterForegroundColor",
+        "description": "Specifies the foreground color of the ABAP FS GitLens-style blame annotations.",
+        "defaults": {
+          "dark": "#BEBEBE",
+          "light": "#747474",
+          "highContrast": "#BEBEBE"
+        }
+      },
+      {
+        "id": "abapfs.blameLineHighlightBackgroundColor",
+        "description": "Specifies the background color of the associated line highlights in ABAP FS blame annotations.",
+        "defaults": {
+          "dark": "#00BCF233",
+          "light": "#00BCF233",
+          "highContrast": "#00BCF233"
+        }
+      },
+      {
+        "id": "abapfs.blameLineHighlightOverviewRulerColor",
+        "description": "Specifies the overview ruler color of the associated line highlights in ABAP FS blame annotations.",
+        "defaults": {
+          "dark": "#00BCF299",
+          "light": "#00BCF299",
+          "highContrast": "#00BCF299"
+        }
+      },
+      {
+        "id": "abapfs.blameTrailingLineBackgroundColor",
+        "description": "Specifies the background color of the selected-line blame annotation in ABAP FS GitLens mode.",
+        "defaults": {
+          "dark": "#00000000",
+          "light": "#00000000",
+          "highContrast": "#00000000"
+        }
+      },
+      {
+        "id": "abapfs.blameTrailingLineForegroundColor",
+        "description": "Specifies the foreground color of the selected-line blame annotation in ABAP FS GitLens mode.",
+        "defaults": {
+          "dark": "#99999959",
+          "light": "#99999959",
+          "highContrast": "#99999999"
+        }
+      }
+    ],
     "configurationDefaults": {
       "[abap]": {
         "editor.formatOnSave": true,
@@ -4582,7 +4652,7 @@
           {
             "id": "abapfs.walkthrough.blame",
             "title": "Blame Gutter & Version History",
-            "description": "Click the **eye icon** in the editor toolbar to toggle blame on/off (or **Ctrl/Cmd+Shift+P** → **ABAP FS: Show Blame**, shortcut **Ctrl+Alt+B**).\n\nHover annotations for author, date, and transport. Revision CodeLens above objects for version comparison.",
+            "description": "Click the **eye icon** in the editor toolbar to toggle blame on/off (or **Ctrl/Cmd+Shift+P** → **ABAP FS: Show Blame**, shortcut **Ctrl+Alt+B**).\n\nChoose between the original inline layout and a GitLens-inspired fixed blame lane with the **ABAP FS: Blame Render Mode** setting. Hover annotations still show author, date, and transport. Revision CodeLens above objects remains available for version comparison.",
             "media": {
               "markdown": "client/dist/media/walkthrough/w2-blame.md"
             },
