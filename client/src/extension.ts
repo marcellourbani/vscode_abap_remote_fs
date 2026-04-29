@@ -52,6 +52,7 @@ import { HeartbeatWatchlist } from "./services/heartbeat/heartbeatWatchlist"
 import { RapGeneratorPanel } from "./views/rapGenerator/rapGeneratorView"
 import { visualizeDependencyGraph } from "./services/dependencyGraph"
 import { checkUpgradeNotification } from "./services/upgradeNotification"
+import { registerAbapRepl } from "./repl"
 import { registerAbapNotebooks } from "./notebooks"
 import { showWelcomeWalkthrough } from "./services/walkthroughService"
 import { disableVirtualToolGrouping } from "./services/virtualToolsFix"
@@ -113,7 +114,9 @@ export async function activate(ctx: ExtensionContext): Promise<AbapFsApi> {
     const adtSelector = { language: "abap", scheme: ADTSCHEME }
 
     sub.push(languages.registerHoverProvider([abapSelector, adtSelector], hoverProvider))
-    sub.push(languages.registerDocumentSymbolProvider([adtSelector], new AbapDocumentSymbolProvider()))
+    sub.push(
+      languages.registerDocumentSymbolProvider([adtSelector], new AbapDocumentSymbolProvider())
+    )
 
     log("✅ ABAP Hover Provider ready to whisper sweet nothings about your code")
 
@@ -139,6 +142,9 @@ export async function activate(ctx: ExtensionContext): Promise<AbapFsApi> {
     // Register ABAP Cleaner feature
     registerCleanerCommands(context)
     setupCleanerContextMonitoring(context)
+
+    // Initialize ABAP REPL
+    registerAbapRepl(context)
 
     // Initialize SAP Data Workbook (.sapwb)
     registerAbapNotebooks(context)
