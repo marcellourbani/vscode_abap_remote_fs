@@ -48,6 +48,7 @@ import { registerChatTools } from "./adt/ai/tools"
 import { initializeEnhancementDecorations } from "./views/enhancementDecorations"
 import { initializeBlameGutter } from "./views/blameGutter"
 import { clearSystemInfoCache } from "./services/sapSystemInfo"
+import { insertMethodParams } from "./commands/insertMethodParams"
 import { HeartbeatWatchlist } from "./services/heartbeat/heartbeatWatchlist"
 import { RapGeneratorPanel } from "./views/rapGenerator/rapGeneratorView"
 import { visualizeDependencyGraph } from "./services/dependencyGraph"
@@ -291,6 +292,11 @@ export async function activate(ctx: ExtensionContext): Promise<AbapFsApi> {
   registerAbapGit(context)
 
   registerCommands(context)
+
+  // Insert method parameters after completion item is accepted
+  context.subscriptions.push(
+    commands.registerCommand("abapfs.insertMethodParams", insertMethodParams)
+  )
 
   // 📊 Register Dependency Graph Command
   try {

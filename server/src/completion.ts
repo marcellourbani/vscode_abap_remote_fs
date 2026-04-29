@@ -105,7 +105,7 @@ export async function completion(params: CompletionParams) {
     }
     return CompletionList.create(items, isInComplete(items))
   } catch (e) {
-    log("Exception in completion:", caughtToString(e)) // ignore
+    log("Exception in completion:", caughtToString(e))
   }
 }
 
@@ -115,17 +115,18 @@ export async function completion(params: CompletionParams) {
 
 export async function completionResolve(item: CompletionItem): Promise<CompletionItem> {
   try {
-    log("[completionResolve] called for:", typeof item.label === "string" ? item.label : item.label.label)
     const proposal: CompletionProposal | undefined = item.data
-    if (!proposal) { log("[completionResolve] no proposal data on item"); return item }
-    if (!lastCompletionContext) { log("[completionResolve] no lastCompletionContext"); return item }
+    if (!proposal) return item
+    if (!lastCompletionContext) return item
 
-    log("[completionResolve] uri:", lastCompletionContext.uri, "mainUrl:", lastCompletionContext.mainUrl)
+    // If this item has a post-insert command (method calls), skip resolve snippet insertion
+    // The command will handle fetching and inserting the full snippet after insertion
+    if (item.command) return item
+
     const co = await clientAndObjfromUrl(lastCompletionContext.uri, true)
-    if (!co?.client) { log("[completionResolve] clientAndObjfromUrl returned nothing"); return item }
+    if (!co?.client) return item
 
     const { mainUrl, source, position } = lastCompletionContext
-    log("[completionResolve] calling codeCompletionFull for", proposal.IDENTIFIER, "at", position.line + 1, position.character)
     const fullText = await co.client.statelessClone.codeCompletionFull(
       mainUrl,
       source,
@@ -134,22 +135,64 @@ export async function completionResolve(item: CompletionItem): Promise<Completio
       proposal.IDENTIFIER
     )
 
-    log("[completionResolve] fullText:", JSON.stringify(fullText?.substring(0, 200)))
     if (fullText && typeof fullText === "string" && fullText.length > proposal.IDENTIFIER.length) {
       // Convert to a snippet: replace empty assignment spots with tab stops
       const snippet = convertToSnippet(fullText, proposal.IDENTIFIER)
-      log("[completionResolve] snippet:", JSON.stringify(snippet?.substring(0, 200)))
       if (snippet) {
         item.insertText = snippet
         item.insertTextFormat = InsertTextFormat.Snippet
       }
     } else {
-      log("[completionResolve] fullText not usable (length:", fullText?.length, "vs identifier:", proposal.IDENTIFIER.length, ")")
     }
   } catch (e) {
     log("Exception in completionResolve:", caughtToString(e))
   }
   return item
+}
+
+// ── Code Completion Full Request ────────────────────────────────────────────
+// Called by client command after a method-call completion item is inserted.
+// Returns the full snippet text so the client can apply it.
+
+export interface CodeCompletionFullParams {
+  uri: string
+  identifier: string
+}
+
+export async function codeCompletionFullRequest(params: CodeCompletionFullParams): Promise<string | undefined> {
+  try {
+    const { uri, identifier } = params
+    const co = await clientAndObjfromUrl(uri, true)
+    if (!co?.client) return undefined
+
+    const { source, obj } = co
+    const lines = source.split(/\n/)
+    // Find the identifier in the source to get the correct position
+    // Search from the end since it was just inserted
+    let foundLine = -1, foundCol = -1
+    for (let l = lines.length - 1; l >= 0; l--) {
+      const idx = lines[l].toUpperCase().lastIndexOf(identifier.toUpperCase())
+      if (idx >= 0) {
+        foundLine = l
+        foundCol = idx + identifier.length
+        break
+      }
+    }
+    if (foundLine < 0) return undefined
+
+    const fullText = await co.client.statelessClone.codeCompletionFull(
+      obj.mainUrl, source, foundLine + 1, foundCol, identifier
+    )
+
+    if (fullText && typeof fullText === "string" && fullText.length > identifier.length) {
+      const snippet = convertToSnippet(fullText, identifier)
+      return snippet
+    }
+    return undefined
+  } catch (e) {
+    log("Exception in codeCompletionFullRequest:", caughtToString(e))
+    return undefined
+  }
 }
 
 /**
@@ -161,21 +204,33 @@ export async function completionResolve(item: CompletionItem): Promise<Completio
  * We normalize all to "param = " and add tab stops.
  */
 function convertToSnippet(fullText: string, identifier: string): string | undefined {
-  // If the full text doesn't contain parentheses, it's not a method call
-  if (!fullText.includes("(")) return undefined
+  // Must have either parentheses (functional call) or EXPORTING/IMPORTING/etc. (call method form)
+  if (!fullText.includes("(") && !/\b(EXPORTING|IMPORTING|CHANGING|RECEIVING)\b/i.test(fullText)) return undefined
 
-  log("[convertToSnippet] raw fullText:", JSON.stringify(fullText))
 
   // Normalize line endings
   let text = fullText.replace(/\r\n/g, "\n")
 
-  // Format A: strip echoed parameter value on next line: "= \n<echo>" → "= \n"
-  text = text.replace(/(=[ \t]*\n)[^\n]*/g, "$1")
+  // Format A: strip echoed parameter value on next line ONLY if it's not a parameter or comment line.
+  // ADT sometimes echoes the value on the next line: "param = \necho_value\n"
+  // But we must NOT strip lines that are new parameters (contain "=") or comments (start with *)
+  text = text.replace(/=[ \t]*\n([^\n]*)/g, (match, nextLine) => {
+    const trimmed = nextLine.trim()
+    // Keep the next line if it's a parameter, comment, closing paren, dot, or keyword
+    if (trimmed === "" || /[=*().]/.test(trimmed) || /^(EXPORTING|IMPORTING|CHANGING|RECEIVING)\b/i.test(trimmed)) {
+      return match // keep as-is
+    }
+    // Strip the echoed value
+    return "= \n"
+  })
 
   // Format B: strip inline ABAP comment after "=": "= <spaces>" comment" → "= "
-  text = text.replace(/(=)\s*"[^\n]*/g, "$1 ")
+  // Use [ \t]* instead of \s* to avoid crossing newlines
+  text = text.replace(/(=)[ \t]*"[^\n]*/g, "$1 ")
 
-  log("[convertToSnippet] cleanedText:", JSON.stringify(text))
+  // Fix commented-out optional parameter lines: in ABAP, * must be in column 1
+  text = text.replace(/^[ \t]+\*/gm, "*")
+
 
   let tabIndex = 0
   // Replace all empty assignment slots (value is only whitespace before ")", ",", or end-of-line)
@@ -191,10 +246,9 @@ function convertToSnippet(fullText: string, identifier: string): string | undefi
     }
   )
 
-  log("[convertToSnippet] tabIndex:", tabIndex, "snippet:", JSON.stringify(snippet?.substring(0, 300)))
 
-  if (tabIndex === 0) return undefined
-
+  // Even with no tab stops (all params optional/commented), return the snippet
+  // so the full method signature template is inserted
   return snippet + `\$0`
 }
 
@@ -216,12 +270,23 @@ export async function signatureHelp(params: SignatureHelpParams): Promise<Signat
     if (!callMatch) return undefined
 
     // Use codeCompletionElement to get parameter info at the method call position
-    const elementInfo = await co.client.statelessClone.codeCompletionElement(
+    // Try at method name position first, then fall back to paren position
+    let elementInfo = await co.client.statelessClone.codeCompletionElement(
       obj.mainUrl,
       source,
       callMatch.line + 1,
       callMatch.column
     )
+  
+    // If that returned nothing useful, try at the opening paren position
+    if (!elementInfo || typeof elementInfo === "string" || !elementInfo.components?.length) {
+      elementInfo = await co.client.statelessClone.codeCompletionElement(
+        obj.mainUrl,
+        source,
+        callMatch.line + 1,
+        callMatch.parenColumn + 1
+      )
+    }
 
     if (!elementInfo || typeof elementInfo === "string") return undefined
 
@@ -278,10 +343,15 @@ function findMethodCall(lines: string[], pos: Position): MethodCallContext | und
             const methodName = fullName.includes("=>") || fullName.includes("->")
               ? fullName.split(/[=-]>/)[1] || fullName
               : fullName
-            const nameStart = textBefore.length - nameMatch[0].trimStart().length
+            // Point column at the method name part, not the class prefix
+            // ADT needs the position of the method identifier to return parameter info
+            const fullNameStart = textBefore.length - nameMatch[0].trimStart().length
+            const methodNameStart = fullName.includes("=>") || fullName.includes("->")
+              ? fullNameStart + fullName.lastIndexOf(">") + 1
+              : fullNameStart
             return {
               line: l,
-              column: nameStart + 1, // 1-based for ADT
+              column: methodNameStart + 1, // 1-based for ADT
               methodName,
               parenLine: l,
               parenColumn: c
@@ -313,13 +383,12 @@ function buildSignatureFromElementInfo(
 
   for (const comp of info.components) {
     // Each component represents a parameter group or individual parameter
-    if (comp.entries && comp.entries.length > 0) {
-      const paramType = comp.entries.find(e => e.key === "type")?.value || ""
-      const paramDir = comp["adtcore:type"] || ""
-      const label = `${comp["adtcore:name"]}${paramType ? " TYPE " + paramType : ""}`
-      paramLabels.push(label)
-      params.push(ParameterInformation.create(comp["adtcore:name"], paramDir))
-    }
+    if (!comp["adtcore:name"]) continue
+    const paramType = comp.entries?.find(e => e.key === "type")?.value || ""
+    const paramDir = comp["adtcore:type"] || ""
+    const label = `${comp["adtcore:name"]}${paramType ? " TYPE " + paramType : ""}`
+    paramLabels.push(label)
+    params.push(ParameterInformation.create(comp["adtcore:name"], paramDir))
   }
 
   if (params.length === 0) return undefined
