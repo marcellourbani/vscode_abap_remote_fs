@@ -1,35 +1,39 @@
-jest.mock("vscode", () => {
-  const Uri = {
-    parse: jest.fn((s: string) => ({
-      scheme: s.startsWith("adt") ? "adt" : "file",
-      authority: s.split("://")[1]?.split("/")[0] ?? "",
-      path: "/" + (s.split("://")[1]?.split("/").slice(1).join("/") ?? ""),
-      toString: () => s
-    }))
-  }
-  return {
-    Uri,
-    workspace: {
-      openTextDocument: jest.fn(),
-      updateWorkspaceFolders: jest.fn(),
-      workspaceFolders: []
-    },
-    commands: {
-      executeCommand: jest.fn()
-    },
-    ProgressLocation: { Notification: 15, Window: 10 },
-    Range: jest.fn(),
-    FileChangeType: { Changed: 1 },
-    extensions: {
-      getExtension: jest.fn()
-    },
-    debug: {
-      breakpoints: [],
-      startDebugging: jest.fn()
-    },
-    SourceBreakpoint: class {}
-  }
-}, { virtual: true })
+jest.mock(
+  "vscode",
+  () => {
+    const Uri = {
+      parse: jest.fn((s: string) => ({
+        scheme: s.startsWith("adt") ? "adt" : "file",
+        authority: s.split("://")[1]?.split("/")[0] ?? "",
+        path: "/" + (s.split("://")[1]?.split("/").slice(1).join("/") ?? ""),
+        toString: () => s
+      }))
+    }
+    return {
+      Uri,
+      workspace: {
+        openTextDocument: jest.fn(),
+        updateWorkspaceFolders: jest.fn(),
+        workspaceFolders: []
+      },
+      commands: {
+        executeCommand: jest.fn()
+      },
+      ProgressLocation: { Notification: 15, Window: 10 },
+      Range: jest.fn(),
+      FileChangeType: { Changed: 1 },
+      extensions: {
+        getExtension: jest.fn()
+      },
+      debug: {
+        breakpoints: [],
+        startDebugging: jest.fn()
+      },
+      SourceBreakpoint: class {}
+    }
+  },
+  { virtual: true }
+)
 
 jest.mock("../services/funMessenger", () => ({
   funWindow: {
@@ -40,7 +44,8 @@ jest.mock("../services/funMessenger", () => ({
     showInformationMessage: jest.fn(),
     withProgress: jest.fn(),
     showInputBox: jest.fn(),
-    showQuickPick: jest.fn()
+    showQuickPick: jest.fn(),
+    createOutputChannel: jest.fn()
   }
 }))
 
@@ -187,12 +192,7 @@ jest.mock("../services/sapSystemInfo", () => ({
   clearSystemInfoCache: jest.fn()
 }))
 
-import {
-  currentUri,
-  currentAbapFile,
-  currentEditState,
-  openObject
-} from "./commands"
+import { currentUri, currentAbapFile, currentEditState, openObject } from "./commands"
 import { funWindow as window } from "../services/funMessenger"
 import { ADTSCHEME, getRoot } from "../adt/conections"
 import { uriAbapFile } from "../adt/operations/AdtObjectFinder"
@@ -292,15 +292,13 @@ describe("openObject", () => {
 
     await openObject("dev100", "/sap/bc/adt/programs/programs/ztest")
 
-    expect(mockRoot.findByAdtUri).toHaveBeenCalledWith(
-      "/sap/bc/adt/programs/programs/ztest",
-      true
-    )
+    expect(mockRoot.findByAdtUri).toHaveBeenCalledWith("/sap/bc/adt/programs/programs/ztest", true)
   })
 
   test("tries to refresh and re-find when object not found initially", async () => {
     const mockRoot = {
-      findByAdtUri: jest.fn()
+      findByAdtUri: jest
+        .fn()
         .mockResolvedValueOnce(null)
         .mockResolvedValueOnce({ file: {}, path: "/ztest" })
     }
@@ -345,9 +343,9 @@ describe("openObject", () => {
     mockGetRoot.mockReturnValue(mockRoot as any)
     ;(vscode.commands.executeCommand as jest.Mock).mockResolvedValue(undefined)
 
-    await expect(
-      openObject("dev100", "/sap/bc/adt/programs/programs/nonexistent")
-    ).rejects.toThrow("Object not found in workspace")
+    await expect(openObject("dev100", "/sap/bc/adt/programs/programs/nonexistent")).rejects.toThrow(
+      "Object not found in workspace"
+    )
   })
 
   test("opens text document for ABAP file", async () => {
