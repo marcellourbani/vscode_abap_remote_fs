@@ -10,7 +10,7 @@ import {
 } from "vscode-languageserver"
 import { connection, log, setCommLogActive } from "./clientManager"
 import { syntaxCheck } from "./syntaxcheck"
-import { completion, completionResolve, signatureHelp } from "./completion"
+import { completion, completionResolve, signatureHelp, codeCompletionFullRequest } from "./completion"
 import { findDefinition, findReferences, cancelSearch } from "./references"
 import { documentSymbols } from "./symbols"
 import { formatDocument } from "./documentformatter"
@@ -136,6 +136,7 @@ connection.onRequest(Methods.triggerSyntaxCheck, (uri: string) => {
   const doc = documents.get(uri)
   if (doc) syntaxCheck(doc)
 })
+connection.onRequest(Methods.codeCompletionFull, codeCompletionFullRequest)
 connection.onNotification(Methods.commLogToggle, setCommLogActive)
 
 documents.listen(connection)
