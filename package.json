@@ -1,8 +1,8 @@
 {
   "name": "vscode-abap-remote-fs",
   "displayName": "ABAP remote filesystem",
-  "description": "Work on your ABAP code straight from the server",
-  "version": "2.2.2",
+  "description": "VS Code-based Agentic AI Platform for SAP ABAP Development",
+  "version": "2.4.4",
   "publisher": "murbani",
   "publishConfig": {
     "access": "restricted",
@@ -44,7 +44,8 @@
     "onFileSystem:adt",
     "onCommand:abapfs.connect",
     "onCommand:abapfs.connectionManager",
-    "onCommand:abapfs.runInEmbeddedGui"
+    "onCommand:abapfs.runInEmbeddedGui",
+    "onNotebook:sap-data-workbook"
   ],
   "main": "./client/dist/extension",
   "scripts": {
@@ -78,6 +79,25 @@
     "webpack-cli": "^5.0.1"
   },
   "contributes": {
+    "languages": [
+      {
+        "id": "abap-sql",
+        "aliases": [
+          "ABAP SQL"
+        ]
+      }
+    ],
+    "notebooks": [
+      {
+        "type": "sap-data-workbook",
+        "displayName": "SAP Data Workbook",
+        "selector": [
+          {
+            "filenamePattern": "*.sapwb"
+          }
+        ]
+      }
+    ],
     "chatSkills": [
       {
         "path": "./client/dist/media/skills/clean-abap/SKILL.md"
@@ -99,6 +119,12 @@
       },
       {
         "path": "./client/dist/media/skills/sap-customizing/SKILL.md"
+      },
+      {
+        "path": "./client/dist/media/skills/sap-data-workbook/SKILL.md"
+      },
+      {
+        "path": "./client/dist/media/skills/adt-api-discovery/SKILL.md"
       }
     ],
     "breakpoints": [
@@ -231,6 +257,15 @@
       ],
       "abapfs": [
         {
+          "type": "webview",
+          "id": "abapfs.views.objectSearch",
+          "name": "Object Search",
+          "when": "abapfs:extensionActive",
+          "contextualTitle": "Object Search",
+          "visibility": "collapsed",
+          "icon": "$(search)"
+        },
+        {
           "id": "abapfs.transports",
           "name": "Transports",
           "when": "abapfs:extensionActive",
@@ -265,6 +300,13 @@
           "name": "Feed Inbox",
           "when": "abapfs:extensionActive",
           "icon": "$(inbox)"
+        },
+        {
+          "type": "webview",
+          "id": "abapfs.rapGenerator",
+          "name": "RAP Generator",
+          "when": "abapfs:extensionActive",
+          "icon": "$(wand)"
         },
         {
           "id": "abapfs.objectProperty",
@@ -414,9 +456,11 @@
                 "SFBF",
                 "SFBS",
                 "JOBD",
-                "NROB"
+                "NROB",
+                "ENHO",
+                "SUSO"
               ],
-              "description": "Optional: Specific object type to avoid ambiguity. FUNC=Function Modules, CLAS=Classes, TABL=Database Tables, PROG=Reports/Programs, INTF=Interfaces, DTEL=Data Elements, DDLS=CDS Views, DOMA=Domains, TTYP=Table Types/Structures, ENQU=Lock Objects, MSAG=Message Classes, FUGR=Function Groups, DEVC=Packages, TRAN=Transactions, VIEW=Views, SICF=ICF Services, WDYN=Web Dynpro, SPRX=Proxies, XSLT=XSLT Programs, TRANSFORMATIONS=Simple Transformations, SUSH=Authorization Objects, SUSC=Authorization Object Classes, PINF=Package Interfaces, ENHC=Enhancement Implementations, ENHS=Enhancement Spots, BADI=BAdI Definitions, BADII=BAdI Implementations, SAMC=AMC Classes, SAPC=APC Classes, SFSW=Switch Framework, SFBF=Business Functions, SFBS=Business Function Sets, JOBD=Job Definitions, NROB=Number Range Objects"
+              "description": "Optional: Specific object type to avoid ambiguity."
             },
             "methodName": {
               "type": "string",
@@ -511,6 +555,48 @@
             "objectName": {
               "type": "string",
               "description": "Name of the ABAP object to get information about"
+            },
+            "objectType": {
+              "type": "string",
+              "enum": [
+                "FUNC",
+                "CLAS",
+                "TABL",
+                "PROG",
+                "INTF",
+                "DTEL",
+                "DDLS",
+                "DOMA",
+                "TTYP",
+                "ENQU",
+                "MSAG",
+                "FUGR",
+                "DEVC",
+                "TRAN",
+                "VIEW",
+                "SICF",
+                "WDYN",
+                "SPRX",
+                "XSLT",
+                "TRANSFORMATIONS",
+                "SUSH",
+                "SUSC",
+                "PINF",
+                "ENHC",
+                "ENHS",
+                "BADI",
+                "BADII",
+                "SAMC",
+                "SAPC",
+                "SFSW",
+                "SFBF",
+                "SFBS",
+                "JOBD",
+                "NROB",
+                "ENHO",
+                "SUSO"
+              ],
+              "description": "Optional: Narrow search to a specific object type to resolve ambiguity when the same name exists in multiple types (e.g., MATNR exists as both DTEL and DOMA). FUNC=Function Modules, CLAS=Classes, TABL=Database Tables, PROG=Reports/Programs, INTF=Interfaces, DTEL=Data Elements, DDLS=CDS Views, DOMA=Domains, TTYP=Table Types, ENQU=Lock Objects, MSAG=Message Classes, FUGR=Function Groups, DEVC=Packages, TRAN=Transactions, VIEW=Views, SICF=ICF Services, WDYN=Web Dynpro, SPRX=Proxies, XSLT=XSLT Programs, TRANSFORMATIONS=Simple Transformations, SUSH=Authorization Objects, SUSC=Authorization Object Classes, PINF=Package Interfaces, ENHC=Enhancement Implementations, ENHS=Enhancement Spots, BADI=BAdI Definitions, BADII=BAdI Implementations, SAMC=AMC Classes, SAPC=APC Classes, SFSW=Switch Framework, SFBF=Business Functions, SFBS=Business Function Sets, JOBD=Job Definitions, NROB=Number Range Objects, ENHO=Enhancement Implementations, SUSO=Authorization Object Sets"
             },
             "connectionId": {
               "type": "string",
@@ -2309,6 +2395,30 @@
         ]
       },
       {
+        "name": "adt_discovery_export",
+        "displayName": "ADT Discovery Export",
+        "modelDescription": "Export the full ADT discovery tree from a connected SAP system into markdown files in the workspace. Creates a folder with: README.md (overview), workspaces.md (all discovery workspaces, collections, template links), core-discovery.md (core discovery entries), res-app-classes.md (all RES_APP classes from SEOMETAREL). Use these files together with the adt-api-discovery skill and other ABAP tools to investigate any ADT REST API endpoint — trace handler classes, read Simple Transformations, and determine request/response XML schemas.",
+        "canBeReferencedInPrompt": true,
+        "toolReferenceName": "adt-discovery",
+        "icon": "$(telescope)",
+        "userDescription": "Export ADT API discovery data to markdown files for AI-assisted endpoint investigation",
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "connectionId": {
+              "type": "string",
+              "description": "SAP connection ID (e.g., 'dev100')"
+            }
+          },
+          "required": [
+            "connectionId"
+          ]
+        },
+        "tags": [
+          "abap-fs"
+        ]
+      },
+      {
         "name": "abap_activate",
         "displayName": "Activate ABAP objects - equivalent of compiling",
         "canBeReferencedInPrompt": true,
@@ -2346,6 +2456,18 @@
         "title": "Replay Debug Recording",
         "category": "ABAP Replay",
         "icon": "$(debug-reverse-continue)"
+      },
+      {
+        "command": "abapfs.compressRecording",
+        "title": "Compress Debug Recording",
+        "category": "ABAP Replay",
+        "icon": "$(file-zip)"
+      },
+      {
+        "command": "abapfs.decompressRecording",
+        "title": "Decompress Debug Recording",
+        "category": "ABAP Replay",
+        "icon": "$(file)"
       },
       {
         "command": "abapfs.openHeartbeatJson",
@@ -2460,6 +2582,12 @@
         "category": "ABAP FS"
       },
       {
+        "command": "abapfs.createInEditor",
+        "title": "ABAP Create object (editor)",
+        "category": "ABAP FS",
+        "icon": "$(package)"
+      },
+      {
         "command": "abapfs.createtestinclude",
         "title": "ABAP Create test class include",
         "category": "ABAP FS"
@@ -2496,6 +2624,16 @@
         "category": "ABAP FS"
       },
       {
+        "command": "abapfs.newAbapNotebook",
+        "title": "New SAP Data Workbook",
+        "category": "ABAP FS"
+      },
+      {
+        "command": "abapfs.notebookSetCellMaxRows",
+        "title": "SAP Data Workbook: Set Cell Row Limit",
+        "category": "ABAP FS"
+      },
+      {
         "command": "abapfs.tableContents",
         "title": "Show table contents",
         "group": "navigation@-10",
@@ -2512,6 +2650,15 @@
         "icon": {
           "dark": "client/images/activate_single.svg",
           "light": "client/images/activate_single.svg"
+        }
+      },
+      {
+        "command": "abapfs.activateMultiple",
+        "title": "Load unactivated objects",
+        "category": "ABAP FS",
+        "icon": {
+          "dark": "client/images/activate_multi.svg",
+          "light": "client/images/activate_multi.svg"
         }
       },
       {
@@ -2894,6 +3041,18 @@
         "category": "ABAP FS"
       },
       {
+        "command": "abapfs.rapGenFromEditor",
+        "title": "Generate RAP UI Service from Table...",
+        "icon": "$(wand)",
+        "category": "ABAP FS"
+      },
+      {
+        "command": "abapfs.publishServiceBinding",
+        "title": "Publish Service Binding",
+        "icon": "$(cloud-upload)",
+        "category": "ABAP FS"
+      },
+      {
         "command": "abapfs.refreshTraces",
         "title": "Refresh",
         "icon": "$(refresh)"
@@ -2983,7 +3142,19 @@
           "command": "abapfs.connect"
         },
         {
-           "command": "abapfs.abapReplSetupGuide"
+          "command": "abapfs.rapGenFromEditor"
+        },
+        {
+          "command": "abapfs.publishServiceBinding"
+        },
+        {
+          "command": "abapfs.compressRecording"
+        },
+        {
+          "command": "abapfs.decompressRecording"
+        },
+        {
+          "command": "abapfs.abapReplSetupGuide"
         },
         {
           "command": "abapfs.startRecording"
@@ -3054,6 +3225,10 @@
           "when": "abapfs:extensionActive"
         },
         {
+          "command": "abapfs.createInEditor",
+          "when": "abapfs:extensionActive"
+        },
+        {
           "command": "abapfs.unittest",
           "when": "abapfs:extensionActive"
         },
@@ -3072,6 +3247,10 @@
         {
           "command": "abapfs.activate",
           "when": "hideCommands.never"
+        },
+        {
+          "command": "abapfs.activateMultiple",
+          "when": "abapfs:extensionActive"
         },
         {
           "command": "abapfs.showBlame",
@@ -3440,6 +3619,11 @@
       ],
       "view/title": [
         {
+          "command": "abapfs.createInEditor",
+          "group": "navigation@3",
+          "when": "view == workbench.explorer.fileView && abapfs:extensionActive"
+        },
+        {
           "command": "abapfs.atcRefresh",
           "group": "navigation",
           "when": "view == abapfs.atcFinds"
@@ -3496,6 +3680,11 @@
         }
       ],
       "editor/title": [
+        {
+          "command": "abapfs.activateMultiple",
+          "group": "navigation@0.4",
+          "when": "resourceScheme == adt && editorLangId =~ /abap|cds|xml/ && !inChat"
+        },
         {
           "command": "abapfs.showBlame",
           "group": "navigation@0.5",
@@ -3653,6 +3842,16 @@
           "group": "2_workspace@1"
         },
         {
+          "command": "abapfs.createInEditor",
+          "when": "resourceScheme == adt",
+          "group": "2_workspace@1"
+        },
+        {
+          "command": "abapfs.activateMultiple",
+          "when": "resourceScheme == adt",
+          "group": "1_activation@2"
+        },
+        {
           "command": "abapfs.addfavourite",
           "when": "resourceScheme == adt",
           "group": "2_workspace@1"
@@ -3681,6 +3880,11 @@
           "group": "1_activation@1"
         },
         {
+          "command": "abapfs.activateMultiple",
+          "when": "resourceScheme == adt && editorLangId =~ /abap|cds|xml/",
+          "group": "1_activation@2"
+        },
+        {
           "command": "abapfs.manageTextElements",
           "when": "resourceScheme == adt && editorLangId == abap",
           "group": "2_analysis@1"
@@ -3699,6 +3903,11 @@
           "command": "abapfs.cleanCode",
           "when": "resourceScheme == adt && editorLangId == abap && abapfs.cleanerAvailable",
           "group": "3_codeTools@1"
+        },
+        {
+          "command": "abapfs.rapGenFromEditor",
+          "when": "resourceScheme == adt && abapfs:activeEditorIsTable",
+          "group": "4_rapGenerator@1"
         }
       ]
     },
@@ -3891,8 +4100,8 @@
         },
         "abapfs.sapGui.useIntegratedBrowser": {
           "type": "boolean",
-          "default": false,
-          "markdownDescription": "Use VS Code's integrated browser instead of the embedded WebView for SAP GUI. Enable this if the embedded WebView shows a blank page (e.g. due to SAP clickjacking frame protection)."
+          "default": true,
+          "markdownDescription": "Use VS Code's integrated browser instead of the embedded WebView for SAP GUI. Disable this if you prefer Webviews but Webviews can show a blank page (e.g. due to SAP clickjacking frame protection)."
         },
         "abapfs.copilot.professionalNotifications": {
           "type": "boolean",
@@ -4037,6 +4246,20 @@
             "type": "string"
           }
         },
+        "abapfs.blame.renderMode": {
+          "type": "string",
+          "default": "gitlens",
+          "scope": "application",
+          "enum": [
+            "classic",
+            "gitlens"
+          ],
+          "enumDescriptions": [
+            "Use the existing ABAP FS blame layout with annotations aligned after the code.",
+            "Use a GitLens-inspired fixed blame lane before the code with grouped blame blocks."
+          ],
+          "description": "Choose how file blame annotations are rendered in the editor. This setting is global and applies across all workspaces."
+        },
         "abapfs.heartbeat.enabled": {
           "type": "boolean",
           "default": false,
@@ -4180,6 +4403,62 @@
         }
       }
     },
+    "colors": [
+      {
+        "id": "abapfs.blameGutterBackgroundColor",
+        "description": "Specifies the background color of the ABAP FS GitLens-style blame annotations.",
+        "defaults": {
+          "dark": "#FFFFFF13",
+          "light": "#0000000C",
+          "highContrast": "#FFFFFF13"
+        }
+      },
+      {
+        "id": "abapfs.blameGutterForegroundColor",
+        "description": "Specifies the foreground color of the ABAP FS GitLens-style blame annotations.",
+        "defaults": {
+          "dark": "#BEBEBE",
+          "light": "#747474",
+          "highContrast": "#BEBEBE"
+        }
+      },
+      {
+        "id": "abapfs.blameLineHighlightBackgroundColor",
+        "description": "Specifies the background color of the associated line highlights in ABAP FS blame annotations.",
+        "defaults": {
+          "dark": "#00BCF233",
+          "light": "#00BCF233",
+          "highContrast": "#00BCF233"
+        }
+      },
+      {
+        "id": "abapfs.blameLineHighlightOverviewRulerColor",
+        "description": "Specifies the overview ruler color of the associated line highlights in ABAP FS blame annotations.",
+        "defaults": {
+          "dark": "#00BCF299",
+          "light": "#00BCF299",
+          "highContrast": "#00BCF299"
+        }
+      },
+      {
+        "id": "abapfs.blameTrailingLineBackgroundColor",
+        "description": "Specifies the background color of the selected-line blame annotation in ABAP FS GitLens mode.",
+        "defaults": {
+          "dark": "#00000000",
+          "light": "#00000000",
+          "highContrast": "#00000000"
+        }
+      },
+      {
+        "id": "abapfs.blameTrailingLineForegroundColor",
+        "description": "Specifies the foreground color of the selected-line blame annotation in ABAP FS GitLens mode.",
+        "defaults": {
+          "dark": "#99999959",
+          "light": "#99999959",
+          "highContrast": "#99999999"
+        }
+      }
+    ],
     "configurationDefaults": {
       "[abap]": {
         "editor.formatOnSave": true,
@@ -4188,7 +4467,478 @@
       "editor.hover.delay": 700,
       "editor.hover.above": false,
       "files.refactoring.autoSave": false
-    }
+    },
+    "walkthroughs": [
+      {
+        "id": "abapfs.gettingStarted",
+        "title": "Getting Started with ABAP FS",
+        "description": "New here? Connect to SAP, find and edit objects, activate code — all from VS Code.",
+        "steps": [
+          {
+            "id": "abapfs.walkthrough.skipGettingStarted",
+            "title": "Already Familiar? Skip Ahead",
+            "description": "Already know the basics? Jump to another walkthrough:\n\n[ABAP FS Views & Tools](command:workbench.action.openWalkthrough?%22murbani.vscode-abap-remote-fs%23abapfs.viewsAndTools%22) — Transports, debugging, ATC, unit tests, dumps, traces, version history.\n\n[AI Tools for ABAP](command:workbench.action.openWalkthrough?%22murbani.vscode-abap-remote-fs%23abapfs.aiTools%22) — Use Copilot or any AI client with your SAP system.\n\n[Advanced & Power Features](command:workbench.action.openWalkthrough?%22murbani.vscode-abap-remote-fs%23abapfs.advanced%22) — MCP server, debug recording, subagents, heartbeat.\n\nReopen anytime: **Help** menu → **Welcome**.",
+            "media": {
+              "markdown": "client/dist/media/walkthrough/w1-skip.md"
+            },
+            "completionEvents": []
+          },
+          {
+            "id": "abapfs.walkthrough.connectionManager",
+            "title": "Set Up Your SAP Connection",
+            "description": "ABAP FS connects directly to your SAP system — no Eclipse needed.\n\n> **Ctrl/Cmd+Shift+P** opens the **Command Palette** — VS Code's search bar for all commands. You'll use it everywhere.\n\nPress **Ctrl/Cmd+Shift+P** → select **ABAP FS: Connection Manager** to add your first system.\n\nPassword is requested on first connect, not here.\n\n[Open Connection Manager](command:abapfs.connectionManager)",
+            "media": {
+              "markdown": "client/dist/media/walkthrough/w1-connection-manager.md"
+            },
+            "completionEvents": [
+              "onCommand:abapfs.connectionManager"
+            ]
+          },
+          {
+            "id": "abapfs.walkthrough.connect",
+            "title": "Connect to Your System",
+            "description": "Press **Ctrl/Cmd+Shift+P** → select **ABAP FS: Connect to an ABAP system**. Pick a system if you have more than one.\n\nPassword is prompted on first connection and stored securely. Once connected, SAP packages appear in the Explorer. Multiple systems appear simultaneously.\n\n[Connect to SAP](command:abapfs.connect)",
+            "media": {
+              "markdown": "client/dist/media/walkthrough/w1-connected-explorer.md"
+            },
+            "completionEvents": [
+              "onCommand:abapfs.connect"
+            ]
+          },
+          {
+            "id": "abapfs.walkthrough.search",
+            "title": "Search for ABAP Objects",
+            "description": "Press **Ctrl/Cmd+Shift+P** → select **ABAP FS: ABAP Search for object** (shortcut: **Ctrl+Alt+;**).\n\nFirst time: pick object types to search. Then type 2+ characters with wildcards (e.g. `Z*ORDER*`, `CL_BCS*`).\n\n[Search for an Object](command:abapfs.search)",
+            "media": {
+              "markdown": "client/dist/media/walkthrough/w1-search.md"
+            },
+            "completionEvents": [
+              "onCommand:abapfs.search"
+            ]
+          },
+          {
+            "id": "abapfs.walkthrough.navigate",
+            "title": "Navigate Your Code",
+            "description": "ABAP objects open with full syntax highlighting. Use **Ctrl+Click** (Go to Definition), **Alt+F12** (Peek), **Shift+F12** (References). Hover over any symbol for rich metadata.",
+            "media": {
+              "markdown": "client/dist/media/walkthrough/w1-navigation.md"
+            }
+          },
+          {
+            "id": "abapfs.walkthrough.activate",
+            "title": "Activate Your Code",
+            "description": "Press **Ctrl/Cmd+Shift+P** → select **Activate current object** (shortcut: **Alt+Shift+F3**), or click the **Activate icon** in the toolbar.\n\nSaves first, prompts for transport if needed, shows related inactive objects to activate together.",
+            "media": {
+              "markdown": "client/dist/media/walkthrough/w1-activate.md"
+            },
+            "completionEvents": [
+              "onCommand:abapfs.activate"
+            ]
+          },
+          {
+            "id": "abapfs.walkthrough.tableQuery",
+            "title": "Data Browser",
+            "description": "Open a **table, view, or CDS view** in the editor, then click the **database icon** in the toolbar.\n\nTwo modes: **Search mode** (field filters, operators, column selection) and **SQL Mode** (raw SELECT). Read-only.",
+            "media": {
+              "markdown": "client/dist/media/walkthrough/w1-table-query.md"
+            },
+            "completionEvents": [
+              "onCommand:abapfs.selectDB"
+            ]
+          },
+          {
+            "id": "abapfs.walkthrough.runTransaction",
+            "title": "Run a Transaction",
+            "description": "Press **Ctrl/Cmd+Shift+P** → select **ABAP FS: Run SAP Transaction**. Type a transaction code (3+ characters). No file needs to be open.\n\nDefault: opens in embedded WebGUI inside VS Code. Configurable per system.\n\n[Run a Transaction](command:abapfs.runTransaction)",
+            "media": {
+              "markdown": "client/dist/media/walkthrough/w1-run-transaction.md"
+            },
+            "completionEvents": [
+              "onCommand:abapfs.runTransaction"
+            ]
+          },
+          {
+            "id": "abapfs.walkthrough.sapGuiButtons",
+            "title": "SAP GUI Toolbar Buttons",
+            "description": "Three SAP GUI buttons appear in the editor toolbar when an ABAP file is open:\n\n- **Play circle** — Embedded WebGUI (**Ctrl+Shift+F7**)\n- **Desktop** — Native SAP GUI (**Ctrl+Shift+F5**)\n- **Globe** — Browser WebGUI (**Ctrl+Shift+F6**)\n\nOpens the current object in SAP GUI.",
+            "media": {
+              "markdown": "client/dist/media/walkthrough/w1-sap-gui-buttons.md"
+            },
+            "completionEvents": [
+              "onCommand:abapfs.runInEmbeddedGui"
+            ]
+          }
+        ]
+      },
+      {
+        "id": "abapfs.viewsAndTools",
+        "title": "ABAP FS Views & Tools",
+        "description": "Transports, debugging, code quality, dumps, traces, and version history — all inside VS Code.",
+        "steps": [
+          {
+            "id": "abapfs.walkthrough.skipViewsTools",
+            "title": "Already Know the Views? Skip Ahead",
+            "description": "Already familiar with the views and tools? Jump ahead:\n\n[AI Tools for ABAP](command:workbench.action.openWalkthrough?%22murbani.vscode-abap-remote-fs%23abapfs.aiTools%22) — Use Copilot or any AI client with your SAP system.\n\n[Advanced & Power Features](command:workbench.action.openWalkthrough?%22murbani.vscode-abap-remote-fs%23abapfs.advanced%22) — MCP server, debug recording, subagents, heartbeat.\n\nNew here? Start with [Getting Started](command:workbench.action.openWalkthrough?%22murbani.vscode-abap-remote-fs%23abapfs.gettingStarted%22).\n\nReopen anytime: **Help** menu → **Welcome**.",
+            "media": {
+              "markdown": "client/dist/media/walkthrough/w2-skip.md"
+            },
+            "completionEvents": []
+          },
+          {
+            "id": "abapfs.walkthrough.transports",
+            "title": "Transport Management",
+            "description": "Click the **Abap FS** icon in the Activity Bar (far left). Expand the **Transports** view to see your open transport requests.\n\nRelease, diff, copy numbers, run ATC on transports. Transports are selected/created when saving to non-local packages.\n\n[Open Transports](command:abapfs.refreshtransports)",
+            "media": {
+              "markdown": "client/dist/media/walkthrough/w2-transports.md"
+            },
+            "completionEvents": [
+              "onView:abapfs.transports"
+            ]
+          },
+          {
+            "id": "abapfs.walkthrough.debugging",
+            "title": "ABAP Debugging",
+            "description": "1. Open an ABAP object, set breakpoints (click gutter)\n2. **Ctrl+Shift+D** → select **ABAP on server** → pick system if multiple → **F5** to attach\n3. Trigger your program from SAP GUI, embedded GUI, or another session",
+            "media": {
+              "markdown": "client/dist/media/walkthrough/w2-debugging.md"
+            },
+            "completionEvents": [
+              "onContext:debugType == abap"
+            ]
+          },
+          {
+            "id": "abapfs.walkthrough.atc",
+            "title": "ATC — Code Quality Checks",
+            "description": "With an ABAP object open, press **Ctrl/Cmd+Shift+P** → select **ABAP FS: Run ABAP Test cockpit** (shortcut: **Ctrl+Shift+F2**).\n\nResults: inline squiggles + **ATC Finds** view in the Abap FS panel.",
+            "media": {
+              "markdown": "client/dist/media/walkthrough/w2-atc.md"
+            },
+            "completionEvents": [
+              "onCommand:abapfs.atcChecks"
+            ]
+          },
+          {
+            "id": "abapfs.walkthrough.unitTests",
+            "title": "ABAP Unit Tests",
+            "description": "With a class or program open, press **Ctrl/Cmd+Shift+P** → select **ABAP FS: Run ABAP Unit Tests** (shortcut: **Ctrl+Shift+F11**).\n\nResults in VS Code's Testing panel.",
+            "media": {
+              "markdown": "client/dist/media/walkthrough/w2-unit-tests.md"
+            },
+            "completionEvents": [
+              "onCommand:abapfs.unittest"
+            ]
+          },
+          {
+            "id": "abapfs.walkthrough.abapCleaner",
+            "title": "ABAP Cleaner — Code Formatting",
+            "description": "**First time:** **Ctrl/Cmd+Shift+P** → select **ABAP FS: Setup ABAP Cleaner Integration**. Browse for `abap-cleanerc.exe` (note the **c**) or download from GitHub.\n\n**After setup:** Click the **ruler icon** in the toolbar, or shortcut **Ctrl+Shift+Alt+F**.\n\n[Set Up ABAP Cleaner](command:abapfs.setupCleaner)",
+            "media": {
+              "markdown": "client/dist/media/walkthrough/w2-abap-cleaner.md"
+            },
+            "completionEvents": [
+              "onCommand:abapfs.setupCleaner",
+              "onCommand:abapfs.cleanCode"
+            ]
+          },
+          {
+            "id": "abapfs.walkthrough.dumps",
+            "title": "Runtime Error Dumps",
+            "description": "Open the **Abap FS** panel → expand **Dumps** view. Click any dump for full details. Like **ST22** inside VS Code.",
+            "media": {
+              "markdown": "client/dist/media/walkthrough/w2-dumps.md"
+            },
+            "completionEvents": [
+              "onView:abapfs.dumps"
+            ]
+          },
+          {
+            "id": "abapfs.walkthrough.traces",
+            "title": "Performance Traces",
+            "description": "Open the **Abap FS** panel → expand **Traces** view. Create trace configurations, start/stop runs, view execution statistics. Like **SAT/SE30** inside VS Code.",
+            "media": {
+              "markdown": "client/dist/media/walkthrough/w2-traces.md"
+            },
+            "completionEvents": [
+              "onView:abapfs.traces"
+            ]
+          },
+          {
+            "id": "abapfs.walkthrough.blame",
+            "title": "Blame Gutter & Version History",
+            "description": "Click the **eye icon** in the editor toolbar to toggle blame on/off (or **Ctrl/Cmd+Shift+P** → **ABAP FS: Show Blame**, shortcut **Ctrl+Alt+B**).\n\nChoose between the original inline layout and a GitLens-inspired fixed blame lane with the **ABAP FS: Blame Render Mode** setting. Hover annotations still show author, date, and transport. Revision CodeLens above objects remains available for version comparison.",
+            "media": {
+              "markdown": "client/dist/media/walkthrough/w2-blame.md"
+            },
+            "completionEvents": [
+              "onCommand:abapfs.showBlame"
+            ]
+          }
+        ]
+      },
+      {
+        "id": "abapfs.aiTools",
+        "title": "AI Tools for ABAP",
+        "description": "Use AI to search, read, query, analyze, and visualize your SAP system — with GitHub Copilot or any MCP-compatible AI client.",
+        "steps": [
+          {
+            "id": "abapfs.walkthrough.skipAiTools",
+            "title": "Already Using AI Tools? Skip Ahead",
+            "description": "Already familiar with the AI tools? Jump ahead:\n\n[Advanced & Power Features](command:workbench.action.openWalkthrough?%22murbani.vscode-abap-remote-fs%23abapfs.advanced%22) — MCP server, debug recording, subagents, heartbeat.\n\nOr go back to [Getting Started](command:workbench.action.openWalkthrough?%22murbani.vscode-abap-remote-fs%23abapfs.gettingStarted%22) or [Views & Tools](command:workbench.action.openWalkthrough?%22murbani.vscode-abap-remote-fs%23abapfs.viewsAndTools%22).\n\nReopen anytime: **Help** menu → **Welcome**.",
+            "media": {
+              "markdown": "client/dist/media/walkthrough/w3-skip.md"
+            },
+            "completionEvents": []
+          },
+          {
+            "id": "abapfs.walkthrough.aiIntro",
+            "title": "Set Up AI Access",
+            "description": "**Copilot:** Click the Copilot icon in the sidebar → switch to **Agent** mode → ask a question. Allow tool calls once, per session, or always.\n\n**Other AI clients:** See MCP Server in the Advanced walkthrough.\n\n**Multiple systems:** Tell the AI which system. Works across systems in one chat.\n\n[Open Copilot Chat](command:workbench.action.chat.open)",
+            "media": {
+              "markdown": "client/dist/media/walkthrough/w3-ai-intro.md"
+            },
+            "completionEvents": [
+              "onCommand:workbench.action.chat.open"
+            ]
+          },
+          {
+            "id": "abapfs.walkthrough.aiSearch",
+            "title": "Search & Read Objects",
+            "description": "Ask the AI to find and read ABAP objects. It searches, reads source code, and explains in plain language.\n\n[Try it: Find report RBDMANI2 and explain what it does](command:abapfs.openChatWithQuery?%22Find%20report%20RBDMANI2%20and%20explain%20what%20it%20does%22)",
+            "media": {
+              "markdown": "client/dist/media/walkthrough/w3-ai-search.md"
+            },
+            "completionEvents": [
+              "onContext:abapfs:toolUsed:search"
+            ]
+          },
+          {
+            "id": "abapfs.walkthrough.aiWhereUsed",
+            "title": "Where-Used Analysis",
+            "description": "Ask the AI to find all callers of a function, method, or object.\n\n[Try it: Where is IDOC_INBOUND_ASYNCHRONOUS called from?](command:abapfs.openChatWithQuery?%22Where%20is%20function%20module%20IDOC_INBOUND_ASYNCHRONOUS%20called%20from%3F%22)",
+            "media": {
+              "markdown": "client/dist/media/walkthrough/w3-ai-where-used.md"
+            },
+            "completionEvents": [
+              "onContext:abapfs:toolUsed:whereUsed"
+            ]
+          },
+          {
+            "id": "abapfs.walkthrough.aiVersionHistory",
+            "title": "Version History via AI",
+            "description": "Ask the AI to show version history, diffs, and who changed what. Use your own custom objects (Z*/Y*) for best results.\n\n[Try it: Show version history](command:abapfs.openChatWithQuery?%22Show%20the%20version%20history%20for%20report%20RBDAPP01%22)",
+            "media": {
+              "markdown": "client/dist/media/walkthrough/w3-ai-version-history.md"
+            },
+            "completionEvents": [
+              "onContext:abapfs:toolUsed:versionHistory"
+            ]
+          },
+          {
+            "id": "abapfs.walkthrough.aiDataQuery",
+            "title": "Query SAP Tables",
+            "description": "Ask the AI to query SAP tables. Two modes: **internal** (text results for analysis) and **UI** (interactive grid).\n\n[Try it: Show last 10 entries in EDIDC](command:abapfs.openChatWithQuery?%22Show%20me%20the%20last%2010%20entries%20in%20table%20EDIDC%20sorted%20by%20CREDAT%20descending%22)",
+            "media": {
+              "markdown": "client/dist/media/walkthrough/w3-ai-data-query.md"
+            },
+            "completionEvents": [
+              "onContext:abapfs:toolUsed:dataQuery"
+            ]
+          },
+          {
+            "id": "abapfs.walkthrough.aiAtc",
+            "title": "Run ATC via AI",
+            "description": "Ask the AI to run ATC checks and explain findings. Use your own custom objects (Z*/Y*) for meaningful results.\n\n[Try it: Run ATC on RBDAPP01](command:abapfs.openChatWithQuery?%22Run%20ATC%20on%20report%20RBDAPP01%20and%20explain%20the%20findings%22)",
+            "media": {
+              "markdown": "client/dist/media/walkthrough/w3-ai-atc.md"
+            },
+            "completionEvents": [
+              "onContext:abapfs:toolUsed:atc"
+            ]
+          },
+          {
+            "id": "abapfs.walkthrough.aiUnitTests",
+            "title": "Run Unit Tests via AI",
+            "description": "Ask the AI to run ABAP Unit tests and explain results.\n\n[Try it: Run unit tests for CL_ABAP_UNIT_ASSERT](command:abapfs.openChatWithQuery?%22Run%20unit%20tests%20for%20CL_ABAP_UNIT_ASSERT%20and%20show%20results%22)",
+            "media": {
+              "markdown": "client/dist/media/walkthrough/w3-ai-unit-tests.md"
+            },
+            "completionEvents": [
+              "onContext:abapfs:toolUsed:unitTests"
+            ]
+          },
+          {
+            "id": "abapfs.walkthrough.aiTransports",
+            "title": "View Transports via AI",
+            "description": "Ask the AI to list and inspect your transports. It can view and compare, but cannot release or modify.\n\n[Try it: Show my open transport requests](command:abapfs.openChatWithQuery?%22Show%20my%20open%20transport%20requests%22)",
+            "media": {
+              "markdown": "client/dist/media/walkthrough/w3-ai-transports.md"
+            },
+            "completionEvents": [
+              "onContext:abapfs:toolUsed:transports"
+            ]
+          },
+          {
+            "id": "abapfs.walkthrough.aiDumpsTraces",
+            "title": "Dump & Trace Analysis",
+            "description": "Ask the AI to analyze dumps (ST22 data) and performance traces. It explains root causes and suggests fixes.\n\n[Try it: Analyze recent dumps](command:abapfs.openChatWithQuery?%22Analyze%20the%20most%20recent%20dumps%20in%20this%20system%22)",
+            "media": {
+              "markdown": "client/dist/media/walkthrough/w3-ai-dumps.md"
+            },
+            "completionEvents": [
+              "onContext:abapfs:toolUsed:dumpAnalysis"
+            ]
+          },
+          {
+            "id": "abapfs.walkthrough.aiDiagrams",
+            "title": "Generate Diagrams from Code",
+            "description": "Ask the AI to generate Mermaid diagrams from your code — class, sequence, ER, flowchart, and more.\n\n[Try it: Create a class diagram for CL_ABAP_TYPEDESCR](command:abapfs.openChatWithQuery?%22Create%20a%20class%20diagram%20showing%20CL_ABAP_TYPEDESCR%20and%20its%20subclasses%22)",
+            "media": {
+              "markdown": "client/dist/media/walkthrough/w3-ai-diagrams.md"
+            },
+            "completionEvents": [
+              "onContext:abapfs:toolUsed:mermaid"
+            ]
+          },
+          {
+            "id": "abapfs.walkthrough.aiSkills",
+            "title": "AI Skills — Built-in Expertise",
+            "description": "7 built-in AI skills for ABAP development. Type **/** in Copilot Chat to see them, or ask a relevant question — skills activate automatically.",
+            "media": {
+              "markdown": "client/dist/media/walkthrough/w3-ai-skills.md"
+            },
+            "completionEvents": [
+              "onCommand:workbench.action.chat.open"
+            ]
+          },
+          {
+            "id": "abapfs.walkthrough.aiAskAboutAbapFs",
+            "title": "Ask AI About ABAP FS Itself",
+            "description": "The AI has access to full ABAP FS documentation and settings. Ask it anything about how ABAP FS works.\n\n[Ask about ABAP FS features](command:abapfs.openChatWithQuery?%22What%20features%20does%20ABAP%20FS%20have%3F%20Give%20me%20an%20overview%22)",
+            "media": {
+              "markdown": "client/dist/media/walkthrough/w3-ai-ask-abapfs.md"
+            },
+            "completionEvents": [
+              "onContext:abapfs:toolUsed:documentation"
+            ]
+          }
+        ]
+      },
+      {
+        "id": "abapfs.advanced",
+        "title": "Advanced & Power Features",
+        "description": "MCP server, debug recording, dependency graphs, feeds, cross-system comparison, subagents, and heartbeat.",
+        "steps": [
+          {
+            "id": "abapfs.walkthrough.skipAdvanced",
+            "title": "Other Walkthroughs",
+            "description": "Looking for something else?\n\n[Getting Started with ABAP FS](command:workbench.action.openWalkthrough?%22murbani.vscode-abap-remote-fs%23abapfs.gettingStarted%22) — Connect, search, edit, activate, browse data.\n\n[ABAP FS Views & Tools](command:workbench.action.openWalkthrough?%22murbani.vscode-abap-remote-fs%23abapfs.viewsAndTools%22) — Transports, debugging, ATC, unit tests, dumps, traces.\n\n[AI Tools for ABAP](command:workbench.action.openWalkthrough?%22murbani.vscode-abap-remote-fs%23abapfs.aiTools%22) — Use Copilot or any AI client with your SAP system.\n\nReopen anytime: **Help** menu → **Welcome**.",
+            "media": {
+              "markdown": "client/dist/media/walkthrough/w4-skip.md"
+            },
+            "completionEvents": []
+          },
+          {
+            "id": "abapfs.walkthrough.mcpServer",
+            "title": "MCP Server for External AI Clients",
+            "description": "**Not using Copilot?** Enable the built-in MCP server to connect Cursor, Claude, Windsurf, etc. Same 39 tools.\n\nWorkspace Settings → `abapfs.mcpServer.autoStart` → port `4847`. Set API key for security.",
+            "media": {
+              "markdown": "client/dist/media/walkthrough/w4-mcp-setup.md"
+            },
+            "completionEvents": [
+              "onSettingChanged:abapfs.mcpServer.autoStart"
+            ]
+          },
+          {
+            "id": "abapfs.walkthrough.debugReplay",
+            "title": "Record & Replay Debug Sessions",
+            "description": "Record a debug session, replay offline — even without SAP. Share `.abaprecord` files with teammates.\n\n**Record:** While debugging → **Ctrl/Cmd+Shift+P** → **ABAP Replay: Start Debug Recording**\n**Replay:** **Ctrl/Cmd+Shift+P** → **ABAP Replay: Replay Debug Recording**\n\n[Replay a Recording](command:abapfs.replaySession)",
+            "media": {
+              "markdown": "client/dist/media/walkthrough/w4-debug-replay.md"
+            },
+            "completionEvents": [
+              "onCommand:abapfs.replaySession"
+            ]
+          },
+          {
+            "id": "abapfs.walkthrough.dependencyGraph",
+            "title": "Dependency Graph",
+            "description": "Open an ABAP object → right-click → **Visualize Dependency Graph**. Shows a where-used graph.\n\nCursor on a symbol → who uses that symbol. Cursor on empty space → who references the entire object.",
+            "media": {
+              "markdown": "client/dist/media/walkthrough/w4-dependency-graph.md"
+            },
+            "completionEvents": [
+              "onCommand:abapfs.visualizeDependencyGraph"
+            ]
+          },
+          {
+            "id": "abapfs.walkthrough.feedInbox",
+            "title": "Feed Inbox & Notifications",
+            "description": "**Ctrl/Cmd+Shift+P** → select **ABAP FS: Configure Feeds**. Pick feeds per system. View entries in the **Feed Inbox** (Abap FS panel).\n\n[Configure Feeds](command:abapfs.configureFeeds)",
+            "media": {
+              "markdown": "client/dist/media/walkthrough/w4-feed-inbox.md"
+            },
+            "completionEvents": [
+              "onCommand:abapfs.configureFeeds"
+            ]
+          },
+          {
+            "id": "abapfs.walkthrough.textElements",
+            "title": "Text Elements Manager",
+            "description": "With an ABAP program/class open, **Ctrl/Cmd+Shift+P** → select **ABAP FS: Text Elements Manager**, or right-click → **Manage Text Elements**.\n\nEdit selection texts, text symbols, message class texts. Falls back to SAP GUI on older systems.",
+            "media": {
+              "markdown": "client/dist/media/walkthrough/w4-text-elements.md"
+            },
+            "completionEvents": [
+              "onCommand:abapfs.manageTextElements"
+            ]
+          },
+          {
+            "id": "abapfs.walkthrough.compareSystem",
+            "title": "Cross-System Comparison",
+            "description": "With an ABAP object open, right-click → **Compare With Other System**, or **Ctrl/Cmd+Shift+P** → select **ABAP FS: ABAP Compare With another SAP System**.\n\nCompare across any connected systems. Requires at least two.",
+            "media": {
+              "markdown": "client/dist/media/walkthrough/w4-compare-system.md"
+            },
+            "completionEvents": [
+              "onCommand:abapfs.compareWithOtherSystem"
+            ]
+          },
+          {
+            "id": "abapfs.walkthrough.commLog",
+            "title": "ADT Communication Log",
+            "description": "**Ctrl/Cmd+Shift+P** → select **ABAP FS: Activate ADT Communication Log**. Pick a system if multiple connected. Logs every HTTP request/response.\n\n[Activate Comm Log](command:abapfs.activateCommLog)",
+            "media": {
+              "markdown": "client/dist/media/walkthrough/w4-comm-log.md"
+            },
+            "completionEvents": [
+              "onCommand:abapfs.activateCommLog"
+            ]
+          },
+          {
+            "id": "abapfs.walkthrough.subagents",
+            "title": "AI Subagents",
+            "description": "Delegate tasks to cheaper AI models. Ask Copilot: *\"Set up ABAP subagents\"* — it configures models for all 13 agents, then enables them.\n\n> Cannot enable until all agents have models assigned.",
+            "media": {
+              "markdown": "client/dist/media/walkthrough/w4-subagents.md"
+            },
+            "completionEvents": [
+              "onContext:abapfs:toolUsed:subagents"
+            ]
+          },
+          {
+            "id": "abapfs.walkthrough.heartbeat",
+            "title": "Heartbeat Monitoring",
+            "description": "Autonomous AI agent running tasks on a schedule. Ask Copilot: *\"Set up heartbeat monitoring\"* — it configures a model and adds tasks.\n\nCategories: transport, dump, job, idoc, performance, reminder, custom.\n\n[Open Heartbeat Config](command:abapfs.openHeartbeatJson)",
+            "media": {
+              "markdown": "client/dist/media/walkthrough/w4-heartbeat.md"
+            },
+            "completionEvents": [
+              "onContext:abapfs:toolUsed:heartbeat"
+            ]
+          }
+        ]
+      }
+    ]
   },
   "dependencies": {
     "@changesets/cli": "^2.28.1",

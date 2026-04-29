@@ -23,6 +23,7 @@ import { randomUUID } from "crypto"
 import { z } from "zod"
 import { log } from "../lib"
 import { toolRegistry } from "./lm-tools/toolRegistry"
+import { funWindow as window } from "./funMessenger"
 
 // ============================================================================
 // TYPES
@@ -65,7 +66,7 @@ function getMcpSettings(): { autoStart: boolean; port: number; apiKey: string } 
  */
 let apiKeyWarningLogged = false
 
-function validateApiKey(req: http.IncomingMessage): boolean {
+export function validateApiKey(req: http.IncomingMessage): boolean {
   const settings = getMcpSettings()
 
   // If no API key is configured, allow access (for backwards compatibility)
@@ -107,7 +108,7 @@ function validateApiKey(req: http.IncomingMessage): boolean {
  * Convert a JSON Schema property to a Zod schema.
  * This is a simplified converter that handles the most common cases.
  */
-function jsonSchemaPropertyToZod(
+export function jsonSchemaPropertyToZod(
   propSchema: Record<string, unknown>,
   isRequired: boolean
 ): z.ZodTypeAny {
@@ -177,7 +178,7 @@ function jsonSchemaPropertyToZod(
 /**
  * Convert a full JSON Schema (with properties) to a Zod object schema.
  */
-function jsonSchemaToZod(
+export function jsonSchemaToZod(
   jsonSchema: Record<string, unknown> | undefined
 ): Record<string, z.ZodTypeAny> {
   if (!jsonSchema) {
@@ -521,7 +522,7 @@ async function startHttpServer(): Promise<void> {
     state.isRunning = true
 
     // Show notification to user
-    vscode.window.showInformationMessage(
+    window.showInformationMessage(
       `🔌 ABAP MCP Server running on port ${actualPort}. External AI clients can connect to http://localhost:${actualPort}/mcp`
     )
   } catch (error) {
@@ -573,7 +574,7 @@ export async function initializeMcpServer(context: vscode.ExtensionContext): Pro
     })
   } catch (error) {
     // Don't throw - MCP server is optional, extension should still work
-    vscode.window.showWarningMessage(
+    window.showWarningMessage(
       `MCP Server failed to start: ${error instanceof Error ? error.message : String(error)}`
     )
   }

@@ -2,7 +2,7 @@ import { TransportsProvider } from "./views/transports"
 import { FavouritesProvider } from "./views/favourites"
 import { atcProvider, registerSCIDecorator } from "./views/abaptestcockpit"
 import { FsProvider } from "./fs/FsProvider"
-import { window, workspace, ExtensionContext, languages, commands } from "vscode"
+import { workspace, ExtensionContext, languages, commands } from "vscode"
 import {
   activeTextEditorChangedListener,
   documentChangedListener,
@@ -33,9 +33,10 @@ import { FeedPollingService } from "./services/feeds/feedPollingService"
 import { initializeFeedInboxProvider } from "./views/feeds/feedInboxView"
 import { setContext } from "./context"
 import { AbapHoverProviderV2 } from "./providers/hoverProvider"
+import { AbapDocumentSymbolProvider } from "./providers/abapDocumentSymbolProvider"
 import { registerAllTools } from "./services/lm-tools"
 import { registerCleanerCommands, setupCleanerContextMonitoring } from "./services/cleanerCommands"
-import { TelemetryService } from "./services/telemetry"
+import { TelemetryService, logTelemetry } from "./services/telemetry"
 import { AppInsightsService } from "./services/appInsightsService"
 import { MermaidWebviewManager } from "./services/MermaidWebviewManager"
 import { DiagramWebviewManager } from "./services/DiagramWebviewManager"
@@ -48,11 +49,17 @@ import { initializeEnhancementDecorations } from "./views/enhancementDecorations
 import { initializeBlameGutter } from "./views/blameGutter"
 import { clearSystemInfoCache } from "./services/sapSystemInfo"
 import { HeartbeatWatchlist } from "./services/heartbeat/heartbeatWatchlist"
+import { RapGeneratorPanel } from "./views/rapGenerator/rapGeneratorView"
 import { visualizeDependencyGraph } from "./services/dependencyGraph"
 import { checkUpgradeNotification } from "./services/upgradeNotification"
 import { registerAbapRepl } from "./repl"
+import { registerAbapNotebooks } from "./notebooks"
+import { showWelcomeWalkthrough } from "./services/walkthroughService"
 import { disableVirtualToolGrouping } from "./services/virtualToolsFix"
 import { ObjectPropertyProvider } from "./views/objectProperties"
+import { ObjectSearchViewProvider } from "./views/objectSearchView"
+import { funWindow as window } from "./services/funMessenger"
+import { initializeReviewPrompt } from "./services/reviewPrompt"
 
 // Import commands to ensure @command decorators are executed
 import "./commands"
@@ -107,6 +114,9 @@ export async function activate(ctx: ExtensionContext): Promise<AbapFsApi> {
     const adtSelector = { language: "abap", scheme: ADTSCHEME }
 
     sub.push(languages.registerHoverProvider([abapSelector, adtSelector], hoverProvider))
+    sub.push(
+      languages.registerDocumentSymbolProvider([adtSelector], new AbapDocumentSymbolProvider())
+    )
 
     log("✅ ABAP Hover Provider ready to whisper sweet nothings about your code")
 
@@ -135,6 +145,9 @@ export async function activate(ctx: ExtensionContext): Promise<AbapFsApi> {
 
     // Initialize ABAP REPL
     registerAbapRepl(context)
+
+    // Initialize SAP Data Workbook (.sapwb)
+    registerAbapNotebooks(context)
 
     // Initialize MCP Server for external AI clients (Cursor, etc.)
     await initializeMcpServer(context)
@@ -175,6 +188,7 @@ export async function activate(ctx: ExtensionContext): Promise<AbapFsApi> {
   sub.push(window.registerTreeDataProvider("abapfs.dumps", dumpProvider))
   sub.push(window.registerTreeDataProvider("abapfs.atcFinds", atcProvider))
   sub.push(window.registerTreeDataProvider("abapfs.traces", tracesProvider))
+  sub.push(window.registerWebviewViewProvider(RapGeneratorPanel.viewType, RapGeneratorPanel.get()))
   const objectPropertyView = window.createTreeView("abapfs.objectProperty", {
     treeDataProvider: objectPropertyProvider,
     showCollapseAll: false,
@@ -265,6 +279,12 @@ export async function activate(ctx: ExtensionContext): Promise<AbapFsApi> {
 
   sub.push(window.registerWebviewViewProvider(ATCDocumentation.viewType, ATCDocumentation.get()))
   sub.push(window.registerWebviewViewProvider(CommLogPanel.viewType, CommLogPanel.get()))
+  sub.push(
+    window.registerWebviewViewProvider(
+      ObjectSearchViewProvider.viewType,
+      ObjectSearchViewProvider.get()
+    )
+  )
 
   sub.push(MessagesProvider.register(context))
   sub.push(HttpProvider.register(context))
@@ -281,7 +301,10 @@ export async function activate(ctx: ExtensionContext): Promise<AbapFsApi> {
   // 📊 Register Dependency Graph Command
   try {
     context.subscriptions.push(
-      commands.registerCommand("abapfs.visualizeDependencyGraph", visualizeDependencyGraph)
+      commands.registerCommand("abapfs.visualizeDependencyGraph", () => {
+        logTelemetry("command_dependency_graph_called")
+        return visualizeDependencyGraph()
+      })
     )
     log("📊 Dependency graph ready to expose your spaghetti architecture 🍝")
   } catch (error) {
@@ -292,6 +315,7 @@ export async function activate(ctx: ExtensionContext): Promise<AbapFsApi> {
   try {
     context.subscriptions.push(
       commands.registerCommand("abapfs.openHeartbeatJson", async () => {
+        logTelemetry("command_open_heartbeat_json_called")
         const filePath = HeartbeatWatchlist.getFilePath()
         if (filePath) {
           const doc = await workspace.openTextDocument(filePath)
@@ -329,8 +353,28 @@ export async function activate(ctx: ExtensionContext): Promise<AbapFsApi> {
   }
   registerChatTools(context)
 
+  // Walkthrough helper: open Copilot chat with a pre-filled query
+  sub.push(
+    commands.registerCommand("abapfs.openChatWithQuery", (query: string) => {
+      commands.executeCommand("workbench.action.chat.open", {
+        query,
+        isPartialQuery: true
+      })
+    })
+  )
+
   // Check for v1 → v2 upgrade and show notification + status bar hint
   checkUpgradeNotification(context)
+
+  // Show Getting Started walkthrough on first install
+  showWelcomeWalkthrough(context)
+
+  // Initialize review prompt (rate on Marketplace after sustained usage)
+  try {
+    initializeReviewPrompt(context)
+  } catch {
+    // Non-critical — never break extension activation
+  }
 
   const elapsed = new Date().getTime() - startTime
   log.debug(`Activated,pid=${process.pid}, activation time(ms):${elapsed}`)

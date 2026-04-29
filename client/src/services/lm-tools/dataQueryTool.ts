@@ -9,6 +9,7 @@ import { logTelemetry } from "../telemetry"
 import { WebviewManager, RowRange, SortColumn, ColumnFilter } from "../webviewManager"
 import { getClient } from "../../adt/conections"
 import { getSAPSystemInfo } from "../sapSystemInfo"
+import { funWindow as window } from "../funMessenger"
 
 // ============================================================================
 // INTERFACE
@@ -387,7 +388,7 @@ export class ExecuteDataQueryTool implements vscode.LanguageModelTool<IExecuteDa
 
       const sqlPreview = sql.length > 100 ? sql.substring(0, 100) + "..." : sql
 
-      const choice = await vscode.window.showWarningMessage(
+      const choice = await window.showWarningMessage(
         `⚠️ PRODUCTION SYSTEM DETECTED\n\n` +
           `Copilot wants to run SQL on: ${clientInfo}\n\n` +
           `Query: ${sqlPreview}`,

@@ -15,7 +15,8 @@ This document provides a comprehensive reference for all ABAP FS extension setti
 7. [AI Subagents](#7-ai-subagents)
 8. [Heartbeat Service](#8-heartbeat-service)
 9. [Feed Subscriptions](#9-feed-subscriptions)
-10. [Editor Defaults](#10-editor-defaults)
+10. [Blame Annotations](#10-blame-annotations)
+11. [Editor Defaults](#11-editor-defaults)
 
 ---
 
@@ -172,7 +173,7 @@ The MCP (Model Context Protocol) server allows external AI tools like Cursor, Cl
 
 | Property | Type | Default | Scope | Description |
 |----------|------|---------|-------|-------------|
-| `useIntegratedBrowser` | boolean | `false` | resource | Use VS Code's integrated browser (Simple Browser) instead of the embedded WebView for SAP GUI. Enable this if the embedded WebView shows a blank page due to SAP clickjacking frame protection. |
+| `useIntegratedBrowser` | boolean | `true` | resource | Use VS Code's integrated browser (Simple Browser) instead of the embedded WebView for SAP GUI. Enable this if the embedded WebView shows a blank page due to SAP clickjacking frame protection. Enabled by default |
 
 When enabled, all embedded SAP GUI actions (toolbar button, command palette, Run Transaction) will open in VS Code's Simple Browser instead of a webview iframe. This avoids clickjacking restrictions that some SAP systems enforce.
 
@@ -386,7 +387,30 @@ ADT feed subscriptions for monitoring SAP system events (transports, dumps, etc.
 
 ---
 
-## 10. Editor Defaults
+## 10. Blame Annotations
+
+GitLens-style file blame annotations can be shown in two layouts. The render mode setting is global-only, so changing it in user settings affects every workspace.
+
+### `abapfs.blame.renderMode`
+
+| Property | Type | Default | Scope | Description |
+|----------|------|---------|-------|-------------|
+| `renderMode` | enum | `"gitlens"` | application | Controls how file blame annotations are rendered. `classic` keeps the original inline-after-code layout. `gitlens` uses a fixed GitLens-style blame lane before the code. |
+
+**Allowed Values:**
+- `classic` - Existing ABAP FS blame layout with annotations aligned after the code
+- `gitlens` - GitLens-style fixed blame lane before the code with grouped blocks and heatmap edge coloring
+
+**Example:**
+```json
+{
+  "abapfs.blame.renderMode": "gitlens"
+}
+```
+
+---
+
+## 11. Editor Defaults
 
 ABAP FS sets recommended editor defaults for ABAP files:
 
@@ -479,6 +503,7 @@ These are automatically applied but can be overridden in user settings.
 | `ABAP FS: Disconnect` | Disconnect from all SAP systems |
 | `ABAP FS: Configure Feeds` | Configure ADT feed subscriptions |
 | `ABAP FS: Search` | Search for ABAP objects |
+| `ABAP FS: Show Blame` | Toggle file blame annotations for the active ABAP editor |
 | `ABAP FS: Run in GUI` | Open current object in SAP GUI |
 | `ABAP FS: Run in Embedded GUI` | Open transaction in embedded WebGUI |
 

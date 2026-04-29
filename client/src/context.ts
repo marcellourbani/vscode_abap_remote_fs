@@ -7,7 +7,6 @@ export type AbapFsContexts =
   | "abapfs:atcdoc:navigation:back"
   | "abapfs:atcdoc:navigation:next"
   | "abapfs:extensionActive"
-  | "abapfs:extensionActive"
   | "abapfs:showTableContentIcon"
   | "abapfs:enableLeftPrevRev"
   | "abapfs:enableLeftNextRev"
@@ -15,6 +14,7 @@ export type AbapFsContexts =
   | "abapfs:enableRightNextRev"
   | "abapfs:blameActive"
   | "abapfs:blameAvailable"
+  | "abapfs:activeEditorIsTable"
 
 export const setContext = (key: AbapFsContexts, value: unknown) =>
   commands.executeCommand("setContext", key, value)

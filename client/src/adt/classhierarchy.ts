@@ -8,7 +8,6 @@ import {
   Range,
   Uri,
   EventEmitter,
-  window,
   QuickPickItem,
   ProgressLocation
 } from "vscode"
@@ -16,6 +15,7 @@ import { asyncCache, cache } from "../lib"
 import { ADTClient } from "abap-adt-api"
 import { getClient, ADTSCHEME } from "./conections"
 import { findAbapObject } from "./operations/AdtObjectFinder"
+import { funWindow as window } from "../services/funMessenger"
 
 const ok = (type: string, name: string) => `${type.toUpperCase()} ${name.toUpperCase()}`
 

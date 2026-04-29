@@ -1,10 +1,16 @@
-import { ADTClient, isAdtError, inactiveObjectsInResults } from "abap-adt-api"
-import { Uri, EventEmitter } from "vscode"
+import {
+  ADTClient,
+  isAdtError,
+  inactiveObjectsInResults,
+  InactiveObjectRecord,
+  InactiveObjectElement
+} from "abap-adt-api"
+import { Uri, EventEmitter, QuickPickItemKind } from "vscode"
 import { AbapObject } from "abapobject"
 import { getClient } from "../conections"
 import { IncludeProvider, IncludeService } from "../includes"
 import { isDefined, channel } from "../../lib"
-import { session_types } from "abap-adt-api"
+import { funWindow as window } from "../../services/funMessenger"
 
 // Log activation errors to ABAP FS output channel
 const logError = (message: string) => {
@@ -44,53 +50,17 @@ export class AdtObjectActivator {
     return main?.["adtcore:uri"]
   }
 
-  private async getFallbackInactiveObjects(): Promise<any[]> {
-    try {
-      // Access the underlying HTTP client to make a raw request
-      const httpClient = (this.client as any).httpClient
-      if (!httpClient || !httpClient.request) {
-        return []
-      }
+  private async getAllInactiveEntries(): Promise<InactiveObjectRecord[]> {
+    const rawInactive = await this.client.inactiveObjects()
+    const tofilter = rawInactive.length
+      ? rawInactive
+      : await this.client.inactiveObjects("application/xml")
+    return tofilter.filter(r => r.object)
+  }
 
-      // Make raw HTTP request with generic XML accept header to get adtcore format
-      const response = await httpClient.request("/sap/bc/adt/activation/inactiveobjects", {
-        headers: { Accept: "application/xml" }
-      })
-
-      // Parse adtcore XML manually
-      const xmlText = response.body
-      if (!xmlText || !xmlText.includes("adtcore:objectReference")) {
-        return []
-      }
-
-      // Simple regex parsing for adtcore:objectReference elements
-      const objectRefRegex = /<adtcore:objectReference[^>]*\/>/g
-      const matches = xmlText.match(objectRefRegex) || []
-
-      const parsedObjects = matches
-        .map((match: string) => {
-          const uriMatch = match.match(/adtcore:uri="([^"]*)"/)
-          const typeMatch = match.match(/adtcore:type="([^"]*)"/)
-          const nameMatch = match.match(/adtcore:name="([^"]*)"/)
-          const parentUriMatch = match.match(/adtcore:parentUri="([^"]*)"/)
-
-          // Create object that matches the structure expected by the activate API
-          const obj = {
-            "adtcore:uri": uriMatch ? uriMatch[1] : "",
-            "adtcore:type": typeMatch ? typeMatch[1] : "",
-            "adtcore:name": nameMatch ? nameMatch[1] : "",
-            "adtcore:parentUri": parentUriMatch ? parentUriMatch[1] : undefined
-          }
-
-          // Only return valid objects with required fields
-          return obj["adtcore:uri"] && obj["adtcore:name"] ? obj : null
-        })
-        .filter((obj: unknown) => obj !== null) // Remove invalid objects
-
-      return parsedObjects
-    } catch (error) {
-      return []
-    }
+  private async getAllInactiveObjects() {
+    const entries = await this.getAllInactiveEntries()
+    return entries.map(entry => entry.object).filter(obj => obj)
   }
 
   private async siblings(object: AbapObject, uri: Uri) {
@@ -158,16 +128,7 @@ export class AdtObjectActivator {
 
   private async getRelatedInactiveObjects(object: AbapObject) {
     try {
-      const rawInactive = await this.client.inactiveObjects()
-      let allInactive = rawInactive.map(r => r.object).filter(obj => obj)
-
-      // If no inactive objects found, try fallback method for older SAP systems
-      if (allInactive.length === 0) {
-        const fallbackInactive = await this.getFallbackInactiveObjects()
-        if (fallbackInactive.length > 0) {
-          allInactive = fallbackInactive
-        }
-      }
+      const allInactive = await this.getAllInactiveObjects()
 
       // Find the main object if it's inactive
       const mainObjectInactive = allInactive.find(obj => obj && obj["adtcore:uri"] === object.path)
@@ -251,24 +212,251 @@ export class AdtObjectActivator {
     }
   }
 
-  private async showActivationSelectionDialog(objects: any[]) {
-    const { window } = require("vscode")
+  private transportId(uri?: string) {
+    return uri?.split("/").filter(Boolean).pop() || ""
+  }
 
-    // Create quick pick items
-    const items = objects.map(obj => ({
-      label: obj["adtcore:name"],
-      description: obj["adtcore:uri"],
-      picked: true, // Pre-select all objects
-      object: obj
-    }))
+  private transportGrouping(entry: InactiveObjectRecord) {
+    const transport = entry.transport
+    const task =
+      transport?.["adtcore:name"] ||
+      this.transportId(transport?.["adtcore:uri"]) ||
+      "Without transport"
+    const order = this.transportId(transport?.["adtcore:parentUri"]) || task
+    const description = `${transport?.["adtcore:description"] || ""}`.trim()
+    return {
+      key: `${order}::${task}`,
+      order,
+      task,
+      description
+    }
+  }
+
+  private formatGroupLabel(group: { order: string; task: string; description: string }) {
+    const transportLabel =
+      group.order === group.task ? group.task : `${group.order} / ${group.task}`
+    return group.description ? `${transportLabel}  ${group.description}` : transportLabel
+  }
+
+  private formatObjectDescription(
+    entry: InactiveObjectRecord,
+    group: { order: string; task: string; description: string }
+  ) {
+    const parts = [`${entry.object?.["adtcore:type"] || ""}`]
+    const transportLabel =
+      group.order === group.task ? group.task : `${group.order} / ${group.task}`
+    if (transportLabel) parts.push(transportLabel)
+    if (entry.object?.deleted) parts.push("deleted")
+    if (entry.object?.user) parts.push(entry.object.user)
+    return parts.filter(Boolean).join(" • ")
+  }
+
+  private formatObjectDetail(
+    entry: InactiveObjectRecord,
+    group: { order: string; task: string; description: string }
+  ) {
+    const parts = [group.description, entry.object?.["adtcore:uri"]]
+    return parts.filter(Boolean).join(" • ")
+  }
+
+  private async showActivationSelectionDialog(entries: InactiveObjectRecord[]) {
+    const groupedEntries = new Map<
+      string,
+      { order: string; task: string; description: string; entries: InactiveObjectRecord[] }
+    >()
+
+    for (const entry of entries) {
+      const group = this.transportGrouping(entry)
+      const existing = groupedEntries.get(group.key)
+      if (existing) {
+        existing.entries.push(entry)
+      } else {
+        groupedEntries.set(group.key, { ...group, entries: [entry] })
+      }
+    }
+
+    const items = [...groupedEntries.values()]
+      .sort((left, right) => {
+        const orderCompare = left.order.localeCompare(right.order)
+        if (orderCompare !== 0) return orderCompare
+        return left.task.localeCompare(right.task)
+      })
+      .flatMap(group => {
+        const objectItems = [...group.entries]
+          .sort((left, right) => {
+            const typeCompare = `${left?.object?.["adtcore:type"] || ""}`.localeCompare(
+              `${right?.object?.["adtcore:type"] || ""}`
+            )
+            if (typeCompare !== 0) return typeCompare
+            return `${left?.object?.["adtcore:name"] || ""}`.localeCompare(
+              `${right?.object?.["adtcore:name"] || ""}`
+            )
+          })
+          .map(entry => ({
+            label: `  ${entry.object?.["adtcore:name"]}`,
+            description: this.formatObjectDescription(entry, group),
+            detail: this.formatObjectDetail(entry, group),
+            picked: false,
+            entry
+          }))
+
+        return [
+          {
+            kind: QuickPickItemKind.Separator,
+            label: this.formatGroupLabel(group)
+          },
+          ...objectItems
+        ]
+      })
 
     const selected = await window.showQuickPick(items, {
       canPickMany: true,
-      placeHolder: "Select objects to activate",
-      title: "Multiple inactive objects found - Select which ones to activate"
+      matchOnDescription: true,
+      matchOnDetail: true,
+      placeHolder: "Select unactivated objects grouped by transport order",
+      title: `Select unactivated objects (${entries.length} found)`
     })
 
-    return selected ? selected.map((item: any) => item.object) : null
+    return selected ? selected.map((item: any) => item.entry.object) : null
+  }
+
+  private summarizeFailure(result: any, defaultObjectName: string) {
+    const normText = (v: any): string => {
+      if (Array.isArray(v)) return v.map(x => normText(x)).join(" ")
+      if (v === undefined || v === null) return ""
+      return `${v}`
+    }
+
+    type Msg = { text: string; href?: string; target: string }
+    const msgs: Msg[] = (result?.messages || [])
+      .map((m: any) => {
+        const textRaw = m.shortText || m.longText || m.message || m.msg || ""
+        const text = normText(textRaw).trim()
+        if (!text) return undefined
+        const href: string | undefined = m.href
+        let target = ""
+
+        if (href) {
+          const parts = href.split("/").filter(Boolean)
+          const sourceIdx = parts.indexOf("source")
+          if (sourceIdx > 0) {
+            target = parts[sourceIdx - 1] || ""
+          } else {
+            const hrefMatch = href.match(
+              /includes\/([^\/\?#]+)|programs\/([^\/\?#]+)|classes\/([^\/\?#]+)/i
+            )
+            if (hrefMatch) target = hrefMatch[1] || hrefMatch[2] || hrefMatch[3] || ""
+          }
+        }
+
+        if (!target && typeof m.objDescr === "string") {
+          const incMatch = m.objDescr.match(/Include\s+([^\s]+)/i)
+          if (incMatch) target = incMatch[1]
+        }
+
+        if (!target) target = defaultObjectName
+
+        return { text, href, target }
+      })
+      .filter(Boolean)
+
+    const grouped = new Map<string, Msg[]>()
+    for (const m of msgs) {
+      const arr = grouped.get(m.target) || []
+      arr.push(m)
+      grouped.set(m.target, arr)
+    }
+
+    const inactiveList = (result?.inactive || [])
+      .map((o: any) =>
+        `${normText(o["adtcore:type"]) || ""} ${normText(o["adtcore:name"]) || ""}`.trim()
+      )
+      .filter(Boolean)
+
+    const errorCount = msgs.length
+    const firstError = msgs[0]?.text || "Unknown error"
+    const firstObject = msgs[0]?.target || defaultObjectName
+    const summary = `Activation failed: ${errorCount} error${errorCount !== 1 ? "s" : ""} in ${firstObject}${errorCount > 1 ? ` (${firstError}...)` : ` (${firstError})`}`
+
+    logError(`❌ Activation failed for ${defaultObjectName}:`)
+    for (const [key, vals] of grouped.entries()) {
+      logError(`  📍 ${key}:`)
+      vals.forEach(v => {
+        logError(`      ${v.text}`)
+      })
+    }
+    if (inactiveList.length) logError(`  ⚠️ Inactive objects: ${inactiveList.join(", ")}`)
+
+    return { ok: false, summary }
+  }
+
+  public async activateMultiple(interactive = true): Promise<{
+    ok: boolean
+    summary?: string
+    availableCount?: number
+    selectedCount?: number
+    cancelled?: boolean
+  }> {
+    try {
+      const inactiveEntries = await this.getAllInactiveEntries()
+      const inactiveObjects = inactiveEntries.map(entry => entry.object).filter(obj => obj)
+
+      if (inactiveObjects.length === 0) {
+        return { ok: true, availableCount: 0, selectedCount: 0 }
+      }
+
+      const selectedObjects = interactive
+        ? await this.showActivationSelectionDialog(inactiveEntries)
+        : inactiveObjects
+
+      if (!selectedObjects) {
+        return {
+          ok: false,
+          cancelled: true,
+          summary: "Activation cancelled by user",
+          availableCount: inactiveObjects.length,
+          selectedCount: 0
+        }
+      }
+
+      if (selectedObjects.length === 0) {
+        return {
+          ok: false,
+          cancelled: true,
+          summary: "No objects selected for activation",
+          availableCount: inactiveObjects.length,
+          selectedCount: 0
+        }
+      }
+
+      const result = await this.client.activate(selectedObjects)
+      if (result?.success) {
+        return {
+          ok: true,
+          availableCount: inactiveObjects.length,
+          selectedCount: selectedObjects.length
+        }
+      }
+
+      return {
+        ...this.summarizeFailure(result, selectedObjects[0]?.["adtcore:name"] || "selection"),
+        availableCount: inactiveObjects.length,
+        selectedCount: selectedObjects.length
+      }
+    } catch (error) {
+      if (isAdtError(error)) {
+        const status = error.response?.status || error.type || "ADT error"
+        const body = error.response?.body || error.message || ""
+        const bodyText = typeof body === "string" ? body : JSON.stringify(body)
+        const trimmed = bodyText.length > 800 ? `${bodyText.slice(0, 800)}…` : bodyText
+        logError(`❌ Multiple activation ADT error status=${status} body=${trimmed}`)
+        return { ok: false, summary: `Activation failed (${status}): ${trimmed}` }
+      }
+
+      const errorMessage = (error as Error).message || String(error)
+      logError(`❌ Multiple activation error: ${errorMessage}`)
+      return { ok: false, summary: errorMessage }
+    }
   }
 
   private async tryActivate(object: AbapObject, uri: Uri, interactive: boolean) {
@@ -362,94 +550,13 @@ export class AdtObjectActivator {
         await inactive.loadStructure(true)
         return { ok: true }
       } else {
-        const normText = (v: any): string => {
-          if (Array.isArray(v)) return v.map(x => normText(x)).join(" ")
-          if (v === undefined || v === null) return ""
-          return `${v}`
-        }
-
-        type Msg = { text: string; href?: string; target: string }
-        const msgs: Msg[] = (result?.messages || [])
-          .map((m: any) => {
-            const textRaw = m.shortText || m.longText || m.message || m.msg || ""
-            const text = normText(textRaw).trim()
-            if (!text) return undefined as any
-            const href: string | undefined = m.href
-            let target = ""
-
-            // Extract target from href - get object name before /source/
-            if (href) {
-              const parts = href.split("/").filter(Boolean)
-              const sourceIdx = parts.indexOf("source")
-              if (sourceIdx > 0) {
-                target = parts[sourceIdx - 1] || ""
-              } else {
-                // Fallback: try regex match
-                const hrefMatch = href.match(
-                  /includes\/([^\/\?#]+)|programs\/([^\/\?#]+)|classes\/([^\/\?#]+)/i
-                )
-                if (hrefMatch) target = hrefMatch[1] || hrefMatch[2] || hrefMatch[3] || ""
-              }
-            }
-
-            // Fallback to objDescr
-            if (!target && typeof m.objDescr === "string") {
-              const incMatch = m.objDescr.match(/Include\s+([^\s]+)/i)
-              if (incMatch) target = incMatch[1]
-            }
-
-            // Last resort: use main object name
-            if (!target) target = object.name
-
-            return { text, href, target }
-          })
-          .filter(Boolean)
-
-        const grouped = new Map<string, Msg[]>()
-        for (const m of msgs) {
-          const arr = grouped.get(m.target) || []
-          arr.push(m)
-          grouped.set(m.target, arr)
-        }
-
-        const summaryLines: string[] = []
-        grouped.forEach((vals, key) => {
-          // Show first 3 errors, then count
-          const parts = vals.map(v => v.text).slice(0, 3)
-          const more = vals.length > 3 ? ` (+${vals.length - 3} more)` : ""
-          summaryLines.push(`${key}: ${parts.join("; ")}${more}`)
-        })
-
-        const inactiveList = (result?.inactive || [])
-          .map((o: any) =>
-            `${normText(o["adtcore:type"]) || ""} ${normText(o["adtcore:name"]) || ""}`.trim()
-          )
-          .filter(Boolean)
-
-        // Simplified summary - just show error count and first object with errors
-        const errorCount = msgs.length
-        const firstError = msgs[0]?.text || "Unknown error"
-        const firstObject = msgs[0]?.target || object.name
-        const summary = `Activation failed: ${errorCount} error${errorCount !== 1 ? "s" : ""} in ${firstObject}${errorCount > 1 ? ` (${firstError}...)` : ` (${firstError})`}`
-
-        // Log detailed activation errors to output channel
-        logError(`❌ Activation failed for ${object.name}:`)
-        for (const [key, vals] of grouped.entries()) {
-          logError(`  📍 ${key}:`)
-          vals.forEach(v => {
-            logError(`      ${v.text}`)
-          })
-        }
-        if (inactiveList.length) logError(`  ⚠️ Inactive objects: ${inactiveList.join(", ")}`)
-
-        // Return concise summary for UI
-        return { ok: false, summary }
+        return this.summarizeFailure(result, object.name)
       }
     } catch (error) {
       // Enhanced error handling: surface ADT response body/status when present
       if (isAdtError(error)) {
-        const status = (error as any).statusCode || (error as any).type || "ADT error"
-        const body = (error as any).response?.body || (error as any).message || ""
+        const status = error.response?.status || error.type || "ADT error"
+        const body = error.response?.body || error.message || ""
         const bodyText = typeof body === "string" ? body : JSON.stringify(body)
         const trimmed = bodyText.length > 800 ? `${bodyText.slice(0, 800)}…` : bodyText
         logError(`❌ Activation ADT error status=${status} body=${trimmed}`)

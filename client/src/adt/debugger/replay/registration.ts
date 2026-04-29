@@ -2,10 +2,11 @@ import { commands, debug, DebugConfigurationProviderTriggerKind, ExtensionContex
 import { ReplayAdapterFactory, ReplayConfigurationProvider, REPLAY_DEBUG_TYPE } from "./replayAdapterFactory"
 import { DEBUGTYPE } from "../abapConfigurationProvider"
 import { AbapDebugSession } from "../abapDebugSession"
-import { saveRecording, loadRecordingFromUri } from "./recordingIO"
+import { saveRecording, saveRecordingCompressed, loadRecordingFromUri, compressRecording, decompressRecording } from "./recordingIO"
 import { funWindow as window } from "../../../services/funMessenger"
 import { log } from "../../../lib"
 import { DebugListener } from "../debugListener"
+import { logTelemetry } from "../../../services/telemetry"
 
 /**
  * Registers the replay debugger adapter, configuration provider, and commands.
@@ -27,6 +28,8 @@ export function registerReplayDebugger(context: ExtensionContext) {
     commands.registerCommand("abapfs.startRecording", startRecordingCommand),
     commands.registerCommand("abapfs.stopRecording", stopRecordingCommand),
     commands.registerCommand("abapfs.replaySession", replaySessionCommand),
+    commands.registerCommand("abapfs.compressRecording", compressRecordingCommand),
+    commands.registerCommand("abapfs.decompressRecording", decompressRecordingCommand),
     // Safety net: auto-stop recording when ABAP debug session terminates
     // Primary auto-stop is in AbapDebugSession.logOut(), but disconnectRequest
     // may not always fire (e.g., VS Code force-closes the session)
@@ -45,6 +48,7 @@ export function registerReplayDebugger(context: ExtensionContext) {
 }
 
 async function startRecordingCommand() {
+  logTelemetry("command_start_recording_called")
   // Find the active ABAP debug session
   const session = debug.activeDebugSession
   if (!session || session.type !== DEBUGTYPE) {
@@ -75,6 +79,7 @@ async function startRecordingCommand() {
 }
 
 async function stopRecordingCommand() {
+  logTelemetry("command_stop_recording_called")
   const listener = findRecordingListener()
   if (!listener) {
     window.showInformationMessage("No active recording")
@@ -91,14 +96,18 @@ async function stopRecordingCommand() {
   const action = await window.showInformationMessage(
     `Recording complete: ${recording.totalSteps} steps. Save?`,
     "Save",
+    "Compress & Save",
     "Discard"
   )
   if (action === "Save") {
     await saveRecording(recording)
+  } else if (action === "Compress & Save") {
+    await saveRecordingCompressed(recording)
   }
 }
 
 async function replaySessionCommand(fileUri?: Uri) {
+  logTelemetry("command_replay_session_called")
   let recording
   if (fileUri) {
     recording = await loadRecordingFromUri(fileUri)
@@ -117,6 +126,16 @@ async function replaySessionCommand(fileUri?: Uri) {
   if (!started) {
     ReplayAdapterFactory.instance.clearPendingRecording()
   }
+}
+
+async function compressRecordingCommand() {
+  logTelemetry("command_compress_recording_called")
+  await compressRecording()
+}
+
+async function decompressRecordingCommand() {
+  logTelemetry("command_decompress_recording_called")
+  await decompressRecording()
 }
 
 /** Find the DebugListener that is currently recording (if any) */
@@ -144,10 +163,13 @@ async function autoStopRecording(listener: DebugListener) {
     const action = await window.showInformationMessage(
       `Debug session ended. Save recording (${recording.totalSteps} steps)?`,
       "Save",
+      "Compress & Save",
       "Discard"
     )
     if (action === "Save") {
       await saveRecording(recording)
+    } else if (action === "Compress & Save") {
+      await saveRecordingCompressed(recording)
     }
   } catch (e) {
     log(`autoStopRecording failed: ${e}`)
