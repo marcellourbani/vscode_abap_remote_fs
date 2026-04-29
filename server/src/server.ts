@@ -10,7 +10,7 @@ import {
 } from "vscode-languageserver"
 import { connection, log, setCommLogActive } from "./clientManager"
 import { syntaxCheck } from "./syntaxcheck"
-import { completion } from "./completion"
+import { completion, completionResolve, signatureHelp } from "./completion"
 import { findDefinition, findReferences, cancelSearch } from "./references"
 import { documentSymbols } from "./symbols"
 import { formatDocument } from "./documentformatter"
@@ -49,6 +49,9 @@ connection.onInitialize((params: InitializeParams) => {
       completionProvider: {
         resolveProvider: true
       },
+      signatureHelpProvider: {
+        triggerCharacters: ["(", ","]
+      },
       definitionProvider: true,
       renameProvider: true,
       implementationProvider: {
@@ -80,7 +83,8 @@ connection.onInitialized(() => {
 })
 
 connection.onCompletion(completion)
-connection.onCompletionResolve((c: CompletionItem) => c)
+connection.onCompletionResolve(completionResolve)
+connection.onSignatureHelp(signatureHelp)
 // Eclipse ADT style: Ctrl+Click goes to implementation first, then declaration
 connection.onDefinition(findDefinition.bind(null, true)) // Swapped: now shows implementation
 connection.onImplementation(findDefinition.bind(null, false)) // Swapped: now shows declaration
