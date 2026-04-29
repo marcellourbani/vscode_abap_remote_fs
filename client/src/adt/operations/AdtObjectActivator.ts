@@ -55,7 +55,7 @@ export class AdtObjectActivator {
     const tofilter = rawInactive.length
       ? rawInactive
       : await this.client.inactiveObjects("application/xml")
-    return rawInactive.filter(r => r.object)
+    return tofilter.filter(r => r.object)
   }
 
   private async getAllInactiveObjects() {

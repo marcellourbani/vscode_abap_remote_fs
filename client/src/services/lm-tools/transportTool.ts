@@ -343,6 +343,10 @@ export class ManageTransportRequestsTool implements vscode.LanguageModelTool<IMa
       for (const transportNumber of transportNumbers) {
         try {
           const transportData = await client.transportDetails(transportNumber)
+          if (transportData["tm:number"] !== transportNumber)
+            throw new Error(
+              `Transport number mismatch: requested ${transportNumber} but got ${transportData["tm:number"]}. This may indicate that your SAP system does not support transport ADT features.`
+            )
           transports.push(transportData)
         } catch (error) {
           notFound.push(transportNumber)

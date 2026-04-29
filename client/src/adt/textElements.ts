@@ -209,22 +209,6 @@ export async function setTextElements(
   }
 }
 
-export async function updateTextElements(
-  connection: ADTClient,
-  objectName: string,
-  textElements: TextElement[]
-): Promise<void> {
-  const lockResult = await lockTextElements(connection, objectName)
-  try {
-    await setTextElements(connection, objectName, textElements, lockResult.lockHandle)
-  } catch (error) {
-    await connection
-      .unLock(getTextElementsBaseUrl(objectName), lockResult.lockHandle)
-      .catch(() => undefined)
-    throw error
-  }
-}
-
 /**
  * Simple validation for object names
  */
