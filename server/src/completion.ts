@@ -13,7 +13,7 @@ import { clientAndObjfromUrl, ClientAndObject } from "./utilities"
 import { log } from "./clientManager"
 import { isAbap, callThrottler, isCdsView, caughtToString } from "./functions"
 import { CompletionProposal, ADTClient, CompletionElementInfo } from "abap-adt-api"
-import { cdsCompletionExtractor } from "./cdsSyntax"
+import { cdsCompletionExtractor, cdsDataSources } from "./cdsSyntax"
 import { formatItem } from "./completionutils"
 
 // ── Completion ──────────────────────────────────────────────────────────────
@@ -63,7 +63,18 @@ async function cdsCompletion(co: ClientAndObject, pos: Position) {
   const add = (label: string) => {
     if (!items.find(i => i.label === label)) items.push({ label })
   }
-  if (matched === "NONE") return items
+  if (matched === "NONE") {
+    // cursor may be on an empty line inside { } — offer all fields from data sources
+    const line = source.split("\n")[pos.line] || ""
+    if (line.trim() === "" || line.trim() === "," || line.trim() === "KEY") {
+      const dataSources = cdsDataSources(source)
+      if (dataSources.length) {
+        const elements = await client.ddicRepositoryAccess(dataSources.map(s => `${s}.`))
+        for (const element of elements) add(element.name)
+      }
+    }
+    return items
+  }
   if (matched === "SOURCE") {
     const elements = await client.ddicRepositoryAccess(`${prefix}*`)
     for (const element of elements) add(element.name)
