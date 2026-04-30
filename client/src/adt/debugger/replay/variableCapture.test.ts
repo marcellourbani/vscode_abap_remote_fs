@@ -7,7 +7,13 @@ jest.mock("../../../lib", () => ({
 import { captureScopesBatched } from "./variableCapture"
 import { CaptureOptions } from "./types"
 
-function makeVar(id: string, name: string, value: string, metaType = "simple", tableLines?: number) {
+function makeVar(
+  id: string,
+  name: string,
+  value: string,
+  metaType = "simple",
+  tableLines?: number
+) {
   return {
     ID: id,
     NAME: name,
@@ -31,7 +37,8 @@ describe("captureScopesBatched", () => {
 
   it("returns scopes from hierarchies with simple variables", async () => {
     const client = {
-      debuggerChildVariables: jest.fn()
+      debuggerChildVariables: jest
+        .fn()
         // Round 1: @ROOT → scope IDs
         .mockResolvedValueOnce({
           hierarchies: [
@@ -74,20 +81,15 @@ describe("captureScopesBatched", () => {
 
   it("adds SY scope if missing from root hierarchies", async () => {
     const client = {
-      debuggerChildVariables: jest.fn()
+      debuggerChildVariables: jest
+        .fn()
         .mockResolvedValueOnce({
           hierarchies: [makeHierarchy("@ROOT", "LOCAL", "Local")],
           variables: []
         })
         .mockResolvedValueOnce({
-          hierarchies: [
-            makeHierarchy("LOCAL", "LV_X"),
-            makeHierarchy("SY", "SY-SUBRC")
-          ],
-          variables: [
-            makeVar("LV_X", "LV_X", "A"),
-            makeVar("SY-SUBRC", "SY-SUBRC", "0")
-          ]
+          hierarchies: [makeHierarchy("LOCAL", "LV_X"), makeHierarchy("SY", "SY-SUBRC")],
+          variables: [makeVar("LV_X", "LV_X", "A"), makeVar("SY-SUBRC", "SY-SUBRC", "0")]
         })
     } as any
 
@@ -100,7 +102,8 @@ describe("captureScopesBatched", () => {
 
   it("does not duplicate SY scope if already present", async () => {
     const client = {
-      debuggerChildVariables: jest.fn()
+      debuggerChildVariables: jest
+        .fn()
         .mockResolvedValueOnce({
           hierarchies: [
             makeHierarchy("@ROOT", "LOCAL", "Local"),
@@ -109,14 +112,8 @@ describe("captureScopesBatched", () => {
           variables: []
         })
         .mockResolvedValueOnce({
-          hierarchies: [
-            makeHierarchy("LOCAL", "LV_X"),
-            makeHierarchy("SY", "SY-SUBRC")
-          ],
-          variables: [
-            makeVar("LV_X", "LV_X", "A"),
-            makeVar("SY-SUBRC", "SY-SUBRC", "0")
-          ]
+          hierarchies: [makeHierarchy("LOCAL", "LV_X"), makeHierarchy("SY", "SY-SUBRC")],
+          variables: [makeVar("LV_X", "LV_X", "A"), makeVar("SY-SUBRC", "SY-SUBRC", "0")]
         })
     } as any
 
@@ -128,7 +125,8 @@ describe("captureScopesBatched", () => {
 
   it("expands structures to maxDepth", async () => {
     const client = {
-      debuggerChildVariables: jest.fn()
+      debuggerChildVariables: jest
+        .fn()
         // Round 1: root
         .mockResolvedValueOnce({
           hierarchies: [makeHierarchy("@ROOT", "LOCAL", "Local")],
@@ -136,10 +134,7 @@ describe("captureScopesBatched", () => {
         })
         // Round 2: scope vars — one structure
         .mockResolvedValueOnce({
-          hierarchies: [
-            makeHierarchy("LOCAL", "LS_DATA"),
-            makeHierarchy("SY", "SY-SUBRC")
-          ],
+          hierarchies: [makeHierarchy("LOCAL", "LS_DATA"), makeHierarchy("SY", "SY-SUBRC")],
           variables: [
             makeVar("LS_DATA", "LS_DATA", "", "structure"),
             makeVar("SY-SUBRC", "SY-SUBRC", "0")
@@ -177,7 +172,8 @@ describe("captureScopesBatched", () => {
 
   it("stops expanding at maxDepth", async () => {
     const client = {
-      debuggerChildVariables: jest.fn()
+      debuggerChildVariables: jest
+        .fn()
         .mockResolvedValueOnce({
           hierarchies: [makeHierarchy("@ROOT", "LOCAL", "Local")],
           variables: []
@@ -191,7 +187,7 @@ describe("captureScopesBatched", () => {
           hierarchies: [makeHierarchy("LS_A", "LS_A-B")],
           variables: [makeVar("LS_A-B", "B", "", "structure")]
         })
-        // maxDepth=2 → no more expansion
+      // maxDepth=2 → no more expansion
     } as any
 
     const result = await captureScopesBatched(client, { ...defaultOpts, maxDepth: 2 })
@@ -207,7 +203,8 @@ describe("captureScopesBatched", () => {
 
   it("limits table rows to RECORDING_MAX_TABLE_ROWS", async () => {
     const client = {
-      debuggerChildVariables: jest.fn()
+      debuggerChildVariables: jest
+        .fn()
         .mockResolvedValueOnce({
           hierarchies: [makeHierarchy("@ROOT", "LOCAL", "Local")],
           variables: []
@@ -233,7 +230,8 @@ describe("captureScopesBatched", () => {
 
   it("handles empty hierarchies", async () => {
     const client = {
-      debuggerChildVariables: jest.fn()
+      debuggerChildVariables: jest
+        .fn()
         .mockResolvedValueOnce({ hierarchies: [], variables: [] })
         .mockResolvedValueOnce({ hierarchies: [], variables: [] })
     } as any
@@ -247,14 +245,15 @@ describe("captureScopesBatched", () => {
 
   it("batches IDs correctly when exceeding MAX_IDS_PER_CALL (200)", async () => {
     // Create 250 scope IDs to force batching
-    const scopeHierarchies = Array.from({ length: 250 }, (_, i) =>
+    const scopeHierarchies = Array.from({ length: 500 }, (_, i) =>
       makeHierarchy("@ROOT", `SCOPE_${i}`, `Scope ${i}`)
     )
     const allScopeIds = scopeHierarchies.map(h => h.CHILD_ID)
     // +1 for SY = 251 total
 
     const client = {
-      debuggerChildVariables: jest.fn()
+      debuggerChildVariables: jest
+        .fn()
         .mockResolvedValueOnce({ hierarchies: scopeHierarchies, variables: [] })
         // Batched calls for scope vars (251 IDs > 200)
         .mockResolvedValueOnce({ hierarchies: [], variables: [] })
@@ -263,19 +262,20 @@ describe("captureScopesBatched", () => {
 
     const result = await captureScopesBatched(client, defaultOpts)
 
-    // 1 call for root + 2 calls for batched scope vars (251 > 200)
+    // 1 call for root + 2 calls for batched scope vars (501 > 500)
     expect(client.debuggerChildVariables).toHaveBeenCalledTimes(3)
-    // First batch should be 200 IDs
+    // First batch should be 500 IDs
     const secondCall = client.debuggerChildVariables.mock.calls[1][0]
-    expect(secondCall).toHaveLength(200)
-    // Second batch should be remaining 51
+    expect(secondCall).toHaveLength(500)
+    // Second batch should be remaining 1
     const thirdCall = client.debuggerChildVariables.mock.calls[2][0]
-    expect(thirdCall).toHaveLength(51)
+    expect(thirdCall).toHaveLength(1)
   })
 
   it("table rows are assigned to correct parent table", async () => {
     const client = {
-      debuggerChildVariables: jest.fn()
+      debuggerChildVariables: jest
+        .fn()
         .mockResolvedValueOnce({
           hierarchies: [makeHierarchy("@ROOT", "LOCAL", "Local")],
           variables: []
@@ -284,10 +284,12 @@ describe("captureScopesBatched", () => {
           hierarchies: [makeHierarchy("LOCAL", "LT_TAB[]")],
           variables: [makeVar("LT_TAB[]", "LT_TAB", "", "table", 2)]
         }),
-      debuggerVariables: jest.fn().mockResolvedValue([
-        makeVar("LT_TAB[1]", "LT_TAB[1]", "row1"),
-        makeVar("LT_TAB[2]", "LT_TAB[2]", "row2")
-      ])
+      debuggerVariables: jest
+        .fn()
+        .mockResolvedValue([
+          makeVar("LT_TAB[1]", "LT_TAB[1]", "row1"),
+          makeVar("LT_TAB[2]", "LT_TAB[2]", "row2")
+        ])
     } as any
 
     const result = await captureScopesBatched(client, defaultOpts)
@@ -301,7 +303,8 @@ describe("captureScopesBatched", () => {
 
   it("adds skipReason when table is truncated", async () => {
     const client = {
-      debuggerChildVariables: jest.fn()
+      debuggerChildVariables: jest
+        .fn()
         .mockResolvedValueOnce({
           hierarchies: [makeHierarchy("@ROOT", "LOCAL", "Local")],
           variables: []
@@ -324,7 +327,8 @@ describe("captureScopesBatched", () => {
 
   it("handles table with 0 lines", async () => {
     const client = {
-      debuggerChildVariables: jest.fn()
+      debuggerChildVariables: jest
+        .fn()
         .mockResolvedValueOnce({
           hierarchies: [makeHierarchy("@ROOT", "LOCAL", "Local")],
           variables: []
@@ -345,7 +349,8 @@ describe("captureScopesBatched", () => {
 
   it("uses DEFAULT_CAPTURE_OPTIONS when no options provided", async () => {
     const client = {
-      debuggerChildVariables: jest.fn()
+      debuggerChildVariables: jest
+        .fn()
         .mockResolvedValueOnce({ hierarchies: [], variables: [] })
         .mockResolvedValueOnce({ hierarchies: [], variables: [] })
     } as any
@@ -359,16 +364,19 @@ describe("captureScopesBatched", () => {
     const { log } = require("../../../lib")
     // Need >200 rows to trigger batching path where try/catch exists
     const client = {
-      debuggerChildVariables: jest.fn()
+      debuggerChildVariables: jest
+        .fn()
         .mockResolvedValueOnce({
           hierarchies: [makeHierarchy("@ROOT", "LOCAL", "Local")],
           variables: []
         })
         .mockResolvedValueOnce({
           hierarchies: [makeHierarchy("LOCAL", "LT_ERR[]")],
-          variables: [makeVar("LT_ERR[]", "LT_ERR", "", "table", 250)]
+          variables: [makeVar("LT_ERR[]", "LT_ERR", "", "table", 502)]
         }),
-      debuggerVariables: jest.fn().mockImplementation(() => Promise.reject(new Error("API failure")))
+      debuggerVariables: jest
+        .fn()
+        .mockImplementation(() => Promise.reject(new Error("API failure")))
     } as any
 
     const result = await captureScopesBatched(client, defaultOpts)
@@ -382,7 +390,8 @@ describe("captureScopesBatched", () => {
   it("batchedVariables propagates error when not batching (<=200 IDs)", async () => {
     // With <=200 IDs, debuggerVariables is called directly without try/catch
     const client = {
-      debuggerChildVariables: jest.fn()
+      debuggerChildVariables: jest
+        .fn()
         .mockResolvedValueOnce({
           hierarchies: [makeHierarchy("@ROOT", "LOCAL", "Local")],
           variables: []
@@ -391,7 +400,9 @@ describe("captureScopesBatched", () => {
           hierarchies: [makeHierarchy("LOCAL", "LT_ERR[]")],
           variables: [makeVar("LT_ERR[]", "LT_ERR", "", "table", 5)]
         }),
-      debuggerVariables: jest.fn().mockImplementation(() => Promise.reject(new Error("API failure")))
+      debuggerVariables: jest
+        .fn()
+        .mockImplementation(() => Promise.reject(new Error("API failure")))
     } as any
 
     // This reveals a bug: errors are only caught in the batching path (>200 IDs)

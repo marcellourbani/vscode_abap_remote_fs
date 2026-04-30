@@ -1,0 +1,230 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta http-equiv="Content-Security-Policy"
+    content="default-src 'none'; script-src {{CSP_SOURCE}}; style-src {{CSP_SOURCE}} 'unsafe-inline'; font-src {{CSP_SOURCE}};">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Execute ABAP Code</title>
+  <style>
+    * { box-sizing: border-box; }
+    body {
+      font-family: var(--vscode-font-family);
+      font-size: var(--vscode-font-size);
+      color: var(--vscode-editor-foreground);
+      background: var(--vscode-editor-background);
+      padding: 16px 20px;
+      margin: 0;
+    }
+    h2 {
+      margin: 0 0 14px 0;
+      font-size: 16px;
+      font-weight: 600;
+      color: var(--vscode-editor-foreground);
+      letter-spacing: 0.3px;
+    }
+    .toolbar {
+      display: flex;
+      gap: 6px;
+      align-items: center;
+      margin-bottom: 10px;
+    }
+    select {
+      font-family: var(--vscode-font-family);
+      font-size: 13px;
+      padding: 4px 8px;
+      border-radius: 3px;
+      border: 1px solid var(--vscode-input-border);
+      background: var(--vscode-input-background);
+      color: var(--vscode-input-foreground);
+      height: 28px;
+      min-width: 120px;
+    }
+    button {
+      font-family: var(--vscode-font-family);
+      font-size: 13px;
+      padding: 4px 14px;
+      border-radius: 3px;
+      border: none;
+      cursor: pointer;
+      font-weight: 500;
+      height: 28px;
+      background: var(--vscode-button-background);
+      color: var(--vscode-button-foreground);
+    }
+    button:hover:not(:disabled) { background: var(--vscode-button-hoverBackground); }
+    button:disabled { opacity: 0.4; cursor: not-allowed; }
+    .clear-btn {
+      background: var(--vscode-button-secondaryBackground);
+      color: var(--vscode-button-secondaryForeground);
+    }
+    .clear-btn:hover:not(:disabled) { background: var(--vscode-button-secondaryHoverBackground, var(--vscode-button-secondaryBackground)); }
+    .spinner {
+      display: none;
+      font-size: 12px;
+      color: var(--vscode-descriptionForeground);
+    }
+    .spinner.visible { display: inline; }
+    .editor-wrap {
+      border: 1px solid var(--vscode-input-border);
+      border-radius: 3px;
+      overflow: hidden;
+    }
+    .editor-wrap:focus-within {
+      outline: 1px solid var(--vscode-focusBorder);
+      border-color: var(--vscode-focusBorder);
+    }
+    textarea {
+      display: block;
+      width: 100%;
+      font-family: var(--vscode-editor-font-family);
+      font-size: var(--vscode-editor-font-size);
+      line-height: 1.5;
+      padding: 10px 12px;
+      border: none;
+      background: var(--vscode-input-background);
+      color: var(--vscode-input-foreground);
+      resize: none;
+      min-height: 140px;
+      tab-size: 2;
+      outline: none;
+    }
+    .editor-hint {
+      background: var(--vscode-input-background);
+      border-top: 1px solid var(--vscode-widget-border, var(--vscode-input-border));
+      padding: 3px 10px;
+      font-size: 11px;
+      color: var(--vscode-descriptionForeground);
+    }
+    .output-section {
+      margin-top: 12px;
+      display: none;
+    }
+    .output-section.visible { display: block; }
+    .output-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 5px;
+    }
+    .output-header h3 {
+      margin: 0;
+      font-size: 12px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      color: var(--vscode-descriptionForeground);
+    }
+    .output-meta { font-size: 11px; color: var(--vscode-descriptionForeground); }
+    .output-box {
+      white-space: pre;
+      font-family: var(--vscode-editor-font-family);
+      font-size: var(--vscode-editor-font-size);
+      line-height: 1.5;
+      padding: 10px 12px;
+      border-radius: 3px;
+      border: 1px solid var(--vscode-panel-border);
+      background: var(--vscode-terminal-background, var(--vscode-editor-background));
+      max-height: 400px;
+      overflow: auto;
+    }
+    .output-box.success { border-left: 3px solid var(--vscode-testing-iconPassed); }
+    .output-box.error {
+      border-left: 3px solid var(--vscode-testing-iconFailed);
+      color: var(--vscode-errorForeground);
+    }
+    .confirm-overlay {
+      display: none;
+      position: fixed;
+      top: 0; left: 0; right: 0; bottom: 0;
+      background: rgba(0,0,0,0.45);
+      z-index: 100;
+      justify-content: center;
+      align-items: center;
+    }
+    .confirm-overlay.visible { display: flex; }
+    .confirm-dialog {
+      background: var(--vscode-editor-background);
+      border: 1px solid var(--vscode-panel-border);
+      border-radius: 4px;
+      padding: 20px;
+      max-width: 560px;
+      width: 90%;
+      box-shadow: 0 8px 32px rgba(0,0,0,0.4);
+    }
+    .confirm-dialog h3 {
+      margin: 0 0 10px 0;
+      font-size: 14px;
+      color: var(--vscode-editorWarning-foreground);
+    }
+    .confirm-dialog p { margin: 6px 0; font-size: 13px; }
+    .system-tag {
+      display: inline-block;
+      padding: 2px 8px;
+      background: var(--vscode-badge-background);
+      color: var(--vscode-badge-foreground);
+      border-radius: 3px;
+      font-weight: 600;
+      font-size: 12px;
+      font-family: var(--vscode-editor-font-family);
+    }
+    .confirm-dialog pre {
+      background: var(--vscode-textBlockQuote-background);
+      border: 1px solid var(--vscode-panel-border);
+      padding: 8px 10px;
+      border-radius: 3px;
+      max-height: 180px;
+      overflow: auto;
+      font-size: 12px;
+      font-family: var(--vscode-editor-font-family);
+      margin: 10px 0;
+      white-space: pre-wrap;
+    }
+    .warning-text { font-size: 12px; color: var(--vscode-editorWarning-foreground); margin: 6px 0; }
+    .confirm-buttons { display: flex; gap: 8px; justify-content: flex-end; margin-top: 16px; }
+    .cancel-btn {
+      background: var(--vscode-button-secondaryBackground);
+      color: var(--vscode-button-secondaryForeground);
+    }
+  </style>
+</head>
+<body>
+  <h2>ABAP REPL</h2>
+
+  <div class="toolbar">
+    <select id="systemSelect"><option value="">-- Select SAP System --</option></select>
+    <button class="run-btn" id="runBtn" disabled>▶ Run</button>
+    <button class="clear-btn" id="clearBtn">Clear</button>
+    <span class="spinner" id="spinner">⟳ Executing…</span>
+  </div>
+
+  <div class="editor-wrap">
+    <textarea id="codeInput" rows="8" placeholder="Enter ABAP code…&#10;&#10;Example:&#10;SELECT COUNT(*) FROM mara INTO @DATA(n).&#10;WRITE: / n." spellcheck="false"></textarea>
+    <div class="editor-hint">Ctrl+Enter to run</div>
+  </div>
+
+  <div class="output-section" id="outputSection">
+    <div class="output-header">
+      <h3 id="outputTitle">Output</h3>
+      <span class="output-meta" id="outputMeta"></span>
+    </div>
+    <div class="output-box" id="outputBox"></div>
+  </div>
+
+  <div class="confirm-overlay" id="confirmOverlay">
+    <div class="confirm-dialog">
+      <h3>Confirm ABAP Execution</h3>
+      <p>You are about to execute ABAP code on:</p>
+      <p><span class="system-tag" id="confirmSystem"></span></p>
+      <p class="warning-text">This code will be compiled and executed on the SAP server under your user authorizations.</p>
+      <pre id="confirmCode"></pre>
+      <div class="confirm-buttons">
+        <button class="cancel-btn" id="confirmCancel">Cancel</button>
+        <button class="run-btn" id="confirmRun">Execute</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="{{SCRIPT_URI}}"></script>
+</body>
+</html>

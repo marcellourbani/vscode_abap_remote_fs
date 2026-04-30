@@ -1,12 +1,21 @@
-jest.mock("vscode", () => ({
-  EventEmitter: jest.fn().mockImplementation(() => ({
-    event: "mockEvent",
-    fire: jest.fn()
-  })),
-  Uri: {
-    parse: jest.fn((s: string) => ({ scheme: "adt", authority: "conn", path: s, toString: () => s }))
-  }
-}), { virtual: true })
+jest.mock(
+  "vscode",
+  () => ({
+    EventEmitter: jest.fn().mockImplementation(() => ({
+      event: "mockEvent",
+      fire: jest.fn()
+    })),
+    Uri: {
+      parse: jest.fn((s: string) => ({
+        scheme: "adt",
+        authority: "conn",
+        path: s,
+        toString: () => s
+      }))
+    }
+  }),
+  { virtual: true }
+)
 
 jest.mock("../conections", () => ({
   getClient: jest.fn()
@@ -64,7 +73,10 @@ describe("AdtObjectActivator", () => {
     mockStatelessClient = {
       activate: jest.fn(),
       inactiveObjects: jest.fn().mockResolvedValue([]),
-      statelessClone: { nodeContents: jest.fn().mockResolvedValue({ nodes: [] }), login: jest.fn() },
+      statelessClone: {
+        nodeContents: jest.fn().mockResolvedValue({ nodes: [] }),
+        login: jest.fn()
+      },
       nodeContents: jest.fn().mockResolvedValue({ nodes: [] }),
       httpClient: {
         request: jest.fn().mockResolvedValue({ body: "" })
@@ -103,83 +115,5 @@ describe("AdtObjectActivator", () => {
   it("constructor uses stateless client", () => {
     AdtObjectActivator.get("conn4")
     expect(mockGetClient).toHaveBeenCalledWith("conn4", false)
-  })
-
-  describe("getFallbackInactiveObjects", () => {
-    it("returns empty array when httpClient has no request method", async () => {
-      mockGetClient.mockReturnValue({
-        ...mockStatelessClient,
-        httpClient: {}
-      })
-      const instance = new (AdtObjectActivator as any)(mockGetClient("testconn"))
-      const result = await instance.getFallbackInactiveObjects()
-      expect(result).toEqual([])
-    })
-
-    it("returns parsed objects from XML response", async () => {
-      const xml = `
-        <response>
-          <adtcore:objectReference adtcore:uri="/sap/bc/adt/programs/programs/zprog" adtcore:type="PROG/P" adtcore:name="ZPROG" />
-        </response>
-      `
-      mockGetClient.mockReturnValue({
-        ...mockStatelessClient,
-        httpClient: {
-          request: jest.fn().mockResolvedValue({ body: xml })
-        }
-      })
-      const instance = new (AdtObjectActivator as any)(mockGetClient("testconn"))
-      const result = await instance.getFallbackInactiveObjects()
-      expect(result).toHaveLength(1)
-      expect(result[0]["adtcore:uri"]).toBe("/sap/bc/adt/programs/programs/zprog")
-      expect(result[0]["adtcore:name"]).toBe("ZPROG")
-    })
-
-    it("returns empty array when XML has no objectReference elements", async () => {
-      mockGetClient.mockReturnValue({
-        ...mockStatelessClient,
-        httpClient: {
-          request: jest.fn().mockResolvedValue({ body: "<empty/>" })
-        }
-      })
-      const instance = new (AdtObjectActivator as any)(mockGetClient("testconn"))
-      const result = await instance.getFallbackInactiveObjects()
-      expect(result).toEqual([])
-    })
-
-    it("returns empty array on request failure", async () => {
-      mockGetClient.mockReturnValue({
-        ...mockStatelessClient,
-        httpClient: {
-          request: jest.fn().mockRejectedValue(new Error("Network error"))
-        }
-      })
-      const instance = new (AdtObjectActivator as any)(mockGetClient("testconn"))
-      const result = await instance.getFallbackInactiveObjects()
-      expect(result).toEqual([])
-    })
-
-    it("filters out XML elements missing required fields", async () => {
-      const xml = `
-        <response>
-          <adtcore:objectReference adtcore:uri="/path/obj" adtcore:type="PROG/P" />
-          <adtcore:objectReference adtcore:type="PROG/P" adtcore:name="ZPROG2" />
-        </response>
-      `
-      // First: no name (valid since no name), second: no uri
-      mockGetClient.mockReturnValue({
-        ...mockStatelessClient,
-        httpClient: {
-          request: jest.fn().mockResolvedValue({ body: xml })
-        }
-      })
-      const instance = new (AdtObjectActivator as any)(mockGetClient("testconn"))
-      const result = await instance.getFallbackInactiveObjects()
-      // Only entries with both uri and name pass the filter
-      result.forEach((r: any) => {
-        expect(r["adtcore:uri"]).toBeTruthy()
-        expect(r["adtcore:name"]).toBeTruthy()
-      })
-    })
   })
 })

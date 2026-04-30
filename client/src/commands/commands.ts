@@ -61,6 +61,10 @@ import { FsProvider } from "../fs/FsProvider"
 import { logTelemetry } from "../services/telemetry"
 import { SapGui } from "../adt/sapgui/sapgui"
 import { AbapDebugSession } from "../adt/debugger/abapDebugSession"
+import { createObjectInEditorCommand } from "./createObjectInEditor"
+import { manageTextElementsCommand } from "./textElementsCommands"
+import { configureFeedsCommand } from "./configureFeeds"
+import { publishServiceBindingCommand } from "./publishServiceBinding"
 
 export function currentUri() {
   if (!window.activeTextEditor) return
@@ -72,7 +76,9 @@ export function currentUri() {
 async function saveDirtyAdtDocuments(connectionId: string) {
   const dirtyDocuments = workspace.textDocuments.filter(
     document =>
-      document.isDirty && document.uri.scheme === ADTSCHEME && document.uri.authority === connectionId
+      document.isDirty &&
+      document.uri.scheme === ADTSCHEME &&
+      document.uri.authority === connectionId
   )
 
   for (const document of dirtyDocuments) {
@@ -392,7 +398,10 @@ export class AdtCommands {
             await commands.executeCommand("workbench.files.action.refreshFilesExplorer")
 
             const editor = window.activeTextEditor
-            if (editor?.document.uri.scheme === ADTSCHEME && editor.document.uri.authority === connectionId) {
+            if (
+              editor?.document.uri.scheme === ADTSCHEME &&
+              editor.document.uri.authority === connectionId
+            ) {
               await showHideActivate(editor, true)
             }
           }
@@ -1282,5 +1291,22 @@ export class AdtCommands {
     } catch (e) {
       window.showErrorMessage(`Failed to clear cache: ${caughtToString(e)}`)
     }
+  }
+
+  @command(AbapFsCommands.createInEditor)
+  private static async createObjectInEditorCommand(uri?: Uri) {
+    return createObjectInEditorCommand(uri)
+  }
+  @command(AbapFsCommands.manageTextElements)
+  private static async manageTextElementsCommand(uri?: Uri) {
+    return manageTextElementsCommand(uri)
+  }
+  @command(AbapFsCommands.configureFeeds)
+  private static async configureFeedsCommand() {
+    return configureFeedsCommand()
+  }
+  @command(AbapFsCommands.publishServiceBinding)
+  private static async publishServiceBindingCommand() {
+    return publishServiceBindingCommand()
   }
 }

@@ -2,7 +2,7 @@
   "name": "vscode-abap-remote-fs",
   "displayName": "ABAP remote filesystem",
   "description": "VS Code-based Agentic AI Platform for SAP ABAP Development",
-  "version": "2.4.4",
+  "version": "2.4.5",
   "publisher": "murbani",
   "publishConfig": {
     "access": "restricted",
@@ -2614,6 +2614,16 @@
         "category": "ABAP FS"
       },
       {
+        "command": "abapfs.executeAbapCode",
+        "title": "Execute ABAP Code (REPL)",
+        "category": "ABAP FS"
+      },
+      {
+        "command": "abapfs.abapReplSetupGuide",
+        "title": "ABAP REPL Setup Guide",
+        "category": "ABAP FS"
+      },
+      {
         "command": "abapfs.newAbapNotebook",
         "title": "New SAP Data Workbook",
         "category": "ABAP FS"
@@ -3142,6 +3152,9 @@
         },
         {
           "command": "abapfs.decompressRecording"
+        },
+        {
+          "command": "abapfs.abapReplSetupGuide"
         },
         {
           "command": "abapfs.startRecording"

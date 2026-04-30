@@ -1,14 +1,18 @@
-jest.mock("vscode", () => ({
-  commands: {
-    executeCommand: jest.fn()
-  },
-  Uri: {
-    parse: jest.fn((s: string) => ({ toString: () => s, scheme: "adt" }))
-  },
-  CancellationToken: {},
-  WebviewView: {},
-  WebviewViewResolveContext: {}
-}), { virtual: true })
+jest.mock(
+  "vscode",
+  () => ({
+    commands: {
+      executeCommand: jest.fn()
+    },
+    Uri: {
+      parse: jest.fn((s: string) => ({ toString: () => s, scheme: "adt" }))
+    },
+    CancellationToken: {},
+    WebviewView: {},
+    WebviewViewResolveContext: {}
+  }),
+  { virtual: true }
+)
 
 jest.mock("../../adt/conections", () => ({
   getClient: jest.fn()
@@ -30,12 +34,25 @@ jest.mock("../history", () => ({
     let items: any[] = initial !== undefined ? [initial] : []
     let idx = 0
     return {
-      get current() { return items[idx] },
-      get hasPrevious() { return idx > 0 },
-      get hasNext() { return idx < items.length - 1 },
-      append: jest.fn((item: any) => { items = [...items.slice(0, idx + 1), item]; idx++ }),
-      back: jest.fn(() => { if (idx > 0) idx-- }),
-      forward: jest.fn(() => { if (idx < items.length - 1) idx++ })
+      get current() {
+        return items[idx]
+      },
+      get hasPrevious() {
+        return idx > 0
+      },
+      get hasNext() {
+        return idx < items.length - 1
+      },
+      append: jest.fn((item: any) => {
+        items = [...items.slice(0, idx + 1), item]
+        idx++
+      }),
+      back: jest.fn(() => {
+        if (idx > 0) idx--
+      }),
+      forward: jest.fn(() => {
+        if (idx < items.length - 1) idx++
+      })
     }
   })
 }))
@@ -97,9 +114,7 @@ describe("ATCDocumentation.showDocumentation", () => {
   it("fetches html and injects url handler when view is resolved", async () => {
     const panel = makeWebviewPanel()
     const mockClient = {
-      httpClient: {
-        request: jest.fn().mockResolvedValue({ body: "<html>doc</html>" })
-      }
+      atcDocumentation: jest.fn().mockResolvedValue({ body: "<html>doc</html>" })
     }
     mockGetClient.mockReturnValue(mockClient as any)
     mockInjectUrlHandler.mockReturnValue("<injected><html>doc</html></injected>")
@@ -112,7 +127,7 @@ describe("ATCDocumentation.showDocumentation", () => {
     await inst.showDocumentation(doc)
 
     expect(mockGetClient).toHaveBeenCalledWith("myconn")
-    expect(mockClient.httpClient.request).toHaveBeenCalledWith("/doc/url")
+    expect(mockClient.atcDocumentation).toHaveBeenCalledWith("/doc/url")
     expect(mockInjectUrlHandler).toHaveBeenCalledWith("<html>doc</html>")
     expect(panel.webview.html).toBe("<injected><html>doc</html></injected>")
   })
@@ -120,9 +135,7 @@ describe("ATCDocumentation.showDocumentation", () => {
   it("sets context for navigation flags", async () => {
     const panel = makeWebviewPanel()
     const mockClient = {
-      httpClient: {
-        request: jest.fn().mockResolvedValue({ body: "<html/>" })
-      }
+      atcDocumentation: jest.fn().mockResolvedValue({ body: "<html/>" })
     }
     mockGetClient.mockReturnValue(mockClient as any)
 
@@ -147,7 +160,7 @@ describe("ATCDocumentation.resolveWebviewView", () => {
   it("sets webview options to enable scripts", async () => {
     const panel = makeWebviewPanel()
     const mockClient = {
-      httpClient: { request: jest.fn().mockResolvedValue({ body: "" }) }
+      atcDocumentation: jest.fn().mockResolvedValue({ body: "" })
     }
     mockGetClient.mockReturnValue(mockClient as any)
 
