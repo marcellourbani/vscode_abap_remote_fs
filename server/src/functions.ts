@@ -42,6 +42,8 @@ export const hashParms = (uri: string): any => {
 
 export const isAbap = (uri: string) => !!uri.match(/\.abap$/i)
 export const isCdsView = (uri: string) => !!uri.match(/\.ddls.asddls$/i)
+export const isCdsLike = (uri: string) => !!uri.match(/\.(ddls\.asddls|dcls\.asdcls|ddlx\.asddlxs|bdef\.asbdef|srvd\.srvdsrv)$/i)
+export const isAbapOrCds = (uri: string) => isAbap(uri) || isCdsLike(uri)
 
 interface RunningState<T> {
   current: Promise<T>

@@ -18,10 +18,97 @@ import { vscUrl } from "./objectManager"
 import { groupBy } from "lodash"
 import { log, warn } from "./clientManager"
 import { getObjectSource, setSearchProgress } from "./clientapis"
-import { isAbap, memoize, parts, toInt, hashParms, caughtToString } from "./functions"
+import { isAbapOrCds, isCdsLike, memoize, parts, toInt, hashParms, caughtToString } from "./functions"
+import { cdsNavigationTarget } from "./cdsSyntax"
+import { ddicRepositoryAccessField } from "./cdsNavigation"
+
+async function cdsDefinition(params: TextDocumentPositionParams): Promise<Location | undefined> {
+  const co = await clientAndObjfromUrl(params.textDocument.uri)
+  if (!co) return
+
+  const pos: Position = { line: params.position.line, character: params.position.character }
+  const target = cdsNavigationTarget(co.source, pos)
+  if (!target) return
+
+  // resolve the target to an ADT object URI
+  try {
+    switch (target.kind) {
+      case "source":
+      case "association":
+      case "dataElement": {
+        // look up the name as a DDIC object
+        const refs = await co.client.ddicRepositoryAccess(target.name)
+        if (refs.length > 0) {
+          const uri = await vscUrl(co.confKey, refs[0].uri, true)
+          if (uri) return { uri, range: { start: { line: 0, character: 0 }, end: { line: 0, character: 0 } } }
+        }
+        break
+      }
+      case "field": {
+        try {
+          const fieldRef = await ddicRepositoryAccessField(
+            co.client.statelessClone, target.source, target.field
+          )
+          if (fieldRef) {
+            const baseUri = fieldRef.uri.replace(/[#?].*/, "")
+            const fragMatch = fieldRef.uri.match(/#type=([^;]+);name=(.+)/)
+            if (fragMatch) {
+              try {
+                const frag = await co.client.statelessClone.fragmentMappings(
+                  baseUri, decodeURIComponent(fragMatch[1]), decodeURIComponent(fragMatch[2])
+                )
+                if (frag?.uri) {
+                  const uri = await vscUrl(co.confKey, frag.uri, true)
+                  if (uri) {
+                    return {
+                      uri,
+                      range: {
+                        start: { line: frag.line - 1, character: frag.column },
+                        end: { line: frag.line - 1, character: frag.column + target.field.length }
+                      }
+                    }
+                  }
+                }
+              } catch (e) {
+                log("cdsDefinition fragmentMappings failed:", caughtToString(e))
+              }
+            }
+            const uri = await vscUrl(co.confKey, baseUri, true)
+            if (uri) return { uri, range: { start: { line: 0, character: 0 }, end: { line: 0, character: 0 } } }
+          }
+        } catch (e) {
+          log("cdsDefinition field lookup failed:", caughtToString(e))
+        }
+        // fallback: navigate to the source itself
+        const sourceRefs = await co.client.ddicRepositoryAccess(target.source)
+        if (sourceRefs.length > 0) {
+          const uri = await vscUrl(co.confKey, sourceRefs[0].uri, true)
+          if (uri) return { uri, range: { start: { line: 0, character: 0 }, end: { line: 0, character: 0 } } }
+        }
+        break
+      }
+      case "unknown": {
+        // fallback: try the word directly
+        const refs = await co.client.ddicRepositoryAccess(target.word)
+        if (refs.length > 0) {
+          const uri = await vscUrl(co.confKey, refs[0].uri, true)
+          if (uri) return { uri, range: { start: { line: 0, character: 0 }, end: { line: 0, character: 0 } } }
+        }
+        break
+      }
+    }
+  } catch (e) {
+    log("cdsDefinition error:", caughtToString(e))
+  }
+}
 
 export async function findDefinition(impl: boolean, params: TextDocumentPositionParams) {
-  if (!isAbap(params.textDocument.uri)) return
+  if (!isAbapOrCds(params.textDocument.uri)) return
+
+  if (isCdsLike(params.textDocument.uri)) {
+    return cdsDefinition(params)
+  }
+
   let co: any = null
   try {
     co = await clientAndObjfromUrl(params.textDocument.uri)
@@ -198,7 +285,7 @@ async function startSearch() {
   return lastSearch
 }
 export async function findReferences(params: ReferenceParams, token: CancellationToken) {
-  if (!isAbap(params.textDocument.uri)) return
+  if (!isAbapOrCds(params.textDocument.uri)) return
   const mySearch = await startSearch()
   const cancelled = () => mySearch.token.isCancellationRequested || token.isCancellationRequested
 
