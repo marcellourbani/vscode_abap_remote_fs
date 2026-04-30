@@ -120,6 +120,136 @@ const sourceOrFieldCompletion = (
 
 export type MatchType = "NONE" | "FIELD" | "SOURCE"
 
+export type CdsNavTarget =
+  | { kind: "source"; name: string }        // table/view name (data source)
+  | { kind: "field"; source: string; field: string }  // alias.field → resolved source.field
+  | { kind: "association"; name: string }    // association target
+  | { kind: "dataElement"; name: string }    // data element in CAST
+  | { kind: "unknown"; word: string }        // fallback - just the word
+
+interface AliasMap { [alias: string]: string }
+
+function buildAliasMap(tree: ParserRuleContext): AliasMap {
+  const map: AliasMap = {}
+  const walk = (ctx: ParserRuleContext) => {
+    if (ctx.ruleIndex === ABAPCDSParser.RULE_data_source) {
+      // data_source: IDENTIFIER data_source_parameters? (AS? alias)? join*
+      const children = ctx.children || []
+      const ids = children.filter(isTerminal).filter(t => t.symbol.type === ABAPCDSLexer.IDENTIFIER)
+      if (ids.length > 0) {
+        const tableName = ids[0].text
+        // find alias child rule
+        const aliasCtx = (ctx.children || []).filter(isRuleContext).find(c => c.ruleIndex === ABAPCDSParser.RULE_alias)
+        const aliasName = aliasCtx ? aliasCtx.text : tableName
+        map[aliasName.toLowerCase()] = tableName
+      }
+    }
+    for (const child of ctx.children || []) {
+      if (isRuleContext(child)) walk(child)
+    }
+  }
+  walk(tree)
+  return map
+}
+
+function getWordAtPosition(source: string, pos: Position): string {
+  const lines = source.split("\n")
+  const line = lines[pos.line] || ""
+  const before = line.substring(0, pos.character).match(/([\w\/]+)$/)
+  const after = line.substring(pos.character).match(/^([\w\/]+)/)
+  return (before ? before[1] : "") + (after ? after[1] : "")
+}
+
+function findParentRule(ctx: ParserRuleContext, pos: Position): ParserRuleContext | undefined {
+  if (!positionInContext(ctx, pos)) return
+  for (const child of ctx.children || []) {
+    if (isRuleContext(child)) {
+      const found = findParentRule(child, pos)
+      if (found) return found
+    }
+  }
+  return ctx
+}
+
+export function cdsNavigationTarget(source: string, pos: Position): CdsNavTarget | undefined {
+  const word = getWordAtPosition(source, pos)
+  if (!word) return
+
+  try {
+    const tree = parseCDS(source)
+    const aliasMap = buildAliasMap(tree)
+
+    // find the deepest rule containing the cursor
+    const node = findParentRule(tree, pos)
+    if (!node) return { kind: "unknown", word }
+
+    // walk up from the node to find the semantic context
+    let current: ParserRuleContext | undefined = node
+    while (current) {
+      switch (current.ruleIndex) {
+        case ABAPCDSParser.RULE_data_source: {
+          // cursor is on a data source name (table/view)
+          const children = current.children || []
+          const firstId = children.filter(isTerminal).find(t => t.symbol.type === ABAPCDSLexer.IDENTIFIER)
+          if (firstId && positionInToken(pos, firstId.symbol)) {
+            return { kind: "source", name: firstId.text }
+          }
+          break
+        }
+        case ABAPCDSParser.RULE_target: {
+          // association target
+          return { kind: "association", name: word }
+        }
+        case ABAPCDSParser.RULE_data_element: {
+          return { kind: "dataElement", name: word }
+        }
+        case ABAPCDSParser.RULE_path_expr: {
+          // path_expr: IDENTIFIER? path_association ('.' path_association)* ('.' IDENTIFIER)?
+          // e.g. a071.matnr → alias=a071, field=matnr
+          const text = current.text
+          const parts = text.split(".")
+          if (parts.length >= 2) {
+            const alias = parts[0].toLowerCase()
+            const resolvedSource = aliasMap[alias] || parts[0]
+            // if cursor is on the alias part, navigate to the source
+            const firstChild = (current.children || [])[0]
+            if (isTerminal(firstChild) && positionInToken(pos, firstChild.symbol)) {
+              return { kind: "source", name: resolvedSource }
+            }
+            // cursor is on a field part
+            return { kind: "field", source: resolvedSource, field: parts.slice(1).join(".") }
+          }
+          break
+        }
+        case ABAPCDSParser.RULE_alias: {
+          // alias after AS in field_rename or data_source — not a navigable object
+          return undefined
+        }
+        case ABAPCDSParser.RULE_field:
+        case ABAPCDSParser.RULE_case_operand:
+        case ABAPCDSParser.RULE_arg: {
+          // simple field reference - might be alias.field or just field
+          // check if the word is an alias
+          if (aliasMap[word.toLowerCase()]) {
+            return { kind: "source", name: aliasMap[word.toLowerCase()] }
+          }
+          // it's a bare field name - try all sources
+          const allSources = Object.values(aliasMap)
+          if (allSources.length > 0) {
+            return { kind: "field", source: allSources[0], field: word }
+          }
+          return { kind: "unknown", word }
+        }
+      }
+      current = current.parent as ParserRuleContext | undefined
+    }
+  } catch (e) {
+    // parse error - fall through to word-based lookup
+  }
+
+  return { kind: "unknown", word }
+}
+
 export const cdsCompletionExtractor = (source: string, cursor: Position) => {
   const result = {
     prefix: "",
@@ -140,4 +270,14 @@ export const cdsCompletionExtractor = (source: string, cursor: Position) => {
   )
   parseCDS(source, { parserListener })
   return result
+}
+
+export function cdsDataSources(source: string): string[] {
+  try {
+    const tree = parseCDS(source)
+    const map = buildAliasMap(tree)
+    return [...new Set(Object.values(map))]
+  } catch (e) {
+    return []
+  }
 }
