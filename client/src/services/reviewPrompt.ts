@@ -77,7 +77,7 @@ export function initializeReviewPrompt(context: vscode.ExtensionContext): void {
 }
 
 /**
- * Call from logTelemetry() on every tool/command invocation to bump the counter.
+ * Call for review-eligible command/tool usage to bump the counter.
  */
 export function incrementReviewCounter(): void {
   try {

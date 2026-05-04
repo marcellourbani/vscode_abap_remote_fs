@@ -4,6 +4,7 @@
  */
 
 import * as vscode from "vscode"
+import { registerToolWithRegistry } from "./toolRegistry"
 import { getSearchService } from "../abapSearchService"
 import { logTelemetry } from "../telemetry"
 import { getOrCreateRoot } from "../../adt/conections"
@@ -264,7 +265,7 @@ export class RunUnitTestsTool implements vscode.LanguageModelTool<IRunUnitTestsP
 
 export function registerUnitTestTools(context: vscode.ExtensionContext): void {
   context.subscriptions.push(
-    vscode.lm.registerTool("create_test_include", new CreateTestIncludeTool())
+    registerToolWithRegistry("create_test_include", new CreateTestIncludeTool())
   )
-  context.subscriptions.push(vscode.lm.registerTool("run_unit_tests", new RunUnitTestsTool()))
+  context.subscriptions.push(registerToolWithRegistry("run_unit_tests", new RunUnitTestsTool()))
 }

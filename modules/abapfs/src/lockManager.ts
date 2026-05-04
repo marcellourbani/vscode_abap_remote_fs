@@ -2,12 +2,29 @@ import { Root } from "./root"
 import { LockObject, delay } from "./lockObject"
 import { isAbapStat } from "./abapFile"
 import { FileSystemError } from "vscode"
-import { isLoginError, isCsrfError } from "abap-adt-api"
+import { isLoginError, isCsrfError, AdtException, isHttpError } from "abap-adt-api"
+
+export class ReloginError extends Error {
+  constructor(public outcome: boolean) {
+    super(`All locks dropped due to expired sessions - login ${outcome ? "successful" : "failed"}`)
+  }
+  static isReloginError(error: unknown): error is ReloginError {
+    return !!error && error instanceof ReloginError
+  }
+}
 
 export class LockManager {
   constructor(private root: Root) {}
   private fileObjects = new Map<string, string>()
-  private objects = new Map<string, LockObject>();
+  private objects = new Map<string, LockObject>()
+  private didworkonce = false
+  private haveToRelogin(error: AdtException) {
+    if (isLoginError(error)) return true
+    return (
+      (this.didworkonce && isLoginError(error)) ||
+      (isHttpError(error) && error.status >= 400 && error.status < 500)
+    )
+  }
 
   *lockedPaths() {
     for (const [path, key] of this.fileObjects)
@@ -36,8 +53,12 @@ export class LockManager {
   requestLock(path: string) {
     return this.lockObject(path)
       .requestLock(path)
+      .then(l => {
+        this.didworkonce = true
+        return l
+      })
       .catch(async error => {
-        if (isLoginError(error)) throw new Error(await this.relogin())
+        if (this.haveToRelogin(error)) await this.relogin()
         throw error
       })
   }
@@ -47,19 +68,19 @@ export class LockManager {
       /* */
     })
     const result = await this.root.service.login().then(
-      () => "successful",
-      () => "failed"
+      () => true,
+      () => false
     )
-    return `All locks dropped due to expired sessions - login ${result}`
+    throw new ReloginError(result)
   }
 
   requestUnlock(path: string, immediate = false) {
     const request = this.lockObject(path).requestUnlock(path, immediate)
-    request.catch(e => {
-      if (isCsrfError(e)) this.dropall()
+    request.catch(async e => {
+      if (this.haveToRelogin(e)) await this.relogin()
+      // throw new Error(`Session expired - unlocking failed, relogin triggered,${e.message}`)
       throw e
     })
-    this.checkSession()
     return request
   }
   dropall(expired = false) {
@@ -85,11 +106,5 @@ export class LockManager {
   private noLocksOrPending() {
     for (const obj of this.objects.values()) if (obj.status.status !== "unlocked") return false
     return true
-  }
-  private async checkSession() {
-    if (this.noLocksOrPending()) {
-      await delay(500)
-      if (this.noLocksOrPending()) this.root.service.dropSession()
-    }
   }
 }

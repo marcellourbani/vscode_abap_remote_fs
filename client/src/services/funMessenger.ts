@@ -314,6 +314,12 @@ export const funWindow = {
   get state() {
     return vscode.window.state
   },
+  get activeNotebookEditor() {
+    return vscode.window.activeNotebookEditor
+  },
+  get visibleNotebookEditors() {
+    return vscode.window.visibleNotebookEditors
+  },
   get activeTerminal() {
     return vscode.window.activeTerminal
   },
@@ -324,6 +330,7 @@ export const funWindow = {
     return vscode.window.tabGroups
   },
   showTextDocument: vscode.window.showTextDocument,
+  showNotebookDocument: vscode.window.showNotebookDocument,
   createQuickPick: vscode.window.createQuickPick,
   createInputBox: vscode.window.createInputBox,
   createTreeView: vscode.window.createTreeView,
@@ -339,6 +346,8 @@ export const funWindow = {
   registerTerminalProfileProvider: vscode.window.registerTerminalProfileProvider,
   registerFileDecorationProvider: vscode.window.registerFileDecorationProvider,
   onDidChangeActiveTextEditor: vscode.window.onDidChangeActiveTextEditor,
+  onDidChangeActiveNotebookEditor: vscode.window.onDidChangeActiveNotebookEditor,
+  onDidChangeVisibleNotebookEditors: vscode.window.onDidChangeVisibleNotebookEditors,
   onDidChangeVisibleTextEditors: vscode.window.onDidChangeVisibleTextEditors,
   onDidChangeTextEditorSelection: vscode.window.onDidChangeTextEditorSelection,
   onDidChangeTextEditorVisibleRanges: vscode.window.onDidChangeTextEditorVisibleRanges,

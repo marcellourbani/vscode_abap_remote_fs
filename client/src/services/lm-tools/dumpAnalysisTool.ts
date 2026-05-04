@@ -4,6 +4,7 @@
  */
 
 import * as vscode from "vscode"
+import { registerToolWithRegistry } from "./toolRegistry"
 import { logTelemetry } from "../telemetry"
 import { getClient } from "../../adt/conections"
 
@@ -217,6 +218,6 @@ export class ABAPDumpAnalysisTool implements vscode.LanguageModelTool<IDumpAnaly
 
 export function registerDumpAnalysisTool(context: vscode.ExtensionContext): void {
   context.subscriptions.push(
-    vscode.lm.registerTool("analyze_abap_dumps", new ABAPDumpAnalysisTool())
+    registerToolWithRegistry("analyze_abap_dumps", new ABAPDumpAnalysisTool())
   )
 }

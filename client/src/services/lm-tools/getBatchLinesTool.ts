@@ -4,6 +4,7 @@
  */
 
 import * as vscode from "vscode"
+import { registerToolWithRegistry } from "./toolRegistry"
 import { funWindow as window } from "../funMessenger"
 import { getSearchService } from "../abapSearchService"
 import { abapUri } from "../../adt/conections"
@@ -208,5 +209,5 @@ export class GetBatchLinesTool implements vscode.LanguageModelTool<IBatchLinesPa
 // ============================================================================
 
 export function registerGetBatchLinesTool(context: vscode.ExtensionContext): void {
-  context.subscriptions.push(vscode.lm.registerTool("get_batch_lines", new GetBatchLinesTool()))
+  context.subscriptions.push(registerToolWithRegistry("get_batch_lines", new GetBatchLinesTool()))
 }

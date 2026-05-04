@@ -7,6 +7,7 @@
  */
 
 import * as vscode from "vscode"
+import { registerToolWithRegistry } from "./toolRegistry"
 import { MermaidWebviewManager } from "../MermaidWebviewManager"
 import { MERMAID_DOCUMENTATION } from "../MermaidDocumentation"
 import { logTelemetry } from "../telemetry"
@@ -405,18 +406,18 @@ export class DetectMermaidDiagramTypeTool implements vscode.LanguageModelTool<ID
 
 export function registerMermaidTools(context: vscode.ExtensionContext): void {
   context.subscriptions.push(
-    vscode.lm.registerTool("create_mermaid_diagram", new CreateMermaidDiagramTool())
+    registerToolWithRegistry("create_mermaid_diagram", new CreateMermaidDiagramTool())
   )
 
   context.subscriptions.push(
-    vscode.lm.registerTool("validate_mermaid_syntax", new ValidateMermaidSyntaxTool())
+    registerToolWithRegistry("validate_mermaid_syntax", new ValidateMermaidSyntaxTool())
   )
 
   context.subscriptions.push(
-    vscode.lm.registerTool("get_mermaid_documentation", new GetMermaidDocumentationTool())
+    registerToolWithRegistry("get_mermaid_documentation", new GetMermaidDocumentationTool())
   )
 
   context.subscriptions.push(
-    vscode.lm.registerTool("detect_mermaid_diagram_type", new DetectMermaidDiagramTypeTool())
+    registerToolWithRegistry("detect_mermaid_diagram_type", new DetectMermaidDiagramTypeTool())
   )
 }

@@ -7,7 +7,6 @@ import {
   Uri,
   Disposable,
   Event,
-  window,
   workspace,
   TabInputTextDiff
 } from "vscode"
@@ -27,6 +26,8 @@ import { triggerSyntaxCheck } from "./langClient"
 import { updateEnhancementDecorations } from "./views/enhancementDecorations"
 import { updateCleanerContext } from "./services/cleanerCommands"
 import { onBlameActiveEditorChanged, onBlameDocumentChanged } from "./views/blameGutter"
+import { ReloginError } from "abapfs/out/lockManager"
+import { funWindow as window } from "./services/funMessenger"
 
 // Global tracking of save reasons to coordinate between documentWillSave and writeFile
 const pendingSaveReasons = new Map<string, TextDocumentSaveReason>()
@@ -67,24 +68,6 @@ export async function documentClosedListener(doc: TextDocument) {
   }
 }
 
-export async function reconnectExpired(uri: Uri) {
-  const ok = "Ok"
-  const lm = uriRoot(uri).lockManager
-
-  const resp = lm.lockedPaths().next().value
-    ? await window.showErrorMessage(
-        "Session expired, files can't be locked might be stale. Try to refresh locks?",
-        "Ok",
-        "Cancel"
-      )
-    : ok
-  if (resp === ok) {
-    await lm.restore()
-    return true
-  }
-  return false
-}
-
 type LockValidator = (l: LockStatus) => Promise<boolean>
 async function validateLock(lock: LockStatus) {
   const ok = "Ok"
@@ -112,7 +95,6 @@ export async function setDocumentLock(
 
   const lockManager = getRoot(uri.authority).lockManager
 
-  const cb = interactive ? validateLock : undefined
   if (document.isDirty)
     try {
       const lock = await lockManager.requestLock(uri.path)
@@ -125,50 +107,22 @@ export async function setDocumentLock(
         throw error
       }
     } catch (e) {
-      // Enhanced error logging for debugging
-      // if (isRecord(e)) {
-      //   const errorDetails = {
-      //     message: e.message,
-      //     status: e.status || e.response?.status,
-      //     statusText: e.statusText || e.response?.statusText,
-      //     code: e.code,
-      //     errno: e.errno
-      //   }
-      // }
-
-      if (isExpired(e)) {
-        if (retry && (await reconnectExpired(document.uri)))
-          return setDocumentLock(document, interactive, false)
-      }
-
       // Handle error notifications based on interactive flag
-      if (interactive) {
-        window.showErrorMessage(`${caughtToString(e)}\nWon't be able to save changes`)
-      }
-
+      if (interactive)
+        if (ReloginError.isReloginError(e) && e.outcome)
+          window.showInformationMessage(`${caughtToString(e)}\nAll should be fine`)
+        else window.showErrorMessage(`${caughtToString(e)}\nWon't be able to save changes`)
       // Always throw the error so caller can handle it
-      throw e
+      if (!(ReloginError.isReloginError(e) && e.outcome)) throw e
     }
-  else await lockManager.requestUnlock(uri.path)
-  // else if (!interactive) {
-  //   // Only unlock if this is NOT an interactive save operation
-  //   await lockManager.requestUnlock(uri.path)
-  // } else {
-  //   // For interactive saves (like "Keep"), we need to lock even if document isn't dirty
-  //   try {
-  //     const lock = await lockManager.requestLock(uri.path)
-  //     if (!validateLock(lock)) {
-  //       await lockManager.requestUnlock(uri.path)
-  //       const error = new Error("Lock validation failed for interactive save")
-  //       window.showErrorMessage(`Lock validation failed\nWon't be able to save changes`)
-  //       throw error
-  //     }
-  //   } catch (e) {
-  //     window.showErrorMessage(`${caughtToString(e)}\nWon't be able to save changes`)
-  //     throw e
-  //   }
-  // }
-
+  else
+    await lockManager.requestUnlock(uri.path).catch(e => {
+      if (interactive)
+        if (ReloginError.isReloginError(e) && e.outcome)
+          window.showInformationMessage(`${caughtToString(e)}`)
+        else window.showErrorMessage(`${caughtToString(e)}`)
+      if (!(ReloginError.isReloginError(e) && e.outcome)) throw e
+    })
   return await lockManager.finalStatus(uri.path)
 }
 // when the extension is deactivated, all locks are dropped
@@ -272,6 +226,7 @@ function showHidedbIcon(editor?: TextEditor) {
   try {
     const type = uriAbapFile(editor?.document.uri)?.object.type
     setContext("abapfs:showTableContentIcon", viewableObjecttypes.has(type))
+    setContext("abapfs:activeEditorIsTable", type === "TABL/DT")
   } catch (error) {}
 }
 

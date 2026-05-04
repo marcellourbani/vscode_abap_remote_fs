@@ -4,6 +4,7 @@
  */
 
 import * as vscode from "vscode"
+import { registerToolWithRegistry } from "./toolRegistry"
 import { logCommands } from "../abapCopilotLogger"
 import { logTelemetry } from "../telemetry"
 import { getClient } from "../../adt/conections"
@@ -570,6 +571,6 @@ export class ABAPTraceAnalysisTool implements vscode.LanguageModelTool<ITraceAna
 
 export function registerTraceAnalysisTool(context: vscode.ExtensionContext): void {
   context.subscriptions.push(
-    vscode.lm.registerTool("analyze_abap_traces", new ABAPTraceAnalysisTool())
+    registerToolWithRegistry("analyze_abap_traces", new ABAPTraceAnalysisTool())
   )
 }

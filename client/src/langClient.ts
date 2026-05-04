@@ -18,7 +18,7 @@ import {
   SearchProgress,
   LogEntry
 } from "vscode-abap-remote-fs-sharedapi"
-import { ExtensionContext, Uri, window, ProgressLocation, workspace, WorkspaceEdit } from "vscode"
+import { ExtensionContext, Uri, ProgressLocation, workspace, WorkspaceEdit } from "vscode"
 import {
   LanguageClient,
   TransportKind,
@@ -37,6 +37,7 @@ import { isAbapFile } from "abapfs"
 import { AbapObject } from "abapobject"
 import { IncludeService, IncludeProvider } from "./adt/includes"
 import * as R from "ramda"
+import { funWindow as window } from "./services/funMessenger"
 import { buildCookieHeaders, errorMessage } from "./auth/utils"
 
 const uriErrors = new Map<string, boolean>()
@@ -143,9 +144,7 @@ async function getToken(connId: string) {
 }
 
 /** Provide auth headers (cookies etc.) to the language server for non-basic auth. */
-async function getAuthHeaders(
-  connId: string
-): Promise<AuthHeadersResponse | undefined> {
+async function getAuthHeaders(connId: string): Promise<AuthHeadersResponse | undefined> {
   connId = formatKey(connId)
   const conn = await RemoteManager.get().byIdAsync(connId)
   if (!conn) return undefined
@@ -166,10 +165,14 @@ async function getAuthHeaders(
         libLog.debug(`[langClient] getAuthHeaders: kerberos refresh success for ${connId}`)
         return result.headers ? { httpHeaders: result.headers } : undefined
       } catch (e) {
-        libLog.debug(`[langClient] getAuthHeaders: kerberos re-negotiation failed for ${connId}: ${errorMessage(e)}`)
+        libLog.debug(
+          `[langClient] getAuthHeaders: kerberos re-negotiation failed for ${connId}: ${errorMessage(e)}`
+        )
         const { getKerberosCookies } = await import("./auth/kerberos")
         const cookies = await getKerberosCookies(connId)
-        libLog.debug(`[langClient] getAuthHeaders: falling back to ${cookies.length} cached cookies for ${connId}`)
+        libLog.debug(
+          `[langClient] getAuthHeaders: falling back to ${cookies.length} cached cookies for ${connId}`
+        )
         const httpHeaders = buildCookieHeaders(cookies)
         return httpHeaders ? { httpHeaders } : undefined
       }
@@ -189,7 +192,9 @@ async function getAuthHeaders(
         const httpHeaders = buildCookieHeaders(cookies)
         return httpHeaders ? { httpHeaders } : undefined
       } catch (e) {
-        libLog.debug(`[langClient] getAuthHeaders: browser_sso capture failed for ${connId}: ${errorMessage(e)}`)
+        libLog.debug(
+          `[langClient] getAuthHeaders: browser_sso capture failed for ${connId}: ${errorMessage(e)}`
+        )
         const { getSsoCookies } = await import("./auth/browserSso")
         const cookies = await getSsoCookies(connId)
         const httpHeaders = buildCookieHeaders(cookies)
@@ -210,8 +215,8 @@ async function getAuthHeaders(
           certPath: conn.certAuth.certPath,
           keyPath: conn.certAuth.keyPath,
           caPath: conn.certAuth.caPath || undefined,
-          passphrase: passphrase || undefined,
-        },
+          passphrase: passphrase || undefined
+        }
       }
     }
     case "oauth_onprem": {
@@ -236,7 +241,9 @@ async function getAuthHeaders(
           return { httpHeaders: { Authorization: `Bearer ${token}` } }
         }
       } catch (e) {
-        libLog.debug(`[langClient] getAuthHeaders: oauth_onprem token fetch failed for ${connId}: ${errorMessage(e)}`)
+        libLog.debug(
+          `[langClient] getAuthHeaders: oauth_onprem token fetch failed for ${connId}: ${errorMessage(e)}`
+        )
       }
       return undefined
     }

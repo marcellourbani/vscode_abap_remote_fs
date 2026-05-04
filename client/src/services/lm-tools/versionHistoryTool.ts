@@ -4,6 +4,7 @@
  */
 
 import * as vscode from "vscode"
+import { registerToolWithRegistry } from "./toolRegistry"
 import { getSearchService } from "../abapSearchService"
 import { logTelemetry } from "../telemetry"
 import { Revision } from "abap-adt-api"
@@ -445,6 +446,6 @@ export class VersionHistoryTool implements vscode.LanguageModelTool<IVersionHist
 
 export function registerVersionHistoryTool(context: vscode.ExtensionContext): void {
   context.subscriptions.push(
-    vscode.lm.registerTool("get_version_history", new VersionHistoryTool())
+    registerToolWithRegistry("get_version_history", new VersionHistoryTool())
   )
 }

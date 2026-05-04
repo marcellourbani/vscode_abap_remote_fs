@@ -70,7 +70,7 @@ export class ATCDocumentation implements WebviewViewProvider {
     setContext("abapfs:atcdoc:navigation:back", this.history.hasPrevious)
     if (this.documentation) {
       const client = getClient(this.documentation.connId)
-      const doc = await client.httpClient.request(this.documentation.url)
+      const doc = await client.atcDocumentation(this.documentation.url)
       this.view.webview.html = injectUrlHandler(doc.body)
     } else this.view.webview.html = `<body>No document selected</body>`
   }

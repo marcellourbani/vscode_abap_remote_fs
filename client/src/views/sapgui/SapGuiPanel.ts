@@ -239,7 +239,7 @@ export class SapGuiPanel {
    */
   public loadDirectWebGuiUrl(webguiUrl: string) {
     // Check if user prefers VS Code's integrated browser over embedded webview
-    const useIntegratedBrowser = vscode.workspace.getConfiguration("abapfs.sapGui").get<boolean>("useIntegratedBrowser", false)
+    const useIntegratedBrowser = vscode.workspace.getConfiguration("abapfs.sapGui").get<boolean>("useIntegratedBrowser", true)
     if (useIntegratedBrowser) {
       vscode.commands.executeCommand("simpleBrowser.api.open", webguiUrl, {
         viewColumn: vscode.ViewColumn.Beside,

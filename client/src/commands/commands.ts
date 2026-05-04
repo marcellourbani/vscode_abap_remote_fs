@@ -60,6 +60,11 @@ import { atcProvider } from "../views/abaptestcockpit"
 import { FsProvider } from "../fs/FsProvider"
 import { logTelemetry } from "../services/telemetry"
 import { SapGui } from "../adt/sapgui/sapgui"
+import { AbapDebugSession } from "../adt/debugger/abapDebugSession"
+import { createObjectInEditorCommand } from "./createObjectInEditor"
+import { manageTextElementsCommand } from "./textElementsCommands"
+import { configureFeedsCommand } from "./configureFeeds"
+import { publishServiceBindingCommand } from "./publishServiceBinding"
 
 export function currentUri() {
   if (!window.activeTextEditor) return
@@ -67,6 +72,23 @@ export function currentUri() {
   if (uri.scheme !== ADTSCHEME) return
   return uri
 }
+
+async function saveDirtyAdtDocuments(connectionId: string) {
+  const dirtyDocuments = workspace.textDocuments.filter(
+    document =>
+      document.isDirty &&
+      document.uri.scheme === ADTSCHEME &&
+      document.uri.authority === connectionId
+  )
+
+  for (const document of dirtyDocuments) {
+    const saved = await document.save()
+    if (!saved) {
+      throw new Error(`Failed to save ${document.uri.path} before activation.`)
+    }
+  }
+}
+
 export function currentAbapFile() {
   const uri = currentUri()
   return uriAbapFile(uri)
@@ -123,8 +145,39 @@ interface ShowObjectArgument {
   uri: string
 }
 export class AdtCommands {
+  private static hasEnabledAbapBreakpoints(connectionId: string) {
+    return vscode.debug.breakpoints.some(
+      breakpoint =>
+        breakpoint.enabled &&
+        breakpoint instanceof vscode.SourceBreakpoint &&
+        breakpoint.location.uri.scheme === ADTSCHEME &&
+        breakpoint.location.uri.authority === connectionId
+    )
+  }
+
+  private static async autoStartDebuggerIfNeeded(connectionId: string) {
+    if (AbapDebugSession.byConnection(connectionId)) return
+    if (!AdtCommands.hasEnabledAbapBreakpoints(connectionId)) return
+
+    const started = await vscode.debug.startDebugging(undefined, {
+      type: "abap",
+      request: "attach",
+      name: "Auto Attach to server",
+      connId: connectionId,
+      debugUser: "",
+      terminalMode: false
+    })
+
+    if (!started) {
+      throw new Error("Failed to auto-start ABAP debugger")
+    }
+
+    await new Promise(resolve => setTimeout(resolve, 500))
+  }
+
   @command(AbapFsCommands.extractMethod)
   private static async extractMethod(url: string, range: Range) {
+    logTelemetry("command_extract_method_called")
     const uri = Uri.parse(url)
     const client = getClient(uri.authority)
     const root = getRoot(uri.authority)
@@ -145,11 +198,13 @@ export class AdtCommands {
   }
   @command(AbapFsCommands.showDocumentation)
   private static async showAbapDoc() {
+    logTelemetry("command_show_documentation_called")
     return showAbapDoc()
   }
 
   @command(AbapFsCommands.selectDB)
   private static async selectDB(table?: string) {
+    logTelemetry("command_select_db_called")
     return showQuery(table)
   }
 
@@ -170,6 +225,7 @@ export class AdtCommands {
 
   @command(AbapFsCommands.connect)
   private static async connectAdtServer(selector: any) {
+    logTelemetry("command_connect_called")
     let name = ""
     try {
       const connectionID = selector && selector.connection
@@ -205,6 +261,7 @@ export class AdtCommands {
 
   @command(AbapFsCommands.disconnect)
   private static async disconnectAdtServer(selector?: any) {
+    logTelemetry("command_disconnect_called")
     try {
       // Show confirmation dialog
       const choice = await window.showWarningMessage(
@@ -314,6 +371,74 @@ export class AdtCommands {
     }
   }
 
+  @command(AbapFsCommands.activateMultiple)
+  private static async activateMultiple(selector?: Uri) {
+    try {
+      const activeUri = selector || currentUri()
+      const fsRoot = await pickAdtRoot(activeUri)
+      const connectionId = activeUri?.authority || fsRoot?.uri.authority
+
+      if (!connectionId) {
+        throw new Error("No ABAP connection available")
+      }
+
+      const activator = AdtObjectActivator.get(connectionId)
+
+      const result = await window.withProgress(
+        { location: ProgressLocation.Notification, title: "Loading unactivated objects..." },
+        async progress => {
+          progress.report({ message: "Saving pending changes..." })
+          await saveDirtyAdtDocuments(connectionId)
+
+          progress.report({ message: "Loading unactivated objects..." })
+          const activationResult = await activator.activateMultiple(true)
+
+          if (activationResult.ok) {
+            progress.report({ message: "Refreshing explorer..." })
+            await commands.executeCommand("workbench.files.action.refreshFilesExplorer")
+
+            const editor = window.activeTextEditor
+            if (
+              editor?.document.uri.scheme === ADTSCHEME &&
+              editor.document.uri.authority === connectionId
+            ) {
+              await showHideActivate(editor, true)
+            }
+          }
+
+          return activationResult
+        }
+      )
+
+      if (result.cancelled) {
+        return
+      }
+
+      if (!result.ok) {
+        throw new Error(result.summary || "Activation failed; see ABAP FS output for details")
+      }
+
+      if (!result.availableCount) {
+        window.showInformationMessage("No unactivated objects found")
+        return
+      }
+
+      window.showInformationMessage(
+        `✅ Activated ${result.selectedCount || 0} object${result.selectedCount === 1 ? "" : "s"}`
+      )
+    } catch (e) {
+      const errorMessage = caughtToString(e)
+
+      const action = await window.showErrorMessage(
+        `Multiple activation failed: ${errorMessage}`,
+        "Show activation log"
+      )
+      if (action === "Show activation log") {
+        channel.show(true)
+      }
+    }
+  }
+
   @command(AbapFsCommands.pickAdtRootConn)
   private static async pickRoot() {
     const uri = currentUri()
@@ -324,6 +449,7 @@ export class AdtCommands {
 
   @command(AbapFsCommands.runClass)
   private static async runClass() {
+    logTelemetry("command_run_class_called")
     try {
       const uri = currentUri()
       if (!uri) return
@@ -560,6 +686,7 @@ export class AdtCommands {
 
   @command(AbapFsCommands.showObject)
   private static async showObject(arg: ShowObjectArgument) {
+    logTelemetry("command_show_object_called")
     const p = splitAdtUri(arg.uri)
     const path = await vsCodeUri(arg.connId, arg.uri, true, true)
     const uri = Uri.parse(path)
@@ -585,6 +712,8 @@ export class AdtCommands {
         window.showErrorMessage("Connection configuration not found")
         return
       }
+
+      await AdtCommands.autoStartDebuggerIfNeeded(fsRoot.uri.authority)
 
       // Create SapGui instance and call startGui directly (no routing check)
       const sapGui = SapGui.create(config)
@@ -653,6 +782,7 @@ export class AdtCommands {
 
       // Check if embedded GUI is configured
       if (config.sapGui?.guiType !== "WEBGUI_UNSAFE_EMBEDDED") {
+        await AdtCommands.autoStartDebuggerIfNeeded(fsRoot.uri.authority)
         await runInSapGui(fsRoot.uri.authority, () => ({
           type: "Transaction" as const,
           command: "*SE38",
@@ -663,6 +793,8 @@ export class AdtCommands {
         }))
         return
       }
+
+      await AdtCommands.autoStartDebuggerIfNeeded(fsRoot.uri.authority)
 
       // Get extension URI more reliably
       let extensionUri: Uri
@@ -809,6 +941,7 @@ export class AdtCommands {
         if (!tcodeToRun) return
 
         logTelemetry("command_run_transaction_called", { connectionId })
+        await AdtCommands.autoStartDebuggerIfNeeded(connectionId)
 
         // 3. Execute transaction based on guiType preference
         const guiType = config.sapGui?.guiType || "SAPGUI"
@@ -951,6 +1084,7 @@ export class AdtCommands {
         window.showErrorMessage("Connection configuration not found")
         return
       }
+      await AdtCommands.autoStartDebuggerIfNeeded(fsRoot.uri.authority)
       // 🎯 USE CENTRALIZED transaction mapping - NO MORE DUPLICATION! 🎉
       const transactionInfo = SapGuiPanel.getTransactionInfo(file.object.type, file.object.name)
 
@@ -971,12 +1105,13 @@ export class AdtCommands {
 
   @command(AbapFsCommands.addfavourite)
   private static addFavourite(uri: Uri | undefined) {
-    // find the adt relevant namespace roots, and let the user pick one if needed
+    logTelemetry("command_add_favourite_called")
     if (uri) FavouritesProvider.get().addFavourite(uri)
   }
 
   @command(AbapFsCommands.deletefavourite)
   private static deleteFavourite(node: FavItem) {
+    logTelemetry("command_delete_favourite_called")
     FavouritesProvider.get().deleteFavourite(node)
   }
 
@@ -1015,6 +1150,7 @@ export class AdtCommands {
 
   @command(AbapFsCommands.atcChecks)
   private static async runAtc() {
+    logTelemetry("command_atc_checks_called")
     try {
       const state = await currentEditState()
       if (!state) return
@@ -1155,5 +1291,22 @@ export class AdtCommands {
     } catch (e) {
       window.showErrorMessage(`Failed to clear cache: ${caughtToString(e)}`)
     }
+  }
+
+  @command(AbapFsCommands.createInEditor)
+  private static async createObjectInEditorCommand(uri?: Uri) {
+    return createObjectInEditorCommand(uri)
+  }
+  @command(AbapFsCommands.manageTextElements)
+  private static async manageTextElementsCommand(uri?: Uri) {
+    return manageTextElementsCommand(uri)
+  }
+  @command(AbapFsCommands.configureFeeds)
+  private static async configureFeedsCommand() {
+    return configureFeedsCommand()
+  }
+  @command(AbapFsCommands.publishServiceBinding)
+  private static async publishServiceBindingCommand() {
+    return publishServiceBindingCommand()
   }
 }

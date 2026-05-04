@@ -76,7 +76,8 @@ export class searchService {
               "SFBF", // Business Functions
               "SFBS", // Business Function Sets
               "JOBD", // Job Definitions
-              "NROB" // Number Range Objects
+              "NROB", // Number Range Objects
+              "SUSO" // Authorization Object Sets
             ]
 
       for (const type of searchTypes) {

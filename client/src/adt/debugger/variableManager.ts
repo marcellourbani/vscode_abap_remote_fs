@@ -7,6 +7,7 @@ import { AbapFsCommands, command } from "../../commands"
 import { env, ProgressLocation } from "vscode"
 import { funWindow as window } from "../../services/funMessenger"
 import { AbapDebugSession } from "./abapDebugSession"
+import { logTelemetry } from "../../services/telemetry"
 
 interface Variable {
   id: string
@@ -167,6 +168,7 @@ export class VariableManager {
     container: { variablesReference: number }
     variable: { name: string }
   }) {
+    logTelemetry("command_export_to_json_called")
     const [vm, client] = this.currentClient(arg.container.variablesReference) || []
     if (!vm || !client) {
       window.showErrorMessage("No active debug session detected")

@@ -14,6 +14,7 @@ import {
 import { getClient, uriRoot } from "../conections"
 import { isAbapFile } from "abapfs"
 import { AdtObjectActivator } from "../operations/AdtObjectActivator"
+import { logTelemetry } from "../../services/telemetry"
 
 interface ActivateInput {
   url: string
@@ -24,6 +25,7 @@ export class ActivateTool implements LanguageModelTool<ActivateInput> {
     options: LanguageModelToolInvocationOptions<ActivateInput>,
     token: CancellationToken
   ): Promise<LanguageModelToolResult> {
+    logTelemetry("tool_abap_activate_called")
     const { url } = options.input
     const uri = Uri.parse(url)
     await window.withProgress(

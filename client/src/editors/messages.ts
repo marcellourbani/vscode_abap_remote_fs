@@ -4,7 +4,6 @@ import {
   WebviewPanel,
   CancellationToken,
   ExtensionContext,
-  window,
   Webview,
   Uri,
   ViewColumn,
@@ -16,6 +15,7 @@ import { XMLParser } from "fast-xml-parser"
 import { decode } from "html-entities"
 import path from "path"
 import { getClient } from "../adt/conections"
+import { funWindow as window } from "../services/funMessenger"
 
 const parser = new XMLParser({
   parseAttributeValue: true,

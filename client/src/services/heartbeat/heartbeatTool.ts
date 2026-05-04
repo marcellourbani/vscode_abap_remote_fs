@@ -12,6 +12,8 @@
  */
 
 import * as vscode from "vscode"
+import { registerToolWithRegistry } from "../lm-tools/toolRegistry"
+import { logTelemetry } from "../telemetry"
 import { getHeartbeatService } from "./heartbeatService"
 import { formatDuration } from "./heartbeatTypes"
 import { HeartbeatWatchlist } from "./heartbeatWatchlist"
@@ -146,6 +148,7 @@ export class HeartbeatTool implements vscode.LanguageModelTool<HeartbeatToolPara
     options: vscode.LanguageModelToolInvocationOptions<HeartbeatToolParams>,
     _token: vscode.CancellationToken
   ): Promise<vscode.LanguageModelToolResult> {
+    logTelemetry("tool_manage_heartbeat_called")
     const params = options.input
     const service = getHeartbeatService()
 
@@ -570,5 +573,5 @@ export class HeartbeatTool implements vscode.LanguageModelTool<HeartbeatToolPara
  * Register the heartbeat tool
  */
 export function registerHeartbeatTool(context: vscode.ExtensionContext): void {
-  context.subscriptions.push(vscode.lm.registerTool("manage_heartbeat", new HeartbeatTool()))
+  context.subscriptions.push(registerToolWithRegistry("manage_heartbeat", new HeartbeatTool()))
 }

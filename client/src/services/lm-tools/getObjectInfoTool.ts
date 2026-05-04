@@ -4,6 +4,7 @@
  */
 
 import * as vscode from "vscode"
+import { registerToolWithRegistry } from "./toolRegistry"
 import { funWindow as window } from "../funMessenger"
 import { getSearchService } from "../abapSearchService"
 import { abapUri } from "../../adt/conections"
@@ -24,6 +25,7 @@ import {
 
 export interface IGetABAPObjectInfoParameters {
   objectName: string
+  objectType?: string
   connectionId?: string
 }
 
@@ -36,12 +38,13 @@ export class GetABAPObjectInfoTool implements vscode.LanguageModelTool<IGetABAPO
     options: vscode.LanguageModelToolInvocationPrepareOptions<IGetABAPObjectInfoParameters>,
     _token: vscode.CancellationToken
   ) {
-    const { objectName, connectionId } = options.input
+    const { objectName, objectType, connectionId } = options.input
 
     const confirmationMessages = {
       title: "Get ABAP Object Info",
       message: new vscode.MarkdownString(
         `Get metadata information for ABAP object: \`${objectName}\`` +
+          (objectType ? ` (type: ${objectType})` : "") +
           (connectionId ? ` (connection: ${connectionId})` : "")
       )
     }
@@ -56,7 +59,7 @@ export class GetABAPObjectInfoTool implements vscode.LanguageModelTool<IGetABAPO
     options: vscode.LanguageModelToolInvocationOptions<IGetABAPObjectInfoParameters>,
     _token: vscode.CancellationToken
   ): Promise<vscode.LanguageModelToolResult> {
-    let { objectName, connectionId } = options.input
+    let { objectName, objectType, connectionId } = options.input
     logTelemetry("tool_get_abap_object_info_called", { connectionId })
 
     if (connectionId) {
@@ -77,7 +80,8 @@ export class GetABAPObjectInfoTool implements vscode.LanguageModelTool<IGetABAPO
       }
 
       const searcher = getSearchService(actualConnectionId)
-      const searchResults = await searcher.searchObjects(objectName, undefined, 1)
+      const searchTypes = objectType ? [objectType] : undefined
+      const searchResults = await searcher.searchObjects(objectName, searchTypes, 1)
 
       if (!searchResults || searchResults.length === 0) {
         return new vscode.LanguageModelToolResult([
@@ -249,6 +253,6 @@ export class GetABAPObjectInfoTool implements vscode.LanguageModelTool<IGetABAPO
 
 export function registerGetObjectInfoTool(context: vscode.ExtensionContext): void {
   context.subscriptions.push(
-    vscode.lm.registerTool("get_abap_object_info", new GetABAPObjectInfoTool())
+    registerToolWithRegistry("get_abap_object_info", new GetABAPObjectInfoTool())
   )
 }

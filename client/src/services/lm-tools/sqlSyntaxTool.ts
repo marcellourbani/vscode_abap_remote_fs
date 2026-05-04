@@ -4,6 +4,7 @@
  */
 
 import * as vscode from "vscode"
+import { registerToolWithRegistry } from "./toolRegistry"
 import * as path from "path"
 import * as fs from "fs"
 import { logTelemetry } from "../telemetry"
@@ -80,6 +81,6 @@ export class GetABAPSQLSyntaxTool implements vscode.LanguageModelTool<{}> {
 
 export function registerSqlSyntaxTool(context: vscode.ExtensionContext): void {
   context.subscriptions.push(
-    vscode.lm.registerTool("get_abap_sql_syntax", new GetABAPSQLSyntaxTool())
+    registerToolWithRegistry("get_abap_sql_syntax", new GetABAPSQLSyntaxTool())
   )
 }

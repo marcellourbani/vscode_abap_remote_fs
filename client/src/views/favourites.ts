@@ -97,7 +97,7 @@ interface FavouriteIf {
 const fixold = (x: string) => x.replace(/\uFF0F/g, NSSLASH)
 const fixoldu = (x: string) => x.replace(/\%EF\%BC\%8F/g, encodeURIComponent(NSSLASH))
 
-class Favourite implements FavouriteIf {
+export class Favourite implements FavouriteIf {
   public readonly label: string
   public readonly uri: string
 

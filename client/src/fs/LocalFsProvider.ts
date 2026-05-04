@@ -19,6 +19,8 @@ import { getConfig } from "../config"
 
 export class LocalFsProvider implements FileSystemProvider {
   private localStorage: LocalStorage
+  private pendingChanges: FileChangeEvent[] = []
+  private changeTimer: ReturnType<typeof setTimeout> | undefined
 
   constructor(private readonly context: ExtensionContext) {
     const preferGlobal = getConfig().get("abapfs.localfs.preferGlobal")
@@ -49,17 +51,30 @@ export class LocalFsProvider implements FileSystemProvider {
         if (disposed) return
         const pattern = options?.recursive ? "**/*" : "*"
         watcher = workspace.createFileSystemWatcher(new RelativePattern(resolved, pattern))
-        const mapAndFire = (type: FileChangeType, u: Uri) => {
+        const queueChange = (type: FileChangeType, u: Uri) => {
           // compute path relative to resolved root
           let rel = u.path
           if (rel.startsWith(resolved.path)) rel = rel.substring(resolved.path.length)
           if (!rel.startsWith("/")) rel = `/${rel}`
           const remote = Uri.parse(`${uri.scheme}://${uri.authority}${rel}`)
-          this.pEventEmitter.fire([{ type, uri: remote }])
+          // Deduplicate: replace any pending event for the same URI
+          const idx = this.pendingChanges.findIndex(e => e.uri.toString() === remote.toString())
+          if (idx >= 0) this.pendingChanges[idx] = { type, uri: remote }
+          else this.pendingChanges.push({ type, uri: remote })
+          // Flush after a short delay to batch rapid changes
+          if (!this.changeTimer) {
+            this.changeTimer = setTimeout(() => {
+              this.changeTimer = undefined
+              if (this.pendingChanges.length > 0) {
+                const batch = this.pendingChanges.splice(0)
+                this.pEventEmitter.fire(batch)
+              }
+            }, 300)
+          }
         }
-        watcher.onDidCreate(u => mapAndFire(FileChangeType.Created, u))
-        watcher.onDidChange(u => mapAndFire(FileChangeType.Changed, u))
-        watcher.onDidDelete(u => mapAndFire(FileChangeType.Deleted, u))
+        watcher.onDidCreate(u => queueChange(FileChangeType.Created, u))
+        watcher.onDidChange(u => queueChange(FileChangeType.Changed, u))
+        watcher.onDidDelete(u => queueChange(FileChangeType.Deleted, u))
       })
       .catch(e => undefined)
     return new Disposable(() => {

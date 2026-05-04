@@ -5,7 +5,6 @@ import {
   workspace,
   EventEmitter,
   TreeItemCollapsibleState,
-  window,
   ProgressLocation,
   commands,
   env,
@@ -23,6 +22,7 @@ import {
   createTaskTransformer,
   caughtToString
 } from "../lib"
+import { funWindow as window } from "../services/funMessenger"
 import { quickPick } from "../lib"
 import { addRepo, repoCredentials } from "../scm/abapGit"
 import { isNone, none, isSome } from "fp-ts/lib/Option"

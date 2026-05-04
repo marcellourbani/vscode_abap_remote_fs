@@ -4,6 +4,7 @@
  */
 
 import * as vscode from "vscode"
+import { registerToolWithRegistry } from "./toolRegistry"
 import { getSearchService } from "../abapSearchService"
 import { getOptimalObjectURI } from "./shared"
 import { logTelemetry } from "../telemetry"
@@ -518,5 +519,5 @@ export class ABAPWhereUsedTool implements vscode.LanguageModelTool<IWhereUsedPar
 // ============================================================================
 
 export function registerWhereUsedTool(context: vscode.ExtensionContext): void {
-  context.subscriptions.push(vscode.lm.registerTool("find_where_used", new ABAPWhereUsedTool()))
+  context.subscriptions.push(registerToolWithRegistry("find_where_used", new ABAPWhereUsedTool()))
 }

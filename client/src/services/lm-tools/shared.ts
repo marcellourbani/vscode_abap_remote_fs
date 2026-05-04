@@ -454,115 +454,25 @@ export async function getObjectEnhancements(
     }
 
     try {
-      // Step 3: Get enhancement names and source code from elements endpoint
-      let enhancementDetails: Array<{
-        name: string
-        code?: string
-        startLine?: number
-        endLine?: number
-        uri?: string
-      }> = []
+      const apiResult = await client.objectEnhancements(sourceMainPath, undefined, needCode)
+      const allElements = apiResult.implementations.flatMap(impl => impl.elements)
 
-      try {
-        const enhancementsUri = `${sourceMainPath}/enhancements/elements`
-        // logCommands.debug(`🔍 Calling enhancements API: ${enhancementsUri}`);
+      if (allElements.length === 0) return result
 
-        const enhancementsResponse = await client.httpClient.request(enhancementsUri, {
-          headers: {
-            Accept: "application/vnd.sap.adt.enhancements.v3+xml"
-          }
-        })
-        const enhancementsData = enhancementsResponse.body
+      result.hasEnhancements = true
+      result.totalEnhancements = allElements.length
+      result.enhancements = allElements.map(el => ({
+        name: el.fullname,
+        startLine: el.position?.startLine ?? 0,
+        type: "ENHANCEMENT" as const,
+        code: el.source,
+        uri: el.uri
+      }))
 
-        if (enhancementsData && enhancementsData.trim().length > 0) {
-          // Parse the enhancement elements XML to extract names and encoded source
-          const elementMatches = enhancementsData.match(
-            /<enh:elements[^>]*>(.*?)<\/enh:elements>/gs
-          )
-
-          if (elementMatches) {
-            for (const elementMatch of elementMatches) {
-              // Extract enhancement name
-              const nameMatch = elementMatch.match(/enh:full_name="([^"]+)"/)
-              // Extract enhancement URI from enh:uri attribute
-              const uriMatch = elementMatch.match(/enh:uri="([^"]+)"/)
-
-              if (nameMatch) {
-                const enhancementName = nameMatch[1]
-                const enhancementUri = uriMatch ? uriMatch[1] : ""
-                let enhancementCode: string | undefined
-                let startLine = 0
-
-                // Extract position information from the <enh:position> element within <enh:option>
-                const positionMatch = elementMatch.match(
-                  /<enh:position[^>]*adtcore:uri="[^"]*#start=(\d+),\d+"[^>]*\/>/
-                )
-                if (positionMatch) {
-                  startLine = parseInt(positionMatch[1], 10)
-                }
-
-                if (needCode) {
-                  // Extract and decode source code if requested
-                  const sourceMatch = elementMatch.match(
-                    /<enh:source>([A-Za-z0-9+\/=\s]+)<\/enh:source>/
-                  )
-                  if (sourceMatch) {
-                    const encodedSource = sourceMatch[1].replace(/\s/g, "") // Remove whitespace
-                    try {
-                      enhancementCode = Buffer.from(encodedSource, "base64").toString("utf8")
-                      // logCommands.debug(`✅ Decoded enhancement ${enhancementName}: ${enhancementCode.length} chars`);
-                    } catch (decodeError) {
-                      // logCommands.warn(`⚠️ Failed to decode enhancement ${enhancementName}: ${decodeError}`);
-                    }
-                  }
-                }
-
-                enhancementDetails.push({
-                  name: enhancementName,
-                  code: enhancementCode,
-                  startLine: startLine,
-                  uri: enhancementUri
-                })
-              }
-            }
-          }
-        }
-      } catch (enhError) {
-        //logCommands.warn(`⚠️ Enhancement elements API failed: ${enhError}`);
-        // Continue without enhancement details
-      }
-
-      if (enhancementDetails.length === 0) {
-        // logCommands.debug(`ℹ️ No enhancement details found`);
-        return result
-      }
-
-      // Step 4: Build result by combining positions with enhancement details
-      result.hasEnhancements = enhancementDetails.length > 0
-      result.totalEnhancements = enhancementDetails.length
-
-      // Use line numbers directly from enhancement details (from elements response)
-      result.enhancements = enhancementDetails.map(detail => {
-        return {
-          name: detail.name,
-          startLine: detail.startLine || 0,
-          type: "ENHANCEMENT",
-          code: detail.code,
-          uri: detail.uri
-        }
-      })
-
-      // logCommands.debug(`✅ Enhancement processing complete: ${result.totalEnhancements} enhancements found`);
-
-      enhancementCache.set(cacheKey, {
-        result,
-        timestamp: now,
-        needCode
-      })
+      enhancementCache.set(cacheKey, { result, timestamp: now, needCode })
       return result
     } catch (apiError) {
-      // logCommands.debug(`ℹ️ Enhancement APIs not available: ${apiError}`);
-      return result // Return empty result
+      return result
     }
   } catch (error) {
     // logCommands.error(`❌ Error getting enhancements: ${error}`);

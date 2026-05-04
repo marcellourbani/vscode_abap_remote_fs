@@ -15,6 +15,7 @@ import { ignore } from "../lib"
 import { AbapFsCommands, command } from "../commands"
 import { pickAdtRoot } from "../config"
 import { ADTSCHEME } from "./conections"
+import { logTelemetry } from "../services/telemetry"
 
 // ── In-memory log store ──────────────────────────────────────────────
 
@@ -65,6 +66,7 @@ export class CallLogger {
   }
   @command(AbapFsCommands.activateCommLog)
   public static async activateLogging() {
+    logTelemetry("command_activate_comm_log_called")
     const folder = await pickAdtRoot()
     if (!folder || folder.uri.scheme !== ADTSCHEME) return
     const connId = folder.uri.authority
@@ -73,6 +75,7 @@ export class CallLogger {
   }
   @command(AbapFsCommands.deactivateCommLog)
   public static async deactivateLogging() {
+    logTelemetry("command_deactivate_comm_log_called")
     const folder = await pickAdtRoot()
     if (!folder || folder.uri.scheme !== ADTSCHEME) return
     const connId = folder.uri.authority

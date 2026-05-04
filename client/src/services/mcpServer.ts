@@ -22,6 +22,8 @@ import { isInitializeRequest } from "@modelcontextprotocol/sdk/types.js"
 import { randomUUID } from "crypto"
 import { z } from "zod"
 import { log } from "../lib"
+import { toolRegistry } from "./lm-tools/toolRegistry"
+import { funWindow as window } from "./funMessenger"
 
 // ============================================================================
 // TYPES
@@ -64,7 +66,7 @@ function getMcpSettings(): { autoStart: boolean; port: number; apiKey: string } 
  */
 let apiKeyWarningLogged = false
 
-function validateApiKey(req: http.IncomingMessage): boolean {
+export function validateApiKey(req: http.IncomingMessage): boolean {
   const settings = getMcpSettings()
 
   // If no API key is configured, allow access (for backwards compatibility)
@@ -106,7 +108,7 @@ function validateApiKey(req: http.IncomingMessage): boolean {
  * Convert a JSON Schema property to a Zod schema.
  * This is a simplified converter that handles the most common cases.
  */
-function jsonSchemaPropertyToZod(
+export function jsonSchemaPropertyToZod(
   propSchema: Record<string, unknown>,
   isRequired: boolean
 ): z.ZodTypeAny {
@@ -176,7 +178,7 @@ function jsonSchemaPropertyToZod(
 /**
  * Convert a full JSON Schema (with properties) to a Zod object schema.
  */
-function jsonSchemaToZod(
+export function jsonSchemaToZod(
   jsonSchema: Record<string, unknown> | undefined
 ): Record<string, z.ZodTypeAny> {
   if (!jsonSchema) {
@@ -237,22 +239,31 @@ function createMcpServer(): McpServer {
       },
       async (args: Record<string, unknown>) => {
         try {
-          // Create a cancellation token (MCP doesn't provide one, so we create a dummy)
           const tokenSource = new vscode.CancellationTokenSource()
 
-          // Invoke the VS Code LM tool
-          // toolInvocationToken can be undefined when invoked outside of chat context
-          const result = await vscode.lm.invokeTool(
-            toolName,
-            {
-              input: args,
-              toolInvocationToken: undefined
-            },
-            tokenSource.token
-          )
+          // Look up the tool instance from our shared registry so we can
+          // call invoke() directly, bypassing vscode.lm.invokeTool() and
+          // its prepareInvocation confirmation dialog pipeline.
+          const registeredTool = toolRegistry.get(toolName)
+          let result: vscode.LanguageModelToolResult
 
-          // Convert LanguageModelToolResult to MCP tool result
-          // The LM result contains content parts that we need to serialize
+          if (registeredTool) {
+            const invokeResult = await registeredTool.invoke(
+              { input: args, toolInvocationToken: undefined } as vscode.LanguageModelToolInvocationOptions<any>,
+              tokenSource.token
+            )
+            if (!invokeResult) {
+              throw new Error(`Tool ${toolName} returned no result`)
+            }
+            result = invokeResult
+          } else {
+            result = await vscode.lm.invokeTool(
+              toolName,
+              { input: args, toolInvocationToken: undefined },
+              tokenSource.token
+            )
+          }
+
           const textParts: string[] = []
 
           for await (const part of result.content) {
@@ -266,7 +277,6 @@ function createMcpServer(): McpServer {
                 textParts.push(JSON.stringify(partWithValue.value))
               }
             } else {
-              // For other part types, try to JSON stringify them
               textParts.push(JSON.stringify(part))
             }
           }
@@ -334,14 +344,9 @@ async function startHttpServer(): Promise<void> {
   state.port = settings.port
 
   state.httpServer = http.createServer(async (req, res) => {
-    // CORS headers for cross-origin requests
-    res.setHeader("Access-Control-Allow-Origin", "*")
-    res.setHeader("Access-Control-Allow-Methods", "GET, POST, DELETE, OPTIONS")
-    res.setHeader("Access-Control-Allow-Headers", "Content-Type, mcp-session-id, Authorization")
-    res.setHeader("Access-Control-Expose-Headers", "mcp-session-id")
 
     if (req.method === "OPTIONS") {
-      res.writeHead(200)
+      res.writeHead(405)
       res.end()
       return
     }
@@ -505,7 +510,7 @@ async function startHttpServer(): Promise<void> {
         }
       })
 
-      state.httpServer!.listen(port, () => {
+      state.httpServer!.listen(port, "127.0.0.1", () => {
         resolve(port)
       })
     })
@@ -517,7 +522,7 @@ async function startHttpServer(): Promise<void> {
     state.isRunning = true
 
     // Show notification to user
-    vscode.window.showInformationMessage(
+    window.showInformationMessage(
       `🔌 ABAP MCP Server running on port ${actualPort}. External AI clients can connect to http://localhost:${actualPort}/mcp`
     )
   } catch (error) {
@@ -569,7 +574,7 @@ export async function initializeMcpServer(context: vscode.ExtensionContext): Pro
     })
   } catch (error) {
     // Don't throw - MCP server is optional, extension should still work
-    vscode.window.showWarningMessage(
+    window.showWarningMessage(
       `MCP Server failed to start: ${error instanceof Error ? error.message : String(error)}`
     )
   }

@@ -4,6 +4,7 @@
  */
 
 import * as vscode from "vscode"
+import { registerToolWithRegistry } from "./toolRegistry"
 import { funWindow as window } from "../funMessenger"
 import { getSearchService } from "../abapSearchService"
 import { logTelemetry } from "../telemetry"
@@ -411,8 +412,8 @@ export class GetATCDecorationsTool implements vscode.LanguageModelTool<IGetATCDe
 // ============================================================================
 
 export function registerAtcTools(context: vscode.ExtensionContext): void {
-  context.subscriptions.push(vscode.lm.registerTool("run_atc_analysis", new RunATCAnalysisTool()))
+  context.subscriptions.push(registerToolWithRegistry("run_atc_analysis", new RunATCAnalysisTool()))
   context.subscriptions.push(
-    vscode.lm.registerTool("get_atc_decorations", new GetATCDecorationsTool())
+    registerToolWithRegistry("get_atc_decorations", new GetATCDecorationsTool())
   )
 }
