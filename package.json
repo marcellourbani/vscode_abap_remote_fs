@@ -85,6 +85,13 @@
         "aliases": [
           "ABAP SQL"
         ]
+      },
+      {
+        "id": "abap_cds",
+        "extensions": [
+          "asbdef",
+          "srvdsrv"
+        ]
       }
     ],
     "notebooks": [
@@ -380,7 +387,9 @@
                   "JOBD",
                   "NROB",
                   "ENHO",
-                  "SUSO"
+                  "SUSO",
+                  "BDEF",
+                  "SRVB"
                 ]
               },
               "description": "Object types to search for.Must provide type or list of types."
@@ -458,7 +467,9 @@
                 "JOBD",
                 "NROB",
                 "ENHO",
-                "SUSO"
+                "SUSO",
+                "BDEF",
+                "SRVB"
               ],
               "description": "Optional: Specific object type to avoid ambiguity."
             },
@@ -594,9 +605,11 @@
                 "JOBD",
                 "NROB",
                 "ENHO",
-                "SUSO"
+                "SUSO",
+                "BDEF",
+                "SRVB"
               ],
-              "description": "Optional: Narrow search to a specific object type to resolve ambiguity when the same name exists in multiple types (e.g., MATNR exists as both DTEL and DOMA). FUNC=Function Modules, CLAS=Classes, TABL=Database Tables, PROG=Reports/Programs, INTF=Interfaces, DTEL=Data Elements, DDLS=CDS Views, DOMA=Domains, TTYP=Table Types, ENQU=Lock Objects, MSAG=Message Classes, FUGR=Function Groups, DEVC=Packages, TRAN=Transactions, VIEW=Views, SICF=ICF Services, WDYN=Web Dynpro, SPRX=Proxies, XSLT=XSLT Programs, TRANSFORMATIONS=Simple Transformations, SUSH=Authorization Objects, SUSC=Authorization Object Classes, PINF=Package Interfaces, ENHC=Enhancement Implementations, ENHS=Enhancement Spots, BADI=BAdI Definitions, BADII=BAdI Implementations, SAMC=AMC Classes, SAPC=APC Classes, SFSW=Switch Framework, SFBF=Business Functions, SFBS=Business Function Sets, JOBD=Job Definitions, NROB=Number Range Objects, ENHO=Enhancement Implementations, SUSO=Authorization Object Sets"
+              "description": "Optional: Narrow search to a specific object type to resolve ambiguity when the same name exists in multiple types (e.g., MATNR exists as both DTEL and DOMA). FUNC=Function Modules, CLAS=Classes, TABL=Database Tables, PROG=Reports/Programs, INTF=Interfaces, DTEL=Data Elements, DDLS=CDS Views, DOMA=Domains, TTYP=Table Types, ENQU=Lock Objects, MSAG=Message Classes, FUGR=Function Groups, DEVC=Packages, TRAN=Transactions, VIEW=Views, SICF=ICF Services, WDYN=Web Dynpro, SPRX=Proxies, XSLT=XSLT Programs, TRANSFORMATIONS=Simple Transformations, SUSH=Authorization Objects, SUSC=Authorization Object Classes, PINF=Package Interfaces, ENHC=Enhancement Implementations, ENHS=Enhancement Spots, BADI=BAdI Definitions, BADII=BAdI Implementations, SAMC=AMC Classes, SAPC=APC Classes, SFSW=Switch Framework, SFBF=Business Functions, SFBS=Business Function Sets, JOBD=Job Definitions, NROB=Number Range Objects, ENHO=Enhancement Implementations, SUSO=Authorization Object Sets, BDEF=Behavior Definitions, SRVB=Service Bindings"
             },
             "connectionId": {
               "type": "string",
@@ -715,7 +728,7 @@
           "properties": {
             "objectType": {
               "type": "string",
-              "description": "Object type. Supports all SAP creatable object types including: 'PROG/P' (report), 'CLAS/OC' (class), 'FUGR/F' (function group), 'INTF/OI' (interface), 'DTEL/DE' (data element), 'TYPE/TY' (type group), 'TABL/DT' (database table), 'DDLS' (CDS view), 'DOMA' (domain), 'TTYP' (table type), 'ENQU/EQ' (lock object), 'MSAG/N' (message class), 'DEVC/K' (package), 'VIEW/V' (view), and many others. Use the format: TYPE/SUBTYPE"
+              "description": "Object type. Supports all SAP creatable object types including: 'PROG/P' (report), 'CLAS/OC' (class), 'FUGR/F' (function group), 'INTF/OI' (interface), 'DTEL/DE' (data element), 'TABL/DT' (database table), 'DDLS/DF' (CDS view), 'DOMA/DD' (domain), 'MSAG/N' (message class), 'DEVC/K' (package), 'SRVD/SRV' (service definition), 'SRVB/SVB' (service binding), 'BDEF/BDO' (behavior definition), and others. Use the format: TYPE/SUBTYPE"
             },
             "name": {
               "type": "string",
@@ -740,19 +753,21 @@
             },
             "additionalOptions": {
               "type": "object",
-              "description": "Additional options for specific object types",
+              "description": "Additional options for specific object types. MANDATORY for service bindings (SRVB/SVB): provide serviceDefinition, bindingType, and bindingCategory. MANDATORY for packages (DEVC/K): provide softwareComponent, packageType, and transportLayer.",
               "properties": {
                 "serviceDefinition": {
                   "type": "string",
-                  "description": "Service definition for service bindings"
+                  "description": "MANDATORY for service bindings (SRVB/SVB): The name of an existing service definition (SRVD/SRV) to bind to (e.g., 'ZSD_MY_SERVICE')"
                 },
                 "bindingType": {
                   "type": "string",
-                  "description": "Binding type for service bindings"
+                  "enum": ["ODATA"],
+                  "description": "MANDATORY for service bindings (SRVB/SVB): Binding protocol type. Currently only 'ODATA' is supported"
                 },
                 "bindingCategory": {
                   "type": "string",
-                  "description": "Binding category for service bindings"
+                  "enum": ["0", "1"],
+                  "description": "MANDATORY for service bindings (SRVB/SVB): '0' = OData V2 Web API, '1' = OData V2 UI"
                 },
                 "softwareComponent": {
                   "type": "string",
@@ -3699,6 +3714,11 @@
           "command": "abapfs.activate",
           "group": "navigation",
           "when": "resourceScheme == adt && editorLangId =~ /abap|cds|xml/ && abapfs:showActivate "
+        },
+        {
+          "command": "abapfs.publishServiceBinding",
+          "group": "navigation@0.6",
+          "when": "resourceScheme == adt && resourceFilename =~ /\\.srvb\\.xml$/ && !inChat"
         },
         {
           "command": "abapfs.cleanCode",

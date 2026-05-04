@@ -1,18 +1,39 @@
 import { funWindow as window } from "../services/funMessenger"
 import { pickAdtRoot } from "../config"
-import { getOrCreateClient } from "../adt/conections"
+import { getOrCreateClient, uriRoot } from "../adt/conections"
 import { rapGenPublishService } from "../adt/rapGenerator"
 import { caughtToString } from "../lib"
+import { isAbapStat } from "abapfs"
 
 export async function publishServiceBindingCommand() {
   try {
-    // Pick system (auto-skips if only one connected)
-    const root = await pickAdtRoot()
-    if (!root) return
-    const connId = root.uri.authority
+    // Try to detect service binding from active editor
+    const editor = window.activeTextEditor
+    let defaultName = ""
+    let connId = ""
 
-    // Ask for service binding name
-    const name = await window.showInputBox({
+    if (editor?.document.uri.scheme === "adt") {
+      const uri = editor.document.uri
+      connId = uri.authority
+      try {
+        const root = uriRoot(uri)
+        const file = root.getNode(uri.path)
+        if (isAbapStat(file) && file.object.type === "SRVB/SVB") {
+          defaultName = file.object.name
+        }
+      } catch {
+        // ignore
+      }
+    }
+
+    if (!connId) {
+      const root = await pickAdtRoot()
+      if (!root) return
+      connId = root.uri.authority
+    }
+
+    // Ask for service binding name (pre-filled if detected)
+    const name = defaultName || await window.showInputBox({
       prompt: "Enter the service binding name to publish",
       placeHolder: "e.g. ZUI_MY_SERVICE_O4",
       ignoreFocusOut: true,

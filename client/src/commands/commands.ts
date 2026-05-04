@@ -1,5 +1,5 @@
 import { PACKAGE, AdtObjectCreator } from "../adt/operations/AdtObjectCreator"
-import { CreatableTypeIds, PackageTypes, CreatableTypes } from "abap-adt-api"
+import { CreatableTypeIds, PackageTypes, CreatableTypes, isBindingOptions, NewObjectOptions } from "abap-adt-api"
 import { MySearchResult } from "../adt/operations/AdtObjectFinder"
 import { SapGuiPanel } from "../views/sapgui/SapGuiPanel"
 import { clearSystemInfoCache } from "../services/sapSystemInfo"
@@ -609,7 +609,31 @@ export class AdtCommands {
         throw new Error(`Unknown object type: ${objectType}`)
       }
 
-      // 4. Let ADT handle transport selection naturally - just call createObject
+      // 4. Override getServiceOptions to use programmatic values for service bindings
+      if (objectType === "SRVB/SVB" && additionalOptions) {
+        const { serviceDefinition, bindingType, bindingCategory } = additionalOptions
+        if (!serviceDefinition || !bindingType || !bindingCategory) {
+          return {
+            success: false,
+            error: "MISSING_SERVICE_BINDING_OPTIONS",
+            message: "Service bindings require additionalOptions with serviceDefinition, bindingType ('ODATA'), and bindingCategory ('0' for Web API, '1' for UI)",
+            objectName: name,
+            objectType: objectType
+          }
+        }
+        creator["getServiceOptions"] = async (options: NewObjectOptions) => {
+          const opt = {
+            ...options,
+            bindingtype: bindingType as "ODATA",
+            category: bindingCategory as "0" | "1",
+            service: serviceDefinition
+          }
+          if (isBindingOptions(opt)) return opt
+          throw new Error("Invalid service binding options")
+        }
+      }
+
+      // 5. Let ADT handle transport selection naturally - just call createObject
       const obj = await creator.createObject(undefined)
 
       if (!obj) {
