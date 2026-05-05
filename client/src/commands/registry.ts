@@ -118,7 +118,8 @@ export const AbapFsCommands = {
   deactivateCommLog: "abapfs.deactivateCommLog",
   // RAP Generator
   rapGenFromEditor: "abapfs.rapGenFromEditor",
-  publishServiceBinding: "abapfs.publishServiceBinding"
+  publishServiceBinding: "abapfs.publishServiceBinding",
+  testServiceBinding: "abapfs.testServiceBinding"
 }
 
 export const abapcmds: {

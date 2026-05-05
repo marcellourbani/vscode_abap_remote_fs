@@ -3068,6 +3068,13 @@
         "category": "ABAP FS"
       },
       {
+        "command": "abapfs.testServiceBinding",
+        "title": "Test Service Binding",
+        "icon": "$(globe)",
+        "category": "ABAP FS"
+      },
+
+      {
         "command": "abapfs.refreshTraces",
         "title": "Refresh",
         "icon": "$(refresh)"
@@ -3162,6 +3169,11 @@
         {
           "command": "abapfs.publishServiceBinding"
         },
+        {
+          "command": "abapfs.testServiceBinding",
+          "when": "abapfs:extensionActive"
+        },
+
         {
           "command": "abapfs.compressRecording"
         },
@@ -3718,6 +3730,11 @@
         {
           "command": "abapfs.publishServiceBinding",
           "group": "navigation@0.6",
+          "when": "resourceScheme == adt && resourceFilename =~ /\\.srvb\\.xml$/ && !inChat"
+        },
+        {
+          "command": "abapfs.testServiceBinding",
+          "group": "navigation@0.7",
           "when": "resourceScheme == adt && resourceFilename =~ /\\.srvb\\.xml$/ && !inChat"
         },
         {

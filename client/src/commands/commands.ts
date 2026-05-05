@@ -65,6 +65,7 @@ import { createObjectInEditorCommand } from "./createObjectInEditor"
 import { manageTextElementsCommand } from "./textElementsCommands"
 import { configureFeedsCommand } from "./configureFeeds"
 import { publishServiceBindingCommand } from "./publishServiceBinding"
+import { testServiceBindingCommand } from "./testServiceBinding"
 
 export function currentUri() {
   if (!window.activeTextEditor) return
@@ -1332,5 +1333,9 @@ export class AdtCommands {
   @command(AbapFsCommands.publishServiceBinding)
   private static async publishServiceBindingCommand() {
     return publishServiceBindingCommand()
+  }
+  @command(AbapFsCommands.testServiceBinding)
+  private static async testServiceBindingCommand() {
+    return testServiceBindingCommand()
   }
 }
