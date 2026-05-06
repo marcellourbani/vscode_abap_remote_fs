@@ -1321,7 +1321,7 @@
       {
         "name": "run_atc_analysis",
         "displayName": "Run ATC Analysis",
-        "modelDescription": "Run ABAP Test Cockpit analysis to identify code quality issues, performance problems, bugs. Run only when user explicitly requests ATC. Updates visual UI and returns structured results. PARALLEL CALLS: Analyze multiple objects simultaneously. Accepts object name/type, URI paths, or active file.",
+        "modelDescription": "Run ABAP Test Cockpit analysis or get documentation for a specific finding. Actions: 'run_analysis' (default) runs ATC checks and returns findings with check variant name and docUri per finding. The check variant name provides context for interpreting findings (e.g., variant 'S4HANA_READINESS' means findings are about upgrade compatibility, not general code quality). 'get_documentation' fetches the detailed SAP documentation for a finding using its docUri + connectionId. IMPORTANT: Documentation contains critical details NOT in the finding title (e.g., 'DB Operation SELECT for RSEG found' - the table name RSEG is ONLY in the doc, not the title). Always fetch docs before suggesting fixes. Each finding has its own unique documentation even when messageTitle is identical across findings - never skip fetching docs for 'duplicate' titles. PARALLEL CALLS supported for both actions.",
         "canBeReferencedInPrompt": true,
         "toolReferenceName": "atc-analysis",
         "icon": "$(testing-run-icon)",
@@ -1329,6 +1329,11 @@
         "inputSchema": {
           "type": "object",
           "properties": {
+            "action": {
+              "type": "string",
+              "enum": ["run_analysis", "get_documentation"],
+              "description": "Action to perform. 'run_analysis' (default) runs ATC checks. 'get_documentation' retrieves detailed check documentation for a specific finding - use checkTitle and messageTitle from a previous run_analysis result to identify the finding."
+            },
             "objectName": {
               "type": "string",
               "description": "Specific ABAP object name to analyze (e.g., 'ZDUMMY1', 'ZCL_MY_CLASS')"
@@ -1358,6 +1363,10 @@
                 "transport"
               ],
               "description": "Analysis scope (future enhancement) - currently only 'object' is supported"
+            },
+            "docUri": {
+              "type": "string",
+              "description": "For get_documentation action: the docUri of the finding (exact value from run_analysis results). Each finding includes a docUri field containing the documentation URL."
             }
           }
         },
