@@ -232,6 +232,12 @@
         }
       ]
     },
+    "viewsWelcome": [
+      {
+        "view": "abapfs.s4hReadiness",
+        "contents": "Load S/4HANA readiness data to see which custom objects reference removed or changed SAP objects.\n[Load Dashboard](command:abapfs.s4hLoad)"
+      }
+    ],
     "views": {
       "abapfsCommLog": [
         {
@@ -288,6 +294,13 @@
           "name": "Traces",
           "when": "abapfs:extensionActive",
           "icon": "$(pulse)"
+        },
+        {
+          "id": "abapfs.s4hReadiness",
+          "name": "S/4HANA Readiness",
+          "when": "abapfs:extensionActive",
+          "icon": "$(shield)",
+          "type": "tree"
         },
         {
           "id": "abapfs.abapgit",
@@ -3072,6 +3085,47 @@
         "icon": "$(trash)"
       },
       {
+        "command": "abapfs.s4hLoad",
+        "title": "S/4HANA Readiness: Load Dashboard",
+        "category": "ABAP FS",
+        "icon": "$(shield)"
+      },
+      {
+        "command": "abapfs.s4hRefresh",
+        "title": "Refresh",
+        "icon": "$(refresh)"
+      },
+      {
+        "command": "abapfs.s4hOpenObject",
+        "title": "Open Object",
+        "icon": "$(go-to-file)"
+      },
+      {
+        "command": "abapfs.s4hRunAtc",
+        "title": "Run ATC",
+        "icon": "$(beaker)"
+      },
+      {
+        "command": "abapfs.s4hAskCopilot",
+        "title": "Ask Copilot to Fix",
+        "icon": "$(comment-discussion)"
+      },
+      {
+        "command": "abapfs.s4hOpenNote",
+        "title": "Open SAP Note",
+        "icon": "$(link-external)"
+      },
+      {
+        "command": "abapfs.s4hFilter",
+        "title": "Filter",
+        "icon": "$(filter)"
+      },
+      {
+        "command": "abapfs.s4hClearFilter",
+        "title": "Clear Filter",
+        "icon": "$(filter-filled)"
+      },
+      {
         "command": "abapfs.showVpnHelp",
         "title": "Show Corporate Network Connection Help",
         "category": "ABAP FS",
@@ -3484,6 +3538,38 @@
         {
           "command": "abapfs.setupCleaner",
           "when": "abapfs:extensionActive"
+        },
+        {
+          "command": "abapfs.s4hLoad",
+          "when": "abapfs:extensionActive"
+        },
+        {
+          "command": "abapfs.s4hRefresh",
+          "when": "hideCommands.never"
+        },
+        {
+          "command": "abapfs.s4hOpenObject",
+          "when": "hideCommands.never"
+        },
+        {
+          "command": "abapfs.s4hRunAtc",
+          "when": "hideCommands.never"
+        },
+        {
+          "command": "abapfs.s4hAskCopilot",
+          "when": "hideCommands.never"
+        },
+        {
+          "command": "abapfs.s4hOpenNote",
+          "when": "hideCommands.never"
+        },
+        {
+          "command": "abapfs.s4hFilter",
+          "when": "hideCommands.never"
+        },
+        {
+          "command": "abapfs.s4hClearFilter",
+          "when": "hideCommands.never"
         }
       ],
       "view/item/context": [
@@ -3624,6 +3710,61 @@
         {
           "command": "abapfs.deleteFeedEntry",
           "when": "view == abapfs.feedInbox && viewItem == feedEntry"
+        },
+        {
+          "command": "abapfs.s4hFilter",
+          "group": "inline@1",
+          "when": "view == abapfs.s4hReadiness && viewItem == s4hRoot"
+        },
+        {
+          "command": "abapfs.s4hClearFilter",
+          "group": "inline@1",
+          "when": "view == abapfs.s4hReadiness && viewItem == s4hRootFiltered"
+        },
+        {
+          "command": "abapfs.s4hOpenObject",
+          "group": "inline@1",
+          "when": "view == abapfs.s4hReadiness && viewItem == s4hRef"
+        },
+        {
+          "command": "abapfs.s4hAskCopilot",
+          "group": "inline@2",
+          "when": "view == abapfs.s4hReadiness && viewItem == s4hRef"
+        },
+        {
+          "command": "abapfs.s4hRunAtc",
+          "group": "inline@3",
+          "when": "view == abapfs.s4hReadiness && viewItem == s4hRef"
+        },
+        {
+          "command": "abapfs.s4hOpenNote",
+          "group": "inline@4",
+          "when": "view == abapfs.s4hReadiness && viewItem == s4hRef"
+        },
+        {
+          "command": "abapfs.s4hOpenObject",
+          "group": "context",
+          "when": "view == abapfs.s4hReadiness && viewItem == s4hRef"
+        },
+        {
+          "command": "abapfs.s4hAskCopilot",
+          "group": "context",
+          "when": "view == abapfs.s4hReadiness && viewItem == s4hRef"
+        },
+        {
+          "command": "abapfs.s4hRunAtc",
+          "group": "context",
+          "when": "view == abapfs.s4hReadiness && viewItem == s4hRef"
+        },
+        {
+          "command": "abapfs.s4hOpenNote",
+          "group": "context",
+          "when": "view == abapfs.s4hReadiness && viewItem == s4hRef"
+        },
+        {
+          "command": "abapfs.s4hOpenNote",
+          "group": "inline",
+          "when": "view == abapfs.s4hReadiness && viewItem == s4hItem"
         }
       ],
       "view/title": [
@@ -3636,6 +3777,11 @@
           "command": "abapfs.atcRefresh",
           "group": "navigation",
           "when": "view == abapfs.atcFinds"
+        },
+        {
+          "command": "abapfs.s4hRefresh",
+          "group": "navigation@1",
+          "when": "view == abapfs.s4hReadiness"
         },
         {
           "command": "abapfs.atcDocHistoryBack",
