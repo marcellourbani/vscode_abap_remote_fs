@@ -70,9 +70,11 @@ export function parseCDS(source: string, config: ParserConfig = {}) {
   const { tokenMiddleware: mid, errorListener, parserListener } = config
   const inputStream = new ANTLRInputStream(source)
   const lexer = new ABAPCDSLexer(inputStream)
+  lexer.removeErrorListeners()
 
   const tokenStream = new CommonTokenStream(mid ? mid(lexer) : lexer)
   const parser = new ABAPCDSParser(tokenStream)
+  parser.removeErrorListeners()
   if (errorListener) parser.addErrorListener(errorListener)
   if (parserListener) parser.addParseListener(parserListener)
   return parser.cdsddl()

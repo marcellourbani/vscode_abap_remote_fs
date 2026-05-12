@@ -119,6 +119,7 @@ export const AbapFsCommands = {
   // RAP Generator
   rapGenFromEditor: "abapfs.rapGenFromEditor",
   publishServiceBinding: "abapfs.publishServiceBinding",
+  testServiceBinding: "abapfs.testServiceBinding",
   // S/4HANA Readiness
   s4hLoad: "abapfs.s4hLoad",
   s4hRefresh: "abapfs.s4hRefresh",
