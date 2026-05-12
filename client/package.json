@@ -67,7 +67,7 @@
     "abap-adt-api": "^8.4.0",
     "abapfs": "file:../modules/abapfs",
     "abapobject": "file:../modules/abapObject",
-    "applicationinsights": "^3.14.0",
+    "applicationinsights": "^2.9.8",
     "chromadb": "^3.0.17",
     "client-oauth2": "^4.3.3",
     "diff": "^8.0.3",

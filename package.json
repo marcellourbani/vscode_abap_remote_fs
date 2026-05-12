@@ -774,12 +774,17 @@
                 },
                 "bindingType": {
                   "type": "string",
-                  "enum": ["ODATA"],
+                  "enum": [
+                    "ODATA"
+                  ],
                   "description": "MANDATORY for service bindings (SRVB/SVB): Binding protocol type. Currently only 'ODATA' is supported"
                 },
                 "bindingCategory": {
                   "type": "string",
-                  "enum": ["0", "1"],
+                  "enum": [
+                    "0",
+                    "1"
+                  ],
                   "description": "MANDATORY for service bindings (SRVB/SVB): '0' = OData V2 Web API, '1' = OData V2 UI"
                 },
                 "softwareComponent": {
@@ -1359,7 +1364,10 @@
           "properties": {
             "action": {
               "type": "string",
-              "enum": ["run_analysis", "get_documentation"],
+              "enum": [
+                "run_analysis",
+                "get_documentation"
+              ],
               "description": "Action to perform. 'run_analysis' (default) runs ATC checks. 'get_documentation' retrieves detailed check documentation for a specific finding - use checkTitle and messageTitle from a previous run_analysis result to identify the finding."
             },
             "objectName": {
@@ -3095,7 +3103,6 @@
         "icon": "$(globe)",
         "category": "ABAP FS"
       },
-
       {
         "command": "abapfs.refreshTraces",
         "title": "Refresh",
@@ -3236,7 +3243,6 @@
           "command": "abapfs.testServiceBinding",
           "when": "abapfs:extensionActive"
         },
-
         {
           "command": "abapfs.compressRecording"
         },
@@ -5134,7 +5140,7 @@
   },
   "dependencies": {
     "@changesets/cli": "^2.28.1",
-    "applicationinsights": "^3.10.0",
+    "applicationinsights": "^2.9.8",
     "cors": "^2.8.5",
     "express": "^4.18.2",
     "prettier": "^3.8.1",
