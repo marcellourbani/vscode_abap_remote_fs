@@ -232,6 +232,12 @@
         }
       ]
     },
+    "viewsWelcome": [
+      {
+        "view": "abapfs.s4hReadiness",
+        "contents": "Load S/4HANA readiness data to see which custom objects reference removed or changed SAP objects.\n[Load Dashboard](command:abapfs.s4hLoad)"
+      }
+    ],
     "views": {
       "abapfsCommLog": [
         {
@@ -288,6 +294,13 @@
           "name": "Traces",
           "when": "abapfs:extensionActive",
           "icon": "$(pulse)"
+        },
+        {
+          "id": "abapfs.s4hReadiness",
+          "name": "S/4HANA Readiness",
+          "when": "abapfs:extensionActive",
+          "icon": "$(shield)",
+          "type": "tree"
         },
         {
           "id": "abapfs.abapgit",
@@ -1321,7 +1334,7 @@
       {
         "name": "run_atc_analysis",
         "displayName": "Run ATC Analysis",
-        "modelDescription": "Run ABAP Test Cockpit analysis to identify code quality issues, performance problems, bugs. Run only when user explicitly requests ATC. Updates visual UI and returns structured results. PARALLEL CALLS: Analyze multiple objects simultaneously. Accepts object name/type, URI paths, or active file.",
+        "modelDescription": "Run ABAP Test Cockpit analysis or get documentation for a specific finding. Actions: 'run_analysis' (default) runs ATC checks and returns findings with check variant name and docUri per finding. The check variant name provides context for interpreting findings (e.g., variant 'S4HANA_READINESS' means findings are about upgrade compatibility, not general code quality). 'get_documentation' fetches the detailed SAP documentation for a finding using its docUri + connectionId. IMPORTANT: Documentation contains critical details NOT in the finding title (e.g., 'DB Operation SELECT for RSEG found' - the table name RSEG is ONLY in the doc, not the title). Always fetch docs before suggesting fixes. Each finding has its own unique documentation even when messageTitle is identical across findings - never skip fetching docs for 'duplicate' titles. PARALLEL CALLS supported for both actions.",
         "canBeReferencedInPrompt": true,
         "toolReferenceName": "atc-analysis",
         "icon": "$(testing-run-icon)",
@@ -1329,6 +1342,11 @@
         "inputSchema": {
           "type": "object",
           "properties": {
+            "action": {
+              "type": "string",
+              "enum": ["run_analysis", "get_documentation"],
+              "description": "Action to perform. 'run_analysis' (default) runs ATC checks. 'get_documentation' retrieves detailed check documentation for a specific finding - use checkTitle and messageTitle from a previous run_analysis result to identify the finding."
+            },
             "objectName": {
               "type": "string",
               "description": "Specific ABAP object name to analyze (e.g., 'ZDUMMY1', 'ZCL_MY_CLASS')"
@@ -1358,6 +1376,10 @@
                 "transport"
               ],
               "description": "Analysis scope (future enhancement) - currently only 'object' is supported"
+            },
+            "docUri": {
+              "type": "string",
+              "description": "For get_documentation action: the docUri of the finding (exact value from run_analysis results). Each finding includes a docUri field containing the documentation URL."
             }
           }
         },
@@ -3063,6 +3085,47 @@
         "icon": "$(trash)"
       },
       {
+        "command": "abapfs.s4hLoad",
+        "title": "S/4HANA Readiness: Load Dashboard",
+        "category": "ABAP FS",
+        "icon": "$(shield)"
+      },
+      {
+        "command": "abapfs.s4hRefresh",
+        "title": "Refresh",
+        "icon": "$(refresh)"
+      },
+      {
+        "command": "abapfs.s4hOpenObject",
+        "title": "Open Object",
+        "icon": "$(go-to-file)"
+      },
+      {
+        "command": "abapfs.s4hRunAtc",
+        "title": "Run ATC",
+        "icon": "$(beaker)"
+      },
+      {
+        "command": "abapfs.s4hAskCopilot",
+        "title": "Ask Copilot to Fix",
+        "icon": "$(comment-discussion)"
+      },
+      {
+        "command": "abapfs.s4hOpenNote",
+        "title": "Open SAP Note",
+        "icon": "$(link-external)"
+      },
+      {
+        "command": "abapfs.s4hFilter",
+        "title": "Filter",
+        "icon": "$(filter)"
+      },
+      {
+        "command": "abapfs.s4hClearFilter",
+        "title": "Clear Filter",
+        "icon": "$(filter-filled)"
+      },
+      {
         "command": "abapfs.showVpnHelp",
         "title": "Show Corporate Network Connection Help",
         "category": "ABAP FS",
@@ -3475,6 +3538,38 @@
         {
           "command": "abapfs.setupCleaner",
           "when": "abapfs:extensionActive"
+        },
+        {
+          "command": "abapfs.s4hLoad",
+          "when": "abapfs:extensionActive"
+        },
+        {
+          "command": "abapfs.s4hRefresh",
+          "when": "hideCommands.never"
+        },
+        {
+          "command": "abapfs.s4hOpenObject",
+          "when": "hideCommands.never"
+        },
+        {
+          "command": "abapfs.s4hRunAtc",
+          "when": "hideCommands.never"
+        },
+        {
+          "command": "abapfs.s4hAskCopilot",
+          "when": "hideCommands.never"
+        },
+        {
+          "command": "abapfs.s4hOpenNote",
+          "when": "hideCommands.never"
+        },
+        {
+          "command": "abapfs.s4hFilter",
+          "when": "hideCommands.never"
+        },
+        {
+          "command": "abapfs.s4hClearFilter",
+          "when": "hideCommands.never"
         }
       ],
       "view/item/context": [
@@ -3615,6 +3710,61 @@
         {
           "command": "abapfs.deleteFeedEntry",
           "when": "view == abapfs.feedInbox && viewItem == feedEntry"
+        },
+        {
+          "command": "abapfs.s4hFilter",
+          "group": "inline@1",
+          "when": "view == abapfs.s4hReadiness && viewItem == s4hRoot"
+        },
+        {
+          "command": "abapfs.s4hClearFilter",
+          "group": "inline@1",
+          "when": "view == abapfs.s4hReadiness && viewItem == s4hRootFiltered"
+        },
+        {
+          "command": "abapfs.s4hOpenObject",
+          "group": "inline@1",
+          "when": "view == abapfs.s4hReadiness && viewItem == s4hRef"
+        },
+        {
+          "command": "abapfs.s4hAskCopilot",
+          "group": "inline@2",
+          "when": "view == abapfs.s4hReadiness && viewItem == s4hRef"
+        },
+        {
+          "command": "abapfs.s4hRunAtc",
+          "group": "inline@3",
+          "when": "view == abapfs.s4hReadiness && viewItem == s4hRef"
+        },
+        {
+          "command": "abapfs.s4hOpenNote",
+          "group": "inline@4",
+          "when": "view == abapfs.s4hReadiness && viewItem == s4hRef"
+        },
+        {
+          "command": "abapfs.s4hOpenObject",
+          "group": "context",
+          "when": "view == abapfs.s4hReadiness && viewItem == s4hRef"
+        },
+        {
+          "command": "abapfs.s4hAskCopilot",
+          "group": "context",
+          "when": "view == abapfs.s4hReadiness && viewItem == s4hRef"
+        },
+        {
+          "command": "abapfs.s4hRunAtc",
+          "group": "context",
+          "when": "view == abapfs.s4hReadiness && viewItem == s4hRef"
+        },
+        {
+          "command": "abapfs.s4hOpenNote",
+          "group": "context",
+          "when": "view == abapfs.s4hReadiness && viewItem == s4hRef"
+        },
+        {
+          "command": "abapfs.s4hOpenNote",
+          "group": "inline",
+          "when": "view == abapfs.s4hReadiness && viewItem == s4hItem"
         }
       ],
       "view/title": [
@@ -3627,6 +3777,11 @@
           "command": "abapfs.atcRefresh",
           "group": "navigation",
           "when": "view == abapfs.atcFinds"
+        },
+        {
+          "command": "abapfs.s4hRefresh",
+          "group": "navigation@1",
+          "when": "view == abapfs.s4hReadiness"
         },
         {
           "command": "abapfs.atcDocHistoryBack",
