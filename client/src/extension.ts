@@ -28,6 +28,7 @@ import { registerAbapDebugger } from "./adt/debugger"
 import { ATCDocumentation } from "./views/abaptestcockpit/documentation"
 import { CommLogPanel } from "./adt/adtCommLog"
 import { tracesProvider } from "./views/traces"
+import { s4hProvider } from "./views/s4hanaReadiness"
 import { FeedStateManager } from "./services/feeds/feedStateManager"
 import { FeedPollingService } from "./services/feeds/feedPollingService"
 import { initializeFeedInboxProvider } from "./views/feeds/feedInboxView"
@@ -193,6 +194,7 @@ export async function activate(ctx: ExtensionContext): Promise<AbapFsApi> {
   sub.push(window.registerTreeDataProvider("abapfs.dumps", dumpProvider))
   sub.push(window.registerTreeDataProvider("abapfs.atcFinds", atcProvider))
   sub.push(window.registerTreeDataProvider("abapfs.traces", tracesProvider))
+  sub.push(window.registerTreeDataProvider("abapfs.s4hReadiness", s4hProvider))
   sub.push(window.registerWebviewViewProvider(RapGeneratorPanel.viewType, RapGeneratorPanel.get()))
   const objectPropertyView = window.createTreeView("abapfs.objectProperty", {
     treeDataProvider: objectPropertyProvider,

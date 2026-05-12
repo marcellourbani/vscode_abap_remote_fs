@@ -57,7 +57,10 @@ export class AtcRoot extends TreeItem {
   }
   async child(key: string, variant: string) {
     const cached = this.systems.get(key)
-    if (cached) return cached
+    if (cached) {
+      cached.updateVariant(variant)
+      return cached
+    }
     const system = new AtcSystem(key, variant, this)
     this.systems.set(key, system)
     this.parent.emitter.fire(undefined)
@@ -141,10 +144,13 @@ export class AtcSystem extends TreeItem {
   }
   constructor(
     public readonly connectionId: string,
-    public readonly variant: string,
+    public variant: string,
     public readonly parent: AtcRoot
   ) {
     super(connectionId, TreeItemCollapsibleState.Expanded)
+  }
+  updateVariant(variant: string) {
+    this.variant = variant
   }
 }
 
@@ -280,25 +286,27 @@ class AtcProvider implements TreeDataProvider<AtcNode> {
       )
   }
 
-  async runInspectorByAdtUrl(uri: string, connectionId: string) {
+  async runInspectorByAdtUrl(uri: string, connectionId: string): Promise<string> {
     const client = getClient(connectionId)
-    const { checkVariant } = await getVariant(client, connectionId)
+    const { variant, checkVariant } = await getVariant(client, connectionId)
     const system = await this.root.child(connectionId, checkVariant)
     await system.load(() => runInspectorByAdtUrl(uri, system.variant, client))
     commands.executeCommand("abapfs.atcFinds.focus")
     this.setAutoRefresh(this.autoRefresh)
     this.reportError(system)
+    return variant
   }
 
-  async runInspector(uri: Uri, setvariant?: (variant: string) => void) {
+  async runInspector(uri: Uri, setvariant?: (variant: string) => void): Promise<string> {
     const client = getClient(uri.authority)
-    const { checkVariant } = await getVariant(client, uri.authority)
-    if (setvariant) setvariant(checkVariant)
+    const { variant, checkVariant } = await getVariant(client, uri.authority)
+    if (setvariant) setvariant(variant)
     const system = await this.root.child(uri.authority, checkVariant)
     await system.load(() => runInspector(uri, system.variant, client))
     commands.executeCommand("abapfs.atcFinds.focus")
     this.setAutoRefresh(this.autoRefresh)
     this.reportError(system)
+    return variant
   }
 }
 
