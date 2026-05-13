@@ -182,14 +182,13 @@ export class DebugListener {
     if (norestart) {
       this.active = false
     }
-    const c = this._client.statelessClone
-    return c.debuggerDeleteListener(this.mode, this.terminalId, this.ideId, this.username)
+    return this._client.statelessClone.debuggerDeleteListener(this.mode, this.terminalId, this.ideId, this.username)
   }
 
-  private debuggerListen() {
+  private async debuggerListen() {
+    this.listening = true
     try {
-      this.listening = true
-      return this.client.statelessClone.debuggerListen(
+      return await this.client.statelessClone.debuggerListen(
         this.mode,
         this.terminalId,
         this.ideId,
@@ -268,7 +267,7 @@ export class DebugListener {
           break
         }
         log(`Debugger ${this.sessionNumber} on connection  ${this.connId} reached a breakpoint`)
-        this.onBreakpointReached(debuggee)
+        await this.onBreakpointReached(debuggee)
       } catch (error) {
         if (!this.active) return
         if (!isAdtError(error)) {
@@ -282,7 +281,7 @@ export class DebugListener {
               const txt =
                 error?.properties?.conflictText || "Debugger terminated by another session/user"
               this.ui.ShowError(txt)
-              await this.stopDebugging(false)
+              await this.stopDebugging()
               break
             case ATTACHTIMEOUT:
               // this.refresh()
@@ -307,8 +306,20 @@ export class DebugListener {
     this.services.delete(threadid)
     if (this.currentThreadId === threadid) this.currentThreadId = undefined
     if (thread) {
-      await this.breakpointManager.removeAllBreakpoints(thread).catch(ignore)
-      await thread.client.debuggerStep("stepContinue").catch(ignore)
+      await this.breakpointManager.removeAllBreakpoints(thread).catch(e => log(`stopThread: removeAllBreakpoints failed: ${caughtToString(e)}`))
+      // stepContinue releases the debuggee on SAP. If this fails, the kernel-level
+      // debug attachment persists and the next session's TPDA_ATTACH will fail.
+      try {
+        await thread.client.debuggerStep("stepContinue")
+      } catch (e: any) {
+        const details = e?.properties ? JSON.stringify(e.properties) : ""
+        log(`stopThread: stepContinue failed: ${caughtToString(e)} ${details}`)
+        // If the debuggee already ended, that's fine. Otherwise try dropping the session
+        // to force SAP to release the debug attachment.
+        if (!isEnded(e)) {
+          await thread.client.dropSession().catch(e2 => log(`stopThread: dropSession failed: ${caughtToString(e2)}`))
+        }
+      }
       await thread.logout()
     }
   }
@@ -366,7 +377,7 @@ export class DebugListener {
     return max + 1
   }
 
-  public async stopDebugging(stopDebugger = true) {
+  public async stopDebugging() {
     this.active = false
     this.notifier.fire(new TerminatedEvent())
   }
@@ -377,14 +388,11 @@ export class DebugListener {
     this.killed = true
     // Stop recording if active
     if (this._recorder?.isRecording) {
-      await this._recorder.stopRecording().catch(ignore)
+      await this._recorder.stopRecording().catch(e => log(`logout: stopRecording failed: ${caughtToString(e)}`))
       this._recorder = undefined
     }
-    if (this.listening) await this.stopListener().catch(ignore)
-    else {
-      const conflict = await this.hasConflict()
-      if (conflict.with === "myself") await this.stopListener().catch(ignore)
-    }
+    // Always delete the listener from SAP on logout
+    await this.stopListener().catch(e => log(`logout: stopListener failed: ${caughtToString(e)}`))
     const stopServices = [...this.services.keys()].map(s => this.stopThread(s))
     const proms: Promise<any>[] = [...stopServices]
 
