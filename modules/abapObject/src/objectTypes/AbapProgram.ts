@@ -43,6 +43,9 @@ export class AbapProgram extends AbapObjectBase {
   async childComponents(includeIncludes?: boolean) {
     if (!this.structure) await this.loadStructure()
     if (!this.expandable) return { nodes: [], categories: [], objectTypes: [] }
+    // For filesystem operations, filterInvalid() discards all nodeContents results anyway —
+    // skip the server call to avoid crashing ADT on programs with local classes (CLAS/OLA nodes).
+    if (!includeIncludes) return this.filterInvalid({ nodes: [], categories: [], objectTypes: [] })
     return super.childComponents(includeIncludes)
   }
 }
