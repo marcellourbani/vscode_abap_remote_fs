@@ -378,21 +378,29 @@ export class AdtObjectActivator {
     const firstObject = msgs[0]?.target || defaultObjectName
     const summary = `Activation failed: ${errorCount} error${errorCount !== 1 ? "s" : ""} in ${firstObject}${errorCount > 1 ? ` (${firstError}...)` : ` (${firstError})`}`
 
+    const detailLines: string[] = []
     logError(`❌ Activation failed for ${defaultObjectName}:`)
     for (const [key, vals] of grouped.entries()) {
+      detailLines.push(`${key}:`)
       logError(`  📍 ${key}:`)
       vals.forEach(v => {
+        detailLines.push(`  ${v.text}`)
         logError(`      ${v.text}`)
       })
     }
-    if (inactiveList.length) logError(`  ⚠️ Inactive objects: ${inactiveList.join(", ")}`)
+    if (inactiveList.length) {
+      detailLines.push(`Inactive objects: ${inactiveList.join(", ")}`)
+      logError(`  ⚠️ Inactive objects: ${inactiveList.join(", ")}`)
+    }
+    const details = detailLines.join("\n")
 
-    return { ok: false, summary }
+    return { ok: false, summary, details }
   }
 
   public async activateMultiple(interactive = true): Promise<{
     ok: boolean
     summary?: string
+    details?: string
     availableCount?: number
     selectedCount?: number
     cancelled?: boolean
@@ -537,7 +545,7 @@ export class AdtObjectActivator {
     object: AbapObject,
     uri: Uri,
     interactive = true
-  ): Promise<{ ok: boolean; summary?: string }> {
+  ): Promise<{ ok: boolean; summary?: string; details?: string }> {
     const inactive = object.lockObject
 
     try {
