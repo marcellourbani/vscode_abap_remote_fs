@@ -77,7 +77,28 @@ export const errorType = (err: any): string | undefined => {
 
 const isConflictError = (e: any) =>
   (errorType(e) || "").match(/conflictNotification|conflictDetected/)
-
+class ServiceCollection {
+  constructor(private maxThreads = 4) {}
+  private services = new Map<number, DebugService>()
+  set(threadId: number, service: DebugService) {
+    this.services.set(threadId, service)
+  }
+  get(threadId: number) {
+    return this.services.get(threadId)
+  }
+  delete(threadId: number) {
+    this.services.delete(threadId)
+  }
+  get active() {
+    return [...this.services]
+  }
+  get isFull() {
+    return this.services.size >= this.maxThreads
+  }
+  get nextThreadId() {
+    return Math.max(0, ...this.services.keys()) + 1
+  }
+}
 export class DebugListener {
   readonly ideId: string
   private active: boolean = false
@@ -88,11 +109,8 @@ export class DebugListener {
   readonly breakpointManager
   readonly variableManager
   sessionNumber: number
-  private services = new Map<number, DebugService>()
   listening = false
-  private currentThreadId?: number
   private threadCreation?: Promise<void>
-  maxThreads = 4
   private _recorder: DebugRecorder | undefined
 
   public get client() {
@@ -100,8 +118,8 @@ export class DebugListener {
     return this._client
   }
 
-  activeServices() {
-    return [...this.services]
+  public get activeThreads() {
+    return this.services.active
   }
 
   get recorder(): DebugRecorder | undefined {
@@ -137,7 +155,8 @@ export class DebugListener {
     readonly terminalId: string,
     readonly username: string,
     terminalMode: boolean,
-    private ui: DebuggerUI
+    private ui: DebuggerUI,
+    private services: ServiceCollection
   ) {
     this.sessionNumber = (sessionNumbers.get(connId) || 0) + 1
     sessionNumbers.set(connId, this.sessionNumber)
@@ -157,7 +176,9 @@ export class DebugListener {
     const client = await getOrCreateClient(connId)
     if (!client) throw new Error(`Unable to get client for${connId}`)
     const terminalId = await getOrCreateTerminalId()
-    return new DebugListener(connId, client, terminalId, username, terminalMode, ui)
+    const cfg = await configFromKey(connId).catch(ignore)
+    const services = new ServiceCollection(cfg?.maxDebugThreads || 4)
+    return new DebugListener(connId, client, terminalId, username, terminalMode, ui, services)
   }
 
   addListener(listener: (e: DebugProtocol.Event) => any, thisArg?: any) {
@@ -167,22 +188,19 @@ export class DebugListener {
   service(threadid: number): DebugService {
     const service = this.services.get(threadid)
     if (!service) throw new Error(`No service for threadid ${threadid}`)
-    this.currentThreadId = threadid
     return service
-  }
-  async currentservice() {
-    await this.threadCreation
-    return this.service(this.currentThreadId || 0)
-  }
-  hasService(threadid: number): boolean {
-    return this.services.has(threadid)
   }
 
   private async stopListener(norestart = true) {
     if (norestart) {
       this.active = false
     }
-    return this._client.statelessClone.debuggerDeleteListener(this.mode, this.terminalId, this.ideId, this.username)
+    return this._client.statelessClone.debuggerDeleteListener(
+      this.mode,
+      this.terminalId,
+      this.ideId,
+      this.username
+    )
   }
 
   private async debuggerListen() {
@@ -247,12 +265,6 @@ export class DebugListener {
 
   private async mainLoop() {
     this.active = true
-    try {
-      const cfg = await configFromKey(this.connId)
-      this.maxThreads = cfg.maxDebugThreads || 4
-    } catch (error) {
-      this.maxThreads = 4
-    }
     let startTime = 0
     while (this.active) {
       try {
@@ -302,44 +314,49 @@ export class DebugListener {
   }
 
   private async stopThread(threadid: number) {
-    const thread = this.services.get(threadid)
+    const service = this.service(threadid)
     this.services.delete(threadid)
-    if (this.currentThreadId === threadid) this.currentThreadId = undefined
-    if (thread) {
-      await this.breakpointManager.removeAllBreakpoints(thread).catch(e => log(`stopThread: removeAllBreakpoints failed: ${caughtToString(e)}`))
+    if (service) {
+      await this.breakpointManager
+        .removeAllBreakpoints(service)
+        .catch(e => log(`stopThread: removeAllBreakpoints failed: ${caughtToString(e)}`))
       // stepContinue releases the debuggee on SAP. If this fails, the kernel-level
       // debug attachment persists and the next session's TPDA_ATTACH will fail.
       try {
-        await thread.client.debuggerStep("stepContinue")
+        await service.client.debuggerStep("stepContinue")
       } catch (e: any) {
         const details = e?.properties ? JSON.stringify(e.properties) : ""
         log(`stopThread: stepContinue failed: ${caughtToString(e)} ${details}`)
         // If the debuggee already ended, that's fine. Otherwise try dropping the session
         // to force SAP to release the debug attachment.
         if (!isEnded(e)) {
-          await thread.client.dropSession().catch(e2 => log(`stopThread: dropSession failed: ${caughtToString(e2)}`))
+          await service.client
+            .dropSession()
+            .catch(e2 => log(`stopThread: dropSession failed: ${caughtToString(e2)}`))
         }
       }
-      await thread.logout()
+      await service.logout()
     }
   }
 
   private async onBreakpointReached(debuggee: Debuggee) {
     try {
-      if (this.services.size >= this.maxThreads) return this.resume(debuggee)
+      if (this.services.isFull) {
+        log(`Max debug threads reached (${this.services.active.length}), refusing new session`)
+        return this.resume(debuggee)
+      }
       log(`onBreakpointReached: creating service for ${debuggee.DEBUGGEE_ID}`)
       const service = await DebugService.create(this.connId, this.ui, this, debuggee)
-      const threadid = this.nextthreadid()
-      service.threadId = threadid
-      this.services.set(threadid, service)
+      service.threadId = this.services.nextThreadId
+      this.services.set(service.threadId, service)
       const creation = (async () => {
         await service.attach()
         service.addListener(e => {
-          if (e instanceof ThreadEvent && e.body.reason === THREAD_EXITED) this.stopThread(threadid)
+          if (e instanceof ThreadEvent && e.body.reason === THREAD_EXITED)
+            this.stopThread(service.threadId)
           this.notifier.fire(e)
         })
-        this.currentThreadId = threadid
-        this.notifier.fire(new StoppedEvent("breakpoint", threadid))
+        this.notifier.fire(new StoppedEvent("breakpoint", service.threadId))
       })()
       this.threadCreation = creation.finally(() => (this.threadCreation = undefined))
       await creation
@@ -369,14 +386,6 @@ export class DebugListener {
     }
   }
 
-  nextthreadid(): number {
-    if (this.services.size === 0) return 1
-    const indexes = [...this.services.keys()]
-    const max = Math.max(...indexes)
-    if (max < this.services.size) for (let i = 1; i < max; i++) if (!this.services.has(i)) return i
-    return max + 1
-  }
-
   public async stopDebugging() {
     this.active = false
     this.notifier.fire(new TerminatedEvent())
@@ -388,12 +397,14 @@ export class DebugListener {
     this.killed = true
     // Stop recording if active
     if (this._recorder?.isRecording) {
-      await this._recorder.stopRecording().catch(e => log(`logout: stopRecording failed: ${caughtToString(e)}`))
+      await this._recorder
+        .stopRecording()
+        .catch(e => log(`logout: stopRecording failed: ${caughtToString(e)}`))
       this._recorder = undefined
     }
     // Always delete the listener from SAP on logout
     await this.stopListener().catch(e => log(`logout: stopListener failed: ${caughtToString(e)}`))
-    const stopServices = [...this.services.keys()].map(s => this.stopThread(s))
+    const stopServices = this.services.active.map(([s, _]) => this.stopThread(s))
     const proms: Promise<any>[] = [...stopServices]
 
     await Promise.all(proms)

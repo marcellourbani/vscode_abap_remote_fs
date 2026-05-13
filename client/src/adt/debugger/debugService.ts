@@ -100,7 +100,7 @@ export class DebugService {
   }
 
   private async baseDebuggerStep(threadId: number, stepType: DebugStepType, url?: string) {
-    this.notifier.fire(new ContinuedEvent(threadId))
+    this.notifier.fire(new ContinuedEvent(threadId, false))
     if (stepType === "stepRunToLine" || stepType === "stepJumpToLine") {
       if (!url) throw new Error(`Debugger step ${stepType} requires a target`)
       return this.client.debuggerStep(stepType, url)
@@ -198,7 +198,9 @@ export class DebugService {
     this.listeners.forEach(l => l.dispose())
     this.listeners = []
     this.notifier.dispose()
-    await client.statelessClone.logout().catch(e => log(`DebugService.logout: statelessClone logout failed: ${caughtToString(e)}`))
+    await client.statelessClone
+      .logout()
+      .catch(e => log(`DebugService.logout: statelessClone logout failed: ${caughtToString(e)}`))
     await client.logout()
   }
 }

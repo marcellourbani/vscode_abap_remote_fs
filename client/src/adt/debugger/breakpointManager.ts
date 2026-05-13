@@ -181,9 +181,9 @@ export class BreakpointManager {
           () => []
         )
     }
-    for (const [id, conn] of this.listener.activeServices()) {
+    for (const [id, service] of this.listener.activeThreads) {
       for (const bp of deleted)
-        await conn.client
+        await service.client
           .debuggerDeleteBreakpoints(
             bp,
             "user",
@@ -192,8 +192,10 @@ export class BreakpointManager {
             this.username,
             "debugger"
           )
-          .catch(e => log(`syncBreakpoints: deleteBreakpoint(debugger) failed: ${caughtToString(e)}`))
-      await conn.client
+          .catch(e =>
+            log(`syncBreakpoints: deleteBreakpoint(debugger) failed: ${caughtToString(e)}`)
+          )
+      await service.client
         .debuggerSetBreakpoints(
           this.mode,
           this.terminalId,
