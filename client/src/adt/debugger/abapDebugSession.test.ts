@@ -1,10 +1,18 @@
-jest.mock("vscode", () => ({
-  Uri: {
-    parse: jest.fn((s: string) => ({ scheme: "adt", path: s.replace(/^adt:\/\/[^/]+/, ""), toString: () => s }))
-  },
-  DebugConfiguration: {},
-  DebugSession: {}
-}), { virtual: true })
+jest.mock(
+  "vscode",
+  () => ({
+    Uri: {
+      parse: jest.fn((s: string) => ({
+        scheme: "adt",
+        path: s.replace(/^adt:\/\/[^/]+/, ""),
+        toString: () => s
+      }))
+    },
+    DebugConfiguration: {},
+    DebugSession: {}
+  }),
+  { virtual: true }
+)
 jest.mock("@vscode/debugadapter", () => ({
   LoggingDebugSession: jest.fn().mockImplementation(function (this: any) {
     this.sendResponse = jest.fn()
@@ -88,6 +96,7 @@ function makeListener(overrides: Partial<any> = {}) {
       return s
     }),
     activeServices: jest.fn(() => [...serviceMap]),
+    activeThreads: [[1, { debuggee: { name: "hi" } }]],
     fireMainLoop: jest.fn().mockResolvedValue(true),
     logout: jest.fn().mockResolvedValue(undefined),
     isRecording: false,
@@ -180,7 +189,7 @@ describe("AbapDebugSession", () => {
 
   describe("threadsRequest", () => {
     test("returns active services as threads", () => {
-      const response = makeResponse()
+      const response = { body: { threads: [] } }
       ;(session as any).threadsRequest(response)
       expect(response.body.threads).toHaveLength(1)
       expect((session as any).sendResponse).toHaveBeenCalledWith(response)
@@ -241,19 +250,16 @@ describe("AbapDebugSession", () => {
       const fakeBps = [{ verified: true, line: 10 }]
       listener.breakpointManager.getBreakpoints.mockReturnValueOnce(fakeBps)
       const response = makeResponse()
-      ;(session as any).breakpointLocationsRequest(
-        response,
-        { source: { path: "/some/path" }, line: 10 }
-      )
+      ;(session as any).breakpointLocationsRequest(response, {
+        source: { path: "/some/path" },
+        line: 10
+      })
       expect(response.body.breakpoints).toHaveLength(1)
     })
 
     test("returns empty when no source path", () => {
       const response = makeResponse()
-      ;(session as any).breakpointLocationsRequest(
-        response,
-        { source: {}, line: 10 }
-      )
+      ;(session as any).breakpointLocationsRequest(response, { source: {}, line: 10 })
       expect(response.body.breakpoints).toEqual([])
     })
   })
@@ -294,16 +300,25 @@ describe("AbapDebugSession", () => {
 
   describe("evaluateRequest", () => {
     test("returns body when evaluate succeeds", async () => {
-      listener.variableManager.evaluate.mockResolvedValueOnce({ result: "hello", variablesReference: 0 })
+      listener.variableManager.evaluate.mockResolvedValueOnce({
+        result: "hello",
+        variablesReference: 0
+      })
       const response = makeResponse()
-      await (session as any).evaluateRequest(response, { expression: "MYVAR", frameId: 1000000000000 })
+      await (session as any).evaluateRequest(response, {
+        expression: "MYVAR",
+        frameId: 1000000000000
+      })
       expect(response.body.result).toBe("hello")
     })
 
     test("sets success false when evaluate returns undefined", async () => {
       listener.variableManager.evaluate.mockResolvedValueOnce(undefined)
       const response = makeResponse()
-      await (session as any).evaluateRequest(response, { expression: "BAD", frameId: 1000000000000 })
+      await (session as any).evaluateRequest(response, {
+        expression: "BAD",
+        frameId: 1000000000000
+      })
       expect(response.success).toBe(false)
     })
   })

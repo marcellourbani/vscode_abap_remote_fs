@@ -1,22 +1,26 @@
-jest.mock("vscode", () => ({
-  Uri: {
-    parse: jest.fn((url: string) => {
-      const match = url.match(/^([^:]+):\/\/([^\/]*)(.*)$/)
-      return {
-        scheme: match?.[1] ?? "",
-        authority: match?.[2] ?? "",
-        path: match?.[3] ?? "",
-        toString: () => url
-      }
-    })
-  },
-  LanguageModelTextPart: jest.fn((t: string) => ({ value: t })),
-  LanguageModelToolResult: jest.fn((content: any[]) => ({ content })),
-  ProgressLocation: { Window: 10 },
-  window: {
-    withProgress: jest.fn()
-  }
-}), { virtual: true })
+jest.mock(
+  "vscode",
+  () => ({
+    Uri: {
+      parse: jest.fn((url: string) => {
+        const match = url.match(/^([^:]+):\/\/([^\/]*)(.*)$/)
+        return {
+          scheme: match?.[1] ?? "",
+          authority: match?.[2] ?? "",
+          path: match?.[3] ?? "",
+          toString: () => url
+        }
+      })
+    },
+    LanguageModelTextPart: jest.fn((t: string) => ({ value: t })),
+    LanguageModelToolResult: jest.fn((content: any[]) => ({ content })),
+    ProgressLocation: { Window: 10 },
+    window: {
+      withProgress: jest.fn()
+    }
+  }),
+  { virtual: true }
+)
 
 jest.mock("../conections", () => ({
   getClient: jest.fn(),
@@ -65,7 +69,7 @@ describe("ActivateTool", () => {
     test("activates object and returns success message", async () => {
       const mockObject = { path: "/sap/bc/adt/programs/programs/ztest" }
       const mockFile = { object: mockObject }
-      const mockActivator = { activate: jest.fn().mockResolvedValue(undefined) }
+      const mockActivator = { activate: jest.fn().mockResolvedValue({ ok: true }) }
 
       mockIsAbapFile.mockReturnValue(true)
       const mockRoot = {
