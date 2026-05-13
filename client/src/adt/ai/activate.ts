@@ -28,17 +28,19 @@ export class ActivateTool implements LanguageModelTool<ActivateInput> {
     logTelemetry("tool_abap_activate_called")
     const { url } = options.input
     const uri = Uri.parse(url)
-    await window.withProgress(
+    const result = await window.withProgress(
       { location: ProgressLocation.Window, title: "Activating..." },
       async () => {
         const [path] = await uriRoot(uri).getNodePathAsync(uri.path)
         const object = isAbapFile(path?.file) && path?.file?.object
         if (!object) throw new Error("Failed to retrieve object for activation")
         const activator = AdtObjectActivator.get(uri.authority)
-        await activator.activate(object, uri, false)
+        return activator.activate(object, uri, false)
       }
     )
-    const contentText = [`Activation successful for ${url}`]
+    const contentText = result.ok
+      ? [`Activation successful for ${url}`]
+      : [`Activation FAILED for ${url}:\n${result.details || result.summary || "Unknown error"}`]
     const content = contentText.map(t => new LanguageModelTextPart(t))
     return new LanguageModelToolResult(content)
   }
