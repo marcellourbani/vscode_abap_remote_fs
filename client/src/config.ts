@@ -213,6 +213,8 @@ export class RemoteManager {
             // ignore any change to connection details, authentication and monitoring
             current.diff_formatter = incoming.diff_formatter
             current.sapGui = incoming.sapGui
+            current.atcVariant = incoming.atcVariant
+            current.atcapprover = incoming.atcapprover
           }
         }
       }

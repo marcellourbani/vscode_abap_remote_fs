@@ -50,6 +50,9 @@ export interface ISearchABAPObjectsParameters {
     | "SFBS"
     | "JOBD"
     | "NROB"
+    | "BDEF"
+    | "SRVB"
+    | "SUSO"
   >
   maxResults?: number
 }

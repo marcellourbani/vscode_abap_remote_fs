@@ -28,6 +28,7 @@ import { registerAbapDebugger } from "./adt/debugger"
 import { ATCDocumentation } from "./views/abaptestcockpit/documentation"
 import { CommLogPanel } from "./adt/adtCommLog"
 import { tracesProvider } from "./views/traces"
+import { s4hProvider } from "./views/s4hanaReadiness"
 import { FeedStateManager } from "./services/feeds/feedStateManager"
 import { FeedPollingService } from "./services/feeds/feedPollingService"
 import { initializeFeedInboxProvider } from "./views/feeds/feedInboxView"
@@ -60,6 +61,7 @@ import { ObjectPropertyProvider } from "./views/objectProperties"
 import { ObjectSearchViewProvider } from "./views/objectSearchView"
 import { funWindow as window } from "./services/funMessenger"
 import { initializeReviewPrompt } from "./services/reviewPrompt"
+import { registerBdefType } from "./adt/operations/BdefCreator"
 
 // Import commands to ensure @command decorators are executed
 import "./commands"
@@ -73,6 +75,9 @@ export async function activate(ctx: ExtensionContext): Promise<AbapFsApi> {
   context = ctx
   const startTime = new Date().getTime()
   log("🚀 Buckle up buttercup, ABAP FS is waking up from its slumber...")
+
+  // Register additional creatable types
+  registerBdefType()
 
   // 📊 Initialize Telemetry Services FIRST
   try {
@@ -189,6 +194,7 @@ export async function activate(ctx: ExtensionContext): Promise<AbapFsApi> {
   sub.push(window.registerTreeDataProvider("abapfs.dumps", dumpProvider))
   sub.push(window.registerTreeDataProvider("abapfs.atcFinds", atcProvider))
   sub.push(window.registerTreeDataProvider("abapfs.traces", tracesProvider))
+  sub.push(window.registerTreeDataProvider("abapfs.s4hReadiness", s4hProvider))
   sub.push(window.registerWebviewViewProvider(RapGeneratorPanel.viewType, RapGeneratorPanel.get()))
   const objectPropertyView = window.createTreeView("abapfs.objectProperty", {
     treeDataProvider: objectPropertyProvider,

@@ -8,7 +8,7 @@ import { registerToolWithRegistry } from "./toolRegistry"
 import { funWindow as window } from "../funMessenger"
 import { getSearchService } from "../abapSearchService"
 import { logTelemetry } from "../telemetry"
-import { getOrCreateRoot, abapUri } from "../../adt/conections"
+import { getClient, getOrCreateRoot, abapUri } from "../../adt/conections"
 import { atcProvider } from "../../views/abaptestcockpit"
 import { getATCDecorations } from "../../views/abaptestcockpit/decorations"
 
@@ -17,12 +17,15 @@ import { getATCDecorations } from "../../views/abaptestcockpit/decorations"
 // ============================================================================
 
 export interface IRunATCAnalysisParameters {
+  action?: "run_analysis" | "get_documentation"
   objectName?: string
   objectType?: string
   objectUri?: string
   connectionId?: string
   useActiveFile?: boolean
   scope?: "object" | "package" | "transport"
+  // For get_documentation action
+  docUri?: string
 }
 
 export interface IGetATCDecorationsParameters {
@@ -41,7 +44,24 @@ export class RunATCAnalysisTool implements vscode.LanguageModelTool<IRunATCAnaly
     options: vscode.LanguageModelToolInvocationPrepareOptions<IRunATCAnalysisParameters>,
     _token: vscode.CancellationToken
   ) {
-    const { objectName, objectType, objectUri, connectionId, useActiveFile } = options.input
+    const { action = "run_analysis", objectName, objectType, objectUri, connectionId, useActiveFile, docUri } = options.input
+
+    // get_documentation only needs docUri + connectionId
+    if (action === "get_documentation") {
+      if (!docUri) {
+        throw new Error("get_documentation requires docUri (from a previous run_analysis result)")
+      }
+      if (!connectionId) {
+        throw new Error("get_documentation requires connectionId")
+      }
+      return {
+        invocationMessage: `Fetching ATC finding documentation...`,
+        confirmationMessages: {
+          title: "Get ATC Documentation",
+          message: new vscode.MarkdownString(`Fetch documentation for ATC finding from ${connectionId}`)
+        }
+      }
+    }
 
     // Validate: must have objectUri, objectName+connectionId, or useActiveFile
     if (objectUri) {
@@ -84,11 +104,17 @@ export class RunATCAnalysisTool implements vscode.LanguageModelTool<IRunATCAnaly
     options: vscode.LanguageModelToolInvocationOptions<IRunATCAnalysisParameters>,
     _token: vscode.CancellationToken
   ): Promise<vscode.LanguageModelToolResult> {
+    const { action = "run_analysis" } = options.input
     let { objectName, objectType, objectUri, connectionId, useActiveFile = true } = options.input
     logTelemetry("tool_run_atc_analysis_called", { connectionId })
 
     if (connectionId) {
       connectionId = connectionId.toLowerCase()
+    }
+
+    // Handle get_documentation action
+    if (action === "get_documentation") {
+      return this.getDocumentation(options.input)
     }
 
     try {
@@ -189,7 +215,7 @@ export class RunATCAnalysisTool implements vscode.LanguageModelTool<IRunATCAnaly
         }
       }
 
-      await window.withProgress(
+      const usedVariant = await window.withProgress(
         { location: vscode.ProgressLocation.Notification, title: "Running ABAP Test Cockpit" },
         async () => {
           try {
@@ -201,10 +227,11 @@ export class RunATCAnalysisTool implements vscode.LanguageModelTool<IRunATCAnaly
             // Continue with ATC even if file opening fails
           }
 
-          await atcProvider.runInspector(targetUri)
+          return atcProvider.runInspector(targetUri)
         }
       )
 
+      const variantName = usedVariant || "unknown"
       const findings = atcProvider.findings()
 
       const structuredFindings = findings.map(finding => ({
@@ -215,6 +242,7 @@ export class RunATCAnalysisTool implements vscode.LanguageModelTool<IRunATCAnaly
         finding: {
           messageTitle: finding.finding.messageTitle,
           checkTitle: finding.finding.checkTitle,
+          checkId: finding.finding.checkId,
           priority: finding.finding.priority,
           priorityText:
             finding.finding.priority === 1
@@ -228,7 +256,8 @@ export class RunATCAnalysisTool implements vscode.LanguageModelTool<IRunATCAnaly
             character: finding.start.character + 1
           },
           hasExemption: !!finding.finding.exemptionApproval,
-          exemptionStatus: finding.finding.exemptionApproval || null
+          exemptionStatus: finding.finding.exemptionApproval || null,
+          docUri: finding.finding.link?.href || null
         }
       }))
 
@@ -252,6 +281,7 @@ export class RunATCAnalysisTool implements vscode.LanguageModelTool<IRunATCAnaly
         `**🔍 ATC Analysis Complete** ✅\n\n` +
         `• **Target:** ${targetUri.toString()}\n` +
         `• **System:** ${actualConnectionId}\n` +
+        `• **Check Variant:** ${variantName}\n` +
         `• **Total Findings:** ${totalFindings}\n` +
         `• **Errors:** ${errors} | **Warnings:** ${warnings} | **Info:** ${infos}\n` +
         `• **Exempted:** ${exempted}\n` +
@@ -280,6 +310,7 @@ export class RunATCAnalysisTool implements vscode.LanguageModelTool<IRunATCAnaly
                 warnings,
                 infos,
                 exempted,
+                checkVariant: variantName,
                 targetUri: targetUri.toString(),
                 connectionId: actualConnectionId
               },
@@ -293,6 +324,60 @@ export class RunATCAnalysisTool implements vscode.LanguageModelTool<IRunATCAnaly
     } catch (error) {
       throw new Error(`Failed to run ATC analysis: ${String(error)}`)
     }
+  }
+
+  private async getDocumentation(
+    input: IRunATCAnalysisParameters
+  ): Promise<vscode.LanguageModelToolResult> {
+    const { docUri, connectionId } = input
+
+    if (!docUri) {
+      return new vscode.LanguageModelToolResult([
+        new vscode.LanguageModelTextPart(
+          "**❌ Missing parameter:** get_documentation requires `docUri` - the documentation URL from a finding. " +
+            "Use the exact docUri value from the findings returned by a previous run_analysis call."
+        )
+      ])
+    }
+
+    if (!connectionId) {
+      return new vscode.LanguageModelToolResult([
+        new vscode.LanguageModelTextPart(
+          "**❌ Missing parameter:** get_documentation requires `connectionId` to fetch documentation from the correct SAP system."
+        )
+      ])
+    }
+
+    const client = getClient(connectionId)
+    const doc = await client.atcDocumentation(docUri)
+
+    // Strip HTML tags to get plain text for the AI
+    const plainText = doc.body
+      .replace(/<style[^>]*>[\s\S]*?<\/style>/gi, "")
+      .replace(/<script[^>]*>[\s\S]*?<\/script>/gi, "")
+      .replace(/<br\s*\/?>/gi, "\n")
+      .replace(/<\/p>/gi, "\n\n")
+      .replace(/<\/div>/gi, "\n")
+      .replace(/<\/li>/gi, "\n")
+      .replace(/<li[^>]*>/gi, "• ")
+      .replace(/<\/h[1-6]>/gi, "\n\n")
+      .replace(/<h[1-6][^>]*>/gi, "\n## ")
+      .replace(/<[^>]+>/g, "")
+      .replace(/&nbsp;/g, " ")
+      .replace(/&lt;/g, "<")
+      .replace(/&gt;/g, ">")
+      .replace(/&amp;/g, "&")
+      .replace(/&quot;/g, '"')
+      .replace(/\n{3,}/g, "\n\n")
+      .trim()
+
+    const resultText =
+      `**📖 ATC Finding Documentation**\n\n` +
+      `• **Doc URI:** ${docUri}\n` +
+      `• **System:** ${connectionId}\n\n` +
+      `**Documentation:**\n\n${plainText}`
+
+    return new vscode.LanguageModelToolResult([new vscode.LanguageModelTextPart(resultText)])
   }
 }
 
