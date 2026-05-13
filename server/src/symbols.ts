@@ -45,16 +45,19 @@ function decodeType(comp: ClassComponent) {
   return SymbolKind.Null
 }
 function convertComponent(comp: ClassComponent, definition: boolean) {
-  const dLink = comp.links.find(l => !!l.rel.match(/definitionIdentifier/i))
-  const iLink = comp.links.find(l => !!l.rel.match(/implementationIdentifier/i))
+  const dIdLink = comp.links.find(l => !!l.rel.match(/definitionIdentifier/i))
+  const iIdLink = comp.links.find(l => !!l.rel.match(/implementationIdentifier/i))
+  const dBlockLink = comp.links.find(l => !!l.rel.match(/definitionBlock/i))
+  const iBlockLink = comp.links.find(l => !!l.rel.match(/implementationBlock/i))
 
-  const mainLink = definition ? dLink : iLink
+  const idLink = definition ? dIdLink : iIdLink
+  const blockLink = definition ? dBlockLink : iBlockLink
   const suffix =
-    (definition && iLink && " definition") || (!definition && dLink && " implementation") || ""
+    (definition && iIdLink && " definition") || (!definition && dIdLink && " implementation") || ""
 
-  const range = mainLink && rangeFromUri(mainLink.href)
-  if (range) {
-    const selectionRange = range
+  const selectionRange = idLink && rangeFromUri(idLink.href)
+  if (selectionRange) {
+    const range = (blockLink && rangeFromUri(blockLink.href)) || selectionRange
     const name = comp["adtcore:name"] + suffix
     const kind = decodeType(comp)
     const children = comp.components
