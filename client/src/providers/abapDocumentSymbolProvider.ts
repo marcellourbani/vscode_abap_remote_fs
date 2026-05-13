@@ -50,25 +50,6 @@ function addToScope(
   else root.push(sym)
 }
 
-function findAncestorScope(
-  stack: vscode.DocumentSymbol[],
-  predicate: (symbol: vscode.DocumentSymbol) => boolean
-) {
-  for (let idx = stack.length - 1; idx >= 0; idx--) {
-    const symbol = stack[idx]
-    if (predicate(symbol)) return symbol
-  }
-}
-
-function findMethodSymbol(scope: vscode.DocumentSymbol, methodName: string): vscode.DocumentSymbol | undefined {
-  const wanted = methodName.toLowerCase()
-  for (const child of scope.children) {
-    if (child.kind === vscode.SymbolKind.Method && child.name.toLowerCase() === wanted) return child
-    const nested = findMethodSymbol(child, methodName)
-    if (nested) return nested
-  }
-}
-
 // Details used to identify section sub-scopes inside a class
 const SECTION_DETAILS = new Set(["public section", "private section", "protected section"])
 
@@ -79,7 +60,14 @@ export function parseAbapDocumentSymbols(document: vscode.TextDocument): vscode.
   let structDepth = 0
   // When in a METHODS/CLASS-METHODS chain: true means the next identifier is a method name
   let methodNameNext = false
+  let activeMethodDeclaration: vscode.DocumentSymbol | undefined
   const lineCount = document.lineCount
+
+  function closeDeclaration(symbol: vscode.DocumentSymbol | undefined, lineIdx: number) {
+    if (!symbol) return
+    const lineText = document.lineAt(lineIdx).text
+    symbol.range = new vscode.Range(symbol.range.start, new vscode.Position(lineIdx, lineText.length))
+  }
 
   // Process one line's worth of text while inside a METHODS/CLASS-METHODS chain.
   // Returns the updated methodNameNext flag (whether a name is expected on the NEXT line).
@@ -93,7 +81,8 @@ export function parseAbapDocumentSymbols(document: vscode.TextDocument): vscode.
       if (expect) {
         const nm = /^([\w\/~$]+)/.exec(segment)
         if (nm && !METHOD_SPEC_KEYWORDS.has(nm[1].toUpperCase())) {
-          addDeclaration(nm[1], vscode.SymbolKind.Method, chainKind!, lineIdx)
+          closeDeclaration(activeMethodDeclaration, lineIdx)
+          activeMethodDeclaration = addDeclaration(nm[1], vscode.SymbolKind.Method, chainKind!, lineIdx)
           expect = false
         }
         // spec keyword while expecting name: keep expect=true (e.g. ABSTRACT before name)
@@ -106,7 +95,6 @@ export function parseAbapDocumentSymbols(document: vscode.TextDocument): vscode.
   const classScopes = new Map<string, vscode.DocumentSymbol>()
   // Classes whose DEFINITION has closed but IMPLEMENTATION not yet opened
   const awaitingImpl = new Set<string>()
-  const reusedImplementationScopes = new Set<vscode.DocumentSymbol>()
 
   function openScope(name: string, kind: vscode.SymbolKind, detail: string, lineIdx: number) {
     const lineText = document.lineAt(lineIdx).text
@@ -121,7 +109,6 @@ export function parseAbapDocumentSymbols(document: vscode.TextDocument): vscode.
   function closeScope(lineIdx: number) {
     const sym = scopeStack.pop()
     if (sym) {
-      reusedImplementationScopes.delete(sym)
       const lineText = document.lineAt(lineIdx).text
       sym.range = new vscode.Range(sym.range.start, new vscode.Position(lineIdx, lineText.length))
     }
@@ -138,6 +125,7 @@ export function parseAbapDocumentSymbols(document: vscode.TextDocument): vscode.
     const range = new vscode.Range(lineIdx, 0, lineIdx, lineText.length)
     const sym = new vscode.DocumentSymbol(name, detail, kind, range, range)
     addToScope(sym, scopeStack, root)
+    return sym
   }
 
   for (let i = 0; i < lineCount; i++) {
@@ -166,7 +154,12 @@ export function parseAbapDocumentSymbols(document: vscode.TextDocument): vscode.
       // ── METHODS / CLASS-METHODS chain ──
       if (chainKind === "METHODS" || chainKind === "CLASS-METHODS") {
         methodNameNext = processMethodsChunk(trimmed, methodNameNext, i)
-        if (endsWithDot) { chainKind = null; methodNameNext = false }
+        if (endsWithDot) {
+          closeDeclaration(activeMethodDeclaration, i)
+          activeMethodDeclaration = undefined
+          chainKind = null
+          methodNameNext = false
+        }
         continue
       }
 
@@ -301,15 +294,7 @@ export function parseAbapDocumentSymbols(document: vscode.TextDocument): vscode.
     }
     // METHOD implementation opener – must NOT match METHODS (declaration keyword)
     if ((m = /^\s*METHOD\s+((?!S\b)[\w$\/~]+)/i.exec(rawLine))) {
-      const classScope = findAncestorScope(scopeStack, s => s.kind === vscode.SymbolKind.Class)
-      const declaredMethod = classScope && findMethodSymbol(classScope, m[1])
-      if (declaredMethod) {
-        scopeStack.push(declaredMethod)
-        reusedImplementationScopes.add(declaredMethod)
-        chainKind = null
-      } else {
-        openScope(m[1], vscode.SymbolKind.Method, "METHOD", i)
-      }
+      openScope(m[1], vscode.SymbolKind.Method, "METHOD", i)
       continue
     }
     // INTERFACE (standalone definition only – INTERFACES as a class statement has a trailing S)
@@ -326,16 +311,24 @@ export function parseAbapDocumentSymbols(document: vscode.TextDocument): vscode.
       const colonIdx = trimmed.indexOf(":")
       const rest = colonIdx >= 0 ? trimmed.slice(colonIdx + 1) : ""
       methodNameNext = processMethodsChunk(rest, true, i)
-      if (trimmed.endsWith(".")) { chainKind = null; methodNameNext = false }
+      if (trimmed.endsWith(".")) {
+        closeDeclaration(activeMethodDeclaration, i)
+        activeMethodDeclaration = undefined
+        chainKind = null
+        methodNameNext = false
+      }
       continue
     }
     if ((m = /^\s*(CLASS-METHODS|METHODS)\s+([\w\/]+)/i.exec(rawLine)) &&
         !/^\s*(CLASS-METHODS|METHODS)\s*:/i.test(rawLine)) {
       const kw = m[1].toUpperCase() as ChainKeyword
-      addDeclaration(m[2], vscode.SymbolKind.Method, kw, i)
+      activeMethodDeclaration = addDeclaration(m[2], vscode.SymbolKind.Method, kw, i)
       if (!trimmed.endsWith(".")) {
         chainKind = kw
         methodNameNext = false
+      } else {
+        closeDeclaration(activeMethodDeclaration, i)
+        activeMethodDeclaration = undefined
       }
       continue
     }
@@ -469,10 +462,6 @@ export class AbapDocumentSymbolProvider implements vscode.DocumentSymbolProvider
   ): vscode.ProviderResult<vscode.DocumentSymbol[]> {
     if (document.uri.scheme !== ADTSCHEME) return []
     if (document.languageId !== "abap") return []
-
-    // CLASS and INTF objects are handled by the language server via classComponents API
-    const uriPath = document.uri.path.toLowerCase()
-    if (uriPath.includes("/oo/classes/") || uriPath.includes("/oo/interfaces/")) return []
 
     return parseAbapDocumentSymbols(document)
   }
