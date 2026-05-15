@@ -14,7 +14,7 @@
     "email": "marcello.urbani@gmail.com",
     "name": "Marcello Urbani"
   },
-  "homepage": "https://github.com/marcellourbani/vscode_abap_remote_fs",
+  "homepage": "https://marcellourbani.github.io/vscode_abap_remote_fs",
   "engines": {
     "vscode": "^1.90.0"
   },
