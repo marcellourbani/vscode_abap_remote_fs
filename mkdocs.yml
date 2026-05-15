@@ -1,0 +1,111 @@
+site_name: ABAP FS Documentation
+site_description: Make ABAP development faster, more intelligent, and less frustrating
+repo_url: https://github.com/marcellourbani/vscode_abap_remote_fs
+repo_name: ABAP FS
+
+theme:
+  name: material
+  palette:
+    - scheme: default
+      primary: blue
+      toggle:
+        icon: material/brightness-7
+        name: Switch to dark mode
+    - scheme: slate
+      primary: blue
+      toggle:
+        icon: material/brightness-4
+        name: Switch to light mode
+  features:
+    - navigation.sections
+    - navigation.expand
+    - search.suggest
+    - search.highlight
+    - content.code.copy
+
+nav:
+  - Home: index.md
+  - Getting Started:
+    - Installation: getting-started/installation.md
+    - Walkthrough: getting-started/walkthrough.md
+    - Connection Manager: getting-started/connection-manager.md
+  - MCP Server: mcp-server.md
+  - AI Features:
+    - Language Model Tools: ai/language-model-tools.md
+    - Subagents: ai/subagents.md
+    - Skills: ai/skills.md
+    - Heartbeat: ai/heartbeat.md
+  - Editor:
+    - Hover Information: editor/hover-information.md
+    - Views & Panels: editor/views-panels.md
+    - Object Property View: editor/object-property-view.md
+    - Custom Editors: editor/custom-editors.md
+    - Message Class Editor: editor/message-class-editor.md
+  - SAP GUI:
+    - Embedded GUI: sap-gui/embedded-gui.md
+    - Native Desktop GUI: sap-gui/native-gui.md
+    - Web Browser GUI: sap-gui/web-browser-gui.md
+    - Run Transaction: sap-gui/run-transaction.md
+  - Object Management:
+    - Search: object-management/search.md
+    - Create: object-management/create.md
+    - Open: object-management/open.md
+    - Activation: object-management/activation.md
+    - Favorites: object-management/favorites.md
+    - Table Contents: object-management/table-contents.md
+    - Compare Across Systems: object-management/compare-systems.md
+  - Code Quality:
+    - ATC Analysis: code-quality/atc-analysis.md
+    - ABAP Cleaner: code-quality/abap-cleaner.md
+    - Syntax Validation: code-quality/syntax-validation.md
+    - Where-Used Analysis: code-quality/where-used.md
+  - Debugging:
+    - ABAP Debugging: debugging/abap-debugging.md
+    - Debug Recording & Replay: debugging/debug-recording.md
+  - Data Query:
+    - SQL Query: data-query/sql-query.md
+    - Data Workbooks: data-query/data-workbooks.md
+  - Transport Management:
+    - Request View: transport/request-view.md
+    - Object Operations: transport/object-operations.md
+  - Version Control:
+    - abapGit: version-control/abapgit.md
+    - Revision History: version-control/revision-history.md
+    - Blame Gutter: version-control/blame-gutter.md
+  - Testing:
+    - Unit Tests: testing/unit-tests.md
+    - Test Classes: testing/test-classes.md
+    - Test Documentation: testing/test-documentation.md
+  - Diagrams:
+    - Mermaid: diagrams/mermaid.md
+    - ABAP Documentation: diagrams/abap-documentation.md
+  - Developer Tools:
+    - Dumps Analysis: developer-tools/dumps-analysis.md
+    - Performance Traces: developer-tools/performance-traces.md
+    - Text Elements: developer-tools/text-elements.md
+    - Regex Search: developer-tools/regex-search.md
+    - S/4HANA Readiness: developer-tools/s4hana-readiness.md
+    - RAP Generator: developer-tools/rap-generator.md
+    - Feed Reader: developer-tools/feed-reader.md
+    - Dependency Graph: developer-tools/dependency-graph.md
+    - Communication Log: developer-tools/communication-log.md
+    - Tool Grouping Fix: developer-tools/tool-grouping-fix.md
+  - Reference:
+    - Important Considerations: reference/important-considerations.md
+    - Commands vs Tools: reference/commands-vs-tools.md
+    - Privacy & Telemetry: reference/privacy-telemetry.md
+    - Organization Administration: reference/org-admin.md
+
+markdown_extensions:
+  - mdx_truly_sane_lists
+  - admonition
+  - pymdownx.details
+  - pymdownx.superfences
+  - pymdownx.tabbed:
+      alternate_style: true
+  - pymdownx.highlight:
+      anchor_linenums: true
+  - pymdownx.inlinehilite
+  - tables
+  - toc:
+      permalink: true

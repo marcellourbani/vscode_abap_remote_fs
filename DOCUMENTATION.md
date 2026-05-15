@@ -1,222 +1,183 @@
-This documentation covers all features in detail. The goal: make ABAP development faster, more intelligent, and less frustrating.
+# ABAP FS — ABAP Development in VS Code
 
-> **� GitHub Repository:** [github.com/marcellourbani/vscode_abap_remote_fs](https://github.com/marcellourbani/vscode_abap_remote_fs)  
-> Report issues, contribute, or browse source code.
+**ABAP FS** is a VS Code extension that connects directly to your SAP system — giving you (and your AI assistant) live access to read code, query tables, run tests, debug, and manage objects without leaving the editor.
 
-> **�🔌 Using a non-GitHub Copilot AI tool?** (Cursor, Claude Code, Windsurf, Claude Desktop, etc.)  
-> See [MCP Server for External AI Tools](#mcp-server-for-external-ai-tools) to use ABAP FS tools with your preferred AI assistant.
+Ask Copilot "How does BAPI_USER_GET_DETAIL work?" and it finds the function, reads the code, checks where it's used, and examines related objects — all autonomously using 40 specialized SAP tools.
 
-> **GitHub Copilot (and other AI tools, once MCP is enabled and connected) has access to this documentation. Simply install ABAP FS extension, restart VS Code, setup MCP (optional) and ask AI to tell you about the ABAP FS features, how to set it up and how to use each feature and it can guide you!**
+If you're used to SE38, SE24, or ADT in Eclipse, ABAP FS brings that same direct-system connectivity into VS Code — plus AI assistance, modern tooling, and the full VS Code extension ecosystem.
 
-- [Installation Steps](#installation-steps)
-  - [Updates](#updates)
-- [MCP Server for External AI Tools](#mcp-server-for-external-ai-tools)
-  - [How It Works](#how-it-works)
-  - [Setup Instructions](#setup-instructions)
-    - [1. Enable MCP Server in VS Code](#1-enable-mcp-server-in-vs-code)
-    - [2. Connect to SAP System](#2-connect-to-sap-system)
-    - [3. Configure Your AI Tool](#3-configure-your-ai-tool)
-    - [Using API Key Authentication](#using-api-key-authentication)
-    - [4. Verify Connection](#4-verify-connection)
-  - [Limitations](#limitations)
-  - [Available Tools](#available-tools)
-  - [Troubleshooting](#troubleshooting)
-- [1. Editor, AI Integration \& Chat](#1-editor-ai-integration--chat)
-  - [1.1 ABAP Language Model Tools (AI Assistant Features)](#11-abap-language-model-tools-ai-assistant-features)
-- [1.2 AI Subagents for Optimized ABAP Development](#12-ai-subagents-for-optimized-abap-development)
-  - [What Are AI Subagents?](#what-are-ai-subagents)
-    - [🎯 Better Output Quality](#-better-output-quality)
-    - [📊 Context Window Management](#-context-window-management)
-    - [💰 Cost Efficiency (Secondary Benefit)](#-cost-efficiency-secondary-benefit)
-  - [Available Subagents](#available-subagents)
-  - [How It Works](#how-it-works-1)
-    - [How Users Invoke Subagents](#how-users-invoke-subagents)
-    - [How Orchestrator Delegates](#how-orchestrator-delegates)
-  - [Setup Instructions](#setup-instructions-1)
-    - [Step 1: Configure Models via Copilot](#step-1-configure-models-via-copilot)
-    - [Step 2: Enable Subagents](#step-2-enable-subagents)
-    - [Step 3: Enable VS Code Setting (if prompted)](#step-3-enable-vs-code-setting-if-prompted)
-  - [Managing Subagents](#managing-subagents)
-    - [Check Status](#check-status)
-    - [Disable Subagents](#disable-subagents)
-    - [Change Models](#change-models)
-    - [List Available Models](#list-available-models)
-    - [List Available Tools](#list-available-tools)
-  - [Customizing Agent Tools](#customizing-agent-tools)
-  - [Advantages](#advantages)
-  - [What to Be Aware Of](#what-to-be-aware-of)
-  - [Troubleshooting](#troubleshooting-1)
-    - ["Cannot enable subagents - missing models"](#cannot-enable-subagents---missing-models)
-    - [Agent files show validation errors](#agent-files-show-validation-errors)
-    - [Subagents auto-disabled](#subagents-auto-disabled)
-    - [Ghost files in explorer after disable](#ghost-files-in-explorer-after-disable)
-    - [Delegation not using custom agents](#delegation-not-using-custom-agents)
-- [1.3 AI Skills](#13-ai-skills)
-  - [How Skills Work](#how-skills-work)
-  - [Available Skills](#available-skills)
-    - [Clean ABAP (`/clean-abap`)](#clean-abap-clean-abap)
-    - [Code Writing Process (`/abap-code-writing`)](#code-writing-process-abap-code-writing)
-    - [Performance - ECC (`/abap-performance-ecc`)](#performance---ecc-abap-performance-ecc)
-    - [Performance - HANA (`/abap-performance-hana`)](#performance---hana-abap-performance-hana)
-    - [SAP Research (`/abap-research`)](#sap-research-abap-research)
-    - [SAP System Personality Report (`/sap-system-personality-report`)](#sap-system-personality-report-sap-system-personality-report)
-    - [SAP Customizing (`/sap-customizing`)](#sap-customizing-sap-customizing)
-    - [SAP Data Workbook (`/sap-data-workbook`)](#sap-data-workbook-sap-data-workbook)
-  - [Using Skills](#using-skills)
-- [1.4 Heartbeat - Background Monitoring \& Reminders](#14-heartbeat---background-monitoring--reminders)
-  - [What is Heartbeat?](#what-is-heartbeat)
-    - [🔔 Personal Reminders (any reminder, not just SAP!)](#-personal-reminders-any-reminder-not-just-sap)
-    - [📊 SAP System Monitoring](#-sap-system-monitoring)
-  - [How It Works](#how-it-works-2)
-  - [Setup Instructions](#setup-instructions-2)
-    - [Step 1: Configure Heartbeat Model](#step-1-configure-heartbeat-model)
-    - [Step 2: Enable via Copilot or Settings](#step-2-enable-via-copilot-or-settings)
-    - [Step 3: Add Monitoring Tasks](#step-3-add-monitoring-tasks)
-  - [Status Bar Indicator](#status-bar-indicator)
-  - [Task Types](#task-types)
-    - [🔔 Reminders (One-time)](#-reminders-one-time)
-    - [📊 Monitoring Tasks (Recurring)](#-monitoring-tasks-recurring)
-    - [Task Properties](#task-properties)
-  - [Example Tasks](#example-tasks)
-    - [Monitor for ST22 Dumps](#monitor-for-st22-dumps)
-    - [Watch Transport Until Released](#watch-transport-until-released)
-    - [Scheduled Reminder (SAP-related)](#scheduled-reminder-sap-related)
-    - [Personal Reminder (non-SAP)](#personal-reminder-non-sap)
-  - [Managing Heartbeat via Copilot](#managing-heartbeat-via-copilot)
-    - [Check Status](#check-status-1)
-    - [Add Tasks](#add-tasks)
-    - [List Tasks](#list-tasks)
-    - [Remove Tasks](#remove-tasks)
-    - [Trigger Manual Check](#trigger-manual-check)
-    - [Stop Service](#stop-service)
-  - [Timezone Handling](#timezone-handling)
-  - [Cooldown \& Deduplication](#cooldown--deduplication)
-  - [Troubleshooting](#troubleshooting-2)
-    - [Service not starting](#service-not-starting)
-    - [Tasks not being checked](#tasks-not-being-checked)
-    - [Too many alerts](#too-many-alerts)
-    - [Missing heartbeat.json](#missing-heartbeatjson)
-    - [Model errors](#model-errors)
-  - [1.5 Enhanced Hover Information](#15-enhanced-hover-information)
-  - [1.6 SAP Data Workbooks (.sapwb)](#16-sap-data-workbooks-sapwb)
-  - [1.7 Getting Started Walkthrough](#17-getting-started-walkthrough)
-- [2. SAP GUI Integration](#2-sap-gui-integration)
-  - [2.1 Embedded SAP GUI (WebView)](#21-embedded-sap-gui-webview)
-    - [Blank Page / Clickjacking Issues](#blank-page--clickjacking-issues)
-  - [2.2 Native Desktop SAP GUI](#22-native-desktop-sap-gui)
-  - [2.3 Web Browser SAP GUI](#23-web-browser-sap-gui)
-- [3. Object Management](#3-object-management)
-  - [3.1 Object Search](#31-object-search)
-  - [3.2 Create Objects](#32-create-objects)
-  - [3.3 Open Objects](#33-open-objects)
-  - [3.4 Object Activation](#34-object-activation)
-  - [3.5 Favorites Management](#35-favorites-management)
-  - [3.6 Show Table Contents](#36-show-table-contents)
-  - [3.7 Compare Objects Across Systems](#37-compare-objects-across-systems)
-- [4. Code Quality \& Analysis](#4-code-quality--analysis)
-  - [4.1 ABAP Test Cockpit (ATC) Analysis](#41-abap-test-cockpit-atc-analysis)
-  - [4.2 ABAP Cleaner Integration](#42-abap-cleaner-integration)
-  - [4.3 Syntax Validation](#43-syntax-validation)
-  - [4.4 Where-Used Analysis](#44-where-used-analysis)
-- [5. Debugging Features](#5-debugging-features)
-  - [5.1 ABAP Debugging](#51-abap-debugging)
-  - [5.2 Debug Recording \& Replay](#52-debug-recording--replay)
-    - [Why?](#why)
-    - [Recording a Debug Session](#recording-a-debug-session)
-    - [Replaying a Recording](#replaying-a-recording)
-    - [Limitations](#limitations-1)
-    - [Commands](#commands)
-    - [File Format](#file-format)
-- [6. Data Query \& Visualization](#6-data-query--visualization)
-  - [6.1 SQL Query Execution](#61-sql-query-execution)
-- [7. Transport Management](#7-transport-management)
-  - [7.1 Transport Request View](#71-transport-request-view)
-  - [7.2 Transport Object Operations](#72-transport-object-operations)
-- [8. Version Control](#8-version-control)
-  - [8.1 abapGit Integration](#81-abapgit-integration)
-  - [8.2 ABAP Revision History](#82-abap-revision-history)
-  - [8.3 Blame Gutter](#83-blame-gutter)
-- [9. Testing Features](#9-testing-features)
-  - [9.1 Run Unit Tests](#91-run-unit-tests)
-  - [9.2 Create Test Classes](#92-create-test-classes)
-  - [9.3 Test Documentation Generator](#93-test-documentation-generator)
-- [10. Documentation \& Diagrams](#10-documentation--diagrams)
-  - [10.1 Mermaid Diagram Creation](#101-mermaid-diagram-creation)
-  - [10.2 ABAP Documentation](#102-abap-documentation)
-- [11. Developer Tools](#11-developer-tools)
-  - [11.1 ABAP Dumps Analysis](#111-abap-dumps-analysis)
-  - [11.2 Performance Traces](#112-performance-traces)
-  - [11.3 Text Elements Management](#113-text-elements-management)
-  - [11.4 Regex Search in Code](#114-regex-search-in-code)
-  - [11.5 Enhanced Views \& Panels](#115-enhanced-views--panels)
-      - [Activity Bar Views:](#activity-bar-views)
-      - [Explorer Views:](#explorer-views)
-      - [Panel Views:](#panel-views)
-  - [11.8 Custom Editors](#118-custom-editors)
-  - [11.9 ADT Feed Reader](#119adt-feed-reader)
-  - [11.10 Run SAP Transaction](#1110-runsap-transaction)
-  - [11.11 Message Class Editor](#1111-message-classeditor)
-  - [11.12 SAP Connection Manager](#1112-sap-connection-manager)
-  - [11.13 Dependency Graph Visualizer](#1113-dependency-graph-visualizer)
-  - [11.14 ADT Communication Log](#1114-adt-communication-log)
-  - [11.15 Virtual Tool Grouping Fix](#1115-virtual-tool-grouping-fix)
-  - [⚠️ Important Considerations](#️-important-considerations)
-  - [🎯 Key Differences: Commands vs Tools](#-key-differences-commands-vs-tools)
-    - [Commands (User-Invoked Manually):](#commands-user-invoked-manually)
-    - [Language Model Tools (Copilot Uses Automatically):](#language-model-tools-copilot-uses-automatically)
-  - [🔒 Privacy \& Telemetry](#-privacy--telemetry)
-    - [What Happens by Default](#what-happens-by-default)
-    - [For Organizations Wanting Central Telemetry](#for-organizations-wanting-central-telemetry)
-    - [Local Telemetry File Location](#local-telemetry-file-location)
+> **GitHub Repository:** [github.com/marcellourbani/vscode_abap_remote_fs](https://github.com/marcellourbani/vscode_abap_remote_fs)
+
+---
+
+## What you can do
+
+This is a high-level summary. See the left navigation for full feature pages.
+
+| Area | Capabilities |
+|------|-------------|
+| **AI-Powered Development** | 40 tools give Copilot deep SAP awareness — search objects, read code, run tests, explain dumps, all via natural language |
+| **Edit & Activate** | Browse, open, edit, and activate ABAP objects on the live system |
+| **Editor Experience** | Enhanced hover info, custom editors, object properties, and dedicated ABAP views/panels |
+| **Debug** | Full ABAP debugger with breakpoints, variable inspection, stepping, and debug recording |
+| **Test** | Run unit tests, create test classes, generate test documentation |
+| **Code Quality** | ATC analysis, syntax validation, where-used, ABAP Cleaner formatting |
+| **Transport** | View and manage transport requests directly |
+| **Version Control** | abapGit integration, revision history, blame gutter |
+| **Data & SQL** | Run SQL queries against SAP tables, build multi-step data workbooks |
+| **SAP GUI** | Launch embedded, native, or browser-based SAP GUI from the editor |
+| **Diagrams & Docs** | Generate Mermaid diagrams and ABAP documentation from within VS Code |
+| **Developer Tools** | REPL, Dumps/traces analysis, regex search, dependency graph, feed reader, communication log, RAP generator |
+
+---
+
+## New to ABAP FS?
+
+1. [Installation](#installation-steps) — install the extension and connect to your SAP system
+2. [Walkthrough](#getting-started-walkthrough) — a guided tour of the main features
+3. [Connection Manager](#sap-connection-manager) — manage multiple SAP connections
+
+---
+
+## Using a non-GitHub Copilot AI tool?
+
+Works with **Cursor, Claude Code, Windsurf, Claude Desktop**, and any MCP-compatible client.  
+See [MCP Server](#mcp-server-for-external-ai-tools) for setup.
+
+---
+
+> **Tip:** GitHub Copilot (and any AI connected via MCP) has access to this documentation. Just ask your AI assistant about any feature and it can guide you.
 
 # Installation Steps
 
-1. **Uninstall old version (less than v2.0.0)** (if installed)
-   - Open Extensions (`Ctrl+Shift+X`)
-   - Search for "ABAP remote filesystem"
-   - Uninstall and restart VS Code
+## 1. Uninstall old version (pre-v2.0.0)
 
-2. **Install latest version from VSCode Marketplace**
-   - Open Extensions (`Ctrl+Shift+X`)
-   - Search for "ABAP remote filesystem"
-   - Install and restart VS Code
+Skip this step if you are installing for the first time or already on v2.0.0+.
 
-3. **Configure SAP system connections**
-   - Press `Ctrl+Shift+P`
-   - Run: **ABAP FS: Connection Manager**
-   - Modern webview UI opens with comprehensive connection management:
-     - **Add Connection** - Fill in system details (URL, client, username, language, SAP GUI settings)
-     - **Import/Export** - Import connections from JSON or export for backup/sharing
-     - **Bulk Operations** - Edit multiple connections at once, bulk username changes
-     - **Cloud Support** - Create connections from BTP Service Key or Endpoint
-   - Save to User settings (global) or Workspace settings (project-specific)
-   - Important: If you know other people who have already setup the same SAP systems, you can ask them to export their connections and import them. UserIDs and passwords won't be exported. Then you can select the connections and update your user ID in mass.
-   - Passwords stored securely in OS credential manager (not in settings files)
+1. Press `Ctrl+Shift+X` to open the **Extensions** panel (left sidebar)
+2. Search for **ABAP remote filesystem**
+3. Click **Uninstall**, then restart VS Code
 
-4. **Connect to SAP systems**
-   - Press `Ctrl+Shift+P`
-   - Run: **ABAP FS: Connect to an SAP system**
-   - Select system and enter password if prompted
-   - Wait for a minute for VSCode to connect to the system
-   - Good to go
+## 2. Install the extension
 
-5. **Verify connection**
-   - Check Activity Bar for "ABAP FS" icon
-   - Expand views: Transports, Dumps, ATC Finds, Traces, abapGit
-   - Try: `Ctrl+Shift+P` → **ABAP FS: Search for object**
+1. Press `Ctrl+Shift+X` to open the **Extensions** panel
+2. Search for **ABAP remote filesystem**
+3. Click **Install**, then restart VS Code
+
+## 3. Configure a SAP system connection
+
+1. Press `Ctrl+Shift+P` to open the **Command Palette** (the search bar for VS Code commands)
+2. Type and run: **ABAP FS: Connection Manager**
+3. In the connection manager window, click **Add Connection** and fill in:
+   - **URL** – your SAP system URL
+   - **Client**, **Username**, **Language**
+   - SAP GUI settings (optional)
+4. Choose where to save the connection:
+   - **User settings** – available in all your VS Code workspaces
+   - **Workspace settings** – stored in the current project folder only
+
+**Tips:**
+
+- Passwords are stored in the OS credential manager, not in settings files.
+- If a colleague already has connections configured, ask them to export via **Import/Export** and send you the JSON. User IDs and passwords are excluded from exports. You can then import and update your credentials in bulk using **Bulk Operations**.
+- For SAP BTP systems, use **Cloud Support** to create a connection from a BTP Service Key or Endpoint.
+
+## 4. Connect to a SAP system
+
+1. Press `Ctrl+Shift+P` and run: **ABAP FS: Connect to an SAP system**
+2. Select the system you configured
+3. Enter your password if prompted
+4. Wait a moment for VS Code to establish the connection
+
+## 5. Verify the connection
+
+- Look for the **ABAP FS** icon in the **Activity Bar** (the vertical icon strip on the far left)
+- Expand the views: **Transports**, **Dumps**, **ATC Finds**, **Traces**, **abapGit**
+- Test object search: `Ctrl+Shift+P` → **ABAP FS: Search for object**
 
 ## Updates
-  - Extension will auto update if installed from VSCode Marketplace (if auto-update is enabled in extension page in VSCode)
+
+The extension updates automatically if installed from the VS Code Marketplace and auto-update is enabled. To check: open the Extensions panel (`Ctrl+Shift+X`), find the extension, and verify **Auto Update** is on.
+
+# Getting Started Walkthrough
+
+When you install ABAP FS, VS Code automatically opens an interactive walkthrough. It guides you through the extension's features in a structured, step-by-step format.
+
+## Walkthrough Stages
+
+The walkthrough covers four progressive stages:
+
+1. **Getting Connected** — Activate the extension, connect to an SAP system, navigate objects, search, run transactions, and launch SAP GUI.
+
+2. **Core Features** — ABAP Cleaner, ATC code analysis, blame annotations, debugging, dump analysis, performance traces, transport management, unit tests.
+
+3. **AI & Copilot** — AI-powered search, data queries, diagrams, where-used analysis, version history comparisons, AI-assisted unit tests, and skills.
+
+4. **Advanced** — Communication log, cross-system comparison, debug recording & replay, dependency graphs, feed inbox, heartbeat monitoring, MCP setup, subagents, text elements.
+
+## Re-opening the Walkthrough
+
+The walkthrough shows automatically only once. To open it again:
+
+1. Press `Ctrl+Shift+P` (Windows/Linux) or `Cmd+Shift+P` (Mac) to open the **Command Palette** — a search bar for all VS Code commands.
+2. Type **Get Started: Open Walkthrough** and press `Enter`.
+3. Search for **ABAP** and select the walkthrough you want.
+
+Alternatively, open **Help → Welcome** from the menu bar, then select the ABAP FS walkthrough from the list.
+
+# SAP Connection Manager
+
+The Connection Manager is a visual interface for adding, editing, and organizing your SAP system connections. Open it from the Command Palette (`Ctrl+Shift+P` / `Cmd+Shift+P`) by typing **ABAP FS: Connection Manager**.
+
+## Adding a Connection
+
+1. Open the Command Palette (`Ctrl+Shift+P`) and run **ABAP FS: Connection Manager**.
+2. Click **Add Connection**.
+3. Fill in the required fields (see [Configuration Fields](#configuration-fields) below).
+4. Choose where to save: **User Settings** (available in all workspaces) or **Workspace Settings** (this project only).
+5. Click **Save**. You will be prompted for your password on the first connect — it is stored securely in the OS credential manager, never in settings files.
+
+## Configuration Fields
+
+| Section | Fields |
+|---|---|
+| **Basic** | ADT URL, username, SAP client, language |
+| **SSL** | Allow self-signed certificates, custom CA certificate |
+| **SAP GUI** | Server, system number, router string, message server, GUI type (Desktop / Embedded WebGUI / Browser) |
+| **OAuth** | Client ID, secret, login URL |
+| **Advanced** | ATC approver, ATC check variant, max debug threads, diff formatter |
+
+## Import / Export
+
+- **Export** — saves all connections to a JSON file (passwords excluded) for backup or sharing with colleagues.
+- **Import** — merges connections from a previously exported JSON file.
+- **BTP Service Key** — create a connection from a BTP Service Key JSON file.
+- **BTP Endpoint** — create a connection via an interactive Cloud Foundry login flow.
+
+## Bulk Operations
+
+Select multiple connections using the checkboxes to:
+
+- **Bulk delete** — remove several connections at once.
+- **Bulk username edit** — update the username across multiple connections simultaneously.
+
+A confirmation dialog appears before any bulk action is applied.
+
+## User vs. Workspace Settings
+
+Connections saved to **User Settings** are global — they appear in every VS Code workspace on your machine. Connections saved to **Workspace Settings** are stored in the `.vscode/settings.json` of the current project folder, making them easy to commit or share per project.
 
 # MCP Server for External AI Tools
 
-> **Prerequisites:** Complete the [Installation Steps](#installation-steps) first. You need VS Code with ABAP FS installed and configured with your SAP system connections before setting up MCP.
+> **Prerequisites:** Complete the [Installation Steps](#installation-steps) first. You need VS Code with ABAP FS installed and configured with at least one SAP system connection.
 
-**Why MCP?** ABAP FS includes 39 Language Model Tools that provide deep SAP integration - searching objects, reading code, running tests, executing queries, and more. These tools are natively available to **GitHub Copilot** in VS Code. However, if you use other AI assistants like **Cursor**, **Claude Code**, **Windsurf**, **Claude Desktop**, or any MCP-compatible client, they cannot access VS Code's Language Model Tools directly.
+## What Is This and Why Would You Need It?
 
-The **MCP (Model Context Protocol) Server** bridges this gap by exposing all ABAP FS tools via a local HTTP endpoint that any MCP-compatible AI client can connect to.
+**MCP (Model Context Protocol)** is an open standard that lets AI tools call external services. ABAP FS exposes its 39 SAP tools (search, read code, run tests, query data, etc.) via a local MCP server so that AI assistants outside of VS Code can use them.
 
-## How It Works
+**Use this if** you work with AI tools like Cursor, Claude Desktop, Claude Code, or Windsurf and want them to have the same SAP access that GitHub Copilot has inside VS Code.
+
+**Don't need this if** you only use GitHub Copilot in VS Code — tools are already available there natively.
 
 ```
 ┌─────────────────┐     MCP Protocol      ┌──────────────────┐     VS Code API     ┌─────────────┐
@@ -225,39 +186,41 @@ The **MCP (Model Context Protocol) Server** bridges this gap by exposing all ABA
 └─────────────────┘                       └──────────────────┘                     └─────────────┘
 ```
 
-**Important:** VS Code must remain open and connected to your SAP system. The MCP server runs inside VS Code and acts as a bridge - your external AI tool sends requests to the MCP server, which invokes the actual ABAP FS tools and returns results.
+**VS Code must remain open.** The MCP server runs inside VS Code — closing VS Code stops the server.
 
-## Setup Instructions
+## Setup
 
-### 1. Enable MCP Server in VS Code
+### 1. Enable the MCP Server
 
-Open VS Code Settings (`Ctrl+,`) and search for `mcpServer`:
+Open VS Code Settings (`Ctrl+,`) and search for `abapfs.mcpServer`. Set:
 
-- **`abapfs.mcpServer.autoStart`**: Set to `true` to start MCP server automatically
-- **`abapfs.mcpServer.port`**: Default is `4847` (change if port conflicts)
-- **`abapfs.mcpServer.apiKey`**: Optional API key for authentication (recommended for shared machines)
+| Setting | Description |
+|---|---|
+| `abapfs.mcpServer.autoStart` | Set to `true` to start automatically on VS Code launch |
+| `abapfs.mcpServer.port` | Default `4847` — change if there's a port conflict |
+| `abapfs.mcpServer.apiKey` | Optional. Recommended on shared machines to prevent unauthorized SAP access |
 
-Alternatively, add to your `settings.json`:
+Or add directly to your `settings.json` (`Ctrl+Shift+P` → "Open User Settings (JSON)"):
+
 ```json
 {
   "abapfs.mcpServer.autoStart": true,
   "abapfs.mcpServer.port": 4847,
-  "abapfs.mcpServer.apiKey": "your-secret-key-here"
+  "abapfs.mcpServer.apiKey": "your-secret-key"
 }
 ```
 
-> ⚠️ **Security Note:** If you're on a shared machine or exposing the MCP server beyond localhost, set an API key to prevent unauthorized access to your SAP system.
+Reload VS Code after changing settings. A notification confirms the server is running: *"MCP Server running on port 4847"*
 
-Reload VS Code after changing settings. You'll see a notification: "🔌 MCP Server running on port 4847"
+### 2. Connect to Your SAP System
 
-### 2. Connect to SAP System
-
-In VS Code, connect to your SAP system as usual (`ABAP FS: Connect to an SAP system`). The MCP server needs an active SAP connection to work.
+Use the command `ABAP FS: Connect to an SAP system` (`Ctrl+Shift+P` to open the Command Palette). The MCP server needs an active SAP connection to serve tool requests.
 
 ### 3. Configure Your AI Tool
 
-**For Cursor:**
-Add to your MCP configuration (`~/.cursor/mcp.json` or project `.cursor/mcp.json`):
+Add the following to your AI tool's MCP configuration. The URL is the same for all clients:
+
+**Cursor** — `~/.cursor/mcp.json` or project `.cursor/mcp.json`:
 ```json
 {
   "mcpServers": {
@@ -268,382 +231,280 @@ Add to your MCP configuration (`~/.cursor/mcp.json` or project `.cursor/mcp.json
 }
 ```
 
-**For Claude Desktop:**
-Add to Claude's config file:
-```json
-{
-  "mcpServers": {
-    "abap-fs": {
-      "url": "http://localhost:4847/mcp"
-    }
-  }
-}
-```
+**Claude Desktop** — see Claude's documentation for the config file location, then add the same block.
 
-**For other MCP clients:**
-Use the Streamable HTTP endpoint: `http://localhost:4847/mcp`
+**Other MCP clients** — use the Streamable HTTP endpoint: `http://localhost:4847/mcp`
 
-### Using API Key Authentication
+#### With API Key Authentication
 
-If you've configured an API key in VS Code (`abapfs.mcpServer.apiKey`), your MCP client must include it in requests using a Bearer token in the `Authorization` header.
+If you set `abapfs.mcpServer.apiKey`, clients must send it as a Bearer token:
 
-**For clients that support headers:**
 ```json
 {
   "mcpServers": {
     "abap-fs": {
       "url": "http://localhost:4847/mcp",
       "headers": {
-        "Authorization": "Bearer your-secret-key-here"
+        "Authorization": "Bearer your-secret-key"
       }
     }
   }
 }
 ```
 
-**Note:** Without a valid API key, requests will receive a `401 Unauthorized` response. The `/health` endpoint is always accessible without authentication for connectivity checks.
+Without a matching key, requests return `401 Unauthorized`. The `/health` endpoint is always accessible without authentication.
 
-### 4. Verify Connection
+### 4. Verify
 
-In your AI tool, you should now see ABAP FS tools available. Try asking:
-- "Search for classes containing 'USER'"
-- "Show me the code for CL_ABAP_TYPEDESCR"
-- "Run unit tests for ZCL_MY_CLASS"
+In your AI tool, ask something SAP-related, for example:
 
-## Limitations
-
-- **VS Code must stay open** - The MCP server runs inside VS Code; closing it stops the server
-- **Active SAP connection required** - Tools need a connected SAP system in VSCode to work
-- **Webview features** - Some features like Mermaid diagrams, data query results, etc. open in VS Code's webview panels (you'll need to look at VS Code for these)
-- **No direct code editing** - Unlike GitHub Copilot which can edit ABAP files directly in VS Code, MCP tools are read-only. External AI tools (Cursor, Claude Code, etc.) cannot access VS Code's virtual `adt://` filesystem. The AI can read code and suggest changes, but you'll need to apply edits manually in VS Code or copy the AI's suggestions
-- **No syntax checking** - ABAP syntax checking only works in VS Code with the ABAP FS extension. In external AI tools, ABAP code is treated as plain text
-- **No go-to-definition or hover** - Navigation features like "Go to Definition", "Find References", and hover documentation require VS Code's ABAP integration
-- **Transport handling in VS Code** - Transport request management UI and workflows are only available in VS Code
-- **Debugging requires VS Code** - The ABAP debugger integration is VS Code-specific
+- *"Search for classes containing 'USER'"*
+- *"Show me the code for CL_ABAP_TYPEDESCR"*
+- *"Run unit tests for ZCL_MY_CLASS"*
 
 ## Available Tools
 
-All 39 ABAP FS Language Model Tools are exposed via MCP, including:
-- `search_abap_objects` - Search for ABAP objects by pattern
-- `get_abap_object_lines` - Read source code from objects
-- `find_where_used` - Where-used analysis
-- `run_unit_tests` - Execute ABAP unit tests
-- `run_atc_analysis` - Run ATC checks
-- `execute_data_query` - Run SQL queries
-- `manage_transport_requests` - Transport management
-- `abap_activate` - Activate abap objects
-- And many more...``
+All 39 ABAP FS tools are exposed, including:
+
+| Tool | What It Does |
+|---|---|
+| `search_abap_objects` | Search for objects by name pattern |
+| `get_abap_object_lines` | Read source code |
+| `find_where_used` | Where-used analysis |
+| `run_unit_tests` | Execute ABAP unit tests |
+| `run_atc_analysis` | Run ATC code checks |
+| `execute_data_query` | Run SQL queries against SAP tables |
+| `manage_transport_requests` | Read transport data |
+| `abap_activate` | Activate ABAP objects |
+
+## Limitations
+
+- **VS Code must stay open** — the server runs inside VS Code
+- **Active SAP connection required** — tools need a connected system
+- **Read-oriented** — external AI tools cannot write to the `adt://` virtual filesystem; the AI can suggest edits but you must apply them manually in VS Code
+- **Webview outputs appear in VS Code** — results from tools like data queries or Mermaid diagrams open as VS Code panels, not in the external tool
+- **No ABAP syntax checking** — ABAP code is treated as plain text in external tools
+- **No navigation features** — Go to Definition, Find References, and hover documentation require the VS Code ABAP FS integration
+- **Debugging requires VS Code** — the ABAP debugger is VS Code-specific
 
 ## Troubleshooting
 
-**Server not starting:**
-- Check if `abapfs.mcpServer.autoStart` is `true`
-- Check VS Code Output panel for errors
-- Try a different port if 4847 is in use
+**Server not starting**
 
-**Tools not working:**
-- Ensure VS Code is connected to an SAP system
-- Check that the MCP server notification appeared on VS Code startup
-- Verify your AI tool's MCP configuration points to the correct URL
+- Confirm `abapfs.mcpServer.autoStart` is `true` in settings
+- Open the VS Code Output panel (`Ctrl+Shift+U`) and select "ABAP FS" for error messages
+- Try a different port if 4847 is already in use
 
-**401 Unauthorized errors:**
-- If you've set `abapfs.mcpServer.apiKey`, ensure your MCP client is sending the correct `Authorization: Bearer <your-key>` header
-- Check that the API key in your client config exactly matches the one in VS Code settings
+**Tools not working**
 
-# 1. Editor, AI Integration & Chat
+- Confirm VS Code is connected to an SAP system
+- Check that the startup notification appeared when VS Code launched
+- Verify the URL in your AI tool's config matches the configured port
 
-## 1.1 ABAP Language Model Tools (AI Assistant Features)
+**401 Unauthorized**
 
-**Purpose:** Backend tools that Copilot Chat uses to help you
+- Check that `Authorization: Bearer <key>` is configured in your MCP client
+- Confirm the key in the client exactly matches `abapfs.mcpServer.apiKey` in VS Code settings
 
-**How to Use:** **ASK COPILOT** in chat in **Agent mode**
+# ABAP Language Model Tools (AI Assistant Features)
 
-**Example Questions:**
+Language Model Tools are the built-in capabilities that GitHub Copilot uses automatically when you ask it questions in chat. You don't call these tools yourself — Copilot selects and runs the right tool based on what you ask.
 
-- \"Where is BAPI_USER_GET_DETAIL used?\" → Copilot calls
-  find_where_used tool
+**How to open Copilot Chat:** `Ctrl+Shift+I` (new chat) or `Ctrl+L` (inline chat)
 
-- \"Show me the code for ZCL_MY_CLASS\" → Copilot calls
-  get_abap_object_lines tool
+Make sure you are in **Agent mode** (not Ask or Edit) for full tool access.
 
-- \"Find all classes with \'pricing\' in the name\" → Copilot calls
-  search_abap_objects tool
+## How it works
 
-- \"Create a new class ZCL_TEST\" → Copilot calls
-  create_object_programmatically tool
+When you type a question, Copilot picks the appropriate tool behind the scenes:
 
-- \"Run ATC on ZTEST_PROG\" → Copilot calls run_atc_analysis tool
+| What you ask | Tool Copilot uses |
+|---|---|
+| "Where is BAPI_USER_GET_DETAIL used?" | `find_where_used` |
+| "Show me the code for ZCL_MY_CLASS" | `get_abap_object_lines` |
+| "Find all classes with 'pricing' in the name" | `search_abap_objects` |
+| "Create a new class ZCL_TEST" | `create_object_programmatically` |
+| "Run ATC on ZTEST_PROG" | `run_atc_analysis` |
 
-**Available Tools for Copilot:**
+## Available Tools
 
-1.  **search_abap_objects** - Search by name patterns with wildcards
+### Search & Navigation
 
-2.  **get_abap_object_lines** - Read source code from objects. For classes, Copilot can use `methodName` parameter to extract a specific method only (e.g., "Show me the FACTORY method from CL_SALV_TABLE")
+1. **search_abap_objects** — Search for objects by name pattern using wildcards (e.g. `Z*PRICING*`, `BAPI_USER*`)
+2. **get_abap_object_lines** — Read source code from any ABAP object. Use `methodName` to extract a single method (e.g. "Show me the FACTORY method from CL_SALV_TABLE")
+3. **search_abap_object_lines** — Search for text within source code; supports regex and can list all methods in a class
+4. **get_abap_object_info** — Get metadata about an object (type, line count, cache status)
+5. **get_batch_lines** — Read source code from multiple objects in one call
+6. **get_object_by_uri** — Access an object directly using its ADT URI path
+7. **find_where_used** — Find all places where an object, method, or symbol is referenced
+8. **get_connected_systems** — List the SAP system connection IDs currently active in VS Code
 
-3.  **search_abap_object_lines** - Search text within code (supports regex). Can also discover class structure using regex patterns
+### Object Management
 
-4.  **get_abap_object_info** - Get metadata about objects
+9. **create_object_programmatically** — Create new ABAP objects (classes, reports, function groups, etc.). Note: transport dialogs still appear during creation.
+10. **get_abap_object_url** — Generate a SAP GUI WebGUI URL for an object (useful for browser automation)
+11. **get_abap_object_workspace_uri** — Get the VS Code `adt://` URI for an object (needed before editing it)
+12. **open_object** — Open an object in the VS Code editor
+13. **abap_activate** — Activate ABAP objects after editing (similar to pressing the Activate button in SE80)
 
-5.  **get_batch_lines** - Read multiple objects at once
+### Code Quality & Testing
 
-6.  **get_object_by_uri** - Direct ADT URI access
+14. **run_unit_tests** — Run ABAP unit tests and show results in the Testing panel
+15. **create_test_include** — Create a unit test class include for an existing class
+16. **run_atc_analysis** — Run ATC (ABAP Test Cockpit) code quality checks on an object
+17. **get_atc_decorations** — Read the current ATC warning/error highlights visible in the editor
 
-7.  **create_object_programmatically** - Create new ABAP objects
-    **(Note: Still shows transport dialogs despite name)**
+### Transport & Text
 
-8.  **get_abap_object_url** - Generate SAP GUI URLs for automation
+18. **manage_transport_requests** — Get transport details, list user transports, compare transports. Falls back to direct SQL on older systems.
+19. **manage_text_elements** — Read, create, or update text elements in programs, classes, or function groups. READ works on all systems; CREATE/UPDATE requires a newer system.
 
-9.  **get_abap_object_workspace_uri** - Get VS Code workspace URI
+### Data & SQL
 
-10. **open_object** - Open objects in editor
+20. **execute_data_query** — Run ABAP SQL queries and display results in an interactive table view
+21. **get_abap_sql_syntax** — Get ABAP SQL syntax rules (Copilot calls this before writing queries to avoid syntax errors)
 
-11. **run_unit_tests** - Execute unit tests
+### Diagrams
 
-12. **create_test_include** - Create test class includes
+22. **create_mermaid_diagram** — Generate and display flowcharts, sequence diagrams, ER diagrams, and more
+23. **validate_mermaid_syntax** — Check Mermaid diagram code for syntax errors
+24. **get_mermaid_documentation** — Retrieve Mermaid syntax reference for a specific diagram type
+25. **detect_mermaid_diagram_type** — Auto-detect the type of a Mermaid diagram from its code
 
-13. **run_atc_analysis** - Run code quality checks
+### Runtime Analysis
 
-14. **get_atc_decorations** - Get current ATC highlights
+26. **analyze_abap_dumps** — List and analyze ST22 runtime errors
+27. **analyze_abap_traces** — Analyze performance traces; detects bottlenecks automatically
+28. **get_version_history** — View version history, retrieve source code at a past version, or compare two versions of an object
 
-15. **manage_text_elements** - Read/create/update text elements (READ
-    works on all systems, CREATE/UPDATE only on newer systems)
+### Debugging
 
-16. **manage_transport_requests** - Get transport info, compare transports (has fallback for older systems)
+29. **abap_debug_session** — Start or stop an ABAP debugging session
+30. **abap_debug_breakpoint** — Set or remove breakpoints (supports conditions)
+31. **abap_debug_step** — Step over, step into, step return, or continue execution
+32. **abap_debug_variable** — Inspect variable values and internal table contents during a debug session
+33. **abap_debug_stack** — View the current call stack
+34. **abap_debug_status** — Check whether a debug session is active
 
-17. **find_where_used** - Find all references to objects/symbols
+### System & Extension
 
-18. **analyze_abap_dumps** - Analyze runtime errors
+35. **get_sap_system_info** — Get SAP system details: client, release, system type (S/4HANA vs ECC), timezone. Results are cached for 24 hours. Use the **Refresh SAP System Info Cache** command to clear the cache.
+36. **abap_fs_documentation** — Search the ABAP FS extension documentation and settings reference
+37. **adt_discovery_export** — Export the full ADT discovery tree from a connected SAP system to markdown files for API investigation
+38. **manage_subagents** — Configure AI subagents that delegate tasks to cheaper/faster models to reduce API costs
+39. **manage_heartbeat** — Control the background heartbeat monitoring service (add monitoring tasks, set reminders, check status)
 
-19. **analyze_abap_traces** - Performance trace analysis
+### Documentation
 
-20. **execute_data_query** - Run SQL queries and display results
+40. **create_test_documentation** — Generate a Word document from Playwright test screenshots, organized by scenario
 
-21. **get_abap_sql_syntax** - **Copilot can get ABAP SQL syntax information for generating correct SQL queries
+# AI Subagents for Optimized ABAP Development
 
-22. **create_mermaid_diagram** - Generate flowcharts and diagrams
+AI Subagents are specialized AI assistants, each focused on one type of ABAP task (finding objects, reading code, running analysis, etc.). Instead of one general AI doing everything, subagents split work across focused specialists.
 
-23. **validate_mermaid_syntax** - Check diagram syntax
+**Why this matters:**
 
-24. **get_mermaid_documentation** - Get diagram syntax help
-
-25. **detect_mermaid_diagram_type** - Auto-detect diagram types
-
-26. **create_test_documentation** - Generate Word docs from screenshots
-
-27. **get_sap_system_info** - Get SAP system info (client, system type S/4HANA vs ECC, release, components). Results are cached for 24 hours. Use command "Refresh SAP System Info Cache" to clear.
-
-28. **get_version_history** - Get version history, retrieve code at historical versions, or compare versions (see Section 8.2)
-
-29. **manage_subagents** - Configure AI subagents for cost-optimized ABAP development (see Section 1.2 for full details)
-
-30. **Debugging Tools (for Copilot):** -- Needs more work to stabilize
-
-- **abap_debug_session** - Start/stop debugging
-
-- **abap_debug_breakpoint** - Set/remove breakpoints
-
-- **abap_debug_step** - Control execution flow
-
-- **abap_debug_variable** - Inspect variables
-
-- **abap_debug_stack** - View call stack
-
-- **abap_debug_status** - Check debug status
-
-# 1.2 AI Subagents for Optimized ABAP Development
-
-**Purpose:** Delegate specialized ABAP tasks to focused AI agents for better output quality, context window management, and cost efficiency
-
-## What Are AI Subagents?
-
-AI Subagents are specialized AI assistants that handle specific ABAP tasks. When you delegate work to subagents instead of having your main agent do everything, you get:
-
-### 🎯 Better Output Quality
-Subagents are **focused specialists**. When a code review is delegated to `abap-code-reviewer`, it's thorough and comprehensive because:
-- The agent has a focused system prompt optimized for code review
-- It's not distracted by other tasks or conversation history
-- It has access only to the tools it needs
-
-**Real-world example:** When asked to "describe this report and review the code", the main agent may provide a surface-level review. But when it delegates the review to `abap-code-reviewer`, the review is significantly more detailed and catches more issues.
-
-### 📊 Context Window Management  
-Every message, tool result, and response consumes context window tokens. When the main agent does everything:
-- Large code blocks fill up context fast
-- Previous conversation history accumulates
-- Eventually the model "forgets" earlier context
-
-With subagents:
-- Heavy lifting happens in **separate context windows**
-- Main agent only receives **summarized results**
-- Your main conversation stays focused and responsive
-
-### 💰 Cost Efficiency (Secondary Benefit)
-While not the primary goal, using cheaper models for simple tasks reduces costs:
-
-| Task Type | Example | Recommended Model Tier |
-|-----------|---------|----------------------|
-| Search/Discovery | "Find all classes starting with ZCL_MD" | 🟢 Tier 1 (Cheap/Fast) |
-| Code Reading | "What does the FACTORY method do?" | 🟢 Tier 1 (Cheap/Fast) |
-| Analysis | "Where is this class used?" | 🟡 Tier 2 (Mid-tier) |
-| Quality Checks | "Run ATC on this class" | 🟡 Tier 2 (Mid-tier) |
-| Code Review | "Review this implementation" | 🔴 Tier 3 (Premium) |
-| Orchestration | Complex multi-step tasks | 🔴 Tier 3 (Premium) |
-
-⚠️ **Important:** Frequently-used agents (like `abap-discoverer`, `abap-reader`) should use cheaper models. Using premium models for every subagent defeats the cost benefit.
+- **Better results** — a dedicated code reviewer catches more issues than a general assistant juggling multiple goals
+- **Longer conversations** — heavy operations run in separate context windows, so your main chat stays responsive
+- **Lower cost** — simple tasks (search, read) use cheaper/faster models; complex tasks use smarter ones
 
 ## Available Subagents
 
-| Agent | Purpose | Tier |
-|-------|---------|------|
-| `abap-orchestrator` | Main coordinator - routes tasks, writes all code | 🔴 3 |
-| `abap-code-reviewer` | Deep code review - security, performance, best practices | 🔴 3 |
-| `abap-usage-analyzer` | Where-used analysis, dependencies, change impact | 🟡 2 |
-| `abap-quality-checker` | ATC analysis, unit tests, code health | 🟡 2 |
-| `abap-historian` | Version history, transport requests | 🟡 2 |
-| `abap-debugger` | Runtime debugging - breakpoints, stepping | 🟡 2 |
-| `abap-troubleshooter` | Analyze dumps, traces, performance issues | 🟡 2 |
-| `abap-data-analyst` | Query SAP tables, analyze data patterns | 🟡 2 |
-| `abap-discoverer` | Find ABAP objects by name/pattern | 🟢 1 |
-| `abap-reader` | Read and extract info from source code | 🟢 1 |
-| `abap-creator` | Create new ABAP objects (shells) | 🟢 1 |
-| `abap-visualizer` | Create diagrams from code | 🟢 1 |
-| `abap-documenter` | Generate technical documentation | 🟢 1 |
+| Agent | What it does | Tier |
+|-------|-------------|------|
+| `abap-orchestrator` | Routes tasks, writes all code, coordinates other agents | 3 (Premium) |
+| `abap-code-reviewer` | Deep code review — security, performance, best practices | 3 (Premium) |
+| `abap-usage-analyzer` | Where-used analysis, dependencies, change impact | 2 (Mid-tier) |
+| `abap-quality-checker` | ATC analysis, unit tests, code health | 2 (Mid-tier) |
+| `abap-historian` | Version history, transport requests | 2 (Mid-tier) |
+| `abap-debugger` | Runtime debugging — breakpoints, stepping | 2 (Mid-tier) |
+| `abap-troubleshooter` | Analyze dumps, traces, performance issues | 2 (Mid-tier) |
+| `abap-data-analyst` | Query SAP tables, analyze data patterns | 2 (Mid-tier) |
+| `abap-discoverer` | Find ABAP objects by name/pattern | 1 (Cheap/Fast) |
+| `abap-reader` | Read and extract info from source code | 1 (Cheap/Fast) |
+| `abap-creator` | Create new ABAP objects (shells) | 1 (Cheap/Fast) |
+| `abap-visualizer` | Create diagrams from code | 1 (Cheap/Fast) |
+| `abap-documenter` | Generate technical documentation | 1 (Cheap/Fast) |
 
-## How It Works
+## How to Use Subagents
 
-1. **Agent Files**: Each subagent is defined in a `.agent.md` file in your workspace under `.github/agents/`
-2. **Model Assignment**: Each agent file specifies which AI model to use
-3. **Tool Restrictions**: Agents only have access to specific tools they need
-4. **User Invocation**: You can invoke agents directly with `@agent-name` in chat
-5. **Delegation**: The orchestrator (or even the default Agent mode) can delegate tasks to other agents using `runSubagent`. If it doesn't - just ask.
-
-### How Users Invoke Subagents
-
-In GitHub Copilot Chat, type `@` followed by the agent name or choose Agent from dropdown.
+In GitHub Copilot Chat, type `@abap-orchestrator` to start. The orchestrator is the only agent exposed directly in the chat dropdown — it calls other agents automatically as needed.
 
 ```
-@abap-orchestrator find all function modules starting with Z_BAPI
-
+@abap-orchestrator analyze ZCL_ARTICLE_HANDLER and suggest improvements
 ```
 
-Only orchestrator will be available for users to select in chat. Other subagents will be automaticlaly called by the orchestrator based on the tasks. This is to avoid clutter in chat mode dropdown. If you need other subagents to be available for direct calling, ask Copilot and it will be able to modify the corresponding agents.md file!!
+For example, the orchestrator might:
 
-### How Orchestrator Delegates
+1. Delegate "find related classes" → `abap-discoverer` (cheap, fast)
+2. Delegate "read the code" → `abap-reader` (cheap, fast)
+3. Delegate "usage analysis" → `abap-usage-analyzer` (mid-tier)
+4. Synthesize findings and write recommendations itself (premium)
 
-When you use `@abap-orchestrator` for a complex task (or even the default Agent mode), it can delegate subtasks:
+You can also invoke other subagents directly with `@agent-name` if needed. Ask Copilot to make an agent available in the dropdown — it can update the agent's `.agent.md` file to enable this.
 
-```
-User: @abap-orchestrator analyze ZCL_ARTICLE_HANDLER and suggest improvements
+## Setup
 
-Orchestrator thinking:
-1. Need to find related classes → delegate to abap-discoverer (Haiku - cheap)
-2. Need to read the code → delegate to abap-reader (Haiku - cheap)  
-3. Need usage analysis → delegate to abap-usage-analyzer (GPT-4o - mid)
-4. Synthesize findings and write recommendations → do myself (Sonnet - smart)
-```
+> Subagent configuration is stored at the **workspace level** in `.vscode/settings.json` and `.github/agents/`. Each project can have its own configuration.
 
-## Setup Instructions
+In normal usage, you do not need to edit these files manually. Copilot can configure models, generate/update agent files, validate them, and enable/disable subagents through chat commands.
 
-> 📁 **Workspace-Level Configuration:** Subagent configuration is stored at the **workspace level** (in `.vscode/settings.json` and `.github/agents/`), not in your global VS Code settings. This allows different subagent configurations for different projects.
-
-### Step 1: Configure Models via Copilot
-
-Ask Copilot to configure subagent models:
-
-```
-"Configure subagents for ABAP development"
-```
-
-Copilot will:
-1. Show available models with cost tiers
-2. Suggest appropriate models for each agent
-3. Ask for your confirmation before applying
-
-**Example tier assignments:**
-- **Tier 1** (discoverer, reader, creator, visualizer, documenter): `Claude Haiku 4.5` or `Gemini 3 Flash`
-- **Tier 2** (usage-analyzer, quality-checker, historian, debugger, troubleshooter, data-analyst): `GPT-4o` or `Claude Sonnet 4`
-- **Tier 3** (orchestrator, code-reviewer): `Claude Sonnet 4.5` or `GPT-5`
-
-### Step 2: Enable Subagents
+### Step 1 — Configure models
 
 Ask Copilot:
+
 ```
-"Enable subagents"
+Configure subagents for ABAP development
 ```
 
-This will:
-1. Verify all models are configured
-2. Create/restore agent files in `.github/agents/`
-3. Validate the files for errors
-4. Prompt to enable the required VS Code setting (if needed)
+Copilot will suggest models for each tier and ask for confirmation before applying. Recommended assignments:
 
-### Step 3: Enable VS Code Setting (if prompted)
+| Tier | Agents | Example models |
+|------|--------|---------------|
+| 1 — Cheap/Fast | discoverer, reader, creator, visualizer, documenter | Claude Haiku 4.5, Gemini 3 Flash |
+| 2 — Mid-tier | usage-analyzer, quality-checker, historian, debugger, troubleshooter, data-analyst | GPT-4o, Claude Sonnet 4 |
+| 3 — Premium | orchestrator, code-reviewer | Claude Sonnet/Opus 4.6, GPT-5.4 |
 
-When enabling, you may see a notification asking to enable `chat.customAgentInSubagent.enabled`. Click "Enable Setting" to allow the orchestrator to delegate to your custom agents.
+**Avoid assigning premium models to Tier 1 agents** — it eliminates the cost benefit without improving results for simple tasks.
+
+### Step 2 — Enable subagents
+
+Ask Copilot:
+
+```
+Enable subagents
+```
+
+This creates agent files in `.github/agents/` and validates them.
+
+### Step 3 — Allow agent delegation (if prompted)
+
+You may see a notification asking to enable `chat.customAgentInSubagent.enabled`. Click **Enable Setting** — this allows the orchestrator to call other agents.
 
 ## Managing Subagents
 
-### Check Status
-```
-"Show subagent status"
-```
+All management is done through Copilot chat:
 
-### Disable Subagents
-```
-"Disable subagents"
-```
-Agent files are preserved in `agents_disabled/` folder and restored when you re-enable.
+| What you want | What to ask |
+|---------------|-------------|
+| Check current status | `Show subagent status` |
+| Disable all agents | `Disable subagents` |
+| Re-enable agents | `Enable subagents` |
+| Change a model | `Change abap-discoverer to use GPT-4o` |
+| See available models | `What models can I use for subagents?` |
+| See available tools | `List available tools for subagents` |
 
-### Change Models
-```
-"Change abap-discoverer to use GPT-4o"
-```
-
-### List Available Models
-```
-"What models can I use for subagents?"
-```
-
-### List Available Tools
-```
-"List available tools for subagents"
-```
+When you disable subagents, agent files move to `agents_disabled/` (not deleted). Re-enabling restores them with your customizations intact.
 
 ## Customizing Agent Tools
 
-Each agent has a default set of tools defined in its `.agent.md` file. You can customize these:
+Each agent's `.agent.md` file in `.github/agents/` defines which tools it can use. You can edit these files directly or ask Copilot to do it:
 
-1. **Open the agent file**: `.github/agents/abap-discoverer.agent.md`
-2. **Find the `tools:` line**
-3. **Edit the tool list** as needed 
--   OR 
-- Just ask Copilot to do it
-
-**Example:**
-```yaml
-tools: ['aragana.abap-copilot/abap-search', 'aragana.abap-copilot/abap-info']
+```
+Add the abap-trace tool to abap-troubleshooter
 ```
 
-**Important:** If you customize agent.md files, your changes are preserved:
-- When you **disable** subagents, the folder is renamed to `agents_disabled/` (not deleted)
-- When you **re-enable**, your customizations are restored
-- When you **change models**, only the `model:` line is updated
-
-To see all available tool names, ask Copilot: `"List available tools for subagents"`
-
-## Advantages
-
-✅ **Better Output Quality**: Specialized agents produce more thorough, focused results than a general-purpose agent multitasking
-
-✅ **Context Window Management**: Heavy operations happen in separate contexts - your main conversation stays lean and responsive
-
-✅ **Specialization**: Each agent has a focused system prompt and limited tools optimized for its domain
-
-✅ **Cost Efficiency**: Route frequent/simple tasks to cheaper models (but this is secondary to quality and context benefits)
-
-✅ **Faster Responses**: Smaller models with focused prompts respond faster for specialized tasks
-
-✅ **Flexibility**: Change models anytime without losing your customizations
+Changes survive disable/re-enable cycles — only the `model:` line is updated when you change models.
 
 ✅ **User Control**: You decide which models to use for each agent tier
 
@@ -676,103 +537,99 @@ This is a VS Code refresh issue. The extension refreshes the explorer automatica
 ### Delegation not using custom agents
 Make sure `chat.customAgentInSubagent.enabled` is set to `true` in your VS Code settings.
 
-# 1.3 AI Skills
+# AI Skills
 
-**Purpose:** Specialized knowledge packs that Copilot loads automatically when your task matches the skill's domain. Skills teach Copilot ABAP best practices, coding processes, performance patterns, and system navigation techniques without you having to explain them every time.
+Skills are built-in "cheat sheets" that Copilot reads automatically when your question or task matches their domain. They contain ABAP-specific knowledge — coding standards, performance rules, SAP navigation techniques — so you don't have to explain that context yourself.
 
-## How Skills Work
-
-Skills use VS Code's progressive disclosure system:
-1. **Always visible:** Copilot sees the skill name and description (lightweight metadata)
-2. **Loaded when relevant:** When your prompt matches a skill's domain, Copilot loads the full instructions into context
-3. **On-demand resources:** Skills can reference additional files that load only when needed
-
-This means you can have many skills installed without bloating every conversation — only relevant skills are loaded.
-
-## Available Skills
-
-### Clean ABAP (`/clean-abap`)
-SAP's official [Clean ABAP Style Guide](https://github.com/SAP/styleguides) distilled into ~350 AI-optimized rules. Covers naming conventions, modern syntax, class/method design, error handling, formatting, comments, and unit testing patterns. Loaded automatically when writing or reviewing ABAP code.
-
-### Code Writing Process (`/abap-code-writing`)
-A structured 6-step process for building ABAP solutions — from requirement understanding through system exploration, architecture planning, research, detailed design, and finally code writing. Ensures the AI validates requirements with you, checks for standard SAP functionality before building custom, and verifies every object and parameter against the live system before writing a single line of code.
-
-### Performance - ECC (`/abap-performance-ecc`)
-Performance best practices for ECC systems on traditional databases (Oracle, DB2, MSSQL, MaxDB). Covers simple SQL patterns, aggressive buffering, index awareness, internal table optimization, and ECC-specific anti-patterns. The AI checks the system type first and loads this skill only for non-HANA systems.
-
-### Performance - HANA (`/abap-performance-hana`)
-Performance best practices for S/4HANA systems. Covers code pushdown, CDS views, AMDP, complex SQL with aggregations, and the HANA-specific mindset of "push everything to the database." The AI checks the system type first and loads this skill only for HANA-based systems.
-
-### SAP Research (`/abap-research`)
-Teaches the AI to navigate SAP systems like a senior developer. Instead of hardcoded steps, it provides the detective mindset: which metadata tables catalog what (TSTCT for transactions, T100 for messages, TADIR for all objects, DD03L for table fields, etc.), thinking patterns for common research problems (finding tcodes from screenshots, tracing error messages to code, reverse-looking up tables from field names), and research principles (wildcard strategies for case-sensitive text, package clustering, following the chain).
-
-### SAP System Personality Report (`/sap-system-personality-report`)
-Teaches the AI how to build a personality report of any connected SAP system - such as number of custom objects, most customized business areas, dumps, etc
-
-### SAP Customizing (`/sap-customizing`)
-Teaches the AI how to navigate and understand SAP Customizing (SPRO/IMG). Instead of guessing which tables store which configuration, the AI uses systematic lookup procedures: tracing from SPRO activities to storage objects (via CUS_IMGACH, CUS_ACTH, CUS_ACTOBJ), reverse-looking up tables to find their SPRO activity, walking the SPRO tree to find menu paths (via TNODEIMG/TNODEIMGR), and looking up domain coded values (DD07T). Loaded automatically when you ask about customizing settings, SPRO activities, configuration tables, maintenance views, or view clusters.
-
-### SAP Data Workbook (`/sap-data-workbook`)
-Teaches the AI how to create `.sapwb` data workbook files — VS Code notebooks with ABAP SQL and JavaScript cells for multi-step SAP data analysis. Loaded automatically when you ask the AI to analyze SAP data, build data quality checks, create reports, compare tables, or profile data. See [SAP Data Workbooks](#16-sap-data-workbooks-sapwb) for full details on the workbook feature itself.
+Copilot only loads a skill's full content when relevant, so having many skills does not slow down unrelated conversations.
 
 ## Using Skills
 
-**Automatic:** Skills load automatically when Copilot determines your prompt matches the skill's domain. No action needed.
+**Automatic:** Skills load on their own when Copilot detects a match. Nothing to do.
 
-**Manual:** Type `/` in the chat input to see available skills as slash commands. Select a skill to invoke it explicitly (e.g., `/clean-abap review this class` or `/abap-research find the transaction for this screen`).
+**Manual:** Type `/` in the Copilot Chat input to see all skills as slash commands. Select one to invoke it explicitly, for example:
 
-**Configure:** Use the command palette (`Ctrl+Shift+P`) → **Configure Skills** to see which skills are available and toggle them.
+- `/clean-abap review this method`
+- `/abap-research find the transaction for this screen`
 
-# 1.4 Heartbeat - Background Monitoring & Reminders
+## Available Skills
 
-> ⚠️ **BETA FEATURE** - This feature is in beta. Please report any issues.
+| Skill | Slash command | When it loads |
+|---|---|---|
+| [Clean ABAP](#clean-abap) | `/clean-abap` | Writing or reviewing ABAP code |
+| [Code Writing Process](#code-writing-process) | `/abap-code-writing` | Building any ABAP solution |
+| [Performance (ECC)](#performance-ecc) | `/abap-performance-ecc` | Non-HANA systems (Oracle, DB2, MSSQL) |
+| [Performance (HANA)](#performance-hana) | `/abap-performance-hana` | S/4HANA / HANA DB systems |
+| [SAP Research](#sap-research) | `/abap-research` | Searching for objects, transactions, messages |
+| [System Personality Report](#system-personality-report) | `/sap-system-personality-report` | Analyzing a system's custom code landscape |
+| [SAP Customizing](#sap-customizing) | `/sap-customizing` | SPRO/IMG settings and configuration tables |
+| [SAP Data Workbook](#sap-data-workbook) | `/sap-data-workbook` | Multi-step SAP data analysis |
 
-**Purpose:** A personal background assistant that periodically monitors your SAP systems and sends you reminders
+---
 
-## What is Heartbeat?
+### Clean ABAP
 
-Heartbeat is a lightweight background service that runs an AI agent at configurable intervals. It can:
+SAP's official [Clean ABAP Style Guide](https://github.com/SAP/styleguides) condensed into AI-optimized rules. Covers naming conventions, modern syntax, class/method design, error handling, formatting, and unit testing patterns.
 
-### 🔔 Personal Reminders (any reminder, not just SAP!)
-- "Remind me in 30 minutes to take a break"
-- "Remind me at 3pm about the meeting"
-- "Remind me tomorrow morning to drink water"
-- "Remind me to check transport K900123 after lunch"
+### Code Writing Process
 
-### 📊 SAP System Monitoring
-- "Alert me when new ST22 dumps appear"
-- "Watch transport XYZ until it's released"
-- "Every 5 minutes, check if my job finished"
+A structured process for building ABAP solutions: validate requirements → explore the system → plan architecture → research existing objects → design → write code. Prevents the AI from guessing at parameters or reimplementing standard SAP functionality that already exists.
 
-The heartbeat agent uses a **cost-effective model** (configurable) to perform these background checks without interrupting your work.
+### Performance (ECC)
 
-## How It Works
+Performance patterns for traditional databases (Oracle, DB2, MSSQL, MaxDB). Covers simple SQL, buffering, index usage, and internal table optimization. Copilot checks the system type automatically and loads this skill only on non-HANA systems.
+
+### Performance (HANA)
+
+Performance patterns for S/4HANA. Covers code pushdown, CDS views, AMDP, and complex SQL aggregations. Copilot checks the system type automatically and loads this skill only on HANA-based systems.
+
+### SAP Research
+
+Teaches Copilot to find anything in an unfamiliar SAP system — the way a senior developer would. Covers which metadata tables to query for what (TSTCT for transactions, T100 for messages, TADIR for all objects, DD03L for table fields), wildcard strategies, package clustering, and tracing error messages back to code.
+
+### System Personality Report
+
+Generates a structured overview of any connected SAP system: number of custom objects, most-developed business areas, recent dump activity, and more. Useful for quickly understanding an unfamiliar system.
+
+### SAP Customizing
+
+Teaches Copilot to navigate SPRO/IMG configuration. Uses systematic lookup procedures to trace from an SPRO activity to its storage tables (via `CUS_IMGACH`, `CUS_ACTH`, `CUS_ACTOBJ`), reverse-look up tables to their SPRO path, and resolve domain fixed values (`DD07T`).
+
+### SAP Data Workbook
+
+Teaches Copilot to create `.sapwb` files — VS Code notebooks combining ABAP SQL and JavaScript cells for multi-step SAP data analysis. See [SAP Data Workbooks](#sap-data-workbooks-sapwb) for details on the workbook feature itself.
+
+# Heartbeat - Background Monitoring & Reminders
+
+> ⚠️ **BETA FEATURE** - Please report any issues.
+
+Heartbeat is a background service that runs an AI agent at a set interval to monitor your SAP systems and send you reminders. You configure what to watch; the agent checks it quietly in the background and only notifies you when something happens.
+
+**Common uses:**
+
+- "Alert me when new ST22 dumps appear in DEV"
+- "Watch transport DEVK900001 until it's released"
+- "Remind me tomorrow at 10am to review the batch job"
+
+---
+
+## Setup
+
+Heartbeat settings are stored at the **workspace level** (`.vscode/settings.json`), not globally. Each project can have its own configuration.
+
+### Step 1: Configure with Copilot (recommended)
+
+You do not need to edit settings manually in most cases. Ask Copilot:
 
 ```
-┌─────────────────┐     Every X min      ┌──────────────────┐                    ┌─────────────┐
-│  Heartbeat      │ ───────────────────► │  Heartbeat LLM   │ ◄────────────────► │  ABAP FS    │
-│  Service        │     (configurable)   │  (cheap model)   │     Uses tools     │  Tools      │
-└─────────────────┘                      └──────────────────┘                    └─────────────┘
-         │                                        │
-         │                                        ▼
-         │                               ┌──────────────────┐
-         └──────────────────────────────►│  heartbeat.json  │ (task definitions)
-                                         └──────────────────┘
+Set up heartbeat with model GPT-4o mini, every 5 minutes, and start it
 ```
 
-1. **Service runs periodically** at your configured interval (e.g., every 5 minutes)
-2. **Reads watchlist** from `heartbeat.json` in your workspace
-3. **LLM processes tasks** - executes SQL queries, checks conditions, follows instructions
-4. **Alerts you** only when something new or important happens
-5. **Updates task state** to track what's been checked and notified
+Copilot uses the heartbeat tools to configure and start the service for you.
 
-## Setup Instructions
+### Step 2: Manual settings (optional)
 
-> 📁 **Workspace-Level Settings:** Heartbeat configuration is stored at the **workspace level** (in `.vscode/settings.json`), not in your global VS Code settings. This allows different heartbeat configurations for different projects.
-
-### Step 1: Configure Heartbeat Model
-
-Open VS Code Settings (`Ctrl+,`) and configure:
+Open VS Code Settings (`Ctrl+,`) and add:
 
 ```json
 {
@@ -785,107 +642,104 @@ Open VS Code Settings (`Ctrl+,`) and configure:
 | Setting | Description | Default |
 |---------|-------------|---------|
 | `abapfs.heartbeat.enabled` | Enable/disable the service | `false` |
-| `abapfs.heartbeat.model` | AI model to use (use cheap models!) | Required |
-| `abapfs.heartbeat.every` | Check interval (e.g., "5m", "1h", "30s") | `"5m"` |
+| `abapfs.heartbeat.model` | AI model for background checks — use a cheap model | Required |
+| `abapfs.heartbeat.every` | Check interval (`"5m"`, `"1h"`, `"30s"`) | `"5m"` |
 | `abapfs.heartbeat.activeHours` | Only run during these hours | `"08:00-18:00"` |
 | `abapfs.heartbeat.maxConsecutiveErrors` | Auto-pause after N errors | `20` |
 
-**Recommended Models (cost-effective):**
-- `GPT-4o mini (copilot)` ⭐
-- `Claude Haiku 4 (copilot)`
-- `GPT-4o (copilot)`
+**Recommended models (cost-effective):**
 
-### Step 2: Enable via Copilot or Settings
+- `GPT-4o mini` ⭐ most reliable for background tasks
+- `Claude Haiku 4`
+- `GPT-4o`
 
-**Option A - Via Copilot Chat:**
-```
-"Start the heartbeat service"
-```
+### Step 3: Start the service
 
-Copilot will check configuration and start the service.
+Ask Copilot: `"Start the heartbeat service"`
 
-**Option B - Via Settings:**
-Set `abapfs.heartbeat.enabled` to `true` - the service auto-starts.
+Or set `abapfs.heartbeat.enabled` to `true` in settings — the service starts automatically.
 
-### Step 3: Add Monitoring Tasks
+### Step 3: Add tasks
 
-Ask Copilot to add tasks:
+Ask Copilot in plain language:
+
 ```
 "Remind me tomorrow at 10am to review transport K900123"
 "Monitor DEV100 for new ST22 dumps and alert me"
 "Watch transport DEVK900001 until it's released"
 ```
 
-Copilot uses the `manage_heartbeat` tool to add tasks to your watchlist.
+Copilot creates the task definitions and saves them to `heartbeat.json` in your workspace root.
 
-## Status Bar Indicator
+---
 
-When heartbeat is running, you'll see a pulsing heart ❤️ in the status bar:
+## Status Bar
+
+When heartbeat is running, a heart ❤️ appears in the VS Code status bar.
 
 | Status | Meaning |
 |--------|---------|
-| ❤️ (pulsing) | Heartbeat active, waiting for next check |
-| ❤️ beat... | Currently running a check |
-| ❤️ zzz | Paused (due to errors or outside active hours) |
-| (hidden) | Service stopped |
+| ❤️ (pulsing) | Active, waiting for next check |
+| ❤️ beat... | Running a check now |
+| ❤️ zzz | Paused (errors or outside active hours) |
+| (hidden) | Stopped |
 
-**Click the heart** to open `heartbeat.json` and view/edit tasks directly.
+**Click the heart** to open `heartbeat.json` directly.
+
+---
 
 ## Task Types
 
-### 🔔 Reminders (One-time)
+### Reminders (one-time)
 
-Simple reminders that notify you once and auto-remove:
+Notifies you once at the scheduled time, then removes itself.
 
 ```
 "Remind me in 2 hours to check the batch job"
-"Remind me tomorrow at 9am about the meeting"
+"Remind me tomorrow at 9am about the deployment"
 ```
 
-**How it works:**
-- Task has `reminderOnly: true`
-- Task has `startAt` set to the reminder time
-- Heartbeat ignores until `startAt` passes
-- Once due, notifies you and removes the task
+Uses `reminderOnly: true` and a `startAt` timestamp. The heartbeat agent ignores the task until `startAt` passes.
 
-### 📊 Monitoring Tasks (Recurring)
+### Monitoring Tasks (recurring)
 
-Continuous monitoring with configurable conditions:
+Checks a condition every interval and alerts only when something **new** is found.
 
 ```
 "Monitor for new ST22 dumps in QA100"
 "Alert me when transport K900123 is released"
-"Check if more than 100 users are locked"
 ```
 
-**How it works:**
-- Task has SQL query or tool instructions
-- Heartbeat checks every interval
-- Compares against previous findings
-- Only alerts on **new** issues (not previously notified)
-- Updates `lastResult` and `lastNotifiedFindings` after each check
+The agent stores what it already reported in `lastNotifiedFindings` and only triggers a new alert for changes.
 
-### Task Properties
+---
+
+## Task Properties Reference
 
 | Property | Description |
 |----------|-------------|
-| `id` | Unique task identifier |
-| `description` | What the task monitors/reminds |
-| `connectionId` | SAP system to monitor (e.g., "dev100") |
-| `enabled` | Whether task is active |
+| `id` | Unique identifier |
+| `description` | What this task monitors or reminds |
+| `connectionId` | SAP system ID (e.g. `"dev100"`) |
+| `enabled` | Whether the task is active |
 | `category` | `transport`, `dump`, `job`, `reminder`, `custom` |
 | `priority` | `high`, `medium`, `low` |
-| `sampleQuery` | SQL query for heartbeat LLM to execute |
-| `checkInstructions` | Step-by-step instructions for heartbeat LLM |
-| `startAt` | ISO timestamp - don't check until this time |
-| `reminderOnly` | If true, notify once and auto-remove |
-| `removeWhenDone` | Auto-remove when condition is met |
+| `sampleQuery` | SQL query for the agent to run |
+| `checkInstructions` | Step-by-step instructions for the agent |
+| `startAt` | ISO timestamp — don't check before this time |
+| `reminderOnly` | Notify once and auto-remove |
+| `removeWhenDone` | Auto-remove when the condition is met |
 | `cooldownMinutes` | Don't re-notify within this period |
-| `alertThreshold` | Only alert if count exceeds this |
+| `alertThreshold` | Only alert if count exceeds this value |
 
-## Example Tasks
+---
 
-### Monitor for ST22 Dumps
+## Example Task Definitions
+
+These are the JSON entries stored in `heartbeat.json`. You can let Copilot generate them, or write them manually.
+
+### Monitor ST22 dumps
+
 ```json
 {
   "id": "task-st22-dumps",
@@ -896,14 +750,15 @@ Continuous monitoring with configurable conditions:
   "checkInstructions": [
     "Use analyze_abap_dumps tool with action 'list_dumps'",
     "Compare dump IDs against lastNotifiedFindings",
-    "Only alert for GENUINELY NEW dumps",
+    "Only alert for genuinely new dumps",
     "Update lastNotifiedFindings with current dump IDs"
   ],
   "cooldownMinutes": 30
 }
 ```
 
-### Watch Transport Until Released
+### Watch a transport until released
+
 ```json
 {
   "id": "task-watch-transport",
@@ -920,7 +775,8 @@ Continuous monitoring with configurable conditions:
 }
 ```
 
-### Scheduled Reminder (SAP-related)
+### Scheduled reminder
+
 ```json
 {
   "id": "task-reminder-123",
@@ -931,293 +787,253 @@ Continuous monitoring with configurable conditions:
 }
 ```
 
-### Personal Reminder (non-SAP)
-```json
-{
-  "id": "task-break-reminder",
-  "description": "Take a break and stretch! 🧘",
-  "category": "reminder",
-  "startAt": "2026-02-04T15:00:00.000Z",
-  "reminderOnly": true
-}
-```
+---
 
 ## Managing Heartbeat via Copilot
 
-### Check Status
-```
-"What's the heartbeat status?"
-```
-Shows: running state, configured model, interval, task count, statistics.
+| What you want | Ask Copilot |
+|---------------|-------------|
+| Check status | `"What's the heartbeat status?"` |
+| List tasks | `"Show me the heartbeat watchlist"` |
+| Add a task | `"Monitor DEV for stuck jobs"` |
+| Remove a task | `"Remove the transport monitoring task"` |
+| Run check now | `"Trigger a heartbeat check now"` |
+| Stop service | `"Stop the heartbeat service"` |
 
-### Add Tasks
-```
-"Add a task to monitor for stuck transports older than 7 days"
-"Remind me tomorrow at 2pm to deploy the fix"
-```
-
-### List Tasks
-```
-"Show me the heartbeat watchlist"
-"What tasks are being monitored?"
-```
-
-### Remove Tasks
-```
-"Remove the transport monitoring task"
-"Delete reminder task-123"
-```
-
-### Trigger Manual Check
-```
-"Trigger a heartbeat check now"
-```
-
-### Stop Service
-```
-"Stop the heartbeat service"
-```
+---
 
 ## Timezone Handling
 
-⚠️ **Important:** When scheduling tasks or interpreting SAP dates/times, consider the SAP system's timezone.
+When you say something like "remind me tomorrow at 10am", Copilot:
 
-Copilot will automatically:
-1. Query system timezone using `get_sap_system_info`
-2. Convert your local time references to correct ISO timestamps
-3. Store tasks with UTC timestamps in `startAt`
+1. Queries the SAP system's timezone using `get_sap_system_info`
+2. Converts your local time to the correct UTC timestamp
+3. Stores the result in `startAt` (e.g. `"2026-02-05T08:00:00.000Z"` for UTC+2)
 
-**Example:**
-- You say: "Remind me tomorrow at 10am" 
-- Copilot checks: SAP system timezone (e.g., UTC+2)
-- Copilot stores: `startAt: "2026-02-05T08:00:00.000Z"` (adjusted for timezone)
+This ensures reminders fire at the right time relative to your SAP system.
 
-## Cooldown & Deduplication
+---
 
-To avoid spamming you with repeated alerts:
+## Deduplication
 
-1. **Cooldown Period**: After alerting, task won't re-alert for `cooldownMinutes`
-2. **Finding Tracking**: `lastNotifiedFindings` stores what was already reported
-3. **Delta Detection**: Only NEW issues trigger alerts
+The agent tracks what it has already alerted on to avoid repeated notifications:
 
-**Example:**
-- First check: 5 dumps found → Alert: "5 new dumps!"
-- Second check: Same 5 dumps → No alert (already notified)
-- Third check: 7 dumps (2 new) → Alert: "2 new dumps!"
+- `cooldownMinutes` — minimum gap between re-alerts for the same task
+- `lastNotifiedFindings` — IDs or summaries of what was already reported
+
+**Example flow for dump monitoring:**
+
+- Check 1: 5 dumps → Alert: "5 new dumps found"
+- Check 2: Same 5 dumps → No alert (already reported)
+- Check 3: 7 dumps → Alert: "2 new dumps found"
+
+---
 
 ## Troubleshooting
 
-### Service not starting
-- Check `abapfs.heartbeat.model` is configured
-- Check `abapfs.heartbeat.enabled` is `true`
-- Look for errors in VS Code Output → "ABAP FS"
+**Service won't start**
 
-### Tasks not being checked
-- Verify `heartbeat.json` exists in workspace root
-- Check task has `enabled: true`
-- Check `startAt` hasn't passed yet (for scheduled tasks)
-- Check you're within `activeHours`
+- Confirm `abapfs.heartbeat.model` is set in workspace settings
+- Confirm `abapfs.heartbeat.enabled` is `true`
+- Check VS Code Output panel → "ABAP FS" for errors
 
-### Too many alerts
+**Tasks not being checked**
+
+- Confirm `heartbeat.json` exists in the workspace root (created automatically when you add your first task)
+- Confirm the task has `"enabled": true`
+- Check whether `startAt` is in the future
+- Check whether current time is within `activeHours`
+
+**Too many alerts**
+
 - Increase `cooldownMinutes` on the task
 - Set `alertThreshold` to filter low-count issues
 - Add more specific conditions in `checkInstructions`
 
-### Missing heartbeat.json
-- The file is created automatically when you add your first task
-- Or create manually in workspace root
+**Model errors**
 
-### Model errors
-- Some models may not work well for heartbeat
-- Try `GPT-4o mini (copilot)` - most reliable for background tasks
+- Try `GPT-4o mini` — most reliable for background tasks
+- Some models handle tool calls inconsistently in background mode
 
-## 1.5 Enhanced Hover Information
+# Enhanced Hover Information
 
-**Purpose:** Rich contextual information on hover over ABAP code
+When you move your mouse cursor over ABAP code in the editor and pause, a popup appears with information about the symbol under the cursor. This is called a **hover**.
 
-**How to Use:**
+## How to trigger a hover
 
-- Hover over ABAP keywords, variables, objects, system fields
+Move your mouse over any ABAP keyword, variable, system field, or object name and wait about 700ms (just under a second). The popup appears automatically — no click needed.
 
-- Wait for hover delay (configurable, default 700ms)
+## What the hover shows
 
-**Features:**
+Depending on what you hover over, you may see:
 
-- System variable explanations (sy-subrc, sy-tabix, etc.)
+| Symbol type | Information shown |
+|---|---|
+| System fields (`sy-subrc`, `sy-tabix`, etc.) | Plain-language explanation of the field's purpose |
+| Built-in types | Type description and length |
+| Variables and data objects | Type, length, and declaration context |
+| Function modules | Parameter list (importing, exporting, exceptions) |
+| Classes and methods | Signature and visibility |
+| Other objects | Metadata from the SAP system |
 
-- Built-in type information
+## Configuration
 
-- Object metadata
+The hover delay is configurable. If the popup appears too quickly or too slowly, search for `abapfs hover` in VS Code settings (`File → Preferences → Settings`) to adjust the delay.
 
-- Function module signatures/definitions
+# Enhanced Views & Panels
 
-- Class/method signatures/implementations
+ABAP FS adds several views and panels to the VS Code interface. Here's a quick orientation to VS Code's layout:
 
-## 1.6 SAP Data Workbooks (.sapwb)
+- **Activity Bar** — the vertical strip of icons on the far left. Click an icon to open the corresponding view in the sidebar.
+- **Explorer** — the file/folder tree, opened via the top Activity Bar icon. ABAP FS adds extra sections here.
+- **Panel** — the area at the bottom of the editor (same area as the Terminal). ABAP FS adds a documentation panel here.
 
-**Purpose:** VS Code notebooks for multi-step SAP data analysis — combine ABAP SQL queries, JavaScript processing, and Markdown documentation in a single reusable file
+---
 
-**How to Use:**
+## Activity Bar Views
 
-- Ask Copilot: "Create a .sapwb workbook to analyze material master data quality" OR
+These appear as icons in the Activity Bar. Click them to open the view in the sidebar.
 
-- Command palette: **ABAP FS: New SAP Data Workbook** OR
+| View | Purpose |
+|------|---------|
+| **Object Search** | Search ABAP objects by name, type, or package with filters |
+| **Transports** | Browse and manage transport requests |
+| **Dumps** | View and analyze runtime errors (ST22) |
+| **ATC Finds** | Review results from ABAP Test Cockpit code quality checks |
+| **Traces** | Analyze performance traces |
+| **S/4HANA Readiness** | Dashboard showing S/4HANA compatibility findings for your code |
+| **abapGit** | Manage abapGit repositories linked to the system |
+| **Feed Inbox** | Subscribe to and view ADT feed notifications |
+| **RAP Generator** | Generate RAP (RESTful ABAP Programming) services from a database table, similar to Eclipse |
+| **Object Property** | Shows properties, assigned transport, and revision history for the currently open ABAP object |
 
-- Create a file with `.sapwb` extension manually
+## Explorer Views
 
-**Cell Types:**
+These appear as collapsible sections inside the Explorer sidebar (the file tree).
 
-1. **Markdown** — Documentation, explanations, and section headers
+| View | Purpose |
+|------|---------|
+| **Favorites** | Pin frequently accessed objects for quick access |
 
-2. **ABAP SQL** — Query SAP data (SELECT and WITH statements only, no DML)
+## Panel Views
 
-3. **JavaScript** — Process and filter results from previous cells
+These appear in the bottom panel area, alongside the Terminal.
 
-**Features:**
+| View | Purpose |
+|------|---------|
+| **ATC Documentation** | Displays the detailed SAP documentation for the ATC finding selected in the ATC Finds view |
 
-- **Variable interpolation** — Reference earlier cell results in SQL: `SELECT * FROM mara WHERE matnr = ${cells[1].result.MATNR}`. Strings are auto-quoted, arrays auto-joined for IN clauses.
+# Object Property View
 
-- **Cell references** — JavaScript cells access previous results via `cells[N].result` (0-indexed)
+The Object Property View shows metadata and history for whichever ABAP object is currently open in the editor — similar to the Properties view in ABAP Development Tools (Eclipse).
 
-- **Row limits** — Configurable per cell (default 1000)
+## Opening the View
 
-- **Per-cell system selection** — Each SQL cell execution prompts you to select which SAP system to run against. This means you can query DEV in one cell and QAS in the next, enabling cross-system data comparison within a single workbook.
+Click the ABAP FS icon in the **Activity Bar** (left sidebar), then select the **Object Property** panel. The view updates automatically as you switch between ABAP files.
 
-- **Run All** — When running all cells at once, you are prompted once for a system and all SQL cells in that run use it.
+## What It Shows
 
-- **Cross-system data comparison** — Run the same query against different systems by executing cells individually with different system selections, then use a JavaScript cell to compare the results. This is the foundation for drift detection across your SAP landscape.
+| Section | Details |
+|---|---|
+| **Object metadata** | Type, package, responsible user, creation date, object URI |
+| **Lock status** | Whether the object is locked and by whom |
+| **Transport history** | All transport requests that contain this object |
+| **Revision history** | Each saved version — author, date, and transport number |
 
-- **Isolated JavaScript** — JS cells run in a worker thread with a 30-second timeout for safety
+## Comparing Revisions
 
-- **Reusable** — Save the workbook file, share with colleagues, re-run anytime. No system IDs are stored in the file, so the same workbook works for anyone regardless of their system naming conventions.
+1. In the **Revision history** section, tick the checkboxes next to any two versions.
+2. A side-by-side diff opens in the editor, showing exactly what changed between them.
 
-**Cross-System Data Comparison Example:**
+## Performance Note
 
-```
-Cell 1 (Markdown):  # Pricing Condition Comparison: DEV vs QAS
-Cell 2 (ABAP SQL):  SELECT KSCHL, VKORG, MATNR, KBETR FROM A005 WHERE KSCHL = 'ZPR1'
-                     → Run this cell, select DEV100
-Cell 3 (ABAP SQL):  SELECT KSCHL, VKORG, MATNR, KBETR FROM A005 WHERE KSCHL = 'ZPR1'
-                     → Run this cell, select QAS200
-Cell 4 (JavaScript): const dev = cells[1].result;
-                     const qa = cells[2].result;
-                     const devMap = new Map(dev.map(r => [r.KSCHL+r.VKORG+r.MATNR, r]));
-                     const diffs = qa.filter(r => {
-                       const d = devMap.get(r.KSCHL+r.VKORG+r.MATNR);
-                       return d && d.KBETR !== r.KBETR;
-                     });
-                     return diffs.map(r => ({...r, DEV_KBETR: devMap.get(r.KSCHL+r.VKORG+r.MATNR).KBETR}));
-```
+Property data is cached after the first load. If you switch back to an object you already viewed, the extension reuses the cached data instead of querying SAP again.
 
-**Example Workbook:**
+# Custom Editors
 
-```
-Cell 1 (Markdown):  # Material Data Quality Check
-Cell 2 (ABAP SQL):  SELECT matnr, mtart, meins FROM mara WHERE mtart = 'FERT'
-Cell 3 (JavaScript): const rows = cells[1].result;
-                     return rows.filter(r => !r.MEINS).length + " materials missing UoM";
-Cell 4 (ABAP SQL):  SELECT matnr, werks FROM marc WHERE matnr IN (${cells[1].result.map(r => r.MATNR)})
-```
+ABAP FS provides custom visual editors for certain SAP object types. Instead of editing raw XML, you get a purpose-built UI tailored to that object.
 
-**Limitations:**
+Custom editors open automatically when you navigate to a supported object type. You can also open them manually via **Open With** (right-click the file in the Explorer).
 
-- SQL cells support SELECT and WITH only — no INSERT, UPDATE, DELETE
+## Supported Editors
 
-- Single string literals limited to 255 characters (SAP ADT limitation)
+### Message Class Editor (`*.msagn.xml`)
 
-- Avoid interpolating arrays with more than 10 values into IN clauses — use a JavaScript cell to filter instead
+A table-based editor for SAP message classes (MSAG). Lets you add, edit, and delete messages without touching XML.
 
-- Cannot abort a SQL query mid-flight on the SAP side (UI shows "Interrupted" immediately but the SAP-side query completes)
+See [Message Class Editor](#message-class-editor) for full details.
 
-**Commands:**
+### HTTP Service Editor (`*.http.xml`)
 
-| Command | Description |
-|---------|-------------|
-| `ABAP FS: New SAP Data Workbook` | Create a new .sapwb file |
-| `ABAP FS: Set Cell Max Rows` | Configure row limit for current cell |
+A form-based editor for configuring SAP HTTP services (SICF nodes).
 
-## 1.7 Getting Started Walkthrough
+## Common Actions
 
-**Purpose:** Interactive step-by-step guide that introduces new users to ABAP FS features
+| Action | How |
+|--------|-----|
+| Save changes | `Ctrl+S` |
+| Switch to raw XML | Right-click file → **Open With** → **Text Editor** |
+| Revert unsaved changes | `File` → **Revert File** |
 
-**How It Works:**
+# Message Class Editor
 
-- Automatically shown once on first installation
+Message classes (transaction SE91) open in a custom table editor instead of raw XML, making it easy to view and maintain messages directly in VS Code.
 
-- Uses VS Code's native walkthrough system with rich Markdown content
+## Opening a Message Class
 
-- Covers four progressive stages, from basics to advanced AI features
+Search for your message class (e.g. `ZMY_MESSAGES`) using the ABAP FS file explorer — it opens automatically in the table editor. You can also open any `.msagn.xml` file directly.
 
-**Walkthrough Stages:**
+## Working with Messages
 
-1. **Getting Connected** — Activate the extension, connect to SAP, navigate objects, search, run transactions, launch SAP GUI
+| Action | How |
+|--------|-----|
+| **Add** | Click the ➕ button — the next available number is suggested automatically |
+| **Edit** | Double-click the message text, or click ✏️ |
+| **Delete** | Click 🗑️ next to the message |
+| **Save** | **Ctrl+S** — all pending adds, edits, and deletes are sent to SAP together |
 
-2. **Core Features** — ABAP Cleaner, ATC analysis, blame annotations, debugging, dump analysis, traces, transports, unit tests
+Validation runs as you type: message text is limited to **72 characters** and the number field is required.
 
-3. **AI & Copilot** — Introduction to AI integration, AI-powered search, data queries, diagrams, dump analysis, where-used analysis, version history, unit tests, skills
+## Notes
 
-4. **Advanced** — Communication log, cross-system comparison, debug recording & replay, dependency graphs, feed inbox, heartbeat monitoring, MCP setup, subagents, text elements
+- Message numbers are zero-padded (`001`, `002`, …).
+- Deleted messages are flagged and removed on save; skipped numbers are not reused when suggesting the next number.
+- **Long text editing is not supported** — use SE91 for long texts.
+- Only applies to message class objects (`MSAG/N` type).
 
-**Re-opening the Walkthrough:**
+# Embedded SAP GUI (WebView)
 
-If you dismissed the walkthrough and want to see it again:
+Run SAP GUI transactions directly inside VS Code — no need to switch between windows. The SAP WebGUI renders inside a **WebView**: an embedded browser tab hosted within VS Code itself.
 
-- Command palette: **Help: Welcome** → select "ABAP FS" from the walkthrough list
+## Opening the Embedded SAP GUI
 
-- Or: Command palette → **Get Started: Open Walkthrough...** → search for "ABAP"
+Three ways to open it:
 
-# 2. SAP GUI Integration
+| Method | Action |
+|--------|--------|
+| Keyboard shortcut | **Ctrl+Shift+F7** (with an ABAP file open) |
+| Editor toolbar | Click the **Embedded GUI** button in the editor toolbar |
+| Command Palette | `ABAP FS: Open SAP GUI in embedded WebView` |
 
-> **Setting: `abapfs.autoOpenUnsupportedInGui`** (default: `true`)  
-> When you open an object type not supported in VS Code (e.g., certain dictionary objects, Web Dynpro, etc.), this setting controls the behavior:
-> - **`true`** (default): Automatically opens the object in SAP GUI
-> - **`false`**: Shows a message with options to "Open in SAP GUI" or "Always Auto Open"
+## Requirements
 
-## 2.1 Embedded SAP GUI (WebView)
+- WebGUI enabled on your SAP system
+- The connection configured in your ABAP FS settings
 
-**Purpose:** Run programs in embedded SAP GUI within VS Code
+## How It Works
 
-**How to Use:**
+By default, the extension opens SAP GUI in VS Code's **Integrated Browser** (Simple Browser) rather than a raw iframe WebView. The Integrated Browser does not wrap the page in an iframe, which avoids a common blank-page issue described below.
 
-- Press **Ctrl+Shift+F7** with ABAP file open OR
+## Blank Page / Clickjacking Issues
 
-- Click embedded GUI button in editor toolbar OR
+If you see a **blank white page**, your SAP system has clickjacking frame protection enabled (`ClickjackingFramingProtection.js`). This is a SAP server-side security feature that blocks SAP WebGUI from loading inside an iframe — the extension cannot override it.
 
-- Command palette: ABAP FS: Open SAP GUI in embedded WebView
+You may also see these browser console errors:
 
-**Features:**
-
-- Full SAP GUI experience in VS Code webview
-
-- No need to switch windows
-
-- Integrated within editor
-
-**Requirements:**
-
-- Chrome/Chromium browser (for rendering)
-
-- WebGUI enabled on SAP system
-
-- Proper SAP GUI configuration in connection settings
-
-**Keyboard Shortcut:** Ctrl+Shift+F7
-
-### Blank Page / Clickjacking Issues
-
-If the embedded WebView shows a **blank white page**, your SAP system likely has clickjacking frame protection enabled (`ClickjackingFramingProtection.js`). This is a server-side SAP security feature that prevents SAP WebGUI from rendering inside an iframe — the extension cannot override it.
-
-You may also see these errors in the browser console:
 - `ClickjackingFramingProtection.js: Ignored call to 'alert()'. The document is sandboxed`
 - `Potential permissions policy violation: fullscreen is not allowed in this document`
 
-**Solution: Use VS Code's Integrated Browser**
-
-Enable the setting `abapfs.sapGui.useIntegratedBrowser` to open SAP GUI in VS Code's built-in Simple Browser instead of the embedded webview. The Simple Browser does not use iframes, so clickjacking protection does not apply.
-
-1. Open VS Code Settings (`Ctrl+,`)
-2. Search for `useIntegratedBrowser`
-3. Enable **Abapfs > Sap Gui: Use Integrated Browser**
+**Solution:** The setting `abapfs.sapGui.useIntegratedBrowser` is **enabled by default** and resolves this. If you previously disabled it, re-enable it:
 
 ```json
 {
@@ -1225,1980 +1041,1944 @@ Enable the setting `abapfs.sapGui.useIntegratedBrowser` to open SAP GUI in VS Co
 }
 ```
 
-This affects all embedded SAP GUI usage — the toolbar button, the command palette command, and the Run Transaction command.
+To fall back to the raw embedded WebView (for example, if the Integrated Browser causes problems in your environment):
 
-> **Tip:** VS Code also has an experimental setting **`simpleBrowser.useIntegratedBrowser`** that controls whether the Simple Browser uses VS Code's integrated browser engine instead of a webview. Enabling it may further improve compatibility on desktop. Note: this is a VS Code setting (not an ABAP FS setting) and is marked as experimental.
+```json
+{
+  "abapfs.sapGui.useIntegratedBrowser": false
+}
+```
 
-## 2.2 Native Desktop SAP GUI
+This setting applies to all entry points: the toolbar button, command palette, and Run Transaction command.
 
-**Purpose:** Launch programs in desktop SAP GUI application
+> **VS Code tip:** The VS Code setting `simpleBrowser.useIntegratedBrowser` (marked experimental) controls whether Simple Browser uses VS Code's built-in browser engine. Enabling it may improve compatibility on desktop. This is a VS Code setting, not an ABAP FS setting.
 
-**How to Use:**
+# Native Desktop SAP GUI
 
-- Press **Ctrl+Shift+F5** with ABAP file open OR
+Open the currently active ABAP object directly in your locally installed SAP GUI application, giving you access to the full transaction UI without leaving your VS Code workflow.
 
-- Click desktop GUI button in editor toolbar OR
+## Requirements
 
-- Command palette: ABAP FS: Open in native SAP GUI desktop
-  application
+- SAP GUI for Windows installed on your machine
+- A configured ABAP FS connection to your SAP system
 
-**Features:**
+## How to Open
 
-- Opens in installed SAP GUI
+With an ABAP file open in the editor, use any of these methods:
 
-- Full SAP GUI functionality
+| Method | Action |
+|---|---|
+| Keyboard shortcut | `Ctrl+Shift+F5` |
+| Editor toolbar | Click the **Open in SAP GUI** icon |
+| Command Palette | `Ctrl+Shift+P` → `ABAP FS: Open in native SAP GUI desktop application` |
 
-- Better performance for complex transactions
+## When to Use
 
-**Requirements:**
+Prefer native SAP GUI when you need:
 
-- SAP GUI for Windows installed
+- Transactions that are not available in the browser-based GUI
+- Better performance for complex or data-heavy screens
+- Full SAP GUI functionality (e.g., ALV grids, custom controls, scripting)
 
-- Proper connection configuration
+# Web Browser SAP GUI
 
-**Keyboard Shortcut:** Ctrl+Shift+F5
+Opens the currently active ABAP object in SAP GUI running inside your default web browser (SAP WebGUI). Useful when you need to interact with an object in its native SAP GUI interface without leaving your development workflow.
 
-## 2.3 Web Browser SAP GUI
+## Prerequisites
 
-**Purpose:** Open programs in external web browser
+- SAP WebGUI must be enabled on the target SAP system (ask your Basis team if unsure).
 
-**How to Use:**
+## How to Open
 
-- Press **Ctrl+Shift+F6** with ABAP file open OR
+With an ABAP file open in the editor, use any of the following:
 
-- Click browser GUI button in editor toolbar OR
+| Method | Action |
+|---|---|
+| Keyboard shortcut | `Ctrl+Shift+F6` |
+| Editor toolbar | Click the **Open in Browser GUI** icon |
+| Command Palette | `Ctrl+Shift+P` → `ABAP FS: Open SAP GUI in external web browser` |
 
-- Command palette: ABAP FS: Open SAP GUI in external web browser
+The object opens in your default browser. The URL can be copied and shared with other users who have access to the same system.
 
-**Features:**
+# Run SAP Transaction
 
-- Opens in default browser
+Execute SAP transaction codes directly from VS Code without switching to the SAP GUI window.
 
-- Useful for sharing URLs
+## How to Use
 
-- Works on any OS
+1. Open the Command Palette (`Ctrl+Shift+P`)
+2. Run **ABAP Copilot: Run SAP Transaction**
+3. If multiple systems are connected, select the target system
+4. Type a transaction code (e.g., `MM43`, `SE38`)
+5. Press `Enter` — the transaction opens in your configured GUI
 
-**Requirements:**
+## GUI Configuration
 
-- WebGUI enabled on SAP system
+Set your preferred GUI type per connection in settings (`sapGui.guiType`).
 
-**Keyboard Shortcut:** Ctrl+Shift+F6
+## Limitations
 
-# 3. Object Management
+- **Native SAP GUI** — Windows only
+- **Embedded WebView** — no SSO; requires manual login
+- Some transactions may not work correctly in embedded mode
 
-## 3.1 Object Search
+# Object Search
 
-**Purpose:** Find ABAP objects across the system
+Search for ABAP objects by name — like the SE80 object search, but directly inside VS Code without opening SAP GUI.
 
-**How to Use:**
+## How to Search
 
-- Command palette: ABAP FS: Search for object OR
+1. Open the Command Palette (`Ctrl+Shift+P`)
+2. Run **ABAP FS: Search for object**
+3. Enter a name pattern using wildcards (e.g. `ZCL_*`, `*USER*`)
+4. Select one or more object types to filter results
+5. Press `Enter` — results open in a quick-pick list for instant navigation
 
-- Ask Copilot: \"Find all classes starting with ZCL\_\"
+> **Tip:** Save your preferred object types as defaults so you don't have to re-select them every time.
 
-**Features:**
+## Wildcard Patterns
 
-- Wildcard support (Z\*, \*USER\*, etc.)
+| Pattern | Matches |
+|---------|---------|
+| `ZCL_*` | All custom classes starting with ZCL_ |
+| `*USER*` | Anything containing USER |
+| `BAPI_MATERIAL_*` | All BAPIs starting with BAPI_MATERIAL_ |
 
-- Multiple object type filtering
+## Supported Object Types
 
-- Quick navigation to results
+| Type | Description |
+|------|-------------|
+| `CLAS` | Classes |
+| `INTF` | Interfaces |
+| `PROG` | Programs / Reports |
+| `FUNC` | Function Modules |
+| `FUGR` | Function Groups |
+| `TABL` | Database Tables |
+| `VIEW` | Views |
+| `DTEL` | Data Elements |
+| `DOMA` | Domains |
+| `TTYP` | Table Types |
+| `DDLS` | CDS Views |
+| `ENQU` | Lock Objects |
+| `MSAG` | Message Classes |
+| `DEVC` | Packages |
+| `TRAN` | Transactions |
+| `ENHC` / `ENHS` | Enhancement Implementations / Spots |
+| `BADI` | BAdI Definitions |
+| + 30 more | — |
 
-- You can select object types to search and choose to save default types
-  to search to avoid selecting each time
+> **Note:** Object types not natively supported by the extension open automatically in SAP GUI.
 
-**Note: Unsupported object types will be automatically opened in SAP
-GUI**
+# Create Objects
 
-**Supported Object Types:**
+Create new ABAP development objects directly from VS Code without opening SAP GUI.
 
-- FUNC (Function Modules)
+## How to Create an Object
 
-- CLAS (Classes)
+**Option 1 — Command Palette:**
 
-- TABL (Database Tables)
+1. Press `Ctrl+Shift+P` to open the Command Palette.
+2. Type and select **ABAP FS: Create object**.
+3. Follow the wizard prompts (object type, name, description, package).
 
-- PROG (Programs/Reports)
+**Option 2 — Explorer context menu:**
 
-- INTF (Interfaces)
+1. Right-click a package or folder in the ABAP Explorer.
+2. Select **Create object**.
+3. Follow the wizard prompts.
 
-- DTEL (Data Elements)
+**Option 3 — Via Copilot:**
 
-- DDLS (CDS Views)
+Ask Copilot in natural language, for example:
 
-- DOMA (Domains)
+> *"Create a new class ZCL_MY_CLASS with description 'My class'"*
 
-- TTYP (Table Types)
+Copilot fills in the object details automatically. You will still be prompted to select a transport request.
 
-- ENQU (Lock Objects)
+## Supported Object Types
 
-- MSAG (Message Classes)
+| Object type | Type code |
+|---|---|
+| Report / Program | `PROG/P` |
+| Class | `CLAS/OC` |
+| Interface | `INTF/OI` |
+| Function Group | `FUGR/F` |
+| Data Element | `DTEL/DE` |
+| Domain | `DOMA` |
+| Database Table | `TABL/DT` |
+| CDS View | `DDLS` |
+| Message Class | `MSAG/N` |
+| Package | `DEVC/K` |
 
-- FUGR (Function Groups)
+Many additional types are supported. If the object type you need is not listed, try the wizard — it shows all types available in your connected system.
 
-- DEVC (Packages)
+## Notes
 
-- TRAN (Transactions)
+- A **transport request** dialog always appears for objects that require transport. This step cannot be skipped.
+- The new object opens in the editor automatically after creation.
+- Objects must be **activated** before they can be used at runtime.
 
-- VIEW (Views)
+# Open Objects
 
-- ENHC/ENHS (Enhancements)
+Open any ABAP object from your connected SAP system directly in the VS Code editor for viewing and editing.
 
-- BADI (BAdI Definitions)
+## How to Open an Object
 
-- And 30+ more types
+**Option 1 — Search command (recommended)**
 
-## 3.2 Create Objects
+1. Press `Ctrl+Shift+P` to open the Command Palette.
+2. Run **ABAP FS: Search for object**.
+3. Type part of the object name and select it from the list.
 
-**Purpose:** Create new ABAP development objects
+**Option 2 — File Explorer**
 
-**How to Use:**
+- Expand your SAP system in the Explorer panel (`Ctrl+Shift+E`) and double-click any object.
 
-- Command palette: ABAP FS: Create object OR
+**Option 3 — Ask Copilot**
 
-- Right-click in explorer → Create object OR
+- In the Copilot chat, type: *"Open ZCL_MY_CLASS"* — the object opens automatically.
 
-- Ask Copilot: \"Create a new class ZCL_TEST with description \'Test
-  class\'\"
+## What You Get
 
-**How it Works:**
+Once open, the object behaves like any other file in VS Code:
 
-- **Manual Creation:** Shows wizard dialogs for input
+- Syntax highlighting for ABAP
+- Full editing with save and activation support
+- Navigation via breadcrumbs and Go to Definition (`F12`)
+- Visible in the Explorer and in **Open Editors**
 
-- **Programmatic Creation (via Copilot):** Still shows transport request
-  dialog (not fully automated)
+# Object Activation
 
-**Supported Creation Types:**
+Activation compiles your ABAP code and makes it executable — the equivalent of pressing the **Activate** button (or `Ctrl+F3`) in SE80/SE24.
 
-- Reports/Programs (PROG/P)
+> Unlike SE80, the extension auto-saves the file before activating, so you don't need a separate save step.
 
-- Classes (CLAS/OC)
+## How to Activate
 
-- Interfaces (INTF/OI)
+| Method | Action |
+|--------|--------|
+| Keyboard shortcut | **Alt+Shift+F3** |
+| Editor toolbar | Click the activation button (lightning icon) |
+| On save | Automatic, if **Auto-activate on save** is enabled in settings |
 
-- Function Groups (FUGR/F)
+## Mass Activation
 
-- Data Elements (DTEL/DE)
+When you edit an object that has related inactive objects (e.g. a program with includes, or a class with methods), the extension detects them automatically and shows a selection dialog:
 
-- Domains (DOMA)
+1. A list of all inactive related objects appears, all pre-selected.
+2. Deselect any objects you do **not** want to activate.
+3. Confirm — all selected objects are activated together.
 
-- Database Tables (TABL/DT)
+This mirrors the mass activation dialog in SE80 that appears when dependent objects are out of sync.
 
-- CDS Views (DDLS)
+# Favorites Management
 
-- Message Classes (MSAG/N)
+Favorites let you bookmark frequently used ABAP objects for quick access across sessions.
 
-- Packages (DEVC/K)
+## Adding a Favorite
 
-- And more\...
+1. In the Explorer sidebar, locate the ABAP object.
+2. Right-click it and select **Add to Favorites**.
 
-**Limitations:**
+## Viewing and Opening Favorites
 
-- Transport request selection still requires user interaction
+- Open the **Favorites** view in the Explorer sidebar.
+- Click any entry to open the object in the editor.
 
-- Package selection may still show dialog
+## Removing a Favorite
 
-- Not fully \"programmatic\" despite the feature name
+- Right-click the entry in the **Favorites** view and select **Remove from Favorites**.
 
-## 3.3 Open Objects
+## Notes
 
-**Purpose:** Open objects in VS Code editor
+- Favorites persist across VS Code sessions.
+- The **Favorites** view is in the Explorer sidebar (same panel as the file tree).
 
-**How to Use:**
+# Show Table Contents
 
-- Ask Copilot: \"Open ZCL_MY_CLASS\" OR
+View the contents of any database table directly in VS Code — similar to **SE16 / SE16N** in SAP GUI.
 
-- Command: ABAP FS: Search for object → Select object
+## Opening Table Contents
 
-- Double-click in explorer views
+1. Open a database table (e.g. from the object explorer or via `Ctrl+Shift+A` to search by name)
+2. Click the **Show table contents** button in the editor toolbar, **or** right-click the table → **Show table contents**
 
-**Features:**
+## Working with the Data Grid
 
-- Opens in VS Code editor
+The results open in an interactive grid with the following capabilities:
 
-- Syntax highlighting
+| Feature | How to use |
+|---|---|
+| **Sort** | Click a column header |
+| **Filter** | Use the filter row below the header |
+| **Paginate** | Navigate pages using the controls at the bottom |
+| **Export** | Use the export button to download results |
 
-- Full editing capabilities
+## Notes
 
-- Shows in file explorer
+- Only the first **1 000 rows** are fetched by default — add filters to narrow results for large tables.
+- For more complex queries (JOINs, aggregations, custom WHERE clauses), use the [Data Query](#sql-query-execution) feature instead.
 
-## 3.4 Object Activation
+# Compare Objects Across Systems
 
-**Purpose:** Save and activate ABAP objects
+Compare the same ABAP object side-by-side between two connected SAP systems — useful for verifying transports, investigating system-specific behaviour, or checking what's in production before a deployment.
 
-**How to Use:**
+## Prerequisites
 
-- Press **Alt+Shift+F3** OR
+- At least 2 SAP systems connected in VS Code
+- The object must exist in both systems
 
-- Click activation button in editor toolbar OR
+## How to Compare
 
-- Save file (if auto-activate enabled)
+1. Open or locate the ABAP object in the Explorer or editor.
+2. Trigger the command using one of:
+   - **Explorer:** right-click the file → **Compare With another SAP System**
+   - **Editor:** right-click inside the file → **Compare With another SAP System**
+   - **Command Palette** (`Ctrl+Shift+P`): `ABAP FS: Compare With another SAP System`
+3. Select the target system from the quick pick list (shows only connected systems).
+4. VS Code opens a diff view titled `OBJECT_NAME: DEV100 ↔ QA100`.
 
-**Features:**
+## Notes
 
-- **Mass Activation:** If multiple related objects are inactive (e.g.,
-  program + includes), shows dialog to select which objects to activate
-  together
+- The diff opens as a standard VS Code side-by-side comparison — all editor shortcuts (e.g. `F7`/`Shift+F7` to jump between changes) work as normal.
+- Path differences between SAP versions are handled automatically (`Source Code Library` for newer systems, `Source Library` for older ones).
+- If the object does not exist in the target system, an error is shown.
 
-- Auto-save before activation
+# ABAP Test Cockpit (ATC) Analysis
 
-- Includes detection (program + includes)
+ATC is SAP's built-in code quality framework — the same checks you run in SE80 or Eclipse ADT, but integrated directly into VS Code. It scans your ABAP objects for coding violations, security issues, performance problems, and (optionally) S/4HANA compatibility.
 
-- Child object activation (class + methods)
+## Running ATC
 
-- Visual feedback
+With an ABAP file open, use any of these methods:
 
-**Keyboard Shortcut:** Alt+Shift+F3
+- **Keyboard:** `Ctrl+Shift+F2`
+- **Command Palette:** `ABAP FS: Run ABAP Test Cockpit`
+- **Copilot chat:** *"Run ATC on this file"*
 
-**Mass Activation Details:**
+Findings appear immediately as colored underlines in the editor, and in the **ATC Findings** panel (Activity Bar → ABAP FS → ATC Finds).
 
-- Detects inactive related objects automatically
+## Working with Results
 
-- Shows selection dialog with all inactive objects
+Click any finding in the ATC panel to jump to the affected line. From there you can:
 
-- Pre-selects all objects
+| Action | How |
+|---|---|
+| Read check documentation | Click **Show documentation** on the finding |
+| Apply a quick fix | Click the lightbulb / use `Ctrl+.` on the underlined code |
+| Get an AI-suggested fix | Ask Copilot: *"Fix this ATC finding"* |
+| Request an exemption | Right-click a finding → **Request exemption** (single or bulk) |
+| Hide exempted findings | Toggle **Filter exempted** in the panel toolbar |
+| Re-run after saving | Toggle **Auto-refresh** in the panel toolbar |
 
-- User can deselect objects they don\'t want to activate
+## Enhancement Decorations
 
-- Activates selected objects together
+When viewing standard SAP code, 🎯 markers show where customer enhancements (BADIs, implicit enhancements, etc.) are active. Hover for details, or click the link to open the enhancement source directly.
 
-## 3.5 Favorites Management
+## Configuring the Check Variant
 
-**Purpose:** Quick access to frequently used objects
+The check variant controls which rules ATC applies — just like choosing a variant in transaction `ATC` or SE80. To set a default variant per connection:
 
-**How to Use:**
+1. Open **ABAP FS: Connection Manager**
+2. Edit the connection
+3. Set the **ATC Variant** field (e.g., `DEFAULT`, `S4HANA_READINESS`, or your custom variant)
 
-- Right-click object in explorer → Add favourite
+Or add it directly to `settings.json`:
 
-- View in \"Favorites\" panel in explorer
+```json
+"atcVariant": "S4HANA_READINESS"
+```
 
-- Click to open
+## S/4HANA Migration Workflow
 
-**Features:**
+To check custom code for S/4HANA compatibility, set the variant to `S4HANA_READINESS`. ATC will then flag removed APIs, changed interfaces, and deprecated features on every run.
 
-- Persisted across sessions
+Recommended workflow:
 
-- Quick navigation
+1. Use the [S/4HANA Readiness Dashboard](#s4hana-readiness-dashboard) to identify all affected objects
+2. Open each object and run ATC (`Ctrl+Shift+F2`) for detailed findings
+3. Ask Copilot to fix the flagged issues based on the ATC documentation
 
-- Delete from favorites
+# ABAP Cleaner Integration
 
-**Location:** Explorer sidebar → Favorites view
+ABAP Cleaner automatically formats and cleans up ABAP code — fixing indentation, modernizing syntax, and applying configurable cleanup rules in one step.
 
-## 3.6 Show Table Contents
+## Setup
 
-**Purpose:** View database table data
+ABAP Cleaner requires its standalone command-line tool (`abap-cleanerc.exe`).
 
-**How to Use:**
+1. Download ABAP Cleaner from [github.com/SAP/abap-cleaner](https://github.com/SAP/abap-cleaner) and extract it to a folder.
+2. Open the Command Palette (`Ctrl+Shift+P`) and run **ABAP FS: Setup ABAP Cleaner Integration**.
+3. Enter the path to `abap-cleanerc.exe` when prompted.
 
-- Open database table object
+## Cleaning Code
 
-- Click \"Show table contents\" button OR
+With an ABAP file open, use any of these methods:
 
-- Right-click table → Show table contents
+| Method | Action |
+|---|---|
+| Keyboard shortcut | `Ctrl+Shift+Alt+F` |
+| Format on save | `Shift+Alt+F` (standard VS Code format — triggers ABAP Cleaner if configured as formatter) |
+| Command Palette | **ABAP FS: Clean ABAP Code with ABAP Cleaner** |
+| Toolbar button | Click the Cleaner button in the editor toolbar |
 
-**Features:**
+To clean only selected lines, select the code first, then trigger the command.
 
-- Interactive data grid
+## What It Does
 
-- Sorting and filtering
+- Applies all configured ABAP Cleaner rules to the file
+- Respects a custom cleanup profile if one is configured
+- Targets the ABAP release you specify (avoids using syntax unavailable on your system)
+- Reports which rules were applied and how many lines changed
 
-- Export capabilities
+## Configuration
 
-- Pagination
+In VS Code settings (`Ctrl+,`), search for **ABAP Cleaner** to configure:
 
-- like SE16N
+- **Executable path** — path to `abap-cleanerc.exe`
+- **Profile** — custom cleanup profile file (optional)
+- **Target release** — ABAP release to target (e.g. `757`)
+- **Clean on save** — automatically clean every time you save an ABAP file
 
-## 3.7 Compare Objects Across Systems
+# Syntax Validation
 
-**Purpose:** Compare the same ABAP object between different SAP systems (DEV vs QA, QA vs PROD, etc.)
+ABAP FS validates your code in real time — no need to run a separate syntax check. Errors appear as you type, directly in the editor and in the Problems panel.
 
-**How to Use:**
+## When it runs
 
-- Right-click ABAP file in Explorer → **Compare With another SAP System** OR
+Syntax checking triggers automatically on:
 
-- Right-click inside editor → **Compare With another SAP System** OR
+- **Open** — when you open an ABAP file
+- **Edit** — as you type
+- **Save** — when you save changes
+- **Activate** — when activating the object
 
-- Command palette: **ABAP FS: Compare With another SAP System**
+## Viewing errors
 
-**Features:**
+| Where | How to open |
+|---|---|
+| Inline underlines | Hover over the underlined code for details |
+| Problems panel | `Ctrl+Shift+M` |
+| Error lens (inline) | Shown automatically next to the offending line |
 
-- Side-by-side diff view of same object in different systems
+## Fixing errors
 
-- Quick system selection from connected systems
+- **Quick Fix** — press `Ctrl+.` on an error to see available fixes
+- **AI Chat fix** — click the sparkle icon next to an error to open an inline AI chat for a suggested fix
+- **Jump to next error** — `F8` / `Shift+F8` to cycle through problems
 
-- Automatic path translation for SAP version differences:
-  - Newer systems: "Source Code Library"
-  - Older systems: "Source Library"
-  - Automatically tries both paths
+# Where-Used Analysis
 
-- Works from both Explorer context menu and Editor context menu
+The VS Code equivalent of **Ctrl+Shift+F3** (Where-Used List) in SAP GUI. Finds every place an object, method, variable, or symbol is referenced across the entire system.
 
-- Clean diff title showing: `OBJECT_NAME: DEV100 ↔ QA100`
+## How to Use
 
-**Requirements:**
+**Option 1 — Editor shortcut:**
+1. Place the cursor on any symbol (class name, method, variable, etc.)
+2. Press `Shift+F12` (Find All References) or right-click → **Find All References**
+3. Results appear in the References panel with file locations and code snippets
 
-- At least 2 SAP systems connected
+**Option 2 — Ask Copilot:**
+> "Where is `BAPI_USER_GET_DETAIL` used?"
+> "Find all usages of method `FACTORY` in `ZCL_MY_CLASS`"
 
-- Same object must exist in both systems, will throw error otherwise
+## Filtering Results
 
-**Use Cases:**
+For large result sets (1,000+ references), filters prevent having to page through SAP standard objects to find your custom code:
 
-- Compare DEV vs QA to verify transport
+| Filter | What it does |
+|--------|-------------|
+| Exclude standard objects | Shows only Z\* / Y\* custom code |
+| Object type | Restrict to programs, classes, interfaces, etc. |
+| Object name pattern | e.g. `Z*INVOICE*` to narrow by naming convention |
 
-- Compare QA vs PROD to check production version
+> **Tip:** Custom Z/Y objects often appear at the end of large result sets. Apply the "exclude standard objects" filter to jump straight to them.
 
-- Debug why code works in one system but not another
+## Compared to SAP GUI
 
-- Verify code differences before deployment
+| SAP GUI (Ctrl+Shift+F3) | VS Code |
+|-------------------------|---------|
+| Modal dialog, one object at a time | Inline results panel, stays open |
+| No snippet preview | Shows code context around each reference |
+| No pattern filtering | Filter by type, name pattern, custom-only |
+| Paginated per transaction | Pagination + filters in one view |
 
-**Limitations:**
+# ABAP Debugging
 
-- Only shows connected systems in quick pick
+Debug ABAP programs directly inside VS Code — no SAP GUI required. You get the same core capabilities as the SAP GUI debugger (breakpoints, stepping, variable inspection, call stack) with a modern editor experience and Copilot integration.
 
-- If object doesn't exist in target system, shows error after trying both path variants
+> 💡 **See also:** [Debug Recording & Replay](#recording-a-session) — record a session and replay it offline with step-back support.
 
-# 4. Code Quality & Analysis
+---
 
-## 4.1 ABAP Test Cockpit (ATC) Analysis
+## vs. SAP GUI Debugger
 
-**Purpose:** Comprehensive code quality and security checks
+| Feature | SAP GUI Debugger | VS Code (ABAP FS) |
+|---|---|---|
+| Breakpoints | Click in editor | Click in gutter or via Copilot |
+| Conditional breakpoints | ✅ | ✅ |
+| Variable inspection | Manual navigation | Pattern filtering, auto-expand |
+| Step controls | Toolbar buttons | Keyboard shortcuts (F5–F8) |
+| Call stack | ✅ | ✅ |
+| Multi-thread | Limited | Up to 20 concurrent threads |
+| AI assistance | ❌ | ✅ via Copilot |
 
-**How to Use:**
+---
 
-- Press **Ctrl+Shift+F2** with ABAP file open OR
+## Starting a Debug Session
 
-- Command palette: ABAP FS: Run ABAP Test cockpit OR
+1. Open the ABAP object in VS Code.
+2. Set at least one breakpoint (see below).
+3. Ask Copilot **"Start debugging session"** — or use the Debug panel.
+4. Trigger execution in the SAP system (run the transaction, report, etc.).
+5. VS Code halts at the first breakpoint.
 
-- Ask Copilot: \"Run ATC on this file\"
+> ⚠️ **Production systems:** Starting a debug session on a production system prompts a confirmation dialog. Production debugging risks data exposure and performance impact. Use SAP GUI instead.
 
-**Features:**
+---
 
-- Full ATC check execution
+## Breakpoints
 
-- **Visual decorations in editor** - Errors, warnings, and info messages
-  shown as colored underlines
+**Setting a breakpoint:** Click in the left gutter next to a line number — a red dot appears, identical to any VS Code language.
 
-- **Enhancements in standard code shown in VSCode** - Shows where
-  enhancements are applied with 🎯 markers
+**Conditional breakpoints:** Right-click the gutter → *Add Conditional Breakpoint* → enter an ABAP expression. Execution pauses only when the condition is true.
 
-- Results in dedicated ATC panel
+**Jump to cursor:** Press **Shift+F12** to resume execution and halt at the current cursor position (equivalent to *Breakpoint at Cursor* in SAP GUI).
 
-- Quick fixes for some issues
+---
 
-- Severity filtering (error, warning, info)
+## Step Controls
 
-- **Exemption request** support
+| Action | Shortcut | SAP GUI Equivalent |
+|---|---|---|
+| Continue (run to next breakpoint) | **F5** | F8 |
+| Step Over (execute line, skip into calls) | **F6** | F6 |
+| Step Into (enter method/function) | **F7** | F5 |
+| Step Return (finish current method) | **F8** | — |
+| Jump to Line | — | *Goto Line* |
 
-- AI-powered fix suggestions
+---
 
-- **Auto-refresh on activation** (configurable)
+## Variable Inspection
 
-**Results Panel Features:**
+Open the **Variables** panel in the Debug sidebar. Variables are grouped by scope: *Local Variables*, *Global Variables*, *SY fields*, etc.
 
-- **Filter exempted findings** - Toggle to show/hide exempted issues
+**Filtering by pattern** — useful in large programs:
 
-- **Auto-refresh** - Toggle to automatically re-run ATC after activation
+- `LT_*` — show all internal tables
+- `LS_*` — show all structures
+- `GV_*` — show all global variables
 
-- **Request exemption** - Request exemption for single or multiple
-  findings
+**Auto-expand:** Structures and tables expand inline so you can see component values without navigating into each one.
 
-- **Show documentation** - View detailed docs for check
+**Expression evaluation:** Type any ABAP variable or expression in the *Watch* panel or Debug Console to evaluate it at the current breakpoint.
 
-- **Navigate to code** - Click to jump to issue location
+**Via Copilot:** Ask naturally — *"Show me the value of lt_data"*, *"Expand ls_header"*, *"Show all variables starting with LT\_"*.
 
-**Keyboard Shortcut:** Ctrl+Shift+F2
+---
 
-**Location:** Activity Bar → ABAP FS → ATC finds
+## Call Stack
 
-**Enhancement Decorations:**
+The **Call Stack** panel lists every active stack frame with the program name, method, and line number. Click any frame to inspect local variables at that level — equivalent to navigating frames in the SAP GUI debugger.
 
-- 🎯 Markers show where enhancements are implemented
+---
 
-- Hover shows enhancement details
+## Multi-Thread Debugging
 
-- Click link to open enhancement source code
+VS Code supports up to **20 concurrent debug threads** (configurable). Each thread appears as a separate entry in the Call Stack panel. This is useful when debugging background jobs or parallel processing scenarios that are difficult to debug in SAP GUI.
 
-- Works for standard SAP code with enhancements
+﻿# Debug Recording & Replay
 
-## 4.2 ABAP Cleaner Integration
+> ⚠️ **BETA FEATURE** — Please report any issues.
 
-**Purpose:** Automated code formatting and cleanup
+Record a live ABAP debug session and replay it offline — forward and backward — like a DVR. No SAP connection needed during replay.
 
-**How to Use:**
+**When is this useful?**
 
-- Press **Ctrl+Shift+Alt+F** with ABAP file open OR
+- You stepped too far and want to go back without restarting
+- You want to share a bug reproduction with a colleague
+- You need to analyse a complex execution path at your own pace
 
-- Click Cleaner button with ABAP file open OR
+---
 
-- Command palette: ABAP FS: Clean ABAP Code with ABAP Cleaner with
-  ABAP file open OR
+## Recording a Session
 
-- Enable auto-clean on save
+> Each step takes ~1–3 seconds longer than normal because the extension captures all variable data before SAP discards it.
 
-**Features:**
+1. Start a debug session as usual (set breakpoints, attach to user/terminal)
+2. Open the Command Palette (`Ctrl+Shift+P`) → **ABAP: Start Debug Recording**
+3. Step through your code normally — every step is captured
+4. `Ctrl+Shift+P` → **ABAP: Stop Debug Recording**
+5. At the prompt, choose **Save** (plain `.abaprecord`) or **Compress & Save** (`.abaprecord.gz`, ~80–95% smaller)
 
-- Full ABAP Cleaner rule execution
+**What is captured per step:**
 
-- Custom profile support
+- Full call stack with source references
+- All variables across all scopes (Local, Global, SY) — structures expanded, tables up to 2,000 rows
+- Source file contents for offline viewing
 
-- Target ABAP release selection
+---
 
-- Statistics display
+## Replaying a Recording
 
-- Applied rules reporting
+1. `Ctrl+Shift+P` → **ABAP: Replay Debug Recording**
+2. Select a `.abaprecord` or `.abaprecord.gz` file — both are handled automatically
+3. The replay session opens showing code, stack, and variables exactly as recorded
 
-- Line range cleaning (selected lines only)
+**Replay controls:**
 
-**Requirements:**
+| Action | Shortcut |
+|--------|----------|
+| Step forward (next snapshot) | `F7`, `F10`, or `F11` |
+| Step back (previous snapshot) | `Shift+F7` or `Shift+F11` |
+| Jump to end | `F5` (Continue) |
+| Jump to start | Reverse Continue |
+| Close session | Terminate |
 
-- ABAP Cleaner command-line tool installed (abap-cleanerc.exe)
+> In replay mode all three step buttons (Step Over / Into / Out) do the same thing: move to the next recorded snapshot.
 
-- Executable path configured
+You can inspect variables, expand structures, browse table rows, evaluate expressions, and hover over variables — all without a SAP connection.
 
-**Setup:**
+---
 
-1.  Download ABAP Cleaner from https://github.com/SAP/abap-cleaner
+## Compression
 
-2.  Extract abap-cleanerc.exe to a folder
+Large sessions can produce files tens of MB in size. Use gzip to reduce storage and sharing size.
 
-3.  Run command: ABAP FS: Setup ABAP Cleaner Integration
+| Command | Description |
+|---------|-------------|
+| **ABAP: Compress Debug Recording** | Compress an existing `.abaprecord` → `.abaprecord.gz` |
+| **ABAP: Decompress Debug Recording** | Convert `.abaprecord.gz` back to plain JSON |
 
-4.  Provide path to executable
+After compression the extension shows the size reduction (e.g. *42 MB → 3.2 MB, 92% smaller*). Both formats are fully interchangeable.
 
-**Keyboard Shortcut:** Ctrl+Shift+Alt+F
+---
 
-## 4.3 Syntax Validation
-
-**Purpose:** Syntax checking triggers automatically when opening ABAP
-files, editing, saving changes and during activation
-
-**How to Use:**
-
-- Open/Edit/Save/Activate ABAP files
-
-- Errors shown in Problems panel
-
-- Inline error indicators
-
-**Features:**
-
-- Error highlighting
-
-- Quick navigation to errors
-
-- Quick fixes with inline AI chat
-
-## 4.4 Where-Used Analysis
-
-**Purpose:** Find all references to objects, methods, variables
-
-**How to Use:**
-
-- Ask Copilot: \"Where is BAPI_USER_GET_DETAIL used?\" OR
-
-- Right-click symbol → Find References
-
-**Features:**
-
-- System-wide search
-
-- Method/variable-level precision
-
-- Code snippets in results
-
-- Filtering options:
-
-  - Exclude standard objects (find only custom Z/Y code)
-
-  - Filter by object type
-
-  - Object name pattern filtering
-
-- Pagination for large result sets (1000+ references)
-
-**Limitations:**
-
-- Large result sets (1000+) require pagination
-
-- Custom Z/Y objects often at end of results - use filters to find them
-  efficiently
-
-# 5. Debugging Features
-
-## 5.1 ABAP Debugging
-
-**Purpose:** Full debugging support in VS Code
-
-**How to Use:**
-
-- Set breakpoints by clicking in gutter OR
-
-- Press **Shift+F12** to jump to cursor during debugging OR
-
-- Ask Copilot to set breakpoints or start debugging
-
-**Features:**
-
-- Visual breakpoints
-
-- Conditional breakpoints
-
-- Variable inspection with enhanced features:
-
-  - Pattern-based filtering (LT\_\* for tables, LS\_\* for structures)
-
-  - Auto-expand structures
-
-  - Auto-expand tables
-
-  - Advanced filters
-
-  - Scope inspection (Local Variables, SY, etc.)
-
-  - Expression evaluation
-
-- Call stack viewing
-
-- Step operations:
-
-  - Continue (F5)
-
-  - Step Over (F6)
-
-  - Step Into (F7)
-
-  - Step Return (F8)
-
-  - Jump to Line
-
-- Session management
-
-- Multi-threaded debugging (up to 20 concurrent threads, configurable)
-
-**Debug Tools (via Copilot):**
-
-- \"Start debugging session\"
-
-- \"Set breakpoint at line 42\"
-
-- \"Show me the value of lt_data\"
-
-- \"Show me all variables starting with LT\_\"
-
-- \"Expand the structure ls_header\"
-
-- \"Show me the call stack\"
-
-- \"Step into this method\"
-
-**Safety:**
-
-- **Production System Guard:** When Copilot tries to start a debug session on a 
-  production system, a dialog prompts for confirmation. Production debugging 
-  poses security risks (sensitive data exposure), stability risks (VS Code 
-  debugging can be fragile), and performance impacts. 
-  **Recommendation:** Use SAP GUI for production debugging.
-
-**Keyboard Shortcuts:**
-
-- Jump to cursor: Shift+F12
-
-- Standard VS Code debugging shortcuts work
-
-> 💡 **See also:** [5.2 Debug Recording & Replay](#52-debug-recording--replay) — record your debug session and replay it offline with step-back support.
-
-## 5.2 Debug Recording & Replay
-
-> ⚠️ **BETA FEATURE** - This feature is in beta. Please report any issues.
-
-**Purpose:** Record a live ABAP debug session and replay it offline with full step-back support — like a DVR for debugging
-
-### Why?
-
-Debugging complex ABAP logic often requires stepping through many lines, then realizing you went too far. In a live session you can't go back — you have to restart and step through everything again. With recording & replay:
-
-1. **Record** while debugging normally (each step is slightly slower due to variable capture)
-2. **Save** the recording as a `.abaprecord` file
-3. **Replay** anytime — offline, no SAP connection needed — with forward AND backward stepping
-4. **Share** recordings with colleagues ("here's what happens at step 23")
-
-### Recording a Debug Session
-
-**How to Use:**
-
-1. Start a normal ABAP debug session (set breakpoints, attach, etc.)
-
-2. Run command: **ABAP: Start Debug Recording** (Command Palette)
-
-3. Debug normally — step over, step into, continue to breakpoints
-
-4. Run command: **ABAP: Stop Debug Recording**
-
-5. Choose **Save** when prompted → saves as `.abaprecord` file
-
-**What Gets Recorded:**
-
-Each step captures:
-
-- Full stack trace with source file references
-
-- All variable names, values, and types across all scopes (Local, Global, SY)
-
-- Structure components (expanded automatically)
-
-- Table rows (up to 2000 rows per table, auto-skipped beyond that)
-
-- Source file contents (for offline viewing)
-
-**How Recording Works:**
-
-Recording uses a batched breadth-first capture algorithm that fetches variable data from SAP in as few HTTP calls as possible:
-
-- All scope variables are fetched in a single API call
-
-- All structures at each depth level are expanded in a single API call
-
-- All table rows across all tables are fetched in a single batch
-
-- Depth is configurable (default: 4 levels deep) via `CaptureOptions.maxDepth`
-
-This typically results in 5–8 HTTP calls per step (~1–3 seconds), compared to the naive sequential approach that would require 20–100+ calls.
-
-**Important:** Recording blocks the step button until variable capture completes. Each step takes ~1–3 seconds instead of being instant. This is by design — once you step in SAP, the previous step's variable data is erased from the server and cannot be recovered.
-
-### Replaying a Recording
-
-**How to Use:**
-
-1. Run command: **ABAP: Replay Debug Recording** (Command Palette) OR
-
-2. The command opens the native OS file picker filtered to `.abaprecord` files
-
-3. Select the recording file
-
-4. A replay debug session starts — you see the code, stack, and variables exactly as recorded
-
-**Replay Controls:**
-
-- **Step Forward** (F7 / F10 / F11) — all step buttons advance to the next recorded snapshot
-
-- **Step Back** (Shift+F7 / Shift+F11) — go to the previous snapshot
-
-- **Continue** (F5) — jump to the end of the recording and terminate
-
-- **Reverse Continue** — jump to the first snapshot
-
-- **Terminate** — close the replay session
-
-> 💡 VS Code always shows Step Over, Step Into, and Step Out buttons. In replay mode, all three do the same thing: advance to the next recorded step.
-
-**Replay Features:**
-
-- Full variable inspection — expand structures, browse table rows
-
-- Expression evaluation for simple variable lookups
-
-- Hover evaluation for variable values
-
-- Source code displayed from cached recording data (no SAP connection needed)
-
-
-### Limitations
-
-- **Tables > 2000 rows** are truncated during recording — the first 2000 rows are captured, the rest are skipped (marked with a skip reason in replay)
-
-- **Depth limit** — structures/tables beyond the configured depth (default 4 levels) are not expanded
-
-- **Source files** may show `[source unavailable]` if the source couldn't be cached during recording
-
-- **No conditional breakpoints** in replay — you can only step through what was recorded
-
-- **Recording file size** can be large for sessions with many steps or large variables
-
-### Commands
+## All Commands
 
 | Command | Description |
 |---------|-------------|
 | `ABAP: Start Debug Recording` | Begin recording the active debug session |
-| `ABAP: Stop Debug Recording` | Stop recording and optionally save |
-| `ABAP: Replay Debug Recording` | Open and replay a `.abaprecord` file |
-
-### File Format
-
-Recordings are saved as `.abaprecord` files (JSON format) containing:
-
-- Recording metadata (date, connection, duration)
-
-- Array of snapshots (one per step), each with stack trace, scopes, and variables
-
-- Cached source file contents for offline viewing
-
-# 6. Data Query & Visualization
-
-## 6.1 SQL Query Execution
-
-**Purpose:** Execute SQL queries and display results interactively
-
-**How to Use:**
-
-- Ask Copilot: \"Show me the first 10 records from MARA\" OR
-
-- Ask Copilot: \"Query users from table USR02 where name starts with
-  \'Z\'\"
-
-**Features:**
-
-- Interactive data tables with Tabulator
-
-- Sorting (single and multi-column)
-
-- Filtering (supports wildcards \*, ?)
-
-- Row range extraction
-
-- Export capabilities
-
-- SQL syntax tool that Copilot can use to understand correct ABAP SQL
-  syntax before generating queries
-
-- **Displays ANY structured data** - not just SAP SQL, can show JIRA
-  issues, task lists, etc.
-
-**Query Options:**
-
-- SQL mode: Run ABAP SQL queries on SAP tables
-
-- Data mode: Display any structured data (columns + values)
-
-**Safety Features:**
-
-- Max row limit (default 1000, max 50000)
-
-- Row range restriction for internal processing
-
-- Prevents accidental large data transfers
-
-- **Production System Guard:** When Copilot requests data in internal mode
-  (data sent back to Copilot) from a production system, a dialog prompts you to:
-  - Run & send results to Copilot
-  - Run & show in UI only (data not sent to Copilot)
-  - Cancel the query
-  
-  This protects sensitive production data from being inadvertently shared.
-
-**Display Modes:**
-
-- **UI mode:** Shows results in interactive webview for user
-
-- **Internal mode:** Returns data to Copilot for analysis (requires row
-  range)
-
-**Note:** ABAP SQL UP TO x ROWS doesn\'t work via ADT - use maxRows
-parameter instead (Copilot will handle that)
-
-# 7. Transport Management
-
-## 7.1 Transport Request View
-
-**Purpose:** Manage SAP transport requests
-
-**How to Use:**
-
-- View in Activity Bar → ABAP FS → Transports panel
-
-**Features:**
-
-- List user\'s transports
-
-- List transports for any user
-
-- View transport objects
-
-- Compare transports (find differences)
-
-- Copy transport number to clipboard
-
-- Run ATC on transport
-
-- Open transport in GUI
-
-- Release transports
-
-- Delete transports
-
-- Change transport owner
-
-- Add users to transport
-
-- Add transport to source control
-
-- Refresh transports list
-
-**Transport Request Tool (via Copilot):**
-
-- \"Show me my transports\"
-
-- \"Get details for transport DEVK900123\"
-
-- \"What objects are in transport DEVK900123?\"
-
-- \"Compare transports DEVK900123 and DEVK900124\"
-
-**Fallback for Older Systems:** If the ADT transport API is not
-available, tool automatically queries transport tables directly (E070,
-E071, E071K) using SQL
-
-**Location:** Activity Bar → ABAP FS → Transports
-
-## 7.2 Transport Object Operations
-
-**Purpose:** Work with objects in transports
-
-**How to Use:**
-
-- Right-click transport object in Transports view
-
-**Features:**
-
-- Open object in editor
-
-- Diff with current version
-
-- Reveal in explorer
-
-# 8. Version Control
-
-## 8.1 abapGit Integration
-
-**Purpose:** Git version control for ABAP objects
-
-**How to Use:**
-
-- Activity Bar → ABAP FS → abapGit panel
-
-**Features:**
-
-- Create Git repositories
-
-- Link existing repos
-
-- Pull from Git (overwrites local changes)
-
-- Push to Git (commit changes)
-
-- Stage/unstage changes
-
-- Register in VS Code source control
-
-- View repository status
-
-- Unlink repositories
-
-**Location:** Activity Bar → ABAP FS → abapGit
-
-## 8.2 ABAP Revision History
-
-**Purpose:** View and compare historical versions of objects
-
-**How to Use:**
-
-- Command palette: ABAP: Show object history OR
-
-- Right-click object in transports → Add transport to source control OR
-
-- Ask Copilot: "Show version history for ZCL_MY_CLASS"
-
-**Features:**
-
-- View revision history
-
-- Diff with any revision
-
-- Normalized diff (formatted comparison)
-
-- Navigate revisions (previous/next)
-
-- Code normalization toggle
-
-- Restore old versions
-
-**Version History Tool (via Copilot):**
-
-The `get_version_history` tool provides three actions:
-
-- **list_versions** (default) - Shows version history with dates, authors, transports, and titles
-
-- **get_version_source** - Retrieves complete source code at a specific historical version
-
-- **compare_versions** - Compares two versions and shows added/removed lines
-
-**Example Copilot Questions:**
-
-- "Show version history for ZCL_MY_CLASS"
-
-- "Who changed ZCL_MY_CLASS recently?"
-
-- "Get the code from version 2 of ZCL_MY_CLASS" (version 1 = most recent)
-
-- "Compare version 1 and version 3 of ZCL_MY_CLASS"
-
-- "What changed between the last two versions of ZTEST_PROGRAM?"
-
-## 8.3 Blame Gutter
-
-**Purpose:** GitLens-style inline blame annotations showing who last changed each line, when, and in which transport
-
-**How to Use:**
-
-- Click the **blame icon** ($(git-commit)) in the editor title bar OR
-
-- Press **Ctrl+Alt+B** with an ABAP file open OR
-
-- Command palette: ABAP FS: Show Blame
-
-- Optional: switch between the original inline layout and the GitLens-inspired blame lane with the `abapfs.blame.renderMode` setting
-
-**Features:**
-
-- Per-line attribution — author, date, and transport number shown inline after each line
-
-- Two render modes — `classic` keeps the current inline-after-code layout, `gitlens` moves blame into a fixed lane before the code
-
-- Transport description shown inline (e.g., `JSMITH · Jan 15, 2026 · KD1K900123 — S 8000005926: Fix pricing logic`)
-
-- Color-coded left border per author for quick visual grouping
-
-- Consecutive lines by the same author/transport are grouped with a `│` continuation marker
-
-- All annotations are column-aligned (start at the same position regardless of line length)
-
-- Hover tooltip with full date and transport details
-
-- Per-file state — blame can be active on one file while another file shows no blame
-
-- Auto-hides when you start editing (document becomes dirty)
-
-- Show Blame button reappears after undo returns the document to clean state
-
-- Cached results — re-opening blame on the same file is instant
-
-- Cache invalidated on save (version history may have changed)
-
-- Cancellable progress notification while fetching version history
-
-**How It Works:**
-
-Blame walks backward through the SAP version history (same algorithm as `git blame`):
-
-1. Fetches all versions of the object from SAP
-2. Starting from the newest version, diffs each consecutive pair (newer vs older)
-3. Lines that were added/changed in the newer version → attributed to that version's author
-4. Lines that are identical in both → carried forward to check against the next older version
-5. Lines still unattributed after all versions → attributed to the oldest version
-
-Version sources are fetched in parallel batches for performance.
-
-**Requirements:**
-
-- Object must have version history in SAP (objects in $TMP with no transports have no versions)
-
-- Document must not be dirty (unsaved changes)
-
-- ABAP files only (`.abap` language)
-
-- Render mode is controlled by the `abapfs.blame.renderMode` setting (`classic` or `gitlens`)
-
-**Keyboard Shortcut:** Ctrl+Alt+B (toggles show/hide)
-
-# 9. Testing Features
-
-## 9.1 Run Unit Tests
-
-**Purpose:** Execute ABAP unit tests
-
-**How to Use:**
-
-- Click test beaker icon in editor toolbar OR
-
-- Command palette: ABAP FS: Run ABAP Unit Tests OR
-
-- Ask Copilot: \"Run unit tests for ZCL_MY_CLASS\"
-
-**Features:**
-
-- Executes all unit tests in object
-
-- Results in VS Code Testing panel
-
-- Pass/fail indicators
-
-- Test coverage information
-
-- Test duration reporting
-
-**Unit Test Tool (via Copilot):**
-
-The `run_unit_tests` tool returns **structured results to Copilot**:
-
-- **Pass/Fail Status:** Copilot receives whether all tests passed or some failed
-
-- **Test Counts:** Total tests, passed count, failed count
-
-- **Execution Time:** Total time and per-method timing
-
-- **Detailed Results:** Individual test class and method results with failure alerts
-
-- **Actionable Feedback:** Copilot can analyze failures and suggest fixes
-
-**Example Copilot Questions:**
-
-- "Run unit tests for ZCL_MY_CLASS"
-
-- "Execute tests on this class and tell me what failed"
-
-- "Check if ZCL_PRICING tests pass"
-
-- "Run tests and fix any failures"
-
-**Requirements:**
-
-- ABAP unit test classes defined in object
-
-**Location:** Results appear in VS Code Testing view (beaker icon in
-sidebar) AND returns to Copilot for analysis
-
-## 9.2 Create Test Classes
-
-**Purpose:** Generate unit test class skeleton
-
-**How to Use:**
-
-- Right-click class file → Create test class include OR
-
-- Command palette: ABAP FS: Create test class include OR
-
-- Ask Copilot: \"Create test class for ZCL_MY_CLASS\"
-
-**Features:**
-
-- Creates test include file
-
-- Opens in editor
-
-- Proper test class structure
-
-- Links to main class
-
-**Create Test Include Tool (via Copilot):**
-
-The `create_test_include` tool creates a unit test class for an existing ABAP class.
-
-**Example Copilot Questions:**
-
-- "Create test class for ZCL_MY_CLASS"
-
-- "Add unit tests to this class"
-
-- "Set up testing for ZCL_PRICING"
-
-**Requirements:**
-
-- Must be a class file (\*.clas.abap)
-
-## 9.3 Test Documentation Generator
-
-**Purpose:** Create professional Word documents from test screenshots
-
-**How to Use:**
-
-- Ask Copilot with screenshot file paths:
-
-- \"Create test documentation with these screenshots:
-
-- Scenario 1: Login Happy Path
-
-- \- C:\\tests\\login1.png - Login page
-
-- \- C:\\tests\\login2.png - Successful login\"
-
-**Features:**
-
-- Professional Word document output
-
-- Organized by test scenarios
-
-- Screenshot embedding
-
-- Descriptions for each screenshot
-
-- Scenario-based organization
-
-- Custom titles and dates
-
-- Proper formatting
-
-**Use Case:**
-
-- Playwright test documentation
-
-- Manual test documentation
-
-- QA reporting
-
-- Test evidence collection
-
-# 10. Documentation & Diagrams
-
-## 10.1 Mermaid Diagram Creation
-
-**Purpose:** Generate flowcharts and diagrams for ABAP code
-
-**How to Use:**
-
-- Ask Copilot: \"Create a flowchart showing the flow of method
-  PROCESS_DATA\" OR
-
-- Ask Copilot: \"Generate a class diagram for ZCL_MY_CLASS\"
-
-**Features:**
-
-- Interactive webview with zoom controls (default 200%)
-
-- Smooth 20% zoom increments
-
-- Save diagrams
-
-- Multiple diagram types supported:
-
-  - Flowcharts
-
-  - Sequence diagrams
-
-  - Class diagrams
-
-  - State machines
-
-  - ER diagrams
-
-  - User journeys
-
-  - Gantt charts
-
-  - Pie charts
-
-  - Git graphs
-
-  - Mind maps
-
-  - Timelines
-
-  - Sankey diagrams
-
-  - XY charts
-
-  - Block diagrams
-
-  - Packet diagrams
-
-**Themes:** default, dark, forest, neutral
-
-**Tools (via Copilot):**
-
-- create_mermaid_diagram - Create and display diagram
-
-- validate_mermaid_syntax - Check syntax before rendering
-
-- get_mermaid_documentation - Get syntax help
-
-- detect_mermaid_diagram_type - Auto-detect diagram type
-
-## 10.2 ABAP Documentation
-
-**Purpose:** View SAP help for ABAP keywords
-
-**How to Use:**
-
-- Press **F1** with cursor on ABAP keyword OR
-
-- Command palette: ABAP FS: Show ABAP documentation
-
-**Features:**
-
-- Context-sensitive help
-
-- Opens SAP documentation
-
-- Keyword-based lookup
-
-**Keyboard Shortcut:** F1
-
-# 11. Developer Tools
-
-## 11.1 ABAP Dumps Analysis
-
-**Purpose:** Analyze runtime errors and dumps
-
-**How to Use:**
-
-- Activity Bar → ABAP FS → Dumps panel OR
-
-- Ask Copilot: \"Analyze the latest dumps\" OR
-
-- Ask Copilot: \"Show me dumps from today\"
-
-**Features:**
-
-- List available dumps (with ID, error type, timestamp, content size)
-
-- Detailed dump analysis (specific dump by ID)
-
-- AI-powered root cause analysis
-
-- Fix suggestions
-
-- Structured dump data parsing
-
-- HTML content analysis (safe structure parsing)
-
-**Dump Actions:**
-
-- List dumps - Shows all available dumps
-
-- Analyze dump - Deep analysis of specific dump
-
-- Refresh - Update dump list
-
-- Delete - Remove old dumps
-
-**Tools (via Copilot):**
-
-- \"List all dumps from today\"
-
-- \"Analyze dump with ID xyz123\"
-
-- \"What caused the RABAX error?\"
-
-**Location:** Activity Bar → ABAP FS → Dumps
-
-## 11.2 Performance Traces
-
-**Purpose:** Analyze ABAP performance traces
-
-**How to Use:**
-
-- Activity Bar → ABAP FS → Traces panel OR
-
-- Ask Copilot: \"Show me recent trace runs\" OR
-
-- Ask Copilot: \"Analyze trace for performance bottlenecks\"
-
-**Features:**
-
-- List trace runs (with performance summary)
-
-- List trace configurations
-
-- Detailed trace analysis with bottleneck detection
-
-- Statement-level performance data
-
-- Hit count and timing analysis
-
-- Auto-fallback to hitlist for Aggregated Traces
-
-- **Automatic bottleneck identification:**
-
-  - Database bottlenecks
-
-  - ABAP processing issues
-
-  - Performance hotspots
-
-**Trace Actions:**
-
-- List runs - Recent trace executions
-
-- List configurations - Available trace configs
-
-- Analyze run - Detailed analysis with bottlenecks
-
-- Get statements - Statement-level performance
-
-- Get hitlist - Hit count and timing
-
-- Refresh - Update trace list
-
-- Delete - Remove trace data
-
-**Tools (via Copilot):**
-
-- \"Show me trace runs from today\"
-
-- \"Analyze trace xyz for bottlenecks\"
-
-- \"What are the slowest statements in trace xyz?\"
-
-**Perfect For:**
-
-- Performance optimization
-
-- Bottleneck analysis
-
-- SQL performance tuning
-
-- Identifying slow code
-
-**Location:** Activity Bar → ABAP FS → Traces
-
-## 11.3 Text Elements Management
-
-**Purpose:** Manage translatable text elements in programs, classes, and
-function groups
-
-**How to Use:**
-
-- Command palette: ABAP FS: Text Elements Manager OR
-
-- Right-click ABAP file → Text Elements Manager OR
-
-- Ask Copilot: \"Show me text elements for ZTEST_PROGRAM\"
-
-**Features:**
-
-- **Read text elements** - Works on ALL SAP systems (newer and older)
-
-- **Create text elements** - Only on newer systems with ADT text
-  elements API
-
-- **Update text elements** - Only on newer systems with ADT text
-  elements API
-
-- **Fallback for older systems:** Opens text elements editor in SAP GUI
-  if ADT API not available
-
-**Limitations:**
-
-- CREATE/UPDATE only work on systems with ADT text elements API support
-
-- Older systems automatically fallback to SAP GUI editor
-
-- READ operation works on all systems
-
-**Tool (via Copilot):**
-
-- \"Show me text elements for ZTEST_PROGRAM\"
-
-- \"Read text elements from ZCL_MY_CLASS\" (works on all systems)
-
-- \"Create text element 001 with text \'Hello World\'\" (newer systems
-  only)
-
-**Manual Command:** Opens interactive webview editor for
-creating/editing text elements
-
-**Supported Object Types:**
-
-- Programs (PROG)
-
-- Classes (CLAS)
-
-- Function Groups (FUGR)
-
-## 11.4 Regex Search in Code
-
-**Purpose:** Advanced search within ABAP source code
-
-**How to Use:**
-
-- Ask Copilot: \"Find all methods matching \'METHOD.\*get\' in
-  ZCL_MY_CLASS\" OR
-
-- Copilot uses search_abap_object_lines tool automatically
-
-**Features:**
-
-- **Regex support:** Full regular expression patterns
-
-- **Word boundaries:** \\bICT\\b matches whole word ICT only
-
-- **Pattern matching:** METHOD.\*restrict finds method definitions
-  containing \"restrict\"
-
-- **Character classes:** \[A-Z\]+ finds uppercase sequences
-
-- **Context lines:** Configurable lines before/after match (default 3)
-
-- **Wildcard object search:** Search multiple objects with Z\* patterns
-
-- **Max objects control:** Limit how many objects to search (1-10)
-
-- **Class structure discovery:** Copilot can use regex `^\s*(CLASS-)?METHODS?\s+\w+` with `contextLines=0` to list all methods in a class with their line numbers
-
-**Class Structure Discovery:**
-
-Copilot can use regex to discover class structure:
-
-- "List all methods in CL_SALV_TABLE" → Uses regex to find all METHOD declarations
-
-- Returns method names with line numbers for quick navigation
-
-**Method Extraction:**
-
-For extracting specific method code, use `get_abap_object_lines` with `methodName` parameter:
-
-- "Show me the FACTORY method from CL_SALV_TABLE"
-
-- Returns complete method code from METHOD...ENDMETHOD
-
-- Handles comments correctly (ignores commented METHOD/ENDMETHOD lines)
-
-- Supports interface method syntax (e.g., IF_INTERFACE~METHOD_NAME)
-
-**Literal vs Regex:**
-
-- Literal mode (default): Fast exact text matching
-
-- Regex mode: Powerful pattern matching with regex syntax
-
-**Limitations:**
-
-- Searches **committed code only** - doesn\'t see unsaved local edits
-
-- Use VS Code search for local unsaved changes
-
-## 11.5 Enhanced Views & Panels
-
-#### Activity Bar Views:
-
-1. **Transports** - Transport request management
-2. **Dumps** - Runtime error analysis
-3. **ATC Finds** - Code quality results
-4. **Traces** - Performance trace analysis
-5. **abapGit** - Git repository management
-
-#### Explorer Views:
-
-1. **Favorites** - Quick access to frequent objects
-
-#### Panel Views:
-
-1. **ATC Documentation** - Detailed check documentation
-
-## 11.8 Custom Editors
-
-**Purpose:** Specialized editors for specific file types
-
-**Editors:**
-
-1.  **Message Class Editor** (\*.msagn.xml) - Visual message class
-    editing
-
-2.  **HTTP Service Editor** (\*.http.xml) - HTTP service configuration
-
-## 11.9 ADT Feed Reader
-
-Purpose: Monitor SAP system events and show notifications in real-time
-
-How to Use:
-
-- Setup: Command palette: ABAP FS: Configure ADT Feeds
-
-<!-- -->
-
-- Access \"Feed Inbox\" view in the sidebar
-
-Features:
-
-- Subscribe to system feeds (ABAP Runtime Errors, ATC Findings, System Messages, URI Creation Errors, etc.)
-
-<!-- -->
-
-- Configure polling intervals per feed
-
-<!-- -->
-
-- Enable/disable notifications for new entries
-
-<!-- -->
-
-- Use default queries or create custom query filters
-
-<!-- -->
-
-- View all feed entries in a unified inbox
-
-<!-- -->
-
-- Mark entries as read/unread
-
-<!-- -->
-
-- Click entries to open details in a WebView
-
-Configuration:
-
-- Select which feeds to monitor per connected system
-
-<!-- -->
-
-- Set polling intervals (default: 120 seconds for most feeds, 24 hours
-  for ATC)
-
-<!-- -->
-
-- Enable/disable notifications per feed
-
-<!-- -->
-
-- Use quick templates or custom queries to filter entries
-
-Supported Feeds:
-
-- ABAP Runtime Errors (Dumps)
-
-<!-- -->
-
-- ATC Findings
-
-<!-- -->
-
-- System Messages
-
-<!-- -->
-
-- URI Creation Errors
-
-<!-- -->
-
-- And other system-specific feeds
-
-Limitations:
-
-- Only works on systems with ADT Feeds API support
-
-- Older systems may not support all feed types
-
-## 11.10 Run SAP Transaction
-
-Purpose: Execute SAP transaction codes directly from VS Code
-
-How to Use:
-
-- Command palette: ABAP Copilot: Run SAP Transaction
-
-<!-- -->
-
-- Search for t-codes by name or enter directly (e.g., \"MM43\",
-  \"SE38\")
-
-Features:
-
-- Search for transaction codes by name
-
-<!-- -->
-
-- Enter t-code directly in the search box
-
-<!-- -->
-
-- Opens transaction in your preferred GUI type
-
-<!-- -->
-
-- Respects connection-specific GUI preferences
-
-Configuration: Configure GUI preference in connection settings
-(sapGui.guiType):
-
-How it Works:
-
-1.  Select your SAP system (if multiple connected)
-
-       2. Search for transaction or type tcode directly (e.g., \"MM43\")
-
-      3. Press Enter or select from results
-
-      4. Transaction opens in your configured GUI preference
-
-Limitations:
-
-- Native SAP GUI only works on Windows
-
-<!-- -->
-
-- Embedded WebView requires manual login (no SSO support)
-
-<!-- -->
-
-- Some transactions may not work properly in embedded mode
-
-## 11.11 Message Class Editor
-
-Purpose: Edit SAP message classes in a user-friendly table view instead
-of raw XML
-
-How to Use:
-
-- Search for a message class (e.g., \"ZMY_MESSAGES\")
-
-<!-- -->
-
-- Message class automatically opens in custom table editor
-
-<!-- -->
-
-- Or manually open .msagn.xml files
-
-Features:
-
-- View: All messages displayed in an easy-to-read table format
-
-<!-- -->
-
-- Add: Click ➕ button to add new messages with automatic number
-  suggestion
-
-<!-- -->
-
-- Edit: Click ✏️ button or double-click message text to edit
-
-<!-- -->
-
-- Delete: Click 🗑️ button to delete messages
-
-<!-- -->
-
-- Save: Ctrl+S to save all changes back to SAP
-
-<!-- -->
-
-- Validation: Automatic validation (max 72 characters, required fields)
-
-How it Works:
-
-- Add: System suggests next available message number (skips deleted
-  ones)
-
-<!-- -->
-
-- Edit: Message text is validated and updated
-
-- Delete: Message is marked as deleted (sent to SAP
-  as \<mc:deletedmessages\>)
-
-- Save: All changes (add/edit/delete) are saved together
-
-Message Format:
-
-- Message numbers are zero-padded (001, 002, etc.)
-
-<!-- -->
-
-- Message text limited to 72 characters
-
-<!-- -->
-
-- All standard SAP attributes preserved
-
-Limitations:
-
-- Only works with message classes (MSAG/N object type)
-
-- Long text editing not supported
-
-Visual Editor Features:
-
-- Clean table layout with message number and text
-
-<!-- -->
-
-- Action buttons (Add, Edit, Delete) for each operation
-
-<!-- -->
-
-- Real-time validation feedback
-
-<!-- -->
-
-- Notifications for successful operations
-
-## 11.12 SAP Connection Manager
-
-**Purpose:** Modern webview-based UI for managing SAP system connections
-
-**How to Use:**
-
-- Command palette: **ABAP FS: Connection Manager** 
-
-**Features:**
-
-**Connection Management:**
-- **Add/Edit/Delete** connections with visual form interface
-- **Bulk operations:** Delete multiple connections, bulk edit usernames  
-- **Dual storage:** Save to user settings (global) or workspace settings (project-specific)
-- **Validation:** Automatic name validation, JSON syntax verification, rollback on error
-- **Security:** Passwords stored in OS credential manager(will be asked during first connect), never in settings files
-
-**Import/Export:**
-- **Export connections** to JSON file for backup/sharing (user/passwords excluded for security)
-- **Import from JSON** - merge connections from exported files
-- **Cloud connection wizards:**
-  - Create from BTP Service Key (JSON)
-  - Create from BTP Endpoint (interactive CF login flow)
-
-**Connection Configuration:**
-- **Basic:** ADT URL, username, client, language
-- **SSL:** Allow self-signed certificates, custom CA
-- **SAP GUI:** Server, system number, router, message server, GUI type (Desktop/Embedded WebGUI/Browser)
-- **OAuth:** Client ID, secret, login URL
-- **Advanced:** ATC approver, ATC variant, max debug threads, diff formatter
-
-**Bulk Operations:**
-- **Select multiple connections** with checkboxes
-- **Bulk delete** - remove multiple connections at once
-- **Bulk username edit** - update username across multiple connections
-- Visual confirmation dialogs for bulk actions
-
-**Visual Features:**
-- Color-coded sections (User vs Workspace settings)
-- Expandable connection cards
-- Real-time validation feedback
-- Success/error notifications
-- Automatic refresh after changes
-
-**Requirements:** None - works on all systems
-
-**Location:** Command Palette → ABAP FS: Connection Manager
-
-## 11.13 Dependency Graph Visualizer
-
-**Purpose:** Interactive visual dependency graph showing where-used relationships with expandable nodes
-
-**How to Use:**
-
-- Right-click in ABAP code → **Visualize Dependency Graph**
-- Place cursor on specific method/variable for symbol-level graph
-- Graph auto-builds for small graphs (<100 nodes), shows filter summary for large graphs
-- For large graphs, update filters if needed and click "Build Graph" button
-
-**Features:**
-
-**Graph Visualization:**
-- **Interactive nodes:** Double-click to open objects in editor
-- **Dynamic expansion:** Right-click node → "Expand Dependencies" to discover deeper relationships
-- **Symbol-level precision:** Place cursor on method/variable before opening graph to see its specific usage
-- **Root node tracking:** Reset to original root object at any time
-- **Color-coded nodes:**
-  - Red = Root object (what you searched for)
-  - Purple = Expanded nodes (where you've explored dependencies)
-  - Dynamic colors per object type (auto-generated for maximum distinction)
-  - Double border = Can expand further (more dependencies available)
-  
-**Layout Options:**
-- **Cose** - Physics-based clustering (default)
-- **Concentric** - Root in center, dependencies in rings
-- **Breadthfirst** - Level-based tree from root
-- **Circle** - Circular arrangement
-- **Grid** - Ordered grid layout
-
-**Filtering:**
-- **Custom/Standard toggle:** Show only Z*/Y* objects or only SAP standard objects
-- **Object type filter:** Show only specific types (CLAS, PROG, FUNC, etc.)
-- **Usage type filter:** Filter by edge usage types (if available)
-- **Name pattern filter:** Filter by object name with wildcards (e.g., Z*MD*)
-- **Real-time counts:** Shows filtered/total count for each object type
-- **Reset filters:** Clear all filters with one click
-
-**Navigation:**
-- **Double-click node:** Opens object in VS Code editor at exact usage location
-- **Right-click node:** Context menu with Open/Expand/Focus options
-- **Hover tooltip:** Shows object details (type, package, responsible, parent class for methods)
-- **Fit to view:** Auto-zoom to fit entire graph
-- **Pan/Zoom:** Mouse wheel zoom, drag to pan
-- **Reset to root:** Restore original graph and clear expansions
-
-**Expansion:**
-- **Right-click node** → "Expand Dependencies" to fetch where this object is used
-- **Tracks expansion state:** Purple nodes show what you've explored
-- **Merge results:** New dependencies integrate into existing graph
-- **Unlimited depth:** Explore dependencies as deep as needed
-
-**Export:**
-- **Export SVG:** Save graph as SVG image (non-interactive)
-- No JSON export
-
-**Context-Aware:**
-- Automatically detects object type from open file
-- Symbol-level analysis when cursor is on specific variable/method/class
-- Shows exact line and column where object is used
-- Parent class tracking for methods (enables filtering by class)
-
-**Performance:**
-- Graphs >100 nodes show filter summary first (apply filters and click "Build Graph" to render)
-- Aggressive node spacing reduces overlap
-
-**Requirements:** 
-- ABAP file open in editor
-- Active SAP connection
-- Works on all object types (classes, programs, functions, etc.)
-
-**Location:** Right-click menu → Visualize Dependency Graph
-
-## 11.14 ADT Communication Log
-
-**Purpose:** Capture and visualize all HTTP requests/responses between VS Code and SAP ADT — for debugging network issues, troubleshooting slow operations, and understanding what happens under the hood
-
-**How to Use:**
-
-- Command palette: **ABAP FS: Activate Communication Log** → select which SAP connection to log
-
-- The Communication Log panel appears in the bottom panel area
-
-- To stop logging: **ABAP FS: Deactivate Communication Log**
-
-**Features:**
-
-- **Real-time capture** — Every HTTP request/response between VS Code and SAP is logged as it happens
-
-- **Filtering:**
-  - By system (dropdown of all logged connections)
-  - By HTTP status (Success 2xx, Errors 4xx/5xx, Pending)
-  - By URL (text search with 200ms debounce)
-
-- **Entry details** — Click any entry to expand and see:
-  - Query parameters
-  - Request/response headers
-  - Request/response bodies (XML and JSON are syntax-highlighted)
-  - Duration in milliseconds
-
-- **Auto-scroll** — Toggle to automatically follow new entries
-
-- **Export** — Download all visible entries or single entries as JSON for sharing or analysis
-
-- **Clear** — Reset all log entries
-
-**Storage:**
-
-- In-memory circular buffer (max 2000 entries) — not persisted to disk
-
-- Entries are lost when you deactivate the log or close VS Code
-
-**When to Use:**
-
-- Debugging slow SAP operations (check which API calls take the longest)
-
-- Troubleshooting connection issues (see exact HTTP errors)
-
-- Understanding extension behavior (see what ADT APIs are called for each action)
-
-- Reporting bugs (export the log and attach to issue reports)
-
-**Commands:**
-
-| Command | Description |
-|---------|-------------|
-| `ABAP FS: Activate Communication Log` | Start logging for a specific SAP connection |
-| `ABAP FS: Deactivate Communication Log` | Stop logging and clear entries |
-
-## 11.15 Virtual Tool Grouping Fix
-
-**Purpose:** Ensure all 39 ABAP FS AI tools remain visible to GitHub Copilot by disabling VS Code's experimental tool grouping
-
-**What is this?**
-
-VS Code has an experimental setting (`github.copilot.chat.virtualTools.threshold`) that groups extension tools into virtual categories when the number of tools exceeds a threshold. When active, Copilot often fails to activate these groups, making ABAP FS tools invisible to the AI — it simply cannot see or use them.
-
-**How It Works:**
-
-- On extension activation, ABAP FS checks the `github.copilot.chat.virtualTools.threshold` setting
-
-- If the threshold is greater than 0 (grouping is active), a warning dialog appears:
-  - **"Disable Grouping & Reload"** — Sets the threshold to 0 at both global and workspace level, resets tool groups, and reloads VS Code
-  - **"Remind Me Next Time"** — Defers the prompt to next activation
-  - **"Don't Ask Again"** — Permanently suppresses the prompt
-
-**Why It Matters:**
-
-ABAP FS registers 39 specialized tools for AI interactions (search objects, read code, run tests, execute queries, manage transports, etc.). When VS Code groups these tools, Copilot typically cannot discover or activate the groups, effectively disabling all AI-powered features. Setting the threshold to 0 disables grouping entirely, ensuring all tools are always available.
-
-**Setting Modified:**
-
-- `github.copilot.chat.virtualTools.threshold` → set to `0` (both global and workspace level)
-
-**Note:** This prompt only appears if VS Code's experimental grouping feature is active. Most users will never see it.
-
-## ⚠️ Important Considerations
-
-1.  **Create Objects \"Programmatically\"** - Still shows transport request dialogs (not fully automated)
-
-2.  **Text Elements CREATE/UPDATE** - Only works on newer SAP systems with ADT API support
-
-3.  **Transport Management** - May require direct table queries on older systems (automatic fallback)
-
-4.  **Copilot Code Search** - Only searches committed code, not unsaved local changes
-
-5.  **Mass Activation** - Requires user selection from dialog (not automatic)
-    
-6.  **Save/Activation** - Code changes are saved to SAP only when user manually saves (Ctrl+S, Keep button, etc) or activates(activate button). No more automatic saving to SAP as and when code is changed in VS Code editor. This is to ensure a human element always remain before code is commmitted to SAP (particularly for changes made by AI).
-
-## 🎯 Key Differences: Commands vs Tools
-
-### Commands (User-Invoked Manually):
-
-- Run from Command Palette (Ctrl+Shift+P)
-
-- Click buttons in UI
-- Use keyboard shortcuts
-- Examples:
-  - ABAP FS: Create object
-  - ABAP FS: Run ABAP Unit Tests
-  - ABAP FS: Text Elements Manager
-
-### Language Model Tools (Copilot Uses Automatically):
-
-- Ask Copilot in chat to use them
-- Copilot decides which tools to call
-- Examples:
-  - "Where is BAPI_USER_GET_DETAIL used?" → Copilot calls find_where_used
-  - "Show me code for ZCL_MY_CLASS" → Copilot calls get_abap_object_lines
-  - "Run ATC on this file" → Copilot calls run_atc_analysis
+| `ABAP: Stop Debug Recording` | Stop and save (plain or compressed) |
+| `ABAP: Replay Debug Recording` | Open and replay a recording file |
+| `ABAP: Compress Debug Recording` | Compress an existing `.abaprecord` file |
+| `ABAP: Decompress Debug Recording` | Decompress a `.abaprecord.gz` file |
 
 ---
 
-## 🔒 Privacy & Telemetry
+## Limitations
 
-**This extension does NOT send any telemetry data to external servers.**
+| Limitation | Detail |
+|------------|--------|
+| Table rows | First 2,000 rows captured; remainder skipped (marked in replay) |
+| Variable depth | Structures/tables beyond 4 levels deep are not expanded |
+| Source unavailable | Shows `[source unavailable]` if caching failed during recording |
+| No conditional breakpoints | Replay only steps through what was recorded |
+| Step speed | ~1–3 seconds per step during recording (variable capture overhead) |
 
-### What Happens by Default
+# SQL Query Execution
 
-- **Local storage only**: Usage telemetry (tools/commands usage, number of code lines changed by Copilot) is stored in a local CSV file within the extension's storage folder on your machine
-- **No external transmission**: No data is sent to any remote server, cloud service, or third party
-- **No tracking**: The extension does not track users, collect personal data, or phone home
-- **Your data stays with you**: All telemetry files remain on your local machine and are never uploaded
+Query SAP tables directly from VS Code — the equivalent of SE16N or DBACOCKPIT, but driven by natural language and integrated with Copilot.
 
-### For Organizations Wanting Central Telemetry
+## How to Use
 
-If your organization wants to collect telemetry centrally for analytics or monitoring purposes, you can:
+Open the Copilot chat (`Ctrl+Alt+I`) and describe what you want:
 
-1. **Fork the public repository** from GitHub
-2. **Add your own Azure Application Insights connection string** in the telemetry service configuration
-3. **Build your own VSIX package** with your App Insights key
-4. **Distribute internally** to your organization's users
+- *"Show me the first 10 records from MARA"*
+- *"Query USR02 where the username starts with Z"*
+- *"Compare open purchase orders in EKKO for vendor 1000"*
 
-This gives organizations full control over:
-- Whether to collect telemetry at all
-- Where telemetry data is stored
-- Who has access to the data
-- Data retention policies
+Copilot builds and executes the ABAP SQL query, then displays results in an interactive table in the editor.
 
-### Local Telemetry File Location
+## Working with Results
 
-The local CSV telemetry file is stored at:
+The result table supports:
+
+| Action | How |
+|---|---|
+| Sort by column | Click a column header (click again to reverse) |
+| Multi-column sort | Hold `Shift` and click additional headers |
+| Filter rows | Type in the filter box — supports wildcards `*` and `?` |
+| Export | Use the export button in the result toolbar |
+
+You can also ask Copilot to refine results after the initial query: *"Now filter by plant 1000"* or *"Sort by creation date descending"*.
+
+## Display Modes
+
+**UI mode** (default) — results appear in a webview for you to explore interactively. Data stays in VS Code.
+
+**Internal mode** — results are sent back to Copilot for further analysis (e.g., *"find duplicates"*, *"summarize by material type"*). Copilot automatically selects this mode when analysis is needed.
+
+## Production System Protection
+
+When Copilot would send data back to itself from a **production system**, a confirmation dialog appears:
+
+- **Run & send to Copilot** — proceed with analysis
+- **Run & show in UI only** — display results without sharing data with Copilot
+- **Cancel**
+
+This prevents sensitive production data from being inadvertently included in the AI context.
+
+## Notes
+
+- **Row limit:** Default 1000 rows, maximum 50,000. Copilot manages this automatically — the ABAP SQL `UP TO x ROWS` clause is not supported via ADT, so use natural language like *"limit to 500 rows"* instead.
+- **Not just SAP data:** The same result viewer can display any structured data — JIRA issues, task lists, comparison tables — that Copilot assembles during a conversation.
+
+# SAP Data Workbooks (.sapwb)
+
+SAP Data Workbooks are VS Code notebooks that combine ABAP SQL queries, JavaScript processing, and Markdown in a single reusable `.sapwb` file. Use them for multi-step data analysis, data quality checks, and cross-system comparisons.
+
+## Creating a Workbook
+
+1. Open the Command Palette (`Ctrl+Shift+P`)
+2. Run **ABAP FS: New SAP Data Workbook**
+
+Alternatively, create any file with the `.sapwb` extension, or ask Copilot: *"Create a workbook to analyze material master data quality."*
+
+## Cell Types
+
+| Type | Purpose |
+|------|---------|
+| **Markdown** | Section headers, notes, documentation |
+| **ABAP SQL** | Query SAP tables (`SELECT` and `WITH` only — no DML) |
+| **JavaScript** | Process, filter, or compare results from earlier cells |
+
+## Key Concepts
+
+**Running cells**
+
+- Run a single cell with the run button or `Shift+Enter`. You are prompted to select a SAP system.
+- **Run All** (`Ctrl+Shift+Enter`) prompts once and uses that system for all SQL cells.
+
+**Referencing results between cells**
+
+- In **JavaScript**: access a previous cell's rows via `cells[N].result` (0-indexed, so cell 2 is `cells[1]`).
+- In **ABAP SQL**: interpolate earlier results using `${...}`. Strings are auto-quoted; arrays are auto-joined for `IN` clauses.
+
+```sql
+-- Use results from cell 2 (index 1) as a filter
+SELECT matnr, werks FROM marc
+  WHERE matnr IN (${cells[1].result.map(r => r.MATNR)})
+```
+
+**Row limits**
+
+Each SQL cell has a configurable row limit (default: 1000). Adjust with **ABAP FS: Set Cell Max Rows**.
+
+## Example: Data Quality Check
+
+```
+Cell 1 (Markdown):   # Material Data Quality Check
+Cell 2 (ABAP SQL):   SELECT matnr, mtart, meins FROM mara WHERE mtart = 'FERT'
+Cell 3 (JavaScript): const rows = cells[1].result;
+                     return rows.filter(r => !r.MEINS).length + " materials missing UoM";
+Cell 4 (ABAP SQL):   SELECT matnr, werks FROM marc
+                       WHERE matnr IN (${cells[1].result.map(r => r.MATNR)})
+```
+
+## Example: Cross-System Comparison
+
+Run the same query against two systems by executing cells individually and selecting a different system each time. A JavaScript cell then diffs the results.
+
+```
+Cell 1 (Markdown):   # Pricing Condition Comparison: DEV vs QAS
+Cell 2 (ABAP SQL):   SELECT KSCHL, VKORG, MATNR, KBETR FROM A005 WHERE KSCHL = 'ZPR1'
+                     → Run, select DEV
+Cell 3 (ABAP SQL):   SELECT KSCHL, VKORG, MATNR, KBETR FROM A005 WHERE KSCHL = 'ZPR1'
+                     → Run, select QAS
+Cell 4 (JavaScript): const devMap = new Map(
+                       cells[1].result.map(r => [r.KSCHL + r.VKORG + r.MATNR, r])
+                     );
+                     return cells[2].result
+                       .filter(r => {
+                         const d = devMap.get(r.KSCHL + r.VKORG + r.MATNR);
+                         return d && d.KBETR !== r.KBETR;
+                       })
+                       .map(r => ({
+                         ...r,
+                         DEV_KBETR: devMap.get(r.KSCHL + r.VKORG + r.MATNR).KBETR
+                       }));
+```
+
+Workbook files store no system IDs, so they can be shared with colleagues who use different system names.
+
+## Limitations
+
+- SQL supports `SELECT` and `WITH` only — no `INSERT`, `UPDATE`, or `DELETE`
+- String literals are limited to 255 characters (SAP ADT constraint)
+- Avoid interpolating more than ~10 values into an `IN` clause — filter in a JavaScript cell instead
+- Cancelling a cell shows "Interrupted" immediately, but the query continues running on the SAP side
+
+## Commands
+
+| Command | Shortcut / Notes |
+|---------|-----------------|
+| `ABAP FS: New SAP Data Workbook` | Creates a new `.sapwb` file |
+| `ABAP FS: Set Cell Max Rows` | Sets row limit for the current SQL cell |
+
+# Transport Request View
+
+The Transport Request View is the VS Code equivalent of **SE09/SE10**. It lets you manage workbench and customising transports without leaving the editor.
+
+**Open it:** Activity Bar → ABAP FS icon → **Transports** panel.
+
+---
+
+## What you can do
+
+| Action | How |
+|---|---|
+| List your open transports | Panel opens automatically filtered to your user |
+| List another user's transports | Click the filter icon and enter a username |
+| Browse objects in a transport | Expand a transport node |
+| Compare two transports | Right-click a transport → **Compare** |
+| Copy transport number | Right-click → **Copy transport number** |
+| Run ATC quality check | Right-click → **Run ATC** |
+| Open in SAP GUI (SE09) | Right-click → **Open in GUI** |
+| Release a transport | Right-click → **Release** |
+| Delete a transport | Right-click → **Delete** |
+| Change owner / add user | Right-click → **Change owner** / **Add user** |
+| Link to source control | Right-click → **Add to source control** |
+| Refresh the list | Click the refresh icon or press `F5` |
+
+---
+
+## Using Copilot to query transports
+
+You can also ask Copilot in natural language:
+
+- *"Show me my transports"*
+- *"Get details for transport DEVK900123"*
+- *"What objects are in DEVK900123?"*
+- *"Compare transports DEVK900123 and DEVK900124"*
+
+---
+
+## Older SAP systems
+
+If the ADT transport API is unavailable, the extension falls back to direct SQL queries against tables `E070`, `E071`, and `E071K` automatically — no configuration needed.
+
+# Transport Object Operations
+
+Work with individual objects inside a transport request directly from the **Transports** view in the sidebar.
+
+## Accessing Object Actions
+
+Right-click any object listed under a transport request to see available actions.
+
+## Available Actions
+
+| Action | What it does |
+|---|---|
+| **Open** | Opens the object in the editor |
+| **Diff with current version** | Shows a side-by-side diff between the transported version and the current active version |
+| **Reveal in Explorer** | Navigates to the object in the ABAP file explorer |
+
+## Adding Objects to a Transport
+
+Objects are added to a transport automatically when you save changes to an ABAP object that is assigned to a transport request. You can also manually assign an object:
+
+1. Right-click the object in the explorer
+2. Select **Add to Transport**
+3. Choose the target transport request from the list
+
+## Removing Objects from a Transport
+
+1. Open the **Transports** view
+2. Expand the transport request
+3. Right-click the object you want to remove
+4. Select **Remove from Transport**
+
+> **Note:** Removing an object from a transport does not revert its source code — it only unlinks the object from that transport request.
+
+# abapGit Integration
+
+abapGit integration lets you manage Git version control for ABAP objects directly in VS Code, without leaving the editor.
+
+## Opening the abapGit Panel
+
+1. Click the **ABAP FS** icon in the Activity Bar (left sidebar).
+2. Expand the **abapGit** section.
+
+## Common Tasks
+
+### Link an existing repository
+1. In the abapGit panel, click **Link Repository**.
+2. Enter the Git URL and select the SAP package to link.
+
+### Create a new repository
+1. Click **Create Repository**.
+2. Provide the Git URL and target package.
+
+### View staged/unstaged changes
+The abapGit panel lists all changed ABAP objects. Each entry shows whether it is staged or unstaged.
+
+### Stage and commit (Push)
+1. Select objects to stage, or stage all changes.
+2. Click **Push** — this commits and pushes to the remote Git repository.
+3. Enter a commit message when prompted.
+
+### Pull (update from Git)
+1. Click **Pull** on the linked repository.
+2. **Note:** Pull overwrites local ABAP objects with the version from Git. Unsaved local changes will be lost.
+
+### Register with VS Code Source Control
+Click **Register in VS Code SCM** to surface the repository in VS Code's built-in Source Control view (`Ctrl+Shift+G`), enabling diffs and history browsing alongside the ABAP FS panel.
+
+### Unlink a repository
+Click the **Unlink** icon next to the repository to remove the connection without deleting any code.
+
+## Tips
+
+- Use **Pull** to sync a fresh system with an existing codebase stored in Git.
+- The abapGit panel respects the active SAP connection — switch connections in the ABAP FS panel first if you work with multiple systems.
+
+# ABAP Revision History
+
+Every time an ABAP object is activated, SAP stores a version snapshot — the same history you see in SE80 via **Utilities → Versions**. This extension brings that history directly into VS Code with a visual diff editor.
+
+## Opening Revision History
+
+**Option 1 — Command Palette** (`Ctrl+Shift+P`):
+> `ABAP: Show object history`
+
+**Option 2 — Explorer context menu:**
+Right-click any ABAP object → **Show object history**
+
+**Option 3 — Ask Copilot:**
+> "Show version history for ZCL_MY_CLASS"
+
+## Comparing Versions
+
+Once the history panel is open:
+
+1. Select any revision from the list — it shows date, author, and transport number.
+2. Click a revision to open a **side-by-side diff** against the current active version.
+3. Use the **previous/next** arrows to step through revisions one at a time.
+4. Toggle **Code Normalization** to strip formatting differences (like SE80's normalized comparison), so only meaningful changes are highlighted.
+
+## Restoring an Old Version
+
+1. Open the revision you want to restore.
+2. Copy the content from the left pane into your editor, or use the restore action if prompted.
+3. Save and activate as normal.
+
+## vs. SE80 Version Management
+
+| SE80 (Utilities → Versions) | This Extension |
+|---|---|
+| Opens in SAP GUI | Opens inside VS Code |
+| Text-based diff | Syntax-highlighted side-by-side diff |
+| Normalized compare available | Normalization toggle available |
+| Manual copy to restore | Copy from diff pane |
+
+## Using Copilot for Version History
+
+The `get_version_history` tool supports three actions. Version numbers are **1-based**, where **1 = most recent**.
+
+| Action | What it does |
+|---|---|
+| `list_versions` | Lists all versions with date, author, and transport |
+| `get_version_source` | Returns full source code at a specific version number |
+| `compare_versions` | Shows added/removed lines between two version numbers |
+
+**Example questions:**
+
+- "Show version history for ZCL_MY_CLASS"
+- "Who last changed ZCL_MY_CLASS and when?"
+- "Get the code from version 2 of ZCL_MY_CLASS"
+- "Compare version 1 and version 3 of ZTEST_PROGRAM"
+- "What changed between the last two versions of ZTEST_PROGRAM?"
+
+# Blame Gutter
+
+Shows who last changed each line of an ABAP file — author, date, and transport number — displayed inline in the editor, similar to GitLens for Git repositories.
+
+## Activating Blame
+
+With an ABAP file open, use any of:
+
+| Method | Action |
+|--------|--------|
+| Keyboard | **Ctrl+Alt+B** (toggles on/off) |
+| Editor title bar | Click the blame icon ($(git-commit)) |
+| Command Palette | `ABAP FS: Show Blame` |
+
+> Blame is per-file — it can be active on one file while other files show no annotations.
+
+## Reading the Annotations
+
+Each annotated line shows: `AUTHOR · DATE · TRANSPORT — Transport description`
+
+Example: `JSMITH · Jan 15, 2026 · KD1K900123 — S 8000005926: Fix pricing logic`
+
+- **Color-coded left border** — each author gets a distinct color for quick visual grouping
+- **`│` continuation marker** — consecutive lines from the same author/transport are grouped
+- **All annotations are column-aligned** — regardless of line length
+- **Hover over an annotation** for full date and transport details
+
+## Render Modes
+
+Control the layout with the `abapfs.blame.renderMode` setting:
+
+| Value | Layout |
+|-------|--------|
+| `classic` | Blame text appears inline after each line of code |
+| `gitlens` | Blame moves into a fixed lane to the left of the code |
+
+Change via **File > Preferences > Settings**, search for `abapfs blame`.
+
+## Requirements
+
+- Object must have SAP version history — objects in `$TMP` with no transports have no versions
+- File must be saved (no unsaved changes); blame auto-hides when you start editing
+- ABAP files only (`.abap`)
+
+## Performance Notes
+
+- **Cached** — re-opening blame on the same file is instant
+- **Cache clears on save** — ensures fresh results after transport releases
+- **Progress notification** shown while fetching; click **Cancel** to abort
+
+## How It Works
+
+Blame walks backward through SAP version history (same algorithm as `git blame`):
+
+1. Fetches all versions of the object from SAP (in parallel batches)
+2. Diffs each consecutive pair, newest-to-oldest
+3. Lines added/changed in a newer version → attributed to that version's author
+4. Unchanged lines → checked against the next older version
+5. Lines still unattributed after all versions → attributed to the oldest version
+
+# Run Unit Tests
+
+Run ABAP unit tests directly from VS Code — no need to open SE80 or ADT.
+
+## How to Run Tests
+
+**Option 1 — VS Code Testing panel (recommended)**
+
+1. Click the **beaker icon** in the Activity Bar (left sidebar) to open the Testing view.
+2. Browse to your class or program in the test tree.
+3. Click the **Run** (▶) button next to any test class or individual method.
+
+**Option 2 — Command Palette**
+
+1. Press `Ctrl+Shift+P` (Windows/Linux) or `Cmd+Shift+P` (macOS).
+2. Type `ABAP FS: Run ABAP Unit Tests` and press `Enter`.
+
+**Option 3 — Ask Copilot**
+
+> "Run unit tests for ZCL_MY_CLASS"  
+> "Run tests and fix any failures"  
+> "Check if ZCL_PRICING tests pass"
+
+## Results
+
+Results appear in the **VS Code Testing panel** with:
+
+| Info | Detail |
+|---|---|
+| Pass/Fail | Green ✓ / Red ✗ per test method |
+| Test counts | Total, passed, failed |
+| Execution time | Per method and total |
+| Coverage | Test coverage percentage (when available) |
+
+Failed tests show the error message inline — click a failure to jump to the relevant line.
+
+## Compared to SE80 / ADT
+
+| | SE80 / ADT | VS Code (ABAP FS) |
+|---|---|---|
+| Run tests | Menu → Unit Test | Beaker icon or `Ctrl+Shift+P` |
+| See results | Dialog / tab | Native Testing panel |
+| Copilot analysis | No | Yes — Copilot can explain failures and suggest fixes |
+| Jump to failure | Manual | Click failure to navigate |
+
+## Requirements
+
+- The target object must contain ABAP unit test classes (`FOR TESTING`).
+- You must be connected to the SAP system in VS Code.
+
+# Create Test Classes
+
+Add an ABAP unit test include to an existing class — the extension creates the skeleton and opens it in the editor.
+
+## Requirements
+
+- The target object must be a class (`*.clas.abap`)
+- The class must already exist on the SAP system
+
+## How to Create a Test Include
+
+**Option 1 — Context menu**
+
+Right-click the class file in the Explorer → **Create test class include**
+
+**Option 2 — Command Palette**
+
+1. Press `Ctrl+Shift+P`
+2. Type `ABAP FS: Create test class include`
+3. Press `Enter`
+
+**Option 3 — Ask Copilot**
+
+Open the Copilot chat and ask:
+
+- *"Create test class for ZCL_MY_CLASS"*
+- *"Add unit tests to ZCL_PRICING"*
+- *"Set up testing for this class"*
+
+## What Gets Created
+
+- A test include linked to the main class
+- A skeleton test class with `FOR TESTING` and `RISK LEVEL HARMLESS`
+- The new include opens automatically in the editor
+
+## Next Steps
+
+After the include is created, add your test methods and run them with the [Run Unit Tests](#run-unit-tests) command.
+
+# Test Documentation Generator
+
+Generate a professional Word document from test screenshots — organized by scenario, with descriptions and a custom title. Useful for Playwright test reports, manual QA evidence, and sign-off documentation.
+
+## How to Use
+
+Open the Copilot Chat panel (`Ctrl+Alt+I`) and describe your scenarios with the full paths to your screenshots:
+
+```
+Create test documentation with these screenshots:
+
+Scenario 1: Login Happy Path
+
+- C:\tests\login1.png - Login page displayed
+- C:\tests\login2.png - Successful login confirmed
+
+Scenario 2: Error Handling
+
+- C:\tests\error1.png - Invalid credentials message shown
+```
+
+Copilot calls the generator and saves a `.docx` file to your workspace.
+
+## What the Document Contains
+
+| Element | Details |
+|---|---|
+| Title | Custom report title (defaults to "Test Documentation Report") |
+| Date | Test date in DD-MM-YYYY format (defaults to today) |
+| Scenarios | Each scenario gets its own section with a name and description |
+| Screenshots | Embedded images with per-screenshot captions |
+
+## Tips
+
+- Use **absolute paths** for screenshots (e.g. `C:\tests\...`), not relative paths
+- You can include as many scenarios and screenshots per scenario as needed
+- Specify a custom title or date in your prompt if the defaults don't fit: *"Use title 'Regression Test April' and date 30-04-2026"*
+
+# Mermaid Diagram Creation
+
+[Mermaid](https://mermaid.js.org/) is a text-based diagramming language that lets you describe diagrams as simple text — no drawing tools needed. ABAP FS can generate and display Mermaid diagrams directly in VS Code via Copilot chat.
+
+## How to Create a Diagram
+
+1. Open Copilot Chat (`Ctrl+Alt+I`).
+2. Describe the diagram you want. Examples:
+   - *"Create a flowchart showing the flow of method `PROCESS_DATA`"*
+   - *"Generate a class diagram for `ZCL_MY_CLASS`"*
+   - *"Show a sequence diagram for the BAPI call in `ZMY_PROGRAM`"*
+3. The diagram renders in an interactive webview at 200% zoom.
+
+## Working with the Diagram Viewer
+
+| Action | How |
+|--------|-----|
+| Zoom in / out | Use the zoom controls in the webview (20% increments) |
+| Save diagram | Click the save button in the webview |
+
+## Supported Diagram Types
+
+Flowchart · Sequence · Class · State · ER · User Journey · Gantt · Pie · Git Graph · Mind Map · Timeline · Sankey · XY Chart · Block · Packet
+
+## Themes
+
+`default` · `dark` · `forest` · `neutral`
+
+Specify a theme in your prompt: *"Create a flowchart … using the dark theme"*
+
+# ABAP Documentation
+
+Look up SAP help for any ABAP keyword directly in VS Code, without leaving the editor.
+
+## How to Use
+
+1. Open an ABAP file in the editor.
+2. Place your cursor on the keyword you want to look up (e.g., `SELECT`, `LOOP`, `MODIFY`).
+3. Press **F1** — the SAP documentation for that keyword opens immediately.
+
+Alternatively, run **ABAP FS: Show ABAP documentation** from the Command Palette (`Ctrl+Shift+P`).
+
+## What to Expect
+
+- The help content is context-sensitive: it reflects the keyword under the cursor.
+- Documentation is fetched from SAP's official help portal and displayed inside VS Code.
+
+# ABAP Dumps Analysis
+
+Analyze ST22 runtime dumps directly in VS Code — no SAP GUI required.
+
+## What This Replaces
+
+In SAP GUI, you'd use **transaction ST22** to find and read dumps. Here, the same data is available in VS Code with AI-powered root cause analysis and fix suggestions.
+
+## Opening the Dumps Panel
+
+**Activity Bar → ABAP FS icon → Dumps**
+
+Or ask Copilot directly (see [Using Copilot](#using-copilot) below).
+
+## Step-by-Step Workflow
+
+1. **Open the Dumps panel** — the list shows each dump's ID, error type, timestamp, and size.
+2. **Click a dump** to open the detailed view.
+3. **Review the structured analysis** — the extension parses the raw HTML dump content and presents it in a readable format.
+4. **Ask Copilot for help** — Copilot can identify the root cause and suggest a fix based on the dump data.
+
+## Using Copilot
+
+Type any of these in the Copilot chat:
+
+| Prompt | What it does |
+|---|---|
+| `Analyze the latest dumps` | Lists recent dumps and analyzes the most recent one |
+| `Show me dumps from today` | Filters to today's dumps |
+| `What caused the RABAX error?` | AI root cause analysis on the current dump |
+| `Analyze dump with ID xyz123` | Analyzes a specific dump by ID |
+
+## Compared to ST22
+
+| ST22 (SAP GUI) | VS Code Dumps panel |
+|---|---|
+| Manual navigation through raw HTML | Structured, parsed output |
+| No AI assistance | Copilot explains cause and suggests fix |
+| Separate tool from your editor | Inline with your code |
+
+# Performance Traces
+
+Analyze ABAP runtime performance directly in VS Code — the equivalent of **SAT** (ABAP Trace) and **ST05** (SQL Trace) in the SAP GUI, but without leaving your editor.
+
+## Opening the Traces Panel
+
+**Activity Bar → ABAP FS icon → Traces**
+
+Or ask Copilot (Ctrl+Alt+I): *"Show me recent trace runs"*
+
+## Workflow
+
+1. **Record a trace** in the SAP system first (via SAT or ST05 as usual).
+2. In VS Code, open the **Traces** panel to see your recorded runs.
+3. Click a trace run to open it, then choose an analysis action.
+4. Ask Copilot to interpret results: *"Analyze this trace for bottlenecks"*
+
+## Analysis Actions
+
+| Action | What it shows | Equivalent in SAP GUI |
+|---|---|---|
+| **List runs** | Recent trace executions with summary | SAT / ST05 hit list |
+| **Analyze run** | Automatic bottleneck detection | SAT summary screen |
+| **Get statements** | Statement-level timing (non-aggregated traces) | ST05 statement list |
+| **Get hitlist** | Hit counts and total timing (aggregated traces) | SAT aggregated view |
+| **List configurations** | Available trace configs on the system | SAT configuration |
+
+> **Note:** For aggregated traces, *Get statements* automatically falls back to the hitlist.
+
+## What Copilot Can Do
+
+Ask Copilot directly instead of navigating the panel:
+
+- *"Show me trace runs from today"*
+- *"Analyze trace [name] for bottlenecks"*
+- *"What are the slowest SQL statements in the last trace?"*
+- *"Is there a database bottleneck in trace [name]?"*
+
+Copilot automatically identifies:
+
+- **Database bottlenecks** — expensive or repeated SELECT statements
+- **ABAP processing hotspots** — slow internal table operations or loops
+- **Performance outliers** — statements disproportionate to total runtime
+
+## When to Use This vs. SAT/ST05
+
+Use the VS Code Traces panel when you are already working in VS Code and want to stay in context, or when you want Copilot to interpret results for you. Use SAT/ST05 in the SAP GUI when you need to configure detailed trace settings or record a new trace interactively.
+
+# Text Elements Management
+
+Manage translatable text elements (symbols) in ABAP programs, classes, and function groups — the VS Code equivalent of the **Text Elements** tab in SE38/SE24.
+
+**Supported object types:** Programs · Classes · Function Groups
+
+---
+
+## Opening the Text Elements Manager
+
+Three ways to open it for the active file:
+
+| Method | Steps |
+|--------|-------|
+| Command Palette | `Ctrl+Shift+P` → **ABAP FS: Text Elements Manager** |
+| Context menu | Right-click an ABAP file in Explorer → **Text Elements Manager** |
+| Copilot | Ask: *"Show me text elements for ZTEST_PROGRAM"* |
+
+---
+
+## What You Can Do
+
+### Read text elements
+Works on **all SAP systems**. Displays existing text element IDs and their translations in an interactive webview.
+
+### Create / Update text elements
+Available on **newer systems** with ADT text elements API support. Lets you add new symbols or change existing text directly in VS Code — no SAP GUI needed.
+
+> **Older systems fallback:** If the ADT API is not available, the extension automatically opens the text element editor in SAP GUI instead.
+
+---
+
+## Step-by-Step: Editing Text Elements
+
+1. Open an ABAP program, class, or function group in the editor.
+2. Press `Ctrl+Shift+P` and run **ABAP FS: Text Elements Manager**.
+3. The webview shows all existing text elements for the object.
+4. To **add** a new element, enter the ID (e.g. `001`) and text value, then confirm.
+5. To **change** an existing element, edit the text inline and save.
+6. Changes are applied to the active object on the server.
+
+---
+
+## Compared to SE38 Text Elements
+
+| SE38 / SE24 | VS Code (ABAP FS) |
+|-------------|-------------------|
+| Navigate to program → Goto → Text Elements | Command Palette or right-click |
+| Edit in ABAP editor screen | Interactive webview |
+| Save with `Ctrl+S` | Save within the webview |
+| Requires SAP GUI | Works directly in VS Code (newer systems) |
+
+---
+
+## System Compatibility
+
+| Operation | Older systems | Newer systems (ADT API) |
+|-----------|--------------|------------------------|
+| Read | Yes | Yes |
+| Create / Update | Opens SAP GUI fallback | Yes, in VS Code |
+
+# Regex Search in Code
+
+Search ABAP source code using plain text or regular expressions (regex). Regex is a pattern language that lets you match variable text — for example, finding any method name that starts with "get", or any word boundary match.
+
+> **Note:** This searches **committed code only**. Unsaved local edits are not visible — use the standard VS Code search (`Ctrl+Shift+F`) for those.
+
+---
+
+## How to Search
+
+Just ask Copilot in plain language:
+
+- *"Find all usages of COMMIT WORK in ZCL_MY_CLASS"*
+- *"Search for methods matching 'get_\*' in ZREPORT_ORDERS"*
+- *"List all methods in CL_SALV_TABLE"*
+
+Copilot determines whether to use literal or regex matching automatically.
+
+---
+
+## Literal vs. Regex Mode
+
+| Mode | When to use | Example |
+|------|-------------|---------|
+| **Literal** (default) | Exact text match, fast | `COMMIT WORK` |
+| **Regex** | Patterns, wildcards, boundaries | `METHOD.*get` |
+
+### Common Regex Patterns
+
+| Pattern | What it matches | Example |
+|---------|-----------------|---------|
+| `\bICT\b` | Whole word `ICT` only (not `DICT`) | Word boundary |
+| `METHOD.*restrict` | `METHOD` followed by anything then `restrict` | Pattern match |
+| `[A-Z]+` | One or more uppercase letters | Character class |
+| `^\s*(CLASS-)?METHODS?\s+\w+` | Any method declaration | Class structure |
+
+---
+
+## Searching Multiple Objects
+
+Use wildcard patterns to search across several objects at once:
+
+- *"Find SELECT \* in all Z\* reports"* — searches up to 10 matching objects
+- Copilot limits the scope automatically (1–10 objects) to keep results manageable
+
+---
+
+## Viewing Class Structure
+
+To list all methods in a class with their line numbers:
+
+- *"List all methods in ZCL_MY_CLASS"*
+
+Copilot returns each method name and the line where it's declared — useful for navigating large classes.
+
+---
+
+## Extracting a Single Method
+
+To see the complete code of one method:
+
+- *"Show me the FACTORY method in CL_SALV_TABLE"*
+
+Returns everything from `METHOD FACTORY.` to `ENDMETHOD.`, including interface method syntax like `IF_SALV_TABLE~FACTORY`.
+
+---
+
+## Context Lines
+
+By default, Copilot shows 3 lines before and after each match. Ask for more or fewer:
+
+- *"Find RAISE EXCEPTION in ZCL_ORDERS, show 5 lines of context"*
+
+# S/4HANA Readiness Dashboard
+
+Visualize custom code compatibility with S/4HANA using data from SAP's Custom Code Migration tool (transaction SYCM).
+
+## Prerequisites
+
+- Run transaction **SYCM** on your SAP system first — the dashboard reads the analysis tables it populates (`sycm_sitem`, `sycm_cust_refs`, and related tables)
+- Works on ECC systems being analyzed for S/4HANA migration
+
+## Opening the Dashboard
+
+Three ways to load it:
+
+| Method | Steps |
+|--------|-------|
+| Activity Bar | **ABAP FS** panel → **S/4HANA Readiness** section → click **Load Dashboard** |
+| Command Palette | `Ctrl+Shift+P` → `ABAP FS: S/4HANA Readiness - Load` |
+| Copilot Chat | Ask: *"Load the S/4HANA readiness dashboard"* |
+
+## Reading the Results
+
+The dashboard shows a tree grouped by **simplification item** (SAP Note):
+
+```
+DRS310 — 156 references in 42 items
+├── Summary
+├── 2830416 — Remove usage of BSEG (12 refs)
+│   ├── ZMY_REPORT
+│   └── ZCL_FINANCE
+├── 2780106 — ... (5 refs)
+│   └── ZFG_CUSTOM
+└── Unlinked References
+```
+
+- **Root node** — your connection ID with a total count
+- **Simplification Item nodes** — each SAP Note that affects your code, with reference count
+- **Custom object nodes** — your Z/Y objects that need to be changed
+- **Unlinked References** — references that couldn't be matched to a simplification item
+
+## Working with Results
+
+**Open an object for editing**
+Click any custom object node — it opens directly in the editor.
+
+**Run ATC analysis on an object**
+Right-click a reference → **Run ATC** — runs ATC checks scoped to that object.
+
+**Get a Copilot fix suggestion**
+Right-click a reference → **Ask Copilot to Fix** — opens a Copilot prompt pre-loaded with the compatibility issue details.
+
+**Open the linked SAP Note**
+Right-click a simplification item → **Open SAP Note** — opens the note in your browser.
+
+**Filter by name pattern**
+Use the filter icon and enter a wildcard pattern, e.g. `Z*PRICING*` or `Y*`, to narrow the list.
+
+**Refresh / Clear**
+Use the **Refresh** button to reload from SAP, or **Clear** to remove the dashboard data.
+
+**Multiple systems**
+Load dashboards from several connected systems simultaneously — each appears under its own root node.
+
+## ATC Integration
+
+For full readiness analysis, combine the dashboard with ATC:
+
+1. Set your ATC check variant to an S/4HANA readiness variant (e.g. `S4HANA_READINESS`)
+2. In your connection settings, set the `atcVariant` property to run this variant by default
+3. Use the dashboard to spot affected objects, then right-click → **Run ATC** for detailed per-object findings
+
+# RAP Generator
+
+RAP (RESTful ABAP Programming model) is SAP's modern framework for building OData services on S/4HANA. Building a RAP service manually requires creating many interdependent objects — CDS views, behavior definitions, service definitions, and bindings. The RAP Generator creates the entire stack from a single database table in one step.
+
+## Requirements
+
+- S/4HANA or BTP system with ADT RAP Generator API support
+- The source database table must already exist on the system
+
+## Open the RAP Generator
+
+Three ways to open it:
+
+- **Activity Bar** → ABAP FS icon → **RAP Generator** panel
+- **Right-click** a database table in the editor → **Generate RAP Service**
+- **Command Palette** (`Ctrl+Shift+P`) → `ABAP FS: Generate RAP Service`
+
+## Generate a Service
+
+1. Select your SAP system from the dropdown
+2. Enter the source **database table name** — default artifact names are fetched automatically from SAP
+3. Review and adjust the generated names (CDS view, behavior definition, service binding, etc.)
+4. Set the **package** (leave `$TMP` for local objects; a transport request will be prompted for other packages)
+5. Click **Preview** to see the full list of objects that will be created
+6. Click **Generate** — all artifacts are created on the server in a single operation
+
+After generation, the service binding opens automatically in the editor.
+
+## Generated Artifacts
+
+| Artifact | Purpose |
+|----------|---------|
+| CDS Interface View | Data model layer |
+| CDS Projection View | Service projection / field selection |
+| Behavior Definition | CRUD operations and validations |
+| Behavior Implementation Class | ABAP class implementing the behavior |
+| Service Definition | Exposes the CDS view as a service |
+| Service Binding | Binds to OData V2 or V4 protocol |
+| Draft Table | Created for managed scenarios with draft enabled |
+
+## Publish and Test
+
+After generating, the service must be **published** before it can be consumed.
+
+- **Publish**: Click **Publish Service** in the panel, or use `ABAP FS: Publish Service Binding`
+- **Test**: Click **Test Service** to open the OData URL in the browser — the extension detects whether the service is published and offers to publish it if not, then builds the correct V2/V4 URL with authentication parameters. Or use `ABAP FS: Test Service Binding`
+
+# ADT Feed Reader
+
+Monitor SAP system events in real-time directly within VS Code — without opening SAP GUI or checking ST22 manually.
+
+## Setup
+
+1. Open the Command Palette (`Ctrl+Shift+P`)
+2. Run **ABAP FS: Configure ADT Feeds**
+3. Select the system and choose which feeds to subscribe to
+4. Open the **Feed Inbox** view in the Activity Bar sidebar
+
+## Supported Feeds
+
+| Feed | Description |
+|------|-------------|
+| ABAP Runtime Errors | Dumps (equivalent to ST22) |
+| ATC Findings | Code quality check results |
+| System Messages | Broadcasts sent via SM02 |
+| URI Creation Errors | ADT object resolution failures |
+
+> **Note:** Available feeds depend on the SAP system version. Older systems may not support all types.
+
+## Configuration
+
+Each feed can be configured independently per connected system:
+
+- **Polling interval** — how often VS Code checks for new entries (default: 120 seconds; ATC: 24 hours)
+- **Notifications** — enable/disable VS Code pop-up alerts for new entries
+- **Query filter** — use a built-in template or write a custom OData filter to narrow results
+
+## Working with Entries
+
+- Click an entry to open its details in a WebView panel
+- Mark entries as **read** or **unread** to track what you've reviewed
+- All feeds appear in a unified **Feed Inbox** — no need to switch between views
+
+## Requirements
+
+The target SAP system must support the ADT Feeds API. Check with your Basis team if feeds are unavailable.
+
+# Dependency Graph Visualizer
+
+Visualize where any ABAP object is used across the system as an interactive, expandable graph.
+
+## Opening the Graph
+
+1. Open an ABAP file in the editor
+2. *(Optional)* Place your cursor on a specific method or variable for symbol-level analysis
+3. Right-click → **Visualize Dependency Graph**
+
+For graphs with fewer than 100 nodes, the graph renders immediately. For larger graphs, adjust the filters first, then click **Build Graph**.
+
+## Reading the Graph
+
+| Color | Meaning |
+|---|---|
+| Red | Root object (your starting point) |
+| Purple | Nodes you have expanded |
+| Other colors | Auto-assigned per object type |
+
+A **double border** on a node means it has more dependencies available to explore.
+
+## Exploring Dependencies
+
+- **Double-click a node** — opens the object in the editor at the exact usage location
+- **Right-click a node** — shows a context menu with Open / Expand / Focus options
+- **Right-click → Expand Dependencies** — fetches where that object is used and merges results into the graph
+- **Hover** — shows object details: type, package, responsible developer, parent class (for methods)
+
+You can expand nodes as many levels deep as needed. Use **Reset to Root** to restore the original graph and clear all expansions.
+
+## Filtering
+
+Use the filter panel to reduce large graphs to what matters:
+
+- **Custom/Standard toggle** — show only Z\*/Y\* objects or only SAP standard objects
+- **Object type** — show only CLAS, PROG, FUNC, etc.
+- **Name pattern** — wildcards supported (e.g., `Z*MD*`)
+- **Usage type** — filter by edge relationship type
+
+Real-time counts show how many objects match each filter. Click **Reset Filters** to clear all.
+
+## Layout Options
+
+| Layout | Best for |
+|---|---|
+| **Cose** *(default)* | General use — physics-based clustering |
+| **Concentric** | Seeing distance from root object |
+| **Breadthfirst** | Tree-shaped dependency chains |
+| **Circle** | Compact overview |
+| **Grid** | Ordered comparison |
+
+## Exporting
+
+Click **Export SVG** to save the current graph as a static image file.
+
+## Requirements
+
+- An ABAP file open in the editor
+- An active SAP connection
+
+# ADT Communication Log
+
+Captures and displays every HTTP request and response between VS Code and SAP ADT in real time. Use it to diagnose slow operations, trace connection errors, or understand which ADT APIs the extension calls.
+
+## Start Logging
+
+1. Open the Command Palette (`Ctrl+Shift+P`)
+2. Run **ABAP FS: Activate Communication Log**
+3. Select the SAP connection to monitor
+
+The **Communication Log** panel opens at the bottom of the screen and immediately begins capturing traffic.
+
+## Stop Logging
+
+Run **ABAP FS: Deactivate Communication Log** from the Command Palette.
+
+> **Note:** The log is held in memory only (up to 2000 entries). Entries are lost when you deactivate logging or close VS Code.
+
+## Reading the Log
+
+Click any entry to expand it and see:
+
+- Query parameters
+- Request and response headers
+- Request and response bodies (XML and JSON are syntax-highlighted)
+- Duration in milliseconds
+
+## Filtering Entries
+
+| Filter | How |
+|--------|-----|
+| By SAP system | Dropdown — select from all logged connections |
+| By HTTP status | Buttons: **Success** (2xx), **Errors** (4xx/5xx), **Pending** |
+| By URL | Text search field (200ms debounce) |
+
+## Other Controls
+
+- **Auto-scroll** — Toggle to keep the view pinned to the latest entry
+- **Export** — Save all visible entries or a single entry as JSON (useful for bug reports)
+- **Clear** — Remove all entries from the current view
+
+## Common Use Cases
+
+- **Slow operations** — Check which API calls take the longest
+- **Connection errors** — See the exact HTTP status code and error body returned by SAP
+- **Bug reports** — Export the log as JSON and attach it to a GitHub issue
+- **Learning the API** — See exactly which ADT endpoints are called for any extension action
+
+# Virtual Tool Grouping Fix
+
+VS Code has an experimental setting (`github.copilot.chat.virtualTools.threshold`) that collapses extension tools into virtual groups when their count exceeds a threshold. When active, Copilot often fails to discover these groups — making all 39 ABAP FS AI tools invisible and unusable.
+
+ABAP FS detects this condition on startup and prompts you to fix it automatically.
+
+## What Happens at Startup
+
+If grouping is active, a warning dialog appears with three options:
+
+| Option | Effect |
+|---|---|
+| **Disable Grouping & Reload** | Sets the threshold to `0` globally and in your workspace, then reloads VS Code |
+| **Remind Me Next Time** | Skips the prompt this session; asks again next time |
+| **Don't Ask Again** | Permanently suppresses the prompt |
+
+Choose **Disable Grouping & Reload** unless you have a specific reason to keep grouping enabled.
+
+## Fixing It Manually
+
+If you dismissed the prompt and AI tools are still not working:
+
+1. Open Settings (`Ctrl+,`)
+2. Search for `virtualTools.threshold`
+3. Set `github.copilot.chat.virtualTools.threshold` to `0`
+4. Reload VS Code (`Ctrl+Shift+P` → **Developer: Reload Window**)
+
+## Why This Matters
+
+ABAP FS registers 39 specialized tools covering object search, code reading, unit tests, SQL queries, transport management, and more. If Copilot cannot see these tools, all AI-powered features stop working. Setting the threshold to `0` disables grouping entirely and keeps all tools available.
+
+> **Note:** This prompt only appears if the experimental grouping feature is active. Most users will never see it.
+
+# Important Considerations
+
+| Feature | Limitation |
+|---|---|
+| **Create Objects** | Transport request dialogs still appear — object creation is not fully automated. |
+| **Text Elements** | Create/Update actions require ADT API support (newer SAP systems only). |
+| **Transport Management** | On older systems, some actions fall back to direct table queries. |
+| **Code Search** | Searches committed code only — unsaved local changes are not visible. |
+| **Mass Activation** | You must select objects from a dialog; activation is not automatic. |
+
+## AI Agent Code Changes
+
+When Copilot edits ABAP code in Agent mode, changes are written to SAP **immediately** — before you accept them. The virtual filesystem locks the object, writes the content, and unlocks it in one step.
+
+- **Keep** — triggers a second save with the accepted content.
+- **Undo** — reverts the changes on the server, just like undoing any file edit.
+
+> **Review AI-generated code carefully.** It is live on the SAP server the moment it is written, not only after you click Keep.
+
+# Key Differences: Commands vs Tools
+
+The extension exposes two types of functionality: **commands** you invoke yourself, and **tools** that GitHub Copilot invokes on your behalf.
+
+## Commands — You invoke them
+
+Commands are discrete actions you trigger directly in VS Code.
+
+**How to run a command:**
+
+- Open the Command Palette with `Ctrl+Shift+P` and type `ABAP FS`
+- Click a button in the VS Code UI (e.g., editor toolbar, explorer context menu)
+- Use a keyboard shortcut
+
+**Examples:**
+
+| Command | What it does |
+|---|---|
+| `ABAP FS: Create object` | Opens a dialog to create a new ABAP object |
+| `ABAP FS: Run ABAP Unit Tests` | Runs unit tests for the current object |
+| `ABAP FS: Text Elements Manager` | Opens the text elements editor |
+
+## Language Model Tools — Copilot invokes them
+
+Tools are capabilities the extension exposes to GitHub Copilot. You don't call them directly — instead, you describe what you want in the Copilot chat panel, and Copilot selects and calls the right tool automatically.
+
+**How to use them:**
+
+- Open the Copilot chat panel (`Ctrl+Alt+I`)
+- Ask in plain language
+
+**Examples:**
+
+| What you type | Tool Copilot calls |
+|---|---|
+| "Where is `BAPI_USER_GET_DETAIL` used?" | `find_where_used` |
+| "Show me the code for `ZCL_MY_CLASS`" | `get_abap_object_lines` |
+| "Run ATC checks on this file" | `run_atc_analysis` |
+
+> **New to VS Code?** Start with commands for direct actions. Use Copilot chat when you want to explore or analyze SAP objects without knowing the exact steps.
+
+# Privacy & Telemetry
+
+**This extension does not send any data to external servers.** Nothing leaves your machine.
+
+## What is collected
+
+A local CSV file records basic usage statistics — which tools and commands you use, and how many lines of code Copilot changed. This file is stored on your machine only and is never uploaded anywhere.
+
+**File location:**
 ```
 <VS Code Global Storage>/extension-path/telemetry-<date>.csv
 ```
 
-You can delete these files at any time - it only contains local usage statistics for your own reference.
+You can delete these files at any time without affecting the extension.
+
+## Central telemetry for organizations
+
+If your organization wants to aggregate telemetry internally, you can fork the public repository, add your own Azure Application Insights connection string, build a custom VSIX, and distribute it. You retain full control over what is collected, where it is stored, and who can access it.
+
+# Organization Administration
+
+To deploy ABAP FS internally, configure the optional features below before building and distributing your own VSIX.
 
 ---
 
+## SAP System Whitelist (Optional)
+
+Restrict which SAP systems and users can connect — for example, to block production connections or limit access to approved developers.
+
+### 1. Create the whitelist file
+
+Base it on `client/src/services/whitelist.example.json`:
+
+```json
+{
+  "version": {
+    "minimumExtensionVersion": "1.0.0"
+  },
+  "allowedDomains": ["*dev*", "*test*", "*qa*"],
+  "developers": [
+    {
+      "manager": "Team_Lead_Name",
+      "userIds": ["developer1", "dev1_alt_id"]
+    },
+    {
+      "manager": "Another_Manager",
+      "userIds": ["developer2"]
+    }
+  ]
+}
+```
+
+**`developers` structure:** Each object represents **one person**. List all of that person's SAP user IDs (across different systems) in the same `userIds` array — they will be treated as the same individual in telemetry. Do not mix different people into one object.
+
+### 2. Host the file
+
+Deploy it to an internal HTTP/HTTPS URL with no authentication required. Users need read access only.
+
+### 3. Configure the URL
+
+Edit `client/src/services/sapSystemValidator.ts`:
+
+```typescript
+private readonly WHITELIST_URL = 'https://your-internal-server.com/whitelist.json';
+```
+
+### 4. Enable validation
+
+Both flags default to `true` (whitelist is skipped). Set to `false` to enforce restrictions:
+
+```typescript
+private readonly ALLOW_ALL_SYSTEMS = true;  // false = validate against allowedDomains
+private readonly ALLOW_ALL_USERS = true;    // false = validate against developers.userIds
+```
+
+### How it works
+
+- The extension fetches the whitelist on startup and every 2 hours.
+- `allowedDomains` patterns use wildcards (e.g., `*dev*`) matched against the SAP system hostname.
+- `userIds` are checked across all developer entries. Both system and user must pass for a connection to succeed.
+- If the fetch fails, a hardcoded backup whitelist is used.
+- On corporate VPN, the extension retries for up to 10 minutes after startup; a status bar notification is shown during retries.
+
+---
+
+## Telemetry with Application Insights (Optional)
+
+**The VS Code Marketplace version sends no telemetry anywhere.** All usage data is written to local CSV files only (`telemetry-YYYY-MM-DD.csv` in extension storage). Nothing leaves the machine.
+
+This section applies only if you want **central analytics** for your organization.
+
+### What is collected
+
+Each event is an action string (e.g., `command_activate_called`, `tool_search_abap_objects_called`) plus:
+
+| Field | Description |
+|---|---|
+| Anonymous user ID | SHA hash of `hostname + username + platform` — cannot be reversed |
+| Session ID | Random ID per VS Code session |
+| Extension version | Version number |
+| VS Code version | VS Code version number |
+| Platform | Windows / Linux / Mac |
+| SAP system | System accessed (if applicable) |
+| Manager / Team | From whitelist `developers` mapping (if configured) |
+
+**Not collected:** credentials, source code, object names, business data, error messages, performance metrics, HTTP requests, dependencies, or console logs. All Application Insights auto-collection features are disabled by default.
+
+### Setup steps
+
+1. **Fork the repository** on GitHub.
+
+2. **Create an Azure Application Insights resource** in your Azure subscription.
+
+3. **Copy the connection string** from Azure Portal → Application Insights → Overview → Connection String.
+
+4. **Set the connection string** in `client/src/services/appInsightsService.ts`:
+
+   ```typescript
+   const connectionString = "InstrumentationKey=YOUR-KEY;IngestionEndpoint=https://..."
+   ```
+
+5. **Build and distribute** your VSIX (see [Building and Distributing](#building-and-distributing) below).
+
+### Enabling additional auto-collection
+
+All auto-collection is off by default. To enable any of the following, edit the `initialize()` method in `client/src/services/appInsightsService.ts`:
+
+| Feature | Change |
+|---|---|
+| Exception tracking | `.setAutoCollectExceptions(false)` → `(true)` |
+| Performance metrics (CPU/memory) | `.setAutoCollectPerformance(false, false)` → `(true, true)` |
+| HTTP request tracking | `.setAutoCollectRequests(false)` → `(true)` |
+| Dependency tracking | `.setAutoCollectDependencies(false)` → `(true)` |
+
+You can also add custom tracking anywhere in your code:
+
+```typescript
+appInsights.defaultClient.trackEvent({ name: 'my_event' });
+appInsights.defaultClient.trackException({ exception: error });
+appInsights.defaultClient.trackMetric({ name: 'my_metric', value: 42 });
+```
+
+### Telemetry + whitelist integration
+
+When the whitelist `developers` structure is configured, telemetry automatically groups multiple SAP user IDs belonging to the same person. The `manager` field enables team-level analytics (e.g., "which team uses debugging most?") while keeping individual users anonymous.
+
+### How events are stored and sent
+
+- Events are logged to local CSV files first.
+- If an App Insights connection string is configured, events are also sent to Azure (batched every 30 seconds).
+- If the network is unavailable, events are stored locally and retried.
+- Local storage flushes every 5 minutes or when the buffer reaches 25 entries.
+
+---
+
+## Building and Distributing
+
+After completing configuration above:
+
+1. **Install dependencies:**
+
+   ```bash
+   npm install
+   ```
+
+2. **Build and package:**
+
+   ```bash
+   # Windows (recommended)
+   build-and-install.bat
+
+   # Or manually:
+   npm run compile
+   npx vsce package
+   ```
+
+3. **Distribute** the generated `.vsix` file to your users. They can install it via Extensions → `...` → **Install from VSIX...**
