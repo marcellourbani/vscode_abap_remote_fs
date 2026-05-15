@@ -11,26 +11,28 @@
       
       
       
+        <link rel="prev" href="../getting-started/connection-manager/">
       
-        <link rel="next" href="getting-started/installation/">
+      
+        <link rel="next" href="../ai/language-model-tools/">
       
       
         
       
       
-      <link rel="icon" href="assets/images/favicon.png">
+      <link rel="icon" href="../assets/images/favicon.png">
       <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.6">
     
     
       
-        <title>ABAP FS Documentation</title>
+        <title>MCP Server - ABAP FS Documentation</title>
       
     
     
-      <link rel="stylesheet" href="assets/stylesheets/main.484c7ddc.min.css">
+      <link rel="stylesheet" href="../assets/stylesheets/main.484c7ddc.min.css">
       
         
-        <link rel="stylesheet" href="assets/stylesheets/palette.ab4e12ef.min.css">
+        <link rel="stylesheet" href="../assets/stylesheets/palette.ab4e12ef.min.css">
       
       
 
@@ -49,7 +51,7 @@
       
     
     
-    <script>__md_scope=new URL(".",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    <script>__md_scope=new URL("..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
     
       
 
@@ -74,7 +76,7 @@
     <div data-md-component="skip">
       
         
-        <a href="#abap-fs-abap-development-in-vs-code" class="md-skip">
+        <a href="#mcp-server-for-external-ai-tools" class="md-skip">
           Skip to content
         </a>
       
@@ -90,7 +92,7 @@
 
 <header class="md-header md-header--shadow" data-md-component="header">
   <nav class="md-header__inner md-grid" aria-label="Header">
-    <a href="." title="ABAP FS Documentation" class="md-header__button md-logo" aria-label="ABAP FS Documentation" data-md-component="logo">
+    <a href=".." title="ABAP FS Documentation" class="md-header__button md-logo" aria-label="ABAP FS Documentation" data-md-component="logo">
       
   
   <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
@@ -110,7 +112,7 @@
         <div class="md-header__topic" data-md-component="header-topic">
           <span class="md-ellipsis">
             
-              Home
+              MCP Server
             
           </span>
         </div>
@@ -228,7 +230,7 @@
 
 <nav class="md-nav md-nav--primary" aria-label="Navigation" data-md-level="0">
   <label class="md-nav__title" for="__drawer">
-    <a href="." title="ABAP FS Documentation" class="md-nav__button md-logo" aria-label="ABAP FS Documentation" data-md-component="logo">
+    <a href=".." title="ABAP FS Documentation" class="md-nav__button md-logo" aria-label="ABAP FS Documentation" data-md-component="logo">
       
   
   <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
@@ -255,37 +257,10 @@
       
   
   
-    
   
   
-  
-    <li class="md-nav__item md-nav__item--active">
-      
-      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
-      
-      
-        
-      
-      
-        <label class="md-nav__link md-nav__link--active" for="__toc">
-          
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    Home
-  
-
-    
-  </span>
-  
-  
-
-          <span class="md-nav__icon md-icon"></span>
-        </label>
-      
-      <a href="." class="md-nav__link md-nav__link--active">
+    <li class="md-nav__item">
+      <a href=".." class="md-nav__link">
         
   
   
@@ -301,59 +276,6 @@
   
 
       </a>
-      
-        
-
-<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
-  
-  
-  
-    
-  
-  
-    <label class="md-nav__title" for="__toc">
-      <span class="md-nav__icon md-icon"></span>
-      Table of contents
-    </label>
-    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
-      
-        <li class="md-nav__item">
-  <a href="#what-you-can-do" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        What you can do
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#new-to-abap-fs" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        New to ABAP FS?
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#using-a-non-github-copilot-ai-tool" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Using a non-GitHub Copilot AI tool?
-      
-    </span>
-  </a>
-  
-</li>
-      
-    </ul>
-  
-</nav>
-      
     </li>
   
 
@@ -419,7 +341,7 @@
   
   
     <li class="md-nav__item">
-      <a href="getting-started/installation/" class="md-nav__link">
+      <a href="../getting-started/installation/" class="md-nav__link">
         
   
   
@@ -447,7 +369,7 @@
   
   
     <li class="md-nav__item">
-      <a href="getting-started/walkthrough/" class="md-nav__link">
+      <a href="../getting-started/walkthrough/" class="md-nav__link">
         
   
   
@@ -475,7 +397,7 @@
   
   
     <li class="md-nav__item">
-      <a href="getting-started/connection-manager/" class="md-nav__link">
+      <a href="../getting-started/connection-manager/" class="md-nav__link">
         
   
   
@@ -507,10 +429,37 @@
       
   
   
+    
   
   
-    <li class="md-nav__item">
-      <a href="mcp-server/" class="md-nav__link">
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    MCP Server
+  
+
+    
+  </span>
+  
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
         
   
   
@@ -526,6 +475,148 @@
   
 
       </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#what-is-this-and-why-would-you-need-it" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        What Is This and Why Would You Need It?
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#setup" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Setup
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Setup">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#1-enable-the-mcp-server" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        1. Enable the MCP Server
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#2-connect-to-your-sap-system" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2. Connect to Your SAP System
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#3-configure-your-ai-tool" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3. Configure Your AI Tool
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="3. Configure Your AI Tool">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#with-api-key-authentication" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        With API Key Authentication
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#4-verify" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        4. Verify
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#available-tools" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Available Tools
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#limitations" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Limitations
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#troubleshooting" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Troubleshooting
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
     </li>
   
 
@@ -591,7 +682,7 @@
   
   
     <li class="md-nav__item">
-      <a href="ai/language-model-tools/" class="md-nav__link">
+      <a href="../ai/language-model-tools/" class="md-nav__link">
         
   
   
@@ -619,7 +710,7 @@
   
   
     <li class="md-nav__item">
-      <a href="ai/subagents/" class="md-nav__link">
+      <a href="../ai/subagents/" class="md-nav__link">
         
   
   
@@ -647,7 +738,7 @@
   
   
     <li class="md-nav__item">
-      <a href="ai/skills/" class="md-nav__link">
+      <a href="../ai/skills/" class="md-nav__link">
         
   
   
@@ -675,7 +766,7 @@
   
   
     <li class="md-nav__item">
-      <a href="ai/heartbeat/" class="md-nav__link">
+      <a href="../ai/heartbeat/" class="md-nav__link">
         
   
   
@@ -764,7 +855,7 @@
   
   
     <li class="md-nav__item">
-      <a href="editor/hover-information/" class="md-nav__link">
+      <a href="../editor/hover-information/" class="md-nav__link">
         
   
   
@@ -792,7 +883,7 @@
   
   
     <li class="md-nav__item">
-      <a href="editor/views-panels/" class="md-nav__link">
+      <a href="../editor/views-panels/" class="md-nav__link">
         
   
   
@@ -820,7 +911,7 @@
   
   
     <li class="md-nav__item">
-      <a href="editor/object-property-view/" class="md-nav__link">
+      <a href="../editor/object-property-view/" class="md-nav__link">
         
   
   
@@ -848,7 +939,7 @@
   
   
     <li class="md-nav__item">
-      <a href="editor/custom-editors/" class="md-nav__link">
+      <a href="../editor/custom-editors/" class="md-nav__link">
         
   
   
@@ -876,7 +967,7 @@
   
   
     <li class="md-nav__item">
-      <a href="editor/message-class-editor/" class="md-nav__link">
+      <a href="../editor/message-class-editor/" class="md-nav__link">
         
   
   
@@ -965,7 +1056,7 @@
   
   
     <li class="md-nav__item">
-      <a href="sap-gui/embedded-gui/" class="md-nav__link">
+      <a href="../sap-gui/embedded-gui/" class="md-nav__link">
         
   
   
@@ -993,7 +1084,7 @@
   
   
     <li class="md-nav__item">
-      <a href="sap-gui/native-gui/" class="md-nav__link">
+      <a href="../sap-gui/native-gui/" class="md-nav__link">
         
   
   
@@ -1021,7 +1112,7 @@
   
   
     <li class="md-nav__item">
-      <a href="sap-gui/web-browser-gui/" class="md-nav__link">
+      <a href="../sap-gui/web-browser-gui/" class="md-nav__link">
         
   
   
@@ -1049,7 +1140,7 @@
   
   
     <li class="md-nav__item">
-      <a href="sap-gui/run-transaction/" class="md-nav__link">
+      <a href="../sap-gui/run-transaction/" class="md-nav__link">
         
   
   
@@ -1138,7 +1229,7 @@
   
   
     <li class="md-nav__item">
-      <a href="object-management/search/" class="md-nav__link">
+      <a href="../object-management/search/" class="md-nav__link">
         
   
   
@@ -1166,7 +1257,7 @@
   
   
     <li class="md-nav__item">
-      <a href="object-management/create/" class="md-nav__link">
+      <a href="../object-management/create/" class="md-nav__link">
         
   
   
@@ -1194,7 +1285,7 @@
   
   
     <li class="md-nav__item">
-      <a href="object-management/open/" class="md-nav__link">
+      <a href="../object-management/open/" class="md-nav__link">
         
   
   
@@ -1222,7 +1313,7 @@
   
   
     <li class="md-nav__item">
-      <a href="object-management/activation/" class="md-nav__link">
+      <a href="../object-management/activation/" class="md-nav__link">
         
   
   
@@ -1250,7 +1341,7 @@
   
   
     <li class="md-nav__item">
-      <a href="object-management/favorites/" class="md-nav__link">
+      <a href="../object-management/favorites/" class="md-nav__link">
         
   
   
@@ -1278,7 +1369,7 @@
   
   
     <li class="md-nav__item">
-      <a href="object-management/table-contents/" class="md-nav__link">
+      <a href="../object-management/table-contents/" class="md-nav__link">
         
   
   
@@ -1306,7 +1397,7 @@
   
   
     <li class="md-nav__item">
-      <a href="object-management/compare-systems/" class="md-nav__link">
+      <a href="../object-management/compare-systems/" class="md-nav__link">
         
   
   
@@ -1395,7 +1486,7 @@
   
   
     <li class="md-nav__item">
-      <a href="code-quality/atc-analysis/" class="md-nav__link">
+      <a href="../code-quality/atc-analysis/" class="md-nav__link">
         
   
   
@@ -1423,7 +1514,7 @@
   
   
     <li class="md-nav__item">
-      <a href="code-quality/abap-cleaner/" class="md-nav__link">
+      <a href="../code-quality/abap-cleaner/" class="md-nav__link">
         
   
   
@@ -1451,7 +1542,7 @@
   
   
     <li class="md-nav__item">
-      <a href="code-quality/syntax-validation/" class="md-nav__link">
+      <a href="../code-quality/syntax-validation/" class="md-nav__link">
         
   
   
@@ -1479,7 +1570,7 @@
   
   
     <li class="md-nav__item">
-      <a href="code-quality/where-used/" class="md-nav__link">
+      <a href="../code-quality/where-used/" class="md-nav__link">
         
   
   
@@ -1568,7 +1659,7 @@
   
   
     <li class="md-nav__item">
-      <a href="debugging/abap-debugging/" class="md-nav__link">
+      <a href="../debugging/abap-debugging/" class="md-nav__link">
         
   
   
@@ -1596,7 +1687,7 @@
   
   
     <li class="md-nav__item">
-      <a href="debugging/debug-recording/" class="md-nav__link">
+      <a href="../debugging/debug-recording/" class="md-nav__link">
         
   
   
@@ -1685,7 +1776,7 @@
   
   
     <li class="md-nav__item">
-      <a href="data-query/sql-query/" class="md-nav__link">
+      <a href="../data-query/sql-query/" class="md-nav__link">
         
   
   
@@ -1713,7 +1804,7 @@
   
   
     <li class="md-nav__item">
-      <a href="data-query/data-workbooks/" class="md-nav__link">
+      <a href="../data-query/data-workbooks/" class="md-nav__link">
         
   
   
@@ -1802,7 +1893,7 @@
   
   
     <li class="md-nav__item">
-      <a href="transport/request-view/" class="md-nav__link">
+      <a href="../transport/request-view/" class="md-nav__link">
         
   
   
@@ -1830,7 +1921,7 @@
   
   
     <li class="md-nav__item">
-      <a href="transport/object-operations/" class="md-nav__link">
+      <a href="../transport/object-operations/" class="md-nav__link">
         
   
   
@@ -1919,7 +2010,7 @@
   
   
     <li class="md-nav__item">
-      <a href="version-control/abapgit/" class="md-nav__link">
+      <a href="../version-control/abapgit/" class="md-nav__link">
         
   
   
@@ -1947,7 +2038,7 @@
   
   
     <li class="md-nav__item">
-      <a href="version-control/revision-history/" class="md-nav__link">
+      <a href="../version-control/revision-history/" class="md-nav__link">
         
   
   
@@ -1975,7 +2066,7 @@
   
   
     <li class="md-nav__item">
-      <a href="version-control/blame-gutter/" class="md-nav__link">
+      <a href="../version-control/blame-gutter/" class="md-nav__link">
         
   
   
@@ -2064,7 +2155,7 @@
   
   
     <li class="md-nav__item">
-      <a href="testing/unit-tests/" class="md-nav__link">
+      <a href="../testing/unit-tests/" class="md-nav__link">
         
   
   
@@ -2092,7 +2183,7 @@
   
   
     <li class="md-nav__item">
-      <a href="testing/test-classes/" class="md-nav__link">
+      <a href="../testing/test-classes/" class="md-nav__link">
         
   
   
@@ -2120,7 +2211,7 @@
   
   
     <li class="md-nav__item">
-      <a href="testing/test-documentation/" class="md-nav__link">
+      <a href="../testing/test-documentation/" class="md-nav__link">
         
   
   
@@ -2209,7 +2300,7 @@
   
   
     <li class="md-nav__item">
-      <a href="diagrams/mermaid/" class="md-nav__link">
+      <a href="../diagrams/mermaid/" class="md-nav__link">
         
   
   
@@ -2237,7 +2328,7 @@
   
   
     <li class="md-nav__item">
-      <a href="diagrams/abap-documentation/" class="md-nav__link">
+      <a href="../diagrams/abap-documentation/" class="md-nav__link">
         
   
   
@@ -2326,7 +2417,7 @@
   
   
     <li class="md-nav__item">
-      <a href="developer-tools/dumps-analysis/" class="md-nav__link">
+      <a href="../developer-tools/dumps-analysis/" class="md-nav__link">
         
   
   
@@ -2354,7 +2445,7 @@
   
   
     <li class="md-nav__item">
-      <a href="developer-tools/performance-traces/" class="md-nav__link">
+      <a href="../developer-tools/performance-traces/" class="md-nav__link">
         
   
   
@@ -2382,7 +2473,7 @@
   
   
     <li class="md-nav__item">
-      <a href="developer-tools/text-elements/" class="md-nav__link">
+      <a href="../developer-tools/text-elements/" class="md-nav__link">
         
   
   
@@ -2410,7 +2501,7 @@
   
   
     <li class="md-nav__item">
-      <a href="developer-tools/regex-search/" class="md-nav__link">
+      <a href="../developer-tools/regex-search/" class="md-nav__link">
         
   
   
@@ -2438,7 +2529,7 @@
   
   
     <li class="md-nav__item">
-      <a href="developer-tools/s4hana-readiness/" class="md-nav__link">
+      <a href="../developer-tools/s4hana-readiness/" class="md-nav__link">
         
   
   
@@ -2466,7 +2557,7 @@
   
   
     <li class="md-nav__item">
-      <a href="developer-tools/rap-generator/" class="md-nav__link">
+      <a href="../developer-tools/rap-generator/" class="md-nav__link">
         
   
   
@@ -2494,7 +2585,7 @@
   
   
     <li class="md-nav__item">
-      <a href="developer-tools/feed-reader/" class="md-nav__link">
+      <a href="../developer-tools/feed-reader/" class="md-nav__link">
         
   
   
@@ -2522,7 +2613,7 @@
   
   
     <li class="md-nav__item">
-      <a href="developer-tools/dependency-graph/" class="md-nav__link">
+      <a href="../developer-tools/dependency-graph/" class="md-nav__link">
         
   
   
@@ -2550,7 +2641,7 @@
   
   
     <li class="md-nav__item">
-      <a href="developer-tools/communication-log/" class="md-nav__link">
+      <a href="../developer-tools/communication-log/" class="md-nav__link">
         
   
   
@@ -2578,7 +2669,7 @@
   
   
     <li class="md-nav__item">
-      <a href="developer-tools/tool-grouping-fix/" class="md-nav__link">
+      <a href="../developer-tools/tool-grouping-fix/" class="md-nav__link">
         
   
   
@@ -2667,7 +2758,7 @@
   
   
     <li class="md-nav__item">
-      <a href="reference/important-considerations/" class="md-nav__link">
+      <a href="../reference/important-considerations/" class="md-nav__link">
         
   
   
@@ -2695,7 +2786,7 @@
   
   
     <li class="md-nav__item">
-      <a href="reference/commands-vs-tools/" class="md-nav__link">
+      <a href="../reference/commands-vs-tools/" class="md-nav__link">
         
   
   
@@ -2723,7 +2814,7 @@
   
   
     <li class="md-nav__item">
-      <a href="reference/privacy-telemetry/" class="md-nav__link">
+      <a href="../reference/privacy-telemetry/" class="md-nav__link">
         
   
   
@@ -2751,7 +2842,7 @@
   
   
     <li class="md-nav__item">
-      <a href="reference/org-admin/" class="md-nav__link">
+      <a href="../reference/org-admin/" class="md-nav__link">
         
   
   
@@ -2806,10 +2897,10 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
-  <a href="#what-you-can-do" class="md-nav__link">
+  <a href="#what-is-this-and-why-would-you-need-it" class="md-nav__link">
     <span class="md-ellipsis">
       
-        What you can do
+        What Is This and Why Would You Need It?
       
     </span>
   </a>
@@ -2817,10 +2908,88 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#new-to-abap-fs" class="md-nav__link">
+  <a href="#setup" class="md-nav__link">
     <span class="md-ellipsis">
       
-        New to ABAP FS?
+        Setup
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Setup">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#1-enable-the-mcp-server" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        1. Enable the MCP Server
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#2-connect-to-your-sap-system" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2. Connect to Your SAP System
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#3-configure-your-ai-tool" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3. Configure Your AI Tool
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="3. Configure Your AI Tool">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#with-api-key-authentication" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        With API Key Authentication
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#4-verify" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        4. Verify
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#available-tools" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Available Tools
       
     </span>
   </a>
@@ -2828,10 +2997,21 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#using-a-non-github-copilot-ai-tool" class="md-nav__link">
+  <a href="#limitations" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Using a non-GitHub Copilot AI tool?
+        Limitations
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#troubleshooting" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Troubleshooting
       
     </span>
   </a>
@@ -2858,89 +3038,161 @@
   
 
 
-<h1 id="abap-fs-abap-development-in-vs-code">ABAP FS — ABAP Development in VS Code<a class="headerlink" href="#abap-fs-abap-development-in-vs-code" title="Permanent link">&para;</a></h1>
-<p><strong>ABAP FS</strong> is a VS Code extension that connects directly to your SAP system — giving you (and your AI assistant) live access to read code, query tables, run tests, debug, and manage objects without leaving the editor.</p>
-<p>Ask Copilot "How does BAPI_USER_GET_DETAIL work?" and it finds the function, reads the code, checks where it's used, and examines related objects — all autonomously using 40 specialized SAP tools.</p>
-<p>If you're used to SE38, SE24, or ADT in Eclipse, ABAP FS brings that same direct-system connectivity into VS Code — plus AI assistance, modern tooling, and the full VS Code extension ecosystem.</p>
+<h1 id="mcp-server-for-external-ai-tools">MCP Server for External AI Tools<a class="headerlink" href="#mcp-server-for-external-ai-tools" title="Permanent link">&para;</a></h1>
 <blockquote>
-<p><strong>GitHub Repository:</strong> <a href="https://github.com/marcellourbani/vscode_abap_remote_fs">github.com/marcellourbani/vscode_abap_remote_fs</a></p>
+<p><strong>Prerequisites:</strong> Complete the <a href="../getting-started/installation/">Installation Steps</a> first. You need VS Code with ABAP FS installed and configured with at least one SAP system connection.</p>
 </blockquote>
-<hr />
-<h2 id="what-you-can-do">What you can do<a class="headerlink" href="#what-you-can-do" title="Permanent link">&para;</a></h2>
-<p>This is a high-level summary. See the left navigation for full feature pages.</p>
+<h2 id="what-is-this-and-why-would-you-need-it">What Is This and Why Would You Need It?<a class="headerlink" href="#what-is-this-and-why-would-you-need-it" title="Permanent link">&para;</a></h2>
+<p><strong>MCP (Model Context Protocol)</strong> is an open standard that lets AI tools call external services. ABAP FS exposes its 39 SAP tools (search, read code, run tests, query data, etc.) via a local MCP server so that AI assistants outside of VS Code can use them.</p>
+<p><strong>Use this if</strong> you work with AI tools like Cursor, Claude Desktop, Claude Code, or Windsurf and want them to have the same SAP access that GitHub Copilot has inside VS Code.</p>
+<p><strong>Don't need this if</strong> you only use GitHub Copilot in VS Code — tools are already available there natively.</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>┌─────────────────┐     MCP Protocol      ┌──────────────────┐     VS Code API     ┌─────────────┐
+<a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a>│  Cursor/Claude  │ ◄──────────────────► │  MCP Server      │ ◄─────────────────► │  ABAP FS    │
+<a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a>│  Desktop/etc.   │    localhost:4847     │  (in VS Code)    │                     │  Tools      │
+<a id="__codelineno-0-4" name="__codelineno-0-4" href="#__codelineno-0-4"></a>└─────────────────┘                       └──────────────────┘                     └─────────────┘
+</code></pre></div>
+<p><strong>VS Code must remain open.</strong> The MCP server runs inside VS Code — closing VS Code stops the server.</p>
+<h2 id="setup">Setup<a class="headerlink" href="#setup" title="Permanent link">&para;</a></h2>
+<h3 id="1-enable-the-mcp-server">1. Enable the MCP Server<a class="headerlink" href="#1-enable-the-mcp-server" title="Permanent link">&para;</a></h3>
+<p>Open VS Code Settings (<code>Ctrl+,</code>) and search for <code>abapfs.mcpServer</code>. Set:</p>
 <table>
 <thead>
 <tr>
-<th>Area</th>
-<th>Capabilities</th>
+<th>Setting</th>
+<th>Description</th>
 </tr>
 </thead>
 <tbody>
 <tr>
-<td><strong>AI-Powered Development</strong></td>
-<td>40 tools give Copilot deep SAP awareness — search objects, read code, run tests, explain dumps, all via natural language</td>
+<td><code>abapfs.mcpServer.autoStart</code></td>
+<td>Set to <code>true</code> to start automatically on VS Code launch</td>
 </tr>
 <tr>
-<td><strong>Edit &amp; Activate</strong></td>
-<td>Browse, open, edit, and activate ABAP objects on the live system</td>
+<td><code>abapfs.mcpServer.port</code></td>
+<td>Default <code>4847</code> — change if there's a port conflict</td>
 </tr>
 <tr>
-<td><strong>Editor Experience</strong></td>
-<td>Enhanced hover info, custom editors, object properties, and dedicated ABAP views/panels</td>
-</tr>
-<tr>
-<td><strong>Debug</strong></td>
-<td>Full ABAP debugger with breakpoints, variable inspection, stepping, and debug recording</td>
-</tr>
-<tr>
-<td><strong>Test</strong></td>
-<td>Run unit tests, create test classes, generate test documentation</td>
-</tr>
-<tr>
-<td><strong>Code Quality</strong></td>
-<td>ATC analysis, syntax validation, where-used, ABAP Cleaner formatting</td>
-</tr>
-<tr>
-<td><strong>Transport</strong></td>
-<td>View and manage transport requests directly</td>
-</tr>
-<tr>
-<td><strong>Version Control</strong></td>
-<td>abapGit integration, revision history, blame gutter</td>
-</tr>
-<tr>
-<td><strong>Data &amp; SQL</strong></td>
-<td>Run SQL queries against SAP tables, build multi-step data workbooks</td>
-</tr>
-<tr>
-<td><strong>SAP GUI</strong></td>
-<td>Launch embedded, native, or browser-based SAP GUI from the editor</td>
-</tr>
-<tr>
-<td><strong>Diagrams &amp; Docs</strong></td>
-<td>Generate Mermaid diagrams and ABAP documentation from within VS Code</td>
-</tr>
-<tr>
-<td><strong>Developer Tools</strong></td>
-<td>REPL, Dumps/traces analysis, regex search, dependency graph, feed reader, communication log, RAP generator</td>
+<td><code>abapfs.mcpServer.apiKey</code></td>
+<td>Optional. Recommended on shared machines to prevent unauthorized SAP access</td>
 </tr>
 </tbody>
 </table>
-<hr />
-<h2 id="new-to-abap-fs">New to ABAP FS?<a class="headerlink" href="#new-to-abap-fs" title="Permanent link">&para;</a></h2>
-<ol>
-<li><a href="getting-started/installation/">Installation</a> — install the extension and connect to your SAP system</li>
-<li><a href="getting-started/walkthrough/">Walkthrough</a> — a guided tour of the main features</li>
-<li><a href="getting-started/connection-manager/">Connection Manager</a> — manage multiple SAP connections</li>
-</ol>
-<hr />
-<h2 id="using-a-non-github-copilot-ai-tool">Using a non-GitHub Copilot AI tool?<a class="headerlink" href="#using-a-non-github-copilot-ai-tool" title="Permanent link">&para;</a></h2>
-<p>Works with <strong>Cursor, Claude Code, Windsurf, Claude Desktop</strong>, and any MCP-compatible client.<br />
-See <a href="mcp-server/">MCP Server</a> for setup.</p>
-<hr />
-<blockquote>
-<p><strong>Tip:</strong> GitHub Copilot (and any AI connected via MCP) has access to this documentation. Just ask your AI assistant about any feature and it can guide you.</p>
-</blockquote>
+<p>Or add directly to your <code>settings.json</code> (<code>Ctrl+Shift+P</code> → "Open User Settings (JSON)"):</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a><span class="p">{</span>
+<a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a><span class="w">  </span><span class="nt">&quot;abapfs.mcpServer.autoStart&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">true</span><span class="p">,</span>
+<a id="__codelineno-1-3" name="__codelineno-1-3" href="#__codelineno-1-3"></a><span class="w">  </span><span class="nt">&quot;abapfs.mcpServer.port&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">4847</span><span class="p">,</span>
+<a id="__codelineno-1-4" name="__codelineno-1-4" href="#__codelineno-1-4"></a><span class="w">  </span><span class="nt">&quot;abapfs.mcpServer.apiKey&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;your-secret-key&quot;</span>
+<a id="__codelineno-1-5" name="__codelineno-1-5" href="#__codelineno-1-5"></a><span class="p">}</span>
+</code></pre></div>
+<p>Reload VS Code after changing settings. A notification confirms the server is running: <em>"MCP Server running on port 4847"</em></p>
+<h3 id="2-connect-to-your-sap-system">2. Connect to Your SAP System<a class="headerlink" href="#2-connect-to-your-sap-system" title="Permanent link">&para;</a></h3>
+<p>Use the command <code>ABAP FS: Connect to an SAP system</code> (<code>Ctrl+Shift+P</code> to open the Command Palette). The MCP server needs an active SAP connection to serve tool requests.</p>
+<h3 id="3-configure-your-ai-tool">3. Configure Your AI Tool<a class="headerlink" href="#3-configure-your-ai-tool" title="Permanent link">&para;</a></h3>
+<p>Add the following to your AI tool's MCP configuration. The URL is the same for all clients:</p>
+<p><strong>Cursor</strong> — <code>~/.cursor/mcp.json</code> or project <code>.cursor/mcp.json</code>:
+<div class="highlight"><pre><span></span><code><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a><span class="p">{</span>
+<a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a><span class="w">  </span><span class="nt">&quot;mcpServers&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
+<a id="__codelineno-2-3" name="__codelineno-2-3" href="#__codelineno-2-3"></a><span class="w">    </span><span class="nt">&quot;abap-fs&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
+<a id="__codelineno-2-4" name="__codelineno-2-4" href="#__codelineno-2-4"></a><span class="w">      </span><span class="nt">&quot;url&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;http://localhost:4847/mcp&quot;</span>
+<a id="__codelineno-2-5" name="__codelineno-2-5" href="#__codelineno-2-5"></a><span class="w">    </span><span class="p">}</span>
+<a id="__codelineno-2-6" name="__codelineno-2-6" href="#__codelineno-2-6"></a><span class="w">  </span><span class="p">}</span>
+<a id="__codelineno-2-7" name="__codelineno-2-7" href="#__codelineno-2-7"></a><span class="p">}</span>
+</code></pre></div></p>
+<p><strong>Claude Desktop</strong> — see Claude's documentation for the config file location, then add the same block.</p>
+<p><strong>Other MCP clients</strong> — use the Streamable HTTP endpoint: <code>http://localhost:4847/mcp</code></p>
+<h4 id="with-api-key-authentication">With API Key Authentication<a class="headerlink" href="#with-api-key-authentication" title="Permanent link">&para;</a></h4>
+<p>If you set <code>abapfs.mcpServer.apiKey</code>, clients must send it as a Bearer token:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a><span class="p">{</span>
+<a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a><span class="w">  </span><span class="nt">&quot;mcpServers&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
+<a id="__codelineno-3-3" name="__codelineno-3-3" href="#__codelineno-3-3"></a><span class="w">    </span><span class="nt">&quot;abap-fs&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
+<a id="__codelineno-3-4" name="__codelineno-3-4" href="#__codelineno-3-4"></a><span class="w">      </span><span class="nt">&quot;url&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;http://localhost:4847/mcp&quot;</span><span class="p">,</span>
+<a id="__codelineno-3-5" name="__codelineno-3-5" href="#__codelineno-3-5"></a><span class="w">      </span><span class="nt">&quot;headers&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
+<a id="__codelineno-3-6" name="__codelineno-3-6" href="#__codelineno-3-6"></a><span class="w">        </span><span class="nt">&quot;Authorization&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;Bearer your-secret-key&quot;</span>
+<a id="__codelineno-3-7" name="__codelineno-3-7" href="#__codelineno-3-7"></a><span class="w">      </span><span class="p">}</span>
+<a id="__codelineno-3-8" name="__codelineno-3-8" href="#__codelineno-3-8"></a><span class="w">    </span><span class="p">}</span>
+<a id="__codelineno-3-9" name="__codelineno-3-9" href="#__codelineno-3-9"></a><span class="w">  </span><span class="p">}</span>
+<a id="__codelineno-3-10" name="__codelineno-3-10" href="#__codelineno-3-10"></a><span class="p">}</span>
+</code></pre></div>
+<p>Without a matching key, requests return <code>401 Unauthorized</code>. The <code>/health</code> endpoint is always accessible without authentication.</p>
+<h3 id="4-verify">4. Verify<a class="headerlink" href="#4-verify" title="Permanent link">&para;</a></h3>
+<p>In your AI tool, ask something SAP-related, for example:</p>
+<ul>
+<li><em>"Search for classes containing 'USER'"</em></li>
+<li><em>"Show me the code for CL_ABAP_TYPEDESCR"</em></li>
+<li><em>"Run unit tests for ZCL_MY_CLASS"</em></li>
+</ul>
+<h2 id="available-tools">Available Tools<a class="headerlink" href="#available-tools" title="Permanent link">&para;</a></h2>
+<p>All 39 ABAP FS tools are exposed, including:</p>
+<table>
+<thead>
+<tr>
+<th>Tool</th>
+<th>What It Does</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>search_abap_objects</code></td>
+<td>Search for objects by name pattern</td>
+</tr>
+<tr>
+<td><code>get_abap_object_lines</code></td>
+<td>Read source code</td>
+</tr>
+<tr>
+<td><code>find_where_used</code></td>
+<td>Where-used analysis</td>
+</tr>
+<tr>
+<td><code>run_unit_tests</code></td>
+<td>Execute ABAP unit tests</td>
+</tr>
+<tr>
+<td><code>run_atc_analysis</code></td>
+<td>Run ATC code checks</td>
+</tr>
+<tr>
+<td><code>execute_data_query</code></td>
+<td>Run SQL queries against SAP tables</td>
+</tr>
+<tr>
+<td><code>manage_transport_requests</code></td>
+<td>Read transport data</td>
+</tr>
+<tr>
+<td><code>abap_activate</code></td>
+<td>Activate ABAP objects</td>
+</tr>
+</tbody>
+</table>
+<h2 id="limitations">Limitations<a class="headerlink" href="#limitations" title="Permanent link">&para;</a></h2>
+<ul>
+<li><strong>VS Code must stay open</strong> — the server runs inside VS Code</li>
+<li><strong>Active SAP connection required</strong> — tools need a connected system</li>
+<li><strong>Read-oriented</strong> — external AI tools cannot write to the <code>adt://</code> virtual filesystem; the AI can suggest edits but you must apply them manually in VS Code</li>
+<li><strong>Webview outputs appear in VS Code</strong> — results from tools like data queries or Mermaid diagrams open as VS Code panels, not in the external tool</li>
+<li><strong>No ABAP syntax checking</strong> — ABAP code is treated as plain text in external tools</li>
+<li><strong>No navigation features</strong> — Go to Definition, Find References, and hover documentation require the VS Code ABAP FS integration</li>
+<li><strong>Debugging requires VS Code</strong> — the ABAP debugger is VS Code-specific</li>
+</ul>
+<h2 id="troubleshooting">Troubleshooting<a class="headerlink" href="#troubleshooting" title="Permanent link">&para;</a></h2>
+<p><strong>Server not starting</strong></p>
+<ul>
+<li>Confirm <code>abapfs.mcpServer.autoStart</code> is <code>true</code> in settings</li>
+<li>Open the VS Code Output panel (<code>Ctrl+Shift+U</code>) and select "ABAP FS" for error messages</li>
+<li>Try a different port if 4847 is already in use</li>
+</ul>
+<p><strong>Tools not working</strong></p>
+<ul>
+<li>Confirm VS Code is connected to an SAP system</li>
+<li>Check that the startup notification appeared when VS Code launched</li>
+<li>Verify the URL in your AI tool's config matches the configured port</li>
+</ul>
+<p><strong>401 Unauthorized</strong></p>
+<ul>
+<li>Check that <code>Authorization: Bearer &lt;key&gt;</code> is configured in your MCP client</li>
+<li>Confirm the key in the client exactly matches <code>abapfs.mcpServer.apiKey</code> in VS Code settings</li>
+</ul>
 
 
 
@@ -2990,10 +3242,10 @@ See <a href="mcp-server/">MCP Server</a> for setup.</p>
     
       
       
-      <script id="__config" type="application/json">{"annotate": null, "base": ".", "features": ["navigation.sections", "navigation.expand", "search.suggest", "search.highlight", "content.code.copy"], "search": "assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
+      <script id="__config" type="application/json">{"annotate": null, "base": "..", "features": ["navigation.sections", "navigation.expand", "search.suggest", "search.highlight", "content.code.copy"], "search": "../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
     
     
-      <script src="assets/javascripts/bundle.79ae519e.min.js"></script>
+      <script src="../assets/javascripts/bundle.79ae519e.min.js"></script>
       
     
   </body>

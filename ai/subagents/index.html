@@ -11,26 +11,28 @@
       
       
       
+        <link rel="prev" href="../language-model-tools/">
       
-        <link rel="next" href="getting-started/installation/">
+      
+        <link rel="next" href="../skills/">
       
       
         
       
       
-      <link rel="icon" href="assets/images/favicon.png">
+      <link rel="icon" href="../../assets/images/favicon.png">
       <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.6">
     
     
       
-        <title>ABAP FS Documentation</title>
+        <title>Subagents - ABAP FS Documentation</title>
       
     
     
-      <link rel="stylesheet" href="assets/stylesheets/main.484c7ddc.min.css">
+      <link rel="stylesheet" href="../../assets/stylesheets/main.484c7ddc.min.css">
       
         
-        <link rel="stylesheet" href="assets/stylesheets/palette.ab4e12ef.min.css">
+        <link rel="stylesheet" href="../../assets/stylesheets/palette.ab4e12ef.min.css">
       
       
 
@@ -49,7 +51,7 @@
       
     
     
-    <script>__md_scope=new URL(".",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    <script>__md_scope=new URL("../..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
     
       
 
@@ -74,7 +76,7 @@
     <div data-md-component="skip">
       
         
-        <a href="#abap-fs-abap-development-in-vs-code" class="md-skip">
+        <a href="#ai-subagents-for-optimized-abap-development" class="md-skip">
           Skip to content
         </a>
       
@@ -90,7 +92,7 @@
 
 <header class="md-header md-header--shadow" data-md-component="header">
   <nav class="md-header__inner md-grid" aria-label="Header">
-    <a href="." title="ABAP FS Documentation" class="md-header__button md-logo" aria-label="ABAP FS Documentation" data-md-component="logo">
+    <a href="../.." title="ABAP FS Documentation" class="md-header__button md-logo" aria-label="ABAP FS Documentation" data-md-component="logo">
       
   
   <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
@@ -110,7 +112,7 @@
         <div class="md-header__topic" data-md-component="header-topic">
           <span class="md-ellipsis">
             
-              Home
+              Subagents
             
           </span>
         </div>
@@ -228,7 +230,7 @@
 
 <nav class="md-nav md-nav--primary" aria-label="Navigation" data-md-level="0">
   <label class="md-nav__title" for="__drawer">
-    <a href="." title="ABAP FS Documentation" class="md-nav__button md-logo" aria-label="ABAP FS Documentation" data-md-component="logo">
+    <a href="../.." title="ABAP FS Documentation" class="md-nav__button md-logo" aria-label="ABAP FS Documentation" data-md-component="logo">
       
   
   <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
@@ -255,37 +257,10 @@
       
   
   
-    
   
   
-  
-    <li class="md-nav__item md-nav__item--active">
-      
-      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
-      
-      
-        
-      
-      
-        <label class="md-nav__link md-nav__link--active" for="__toc">
-          
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    Home
-  
-
-    
-  </span>
-  
-  
-
-          <span class="md-nav__icon md-icon"></span>
-        </label>
-      
-      <a href="." class="md-nav__link md-nav__link--active">
+    <li class="md-nav__item">
+      <a href="../.." class="md-nav__link">
         
   
   
@@ -301,59 +276,6 @@
   
 
       </a>
-      
-        
-
-<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
-  
-  
-  
-    
-  
-  
-    <label class="md-nav__title" for="__toc">
-      <span class="md-nav__icon md-icon"></span>
-      Table of contents
-    </label>
-    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
-      
-        <li class="md-nav__item">
-  <a href="#what-you-can-do" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        What you can do
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#new-to-abap-fs" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        New to ABAP FS?
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#using-a-non-github-copilot-ai-tool" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Using a non-GitHub Copilot AI tool?
-      
-    </span>
-  </a>
-  
-</li>
-      
-    </ul>
-  
-</nav>
-      
     </li>
   
 
@@ -419,7 +341,7 @@
   
   
     <li class="md-nav__item">
-      <a href="getting-started/installation/" class="md-nav__link">
+      <a href="../../getting-started/installation/" class="md-nav__link">
         
   
   
@@ -447,7 +369,7 @@
   
   
     <li class="md-nav__item">
-      <a href="getting-started/walkthrough/" class="md-nav__link">
+      <a href="../../getting-started/walkthrough/" class="md-nav__link">
         
   
   
@@ -475,7 +397,7 @@
   
   
     <li class="md-nav__item">
-      <a href="getting-started/connection-manager/" class="md-nav__link">
+      <a href="../../getting-started/connection-manager/" class="md-nav__link">
         
   
   
@@ -510,7 +432,7 @@
   
   
     <li class="md-nav__item">
-      <a href="mcp-server/" class="md-nav__link">
+      <a href="../../mcp-server/" class="md-nav__link">
         
   
   
@@ -534,8 +456,10 @@
       
   
   
+    
   
   
+  
     
     
     
@@ -546,13 +470,11 @@
       
     
     
-    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+    <li class="md-nav__item md-nav__item--active md-nav__item--section md-nav__item--nested">
       
         
         
-          
-        
-        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_4" >
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4" checked>
         
           
           <label class="md-nav__link" for="__nav_4" id="__nav_4_label" tabindex="">
@@ -573,7 +495,7 @@
             <span class="md-nav__icon md-icon"></span>
           </label>
         
-        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_4_label" aria-expanded="false">
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_4_label" aria-expanded="true">
           <label class="md-nav__title" for="__nav_4">
             <span class="md-nav__icon md-icon"></span>
             
@@ -591,7 +513,7 @@
   
   
     <li class="md-nav__item">
-      <a href="ai/language-model-tools/" class="md-nav__link">
+      <a href="../language-model-tools/" class="md-nav__link">
         
   
   
@@ -616,10 +538,37 @@
                 
   
   
+    
   
   
-    <li class="md-nav__item">
-      <a href="ai/subagents/" class="md-nav__link">
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Subagents
+  
+
+    
+  </span>
+  
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
         
   
   
@@ -635,6 +584,203 @@
   
 
       </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#available-subagents" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Available Subagents
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#how-to-use-subagents" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        How to Use Subagents
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#setup" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Setup
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Setup">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#step-1-configure-models" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Step 1 — Configure models
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#step-2-enable-subagents" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Step 2 — Enable subagents
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#step-3-allow-agent-delegation-if-prompted" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Step 3 — Allow agent delegation (if prompted)
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#managing-subagents" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Managing Subagents
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#customizing-agent-tools" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Customizing Agent Tools
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#what-to-be-aware-of" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        What to Be Aware Of
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#troubleshooting" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Troubleshooting
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Troubleshooting">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#cannot-enable-subagents-missing-models" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        "Cannot enable subagents - missing models"
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#agent-files-show-validation-errors" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Agent files show validation errors
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#subagents-auto-disabled" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Subagents auto-disabled
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#ghost-files-in-explorer-after-disable" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Ghost files in explorer after disable
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#delegation-not-using-custom-agents" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Delegation not using custom agents
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
     </li>
   
 
@@ -647,7 +793,7 @@
   
   
     <li class="md-nav__item">
-      <a href="ai/skills/" class="md-nav__link">
+      <a href="../skills/" class="md-nav__link">
         
   
   
@@ -675,7 +821,7 @@
   
   
     <li class="md-nav__item">
-      <a href="ai/heartbeat/" class="md-nav__link">
+      <a href="../heartbeat/" class="md-nav__link">
         
   
   
@@ -764,7 +910,7 @@
   
   
     <li class="md-nav__item">
-      <a href="editor/hover-information/" class="md-nav__link">
+      <a href="../../editor/hover-information/" class="md-nav__link">
         
   
   
@@ -792,7 +938,7 @@
   
   
     <li class="md-nav__item">
-      <a href="editor/views-panels/" class="md-nav__link">
+      <a href="../../editor/views-panels/" class="md-nav__link">
         
   
   
@@ -820,7 +966,7 @@
   
   
     <li class="md-nav__item">
-      <a href="editor/object-property-view/" class="md-nav__link">
+      <a href="../../editor/object-property-view/" class="md-nav__link">
         
   
   
@@ -848,7 +994,7 @@
   
   
     <li class="md-nav__item">
-      <a href="editor/custom-editors/" class="md-nav__link">
+      <a href="../../editor/custom-editors/" class="md-nav__link">
         
   
   
@@ -876,7 +1022,7 @@
   
   
     <li class="md-nav__item">
-      <a href="editor/message-class-editor/" class="md-nav__link">
+      <a href="../../editor/message-class-editor/" class="md-nav__link">
         
   
   
@@ -965,7 +1111,7 @@
   
   
     <li class="md-nav__item">
-      <a href="sap-gui/embedded-gui/" class="md-nav__link">
+      <a href="../../sap-gui/embedded-gui/" class="md-nav__link">
         
   
   
@@ -993,7 +1139,7 @@
   
   
     <li class="md-nav__item">
-      <a href="sap-gui/native-gui/" class="md-nav__link">
+      <a href="../../sap-gui/native-gui/" class="md-nav__link">
         
   
   
@@ -1021,7 +1167,7 @@
   
   
     <li class="md-nav__item">
-      <a href="sap-gui/web-browser-gui/" class="md-nav__link">
+      <a href="../../sap-gui/web-browser-gui/" class="md-nav__link">
         
   
   
@@ -1049,7 +1195,7 @@
   
   
     <li class="md-nav__item">
-      <a href="sap-gui/run-transaction/" class="md-nav__link">
+      <a href="../../sap-gui/run-transaction/" class="md-nav__link">
         
   
   
@@ -1138,7 +1284,7 @@
   
   
     <li class="md-nav__item">
-      <a href="object-management/search/" class="md-nav__link">
+      <a href="../../object-management/search/" class="md-nav__link">
         
   
   
@@ -1166,7 +1312,7 @@
   
   
     <li class="md-nav__item">
-      <a href="object-management/create/" class="md-nav__link">
+      <a href="../../object-management/create/" class="md-nav__link">
         
   
   
@@ -1194,7 +1340,7 @@
   
   
     <li class="md-nav__item">
-      <a href="object-management/open/" class="md-nav__link">
+      <a href="../../object-management/open/" class="md-nav__link">
         
   
   
@@ -1222,7 +1368,7 @@
   
   
     <li class="md-nav__item">
-      <a href="object-management/activation/" class="md-nav__link">
+      <a href="../../object-management/activation/" class="md-nav__link">
         
   
   
@@ -1250,7 +1396,7 @@
   
   
     <li class="md-nav__item">
-      <a href="object-management/favorites/" class="md-nav__link">
+      <a href="../../object-management/favorites/" class="md-nav__link">
         
   
   
@@ -1278,7 +1424,7 @@
   
   
     <li class="md-nav__item">
-      <a href="object-management/table-contents/" class="md-nav__link">
+      <a href="../../object-management/table-contents/" class="md-nav__link">
         
   
   
@@ -1306,7 +1452,7 @@
   
   
     <li class="md-nav__item">
-      <a href="object-management/compare-systems/" class="md-nav__link">
+      <a href="../../object-management/compare-systems/" class="md-nav__link">
         
   
   
@@ -1395,7 +1541,7 @@
   
   
     <li class="md-nav__item">
-      <a href="code-quality/atc-analysis/" class="md-nav__link">
+      <a href="../../code-quality/atc-analysis/" class="md-nav__link">
         
   
   
@@ -1423,7 +1569,7 @@
   
   
     <li class="md-nav__item">
-      <a href="code-quality/abap-cleaner/" class="md-nav__link">
+      <a href="../../code-quality/abap-cleaner/" class="md-nav__link">
         
   
   
@@ -1451,7 +1597,7 @@
   
   
     <li class="md-nav__item">
-      <a href="code-quality/syntax-validation/" class="md-nav__link">
+      <a href="../../code-quality/syntax-validation/" class="md-nav__link">
         
   
   
@@ -1479,7 +1625,7 @@
   
   
     <li class="md-nav__item">
-      <a href="code-quality/where-used/" class="md-nav__link">
+      <a href="../../code-quality/where-used/" class="md-nav__link">
         
   
   
@@ -1568,7 +1714,7 @@
   
   
     <li class="md-nav__item">
-      <a href="debugging/abap-debugging/" class="md-nav__link">
+      <a href="../../debugging/abap-debugging/" class="md-nav__link">
         
   
   
@@ -1596,7 +1742,7 @@
   
   
     <li class="md-nav__item">
-      <a href="debugging/debug-recording/" class="md-nav__link">
+      <a href="../../debugging/debug-recording/" class="md-nav__link">
         
   
   
@@ -1685,7 +1831,7 @@
   
   
     <li class="md-nav__item">
-      <a href="data-query/sql-query/" class="md-nav__link">
+      <a href="../../data-query/sql-query/" class="md-nav__link">
         
   
   
@@ -1713,7 +1859,7 @@
   
   
     <li class="md-nav__item">
-      <a href="data-query/data-workbooks/" class="md-nav__link">
+      <a href="../../data-query/data-workbooks/" class="md-nav__link">
         
   
   
@@ -1802,7 +1948,7 @@
   
   
     <li class="md-nav__item">
-      <a href="transport/request-view/" class="md-nav__link">
+      <a href="../../transport/request-view/" class="md-nav__link">
         
   
   
@@ -1830,7 +1976,7 @@
   
   
     <li class="md-nav__item">
-      <a href="transport/object-operations/" class="md-nav__link">
+      <a href="../../transport/object-operations/" class="md-nav__link">
         
   
   
@@ -1919,7 +2065,7 @@
   
   
     <li class="md-nav__item">
-      <a href="version-control/abapgit/" class="md-nav__link">
+      <a href="../../version-control/abapgit/" class="md-nav__link">
         
   
   
@@ -1947,7 +2093,7 @@
   
   
     <li class="md-nav__item">
-      <a href="version-control/revision-history/" class="md-nav__link">
+      <a href="../../version-control/revision-history/" class="md-nav__link">
         
   
   
@@ -1975,7 +2121,7 @@
   
   
     <li class="md-nav__item">
-      <a href="version-control/blame-gutter/" class="md-nav__link">
+      <a href="../../version-control/blame-gutter/" class="md-nav__link">
         
   
   
@@ -2064,7 +2210,7 @@
   
   
     <li class="md-nav__item">
-      <a href="testing/unit-tests/" class="md-nav__link">
+      <a href="../../testing/unit-tests/" class="md-nav__link">
         
   
   
@@ -2092,7 +2238,7 @@
   
   
     <li class="md-nav__item">
-      <a href="testing/test-classes/" class="md-nav__link">
+      <a href="../../testing/test-classes/" class="md-nav__link">
         
   
   
@@ -2120,7 +2266,7 @@
   
   
     <li class="md-nav__item">
-      <a href="testing/test-documentation/" class="md-nav__link">
+      <a href="../../testing/test-documentation/" class="md-nav__link">
         
   
   
@@ -2209,7 +2355,7 @@
   
   
     <li class="md-nav__item">
-      <a href="diagrams/mermaid/" class="md-nav__link">
+      <a href="../../diagrams/mermaid/" class="md-nav__link">
         
   
   
@@ -2237,7 +2383,7 @@
   
   
     <li class="md-nav__item">
-      <a href="diagrams/abap-documentation/" class="md-nav__link">
+      <a href="../../diagrams/abap-documentation/" class="md-nav__link">
         
   
   
@@ -2326,7 +2472,7 @@
   
   
     <li class="md-nav__item">
-      <a href="developer-tools/dumps-analysis/" class="md-nav__link">
+      <a href="../../developer-tools/dumps-analysis/" class="md-nav__link">
         
   
   
@@ -2354,7 +2500,7 @@
   
   
     <li class="md-nav__item">
-      <a href="developer-tools/performance-traces/" class="md-nav__link">
+      <a href="../../developer-tools/performance-traces/" class="md-nav__link">
         
   
   
@@ -2382,7 +2528,7 @@
   
   
     <li class="md-nav__item">
-      <a href="developer-tools/text-elements/" class="md-nav__link">
+      <a href="../../developer-tools/text-elements/" class="md-nav__link">
         
   
   
@@ -2410,7 +2556,7 @@
   
   
     <li class="md-nav__item">
-      <a href="developer-tools/regex-search/" class="md-nav__link">
+      <a href="../../developer-tools/regex-search/" class="md-nav__link">
         
   
   
@@ -2438,7 +2584,7 @@
   
   
     <li class="md-nav__item">
-      <a href="developer-tools/s4hana-readiness/" class="md-nav__link">
+      <a href="../../developer-tools/s4hana-readiness/" class="md-nav__link">
         
   
   
@@ -2466,7 +2612,7 @@
   
   
     <li class="md-nav__item">
-      <a href="developer-tools/rap-generator/" class="md-nav__link">
+      <a href="../../developer-tools/rap-generator/" class="md-nav__link">
         
   
   
@@ -2494,7 +2640,7 @@
   
   
     <li class="md-nav__item">
-      <a href="developer-tools/feed-reader/" class="md-nav__link">
+      <a href="../../developer-tools/feed-reader/" class="md-nav__link">
         
   
   
@@ -2522,7 +2668,7 @@
   
   
     <li class="md-nav__item">
-      <a href="developer-tools/dependency-graph/" class="md-nav__link">
+      <a href="../../developer-tools/dependency-graph/" class="md-nav__link">
         
   
   
@@ -2550,7 +2696,7 @@
   
   
     <li class="md-nav__item">
-      <a href="developer-tools/communication-log/" class="md-nav__link">
+      <a href="../../developer-tools/communication-log/" class="md-nav__link">
         
   
   
@@ -2578,7 +2724,7 @@
   
   
     <li class="md-nav__item">
-      <a href="developer-tools/tool-grouping-fix/" class="md-nav__link">
+      <a href="../../developer-tools/tool-grouping-fix/" class="md-nav__link">
         
   
   
@@ -2667,7 +2813,7 @@
   
   
     <li class="md-nav__item">
-      <a href="reference/important-considerations/" class="md-nav__link">
+      <a href="../../reference/important-considerations/" class="md-nav__link">
         
   
   
@@ -2695,7 +2841,7 @@
   
   
     <li class="md-nav__item">
-      <a href="reference/commands-vs-tools/" class="md-nav__link">
+      <a href="../../reference/commands-vs-tools/" class="md-nav__link">
         
   
   
@@ -2723,7 +2869,7 @@
   
   
     <li class="md-nav__item">
-      <a href="reference/privacy-telemetry/" class="md-nav__link">
+      <a href="../../reference/privacy-telemetry/" class="md-nav__link">
         
   
   
@@ -2751,7 +2897,7 @@
   
   
     <li class="md-nav__item">
-      <a href="reference/org-admin/" class="md-nav__link">
+      <a href="../../reference/org-admin/" class="md-nav__link">
         
   
   
@@ -2806,10 +2952,10 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
-  <a href="#what-you-can-do" class="md-nav__link">
+  <a href="#available-subagents" class="md-nav__link">
     <span class="md-ellipsis">
       
-        What you can do
+        Available Subagents
       
     </span>
   </a>
@@ -2817,10 +2963,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#new-to-abap-fs" class="md-nav__link">
+  <a href="#how-to-use-subagents" class="md-nav__link">
     <span class="md-ellipsis">
       
-        New to ABAP FS?
+        How to Use Subagents
       
     </span>
   </a>
@@ -2828,13 +2974,157 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#using-a-non-github-copilot-ai-tool" class="md-nav__link">
+  <a href="#setup" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Using a non-GitHub Copilot AI tool?
+        Setup
       
     </span>
   </a>
+  
+    <nav class="md-nav" aria-label="Setup">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#step-1-configure-models" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Step 1 — Configure models
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#step-2-enable-subagents" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Step 2 — Enable subagents
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#step-3-allow-agent-delegation-if-prompted" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Step 3 — Allow agent delegation (if prompted)
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#managing-subagents" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Managing Subagents
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#customizing-agent-tools" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Customizing Agent Tools
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#what-to-be-aware-of" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        What to Be Aware Of
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#troubleshooting" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Troubleshooting
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Troubleshooting">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#cannot-enable-subagents-missing-models" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        "Cannot enable subagents - missing models"
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#agent-files-show-validation-errors" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Agent files show validation errors
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#subagents-auto-disabled" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Subagents auto-disabled
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#ghost-files-in-explorer-after-disable" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Ghost files in explorer after disable
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#delegation-not-using-custom-agents" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Delegation not using custom agents
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
   
 </li>
       
@@ -2858,89 +3148,207 @@
   
 
 
-<h1 id="abap-fs-abap-development-in-vs-code">ABAP FS — ABAP Development in VS Code<a class="headerlink" href="#abap-fs-abap-development-in-vs-code" title="Permanent link">&para;</a></h1>
-<p><strong>ABAP FS</strong> is a VS Code extension that connects directly to your SAP system — giving you (and your AI assistant) live access to read code, query tables, run tests, debug, and manage objects without leaving the editor.</p>
-<p>Ask Copilot "How does BAPI_USER_GET_DETAIL work?" and it finds the function, reads the code, checks where it's used, and examines related objects — all autonomously using 40 specialized SAP tools.</p>
-<p>If you're used to SE38, SE24, or ADT in Eclipse, ABAP FS brings that same direct-system connectivity into VS Code — plus AI assistance, modern tooling, and the full VS Code extension ecosystem.</p>
-<blockquote>
-<p><strong>GitHub Repository:</strong> <a href="https://github.com/marcellourbani/vscode_abap_remote_fs">github.com/marcellourbani/vscode_abap_remote_fs</a></p>
-</blockquote>
-<hr />
-<h2 id="what-you-can-do">What you can do<a class="headerlink" href="#what-you-can-do" title="Permanent link">&para;</a></h2>
-<p>This is a high-level summary. See the left navigation for full feature pages.</p>
+<h1 id="ai-subagents-for-optimized-abap-development">AI Subagents for Optimized ABAP Development<a class="headerlink" href="#ai-subagents-for-optimized-abap-development" title="Permanent link">&para;</a></h1>
+<p>AI Subagents are specialized AI assistants, each focused on one type of ABAP task (finding objects, reading code, running analysis, etc.). Instead of one general AI doing everything, subagents split work across focused specialists.</p>
+<p><strong>Why this matters:</strong></p>
+<ul>
+<li><strong>Better results</strong> — a dedicated code reviewer catches more issues than a general assistant juggling multiple goals</li>
+<li><strong>Longer conversations</strong> — heavy operations run in separate context windows, so your main chat stays responsive</li>
+<li><strong>Lower cost</strong> — simple tasks (search, read) use cheaper/faster models; complex tasks use smarter ones</li>
+</ul>
+<h2 id="available-subagents">Available Subagents<a class="headerlink" href="#available-subagents" title="Permanent link">&para;</a></h2>
 <table>
 <thead>
 <tr>
-<th>Area</th>
-<th>Capabilities</th>
+<th>Agent</th>
+<th>What it does</th>
+<th>Tier</th>
 </tr>
 </thead>
 <tbody>
 <tr>
-<td><strong>AI-Powered Development</strong></td>
-<td>40 tools give Copilot deep SAP awareness — search objects, read code, run tests, explain dumps, all via natural language</td>
+<td><code>abap-orchestrator</code></td>
+<td>Routes tasks, writes all code, coordinates other agents</td>
+<td>3 (Premium)</td>
 </tr>
 <tr>
-<td><strong>Edit &amp; Activate</strong></td>
-<td>Browse, open, edit, and activate ABAP objects on the live system</td>
+<td><code>abap-code-reviewer</code></td>
+<td>Deep code review — security, performance, best practices</td>
+<td>3 (Premium)</td>
 </tr>
 <tr>
-<td><strong>Editor Experience</strong></td>
-<td>Enhanced hover info, custom editors, object properties, and dedicated ABAP views/panels</td>
+<td><code>abap-usage-analyzer</code></td>
+<td>Where-used analysis, dependencies, change impact</td>
+<td>2 (Mid-tier)</td>
 </tr>
 <tr>
-<td><strong>Debug</strong></td>
-<td>Full ABAP debugger with breakpoints, variable inspection, stepping, and debug recording</td>
+<td><code>abap-quality-checker</code></td>
+<td>ATC analysis, unit tests, code health</td>
+<td>2 (Mid-tier)</td>
 </tr>
 <tr>
-<td><strong>Test</strong></td>
-<td>Run unit tests, create test classes, generate test documentation</td>
+<td><code>abap-historian</code></td>
+<td>Version history, transport requests</td>
+<td>2 (Mid-tier)</td>
 </tr>
 <tr>
-<td><strong>Code Quality</strong></td>
-<td>ATC analysis, syntax validation, where-used, ABAP Cleaner formatting</td>
+<td><code>abap-debugger</code></td>
+<td>Runtime debugging — breakpoints, stepping</td>
+<td>2 (Mid-tier)</td>
 </tr>
 <tr>
-<td><strong>Transport</strong></td>
-<td>View and manage transport requests directly</td>
+<td><code>abap-troubleshooter</code></td>
+<td>Analyze dumps, traces, performance issues</td>
+<td>2 (Mid-tier)</td>
 </tr>
 <tr>
-<td><strong>Version Control</strong></td>
-<td>abapGit integration, revision history, blame gutter</td>
+<td><code>abap-data-analyst</code></td>
+<td>Query SAP tables, analyze data patterns</td>
+<td>2 (Mid-tier)</td>
 </tr>
 <tr>
-<td><strong>Data &amp; SQL</strong></td>
-<td>Run SQL queries against SAP tables, build multi-step data workbooks</td>
+<td><code>abap-discoverer</code></td>
+<td>Find ABAP objects by name/pattern</td>
+<td>1 (Cheap/Fast)</td>
 </tr>
 <tr>
-<td><strong>SAP GUI</strong></td>
-<td>Launch embedded, native, or browser-based SAP GUI from the editor</td>
+<td><code>abap-reader</code></td>
+<td>Read and extract info from source code</td>
+<td>1 (Cheap/Fast)</td>
 </tr>
 <tr>
-<td><strong>Diagrams &amp; Docs</strong></td>
-<td>Generate Mermaid diagrams and ABAP documentation from within VS Code</td>
+<td><code>abap-creator</code></td>
+<td>Create new ABAP objects (shells)</td>
+<td>1 (Cheap/Fast)</td>
 </tr>
 <tr>
-<td><strong>Developer Tools</strong></td>
-<td>REPL, Dumps/traces analysis, regex search, dependency graph, feed reader, communication log, RAP generator</td>
+<td><code>abap-visualizer</code></td>
+<td>Create diagrams from code</td>
+<td>1 (Cheap/Fast)</td>
+</tr>
+<tr>
+<td><code>abap-documenter</code></td>
+<td>Generate technical documentation</td>
+<td>1 (Cheap/Fast)</td>
 </tr>
 </tbody>
 </table>
-<hr />
-<h2 id="new-to-abap-fs">New to ABAP FS?<a class="headerlink" href="#new-to-abap-fs" title="Permanent link">&para;</a></h2>
+<h2 id="how-to-use-subagents">How to Use Subagents<a class="headerlink" href="#how-to-use-subagents" title="Permanent link">&para;</a></h2>
+<p>In GitHub Copilot Chat, type <code>@abap-orchestrator</code> to start. The orchestrator is the only agent exposed directly in the chat dropdown — it calls other agents automatically as needed.</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>@abap-orchestrator analyze ZCL_ARTICLE_HANDLER and suggest improvements
+</code></pre></div>
+<p>For example, the orchestrator might:</p>
 <ol>
-<li><a href="getting-started/installation/">Installation</a> — install the extension and connect to your SAP system</li>
-<li><a href="getting-started/walkthrough/">Walkthrough</a> — a guided tour of the main features</li>
-<li><a href="getting-started/connection-manager/">Connection Manager</a> — manage multiple SAP connections</li>
+<li>Delegate "find related classes" → <code>abap-discoverer</code> (cheap, fast)</li>
+<li>Delegate "read the code" → <code>abap-reader</code> (cheap, fast)</li>
+<li>Delegate "usage analysis" → <code>abap-usage-analyzer</code> (mid-tier)</li>
+<li>Synthesize findings and write recommendations itself (premium)</li>
 </ol>
-<hr />
-<h2 id="using-a-non-github-copilot-ai-tool">Using a non-GitHub Copilot AI tool?<a class="headerlink" href="#using-a-non-github-copilot-ai-tool" title="Permanent link">&para;</a></h2>
-<p>Works with <strong>Cursor, Claude Code, Windsurf, Claude Desktop</strong>, and any MCP-compatible client.<br />
-See <a href="mcp-server/">MCP Server</a> for setup.</p>
-<hr />
+<p>You can also invoke other subagents directly with <code>@agent-name</code> if needed. Ask Copilot to make an agent available in the dropdown — it can update the agent's <code>.agent.md</code> file to enable this.</p>
+<h2 id="setup">Setup<a class="headerlink" href="#setup" title="Permanent link">&para;</a></h2>
 <blockquote>
-<p><strong>Tip:</strong> GitHub Copilot (and any AI connected via MCP) has access to this documentation. Just ask your AI assistant about any feature and it can guide you.</p>
+<p>Subagent configuration is stored at the <strong>workspace level</strong> in <code>.vscode/settings.json</code> and <code>.github/agents/</code>. Each project can have its own configuration.</p>
 </blockquote>
+<p>In normal usage, you do not need to edit these files manually. Copilot can configure models, generate/update agent files, validate them, and enable/disable subagents through chat commands.</p>
+<h3 id="step-1-configure-models">Step 1 — Configure models<a class="headerlink" href="#step-1-configure-models" title="Permanent link">&para;</a></h3>
+<p>Ask Copilot:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a>Configure subagents for ABAP development
+</code></pre></div>
+<p>Copilot will suggest models for each tier and ask for confirmation before applying. Recommended assignments:</p>
+<table>
+<thead>
+<tr>
+<th>Tier</th>
+<th>Agents</th>
+<th>Example models</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>1 — Cheap/Fast</td>
+<td>discoverer, reader, creator, visualizer, documenter</td>
+<td>Claude Haiku 4.5, Gemini 3 Flash</td>
+</tr>
+<tr>
+<td>2 — Mid-tier</td>
+<td>usage-analyzer, quality-checker, historian, debugger, troubleshooter, data-analyst</td>
+<td>GPT-4o, Claude Sonnet 4</td>
+</tr>
+<tr>
+<td>3 — Premium</td>
+<td>orchestrator, code-reviewer</td>
+<td>Claude Sonnet/Opus 4.6, GPT-5.4</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Avoid assigning premium models to Tier 1 agents</strong> — it eliminates the cost benefit without improving results for simple tasks.</p>
+<h3 id="step-2-enable-subagents">Step 2 — Enable subagents<a class="headerlink" href="#step-2-enable-subagents" title="Permanent link">&para;</a></h3>
+<p>Ask Copilot:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a>Enable subagents
+</code></pre></div>
+<p>This creates agent files in <code>.github/agents/</code> and validates them.</p>
+<h3 id="step-3-allow-agent-delegation-if-prompted">Step 3 — Allow agent delegation (if prompted)<a class="headerlink" href="#step-3-allow-agent-delegation-if-prompted" title="Permanent link">&para;</a></h3>
+<p>You may see a notification asking to enable <code>chat.customAgentInSubagent.enabled</code>. Click <strong>Enable Setting</strong> — this allows the orchestrator to call other agents.</p>
+<h2 id="managing-subagents">Managing Subagents<a class="headerlink" href="#managing-subagents" title="Permanent link">&para;</a></h2>
+<p>All management is done through Copilot chat:</p>
+<table>
+<thead>
+<tr>
+<th>What you want</th>
+<th>What to ask</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Check current status</td>
+<td><code>Show subagent status</code></td>
+</tr>
+<tr>
+<td>Disable all agents</td>
+<td><code>Disable subagents</code></td>
+</tr>
+<tr>
+<td>Re-enable agents</td>
+<td><code>Enable subagents</code></td>
+</tr>
+<tr>
+<td>Change a model</td>
+<td><code>Change abap-discoverer to use GPT-4o</code></td>
+</tr>
+<tr>
+<td>See available models</td>
+<td><code>What models can I use for subagents?</code></td>
+</tr>
+<tr>
+<td>See available tools</td>
+<td><code>List available tools for subagents</code></td>
+</tr>
+</tbody>
+</table>
+<p>When you disable subagents, agent files move to <code>agents_disabled/</code> (not deleted). Re-enabling restores them with your customizations intact.</p>
+<h2 id="customizing-agent-tools">Customizing Agent Tools<a class="headerlink" href="#customizing-agent-tools" title="Permanent link">&para;</a></h2>
+<p>Each agent's <code>.agent.md</code> file in <code>.github/agents/</code> defines which tools it can use. You can edit these files directly or ask Copilot to do it:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a>Add the abap-trace tool to abap-troubleshooter
+</code></pre></div>
+<p>Changes survive disable/re-enable cycles — only the <code>model:</code> line is updated when you change models.</p>
+<p>✅ <strong>User Control</strong>: You decide which models to use for each agent tier</p>
+<h2 id="what-to-be-aware-of">What to Be Aware Of<a class="headerlink" href="#what-to-be-aware-of" title="Permanent link">&para;</a></h2>
+<p>⚠️ <strong>Model Availability</strong>: Some models shown in the list may not work (e.g., "GPT-4o mini"). The system validates and auto-disables if errors are detected.</p>
+<p>⚠️ <strong>VS Code Setting Required</strong>: <code>chat.customAgentInSubagent.enabled</code> must be true for delegation to work, otherwise main agent's model may be used for all subagents which can result in a lot of premium request usage.</p>
+<p>⚠️ <strong>Workspace-Specific</strong>: Settings and agent files are per-workspace, not global</p>
+<p>⚠️ <strong>Agent Files in Git</strong>: The <code>.github/agents/</code> folder will appear in your version control - add to <code>.gitignore</code> if you don't want to share</p>
+<p>⚠️ <strong>Frequently-Used Agents</strong>: Agents like <code>abap-discoverer</code> and <code>abap-reader</code> get called often - using expensive models for these defeats the cost benefit</p>
+<h2 id="troubleshooting">Troubleshooting<a class="headerlink" href="#troubleshooting" title="Permanent link">&para;</a></h2>
+<h3 id="cannot-enable-subagents-missing-models">"Cannot enable subagents - missing models"<a class="headerlink" href="#cannot-enable-subagents-missing-models" title="Permanent link">&para;</a></h3>
+<p>All 13 agents must have models configured. Ask Copilot to configure missing agents.</p>
+<h3 id="agent-files-show-validation-errors">Agent files show validation errors<a class="headerlink" href="#agent-files-show-validation-errors" title="Permanent link">&para;</a></h3>
+<p>Some model names aren't valid for agent files. Try a different model (e.g., use <code>Claude Haiku 4.5</code> instead of <code>GPT-4o mini</code>).</p>
+<h3 id="subagents-auto-disabled">Subagents auto-disabled<a class="headerlink" href="#subagents-auto-disabled" title="Permanent link">&para;</a></h3>
+<p>This happens when configured models become unavailable. Reconfigure with available models.</p>
+<h3 id="ghost-files-in-explorer-after-disable">Ghost files in explorer after disable<a class="headerlink" href="#ghost-files-in-explorer-after-disable" title="Permanent link">&para;</a></h3>
+<p>This is a VS Code refresh issue. The extension refreshes the explorer automatically, but occasionally you may need to collapse/expand the folder.</p>
+<h3 id="delegation-not-using-custom-agents">Delegation not using custom agents<a class="headerlink" href="#delegation-not-using-custom-agents" title="Permanent link">&para;</a></h3>
+<p>Make sure <code>chat.customAgentInSubagent.enabled</code> is set to <code>true</code> in your VS Code settings.</p>
 
 
 
@@ -2990,10 +3398,10 @@ See <a href="mcp-server/">MCP Server</a> for setup.</p>
     
       
       
-      <script id="__config" type="application/json">{"annotate": null, "base": ".", "features": ["navigation.sections", "navigation.expand", "search.suggest", "search.highlight", "content.code.copy"], "search": "assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
+      <script id="__config" type="application/json">{"annotate": null, "base": "../..", "features": ["navigation.sections", "navigation.expand", "search.suggest", "search.highlight", "content.code.copy"], "search": "../../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
     
     
-      <script src="assets/javascripts/bundle.79ae519e.min.js"></script>
+      <script src="../../assets/javascripts/bundle.79ae519e.min.js"></script>
       
     
   </body>

@@ -11,26 +11,28 @@
       
       
       
+        <link rel="prev" href="../sql-query/">
       
-        <link rel="next" href="getting-started/installation/">
+      
+        <link rel="next" href="../../transport/request-view/">
       
       
         
       
       
-      <link rel="icon" href="assets/images/favicon.png">
+      <link rel="icon" href="../../assets/images/favicon.png">
       <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.6">
     
     
       
-        <title>ABAP FS Documentation</title>
+        <title>Data Workbooks - ABAP FS Documentation</title>
       
     
     
-      <link rel="stylesheet" href="assets/stylesheets/main.484c7ddc.min.css">
+      <link rel="stylesheet" href="../../assets/stylesheets/main.484c7ddc.min.css">
       
         
-        <link rel="stylesheet" href="assets/stylesheets/palette.ab4e12ef.min.css">
+        <link rel="stylesheet" href="../../assets/stylesheets/palette.ab4e12ef.min.css">
       
       
 
@@ -49,7 +51,7 @@
       
     
     
-    <script>__md_scope=new URL(".",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    <script>__md_scope=new URL("../..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
     
       
 
@@ -74,7 +76,7 @@
     <div data-md-component="skip">
       
         
-        <a href="#abap-fs-abap-development-in-vs-code" class="md-skip">
+        <a href="#sap-data-workbooks-sapwb" class="md-skip">
           Skip to content
         </a>
       
@@ -90,7 +92,7 @@
 
 <header class="md-header md-header--shadow" data-md-component="header">
   <nav class="md-header__inner md-grid" aria-label="Header">
-    <a href="." title="ABAP FS Documentation" class="md-header__button md-logo" aria-label="ABAP FS Documentation" data-md-component="logo">
+    <a href="../.." title="ABAP FS Documentation" class="md-header__button md-logo" aria-label="ABAP FS Documentation" data-md-component="logo">
       
   
   <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
@@ -110,7 +112,7 @@
         <div class="md-header__topic" data-md-component="header-topic">
           <span class="md-ellipsis">
             
-              Home
+              Data Workbooks
             
           </span>
         </div>
@@ -228,7 +230,7 @@
 
 <nav class="md-nav md-nav--primary" aria-label="Navigation" data-md-level="0">
   <label class="md-nav__title" for="__drawer">
-    <a href="." title="ABAP FS Documentation" class="md-nav__button md-logo" aria-label="ABAP FS Documentation" data-md-component="logo">
+    <a href="../.." title="ABAP FS Documentation" class="md-nav__button md-logo" aria-label="ABAP FS Documentation" data-md-component="logo">
       
   
   <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
@@ -255,37 +257,10 @@
       
   
   
-    
   
   
-  
-    <li class="md-nav__item md-nav__item--active">
-      
-      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
-      
-      
-        
-      
-      
-        <label class="md-nav__link md-nav__link--active" for="__toc">
-          
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    Home
-  
-
-    
-  </span>
-  
-  
-
-          <span class="md-nav__icon md-icon"></span>
-        </label>
-      
-      <a href="." class="md-nav__link md-nav__link--active">
+    <li class="md-nav__item">
+      <a href="../.." class="md-nav__link">
         
   
   
@@ -301,59 +276,6 @@
   
 
       </a>
-      
-        
-
-<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
-  
-  
-  
-    
-  
-  
-    <label class="md-nav__title" for="__toc">
-      <span class="md-nav__icon md-icon"></span>
-      Table of contents
-    </label>
-    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
-      
-        <li class="md-nav__item">
-  <a href="#what-you-can-do" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        What you can do
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#new-to-abap-fs" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        New to ABAP FS?
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#using-a-non-github-copilot-ai-tool" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Using a non-GitHub Copilot AI tool?
-      
-    </span>
-  </a>
-  
-</li>
-      
-    </ul>
-  
-</nav>
-      
     </li>
   
 
@@ -419,7 +341,7 @@
   
   
     <li class="md-nav__item">
-      <a href="getting-started/installation/" class="md-nav__link">
+      <a href="../../getting-started/installation/" class="md-nav__link">
         
   
   
@@ -447,7 +369,7 @@
   
   
     <li class="md-nav__item">
-      <a href="getting-started/walkthrough/" class="md-nav__link">
+      <a href="../../getting-started/walkthrough/" class="md-nav__link">
         
   
   
@@ -475,7 +397,7 @@
   
   
     <li class="md-nav__item">
-      <a href="getting-started/connection-manager/" class="md-nav__link">
+      <a href="../../getting-started/connection-manager/" class="md-nav__link">
         
   
   
@@ -510,7 +432,7 @@
   
   
     <li class="md-nav__item">
-      <a href="mcp-server/" class="md-nav__link">
+      <a href="../../mcp-server/" class="md-nav__link">
         
   
   
@@ -591,7 +513,7 @@
   
   
     <li class="md-nav__item">
-      <a href="ai/language-model-tools/" class="md-nav__link">
+      <a href="../../ai/language-model-tools/" class="md-nav__link">
         
   
   
@@ -619,7 +541,7 @@
   
   
     <li class="md-nav__item">
-      <a href="ai/subagents/" class="md-nav__link">
+      <a href="../../ai/subagents/" class="md-nav__link">
         
   
   
@@ -647,7 +569,7 @@
   
   
     <li class="md-nav__item">
-      <a href="ai/skills/" class="md-nav__link">
+      <a href="../../ai/skills/" class="md-nav__link">
         
   
   
@@ -675,7 +597,7 @@
   
   
     <li class="md-nav__item">
-      <a href="ai/heartbeat/" class="md-nav__link">
+      <a href="../../ai/heartbeat/" class="md-nav__link">
         
   
   
@@ -764,7 +686,7 @@
   
   
     <li class="md-nav__item">
-      <a href="editor/hover-information/" class="md-nav__link">
+      <a href="../../editor/hover-information/" class="md-nav__link">
         
   
   
@@ -792,7 +714,7 @@
   
   
     <li class="md-nav__item">
-      <a href="editor/views-panels/" class="md-nav__link">
+      <a href="../../editor/views-panels/" class="md-nav__link">
         
   
   
@@ -820,7 +742,7 @@
   
   
     <li class="md-nav__item">
-      <a href="editor/object-property-view/" class="md-nav__link">
+      <a href="../../editor/object-property-view/" class="md-nav__link">
         
   
   
@@ -848,7 +770,7 @@
   
   
     <li class="md-nav__item">
-      <a href="editor/custom-editors/" class="md-nav__link">
+      <a href="../../editor/custom-editors/" class="md-nav__link">
         
   
   
@@ -876,7 +798,7 @@
   
   
     <li class="md-nav__item">
-      <a href="editor/message-class-editor/" class="md-nav__link">
+      <a href="../../editor/message-class-editor/" class="md-nav__link">
         
   
   
@@ -965,7 +887,7 @@
   
   
     <li class="md-nav__item">
-      <a href="sap-gui/embedded-gui/" class="md-nav__link">
+      <a href="../../sap-gui/embedded-gui/" class="md-nav__link">
         
   
   
@@ -993,7 +915,7 @@
   
   
     <li class="md-nav__item">
-      <a href="sap-gui/native-gui/" class="md-nav__link">
+      <a href="../../sap-gui/native-gui/" class="md-nav__link">
         
   
   
@@ -1021,7 +943,7 @@
   
   
     <li class="md-nav__item">
-      <a href="sap-gui/web-browser-gui/" class="md-nav__link">
+      <a href="../../sap-gui/web-browser-gui/" class="md-nav__link">
         
   
   
@@ -1049,7 +971,7 @@
   
   
     <li class="md-nav__item">
-      <a href="sap-gui/run-transaction/" class="md-nav__link">
+      <a href="../../sap-gui/run-transaction/" class="md-nav__link">
         
   
   
@@ -1138,7 +1060,7 @@
   
   
     <li class="md-nav__item">
-      <a href="object-management/search/" class="md-nav__link">
+      <a href="../../object-management/search/" class="md-nav__link">
         
   
   
@@ -1166,7 +1088,7 @@
   
   
     <li class="md-nav__item">
-      <a href="object-management/create/" class="md-nav__link">
+      <a href="../../object-management/create/" class="md-nav__link">
         
   
   
@@ -1194,7 +1116,7 @@
   
   
     <li class="md-nav__item">
-      <a href="object-management/open/" class="md-nav__link">
+      <a href="../../object-management/open/" class="md-nav__link">
         
   
   
@@ -1222,7 +1144,7 @@
   
   
     <li class="md-nav__item">
-      <a href="object-management/activation/" class="md-nav__link">
+      <a href="../../object-management/activation/" class="md-nav__link">
         
   
   
@@ -1250,7 +1172,7 @@
   
   
     <li class="md-nav__item">
-      <a href="object-management/favorites/" class="md-nav__link">
+      <a href="../../object-management/favorites/" class="md-nav__link">
         
   
   
@@ -1278,7 +1200,7 @@
   
   
     <li class="md-nav__item">
-      <a href="object-management/table-contents/" class="md-nav__link">
+      <a href="../../object-management/table-contents/" class="md-nav__link">
         
   
   
@@ -1306,7 +1228,7 @@
   
   
     <li class="md-nav__item">
-      <a href="object-management/compare-systems/" class="md-nav__link">
+      <a href="../../object-management/compare-systems/" class="md-nav__link">
         
   
   
@@ -1395,7 +1317,7 @@
   
   
     <li class="md-nav__item">
-      <a href="code-quality/atc-analysis/" class="md-nav__link">
+      <a href="../../code-quality/atc-analysis/" class="md-nav__link">
         
   
   
@@ -1423,7 +1345,7 @@
   
   
     <li class="md-nav__item">
-      <a href="code-quality/abap-cleaner/" class="md-nav__link">
+      <a href="../../code-quality/abap-cleaner/" class="md-nav__link">
         
   
   
@@ -1451,7 +1373,7 @@
   
   
     <li class="md-nav__item">
-      <a href="code-quality/syntax-validation/" class="md-nav__link">
+      <a href="../../code-quality/syntax-validation/" class="md-nav__link">
         
   
   
@@ -1479,7 +1401,7 @@
   
   
     <li class="md-nav__item">
-      <a href="code-quality/where-used/" class="md-nav__link">
+      <a href="../../code-quality/where-used/" class="md-nav__link">
         
   
   
@@ -1568,7 +1490,7 @@
   
   
     <li class="md-nav__item">
-      <a href="debugging/abap-debugging/" class="md-nav__link">
+      <a href="../../debugging/abap-debugging/" class="md-nav__link">
         
   
   
@@ -1596,7 +1518,7 @@
   
   
     <li class="md-nav__item">
-      <a href="debugging/debug-recording/" class="md-nav__link">
+      <a href="../../debugging/debug-recording/" class="md-nav__link">
         
   
   
@@ -1628,8 +1550,10 @@
       
   
   
+    
   
   
+  
     
     
     
@@ -1640,13 +1564,11 @@
       
     
     
-    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+    <li class="md-nav__item md-nav__item--active md-nav__item--section md-nav__item--nested">
       
         
         
-          
-        
-        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_10" >
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_10" checked>
         
           
           <label class="md-nav__link" for="__nav_10" id="__nav_10_label" tabindex="">
@@ -1667,7 +1589,7 @@
             <span class="md-nav__icon md-icon"></span>
           </label>
         
-        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_10_label" aria-expanded="false">
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_10_label" aria-expanded="true">
           <label class="md-nav__title" for="__nav_10">
             <span class="md-nav__icon md-icon"></span>
             
@@ -1685,7 +1607,7 @@
   
   
     <li class="md-nav__item">
-      <a href="data-query/sql-query/" class="md-nav__link">
+      <a href="../sql-query/" class="md-nav__link">
         
   
   
@@ -1710,10 +1632,37 @@
                 
   
   
+    
   
   
-    <li class="md-nav__item">
-      <a href="data-query/data-workbooks/" class="md-nav__link">
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Data Workbooks
+  
+
+    
+  </span>
+  
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
         
   
   
@@ -1729,6 +1678,103 @@
   
 
       </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#creating-a-workbook" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Creating a Workbook
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#cell-types" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Cell Types
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#key-concepts" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Key Concepts
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#example-data-quality-check" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Example: Data Quality Check
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#example-cross-system-comparison" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Example: Cross-System Comparison
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#limitations" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Limitations
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#commands" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Commands
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
     </li>
   
 
@@ -1802,7 +1848,7 @@
   
   
     <li class="md-nav__item">
-      <a href="transport/request-view/" class="md-nav__link">
+      <a href="../../transport/request-view/" class="md-nav__link">
         
   
   
@@ -1830,7 +1876,7 @@
   
   
     <li class="md-nav__item">
-      <a href="transport/object-operations/" class="md-nav__link">
+      <a href="../../transport/object-operations/" class="md-nav__link">
         
   
   
@@ -1919,7 +1965,7 @@
   
   
     <li class="md-nav__item">
-      <a href="version-control/abapgit/" class="md-nav__link">
+      <a href="../../version-control/abapgit/" class="md-nav__link">
         
   
   
@@ -1947,7 +1993,7 @@
   
   
     <li class="md-nav__item">
-      <a href="version-control/revision-history/" class="md-nav__link">
+      <a href="../../version-control/revision-history/" class="md-nav__link">
         
   
   
@@ -1975,7 +2021,7 @@
   
   
     <li class="md-nav__item">
-      <a href="version-control/blame-gutter/" class="md-nav__link">
+      <a href="../../version-control/blame-gutter/" class="md-nav__link">
         
   
   
@@ -2064,7 +2110,7 @@
   
   
     <li class="md-nav__item">
-      <a href="testing/unit-tests/" class="md-nav__link">
+      <a href="../../testing/unit-tests/" class="md-nav__link">
         
   
   
@@ -2092,7 +2138,7 @@
   
   
     <li class="md-nav__item">
-      <a href="testing/test-classes/" class="md-nav__link">
+      <a href="../../testing/test-classes/" class="md-nav__link">
         
   
   
@@ -2120,7 +2166,7 @@
   
   
     <li class="md-nav__item">
-      <a href="testing/test-documentation/" class="md-nav__link">
+      <a href="../../testing/test-documentation/" class="md-nav__link">
         
   
   
@@ -2209,7 +2255,7 @@
   
   
     <li class="md-nav__item">
-      <a href="diagrams/mermaid/" class="md-nav__link">
+      <a href="../../diagrams/mermaid/" class="md-nav__link">
         
   
   
@@ -2237,7 +2283,7 @@
   
   
     <li class="md-nav__item">
-      <a href="diagrams/abap-documentation/" class="md-nav__link">
+      <a href="../../diagrams/abap-documentation/" class="md-nav__link">
         
   
   
@@ -2326,7 +2372,7 @@
   
   
     <li class="md-nav__item">
-      <a href="developer-tools/dumps-analysis/" class="md-nav__link">
+      <a href="../../developer-tools/dumps-analysis/" class="md-nav__link">
         
   
   
@@ -2354,7 +2400,7 @@
   
   
     <li class="md-nav__item">
-      <a href="developer-tools/performance-traces/" class="md-nav__link">
+      <a href="../../developer-tools/performance-traces/" class="md-nav__link">
         
   
   
@@ -2382,7 +2428,7 @@
   
   
     <li class="md-nav__item">
-      <a href="developer-tools/text-elements/" class="md-nav__link">
+      <a href="../../developer-tools/text-elements/" class="md-nav__link">
         
   
   
@@ -2410,7 +2456,7 @@
   
   
     <li class="md-nav__item">
-      <a href="developer-tools/regex-search/" class="md-nav__link">
+      <a href="../../developer-tools/regex-search/" class="md-nav__link">
         
   
   
@@ -2438,7 +2484,7 @@
   
   
     <li class="md-nav__item">
-      <a href="developer-tools/s4hana-readiness/" class="md-nav__link">
+      <a href="../../developer-tools/s4hana-readiness/" class="md-nav__link">
         
   
   
@@ -2466,7 +2512,7 @@
   
   
     <li class="md-nav__item">
-      <a href="developer-tools/rap-generator/" class="md-nav__link">
+      <a href="../../developer-tools/rap-generator/" class="md-nav__link">
         
   
   
@@ -2494,7 +2540,7 @@
   
   
     <li class="md-nav__item">
-      <a href="developer-tools/feed-reader/" class="md-nav__link">
+      <a href="../../developer-tools/feed-reader/" class="md-nav__link">
         
   
   
@@ -2522,7 +2568,7 @@
   
   
     <li class="md-nav__item">
-      <a href="developer-tools/dependency-graph/" class="md-nav__link">
+      <a href="../../developer-tools/dependency-graph/" class="md-nav__link">
         
   
   
@@ -2550,7 +2596,7 @@
   
   
     <li class="md-nav__item">
-      <a href="developer-tools/communication-log/" class="md-nav__link">
+      <a href="../../developer-tools/communication-log/" class="md-nav__link">
         
   
   
@@ -2578,7 +2624,7 @@
   
   
     <li class="md-nav__item">
-      <a href="developer-tools/tool-grouping-fix/" class="md-nav__link">
+      <a href="../../developer-tools/tool-grouping-fix/" class="md-nav__link">
         
   
   
@@ -2667,7 +2713,7 @@
   
   
     <li class="md-nav__item">
-      <a href="reference/important-considerations/" class="md-nav__link">
+      <a href="../../reference/important-considerations/" class="md-nav__link">
         
   
   
@@ -2695,7 +2741,7 @@
   
   
     <li class="md-nav__item">
-      <a href="reference/commands-vs-tools/" class="md-nav__link">
+      <a href="../../reference/commands-vs-tools/" class="md-nav__link">
         
   
   
@@ -2723,7 +2769,7 @@
   
   
     <li class="md-nav__item">
-      <a href="reference/privacy-telemetry/" class="md-nav__link">
+      <a href="../../reference/privacy-telemetry/" class="md-nav__link">
         
   
   
@@ -2751,7 +2797,7 @@
   
   
     <li class="md-nav__item">
-      <a href="reference/org-admin/" class="md-nav__link">
+      <a href="../../reference/org-admin/" class="md-nav__link">
         
   
   
@@ -2806,10 +2852,10 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
-  <a href="#what-you-can-do" class="md-nav__link">
+  <a href="#creating-a-workbook" class="md-nav__link">
     <span class="md-ellipsis">
       
-        What you can do
+        Creating a Workbook
       
     </span>
   </a>
@@ -2817,10 +2863,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#new-to-abap-fs" class="md-nav__link">
+  <a href="#cell-types" class="md-nav__link">
     <span class="md-ellipsis">
       
-        New to ABAP FS?
+        Cell Types
       
     </span>
   </a>
@@ -2828,10 +2874,54 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#using-a-non-github-copilot-ai-tool" class="md-nav__link">
+  <a href="#key-concepts" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Using a non-GitHub Copilot AI tool?
+        Key Concepts
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#example-data-quality-check" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Example: Data Quality Check
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#example-cross-system-comparison" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Example: Cross-System Comparison
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#limitations" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Limitations
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#commands" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Commands
       
     </span>
   </a>
@@ -2858,89 +2948,109 @@
   
 
 
-<h1 id="abap-fs-abap-development-in-vs-code">ABAP FS — ABAP Development in VS Code<a class="headerlink" href="#abap-fs-abap-development-in-vs-code" title="Permanent link">&para;</a></h1>
-<p><strong>ABAP FS</strong> is a VS Code extension that connects directly to your SAP system — giving you (and your AI assistant) live access to read code, query tables, run tests, debug, and manage objects without leaving the editor.</p>
-<p>Ask Copilot "How does BAPI_USER_GET_DETAIL work?" and it finds the function, reads the code, checks where it's used, and examines related objects — all autonomously using 40 specialized SAP tools.</p>
-<p>If you're used to SE38, SE24, or ADT in Eclipse, ABAP FS brings that same direct-system connectivity into VS Code — plus AI assistance, modern tooling, and the full VS Code extension ecosystem.</p>
-<blockquote>
-<p><strong>GitHub Repository:</strong> <a href="https://github.com/marcellourbani/vscode_abap_remote_fs">github.com/marcellourbani/vscode_abap_remote_fs</a></p>
-</blockquote>
-<hr />
-<h2 id="what-you-can-do">What you can do<a class="headerlink" href="#what-you-can-do" title="Permanent link">&para;</a></h2>
-<p>This is a high-level summary. See the left navigation for full feature pages.</p>
+<h1 id="sap-data-workbooks-sapwb">SAP Data Workbooks (.sapwb)<a class="headerlink" href="#sap-data-workbooks-sapwb" title="Permanent link">&para;</a></h1>
+<p>SAP Data Workbooks are VS Code notebooks that combine ABAP SQL queries, JavaScript processing, and Markdown in a single reusable <code>.sapwb</code> file. Use them for multi-step data analysis, data quality checks, and cross-system comparisons.</p>
+<h2 id="creating-a-workbook">Creating a Workbook<a class="headerlink" href="#creating-a-workbook" title="Permanent link">&para;</a></h2>
+<ol>
+<li>Open the Command Palette (<code>Ctrl+Shift+P</code>)</li>
+<li>Run <strong>ABAP FS: New SAP Data Workbook</strong></li>
+</ol>
+<p>Alternatively, create any file with the <code>.sapwb</code> extension, or ask Copilot: <em>"Create a workbook to analyze material master data quality."</em></p>
+<h2 id="cell-types">Cell Types<a class="headerlink" href="#cell-types" title="Permanent link">&para;</a></h2>
 <table>
 <thead>
 <tr>
-<th>Area</th>
-<th>Capabilities</th>
+<th>Type</th>
+<th>Purpose</th>
 </tr>
 </thead>
 <tbody>
 <tr>
-<td><strong>AI-Powered Development</strong></td>
-<td>40 tools give Copilot deep SAP awareness — search objects, read code, run tests, explain dumps, all via natural language</td>
+<td><strong>Markdown</strong></td>
+<td>Section headers, notes, documentation</td>
 </tr>
 <tr>
-<td><strong>Edit &amp; Activate</strong></td>
-<td>Browse, open, edit, and activate ABAP objects on the live system</td>
+<td><strong>ABAP SQL</strong></td>
+<td>Query SAP tables (<code>SELECT</code> and <code>WITH</code> only — no DML)</td>
 </tr>
 <tr>
-<td><strong>Editor Experience</strong></td>
-<td>Enhanced hover info, custom editors, object properties, and dedicated ABAP views/panels</td>
-</tr>
-<tr>
-<td><strong>Debug</strong></td>
-<td>Full ABAP debugger with breakpoints, variable inspection, stepping, and debug recording</td>
-</tr>
-<tr>
-<td><strong>Test</strong></td>
-<td>Run unit tests, create test classes, generate test documentation</td>
-</tr>
-<tr>
-<td><strong>Code Quality</strong></td>
-<td>ATC analysis, syntax validation, where-used, ABAP Cleaner formatting</td>
-</tr>
-<tr>
-<td><strong>Transport</strong></td>
-<td>View and manage transport requests directly</td>
-</tr>
-<tr>
-<td><strong>Version Control</strong></td>
-<td>abapGit integration, revision history, blame gutter</td>
-</tr>
-<tr>
-<td><strong>Data &amp; SQL</strong></td>
-<td>Run SQL queries against SAP tables, build multi-step data workbooks</td>
-</tr>
-<tr>
-<td><strong>SAP GUI</strong></td>
-<td>Launch embedded, native, or browser-based SAP GUI from the editor</td>
-</tr>
-<tr>
-<td><strong>Diagrams &amp; Docs</strong></td>
-<td>Generate Mermaid diagrams and ABAP documentation from within VS Code</td>
-</tr>
-<tr>
-<td><strong>Developer Tools</strong></td>
-<td>REPL, Dumps/traces analysis, regex search, dependency graph, feed reader, communication log, RAP generator</td>
+<td><strong>JavaScript</strong></td>
+<td>Process, filter, or compare results from earlier cells</td>
 </tr>
 </tbody>
 </table>
-<hr />
-<h2 id="new-to-abap-fs">New to ABAP FS?<a class="headerlink" href="#new-to-abap-fs" title="Permanent link">&para;</a></h2>
-<ol>
-<li><a href="getting-started/installation/">Installation</a> — install the extension and connect to your SAP system</li>
-<li><a href="getting-started/walkthrough/">Walkthrough</a> — a guided tour of the main features</li>
-<li><a href="getting-started/connection-manager/">Connection Manager</a> — manage multiple SAP connections</li>
-</ol>
-<hr />
-<h2 id="using-a-non-github-copilot-ai-tool">Using a non-GitHub Copilot AI tool?<a class="headerlink" href="#using-a-non-github-copilot-ai-tool" title="Permanent link">&para;</a></h2>
-<p>Works with <strong>Cursor, Claude Code, Windsurf, Claude Desktop</strong>, and any MCP-compatible client.<br />
-See <a href="mcp-server/">MCP Server</a> for setup.</p>
-<hr />
-<blockquote>
-<p><strong>Tip:</strong> GitHub Copilot (and any AI connected via MCP) has access to this documentation. Just ask your AI assistant about any feature and it can guide you.</p>
-</blockquote>
+<h2 id="key-concepts">Key Concepts<a class="headerlink" href="#key-concepts" title="Permanent link">&para;</a></h2>
+<p><strong>Running cells</strong></p>
+<ul>
+<li>Run a single cell with the run button or <code>Shift+Enter</code>. You are prompted to select a SAP system.</li>
+<li><strong>Run All</strong> (<code>Ctrl+Shift+Enter</code>) prompts once and uses that system for all SQL cells.</li>
+</ul>
+<p><strong>Referencing results between cells</strong></p>
+<ul>
+<li>In <strong>JavaScript</strong>: access a previous cell's rows via <code>cells[N].result</code> (0-indexed, so cell 2 is <code>cells[1]</code>).</li>
+<li>In <strong>ABAP SQL</strong>: interpolate earlier results using <code>${...}</code>. Strings are auto-quoted; arrays are auto-joined for <code>IN</code> clauses.</li>
+</ul>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="c1">-- Use results from cell 2 (index 1) as a filter</span>
+<a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a><span class="k">SELECT</span><span class="w"> </span><span class="n">matnr</span><span class="p">,</span><span class="w"> </span><span class="n">werks</span><span class="w"> </span><span class="k">FROM</span><span class="w"> </span><span class="n">marc</span>
+<a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a><span class="w">  </span><span class="k">WHERE</span><span class="w"> </span><span class="n">matnr</span><span class="w"> </span><span class="k">IN</span><span class="w"> </span><span class="p">(</span><span class="err">${</span><span class="n">cells</span><span class="p">[</span><span class="mi">1</span><span class="p">].</span><span class="k">result</span><span class="p">.</span><span class="k">map</span><span class="p">(</span><span class="n">r</span><span class="w"> </span><span class="o">=&gt;</span><span class="w"> </span><span class="n">r</span><span class="p">.</span><span class="n">MATNR</span><span class="p">)</span><span class="err">}</span><span class="p">)</span>
+</code></pre></div>
+<p><strong>Row limits</strong></p>
+<p>Each SQL cell has a configurable row limit (default: 1000). Adjust with <strong>ABAP FS: Set Cell Max Rows</strong>.</p>
+<h2 id="example-data-quality-check">Example: Data Quality Check<a class="headerlink" href="#example-data-quality-check" title="Permanent link">&para;</a></h2>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a>Cell 1 (Markdown):   # Material Data Quality Check
+<a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a>Cell 2 (ABAP SQL):   SELECT matnr, mtart, meins FROM mara WHERE mtart = &#39;FERT&#39;
+<a id="__codelineno-1-3" name="__codelineno-1-3" href="#__codelineno-1-3"></a>Cell 3 (JavaScript): const rows = cells[1].result;
+<a id="__codelineno-1-4" name="__codelineno-1-4" href="#__codelineno-1-4"></a>                     return rows.filter(r =&gt; !r.MEINS).length + &quot; materials missing UoM&quot;;
+<a id="__codelineno-1-5" name="__codelineno-1-5" href="#__codelineno-1-5"></a>Cell 4 (ABAP SQL):   SELECT matnr, werks FROM marc
+<a id="__codelineno-1-6" name="__codelineno-1-6" href="#__codelineno-1-6"></a>                       WHERE matnr IN (${cells[1].result.map(r =&gt; r.MATNR)})
+</code></pre></div>
+<h2 id="example-cross-system-comparison">Example: Cross-System Comparison<a class="headerlink" href="#example-cross-system-comparison" title="Permanent link">&para;</a></h2>
+<p>Run the same query against two systems by executing cells individually and selecting a different system each time. A JavaScript cell then diffs the results.</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a>Cell 1 (Markdown):   # Pricing Condition Comparison: DEV vs QAS
+<a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a>Cell 2 (ABAP SQL):   SELECT KSCHL, VKORG, MATNR, KBETR FROM A005 WHERE KSCHL = &#39;ZPR1&#39;
+<a id="__codelineno-2-3" name="__codelineno-2-3" href="#__codelineno-2-3"></a>                     → Run, select DEV
+<a id="__codelineno-2-4" name="__codelineno-2-4" href="#__codelineno-2-4"></a>Cell 3 (ABAP SQL):   SELECT KSCHL, VKORG, MATNR, KBETR FROM A005 WHERE KSCHL = &#39;ZPR1&#39;
+<a id="__codelineno-2-5" name="__codelineno-2-5" href="#__codelineno-2-5"></a>                     → Run, select QAS
+<a id="__codelineno-2-6" name="__codelineno-2-6" href="#__codelineno-2-6"></a>Cell 4 (JavaScript): const devMap = new Map(
+<a id="__codelineno-2-7" name="__codelineno-2-7" href="#__codelineno-2-7"></a>                       cells[1].result.map(r =&gt; [r.KSCHL + r.VKORG + r.MATNR, r])
+<a id="__codelineno-2-8" name="__codelineno-2-8" href="#__codelineno-2-8"></a>                     );
+<a id="__codelineno-2-9" name="__codelineno-2-9" href="#__codelineno-2-9"></a>                     return cells[2].result
+<a id="__codelineno-2-10" name="__codelineno-2-10" href="#__codelineno-2-10"></a>                       .filter(r =&gt; {
+<a id="__codelineno-2-11" name="__codelineno-2-11" href="#__codelineno-2-11"></a>                         const d = devMap.get(r.KSCHL + r.VKORG + r.MATNR);
+<a id="__codelineno-2-12" name="__codelineno-2-12" href="#__codelineno-2-12"></a>                         return d &amp;&amp; d.KBETR !== r.KBETR;
+<a id="__codelineno-2-13" name="__codelineno-2-13" href="#__codelineno-2-13"></a>                       })
+<a id="__codelineno-2-14" name="__codelineno-2-14" href="#__codelineno-2-14"></a>                       .map(r =&gt; ({
+<a id="__codelineno-2-15" name="__codelineno-2-15" href="#__codelineno-2-15"></a>                         ...r,
+<a id="__codelineno-2-16" name="__codelineno-2-16" href="#__codelineno-2-16"></a>                         DEV_KBETR: devMap.get(r.KSCHL + r.VKORG + r.MATNR).KBETR
+<a id="__codelineno-2-17" name="__codelineno-2-17" href="#__codelineno-2-17"></a>                       }));
+</code></pre></div>
+<p>Workbook files store no system IDs, so they can be shared with colleagues who use different system names.</p>
+<h2 id="limitations">Limitations<a class="headerlink" href="#limitations" title="Permanent link">&para;</a></h2>
+<ul>
+<li>SQL supports <code>SELECT</code> and <code>WITH</code> only — no <code>INSERT</code>, <code>UPDATE</code>, or <code>DELETE</code></li>
+<li>String literals are limited to 255 characters (SAP ADT constraint)</li>
+<li>Avoid interpolating more than ~10 values into an <code>IN</code> clause — filter in a JavaScript cell instead</li>
+<li>Cancelling a cell shows "Interrupted" immediately, but the query continues running on the SAP side</li>
+</ul>
+<h2 id="commands">Commands<a class="headerlink" href="#commands" title="Permanent link">&para;</a></h2>
+<table>
+<thead>
+<tr>
+<th>Command</th>
+<th>Shortcut / Notes</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>ABAP FS: New SAP Data Workbook</code></td>
+<td>Creates a new <code>.sapwb</code> file</td>
+</tr>
+<tr>
+<td><code>ABAP FS: Set Cell Max Rows</code></td>
+<td>Sets row limit for the current SQL cell</td>
+</tr>
+</tbody>
+</table>
 
 
 
@@ -2990,10 +3100,10 @@ See <a href="mcp-server/">MCP Server</a> for setup.</p>
     
       
       
-      <script id="__config" type="application/json">{"annotate": null, "base": ".", "features": ["navigation.sections", "navigation.expand", "search.suggest", "search.highlight", "content.code.copy"], "search": "assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
+      <script id="__config" type="application/json">{"annotate": null, "base": "../..", "features": ["navigation.sections", "navigation.expand", "search.suggest", "search.highlight", "content.code.copy"], "search": "../../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
     
     
-      <script src="assets/javascripts/bundle.79ae519e.min.js"></script>
+      <script src="../../assets/javascripts/bundle.79ae519e.min.js"></script>
       
     
   </body>
