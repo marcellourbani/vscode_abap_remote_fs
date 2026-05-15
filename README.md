@@ -4,7 +4,7 @@
 
 > Ask "How does BAPI_USER_GET_DETAIL work?" and the AI finds the function, reads the code, checks where it's used, and examines related objects — without you opening anything manually.
 
-- 39 specialized AI tools giving Copilot deep SAP awareness
+- 40 specialized AI tools giving Copilot deep SAP awareness
 - Works with GitHub Copilot, Cursor, Claude Code, Windsurf and more (via MCP)
 - Full development workflow: code, debug, test, ATC, transports, dumps — all in VS Code
 
@@ -17,6 +17,7 @@
 
 
 - [ABAP FS 🚀](#abap-fs-)
+  - [Demo](#demo)
   - [🎯 What Makes This Different?](#-what-makes-this-different)
   - [📖 Documentation](#-documentation)
   - [🚀 Installation](#-installation)
@@ -33,13 +34,6 @@
     - [📦 Transport \& Version Control](#-transport--version-control)
     - [🔧 Developer Tools](#-developer-tools)
   - [📚 How It Works](#-how-it-works)
-    - [AI Language Model Tools (39 tools)](#ai-language-model-tools-39-tools)
-    - [Commands (Manual Execution)](#commands-manual-execution)
-  - [🔒 For Organization Administrators](#-for-organization-administrators)
-    - [1. SAP System Whitelist (Optional Access Control)](#1-sap-system-whitelist-optional-access-control)
-    - [2. Telemetry with Application Insights (Optional - For Organizations Only)](#2-telemetry-with-application-insights-optional---for-organizations-only)
-    - [Building and Distributing](#building-and-distributing)
-    - [Proxy Support](#proxy-support)
   - [⚠️ Limitations](#️-limitations)
     - [Third-Party Libraries](#third-party-libraries)
 
@@ -57,7 +51,7 @@
 
 ## 📖 Documentation
 
-For comprehensive documentation covering all features in detail, see [DOCUMENTATION.md](DOCUMENTATION.md).
+For comprehensive documentation covering all features in detail, see the [Documentation Site](https://marcellourbani.github.io/vscode_abap_remote_fs/).
 
 ## 🚀 Installation
 
@@ -71,50 +65,18 @@ For comprehensive documentation covering all features in detail, see [DOCUMENTAT
 
 ### Installation Steps (Will need to follow slightly different steps for custom builds)
 
-1. **Install latest version from VSCode Marketplace**
-   - Open Extensions (`Ctrl+Shift+X`)
-   - Search for "ABAP remote filesystem"
-   - Install and restart VS Code
+1. **Install from VS Code Marketplace** — `Ctrl+Shift+X` → search "ABAP remote filesystem" → Install
+2. **Configure connections** — `Ctrl+Shift+P` → **ABAP FS: Connection Manager** → add your SAP systems
+3. **Connect** — `Ctrl+Shift+P` → **ABAP FS: Connect to an SAP system**
+4. **Follow the walkthrough** — appears on first install, or `Ctrl+Shift+P` → **Get Started: Open Walkthrough** → search "ABAP"
 
-2. **Configure SAP system connections**
-   - Press `Ctrl+Shift+P`
-   - Run: **ABAP FS: Connection Manager**
-   - Modern webview UI opens with comprehensive connection management:
-     - **Add Connection** - Fill in system details (URL, client, username, language, SAP GUI settings)
-     - **Import/Export** - Import connections from JSON or export for backup/sharing
-     - **Bulk Operations** - Edit multiple connections at once, bulk username changes
-     - **Cloud Support** - Create connections from BTP Service Key or Endpoint
-   - Save to User settings (global) or Workspace settings (project-specific)
-   - Passwords stored securely in OS credential manager (not in settings files)
-
-3. **Connect to SAP systems**
-   - Press `Ctrl+Shift+P`
-   - Run: **ABAP FS: Connect to an SAP system**
-   - Select system and enter password if prompted
-   - Wait for a minute for VSCode to connect to the system
-   - Good to go
-
-4. **Verify connection**
-   - Check Activity Bar for "ABAP FS" icon
-   - Expand views: Transports, Dumps, ATC Finds, Traces, abapGit
-   - Try: `Ctrl+Shift+P` → **ABAP FS: Search for object**
-
-5. **Follow the Getting Started Walkthrough**
-   - A walkthrough appears automatically on first install
-   - If you missed it: `Ctrl+Shift+P` → **Get Started: Open Walkthrough...** → search for "ABAP"
-   - Covers 4 stages: Connection basics → Core features → AI & Copilot → Advanced tools
-
-6. **Agents setup - Recommended for AI coding**
-   - Connect to an ABAP system
-   - Open Copilot and type "configure subagent models"
-   - Open editor configuration and activate setting "abapfs.subagents.enabled"
-   - In Copilot, choose the most appropriate agent for the task. abap-orchestrator is a good default
+For detailed setup, see the [Installation Guide](https://marcellourbani.github.io/vscode_abap_remote_fs/getting-started/installation/). For AI subagents configuration, see the [Subagents Guide](https://marcellourbani.github.io/vscode_abap_remote_fs/ai/subagents/).
 
 ## ✨ Key Features
 
 ### 🤖 AI Integration & Chat
 
-- **39 Language Model Tools** - Backend tools that GitHub Copilot uses automatically
+- **40 Language Model Tools** - Backend tools that GitHub Copilot uses automatically
 - **Autonomous Agent Mode** - AI explores your codebase independently without manual navigation
 - **AI Subagents** - Delegate ABAP tasks to specialized agents (discoverer, reader, creator, code-reviewer, etc.) with configurable models for cost optimization
 - **Context-Aware Assistance** - AI understands your SAP system structure and objects
@@ -137,10 +99,10 @@ For comprehensive documentation covering all features in detail, see [DOCUMENTAT
 ### 📚 MCP Server (For Non-GitHub Copilot Users)
 
 - **Works with Cursor, Claude Code, Windsurf, Claude Desktop** - Any MCP-compatible AI tool
-- **All 39 tools exposed** - Read code, search, run tests, analyze dumps, etc.
+- **All 40 tools exposed** - Read code, search, run tests, analyze dumps, etc.
 - **Read-only limitation** - MCP tools can read but cannot edit ABAP files directly (apply changes manually in VS Code)
 - **VS Code as host** - VS Code stays open as the SAP connection bridge
-- See [MCP Server Documentation](DOCUMENTATION.md#mcp-server-for-external-ai-tools) for setup and full limitations
+- See [MCP Server Documentation](https://marcellourbani.github.io/vscode_abap_remote_fs/mcp-server/) for setup and full limitations
 
 ### 🔍 Object Management
 
@@ -202,282 +164,26 @@ For comprehensive documentation covering all features in detail, see [DOCUMENTAT
 
 ## 📚 How It Works
 
-### AI Language Model Tools (39 tools)
+ABAP FS provides two interaction modes:
 
-Copilot automatically uses these tools when you ask questions:
+| Mode | How | Example |
+|------|-----|---------|
+| **AI Tools** (40 tools) | Ask Copilot in chat (`Ctrl+Shift+I`) | "Where is BAPI_USER_GET_DETAIL used?" |
+| **Commands** | Command Palette (`Ctrl+Shift+P`) | ABAP FS: Search for object |
 
-**Object Management:**
+The AI tools are invoked automatically by Copilot — you just ask questions in natural language. Commands are for manual operations like connecting to a system, running a transaction, or activating code.
 
-- `search_abap_objects` - Find objects by name patterns
-- `get_abap_object_lines` - Read source code
-- `search_abap_object_lines` - Search within code (regex support)
-- `open_object` - Open in editor
-- `create_object_programmatically` - Create new objects
-- `find_where_used` - Where-used analysis
+See the [full documentation](https://marcellourbani.github.io/vscode_abap_remote_fs/) for details on all tools and commands.
 
-**Code Quality:**
+For organizations wanting to deploy ABAP FS internally with access control, telemetry, or custom builds, see the full [Organization Administration Guide](docs/reference/org-admin.md).
 
-- `run_atc_analysis` - Run code quality checks
-- `get_atc_decorations` - Get current ATC highlights
-- `manage_text_elements` - Read/create/update text elements
+Covers:
+- SAP System Whitelist (restrict which systems users can connect to)
+- Azure Application Insights telemetry (optional central analytics)
+- Building and distributing custom VSIX packages
+- Proxy support
 
-**Testing & Debugging:**
-
-- `run_unit_tests` - Execute unit tests
-- `create_test_include` - Create test classes
-- `abap_debug_*` - Debugging operations (breakpoints, step, variables, call stack)
-
-**Data & Analysis:**
-
-- `execute_data_query` - Run SQL queries and display results (with production system guard)
-- `get_abap_sql_syntax` - Get ABAP SQL syntax reference
-- `get_sap_system_info` - Get SAP system info (cached for 24 hours)
-- `analyze_abap_dumps` - Analyze runtime errors
-- `analyze_abap_traces` - Performance trace analysis
-
-**Transport & Documentation:**
-
-- `manage_transport_requests` - Transport operations
-- `create_mermaid_diagram` - Generate diagrams
-- `create_test_documentation` - Generate Word test docs
-
-**And many more...**
-
-### Commands (Manual Execution)
-
-Available via Command Palette (`Ctrl+Shift+P`):
-
-- ABAP FS: Connect to an ABAP system
-- ABAP FS: Search for object
-- ABAP FS: Create object
-- ABAP FS: Run ABAP Unit Tests
-- ABAP FS: Text Elements Manager
-- ABAP FS: Run SAP Transaction
-- ABAP FS: Configure ADT Feeds
-- And many more commands...
-
-## 🔒 For Organization Administrators
-
-If you want to deploy ABAP FS internally for your organization, you can configure two optional features before building and distributing the extension:
-
-### 1. SAP System Whitelist (Optional Access Control)
-
-Control which SAP systems users can connect to (e.g., allow only DEV systems, block PROD).
-
-**Purpose:**
-
-- Restrict connections to authorized systems only
-- Prevent accidental connections to production systems
-- Centrally manage allowed systems via network-accessible file
-
-**How to Configure:**
-
-1. **Create a whitelist JSON file** based on client/src/services/whitelist.example.json
-
-   ```json
-   {
-     "version": {
-       "minimumExtensionVersion": "1.0.0"
-     },
-     "allowedDomains": ["*dev*", "*test*", "*qa*"],
-     "developers": [
-       {
-         "manager": "Team_Lead_Name",
-         "userIds": ["developer1", "dev1_alt_id"]
-       },
-       {
-         "manager": "Another_Manager",
-         "userIds": ["developer2"]
-       }
-     ]
-   }
-   ```
-
-   **Important**: Each `developer` object represents ONE person with their multiple SAP user IDs across different systems. All `userIds` within one developer object will be tracked as the SAME person in telemetry (anonymized). Do NOT mix different people's IDs in one developer object.
-
-2. **Deploy the file** to a network-accessible location (e.g., internal web server, artifact repository)
-   - File must be directly accessible via HTTP/HTTPS without authentication
-   - Users only need read access
-
-3. **Update the whitelist URL** in client/src/services/sapSystemValidator.ts:
-
-   ```typescript
-   private readonly WHITELIST_URL = 'https://your-internal-server.com/whitelist.json';
-   ```
-
-4. **Allow all systems/users** (disable whitelist completely): Default is True. Make it false if you want to enable whitelist based control.
-
-   ```typescript
-   private readonly ALLOW_ALL_SYSTEMS = true;  // Skip system validation
-   private readonly ALLOW_ALL_USERS = true;    // Skip user validation
-   ```
-
-**How It Works:**
-
-- Extension fetches whitelist on startup and every 2 hours
-- System IDs are matched against `allowedDomains` patterns (supports wildcards like `*dev*`, `*test*`)
-- User IDs are validated against all `userIds` across all `developers` entries
-- The `manager` field groups users for telemetry team analytics
-- If fetch fails, falls back to hardcoded backup whitelist
-- Corporate network retry: automatically retries for 10 minutes if initial fetch fails (useful for VPN scenarios)
-- Users see status bar notification during retry attempts
-
-**Validation Logic:**
-
-- System validation: Checks if system hostname/domain matches any pattern in `allowedDomains`
-- User validation: Checks if SAP username exists in any `userIds` array across all developers
-- Both must pass for connection to succeed
-- Multiple user IDs per person: If a developer has different user IDs on different systems (e.g., "john.doe" on DEV, "j0d0o3e" on QA), add all IDs to the same developer object
-
-### 2. Telemetry with Application Insights (Optional - For Organizations Only)
-
-**⚠️ IMPORTANT: The extension from VS Code Marketplace does NOT send any telemetry to external servers.**
-
-By default, all telemetry is stored **locally only** in CSV files on your machine. No data is transmitted anywhere. This section is only relevant for organizations who want to set up their own central telemetry.
-
-**Default Behavior (VS Code Marketplace Version):**
-
-- ✅ Usage data stored in local CSV files only (`telemetry-YYYY-MM-DD.csv` in extension storage)
-- ✅ No external transmission - nothing leaves your machine
-- ✅ No tracking, no phone home, no third-party data collection
-- ✅ You can delete local telemetry files anytime
-
----
-
-**For Organizations Wanting Central Analytics:**
-
-If your organization wants to collect usage analytics centrally, you can fork this repository and configure Azure Application Insights.
-
-**Purpose:**
-
-- Count how often each command is executed (e.g., "command_activate_called")
-- Count how often each language model tool is used by Copilot (e.g., "tool_search_abap_objects_called")
-- Track which SAP system and team each usage comes from
-- Data helps prioritize feature development based on actual usage patterns
-
-**How to Configure:**
-
-1. **Fork this repository** from GitHub
-
-2. **Create an Azure Application Insights resource** in your Azure subscription
-
-3. **Get the connection/Instrumentation Key string** from Azure Portal → Application Insights → Overview → Connection String
-
-4. **Update the connection string** in client/src/services/appInsightsService.ts:
-
-   ```typescript
-   const connectionString = "InstrumentationKey=YOUR-KEY;IngestionEndpoint=https://..."
-   ```
-
-5. **Build your own VSIX** and distribute to your organization's users
-
-**What Gets Collected:**
-The telemetry service logs only action strings like:
-
-- `command_activate_called` - When activation command is executed
-- `tool_create_test_include_called` - When Copilot uses the test creation tool
-- `tool_search_abap_objects_called` - When Copilot searches for objects
-
-Each entry includes:
-
-- **Anonymous user ID** - Hashed from `hostname + username + platform` (cannot be reverse-engineered)
-- **Session ID** - Random ID per VS Code session
-- **Extension version** - Version number for compatibility tracking
-- **VS Code version** - VS Code version number
-- **Platform** - OS type (Windows/Linux/Mac)
-- **SAP system** - Which system was accessed (if applicable)
-- **Manager/Team** - From whitelist developer mapping (if configured)
-
-**What is NOT Collected:**
-
-- No SAP credentials or passwords
-- No source code or ABAP code content
-- No object names or identifiers
-- No business data or table contents
-- No error messages or stack traces (by default - disabled via `setAutoCollectExceptions(false)`)
-- No performance metrics or execution times (by default - disabled via `setAutoCollectPerformance(false, false)`)
-- No HTTP requests (disabled via `setAutoCollectRequests(false)`)
-- No dependencies (disabled via `setAutoCollectDependencies(false)`)
-- No console logs (disabled via `setAutoCollectConsole(false)`)
-
-**Note for Administrators**: The default configuration disables auto-collection of exceptions, performance metrics, requests, dependencies, and console logs. To enable additional telemetry before building the extension, modify client/src/services/appInsightsService.ts in the `initialize()` method:
-
-- **Enable exception tracking**: Change `.setAutoCollectExceptions(false)` to `.setAutoCollectExceptions(true)` - automatically captures unhandled exceptions
-- **Enable performance metrics**: Change `.setAutoCollectPerformance(false, false)` to `.setAutoCollectPerformance(true, true)` - tracks memory, CPU usage
-- **Enable request tracking**: Change `.setAutoCollectRequests(false)` to `.setAutoCollectRequests(true)` - tracks HTTP requests
-- **Enable dependency tracking**: Change `.setAutoCollectDependencies(false)` to `.setAutoCollectDependencies(true)` - tracks external dependencies
-
-You can also add custom tracking by calling `appInsights.defaultClient.trackException()`, `appInsights.defaultClient.trackMetric()`, or `appInsights.defaultClient.trackEvent()` in your custom code.
-
-**Privacy & Data:**
-
-- User ID: Hashed from `hostname + username + platform` (anonymized, cannot be reverse-engineered to identify individuals)
-- Session ID: Random generated per VS Code session
-- Data stored locally in extension storage first (CSV files in extension global storage)
-- If App Insights configured, events also sent to Azure (batched every 30 seconds)
-- If network unavailable, events stored locally and retried later
-
-**How It Works:**
-
-- Telemetry service runs automatically in background
-- Every command execution or tool usage is logged
-- Events logged to local CSV files first (`telemetry-YYYY-MM-DD.csv`)
-- If App Insights connection string configured, events also sent to Azure
-- Local storage flushes every 5 minutes or when buffer reaches 25 entries
-- Whitelist integration: If whitelist configured with `developers` structure, multiple `userIds` of same person are grouped together
-
-**Telemetry Integration with Whitelist:**
-If whitelist is configured with `developers` structure, telemetry will group users:
-
-- Multiple `userIds` in the same developer object are tracked as one person (anonymized)
-- `manager` field enables team-level analytics
-- Example: If John has SAP IDs "john.doe", "j0d0o3e", and "john.d" across different systems, all three IDs in one developer object will be recognized as the same person in analytics
-
-This helps answer questions like "Which team uses debugging most?" or "What features does Team X use?" while maintaining user anonymity.
-
-### Building and Distributing
-
-After configuration:
-
-1. **Install dependencies**:
-
-   ```bash
-   npm install
-   ```
-
-2. **Build and package the extension**:
-
-   ```bash
-   # Windows
-   build-and-install.bat
-
-   # Or manually:
-   npm run compile
-   npx vsce package
-   ```
-
-3. **Distribute the `.vsix` file** to your users via:
-   - Internal artifact repository
-   - Shared network drive
-   - Internal VS Code marketplace
-   - Direct download
-
-Users install via: Extensions → `...` → "Install from VSIX..."
-
-**Note:** Both whitelist and telemetry are optional. The extension works fully without them.
-
-### Proxy Support
-
-There's no direct proxy support in the extension, but you can use VS Code's builtin proxy support. Enable it in your settings (workspace or global):
-
-```json
-{
-  "http.proxySupport": "on",
-  "http.proxy": "http://localhost:3128"
-}
-```
-
-If you only want proxy for a specific system, configure it in that workspace's settings .
+**Note:** The extension from VS Code Marketplace does NOT send any telemetry to external servers. All usage data is stored locally only.
 
 ## ⚠️ Limitations
 
