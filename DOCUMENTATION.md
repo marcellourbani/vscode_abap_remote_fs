@@ -125,6 +125,7 @@ This documentation covers all features in detail. The goal: make ABAP developmen
     - [Recording a Debug Session](#recording-a-debug-session)
     - [Replaying a Recording](#replaying-a-recording)
     - [Limitations](#limitations-1)
+    - [Gzip Compression](#gzip-compression)
     - [Commands](#commands)
     - [File Format](#file-format)
 - [6. Data Query \& Visualization](#6-data-query--visualization)
@@ -152,14 +153,17 @@ This documentation covers all features in detail. The goal: make ABAP developmen
       - [Activity Bar Views:](#activity-bar-views)
       - [Explorer Views:](#explorer-views)
       - [Panel Views:](#panel-views)
-  - [11.8 Custom Editors](#118-custom-editors)
-  - [11.9 ADT Feed Reader](#119adt-feed-reader)
-  - [11.10 Run SAP Transaction](#1110-runsap-transaction)
-  - [11.11 Message Class Editor](#1111-message-classeditor)
-  - [11.12 SAP Connection Manager](#1112-sap-connection-manager)
-  - [11.13 Dependency Graph Visualizer](#1113-dependency-graph-visualizer)
-  - [11.14 ADT Communication Log](#1114-adt-communication-log)
-  - [11.15 Virtual Tool Grouping Fix](#1115-virtual-tool-grouping-fix)
+  - [11.6 S/4HANA Readiness Dashboard](#116-s4hana-readiness-dashboard)
+  - [11.7 RAP Generator](#117-rap-generator)
+  - [11.8 Object Property View](#118-object-property-view)
+  - [11.9 Custom Editors](#119-custom-editors)
+  - [11.10 ADT Feed Reader](#1110-adt-feed-reader)
+  - [11.11 Run SAP Transaction](#1111-run-sap-transaction)
+  - [11.12 Message Class Editor](#1112-message-class-editor)
+  - [11.13 SAP Connection Manager](#1113-sap-connection-manager)
+  - [11.14 Dependency Graph Visualizer](#1114-dependency-graph-visualizer)
+  - [11.15 ADT Communication Log](#1115-adt-communication-log)
+  - [11.16 Virtual Tool Grouping Fix](#1116-virtual-tool-grouping-fix)
   - [⚠️ Important Considerations](#️-important-considerations)
   - [🎯 Key Differences: Commands vs Tools](#-key-differences-commands-vs-tools)
     - [Commands (User-Invoked Manually):](#commands-user-invoked-manually)
@@ -1187,11 +1191,13 @@ If you dismissed the walkthrough and want to see it again:
 
 **Features:**
 
-- Full SAP GUI experience in VS Code webview
+- Full SAP GUI experience in VS Code
 
 - No need to switch windows
 
 - Integrated within editor
+
+- **Uses VS Code's Integrated Browser by default** — avoids clickjacking/iframe issues that plagued the old embedded WebView approach
 
 **Requirements:**
 
@@ -1211,17 +1217,15 @@ You may also see these errors in the browser console:
 - `ClickjackingFramingProtection.js: Ignored call to 'alert()'. The document is sandboxed`
 - `Potential permissions policy violation: fullscreen is not allowed in this document`
 
-**Solution: Use VS Code's Integrated Browser**
+**Solution: Use VS Code's Integrated Browser (now the default)**
 
-Enable the setting `abapfs.sapGui.useIntegratedBrowser` to open SAP GUI in VS Code's built-in Simple Browser instead of the embedded webview. The Simple Browser does not use iframes, so clickjacking protection does not apply.
+The setting `abapfs.sapGui.useIntegratedBrowser` is now **enabled by default**. This opens SAP GUI in VS Code's built-in Simple Browser instead of the embedded webview. The Simple Browser does not use iframes, so clickjacking protection does not apply.
 
-1. Open VS Code Settings (`Ctrl+,`)
-2. Search for `useIntegratedBrowser`
-3. Enable **Abapfs > Sap Gui: Use Integrated Browser**
+If you experience issues with the integrated browser, you can disable it to fall back to the embedded webview:
 
 ```json
 {
-  "abapfs.sapGui.useIntegratedBrowser": true
+  "abapfs.sapGui.useIntegratedBrowser": false
 }
 ```
 
@@ -1620,6 +1624,24 @@ GUI**
 
 - Works for standard SAP code with enhancements
 
+**ATC Check Variant Configuration:**
+
+The ATC check variant determines which rules are applied during analysis. You can configure a default variant per SAP connection:
+
+1. Open **ABAP FS: Connection Manager**
+2. Edit the connection
+3. Set the **ATC Variant** field (e.g., `S4HANA_READINESS`, `DEFAULT`, or your custom variant)
+
+Alternatively, add `"atcVariant": "S4HANA_READINESS"` to the connection in `settings.json`.
+
+**S/4HANA Readiness with ATC:**
+
+For S/4HANA migration projects, configure the ATC variant to use SAP's S/4HANA readiness check variant. This makes every ATC run check for S/4HANA compatibility issues (removed APIs, changed interfaces, deprecated features). Combined with the [S/4HANA Readiness Dashboard](#116-s4hana-readiness-dashboard), this provides a complete migration analysis workflow:
+
+1. Load the S/4HANA Readiness Dashboard to identify all affected custom objects
+2. Run ATC with the S/4HANA readiness variant on individual objects for detailed findings
+3. Ask Copilot to fix compatibility issues based on ATC documentation
+
 ## 4.2 ABAP Cleaner Integration
 
 **Purpose:** Automated code formatting and cleanup
@@ -1913,25 +1935,39 @@ This typically results in 5–8 HTTP calls per step (~1–3 seconds), compared t
 
 - **No conditional breakpoints** in replay — you can only step through what was recorded
 
-- **Recording file size** can be large for sessions with many steps or large variables
+- **Recording file size** can be large for sessions with many steps or large variables — use gzip compression to reduce size significantly
+
+### Gzip Compression
+
+Recording files can be very large (tens of MB for complex sessions). ABAP FS supports gzip compression to reduce file sizes significantly:
+
+- **Save Compressed** — When stopping a recording, choose "Compress & Save" to save directly as `.abaprecord.gz` (typically 80-95% smaller)
+- **Compress Existing** — Command: **ABAP: Compress Debug Recording** — compress an existing `.abaprecord` file to `.abaprecord.gz`
+- **Decompress** — Command: **ABAP: Decompress Debug Recording** — convert `.abaprecord.gz` back to plain JSON
+- **Auto-detection** — Replay automatically detects whether a file is plain JSON or gzip-compressed and handles both transparently
+- **Compression stats** — After compression, shows the size reduction (e.g., "42 MB → 3.2 MB (92% smaller)")
 
 ### Commands
 
 | Command | Description |
 |---------|-------------|
 | `ABAP: Start Debug Recording` | Begin recording the active debug session |
-| `ABAP: Stop Debug Recording` | Stop recording and optionally save |
-| `ABAP: Replay Debug Recording` | Open and replay a `.abaprecord` file |
+| `ABAP: Stop Debug Recording` | Stop recording and optionally save (plain or compressed) |
+| `ABAP: Replay Debug Recording` | Open and replay a `.abaprecord` or `.abaprecord.gz` file |
+| `ABAP: Compress Debug Recording` | Compress an existing `.abaprecord` file with gzip |
+| `ABAP: Decompress Debug Recording` | Decompress a `.abaprecord.gz` file back to plain JSON |
 
 ### File Format
 
-Recordings are saved as `.abaprecord` files (JSON format) containing:
+Recordings are saved as `.abaprecord` (plain JSON) or `.abaprecord.gz` (gzip-compressed JSON) files containing:
 
 - Recording metadata (date, connection, duration)
 
 - Array of snapshots (one per step), each with stack trace, scopes, and variables
 
 - Cached source file contents for offline viewing
+
+The compressed format is recommended for sharing and storage. Both formats are fully interchangeable — compress/decompress at any time without data loss.
 
 # 6. Data Query & Visualization
 
@@ -2674,7 +2710,12 @@ For extracting specific method code, use `get_abap_object_lines` with `methodNam
 2. **Dumps** - Runtime error analysis
 3. **ATC Finds** - Code quality results
 4. **Traces** - Performance trace analysis
-5. **abapGit** - Git repository management
+5. **S/4HANA Readiness** - S/4HANA compatibility analysis dashboard (see Section 11.6)
+6. **abapGit** - Git repository management
+7. **Feed Inbox** - ADT feed subscriptions
+8. **RAP Generator** - Eclipse-like RAP service generation from database tables (see Section 11.7)
+9. **Object Property** - Properties, transports, and revision history for the active ABAP object (see Section 11.8)
+10. **Object Search** - Search ABAP objects with filters
 
 #### Explorer Views:
 
@@ -2684,7 +2725,130 @@ For extracting specific method code, use `get_abap_object_lines` with `methodNam
 
 1. **ATC Documentation** - Detailed check documentation
 
-## 11.8 Custom Editors
+## 11.6 S/4HANA Readiness Dashboard
+
+**Purpose:** Analyze custom code compatibility with S/4HANA by visualizing data from the SAP Custom Code Migration tool (transaction SYCM)
+
+**How to Use:**
+
+- Activity Bar → ABAP FS → S/4HANA Readiness → Click **Load Dashboard** OR
+
+- Command palette: **ABAP FS: S/4HANA Readiness - Load** OR
+
+- Ask Copilot: "Load the S/4HANA readiness dashboard"
+
+**How It Works:**
+
+1. Fetches data from SYCM tables on the connected SAP system (`sycm_sitem`, `sycm_cust_refs`, `sycm_sitem_plist`, `sycm_piecelist`)
+2. Joins the data in JavaScript (required because ADT SQL has a 255-character query limit)
+3. Presents results in a tree view grouped by simplification item
+
+**Tree Structure:**
+
+- **Root node** — Connection ID with summary (e.g., "DRS310 — 156 references in 42 items")
+  - **Summary node** — Overall statistics
+  - **Simplification Item nodes** — Grouped by SAP Note with reference count (e.g., "2830416 — Remove usage of BSEG (12 refs)")
+    - **Custom object references** — Your Z/Y objects that reference the affected SAP object
+  - **Unlinked References** — References that couldn't be matched to a simplification item
+
+**Features:**
+
+- **Filter** — Filter references by name pattern with wildcard support (e.g., `Z*PRICING*`, `Y*`)
+- **Open Object** — Click a reference node to open the affected custom object in the editor
+- **Run ATC** — Right-click a reference to run ATC analysis on that specific object
+- **Ask Copilot to Fix** — Right-click a reference to compose a Copilot prompt that explains the compatibility issue and asks for a fix
+- **Open SAP Note** — Right-click to open the linked SAP Note in the browser
+- **Refresh** — Reload data from SAP
+- **Clear** — Remove dashboard data
+- **Multi-system** — Load dashboards from multiple connected systems simultaneously
+
+**Integration with ATC:**
+
+For a complete S/4HANA readiness workflow, configure your ATC check variant to use SAP's S/4HANA readiness variant (e.g., `S4HANA_READINESS` or your system-specific variant). Set the `atcVariant` property in your connection configuration to run this variant by default. Then use the S/4HANA Readiness Dashboard to identify affected objects and ATC to get detailed findings per object.
+
+**Prerequisites:**
+
+- Transaction SYCM must have been run on the SAP system to populate the analysis tables
+- Works best on ECC systems being analyzed for S/4HANA migration
+
+**Location:** Activity Bar → ABAP FS → S/4HANA Readiness
+
+## 11.7 RAP Generator
+
+**Purpose:** Generate complete RAP (ABAP RESTful Application Programming) service stacks from a database table — the same Eclipse-like wizard, directly in VS Code
+
+**How to Use:**
+
+- Activity Bar → ABAP FS → RAP Generator panel OR
+
+- Right-click a database table in the editor → **Generate RAP Service** OR
+
+- Use the RAP Generator view in the ABAP FS sidebar
+
+**How It Works:**
+
+1. Select a connected SAP system and enter a database table name
+2. The generator calls SAP's ADT RAP Generator API to fetch default artifact names
+3. Review and customize the generated names (CDS view, behavior, service definition, service binding, etc.)
+4. Preview the list of objects that will be created
+5. Click **Generate** — all RAP artifacts are created on the server in one operation
+6. The service binding opens automatically in the editor after generation
+
+**Generated Artifacts:**
+
+- CDS Interface View (data model)
+- CDS Projection View (service projection)
+- Behavior Definition
+- Behavior Implementation Class
+- Draft Table (for managed scenarios with draft)
+- Service Definition
+- Service Binding
+
+**Features:**
+
+- **Validation** — Real-time validation of names and configuration before generation
+- **Preview** — See exactly which objects will be created before committing
+- **Transport handling** — Prompts for transport request when package is not `$TMP`
+- **Publish Service** — After generation, publish the service binding directly from the panel to make the OData service available
+- **Test Service** — Open the published OData service URL in the browser for quick testing. Automatically detects if the service is published, offers to publish if not, and builds the correct OData V2 or V4 URL with authentication parameters
+- **System availability check** — Verifies that the RAP Generator API is available on the target system before proceeding
+
+**Commands:**
+
+| Command | Description |
+|---------|-------------|
+| `ABAP FS: Generate RAP Service` | Open RAP Generator from editor context |
+| `ABAP FS: Publish Service Binding` | Publish an OData service binding |
+| `ABAP FS: Test Service Binding` | Open published OData service in browser |
+
+**Requirements:**
+
+- SAP system with RAP Generator ADT API support (S/4HANA or BTP)
+- Database table must exist on the system
+
+**Location:** Activity Bar → ABAP FS → RAP Generator
+
+## 11.8 Object Property View
+
+**Purpose:** Eclipse-like property view showing metadata, transport history, and revision history for the currently active ABAP object
+
+**How to Use:**
+
+- Activity Bar → ABAP FS → Object Property panel
+- Automatically updates when you switch between ABAP files in the editor
+
+**Features:**
+
+- **Object metadata** — Type, package, responsible user, creation date, object URI
+- **Lock status** — Shows whether the object is currently locked and by whom
+- **Transport history** — Lists transport requests containing this object
+- **Revision history** — Shows version history with author, date, and transport for each revision
+- **Inline diff** — Select two revisions using checkboxes and compare them side-by-side
+- **TTL caching** — Property data is cached to avoid repeated SAP calls when switching back to previously viewed objects
+
+**Location:** Activity Bar → ABAP FS → Object Property
+
+## 11.9 Custom Editors
 
 **Purpose:** Specialized editors for specific file types
 
@@ -2695,7 +2859,7 @@ For extracting specific method code, use `get_abap_object_lines` with `methodNam
 
 2.  **HTTP Service Editor** (\*.http.xml) - HTTP service configuration
 
-## 11.9 ADT Feed Reader
+## 11.10 ADT Feed Reader
 
 Purpose: Monitor SAP system events and show notifications in real-time
 
@@ -2778,7 +2942,7 @@ Limitations:
 
 - Older systems may not support all feed types
 
-## 11.10 Run SAP Transaction
+## 11.11 Run SAP Transaction
 
 Purpose: Execute SAP transaction codes directly from VS Code
 
@@ -2832,7 +2996,7 @@ Limitations:
 
 - Some transactions may not work properly in embedded mode
 
-## 11.11 Message Class Editor
+## 11.12 Message Class Editor
 
 Purpose: Edit SAP message classes in a user-friendly table view instead
 of raw XML
@@ -2922,7 +3086,7 @@ Visual Editor Features:
 
 - Notifications for successful operations
 
-## 11.12 SAP Connection Manager
+## 11.13 SAP Connection Manager
 
 **Purpose:** Modern webview-based UI for managing SAP system connections
 
@@ -2970,7 +3134,7 @@ Visual Editor Features:
 
 **Location:** Command Palette → ABAP FS: Connection Manager
 
-## 11.13 Dependency Graph Visualizer
+## 11.14 Dependency Graph Visualizer
 
 **Purpose:** Interactive visual dependency graph showing where-used relationships with expandable nodes
 
@@ -3044,7 +3208,7 @@ Visual Editor Features:
 
 **Location:** Right-click menu → Visualize Dependency Graph
 
-## 11.14 ADT Communication Log
+## 11.15 ADT Communication Log
 
 **Purpose:** Capture and visualize all HTTP requests/responses between VS Code and SAP ADT — for debugging network issues, troubleshooting slow operations, and understanding what happens under the hood
 
@@ -3100,7 +3264,7 @@ Visual Editor Features:
 | `ABAP FS: Activate Communication Log` | Start logging for a specific SAP connection |
 | `ABAP FS: Deactivate Communication Log` | Stop logging and clear entries |
 
-## 11.15 Virtual Tool Grouping Fix
+## 11.16 Virtual Tool Grouping Fix
 
 **Purpose:** Ensure all 39 ABAP FS AI tools remain visible to GitHub Copilot by disabling VS Code's experimental tool grouping
 
@@ -3139,7 +3303,7 @@ ABAP FS registers 39 specialized tools for AI interactions (search objects, read
 
 5.  **Mass Activation** - Requires user selection from dialog (not automatic)
     
-6.  **Save/Activation** - Code changes are saved to SAP only when user manually saves (Ctrl+S, Keep button, etc) or activates(activate button). No more automatic saving to SAP as and when code is changed in VS Code editor. This is to ensure a human element always remain before code is commmitted to SAP (particularly for changes made by AI).
+6.  **Save/Activation** - Code changes are synced to SAP when saved. When Copilot makes code changes in Agent mode, they are immediately written to SAP (the virtual filesystem locks the object, writes the content, and unlocks). Clicking **Keep** triggers another save. Clicking **Undo** reverts the changes in SAP — the same way VS Code handles undo for any file. This means AI-generated code is live on the server before you explicitly accept it, so review changes carefully.
 
 ## 🎯 Key Differences: Commands vs Tools
 
