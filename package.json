@@ -42,9 +42,6 @@
   ],
   "activationEvents": [
     "onFileSystem:adt",
-    "onCommand:abapfs.connect",
-    "onCommand:abapfs.connectionManager",
-    "onCommand:abapfs.runInEmbeddedGui",
     "onNotebook:sap-data-workbook"
   ],
   "main": "./client/dist/extension",
@@ -3165,6 +3162,11 @@
         "title": "Refresh SAP System Whitelist",
         "category": "ABAP FS",
         "icon": "$(refresh)"
+      },
+      {
+        "command": "abapfs.showWalkThrough",
+        "title": "Show Walkthrough",
+        "category": "ABAP FS"
       }
     ],
     "keybindings": [

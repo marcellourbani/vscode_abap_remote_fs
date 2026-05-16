@@ -27,6 +27,7 @@ export const AbapFsCommands = {
   tableContents: "abapfs.tableContents",
   exportToJson: "abapfs.exportToJson",
   extractMethod: "abapfs.extractMethod",
+  showWalkThrough: "abapfs.showWalkThrough",
   // atc
   atcChecks: "abapfs.atcChecks",
   atcIgnore: "abapfs.atcIgnore",

@@ -1,14 +1,23 @@
-jest.mock("vscode", () => ({
-  window: {
-    createStatusBarItem: jest.fn(),
-    showInformationMessage: jest.fn()
-  },
-  StatusBarAlignment: { Left: 1, Right: 2 },
-  commands: { executeCommand: jest.fn().mockResolvedValue(undefined) },
-  Disposable: jest.fn().mockImplementation((fn: () => void) => ({ dispose: fn }))
-}), { virtual: true })
+jest.mock(
+  "vscode",
+  () => ({
+    window: {
+      createStatusBarItem: jest.fn(),
+      showInformationMessage: jest.fn()
+    },
+    StatusBarAlignment: { Left: 1, Right: 2 },
+    commands: { executeCommand: jest.fn().mockResolvedValue(undefined) },
+    Disposable: jest.fn().mockImplementation((fn: () => void) => ({ dispose: fn }))
+  }),
+  { virtual: true }
+)
 
 jest.mock("../lib", () => ({ log: jest.fn() }))
+jest.mock("../commands", () => ({
+  command: jest.fn(
+    () => (_target: any, _propertyKey: string, descriptor: PropertyDescriptor) => descriptor
+  )
+}))
 
 import * as vscode from "vscode"
 import { showWelcomeWalkthrough } from "./walkthroughService"
