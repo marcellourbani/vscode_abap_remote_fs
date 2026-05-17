@@ -19,7 +19,7 @@ The walkthrough covers four progressive stages:
 The walkthrough shows automatically only once. To open it again:
 
 1. Press `Ctrl+Shift+P` (Windows/Linux) or `Cmd+Shift+P` (Mac) to open the **Command Palette** — a search bar for all VS Code commands.
-2. Type **Get Started: Open Walkthrough** and press `Enter`.
+2. Type **ABAP FS:Show Walkthrough** and press `Enter`.
 3. Search for **ABAP** and select the walkthrough you want.
 
 Alternatively, open **Help → Welcome** from the menu bar, then select the ABAP FS walkthrough from the list.

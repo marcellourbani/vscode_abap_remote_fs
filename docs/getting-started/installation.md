@@ -1,20 +1,14 @@
 # Installation Steps
 
-## 1. Uninstall old version (pre-v2.0.0)
+## 1. Install the extension
 
-Skip this step if you are installing for the first time or already on v2.0.0+.
-
-1. Press `Ctrl+Shift+X` to open the **Extensions** panel (left sidebar)
-2. Search for **ABAP remote filesystem**
-3. Click **Uninstall**, then restart VS Code
-
-## 2. Install the extension
-
-1. Press `Ctrl+Shift+X` to open the **Extensions** panel
-2. Search for **ABAP remote filesystem**
+1. Press `Ctrl+Shift+X` or Click on the extension icon on the activity bar to open the **Extensions** panel (left sidebar)
+2. Search for **murbani.vscode-abap-remote-fs** or **ABAP remote filesystem**
 3. Click **Install**, then restart VS Code
 
-## 3. Configure a SAP system connection
+![Installation instructions](installationImage.png)
+
+## 2. Configure a SAP system connection
 
 1. Press `Ctrl+Shift+P` to open the **Command Palette** (the search bar for VS Code commands)
 2. Type and run: **ABAP FS: Connection Manager**
@@ -32,14 +26,14 @@ Skip this step if you are installing for the first time or already on v2.0.0+.
 - If a colleague already has connections configured, ask them to export via **Import/Export** and send you the JSON. User IDs and passwords are excluded from exports. You can then import and update your credentials in bulk using **Bulk Operations**.
 - For SAP BTP systems, use **Cloud Support** to create a connection from a BTP Service Key or Endpoint.
 
-## 4. Connect to a SAP system
+## 3. Connect to a SAP system
 
 1. Press `Ctrl+Shift+P` and run: **ABAP FS: Connect to an SAP system**
 2. Select the system you configured
 3. Enter your password if prompted
 4. Wait a moment for VS Code to establish the connection
 
-## 5. Verify the connection
+## 4. Verify the connection
 
 - Look for the **ABAP FS** icon in the **Activity Bar** (the vertical icon strip on the far left)
 - Expand the views: **Transports**, **Dumps**, **ATC Finds**, **Traces**, **abapGit**

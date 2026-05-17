@@ -97,6 +97,12 @@
     "jest.runMode": {
       "type": "on-save",
       "testFileOnly": true
-    }
+    },
+    "abapfs.subagents.enabled": false,
+    "python.defaultInterpreterPath": "${workspaceFolder}/.venv/bin/python",
+    "python.terminal.activateEnvironment": true,
+    "python.terminal.activateEnvInCurrentTerminal": true,
+    "python-envs.defaultEnvManager": "ms-python.python:venv",
+    "python-envs.defaultPackageManager": "ms-python.vscode-python-envs:uv"
   }
 }

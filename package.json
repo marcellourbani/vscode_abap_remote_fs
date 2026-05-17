@@ -42,10 +42,11 @@
   ],
   "activationEvents": [
     "onFileSystem:adt",
+    "onNotebook:sap-data-workbook",
     "onCommand:abapfs.connect",
     "onCommand:abapfs.connectionManager",
     "onCommand:abapfs.runInEmbeddedGui",
-    "onNotebook:sap-data-workbook"
+    "onCommand:abapfs.showWalkThrough"
   ],
   "main": "./client/dist/extension",
   "scripts": {
@@ -61,6 +62,7 @@
     "test-abapfs": "cd modules/abapfs&& npm run test",
     "createpackage": "vsce package",
     "deploy": "vsce publish",
+    "docs": "uv run mkdocs serve --livereload",
     "inst_dep_sharedapi": "cd modules/sharedapi&& npm i && npm run build&& cd ../..",
     "inst_dep_object": "cd modules/abapObject&& npm i && npm run build&& cd ../..",
     "inst_dep_abapfs": "cd modules/abapfs&& npm i && npm run build&& cd ../..",
@@ -3165,6 +3167,11 @@
         "title": "Refresh SAP System Whitelist",
         "category": "ABAP FS",
         "icon": "$(refresh)"
+      },
+      {
+        "command": "abapfs.showWalkThrough",
+        "title": "Show Walkthrough",
+        "category": "ABAP FS"
       }
     ],
     "keybindings": [
