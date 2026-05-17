@@ -42,7 +42,11 @@
   ],
   "activationEvents": [
     "onFileSystem:adt",
-    "onNotebook:sap-data-workbook"
+    "onNotebook:sap-data-workbook",
+    "onCommand:abapfs.connect",
+    "onCommand:abapfs.connectionManager",
+    "onCommand:abapfs.runInEmbeddedGui",
+    "onCommand:abapfs.showWalkThrough"
   ],
   "main": "./client/dist/extension",
   "scripts": {
