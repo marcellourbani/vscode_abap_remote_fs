@@ -26,10 +26,18 @@ theme:
 nav:
   - Home: index.md
   - Getting Started:
+    - Prerequisites: getting-started/prerequisite.md
     - Installation: getting-started/installation.md
     - Walkthrough: getting-started/walkthrough.md
     - Connection Manager: getting-started/connection-manager.md
-  - MCP Server: mcp-server.md
+  - Object Management:
+    - Search: object-management/search.md
+    - Create: object-management/create.md
+    - Open: object-management/open.md
+    - Activation: object-management/activation.md
+    - Favorites: object-management/favorites.md
+    - Table Contents: object-management/table-contents.md
+    - Compare Across Systems: object-management/compare-systems.md
   - AI Features:
     - Language Model Tools: ai/language-model-tools.md
     - Subagents: ai/subagents.md
@@ -46,14 +54,6 @@ nav:
     - Native Desktop GUI: sap-gui/native-gui.md
     - Web Browser GUI: sap-gui/web-browser-gui.md
     - Run Transaction: sap-gui/run-transaction.md
-  - Object Management:
-    - Search: object-management/search.md
-    - Create: object-management/create.md
-    - Open: object-management/open.md
-    - Activation: object-management/activation.md
-    - Favorites: object-management/favorites.md
-    - Table Contents: object-management/table-contents.md
-    - Compare Across Systems: object-management/compare-systems.md
   - Code Quality:
     - ATC Analysis: code-quality/atc-analysis.md
     - ABAP Cleaner: code-quality/abap-cleaner.md
@@ -90,6 +90,7 @@ nav:
     - Dependency Graph: developer-tools/dependency-graph.md
     - Communication Log: developer-tools/communication-log.md
     - Tool Grouping Fix: developer-tools/tool-grouping-fix.md
+  - MCP Server: mcp-server.md
   - Reference:
     - Important Considerations: reference/important-considerations.md
     - Commands vs Tools: reference/commands-vs-tools.md
