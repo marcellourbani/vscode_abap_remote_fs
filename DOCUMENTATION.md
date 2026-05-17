@@ -50,21 +50,15 @@ See [MCP Server](#mcp-server-for-external-ai-tools) for setup.
 
 # Installation Steps
 
-## 1. Uninstall old version (pre-v2.0.0)
+## 1. Install the extension
 
-Skip this step if you are installing for the first time or already on v2.0.0+.
-
-1. Press `Ctrl+Shift+X` to open the **Extensions** panel (left sidebar)
-2. Search for **ABAP remote filesystem**
-3. Click **Uninstall**, then restart VS Code
-
-## 2. Install the extension
-
-1. Press `Ctrl+Shift+X` to open the **Extensions** panel
-2. Search for **ABAP remote filesystem**
+1. Press `Ctrl+Shift+X` or Click on the extension icon on the activity bar to open the **Extensions** panel (left sidebar)
+2. Search for **murbani.vscode-abap-remote-fs** or **ABAP remote filesystem**
 3. Click **Install**, then restart VS Code
 
-## 3. Configure a SAP system connection
+![Installation instructions](installationImage.png)
+
+## 2. Configure a SAP system connection
 
 1. Press `Ctrl+Shift+P` to open the **Command Palette** (the search bar for VS Code commands)
 2. Type and run: **ABAP FS: Connection Manager**
@@ -82,14 +76,14 @@ Skip this step if you are installing for the first time or already on v2.0.0+.
 - If a colleague already has connections configured, ask them to export via **Import/Export** and send you the JSON. User IDs and passwords are excluded from exports. You can then import and update your credentials in bulk using **Bulk Operations**.
 - For SAP BTP systems, use **Cloud Support** to create a connection from a BTP Service Key or Endpoint.
 
-## 4. Connect to a SAP system
+## 3. Connect to a SAP system
 
 1. Press `Ctrl+Shift+P` and run: **ABAP FS: Connect to an SAP system**
 2. Select the system you configured
 3. Enter your password if prompted
 4. Wait a moment for VS Code to establish the connection
 
-## 5. Verify the connection
+## 4. Verify the connection
 
 - Look for the **ABAP FS** icon in the **Activity Bar** (the vertical icon strip on the far left)
 - Expand the views: **Transports**, **Dumps**, **ATC Finds**, **Traces**, **abapGit**
@@ -120,7 +114,7 @@ The walkthrough covers four progressive stages:
 The walkthrough shows automatically only once. To open it again:
 
 1. Press `Ctrl+Shift+P` (Windows/Linux) or `Cmd+Shift+P` (Mac) to open the **Command Palette** — a search bar for all VS Code commands.
-2. Type **Get Started: Open Walkthrough** and press `Enter`.
+2. Type **ABAP FS:Show Walkthrough** and press `Enter`.
 3. Search for **ABAP** and select the walkthrough you want.
 
 Alternatively, open **Help → Welcome** from the menu bar, then select the ABAP FS walkthrough from the list.
@@ -175,13 +169,16 @@ Connections saved to **User Settings** are global — they appear in every VS Co
 
 **MCP (Model Context Protocol)** is an open standard that lets AI tools call external services. ABAP FS exposes its 39 SAP tools (search, read code, run tests, query data, etc.) via a local MCP server so that AI assistants outside of VS Code can use them.
 
+> **Warning:** MCP access is read-only. See [Limitations](#limitations) for details.
+
 **Use this if** you work with AI tools like Cursor, Claude Desktop, Claude Code, or Windsurf and want them to have the same SAP access that GitHub Copilot has inside VS Code.
+Also applies to AI agents plugins for vscode like Cline/Continue/Roo code/... unless they support the [virtual filesystem API](https://code.visualstudio.com/api/extension-guides/virtual-workspaces) AFAIK only copilot does at the moment
 
 **Don't need this if** you only use GitHub Copilot in VS Code — tools are already available there natively.
 
-```
+```text
 ┌─────────────────┐     MCP Protocol      ┌──────────────────┐     VS Code API     ┌─────────────┐
-│  Cursor/Claude  │ ◄──────────────────► │  MCP Server      │ ◄─────────────────► │  ABAP FS    │
+│  Cursor/Claude  │ ◄───────────────────► │  MCP Server      │ ◄─────────────────► │  ABAP FS    │
 │  Desktop/etc.   │    localhost:4847     │  (in VS Code)    │                     │  Tools      │
 └─────────────────┘                       └──────────────────┘                     └─────────────┘
 ```
@@ -194,11 +191,11 @@ Connections saved to **User Settings** are global — they appear in every VS Co
 
 Open VS Code Settings (`Ctrl+,`) and search for `abapfs.mcpServer`. Set:
 
-| Setting | Description |
-|---|---|
-| `abapfs.mcpServer.autoStart` | Set to `true` to start automatically on VS Code launch |
-| `abapfs.mcpServer.port` | Default `4847` — change if there's a port conflict |
-| `abapfs.mcpServer.apiKey` | Optional. Recommended on shared machines to prevent unauthorized SAP access |
+| Setting                      | Description                                                                 |
+| ---------------------------- | --------------------------------------------------------------------------- |
+| `abapfs.mcpServer.autoStart` | Set to `true` to start automatically on VS Code launch                      |
+| `abapfs.mcpServer.port`      | Default `4847` — change if there's a port conflict                          |
+| `abapfs.mcpServer.apiKey`    | Optional. Recommended on shared machines to prevent unauthorized SAP access |
 
 Or add directly to your `settings.json` (`Ctrl+Shift+P` → "Open User Settings (JSON)"):
 
@@ -210,7 +207,7 @@ Or add directly to your `settings.json` (`Ctrl+Shift+P` → "Open User Settings 
 }
 ```
 
-Reload VS Code after changing settings. A notification confirms the server is running: *"MCP Server running on port 4847"*
+Reload VS Code after changing settings. A notification confirms the server is running: _"MCP Server running on port 4847"_
 
 ### 2. Connect to Your SAP System
 
@@ -221,6 +218,7 @@ Use the command `ABAP FS: Connect to an SAP system` (`Ctrl+Shift+P` to open the 
 Add the following to your AI tool's MCP configuration. The URL is the same for all clients:
 
 **Cursor** — `~/.cursor/mcp.json` or project `.cursor/mcp.json`:
+
 ```json
 {
   "mcpServers": {
@@ -258,24 +256,24 @@ Without a matching key, requests return `401 Unauthorized`. The `/health` endpoi
 
 In your AI tool, ask something SAP-related, for example:
 
-- *"Search for classes containing 'USER'"*
-- *"Show me the code for CL_ABAP_TYPEDESCR"*
-- *"Run unit tests for ZCL_MY_CLASS"*
+- _"Search for classes containing 'USER'"_
+- _"Show me the code for CL_ABAP_TYPEDESCR"_
+- _"Run unit tests for ZCL_MY_CLASS"_
 
 ## Available Tools
 
 All 39 ABAP FS tools are exposed, including:
 
-| Tool | What It Does |
-|---|---|
-| `search_abap_objects` | Search for objects by name pattern |
-| `get_abap_object_lines` | Read source code |
-| `find_where_used` | Where-used analysis |
-| `run_unit_tests` | Execute ABAP unit tests |
-| `run_atc_analysis` | Run ATC code checks |
-| `execute_data_query` | Run SQL queries against SAP tables |
-| `manage_transport_requests` | Read transport data |
-| `abap_activate` | Activate ABAP objects |
+| Tool                        | What It Does                       |
+| --------------------------- | ---------------------------------- |
+| `search_abap_objects`       | Search for objects by name pattern |
+| `get_abap_object_lines`     | Read source code                   |
+| `find_where_used`           | Where-used analysis                |
+| `run_unit_tests`            | Execute ABAP unit tests            |
+| `run_atc_analysis`          | Run ATC code checks                |
+| `execute_data_query`        | Run SQL queries against SAP tables |
+| `manage_transport_requests` | Read transport data                |
+| `abap_activate`             | Activate ABAP objects              |
 
 ## Limitations
 
@@ -289,19 +287,19 @@ All 39 ABAP FS tools are exposed, including:
 
 ## Troubleshooting
 
-**Server not starting**
+### Server not starting
 
 - Confirm `abapfs.mcpServer.autoStart` is `true` in settings
 - Open the VS Code Output panel (`Ctrl+Shift+U`) and select "ABAP FS" for error messages
 - Try a different port if 4847 is already in use
 
-**Tools not working**
+### Tools not working
 
 - Confirm VS Code is connected to an SAP system
 - Check that the startup notification appeared when VS Code launched
 - Verify the URL in your AI tool's config matches the configured port
 
-**401 Unauthorized**
+### 401 Unauthorized
 
 - Check that `Authorization: Bearer <key>` is configured in your MCP client
 - Confirm the key in the client exactly matches `abapfs.mcpServer.apiKey` in VS Code settings
