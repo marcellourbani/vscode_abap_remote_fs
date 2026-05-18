@@ -1,5 +1,5 @@
 import { CompletionProposal } from "abap-adt-api"
-import { CompletionItem, Position, Range, TextEdit } from "vscode-languageserver"
+import { Command, CompletionItem, Position, Range, TextEdit } from "vscode-languageserver"
 
 const INTERFACEROLE = 58 // sccmp_role_intftype in abap
 
@@ -47,6 +47,10 @@ export const formatItem =
       insertText,
       sortText: `${i.LOCATION}  ${i.IDENTIFIER}`,
       data: i
+    }
+    // For method calls, add command to fetch and insert full parameters after insertion
+    if (isMethodCall) {
+      item.command = Command.create("Insert Method Parameters", "abapfs.insertMethodParams")
     }
     return item
   }

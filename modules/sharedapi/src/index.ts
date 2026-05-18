@@ -14,7 +14,8 @@ export enum Methods {
   getToken = "vscabap.getToken",
   triggerSyntaxCheck = "vscabap.triggerSyntaxCheck",
   commLogEntry = "vscabap.commLogEntry",
-  commLogToggle = "vscabap.commLogToggle"
+  commLogToggle = "vscabap.commLogToggle",
+  codeCompletionFull = "vscabap.codeCompletionFull"
 }
 
 export type Sources = "client" | "server"
