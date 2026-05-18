@@ -1,5 +1,7 @@
 # Installation Steps
 
+Before proceeding, ensure you meet the [Prerequisites](prerequisite.md).
+
 ## 1. Install the extension
 
 1. Press `Ctrl+Shift+X` or Click on the extension icon on the activity bar to open the **Extensions** panel (left sidebar)
