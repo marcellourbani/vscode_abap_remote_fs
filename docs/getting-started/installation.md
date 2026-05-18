@@ -1,5 +1,7 @@
 # Installation Steps
 
+Before proceeding, ensure you meet the [Prerequisites](prerequisite.md).
+
 > **Note:** ABAP FS registers 40+ AI tools for Copilot, but only the documentation tool is available until you connect to a SAP system. Connect to SAP first to unlock all tools.
 
 ## 1. Install the extension
