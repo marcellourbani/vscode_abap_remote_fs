@@ -2,19 +2,25 @@
 
 VS Code has an experimental setting (`github.copilot.chat.virtualTools.threshold`) that collapses extension tools into virtual groups when their count exceeds a threshold. When active, Copilot often fails to discover these groups — making all 39 ABAP FS AI tools invisible and unusable.
 
-ABAP FS detects this condition on startup and prompts you to fix it automatically.
+ABAP FS detects this condition after your first SAP connection and prompts you to fix it.
 
-## What Happens at Startup
+## When the Prompt Appears
 
-If grouping is active, a warning dialog appears with three options:
+The check runs after you first connect to a SAP system (not at extension activation). It only fires when:
+
+- The virtual tools threshold is greater than `0`
+- AI models are available (GitHub Copilot is signed in and active)
+- You haven't previously dismissed the prompt
+
+A non-modal notification appears with three options:
 
 | Option | Effect |
 |---|---|
-| **Disable Grouping & Reload** | Sets the threshold to `0` globally and in your workspace, then reloads VS Code |
-| **Remind Me Next Time** | Skips the prompt this session; asks again next time |
+| **Disable & Reload** | Sets the threshold to `0` globally and in your workspace, then reloads VS Code |
+| **Later** | Skips the prompt this session; asks again on next connection |
 | **Don't Ask Again** | Permanently suppresses the prompt |
 
-Choose **Disable Grouping & Reload** unless you have a specific reason to keep grouping enabled.
+Choose **Disable & Reload** unless you have a specific reason to keep grouping enabled.
 
 ## Fixing It Manually
 

@@ -427,7 +427,8 @@
         },
         "tags": [
           "abap-fs"
-        ]
+        ],
+        "when": "abapfs:extensionActive && !abapfs:noSapConnected"
       },
       {
         "name": "get_abap_object_lines",
@@ -514,7 +515,8 @@
         },
         "tags": [
           "abap-fs"
-        ]
+        ],
+        "when": "abapfs:extensionActive && !abapfs:noSapConnected"
       },
       {
         "name": "search_abap_object_lines",
@@ -565,7 +567,8 @@
         },
         "tags": [
           "abap-fs"
-        ]
+        ],
+        "when": "abapfs:extensionActive && !abapfs:noSapConnected"
       },
       {
         "name": "get_abap_object_info",
@@ -638,7 +641,8 @@
         },
         "tags": [
           "abap-fs"
-        ]
+        ],
+        "when": "abapfs:extensionActive && !abapfs:noSapConnected"
       },
       {
         "name": "get_batch_lines",
@@ -689,7 +693,8 @@
         },
         "tags": [
           "abap-fs"
-        ]
+        ],
+        "when": "abapfs:extensionActive && !abapfs:noSapConnected"
       },
       {
         "name": "get_object_by_uri",
@@ -728,7 +733,8 @@
         },
         "tags": [
           "abap-fs"
-        ]
+        ],
+        "when": "abapfs:extensionActive && !abapfs:noSapConnected"
       },
       {
         "name": "create_object_programmatically",
@@ -868,7 +874,8 @@
         },
         "tags": [
           "abap-fs"
-        ]
+        ],
+        "when": "abapfs:extensionActive && !abapfs:noSapConnected"
       },
       {
         "name": "get_abap_object_url",
@@ -902,7 +909,8 @@
         },
         "tags": [
           "abap-fs"
-        ]
+        ],
+        "when": "abapfs:extensionActive && !abapfs:noSapConnected"
       },
       {
         "name": "get_abap_object_workspace_uri",
@@ -936,7 +944,8 @@
         },
         "tags": [
           "abap-fs"
-        ]
+        ],
+        "when": "abapfs:extensionActive && !abapfs:noSapConnected"
       },
       {
         "name": "create_mermaid_diagram",
@@ -992,7 +1001,8 @@
         },
         "tags": [
           "abap-fs"
-        ]
+        ],
+        "when": "abapfs:extensionActive && !abapfs:noSapConnected"
       },
       {
         "name": "validate_mermaid_syntax",
@@ -1021,7 +1031,8 @@
         },
         "tags": [
           "abap-fs"
-        ]
+        ],
+        "when": "abapfs:extensionActive && !abapfs:noSapConnected"
       },
       {
         "name": "get_mermaid_documentation",
@@ -1066,7 +1077,8 @@
         },
         "tags": [
           "abap-fs"
-        ]
+        ],
+        "when": "abapfs:extensionActive && !abapfs:noSapConnected"
       },
       {
         "name": "detect_mermaid_diagram_type",
@@ -1090,7 +1102,8 @@
         },
         "tags": [
           "abap-fs"
-        ]
+        ],
+        "when": "abapfs:extensionActive && !abapfs:noSapConnected"
       },
       {
         "name": "create_test_documentation",
@@ -1166,7 +1179,8 @@
         },
         "tags": [
           "abap-fs"
-        ]
+        ],
+        "when": "abapfs:extensionActive && !abapfs:noSapConnected"
       },
       {
         "name": "execute_data_query",
@@ -1335,7 +1349,8 @@
         },
         "tags": [
           "abap-fs"
-        ]
+        ],
+        "when": "abapfs:extensionActive && !abapfs:noSapConnected"
       },
       {
         "name": "get_abap_sql_syntax",
@@ -1351,7 +1366,8 @@
         },
         "tags": [
           "abap-fs"
-        ]
+        ],
+        "when": "abapfs:extensionActive && !abapfs:noSapConnected"
       },
       {
         "name": "run_atc_analysis",
@@ -1410,7 +1426,8 @@
         },
         "tags": [
           "abap-fs"
-        ]
+        ],
+        "when": "abapfs:extensionActive && !abapfs:noSapConnected"
       },
       {
         "name": "get_atc_decorations",
@@ -1431,7 +1448,8 @@
         },
         "tags": [
           "abap-fs"
-        ]
+        ],
+        "when": "abapfs:extensionActive && !abapfs:noSapConnected"
       },
       {
         "name": "manage_text_elements",
@@ -1510,7 +1528,8 @@
         },
         "tags": [
           "abap-fs"
-        ]
+        ],
+        "when": "abapfs:extensionActive && !abapfs:noSapConnected"
       },
       {
         "name": "open_object",
@@ -1543,7 +1562,8 @@
         },
         "tags": [
           "abap-fs"
-        ]
+        ],
+        "when": "abapfs:extensionActive && !abapfs:noSapConnected"
       },
       {
         "name": "run_unit_tests",
@@ -1572,7 +1592,8 @@
         },
         "tags": [
           "abap-fs"
-        ]
+        ],
+        "when": "abapfs:extensionActive && !abapfs:noSapConnected"
       },
       {
         "name": "create_test_include",
@@ -1601,7 +1622,8 @@
         },
         "tags": [
           "abap-fs"
-        ]
+        ],
+        "when": "abapfs:extensionActive && !abapfs:noSapConnected"
       },
       {
         "name": "manage_transport_requests",
@@ -1651,7 +1673,8 @@
         },
         "tags": [
           "abap-fs"
-        ]
+        ],
+        "when": "abapfs:extensionActive && !abapfs:noSapConnected"
       },
       {
         "name": "abap_debug_session",
@@ -1694,7 +1717,8 @@
         },
         "tags": [
           "abap-fs"
-        ]
+        ],
+        "when": "abapfs:extensionActive && !abapfs:noSapConnected"
       },
       {
         "name": "abap_debug_breakpoint",
@@ -1744,7 +1768,8 @@
         },
         "tags": [
           "abap-fs"
-        ]
+        ],
+        "when": "abapfs:extensionActive && !abapfs:noSapConnected"
       },
       {
         "name": "abap_debug_step",
@@ -1789,7 +1814,8 @@
         },
         "tags": [
           "abap-fs"
-        ]
+        ],
+        "when": "abapfs:extensionActive && !abapfs:noSapConnected"
       },
       {
         "name": "abap_debug_variable",
@@ -1868,7 +1894,8 @@
         },
         "tags": [
           "abap-fs"
-        ]
+        ],
+        "when": "abapfs:extensionActive && !abapfs:noSapConnected"
       },
       {
         "name": "abap_debug_stack",
@@ -1897,7 +1924,8 @@
         },
         "tags": [
           "abap-fs"
-        ]
+        ],
+        "when": "abapfs:extensionActive && !abapfs:noSapConnected"
       },
       {
         "name": "abap_debug_status",
@@ -1921,7 +1949,8 @@
         },
         "tags": [
           "abap-fs"
-        ]
+        ],
+        "when": "abapfs:extensionActive && !abapfs:noSapConnected"
       },
       {
         "name": "analyze_abap_dumps",
@@ -1966,7 +1995,8 @@
         },
         "tags": [
           "abap-fs"
-        ]
+        ],
+        "when": "abapfs:extensionActive && !abapfs:noSapConnected"
       },
       {
         "name": "analyze_abap_traces",
@@ -2014,7 +2044,8 @@
         },
         "tags": [
           "abap-fs"
-        ]
+        ],
+        "when": "abapfs:extensionActive && !abapfs:noSapConnected"
       },
       {
         "name": "find_where_used",
@@ -2092,7 +2123,8 @@
         },
         "tags": [
           "abap-fs"
-        ]
+        ],
+        "when": "abapfs:extensionActive && !abapfs:noSapConnected"
       },
       {
         "name": "get_sap_system_info",
@@ -2121,7 +2153,8 @@
         },
         "tags": [
           "abap-fs"
-        ]
+        ],
+        "when": "abapfs:extensionActive && !abapfs:noSapConnected"
       },
       {
         "name": "get_connected_systems",
@@ -2138,7 +2171,8 @@
         },
         "tags": [
           "abap-fs"
-        ]
+        ],
+        "when": "abapfs:extensionActive && !abapfs:noSapConnected"
       },
       {
         "name": "get_version_history",
@@ -2198,7 +2232,8 @@
         },
         "tags": [
           "abap-fs"
-        ]
+        ],
+        "when": "abapfs:extensionActive && !abapfs:noSapConnected"
       },
       {
         "name": "manage_subagents",
@@ -2251,7 +2286,8 @@
           "required": [
             "action"
           ]
-        }
+        },
+        "when": "abapfs:extensionActive && !abapfs:noSapConnected"
       },
       {
         "name": "abap_fs_documentation",
@@ -2439,7 +2475,8 @@
         },
         "tags": [
           "abap-fs"
-        ]
+        ],
+        "when": "abapfs:extensionActive && !abapfs:noSapConnected"
       },
       {
         "name": "adt_discovery_export",
@@ -2463,7 +2500,8 @@
         },
         "tags": [
           "abap-fs"
-        ]
+        ],
+        "when": "abapfs:extensionActive && !abapfs:noSapConnected"
       },
       {
         "name": "abap_activate",
@@ -2482,7 +2520,8 @@
           "required": [
             "url"
           ]
-        }
+        },
+        "when": "abapfs:extensionActive && !abapfs:noSapConnected"
       }
     ],
     "commands": [
@@ -2599,6 +2638,11 @@
       {
         "command": "abapfs.connectionManager",
         "title": "Connection Manager",
+        "category": "ABAP FS"
+      },
+      {
+        "command": "abapfs.startMcpServer",
+        "title": "Start MCP Server",
         "category": "ABAP FS"
       },
       {
@@ -3016,6 +3060,11 @@
         "category": "ABAP FS"
       },
       {
+        "command": "abapfs.changePassword",
+        "title": "Change Connection Password",
+        "category": "ABAP FS"
+      },
+      {
         "command": "abapfs.atcChecks",
         "title": "Run ABAP Test cockpit",
         "category": "ABAP FS",
@@ -3241,6 +3290,9 @@
           "command": "abapfs.connect"
         },
         {
+          "command": "abapfs.startMcpServer"
+        },
+        {
           "command": "abapfs.rapGenFromEditor"
         },
         {
@@ -3277,6 +3329,10 @@
         },
         {
           "command": "abapfs.clearPassword",
+          "when": "abapfs:extensionActive"
+        },
+        {
+          "command": "abapfs.changePassword",
           "when": "abapfs:extensionActive"
         },
         {

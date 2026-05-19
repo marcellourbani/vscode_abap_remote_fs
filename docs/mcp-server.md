@@ -2,6 +2,8 @@
 
 > **Prerequisites:** Complete the [Installation Steps](getting-started/installation.md) first. You need VS Code with ABAP FS installed and configured with at least one SAP system connection.
 
+> **Note:** ABAP FS has 40+ AI tools. When using GitHub Copilot in VS Code, all tools are available natively once a SAP system is connected — no MCP server needed. The MCP server is only for external AI clients.
+
 ## What Is This and Why Would You Need It?
 
 **MCP (Model Context Protocol)** is an open standard that lets AI tools call external services. ABAP FS exposes its 39 SAP tools (search, read code, run tests, query data, etc.) via a local MCP server so that AI assistants outside of VS Code can use them.
@@ -24,27 +26,35 @@ Also applies to AI agents plugins for vscode like Cline/Continue/Roo code/... un
 
 ## Setup
 
-### 1. Enable the MCP Server
+### 1. Start the MCP Server
 
-Open VS Code Settings (`Ctrl+,`) and search for `abapfs.mcpServer`. Set:
+Press `Ctrl+Shift+P` and run: **ABAP FS: Start MCP Server**
+
+That's it — the server starts immediately on the default port (4847). A notification confirms it's running.
+
+> If you have GitHub Copilot installed, ABAP FS will ask whether you actually need the MCP server (Copilot already has native access to all tools). You can choose to start anyway or cancel.
+
+### 2. (Optional) Change Port or Add API Key
+
+Running the command automatically enables `autoStart` — VS Code will start the MCP server on every launch going forward. You don't need to touch settings for that.
+
+If you need to change the port or secure the server with an API key:
+
+Open VS Code Settings (`Ctrl+,`) and search for `abapfs.mcpServer`:
 
 | Setting                      | Description                                                                 |
 | ---------------------------- | --------------------------------------------------------------------------- |
-| `abapfs.mcpServer.autoStart` | Set to `true` to start automatically on VS Code launch                      |
 | `abapfs.mcpServer.port`      | Default `4847` — change if there's a port conflict                          |
 | `abapfs.mcpServer.apiKey`    | Optional. Recommended on shared machines to prevent unauthorized SAP access |
 
-Or add directly to your `settings.json` (`Ctrl+Shift+P` → "Open User Settings (JSON)"):
+Or add directly to your `settings.json`:
 
 ```json
 {
-  "abapfs.mcpServer.autoStart": true,
   "abapfs.mcpServer.port": 4847,
   "abapfs.mcpServer.apiKey": "your-secret-key"
 }
 ```
-
-Reload VS Code after changing settings. A notification confirms the server is running: _"MCP Server running on port 4847"_
 
 ### 2. Connect to Your SAP System
 
@@ -99,7 +109,7 @@ In your AI tool, ask something SAP-related, for example:
 
 ## Available Tools
 
-All 39 ABAP FS tools are exposed, including:
+All 40 ABAP FS tools are exposed, including:
 
 | Tool                        | What It Does                       |
 | --------------------------- | ---------------------------------- |
@@ -126,9 +136,10 @@ All 39 ABAP FS tools are exposed, including:
 
 ### Server not starting
 
-- Confirm `abapfs.mcpServer.autoStart` is `true` in settings
+- Run `ABAP FS: Start MCP Server` from the Command Palette to start it manually
+- If you previously chose "Disable MCP", re-run the command — it will start and re-enable auto-start
 - Open the VS Code Output panel (`Ctrl+Shift+U`) and select "ABAP FS" for error messages
-- Try a different port if 4847 is already in use
+- Try a different port if 4847 is already in use (`abapfs.mcpServer.port` in settings)
 
 ### Tools not working
 
