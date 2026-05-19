@@ -12,6 +12,7 @@ export enum Methods {
   logCall = "vscabap.logCall",
   logHTTP = "vscabap.logHTTP",
   getToken = "vscabap.getToken",
+  getAuthHeaders = "vscabap.getAuthHeaders",
   triggerSyntaxCheck = "vscabap.triggerSyntaxCheck",
   commLogEntry = "vscabap.commLogEntry",
   commLogToggle = "vscabap.commLogToggle"
@@ -29,6 +30,48 @@ export interface AbapObjectDetail {
   name: string
 }
 
+/** Supported authentication methods for SAP connections. */
+export type AuthMethod = "basic" | "cert" | "kerberos" | "browser_sso" | "oauth_onprem"
+export type NonBasicAuthMethod = Exclude<AuthMethod, "basic">
+
+/** X.509 client certificate configuration (paths only — passphrase in vault). */
+export interface CertAuthConfig {
+  certPath: string
+  keyPath: string
+  caPath?: string
+}
+
+/** Kerberos/SPNEGO configuration (all fields optional — PowerShell SSPI uses UseDefaultCredentials). */
+export interface KerberosAuthConfig {
+  sapHostname?: string
+  realm?: string
+  spn?: string
+}
+
+/** On-premise SAP OAuth 2.0 configuration (SOAUTH2). */
+export interface OAuthOnPremConfig {
+  /** OAuth client ID registered in SOAUTH2. */
+  clientId: string
+  /** OAuth client secret (optional if PKCE is used). */
+  clientSecret?: string
+  /** OAuth scope (default: SAP_ADT). */
+  scope?: string
+}
+
+/** HTTP headers forwarded from the extension host to the language server. */
+export type AuthHttpHeaders = Readonly<Record<string, string>>
+
+/** Certificate material sent to the language server to reconstruct an https.Agent. */
+export interface CertAuthTransport extends CertAuthConfig {
+  passphrase?: string
+}
+
+/** Auth metadata returned by the extension host for non-basic authentication methods. */
+export interface AuthHeadersResponse {
+  httpHeaders?: AuthHttpHeaders
+  certAuth?: CertAuthTransport
+}
+
 export interface ClientConfiguration {
   name: string
   url: string
@@ -39,6 +82,14 @@ export interface ClientConfiguration {
   allowSelfSigned: boolean
   customCA?: string
   diff_formatter: "ADT formatter" | "AbapLint" | "Simple"
+  /** Authentication method. Defaults to "basic" when omitted (backward compatible). */
+  authMethod?: AuthMethod
+  /** Certificate auth config (only when authMethod === "cert"). */
+  certAuth?: CertAuthConfig
+  /** Kerberos auth config (only when authMethod === "kerberos"). */
+  kerberosAuth?: KerberosAuthConfig
+  /** On-premise OAuth config (only when authMethod === "oauth_onprem"). */
+  oauthOnPrem?: OAuthOnPremConfig
   oauth?: {
     clientId: string
     clientSecret: string
@@ -51,6 +102,30 @@ export interface ClientConfiguration {
     http_calls: boolean
   }
 }
+
+export const getAuthMethod = (config: Pick<ClientConfiguration, "authMethod">): AuthMethod =>
+  config.authMethod || "basic"
+
+export type ClientConfigurationWithAuth<M extends AuthMethod> = ClientConfiguration & {
+  authMethod: M
+}
+
+export type CertClientConfiguration = ClientConfigurationWithAuth<"cert"> & {
+  certAuth: CertAuthConfig
+}
+
+export type OAuthOnPremClientConfiguration = ClientConfigurationWithAuth<"oauth_onprem"> & {
+  oauthOnPrem: OAuthOnPremConfig
+}
+
+export const hasCertAuthConfig = (
+  config: ClientConfiguration
+): config is CertClientConfiguration => getAuthMethod(config) === "cert" && !!config.certAuth
+
+export const hasOAuthOnPremConfig = (
+  config: ClientConfiguration
+): config is OAuthOnPremClientConfiguration =>
+  getAuthMethod(config) === "oauth_onprem" && !!config.oauthOnPrem
 
 export const clientTraceUrl = (conf: ClientConfiguration) =>
   conf.trace && conf.trace.api_methods && conf.trace.mongoUrl

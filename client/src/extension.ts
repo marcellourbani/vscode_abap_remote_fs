@@ -119,7 +119,9 @@ export async function activate(ctx: ExtensionContext): Promise<AbapFsApi> {
     const adtSelector = { language: "abap", scheme: ADTSCHEME }
     const cdsSelector = { language: "abap_cds", scheme: ADTSCHEME }
 
-    sub.push(languages.registerHoverProvider([abapSelector, adtSelector, cdsSelector], hoverProvider))
+    sub.push(
+      languages.registerHoverProvider([abapSelector, adtSelector, cdsSelector], hoverProvider)
+    )
     sub.push(
       languages.registerDocumentSymbolProvider([adtSelector], new AbapDocumentSymbolProvider())
     )
