@@ -556,6 +556,75 @@ function stopServer(): void {
  * Initialize and start the MCP server based on settings
  * Call this from extension.ts during activation
  */
+
+
+const MCP_COPILOT_DISMISSED_KEY = "abapfs.mcpServer.copilotPromptDismissed"
+
+/**
+ * Start MCP server via command. Shows Copilot warning if applicable.
+ */
+export async function startMcpServerCommand(context: vscode.ExtensionContext): Promise<void> {
+  if (state.isRunning) {
+    window.showInformationMessage(`MCP Server is already running on port ${state.port}.`)
+    return
+  }
+
+
+  // One-time check: if LLM models are available (Copilot active), user may not need MCP
+  const dismissed = context.globalState.get<boolean>(MCP_COPILOT_DISMISSED_KEY)
+  if (!dismissed) {
+    let hasModels = false
+    try {
+      const models = await vscode.lm.selectChatModels({})
+      hasModels = models.length > 0
+    } catch {
+      // No models available — user likely needs MCP for external AI clients
+    }
+
+    if (hasModels) {
+      const selection = await vscode.window.showQuickPick(
+        [
+          { label: "$(rocket) Start MCP Anyway", description: "I use Cursor/Claude/other external AI tools", value: "start" },
+          { label: "$(x) Don't Start", description: "I only use GitHub Copilot — don't need MCP", value: "disable" }
+        ],
+        {
+          placeHolder: "Github Copilot AI models detected. MCP server is for external AI tools — do you still need it?",
+          ignoreFocusOut: true
+        }
+      )
+
+      if (!selection || selection.value === "disable") {
+        await context.globalState.update(MCP_COPILOT_DISMISSED_KEY, true)
+        const config = vscode.workspace.getConfiguration("abapfs.mcpServer")
+        await config.update("autoStart", false, vscode.ConfigurationTarget.Workspace)
+        log("🔌 MCP Server disabled by user — Copilot provides native tool access")
+        return
+      }
+      // "start" selected
+      await context.globalState.update(MCP_COPILOT_DISMISSED_KEY, true)
+    }
+  }
+
+  // Persist autoStart so MCP starts automatically on next VS Code launch
+  if (vscode.workspace.workspaceFolders?.length) {
+    const mcpConfig = vscode.workspace.getConfiguration("abapfs.mcpServer")
+    await mcpConfig.update("autoStart", true, vscode.ConfigurationTarget.Workspace)
+  } else {
+    window.showInformationMessage(
+      "MCP Server started for this session. Open a workspace/folder and start MCP to persist this setting in that workspace across restarts."
+    )
+  }
+
+  try {
+    await startHttpServer()
+    context.subscriptions.push({ dispose: () => { stopServer() } })
+  } catch (error) {
+    window.showWarningMessage(
+      `MCP Server failed to start: ${error instanceof Error ? error.message : String(error)}`
+    )
+  }
+}
+
 export async function initializeMcpServer(context: vscode.ExtensionContext): Promise<void> {
   const settings = getMcpSettings()
 
@@ -563,21 +632,8 @@ export async function initializeMcpServer(context: vscode.ExtensionContext): Pro
     return // Don't start if autoStart is disabled
   }
 
-  try {
-    await startHttpServer()
-
-    // Register cleanup on extension deactivation
-    context.subscriptions.push({
-      dispose: () => {
-        stopServer()
-      }
-    })
-  } catch (error) {
-    // Don't throw - MCP server is optional, extension should still work
-    window.showWarningMessage(
-      `MCP Server failed to start: ${error instanceof Error ? error.message : String(error)}`
-    )
-  }
+  // On autoStart, reuse the same logic (modal + start)
+  await startMcpServerCommand(context)
 }
 
 /**

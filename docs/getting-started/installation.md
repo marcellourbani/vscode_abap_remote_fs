@@ -1,5 +1,7 @@
 # Installation Steps
 
+> **Note:** ABAP FS registers 40+ AI tools for Copilot, but only the documentation tool is available until you connect to a SAP system. Connect to SAP first to unlock all tools.
+
 ## 1. Install the extension
 
 1. Press `Ctrl+Shift+X` or Click on the extension icon on the activity bar to open the **Extensions** panel (left sidebar)
@@ -12,7 +14,7 @@
 
 1. Press `Ctrl+Shift+P` to open the **Command Palette** (the search bar for VS Code commands)
 2. Type and run: **ABAP FS: Connection Manager**
-3. In the connection manager window, click **Add Connection** and fill in:
+3. In the connection manager window, click **Add SAP System** and fill in:
    - **URL** – your SAP system URL
    - **Client**, **Username**, **Language**
    - SAP GUI settings (optional)
@@ -32,6 +34,11 @@
 2. Select the system you configured
 3. Enter your password if prompted
 4. Wait a moment for VS Code to establish the connection
+
+## Password Management
+
+- **Change password:** `Ctrl+Shift+P` → **ABAP FS: Change Connection Password** — select a system and enter your new password.
+- **Forget password:** `Ctrl+Shift+P` → **ABAP FS: Forget connection password** — removes the stored password so you're prompted again on next connect.
 
 ## 4. Verify the connection
 

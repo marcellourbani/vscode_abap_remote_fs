@@ -44,7 +44,7 @@ import { DiagramWebviewManager } from "./services/DiagramWebviewManager"
 import { SapSystemValidator } from "./services/sapSystemValidator"
 import { listAdtFeedsCommand } from "./commands/listAdtFeeds"
 import { validateSubagentsOnStartup } from "./services/lm-tools/subagentConfigTool"
-import { initializeMcpServer } from "./services/mcpServer"
+import { initializeMcpServer, startMcpServerCommand } from "./services/mcpServer"
 import { registerChatTools } from "./adt/ai/tools"
 import { initializeEnhancementDecorations } from "./views/enhancementDecorations"
 import { initializeBlameGutter } from "./views/blameGutter"
@@ -56,7 +56,7 @@ import { checkUpgradeNotification } from "./services/upgradeNotification"
 import { registerAbapRepl } from "./repl"
 import { registerAbapNotebooks } from "./notebooks"
 import { showWelcomeWalkthrough } from "./services/walkthroughService"
-import { disableVirtualToolGrouping } from "./services/virtualToolsFix"
+import { registerVirtualToolsFixOnConnect } from "./services/virtualToolsFix"
 import { ObjectPropertyProvider } from "./views/objectProperties"
 import { ObjectSearchViewProvider } from "./views/objectSearchView"
 import { funWindow as window } from "./services/funMessenger"
@@ -142,7 +142,8 @@ export async function activate(ctx: ExtensionContext): Promise<AbapFsApi> {
     DiagramWebviewManager.initialize(context.extensionUri)
     log("🧜‍♀️ Mermaid Webview Manager ready to make your diagrams prettier than your code")
 
-    // Register Language Model Tools for proper AI integration (includes Mermaid tools)
+
+    // Register Language Model Tools
     await registerAllTools(context)
 
     // Register ABAP Cleaner feature
@@ -157,6 +158,8 @@ export async function activate(ctx: ExtensionContext): Promise<AbapFsApi> {
 
     // Initialize MCP Server for external AI clients (Cursor, etc.)
     await initializeMcpServer(context)
+
+    sub.push(commands.registerCommand("abapfs.startMcpServer", () => startMcpServerCommand(context)))
     // Validate and regenerate subagent files if enabled, but only do that in background
     setImmediate(() => validateSubagentsOnStartup(context))
     log("🚀 ABAP FS services are GO! Houston, we have liftoff! 🌙")
@@ -300,6 +303,10 @@ export async function activate(ctx: ExtensionContext): Promise<AbapFsApi> {
   LanguageCommands.start(context)
 
   setContext("abapfs:extensionActive", true)
+  setContext("abapfs:noSapConnected", !(workspace.workspaceFolders?.some(f => f.uri.scheme === ADTSCHEME) ?? false))
+  sub.push(workspace.onDidChangeWorkspaceFolders(() => {
+    setContext("abapfs:noSapConnected", !(workspace.workspaceFolders?.some(f => f.uri.scheme === ADTSCHEME) ?? false))
+  }))
   restoreLocks()
   registerAbapGit(context)
 
@@ -383,12 +390,11 @@ export async function activate(ctx: ExtensionContext): Promise<AbapFsApi> {
     // Non-critical — never break extension activation
   }
 
+  // Register virtual tools fix — fires once on first SAP connection, not at activation
+  registerVirtualToolsFixOnConnect(context)
+
   const elapsed = new Date().getTime() - startTime
   log.debug(`Activated,pid=${process.pid}, activation time(ms):${elapsed}`)
-
-  // Delay the virtual tools fix so VS Code and Copilot are fully loaded
-  // (the reset command is slow during early activation but fast once everything is ready)
-  setTimeout(() => disableVirtualToolGrouping(ctx), 10000)
   return api
 }
 

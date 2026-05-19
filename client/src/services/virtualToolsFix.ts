@@ -5,25 +5,69 @@
  * them into groups that Copilot often fails to activate — making our 30+ ABAP
  * tools invisible. Setting threshold to 0 disables grouping entirely.
  *
- * This runs once on activation. If the threshold is already 0, it stays dormant.
+ * This is triggered once after the user first connects to a SAP system.
+ * It shows a non-modal notification rather than a blocking modal dialog.
  */
 
 import * as vscode from "vscode"
 import { log } from "../lib"
 import { funWindow as window } from "./funMessenger"
+import { ADTSCHEME } from "../adt/conections"
 
 const FULL_SETTING_ID = "github.copilot.chat.virtualTools.threshold"
 const RESET_COMMAND = "github.copilot.debug.resetVirtualToolGroups"
 const DISMISSED_KEY = "abapfs.virtualToolsFix.dismissed"
 
-export async function disableVirtualToolGrouping(
+/**
+ * Called on every activation. Handles two scenarios:
+ * 1. ADT folders already present (extension restarted after connecting) → check after a delay.
+ * 2. No ADT folders yet → register a listener and wait for the first connection.
+ *
+ * Safe to call on every activation — dismissed/already-fixed state is persisted.
+ */
+export function registerVirtualToolsFixOnConnect(context: vscode.ExtensionContext): void {
+  // Already dismissed — nothing to do ever again
+  if (context.globalState.get<boolean>(DISMISSED_KEY)) return
+
+  const hasAdtFolders = vscode.workspace.workspaceFolders?.some(
+    f => f.uri.scheme === ADTSCHEME
+  ) ?? false
+
+  if (hasAdtFolders) {
+    // Extension restarted with ADT folders already mounted (e.g. after connecting).
+    // Delay so the workspace finishes settling before showing the notification.
+    setTimeout(() => disableVirtualToolGrouping(context), 5000)
+    return
+  }
+
+  // No ADT folders yet — wait for the first connection
+  const listener = vscode.workspace.onDidChangeWorkspaceFolders(e => {
+    const hasNewAdtFolder = e.added.some(f => f.uri.scheme === ADTSCHEME)
+    if (!hasNewAdtFolder) return
+
+    listener.dispose()
+    setTimeout(() => disableVirtualToolGrouping(context), 5000)
+  })
+  context.subscriptions.push(listener)
+}
+
+async function disableVirtualToolGrouping(
   context: vscode.ExtensionContext
 ): Promise<void> {
+
   try {
-    // User previously chose "Don't Ask Again" — respect that
-    if (context.globalState.get<boolean>(DISMISSED_KEY)) {
-      return
+    if (context.globalState.get<boolean>(DISMISSED_KEY)) return
+
+    // Only proceed if AI models are available — if not, Copilot isn't active yet
+    // and there's nothing to fix. Will retry automatically on next activation.
+    let hasModels = false
+    try {
+      const models = await vscode.lm.selectChatModels({})
+      hasModels = models.length > 0
+    } catch {
+      // selectChatModels not available or failed — skip silently
     }
+    if (!hasModels) return
 
     const rootConfig = vscode.workspace.getConfiguration()
     const inspection = rootConfig.inspect<number>(FULL_SETTING_ID)
@@ -36,16 +80,13 @@ export async function disableVirtualToolGrouping(
       return // Already disabled — stay dormant
     }
 
-    // Ask the user before changing anything
+    // Non-modal notification — doesn't interrupt the user's workflow
     const selection = await window.showWarningMessage(
-      "VS Code's experimental \"virtual tool grouping\" is active (threshold: "
-        + effectiveValue
-        + "). This groups extension tools and Copilot often fails to activate the groups, "
-        + "making ABAP FS tools invisible to AI. "
-        + "We recommend setting the threshold to 0 to disable grouping so all 30+ ABAP tools are always available to Copilot.",
-      { modal: true, detail: "This changes the setting \"github.copilot.chat.virtualTools.threshold\" to 0 at both global and workspace level. A window reload will be needed afterwards." },
-      "Disable Grouping & Reload",
-      "Remind Me Next Time",
+      `ABAP FS: Virtual tool grouping is active (threshold: ${effectiveValue}). ` +
+        "Copilot may not see all 30+ ABAP tools. " +
+        "Disable grouping to make all tools available?",
+      "Disable & Reload",
+      "Later",
       "Don't Ask Again"
     )
 
@@ -55,27 +96,20 @@ export async function disableVirtualToolGrouping(
       return
     }
 
-    if (selection === "Remind Me Next Time") {
-      log("🔧 User deferred virtual tool grouping fix — will ask again next activation")
+    if (selection !== "Disable & Reload") {
+      log("🔧 User deferred virtual tool grouping fix — will ask again next connection")
       return
     }
 
-    if (selection !== "Disable Grouping & Reload") {
-      // User dismissed the dialog (pressed Escape / clicked X) — same as remind me
-      return
-    }
-
-    // Show progress while applying changes — settings updates trigger config change events across all extensions which takes a moment
+    // Show progress while applying changes
     await window.withProgress(
       { location: vscode.ProgressLocation.Notification, title: "Disabling virtual tool grouping..." },
       async (progress) => {
         progress.report({ message: "Updating settings..." })
 
-        // Always update global
         await rootConfig.update(FULL_SETTING_ID, 0, vscode.ConfigurationTarget.Global)
         log("🔧 Disabled virtual tool grouping at global level")
 
-        // Update workspace level only if a workspace is open — this throws otherwise
         if (vscode.workspace.workspaceFolders?.length) {
           try {
             await rootConfig.update(FULL_SETTING_ID, 0, vscode.ConfigurationTarget.Workspace)
@@ -97,11 +131,11 @@ export async function disableVirtualToolGrouping(
         await vscode.commands.executeCommand("workbench.action.reloadWindow")
       }
     )
+
   } catch (error) {
-    // "Canceled" is expected — the window reload disposes the extension mid-execution
     const msg = String(error)
-    if (!msg.includes("Canceled")) {
-      log(`⚠️ Could not check/disable virtual tool grouping: ${error}`)
-    }
+    if (msg.includes("Canceled")) return
+    // Unexpected error (e.g. settings write failed, reload command unavailable)
+    log(`⚠️ Could not apply virtual tool grouping fix: ${error}`)
   }
 }
