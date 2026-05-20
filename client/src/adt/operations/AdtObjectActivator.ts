@@ -17,6 +17,11 @@ const logError = (message: string) => {
   channel.appendLine(message)
 }
 
+
+/** Wrap plain InactiveObject[] into InactiveObjectRecord[] for use with showActivationSelectionDialog */
+const toRecords = (objects: any[]): InactiveObjectRecord[] =>
+  objects.map(obj => ({ object: obj } as InactiveObjectRecord))
+
 export interface ActivationEvent {
   object: AbapObject
   uri: Uri
@@ -490,7 +495,7 @@ export class AdtObjectActivator {
     if (relatedObjects.length > 1) {
       // Show user selection dialog for which objects to activate
       const selectedObjects = interactive
-        ? await this.showActivationSelectionDialog(relatedObjects)
+        ? await this.showActivationSelectionDialog(toRecords(relatedObjects))
         : relatedObjects
 
       if (selectedObjects && selectedObjects.length > 0) {
@@ -524,9 +529,13 @@ export class AdtObjectActivator {
           }
         }
 
+
+
         if (fallbackObjects.length > 1) {
           // Show user selection dialog for which objects to activate
-          const selectedObjects = await this.showActivationSelectionDialog(fallbackObjects)
+          const selectedObjects = interactive
+            ? await this.showActivationSelectionDialog(toRecords(fallbackObjects))
+            : fallbackObjects
 
           if (selectedObjects && selectedObjects.length > 0) {
             result = await this.client.activate(selectedObjects)
