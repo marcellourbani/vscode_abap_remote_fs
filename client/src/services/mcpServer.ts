@@ -24,6 +24,8 @@ import { z } from "zod"
 import { log } from "../lib"
 import { toolRegistry } from "./lm-tools/toolRegistry"
 import { funWindow as window } from "./funMessenger"
+import { executeReplace } from "./lm-tools/mcpReplaceStringTool"
+import { getDiagnosticsForUri } from "./lm-tools/mcpGetDiagnosticsTool"
 
 // ============================================================================
 // TYPES
@@ -307,6 +309,125 @@ function createMcpServer(): McpServer {
       }
     )
   }
+
+  // ============================================================================
+  // MCP-ONLY TOOLS (not available as VS Code LM tools)
+  // ============================================================================
+
+  // Replace String in ABAP Object - enables MCP clients to edit ABAP source code
+  server.registerTool(
+    "replace_string_in_abap_object",
+    {
+      title: "Replace String In ABAP Object",
+      description:
+        "Edit ABAP source code by replacing a specific text string with new text. " +
+        "This tool performs a find-and-replace operation on an ABAP source file identified by its workspace URI. " +
+        "The oldString must match EXACTLY ONE occurrence in the file - include 3-5 lines of surrounding context to ensure uniqueness. " +
+        "The file is automatically locked, saved to SAP, and unlocked.\n\n" +
+        "Prerequisites: First call get_abap_object_workspace_uri to get the fileUri. " +
+        "Then call get_abap_object_lines or search_abap_object_lines to read current content before editing.\n\n" +
+        "IMPORTANT: oldString cannot be empty. To create new objects, use create_object_programmatically first, then edit with this tool.\n\n" +
+        "After editing, call get_abap_diagnostics with the same fileUri to verify the code has no syntax errors.",
+      inputSchema: {
+        fileUri: z.string().describe(
+          "The full workspace URI of the ABAP source file." +
+          "Get this using the get_abap_object_workspace_uri tool."
+        ),
+        oldString: z.string().min(1).describe(
+          "The exact literal text to find and replace. Must match exactly one occurrence in the file. " +
+          "Include at least 3-5 lines of surrounding context to ensure uniqueness. " +
+          "Must match whitespace and indentation precisely."
+        ),
+        newString: z.string().describe(
+          "The replacement text. Ensure the resulting code is syntactically valid ABAP."
+        )
+      }
+    },
+    async (args: Record<string, unknown>) => {
+      try {
+        const fileUri = args.fileUri as string
+        const oldString = args.oldString as string
+        const newString = args.newString as string
+
+        if (!fileUri) {
+          throw new Error("fileUri is required")
+        }
+        if (!oldString) {
+          throw new Error("oldString is required and cannot be empty")
+        }
+        if (newString === undefined || newString === null) {
+          throw new Error("newString is required (use empty string to delete text)")
+        }
+
+        await executeReplace(fileUri, oldString, newString)
+
+        const oldLineCount = oldString.split("\n").length
+        const newLineCount = newString.split("\n").length
+
+        return {
+          content: [
+            {
+              type: "text" as const,
+              text:
+                `✅ Successfully replaced ${oldLineCount} line(s) with ${newLineCount} line(s) in ${fileUri}\n\n` +
+                `The file has been saved and synced to SAP.`
+            }
+          ]
+        }
+      } catch (error) {
+        const errorMessage = error instanceof Error ? error.message : String(error)
+        return {
+          content: [
+            {
+              type: "text" as const,
+              text: `❌ Error: ${errorMessage}`
+            }
+          ],
+          isError: true
+        }
+      }
+    }
+  )
+
+  // Get Diagnostics - returns syntax errors/warnings for a given ABAP file
+  server.registerTool(
+    "get_abap_diagnostics",
+    {
+      title: "Get ABAP Diagnostics",
+      description:
+        "Get syntax errors, warnings, and other diagnostics for an ABAP source file. " +
+        "Returns all problems detected by the ABAP language server (syntax check results). " +
+        "Use this after editing code with replace_string_in_abap_object to verify there are no syntax errors. " +
+        "Always call this after making code changes.\n\n" +
+        "Prerequisite: Use get_abap_object_workspace_uri to get the fileUri.",
+      inputSchema: {
+        fileUri: z.string().describe(
+          "The full workspace URI of the ABAP source file. " +
+          "Get this using the get_abap_object_workspace_uri tool."
+        )
+      }
+    },
+    async (args: Record<string, unknown>) => {
+      try {
+        const fileUri = args.fileUri as string
+        if (!fileUri) {
+          throw new Error("fileUri is required")
+        }
+
+        const result = await getDiagnosticsForUri(fileUri)
+
+        return {
+          content: [{ type: "text" as const, text: result }]
+        }
+      } catch (error) {
+        const errorMessage = error instanceof Error ? error.message : String(error)
+        return {
+          content: [{ type: "text" as const, text: `❌ Error: ${errorMessage}` }],
+          isError: true
+        }
+      }
+    }
+  )
 
   return server
 }
