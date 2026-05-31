@@ -22,6 +22,7 @@ import { ADTSCHEME, disconnect, hasLocks } from "./adt/conections"
 import { MessagesProvider } from "./editors/messages"
 import { IncludeProvider } from "./adt/includes"
 import { registerCommands } from "./commands/register"
+import { PENDING_CONNECT_KEY } from "./commands/commands"
 import { HttpProvider } from "./editors/httpprovider"
 import { dumpProvider } from "./views/dumps/dumps"
 import { registerAbapDebugger } from "./adt/debugger"
@@ -385,6 +386,30 @@ export async function activate(ctx: ExtensionContext): Promise<AbapFsApi> {
 
   const elapsed = new Date().getTime() - startTime
   log.debug(`Activated,pid=${process.pid}, activation time(ms):${elapsed}`)
+
+  // Resume a Connect that was interrupted by saveWorkspaceAs in commands.ts.
+  // The connect command stashes the chosen connection id under
+  // PENDING_CONNECT_KEY before triggering saveWorkspaceAs; that command
+  // reloads the extension host, so we land here on the next activation.
+  // We dispatch the connect command synthetically — selectConnection skips
+  // its picker when given an existing connection id.
+  try {
+    const pending = ctx.globalState.get<string>(PENDING_CONNECT_KEY)
+    if (pending) {
+      // Always clear before resuming so a future failure cannot loop us
+      // forever. If the user cancelled the save dialog the workspace is
+      // still untitled — in that case we just clear and stay quiet.
+      await ctx.globalState.update(PENDING_CONNECT_KEY, undefined)
+      if (workspace.workspaceFile) {
+        log(`Resuming pending connect to ${pending} after workspace save`)
+        commands
+          .executeCommand("abapfs.connect", { connection: pending })
+          .then(undefined, e => log(`Pending connect resume failed: ${e}`))
+      }
+    }
+  } catch (e) {
+    log(`Pending connect resume failed: ${e}`)
+  }
 
   // Delay the virtual tools fix so VS Code and Copilot are fully loaded
   // (the reset command is slow during early activation but fast once everything is ready)

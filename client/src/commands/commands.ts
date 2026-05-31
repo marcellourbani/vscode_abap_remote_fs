@@ -145,6 +145,15 @@ interface ShowObjectArgument {
   connId: string
   uri: string
 }
+
+/**
+ * Key under which we stash a connection id when the user picks
+ * "Save workspace first" in the empty-workspace warning dialog.
+ * activate() in extension.ts reads this after the reload and resumes the
+ * Connect command. Exported for use from extension.ts.
+ */
+export const PENDING_CONNECT_KEY = "abapfs.pendingConnectAfterSave"
+
 export class AdtCommands {
   private static hasEnabledAbapBreakpoints(connectionId: string) {
     return vscode.debug.breakpoints.some(
@@ -241,8 +250,13 @@ export class AdtCommands {
       // between "no folders" and "has folders". When that happens here, login
       // runs twice (once now, once on reload) and the second pass tends to be
       // dramatically slower because the SAP backend throttles back-to-back
-      // session creation. Warn first and let the user save a workspace file —
-      // adding folders to a saved .code-workspace doesn't reload extensions.
+      // session creation. Offer to save a .code-workspace file first; once the
+      // workspace is saved, adding folders no longer reloads extensions.
+      //
+      // Saving is a two-step flow that crosses an extension-host reload, so
+      // we stash the connection id in globalState and let activate() resume
+      // the connect after reload. PENDING_CONNECT_KEY is also referenced in
+      // extension.ts.
       const wsFolders = workspace.workspaceFolders
       const hasUntitledWorkspace = !workspace.workspaceFile
       if ((!wsFolders || wsFolders.length === 0) && hasUntitledWorkspace) {
@@ -251,16 +265,26 @@ export class AdtCommands {
         const choice = await window.showWarningMessage(
           "Adding the first folder to an empty workspace causes VSCode to reload all extensions, " +
             "which makes the ABAP login run twice and the second pass is often much slower. " +
-            "Saving the current workspace as a .code-workspace file first avoids this.",
+            "Saving the current workspace as a .code-workspace file first avoids this. " +
+            "If you choose to save, we will reconnect automatically after the reload.",
           { modal: false },
           save,
           proceed
         )
         if (choice === save) {
+          // Persist the connection id so activate() can resume after reload.
+          // We key on the actual remote name (as opposed to whatever was
+          // initially passed in), since selectConnection may have prompted.
+          await extensionContext.globalState.update(PENDING_CONNECT_KEY, remote.name)
+          // saveWorkspaceAs is a UI command — if the user cancels the save
+          // dialog the window does NOT reload, the command just resolves and
+          // we land back here. In that case we clear pending and bail; the
+          // user can re-run Connect when ready.
           await commands.executeCommand("workbench.action.saveWorkspaceAs")
-          // saveWorkspaceAs reloads the window if the user goes through with it,
-          // which cancels this command anyway. If they cancelled the save dialog
-          // we just bail out — they can re-run Connect.
+          // If we reach this line, the save was cancelled (otherwise the host
+          // is gone and this code never runs). Clear the pending marker so a
+          // future unrelated reload does not auto-trigger Connect.
+          await extensionContext.globalState.update(PENDING_CONNECT_KEY, undefined)
           return
         }
         if (choice !== proceed) return
