@@ -23,6 +23,7 @@ import { randomUUID } from "crypto"
 import { z } from "zod"
 import { log } from "../lib"
 import { toolRegistry } from "./lm-tools/toolRegistry"
+import { getMcpOnlyTools } from "./mcp-only-tools/mcpOnlyRegistry"
 import { funWindow as window } from "./funMessenger"
 
 // ============================================================================
@@ -299,6 +300,49 @@ function createMcpServer(): McpServer {
               {
                 type: "text" as const,
                 text: `❌ Error invoking ${toolName}: ${errorMessage}`
+              }
+            ],
+            isError: true
+          }
+        }
+      }
+    )
+  }
+
+  // ----------------------------------------------------------------------
+  // MCP-only tools — registered via mcp-only-tools/mcpOnlyRegistry.
+  // These intentionally bypass vscode.lm.registerTool / package.json
+  // contributions, so Copilot does not see them. Only external MCP clients
+  // (Claude Desktop, Cursor, headless agents) can invoke them.
+  // ----------------------------------------------------------------------
+  for (const mcpTool of getMcpOnlyTools()) {
+    const zodSchema = jsonSchemaToZod(mcpTool.inputSchema)
+
+    server.registerTool(
+      mcpTool.name,
+      {
+        title: mcpTool.name.replace(/_/g, " ").replace(/\b\w/g, c => c.toUpperCase()),
+        description: mcpTool.description,
+        inputSchema: zodSchema
+      },
+      async (args: Record<string, unknown>) => {
+        try {
+          const text = await mcpTool.invoke(args)
+          return {
+            content: [
+              {
+                type: "text" as const,
+                text
+              }
+            ]
+          }
+        } catch (error) {
+          const errorMessage = error instanceof Error ? error.message : String(error)
+          return {
+            content: [
+              {
+                type: "text" as const,
+                text: `❌ Error invoking ${mcpTool.name}: ${errorMessage}`
               }
             ],
             isError: true

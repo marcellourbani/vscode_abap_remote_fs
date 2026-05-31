@@ -45,6 +45,7 @@ import { SapSystemValidator } from "./services/sapSystemValidator"
 import { listAdtFeedsCommand } from "./commands/listAdtFeeds"
 import { validateSubagentsOnStartup } from "./services/lm-tools/subagentConfigTool"
 import { initializeMcpServer } from "./services/mcpServer"
+import { registerUpdateAbapSourceTool } from "./services/mcp-only-tools/updateAbapSourceTool"
 import { registerChatTools } from "./adt/ai/tools"
 import { initializeEnhancementDecorations } from "./views/enhancementDecorations"
 import { initializeBlameGutter } from "./views/blameGutter"
@@ -144,6 +145,11 @@ export async function activate(ctx: ExtensionContext): Promise<AbapFsApi> {
 
     // Register Language Model Tools for proper AI integration (includes Mermaid tools)
     await registerAllTools(context)
+
+    // Register MCP-only tools — visible only to external MCP clients, NOT to
+    // Copilot. Must run before initializeMcpServer so the tools are in the
+    // registry when the server snapshots it.
+    registerUpdateAbapSourceTool()
 
     // Register ABAP Cleaner feature
     registerCleanerCommands(context)
