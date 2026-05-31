@@ -37,8 +37,10 @@ async function create(connId: string) {
   let client
   if (connection.oauth || connection.password) {
     client = createClient(connection)
-    await client.login() // raise exception for login issues
-    await client.statelessClone.login()
+    // Parallelise the two logins — they hit the same backend but use independent
+    // sessions, so running them serially doubles connect latency for no reason.
+    // Any login error still propagates via Promise.all rejection.
+    await Promise.all([client.login(), client.statelessClone.login()])
 
     // Fix LIKE issue: Add Content-Type header for SQL queries
     const addContentTypeInterceptor = (adtClient: ADTClient) => {
@@ -79,8 +81,7 @@ async function create(connId: string) {
     const password = (await manager.askPassword(connection.name)) || ""
     if (!password) throw Error("Can't connect without a password")
     client = await createClient({ ...connection, password })
-    await client.login() // raise exception for login issues
-    await client.statelessClone.login()
+    await Promise.all([client.login(), client.statelessClone.login()])
     connection.password = password
     const { name, username } = connection
     await manager.savePassword(name, username, password)

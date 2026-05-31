@@ -237,6 +237,35 @@ export class AdtCommands {
         else return
       name = remote.name
 
+      // VSCode reloads the extension host whenever a workspace transitions
+      // between "no folders" and "has folders". When that happens here, login
+      // runs twice (once now, once on reload) and the second pass tends to be
+      // dramatically slower because the SAP backend throttles back-to-back
+      // session creation. Warn first and let the user save a workspace file —
+      // adding folders to a saved .code-workspace doesn't reload extensions.
+      const wsFolders = workspace.workspaceFolders
+      const hasUntitledWorkspace = !workspace.workspaceFile
+      if ((!wsFolders || wsFolders.length === 0) && hasUntitledWorkspace) {
+        const proceed = "Connect anyway"
+        const save = "Save workspace first"
+        const choice = await window.showWarningMessage(
+          "Adding the first folder to an empty workspace causes VSCode to reload all extensions, " +
+            "which makes the ABAP login run twice and the second pass is often much slower. " +
+            "Saving the current workspace as a .code-workspace file first avoids this.",
+          { modal: false },
+          save,
+          proceed
+        )
+        if (choice === save) {
+          await commands.executeCommand("workbench.action.saveWorkspaceAs")
+          // saveWorkspaceAs reloads the window if the user goes through with it,
+          // which cancels this command anyway. If they cancelled the save dialog
+          // we just bail out — they can re-run Connect.
+          return
+        }
+        if (choice !== proceed) return
+      }
+
       log(`Connecting to server ${remote.name}`)
       // this might involve asking for a password...
       await getOrCreateRoot(remote.name) // if connection raises an exception don't mount any folder
