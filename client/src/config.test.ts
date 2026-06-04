@@ -32,25 +32,16 @@ const mockVault = {
   deletePassword: jest.fn().mockResolvedValue(true)
 }
 jest.mock("./lib", () => ({
-  mongoApiLogger: jest.fn(() => undefined),
-  mongoHttpLogger: jest.fn(() => undefined),
   PasswordVault: {
     get: jest.fn(() => mockVault)
   }
-}))
-jest.mock("method-call-logger", () => ({
-  createProxy: jest.fn((client: any) => client)
 }))
 jest.mock("./oauth", () => ({ oauthLogin: jest.fn(() => undefined) }))
 jest.mock("./adt/conections", () => ({ ADTSCHEME: "adt" }))
 jest.mock("./adt/adtCommLog", () => ({
   CallLogger: { get: jest.fn(() => undefined) }
 }))
-jest.mock("vscode-abap-remote-fs-sharedapi", () => ({
-  clientTraceUrl: jest.fn(() => undefined),
-  httpTraceUrl: jest.fn(() => undefined),
-  SOURCE_CLIENT: "client"
-}))
+jest.mock("vscode-abap-remote-fs-sharedapi", () => ({}))
 jest.mock("fs", () => ({
   readFileSync: jest.fn(() => { throw new Error("not found") })
 }))

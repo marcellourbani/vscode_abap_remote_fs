@@ -1,8 +1,5 @@
 import {
-  ClientConfiguration,
-  clientTraceUrl,
-  httpTraceUrl,
-  SOURCE_CLIENT
+  ClientConfiguration
 } from "vscode-abap-remote-fs-sharedapi"
 import {
   workspace,
@@ -16,8 +13,7 @@ import {
 import { funWindow as window } from "./services/funMessenger"
 import { ADTClient, createSSLConfig, LogCallback, LogData } from "abap-adt-api"
 import { readFileSync } from "fs"
-import { createProxy } from "method-call-logger"
-import { mongoApiLogger, mongoHttpLogger, PasswordVault } from "./lib"
+import { PasswordVault } from "./lib"
 import { oauthLogin } from "./oauth"
 import { ADTSCHEME } from "./adt/conections"
 import { CallLogger } from "./adt/adtCommLog"
@@ -143,31 +139,10 @@ export async function pickAdtRoot(uri?: Uri) {
   if (item) return item.root
 }
 
-function loggedProxy(client: ADTClient, conf: RemoteConfig) {
-  if (!clientTraceUrl(conf)) return client
-  const logger = mongoApiLogger(conf.name, SOURCE_CLIENT, false)
-  const cloneLogger = mongoApiLogger(conf.name, SOURCE_CLIENT, true)
-  if (!(logger && cloneLogger)) return client
-
-  const clone = createProxy(client.statelessClone, cloneLogger)
-
-  return createProxy(client, logger, {
-    resolvePromises: true,
-    getterOverride: new Map([["statelessClone", () => clone]])
-  })
-}
-const httpLogger = (conf: RemoteConfig): LogCallback | undefined => {
-  const mongoUrl = httpTraceUrl(conf)
-  if (!mongoUrl) return undefined
-  return mongoHttpLogger(conf.name, SOURCE_CLIENT)
-}
-
-/** Build a debugCallback that chains MongoDB tracing and comm log */
+/** Build a debugCallback that forwards to the comm log */
 function buildDebugCallback(conf: RemoteConfig): LogCallback {
-  const mongoLogger = httpLogger(conf)
   const connId = conf.name
   return (data: LogData) => {
-    if (mongoLogger) mongoLogger(data)
     try {
       const logger = CallLogger.get(connId)
       if (logger) logger.add(data)
@@ -191,7 +166,7 @@ export function createClient(conf: RemoteConfig) {
     conf.language,
     sslconf
   )
-  return loggedProxy(client, conf)
+  return client
 }
 
 export class RemoteManager {
