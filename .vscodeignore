@@ -11,8 +11,10 @@ node_modules/**
 DOCUMENTATION.md
 **/jest.config.js
 tsconfig.json
+skills-lock.json
 vsc-extension-quickstart.md
 tslint.json
+.agents/
 tmp/**
 **/tmp/**
 server/**

@@ -1,13 +1,12 @@
 import {
   MainProgram,
-  HttpLogEntry,
   CommLogEntryData,
   AuthHeadersResponse,
   getAuthMethod,
   hasCertAuthConfig,
   hasOAuthOnPremConfig
 } from "vscode-abap-remote-fs-sharedapi"
-import { log, channel, mongoApiLogger, mongoHttpLogger, rangeApi2Vsc } from "./lib"
+import { log, channel, rangeApi2Vsc } from "./lib"
 import {
   AbapObjectDetail,
   Methods,
@@ -15,8 +14,7 @@ import {
   AbapObjectSource,
   urlFromPath,
   UriRequest,
-  SearchProgress,
-  LogEntry
+  SearchProgress
 } from "vscode-abap-remote-fs-sharedapi"
 import { ExtensionContext, Uri, ProgressLocation, workspace, WorkspaceEdit } from "vscode"
 import {
@@ -299,15 +297,6 @@ export async function triggerSyntaxCheck(uri: string) {
   }
 }
 
-function logCall(entry: LogEntry) {
-  const logger = mongoApiLogger(entry.connection, entry.source, entry.fromClone)
-  if (logger) logger(entry.call)
-}
-function logHttp(entry: HttpLogEntry) {
-  const logger = mongoHttpLogger(entry.connection, entry.source)
-  if (logger) logger(entry.data)
-}
-
 const hidrateLogData = (entry: LogData): LogData => ({
   ...entry,
   startTime: new Date(entry.startTime)
@@ -346,8 +335,6 @@ export async function startLanguageClient(context: ExtensionContext) {
       client.onRequest(Methods.readObjectSourceOrMain, readObjectSource)
       client.onRequest(Methods.vsUri, getVSCodeUri)
       client.onRequest(Methods.setSearchProgress, setSearchProgress)
-      client.onRequest(Methods.logCall, logCall)
-      client.onRequest(Methods.logHTTP, logHttp)
       client.onRequest(Methods.getToken, getToken)
       client.onRequest(Methods.getAuthHeaders, getAuthHeaders)
       client.onNotification(Methods.commLogEntry, (entry: CommLogEntryData) =>

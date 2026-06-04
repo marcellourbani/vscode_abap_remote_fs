@@ -3,18 +3,15 @@ import { createConnection, ProposedFeatures } from "vscode-languageserver"
 import { types } from "util"
 import * as https from "https"
 import { readFileSync, existsSync } from "fs"
-import { readConfiguration, sendLog, sendHttpLog } from "./clientapis"
+import { readConfiguration } from "./clientapis"
 import {
   ClientConfiguration,
   AuthHeadersResponse,
   CertAuthTransport,
-  clientTraceUrl,
   getAuthMethod,
-  SOURCE_SERVER,
   Methods,
   CommLogTogglePayload
 } from "vscode-abap-remote-fs-sharedapi"
-import { createProxy, MethodCall } from "method-call-logger"
 import { isString } from "./functions"
 const clients: Map<string, ADTClient> = new Map()
 
@@ -35,37 +32,15 @@ export function clientKeyFromUrl(url: string) {
   return match && match[1]
 }
 
-function loggedProxy(client: ADTClient, conf: ClientConfiguration) {
-  const temp = {
-    connection: conf.name,
-    source: SOURCE_SERVER,
-    fromClone: false
-  }
-  const logger = (call: MethodCall) => sendLog({ ...temp, call })
-  const cloneLogger = (call: MethodCall) => sendLog({ ...temp, call, fromClone: true })
-
-  const clone = createProxy(client.statelessClone, cloneLogger)
-
-  return createProxy(client, logger, {
-    resolvePromises: true,
-    getterOverride: new Map([["statelessClone", () => clone]])
-  })
-}
-
 function createFetchToken(conf: ClientConfiguration) {
   if (conf.oauth)
     return () => connection.sendRequest(Methods.getToken, conf.name) as Promise<string>
 }
 
 /** Fetch auth headers from the client extension for non-basic auth methods. */
-async function fetchAuthHeaders(
-  connName: string
-): Promise<AuthHeadersResponse | undefined> {
+async function fetchAuthHeaders(connName: string): Promise<AuthHeadersResponse | undefined> {
   try {
-    const headers = await connection.sendRequest(
-      Methods.getAuthHeaders,
-      connName
-    )
+    const headers = await connection.sendRequest(Methods.getAuthHeaders, connName)
     if (headers && typeof headers === "object") {
       return headers as AuthHeadersResponse
     }
@@ -105,16 +80,23 @@ function buildCertificateAgent(
   const allowedExts = /\.(pem|crt|cer|key|p12|pfx)$/i
   const isPkcs12 = /\.(p12|pfx)$/i.test(certInfo.certPath || "")
 
-  if (!certInfo.certPath || !allowedExts.test(certInfo.certPath) || !existsSync(certInfo.certPath)) {
+  if (
+    !certInfo.certPath ||
+    !allowedExts.test(certInfo.certPath) ||
+    !existsSync(certInfo.certPath)
+  ) {
     throw new Error(`Client certificate not found or invalid extension: ${certInfo.certPath}`)
   }
-  if (!isPkcs12 && (!certInfo.keyPath || !allowedExts.test(certInfo.keyPath) || !existsSync(certInfo.keyPath))) {
+  if (
+    !isPkcs12 &&
+    (!certInfo.keyPath || !allowedExts.test(certInfo.keyPath) || !existsSync(certInfo.keyPath))
+  ) {
     throw new Error(`Private key not found or invalid extension: ${certInfo.keyPath}`)
   }
 
   const agentOptions: https.AgentOptions = {
     rejectUnauthorized: !allowSelfSigned,
-    keepAlive: true,
+    keepAlive: true
   }
 
   if (isPkcs12) {
@@ -171,7 +153,9 @@ const refreshClient = async (key: string, conf: ClientConfiguration) => {
           throw new Error(`Certificate auth setup failed for ${key}: ${e}`)
         }
       } else {
-        warn(`Cert auth configured for ${key} but no cert paths received — language features will fail`)
+        warn(
+          `Cert auth configured for ${key} but no cert paths received — language features will fail`
+        )
       }
       pwdOrFetch = "cert-auth"
     } else if (authMethod === "oauth_onprem" && authResponse?.httpHeaders?.Authorization) {
@@ -203,9 +187,7 @@ const refreshClient = async (key: string, conf: ClientConfiguration) => {
     sslconf
   )
   baseclient.stateful = session_types.stateful
-  const traceUrl = clientTraceUrl(conf)
-  const client = traceUrl ? loggedProxy(baseclient, conf) : baseclient
-  clients.set(key, client)
+  clients.set(key, baseclient)
   if (oldClient) {
     setTimeout(() => {
       oldClient.stateful = session_types.stateless
