@@ -45,7 +45,16 @@ export interface IMcpReplaceStringParams {
  */
 export function findAndReplace(content: string, oldString: string, newString: string): string {
   if (!oldString) {
-    throw new Error("oldString cannot be empty. To create new ABAP objects, use the create_object_programmatically tool followed by editing via this tool.")
+    // Empty oldString is only allowed when the current file is completely blank
+    // (e.g. a freshly created ABAP object with no source yet).
+    if (content.length === 0) {
+      return newString
+    }
+    throw new Error(
+      "oldString can only be empty when the file is currently completely blank. " +
+      "The file has existing content, so oldString is mandatory. " +
+      "Read the current content with get_abap_object_lines first and include the exact text to replace."
+    )
   }
 
   if (oldString === newString) {

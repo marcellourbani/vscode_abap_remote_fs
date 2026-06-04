@@ -326,17 +326,18 @@ function createMcpServer(): McpServer {
         "The file is automatically locked, saved to SAP, and unlocked.\n\n" +
         "Prerequisites: First call get_abap_object_workspace_uri to get the fileUri. " +
         "Then call get_abap_object_lines or search_abap_object_lines to read current content before editing.\n\n" +
-        "IMPORTANT: oldString cannot be empty. To create new objects, use create_object_programmatically first, then edit with this tool.\n\n" +
+        "IMPORTANT: oldString is mandatory whenever the file has any content. An empty oldString is accepted ONLY when the file is currently completely blank (e.g. a freshly created ABAP object with no source yet) - in that case the entire newString becomes the file content.\n\n" +
         "After editing, call get_abap_diagnostics with the same fileUri to verify the code has no syntax errors.",
       inputSchema: {
         fileUri: z.string().describe(
           "The full workspace URI of the ABAP source file." +
           "Get this using the get_abap_object_workspace_uri tool."
         ),
-        oldString: z.string().min(1).describe(
+        oldString: z.string().describe(
           "The exact literal text to find and replace. Must match exactly one occurrence in the file. " +
           "Include at least 3-5 lines of surrounding context to ensure uniqueness. " +
-          "Must match whitespace and indentation precisely."
+          "Must match whitespace and indentation precisely. " +
+          "May be an empty string ONLY if the target file is currently completely blank; otherwise it is mandatory."
         ),
         newString: z.string().describe(
           "The replacement text. Ensure the resulting code is syntactically valid ABAP."
@@ -352,12 +353,12 @@ function createMcpServer(): McpServer {
         if (!fileUri) {
           throw new Error("fileUri is required")
         }
-        if (!oldString) {
-          throw new Error("oldString is required and cannot be empty")
-        }
         if (newString === undefined || newString === null) {
           throw new Error("newString is required (use empty string to delete text)")
         }
+        // Note: empty oldString is allowed only when the file is blank.
+        // That check happens inside executeReplace/findAndReplace once the
+        // current file content is known.
 
         await executeReplace(fileUri, oldString, newString)
 
