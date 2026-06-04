@@ -23,6 +23,7 @@ import { randomUUID } from "crypto"
 import { z } from "zod"
 import { log } from "../lib"
 import { toolRegistry } from "./lm-tools/toolRegistry"
+import { createMcpAuthorizedOptions } from "./lm-tools/toolGuard"
 import { funWindow as window } from "./funMessenger"
 
 // ============================================================================
@@ -248,8 +249,9 @@ function createMcpServer(): McpServer {
           let result: vscode.LanguageModelToolResult
 
           if (registeredTool) {
+            const authorizedOptions = createMcpAuthorizedOptions(args)
             const invokeResult = await registeredTool.invoke(
-              { input: args, toolInvocationToken: undefined } as vscode.LanguageModelToolInvocationOptions<any>,
+              authorizedOptions as vscode.LanguageModelToolInvocationOptions<any>,
               tokenSource.token
             )
             if (!invokeResult) {

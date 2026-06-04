@@ -8,6 +8,7 @@
 
 import * as vscode from "vscode"
 import { registerToolWithRegistry } from "./toolRegistry"
+import { assertToolInvocationAuthorized } from "./toolGuard"
 import { logTelemetry } from "../telemetry"
 import { connectedRoots } from "../../config"
 
@@ -40,9 +41,10 @@ export class ConnectedSystemsTool implements vscode.LanguageModelTool<IConnected
   }
 
   async invoke(
-    _options: vscode.LanguageModelToolInvocationOptions<IConnectedSystemsParameters>,
+    options: vscode.LanguageModelToolInvocationOptions<IConnectedSystemsParameters>,
     _token: vscode.CancellationToken
   ): Promise<vscode.LanguageModelToolResult> {
+    assertToolInvocationAuthorized(options)
     logTelemetry("tool_get_connected_systems_called")
     try {
       const roots = connectedRoots()

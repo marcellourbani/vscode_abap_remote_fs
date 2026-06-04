@@ -10,6 +10,7 @@ import { WebviewManager, RowRange, SortColumn, ColumnFilter } from "../webviewMa
 import { getClient } from "../../adt/conections"
 import { getSAPSystemInfo } from "../sapSystemInfo"
 import { funWindow as window } from "../funMessenger"
+import { assertToolInvocationAuthorized } from "./toolGuard"
 
 // ============================================================================
 // INTERFACE
@@ -209,6 +210,7 @@ export class ExecuteDataQueryTool implements vscode.LanguageModelTool<IExecuteDa
     options: vscode.LanguageModelToolInvocationOptions<IExecuteDataQueryParameters>,
     _token: vscode.CancellationToken
   ): Promise<vscode.LanguageModelToolResult> {
+    assertToolInvocationAuthorized(options)
     try {
       let {
         sql,

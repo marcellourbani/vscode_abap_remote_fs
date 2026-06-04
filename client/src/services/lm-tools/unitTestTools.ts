@@ -13,6 +13,7 @@ import { isAbapClass } from "abapobject"
 import { UnitTestRunner } from "../../adt/operations/UnitTestRunner"
 import { isAbapFile, isAbapStat, PathItem } from "abapfs"
 import { AdtObjectActivator } from "../../adt/operations/AdtObjectActivator"
+import { assertToolInvocationAuthorized } from "./toolGuard"
 
 // ============================================================================
 // INTERFACES
@@ -61,6 +62,7 @@ export class CreateTestIncludeTool implements vscode.LanguageModelTool<ICreateTe
     options: vscode.LanguageModelToolInvocationOptions<ICreateTestIncludeParameters>,
     _token: vscode.CancellationToken
   ): Promise<vscode.LanguageModelToolResult> {
+    assertToolInvocationAuthorized(options)
     let { className, connectionId } = options.input
     logTelemetry("tool_create_test_include_called", { connectionId })
 
@@ -161,6 +163,7 @@ export class RunUnitTestsTool implements vscode.LanguageModelTool<IRunUnitTestsP
     options: vscode.LanguageModelToolInvocationOptions<IRunUnitTestsParameters>,
     _token: vscode.CancellationToken
   ): Promise<vscode.LanguageModelToolResult> {
+    assertToolInvocationAuthorized(options)
     const { objectName, connectionId } = options.input
     logTelemetry("tool_run_unit_tests_called", { connectionId })
 

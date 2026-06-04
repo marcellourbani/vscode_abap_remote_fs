@@ -10,6 +10,7 @@ import * as fs from "fs"
 import { logTelemetry } from "../telemetry"
 import { logCommands } from "../abapCopilotLogger"
 import { context } from "../../extension"
+import { assertToolInvocationAuthorized } from "./toolGuard"
 
 // ============================================================================
 // TOOL CLASS
@@ -42,6 +43,7 @@ export class GetABAPSQLSyntaxTool implements vscode.LanguageModelTool<{}> {
     options: vscode.LanguageModelToolInvocationOptions<{}>,
     _token: vscode.CancellationToken
   ): Promise<vscode.LanguageModelToolResult> {
+    assertToolInvocationAuthorized(options)
     logTelemetry("tool_get_abap_sql_syntax_called")
 
     try {

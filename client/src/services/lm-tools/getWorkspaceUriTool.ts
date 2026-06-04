@@ -7,6 +7,7 @@ import * as vscode from "vscode"
 import { registerToolWithRegistry } from "./toolRegistry"
 import { logTelemetry } from "../telemetry"
 import { getClient, getOrCreateRoot } from "../../adt/conections"
+import { assertToolInvocationAuthorized } from "./toolGuard"
 
 // ============================================================================
 // INTERFACE
@@ -52,6 +53,7 @@ export class GetAbapObjectWorkspaceUriTool implements vscode.LanguageModelTool<I
     options: vscode.LanguageModelToolInvocationOptions<IGetAbapObjectWorkspaceUriParameters>,
     _token: vscode.CancellationToken
   ): Promise<vscode.LanguageModelToolResult> {
+    assertToolInvocationAuthorized(options)
     let { objectName, objectType, connectionId } = options.input
     logTelemetry("tool_get_abap_object_workspace_uri_called", { connectionId })
 

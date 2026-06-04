@@ -7,6 +7,7 @@ import * as vscode from "vscode"
 import { registerToolWithRegistry } from "./toolRegistry"
 import { logTelemetry } from "../telemetry"
 import { getClient } from "../../adt/conections"
+import { assertToolInvocationAuthorized } from "./toolGuard"
 
 // ============================================================================
 // INTERFACE
@@ -63,6 +64,7 @@ export class ABAPDumpAnalysisTool implements vscode.LanguageModelTool<IDumpAnaly
     options: vscode.LanguageModelToolInvocationOptions<IDumpAnalysisParameters>,
     _token: vscode.CancellationToken
   ): Promise<vscode.LanguageModelToolResult> {
+    assertToolInvocationAuthorized(options)
     let {
       action,
       connectionId,

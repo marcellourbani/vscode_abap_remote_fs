@@ -20,7 +20,11 @@ bookmarks.json
 .github/agents/
 .github/agents_disabled/
 .github/skills/
+.github/hooks/
+.github/instructions
 .vscode/
+.agents/
+skills-lock.json
 # Webpack cache directories
 client/node_modules/.cache/
 server/node_modules/.cache/
@@ -32,3 +36,7 @@ server/src/**/*.js.map
 modules/*/src/**/*.js
 modules/*/src/**/*.js.map
 .venv
+# MemPalace per-project files
+mempalace.yaml
+entities.json
+.github/instructions/wmt-copilot.instructions.md

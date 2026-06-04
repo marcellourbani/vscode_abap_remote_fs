@@ -16,6 +16,7 @@ import {
   getTableTypeFromDD,
   getTableStructureFromDD
 } from "./shared"
+import { assertToolInvocationAuthorized } from "./toolGuard"
 
 // ============================================================================
 // INTERFACE
@@ -164,6 +165,7 @@ export class SearchABAPObjectLinesTool implements vscode.LanguageModelTool<ISear
     options: vscode.LanguageModelToolInvocationOptions<ISearchABAPObjectLinesParameters>,
     _token: vscode.CancellationToken
   ): Promise<vscode.LanguageModelToolResult> {
+    assertToolInvocationAuthorized(options)
     let {
       objectName,
       searchTerm,

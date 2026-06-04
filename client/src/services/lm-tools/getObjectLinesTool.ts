@@ -5,6 +5,7 @@
  */
 
 import * as vscode from "vscode"
+import { assertToolInvocationAuthorized } from "./toolGuard"
 import { registerToolWithRegistry } from "./toolRegistry"
 import { funWindow as window } from "../funMessenger"
 import { getSearchService } from "../abapSearchService"
@@ -250,6 +251,7 @@ export class GetABAPObjectLinesTool implements vscode.LanguageModelTool<IGetABAP
     options: vscode.LanguageModelToolInvocationOptions<IGetABAPObjectLinesParameters>,
     _token: vscode.CancellationToken
   ): Promise<vscode.LanguageModelToolResult> {
+    assertToolInvocationAuthorized(options)
     let {
       objectName,
       objectType,

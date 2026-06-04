@@ -6,6 +6,7 @@ import { logTelemetry } from "../telemetry"
 import { getClient, abapUri } from "../../adt/conections"
 import { getTextElementsSafe, updateTextElementsWithTransport } from "../../adt/textElements"
 import { openTextElementsInSapGui } from "../../commands/textElementsCommands"
+import { assertToolInvocationAuthorized } from "./toolGuard"
 
 // Text Elements Tool Interfaces
 export interface IManageTextElementsParameters {
@@ -60,6 +61,7 @@ export class ManageTextElementsTool implements vscode.LanguageModelTool<IManageT
     options: vscode.LanguageModelToolInvocationOptions<IManageTextElementsParameters>,
     _token: vscode.CancellationToken
   ): Promise<vscode.LanguageModelToolResult> {
+    assertToolInvocationAuthorized(options)
     let { objectName, objectType, action, textElements, connectionId } = options.input
     logTelemetry("tool_manage_text_elements_called", { connectionId })
 

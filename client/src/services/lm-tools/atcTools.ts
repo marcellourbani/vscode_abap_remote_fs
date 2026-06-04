@@ -11,6 +11,7 @@ import { logTelemetry } from "../telemetry"
 import { getClient, getOrCreateRoot, abapUri } from "../../adt/conections"
 import { atcProvider } from "../../views/abaptestcockpit"
 import { getATCDecorations } from "../../views/abaptestcockpit/decorations"
+import { assertToolInvocationAuthorized } from "./toolGuard"
 
 // ============================================================================
 // INTERFACES
@@ -104,6 +105,7 @@ export class RunATCAnalysisTool implements vscode.LanguageModelTool<IRunATCAnaly
     options: vscode.LanguageModelToolInvocationOptions<IRunATCAnalysisParameters>,
     _token: vscode.CancellationToken
   ): Promise<vscode.LanguageModelToolResult> {
+    assertToolInvocationAuthorized(options)
     const { action = "run_analysis" } = options.input
     let { objectName, objectType, objectUri, connectionId, useActiveFile = true } = options.input
     logTelemetry("tool_run_atc_analysis_called", { connectionId })
@@ -411,6 +413,7 @@ export class GetATCDecorationsTool implements vscode.LanguageModelTool<IGetATCDe
     options: vscode.LanguageModelToolInvocationOptions<IGetATCDecorationsParameters>,
     _token: vscode.CancellationToken
   ): Promise<vscode.LanguageModelToolResult> {
+    assertToolInvocationAuthorized(options)
     const { fileUri } = options.input
     const connectionId = fileUri ? vscode.Uri.parse(fileUri).authority : undefined
     logTelemetry("tool_get_atc_decorations_called", { connectionId })
