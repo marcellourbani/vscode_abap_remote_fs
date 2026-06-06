@@ -20,7 +20,6 @@ bookmarks.json
 .github/agents/
 .github/agents_disabled/
 .github/skills/
-.github/
 .vscode/
 # Webpack cache directories
 client/node_modules/.cache/
