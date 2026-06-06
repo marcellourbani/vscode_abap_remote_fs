@@ -2707,6 +2707,17 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#write-support" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Write Support
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#limitations" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -3086,6 +3097,17 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#write-support" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Write Support
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#limitations" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -3174,7 +3196,7 @@
 <h2 id="what-is-this-and-why-would-you-need-it">What Is This and Why Would You Need It?<a class="headerlink" href="#what-is-this-and-why-would-you-need-it" title="Permanent link">&para;</a></h2>
 <p><strong>MCP (Model Context Protocol)</strong> is an open standard that lets AI tools call external services. ABAP FS exposes its 39 SAP tools (search, read code, run tests, query data, etc.) via a local MCP server so that AI assistants outside of VS Code can use them.</p>
 <blockquote>
-<p><strong>Warning:</strong> MCP access is read-only. See <a href="#limitations">Limitations</a> for details.</p>
+<p><strong>Note:</strong> MCP now supports both reading and writing ABAP code. See <a href="#write-support">Write Support</a> for details.</p>
 </blockquote>
 <p><strong>Use this if</strong> you work with AI tools like Cursor, Claude Desktop, Claude Code, or Windsurf and want them to have the same SAP access that GitHub Copilot has inside VS Code.
 Also applies to AI agents plugins for vscode like Cline/Continue/Roo code/... unless they support the <a href="https://code.visualstudio.com/api/extension-guides/virtual-workspaces">virtual filesystem API</a> AFAIK only copilot does at the moment</p>
@@ -3298,15 +3320,30 @@ Also applies to AI agents plugins for vscode like Cline/Continue/Roo code/... un
 <td><code>abap_activate</code></td>
 <td>Activate ABAP objects</td>
 </tr>
+<tr>
+<td><code>replace_string_in_abap_object</code></td>
+<td>Edit ABAP source code (find &amp; replace)</td>
+</tr>
+<tr>
+<td><code>get_abap_diagnostics</code></td>
+<td>Get syntax errors/warnings for a file</td>
+</tr>
 </tbody>
 </table>
+<h2 id="write-support">Write Support<a class="headerlink" href="#write-support" title="Permanent link">&para;</a></h2>
+<p>MCP clients can now edit ABAP source code directly. The workflow:</p>
+<ol>
+<li><strong>Get the file URI</strong> — call <code>get_abap_object_workspace_uri</code> with object name/type/connection</li>
+<li><strong>Read current code</strong> — call <code>get_abap_object_lines</code> or <code>search_abap_object_lines</code></li>
+<li><strong>Edit</strong> — call <code>replace_string_in_abap_object</code> with the URI, old text, and new text</li>
+<li><strong>Verify</strong> — call <code>get_abap_diagnostics</code> with the same URI to check for syntax errors</li>
+</ol>
+<p>Edits are immediately synced to SAP (ABAP FS handles locking, saving, and unlocking automatically). There is no keep/undo UI — changes are applied directly.</p>
 <h2 id="limitations">Limitations<a class="headerlink" href="#limitations" title="Permanent link">&para;</a></h2>
 <ul>
 <li><strong>VS Code must stay open</strong> — the server runs inside VS Code</li>
 <li><strong>Active SAP connection required</strong> — tools need a connected system</li>
-<li><strong>Read-oriented</strong> — external AI tools cannot write to the <code>adt://</code> virtual filesystem; the AI can suggest edits but you must apply them manually in VS Code</li>
 <li><strong>Webview outputs appear in VS Code</strong> — results from tools like data queries or Mermaid diagrams open as VS Code panels, not in the external tool</li>
-<li><strong>No ABAP syntax checking</strong> — ABAP code is treated as plain text in external tools</li>
 <li><strong>No navigation features</strong> — Go to Definition, Find References, and hover documentation require the VS Code ABAP FS integration</li>
 <li><strong>Debugging requires VS Code</strong> — the ABAP debugger is VS Code-specific</li>
 </ul>
