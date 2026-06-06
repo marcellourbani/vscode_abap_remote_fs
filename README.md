@@ -98,8 +98,8 @@ For detailed setup, see the [Installation Guide](https://marcellourbani.github.i
 ### 📚 MCP Server (For Non-GitHub Copilot Users)
 
 - **Works with Cursor, Claude Code, Windsurf, Claude Desktop** - Any MCP-compatible AI tool
-- **All 40 tools exposed** - Read code, search, run tests, analyze dumps, etc.
-- **Read-only limitation** - MCP tools can read but cannot edit ABAP files directly (apply changes manually in VS Code)
+- **All 40+ tools exposed** - Read code, search, edit code, run tests, analyze dumps, etc.
+- **Write support** - MCP clients can edit ABAP source code directly via `replace_string_in_abap_object` and verify with `get_abap_diagnostics`
 - **VS Code as host** - VS Code stays open as the SAP connection bridge
 - See [MCP Server Documentation](https://marcellourbani.github.io/vscode_abap_remote_fs/mcp-server/) for setup and full limitations
 

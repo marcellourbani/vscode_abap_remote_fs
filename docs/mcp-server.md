@@ -8,7 +8,7 @@
 
 **MCP (Model Context Protocol)** is an open standard that lets AI tools call external services. ABAP FS exposes its 39 SAP tools (search, read code, run tests, query data, etc.) via a local MCP server so that AI assistants outside of VS Code can use them.
 
-> **Warning:** MCP access is read-only. See [Limitations](#limitations) for details.
+> **Note:** MCP now supports both reading and writing ABAP code. See [Write Support](#write-support) for details.
 
 **Use this if** you work with AI tools like Cursor, Claude Desktop, Claude Code, or Windsurf and want them to have the same SAP access that GitHub Copilot has inside VS Code.
 Also applies to AI agents plugins for vscode like Cline/Continue/Roo code/... unless they support the [virtual filesystem API](https://code.visualstudio.com/api/extension-guides/virtual-workspaces) AFAIK only copilot does at the moment
@@ -121,14 +121,26 @@ All 40 ABAP FS tools are exposed, including:
 | `execute_data_query`        | Run SQL queries against SAP tables |
 | `manage_transport_requests` | Read transport data                |
 | `abap_activate`             | Activate ABAP objects              |
+| `replace_string_in_abap_object` | Edit ABAP source code (find & replace) |
+| `get_abap_diagnostics`      | Get syntax errors/warnings for a file  |
+
+## Write Support
+
+MCP clients can now edit ABAP source code directly. The workflow:
+
+1. **Get the file URI** — call `get_abap_object_workspace_uri` with object name/type/connection
+2. **Read current code** — call `get_abap_object_lines` or `search_abap_object_lines`
+3. **Edit** — call `replace_string_in_abap_object` with the URI, old text, and new text
+4. **Verify** — call `get_abap_diagnostics` with the same URI to check for syntax errors
+
+Edits are immediately synced to SAP (ABAP FS handles locking, saving, and unlocking automatically). There is no keep/undo UI — changes are applied directly.
+
 
 ## Limitations
 
 - **VS Code must stay open** — the server runs inside VS Code
 - **Active SAP connection required** — tools need a connected system
-- **Read-oriented** — external AI tools cannot write to the `adt://` virtual filesystem; the AI can suggest edits but you must apply them manually in VS Code
 - **Webview outputs appear in VS Code** — results from tools like data queries or Mermaid diagrams open as VS Code panels, not in the external tool
-- **No ABAP syntax checking** — ABAP code is treated as plain text in external tools
 - **No navigation features** — Go to Definition, Find References, and hover documentation require the VS Code ABAP FS integration
 - **Debugging requires VS Code** — the ABAP debugger is VS Code-specific
 
