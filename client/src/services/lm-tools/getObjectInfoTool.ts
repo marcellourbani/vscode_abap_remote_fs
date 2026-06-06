@@ -10,6 +10,7 @@ import { getSearchService } from "../abapSearchService"
 import { abapUri } from "../../adt/conections"
 import { logTelemetry } from "../telemetry"
 import { getClient } from "../../adt/conections"
+import { assertToolInvocationAuthorized } from "./toolGuard"
 import {
   getOptimalObjectURI,
   getObjectEnhancements,
@@ -59,6 +60,7 @@ export class GetABAPObjectInfoTool implements vscode.LanguageModelTool<IGetABAPO
     options: vscode.LanguageModelToolInvocationOptions<IGetABAPObjectInfoParameters>,
     _token: vscode.CancellationToken
   ): Promise<vscode.LanguageModelToolResult> {
+    assertToolInvocationAuthorized(options)
     let { objectName, objectType, connectionId } = options.input
     logTelemetry("tool_get_abap_object_info_called", { connectionId })
 

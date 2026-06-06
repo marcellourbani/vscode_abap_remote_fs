@@ -15,6 +15,7 @@ import * as vscode from "vscode"
 import { registerToolWithRegistry } from "./toolRegistry"
 import { logTelemetry } from "../telemetry"
 import { getClient } from "../../adt/conections"
+import { assertToolInvocationAuthorized } from "./toolGuard"
 
 // ── Interfaces (mirror abap-adt-api types) ──────────────────────
 
@@ -66,6 +67,7 @@ export class AdtDiscoveryTool
     options: vscode.LanguageModelToolInvocationOptions<IAdtDiscoveryParameters>,
     _token: vscode.CancellationToken
   ): Promise<vscode.LanguageModelToolResult> {
+    assertToolInvocationAuthorized(options)
 
     const connId = options.input.connectionId
     if (!connId) {

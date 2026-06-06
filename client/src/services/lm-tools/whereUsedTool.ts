@@ -9,6 +9,7 @@ import { getSearchService } from "../abapSearchService"
 import { getOptimalObjectURI } from "./shared"
 import { logTelemetry } from "../telemetry"
 import { getClient } from "../../adt/conections"
+import { assertToolInvocationAuthorized } from "./toolGuard"
 
 // ============================================================================
 // INTERFACE
@@ -98,6 +99,7 @@ export class ABAPWhereUsedTool implements vscode.LanguageModelTool<IWhereUsedPar
     options: vscode.LanguageModelToolInvocationOptions<IWhereUsedParameters>,
     _token: vscode.CancellationToken
   ): Promise<vscode.LanguageModelToolResult> {
+    assertToolInvocationAuthorized(options)
     let {
       objectName,
       connectionId,

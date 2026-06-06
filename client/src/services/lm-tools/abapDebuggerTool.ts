@@ -20,6 +20,7 @@ import { logCommands } from "./../abapCopilotLogger"
 import { logTelemetry } from "./../telemetry"
 import { caughtToString } from "../../lib"
 import { getSAPSystemInfo } from "../sapSystemInfo"
+import { assertToolInvocationAuthorized } from "./toolGuard"
 
 // Helper for detailed debug logging - disabled, can be enabled when debugging the debugger!!
 const debugLog = (tool: string, message: string, data?: any) => {
@@ -110,6 +111,7 @@ export class ABAPDebugSessionTool implements vscode.LanguageModelTool<IDebugSess
     options: vscode.LanguageModelToolInvocationOptions<IDebugSessionParameters>,
     _token: vscode.CancellationToken
   ): Promise<vscode.LanguageModelToolResult> {
+    assertToolInvocationAuthorized(options)
     const { connectionId, debugUser, terminalMode = false, action = "start" } = options.input
     logTelemetry("tool_debug_session_called", { connectionId })
 
@@ -305,6 +307,7 @@ export class ABAPBreakpointTool implements vscode.LanguageModelTool<IBreakpointP
     options: vscode.LanguageModelToolInvocationOptions<IBreakpointParameters>,
     _token: vscode.CancellationToken
   ): Promise<vscode.LanguageModelToolResult> {
+    assertToolInvocationAuthorized(options)
     const { connectionId, filePath, lineNumbers, condition, action = "set" } = options.input
     debugLog("Breakpoint", `invoke called`, {
       connectionId,
@@ -507,6 +510,7 @@ export class ABAPDebugStepTool implements vscode.LanguageModelTool<IDebugStepPar
     options: vscode.LanguageModelToolInvocationOptions<IDebugStepParameters>,
     _token: vscode.CancellationToken
   ): Promise<vscode.LanguageModelToolResult> {
+    assertToolInvocationAuthorized(options)
     const { connectionId, stepType, threadId = 1, targetLine } = options.input
     debugLog("Step", `invoke called`, { connectionId, stepType, threadId, targetLine })
     logTelemetry("tool_debug_step_called", { connectionId })
@@ -661,7 +665,7 @@ export class ABAPDebugStepTool implements vscode.LanguageModelTool<IDebugStepPar
           // Check if there are any active services/threads left
           const session = AbapDebugSession.byConnection(connectionId)
           const debugListener = session?.debugListener
-          const activeServices = debugListener?.activeServices() || []
+          const activeServices = debugListener?.activeThreads || []
 
           if (activeServices.length === 0) {
             locationInfo =
@@ -884,6 +888,7 @@ export class ABAPDebugVariableTool implements vscode.LanguageModelTool<IVariable
     options: vscode.LanguageModelToolInvocationOptions<IVariableParameters>,
     _token: vscode.CancellationToken
   ): Promise<vscode.LanguageModelToolResult> {
+    assertToolInvocationAuthorized(options)
     const {
       connectionId,
       threadId = 1,
@@ -1376,6 +1381,7 @@ export class ABAPDebugStackTool implements vscode.LanguageModelTool<IStackTraceP
     options: vscode.LanguageModelToolInvocationOptions<IStackTraceParameters>,
     _token: vscode.CancellationToken
   ): Promise<vscode.LanguageModelToolResult> {
+    assertToolInvocationAuthorized(options)
     const { connectionId, threadId = 1 } = options.input
     debugLog("Stack", `invoke called`, { connectionId, threadId })
     logTelemetry("tool_debug_stack_called", { connectionId })
@@ -1392,7 +1398,7 @@ export class ABAPDebugStackTool implements vscode.LanguageModelTool<IStackTraceP
       const debugListener = session.debugListener
       debugLog("Stack", `debugListener:`, {
         exists: !!debugListener,
-        activeServices: debugListener?.activeServices()?.length || 0
+        activeServices: debugListener?.activeThreads?.length || 0
       })
 
       const activeDebugSession = vscode.debug.activeDebugSession
@@ -1486,6 +1492,7 @@ export class ABAPDebugStatusTool implements vscode.LanguageModelTool<IDebugStatu
     options: vscode.LanguageModelToolInvocationOptions<IDebugStatusParameters>,
     _token: vscode.CancellationToken
   ): Promise<vscode.LanguageModelToolResult> {
+    assertToolInvocationAuthorized(options)
     const { connectionId } = options.input
     debugLog("Status", `invoke called`, { connectionId })
     logTelemetry("tool_debug_status_called", { connectionId })
@@ -1507,9 +1514,9 @@ export class ABAPDebugStatusTool implements vscode.LanguageModelTool<IDebugStatu
         const debugListener = session.debugListener
         debugLog("Status", `DebugListener info:`, {
           exists: !!debugListener,
-          activeServicesCount: debugListener?.activeServices()?.length || 0,
+          activeServicesCount: debugListener?.activeThreads?.length || 0,
           services:
-            debugListener?.activeServices()?.map(([id, s]) => ({ id, name: s.debuggee?.NAME })) ||
+            debugListener?.activeThreads?.map(([id, s]: [number, any]) => ({ id, name: s.debuggee?.NAME })) ||
             []
         })
       }

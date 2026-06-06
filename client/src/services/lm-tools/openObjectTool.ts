@@ -8,6 +8,7 @@ import { registerToolWithRegistry } from "./toolRegistry"
 import { getSearchService } from "../abapSearchService"
 import { openObject } from "../../commands/commands"
 import { logTelemetry } from "../telemetry"
+import { assertToolInvocationAuthorized } from "./toolGuard"
 
 // ============================================================================
 // INTERFACE
@@ -53,6 +54,7 @@ export class OpenObjectTool implements vscode.LanguageModelTool<IOpenObjectParam
     options: vscode.LanguageModelToolInvocationOptions<IOpenObjectParameters>,
     _token: vscode.CancellationToken
   ): Promise<vscode.LanguageModelToolResult> {
+    assertToolInvocationAuthorized(options)
     const { objectName, objectType, connectionId } = options.input
     logTelemetry("tool_open_object_called", { connectionId })
 

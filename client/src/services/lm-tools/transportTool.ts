@@ -9,6 +9,7 @@ import { funWindow as window } from "../funMessenger"
 import { abapUri, getClient } from "../../adt/conections"
 import { logTelemetry } from "../telemetry"
 import { readTransports } from "../../views/transports"
+import { assertToolInvocationAuthorized } from "./toolGuard"
 
 // ============================================================================
 // INTERFACE
@@ -94,6 +95,7 @@ export class ManageTransportRequestsTool implements vscode.LanguageModelTool<IMa
     options: vscode.LanguageModelToolInvocationOptions<IManageTransportRequestsParameters>,
     _token: vscode.CancellationToken
   ): Promise<vscode.LanguageModelToolResult> {
+    assertToolInvocationAuthorized(options)
     let { action, connectionId, transportNumber, transportNumbers, user } = options.input
     logTelemetry("tool_manage_transport_requests_called", { connectionId })
 

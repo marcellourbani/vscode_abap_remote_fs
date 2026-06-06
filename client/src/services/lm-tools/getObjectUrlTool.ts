@@ -10,6 +10,7 @@ import { logTelemetry } from "../telemetry"
 import { SapGuiPanel } from "../../views/sapgui/SapGuiPanel"
 import { RemoteManager } from "../../config"
 import { ADTClient } from "abap-adt-api"
+import { assertToolInvocationAuthorized } from "./toolGuard"
 
 // ============================================================================
 // INTERFACE
@@ -53,6 +54,7 @@ export class GetAbapObjectUrlTool implements vscode.LanguageModelTool<IGetAbapOb
     options: vscode.LanguageModelToolInvocationOptions<IGetAbapObjectUrlParameters>,
     _token: vscode.CancellationToken
   ): Promise<vscode.LanguageModelToolResult> {
+    assertToolInvocationAuthorized(options)
     let { objectName, objectType = "PROG/P", connectionId } = options.input
     logTelemetry("tool_get_abap_object_url_called", { connectionId })
 

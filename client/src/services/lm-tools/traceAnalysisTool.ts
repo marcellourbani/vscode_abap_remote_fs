@@ -8,6 +8,7 @@ import { registerToolWithRegistry } from "./toolRegistry"
 import { logCommands } from "../abapCopilotLogger"
 import { logTelemetry } from "../telemetry"
 import { getClient } from "../../adt/conections"
+import { assertToolInvocationAuthorized } from "./toolGuard"
 
 // ============================================================================
 // INTERFACE
@@ -73,6 +74,7 @@ export class ABAPTraceAnalysisTool implements vscode.LanguageModelTool<ITraceAna
     options: vscode.LanguageModelToolInvocationOptions<ITraceAnalysisParameters>,
     _token: vscode.CancellationToken
   ): Promise<vscode.LanguageModelToolResult> {
+    assertToolInvocationAuthorized(options)
     let { action, connectionId, traceId, maxResults = 20, includeDetails = false } = options.input
     logTelemetry("tool_analyze_abap_traces_called", { connectionId })
 

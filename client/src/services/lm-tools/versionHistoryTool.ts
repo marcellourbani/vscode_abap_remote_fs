@@ -11,6 +11,7 @@ import { Revision } from "abap-adt-api"
 import { getOrCreateRoot, getClient } from "../../adt/conections"
 import { isAbapFile } from "abapfs"
 import { isAbapClassInclude } from "abapobject"
+import { assertToolInvocationAuthorized } from "./toolGuard"
 
 // ============================================================================
 // INTERFACES
@@ -90,6 +91,7 @@ export class VersionHistoryTool implements vscode.LanguageModelTool<IVersionHist
     options: vscode.LanguageModelToolInvocationOptions<IVersionHistoryParameters>,
     _token: vscode.CancellationToken
   ): Promise<vscode.LanguageModelToolResult> {
+    assertToolInvocationAuthorized(options)
     const {
       objectName,
       objectType,

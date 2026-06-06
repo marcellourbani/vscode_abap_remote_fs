@@ -71,6 +71,23 @@ export let context: ExtensionContext
 // Feed polling service instance (module-level for deactivation)
 let feedPollingServiceInstance: FeedPollingService | undefined
 
+
+function checkPasswordsInSettings() {
+  setTimeout(() => {
+    const remotes = workspace.getConfiguration("abapfs")?.get<Record<string, any>>("remote")
+    if (!remotes) return
+    const systemsWithPasswords = Object.entries(remotes)
+      .filter(([_, cfg]) => typeof cfg?.password === "string" && cfg.password.trim().length > 0)
+      .map(([name]) => name)
+    if (systemsWithPasswords.length > 0) {
+      window.showWarningMessage(
+        `Security risk: ${systemsWithPasswords.length} SAP connection(s) have passwords stored in plain text settings (${systemsWithPasswords.join(", ")}). ` +
+          `Remove them from your settings JSON — ABAP FS will prompt for your password securely when connecting.`
+      )
+    }
+  }, 10 * 60 * 1000)
+}
+
 export async function activate(ctx: ExtensionContext): Promise<AbapFsApi> {
   context = ctx
   const startTime = new Date().getTime()
@@ -105,6 +122,7 @@ export async function activate(ctx: ExtensionContext): Promise<AbapFsApi> {
   new PasswordVault(ctx)
   loadTokens()
   clearTokens()
+  checkPasswordsInSettings()
   const sub = context.subscriptions
 
   // 🧠 ABAP Intelligence Integration - Start

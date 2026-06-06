@@ -12,6 +12,7 @@
 import * as vscode from "vscode"
 import { registerToolWithRegistry } from "./toolRegistry"
 import { logTelemetry } from "../telemetry"
+import { assertToolInvocationAuthorized } from "./toolGuard"
 import {
   AGENT_REGISTRY,
   getSubagentSettings,
@@ -59,6 +60,7 @@ class SubagentConfigTool implements vscode.LanguageModelTool<SubagentConfigInput
     options: vscode.LanguageModelToolInvocationOptions<SubagentConfigInput>,
     _token: vscode.CancellationToken
   ): Promise<vscode.LanguageModelToolResult> {
+    assertToolInvocationAuthorized(options)
     logTelemetry("tool_manage_subagents_called")
     const { action, configurations } = options.input
 

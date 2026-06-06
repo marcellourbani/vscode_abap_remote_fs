@@ -11,7 +11,7 @@ import { registerToolWithRegistry } from "./toolRegistry"
 import { MermaidWebviewManager } from "../MermaidWebviewManager"
 import { MERMAID_DOCUMENTATION } from "../MermaidDocumentation"
 import { logTelemetry } from "../telemetry"
-
+import { assertToolInvocationAuthorized } from "./toolGuard"
 // ============================================================================
 // INTERFACES
 // ============================================================================
@@ -100,6 +100,7 @@ export class CreateMermaidDiagramTool implements vscode.LanguageModelTool<ICreat
     options: vscode.LanguageModelToolInvocationOptions<ICreateMermaidDiagramParameters>,
     _token: vscode.CancellationToken
   ): Promise<vscode.LanguageModelToolResult> {
+    assertToolInvocationAuthorized(options)
     let { code, theme = "forest" } = options.input
     logTelemetry("tool_create_mermaid_diagram_called") // No connectionId available
 
@@ -168,6 +169,7 @@ export class ValidateMermaidSyntaxTool implements vscode.LanguageModelTool<IVali
     options: vscode.LanguageModelToolInvocationOptions<IValidateMermaidSyntaxParameters>,
     _token: vscode.CancellationToken
   ): Promise<vscode.LanguageModelToolResult> {
+    assertToolInvocationAuthorized(options)
     const { code } = options.input
     logTelemetry("tool_validate_mermaid_syntax_called") // No connectionId available
 
@@ -242,6 +244,7 @@ export class GetMermaidDocumentationTool implements vscode.LanguageModelTool<IGe
     options: vscode.LanguageModelToolInvocationOptions<IGetMermaidDocumentationParameters>,
     _token: vscode.CancellationToken
   ): Promise<vscode.LanguageModelToolResult> {
+    assertToolInvocationAuthorized(options)
     const { diagramType = "all", includeExamples = true } = options.input
     logTelemetry("tool_get_mermaid_documentation_called") // No connectionId available
 
@@ -357,6 +360,7 @@ export class DetectMermaidDiagramTypeTool implements vscode.LanguageModelTool<ID
     options: vscode.LanguageModelToolInvocationOptions<IDetectMermaidDiagramTypeParameters>,
     _token: vscode.CancellationToken
   ): Promise<vscode.LanguageModelToolResult> {
+    assertToolInvocationAuthorized(options)
     const { code } = options.input
     logTelemetry("tool_detect_mermaid_diagram_type_called") // No connectionId available
 

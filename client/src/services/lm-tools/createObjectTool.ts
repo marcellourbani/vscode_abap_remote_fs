@@ -6,6 +6,7 @@
 import * as vscode from "vscode"
 import { registerToolWithRegistry } from "./toolRegistry"
 import { logTelemetry } from "../telemetry"
+import { assertToolInvocationAuthorized } from "./toolGuard"
 
 // ============================================================================
 // INTERFACE
@@ -69,6 +70,7 @@ export class CreateABAPObjectTool implements vscode.LanguageModelTool<ICreateObj
     options: vscode.LanguageModelToolInvocationOptions<ICreateObjectParameters>,
     _token: vscode.CancellationToken
   ): Promise<vscode.LanguageModelToolResult> {
+    assertToolInvocationAuthorized(options)
     let {
       objectType,
       name,

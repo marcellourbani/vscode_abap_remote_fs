@@ -10,6 +10,7 @@ import { getSearchService } from "../abapSearchService"
 import { abapUri, getClient } from "../../adt/conections"
 import { logTelemetry } from "../telemetry"
 import { getOptimalObjectURI, resolveCorrectURI } from "./shared"
+import { assertToolInvocationAuthorized } from "./toolGuard"
 
 // ============================================================================
 // INTERFACE
@@ -55,6 +56,7 @@ export class GetObjectByURITool implements vscode.LanguageModelTool<IGetObjectBy
     options: vscode.LanguageModelToolInvocationOptions<IGetObjectByURIParameters>,
     _token: vscode.CancellationToken
   ): Promise<vscode.LanguageModelToolResult> {
+    assertToolInvocationAuthorized(options)
     let { uri, startLine = 0, lineCount = 50, connectionId } = options.input
     logTelemetry("tool_get_object_by_uri_called", { connectionId })
 

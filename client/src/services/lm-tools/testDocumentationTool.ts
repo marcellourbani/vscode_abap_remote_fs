@@ -8,6 +8,7 @@ import { registerToolWithRegistry } from "./toolRegistry"
 import { funWindow as window } from "../funMessenger"
 import { logTelemetry } from "../telemetry"
 import { TestDocumentCreator } from "../testDocumentCreator"
+import { assertToolInvocationAuthorized } from "./toolGuard"
 
 // ============================================================================
 // INTERFACE
@@ -65,6 +66,7 @@ export class CreateTestDocumentationTool implements vscode.LanguageModelTool<ICr
     options: vscode.LanguageModelToolInvocationOptions<ICreateTestDocumentationParameters>,
     _token: vscode.CancellationToken
   ): Promise<vscode.LanguageModelToolResult> {
+    assertToolInvocationAuthorized(options)
     const { scenarios, reportTitle, testDate } = options.input
     logTelemetry("tool_create_test_documentation_called")
 
