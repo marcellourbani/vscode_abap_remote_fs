@@ -25,6 +25,7 @@ const extractOwner = (n: string) => n.match(/\$tmp_(.*)/i)?.[1]
 
 const toInclude = async (node: PathItem | undefined, adtPath: string, main: boolean) => {
   if (node && isAbapFolder(node?.file) && (main || node.path !== adtPath)) {
+    if (node.file.object.type === PACKAGE) return node
     if (node.file.size === 0) await node.file.refresh()
     for (const i of node.file.expandPath(node.path))
       if (isAbapFile(i.file) && i.file.object.structure && i.file.object.contentsPath() === adtPath)
@@ -109,11 +110,6 @@ export class Root extends Folder {
     if (first) {
       // if belongs to the $TMP of another user, add it to the root - blacklist myself to avoid duplications
       const owner = extractOwner(first)
-      // Debug: Log when trying to create TMP folder
-      if (owner && owner.toUpperCase() === "USER") {
-        console.log(`[DEBUG] Attempting to create $TMP_USER folder - path: ${path}`)
-        console.trace("[DEBUG] Stack trace for $TMP_USER creation")
-      }
       // Skip if owner is the literal string "USER" (test/example data) or if it's the current user
       if (owner && owner.toUpperCase() !== "USER" && !this.isMe(owner) && !this.getNode(first)) {
         const tmp = new AbapFolder(createPkg(TMPFOLDER, this.service, owner), this, this.service)

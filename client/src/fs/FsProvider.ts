@@ -126,7 +126,7 @@ export class FsProvider implements FileSystemProvider {
       // Don't log FileNotFound errors for method names/debug artifacts to reduce noise
       if (!(e instanceof FileSystemError && e.name === "FileNotFound (FileSystemError)"))
         log.debug(`Error in stat of ${uri?.toString()}\n${caughtToString(e)}`)
-      throw e
+      throw this.wrapHttpError(e, uri)
     }
   }
 
@@ -164,7 +164,7 @@ export class FsProvider implements FileSystemProvider {
       return files
     } catch (e) {
       log(`Error reading directory ${uri?.toString()}\n${caughtToString(e)}`)
-      throw e
+      throw this.wrapHttpError(e, uri)
     }
   }
 
@@ -173,6 +173,20 @@ export class FsProvider implements FileSystemProvider {
     throw FileSystemError.NoPermissions(
       "Not a real filesystem, directory creation is not supported"
     )
+  }
+
+  private wrapHttpError(e: unknown, uri: Uri): unknown {
+    if (e instanceof FileSystemError) return e
+    const msg = caughtToString(e)
+    if (msg.includes("status code 401"))
+      return FileSystemError.NoPermissions(`Authentication failed for ${uri.authority}. Wrong password?`)
+    if (msg.includes("status code 403"))
+      return FileSystemError.NoPermissions(`Access denied to ${uri.authority} (HTTP 403). Likely a proxy issue or ADT service (/sap/bc/adt) not activated in SICF — contact your Basis team.`)
+    if (msg.includes("status code 503"))
+      return FileSystemError.Unavailable(`SAP system ${uri.authority} is unreachable (HTTP 503). ADT endpoint may be down or proxy misconfigured.`)
+    if (msg.includes("status code 404"))
+      return FileSystemError.FileNotFound(uri)
+    return e
   }
 
   private async askOverwrite(uri: Uri) {
