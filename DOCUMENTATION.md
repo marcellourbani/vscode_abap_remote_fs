@@ -12,6 +12,8 @@ If you're used to SE38, SE24, or ADT in Eclipse, ABAP FS brings that same direct
 
 ## What you can do
 
+> **Note:** ABAP FS has 40+ AI tools, but only the documentation tool is available until you connect to a SAP system. Add SAP connections using Connection manager and then run `ABAP FS: Connect to an ABAP system` from the Command Palette to unlock all tools.
+
 This is a high-level summary. See the left navigation for full feature pages.
 
 | Area | Capabilities |
@@ -52,6 +54,8 @@ See [MCP Server](#mcp-server-for-external-ai-tools) for setup.
 
 Before proceeding, ensure you meet the [Prerequisites](prerequisite.md).
 
+> **Note:** ABAP FS registers 40+ AI tools for Copilot, but only the documentation tool is available until you connect to a SAP system. Connect to SAP first to unlock all tools.
+
 ## 1. Install the extension
 
 1. Press `Ctrl+Shift+X` or Click on the extension icon on the activity bar to open the **Extensions** panel (left sidebar)
@@ -64,7 +68,7 @@ Before proceeding, ensure you meet the [Prerequisites](prerequisite.md).
 
 1. Press `Ctrl+Shift+P` to open the **Command Palette** (the search bar for VS Code commands)
 2. Type and run: **ABAP FS: Connection Manager**
-3. In the connection manager window, click **Add Connection** and fill in:
+3. In the connection manager window, click **Add SAP System** and fill in:
    - **URL** – your SAP system URL
    - **Client**, **Username**, **Language**
    - SAP GUI settings (optional)
@@ -84,6 +88,11 @@ Before proceeding, ensure you meet the [Prerequisites](prerequisite.md).
 2. Select the system you configured
 3. Enter your password if prompted
 4. Wait a moment for VS Code to establish the connection
+
+## Password Management
+
+- **Change password:** `Ctrl+Shift+P` → **ABAP FS: Change Connection Password** — select a system and enter your new password.
+- **Forget password:** `Ctrl+Shift+P` → **ABAP FS: Forget connection password** — removes the stored password so you're prompted again on next connect.
 
 ## 4. Verify the connection
 
@@ -123,6 +132,8 @@ Alternatively, open **Help → Welcome** from the menu bar, then select the ABAP
 
 # SAP Connection Manager
 
+> **Important:** ABAP FS has 40+ AI tools for Copilot, but they are only available once you connect to a SAP system. Use the Connection Manager to add your first system.
+
 The Connection Manager is a visual interface for adding, editing, and organizing your SAP system connections. Open it from the Command Palette (`Ctrl+Shift+P` / `Cmd+Shift+P`) by typing **ABAP FS: Connection Manager**.
 
 ## Adding a Connection
@@ -159,6 +170,15 @@ Select multiple connections using the checkboxes to:
 
 A confirmation dialog appears before any bulk action is applied.
 
+## Password Management
+
+Passwords are stored securely in the OS credential manager (never in settings files).
+
+| Command | What it does |
+|---|---|
+| **ABAP FS: Change Connection Password** | Select a system and enter a new password |
+| **ABAP FS: Forget connection password** | Removes the stored password; you'll be prompted on next connect |
+
 ## User vs. Workspace Settings
 
 Connections saved to **User Settings** are global — they appear in every VS Code workspace on your machine. Connections saved to **Workspace Settings** are stored in the `.vscode/settings.json` of the current project folder, making them easy to commit or share per project.
@@ -166,6 +186,8 @@ Connections saved to **User Settings** are global — they appear in every VS Co
 # MCP Server for External AI Tools
 
 > **Prerequisites:** Complete the [Installation Steps](#installation-steps) first. You need VS Code with ABAP FS installed and configured with at least one SAP system connection.
+
+> **Note:** ABAP FS has 40+ AI tools. When using GitHub Copilot in VS Code, all tools are available natively once a SAP system is connected — no MCP server needed. The MCP server is only for external AI clients.
 
 ## What Is This and Why Would You Need It?
 
@@ -189,27 +211,35 @@ Also applies to AI agents plugins for vscode like Cline/Continue/Roo code/... un
 
 ## Setup
 
-### 1. Enable the MCP Server
+### 1. Start the MCP Server
 
-Open VS Code Settings (`Ctrl+,`) and search for `abapfs.mcpServer`. Set:
+Press `Ctrl+Shift+P` and run: **ABAP FS: Start MCP Server**
+
+That's it — the server starts immediately on the default port (4847). A notification confirms it's running.
+
+> If you have GitHub Copilot installed, ABAP FS will ask whether you actually need the MCP server (Copilot already has native access to all tools). You can choose to start anyway or cancel.
+
+### 2. (Optional) Change Port or Add API Key
+
+Running the command automatically enables `autoStart` — VS Code will start the MCP server on every launch going forward. You don't need to touch settings for that.
+
+If you need to change the port or secure the server with an API key:
+
+Open VS Code Settings (`Ctrl+,`) and search for `abapfs.mcpServer`:
 
 | Setting                      | Description                                                                 |
 | ---------------------------- | --------------------------------------------------------------------------- |
-| `abapfs.mcpServer.autoStart` | Set to `true` to start automatically on VS Code launch                      |
 | `abapfs.mcpServer.port`      | Default `4847` — change if there's a port conflict                          |
 | `abapfs.mcpServer.apiKey`    | Optional. Recommended on shared machines to prevent unauthorized SAP access |
 
-Or add directly to your `settings.json` (`Ctrl+Shift+P` → "Open User Settings (JSON)"):
+Or add directly to your `settings.json`:
 
 ```json
 {
-  "abapfs.mcpServer.autoStart": true,
   "abapfs.mcpServer.port": 4847,
   "abapfs.mcpServer.apiKey": "your-secret-key"
 }
 ```
-
-Reload VS Code after changing settings. A notification confirms the server is running: _"MCP Server running on port 4847"_
 
 ### 2. Connect to Your SAP System
 
@@ -264,7 +294,7 @@ In your AI tool, ask something SAP-related, for example:
 
 ## Available Tools
 
-All 39 ABAP FS tools are exposed, including:
+All 40 ABAP FS tools are exposed, including:
 
 | Tool                        | What It Does                       |
 | --------------------------- | ---------------------------------- |
@@ -291,9 +321,10 @@ All 39 ABAP FS tools are exposed, including:
 
 ### Server not starting
 
-- Confirm `abapfs.mcpServer.autoStart` is `true` in settings
+- Run `ABAP FS: Start MCP Server` from the Command Palette to start it manually
+- If you previously chose "Disable MCP", re-run the command — it will start and re-enable auto-start
 - Open the VS Code Output panel (`Ctrl+Shift+U`) and select "ABAP FS" for error messages
-- Try a different port if 4847 is already in use
+- Try a different port if 4847 is already in use (`abapfs.mcpServer.port` in settings)
 
 ### Tools not working
 
@@ -313,6 +344,12 @@ Language Model Tools are the built-in capabilities that GitHub Copilot uses auto
 **How to open Copilot Chat:** `Ctrl+Shift+I` (new chat) or `Ctrl+L` (inline chat)
 
 Make sure you are in **Agent mode** (not Ask or Edit) for full tool access.
+
+## Connection Requirement
+
+Most tools require an active SAP connection. When no SAP system is connected, tools are hidden from Copilot to save context tokens. The **abap_fs_documentation** tool is always available regardless of connection status — use it to ask about features and setup.
+
+Connect to a SAP system (`Ctrl+Shift+P` → **ABAP FS: Connect to an ABAP system**) to enable all 40+ tools.
 
 ## How it works
 
@@ -2716,19 +2753,25 @@ Click any entry to expand it and see:
 
 VS Code has an experimental setting (`github.copilot.chat.virtualTools.threshold`) that collapses extension tools into virtual groups when their count exceeds a threshold. When active, Copilot often fails to discover these groups — making all 39 ABAP FS AI tools invisible and unusable.
 
-ABAP FS detects this condition on startup and prompts you to fix it automatically.
+ABAP FS detects this condition after your first SAP connection and prompts you to fix it.
 
-## What Happens at Startup
+## When the Prompt Appears
 
-If grouping is active, a warning dialog appears with three options:
+The check runs after you first connect to a SAP system (not at extension activation). It only fires when:
+
+- The virtual tools threshold is greater than `0`
+- AI models are available (GitHub Copilot is signed in and active)
+- You haven't previously dismissed the prompt
+
+A non-modal notification appears with three options:
 
 | Option | Effect |
 |---|---|
-| **Disable Grouping & Reload** | Sets the threshold to `0` globally and in your workspace, then reloads VS Code |
-| **Remind Me Next Time** | Skips the prompt this session; asks again next time |
+| **Disable & Reload** | Sets the threshold to `0` globally and in your workspace, then reloads VS Code |
+| **Later** | Skips the prompt this session; asks again on next connection |
 | **Don't Ask Again** | Permanently suppresses the prompt |
 
-Choose **Disable Grouping & Reload** unless you have a specific reason to keep grouping enabled.
+Choose **Disable & Reload** unless you have a specific reason to keep grouping enabled.
 
 ## Fixing It Manually
 
