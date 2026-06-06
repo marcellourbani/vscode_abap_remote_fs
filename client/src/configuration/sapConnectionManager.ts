@@ -821,7 +821,7 @@ export class SapConnectionManager {
                         <button id="addCloudBtn" class="btn btn-secondary">☁️ Add Cloud Connection</button>
                         <button id="exportBtn" class="btn btn-secondary">📤 Export Connections</button>
                         <button id="importJsonBtn" class="btn btn-secondary">📥 Import from JSON</button>
-                        <button id="addBtn" class="btn btn-primary">➕ Add Application Server</button>
+                        <button id="addBtn" class="btn btn-primary">➕ Add SAP System</button>
                     </div>
                 </header>
 

@@ -6,6 +6,12 @@ Language Model Tools are the built-in capabilities that GitHub Copilot uses auto
 
 Make sure you are in **Agent mode** (not Ask or Edit) for full tool access.
 
+## Connection Requirement
+
+Most tools require an active SAP connection. When no SAP system is connected, tools are hidden from Copilot to save context tokens. The **abap_fs_documentation** tool is always available regardless of connection status — use it to ask about features and setup.
+
+Connect to a SAP system (`Ctrl+Shift+P` → **ABAP FS: Connect to an ABAP system**) to enable all 40+ tools.
+
 ## How it works
 
 When you type a question, Copilot picks the appropriate tool behind the scenes:
