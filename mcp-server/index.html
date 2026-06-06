@@ -2619,10 +2619,21 @@
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
-  <a href="#1-enable-the-mcp-server" class="md-nav__link">
+  <a href="#1-start-the-mcp-server" class="md-nav__link">
     <span class="md-ellipsis">
       
-        1. Enable the MCP Server
+        1. Start the MCP Server
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#2-optional-change-port-or-add-api-key" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2. (Optional) Change Port or Add API Key
       
     </span>
   </a>
@@ -2987,10 +2998,21 @@
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
-  <a href="#1-enable-the-mcp-server" class="md-nav__link">
+  <a href="#1-start-the-mcp-server" class="md-nav__link">
     <span class="md-ellipsis">
       
-        1. Enable the MCP Server
+        1. Start the MCP Server
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#2-optional-change-port-or-add-api-key" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2. (Optional) Change Port or Add API Key
       
     </span>
   </a>
@@ -3147,6 +3169,7 @@
 <h1 id="mcp-server-for-external-ai-tools">MCP Server for External AI Tools<a class="headerlink" href="#mcp-server-for-external-ai-tools" title="Permanent link">&para;</a></h1>
 <blockquote>
 <p><strong>Prerequisites:</strong> Complete the <a href="../getting-started/installation/">Installation Steps</a> first. You need VS Code with ABAP FS installed and configured with at least one SAP system connection.</p>
+<p><strong>Note:</strong> ABAP FS has 40+ AI tools. When using GitHub Copilot in VS Code, all tools are available natively once a SAP system is connected — no MCP server needed. The MCP server is only for external AI clients.</p>
 </blockquote>
 <h2 id="what-is-this-and-why-would-you-need-it">What Is This and Why Would You Need It?<a class="headerlink" href="#what-is-this-and-why-would-you-need-it" title="Permanent link">&para;</a></h2>
 <p><strong>MCP (Model Context Protocol)</strong> is an open standard that lets AI tools call external services. ABAP FS exposes its 39 SAP tools (search, read code, run tests, query data, etc.) via a local MCP server so that AI assistants outside of VS Code can use them.</p>
@@ -3163,8 +3186,16 @@ Also applies to AI agents plugins for vscode like Cline/Continue/Roo code/... un
 </code></pre></div>
 <p><strong>VS Code must remain open.</strong> The MCP server runs inside VS Code — closing VS Code stops the server.</p>
 <h2 id="setup">Setup<a class="headerlink" href="#setup" title="Permanent link">&para;</a></h2>
-<h3 id="1-enable-the-mcp-server">1. Enable the MCP Server<a class="headerlink" href="#1-enable-the-mcp-server" title="Permanent link">&para;</a></h3>
-<p>Open VS Code Settings (<code>Ctrl+,</code>) and search for <code>abapfs.mcpServer</code>. Set:</p>
+<h3 id="1-start-the-mcp-server">1. Start the MCP Server<a class="headerlink" href="#1-start-the-mcp-server" title="Permanent link">&para;</a></h3>
+<p>Press <code>Ctrl+Shift+P</code> and run: <strong>ABAP FS: Start MCP Server</strong></p>
+<p>That's it — the server starts immediately on the default port (4847). A notification confirms it's running.</p>
+<blockquote>
+<p>If you have GitHub Copilot installed, ABAP FS will ask whether you actually need the MCP server (Copilot already has native access to all tools). You can choose to start anyway or cancel.</p>
+</blockquote>
+<h3 id="2-optional-change-port-or-add-api-key">2. (Optional) Change Port or Add API Key<a class="headerlink" href="#2-optional-change-port-or-add-api-key" title="Permanent link">&para;</a></h3>
+<p>Running the command automatically enables <code>autoStart</code> — VS Code will start the MCP server on every launch going forward. You don't need to touch settings for that.</p>
+<p>If you need to change the port or secure the server with an API key:</p>
+<p>Open VS Code Settings (<code>Ctrl+,</code>) and search for <code>abapfs.mcpServer</code>:</p>
 <table>
 <thead>
 <tr>
@@ -3173,10 +3204,6 @@ Also applies to AI agents plugins for vscode like Cline/Continue/Roo code/... un
 </tr>
 </thead>
 <tbody>
-<tr>
-<td><code>abapfs.mcpServer.autoStart</code></td>
-<td>Set to <code>true</code> to start automatically on VS Code launch</td>
-</tr>
 <tr>
 <td><code>abapfs.mcpServer.port</code></td>
 <td>Default <code>4847</code> — change if there's a port conflict</td>
@@ -3187,14 +3214,12 @@ Also applies to AI agents plugins for vscode like Cline/Continue/Roo code/... un
 </tr>
 </tbody>
 </table>
-<p>Or add directly to your <code>settings.json</code> (<code>Ctrl+Shift+P</code> → "Open User Settings (JSON)"):</p>
+<p>Or add directly to your <code>settings.json</code>:</p>
 <div class="highlight"><pre><span></span><code><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a><span class="p">{</span>
-<a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a><span class="w">  </span><span class="nt">&quot;abapfs.mcpServer.autoStart&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">true</span><span class="p">,</span>
-<a id="__codelineno-1-3" name="__codelineno-1-3" href="#__codelineno-1-3"></a><span class="w">  </span><span class="nt">&quot;abapfs.mcpServer.port&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">4847</span><span class="p">,</span>
-<a id="__codelineno-1-4" name="__codelineno-1-4" href="#__codelineno-1-4"></a><span class="w">  </span><span class="nt">&quot;abapfs.mcpServer.apiKey&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;your-secret-key&quot;</span>
-<a id="__codelineno-1-5" name="__codelineno-1-5" href="#__codelineno-1-5"></a><span class="p">}</span>
+<a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a><span class="w">  </span><span class="nt">&quot;abapfs.mcpServer.port&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">4847</span><span class="p">,</span>
+<a id="__codelineno-1-3" name="__codelineno-1-3" href="#__codelineno-1-3"></a><span class="w">  </span><span class="nt">&quot;abapfs.mcpServer.apiKey&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;your-secret-key&quot;</span>
+<a id="__codelineno-1-4" name="__codelineno-1-4" href="#__codelineno-1-4"></a><span class="p">}</span>
 </code></pre></div>
-<p>Reload VS Code after changing settings. A notification confirms the server is running: <em>"MCP Server running on port 4847"</em></p>
 <h3 id="2-connect-to-your-sap-system">2. Connect to Your SAP System<a class="headerlink" href="#2-connect-to-your-sap-system" title="Permanent link">&para;</a></h3>
 <p>Use the command <code>ABAP FS: Connect to an SAP system</code> (<code>Ctrl+Shift+P</code> to open the Command Palette). The MCP server needs an active SAP connection to serve tool requests.</p>
 <h3 id="3-configure-your-ai-tool">3. Configure Your AI Tool<a class="headerlink" href="#3-configure-your-ai-tool" title="Permanent link">&para;</a></h3>
@@ -3232,7 +3257,7 @@ Also applies to AI agents plugins for vscode like Cline/Continue/Roo code/... un
 <li><em>"Run unit tests for ZCL_MY_CLASS"</em></li>
 </ul>
 <h2 id="available-tools">Available Tools<a class="headerlink" href="#available-tools" title="Permanent link">&para;</a></h2>
-<p>All 39 ABAP FS tools are exposed, including:</p>
+<p>All 40 ABAP FS tools are exposed, including:</p>
 <table>
 <thead>
 <tr>
@@ -3288,9 +3313,10 @@ Also applies to AI agents plugins for vscode like Cline/Continue/Roo code/... un
 <h2 id="troubleshooting">Troubleshooting<a class="headerlink" href="#troubleshooting" title="Permanent link">&para;</a></h2>
 <h3 id="server-not-starting">Server not starting<a class="headerlink" href="#server-not-starting" title="Permanent link">&para;</a></h3>
 <ul>
-<li>Confirm <code>abapfs.mcpServer.autoStart</code> is <code>true</code> in settings</li>
+<li>Run <code>ABAP FS: Start MCP Server</code> from the Command Palette to start it manually</li>
+<li>If you previously chose "Disable MCP", re-run the command — it will start and re-enable auto-start</li>
 <li>Open the VS Code Output panel (<code>Ctrl+Shift+U</code>) and select "ABAP FS" for error messages</li>
-<li>Try a different port if 4847 is already in use</li>
+<li>Try a different port if 4847 is already in use (<code>abapfs.mcpServer.port</code> in settings)</li>
 </ul>
 <h3 id="tools-not-working">Tools not working<a class="headerlink" href="#tools-not-working" title="Permanent link">&para;</a></h3>
 <ul>

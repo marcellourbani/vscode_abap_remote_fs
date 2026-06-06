@@ -529,6 +529,17 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#password-management" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Password Management
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#user-vs-workspace-settings" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -2902,6 +2913,17 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#password-management" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Password Management
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#user-vs-workspace-settings" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -2933,6 +2955,9 @@
 
 
 <h1 id="sap-connection-manager">SAP Connection Manager<a class="headerlink" href="#sap-connection-manager" title="Permanent link">&para;</a></h1>
+<blockquote>
+<p><strong>Important:</strong> ABAP FS has 40+ AI tools for Copilot, but they are only available once you connect to a SAP system. Use the Connection Manager to add your first system.</p>
+</blockquote>
 <p>The Connection Manager is a visual interface for adding, editing, and organizing your SAP system connections. Open it from the Command Palette (<code>Ctrl+Shift+P</code> / <code>Cmd+Shift+P</code>) by typing <strong>ABAP FS: Connection Manager</strong>.</p>
 <h2 id="adding-a-connection">Adding a Connection<a class="headerlink" href="#adding-a-connection" title="Permanent link">&para;</a></h2>
 <ol>
@@ -2987,6 +3012,26 @@
 <li><strong>Bulk username edit</strong> — update the username across multiple connections simultaneously.</li>
 </ul>
 <p>A confirmation dialog appears before any bulk action is applied.</p>
+<h2 id="password-management">Password Management<a class="headerlink" href="#password-management" title="Permanent link">&para;</a></h2>
+<p>Passwords are stored securely in the OS credential manager (never in settings files).</p>
+<table>
+<thead>
+<tr>
+<th>Command</th>
+<th>What it does</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>ABAP FS: Change Connection Password</strong></td>
+<td>Select a system and enter a new password</td>
+</tr>
+<tr>
+<td><strong>ABAP FS: Forget connection password</strong></td>
+<td>Removes the stored password; you'll be prompted on next connect</td>
+</tr>
+</tbody>
+</table>
 <h2 id="user-vs-workspace-settings">User vs. Workspace Settings<a class="headerlink" href="#user-vs-workspace-settings" title="Permanent link">&para;</a></h2>
 <p>Connections saved to <strong>User Settings</strong> are global — they appear in every VS Code workspace on your machine. Connections saved to <strong>Workspace Settings</strong> are stored in the <code>.vscode/settings.json</code> of the current project folder, making them easy to commit or share per project.</p>
 

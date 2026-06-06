@@ -2561,10 +2561,10 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
-  <a href="#what-happens-at-startup" class="md-nav__link">
+  <a href="#when-the-prompt-appears" class="md-nav__link">
     <span class="md-ellipsis">
       
-        What Happens at Startup
+        When the Prompt Appears
       
     </span>
   </a>
@@ -2836,10 +2836,10 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
-  <a href="#what-happens-at-startup" class="md-nav__link">
+  <a href="#when-the-prompt-appears" class="md-nav__link">
     <span class="md-ellipsis">
       
-        What Happens at Startup
+        When the Prompt Appears
       
     </span>
   </a>
@@ -2890,9 +2890,15 @@
 
 <h1 id="virtual-tool-grouping-fix">Virtual Tool Grouping Fix<a class="headerlink" href="#virtual-tool-grouping-fix" title="Permanent link">&para;</a></h1>
 <p>VS Code has an experimental setting (<code>github.copilot.chat.virtualTools.threshold</code>) that collapses extension tools into virtual groups when their count exceeds a threshold. When active, Copilot often fails to discover these groups — making all 39 ABAP FS AI tools invisible and unusable.</p>
-<p>ABAP FS detects this condition on startup and prompts you to fix it automatically.</p>
-<h2 id="what-happens-at-startup">What Happens at Startup<a class="headerlink" href="#what-happens-at-startup" title="Permanent link">&para;</a></h2>
-<p>If grouping is active, a warning dialog appears with three options:</p>
+<p>ABAP FS detects this condition after your first SAP connection and prompts you to fix it.</p>
+<h2 id="when-the-prompt-appears">When the Prompt Appears<a class="headerlink" href="#when-the-prompt-appears" title="Permanent link">&para;</a></h2>
+<p>The check runs after you first connect to a SAP system (not at extension activation). It only fires when:</p>
+<ul>
+<li>The virtual tools threshold is greater than <code>0</code></li>
+<li>AI models are available (GitHub Copilot is signed in and active)</li>
+<li>You haven't previously dismissed the prompt</li>
+</ul>
+<p>A non-modal notification appears with three options:</p>
 <table>
 <thead>
 <tr>
@@ -2902,12 +2908,12 @@
 </thead>
 <tbody>
 <tr>
-<td><strong>Disable Grouping &amp; Reload</strong></td>
+<td><strong>Disable &amp; Reload</strong></td>
 <td>Sets the threshold to <code>0</code> globally and in your workspace, then reloads VS Code</td>
 </tr>
 <tr>
-<td><strong>Remind Me Next Time</strong></td>
-<td>Skips the prompt this session; asks again next time</td>
+<td><strong>Later</strong></td>
+<td>Skips the prompt this session; asks again on next connection</td>
 </tr>
 <tr>
 <td><strong>Don't Ask Again</strong></td>
@@ -2915,7 +2921,7 @@
 </tr>
 </tbody>
 </table>
-<p>Choose <strong>Disable Grouping &amp; Reload</strong> unless you have a specific reason to keep grouping enabled.</p>
+<p>Choose <strong>Disable &amp; Reload</strong> unless you have a specific reason to keep grouping enabled.</p>
 <h2 id="fixing-it-manually">Fixing It Manually<a class="headerlink" href="#fixing-it-manually" title="Permanent link">&para;</a></h2>
 <p>If you dismissed the prompt and AI tools are still not working:</p>
 <ol>

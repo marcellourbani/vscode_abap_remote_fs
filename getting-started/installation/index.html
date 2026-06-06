@@ -462,6 +462,17 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#password-management" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Password Management
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#4-verify-the-connection" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -2891,6 +2902,17 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#password-management" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Password Management
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#4-verify-the-connection" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -2934,6 +2956,9 @@
 
 <h1 id="installation-steps">Installation Steps<a class="headerlink" href="#installation-steps" title="Permanent link">&para;</a></h1>
 <p>Before proceeding, ensure you meet the <a href="../prerequisite/">Prerequisites</a>.</p>
+<blockquote>
+<p><strong>Note:</strong> ABAP FS registers 40+ AI tools for Copilot, but only the documentation tool is available until you connect to a SAP system. Connect to SAP first to unlock all tools.</p>
+</blockquote>
 <h2 id="1-install-the-extension">1. Install the extension<a class="headerlink" href="#1-install-the-extension" title="Permanent link">&para;</a></h2>
 <ol>
 <li>Press <code>Ctrl+Shift+X</code> or Click on the extension icon on the activity bar to open the <strong>Extensions</strong> panel (left sidebar)</li>
@@ -2945,7 +2970,7 @@
 <ol>
 <li>Press <code>Ctrl+Shift+P</code> to open the <strong>Command Palette</strong> (the search bar for VS Code commands)</li>
 <li>Type and run: <strong>ABAP FS: Connection Manager</strong></li>
-<li>In the connection manager window, click <strong>Add Connection</strong> and fill in:<ul>
+<li>In the connection manager window, click <strong>Add SAP System</strong> and fill in:<ul>
 <li><strong>URL</strong> – your SAP system URL</li>
 <li><strong>Client</strong>, <strong>Username</strong>, <strong>Language</strong></li>
 <li>SAP GUI settings (optional)</li>
@@ -2970,6 +2995,11 @@
 <li>Enter your password if prompted</li>
 <li>Wait a moment for VS Code to establish the connection</li>
 </ol>
+<h2 id="password-management">Password Management<a class="headerlink" href="#password-management" title="Permanent link">&para;</a></h2>
+<ul>
+<li><strong>Change password:</strong> <code>Ctrl+Shift+P</code> → <strong>ABAP FS: Change Connection Password</strong> — select a system and enter your new password.</li>
+<li><strong>Forget password:</strong> <code>Ctrl+Shift+P</code> → <strong>ABAP FS: Forget connection password</strong> — removes the stored password so you're prompted again on next connect.</li>
+</ul>
 <h2 id="4-verify-the-connection">4. Verify the connection<a class="headerlink" href="#4-verify-the-connection" title="Permanent link">&para;</a></h2>
 <ul>
 <li>Look for the <strong>ABAP FS</strong> icon in the <strong>Activity Bar</strong> (the vertical icon strip on the far left)</li>
