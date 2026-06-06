@@ -1,15 +1,12 @@
 import { ADTClient, createSSLConfig, LogData, session_types } from "abap-adt-api"
 import { createConnection, ProposedFeatures } from "vscode-languageserver"
 import { types } from "util"
-import { readConfiguration, sendLog, sendHttpLog } from "./clientapis"
+import { readConfiguration } from "./clientapis"
 import {
   ClientConfiguration,
-  clientTraceUrl,
-  SOURCE_SERVER,
   Methods,
   CommLogTogglePayload
 } from "vscode-abap-remote-fs-sharedapi"
-import { createProxy, MethodCall } from "method-call-logger"
 import { isString } from "./functions"
 const clients: Map<string, ADTClient> = new Map()
 
@@ -22,23 +19,6 @@ export const log = (...params: any) => connection.console.log(convertParams(...p
 export function clientKeyFromUrl(url: string) {
   const match = url.match(/adt:\/\/([^\/]*)/)
   return match && match[1]
-}
-
-function loggedProxy(client: ADTClient, conf: ClientConfiguration) {
-  const temp = {
-    connection: conf.name,
-    source: SOURCE_SERVER,
-    fromClone: false
-  }
-  const logger = (call: MethodCall) => sendLog({ ...temp, call })
-  const cloneLogger = (call: MethodCall) => sendLog({ ...temp, call, fromClone: true })
-
-  const clone = createProxy(client.statelessClone, cloneLogger)
-
-  return createProxy(client, logger, {
-    resolvePromises: true,
-    getterOverride: new Map([["statelessClone", () => clone]])
-  })
 }
 
 function createFetchToken(conf: ClientConfiguration) {
@@ -76,9 +56,7 @@ const refreshClient = (key: string, conf: ClientConfiguration) => {
     sslconf
   )
   baseclient.stateful = session_types.stateful
-  const traceUrl = clientTraceUrl(conf)
-  const client = traceUrl ? loggedProxy(baseclient, conf) : baseclient
-  clients.set(key, client)
+  clients.set(key, baseclient)
   if (oldClient) {
     setTimeout(() => {
       oldClient.stateful = session_types.stateless
