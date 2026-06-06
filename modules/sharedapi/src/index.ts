@@ -1,4 +1,3 @@
-import { MethodCall } from "method-call-logger"
 import { LogData } from "abap-adt-api"
 export enum Methods {
   objectDetails = "vscabap.objDetails",
@@ -9,17 +8,11 @@ export enum Methods {
   cancelSearch = "vscabap.cancelSearch",
   vsUri = "vscabap.vsUri",
   updateMainProgram = "vscabap.updateMain",
-  logCall = "vscabap.logCall",
-  logHTTP = "vscabap.logHTTP",
   getToken = "vscabap.getToken",
   triggerSyntaxCheck = "vscabap.triggerSyntaxCheck",
   commLogEntry = "vscabap.commLogEntry",
   commLogToggle = "vscabap.commLogToggle"
 }
-
-export type Sources = "client" | "server"
-export const SOURCE_CLIENT: Sources = "client"
-export const SOURCE_SERVER: Sources = "server"
 
 export interface AbapObjectDetail {
   url: string
@@ -45,18 +38,7 @@ export interface ClientConfiguration {
     loginUrl: string
     saveCredentials?: boolean
   }
-  trace?: {
-    mongoUrl: string
-    api_methods: boolean
-    http_calls: boolean
-  }
 }
-
-export const clientTraceUrl = (conf: ClientConfiguration) =>
-  conf.trace && conf.trace.api_methods && conf.trace.mongoUrl
-
-export const httpTraceUrl = (conf: ClientConfiguration) =>
-  conf.trace && conf.trace.http_calls && conf.trace.mongoUrl
 
 export interface AbapObjectSource {
   url: string
@@ -82,19 +64,6 @@ export interface SearchProgress {
 export interface MainProgram {
   includeUri: string
   mainProgramUri: string
-}
-
-export interface LogEntry {
-  connection: string
-  source: Sources
-  fromClone: boolean
-  call: MethodCall
-}
-
-export interface HttpLogEntry {
-  connection: string
-  source: Sources
-  data: LogData
 }
 
 export interface CommLogTogglePayload {

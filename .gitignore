@@ -32,3 +32,6 @@ server/src/**/*.js.map
 modules/*/src/**/*.js
 modules/*/src/**/*.js.map
 .venv
+# MemPalace per-project files
+mempalace.yaml
+entities.json
