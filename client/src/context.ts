@@ -15,6 +15,7 @@ export type AbapFsContexts =
   | "abapfs:blameActive"
   | "abapfs:blameAvailable"
   | "abapfs:activeEditorIsTable"
+  | "abapfs:noSapConnected"
 
 export const setContext = (key: AbapFsContexts, value: unknown) =>
   commands.executeCommand("setContext", key, value)

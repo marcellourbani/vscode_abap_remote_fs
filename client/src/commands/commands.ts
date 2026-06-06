@@ -224,6 +224,7 @@ export class AdtCommands {
     return openConnectionManager(extensionContext)
   }
 
+
   @command(AbapFsCommands.connect)
   private static async connectAdtServer(selector: any) {
     logTelemetry("command_connect_called")
@@ -231,6 +232,7 @@ export class AdtCommands {
     try {
       const connectionID = selector && selector.connection
       const manager = RemoteManager.get()
+
       const { remote, userCancel } = await manager.selectConnection(connectionID)
       if (!remote)
         if (!userCancel) throw Error("No remote configuration available in settings")
@@ -243,7 +245,8 @@ export class AdtCommands {
 
       await storeTokens()
 
-      workspace.updateWorkspaceFolders(0, 0, {
+      const folderCount = workspace.workspaceFolders?.length ?? 0
+      workspace.updateWorkspaceFolders(folderCount, 0, {
         uri: Uri.parse("adt://" + remote.name),
         name: remote.name + "(ABAP)"
       })
@@ -253,9 +256,44 @@ export class AdtCommands {
       const body = typeof e === "object" && (e as any)?.response?.body
       if (body) log(body)
       const isMissing = (e: any) => !!`${e}`.match("name.*org.freedesktop.secrets")
+      const errStr = caughtToString(e)
+
+      // Recoverable config errors → open Connection Manager with helpful message
+      let configError = ""
+      if (errStr.includes("No remote configuration available")) {
+        configError = "No SAP systems configured yet. Opening Connection Manager to add one."
+      } else if (errStr.includes("Invalid ADTClient configuration")) {
+        configError = name
+          ? `Connection "${name}" is incomplete (missing ADT URL or username). Opening Connection Manager to fix it.`
+          : "Connection is incomplete (missing ADT URL or username). Opening Connection Manager to fix it."
+      }
+
+      if (configError) {
+        window.showInformationMessage(configError)
+        return commands.executeCommand("abapfs.connectionManager")
+      }
+
+      // HTTP errors with user-friendly messages
+      if (errStr.includes("status code 401")) {
+        return window.showErrorMessage(
+          name
+            ? `Authentication failed for "${name}". Check your username/password in Connection Manager.`
+            : `Authentication failed. Check your credentials.`
+        )
+      }
+      if (errStr.includes("status code 503")) {
+        return window.showErrorMessage(
+          name
+            ? `SAP system "${name}" is unreachable (HTTP 503). The ADT endpoint may be down or proxy settings may be incorrect — contact your Basis team.`
+            : `SAP system is unreachable (HTTP 503). The ADT endpoint may be down or proxy settings may be incorrect — contact your Basis team.`
+        )
+      }
+
       const message = isMissing(e)
         ? `Password storage not supported. Please install gnome-keyring or add a password to the connection`
-        : `Failed to connect to ${name}:${caughtToString(e)}`
+        : name
+          ? `Failed to connect to ${name}: ${errStr}`
+          : `Failed to connect: ${errStr}`
       return window.showErrorMessage(message)
     }
   }
@@ -1207,6 +1245,24 @@ export class AdtCommands {
   @command(AbapFsCommands.clearPassword)
   public static async clearPasswordCmd(connectionId?: string) {
     return RemoteManager.get().clearPasswordCmd(connectionId)
+  }
+
+  @command(AbapFsCommands.changePassword)
+  private static async changePasswordCmd() {
+    const manager = RemoteManager.get()
+    const { remote, userCancel } = await manager.selectConnection()
+    if (userCancel || !remote) return
+
+    const newPassword = await window.showInputBox({
+      prompt: `Enter new password for ${remote.name} (user: ${remote.username})`,
+      password: true,
+      ignoreFocusOut: true
+    })
+    if (!newPassword) return
+
+    await manager.clearPassword(remote.name, remote.username)
+    await manager.savePassword(remote.name, remote.username, newPassword)
+    vscode.window.showInformationMessage(`Password updated for "${remote.name}". Reconnect to use the new credentials.`)
   }
 
   private static async createTI(uri: Uri) {

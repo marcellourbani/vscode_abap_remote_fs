@@ -18,6 +18,7 @@ export const AbapFsCommands = {
   selectDB: "abapfs.selectDB",
   showObject: "abapfs.showObject",
   clearPassword: "abapfs.clearPassword",
+  changePassword: "abapfs.changePassword",
   addfavourite: "abapfs.addfavourite",
   deletefavourite: "abapfs.deletefavourite",
   createConnection: "abapfs.createConnection",

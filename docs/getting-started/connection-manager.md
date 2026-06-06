@@ -1,5 +1,7 @@
 # SAP Connection Manager
 
+> **Important:** ABAP FS has 40+ AI tools for Copilot, but they are only available once you connect to a SAP system. Use the Connection Manager to add your first system.
+
 The Connection Manager is a visual interface for adding, editing, and organizing your SAP system connections. Open it from the Command Palette (`Ctrl+Shift+P` / `Cmd+Shift+P`) by typing **ABAP FS: Connection Manager**.
 
 ## Adding a Connection
@@ -35,6 +37,15 @@ Select multiple connections using the checkboxes to:
 - **Bulk username edit** — update the username across multiple connections simultaneously.
 
 A confirmation dialog appears before any bulk action is applied.
+
+## Password Management
+
+Passwords are stored securely in the OS credential manager (never in settings files).
+
+| Command | What it does |
+|---|---|
+| **ABAP FS: Change Connection Password** | Select a system and enter a new password |
+| **ABAP FS: Forget connection password** | Removes the stored password; you'll be prompted on next connect |
 
 ## User vs. Workspace Settings
 
