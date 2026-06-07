@@ -3,7 +3,7 @@
     "module": "commonjs",
     "target": "ES2019",
     "rootDir": "src",
-    "moduleResolution": "node",
+    "moduleResolution": "bundler",
     "outDir": "./out",
     "sourceMap": true,
     "strict": true,
@@ -13,7 +13,10 @@
     "incremental": true,
     "tsBuildInfoFile": ".tsbuildinfo",
     "skipLibCheck": true,
-    "esModuleInterop": true
+    "esModuleInterop": true,
+    "types": [
+      "jest"
+    ]
   },
   "include": [
     "src"
