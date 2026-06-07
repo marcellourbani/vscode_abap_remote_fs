@@ -1,9 +1,13 @@
-jest.mock("vscode", () => ({
-  LanguageModelToolResult: jest.fn().mockImplementation((parts: any[]) => ({ parts })),
-  LanguageModelTextPart: jest.fn().mockImplementation((text: string) => ({ text })),
-  MarkdownString: jest.fn().mockImplementation((text: string) => ({ text })),
-  lm: { registerTool: jest.fn(() => ({ dispose: jest.fn() })) }
-}), { virtual: true })
+jest.mock(
+  "vscode",
+  () => ({
+    LanguageModelToolResult: jest.fn().mockImplementation((parts: any[]) => ({ parts })),
+    LanguageModelTextPart: jest.fn().mockImplementation((text: string) => ({ text })),
+    MarkdownString: jest.fn().mockImplementation((text: string) => ({ text })),
+    lm: { registerTool: jest.fn(() => ({ dispose: jest.fn() })) }
+  }),
+  { virtual: true }
+)
 
 jest.mock("../../adt/conections", () => ({
   getClient: jest.fn(),
@@ -12,6 +16,10 @@ jest.mock("../../adt/conections", () => ({
 jest.mock("../telemetry", () => ({ logTelemetry: jest.fn() }))
 jest.mock("./toolRegistry", () => ({
   registerToolWithRegistry: jest.fn(() => ({ dispose: jest.fn() }))
+}))
+jest.mock("./toolGuard", () => ({
+  assertToolInvocationAuthorized: jest.fn(),
+  isToolInvocationAuthorized: jest.fn(() => true)
 }))
 
 import { GetAbapObjectWorkspaceUriTool } from "./getWorkspaceUriTool"
@@ -62,9 +70,15 @@ describe("GetAbapObjectWorkspaceUriTool", () => {
   describe("invoke", () => {
     it("logs telemetry", async () => {
       mockClient.searchObject.mockResolvedValue([
-        { "adtcore:name": "ZPROG", "adtcore:type": "PROG/P", "adtcore:uri": "/sap/bc/adt/programs/programs/zprog" }
+        {
+          "adtcore:name": "ZPROG",
+          "adtcore:type": "PROG/P",
+          "adtcore:uri": "/sap/bc/adt/programs/programs/zprog"
+        }
       ])
-      mockRoot.findByAdtUri.mockResolvedValue({ path: "/System%20Library/Source%20Code%20Library/Programs/ZPROG" })
+      mockRoot.findByAdtUri.mockResolvedValue({
+        path: "/System%20Library/Source%20Code%20Library/Programs/ZPROG"
+      })
       await tool.invoke(
         makeOptions({ objectName: "ZPROG", objectType: "PROG/P", connectionId: "dev100" }),
         mockToken
@@ -76,7 +90,11 @@ describe("GetAbapObjectWorkspaceUriTool", () => {
 
     it("normalizes connectionId to lowercase", async () => {
       mockClient.searchObject.mockResolvedValue([
-        { "adtcore:name": "ZPROG", "adtcore:type": "PROG/P", "adtcore:uri": "/sap/bc/adt/programs/programs/zprog" }
+        {
+          "adtcore:name": "ZPROG",
+          "adtcore:type": "PROG/P",
+          "adtcore:uri": "/sap/bc/adt/programs/programs/zprog"
+        }
       ])
       mockRoot.findByAdtUri.mockResolvedValue({ path: "/path/ZPROG" })
       await tool.invoke(
@@ -107,7 +125,11 @@ describe("GetAbapObjectWorkspaceUriTool", () => {
 
     it("throws when exact match not found", async () => {
       mockClient.searchObject.mockResolvedValue([
-        { "adtcore:name": "ZPROG_OTHER", "adtcore:type": "PROG/P", "adtcore:uri": "/sap/bc/adt/..." }
+        {
+          "adtcore:name": "ZPROG_OTHER",
+          "adtcore:type": "PROG/P",
+          "adtcore:uri": "/sap/bc/adt/..."
+        }
       ])
       await expect(
         tool.invoke(
@@ -132,7 +154,11 @@ describe("GetAbapObjectWorkspaceUriTool", () => {
 
     it("throws when workspace path cannot be resolved", async () => {
       mockClient.searchObject.mockResolvedValue([
-        { "adtcore:name": "ZPROG", "adtcore:type": "PROG/P", "adtcore:uri": "/sap/bc/adt/programs/programs/zprog" }
+        {
+          "adtcore:name": "ZPROG",
+          "adtcore:type": "PROG/P",
+          "adtcore:uri": "/sap/bc/adt/programs/programs/zprog"
+        }
       ])
       mockRoot.findByAdtUri.mockResolvedValue(null)
       await expect(

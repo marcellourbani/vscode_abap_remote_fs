@@ -1,31 +1,45 @@
-jest.mock("vscode", () => {
-  class LanguageModelToolResult { constructor(public parts: any[]) {} }
-  class LanguageModelTextPart { constructor(public text: string) {} }
-  class MarkdownString { constructor(public value: string) {} }
-  return {
-    LanguageModelToolResult,
-    LanguageModelTextPart,
-    MarkdownString,
-    lm: { registerTool: jest.fn(() => ({ dispose: jest.fn() })) },
-    workspace: {
-      workspaceFolders: [
-        { uri: { fsPath: "/test", scheme: "file" } }
-      ],
-      fs: {
-        writeFile: jest.fn().mockResolvedValue(undefined),
-        createDirectory: jest.fn().mockResolvedValue(undefined)
-      }
-    },
-    Uri: {
-      parse: (s: string) => ({ authority: "", path: s, scheme: "file", fsPath: s, toString: () => s }),
-      file: (s: string) => ({ fsPath: s, scheme: "file", toString: () => s }),
-      joinPath: jest.fn((...args: any[]) => ({
-        fsPath: args.map((a: any) => a.fsPath || a).join("/"),
-        toString: () => args.map((a: any) => a.fsPath || a).join("/")
-      }))
+jest.mock(
+  "vscode",
+  () => {
+    class LanguageModelToolResult {
+      constructor(public parts: any[]) {}
     }
-  }
-}, { virtual: true })
+    class LanguageModelTextPart {
+      constructor(public text: string) {}
+    }
+    class MarkdownString {
+      constructor(public value: string) {}
+    }
+    return {
+      LanguageModelToolResult,
+      LanguageModelTextPart,
+      MarkdownString,
+      lm: { registerTool: jest.fn(() => ({ dispose: jest.fn() })) },
+      workspace: {
+        workspaceFolders: [{ uri: { fsPath: "/test", scheme: "file" } }],
+        fs: {
+          writeFile: jest.fn().mockResolvedValue(undefined),
+          createDirectory: jest.fn().mockResolvedValue(undefined)
+        }
+      },
+      Uri: {
+        parse: (s: string) => ({
+          authority: "",
+          path: s,
+          scheme: "file",
+          fsPath: s,
+          toString: () => s
+        }),
+        file: (s: string) => ({ fsPath: s, scheme: "file", toString: () => s }),
+        joinPath: jest.fn((...args: any[]) => ({
+          fsPath: args.map((a: any) => a.fsPath || a).join("/"),
+          toString: () => args.map((a: any) => a.fsPath || a).join("/")
+        }))
+      }
+    }
+  },
+  { virtual: true }
+)
 
 jest.mock("../../adt/conections", () => ({ getClient: jest.fn() }))
 jest.mock("../telemetry", () => ({ logTelemetry: jest.fn() }))
@@ -33,6 +47,10 @@ jest.mock("./toolRegistry", () => ({
   registerToolWithRegistry: jest.fn(() => ({ dispose: jest.fn() }))
 }))
 
+jest.mock("./toolGuard", () => ({
+  assertToolInvocationAuthorized: jest.fn(),
+  isToolInvocationAuthorized: jest.fn(() => true)
+}))
 import { AdtDiscoveryTool } from "./adtDiscoveryTool"
 import { getClient } from "../../adt/conections"
 import { logTelemetry } from "../telemetry"
@@ -81,10 +99,7 @@ describe("AdtDiscoveryTool", () => {
     })
 
     it("message contains 'Exporting ADT discovery'", async () => {
-      const result = await tool.prepareInvocation(
-        makeOptions({ connectionId: "sys" }),
-        mockToken
-      )
+      const result = await tool.prepareInvocation(makeOptions({ connectionId: "sys" }), mockToken)
       expect(result.invocationMessage).toMatch(/exporting adt discovery/i)
     })
   })
@@ -97,9 +112,7 @@ describe("AdtDiscoveryTool", () => {
           {
             href: "/sap/bc/adt/something",
             title: "Col1",
-            templateLinks: [
-              { rel: "self", template: "/sap/bc/adt/{id}" }
-            ]
+            templateLinks: [{ rel: "self", template: "/sap/bc/adt/{id}" }]
           }
         ]
       }
@@ -118,9 +131,9 @@ describe("AdtDiscoveryTool", () => {
     })
 
     it("throws when connectionId is empty string", async () => {
-      await expect(
-        tool.invoke(makeOptions({ connectionId: "" }), mockToken)
-      ).rejects.toThrow("connectionId is required")
+      await expect(tool.invoke(makeOptions({ connectionId: "" }), mockToken)).rejects.toThrow(
+        "connectionId is required"
+      )
     })
 
     it("throws when connectionId is undefined", async () => {
@@ -155,10 +168,22 @@ describe("AdtDiscoveryTool", () => {
       let discoveryResolved = false
       let coreResolved = false
       mockClient.adtDiscovery.mockImplementation(
-        () => new Promise(r => setTimeout(() => { discoveryResolved = true; r(minimalDiscovery) }, 10))
+        () =>
+          new Promise(r =>
+            setTimeout(() => {
+              discoveryResolved = true
+              r(minimalDiscovery)
+            }, 10)
+          )
       )
       mockClient.adtCoreDiscovery.mockImplementation(
-        () => new Promise(r => setTimeout(() => { coreResolved = true; r(minimalCoreDiscovery) }, 10))
+        () =>
+          new Promise(r =>
+            setTimeout(() => {
+              coreResolved = true
+              r(minimalCoreDiscovery)
+            }, 10)
+          )
       )
 
       const resultPromise = tool.invoke(makeOptions({ connectionId: "dev100" }), mockToken)
@@ -186,7 +211,12 @@ describe("AdtDiscoveryTool", () => {
     it("deduplicates RES_APP classes from both queries", async () => {
       mockClient.runQuery
         .mockResolvedValueOnce({ values: [{ CLSNAME: "CL_FOO", DESCRIPT: "Foo" }] })
-        .mockResolvedValueOnce({ values: [{ CLSNAME: "CL_FOO", DESCRIPT: "Foo" }, { CLSNAME: "CL_BAR", DESCRIPT: "Bar" }] })
+        .mockResolvedValueOnce({
+          values: [
+            { CLSNAME: "CL_FOO", DESCRIPT: "Foo" },
+            { CLSNAME: "CL_BAR", DESCRIPT: "Bar" }
+          ]
+        })
 
       const result = await tool.invoke(makeOptions({ connectionId: "dev100" }), mockToken)
       // Should have 2 unique classes, not 3
@@ -218,16 +248,16 @@ describe("AdtDiscoveryTool", () => {
 
     it("handles adtDiscovery rejecting with error", async () => {
       mockClient.adtDiscovery.mockRejectedValue(new Error("network fail"))
-      await expect(
-        tool.invoke(makeOptions({ connectionId: "dev100" }), mockToken)
-      ).rejects.toThrow("network fail")
+      await expect(tool.invoke(makeOptions({ connectionId: "dev100" }), mockToken)).rejects.toThrow(
+        "network fail"
+      )
     })
 
     it("handles adtCoreDiscovery rejecting with error", async () => {
       mockClient.adtCoreDiscovery.mockRejectedValue(new Error("timeout"))
-      await expect(
-        tool.invoke(makeOptions({ connectionId: "dev100" }), mockToken)
-      ).rejects.toThrow("timeout")
+      await expect(tool.invoke(makeOptions({ connectionId: "dev100" }), mockToken)).rejects.toThrow(
+        "timeout"
+      )
     })
 
     it("writes 4 markdown files to workspace", async () => {
@@ -293,11 +323,7 @@ describe("AdtDiscoveryTool", () => {
     it("handles RES_APP rows with missing fields", async () => {
       mockClient.runQuery
         .mockResolvedValueOnce({
-          values: [
-            { CLSNAME: "CL_ONLY_NAME" },
-            { DESCRIPT: "only desc" },
-            {}
-          ]
+          values: [{ CLSNAME: "CL_ONLY_NAME" }, { DESCRIPT: "only desc" }, {}]
         })
         .mockResolvedValueOnce({ values: [] })
 
@@ -320,7 +346,14 @@ describe("AdtDiscoveryTool", () => {
         {
           title: "WS",
           collection: [
-            { href: "/a", title: "C1", templateLinks: [{ rel: "r", template: "t1" }, { rel: "r2", template: "t2" }] },
+            {
+              href: "/a",
+              title: "C1",
+              templateLinks: [
+                { rel: "r", template: "t1" },
+                { rel: "r2", template: "t2" }
+              ]
+            },
             { href: "/b", title: "C2", templateLinks: [] }
           ]
         }

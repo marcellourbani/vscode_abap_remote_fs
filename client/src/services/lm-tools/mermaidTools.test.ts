@@ -1,9 +1,13 @@
-jest.mock("vscode", () => ({
-  LanguageModelToolResult: jest.fn().mockImplementation((parts: any[]) => ({ parts })),
-  LanguageModelTextPart: jest.fn().mockImplementation((text: string) => ({ text })),
-  MarkdownString: jest.fn().mockImplementation((text: string) => ({ text })),
-  lm: { registerTool: jest.fn(() => ({ dispose: jest.fn() })) }
-}), { virtual: true })
+jest.mock(
+  "vscode",
+  () => ({
+    LanguageModelToolResult: jest.fn().mockImplementation((parts: any[]) => ({ parts })),
+    LanguageModelTextPart: jest.fn().mockImplementation((text: string) => ({ text })),
+    MarkdownString: jest.fn().mockImplementation((text: string) => ({ text })),
+    lm: { registerTool: jest.fn(() => ({ dispose: jest.fn() })) }
+  }),
+  { virtual: true }
+)
 
 jest.mock("../../adt/conections", () => ({}))
 jest.mock("../telemetry", () => ({ logTelemetry: jest.fn() }))
@@ -17,11 +21,25 @@ jest.mock("../MermaidWebviewManager", () => ({
 }))
 jest.mock("../MermaidDocumentation", () => ({
   MERMAID_DOCUMENTATION: {
-    flowchart: { description: "Flowchart description", syntax: "graph TD", keywords: ["graph", "flowchart"], examples: ["graph TD\nA-->B"] },
-    sequence: { description: "Sequence description", syntax: "sequenceDiagram", keywords: ["sequenceDiagram"], examples: [] }
+    flowchart: {
+      description: "Flowchart description",
+      syntax: "graph TD",
+      keywords: ["graph", "flowchart"],
+      examples: ["graph TD\nA-->B"]
+    },
+    sequence: {
+      description: "Sequence description",
+      syntax: "sequenceDiagram",
+      keywords: ["sequenceDiagram"],
+      examples: []
+    }
   }
 }))
 
+jest.mock("./toolGuard", () => ({
+  assertToolInvocationAuthorized: jest.fn(),
+  isToolInvocationAuthorized: jest.fn(() => true)
+}))
 import {
   CreateMermaidDiagramTool,
   ValidateMermaidSyntaxTool,
@@ -121,18 +139,18 @@ describe("CreateMermaidDiagramTool", () => {
         success: false,
         error: "Parse error on line 1"
       })
-      await expect(
-        tool.invoke(makeOptions({ code: "invalid code" }), mockToken)
-      ).rejects.toThrow("Failed to create diagram")
+      await expect(tool.invoke(makeOptions({ code: "invalid code" }), mockToken)).rejects.toThrow(
+        "Failed to create diagram"
+      )
     })
 
     it("wraps Parse error as syntax error", async () => {
       mockWebviewManager.renderDiagram.mockRejectedValue(
         new Error("Parse error on line 1: unexpected token")
       )
-      await expect(
-        tool.invoke(makeOptions({ code: "bad code" }), mockToken)
-      ).rejects.toThrow("Syntax error in diagram code")
+      await expect(tool.invoke(makeOptions({ code: "bad code" }), mockToken)).rejects.toThrow(
+        "Syntax error in diagram code"
+      )
     })
   })
 })
@@ -165,10 +183,7 @@ describe("ValidateMermaidSyntaxTool", () => {
 
     it("returns valid message for correct syntax", async () => {
       mockWebviewManager.validateSyntax.mockResolvedValue({ valid: true })
-      const result: any = await tool.invoke(
-        makeOptions({ code: "graph TD\nA-->B" }),
-        mockToken
-      )
+      const result: any = await tool.invoke(makeOptions({ code: "graph TD\nA-->B" }), mockToken)
       expect(result.parts[0].text).toContain("valid")
     })
 
@@ -177,10 +192,7 @@ describe("ValidateMermaidSyntaxTool", () => {
         valid: false,
         error: "Unexpected token on line 2"
       })
-      const result: any = await tool.invoke(
-        makeOptions({ code: "bad code" }),
-        mockToken
-      )
+      const result: any = await tool.invoke(makeOptions({ code: "bad code" }), mockToken)
       expect(result.parts[0].text).toContain("Unexpected token")
     })
 
@@ -270,10 +282,7 @@ describe("DetectMermaidDiagramTypeTool", () => {
 
     it("returns detected diagram type", async () => {
       mockWebviewManager.detectDiagramType.mockResolvedValue({ diagramType: "flowchart" })
-      const result: any = await tool.invoke(
-        makeOptions({ code: "graph TD\nA-->B" }),
-        mockToken
-      )
+      const result: any = await tool.invoke(makeOptions({ code: "graph TD\nA-->B" }), mockToken)
       expect(result.parts[0].text).toContain("flowchart")
     })
   })

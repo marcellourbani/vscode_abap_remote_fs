@@ -41,6 +41,11 @@ jest.mock("../../services/telemetry", () => ({
   logTelemetry: jest.fn()
 }))
 
+jest.mock("../../services/lm-tools/toolGuard", () => ({
+  assertToolInvocationAuthorized: jest.fn(),
+  isToolInvocationAuthorized: jest.fn(() => true)
+}))
+
 import { ActivateTool } from "./activate"
 import { getClient, uriRoot } from "../conections"
 import { isAbapFile } from "abapfs"

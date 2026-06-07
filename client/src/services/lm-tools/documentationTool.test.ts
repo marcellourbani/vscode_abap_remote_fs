@@ -1,12 +1,16 @@
-jest.mock("vscode", () => ({
-  LanguageModelToolResult: jest.fn().mockImplementation((parts: any[]) => ({ parts })),
-  LanguageModelTextPart: jest.fn().mockImplementation((text: string) => ({ text })),
-  MarkdownString: jest.fn().mockImplementation((text: string) => ({ text })),
-  extensions: {
-    getExtension: jest.fn()
-  },
-  lm: { registerTool: jest.fn(() => ({ dispose: jest.fn() })) }
-}), { virtual: true })
+jest.mock(
+  "vscode",
+  () => ({
+    LanguageModelToolResult: jest.fn().mockImplementation((parts: any[]) => ({ parts })),
+    LanguageModelTextPart: jest.fn().mockImplementation((text: string) => ({ text })),
+    MarkdownString: jest.fn().mockImplementation((text: string) => ({ text })),
+    extensions: {
+      getExtension: jest.fn()
+    },
+    lm: { registerTool: jest.fn(() => ({ dispose: jest.fn() })) }
+  }),
+  { virtual: true }
+)
 
 jest.mock("../../adt/conections", () => ({}))
 jest.mock("../telemetry", () => ({ logTelemetry: jest.fn() }))
@@ -21,6 +25,10 @@ jest.mock("fs", () => ({
   readFileSync: jest.fn()
 }))
 
+jest.mock("./toolGuard", () => ({
+  assertToolInvocationAuthorized: jest.fn(),
+  isToolInvocationAuthorized: jest.fn(() => true)
+}))
 import { ABAPFSDocumentationTool } from "./documentationTool"
 import { logTelemetry } from "../telemetry"
 import * as fs from "fs"
@@ -96,10 +104,7 @@ describe("ABAPFSDocumentationTool", () => {
     })
 
     it("defaults to startLine=1, lineCount=50", async () => {
-      const result: any = await tool.invoke(
-        makeOptions({ action: "get_documentation" }),
-        mockToken
-      )
+      const result: any = await tool.invoke(makeOptions({ action: "get_documentation" }), mockToken)
       expect(result.parts[0].text).toBeDefined()
       expect(fs.readFileSync).toHaveBeenCalled()
     })
@@ -166,9 +171,9 @@ describe("ABAPFSDocumentationTool", () => {
 
     it("throws when settings file not found", async () => {
       ;(fs.existsSync as jest.Mock).mockReturnValue(false)
-      await expect(
-        tool.invoke(makeOptions({ action: "get_settings" }), mockToken)
-      ).rejects.toThrow("ABAP-FS-SETTINGS.md not found")
+      await expect(tool.invoke(makeOptions({ action: "get_settings" }), mockToken)).rejects.toThrow(
+        "ABAP-FS-SETTINGS.md not found"
+      )
     })
   })
 

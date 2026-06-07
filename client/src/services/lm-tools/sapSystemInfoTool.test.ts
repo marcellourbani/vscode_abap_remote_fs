@@ -1,9 +1,13 @@
-jest.mock("vscode", () => ({
-  LanguageModelToolResult: jest.fn().mockImplementation((parts: any[]) => ({ parts })),
-  LanguageModelTextPart: jest.fn().mockImplementation((text: string) => ({ text })),
-  MarkdownString: jest.fn().mockImplementation((text: string) => ({ text })),
-  lm: { registerTool: jest.fn(() => ({ dispose: jest.fn() })) }
-}), { virtual: true })
+jest.mock(
+  "vscode",
+  () => ({
+    LanguageModelToolResult: jest.fn().mockImplementation((parts: any[]) => ({ parts })),
+    LanguageModelTextPart: jest.fn().mockImplementation((text: string) => ({ text })),
+    MarkdownString: jest.fn().mockImplementation((text: string) => ({ text })),
+    lm: { registerTool: jest.fn(() => ({ dispose: jest.fn() })) }
+  }),
+  { virtual: true }
+)
 
 jest.mock("../../adt/conections", () => ({}))
 jest.mock("../telemetry", () => ({ logTelemetry: jest.fn() }))
@@ -15,6 +19,10 @@ jest.mock("../sapSystemInfo", () => ({
   formatSAPSystemInfoAsText: jest.fn()
 }))
 
+jest.mock("./toolGuard", () => ({
+  assertToolInvocationAuthorized: jest.fn(),
+  isToolInvocationAuthorized: jest.fn(() => true)
+}))
 import { SAPSystemInfoTool } from "./sapSystemInfoTool"
 import { getSAPSystemInfo } from "../sapSystemInfo"
 import { logTelemetry } from "../telemetry"
@@ -63,9 +71,9 @@ describe("SAPSystemInfoTool", () => {
     })
 
     it("throws when connectionId is undefined", async () => {
-      await expect(
-        tool.prepareInvocation(makeOptions({}), mockToken)
-      ).rejects.toThrow("connectionId is required")
+      await expect(tool.prepareInvocation(makeOptions({}), mockToken)).rejects.toThrow(
+        "connectionId is required"
+      )
     })
   })
 
@@ -108,7 +116,10 @@ describe("SAPSystemInfoTool", () => {
     })
 
     it("shows DST rule when not NONE", async () => {
-      const infoWithDST = { ...mockSystemInfo, timezone: { ...mockSystemInfo.timezone, dstRule: "EU" } }
+      const infoWithDST = {
+        ...mockSystemInfo,
+        timezone: { ...mockSystemInfo.timezone, dstRule: "EU" }
+      }
       ;(getSAPSystemInfo as jest.Mock).mockResolvedValue(infoWithDST)
       const result: any = await tool.invoke(makeOptions({ connectionId: "dev100" }), mockToken)
       const summaryText = result.parts[0].text
@@ -142,24 +153,24 @@ describe("SAPSystemInfoTool", () => {
     })
 
     it("throws when connectionId is missing", async () => {
-      await expect(
-        tool.invoke(makeOptions({ connectionId: "" }), mockToken)
-      ).rejects.toThrow("connectionId is required")
+      await expect(tool.invoke(makeOptions({ connectionId: "" }), mockToken)).rejects.toThrow(
+        "connectionId is required"
+      )
     })
 
     it("throws with localizedMessage on error", async () => {
       const err = Object.assign(new Error("base"), { localizedMessage: "localized error" })
       ;(getSAPSystemInfo as jest.Mock).mockRejectedValue(err)
-      await expect(
-        tool.invoke(makeOptions({ connectionId: "dev100" }), mockToken)
-      ).rejects.toThrow("localized error")
+      await expect(tool.invoke(makeOptions({ connectionId: "dev100" }), mockToken)).rejects.toThrow(
+        "localized error"
+      )
     })
 
     it("throws with standard message on plain error", async () => {
       ;(getSAPSystemInfo as jest.Mock).mockRejectedValue(new Error("network failure"))
-      await expect(
-        tool.invoke(makeOptions({ connectionId: "dev100" }), mockToken)
-      ).rejects.toThrow("network failure")
+      await expect(tool.invoke(makeOptions({ connectionId: "dev100" }), mockToken)).rejects.toThrow(
+        "network failure"
+      )
     })
 
     it("handles info with no client", async () => {
