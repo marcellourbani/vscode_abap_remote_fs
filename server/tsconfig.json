@@ -3,7 +3,7 @@
     "module": "commonjs",
     "target": "ES2019",
     "rootDir": "src",
-    "moduleResolution": "bundler",
+    "moduleResolution": "node",
     "outDir": "./out",
     "sourceMap": true,
     "strict": true,
