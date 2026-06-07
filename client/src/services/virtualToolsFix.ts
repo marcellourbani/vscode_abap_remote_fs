@@ -29,9 +29,8 @@ export function registerVirtualToolsFixOnConnect(context: vscode.ExtensionContex
   // Already dismissed — nothing to do ever again
   if (context.globalState.get<boolean>(DISMISSED_KEY)) return
 
-  const hasAdtFolders = vscode.workspace.workspaceFolders?.some(
-    f => f.uri.scheme === ADTSCHEME
-  ) ?? false
+  const hasAdtFolders =
+    vscode.workspace.workspaceFolders?.some(f => f.uri.scheme === ADTSCHEME) ?? false
 
   if (hasAdtFolders) {
     // Extension restarted with ADT folders already mounted (e.g. after connecting).
@@ -51,10 +50,7 @@ export function registerVirtualToolsFixOnConnect(context: vscode.ExtensionContex
   context.subscriptions.push(listener)
 }
 
-async function disableVirtualToolGrouping(
-  context: vscode.ExtensionContext
-): Promise<void> {
-
+export async function disableVirtualToolGrouping(context: vscode.ExtensionContext): Promise<void> {
   try {
     if (context.globalState.get<boolean>(DISMISSED_KEY)) return
 
@@ -103,8 +99,11 @@ async function disableVirtualToolGrouping(
 
     // Show progress while applying changes
     await window.withProgress(
-      { location: vscode.ProgressLocation.Notification, title: "Disabling virtual tool grouping..." },
-      async (progress) => {
+      {
+        location: vscode.ProgressLocation.Notification,
+        title: "Disabling virtual tool grouping..."
+      },
+      async progress => {
         progress.report({ message: "Updating settings..." })
 
         await rootConfig.update(FULL_SETTING_ID, 0, vscode.ConfigurationTarget.Global)
@@ -131,7 +130,6 @@ async function disableVirtualToolGrouping(
         await vscode.commands.executeCommand("workbench.action.reloadWindow")
       }
     )
-
   } catch (error) {
     const msg = String(error)
     if (msg.includes("Canceled")) return
