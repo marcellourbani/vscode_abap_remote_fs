@@ -82,10 +82,14 @@ afterEach(() => {
 
 describe("checkUpgradeNotification", () => {
   // ─── Upgrade trigger conditions ────────────────────────────────────────────
-  test("does NOT trigger when already on v2", () => {
+  test("shows version upgrade notification when upgrading", () => {
     const ctx = makeContext("2.0.0")
     checkUpgradeNotification(ctx)
-    expect(mockShowInfoMessage).not.toHaveBeenCalled()
+    expect(mockShowInfoMessage).toHaveBeenCalledWith(
+      "ABAP Remote Filesystem has been updated to v2.1.0",
+      "What's New"
+    )
+    expect(mockCreateStatusBarItem).not.toHaveBeenCalled()
   })
 
   test("does NOT trigger when already on current version", () => {
