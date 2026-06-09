@@ -3,8 +3,24 @@ name: CI
 on:
   pull_request:
     branches: [ master ]
+    paths-ignore:
+      - '**.md'
+      - 'docs/**'
+      - 'wiki/**'
+      - 'mkdocs.yml'
+      - 'pyproject.toml'
+      - 'scripts/build_docs.py'
+      - 'LICENSE'
   push:
     branches: [ master ]
+    paths-ignore:
+      - '**.md'
+      - 'docs/**'
+      - 'wiki/**'
+      - 'mkdocs.yml'
+      - 'pyproject.toml'
+      - 'scripts/build_docs.py'
+      - 'LICENSE'
   workflow_dispatch:
 
 jobs:
