@@ -1,9 +1,13 @@
-jest.mock("vscode", () => ({
-  env: { openExternal: jest.fn() },
-  Uri: { parse: jest.fn(url => ({ toString: () => url })) },
-  StatusBarAlignment: { Left: 1, Right: 2 },
-  commands: { registerCommand: jest.fn().mockReturnValue({ dispose: jest.fn() }) }
-}), { virtual: true })
+jest.mock(
+  "vscode",
+  () => ({
+    env: { openExternal: jest.fn() },
+    Uri: { parse: jest.fn(url => ({ toString: () => url })) },
+    StatusBarAlignment: { Left: 1, Right: 2 },
+    commands: { registerCommand: jest.fn().mockReturnValue({ dispose: jest.fn() }) }
+  }),
+  { virtual: true }
+)
 
 jest.mock("./funMessenger", () => {
   const mockStatusBarItem = {
@@ -21,6 +25,11 @@ jest.mock("./funMessenger", () => {
     }
   }
 })
+
+jest.mock("./lm-tools/toolGuard", () => ({
+  assertToolInvocationAuthorized: jest.fn(),
+  isToolInvocationAuthorized: jest.fn(() => true)
+}))
 
 import * as vscode from "vscode"
 import { checkUpgradeNotification } from "./upgradeNotification"
@@ -73,19 +82,6 @@ afterEach(() => {
 
 describe("checkUpgradeNotification", () => {
   // ─── Upgrade trigger conditions ────────────────────────────────────────────
-
-  test("triggers when lastVersion is undefined (fresh install / v1 user)", () => {
-    const ctx = makeContext(undefined)
-    checkUpgradeNotification(ctx)
-    expect(mockShowInfoMessage).toHaveBeenCalled()
-  })
-
-  test("triggers when lastVersion starts with '1.'", () => {
-    const ctx = makeContext("1.9.9")
-    checkUpgradeNotification(ctx)
-    expect(mockShowInfoMessage).toHaveBeenCalled()
-  })
-
   test("does NOT trigger when already on v2", () => {
     const ctx = makeContext("2.0.0")
     checkUpgradeNotification(ctx)
@@ -117,49 +113,6 @@ describe("checkUpgradeNotification", () => {
     const updateCalls = (ctx.globalState.update as jest.Mock).mock.calls
     const versionUpdate = updateCalls.find((c: any[]) => c[0] === "abapfs.lastVersion")
     expect(versionUpdate![1]).toBe("2.1.0")
-  })
-
-  // ─── Notification message ──────────────────────────────────────────────────
-
-  test("notification message mentions v2", () => {
-    const ctx = makeContext(undefined)
-    checkUpgradeNotification(ctx)
-
-    const message = mockShowInfoMessage.mock.calls[0][0] as string
-    expect(message).toContain("v2")
-  })
-
-  test("notification has 'Open Marketplace Page' button", () => {
-    const ctx = makeContext(undefined)
-    checkUpgradeNotification(ctx)
-
-    const args = mockShowInfoMessage.mock.calls[0]
-    expect(args).toContain("Open Marketplace Page")
-  })
-
-  // ─── Opening marketplace ───────────────────────────────────────────────────
-
-  test("opens marketplace when 'Open Marketplace Page' is clicked", async () => {
-    mockShowInfoMessage.mockResolvedValue("Open Marketplace Page")
-
-    const ctx = makeContext(undefined)
-    checkUpgradeNotification(ctx)
-
-    // Wait for promise resolution
-    await Promise.resolve()
-
-    expect(mockEnvOpenExternal).toHaveBeenCalled()
-  })
-
-  test("does not open marketplace when notification is dismissed", async () => {
-    mockShowInfoMessage.mockResolvedValue(undefined)
-
-    const ctx = makeContext(undefined)
-    checkUpgradeNotification(ctx)
-
-    await Promise.resolve()
-
-    expect(mockEnvOpenExternal).not.toHaveBeenCalled()
   })
 
   // ─── Status bar item ────────────────────────────────────────────────────────

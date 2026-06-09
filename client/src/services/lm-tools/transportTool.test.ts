@@ -20,6 +20,10 @@ jest.mock("./toolRegistry", () => ({
 jest.mock("../funMessenger", () => ({ funWindow: { activeTextEditor: undefined } }))
 jest.mock("../../views/transports", () => ({ readTransports: jest.fn() }))
 
+jest.mock("./toolGuard", () => ({
+  assertToolInvocationAuthorized: jest.fn(),
+  isToolInvocationAuthorized: jest.fn(() => true)
+}))
 import { ManageTransportRequestsTool } from "./transportTool"
 import { getClient } from "../../adt/conections"
 import { logTelemetry } from "../telemetry"

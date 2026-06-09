@@ -1,9 +1,13 @@
-jest.mock("vscode", () => ({
-  LanguageModelToolResult: jest.fn().mockImplementation((parts: any[]) => ({ parts })),
-  LanguageModelTextPart: jest.fn().mockImplementation((text: string) => ({ text })),
-  MarkdownString: jest.fn().mockImplementation((text: string) => ({ text })),
-  lm: { registerTool: jest.fn(() => ({ dispose: jest.fn() })) }
-}), { virtual: true })
+jest.mock(
+  "vscode",
+  () => ({
+    LanguageModelToolResult: jest.fn().mockImplementation((parts: any[]) => ({ parts })),
+    LanguageModelTextPart: jest.fn().mockImplementation((text: string) => ({ text })),
+    MarkdownString: jest.fn().mockImplementation((text: string) => ({ text })),
+    lm: { registerTool: jest.fn(() => ({ dispose: jest.fn() })) }
+  }),
+  { virtual: true }
+)
 
 jest.mock("../../adt/conections", () => ({
   getClient: jest.fn(),
@@ -18,6 +22,10 @@ jest.mock("abapfs", () => ({ isAbapFile: jest.fn() }))
 jest.mock("abap-adt-api", () => ({}))
 jest.mock("abapobject", () => ({ isAbapClassInclude: jest.fn() }))
 
+jest.mock("./toolGuard", () => ({
+  assertToolInvocationAuthorized: jest.fn(),
+  isToolInvocationAuthorized: jest.fn(() => true)
+}))
 import { VersionHistoryTool } from "./versionHistoryTool"
 import { getSearchService } from "../abapSearchService"
 import { getClient, getOrCreateRoot } from "../../adt/conections"
@@ -47,28 +55,19 @@ describe("VersionHistoryTool", () => {
   describe("prepareInvocation validation", () => {
     it("throws when objectName is empty", async () => {
       await expect(
-        tool.prepareInvocation(
-          makeOptions({ objectName: "Z", connectionId: "dev100" }),
-          mockToken
-        )
+        tool.prepareInvocation(makeOptions({ objectName: "Z", connectionId: "dev100" }), mockToken)
       ).rejects.toThrow("objectName is required and must be at least 2 characters")
     })
 
     it("throws when objectName has only 1 character", async () => {
       await expect(
-        tool.prepareInvocation(
-          makeOptions({ objectName: "Z", connectionId: "dev100" }),
-          mockToken
-        )
+        tool.prepareInvocation(makeOptions({ objectName: "Z", connectionId: "dev100" }), mockToken)
       ).rejects.toThrow("objectName")
     })
 
     it("throws when connectionId is missing", async () => {
       await expect(
-        tool.prepareInvocation(
-          makeOptions({ objectName: "ZCLASS" }),
-          mockToken
-        )
+        tool.prepareInvocation(makeOptions({ objectName: "ZCLASS" }), mockToken)
       ).rejects.toThrow("connectionId is required")
     })
 
@@ -153,10 +152,9 @@ describe("VersionHistoryTool", () => {
   describe("invoke", () => {
     it("logs telemetry", async () => {
       mockSearcher.searchObjects.mockResolvedValue([])
-      await tool.invoke(
-        makeOptions({ objectName: "ZCLASS", connectionId: "dev100" }),
-        mockToken
-      ).catch(() => {})
+      await tool
+        .invoke(makeOptions({ objectName: "ZCLASS", connectionId: "dev100" }), mockToken)
+        .catch(() => {})
       expect(logTelemetry).toHaveBeenCalledWith("tool_version_history_called", {
         connectionId: "dev100"
       })
@@ -164,19 +162,17 @@ describe("VersionHistoryTool", () => {
 
     it("normalizes connectionId to lowercase", async () => {
       mockSearcher.searchObjects.mockResolvedValue([])
-      await tool.invoke(
-        makeOptions({ objectName: "ZCLASS", connectionId: "DEV100" }),
-        mockToken
-      ).catch(() => {})
+      await tool
+        .invoke(makeOptions({ objectName: "ZCLASS", connectionId: "DEV100" }), mockToken)
+        .catch(() => {})
       expect(getSearchService).toHaveBeenCalledWith("dev100")
     })
 
     it("defaults to list_versions action", async () => {
       mockSearcher.searchObjects.mockResolvedValue([])
-      await tool.invoke(
-        makeOptions({ objectName: "ZCLASS", connectionId: "dev100" }),
-        mockToken
-      ).catch(() => {})
+      await tool
+        .invoke(makeOptions({ objectName: "ZCLASS", connectionId: "dev100" }), mockToken)
+        .catch(() => {})
       // Just verify it doesn't throw for default action
       expect(logTelemetry).toHaveBeenCalled()
     })

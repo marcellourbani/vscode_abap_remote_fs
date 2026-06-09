@@ -71,21 +71,23 @@ export let context: ExtensionContext
 // Feed polling service instance (module-level for deactivation)
 let feedPollingServiceInstance: FeedPollingService | undefined
 
-
 function checkPasswordsInSettings() {
-  setTimeout(() => {
-    const remotes = workspace.getConfiguration("abapfs")?.get<Record<string, any>>("remote")
-    if (!remotes) return
-    const systemsWithPasswords = Object.entries(remotes)
-      .filter(([_, cfg]) => typeof cfg?.password === "string" && cfg.password.trim().length > 0)
-      .map(([name]) => name)
-    if (systemsWithPasswords.length > 0) {
-      window.showWarningMessage(
-        `Security risk: ${systemsWithPasswords.length} SAP connection(s) have passwords stored in plain text settings (${systemsWithPasswords.join(", ")}). ` +
-          `Remove them from your settings JSON — ABAP FS will prompt for your password securely when connecting.`
-      )
-    }
-  }, 10 * 60 * 1000)
+  setTimeout(
+    () => {
+      const remotes = workspace.getConfiguration("abapfs")?.get<Record<string, any>>("remote")
+      if (!remotes) return
+      const systemsWithPasswords = Object.entries(remotes)
+        .filter(([_, cfg]) => typeof cfg?.password === "string" && cfg.password.trim().length > 0)
+        .map(([name]) => name)
+      if (systemsWithPasswords.length > 0) {
+        window.showWarningMessage(
+          `Security risk: ${systemsWithPasswords.length} SAP connection(s) have passwords stored in plain text settings (${systemsWithPasswords.join(", ")}). ` +
+            `Remove them from your settings JSON — ABAP FS will prompt for your password securely when connecting.`
+        )
+      }
+    },
+    10 * 60 * 1000
+  )
 }
 
 export async function activate(ctx: ExtensionContext): Promise<AbapFsApi> {
@@ -96,17 +98,19 @@ export async function activate(ctx: ExtensionContext): Promise<AbapFsApi> {
   // Register additional creatable types
   registerBdefType()
 
-  // 📊 Initialize Telemetry Services FIRST
-  try {
-    TelemetryService.initialize(ctx)
-    log("📊 Local Telemetry Service initialized - We promise we're not spying... much 👀")
+  // 📊 Initialize Telemetry Services in the background to avoid blocking activation
+  setImmediate(() => {
+    try {
+      TelemetryService.initialize(ctx)
+      log("📊 Local Telemetry Service initialized")
 
-    // Initialize App Insights
-    AppInsightsService.getInstance(ctx)
-    log("📊 App Insights ready to count your clicks (for science!)")
-  } catch (error) {
-    log(`❌ Telemetry Services said 'nope': ${error} (honestly, probably for the best 🤷)`)
-  }
+      // Initialize App Insights
+      AppInsightsService.getInstance(ctx)
+      log("📊 App Insights initialization started in background")
+    } catch (error) {
+      log(`❌ Telemetry Services initialization failed: ${error}`)
+    }
+  })
 
   // 🔐 Initialize SAP System Validator FIRST (before any client connections)
   try {

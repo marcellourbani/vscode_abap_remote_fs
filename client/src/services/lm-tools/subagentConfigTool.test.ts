@@ -1,28 +1,43 @@
-jest.mock("vscode", () => ({
-  LanguageModelToolResult: jest.fn().mockImplementation((parts: any[]) => ({ parts })),
-  LanguageModelTextPart: jest.fn().mockImplementation((text: string) => ({ text })),
-  MarkdownString: jest.fn().mockImplementation((value: string) => ({ value })),
-  CancellationTokenSource: jest.fn().mockImplementation(() => ({
-    token: { isCancellationRequested: false, onCancellationRequested: jest.fn() }
-  })),
-  lm: {
-    registerTool: jest.fn(() => ({ dispose: jest.fn() })),
-    onDidChangeChatModels: jest.fn(() => ({ dispose: jest.fn() }))
-  },
-  window: { activeTextEditor: undefined },
-  workspace: {
-    workspaceFolders: [],
-    getConfiguration: jest.fn(() => ({
-      get: jest.fn(),
-      update: jest.fn().mockResolvedValue(undefined)
+jest.mock(
+  "vscode",
+  () => ({
+    LanguageModelToolResult: jest.fn().mockImplementation((parts: any[]) => ({ parts })),
+    LanguageModelTextPart: jest.fn().mockImplementation((text: string) => ({ text })),
+    MarkdownString: jest.fn().mockImplementation((value: string) => ({ value })),
+    CancellationTokenSource: jest.fn().mockImplementation(() => ({
+      token: { isCancellationRequested: false, onCancellationRequested: jest.fn() }
     })),
-    onDidChangeConfiguration: jest.fn(() => ({ dispose: jest.fn() }))
-  },
-  ConfigurationTarget: { Workspace: 2 },
-  Uri: { parse: (s: string) => ({ authority: s.split("/")[2] || "", path: s, scheme: "adt", toString: () => s }) },
-  debug: { activeDebugSession: undefined }
-}), { virtual: true })
+    lm: {
+      registerTool: jest.fn(() => ({ dispose: jest.fn() })),
+      onDidChangeChatModels: jest.fn(() => ({ dispose: jest.fn() }))
+    },
+    window: { activeTextEditor: undefined },
+    workspace: {
+      workspaceFolders: [],
+      getConfiguration: jest.fn(() => ({
+        get: jest.fn(),
+        update: jest.fn().mockResolvedValue(undefined)
+      })),
+      onDidChangeConfiguration: jest.fn(() => ({ dispose: jest.fn() }))
+    },
+    ConfigurationTarget: { Workspace: 2 },
+    Uri: {
+      parse: (s: string) => ({
+        authority: s.split("/")[2] || "",
+        path: s,
+        scheme: "adt",
+        toString: () => s
+      })
+    },
+    debug: { activeDebugSession: undefined }
+  }),
+  { virtual: true }
+)
 
+jest.mock("./toolGuard", () => ({
+  assertToolInvocationAuthorized: jest.fn(),
+  isToolInvocationAuthorized: jest.fn(() => true)
+}))
 jest.mock("../../adt/conections", () => ({
   getClient: jest.fn(),
   abapUri: jest.fn()
@@ -36,14 +51,42 @@ jest.mock("../funMessenger", () => ({
     showWarningMessage: jest.fn()
   }
 }))
-jest.mock("./toolRegistry", () => ({ registerToolWithRegistry: jest.fn(() => ({ dispose: jest.fn() })) }))
-jest.mock("../abapCopilotLogger", () => ({ logCommands: { info: jest.fn(), error: jest.fn(), warn: jest.fn() } }))
+jest.mock("./toolRegistry", () => ({
+  registerToolWithRegistry: jest.fn(() => ({ dispose: jest.fn() }))
+}))
+jest.mock("../abapCopilotLogger", () => ({
+  logCommands: { info: jest.fn(), error: jest.fn(), warn: jest.fn() }
+}))
 
 jest.mock("../subagentRegistry", () => ({
   AGENT_REGISTRY: [
-    { id: "abap-discoverer", name: "Discoverer", tier: 1, tools: ["abap-search"], templateFile: "test.md", defaultModel: "", description: "Discovers ABAP objects" },
-    { id: "abap-reader", name: "Reader", tier: 1, tools: ["abap-read"], templateFile: "test2.md", defaultModel: "", description: "Reads ABAP code" },
-    { id: "abap-orchestrator", name: "Orchestrator", tier: 3, tools: null, templateFile: "test3.md", defaultModel: "", description: "Orchestrates tasks" }
+    {
+      id: "abap-discoverer",
+      name: "Discoverer",
+      tier: 1,
+      tools: ["abap-search"],
+      templateFile: "test.md",
+      defaultModel: "",
+      description: "Discovers ABAP objects"
+    },
+    {
+      id: "abap-reader",
+      name: "Reader",
+      tier: 1,
+      tools: ["abap-read"],
+      templateFile: "test2.md",
+      defaultModel: "",
+      description: "Reads ABAP code"
+    },
+    {
+      id: "abap-orchestrator",
+      name: "Orchestrator",
+      tier: 3,
+      tools: null,
+      templateFile: "test3.md",
+      defaultModel: "",
+      description: "Orchestrates tasks"
+    }
   ],
   getSubagentSettings: jest.fn(() => ({ enabled: false, models: {} })),
   getWorkspaceFolder: jest.fn(),
@@ -72,11 +115,7 @@ import {
   validateModelConfiguration,
   buildFullToolName
 } from "../subagentRegistry"
-import {
-  enableSubagentsCore,
-  disableSubagentsCore,
-  writeAgentFile
-} from "../subagentFileOps"
+import { enableSubagentsCore, disableSubagentsCore, writeAgentFile } from "../subagentFileOps"
 import { logTelemetry } from "../telemetry"
 
 // We need to import the class - it's not exported directly, only via registration function
@@ -296,9 +335,7 @@ describe("SubagentConfigTool", () => {
       ;(enableSubagentsCore as jest.Mock).mockResolvedValue({
         success: false,
         error: "validation_failed",
-        fileErrors: [
-          { agentId: "abap-discoverer", errors: ["Invalid model name"] }
-        ]
+        fileErrors: [{ agentId: "abap-discoverer", errors: ["Invalid model name"] }]
       })
 
       const result: any = await tool.invoke(makeOptions({ action: "enable" }), mockToken)
@@ -341,10 +378,7 @@ describe("SubagentConfigTool", () => {
     })
 
     it("returns help when configurations is undefined", async () => {
-      const result: any = await tool.invoke(
-        makeOptions({ action: "configure" }),
-        mockToken
-      )
+      const result: any = await tool.invoke(makeOptions({ action: "configure" }), mockToken)
       expect(result.parts[0].text).toContain("No configurations provided")
     })
 

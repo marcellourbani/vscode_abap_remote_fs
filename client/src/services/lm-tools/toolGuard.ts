@@ -1,4 +1,3 @@
-
 /**
  * LM Tool Security Guard
  *
@@ -54,7 +53,7 @@ export function createMcpAuthorizedOptions<T>(input: T): McpAuthorizedOptions<T>
  * Validates that a tool invocation is authorized.
  * Returns true if authorized, false if blocked.
  */
-function isToolInvocationAuthorized(
+export function isToolInvocationAuthorized(
   options: vscode.LanguageModelToolInvocationOptions<any>
 ): boolean {
   if (options.toolInvocationToken) return true

@@ -1,10 +1,14 @@
-jest.mock("vscode", () => ({
-  LanguageModelToolResult: jest.fn().mockImplementation((parts: any[]) => ({ parts })),
-  LanguageModelTextPart: jest.fn().mockImplementation((text: string) => ({ text })),
-  MarkdownString: jest.fn().mockImplementation((text: string) => ({ text })),
-  lm: { registerTool: jest.fn(() => ({ dispose: jest.fn() })) },
-  Uri: { file: jest.fn((p: string) => ({ fsPath: p })) }
-}), { virtual: true })
+jest.mock(
+  "vscode",
+  () => ({
+    LanguageModelToolResult: jest.fn().mockImplementation((parts: any[]) => ({ parts })),
+    LanguageModelTextPart: jest.fn().mockImplementation((text: string) => ({ text })),
+    MarkdownString: jest.fn().mockImplementation((text: string) => ({ text })),
+    lm: { registerTool: jest.fn(() => ({ dispose: jest.fn() })) },
+    Uri: { file: jest.fn((p: string) => ({ fsPath: p })) }
+  }),
+  { virtual: true }
+)
 
 jest.mock("../../adt/conections", () => ({
   getClient: jest.fn(),
@@ -26,6 +30,10 @@ jest.mock("../../config", () => ({
       byId: jest.fn()
     }))
   }
+}))
+jest.mock("./toolGuard", () => ({
+  assertToolInvocationAuthorized: jest.fn(),
+  isToolInvocationAuthorized: jest.fn(() => true)
 }))
 jest.mock("../funMessenger", () => ({ funWindow: { activeTextEditor: undefined } }))
 jest.mock("abap-adt-api", () => ({
@@ -62,10 +70,14 @@ describe("GetAbapObjectUrlTool", () => {
   beforeEach(() => {
     tool = new GetAbapObjectUrlTool()
     jest.clearAllMocks()
-    ;(RemoteManager.get as jest.Mock).mockReturnValue({ byId: jest.fn().mockReturnValue(mockConfig) })
+    ;(RemoteManager.get as jest.Mock).mockReturnValue({
+      byId: jest.fn().mockReturnValue(mockConfig)
+    })
     ;(SapGuiPanel.createOrShow as jest.Mock).mockReturnValue(mockPanel)
     ;(SapGuiPanel.getTransactionInfo as jest.Mock).mockReturnValue({ transaction: "SE38" })
-    mockPanel.buildWebGuiUrl.mockResolvedValue("https://sap.example.com/sap/bc/gui/sap/its/webgui?~transaction=SE38")
+    mockPanel.buildWebGuiUrl.mockResolvedValue(
+      "https://sap.example.com/sap/bc/gui/sap/its/webgui?~transaction=SE38"
+    )
     ;(window as any).activeTextEditor = undefined
   })
 
@@ -97,20 +109,14 @@ describe("GetAbapObjectUrlTool", () => {
 
   describe("invoke", () => {
     it("logs telemetry", async () => {
-      await tool.invoke(
-        makeOptions({ objectName: "ZPROG", connectionId: "dev100" }),
-        mockToken
-      )
+      await tool.invoke(makeOptions({ objectName: "ZPROG", connectionId: "dev100" }), mockToken)
       expect(logTelemetry).toHaveBeenCalledWith("tool_get_abap_object_url_called", {
         connectionId: "dev100"
       })
     })
 
     it("normalizes connectionId to lowercase", async () => {
-      await tool.invoke(
-        makeOptions({ objectName: "ZPROG", connectionId: "DEV100" }),
-        mockToken
-      )
+      await tool.invoke(makeOptions({ objectName: "ZPROG", connectionId: "DEV100" }), mockToken)
       expect(RemoteManager.get().byId).toHaveBeenCalledWith("dev100")
     })
 
@@ -133,15 +139,14 @@ describe("GetAbapObjectUrlTool", () => {
     })
 
     it("disposes panel after URL is built", async () => {
-      await tool.invoke(
-        makeOptions({ objectName: "ZPROG", connectionId: "dev100" }),
-        mockToken
-      )
+      await tool.invoke(makeOptions({ objectName: "ZPROG", connectionId: "dev100" }), mockToken)
       expect(mockPanel.dispose).toHaveBeenCalled()
     })
 
     it("throws when connection config not found", async () => {
-      ;(RemoteManager.get as jest.Mock).mockReturnValue({ byId: jest.fn().mockReturnValue(undefined) })
+      ;(RemoteManager.get as jest.Mock).mockReturnValue({
+        byId: jest.fn().mockReturnValue(undefined)
+      })
       await expect(
         tool.invoke(makeOptions({ objectName: "ZPROG", connectionId: "dev100" }), mockToken)
       ).rejects.toThrow("Connection configuration not found")
@@ -149,9 +154,9 @@ describe("GetAbapObjectUrlTool", () => {
 
     it("throws when no connectionId and no active editor", async () => {
       ;(window as any).activeTextEditor = undefined
-      await expect(
-        tool.invoke(makeOptions({ objectName: "ZPROG" }), mockToken)
-      ).rejects.toThrow("No connection ID provided")
+      await expect(tool.invoke(makeOptions({ objectName: "ZPROG" }), mockToken)).rejects.toThrow(
+        "No connection ID provided"
+      )
     })
 
     it("uses active editor authority when no connectionId", async () => {

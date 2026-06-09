@@ -1,9 +1,13 @@
-jest.mock("vscode", () => ({
-  LanguageModelToolResult: jest.fn().mockImplementation((parts: any[]) => ({ parts })),
-  LanguageModelTextPart: jest.fn().mockImplementation((text: string) => ({ text })),
-  MarkdownString: jest.fn().mockImplementation((text: string) => ({ text })),
-  lm: { registerTool: jest.fn(() => ({ dispose: jest.fn() })) }
-}), { virtual: true })
+jest.mock(
+  "vscode",
+  () => ({
+    LanguageModelToolResult: jest.fn().mockImplementation((parts: any[]) => ({ parts })),
+    LanguageModelTextPart: jest.fn().mockImplementation((text: string) => ({ text })),
+    MarkdownString: jest.fn().mockImplementation((text: string) => ({ text })),
+    lm: { registerTool: jest.fn(() => ({ dispose: jest.fn() })) }
+  }),
+  { virtual: true }
+)
 
 jest.mock("../../adt/conections", () => ({
   getClient: jest.fn(),
@@ -20,6 +24,10 @@ jest.mock("./shared", () => ({
   resolveCorrectURI: jest.fn((uri: string) => Promise.resolve(uri))
 }))
 
+jest.mock("./toolGuard", () => ({
+  assertToolInvocationAuthorized: jest.fn(),
+  isToolInvocationAuthorized: jest.fn(() => true)
+}))
 import { GetObjectByURITool } from "./getObjectByUriTool"
 import { getClient } from "../../adt/conections"
 import { logTelemetry } from "../telemetry"

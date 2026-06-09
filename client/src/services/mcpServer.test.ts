@@ -47,7 +47,9 @@ jest.mock("./lm-tools/toolRegistry", () => ({
 // Mock MCP SDK modules
 jest.mock(
   "@modelcontextprotocol/sdk/server/mcp.js",
-  () => ({ McpServer: jest.fn().mockImplementation(() => ({ registerTool: jest.fn(), connect: jest.fn() })) }),
+  () => ({
+    McpServer: jest.fn().mockImplementation(() => ({ registerTool: jest.fn(), connect: jest.fn() }))
+  }),
   { virtual: true }
 )
 jest.mock(
@@ -61,8 +63,22 @@ jest.mock(
   { virtual: true }
 )
 
+jest.mock("./lm-tools/toolGuard", () => ({
+  assertToolInvocationAuthorized: jest.fn(),
+  isToolInvocationAuthorized: jest.fn(() => true)
+}))
 import * as vscode from "vscode"
-import { initializeMcpServer, getMcpServerStatus, jsonSchemaPropertyToZod, jsonSchemaToZod, validateApiKey } from "./mcpServer"
+import {
+  initializeMcpServer,
+  getMcpServerStatus,
+  jsonSchemaPropertyToZod,
+  jsonSchemaToZod,
+  validateApiKey
+} from "./mcpServer"
+
+jest.mock("../langClient", () => ({
+  triggerSyntaxCheck: jest.fn()
+}))
 
 describe("mcpServer", () => {
   const mockContext = {
@@ -155,7 +171,10 @@ describe("mcpServer - API key validation logic", () => {
     })
     // The module-level warning flag resets would require server restart
     // Verify indirectly via initializeMcpServer with autoStart=false not throwing
-    const ctx = { subscriptions: [] as any[], globalState: { get: jest.fn(), update: jest.fn() } } as any
+    const ctx = {
+      subscriptions: [] as any[],
+      globalState: { get: jest.fn(), update: jest.fn() }
+    } as any
     await expect(initializeMcpServer(ctx)).resolves.not.toThrow()
   })
 })
@@ -197,10 +216,7 @@ describe("jsonSchemaPropertyToZod", () => {
   })
 
   it("converts array of strings", () => {
-    const zodType = jsonSchemaPropertyToZod(
-      { type: "array", items: { type: "string" } },
-      true
-    )
+    const zodType = jsonSchemaPropertyToZod({ type: "array", items: { type: "string" } }, true)
     expect(zodType.parse(["a", "b"])).toEqual(["a", "b"])
     expect(() => zodType.parse([1, 2])).toThrow()
   })
@@ -256,10 +272,7 @@ describe("jsonSchemaPropertyToZod", () => {
   })
 
   it("attaches description when present", () => {
-    const zodType = jsonSchemaPropertyToZod(
-      { type: "string", description: "A name field" },
-      true
-    )
+    const zodType = jsonSchemaPropertyToZod({ type: "string", description: "A name field" }, true)
     expect(zodType.description).toBe("A name field")
   })
 

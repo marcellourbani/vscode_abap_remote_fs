@@ -8,8 +8,8 @@ import * as os from "os"
 import * as crypto from "crypto"
 import { log } from "../lib"
 
-// Application Insights SDK
-import * as appInsights from "applicationinsights"
+// Application Insights SDK imported lazily only if telemetry is enabled
+let appInsights: any = null
 
 interface ParsedTelemetry {
   type: "command" | "tool" | "code_change" | "unknown"
@@ -37,7 +37,8 @@ export class AppInsightsService {
       vscode.extensions.getExtension("murbani.vscode-abap-remote-fs")?.packageJSON?.version ||
       "unknown"
 
-    this.initialize()
+    // Defer initialization to avoid blocking the main extension activation flow
+    setImmediate(() => this.initialize())
 
     // Register cleanup on extension deactivation (same pattern as local telemetry)
     context.subscriptions.push(
@@ -59,11 +60,23 @@ export class AppInsightsService {
 
   private initialize(): void {
     try {
+      // Respect VS Code telemetry settings
+      if (!vscode.env.isTelemetryEnabled) {
+        log("AppInsights: Telemetry is disabled in VS Code settings, skipping initialization")
+        return
+      }
+
       const connectionString = "your-key-here"
 
       if (!connectionString || connectionString.includes("your-key-here")) {
         log("AppInsights: Connection string not configured, skipping initialization")
         return
+      }
+
+      // Lazy load SDK only when we are sure we want to initialize
+      if (!appInsights) {
+        log("AppInsights: Loading SDK...")
+        appInsights = require("applicationinsights")
       }
 
       // Set environment variables for cloud role information (recommended approach for newer SDK)
@@ -80,7 +93,8 @@ export class AppInsightsService {
         .setAutoCollectConsole(false) // Disable - we don't want console logs
         .setUseDiskRetryCaching(true) // Keep - helps with connectivity
         .setSendLiveMetrics(false) // Disable - we don't need live metrics
-        .setInternalLogging(true, true)
+        .setAutoDependencyCorrelation(false) // Disable - stops CorrelationIdManager from starting
+        .setInternalLogging(false, false) // Disable internal logging to avoid blockage and console spam
 
       // Start Application Insights
       appInsights.start()
@@ -88,12 +102,13 @@ export class AppInsightsService {
       // Set custom flush interval to 30 seconds
       appInsights.defaultClient.config.maxBatchIntervalMs = 30000 // 30 seconds
 
-      // Disable additional auto-collection features
+      // Disable additional auto-collection features and correlation management
       appInsights.defaultClient.config.enableAutoCollectConsole = false
       appInsights.defaultClient.config.enableAutoCollectDependencies = false
       appInsights.defaultClient.config.enableAutoCollectExceptions = false
       appInsights.defaultClient.config.enableAutoCollectPerformance = false
       appInsights.defaultClient.config.enableAutoCollectRequests = false
+      appInsights.defaultClient.config.enableAutoDependencyCorrelation = false // Disable correlation to speed up cold starts
 
       // Set global properties for all telemetry
       appInsights.defaultClient.commonProperties = {

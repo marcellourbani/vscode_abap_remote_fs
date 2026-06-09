@@ -1,24 +1,37 @@
-jest.mock("vscode", () => ({
-  LanguageModelToolResult: jest.fn().mockImplementation((parts: any[]) => ({ parts })),
-  LanguageModelTextPart: jest.fn().mockImplementation((text: string) => ({ text })),
-  MarkdownString: jest.fn().mockImplementation((value: string) => ({ value })),
-  CancellationTokenSource: jest.fn().mockImplementation(() => ({
-    token: { isCancellationRequested: false, onCancellationRequested: jest.fn() }
-  })),
-  lm: { registerTool: jest.fn(() => ({ dispose: jest.fn() })) },
-  window: { activeTextEditor: undefined },
-  workspace: {
-    workspaceFolders: [],
-    getConfiguration: jest.fn(() => ({ get: jest.fn() }))
-  },
-  Uri: {
-    parse: (s: string) => ({ authority: s.split("/")[2] || "", path: s, scheme: "adt", toString: () => s }),
-    file: (s: string) => ({ fsPath: s, scheme: "file", toString: () => `file://${s}` })
-  },
-  env: { openExternal: jest.fn() },
-  debug: { activeDebugSession: undefined }
-}), { virtual: true })
+jest.mock(
+  "vscode",
+  () => ({
+    LanguageModelToolResult: jest.fn().mockImplementation((parts: any[]) => ({ parts })),
+    LanguageModelTextPart: jest.fn().mockImplementation((text: string) => ({ text })),
+    MarkdownString: jest.fn().mockImplementation((value: string) => ({ value })),
+    CancellationTokenSource: jest.fn().mockImplementation(() => ({
+      token: { isCancellationRequested: false, onCancellationRequested: jest.fn() }
+    })),
+    lm: { registerTool: jest.fn(() => ({ dispose: jest.fn() })) },
+    window: { activeTextEditor: undefined },
+    workspace: {
+      workspaceFolders: [],
+      getConfiguration: jest.fn(() => ({ get: jest.fn() }))
+    },
+    Uri: {
+      parse: (s: string) => ({
+        authority: s.split("/")[2] || "",
+        path: s,
+        scheme: "adt",
+        toString: () => s
+      }),
+      file: (s: string) => ({ fsPath: s, scheme: "file", toString: () => `file://${s}` })
+    },
+    env: { openExternal: jest.fn() },
+    debug: { activeDebugSession: undefined }
+  }),
+  { virtual: true }
+)
 
+jest.mock("./toolGuard", () => ({
+  assertToolInvocationAuthorized: jest.fn(),
+  isToolInvocationAuthorized: jest.fn(() => true)
+}))
 jest.mock("../../adt/conections", () => ({
   getClient: jest.fn(),
   abapUri: jest.fn()
@@ -32,8 +45,12 @@ jest.mock("../funMessenger", () => ({
     showWarningMessage: jest.fn()
   }
 }))
-jest.mock("./toolRegistry", () => ({ registerToolWithRegistry: jest.fn(() => ({ dispose: jest.fn() })) }))
-jest.mock("../abapCopilotLogger", () => ({ logCommands: { info: jest.fn(), error: jest.fn(), warn: jest.fn() } }))
+jest.mock("./toolRegistry", () => ({
+  registerToolWithRegistry: jest.fn(() => ({ dispose: jest.fn() }))
+}))
+jest.mock("../abapCopilotLogger", () => ({
+  logCommands: { info: jest.fn(), error: jest.fn(), warn: jest.fn() }
+}))
 
 const mockCreateDocument = jest.fn().mockResolvedValue(Buffer.from("test"))
 const mockSaveDocument = jest.fn().mockResolvedValue("/path/to/doc.docx")
@@ -81,28 +98,19 @@ describe("CreateTestDocumentationTool", () => {
   describe("prepareInvocation", () => {
     it("counts scenarios correctly", async () => {
       const scenarios = makeScenarios(3)
-      const result: any = await tool.prepareInvocation(
-        makeOptions({ scenarios }),
-        mockToken
-      )
+      const result: any = await tool.prepareInvocation(makeOptions({ scenarios }), mockToken)
       expect(result.invocationMessage).toContain("3 scenarios")
     })
 
     it("counts total screenshots across all scenarios", async () => {
       const scenarios = makeScenarios(2, 3) // 2 scenarios, 3 screenshots each = 6 total
-      const result: any = await tool.prepareInvocation(
-        makeOptions({ scenarios }),
-        mockToken
-      )
+      const result: any = await tool.prepareInvocation(makeOptions({ scenarios }), mockToken)
       expect((result.confirmationMessages as any).message.value).toContain("6 screenshot(s)")
     })
 
     it("counts zero screenshots when scenarios have none", async () => {
       const scenarios = makeScenarios(2, 0)
-      const result: any = await tool.prepareInvocation(
-        makeOptions({ scenarios }),
-        mockToken
-      )
+      const result: any = await tool.prepareInvocation(makeOptions({ scenarios }), mockToken)
       expect((result.confirmationMessages as any).message.value).toContain("0 screenshot(s)")
     })
 
@@ -117,10 +125,7 @@ describe("CreateTestDocumentationTool", () => {
 
     it("does not include title section when reportTitle is omitted", async () => {
       const scenarios = makeScenarios(1)
-      const result: any = await tool.prepareInvocation(
-        makeOptions({ scenarios }),
-        mockToken
-      )
+      const result: any = await tool.prepareInvocation(makeOptions({ scenarios }), mockToken)
       expect((result.confirmationMessages as any).message.value).not.toContain("Title:")
     })
 
@@ -135,10 +140,7 @@ describe("CreateTestDocumentationTool", () => {
 
     it("handles single scenario with single screenshot", async () => {
       const scenarios = makeScenarios(1, 1)
-      const result: any = await tool.prepareInvocation(
-        makeOptions({ scenarios }),
-        mockToken
-      )
+      const result: any = await tool.prepareInvocation(makeOptions({ scenarios }), mockToken)
       expect((result.confirmationMessages as any).message.value).toContain("1 scenario(s)")
       expect((result.confirmationMessages as any).message.value).toContain("1 screenshot(s)")
     })
@@ -172,36 +174,21 @@ describe("CreateTestDocumentationTool", () => {
 
     it("calls saveDocument after createDocument", async () => {
       const scenarios = makeScenarios(1)
-      await tool.invoke(
-        makeOptions({ scenarios, reportTitle: "My Report" }),
-        mockToken
-      )
+      await tool.invoke(makeOptions({ scenarios, reportTitle: "My Report" }), mockToken)
       expect(mockCreateDocument).toHaveBeenCalled()
-      expect(mockSaveDocument).toHaveBeenCalledWith(
-        expect.any(Buffer),
-        "My_Report.docx"
-      )
+      expect(mockSaveDocument).toHaveBeenCalledWith(expect.any(Buffer), "My_Report.docx")
     })
 
     it("uses default filename when reportTitle is not provided", async () => {
       const scenarios = makeScenarios(1)
       await tool.invoke(makeOptions({ scenarios }), mockToken)
-      expect(mockSaveDocument).toHaveBeenCalledWith(
-        expect.any(Buffer),
-        undefined
-      )
+      expect(mockSaveDocument).toHaveBeenCalledWith(expect.any(Buffer), undefined)
     })
 
     it("sanitizes reportTitle for filename", async () => {
       const scenarios = makeScenarios(1)
-      await tool.invoke(
-        makeOptions({ scenarios, reportTitle: "My Report: Test/2026" }),
-        mockToken
-      )
-      expect(mockSaveDocument).toHaveBeenCalledWith(
-        expect.any(Buffer),
-        "My_Report__Test_2026.docx"
-      )
+      await tool.invoke(makeOptions({ scenarios, reportTitle: "My Report: Test/2026" }), mockToken)
+      expect(mockSaveDocument).toHaveBeenCalledWith(expect.any(Buffer), "My_Report__Test_2026.docx")
     })
 
     it("returns result with scenario count", async () => {
@@ -260,27 +247,27 @@ describe("CreateTestDocumentationTool", () => {
       mockCreateDocument.mockRejectedValue(new Error("Disk full"))
       const scenarios = makeScenarios(1)
 
-      await expect(
-        tool.invoke(makeOptions({ scenarios }), mockToken)
-      ).rejects.toThrow("Failed to create test documentation: Disk full")
+      await expect(tool.invoke(makeOptions({ scenarios }), mockToken)).rejects.toThrow(
+        "Failed to create test documentation: Disk full"
+      )
     })
 
     it("throws with docx install hint when module not found", async () => {
       mockCreateDocument.mockRejectedValue(new Error("Cannot find module 'docx'"))
       const scenarios = makeScenarios(1)
 
-      await expect(
-        tool.invoke(makeOptions({ scenarios }), mockToken)
-      ).rejects.toThrow("npm install docx")
+      await expect(tool.invoke(makeOptions({ scenarios }), mockToken)).rejects.toThrow(
+        "npm install docx"
+      )
     })
 
     it("handles non-Error thrown values", async () => {
       mockCreateDocument.mockRejectedValue("string error")
       const scenarios = makeScenarios(1)
 
-      await expect(
-        tool.invoke(makeOptions({ scenarios }), mockToken)
-      ).rejects.toThrow("string error")
+      await expect(tool.invoke(makeOptions({ scenarios }), mockToken)).rejects.toThrow(
+        "string error"
+      )
     })
 
     it("handles very long report title", async () => {
@@ -292,10 +279,7 @@ describe("CreateTestDocumentationTool", () => {
       )
       expect(result.parts[0].text).toContain(longTitle)
       // Also verify filename sanitization still works
-      expect(mockSaveDocument).toHaveBeenCalledWith(
-        expect.any(Buffer),
-        `${"A".repeat(500)}.docx`
-      )
+      expect(mockSaveDocument).toHaveBeenCalledWith(expect.any(Buffer), `${"A".repeat(500)}.docx`)
     })
 
     it("handles null savedPath gracefully", async () => {

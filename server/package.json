@@ -36,6 +36,9 @@
     "webpack": "^5.101.3",
     "webpack-cli": "^5.1.4"
   },
+  "overrides": {
+    "vscode-languageserver-protocol": "3.17.5"
+  },
   "scripts": {
     "clean": "rimraf ./out ./dist node_modules",
     "build": "npm run webpack",
