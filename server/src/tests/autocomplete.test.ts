@@ -1,4 +1,4 @@
-import { CompletionItem } from "vscode-languageserver"
+import { CompletionItem } from "vscode-languageserver-protocol"
 import { formatItem } from "../completionutils"
 
 test("formatItem_star_prefix", () => {
