@@ -1,9 +1,7 @@
-import { AbapObjectCreator } from "../creator"
-import { AbapObjectBase } from ".."
+import { AbapObjectBase } from "../AbapObject"
 import { NodeStructure } from "abap-adt-api"
 
 const tag = Symbol("AbapFunctionGroup")
-@AbapObjectCreator("FUGR/F")
 export class AbapFunctionGroup extends AbapObjectBase {
   [tag] = true
   readonly type = "FUGR/F"

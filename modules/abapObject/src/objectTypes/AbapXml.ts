@@ -1,4 +1,6 @@
-import { AbapObjectCreator, AbapObjectBase, AbapObject, AbapObjectService } from ".."
+import { AbapObjectBase, AbapObject } from "../AbapObject"
+import { AbapObjectService } from "../AOService"
+import { getObjectTypeConfig } from "../registry"
 const tag = Symbol("AbapXml")
 
 const extension = (type: string) => {
@@ -9,17 +11,6 @@ const extension = (type: string) => {
   return `.${tpext.toLowerCase()}.xml`
 }
 
-@AbapObjectCreator(
-  "MSAG/N",
-  "XSLT/VT",
-  "HTTP",
-  "SRVB/SVB",
-  "SUSO/B",
-  "AUTH",
-  "SUSH",
-  "DTEL/DE",
-  "SIA6"
-)
 export class AbapXml extends AbapObjectBase {
   public [tag] = true
   constructor(
@@ -35,7 +26,14 @@ export class AbapXml extends AbapObjectBase {
     super(type, name, path, false, techName, parent, sapGuiUri, client)
   }
   get extension() {
+    const config = getObjectTypeConfig(this.type)
+    if (config?.extension) return config.extension
     return extension(this.type)
+  }
+  get gui_objects(): "yes" | "no" | "better" {
+    const config = getObjectTypeConfig(this.type)
+    if (config) return config.gui_objects
+    return "better"
   }
   contentsPath() {
     if (this.type === "XSLT/VT") return super.contentsPath()

@@ -7,6 +7,7 @@ import {
 } from "abap-adt-api"
 import { AbapObjectService } from "./AOService"
 import { ObjectErrors } from "./AOError"
+import { getObjectTypeConfig } from "./registry"
 const SAPGUIONLY = "This object type is not supported in VS Code."
 const NSSLASH = "\u2215" // used to be hardcoded as "／", aka "\uFF0F"
 export const PACKAGE = "DEVC/K"
@@ -62,6 +63,7 @@ export interface AbapObject {
   readonly sapGuiUri: string
   /** supported or only sapgui */
   readonly supported: boolean
+  readonly gui_objects: "yes" | "no" | "better"
   readonly owner?: string
   readonly modtime: number
   readonly version: ObjectVersion | undefined
@@ -127,6 +129,12 @@ export class AbapObjectBase implements AbapObject {
     this._structure = value
   }
   readonly supported: boolean
+
+  get gui_objects(): "yes" | "no" | "better" {
+    const config = getObjectTypeConfig(this.type)
+    if (config) return config.gui_objects
+    return this.supported ? "no" : "yes"
+  }
 
   get canBeWritten() {
     return this.supported && !this.expandable

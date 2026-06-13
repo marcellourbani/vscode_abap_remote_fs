@@ -1,7 +1,8 @@
-import { AbapObjectCreator, AbapObjectBase, AbapObject, AbapObjectService } from ".."
+import { AbapObjectBase, AbapObject } from "../AbapObject"
+import { AbapObjectService } from "../AOService"
+import { getObjectTypeConfig } from "../registry"
 const tag = Symbol("AbapSimple")
 
-@AbapObjectCreator("TABL/DT", "TABL/DS", "SRFC", "TRAN/T", "PARA/R")
 export class AbapSimple extends AbapObjectBase {
   [tag] = true
   constructor(
@@ -15,6 +16,11 @@ export class AbapSimple extends AbapObjectBase {
     client: AbapObjectService
   ) {
     super(type, name, path, false, techName, parent, sapGuiUri, client)
+  }
+  get gui_objects(): "yes" | "no" | "better" {
+    const config = getObjectTypeConfig(this.type)
+    if (config) return config.gui_objects
+    return "yes"
   }
 }
 

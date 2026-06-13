@@ -8,10 +8,8 @@ import {
   Node
 } from "abap-adt-api"
 import { ObjectErrors } from "../AOError"
-import { AbapObjectCreator } from "../creator"
 const tag = Symbol("AbapClass")
 
-@AbapObjectCreator("CLAS/OC")
 export class AbapClass extends AbapObjectBase {
   [tag] = true
   private _cstructure: AbapClassStructure | undefined
