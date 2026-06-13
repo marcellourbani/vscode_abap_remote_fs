@@ -3927,16 +3927,6 @@
           "when": "resourceScheme == adt && editorLangId =~ /abap|cds|xml/ && !inChat"
         },
         {
-          "command": "abapfs.showBlame",
-          "group": "navigation@0.5",
-          "when": "resourceScheme == adt && editorLangId == abap && abapfs:blameAvailable && !abapfs:blameActive && !inChat"
-        },
-        {
-          "command": "abapfs.hideBlame",
-          "group": "navigation@0.5",
-          "when": "resourceScheme == adt && editorLangId == abap && abapfs:blameActive && !inChat"
-        },
-        {
           "command": "abapfs.activate",
           "group": "navigation",
           "when": "resourceScheme == adt && editorLangId =~ /abap|cds|xml/ && abapfs:showActivate "
