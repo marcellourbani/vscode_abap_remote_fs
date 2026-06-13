@@ -760,16 +760,17 @@ export class AdtCommands {
   @command(AbapFsCommands.runInGui)
   private static async executeAbap() {
     try {
-      log("Execute ABAP")
+      log("Open/Run in SAP GUI")
       const uri = currentUri()
       if (!uri) return
       const fsRoot = await pickAdtRoot(uri)
       if (!fsRoot) return
-      logTelemetry("command_sap_gui_desktop_called", { connectionId: fsRoot.uri.authority })
+      logTelemetry("command_sap_gui_called", { connectionId: fsRoot.uri.authority })
       const file = uriRoot(fsRoot.uri).getNode(uri.path)
       if (!isAbapStat(file)) return
 
       await AdtCommands.autoStartDebuggerIfNeeded(fsRoot.uri.authority)
+      // Mode is determined by the connection's sapGui.guiType config (SAPGUI | WEBGUI_UNSAFE | WEBGUI_UNSAFE_EMBEDDED | WEBGUI_CONTROLLED)
       await openInGui(fsRoot.uri.authority, file.object)
     } catch (e) {
       return window.showErrorMessage(caughtToString(e))
