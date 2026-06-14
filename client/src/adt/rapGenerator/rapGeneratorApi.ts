@@ -44,29 +44,20 @@ function qs(params: Record<string, string | undefined>): string {
 
 const patched = new WeakSet<ADTClient>()
 
-function ensureJsonInterceptor(client: ADTClient): void {
-  if (patched.has(client)) return
-  patched.add(client)
-  try {
-    const axios = (client as any).httpClient?.httpclient?.axios
-    if (!axios?.interceptors?.response) return
-    axios.interceptors.response.use((resp: any) => {
-      if (resp.data && typeof resp.data === "object" && resp.config?.url?.includes("/businessservices/generators")) {
-        resp.data = JSON.stringify(resp.data)
-      }
-      return resp
-    })
-  } catch { /* best effort */ }
-}
-
-// ── XML Helpers ──────────────────────────────────────────────────────
-
 function parseValidation(body: string | undefined): RapGeneratorValidationResult {
   if (!body) return { severity: "error", shortText: "Empty response from server" }
-  const sev = body.match(/<SEVERITY>([\s\S]*?)<\/SEVERITY>/i)?.[1]?.trim().toLowerCase() || "ok"
+  const sev =
+    body
+      .match(/<SEVERITY>([\s\S]*?)<\/SEVERITY>/i)?.[1]
+      ?.trim()
+      .toLowerCase() || "ok"
   const txt = decode(body.match(/<SHORT_TEXT>([\s\S]*?)<\/SHORT_TEXT>/i)?.[1]?.trim() || "")
   const lng = decode(body.match(/<LONG_TEXT>([\s\S]*?)<\/LONG_TEXT>/i)?.[1]?.trim() || "")
-  return { severity: sev as RapGeneratorValidationResult["severity"], shortText: txt, longText: lng || undefined }
+  return {
+    severity: sev as RapGeneratorValidationResult["severity"],
+    shortText: txt,
+    longText: lng || undefined
+  }
 }
 
 function parseObjectRefs(body: string | undefined): RapGeneratorPreviewObject[] {
@@ -82,7 +73,12 @@ function parseObjectRefs(body: string | undefined): RapGeneratorPreviewObject[] 
       const match = attrs.match(new RegExp(`(?:\\w+:)?${n}\\s*=\\s*"([^"]*)"`))
       return match?.[1] || ""
     }
-    out.push({ uri: attr("uri"), type: attr("type"), name: attr("name"), description: attr("description") })
+    out.push({
+      uri: attr("uri"),
+      type: attr("type"),
+      name: attr("name"),
+      description: attr("description")
+    })
   }
   return out
 }
@@ -124,7 +120,6 @@ export async function rapGenGetContent(
   refObjectUri: string,
   packageName: string
 ): Promise<RapGeneratorContent> {
-  ensureJsonInterceptor(client)
   const q = qs({ referencedObject: refObjectUri, package: packageName })
   const resp = await client.httpClient.request(`${url(genId, "content")}${q}`, {
     method: "GET",
@@ -188,7 +183,6 @@ export async function rapGenGenerate(
   transport: string,
   content: RapGeneratorContent
 ): Promise<RapGeneratorPreviewObject[]> {
-  ensureJsonInterceptor(client)
   // corrNr must always be present in the query, even if empty (for $TMP)
   const q = `?referencedObject=${encodeURIComponent(refObjectUri)}&corrNr=${encodeURIComponent(transport)}`
   const resp = await client.httpClient.request(`${url(genId)}${q}`, {
@@ -204,7 +198,6 @@ export async function rapGenIsAvailable(
   client: ADTClient,
   genId: RapGeneratorId = "uiservice"
 ): Promise<boolean> {
-  ensureJsonInterceptor(client)
   try {
     const q = qs({ referencedObject: "", package: "", checks: "PACKAGE" })
     await client.httpClient.request(`${url(genId, "validation")}${q}`, { method: "GET" })
@@ -228,14 +221,18 @@ export async function rapGenPublishService(
     `<adtcore:objectReference adtcore:type="SCGR" adtcore:name="${srvbName}"/>` +
     `</adtcore:objectReferences>`
   try {
-    const resp = await client.httpClient.request("/sap/bc/adt/businessservices/odatav4/publishjobs", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/xml",
-        Accept: "application/xml, application/vnd.sap.as+xml;charset=UTF-8;dataname=com.sap.adt.StatusMessage"
-      },
-      body
-    })
+    const resp = await client.httpClient.request(
+      "/sap/bc/adt/businessservices/odatav4/publishjobs",
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/xml",
+          Accept:
+            "application/xml, application/vnd.sap.as+xml;charset=UTF-8;dataname=com.sap.adt.StatusMessage"
+        },
+        body
+      }
+    )
     return parseValidation(resp.body)
   } catch (e: any) {
     const respBody = e?.response?.body || ""
