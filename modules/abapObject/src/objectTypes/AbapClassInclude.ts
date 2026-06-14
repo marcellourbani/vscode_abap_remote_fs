@@ -1,9 +1,8 @@
 import { AbapObjectBase, convertSlash, AbapObject } from "../AbapObject"
-import { AbapObjectCreator } from "../creator"
-import { AbapClass } from "."
+import { AbapClass } from "./AbapClass"
 import { ADTClient, classIncludes } from "abap-adt-api"
 import { isAbapClass } from "./AbapClass"
-import { AbapObjectService } from ".."
+import { AbapObjectService } from "../AOService"
 import { ObjectErrors } from "../AOError"
 import { AbapSimpleStructure } from "abap-adt-api/build/api"
 const tag = Symbol("AbapClassInclude")
@@ -15,7 +14,6 @@ const CLASSINCLUDES: any = {
   main: ""
 }
 
-@AbapObjectCreator("CLAS/I")
 export class AbapClassInclude extends AbapObjectBase {
   [tag] = true
   constructor(

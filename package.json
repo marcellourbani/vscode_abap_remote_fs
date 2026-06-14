@@ -2874,9 +2874,9 @@
       },
       {
         "command": "abapfs.runInGui",
-        "title": "Open in native SAP GUI desktop application",
+        "title": "Open/Run in SAP GUI",
         "category": "ABAP FS",
-        "icon": "$(desktop-download)"
+        "icon": "$(play)"
       },
       {
         "command": "abapfs.runInEmbeddedGui",
@@ -3225,11 +3225,6 @@
     ],
     "keybindings": [
       {
-        "command": "abapfs.execute",
-        "key": "Ctrl+Shift+F6",
-        "when": "editorTextFocus && resourceScheme == adt"
-      },
-      {
         "command": "abapfs.unittest",
         "key": "ctrl+shift+f11",
         "when": "editorTextFocus && resourceScheme == adt"
@@ -3237,11 +3232,6 @@
       {
         "command": "abapfs.runInGui",
         "key": "Ctrl+Shift+F5",
-        "when": "editorTextFocus && resourceScheme == adt"
-      },
-      {
-        "command": "abapfs.runInEmbeddedGui",
-        "key": "Ctrl+Shift+F7",
         "when": "editorTextFocus && resourceScheme == adt"
       },
       {
@@ -3477,7 +3467,7 @@
         },
         {
           "command": "abapfs.execute",
-          "when": "resourceScheme == adt && editorLangId == abap"
+          "when": "hideCommands.never"
         },
         {
           "command": "abapfs.runInGui",
@@ -3485,7 +3475,7 @@
         },
         {
           "command": "abapfs.runInEmbeddedGui",
-          "when": "resourceScheme == adt && editorLangId == abap"
+          "when": "hideCommands.never"
         },
         {
           "command": "abapfs.openTransportObject",
@@ -3937,16 +3927,6 @@
           "when": "resourceScheme == adt && editorLangId =~ /abap|cds|xml/ && !inChat"
         },
         {
-          "command": "abapfs.showBlame",
-          "group": "navigation@0.5",
-          "when": "resourceScheme == adt && editorLangId == abap && abapfs:blameAvailable && !abapfs:blameActive && !inChat"
-        },
-        {
-          "command": "abapfs.hideBlame",
-          "group": "navigation@0.5",
-          "when": "resourceScheme == adt && editorLangId == abap && abapfs:blameActive && !inChat"
-        },
-        {
           "command": "abapfs.activate",
           "group": "navigation",
           "when": "resourceScheme == adt && editorLangId =~ /abap|cds|xml/ && abapfs:showActivate "
@@ -3967,18 +3947,8 @@
           "when": "resourceScheme == adt && editorLangId == abap && abapfs.cleanerAvailable && !inChat"
         },
         {
-          "command": "abapfs.runInEmbeddedGui",
-          "group": "navigation@1",
-          "when": "resourceScheme == adt && editorLangId =~ /abap|cds/ && !inChat"
-        },
-        {
           "command": "abapfs.runInGui",
-          "group": "navigation@2",
-          "when": "resourceScheme == adt && editorLangId =~ /abap|cds/ && !inChat"
-        },
-        {
-          "command": "abapfs.execute",
-          "group": "navigation@3",
+          "group": "navigation@1",
           "when": "resourceScheme == adt && editorLangId =~ /abap|cds/ && !inChat"
         },
         {
@@ -4338,6 +4308,11 @@
           "type": "boolean",
           "default": true,
           "markdownDescription": "Use VS Code's integrated browser instead of the embedded WebView for SAP GUI. Disable this if you prefer Webviews but Webviews can show a blank page (e.g. due to SAP clickjacking frame protection)."
+        },
+        "abapfs.sapGui.openXmlInGui": {
+          "type": "boolean",
+          "default": true,
+          "markdownDescription": "Automatically open XML/metadata objects (like message classes, simple transformations, service bindings) in SAP GUI instead of as XML text files in the editor."
         },
         "abapfs.copilot.professionalNotifications": {
           "type": "boolean",

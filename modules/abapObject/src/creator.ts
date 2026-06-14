@@ -2,17 +2,32 @@ import { AbapObjectBase, AbapObjectConstructor, AbapObject } from "./AbapObject"
 import { AbapObjectService } from "./AOService"
 import { Node } from "abap-adt-api"
 import { AbapObjectError } from "./AOError"
-import {} from "./objectTypes"
 
-const constructors = new Map<string, AbapObjectConstructor>()
-export const AbapObjectCreator =
-  (...types: string[]) =>
-  (target: AbapObjectConstructor) => {
-    for (const t of types) {
-      if (constructors.has(t)) throw new Error(`Conflict assigning constructor for type ${t}`)
-      constructors.set(t, target)
-    }
-  }
+import { AbapClass } from "./objectTypes/AbapClass"
+import { AbapClassInclude } from "./objectTypes/AbapClassInclude"
+import { AbapCds } from "./objectTypes/AbapCds"
+import { AbapInclude } from "./objectTypes/AbapInclude"
+import { AbapInterface } from "./objectTypes/AbapInterface"
+import { AbapFunction } from "./objectTypes/AbapFunction"
+import { AbapFunctionGroup } from "./objectTypes/AbapFunctionGroup"
+import { AbapProgram } from "./objectTypes/AbapProgram"
+import { AbapSimple } from "./objectTypes/AbapSimple"
+import { AbapXml } from "./objectTypes/AbapXml"
+
+import { getObjectTypeConfig } from "./registry"
+
+const classMap: Record<string, AbapObjectConstructor> = {
+  AbapClass,
+  AbapClassInclude,
+  AbapCds,
+  AbapInclude,
+  AbapInterface,
+  AbapFunction,
+  AbapFunctionGroup,
+  AbapProgram,
+  AbapSimple,
+  AbapXml
+}
 
 export const create = (
   type: string,
@@ -31,7 +46,9 @@ export const create = (
       undefined,
       "Abap Object can't be created without a type and path"
     )
-  const cons = constructors.get(type) || AbapObjectBase
+  const config = getObjectTypeConfig(type)
+  const creatorClass = config?.creatorClass
+  const cons = (creatorClass && classMap[creatorClass]) || AbapObjectBase
   return new cons(type, name, path, expandable, techName, parent, sapguiUri, client, owner)
 }
 

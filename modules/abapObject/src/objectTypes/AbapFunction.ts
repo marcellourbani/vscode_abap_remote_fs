@@ -1,9 +1,7 @@
-import { AbapObjectCreator } from "../creator"
 import { AbapObjectBase, AbapObject, AbapObjectService } from ".."
 import { ObjectErrors } from "../AOError"
 
 const tag = Symbol("AbapFunction")
-@AbapObjectCreator("FUGR/FF")
 export class AbapFunction extends AbapObjectBase {
   [tag] = true
   get extension() {

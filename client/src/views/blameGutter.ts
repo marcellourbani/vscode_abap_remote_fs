@@ -103,6 +103,8 @@ const AUTHOR_COLORS = [
 let blameActiveUris = new Set<string>()
 const blameCache = new Map<string, BlameState>()
 
+let blameStatusBarItem: vscode.StatusBarItem | undefined
+
 let classicBlameDecorationType: vscode.TextEditorDecorationType | undefined
 let classicSelectedLineDecorationType: vscode.TextEditorDecorationType | undefined
 let gitlensLeaderDecorationType: vscode.TextEditorDecorationType | undefined
@@ -1158,6 +1160,24 @@ function updateBlameContext(editor?: vscode.TextEditor) {
 
   setContext("abapfs:blameActive", isBlameOn)
   setContext("abapfs:blameAvailable", canShowBlame)
+
+  // Update status bar item
+  if (!blameStatusBarItem) return
+  if (!isAbap) {
+    blameStatusBarItem.hide()
+  } else if (isBlameOn) {
+    blameStatusBarItem.text = "$(eye-closed) Blame"
+    blameStatusBarItem.tooltip = "Hide Blame"
+    blameStatusBarItem.command = "abapfs.hideBlame"
+    blameStatusBarItem.show()
+  } else {
+    blameStatusBarItem.text = "$(eye) Blame"
+    blameStatusBarItem.tooltip = editor?.document.isDirty
+      ? "Save the document first to enable blame"
+      : "Show Blame"
+    blameStatusBarItem.command = editor?.document.isDirty ? undefined : "abapfs.showBlame"
+    blameStatusBarItem.show()
+  }
 }
 
 function updateBlameAvailableForDocument(document: vscode.TextDocument) {
@@ -1182,6 +1202,11 @@ export function initializeBlameGutter(context: vscode.ExtensionContext) {
     vscode.commands.registerCommand("abapfs.hideBlame", hideBlame)
   )
 
+  // Status bar item: bottom-right, high priority = leftmost of the right-side group.
+  blameStatusBarItem = window.createStatusBarItem(vscode.StatusBarAlignment.Right, 1000)
+  blameStatusBarItem.name = "ABAP FS Blame"
+  context.subscriptions.push(blameStatusBarItem)
+
   // Invalidate the blame cache when documents are saved, and re-render when the mode changes.
   context.subscriptions.push(vscode.workspace.onDidSaveTextDocument(onBlameDocumentSaved))
   context.subscriptions.push(vscode.workspace.onDidChangeConfiguration(onBlameConfigurationChanged))
@@ -1193,6 +1218,7 @@ export function initializeBlameGutter(context: vscode.ExtensionContext) {
       disposeBlameDecorationTypes()
       blameCache.clear()
       blameActiveUris.clear()
+      blameStatusBarItem = undefined
     }
   })
 

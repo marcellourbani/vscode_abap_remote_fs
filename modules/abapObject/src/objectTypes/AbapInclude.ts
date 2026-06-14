@@ -1,9 +1,7 @@
-import { AbapObjectCreator } from "../creator"
-import { AbapObjectBase, AbapObject } from ".."
+import { AbapObjectBase, AbapObject } from "../AbapObject"
 import { AbapObjectService } from "../AOService"
 
 const tag = Symbol("AbapInclude")
-@AbapObjectCreator("PROG/I", "FUGR/I")
 export class AbapInclude extends AbapObjectBase {
   constructor(
     type: string,

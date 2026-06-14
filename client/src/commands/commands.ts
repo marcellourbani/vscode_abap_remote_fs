@@ -29,7 +29,7 @@ import { findEditor, vsCodeUri } from "../langClient"
 import { showHideActivate } from "../listeners"
 import { UnitTestRunner } from "../adt/operations/UnitTestRunner"
 import { selectTransport } from "../adt/AdtTransports"
-import { showInGuiCb, executeInGui, runInSapGui } from "../adt/sapgui/sapgui"
+import { showInGuiCb, executeInGui, runInSapGui, openInGui } from "../adt/sapgui/sapgui"
 import { storeTokens, clearTokens } from "../oauth"
 import { showAbapDoc } from "../views/help"
 import { showQuery } from "../views/query/query"
@@ -49,7 +49,7 @@ import {
   findAbapObject,
   uriAbapFile
 } from "../adt/operations/AdtObjectFinder"
-import { isAbapClassInclude } from "abapobject"
+import { isAbapClassInclude, getObjectTypeConfig } from "abapobject"
 import { IncludeProvider } from "../adt/includes" // resolve dependencies
 import { command, AbapFsCommands } from "."
 import { createConnection } from "./connectionwizard"
@@ -130,9 +130,9 @@ export function openObject(connId: string, uri: string, objectType?: string) {
       } else if (isAbapFile(file)) {
         const fileUri = createUri(connId, path)
 
-        // For message classes, force open with custom editor
-        if (objectType === "MSAG/N" || path.endsWith(".msagn.xml")) {
-          await commands.executeCommand("vscode.openWith", fileUri, "abapfs.msagn")
+        const config = getObjectTypeConfig(objectType || "")
+        if (config?.customEditor) {
+          await commands.executeCommand("vscode.openWith", fileUri, config.customEditor)
         } else {
           await workspace.openTextDocument(fileUri).then(window.showTextDocument)
         }
@@ -760,50 +760,18 @@ export class AdtCommands {
   @command(AbapFsCommands.runInGui)
   private static async executeAbap() {
     try {
-      log("Execute ABAP")
+      log("Open/Run in SAP GUI")
       const uri = currentUri()
       if (!uri) return
       const fsRoot = await pickAdtRoot(uri)
       if (!fsRoot) return
-      logTelemetry("command_sap_gui_desktop_called", { connectionId: fsRoot.uri.authority })
+      logTelemetry("command_sap_gui_called", { connectionId: fsRoot.uri.authority })
       const file = uriRoot(fsRoot.uri).getNode(uri.path)
-      if (!isAbapStat(file) || !file.object.sapGuiUri) return
-
-      // 🎯 FORCE native SAP GUI by bypassing runInSapGui routing
-      const config = RemoteManager.get().byId(fsRoot.uri.authority)
-      if (!config) {
-        window.showErrorMessage("Connection configuration not found")
-        return
-      }
+      if (!isAbapStat(file)) return
 
       await AdtCommands.autoStartDebuggerIfNeeded(fsRoot.uri.authority)
-
-      // Create SapGui instance and call startGui directly (no routing check)
-      const sapGui = SapGui.create(config)
-      const client = getClient(fsRoot.uri.authority)
-
-      const transactionInfo = SapGuiPanel.getTransactionInfo(file.object.type, file.object.name)
-
-      // For non-standard types, fall back to URI-based approach
-      let cmd = transactionInfo.sapGuiCommand
-      if (
-        file.object.type !== "PROG/P" &&
-        file.object.type !== "FUGR/FF" &&
-        file.object.type !== "CLAS/OC"
-      ) {
-        cmd = {
-          type: "Transaction" as const,
-          command: "*SADT_START_WB_URI",
-          parameters: [
-            { name: "D_OBJECT_URI", value: file.object.sapGuiUri },
-            { name: "DYNP_OKCODE", value: "OKAY" }
-          ]
-        }
-      }
-
-      // Get ticket and call native SAP GUI directly (bypasses routing)
-      const ticket = await client.reentranceTicket()
-      await sapGui.startGui(cmd, ticket)
+      // Mode is determined by the connection's sapGui.guiType config (SAPGUI | WEBGUI_UNSAFE | WEBGUI_UNSAFE_EMBEDDED | WEBGUI_CONTROLLED)
+      await openInGui(fsRoot.uri.authority, file.object)
     } catch (e) {
       return window.showErrorMessage(caughtToString(e))
     }
@@ -823,9 +791,7 @@ export class AdtCommands {
       }
 
       const fsRoot = await pickAdtRoot(uri)
-      if (!fsRoot) {
-        return
-      }
+      if (!fsRoot) return
       logTelemetry("command_sap_gui_embedded_called", { connectionId: fsRoot.uri.authority })
 
       const file = uriRoot(fsRoot.uri).getNode(uri.path)
@@ -834,87 +800,9 @@ export class AdtCommands {
         return
       }
 
-      // Import the SAP GUI Panel and authentication utilities
-
-      // Get the remote configuration for authentication
-      const config = RemoteManager.get().byId(fsRoot.uri.authority)
-      if (!config) {
-        window.showErrorMessage(`Connection configuration not found for ${fsRoot.uri.authority}`)
-        return
-      }
-
-      // Check if embedded GUI is configured
-      if (config.sapGui?.guiType !== "WEBGUI_UNSAFE_EMBEDDED") {
-        await AdtCommands.autoStartDebuggerIfNeeded(fsRoot.uri.authority)
-        await runInSapGui(fsRoot.uri.authority, () => ({
-          type: "Transaction" as const,
-          command: "*SE38",
-          parameters: [
-            { name: "RS38M-PROGRAMM", value: file.object.name },
-            { name: "DYNP_OKCODE", value: "STRT" }
-          ]
-        }))
-        return
-      }
-
       await AdtCommands.autoStartDebuggerIfNeeded(fsRoot.uri.authority)
-
-      // Get extension URI more reliably
-      let extensionUri: Uri
-      try {
-        const extension = extensions.getExtension("murbani.vscode-abap-remote-fs")
-        if (extension) {
-          extensionUri = extension.extensionUri
-        } else {
-          // Fallback: try alternative extension ID
-          const altExtension = extensions.getExtension("abap-copilot")
-          if (altExtension) {
-            extensionUri = altExtension.extensionUri
-          } else {
-            extensionUri = Uri.file(__dirname)
-          }
-        }
-      } catch (error) {
-        extensionUri = Uri.file(__dirname)
-      }
-
-      // Create the panel first
-      const panel = SapGuiPanel.createOrShow(
-        extensionUri,
-        getClient(fsRoot.uri.authority),
-        fsRoot.uri.authority,
-        file.object.name,
-        file.object.type
-      )
-
-      // Build target URL using simple WebGUI format (no SSO ticket needed)
-      let baseUrl = config.url.replace(/\/sap\/bc\/adt.*$/, "") // Remove ADT path, keep base
-
-      // Ensure HTTPS is used (fix certificate issues for hover etc.)
-      if (!baseUrl.startsWith("https://") && !baseUrl.startsWith("http://")) {
-        baseUrl = "https://" + baseUrl
-      } else if (baseUrl.startsWith("http://")) {
-        baseUrl = baseUrl.replace("http://", "https://")
-      }
-
-      // 🎯 USE CENTRALIZED transaction mapping - NO MORE DUPLICATION! 🎉
-      const transactionInfo = SapGuiPanel.getTransactionInfo(file.object.type, file.object.name)
-
-      // Use the cleaned object name from transaction info (removes .main suffix for classes)
-      const cleanedObjectName = transactionInfo.sapGuiCommand.parameters[0].value
-
-      // Use the dynamic WebGUI URL format with correct transaction
-      const webguiUrl =
-        `${baseUrl}/sap/bc/gui/sap/its/webgui?` +
-        `%7etransaction=%2a${transactionInfo.transaction}%20${transactionInfo.dynprofield}%3d${cleanedObjectName}%3bDYNP_OKCODE%3d${transactionInfo.okcode}` +
-        `&sap-client=${config.client}` +
-        `&sap-language=${config.language || "EN"}` +
-        `&saml2=disabled`
-
-      // Load the direct URL in the WebView panel (authentication will be handled by cookies)
-      panel.loadDirectWebGuiUrl(webguiUrl)
+      await openInGui(fsRoot.uri.authority, file.object, "EMBEDDED")
     } catch (e) {
-      //log(`Error in executeAbapEmbedded: ${caughtToString(e)}`)
       return window.showErrorMessage(`Failed to open embedded GUI: ${caughtToString(e)}`)
     }
   }
@@ -1012,19 +900,19 @@ export class AdtCommands {
         switch (guiType) {
           case "WEBGUI_UNSAFE_EMBEDDED":
             // Embedded webview
-            await AdtCommands.launchTransactionInEmbeddedGui(config, client, tcodeToRun)
+            await openInGui(connectionId, tcodeToRun, "EMBEDDED")
             break
 
           case "WEBGUI_UNSAFE":
           case "WEBGUI_CONTROLLED":
             // External browser
-            await AdtCommands.launchTransactionInBrowser(config, client, tcodeToRun)
+            await openInGui(connectionId, tcodeToRun, "WEBGUI")
             break
 
           case "SAPGUI":
           default:
             // Native SAP GUI
-            await AdtCommands.launchTransactionInNativeGui(config, client, tcodeToRun)
+            await openInGui(connectionId, tcodeToRun, "SAPGUI")
             break
         }
       })
@@ -1033,100 +921,6 @@ export class AdtCommands {
       quickPick.show()
     } catch (e) {
       return window.showErrorMessage(`Failed to run transaction: ${caughtToString(e)}`)
-    }
-  }
-
-  /**
-   * Launch transaction in embedded webview
-   */
-  private static async launchTransactionInEmbeddedGui(config: any, client: any, tcode: string) {
-    try {
-      // Build base URL
-      let baseUrl = config.url.replace(/\/sap\/bc\/adt.*$/, "")
-
-      // Ensure HTTPS
-      if (!baseUrl.startsWith("https://") && !baseUrl.startsWith("http://")) {
-        baseUrl = "https://" + baseUrl
-      } else if (baseUrl.startsWith("http://")) {
-        baseUrl = baseUrl.replace("http://", "https://")
-      }
-
-      // Direct WebGUI URL for transaction (no SSO, user will login manually)
-      const webguiUrl =
-        `${baseUrl}/sap/bc/gui/sap/its/webgui?` +
-        `%7etransaction=%2a${tcode}` +
-        `&sap-client=${config.client}` +
-        `&sap-language=${config.language || "EN"}` +
-        `&saml2=disabled`
-
-      let extensionUri: vscode.Uri
-      try {
-        const extension = vscode.extensions.getExtension("murbani.vscode-abap-remote-fs")
-        extensionUri =
-          extension?.extensionUri ||
-          vscode.extensions.getExtension("abap-copilot")?.extensionUri ||
-          vscode.Uri.file(__dirname)
-      } catch {
-        extensionUri = vscode.Uri.file(__dirname)
-      }
-
-      const panel = SapGuiPanel.createOrShow(
-        extensionUri,
-        client,
-        config.name || "SAP",
-        tcode,
-        "TRAN"
-      )
-
-      panel.loadDirectWebGuiUrl(webguiUrl)
-    } catch (error) {
-      window.showErrorMessage(
-        `Failed to open transaction in embedded GUI: ${caughtToString(error)}`
-      )
-    }
-  }
-
-  /**
-   * Launch transaction in external browser
-   */
-  private static async launchTransactionInBrowser(config: any, client: any, tcode: string) {
-    try {
-      const ticket = await client.reentranceTicket()
-
-      const baseUrl = config.sapGui?.server
-        ? `${config.url.startsWith("https") ? "https" : "https"}://${config.sapGui.server}`
-        : config.url
-
-      const tcodeUrl = `${baseUrl}/sap/bc/gui/sap/its/webgui?~transaction=*${tcode}&sap-client=${config.client}&sap-language=${config.language || "EN"}&saml2=disabled`
-
-      const authenticatedUrl = Uri.parse(baseUrl).with({
-        path: `/sap/public/myssocntl`,
-        query: `sap-mysapsso=${config.client}${ticket}&sap-mysapred=${encodeURIComponent(tcodeUrl)}`
-      })
-
-      commands.executeCommand("vscode.open", authenticatedUrl)
-    } catch (error) {
-      window.showErrorMessage(`Failed to open transaction in browser: ${caughtToString(error)}`)
-    }
-  }
-
-  /**
-   * Launch transaction in native SAP GUI
-   */
-  private static async launchTransactionInNativeGui(config: any, client: any, tcode: string) {
-    try {
-      const sapGui = SapGui.create(config)
-
-      const cmd = {
-        type: "Transaction" as const,
-        command: `*${tcode}`,
-        parameters: []
-      }
-
-      const ticket = await client.reentranceTicket()
-      await sapGui.startGui(cmd, ticket)
-    } catch (error) {
-      window.showErrorMessage(`Failed to open transaction in SAP GUI: ${caughtToString(error)}`)
     }
   }
 
@@ -1139,28 +933,10 @@ export class AdtCommands {
       if (!fsRoot) return
       logTelemetry("command_sap_gui_browser_called", { connectionId: fsRoot.uri.authority })
       const file = uriRoot(fsRoot.uri).getNode(uri.path)
-      if (!isAbapStat(file) || !file.object.sapGuiUri) return
+      if (!isAbapStat(file)) return
 
-      // 🎯 FORCE browser opening by bypassing runInSapGui routing
-      const config = RemoteManager.get().byId(fsRoot.uri.authority)
-      if (!config) {
-        window.showErrorMessage("Connection configuration not found")
-        return
-      }
       await AdtCommands.autoStartDebuggerIfNeeded(fsRoot.uri.authority)
-      // 🎯 USE CENTRALIZED transaction mapping - NO MORE DUPLICATION! 🎉
-      const transactionInfo = SapGuiPanel.getTransactionInfo(file.object.type, file.object.name)
-
-      // Build simple WebGUI URL (same format as WebView uses)
-      const browserUrl =
-        `${config.url}/sap/bc/gui/sap/its/webgui?` +
-        `%7etransaction=%2a${transactionInfo.transaction}%20${transactionInfo.dynprofield}%3d${file.object.name}%3bDYNP_OKCODE%3d${transactionInfo.okcode}` +
-        `&sap-client=${config.client}` +
-        `&sap-language=${config.language || "EN"}` +
-        `&saml2=disabled`
-
-      // Open in external browser - user will authenticate themselves
-      commands.executeCommand("vscode.open", Uri.parse(browserUrl))
+      await openInGui(fsRoot.uri.authority, file.object, "WEBGUI")
     } catch (e) {
       return window.showErrorMessage(caughtToString(e))
     }

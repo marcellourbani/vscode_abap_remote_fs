@@ -28,7 +28,7 @@ import { isFolder, isAbapStat, PathItem, isAbapFolder } from "abapfs"
 import { createUri } from "../adt/operations/AdtObjectFinder"
 import { AbapScm, displayRevDiff } from "../scm/abaprevisions"
 import { AbapRevisionService } from "../scm/abaprevisions/abaprevisionservice"
-import { runInSapGui, showInGuiCb } from "../adt/sapgui/sapgui"
+import { openInGui } from "../adt/sapgui/sapgui"
 import { atcProvider } from "./abaptestcockpit"
 import { pickUser } from "./utilities"
 
@@ -386,7 +386,7 @@ export class TransportsProvider implements TreeDataProvider<CollectionItem> {
 
   @command(AbapFsCommands.transportOpenGui)
   private static openTransportInGui(tran: TransportItem) {
-    return runInSapGui(tran.connId, showInGuiCb(tran.task["tm:uri"]))
+    return openInGui(tran.connId, tran.task["tm:uri"])
   }
 
   @command(AbapFsCommands.transportCopyNumber)
