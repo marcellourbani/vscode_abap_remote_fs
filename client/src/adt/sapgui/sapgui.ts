@@ -222,7 +222,7 @@ export function runInSapGui(
   getCmd: () => Promise<SapGuiCommand | undefined> | SapGuiCommand | undefined
 ) {
   return window.withProgress(
-    { location: ProgressLocation.Notification, title: "Opening SAPGui..." },
+    { location: ProgressLocation.Notification, title: "Opening SAP GUI..." },
     async () => {
       const cmd = await getCmd()
       if (cmd) {

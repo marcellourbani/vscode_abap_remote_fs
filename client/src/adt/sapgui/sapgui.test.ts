@@ -68,12 +68,35 @@ jest.mock("../conections", () => ({
 }))
 
 jest.mock("abapobject", () => ({
+  ...jest.requireActual("abapobject"),
   isAbapClassInclude: jest.fn()
 }))
 
 jest.mock("../../views/sapgui/SapGuiPanel", () => ({
   SapGuiPanel: {
-    createOrShow: jest.fn()
+    createOrShow: jest.fn(),
+    getTransactionInfo: jest.fn((objectType: string, objectName: string) => {
+      let cleanObjectName = objectName
+      if (objectType === "CLAS/OC" || objectType === "CLAS/I") {
+        cleanObjectName = objectName.split(".")[0]
+      }
+      return {
+        transaction: objectType === "CLAS/OC" || objectType === "CLAS/I" ? "SE24" : "SE38",
+        dynprofield: objectType === "CLAS/OC" || objectType === "CLAS/I" ? "SEOCLASS-CLSNAME" : "RS38M-PROGRAMM",
+        okcode: objectType === "CLAS/OC" || objectType === "CLAS/I" ? "WB_EXEC" : "STRT",
+        sapGuiCommand: {
+          type: "Transaction",
+          command: objectType === "CLAS/OC" || objectType === "CLAS/I" ? "*SE24" : "*SE38",
+          parameters: [
+            {
+              name: objectType === "CLAS/OC" || objectType === "CLAS/I" ? "SEOCLASS-CLSNAME" : "RS38M-PROGRAMM",
+              value: cleanObjectName
+            },
+            { name: "DYNP_OKCODE", value: objectType === "CLAS/OC" || objectType === "CLAS/I" ? "WB_EXEC" : "STRT" }
+          ]
+        }
+      }
+    })
   }
 }))
 

@@ -95,6 +95,12 @@ const REGISTRY: ObjectTypeConfig[] = [
     sourceRequired: true
   },
   {
+    type: "FUGR/I",
+    label: "Function Group Include",
+    gui_objects: "no",
+    creatorClass: "AbapInclude"
+  },
+  {
     type: "FUNC/FM",
     label: "Function Module",
     gui_objects: "no",

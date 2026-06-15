@@ -133,6 +133,7 @@ jest.mock("../adt/operations/AdtObjectFinder", () => ({
 }))
 
 jest.mock("abapobject", () => ({
+  ...jest.requireActual("abapobject"),
   isAbapClassInclude: jest.fn()
 }))
 
