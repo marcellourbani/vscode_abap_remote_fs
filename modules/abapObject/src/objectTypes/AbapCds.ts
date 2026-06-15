@@ -1,5 +1,5 @@
 import { AbapObjectBase } from "../AbapObject"
-const tag = Symbol("AbapClass")
+const tag = Symbol("AbapCds")
 
 export class AbapCds extends AbapObjectBase {
   public [tag] = true

@@ -1,7 +1,7 @@
 import { RemoteConfig, RemoteManager } from "../../config"
 import { file } from "tmp-promise"
 import { writeAsync } from "fs-jetpack"
-import { log } from "../../lib"
+import { log, caughtToString } from "../../lib"
 import { closeSync } from "fs"
 import opn = require("open")
 import { ProgressLocation, extensions } from "vscode"
@@ -65,12 +65,6 @@ export function getGuiCommand(target: AbapObject | string | SapGuiCommand): SapG
   // target is AbapObject
   const objectType = target.type
   const objectName = target.name
-
-  // Clean up class names
-  let cleanObjectName = objectName
-  if (objectType === "CLAS/OC" || objectType === "CLAS/I") {
-    cleanObjectName = objectName.split(".")[0]
-  }
 
   const config = getObjectTypeConfig(objectType)
   if (config?.transactionInfo) {
@@ -196,6 +190,8 @@ export async function openInGui(
           try {
             ticket = await client.reentranceTicket()
           } catch (error) {
+            log("Failed to acquire reentrance ticket for controlled WebGUI:", caughtToString(error))
+            window.showErrorMessage("Failed to acquire SAP reentrance ticket. Cannot open WebGUI.")
             return
           }
           const controlledBaseUrl = config.sapGui?.server
@@ -401,6 +397,8 @@ export class SapGui {
           try {
             ticket2 = await client.reentranceTicket()
           } catch (error) {
+            log("Failed to acquire reentrance ticket for controlled WebGUI:", caughtToString(error))
+            window.showErrorMessage("Failed to acquire SAP reentrance ticket. Cannot open WebGUI.")
             return
           }
 

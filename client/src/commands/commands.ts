@@ -133,6 +133,8 @@ export function openObject(connId: string, uri: string, objectType?: string) {
         const config = getObjectTypeConfig(objectType || "")
         if (config?.customEditor) {
           await commands.executeCommand("vscode.openWith", fileUri, config.customEditor)
+        } else if (path.endsWith(".msagn.xml")) {
+          await commands.executeCommand("vscode.openWith", fileUri, "abapfs.msagn")
         } else {
           await workspace.openTextDocument(fileUri).then(window.showTextDocument)
         }

@@ -31,7 +31,7 @@ const openInGui = (uri: Uri, object: AbapObject) => {
     .get<boolean>("autoOpenUnsupportedInGui", true)
   const openXml = workspace
     .getConfiguration("abapfs")
-    .get<boolean>("sapGui.openXmlInGui", false)
+    .get<boolean>("sapGui.openXmlInGui", true)
 
   const shouldOpen = guiObjects === "yes" || (guiObjects === "better" && openXml)
 

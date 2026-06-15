@@ -1,4 +1,5 @@
-import { AbapObjectBase, AbapObject, AbapObjectService } from ".."
+import { AbapObjectBase, AbapObject } from "../AbapObject"
+import { AbapObjectService } from "../AOService"
 import { ObjectErrors } from "../AOError"
 
 const tag = Symbol("AbapFunction")
