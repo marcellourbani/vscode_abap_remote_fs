@@ -22,4 +22,4 @@ jobs:
 
       - name: Check for changeset
         run: |
-          npx changeset status --since=master || (echo "::error title=Changeset required::A changeset is required for this contribution. Please refer to [CONTRIBUTING.md](CONTRIBUTING.md) for instructions on how to add one."; exit 1)
+          npx @changesets/cli status --since=master || (echo "::error title=Changeset required::A changeset is required for this contribution. Please refer to [CONTRIBUTING.md](CONTRIBUTING.md) for instructions on how to add one."; exit 1)
