@@ -1,0 +1,25 @@
+name: Changeset
+
+on:
+  pull_request:
+    branches: [ master ]
+  workflow_dispatch:
+
+jobs:
+  check-changeset:
+    name: Check Changeset
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Install Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+
+      - name: Check for changeset
+        run: |
+          npx changeset status --since=master || (echo "::error title=Changeset required::A changeset is required for this contribution. Please refer to [CONTRIBUTING.md](CONTRIBUTING.md) for instructions on how to add one."; exit 1)
