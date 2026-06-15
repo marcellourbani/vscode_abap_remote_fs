@@ -48,7 +48,13 @@ export class RapGeneratorPanel implements WebviewViewProvider {
   ) {
     panel.webview.options = { enableScripts: true, localResourceRoots: [] }
 
-    const htmlPath = path.join(context.extensionPath, "client", "dist", "media", "rapGenerator.html")
+    const htmlPath = path.join(
+      context.extensionPath,
+      "client",
+      "dist",
+      "media",
+      "rapGenerator.html"
+    )
     try {
       panel.webview.html = fs.readFileSync(htmlPath, "utf8")
     } catch (err) {
@@ -64,7 +70,9 @@ export class RapGeneratorPanel implements WebviewViewProvider {
         this.post({ type: "error", text: caughtToString(e) })
       }
     })
-    panel.onDidDispose(() => { this.view = undefined })
+    panel.onDidDispose(() => {
+      this.view = undefined
+    })
     // Assign after setup so prefill() can safely post
     this.view = panel
   }
@@ -107,10 +115,15 @@ export class RapGeneratorPanel implements WebviewViewProvider {
   }
 
   private tableUri(name: string): string {
-    return `/sap/bc/adt/ddic/tables/${name.toLowerCase()}`
+    return `/sap/bc/adt/ddic/tables/${name.toLowerCase().replaceAll("/", "%2F")}`
   }
 
-  private async loadDefaults(connId: string, tableName: string, packageName: string, genId: RapGeneratorId) {
+  private async loadDefaults(
+    connId: string,
+    tableName: string,
+    packageName: string,
+    genId: RapGeneratorId
+  ) {
     try {
       const client = await getOrCreateClient(connId)
 
@@ -127,7 +140,7 @@ export class RapGeneratorPanel implements WebviewViewProvider {
       if (validation.severity === "error") {
         const msg = validation.longText
           ? `${validation.shortText}\n\n${validation.longText}`
-          : (validation.shortText || "Validation failed")
+          : validation.shortText || "Validation failed"
         this.post({ type: "error", text: msg })
         return
       }
@@ -140,7 +153,12 @@ export class RapGeneratorPanel implements WebviewViewProvider {
     }
   }
 
-  private async validateContent(connId: string, tableName: string, content: RapGeneratorContent, genId: RapGeneratorId) {
+  private async validateContent(
+    connId: string,
+    tableName: string,
+    content: RapGeneratorContent,
+    genId: RapGeneratorId
+  ) {
     try {
       const client = await getOrCreateClient(connId)
       const result = await rapGenValidateContent(client, genId, this.tableUri(tableName), content)
@@ -150,7 +168,12 @@ export class RapGeneratorPanel implements WebviewViewProvider {
     }
   }
 
-  private async previewContent(connId: string, tableName: string, content: RapGeneratorContent, genId: RapGeneratorId) {
+  private async previewContent(
+    connId: string,
+    tableName: string,
+    content: RapGeneratorContent,
+    genId: RapGeneratorId
+  ) {
     try {
       const client = await getOrCreateClient(connId)
       const objects = await rapGenPreview(client, genId, this.tableUri(tableName), content)
@@ -160,16 +183,26 @@ export class RapGeneratorPanel implements WebviewViewProvider {
     }
   }
 
-  private async generate(connId: string, tableName: string, content: RapGeneratorContent, genId: RapGeneratorId) {
+  private async generate(
+    connId: string,
+    tableName: string,
+    content: RapGeneratorContent,
+    genId: RapGeneratorId
+  ) {
     try {
       const client = await getOrCreateClient(connId)
 
       // Validate content first (like Eclipse does)
-      const validation = await rapGenValidateContent(client, genId, this.tableUri(tableName), content)
+      const validation = await rapGenValidateContent(
+        client,
+        genId,
+        this.tableUri(tableName),
+        content
+      )
       if (validation.severity === "error") {
         const msg = validation.longText
           ? `${validation.shortText}\n\n${validation.longText}`
-          : (validation.shortText || "Validation failed")
+          : validation.shortText || "Validation failed"
         this.post({ type: "error", text: msg })
         return
       }
@@ -182,7 +215,12 @@ export class RapGeneratorPanel implements WebviewViewProvider {
       let transport = ""
       if (needsTransport) {
         const tableUri = this.tableUri(tableName)
-        const result = await selectTransport(tableUri, content.metadata?.package || "", client, true)
+        const result = await selectTransport(
+          tableUri,
+          content.metadata?.package || "",
+          client,
+          true
+        )
         if (result.cancelled) {
           this.post({ type: "cancelled" })
           return
@@ -195,17 +233,25 @@ export class RapGeneratorPanel implements WebviewViewProvider {
       // Use the preview list (which has all objects) for the generated view
       // Mark them as CREATED instead of CREATE
       const objects = previewObjects.map(o => ({ ...o, description: "CREATED" }))
-      this.post({ type: "generated", objects, srvbName: content.businessService?.serviceBinding?.name })
+      this.post({
+        type: "generated",
+        objects,
+        srvbName: content.businessService?.serviceBinding?.name
+      })
 
       // Open the service binding from the preview URIs
       const srvb = previewObjects.find(o => o.type?.includes("SRVB"))
       if (srvb?.uri) {
         try {
           await openObject(connId, srvb.uri)
-        } catch { /* non-critical — objects are already created */ }
+        } catch {
+          /* non-critical — objects are already created */
+        }
       }
 
-      window.showInformationMessage(`RAP service generated successfully (${objects.length} objects created)`)
+      window.showInformationMessage(
+        `RAP service generated successfully (${objects.length} objects created)`
+      )
     } catch (e: any) {
       // Extract detailed error info from ADT HTTP exceptions
       const responseBody = e?.response?.body || e?.response?.data || ""
@@ -223,7 +269,7 @@ export class RapGeneratorPanel implements WebviewViewProvider {
       if (result.severity === "error") {
         const msg = result.longText
           ? `${result.shortText}\n\n${result.longText}`
-          : (result.shortText || "Publish failed")
+          : result.shortText || "Publish failed"
         this.post({ type: "error", text: msg })
       } else {
         this.post({ type: "published" })
