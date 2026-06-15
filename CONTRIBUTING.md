@@ -33,7 +33,7 @@ This extension has been growing since 2018 and has more features than most peopl
 
 This is a monorepo. There are modules inside modules. It's modules all the way down.
 
-```
+```text
 client/          → VS Code extension (the big one)
 server/          → Language server (completions, CDS, syntax)
 modules/
@@ -69,6 +69,7 @@ This compiles everything, packages a `.vsix`, installs it into VS Code, and make
 - The CI must pass. It runs on Node 24. "Works on my machine" is not a valid CI strategy
 - Commit messages: just say what you did. No `feat(scope):` prefixes, no 🎉 emoji, no haiku
 - Run `npm run format` before pushing — CI doesn't enforce it yet, but we can tell when you didn't
+- Create a [changeset](./CONTRIBUTING.md#changesets) by running `npx changeset` from the project root folder and answer the questions ![changeset example](docs/images/changeset.png)
 
 ### Before You Commit
 
@@ -83,7 +84,7 @@ Things we've seen committed that should not have been:
 - `node_modules` (in 2026!)
 - Files the contributor didn't even know existed
 
-If you're using AI to write code — and let's be honest, you probably are — it generates a *lot* of scratch files. That's fine. Just don't commit them. Update `.gitignore` if needed.
+If you're using AI to write code — and let's be honest, you probably are — it generates a _lot_ of scratch files. That's fine. Just don't commit them. Update `.gitignore` if needed.
 
 ## Code Style
 
@@ -127,6 +128,15 @@ These will get your PR rejected instantly:
 - **Do NOT edit `DOCUMENTATION.md` directly** — it's auto-generated from the `docs/` folder by a script. Your changes will be overwritten
 - If you add a new doc page and want it included in `DOCUMENTATION.md`, add it to `docs/_order.yml`
 - If you want it in the mkdocs site navigation, add it to `mkdocs.yml` as well
+
+### Changesets
+
+Changesets are a convenient way to track changes and maintain a [change log](./CHANGELOG.md) respecting semantic versioning
+You only have to create one per PR with a short description of what it does and a category like:
+
+- patch for bugfixes and minor changes, like a new minor feature in an AI tool or a new command
+- minor for bigger features, like a new set of AI tools or rewriting abapgit support (works now but is based on a deprecated plugin)
+- major for architectural changes, like making the language server an independent module one could use in [neovim](https://neovim.io/)
 
 ## What We'd Love Help With
 
