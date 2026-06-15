@@ -15,6 +15,9 @@ jobs:
         with:
           fetch-depth: 0
 
+      - name: Fetch master
+        run: git fetch origin master:master
+
       - name: Install Node.js
         uses: actions/setup-node@v4
         with:
