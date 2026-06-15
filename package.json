@@ -2522,6 +2522,9 @@
             "url"
           ]
         },
+        "tags": [
+          "abap-fs"
+        ],
         "when": "abapfs:extensionActive && !abapfs:noSapConnected"
       }
     ],
