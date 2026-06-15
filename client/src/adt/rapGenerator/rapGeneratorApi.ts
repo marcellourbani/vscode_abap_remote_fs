@@ -35,15 +35,6 @@ function qs(params: Record<string, string | undefined>): string {
   }
   return parts.length ? `?${parts.join("&")}` : ""
 }
-
-// ── Axios JSON workaround ────────────────────────────────────────────
-// Axios auto-parses JSON when content-type contains "+json".
-// The ADT HTTP layer then does `${data}` which produces "[object Object]".
-// We install a one-time response interceptor that re-serializes parsed
-// objects back to JSON strings for our endpoints.
-
-const patched = new WeakSet<ADTClient>()
-
 function parseValidation(body: string | undefined): RapGeneratorValidationResult {
   if (!body) return { severity: "error", shortText: "Empty response from server" }
   const sev =
