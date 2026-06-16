@@ -633,6 +633,11 @@ export class AdtCommands {
           // PACKAGE type - this is what prevents the "Select package" dialog
           return packageName
         }
+        if (type === "FUGR/F" && parentName) {
+          // Function modules are function group children; AI creation must use the provided parent group
+          // to avoid falling back to the current workspace location.
+          return parentName.toUpperCase()
+        }
         // For other types, use original logic
         const original =
           hierarchy.filter((n: any) => n.object?.type === type)?.[0]?.object?.name || ""
