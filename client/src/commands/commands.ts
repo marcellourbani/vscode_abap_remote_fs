@@ -602,6 +602,17 @@ export class AdtCommands {
     }
   ) {
     try {
+      if (objectType.toUpperCase() === "FUGR/FF" && !parentName?.trim()) {
+        return {
+          success: false,
+          error: "MISSING_FUNCTION_GROUP_PARENT",
+          message:
+            "Function module creation requires parentName with the parent function group name.",
+          objectName: name,
+          objectType: objectType
+        }
+      }
+
       // Use current connection or specified one
       const connId = connectionId || (await pickAdtRoot())?.uri.authority
       if (!connId) return
@@ -636,7 +647,7 @@ export class AdtCommands {
         if (type === "FUGR/F" && parentName) {
           // Function modules are function group children; AI creation must use the provided parent group
           // to avoid falling back to the current workspace location.
-          return parentName.toUpperCase()
+          return parentName.trim().toUpperCase()
         }
         // For other types, use original logic
         const original =
