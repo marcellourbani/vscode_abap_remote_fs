@@ -16,6 +16,7 @@ vsc-extension-quickstart.md
 tslint.json
 .agents/
 .github/
+.venv
 tmp/**
 **/tmp/**
 server/**
