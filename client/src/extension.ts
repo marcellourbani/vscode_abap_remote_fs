@@ -178,9 +178,6 @@ export async function activate(ctx: ExtensionContext): Promise<AbapFsApi> {
     // Initialize SAP Data Workbook (.sapwb)
     registerAbapNotebooks(context)
 
-    // Initialize MCP Server for external AI clients (Cursor, etc.)
-    await initializeMcpServer(context)
-
     sub.push(commands.registerCommand("abapfs.startMcpServer", () => startMcpServerCommand(context)))
     // Validate and regenerate subagent files if enabled, but only do that in background
     setImmediate(() => validateSubagentsOnStartup(context))
@@ -414,6 +411,15 @@ export async function activate(ctx: ExtensionContext): Promise<AbapFsApi> {
 
   // Register virtual tools fix — fires once on first SAP connection, not at activation
   registerVirtualToolsFixOnConnect(context)
+
+  // Initialize MCP Server LAST so that all LM tools, context keys, and providers
+  // are fully registered before any waiting MCP client (Claude Code, Cursor, ...)
+  // can connect and enumerate vscode.lm.tools.
+  try {
+    await initializeMcpServer(context)
+  } catch (error) {
+    log(`⚠️ MCP server initialization failed: ${error}`)
+  }
 
   const elapsed = new Date().getTime() - startTime
   log.debug(`Activated,pid=${process.pid}, activation time(ms):${elapsed}`)
