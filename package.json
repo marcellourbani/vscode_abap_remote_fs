@@ -740,7 +740,7 @@
       {
         "name": "create_object_programmatically",
         "displayName": "Create ABAP Object Programmatically",
-        "modelDescription": "Creates new ABAP objects (classes, reports, function groups, etc.) programmatically without manual dialogs. Use this when the user wants to create new ABAP objects. Supports various object types including reports, classes, function groups, interfaces, data elements, and more.",
+        "modelDescription": "Creates new ABAP objects (classes, reports, function groups, function modules, etc.) programmatically without manual dialogs. Use this when the user wants to create new ABAP objects. For function modules, use objectType 'FUGR/FF' and always provide parentName with the parent function group name. Supports various object types including reports, classes, function groups, function modules, interfaces, data elements, and more.",
         "canBeReferencedInPrompt": true,
         "toolReferenceName": "abap-create",
         "icon": "$(add)",
@@ -750,7 +750,7 @@
           "properties": {
             "objectType": {
               "type": "string",
-              "description": "Object type. Supports all SAP creatable object types including: 'PROG/P' (report), 'CLAS/OC' (class), 'FUGR/F' (function group), 'INTF/OI' (interface), 'DTEL/DE' (data element), 'TABL/DT' (database table), 'DDLS/DF' (CDS view), 'DOMA/DD' (domain), 'MSAG/N' (message class), 'DEVC/K' (package), 'SRVD/SRV' (service definition), 'SRVB/SVB' (service binding), 'BDEF/BDO' (behavior definition), and others. Use the format: TYPE/SUBTYPE"
+              "description": "Object type. Supports all SAP creatable object types including: 'PROG/P' (report), 'CLAS/OC' (class), 'FUGR/F' (function group), 'FUGR/FF' (function module, requires parentName with the parent function group), 'INTF/OI' (interface), 'DTEL/DE' (data element), 'TABL/DT' (database table), 'DDLS/DF' (CDS view), 'DOMA/DD' (domain), 'MSAG/N' (message class), 'DEVC/K' (package), 'SRVD/SRV' (service definition), 'SRVB/SVB' (service binding), 'BDEF/BDO' (behavior definition), and others. Use the format: TYPE/SUBTYPE"
             },
             "name": {
               "type": "string",
@@ -767,7 +767,7 @@
             },
             "parentName": {
               "type": "string",
-              "description": "Optional parent object for includes/methods"
+              "description": "Parent object name. Required for function modules ('FUGR/FF'): pass the parent function group name, not the function module name. Optional for other object types such as includes/methods."
             },
             "connectionId": {
               "type": "string",
