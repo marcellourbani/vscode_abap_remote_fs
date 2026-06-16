@@ -74,6 +74,13 @@ export function currentUri() {
   return uri
 }
 
+export function normalizeAiCreatableObjectType(objectType: string): CreatableTypeIds {
+  const normalized = objectType.toUpperCase()
+  // AI/LLM 往往会复用搜索工具里的 FUNC 类型；创建函数模块时 ADT 实际需要函数组子对象类型 FUGR/FF。
+  if (normalized === "FUNC" || normalized === "FUNC/FF") return "FUGR/FF" as CreatableTypeIds
+  return normalized as CreatableTypeIds
+}
+
 async function saveDirtyAdtDocuments(connectionId: string) {
   const dirtyDocuments = workspace.textDocuments.filter(
     document =>
@@ -578,7 +585,7 @@ export class AdtCommands {
    */
   @command(AbapFsCommands.createObjectProgrammatically)
   public static async createAdtObjectProgrammatically(
-    objectType: CreatableTypeIds,
+    objectType: string,
     name: string,
     description: string,
     packageName: string = "$TMP",
@@ -602,6 +609,7 @@ export class AdtCommands {
     }
   ) {
     try {
+      const normalizedObjectType = normalizeAiCreatableObjectType(objectType)
       // Use current connection or specified one
       const connId = connectionId || (await pickAdtRoot())?.uri.authority
       if (!connId) return
@@ -633,6 +641,11 @@ export class AdtCommands {
           // PACKAGE type - this is what prevents the "Select package" dialog
           return packageName
         }
+        if (type === "FUGR/F" && parentName) {
+          // Function modules are function group children; AI creation must use the provided parent group
+          // to avoid falling back to the current workspace location.
+          return parentName.toUpperCase()
+        }
         // For other types, use original logic
         const original =
           hierarchy.filter((n: any) => n.object?.type === type)?.[0]?.object?.name || ""
@@ -641,15 +654,15 @@ export class AdtCommands {
 
       // 3. Override guessOrSelectObjectType to return the specified object type
       creator["guessOrSelectObjectType"] = async (hierarchy: any[]): Promise<any> => {
-        const objType = CreatableTypes.get(objectType)
+        const objType = CreatableTypes.get(normalizedObjectType)
         if (objType) {
-          return { typeId: objectType, label: objType.label, maxLen: objType.maxLen }
+          return { typeId: normalizedObjectType, label: objType.label, maxLen: objType.maxLen }
         }
-        throw new Error(`Unknown object type: ${objectType}`)
+        throw new Error(`Unknown object type: ${normalizedObjectType}`)
       }
 
       // 4. Override getServiceOptions to use programmatic values for service bindings
-      if (objectType === "SRVB/SVB" && additionalOptions) {
+      if (normalizedObjectType === "SRVB/SVB" && additionalOptions) {
         const { serviceDefinition, bindingType, bindingCategory } = additionalOptions
         if (!serviceDefinition || !bindingType || !bindingCategory) {
           return {
@@ -657,7 +670,7 @@ export class AdtCommands {
             error: "MISSING_SERVICE_BINDING_OPTIONS",
             message: "Service bindings require additionalOptions with serviceDefinition, bindingType ('ODATA'), and bindingCategory ('0' for Web API, '1' for UI)",
             objectName: name,
-            objectType: objectType
+            objectType: normalizedObjectType
           }
         }
         creator["getServiceOptions"] = async (options: NewObjectOptions) => {
@@ -682,7 +695,7 @@ export class AdtCommands {
           error: "CREATION_CANCELLED",
           message: "Object creation was cancelled or failed",
           objectName: name,
-          objectType: objectType
+          objectType: normalizedObjectType
         }
       }
 
@@ -731,7 +744,7 @@ export class AdtCommands {
           error: "OBJECT_ALREADY_EXISTS",
           message: errorMessage,
           objectName: name,
-          objectType: objectType
+          objectType: normalizeAiCreatableObjectType(objectType)
         }
       }
 
@@ -741,7 +754,7 @@ export class AdtCommands {
         error: "CREATION_FAILED",
         message: errorMessage,
         objectName: name,
-        objectType: objectType,
+        objectType: normalizeAiCreatableObjectType(objectType),
         stack: stack
       }
     }

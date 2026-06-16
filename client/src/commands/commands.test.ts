@@ -192,7 +192,14 @@ jest.mock("../services/sapSystemInfo", () => ({
   clearSystemInfoCache: jest.fn()
 }))
 
-import { currentUri, currentAbapFile, currentEditState, openObject } from "./commands"
+import {
+  currentUri,
+  currentAbapFile,
+  currentEditState,
+  openObject,
+  AdtCommands,
+  normalizeAiCreatableObjectType
+} from "./commands"
 import { funWindow as window } from "../services/funMessenger"
 import { ADTSCHEME, getRoot } from "../adt/conections"
 import { uriAbapFile } from "../adt/operations/AdtObjectFinder"
@@ -231,6 +238,93 @@ describe("currentUri", () => {
     const uri = makeAdtUri()
     ;(mockWindow as any).activeTextEditor = { document: { uri } }
     expect(currentUri()).toBe(uri)
+  })
+})
+
+describe("normalizeAiCreatableObjectType", () => {
+  test("maps AI function module aliases to FUGR/FF", () => {
+    expect(normalizeAiCreatableObjectType("FUNC/FF" as any)).toBe("FUGR/FF")
+    expect(normalizeAiCreatableObjectType("FUNC" as any)).toBe("FUGR/FF")
+  })
+
+  test("keeps supported creatable object types unchanged", () => {
+    expect(normalizeAiCreatableObjectType("FUGR/FF" as any)).toBe("FUGR/FF")
+    expect(normalizeAiCreatableObjectType("PROG/P" as any)).toBe("PROG/P")
+  })
+})
+
+describe("createAdtObjectProgrammatically", () => {
+  test("uses FUGR/FF creatable type when AI requests FUNC/FF", async () => {
+    const { CreatableTypes } = require("abap-adt-api")
+    CreatableTypes.get = jest.fn().mockReturnValue({
+      typeId: "FUGR/FF",
+      label: "Function module",
+      maxLen: 30
+    })
+
+    const { AdtObjectCreator, PACKAGE } = require("../adt/operations/AdtObjectCreator")
+    const createdObject = {
+      type: PACKAGE,
+      name: "ZAI_TEST_FM",
+      path: "/sap/bc/adt/functions/groups/zzj_ai/fmodules/zai_test_fm",
+      loadStructure: jest.fn().mockResolvedValue(undefined)
+    }
+    AdtObjectCreator.mockImplementation(() => ({
+      createObject: jest.fn(async function (this: any) {
+        await this.guessOrSelectObjectType([])
+        return createdObject
+      })
+    }))
+
+    await AdtCommands.createAdtObjectProgrammatically(
+      "FUNC/FF",
+      "ZAI_TEST_FM",
+      "Test function module",
+      "$TMP",
+      "ZZJ_AI",
+      "dev"
+    )
+
+    expect(CreatableTypes.get).toHaveBeenCalledWith("FUGR/FF")
+  })
+
+  test("uses provided parentName as function group parent for function modules", async () => {
+    const { CreatableTypes } = require("abap-adt-api")
+    CreatableTypes.get = jest.fn().mockReturnValue({
+      typeId: "FUGR/FF",
+      label: "Function module",
+      maxLen: 30
+    })
+
+    const observedParents: Record<string, string> = {}
+    const { AdtObjectCreator, PACKAGE } = require("../adt/operations/AdtObjectCreator")
+    const createdObject = {
+      type: PACKAGE,
+      name: "ZAI_TEST_FM",
+      path: "/sap/bc/adt/functions/groups/zzj_ai/fmodules/zai_test_fm",
+      loadStructure: jest.fn().mockResolvedValue(undefined)
+    }
+    AdtObjectCreator.mockImplementation(() => ({
+      createObject: jest.fn(async function (this: any) {
+        observedParents.package = this.guessParentByType([], "DEVC/K")
+        observedParents.functionGroup = this.guessParentByType([], "FUGR/F")
+        return createdObject
+      })
+    }))
+
+    await AdtCommands.createAdtObjectProgrammatically(
+      "FUGR/FF",
+      "ZAI_TEST_FM",
+      "Test function module",
+      "$TMP",
+      "ZZJ_AI",
+      "dev"
+    )
+
+    expect(observedParents).toEqual({
+      package: "$TMP",
+      functionGroup: "ZZJ_AI"
+    })
   })
 })
 
