@@ -11,20 +11,11 @@ import * as fs from "fs"
 import { context } from "../../extension"
 import { getOrCreateClient, ADTSCHEME } from "../../adt/conections"
 import { connectedRoots } from "../../config"
-import {
-  rapGenIsAvailable,
-  rapGenGetContent,
-  rapGenValidateInitial,
-  rapGenValidateContent,
-  rapGenPreview,
-  rapGenGenerate,
-  rapGenPublishService
-} from "../../adt/rapGenerator"
-import type { RapGeneratorContent, RapGeneratorId } from "../../adt/rapGenerator"
 import { selectTransport } from "../../adt/AdtTransports"
 import { AbapFsCommands, command, openObject } from "../../commands"
 import { caughtToString } from "../../lib"
 import { AdtObjectFinder, uriAbapFile } from "../../adt/operations/AdtObjectFinder"
+import { RapGeneratorContent, RapGeneratorId } from "abap-adt-api"
 
 export class RapGeneratorPanel implements WebviewViewProvider {
   public static readonly viewType = "abapfs.rapGenerator"
@@ -128,7 +119,7 @@ export class RapGeneratorPanel implements WebviewViewProvider {
       const client = await getOrCreateClient(connId)
 
       // Check availability first
-      const available = await rapGenIsAvailable(client, genId)
+      const available = await client.rapGenIsAvailable(genId)
       if (!available) {
         this.post({ type: "error", text: "RAP Generator is not available on this system." })
         return
@@ -136,7 +127,7 @@ export class RapGeneratorPanel implements WebviewViewProvider {
 
       // Initial validation
       const tableUri = this.tableUri(tableName)
-      const validation = await rapGenValidateInitial(client, genId, tableUri, packageName)
+      const validation = await client.rapGenValidateInitial(genId, tableUri, packageName)
       if (validation.severity === "error") {
         const msg = validation.longText
           ? `${validation.shortText}\n\n${validation.longText}`
@@ -146,7 +137,7 @@ export class RapGeneratorPanel implements WebviewViewProvider {
       }
 
       // Get default content
-      const content = await rapGenGetContent(client, genId, tableUri, packageName)
+      const content = await client.rapGenGetContent(genId, tableUri, packageName)
       this.post({ type: "defaults", content })
     } catch (e: any) {
       this.post({ type: "error", text: caughtToString(e) })
@@ -161,7 +152,7 @@ export class RapGeneratorPanel implements WebviewViewProvider {
   ) {
     try {
       const client = await getOrCreateClient(connId)
-      const result = await rapGenValidateContent(client, genId, this.tableUri(tableName), content)
+      const result = await client.rapGenValidateContent(genId, this.tableUri(tableName), content)
       this.post({ type: "validation", result })
     } catch (e: any) {
       this.post({ type: "validation", result: { severity: "error", shortText: caughtToString(e) } })
@@ -176,7 +167,7 @@ export class RapGeneratorPanel implements WebviewViewProvider {
   ) {
     try {
       const client = await getOrCreateClient(connId)
-      const objects = await rapGenPreview(client, genId, this.tableUri(tableName), content)
+      const objects = await client.rapGenPreview(genId, this.tableUri(tableName), content)
       this.post({ type: "preview", objects })
     } catch (e: any) {
       this.post({ type: "error", text: caughtToString(e) })
@@ -193,8 +184,7 @@ export class RapGeneratorPanel implements WebviewViewProvider {
       const client = await getOrCreateClient(connId)
 
       // Validate content first (like Eclipse does)
-      const validation = await rapGenValidateContent(
-        client,
+      const validation = await client.rapGenValidateContent(
         genId,
         this.tableUri(tableName),
         content
@@ -208,7 +198,7 @@ export class RapGeneratorPanel implements WebviewViewProvider {
       }
 
       // Get full object list via preview before generating
-      const previewObjects = await rapGenPreview(client, genId, this.tableUri(tableName), content)
+      const previewObjects = await client.rapGenPreview(genId, this.tableUri(tableName), content)
 
       const needsTransport = content.metadata?.package !== "$TMP"
 
@@ -228,7 +218,7 @@ export class RapGeneratorPanel implements WebviewViewProvider {
         transport = result.transport
       }
 
-      await rapGenGenerate(client, genId, this.tableUri(tableName), transport, content)
+      await client.rapGenGenerate(genId, this.tableUri(tableName), transport, content)
 
       // Use the preview list (which has all objects) for the generated view
       // Mark them as CREATED instead of CREATE
@@ -265,7 +255,7 @@ export class RapGeneratorPanel implements WebviewViewProvider {
   private async publishService(connId: string, srvbName: string) {
     try {
       const client = await getOrCreateClient(connId)
-      const result = await rapGenPublishService(client, srvbName)
+      const result = await client.rapGenPublishService(srvbName)
       if (result.severity === "error") {
         const msg = result.longText
           ? `${result.shortText}\n\n${result.longText}`
