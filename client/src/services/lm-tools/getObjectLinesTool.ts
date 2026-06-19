@@ -46,11 +46,7 @@ async function getCompleteTableStructure(
           mainStructure = tableFields
 
           const completeStructure =
-            `Complete Structure for ${objectName}:\n` +
-            `${"=".repeat(60)}\n` +
-            ` DD Table Query: Includes main object + ALL append structures automatically\n` +
-            ` Source: DD03L (Data Dictionary fields)\n` +
-            `${"=".repeat(60)}\n\n` +
+            `Complete Structure for ${objectName} (from DD03L — main object + ALL append structures):\n\n` +
             tableFields
 
           return completeStructure
@@ -106,22 +102,17 @@ async function getCompleteTableStructure(
       // Ignore enhancement errors
     }
 
-    let completeStructure = `Complete Table Structure for ${objectName}:\n`
-    completeStructure += `${"=".repeat(60)}\n`
-    completeStructure += ` SE11-like Table Access: Main table + ALL append structures with complete field properties\n`
-    completeStructure += ` Includes: ${mainStructure ? "Main table structure" : "No main structure"} + ${allAppendStructures ? "All append structures" : "No append structures"}\n`
-    completeStructure += `${"=".repeat(60)}\n\n`
+    let completeStructure = `Complete Table Structure for ${objectName} (SE11-like, includes ALL append structures):\n`
+    completeStructure += ` Main: ${mainStructure ? "present" : "missing"} | Appends: ${allAppendStructures ? "present" : "none"}\n\n`
 
     if (mainStructure) {
       completeStructure += `MAIN TABLE STRUCTURE:\n`
-      completeStructure += `${"-".repeat(30)}\n`
       completeStructure += mainStructure
       completeStructure += `\n\n`
     }
 
     if (allAppendStructures) {
       completeStructure += `APPEND STRUCTURES (Additional Fields & Extensions):\n`
-      completeStructure += `${"-".repeat(30)}\n`
       completeStructure += allAppendStructures
       completeStructure += `\n\n`
     }
@@ -323,11 +314,7 @@ export class GetABAPObjectLinesTool implements vscode.LanguageModelTool<IGetABAP
             const tableTypeInfo = await getTableTypeFromDD(client, objectName)
             if (tableTypeInfo) {
               completeStructure =
-                `Complete Structure for ${objectName}:\n` +
-                `${"=".repeat(60)}\n` +
-                ` DD Table Query: Table Type definition from DD40L/DD40T\n` +
-                ` Source: DD40L (Table Type definitions)\n` +
-                `${"=".repeat(60)}\n\n` +
+                `Complete Structure for ${objectName} (Table Type from DD40L/DD40T):\n\n` +
                 tableTypeInfo
             }
           } else {

@@ -40,7 +40,7 @@ function readFileLines(filePath: string, startLine: number, lineCount: number): 
     const selectedLines = lines.slice(start, end)
     const totalLines = lines.length
     
-    const header = `Lines ${startLine}-${start + selectedLines.length} of ${totalLines}:\n${"=".repeat(60)}\n\n`
+    const header = `Lines ${startLine}-${start + selectedLines.length} of ${totalLines}:\n\n`
     return header + selectedLines.join("\n")
   } catch (error) {
     throw new Error(`Failed to read file: ${error}`)
@@ -100,12 +100,10 @@ function searchFileLines(
     
     // Format results
     let result = `Found ${matches.length} match(es) for: "${searchQuery}"\n`
-    result += `Search terms: ${searchTerms.join(", ")}\n`
-    result += `${"=".repeat(60)}\n\n`
+    result += `Search terms: ${searchTerms.join(", ")}\n\n`
     
     for (const match of matches) {
       result += ` Line ${match.lineNumber} (matched: ${match.matchedTerms.join(", ")}):\n`
-      result += `${"-".repeat(40)}\n`
       result += match.context.join("\n")
       result += `\n\n`
     }

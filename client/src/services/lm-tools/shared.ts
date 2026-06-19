@@ -240,11 +240,7 @@ export async function getCompleteTableStructure(
           mainStructure = tableFields
 
           const completeStructure =
-            `Complete Structure for ${sanitizedName}:\n` +
-            `${"=".repeat(60)}\n` +
-            ` DD Table Query: Includes main object + ALL append structures automatically\n` +
-            ` Source: DD03L (Data Dictionary fields)\n` +
-            `${"=".repeat(60)}\n\n` +
+            `Complete Structure for ${sanitizedName} (from DD03L — main object + ALL append structures):\n\n` +
             tableFields
 
           return completeStructure
@@ -262,7 +258,6 @@ export async function getCompleteTableStructure(
 
       if (appendStructuresList.length > 0) {
         allAppendStructures += `\n\nALL APPEND STRUCTURES (${appendStructuresList.length}):\n`
-        allAppendStructures += `${"=".repeat(40)}\n`
         for (const append of appendStructuresList) {
           allAppendStructures += `• ${append.name} (${append.fields} fields)\n`
         }
@@ -271,15 +266,11 @@ export async function getCompleteTableStructure(
       // Append structures are optional
     }
 
-    let completeStructure = `Complete Table Structure for ${sanitizedName}:\n`
-    completeStructure += `${"=".repeat(60)}\n`
-    completeStructure += ` SE11-like Table Access: Main table + ALL append structures\n`
-    completeStructure += ` Append Structures Found: ${appendStructuresList.length}\n`
-    completeStructure += `${"=".repeat(60)}\n\n`
+    let completeStructure = `Complete Table Structure for ${sanitizedName} (SE11-like, includes ALL append structures):\n`
+    completeStructure += ` Append Structures Found: ${appendStructuresList.length}\n\n`
 
     if (mainStructure) {
       completeStructure += `MAIN TABLE STRUCTURE:\n`
-      completeStructure += `${"=".repeat(40)}\n`
       completeStructure += mainStructure + "\n"
     }
 

@@ -160,8 +160,7 @@ export class ManageTransportRequestsTool implements vscode.LanguageModelTool<IMa
 
       const transports = await readTransports(connectionId, targetUser)
 
-      let result = `Transport Requests for User: ${targetUser.toUpperCase()}\n`
-      result += `${"=".repeat(60)}\n\n`
+      let result = `Transport Requests for User: ${targetUser.toUpperCase()}\n\n`
 
       let totalCount = 0
 
@@ -206,7 +205,6 @@ export class ManageTransportRequestsTool implements vscode.LanguageModelTool<IMa
       const transportData = await client.transportDetails(transportNumber)
 
       let result = `Transport Details: ${transportNumber}\n`
-      result += `${"=".repeat(60)}\n`
       result += ` **Number**: ${transportData["tm:number"]}\n`
       result += ` **Owner**: ${transportData["tm:owner"]}\n`
       result += ` **Description**: ${transportData["tm:desc"]}\n`
@@ -263,7 +261,6 @@ export class ManageTransportRequestsTool implements vscode.LanguageModelTool<IMa
       }
 
       let result = `Objects in Transport: ${transportNumber}\n`
-      result += `${"=".repeat(60)}\n`
       result += ` **Main Owner**: ${transportData["tm:owner"]}\n`
       result += ` **Description**: ${transportData["tm:desc"]}\n`
       result += ` **Total Objects**: ${allObjects.length} (includes main transport + all task objects)\n`
@@ -355,8 +352,7 @@ export class ManageTransportRequestsTool implements vscode.LanguageModelTool<IMa
         }
       }
 
-      let result = `Transport Comparison: ${transportNumbers.join(" vs ")}\n`
-      result += `${"=".repeat(60)}\n\n`
+      let result = `Transport Comparison: ${transportNumbers.join(" vs ")}\n\n`
 
       if (notFound.length > 0) {
         result += ` **Not Found**: ${notFound.join(", ")}\n\n`

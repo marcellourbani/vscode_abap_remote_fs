@@ -115,11 +115,7 @@ export class GetABAPObjectInfoTool implements vscode.LanguageModelTool<IGetABAPO
               const tableTypeInfo = await getTableTypeFromDD(client, objectName)
               if (tableTypeInfo) {
                 completeStructure =
-                  `Complete Structure for ${objectName}:\n` +
-                  `${"=".repeat(60)}\n` +
-                  ` DD Table Query: Table Type definition from DD40L/DD40T\n` +
-                  ` Source: DD40L (Table Type definitions)\n` +
-                  `${"=".repeat(60)}\n\n` +
+                  `Complete Structure for ${objectName} (Table Type from DD40L/DD40T):\n\n` +
                   tableTypeInfo
               }
             } else {
