@@ -87,7 +87,7 @@ export async function getTableTypeFromDD(client: any, typeName: string): Promise
       if (row.DECIMALS) structure += ` DECIMALS ${row.DECIMALS}`
       structure += `\n`
     }
-    structure += `\n💡 This is a table type that references line type ${row.ROWTYPE}. To see the actual fields, query the line type structure.`
+    structure += `\n This is a table type that references line type ${row.ROWTYPE}. To see the actual fields, query the line type structure.`
   })
 
   return structure
@@ -242,8 +242,8 @@ export async function getCompleteTableStructure(
           const completeStructure =
             `Complete Structure for ${sanitizedName}:\n` +
             `${"=".repeat(60)}\n` +
-            `💡 DD Table Query: Includes main object + ALL append structures automatically\n` +
-            `📊 Source: DD03L (Data Dictionary fields)\n` +
+            ` DD Table Query: Includes main object + ALL append structures automatically\n` +
+            ` Source: DD03L (Data Dictionary fields)\n` +
             `${"=".repeat(60)}\n\n` +
             tableFields
 
@@ -273,8 +273,8 @@ export async function getCompleteTableStructure(
 
     let completeStructure = `Complete Table Structure for ${sanitizedName}:\n`
     completeStructure += `${"=".repeat(60)}\n`
-    completeStructure += `💡 SE11-like Table Access: Main table + ALL append structures\n`
-    completeStructure += `📊 Append Structures Found: ${appendStructuresList.length}\n`
+    completeStructure += ` SE11-like Table Access: Main table + ALL append structures\n`
+    completeStructure += ` Append Structures Found: ${appendStructuresList.length}\n`
     completeStructure += `${"=".repeat(60)}\n\n`
 
     if (mainStructure) {

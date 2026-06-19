@@ -104,7 +104,7 @@ function searchFileLines(
     result += `${"=".repeat(60)}\n\n`
     
     for (const match of matches) {
-      result += `📍 Line ${match.lineNumber} (matched: ${match.matchedTerms.join(", ")}):\n`
+      result += ` Line ${match.lineNumber} (matched: ${match.matchedTerms.join(", ")}):\n`
       result += `${"-".repeat(40)}\n`
       result += match.context.join("\n")
       result += `\n\n`

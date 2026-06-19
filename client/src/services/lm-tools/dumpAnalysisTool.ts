@@ -115,7 +115,7 @@ export class ABAPDumpAnalysisTool implements vscode.LanguageModelTool<IDumpAnaly
       if (!dumpFeed) {
         return new vscode.LanguageModelToolResult([
           new vscode.LanguageModelTextPart(
-            `❌ **Dumps not available** - This SAP system does not support dump access via ADT API.`
+            ` **Dumps not available** - This SAP system does not support dump access via ADT API.`
           )
         ])
       }
@@ -126,7 +126,7 @@ export class ABAPDumpAnalysisTool implements vscode.LanguageModelTool<IDumpAnaly
       if (dumps.length === 0) {
         return new vscode.LanguageModelToolResult([
           new vscode.LanguageModelTextPart(
-            `✅ **No dumps found** - No recent ABAP runtime errors in system ${connectionId}.`
+            ` **No dumps found** - No recent ABAP runtime errors in system ${connectionId}.`
           )
         ])
       }
@@ -136,7 +136,7 @@ export class ABAPDumpAnalysisTool implements vscode.LanguageModelTool<IDumpAnaly
 
       let result = `**ABAP Runtime Dumps** (${limitedDumps.length} of ${dumps.length} total)\n`
       result += `System: ${connectionId}\n\n`
-      result += `💡 **To analyze a specific dump, use the analyze_dump action with the exact Dump ID shown below.**\n\n`
+      result += ` **To analyze a specific dump, use the analyze_dump action with the exact Dump ID shown below.**\n\n`
 
       for (let i = 0; i < limitedDumps.length; i++) {
         const dump = limitedDumps[i]
@@ -170,7 +170,7 @@ export class ABAPDumpAnalysisTool implements vscode.LanguageModelTool<IDumpAnaly
       if (!dump) {
         return new vscode.LanguageModelToolResult([
           new vscode.LanguageModelTextPart(
-            `❌ **Dump not found** - No dump with ID "${dumpId}" found in system ${connectionId}.`
+            ` **Dump not found** - No dump with ID "${dumpId}" found in system ${connectionId}.`
           )
         ])
       }

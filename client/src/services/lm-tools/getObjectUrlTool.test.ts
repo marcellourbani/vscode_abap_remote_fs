@@ -126,7 +126,7 @@ describe("GetAbapObjectUrlTool", () => {
         mockToken
       )
       expect(result.parts[0].text).toContain("https://sap.example.com")
-      expect(result.parts[0].text).toContain("✅")
+      expect(result.parts[0].text).toContain("Successfully")
     })
 
     it("includes object name and type in result", async () => {

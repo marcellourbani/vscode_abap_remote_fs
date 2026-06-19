@@ -81,14 +81,14 @@ export class OpenObjectTool implements vscode.LanguageModelTool<IOpenObjectParam
 
       return new vscode.LanguageModelToolResult([
         new vscode.LanguageModelTextPart(
-          `✅ Object ${objectName} opened successfully in the editor.`
+          ` Object ${objectName} opened successfully in the editor.`
         )
       ])
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : String(error)
 
       return new vscode.LanguageModelToolResult([
-        new vscode.LanguageModelTextPart(`❌ Failed to open object: ${errorMessage}`)
+        new vscode.LanguageModelTextPart(` Failed to open object: ${errorMessage}`)
       ])
     }
   }

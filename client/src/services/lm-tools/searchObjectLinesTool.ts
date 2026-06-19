@@ -89,8 +89,8 @@ async function getCompleteTableStructure(
 
     let completeStructure = `Complete Table Structure for ${objectName}:\n`
     completeStructure += `${"=".repeat(60)}\n`
-    completeStructure += `💡 SE11-like Table Access: Main table + ALL append structures\n`
-    completeStructure += `📊 Includes: ${mainStructure ? "Main table structure" : "No main structure"} + ${allAppendStructures ? "All append structures" : "No append structures"}\n`
+    completeStructure += ` SE11-like Table Access: Main table + ALL append structures\n`
+    completeStructure += ` Includes: ${mainStructure ? "Main table structure" : "No main structure"} + ${allAppendStructures ? "All append structures" : "No append structures"}\n`
     completeStructure += `${"=".repeat(60)}\n\n`
 
     if (mainStructure) {
@@ -215,7 +215,7 @@ export class SearchABAPObjectLinesTool implements vscode.LanguageModelTool<ISear
         totalObjectsSearched++
 
         if (!objectInfo.uri) {
-          allResultsText += `⚠️ **Object ${objectInfo.name}**: Could not get URI, skipping.\n\n`
+          allResultsText += ` **Object ${objectInfo.name}**: Could not get URI, skipping.\n\n`
           continue
         }
 
@@ -241,8 +241,8 @@ export class SearchABAPObjectLinesTool implements vscode.LanguageModelTool<ISear
                   completeStructure =
                     `Complete Structure for ${objectInfo.name}:\n` +
                     `${"=".repeat(60)}\n` +
-                    `💡 DD Table Query: Table Type definition from DD40L/DD40T\n` +
-                    `📊 Source: DD40L (Table Type definitions)\n` +
+                    ` DD Table Query: Table Type definition from DD40L/DD40T\n` +
+                    ` Source: DD40L (Table Type definitions)\n` +
                     `${"=".repeat(60)}\n\n` +
                     tableTypeInfo
                 }
@@ -265,7 +265,7 @@ export class SearchABAPObjectLinesTool implements vscode.LanguageModelTool<ISear
               }
 
               if (matches.length > 0) {
-                currentObjectResultText += `\n## 📋 **${objectInfo.name}** (Complete Table Structure)\n\n`
+                currentObjectResultText += `\n##  **${objectInfo.name}** (Complete Table Structure)\n\n`
 
                 for (const match of matches) {
                   const startLine = Math.max(0, match.lineNumber - contextLines)
@@ -285,7 +285,7 @@ export class SearchABAPObjectLinesTool implements vscode.LanguageModelTool<ISear
                 currentObjectResultText +=
                   `• **Search covered:** Main table + ALL append structures\n` +
                   `• **Total structure lines:** ${lines.length}\n` +
-                  `• **Custom field discovery:** ${searchTerm.toLowerCase().startsWith("z") || searchTerm.toLowerCase().startsWith("y") ? "✅ Custom field search enabled" : "Standard search"}\n\n`
+                  `• **Custom field discovery:** ${searchTerm.toLowerCase().startsWith("z") || searchTerm.toLowerCase().startsWith("y") ? " Custom field search enabled" : "Standard search"}\n\n`
 
                 totalMatches += matches.length
                 allResultsText += currentObjectResultText
@@ -320,7 +320,7 @@ export class SearchABAPObjectLinesTool implements vscode.LanguageModelTool<ISear
                   sourceContent = await client.getObjectSource(finalUri)
                   uriUsed = finalUri
                 } catch (finalError) {
-                  allResultsText += `⚠️ **Object ${objectInfo.name}**: Could not get source content. Last error: ${finalError}\n\n`
+                  allResultsText += ` **Object ${objectInfo.name}**: Could not get source content. Last error: ${finalError}\n\n`
                   continue
                 }
               }
@@ -332,14 +332,14 @@ export class SearchABAPObjectLinesTool implements vscode.LanguageModelTool<ISear
                 sourceContent = await client.getObjectSource(finalUri)
                 uriUsed = finalUri
               } catch (finalError) {
-                allResultsText += `⚠️ **Object ${objectInfo.name}**: Could not get source content.\n\n`
+                allResultsText += ` **Object ${objectInfo.name}**: Could not get source content.\n\n`
                 continue
               }
             }
           }
 
           if (!sourceContent) {
-            allResultsText += `⚠️ **Object ${objectInfo.name}**: Source content is empty.\n\n`
+            allResultsText += ` **Object ${objectInfo.name}**: Source content is empty.\n\n`
             continue
           }
 
@@ -401,10 +401,10 @@ export class SearchABAPObjectLinesTool implements vscode.LanguageModelTool<ISear
           }
 
           if (matches.length > 0 || enhancementMatches.length > 0) {
-            currentObjectResultText += `\n## 📋 **${objectInfo.name}** (${objectInfo.type})\n\n`
+            currentObjectResultText += `\n##  **${objectInfo.name}** (${objectInfo.type})\n\n`
 
             if (matches.length > 0) {
-              currentObjectResultText += `**📋 Base Source Matches (${matches.length}):**\n\n`
+              currentObjectResultText += `** Base Source Matches (${matches.length}):**\n\n`
               for (const match of matches) {
                 const startLine = Math.max(0, match.lineNumber - contextLines)
                 const endLine = Math.min(lines.length - 1, match.lineNumber + contextLines)
@@ -422,7 +422,7 @@ export class SearchABAPObjectLinesTool implements vscode.LanguageModelTool<ISear
             }
 
             if (enhancementMatches.length > 0) {
-              currentObjectResultText += `**🎯 Enhancement Matches (${enhancementMatches.length}):**\n\n`
+              currentObjectResultText += `** Enhancement Matches (${enhancementMatches.length}):**\n\n`
               for (const enhMatch of enhancementMatches) {
                 currentObjectResultText += `**Enhancement ${enhMatch.enhancementName} - Line ${enhMatch.lineNumber + 1}:**\n\`\`\`abap\n`
                 currentObjectResultText += enhMatch.contextLines.join("\n")
@@ -439,7 +439,7 @@ export class SearchABAPObjectLinesTool implements vscode.LanguageModelTool<ISear
             allResultsText += currentObjectResultText
           }
         } catch (objectError) {
-          allResultsText += `⚠️ **Object ${objectInfo.name}**: Error during search - ${objectError}\n\n`
+          allResultsText += ` **Object ${objectInfo.name}**: Error during search - ${objectError}\n\n`
           continue
         }
       }
@@ -463,7 +463,7 @@ export class SearchABAPObjectLinesTool implements vscode.LanguageModelTool<ISear
 
       let objectListSection = ""
       if (maxObjects > 1 && searchResults.length > 0) {
-        objectListSection = `\n**📋 Objects searched:**\n`
+        objectListSection = `\n** Objects searched:**\n`
         for (const obj of searchResults.slice(0, totalObjectsSearched)) {
           objectListSection += `• **${obj.name}** (${obj.type})\n`
         }

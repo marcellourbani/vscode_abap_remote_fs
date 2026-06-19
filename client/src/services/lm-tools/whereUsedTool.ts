@@ -452,7 +452,7 @@ export class ABAPWhereUsedTool implements vscode.LanguageModelTool<IWhereUsedPar
 
       // Add tip about Unknown types
       if (hasUnknownTypes) {
-        resultText += `\n💡 **Tip:** Some references show Type as "Unknown". You can determine the actual object type from the URI path:\n`
+        resultText += `\n **Tip:** Some references show Type as "Unknown". You can determine the actual object type from the URI path:\n`
         resultText += `   • URIs containing "/oo/classes/" → Class (CLAS/OC)\n`
         resultText += `   • URIs containing "/programs/programs/" → Program (PROG/P)\n`
         resultText += `   • URIs containing "/functions/groups/" → Function Module (FUGR/FF)\n`

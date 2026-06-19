@@ -117,8 +117,8 @@ export class GetABAPObjectInfoTool implements vscode.LanguageModelTool<IGetABAPO
                 completeStructure =
                   `Complete Structure for ${objectName}:\n` +
                   `${"=".repeat(60)}\n` +
-                  `💡 DD Table Query: Table Type definition from DD40L/DD40T\n` +
-                  `📊 Source: DD40L (Table Type definitions)\n` +
+                  ` DD Table Query: Table Type definition from DD40L/DD40T\n` +
+                  ` Source: DD40L (Table Type definitions)\n` +
                   `${"=".repeat(60)}\n\n` +
                   tableTypeInfo
               }
@@ -167,10 +167,10 @@ export class GetABAPObjectInfoTool implements vscode.LanguageModelTool<IGetABAPO
               `• **System Type:** ${objectInfo.systemType}\n` +
               `• **Total Lines:** ${structureLines.length}\n` +
               `• **Append Structures:** ${appendCount}\n` +
-              `• **Has Custom Fields/Append Structures:** ${hasAppendStructures ? "✅ Yes" : "❌ No"}\n` +
-              `• **SE11-like Structure Access:** ✅ Available\n` +
+              `• **Has Custom Fields/Append Structures:** ${hasAppendStructures ? " Yes" : " No"}\n` +
+              `• **SE11-like Structure Access:**  Available\n` +
               `• **URI:** \`${objectInfo.uri}\`\n\n` +
-              `💡 **Enhanced Table Info:** This table ${hasAppendStructures ? `includes ${appendCount} custom append structure(s) with additional fields` : "has no append structures"}. `
+              ` **Enhanced Table Info:** This table ${hasAppendStructures ? `includes ${appendCount} custom append structure(s) with additional fields` : "has no append structures"}. `
 
             return new vscode.LanguageModelToolResult([
               new vscode.LanguageModelTextPart(tableResultText)

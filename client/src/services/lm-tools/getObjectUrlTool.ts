@@ -102,20 +102,20 @@ export class GetAbapObjectUrlTool implements vscode.LanguageModelTool<IGetAbapOb
       sapGuiPanel.dispose()
 
       const resultText =
-        `**🔗 SAP GUI URL Generated Successfully** ✅\n\n` +
+        `** SAP GUI URL Generated Successfully** \n\n` +
         `• **Object:** ${objectName}\n` +
         `• **Type:** ${objectType}\n` +
         `• **Connection:** ${activeConnectionId}\n` +
         `• **Transaction:** ${transactionInfo.transaction}\n` +
         `• **URL:** \`${webguiUrl}\`\n\n` +
-        `**📖 Usage with MCP Playwright:**\n` +
+        `** Usage with MCP Playwright:**\n` +
         `Use this URL with the Playwright MCP server (HTTP mode) to automate SAP GUI interactions:\n` +
         `1. Navigate to the URL using \`mcp_playwright_browser_navigate\`\n` +
         `2. Ask user to login so you can continue \n` +
         `3. Use \`mcp_playwright_browser_snapshot\` for testing/navigation (not screenshots)\n` +
         `4. Interact with elements using \`mcp_playwright_browser_click\` and \`mcp_playwright_browser_type\`\n` +
         `5. Take screenshots only for reference using \`mcp_playwright_browser_take_screenshot\`\n\n` +
-        `**🎯 Ready for Browser Automation!**`
+        `** Ready for Browser Automation!**`
 
       return new vscode.LanguageModelToolResult([new vscode.LanguageModelTextPart(resultText)])
     } catch (error) {

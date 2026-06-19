@@ -109,7 +109,7 @@ export class CreateABAPObjectTool implements vscode.LanguageModelTool<ICreateObj
             structuredResult.message.includes("Object not found in workspace")
           ) {
             errorText =
-              `**ABAP Object Creation Failed** ❌\n\n` +
+              `**ABAP Object Creation Failed** \n\n` +
               `• **Object Type:** ${objectType}\n` +
               `• **Name:** ${name}\n` +
               `• **Error:** ${structuredResult.error || "WORKSPACE_REGISTRATION_FAILED"}\n` +
@@ -121,7 +121,7 @@ export class CreateABAPObjectTool implements vscode.LanguageModelTool<ICreateObj
               `3. The object creation in SAP was likely successful despite this error`
           } else {
             errorText =
-              `**ABAP Object Creation Failed** ❌\n\n` +
+              `**ABAP Object Creation Failed** \n\n` +
               `• **Object Type:** ${objectType}\n` +
               `• **Name:** ${name}\n` +
               `• **Error:** ${structuredResult.error || "UNKNOWN_ERROR"}\n` +
@@ -134,7 +134,7 @@ export class CreateABAPObjectTool implements vscode.LanguageModelTool<ICreateObj
       }
 
       const resultText =
-        `**ABAP Object Created Successfully** ✅\n\n` +
+        `**ABAP Object Created Successfully** \n\n` +
         `• **Object Type:** ${objectType}\n` +
         `• **Name:** ${name}\n` +
         `• **Description:** ${description}\n` +

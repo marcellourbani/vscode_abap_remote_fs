@@ -90,14 +90,14 @@ export class GetAbapObjectWorkspaceUriTool implements vscode.LanguageModelTool<I
       const workspaceUri = `adt://${connectionId}${path}`
 
       const resultText =
-        `**ABAP Object Workspace URI** ✅\n\n` +
+        `**ABAP Object Workspace URI** \n\n` +
         `• **Object:** ${exactMatch["adtcore:name"]}\n` +
         `• **Type:** ${exactMatch["adtcore:type"]}\n` +
         `• **Package:** ${exactMatch["adtcore:packageName"] || "Unknown"}\n` +
         `• **Description:** ${exactMatch["adtcore:description"] || "No description"}\n` +
         `• **ADT URI:** \`${exactMatch["adtcore:uri"]}\`\n` +
         `• **Workspace URI:** \`${workspaceUri}\`\n\n` +
-        `**📁 Use the workspace URI to access the object content directly with standard VS Code file operations.**`
+        `** Use the workspace URI to access the object content directly with standard VS Code file operations.**`
 
       return new vscode.LanguageModelToolResult([new vscode.LanguageModelTextPart(resultText)])
     } catch (error) {

@@ -82,17 +82,17 @@ export class ExecuteDataQueryTool implements vscode.LanguageModelTool<IExecuteDa
     if (displayMode === "internal") {
       if (!sql) {
         throw new Error(
-          '❌ Internal mode requires SQL query. Use displayMode "ui" to display data or work with webviews.'
+          ' Internal mode requires SQL query. Use displayMode "ui" to display data or work with webviews.'
         )
       }
       if (webviewId) {
         throw new Error(
-          '❌ LOGICAL CONFLICT: displayMode "internal" is for SQL execution without UI. Use displayMode "ui" to work with webviews.'
+          ' LOGICAL CONFLICT: displayMode "internal" is for SQL execution without UI. Use displayMode "ui" to work with webviews.'
         )
       }
       if (data) {
         throw new Error(
-          '❌ LOGICAL CONFLICT: displayMode "internal" is for SQL execution only. Use displayMode "ui" to display data to user.'
+          ' LOGICAL CONFLICT: displayMode "internal" is for SQL execution only. Use displayMode "ui" to display data to user.'
         )
       }
     }
@@ -157,7 +157,7 @@ export class ExecuteDataQueryTool implements vscode.LanguageModelTool<IExecuteDa
 
     if (displayMode === "internal" && !rowRange) {
       throw new Error(
-        "❌ CRITICAL: rowRange is MANDATORY for internal mode to prevent accidental large data transfers that could overwhelm the system. You MUST specify start and end rows (e.g., {start: 0, end: 10}) to analyze specific data ranges."
+        " CRITICAL: rowRange is MANDATORY for internal mode to prevent accidental large data transfers that could overwhelm the system. You MUST specify start and end rows (e.g., {start: 0, end: 10}) to analyze specific data ranges."
       )
     }
 
@@ -180,7 +180,7 @@ export class ExecuteDataQueryTool implements vscode.LanguageModelTool<IExecuteDa
       const rowRangeSize = rowRange.end - rowRange.start
       if (displayMode === "internal" && rowRangeSize > 1000) {
         throw new Error(
-          `❌ SAFETY LIMIT: Internal mode rowRange cannot exceed 1000 rows. Requested: ${rowRangeSize} rows (${rowRange.start} to ${rowRange.end}). Break large analysis into smaller chunks.`
+          ` SAFETY LIMIT: Internal mode rowRange cannot exceed 1000 rows. Requested: ${rowRangeSize} rows (${rowRange.start} to ${rowRange.end}). Break large analysis into smaller chunks.`
         )
       }
     }
@@ -335,7 +335,7 @@ export class ExecuteDataQueryTool implements vscode.LanguageModelTool<IExecuteDa
 
         // If user chose "UI only" due to production guard, inform Copilot
         const guardNote = switchedToUiMode
-          ? `\n\n⚠️ PRODUCTION SYSTEM: User chose to view results in UI only. Data was NOT sent back to you for security reasons. The user can see the results in the webview.`
+          ? `\n\n PRODUCTION SYSTEM: User chose to view results in UI only. Data was NOT sent back to you for security reasons. The user can see the results in the webview.`
           : ""
 
         return new vscode.LanguageModelToolResult([
@@ -391,7 +391,7 @@ export class ExecuteDataQueryTool implements vscode.LanguageModelTool<IExecuteDa
       const sqlPreview = sql.length > 100 ? sql.substring(0, 100) + "..." : sql
 
       const choice = await window.showWarningMessage(
-        `⚠️ PRODUCTION SYSTEM DETECTED\n\n` +
+        ` PRODUCTION SYSTEM DETECTED\n\n` +
           `Copilot wants to run SQL on: ${clientInfo}\n\n` +
           `Query: ${sqlPreview}`,
         { modal: true },
@@ -471,7 +471,7 @@ export class ExecuteDataQueryTool implements vscode.LanguageModelTool<IExecuteDa
       // Return SQL error to Copilot so it can fix and retry
       const errorMessage = error?.message || String(error)
       return new vscode.LanguageModelToolResult([
-        new vscode.LanguageModelTextPart(`❌ SQL Error: ${errorMessage}`)
+        new vscode.LanguageModelTextPart(` SQL Error: ${errorMessage}`)
       ])
     }
   }

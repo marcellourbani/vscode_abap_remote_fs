@@ -125,7 +125,7 @@ export class ABAPTraceAnalysisTool implements vscode.LanguageModelTool<ITraceAna
       if (!runs || runs.length === 0) {
         return new vscode.LanguageModelToolResult([
           new vscode.LanguageModelTextPart(
-            `✅ **No trace runs found** - No recent trace executions in system ${connectionId}.`
+            ` **No trace runs found** - No recent trace executions in system ${connectionId}.`
           )
         ])
       }
@@ -184,7 +184,7 @@ export class ABAPTraceAnalysisTool implements vscode.LanguageModelTool<ITraceAna
       if (!requests || requests.length === 0) {
         return new vscode.LanguageModelToolResult([
           new vscode.LanguageModelTextPart(
-            `✅ **No trace configurations found** - No trace configurations in system ${connectionId}.`
+            ` **No trace configurations found** - No trace configurations in system ${connectionId}.`
           )
         ])
       }
@@ -228,7 +228,7 @@ export class ABAPTraceAnalysisTool implements vscode.LanguageModelTool<ITraceAna
       if (!run) {
         return new vscode.LanguageModelToolResult([
           new vscode.LanguageModelTextPart(
-            `❌ **Trace run not found** - No trace run with ID "${traceId}" found in system ${connectionId}.`
+            ` **Trace run not found** - No trace run with ID "${traceId}" found in system ${connectionId}.`
           )
         ])
       }
@@ -251,21 +251,21 @@ export class ABAPTraceAnalysisTool implements vscode.LanguageModelTool<ITraceAna
       const dbPercent = Math.round((runtimeDatabase / totalRuntime) * 100)
       const sysPercent = Math.round((runtimeSystem / totalRuntime) * 100)
 
-      let result = `**📈 ABAP Trace Run Analysis** 🚀\n\n`
+      let result = `** ABAP Trace Run Analysis** \n\n`
       result += `**System:** ${connectionId}\n`
       result += `**Trace ID:** ${traceId}\n`
       result += `**Title:** ${run.title}\n`
       result += `**Published:** ${run.published.toLocaleString()}\n`
       result += `\n`
 
-      result += `**📊 Performance Summary:**\n`
+      result += `** Performance Summary:**\n`
       result += `• **Total Runtime:** ${runtime}ms\n`
       result += `• **ABAP Runtime:** ${runtimeABAP}ms (${abapPercent}%)\n`
       result += `• **Database Runtime:** ${runtimeDatabase}ms (${dbPercent}%)\n`
       result += `• **System Runtime:** ${runtimeSystem}ms (${sysPercent}%)\n`
       result += `\n`
 
-      result += `**🎯 Execution Context:**\n`
+      result += `** Execution Context:**\n`
       result += `• **Object:** ${objectName}\n`
       result += `• **Author:** ${author}\n`
       result += `• **Host:** ${host}\n`
@@ -309,7 +309,7 @@ export class ABAPTraceAnalysisTool implements vscode.LanguageModelTool<ITraceAna
       if (!run) {
         return new vscode.LanguageModelToolResult([
           new vscode.LanguageModelTextPart(
-            `❌ **Trace run not found** - No trace run with ID "${traceId}" found in system ${connectionId}.`
+            ` **Trace run not found** - No trace run with ID "${traceId}" found in system ${connectionId}.`
           )
         ])
       }
@@ -339,7 +339,7 @@ export class ABAPTraceAnalysisTool implements vscode.LanguageModelTool<ITraceAna
         logCommands.error(`Trace statements returned null/undefined`)
         return new vscode.LanguageModelToolResult([
           new vscode.LanguageModelTextPart(
-            `❌ **No data returned from SAP** - Trace ${traceId} returned empty response.`
+            ` **No data returned from SAP** - Trace ${traceId} returned empty response.`
           )
         ])
       }
@@ -350,7 +350,7 @@ export class ABAPTraceAnalysisTool implements vscode.LanguageModelTool<ITraceAna
         )
         return new vscode.LanguageModelToolResult([
           new vscode.LanguageModelTextPart(
-            `❌ **Invalid data structure** - Expected 'statements' property not found in response.`
+            ` **Invalid data structure** - Expected 'statements' property not found in response.`
           )
         ])
       }
@@ -359,7 +359,7 @@ export class ABAPTraceAnalysisTool implements vscode.LanguageModelTool<ITraceAna
         logCommands.info(`Trace ${traceId} has empty statements array`)
         return new vscode.LanguageModelToolResult([
           new vscode.LanguageModelTextPart(
-            `❌ **No statement data available** - Trace ${traceId} contains no detailed statements.`
+            ` **No statement data available** - Trace ${traceId} contains no detailed statements.`
           )
         ])
       }
@@ -368,7 +368,7 @@ export class ABAPTraceAnalysisTool implements vscode.LanguageModelTool<ITraceAna
 
       const stmts = statements.statements
 
-      let result = `**📋 ABAP Trace Statements Analysis** 🔍\n\n`
+      let result = `** ABAP Trace Statements Analysis** \n\n`
       result += `**System:** ${connectionId}\n`
       result += `**Trace ID:** ${traceId}\n`
       result += `**Total Statements:** ${stmts.length}\n`
@@ -382,7 +382,7 @@ export class ABAPTraceAnalysisTool implements vscode.LanguageModelTool<ITraceAna
       // Show top 20 performance hotspots
       const topStatements = sortedStmts.slice(0, 20)
 
-      result += `**🔥 Top Performance Hotspots (Top 20):**\n`
+      result += `** Top Performance Hotspots (Top 20):**\n`
 
       for (let i = 0; i < topStatements.length; i++) {
         const stmt = topStatements[i]
@@ -395,11 +395,11 @@ export class ABAPTraceAnalysisTool implements vscode.LanguageModelTool<ITraceAna
 
         result += `${i + 1}. **${description || "Unknown Statement"}**\n`
         result += `   ⏱️ **Net Time:** ${netTime}ms | **Gross Time:** ${grossTimeVal}ms\n`
-        result += `   🎯 **Hit Count:** ${hitCount}\n`
-        result += `   📋 **Program:** ${program}${context ? ` (${context})` : ""}\n`
-        result += `   📊 **Call Level:** ${callLevel}\n`
+        result += `    **Hit Count:** ${hitCount}\n`
+        result += `    **Program:** ${program}${context ? ` (${context})` : ""}\n`
+        result += `    **Call Level:** ${callLevel}\n`
         if (hitCount > 0) {
-          result += `   📈 **Avg Time/Hit:** ${Math.round(netTime / hitCount)}ms\n`
+          result += `    **Avg Time/Hit:** ${Math.round(netTime / hitCount)}ms\n`
         }
         result += `\n`
       }
@@ -412,7 +412,7 @@ export class ABAPTraceAnalysisTool implements vscode.LanguageModelTool<ITraceAna
       const totalHits = stmts.reduce((sum: number, stmt: any) => sum + (stmt.hitCount || 0), 0)
       const maxCallLevel = Math.max(...stmts.map((stmt: any) => stmt.callLevel || 0))
 
-      result += `**📊 Statement Statistics:**\n`
+      result += `** Statement Statistics:**\n`
       result += `• **Total Net Time:** ${totalNetTime}ms\n`
       result += `• **Total Hits:** ${totalHits}\n`
       result += `• **Max Call Depth:** ${maxCallLevel}\n`
@@ -428,7 +428,7 @@ export class ABAPTraceAnalysisTool implements vscode.LanguageModelTool<ITraceAna
       })
 
       if (highHitStmts.length > 0 || slowStmts.length > 0) {
-        result += `\n**🔍 Performance Issues:**\n`
+        result += `\n** Performance Issues:**\n`
         if (highHitStmts.length > 0) {
           result += `• **High Frequency:** ${highHitStmts.length} statements >100 hits\n`
         }
@@ -459,14 +459,14 @@ export class ABAPTraceAnalysisTool implements vscode.LanguageModelTool<ITraceAna
       if (!hitlist || !hitlist.entries || hitlist.entries.length === 0) {
         return new vscode.LanguageModelToolResult([
           new vscode.LanguageModelTextPart(
-            `❌ **No hit list data available** - Trace ${traceId} contains no hit list information.`
+            ` **No hit list data available** - Trace ${traceId} contains no hit list information.`
           )
         ])
       }
 
       const entries = hitlist.entries
 
-      let result = `**🎯 ABAP Trace Hit List Analysis** 📊\n\n`
+      let result = `** ABAP Trace Hit List Analysis** \n\n`
       result += `**System:** ${connectionId}\n`
       result += `**Trace ID:** ${traceId}\n`
       result += `**Total Entries:** ${entries.length}\n`
@@ -480,7 +480,7 @@ export class ABAPTraceAnalysisTool implements vscode.LanguageModelTool<ITraceAna
       // Show top 15 performance hotspots
       const topEntries = sortedEntries.slice(0, 15)
 
-      result += `**🔥 Top Performance Hotspots (Top 15):**\n`
+      result += `** Top Performance Hotspots (Top 15):**\n`
 
       for (let i = 0; i < topEntries.length; i++) {
         const entry = topEntries[i]
@@ -493,13 +493,13 @@ export class ABAPTraceAnalysisTool implements vscode.LanguageModelTool<ITraceAna
 
         result += `${i + 1}. **${description || "Unknown Operation"}**\n`
         result += `   ⏱️ **Net Time:** ${netTime}ms | **Gross Time:** ${grossTimeVal}ms\n`
-        result += `   🎯 **Hit Count:** ${hitCount}\n`
-        result += `   📋 **Program:** ${program}${context ? ` (${context})` : ""}\n`
+        result += `    **Hit Count:** ${hitCount}\n`
+        result += `    **Program:** ${program}${context ? ` (${context})` : ""}\n`
         if (hitCount > 0) {
-          result += `   📈 **Avg Time/Hit:** ${Math.round(netTime / hitCount)}ms\n`
+          result += `    **Avg Time/Hit:** ${Math.round(netTime / hitCount)}ms\n`
         }
         if (uri) {
-          result += `   🔗 **Object URI:** \`${uri}\`\n`
+          result += `    **Object URI:** \`${uri}\`\n`
         }
         result += `\n`
       }
@@ -514,7 +514,7 @@ export class ABAPTraceAnalysisTool implements vscode.LanguageModelTool<ITraceAna
         entries.map((entry: any) => entry.callingProgram?.name).filter(Boolean)
       )
 
-      result += `**📊 Hit List Statistics:**\n`
+      result += `** Hit List Statistics:**\n`
       result += `• **Total Net Time:** ${totalNetTime}ms\n`
       result += `• **Total Hits:** ${totalHits}\n`
       result += `• **Unique Programs:** ${uniquePrograms.size}\n`
@@ -530,7 +530,7 @@ export class ABAPTraceAnalysisTool implements vscode.LanguageModelTool<ITraceAna
       })
 
       if (highHitEntries.length > 0 || inefficientEntries.length > 0) {
-        result += `\n**🔍 Performance Issues:**\n`
+        result += `\n** Performance Issues:**\n`
         if (highHitEntries.length > 0) {
           result += `• **High Frequency:** ${highHitEntries.length} entries >50 hits\n`
         }
@@ -549,7 +549,7 @@ export class ABAPTraceAnalysisTool implements vscode.LanguageModelTool<ITraceAna
       })
 
       if (programHits.size > 0) {
-        result += `\n**📋 Program Hit Distribution:**\n`
+        result += `\n** Program Hit Distribution:**\n`
         const sortedPrograms = Array.from(programHits.entries())
           .sort(([, a], [, b]) => b - a)
           .slice(0, 10)

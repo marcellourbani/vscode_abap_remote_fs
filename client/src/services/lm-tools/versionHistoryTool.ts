@@ -147,7 +147,7 @@ export class VersionHistoryTool implements vscode.LanguageModelTool<IVersionHist
       const errorMessage = error instanceof Error ? error.message : String(error)
 
       return new vscode.LanguageModelToolResult([
-        new vscode.LanguageModelTextPart(`❌ Failed to get version history: ${errorMessage}`)
+        new vscode.LanguageModelTextPart(` Failed to get version history: ${errorMessage}`)
       ])
     }
   }
@@ -236,7 +236,7 @@ export class VersionHistoryTool implements vscode.LanguageModelTool<IVersionHist
     const source = await client.getObjectSource(revision.uri)
 
     const output =
-      `📜 **Source at Version #${versionNumber}** of **${objectName}** (${objectType})\n\n` +
+      ` **Source at Version #${versionNumber}** of **${objectName}** (${objectType})\n\n` +
       `**Version Info:**\n` +
       `• **Date:** ${this.formatDate(revision.date)}\n` +
       `• **Author:** ${revision.author || "Unknown"}\n` +
@@ -288,7 +288,7 @@ export class VersionHistoryTool implements vscode.LanguageModelTool<IVersionHist
     // Simple diff - find added, removed, changed lines
     const diff = this.computeSimpleDiff(lines1, lines2)
 
-    let output = `🔀 **Version Comparison for ${objectName}** (${objectType})\n\n`
+    let output = ` **Version Comparison for ${objectName}** (${objectType})\n\n`
     output += `**Version #${version1}** (newer) vs **Version #${version2}** (older)\n\n`
 
     output += `| | Version #${version1} | Version #${version2} |\n`
@@ -298,7 +298,7 @@ export class VersionHistoryTool implements vscode.LanguageModelTool<IVersionHist
     output += `| **Transport** | ${rev1.version || "-"} | ${rev2.version || "-"} |\n`
     output += `| **Lines** | ${lines1.length} | ${lines2.length} |\n\n`
 
-    output += `**📊 Change Summary:**\n`
+    output += `** Change Summary:**\n`
     output += `• **Lines Added:** ${diff.added.length}\n`
     output += `• **Lines Removed:** ${diff.removed.length}\n`
     output += `• **Net Change:** ${lines1.length - lines2.length} lines\n\n`
@@ -330,7 +330,7 @@ export class VersionHistoryTool implements vscode.LanguageModelTool<IVersionHist
         output += `\`\`\`\n`
       }
     } else {
-      output += `\n✅ **No differences found** - the versions are identical.\n`
+      output += `\n **No differences found** - the versions are identical.\n`
     }
 
     return new vscode.LanguageModelToolResult([new vscode.LanguageModelTextPart(output)])
@@ -379,10 +379,10 @@ export class VersionHistoryTool implements vscode.LanguageModelTool<IVersionHist
     totalCount: number
   ): string {
     if (revisions.length === 0) {
-      return `📜 **Version History for ${objectName}** (${objectType})\n\n⚠️ No version history available for this object.`
+      return ` **Version History for ${objectName}** (${objectType})\n\n No version history available for this object.`
     }
 
-    let output = `📜 **Version History for ${objectName}** (${objectType})\n\n`
+    let output = ` **Version History for ${objectName}** (${objectType})\n\n`
     output += `**Total Versions:** ${totalCount}${revisions.length < totalCount ? ` (showing ${revisions.length})` : ""}\n\n`
 
     output += `| # | Date | Author | Transport | Title |\n`
@@ -420,7 +420,7 @@ export class VersionHistoryTool implements vscode.LanguageModelTool<IVersionHist
       output += `• **Recent Changes (30 days):** ${recentRevisions.length} version(s)\n`
     }
 
-    output += `\n💡 **Tip:** Use \`action: 'get_version_source'\` with \`versionNumber\` to get code at a specific version, or \`action: 'compare_versions'\` with \`version1\` and \`version2\` to compare.`
+    output += `\n **Tip:** Use \`action: 'get_version_source'\` with \`versionNumber\` to get code at a specific version, or \`action: 'compare_versions'\` with \`version1\` and \`version2\` to compare.`
 
     return output
   }

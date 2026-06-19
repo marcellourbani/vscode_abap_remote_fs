@@ -194,7 +194,7 @@ export class GetBatchLinesTool implements vscode.LanguageModelTool<IBatchLinesPa
                 `\`\`\`abap\n${result.content}\n\`\`\`\n`
               )
             } else {
-              return `### **${result.objectName}**\n❌ ${result.content}\n`
+              return `### **${result.objectName}**\n ${result.content}\n`
             }
           })
           .join("\n")

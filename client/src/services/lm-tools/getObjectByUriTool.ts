@@ -157,7 +157,7 @@ export class GetObjectByURITool implements vscode.LanguageModelTool<IGetObjectBy
 
       try {
         const resultText =
-          `**Direct URI Access Successful** ✅\n\n` +
+          `**Direct URI Access Successful** \n\n` +
           `**Original URI:** \`${uri}\`\n` +
           `**URI Used:** \`${uriUsed}\`\n` +
           `**Lines:** ${startLine}-${endLine} (${actualLines} lines retrieved)\n` +
@@ -201,7 +201,7 @@ export class GetObjectByURITool implements vscode.LanguageModelTool<IGetObjectBy
                 }
 
                 const resultText =
-                  `**URI Access via Object Name** ⚠️\n\n` +
+                  `**URI Access via Object Name** \n\n` +
                   `**Original URI:** \`${uri}\`\n` +
                   `**Extracted Name:** ${objectName}\n` +
                   `**Resolved URI:** \`${resolvedUri}\`\n` +
