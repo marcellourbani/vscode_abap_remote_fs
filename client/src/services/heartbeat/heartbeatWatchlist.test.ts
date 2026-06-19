@@ -2,11 +2,15 @@
  * Tests for heartbeatWatchlist.ts
  */
 
-jest.mock("vscode", () => ({
-  workspace: {
-    workspaceFolders: undefined
-  }
-}), { virtual: true })
+jest.mock(
+  "vscode",
+  () => ({
+    workspace: {
+      workspaceFolders: undefined
+    }
+  }),
+  { virtual: true }
+)
 
 jest.mock("../../lib", () => ({ log: jest.fn() }))
 
@@ -94,9 +98,7 @@ describe("HeartbeatWatchlist.getFilePath", () => {
   })
 
   test("returns null when all folders are adt://", () => {
-    vscode.workspace.workspaceFolders = [
-      { uri: { scheme: "adt", fsPath: "/some/adt" } }
-    ]
+    vscode.workspace.workspaceFolders = [{ uri: { scheme: "adt", fsPath: "/some/adt" } }]
     expect(HeartbeatWatchlist.getFilePath()).toBeNull()
   })
 })
@@ -319,7 +321,10 @@ describe("HeartbeatWatchlist.addTask", () => {
   })
 
   test("preserves category when explicitly provided (override logic lives in tool, not watchlist)", () => {
-    const result = HeartbeatWatchlist.addTask("Remind me!", { reminderOnly: true, category: "custom" })
+    const result = HeartbeatWatchlist.addTask("Remind me!", {
+      reminderOnly: true,
+      category: "custom"
+    })
     // The watchlist stores category as-is; the tool layer overrides it to 'reminder' for reminderOnly tasks
     expect(result.task!.category).toBe("custom")
   })
@@ -370,7 +375,9 @@ describe("HeartbeatWatchlist.removeTask", () => {
 
 describe("HeartbeatWatchlist.updateTask", () => {
   beforeEach(() => {
-    writeWatchlist(makeWatchlistFile([makeTask({ id: "task-001", description: "Check transport" })]))
+    writeWatchlist(
+      makeWatchlistFile([makeTask({ id: "task-001", description: "Check transport" })])
+    )
   })
 
   test("updates lastResult and lastCheckedAt", () => {
@@ -424,20 +431,24 @@ describe("HeartbeatWatchlist.updateTask", () => {
 
 describe("HeartbeatWatchlist.getEnabledTasks / getAllTasks", () => {
   test("getEnabledTasks returns only enabled tasks", () => {
-    writeWatchlist(makeWatchlistFile([
-      makeTask({ id: "task-001", enabled: true }),
-      makeTask({ id: "task-002", description: "Disabled", enabled: false })
-    ]))
+    writeWatchlist(
+      makeWatchlistFile([
+        makeTask({ id: "task-001", enabled: true }),
+        makeTask({ id: "task-002", description: "Disabled", enabled: false })
+      ])
+    )
     const enabled = HeartbeatWatchlist.getEnabledTasks()
     expect(enabled).toHaveLength(1)
     expect(enabled[0].id).toBe("task-001")
   })
 
   test("getAllTasks returns all tasks regardless of enabled state", () => {
-    writeWatchlist(makeWatchlistFile([
-      makeTask({ id: "task-001", enabled: true }),
-      makeTask({ id: "task-002", description: "Disabled", enabled: false })
-    ]))
+    writeWatchlist(
+      makeWatchlistFile([
+        makeTask({ id: "task-001", enabled: true }),
+        makeTask({ id: "task-002", description: "Disabled", enabled: false })
+      ])
+    )
     expect(HeartbeatWatchlist.getAllTasks()).toHaveLength(2)
   })
 
@@ -470,37 +481,27 @@ describe("HeartbeatWatchlist.getDueTasks", () => {
   })
 
   test("excludes task with future startAt", () => {
-    writeWatchlist(makeWatchlistFile([
-      makeTask({ startAt: "2024-12-01T00:00:00Z" })
-    ]))
+    writeWatchlist(makeWatchlistFile([makeTask({ startAt: "2024-12-01T00:00:00Z" })]))
     expect(HeartbeatWatchlist.getDueTasks()).toHaveLength(0)
   })
 
   test("includes task with past startAt", () => {
-    writeWatchlist(makeWatchlistFile([
-      makeTask({ startAt: "2024-01-01T00:00:00Z" })
-    ]))
+    writeWatchlist(makeWatchlistFile([makeTask({ startAt: "2024-01-01T00:00:00Z" })]))
     expect(HeartbeatWatchlist.getDueTasks()).toHaveLength(1)
   })
 
   test("excludes expired task", () => {
-    writeWatchlist(makeWatchlistFile([
-      makeTask({ expiresAt: "2024-01-01T00:00:00Z" })
-    ]))
+    writeWatchlist(makeWatchlistFile([makeTask({ expiresAt: "2024-01-01T00:00:00Z" })]))
     expect(HeartbeatWatchlist.getDueTasks()).toHaveLength(0)
   })
 
   test("includes task that expires in the future", () => {
-    writeWatchlist(makeWatchlistFile([
-      makeTask({ expiresAt: "2024-12-31T00:00:00Z" })
-    ]))
+    writeWatchlist(makeWatchlistFile([makeTask({ expiresAt: "2024-12-31T00:00:00Z" })]))
     expect(HeartbeatWatchlist.getDueTasks()).toHaveLength(1)
   })
 
   test("excludes disabled tasks", () => {
-    writeWatchlist(makeWatchlistFile([
-      makeTask({ enabled: false })
-    ]))
+    writeWatchlist(makeWatchlistFile([makeTask({ enabled: false })]))
     expect(HeartbeatWatchlist.getDueTasks()).toHaveLength(0)
   })
 })
@@ -520,10 +521,12 @@ describe("HeartbeatWatchlist.getScheduledTasks", () => {
   })
 
   test("returns tasks with future startAt", () => {
-    writeWatchlist(makeWatchlistFile([
-      makeTask({ id: "future", startAt: "2024-12-01T00:00:00Z" }),
-      makeTask({ id: "past", description: "Past task" })
-    ]))
+    writeWatchlist(
+      makeWatchlistFile([
+        makeTask({ id: "future", startAt: "2024-12-01T00:00:00Z" }),
+        makeTask({ id: "past", description: "Past task" })
+      ])
+    )
     const scheduled = HeartbeatWatchlist.getScheduledTasks()
     expect(scheduled).toHaveLength(1)
     expect(scheduled[0].id).toBe("future")
@@ -556,9 +559,7 @@ describe("HeartbeatWatchlist.formatForPrompt", () => {
   })
 
   test("returns scheduled info when only future tasks", () => {
-    writeWatchlist(makeWatchlistFile([
-      makeTask({ startAt: "2024-12-01T00:00:00Z" })
-    ]))
+    writeWatchlist(makeWatchlistFile([makeTask({ startAt: "2024-12-01T00:00:00Z" })]))
     const prompt = HeartbeatWatchlist.formatForPrompt()
     expect(prompt).toMatch(/scheduled for later/i)
   })
@@ -570,25 +571,25 @@ describe("HeartbeatWatchlist.formatForPrompt", () => {
   })
 
   test("includes REMINDER marker for reminderOnly tasks", () => {
-    writeWatchlist(makeWatchlistFile([
-      makeTask({ description: "Meeting at 3pm", reminderOnly: true })
-    ]))
+    writeWatchlist(
+      makeWatchlistFile([makeTask({ description: "Meeting at 3pm", reminderOnly: true })])
+    )
     const prompt = HeartbeatWatchlist.formatForPrompt()
     expect(prompt).toMatch(/REMINDER/i)
   })
 
   test("includes SQL query when present", () => {
-    writeWatchlist(makeWatchlistFile([
-      makeTask({ sampleQuery: "SELECT * FROM e070 WHERE trkorr LIKE 'K%'" })
-    ]))
+    writeWatchlist(
+      makeWatchlistFile([makeTask({ sampleQuery: "SELECT * FROM e070 WHERE trkorr LIKE 'K%'" })])
+    )
     const prompt = HeartbeatWatchlist.formatForPrompt()
     expect(prompt).toContain("SELECT * FROM e070")
   })
 
   test("includes checkInstructions as numbered list", () => {
-    writeWatchlist(makeWatchlistFile([
-      makeTask({ checkInstructions: ["Run query", "Compare results"] })
-    ]))
+    writeWatchlist(
+      makeWatchlistFile([makeTask({ checkInstructions: ["Run query", "Compare results"] })])
+    )
     const prompt = HeartbeatWatchlist.formatForPrompt()
     expect(prompt).toContain("1. Run query")
     expect(prompt).toContain("2. Compare results")
@@ -596,9 +597,7 @@ describe("HeartbeatWatchlist.formatForPrompt", () => {
 
   test("shows cooldown active when in cooldown window", () => {
     const lastNotifiedAt = new Date("2024-06-15T09:45:00Z").toISOString()
-    writeWatchlist(makeWatchlistFile([
-      makeTask({ cooldownMinutes: 30, lastNotifiedAt })
-    ]))
+    writeWatchlist(makeWatchlistFile([makeTask({ cooldownMinutes: 30, lastNotifiedAt })]))
     const prompt = HeartbeatWatchlist.formatForPrompt()
     expect(prompt).toMatch(/cooldown active/i)
   })

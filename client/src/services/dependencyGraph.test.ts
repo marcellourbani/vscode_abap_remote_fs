@@ -7,8 +7,15 @@
 jest.mock(
   "vscode",
   () => ({
-    window: { showInformationMessage: jest.fn(), showErrorMessage: jest.fn(), showWarningMessage: jest.fn(), createWebviewPanel: jest.fn() },
-    workspace: { getConfiguration: jest.fn().mockReturnValue({ get: jest.fn().mockReturnValue(false) }) },
+    window: {
+      showInformationMessage: jest.fn(),
+      showErrorMessage: jest.fn(),
+      showWarningMessage: jest.fn(),
+      createWebviewPanel: jest.fn()
+    },
+    workspace: {
+      getConfiguration: jest.fn().mockReturnValue({ get: jest.fn().mockReturnValue(false) })
+    },
     ViewColumn: { One: 1, Active: -1 },
     Uri: { joinPath: jest.fn(), file: jest.fn() }
   }),
@@ -115,8 +122,14 @@ describe("dependencyGraph", () => {
     })
 
     it("de-duplicates nodes with the same id", () => {
-      const ref1 = makeRef({ "adtcore:name": "ZDUPLICATE", objectIdentifier: "ABAPFullName;ZDUPLICATE" })
-      const ref2 = makeRef({ "adtcore:name": "ZDUPLICATE", objectIdentifier: "ABAPFullName;ZDUPLICATE" })
+      const ref1 = makeRef({
+        "adtcore:name": "ZDUPLICATE",
+        objectIdentifier: "ABAPFullName;ZDUPLICATE"
+      })
+      const ref2 = makeRef({
+        "adtcore:name": "ZDUPLICATE",
+        objectIdentifier: "ABAPFullName;ZDUPLICATE"
+      })
       const result = buildGraphData("ROOT_OBJ", "PROG/P", [ref1, ref2], true)
       const dupNodes = result.nodes.filter(n => n.name === "ZDUPLICATE")
       expect(dupNodes).toHaveLength(1)
@@ -160,9 +173,7 @@ describe("dependencyGraph", () => {
     })
 
     it("extracts actual symbol from objectIdentifier when skipSymbolExtraction=false", () => {
-      const refs = [
-        makeRef({ objectIdentifier: "ABAPFullName;ZCL_TEST;INCLUDE;\\ME:MY_METHOD" })
-      ]
+      const refs = [makeRef({ objectIdentifier: "ABAPFullName;ZCL_TEST;INCLUDE;\\ME:MY_METHOD" })]
       const result = buildGraphData("ROOT_OBJ", "PROG/P", refs, false)
       // Root name should be the extracted symbol
       const rootNode = result.nodes.find(n => n.isRoot)
@@ -226,9 +237,27 @@ describe("dependencyGraph", () => {
   })
 
   describe("applyFilters", () => {
-    const rootNode: GraphNode = { id: "ROOT::T", name: "ROOT", type: "T", isRoot: true, isCustom: false }
-    const customNode: GraphNode = { id: "ZCUST::PROG/P", name: "ZCUST", type: "PROG/P", isRoot: false, isCustom: true }
-    const standardNode: GraphNode = { id: "STD::PROG/P", name: "STD", type: "PROG/P", isRoot: false, isCustom: false }
+    const rootNode: GraphNode = {
+      id: "ROOT::T",
+      name: "ROOT",
+      type: "T",
+      isRoot: true,
+      isCustom: false
+    }
+    const customNode: GraphNode = {
+      id: "ZCUST::PROG/P",
+      name: "ZCUST",
+      type: "PROG/P",
+      isRoot: false,
+      isCustom: true
+    }
+    const standardNode: GraphNode = {
+      id: "STD::PROG/P",
+      name: "STD",
+      type: "PROG/P",
+      isRoot: false,
+      isCustom: false
+    }
     const sampleGraph: GraphData = {
       nodes: [rootNode, customNode, standardNode],
       edges: [

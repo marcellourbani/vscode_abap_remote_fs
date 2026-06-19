@@ -1,19 +1,29 @@
-jest.mock("vscode", () => ({
-  Uri: {
-    parse: jest.fn((s: string) => ({
-      scheme: "adt",
-      authority: s.split("://")[1]?.split("/")[0] || "conn",
-      path: s,
-      toString: () => s
-    }))
-  }
-}), { virtual: true })
+jest.mock(
+  "vscode",
+  () => ({
+    Uri: {
+      parse: jest.fn((s: string) => ({
+        scheme: "adt",
+        authority: s.split("://")[1]?.split("/")[0] || "conn",
+        path: s,
+        toString: () => s
+      }))
+    }
+  }),
+  { virtual: true }
+)
 
 jest.mock("../../lib", () => ({
   cache: jest.fn((fn: any) => {
     const map = new Map()
-    const accessor = (k: string) => { if (!map.has(k)) map.set(k, fn(k)); return map.get(k) }
-    accessor.get = (k: string) => { if (!map.has(k)) map.set(k, fn(k)); return map.get(k) }
+    const accessor = (k: string) => {
+      if (!map.has(k)) map.set(k, fn(k))
+      return map.get(k)
+    }
+    accessor.get = (k: string) => {
+      if (!map.has(k)) map.set(k, fn(k))
+      return map.get(k)
+    }
     return accessor
   })
 }))
@@ -150,7 +160,9 @@ describe("AbapRevisionService", () => {
         loadStructure: loadStructureFn
       }
       // loadStructure sets structure
-      loadStructureFn.mockImplementation(() => { mockObj.structure = { uri: "/p" } })
+      loadStructureFn.mockImplementation(() => {
+        mockObj.structure = { uri: "/p" }
+      })
       mockIsAbapClassInclude.mockReturnValue(false)
       await service.objRevisions(mockObj)
       expect(loadStructureFn).toHaveBeenCalled()

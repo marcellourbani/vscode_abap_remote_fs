@@ -1,30 +1,45 @@
 // Tests for views/traces/views.ts - TraceRunItem and tracesProvider
-jest.mock("vscode", () => {
-  const MarkdownString = class {
-    constructor(public value = "") {}
-  }
-  const ThemeIcon = class { constructor(public id: string) {} }
-  const TreeItem = class {
-    constructor(public label: string, public collapsibleState?: number) {}
-    tooltip: any
-    command: any
-    iconPath: any
-    id: any
-    contextValue: any
-  }
-  const TreeItemCollapsibleState = { None: 0, Collapsed: 1, Expanded: 2 }
-  const EventEmitter = class {
-    event = jest.fn()
-    fire = jest.fn()
-  }
-  const Uri = {
-    parse: jest.fn((s: string) => ({ toString: () => s, path: s }))
-  }
-  return { MarkdownString, ThemeIcon, TreeItem, TreeItemCollapsibleState, EventEmitter, Uri }
-}, { virtual: true })
+jest.mock(
+  "vscode",
+  () => {
+    const MarkdownString = class {
+      constructor(public value = "") {}
+    }
+    const ThemeIcon = class {
+      constructor(public id: string) {}
+    }
+    const TreeItem = class {
+      constructor(
+        public label: string,
+        public collapsibleState?: number
+      ) {}
+      tooltip: any
+      command: any
+      iconPath: any
+      id: any
+      contextValue: any
+    }
+    const TreeItemCollapsibleState = { None: 0, Collapsed: 1, Expanded: 2 }
+    const EventEmitter = class {
+      event = jest.fn()
+      fire = jest.fn()
+    }
+    const Uri = {
+      parse: jest.fn((s: string) => ({ toString: () => s, path: s }))
+    }
+    return { MarkdownString, ThemeIcon, TreeItem, TreeItemCollapsibleState, EventEmitter, Uri }
+  },
+  { virtual: true }
+)
 
 jest.mock("../../config", () => ({
-  connectedRoots: jest.fn(() => new Map([["DEV100", {}], ["QA100", {}]]))
+  connectedRoots: jest.fn(
+    () =>
+      new Map([
+        ["DEV100", {}],
+        ["QA100", {}]
+      ])
+  )
 }))
 
 jest.mock("../../adt/conections", () => ({

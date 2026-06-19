@@ -4,33 +4,49 @@
  * showResult/showError methods, and dispose.
  */
 
-jest.mock("vscode", () => {
-  return {
-    ViewColumn: { One: 1, Beside: 2 },
-    Uri: {
-      file: jest.fn((p: string) => ({ fsPath: p, toString: () => `file://${p}` })),
-      parse: jest.fn((s: string) => ({ toString: () => s })),
-      joinPath: jest.fn((base: any, ...parts: string[]) => ({ ...base, path: [base.path || "", ...parts].join("/"), toString: () => parts.join("/") })),
-    },
-    workspace: {
-      fs: { writeFile: jest.fn() },
-      getConfiguration: jest.fn(() => ({ get: jest.fn(() => []) })),
-    },
-  }
-}, { virtual: true })
-
-jest.mock("../../services/funMessenger", () => ({
-  funWindow: {
-    activeTextEditor: undefined,
-    createWebviewPanel: jest.fn(),
-    showSaveDialog: jest.fn(),
-    showErrorMessage: jest.fn(),
+jest.mock(
+  "vscode",
+  () => {
+    return {
+      ViewColumn: { One: 1, Beside: 2 },
+      Uri: {
+        file: jest.fn((p: string) => ({ fsPath: p, toString: () => `file://${p}` })),
+        parse: jest.fn((s: string) => ({ toString: () => s })),
+        joinPath: jest.fn((base: any, ...parts: string[]) => ({
+          ...base,
+          path: [base.path || "", ...parts].join("/"),
+          toString: () => parts.join("/")
+        }))
+      },
+      workspace: {
+        fs: { writeFile: jest.fn() },
+        getConfiguration: jest.fn(() => ({ get: jest.fn(() => []) }))
+      }
+    }
   },
-}), { virtual: true })
+  { virtual: true }
+)
 
-jest.mock("../../lib", () => ({
-  log: jest.fn(),
-}), { virtual: true })
+jest.mock(
+  "../../services/funMessenger",
+  () => ({
+    funWindow: {
+      activeTextEditor: undefined,
+      createWebviewPanel: jest.fn(),
+      showSaveDialog: jest.fn(),
+      showErrorMessage: jest.fn()
+    }
+  }),
+  { virtual: true }
+)
+
+jest.mock(
+  "../../lib",
+  () => ({
+    log: jest.fn()
+  }),
+  { virtual: true }
+)
 
 // We need to be able to test SQLValidator. It's not exported, so we test via
 // the message handling that calls it. But we can also test it indirectly.
@@ -48,20 +64,29 @@ function makeWebviewPanel() {
   const webview = {
     html: "",
     postMessage: jest.fn(),
-    onDidReceiveMessage: jest.fn((cb: any) => { messageHandlers.push(cb); return { dispose: jest.fn() } }),
+    onDidReceiveMessage: jest.fn((cb: any) => {
+      messageHandlers.push(cb)
+      return { dispose: jest.fn() }
+    }),
     asWebviewUri: jest.fn((uri: any) => uri),
-    cspSource: "vscode-webview:",
+    cspSource: "vscode-webview:"
   }
   const panel = {
     webview,
     reveal: jest.fn(),
     dispose: jest.fn(),
-    onDidDispose: jest.fn((cb: any) => { cb(); return { dispose: jest.fn() } }),
-    onDidChangeViewState: jest.fn((cb: any) => { changeViewHandlers.push(cb); return { dispose: jest.fn() } }),
+    onDidDispose: jest.fn((cb: any) => {
+      cb()
+      return { dispose: jest.fn() }
+    }),
+    onDidChangeViewState: jest.fn((cb: any) => {
+      changeViewHandlers.push(cb)
+      return { dispose: jest.fn() }
+    }),
     visible: true,
     viewColumn: 1,
     _messageHandlers: messageHandlers,
-    _changeViewHandlers: changeViewHandlers,
+    _changeViewHandlers: changeViewHandlers
   }
   return panel
 }
@@ -70,7 +95,7 @@ function makeClient() {
   return {
     runQuery: jest.fn().mockResolvedValue({ values: [], columns: [] }),
     searchObject: jest.fn().mockResolvedValue([]),
-    tableContents: jest.fn().mockResolvedValue({ columns: [] }),
+    tableContents: jest.fn().mockResolvedValue({ columns: [] })
   } as any
 }
 
@@ -126,35 +151,50 @@ describe("QueryPanel message handlers – SQL validation", () => {
   it("rejects DROP statement via runSQL command", async () => {
     await sendMessage({ command: "runSQL", sql: "DROP TABLE MARA", top: 10 })
     expect(panel.webview.postMessage).toHaveBeenCalledWith(
-      expect.objectContaining({ command: "error", data: expect.stringContaining("SQL Security Error") })
+      expect.objectContaining({
+        command: "error",
+        data: expect.stringContaining("SQL Security Error")
+      })
     )
   })
 
   it("rejects DELETE statement via runSQL command", async () => {
     await sendMessage({ command: "runSQL", sql: "DELETE FROM MARA", top: 10 })
     expect(panel.webview.postMessage).toHaveBeenCalledWith(
-      expect.objectContaining({ command: "error", data: expect.stringContaining("SQL Security Error") })
+      expect.objectContaining({
+        command: "error",
+        data: expect.stringContaining("SQL Security Error")
+      })
     )
   })
 
   it("rejects INSERT statement via runSQL command", async () => {
     await sendMessage({ command: "runSQL", sql: "INSERT INTO MARA VALUES (1)", top: 10 })
     expect(panel.webview.postMessage).toHaveBeenCalledWith(
-      expect.objectContaining({ command: "error", data: expect.stringContaining("SQL Security Error") })
+      expect.objectContaining({
+        command: "error",
+        data: expect.stringContaining("SQL Security Error")
+      })
     )
   })
 
   it("rejects UPDATE statement via runSQL command", async () => {
     await sendMessage({ command: "runSQL", sql: "UPDATE MARA SET MATNR = 'X'", top: 10 })
     expect(panel.webview.postMessage).toHaveBeenCalledWith(
-      expect.objectContaining({ command: "error", data: expect.stringContaining("SQL Security Error") })
+      expect.objectContaining({
+        command: "error",
+        data: expect.stringContaining("SQL Security Error")
+      })
     )
   })
 
   it("rejects ALTER statement via runSQL command", async () => {
     await sendMessage({ command: "runSQL", sql: "ALTER TABLE MARA ADD COLUMN X", top: 10 })
     expect(panel.webview.postMessage).toHaveBeenCalledWith(
-      expect.objectContaining({ command: "error", data: expect.stringContaining("SQL Security Error") })
+      expect.objectContaining({
+        command: "error",
+        data: expect.stringContaining("SQL Security Error")
+      })
     )
   })
 
@@ -183,7 +223,11 @@ describe("QueryPanel message handlers – SQL validation", () => {
 
   it("allows valid WITH statement", async () => {
     client.runQuery.mockResolvedValue({ values: [], columns: [] })
-    await sendMessage({ command: "runSQL", sql: "WITH cte AS (SELECT 1 FROM MARA) SELECT * FROM cte", top: 5 })
+    await sendMessage({
+      command: "runSQL",
+      sql: "WITH cte AS (SELECT 1 FROM MARA) SELECT * FROM cte",
+      top: 5
+    })
     expect(client.runQuery).toHaveBeenCalled()
   })
 
@@ -194,7 +238,7 @@ describe("QueryPanel message handlers – SQL validation", () => {
     expect(panel.webview.postMessage).toHaveBeenCalledWith(
       expect.objectContaining({
         command: "queryResult",
-        data: expect.objectContaining({ hasMore: true }),
+        data: expect.objectContaining({ hasMore: true })
       })
     )
   })
@@ -207,13 +251,15 @@ describe("QueryPanel message handlers – SQL validation", () => {
 
   it("searchObjects returns de-duplicated results", async () => {
     client.searchObject
-      .mockResolvedValueOnce([{ "adtcore:name": "MARA", "adtcore:type": "TABL/DT", "adtcore:description": "Material" }])
+      .mockResolvedValueOnce([
+        { "adtcore:name": "MARA", "adtcore:type": "TABL/DT", "adtcore:description": "Material" }
+      ])
       .mockResolvedValueOnce([])
     await sendMessage({ command: "searchObjects", term: "MAR", types: ["TABL"], max: 5 })
     expect(panel.webview.postMessage).toHaveBeenCalledWith(
       expect.objectContaining({
         command: "objects",
-        data: expect.arrayContaining([expect.objectContaining({ name: "MARA" })]),
+        data: expect.arrayContaining([expect.objectContaining({ name: "MARA" })])
       })
     )
   })
@@ -224,7 +270,7 @@ describe("QueryPanel message handlers – SQL validation", () => {
     expect(panel.webview.postMessage).toHaveBeenCalledWith(
       expect.objectContaining({
         command: "fields",
-        data: expect.objectContaining({ columns: [{ name: "MATNR" }] }),
+        data: expect.objectContaining({ columns: [{ name: "MATNR" }] })
       })
     )
   })
@@ -278,7 +324,7 @@ describe("QueryPanel runCriteria", () => {
       entity: { name: "MARA", kind: "TABL" },
       where: "MATNR = 'X'",
       top: 10,
-      columns: ["MATNR"],
+      columns: ["MATNR"]
     })
     expect(client.runQuery).toHaveBeenCalled()
     const call = client.runQuery.mock.calls[0]
@@ -293,7 +339,7 @@ describe("QueryPanel runCriteria", () => {
       entity: { name: "MARA", kind: "TABL" },
       where: "WHERE MATNR = 'Y'",
       top: 5,
-      columns: [],
+      columns: []
     })
     expect(client.runQuery).toHaveBeenCalled()
     const sql = client.runQuery.mock.calls[0][0] as string
@@ -308,7 +354,7 @@ describe("QueryPanel runCriteria", () => {
       entity: { name: "MARA", kind: "TABL" },
       where: "",
       top: 10,
-      columns: [],
+      columns: []
     })
     expect(client.runQuery.mock.calls[0][0]).toContain("*")
   })
@@ -334,7 +380,15 @@ describe("QueryPanel loadMore", () => {
   }
 
   it("rejects dangerous SQL in loadMore sql mode", async () => {
-    await sendMessage({ command: "loadMore", mode: "sql", sql: "DROP TABLE X", nextTop: 100, entity: null, where: "", columns: [] })
+    await sendMessage({
+      command: "loadMore",
+      mode: "sql",
+      sql: "DROP TABLE X",
+      nextTop: 100,
+      entity: null,
+      where: "",
+      columns: []
+    })
     expect(panel.webview.postMessage).toHaveBeenCalledWith(
       expect.objectContaining({ command: "error" })
     )
@@ -350,7 +404,7 @@ describe("QueryPanel loadMore", () => {
       where: "MATNR = 'X'",
       sql: "",
       nextTop: 50,
-      columns: ["MATNR"],
+      columns: ["MATNR"]
     })
     expect(client.runQuery).toHaveBeenCalled()
   })

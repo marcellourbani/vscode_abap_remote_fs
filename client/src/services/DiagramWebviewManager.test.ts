@@ -26,7 +26,10 @@ jest.mock(
     },
     ViewColumn: { One: 1, Active: -1 },
     Uri: {
-      joinPath: jest.fn((...args: any[]) => ({ fsPath: args.join("/"), toString: () => args.join("/") })),
+      joinPath: jest.fn((...args: any[]) => ({
+        fsPath: args.join("/"),
+        toString: () => args.join("/")
+      })),
       file: jest.fn((p: string) => ({ fsPath: p }))
     }
   }),
@@ -72,7 +75,9 @@ function makeMockPanel() {
       onDisposeFns.push(fn)
       return { dispose: jest.fn() }
     }),
-    dispose: jest.fn(() => { onDisposeFns.forEach(fn => fn()) }),
+    dispose: jest.fn(() => {
+      onDisposeFns.forEach(fn => fn())
+    }),
     reveal: jest.fn(),
     _triggerMessage: (msg: any) => messageHandlers.forEach(h => h(msg)),
     _triggerDispose: () => onDisposeFns.forEach(fn => fn())
@@ -146,11 +151,7 @@ describe("DiagramWebviewManager", () => {
       const panel = makeMockPanel()
       mockCreateWebviewPanel.mockReturnValue(panel)
 
-      await DiagramWebviewManager.getInstance().displayDiagram(
-        "<svg/>",
-        "sequence",
-        "Custom Title"
-      )
+      await DiagramWebviewManager.getInstance().displayDiagram("<svg/>", "sequence", "Custom Title")
 
       expect(mockCreateWebviewPanel).toHaveBeenCalledWith(
         "diagramViewer",
@@ -225,7 +226,11 @@ describe("DiagramWebviewManager", () => {
       await DiagramWebviewManager.getInstance().displayDiagram("<svg/>", "flowchart")
 
       // Trigger saveDiagram message
-      await (panel as any)._triggerMessage({ command: "saveDiagram", svg: "<svg/>", filename: "test.svg" })
+      await (panel as any)._triggerMessage({
+        command: "saveDiagram",
+        svg: "<svg/>",
+        filename: "test.svg"
+      })
 
       expect(mockShowSaveDialog).toHaveBeenCalledTimes(1)
     })
@@ -237,7 +242,11 @@ describe("DiagramWebviewManager", () => {
       mockShowSaveDialog.mockResolvedValue(saveUri)
 
       await DiagramWebviewManager.getInstance().displayDiagram("<svg/>", "flowchart")
-      await (panel as any)._triggerMessage({ command: "saveDiagram", svg: "<svg test/>", filename: "diagram.svg" })
+      await (panel as any)._triggerMessage({
+        command: "saveDiagram",
+        svg: "<svg test/>",
+        filename: "diagram.svg"
+      })
 
       // Wait for async handler
       await new Promise(r => setTimeout(r, 10))

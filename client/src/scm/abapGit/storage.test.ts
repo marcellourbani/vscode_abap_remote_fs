@@ -14,7 +14,12 @@ import { ScmData, ScmCredentials } from "./scm"
 import { getOrCreateClient } from "../../adt/conections"
 import { addRepo } from "."
 
-function makeScmData(overrides: { connId: string; repo: any; credentials?: ScmCredentials; [k: string]: any }): ScmData {
+function makeScmData(overrides: {
+  connId: string
+  repo: any
+  credentials?: ScmCredentials
+  [k: string]: any
+}): ScmData {
   return {
     scm: {} as any,
     groups: {} as any,
@@ -42,11 +47,14 @@ describe("saveRepos", () => {
     registerAbapGit(mockContext as any)
 
     const scms = new Map<string, ScmData>()
-    scms.set("key1", makeScmData({
-      connId: "DEV",
-      repo: { key: "repo1" },
-      credentials: { user: "admin", password: "secret" }
-    }))
+    scms.set(
+      "key1",
+      makeScmData({
+        connId: "DEV",
+        repo: { key: "repo1" },
+        credentials: { user: "admin", password: "secret" }
+      })
+    )
 
     saveRepos(scms)
 
@@ -81,16 +89,22 @@ describe("saveRepos", () => {
     registerAbapGit(mockContext as any)
 
     const scms = new Map<string, ScmData>()
-    scms.set("k1", makeScmData({
-      connId: "C1",
-      repo: { key: "r1" },
-      credentials: { user: "user1", password: "pw1" }
-    }))
-    scms.set("k2", makeScmData({
-      connId: "C2",
-      repo: { key: "r2" },
-      credentials: { user: "user2", password: "pw2" }
-    }))
+    scms.set(
+      "k1",
+      makeScmData({
+        connId: "C1",
+        repo: { key: "r1" },
+        credentials: { user: "user1", password: "pw1" }
+      })
+    )
+    scms.set(
+      "k2",
+      makeScmData({
+        connId: "C2",
+        repo: { key: "r2" },
+        credentials: { user: "user2", password: "pw2" }
+      })
+    )
 
     saveRepos(scms)
 
@@ -114,11 +128,14 @@ describe("saveRepos", () => {
     registerAbapGit(mockContext as any)
 
     const scms = new Map<string, ScmData>()
-    scms.set("k1", makeScmData({
-      connId: "C1",
-      repo: { key: "r1" }
-      // no credentials
-    }))
+    scms.set(
+      "k1",
+      makeScmData({
+        connId: "C1",
+        repo: { key: "r1" }
+        // no credentials
+      })
+    )
 
     saveRepos(scms)
 
@@ -138,7 +155,10 @@ describe("saveRepos", () => {
 
     const scms = new Map<string, ScmData>()
     scms.set("a", makeScmData({ connId: "DEV", repo: { key: "r1" } }))
-    scms.set("b", makeScmData({ connId: "QAS", repo: { key: "r2" }, credentials: { user: "u", password: "p" } }))
+    scms.set(
+      "b",
+      makeScmData({ connId: "QAS", repo: { key: "r2" }, credentials: { user: "u", password: "p" } })
+    )
     scms.set("c", makeScmData({ connId: "DEV", repo: { key: "r3" } }))
 
     saveRepos(scms)

@@ -1,9 +1,13 @@
-jest.mock("vscode", () => ({
-  Uri: {
-    parse: jest.fn((s: string) => ({ scheme: "adt", path: "/path", toString: () => s }))
-  },
-  FileStat: jest.fn()
-}), { virtual: true })
+jest.mock(
+  "vscode",
+  () => ({
+    Uri: {
+      parse: jest.fn((s: string) => ({ scheme: "adt", path: "/path", toString: () => s }))
+    },
+    FileStat: jest.fn()
+  }),
+  { virtual: true }
+)
 
 jest.mock("../../services/funMessenger", () => ({
   funWindow: {
@@ -34,13 +38,21 @@ jest.mock("./AdtObjectFinder", () => ({
 }))
 
 jest.mock("../conections", () => ({
-  getClient: jest.fn().mockReturnValue({ username: "TESTUSER", validateNewObject: jest.fn().mockResolvedValue(true), createObject: jest.fn() }),
+  getClient: jest
+    .fn()
+    .mockReturnValue({
+      username: "TESTUSER",
+      validateNewObject: jest.fn().mockResolvedValue(true),
+      createObject: jest.fn()
+    }),
   getRoot: jest.fn().mockReturnValue({ getNode: jest.fn() })
 }))
 
 jest.mock("abapfs", () => ({
   isAbapFolder: jest.fn().mockReturnValue(false),
-  isAbapStat: jest.fn().mockImplementation((x: any) => x != null && typeof x === "object" && x.object != null),
+  isAbapStat: jest
+    .fn()
+    .mockImplementation((x: any) => x != null && typeof x === "object" && x.object != null),
   isFolder: jest.fn().mockReturnValue(false)
 }))
 
@@ -52,7 +64,9 @@ jest.mock("abap-adt-api", () => ({
     ["CLAS/OC", { typeId: "CLAS/OC", label: "Class", maxLen: 30 }],
     ["DEVC/K", { typeId: "DEVC/K", label: "Package", maxLen: 30 }]
   ]),
-  objectPath: jest.fn((type: string, name?: string, parent?: string) => `/sap/bc/adt/${type}/${name}`),
+  objectPath: jest.fn(
+    (type: string, name?: string, parent?: string) => `/sap/bc/adt/${type}/${name}`
+  ),
   parentTypeId: jest.fn().mockReturnValue("DEVC/K"),
   isGroupType: jest.fn().mockReturnValue(false),
   isPackageType: jest.fn().mockReturnValue(false),
@@ -118,7 +132,9 @@ describe("AdtObjectCreator", () => {
     jest.clearAllMocks()
     // Reset isAbapStat to its original implementation (clearAllMocks doesn't reset mockReturnValue)
     const { isAbapStat } = require("abapfs")
-    ;(isAbapStat as jest.Mock).mockImplementation((x: any) => x != null && typeof x === "object" && x.object != null)
+    ;(isAbapStat as jest.Mock).mockImplementation(
+      (x: any) => x != null && typeof x === "object" && x.object != null
+    )
     creator = new AdtObjectCreator("testconn")
   })
 
@@ -156,9 +172,7 @@ describe("AdtObjectCreator", () => {
     const { getClient } = require("../conections")
     const { getRoot } = require("../conections")
     ;(getClient as jest.Mock).mockReturnValue({
-      loadTypes: jest.fn().mockResolvedValue([
-        { OBJECT_TYPE: "PROG/P", PARENT_OBJECT_TYPE: "" }
-      ])
+      loadTypes: jest.fn().mockResolvedValue([{ OBJECT_TYPE: "PROG/P", PARENT_OBJECT_TYPE: "" }])
     })
     ;(getRoot as jest.Mock).mockReturnValue({
       getNode: jest.fn().mockReturnValue(null)

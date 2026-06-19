@@ -22,7 +22,9 @@ jest.mock(
       }),
       commands: { registerCommand: jest.fn(() => mockDisposable) },
       workspace: {
-        getConfiguration: jest.fn(() => ({ get: jest.fn((_: string, fallback: unknown) => fallback) })),
+        getConfiguration: jest.fn(() => ({
+          get: jest.fn((_: string, fallback: unknown) => fallback)
+        })),
         onDidSaveTextDocument: jest.fn(() => mockDisposable),
         onDidChangeConfiguration: jest.fn(() => mockDisposable)
       }
@@ -386,7 +388,9 @@ describe("onBlameTextEditorSelectionChanged", () => {
     } as any)
 
     expect((editor.setDecorations as jest.Mock).mock.calls).toHaveLength(3)
-    expect((editor.setDecorations as jest.Mock).mock.calls[1][1][0].renderOptions.after.contentText).toContain("JSMITH,")
+    expect(
+      (editor.setDecorations as jest.Mock).mock.calls[1][1][0].renderOptions.after.contentText
+    ).toContain("JSMITH,")
     expect((editor.setDecorations as jest.Mock).mock.calls[2][1]).toEqual([])
   })
 })

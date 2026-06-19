@@ -1,33 +1,44 @@
-jest.mock("vscode", () => ({
-  ProgressLocation: { Notification: 15 },
-  Uri: {
-    parse: jest.fn((s: string) => {
-      const [scheme, rest] = s.split("://")
-      const qIdx = rest?.indexOf("?") ?? -1
-      const authority = rest?.substring(0, qIdx === -1 ? rest.indexOf("/") : Math.min(qIdx, rest.indexOf("/") === -1 ? qIdx : rest.indexOf("/"))) ?? ""
-      const path = rest?.substring(authority.length)?.split("?")[0] ?? ""
-      return {
-        scheme,
-        authority,
-        path,
-        with: jest.fn((opts: any) => ({
-          scheme: opts.scheme ?? scheme,
-          authority: opts.authority ?? authority,
-          path: opts.path ?? path,
-          query: opts.query ?? "",
-          toString: () => `${opts.scheme ?? scheme}://${opts.authority ?? authority}${opts.path ?? path}?${opts.query ?? ""}`
-        })),
-        toString: () => s
-      }
-    })
-  },
-  commands: {
-    executeCommand: jest.fn()
-  },
-  extensions: {
-    getExtension: jest.fn()
-  }
-}), { virtual: true })
+jest.mock(
+  "vscode",
+  () => ({
+    ProgressLocation: { Notification: 15 },
+    Uri: {
+      parse: jest.fn((s: string) => {
+        const [scheme, rest] = s.split("://")
+        const qIdx = rest?.indexOf("?") ?? -1
+        const authority =
+          rest?.substring(
+            0,
+            qIdx === -1
+              ? rest.indexOf("/")
+              : Math.min(qIdx, rest.indexOf("/") === -1 ? qIdx : rest.indexOf("/"))
+          ) ?? ""
+        const path = rest?.substring(authority.length)?.split("?")[0] ?? ""
+        return {
+          scheme,
+          authority,
+          path,
+          with: jest.fn((opts: any) => ({
+            scheme: opts.scheme ?? scheme,
+            authority: opts.authority ?? authority,
+            path: opts.path ?? path,
+            query: opts.query ?? "",
+            toString: () =>
+              `${opts.scheme ?? scheme}://${opts.authority ?? authority}${opts.path ?? path}?${opts.query ?? ""}`
+          })),
+          toString: () => s
+        }
+      })
+    },
+    commands: {
+      executeCommand: jest.fn()
+    },
+    extensions: {
+      getExtension: jest.fn()
+    }
+  }),
+  { virtual: true }
+)
 
 jest.mock("../../config", () => ({
   RemoteManager: {
@@ -77,13 +88,7 @@ jest.mock("../../views/sapgui/SapGuiPanel", () => ({
   }
 }))
 
-import {
-  SapGui,
-  showInGuiCb,
-  executeInGui,
-  runInSapGui,
-  SapGuiCommand
-} from "./sapgui"
+import { SapGui, showInGuiCb, executeInGui, runInSapGui, SapGuiCommand } from "./sapgui"
 import { RemoteManager } from "../../config"
 import { funWindow as window } from "../../services/funMessenger"
 import { isAbapClassInclude } from "abapobject"
@@ -219,10 +224,12 @@ describe("SapGui.checkConfig", () => {
   })
 
   test("does not throw when enabled and configured", () => {
-    const gui = new (SapGui as any)(
-      false,
-      { server: "srv", systemNumber: "00", routerString: "", client: "100" }
-    )
+    const gui = new (SapGui as any)(false, {
+      server: "srv",
+      systemNumber: "00",
+      routerString: "",
+      client: "100"
+    })
     expect(() => gui.checkConfig()).not.toThrow()
   })
 })
@@ -282,7 +289,6 @@ describe("executeInGui", () => {
   test("builds SE38 command for PROG/P type", async () => {
     const object = { type: "PROG/P", name: "ZTEST", sapGuiUri: "/uri" }
     let capturedCmd: SapGuiCommand | undefined
-
     ;(window.withProgress as jest.Mock).mockImplementation(async (_opts: any, fn: Function) => {
       const config = makeConfig()
       const sapGui = SapGui.create(config as any)
@@ -333,7 +339,13 @@ describe("runInSapGui", () => {
 
   test("opens URL in browser for WEBGUI_UNSAFE type", async () => {
     const config = makeConfig({
-      sapGui: { server: "srv", systemNumber: "00", routerString: "", guiType: "WEBGUI_UNSAFE", client: "100" }
+      sapGui: {
+        server: "srv",
+        systemNumber: "00",
+        routerString: "",
+        guiType: "WEBGUI_UNSAFE",
+        client: "100"
+      }
     })
     ;(RemoteManager.get as jest.Mock).mockReturnValue({
       byId: jest.fn().mockReturnValue(config)
@@ -355,9 +367,6 @@ describe("runInSapGui", () => {
 
     await runInSapGui("dev100", () => cmd)
 
-    expect(vscode.commands.executeCommand).toHaveBeenCalledWith(
-      "vscode.open",
-      expect.anything()
-    )
+    expect(vscode.commands.executeCommand).toHaveBeenCalledWith("vscode.open", expect.anything())
   })
 })

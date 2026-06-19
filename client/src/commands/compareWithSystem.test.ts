@@ -1,35 +1,39 @@
-jest.mock("vscode", () => {
-  const mockUri = {
-    scheme: "adt",
-    authority: "dev100",
-    path: "/sap/bc/adt/programs/programs/ztest/source/main",
-    with: jest.fn()
-  }
-  return {
-    Uri: {
-      parse: jest.fn((s: string) => {
-        const [scheme, rest] = s.split("://")
-        const [authority, ...pathParts] = (rest || "").split("/")
-        return {
-          scheme,
-          authority,
-          path: "/" + pathParts.join("/"),
-          with: jest.fn((opts: any) => ({ ...mockUri, ...opts })),
-          toString: () => s
-        }
-      })
-    },
-    workspace: {
-      fs: {
-        stat: jest.fn()
-      }
-    },
-    commands: {
-      registerCommand: jest.fn(() => ({ dispose: jest.fn() })),
-      executeCommand: jest.fn()
+jest.mock(
+  "vscode",
+  () => {
+    const mockUri = {
+      scheme: "adt",
+      authority: "dev100",
+      path: "/sap/bc/adt/programs/programs/ztest/source/main",
+      with: jest.fn()
     }
-  }
-}, { virtual: true })
+    return {
+      Uri: {
+        parse: jest.fn((s: string) => {
+          const [scheme, rest] = s.split("://")
+          const [authority, ...pathParts] = (rest || "").split("/")
+          return {
+            scheme,
+            authority,
+            path: "/" + pathParts.join("/"),
+            with: jest.fn((opts: any) => ({ ...mockUri, ...opts })),
+            toString: () => s
+          }
+        })
+      },
+      workspace: {
+        fs: {
+          stat: jest.fn()
+        }
+      },
+      commands: {
+        registerCommand: jest.fn(() => ({ dispose: jest.fn() })),
+        executeCommand: jest.fn()
+      }
+    }
+  },
+  { virtual: true }
+)
 
 jest.mock("../services/funMessenger", () => ({
   funWindow: {
@@ -257,10 +261,7 @@ describe("compareWithOtherSystem", () => {
   })
 
   test("diff title strips known ABAP extensions from filename", async () => {
-    const sourceUri = makeUri(
-      "dev100",
-      "/sap/bc/adt/programs/programs/ztest/ztest.prog.abap"
-    )
+    const sourceUri = makeUri("dev100", "/sap/bc/adt/programs/programs/ztest/ztest.prog.abap")
     const roots = new Map([
       ["dev100", { name: "DEV100" }],
       ["qas100", { name: "QAS100" }]

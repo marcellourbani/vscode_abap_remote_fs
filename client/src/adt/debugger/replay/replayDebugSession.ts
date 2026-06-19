@@ -1,6 +1,10 @@
 import {
-  InitializedEvent, LoggingDebugSession,
-  StoppedEvent, Thread, Source, TerminatedEvent
+  InitializedEvent,
+  LoggingDebugSession,
+  StoppedEvent,
+  Thread,
+  Source,
+  TerminatedEvent
 } from "@vscode/debugadapter"
 import { DebugProtocol } from "@vscode/debugprotocol"
 import { DebugRecording, DebugSnapshot, REPLAY_DEBUG_TYPE } from "./types"
@@ -83,7 +87,12 @@ export class ReplayDebugSession extends LoggingDebugSession {
     const snap = this.snapshot
     const threadLabel = snap ? ` [thread ${snap.threadId}]` : ""
     response.body = {
-      threads: [new Thread(REPLAY_THREAD_ID, `\u23fa Replay \u2014 step ${this.currentStep + 1}/${this.totalSteps}${threadLabel}`)]
+      threads: [
+        new Thread(
+          REPLAY_THREAD_ID,
+          `\u23fa Replay \u2014 step ${this.currentStep + 1}/${this.totalSteps}${threadLabel}`
+        )
+      ]
     }
     this.sendResponse(response)
   }
@@ -295,9 +304,10 @@ export class ReplayDebugSession extends LoggingDebugSession {
     response: DebugProtocol.SourceResponse,
     args: DebugProtocol.SourceArguments
   ): void {
-    const path = args.source?.path
-      || (args.sourceReference ? this.sourceRefMap.get(args.sourceReference) : undefined)
-      || ""
+    const path =
+      args.source?.path ||
+      (args.sourceReference ? this.sourceRefMap.get(args.sourceReference) : undefined) ||
+      ""
     const content = this.recording.sources?.[path]
     response.body = { content: content ?? "[source unavailable in recording]" }
     this.sendResponse(response)

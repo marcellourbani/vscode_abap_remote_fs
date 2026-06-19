@@ -2,26 +2,46 @@ jest.mock("abap-adt-api", () => ({
   isAdtError: jest.fn((e: any) => e && e.__isAdtError === true),
   session_types: { stateful: "stateful" }
 }))
-jest.mock("vscode", () => ({
-  EventEmitter: jest.fn().mockImplementation(() => {
-    const listeners: any[] = []
-    return {
-      event: jest.fn((listener: any, _thisArg?: any, disposables?: any[]) => {
-        listeners.push(listener)
-        const d = { dispose: jest.fn() }
-        if (Array.isArray(disposables)) disposables.push(d)
-        return d
-      }),
-      fire: jest.fn((e: any) => { listeners.forEach(l => l(e)) }),
-      dispose: jest.fn()
-    }
+jest.mock(
+  "vscode",
+  () => ({
+    EventEmitter: jest.fn().mockImplementation(() => {
+      const listeners: any[] = []
+      return {
+        event: jest.fn((listener: any, _thisArg?: any, disposables?: any[]) => {
+          listeners.push(listener)
+          const d = { dispose: jest.fn() }
+          if (Array.isArray(disposables)) disposables.push(d)
+          return d
+        }),
+        fire: jest.fn((e: any) => {
+          listeners.forEach(l => l(e))
+        }),
+        dispose: jest.fn()
+      }
+    }),
+    Disposable: jest.fn().mockImplementation((fn: any) => ({ dispose: fn }))
   }),
-  Disposable: jest.fn().mockImplementation((fn: any) => ({ dispose: fn }))
-}), { virtual: true })
+  { virtual: true }
+)
 jest.mock("@vscode/debugadapter", () => ({
-  ContinuedEvent: jest.fn().mockImplementation((threadId: number) => ({ type: "continued", threadId })),
-  StoppedEvent: jest.fn().mockImplementation((reason: string, threadId: number) => ({ type: "stopped", reason, threadId })),
-  ThreadEvent: jest.fn().mockImplementation((reason: string, threadId: number) => ({ type: "thread", reason, threadId })),
+  ContinuedEvent: jest
+    .fn()
+    .mockImplementation((threadId: number) => ({ type: "continued", threadId })),
+  StoppedEvent: jest
+    .fn()
+    .mockImplementation((reason: string, threadId: number) => ({
+      type: "stopped",
+      reason,
+      threadId
+    })),
+  ThreadEvent: jest
+    .fn()
+    .mockImplementation((reason: string, threadId: number) => ({
+      type: "thread",
+      reason,
+      threadId
+    })),
   Source: jest.fn().mockImplementation((name: string, path: string) => ({ name, path }))
 }))
 jest.mock("./functions", () => ({

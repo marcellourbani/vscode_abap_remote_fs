@@ -32,12 +32,14 @@ const proposals = (client: ADTClient, url: string, p: Position, source: string) 
 const isSupported = (x: string) => isAbap(x) || isCdsView(x)
 
 // Cache the last completion context so onCompletionResolve can call codeCompletionFull
-let lastCompletionContext: {
-  uri: string
-  mainUrl: string
-  source: string
-  position: Position
-} | undefined
+let lastCompletionContext:
+  | {
+      uri: string
+      mainUrl: string
+      source: string
+      position: Position
+    }
+  | undefined
 
 async function abapCompletion(co: ClientAndObject, pos: Position, docUri: string) {
   const { client, obj, source } = co
@@ -98,7 +100,8 @@ export async function completion(params: CompletionParams) {
     const co = await clientAndObjfromUrl(params.textDocument.uri)
     if (!co) return items
 
-    if (isAbap(params.textDocument.uri)) items = await abapCompletion(co, params.position, params.textDocument.uri)
+    if (isAbap(params.textDocument.uri))
+      items = await abapCompletion(co, params.position, params.textDocument.uri)
     if (isCdsView(params.textDocument.uri)) items = await cdsCompletion(co, params.position)
     const isInComplete = (compl: CompletionItem[]) => {
       if (compl.length > 10) return true
@@ -126,17 +129,40 @@ export async function completion(params: CompletionParams) {
 
 export async function completionResolve(item: CompletionItem): Promise<CompletionItem> {
   try {
-    log("[completionResolve] called for:", typeof item.label === "string" ? item.label : item.label.label)
+    log(
+      "[completionResolve] called for:",
+      typeof item.label === "string" ? item.label : item.label.label
+    )
     const proposal: CompletionProposal | undefined = item.data
-    if (!proposal) { log("[completionResolve] no proposal data on item"); return item }
-    if (!lastCompletionContext) { log("[completionResolve] no lastCompletionContext"); return item }
+    if (!proposal) {
+      log("[completionResolve] no proposal data on item")
+      return item
+    }
+    if (!lastCompletionContext) {
+      log("[completionResolve] no lastCompletionContext")
+      return item
+    }
 
-    log("[completionResolve] uri:", lastCompletionContext.uri, "mainUrl:", lastCompletionContext.mainUrl)
+    log(
+      "[completionResolve] uri:",
+      lastCompletionContext.uri,
+      "mainUrl:",
+      lastCompletionContext.mainUrl
+    )
     const co = await clientAndObjfromUrl(lastCompletionContext.uri, true)
-    if (!co?.client) { log("[completionResolve] clientAndObjfromUrl returned nothing"); return item }
+    if (!co?.client) {
+      log("[completionResolve] clientAndObjfromUrl returned nothing")
+      return item
+    }
 
     const { mainUrl, source, position } = lastCompletionContext
-    log("[completionResolve] calling codeCompletionFull for", proposal.IDENTIFIER, "at", position.line + 1, position.character)
+    log(
+      "[completionResolve] calling codeCompletionFull for",
+      proposal.IDENTIFIER,
+      "at",
+      position.line + 1,
+      position.character
+    )
     const fullText = await co.client.statelessClone.codeCompletionFull(
       mainUrl,
       source,
@@ -155,7 +181,13 @@ export async function completionResolve(item: CompletionItem): Promise<Completio
         item.insertTextFormat = InsertTextFormat.Snippet
       }
     } else {
-      log("[completionResolve] fullText not usable (length:", fullText?.length, "vs identifier:", proposal.IDENTIFIER.length, ")")
+      log(
+        "[completionResolve] fullText not usable (length:",
+        fullText?.length,
+        "vs identifier:",
+        proposal.IDENTIFIER.length,
+        ")"
+      )
     }
   } catch (e) {
     log("Exception in completionResolve:", caughtToString(e))
@@ -202,7 +234,12 @@ function convertToSnippet(fullText: string, identifier: string): string | undefi
     }
   )
 
-  log("[convertToSnippet] tabIndex:", tabIndex, "snippet:", JSON.stringify(snippet?.substring(0, 300)))
+  log(
+    "[convertToSnippet] tabIndex:",
+    tabIndex,
+    "snippet:",
+    JSON.stringify(snippet?.substring(0, 300))
+  )
 
   if (tabIndex === 0) return undefined
 
@@ -212,7 +249,9 @@ function convertToSnippet(fullText: string, identifier: string): string | undefi
 // ── Signature Help ──────────────────────────────────────────────────────────
 // Shows method parameter hints when typing inside parentheses.
 
-export async function signatureHelp(params: SignatureHelpParams): Promise<SignatureHelp | undefined> {
+export async function signatureHelp(
+  params: SignatureHelpParams
+): Promise<SignatureHelp | undefined> {
   try {
     if (!isAbap(params.textDocument.uri)) return undefined
 
@@ -286,9 +325,10 @@ function findMethodCall(lines: string[], pos: Position): MethodCallContext | und
           const nameMatch = textBefore.match(/([\w\/]+(?:[=-]>[\w\/]+)?)\s*$/)
           if (nameMatch) {
             const fullName = nameMatch[1]
-            const methodName = fullName.includes("=>") || fullName.includes("->")
-              ? fullName.split(/[=-]>/)[1] || fullName
-              : fullName
+            const methodName =
+              fullName.includes("=>") || fullName.includes("->")
+                ? fullName.split(/[=-]>/)[1] || fullName
+                : fullName
             const nameStart = textBefore.length - nameMatch[0].trimStart().length
             return {
               line: l,

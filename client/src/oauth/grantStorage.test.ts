@@ -19,7 +19,15 @@ jest.mock("../lib", () => ({
   log: jest.fn()
 }))
 
-import { getToken, setToken, strip, storeTokens, clearTokens, loadTokens, TokenData } from "./grantStorage"
+import {
+  getToken,
+  setToken,
+  strip,
+  storeTokens,
+  clearTokens,
+  loadTokens,
+  TokenData
+} from "./grantStorage"
 import { PasswordVault, log } from "../lib"
 import { context } from "../extension"
 
@@ -60,7 +68,11 @@ describe("grantStorage", () => {
       const token = makeToken()
       setToken("conn1", token)
       const retrieved = getToken("conn1")
-      expect(retrieved).toEqual({ tokenType: "Bearer", accessToken: "access-test", refreshToken: "refresh-test" })
+      expect(retrieved).toEqual({
+        tokenType: "Bearer",
+        accessToken: "access-test",
+        refreshToken: "refresh-test"
+      })
     })
 
     it("setToken strips the token (only keeps required fields)", () => {
@@ -72,7 +84,11 @@ describe("grantStorage", () => {
 
     it("overwrites existing token for same connId", () => {
       setToken("conn3", makeToken("v1"))
-      setToken("conn3", { tokenType: "Bearer", accessToken: "access-v2", refreshToken: "refresh-v2" })
+      setToken("conn3", {
+        tokenType: "Bearer",
+        accessToken: "access-v2",
+        refreshToken: "refresh-v2"
+      })
       expect(getToken("conn3")?.accessToken).toBe("access-v2")
     })
   })
@@ -133,9 +149,7 @@ describe("grantStorage", () => {
   describe("loadTokens", () => {
     it("migrates legacy tokens from globalState to vault", async () => {
       const legacyToken = makeToken("legacy")
-      ;(context.globalState.get as jest.Mock).mockReturnValue([
-        ["legacy-conn", legacyToken]
-      ])
+      ;(context.globalState.get as jest.Mock).mockReturnValue([["legacy-conn", legacyToken]])
       const vault = { setPassword: jest.fn(), deletePassword: jest.fn() }
       ;(PasswordVault.get as jest.Mock).mockReturnValue(vault)
       ;(context.globalState.update as jest.Mock).mockResolvedValue(undefined)

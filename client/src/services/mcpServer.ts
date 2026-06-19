@@ -76,7 +76,9 @@ export function validateApiKey(req: http.IncomingMessage): boolean {
   // but log a warning once per session
   if (!settings.apiKey) {
     if (!apiKeyWarningLogged) {
-      log("No API key configured for the MCP server. Consider configuring a random key and passing it in your MCP client. Allowing anyway..")
+      log(
+        "No API key configured for the MCP server. Consider configuring a random key and passing it in your MCP client. Allowing anyway.."
+      )
       apiKeyWarningLogged = true
     }
     return true
@@ -331,19 +333,23 @@ function createMcpServer(): McpServer {
         "IMPORTANT: oldString is mandatory whenever the file has any content. An empty oldString is accepted ONLY when the file is currently completely blank (e.g. a freshly created ABAP object with no source yet) - in that case the entire newString becomes the file content.\n\n" +
         "After editing, call get_abap_diagnostics with the same fileUri to verify the code has no syntax errors.",
       inputSchema: {
-        fileUri: z.string().describe(
-          "The full workspace URI of the ABAP source file." +
-          "Get this using the get_abap_object_workspace_uri tool."
-        ),
-        oldString: z.string().describe(
-          "The exact literal text to find and replace. Must match exactly one occurrence in the file. " +
-          "Include at least 3-5 lines of surrounding context to ensure uniqueness. " +
-          "Must match whitespace and indentation precisely. " +
-          "May be an empty string ONLY if the target file is currently completely blank; otherwise it is mandatory."
-        ),
-        newString: z.string().describe(
-          "The replacement text. Ensure the resulting code is syntactically valid ABAP."
-        )
+        fileUri: z
+          .string()
+          .describe(
+            "The full workspace URI of the ABAP source file." +
+              "Get this using the get_abap_object_workspace_uri tool."
+          ),
+        oldString: z
+          .string()
+          .describe(
+            "The exact literal text to find and replace. Must match exactly one occurrence in the file. " +
+              "Include at least 3-5 lines of surrounding context to ensure uniqueness. " +
+              "Must match whitespace and indentation precisely. " +
+              "May be an empty string ONLY if the target file is currently completely blank; otherwise it is mandatory."
+          ),
+        newString: z
+          .string()
+          .describe("The replacement text. Ensure the resulting code is syntactically valid ABAP.")
       }
     },
     async (args: Record<string, unknown>) => {
@@ -404,10 +410,12 @@ function createMcpServer(): McpServer {
         "Always call this after making code changes.\n\n" +
         "Prerequisite: Use get_abap_object_workspace_uri to get the fileUri.",
       inputSchema: {
-        fileUri: z.string().describe(
-          "The full workspace URI of the ABAP source file. " +
-          "Get this using the get_abap_object_workspace_uri tool."
-        )
+        fileUri: z
+          .string()
+          .describe(
+            "The full workspace URI of the ABAP source file. " +
+              "Get this using the get_abap_object_workspace_uri tool."
+          )
       }
     },
     async (args: Record<string, unknown>) => {
@@ -468,7 +476,6 @@ async function startHttpServer(): Promise<void> {
   state.port = settings.port
 
   state.httpServer = http.createServer(async (req, res) => {
-
     if (req.method === "OPTIONS") {
       res.writeHead(405)
       res.end()
@@ -681,7 +688,6 @@ function stopServer(): void {
  * Call this from extension.ts during activation
  */
 
-
 const MCP_COPILOT_DISMISSED_KEY = "abapfs.mcpServer.copilotPromptDismissed"
 
 /**
@@ -692,7 +698,6 @@ export async function startMcpServerCommand(context: vscode.ExtensionContext): P
     window.showInformationMessage(`MCP Server is already running on port ${state.port}.`)
     return
   }
-
 
   // One-time check: if LLM models are available (Copilot active), user may not need MCP
   const dismissed = context.globalState.get<boolean>(MCP_COPILOT_DISMISSED_KEY)
@@ -708,11 +713,20 @@ export async function startMcpServerCommand(context: vscode.ExtensionContext): P
     if (hasModels) {
       const selection = await vscode.window.showQuickPick(
         [
-          { label: "$(rocket) Start MCP Anyway", description: "I use Cursor/Claude/other external AI tools", value: "start" },
-          { label: "$(x) Don't Start", description: "I only use GitHub Copilot — don't need MCP", value: "disable" }
+          {
+            label: "$(rocket) Start MCP Anyway",
+            description: "I use Cursor/Claude/other external AI tools",
+            value: "start"
+          },
+          {
+            label: "$(x) Don't Start",
+            description: "I only use GitHub Copilot — don't need MCP",
+            value: "disable"
+          }
         ],
         {
-          placeHolder: "Github Copilot AI models detected. MCP server is for external AI tools — do you still need it?",
+          placeHolder:
+            "Github Copilot AI models detected. MCP server is for external AI tools — do you still need it?",
           ignoreFocusOut: true
         }
       )
@@ -741,7 +755,11 @@ export async function startMcpServerCommand(context: vscode.ExtensionContext): P
 
   try {
     await startHttpServer()
-    context.subscriptions.push({ dispose: () => { stopServer() } })
+    context.subscriptions.push({
+      dispose: () => {
+        stopServer()
+      }
+    })
   } catch (error) {
     window.showWarningMessage(
       `MCP Server failed to start: ${error instanceof Error ? error.message : String(error)}`

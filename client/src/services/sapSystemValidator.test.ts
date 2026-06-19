@@ -1,8 +1,16 @@
-jest.mock("vscode", () => ({
-  extensions: { getExtension: jest.fn().mockReturnValue({ packageJSON: { version: "2.1.0" } }) },
-  window: { createStatusBarItem: jest.fn(), showInformationMessage: jest.fn(), showErrorMessage: jest.fn() },
-  StatusBarAlignment: { Left: 1, Right: 2 }
-}), { virtual: true })
+jest.mock(
+  "vscode",
+  () => ({
+    extensions: { getExtension: jest.fn().mockReturnValue({ packageJSON: { version: "2.1.0" } }) },
+    window: {
+      createStatusBarItem: jest.fn(),
+      showInformationMessage: jest.fn(),
+      showErrorMessage: jest.fn()
+    },
+    StatusBarAlignment: { Left: 1, Right: 2 }
+  }),
+  { virtual: true }
+)
 
 jest.mock("./funMessenger", () => ({
   funWindow: {
@@ -28,23 +36,37 @@ beforeEach(() => {
 // Helper to get a fresh validator instance after module reset
 function getValidator() {
   jest.resetModules()
-  jest.mock("vscode", () => ({
-    extensions: {
-      getExtension: jest.fn().mockReturnValue({ packageJSON: { version: "2.1.0" } })
-    },
-    window: {
-      createStatusBarItem: jest.fn().mockReturnValue({
-        show: jest.fn(), hide: jest.fn(), dispose: jest.fn(), text: "", tooltip: "", command: ""
-      }),
-      showInformationMessage: jest.fn().mockResolvedValue(undefined),
-      showErrorMessage: jest.fn().mockResolvedValue(undefined)
-    },
-    StatusBarAlignment: { Left: 1, Right: 2 }
-  }), { virtual: true })
+  jest.mock(
+    "vscode",
+    () => ({
+      extensions: {
+        getExtension: jest.fn().mockReturnValue({ packageJSON: { version: "2.1.0" } })
+      },
+      window: {
+        createStatusBarItem: jest.fn().mockReturnValue({
+          show: jest.fn(),
+          hide: jest.fn(),
+          dispose: jest.fn(),
+          text: "",
+          tooltip: "",
+          command: ""
+        }),
+        showInformationMessage: jest.fn().mockResolvedValue(undefined),
+        showErrorMessage: jest.fn().mockResolvedValue(undefined)
+      },
+      StatusBarAlignment: { Left: 1, Right: 2 }
+    }),
+    { virtual: true }
+  )
   jest.mock("./funMessenger", () => ({
     funWindow: {
       createStatusBarItem: jest.fn().mockReturnValue({
-        show: jest.fn(), hide: jest.fn(), dispose: jest.fn(), text: "", tooltip: "", command: ""
+        show: jest.fn(),
+        hide: jest.fn(),
+        dispose: jest.fn(),
+        text: "",
+        tooltip: "",
+        command: ""
       }),
       showInformationMessage: jest.fn().mockResolvedValue(undefined),
       showErrorMessage: jest.fn().mockResolvedValue(undefined)
@@ -97,7 +119,11 @@ describe("checkSystemAccess with ALLOW_ALL_SYSTEMS and ALLOW_ALL_USERS true", ()
 
   test("allows any URL when both flags are true", async () => {
     const validator = SapSystemValidator.getInstance()
-    const result = await validator.checkSystemAccess("https://any-sap.example.com", undefined, "anyuser")
+    const result = await validator.checkSystemAccess(
+      "https://any-sap.example.com",
+      undefined,
+      "anyuser"
+    )
     expect(result.allowed).toBe(true)
   })
 
@@ -322,9 +348,7 @@ describe("parseWhitelistData", () => {
     const v = SapSystemValidator.getInstance()
     const data = {
       allowedDomains: ["*dev*"],
-      developers: [
-        { manager: "Boss", userIds: ["user1", "user2"] }
-      ]
+      developers: [{ manager: "Boss", userIds: ["user1", "user2"] }]
     }
     ;(v as any).parseWhitelistData(data)
 
@@ -338,9 +362,7 @@ describe("parseWhitelistData", () => {
     const v = SapSystemValidator.getInstance()
     const data = {
       allowedDomains: ["*dev*"],
-      developers: [
-        { manager: "Boss", userIds: ["user1", "user2"] }
-      ]
+      developers: [{ manager: "Boss", userIds: ["user1", "user2"] }]
     }
     ;(v as any).parseWhitelistData(data)
 

@@ -141,7 +141,9 @@ export async function activate(ctx: ExtensionContext): Promise<AbapFsApi> {
     const adtSelector = { language: "abap", scheme: ADTSCHEME }
     const cdsSelector = { language: "abap_cds", scheme: ADTSCHEME }
 
-    sub.push(languages.registerHoverProvider([abapSelector, adtSelector, cdsSelector], hoverProvider))
+    sub.push(
+      languages.registerHoverProvider([abapSelector, adtSelector, cdsSelector], hoverProvider)
+    )
     sub.push(
       languages.registerDocumentSymbolProvider([adtSelector], new AbapDocumentSymbolProvider())
     )
@@ -164,7 +166,6 @@ export async function activate(ctx: ExtensionContext): Promise<AbapFsApi> {
     DiagramWebviewManager.initialize(context.extensionUri)
     log("🧜‍♀️ Mermaid Webview Manager ready to make your diagrams prettier than your code")
 
-
     // Register Language Model Tools
     await registerAllTools(context)
 
@@ -178,7 +179,9 @@ export async function activate(ctx: ExtensionContext): Promise<AbapFsApi> {
     // Initialize SAP Data Workbook (.sapwb)
     registerAbapNotebooks(context)
 
-    sub.push(commands.registerCommand("abapfs.startMcpServer", () => startMcpServerCommand(context)))
+    sub.push(
+      commands.registerCommand("abapfs.startMcpServer", () => startMcpServerCommand(context))
+    )
     // Validate and regenerate subagent files if enabled, but only do that in background
     setImmediate(() => validateSubagentsOnStartup(context))
     log("🚀 ABAP FS services are GO! Houston, we have liftoff! 🌙")
@@ -322,10 +325,18 @@ export async function activate(ctx: ExtensionContext): Promise<AbapFsApi> {
   LanguageCommands.start(context)
 
   setContext("abapfs:extensionActive", true)
-  setContext("abapfs:noSapConnected", !(workspace.workspaceFolders?.some(f => f.uri.scheme === ADTSCHEME) ?? false))
-  sub.push(workspace.onDidChangeWorkspaceFolders(() => {
-    setContext("abapfs:noSapConnected", !(workspace.workspaceFolders?.some(f => f.uri.scheme === ADTSCHEME) ?? false))
-  }))
+  setContext(
+    "abapfs:noSapConnected",
+    !(workspace.workspaceFolders?.some(f => f.uri.scheme === ADTSCHEME) ?? false)
+  )
+  sub.push(
+    workspace.onDidChangeWorkspaceFolders(() => {
+      setContext(
+        "abapfs:noSapConnected",
+        !(workspace.workspaceFolders?.some(f => f.uri.scheme === ADTSCHEME) ?? false)
+      )
+    })
+  )
   restoreLocks()
   registerAbapGit(context)
 

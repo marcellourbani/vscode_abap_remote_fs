@@ -1,14 +1,18 @@
 // Mock vscode BEFORE any imports
-jest.mock("vscode", () => ({
-  workspace: {
-    getConfiguration: jest.fn(),
-    onDidChangeConfiguration: jest.fn(() => ({ dispose: jest.fn() })),
-    workspaceFolders: []
-  },
-  commands: {
-    executeCommand: jest.fn()
-  }
-}), { virtual: true })
+jest.mock(
+  "vscode",
+  () => ({
+    workspace: {
+      getConfiguration: jest.fn(),
+      onDidChangeConfiguration: jest.fn(() => ({ dispose: jest.fn() })),
+      workspaceFolders: []
+    },
+    commands: {
+      executeCommand: jest.fn()
+    }
+  }),
+  { virtual: true }
+)
 
 // Mock modules that have vscode deps
 jest.mock("../../lib", () => ({ log: () => {} }))
@@ -290,7 +294,11 @@ describe("validatePollingInterval (indirectly via scheduling)", () => {
     const systems = new Map([["sys1", { uri: { authority: "sys1" } }]])
     ;(connectedRoots as jest.Mock).mockReturnValue(systems)
     ;(getOrCreateClient as jest.Mock).mockResolvedValue({
-      feeds: jest.fn().mockResolvedValue([{ href: "/sap/bc/adt/runtime/dumps/feeds", title: "Dumps", queryVariants: [] }])
+      feeds: jest
+        .fn()
+        .mockResolvedValue([
+          { href: "/sap/bc/adt/runtime/dumps/feeds", title: "Dumps", queryVariants: [] }
+        ])
     })
     setupWorkspaceConfig({
       sys1: {
@@ -310,11 +318,20 @@ describe("validatePollingInterval (indirectly via scheduling)", () => {
     const systems = new Map([["sys1", {}]])
     ;(connectedRoots as jest.Mock).mockReturnValue(systems)
     ;(getOrCreateClient as jest.Mock).mockResolvedValue({
-      feeds: jest.fn().mockResolvedValue([{ href: "/sap/bc/adt/runtime/dumps/feeds", title: "Dumps", queryVariants: [] }])
+      feeds: jest
+        .fn()
+        .mockResolvedValue([
+          { href: "/sap/bc/adt/runtime/dumps/feeds", title: "Dumps", queryVariants: [] }
+        ])
     })
     setupWorkspaceConfig({
       sys1: {
-        Dumps: { enabled: true, pollingInterval: 999999, notifications: false, useDefaultQuery: true }
+        Dumps: {
+          enabled: true,
+          pollingInterval: 999999,
+          notifications: false,
+          useDefaultQuery: true
+        }
       }
     })
 
@@ -348,7 +365,12 @@ describe("handleUnavailableFeed warning notification", () => {
     })
     setupWorkspaceConfig({
       sys1: {
-        "Missing Feed": { enabled: true, pollingInterval: 300, notifications: true, useDefaultQuery: true }
+        "Missing Feed": {
+          enabled: true,
+          pollingInterval: 300,
+          notifications: true,
+          useDefaultQuery: true
+        }
       }
     })
 
@@ -375,7 +397,12 @@ describe("handleUnavailableFeed warning notification", () => {
     })
     setupWorkspaceConfig({
       sys1: {
-        "Missing Feed": { enabled: true, pollingInterval: 300, notifications: true, useDefaultQuery: true }
+        "Missing Feed": {
+          enabled: true,
+          pollingInterval: 300,
+          notifications: true,
+          useDefaultQuery: true
+        }
       }
     })
 
@@ -406,7 +433,11 @@ describe("disabled feed subscriptions", () => {
     const systems = new Map([["sys1", {}]])
     ;(connectedRoots as jest.Mock).mockReturnValue(systems)
     ;(getOrCreateClient as jest.Mock).mockResolvedValue({
-      feeds: jest.fn().mockResolvedValue([{ href: "/sap/bc/adt/runtime/dumps/feeds", title: "Dumps", queryVariants: [] }])
+      feeds: jest
+        .fn()
+        .mockResolvedValue([
+          { href: "/sap/bc/adt/runtime/dumps/feeds", title: "Dumps", queryVariants: [] }
+        ])
     })
     setupWorkspaceConfig({
       sys1: {

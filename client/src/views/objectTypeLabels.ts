@@ -7,7 +7,7 @@ const TYPE_LABELS: Record<string, TypeLabel> = {
   "CLAS/OM": "Class Method",
   "INTF/OI": "Interface",
   "PROG/P": "Program",
-  "PROG/I": (mainProgram?: MainInclude) => mainProgram ? "Include" : "Program Include",
+  "PROG/I": (mainProgram?: MainInclude) => (mainProgram ? "Include" : "Program Include"),
   "FUGR/F": "Function Group",
   "FUGR/FF": "Function Module",
   "TYPE/TY": "Type Group",

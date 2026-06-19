@@ -178,7 +178,6 @@ export class TelemetryService {
   }
 }
 
-
 const toolContextKeys: Record<string, string> = {
   // Search & discovery
   tool_search_abap_objects_called: "abapfs:toolUsed:search",

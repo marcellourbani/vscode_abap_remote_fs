@@ -4,7 +4,13 @@ jest.mock("@vscode/debugadapter", () => ({
     this.sendEvent = jest.fn()
   }),
   InitializedEvent: jest.fn().mockImplementation(() => ({ type: "initialized" })),
-  StoppedEvent: jest.fn().mockImplementation((reason: string, threadId: number) => ({ type: "stopped", reason, threadId })),
+  StoppedEvent: jest
+    .fn()
+    .mockImplementation((reason: string, threadId: number) => ({
+      type: "stopped",
+      reason,
+      threadId
+    })),
   TerminatedEvent: jest.fn().mockImplementation(() => ({ type: "terminated" })),
   Thread: jest.fn().mockImplementation((id: number, name: string) => ({ id, name })),
   Source: jest.fn().mockImplementation((name: string, path: string) => ({ name, path }))
@@ -36,7 +42,15 @@ function makeSnapshot(step: number, overrides: Partial<DebugSnapshot> = {}): Deb
     stepNumber: step,
     timestamp: Date.now(),
     threadId: 1,
-    stack: [{ name: "ZPROG", sourcePath: "adt://TST/some/path", adtUri: "/sap/bc/adt/programs/programs/ZPROG", line: step + 1, stackPosition: step }],
+    stack: [
+      {
+        name: "ZPROG",
+        sourcePath: "adt://TST/some/path",
+        adtUri: "/sap/bc/adt/programs/programs/ZPROG",
+        line: step + 1,
+        stackPosition: step
+      }
+    ],
     scopes: [{ name: "LOCAL", variables: [] }],
     changedVars: [],
     ...overrides
@@ -353,14 +367,34 @@ describe("ReplayDebugSession", () => {
 
     test("assigns different source references to different paths", () => {
       const snap0 = makeSnapshot(0, {
-        stack: [{ name: "ZPROG_A", sourcePath: "adt://TST/path/A", adtUri: "/A", line: 1, stackPosition: 0 }]
+        stack: [
+          {
+            name: "ZPROG_A",
+            sourcePath: "adt://TST/path/A",
+            adtUri: "/A",
+            line: 1,
+            stackPosition: 0
+          }
+        ]
       })
       const snap1 = makeSnapshot(1, {
-        stack: [{ name: "ZPROG_B", sourcePath: "adt://TST/path/B", adtUri: "/B", line: 2, stackPosition: 0 }]
+        stack: [
+          {
+            name: "ZPROG_B",
+            sourcePath: "adt://TST/path/B",
+            adtUri: "/B",
+            line: 2,
+            stackPosition: 0
+          }
+        ]
       })
       const rec: DebugRecording = {
-        version: 1, recordedAt: "", connectionId: "TST",
-        totalSteps: 2, duration: 100, snapshots: [snap0, snap1]
+        version: 1,
+        recordedAt: "",
+        connectionId: "TST",
+        totalSteps: 2,
+        duration: 100,
+        snapshots: [snap0, snap1]
       }
       const session = new ReplayDebugSession(rec)
       const r0 = makeResponse()

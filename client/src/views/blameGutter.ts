@@ -451,7 +451,8 @@ function applyHeatmap(
   if (Number.isNaN(date.getTime())) return
 
   const age = heatmap.computeRelativeAge(date)
-  const colors = date.getTime() < heatmap.coldThresholdTimestamp ? heatmap.colors.cold : heatmap.colors.hot
+  const colors =
+    date.getTime() < heatmap.coldThresholdTimestamp ? heatmap.colors.cold : heatmap.colors.hot
   const color = colors[Math.min(age, colors.length - 1)]
   const alpha = age === 0 ? 1 : age <= 5 ? 0.8 : 0.6
 
@@ -592,8 +593,10 @@ function clearBlameHighlights(editor?: vscode.TextEditor) {
 
 function clearSelectedLineAnnotation(editor?: vscode.TextEditor) {
   if (!editor) return
-  if (classicSelectedLineDecorationType) editor.setDecorations(classicSelectedLineDecorationType, [])
-  if (gitlensSelectedLineDecorationType) editor.setDecorations(gitlensSelectedLineDecorationType, [])
+  if (classicSelectedLineDecorationType)
+    editor.setDecorations(classicSelectedLineDecorationType, [])
+  if (gitlensSelectedLineDecorationType)
+    editor.setDecorations(gitlensSelectedLineDecorationType, [])
 }
 
 function updateBlameHighlights(editor: vscode.TextEditor, blame: BlameInfo[], line?: number) {
@@ -649,7 +652,9 @@ function getAvatarInitials(author: string): string {
   return `${parts[0][0]}${parts[parts.length - 1][0]}`.toUpperCase()
 }
 
-function buildAvatarRenderOptions(author: string): vscode.ThemableDecorationAttachmentRenderOptions {
+function buildAvatarRenderOptions(
+  author: string
+): vscode.ThemableDecorationAttachmentRenderOptions {
   const initials = getAvatarInitials(author)
   const accent = accentColorForAuthor(author)
   const svg = encodeURIComponent(
@@ -676,7 +681,11 @@ function buildAvatarRenderOptions(author: string): vscode.ThemableDecorationAtta
   }
 }
 
-function updateSelectedLineAnnotation(editor: vscode.TextEditor, blame: BlameInfo[], line?: number) {
+function updateSelectedLineAnnotation(
+  editor: vscode.TextEditor,
+  blame: BlameInfo[],
+  line?: number
+) {
   if (line == null || line < 0 || line >= blame.length) {
     clearSelectedLineAnnotation(editor)
     return
@@ -892,7 +901,9 @@ async function fetchRevisionSources(
 
       const start = batchIndex * REVISION_FETCH_BATCH_SIZE
       const batch = revisions.slice(start, start + REVISION_FETCH_BATCH_SIZE)
-      const batchSources = await Promise.all(batch.map(revision => client.getObjectSource(revision.uri)))
+      const batchSources = await Promise.all(
+        batch.map(revision => client.getObjectSource(revision.uri))
+      )
 
       if (token.isCancellationRequested) return
 
@@ -1185,7 +1196,9 @@ export function initializeBlameGutter(context: vscode.ExtensionContext) {
   // Invalidate the blame cache when documents are saved, and re-render when the mode changes.
   context.subscriptions.push(vscode.workspace.onDidSaveTextDocument(onBlameDocumentSaved))
   context.subscriptions.push(vscode.workspace.onDidChangeConfiguration(onBlameConfigurationChanged))
-  context.subscriptions.push(window.onDidChangeTextEditorSelection(onBlameTextEditorSelectionChanged))
+  context.subscriptions.push(
+    window.onDidChangeTextEditorSelection(onBlameTextEditorSelectionChanged)
+  )
 
   // Clean up decoration types and cached state on deactivate.
   context.subscriptions.push({

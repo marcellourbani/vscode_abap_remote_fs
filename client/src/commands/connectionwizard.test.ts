@@ -1,16 +1,20 @@
-jest.mock("vscode", () => ({
-  ConfigurationTarget: { Global: 1, Workspace: 2 },
-  QuickPickItem: jest.fn(),
-  Uri: {
-    parse: jest.fn((s: string) => ({ toString: () => s }))
-  },
-  workspace: {
-    fs: {
-      readFile: jest.fn()
+jest.mock(
+  "vscode",
+  () => ({
+    ConfigurationTarget: { Global: 1, Workspace: 2 },
+    QuickPickItem: jest.fn(),
+    Uri: {
+      parse: jest.fn((s: string) => ({ toString: () => s }))
     },
-    getConfiguration: jest.fn()
-  }
-}), { virtual: true })
+    workspace: {
+      fs: {
+        readFile: jest.fn()
+      },
+      getConfiguration: jest.fn()
+    }
+  }),
+  { virtual: true }
+)
 
 jest.mock("abap_cloud_platform", () => ({
   cfInfo: jest.fn(),
@@ -106,19 +110,14 @@ describe("URL validation pattern", () => {
     "http://192.168.1.1:8080",
     "https://sap.example.com"
   ]
-  const invalidUrls = [
-    "not-a-url",
-    "ftp://server.com",
-    "http://",
-    ""
-  ]
+  const invalidUrls = ["not-a-url", "ftp://server.com", "http://", ""]
 
-  test.each(validUrls)("accepts valid URL: %s", (url) => {
+  test.each(validUrls)("accepts valid URL: %s", url => {
     const pattern = /^http(s)?:\/\/[\w\.-]+(:\d+)?$/i
     expect(pattern.test(url)).toBe(true)
   })
 
-  test.each(invalidUrls)("rejects invalid URL: %s", (url) => {
+  test.each(invalidUrls)("rejects invalid URL: %s", url => {
     const pattern = /^http(s)?:\/\/[\w\.-]+(:\d+)?$/i
     expect(pattern.test(url)).toBe(false)
   })
@@ -129,13 +128,13 @@ describe("SAP client validation pattern", () => {
   const validClients = ["001", "100", "200", "999"]
   const invalidClients = ["000", "1234", "abc", "10", ""]
 
-  test.each(validClients)("accepts valid client: %s", (client) => {
+  test.each(validClients)("accepts valid client: %s", client => {
     const pattern = /^\d\d\d$/
     const notZero = client !== "000"
     expect(pattern.test(client) && notZero).toBe(true)
   })
 
-  test.each(invalidClients)("rejects invalid client: %s", (client) => {
+  test.each(invalidClients)("rejects invalid client: %s", client => {
     const pattern = /^\d\d\d$/
     const isValid = pattern.test(client) && client !== "000"
     expect(isValid).toBe(false)
@@ -147,12 +146,12 @@ describe("language code validation pattern", () => {
   const validCodes = ["en", "de", "fr", "zh"]
   const invalidCodes = ["EN", "eng", "e", ""]
 
-  test.each(validCodes)("accepts valid 2-letter lowercase language: %s", (lang) => {
+  test.each(validCodes)("accepts valid 2-letter lowercase language: %s", lang => {
     const pattern = /^[a-z][a-z]$/
     expect(pattern.test(lang)).toBe(true)
   })
 
-  test.each(invalidCodes)("rejects invalid language code: %s", (lang) => {
+  test.each(invalidCodes)("rejects invalid language code: %s", lang => {
     const pattern = /^[a-z][a-z]$/
     expect(pattern.test(lang)).toBe(false)
   })

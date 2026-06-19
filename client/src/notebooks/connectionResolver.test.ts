@@ -1,16 +1,24 @@
 jest.mock("../config", () => ({ connectedRoots: jest.fn() }), { virtual: false })
 jest.mock("../adt/conections", () => ({ getClient: jest.fn() }), { virtual: false })
-jest.mock("../services/funMessenger", () => ({
-  funWindow: {
-    showWarningMessage: jest.fn(),
-    showQuickPick: jest.fn(),
-    showInputBox: jest.fn(),
-    showErrorMessage: jest.fn(),
-    createOutputChannel: jest.fn(() => ({
-      info: jest.fn(), warn: jest.fn(), error: jest.fn(), debug: jest.fn(), trace: jest.fn(),
-    })),
-  },
-}), { virtual: false })
+jest.mock(
+  "../services/funMessenger",
+  () => ({
+    funWindow: {
+      showWarningMessage: jest.fn(),
+      showQuickPick: jest.fn(),
+      showInputBox: jest.fn(),
+      showErrorMessage: jest.fn(),
+      createOutputChannel: jest.fn(() => ({
+        info: jest.fn(),
+        warn: jest.fn(),
+        error: jest.fn(),
+        debug: jest.fn(),
+        trace: jest.fn()
+      }))
+    }
+  }),
+  { virtual: false }
+)
 jest.mock("vscode", () => ({}), { virtual: true })
 
 import { resolveConnection, NotebookConnectionError } from "./connectionResolver"
@@ -60,7 +68,9 @@ describe("resolveConnection — single system", () => {
 
   test("shows confirmation dialog when only one system connected", async () => {
     mockShowWarningMessage.mockResolvedValue("Yes, run")
-    mockGetClient.mockReturnValue({ /* mock client */ })
+    mockGetClient.mockReturnValue({
+      /* mock client */
+    })
     await resolveConnection()
     expect(mockShowWarningMessage).toHaveBeenCalledWith(
       expect.stringContaining("dev100"),
@@ -86,7 +96,9 @@ describe("resolveConnection — single system", () => {
 
   test("throws NotebookConnectionError when getClient throws", async () => {
     mockShowWarningMessage.mockResolvedValue("Yes, run")
-    mockGetClient.mockImplementation(() => { throw new Error("client creation failed") })
+    mockGetClient.mockImplementation(() => {
+      throw new Error("client creation failed")
+    })
     await expect(resolveConnection()).rejects.toThrow(NotebookConnectionError)
     await expect(resolveConnection()).rejects.toThrow("connection failed")
   })
@@ -95,7 +107,10 @@ describe("resolveConnection — single system", () => {
 describe("resolveConnection — multiple systems", () => {
   beforeEach(() => {
     jest.clearAllMocks()
-    const map = new Map([["dev100", {}], ["qas200", {}]])
+    const map = new Map([
+      ["dev100", {}],
+      ["qas200", {}]
+    ])
     mockConnectedRoots.mockReturnValue(map)
   })
 
@@ -105,7 +120,7 @@ describe("resolveConnection — multiple systems", () => {
     expect(mockShowQuickPick).toHaveBeenCalledWith(
       expect.arrayContaining([
         expect.objectContaining({ label: "dev100" }),
-        expect.objectContaining({ label: "qas200" }),
+        expect.objectContaining({ label: "qas200" })
       ]),
       expect.objectContaining({ placeHolder: expect.any(String) })
     )
@@ -147,7 +162,9 @@ describe("resolveConnection — multiple systems", () => {
   test("throws NotebookConnectionError when getClient throws for selected system", async () => {
     mockShowQuickPick.mockResolvedValue({ label: "dev100" })
     mockShowWarningMessage.mockResolvedValue("Yes, run")
-    mockGetClient.mockImplementation(() => { throw new Error("net error") })
+    mockGetClient.mockImplementation(() => {
+      throw new Error("net error")
+    })
     await expect(resolveConnection()).rejects.toThrow(NotebookConnectionError)
   })
 })

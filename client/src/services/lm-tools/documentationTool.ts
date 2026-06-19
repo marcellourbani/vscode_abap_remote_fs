@@ -32,14 +32,14 @@ function readFileLines(filePath: string, startLine: number, lineCount: number): 
   try {
     const content = fs.readFileSync(filePath, "utf-8")
     const lines = content.split("\n")
-    
+
     // 1-based to 0-based conversion
     const start = Math.max(0, startLine - 1)
     const end = Math.min(lines.length, start + lineCount)
-    
+
     const selectedLines = lines.slice(start, end)
     const totalLines = lines.length
-    
+
     const header = `Lines ${startLine}-${start + selectedLines.length} of ${totalLines}:\n\n`
     return header + selectedLines.join("\n")
   } catch (error) {
@@ -51,21 +51,25 @@ function readFileLines(filePath: string, startLine: number, lineCount: number): 
  * Search for text in file and return matching lines with context
  * Splits search query by spaces and finds lines matching ANY of the words
  */
-function searchFileLines(
-  filePath: string,
-  searchQuery: string,
-  contextLines: number = 3
-): string {
+function searchFileLines(filePath: string, searchQuery: string, contextLines: number = 3): string {
   try {
     const content = fs.readFileSync(filePath, "utf-8")
     const lines = content.split("\n")
-    
+
     // Split search query by spaces and convert to lowercase
-    const searchTerms = searchQuery.toLowerCase().split(/\s+/).filter(term => term.length > 0)
-    
-    const matches: Array<{ lineNumber: number; line: string; context: string[]; matchedTerms: string[] }> = []
+    const searchTerms = searchQuery
+      .toLowerCase()
+      .split(/\s+/)
+      .filter(term => term.length > 0)
+
+    const matches: Array<{
+      lineNumber: number
+      line: string
+      context: string[]
+      matchedTerms: string[]
+    }> = []
     const matchedLineNumbers = new Set<number>()
-    
+
     // Find all matching lines for each search term
     for (const searchTerm of searchTerms) {
       for (let i = 0; i < lines.length; i++) {
@@ -74,12 +78,10 @@ function searchFileLines(
           const contextStart = Math.max(0, i - contextLines)
           const contextEnd = Math.min(lines.length, i + contextLines + 1)
           const contextLinesArray = lines.slice(contextStart, contextEnd)
-          
+
           // Find which terms matched this line
-          const matchedTerms = searchTerms.filter(term => 
-            lines[i].toLowerCase().includes(term)
-          )
-          
+          const matchedTerms = searchTerms.filter(term => lines[i].toLowerCase().includes(term))
+
           matches.push({
             lineNumber: i + 1, // 1-based
             line: lines[i],
@@ -90,24 +92,24 @@ function searchFileLines(
         }
       }
     }
-    
+
     if (matches.length === 0) {
       return `No matches found for: "${searchQuery}" (searched for: ${searchTerms.join(", ")})`
     }
-    
+
     // Sort by line number
     matches.sort((a, b) => a.lineNumber - b.lineNumber)
-    
+
     // Format results
     let result = `Found ${matches.length} match(es) for: "${searchQuery}"\n`
     result += `Search terms: ${searchTerms.join(", ")}\n\n`
-    
+
     for (const match of matches) {
       result += ` Line ${match.lineNumber} (matched: ${match.matchedTerms.join(", ")}):\n`
       result += match.context.join("\n")
       result += `\n\n`
     }
-    
+
     return result
   } catch (error) {
     throw new Error(`Failed to search file: ${error}`)
@@ -127,7 +129,7 @@ export class ABAPFSDocumentationTool implements vscode.LanguageModelTool<IDocume
     _token: vscode.CancellationToken
   ) {
     const { action, searchQuery, startLine = 1, lineCount = 50 } = options.input
-    
+
     let message = ""
     switch (action) {
       case "get_documentation":
@@ -143,7 +145,7 @@ export class ABAPFSDocumentationTool implements vscode.LanguageModelTool<IDocume
         message = `Searching ABAP FS settings for: "${searchQuery}"`
         break
     }
-    
+
     return {
       invocationMessage: message
     }
@@ -162,14 +164,14 @@ export class ABAPFSDocumentationTool implements vscode.LanguageModelTool<IDocume
     if (!extension) {
       throw new Error("ABAP FS extension not found")
     }
-    
+
     const extensionPath = extension.extensionPath
     // Files are copied by webpack to client/dist/media during build
     const docsPath = path.join(extensionPath, "client", "dist", "media", "DOCUMENTATION.md")
     const settingsPath = path.join(extensionPath, "client", "dist", "media", "ABAP-FS-SETTINGS.md")
-    
+
     let result = ""
-    
+
     try {
       switch (action) {
         case "get_documentation":
@@ -178,7 +180,7 @@ export class ABAPFSDocumentationTool implements vscode.LanguageModelTool<IDocume
           }
           result = readFileLines(docsPath, startLine, lineCount)
           break
-          
+
         case "search_documentation":
           if (!searchQuery) {
             throw new Error("searchQuery is required for search_documentation action")
@@ -188,14 +190,14 @@ export class ABAPFSDocumentationTool implements vscode.LanguageModelTool<IDocume
           }
           result = searchFileLines(docsPath, searchQuery, 3)
           break
-          
+
         case "get_settings":
           if (!fs.existsSync(settingsPath)) {
             throw new Error("ABAP-FS-SETTINGS.md not found in extension directory")
           }
           result = readFileLines(settingsPath, startLine, lineCount)
           break
-          
+
         case "search_settings":
           if (!searchQuery) {
             throw new Error("searchQuery is required for search_settings action")
@@ -205,11 +207,11 @@ export class ABAPFSDocumentationTool implements vscode.LanguageModelTool<IDocume
           }
           result = searchFileLines(settingsPath, searchQuery, 3)
           break
-          
+
         default:
           throw new Error(`Unknown action: ${action}`)
       }
-      
+
       return new vscode.LanguageModelToolResult([new vscode.LanguageModelTextPart(result)])
     } catch (error) {
       throw new Error(`Documentation tool error: ${error}`)

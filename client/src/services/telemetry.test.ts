@@ -1,10 +1,14 @@
-jest.mock("vscode", () => ({
-  extensions: {
-    getExtension: jest.fn().mockReturnValue({ packageJSON: { version: "2.1.0" } })
-  },
-  Disposable: jest.fn().mockImplementation((fn: () => void) => ({ dispose: fn })),
-  commands: { executeCommand: jest.fn() }
-}), { virtual: true })
+jest.mock(
+  "vscode",
+  () => ({
+    extensions: {
+      getExtension: jest.fn().mockReturnValue({ packageJSON: { version: "2.1.0" } })
+    },
+    Disposable: jest.fn().mockImplementation((fn: () => void) => ({ dispose: fn })),
+    commands: { executeCommand: jest.fn() }
+  }),
+  { virtual: true }
+)
 
 jest.mock("./appInsightsService", () => ({
   AppInsightsService: {

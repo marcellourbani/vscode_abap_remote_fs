@@ -1,14 +1,18 @@
-jest.mock("vscode", () => ({
-  Uri: {
-    file: jest.fn((p: string) => ({ fsPath: p, toString: () => `file://${p}` }))
-  },
-  workspace: {
-    fs: {
-      readFile: jest.fn(),
-      writeFile: jest.fn()
+jest.mock(
+  "vscode",
+  () => ({
+    Uri: {
+      file: jest.fn((p: string) => ({ fsPath: p, toString: () => `file://${p}` }))
+    },
+    workspace: {
+      fs: {
+        readFile: jest.fn(),
+        writeFile: jest.fn()
+      }
     }
-  }
-}), { virtual: true })
+  }),
+  { virtual: true }
+)
 
 jest.mock("./funMessenger", () => ({
   funWindow: {
@@ -44,9 +48,15 @@ import * as vscode from "vscode"
 import { funWindow as window } from "./funMessenger"
 import { Packer } from "docx"
 
-const mockReadFile = vscode.workspace.fs.readFile as jest.MockedFunction<typeof vscode.workspace.fs.readFile>
-const mockWriteFile = vscode.workspace.fs.writeFile as jest.MockedFunction<typeof vscode.workspace.fs.writeFile>
-const mockShowSaveDialog = window.showSaveDialog as jest.MockedFunction<typeof window.showSaveDialog>
+const mockReadFile = vscode.workspace.fs.readFile as jest.MockedFunction<
+  typeof vscode.workspace.fs.readFile
+>
+const mockWriteFile = vscode.workspace.fs.writeFile as jest.MockedFunction<
+  typeof vscode.workspace.fs.writeFile
+>
+const mockShowSaveDialog = window.showSaveDialog as jest.MockedFunction<
+  typeof window.showSaveDialog
+>
 const mockPackerToBuffer = Packer.toBuffer as jest.MockedFunction<typeof Packer.toBuffer>
 
 const makeScenario = (id = 1, numScreenshots = 1): TestScenario => ({
@@ -147,8 +157,8 @@ describe("TestDocumentCreator.createDocument", () => {
     mockPackerToBuffer.mockResolvedValue(Buffer.from("doc"))
     const scenarios = [makeScenario(1, 1)]
     await creator.createDocument({ scenarios })
-    const errorRun = (TextRun as jest.Mock).mock.calls.find(
-      (call: any[]) => call[0].text?.includes("Error loading image")
+    const errorRun = (TextRun as jest.Mock).mock.calls.find((call: any[]) =>
+      call[0].text?.includes("Error loading image")
     )
     expect(errorRun).toBeDefined()
   })
@@ -173,15 +183,17 @@ describe("TestDocumentCreator.createDocument", () => {
     jest.clearAllMocks()
     mockReadFile.mockResolvedValue(Buffer.from("img") as any)
     mockPackerToBuffer.mockResolvedValue(Buffer.from("doc"))
-    const scenarios: TestScenario[] = [{
-      scenarioId: 1,
-      scenarioName: "Test",
-      scenarioDescription: "desc",
-      screenshots: [{ filePath: "/img.png", description: "My Screenshot" }]
-    }]
+    const scenarios: TestScenario[] = [
+      {
+        scenarioId: 1,
+        scenarioName: "Test",
+        scenarioDescription: "desc",
+        screenshots: [{ filePath: "/img.png", description: "My Screenshot" }]
+      }
+    ]
     await creator.createDocument({ scenarios })
-    const descRun = (TextRun as jest.Mock).mock.calls.find(
-      (call: any[]) => call[0].text?.includes("My Screenshot")
+    const descRun = (TextRun as jest.Mock).mock.calls.find((call: any[]) =>
+      call[0].text?.includes("My Screenshot")
     )
     expect(descRun).toBeDefined()
   })

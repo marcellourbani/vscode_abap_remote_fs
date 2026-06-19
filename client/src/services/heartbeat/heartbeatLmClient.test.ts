@@ -11,45 +11,58 @@
  * - Tool usage tracking (deduplication)
  */
 
-jest.mock("vscode", () => {
-  const mockToken = { isCancellationRequested: false, onCancellationRequested: jest.fn() }
-  const CancellationTokenSource = jest.fn(() => ({
-    token: mockToken,
-    cancel: jest.fn(),
-    dispose: jest.fn()
-  }))
+jest.mock(
+  "vscode",
+  () => {
+    const mockToken = { isCancellationRequested: false, onCancellationRequested: jest.fn() }
+    const CancellationTokenSource = jest.fn(() => ({
+      token: mockToken,
+      cancel: jest.fn(),
+      dispose: jest.fn()
+    }))
 
-  const LanguageModelTextPart = jest.fn(function (this: any, value: string) {
-    this.value = value
-  })
-  const LanguageModelToolCallPart = jest.fn(function (this: any, callId: string, name: string, input: any) {
-    this.callId = callId
-    this.name = name
-    this.input = input
-  })
-  const LanguageModelToolResultPart = jest.fn(function (this: any, callId: string, content: any[]) {
-    this.callId = callId
-    this.content = content
-  })
+    const LanguageModelTextPart = jest.fn(function (this: any, value: string) {
+      this.value = value
+    })
+    const LanguageModelToolCallPart = jest.fn(function (
+      this: any,
+      callId: string,
+      name: string,
+      input: any
+    ) {
+      this.callId = callId
+      this.name = name
+      this.input = input
+    })
+    const LanguageModelToolResultPart = jest.fn(function (
+      this: any,
+      callId: string,
+      content: any[]
+    ) {
+      this.callId = callId
+      this.content = content
+    })
 
-  const LanguageModelChatMessage = {
-    User: jest.fn((content: any) => ({ role: "user", content })),
-    Assistant: jest.fn((content: any) => ({ role: "assistant", content }))
-  }
+    const LanguageModelChatMessage = {
+      User: jest.fn((content: any) => ({ role: "user", content })),
+      Assistant: jest.fn((content: any) => ({ role: "assistant", content }))
+    }
 
-  return {
-    lm: {
-      selectChatModels: jest.fn(),
-      tools: [],
-      invokeTool: jest.fn()
-    },
-    CancellationTokenSource,
-    LanguageModelTextPart,
-    LanguageModelToolCallPart,
-    LanguageModelToolResultPart,
-    LanguageModelChatMessage
-  }
-}, { virtual: true })
+    return {
+      lm: {
+        selectChatModels: jest.fn(),
+        tools: [],
+        invokeTool: jest.fn()
+      },
+      CancellationTokenSource,
+      LanguageModelTextPart,
+      LanguageModelToolCallPart,
+      LanguageModelToolResultPart,
+      LanguageModelChatMessage
+    }
+  },
+  { virtual: true }
+)
 
 jest.mock("../../lib", () => ({ log: jest.fn() }))
 
@@ -171,7 +184,9 @@ describe("runHeartbeatLM", () => {
   // === Alert response ===
 
   test("returns status=alert when response does not contain HEARTBEAT_OK", async () => {
-    const mockSendRequest = jest.fn().mockResolvedValue(makeStreamWithText("There are 3 new dumps!"))
+    const mockSendRequest = jest
+      .fn()
+      .mockResolvedValue(makeStreamWithText("There are 3 new dumps!"))
     vscode.lm.selectChatModels.mockResolvedValue([
       { name: "TestModel", id: "test", sendRequest: mockSendRequest }
     ])

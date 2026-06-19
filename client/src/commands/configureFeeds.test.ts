@@ -1,9 +1,13 @@
-jest.mock("vscode", () => ({
-  ViewColumn: { Active: 1, One: 2 },
-  workspace: {
-    getConfiguration: jest.fn()
-  }
-}), { virtual: true })
+jest.mock(
+  "vscode",
+  () => ({
+    ViewColumn: { Active: 1, One: 2 },
+    workspace: {
+      getConfiguration: jest.fn()
+    }
+  }),
+  { virtual: true }
+)
 
 jest.mock("../services/funMessenger", () => ({
   funWindow: {
@@ -164,9 +168,9 @@ describe("configureFeedsCommand", () => {
     lastPanel = panel
     ;(mockWindow.createWebviewPanel as jest.Mock).mockReturnValue(panel)
     const mockClient = {
-      feeds: jest.fn().mockResolvedValue([
-        { title: "Dumps Feed", href: "/sap/bc/adt/runtime/dumps/feeds" }
-      ])
+      feeds: jest
+        .fn()
+        .mockResolvedValue([{ title: "Dumps Feed", href: "/sap/bc/adt/runtime/dumps/feeds" }])
     }
     mockGetOrCreateClient.mockResolvedValue(mockClient as any)
     ;(vscode.workspace.getConfiguration as jest.Mock).mockReturnValue({
