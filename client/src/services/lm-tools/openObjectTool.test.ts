@@ -100,7 +100,7 @@ describe("OpenObjectTool", () => {
         mockToken
       )
       expect(result.parts[0].text).toContain("ZPROG")
-      expect(result.parts[0].text).toContain("opened successfully")
+      expect(result.parts[0].text).toContain("opened in editor")
     })
 
     it("returns failure message when object not found", async () => {

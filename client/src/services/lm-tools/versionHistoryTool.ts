@@ -147,7 +147,7 @@ export class VersionHistoryTool implements vscode.LanguageModelTool<IVersionHist
       const errorMessage = error instanceof Error ? error.message : String(error)
 
       return new vscode.LanguageModelToolResult([
-        new vscode.LanguageModelTextPart(`❌ Failed to get version history: ${errorMessage}`)
+        new vscode.LanguageModelTextPart(` Failed to get version history: ${errorMessage}`)
       ])
     }
   }
@@ -236,14 +236,13 @@ export class VersionHistoryTool implements vscode.LanguageModelTool<IVersionHist
     const source = await client.getObjectSource(revision.uri)
 
     const output =
-      `📜 **Source at Version #${versionNumber}** of **${objectName}** (${objectType})\n\n` +
-      `**Version Info:**\n` +
-      `• **Date:** ${this.formatDate(revision.date)}\n` +
-      `• **Author:** ${revision.author || "Unknown"}\n` +
-      `• **Transport:** ${revision.version || "-"}\n` +
-      `• **Title:** ${revision.versionTitle || "-"}\n\n` +
-      `**Source Code:**\n\`\`\`abap\n${source}\n\`\`\`\n\n` +
-      `• **Lines:** ${source.split("\n").length}`
+      `Source at Version #${versionNumber} of ${objectName} (${objectType})\n\n` +
+      `Date: ${this.formatDate(revision.date)}\n` +
+      `Author: ${revision.author || "Unknown"}\n` +
+      `Transport: ${revision.version || "-"}\n` +
+      `Title: ${revision.versionTitle || "-"}\n` +
+      `Lines: ${source.split("\n").length}\n\n` +
+      `\`\`\`abap\n${source}\n\`\`\``
 
     return new vscode.LanguageModelToolResult([new vscode.LanguageModelTextPart(output)])
   }
@@ -288,26 +287,23 @@ export class VersionHistoryTool implements vscode.LanguageModelTool<IVersionHist
     // Simple diff - find added, removed, changed lines
     const diff = this.computeSimpleDiff(lines1, lines2)
 
-    let output = `🔀 **Version Comparison for ${objectName}** (${objectType})\n\n`
-    output += `**Version #${version1}** (newer) vs **Version #${version2}** (older)\n\n`
+    let output = `Version Comparison for ${objectName} (${objectType})\n`
+    output += `Version #${version1} (newer) vs Version #${version2} (older)\n\n`
 
     output += `| | Version #${version1} | Version #${version2} |\n`
     output += `|---|---|---|\n`
-    output += `| **Date** | ${this.formatDate(rev1.date)} | ${this.formatDate(rev2.date)} |\n`
-    output += `| **Author** | ${rev1.author || "Unknown"} | ${rev2.author || "Unknown"} |\n`
-    output += `| **Transport** | ${rev1.version || "-"} | ${rev2.version || "-"} |\n`
-    output += `| **Lines** | ${lines1.length} | ${lines2.length} |\n\n`
+    output += `| Date | ${this.formatDate(rev1.date)} | ${this.formatDate(rev2.date)} |\n`
+    output += `| Author | ${rev1.author || "Unknown"} | ${rev2.author || "Unknown"} |\n`
+    output += `| Transport | ${rev1.version || "-"} | ${rev2.version || "-"} |\n`
+    output += `| Lines | ${lines1.length} | ${lines2.length} |\n\n`
 
-    output += `**📊 Change Summary:**\n`
-    output += `• **Lines Added:** ${diff.added.length}\n`
-    output += `• **Lines Removed:** ${diff.removed.length}\n`
-    output += `• **Net Change:** ${lines1.length - lines2.length} lines\n\n`
+    output += `Change Summary: +${diff.added.length} −${diff.removed.length} (net ${lines1.length - lines2.length})\n\n`
 
     if (diff.added.length > 0 || diff.removed.length > 0) {
-      output += `**Changes:**\n`
+      output += `Changes:\n`
 
       if (diff.removed.length > 0) {
-        output += `\n**➖ Removed (in version #${version2} but not in #${version1}):**\n`
+        output += `\nRemoved (in #${version2} but not in #${version1}):\n`
         output += `\`\`\`diff\n`
         for (const line of diff.removed.slice(0, 20)) {
           output += `- ${line}\n`
@@ -319,7 +315,7 @@ export class VersionHistoryTool implements vscode.LanguageModelTool<IVersionHist
       }
 
       if (diff.added.length > 0) {
-        output += `\n**➕ Added (in version #${version1} but not in #${version2}):**\n`
+        output += `\nAdded (in #${version1} but not in #${version2}):\n`
         output += `\`\`\`diff\n`
         for (const line of diff.added.slice(0, 20)) {
           output += `+ ${line}\n`
@@ -330,7 +326,7 @@ export class VersionHistoryTool implements vscode.LanguageModelTool<IVersionHist
         output += `\`\`\`\n`
       }
     } else {
-      output += `\n✅ **No differences found** - the versions are identical.\n`
+      output += `\nNo differences found — versions are identical.\n`
     }
 
     return new vscode.LanguageModelToolResult([new vscode.LanguageModelTextPart(output)])
@@ -379,11 +375,11 @@ export class VersionHistoryTool implements vscode.LanguageModelTool<IVersionHist
     totalCount: number
   ): string {
     if (revisions.length === 0) {
-      return `📜 **Version History for ${objectName}** (${objectType})\n\n⚠️ No version history available for this object.`
+      return `Version History for ${objectName} (${objectType})\n\nNo version history available for this object.`
     }
 
-    let output = `📜 **Version History for ${objectName}** (${objectType})\n\n`
-    output += `**Total Versions:** ${totalCount}${revisions.length < totalCount ? ` (showing ${revisions.length})` : ""}\n\n`
+    let output = `Version History for ${objectName} (${objectType})\n`
+    output += `Total Versions: ${totalCount}${revisions.length < totalCount ? ` (showing ${revisions.length})` : ""}\n\n`
 
     output += `| # | Date | Author | Transport | Title |\n`
     output += `|---|------|--------|-----------|-------|\n`
@@ -398,15 +394,15 @@ export class VersionHistoryTool implements vscode.LanguageModelTool<IVersionHist
       output += `| ${i + 1} | ${date} | ${author} | ${version} | ${versionTitle} |\n`
     }
 
-    output += `\n**Summary:**\n`
+    output += `\nSummary:\n`
 
     const authors = [...new Set(revisions.map(r => r.author).filter(Boolean))]
-    output += `• **Contributors:** ${authors.length > 0 ? authors.join(", ") : "Unknown"}\n`
+    output += `• Contributors: ${authors.length > 0 ? authors.join(", ") : "Unknown"}\n`
 
     if (revisions.length > 0) {
       const oldestDate = this.formatDate(revisions[revisions.length - 1].date)
       const newestDate = this.formatDate(revisions[0].date)
-      output += `• **Date Range:** ${oldestDate} → ${newestDate}\n`
+      output += `• Date Range: ${oldestDate} → ${newestDate}\n`
     }
 
     const recentRevisions = revisions.filter(r => {
@@ -417,10 +413,10 @@ export class VersionHistoryTool implements vscode.LanguageModelTool<IVersionHist
     })
 
     if (recentRevisions.length > 0) {
-      output += `• **Recent Changes (30 days):** ${recentRevisions.length} version(s)\n`
+      output += `• Recent Changes (30 days): ${recentRevisions.length} version(s)\n`
     }
 
-    output += `\n💡 **Tip:** Use \`action: 'get_version_source'\` with \`versionNumber\` to get code at a specific version, or \`action: 'compare_versions'\` with \`version1\` and \`version2\` to compare.`
+    output += `\nTip: action='get_version_source' with versionNumber to get code at a version, or action='compare_versions' with version1/version2 to compare.`
 
     return output
   }

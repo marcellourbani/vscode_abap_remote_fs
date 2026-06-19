@@ -136,11 +136,11 @@ export class SearchABAPObjectsTool implements vscode.LanguageModelTool<ISearchAB
         results
           .map(
             obj =>
-              `• **${obj.name}** (${obj.type})\n` +
-              `  - Description: ${obj.description}\n` +
-              `  - Package: ${obj.package}\n` +
-              `  - URI Path: \`${obj.uri}\`\n` +
-              `  - Full ADT Path: \`adt://${actualConnectionId}${obj.uri}\``
+              `• ${obj.name} (${obj.type})\n` +
+              `  ${obj.description}\n` +
+              `  Package: ${obj.package}\n` +
+              `  URI: ${obj.uri}\n` +
+              `  ADT: adt://${actualConnectionId}${obj.uri}`
           )
           .join("\n\n")
 

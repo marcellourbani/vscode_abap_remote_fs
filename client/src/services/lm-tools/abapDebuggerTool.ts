@@ -94,9 +94,9 @@ export class ABAPDebugSessionTool implements vscode.LanguageModelTool<IDebugSess
       title: "ABAP Debug Session Control",
       message: new vscode.MarkdownString(
         `Managing ABAP debugging session:\n\n` +
-          `**Connection:** ${connectionId}\n` +
-          (debugUser ? `**Debug User:** ${debugUser}\n` : "") +
-          `**Terminal Mode:** ${terminalMode ? "Yes" : "No"}\n\n` +
+          `Connection: ${connectionId}\n` +
+          (debugUser ? `Debug User: ${debugUser}\n` : "") +
+          `Terminal Mode: ${terminalMode ? "Yes" : "No"}\n\n` +
           `This will start or manage an ABAP debugging session.`
       )
     }
@@ -123,20 +123,20 @@ export class ABAPDebugSessionTool implements vscode.LanguageModelTool<IDebugSess
           if (existingSession) {
             return new vscode.LanguageModelToolResult([
               new vscode.LanguageModelTextPart(
-                `🔍 **Debug Session Status:**\n` +
-                  `**Connection:** ${connectionId}\n` +
-                  `**Status:** Active\n` +
-                  `**Total Sessions:** ${AbapDebugSession.activeSessions}\n` +
-                  `**Ready for debugging operations**`
+                ` Debug Session Status:\n` +
+                  `Connection: ${connectionId}\n` +
+                  `Status: Active\n` +
+                  `Total Sessions: ${AbapDebugSession.activeSessions}\n` +
+                  `Ready for debugging operations`
               )
             ])
           } else {
             return new vscode.LanguageModelToolResult([
               new vscode.LanguageModelTextPart(
-                `❌ **Debug Session Status:**\n` +
-                  `**Connection:** ${connectionId}\n` +
-                  `**Status:** No active session\n` +
-                  `**Action Required:** Start a debug session first`
+                ` Debug Session Status:\n` +
+                  `Connection: ${connectionId}\n` +
+                  `Status: No active session\n` +
+                  `Action Required: Start a debug session first`
               )
             ])
           }
@@ -153,13 +153,13 @@ export class ABAPDebugSessionTool implements vscode.LanguageModelTool<IDebugSess
 
             return new vscode.LanguageModelToolResult([
               new vscode.LanguageModelTextPart(
-                `✅ Debug session stopped for connection ${connectionId}`
+                ` Debug session stopped for connection ${connectionId}`
               )
             ])
           } else {
             return new vscode.LanguageModelToolResult([
               new vscode.LanguageModelTextPart(
-                `⚠️ No active debug session found for connection ${connectionId}`
+                ` No active debug session found for connection ${connectionId}`
               )
             ])
           }
@@ -169,7 +169,7 @@ export class ABAPDebugSessionTool implements vscode.LanguageModelTool<IDebugSess
           if (existingSession) {
             return new vscode.LanguageModelToolResult([
               new vscode.LanguageModelTextPart(
-                `🔍 Debug session already active for connection ${connectionId}.\n` +
+                ` Debug session already active for connection ${connectionId}.\n` +
                   `Use other debug tools to interact with the session.`
               )
             ])
@@ -204,11 +204,11 @@ export class ABAPDebugSessionTool implements vscode.LanguageModelTool<IDebugSess
 
             return new vscode.LanguageModelToolResult([
               new vscode.LanguageModelTextPart(
-                `✅ **ABAP debug session started!**\n` +
-                  `**Connection:** ${connectionId}\n` +
-                  `**Mode:** ${terminalMode ? "Terminal" : "User"}\n` +
-                  `**Status:** Ready for debugging\n\n` +
-                  `**Next Steps:**\n` +
+                ` ABAP debug session started!\n` +
+                  `Connection: ${connectionId}\n` +
+                  `Mode: ${terminalMode ? "Terminal" : "User"}\n` +
+                  `Status: Ready for debugging\n\n` +
+                  `Next Steps:\n` +
                   `1. Set breakpoints in your ABAP code\n` +
                   `2. Execute your ABAP program\n` +
                   `3. Use debug tools when execution pauses`
@@ -223,7 +223,7 @@ export class ABAPDebugSessionTool implements vscode.LanguageModelTool<IDebugSess
       logCommands.error(`Debug session error: ${errorMessage}`)
 
       return new vscode.LanguageModelToolResult([
-        new vscode.LanguageModelTextPart(`❌ Failed to manage debug session: ${errorMessage}`)
+        new vscode.LanguageModelTextPart(` Failed to manage debug session: ${errorMessage}`)
       ])
     }
   }
@@ -252,10 +252,10 @@ export class ABAPDebugSessionTool implements vscode.LanguageModelTool<IDebugSess
         : connectionId.toUpperCase()
 
       const choice = await window.showWarningMessage(
-        `⚠️ PRODUCTION SYSTEM DETECTED\n\n` +
+        ` PRODUCTION SYSTEM DETECTED\n\n` +
           `Copilot wants to start debugging on: ${clientInfo}\n\n` +
-          `⚠️ Security Risk: Debugging may expose sensitive data.\n` +
-          `⚠️ Stability Risk: VS Code debugging can be fragile on production.\n\n` +
+          ` Security Risk: Debugging may expose sensitive data.\n` +
+          ` Stability Risk: VS Code debugging can be fragile on production.\n\n` +
           `Recommendation: Use SAP GUI for production debugging.`,
         { modal: true },
         { title: "Start Debugging Anyway", action: "proceed" },
@@ -290,10 +290,10 @@ export class ABAPBreakpointTool implements vscode.LanguageModelTool<IBreakpointP
       title: "ABAP Breakpoint Management",
       message: new vscode.MarkdownString(
         `Managing breakpoints:\n\n` +
-          `**File:** ${filePath}\n` +
-          `**Lines:** ${lineNumbers.join(", ")}\n` +
-          (condition ? `**Condition:** ${condition}\n` : "") +
-          `**Connection:** ${connectionId}`
+          `File: ${filePath}\n` +
+          `Lines: ${lineNumbers.join(", ")}\n` +
+          (condition ? `Condition: ${condition}\n` : "") +
+          `Connection: ${connectionId}`
       )
     }
 
@@ -406,31 +406,31 @@ export class ABAPBreakpointTool implements vscode.LanguageModelTool<IBreakpointP
         let result = ""
 
         // Show detailed status for each breakpoint line
-        result = `📍 **Breakpoint Results:**\n`
-        result += `**File:** ${source.name}\n`
-        if (condition) result += `**Condition:** ${condition}\n`
-        result += `\n**Line-by-Line Status:**\n`
+        result = ` Breakpoint Results:\n`
+        result += `File: ${source.name}\n`
+        if (condition) result += `Condition: ${condition}\n`
+        result += `\nLine-by-Line Status:\n`
 
         lineNumbers.forEach((lineNum, index) => {
           const bp = actualBreakpoints[index]
           if (bp && bp.verified) {
-            result += `  Line ${lineNum}: ✅ Set successfully\n`
+            result += `  Line ${lineNum}:  Set successfully\n`
           } else if (bp) {
-            result += `  Line ${lineNum}: ❌ Failed - Not executable code or invalid location\n`
+            result += `  Line ${lineNum}:  Failed - Not executable code or invalid location\n`
           } else {
-            result += `  Line ${lineNum}: ❌ Failed - Unknown error\n`
+            result += `  Line ${lineNum}:  Failed - Unknown error\n`
           }
         })
 
-        result += `\n**Summary:** ${verifiedCount} of ${lineNumbers.length} breakpoints verified\n`
+        result += `\nSummary: ${verifiedCount} of ${lineNumbers.length} breakpoints verified\n`
 
         if (verifiedCount > 0) {
-          result += `**VS Code UI:** Red dot indicators added\n`
-          result += `\n🎯 **Status:** Active breakpoints ready\n`
+          result += `VS Code UI: Red dot indicators added\n`
+          result += `\n Status: Active breakpoints ready\n`
           result += `Execute your ABAP program to trigger debugging.`
         } else {
-          result += `\n❌ **Issue:** No breakpoints were successfully set\n`
-          result += `**Possible causes:**\n`
+          result += `\n Issue: No breakpoints were successfully set\n`
+          result += `Possible causes:\n`
           result += `• Lines contain comments or non-executable statements\n`
           result += `• Invalid line numbers for this source file\n`
           result += `• Debug session not properly attached to SAP\n`
@@ -450,9 +450,9 @@ export class ABAPBreakpointTool implements vscode.LanguageModelTool<IBreakpointP
 
         return new vscode.LanguageModelToolResult([
           new vscode.LanguageModelTextPart(
-            `✅ **Breakpoints removed from ABAP debugger!**\n` +
-              `**File:** ${source.name}\n` +
-              `**Lines:** ${lineNumbers.join(", ")}\n` +
+            ` Breakpoints removed from ABAP debugger!\n` +
+              `File: ${source.name}\n` +
+              `Lines: ${lineNumbers.join(", ")}\n` +
               `All breakpoints have been cleared from SAP system.`
           )
         ])
@@ -464,7 +464,7 @@ export class ABAPBreakpointTool implements vscode.LanguageModelTool<IBreakpointP
       logCommands.error(`Breakpoint error: ${errorMessage}`)
 
       return new vscode.LanguageModelToolResult([
-        new vscode.LanguageModelTextPart(`❌ Failed to manage breakpoints: ${errorMessage}`)
+        new vscode.LanguageModelTextPart(` Failed to manage breakpoints: ${errorMessage}`)
       ])
     }
   }
@@ -493,10 +493,10 @@ export class ABAPDebugStepTool implements vscode.LanguageModelTool<IDebugStepPar
       title: "ABAP Debug Step Control",
       message: new vscode.MarkdownString(
         `Debug step operation:\n\n` +
-          `**Action:** ${stepDescriptions[stepType]}\n` +
-          `**Connection:** ${connectionId}\n` +
-          (threadId ? `**Thread ID:** ${threadId}\n` : "") +
-          (targetLine ? `**Target Line:** ${targetLine}\n` : "")
+          `Action: ${stepDescriptions[stepType]}\n` +
+          `Connection: ${connectionId}\n` +
+          (threadId ? `Thread ID: ${threadId}\n` : "") +
+          (targetLine ? `Target Line: ${targetLine}\n` : "")
       )
     }
 
@@ -616,8 +616,8 @@ export class ABAPDebugStepTool implements vscode.LanguageModelTool<IDebugStepPar
 
         if (newStackTrace && newStackTrace.stackFrames && newStackTrace.stackFrames.length > 0) {
           const currentFrame = newStackTrace.stackFrames[0]
-          locationInfo += `\n📍 **New Location:** ${currentFrame.source?.name || "unknown"} line ${currentFrame.line}\n`
-          locationInfo += `**Method:** ${currentFrame.name}\n`
+          locationInfo += `\n New Location: ${currentFrame.source?.name || "unknown"} line ${currentFrame.line}\n`
+          locationInfo += `Method: ${currentFrame.name}\n`
 
           // Get current code line
           if (currentFrame.source?.path) {
@@ -634,7 +634,7 @@ export class ABAPDebugStepTool implements vscode.LanguageModelTool<IDebugStepPar
               if (lineIndex >= 0 && lineIndex < document.lineCount) {
                 const currentLine = document.lineAt(lineIndex)
                 const lineText = currentLine.text.trim()
-                locationInfo += `**Current Code:** \`${lineText}\`\n`
+                locationInfo += `Current Code: \`${lineText}\`\n`
 
                 // Add code context (2 lines before and after)
                 const contextLines: string[] = []
@@ -650,7 +650,7 @@ export class ABAPDebugStepTool implements vscode.LanguageModelTool<IDebugStepPar
                 }
 
                 if (contextLines.length > 0) {
-                  locationInfo += `\n📝 **Code Context:**\n\`\`\`abap\n${contextLines.join("\n")}\n\`\`\`\n`
+                  locationInfo += `\n Code Context:\n\`\`\`abap\n${contextLines.join("\n")}\n\`\`\`\n`
                 }
               }
             } catch (sourceErr) {
@@ -669,26 +669,26 @@ export class ABAPDebugStepTool implements vscode.LanguageModelTool<IDebugStepPar
 
           if (activeServices.length === 0) {
             locationInfo =
-              "\n⏹️ **Program execution completed.** No active debug threads.\n" +
-              "**Session remains active** - you can run another program to debug.\n" +
+              "\n⏹️ Program execution completed. No active debug threads.\n" +
+              "Session remains active - you can run another program to debug.\n" +
               "Use `abap_debug_session stop` if you want to end the session."
           } else {
             locationInfo =
-              "\n⏹️ **Execution continued.** Waiting at another breakpoint or running.\n" +
-              `**Active threads:** ${activeServices.length}`
+              "\n⏹️ Execution continued. Waiting at another breakpoint or running.\n" +
+              `Active threads: ${activeServices.length}`
           }
         } else {
-          locationInfo = "\n⚠️ Could not retrieve new location. Debug session may have ended."
+          locationInfo = "\n Could not retrieve new location. Debug session may have ended."
         }
       }
 
       debugLog("Step", `Step completed successfully`)
       return new vscode.LanguageModelToolResult([
         new vscode.LanguageModelTextPart(
-          `✅ **${stepDescriptions[stepType]}**\n` +
-            `**Connection:** ${connectionId}\n` +
-            `**Thread:** ${threadId}\n` +
-            `**Status:** Command executed successfully${locationInfo}`
+          ` ${stepDescriptions[stepType]}\n` +
+            `Connection: ${connectionId}\n` +
+            `Thread: ${threadId}\n` +
+            `Status: Command executed successfully${locationInfo}`
         )
       ])
     } catch (error) {
@@ -697,7 +697,7 @@ export class ABAPDebugStepTool implements vscode.LanguageModelTool<IDebugStepPar
       logCommands.error(`Debug step error: ${errorMessage}`)
 
       return new vscode.LanguageModelToolResult([
-        new vscode.LanguageModelTextPart(`❌ Failed to execute debug step: ${errorMessage}`)
+        new vscode.LanguageModelTextPart(` Failed to execute debug step: ${errorMessage}`)
       ])
     }
   }
@@ -846,13 +846,13 @@ export class ABAPDebugVariableTool implements vscode.LanguageModelTool<IVariable
 
   private getVariableTypeIndicator(variable: any): string {
     if (variable.value.includes("Standard Table") || variable.value.includes("lines")) {
-      return "📊" // Table
+      return "" // Table
     } else if (variable.variablesReference > 0) {
-      return "📁" // Structure
+      return "" // Structure
     } else if (variable.value.match(/^\d+$/)) {
-      return "🔢" // Number
+      return "" // Number
     } else if (variable.value.includes("'")) {
-      return "📝" // String
+      return "" // String
     } else {
       return "•" // Other
     }
@@ -868,13 +868,13 @@ export class ABAPDebugVariableTool implements vscode.LanguageModelTool<IVariable
       title: "ABAP Variable Inspection",
       message: new vscode.MarkdownString(
         `Inspecting runtime data:\n\n` +
-          `**Connection:** ${connectionId}\n` +
-          (variableName ? `**Variable:** ${variableName}\n` : "") +
-          (expression ? `**Expression:** ${expression}\n` : "") +
-          (rowStart !== undefined ? `**Row Start:** ${rowStart}\n` : "") +
-          (rowCount ? `**Row Count:** ${rowCount}\n` : "") +
-          (filter ? `**Filter:** ${filter}\n` : "") +
-          `\n📊 This will retrieve current runtime values.`
+          `Connection: ${connectionId}\n` +
+          (variableName ? `Variable: ${variableName}\n` : "") +
+          (expression ? `Expression: ${expression}\n` : "") +
+          (rowStart !== undefined ? `Row Start: ${rowStart}\n` : "") +
+          (rowCount ? `Row Count: ${rowCount}\n` : "") +
+          (filter ? `Filter: ${filter}\n` : "") +
+          `\n This will retrieve current runtime values.`
       )
     }
 
@@ -958,7 +958,7 @@ export class ABAPDebugVariableTool implements vscode.LanguageModelTool<IVariable
             const currentFrame = stackTrace.stackFrames[0]
             actualFrameId = currentFrame.id
             frameIdWarning =
-              `⚠️ **Note:** Provided frameId ${frameId} is no longer valid. ` +
+              ` Note: Provided frameId ${frameId} is no longer valid. ` +
               `Auto-recovered to current frame ${actualFrameId} (${currentFrame.name} at line ${currentFrame.line}).\n\n`
             debugLog("Variable", `Auto-recovered to frameId ${actualFrameId}`)
           } else {
@@ -984,19 +984,19 @@ export class ABAPDebugVariableTool implements vscode.LanguageModelTool<IVariable
           debugLog("Variable", `Expression result:`, evalResult)
 
           if (evalResult) {
-            result += `🔍 **Expression Evaluation:**\n`
-            result += `**Expression:** ${expression}\n`
-            result += `**Result:** ${evalResult.result}\n`
-            result += `**Type:** ${evalResult.type || "unknown"}\n`
+            result += ` Expression Evaluation:\n`
+            result += `Expression: ${expression}\n`
+            result += `Result: ${evalResult.result}\n`
+            result += `Type: ${evalResult.type || "unknown"}\n`
 
             if (evalResult.variablesReference && evalResult.variablesReference > 0) {
-              result += `**Complex Type:** Yes (can be expanded)\n`
+              result += `Complex Type: Yes (can be expanded)\n`
             }
             result += `\n`
           }
         } catch (evalError) {
           debugLog("Variable", `Expression evaluation error: ${caughtToString(evalError)}`)
-          result += `❌ **Expression Error:** ${evalError}\n\n`
+          result += ` Expression Error: ${evalError}\n\n`
         }
       }
 
@@ -1089,13 +1089,13 @@ export class ABAPDebugVariableTool implements vscode.LanguageModelTool<IVariable
         }
 
         if (foundVariable) {
-          result += `📋 **Variable Details:**\n`
-          result += `**Name:** ${foundVariable.name}\n`
-          result += `**Value:** ${foundVariable.value}\n`
-          result += `**Type:** ${foundVariable.type || "unknown"}\n`
-          result += `**Scope:** ${foundScope}\n`
+          result += ` Variable Details:\n`
+          result += `Name: ${foundVariable.name}\n`
+          result += `Value: ${foundVariable.value}\n`
+          result += `Type: ${foundVariable.type || "unknown"}\n`
+          result += `Scope: ${foundScope}\n`
           if (foundFrameId !== actualFrameId) {
-            result += `**Frame:** ${foundFrameName} (ID: ${foundFrameId})\n`
+            result += `Frame: ${foundFrameName} (ID: ${foundFrameId})\n`
           }
 
           // Handle complex variables (structures, tables)
@@ -1118,32 +1118,32 @@ export class ABAPDebugVariableTool implements vscode.LanguageModelTool<IVariable
                     const maxRows = rowCount // Use rowCount as max results when filtering
                     rowsToShow = filteredRows.slice(0, maxRows)
 
-                    result += `**Total Table Rows:** ${totalRows}\n`
-                    result += `**Filter:** "${filter}"\n`
-                    result += `**Matching Rows:** ${filteredRows.length}\n`
-                    result += `**Showing:** ${rowsToShow.length} of ${filteredRows.length} matches\n\n`
+                    result += `Total Table Rows: ${totalRows}\n`
+                    result += `Filter: "${filter}"\n`
+                    result += `Matching Rows: ${filteredRows.length}\n`
+                    result += `Showing: ${rowsToShow.length} of ${filteredRows.length} matches\n\n`
 
                     if (filteredRows.length === 0) {
-                      result += `❌ **No rows match filter:** "${filter}"\n`
+                      result += ` No rows match filter: "${filter}"\n`
                     } else {
-                      result += `📊 **Filtered Table Content:**\n`
+                      result += ` Filtered Table Content:\n`
                       rowsToShow.forEach((row: any, index: number) => {
                         result += `Match ${index + 1}: ${row.name} = ${row.value}\n`
                       })
 
                       if (filteredRows.length > maxRows) {
-                        result += `\n💡 **${filteredRows.length - maxRows} more matches available.** Refine filter or increase rowCount.\n`
+                        result += `\n ${filteredRows.length - maxRows} more matches available. Refine filter or increase rowCount.\n`
                       }
                     }
                   } catch (filterError) {
-                    result += `⚠️ **Filter Error:** ${filterError}\n`
+                    result += ` Filter Error: ${filterError}\n`
                     // Fallback to simple contains filter
                     const simpleFiltered = childVars.variables.filter((row: any) => {
                       const rowValue = row.value.toString().toLowerCase()
                       return rowValue.includes(filter.toLowerCase())
                     })
                     rowsToShow = simpleFiltered.slice(0, rowCount)
-                    result += `**Fallback Filter Applied:** ${rowsToShow.length} matches\n\n`
+                    result += `Fallback Filter Applied: ${rowsToShow.length} matches\n\n`
                   }
                 } else {
                   // ROW INTERVAL MODE: Pagination without filtering
@@ -1151,24 +1151,24 @@ export class ABAPDebugVariableTool implements vscode.LanguageModelTool<IVariable
                   const actualRowStart = Math.min(rowStart, Math.max(0, totalRows - 1))
                   rowsToShow = childVars.variables.slice(actualRowStart, endRow)
 
-                  result += `**Total Table Rows:** ${totalRows}\n`
-                  result += `**Row Range:** ${actualRowStart + 1}-${Math.min(endRow, totalRows)}\n`
-                  result += `**Showing:** ${rowsToShow.length} rows\n\n`
+                  result += `Total Table Rows: ${totalRows}\n`
+                  result += `Row Range: ${actualRowStart + 1}-${Math.min(endRow, totalRows)}\n`
+                  result += `Showing: ${rowsToShow.length} rows\n\n`
 
-                  result += `📊 **Table Content:**\n`
+                  result += ` Table Content:\n`
                   rowsToShow.forEach((row: any, index: number) => {
                     const actualRowNum = actualRowStart + index + 1
                     result += `Row ${actualRowNum}: ${row.name} = ${row.value}\n`
                   })
 
                   if (totalRows > endRow) {
-                    result += `\n💡 **More data available:** Use rowStart=${endRow} to see next rows\n`
+                    result += `\n More data available: Use rowStart=${endRow} to see next rows\n`
                   }
                 }
               } else {
                 // Structure or other complex type
-                result += `**Components:** ${childVars.variables.length}\n\n`
-                result += `📊 **Structure Content:**\n`
+                result += `Components: ${childVars.variables.length}\n\n`
+                result += ` Structure Content:\n`
 
                 const componentCount = Math.min(childVars.variables.length, 20)
                 for (let i = 0; i < componentCount; i++) {
@@ -1184,7 +1184,7 @@ export class ABAPDebugVariableTool implements vscode.LanguageModelTool<IVariable
           }
           result += `\n`
         } else {
-          result += `❌ Variable '${variableName}' not found in any stack frame.\n\n`
+          result += ` Variable '${variableName}' not found in any stack frame.\n\n`
         }
       }
 
@@ -1193,14 +1193,14 @@ export class ABAPDebugVariableTool implements vscode.LanguageModelTool<IVariable
         const scopes = await activeDebugSession.customRequest("scopes", { frameId: actualFrameId })
 
         if (scopes && scopes.scopes) {
-          result += `📋 **Available Scopes (Frame ${actualFrameId}):**\n\n`
+          result += ` Available Scopes (Frame ${actualFrameId}):\n\n`
 
           const scopesToShow = scopeName
             ? scopes.scopes.filter((s: any) => s.name === scopeName)
             : scopes.scopes
 
           for (const scope of scopesToShow) {
-            result += `**${scope.name}:**\n`
+            result += `${scope.name}:\n`
 
             const scopeVars = await activeDebugSession.customRequest("variables", {
               variablesReference: scope.variablesReference
@@ -1214,7 +1214,7 @@ export class ABAPDebugVariableTool implements vscode.LanguageModelTool<IVariable
                 const pattern = filterPattern.replace(/\*/g, ".*").replace(/\?/g, ".")
                 const regex = new RegExp(`^${pattern}$`, "i")
                 filteredVars = scopeVars.variables.filter((v: any) => regex.test(v.name))
-                result += `**Filter Pattern:** ${filterPattern} (${filteredVars.length} matches)\n`
+                result += `Filter Pattern: ${filterPattern} (${filteredVars.length} matches)\n`
               }
 
               // Group variables by name for display (but preserve all instances for debugging)
@@ -1332,7 +1332,7 @@ export class ABAPDebugVariableTool implements vscode.LanguageModelTool<IVariable
       }
 
       if (!result) {
-        result = "❌ No variable data available. Ensure debugger is paused at a breakpoint."
+        result = " No variable data available. Ensure debugger is paused at a breakpoint."
       }
 
       // Prepend frame ID warning if applicable
@@ -1344,7 +1344,7 @@ export class ABAPDebugVariableTool implements vscode.LanguageModelTool<IVariable
       logCommands.error(`Variable inspection error: ${errorMessage}`)
 
       return new vscode.LanguageModelToolResult([
-        new vscode.LanguageModelTextPart(`❌ Failed to inspect variables: ${errorMessage}`)
+        new vscode.LanguageModelTextPart(` Failed to inspect variables: ${errorMessage}`)
       ])
     }
   }
@@ -1365,9 +1365,9 @@ export class ABAPDebugStackTool implements vscode.LanguageModelTool<IStackTraceP
       title: "ABAP Stack Trace",
       message: new vscode.MarkdownString(
         `Getting call stack information:\n\n` +
-          `**Connection:** ${connectionId}\n` +
-          (threadId ? `**Thread ID:** ${threadId}\n` : "") +
-          `\n📚 This will show the current execution stack.`
+          `Connection: ${connectionId}\n` +
+          (threadId ? `Thread ID: ${threadId}\n` : "") +
+          `\n This will show the current execution stack.`
       )
     }
 
@@ -1426,13 +1426,13 @@ export class ABAPDebugStackTool implements vscode.LanguageModelTool<IStackTraceP
         throw new Error("No stack trace available - debugger may not be paused")
       }
 
-      let result = `📚 **Call Stack (${stackTrace.stackFrames.length} frames):**\n\n`
+      let result = ` Call Stack (${stackTrace.stackFrames.length} frames):\n\n`
 
       for (let i = 0; i < stackTrace.stackFrames.length; i++) {
         const frame = stackTrace.stackFrames[i]
-        result += `**Frame ${frame.id}:** ${frame.name}\n`
-        result += `  📄 Source: ${frame.source?.name || "unknown"}\n`
-        result += `  📍 Line: ${frame.line}`
+        result += `Frame ${frame.id}: ${frame.name}\n`
+        result += `   Source: ${frame.source?.name || "unknown"}\n`
+        result += `   Line: ${frame.line}`
         if (frame.column && frame.column > 0) {
           result += `, Column: ${frame.column}`
         }
@@ -1440,12 +1440,12 @@ export class ABAPDebugStackTool implements vscode.LanguageModelTool<IStackTraceP
 
         // Add current execution indicator
         if (i === 0) {
-          result += `  ➤ **Current execution point**\n`
+          result += `   Current execution point\n`
         }
         result += `\n`
       }
 
-      result += `🔍 **Usage Tips:**\n`
+      result += ` Usage Tips:\n`
       result += `• Use frame IDs to inspect variables at different call levels\n`
       result += `• Frame 0 is the current execution point\n`
       result += `• Use variable tool with frameId parameter to inspect variables at specific frames\n`
@@ -1456,7 +1456,7 @@ export class ABAPDebugStackTool implements vscode.LanguageModelTool<IStackTraceP
       logCommands.error(`Stack trace error: ${errorMessage}`)
 
       return new vscode.LanguageModelToolResult([
-        new vscode.LanguageModelTextPart(`❌ Failed to get stack trace: ${errorMessage}`)
+        new vscode.LanguageModelTextPart(` Failed to get stack trace: ${errorMessage}`)
       ])
     }
   }
@@ -1477,8 +1477,8 @@ export class ABAPDebugStatusTool implements vscode.LanguageModelTool<IDebugStatu
       title: "ABAP Debug Status",
       message: new vscode.MarkdownString(
         `Checking debugging session status:\n\n` +
-          `**Connection:** ${connectionId}\n` +
-          `\n📊 This will show current debug session information.`
+          `Connection: ${connectionId}\n` +
+          `\n This will show current debug session information.`
       )
     }
 
@@ -1521,13 +1521,13 @@ export class ABAPDebugStatusTool implements vscode.LanguageModelTool<IDebugStatu
         })
       }
 
-      let result = `📊 **ABAP Debug Status:**\n\n`
+      let result = ` ABAP Debug Status:\n\n`
 
-      result += `**Connection:** ${connectionId}\n`
-      result += `**ABAP Session Active:** ${session ? "Yes" : "No"}\n`
-      result += `**VS Code Debug Active:** ${activeSession ? "Yes" : "No"}\n`
-      result += `**Debug Session Type:** ${activeSession?.type || "None"}\n`
-      result += `**Total Active Sessions:** ${AbapDebugSession.activeSessions}\n`
+      result += `Connection: ${connectionId}\n`
+      result += `ABAP Session Active: ${session ? "Yes" : "No"}\n`
+      result += `VS Code Debug Active: ${activeSession ? "Yes" : "No"}\n`
+      result += `Debug Session Type: ${activeSession?.type || "None"}\n`
+      result += `Total Active Sessions: ${AbapDebugSession.activeSessions}\n`
 
       if (session && activeSession && activeSession.type === "abap") {
         try {
@@ -1537,9 +1537,9 @@ export class ABAPDebugStatusTool implements vscode.LanguageModelTool<IDebugStatu
           debugLog("Status", `Threads response:`, threads)
 
           if (threads && threads.threads) {
-            result += `**Active Threads:** ${threads.threads.length}\n`
+            result += `Active Threads: ${threads.threads.length}\n`
 
-            result += `\n🧵 **Thread Details:**\n`
+            result += `\n Thread Details:\n`
             for (const thread of threads.threads) {
               result += `  • Thread ${thread.id}: ${thread.name}\n`
             }
@@ -1559,9 +1559,9 @@ export class ABAPDebugStatusTool implements vscode.LanguageModelTool<IDebugStatu
 
             if (stackTrace && stackTrace.stackFrames && stackTrace.stackFrames.length > 0) {
               const currentFrame = stackTrace.stackFrames[0]
-              result += `\n🎯 **Current State:** Paused at breakpoint\n`
-              result += `**Current Location:** ${currentFrame.source?.name || "unknown"} line ${currentFrame.line}\n`
-              result += `**Current Method:** ${currentFrame.name}\n`
+              result += `\n Current State: Paused at breakpoint\n`
+              result += `Current Location: ${currentFrame.source?.name || "unknown"} line ${currentFrame.line}\n`
+              result += `Current Method: ${currentFrame.name}\n`
 
               // Try to get the actual source code at current line
               if (currentFrame.source?.path) {
@@ -1585,7 +1585,7 @@ export class ABAPDebugStatusTool implements vscode.LanguageModelTool<IDebugStatu
                     const lineText = currentLine.text.trim()
 
                     const isDirty = document.isDirty ? " (unsaved changes)" : ""
-                    result += `**Current Code:** \`${lineText}\`${isDirty}\n`
+                    result += `Current Code: \`${lineText}\`${isDirty}\n`
 
                     // Also show some context (2 lines before and after)
                     const contextLines: string[] = []
@@ -1601,21 +1601,21 @@ export class ABAPDebugStatusTool implements vscode.LanguageModelTool<IDebugStatu
                     }
 
                     if (contextLines.length > 0) {
-                      result += `\n📝 **Code Context:**${isDirty}\n\`\`\`abap\n${contextLines.join("\n")}\n\`\`\`\n`
+                      result += `\n Code Context:${isDirty}\n\`\`\`abap\n${contextLines.join("\n")}\n\`\`\`\n`
                     }
                   }
                 } catch (sourceError) {
                   // Couldn't get source code, but that's okay
-                  result += `**Current Code:** (source not available)\n`
+                  result += `Current Code: (source not available)\n`
                 }
               }
             } else {
               // Check if there are any threads - if none, execution likely completed
               const threads = await activeSession.customRequest("threads")
               if (threads && threads.threads && threads.threads.length === 0) {
-                result += `\n✅ **Current State:** Completed - Execution finished\n`
+                result += `\n Current State: Completed - Execution finished\n`
               } else {
-                result += `\n🏃 **Current State:** Running - Executing between breakpoints\n`
+                result += `\n Current State: Running - Executing between breakpoints\n`
               }
             }
           } catch {
@@ -1623,16 +1623,16 @@ export class ABAPDebugStatusTool implements vscode.LanguageModelTool<IDebugStatu
             try {
               const threads = await activeSession.customRequest("threads")
               if (threads && threads.threads && threads.threads.length === 0) {
-                result += `\n✅ **Current State:** Completed - Execution finished\n`
+                result += `\n Current State: Completed - Execution finished\n`
               } else {
-                result += `\n🏃 **Current State:** Running - Executing between breakpoints\n`
+                result += `\n Current State: Running - Executing between breakpoints\n`
               }
             } catch {
-              result += `\n❓ **Current State:** Unknown - Cannot determine execution state\n`
+              result += `\n Current State: Unknown - Cannot determine execution state\n`
             }
           }
 
-          result += `\n🔧 **Available Operations:**\n`
+          result += `\n Available Operations:\n`
           result += `• Set/remove breakpoints\n`
           result += `• Step through code (continue, stepOver, stepInto, stepReturn)\n`
           result += `• Inspect variables and expressions\n`
@@ -1640,11 +1640,11 @@ export class ABAPDebugStatusTool implements vscode.LanguageModelTool<IDebugStatu
           result += `• Evaluate ABAP expressions\n`
           result += `• Jump to specific lines\n`
         } catch (statusError) {
-          result += `\n⚠️ **Status Check Error:** ${statusError}\n`
+          result += `\n Status Check Error: ${statusError}\n`
         }
       } else {
-        result += `\n❌ **Status:** No active debugging session\n`
-        result += `\n💡 **To start debugging:**\n`
+        result += `\n Status: No active debugging session\n`
+        result += `\n To start debugging:\n`
         result += `1. Use abap_debug_session tool with action='start'\n`
         result += `2. Set breakpoints using abap_debug_breakpoint tool\n`
         result += `3. Execute your ABAP program in SAP\n`
@@ -1658,7 +1658,7 @@ export class ABAPDebugStatusTool implements vscode.LanguageModelTool<IDebugStatu
       logCommands.error(`Debug status error: ${errorMessage}`)
 
       return new vscode.LanguageModelToolResult([
-        new vscode.LanguageModelTextPart(`❌ Failed to get debug status: ${errorMessage}`)
+        new vscode.LanguageModelTextPart(` Failed to get debug status: ${errorMessage}`)
       ])
     }
   }

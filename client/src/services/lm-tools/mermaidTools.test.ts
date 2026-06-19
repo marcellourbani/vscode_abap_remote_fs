@@ -131,7 +131,7 @@ describe("CreateMermaidDiagramTool", () => {
       })
       const result: any = await tool.invoke(makeOptions({ code: "graph TD\nA-->B" }), mockToken)
       expect(result.parts[0].text).toContain("flowchart")
-      expect(result.parts[0].text).toContain("✅")
+      expect(result.parts[0].text).toContain("Successfully")
     })
 
     it("throws when render fails", async () => {

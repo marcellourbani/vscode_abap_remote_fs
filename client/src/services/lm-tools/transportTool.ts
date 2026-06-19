@@ -160,8 +160,7 @@ export class ManageTransportRequestsTool implements vscode.LanguageModelTool<IMa
 
       const transports = await readTransports(connectionId, targetUser)
 
-      let result = `Transport Requests for User: ${targetUser.toUpperCase()}\n`
-      result += `${"=".repeat(60)}\n\n`
+      let result = `Transport Requests for User: ${targetUser.toUpperCase()}\n\n`
 
       let totalCount = 0
 
@@ -169,7 +168,7 @@ export class ManageTransportRequestsTool implements vscode.LanguageModelTool<IMa
         const targets = (transports as any)[category]
         if (!targets?.length) continue
 
-        result += `📦 **${category.toUpperCase()}**\n`
+        result += `${category.toUpperCase()}\n`
 
         for (const target of targets) {
           result += `  Target: ${target["tm:name"]} - ${target["tm:desc"]}\n`
@@ -178,11 +177,11 @@ export class ManageTransportRequestsTool implements vscode.LanguageModelTool<IMa
             const transportList = (target as any)[status]
             if (!transportList?.length) continue
 
-            result += `    ${status === "modifiable" ? "🔓" : "🔒"} **${status.toUpperCase()}**:\n`
+            result += `    ${status.toUpperCase()}:\n`
 
             for (const transport of transportList) {
               totalCount++
-              result += `      • **${transport["tm:number"]}** - ${transport["tm:owner"]} - ${transport["tm:desc"]}\n`
+              result += `      • ${transport["tm:number"]} - ${transport["tm:owner"]} - ${transport["tm:desc"]}\n`
               result += `        Status: ${transport["tm:status"]} | Tasks: ${transport.tasks?.length || 0} | Objects: ${transport.objects?.length || 0}\n`
             }
           }
@@ -190,7 +189,7 @@ export class ManageTransportRequestsTool implements vscode.LanguageModelTool<IMa
         result += "\n"
       }
 
-      result += `\n📊 **Summary**: Found ${totalCount} transport requests for user ${targetUser}`
+      result += `\nSummary: ${totalCount} transport requests for user ${targetUser}`
 
       return new vscode.LanguageModelToolResult([new vscode.LanguageModelTextPart(result)])
     } catch (error) {
@@ -206,26 +205,25 @@ export class ManageTransportRequestsTool implements vscode.LanguageModelTool<IMa
       const transportData = await client.transportDetails(transportNumber)
 
       let result = `Transport Details: ${transportNumber}\n`
-      result += `${"=".repeat(60)}\n`
-      result += `📋 **Number**: ${transportData["tm:number"]}\n`
-      result += `👤 **Owner**: ${transportData["tm:owner"]}\n`
-      result += `📝 **Description**: ${transportData["tm:desc"]}\n`
-      result += `📊 **Status**: ${transportData["tm:status"]}\n`
-      result += `📦 **Objects**: ${transportData.objects.length}\n\n`
+      result += `Number: ${transportData["tm:number"]}\n`
+      result += `Owner: ${transportData["tm:owner"]}\n`
+      result += `Description: ${transportData["tm:desc"]}\n`
+      result += `Status: ${transportData["tm:status"]}\n`
+      result += `Objects: ${transportData.objects.length}\n\n`
 
       if (transportData.tasks.length > 0) {
-        result += `📋 **Tasks** (${transportData.tasks.length}):\n`
+        result += `Tasks (${transportData.tasks.length}):\n`
         for (const task of transportData.tasks) {
-          result += `  • **${task["tm:number"]}** - ${task["tm:owner"]} - ${task["tm:desc"]}\n`
+          result += `  • ${task["tm:number"]} - ${task["tm:owner"]} - ${task["tm:desc"]}\n`
           result += `    Status: ${task["tm:status"]} | Objects: ${task.objects.length}\n`
         }
         result += "\n"
       }
 
       if (transportData.objects.length > 0) {
-        result += `📦 **Objects** (${transportData.objects.length}):\n`
+        result += `Objects (${transportData.objects.length}):\n`
         for (const obj of transportData.objects) {
-          result += `  • **${obj["tm:name"]}** (${obj["tm:type"]}) - ${obj["tm:obj_info"]}\n`
+          result += `  • ${obj["tm:name"]} (${obj["tm:type"]}) - ${obj["tm:obj_info"]}\n`
         }
       }
 
@@ -263,19 +261,18 @@ export class ManageTransportRequestsTool implements vscode.LanguageModelTool<IMa
       }
 
       let result = `Objects in Transport: ${transportNumber}\n`
-      result += `${"=".repeat(60)}\n`
-      result += `👤 **Main Owner**: ${transportData["tm:owner"]}\n`
-      result += `📝 **Description**: ${transportData["tm:desc"]}\n`
-      result += `📦 **Total Objects**: ${allObjects.length} (includes main transport + all task objects)\n`
-      result += `📋 **Tasks**: ${transportData.tasks.length}\n\n`
+      result += `Main Owner: ${transportData["tm:owner"]}\n`
+      result += `Description: ${transportData["tm:desc"]}\n`
+      result += `Total Objects: ${allObjects.length} (main transport + all task objects)\n`
+      result += `Tasks: ${transportData.tasks.length}\n\n`
 
       if (allObjects.length === 0) {
-        result += "⚠️ No objects found in this transport.\n"
+        result += "No objects in this transport.\n"
       } else {
         if (transportData.objects.length > 0) {
-          result += `📋 **MAIN TRANSPORT** (${transportData.objects.length} objects):\n`
-          result += `  👤 Owner: ${transportData["tm:owner"]}\n`
-          result += `  📊 Status: ${transportData["tm:status"]}\n\n`
+          result += `MAIN TRANSPORT (${transportData.objects.length} objects):\n`
+          result += `   Owner: ${transportData["tm:owner"]}\n`
+          result += `   Status: ${transportData["tm:status"]}\n\n`
 
           const mainObjectsByType = transportData.objects.reduce((acc: any, obj: any) => {
             const type = obj["tm:type"]
@@ -285,19 +282,19 @@ export class ManageTransportRequestsTool implements vscode.LanguageModelTool<IMa
           }, {})
 
           for (const [type, objects] of Object.entries(mainObjectsByType)) {
-            result += `  🗂️ **${type}** (${(objects as any[]).length} objects):\n`
+            result += `   ${type} (${(objects as any[]).length} objects):\n`
             for (const obj of objects as any[]) {
-              result += `    • **${obj["tm:name"]}** - ${obj["tm:obj_info"]}\n`
+              result += `    • ${obj["tm:name"]} - ${obj["tm:obj_info"]}\n`
             }
           }
           result += "\n"
         }
 
         for (const task of transportData.tasks) {
-          result += `📋 **TASK ${task["tm:number"]}** (${task.objects.length} objects):\n`
-          result += `  👤 Owner: ${task["tm:owner"]}\n`
-          result += `  📝 Description: ${task["tm:desc"]}\n`
-          result += `  📊 Status: ${task["tm:status"]}\n\n`
+          result += `TASK ${task["tm:number"]} (${task.objects.length} objects):\n`
+          result += `   Owner: ${task["tm:owner"]}\n`
+          result += `   Description: ${task["tm:desc"]}\n`
+          result += `   Status: ${task["tm:status"]}\n\n`
 
           if (task.objects.length > 0) {
             const taskObjectsByType = task.objects.reduce((acc: any, obj: any) => {
@@ -308,13 +305,13 @@ export class ManageTransportRequestsTool implements vscode.LanguageModelTool<IMa
             }, {})
 
             for (const [type, objects] of Object.entries(taskObjectsByType)) {
-              result += `  🗂️ **${type}** (${(objects as any[]).length} objects):\n`
+              result += `   ${type} (${(objects as any[]).length} objects):\n`
               for (const obj of objects as any[]) {
-                result += `    • **${obj["tm:name"]}** - ${obj["tm:obj_info"]}\n`
+                result += `    • ${obj["tm:name"]} - ${obj["tm:obj_info"]}\n`
               }
             }
           } else {
-            result += `  ⚠️ No objects in this task\n`
+            result += `   No objects in this task\n`
           }
           result += "\n"
         }
@@ -355,17 +352,16 @@ export class ManageTransportRequestsTool implements vscode.LanguageModelTool<IMa
         }
       }
 
-      let result = `Transport Comparison: ${transportNumbers.join(" vs ")}\n`
-      result += `${"=".repeat(60)}\n\n`
+      let result = `Transport Comparison: ${transportNumbers.join(" vs ")}\n\n`
 
       if (notFound.length > 0) {
-        result += `⚠️ **Not Found**: ${notFound.join(", ")}\n\n`
+        result += `Not Found: ${notFound.join(", ")}\n\n`
       }
 
       if (transports.length < 2) {
-        result += `❌ Need at least 2 valid transports for comparison. Found: ${transports.length}\n`
+        result += `Need at least 2 valid transports for comparison. Found: ${transports.length}\n`
         if (notFound.length > 0) {
-          result += `💡 Note: Some transports may not be found if your SAP system doesn't support transport ADT features.\n`
+          result += `Note: Some transports may not be found if your SAP system doesn't support transport ADT features.\n`
         }
         return new vscode.LanguageModelToolResult([new vscode.LanguageModelTextPart(result)])
       }
@@ -391,11 +387,11 @@ export class ManageTransportRequestsTool implements vscode.LanguageModelTool<IMa
         })
       })
 
-      result += `📊 **Summary**:\n`
+      result += `Summary:\n`
       transportObjects.forEach(tr => {
-        result += `  • **${tr.number}** (${tr.owner}): ${tr.objects.length} objects\n`
+        result += `  • ${tr.number} (${tr.owner}): ${tr.objects.length} objects\n`
       })
-      result += `  • **Total Unique Objects**: ${allUniqueObjects.size}\n\n`
+      result += `  Total Unique Objects: ${allUniqueObjects.size}\n\n`
 
       const commonObjects: any[] = []
       const uniqueObjects: { [key: string]: any[] } = {}
@@ -429,20 +425,20 @@ export class ManageTransportRequestsTool implements vscode.LanguageModelTool<IMa
       })
 
       if (commonObjects.length > 0) {
-        result += `🤝 **COMMON OBJECTS** (${commonObjects.length}) - Objects in ALL transports:\n`
+        result += `COMMON OBJECTS (${commonObjects.length}) — in ALL transports:\n`
         commonObjects.forEach(obj => {
-          result += `  • **${obj["tm:name"]}** (${obj["tm:type"]}) - ${obj["tm:obj_info"]}\n`
+          result += `  • ${obj["tm:name"]} (${obj["tm:type"]}) - ${obj["tm:obj_info"]}\n`
         })
         result += "\n"
       } else {
-        result += `🤝 **COMMON OBJECTS**: None - No objects appear in all transports\n\n`
+        result += `COMMON OBJECTS: none — no objects appear in all transports\n\n`
       }
 
       Object.entries(uniqueObjects).forEach(([trNum, objects]) => {
         if (objects.length > 0) {
-          result += `🔹 **Unique to ${trNum}** (${objects.length} objects):\n`
+          result += `Unique to ${trNum} (${objects.length} objects):\n`
           objects.forEach(obj => {
-            result += `  • **${obj["tm:name"]}** (${obj["tm:type"]}) - ${obj["tm:obj_info"]}\n`
+            result += `  • ${obj["tm:name"]} (${obj["tm:type"]}) - ${obj["tm:obj_info"]}\n`
           })
           result += "\n"
         }

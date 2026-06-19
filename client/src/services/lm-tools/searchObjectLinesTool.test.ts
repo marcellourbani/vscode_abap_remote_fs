@@ -257,7 +257,7 @@ describe("SearchABAPObjectLinesTool", () => {
         mockToken
       )
 
-      expect(result.parts[0].text).toContain("No matches found")
+      expect(result.parts[0].text).toContain("No matches")
       expect(result.parts[0].text).toContain("NONEXISTENT_TERM")
     })
 
@@ -411,7 +411,7 @@ describe("SearchABAPObjectLinesTool", () => {
       )
 
       const text = result.parts[0].text
-      expect(text).toContain("No matches found")
+      expect(text).toContain("No matches")
       expect(text).toContain("Objects searched")
     })
   })
@@ -514,8 +514,8 @@ describe("SearchABAPObjectLinesTool", () => {
       )
 
       const text = result.parts[0].text
-      expect(text).toContain("Base source matches")
-      expect(text).toContain("Enhancement matches")
+      expect(text).toContain("Base:")
+      expect(text).toContain("Enhancement Matches")
     })
   })
 
@@ -576,7 +576,7 @@ describe("SearchABAPObjectLinesTool", () => {
 
       // Object with no URI is skipped; since it's the only result we get no-matches
       const text = result.parts[0].text
-      expect(text).toContain("No matches found")
+      expect(text).toContain("No matches")
     })
 
     it("handles getObjectSource failure for individual object in multi-search", async () => {
@@ -620,7 +620,7 @@ describe("SearchABAPObjectLinesTool", () => {
         mockToken
       )
 
-      expect(result.parts[0].text).toContain("No matches found")
+      expect(result.parts[0].text).toContain("No matches")
     })
   })
 })
