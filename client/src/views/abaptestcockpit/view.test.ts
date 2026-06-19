@@ -1,29 +1,25 @@
-jest.mock(
-  "vscode",
-  () => {
-    const Position = jest.fn((line: number, character: number) => ({ line, character }))
-    const Range = jest.fn((start: any, end: any) => ({ start, end }))
-    const ThemeColor = jest.fn((id: string) => ({ id }))
-    const ThemeIcon = jest.fn((id: string, color?: any) => ({ id, color }))
-    return {
-      Position,
-      Range,
-      ThemeColor,
-      ThemeIcon,
-      TreeItem: jest.fn().mockImplementation(function (this: any, label: string, collapsible: any) {
-        this.label = label
-        this.collapsibleState = collapsible
-      }),
-      TreeItemCollapsibleState: { Expanded: 1, Collapsed: 2, None: 0 },
-      EventEmitter: jest.fn().mockImplementation(() => ({
-        fire: jest.fn(),
-        event: jest.fn()
-      })),
-      commands: { executeCommand: jest.fn() }
-    }
-  },
-  { virtual: true }
-)
+jest.mock("vscode", () => {
+  const Position = jest.fn((line: number, character: number) => ({ line, character }))
+  const Range = jest.fn((start: any, end: any) => ({ start, end }))
+  const ThemeColor = jest.fn((id: string) => ({ id }))
+  const ThemeIcon = jest.fn((id: string, color?: any) => ({ id, color }))
+  return {
+    Position,
+    Range,
+    ThemeColor,
+    ThemeIcon,
+    TreeItem: jest.fn().mockImplementation(function (this: any, label: string, collapsible: any) {
+      this.label = label
+      this.collapsibleState = collapsible
+    }),
+    TreeItemCollapsibleState: { Expanded: 1, Collapsed: 2, None: 0 },
+    EventEmitter: jest.fn().mockImplementation(() => ({
+      fire: jest.fn(),
+      event: jest.fn()
+    })),
+    commands: { executeCommand: jest.fn() }
+  }
+}, { virtual: true })
 
 jest.mock("../../services/funMessenger", () => ({
   funWindow: {
@@ -82,7 +78,14 @@ jest.mock("ramda", () => ({
   prop: jest.fn(() => jest.fn())
 }))
 
-import { hasExemption, approvedExemption, AtcRoot, AtcSystem, AtcObject, AtcFind } from "./view"
+import {
+  hasExemption,
+  approvedExemption,
+  AtcRoot,
+  AtcSystem,
+  AtcObject,
+  AtcFind
+} from "./view"
 import { setContext } from "../../context"
 
 const mockSetContext = setContext as jest.MockedFunction<typeof setContext>

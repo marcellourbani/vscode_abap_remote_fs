@@ -27,9 +27,7 @@ export async function testServiceBindingCommand() {
         if (isAbapStat(file) && file.object.type === "SRVB/SVB") {
           defaultName = file.object.name
         }
-      } catch {
-        /* ignore */
-      }
+      } catch { /* ignore */ }
     }
 
     if (!connId) {
@@ -38,23 +36,18 @@ export async function testServiceBindingCommand() {
       connId = root.uri.authority
     }
 
-    const srvbName =
-      defaultName ||
-      (await window.showInputBox({
-        prompt: "Enter the service binding name",
-        placeHolder: "e.g. ZUI_MY_SERVICE_O4",
-        ignoreFocusOut: true,
-        validateInput: v => (v?.trim() ? null : "Service binding name is required")
-      }))
+    const srvbName = defaultName || await window.showInputBox({
+      prompt: "Enter the service binding name",
+      placeHolder: "e.g. ZUI_MY_SERVICE_O4",
+      ignoreFocusOut: true,
+      validateInput: v => v?.trim() ? null : "Service binding name is required"
+    })
     if (!srvbName) return
 
     const client = await getOrCreateClient(connId)
 
     await window.withProgress(
-      {
-        location: { viewId: "workbench.panel.output" },
-        title: `Loading service binding ${srvbName}...`
-      },
+      { location: { viewId: "workbench.panel.output" }, title: `Loading service binding ${srvbName}...` },
       async () => {
         // Read binding XML and parse using abap-adt-api
         const bindingUrl = `/sap/bc/adt/businessservices/bindings/${encodeURIComponent(srvbName.toLowerCase())}`
@@ -65,17 +58,14 @@ export async function testServiceBindingCommand() {
         const binding = parseServiceBinding(resp.body)
 
         if (binding.services.length === 0) {
-          window.showWarningMessage(
-            `No services found in binding ${srvbName}. Has it been generated?`
-          )
+          window.showWarningMessage(`No services found in binding ${srvbName}. Has it been generated?`)
           return
         }
 
         if (!binding.published) {
           const publish = await window.showWarningMessage(
             `Service ${srvbName} is not published. Publish it now?`,
-            "Publish",
-            "Cancel"
+            "Publish", "Cancel"
           )
           if (publish === "Publish") {
             commands.executeCommand("abapfs.publishServiceBinding")
@@ -133,23 +123,18 @@ export async function testServiceBindingCommand() {
         serviceUrl += `${sep}${authParams}`
 
         // Build Fiori preview URL if collections and URL available
-        const previewUrl =
-          service.serviceInformation?.url && service.serviceInformation?.collection?.length
-            ? servicePreviewUrl(service, service.serviceInformation.collection[0].name)
-            : undefined
+        const previewUrl = service.serviceInformation?.url && service.serviceInformation?.collection?.length
+          ? servicePreviewUrl(service, service.serviceInformation.collection[0].name)
+          : undefined
 
         // Show options
         const options: Array<{ label: string; description: string; action: string }> = [
           { label: "$(globe) Open Service Document", description: serviceUrl, action: "open" },
           { label: "$(json) Open $metadata", description: metadataUrl, action: "metadata" },
-          { label: "$(clippy) Copy Service URL", description: "Copy to clipboard", action: "copy" }
+          { label: "$(clippy) Copy Service URL", description: "Copy to clipboard", action: "copy" },
         ]
         if (previewUrl) {
-          options.push({
-            label: "$(preview) Fiori Elements Preview",
-            description: "Open in ADT preview",
-            action: "preview"
-          })
+          options.push({ label: "$(preview) Fiori Elements Preview", description: "Open in ADT preview", action: "preview" })
         }
 
         const action = await window.showQuickPick(options, {

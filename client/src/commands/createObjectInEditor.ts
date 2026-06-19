@@ -101,8 +101,7 @@ const toTypeOption = (type: CreatableType): CreateObjectTypeOption => ({
   usesSuffix: type.typeId === "FUGR/I"
 })
 
-const getSortedTypeOptions = () =>
-  [...CreatableTypes.values()].sort(fieldOrder("label")).map(toTypeOption)
+const getSortedTypeOptions = () => [...CreatableTypes.values()].sort(fieldOrder("label")).map(toTypeOption)
 
 const getBindingTypeOptions = (): CreateObjectBindingTypeOption[] =>
   BindinTypes.map(type => ({
@@ -225,10 +224,7 @@ function buildObjectName(input: CreateObjectFormInput, parentName: string): stri
   return parts.length < 3 ? `L${parentName}${input.name}` : `/${parts[1]}/L${parts[2]}${input.name}`
 }
 
-function hasEnoughTransportData(
-  input: CreateObjectFormInput,
-  type: CreateObjectTypeOption
-): boolean {
+function hasEnoughTransportData(input: CreateObjectFormInput, type: CreateObjectTypeOption): boolean {
   if (!input.typeId || !input.name || !input.packageName) return false
   if (type.parentType !== PACKAGE && type.typeId !== PACKAGE && !input.parentName) return false
   return true
@@ -280,20 +276,14 @@ async function buildCreationDetails(connId: string, input: CreateObjectFormInput
   }
 }
 
-async function resolveTransportPreview(
-  connId: string,
-  rawInput: CreateObjectFormInput
-): Promise<TransportPreview> {
+async function resolveTransportPreview(connId: string, rawInput: CreateObjectFormInput): Promise<TransportPreview> {
   const input = normalizeInput(rawInput)
   const typeInfo = getTypeOption(input.typeId)
   if (!typeInfo || !hasEnoughTransportData(input, typeInfo)) {
     return transportPreviewMessage("Complete object details to load transport requests.")
   }
 
-  const details = await buildCreationDetails(connId, {
-    ...input,
-    description: input.description || "DUMMY"
-  })
+  const details = await buildCreationDetails(connId, { ...input, description: input.description || "DUMMY" })
   const info = await fetchTransportInfo(connId, details)
   return toTransportPreview(info)
 }
@@ -395,9 +385,7 @@ async function resolveTransportForCreate(
     return transport
   }
 
-  throw new Error(
-    "Transport request is required. Select an existing request or enter text for a new one."
-  )
+  throw new Error("Transport request is required. Select an existing request or enter text for a new one.")
 }
 
 async function getCreateObjectFormContext(
@@ -408,9 +396,7 @@ async function getCreateObjectFormContext(
   const hierarchy = pathSequence(getRoot(connId), uri)
   const initialParents: Record<string, string> = {}
 
-  for (const type of new Set(
-    [...CreatableTypes.values()].map(t => parentTypeId(t.typeId)).filter(Boolean)
-  )) {
+  for (const type of new Set([...CreatableTypes.values()].map(t => parentTypeId(t.typeId)).filter(Boolean))) {
     initialParents[type] = creator.guessParentByType(hierarchy, type as ParentTypeIds)
   }
 
@@ -424,13 +410,14 @@ async function getCreateObjectFormContext(
   }
 }
 
-async function fetchTransportInfo(connId: string, details: CreationDetails) {
+async function fetchTransportInfo(
+  connId: string,
+  details: CreationDetails
+) {
   return getClient(connId).transportInfo(details.objectContentPath, details.devclass, "I")
 }
 
-async function getTransportLayerOptions(
-  connId: string
-): Promise<CreateObjectTransportLayerOption[]> {
+async function getTransportLayerOptions(connId: string): Promise<CreateObjectTransportLayerOption[]> {
   const layers = await getClient(connId).packageSearchHelp("transportlayers")
   const items = layers.map(layer => ({
     label: layer.name,
@@ -491,7 +478,8 @@ async function browseServiceDefinition(connId: string): Promise<string> {
 
 function validateName(type: CreateObjectTypeOption, name: string): string {
   if (!name) return "Field is mandatory"
-  if (type.usesSuffix) return /^[A-Za-z]\w\w$/.test(name) ? "" : "Suffix must be 3 characters long"
+  if (type.usesSuffix)
+    return /^[A-Za-z]\w\w$/.test(name) ? "" : "Suffix must be 3 characters long"
   if (name.length <= type.maxLen) return ""
   return `Name length of ${name.length} exceeds maximum (${type.maxLen})`
 }
@@ -516,15 +504,9 @@ function validateFormInput(input: CreateObjectFormInput, type: CreateObjectTypeO
   if (!input.packageName) throw new Error("Package is mandatory")
   if (type.parentType !== PACKAGE && type.typeId !== PACKAGE && !input.parentName)
     throw new Error("Parent is mandatory")
-  if (
-    type.isPackage &&
-    (!input.softwareComponent || !input.packageType || input.transportLayer === undefined)
-  )
+  if (type.isPackage && (!input.softwareComponent || !input.packageType || input.transportLayer === undefined))
     throw new Error("Software component, package type and transport layer are mandatory")
-  if (
-    type.isServiceBinding &&
-    (!input.bindingType || !input.bindingCategory || !input.serviceDefinition)
-  )
+  if (type.isServiceBinding && (!input.bindingType || !input.bindingCategory || !input.serviceDefinition))
     throw new Error("Service binding type and service definition are mandatory")
 }
 
@@ -553,7 +535,10 @@ async function createObjectFromForm(connId: string, rawInput: CreateObjectFormIn
   return obj
 }
 
-function getWebviewHtml(connId: string, formContext: CreateObjectFormContext): string {
+function getWebviewHtml(
+  connId: string,
+  formContext: CreateObjectFormContext
+): string {
   const nonce = getNonce()
   const payload = JSON.stringify({ connId, formContext }).replace(/</g, "\\u003c")
 

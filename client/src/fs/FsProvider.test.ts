@@ -1,58 +1,40 @@
 // Tests for fs/FsProvider.ts
-jest.mock(
-  "vscode",
-  () => {
-    const EventEmitter = class {
-      event = jest.fn()
-      fire = jest.fn()
-    }
-    const FileChangeType = { Created: 1, Changed: 2, Deleted: 3 }
-    const FileType = { Unknown: 0, File: 1, Directory: 2 }
-    const Disposable = class {
-      constructor(public fn?: () => void) {
-        this.dispose = fn ?? (() => {})
-      }
-      dispose: () => void
-    }
-    const FileSystemError = {
-      FileNotFound: jest.fn(msg =>
-        Object.assign(new Error(msg), { name: "FileNotFound (FileSystemError)" })
-      ),
-      NoPermissions: jest.fn(msg => new Error(msg)),
-      Unavailable: jest.fn(msg => new Error(msg))
-    }
-    const TextDocumentSaveReason = { Manual: 1, AfterDelay: 2, FocusOut: 3 }
-    const workspace = {
-      textDocuments: [],
-      getConfiguration: jest.fn(() => ({
-        get: jest.fn(() => true),
-        update: jest.fn()
-      }))
-    }
-    const commands = { executeCommand: jest.fn() }
-    const Uri = {
-      parse: jest.fn((s: string) => ({
-        scheme: s.split("://")[0] || "file",
-        authority: "",
-        path: "/" + (s.split("://")[1] || s),
-        toString: () => s
-      }))
-    }
-    return {
-      EventEmitter,
-      FileChangeType,
-      FileType,
-      Disposable,
-      FileSystemError,
-      TextDocumentSaveReason,
-      workspace,
-      commands,
-      Uri,
-      ExtensionContext: class {}
-    }
-  },
-  { virtual: true }
-)
+jest.mock("vscode", () => {
+  const EventEmitter = class {
+    event = jest.fn()
+    fire = jest.fn()
+  }
+  const FileChangeType = { Created: 1, Changed: 2, Deleted: 3 }
+  const FileType = { Unknown: 0, File: 1, Directory: 2 }
+  const Disposable = class { constructor(public fn?: () => void) { this.dispose = fn ?? (() => {}) }; dispose: () => void }
+  const FileSystemError = {
+    FileNotFound: jest.fn(msg => Object.assign(new Error(msg), { name: "FileNotFound (FileSystemError)" })),
+    NoPermissions: jest.fn(msg => new Error(msg)),
+    Unavailable: jest.fn(msg => new Error(msg))
+  }
+  const TextDocumentSaveReason = { Manual: 1, AfterDelay: 2, FocusOut: 3 }
+  const workspace = {
+    textDocuments: [],
+    getConfiguration: jest.fn(() => ({
+      get: jest.fn(() => true),
+      update: jest.fn()
+    }))
+  }
+  const commands = { executeCommand: jest.fn() }
+  const Uri = {
+    parse: jest.fn((s: string) => ({
+      scheme: s.split("://")[0] || "file",
+      authority: "",
+      path: "/" + (s.split("://")[1] || s),
+      toString: () => s
+    }))
+  }
+  return {
+    EventEmitter, FileChangeType, FileType, Disposable, FileSystemError,
+    TextDocumentSaveReason, workspace, commands, Uri,
+    ExtensionContext: class {}
+  }
+}, { virtual: true })
 
 jest.mock("../adt/conections", () => ({
   getOrCreateRoot: jest.fn(),
@@ -111,13 +93,12 @@ import { LocalFsProvider as _LocalFsProvider } from "./LocalFsProvider"
 const LocalFsProvider = _LocalFsProvider as any
 import * as vscode from "vscode"
 
-const makeUri = (path = "/test", scheme = "adt", authority = "host") =>
-  ({
-    path,
-    scheme,
-    authority,
-    toString: () => `${scheme}://${authority}${path}`
-  }) as any
+const makeUri = (path = "/test", scheme = "adt", authority = "host") => ({
+  path,
+  scheme,
+  authority,
+  toString: () => `${scheme}://${authority}${path}`
+} as any)
 
 const makeContext = () => {
   const provider = new (LocalFsProvider as any)()

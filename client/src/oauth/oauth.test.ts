@@ -60,11 +60,7 @@ describe("futureToken", () => {
   })
 
   it("returns accessToken when grant exists in store", async () => {
-    mockGetToken.mockReturnValue({
-      accessToken: "tok123",
-      refreshToken: "ref",
-      tokenType: "bearer"
-    })
+    mockGetToken.mockReturnValue({ accessToken: "tok123", refreshToken: "ref", tokenType: "bearer" })
     const result = await futureToken("dev100")
     expect(result).toBe("tok123")
   })
@@ -111,11 +107,7 @@ describe("oauthLogin", () => {
 
   describe("returned login function", () => {
     it("reuses existing token from store", async () => {
-      const existingToken = {
-        accessToken: "existing-tok",
-        refreshToken: "ref",
-        tokenType: "bearer"
-      }
+      const existingToken = { accessToken: "existing-tok", refreshToken: "ref", tokenType: "bearer" }
       mockGetToken.mockReturnValue(existingToken)
 
       const conf = {
@@ -266,19 +258,11 @@ describe("oauthLogin", () => {
 
     it("uses refreshed token from vault when available", async () => {
       mockGetToken.mockReturnValue(undefined)
-      const vaultData = JSON.stringify({
-        accessToken: "vault-tok",
-        refreshToken: "vault-ref",
-        tokenType: "bearer"
-      })
+      const vaultData = JSON.stringify({ accessToken: "vault-tok", refreshToken: "vault-ref", tokenType: "bearer" })
       mockGetPassword.mockResolvedValue(vaultData)
 
       // The fromVault function creates a ClientOAuth2 instance and refreshes
-      const refreshedToken = {
-        accessToken: "refreshed-tok",
-        refreshToken: "ref2",
-        tokenType: "bearer"
-      }
+      const refreshedToken = { accessToken: "refreshed-tok", refreshToken: "ref2", tokenType: "bearer" }
       mockCreateToken.mockReturnValue({ refresh: jest.fn().mockResolvedValue(refreshedToken) })
       mockStrip.mockImplementation((x: any) => {
         const { accessToken, refreshToken, tokenType } = x
@@ -307,11 +291,7 @@ describe("oauthLogin", () => {
 
     it("falls through to login flow if vault refresh fails", async () => {
       mockGetToken.mockReturnValue(undefined)
-      const vaultData = JSON.stringify({
-        accessToken: "old",
-        refreshToken: "old-ref",
-        tokenType: "bearer"
-      })
+      const vaultData = JSON.stringify({ accessToken: "old", refreshToken: "old-ref", tokenType: "bearer" })
       mockGetPassword.mockResolvedValue(vaultData)
 
       // Refresh fails

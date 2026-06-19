@@ -1,20 +1,16 @@
-jest.mock(
-  "vscode",
-  () => ({
-    Uri: {
-      parse: jest.fn((s: string) => ({
-        scheme: s.split("://")[0] || "ABAPGIT",
-        authority: s.split("://")[1]?.split("?")[0] || "",
-        query: s.split("?")[1] || "",
-        toString: () => s
-      }))
-    },
-    workspace: {
-      registerTextDocumentContentProvider: jest.fn()
-    }
-  }),
-  { virtual: true }
-)
+jest.mock("vscode", () => ({
+  Uri: {
+    parse: jest.fn((s: string) => ({
+      scheme: s.split("://")[0] || "ABAPGIT",
+      authority: s.split("://")[1]?.split("?")[0] || "",
+      query: s.split("?")[1] || "",
+      toString: () => s
+    }))
+  },
+  workspace: {
+    registerTextDocumentContentProvider: jest.fn()
+  }
+}), { virtual: true })
 
 jest.mock("./scm", () => ({
   scmKey: jest.fn((auth: string, key: string) => `abapGit_${auth}_${key}`),
@@ -55,7 +51,9 @@ describe("gitUrl", () => {
     const file: any = { name: "foo.abap" }
     const path = "/sap/bc/adt/path"
     gitUrl(data, path, file)
-    expect(mockBtoa).toHaveBeenCalledWith(JSON.stringify({ key: "ZREPOKEY", path }))
+    expect(mockBtoa).toHaveBeenCalledWith(
+      JSON.stringify({ key: "ZREPOKEY", path })
+    )
   })
 
   it("uses connId as URI authority", () => {
@@ -80,13 +78,9 @@ describe("GitDocProvider.provideTextDocumentContent", () => {
 
   it("throws for non-ABAPGIT scheme URIs", async () => {
     // Import the module to get access to the provider instance via workspace mock
-    const registeredProvider = (
-      require("vscode").workspace.registerTextDocumentContentProvider as jest.Mock
-    ).mock.calls[0][1]
+    const registeredProvider = (require("vscode").workspace.registerTextDocumentContentProvider as jest.Mock).mock.calls[0][1]
     const badUri: any = { scheme: "file", query: "", authority: "" }
-    await expect(registeredProvider.provideTextDocumentContent(badUri)).rejects.toThrow(
-      "Unexpected URI scheme"
-    )
+    await expect(registeredProvider.provideTextDocumentContent(badUri)).rejects.toThrow("Unexpected URI scheme")
   })
 
   it("throws for invalid (missing key) URLs", async () => {
@@ -95,9 +89,7 @@ describe("GitDocProvider.provideTextDocumentContent", () => {
     const mockScmData = scmData as jest.Mock
     mockScmData.mockReturnValue(undefined)
 
-    const registeredProvider = (
-      require("vscode").workspace.registerTextDocumentContentProvider as jest.Mock
-    ).mock.calls[0][1]
+    const registeredProvider = (require("vscode").workspace.registerTextDocumentContentProvider as jest.Mock).mock.calls[0][1]
     const uri: any = { scheme: "ABAPGIT", query: "xxx", authority: "conn" }
     await expect(registeredProvider.provideTextDocumentContent(uri)).rejects.toThrow("Invalid URL")
   })
@@ -116,9 +108,7 @@ describe("GitDocProvider.provideTextDocumentContent", () => {
     })
     ;(require("./scm").scmKey as jest.Mock).mockReturnValue("abapGit_conn_ZPKG")
 
-    const registeredProvider = (
-      require("vscode").workspace.registerTextDocumentContentProvider as jest.Mock
-    ).mock.calls[0][1]
+    const registeredProvider = (require("vscode").workspace.registerTextDocumentContentProvider as jest.Mock).mock.calls[0][1]
     const uri: any = { scheme: "ABAPGIT", query: "xxx", authority: "conn" }
     const result = await registeredProvider.provideTextDocumentContent(uri)
     expect(mockGetObjectSource).toHaveBeenCalledWith(
@@ -140,9 +130,7 @@ describe("GitDocProvider.provideTextDocumentContent", () => {
       repo: { key: "ZPKG" }
     })
 
-    const registeredProvider = (
-      require("vscode").workspace.registerTextDocumentContentProvider as jest.Mock
-    ).mock.calls[0][1]
+    const registeredProvider = (require("vscode").workspace.registerTextDocumentContentProvider as jest.Mock).mock.calls[0][1]
     const uri: any = { scheme: "ABAPGIT", query: "xxx", authority: "conn" }
     await registeredProvider.provideTextDocumentContent(uri)
     const calledPath = mockGetObjectSource.mock.calls[0]?.[0] as string

@@ -45,15 +45,7 @@ export class RunATCAnalysisTool implements vscode.LanguageModelTool<IRunATCAnaly
     options: vscode.LanguageModelToolInvocationPrepareOptions<IRunATCAnalysisParameters>,
     _token: vscode.CancellationToken
   ) {
-    const {
-      action = "run_analysis",
-      objectName,
-      objectType,
-      objectUri,
-      connectionId,
-      useActiveFile,
-      docUri
-    } = options.input
+    const { action = "run_analysis", objectName, objectType, objectUri, connectionId, useActiveFile, docUri } = options.input
 
     // get_documentation only needs docUri + connectionId
     if (action === "get_documentation") {
@@ -67,9 +59,7 @@ export class RunATCAnalysisTool implements vscode.LanguageModelTool<IRunATCAnaly
         invocationMessage: `Fetching ATC finding documentation...`,
         confirmationMessages: {
           title: "Get ATC Documentation",
-          message: new vscode.MarkdownString(
-            `Fetch documentation for ATC finding from ${connectionId}`
-          )
+          message: new vscode.MarkdownString(`Fetch documentation for ATC finding from ${connectionId}`)
         }
       }
     }
@@ -450,7 +440,9 @@ export class GetATCDecorationsTool implements vscode.LanguageModelTool<IGetATCDe
             `${errors}E (red) | ${warnings}W (yellow) | ${infos}I (blue) | ${exempted} exempted (green)\n\n` +
             `Decorations:\n` +
             fileData.decorations
-              .map(d => `• Line ${d.line}: ${d.message} (${d.priorityText}) [${d.decorationType}]`)
+              .map(
+                d => `• Line ${d.line}: ${d.message} (${d.priorityText}) [${d.decorationType}]`
+              )
               .join("\n")
         } else {
           resultText += `No decorations visible — clean code or no ATC analysis run yet.`

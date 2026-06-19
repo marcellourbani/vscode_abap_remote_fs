@@ -213,14 +213,13 @@ describe("IncludeService", () => {
     })
 
     it("returns parent from node path when available", () => {
-      const parentObj = {
-        name: "ZPROG",
-        type: "PROG/P",
-        path: "/sap/bc/adt/programs/programs/zprog"
-      }
+      const parentObj = { name: "ZPROG", type: "PROG/P", path: "/sap/bc/adt/programs/programs/zprog" }
       const parentStat = { object: parentObj }
       mockIsAbapStat.mockImplementation((f: any) => f === parentStat)
-      mockRoot.getNodePath.mockReturnValue([{ file: {} }, { file: parentStat }] as any)
+      mockRoot.getNodePath.mockReturnValue([
+        { file: {} },
+        { file: parentStat }
+      ] as any)
 
       const result = service.guessParent("/some/include/path")
       expect(result).toEqual({
@@ -233,7 +232,10 @@ describe("IncludeService", () => {
     it("skips DEVC/K (package) parents", () => {
       const pkgStat = { object: { name: "PKG", type: "DEVC/K", path: "/pkg" } }
       mockIsAbapStat.mockImplementation((f: any) => f === pkgStat)
-      mockRoot.getNodePath.mockReturnValue([{ file: {} }, { file: pkgStat }] as any)
+      mockRoot.getNodePath.mockReturnValue([
+        { file: {} },
+        { file: pkgStat }
+      ] as any)
 
       const result = service.guessParent("/some/include/path")
       expect(result).toBeUndefined()
@@ -345,8 +347,7 @@ describe("IncludeService", () => {
     it("refreshes candidates when refresh=true", async () => {
       const candidates1 = [{ "adtcore:name": "Z1", "adtcore:type": "PROG/P", "adtcore:uri": "/u1" }]
       const candidates2 = [{ "adtcore:name": "Z2", "adtcore:type": "PROG/P", "adtcore:uri": "/u2" }]
-      const mainPrograms = jest
-        .fn()
+      const mainPrograms = jest.fn()
         .mockResolvedValueOnce(candidates1)
         .mockResolvedValueOnce(candidates2)
       const file = {

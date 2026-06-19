@@ -18,43 +18,57 @@ describe("interpolateSql", () => {
   test("interpolates a simple string value", () => {
     const results = makeResults([0, "MAT001"])
     const sql = "SELECT * FROM mara WHERE matnr = ${cells[0].result}"
-    expect(interpolateSql(sql, results)).toBe("SELECT * FROM mara WHERE matnr = 'MAT001'")
+    expect(interpolateSql(sql, results)).toBe(
+      "SELECT * FROM mara WHERE matnr = 'MAT001'"
+    )
   })
 
   test("interpolates a number value without quotes", () => {
     const results = makeResults([0, 42])
     const sql = "SELECT * FROM mara WHERE mandt = ${cells[0].result}"
-    expect(interpolateSql(sql, results)).toBe("SELECT * FROM mara WHERE mandt = 42")
+    expect(interpolateSql(sql, results)).toBe(
+      "SELECT * FROM mara WHERE mandt = 42"
+    )
   })
 
   test("interpolates nested object property", () => {
     const results = makeResults([1, { MATNR: "MAT002" }])
     const sql = "SELECT * FROM mara WHERE matnr = ${cells[1].result.MATNR}"
-    expect(interpolateSql(sql, results)).toBe("SELECT * FROM mara WHERE matnr = 'MAT002'")
+    expect(interpolateSql(sql, results)).toBe(
+      "SELECT * FROM mara WHERE matnr = 'MAT002'"
+    )
   })
 
   test("interpolates deep nested property with array index", () => {
     const results = makeResults([0, { rows: [{ MATNR: "A" }, { MATNR: "B" }] }])
     const sql = "SELECT * FROM mara WHERE matnr = ${cells[0].result.rows[1].MATNR}"
-    expect(interpolateSql(sql, results)).toBe("SELECT * FROM mara WHERE matnr = 'B'")
+    expect(interpolateSql(sql, results)).toBe(
+      "SELECT * FROM mara WHERE matnr = 'B'"
+    )
   })
 
   test("interpolates array into comma-separated list", () => {
     const results = makeResults([0, ["A", "B", "C"]])
     const sql = "SELECT * FROM mara WHERE matnr IN (${cells[0].result})"
-    expect(interpolateSql(sql, results)).toBe("SELECT * FROM mara WHERE matnr IN ('A','B','C')")
+    expect(interpolateSql(sql, results)).toBe(
+      "SELECT * FROM mara WHERE matnr IN ('A','B','C')"
+    )
   })
 
   test("interpolates numeric array without quotes", () => {
     const results = makeResults([0, [1, 2, 3]])
     const sql = "SELECT * FROM t001 WHERE mandt IN (${cells[0].result})"
-    expect(interpolateSql(sql, results)).toBe("SELECT * FROM t001 WHERE mandt IN (1,2,3)")
+    expect(interpolateSql(sql, results)).toBe(
+      "SELECT * FROM t001 WHERE mandt IN (1,2,3)"
+    )
   })
 
   test("escapes single quotes in strings", () => {
     const results = makeResults([0, "it's a test"])
     const sql = "SELECT * FROM mara WHERE name = ${cells[0].result}"
-    expect(interpolateSql(sql, results)).toBe("SELECT * FROM mara WHERE name = 'it''s a test'")
+    expect(interpolateSql(sql, results)).toBe(
+      "SELECT * FROM mara WHERE name = 'it''s a test'"
+    )
   })
 
   test("multiple interpolations in one query", () => {

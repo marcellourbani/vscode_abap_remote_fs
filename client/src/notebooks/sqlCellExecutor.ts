@@ -24,10 +24,9 @@ export async function executeSqlCell(
   validateSql(sql)
 
   const ADT_MAX_ROWS_LIMIT = 10_000_000
-  const limit =
-    typeof maxRows === "number" && maxRows > 0 && isFinite(maxRows)
-      ? Math.min(Math.floor(maxRows), ADT_MAX_ROWS_LIMIT)
-      : DEFAULT_MAX_ROWS
+  const limit = typeof maxRows === "number" && maxRows > 0 && isFinite(maxRows)
+    ? Math.min(Math.floor(maxRows), ADT_MAX_ROWS_LIMIT)
+    : DEFAULT_MAX_ROWS
   const result = await client.runQuery(sql, limit, true)
 
   if (!result || !result.columns) {
@@ -63,12 +62,16 @@ function validateSql(sql: string): void {
 
   const stripped = stripStringLiterals(withoutComments)
 
-  const dangerousKeywords = ["DROP", "DELETE", "INSERT", "UPDATE", "ALTER", "CREATE", "TRUNCATE"]
+  const dangerousKeywords = [
+    "DROP", "DELETE", "INSERT", "UPDATE", "ALTER", "CREATE", "TRUNCATE"
+  ]
 
   for (const kw of dangerousKeywords) {
     const pattern = new RegExp(`\\b${kw}\\b`, "i")
     if (pattern.test(stripped)) {
-      throw new Error(`SQL contains '${kw}'. Only SELECT and WITH statements are allowed.`)
+      throw new Error(
+        `SQL contains '${kw}'. Only SELECT and WITH statements are allowed.`
+      )
     }
   }
 

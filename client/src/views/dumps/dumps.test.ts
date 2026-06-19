@@ -1,25 +1,18 @@
 // Tests for views/dumps/dumps.ts
-jest.mock(
-  "vscode",
-  () => {
-    const EventEmitter = class {
-      event = jest.fn()
-      fire = jest.fn()
-    }
-    const TreeItem = class {
-      constructor(
-        public label: string,
-        public collapsibleState?: number
-      ) {}
-      command: any
-      contextValue: any
-    }
-    const TreeItemCollapsibleState = { None: 0, Collapsed: 1, Expanded: 2 }
-    const ViewColumn = { Active: 1, Beside: 2 }
-    return { EventEmitter, TreeItem, TreeItemCollapsibleState, ViewColumn }
-  },
-  { virtual: true }
-)
+jest.mock("vscode", () => {
+  const EventEmitter = class {
+    event = jest.fn()
+    fire = jest.fn()
+  }
+  const TreeItem = class {
+    constructor(public label: string, public collapsibleState?: number) {}
+    command: any
+    contextValue: any
+  }
+  const TreeItemCollapsibleState = { None: 0, Collapsed: 1, Expanded: 2 }
+  const ViewColumn = { Active: 1, Beside: 2 }
+  return { EventEmitter, TreeItem, TreeItemCollapsibleState, ViewColumn }
+}, { virtual: true })
 
 jest.mock("../../services/funMessenger", () => ({
   funWindow: {
@@ -48,9 +41,7 @@ jest.mock("../../commands", () => ({
     showDump: "abapfs.showDump",
     refreshDumps: "abapfs.refreshDumps"
   },
-  command: jest.fn(
-    (name: string) => (_target: any, _key: string, descriptor: PropertyDescriptor) => descriptor
-  )
+  command: jest.fn((name: string) => (_target: any, _key: string, descriptor: PropertyDescriptor) => descriptor)
 }))
 
 jest.mock("../../config", () => ({
@@ -119,7 +110,9 @@ describe("dumps.ts", () => {
       it("fetches dumps from client when system item provided", async () => {
         const { getOrCreateClient } = require("../../adt/conections")
         ;(getOrCreateClient as jest.Mock).mockResolvedValue({
-          feeds: jest.fn().mockResolvedValue([{ href: "/sap/bc/adt/runtime/dumps" }]),
+          feeds: jest.fn().mockResolvedValue([
+            { href: "/sap/bc/adt/runtime/dumps" }
+          ]),
           dumps: jest.fn().mockResolvedValue({
             dumps: [
               {

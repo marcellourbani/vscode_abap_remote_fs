@@ -1,21 +1,14 @@
 jest.mock("../../lib", () => ({ log: () => {} }))
 
-import {
-  determineFeedType,
-  getDefaultQuery,
-  toFeedMetadata,
-  parseFeedEntry,
-  parseFeedResponse
-} from "./feedParsers"
+import { determineFeedType, getDefaultQuery, toFeedMetadata, parseFeedEntry, parseFeedResponse } from "./feedParsers"
 import { FeedType } from "./feedTypes"
 import { Feed } from "abap-adt-api"
 
-const makeFeed = (href: string, title = "Test Feed"): Feed =>
-  ({
-    href,
-    title,
-    queryVariants: []
-  }) as any
+const makeFeed = (href: string, title = "Test Feed"): Feed => ({
+  href,
+  title,
+  queryVariants: []
+} as any)
 
 describe("determineFeedType", () => {
   test("detects DUMPS feed", () => {
@@ -31,9 +24,7 @@ describe("determineFeedType", () => {
   })
 
   test("detects SYSTEM_MESSAGES feed", () => {
-    expect(determineFeedType(makeFeed("/sap/bc/adt/runtime/systemmessages"))).toBe(
-      FeedType.SYSTEM_MESSAGES
-    )
+    expect(determineFeedType(makeFeed("/sap/bc/adt/runtime/systemmessages"))).toBe(FeedType.SYSTEM_MESSAGES)
   })
 
   test("detects URI_ERRORS feed", () => {
@@ -41,9 +32,7 @@ describe("determineFeedType", () => {
   })
 
   test("detects RAP_CONTRACT feed", () => {
-    expect(determineFeedType(makeFeed("/sap/bc/adt/bo/feeds/ccviolations"))).toBe(
-      FeedType.RAP_CONTRACT
-    )
+    expect(determineFeedType(makeFeed("/sap/bc/adt/bo/feeds/ccviolations"))).toBe(FeedType.RAP_CONTRACT)
   })
 
   test("detects EEE_ERROR feed", () => {
@@ -121,7 +110,9 @@ describe("parseFeedEntry", () => {
     const raw = {
       id: "d1",
       title: "Some title",
-      categories: [{ term: "DBSQL_SQL_ERROR", label: "ABAP runtime error" }]
+      categories: [
+        { term: "DBSQL_SQL_ERROR", label: "ABAP runtime error" }
+      ]
     }
     const entry = parseFeedEntry(raw, "DEV", "Dumps", "/dumps", FeedType.DUMPS)
     expect(entry.title).toBe("DBSQL_SQL_ERROR")
@@ -139,25 +130,13 @@ describe("parseFeedEntry", () => {
 
   test("determines severity for ATC findings by priority", () => {
     const base = { id: "a1", title: "ATC Finding" }
-    expect(
-      parseFeedEntry({ ...base, priority: 1 }, "D", "ATC", "/atc", FeedType.ATC).severity
-    ).toBe("error")
-    expect(
-      parseFeedEntry({ ...base, priority: 2 }, "D", "ATC", "/atc", FeedType.ATC).severity
-    ).toBe("warning")
-    expect(
-      parseFeedEntry({ ...base, priority: 3 }, "D", "ATC", "/atc", FeedType.ATC).severity
-    ).toBe("info")
+    expect(parseFeedEntry({ ...base, priority: 1 }, "D", "ATC", "/atc", FeedType.ATC).severity).toBe("error")
+    expect(parseFeedEntry({ ...base, priority: 2 }, "D", "ATC", "/atc", FeedType.ATC).severity).toBe("warning")
+    expect(parseFeedEntry({ ...base, priority: 3 }, "D", "ATC", "/atc", FeedType.ATC).severity).toBe("info")
   })
 
   test("gateway errors are always error severity", () => {
-    const entry = parseFeedEntry(
-      { id: "g1", title: "GW" },
-      "D",
-      "GW",
-      "/gw",
-      FeedType.GATEWAY_ERROR
-    )
+    const entry = parseFeedEntry({ id: "g1", title: "GW" }, "D", "GW", "/gw", FeedType.GATEWAY_ERROR)
     expect(entry.severity).toBe("error")
   })
 
@@ -167,79 +146,37 @@ describe("parseFeedEntry", () => {
   })
 
   test("extracts summary from string summary", () => {
-    const entry = parseFeedEntry(
-      { id: "s1", title: "T", summary: "Hello" },
-      "D",
-      "F",
-      "/f",
-      FeedType.UNKNOWN
-    )
+    const entry = parseFeedEntry({ id: "s1", title: "T", summary: "Hello" }, "D", "F", "/f", FeedType.UNKNOWN)
     expect(entry.summary).toBe("Hello")
   })
 
   test("extracts summary from object summary with #text", () => {
-    const entry = parseFeedEntry(
-      { id: "s2", title: "T", summary: { "#text": "Rich text" } },
-      "D",
-      "F",
-      "/f",
-      FeedType.UNKNOWN
-    )
+    const entry = parseFeedEntry({ id: "s2", title: "T", summary: { "#text": "Rich text" } }, "D", "F", "/f", FeedType.UNKNOWN)
     expect(entry.summary).toBe("Rich text")
   })
 
   test("strips HTML from content summary", () => {
-    const entry = parseFeedEntry(
-      { id: "s3", title: "T", content: "<b>Bold</b> text" },
-      "D",
-      "F",
-      "/f",
-      FeedType.UNKNOWN
-    )
+    const entry = parseFeedEntry({ id: "s3", title: "T", content: "<b>Bold</b> text" }, "D", "F", "/f", FeedType.UNKNOWN)
     expect(entry.summary).toBe("Bold text")
   })
 
   test("extracts category from object", () => {
-    const entry = parseFeedEntry(
-      { id: "c1", title: "T", category: { term: "CAT1" } },
-      "D",
-      "F",
-      "/f",
-      FeedType.UNKNOWN
-    )
+    const entry = parseFeedEntry({ id: "c1", title: "T", category: { term: "CAT1" } }, "D", "F", "/f", FeedType.UNKNOWN)
     expect(entry.category).toBe("CAT1")
   })
 
   test("extracts category from array", () => {
-    const entry = parseFeedEntry(
-      { id: "c2", title: "T", category: [{ term: "CAT2" }] },
-      "D",
-      "F",
-      "/f",
-      FeedType.UNKNOWN
-    )
+    const entry = parseFeedEntry({ id: "c2", title: "T", category: [{ term: "CAT2" }] }, "D", "F", "/f", FeedType.UNKNOWN)
     expect(entry.category).toBe("CAT2")
   })
 
   test("extracts category from string", () => {
-    const entry = parseFeedEntry(
-      { id: "c3", title: "T", category: "simple" },
-      "D",
-      "F",
-      "/f",
-      FeedType.UNKNOWN
-    )
+    const entry = parseFeedEntry({ id: "c3", title: "T", category: "simple" }, "D", "F", "/f", FeedType.UNKNOWN)
     expect(entry.category).toBe("simple")
   })
 
   test("parses date from string", () => {
-    const entry = parseFeedEntry(
-      { id: "d1", title: "T", updated: "2024-06-15T12:00:00Z" },
-      "D",
-      "F",
-      "/f",
-      FeedType.UNKNOWN
-    )
+    const entry = parseFeedEntry({ id: "d1", title: "T", updated: "2024-06-15T12:00:00Z" }, "D", "F", "/f", FeedType.UNKNOWN)
     expect(entry.timestamp.getFullYear()).toBe(2024)
   })
 

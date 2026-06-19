@@ -64,12 +64,7 @@ export class ReplPanel {
         if (ReplPanel.executing) {
           this.panel.webview.postMessage({
             command: "result",
-            data: {
-              success: false,
-              output: "",
-              error: "Another ABAP execution is already in progress. Wait for it to complete.",
-              runtime_ms: 0
-            }
+            data: { success: false, output: "", error: "Another ABAP execution is already in progress. Wait for it to complete.", runtime_ms: 0 }
           })
           return
         }
@@ -123,8 +118,7 @@ export class ReplPanel {
           data: {
             success: false,
             output: "",
-            error:
-              `REPL service not available on '${connectionId}'. ` +
+            error: `REPL service not available on '${connectionId}'. ` +
               `Deploy ZCL_ABAP_REPL and create SICF service '/sap/bc/z_abap_repl'. ` +
               `Run command "ABAP REPL Setup Guide" for instructions.`,
 
@@ -138,9 +132,7 @@ export class ReplPanel {
       try {
         // Both checks must agree it's NOT production. If either says production, block.
         const sapSaysNotProd = health.production === false
-        log.debug(
-          `ABAP REPL health.production=${health.production}, sapSaysNotProd=${sapSaysNotProd}`
-        )
+        log.debug(`ABAP REPL health.production=${health.production}, sapSaysNotProd=${sapSaysNotProd}`)
         const sysInfo = await getSAPSystemInfo(connectionId.toLowerCase())
         const cat = sysInfo.currentClient?.category
         const sysInfoSaysNotProd = !!cat && cat !== "Production" && !cat.startsWith("P")

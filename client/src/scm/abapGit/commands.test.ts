@@ -1,24 +1,20 @@
-jest.mock(
-  "vscode",
-  () => ({
-    commands: { executeCommand: jest.fn() },
-    Uri: {
-      parse: jest.fn((s: string) => ({
-        toString: () => s,
-        path: s.replace(/^\w+:\/\/[^/]*/, ""),
-        authority: "",
-        scheme: "adt"
-      })),
-      file: jest.fn((s: string) => ({ toString: () => s, fsPath: s }))
-    },
-    SourceControlResourceGroup: jest.fn(),
-    SourceControlResourceState: jest.fn(),
-    SourceControl: jest.fn(),
-    Memento: jest.fn(),
-    QuickPickItem: jest.fn()
-  }),
-  { virtual: true }
-)
+jest.mock("vscode", () => ({
+  commands: { executeCommand: jest.fn() },
+  Uri: {
+    parse: jest.fn((s: string) => ({
+      toString: () => s,
+      path: s.replace(/^\w+:\/\/[^/]*/, ""),
+      authority: "",
+      scheme: "adt"
+    })),
+    file: jest.fn((s: string) => ({ toString: () => s, fsPath: s }))
+  },
+  SourceControlResourceGroup: jest.fn(),
+  SourceControlResourceState: jest.fn(),
+  SourceControl: jest.fn(),
+  Memento: jest.fn(),
+  QuickPickItem: jest.fn()
+}), { virtual: true })
 
 jest.mock("../../services/funMessenger", () => ({
   funWindow: {

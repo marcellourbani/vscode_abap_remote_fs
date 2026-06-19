@@ -2,63 +2,59 @@
  * Tests for heartbeatService.ts - HeartbeatService, initializeHeartbeatService, getHeartbeatService
  */
 
-jest.mock(
-  "vscode",
-  () => {
-    const mockStatusBarItem = {
-      show: jest.fn(),
-      hide: jest.fn(),
-      dispose: jest.fn(),
-      text: "",
-      command: undefined,
-      tooltip: "",
-      backgroundColor: undefined
-    }
-    const mockConfigObj = {
-      get: jest.fn((key: string, def: any) => {
-        const vals: Record<string, any> = {
-          enabled: true,
-          model: "TestModel",
-          every: "5m",
-          ackMaxChars: 300,
-          maxHistory: 100,
-          maxConsecutiveErrors: 5,
-          notifyOnAlert: true,
-          notifyOnError: true
-        }
-        return vals[key] !== undefined ? vals[key] : def
-      }),
-      update: jest.fn().mockResolvedValue(undefined)
-    }
-
-    const disposablePush = jest.fn()
-
-    return {
-      workspace: {
-        getConfiguration: jest.fn(() => mockConfigObj),
-        onDidChangeConfiguration: jest.fn(() => ({ dispose: jest.fn() }))
-      },
-      window: {
-        createStatusBarItem: jest.fn(() => mockStatusBarItem),
-        showWarningMessage: jest.fn().mockResolvedValue(undefined),
-        showInformationMessage: jest.fn().mockResolvedValue(undefined),
-        showErrorMessage: jest.fn().mockResolvedValue(undefined)
-      },
-      StatusBarAlignment: { Right: 1 },
-      ThemeColor: jest.fn((id: string) => ({ id })),
-      CancellationTokenSource: jest.fn(() => ({
-        token: { isCancellationRequested: false },
-        cancel: jest.fn(),
-        dispose: jest.fn()
-      })),
-      ConfigurationTarget: { Workspace: 2 },
-      commands: {
-        executeCommand: jest.fn()
+jest.mock("vscode", () => {
+  const mockStatusBarItem = {
+    show: jest.fn(),
+    hide: jest.fn(),
+    dispose: jest.fn(),
+    text: "",
+    command: undefined,
+    tooltip: "",
+    backgroundColor: undefined
+  }
+  const mockConfigObj = {
+    get: jest.fn((key: string, def: any) => {
+      const vals: Record<string, any> = {
+        enabled: true,
+        model: "TestModel",
+        every: "5m",
+        ackMaxChars: 300,
+        maxHistory: 100,
+        maxConsecutiveErrors: 5,
+        notifyOnAlert: true,
+        notifyOnError: true
       }
+      return vals[key] !== undefined ? vals[key] : def
+    }),
+    update: jest.fn().mockResolvedValue(undefined)
+  }
+
+  const disposablePush = jest.fn()
+
+  return {
+    workspace: {
+      getConfiguration: jest.fn(() => mockConfigObj),
+      onDidChangeConfiguration: jest.fn(() => ({ dispose: jest.fn() }))
+    },
+    window: {
+      createStatusBarItem: jest.fn(() => mockStatusBarItem),
+      showWarningMessage: jest.fn().mockResolvedValue(undefined),
+      showInformationMessage: jest.fn().mockResolvedValue(undefined),
+      showErrorMessage: jest.fn().mockResolvedValue(undefined)
+    },
+    StatusBarAlignment: { Right: 1 },
+    ThemeColor: jest.fn((id: string) => ({ id })),
+    CancellationTokenSource: jest.fn(() => ({
+      token: { isCancellationRequested: false },
+      cancel: jest.fn(),
+      dispose: jest.fn()
+    })),
+    ConfigurationTarget: { Workspace: 2 },
+    commands: {
+      executeCommand: jest.fn()
     }
-  },
-  { virtual: true }
-)
+  }
+}, { virtual: true })
 
 jest.mock("../../lib", () => ({ log: jest.fn() }))
 
@@ -86,11 +82,7 @@ jest.mock("../funMessenger", () => ({
 import * as fs from "fs"
 import * as path from "path"
 import * as os from "os"
-import {
-  HeartbeatService,
-  initializeHeartbeatService,
-  getHeartbeatService
-} from "./heartbeatService"
+import { HeartbeatService, initializeHeartbeatService, getHeartbeatService } from "./heartbeatService"
 import { HeartbeatStateManager } from "./heartbeatStateManager"
 import { runHeartbeatLM } from "./heartbeatLmClient"
 
@@ -208,7 +200,7 @@ describe("HeartbeatService start / stop", () => {
   test("does not start when enabled=false in config", async () => {
     const vscode = require("vscode")
     vscode.workspace.getConfiguration.mockReturnValue({
-      get: jest.fn((key: string, def: any) => (key === "enabled" ? false : def))
+      get: jest.fn((key: string, def: any) => key === "enabled" ? false : def)
     })
     const svc = initializeHeartbeatService(context)
     await svc.start()
@@ -420,10 +412,7 @@ describe("HeartbeatService.getStatus", () => {
 
   test("returns stats with totalRuns after triggerNow", async () => {
     ;(runHeartbeatLM as jest.Mock).mockResolvedValue({
-      status: "ok",
-      response: "HEARTBEAT_OK",
-      toolsUsed: [],
-      durationMs: 100
+      status: "ok", response: "HEARTBEAT_OK", toolsUsed: [], durationMs: 100
     })
     const svc = initializeHeartbeatService(context)
     await svc.triggerNow()
@@ -460,10 +449,7 @@ describe("HeartbeatService.onEvent", () => {
 
   test("listener receives 'beat_started' event on triggerNow", async () => {
     ;(runHeartbeatLM as jest.Mock).mockResolvedValue({
-      status: "ok",
-      response: "HEARTBEAT_OK",
-      toolsUsed: [],
-      durationMs: 100
+      status: "ok", response: "HEARTBEAT_OK", toolsUsed: [], durationMs: 100
     })
     const svc = initializeHeartbeatService(context)
     const events: string[] = []
@@ -475,16 +461,11 @@ describe("HeartbeatService.onEvent", () => {
 
   test("listener receives 'alert' event for alert response", async () => {
     ;(runHeartbeatLM as jest.Mock).mockResolvedValue({
-      status: "alert",
-      response: "New errors found!",
-      toolsUsed: [],
-      durationMs: 100
+      status: "alert", response: "New errors found!", toolsUsed: [], durationMs: 100
     })
     const svc = initializeHeartbeatService(context)
     const alertEvents: any[] = []
-    svc.onEvent(e => {
-      if (e.type === "alert") alertEvents.push(e)
-    })
+    svc.onEvent(e => { if (e.type === "alert") alertEvents.push(e) })
     await svc.triggerNow()
     expect(alertEvents).toHaveLength(1)
     expect((alertEvents[0] as any).message).toContain("New errors found!")
@@ -504,15 +485,10 @@ describe("HeartbeatService.onEvent", () => {
 
   test("error in listener does not crash the service", async () => {
     ;(runHeartbeatLM as jest.Mock).mockResolvedValue({
-      status: "ok",
-      response: "HEARTBEAT_OK",
-      toolsUsed: [],
-      durationMs: 100
+      status: "ok", response: "HEARTBEAT_OK", toolsUsed: [], durationMs: 100
     })
     const svc = initializeHeartbeatService(context)
-    svc.onEvent(() => {
-      throw new Error("listener crash")
-    })
+    svc.onEvent(() => { throw new Error("listener crash") })
     await expect(svc.triggerNow()).resolves.not.toThrow()
   })
 })
@@ -539,11 +515,7 @@ describe("HeartbeatService consecutive error handling", () => {
       })
     })
     ;(runHeartbeatLM as jest.Mock).mockResolvedValue({
-      status: "error",
-      response: "",
-      toolsUsed: [],
-      durationMs: 50,
-      error: "fail"
+      status: "error", response: "", toolsUsed: [], durationMs: 50, error: "fail"
     })
 
     const svc = initializeHeartbeatService(context)

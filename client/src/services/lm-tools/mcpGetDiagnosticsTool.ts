@@ -1,3 +1,4 @@
+
 /**
  * MCP Get Diagnostics Tool
  *

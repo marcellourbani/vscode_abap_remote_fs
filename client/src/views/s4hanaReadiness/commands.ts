@@ -46,7 +46,7 @@ async function loadDashboard(connectionId?: string) {
 
   await window.withProgress(
     { location: ProgressLocation.Notification, title: "S/4HANA Readiness", cancellable: false },
-    async progress => {
+    async (progress) => {
       try {
         log.debug(`${LOG_PREFIX} loadDashboard: getting client for '${connectionId}'`)
         progress.report({ message: `Connecting to ${connectionId}...` })
@@ -54,13 +54,11 @@ async function loadDashboard(connectionId?: string) {
         log.debug(`${LOG_PREFIX} loadDashboard: calling loadReadinessData`)
         const onProgress = (msg: string) => progress.report({ message: msg })
         const data = await loadReadinessData(client, onProgress)
-        log.debug(
-          `${LOG_PREFIX} loadDashboard: totalRefs=${data.totalRefs}, groups=${data.groups.length}, ungrouped=${data.ungrouped.length}`
-        )
+        log.debug(`${LOG_PREFIX} loadDashboard: totalRefs=${data.totalRefs}, groups=${data.groups.length}, ungrouped=${data.ungrouped.length}`)
         if (data.totalRefs === 0) {
           window.showInformationMessage(
             `No S/4HANA compatibility findings for ${connectionId}. ` +
-              `Run transaction SYCM on the system to analyze custom code.`
+            `Run transaction SYCM on the system to analyze custom code.`
           )
           return
         }
@@ -77,9 +75,7 @@ async function loadDashboard(connectionId?: string) {
 
 async function openObject(node?: S4HRefNode) {
   if (!node) return
-  log.debug(
-    `${LOG_PREFIX} openObject: ${node.ref.objName} (${node.ref.objType}) on ${node.connectionId}`
-  )
+  log.debug(`${LOG_PREFIX} openObject: ${node.ref.objName} (${node.ref.objType}) on ${node.connectionId}`)
   try {
     await window.withProgress(
       { location: ProgressLocation.Notification, title: `Opening ${node.ref.objName}...` },
@@ -107,13 +103,11 @@ async function openObject(node?: S4HRefNode) {
 
 async function runAtcOnObject(node?: S4HRefNode) {
   if (!node) return
-  log.debug(
-    `${LOG_PREFIX} runAtcOnObject: ${node.ref.objName} (${node.ref.objType}) on ${node.connectionId}`
-  )
+  log.debug(`${LOG_PREFIX} runAtcOnObject: ${node.ref.objName} (${node.ref.objType}) on ${node.connectionId}`)
   try {
     await window.withProgress(
       { location: ProgressLocation.Notification, title: `Running ATC on ${node.ref.objName}...` },
-      async progress => {
+      async (progress) => {
         const client = getClient(node.connectionId)
         const results = await client.searchObject(node.ref.objName, node.ref.objType, 1)
         log.debug(`${LOG_PREFIX} runAtcOnObject: search returned ${results.length} results`)
@@ -146,9 +140,7 @@ function askCopilotToFix(node?: S4HRefNode) {
     noteInfo,
     `- Package: ${ref.devclass}`,
     `\nPlease open the object, find the usage of ${ref.refObjName}, and suggest the S/4HANA-compatible replacement.`
-  ]
-    .filter(Boolean)
-    .join("\n")
+  ].filter(Boolean).join("\n")
 
   commands.executeCommand("workbench.action.chat.open", { query: prompt, isPartialQuery: true })
 }
@@ -195,42 +187,26 @@ function clearFilter(node?: S4HRoot) {
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
 class S4HCommands {
   @command(AbapFsCommands.s4hLoad)
-  private async s4hLoad() {
-    return loadDashboard()
-  }
+  private async s4hLoad() { return loadDashboard() }
 
   @command(AbapFsCommands.s4hRefresh)
-  private async s4hRefresh(node?: S4HRoot) {
-    return refreshDashboard(node)
-  }
+  private async s4hRefresh(node?: S4HRoot) { return refreshDashboard(node) }
 
   @command(AbapFsCommands.s4hOpenObject)
-  private async s4hOpenObject(node?: S4HRefNode) {
-    return openObject(node)
-  }
+  private async s4hOpenObject(node?: S4HRefNode) { return openObject(node) }
 
   @command(AbapFsCommands.s4hRunAtc)
-  private async s4hRunAtc(node?: S4HRefNode) {
-    return runAtcOnObject(node)
-  }
+  private async s4hRunAtc(node?: S4HRefNode) { return runAtcOnObject(node) }
 
   @command(AbapFsCommands.s4hAskCopilot)
-  private async s4hAskCopilot(node?: S4HRefNode) {
-    return askCopilotToFix(node)
-  }
+  private async s4hAskCopilot(node?: S4HRefNode) { return askCopilotToFix(node) }
 
   @command(AbapFsCommands.s4hOpenNote)
-  private async s4hOpenNote(node?: S4HItemNode | S4HRefNode) {
-    return openSapNote(node)
-  }
+  private async s4hOpenNote(node?: S4HItemNode | S4HRefNode) { return openSapNote(node) }
 
   @command(AbapFsCommands.s4hFilter)
-  private async s4hFilter(node?: S4HRoot) {
-    return filterTree(node)
-  }
+  private async s4hFilter(node?: S4HRoot) { return filterTree(node) }
 
   @command(AbapFsCommands.s4hClearFilter)
-  private async s4hClearFilter(node?: S4HRoot) {
-    return clearFilter(node)
-  }
+  private async s4hClearFilter(node?: S4HRoot) { return clearFilter(node) }
 }

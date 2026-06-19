@@ -1,31 +1,27 @@
-jest.mock(
-  "vscode",
-  () => {
-    const postMessageMock = jest.fn()
-    const webviewMock = {
-      html: "",
-      postMessage: postMessageMock,
-      onDidReceiveMessage: jest.fn(),
-      cspSource: "none"
-    }
+jest.mock("vscode", () => {
+  const postMessageMock = jest.fn()
+  const webviewMock = {
+    html: "",
+    postMessage: postMessageMock,
+    onDidReceiveMessage: jest.fn(),
+    cspSource: "none"
+  }
 
-    return {
-      ViewColumn: { One: 1 },
-      Uri: {
-        file: (p: string) => ({ fsPath: p, toString: () => p }),
-        joinPath: jest.fn((...args: any[]) => ({ fsPath: args.join("/") }))
-      },
-      ConfigurationTarget: { Global: 1, Workspace: 2, WorkspaceFolder: 3 },
-      workspace: {
-        getConfiguration: jest.fn(),
-        fs: {
-          writeFile: jest.fn().mockResolvedValue(undefined)
-        }
+  return {
+    ViewColumn: { One: 1 },
+    Uri: {
+      file: (p: string) => ({ fsPath: p, toString: () => p }),
+      joinPath: jest.fn((...args: any[]) => ({ fsPath: args.join("/") }))
+    },
+    ConfigurationTarget: { Global: 1, Workspace: 2, WorkspaceFolder: 3 },
+    workspace: {
+      getConfiguration: jest.fn(),
+      fs: {
+        writeFile: jest.fn().mockResolvedValue(undefined)
       }
     }
-  },
-  { virtual: true }
-)
+  }
+}, { virtual: true })
 
 jest.mock("../services/funMessenger", () => ({
   funWindow: {
@@ -192,7 +188,9 @@ describe("message handling: ready / loadConnections", () => {
 
     await receiveMessageHandler!({ type: "ready" })
 
-    expect(postMessageMock).toHaveBeenCalledWith(expect.objectContaining({ type: "connections" }))
+    expect(postMessageMock).toHaveBeenCalledWith(
+      expect.objectContaining({ type: "connections" })
+    )
   })
 
   test("sends connections to webview on 'loadConnections' message", async () => {
@@ -202,7 +200,9 @@ describe("message handling: ready / loadConnections", () => {
 
     await receiveMessageHandler!({ type: "loadConnections" })
 
-    expect(postMessageMock).toHaveBeenCalledWith(expect.objectContaining({ type: "connections" }))
+    expect(postMessageMock).toHaveBeenCalledWith(
+      expect.objectContaining({ type: "connections" })
+    )
   })
 
   test("connections message includes both user and workspace remotes", async () => {
@@ -238,8 +238,7 @@ describe("message handling: saveConnection (new)", () => {
 
     // First config call: get current remotes; second: verify save
     const cfg = {
-      inspect: jest
-        .fn()
+      inspect: jest.fn()
         .mockReturnValueOnce({ globalValue: {}, workspaceValue: {} })
         .mockReturnValueOnce({ globalValue: { newConn: connection }, workspaceValue: {} }),
       update: jest.fn().mockResolvedValue(undefined)
@@ -261,7 +260,9 @@ describe("message handling: saveConnection (new)", () => {
       expect.objectContaining({ newConn: expect.any(Object) }),
       vscode.ConfigurationTarget.Global
     )
-    expect(postMessageMock).toHaveBeenCalledWith(expect.objectContaining({ type: "success" }))
+    expect(postMessageMock).toHaveBeenCalledWith(
+      expect.objectContaining({ type: "success" })
+    )
     expect(logTelemetry).toHaveBeenCalledWith("command_connection_manager_save_called")
   })
 
@@ -296,8 +297,7 @@ describe("message handling: saveConnection (new)", () => {
     const connection = { url: "https://h", username: "u" }
 
     const cfg = {
-      inspect: jest
-        .fn()
+      inspect: jest.fn()
         .mockReturnValueOnce({ globalValue: {}, workspaceValue: {} })
         .mockReturnValueOnce({ globalValue: {}, workspaceValue: {} }), // missing after save
       update: jest.fn().mockResolvedValue(undefined)
@@ -318,7 +318,9 @@ describe("message handling: saveConnection (new)", () => {
     // so we need to flush microtasks to let saveConnection complete
     await new Promise(r => setImmediate(r))
 
-    expect(postMessageMock).toHaveBeenCalledWith(expect.objectContaining({ type: "error" }))
+    expect(postMessageMock).toHaveBeenCalledWith(
+      expect.objectContaining({ type: "error" })
+    )
   })
 
   test("saves to workspace target when target is 'workspace'", async () => {
@@ -326,8 +328,7 @@ describe("message handling: saveConnection (new)", () => {
 
     const connection = { url: "https://h", username: "u" }
     const cfg = {
-      inspect: jest
-        .fn()
+      inspect: jest.fn()
         .mockReturnValueOnce({ globalValue: {}, workspaceValue: {} })
         .mockReturnValueOnce({ globalValue: {}, workspaceValue: { wsConn: connection } }),
       update: jest.fn().mockResolvedValue(undefined)
@@ -359,8 +360,7 @@ describe("message handling: deleteConnection", () => {
     const existing = { dev: { url: "https://h", username: "u" } }
 
     const cfg = {
-      inspect: jest
-        .fn()
+      inspect: jest.fn()
         .mockReturnValueOnce({ globalValue: existing, workspaceValue: {} })
         .mockReturnValueOnce({ globalValue: {}, workspaceValue: {} }), // verified deleted
       update: jest.fn().mockResolvedValue(undefined)
@@ -379,7 +379,9 @@ describe("message handling: deleteConnection", () => {
     await new Promise(r => setImmediate(r))
 
     expect(cfg.update).toHaveBeenCalled()
-    expect(postMessageMock).toHaveBeenCalledWith(expect.objectContaining({ type: "success" }))
+    expect(postMessageMock).toHaveBeenCalledWith(
+      expect.objectContaining({ type: "success" })
+    )
     expect(logTelemetry).toHaveBeenCalledWith("command_connection_manager_delete_called")
   })
 
@@ -387,8 +389,7 @@ describe("message handling: deleteConnection", () => {
     const existing = { dev: { url: "https://h", username: "u" } }
 
     const cfg = {
-      inspect: jest
-        .fn()
+      inspect: jest.fn()
         .mockReturnValueOnce({ globalValue: existing, workspaceValue: {} })
         .mockReturnValueOnce({ globalValue: existing, workspaceValue: {} }), // still there!
       update: jest.fn().mockResolvedValue(undefined)
@@ -405,7 +406,9 @@ describe("message handling: deleteConnection", () => {
 
     await new Promise(r => setImmediate(r))
 
-    expect(postMessageMock).toHaveBeenCalledWith(expect.objectContaining({ type: "error" }))
+    expect(postMessageMock).toHaveBeenCalledWith(
+      expect.objectContaining({ type: "error" })
+    )
   })
 
   test("clears password from vault when deleting", async () => {
@@ -413,8 +416,7 @@ describe("message handling: deleteConnection", () => {
     const existing = { dev: { url: "https://h", username: "myuser" } }
 
     const cfg = {
-      inspect: jest
-        .fn()
+      inspect: jest.fn()
         .mockReturnValueOnce({ globalValue: existing, workspaceValue: {} })
         .mockReturnValueOnce({ globalValue: {}, workspaceValue: {} }),
       update: jest.fn().mockResolvedValue(undefined)
@@ -460,7 +462,9 @@ describe("message handling: importFromJson", () => {
       expect.objectContaining({ dev1: expect.any(Object), dev2: expect.any(Object) }),
       vscode.ConfigurationTarget.Global
     )
-    expect(postMessageMock).toHaveBeenCalledWith(expect.objectContaining({ type: "success" }))
+    expect(postMessageMock).toHaveBeenCalledWith(
+      expect.objectContaining({ type: "success" })
+    )
   })
 
   test("sends error message when JSON is invalid", async () => {
@@ -479,7 +483,9 @@ describe("message handling: importFromJson", () => {
     })
 
     expect(cfg.update).not.toHaveBeenCalled()
-    expect(postMessageMock).toHaveBeenCalledWith(expect.objectContaining({ type: "error" }))
+    expect(postMessageMock).toHaveBeenCalledWith(
+      expect.objectContaining({ type: "error" })
+    )
   })
 })
 
@@ -492,8 +498,7 @@ describe("message handling: confirmDeleteConnection", () => {
 
     const existing = { dev: { url: "https://h", username: "u" } }
     const cfg = {
-      inspect: jest
-        .fn()
+      inspect: jest.fn()
         .mockReturnValueOnce({ globalValue: existing, workspaceValue: {} })
         .mockReturnValueOnce({ globalValue: {}, workspaceValue: {} }),
       update: jest.fn().mockResolvedValue(undefined)
@@ -642,10 +647,7 @@ describe("message handling: confirmBulkDelete", () => {
     const { funWindow: w } = require("../services/funMessenger")
     ;(w.showWarningMessage as jest.Mock).mockResolvedValue("Delete All")
 
-    const existing = {
-      a: { url: "https://h1", username: "u" },
-      b: { url: "https://h2", username: "u" }
-    }
+    const existing = { a: { url: "https://h1", username: "u" }, b: { url: "https://h2", username: "u" } }
     const cfg = {
       inspect: jest.fn().mockReturnValue({ globalValue: existing, workspaceValue: {} }),
       update: jest.fn().mockResolvedValue(undefined)
@@ -706,7 +708,9 @@ describe("message handling: createCloudConnection (service key)", () => {
       target: "user"
     })
 
-    expect(postMessageMock).toHaveBeenCalledWith(expect.objectContaining({ type: "error" }))
+    expect(postMessageMock).toHaveBeenCalledWith(
+      expect.objectContaining({ type: "error" })
+    )
   })
 
   test("sends error for malformed JSON service key", async () => {
@@ -722,6 +726,8 @@ describe("message handling: createCloudConnection (service key)", () => {
       target: "user"
     })
 
-    expect(postMessageMock).toHaveBeenCalledWith(expect.objectContaining({ type: "error" }))
+    expect(postMessageMock).toHaveBeenCalledWith(
+      expect.objectContaining({ type: "error" })
+    )
   })
 })

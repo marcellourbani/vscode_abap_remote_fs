@@ -1,28 +1,24 @@
-jest.mock(
-  "vscode",
-  () => {
-    const TabInputTextDiff = jest.fn()
-    return {
-      commands: { executeCommand: jest.fn() },
-      Uri: {
-        parse: jest.fn((s: string) => ({
-          toString: () => s,
-          path: s.replace(/^\w+:\/\/[^/]*/, ""),
-          authority: s.match(/^\w+:\/\/([^/]*)/)?.[1] || "",
-          scheme: s.match(/^(\w+):/)?.[1] || "",
-          with: jest.fn(function (this: any, overrides: any) {
-            return { ...this, ...overrides, toString: () => s }
-          })
-        }))
-      },
-      ProgressLocation: { Notification: 15 },
-      workspace: {},
-      QuickPickItem: {},
-      TabInputTextDiff
-    }
-  },
-  { virtual: true }
-)
+jest.mock("vscode", () => {
+  const TabInputTextDiff = jest.fn()
+  return {
+    commands: { executeCommand: jest.fn() },
+    Uri: {
+      parse: jest.fn((s: string) => ({
+        toString: () => s,
+        path: s.replace(/^\w+:\/\/[^/]*/, ""),
+        authority: s.match(/^\w+:\/\/([^/]*)/)?.[1] || "",
+        scheme: s.match(/^(\w+):/)?.[1] || "",
+        with: jest.fn(function (this: any, overrides: any) {
+          return { ...this, ...overrides, toString: () => s }
+        })
+      }))
+    },
+    ProgressLocation: { Notification: 15 },
+    workspace: {},
+    QuickPickItem: {},
+    TabInputTextDiff
+  }
+}, { virtual: true })
 
 jest.mock("../../services/funMessenger", () => ({
   funWindow: {
@@ -136,20 +132,8 @@ beforeEach(() => {
 describe("displayRevDiff", () => {
   it("calls vscode.diff with correct title and revision URIs", async () => {
     const uri = Uri.parse("adt://dev100/some/path/object.abap")
-    const leftRev = {
-      uri: "rev1",
-      version: "v1",
-      date: "2024-01-01",
-      author: "user",
-      versionTitle: ""
-    }
-    const rightRev = {
-      uri: "rev2",
-      version: "v2",
-      date: "2024-01-02",
-      author: "user",
-      versionTitle: ""
-    }
+    const leftRev = { uri: "rev1", version: "v1", date: "2024-01-01", author: "user", versionTitle: "" }
+    const rightRev = { uri: "rev2", version: "v2", date: "2024-01-02", author: "user", versionTitle: "" }
 
     await displayRevDiff(rightRev, leftRev, uri)
 
@@ -166,11 +150,7 @@ describe("displayRevDiff", () => {
   it("uses 'initial' label when leftRev is undefined", async () => {
     const uri = Uri.parse("adt://dev100/some/path/object.abap")
 
-    await displayRevDiff(
-      { uri: "r", version: "v", date: "", author: "", versionTitle: "" },
-      undefined,
-      uri
-    )
+    await displayRevDiff({ uri: "r", version: "v", date: "", author: "", versionTitle: "" }, undefined, uri)
 
     expect(commands.executeCommand).toHaveBeenCalledWith(
       "vscode.diff",
@@ -183,11 +163,7 @@ describe("displayRevDiff", () => {
   it("uses 'current' label when rightRev is undefined", async () => {
     const uri = Uri.parse("adt://dev100/some/path/object.abap")
 
-    await displayRevDiff(
-      undefined,
-      { uri: "r", version: "v", date: "", author: "", versionTitle: "" },
-      uri
-    )
+    await displayRevDiff(undefined, { uri: "r", version: "v", date: "", author: "", versionTitle: "" }, uri)
 
     expect(commands.executeCommand).toHaveBeenCalledWith(
       "vscode.diff",
@@ -233,13 +209,7 @@ describe("versionRevisions", () => {
 
   it("returns revision details when found", async () => {
     const innerUri = Uri.parse("adt://dev100/path")
-    const revision = {
-      uri: "found-uri",
-      version: "2",
-      date: "2024-01-01",
-      author: "user",
-      versionTitle: ""
-    }
+    const revision = { uri: "found-uri", version: "2", date: "2024-01-01", author: "user", versionTitle: "" }
     ;(decodeRevisioUrl as jest.Mock).mockReturnValue({
       uri: innerUri,
       revision,

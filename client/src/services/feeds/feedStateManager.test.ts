@@ -1,10 +1,6 @@
-jest.mock(
-  "vscode",
-  () => ({
-    Uri: { file: (p: string) => ({ fsPath: p }) }
-  }),
-  { virtual: true }
-)
+jest.mock("vscode", () => ({
+  Uri: { file: (p: string) => ({ fsPath: p }) }
+}), { virtual: true })
 jest.mock("../../lib", () => ({ log: () => {} }))
 jest.mock("fs")
 jest.mock("path", () => ({
@@ -429,7 +425,10 @@ describe("removeEntry", () => {
   test("removes specific entry from feed", async () => {
     const ctx = makeContext()
     const manager = new FeedStateManager(ctx as any)
-    await manager.addFeedEntries("s", "f", [makeEntry({ id: "e1" }), makeEntry({ id: "e2" })])
+    await manager.addFeedEntries("s", "f", [
+      makeEntry({ id: "e1" }),
+      makeEntry({ id: "e2" })
+    ])
     await manager.removeEntry("s", "f", "e1")
     const entries = manager.getFeedEntries("s", "f")
     expect(entries).toHaveLength(1)

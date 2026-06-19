@@ -1,10 +1,6 @@
-jest.mock(
-  "./interpolation",
-  () => ({
-    interpolateSql: jest.fn((sql: string) => sql)
-  }),
-  { virtual: false }
-)
+jest.mock("./interpolation", () => ({
+  interpolateSql: jest.fn((sql: string) => sql),
+}), { virtual: false })
 
 import { executeSqlCell } from "./sqlCellExecutor"
 import { interpolateSql } from "./interpolation"
@@ -15,12 +11,10 @@ const mockInterpolateSql = interpolateSql as jest.Mock
 
 function makeClient(runQueryResult?: any): any {
   return {
-    runQuery: jest.fn().mockResolvedValue(
-      runQueryResult ?? {
-        columns: [{ name: "MATNR", type: "C" }],
-        values: [{ MATNR: "MAT001" }]
-      }
-    )
+    runQuery: jest.fn().mockResolvedValue(runQueryResult ?? {
+      columns: [{ name: "MATNR", type: "C" }],
+      values: [{ MATNR: "MAT001" }],
+    }),
   }
 }
 
@@ -32,14 +26,8 @@ describe("executeSqlCell — happy paths", () => {
 
   test("executes a simple SELECT and returns rows", async () => {
     const client = makeClient({
-      columns: [
-        { name: "MATNR", type: "C" },
-        { name: "MBRSH", type: "C" }
-      ],
-      values: [
-        { MATNR: "M1", MBRSH: "A" },
-        { MATNR: "M2", MBRSH: "B" }
-      ]
+      columns: [{ name: "MATNR", type: "C" }, { name: "MBRSH", type: "C" }],
+      values: [{ MATNR: "M1", MBRSH: "A" }, { MATNR: "M2", MBRSH: "B" }],
     })
     const result = await executeSqlCell("SELECT matnr, mbrsh FROM mara", client, 0, new Map())
     expect(result.result).toHaveLength(2)
@@ -51,37 +39,61 @@ describe("executeSqlCell — happy paths", () => {
   test("uses DEFAULT_MAX_ROWS when maxRows is not provided", async () => {
     const client = makeClient()
     await executeSqlCell("SELECT * FROM mara", client, 0, new Map())
-    expect(client.runQuery).toHaveBeenCalledWith(expect.any(String), DEFAULT_MAX_ROWS, true)
+    expect(client.runQuery).toHaveBeenCalledWith(
+      expect.any(String),
+      DEFAULT_MAX_ROWS,
+      true
+    )
   })
 
   test("uses provided maxRows when valid", async () => {
     const client = makeClient()
     await executeSqlCell("SELECT * FROM mara", client, 0, new Map(), 500)
-    expect(client.runQuery).toHaveBeenCalledWith(expect.any(String), 500, true)
+    expect(client.runQuery).toHaveBeenCalledWith(
+      expect.any(String),
+      500,
+      true
+    )
   })
 
   test("caps maxRows to ADT_MAX_ROWS_LIMIT (10_000_000)", async () => {
     const client = makeClient()
     await executeSqlCell("SELECT * FROM mara", client, 0, new Map(), 999_999_999)
-    expect(client.runQuery).toHaveBeenCalledWith(expect.any(String), 10_000_000, true)
+    expect(client.runQuery).toHaveBeenCalledWith(
+      expect.any(String),
+      10_000_000,
+      true
+    )
   })
 
   test("falls back to DEFAULT_MAX_ROWS for maxRows=0", async () => {
     const client = makeClient()
     await executeSqlCell("SELECT * FROM mara", client, 0, new Map(), 0)
-    expect(client.runQuery).toHaveBeenCalledWith(expect.any(String), DEFAULT_MAX_ROWS, true)
+    expect(client.runQuery).toHaveBeenCalledWith(
+      expect.any(String),
+      DEFAULT_MAX_ROWS,
+      true
+    )
   })
 
   test("falls back to DEFAULT_MAX_ROWS for negative maxRows", async () => {
     const client = makeClient()
     await executeSqlCell("SELECT * FROM mara", client, 0, new Map(), -1)
-    expect(client.runQuery).toHaveBeenCalledWith(expect.any(String), DEFAULT_MAX_ROWS, true)
+    expect(client.runQuery).toHaveBeenCalledWith(
+      expect.any(String),
+      DEFAULT_MAX_ROWS,
+      true
+    )
   })
 
   test("falls back to DEFAULT_MAX_ROWS for Infinity", async () => {
     const client = makeClient()
     await executeSqlCell("SELECT * FROM mara", client, 0, new Map(), Infinity)
-    expect(client.runQuery).toHaveBeenCalledWith(expect.any(String), DEFAULT_MAX_ROWS, true)
+    expect(client.runQuery).toHaveBeenCalledWith(
+      expect.any(String),
+      DEFAULT_MAX_ROWS,
+      true
+    )
   })
 
   test("returns empty result when client returns null", async () => {
@@ -102,7 +114,7 @@ describe("executeSqlCell — happy paths", () => {
   test("handles string column names (legacy format)", async () => {
     const client = makeClient({
       columns: ["MATNR", "MBRSH"],
-      values: [{ MATNR: "M1", MBRSH: "A" }]
+      values: [{ MATNR: "M1", MBRSH: "A" }],
     })
     const result = await executeSqlCell("SELECT matnr FROM mara", client, 0, new Map())
     expect(result.columns![0].name).toBe("MATNR")
@@ -112,7 +124,7 @@ describe("executeSqlCell — happy paths", () => {
   test("handles column objects with COLUMN_NAME property", async () => {
     const client = makeClient({
       columns: [{ COLUMN_NAME: "MATNR" }],
-      values: []
+      values: [],
     })
     const result = await executeSqlCell("SELECT matnr FROM mara", client, 0, new Map())
     expect(result.columns![0].name).toBe("MATNR")
@@ -131,7 +143,11 @@ describe("executeSqlCell — happy paths", () => {
   test("floors decimal maxRows", async () => {
     const client = makeClient()
     await executeSqlCell("SELECT * FROM mara", client, 0, new Map(), 3.9)
-    expect(client.runQuery).toHaveBeenCalledWith(expect.any(String), 3, true)
+    expect(client.runQuery).toHaveBeenCalledWith(
+      expect.any(String),
+      3,
+      true
+    )
   })
 
   test("executes WITH statement", async () => {
@@ -173,58 +189,50 @@ describe("executeSqlCell — validation errors", () => {
 
   test("throws for INSERT statement", async () => {
     const client = makeClient()
-    await expect(
-      executeSqlCell("INSERT INTO mara VALUES ('X')", client, 0, new Map())
-    ).rejects.toThrow(/SELECT and WITH/)
+    await expect(executeSqlCell("INSERT INTO mara VALUES ('X')", client, 0, new Map()))
+      .rejects.toThrow(/SELECT and WITH/)
   })
 
   test("throws for UPDATE statement", async () => {
     const client = makeClient()
-    await expect(
-      executeSqlCell("UPDATE mara SET mbrsh = 'A'", client, 0, new Map())
-    ).rejects.toThrow(/SELECT and WITH/)
+    await expect(executeSqlCell("UPDATE mara SET mbrsh = 'A'", client, 0, new Map()))
+      .rejects.toThrow(/SELECT and WITH/)
   })
 
   test("throws for DELETE statement", async () => {
     const client = makeClient()
-    await expect(
-      executeSqlCell("DELETE FROM mara WHERE matnr = 'X'", client, 0, new Map())
-    ).rejects.toThrow(/SELECT and WITH/)
+    await expect(executeSqlCell("DELETE FROM mara WHERE matnr = 'X'", client, 0, new Map()))
+      .rejects.toThrow(/SELECT and WITH/)
   })
 
   test("throws for DROP statement", async () => {
     const client = makeClient()
-    await expect(executeSqlCell("DROP TABLE mara", client, 0, new Map())).rejects.toThrow(
-      /SELECT and WITH/
-    )
+    await expect(executeSqlCell("DROP TABLE mara", client, 0, new Map()))
+      .rejects.toThrow(/SELECT and WITH/)
   })
 
   test("throws for CREATE statement", async () => {
     const client = makeClient()
-    await expect(
-      executeSqlCell("CREATE TABLE test (id int)", client, 0, new Map())
-    ).rejects.toThrow(/SELECT and WITH/)
+    await expect(executeSqlCell("CREATE TABLE test (id int)", client, 0, new Map()))
+      .rejects.toThrow(/SELECT and WITH/)
   })
 
   test("throws for ALTER statement", async () => {
     const client = makeClient()
-    await expect(
-      executeSqlCell("ALTER TABLE mara ADD col CHAR(10)", client, 0, new Map())
-    ).rejects.toThrow(/SELECT and WITH/)
+    await expect(executeSqlCell("ALTER TABLE mara ADD col CHAR(10)", client, 0, new Map()))
+      .rejects.toThrow(/SELECT and WITH/)
   })
 
   test("throws for TRUNCATE statement", async () => {
     const client = makeClient()
-    await expect(executeSqlCell("TRUNCATE TABLE mara", client, 0, new Map())).rejects.toThrow(
-      /SELECT and WITH/
-    )
+    await expect(executeSqlCell("TRUNCATE TABLE mara", client, 0, new Map()))
+      .rejects.toThrow(/SELECT and WITH/)
   })
 
   test("throws when SQL contains a semicolon", async () => {
     const client = makeClient()
-    await expect(executeSqlCell("SELECT * FROM mara;", client, 0, new Map())).rejects.toThrow(
-      /[Ss]emicolon/
-    )
+    await expect(executeSqlCell("SELECT * FROM mara;", client, 0, new Map()))
+      .rejects.toThrow(/[Ss]emicolon/)
   })
 
   test("allows DELETE keyword inside string literals", async () => {
@@ -252,6 +260,8 @@ describe("executeSqlCell — validation errors", () => {
 
   test("case-insensitive first word check (lowercase select)", async () => {
     const client = makeClient()
-    await expect(executeSqlCell("select * from mara", client, 0, new Map())).resolves.toBeDefined()
+    await expect(
+      executeSqlCell("select * from mara", client, 0, new Map())
+    ).resolves.toBeDefined()
   })
 })

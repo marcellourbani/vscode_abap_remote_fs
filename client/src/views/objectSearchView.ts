@@ -549,8 +549,9 @@ async function searchObjects(
   typeFilter: string[]
 ): Promise<MySearchResult[]> {
   const raw = await getClient(connectionId).searchObject(query.toUpperCase() + "*", "")
-  const filtered =
-    typeFilter.length > 0 ? raw.filter(result => typeFilter.includes(result["adtcore:type"])) : raw
+  const filtered = typeFilter.length > 0
+    ? raw.filter(result => typeFilter.includes(result["adtcore:type"]))
+    : raw
 
   return MySearchResult.createResults(filtered, getClient(connectionId))
 }

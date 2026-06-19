@@ -4,156 +4,97 @@
  * CollectionItem, TransportItem, and TransportsProvider structure.
  */
 
-jest.mock(
-  "vscode",
-  () => {
-    const mockDisposable = { dispose: jest.fn() }
-    return {
-      TreeItem: class TreeItem {
-        constructor(
-          public label: string,
-          public collapsibleState?: number
-        ) {}
-      },
-      TreeItemCollapsibleState: { None: 0, Collapsed: 1, Expanded: 2 },
-      EventEmitter: jest.fn().mockImplementation(() => ({
-        event: jest.fn(),
-        fire: jest.fn()
-      })),
-      workspace: {
-        workspaceFolders: [],
-        onDidChangeWorkspaceFolders: jest.fn(() => mockDisposable)
-      },
-      Uri: {
-        parse: jest.fn((s: string) => ({
-          toString: () => s,
-          authority: s.split("//")[1]?.split("/")[0] || "",
-          scheme: s.split(":")[0]
-        }))
-      },
-      ProgressLocation: { Notification: 15 },
-      commands: { executeCommand: jest.fn() },
-      env: { openExternal: jest.fn() }
-    }
+jest.mock("vscode", () => {
+  const mockDisposable = { dispose: jest.fn() }
+  return {
+    TreeItem: class TreeItem {
+      constructor(public label: string, public collapsibleState?: number) {}
+    },
+    TreeItemCollapsibleState: { None: 0, Collapsed: 1, Expanded: 2 },
+    EventEmitter: jest.fn().mockImplementation(() => ({
+      event: jest.fn(),
+      fire: jest.fn(),
+    })),
+    workspace: {
+      workspaceFolders: [],
+      onDidChangeWorkspaceFolders: jest.fn(() => mockDisposable),
+    },
+    Uri: {
+      parse: jest.fn((s: string) => ({ toString: () => s, authority: s.split("//")[1]?.split("/")[0] || "", scheme: s.split(":")[0] })),
+    },
+    ProgressLocation: { Notification: 15 },
+    commands: { executeCommand: jest.fn() },
+    env: { openExternal: jest.fn() },
+  }
+}, { virtual: true })
+
+jest.mock("../adt/operations/AdtObjectCreator", () => ({
+  PACKAGE: "DEVC/K",
+}), { virtual: true })
+
+jest.mock("../commands", () => ({
+  command: () => (target: any, key: string, descriptor: any) => descriptor,
+  AbapFsCommands: {
+    releaseTransport: "abapfs.releaseTransport",
+    openTransportObject: "abapfs.openTransportObject",
+    transportObjectDiff: "abapfs.transportObjectDiff",
+    refreshtransports: "abapfs.refreshtransports",
+    transportOpenGui: "abapfs.transportOpenGui",
   },
-  { virtual: true }
-)
+}), { virtual: true })
 
-jest.mock(
-  "../adt/operations/AdtObjectCreator",
-  () => ({
-    PACKAGE: "DEVC/K"
-  }),
-  { virtual: true }
-)
+jest.mock("../services/funMessenger", () => ({
+  funWindow: {
+    withProgress: jest.fn(),
+    showErrorMessage: jest.fn(),
+    showInformationMessage: jest.fn(),
+  },
+}), { virtual: true })
 
-jest.mock(
-  "../commands",
-  () => ({
-    command: () => (target: any, key: string, descriptor: any) => descriptor,
-    AbapFsCommands: {
-      releaseTransport: "abapfs.releaseTransport",
-      openTransportObject: "abapfs.openTransportObject",
-      transportObjectDiff: "abapfs.transportObjectDiff",
-      refreshtransports: "abapfs.refreshtransports",
-      transportOpenGui: "abapfs.transportOpenGui"
-    }
-  }),
-  { virtual: true }
-)
+jest.mock("../lib", () => ({
+  caughtToString: jest.fn((e: any) => String(e)),
+  withp: jest.fn((_: string, fn: () => Promise<any>) => fn()),
+}), { virtual: true })
 
-jest.mock(
-  "../services/funMessenger",
-  () => ({
-    funWindow: {
-      withProgress: jest.fn(),
-      showErrorMessage: jest.fn(),
-      showInformationMessage: jest.fn()
-    }
-  }),
-  { virtual: true }
-)
+jest.mock("../adt/conections", () => ({
+  getClient: jest.fn(),
+  ADTSCHEME: "adt",
+  getOrCreateClient: jest.fn(),
+  getRoot: jest.fn(),
+}), { virtual: true })
 
-jest.mock(
-  "../lib",
-  () => ({
-    caughtToString: jest.fn((e: any) => String(e)),
-    withp: jest.fn((_: string, fn: () => Promise<any>) => fn())
-  }),
-  { virtual: true }
-)
+jest.mock("abapfs", () => ({
+  isFolder: jest.fn(),
+  isAbapStat: jest.fn(),
+  isAbapFolder: jest.fn(),
+  PathItem: {},
+}), { virtual: true })
 
-jest.mock(
-  "../adt/conections",
-  () => ({
-    getClient: jest.fn(),
-    ADTSCHEME: "adt",
-    getOrCreateClient: jest.fn(),
-    getRoot: jest.fn()
-  }),
-  { virtual: true }
-)
+jest.mock("../adt/operations/AdtObjectFinder", () => ({
+  createUri: jest.fn(),
+}), { virtual: true })
 
-jest.mock(
-  "abapfs",
-  () => ({
-    isFolder: jest.fn(),
-    isAbapStat: jest.fn(),
-    isAbapFolder: jest.fn(),
-    PathItem: {}
-  }),
-  { virtual: true }
-)
+jest.mock("../scm/abaprevisions", () => ({
+  AbapScm: {},
+  displayRevDiff: jest.fn(),
+}), { virtual: true })
 
-jest.mock(
-  "../adt/operations/AdtObjectFinder",
-  () => ({
-    createUri: jest.fn()
-  }),
-  { virtual: true }
-)
+jest.mock("../scm/abaprevisions/abaprevisionservice", () => ({
+  AbapRevisionService: { get: jest.fn() },
+}), { virtual: true })
 
-jest.mock(
-  "../scm/abaprevisions",
-  () => ({
-    AbapScm: {},
-    displayRevDiff: jest.fn()
-  }),
-  { virtual: true }
-)
+jest.mock("../adt/sapgui/sapgui", () => ({
+  runInSapGui: jest.fn(),
+  showInGuiCb: jest.fn(),
+}), { virtual: true })
 
-jest.mock(
-  "../scm/abaprevisions/abaprevisionservice",
-  () => ({
-    AbapRevisionService: { get: jest.fn() }
-  }),
-  { virtual: true }
-)
+jest.mock("./abaptestcockpit", () => ({
+  atcProvider: {},
+}), { virtual: true })
 
-jest.mock(
-  "../adt/sapgui/sapgui",
-  () => ({
-    runInSapGui: jest.fn(),
-    showInGuiCb: jest.fn()
-  }),
-  { virtual: true }
-)
-
-jest.mock(
-  "./abaptestcockpit",
-  () => ({
-    atcProvider: {}
-  }),
-  { virtual: true }
-)
-
-jest.mock(
-  "./utilities",
-  () => ({
-    pickUser: jest.fn()
-  }),
-  { virtual: true }
-)
+jest.mock("./utilities", () => ({
+  pickUser: jest.fn(),
+}), { virtual: true })
 
 import { readTransports, TransportsProvider } from "./transports"
 import { getClient, getOrCreateClient, ADTSCHEME } from "../adt/conections"
@@ -178,7 +119,7 @@ describe("readTransports", () => {
       transportConfigurations: jest.fn().mockResolvedValue([mockConfig]),
       getTransportConfiguration: jest.fn().mockResolvedValue(mockFullConfig),
       setTransportsConfig: jest.fn().mockResolvedValue(undefined),
-      transportsByConfig: jest.fn().mockResolvedValue(mockTransports)
+      transportsByConfig: jest.fn().mockResolvedValue(mockTransports),
     }
     mockedGetClient.mockReturnValue(mockClient)
 
@@ -199,14 +140,14 @@ describe("readTransports", () => {
       transportConfigurations: jest.fn().mockResolvedValue([mockConfig]),
       getTransportConfiguration: jest.fn().mockResolvedValue(mockFullConfig),
       setTransportsConfig: jest.fn().mockResolvedValue(undefined),
-      transportsByConfig: jest.fn().mockResolvedValue([])
+      transportsByConfig: jest.fn().mockResolvedValue([]),
     }
     mockedGetClient.mockReturnValue(mockClient)
 
     await readTransports("dev100", "MYUSER")
-    expect(mockClient.setTransportsConfig).toHaveBeenCalledWith(mockLink, mockEtag, {
-      User: "MYUSER"
-    })
+    expect(mockClient.setTransportsConfig).toHaveBeenCalledWith(
+      mockLink, mockEtag, { User: "MYUSER" }
+    )
   })
 
   it("does not update config if user already matches (case-insensitive)", async () => {
@@ -219,7 +160,7 @@ describe("readTransports", () => {
       transportConfigurations: jest.fn().mockResolvedValue([mockConfig]),
       getTransportConfiguration: jest.fn().mockResolvedValue(mockFullConfig),
       setTransportsConfig: jest.fn(),
-      transportsByConfig: jest.fn().mockResolvedValue([])
+      transportsByConfig: jest.fn().mockResolvedValue([]),
     }
     mockedGetClient.mockReturnValue(mockClient)
 
@@ -231,7 +172,7 @@ describe("readTransports", () => {
     const mockTransports = [{ "tm:number": "TR002" }]
     const mockClient = {
       hasTransportConfig: jest.fn().mockResolvedValue(false),
-      userTransports: jest.fn().mockResolvedValue(mockTransports)
+      userTransports: jest.fn().mockResolvedValue(mockTransports),
     }
     mockedGetClient.mockReturnValue(mockClient)
 
@@ -245,14 +186,13 @@ describe("readTransports", () => {
     const mockConfig = { link: mockLink, etag: "new" }
     const mockClient = {
       hasTransportConfig: jest.fn().mockResolvedValue(true),
-      transportConfigurations: jest
-        .fn()
+      transportConfigurations: jest.fn()
         .mockResolvedValueOnce([]) // first call returns empty
         .mockResolvedValueOnce([mockConfig]), // second call after create
       createTransportsConfig: jest.fn().mockResolvedValue(undefined),
       getTransportConfiguration: jest.fn().mockResolvedValue({ User: "USER1" }),
       setTransportsConfig: jest.fn().mockResolvedValue(undefined),
-      transportsByConfig: jest.fn().mockResolvedValue([])
+      transportsByConfig: jest.fn().mockResolvedValue([]),
     }
     mockedGetClient.mockReturnValue(mockClient)
 
@@ -265,7 +205,7 @@ describe("readTransports", () => {
     const mockClient = {
       hasTransportConfig: jest.fn().mockResolvedValue(true),
       transportConfigurations: jest.fn().mockResolvedValue([]),
-      createTransportsConfig: jest.fn().mockResolvedValue(undefined)
+      createTransportsConfig: jest.fn().mockResolvedValue(undefined),
     }
     // Make second call return empty too
     ;(mockClient.transportConfigurations as jest.Mock).mockResolvedValue([])

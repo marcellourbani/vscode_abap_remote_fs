@@ -2,15 +2,11 @@
  * Tests for heartbeatStateManager.ts
  */
 
-jest.mock(
-  "vscode",
-  () => ({
-    workspace: {
-      getConfiguration: jest.fn()
-    }
-  }),
-  { virtual: true }
-)
+jest.mock("vscode", () => ({
+  workspace: {
+    getConfiguration: jest.fn()
+  }
+}), { virtual: true })
 
 jest.mock("../../lib", () => ({ log: jest.fn() }))
 

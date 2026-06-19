@@ -1,6 +1,9 @@
 import { CellResult } from "./types"
 
-export function interpolateSql(rawSql: string, cellResults: Map<number, CellResult>): string {
+export function interpolateSql(
+  rawSql: string,
+  cellResults: Map<number, CellResult>
+): string {
   if (!rawSql.includes("${cells[")) return rawSql
 
   const pattern = /\$\{cells\[(\d+)\]\.result((?:\.[a-zA-Z_]\w*(?:\[\d+\])?)*)\}/g
@@ -9,7 +12,10 @@ export function interpolateSql(rawSql: string, cellResults: Map<number, CellResu
     const cellIndex = parseInt(indexStr, 10)
     const cellResult = cellResults.get(cellIndex)
     if (!cellResult) {
-      throw new InterpolationError(`Cell [${cellIndex}] has no result. Run it first.`, cellIndex)
+      throw new InterpolationError(
+        `Cell [${cellIndex}] has no result. Run it first.`,
+        cellIndex
+      )
     }
 
     let value: unknown = cellResult.result
@@ -58,7 +64,10 @@ function parsePathSegments(pathStr: string): Array<string | number> {
 function formatValueForSql(value: unknown): string {
   if (typeof value === "number") {
     if (!isFinite(value)) {
-      throw new InterpolationError(`Cannot interpolate ${value} (NaN/Infinity) into SQL.`, -1)
+      throw new InterpolationError(
+        `Cannot interpolate ${value} (NaN/Infinity) into SQL.`,
+        -1
+      )
     }
     const str = String(value)
     if (str.includes("e") || str.includes("E")) {
@@ -104,10 +113,7 @@ function escapeSqlString(s: string): string {
 }
 
 export class InterpolationError extends Error {
-  constructor(
-    message: string,
-    public readonly cellIndex: number
-  ) {
+  constructor(message: string, public readonly cellIndex: number) {
     super(message)
     this.name = "InterpolationError"
   }

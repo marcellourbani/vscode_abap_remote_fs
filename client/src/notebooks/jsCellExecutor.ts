@@ -50,22 +50,16 @@ export async function executeJsCell(
       if (onAbort) abortSignal?.removeEventListener("abort", onAbort)
       fn()
       setImmediate(() => {
-        try {
-          worker?.terminate()
-        } catch {
-          /* already dead */
-        }
+        try { worker?.terminate() } catch { /* already dead */ }
       })
     }
 
     timer = setTimeout(() => {
       settle(() => {
-        reject(
-          new Error(
-            `JavaScript cell timed out after ${JS_EXECUTION_TIMEOUT_MS / 1000}s. ` +
-              `Possible infinite loop — the worker was killed.`
-          )
-        )
+        reject(new Error(
+          `JavaScript cell timed out after ${JS_EXECUTION_TIMEOUT_MS / 1000}s. ` +
+          `Possible infinite loop — the worker was killed.`
+        ))
       })
     }, JS_EXECUTION_TIMEOUT_MS)
 
@@ -105,11 +99,11 @@ export async function executeJsCell(
       })
     })
 
-    worker.on("error", err => {
+    worker.on("error", (err) => {
       settle(() => reject(new Error(`JS worker error: ${err.message}`)))
     })
 
-    worker.on("exit", _exitCode => {
+    worker.on("exit", (_exitCode) => {
       settle(() => {
         reject(new Error("JS worker exited without sending a result. Check cell syntax."))
       })

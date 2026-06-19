@@ -64,12 +64,8 @@ jest.mock("./subagentRegistry", () => ({
     { id: "abap-reader", templateFile: "abap-reader.agent.md", tools: ["tool1"] },
     { id: "abap-discoverer", templateFile: "abap-discoverer.agent.md", tools: null }
   ],
-  getSubagentSettings: jest
-    .fn()
-    .mockReturnValue({ models: { "abap-reader": "gpt-4o", "abap-discoverer": "gpt-4o" } }),
-  getWorkspaceFolder: jest
-    .fn()
-    .mockReturnValue({ fsPath: "/workspace", toString: () => "/workspace" }),
+  getSubagentSettings: jest.fn().mockReturnValue({ models: { "abap-reader": "gpt-4o", "abap-discoverer": "gpt-4o" } }),
+  getWorkspaceFolder: jest.fn().mockReturnValue({ fsPath: "/workspace", toString: () => "/workspace" }),
   getExtensionId: jest.fn().mockReturnValue("murbani.vscode-abap-remote-fs"),
   buildFullToolName: jest.fn((ext: string, t: string) => `${ext}_${t}`)
 }))
@@ -118,12 +114,7 @@ describe("subagentFileOps", () => {
     })
 
     it("replaces multiple occurrences of {{MODEL}}", () => {
-      const result = processTemplate(
-        "model: {{MODEL}}\n# Using {{MODEL}}",
-        "gpt-4o",
-        null,
-        "ext-id"
-      )
+      const result = processTemplate("model: {{MODEL}}\n# Using {{MODEL}}", "gpt-4o", null, "ext-id")
       expect(result).toBe("model: gpt-4o\n# Using gpt-4o")
     })
 
@@ -295,11 +286,7 @@ describe("subagentFileOps", () => {
         update: mockUpdate
       })
       await disableSubagentsCore()
-      expect(mockUpdate).toHaveBeenCalledWith(
-        "enabled",
-        false,
-        vscode.ConfigurationTarget.Workspace
-      )
+      expect(mockUpdate).toHaveBeenCalledWith("enabled", false, vscode.ConfigurationTarget.Workspace)
     })
   })
 })

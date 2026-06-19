@@ -17,9 +17,10 @@ const logError = (message: string) => {
   channel.appendLine(message)
 }
 
+
 /** Wrap plain InactiveObject[] into InactiveObjectRecord[] for use with showActivationSelectionDialog */
 const toRecords = (objects: any[]): InactiveObjectRecord[] =>
-  objects.map(obj => ({ object: obj }) as InactiveObjectRecord)
+  objects.map(obj => ({ object: obj } as InactiveObjectRecord))
 
 export interface ActivationEvent {
   object: AbapObject
@@ -527,6 +528,8 @@ export class AdtObjectActivator {
             fallbackObjects = relatedObjects
           }
         }
+
+
 
         if (fallbackObjects.length > 1) {
           // Show user selection dialog for which objects to activate

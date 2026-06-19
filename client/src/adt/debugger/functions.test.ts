@@ -53,7 +53,7 @@ describe("newClientFromKey", () => {
 
   beforeEach(() => {
     jest.clearAllMocks()
-    MockADTClient.mockImplementation(() => ({}) as any)
+    MockADTClient.mockImplementation(() => ({} as any))
   })
 
   test("returns undefined when configFromKey returns undefined", async () => {

@@ -1,32 +1,28 @@
-jest.mock(
-  "vscode",
-  () => ({
-    Uri: {
-      parse: jest.fn((s: string) => ({
-        scheme: s.split("://")[0],
-        authority: s.split("://")[1]?.split("/")[0] || "",
-        path: "/" + (s.split("://")[1]?.split("/").slice(1).join("/") || ""),
-        toString: () => s
-      }))
-    },
-    scm: {
-      createSourceControl: jest.fn().mockReturnValue({
-        inputBox: { placeholder: "" },
-        statusBarCommands: [],
-        createResourceGroup: jest.fn().mockReturnValue({
-          hideWhenEmpty: false,
-          resourceStates: [],
-          id: "staged",
-          [Symbol.iterator]: jest.fn().mockReturnValue([][Symbol.iterator]())
-        })
+jest.mock("vscode", () => ({
+  Uri: {
+    parse: jest.fn((s: string) => ({
+      scheme: s.split("://")[0],
+      authority: s.split("://")[1]?.split("/")[0] || "",
+      path: "/" + (s.split("://")[1]?.split("/").slice(1).join("/") || ""),
+      toString: () => s
+    }))
+  },
+  scm: {
+    createSourceControl: jest.fn().mockReturnValue({
+      inputBox: { placeholder: "" },
+      statusBarCommands: [],
+      createResourceGroup: jest.fn().mockReturnValue({
+        hideWhenEmpty: false,
+        resourceStates: [],
+        id: "staged",
+        [Symbol.iterator]: jest.fn().mockReturnValue([][Symbol.iterator]())
       })
-    },
-    SourceControl: jest.fn(),
-    SourceControlResourceGroup: jest.fn(),
-    SourceControlResourceState: jest.fn()
-  }),
-  { virtual: true }
-)
+    })
+  },
+  SourceControl: jest.fn(),
+  SourceControlResourceGroup: jest.fn(),
+  SourceControlResourceState: jest.fn()
+}), { virtual: true })
 
 jest.mock("../../lib", () => ({
   Cache: jest.fn(),
@@ -37,13 +33,8 @@ jest.mock("../../lib", () => ({
   cache: jest.fn((fn: any) => {
     const map = new Map()
     return {
-      get: (k: string) => {
-        if (!map.has(k)) map.set(k, fn(k))
-        return map.get(k)
-      },
-      [Symbol.iterator]: function* () {
-        yield* map.entries()
-      }
+      get: (k: string) => { if (!map.has(k)) map.set(k, fn(k)); return map.get(k) },
+      [Symbol.iterator]: function*() { yield* map.entries() }
     }
   })
 }))
@@ -62,7 +53,7 @@ jest.mock("../../commands", () => ({
 
 jest.mock("fp-ts/lib/Option", () => ({
   isNone: jest.fn(),
-  fromNullable: jest.fn((v: any) => (v ? { _tag: "Some", value: v } : { _tag: "None" })),
+  fromNullable: jest.fn((v: any) => v ? { _tag: "Some", value: v } : { _tag: "None" }),
   some: jest.fn((v: any) => ({ _tag: "Some", value: v }))
 }))
 
@@ -73,31 +64,16 @@ jest.mock("../../adt/conections", () => ({
 }))
 
 import {
-  STAGED,
-  UNSTAGED,
-  IGNORED,
-  scmKey,
-  scmData,
-  fileUri,
-  isAgResState,
-  setStatusCommand,
-  addRepo,
-  fromSC,
-  fromGroup,
-  ScmData
+  STAGED, UNSTAGED, IGNORED,
+  scmKey, scmData, fileUri, isAgResState,
+  setStatusCommand, addRepo, fromSC, fromGroup, ScmData
 } from "./scm"
 import { Uri } from "vscode"
 
 describe("constants", () => {
-  it("STAGED is 'staged'", () => {
-    expect(STAGED).toBe("staged")
-  })
-  it("UNSTAGED is 'unstaged'", () => {
-    expect(UNSTAGED).toBe("unstaged")
-  })
-  it("IGNORED is 'ignored'", () => {
-    expect(IGNORED).toBe("ignored")
-  })
+  it("STAGED is 'staged'", () => { expect(STAGED).toBe("staged") })
+  it("UNSTAGED is 'unstaged'", () => { expect(UNSTAGED).toBe("unstaged") })
+  it("IGNORED is 'ignored'", () => { expect(IGNORED).toBe("ignored") })
 })
 
 describe("scmKey", () => {
@@ -136,7 +112,9 @@ describe("fileUri", () => {
       links: []
     }
     const uri = fileUri(file)
-    expect(Uri.parse).toHaveBeenCalledWith(expect.stringContaining("Z%20CL%20TEST"))
+    expect(Uri.parse).toHaveBeenCalledWith(
+      expect.stringContaining("Z%20CL%20TEST")
+    )
   })
 })
 

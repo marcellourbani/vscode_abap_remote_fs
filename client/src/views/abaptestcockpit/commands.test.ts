@@ -1,16 +1,12 @@
-jest.mock(
-  "vscode",
-  () => ({
-    commands: { executeCommand: jest.fn() },
-    ProgressLocation: { Notification: 15 },
-    Uri: { parse: jest.fn((s: string) => ({ toString: () => s })) },
-    workspace: { openTextDocument: jest.fn() },
-    Selection: jest.fn((start: any, end: any) => ({ start, end })),
-    WorkspaceEdit: jest.fn().mockImplementation(() => ({ insert: jest.fn() })),
-    Position: jest.fn((line: number, character: number) => ({ line, character }))
-  }),
-  { virtual: true }
-)
+jest.mock("vscode", () => ({
+  commands: { executeCommand: jest.fn() },
+  ProgressLocation: { Notification: 15 },
+  Uri: { parse: jest.fn((s: string) => ({ toString: () => s })) },
+  workspace: { openTextDocument: jest.fn() },
+  Selection: jest.fn((start: any, end: any) => ({ start, end })),
+  WorkspaceEdit: jest.fn().mockImplementation(() => ({ insert: jest.fn() })),
+  Position: jest.fn((line: number, character: number) => ({ line, character }))
+}), { virtual: true })
 
 jest.mock("../../services/funMessenger", () => ({
   funWindow: {
@@ -45,13 +41,7 @@ jest.mock("./documentation", () => ({
 }))
 
 jest.mock("./view", () => ({
-  AtcFind: jest.fn().mockImplementation(function (
-    this: any,
-    finding: any,
-    parent: any,
-    uri: string,
-    start: any
-  ) {
+  AtcFind: jest.fn().mockImplementation(function (this: any, finding: any, parent: any, uri: string, start: any) {
     this.finding = finding
     this.parent = parent
     this.uri = uri

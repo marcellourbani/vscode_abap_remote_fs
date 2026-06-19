@@ -14,16 +14,11 @@ jest.mock("@vscode/debugadapter", () => ({
         return id
       }),
       get: jest.fn((id: number) => store.get(id)),
-      reset: jest.fn(() => {
-        store.clear()
-        counter = base || 1000
-      })
+      reset: jest.fn(() => { store.clear(); counter = base || 1000 })
     }
   }),
   Scope: jest.fn().mockImplementation((name: string, ref: number, expensive: boolean) => ({
-    name,
-    variablesReference: ref,
-    expensive
+    name, variablesReference: ref, expensive
   }))
 }))
 
@@ -126,12 +121,7 @@ describe("ReplayVariableManager", () => {
 
     test("creates nested reference for variables with children", () => {
       const child = makeVar({ id: "CHILD1", name: "COMP_A", value: "X" })
-      const parent = makeVar({
-        id: "STRUCT1",
-        name: "MY_STRUCT",
-        metaType: "structure",
-        children: [child]
-      })
+      const parent = makeVar({ id: "STRUCT1", name: "MY_STRUCT", metaType: "structure", children: [child] })
       const snap = makeSnapshot([{ name: "LOCAL", variables: [parent] }])
       const scopes = manager.getScopes(snap)
       const result = manager.getVariables(scopes[0].variablesReference)
@@ -141,12 +131,8 @@ describe("ReplayVariableManager", () => {
     test("returns 0 reference for skipped variables even with children", () => {
       const child = makeVar({ id: "R1", name: "R_1" })
       const skipped = makeVar({
-        id: "TBL1",
-        name: "MY_TABLE",
-        metaType: "table",
-        children: [child],
-        skipped: true,
-        skipReason: "too large"
+        id: "TBL1", name: "MY_TABLE", metaType: "table",
+        children: [child], skipped: true, skipReason: "too large"
       })
       const snap = makeSnapshot([{ name: "LOCAL", variables: [skipped] }])
       const scopes = manager.getScopes(snap)
@@ -155,13 +141,7 @@ describe("ReplayVariableManager", () => {
     })
 
     test("formats table value as 'type N lines'", () => {
-      const tbl = makeVar({
-        id: "TBL1",
-        name: "MY_TBL",
-        metaType: "table",
-        type: "ITAB",
-        tableLines: 5
-      })
+      const tbl = makeVar({ id: "TBL1", name: "MY_TBL", metaType: "table", type: "ITAB", tableLines: 5 })
       const snap = makeSnapshot([{ name: "LOCAL", variables: [tbl] }])
       const scopes = manager.getScopes(snap)
       const result = manager.getVariables(scopes[0].variablesReference)
@@ -200,12 +180,7 @@ describe("ReplayVariableManager", () => {
 
     test("finds nested variable in children", () => {
       const child = makeVar({ id: "STRUCT-COMP", name: "COMP", value: "nested" })
-      const parent = makeVar({
-        id: "STRUCT1",
-        name: "STRUCT",
-        metaType: "structure",
-        children: [child]
-      })
+      const parent = makeVar({ id: "STRUCT1", name: "STRUCT", metaType: "structure", children: [child] })
       const snap = makeSnapshot([{ name: "LOCAL", variables: [parent] }])
       const result = manager.evaluate("comp", snap)
       expect(result).toBeDefined()
@@ -215,9 +190,7 @@ describe("ReplayVariableManager", () => {
     test("returns variablesReference > 0 for child with children", () => {
       const grandchild = makeVar({ id: "G", name: "GC", value: "deep" })
       const child = makeVar({
-        id: "C1",
-        name: "C_VAR",
-        metaType: "structure",
+        id: "C1", name: "C_VAR", metaType: "structure",
         children: [grandchild]
       })
       const snap = makeSnapshot([{ name: "LOCAL", variables: [child] }])
@@ -228,11 +201,8 @@ describe("ReplayVariableManager", () => {
 
     test("returns 0 variablesReference for skipped variable", () => {
       const v = makeVar({
-        id: "TBL1",
-        name: "MY_TBL",
-        metaType: "table",
-        children: [makeVar()],
-        skipped: true
+        id: "TBL1", name: "MY_TBL", metaType: "table",
+        children: [makeVar()], skipped: true
       })
       const snap = makeSnapshot([{ name: "LOCAL", variables: [v] }])
       const result = manager.evaluate("my_tbl", snap)

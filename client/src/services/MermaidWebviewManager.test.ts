@@ -23,9 +23,7 @@ jest.mock(
     Uri: {
       joinPath: jest.fn((...args: any[]) => ({
         fsPath: args.map(a => a?.fsPath || String(a)).join("/"),
-        toString: function () {
-          return this.fsPath
-        }
+        toString: function () { return this.fsPath }
       })),
       file: jest.fn((p: string) => ({ fsPath: p }))
     }
@@ -57,11 +55,7 @@ jest.mock("./DiagramWebviewManager", () => ({
   }
 }))
 
-import {
-  MermaidWebviewManager,
-  MermaidRenderResult,
-  MermaidValidationResult
-} from "./MermaidWebviewManager"
+import { MermaidWebviewManager, MermaidRenderResult, MermaidValidationResult } from "./MermaidWebviewManager"
 
 const mockExtUri = { fsPath: "/ext", toString: () => "/ext" } as any
 
@@ -198,12 +192,7 @@ describe("MermaidWebviewManager", () => {
     })
 
     it("accepts optional error field", () => {
-      const r: MermaidRenderResult = {
-        svg: "",
-        diagramType: "unknown",
-        success: false,
-        error: "Parse error"
-      }
+      const r: MermaidRenderResult = { svg: "", diagramType: "unknown", success: false, error: "Parse error" }
       expect(r.error).toBe("Parse error")
     })
   })

@@ -1,12 +1,7 @@
 import {
-  CancellationToken,
-  DebugAdapterDescriptor,
-  DebugAdapterDescriptorFactory,
-  DebugAdapterInlineImplementation,
-  DebugConfigurationProvider,
-  DebugSession,
-  Uri,
-  WorkspaceFolder
+  CancellationToken, DebugAdapterDescriptor, DebugAdapterDescriptorFactory,
+  DebugAdapterInlineImplementation, DebugConfigurationProvider,
+  DebugSession, Uri, WorkspaceFolder
 } from "vscode"
 import { DebugRecording, REPLAY_DEBUG_TYPE } from "./types"
 import { ReplayDebugSession } from "./replayDebugSession"
@@ -27,13 +22,11 @@ interface ReplayLaunchConfig {
  */
 export class ReplayConfigurationProvider implements DebugConfigurationProvider {
   provideDebugConfigurations(): ReplayLaunchConfig[] {
-    return [
-      {
-        type: REPLAY_DEBUG_TYPE,
-        request: "launch",
-        name: "Replay ABAP Recording"
-      }
-    ]
+    return [{
+      type: REPLAY_DEBUG_TYPE,
+      request: "launch",
+      name: "Replay ABAP Recording"
+    }]
   }
 
   resolveDebugConfiguration(

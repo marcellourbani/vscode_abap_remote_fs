@@ -1,21 +1,20 @@
-jest.mock(
-  "vscode",
-  () => ({
-    window: {
-      createStatusBarItem: jest.fn(),
-      showInformationMessage: jest.fn()
-    },
-    StatusBarAlignment: { Left: 1, Right: 2 },
-    Disposable: jest.fn().mockImplementation((fn: () => void) => ({ dispose: fn })),
-    env: { openExternal: jest.fn() },
-    Uri: { parse: jest.fn(url => ({ toString: () => url })) },
-    commands: { registerCommand: jest.fn().mockReturnValue({ dispose: jest.fn() }) }
-  }),
-  { virtual: true }
-)
+jest.mock("vscode", () => ({
+  window: {
+    createStatusBarItem: jest.fn(),
+    showInformationMessage: jest.fn()
+  },
+  StatusBarAlignment: { Left: 1, Right: 2 },
+  Disposable: jest.fn().mockImplementation((fn: () => void) => ({ dispose: fn })),
+  env: { openExternal: jest.fn() },
+  Uri: { parse: jest.fn(url => ({ toString: () => url })) },
+  commands: { registerCommand: jest.fn().mockReturnValue({ dispose: jest.fn() }) }
+}), { virtual: true })
 
 import * as vscode from "vscode"
-import { initializeReviewPrompt, incrementReviewCounter } from "./reviewPrompt"
+import {
+  initializeReviewPrompt,
+  incrementReviewCounter
+} from "./reviewPrompt"
 
 const mockShowInfoMessage = vscode.window.showInformationMessage as jest.Mock
 const mockCreateStatusBarItem = vscode.window.createStatusBarItem as jest.Mock
@@ -54,28 +53,26 @@ beforeEach(() => {
   jest.clearAllMocks()
   jest.resetModules()
   // Re-apply the mock after resetModules
-  jest.mock(
-    "vscode",
-    () => ({
-      window: {
-        createStatusBarItem: jest.fn().mockReturnValue(makeStatusBarItem()),
-        showInformationMessage: jest.fn().mockResolvedValue(undefined)
-      },
-      StatusBarAlignment: { Left: 1, Right: 2 },
-      Disposable: jest.fn().mockImplementation((fn: () => void) => ({ dispose: fn })),
-      env: { openExternal: jest.fn() },
-      Uri: { parse: jest.fn(url => ({ toString: () => url })) },
-      commands: { registerCommand: jest.fn().mockReturnValue({ dispose: jest.fn() }) }
-    }),
-    { virtual: true }
-  )
+  jest.mock("vscode", () => ({
+    window: {
+      createStatusBarItem: jest.fn().mockReturnValue(makeStatusBarItem()),
+      showInformationMessage: jest.fn().mockResolvedValue(undefined)
+    },
+    StatusBarAlignment: { Left: 1, Right: 2 },
+    Disposable: jest.fn().mockImplementation((fn: () => void) => ({ dispose: fn })),
+    env: { openExternal: jest.fn() },
+    Uri: { parse: jest.fn(url => ({ toString: () => url })) },
+    commands: { registerCommand: jest.fn().mockReturnValue({ dispose: jest.fn() }) }
+  }), { virtual: true })
 })
 
 // Separate describe block that doesn't use resetModules so imports work
 describe("initializeReviewPrompt", () => {
   test("stores first activation date when not already stored", () => {
     // Use fresh require after beforeEach resetModules
-    const { initializeReviewPrompt: init } = require("./reviewPrompt")
+    const {
+      initializeReviewPrompt: init
+    } = require("./reviewPrompt")
 
     const ctx = makeContext()
     ;(ctx.globalState.get as jest.Mock).mockReturnValue(undefined)

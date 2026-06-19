@@ -621,7 +621,9 @@ async function handleManualModelChange(context: vscode.ExtensionContext): Promis
 
   if (updated > 0) {
     await refreshExplorer()
-    window.showInformationMessage(`Updated ${updated} agent file(s) with new model configurations.`)
+    window.showInformationMessage(
+      `Updated ${updated} agent file(s) with new model configurations.`
+    )
   }
 }
 

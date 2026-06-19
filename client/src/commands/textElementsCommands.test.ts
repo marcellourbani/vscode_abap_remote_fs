@@ -1,17 +1,13 @@
-jest.mock(
-  "vscode",
-  () => ({
-    ProgressLocation: { Notification: 15 },
-    ViewColumn: { One: 1 },
-    Uri: {
-      file: jest.fn((p: string) => ({ scheme: "file", path: p, toString: () => `file://${p}` }))
-    },
-    extensions: {
-      getExtension: jest.fn()
-    }
-  }),
-  { virtual: true }
-)
+jest.mock("vscode", () => ({
+  ProgressLocation: { Notification: 15 },
+  ViewColumn: { One: 1 },
+  Uri: {
+    file: jest.fn((p: string) => ({ scheme: "file", path: p, toString: () => `file://${p}` }))
+  },
+  extensions: {
+    getExtension: jest.fn()
+  }
+}), { virtual: true })
 
 jest.mock("../services/funMessenger", () => ({
   funWindow: {
@@ -70,16 +66,11 @@ import * as vscode from "vscode"
 const mockWindow = window as jest.Mocked<typeof window>
 const mockGetClient = getClient as jest.MockedFunction<typeof getClient>
 const mockGetRoot = getRoot as jest.MockedFunction<typeof getRoot>
-const mockGetTextElementsSafe = getTextElementsSafe as jest.MockedFunction<
-  typeof getTextElementsSafe
->
+const mockGetTextElementsSafe = getTextElementsSafe as jest.MockedFunction<typeof getTextElementsSafe>
 const mockIsAbapFile = isAbapFile as jest.MockedFunction<typeof isAbapFile>
 const mockParseObjectName = parseObjectName as jest.MockedFunction<typeof parseObjectName>
 
-function makeAdtUri(
-  authority = "dev100",
-  path = "/dev100/Source Code Library/Programs/ZTEST/ZTEST.prog.abap"
-) {
+function makeAdtUri(authority = "dev100", path = "/dev100/Source Code Library/Programs/ZTEST/ZTEST.prog.abap") {
   return {
     scheme: "adt",
     authority,
@@ -105,12 +96,7 @@ describe("manageTextElementsCommand", () => {
   })
 
   test("shows error when URI scheme is not adt", async () => {
-    const uri = {
-      scheme: "file",
-      authority: "",
-      path: "/some/file.ts",
-      toString: () => "file:///some/file.ts"
-    } as any
+    const uri = { scheme: "file", authority: "", path: "/some/file.ts", toString: () => "file:///some/file.ts" } as any
     await manageTextElementsCommand(uri)
     expect(mockWindow.showErrorMessage).toHaveBeenCalledWith(
       expect.stringContaining("only works with ABAP files")
@@ -235,7 +221,9 @@ describe("openTextElementsInSapGui", () => {
     await openTextElementsInSapGui("ZTEST.prog.abap", "dev100")
 
     expect(SapGuiPanel.createOrShow).toHaveBeenCalled()
-    expect(mockPanel.loadDirectWebGuiUrl).toHaveBeenCalledWith(expect.stringContaining("TEXT"))
+    expect(mockPanel.loadDirectWebGuiUrl).toHaveBeenCalledWith(
+      expect.stringContaining("TEXT")
+    )
   })
 
   test("handles CLASS object type for SE24", async () => {
@@ -261,7 +249,9 @@ describe("openTextElementsInSapGui", () => {
 
     await openTextElementsInSapGui("ZCL_TEST.clas.abap", "dev100")
 
-    expect(mockPanel.loadDirectWebGuiUrl).toHaveBeenCalledWith(expect.stringContaining("SE24"))
+    expect(mockPanel.loadDirectWebGuiUrl).toHaveBeenCalledWith(
+      expect.stringContaining("SE24")
+    )
   })
 
   test("handles FUNCTION_GROUP object type for SE37 with TEXT okcode", async () => {
@@ -279,7 +269,9 @@ describe("openTextElementsInSapGui", () => {
 
     await openTextElementsInSapGui("ZFG_TEST.fugr.abap", "dev100")
 
-    expect(mockPanel.loadDirectWebGuiUrl).toHaveBeenCalledWith(expect.stringContaining("TEXT"))
+    expect(mockPanel.loadDirectWebGuiUrl).toHaveBeenCalledWith(
+      expect.stringContaining("TEXT")
+    )
     expect(mockPanel.loadDirectWebGuiUrl).toHaveBeenCalledWith(
       expect.not.stringContaining("WB_EXEC")
     )

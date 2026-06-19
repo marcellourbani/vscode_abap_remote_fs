@@ -195,7 +195,9 @@ export class ValidateMermaidSyntaxTool implements vscode.LanguageModelTool<IVali
       const errorMessage = error instanceof Error ? error.message : String(error)
 
       const resultText =
-        `Validation Error\n` + `Error: ${errorMessage}\n` + `Code Length: ${code.length} characters`
+        `Validation Error\n` +
+        `Error: ${errorMessage}\n` +
+        `Code Length: ${code.length} characters`
 
       return new vscode.LanguageModelToolResult([new vscode.LanguageModelTextPart(resultText)])
     }

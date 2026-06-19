@@ -1,23 +1,17 @@
-jest.mock(
-  "vscode",
-  () => {
-    const Position = jest.fn((line: number, character: number) => ({ line, character }))
-    const Range = jest.fn((start: any, end: any) => ({ start, end }))
-    const Uri = {
-      parse: jest.fn((s: string) => ({
-        toString: () => s,
-        scheme: s.split("://")[0] || "",
-        authority: s.split("://")[1]?.split("/")[0] || "",
-        path: "/" + (s.split("://")[1]?.split("/").slice(1).join("/") || ""),
-        with: jest.fn(function (this: any, changes: any) {
-          return { ...this, ...changes }
-        })
-      }))
-    }
-    return { Position, Range, Uri, ProgressLocation: { Window: 10, Notification: 15 } }
-  },
-  { virtual: true }
-)
+jest.mock("vscode", () => {
+  const Position = jest.fn((line: number, character: number) => ({ line, character }))
+  const Range = jest.fn((start: any, end: any) => ({ start, end }))
+  const Uri = {
+    parse: jest.fn((s: string) => ({
+      toString: () => s,
+      scheme: s.split("://")[0] || "",
+      authority: s.split("://")[1]?.split("/")[0] || "",
+      path: "/" + (s.split("://")[1]?.split("/").slice(1).join("/") || ""),
+      with: jest.fn(function (this: any, changes: any) { return { ...this, ...changes } })
+    }))
+  }
+  return { Position, Range, Uri, ProgressLocation: { Window: 10, Notification: 15 } }
+}, { virtual: true })
 
 jest.mock("../services/funMessenger", () => ({
   funWindow: {
@@ -65,9 +59,7 @@ import { splitAdtUriInternal, isUnDefined, isFn, isNonNullable } from "./functio
 import { funWindow as window } from "../services/funMessenger"
 import { Uri, Position, Range } from "vscode"
 
-const mockSplitAdtUriInternal = splitAdtUriInternal as jest.MockedFunction<
-  typeof splitAdtUriInternal
->
+const mockSplitAdtUriInternal = splitAdtUriInternal as jest.MockedFunction<typeof splitAdtUriInternal>
 const mockIsUnDefined = isUnDefined as jest.MockedFunction<typeof isUnDefined>
 
 describe("uriName", () => {
@@ -108,10 +100,7 @@ describe("showErrorMessage", () => {
 
 describe("vscPosition", () => {
   beforeEach(() => {
-    ;(Position as jest.Mock).mockImplementation((line: number, char: number) => ({
-      line,
-      character: char
-    }))
+    ;(Position as jest.Mock).mockImplementation((line: number, char: number) => ({ line, character: char }))
   })
 
   it("converts 1-based ADT line to 0-based VS Code line", () => {
@@ -138,10 +127,7 @@ describe("vscPosition", () => {
 
 describe("rangeApi2Vsc", () => {
   beforeEach(() => {
-    ;(Position as jest.Mock).mockImplementation((line: number, char: number) => ({
-      line,
-      character: char
-    }))
+    ;(Position as jest.Mock).mockImplementation((line: number, char: number) => ({ line, character: char }))
     ;(Range as jest.Mock).mockImplementation((start: any, end: any) => ({ start, end }))
   })
 
@@ -193,10 +179,7 @@ describe("rangeVscToApi", () => {
 
 describe("lineRange", () => {
   beforeEach(() => {
-    ;(Position as jest.Mock).mockImplementation((line: number, char: number) => ({
-      line,
-      character: char
-    }))
+    ;(Position as jest.Mock).mockImplementation((line: number, char: number) => ({ line, character: char }))
     ;(Range as jest.Mock).mockImplementation((start: any, end: any) => ({ start, end }))
   })
 
@@ -254,10 +237,7 @@ describe("createStore", () => {
 
 describe("splitAdtUri", () => {
   beforeEach(() => {
-    ;(Position as jest.Mock).mockImplementation((line: number, char: number) => ({
-      line,
-      character: char
-    }))
+    ;(Position as jest.Mock).mockImplementation((line: number, char: number) => ({ line, character: char }))
     mockSplitAdtUriInternal.mockReturnValue({
       path: "/sap/bc/adt/programs/ZTEST",
       type: "PROG",
@@ -299,7 +279,7 @@ describe("splitAdtUri", () => {
       uri: "/path",
       range: {
         start: { line: 5, column: 0 },
-        end: { line: 5, column: 0 } // same as start
+        end: { line: 5, column: 0 }  // same as start
       },
       hashparms: {}
     } as any
@@ -308,10 +288,7 @@ describe("splitAdtUri", () => {
   })
 
   it("includes start when range has actual extent", () => {
-    ;(Position as jest.Mock).mockImplementation((line: number, char: number) => ({
-      line,
-      character: char
-    }))
+    ;(Position as jest.Mock).mockImplementation((line: number, char: number) => ({ line, character: char }))
     const uriParts = {
       uri: "/path",
       range: {

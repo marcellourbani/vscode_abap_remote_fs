@@ -1,27 +1,9 @@
-jest.mock(
-  "vscode",
-  () => ({
-    window: {
-      createOutputChannel: () => ({
-        info: jest.fn(),
-        warn: jest.fn(),
-        error: jest.fn(),
-        debug: jest.fn(),
-        trace: jest.fn()
-      })
-    }
-  }),
-  { virtual: true }
-)
+jest.mock("vscode", () => ({
+  window: { createOutputChannel: () => ({ info: jest.fn(), warn: jest.fn(), error: jest.fn(), debug: jest.fn(), trace: jest.fn() }) }
+}), { virtual: true })
 
 jest.mock("../../lib", () => ({
-  log: Object.assign(jest.fn(), {
-    info: jest.fn(),
-    warn: jest.fn(),
-    error: jest.fn(),
-    debug: jest.fn(),
-    trace: jest.fn()
-  })
+  log: Object.assign(jest.fn(), { info: jest.fn(), warn: jest.fn(), error: jest.fn(), debug: jest.fn(), trace: jest.fn() })
 }))
 
 import { joinData } from "./dataFetcher"
@@ -57,14 +39,7 @@ function makeRef(overrides: Partial<CustomReference> = {}): CustomReference {
 }
 
 function makePiecelist(piecelistId: string, objectName: string): PiecelistEntry {
-  return {
-    piecelistId,
-    pgmid: "R3TR",
-    objectType: "TABL",
-    objectName,
-    packageName: "",
-    applicationComponent: ""
-  }
+  return { piecelistId, pgmid: "R3TR", objectType: "TABL", objectName, packageName: "", applicationComponent: "" }
 }
 
 function makeLink(id: string, piecelistId: string): ItemPiecelistLink {
@@ -120,7 +95,10 @@ describe("joinData", () => {
       makeRef({ refObjName: "MSEG", objName: "ZCL_A", hash: "1" }),
       makeRef({ refObjName: "MKPF", objName: "ZCL_B", hash: "2" })
     ]
-    const piecelist = [makePiecelist("PL1", "MSEG"), makePiecelist("PL1", "MKPF")]
+    const piecelist = [
+      makePiecelist("PL1", "MSEG"),
+      makePiecelist("PL1", "MKPF")
+    ]
     const links = [makeLink("ITEM1", "PL1")]
 
     const result = joinData(items, refs, piecelist, links)
@@ -130,10 +108,19 @@ describe("joinData", () => {
   })
 
   it("handles ref matching multiple piecelist entries across items - assigns to first match", () => {
-    const items = [makeItem("ITEM1", "FIRST", 111), makeItem("ITEM2", "SECOND", 222)]
+    const items = [
+      makeItem("ITEM1", "FIRST", 111),
+      makeItem("ITEM2", "SECOND", 222)
+    ]
     const refs = [makeRef({ refObjName: "SHARED_TABLE" })]
-    const piecelist = [makePiecelist("PL1", "SHARED_TABLE"), makePiecelist("PL2", "SHARED_TABLE")]
-    const links = [makeLink("ITEM1", "PL1"), makeLink("ITEM2", "PL2")]
+    const piecelist = [
+      makePiecelist("PL1", "SHARED_TABLE"),
+      makePiecelist("PL2", "SHARED_TABLE")
+    ]
+    const links = [
+      makeLink("ITEM1", "PL1"),
+      makeLink("ITEM2", "PL2")
+    ]
 
     const result = joinData(items, refs, piecelist, links)
 
@@ -145,15 +132,24 @@ describe("joinData", () => {
   })
 
   it("sorts groups by ref count descending", () => {
-    const items = [makeItem("ITEM1", "FEW", 100), makeItem("ITEM2", "MANY", 200)]
+    const items = [
+      makeItem("ITEM1", "FEW", 100),
+      makeItem("ITEM2", "MANY", 200)
+    ]
     const refs = [
       makeRef({ refObjName: "T1", objName: "Z1", hash: "1" }),
       makeRef({ refObjName: "T2", objName: "Z2", hash: "2" }),
       makeRef({ refObjName: "T2", objName: "Z3", hash: "3" }),
       makeRef({ refObjName: "T2", objName: "Z4", hash: "4" })
     ]
-    const piecelist = [makePiecelist("PL1", "T1"), makePiecelist("PL2", "T2")]
-    const links = [makeLink("ITEM1", "PL1"), makeLink("ITEM2", "PL2")]
+    const piecelist = [
+      makePiecelist("PL1", "T1"),
+      makePiecelist("PL2", "T2")
+    ]
+    const links = [
+      makeLink("ITEM1", "PL1"),
+      makeLink("ITEM2", "PL2")
+    ]
 
     const result = joinData(items, refs, piecelist, links)
 
@@ -191,7 +187,10 @@ describe("joinData", () => {
       makePiecelist("PL1", "MULTI_PL_TABLE"),
       makePiecelist("PL2", "MULTI_PL_TABLE")
     ]
-    const links = [makeLink("ITEM1", "PL1"), makeLink("ITEM2", "PL2")]
+    const links = [
+      makeLink("ITEM1", "PL1"),
+      makeLink("ITEM2", "PL2")
+    ]
 
     const result = joinData(items, refs, piecelist, links)
 

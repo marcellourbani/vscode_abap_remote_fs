@@ -57,7 +57,11 @@ async function createNewNotebook(): Promise<void> {
       "# New SAP Data Workbook\n\nAdd SQL and JavaScript cells below.",
       "markdown"
     ),
-    new vscode.NotebookCellData(vscode.NotebookCellKind.Code, "SELECT * FROM t000", SQL_LANGUAGE_ID)
+    new vscode.NotebookCellData(
+      vscode.NotebookCellKind.Code,
+      "SELECT * FROM t000",
+      SQL_LANGUAGE_ID
+    )
   ])
   data.metadata = { version: 1, title: "" }
 
@@ -66,9 +70,9 @@ async function createNewNotebook(): Promise<void> {
 }
 
 async function correctSqlLanguages(notebook: vscode.NotebookDocument): Promise<void> {
-  const wrongCells = notebook
-    .getCells()
-    .filter(c => c.kind === vscode.NotebookCellKind.Code && c.document.languageId === "sql")
+  const wrongCells = notebook.getCells().filter(
+    c => c.kind === vscode.NotebookCellKind.Code && c.document.languageId === "sql"
+  )
   if (wrongCells.length === 0) return
 
   const edit = new vscode.WorkspaceEdit()

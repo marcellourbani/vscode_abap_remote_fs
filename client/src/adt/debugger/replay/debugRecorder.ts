@@ -3,13 +3,8 @@ import { Uri, workspace } from "vscode"
 import { funWindow as window } from "../../../services/funMessenger"
 import { log, caughtToString } from "../../../lib"
 import {
-  DebugSnapshot,
-  DebugRecording,
-  CapturedScope,
-  CapturedStackFrame,
-  CapturedVariable,
-  CaptureOptions,
-  DEFAULT_CAPTURE_OPTIONS
+  DebugSnapshot, DebugRecording, CapturedScope,
+  CapturedStackFrame, CapturedVariable, CaptureOptions, DEFAULT_CAPTURE_OPTIONS
 } from "./types"
 import { captureScopesBatched } from "./variableCapture"
 
@@ -20,12 +15,8 @@ export class DebugRecorder {
   private startTime = 0
   private connId = ""
 
-  get isRecording() {
-    return this.recording
-  }
-  get stepCount() {
-    return this.snapshots.length
-  }
+  get isRecording() { return this.recording }
+  get stepCount() { return this.snapshots.length }
 
   constructor(private options: CaptureOptions = DEFAULT_CAPTURE_OPTIONS) {}
 
@@ -53,7 +44,9 @@ export class DebugRecorder {
       if (!this.recording) return // stopped during async capture
       if (this.snapshots.length >= this.options.maxSteps) {
         this.recording = false
-        window.showWarningMessage(`Recording stopped: reached ${this.options.maxSteps} step limit`)
+        window.showWarningMessage(
+          `Recording stopped: reached ${this.options.maxSteps} step limit`
+        )
         return
       }
       this.snapshots.push({
@@ -112,7 +105,10 @@ export class DebugRecorder {
   }
 }
 
-function diffScopeVariables(prev: CapturedScope[], curr: CapturedScope[]): string[] {
+function diffScopeVariables(
+  prev: CapturedScope[],
+  curr: CapturedScope[]
+): string[] {
   const changed: string[] = []
   const prevMap = buildVarMap(prev)
   const currMap = buildVarMap(curr)
@@ -132,7 +128,11 @@ function buildVarMap(scopes: CapturedScope[]): Map<string, string> {
   return map
 }
 
-function flattenVars(vars: CapturedVariable[], prefix: string, map: Map<string, string>): void {
+function flattenVars(
+  vars: CapturedVariable[],
+  prefix: string,
+  map: Map<string, string>
+): void {
   for (const v of vars) {
     const key = `${prefix}.${v.name}`
     map.set(key, v.value)

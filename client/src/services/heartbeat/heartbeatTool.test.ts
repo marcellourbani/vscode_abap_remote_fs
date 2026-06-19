@@ -410,18 +410,20 @@ describe("HeartbeatTool invoke - add_task", () => {
     })
     ;(getHeartbeatService as jest.Mock).mockReturnValue(
       makeService({
-        getStatus: jest.fn().mockReturnValue({
-          isRunning: false,
-          isPaused: false,
-          stats: {
-            totalRuns: 0,
-            successfulRuns: 0,
-            alerts: 0,
-            errors: 0,
-            skipped: 0,
-            averageDurationMs: 0
-          }
-        })
+        getStatus: jest
+          .fn()
+          .mockReturnValue({
+            isRunning: false,
+            isPaused: false,
+            stats: {
+              totalRuns: 0,
+              successfulRuns: 0,
+              alerts: 0,
+              errors: 0,
+              skipped: 0,
+              averageDurationMs: 0
+            }
+          })
       })
     )
     const result = await tool.invoke(

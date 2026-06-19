@@ -4,15 +4,9 @@ import {
   SQL_LANGUAGE_ID,
   DEFAULT_MAX_ROWS,
   DISPLAY_ROW_LIMIT,
-  JS_EXECUTION_TIMEOUT_MS
+  JS_EXECUTION_TIMEOUT_MS,
 } from "./types"
-import type {
-  CellType,
-  AbapNotebookCell,
-  AbapNotebookDocument,
-  CellResult,
-  CellExecutionContext
-} from "./types"
+import type { CellType, AbapNotebookCell, AbapNotebookDocument, CellResult, CellExecutionContext } from "./types"
 
 describe("types constants", () => {
   test("NOTEBOOK_TYPE is the expected string", () => {
@@ -71,7 +65,7 @@ describe("type shapes", () => {
       rowCount: 1,
       columns: [{ name: "NAME", type: "C" }],
       error: undefined,
-      logs: ["log line"]
+      logs: ["log line"],
     }
     expect(result.result).toHaveLength(1)
     expect(result.rowCount).toBe(1)
@@ -89,7 +83,7 @@ describe("type shapes", () => {
     const ctx: CellExecutionContext = {
       cellIndex: 2,
       cellResults: new Map(),
-      connectionId: "dev100"
+      connectionId: "dev100",
     }
     expect(ctx.cellIndex).toBe(2)
     expect(ctx.connectionId).toBe("dev100")

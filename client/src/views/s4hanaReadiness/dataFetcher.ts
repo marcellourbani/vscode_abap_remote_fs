@@ -37,26 +37,18 @@ async function safeQuery(client: ADTClient, sql: string, context: string): Promi
       return result.values
     }
     // More rows exist — increase limit and retry
-    log.debug(
-      `${LOG_PREFIX} ${context}: got ${result.values.length} rows, more available — retrying with higher limit`
-    )
+    log.debug(`${LOG_PREFIX} ${context}: got ${result.values.length} rows, more available — retrying with higher limit`)
     limit += INCREMENT
   }
   // Hit absolute max — fetch one final time at that limit
-  log.warn(
-    `${LOG_PREFIX} ${context}: hit absolute max (${ABSOLUTE_MAX}), results may be incomplete`
-  )
+  log.warn(`${LOG_PREFIX} ${context}: hit absolute max (${ABSOLUTE_MAX}), results may be incomplete`)
   const result = await client.runQuery(sql, ABSOLUTE_MAX, true)
   return result?.values || []
 }
 
 export async function fetchSimplificationItems(client: ADTClient): Promise<SimplificationItem[]> {
   log.debug(`${LOG_PREFIX} fetchSimplificationItems: querying sycm_sitem`)
-  const values = await safeQuery(
-    client,
-    "SELECT id, version, title, note, replacement_id FROM sycm_sitem",
-    "fetchSimplificationItems"
-  )
+  const values = await safeQuery(client, "SELECT id, version, title, note, replacement_id FROM sycm_sitem", "fetchSimplificationItems")
   log.debug(`${LOG_PREFIX} fetchSimplificationItems: got ${values.length} items`)
   return values.map((row: any) => ({
     id: (row.ID || "").trim(),
@@ -74,35 +66,31 @@ export async function fetchCustomRefs(client: ADTClient): Promise<CustomReferenc
   return values
     .filter((row: any) => (row.OBJ_NAME || "").trim() !== "")
     .map((row: any) => ({
-      extractionSysid: (row.EXTRACTION_SYSID || "").trim(),
-      extractionName: (row.EXTRACTION_NAME || "").trim(),
-      referenceKind: (row.REFERENCE_KIND || "").trim(),
-      hash: (row.HASH || "").trim(),
-      refObjType: (row.REF_OBJ_TYPE || "").trim(),
-      refObjName: (row.REF_OBJ_NAME || "").trim(),
-      refSubType: (row.REF_SUB_TYPE || "").trim(),
-      refSubName: (row.REF_SUB_NAME || "").trim(),
-      refIntType: (row.REF_INT_TYPE || "").trim(),
-      refIntName: (row.REF_INT_NAME || "").trim(),
-      objType: (row.OBJ_TYPE || "").trim(),
-      objName: (row.OBJ_NAME || "").trim(),
-      subType: (row.SUB_TYPE || "").trim(),
-      subName: (row.SUB_NAME || "").trim(),
-      includeName: (row.INCLUDE_NAME || "").trim(),
-      devclass: (row.DEVCLASS || "").trim(),
-      genflag: (row.GENFLAG || "").trim(),
-      dlvunit: (row.DLVUNIT || "").trim(),
-      refApplComponent: (row.REF_APPL_COMPONENT || "").trim()
-    }))
+    extractionSysid: (row.EXTRACTION_SYSID || "").trim(),
+    extractionName: (row.EXTRACTION_NAME || "").trim(),
+    referenceKind: (row.REFERENCE_KIND || "").trim(),
+    hash: (row.HASH || "").trim(),
+    refObjType: (row.REF_OBJ_TYPE || "").trim(),
+    refObjName: (row.REF_OBJ_NAME || "").trim(),
+    refSubType: (row.REF_SUB_TYPE || "").trim(),
+    refSubName: (row.REF_SUB_NAME || "").trim(),
+    refIntType: (row.REF_INT_TYPE || "").trim(),
+    refIntName: (row.REF_INT_NAME || "").trim(),
+    objType: (row.OBJ_TYPE || "").trim(),
+    objName: (row.OBJ_NAME || "").trim(),
+    subType: (row.SUB_TYPE || "").trim(),
+    subName: (row.SUB_NAME || "").trim(),
+    includeName: (row.INCLUDE_NAME || "").trim(),
+    devclass: (row.DEVCLASS || "").trim(),
+    genflag: (row.GENFLAG || "").trim(),
+    dlvunit: (row.DLVUNIT || "").trim(),
+    refApplComponent: (row.REF_APPL_COMPONENT || "").trim()
+  }))
 }
 
 export async function fetchItemPiecelistLinks(client: ADTClient): Promise<ItemPiecelistLink[]> {
   log.debug(`${LOG_PREFIX} fetchItemPiecelistLinks: querying sycm_sitem_plist`)
-  const values = await safeQuery(
-    client,
-    "SELECT id, version, piecelist_id FROM sycm_sitem_plist",
-    "fetchItemPiecelistLinks"
-  )
+  const values = await safeQuery(client, "SELECT id, version, piecelist_id FROM sycm_sitem_plist", "fetchItemPiecelistLinks")
   log.debug(`${LOG_PREFIX} fetchItemPiecelistLinks: got ${values.length} links`)
   return values.map((row: any) => ({
     id: (row.ID || "").trim(),
@@ -118,11 +106,7 @@ export async function fetchItemPiecelistLinks(client: ADTClient): Promise<ItemPi
  */
 export async function fetchPiecelist(client: ADTClient): Promise<PiecelistEntry[]> {
   log.debug(`${LOG_PREFIX} fetchPiecelist: querying full sycm_piecelist`)
-  const values = await safeQuery(
-    client,
-    "SELECT piecelist_id, object_type, object_name FROM sycm_piecelist",
-    "fetchPiecelist"
-  )
+  const values = await safeQuery(client, "SELECT piecelist_id, object_type, object_name FROM sycm_piecelist", "fetchPiecelist")
   log.debug(`${LOG_PREFIX} fetchPiecelist: got ${values.length} entries`)
   return values.map(mapPiecelistRow)
 }
@@ -270,8 +254,6 @@ export async function loadReadinessData(
 
   log.debug(`${LOG_PREFIX} loadReadinessData: joining data...`)
   const result = joinData(items, refs, piecelist, itemLinks)
-  log.debug(
-    `${LOG_PREFIX} loadReadinessData: done. ${result.groups.length} groups, ${result.ungrouped.length} ungrouped`
-  )
+  log.debug(`${LOG_PREFIX} loadReadinessData: done. ${result.groups.length} groups, ${result.ungrouped.length} ungrouped`)
   return result
 }

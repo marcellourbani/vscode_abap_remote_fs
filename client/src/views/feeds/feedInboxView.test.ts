@@ -1,38 +1,34 @@
-jest.mock(
-  "vscode",
-  () => {
-    const EventEmitter = jest.fn().mockImplementation(() => ({
-      event: jest.fn(),
-      fire: jest.fn(),
-      dispose: jest.fn()
-    }))
+jest.mock("vscode", () => {
+  const EventEmitter = jest.fn().mockImplementation(() => ({
+    event: jest.fn(),
+    fire: jest.fn(),
+    dispose: jest.fn()
+  }))
 
-    class TreeItem {
-      label: string
-      collapsibleState: any
-      contextValue: string | undefined = undefined
-      description: string | undefined = undefined
-      tooltip: string | undefined = undefined
-      command: any = undefined
-      iconPath: any = undefined
-      constructor(label: string, collapsibleState?: any) {
-        this.label = label
-        this.collapsibleState = collapsibleState
-      }
+  class TreeItem {
+    label: string
+    collapsibleState: any
+    contextValue: string | undefined = undefined
+    description: string | undefined = undefined
+    tooltip: string | undefined = undefined
+    command: any = undefined
+    iconPath: any = undefined
+    constructor(label: string, collapsibleState?: any) {
+      this.label = label
+      this.collapsibleState = collapsibleState
     }
+  }
 
-    return {
-      TreeItem,
-      TreeItemCollapsibleState: { None: 0, Collapsed: 1, Expanded: 2 },
-      EventEmitter,
-      ViewColumn: { Active: 1 },
-      ThemeIcon: jest.fn().mockImplementation((id: string) => ({ id })),
-      commands: { executeCommand: jest.fn().mockResolvedValue(undefined) },
-      Uri: { file: (p: string) => ({ fsPath: p }) }
-    }
-  },
-  { virtual: true }
-)
+  return {
+    TreeItem,
+    TreeItemCollapsibleState: { None: 0, Collapsed: 1, Expanded: 2 },
+    EventEmitter,
+    ViewColumn: { Active: 1 },
+    ThemeIcon: jest.fn().mockImplementation((id: string) => ({ id })),
+    commands: { executeCommand: jest.fn().mockResolvedValue(undefined) },
+    Uri: { file: (p: string) => ({ fsPath: p }) }
+  }
+}, { virtual: true })
 
 jest.mock("../../lib", () => ({ log: () => {} }))
 jest.mock("../../services/funMessenger", () => ({
@@ -189,9 +185,7 @@ describe("FeedInboxProvider.getChildren at root level", () => {
     const ctx = makeContext()
     const sm = makeStateManager(ctx)
     await sm.addFeedEntries("sys1", "Dumps", [makeEntry({ systemId: "sys1" })])
-    await sm.addFeedEntries("sys2", "ATC", [
-      makeEntry({ id: "e2", systemId: "sys2", feedTitle: "ATC" })
-    ])
+    await sm.addFeedEntries("sys2", "ATC", [makeEntry({ id: "e2", systemId: "sys2", feedTitle: "ATC" })])
     const provider = new FeedInboxProvider(sm)
     const children = await provider.getChildren(undefined)
     expect(children.length).toBe(2)
@@ -204,9 +198,10 @@ describe("FeedInboxProvider.getChildren at root level", () => {
     await sm.addFeedEntries("sys1", "Dumps", [makeEntry({ systemId: "sys1" })])
     const provider = new FeedInboxProvider(sm)
     // Manually inject an invalid entry into getAllFeedEntries via jest.spyOn
-    jest
-      .spyOn(sm, "getAllFeedEntries")
-      .mockReturnValue([makeEntry({ systemId: "" }), makeEntry({ id: "valid", systemId: "sys1" })])
+    jest.spyOn(sm, "getAllFeedEntries").mockReturnValue([
+      makeEntry({ systemId: "" }),
+      makeEntry({ id: "valid", systemId: "sys1" })
+    ])
     const children = await provider.getChildren(undefined)
     // Only sys1 node should appear
     expect(children.length).toBe(1)
@@ -253,7 +248,10 @@ describe("FeedInboxProvider.getChildren for feed folder node", () => {
   test("returns entry nodes for each feed entry", async () => {
     const ctx = makeContext()
     const sm = makeStateManager(ctx)
-    await sm.addFeedEntries("sys1", "Dumps", [makeEntry({ id: "e1" }), makeEntry({ id: "e2" })])
+    await sm.addFeedEntries("sys1", "Dumps", [
+      makeEntry({ id: "e1" }),
+      makeEntry({ id: "e2" })
+    ])
     const provider = new FeedInboxProvider(sm)
 
     const root = await provider.getChildren(undefined)
@@ -430,7 +428,9 @@ describe("FeedInboxProvider.showFeedInbox", () => {
     const provider = new FeedInboxProvider(sm)
 
     await provider.showFeedInbox()
-    expect(commands.executeCommand).toHaveBeenCalledWith("workbench.view.extension.abapfs")
+    expect(commands.executeCommand).toHaveBeenCalledWith(
+      "workbench.view.extension.abapfs"
+    )
   })
 })
 

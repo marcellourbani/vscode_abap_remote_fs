@@ -48,3 +48,4 @@ export async function getVSCodeUri(confKey: string, uri: string, mainInclude: bo
 export async function setSearchProgress(progress: SearchProgress) {
   connection.sendRequest(Methods.setSearchProgress, progress)
 }
+

@@ -1,22 +1,18 @@
-jest.mock(
-  "vscode",
-  () => ({
-    Uri: {
-      parse: jest.fn((url: string) => {
-        const match = url.match(/^([^:]+):\/\/([^\/]*)(.*)$/)
-        return {
-          scheme: match?.[1] ?? "",
-          authority: match?.[2] ?? "",
-          path: match?.[3] ?? "",
-          toString: () => url
-        }
-      })
-    },
-    LanguageModelTextPart: jest.fn((t: string) => ({ value: t })),
-    LanguageModelToolResult: jest.fn((content: any[]) => ({ content }))
-  }),
-  { virtual: true }
-)
+jest.mock("vscode", () => ({
+  Uri: {
+    parse: jest.fn((url: string) => {
+      const match = url.match(/^([^:]+):\/\/([^\/]*)(.*)$/)
+      return {
+        scheme: match?.[1] ?? "",
+        authority: match?.[2] ?? "",
+        path: match?.[3] ?? "",
+        toString: () => url
+      }
+    })
+  },
+  LanguageModelTextPart: jest.fn((t: string) => ({ value: t })),
+  LanguageModelToolResult: jest.fn((content: any[]) => ({ content }))
+}), { virtual: true })
 
 jest.mock("../conections", () => ({
   getClient: jest.fn(),
@@ -109,7 +105,9 @@ describe("SearchTool", () => {
       }))
       const mockClient = { searchObject: jest.fn().mockResolvedValue(manyResults) }
       const mockRoot = {
-        findByAdtUri: jest.fn().mockImplementation(() => Promise.resolve({ path: "/some/path" }))
+        findByAdtUri: jest.fn().mockImplementation(() =>
+          Promise.resolve({ path: "/some/path" })
+        )
       }
       mockGetClient.mockReturnValue(mockClient as any)
       mockGetRoot.mockReturnValue(mockRoot as any)
@@ -127,11 +125,7 @@ describe("SearchTool", () => {
 
     test("skips objects not found in root", async () => {
       const mockResults = [
-        {
-          "adtcore:uri": "/sap/bc/adt/programs/programs/ztest",
-          "adtcore:name": "ZTEST",
-          "adtcore:type": "PROG/P"
-        }
+        { "adtcore:uri": "/sap/bc/adt/programs/programs/ztest", "adtcore:name": "ZTEST", "adtcore:type": "PROG/P" }
       ]
       const mockClient = { searchObject: jest.fn().mockResolvedValue(mockResults) }
       const mockRoot = { findByAdtUri: jest.fn().mockResolvedValue(undefined) }

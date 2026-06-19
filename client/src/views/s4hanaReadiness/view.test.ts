@@ -1,38 +1,17 @@
-jest.mock(
-  "vscode",
-  () => {
-    class MockEventEmitter {
-      private listeners: Function[] = []
-      event = (listener: Function) => {
-        this.listeners.push(listener)
-        return { dispose: jest.fn() }
-      }
-      fire = (data: any) => {
-        this.listeners.forEach(l => l(data))
-      }
-    }
-    return {
-      EventEmitter: MockEventEmitter,
-      TreeItem: class {
-        constructor(label: any, collapsible?: any) {
-          ;(this as any).label = label
-          ;(this as any).collapsibleState = collapsible
-        }
-      },
-      TreeItemCollapsibleState: { None: 0, Collapsed: 1, Expanded: 2 },
-      ThemeColor: class {
-        constructor(public id: string) {}
-      },
-      ThemeIcon: class {
-        constructor(
-          public id: string,
-          public color?: any
-        ) {}
-      }
-    }
-  },
-  { virtual: true }
-)
+jest.mock("vscode", () => {
+  class MockEventEmitter {
+    private listeners: Function[] = []
+    event = (listener: Function) => { this.listeners.push(listener); return { dispose: jest.fn() } }
+    fire = (data: any) => { this.listeners.forEach(l => l(data)) }
+  }
+  return {
+    EventEmitter: MockEventEmitter,
+    TreeItem: class { constructor(label: any, collapsible?: any) { (this as any).label = label; (this as any).collapsibleState = collapsible } },
+    TreeItemCollapsibleState: { None: 0, Collapsed: 1, Expanded: 2 },
+    ThemeColor: class { constructor(public id: string) {} },
+    ThemeIcon: class { constructor(public id: string, public color?: any) {} }
+  }
+}, { virtual: true })
 
 import { S4HItemNode, S4HProvider, S4HRefNode, S4HRoot, S4HSummaryNode } from "./view"
 import { CustomReference, GroupedData, ItemGroup } from "./types"
@@ -64,12 +43,10 @@ function makeRef(overrides: Partial<CustomReference> = {}): CustomReference {
 
 function makeGroupedData(overrides: Partial<GroupedData> = {}): GroupedData {
   return {
-    groups: [
-      {
-        item: { id: "ITEM1", version: "R", title: "SD CHANGES", note: 2198647, replacementId: "" },
-        refs: [makeRef()]
-      }
-    ],
+    groups: [{
+      item: { id: "ITEM1", version: "R", title: "SD CHANGES", note: 2198647, replacementId: "" },
+      refs: [makeRef()]
+    }],
     ungrouped: [],
     totalRefs: 1,
     ...overrides
@@ -166,7 +143,7 @@ describe("S4HItemNode", () => {
       refs: [
         makeRef({ objName: "ZCL_A", refObjName: "T1", hash: "H1" }),
         makeRef({ objName: "ZCL_A", refObjName: "T1", hash: "H2" }), // duplicate
-        makeRef({ objName: "ZCL_A", refObjName: "T2", hash: "H3" }) // different refObjName
+        makeRef({ objName: "ZCL_A", refObjName: "T2", hash: "H3" })  // different refObjName
       ]
     }
 
@@ -192,14 +169,7 @@ describe("S4HRefNode", () => {
   it("shows object name as label and reference info as description", () => {
     const group: ItemGroup = {
       item: { id: "I1", version: "R", title: "T", note: 1, replacementId: "" },
-      refs: [
-        makeRef({
-          objName: "ZCL_MY_CLASS",
-          objType: "CLAS",
-          refObjName: "KONV",
-          refObjType: "TABL"
-        })
-      ]
+      refs: [makeRef({ objName: "ZCL_MY_CLASS", objType: "CLAS", refObjName: "KONV", refObjType: "TABL" })]
     }
     const root = new S4HRoot("dev100", { groups: [group], ungrouped: [], totalRefs: 1 })
     const itemNode = root.children[1] as S4HItemNode
@@ -226,19 +196,10 @@ describe("S4HRefNode", () => {
 
 describe("S4HSummaryNode", () => {
   it("shows total count and item count", () => {
-    const data = makeGroupedData({
-      totalRefs: 42,
-      groups: [
-        {
-          item: { id: "1", version: "R", title: "A", note: 1, replacementId: "" },
-          refs: Array(20).fill(makeRef())
-        },
-        {
-          item: { id: "2", version: "R", title: "B", note: 2, replacementId: "" },
-          refs: Array(22).fill(makeRef())
-        }
-      ]
-    })
+    const data = makeGroupedData({ totalRefs: 42, groups: [
+      { item: { id: "1", version: "R", title: "A", note: 1, replacementId: "" }, refs: Array(20).fill(makeRef()) },
+      { item: { id: "2", version: "R", title: "B", note: 2, replacementId: "" }, refs: Array(22).fill(makeRef()) }
+    ]})
     const root = new S4HRoot("x", data)
     const summary = root.children[0] as S4HSummaryNode
 
@@ -248,16 +209,14 @@ describe("S4HSummaryNode", () => {
 
   it("shows type breakdown in description", () => {
     const data: GroupedData = {
-      groups: [
-        {
-          item: { id: "1", version: "R", title: "A", note: 1, replacementId: "" },
-          refs: [
-            makeRef({ refObjType: "TABL" }),
-            makeRef({ refObjType: "TABL", hash: "2" }),
-            makeRef({ refObjType: "INTF", hash: "3" })
-          ]
-        }
-      ],
+      groups: [{
+        item: { id: "1", version: "R", title: "A", note: 1, replacementId: "" },
+        refs: [
+          makeRef({ refObjType: "TABL" }),
+          makeRef({ refObjType: "TABL", hash: "2" }),
+          makeRef({ refObjType: "INTF", hash: "3" })
+        ]
+      }],
       ungrouped: [],
       totalRefs: 3
     }

@@ -1,55 +1,38 @@
-jest.mock(
-  "../services/funMessenger",
-  () => ({
-    funWindow: {
-      showWarningMessage: jest.fn(),
-      showQuickPick: jest.fn(),
-      showInputBox: jest.fn(),
-      showErrorMessage: jest.fn(),
-      createOutputChannel: jest.fn(() => ({
-        info: jest.fn(),
-        warn: jest.fn(),
-        error: jest.fn(),
-        debug: jest.fn(),
-        trace: jest.fn()
-      }))
-    }
-  }),
-  { virtual: false }
-)
-jest.mock(
-  "vscode",
-  () => {
-    const NotebookCellStatusBarItem = jest
-      .fn()
-      .mockImplementation((text: string, alignment: any) => ({
-        text,
-        alignment,
-        tooltip: undefined as string | undefined,
-        command: undefined as any
-      }))
-    return {
-      NotebookCellStatusBarItem,
-      NotebookCellStatusBarAlignment: { Right: 2, Left: 1 },
-      NotebookEdit: {
-        updateCellMetadata: jest.fn((index: number, meta: any) => ({ index, meta }))
-      },
-      WorkspaceEdit: jest.fn().mockImplementation(() => ({
-        set: jest.fn()
-      })),
-      notebooks: {
-        registerNotebookCellStatusBarItemProvider: jest.fn(() => ({ dispose: jest.fn() }))
-      },
-      commands: {
-        registerCommand: jest.fn(() => ({ dispose: jest.fn() }))
-      },
-      workspace: {
-        applyEdit: jest.fn().mockResolvedValue(true)
-      }
-    }
+jest.mock("../services/funMessenger", () => ({
+  funWindow: {
+    showWarningMessage: jest.fn(),
+    showQuickPick: jest.fn(),
+    showInputBox: jest.fn(),
+    showErrorMessage: jest.fn(),
+    createOutputChannel: jest.fn(() => ({
+      info: jest.fn(), warn: jest.fn(), error: jest.fn(), debug: jest.fn(), trace: jest.fn(),
+    })),
   },
-  { virtual: true }
-)
+}), { virtual: false })
+jest.mock("vscode", () => {
+  const NotebookCellStatusBarItem = jest.fn().mockImplementation((text: string, alignment: any) => ({
+    text, alignment, tooltip: undefined as string | undefined, command: undefined as any
+  }))
+  return {
+    NotebookCellStatusBarItem,
+    NotebookCellStatusBarAlignment: { Right: 2, Left: 1 },
+    NotebookEdit: {
+      updateCellMetadata: jest.fn((index: number, meta: any) => ({ index, meta })),
+    },
+    WorkspaceEdit: jest.fn().mockImplementation(() => ({
+      set: jest.fn(),
+    })),
+    notebooks: {
+      registerNotebookCellStatusBarItemProvider: jest.fn(() => ({ dispose: jest.fn() })),
+    },
+    commands: {
+      registerCommand: jest.fn(() => ({ dispose: jest.fn() })),
+    },
+    workspace: {
+      applyEdit: jest.fn().mockResolvedValue(true),
+    },
+  }
+}, { virtual: true })
 
 import { SqlCellStatusBarProvider, registerCellStatusBar } from "./cellStatusBar"
 import { DEFAULT_MAX_ROWS, SQL_LANGUAGE_ID } from "./types"
@@ -62,7 +45,7 @@ function makeCell(languageId: string, metadata?: Record<string, unknown>): any {
     document: { languageId },
     metadata: metadata ?? {},
     index: 0,
-    notebook: { uri: { toString: () => "adt://dev100/nb.sapwb" } }
+    notebook: { uri: { toString: () => "adt://dev100/nb.sapwb" } },
   }
 }
 
@@ -202,7 +185,9 @@ describe("abapfs.notebookSetCellMaxRows command handler", () => {
     mockWindow.showInputBox.mockResolvedValue(undefined)
     const cell = makeCell(SQL_LANGUAGE_ID, { maxRows: 42 })
     await commandHandler(cell)
-    expect(mockWindow.showInputBox).toHaveBeenCalledWith(expect.objectContaining({ value: "42" }))
+    expect(mockWindow.showInputBox).toHaveBeenCalledWith(
+      expect.objectContaining({ value: "42" })
+    )
   })
 
   test("input box defaults to DEFAULT_MAX_ROWS when no maxRows in metadata", async () => {

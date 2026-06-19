@@ -1,22 +1,18 @@
 const mockEmitterFire = jest.fn()
 const mockEmitterEvent = jest.fn()
 
-jest.mock(
-  "vscode",
-  () => {
-    class EventEmitter {
-      event = mockEmitterEvent
-      fire = mockEmitterFire
+jest.mock("vscode", () => {
+  class EventEmitter {
+    event = mockEmitterEvent
+    fire = mockEmitterFire
+  }
+  return {
+    EventEmitter,
+    Uri: {
+      parse: jest.fn((s: string) => ({ toString: () => s }))
     }
-    return {
-      EventEmitter,
-      Uri: {
-        parse: jest.fn((s: string) => ({ toString: () => s }))
-      }
-    }
-  },
-  { virtual: true }
-)
+  }
+}, { virtual: true })
 
 jest.mock("../../lib", () => ({
   atob: jest.fn((s: string) => Buffer.from(s, "base64").toString()),
@@ -98,11 +94,9 @@ describe("revisionUri", () => {
     const result = revisionUri(uri as any, revision as any, false)
 
     expect(result).toBeDefined()
-    expect(uri.with).toHaveBeenCalledWith(
-      expect.objectContaining({
-        scheme: ADTREVISIONSCHEME
-      })
-    )
+    expect(uri.with).toHaveBeenCalledWith(expect.objectContaining({
+      scheme: ADTREVISIONSCHEME
+    }))
   })
 
   it("encodes revision and normalized flag in fragment", () => {

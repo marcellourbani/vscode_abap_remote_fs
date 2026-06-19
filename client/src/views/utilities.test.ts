@@ -38,8 +38,8 @@ describe("injectUrlHandler", () => {
   test("handles multiple links", () => {
     const html = '<a href="url1">One</a> <a href="url2">Two</a>'
     const result = injectUrlHandler(html)
-    expect(result).toContain('abapClick("url1")')
-    expect(result).toContain('abapClick("url2")')
+    expect(result).toContain("abapClick(\"url1\")")
+    expect(result).toContain("abapClick(\"url2\")")
   })
 
   test("is case-insensitive for href attribute", () => {

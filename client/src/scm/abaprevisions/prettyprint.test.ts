@@ -14,7 +14,7 @@ describe("normalizeAbap", () => {
     expect(normalizeAbap("* This is a COMMENT")).toBe("* This is a COMMENT")
   })
 
-  test('preserves inline comments starting with "', () => {
+  test("preserves inline comments starting with \"", () => {
     const input = '  data lv_x TYPE i. "This IS a Comment'
     const result = normalizeAbap(input)
     expect(result).toContain('"This IS a Comment')

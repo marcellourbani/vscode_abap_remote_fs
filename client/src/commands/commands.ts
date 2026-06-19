@@ -1,11 +1,5 @@
 import { PACKAGE, AdtObjectCreator } from "../adt/operations/AdtObjectCreator"
-import {
-  CreatableTypeIds,
-  PackageTypes,
-  CreatableTypes,
-  isBindingOptions,
-  NewObjectOptions
-} from "abap-adt-api"
+import { CreatableTypeIds, PackageTypes, CreatableTypes, isBindingOptions, NewObjectOptions } from "abap-adt-api"
 import { MySearchResult } from "../adt/operations/AdtObjectFinder"
 import { SapGuiPanel } from "../views/sapgui/SapGuiPanel"
 import { clearSystemInfoCache } from "../services/sapSystemInfo"
@@ -229,6 +223,7 @@ export class AdtCommands {
   private static connectionManagerCommand() {
     return openConnectionManager(extensionContext)
   }
+
 
   @command(AbapFsCommands.connect)
   private static async connectAdtServer(selector: any) {
@@ -676,8 +671,7 @@ export class AdtCommands {
           return {
             success: false,
             error: "MISSING_SERVICE_BINDING_OPTIONS",
-            message:
-              "Service bindings require additionalOptions with serviceDefinition, bindingType ('ODATA'), and bindingCategory ('0' for Web API, '1' for UI)",
+            message: "Service bindings require additionalOptions with serviceDefinition, bindingType ('ODATA'), and bindingCategory ('0' for Web API, '1' for UI)",
             objectName: name,
             objectType: objectType
           }
@@ -1284,9 +1278,7 @@ export class AdtCommands {
 
     await manager.clearPassword(remote.name, remote.username)
     await manager.savePassword(remote.name, remote.username, newPassword)
-    vscode.window.showInformationMessage(
-      `Password updated for "${remote.name}". Reconnect to use the new credentials.`
-    )
+    vscode.window.showInformationMessage(`Password updated for "${remote.name}". Reconnect to use the new credentials.`)
   }
 
   private static async createTI(uri: Uri) {

@@ -1,54 +1,41 @@
 // Tests for fs/LocalFsProvider.ts
-jest.mock(
-  "vscode",
-  () => {
-    const EventEmitter = class {
-      event = jest.fn()
-      fire = jest.fn()
-    }
-    const FileChangeType = { Created: 1, Changed: 2, Deleted: 3 }
-    const FileType = { Unknown: 0, File: 1, Directory: 2 }
-    const Disposable = class {
-      constructor(public dispose: () => void) {}
-    }
-    const Uri = {
-      joinPath: jest.fn((base: any, ...parts: string[]) => ({
-        ...base,
-        path: [base.path, ...parts].join("/"),
-        toString: () => `${base.scheme}://${base.authority}${[base.path, ...parts].join("/")}`
-      })),
-      parse: jest.fn((s: string) => ({
-        path: s,
-        scheme: "adt",
-        authority: "host",
-        toString: () => s
-      }))
-    }
-    const RelativePattern = class {
-      constructor(base: any, pattern: string) {}
-    }
-    const workspace = {
-      fs: {
-        stat: jest.fn(),
-        readDirectory: jest.fn(),
-        createDirectory: jest.fn(),
-        readFile: jest.fn(),
-        writeFile: jest.fn(),
-        delete: jest.fn(),
-        rename: jest.fn(),
-        copy: jest.fn()
-      },
-      createFileSystemWatcher: jest.fn(() => ({
-        onDidCreate: jest.fn(),
-        onDidChange: jest.fn(),
-        onDidDelete: jest.fn(),
-        dispose: jest.fn()
-      }))
-    }
-    return { EventEmitter, FileChangeType, FileType, Disposable, Uri, RelativePattern, workspace }
-  },
-  { virtual: true }
-)
+jest.mock("vscode", () => {
+  const EventEmitter = class {
+    event = jest.fn()
+    fire = jest.fn()
+  }
+  const FileChangeType = { Created: 1, Changed: 2, Deleted: 3 }
+  const FileType = { Unknown: 0, File: 1, Directory: 2 }
+  const Disposable = class { constructor(public dispose: () => void) {} }
+  const Uri = {
+    joinPath: jest.fn((base: any, ...parts: string[]) => ({
+      ...base,
+      path: [base.path, ...parts].join("/"),
+      toString: () => `${base.scheme}://${base.authority}${[base.path, ...parts].join("/")}`
+    })),
+    parse: jest.fn((s: string) => ({ path: s, scheme: "adt", authority: "host", toString: () => s }))
+  }
+  const RelativePattern = class { constructor(base: any, pattern: string) {} }
+  const workspace = {
+    fs: {
+      stat: jest.fn(),
+      readDirectory: jest.fn(),
+      createDirectory: jest.fn(),
+      readFile: jest.fn(),
+      writeFile: jest.fn(),
+      delete: jest.fn(),
+      rename: jest.fn(),
+      copy: jest.fn()
+    },
+    createFileSystemWatcher: jest.fn(() => ({
+      onDidCreate: jest.fn(),
+      onDidChange: jest.fn(),
+      onDidDelete: jest.fn(),
+      dispose: jest.fn()
+    }))
+  }
+  return { EventEmitter, FileChangeType, FileType, Disposable, Uri, RelativePattern, workspace }
+}, { virtual: true })
 
 jest.mock("./localStorage", () => ({
   LocalStorage: jest.fn().mockImplementation(() => ({
@@ -71,20 +58,18 @@ jest.mock("../config", () => ({
 import { LocalFsProvider } from "./LocalFsProvider"
 import * as vscode from "vscode"
 
-const makeUri = (path: string, scheme = "adt", authority = "host") =>
-  ({
-    path,
-    scheme,
-    authority,
-    toString: () => `${scheme}://${authority}${path}`
-  }) as any
+const makeUri = (path: string, scheme = "adt", authority = "host") => ({
+  path,
+  scheme,
+  authority,
+  toString: () => `${scheme}://${authority}${path}`
+} as any)
 
-const makeContext = () =>
-  ({
-    storageUri: makeUri("/storage", "file"),
-    globalStorageUri: makeUri("/global-storage", "file"),
-    subscriptions: [] as any[]
-  }) as any
+const makeContext = () => ({
+  storageUri: makeUri("/storage", "file"),
+  globalStorageUri: makeUri("/global-storage", "file"),
+  subscriptions: [] as any[]
+} as any)
 
 describe("LocalFsProvider", () => {
   let provider: LocalFsProvider
@@ -157,10 +142,7 @@ describe("LocalFsProvider", () => {
 
   describe("readDirectory", () => {
     it("returns resolved directory contents", async () => {
-      const entries: [string, number][] = [
-        ["file.txt", 1],
-        ["subdir", 2]
-      ]
+      const entries: [string, number][] = [["file.txt", 1], ["subdir", 2]]
       ;(vscode.workspace.fs.readDirectory as jest.Mock).mockResolvedValue(entries)
 
       const uri = makeUri("/mydir")

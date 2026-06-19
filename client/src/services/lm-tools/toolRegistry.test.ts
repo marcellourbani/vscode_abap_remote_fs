@@ -1,12 +1,8 @@
-jest.mock(
-  "vscode",
-  () => ({
-    lm: {
-      registerTool: jest.fn(() => ({ dispose: jest.fn() }))
-    }
-  }),
-  { virtual: true }
-)
+jest.mock("vscode", () => ({
+  lm: {
+    registerTool: jest.fn(() => ({ dispose: jest.fn() }))
+  }
+}), { virtual: true })
 
 import { toolRegistry, registerToolWithRegistry } from "./toolRegistry"
 

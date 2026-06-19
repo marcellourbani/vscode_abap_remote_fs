@@ -2,7 +2,11 @@ import { ADTClient, createSSLConfig, LogData, session_types } from "abap-adt-api
 import { createConnection, ProposedFeatures } from "vscode-languageserver"
 import { types } from "util"
 import { readConfiguration } from "./clientapis"
-import { ClientConfiguration, Methods, CommLogTogglePayload } from "vscode-abap-remote-fs-sharedapi"
+import {
+  ClientConfiguration,
+  Methods,
+  CommLogTogglePayload
+} from "vscode-abap-remote-fs-sharedapi"
 import { isString } from "./functions"
 const clients: Map<string, ADTClient> = new Map()
 

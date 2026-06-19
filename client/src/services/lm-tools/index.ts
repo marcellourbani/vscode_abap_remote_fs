@@ -114,9 +114,7 @@ export async function registerAllTools(context: vscode.ExtensionContext): Promis
     registerToolWithRegistry("abap_debug_variable", new ABAPDebugVariableTool())
   )
   context.subscriptions.push(registerToolWithRegistry("abap_debug_stack", new ABAPDebugStackTool()))
-  context.subscriptions.push(
-    registerToolWithRegistry("abap_debug_status", new ABAPDebugStatusTool())
-  )
+  context.subscriptions.push(registerToolWithRegistry("abap_debug_status", new ABAPDebugStatusTool()))
 
   // 15. Version History Tool
   registerVersionHistoryTool(context)

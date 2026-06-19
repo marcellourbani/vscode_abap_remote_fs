@@ -37,7 +37,9 @@ describe("searchService.searchObjects", () => {
 
   it("returns results from client.searchObject", async () => {
     const mockClient = {
-      searchObject: jest.fn().mockResolvedValue([makeSearchResult("ZCL_TEST", "CLAS/OC")])
+      searchObject: jest.fn().mockResolvedValue([
+        makeSearchResult("ZCL_TEST", "CLAS/OC")
+      ])
     }
     mockGetClient.mockReturnValue(mockClient as any)
 
@@ -121,9 +123,7 @@ describe("searchService.searchObjects", () => {
   })
 
   it("returns empty array on error", async () => {
-    mockGetClient.mockImplementation(() => {
-      throw new Error("No client")
-    })
+    mockGetClient.mockImplementation(() => { throw new Error("No client") })
 
     const svc = new searchService("myconn")
     const results = await svc.searchObjects("ZCL*", ["CLAS"])
@@ -131,9 +131,7 @@ describe("searchService.searchObjects", () => {
   })
 
   it("logs errors when outer try-catch fires", async () => {
-    mockGetClient.mockImplementation(() => {
-      throw new Error("Connection failed")
-    })
+    mockGetClient.mockImplementation(() => { throw new Error("Connection failed") })
 
     const svc = new searchService("myconn")
     await svc.searchObjects("ZCL*", ["CLAS"])
@@ -170,11 +168,9 @@ describe("searchService.searchObjects", () => {
 
   it("includes description from search result", async () => {
     const mockClient = {
-      searchObject: jest
-        .fn()
-        .mockResolvedValue([
-          makeSearchResult("ZTEST", "CLAS/OC", { "adtcore:description": "My custom class" })
-        ])
+      searchObject: jest.fn().mockResolvedValue([
+        makeSearchResult("ZTEST", "CLAS/OC", { "adtcore:description": "My custom class" })
+      ])
     }
     mockGetClient.mockReturnValue(mockClient as any)
 
@@ -185,9 +181,9 @@ describe("searchService.searchObjects", () => {
 
   it("falls back to empty string when description is missing", async () => {
     const mockClient = {
-      searchObject: jest
-        .fn()
-        .mockResolvedValue([{ "adtcore:name": "ZTEST", "adtcore:type": "CLAS/OC" }])
+      searchObject: jest.fn().mockResolvedValue([
+        { "adtcore:name": "ZTEST", "adtcore:type": "CLAS/OC" }
+      ])
     }
     mockGetClient.mockReturnValue(mockClient as any)
 
@@ -198,9 +194,10 @@ describe("searchService.searchObjects", () => {
 
   it("skips results with no name", async () => {
     const mockClient = {
-      searchObject: jest
-        .fn()
-        .mockResolvedValue([{ "adtcore:type": "CLAS/OC" }, makeSearchResult("ZVALID", "CLAS/OC")])
+      searchObject: jest.fn().mockResolvedValue([
+        { "adtcore:type": "CLAS/OC" },
+        makeSearchResult("ZVALID", "CLAS/OC")
+      ])
     }
     mockGetClient.mockReturnValue(mockClient as any)
 

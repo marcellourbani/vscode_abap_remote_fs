@@ -35,10 +35,7 @@ jest.mock(
     })),
     Range: jest.fn().mockImplementation((s: any, e: any) => ({ start: s, end: e })),
     Position: jest.fn().mockImplementation((l: number, c: number) => ({ line: l, character: c })),
-    Uri: {
-      file: jest.fn((p: string) => ({ fsPath: p })),
-      parse: jest.fn((s: string) => ({ toString: () => s }))
-    },
+    Uri: { file: jest.fn((p: string) => ({ fsPath: p })), parse: jest.fn((s: string) => ({ toString: () => s })) },
     env: { openExternal: jest.fn() }
   }),
   { virtual: true }
@@ -83,7 +80,7 @@ import { ABAPCleanerService } from "./abapCleanerService"
 
 // Reset singleton between tests
 function resetSingleton() {
-  ;(ABAPCleanerService as any).instance = undefined
+  (ABAPCleanerService as any).instance = undefined
 }
 
 function setupConfig(overrides: Record<string, any> = {}) {

@@ -4,10 +4,13 @@ async function ddicRepositoryAccessRaw(
   client: ADTClient,
   qs: Record<string, string>
 ): Promise<DdicObjectReference | undefined> {
-  const response = await client.httpClient.request(`/sap/bc/adt/ddic/ddl/ddicrepositoryaccess`, {
-    qs: { ...qs, uriRequired: "X" },
-    headers: { Accept: "application/*" }
-  })
+  const response = await client.httpClient.request(
+    `/sap/bc/adt/ddic/ddl/ddicrepositoryaccess`,
+    {
+      qs: { ...qs, uriRequired: "X" },
+      headers: { Accept: "application/*" }
+    }
+  )
   const { fullParse, xmlArray, xmlNodeAttr } = require("abap-adt-api/build/utilities")
   const raw = fullParse(response.body)
   const records = raw["adtcore:objectReferences"]

@@ -1,54 +1,33 @@
 // Tests for providers/hoverProvider.ts - AbapHoverProviderV2 (private methods via indirect testing)
-jest.mock(
-  "vscode",
-  () => {
-    const Position = class {
-      constructor(
-        public line: number,
-        public character: number
-      ) {}
-    }
-    const Range = class {
-      constructor(
-        public start: any,
-        public end: any
-      ) {}
-    }
-    const MarkdownString = class {
-      public isTrusted?: boolean
-      public supportHtml?: boolean
-      public value = ""
-      appendMarkdown(s: string) {
-        this.value += s
-        return this
-      }
-      appendCodeblock(s: string, lang?: string) {
-        this.value += `\`\`\`${lang}\n${s}\n\`\`\``
-        return this
-      }
-    }
-    const Hover = class {
-      constructor(
-        public contents: any,
-        public range?: any
-      ) {}
-    }
-    const CancellationTokenCls = class {
-      isCancellationRequested = false
-    }
-    return {
-      Position,
-      Range,
-      MarkdownString,
-      Hover,
-      CancellationToken: CancellationTokenCls,
-      commands: { executeCommand: jest.fn() },
-      workspace: { openTextDocument: jest.fn() },
-      window: { visibleTextEditors: [] }
-    }
-  },
-  { virtual: true }
-)
+jest.mock("vscode", () => {
+  const Position = class {
+    constructor(public line: number, public character: number) {}
+  }
+  const Range = class {
+    constructor(public start: any, public end: any) {}
+  }
+  const MarkdownString = class {
+    public isTrusted?: boolean
+    public supportHtml?: boolean
+    public value = ""
+    appendMarkdown(s: string) { this.value += s; return this }
+    appendCodeblock(s: string, lang?: string) { this.value += `\`\`\`${lang}\n${s}\n\`\`\``; return this }
+  }
+  const Hover = class {
+    constructor(public contents: any, public range?: any) {}
+  }
+  const CancellationTokenCls = class { isCancellationRequested = false }
+  return {
+    Position,
+    Range,
+    MarkdownString,
+    Hover,
+    CancellationToken: CancellationTokenCls,
+    commands: { executeCommand: jest.fn() },
+    workspace: { openTextDocument: jest.fn() },
+    window: { visibleTextEditors: [] }
+  }
+}, { virtual: true })
 
 jest.mock("../services/funMessenger", () => ({
   funWindow: { visibleTextEditors: [] }
@@ -72,8 +51,7 @@ const makeMockDocument = (lines: string[], uriStr = "file:///test.abap") => {
 }
 
 const makeMockPosition = (line: number, character: number) => new vscode.Position(line, character)
-const makeMockToken = () =>
-  ({ isCancellationRequested: false }) as unknown as vscode.CancellationToken
+const makeMockToken = () => ({ isCancellationRequested: false } as unknown as vscode.CancellationToken)
 
 describe("AbapHoverProviderV2", () => {
   let provider: AbapHoverProviderV2
@@ -180,16 +158,8 @@ describe("AbapHoverProviderV2", () => {
         new vscode.Range(new vscode.Position(0, 17), new vscode.Position(0, 22))
       )
 
-      const defUri = {
-        toString: () => "file:///fm.abap",
-        path: "/fm.abap",
-        scheme: "file",
-        authority: ""
-      }
-      const defDoc = makeMockDocument(
-        ["FUNCTION MY_FM.", "  ....", "ENDFUNCTION."],
-        "file:///fm.abap"
-      )
+      const defUri = { toString: () => "file:///fm.abap", path: "/fm.abap", scheme: "file", authority: "" }
+      const defDoc = makeMockDocument(["FUNCTION MY_FM.", "  ....", "ENDFUNCTION."], "file:///fm.abap")
       ;(vscode.commands.executeCommand as jest.Mock).mockResolvedValue([
         { uri: defUri, range: { start: { line: 0 } } }
       ])
@@ -205,13 +175,9 @@ describe("AbapHoverProviderV2", () => {
     it("catches errors in provideHover and returns undefined", async () => {
       const doc = {
         uri: { toString: () => "file:///err.abap" },
-        lineAt: jest.fn(() => {
-          throw new Error("document error")
-        }),
+        lineAt: jest.fn(() => { throw new Error("document error") }),
         getText: jest.fn(),
-        getWordRangeAtPosition: jest.fn(
-          () => new vscode.Range(new vscode.Position(0, 0), new vscode.Position(0, 5))
-        )
+        getWordRangeAtPosition: jest.fn(() => new vscode.Range(new vscode.Position(0, 0), new vscode.Position(0, 5)))
       } as any
 
       const pos = makeMockPosition(0, 2)

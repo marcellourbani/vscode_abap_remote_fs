@@ -30,13 +30,10 @@ export class AbapConfigurationProvider implements DebugConfigurationProvider {
     // Treat that as unset and fall through to folder authority or picker.
     const rawConnId = config.connId
     const isCommandPlaceholder = typeof rawConnId === "string" && rawConnId.startsWith("${command:")
-    const connId =
-      !rawConnId || isCommandPlaceholder
-        ? folder?.uri.authority || "${command:abapfs.pickAdtRootConn}"
-        : rawConnId
-    log(
-      `resolveDebugConfiguration: config.connId="${rawConnId}", folder.authority="${folder?.uri.authority}", resolved connId="${connId}"`
-    )
+    const connId = (!rawConnId || isCommandPlaceholder)
+      ? (folder?.uri.authority || "${command:abapfs.pickAdtRootConn}")
+      : rawConnId
+    log(`resolveDebugConfiguration: config.connId="${rawConnId}", folder.authority="${folder?.uri.authority}", resolved connId="${connId}"`)
     const defaultconf: AbapDebugConfiguration = {
       name: "Attach to server",
       type: DEBUGTYPE,

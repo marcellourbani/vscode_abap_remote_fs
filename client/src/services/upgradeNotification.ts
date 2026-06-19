@@ -43,13 +43,14 @@ export function checkUpgradeNotification(context: vscode.ExtensionContext): void
 // ─── Blinking Status Bar ─────────────────────────────────────────────────────
 
 function showVersionUpgradeNotification(version: string): void {
-  window
-    .showInformationMessage(`ABAP Remote Filesystem has been updated to v${version}`, "What's New")
-    .then(choice => {
-      if (choice === "What's New") {
-        vscode.env.openExternal(vscode.Uri.parse(CHANGELOG_URL))
-      }
-    })
+  window.showInformationMessage(
+    `ABAP Remote Filesystem has been updated to v${version}`,
+    "What's New"
+  ).then(choice => {
+    if (choice === "What's New") {
+      vscode.env.openExternal(vscode.Uri.parse(CHANGELOG_URL))
+    }
+  })
 }
 
 function showBlinkingStatusBar(context: vscode.ExtensionContext): void {

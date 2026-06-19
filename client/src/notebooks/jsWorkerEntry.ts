@@ -50,23 +50,10 @@ parentPort.once("message", async (request: WorkerRequest) => {
         warn: (...args: unknown[]) => logs.push("[warn] " + args.map(formatLogArg).join(" ")),
         error: (...args: unknown[]) => logs.push("[error] " + args.map(formatLogArg).join(" "))
       },
-      Math,
-      Date,
-      JSON,
-      parseInt,
-      parseFloat,
-      isNaN,
-      isFinite,
-      Array,
-      Object,
-      String,
-      Number,
-      Boolean,
-      Map,
-      Set,
-      RegExp,
-      Error,
-      Promise
+      Math, Date, JSON,
+      parseInt, parseFloat, isNaN, isFinite,
+      Array, Object, String, Number, Boolean,
+      Map, Set, RegExp, Error, Promise
     }
 
     const wrappedCode = wrapAsAsyncFunction(code)
@@ -134,13 +121,11 @@ function buildCellsAccessor(
 function wrapAsAsyncFunction(code: string): string {
   const trimmed = code.trim()
 
-  if (
-    /^\s*return\s/m.test(trimmed) &&
+  if (/^\s*return\s/m.test(trimmed) &&
     !trimmed.startsWith("const ") &&
     !trimmed.startsWith("let ") &&
     !trimmed.startsWith("var ") &&
-    !trimmed.startsWith("function")
-  ) {
+    !trimmed.startsWith("function")) {
     return `(async function() {\n${trimmed}\n})`
   }
 
@@ -152,10 +137,7 @@ function wrapAsAsyncFunction(code: string): string {
     return `(async function() {\n${trimmed}\n})`
   }
 
-  const isNonReturnable =
-    /^(const |let |var |if\b|for\b|while\b|switch\b|try\b|class\b|function\b|throw\b|do\b|\{|\}|\[)/.test(
-      lastLine
-    )
+  const isNonReturnable = /^(const |let |var |if\b|for\b|while\b|switch\b|try\b|class\b|function\b|throw\b|do\b|\{|\}|\[)/.test(lastLine)
 
   if (isNonReturnable) {
     return `(async function() {\n${trimmed}\n})`
@@ -173,14 +155,8 @@ function withTimeout<T>(promise: Promise<T>, ms: number): Promise<T> {
   return new Promise<T>((resolve, reject) => {
     const timer = setTimeout(() => reject(new Error(`Timed out after ${ms / 1000}s`)), ms)
     promise.then(
-      val => {
-        clearTimeout(timer)
-        resolve(val)
-      },
-      err => {
-        clearTimeout(timer)
-        reject(err)
-      }
+      val => { clearTimeout(timer); resolve(val) },
+      err => { clearTimeout(timer); reject(err) }
     )
   })
 }

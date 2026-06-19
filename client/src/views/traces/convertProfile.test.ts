@@ -22,9 +22,13 @@ const makeRun = (publishedMs = 1000000): TraceRun =>
       state: { text: "OK", value: "S" },
       system: "DEV"
     }
-  }) as any
+  } as any)
 
-const makeStatement = (id: number, callLevel: number, netTime: number) => ({
+const makeStatement = (
+  id: number,
+  callLevel: number,
+  netTime: number
+) => ({
   index: id,
   callLevel,
   hitCount: 1,
@@ -39,7 +43,8 @@ const makeStatement = (id: number, callLevel: number, netTime: number) => ({
   }
 })
 
-const makeStatementResponse = (statements: any[]): TraceStatementResponse => ({ statements }) as any
+const makeStatementResponse = (statements: any[]): TraceStatementResponse =>
+  ({ statements } as any)
 
 const makeHitlistEntry = (id: number, netTime: number) => ({
   index: id,
@@ -55,7 +60,7 @@ const makeHitlistEntry = (id: number, netTime: number) => ({
   }
 })
 
-const makeHitList = (entries: any[]): TraceHitList => ({ entries }) as any
+const makeHitList = (entries: any[]): TraceHitList => ({ entries } as any)
 
 describe("convertStatements", () => {
   const run = makeRun(1_000_000)
@@ -68,7 +73,10 @@ describe("convertStatements", () => {
   })
 
   it("computes endTime = startTime + sum of timeDeltas", () => {
-    const resp = makeStatementResponse([makeStatement(0, 0, 100), makeStatement(1, 1, 200)])
+    const resp = makeStatementResponse([
+      makeStatement(0, 0, 100),
+      makeStatement(1, 1, 200)
+    ])
     const profile = convertStatements(run, resp, connId)
     const expectedSelfTime = 0 + 100 + 200 // timeDeltas: [0, ...statement times]
     expect(profile.endTime).toBe(profile.startTime + expectedSelfTime)

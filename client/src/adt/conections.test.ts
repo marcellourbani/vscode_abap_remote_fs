@@ -1,22 +1,14 @@
-jest.mock(
-  "vscode",
-  () => ({
-    FileSystemError: {
-      FileNotFound: (msg: string) => new Error(`FileNotFound: ${msg}`)
-    },
-    workspace: {
-      workspaceFolders: undefined
-    },
-    Uri: {
-      parse: jest.fn((s: string) => ({
-        scheme: s.split("://")[0],
-        authority: s.split("://")[1]?.split("/")[0],
-        toString: () => s
-      }))
-    }
-  }),
-  { virtual: true }
-)
+jest.mock("vscode", () => ({
+  FileSystemError: {
+    FileNotFound: (msg: string) => new Error(`FileNotFound: ${msg}`)
+  },
+  workspace: {
+    workspaceFolders: undefined
+  },
+  Uri: {
+    parse: jest.fn((s: string) => ({ scheme: s.split("://")[0], authority: s.split("://")[1]?.split("/")[0], toString: () => s }))
+  }
+}), { virtual: true })
 
 jest.mock("../config", () => ({
   RemoteManager: { get: jest.fn() },
@@ -26,9 +18,7 @@ jest.mock("../config", () => ({
 jest.mock("./debugger", () => ({ LogOutPendingDebuggers: jest.fn().mockResolvedValue([]) }))
 jest.mock("../services/sapSystemValidator", () => ({
   SapSystemValidator: {
-    getInstance: jest
-      .fn()
-      .mockReturnValue({ validateSystemAccess: jest.fn().mockResolvedValue(undefined) })
+    getInstance: jest.fn().mockReturnValue({ validateSystemAccess: jest.fn().mockResolvedValue(undefined) })
   }
 }))
 jest.mock("../fs/LocalFsProvider", () => ({
@@ -37,14 +27,7 @@ jest.mock("../fs/LocalFsProvider", () => ({
 jest.mock("../lib", () => ({ log: jest.fn() }))
 jest.mock("abapfs", () => ({}))
 
-import {
-  ADTSCHEME,
-  ADTURIPATTERN,
-  abapUri,
-  getClient,
-  getRoot,
-  rootIsConnected
-} from "./conections"
+import { ADTSCHEME, ADTURIPATTERN, abapUri, getClient, getRoot, rootIsConnected } from "./conections"
 
 describe("ADTSCHEME", () => {
   it("is 'adt'", () => {
@@ -110,19 +93,25 @@ describe("rootIsConnected", () => {
 
   it("returns false when no matching ADT folder", () => {
     const { workspace } = require("vscode")
-    workspace.workspaceFolders = [{ uri: { scheme: "file", authority: "myconn" } }]
+    workspace.workspaceFolders = [
+      { uri: { scheme: "file", authority: "myconn" } }
+    ]
     expect(rootIsConnected("myconn")).toBe(false)
   })
 
   it("returns true when matching ADT folder exists", () => {
     const { workspace } = require("vscode")
-    workspace.workspaceFolders = [{ uri: { scheme: "adt", authority: "myconn" } }]
+    workspace.workspaceFolders = [
+      { uri: { scheme: "adt", authority: "myconn" } }
+    ]
     expect(rootIsConnected("myconn")).toBe(true)
   })
 
   it("is case-insensitive for connId", () => {
     const { workspace } = require("vscode")
-    workspace.workspaceFolders = [{ uri: { scheme: "adt", authority: "myconn" } }]
+    workspace.workspaceFolders = [
+      { uri: { scheme: "adt", authority: "myconn" } }
+    ]
     expect(rootIsConnected("MYCONN")).toBe(true)
   })
 })

@@ -1,31 +1,19 @@
 const mockFire = jest.fn()
 const mockEvent = jest.fn()
 
-jest.mock(
-  "vscode",
-  () => {
-    class EventEmitter {
-      event = mockEvent
-      fire = mockFire
-    }
-    class Range {
-      constructor(
-        public sl: number,
-        public sc: number,
-        public el: number,
-        public ec: number
-      ) {}
-    }
-    class CodeLens {
-      constructor(
-        public range: any,
-        public command?: any
-      ) {}
-    }
-    return { CodeLensProvider: class {}, EventEmitter, Range, CodeLens, Uri: {} }
-  },
-  { virtual: true }
-)
+jest.mock("vscode", () => {
+  class EventEmitter {
+    event = mockEvent
+    fire = mockFire
+  }
+  class Range {
+    constructor(public sl: number, public sc: number, public el: number, public ec: number) {}
+  }
+  class CodeLens {
+    constructor(public range: any, public command?: any) {}
+  }
+  return { CodeLensProvider: class {}, EventEmitter, Range, CodeLens, Uri: {} }
+}, { virtual: true })
 
 const mockGetCurrentRev = jest.fn()
 const mockSetCurrentRev = jest.fn()
@@ -46,12 +34,7 @@ jest.mock("./abaprevisionservice", () => ({
   revLabel: mockRevLabel
 }))
 jest.mock("../../commands", () => ({
-  AbapFsCommands: {
-    changequickdiff: "cmd1",
-    comparediff: "cmd2",
-    remotediff: "cmd3",
-    mergeEditor: "cmd4"
-  }
+  AbapFsCommands: { changequickdiff: "cmd1", comparediff: "cmd2", remotediff: "cmd3", mergeEditor: "cmd4" }
 }))
 
 import { AbapRevisionLens } from "./lenses"

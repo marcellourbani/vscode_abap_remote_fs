@@ -1516,10 +1516,8 @@ export class ABAPDebugStatusTool implements vscode.LanguageModelTool<IDebugStatu
           exists: !!debugListener,
           activeServicesCount: debugListener?.activeThreads?.length || 0,
           services:
-            debugListener?.activeThreads?.map(([id, s]: [number, any]) => ({
-              id,
-              name: s.debuggee?.NAME
-            })) || []
+            debugListener?.activeThreads?.map(([id, s]: [number, any]) => ({ id, name: s.debuggee?.NAME })) ||
+            []
         })
       }
 

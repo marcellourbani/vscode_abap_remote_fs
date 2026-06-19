@@ -1,15 +1,11 @@
 // dataQueryTool tests focus purely on prepareInvocation validation logic
 // (the SQL guards and input validations) since invoke requires heavy infrastructure.
-jest.mock(
-  "vscode",
-  () => ({
-    LanguageModelToolResult: jest.fn().mockImplementation((parts: any[]) => ({ parts })),
-    LanguageModelTextPart: jest.fn().mockImplementation((text: string) => ({ text })),
-    MarkdownString: jest.fn().mockImplementation((text: string) => ({ text })),
-    lm: { registerTool: jest.fn(() => ({ dispose: jest.fn() })) }
-  }),
-  { virtual: true }
-)
+jest.mock("vscode", () => ({
+  LanguageModelToolResult: jest.fn().mockImplementation((parts: any[]) => ({ parts })),
+  LanguageModelTextPart: jest.fn().mockImplementation((text: string) => ({ text })),
+  MarkdownString: jest.fn().mockImplementation((text: string) => ({ text })),
+  lm: { registerTool: jest.fn(() => ({ dispose: jest.fn() })) }
+}), { virtual: true })
 
 jest.mock("../../adt/conections", () => ({ getClient: jest.fn() }))
 jest.mock("../telemetry", () => ({ logTelemetry: jest.fn() }))
@@ -17,9 +13,7 @@ jest.mock("./toolRegistry", () => ({
   registerToolWithRegistry: jest.fn(() => ({ dispose: jest.fn() }))
 }))
 jest.mock("../webviewManager", () => ({
-  WebviewManager: {
-    getInstance: jest.fn(() => ({ executeQuery: jest.fn(), getWebview: jest.fn() }))
-  }
+  WebviewManager: { getInstance: jest.fn(() => ({ executeQuery: jest.fn(), getWebview: jest.fn() })) }
 }))
 jest.mock("../sapSystemInfo", () => ({ getSAPSystemInfo: jest.fn() }))
 jest.mock("../funMessenger", () => ({ funWindow: { activeTextEditor: undefined } }))
@@ -48,21 +42,14 @@ describe("ExecuteDataQueryTool - prepareInvocation validation", () => {
 
     it("throws for invalid displayMode value", async () => {
       await expect(
-        tool.prepareInvocation(
-          makeOptions({ sql: "SELECT * FROM mara", displayMode: "invalid" }),
-          mockToken
-        )
+        tool.prepareInvocation(makeOptions({ sql: "SELECT * FROM mara", displayMode: "invalid" }), mockToken)
       ).rejects.toThrow("displayMode")
     })
 
     it("accepts 'internal' displayMode", async () => {
       await expect(
         tool.prepareInvocation(
-          makeOptions({
-            sql: "SELECT * FROM mara",
-            displayMode: "internal",
-            rowRange: { start: 0, end: 10 }
-          }),
+          makeOptions({ sql: "SELECT * FROM mara", displayMode: "internal", rowRange: { start: 0, end: 10 } }),
           mockToken
         )
       ).resolves.toBeDefined()
@@ -158,10 +145,7 @@ describe("ExecuteDataQueryTool - prepareInvocation validation", () => {
     it("accepts WITH statement", async () => {
       await expect(
         tool.prepareInvocation(
-          makeOptions({
-            displayMode: "ui",
-            sql: "WITH cte AS (SELECT matnr FROM mara) SELECT * FROM cte"
-          }),
+          makeOptions({ displayMode: "ui", sql: "WITH cte AS (SELECT matnr FROM mara) SELECT * FROM cte" }),
           mockToken
         )
       ).resolves.toBeDefined()

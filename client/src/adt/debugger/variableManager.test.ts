@@ -14,26 +14,17 @@ jest.mock("@vscode/debugadapter", () => ({
         return id
       }),
       get: jest.fn((id: number) => store.get(id)),
-      reset: jest.fn(() => {
-        store.clear()
-        counter = base || 1
-      })
+      reset: jest.fn(() => { store.clear(); counter = base || 1 })
     }
   }),
   Scope: jest.fn().mockImplementation((name: string, ref: number, expensive: boolean) => ({
-    name,
-    variablesReference: ref,
-    expensive
+    name, variablesReference: ref, expensive
   }))
 }))
-jest.mock(
-  "vscode",
-  () => ({
-    env: { clipboard: { writeText: jest.fn() } },
-    ProgressLocation: { Notification: 1 }
-  }),
-  { virtual: true }
-)
+jest.mock("vscode", () => ({
+  env: { clipboard: { writeText: jest.fn() } },
+  ProgressLocation: { Notification: 1 }
+}), { virtual: true })
 jest.mock("../../services/funMessenger", () => ({
   funWindow: {
     withProgress: jest.fn((_opts: any, fn: () => any) => fn()),
@@ -154,9 +145,7 @@ describe("VariableManager", () => {
       const frameId = threadId * 1000000000000
       mockIdThread.mockReturnValue(threadId)
       const listener = {
-        service: jest.fn().mockImplementation(() => {
-          throw new Error("no service")
-        }),
+        service: jest.fn().mockImplementation(() => { throw new Error("no service") }),
         activeServices: jest.fn(() => [])
       } as any
       const vm = new VariableManager(listener)
@@ -234,22 +223,8 @@ describe("VariableManager", () => {
       const MULTIPLIER = 1000000000000
       mockIdThread.mockReturnValue(threadId)
       const mockDebugVars = [
-        {
-          NAME: "VAR_A",
-          VALUE: "hello",
-          META_TYPE: "simple",
-          TECHNICAL_TYPE: "C",
-          ID: "VAR_A",
-          TABLE_LINES: 0
-        },
-        {
-          NAME: "TBL",
-          VALUE: "",
-          META_TYPE: "table",
-          TECHNICAL_TYPE: "T",
-          ID: "TBL[]",
-          TABLE_LINES: 5
-        }
+        { NAME: "VAR_A", VALUE: "hello", META_TYPE: "simple", TECHNICAL_TYPE: "C", ID: "VAR_A", TABLE_LINES: 0 },
+        { NAME: "TBL", VALUE: "", META_TYPE: "table", TECHNICAL_TYPE: "T", ID: "TBL[]", TABLE_LINES: 5 }
       ] as any[]
       const mockClient = makeClient({
         debuggerChildVariables: jest.fn().mockResolvedValue({
@@ -279,9 +254,7 @@ describe("VariableManager", () => {
       const ref = threadId * 1000000000000
       mockIdThread.mockReturnValue(threadId)
       const listener = {
-        service: jest.fn().mockImplementation(() => {
-          throw new Error("no service")
-        }),
+        service: jest.fn().mockImplementation(() => { throw new Error("no service") }),
         activeServices: jest.fn(() => [])
       } as any
       const vm = new VariableManager(listener)
@@ -326,11 +299,9 @@ describe("VariableManager", () => {
 
     test("returns numeric value for numeric TECHNICAL_TYPE", async () => {
       const mockClient = makeClient({
-        debuggerVariables: jest
-          .fn()
-          .mockResolvedValue([
-            { META_TYPE: "simple", TECHNICAL_TYPE: "I", VALUE: "42", ID: "V1", NAME: "V1" }
-          ])
+        debuggerVariables: jest.fn().mockResolvedValue([
+          { META_TYPE: "simple", TECHNICAL_TYPE: "I", VALUE: "42", ID: "V1", NAME: "V1" }
+        ])
       })
       const listener = { service: jest.fn(), activeServices: jest.fn(() => []) } as any
       const vm = new VariableManager(listener)
@@ -340,11 +311,9 @@ describe("VariableManager", () => {
 
     test("returns string value trimmed for string type", async () => {
       const mockClient = makeClient({
-        debuggerVariables: jest
-          .fn()
-          .mockResolvedValue([
-            { META_TYPE: "string", VALUE: "hello   ", ID: "V1", NAME: "V1", TECHNICAL_TYPE: "g" }
-          ])
+        debuggerVariables: jest.fn().mockResolvedValue([
+          { META_TYPE: "string", VALUE: "hello   ", ID: "V1", NAME: "V1", TECHNICAL_TYPE: "g" }
+        ])
       })
       const listener = { service: jest.fn(), activeServices: jest.fn(() => []) } as any
       const vm = new VariableManager(listener)
@@ -354,11 +323,9 @@ describe("VariableManager", () => {
 
     test("returns Unprocessable string for objectref type", async () => {
       const mockClient = makeClient({
-        debuggerVariables: jest
-          .fn()
-          .mockResolvedValue([
-            { META_TYPE: "objectref", VALUE: "ref", ID: "V1", NAME: "V1", TECHNICAL_TYPE: "r" }
-          ])
+        debuggerVariables: jest.fn().mockResolvedValue([
+          { META_TYPE: "objectref", VALUE: "ref", ID: "V1", NAME: "V1", TECHNICAL_TYPE: "r" }
+        ])
       })
       const listener = { service: jest.fn(), activeServices: jest.fn(() => []) } as any
       const vm = new VariableManager(listener)
@@ -403,18 +370,9 @@ describe("VariableManager", () => {
       const frameId = threadId * 1000000000000
       mockIdThread.mockReturnValue(threadId)
       const mockClient = makeClient({
-        debuggerVariables: jest
-          .fn()
-          .mockResolvedValue([
-            {
-              META_TYPE: "simple",
-              TECHNICAL_TYPE: "C",
-              VALUE: "hello",
-              ID: "V1",
-              NAME: "V1",
-              TABLE_LINES: 0
-            }
-          ])
+        debuggerVariables: jest.fn().mockResolvedValue([
+          { META_TYPE: "simple", TECHNICAL_TYPE: "C", VALUE: "hello", ID: "V1", NAME: "V1", TABLE_LINES: 0 }
+        ])
       })
       const service = makeService(threadId, { client: mockClient })
       const listener = {

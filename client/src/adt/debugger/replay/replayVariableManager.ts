@@ -48,10 +48,7 @@ export class ReplayVariableManager {
   }
 
   /** Simple expression evaluation against the current snapshot */
-  evaluate(
-    expression: string,
-    snapshot: DebugSnapshot
-  ): DebugProtocol.EvaluateResponse["body"] | undefined {
+  evaluate(expression: string, snapshot: DebugSnapshot): DebugProtocol.EvaluateResponse["body"] | undefined {
     const found = findVariable(expression, snapshot.scopes)
     if (!found) return undefined
 
