@@ -150,7 +150,7 @@ describe("ABAPFSDocumentationTool", () => {
         makeOptions({ action: "search_documentation", searchQuery: "xyznotfound" }),
         mockToken
       )
-      expect(result.parts[0].text).toContain("No matches found")
+      expect(result.parts[0].text).toContain("No matches")
     })
 
     it("throws when searchQuery not provided", async () => {

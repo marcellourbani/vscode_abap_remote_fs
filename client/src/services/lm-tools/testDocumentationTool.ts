@@ -51,8 +51,8 @@ export class CreateTestDocumentationTool implements vscode.LanguageModelTool<ICr
       title: "Create Test Documentation",
       message: new vscode.MarkdownString(
         `Create Word document with ${scenarios.length} scenario(s) and ${totalScreenshots} screenshot(s)` +
-          (reportTitle ? `\n\n**Title:** ${reportTitle}` : "") +
-          (testDate ? `\n**Date:** ${testDate}` : "")
+          (reportTitle ? `\n\nTitle: ${reportTitle}` : "") +
+          (testDate ? `\nDate: ${testDate}` : "")
       )
     }
 
@@ -106,17 +106,17 @@ export class CreateTestDocumentationTool implements vscode.LanguageModelTool<ICr
       )
 
       const resultText =
-        `** Test Documentation Created Successfully** \n\n` +
-        `• **Scenarios:** ${scenarios.length}\n` +
-        `• **Total Screenshots:** ${totalScreenshots}\n` +
-        `• **Report Title:** ${reportTitle || "Test Documentation Report"}\n` +
-        `• **Test Date:** ${testDate || new Date().toISOString().split("T")[0]}\n` +
-        `• **Status:** ${resultMessage}\n\n` +
-        `** Scenario Breakdown:**\n` +
+        ` Test Documentation Created Successfully \n\n` +
+        `• Scenarios: ${scenarios.length}\n` +
+        `• Total Screenshots: ${totalScreenshots}\n` +
+        `• Report Title: ${reportTitle || "Test Documentation Report"}\n` +
+        `• Test Date: ${testDate || new Date().toISOString().split("T")[0]}\n` +
+        `• Status: ${resultMessage}\n\n` +
+        ` Scenario Breakdown:\n` +
         scenarios
           .map(
             scenario =>
-              `• **Scenario ${scenario.scenarioId}:** ${scenario.scenarioName} (${scenario.screenshots.length} screenshots)`
+              `• Scenario ${scenario.scenarioId}: ${scenario.scenarioName} (${scenario.screenshots.length} screenshots)`
           )
           .join("\n")
 

@@ -528,8 +528,8 @@ describe("ABAPWhereUsedTool", () => {
 
         const text = result.parts[0].text
         // startIndex=2, maxResults=3 → showing items 2,3,4 out of 10 → 5 remaining
-        expect(text).toContain("Remaining results: 5")
-        expect(text).toContain("startIndex: 5")
+        expect(text).toContain("Remaining: 5")
+        expect(text).toContain("startIndex=5")
       })
     })
 
@@ -598,8 +598,8 @@ describe("ABAPWhereUsedTool", () => {
         )
 
         const text = result.parts[0].text
-        expect(text).toContain("Total References:** 3")
-        expect(text).toContain("Unique Objects:** 2")
+        expect(text).toContain("Total References: 3")
+        expect(text).toContain("Unique Objects: 2")
       })
 
       it("filters out refs without valid ABAPFullName identifier", async () => {
@@ -617,7 +617,7 @@ describe("ABAPWhereUsedTool", () => {
         const text = result.parts[0].text
         expect(text).toContain("ZVALID_OBJ")
         // The invalid refs should not appear (only 1 result)
-        expect(text).toContain("Total References:** 1")
+        expect(text).toContain("Total References: 1")
       })
     })
 

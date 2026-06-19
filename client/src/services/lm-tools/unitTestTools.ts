@@ -109,7 +109,7 @@ export class CreateTestIncludeTool implements vscode.LanguageModelTool<ICreateTe
 
       return new vscode.LanguageModelToolResult([
         new vscode.LanguageModelTextPart(
-          ` Test include created successfully for class ${className}! The test include is now available in the class structure and has been opened in the editor.`
+          `Test include created for class ${className}. Now available in class structure and opened in editor.`
         )
       ])
     } catch (error) {
@@ -213,21 +213,19 @@ export class RunUnitTestsTool implements vscode.LanguageModelTool<IRunUnitTestsP
   private formatTestResults(
     results: import("../../adt/operations/UnitTestRunner").UnitTestResults
   ): string {
-    const icon = results.allPassed ? "" : ""
     const status = results.allPassed ? "ALL TESTS PASSED" : "SOME TESTS FAILED"
 
-    let output = `${icon} **Unit Test Results for ${results.objectName}**\n\n`
-    output += `**Status:** ${status}\n`
-    output += `**Total Tests:** ${results.totalTests}\n`
-    output += `**Passed:** ${results.passed} | **Failed:** ${results.failed}\n`
-    output += `**Total Time:** ${results.totalTime.toFixed(3)}s\n\n`
+    let output = `Unit Test Results for ${results.objectName}\n`
+    output += `Status: ${status}\n`
+    output += `Total: ${results.totalTests} | Passed: ${results.passed} | Failed: ${results.failed}\n`
+    output += `Time: ${results.totalTime.toFixed(3)}s\n\n`
 
     if (results.classes.length > 0) {
-      output += `**Test Classes:**\n`
+      output += `Test Classes:\n`
 
       for (const testClass of results.classes) {
-        const classIcon = testClass.passed ? "" : ""
-        output += `\n${classIcon} **${testClass.name}**\n`
+        const classStatus = testClass.passed ? "PASS" : "FAIL"
+        output += `\n[${classStatus}] ${testClass.name}\n`
 
         // Show class-level alerts if any
         if (testClass.alerts.length > 0) {
@@ -238,8 +236,8 @@ export class RunUnitTestsTool implements vscode.LanguageModelTool<IRunUnitTestsP
 
         // Show methods
         for (const method of testClass.methods) {
-          const methodIcon = method.passed ? "" : ""
-          output += `  ${methodIcon} ${method.name} (${method.executionTime.toFixed(3)}s)\n`
+          const methodStatus = method.passed ? "PASS" : "FAIL"
+          output += `  [${methodStatus}] ${method.name} (${method.executionTime.toFixed(3)}s)\n`
 
           // Show method alerts (failures)
           if (!method.passed && method.alerts.length > 0) {
@@ -253,10 +251,10 @@ export class RunUnitTestsTool implements vscode.LanguageModelTool<IRunUnitTestsP
         }
       }
     } else {
-      output += ` No test classes found in this object.\n`
+      output += `No test classes found in this object.\n`
     }
 
-    output += `\n Results are also displayed in the VS Code Testing view.`
+    output += `\nResults also displayed in VS Code Testing view.`
 
     return output
   }

@@ -185,16 +185,16 @@ export class GetBatchLinesTool implements vscode.LanguageModelTool<IBatchLinesPa
       )
 
       const resultText =
-        `**Batch Lines Results** (${requests.length} objects):\n\n` +
+        `Batch Lines Results (${requests.length} objects):\n\n` +
         results
           .map(result => {
             if (result.success) {
               return (
-                `### **${result.objectName}** (${result.lines} lines)\n` +
+                `### ${result.objectName} (${result.lines} lines)\n` +
                 `\`\`\`abap\n${result.content}\n\`\`\`\n`
               )
             } else {
-              return `### **${result.objectName}**\n ${result.content}\n`
+              return `### ${result.objectName}\n${result.content}\n`
             }
           })
           .join("\n")

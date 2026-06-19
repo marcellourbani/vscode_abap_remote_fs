@@ -194,8 +194,8 @@ describe("CreateTestDocumentationTool", () => {
     it("returns result with scenario count", async () => {
       const scenarios = makeScenarios(3, 2)
       const result: any = await tool.invoke(makeOptions({ scenarios }), mockToken)
-      expect(result.parts[0].text).toContain("Scenarios:** 3")
-      expect(result.parts[0].text).toContain("Total Screenshots:** 6")
+      expect(result.parts[0].text).toContain("Scenarios: 3")
+      expect(result.parts[0].text).toContain("Total Screenshots: 6")
     })
 
     it("returns result with saved path", async () => {
@@ -233,8 +233,8 @@ describe("CreateTestDocumentationTool", () => {
 
     it("handles empty scenarios array", async () => {
       const result: any = await tool.invoke(makeOptions({ scenarios: [] }), mockToken)
-      expect(result.parts[0].text).toContain("Scenarios:** 0")
-      expect(result.parts[0].text).toContain("Total Screenshots:** 0")
+      expect(result.parts[0].text).toContain("Scenarios: 0")
+      expect(result.parts[0].text).toContain("Total Screenshots: 0")
     })
 
     it("handles scenario with no screenshots", async () => {

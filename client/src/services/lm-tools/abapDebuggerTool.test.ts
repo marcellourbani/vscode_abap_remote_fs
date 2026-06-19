@@ -1058,7 +1058,7 @@ describe("ABAPDebugStatusTool", () => {
       Object.defineProperty(AbapDebugSession, "activeSessions", { value: 0, writable: true })
 
       const result: any = await tool.invoke(makeOptions({ connectionId: "dev100" }), mockToken)
-      expect(result.parts[0].text).toContain("ABAP Session Active:** No")
+      expect(result.parts[0].text).toContain("ABAP Session Active: No")
       expect(result.parts[0].text).toContain("No active debugging session")
     })
 
@@ -1075,8 +1075,8 @@ describe("ABAPDebugStatusTool", () => {
       Object.defineProperty(AbapDebugSession, "activeSessions", { value: 1, writable: true })
 
       const result: any = await tool.invoke(makeOptions({ connectionId: "dev100" }), mockToken)
-      expect(result.parts[0].text).toContain("ABAP Session Active:** Yes")
-      expect(result.parts[0].text).toContain("VS Code Debug Active:** Yes")
+      expect(result.parts[0].text).toContain("ABAP Session Active: Yes")
+      expect(result.parts[0].text).toContain("VS Code Debug Active: Yes")
     })
 
     it("shows paused state with current location", async () => {

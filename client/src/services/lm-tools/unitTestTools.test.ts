@@ -339,9 +339,9 @@ describe("RunUnitTestsTool", () => {
 
         const text = result.parts[0].text
         expect(text).toContain("ALL TESTS PASSED")
-        expect(text).toContain("Total Tests:** 5")
-        expect(text).toContain("Passed:** 5")
-        expect(text).toContain("Failed:** 0")
+        expect(text).toContain("Total: 5")
+        expect(text).toContain("Passed: 5")
+        expect(text).toContain("Failed: 0")
         expect(text).toContain("1.234s")
         expect(text).toContain("LCL_TEST")
         expect(text).toContain("test_method_1")
@@ -399,8 +399,8 @@ describe("RunUnitTestsTool", () => {
 
         const text = result.parts[0].text
         expect(text).toContain("SOME TESTS FAILED")
-        expect(text).toContain("Passed:** 0")
-        expect(text).toContain("Failed:** 2")
+        expect(text).toContain("Passed: 0")
+        expect(text).toContain("Failed: 2")
         expect(text).toContain("Expected 1 but got 2")
         expect(text).toContain("Values differ")
         expect(text).toContain("Line 42")
@@ -522,8 +522,8 @@ describe("RunUnitTestsTool", () => {
         )
 
         const text = result.parts[0].text
-        expect(text).toContain("Passed:** 2")
-        expect(text).toContain("Failed:** 1")
+        expect(text).toContain("Passed: 2")
+        expect(text).toContain("Failed: 1")
         expect(text).toContain("LCL_TEST_GOOD")
         expect(text).toContain("LCL_TEST_BAD")
       })

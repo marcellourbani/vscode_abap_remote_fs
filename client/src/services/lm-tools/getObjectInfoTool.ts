@@ -156,17 +156,14 @@ export class GetABAPObjectInfoTool implements vscode.LanguageModelTool<IGetABAPO
             const hasAppendStructures = appendCount > 0
 
             const tableResultText =
-              `**${objectName}** Enhanced Table Information:\n\n` +
-              `• **Object Type:** ${objectInfo.type} (Database Table)\n` +
-              `• **Description:** ${objectInfo.description || "No description available"}\n` +
-              `• **Package:** ${objectInfo.package || "Unknown"}\n` +
-              `• **System Type:** ${objectInfo.systemType}\n` +
-              `• **Total Lines:** ${structureLines.length}\n` +
-              `• **Append Structures:** ${appendCount}\n` +
-              `• **Has Custom Fields/Append Structures:** ${hasAppendStructures ? " Yes" : " No"}\n` +
-              `• **SE11-like Structure Access:**  Available\n` +
-              `• **URI:** \`${objectInfo.uri}\`\n\n` +
-              ` **Enhanced Table Info:** This table ${hasAppendStructures ? `includes ${appendCount} custom append structure(s) with additional fields` : "has no append structures"}. `
+              `${objectName} (Database Table):\n` +
+              `Type: ${objectInfo.type}\n` +
+              `Description: ${objectInfo.description || "none"}\n` +
+              `Package: ${objectInfo.package || "unknown"}\n` +
+              `System Type: ${objectInfo.systemType}\n` +
+              `Total lines: ${structureLines.length}\n` +
+              `Append structures: ${appendCount}${hasAppendStructures ? " (custom fields present)" : ""}\n` +
+              `URI: ${objectInfo.uri}`
 
             return new vscode.LanguageModelToolResult([
               new vscode.LanguageModelTextPart(tableResultText)
@@ -215,27 +212,27 @@ export class GetABAPObjectInfoTool implements vscode.LanguageModelTool<IGetABAPO
           )
           if (enhancementResult.hasEnhancements) {
             enhancementInfo =
-              `\n• **Enhancements:** ${enhancementResult.totalEnhancements} enhancement(s) found\n` +
+              `\n• Enhancements: ${enhancementResult.totalEnhancements} enhancement(s) found\n` +
               enhancementResult.enhancements
                 .map(enh => `  - ${enh.name} (line ${enh.startLine})`)
                 .join("\n")
           } else {
-            enhancementInfo = "\n• **Enhancements:** No enhancements found"
+            enhancementInfo = "\n• Enhancements: No enhancements found"
           }
         } catch {
-          enhancementInfo = "\n• **Enhancements:** Could not check enhancements"
+          enhancementInfo = "\n• Enhancements: Could not check enhancements"
         }
       }
 
       const resultText =
-        `**${objectName}** Information:\n\n` +
-        `• **Object Type:** ${objectInfo.type}\n` +
-        `• **Description:** ${objectInfo.description || "No description available"}\n` +
-        `• **Package:** ${objectInfo.package || "Unknown"}\n` +
-        `• **System Type:** ${objectInfo.systemType}\n` +
-        `• **Total Lines:** ${totalLines}\n` +
-        `• **URI:** \`${objectInfo.uri || "Not available"}\`\n` +
-        `• **URI Used:** \`${uriUsed}\`` +
+        `${objectName} Information:\n\n` +
+        `• Object Type: ${objectInfo.type}\n` +
+        `• Description: ${objectInfo.description || "No description available"}\n` +
+        `• Package: ${objectInfo.package || "Unknown"}\n` +
+        `• System Type: ${objectInfo.systemType}\n` +
+        `• Total Lines: ${totalLines}\n` +
+        `• URI: \`${objectInfo.uri || "Not available"}\`\n` +
+        `• URI Used: \`${uriUsed}\`` +
         enhancementInfo
 
       return new vscode.LanguageModelToolResult([new vscode.LanguageModelTextPart(resultText)])

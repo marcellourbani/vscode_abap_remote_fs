@@ -680,7 +680,7 @@ describe("ManageTextElementsTool", () => {
         mockToken
       )
 
-      expect(result.parts[0].text).toContain("Total Text Elements:** 3")
+      expect(result.parts[0].text).toContain("Total: 3")
       expect(result.parts[0].text).toContain("Alpha")
       expect(result.parts[0].text).toContain("Beta")
       expect(result.parts[0].text).toContain("Gamma")

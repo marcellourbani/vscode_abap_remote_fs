@@ -365,12 +365,12 @@ export class ABAPWhereUsedTool implements vscode.LanguageModelTool<IWhereUsedPar
         ])
       }
 
-      let resultText = `**ABAP Where-Used Analysis**\n`
+      let resultText = `ABAP Where-Used Analysis\n`
       resultText += `Object: ${objectName}${objectType ? ` (${objectType})` : ""}\n`
 
       // Show actual keyword found at position (when line/character provided OR searchTerm used)
       if (actualKeyword) {
-        resultText += `**Analyzing symbol at position:** \`${actualKeyword}\` (Line ${searchLine}, Character ${searchCharacter})\n`
+        resultText += `Analyzing symbol at position: \`${actualKeyword}\` (Line ${searchLine}, Character ${searchCharacter})\n`
       } else {
         if (searchTerm) resultText += `Search Term: ${searchTerm}\n`
         resultText += `Position: Line ${searchLine}, Character ${searchCharacter}\n`
@@ -380,7 +380,7 @@ export class ABAPWhereUsedTool implements vscode.LanguageModelTool<IWhereUsedPar
 
       // Show filtering and pagination info
       if (filter || startIndex > 0) {
-        resultText += `**Result Set Info:**\n`
+        resultText += `Result Set Info:\n`
         resultText += `• Total references found: ${totalRawReferences}\n`
 
         if (filter) {
@@ -397,13 +397,13 @@ export class ABAPWhereUsedTool implements vscode.LanguageModelTool<IWhereUsedPar
           resultText += `• Showing: ${startIndex + 1} to ${Math.min(startIndex + paginatedRefs.length, filteredRefs.length)} (${paginatedRefs.length} results)\n`
           if (startIndex + maxResults < filteredRefs.length) {
             const remaining = filteredRefs.length - (startIndex + maxResults)
-            resultText += `• Remaining results: ${remaining} (use startIndex: ${startIndex + maxResults} to see next batch)\n`
+            resultText += `• Remaining: ${remaining} (use startIndex=${startIndex + maxResults} for next batch)\n`
           }
         }
 
         resultText += `\n`
       } else {
-        resultText += `**Results:** ${paginatedRefs.length} of ${filteredRefs.length} references\n`
+        resultText += `Results: ${paginatedRefs.length} of ${filteredRefs.length} references\n`
         if (filteredRefs.length > maxResults) {
           resultText += `(showing first ${maxResults}, use startIndex to see more)\n`
         }
@@ -421,7 +421,7 @@ export class ABAPWhereUsedTool implements vscode.LanguageModelTool<IWhereUsedPar
         groups.get(fullName)!.push(ref)
       }
 
-      resultText += `**References by Object:**\n`
+      resultText += `References by Object:\n`
 
       let refIndex = 1
       let hasUnknownTypes = false
@@ -429,7 +429,7 @@ export class ABAPWhereUsedTool implements vscode.LanguageModelTool<IWhereUsedPar
 
       // Show details for all objects (they're already paginated by maxResults/startIndex)
       for (const [fullName, refs] of allObjects) {
-        resultText += `${refIndex}. **${fullName}** (${refs.length} reference${refs.length > 1 ? "s" : ""})\n`
+        resultText += `${refIndex}. ${fullName} (${refs.length} reference${refs.length > 1 ? "s" : ""})\n`
 
         for (const ref of refs) {
           const objType = ref["adtcore:type"] || "Unknown"
@@ -443,7 +443,7 @@ export class ABAPWhereUsedTool implements vscode.LanguageModelTool<IWhereUsedPar
           if (ref["adtcore:description"]) {
             resultText += `   • Description: ${ref["adtcore:description"]}\n`
           }
-          resultText += `   • URI: \`${ref.uri || "N/A"}\`\n`
+          resultText += `   • URI: ${ref.uri || "N/A"}\n`
           resultText += `\n`
         }
 
@@ -452,30 +452,30 @@ export class ABAPWhereUsedTool implements vscode.LanguageModelTool<IWhereUsedPar
 
       // Add tip about Unknown types
       if (hasUnknownTypes) {
-        resultText += `\n **Tip:** Some references show Type as "Unknown". You can determine the actual object type from the URI path:\n`
-        resultText += `   • URIs containing "/oo/classes/" → Class (CLAS/OC)\n`
-        resultText += `   • URIs containing "/programs/programs/" → Program (PROG/P)\n`
-        resultText += `   • URIs containing "/functions/groups/" → Function Module (FUGR/FF)\n`
-        resultText += `   • URIs containing "/oo/interfaces/" → Interface (INTF/OI)\n`
-        resultText += `   • Or use the URI with get_object_by_uri tool to retrieve the object and inspect its metadata\n\n`
+        resultText += `\nTip: some references show Type="Unknown". Determine actual type from URI path:\n`
+        resultText += `   • /oo/classes/ → Class (CLAS/OC)\n`
+        resultText += `   • /programs/programs/ → Program (PROG/P)\n`
+        resultText += `   • /functions/groups/ → Function Module (FUGR/FF)\n`
+        resultText += `   • /oo/interfaces/ → Interface (INTF/OI)\n`
+        resultText += `   • Or use the URI with get_object_by_uri to inspect metadata\n\n`
       }
 
       // Get usage snippets if requested - Copilot controls this via includeSnippets parameter
       if (includeSnippets) {
         try {
-          resultText += `\n**Usage Snippets:**\n`
+          resultText += `\nUsage Snippets:\n`
 
           const snippets = await client.statelessClone.usageReferenceSnippets(paginatedRefs)
 
           let snippetIndex = 1
           for (const s of snippets) {
             if (s.snippets && s.snippets.length > 0) {
-              resultText += `${snippetIndex}. **${s.objectIdentifier}**\n`
+              resultText += `${snippetIndex}. ${s.objectIdentifier}\n`
 
               for (const snippet of s.snippets.slice(0, 3)) {
                 // Max 3 snippets per object
                 if (snippet.uri && snippet.uri.start) {
-                  resultText += `   Line ${snippet.uri.start.line}: \`${snippet.content || snippet.matches || "No content"}\`\n`
+                  resultText += `   Line ${snippet.uri.start.line}: ${snippet.content || snippet.matches || "No content"}\n`
                 }
               }
               resultText += `\n`
@@ -491,13 +491,13 @@ export class ABAPWhereUsedTool implements vscode.LanguageModelTool<IWhereUsedPar
       const uniqueObjects = groups.size
       const totalReferences = paginatedRefs.length
 
-      resultText += `\n**Summary:**\n`
-      resultText += `• **Total References:** ${totalReferences}\n`
-      resultText += `• **Unique Objects:** ${uniqueObjects}\n`
-      resultText += `• **Avg References/Object:** ${Math.round(totalReferences / uniqueObjects)}\n`
+      resultText += `\nSummary:\n`
+      resultText += `• Total References: ${totalReferences}\n`
+      resultText += `• Unique Objects: ${uniqueObjects}\n`
+      resultText += `• Avg References/Object: ${Math.round(totalReferences / uniqueObjects)}\n`
 
       if (filteredRefs.length > paginatedRefs.length) {
-        resultText += `• **Truncated:** Showing ${paginatedRefs.length} of ${filteredRefs.length} filtered references\n`
+        resultText += `• Truncated: Showing ${paginatedRefs.length} of ${filteredRefs.length} filtered references\n`
       }
 
       return new vscode.LanguageModelToolResult([new vscode.LanguageModelTextPart(resultText)])

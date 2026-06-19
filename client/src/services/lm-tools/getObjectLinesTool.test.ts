@@ -119,7 +119,7 @@ describe("GetABAPObjectLinesTool", () => {
         makeOptions({ objectName: "ZCLASS", methodName: "NONEXISTENT", connectionId: "dev100" }),
         mockToken
       )
-      expect(result.parts[0].text).toContain("not found")
+      expect(result.parts[0].text).toContain("NOT FOUND")
     })
   })
 
