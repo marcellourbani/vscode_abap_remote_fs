@@ -1,5 +1,21 @@
 # Changelog
 
+## 2.5.0
+
+### Minor Changes
+
+- 94dd00e: Added an object type registry (registry.ts) and updated object creation / behavior (extensions, GUI routing, labels) to consult it instead of hardcoded switch/Maps/decorators
+
+### Patch Changes
+
+- eaef7e8: trim tool/field descriptions and outputs of tools to reduce AI cost
+- e544b85: replace custom rap generator calls with adt ones
+- a9f6db4: Refactor SAP GUI opening to a single entry point and button
+- 1e1ee2c: added a status bar control for blame
+- 123f333: remove unnecessary axios interceptors
+- 2f9b5e2: Added new config to auto open xml objects in webgui
+- 6a522c5: update dependencies
+
 ## 2.4.10
 
 ### Patch Changes

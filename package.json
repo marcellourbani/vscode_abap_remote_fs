@@ -2,7 +2,7 @@
   "name": "vscode-abap-remote-fs",
   "displayName": "ABAP remote filesystem",
   "description": "VS Code-based Agentic AI Platform for SAP ABAP Development",
-  "version": "2.4.10",
+  "version": "2.5.0",
   "publisher": "murbani",
   "publishConfig": {
     "access": "restricted",
@@ -775,7 +775,7 @@
             },
             "additionalOptions": {
               "type": "object",
-          "description": "Type-specific options. MANDATORY for service bindings (SRVB/SVB): serviceDefinition, bindingType, bindingCategory. MANDATORY for packages (DEVC/K): softwareComponent, packageType, transportLayer.",
+              "description": "Type-specific options. MANDATORY for service bindings (SRVB/SVB): serviceDefinition, bindingType, bindingCategory. MANDATORY for packages (DEVC/K): softwareComponent, packageType, transportLayer.",
               "properties": {
                 "serviceDefinition": {
                   "type": "string",
