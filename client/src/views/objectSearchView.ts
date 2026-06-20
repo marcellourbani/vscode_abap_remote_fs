@@ -70,15 +70,33 @@ export class ObjectSearchViewProvider implements WebviewViewProvider {
           await this.postState()
           break
         case "search":
+          if (message.connectionId && message.connectionId !== this.currentConnId) {
+            this.currentConnId = message.connectionId
+            await this.postState()
+          }
           await this.search(message.query || "", message.connectionId)
           break
         case "open":
           if (message.connectionId && message.uri) {
+            await this.addToRecent(message.connectionId, {
+              uri: message.uri,
+              type: message.objectType || "",
+              name: message.name || "",
+              description: message.description || "",
+              detail: message.detail || ""
+            })
+            await this.postState()
             await openObject(message.connectionId, message.uri, message.objectType)
           }
           break
         case "changeTypes":
           await this.changeTypes(message.connectionId, message.query || "")
+          break
+        case "clearHistory":
+          if (message.connectionId) {
+            await this.clearRecent(message.connectionId)
+            await this.postState()
+          }
           break
       }
     })
@@ -106,6 +124,25 @@ export class ObjectSearchViewProvider implements WebviewViewProvider {
     return connections[0]?.id
   }
 
+  private async addToRecent(connectionId: string, item: SearchResultMessage) {
+    if (!connectionId) return
+    const key = `abapfs.recentObjects.${connectionId}`
+    let recent: SearchResultMessage[] = context.globalState.get<SearchResultMessage[]>(key) || []
+    recent = recent.filter(r => r.uri !== item.uri)
+    recent.unshift(item)
+    if (recent.length > 10) {
+      recent = recent.slice(0, 10)
+    }
+    await context.globalState.update(key, recent)
+  }
+
+  private async clearRecent(connectionId: string) {
+    if (!connectionId) return
+    const key = `abapfs.recentObjects.${connectionId}`
+    await context.globalState.update(key, [])
+  }
+
+
   private async postState() {
     if (!this.view) return
 
@@ -113,13 +150,16 @@ export class ObjectSearchViewProvider implements WebviewViewProvider {
     const connectionId = this.resolveConnectionId()
     this.currentConnId = connectionId
     const typeFilter = getSavedTypeFilter()
+    const recentKey = `abapfs.recentObjects.${connectionId}`
+    const recentObjects = connectionId ? context.globalState.get<SearchResultMessage[]>(recentKey) || [] : []
 
     await this.view.webview.postMessage({
       type: "state",
       connections,
       connectionId,
       typeFilter,
-      hasConnections: connections.length > 0
+      hasConnections: connections.length > 0,
+      recentObjects
     })
   }
 
@@ -195,28 +235,29 @@ export class ObjectSearchViewProvider implements WebviewViewProvider {
       }
 
       .wrap {
-        padding: 10px;
+        padding: 6px;
         display: flex;
         flex-direction: column;
-        gap: 10px;
+        gap: 4px;
       }
 
       .toolbar {
         display: grid;
         grid-template-columns: 1fr auto;
-        gap: 8px;
+        gap: 6px;
       }
 
       select,
-      input,
-      button {
+      input {
         width: 100%;
         box-sizing: border-box;
         border: 1px solid var(--vscode-input-border, transparent);
         background: var(--vscode-input-background);
         color: var(--vscode-input-foreground);
-        padding: 6px 8px;
-        font: inherit;
+        padding: 2px 4px;
+        font-family: inherit;
+        font-size: 12px;
+        height: 20px;
       }
 
       button {
@@ -225,26 +266,55 @@ export class ObjectSearchViewProvider implements WebviewViewProvider {
       }
 
       .iconButton {
-        width: 32px;
-        min-width: 32px;
-        padding: 6px;
+        box-sizing: border-box;
+        border: 1px solid var(--vscode-input-border, transparent);
+        background: var(--vscode-input-background);
+        color: var(--vscode-input-foreground);
+        width: auto;
+        min-width: 20px;
+        height: 20px;
+        padding: 0 4px;
         display: inline-flex;
         align-items: center;
         justify-content: center;
-        font-size: 14px;
+        gap: 4px;
+        font-family: inherit;
+        font-size: 11px;
         line-height: 1;
+        cursor: pointer;
       }
 
       .iconButton svg {
-        width: 16px;
-        height: 16px;
+        width: 12px;
+        height: 12px;
         fill: currentColor;
         display: block;
+      }
+
+      .badge {
+        background-color: var(--vscode-badge-background, #007acc);
+        color: var(--vscode-badge-foreground, #ffffff);
+        border-radius: 8px;
+        font-size: 9px;
+        font-weight: bold;
+        line-height: 1;
+        padding: 1px 4px;
+        min-width: 8px;
+        text-align: center;
+        display: flex;
+        align-items: center;
+        justify-content: center;
       }
 
       .hint {
         font-size: 11px;
         color: var(--vscode-descriptionForeground);
+      }
+
+      .search-area {
+        display: flex;
+        flex-direction: column;
+        gap: 0;
       }
 
       .meta {
@@ -253,6 +323,8 @@ export class ObjectSearchViewProvider implements WebviewViewProvider {
         gap: 8px;
         font-size: 11px;
         color: var(--vscode-descriptionForeground);
+        padding: 4px 2px 0 2px;
+        margin: 0;
       }
 
       .results {
@@ -263,7 +335,7 @@ export class ObjectSearchViewProvider implements WebviewViewProvider {
       }
 
       .result {
-        padding: 8px 2px;
+        padding: 2px 2px;
         border-bottom: 1px solid var(--vscode-panel-border);
       }
 
@@ -278,22 +350,22 @@ export class ObjectSearchViewProvider implements WebviewViewProvider {
       }
 
       .name {
-        font-size: 14px;
+        font-size: 13px;
         font-weight: 600;
-        line-height: 1.4;
+        line-height: 1.2;
       }
 
       .headline {
         display: flex;
         align-items: baseline;
-        gap: 8px;
+        gap: 4px;
       }
 
       .desc,
       .detail {
-        font-size: 12px;
+        font-size: 11px;
         color: var(--vscode-descriptionForeground);
-        line-height: 1.4;
+        line-height: 1.2;
       }
 
       .desc {
@@ -309,6 +381,71 @@ export class ObjectSearchViewProvider implements WebviewViewProvider {
 
       .error {
         color: var(--vscode-errorForeground);
+      }
+
+      .section-header-container {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin: 2px 2px 2px 2px;
+      }
+
+      .section-header {
+        font-size: 11px;
+        text-transform: uppercase;
+        font-weight: bold;
+        color: var(--vscode-descriptionForeground);
+        margin: 0;
+        letter-spacing: 0.5px;
+      }
+
+      .search-container {
+        position: relative;
+        display: flex;
+        align-items: center;
+        width: 100%;
+        margin-bottom: 4px;
+      }
+
+      .search-container input {
+        padding-right: 24px;
+      }
+
+      .clear-btn,
+      .clear-history-btn {
+        background: transparent !important;
+        border: none !important;
+        padding: 0 !important;
+        width: auto !important;
+        cursor: pointer;
+        color: var(--vscode-descriptionForeground);
+        opacity: 0.6;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 16px;
+        font-weight: bold;
+        line-height: 1;
+        font-family: var(--vscode-font-family);
+      }
+
+      .clear-btn {
+        position: absolute;
+        right: 6px;
+        top: 0;
+        bottom: 0;
+        height: 100% !important;
+        margin: 0 !important;
+      }
+
+      .clear-history-btn {
+        height: auto !important;
+      }
+
+      .clear-btn:hover,
+      .clear-history-btn:hover {
+        opacity: 1;
+        color: var(--vscode-foreground);
       }
     </style>
   </head>
@@ -326,16 +463,26 @@ export class ObjectSearchViewProvider implements WebviewViewProvider {
           <svg viewBox="0 0 16 16" aria-hidden="true">
             <path d="M1 3.25A1.25 1.25 0 0 1 2.25 2h11.5a1.25 1.25 0 0 1 .97 2.04L10 9.97v3.28a.75.75 0 0 1-1.2.6l-2-1.5a.75.75 0 0 1-.3-.6V9.97L1.28 4.04A1.25 1.25 0 0 1 1 3.25Z" />
           </svg>
+          <span id="filterBadge" class="badge" style="display: none;"></span>
         </button>
       </div>
-      <input id="search" type="text" placeholder="Search ABAP objects">
-      <div class="meta">
-        <span id="filterInfo">All types</span>
-        <span id="status">Type at least 2 characters</span>
+      <div class="search-area">
+        <div class="search-container">
+          <input id="search" type="text" placeholder="Search ABAP objects">
+          <button id="clearSearch" class="clear-btn" type="button" title="Clear Search Query" aria-label="Clear Search Query" style="display: none;">&times;</button>
+        </div>
+        <div id="error" class="error" hidden></div>
+        <div id="recentHeaderContainer" class="section-header-container" style="display: none;">
+          <span class="section-header">Recent Objects</span>
+          <button id="clearHistory" class="clear-history-btn" type="button" title="Clear Recent Objects History" aria-label="Clear Recent Objects History">&times;</button>
+        </div>
+        <ul id="recentList" class="results" style="display: none;"></ul>
+        <ul id="results" class="results"></ul>
+        <div class="meta">
+          <span id="status">Type at least 2 characters</span>
+        </div>
       </div>
-      <div id="error" class="error" hidden></div>
-      <ul id="results" class="results"></ul>
-      <div class="hint">Uses the existing object search logic and saved type filter. Manage filters with the filter button in the toolbar.</div>
+      <div class="hint">Manage filters with the filter button in the toolbar.</div>
     </div>
     <script nonce="${nonce}">
       const vscode = acquireVsCodeApi()
@@ -344,10 +491,15 @@ export class ObjectSearchViewProvider implements WebviewViewProvider {
       const results = document.getElementById("results")
       const error = document.getElementById("error")
       const status = document.getElementById("status")
-      const filterInfo = document.getElementById("filterInfo")
+      const filterBadge = document.getElementById("filterBadge")
       const filters = document.getElementById("filters")
+      const recentHeaderContainer = document.getElementById("recentHeaderContainer")
+      const recentList = document.getElementById("recentList")
+      const clearSearch = document.getElementById("clearSearch")
+      const clearHistory = document.getElementById("clearHistory")
       let searchTimer
       let currentConnectionId = undefined
+      let recentItems = []
 
       const pluralize = (count, singular, plural = singular + "s") => {
         return count + " " + (count === 1 ? singular : plural)
@@ -361,10 +513,10 @@ export class ObjectSearchViewProvider implements WebviewViewProvider {
         })
       }
 
-      const renderResults = items => {
-        results.textContent = ""
+      const renderList = (container, items) => {
+        container.textContent = ""
 
-        if (!items.length) {
+        if (!items || !items.length) {
           return
         }
 
@@ -379,7 +531,10 @@ export class ObjectSearchViewProvider implements WebviewViewProvider {
               command: "open",
               connectionId: currentConnectionId,
               uri: item.uri,
-              objectType: item.type
+              objectType: item.type,
+              name: item.name,
+              description: item.description,
+              detail: item.detail
             })
           })
 
@@ -403,13 +558,49 @@ export class ObjectSearchViewProvider implements WebviewViewProvider {
           button.appendChild(headline)
           if (detail.textContent) button.appendChild(detail)
           li.appendChild(button)
-          results.appendChild(li)
+          container.appendChild(li)
+        }
+      }
+
+      const updateListVisibility = () => {
+        const query = search.value.trim()
+        clearSearch.style.display = search.value ? "flex" : "none"
+        if (query.length < 2) {
+          results.style.display = "none"
+          if (recentItems && recentItems.length > 0) {
+            recentHeaderContainer.style.display = "flex"
+            recentList.style.display = "block"
+            status.textContent = "Recent objects"
+          } else {
+            recentHeaderContainer.style.display = "none"
+            recentList.style.display = "none"
+            status.textContent = "Type at least 2 characters"
+          }
+        } else {
+          results.style.display = "block"
+          recentHeaderContainer.style.display = "none"
+          recentList.style.display = "none"
         }
       }
 
       search.addEventListener("input", () => {
+        updateListVisibility()
         clearTimeout(searchTimer)
         searchTimer = setTimeout(postSearch, 200)
+      })
+
+      clearSearch.addEventListener("click", () => {
+        search.value = ""
+        updateListVisibility()
+        clearTimeout(searchTimer)
+        postSearch()
+      })
+
+      clearHistory.addEventListener("click", () => {
+        vscode.postMessage({
+          command: "clearHistory",
+          connectionId: currentConnectionId
+        })
       })
 
       connection.addEventListener("change", () => {
@@ -451,24 +642,37 @@ export class ObjectSearchViewProvider implements WebviewViewProvider {
           }
 
           const typeCount = Array.isArray(message.typeFilter) ? message.typeFilter.length : 0
-          filterInfo.textContent = typeCount > 0 ? pluralize(typeCount, "type filter") : "All types"
+          if (typeCount > 0) {
+            filterBadge.textContent = typeCount
+            filterBadge.style.display = "flex"
+            filters.title = "Select object type filters (" + typeCount + " active)"
+          } else {
+            filterBadge.style.display = "none"
+            filters.title = "Select object type filters"
+          }
+          
+          recentItems = message.recentObjects || []
+          renderList(recentList, recentItems)
+          updateListVisibility()
+
           if (!message.hasConnections) {
             status.textContent = "Mount an ABAP system to search"
-            renderResults([])
+            renderList(results, [])
           }
         }
 
         if (message.type === "results") {
           error.hidden = !message.error
           error.textContent = message.error || ""
-          renderResults(message.items || [])
+          renderList(results, message.items || [])
+          updateListVisibility()
 
           if (message.busy) {
             status.textContent = "Searching..."
           } else if (message.error) {
             status.textContent = "Search failed"
           } else if (search.value.trim().length < 2) {
-            status.textContent = "Type at least 2 characters"
+            updateListVisibility()
           } else if ((message.items || []).length === 0) {
             status.textContent = "No matching objects"
           } else {
@@ -480,7 +684,7 @@ export class ObjectSearchViewProvider implements WebviewViewProvider {
       vscode.postMessage({ command: "ready" })
     </script>
   </body>
-</html>`
+  </html>`
   }
 }
 

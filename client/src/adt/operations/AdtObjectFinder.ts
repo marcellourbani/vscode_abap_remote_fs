@@ -400,21 +400,52 @@ export class AdtObjectFinder {
       const qp = window.createQuickPick()
       qp.ignoreFocusOut = true
 
+      const getRecentItems = (): MySearchResult[] => {
+        const key = `abapfs.recentObjects.${this.connId}`
+        const recent = context.globalState.get<any[]>(key) || []
+        return recent.map(item => {
+          let packageName = ""
+          const pkgMatch = item.detail?.match(/Package\s+([^\s•]+)/)
+          if (pkgMatch) {
+            packageName = pkgMatch[1]
+          }
+          return new MySearchResult({
+            "adtcore:uri": item.uri,
+            "adtcore:type": item.type,
+            "adtcore:name": item.name,
+            "adtcore:packageName": packageName,
+            "adtcore:description": item.description || ""
+          })
+        })
+      }
+
+      const recentItems = getRecentItems()
+
       // Add button to change type filter (show always when no specific type is requested)
       if (!objType && !forType) {
-        qp.buttons = [
-          {
-            iconPath: new ThemeIcon("filter"),
-            tooltip: "Change Type Filter (Click to select different object types)"
-          }
-        ]
+        const filterButton = {
+          iconPath: new ThemeIcon("filter"),
+          tooltip: "Change Type Filter (Click to select different object types)"
+        }
+        const clearHistoryButton = {
+          iconPath: new ThemeIcon("trash"),
+          tooltip: "Clear Search History"
+        }
 
-        qp.onDidTriggerButton(async () => {
-          qp.hide()
-          // Re-run the full flow (force type selection and ask preference again)
-          const result = await this.findObjectWithTypeFilter(prompt, true)
-          if (result) {
-            resolve(result)
+        qp.buttons = [filterButton, clearHistoryButton]
+
+        qp.onDidTriggerButton(async button => {
+          if (button === filterButton) {
+            qp.hide()
+            // Re-run the full flow (force type selection and ask preference again)
+            const result = await this.findObjectWithTypeFilter(prompt, true)
+            if (result) {
+              resolve(result)
+            }
+          } else if (button === clearHistoryButton) {
+            const key = `abapfs.recentObjects.${this.connId}`
+            await context.globalState.update(key, [])
+            qp.items = []
           }
         })
 
@@ -424,16 +455,31 @@ export class AdtObjectFinder {
 
       const searchParent = async (e: string) => {
         qp.items =
-          e.length >= 2 ? await this.search(e, getClient(this.connId), objType, typeFilter) : empty
+          e.length >= 2 ? await this.search(e, getClient(this.connId), objType, typeFilter) : recentItems
       }
 
-      qp.items = empty
-      qp.items = [...empty]
+      qp.items = recentItems
       qp.onDidChangeValue(async e => searchParent(e))
       qp.placeholder = prompt
-      qp.onDidChangeSelection(e => {
+      qp.onDidChangeSelection(async e => {
         if (e[0]) {
-          resolve(e[0] as MySearchResult)
+          const selected = e[0] as MySearchResult
+          const recentKey = `abapfs.recentObjects.${this.connId}`
+          let recent: any[] = context.globalState.get<any[]>(recentKey) || []
+          recent = recent.filter(r => r.uri !== selected.uri)
+          recent.unshift({
+            uri: selected.uri,
+            type: selected.type,
+            name: selected.name,
+            description: selected.description || "",
+            detail: selected.detail || ""
+          })
+          if (recent.length > 10) {
+            recent = recent.slice(0, 10)
+          }
+          await context.globalState.update(recentKey, recent)
+
+          resolve(selected)
           qp.hide()
         }
       })
