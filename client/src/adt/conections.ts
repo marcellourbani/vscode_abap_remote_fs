@@ -39,7 +39,9 @@ async function create(connId: string) {
   if (!validAuthMethods.includes(authMethod)) {
     log(`⚠️ Unknown authMethod '${authMethod}' for ${connId} — falling back to basic auth`)
   }
-  log.debug(`[connect] Creating client for ${connId}: authMethod=${authMethod}, hasOAuth=${!!connection.oauth}, hasPassword=${!!connection.password}`)
+  log.debug(
+    `[connect] Creating client for ${connId}: authMethod=${authMethod}, hasOAuth=${!!connection.oauth}, hasPassword=${!!connection.password}`
+  )
   let client: ADTClient
 
   if (authMethod !== "basic" && validAuthMethods.includes(authMethod)) {
@@ -78,10 +80,7 @@ async function create(connId: string) {
       ) {
         httpClient.httpclient.axios.interceptors.request.use((config: any) => {
           if (!config || typeof config !== "object") return config
-          if (
-            typeof config.url === "string" &&
-            config.url.includes("/datapreview/freestyle")
-          ) {
+          if (typeof config.url === "string" && config.url.includes("/datapreview/freestyle")) {
             config.headers = config.headers || {}
             config.headers["Content-Type"] = "text/plain"
           }
@@ -131,7 +130,10 @@ function createIfMissing(connId: string) {
         msg.includes("Can't connect without a password")
       ) {
         log.debug(`[connect] Marking ${connId} as failed (no auto-retry): ${msg.substring(0, 100)}`)
-        failedConnections.set(connId, `Connection failed: ${msg}. Disconnect and reconnect to retry.`)
+        failedConnections.set(
+          connId,
+          `Connection failed: ${msg}. Disconnect and reconnect to retry.`
+        )
       }
       throw err
     })

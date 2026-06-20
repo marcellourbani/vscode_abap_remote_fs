@@ -81,7 +81,9 @@ export async function getSsoCookies(connId: string): Promise<string[]> {
     const storedAt = parseInt(tsRaw, 10)
     const ageMs = Date.now() - storedAt
     if (ageMs > SSO_COOKIE_TTL_MS) {
-      log.debug(`[browser-sso] Cookies expired for ${connId} (age=${Math.round(ageMs / 1000)}s, ttl=${SSO_COOKIE_TTL_MS / 1000}s)`)
+      log.debug(
+        `[browser-sso] Cookies expired for ${connId} (age=${Math.round(ageMs / 1000)}s, ttl=${SSO_COOKIE_TTL_MS / 1000}s)`
+      )
       await clearSsoCookies(connId)
       return []
     }
@@ -158,7 +160,7 @@ export function startCookieCaptureServer(
           if (rejected) return
           try {
             const data = JSON.parse(body) as CookieCaptureRequest
-            // Sanitize cookies: strip CR/LF to prevent HTTP header injection 
+            // Sanitize cookies: strip CR/LF to prevent HTTP header injection
             const cookieString = typeof data.cookies === "string" ? data.cookies : ""
             const cookies = cookieString
               .split(";")
@@ -168,13 +170,21 @@ export function startCookieCaptureServer(
             if (cookies.length === 0) {
               log.debug(`[browser-sso] POST received but no cookies extracted`)
               res.writeHead(200, { "Content-Type": "application/json" })
-              res.end(JSON.stringify({ message: "No cookies received. Make sure you are logged in." }))
+              res.end(
+                JSON.stringify({ message: "No cookies received. Make sure you are logged in." })
+              )
               return
             }
 
-            log.debug(`[browser-sso] Captured ${cookies.length} cookies: ${cookies.map(c => c.split("=")[0]).join(",")}`)
+            log.debug(
+              `[browser-sso] Captured ${cookies.length} cookies: ${cookies.map(c => c.split("=")[0]).join(",")}`
+            )
             res.writeHead(200, { "Content-Type": "application/json" })
-            res.end(JSON.stringify({ message: `Captured ${cookies.length} cookies. You can close this tab.` }))
+            res.end(
+              JSON.stringify({
+                message: `Captured ${cookies.length} cookies. You can close this tab.`
+              })
+            )
 
             clearTimeout(timer)
             server.close()
@@ -201,7 +211,7 @@ export function startCookieCaptureServer(
         .then(() => {
           log.debug(`[browser-sso] Browser opened successfully for: ${helperUrl}`)
         })
-        .catch((err) => {
+        .catch(err => {
           log.debug(`[browser-sso] Failed to open browser (${err}), showing notification fallback`)
           if (notifyUser) notifyUser(helperUrl)
         })
@@ -212,7 +222,7 @@ export function startCookieCaptureServer(
       reject(new Error("Browser SSO timed out. No cookies received within the time limit."))
     }, timeoutMs)
 
-    server.on("error", (err) => {
+    server.on("error", err => {
       clearTimeout(timer)
       reject(new Error(`Cookie capture server error: ${err.message}`))
     })
@@ -239,7 +249,7 @@ function vscodeSsoNotify(helperUrl: string) {
 export async function buildBrowserSsoAuth(
   connId: string,
   sapUrl: string,
-  sapClient: string,
+  sapClient: string
 ): Promise<AuthResult> {
   log.debug(`[browser-sso] buildBrowserSsoAuth starting for ${connId}`)
   let cookies = await getSsoCookies(connId)
@@ -254,7 +264,7 @@ export async function buildBrowserSsoAuth(
   log.debug(`[browser-sso] buildBrowserSsoAuth complete for ${connId}: ${cookies.length} cookies`)
   return {
     passwordOrFetcher: "browser-sso",
-    ...(headers ? { headers } : {}),
+    ...(headers ? { headers } : {})
   }
 }
 
@@ -264,7 +274,7 @@ export async function buildBrowserSsoAuth(
 export async function refreshBrowserSsoAuth(
   connId: string,
   sapUrl: string,
-  sapClient: string,
+  sapClient: string
 ): Promise<AuthResult> {
   log.debug(`[browser-sso] refreshBrowserSsoAuth starting for ${connId}`)
   await clearSsoCookies(connId)
@@ -277,7 +287,7 @@ export async function refreshBrowserSsoAuth(
   log.debug(`[browser-sso] refreshBrowserSsoAuth complete for ${connId}: ${cookies.length} cookies`)
   return {
     passwordOrFetcher: "browser-sso",
-    ...(headers ? { headers } : {}),
+    ...(headers ? { headers } : {})
   }
 }
 
@@ -288,7 +298,11 @@ function getHelperPageHtml(sapUrl: string, token: string): string {
     sapUrl = "about:blank" // Safe fallback; should never reach here in normal operation
   }
   // Escape the SAP URL for safe embedding in HTML
-  const escapedUrl = sapUrl.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;")
+  const escapedUrl = sapUrl
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
 
   return `<!DOCTYPE html>
 <html lang="en">

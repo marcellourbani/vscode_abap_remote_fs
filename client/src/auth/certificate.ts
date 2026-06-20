@@ -56,20 +56,30 @@ export async function buildCertAuth(
   log.debug(`[cert] buildCertAuth starting for ${connId}`)
   const allowedExts = /\.(pem|crt|cer|key|p12|pfx)$/i
   const isPkcs12 = /\.(p12|pfx)$/i.test(certConfig.certPath || "")
-  log.debug(`[cert] certPath=${certConfig.certPath}, keyPath=${certConfig.keyPath}, isPkcs12=${isPkcs12}`)
-  if (!certConfig.certPath || !allowedExts.test(certConfig.certPath) || !existsSync(certConfig.certPath)) {
+  log.debug(
+    `[cert] certPath=${certConfig.certPath}, keyPath=${certConfig.keyPath}, isPkcs12=${isPkcs12}`
+  )
+  if (
+    !certConfig.certPath ||
+    !allowedExts.test(certConfig.certPath) ||
+    !existsSync(certConfig.certPath)
+  ) {
     throw new Error(`Client certificate not found or invalid extension: ${certConfig.certPath}`)
   }
   // keyPath is only required for PEM format, not for PKCS#12 (.p12/.pfx) containers
   if (!isPkcs12) {
-    if (!certConfig.keyPath || !allowedExts.test(certConfig.keyPath) || !existsSync(certConfig.keyPath)) {
+    if (
+      !certConfig.keyPath ||
+      !allowedExts.test(certConfig.keyPath) ||
+      !existsSync(certConfig.keyPath)
+    ) {
       throw new Error(`Private key not found or invalid extension: ${certConfig.keyPath}`)
     }
   }
 
   const agentOptions: https.AgentOptions = {
     rejectUnauthorized: !skipSsl,
-    keepAlive: true,
+    keepAlive: true
   }
 
   // .p12/.pfx files are PKCS#12 containers — use `pfx` option, not cert+key
@@ -100,9 +110,11 @@ export async function buildCertAuth(
 
   const agent = new https.Agent(agentOptions)
 
-  log.debug(`[cert] buildCertAuth complete for ${connId}: agent created, hasPassphrase=${!!passphrase}, hasCA=${!!caPath}`)
+  log.debug(
+    `[cert] buildCertAuth complete for ${connId}: agent created, hasPassphrase=${!!passphrase}, hasCA=${!!caPath}`
+  )
   return {
     passwordOrFetcher: "x509-cert-auth",
-    httpsAgent: agent,
+    httpsAgent: agent
   }
 }

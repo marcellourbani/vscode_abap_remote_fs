@@ -15,7 +15,9 @@ export function sanitizeCookies(cookies: readonly string[]): string[] {
 }
 
 export function toStringArray(value: unknown): string[] {
-  return Array.isArray(value) ? value.filter((item): item is string => typeof item === "string") : []
+  return Array.isArray(value)
+    ? value.filter((item): item is string => typeof item === "string")
+    : []
 }
 
 export function buildCookieHeaders(cookies: readonly string[]): AuthHttpHeaders | undefined {

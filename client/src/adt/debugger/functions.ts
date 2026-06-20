@@ -28,13 +28,15 @@ async function getDebuggerAuthHeaders(
     case "kerberos": {
       const cookies = await getKerberosCookies(connId)
       log.debug(`[debugger] kerberos: ${cookies.length} cached cookies for ${connId}`)
-      if (cookies.length > 0) return { Cookie: cookies.map(c => c.replace(/[\r\n\x00-\x1f]/g, "")).join("; ") }
+      if (cookies.length > 0)
+        return { Cookie: cookies.map(c => c.replace(/[\r\n\x00-\x1f]/g, "")).join("; ") }
       return undefined
     }
     case "browser_sso": {
       const cookies = await getSsoCookies(connId)
       log.debug(`[debugger] browser_sso: ${cookies.length} cached cookies for ${connId}`)
-      if (cookies.length > 0) return { Cookie: cookies.map(c => c.replace(/[\r\n\x00-\x1f]/g, "")).join("; ") }
+      if (cookies.length > 0)
+        return { Cookie: cookies.map(c => c.replace(/[\r\n\x00-\x1f]/g, "")).join("; ") }
       return undefined
     }
     default:
@@ -60,20 +62,36 @@ export async function newClientFromKey(key: string, options: Partial<ClientOptio
         const allowedExts = /\.(pem|crt|cer|key|p12|pfx)$/i
         const agentOptions: https.AgentOptions = {
           rejectUnauthorized: !conf.allowSelfSigned,
-          keepAlive: true,
+          keepAlive: true
         }
         // .p12/.pfx files are PKCS#12 containers — use `pfx` option
         if (/\.(p12|pfx)$/i.test(certAuth.certPath || "")) {
-          if (certAuth.certPath && allowedExts.test(certAuth.certPath) && existsSync(certAuth.certPath))
+          if (
+            certAuth.certPath &&
+            allowedExts.test(certAuth.certPath) &&
+            existsSync(certAuth.certPath)
+          )
             agentOptions.pfx = readFileSync(certAuth.certPath)
           else if (certAuth.certPath)
-            throw new Error(`Client certificate (PKCS#12) not found or invalid extension: ${certAuth.certPath}`)
+            throw new Error(
+              `Client certificate (PKCS#12) not found or invalid extension: ${certAuth.certPath}`
+            )
         } else {
-          if (certAuth.certPath && allowedExts.test(certAuth.certPath) && existsSync(certAuth.certPath))
+          if (
+            certAuth.certPath &&
+            allowedExts.test(certAuth.certPath) &&
+            existsSync(certAuth.certPath)
+          )
             agentOptions.cert = readFileSync(certAuth.certPath)
           else if (certAuth.certPath)
-            throw new Error(`Client certificate not found or invalid extension: ${certAuth.certPath}`)
-          if (certAuth.keyPath && allowedExts.test(certAuth.keyPath) && existsSync(certAuth.keyPath))
+            throw new Error(
+              `Client certificate not found or invalid extension: ${certAuth.certPath}`
+            )
+          if (
+            certAuth.keyPath &&
+            allowedExts.test(certAuth.keyPath) &&
+            existsSync(certAuth.keyPath)
+          )
             agentOptions.key = readFileSync(certAuth.keyPath)
           else if (certAuth.keyPath)
             throw new Error(`Private key not found or invalid extension: ${certAuth.keyPath}`)
@@ -93,11 +111,17 @@ export async function newClientFromKey(key: string, options: Partial<ClientOptio
         try {
           const { buildOAuthOnPremAuth } = await import("../../auth/oauthOnPrem")
           const result = await buildOAuthOnPremAuth(
-            formatKey(conf.name), conf.url, conf.client, oauthConf, !!conf.allowSelfSigned
+            formatKey(conf.name),
+            conf.url,
+            conf.client,
+            oauthConf,
+            !!conf.allowSelfSigned
           )
           pwdOrFetch = result.passwordOrFetcher
         } catch (e) {
-          throw new Error(`OAuth tokens expired for ${conf.name}. Disconnect and reconnect to re-authenticate. (${e})`)
+          throw new Error(
+            `OAuth tokens expired for ${conf.name}. Disconnect and reconnect to re-authenticate. (${e})`
+          )
         }
       } else {
         pwdOrFetch = "oauth-onprem-auth"

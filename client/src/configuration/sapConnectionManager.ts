@@ -49,7 +49,8 @@ type ConnectionTarget = "user" | "workspace"
 type StoredConnection = StoredRemoteConfig
 type StoredRemotes = StoredRemoteMap
 
-type ConnectionInput = Partial<StoredConnection> & Pick<StoredConnection, "url" | "username" | "client">
+type ConnectionInput = Partial<StoredConnection> &
+  Pick<StoredConnection, "url" | "username" | "client">
 
 interface ConnectionData extends ConnectionInput {
   name: string
@@ -204,7 +205,9 @@ function isConnectionInput(value: unknown): value is ConnectionInput {
   )
 }
 
-function hasNamedEntity<T extends { entity?: unknown }>(value: T): value is T & CloudEntityWithName {
+function hasNamedEntity<T extends { entity?: unknown }>(
+  value: T
+): value is T & CloudEntityWithName {
   if (!isRecord(value) || !isRecord(value.entity)) {
     return false
   }
@@ -603,7 +606,9 @@ export class SapConnectionManager {
         await clearKerberosCookies(connKey).catch(() => {})
         await clearSsoCookies(connKey).catch(() => {})
         await clearOAuthOnPremTokens(connKey).catch(() => {})
-        try { await vault.deletePassword(OAUTH_ONPREM_SECRET_SERVICE, connKey) } catch {}
+        try {
+          await vault.deletePassword(OAUTH_ONPREM_SECRET_SERVICE, connKey)
+        } catch {}
       }
 
       this.panel.webview.postMessage({
@@ -690,7 +695,9 @@ export class SapConnectionManager {
       this.panel.webview.postMessage({
         type: "cloudConnectionCreated",
         connection: connection,
-        availableLanguages: info.INSTALLED_LANGUAGES.map(language => language.ISOLANG?.toLowerCase() || "en")
+        availableLanguages: info.INSTALLED_LANGUAGES.map(
+          language => language.ISOLANG?.toLowerCase() || "en"
+        )
       })
 
       logTelemetry("command_connection_manager_cloud_connection_created")
@@ -1047,7 +1054,9 @@ export class SapConnectionManager {
           await clearKerberosCookies(connKey).catch(() => {})
           await clearSsoCookies(connKey).catch(() => {})
           await clearOAuthOnPremTokens(connKey).catch(() => {})
-          try { await vault.deletePassword("vscode.abapfs.oauth_onprem_secret", connKey) } catch {}
+          try {
+            await vault.deletePassword("vscode.abapfs.oauth_onprem_secret", connKey)
+          } catch {}
         }
       }
 

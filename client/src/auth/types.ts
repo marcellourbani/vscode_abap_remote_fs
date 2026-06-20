@@ -33,7 +33,7 @@ export const AUTH_METHOD_LABELS: Record<AuthMethod, string> = {
   cert: "X.509 Client Certificate",
   kerberos: "Kerberos / SPNEGO (SSO)",
   browser_sso: "Browser SSO (Cookie Capture)",
-  oauth_onprem: "OAuth 2.0 (On-Premise SAP)",
+  oauth_onprem: "OAuth 2.0 (On-Premise SAP)"
 }
 
 /** Result of an authentication attempt — provides what ADTClient needs. */

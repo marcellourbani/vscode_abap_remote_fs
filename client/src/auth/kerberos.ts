@@ -33,7 +33,7 @@ const SAP_AUTH_COOKIE_PATTERNS = [
   /^MYSAPSSO2$/i,
   /^SAP_SESSIONID_/i,
   /^sap-XCSRF/i,
-  /^SAP_CLIENTID/i,
+  /^SAP_CLIENTID/i
 ]
 
 function isAuthCookie(name: string): boolean {
@@ -101,11 +101,11 @@ function buildNegotiateScript(skipSsl: boolean): string {
     `  $req = [System.Net.HttpWebRequest]::Create($uri)`,
     `  $req.Method = 'GET'`,
     `  $req.AllowAutoRedirect = $false`,
-    `  $req.CookieContainer = New-Object System.Net.CookieContainer`,
+    `  $req.CookieContainer = New-Object System.Net.CookieContainer`
   )
   if (skipSsl) {
     lines.push(
-      `  [System.Net.ServicePointManager]::ServerCertificateValidationCallback = { $true }`,
+      `  [System.Net.ServicePointManager]::ServerCertificateValidationCallback = { $true }`
     )
   }
   lines.push(
@@ -192,7 +192,7 @@ function buildNegotiateScript(skipSsl: boolean): string {
     `  } | ConvertTo-Json -Compress`,
     `} catch {`,
     `  @{ error = $_.Exception.Message } | ConvertTo-Json -Compress`,
-    `}`,
+    `}`
   )
   return lines.join("\n")
 }
@@ -255,7 +255,7 @@ function isNegotiateFailureResult(
 function runPowerShellNegotiate(
   url: string,
   skipSsl: boolean,
-  targetSpn?: string,
+  targetSpn?: string
 ): Promise<NegotiateResult> {
   return new Promise((resolve, reject) => {
     const safeUrl = url.replace(/'/g, "''")
@@ -265,10 +265,12 @@ function runPowerShellNegotiate(
       "param([string]$TargetUrl)",
       [
         `$TargetUrl = '${safeUrl}'`,
-        `$TargetSpn = ${safeTargetSpn ? `'${safeTargetSpn}'` : "$null"}`,
+        `$TargetSpn = ${safeTargetSpn ? `'${safeTargetSpn}'` : "$null"}`
       ].join("\n")
     )
-    log.debug(`[sso] Launching PowerShell SSO handshake for: ${url}${targetSpn ? `, targetSpn=${targetSpn}` : ""}`)
+    log.debug(
+      `[sso] Launching PowerShell SSO handshake for: ${url}${targetSpn ? `, targetSpn=${targetSpn}` : ""}`
+    )
     const child = execFile(
       "powershell.exe",
       ["-NoProfile", "-NonInteractive", "-Command", finalScript],
@@ -295,30 +297,34 @@ function runPowerShellNegotiate(
             const p2 = `Phase 2 (Certificate): found ${result.certsFound || 0} certs in Windows store`
             const tried = (result.certsTried || []).join(", ") || "none"
             log.debug(`[sso] Both phases failed. ${p1}. ${p2}. Tried: ${tried}`)
-            reject(new Error(
-              `Windows SSO authentication failed.\n` +
-              `  ${p1}\n` +
-              `  ${p2}\n` +
-              `  Certificates tried: ${tried}\n\n` +
-              `Possible causes:\n` +
-              `  • No valid Kerberos TGT (for SPNEGO)\n` +
-              `  • SAP Secure Login Client not running or not logged in (for certificate SSO)\n` +
-              `  • Certificate not mapped to a SAP user (check CERTRULE/STRUST in SAP)\n` +
-              `  • SPNego or certificate auth not enabled on the SAP ICF service`
-            ))
+            reject(
+              new Error(
+                `Windows SSO authentication failed.\n` +
+                  `  ${p1}\n` +
+                  `  ${p2}\n` +
+                  `  Certificates tried: ${tried}\n\n` +
+                  `Possible causes:\n` +
+                  `  • No valid Kerberos TGT (for SPNEGO)\n` +
+                  `  • SAP Secure Login Client not running or not logged in (for certificate SSO)\n` +
+                  `  • Certificate not mapped to a SAP user (check CERTRULE/STRUST in SAP)\n` +
+                  `  • SPNego or certificate auth not enabled on the SAP ICF service`
+              )
+            )
             return
           }
           if (isNegotiateFailureResult(result)) {
             reject(new Error(`Windows SSO failed: ${result.error}`))
             return
           }
-          log.debug(`[sso] Success via ${result.method}: HTTP ${result.status}, cookies=${(result.cookies || []).length}${result.certSubject ? `, cert=${result.certSubject}` : ""}`)
+          log.debug(
+            `[sso] Success via ${result.method}: HTTP ${result.status}, cookies=${(result.cookies || []).length}${result.certSubject ? `, cert=${result.certSubject}` : ""}`
+          )
           resolve({
             method: result.method || "unknown",
             status: result.status || 0,
             cookies: result.cookies || [],
             authHeader: result.authHeader || undefined,
-            certSubject: result.certSubject || undefined,
+            certSubject: result.certSubject || undefined
           })
         } catch (e) {
           log.debug(`[sso] Failed to parse PowerShell output: ${errorMessage(e)}`)
@@ -331,10 +337,7 @@ function runPowerShellNegotiate(
 }
 
 /** SAP tracking cookies sent even on auth failure — must be excluded. */
-const SAP_TRACKING_COOKIES = [
-  /^sap-usercontext$/i,
-  /^sap-contextid$/i,
-]
+const SAP_TRACKING_COOKIES = [/^sap-usercontext$/i, /^sap-contextid$/i]
 
 function isTrackingCookie(name: string): boolean {
   return SAP_TRACKING_COOKIES.some(p => p.test(name))
@@ -348,12 +351,12 @@ async function negotiateWithSap(
   kerberosConfig: KerberosAuthConfig | undefined,
   sapBaseUrl: string,
   sapClient: string,
-  skipSsl: boolean,
+  skipSsl: boolean
 ): Promise<string[]> {
   if (process.platform !== "win32") {
     throw new Error(
       "Kerberos/SPNEGO authentication is currently supported on Windows only. " +
-      "Your machine must be domain-joined with a valid Kerberos TGT, or have SAP Secure Login Client running."
+        "Your machine must be domain-joined with a valid Kerberos TGT, or have SAP Secure Login Client running."
     )
   }
 
@@ -363,7 +366,9 @@ async function negotiateWithSap(
 
   const url = `${sapBaseUrl}/sap/bc/adt/discovery?sap-client=${encodeURIComponent(sapClient)}`
   const targetSpn = buildKerberosSpn(kerberosConfig, sapBaseUrl)
-  log.debug(`[sso] Starting Windows SSO negotiation with: ${url}${targetSpn ? `, targetSpn=${targetSpn}` : ""}`)
+  log.debug(
+    `[sso] Starting Windows SSO negotiation with: ${url}${targetSpn ? `, targetSpn=${targetSpn}` : ""}`
+  )
   const result = await runPowerShellNegotiate(url, skipSsl, targetSpn)
 
   // Filter out SAP tracking cookies (sap-usercontext etc.) — these are sent on ALL
@@ -371,13 +376,15 @@ async function negotiateWithSap(
   const allCookies = result.cookies.map(cookie => sanitizeCookie(cookie))
   const sessionCookies = allCookies.filter(c => !isTrackingCookie(c.split("=")[0]))
 
-  log.debug(`[sso] Cookies: total=${allCookies.length}, session=${sessionCookies.length} (${sessionCookies.map(c => c.split("=")[0]).join(",")})`)
+  log.debug(
+    `[sso] Cookies: total=${allCookies.length}, session=${sessionCookies.length} (${sessionCookies.map(c => c.split("=")[0]).join(",")})`
+  )
 
   if (sessionCookies.length === 0) {
     // runPowerShellNegotiate already throws on auth failure, but guard just in case
     throw new Error(
       `SSO handshake returned HTTP ${result.status} but no session cookies. ` +
-      `Tracking cookies were filtered. Raw cookies: ${allCookies.map(c => c.split("=")[0]).join(", ")}`
+        `Tracking cookies were filtered. Raw cookies: ${allCookies.map(c => c.split("=")[0]).join(", ")}`
     )
   }
 
@@ -401,7 +408,7 @@ export async function buildKerberosAuth(
   kerberosConfig: KerberosAuthConfig | undefined,
   sapBaseUrl: string,
   sapClient: string,
-  skipSsl: boolean,
+  skipSsl: boolean
 ): Promise<AuthResult> {
   log.debug(`[sso] buildKerberosAuth starting for ${connId}`)
   const cookies = await negotiateWithSap(kerberosConfig, sapBaseUrl, sapClient, skipSsl)
@@ -412,7 +419,7 @@ export async function buildKerberosAuth(
   log.debug(`[sso] buildKerberosAuth complete for ${connId}: ${cookies.length} cookies`)
   return {
     passwordOrFetcher: "kerberos-sso",
-    ...(headers ? { headers } : {}),
+    ...(headers ? { headers } : {})
   }
 }
 
@@ -424,7 +431,7 @@ export async function refreshKerberosAuth(
   kerberosConfig: KerberosAuthConfig | undefined,
   sapBaseUrl: string,
   sapClient: string,
-  skipSsl: boolean,
+  skipSsl: boolean
 ): Promise<AuthResult> {
   log.debug(`[sso] refreshKerberosAuth starting for ${connId}`)
   await clearKerberosCookies(connId)
@@ -436,6 +443,6 @@ export async function refreshKerberosAuth(
   log.debug(`[sso] refreshKerberosAuth complete for ${connId}: ${cookies.length} cookies`)
   return {
     passwordOrFetcher: "kerberos-sso",
-    ...(headers ? { headers } : {}),
+    ...(headers ? { headers } : {})
   }
 }

@@ -38,13 +38,11 @@ jest.mock("./AdtObjectFinder", () => ({
 }))
 
 jest.mock("../conections", () => ({
-  getClient: jest
-    .fn()
-    .mockReturnValue({
-      username: "TESTUSER",
-      validateNewObject: jest.fn().mockResolvedValue(true),
-      createObject: jest.fn()
-    }),
+  getClient: jest.fn().mockReturnValue({
+    username: "TESTUSER",
+    validateNewObject: jest.fn().mockResolvedValue(true),
+    createObject: jest.fn()
+  }),
   getRoot: jest.fn().mockReturnValue({ getNode: jest.fn() })
 }))
 

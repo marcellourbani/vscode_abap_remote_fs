@@ -60,7 +60,7 @@ function normalizeStoredTokenSet(value: unknown): TokenSet | null {
   return {
     accessToken: candidate.accessToken,
     refreshToken: typeof candidate.refreshToken === "string" ? candidate.refreshToken : "",
-    expiresAt: candidate.expiresAt,
+    expiresAt: candidate.expiresAt
   }
 }
 
@@ -94,7 +94,7 @@ function parseTokenSet(body: string): TokenSet {
   return {
     accessToken: data.access_token,
     refreshToken: typeof data.refresh_token === "string" ? data.refresh_token : "",
-    expiresAt: Date.now() + parseExpiresInSeconds(data.expires_in) * 1000,
+    expiresAt: Date.now() + parseExpiresInSeconds(data.expires_in) * 1000
   }
 }
 
@@ -102,7 +102,9 @@ function parseTokenSet(body: string): TokenSet {
 async function storeTokens(connId: string, tokens: TokenSet): Promise<void> {
   const vault = PasswordVault.get()
   await vault.setPassword(VAULT_SERVICE, formatKey(connId), JSON.stringify(tokens))
-  log.debug(`[oauth-onprem] Stored tokens for ${connId}, expiresAt=${new Date(tokens.expiresAt).toISOString()}`)
+  log.debug(
+    `[oauth-onprem] Stored tokens for ${connId}, expiresAt=${new Date(tokens.expiresAt).toISOString()}`
+  )
 }
 
 /** Retrieve stored tokens. */
@@ -120,7 +122,9 @@ async function getTokens(connId: string): Promise<TokenSet | null> {
       return null
     }
     const remainingMs = tokens.expiresAt - Date.now()
-    log.debug(`[oauth-onprem] Retrieved cached tokens for ${connId}, expires in ${Math.round(remainingMs / 1000)}s`)
+    log.debug(
+      `[oauth-onprem] Retrieved cached tokens for ${connId}, expires in ${Math.round(remainingMs / 1000)}s`
+    )
     return tokens
   } catch (e) {
     log.debug(`[oauth-onprem] Failed to parse cached tokens for ${connId}: ${e}`)
@@ -146,7 +150,7 @@ async function authorizeInteractive(
   sapUrl: string,
   sapClient: string,
   config: OAuthOnPremConfig,
-  skipSsl: boolean,
+  skipSsl: boolean
 ): Promise<TokenSet> {
   // PKCE: generate code verifier and challenge
   const codeVerifier = randomBytes(32).toString("base64url")
@@ -170,19 +174,31 @@ async function authorizeInteractive(
       const error = url.searchParams.get("error")
 
       if (error) {
-        log.debug(`[oauth-onprem] SAP returned OAuth error: ${error} — ${url.searchParams.get("error_description") || ""}`)
+        log.debug(
+          `[oauth-onprem] SAP returned OAuth error: ${error} — ${url.searchParams.get("error_description") || ""}`
+        )
         res.writeHead(200, { "Content-Type": "text/html", [cspHeader]: cspValue })
-        res.end("<html><body><h2>Authentication Failed</h2><p>SAP returned an error. You can close this tab.</p></body></html>")
+        res.end(
+          "<html><body><h2>Authentication Failed</h2><p>SAP returned an error. You can close this tab.</p></body></html>"
+        )
         clearTimeout(timer)
         server.close()
-        reject(new Error(`OAuth error from SAP: ${error} — ${url.searchParams.get("error_description") || ""}`))
+        reject(
+          new Error(
+            `OAuth error from SAP: ${error} — ${url.searchParams.get("error_description") || ""}`
+          )
+        )
         return
       }
 
       if (!code || receivedState !== state) {
-        log.debug(`[oauth-onprem] State mismatch or missing code: receivedState=${receivedState}, expectedState=${state}, hasCode=${!!code}`)
+        log.debug(
+          `[oauth-onprem] State mismatch or missing code: receivedState=${receivedState}, expectedState=${state}, hasCode=${!!code}`
+        )
         res.writeHead(400, { "Content-Type": "text/html", [cspHeader]: cspValue })
-        res.end("<html><body><h2>Invalid Response</h2><p>Missing authorization code or state mismatch.</p></body></html>")
+        res.end(
+          "<html><body><h2>Invalid Response</h2><p>Missing authorization code or state mismatch.</p></body></html>"
+        )
         clearTimeout(timer)
         server.close()
         reject(new Error("OAuth state mismatch — possible CSRF attack"))
@@ -200,9 +216,13 @@ async function authorizeInteractive(
           getCallbackPort(server),
           skipSsl
         )
-        log.debug(`[oauth-onprem] Token exchange successful, accessToken length=${tokens.accessToken.length}`)
+        log.debug(
+          `[oauth-onprem] Token exchange successful, accessToken length=${tokens.accessToken.length}`
+        )
         res.writeHead(200, { "Content-Type": "text/html", [cspHeader]: cspValue })
-        res.end("<html><body><h2>Authentication Successful</h2><p>You can close this tab and return to VS Code.</p></body></html>")
+        res.end(
+          "<html><body><h2>Authentication Successful</h2><p>You can close this tab and return to VS Code.</p></body></html>"
+        )
         clearTimeout(timer)
         server.close()
         resolve(tokens)
@@ -210,7 +230,9 @@ async function authorizeInteractive(
         const message = errorMessage(err)
         log.debug(`[oauth-onprem] Token exchange failed: ${message}`)
         res.writeHead(200, { "Content-Type": "text/html", [cspHeader]: cspValue })
-        res.end(`<html><body><h2>Token Exchange Failed</h2><p>${escapeHtml(message)}</p></body></html>`)
+        res.end(
+          `<html><body><h2>Token Exchange Failed</h2><p>${escapeHtml(message)}</p></body></html>`
+        )
         clearTimeout(timer)
         server.close()
         reject(err)
@@ -229,7 +251,7 @@ async function authorizeInteractive(
         state,
         code_challenge: codeChallenge,
         code_challenge_method: "S256",
-        "sap-client": sapClient,
+        "sap-client": sapClient
       })
 
       const authUrl = `${sapUrl}/sap/bc/sec/oauth2/authorize?${params.toString()}`
@@ -237,7 +259,7 @@ async function authorizeInteractive(
       // Open in the user's default browser
       vscode.env.openExternal(vscode.Uri.parse(authUrl))
       vscode.window.showInformationMessage(
-        "OAuth: Complete the login in your browser. Waiting for redirect...",
+        "OAuth: Complete the login in your browser. Waiting for redirect..."
       )
     })
 
@@ -246,7 +268,7 @@ async function authorizeInteractive(
       reject(new Error("OAuth login timed out (120 seconds). No authorization code received."))
     }, 120_000)
 
-    server.on("error", (err) => {
+    server.on("error", err => {
       clearTimeout(timer)
       reject(new Error(`OAuth callback server error: ${err.message}`))
     })
@@ -263,14 +285,14 @@ async function exchangeCodeForTokens(
   code: string,
   codeVerifier: string,
   callbackPort: number,
-  skipSsl: boolean,
+  skipSsl: boolean
 ): Promise<TokenSet> {
   const body = new URLSearchParams({
     grant_type: "authorization_code",
     code,
     redirect_uri: `http://localhost:${callbackPort}/callback`,
     client_id: config.clientId,
-    code_verifier: codeVerifier,
+    code_verifier: codeVerifier
   })
 
   if (config.clientSecret) {
@@ -295,12 +317,12 @@ async function refreshTokens(
   sapClient: string,
   config: OAuthOnPremConfig,
   refreshToken: string,
-  skipSsl: boolean,
+  skipSsl: boolean
 ): Promise<TokenSet> {
   const body = new URLSearchParams({
     grant_type: "refresh_token",
     refresh_token: refreshToken,
-    client_id: config.clientId,
+    client_id: config.clientId
   })
 
   if (config.clientSecret) {
@@ -319,7 +341,7 @@ async function refreshTokens(
   const tokens = parseTokenSet(resp.body)
   return {
     ...tokens,
-    refreshToken: tokens.refreshToken || refreshToken,
+    refreshToken: tokens.refreshToken || refreshToken
   }
 }
 
@@ -334,9 +356,11 @@ export async function buildOAuthOnPremAuth(
   sapUrl: string,
   sapClient: string,
   config: OAuthOnPremConfig,
-  skipSsl: boolean,
+  skipSsl: boolean
 ): Promise<AuthResult> {
-  log.debug(`[oauth-onprem] buildOAuthOnPremAuth starting for ${connId}, clientId=${config.clientId}`)
+  log.debug(
+    `[oauth-onprem] buildOAuthOnPremAuth starting for ${connId}, clientId=${config.clientId}`
+  )
   // Resolve client secret from vault if not inline
   if (!config.clientSecret) {
     const vault = PasswordVault.get()
@@ -356,7 +380,9 @@ export async function buildOAuthOnPremAuth(
           tokens = await refreshTokens(sapUrl, sapClient, config, tokens.refreshToken, skipSsl)
           await storeTokens(connId, tokens)
         } catch (e) {
-          log.debug(`[oauth-onprem] Token refresh failed for ${connId}, will do interactive login: ${e}`)
+          log.debug(
+            `[oauth-onprem] Token refresh failed for ${connId}, will do interactive login: ${e}`
+          )
           tokens = null
         }
       } else {
@@ -377,7 +403,7 @@ export async function buildOAuthOnPremAuth(
 
   log.debug(`[oauth-onprem] buildOAuthOnPremAuth complete for ${connId}`)
   return {
-    passwordOrFetcher: fetchToken,
+    passwordOrFetcher: fetchToken
   }
 }
 
@@ -393,7 +419,7 @@ function createTokenFetcher(
   sapUrl: string,
   sapClient: string,
   config: OAuthOnPremConfig,
-  skipSsl: boolean,
+  skipSsl: boolean
 ): () => Promise<string> {
   return async () => {
     let tokens = await getTokens(connId)
@@ -406,7 +432,7 @@ function createTokenFetcher(
       let pending = refreshLocks.get(connId)
       if (!pending) {
         pending = refreshTokens(sapUrl, sapClient, config, tokens.refreshToken, skipSsl)
-          .then(async (newTokens) => {
+          .then(async newTokens => {
             await storeTokens(connId, newTokens)
             return newTokens
           })
@@ -429,13 +455,15 @@ function createTokenFetcher(
 function doPost(
   url: string,
   body: string,
-  skipSsl: boolean,
+  skipSsl: boolean
 ): Promise<{ ok: boolean; status: number; body: string }> {
   const parsed = new URL(url)
   if (parsed.protocol !== "https:") {
-    return Promise.reject(new Error(
-      "OAuth token exchange requires HTTPS. Refusing to send credentials over plaintext HTTP."
-    ))
+    return Promise.reject(
+      new Error(
+        "OAuth token exchange requires HTTPS. Refusing to send credentials over plaintext HTTP."
+      )
+    )
   }
 
   return new Promise((resolve, reject) => {
@@ -446,13 +474,13 @@ function doPost(
       method: "POST",
       headers: {
         "Content-Type": "application/x-www-form-urlencoded",
-        "Content-Length": Buffer.byteLength(body),
+        "Content-Length": Buffer.byteLength(body)
       },
       rejectUnauthorized: !skipSsl,
-      timeout: 30_000,
+      timeout: 30_000
     }
 
-    const req = https.request(options, (res) => {
+    const req = https.request(options, res => {
       let data = ""
       const maxSize = 1024 * 1024 // 1 MB response limit
       res.on("data", (chunk: Buffer) => {
@@ -463,10 +491,16 @@ function doPost(
         }
       })
       res.on("end", () => {
-        resolve({ ok: res.statusCode! >= 200 && res.statusCode! < 300, status: res.statusCode!, body: data })
+        resolve({
+          ok: res.statusCode! >= 200 && res.statusCode! < 300,
+          status: res.statusCode!,
+          body: data
+        })
       })
     })
-    req.on("timeout", () => { req.destroy(new Error("OAuth token request timed out (30s)")) })
+    req.on("timeout", () => {
+      req.destroy(new Error("OAuth token request timed out (30s)"))
+    })
     req.on("error", reject)
     req.write(body)
     req.end()
@@ -474,5 +508,10 @@ function doPost(
 }
 
 function escapeHtml(s: string): string {
-  return s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#39;")
+  return s
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;")
 }
