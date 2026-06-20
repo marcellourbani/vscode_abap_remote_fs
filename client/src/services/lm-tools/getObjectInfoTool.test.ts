@@ -336,8 +336,8 @@ describe("GetABAPObjectInfoTool", () => {
         mockToken
       )
 
-      expect(result.parts[0].text).toContain("Append Structures:** 2")
-      expect(result.parts[0].text).toContain("Has Custom Fields")
+      expect(result.parts[0].text).toContain("Append structures: 2")
+      expect(result.parts[0].text).toContain("custom fields")
     })
   })
 

@@ -113,7 +113,7 @@ class SubagentConfigTool implements vscode.LanguageModelTool<SubagentConfigInput
 
       if (result.error === "missing_models") {
         return new vscode.LanguageModelToolResult([
-          new vscode.LanguageModelTextPart(`❌ CANNOT ENABLE SUBAGENTS - Missing Model Configurations
+          new vscode.LanguageModelTextPart(` CANNOT ENABLE SUBAGENTS - Missing Model Configurations
 
 All subagents MUST have a model assigned before enabling. The following ${result.missingModels!.length} agent(s) have no model configured:
 
@@ -147,7 +147,7 @@ Example configuration:
         }
 
         return new vscode.LanguageModelToolResult([
-          new vscode.LanguageModelTextPart(`❌ SUBAGENTS AUTO-DISABLED - Invalid Agent Files
+          new vscode.LanguageModelTextPart(` SUBAGENTS AUTO-DISABLED - Invalid Agent Files
 
 ${result.fileErrors!.length} agent file(s) have validation errors (likely invalid model names):
 ${errorDetails}
@@ -204,18 +204,18 @@ All ABAP tasks will now be handled by the main model directly.`)
     let status = `SUBAGENT STATUS
 ===============
 
-Enabled: ${settings.enabled ? "YES ✓" : "NO ✗"}
+Enabled: ${settings.enabled ? "YES " : "NO "}
 Workspace: ${workspaceFolder?.fsPath || "None"}
 `
 
     if (unconfiguredAgents.length > 0) {
       status += `
-❌ ${unconfiguredAgents.length} agent(s) need model configuration before subagents can be enabled.
+ ${unconfiguredAgents.length} agent(s) need model configuration before subagents can be enabled.
 Use "configure" action to assign models to all agents.
 `
     } else {
       status += `
-✓ All agents have models configured.
+ All agents have models configured.
 `
     }
 
@@ -229,8 +229,8 @@ AGENT CONFIGURATIONS:
       const available = validationResult?.available ?? true
 
       const modelDisplay = configuredModel
-        ? `${configuredModel}${available ? "" : " ⚠️ NOT AVAILABLE"}`
-        : "❌ NOT CONFIGURED (required)"
+        ? `${configuredModel}${available ? "" : "  NOT AVAILABLE"}`
+        : " NOT CONFIGURED (required)"
 
       status += `\n${agent.id}:
   Model: ${modelDisplay}
@@ -239,7 +239,7 @@ AGENT CONFIGURATIONS:
     }
 
     if (unavailableModels.length > 0) {
-      status += `\n\n⚠️ WARNING: ${unavailableModels.length} agent(s) have models that are not currently available.
+      status += `\n\n WARNING: ${unavailableModels.length} agent(s) have models that are not currently available.
 Use "configure" action to set different models.`
     }
 
@@ -294,21 +294,21 @@ IMPORTANT: Use the model NAME (e.g., "Claude Sonnet 4") when configuring agents.
 
     if (unconfiguredCount > 0) {
       result += `
-❌ ${unconfiguredCount} agent(s) need model configuration.
+ ${unconfiguredCount} agent(s) need model configuration.
 All agents MUST have a model assigned before subagents can be enabled.
 
 `
     } else {
       result += `
-✓ All agents configured and ready.
+ All agents configured and ready.
 
 `
     }
 
     const tiers = [
-      { tier: 3, name: "Tier 3 - Premium (Complex Reasoning)", color: "🔴" },
-      { tier: 2, name: "Tier 2 - Analysis & Understanding", color: "🟡" },
-      { tier: 1, name: "Tier 1 - Fast & Cheap", color: "🟢" }
+      { tier: 3, name: "Tier 3 - Premium (Complex Reasoning)", color: "" },
+      { tier: 2, name: "Tier 2 - Analysis & Understanding", color: "" },
+      { tier: 1, name: "Tier 1 - Fast & Cheap", color: "" }
     ]
 
     for (const tierInfo of tiers) {
@@ -317,7 +317,7 @@ All agents MUST have a model assigned before subagents can be enabled.
 
       for (const agent of tierAgents) {
         const configuredModel = settings.models[agent.id]
-        const modelDisplay = configuredModel ? configuredModel : "❌ NOT CONFIGURED"
+        const modelDisplay = configuredModel ? configuredModel : " NOT CONFIGURED"
         result += `
 ${agent.id}
   ${agent.description}
@@ -422,7 +422,7 @@ Use "list_models" action to see available models.`)
       }
 
       currentModels[config.agentId] = config.model
-      results.push(`✓ ${config.agentId} → ${config.model}`)
+      results.push(` ${config.agentId} → ${config.model}`)
     }
 
     const vsConfig = vscode.workspace.getConfiguration("abapfs.subagents")
@@ -444,7 +444,7 @@ Use "list_models" action to see available models.`)
 ${results.join("\n")}`
 
     if (warnings.length > 0) {
-      response += `\n\n⚠️ WARNINGS:\n${warnings.join("\n")}`
+      response += `\n\n WARNINGS:\n${warnings.join("\n")}`
     }
 
     if (settings.enabled && workspaceFolder) {
@@ -465,13 +465,13 @@ ${results.join("\n")}`
 
     if (unconfigured.length > 0) {
       return new vscode.LanguageModelToolResult([
-        new vscode.LanguageModelTextPart(`❌ INCOMPLETE CONFIGURATION
+        new vscode.LanguageModelTextPart(` INCOMPLETE CONFIGURATION
 
 ${unconfigured.length} agent(s) have no model assigned:
 
 ${unconfigured.map(u => `  • ${u.agentId}`).join("\n")}
 
-⚠️ Subagents CANNOT be enabled until ALL agents have models configured.
+ Subagents CANNOT be enabled until ALL agents have models configured.
 
 Use "configure" action to assign models to all agents, then "enable".
 Use "list_models" to see available model names.`)
@@ -480,12 +480,12 @@ Use "list_models" to see available model names.`)
 
     if (unavailable.length === 0) {
       const readyMessage = settings.enabled
-        ? `✓ All ${AGENT_REGISTRY.length} agents are configured and ready to use.`
-        : `✓ All ${AGENT_REGISTRY.length} agents are configured. Use "enable" action to activate subagents.`
+        ? ` All ${AGENT_REGISTRY.length} agents are configured and ready to use.`
+        : ` All ${AGENT_REGISTRY.length} agents are configured. Use "enable" action to activate subagents.`
       return new vscode.LanguageModelToolResult([new vscode.LanguageModelTextPart(readyMessage)])
     }
 
-    let result = `⚠️ MODEL AVAILABILITY ISSUES
+    let result = ` MODEL AVAILABILITY ISSUES
 
 ${unavailable.length} agent(s) have unavailable models:
 
@@ -534,14 +534,14 @@ Use "list_models" action to see available model names.`
           extensionId
         )
         if (result.created) {
-          results.push(`✓ Created ${agent.id}.agent.md`)
+          results.push(` Created ${agent.id}.agent.md`)
         } else if (result.updated) {
-          results.push(`✓ Updated ${agent.id}.agent.md`)
+          results.push(` Updated ${agent.id}.agent.md`)
         } else {
           results.push(`- ${agent.id}.agent.md (no changes needed)`)
         }
       } catch (error) {
-        results.push(`✗ Failed ${agent.id}: ${error}`)
+        results.push(` Failed ${agent.id}: ${error}`)
       }
     }
 

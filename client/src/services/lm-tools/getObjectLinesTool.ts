@@ -46,11 +46,7 @@ async function getCompleteTableStructure(
           mainStructure = tableFields
 
           const completeStructure =
-            `Complete Structure for ${objectName}:\n` +
-            `${"=".repeat(60)}\n` +
-            `💡 DD Table Query: Includes main object + ALL append structures automatically\n` +
-            `📊 Source: DD03L (Data Dictionary fields)\n` +
-            `${"=".repeat(60)}\n\n` +
+            `Complete Structure for ${objectName} (from DD03L — main object + ALL append structures):\n\n` +
             tableFields
 
           return completeStructure
@@ -106,22 +102,16 @@ async function getCompleteTableStructure(
       // Ignore enhancement errors
     }
 
-    let completeStructure = `Complete Table Structure for ${objectName}:\n`
-    completeStructure += `${"=".repeat(60)}\n`
-    completeStructure += `💡 SE11-like Table Access: Main table + ALL append structures with complete field properties\n`
-    completeStructure += `📊 Includes: ${mainStructure ? "Main table structure" : "No main structure"} + ${allAppendStructures ? "All append structures" : "No append structures"}\n`
-    completeStructure += `${"=".repeat(60)}\n\n`
+    let completeStructure = `Complete Table Structure for ${objectName} (SE11-like, includes ALL append structures):\n\n`
 
     if (mainStructure) {
       completeStructure += `MAIN TABLE STRUCTURE:\n`
-      completeStructure += `${"-".repeat(30)}\n`
       completeStructure += mainStructure
       completeStructure += `\n\n`
     }
 
     if (allAppendStructures) {
-      completeStructure += `APPEND STRUCTURES (Additional Fields & Extensions):\n`
-      completeStructure += `${"-".repeat(30)}\n`
+      completeStructure += `APPEND STRUCTURES:\n`
       completeStructure += allAppendStructures
       completeStructure += `\n\n`
     }
@@ -323,11 +313,7 @@ export class GetABAPObjectLinesTool implements vscode.LanguageModelTool<IGetABAP
             const tableTypeInfo = await getTableTypeFromDD(client, objectName)
             if (tableTypeInfo) {
               completeStructure =
-                `Complete Structure for ${objectName}:\n` +
-                `${"=".repeat(60)}\n` +
-                `💡 DD Table Query: Table Type definition from DD40L/DD40T\n` +
-                `📊 Source: DD40L (Table Type definitions)\n` +
-                `${"=".repeat(60)}\n\n` +
+                `Complete Structure for ${objectName} (Table Type from DD40L/DD40T):\n\n` +
                 tableTypeInfo
             }
           } else {
@@ -346,20 +332,15 @@ export class GetABAPObjectLinesTool implements vscode.LanguageModelTool<IGetABAP
             const content = requestedLines.join("\n")
 
             const resultText =
-              `**Complete Table Structure for ${objectName}** (lines ${startLine}-${endLine}):\n\n` +
-              `${content}\n\n` +
-              `• **Total structure lines:** ${totalLines}\n` +
-              `• **Lines retrieved:** ${endLine - startLine}` +
-              (endLine < totalLines ? "\n• **(More lines available)**" : "") +
-              `\n\n💡 **SE11-like Table Access:** This shows the complete table structure including ALL append structures and custom fields.`
+              `Complete Table Structure for ${objectName} (lines ${startLine}-${endLine} of ${totalLines}, ${endLine - startLine} retrieved):\n\n` +
+              content +
+              (endLine < totalLines ? `\n\n(more lines available, request next range)` : "")
 
             return new vscode.LanguageModelToolResult([
               new vscode.LanguageModelTextPart(resultText)
             ])
           } else {
-            const resultText =
-              `${completeStructure}\n\n` +
-              `💡 **SE11-like Table Access:** This shows the complete table structure including ALL append structures and custom fields.`
+            const resultText = completeStructure
 
             return new vscode.LanguageModelToolResult([
               new vscode.LanguageModelTextPart(resultText)
@@ -452,19 +433,18 @@ export class GetABAPObjectLinesTool implements vscode.LanguageModelTool<IGetABAP
       ) {
         const methodResult = this.extractMethod(lines, methodName)
         if (methodResult.found) {
+          const methodLineCount = methodResult.endLine - methodResult.startLine + 1
           const resultText =
-            `**Method ${methodName.toUpperCase()}** from class **${objectName}** (lines ${methodResult.startLine}-${methodResult.endLine}):\n\n` +
+            `Method ${methodName.toUpperCase()} from class ${objectName} (lines ${methodResult.startLine}-${methodResult.endLine} of ${totalLines}, ${methodLineCount} method lines):\n\n` +
             `\`\`\`abap\n${methodResult.code}\n\`\`\`\n\n` +
-            `• **Total lines in class:** ${totalLines}\n` +
-            `• **Method lines:** ${methodResult.endLine - methodResult.startLine + 1}\n` +
-            `• **URI used:** \`${uriUsed}\``
+            `URI: ${uriUsed}`
 
           return new vscode.LanguageModelToolResult([new vscode.LanguageModelTextPart(resultText)])
         } else {
           return new vscode.LanguageModelToolResult([
             new vscode.LanguageModelTextPart(
-              `❌ Method **${methodName}** not found in class **${objectName}**.\n\n` +
-                `💡 Tip: Use search tool with regex \`^\\s*(CLASS-)?METHODS?\\s+\\w+\` to list all methods in this class.`
+              `Method ${methodName} NOT FOUND in class ${objectName}.\n` +
+                `Tip: search this class with regex '^\\s*(CLASS-)?METHODS?\\s+\\w+' to list all method names.`
             )
           ])
         }
@@ -480,11 +460,11 @@ export class GetABAPObjectLinesTool implements vscode.LanguageModelTool<IGetABAP
       try {
         const enhancements = await getObjectEnhancements(uriUsed, actualConnectionId, false)
         if (enhancements.hasEnhancements) {
-          enhancementInfo = `\n\n**🔧 Enhancements Found:** ${enhancements.totalEnhancements}\n`
+          enhancementInfo = `\n\nEnhancements found: ${enhancements.totalEnhancements}\n`
           for (const enh of enhancements.enhancements) {
-            enhancementInfo += `• **${enh.name}** (line ${enh.startLine})\n`
+            enhancementInfo += `• ${enh.name} (line ${enh.startLine})\n`
           }
-          enhancementInfo += `\n💡 Use the search tool to find specific enhancement code, or call this tool again with the enhancement line ranges.`
+          enhancementInfo += `Use search tool to find enhancement code, or re-call this tool with the enhancement line range.`
         }
       } catch (enhError) {
         // Ignore enhancement errors
@@ -494,12 +474,10 @@ export class GetABAPObjectLinesTool implements vscode.LanguageModelTool<IGetABAP
       const displayEndLine = arrayStartIndex + actualLines
 
       const resultText =
-        `Source code lines from **${objectName}** (lines ${displayStartLine}-${displayEndLine}):\n\n` +
+        `Source from ${objectName} (lines ${displayStartLine}-${displayEndLine} of ${totalLines}, ${actualLines} lines retrieved):\n\n` +
         `\`\`\`abap\n${content.trim()}\n\`\`\`\n\n` +
-        `• **Total lines in object:** ${totalLines}\n` +
-        `• **URI used:** \`${uriUsed}\`\n` +
-        `• **Lines retrieved:** ${actualLines}` +
-        (arrayEndIndex < totalLines ? "\n• **(More lines available)**" : "") +
+        `URI: ${uriUsed}` +
+        (arrayEndIndex < totalLines ? `\n(more lines available, request next range)` : "") +
         enhancementInfo
 
       return new vscode.LanguageModelToolResult([new vscode.LanguageModelTextPart(resultText)])

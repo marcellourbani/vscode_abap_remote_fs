@@ -199,13 +199,13 @@ export class RunATCAnalysisTool implements vscode.LanguageModelTool<IRunATCAnaly
           if (hasContentDifference) {
             const objectName = targetUri.path.split("/").pop() || "object"
             const errorMessage =
-              `**⚠️ Cannot run ATC analysis on ${objectName}**\n\n` +
-              `The file has **unsaved changes** (including potential Copilot modifications). ` +
+              ` Cannot run ATC analysis on ${objectName}\n\n` +
+              `The file has unsaved changes (including potential Copilot modifications). ` +
               `ATC analysis would run on the old server version, not your current changes, making results inaccurate.\n\n` +
-              `**Please ask user to:**\n` +
-              `1. **save the file** (Ctrl+S or click "Keep" if you have Copilot changes)\n` +
-              `2. **Activate the object**\n` +
-              `3. **Run ATC analysis again** for accurate results\n\n` +
+              `Please ask user to:\n` +
+              `1. save the file (Ctrl+S or click "Keep" if you have Copilot changes)\n` +
+              `2. Activate the object\n` +
+              `3. Run ATC analysis again for accurate results\n\n` +
               `This ensures ATC analyzes your actual current code, not the old version.`
 
             return new vscode.LanguageModelToolResult([
@@ -280,31 +280,28 @@ export class RunATCAnalysisTool implements vscode.LanguageModelTool<IRunATCAnaly
       )
 
       const resultText =
-        `**🔍 ATC Analysis Complete** ✅\n\n` +
-        `• **Target:** ${targetUri.toString()}\n` +
-        `• **System:** ${actualConnectionId}\n` +
-        `• **Check Variant:** ${variantName}\n` +
-        `• **Total Findings:** ${totalFindings}\n` +
-        `• **Errors:** ${errors} | **Warnings:** ${warnings} | **Info:** ${infos}\n` +
-        `• **Exempted:** ${exempted}\n` +
-        `• **Objects Analyzed:** ${Object.keys(findingsByObject).length}\n\n` +
-        `**📋 Finding Summary:**\n` +
+        `ATC Analysis Complete\n` +
+        `Target: ${targetUri.toString()}\n` +
+        `System: ${actualConnectionId}\n` +
+        `Check Variant: ${variantName}\n` +
+        `Findings: ${totalFindings} (${errors}E ${warnings}W ${infos}I, ${exempted} exempted)\n` +
+        `Objects Analyzed: ${Object.keys(findingsByObject).length}\n\n` +
+        `Per-object:\n` +
         Object.entries(findingsByObject)
           .map(
             ([objectKey, findings]) =>
-              `• **${objectKey}**: ${findings.length} finding(s) ` +
-              `(${findings.filter(f => f.finding.priority === 1).length} errors, ` +
-              `${findings.filter(f => f.finding.priority === 2).length} warnings, ` +
-              `${findings.filter(f => f.finding.priority === 3).length} info)`
+              `• ${objectKey}: ${findings.length} (` +
+              `${findings.filter(f => f.finding.priority === 1).length}E, ` +
+              `${findings.filter(f => f.finding.priority === 2).length}W, ` +
+              `${findings.filter(f => f.finding.priority === 3).length}I)`
           )
           .join("\n") +
-        `\n\n**🎯 UI Updated:** Results displayed in ATC Finds panel with color-coded highlights\n` +
-        `**📊 AI Analysis Ready:** Structured data available for intelligent assistance`
+        `\n\nResults also displayed in ATC Finds panel.`
 
       return new vscode.LanguageModelToolResult([
         new vscode.LanguageModelTextPart(resultText),
         new vscode.LanguageModelTextPart(
-          `\n**Structured Findings Data:**\n${JSON.stringify(
+          `\nStructured Findings Data:\n${JSON.stringify(
             {
               summary: {
                 totalFindings,
@@ -336,7 +333,7 @@ export class RunATCAnalysisTool implements vscode.LanguageModelTool<IRunATCAnaly
     if (!docUri) {
       return new vscode.LanguageModelToolResult([
         new vscode.LanguageModelTextPart(
-          "**❌ Missing parameter:** get_documentation requires `docUri` - the documentation URL from a finding. " +
+          "Missing parameter: get_documentation requires `docUri` — the documentation URL from a finding. " +
             "Use the exact docUri value from the findings returned by a previous run_analysis call."
         )
       ])
@@ -345,7 +342,7 @@ export class RunATCAnalysisTool implements vscode.LanguageModelTool<IRunATCAnaly
     if (!connectionId) {
       return new vscode.LanguageModelToolResult([
         new vscode.LanguageModelTextPart(
-          "**❌ Missing parameter:** get_documentation requires `connectionId` to fetch documentation from the correct SAP system."
+          "Missing parameter: get_documentation requires `connectionId` to fetch documentation from the correct SAP system."
         )
       ])
     }
@@ -374,10 +371,10 @@ export class RunATCAnalysisTool implements vscode.LanguageModelTool<IRunATCAnaly
       .trim()
 
     const resultText =
-      `**📖 ATC Finding Documentation**\n\n` +
-      `• **Doc URI:** ${docUri}\n` +
-      `• **System:** ${connectionId}\n\n` +
-      `**Documentation:**\n\n${plainText}`
+      `ATC Finding Documentation\n` +
+      `Doc URI: ${docUri}\n` +
+      `System: ${connectionId}\n\n` +
+      `Documentation:\n\n${plainText}`
 
     return new vscode.LanguageModelToolResult([new vscode.LanguageModelTextPart(resultText)])
   }
@@ -429,9 +426,9 @@ export class GetATCDecorationsTool implements vscode.LanguageModelTool<IGetATCDe
         findingsCount = fileData.decorations.length
 
         resultText =
-          `**🎨 ATC Decorations for File** ✅\n\n` +
-          `• **File:** ${fileUri}\n` +
-          `• **Total Decorations:** ${findingsCount}\n\n`
+          `ATC Decorations for File\n` +
+          `File: ${fileUri}\n` +
+          `Total Decorations: ${findingsCount}\n\n`
 
         if (findingsCount > 0) {
           const errors = fileData.decorations.filter(d => d.priority === 1).length
@@ -440,19 +437,15 @@ export class GetATCDecorationsTool implements vscode.LanguageModelTool<IGetATCDe
           const exempted = fileData.decorations.filter(d => d.hasExemption).length
 
           resultText +=
-            `**📊 Breakdown:**\n` +
-            `• **Errors:** ${errors} (red highlights)\n` +
-            `• **Warnings:** ${warnings} (yellow highlights)\n` +
-            `• **Info:** ${infos} (blue highlights)\n` +
-            `• **Exempted:** ${exempted} (green highlights)\n\n` +
-            `**🎯 Visible Decorations:**\n` +
+            `${errors}E (red) | ${warnings}W (yellow) | ${infos}I (blue) | ${exempted} exempted (green)\n\n` +
+            `Decorations:\n` +
             fileData.decorations
               .map(
-                d => `• **Line ${d.line}:** ${d.message} (${d.priorityText}) [${d.decorationType}]`
+                d => `• Line ${d.line}: ${d.message} (${d.priorityText}) [${d.decorationType}]`
               )
               .join("\n")
         } else {
-          resultText += `**✅ No decorations currently visible** - Clean code or no ATC analysis run yet.`
+          resultText += `No decorations visible — clean code or no ATC analysis run yet.`
         }
       } else {
         const allData = decorationData as {
@@ -463,30 +456,30 @@ export class GetATCDecorationsTool implements vscode.LanguageModelTool<IGetATCDe
         findingsCount = allData.totalFindings
 
         resultText =
-          `**🎨 All ATC Decorations** ✅\n\n` +
-          `• **Files with Decorations:** ${allData.totalFiles}\n` +
-          `• **Total Decorations:** ${allData.totalFindings}\n\n`
+          `All ATC Decorations\n` +
+          `Files with Decorations: ${allData.totalFiles}\n` +
+          `Total Decorations: ${allData.totalFindings}\n\n`
 
         if (allData.totalFiles > 0) {
           resultText +=
-            `**📂 Files Overview:**\n` +
+            `Files Overview:\n` +
             Object.entries(allData.decorations)
               .map(([uri, decorations]) => {
                 const errors = decorations.filter(d => d.priority === 1).length
                 const warnings = decorations.filter(d => d.priority === 2).length
                 const infos = decorations.filter(d => d.priority === 3).length
-                return `• **${uri}**: ${decorations.length} decorations (${errors}E, ${warnings}W, ${infos}I)`
+                return `• ${uri}: ${decorations.length} (${errors}E ${warnings}W ${infos}I)`
               })
               .join("\n")
         } else {
-          resultText += `**✅ No decorations in any files** - All code clean or no ATC analysis run yet.`
+          resultText += `No decorations in any files — all code clean or no ATC analysis run yet.`
         }
       }
 
       return new vscode.LanguageModelToolResult([
         new vscode.LanguageModelTextPart(resultText),
         new vscode.LanguageModelTextPart(
-          `\n**Structured Decoration Data:**\n${JSON.stringify(decorationData, null, 2)}`
+          `\nStructured Decoration Data:\n${JSON.stringify(decorationData, null, 2)}`
         )
       ])
     } catch (error) {

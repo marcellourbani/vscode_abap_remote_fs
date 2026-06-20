@@ -193,7 +193,7 @@ jest.mock("../services/sapSystemInfo", () => ({
   clearSystemInfoCache: jest.fn()
 }))
 
-import { currentUri, currentAbapFile, currentEditState, openObject } from "./commands"
+import { currentUri, currentAbapFile, currentEditState, openObject, AdtCommands } from "./commands"
 import { funWindow as window } from "../services/funMessenger"
 import { ADTSCHEME, getRoot } from "../adt/conections"
 import { uriAbapFile } from "../adt/operations/AdtObjectFinder"
@@ -232,6 +232,30 @@ describe("currentUri", () => {
     const uri = makeAdtUri()
     ;(mockWindow as any).activeTextEditor = { document: { uri } }
     expect(currentUri()).toBe(uri)
+  })
+})
+
+describe("createAdtObjectProgrammatically", () => {
+  test("requires a parent function group when creating function modules", async () => {
+    const result = await AdtCommands.createAdtObjectProgrammatically(
+      "FUGR/FF" as any,
+      "Z_TEST_FUNCTION",
+      "Test function module",
+      "$TMP",
+      undefined,
+      "dev100"
+    )
+
+    const { AdtObjectCreator } = require("../adt/operations/AdtObjectCreator")
+
+    expect(result).toEqual({
+      success: false,
+      error: "MISSING_FUNCTION_GROUP_PARENT",
+      message: "Function module creation requires parentName with the parent function group name.",
+      objectName: "Z_TEST_FUNCTION",
+      objectType: "FUGR/FF"
+    })
+    expect(AdtObjectCreator).not.toHaveBeenCalled()
   })
 })
 

@@ -1,10 +1,20 @@
 # Changelog
 
+## 2.4.10
+
+### Patch Changes
+
+- fb69dc5: add a CI job to check for changesets in each PR - will rejects any PR without a changeset
+- 0c3075b: enable activation tool for MCP
+- 48d8fbe: Fix function module creation to use the provided function group parent instead of falling back to the current workspace hierarchy.
+- 3f99f16: initialize MCP only after all tools are registered
+
 All notable changes to ABAP Remote FS are documented here.
 
 ---
 
 ## 2.4.9 (2026-06-09)
+
 - **MCP write support** — external AI tools can now edit ABAP source code and check syntax errors via the MCP server
 - **Tool invocation guard** — AI language model tools are now protected against unauthorized calls, and improved security for MCP integrations as well
 - **Version upgrade notification** — you'll now see a "What's New" prompt whenever the extension updates
@@ -22,6 +32,7 @@ All notable changes to ABAP Remote FS are documented here.
 - Documentation reorganized and published to GitHub Pages
 
 ## 2.4.8 (2026-05-13)
+
 - Debugger reliability improvements — fixed thread handling, eliminated race conditions during attach, and improved error surfacing for more stable debugging sessions
 - Fixed the AI-powered activate command — now returns specific per-object error details to Copilot
 - Document outline and breadcrumbs now work for classes and interfaces (was previously excluded)
@@ -30,6 +41,7 @@ All notable changes to ABAP Remote FS are documented here.
 - Fixed an issue where opening programs with local classes would cause errors
 
 ## 2.4.7 (2026-05-12)
+
 - **S/4HANA Readiness Check view** — new dedicated view to analyze your custom code for S/4HANA compatibility issues, with "Ask Copilot to Fix" and "Open SAP Note" inline actions
 - **Behavior Definition (BDEF) creation** — create RAP behavior definitions directly from VS Code
 - **Service Binding toolbar** — Publish and Test buttons appear in the editor title bar when viewing service bindings
@@ -41,21 +53,25 @@ All notable changes to ABAP Remote FS are documented here.
 - Security dependency updates
 
 ## 2.4.6 (2026-04-30)
+
 - **CDS Go to Definition** — navigate to data sources, fields, associations, and data elements directly from CDS views
 - **CDS Find All References** — find where CDS entities are used across the project
 - **CDS Hover Information** — hover over CDS entities to see type details and documentation
 - CDS auto-completion now suggests all available fields when on empty lines inside select lists
 
 ## 2.4.5 (2026-04-29)
+
 - **ABAP REPL** — new interactive Read-Eval-Print-Loop panel. Execute ABAP statements on the fly and see results immediately without creating test programs
 - Improved reliability of object activation and transport operations
 
 ## 2.4.4 (2026-04-29)
+
 - **Method signature autocomplete** — selecting a method from autocomplete now inserts a snippet with tab stops for all parameters, so you can jump between them with Tab
 - **Signature Help** — typing `(` or `,` inside method calls now shows parameter names, types, and direction (importing/exporting/changing) with the active parameter highlighted
 - Inline blame annotations now render directly in the editor gutter with a modern display style
 
 ## 2.4.3 (2026-04-28)
+
 - **RAP Generator wizard** — Eclipse-style RAP business object generation from database tables, available from the editor context menu when viewing a table
 - **Batch activation** — new "Load unactivated objects" command shows all inactive objects on the system and lets you select which to activate
 - **Publish Service Binding command** — auto-detects the service binding from the active editor
@@ -64,11 +80,13 @@ All notable changes to ABAP Remote FS are documented here.
 - SAP GUI transactions now open in the built-in browser by default (`abapfs.sapGui.useIntegratedBrowser` defaults to true)
 
 ## 2.4.2 (2026-04-15)
+
 - **Object Search panel** — a new persistent search webview in the sidebar with object type filtering and system picker
 - **Create Object wizard** — new "Create Object" command available in the explorer toolbar and context menu, with a full creation wizard
 - **Document Symbol provider** — ABAP files now contribute outline symbols (classes, methods, data declarations, types, constants, field-symbols) to VS Code's Outline view, Breadcrumbs, and Go to Symbol
 
 ## 2.4.1 (2026-04-14)
+
 - **ADT API Explorer** — new AI tool and skill for discovering and investigating SAP ADT REST API endpoints directly from VS Code
 - **Auto-attach debugger** — if breakpoints are set for a connection, the debugger automatically attaches before launching SAP GUI transactions or programs
 - **Object type filtering in AI tools** — `get_abap_object_info` now accepts an `objectType` parameter to narrow results; added ENHO and SUSO types to search
@@ -77,24 +95,29 @@ All notable changes to ABAP Remote FS are documented here.
 - Stability and usability fixes for SAP Data Notebooks
 
 ## 2.4.0 (2026-04-06)
+
 - **SAP Data Notebooks** — a brand-new notebook experience (`.sapwb` files) for running ABAP SQL queries and JavaScript processing side by side, with variable interpolation between cells and rich output rendering
 - **Guided Walkthroughs** — 4 interactive step-by-step walkthroughs covering Getting Started, Views & Tools, AI Tools, and Advanced Features
 - Walkthrough automatically shown on first install
 
 ## 2.3.0 (2026-04-06)
+
 - **Automatic re-login on session expiry** — if your SAP session expires while saving, the extension now automatically re-authenticates, re-locks the file, and retries the write
 - Overwrite confirmation dialog when remote object was modified during session gap
 - Documents with unsaved local edits are no longer overwritten by server refreshes
 
 ## 2.2.4 (2026-04-04)
+
 - Fixed frequent ABAP object lock conflicts that could block editing when multiple objects were open
 
 ## 2.2.3 (2026-04-03)
+
 - **Object version history & compare** — view the change history of ABAP objects and compare versions side-by-side
 - Function modules now show their type in the Object Property View
 - Fixed unnecessary reloading when switching between objects
 
 ## 2.2.2 (2026-04-02)
+
 - **Object Property View** — inspect ABAP object properties directly in VS Code
 - **Virtual Tools Fix** — automatic one-time fix for VS Code's tool grouping that hides ABAP FS tools from Copilot
 - Open transport requests and subtasks in SAP GUI directly from VS Code
@@ -103,21 +126,26 @@ All notable changes to ABAP Remote FS are documented here.
 - Improved file system event batching for better performance
 
 ## 2.2.1 (2026-03-28)
+
 - Security fix: MCP server now only listens on localhost and rejects unexpected cross-origin requests, preventing external access to your local development server
 
 ## 2.2.0 (2026-03-26)
+
 - **ABAP Debug Replay & Recording** — record your debugging sessions and replay them later, including table variable captures. Review past debug steps without re-running the program
 
 ## 2.1.0 (2026-03-26)
+
 - **ADT Communication Log** — view and monitor ADT HTTP communication in a dedicated panel, helping you troubleshoot connectivity and inspect server interactions
 - Added support for Enhancement Hook (ENHO/XHH) object types
 
 ## 2.0.10 (2026-03-15)
+
 - Fixed security vulnerabilities in dependencies
 - Added toggle icon for Blame Gutter visibility
 - Updated AI subagent templates with improved instructions
 
 ## 2.0.9 (2026-03-14)
+
 - **Blame Gutter** — see who changed each line of ABAP code, directly in the editor (like GitLens for SAP)
 - Keyboard shortcut `Ctrl+Alt+B` to toggle blame on/off
 - Blame toggle button in the editor title bar
@@ -125,6 +153,7 @@ All notable changes to ABAP Remote FS are documented here.
 - Output channel now supports VS Code's native log level filtering for easier troubleshooting
 
 ## 2.0.8 (2026-03-14)
+
 - **Integrated browser for SAP GUI** — new `abapfs.sapGui.useIntegratedBrowser` setting to view SAP GUI directly inside VS Code
 - **SAP System Personality Report** — AI can analyze and characterize your entire SAP system landscape
 - 6 AI skills registered and auto-discoverable by Copilot: Clean ABAP, Code Writing, Performance (ECC), Performance (HANA), System Research, and System Personality Report
@@ -132,25 +161,31 @@ All notable changes to ABAP Remote FS are documented here.
 - Fixed a lock race condition where rapid lock/unlock sequences could deadlock or leave objects in a broken state
 
 ## 2.0.7 (2026-02-25)
+
 - Added upgrade notification to guide users to new v2 features
 - Fixed subagent configuration to properly rotate between specialized AI agents
 - Improved MCP server logging for troubleshooting
 
 ## 2.0.6 (2026-02-19)
+
 - Re-enabled the AI activation tool so Copilot can activate ABAP objects after making changes
 
 ## 2.0.5 (2026-02-14)
+
 - New keyboard shortcuts: `Ctrl+Shift+F11` for Run Unit Tests, `Ctrl+Alt+;` for ABAP Search
 - AI now automatically activates inactive objects before running unit tests (prevents stale test results)
 - Restored telemetry for usage insights
 
 ## 2.0.4 (2026-02-14)
+
 - Fixed file locking behavior to prevent conflicts when editing ABAP objects
 
 ## 2.0.3 (2026-02-13)
+
 - Packaging fix
 
 ## 2.0.2 (2026-02-13)
+
 - **Documentation tool** — AI can now look up extension settings and help docs on your behalf
 - New `abapfs.autoOpenUnsupportedInGui` setting — choose whether unsupported objects auto-open in SAP GUI or show a prompt
 - Fixed "Where Used" analysis for Data Dictionary objects (falls back to table structure when source unavailable)
@@ -158,6 +193,7 @@ All notable changes to ABAP Remote FS are documented here.
 - Removed the `abapfs.embeddedGui` settings block (replaced by simpler GUI configuration)
 
 ## 2.0.1 (2026-02-09)
+
 - **Heartbeat** — AI continuously monitors your SAP system health and alerts you to issues. Configurable tasks (transports, dumps, jobs, IDocs, performance), custom intervals, active hours, and cooldown
 - New settings: `abapfs.heartbeat.enabled`, `.every`, `.model`, `.prompt`, `.activeHours`, and more
 - **SAP system timezone** — system info tool now reports timezone, UTC offset, and DST rules
@@ -166,6 +202,7 @@ All notable changes to ABAP Remote FS are documented here.
 - Improved security with SQL injection prevention and input sanitization
 
 ## 2.0.0 (2026-02-07)
+
 - **Major release: AI-powered ABAP development** — complete overhaul with GitHub Copilot integration
 - Added AI subagents: specialized assistants for code review, debugging, data analysis, documentation, visualization, and more
 - Added MCP (Model Context Protocol) server for external AI tool integrations

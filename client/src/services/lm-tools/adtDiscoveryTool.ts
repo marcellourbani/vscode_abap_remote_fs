@@ -232,7 +232,7 @@ function buildIndexMd(
   lines.push("")
   lines.push("## How to use these files")
   lines.push("")
-  lines.push("These files contain the **raw discovery data** from the SAP system. To investigate a specific ADT endpoint:")
+  lines.push("These files contain the raw discovery data from the SAP system. To investigate a specific ADT endpoint:")
   lines.push("")
   lines.push("1. Find the endpoint URL in `workspaces.md` (search by keyword)")
   lines.push("2. Use the `adt-api-discovery` skill which teaches how to trace from discovery → RES_APP class → handler class → Simple Transformation → XML schema")
@@ -261,7 +261,7 @@ function buildWorkspacesMd(discovery: DiscoveryWorkspace[]): string {
     for (const col of ws.collection) {
       lines.push(`### ${col.title || "(untitled)"}`)
       lines.push("")
-      lines.push(`- **href**: \`${col.href}\``)
+      lines.push(`- href: \`${col.href}\``)
       lines.push("")
 
       if (col.templateLinks.length === 0) {
