@@ -1,6 +1,10 @@
-jest.mock("vscode", () => ({
-  Memento: jest.fn()
-}), { virtual: true })
+jest.mock(
+  "vscode",
+  () => ({
+    Memento: jest.fn()
+  }),
+  { virtual: true }
+)
 
 jest.mock("../../lib", () => ({
   PasswordVault: {
@@ -45,12 +49,7 @@ jest.mock("fp-ts/lib/Option", () => ({
   Option: {}
 }))
 
-import {
-  getDefaultUser,
-  deleteDefaultUser,
-  deletePassword,
-  listPasswords
-} from "./credentials"
+import { getDefaultUser, deleteDefaultUser, deletePassword, listPasswords } from "./credentials"
 import { createStore } from "../../lib"
 import { PasswordVault } from "../../lib"
 

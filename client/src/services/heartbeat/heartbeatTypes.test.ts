@@ -14,7 +14,7 @@ import {
   isWithinActiveHours,
   parseHeartbeatResponse,
   DEFAULT_HEARTBEAT_CONFIG,
-  HEARTBEAT_OK_TOKEN,
+  HEARTBEAT_OK_TOKEN
 } from "./heartbeatTypes"
 
 // ============================================================================

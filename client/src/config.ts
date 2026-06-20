@@ -1,6 +1,4 @@
-import {
-  ClientConfiguration
-} from "vscode-abap-remote-fs-sharedapi"
+import { ClientConfiguration } from "vscode-abap-remote-fs-sharedapi"
 import {
   workspace,
   QuickPickItem,

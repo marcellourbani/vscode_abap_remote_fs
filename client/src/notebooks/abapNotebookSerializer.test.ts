@@ -1,43 +1,66 @@
-jest.mock("../services/funMessenger", () => ({
-  funWindow: {
-    showWarningMessage: jest.fn(),
-    showQuickPick: jest.fn(),
-    showInputBox: jest.fn(),
-    showErrorMessage: jest.fn(),
-    createOutputChannel: jest.fn(() => ({
-      info: jest.fn(), warn: jest.fn(), error: jest.fn(), debug: jest.fn(), trace: jest.fn(),
-    })),
-  },
-}), { virtual: false })
-jest.mock("../lib", () => ({
-  log: Object.assign(jest.fn(), {
-    info: jest.fn(), warn: jest.fn(), error: jest.fn(), debug: jest.fn(), trace: jest.fn(),
+jest.mock(
+  "../services/funMessenger",
+  () => ({
+    funWindow: {
+      showWarningMessage: jest.fn(),
+      showQuickPick: jest.fn(),
+      showInputBox: jest.fn(),
+      showErrorMessage: jest.fn(),
+      createOutputChannel: jest.fn(() => ({
+        info: jest.fn(),
+        warn: jest.fn(),
+        error: jest.fn(),
+        debug: jest.fn(),
+        trace: jest.fn()
+      }))
+    }
   }),
-}), { virtual: false })
-
-jest.mock("vscode", () => {
-  const NotebookCellKind = { Markup: 1, Code: 2 }
-
-  const NotebookCellData = jest.fn().mockImplementation(
-    (kind: number, value: string, languageId: string) => ({
-      kind, value, languageId, metadata: {} as Record<string, any>,
+  { virtual: false }
+)
+jest.mock(
+  "../lib",
+  () => ({
+    log: Object.assign(jest.fn(), {
+      info: jest.fn(),
+      warn: jest.fn(),
+      error: jest.fn(),
+      debug: jest.fn(),
+      trace: jest.fn()
     })
-  )
+  }),
+  { virtual: false }
+)
 
-  const NotebookData = jest.fn().mockImplementation((cells: any[]) => ({
-    cells,
-    metadata: {} as Record<string, any>,
-  }))
+jest.mock(
+  "vscode",
+  () => {
+    const NotebookCellKind = { Markup: 1, Code: 2 }
 
-  return {
-    NotebookCellKind,
-    NotebookCellData,
-    NotebookData,
-    workspace: {
-      registerNotebookSerializer: jest.fn(() => ({ dispose: jest.fn() })),
-    },
-  }
-}, { virtual: true })
+    const NotebookCellData = jest
+      .fn()
+      .mockImplementation((kind: number, value: string, languageId: string) => ({
+        kind,
+        value,
+        languageId,
+        metadata: {} as Record<string, any>
+      }))
+
+    const NotebookData = jest.fn().mockImplementation((cells: any[]) => ({
+      cells,
+      metadata: {} as Record<string, any>
+    }))
+
+    return {
+      NotebookCellKind,
+      NotebookCellData,
+      NotebookData,
+      workspace: {
+        registerNotebookSerializer: jest.fn(() => ({ dispose: jest.fn() }))
+      }
+    }
+  },
+  { virtual: true }
+)
 
 import { AbapNotebookSerializer, registerNotebookSerializer } from "./abapNotebookSerializer"
 import { NOTEBOOK_TYPE, SQL_LANGUAGE_ID } from "./types"
@@ -83,7 +106,7 @@ describe("AbapNotebookSerializer.deserializeNotebook", () => {
   test("deserializes valid JSON with one SQL cell", async () => {
     const nb = {
       version: 1,
-      cells: [{ type: "sql", content: "SELECT * FROM mara" }],
+      cells: [{ type: "sql", content: "SELECT * FROM mara" }]
     }
     const data = await deserialize(JSON.stringify(nb))
     expect(data.cells).toHaveLength(1)
@@ -96,7 +119,7 @@ describe("AbapNotebookSerializer.deserializeNotebook", () => {
   test("deserializes valid JSON with markdown cell as Markup kind", async () => {
     const nb = {
       version: 1,
-      cells: [{ type: "markdown", content: "# Title" }],
+      cells: [{ type: "markdown", content: "# Title" }]
     }
     const data = await deserialize(JSON.stringify(nb))
     expect(data.cells[0].kind).toBe(1) // Markup
@@ -106,7 +129,7 @@ describe("AbapNotebookSerializer.deserializeNotebook", () => {
   test("deserializes valid JSON with javascript cell", async () => {
     const nb = {
       version: 1,
-      cells: [{ type: "javascript", content: "const x = 1" }],
+      cells: [{ type: "javascript", content: "const x = 1" }]
     }
     const data = await deserialize(JSON.stringify(nb))
     expect(data.cells[0].languageId).toBe("javascript")
@@ -123,7 +146,7 @@ describe("AbapNotebookSerializer.deserializeNotebook", () => {
   test("preserves maxRows in cell metadata", async () => {
     const nb = {
       version: 1,
-      cells: [{ type: "sql", content: "SELECT 1", maxRows: 250 }],
+      cells: [{ type: "sql", content: "SELECT 1", maxRows: 250 }]
     }
     const data = await deserialize(JSON.stringify(nb))
     expect(data.cells[0].metadata!.maxRows).toBe(250)
@@ -132,7 +155,7 @@ describe("AbapNotebookSerializer.deserializeNotebook", () => {
   test("cell metadata has no maxRows key when not specified", async () => {
     const nb = {
       version: 1,
-      cells: [{ type: "sql", content: "SELECT 1" }],
+      cells: [{ type: "sql", content: "SELECT 1" }]
     }
     const data = await deserialize(JSON.stringify(nb))
     expect(data.cells[0].metadata!.maxRows).toBeUndefined()
@@ -141,7 +164,7 @@ describe("AbapNotebookSerializer.deserializeNotebook", () => {
   test("normalizes 'abap-sql' cell type to sql (uses SQL_LANGUAGE_ID)", async () => {
     const nb = {
       version: 1,
-      cells: [{ type: "abap-sql", content: "SELECT 1" }],
+      cells: [{ type: "abap-sql", content: "SELECT 1" }]
     }
     const data = await deserialize(JSON.stringify(nb))
     expect(data.cells[0].languageId).toBe(SQL_LANGUAGE_ID)
@@ -150,7 +173,7 @@ describe("AbapNotebookSerializer.deserializeNotebook", () => {
   test("normalizes unknown type to markdown", async () => {
     const nb = {
       version: 1,
-      cells: [{ type: "cobol", content: "MOVE X TO Y" }],
+      cells: [{ type: "cobol", content: "MOVE X TO Y" }]
     }
     const data = await deserialize(JSON.stringify(nb))
     expect(data.cells[0].languageId).toBe("markdown")
@@ -160,7 +183,7 @@ describe("AbapNotebookSerializer.deserializeNotebook", () => {
   test("normalizes 'js' type to javascript", async () => {
     const nb = {
       version: 1,
-      cells: [{ type: "js", content: "1 + 1" }],
+      cells: [{ type: "js", content: "1 + 1" }]
     }
     const data = await deserialize(JSON.stringify(nb))
     expect(data.cells[0].languageId).toBe("javascript")
@@ -169,7 +192,7 @@ describe("AbapNotebookSerializer.deserializeNotebook", () => {
   test("normalizes 'typescript' type to javascript", async () => {
     const nb = {
       version: 1,
-      cells: [{ type: "typescript", content: "const x: number = 1" }],
+      cells: [{ type: "typescript", content: "const x: number = 1" }]
     }
     const data = await deserialize(JSON.stringify(nb))
     expect(data.cells[0].languageId).toBe("javascript")
@@ -178,7 +201,7 @@ describe("AbapNotebookSerializer.deserializeNotebook", () => {
   test("normalizes 'ts' type to javascript", async () => {
     const nb = {
       version: 1,
-      cells: [{ type: "ts", content: "let x = 1" }],
+      cells: [{ type: "ts", content: "let x = 1" }]
     }
     const data = await deserialize(JSON.stringify(nb))
     expect(data.cells[0].languageId).toBe("javascript")
@@ -199,7 +222,7 @@ describe("AbapNotebookSerializer.deserializeNotebook", () => {
   test("handles cell with non-string content — normalizes to empty string", async () => {
     const nb = {
       version: 1,
-      cells: [{ type: "sql", content: null }],
+      cells: [{ type: "sql", content: null }]
     }
     const data = await deserialize(JSON.stringify(nb))
     expect(data.cells[0].value).toBe("")
@@ -235,9 +258,7 @@ describe("AbapNotebookSerializer.deserializeNotebook", () => {
   test("shows warning message when JSON is corrupt and unfixable", async () => {
     const { funWindow: win } = require("../services/funMessenger")
     await deserialize("{not json at all!!")
-    expect(win.showWarningMessage).toHaveBeenCalledWith(
-      expect.stringContaining("invalid JSON")
-    )
+    expect(win.showWarningMessage).toHaveBeenCalledWith(expect.stringContaining("invalid JSON"))
   })
 
   test("deserializes multiple cells in order", async () => {
@@ -246,8 +267,8 @@ describe("AbapNotebookSerializer.deserializeNotebook", () => {
       cells: [
         { type: "markdown", content: "# H1" },
         { type: "sql", content: "SELECT 1" },
-        { type: "javascript", content: "cells[0]" },
-      ],
+        { type: "javascript", content: "cells[0]" }
+      ]
     }
     const data = await deserialize(JSON.stringify(nb))
     expect(data.cells).toHaveLength(3)
@@ -353,7 +374,7 @@ describe("AbapNotebookSerializer.serializeNotebook", () => {
     warningCell.metadata = { "[ABAPNB_CORRUPT_FILE_WARNING]": true }
     const data = makeData([warningCell], {
       version: 1,
-      "__abapnb_corrupt_original__": originalText,
+      __abapnb_corrupt_original__: originalText
     })
     const bytes = await serialize(data)
     expect(decodeResult(bytes)).toBe(originalText)
@@ -376,7 +397,7 @@ describe("AbapNotebookSerializer.serializeNotebook", () => {
   test("serialized output is valid JSON", async () => {
     const data = makeData([
       makeCell("markdown", "# Title"),
-      makeCell(SQL_LANGUAGE_ID, "SELECT * FROM mara"),
+      makeCell(SQL_LANGUAGE_ID, "SELECT * FROM mara")
     ])
     const bytes = await serialize(data)
     expect(() => JSON.parse(decodeResult(bytes))).not.toThrow()

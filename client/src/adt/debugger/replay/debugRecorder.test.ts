@@ -1,13 +1,17 @@
-jest.mock("vscode", () => ({
-  Uri: {
-    parse: jest.fn((s: string) => ({ scheme: "adt", path: s, toString: () => s }))
-  },
-  workspace: {
-    fs: {
-      readFile: jest.fn().mockResolvedValue(Buffer.from("REPORT Z."))
+jest.mock(
+  "vscode",
+  () => ({
+    Uri: {
+      parse: jest.fn((s: string) => ({ scheme: "adt", path: s, toString: () => s }))
+    },
+    workspace: {
+      fs: {
+        readFile: jest.fn().mockResolvedValue(Buffer.from("REPORT Z."))
+      }
     }
-  }
-}), { virtual: true })
+  }),
+  { virtual: true }
+)
 jest.mock("../../../lib", () => ({
   log: jest.fn(),
   caughtToString: jest.fn((e: any) => String(e))
@@ -18,9 +22,14 @@ jest.mock("../../../services/funMessenger", () => ({
   }
 }))
 jest.mock("./variableCapture", () => ({
-  captureScopesBatched: jest.fn().mockResolvedValue([
-    { name: "LOCAL", variables: [{ id: "V1", name: "X", value: "10", type: "I", metaType: "simple" }] }
-  ])
+  captureScopesBatched: jest
+    .fn()
+    .mockResolvedValue([
+      {
+        name: "LOCAL",
+        variables: [{ id: "V1", name: "X", value: "10", type: "I", metaType: "simple" }]
+      }
+    ])
 }))
 
 import { DebugRecorder } from "./debugRecorder"
@@ -29,7 +38,9 @@ import { funWindow as window } from "../../../services/funMessenger"
 import { DEFAULT_CAPTURE_OPTIONS } from "./types"
 import type { CapturedStackFrame } from "./types"
 
-const mockCaptureScopesBatched = captureScopesBatched as jest.MockedFunction<typeof captureScopesBatched>
+const mockCaptureScopesBatched = captureScopesBatched as jest.MockedFunction<
+  typeof captureScopesBatched
+>
 
 function makeStackFrames(count = 1): CapturedStackFrame[] {
   return Array.from({ length: count }, (_, i) => ({
@@ -50,7 +61,10 @@ describe("DebugRecorder", () => {
     jest.clearAllMocks()
     // Reset captureScopesBatched to return one scope each time
     mockCaptureScopesBatched.mockResolvedValue([
-      { name: "LOCAL", variables: [{ id: "V1", name: "X", value: "10", type: "I", metaType: "simple" }] }
+      {
+        name: "LOCAL",
+        variables: [{ id: "V1", name: "X", value: "10", type: "I", metaType: "simple" }]
+      }
     ])
   })
 
@@ -125,13 +139,19 @@ describe("DebugRecorder", () => {
 
       // First snapshot: X = 10
       mockCaptureScopesBatched.mockResolvedValueOnce([
-        { name: "LOCAL", variables: [{ id: "V1", name: "X", value: "10", type: "I", metaType: "simple" }] }
+        {
+          name: "LOCAL",
+          variables: [{ id: "V1", name: "X", value: "10", type: "I", metaType: "simple" }]
+        }
       ])
       await recorder.captureSnapshot(client, 1, makeStackFrames())
 
       // Second snapshot: X = 20 (changed)
       mockCaptureScopesBatched.mockResolvedValueOnce([
-        { name: "LOCAL", variables: [{ id: "V1", name: "X", value: "20", type: "I", metaType: "simple" }] }
+        {
+          name: "LOCAL",
+          variables: [{ id: "V1", name: "X", value: "20", type: "I", metaType: "simple" }]
+        }
       ])
       await recorder.captureSnapshot(client, 1, makeStackFrames())
 
@@ -156,7 +176,9 @@ describe("DebugRecorder", () => {
       mockCaptureScopesBatched.mockRejectedValueOnce(new Error("ADT error"))
       const recorder = new DebugRecorder()
       recorder.startRecording("TST")
-      await expect(recorder.captureSnapshot(makeClient(), 1, makeStackFrames())).resolves.not.toThrow()
+      await expect(
+        recorder.captureSnapshot(makeClient(), 1, makeStackFrames())
+      ).resolves.not.toThrow()
       expect(recorder.stepCount).toBe(0) // no snapshot on error
     })
 
@@ -164,7 +186,13 @@ describe("DebugRecorder", () => {
       const recorder = new DebugRecorder()
       recorder.startRecording("TST")
       const frames: CapturedStackFrame[] = [
-        { name: "ZPROG", sourcePath: "adt://TST/some/path", adtUri: "/p", line: 1, stackPosition: 0 }
+        {
+          name: "ZPROG",
+          sourcePath: "adt://TST/some/path",
+          adtUri: "/p",
+          line: 1,
+          stackPosition: 0
+        }
       ]
       await recorder.captureSnapshot(makeClient(), 1, frames)
       const recording = await recorder.stopRecording()

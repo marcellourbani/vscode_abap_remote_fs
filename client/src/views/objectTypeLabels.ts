@@ -8,7 +8,6 @@ for (const config of getAllConfigs()) {
   TYPE_LABELS[config.type] = config.label
 }
 
-
 export const OBJECT_TYPE_FILTER_OPTIONS = [
   { type: "PROG/P", label: "Programs (Reports)" },
   { type: "PROG/I", label: "Includes" },

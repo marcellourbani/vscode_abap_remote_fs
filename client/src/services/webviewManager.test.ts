@@ -99,7 +99,9 @@ function makeMockPanel() {
       onDisposeFns.push(fn)
       return { dispose: jest.fn() }
     }),
-    dispose: jest.fn(() => { onDisposeFns.forEach(fn => fn()) }),
+    dispose: jest.fn(() => {
+      onDisposeFns.forEach(fn => fn())
+    }),
     reveal: jest.fn()
   }
   return panel
@@ -183,7 +185,13 @@ describe("WebviewManager", () => {
       const directData = { columns: [], values: [] }
 
       // First create
-      const { webviewId } = await manager.createOrUpdateWebview(directData as any, "", "DEV100", undefined, "First")
+      const { webviewId } = await manager.createOrUpdateWebview(
+        directData as any,
+        "",
+        "DEV100",
+        undefined,
+        "First"
+      )
 
       // Second call with same id
       await manager.createOrUpdateWebview(directData as any, "", "DEV100", webviewId, "Updated")
@@ -219,7 +227,16 @@ describe("WebviewManager", () => {
       const directData = { columns: [], values: [] }
 
       await manager.createOrUpdateWebview(
-        directData as any, "", "DEV100", undefined, undefined, undefined, undefined, undefined, undefined, true
+        directData as any,
+        "",
+        "DEV100",
+        undefined,
+        undefined,
+        undefined,
+        undefined,
+        undefined,
+        undefined,
+        true
       )
 
       const clearSortMsg = (panel.webview.postMessage as jest.Mock).mock.calls.find(
@@ -237,7 +254,17 @@ describe("WebviewManager", () => {
       const directData = { columns: [], values: [] }
 
       await manager.createOrUpdateWebview(
-        directData as any, "", "DEV100", undefined, undefined, undefined, undefined, undefined, undefined, false, true
+        directData as any,
+        "",
+        "DEV100",
+        undefined,
+        undefined,
+        undefined,
+        undefined,
+        undefined,
+        undefined,
+        false,
+        true
       )
 
       const clearFiltersMsg = (panel.webview.postMessage as jest.Mock).mock.calls.find(
@@ -256,7 +283,14 @@ describe("WebviewManager", () => {
       const sortColumns = [{ column: "MATNR", direction: "asc" as const }]
 
       await manager.createOrUpdateWebview(
-        directData as any, "", "DEV100", undefined, undefined, undefined, undefined, sortColumns
+        directData as any,
+        "",
+        "DEV100",
+        undefined,
+        undefined,
+        undefined,
+        undefined,
+        sortColumns
       )
 
       const sortMsg = (panel.webview.postMessage as jest.Mock).mock.calls.find(
@@ -276,7 +310,15 @@ describe("WebviewManager", () => {
       const filters = [{ column: "MATNR", value: "MAT*" }]
 
       await manager.createOrUpdateWebview(
-        directData as any, "", "DEV100", undefined, undefined, undefined, undefined, undefined, filters
+        directData as any,
+        "",
+        "DEV100",
+        undefined,
+        undefined,
+        undefined,
+        undefined,
+        undefined,
+        filters
       )
 
       const filterMsg = (panel.webview.postMessage as jest.Mock).mock.calls.find(

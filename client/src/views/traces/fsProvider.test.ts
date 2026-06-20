@@ -1,30 +1,34 @@
-jest.mock("vscode", () => {
-  class EventEmitter {
-    event = jest.fn()
-    fire = jest.fn()
-  }
-  class Disposable {
-    constructor(public cb: () => void) {}
-  }
-  const FileType = { File: 1, Directory: 2 }
-  return {
-    EventEmitter,
-    Disposable,
-    FileType,
-    Uri: {
-      parse: (s: string) => {
-        const match = s.match(/^(\w+):\/\/([^/]*)(.*)$/)
-        return {
-          scheme: match?.[1] || "",
-          authority: match?.[2] || "",
-          path: match?.[3] || s,
-          toString: () => s
+jest.mock(
+  "vscode",
+  () => {
+    class EventEmitter {
+      event = jest.fn()
+      fire = jest.fn()
+    }
+    class Disposable {
+      constructor(public cb: () => void) {}
+    }
+    const FileType = { File: 1, Directory: 2 }
+    return {
+      EventEmitter,
+      Disposable,
+      FileType,
+      Uri: {
+        parse: (s: string) => {
+          const match = s.match(/^(\w+):\/\/([^/]*)(.*)$/)
+          return {
+            scheme: match?.[1] || "",
+            authority: match?.[2] || "",
+            path: match?.[3] || s,
+            toString: () => s
+          }
         }
-      }
-    },
-    workspace: { registerFileSystemProvider: jest.fn() }
-  }
-}, { virtual: true })
+      },
+      workspace: { registerFileSystemProvider: jest.fn() }
+    }
+  },
+  { virtual: true }
+)
 
 jest.mock("../../adt/conections", () => ({
   getClient: jest.fn()
@@ -113,7 +117,13 @@ describe("TraceFs", () => {
       ;(findRun as jest.Mock).mockResolvedValue(fakeRun)
       const mockClient = { tracesHitList: jest.fn().mockResolvedValue({ entries: [] }) }
       ;(getClient as jest.Mock).mockReturnValue(mockClient)
-      ;(convertRun as jest.Mock).mockReturnValue({ startTime: 0, endTime: 1, nodes: [], samples: [], timeDeltas: [] })
+      ;(convertRun as jest.Mock).mockReturnValue({
+        startTime: 0,
+        endTime: 1,
+        nodes: [],
+        samples: [],
+        timeDeltas: []
+      })
 
       const uri = Uri.parse("adt_profile://dev100/trace/3.cpuprofile")
       // WeakMap uses object identity, so we must reuse the same uri object

@@ -1,22 +1,26 @@
-jest.mock("vscode", () => ({
-  Uri: {
-    parse: jest.fn((url: string) => {
-      const match = url.match(/^([^:]+):\/\/([^\/]*)(.*)$/)
-      return {
-        scheme: match?.[1] ?? "",
-        authority: match?.[2] ?? "",
-        path: match?.[3] ?? "",
-        toString: () => url
-      }
-    })
-  },
-  LanguageModelTextPart: jest.fn((t: string) => ({ value: t })),
-  LanguageModelToolResult: jest.fn((content: any[]) => ({ content })),
-  ProgressLocation: { Window: 10 },
-  window: {
-    withProgress: jest.fn()
-  }
-}), { virtual: true })
+jest.mock(
+  "vscode",
+  () => ({
+    Uri: {
+      parse: jest.fn((url: string) => {
+        const match = url.match(/^([^:]+):\/\/([^\/]*)(.*)$/)
+        return {
+          scheme: match?.[1] ?? "",
+          authority: match?.[2] ?? "",
+          path: match?.[3] ?? "",
+          toString: () => url
+        }
+      })
+    },
+    LanguageModelTextPart: jest.fn((t: string) => ({ value: t })),
+    LanguageModelToolResult: jest.fn((content: any[]) => ({ content })),
+    ProgressLocation: { Window: 10 },
+    window: {
+      withProgress: jest.fn()
+    }
+  }),
+  { virtual: true }
+)
 
 jest.mock("../conections", () => ({
   getClient: jest.fn(),
@@ -91,9 +95,11 @@ describe("UnitTool", () => {
       )
 
       // We need to capture return from withProgress
-      ;(vscode.window.withProgress as jest.Mock).mockImplementation(async (_opts: any, fn: Function) => {
-        return fn()
-      })
+      ;(vscode.window.withProgress as jest.Mock).mockImplementation(
+        async (_opts: any, fn: Function) => {
+          return fn()
+        }
+      )
 
       const result = await tool.invoke(
         { input: { url: "adt://dev100/sap/bc/adt/programs/programs/ztest" } } as any,
@@ -121,7 +127,9 @@ describe("UnitTool", () => {
       mockUriRoot.mockReturnValue(mockRoot as any)
       ;(AdtObjectActivator.get as jest.Mock).mockReturnValue(mockActivator)
       ;(UnitTestRunner.get as jest.Mock).mockReturnValue(mockRunner)
-      ;(vscode.window.withProgress as jest.Mock).mockImplementation(async (_opts: any, fn: Function) => fn())
+      ;(vscode.window.withProgress as jest.Mock).mockImplementation(
+        async (_opts: any, fn: Function) => fn()
+      )
 
       await tool.invoke(
         { input: { url: "adt://dev100/sap/bc/adt/programs/programs/ztest" } } as any,
@@ -148,7 +156,9 @@ describe("UnitTool", () => {
       mockUriRoot.mockReturnValue(mockRoot as any)
       ;(AdtObjectActivator.get as jest.Mock).mockReturnValue(mockActivator)
       ;(UnitTestRunner.get as jest.Mock).mockReturnValue(mockRunner)
-      ;(vscode.window.withProgress as jest.Mock).mockImplementation(async (_opts: any, fn: Function) => fn())
+      ;(vscode.window.withProgress as jest.Mock).mockImplementation(
+        async (_opts: any, fn: Function) => fn()
+      )
 
       await tool.invoke(
         { input: { url: "adt://dev100/sap/bc/adt/programs/programs/ztest" } } as any,
@@ -164,13 +174,12 @@ describe("UnitTool", () => {
         getNodePathAsync: jest.fn().mockResolvedValue([{ file: {}, path: "/" }])
       }
       mockUriRoot.mockReturnValue(mockRoot as any)
-      ;(vscode.window.withProgress as jest.Mock).mockImplementation(async (_opts: any, fn: Function) => fn())
+      ;(vscode.window.withProgress as jest.Mock).mockImplementation(
+        async (_opts: any, fn: Function) => fn()
+      )
 
       await expect(
-        tool.invoke(
-          { input: { url: "adt://dev100/bad/path" } } as any,
-          mockToken
-        )
+        tool.invoke({ input: { url: "adt://dev100/bad/path" } } as any, mockToken)
       ).rejects.toThrow("Failed to retrieve object for unit test run")
     })
   })
@@ -180,7 +189,9 @@ describe("UnitTool", () => {
       mockGetClient.mockReturnValue({} as any)
 
       const result = tool.prepareInvocation!(
-        { input: { url: "adt://dev100/sap/bc/adt/programs/programs/ztest/ztest.prog.abap" } } as any,
+        {
+          input: { url: "adt://dev100/sap/bc/adt/programs/programs/ztest/ztest.prog.abap" }
+        } as any,
         mockToken
       )
 

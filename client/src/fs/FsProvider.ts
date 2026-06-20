@@ -29,9 +29,7 @@ const openInGui = (uri: Uri, object: AbapObject) => {
   const autoOpen = workspace
     .getConfiguration("abapfs")
     .get<boolean>("autoOpenUnsupportedInGui", true)
-  const openXml = workspace
-    .getConfiguration("abapfs")
-    .get<boolean>("sapGui.openXmlInGui", true)
+  const openXml = workspace.getConfiguration("abapfs").get<boolean>("sapGui.openXmlInGui", true)
 
   const shouldOpen = guiObjects === "yes" || (guiObjects === "better" && openXml)
 
@@ -186,13 +184,18 @@ export class FsProvider implements FileSystemProvider {
     if (e instanceof FileSystemError) return e
     const msg = caughtToString(e)
     if (msg.includes("status code 401"))
-      return FileSystemError.NoPermissions(`Authentication failed for ${uri.authority}. Wrong password?`)
+      return FileSystemError.NoPermissions(
+        `Authentication failed for ${uri.authority}. Wrong password?`
+      )
     if (msg.includes("status code 403"))
-      return FileSystemError.NoPermissions(`Access denied to ${uri.authority} (HTTP 403). Likely a proxy issue or ADT service (/sap/bc/adt) not activated in SICF — contact your Basis team.`)
+      return FileSystemError.NoPermissions(
+        `Access denied to ${uri.authority} (HTTP 403). Likely a proxy issue or ADT service (/sap/bc/adt) not activated in SICF — contact your Basis team.`
+      )
     if (msg.includes("status code 503"))
-      return FileSystemError.Unavailable(`SAP system ${uri.authority} is unreachable (HTTP 503). ADT endpoint may be down or proxy misconfigured.`)
-    if (msg.includes("status code 404"))
-      return FileSystemError.FileNotFound(uri)
+      return FileSystemError.Unavailable(
+        `SAP system ${uri.authority} is unreachable (HTTP 503). ADT endpoint may be down or proxy misconfigured.`
+      )
+    if (msg.includes("status code 404")) return FileSystemError.FileNotFound(uri)
     return e
   }
 

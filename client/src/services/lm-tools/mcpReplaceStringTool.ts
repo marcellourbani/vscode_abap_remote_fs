@@ -1,4 +1,3 @@
-
 /**
  * MCP Replace String in ABAP Object Tool
  *
@@ -52,8 +51,8 @@ export function findAndReplace(content: string, oldString: string, newString: st
     }
     throw new Error(
       "oldString can only be empty when the file is currently completely blank. " +
-      "The file has existing content, so oldString is mandatory. " +
-      "Read the current content with get_abap_object_lines first and include the exact text to replace."
+        "The file has existing content, so oldString is mandatory. " +
+        "Read the current content with get_abap_object_lines first and include the exact text to replace."
     )
   }
 
@@ -87,15 +86,15 @@ export function findAndReplace(content: string, oldString: string, newString: st
     }
     throw new Error(
       "Could not find the specified oldString in the file. " +
-      "Make sure the text matches exactly (including whitespace and indentation). " +
-      "Use get_abap_object_lines or search_abap_object_lines to read the current file content first."
+        "Make sure the text matches exactly (including whitespace and indentation). " +
+        "Use get_abap_object_lines or search_abap_object_lines to read the current file content first."
     )
   }
 
   if (count > 1) {
     throw new Error(
       `Found ${count} occurrences of oldString. It must match exactly one location. ` +
-      "Include more surrounding context lines to make the match unique."
+        "Include more surrounding context lines to make the match unique."
     )
   }
 
@@ -119,7 +118,7 @@ export async function executeReplace(
   if (uri.scheme !== "adt") {
     throw new Error(
       `Invalid URI scheme '${uri.scheme}'. Expected 'adt://' URI. ` +
-      "Use the get_abap_object_workspace_uri tool to get the correct URI."
+        "Use the get_abap_object_workspace_uri tool to get the correct URI."
     )
   }
 

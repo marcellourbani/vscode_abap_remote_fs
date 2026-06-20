@@ -19,10 +19,28 @@ type ChainKeyword =
 
 // Keywords that appear in method parameter specs – not method names
 const METHOD_SPEC_KEYWORDS = new Set([
-  "IMPORTING", "EXPORTING", "CHANGING", "RAISING", "EXCEPTIONS",
-  "RETURNING", "TYPE", "LIKE", "OPTIONAL", "DEFAULT", "VALUE",
-  "PREFERRED", "PARAMETER", "ABSTRACT", "FINAL", "REDEFINITION",
-  "FOR", "TESTING", "AMDP", "BY", "DATABASE", "PROCEDURE"
+  "IMPORTING",
+  "EXPORTING",
+  "CHANGING",
+  "RAISING",
+  "EXCEPTIONS",
+  "RETURNING",
+  "TYPE",
+  "LIKE",
+  "OPTIONAL",
+  "DEFAULT",
+  "VALUE",
+  "PREFERRED",
+  "PARAMETER",
+  "ABSTRACT",
+  "FINAL",
+  "REDEFINITION",
+  "FOR",
+  "TESTING",
+  "AMDP",
+  "BY",
+  "DATABASE",
+  "PROCEDURE"
 ])
 
 function kindForChain(kw: ChainKeyword): vscode.SymbolKind {
@@ -66,7 +84,10 @@ export function parseAbapDocumentSymbols(document: vscode.TextDocument): vscode.
   function closeDeclaration(symbol: vscode.DocumentSymbol | undefined, lineIdx: number) {
     if (!symbol) return
     const lineText = document.lineAt(lineIdx).text
-    symbol.range = new vscode.Range(symbol.range.start, new vscode.Position(lineIdx, lineText.length))
+    symbol.range = new vscode.Range(
+      symbol.range.start,
+      new vscode.Position(lineIdx, lineText.length)
+    )
   }
 
   // Process one line's worth of text while inside a METHODS/CLASS-METHODS chain.
@@ -82,12 +103,17 @@ export function parseAbapDocumentSymbols(document: vscode.TextDocument): vscode.
         const nm = /^([\w\/~$]+)/.exec(segment)
         if (nm && !METHOD_SPEC_KEYWORDS.has(nm[1].toUpperCase())) {
           closeDeclaration(activeMethodDeclaration, lineIdx)
-          activeMethodDeclaration = addDeclaration(nm[1], vscode.SymbolKind.Method, chainKind!, lineIdx)
+          activeMethodDeclaration = addDeclaration(
+            nm[1],
+            vscode.SymbolKind.Method,
+            chainKind!,
+            lineIdx
+          )
           expect = false
         }
         // spec keyword while expecting name: keep expect=true (e.g. ABSTRACT before name)
       }
-      if (ci >= 0) expect = true  // comma found → next segment starts a new method name
+      if (ci >= 0) expect = true // comma found → next segment starts a new method name
     }
     return expect
   }
@@ -114,12 +140,7 @@ export function parseAbapDocumentSymbols(document: vscode.TextDocument): vscode.
     }
   }
 
-  function addDeclaration(
-    name: string,
-    kind: vscode.SymbolKind,
-    detail: string,
-    lineIdx: number
-  ) {
+  function addDeclaration(name: string, kind: vscode.SymbolKind, detail: string, lineIdx: number) {
     if (structDepth > 0) return
     const lineText = document.lineAt(lineIdx).text
     const range = new vscode.Range(lineIdx, 0, lineIdx, lineText.length)
@@ -319,8 +340,10 @@ export function parseAbapDocumentSymbols(document: vscode.TextDocument): vscode.
       }
       continue
     }
-    if ((m = /^\s*(CLASS-METHODS|METHODS)\s+([\w\/]+)/i.exec(rawLine)) &&
-        !/^\s*(CLASS-METHODS|METHODS)\s*:/i.test(rawLine)) {
+    if (
+      (m = /^\s*(CLASS-METHODS|METHODS)\s+([\w\/]+)/i.exec(rawLine)) &&
+      !/^\s*(CLASS-METHODS|METHODS)\s*:/i.test(rawLine)
+    ) {
       const kw = m[1].toUpperCase() as ChainKeyword
       activeMethodDeclaration = addDeclaration(m[2], vscode.SymbolKind.Method, kw, i)
       if (!trimmed.endsWith(".")) {

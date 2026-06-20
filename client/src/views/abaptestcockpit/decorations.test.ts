@@ -2,20 +2,24 @@
 // The module uses module-level state (fileFindings map) that is populated via the atcProvider event.
 // We focus tests on the pure data-transformation function getATCDecorations.
 
-jest.mock("vscode", () => {
-  const Range = jest.fn((start: any, end: any) => ({ start, end }))
-  const Position = jest.fn((line: number, character: number) => ({ line, character }))
-  return {
-    Range,
-    Position,
-    DecorationOptions: {},
-    workspace: {
-      onDidChangeTextDocument: jest.fn(),
-      onDidSaveTextDocument: jest.fn(),
-      onDidCloseTextDocument: jest.fn()
+jest.mock(
+  "vscode",
+  () => {
+    const Range = jest.fn((start: any, end: any) => ({ start, end }))
+    const Position = jest.fn((line: number, character: number) => ({ line, character }))
+    return {
+      Range,
+      Position,
+      DecorationOptions: {},
+      workspace: {
+        onDidChangeTextDocument: jest.fn(),
+        onDidSaveTextDocument: jest.fn(),
+        onDidCloseTextDocument: jest.fn()
+      }
     }
-  }
-}, { virtual: true })
+  },
+  { virtual: true }
+)
 
 jest.mock("../../services/funMessenger", () => ({
   funWindow: {

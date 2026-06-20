@@ -10,7 +10,17 @@ export interface ObjectTypeConfig {
   extension?: string
   filterLabel?: string
   viewable?: boolean
-  creatorClass?: "AbapClass" | "AbapClassInclude" | "AbapCds" | "AbapInclude" | "AbapInterface" | "AbapFunction" | "AbapFunctionGroup" | "AbapProgram" | "AbapSimple" | "AbapXml"
+  creatorClass?:
+    | "AbapClass"
+    | "AbapClassInclude"
+    | "AbapCds"
+    | "AbapInclude"
+    | "AbapInterface"
+    | "AbapFunction"
+    | "AbapFunctionGroup"
+    | "AbapProgram"
+    | "AbapSimple"
+    | "AbapXml"
   customEditor?: string
   sourceRequired?: boolean
 }
@@ -69,7 +79,7 @@ const REGISTRY: ObjectTypeConfig[] = [
   },
   {
     type: "PROG/I",
-    label: (mainProgram?: any) => mainProgram ? "Include" : "Program Include",
+    label: (mainProgram?: any) => (mainProgram ? "Include" : "Program Include"),
     gui_objects: "no",
     filterLabel: "Includes",
     creatorClass: "AbapInclude"

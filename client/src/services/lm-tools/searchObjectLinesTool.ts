@@ -419,8 +419,7 @@ export class SearchABAPObjectLinesTool implements vscode.LanguageModelTool<ISear
               }
             }
 
-            currentObjectResultText +=
-              `URI: ${uriUsed} (${lines.length} lines total)\n\n`
+            currentObjectResultText += `URI: ${uriUsed} (${lines.length} lines total)\n\n`
 
             totalMatches += matches.length
             totalEnhancementMatches += enhancementMatches.length

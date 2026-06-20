@@ -1,15 +1,19 @@
-jest.mock("vscode", () => ({
-  Uri: {
-    file: jest.fn((p: string) => ({ scheme: "file", fsPath: p, toString: () => `file://${p}` })),
-    parse: jest.fn((s: string) => ({ scheme: "file", toString: () => s }))
-  },
-  workspace: {
-    fs: {
-      readFile: jest.fn(),
-      writeFile: jest.fn()
+jest.mock(
+  "vscode",
+  () => ({
+    Uri: {
+      file: jest.fn((p: string) => ({ scheme: "file", fsPath: p, toString: () => `file://${p}` })),
+      parse: jest.fn((s: string) => ({ scheme: "file", toString: () => s }))
+    },
+    workspace: {
+      fs: {
+        readFile: jest.fn(),
+        writeFile: jest.fn()
+      }
     }
-  }
-}), { virtual: true })
+  }),
+  { virtual: true }
+)
 jest.mock("../../../lib", () => ({
   log: jest.fn(),
   caughtToString: jest.fn((e: any) => String(e))
@@ -36,9 +40,15 @@ import type { DebugRecording } from "./types"
 
 const mockWriteFile = workspace.fs.writeFile as jest.MockedFunction<typeof workspace.fs.writeFile>
 const mockReadFile = workspace.fs.readFile as jest.MockedFunction<typeof workspace.fs.readFile>
-const mockShowSaveDialog = window.showSaveDialog as jest.MockedFunction<typeof window.showSaveDialog>
-const mockShowOpenDialog = window.showOpenDialog as jest.MockedFunction<typeof window.showOpenDialog>
-const mockShowErrorMessage = window.showErrorMessage as jest.MockedFunction<typeof window.showErrorMessage>
+const mockShowSaveDialog = window.showSaveDialog as jest.MockedFunction<
+  typeof window.showSaveDialog
+>
+const mockShowOpenDialog = window.showOpenDialog as jest.MockedFunction<
+  typeof window.showOpenDialog
+>
+const mockShowErrorMessage = window.showErrorMessage as jest.MockedFunction<
+  typeof window.showErrorMessage
+>
 
 function makeRecording(overrides: Partial<DebugRecording> = {}): DebugRecording {
   return {
@@ -52,7 +62,9 @@ function makeRecording(overrides: Partial<DebugRecording> = {}): DebugRecording 
         stepNumber: 0,
         timestamp: 1000,
         threadId: 1,
-        stack: [{ name: "ZPROG", sourcePath: "adt://TST/p", adtUri: "/p", line: 1, stackPosition: 0 }],
+        stack: [
+          { name: "ZPROG", sourcePath: "adt://TST/p", adtUri: "/p", line: 1, stackPosition: 0 }
+        ],
         scopes: [{ name: "LOCAL", variables: [] }],
         changedVars: []
       },
@@ -60,7 +72,9 @@ function makeRecording(overrides: Partial<DebugRecording> = {}): DebugRecording 
         stepNumber: 1,
         timestamp: 2000,
         threadId: 1,
-        stack: [{ name: "ZPROG", sourcePath: "adt://TST/p", adtUri: "/p", line: 2, stackPosition: 0 }],
+        stack: [
+          { name: "ZPROG", sourcePath: "adt://TST/p", adtUri: "/p", line: 2, stackPosition: 0 }
+        ],
         scopes: [{ name: "LOCAL", variables: [] }],
         changedVars: []
       }
@@ -82,16 +96,16 @@ describe("saveRecording", () => {
   })
 
   test("writes JSON to chosen uri", async () => {
-    const savedUri = { fsPath: "/home/user/TST-2026-01-01.abaprecord", toString: () => "file:///home/user/TST.abaprecord" } as any
+    const savedUri = {
+      fsPath: "/home/user/TST-2026-01-01.abaprecord",
+      toString: () => "file:///home/user/TST.abaprecord"
+    } as any
     mockShowSaveDialog.mockResolvedValueOnce(savedUri)
     mockWriteFile.mockResolvedValueOnce(undefined)
     const recording = makeRecording()
     const result = await saveRecording(recording)
     expect(result).toBe(savedUri)
-    expect(mockWriteFile).toHaveBeenCalledWith(
-      savedUri,
-      expect.any(Buffer)
-    )
+    expect(mockWriteFile).toHaveBeenCalledWith(savedUri, expect.any(Buffer))
     // Verify the content is valid JSON of the recording
     const [, buf] = mockWriteFile.mock.calls[0]
     const parsed = JSON.parse((buf as Buffer).toString())

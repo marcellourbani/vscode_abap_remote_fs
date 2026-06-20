@@ -18,7 +18,15 @@ import { vscUrl } from "./objectManager"
 import { groupBy } from "lodash"
 import { log, warn } from "./clientManager"
 import { getObjectSource, setSearchProgress } from "./clientapis"
-import { isAbapOrCds, isCdsLike, memoize, parts, toInt, hashParms, caughtToString } from "./functions"
+import {
+  isAbapOrCds,
+  isCdsLike,
+  memoize,
+  parts,
+  toInt,
+  hashParms,
+  caughtToString
+} from "./functions"
 import { cdsNavigationTarget } from "./cdsSyntax"
 import { ddicRepositoryAccessField, ddicRepositoryAccessSource } from "./cdsNavigation"
 
@@ -39,14 +47,20 @@ async function cdsDefinition(params: TextDocumentPositionParams): Promise<Locati
         const ref = await ddicRepositoryAccessSource(co.client.statelessClone, target.name)
         if (ref) {
           const uri = await vscUrl(co.confKey, ref.uri, true)
-          if (uri) return { uri, range: { start: { line: 0, character: 0 }, end: { line: 0, character: 0 } } }
+          if (uri)
+            return {
+              uri,
+              range: { start: { line: 0, character: 0 }, end: { line: 0, character: 0 } }
+            }
         }
         break
       }
       case "field": {
         try {
           const fieldRef = await ddicRepositoryAccessField(
-            co.client.statelessClone, target.source, target.field
+            co.client.statelessClone,
+            target.source,
+            target.field
           )
           if (fieldRef) {
             const baseUri = fieldRef.uri.replace(/[#?].*/, "")
@@ -54,7 +68,9 @@ async function cdsDefinition(params: TextDocumentPositionParams): Promise<Locati
             if (fragMatch) {
               try {
                 const frag = await co.client.statelessClone.fragmentMappings(
-                  baseUri, decodeURIComponent(fragMatch[1]), decodeURIComponent(fragMatch[2])
+                  baseUri,
+                  decodeURIComponent(fragMatch[1]),
+                  decodeURIComponent(fragMatch[2])
                 )
                 if (frag?.uri) {
                   const uri = await vscUrl(co.confKey, frag.uri, true)
@@ -73,7 +89,11 @@ async function cdsDefinition(params: TextDocumentPositionParams): Promise<Locati
               }
             }
             const uri = await vscUrl(co.confKey, baseUri, true)
-            if (uri) return { uri, range: { start: { line: 0, character: 0 }, end: { line: 0, character: 0 } } }
+            if (uri)
+              return {
+                uri,
+                range: { start: { line: 0, character: 0 }, end: { line: 0, character: 0 } }
+              }
           }
         } catch (e) {
           log("cdsDefinition field lookup failed:", caughtToString(e))
@@ -82,7 +102,11 @@ async function cdsDefinition(params: TextDocumentPositionParams): Promise<Locati
         const sourceRef = await ddicRepositoryAccessSource(co.client.statelessClone, target.source)
         if (sourceRef) {
           const sourceUri = await vscUrl(co.confKey, sourceRef.uri, true)
-          if (sourceUri) return { uri: sourceUri, range: { start: { line: 0, character: 0 }, end: { line: 0, character: 0 } } }
+          if (sourceUri)
+            return {
+              uri: sourceUri,
+              range: { start: { line: 0, character: 0 }, end: { line: 0, character: 0 } }
+            }
         }
         break
       }
@@ -90,7 +114,11 @@ async function cdsDefinition(params: TextDocumentPositionParams): Promise<Locati
         const ref = await ddicRepositoryAccessSource(co.client.statelessClone, target.word)
         if (ref) {
           const uri = await vscUrl(co.confKey, ref.uri, true)
-          if (uri) return { uri, range: { start: { line: 0, character: 0 }, end: { line: 0, character: 0 } } }
+          if (uri)
+            return {
+              uri,
+              range: { start: { line: 0, character: 0 }, end: { line: 0, character: 0 } }
+            }
         }
         break
       }

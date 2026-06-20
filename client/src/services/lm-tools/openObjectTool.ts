@@ -80,9 +80,7 @@ export class OpenObjectTool implements vscode.LanguageModelTool<IOpenObjectParam
       await openObject(connectionId.toLowerCase(), objectInfo.uri)
 
       return new vscode.LanguageModelToolResult([
-        new vscode.LanguageModelTextPart(
-          `Object ${objectName} opened in editor.`
-        )
+        new vscode.LanguageModelTextPart(`Object ${objectName} opened in editor.`)
       ])
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : String(error)

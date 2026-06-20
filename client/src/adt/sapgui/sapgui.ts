@@ -85,7 +85,10 @@ export function getGuiCommand(target: AbapObject | string | SapGuiCommand): SapG
 export function detectObjectType(command: string): string {
   const configs = getAllConfigs()
   for (const config of configs) {
-    if (config.transactionInfo?.transaction && command.includes(config.transactionInfo.transaction)) {
+    if (
+      config.transactionInfo?.transaction &&
+      command.includes(config.transactionInfo.transaction)
+    ) {
       return config.type
     }
   }
@@ -148,9 +151,11 @@ export async function openInGui(
 
       if (targetMode === "EMBEDDED") {
         const webguiUrl = getWebGuiUrl(config, cmd)
-        
+
         // Use VS Code simple browser if configured
-        const useIntegratedBrowser = workspace.getConfiguration("abapfs.sapGui").get<boolean>("useIntegratedBrowser", true)
+        const useIntegratedBrowser = workspace
+          .getConfiguration("abapfs.sapGui")
+          .get<boolean>("useIntegratedBrowser", true)
         if (useIntegratedBrowser) {
           commands.executeCommand("simpleBrowser.api.open", webguiUrl, {
             viewColumn: vscode.ViewColumn.Beside,
@@ -163,7 +168,10 @@ export async function openInGui(
         let extensionUri: Uri
         try {
           const extension = extensions.getExtension("murbani.vscode-abap-remote-fs")
-          extensionUri = extension?.extensionUri || extensions.getExtension("abap-copilot")?.extensionUri || Uri.file(__dirname)
+          extensionUri =
+            extension?.extensionUri ||
+            extensions.getExtension("abap-copilot")?.extensionUri ||
+            Uri.file(__dirname)
         } catch {
           extensionUri = Uri.file(__dirname)
         }

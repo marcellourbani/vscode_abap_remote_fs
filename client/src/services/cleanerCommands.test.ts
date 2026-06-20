@@ -57,7 +57,11 @@ jest.mock("../lib", () => ({ log: jest.fn() }))
 jest.mock("./telemetry", () => ({ logTelemetry: jest.fn() }))
 
 import * as vscode from "vscode"
-import { registerCleanerCommands, updateCleanerContext, setupCleanerContextMonitoring } from "./cleanerCommands"
+import {
+  registerCleanerCommands,
+  updateCleanerContext,
+  setupCleanerContextMonitoring
+} from "./cleanerCommands"
 import { ABAPCleanerService } from "./abapCleanerService"
 
 const mockCleanerService = {
@@ -113,7 +117,9 @@ describe("registerCleanerCommands", () => {
       registerCleanerCommands(context)
 
       // Find the cleanCode command handler
-      const cleanCodeCall = mockRegisterCommand.mock.calls.find((c: any) => c[0] === "abapfs.cleanCode")
+      const cleanCodeCall = mockRegisterCommand.mock.calls.find(
+        (c: any) => c[0] === "abapfs.cleanCode"
+      )
       const handler = cleanCodeCall?.[1]
       await handler?.()
 
@@ -126,7 +132,9 @@ describe("registerCleanerCommands", () => {
       const context = makeContext()
       registerCleanerCommands(context)
 
-      const cleanCodeCall = mockRegisterCommand.mock.calls.find((c: any) => c[0] === "abapfs.cleanCode")
+      const cleanCodeCall = mockRegisterCommand.mock.calls.find(
+        (c: any) => c[0] === "abapfs.cleanCode"
+      )
       const handler = cleanCodeCall?.[1]
       await handler?.()
 
@@ -144,7 +152,9 @@ describe("registerCleanerCommands", () => {
       const context = makeContext()
       registerCleanerCommands(context)
 
-      const cleanCodeCall = mockRegisterCommand.mock.calls.find((c: any) => c[0] === "abapfs.cleanCode")
+      const cleanCodeCall = mockRegisterCommand.mock.calls.find(
+        (c: any) => c[0] === "abapfs.cleanCode"
+      )
       const handler = cleanCodeCall?.[1]
       await handler?.()
 
@@ -157,7 +167,9 @@ describe("registerCleanerCommands", () => {
       const context = makeContext()
       registerCleanerCommands(context)
 
-      const setupCall = mockRegisterCommand.mock.calls.find((c: any) => c[0] === "abapfs.setupCleaner")
+      const setupCall = mockRegisterCommand.mock.calls.find(
+        (c: any) => c[0] === "abapfs.setupCleaner"
+      )
       const handler = setupCall?.[1]
       await handler?.()
 

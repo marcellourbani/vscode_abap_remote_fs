@@ -22,8 +22,12 @@ export class S4HProvider implements TreeDataProvider<S4HNode> {
   private roots = new Map<string, S4HRoot>()
   private filters = new Map<string, string>() // per-connection filter
 
-  getFilter(connectionId: string): string { return this.filters.get(connectionId) || "" }
-  get filter(): string { return [...this.filters.values()].find(f => !!f) || "" }
+  getFilter(connectionId: string): string {
+    return this.filters.get(connectionId) || ""
+  }
+  get filter(): string {
+    return [...this.filters.values()].find(f => !!f) || ""
+  }
 
   setFilter(filter: string, connectionId?: string) {
     if (connectionId) {
@@ -133,7 +137,10 @@ export class S4HRoot extends TreeItem {
 }
 
 export class S4HSummaryNode extends TreeItem {
-  constructor(data: GroupedData, public readonly parent: S4HRoot) {
+  constructor(
+    data: GroupedData,
+    public readonly parent: S4HRoot
+  ) {
     const objTypes = new Map<string, number>()
     const allRefs = [...data.groups.flatMap(g => g.refs), ...data.ungrouped]
     for (const r of allRefs) {
@@ -144,7 +151,10 @@ export class S4HSummaryNode extends TreeItem {
       .map(([type, count]) => `${count} ${type}`)
       .join(" │ ")
 
-    super(`${data.totalRefs} references │ ${data.groups.length} simplification items`, TreeItemCollapsibleState.None)
+    super(
+      `${data.totalRefs} references │ ${data.groups.length} simplification items`,
+      TreeItemCollapsibleState.None
+    )
     this.description = breakdown
     this.contextValue = "s4hSummary"
     this.iconPath = new ThemeIcon("graph", new ThemeColor("charts.blue"))
@@ -160,9 +170,7 @@ export class S4HItemNode extends TreeItem {
     filter = ""
   ) {
     const isUngrouped = group.item.id === "__ungrouped__"
-    const label = isUngrouped
-      ? "Unlinked References"
-      : group.item.title
+    const label = isUngrouped ? "Unlinked References" : group.item.title
     super(label, TreeItemCollapsibleState.Collapsed)
 
     this.description = isUngrouped
@@ -189,11 +197,12 @@ export class S4HItemNode extends TreeItem {
     let filteredRefs = [...seen.values()]
     if (filter) {
       const regex = new RegExp("^" + filter.replace(/\*/g, ".*") + "$", "i")
-      filteredRefs = filteredRefs.filter(r =>
-        regex.test(r.objName) ||
-        regex.test(r.refObjName) ||
-        r.objName.toLowerCase().includes(filter) ||
-        r.refObjName.toLowerCase().includes(filter)
+      filteredRefs = filteredRefs.filter(
+        r =>
+          regex.test(r.objName) ||
+          regex.test(r.refObjName) ||
+          r.objName.toLowerCase().includes(filter) ||
+          r.refObjName.toLowerCase().includes(filter)
       )
     }
 
@@ -228,7 +237,9 @@ export class S4HRefNode extends TreeItem {
       `Package: ${ref.devclass}`,
       ref.includeName ? `Include: ${ref.includeName}` : "",
       ref.refApplComponent ? `Component: ${ref.refApplComponent}` : ""
-    ].filter(Boolean).join("\n")
+    ]
+      .filter(Boolean)
+      .join("\n")
   }
 
   get connectionId(): string {
