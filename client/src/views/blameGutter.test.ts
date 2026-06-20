@@ -10,6 +10,7 @@ jest.mock(
     return {
       ProgressLocation: { Notification: 15 },
       OverviewRulerLane: { Right: 4 },
+      StatusBarAlignment: { Left: 1, Right: 2 },
       DecorationRangeBehavior: { ClosedClosed: 0, OpenOpen: 1 },
       Range: jest.fn((sl: number, sc: number, el: number, ec: number) => ({
         start: { line: sl, character: sc },
@@ -84,7 +85,12 @@ jest.mock(
       showInformationMessage: jest.fn(),
       showErrorMessage: jest.fn(),
       withProgress: jest.fn(),
-      createTextEditorDecorationType: jest.fn(() => ({ dispose: jest.fn() }))
+      createTextEditorDecorationType: jest.fn(() => ({ dispose: jest.fn() })),
+      createStatusBarItem: jest.fn(() => ({
+        show: jest.fn(),
+        hide: jest.fn(),
+        dispose: jest.fn()
+      }))
     }
   }),
   { virtual: true }

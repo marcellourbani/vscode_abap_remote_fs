@@ -1,4 +1,5 @@
 import { getClient } from "../../adt/conections"
+import { getObjectTypeConfig } from "abapobject"
 
 /**
  * Shared utilities and types for ABAP Language Model Tools
@@ -311,24 +312,20 @@ export interface EnhancementResult {
  * or if /source/main is needed for actual source code
  */
 export function getOptimalObjectURI(objectType: string, baseUri: string): string {
-  // Object types where XML metadata contains all needed information
-  const metadataOnlyTypes = ["DTEL/DE", "DOMA/DD", "TTYP/DA"]
-
-  // Object types that require actual source code via /source/main
-  const sourceRequiredTypes = ["CLAS/OC", "FUNC/FF", "PROG/P", "INTF/OI", "TABL/TA"]
-
-  if (metadataOnlyTypes.includes(objectType)) {
-    // XML has all the info we need - no /source/main needed
-    return baseUri
-  } else if (sourceRequiredTypes.includes(objectType)) {
-    // Need actual source code
-    const sourceUri = baseUri.endsWith("/source/main") ? baseUri : `${baseUri}/source/main`
-    return sourceUri
-  } else {
-    // Unknown type - try /source/main as fallback
-    const sourceUri = baseUri.endsWith("/source/main") ? baseUri : `${baseUri}/source/main`
-    return sourceUri
+  const config = getObjectTypeConfig(objectType)
+  if (config) {
+    if (config.sourceRequired) {
+      const sourceUri = baseUri.endsWith("/source/main") ? baseUri : `${baseUri}/source/main`
+      return sourceUri
+    }
+    if (config.extension?.endsWith(".xml")) {
+      return baseUri
+    }
   }
+
+  // Unknown or fallback type - try /source/main
+  const sourceUri = baseUri.endsWith("/source/main") ? baseUri : `${baseUri}/source/main`
+  return sourceUri
 }
 
 /**

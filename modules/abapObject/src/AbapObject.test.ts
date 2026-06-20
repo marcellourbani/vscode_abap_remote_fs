@@ -23,7 +23,7 @@ interface Counts {
 async function expectException(fn: () => any, kind: Kind) {
   try {
     await fn()
-    fail("Exception expected")
+    throw new Error("Exception expected")
   } catch (error) {
     if (isAbapObjectError(error)) expect(error.kind).toBe(kind)
     else throw error
@@ -261,7 +261,7 @@ test("create class main include", async () => {
     "",
     client
   )
-  if (!isAbapClassInclude(cut)) fail("Class include expected")
+  if (!isAbapClassInclude(cut)) throw new Error("Class include expected")
   expect(cut.fsName).toBe("ZCL_Z001_DPC_EXT.clas.abap")
   expect(cut.key).toBe("CLAS/I ZCL_Z001_DPC_EXT.main")
   await supportedFileAssertions(cut, client, false) // TODO - fix test
@@ -281,7 +281,7 @@ test("create class definitions include", async () => {
     "",
     client
   )
-  if (!isAbapClassInclude(cut)) fail("Class include expected")
+  if (!isAbapClassInclude(cut)) throw new Error("Class include expected")
   expect(cut.fsName).toBe("ZCL_Z001_DPC_EXT.clas.locals_def.abap")
   expect(cut.key).toBe("CLAS/I ZCL_Z001_DPC_EXT.definitions")
   await supportedFileAssertions(cut, client, false)
@@ -305,7 +305,7 @@ const createGroup = (): [MockProxy<AbapObjectService>, AbapObject] => {
 
 test("create function group", async () => {
   const [client, cut] = createGroup()
-  if (!isAbapFunctionGroup(cut)) fail("Function group expected")
+  if (!isAbapFunctionGroup(cut)) throw new Error("Function group expected")
   expect(cut.fsName).toBe(convertSlash("/FOO/BAR"))
 })
 
@@ -322,7 +322,7 @@ test("contents uri of fg include", async () => {
     "",
     client
   )
-  if (!isAbapInclude(cut)) fail("Include expected")
+  if (!isAbapInclude(cut)) throw new Error("Include expected")
   await cut.loadStructure()
   expect(cut.contentsPath()).toBe(
     "/sap/bc/adt/functions/groups/%2ffoo%2fbar/includes/%2ffoo%2flbartop/source/main"

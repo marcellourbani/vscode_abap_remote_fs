@@ -32,7 +32,7 @@ jest.mock("./adt/conections", () => ({
   abapUri: jest.fn(() => false),
   getRoot: jest.fn()
 }))
-jest.mock("abapobject", () => ({}))
+jest.mock("abapobject", () => jest.requireActual("abapobject"))
 jest.mock("abapfs", () => ({ isAbapStat: jest.fn() }))
 jest.mock("abap-adt-api", () => ({ isCsrfError: jest.fn() }))
 jest.mock("abapfs/out/lockObject", () => ({}))

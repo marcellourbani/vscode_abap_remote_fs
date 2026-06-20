@@ -59,6 +59,7 @@ jest.mock("abapfs/out/lockObject", () => ({
 }), { virtual: true })
 
 jest.mock("abapobject", () => ({
+  ...jest.requireActual("abapobject"),
   AbapObject: {},
 }), { virtual: true })
 

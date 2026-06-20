@@ -1,11 +1,9 @@
-import { AbapObjectCreator } from "../creator"
-import { AbapObjectBase } from ".."
+import { AbapObjectBase } from "../AbapObject"
 import { NodeStructure, ADTClient } from "abap-adt-api"
 import { ObjectErrors } from "../AOError"
 
 const tag = Symbol("AbapProgram")
 
-@AbapObjectCreator("PROG/P")
 export class AbapProgram extends AbapObjectBase {
   [tag] = true
   protected filterInvalid(original: NodeStructure, includeIncludes?: boolean): NodeStructure {

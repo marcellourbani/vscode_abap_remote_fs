@@ -22,13 +22,20 @@ import { LocalFsProvider } from "./LocalFsProvider"
 import { isHttpError } from "abap-adt-api"
 import { ReloginError } from "abapfs/out/lockManager"
 import { funWindow as window } from "../services/funMessenger"
+import { AbapObject } from "abapobject"
 
-const openInGui = (uri: Uri, contents: string) => {
-  if (contents.includes("This object type is not supported in VS Code")) {
-    const autoOpen = workspace
-      .getConfiguration("abapfs")
-      .get<boolean>("autoOpenUnsupportedInGui", true)
+const openInGui = (uri: Uri, object: AbapObject) => {
+  const guiObjects = object.gui_objects
+  const autoOpen = workspace
+    .getConfiguration("abapfs")
+    .get<boolean>("autoOpenUnsupportedInGui", true)
+  const openXml = workspace
+    .getConfiguration("abapfs")
+    .get<boolean>("sapGui.openXmlInGui", true)
 
+  const shouldOpen = guiObjects === "yes" || (guiObjects === "better" && openXml)
+
+  if (shouldOpen) {
     if (autoOpen) {
       // Automatically trigger runInGui command
       // Use setTimeout to ensure the document is opened first so URI context is available
@@ -39,7 +46,7 @@ const openInGui = (uri: Uri, contents: string) => {
       // Show message with action buttons
       setTimeout(async () => {
         const choice = await window.showInformationMessage(
-          "This object type is not supported in VS Code.",
+          "This object type is best viewed in SAP GUI.",
           "Open in SAP GUI",
           "Always Auto Open"
         )
@@ -137,7 +144,7 @@ export class FsProvider implements FileSystemProvider {
       const node = await root.getNodeAsync(uri.path)
       if (isAbapFile(node)) {
         const contents = await node.read()
-        openInGui(uri, contents)
+        openInGui(uri, node.object)
 
         const buf = Buffer.from(contents)
         return buf
