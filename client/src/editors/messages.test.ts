@@ -1,18 +1,32 @@
 // Tests for editors/messages.ts - pure logic functions
-jest.mock("vscode", () => ({
-  workspace: {
-    onDidChangeTextDocument: jest.fn(() => ({ dispose: jest.fn() })),
-    fs: {}
-  },
-  ViewColumn: { Beside: 2, Active: 1 },
-  Range: class { constructor(public start: any, public end: any) {} },
-  Position: class { constructor(public line: number, public character: number) {} },
-  WorkspaceEdit: class {
-    replace = jest.fn()
-    insert = jest.fn()
-    delete = jest.fn()
-  }
-}), { virtual: true })
+jest.mock(
+  "vscode",
+  () => ({
+    workspace: {
+      onDidChangeTextDocument: jest.fn(() => ({ dispose: jest.fn() })),
+      fs: {}
+    },
+    ViewColumn: { Beside: 2, Active: 1 },
+    Range: class {
+      constructor(
+        public start: any,
+        public end: any
+      ) {}
+    },
+    Position: class {
+      constructor(
+        public line: number,
+        public character: number
+      ) {}
+    },
+    WorkspaceEdit: class {
+      replace = jest.fn()
+      insert = jest.fn()
+      delete = jest.fn()
+    }
+  }),
+  { virtual: true }
+)
 
 jest.mock("../adt/conections", () => ({ getClient: jest.fn() }))
 jest.mock("../services/funMessenger", () => ({

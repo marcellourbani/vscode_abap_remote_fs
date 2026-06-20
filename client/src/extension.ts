@@ -28,6 +28,7 @@ import { registerAbapDebugger } from "./adt/debugger"
 import { ATCDocumentation } from "./views/abaptestcockpit/documentation"
 import { CommLogPanel } from "./adt/adtCommLog"
 import { tracesProvider } from "./views/traces"
+import { s4hProvider } from "./views/s4hanaReadiness"
 import { FeedStateManager } from "./services/feeds/feedStateManager"
 import { FeedPollingService } from "./services/feeds/feedPollingService"
 import { initializeFeedInboxProvider } from "./views/feeds/feedInboxView"
@@ -43,7 +44,7 @@ import { DiagramWebviewManager } from "./services/DiagramWebviewManager"
 import { SapSystemValidator } from "./services/sapSystemValidator"
 import { listAdtFeedsCommand } from "./commands/listAdtFeeds"
 import { validateSubagentsOnStartup } from "./services/lm-tools/subagentConfigTool"
-import { initializeMcpServer } from "./services/mcpServer"
+import { initializeMcpServer, startMcpServerCommand } from "./services/mcpServer"
 import { registerChatTools } from "./adt/ai/tools"
 import { initializeEnhancementDecorations } from "./views/enhancementDecorations"
 import { initializeBlameGutter } from "./views/blameGutter"
@@ -55,11 +56,12 @@ import { checkUpgradeNotification } from "./services/upgradeNotification"
 import { registerAbapRepl } from "./repl"
 import { registerAbapNotebooks } from "./notebooks"
 import { showWelcomeWalkthrough } from "./services/walkthroughService"
-import { disableVirtualToolGrouping } from "./services/virtualToolsFix"
+import { registerVirtualToolsFixOnConnect } from "./services/virtualToolsFix"
 import { ObjectPropertyProvider } from "./views/objectProperties"
 import { ObjectSearchViewProvider } from "./views/objectSearchView"
 import { funWindow as window } from "./services/funMessenger"
 import { initializeReviewPrompt } from "./services/reviewPrompt"
+import { registerBdefType } from "./adt/operations/BdefCreator"
 
 // Import commands to ensure @command decorators are executed
 import "./commands"
@@ -69,22 +71,46 @@ export let context: ExtensionContext
 // Feed polling service instance (module-level for deactivation)
 let feedPollingServiceInstance: FeedPollingService | undefined
 
+function checkPasswordsInSettings() {
+  setTimeout(
+    () => {
+      const remotes = workspace.getConfiguration("abapfs")?.get<Record<string, any>>("remote")
+      if (!remotes) return
+      const systemsWithPasswords = Object.entries(remotes)
+        .filter(([_, cfg]) => typeof cfg?.password === "string" && cfg.password.trim().length > 0)
+        .map(([name]) => name)
+      if (systemsWithPasswords.length > 0) {
+        window.showWarningMessage(
+          `Security risk: ${systemsWithPasswords.length} SAP connection(s) have passwords stored in plain text settings (${systemsWithPasswords.join(", ")}). ` +
+            `Remove them from your settings JSON — ABAP FS will prompt for your password securely when connecting.`
+        )
+      }
+    },
+    10 * 60 * 1000
+  )
+}
+
 export async function activate(ctx: ExtensionContext): Promise<AbapFsApi> {
   context = ctx
   const startTime = new Date().getTime()
   log("🚀 Buckle up buttercup, ABAP FS is waking up from its slumber...")
 
-  // 📊 Initialize Telemetry Services FIRST
-  try {
-    TelemetryService.initialize(ctx)
-    log("📊 Local Telemetry Service initialized - We promise we're not spying... much 👀")
+  // Register additional creatable types
+  registerBdefType()
 
-    // Initialize App Insights
-    AppInsightsService.getInstance(ctx)
-    log("📊 App Insights ready to count your clicks (for science!)")
-  } catch (error) {
-    log(`❌ Telemetry Services said 'nope': ${error} (honestly, probably for the best 🤷)`)
-  }
+  // 📊 Initialize Telemetry Services in the background to avoid blocking activation
+  setImmediate(() => {
+    try {
+      TelemetryService.initialize(ctx)
+      log("📊 Local Telemetry Service initialized")
+
+      // Initialize App Insights
+      AppInsightsService.getInstance(ctx)
+      log("📊 App Insights initialization started in background")
+    } catch (error) {
+      log(`❌ Telemetry Services initialization failed: ${error}`)
+    }
+  })
 
   // 🔐 Initialize SAP System Validator FIRST (before any client connections)
   try {
@@ -100,6 +126,7 @@ export async function activate(ctx: ExtensionContext): Promise<AbapFsApi> {
   new PasswordVault(ctx)
   loadTokens()
   clearTokens()
+  checkPasswordsInSettings()
   const sub = context.subscriptions
 
   // 🧠 ABAP Intelligence Integration - Start
@@ -139,7 +166,7 @@ export async function activate(ctx: ExtensionContext): Promise<AbapFsApi> {
     DiagramWebviewManager.initialize(context.extensionUri)
     log("🧜‍♀️ Mermaid Webview Manager ready to make your diagrams prettier than your code")
 
-    // Register Language Model Tools for proper AI integration (includes Mermaid tools)
+    // Register Language Model Tools
     await registerAllTools(context)
 
     // Register ABAP Cleaner feature
@@ -152,8 +179,9 @@ export async function activate(ctx: ExtensionContext): Promise<AbapFsApi> {
     // Initialize SAP Data Workbook (.sapwb)
     registerAbapNotebooks(context)
 
-    // Initialize MCP Server for external AI clients (Cursor, etc.)
-    await initializeMcpServer(context)
+    sub.push(
+      commands.registerCommand("abapfs.startMcpServer", () => startMcpServerCommand(context))
+    )
     // Validate and regenerate subagent files if enabled, but only do that in background
     setImmediate(() => validateSubagentsOnStartup(context))
     log("🚀 ABAP FS services are GO! Houston, we have liftoff! 🌙")
@@ -191,6 +219,7 @@ export async function activate(ctx: ExtensionContext): Promise<AbapFsApi> {
   sub.push(window.registerTreeDataProvider("abapfs.dumps", dumpProvider))
   sub.push(window.registerTreeDataProvider("abapfs.atcFinds", atcProvider))
   sub.push(window.registerTreeDataProvider("abapfs.traces", tracesProvider))
+  sub.push(window.registerTreeDataProvider("abapfs.s4hReadiness", s4hProvider))
   sub.push(window.registerWebviewViewProvider(RapGeneratorPanel.viewType, RapGeneratorPanel.get()))
   const objectPropertyView = window.createTreeView("abapfs.objectProperty", {
     treeDataProvider: objectPropertyProvider,
@@ -296,6 +325,18 @@ export async function activate(ctx: ExtensionContext): Promise<AbapFsApi> {
   LanguageCommands.start(context)
 
   setContext("abapfs:extensionActive", true)
+  setContext(
+    "abapfs:noSapConnected",
+    !(workspace.workspaceFolders?.some(f => f.uri.scheme === ADTSCHEME) ?? false)
+  )
+  sub.push(
+    workspace.onDidChangeWorkspaceFolders(() => {
+      setContext(
+        "abapfs:noSapConnected",
+        !(workspace.workspaceFolders?.some(f => f.uri.scheme === ADTSCHEME) ?? false)
+      )
+    })
+  )
   restoreLocks()
   registerAbapGit(context)
 
@@ -379,12 +420,20 @@ export async function activate(ctx: ExtensionContext): Promise<AbapFsApi> {
     // Non-critical — never break extension activation
   }
 
+  // Register virtual tools fix — fires once on first SAP connection, not at activation
+  registerVirtualToolsFixOnConnect(context)
+
+  // Initialize MCP Server LAST so that all LM tools, context keys, and providers
+  // are fully registered before any waiting MCP client (Claude Code, Cursor, ...)
+  // can connect and enumerate vscode.lm.tools.
+  try {
+    await initializeMcpServer(context)
+  } catch (error) {
+    log(`⚠️ MCP server initialization failed: ${error}`)
+  }
+
   const elapsed = new Date().getTime() - startTime
   log.debug(`Activated,pid=${process.pid}, activation time(ms):${elapsed}`)
-
-  // Delay the virtual tools fix so VS Code and Copilot are fully loaded
-  // (the reset command is slow during early activation but fast once everything is ready)
-  setTimeout(() => disableVirtualToolGrouping(ctx), 10000)
   return api
 }
 

@@ -23,7 +23,10 @@ import { randomUUID } from "crypto"
 import { z } from "zod"
 import { log } from "../lib"
 import { toolRegistry } from "./lm-tools/toolRegistry"
+import { createMcpAuthorizedOptions } from "./lm-tools/toolGuard"
 import { funWindow as window } from "./funMessenger"
+import { executeReplace } from "./lm-tools/mcpReplaceStringTool"
+import { getDiagnosticsForUri } from "./lm-tools/mcpGetDiagnosticsTool"
 
 // ============================================================================
 // TYPES
@@ -73,7 +76,9 @@ export function validateApiKey(req: http.IncomingMessage): boolean {
   // but log a warning once per session
   if (!settings.apiKey) {
     if (!apiKeyWarningLogged) {
-      log("No API key configured for the MCP server. Consider configuring a random key and passing it in your MCP client. Allowing anyway..")
+      log(
+        "No API key configured for the MCP server. Consider configuring a random key and passing it in your MCP client. Allowing anyway.."
+      )
       apiKeyWarningLogged = true
     }
     return true
@@ -248,8 +253,9 @@ function createMcpServer(): McpServer {
           let result: vscode.LanguageModelToolResult
 
           if (registeredTool) {
+            const authorizedOptions = createMcpAuthorizedOptions(args)
             const invokeResult = await registeredTool.invoke(
-              { input: args, toolInvocationToken: undefined } as vscode.LanguageModelToolInvocationOptions<any>,
+              authorizedOptions as vscode.LanguageModelToolInvocationOptions<any>,
               tokenSource.token
             )
             if (!invokeResult) {
@@ -308,6 +314,132 @@ function createMcpServer(): McpServer {
     )
   }
 
+  // ============================================================================
+  // MCP-ONLY TOOLS (not available as VS Code LM tools)
+  // ============================================================================
+
+  // Replace String in ABAP Object - enables MCP clients to edit ABAP source code
+  server.registerTool(
+    "replace_string_in_abap_object",
+    {
+      title: "Replace String In ABAP Object",
+      description:
+        "Edit ABAP source code by replacing a specific text string with new text. " +
+        "This tool performs a find-and-replace operation on an ABAP source file identified by its workspace URI. " +
+        "The oldString must match EXACTLY ONE occurrence in the file - include 3-5 lines of surrounding context to ensure uniqueness. " +
+        "The file is automatically locked, saved to SAP, and unlocked.\n\n" +
+        "Prerequisites: First call get_abap_object_workspace_uri to get the fileUri. " +
+        "Then call get_abap_object_lines or search_abap_object_lines to read current content before editing.\n\n" +
+        "IMPORTANT: oldString is mandatory whenever the file has any content. An empty oldString is accepted ONLY when the file is currently completely blank (e.g. a freshly created ABAP object with no source yet) - in that case the entire newString becomes the file content.\n\n" +
+        "After editing, call get_abap_diagnostics with the same fileUri to verify the code has no syntax errors.",
+      inputSchema: {
+        fileUri: z
+          .string()
+          .describe(
+            "The full workspace URI of the ABAP source file." +
+              "Get this using the get_abap_object_workspace_uri tool."
+          ),
+        oldString: z
+          .string()
+          .describe(
+            "The exact literal text to find and replace. Must match exactly one occurrence in the file. " +
+              "Include at least 3-5 lines of surrounding context to ensure uniqueness. " +
+              "Must match whitespace and indentation precisely. " +
+              "May be an empty string ONLY if the target file is currently completely blank; otherwise it is mandatory."
+          ),
+        newString: z
+          .string()
+          .describe("The replacement text. Ensure the resulting code is syntactically valid ABAP.")
+      }
+    },
+    async (args: Record<string, unknown>) => {
+      try {
+        const fileUri = args.fileUri as string
+        const oldString = args.oldString as string
+        const newString = args.newString as string
+
+        if (!fileUri) {
+          throw new Error("fileUri is required")
+        }
+        if (newString === undefined || newString === null) {
+          throw new Error("newString is required (use empty string to delete text)")
+        }
+        // Note: empty oldString is allowed only when the file is blank.
+        // That check happens inside executeReplace/findAndReplace once the
+        // current file content is known.
+
+        await executeReplace(fileUri, oldString, newString)
+
+        const oldLineCount = oldString.split("\n").length
+        const newLineCount = newString.split("\n").length
+
+        return {
+          content: [
+            {
+              type: "text" as const,
+              text:
+                `✅ Successfully replaced ${oldLineCount} line(s) with ${newLineCount} line(s) in ${fileUri}\n\n` +
+                `The file has been saved and synced to SAP.`
+            }
+          ]
+        }
+      } catch (error) {
+        const errorMessage = error instanceof Error ? error.message : String(error)
+        return {
+          content: [
+            {
+              type: "text" as const,
+              text: `❌ Error: ${errorMessage}`
+            }
+          ],
+          isError: true
+        }
+      }
+    }
+  )
+
+  // Get Diagnostics - returns syntax errors/warnings for a given ABAP file
+  server.registerTool(
+    "get_abap_diagnostics",
+    {
+      title: "Get ABAP Diagnostics",
+      description:
+        "Get syntax errors, warnings, and other diagnostics for an ABAP source file. " +
+        "Returns all problems detected by the ABAP language server (syntax check results). " +
+        "Use this after editing code with replace_string_in_abap_object to verify there are no syntax errors. " +
+        "Always call this after making code changes.\n\n" +
+        "Prerequisite: Use get_abap_object_workspace_uri to get the fileUri.",
+      inputSchema: {
+        fileUri: z
+          .string()
+          .describe(
+            "The full workspace URI of the ABAP source file. " +
+              "Get this using the get_abap_object_workspace_uri tool."
+          )
+      }
+    },
+    async (args: Record<string, unknown>) => {
+      try {
+        const fileUri = args.fileUri as string
+        if (!fileUri) {
+          throw new Error("fileUri is required")
+        }
+
+        const result = await getDiagnosticsForUri(fileUri)
+
+        return {
+          content: [{ type: "text" as const, text: result }]
+        }
+      } catch (error) {
+        const errorMessage = error instanceof Error ? error.message : String(error)
+        return {
+          content: [{ type: "text" as const, text: `❌ Error: ${errorMessage}` }],
+          isError: true
+        }
+      }
+    }
+  )
+
   return server
 }
 
@@ -344,7 +476,6 @@ async function startHttpServer(): Promise<void> {
   state.port = settings.port
 
   state.httpServer = http.createServer(async (req, res) => {
-
     if (req.method === "OPTIONS") {
       res.writeHead(405)
       res.end()
@@ -556,6 +687,86 @@ function stopServer(): void {
  * Initialize and start the MCP server based on settings
  * Call this from extension.ts during activation
  */
+
+const MCP_COPILOT_DISMISSED_KEY = "abapfs.mcpServer.copilotPromptDismissed"
+
+/**
+ * Start MCP server via command. Shows Copilot warning if applicable.
+ */
+export async function startMcpServerCommand(context: vscode.ExtensionContext): Promise<void> {
+  if (state.isRunning) {
+    window.showInformationMessage(`MCP Server is already running on port ${state.port}.`)
+    return
+  }
+
+  // One-time check: if LLM models are available (Copilot active), user may not need MCP
+  const dismissed = context.globalState.get<boolean>(MCP_COPILOT_DISMISSED_KEY)
+  if (!dismissed) {
+    let hasModels = false
+    try {
+      const models = await vscode.lm.selectChatModels({})
+      hasModels = models.length > 0
+    } catch {
+      // No models available — user likely needs MCP for external AI clients
+    }
+
+    if (hasModels) {
+      const selection = await vscode.window.showQuickPick(
+        [
+          {
+            label: "$(rocket) Start MCP Anyway",
+            description: "I use Cursor/Claude/other external AI tools",
+            value: "start"
+          },
+          {
+            label: "$(x) Don't Start",
+            description: "I only use GitHub Copilot — don't need MCP",
+            value: "disable"
+          }
+        ],
+        {
+          placeHolder:
+            "Github Copilot AI models detected. MCP server is for external AI tools — do you still need it?",
+          ignoreFocusOut: true
+        }
+      )
+
+      if (!selection || selection.value === "disable") {
+        await context.globalState.update(MCP_COPILOT_DISMISSED_KEY, true)
+        const config = vscode.workspace.getConfiguration("abapfs.mcpServer")
+        await config.update("autoStart", false, vscode.ConfigurationTarget.Workspace)
+        log("🔌 MCP Server disabled by user — Copilot provides native tool access")
+        return
+      }
+      // "start" selected
+      await context.globalState.update(MCP_COPILOT_DISMISSED_KEY, true)
+    }
+  }
+
+  // Persist autoStart so MCP starts automatically on next VS Code launch
+  if (vscode.workspace.workspaceFolders?.length) {
+    const mcpConfig = vscode.workspace.getConfiguration("abapfs.mcpServer")
+    await mcpConfig.update("autoStart", true, vscode.ConfigurationTarget.Workspace)
+  } else {
+    window.showInformationMessage(
+      "MCP Server started for this session. Open a workspace/folder and start MCP to persist this setting in that workspace across restarts."
+    )
+  }
+
+  try {
+    await startHttpServer()
+    context.subscriptions.push({
+      dispose: () => {
+        stopServer()
+      }
+    })
+  } catch (error) {
+    window.showWarningMessage(
+      `MCP Server failed to start: ${error instanceof Error ? error.message : String(error)}`
+    )
+  }
+}
+
 export async function initializeMcpServer(context: vscode.ExtensionContext): Promise<void> {
   const settings = getMcpSettings()
 
@@ -563,21 +774,8 @@ export async function initializeMcpServer(context: vscode.ExtensionContext): Pro
     return // Don't start if autoStart is disabled
   }
 
-  try {
-    await startHttpServer()
-
-    // Register cleanup on extension deactivation
-    context.subscriptions.push({
-      dispose: () => {
-        stopServer()
-      }
-    })
-  } catch (error) {
-    // Don't throw - MCP server is optional, extension should still work
-    window.showWarningMessage(
-      `MCP Server failed to start: ${error instanceof Error ? error.message : String(error)}`
-    )
-  }
+  // On autoStart, reuse the same logic (modal + start)
+  await startMcpServerCommand(context)
 }
 
 /**

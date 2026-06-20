@@ -53,7 +53,8 @@ describe("funMessenger", () => {
     it("enhances a success message with a fun prefix", () => {
       ;(mockVscode.window.showInformationMessage as jest.Mock).mockResolvedValue(undefined)
       funWindow.showInformationMessage("Successfully saved the file")
-      const calledWith = (mockVscode.window.showInformationMessage as jest.Mock).mock.calls[0][0] as string
+      const calledWith = (mockVscode.window.showInformationMessage as jest.Mock).mock
+        .calls[0][0] as string
       expect(calledWith).not.toBe("Successfully saved the file")
       expect(calledWith.length).toBeGreaterThan("Successfully saved the file".length)
     })
@@ -78,7 +79,8 @@ describe("funMessenger", () => {
     it("enhances an error message with a fun prefix", () => {
       ;(mockVscode.window.showErrorMessage as jest.Mock).mockResolvedValue(undefined)
       funWindow.showErrorMessage("Failed to connect to server")
-      const calledWith = (mockVscode.window.showErrorMessage as jest.Mock).mock.calls[0][0] as string
+      const calledWith = (mockVscode.window.showErrorMessage as jest.Mock).mock
+        .calls[0][0] as string
       expect(calledWith).not.toBe("Failed to connect to server")
     })
 
@@ -92,7 +94,8 @@ describe("funMessenger", () => {
     it("enhances a warning message", () => {
       ;(mockVscode.window.showWarningMessage as jest.Mock).mockResolvedValue(undefined)
       funWindow.showWarningMessage("Warning: multiple connections detected")
-      const calledWith = (mockVscode.window.showWarningMessage as jest.Mock).mock.calls[0][0] as string
+      const calledWith = (mockVscode.window.showWarningMessage as jest.Mock).mock
+        .calls[0][0] as string
       expect(calledWith).not.toBe("Warning: multiple connections detected")
     })
   })
@@ -101,7 +104,8 @@ describe("funMessenger", () => {
     it("enhances and passes through", () => {
       ;(mockVscode.window.setStatusBarMessage as jest.Mock).mockReturnValue({ dispose: jest.fn() })
       funWindow.setStatusBarMessage("Searching for objects...")
-      const calledWith = (mockVscode.window.setStatusBarMessage as jest.Mock).mock.calls[0][0] as string
+      const calledWith = (mockVscode.window.setStatusBarMessage as jest.Mock).mock
+        .calls[0][0] as string
       expect(calledWith).not.toBe("Searching for objects...")
     })
 
@@ -116,10 +120,7 @@ describe("funMessenger", () => {
     it("enhances the progress title", async () => {
       ;(mockVscode.window.withProgress as jest.Mock).mockResolvedValue("result")
       const task = jest.fn().mockResolvedValue("done")
-      await funWindow.withProgress(
-        { location: 15, title: "Activating code..." },
-        task
-      )
+      await funWindow.withProgress({ location: 15, title: "Activating code..." }, task)
       const options = (mockVscode.window.withProgress as jest.Mock).mock.calls[0][0]
       expect(options.title).not.toBe("Activating code...")
     })
@@ -138,7 +139,8 @@ describe("funMessenger", () => {
       setupProfessionalMode(true)
       ;(mockVscode.window.showInformationMessage as jest.Mock).mockResolvedValue(undefined)
       funWindow.showInformationMessage("Successfully saved the file")
-      const calledWith = (mockVscode.window.showInformationMessage as jest.Mock).mock.calls[0][0] as string
+      const calledWith = (mockVscode.window.showInformationMessage as jest.Mock).mock
+        .calls[0][0] as string
       expect(calledWith).toBe("Successfully saved the file")
     })
 
@@ -146,7 +148,8 @@ describe("funMessenger", () => {
       setupProfessionalMode(true)
       ;(mockVscode.window.showErrorMessage as jest.Mock).mockResolvedValue(undefined)
       funWindow.showErrorMessage("Failed to load")
-      const calledWith = (mockVscode.window.showErrorMessage as jest.Mock).mock.calls[0][0] as string
+      const calledWith = (mockVscode.window.showErrorMessage as jest.Mock).mock
+        .calls[0][0] as string
       expect(calledWith).toBe("Failed to load")
     })
   })
@@ -162,7 +165,7 @@ describe("funMessenger", () => {
       { message: "Connected to DEV100", description: "connection message" },
       { message: "Saved to server", description: "saved message" },
       { message: "Refreshed successfully", description: "refresh message" },
-      { message: "Creating new class...", description: "creation message" },
+      { message: "Creating new class...", description: "creation message" }
     ]
 
     cases.forEach(({ message, description }) => {
@@ -170,7 +173,8 @@ describe("funMessenger", () => {
         ;(mockVscode.window.showInformationMessage as jest.Mock).mockResolvedValue(undefined)
         funWindow.showInformationMessage(message)
         expect(mockVscode.window.showInformationMessage).toHaveBeenCalledTimes(1)
-        const calledWith = (mockVscode.window.showInformationMessage as jest.Mock).mock.calls[0][0] as string
+        const calledWith = (mockVscode.window.showInformationMessage as jest.Mock).mock
+          .calls[0][0] as string
         // Message should have been enhanced (have a prefix), not be identical
         // (funMessenger always enhances unless professional mode)
         expect(typeof calledWith).toBe("string")

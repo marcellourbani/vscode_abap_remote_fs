@@ -11,6 +11,7 @@ import { abapUri } from "../../adt/conections"
 import { logTelemetry } from "../telemetry"
 import { getClient } from "../../adt/conections"
 import { getOptimalObjectURI, resolveCorrectURI } from "./shared"
+import { assertToolInvocationAuthorized } from "./toolGuard"
 
 // ============================================================================
 // INTERFACE
@@ -59,6 +60,7 @@ export class GetBatchLinesTool implements vscode.LanguageModelTool<IBatchLinesPa
     options: vscode.LanguageModelToolInvocationOptions<IBatchLinesParameters>,
     _token: vscode.CancellationToken
   ): Promise<vscode.LanguageModelToolResult> {
+    assertToolInvocationAuthorized(options)
     let { requests, connectionId } = options.input
     logTelemetry("tool_get_batch_lines_called", { connectionId })
 
@@ -183,16 +185,16 @@ export class GetBatchLinesTool implements vscode.LanguageModelTool<IBatchLinesPa
       )
 
       const resultText =
-        `**Batch Lines Results** (${requests.length} objects):\n\n` +
+        `Batch Lines Results (${requests.length} objects):\n\n` +
         results
           .map(result => {
             if (result.success) {
               return (
-                `### **${result.objectName}** (${result.lines} lines)\n` +
+                `### ${result.objectName} (${result.lines} lines)\n` +
                 `\`\`\`abap\n${result.content}\n\`\`\`\n`
               )
             } else {
-              return `### **${result.objectName}**\n❌ ${result.content}\n`
+              return `### ${result.objectName}\n${result.content}\n`
             }
           })
           .join("\n")

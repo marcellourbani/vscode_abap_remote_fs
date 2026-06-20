@@ -6,6 +6,7 @@ import { logTelemetry } from "../telemetry"
 import { getClient, abapUri } from "../../adt/conections"
 import { getTextElementsSafe, updateTextElementsWithTransport } from "../../adt/textElements"
 import { openTextElementsInSapGui } from "../../commands/textElementsCommands"
+import { assertToolInvocationAuthorized } from "./toolGuard"
 
 // Text Elements Tool Interfaces
 export interface IManageTextElementsParameters {
@@ -39,9 +40,9 @@ export class ManageTextElementsTool implements vscode.LanguageModelTool<IManageT
     if (action === "create" || action === "update") {
       message += `\n**Text Elements:** ${textElements?.length || 0}`
       message +=
-        "\n\n💡 **Best Practice:** Always read existing text elements first to avoid duplicates and to know which text IDs are already in use."
+        "\n\n **Best Practice:** Always read existing text elements first to avoid duplicates and to know which text IDs are already in use."
       if (action === "update") {
-        message += "\n\n⚠️ **This will modify existing text elements in the SAP system.**"
+        message += "\n\n **This will modify existing text elements in the SAP system.**"
       }
     }
 
@@ -60,6 +61,7 @@ export class ManageTextElementsTool implements vscode.LanguageModelTool<IManageT
     options: vscode.LanguageModelToolInvocationOptions<IManageTextElementsParameters>,
     _token: vscode.CancellationToken
   ): Promise<vscode.LanguageModelToolResult> {
+    assertToolInvocationAuthorized(options)
     let { objectName, objectType, action, textElements, connectionId } = options.input
     logTelemetry("tool_manage_text_elements_called", { connectionId })
 
@@ -128,7 +130,7 @@ export class ManageTextElementsTool implements vscode.LanguageModelTool<IManageT
           }
         } catch (error) {
           // If we can't read existing elements, proceed with just the provided ones
-          logCommands.warn(`⚠️ Could not read existing text elements for merge: ${error}`)
+          logCommands.warn(` Could not read existing text elements for merge: ${error}`)
         }
 
         client.stateful = session_types.stateful
@@ -143,7 +145,7 @@ export class ManageTextElementsTool implements vscode.LanguageModelTool<IManageT
         throw new Error(`Invalid action: ${action}. Must be 'read', 'create', or 'update'`)
       }
     } catch (error) {
-      logCommands.error(`❌ Manage Text Elements Tool error: ${error}`)
+      logCommands.error(` Manage Text Elements Tool error: ${error}`)
       throw new Error(`Failed to ${action} text elements: ${String(error)}`)
     }
   }
@@ -158,18 +160,17 @@ export class ManageTextElementsTool implements vscode.LanguageModelTool<IManageT
       // Use explicit object type when provided, fallback to detection when not
       const result = await getTextElementsSafe(client, objectName, objectType)
 
-      let resultText = `**📖 Text Elements for ${result.programName}** ✅\n\n`
-      resultText += `• **Object:** ${result.programName}\n`
-      resultText += `• **Total Text Elements:** ${result.textElements.length}\n\n`
+      let resultText = `Text Elements for ${result.programName}\n`
+      resultText += `Object: ${result.programName} | Total: ${result.textElements.length}\n\n`
 
       if (result.textElements.length > 0) {
-        resultText += `**🎯 Text Elements:**\n`
+        resultText += `Elements:\n`
         result.textElements.forEach(element => {
           const maxLengthInfo = element.maxLength ? ` (max: ${element.maxLength})` : ""
-          resultText += `• **${element.id}:** "${element.text}"${maxLengthInfo}\n`
+          resultText += `• ${element.id}: "${element.text}"${maxLengthInfo}\n`
         })
       } else {
-        resultText += `**ℹ️ No text elements found** - This program has no defined text elements.`
+        resultText += `No text elements found — this program has none defined.`
       }
 
       // logCommands.info(`✅ Read Text Elements: Found ${result.textElements.length} text elements`);
@@ -195,12 +196,11 @@ export class ManageTextElementsTool implements vscode.LanguageModelTool<IManageT
         )
 
         const resultText =
-          `**🌐 Text Elements Editor Opened in SAP GUI** ✅\n\n` +
-          `• **Object:** ${objectName}\n` +
-          `• **System:** ${connectionId.toUpperCase()}\n` +
-          `• **Reason:** ADT text elements API not available on this system\n\n` +
-          `**ℹ️ The text elements editor has been opened in an embedded SAP GUI webview.** ` +
-          `User can edit text elements directly in the SAP GUI interface.`
+          `Text Elements Editor Opened in SAP GUI\n` +
+          `Object: ${objectName}\n` +
+          `System: ${connectionId.toUpperCase()}\n` +
+          `Reason: ADT text elements API not available on this system\n\n` +
+          `Editor opened in embedded SAP GUI webview. User can edit text elements directly there.`
 
         return new vscode.LanguageModelToolResult([new vscode.LanguageModelTextPart(resultText)])
       } else {
@@ -220,24 +220,22 @@ export class ManageTextElementsTool implements vscode.LanguageModelTool<IManageT
     // Transport-aware function imported statically at module top
     await updateTextElementsWithTransport(client, objectName, textElements, objectType)
 
-    let resultText = `**✏️ Text Elements ${action === "create" ? "Created" : "Updated"} for ${objectName}** ✅\n\n`
-    resultText += `• **Object:** ${objectName}\n`
-    resultText += `• **Text Elements ${action === "create" ? "Created" : "Updated"}:** ${textElements.length}\n\n`
+    let resultText = `Text Elements ${action === "create" ? "Created" : "Updated"} for ${objectName}\n`
+    resultText += `Object: ${objectName} | ${action === "create" ? "Created" : "Updated"}: ${textElements.length}\n\n`
 
-    resultText += `**🎯 ${action === "create" ? "Created" : "Updated"} Text Elements:**\n`
+    resultText += `${action === "create" ? "Created" : "Updated"} elements:\n`
     textElements.forEach(element => {
       const maxLengthInfo = element.maxLength ? ` (max: ${element.maxLength})` : ""
-      resultText += `• **${element.id}:** "${element.text}"${maxLengthInfo}\n`
+      resultText += `• ${element.id}: "${element.text}"${maxLengthInfo}\n`
     })
 
-    resultText += `\n**✅ Success:** Text elements have been ${action === "create" ? "created" : "updated"} in the SAP system.`
-    resultText += `\n\n**💡 Next Steps:** Update your ABAP code to use these text elements:`
+    resultText += `\nSuccess. Next: update ABAP code to use these elements:`
     textElements.forEach(element => {
-      resultText += `\n• Replace hardcoded text with: \`TEXT-${element.id}\``
+      resultText += `\n• Replace hardcoded text with: TEXT-${element.id}`
     })
 
     logCommands.info(
-      `✅ ${action} Text Elements: Successfully processed ${textElements.length} text elements`
+      ` ${action} Text Elements: Successfully processed ${textElements.length} text elements`
     )
 
     return new vscode.LanguageModelToolResult([new vscode.LanguageModelTextPart(resultText)])

@@ -1,51 +1,55 @@
-jest.mock("vscode", () => ({
-  Uri: {
-    parse: jest.fn((s: string) => ({
-      scheme: "adt",
-      authority: s.split("://")[1]?.split("/")[0] || "conn",
-      path: "/" + (s.split("://")[1]?.split("/").slice(1).join("/") || ""),
-      toString: () => s
-    }))
-  },
-  tests: {
-    createTestController: jest.fn().mockReturnValue({
-      createRunProfile: jest.fn(),
-      createTestItem: jest.fn().mockImplementation((id: string, label: string) => ({
-        id,
-        label,
-        children: {
+jest.mock(
+  "vscode",
+  () => ({
+    Uri: {
+      parse: jest.fn((s: string) => ({
+        scheme: "adt",
+        authority: s.split("://")[1]?.split("/")[0] || "conn",
+        path: "/" + (s.split("://")[1]?.split("/").slice(1).join("/") || ""),
+        toString: () => s
+      }))
+    },
+    tests: {
+      createTestController: jest.fn().mockReturnValue({
+        createRunProfile: jest.fn(),
+        createTestItem: jest.fn().mockImplementation((id: string, label: string) => ({
+          id,
+          label,
+          children: {
+            get: jest.fn(),
+            add: jest.fn(),
+            delete: jest.fn(),
+            [Symbol.iterator]: jest.fn().mockReturnValue([][Symbol.iterator]())
+          },
+          parent: undefined,
+          range: undefined
+        })),
+        items: {
           get: jest.fn(),
           add: jest.fn(),
-          delete: jest.fn(),
           [Symbol.iterator]: jest.fn().mockReturnValue([][Symbol.iterator]())
         },
-        parent: undefined,
-        range: undefined
-      })),
-      items: {
-        get: jest.fn(),
-        add: jest.fn(),
-        [Symbol.iterator]: jest.fn().mockReturnValue([][Symbol.iterator]())
-      },
-      createTestRun: jest.fn().mockReturnValue({
-        enqueued: jest.fn(),
-        started: jest.fn(),
-        skipped: jest.fn(),
-        passed: jest.fn(),
-        failed: jest.fn(),
-        end: jest.fn()
+        createTestRun: jest.fn().mockReturnValue({
+          enqueued: jest.fn(),
+          started: jest.fn(),
+          skipped: jest.fn(),
+          passed: jest.fn(),
+          failed: jest.fn(),
+          end: jest.fn()
+        })
       })
-    })
-  },
-  TestRunProfileKind: { Run: 1 },
-  TestRunRequest: jest.fn().mockImplementation((include: any) => ({ include, exclude: [] })),
-  TestMessage: jest.fn().mockImplementation((msg: any) => ({ message: msg })),
-  MarkdownString: jest.fn().mockImplementation((s: string) => ({ value: s })),
-  commands: { executeCommand: jest.fn() },
-  TestItemCollection: jest.fn(),
-  TestRun: jest.fn(),
-  Range: jest.fn().mockImplementation((s: any, e: any) => ({ start: s, end: e }))
-}), { virtual: true })
+    },
+    TestRunProfileKind: { Run: 1 },
+    TestRunRequest: jest.fn().mockImplementation((include: any) => ({ include, exclude: [] })),
+    TestMessage: jest.fn().mockImplementation((msg: any) => ({ message: msg })),
+    MarkdownString: jest.fn().mockImplementation((s: string) => ({ value: s })),
+    commands: { executeCommand: jest.fn() },
+    TestItemCollection: jest.fn(),
+    TestRun: jest.fn(),
+    Range: jest.fn().mockImplementation((s: any, e: any) => ({ start: s, end: e }))
+  }),
+  { virtual: true }
+)
 
 jest.mock("../conections", () => ({
   getClient: jest.fn(),
@@ -87,7 +91,12 @@ jest.mock("./AdtObjectFinder", () => ({
 
 jest.mock("../../services/telemetry", () => ({ logTelemetry: jest.fn() }))
 
-import { UnitTestRunner, UnitTestResults, TestClassResult, TestMethodResult } from "./UnitTestRunner"
+import {
+  UnitTestRunner,
+  UnitTestResults,
+  TestClassResult,
+  TestMethodResult
+} from "./UnitTestRunner"
 
 describe("UnitTestRunner", () => {
   beforeEach(() => {
@@ -154,7 +163,12 @@ describe("UnitTestResults type structure", () => {
           passed: false,
           methods: [
             { name: "METHOD_OK", passed: true, executionTime: 0.1, alerts: [] },
-            { name: "METHOD_FAIL", passed: false, executionTime: 0.2, alerts: [{ kind: "error", title: "Assert failed", details: ["Expected X, got Y"] }] }
+            {
+              name: "METHOD_FAIL",
+              passed: false,
+              executionTime: 0.2,
+              alerts: [{ kind: "error", title: "Assert failed", details: ["Expected X, got Y"] }]
+            }
           ],
           alerts: []
         }
@@ -195,7 +209,13 @@ describe("buildTestResults", () => {
         srcUrl: {},
         testmethods: [
           { uri: "/m1", name: "TEST_OK", executionTime: 0.1, alerts: [], srcUrl: {} },
-          { uri: "/m2", name: "TEST_FAIL", executionTime: 0.2, alerts: [{ kind: "error", title: "Assert", details: [] }], srcUrl: {} }
+          {
+            uri: "/m2",
+            name: "TEST_FAIL",
+            executionTime: 0.2,
+            alerts: [{ kind: "error", title: "Assert", details: [] }],
+            srcUrl: {}
+          }
         ]
       }
     ]
@@ -220,7 +240,13 @@ describe("buildTestResults", () => {
         alerts: [],
         srcUrl: {},
         testmethods: [
-          { uri: "/m1", name: "TEST_WARN", executionTime: 0.1, alerts: [{ kind: "warning", title: "Warning", details: [] }], srcUrl: {} }
+          {
+            uri: "/m1",
+            name: "TEST_WARN",
+            executionTime: 0.1,
+            alerts: [{ kind: "warning", title: "Warning", details: [] }],
+            srcUrl: {}
+          }
         ]
       }
     ]
@@ -238,9 +264,7 @@ describe("buildTestResults", () => {
         name: "LTCL_FAIL",
         alerts: [{ kind: "error", title: "Class error", details: [] }],
         srcUrl: {},
-        testmethods: [
-          { uri: "/m1", name: "TEST_OK", executionTime: 0.1, alerts: [], srcUrl: {} }
-        ]
+        testmethods: [{ uri: "/m1", name: "TEST_OK", executionTime: 0.1, alerts: [], srcUrl: {} }]
       }
     ]
     const results = (runner as any).buildTestResults(classes, "ZCL_FAIL")

@@ -1,10 +1,19 @@
-jest.mock("vscode", () => ({
-  LanguageModelToolResult: jest.fn().mockImplementation((parts: any[]) => ({ parts })),
-  LanguageModelTextPart: jest.fn().mockImplementation((text: string) => ({ text })),
-  MarkdownString: jest.fn().mockImplementation((text: string) => ({ text })),
-  Uri: { parse: jest.fn((s: string) => ({ toString: () => s, authority: s.split("//")[1]?.split("/")[0] })) },
-  lm: { registerTool: jest.fn(() => ({ dispose: jest.fn() })) }
-}), { virtual: true })
+jest.mock(
+  "vscode",
+  () => ({
+    LanguageModelToolResult: jest.fn().mockImplementation((parts: any[]) => ({ parts })),
+    LanguageModelTextPart: jest.fn().mockImplementation((text: string) => ({ text })),
+    MarkdownString: jest.fn().mockImplementation((text: string) => ({ text })),
+    Uri: {
+      parse: jest.fn((s: string) => ({
+        toString: () => s,
+        authority: s.split("//")[1]?.split("/")[0]
+      }))
+    },
+    lm: { registerTool: jest.fn(() => ({ dispose: jest.fn() })) }
+  }),
+  { virtual: true }
+)
 
 jest.mock("../../adt/conections", () => ({
   getOrCreateRoot: jest.fn(),
@@ -19,6 +28,10 @@ jest.mock("../funMessenger", () => ({ funWindow: { activeTextEditor: undefined }
 jest.mock("../../views/abaptestcockpit", () => ({ atcProvider: { runAnalysis: jest.fn() } }))
 jest.mock("../../views/abaptestcockpit/decorations", () => ({ getATCDecorations: jest.fn() }))
 
+jest.mock("./toolGuard", () => ({
+  assertToolInvocationAuthorized: jest.fn(),
+  isToolInvocationAuthorized: jest.fn(() => true)
+}))
 import { RunATCAnalysisTool, GetATCDecorationsTool } from "./atcTools"
 import { getSearchService } from "../abapSearchService"
 import { getOrCreateRoot, abapUri } from "../../adt/conections"
@@ -48,28 +61,19 @@ describe("RunATCAnalysisTool - prepareInvocation validation", () => {
 
   it("throws when objectUri is not a valid ADT URI", async () => {
     await expect(
-      tool.prepareInvocation(
-        makeOptions({ objectUri: "http://bad/uri" }),
-        mockToken
-      )
+      tool.prepareInvocation(makeOptions({ objectUri: "http://bad/uri" }), mockToken)
     ).rejects.toThrow("objectUri must be a valid ADT URI")
   })
 
   it("throws when objectName given without connectionId", async () => {
     await expect(
-      tool.prepareInvocation(
-        makeOptions({ objectName: "ZPROG" }),
-        mockToken
-      )
+      tool.prepareInvocation(makeOptions({ objectName: "ZPROG" }), mockToken)
     ).rejects.toThrow("connectionId is required when specifying objectName")
   })
 
   it("throws when no target and useActiveFile=false", async () => {
     await expect(
-      tool.prepareInvocation(
-        makeOptions({ useActiveFile: false }),
-        mockToken
-      )
+      tool.prepareInvocation(makeOptions({ useActiveFile: false }), mockToken)
     ).rejects.toThrow("No target specified")
   })
 
@@ -93,10 +97,7 @@ describe("RunATCAnalysisTool - prepareInvocation validation", () => {
 
   it("accepts useActiveFile=true without other params", async () => {
     await expect(
-      tool.prepareInvocation(
-        makeOptions({ useActiveFile: true }),
-        mockToken
-      )
+      tool.prepareInvocation(makeOptions({ useActiveFile: true }), mockToken)
     ).resolves.toBeDefined()
   })
 
@@ -109,10 +110,7 @@ describe("RunATCAnalysisTool - prepareInvocation validation", () => {
   })
 
   it("returns invocation message for active file", async () => {
-    const result = await tool.prepareInvocation(
-      makeOptions({ useActiveFile: true }),
-      mockToken
-    )
+    const result = await tool.prepareInvocation(makeOptions({ useActiveFile: true }), mockToken)
     expect(result.invocationMessage).toContain("active file")
   })
 
@@ -137,10 +135,15 @@ describe("RunATCAnalysisTool - invoke", () => {
   })
 
   it("logs telemetry", async () => {
-    await tool.invoke(
-      makeOptions({ objectUri: "adt://dev100/sap/bc/adt/programs/programs/zprog", connectionId: "dev100" }),
-      mockToken
-    ).catch(() => {})
+    await tool
+      .invoke(
+        makeOptions({
+          objectUri: "adt://dev100/sap/bc/adt/programs/programs/zprog",
+          connectionId: "dev100"
+        }),
+        mockToken
+      )
+      .catch(() => {})
     expect(logTelemetry).toHaveBeenCalledWith("tool_run_atc_analysis_called", {
       connectionId: "dev100"
     })
@@ -148,21 +151,15 @@ describe("RunATCAnalysisTool - invoke", () => {
 
   it("throws when objectUri is not adt:// URI", async () => {
     await expect(
-      tool.invoke(
-        makeOptions({ objectUri: "http://bad/uri", connectionId: "dev100" }),
-        mockToken
-      )
+      tool.invoke(makeOptions({ objectUri: "http://bad/uri", connectionId: "dev100" }), mockToken)
     ).rejects.toThrow("ADT URI")
   })
 
   it("throws when no active editor and useActiveFile=true", async () => {
     ;(window as any).activeTextEditor = undefined
-    await expect(
-      tool.invoke(
-        makeOptions({ useActiveFile: true }),
-        mockToken
-      )
-    ).rejects.toThrow("No active editor")
+    await expect(tool.invoke(makeOptions({ useActiveFile: true }), mockToken)).rejects.toThrow(
+      "No active editor"
+    )
   })
 
   it("throws when active editor is not ABAP", async () => {
@@ -170,26 +167,22 @@ describe("RunATCAnalysisTool - invoke", () => {
       document: { uri: { scheme: "file", authority: "" } }
     }
     ;(abapUri as jest.Mock).mockReturnValue(false)
-    await expect(
-      tool.invoke(makeOptions({ useActiveFile: true }), mockToken)
-    ).rejects.toThrow("not an ABAP document")
+    await expect(tool.invoke(makeOptions({ useActiveFile: true }), mockToken)).rejects.toThrow(
+      "not an ABAP document"
+    )
   })
 
   it("throws when objectName search returns no results", async () => {
     mockSearcher.searchObjects.mockResolvedValue([])
     await expect(
-      tool.invoke(
-        makeOptions({ objectName: "MISSING", connectionId: "dev100" }),
-        mockToken
-      )
+      tool.invoke(makeOptions({ objectName: "MISSING", connectionId: "dev100" }), mockToken)
     ).rejects.toThrow("Could not find ABAP object")
   })
 
   it("normalizes connectionId to lowercase", async () => {
-    await tool.invoke(
-      makeOptions({ objectUri: "adt://dev100/path", connectionId: "DEV100" }),
-      mockToken
-    ).catch(() => {})
+    await tool
+      .invoke(makeOptions({ objectUri: "adt://dev100/path", connectionId: "DEV100" }), mockToken)
+      .catch(() => {})
     expect(logTelemetry).toHaveBeenCalledWith("tool_run_atc_analysis_called", {
       connectionId: "DEV100" // connectionId is logged before lowercasing
     })
@@ -221,7 +214,10 @@ describe("GetATCDecorationsTool", () => {
     })
 
     it("returns decorations result", async () => {
-      ;(getATCDecorations as jest.Mock).mockReturnValue({ fileUri: "adt://dev100/path", decorations: [] })
+      ;(getATCDecorations as jest.Mock).mockReturnValue({
+        fileUri: "adt://dev100/path",
+        decorations: []
+      })
       const result: any = await tool.invoke(makeOptions(), mockToken)
       expect(result.parts[0].text).toBeDefined()
     })
@@ -233,7 +229,10 @@ describe("GetATCDecorationsTool", () => {
     })
 
     it("filters by fileUri when provided", async () => {
-      ;(getATCDecorations as jest.Mock).mockReturnValue({ fileUri: "adt://dev100/path", decorations: [] })
+      ;(getATCDecorations as jest.Mock).mockReturnValue({
+        fileUri: "adt://dev100/path",
+        decorations: []
+      })
       await tool.invoke(
         makeOptions({ fileUri: "adt://dev100/sap/bc/adt/programs/programs/zprog" }),
         mockToken

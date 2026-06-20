@@ -1,8 +1,7 @@
-import { AbapObjectCreator } from "../creator"
-import { AbapObject, AbapObjectBase, AbapObjectService } from ".."
+import { AbapObject, AbapObjectBase } from "../AbapObject"
+import { AbapObjectService } from "../AOService"
 
 const tag = Symbol("AbapInterface")
-@AbapObjectCreator("INTF/OI")
 export class AbapInterface extends AbapObjectBase {
   [tag] = true
   get extension() {

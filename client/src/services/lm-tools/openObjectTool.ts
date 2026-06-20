@@ -8,6 +8,7 @@ import { registerToolWithRegistry } from "./toolRegistry"
 import { getSearchService } from "../abapSearchService"
 import { openObject } from "../../commands/commands"
 import { logTelemetry } from "../telemetry"
+import { assertToolInvocationAuthorized } from "./toolGuard"
 
 // ============================================================================
 // INTERFACE
@@ -53,6 +54,7 @@ export class OpenObjectTool implements vscode.LanguageModelTool<IOpenObjectParam
     options: vscode.LanguageModelToolInvocationOptions<IOpenObjectParameters>,
     _token: vscode.CancellationToken
   ): Promise<vscode.LanguageModelToolResult> {
+    assertToolInvocationAuthorized(options)
     const { objectName, objectType, connectionId } = options.input
     logTelemetry("tool_open_object_called", { connectionId })
 
@@ -78,15 +80,13 @@ export class OpenObjectTool implements vscode.LanguageModelTool<IOpenObjectParam
       await openObject(connectionId.toLowerCase(), objectInfo.uri)
 
       return new vscode.LanguageModelToolResult([
-        new vscode.LanguageModelTextPart(
-          `✅ Object ${objectName} opened successfully in the editor.`
-        )
+        new vscode.LanguageModelTextPart(`Object ${objectName} opened in editor.`)
       ])
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : String(error)
 
       return new vscode.LanguageModelToolResult([
-        new vscode.LanguageModelTextPart(`❌ Failed to open object: ${errorMessage}`)
+        new vscode.LanguageModelTextPart(`Failed to open object: ${errorMessage}`)
       ])
     }
   }

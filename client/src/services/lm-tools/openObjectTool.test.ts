@@ -1,9 +1,13 @@
-jest.mock("vscode", () => ({
-  LanguageModelToolResult: jest.fn().mockImplementation((parts: any[]) => ({ parts })),
-  LanguageModelTextPart: jest.fn().mockImplementation((text: string) => ({ text })),
-  MarkdownString: jest.fn().mockImplementation((text: string) => ({ text })),
-  lm: { registerTool: jest.fn(() => ({ dispose: jest.fn() })) }
-}), { virtual: true })
+jest.mock(
+  "vscode",
+  () => ({
+    LanguageModelToolResult: jest.fn().mockImplementation((parts: any[]) => ({ parts })),
+    LanguageModelTextPart: jest.fn().mockImplementation((text: string) => ({ text })),
+    MarkdownString: jest.fn().mockImplementation((text: string) => ({ text })),
+    lm: { registerTool: jest.fn(() => ({ dispose: jest.fn() })) }
+  }),
+  { virtual: true }
+)
 
 jest.mock("../../adt/conections", () => ({}))
 jest.mock("../telemetry", () => ({ logTelemetry: jest.fn() }))
@@ -14,6 +18,10 @@ jest.mock("../abapSearchService", () => ({ getSearchService: jest.fn() }))
 jest.mock("../funMessenger", () => ({ funWindow: { activeTextEditor: undefined } }))
 jest.mock("../../commands/commands", () => ({ openObject: jest.fn() }))
 
+jest.mock("./toolGuard", () => ({
+  assertToolInvocationAuthorized: jest.fn(),
+  isToolInvocationAuthorized: jest.fn(() => true)
+}))
 import { OpenObjectTool } from "./openObjectTool"
 import { getSearchService } from "../abapSearchService"
 import { openObject } from "../../commands/commands"
@@ -72,7 +80,9 @@ describe("OpenObjectTool", () => {
       mockSearcher.searchObjects.mockResolvedValue([{ uri: "/sap/bc/adt/programs/programs/zprog" }])
       ;(openObject as jest.Mock).mockResolvedValue(undefined)
       await tool.invoke(makeOptions({ objectName: "ZPROG", connectionId: "DEV100" }), mockToken)
-      expect(logTelemetry).toHaveBeenCalledWith("tool_open_object_called", { connectionId: "DEV100" })
+      expect(logTelemetry).toHaveBeenCalledWith("tool_open_object_called", {
+        connectionId: "DEV100"
+      })
     })
 
     it("uses lowercase connectionId for service", async () => {
@@ -90,7 +100,7 @@ describe("OpenObjectTool", () => {
         mockToken
       )
       expect(result.parts[0].text).toContain("ZPROG")
-      expect(result.parts[0].text).toContain("opened successfully")
+      expect(result.parts[0].text).toContain("opened in editor")
     })
 
     it("returns failure message when object not found", async () => {

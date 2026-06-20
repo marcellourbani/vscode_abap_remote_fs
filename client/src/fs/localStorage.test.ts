@@ -1,27 +1,40 @@
 // Tests for fs/localStorage.ts - pure functions and LocalStorage class
-jest.mock("vscode", () => {
-  const joinPath = (...args: any[]) => {
-    const base = args[0]
-    const parts = args.slice(1)
-    return { ...base, path: [base.path, ...parts].join("/"), toString: () => `file://${[base.path, ...parts].join("/")}` }
-  }
-  return {
-    Uri: {
-      joinPath: jest.fn((base: any, ...parts: string[]) => joinPath(base, ...parts)),
-      parse: jest.fn((s: string) => ({ path: s.replace(/^file:\/\//, ""), scheme: "file", authority: "", toString: () => s }))
-    },
-    workspace: {
-      fs: {
-        stat: jest.fn(),
-        createDirectory: jest.fn(),
-        writeFile: jest.fn(),
-        readFile: jest.fn(),
-        readDirectory: jest.fn()
-      },
-      workspaceFolders: []
+jest.mock(
+  "vscode",
+  () => {
+    const joinPath = (...args: any[]) => {
+      const base = args[0]
+      const parts = args.slice(1)
+      return {
+        ...base,
+        path: [base.path, ...parts].join("/"),
+        toString: () => `file://${[base.path, ...parts].join("/")}`
+      }
     }
-  }
-}, { virtual: true })
+    return {
+      Uri: {
+        joinPath: jest.fn((base: any, ...parts: string[]) => joinPath(base, ...parts)),
+        parse: jest.fn((s: string) => ({
+          path: s.replace(/^file:\/\//, ""),
+          scheme: "file",
+          authority: "",
+          toString: () => s
+        }))
+      },
+      workspace: {
+        fs: {
+          stat: jest.fn(),
+          createDirectory: jest.fn(),
+          writeFile: jest.fn(),
+          readFile: jest.fn(),
+          readDirectory: jest.fn()
+        },
+        workspaceFolders: []
+      }
+    }
+  },
+  { virtual: true }
+)
 
 jest.mock("./initialtemplates", () => ({
   templates: [
@@ -106,7 +119,12 @@ describe("localStorage.ts", () => {
       ;(vscode.workspace.fs.createDirectory as jest.Mock).mockResolvedValue(undefined)
       ;(vscode.workspace.fs.writeFile as jest.Mock).mockResolvedValue(undefined)
 
-      const root = { path: "/root2", scheme: "file", authority: "", toString: () => "file:///root2" }
+      const root = {
+        path: "/root2",
+        scheme: "file",
+        authority: "",
+        toString: () => "file:///root2"
+      }
       await initializeMainStorage(root as any)
 
       // Should write template files + folderMap.json
@@ -117,7 +135,12 @@ describe("localStorage.ts", () => {
       // stat succeeds for everything - nothing should be created
       ;(vscode.workspace.fs.stat as jest.Mock).mockResolvedValue({})
 
-      const root = { path: "/root3", scheme: "file", authority: "", toString: () => "file:///root3" }
+      const root = {
+        path: "/root3",
+        scheme: "file",
+        authority: "",
+        toString: () => "file:///root3"
+      }
       await initializeMainStorage(root as any)
 
       expect(vscode.workspace.fs.writeFile).not.toHaveBeenCalled()

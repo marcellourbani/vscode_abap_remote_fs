@@ -3,45 +3,65 @@
  * Primarily tests the public static getTransactionInfo method and createOrShow.
  */
 
-jest.mock("vscode", () => ({
-  ViewColumn: { One: 1, Beside: 2, Active: -1 },
-  Uri: {
-    parse: jest.fn((s: string) => ({ toString: () => s, fsPath: s })),
-    file: jest.fn((p: string) => ({ fsPath: p, toString: () => `file://${p}` })),
-  },
-  workspace: {
-    getConfiguration: jest.fn(() => ({
-      get: jest.fn(() => false), // useIntegratedBrowser = false by default
-    })),
-    fs: { writeFile: jest.fn() },
-  },
-  commands: { executeCommand: jest.fn() },
-}), { virtual: true })
+jest.mock(
+  "vscode",
+  () => ({
+    ViewColumn: { One: 1, Beside: 2, Active: -1 },
+    Uri: {
+      parse: jest.fn((s: string) => ({ toString: () => s, fsPath: s })),
+      file: jest.fn((p: string) => ({ fsPath: p, toString: () => `file://${p}` }))
+    },
+    workspace: {
+      getConfiguration: jest.fn(() => ({
+        get: jest.fn(() => false) // useIntegratedBrowser = false by default
+      })),
+      fs: { writeFile: jest.fn() }
+    },
+    commands: { executeCommand: jest.fn() }
+  }),
+  { virtual: true }
+)
 
-jest.mock("../../services/funMessenger", () => ({
-  funWindow: {
-    activeTextEditor: undefined,
-    createWebviewPanel: jest.fn(),
-    showErrorMessage: jest.fn(),
-    showWarningMessage: jest.fn(),
-  },
-}), { virtual: true })
+jest.mock(
+  "../../services/funMessenger",
+  () => ({
+    funWindow: {
+      activeTextEditor: undefined,
+      createWebviewPanel: jest.fn(),
+      showErrorMessage: jest.fn(),
+      showWarningMessage: jest.fn()
+    }
+  }),
+  { virtual: true }
+)
 
-jest.mock("../../lib", () => ({
-  log: jest.fn(),
-}), { virtual: true })
+jest.mock(
+  "../../lib",
+  () => ({
+    log: jest.fn()
+  }),
+  { virtual: true }
+)
 
-jest.mock("../../config", () => ({
-  RemoteManager: {
-    get: jest.fn(() => ({
-      byId: jest.fn(),
-    })),
-  },
-}), { virtual: true })
+jest.mock(
+  "../../config",
+  () => ({
+    RemoteManager: {
+      get: jest.fn(() => ({
+        byId: jest.fn()
+      }))
+    }
+  }),
+  { virtual: true }
+)
 
-jest.mock("../../adt/sapgui/sapgui", () => ({
-  runInSapGui: jest.fn(),
-}), { virtual: true })
+jest.mock(
+  "../../adt/sapgui/sapgui",
+  () => ({
+    runInSapGui: jest.fn()
+  }),
+  { virtual: true }
+)
 
 import { SapGuiPanel } from "./SapGuiPanel"
 import { funWindow as window } from "../../services/funMessenger"
@@ -55,16 +75,23 @@ function makePanelMock() {
     webview: {
       html: "",
       postMessage: jest.fn(),
-      onDidReceiveMessage: jest.fn((cb: any) => { cb({ command: "nonexistent" }); return { dispose: jest.fn() } }),
+      onDidReceiveMessage: jest.fn((cb: any) => {
+        cb({ command: "nonexistent" })
+        return { dispose: jest.fn() }
+      }),
       asWebviewUri: jest.fn((uri: any) => uri),
-      cspSource: "vscode-webview:",
+      cspSource: "vscode-webview:"
     },
     reveal: jest.fn(),
     dispose: jest.fn(),
-    onDidDispose: jest.fn((cb: any) => { return { dispose: jest.fn() } }),
-    onDidChangeViewState: jest.fn((cb: any) => { return { dispose: jest.fn() } }),
+    onDidDispose: jest.fn((cb: any) => {
+      return { dispose: jest.fn() }
+    }),
+    onDidChangeViewState: jest.fn((cb: any) => {
+      return { dispose: jest.fn() }
+    }),
     visible: true,
-    viewColumn: 1,
+    viewColumn: 1
   }
   return panel
 }
@@ -158,7 +185,13 @@ describe("SapGuiPanel.createOrShow", () => {
     ;(mockedWindow.createWebviewPanel as jest.Mock).mockReturnValue(mockPanel)
     const { Uri } = require("vscode")
     const client = { username: "USER1" } as any
-    const instance = SapGuiPanel.createOrShow(Uri.parse("/ext"), client, "dev100", "ZPROG", "PROG/P")
+    const instance = SapGuiPanel.createOrShow(
+      Uri.parse("/ext"),
+      client,
+      "dev100",
+      "ZPROG",
+      "PROG/P"
+    )
     expect(mockedWindow.createWebviewPanel).toHaveBeenCalledWith(
       "ABAPSapGui",
       "SAP GUI - ZPROG",
@@ -206,13 +239,19 @@ describe("SapGuiPanel.buildWebGuiUrl", () => {
       byId: jest.fn().mockReturnValue({
         url: "https://myserver:8443/sap/bc/adt",
         client: "100",
-        language: "DE",
-      }),
+        language: "DE"
+      })
     })
 
     const { Uri } = require("vscode")
     const client = {} as any
-    const instance = SapGuiPanel.createOrShow(Uri.parse("/ext"), client, "dev100", "ZPROG", "PROG/P")
+    const instance = SapGuiPanel.createOrShow(
+      Uri.parse("/ext"),
+      client,
+      "dev100",
+      "ZPROG",
+      "PROG/P"
+    )
     const url = await instance!.buildWebGuiUrl()
 
     expect(url).toContain("webgui")
@@ -231,12 +270,18 @@ describe("SapGuiPanel.buildWebGuiUrl", () => {
       byId: jest.fn().mockReturnValue({
         url: "https://myserver/sap/bc/adt",
         client: "001",
-        language: "",
-      }),
+        language: ""
+      })
     })
 
     const { Uri } = require("vscode")
-    const instance = SapGuiPanel.createOrShow(Uri.parse("/ext"), {} as any, "dev100", "ZPROG", "PROG/P")
+    const instance = SapGuiPanel.createOrShow(
+      Uri.parse("/ext"),
+      {} as any,
+      "dev100",
+      "ZPROG",
+      "PROG/P"
+    )
     const url = await instance!.buildWebGuiUrl()
     expect(url).toContain("sap-language=EN")
   })
@@ -248,12 +293,18 @@ describe("SapGuiPanel.buildWebGuiUrl", () => {
       byId: jest.fn().mockReturnValue({
         url: "http://myserver/sap/bc/adt",
         client: "001",
-        language: "EN",
-      }),
+        language: "EN"
+      })
     })
 
     const { Uri } = require("vscode")
-    const instance = SapGuiPanel.createOrShow(Uri.parse("/ext"), {} as any, "dev100", "ZPROG", "PROG/P")
+    const instance = SapGuiPanel.createOrShow(
+      Uri.parse("/ext"),
+      {} as any,
+      "dev100",
+      "ZPROG",
+      "PROG/P"
+    )
     const url = await instance!.buildWebGuiUrl()
     expect(url.startsWith("https://")).toBe(true)
   })
@@ -262,11 +313,17 @@ describe("SapGuiPanel.buildWebGuiUrl", () => {
     const mockPanel = makePanelMock()
     ;(mockedWindow.createWebviewPanel as jest.Mock).mockReturnValue(mockPanel)
     ;(mockedRemoteManager.get as jest.Mock).mockReturnValue({
-      byId: jest.fn().mockReturnValue(null),
+      byId: jest.fn().mockReturnValue(null)
     })
 
     const { Uri } = require("vscode")
-    const instance = SapGuiPanel.createOrShow(Uri.parse("/ext"), {} as any, "dev100", "ZPROG", "PROG/P")
+    const instance = SapGuiPanel.createOrShow(
+      Uri.parse("/ext"),
+      {} as any,
+      "dev100",
+      "ZPROG",
+      "PROG/P"
+    )
     await expect(instance!.buildWebGuiUrl()).rejects.toThrow("Connection configuration not found")
   })
 })
@@ -281,7 +338,15 @@ describe("SapGuiPanel sanitizeUrl (via loadDirectWebGuiUrl)", () => {
     const mockPanel = makePanelMock()
     ;(mockedWindow.createWebviewPanel as jest.Mock).mockReturnValue(mockPanel)
     const { Uri } = require("vscode")
-    const instance = SapGuiPanel.createOrShow(Uri.parse("/ext"), {} as any, "dev100", "ZPROG", "PROG/P")
-    expect(() => instance!.loadDirectWebGuiUrl("https://myserver/sap/bc/gui/sap/its/webgui?param=1")).not.toThrow()
+    const instance = SapGuiPanel.createOrShow(
+      Uri.parse("/ext"),
+      {} as any,
+      "dev100",
+      "ZPROG",
+      "PROG/P"
+    )
+    expect(() =>
+      instance!.loadDirectWebGuiUrl("https://myserver/sap/bc/gui/sap/its/webgui?param=1")
+    ).not.toThrow()
   })
 })

@@ -18,9 +18,17 @@ import { vscUrl } from "./objectManager"
 import { groupBy } from "lodash"
 import { log, warn } from "./clientManager"
 import { getObjectSource, setSearchProgress } from "./clientapis"
-import { isAbapOrCds, isCdsLike, memoize, parts, toInt, hashParms, caughtToString } from "./functions"
+import {
+  isAbapOrCds,
+  isCdsLike,
+  memoize,
+  parts,
+  toInt,
+  hashParms,
+  caughtToString
+} from "./functions"
 import { cdsNavigationTarget } from "./cdsSyntax"
-import { ddicRepositoryAccessField } from "./cdsNavigation"
+import { ddicRepositoryAccessField, ddicRepositoryAccessSource } from "./cdsNavigation"
 
 async function cdsDefinition(params: TextDocumentPositionParams): Promise<Location | undefined> {
   const co = await clientAndObjfromUrl(params.textDocument.uri)
@@ -36,18 +44,23 @@ async function cdsDefinition(params: TextDocumentPositionParams): Promise<Locati
       case "source":
       case "association":
       case "dataElement": {
-        // look up the name as a DDIC object
-        const refs = await co.client.ddicRepositoryAccess(target.name)
-        if (refs.length > 0) {
-          const uri = await vscUrl(co.confKey, refs[0].uri, true)
-          if (uri) return { uri, range: { start: { line: 0, character: 0 }, end: { line: 0, character: 0 } } }
+        const ref = await ddicRepositoryAccessSource(co.client.statelessClone, target.name)
+        if (ref) {
+          const uri = await vscUrl(co.confKey, ref.uri, true)
+          if (uri)
+            return {
+              uri,
+              range: { start: { line: 0, character: 0 }, end: { line: 0, character: 0 } }
+            }
         }
         break
       }
       case "field": {
         try {
           const fieldRef = await ddicRepositoryAccessField(
-            co.client.statelessClone, target.source, target.field
+            co.client.statelessClone,
+            target.source,
+            target.field
           )
           if (fieldRef) {
             const baseUri = fieldRef.uri.replace(/[#?].*/, "")
@@ -55,7 +68,9 @@ async function cdsDefinition(params: TextDocumentPositionParams): Promise<Locati
             if (fragMatch) {
               try {
                 const frag = await co.client.statelessClone.fragmentMappings(
-                  baseUri, decodeURIComponent(fragMatch[1]), decodeURIComponent(fragMatch[2])
+                  baseUri,
+                  decodeURIComponent(fragMatch[1]),
+                  decodeURIComponent(fragMatch[2])
                 )
                 if (frag?.uri) {
                   const uri = await vscUrl(co.confKey, frag.uri, true)
@@ -74,25 +89,36 @@ async function cdsDefinition(params: TextDocumentPositionParams): Promise<Locati
               }
             }
             const uri = await vscUrl(co.confKey, baseUri, true)
-            if (uri) return { uri, range: { start: { line: 0, character: 0 }, end: { line: 0, character: 0 } } }
+            if (uri)
+              return {
+                uri,
+                range: { start: { line: 0, character: 0 }, end: { line: 0, character: 0 } }
+              }
           }
         } catch (e) {
           log("cdsDefinition field lookup failed:", caughtToString(e))
         }
         // fallback: navigate to the source itself
-        const sourceRefs = await co.client.ddicRepositoryAccess(target.source)
-        if (sourceRefs.length > 0) {
-          const uri = await vscUrl(co.confKey, sourceRefs[0].uri, true)
-          if (uri) return { uri, range: { start: { line: 0, character: 0 }, end: { line: 0, character: 0 } } }
+        const sourceRef = await ddicRepositoryAccessSource(co.client.statelessClone, target.source)
+        if (sourceRef) {
+          const sourceUri = await vscUrl(co.confKey, sourceRef.uri, true)
+          if (sourceUri)
+            return {
+              uri: sourceUri,
+              range: { start: { line: 0, character: 0 }, end: { line: 0, character: 0 } }
+            }
         }
         break
       }
       case "unknown": {
-        // fallback: try the word directly
-        const refs = await co.client.ddicRepositoryAccess(target.word)
-        if (refs.length > 0) {
-          const uri = await vscUrl(co.confKey, refs[0].uri, true)
-          if (uri) return { uri, range: { start: { line: 0, character: 0 }, end: { line: 0, character: 0 } } }
+        const ref = await ddicRepositoryAccessSource(co.client.statelessClone, target.word)
+        if (ref) {
+          const uri = await vscUrl(co.confKey, ref.uri, true)
+          if (uri)
+            return {
+              uri,
+              range: { start: { line: 0, character: 0 }, end: { line: 0, character: 0 } }
+            }
         }
         break
       }

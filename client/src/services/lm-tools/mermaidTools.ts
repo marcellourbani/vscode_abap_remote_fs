@@ -11,7 +11,7 @@ import { registerToolWithRegistry } from "./toolRegistry"
 import { MermaidWebviewManager } from "../MermaidWebviewManager"
 import { MERMAID_DOCUMENTATION } from "../MermaidDocumentation"
 import { logTelemetry } from "../telemetry"
-
+import { assertToolInvocationAuthorized } from "./toolGuard"
 // ============================================================================
 // INTERFACES
 // ============================================================================
@@ -100,6 +100,7 @@ export class CreateMermaidDiagramTool implements vscode.LanguageModelTool<ICreat
     options: vscode.LanguageModelToolInvocationOptions<ICreateMermaidDiagramParameters>,
     _token: vscode.CancellationToken
   ): Promise<vscode.LanguageModelToolResult> {
+    assertToolInvocationAuthorized(options)
     let { code, theme = "forest" } = options.input
     logTelemetry("tool_create_mermaid_diagram_called") // No connectionId available
 
@@ -112,19 +113,13 @@ export class CreateMermaidDiagramTool implements vscode.LanguageModelTool<ICreat
         throw new Error(renderResult.error || "Failed to render diagram")
       }
 
-      let resultMessage = `✅ Diagram displayed in webview successfully (Type: ${renderResult.diagramType})`
+      let resultMessage = `Diagram displayed in webview (Type: ${renderResult.diagramType})`
 
       const resultText =
-        `**🎨 Mermaid Diagram Created Successfully** ✅\n\n` +
-        `• **Diagram Type:** ${renderResult.diagramType}\n` +
-        `• **Theme:** ${theme}\n` +
-        `• **Display:** Opened in webview with zoom controls\n` +
-        `• **Zoom Level:** 500% (adjustable)\n` +
-        `• **Save Option:** Click "Save to Desktop" button in webview\n\n` +
-        `**🔍 Webview Features:**\n` +
-        `• **Zoom In/Out:** Use +/- buttons or Ctrl+scroll\n` +
-        `• **Keyboard Shortcuts:** Ctrl+Plus/Minus, Ctrl+0 (reset), Ctrl+S (save)\n` +
-        `• **High Quality:** SVG format ensures perfect quality at any zoom level\n`
+        `Mermaid Diagram Created Successfully\n` +
+        `Type: ${renderResult.diagramType}\n` +
+        `Theme: ${theme}\n` +
+        `Display: opened in webview with zoom controls`
 
       return new vscode.LanguageModelToolResult([new vscode.LanguageModelTextPart(resultText)])
     } catch (error) {
@@ -168,6 +163,7 @@ export class ValidateMermaidSyntaxTool implements vscode.LanguageModelTool<IVali
     options: vscode.LanguageModelToolInvocationOptions<IValidateMermaidSyntaxParameters>,
     _token: vscode.CancellationToken
   ): Promise<vscode.LanguageModelToolResult> {
+    assertToolInvocationAuthorized(options)
     const { code } = options.input
     logTelemetry("tool_validate_mermaid_syntax_called") // No connectionId available
 
@@ -178,24 +174,18 @@ export class ValidateMermaidSyntaxTool implements vscode.LanguageModelTool<IVali
 
       if (validationResult.isValid) {
         const resultText =
-          `**✅ Valid Mermaid Syntax** ✅\n\n` +
-          `• **Diagram Type:** ${validationResult.diagramType || "auto-detected"}\n` +
-          `• **Code Length:** ${code.length} characters\n` +
-          `• **Validation Status:** Passed\n\n` +
-          `**🎯 Ready for Rendering!** The syntax is valid and can be rendered as a diagram.`
+          `Valid Mermaid Syntax\n` +
+          `Diagram Type: ${validationResult.diagramType || "auto-detected"}\n` +
+          `Code Length: ${code.length} characters\n` +
+          `Status: Passed`
 
         return new vscode.LanguageModelToolResult([new vscode.LanguageModelTextPart(resultText)])
       } else {
         const resultText =
-          `**❌ Syntax Validation Failed**\n\n` +
-          `**Error:** ${validationResult.error || "Syntax error"}\n\n` +
-          `**📝 Code Length:** ${code.length} characters\n` +
-          `**🔍 Status:** Validation error\n\n` +
-          `**💡 Common Issues:**\n` +
-          `• Missing or incorrect diagram type declaration\n` +
-          `• Invalid node syntax or connections\n` +
-          `• Unsupported diagram features\n` +
-          `• Malformed text or special characters`
+          `Syntax Validation Failed\n` +
+          `Error: ${validationResult.error || "Syntax error"}\n` +
+          `Code Length: ${code.length} characters\n\n` +
+          `Common issues: missing/incorrect diagram type declaration, invalid node syntax, unsupported features, malformed text/special characters.`
 
         return new vscode.LanguageModelToolResult([new vscode.LanguageModelTextPart(resultText)])
       }
@@ -205,9 +195,7 @@ export class ValidateMermaidSyntaxTool implements vscode.LanguageModelTool<IVali
       const errorMessage = error instanceof Error ? error.message : String(error)
 
       const resultText =
-        `**❌ Validation Error**\n\n` +
-        `**Error:** ${errorMessage}\n\n` +
-        `**📝 Code Length:** ${code.length} characters`
+        `Validation Error\n` + `Error: ${errorMessage}\n` + `Code Length: ${code.length} characters`
 
       return new vscode.LanguageModelToolResult([new vscode.LanguageModelTextPart(resultText)])
     }
@@ -242,6 +230,7 @@ export class GetMermaidDocumentationTool implements vscode.LanguageModelTool<IGe
     options: vscode.LanguageModelToolInvocationOptions<IGetMermaidDocumentationParameters>,
     _token: vscode.CancellationToken
   ): Promise<vscode.LanguageModelToolResult> {
+    assertToolInvocationAuthorized(options)
     const { diagramType = "all", includeExamples = true } = options.input
     logTelemetry("tool_get_mermaid_documentation_called") // No connectionId available
 
@@ -253,13 +242,13 @@ export class GetMermaidDocumentationTool implements vscode.LanguageModelTool<IGe
       if (diagramType === "all") {
         const supportedTypes = Object.keys(documentation)
 
-        let resultText = `**📚 Complete Mermaid Documentation** 📖\n\n`
-        resultText += `**🎯 Supported Diagram Types:** ${supportedTypes.length} types\n\n`
+        let resultText = `Complete Mermaid Documentation\n`
+        resultText += `Supported Diagram Types: ${supportedTypes.length}\n\n`
 
-        resultText += `**📋 Available Diagram Types:**\n`
+        resultText += `Available Diagram Types:\n`
 
         for (const [type, info] of Object.entries(documentation)) {
-          resultText += `\n**${type.toUpperCase()}** - ${info.description}\n`
+          resultText += `\n${type.toUpperCase()} — ${info.description}\n`
           resultText += `Keywords: ${info.keywords.join(", ")}\n`
 
           if (includeExamples) {
@@ -267,7 +256,7 @@ export class GetMermaidDocumentationTool implements vscode.LanguageModelTool<IGe
           }
         }
 
-        resultText += `\n**💡 Usage Tips:**\n`
+        resultText += `\nUsage Tips:\n`
         resultText += `• Each diagram starts with a type declaration\n`
         resultText += `• Flowchart directions: TD (Top-Down), LR (Left-Right), TB, RL\n`
         resultText += `• Sequence arrows: ->> (solid), -->> (dotted)\n`
@@ -279,16 +268,16 @@ export class GetMermaidDocumentationTool implements vscode.LanguageModelTool<IGe
       } else if (documentation[diagramType]) {
         const specificDoc = documentation[diagramType]
 
-        let resultText = `**📚 ${diagramType.toUpperCase()} Diagram Documentation** 📖\n\n`
-        resultText += `**Description:** ${specificDoc.description}\n`
-        resultText += `**Keywords:** ${specificDoc.keywords.join(", ")}\n\n`
+        let resultText = `${diagramType.toUpperCase()} Diagram Documentation\n`
+        resultText += `Description: ${specificDoc.description}\n`
+        resultText += `Keywords: ${specificDoc.keywords.join(", ")}\n\n`
 
         if (includeExamples) {
-          resultText += `**🎯 Syntax Example:**\n`
+          resultText += `Syntax Example:\n`
           resultText += `\`\`\`\n${specificDoc.syntax}\n\`\`\`\n\n`
         }
 
-        resultText += `**💡 Specific Tips for ${diagramType.toUpperCase()}:**\n`
+        resultText += `Specific Tips for ${diagramType.toUpperCase()}:\n`
 
         switch (diagramType) {
           case "flowchart":
@@ -316,8 +305,8 @@ export class GetMermaidDocumentationTool implements vscode.LanguageModelTool<IGe
       } else {
         const availableTypes = Object.keys(documentation)
         const resultText =
-          `**❌ Unknown Diagram Type: ${diagramType}**\n\n` +
-          `**Available Types:**\n${availableTypes.map(t => `• ${t}`).join("\n")}\n\n` +
+          `Unknown Diagram Type: ${diagramType}\n\n` +
+          `Available types:\n${availableTypes.map(t => `• ${t}`).join("\n")}\n\n` +
           `Use 'all' to get complete documentation for all diagram types.`
 
         return new vscode.LanguageModelToolResult([new vscode.LanguageModelTextPart(resultText)])
@@ -357,6 +346,7 @@ export class DetectMermaidDiagramTypeTool implements vscode.LanguageModelTool<ID
     options: vscode.LanguageModelToolInvocationOptions<IDetectMermaidDiagramTypeParameters>,
     _token: vscode.CancellationToken
   ): Promise<vscode.LanguageModelToolResult> {
+    assertToolInvocationAuthorized(options)
     const { code } = options.input
     logTelemetry("tool_detect_mermaid_diagram_type_called") // No connectionId available
 
@@ -368,25 +358,25 @@ export class DetectMermaidDiagramTypeTool implements vscode.LanguageModelTool<ID
       const detectedType = detectionResult.diagramType
       const confidence = detectedType !== "unknown" ? 0.9 : 0.1
 
-      let resultText = `**🔍 Diagram Type Detection Results** 🎯\n\n`
-      resultText += `• **Detected Type:** ${detectedType}\n`
-      resultText += `• **Confidence:** ${Math.round(confidence * 100)}%\n`
-      resultText += `• **Code Length:** ${code.length} characters\n\n`
+      let resultText = `Diagram Type Detection Results\n`
+      resultText += `Detected Type: ${detectedType}\n`
+      resultText += `Confidence: ${Math.round(confidence * 100)}%\n`
+      resultText += `Code Length: ${code.length} characters\n\n`
 
       if (detectedType !== "unknown") {
-        resultText += `**✅ Success!** The diagram appears to be a **${detectedType}** diagram.\n\n`
+        resultText += `Success — diagram appears to be a ${detectedType} diagram.\n\n`
 
         // Add type-specific guidance from documentation
         const docs = MERMAID_DOCUMENTATION
         if (docs[detectedType]) {
           const docInfo = docs[detectedType]
-          resultText += `**📝 Description:** ${docInfo.description}\n`
-          resultText += `**🔑 Keywords:** ${docInfo.keywords.join(", ")}`
+          resultText += `Description: ${docInfo.description}\n`
+          resultText += `Keywords: ${docInfo.keywords.join(", ")}`
         }
       } else {
-        resultText += `**⚠️ Detection Failed** - Could not determine diagram type.\n\n`
-        resultText += `**💡 Suggestions:**\n`
-        resultText += `• Check if the code starts with a valid diagram type declaration\n`
+        resultText += `Detection Failed — could not determine diagram type.\n\n`
+        resultText += `Suggestions:\n`
+        resultText += `• Check if code starts with a valid diagram type declaration\n`
         resultText += `• Supported types: flowchart, sequenceDiagram, classDiagram, etc.\n`
         resultText += `• Ensure proper syntax and formatting`
       }

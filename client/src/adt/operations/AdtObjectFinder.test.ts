@@ -1,6 +1,9 @@
 interface MockUri {
-  scheme: string; authority: string; path: string;
-  toString(): string; with(o: any): MockUri
+  scheme: string
+  authority: string
+  path: string
+  toString(): string
+  with(o: any): MockUri
 }
 const makeUri = (s: string): MockUri => ({
   scheme: s.split("://")[0] || "",
@@ -15,23 +18,32 @@ const makeUri = (s: string): MockUri => ({
   }
 })
 
-jest.mock("vscode", () => ({
-  workspace: {
-    openTextDocument: jest.fn(),
-    workspaceFolders: []
-  },
-  commands: { executeCommand: jest.fn() },
-  Uri: {
-    parse: jest.fn((s: string) => makeUri(s))
-  },
-  ThemeIcon: jest.fn(),
-  FileStat: jest.fn(),
-  Range: jest.fn().mockImplementation((s: any, e: any) => ({ start: s, end: e })),
-  QuickPickItem: jest.fn()
-}), { virtual: true })
+jest.mock(
+  "vscode",
+  () => ({
+    workspace: {
+      openTextDocument: jest.fn(),
+      workspaceFolders: []
+    },
+    commands: { executeCommand: jest.fn() },
+    Uri: {
+      parse: jest.fn((s: string) => makeUri(s))
+    },
+    ThemeIcon: jest.fn(),
+    FileStat: jest.fn(),
+    Range: jest.fn().mockImplementation((s: any, e: any) => ({ start: s, end: e })),
+    QuickPickItem: jest.fn()
+  }),
+  { virtual: true }
+)
 
 jest.mock("../../lib", () => ({
-  splitAdtUri: jest.fn((u: string) => ({ path: u, type: undefined, name: undefined, start: undefined })),
+  splitAdtUri: jest.fn((u: string) => ({
+    path: u,
+    type: undefined,
+    name: undefined,
+    start: undefined
+  })),
   vscPosition: jest.fn((l: number, c: number) => ({ line: l, character: c })),
   log: jest.fn(),
   caughtToString: jest.fn((e: any) => String(e)),
@@ -137,9 +149,9 @@ describe("MySearchResult", () => {
 
     it("loads types if any result has no description", async () => {
       const rawClient: any = {
-        loadTypes: jest.fn().mockResolvedValue([
-          { OBJECT_TYPE: "PROG/P", OBJECT_TYPE_LABEL: "Program" }
-        ])
+        loadTypes: jest
+          .fn()
+          .mockResolvedValue([{ OBJECT_TYPE: "PROG/P", OBJECT_TYPE_LABEL: "Program" }])
       }
       const rawResults = [makeSR({ "adtcore:description": undefined })]
       const results = await MySearchResult.createResults(rawResults, rawClient)
@@ -176,9 +188,7 @@ describe("createUri", () => {
   it("creates an adt:// URI from connId and path", () => {
     const { Uri } = require("vscode")
     createUri("myconn", "/sap/bc/adt/programs/programs/zprog")
-    expect(Uri.parse).toHaveBeenCalledWith(
-      expect.stringContaining("adt://myconn")
-    )
+    expect(Uri.parse).toHaveBeenCalledWith(expect.stringContaining("adt://myconn"))
   })
 })
 
@@ -209,7 +219,9 @@ describe("AdtObjectFinder", () => {
       file: {}
     })
     const { Uri } = require("vscode")
-    ;(Uri.parse as jest.Mock).mockReturnValue(makeUri("adt://testconn/sap/bc/adt/programs/programs/zprog/source/main"))
+    ;(Uri.parse as jest.Mock).mockReturnValue(
+      makeUri("adt://testconn/sap/bc/adt/programs/programs/zprog/source/main")
+    )
 
     finder = new AdtObjectFinder("testconn")
     const uri = await finder.vscodeUri("/sap/bc/adt/programs/programs/zprog/source/main")

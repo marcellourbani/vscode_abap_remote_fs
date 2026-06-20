@@ -17,6 +17,10 @@ const logError = (message: string) => {
   channel.appendLine(message)
 }
 
+/** Wrap plain InactiveObject[] into InactiveObjectRecord[] for use with showActivationSelectionDialog */
+const toRecords = (objects: any[]): InactiveObjectRecord[] =>
+  objects.map(obj => ({ object: obj }) as InactiveObjectRecord)
+
 export interface ActivationEvent {
   object: AbapObject
   uri: Uri
@@ -378,21 +382,29 @@ export class AdtObjectActivator {
     const firstObject = msgs[0]?.target || defaultObjectName
     const summary = `Activation failed: ${errorCount} error${errorCount !== 1 ? "s" : ""} in ${firstObject}${errorCount > 1 ? ` (${firstError}...)` : ` (${firstError})`}`
 
+    const detailLines: string[] = []
     logError(`❌ Activation failed for ${defaultObjectName}:`)
     for (const [key, vals] of grouped.entries()) {
+      detailLines.push(`${key}:`)
       logError(`  📍 ${key}:`)
       vals.forEach(v => {
+        detailLines.push(`  ${v.text}`)
         logError(`      ${v.text}`)
       })
     }
-    if (inactiveList.length) logError(`  ⚠️ Inactive objects: ${inactiveList.join(", ")}`)
+    if (inactiveList.length) {
+      detailLines.push(`Inactive objects: ${inactiveList.join(", ")}`)
+      logError(`  ⚠️ Inactive objects: ${inactiveList.join(", ")}`)
+    }
+    const details = detailLines.join("\n")
 
-    return { ok: false, summary }
+    return { ok: false, summary, details }
   }
 
   public async activateMultiple(interactive = true): Promise<{
     ok: boolean
     summary?: string
+    details?: string
     availableCount?: number
     selectedCount?: number
     cancelled?: boolean
@@ -482,7 +494,7 @@ export class AdtObjectActivator {
     if (relatedObjects.length > 1) {
       // Show user selection dialog for which objects to activate
       const selectedObjects = interactive
-        ? await this.showActivationSelectionDialog(relatedObjects)
+        ? await this.showActivationSelectionDialog(toRecords(relatedObjects))
         : relatedObjects
 
       if (selectedObjects && selectedObjects.length > 0) {
@@ -518,7 +530,9 @@ export class AdtObjectActivator {
 
         if (fallbackObjects.length > 1) {
           // Show user selection dialog for which objects to activate
-          const selectedObjects = await this.showActivationSelectionDialog(fallbackObjects)
+          const selectedObjects = interactive
+            ? await this.showActivationSelectionDialog(toRecords(fallbackObjects))
+            : fallbackObjects
 
           if (selectedObjects && selectedObjects.length > 0) {
             result = await this.client.activate(selectedObjects)
@@ -537,7 +551,7 @@ export class AdtObjectActivator {
     object: AbapObject,
     uri: Uri,
     interactive = true
-  ): Promise<{ ok: boolean; summary?: string }> {
+  ): Promise<{ ok: boolean; summary?: string; details?: string }> {
     const inactive = object.lockObject
 
     try {

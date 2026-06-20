@@ -15,6 +15,7 @@ import * as vscode from "vscode"
 import { registerToolWithRegistry } from "./toolRegistry"
 import { logTelemetry } from "../telemetry"
 import { getClient } from "../../adt/conections"
+import { assertToolInvocationAuthorized } from "./toolGuard"
 
 // ── Interfaces (mirror abap-adt-api types) ──────────────────────
 
@@ -49,9 +50,7 @@ export interface IAdtDiscoveryParameters {
 
 // ── Tool ────────────────────────────────────────────────────────
 
-export class AdtDiscoveryTool
-  implements vscode.LanguageModelTool<IAdtDiscoveryParameters>
-{
+export class AdtDiscoveryTool implements vscode.LanguageModelTool<IAdtDiscoveryParameters> {
   async prepareInvocation(
     options: vscode.LanguageModelToolInvocationPrepareOptions<IAdtDiscoveryParameters>,
     _token: vscode.CancellationToken
@@ -66,6 +65,7 @@ export class AdtDiscoveryTool
     options: vscode.LanguageModelToolInvocationOptions<IAdtDiscoveryParameters>,
     _token: vscode.CancellationToken
   ): Promise<vscode.LanguageModelToolResult> {
+    assertToolInvocationAuthorized(options)
 
     const connId = options.input.connectionId
     if (!connId) {
@@ -156,10 +156,7 @@ export class AdtDiscoveryTool
 
     await vscode.workspace.fs.createDirectory(baseUri)
     await Promise.all([
-      vscode.workspace.fs.writeFile(
-        vscode.Uri.joinPath(baseUri, "README.md"),
-        enc.encode(indexMd)
-      ),
+      vscode.workspace.fs.writeFile(vscode.Uri.joinPath(baseUri, "README.md"), enc.encode(indexMd)),
       vscode.workspace.fs.writeFile(
         vscode.Uri.joinPath(baseUri, "workspaces.md"),
         enc.encode(workspacesMd)
@@ -224,17 +221,29 @@ function buildIndexMd(
   lines.push("")
   lines.push("| File | Description |")
   lines.push("|------|-------------|")
-  lines.push("| [workspaces.md](workspaces.md) | Full discovery tree — workspaces → collections → template links |")
-  lines.push("| [core-discovery.md](core-discovery.md) | Core discovery entries (simpler flat list) |")
-  lines.push("| [res-app-classes.md](res-app-classes.md) | All RES_APP classes that register ADT endpoints |")
+  lines.push(
+    "| [workspaces.md](workspaces.md) | Full discovery tree — workspaces → collections → template links |"
+  )
+  lines.push(
+    "| [core-discovery.md](core-discovery.md) | Core discovery entries (simpler flat list) |"
+  )
+  lines.push(
+    "| [res-app-classes.md](res-app-classes.md) | All RES_APP classes that register ADT endpoints |"
+  )
   lines.push("")
   lines.push("## How to use these files")
   lines.push("")
-  lines.push("These files contain the **raw discovery data** from the SAP system. To investigate a specific ADT endpoint:")
+  lines.push(
+    "These files contain the raw discovery data from the SAP system. To investigate a specific ADT endpoint:"
+  )
   lines.push("")
   lines.push("1. Find the endpoint URL in `workspaces.md` (search by keyword)")
-  lines.push("2. Use the `adt-api-discovery` skill which teaches how to trace from discovery → RES_APP class → handler class → Simple Transformation → XML schema")
-  lines.push("3. Use ABAP tools (`get_abap_object_lines`, `search_abap_objects`, `search_abap_object_lines`) to read source code")
+  lines.push(
+    "2. Use the `adt-api-discovery` skill which teaches how to trace from discovery → RES_APP class → handler class → Simple Transformation → XML schema"
+  )
+  lines.push(
+    "3. Use ABAP tools (`get_abap_object_lines`, `search_abap_objects`, `search_abap_object_lines`) to read source code"
+  )
   lines.push("")
   return lines.join("\n")
 }
@@ -259,7 +268,7 @@ function buildWorkspacesMd(discovery: DiscoveryWorkspace[]): string {
     for (const col of ws.collection) {
       lines.push(`### ${col.title || "(untitled)"}`)
       lines.push("")
-      lines.push(`- **href**: \`${col.href}\``)
+      lines.push(`- href: \`${col.href}\``)
       lines.push("")
 
       if (col.templateLinks.length === 0) {
@@ -295,18 +304,14 @@ function buildCoreDiscoveryMd(coreDiscovery: CoreDiscoveryWorkspace[]): string {
 
   for (const ws of coreDiscovery) {
     const c = ws.collection
-    lines.push(
-      `| ${ws.title} | ${c.title || ""} | \`${c.href}\` | ${c.category || ""} |`
-    )
+    lines.push(`| ${ws.title} | ${c.title || ""} | \`${c.href}\` | ${c.category || ""} |`)
   }
 
   lines.push("")
   return lines.join("\n")
 }
 
-function buildResAppClassesMd(
-  classes: { name: string; description: string }[]
-): string {
+function buildResAppClassesMd(classes: { name: string; description: string }[]): string {
   const lines: string[] = []
   lines.push("# RES_APP Classes")
   lines.push("")
@@ -345,9 +350,7 @@ function getFirstNonAdtFolder(): vscode.Uri | undefined {
 
 // ── Registration ────────────────────────────────────────────────
 
-export function registerAdtDiscoveryTool(
-  context: vscode.ExtensionContext
-): void {
+export function registerAdtDiscoveryTool(context: vscode.ExtensionContext): void {
   context.subscriptions.push(
     registerToolWithRegistry("adt_discovery_export", new AdtDiscoveryTool())
   )

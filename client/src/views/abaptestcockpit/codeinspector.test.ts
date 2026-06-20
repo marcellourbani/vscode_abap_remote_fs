@@ -1,10 +1,14 @@
 import { getVariant, runInspectorByAdtUrl, runInspector, findingPragmas } from "./codeinspector"
 
-jest.mock("vscode", () => ({
-  Uri: {
-    parse: jest.fn((s: string) => ({ toString: () => s, scheme: "adt", authority: "sys" }))
-  }
-}), { virtual: true })
+jest.mock(
+  "vscode",
+  () => ({
+    Uri: {
+      parse: jest.fn((s: string) => ({ toString: () => s, scheme: "adt", authority: "sys" }))
+    }
+  }),
+  { virtual: true }
+)
 
 jest.mock("../../adt/conections", () => ({
   getClient: jest.fn()

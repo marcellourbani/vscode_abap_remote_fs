@@ -1,13 +1,19 @@
-jest.mock("vscode", () => ({
-  extensions: {
-    getExtension: jest.fn()
-  }
-}), { virtual: true })
+jest.mock(
+  "vscode",
+  () => ({
+    extensions: {
+      getExtension: jest.fn()
+    }
+  }),
+  { virtual: true }
+)
 
 import { getWinRegistryReader } from "./winregistry"
 import { extensions } from "vscode"
 
-const mockGetExtension = extensions.getExtension as jest.MockedFunction<typeof extensions.getExtension>
+const mockGetExtension = extensions.getExtension as jest.MockedFunction<
+  typeof extensions.getExtension
+>
 
 describe("getWinRegistryReader", () => {
   beforeEach(() => {

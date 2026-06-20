@@ -18,6 +18,7 @@ export const AbapFsCommands = {
   selectDB: "abapfs.selectDB",
   showObject: "abapfs.showObject",
   clearPassword: "abapfs.clearPassword",
+  changePassword: "abapfs.changePassword",
   addfavourite: "abapfs.addfavourite",
   deletefavourite: "abapfs.deletefavourite",
   createConnection: "abapfs.createConnection",
@@ -27,6 +28,7 @@ export const AbapFsCommands = {
   tableContents: "abapfs.tableContents",
   exportToJson: "abapfs.exportToJson",
   extractMethod: "abapfs.extractMethod",
+  showWalkThrough: "abapfs.showWalkThrough",
   // atc
   atcChecks: "abapfs.atcChecks",
   atcIgnore: "abapfs.atcIgnore",
@@ -118,7 +120,17 @@ export const AbapFsCommands = {
   deactivateCommLog: "abapfs.deactivateCommLog",
   // RAP Generator
   rapGenFromEditor: "abapfs.rapGenFromEditor",
-  publishServiceBinding: "abapfs.publishServiceBinding"
+  publishServiceBinding: "abapfs.publishServiceBinding",
+  testServiceBinding: "abapfs.testServiceBinding",
+  // S/4HANA Readiness
+  s4hLoad: "abapfs.s4hLoad",
+  s4hRefresh: "abapfs.s4hRefresh",
+  s4hOpenObject: "abapfs.s4hOpenObject",
+  s4hRunAtc: "abapfs.s4hRunAtc",
+  s4hAskCopilot: "abapfs.s4hAskCopilot",
+  s4hOpenNote: "abapfs.s4hOpenNote",
+  s4hFilter: "abapfs.s4hFilter",
+  s4hClearFilter: "abapfs.s4hClearFilter"
 }
 
 export const abapcmds: {

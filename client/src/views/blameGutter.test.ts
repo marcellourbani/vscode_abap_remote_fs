@@ -10,6 +10,7 @@ jest.mock(
     return {
       ProgressLocation: { Notification: 15 },
       OverviewRulerLane: { Right: 4 },
+      StatusBarAlignment: { Left: 1, Right: 2 },
       DecorationRangeBehavior: { ClosedClosed: 0, OpenOpen: 1 },
       Range: jest.fn((sl: number, sc: number, el: number, ec: number) => ({
         start: { line: sl, character: sc },
@@ -22,7 +23,9 @@ jest.mock(
       }),
       commands: { registerCommand: jest.fn(() => mockDisposable) },
       workspace: {
-        getConfiguration: jest.fn(() => ({ get: jest.fn((_: string, fallback: unknown) => fallback) })),
+        getConfiguration: jest.fn(() => ({
+          get: jest.fn((_: string, fallback: unknown) => fallback)
+        })),
         onDidSaveTextDocument: jest.fn(() => mockDisposable),
         onDidChangeConfiguration: jest.fn(() => mockDisposable)
       }
@@ -84,7 +87,12 @@ jest.mock(
       showInformationMessage: jest.fn(),
       showErrorMessage: jest.fn(),
       withProgress: jest.fn(),
-      createTextEditorDecorationType: jest.fn(() => ({ dispose: jest.fn() }))
+      createTextEditorDecorationType: jest.fn(() => ({ dispose: jest.fn() })),
+      createStatusBarItem: jest.fn(() => ({
+        show: jest.fn(),
+        hide: jest.fn(),
+        dispose: jest.fn()
+      }))
     }
   }),
   { virtual: true }
@@ -386,7 +394,9 @@ describe("onBlameTextEditorSelectionChanged", () => {
     } as any)
 
     expect((editor.setDecorations as jest.Mock).mock.calls).toHaveLength(3)
-    expect((editor.setDecorations as jest.Mock).mock.calls[1][1][0].renderOptions.after.contentText).toContain("JSMITH,")
+    expect(
+      (editor.setDecorations as jest.Mock).mock.calls[1][1][0].renderOptions.after.contentText
+    ).toContain("JSMITH,")
     expect((editor.setDecorations as jest.Mock).mock.calls[2][1]).toEqual([])
   })
 })

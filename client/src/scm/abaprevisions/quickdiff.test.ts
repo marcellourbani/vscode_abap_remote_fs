@@ -1,13 +1,17 @@
-jest.mock("vscode", () => ({
-  Uri: {
-    parse: jest.fn((s: string) => ({
-      scheme: "adt",
-      authority: s.split("://")[1]?.split("/")[0] || "conn",
-      path: s,
-      toString: () => s
-    }))
-  }
-}), { virtual: true })
+jest.mock(
+  "vscode",
+  () => ({
+    Uri: {
+      parse: jest.fn((s: string) => ({
+        scheme: "adt",
+        authority: s.split("://")[1]?.split("/")[0] || "conn",
+        path: s,
+        toString: () => s
+      }))
+    }
+  }),
+  { virtual: true }
+)
 
 jest.mock("./abaprevisionservice", () => ({
   AbapRevisionService: {

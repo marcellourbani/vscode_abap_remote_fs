@@ -6,6 +6,7 @@
 import * as vscode from "vscode"
 import { registerToolWithRegistry } from "./toolRegistry"
 import { logTelemetry } from "../telemetry"
+import { assertToolInvocationAuthorized } from "./toolGuard"
 
 // ============================================================================
 // INTERFACE
@@ -69,6 +70,7 @@ export class CreateABAPObjectTool implements vscode.LanguageModelTool<ICreateObj
     options: vscode.LanguageModelToolInvocationOptions<ICreateObjectParameters>,
     _token: vscode.CancellationToken
   ): Promise<vscode.LanguageModelToolResult> {
+    assertToolInvocationAuthorized(options)
     let {
       objectType,
       name,
@@ -107,24 +109,23 @@ export class CreateABAPObjectTool implements vscode.LanguageModelTool<ICreateObj
             structuredResult.message.includes("Object not found in workspace")
           ) {
             errorText =
-              `**ABAP Object Creation Failed** ❌\n\n` +
-              `• **Object Type:** ${objectType}\n` +
-              `• **Name:** ${name}\n` +
-              `• **Error:** ${structuredResult.error || "WORKSPACE_REGISTRATION_FAILED"}\n` +
-              `• **Message:** ${structuredResult.message}\n\n` +
-              `**NOTE:** Even though this error occurred, the object may have been successfully created in SAP. This error typically happens during the workspace registration phase, not during object creation itself.\n\n` +
-              `**Suggested Actions:**\n` +
-              `1. Use get_abap_object_workspace_uri tool to get the workspace URI for object "${name}" with type "${objectType}"\n` +
-              `2. If you get a valid URI, try opening it in VS Code to verify the object exists\n` +
-              `3. The object creation in SAP was likely successful despite this error`
+              `ABAP Object Creation Failed\n` +
+              `Object Type: ${objectType}\n` +
+              `Name: ${name}\n` +
+              `Error: ${structuredResult.error || "WORKSPACE_REGISTRATION_FAILED"}\n` +
+              `Message: ${structuredResult.message}\n\n` +
+              `NOTE: object may have been created in SAP — this error is from workspace registration, not object creation.\n` +
+              `Next steps:\n` +
+              `1. Call get_abap_object_workspace_uri with name="${name}" type="${objectType}"\n` +
+              `2. If valid URI returned, open it in VS Code to verify\n` +
+              `3. SAP creation was likely successful despite this error`
           } else {
             errorText =
-              `**ABAP Object Creation Failed** ❌\n\n` +
-              `• **Object Type:** ${objectType}\n` +
-              `• **Name:** ${name}\n` +
-              `• **Error:** ${structuredResult.error || "UNKNOWN_ERROR"}\n` +
-              `• **Message:** ${structuredResult.message || "No error message provided"}\n\n` +
-              `The object could not be created. Please check the error details above and try again.`
+              `ABAP Object Creation Failed\n` +
+              `Object Type: ${objectType}\n` +
+              `Name: ${name}\n` +
+              `Error: ${structuredResult.error || "UNKNOWN_ERROR"}\n` +
+              `Message: ${structuredResult.message || "none"}\n`
           }
 
           return new vscode.LanguageModelToolResult([new vscode.LanguageModelTextPart(errorText)])
@@ -132,13 +133,12 @@ export class CreateABAPObjectTool implements vscode.LanguageModelTool<ICreateObj
       }
 
       const resultText =
-        `**ABAP Object Created Successfully** ✅\n\n` +
-        `• **Object Type:** ${objectType}\n` +
-        `• **Name:** ${name}\n` +
-        `• **Description:** ${description}\n` +
-        `• **Package:** ${packageName}\n` +
-        `• **Status:** Created and ready for development\n\n` +
-        `The object has been created in the SAP system and is ready for editing.`
+        `ABAP Object Created Successfully\n` +
+        `Object Type: ${objectType}\n` +
+        `Name: ${name}\n` +
+        `Description: ${description}\n` +
+        `Package: ${packageName}\n` +
+        `Status: created, ready for development`
 
       return new vscode.LanguageModelToolResult([new vscode.LanguageModelTextPart(resultText)])
     } catch (error) {

@@ -70,9 +70,11 @@ export function parseCDS(source: string, config: ParserConfig = {}) {
   const { tokenMiddleware: mid, errorListener, parserListener } = config
   const inputStream = new ANTLRInputStream(source)
   const lexer = new ABAPCDSLexer(inputStream)
+  lexer.removeErrorListeners()
 
   const tokenStream = new CommonTokenStream(mid ? mid(lexer) : lexer)
   const parser = new ABAPCDSParser(tokenStream)
+  parser.removeErrorListeners()
   if (errorListener) parser.addErrorListener(errorListener)
   if (parserListener) parser.addParseListener(parserListener)
   return parser.cdsddl()
@@ -121,13 +123,15 @@ const sourceOrFieldCompletion = (
 export type MatchType = "NONE" | "FIELD" | "SOURCE"
 
 export type CdsNavTarget =
-  | { kind: "source"; name: string }        // table/view name (data source)
-  | { kind: "field"; source: string; field: string }  // alias.field → resolved source.field
-  | { kind: "association"; name: string }    // association target
-  | { kind: "dataElement"; name: string }    // data element in CAST
-  | { kind: "unknown"; word: string }        // fallback - just the word
+  | { kind: "source"; name: string } // table/view name (data source)
+  | { kind: "field"; source: string; field: string } // alias.field → resolved source.field
+  | { kind: "association"; name: string } // association target
+  | { kind: "dataElement"; name: string } // data element in CAST
+  | { kind: "unknown"; word: string } // fallback - just the word
 
-interface AliasMap { [alias: string]: string }
+interface AliasMap {
+  [alias: string]: string
+}
 
 function buildAliasMap(tree: ParserRuleContext): AliasMap {
   const map: AliasMap = {}
@@ -139,7 +143,9 @@ function buildAliasMap(tree: ParserRuleContext): AliasMap {
       if (ids.length > 0) {
         const tableName = ids[0].text
         // find alias child rule
-        const aliasCtx = (ctx.children || []).filter(isRuleContext).find(c => c.ruleIndex === ABAPCDSParser.RULE_alias)
+        const aliasCtx = (ctx.children || [])
+          .filter(isRuleContext)
+          .find(c => c.ruleIndex === ABAPCDSParser.RULE_alias)
         const aliasName = aliasCtx ? aliasCtx.text : tableName
         map[aliasName.toLowerCase()] = tableName
       }
@@ -190,7 +196,9 @@ export function cdsNavigationTarget(source: string, pos: Position): CdsNavTarget
         case ABAPCDSParser.RULE_data_source: {
           // cursor is on a data source name (table/view)
           const children = current.children || []
-          const firstId = children.filter(isTerminal).find(t => t.symbol.type === ABAPCDSLexer.IDENTIFIER)
+          const firstId = children
+            .filter(isTerminal)
+            .find(t => t.symbol.type === ABAPCDSLexer.IDENTIFIER)
           if (firstId && positionInToken(pos, firstId.symbol)) {
             return { kind: "source", name: firstId.text }
           }

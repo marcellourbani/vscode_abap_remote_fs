@@ -1,19 +1,23 @@
 // Must mock vscode before any imports that reference it
-jest.mock("vscode", () => ({
-  workspace: {
-    getConfiguration: jest.fn(),
-    workspaceFolders: [] as any[],
-    onDidChangeConfiguration: jest.fn()
-  },
-  ConfigurationTarget: {
-    Global: 1,
-    Workspace: 2,
-    WorkspaceFolder: 3
-  },
-  Uri: {
-    parse: jest.fn((s: string) => ({ toString: () => s }))
-  }
-}), { virtual: true })
+jest.mock(
+  "vscode",
+  () => ({
+    workspace: {
+      getConfiguration: jest.fn(),
+      workspaceFolders: [] as any[],
+      onDidChangeConfiguration: jest.fn()
+    },
+    ConfigurationTarget: {
+      Global: 1,
+      Workspace: 2,
+      WorkspaceFolder: 3
+    },
+    Uri: {
+      parse: jest.fn((s: string) => ({ toString: () => s }))
+    }
+  }),
+  { virtual: true }
+)
 
 jest.mock("./services/funMessenger", () => ({
   funWindow: {
@@ -43,7 +47,9 @@ jest.mock("./adt/adtCommLog", () => ({
 }))
 jest.mock("vscode-abap-remote-fs-sharedapi", () => ({}))
 jest.mock("fs", () => ({
-  readFileSync: jest.fn(() => { throw new Error("not found") })
+  readFileSync: jest.fn(() => {
+    throw new Error("not found")
+  })
 }))
 
 import { workspace, ConfigurationTarget } from "vscode"
@@ -67,11 +73,14 @@ function mockWorkspaceConfig(remotes: Record<string, any> = {}, inspect?: any) {
       return defaultVal
     }),
     update: jest.fn().mockResolvedValue(undefined),
-    inspect: jest.fn((key: string) => inspect || {
-      globalValue: remotes,
-      workspaceValue: {},
-      workspaceFolderValue: {}
-    }),
+    inspect: jest.fn(
+      (key: string) =>
+        inspect || {
+          globalValue: remotes,
+          workspaceValue: {},
+          workspaceFolderValue: {}
+        }
+    ),
     remote: remotes
   }
   ;(workspace.getConfiguration as jest.Mock).mockReturnValue(configObject)
@@ -241,10 +250,7 @@ describe("saveNewRemote", () => {
   })
 
   test("throws when validation fails (name too short)", async () => {
-    mockWorkspaceConfig(
-      {},
-      { globalValue: {}, workspaceValue: {}, workspaceFolderValue: {} }
-    )
+    mockWorkspaceConfig({}, { globalValue: {}, workspaceValue: {}, workspaceFolderValue: {} })
     const remote = { name: "ab", url: "https://host", username: "user" } as any
     await expect(saveNewRemote(remote, ConfigurationTarget.Global)).rejects.toThrow()
   })
@@ -255,7 +261,9 @@ describe("saveNewRemote", () => {
       { globalValue: { taken: {} }, workspaceValue: {}, workspaceFolderValue: {} }
     )
     const remote = { name: "taken", url: "https://host", username: "user" } as any
-    await expect(saveNewRemote(remote, ConfigurationTarget.Global)).rejects.toThrow(/already in use/)
+    await expect(saveNewRemote(remote, ConfigurationTarget.Global)).rejects.toThrow(
+      /already in use/
+    )
   })
 })
 
@@ -373,10 +381,7 @@ describe("RemoteManager", () => {
   })
 
   test("byIdAsync returns undefined for completely missing connection", async () => {
-    mockWorkspaceConfig(
-      {},
-      { globalValue: {}, workspaceValue: {}, workspaceFolderValue: {} }
-    )
+    mockWorkspaceConfig({}, { globalValue: {}, workspaceValue: {}, workspaceFolderValue: {} })
     ;(RemoteManager as any).instance = undefined
     const manager = RemoteManager.get()
     const result = await manager.byIdAsync("ghost")
@@ -397,11 +402,7 @@ describe("RemoteManager", () => {
     const manager = RemoteManager.get()
     await manager.byIdAsync("dev")
     await manager.savePassword("dev", "user", "secret")
-    expect(vault.setPassword).toHaveBeenCalledWith(
-      "vscode.abapfs.dev",
-      "user",
-      "secret"
-    )
+    expect(vault.setPassword).toHaveBeenCalledWith("vscode.abapfs.dev", "user", "secret")
     expect(manager.byId("dev")?.password).toBe("secret")
   })
 
@@ -445,10 +446,7 @@ describe("RemoteManager", () => {
 
   test("selectConnection with empty remote list throws", async () => {
     ;(RemoteManager as any).instance = undefined
-    mockWorkspaceConfig(
-      {},
-      { globalValue: {}, workspaceValue: {}, workspaceFolderValue: {} }
-    )
+    mockWorkspaceConfig({}, { globalValue: {}, workspaceValue: {}, workspaceFolderValue: {} })
     const manager = RemoteManager.get()
     // remoteList throws if no remote key
     const mockCfg = {

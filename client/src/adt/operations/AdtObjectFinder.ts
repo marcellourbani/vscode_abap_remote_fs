@@ -336,6 +336,21 @@ export class AdtObjectFinder {
         type: "NROB/NR",
         label: "Number Range Objects",
         picked: previousSelection.includes("NROB/NR")
+      },
+      {
+        type: "BDEF/BDO",
+        label: "Behavior Definitions",
+        picked: previousSelection.includes("BDEF/BDO")
+      },
+      {
+        type: "SRVB/SVB",
+        label: "Service Bindings",
+        picked: previousSelection.includes("SRVB/SVB")
+      },
+      {
+        type: "SRVD/SRV",
+        label: "Service Definitions",
+        picked: previousSelection.includes("SRVD/SRV")
       }
     ]
 

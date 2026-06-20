@@ -4,14 +4,23 @@ jest.mock("abap-adt-api", () => ({
 jest.mock("abapfs", () => ({
   isAbapFile: jest.fn((node: any) => node && node.__isAbapFile === true)
 }))
-jest.mock("vscode", () => ({
-  Uri: {
-    parse: jest.fn((s: string) => ({ scheme: "adt", path: s.replace(/^adt:\/\/[^/]+/, ""), toString: () => s }))
-  }
-}), { virtual: true })
+jest.mock(
+  "vscode",
+  () => ({
+    Uri: {
+      parse: jest.fn((s: string) => ({
+        scheme: "adt",
+        path: s.replace(/^adt:\/\/[^/]+/, ""),
+        toString: () => s
+      }))
+    }
+  }),
+  { virtual: true }
+)
 jest.mock("@vscode/debugadapter", () => ({
   Breakpoint: jest.fn().mockImplementation((verified: boolean, line?: number) => ({
-    verified, line
+    verified,
+    line
   })),
   Source: jest.fn().mockImplementation((name: string, path: string) => ({ name, path }))
 }))
@@ -119,21 +128,23 @@ describe("BreakpointManager", () => {
     })
 
     test("stores breakpoints after successful sync", async () => {
-      const listener = makeListener()
+      const fakeBp = { __isDebuggerBP: true, uri: { range: { start: { line: 10 } } } }
+      const client = makeAdtClient({
+        statelessClone: makeStatelessClient({
+          debuggerSetBreakpoints: jest.fn().mockResolvedValue([fakeBp])
+        })
+      })
+      mockGetClient.mockReturnValueOnce(client as any)
+      const activeThreads = [[1, { debuggee: { name: "hi" }, client }]]
+      const listener = makeListener({ activeThreads })
+
       const bpm = new BreakpointManager(listener)
       const node = makeAbapNode()
       const mockRoot = { getNodeAsync: jest.fn().mockResolvedValue(node) }
       mockGetRoot.mockReturnValueOnce(mockRoot as any)
       mockIsAbapFile.mockReturnValueOnce(true)
 
-      const fakeBp = { __isDebuggerBP: true, uri: { range: { start: { line: 10 } } } }
       mockIsDebuggerBP.mockReturnValue(true)
-      const adtClient = makeAdtClient({
-        statelessClone: makeStatelessClient({
-          debuggerSetBreakpoints: jest.fn().mockResolvedValue([fakeBp])
-        })
-      })
-      mockGetClient.mockReturnValueOnce(adtClient as any)
 
       const path = "adt://TST/sap/bc/adt/programs/programs/ZPROG"
       const bps = await bpm.setBreakpoints({ path, name: "ZPROG" }, [{ line: 10 }])
@@ -141,20 +152,21 @@ describe("BreakpointManager", () => {
     })
 
     test("returns unverified breakpoints when server returns none", async () => {
-      const listener = makeListener()
+      const fakeBp = { __isDebuggerBP: true, uri: { range: { start: { line: 10 } } } }
+      const client = makeAdtClient({
+        statelessClone: makeStatelessClient({
+          debuggerSetBreakpoints: jest.fn().mockResolvedValue([fakeBp])
+        })
+      })
+      mockGetClient.mockReturnValueOnce(client as any)
+      const activeThreads = [[1, { debuggee: { name: "hi" }, client }]]
+      const listener = makeListener({ activeThreads })
       const bpm = new BreakpointManager(listener)
       const node = makeAbapNode()
       const mockRoot = { getNodeAsync: jest.fn().mockResolvedValue(node) }
       mockGetRoot.mockReturnValueOnce(mockRoot as any)
       mockIsAbapFile.mockReturnValueOnce(true)
       mockIsDebuggerBP.mockReturnValue(false)
-      const adtClient = makeAdtClient({
-        statelessClone: makeStatelessClient({
-          debuggerSetBreakpoints: jest.fn().mockResolvedValue([])
-        })
-      })
-      mockGetClient.mockReturnValueOnce(adtClient as any)
-
       const path = "adt://TST/sap/bc/adt/programs/programs/ZPROG"
       const bps = await bpm.setBreakpoints({ path, name: "ZPROG" }, [{ line: 5 }])
       // syncBreakpoints returns one AdtBreakpoint per input breakpoint, unverified when no match found
@@ -163,18 +175,19 @@ describe("BreakpointManager", () => {
     })
 
     test("handles exception in syncBreakpoints gracefully", async () => {
-      const listener = makeListener()
-      const bpm = new BreakpointManager(listener)
-      const node = makeAbapNode()
-      const mockRoot = { getNodeAsync: jest.fn().mockResolvedValue(node) }
-      mockGetRoot.mockReturnValueOnce(mockRoot as any)
-      mockIsAbapFile.mockReturnValueOnce(true)
       const adtClient = makeAdtClient({
         statelessClone: makeStatelessClient({
           debuggerSetBreakpoints: jest.fn().mockRejectedValue(new Error("network error"))
         })
       })
       mockGetClient.mockReturnValueOnce(adtClient as any)
+      const activeThreads = [[1, { debuggee: { name: "hi" }, client: adtClient }]]
+      const listener = makeListener({ activeThreads })
+      const bpm = new BreakpointManager(listener)
+      const node = makeAbapNode()
+      const mockRoot = { getNodeAsync: jest.fn().mockResolvedValue(node) }
+      mockGetRoot.mockReturnValueOnce(mockRoot as any)
+      mockIsAbapFile.mockReturnValueOnce(true)
 
       const path = "adt://TST/sap/bc/adt/programs/programs/ZPROG"
       const result = await bpm.setBreakpoints({ path, name: "ZPROG" }, [{ line: 5 }])

@@ -1,10 +1,14 @@
 // Tests for editors/httpprovider.ts
-jest.mock("vscode", () => ({
-  Uri: {
-    file: jest.fn((p: string) => ({ fsPath: p, toString: () => p }))
-  },
-  ExtensionContext: class {}
-}), { virtual: true })
+jest.mock(
+  "vscode",
+  () => ({
+    Uri: {
+      file: jest.fn((p: string) => ({ fsPath: p, toString: () => p }))
+    },
+    ExtensionContext: class {}
+  }),
+  { virtual: true }
+)
 
 jest.mock("../services/funMessenger", () => ({
   funWindow: {
@@ -26,7 +30,13 @@ import { parseHTTP } from "./httpparser"
 const makeField = (name: string, value: string) =>
   `<tr><td><strong>${name}</strong></td><td>${value}</td></tr>`
 
-const toHtmlLogic = (service: { name: string; text: string; handlerClass: string; author: string; url: string }) => {
+const toHtmlLogic = (service: {
+  name: string
+  text: string
+  handlerClass: string
+  author: string
+  url: string
+}) => {
   const tbody =
     makeField("Handler Class", service.handlerClass) +
     makeField("Author", service.author) +

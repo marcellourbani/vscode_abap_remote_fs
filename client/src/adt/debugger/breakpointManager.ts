@@ -136,7 +136,7 @@ export class BreakpointManager {
     for (const bp of deleted)
       await client.statelessClone
         .debuggerDeleteBreakpoints(bp, "user", this.terminalId, this.ideId, this.username)
-        .catch(ignore)
+        .catch(e => log(`syncBreakpoints: deleteBreakpoint failed: ${caughtToString(e)}`))
     let actualbps: DebugBreakpoint[] = []
     actualbps = await client.statelessClone
       .debuggerSetBreakpoints(
@@ -181,9 +181,9 @@ export class BreakpointManager {
           () => []
         )
     }
-    for (const [id, conn] of this.listener.activeServices()) {
+    for (const [id, service] of this.listener.activeThreads) {
       for (const bp of deleted)
-        await conn.client
+        await service.client
           .debuggerDeleteBreakpoints(
             bp,
             "user",
@@ -192,8 +192,10 @@ export class BreakpointManager {
             this.username,
             "debugger"
           )
-          .catch(ignore)
-      await conn.client
+          .catch(e =>
+            log(`syncBreakpoints: deleteBreakpoint(debugger) failed: ${caughtToString(e)}`)
+          )
+      await service.client
         .debuggerSetBreakpoints(
           this.mode,
           this.terminalId,
@@ -206,7 +208,7 @@ export class BreakpointManager {
           false,
           objuri
         )
-        .catch(ignore)
+        .catch(e => log(`syncBreakpoints: setBreakpoints(debugger) failed: ${caughtToString(e)}`))
     }
 
     const confirmed = breakpoints.map(bp => {

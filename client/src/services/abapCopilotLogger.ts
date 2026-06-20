@@ -22,7 +22,7 @@ class ABAPCopilotLogger {
     return ABAPCopilotLogger.instance
   }
 
-  private formatMessage(component: string, message: string): string {   
+  private formatMessage(component: string, message: string): string {
     return `[${component}] ${message}`
   }
 

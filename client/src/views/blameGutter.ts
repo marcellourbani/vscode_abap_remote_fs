@@ -103,6 +103,8 @@ const AUTHOR_COLORS = [
 let blameActiveUris = new Set<string>()
 const blameCache = new Map<string, BlameState>()
 
+let blameStatusBarItem: vscode.StatusBarItem | undefined
+
 let classicBlameDecorationType: vscode.TextEditorDecorationType | undefined
 let classicSelectedLineDecorationType: vscode.TextEditorDecorationType | undefined
 let gitlensLeaderDecorationType: vscode.TextEditorDecorationType | undefined
@@ -451,7 +453,8 @@ function applyHeatmap(
   if (Number.isNaN(date.getTime())) return
 
   const age = heatmap.computeRelativeAge(date)
-  const colors = date.getTime() < heatmap.coldThresholdTimestamp ? heatmap.colors.cold : heatmap.colors.hot
+  const colors =
+    date.getTime() < heatmap.coldThresholdTimestamp ? heatmap.colors.cold : heatmap.colors.hot
   const color = colors[Math.min(age, colors.length - 1)]
   const alpha = age === 0 ? 1 : age <= 5 ? 0.8 : 0.6
 
@@ -592,8 +595,10 @@ function clearBlameHighlights(editor?: vscode.TextEditor) {
 
 function clearSelectedLineAnnotation(editor?: vscode.TextEditor) {
   if (!editor) return
-  if (classicSelectedLineDecorationType) editor.setDecorations(classicSelectedLineDecorationType, [])
-  if (gitlensSelectedLineDecorationType) editor.setDecorations(gitlensSelectedLineDecorationType, [])
+  if (classicSelectedLineDecorationType)
+    editor.setDecorations(classicSelectedLineDecorationType, [])
+  if (gitlensSelectedLineDecorationType)
+    editor.setDecorations(gitlensSelectedLineDecorationType, [])
 }
 
 function updateBlameHighlights(editor: vscode.TextEditor, blame: BlameInfo[], line?: number) {
@@ -649,7 +654,9 @@ function getAvatarInitials(author: string): string {
   return `${parts[0][0]}${parts[parts.length - 1][0]}`.toUpperCase()
 }
 
-function buildAvatarRenderOptions(author: string): vscode.ThemableDecorationAttachmentRenderOptions {
+function buildAvatarRenderOptions(
+  author: string
+): vscode.ThemableDecorationAttachmentRenderOptions {
   const initials = getAvatarInitials(author)
   const accent = accentColorForAuthor(author)
   const svg = encodeURIComponent(
@@ -676,7 +683,11 @@ function buildAvatarRenderOptions(author: string): vscode.ThemableDecorationAtta
   }
 }
 
-function updateSelectedLineAnnotation(editor: vscode.TextEditor, blame: BlameInfo[], line?: number) {
+function updateSelectedLineAnnotation(
+  editor: vscode.TextEditor,
+  blame: BlameInfo[],
+  line?: number
+) {
   if (line == null || line < 0 || line >= blame.length) {
     clearSelectedLineAnnotation(editor)
     return
@@ -892,7 +903,9 @@ async function fetchRevisionSources(
 
       const start = batchIndex * REVISION_FETCH_BATCH_SIZE
       const batch = revisions.slice(start, start + REVISION_FETCH_BATCH_SIZE)
-      const batchSources = await Promise.all(batch.map(revision => client.getObjectSource(revision.uri)))
+      const batchSources = await Promise.all(
+        batch.map(revision => client.getObjectSource(revision.uri))
+      )
 
       if (token.isCancellationRequested) return
 
@@ -1158,6 +1171,24 @@ function updateBlameContext(editor?: vscode.TextEditor) {
 
   setContext("abapfs:blameActive", isBlameOn)
   setContext("abapfs:blameAvailable", canShowBlame)
+
+  // Update status bar item
+  if (!blameStatusBarItem) return
+  if (!isAbap) {
+    blameStatusBarItem.hide()
+  } else if (isBlameOn) {
+    blameStatusBarItem.text = "$(eye-closed) Blame"
+    blameStatusBarItem.tooltip = "Hide Blame"
+    blameStatusBarItem.command = "abapfs.hideBlame"
+    blameStatusBarItem.show()
+  } else {
+    blameStatusBarItem.text = "$(eye) Blame"
+    blameStatusBarItem.tooltip = editor?.document.isDirty
+      ? "Save the document first to enable blame"
+      : "Show Blame"
+    blameStatusBarItem.command = editor?.document.isDirty ? undefined : "abapfs.showBlame"
+    blameStatusBarItem.show()
+  }
 }
 
 function updateBlameAvailableForDocument(document: vscode.TextDocument) {
@@ -1182,10 +1213,17 @@ export function initializeBlameGutter(context: vscode.ExtensionContext) {
     vscode.commands.registerCommand("abapfs.hideBlame", hideBlame)
   )
 
+  // Status bar item: bottom-right, high priority = leftmost of the right-side group.
+  blameStatusBarItem = window.createStatusBarItem(vscode.StatusBarAlignment.Right, 1000)
+  blameStatusBarItem.name = "ABAP FS Blame"
+  context.subscriptions.push(blameStatusBarItem)
+
   // Invalidate the blame cache when documents are saved, and re-render when the mode changes.
   context.subscriptions.push(vscode.workspace.onDidSaveTextDocument(onBlameDocumentSaved))
   context.subscriptions.push(vscode.workspace.onDidChangeConfiguration(onBlameConfigurationChanged))
-  context.subscriptions.push(window.onDidChangeTextEditorSelection(onBlameTextEditorSelectionChanged))
+  context.subscriptions.push(
+    window.onDidChangeTextEditorSelection(onBlameTextEditorSelectionChanged)
+  )
 
   // Clean up decoration types and cached state on deactivate.
   context.subscriptions.push({
@@ -1193,6 +1231,7 @@ export function initializeBlameGutter(context: vscode.ExtensionContext) {
       disposeBlameDecorationTypes()
       blameCache.clear()
       blameActiveUris.clear()
+      blameStatusBarItem = undefined
     }
   })
 

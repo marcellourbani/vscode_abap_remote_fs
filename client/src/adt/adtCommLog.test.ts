@@ -1,6 +1,8 @@
 jest.mock("vscode", () => ({}), { virtual: true })
 jest.mock("../extension", () => ({ context: { extensionPath: "/fake/ext" } }))
-jest.mock("../langClient", () => ({ client: { sendNotification: jest.fn().mockResolvedValue(undefined) } }))
+jest.mock("../langClient", () => ({
+  client: { sendNotification: jest.fn().mockResolvedValue(undefined) }
+}))
 jest.mock("../lib", () => ({ ignore: jest.fn() }))
 jest.mock("../commands", () => ({
   AbapFsCommands: { activateCommLog: "activateCommLog", deactivateCommLog: "deactivateCommLog" },

@@ -1,6 +1,10 @@
-jest.mock("vscode", () => ({
-  ExtensionContext: jest.fn()
-}), { virtual: true })
+jest.mock(
+  "vscode",
+  () => ({
+    ExtensionContext: jest.fn()
+  }),
+  { virtual: true }
+)
 
 jest.mock("./search", () => ({
   SearchTool: jest.fn().mockImplementation(() => ({ id: "search" }))
@@ -22,7 +26,9 @@ import { registerChatTools } from "./tools"
 import { registerToolWithRegistry } from "../../services/lm-tools/toolRegistry"
 import { ActivateTool } from "./activate"
 
-const mockRegisterTool = registerToolWithRegistry as jest.MockedFunction<typeof registerToolWithRegistry>
+const mockRegisterTool = registerToolWithRegistry as jest.MockedFunction<
+  typeof registerToolWithRegistry
+>
 
 describe("registerChatTools", () => {
   let mockContext: any

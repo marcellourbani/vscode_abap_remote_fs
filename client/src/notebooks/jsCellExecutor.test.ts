@@ -35,7 +35,7 @@ jest.mock("worker_threads", () => ({
   Worker: jest.fn().mockImplementation(() => {
     lastWorker = createMockWorker()
     return lastWorker
-  }),
+  })
 }))
 
 import { executeJsCell } from "./jsCellExecutor"
@@ -114,7 +114,7 @@ describe("executeJsCell — happy paths", () => {
     const cellResults = new Map<number, CellResult>([
       [0, { result: "A" }],
       [1, { result: "B" }],
-      [2, { result: "C" }],
+      [2, { result: "C" }]
     ])
     // code only references cells[1]
     const promise = executeJsCell("cells[1].result", 3, cellResults)

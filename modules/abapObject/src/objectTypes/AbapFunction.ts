@@ -1,9 +1,8 @@
-import { AbapObjectCreator } from "../creator"
-import { AbapObjectBase, AbapObject, AbapObjectService } from ".."
+import { AbapObjectBase, AbapObject } from "../AbapObject"
+import { AbapObjectService } from "../AOService"
 import { ObjectErrors } from "../AOError"
 
 const tag = Symbol("AbapFunction")
-@AbapObjectCreator("FUGR/FF")
 export class AbapFunction extends AbapObjectBase {
   [tag] = true
   get extension() {
@@ -22,7 +21,9 @@ export class AbapFunction extends AbapObjectBase {
     super(type, name, path, expandable, techName, parent, sapGuiUri, client)
     if (parent?.type !== "FUGR/F")
       throw ObjectErrors.Invalid(this, "Parent function group is required for function modules")
-    if (!this.path.toLowerCase().startsWith(parent.path.replace(/\/source\/main$/i, "").toLowerCase()))
+    if (
+      !this.path.toLowerCase().startsWith(parent.path.replace(/\/source\/main$/i, "").toLowerCase())
+    )
       throw ObjectErrors.Invalid(this, `Function ${name} doesn't belong to group ${parent.name}`)
 
     this.parent = parent

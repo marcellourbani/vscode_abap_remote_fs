@@ -6,6 +6,7 @@ import {
   StringWrapper,
   UriRequest,
   SearchProgress
+  SearchProgress
 } from "vscode-abap-remote-fs-sharedapi"
 import { connection } from "./clientManager"
 

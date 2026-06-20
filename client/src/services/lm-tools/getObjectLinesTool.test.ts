@@ -1,9 +1,13 @@
-jest.mock("vscode", () => ({
-  LanguageModelToolResult: jest.fn().mockImplementation((parts: any[]) => ({ parts })),
-  LanguageModelTextPart: jest.fn().mockImplementation((text: string) => ({ text })),
-  MarkdownString: jest.fn().mockImplementation((text: string) => ({ text })),
-  lm: { registerTool: jest.fn(() => ({ dispose: jest.fn() })) }
-}), { virtual: true })
+jest.mock(
+  "vscode",
+  () => ({
+    LanguageModelToolResult: jest.fn().mockImplementation((parts: any[]) => ({ parts })),
+    LanguageModelTextPart: jest.fn().mockImplementation((text: string) => ({ text })),
+    MarkdownString: jest.fn().mockImplementation((text: string) => ({ text })),
+    lm: { registerTool: jest.fn(() => ({ dispose: jest.fn() })) }
+  }),
+  { virtual: true }
+)
 
 jest.mock("../../adt/conections", () => ({
   getClient: jest.fn(),
@@ -13,12 +17,18 @@ jest.mock("../telemetry", () => ({ logTelemetry: jest.fn() }))
 jest.mock("./toolRegistry", () => ({
   registerToolWithRegistry: jest.fn(() => ({ dispose: jest.fn() }))
 }))
+jest.mock("./toolGuard", () => ({
+  assertToolInvocationAuthorized: jest.fn(),
+  isToolInvocationAuthorized: jest.fn(() => true)
+}))
 jest.mock("../abapSearchService", () => ({ getSearchService: jest.fn() }))
 jest.mock("../funMessenger", () => ({ funWindow: { activeTextEditor: undefined } }))
 jest.mock("./shared", () => ({
   getOptimalObjectURI: jest.fn((type: string, uri: string) => uri + "/source/main"),
   resolveCorrectURI: jest.fn((uri: string) => Promise.resolve(uri)),
-  getObjectEnhancements: jest.fn(() => Promise.resolve({ hasEnhancements: false, enhancements: [] })),
+  getObjectEnhancements: jest.fn(() =>
+    Promise.resolve({ hasEnhancements: false, enhancements: [] })
+  ),
   getTableTypeFromDD: jest.fn(() => Promise.resolve("")),
   getTableStructureFromDD: jest.fn(() => Promise.resolve(""))
 }))
@@ -109,7 +119,7 @@ describe("GetABAPObjectLinesTool", () => {
         makeOptions({ objectName: "ZCLASS", methodName: "NONEXISTENT", connectionId: "dev100" }),
         mockToken
       )
-      expect(result.parts[0].text).toContain("not found")
+      expect(result.parts[0].text).toContain("NOT FOUND")
     })
   })
 

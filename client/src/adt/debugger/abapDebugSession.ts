@@ -94,9 +94,9 @@ export class AbapDebugSession extends LoggingDebugSession {
 
   protected threadsRequest(response: DebugProtocol.ThreadsResponse): void {
     response.body = {
-      threads: this.listener
-        .activeServices()
-        .map(([id, s]) => new Thread(id, `${s.debuggee.NAME} ${id}`))
+      threads: this.listener.activeThreads.map(
+        ([id, s]) => new Thread(id, `${s.debuggee.NAME} ${id}`)
+      )
     }
     this.sendResponse(response)
   }

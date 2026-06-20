@@ -1,11 +1,9 @@
-import { AbapObjectCreator } from "../creator"
-import { AbapObjectBase } from ".."
+import { AbapObjectBase } from "../AbapObject"
 import { NodeStructure, ADTClient } from "abap-adt-api"
 import { ObjectErrors } from "../AOError"
 
 const tag = Symbol("AbapProgram")
 
-@AbapObjectCreator("PROG/P")
 export class AbapProgram extends AbapObjectBase {
   [tag] = true
   protected filterInvalid(original: NodeStructure, includeIncludes?: boolean): NodeStructure {
@@ -43,6 +41,9 @@ export class AbapProgram extends AbapObjectBase {
   async childComponents(includeIncludes?: boolean) {
     if (!this.structure) await this.loadStructure()
     if (!this.expandable) return { nodes: [], categories: [], objectTypes: [] }
+    // For filesystem operations, filterInvalid() discards all nodeContents results anyway —
+    // skip the server call to avoid crashing ADT on programs with local classes (CLAS/OLA nodes).
+    if (!includeIncludes) return this.filterInvalid({ nodes: [], categories: [], objectTypes: [] })
     return super.childComponents(includeIncludes)
   }
 }

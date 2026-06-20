@@ -1,8 +1,6 @@
 import { AbapObjectBase } from "../AbapObject"
-import { AbapObjectCreator } from ".."
-const tag = Symbol("AbapClass")
+const tag = Symbol("AbapCds")
 
-@AbapObjectCreator("DDLS/DF", "DCLS/DL", "DDLX/EX", "BDEF/BDO", "SRVD/SRV")
 export class AbapCds extends AbapObjectBase {
   public [tag] = true
   get extension(): string {

@@ -1,6 +1,6 @@
 import { cdsCompletionExtractor } from "../cdsSyntax"
 import { parseCDS, findNode } from "../cdsSyntax"
-import { Position } from "vscode-languageserver"
+import { Position } from "vscode-languageserver-protocol"
 import { ABAPCDSParser } from "abapcdsgrammar"
 import { ANTLRErrorListener, Token } from "antlr4ts"
 

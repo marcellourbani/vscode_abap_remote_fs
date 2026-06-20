@@ -10,6 +10,7 @@ import { getSearchService } from "../abapSearchService"
 import { abapUri, getClient } from "../../adt/conections"
 import { logTelemetry } from "../telemetry"
 import { getOptimalObjectURI, resolveCorrectURI } from "./shared"
+import { assertToolInvocationAuthorized } from "./toolGuard"
 
 // ============================================================================
 // INTERFACE
@@ -55,6 +56,7 @@ export class GetObjectByURITool implements vscode.LanguageModelTool<IGetObjectBy
     options: vscode.LanguageModelToolInvocationOptions<IGetObjectByURIParameters>,
     _token: vscode.CancellationToken
   ): Promise<vscode.LanguageModelToolResult> {
+    assertToolInvocationAuthorized(options)
     let { uri, startLine = 0, lineCount = 50, connectionId } = options.input
     logTelemetry("tool_get_object_by_uri_called", { connectionId })
 
@@ -155,11 +157,10 @@ export class GetObjectByURITool implements vscode.LanguageModelTool<IGetObjectBy
 
       try {
         const resultText =
-          `**Direct URI Access Successful** ✅\n\n` +
-          `**Original URI:** \`${uri}\`\n` +
-          `**URI Used:** \`${uriUsed}\`\n` +
-          `**Lines:** ${startLine}-${endLine} (${actualLines} lines retrieved)\n` +
-          `**Total Lines:** ${totalLines}\n\n` +
+          `Direct URI Access Successful\n` +
+          `Original URI: ${uri}\n` +
+          `URI Used: ${uriUsed}\n` +
+          `Lines: ${startLine}-${endLine} of ${totalLines} (${actualLines} retrieved)\n\n` +
           `\`\`\`abap\n${content.trim()}\n\`\`\``
 
         return new vscode.LanguageModelToolResult([new vscode.LanguageModelTextPart(resultText)])
@@ -199,11 +200,11 @@ export class GetObjectByURITool implements vscode.LanguageModelTool<IGetObjectBy
                 }
 
                 const resultText =
-                  `**URI Access via Object Name** ⚠️\n\n` +
-                  `**Original URI:** \`${uri}\`\n` +
-                  `**Extracted Name:** ${objectName}\n` +
-                  `**Resolved URI:** \`${resolvedUri}\`\n` +
-                  `**Lines:** ${startLine}-${endLine} (${actualLines} lines)\n\n` +
+                  `URI Access via Object Name\n` +
+                  `Original URI: ${uri}\n` +
+                  `Extracted Name: ${objectName}\n` +
+                  `Resolved URI: ${resolvedUri}\n` +
+                  `Lines: ${startLine}-${endLine} (${actualLines} lines)\n\n` +
                   `\`\`\`abap\n${content.trim()}\n\`\`\``
 
                 return new vscode.LanguageModelToolResult([
@@ -249,5 +250,7 @@ export class GetObjectByURITool implements vscode.LanguageModelTool<IGetObjectBy
 // ============================================================================
 
 export function registerGetObjectByUriTool(context: vscode.ExtensionContext): void {
-  context.subscriptions.push(registerToolWithRegistry("get_object_by_uri", new GetObjectByURITool()))
+  context.subscriptions.push(
+    registerToolWithRegistry("get_object_by_uri", new GetObjectByURITool())
+  )
 }

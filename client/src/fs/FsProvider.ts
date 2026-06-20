@@ -22,13 +22,18 @@ import { LocalFsProvider } from "./LocalFsProvider"
 import { isHttpError } from "abap-adt-api"
 import { ReloginError } from "abapfs/out/lockManager"
 import { funWindow as window } from "../services/funMessenger"
+import { AbapObject } from "abapobject"
 
-const openInGui = (uri: Uri, contents: string) => {
-  if (contents.includes("This object type is not supported in VS Code")) {
-    const autoOpen = workspace
-      .getConfiguration("abapfs")
-      .get<boolean>("autoOpenUnsupportedInGui", true)
+const openInGui = (uri: Uri, object: AbapObject) => {
+  const guiObjects = object.gui_objects
+  const autoOpen = workspace
+    .getConfiguration("abapfs")
+    .get<boolean>("autoOpenUnsupportedInGui", true)
+  const openXml = workspace.getConfiguration("abapfs").get<boolean>("sapGui.openXmlInGui", true)
 
+  const shouldOpen = guiObjects === "yes" || (guiObjects === "better" && openXml)
+
+  if (shouldOpen) {
     if (autoOpen) {
       // Automatically trigger runInGui command
       // Use setTimeout to ensure the document is opened first so URI context is available
@@ -39,7 +44,7 @@ const openInGui = (uri: Uri, contents: string) => {
       // Show message with action buttons
       setTimeout(async () => {
         const choice = await window.showInformationMessage(
-          "This object type is not supported in VS Code.",
+          "This object type is best viewed in SAP GUI.",
           "Open in SAP GUI",
           "Always Auto Open"
         )
@@ -126,7 +131,7 @@ export class FsProvider implements FileSystemProvider {
       // Don't log FileNotFound errors for method names/debug artifacts to reduce noise
       if (!(e instanceof FileSystemError && e.name === "FileNotFound (FileSystemError)"))
         log.debug(`Error in stat of ${uri?.toString()}\n${caughtToString(e)}`)
-      throw e
+      throw this.wrapHttpError(e, uri)
     }
   }
 
@@ -137,7 +142,7 @@ export class FsProvider implements FileSystemProvider {
       const node = await root.getNodeAsync(uri.path)
       if (isAbapFile(node)) {
         const contents = await node.read()
-        openInGui(uri, contents)
+        openInGui(uri, node.object)
 
         const buf = Buffer.from(contents)
         return buf
@@ -164,7 +169,7 @@ export class FsProvider implements FileSystemProvider {
       return files
     } catch (e) {
       log(`Error reading directory ${uri?.toString()}\n${caughtToString(e)}`)
-      throw e
+      throw this.wrapHttpError(e, uri)
     }
   }
 
@@ -173,6 +178,25 @@ export class FsProvider implements FileSystemProvider {
     throw FileSystemError.NoPermissions(
       "Not a real filesystem, directory creation is not supported"
     )
+  }
+
+  private wrapHttpError(e: unknown, uri: Uri): unknown {
+    if (e instanceof FileSystemError) return e
+    const msg = caughtToString(e)
+    if (msg.includes("status code 401"))
+      return FileSystemError.NoPermissions(
+        `Authentication failed for ${uri.authority}. Wrong password?`
+      )
+    if (msg.includes("status code 403"))
+      return FileSystemError.NoPermissions(
+        `Access denied to ${uri.authority} (HTTP 403). Likely a proxy issue or ADT service (/sap/bc/adt) not activated in SICF — contact your Basis team.`
+      )
+    if (msg.includes("status code 503"))
+      return FileSystemError.Unavailable(
+        `SAP system ${uri.authority} is unreachable (HTTP 503). ADT endpoint may be down or proxy misconfigured.`
+      )
+    if (msg.includes("status code 404")) return FileSystemError.FileNotFound(uri)
+    return e
   }
 
   private async askOverwrite(uri: Uri) {

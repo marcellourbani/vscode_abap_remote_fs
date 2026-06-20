@@ -7,9 +7,12 @@ import { funWindow as window } from "./funMessenger"
 
 const MARKETPLACE_URL =
   "https://marketplace.visualstudio.com/items?itemName=murbani.vscode-abap-remote-fs"
+const CHANGELOG_URL =
+  "https://github.com/marcellourbani/vscode_abap_remote_fs/blob/master/CHANGELOG.md"
 
 const STATE_LAST_VERSION = "abapfs.lastVersion"
 const STATE_UPGRADE_DISMISSED = "abapfs.upgradeStatusBarDismissed"
+const STATE_STATUS_BAR_PENDING = "abapfs.upgradeStatusBarPending"
 
 export function checkUpgradeNotification(context: vscode.ExtensionContext): void {
   const currentVersion: string = context.extension.packageJSON.version ?? "0.0.0"
@@ -23,32 +26,31 @@ export function checkUpgradeNotification(context: vscode.ExtensionContext): void
   // We skip if they already have a v2 version stored (meaning they've run v2 before).
   const isUpgradeFromV1 = lastVersion === undefined || lastVersion.startsWith("1.")
 
-  if (!isUpgradeFromV1) return
+  if (isUpgradeFromV1) {
+    // Mark that we want to show the status bar — persists across reloads until dismissed
+    context.globalState.update(STATE_STATUS_BAR_PENDING, true)
+  } else if (lastVersion && lastVersion !== currentVersion) {
+    // Regular version upgrade — show a simple notification
+    showVersionUpgradeNotification(currentVersion)
+  }
 
-  // 1) One-time notification
-  showUpgradeNotification()
-
-  // 2) Blinking status bar (unless already dismissed or expired)
-  showBlinkingStatusBar(context)
-}
-
-// ─── Notification ────────────────────────────────────────────────────────────
-
-function showUpgradeNotification(): void {
-  window
-    .showInformationMessage(
-      "🚀 ABAP Remote FS has been upgraded to v2 with powerful AI features! " +
-        "Simply ask GitHub Copilot (in Agent mode) to tell you about them.",
-      "Open Marketplace Page"
-    )
-    .then(action => {
-      if (action === "Open Marketplace Page") {
-        vscode.env.openExternal(vscode.Uri.parse(MARKETPLACE_URL))
-      }
-    })
+  // Show status bar if pending (covers both fresh upgrade and post-reload reactivation)
+  if (context.globalState.get<boolean>(STATE_STATUS_BAR_PENDING)) {
+    showBlinkingStatusBar(context)
+  }
 }
 
 // ─── Blinking Status Bar ─────────────────────────────────────────────────────
+
+function showVersionUpgradeNotification(version: string): void {
+  window
+    .showInformationMessage(`ABAP Remote Filesystem has been updated to v${version}`, "What's New")
+    .then(choice => {
+      if (choice === "What's New") {
+        vscode.env.openExternal(vscode.Uri.parse(CHANGELOG_URL))
+      }
+    })
+}
 
 function showBlinkingStatusBar(context: vscode.ExtensionContext): void {
   // Already dismissed by click?
@@ -77,6 +79,7 @@ function showBlinkingStatusBar(context: vscode.ExtensionContext): void {
   const cmd = vscode.commands.registerCommand("abapfs.openUpgradeMarketplace", () => {
     vscode.env.openExternal(vscode.Uri.parse(MARKETPLACE_URL))
     context.globalState.update(STATE_UPGRADE_DISMISSED, true)
+    context.globalState.update(STATE_STATUS_BAR_PENDING, false)
     clearInterval(blinkInterval)
     item.dispose()
   })

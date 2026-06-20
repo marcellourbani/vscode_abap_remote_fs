@@ -205,7 +205,13 @@ export async function openTextElementsInSapGui(
     }
 
     // Create panel using the exact same working logic
-    const panel = SapGuiPanel.createOrShow(extensionUri, client, sapGuiObjectType, programName)
+    const panel = SapGuiPanel.createOrShow(
+      extensionUri,
+      client,
+      connectionId,
+      objectInfo.name,
+      sapGuiObjectType
+    )
 
     // Build text elements URL
     const baseUrl = await panel.buildWebGuiUrl()

@@ -102,7 +102,8 @@ function isValidRecording(r: any): r is DebugRecording {
     Array.isArray(r.snapshots) &&
     r.snapshots.length > 0 &&
     r.snapshots.every((s: any) => Array.isArray(s.stack) && Array.isArray(s.scopes)) &&
-    (r.sources === undefined || (typeof r.sources === "object" && r.sources !== null && !Array.isArray(r.sources)))
+    (r.sources === undefined ||
+      (typeof r.sources === "object" && r.sources !== null && !Array.isArray(r.sources)))
   )
 }
 
@@ -118,14 +119,20 @@ function buildDefaultFilename(recording: DebugRecording): string {
  */
 async function gzipAndSave(raw: Buffer, targetUri: Uri): Promise<void> {
   await window.withProgress(
-    { location: ProgressLocation.Notification, title: "Compressing debug recording…", cancellable: false },
-    async (progress) => {
+    {
+      location: ProgressLocation.Notification,
+      title: "Compressing debug recording…",
+      cancellable: false
+    },
+    async progress => {
       progress.report({ message: "Compressing…" })
       const compressed = await gzip(raw, { level: zlib.constants.Z_BEST_COMPRESSION })
       progress.report({ message: "Writing file…" })
       await workspace.fs.writeFile(targetUri, compressed)
       const ratio = raw.length > 0 ? ((1 - compressed.length / raw.length) * 100).toFixed(1) : "0"
-      log(`Compressed recording saved to ${targetUri.fsPath} (${formatBytes(compressed.length)}, ${ratio}% smaller than ${formatBytes(raw.length)})`)
+      log(
+        `Compressed recording saved to ${targetUri.fsPath} (${formatBytes(compressed.length)}, ${ratio}% smaller than ${formatBytes(raw.length)})`
+      )
       window.showInformationMessage(
         `Compressed: ${formatBytes(raw.length)} → ${formatBytes(compressed.length)} (${ratio}% smaller)`
       )
@@ -227,7 +234,9 @@ export async function decompressRecording(): Promise<void> {
     const bytes = Buffer.from(data)
 
     if (bytes.length < 2 || bytes[0] !== GZIP_MAGIC_0 || bytes[1] !== GZIP_MAGIC_1) {
-      window.showInformationMessage("This file is not gzip-compressed. It may already be a plain .abaprecord file.")
+      window.showInformationMessage(
+        "This file is not gzip-compressed. It may already be a plain .abaprecord file."
+      )
       return
     }
 
@@ -242,8 +251,12 @@ export async function decompressRecording(): Promise<void> {
     if (!saveUri) return
 
     await window.withProgress(
-      { location: ProgressLocation.Notification, title: "Decompressing debug recording…", cancellable: false },
-      async (progress) => {
+      {
+        location: ProgressLocation.Notification,
+        title: "Decompressing debug recording…",
+        cancellable: false
+      },
+      async progress => {
         progress.report({ message: "Decompressing…" })
         const decompressed = await gunzip(bytes)
         const text = decompressed.toString("utf-8")
@@ -257,7 +270,9 @@ export async function decompressRecording(): Promise<void> {
         window.showInformationMessage(
           `Decompressed: ${formatBytes(bytes.length)} → ${formatBytes(decompressed.length)}`
         )
-        log(`Recording decompressed: ${sourceUri.fsPath} → ${saveUri.fsPath} (${formatBytes(bytes.length)} → ${formatBytes(decompressed.length)})`)
+        log(
+          `Recording decompressed: ${sourceUri.fsPath} → ${saveUri.fsPath} (${formatBytes(bytes.length)} → ${formatBytes(decompressed.length)})`
+        )
       }
     )
   } catch (error) {

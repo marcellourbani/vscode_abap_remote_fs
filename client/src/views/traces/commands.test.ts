@@ -1,9 +1,19 @@
-jest.mock("vscode", () => ({
-  commands: { registerCommand: jest.fn() },
-  Uri: {
-    parse: (s: string) => ({ authority: "", path: s, scheme: "file", fsPath: s, toString: () => s })
-  }
-}), { virtual: true })
+jest.mock(
+  "vscode",
+  () => ({
+    commands: { registerCommand: jest.fn() },
+    Uri: {
+      parse: (s: string) => ({
+        authority: "",
+        path: s,
+        scheme: "file",
+        fsPath: s,
+        toString: () => s
+      })
+    }
+  }),
+  { virtual: true }
+)
 
 jest.mock("../../commands", () => ({
   AbapFsCommands: {

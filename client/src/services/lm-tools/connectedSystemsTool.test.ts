@@ -1,9 +1,13 @@
-jest.mock("vscode", () => ({
-  LanguageModelToolResult: jest.fn().mockImplementation((parts: any[]) => ({ parts })),
-  LanguageModelTextPart: jest.fn().mockImplementation((text: string) => ({ text })),
-  MarkdownString: jest.fn().mockImplementation((text: string) => ({ text })),
-  lm: { registerTool: jest.fn(() => ({ dispose: jest.fn() })) }
-}), { virtual: true })
+jest.mock(
+  "vscode",
+  () => ({
+    LanguageModelToolResult: jest.fn().mockImplementation((parts: any[]) => ({ parts })),
+    LanguageModelTextPart: jest.fn().mockImplementation((text: string) => ({ text })),
+    MarkdownString: jest.fn().mockImplementation((text: string) => ({ text })),
+    lm: { registerTool: jest.fn(() => ({ dispose: jest.fn() })) }
+  }),
+  { virtual: true }
+)
 
 jest.mock("../../adt/conections", () => ({}))
 jest.mock("../telemetry", () => ({ logTelemetry: jest.fn() }))
@@ -14,6 +18,10 @@ jest.mock("../../config", () => ({
   connectedRoots: jest.fn()
 }))
 
+jest.mock("./toolGuard", () => ({
+  assertToolInvocationAuthorized: jest.fn(),
+  isToolInvocationAuthorized: jest.fn(() => true)
+}))
 import { ConnectedSystemsTool } from "./connectedSystemsTool"
 import { connectedRoots } from "../../config"
 import { logTelemetry } from "../telemetry"
@@ -49,7 +57,10 @@ describe("ConnectedSystemsTool", () => {
     })
 
     it("returns comma-separated connection IDs when systems are connected", async () => {
-      const mockMap = new Map([["dev100", {}], ["qas200", {}]])
+      const mockMap = new Map([
+        ["dev100", {}],
+        ["qas200", {}]
+      ])
       ;(connectedRoots as jest.Mock).mockReturnValue(mockMap)
 
       const result: any = await tool.invoke(makeOptions(), mockToken)
@@ -99,7 +110,11 @@ describe("ConnectedSystemsTool", () => {
     // ====================================================================
 
     it("produces exact comma-separated format with multiple connections", async () => {
-      const mockMap = new Map([["dev100", {}], ["qas200", {}], ["prd300", {}]])
+      const mockMap = new Map([
+        ["dev100", {}],
+        ["qas200", {}],
+        ["prd300", {}]
+      ])
       ;(connectedRoots as jest.Mock).mockReturnValue(mockMap)
 
       const result: any = await tool.invoke(makeOptions(), mockToken)

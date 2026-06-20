@@ -176,12 +176,7 @@ describe("selectTransport", () => {
     mockWindow.showQuickPick.mockResolvedValue("Create a new transport" as any)
     mockWindow.showInputBox.mockResolvedValue("New request text")
     const result = await selectTransport("/path", "ZDEV", mockClient)
-    expect(mockClient.createTransport).toHaveBeenCalledWith(
-      "/path",
-      "New request text",
-      "ZDEV",
-      ""
-    )
+    expect(mockClient.createTransport).toHaveBeenCalledWith("/path", "New request text", "ZDEV", "")
     expect(result.transport).toBe("NEWTR001")
   })
 

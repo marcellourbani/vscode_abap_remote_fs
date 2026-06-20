@@ -1,9 +1,13 @@
-jest.mock("vscode", () => ({
-  LanguageModelToolResult: jest.fn().mockImplementation((parts: any[]) => ({ parts })),
-  LanguageModelTextPart: jest.fn().mockImplementation((text: string) => ({ text })),
-  MarkdownString: jest.fn().mockImplementation((text: string) => ({ text })),
-  lm: { registerTool: jest.fn(() => ({ dispose: jest.fn() })) }
-}), { virtual: true })
+jest.mock(
+  "vscode",
+  () => ({
+    LanguageModelToolResult: jest.fn().mockImplementation((parts: any[]) => ({ parts })),
+    LanguageModelTextPart: jest.fn().mockImplementation((text: string) => ({ text })),
+    MarkdownString: jest.fn().mockImplementation((text: string) => ({ text })),
+    lm: { registerTool: jest.fn(() => ({ dispose: jest.fn() })) }
+  }),
+  { virtual: true }
+)
 
 jest.mock("../../adt/conections", () => ({
   getClient: jest.fn(),
@@ -18,6 +22,11 @@ jest.mock("../funMessenger", () => ({ funWindow: { activeTextEditor: undefined }
 jest.mock("./shared", () => ({
   getOptimalObjectURI: jest.fn((type: string, uri: string) => uri + "/source/main"),
   resolveCorrectURI: jest.fn((uri: string) => Promise.resolve(uri))
+}))
+
+jest.mock("./toolGuard", () => ({
+  assertToolInvocationAuthorized: jest.fn(),
+  isToolInvocationAuthorized: jest.fn(() => true)
 }))
 
 import { GetBatchLinesTool } from "./getBatchLinesTool"
@@ -122,7 +131,9 @@ describe("GetBatchLinesTool", () => {
       mockSearcher.searchObjects.mockResolvedValue([
         { name: "ZPROG", type: "PROG/P", uri: "/sap/bc/adt/programs/zprog" }
       ])
-      mockClient.getObjectSource.mockResolvedValue("REPORT ZPROG.\nSTART-OF-SELECTION.\n  WRITE 'Hello'.")
+      mockClient.getObjectSource.mockResolvedValue(
+        "REPORT ZPROG.\nSTART-OF-SELECTION.\n  WRITE 'Hello'."
+      )
       const result: any = await tool.invoke(
         makeOptions({ requests: [{ objectName: "ZPROG" }], connectionId: "dev100" }),
         mockToken

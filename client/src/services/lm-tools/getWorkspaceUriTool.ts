@@ -7,6 +7,7 @@ import * as vscode from "vscode"
 import { registerToolWithRegistry } from "./toolRegistry"
 import { logTelemetry } from "../telemetry"
 import { getClient, getOrCreateRoot } from "../../adt/conections"
+import { assertToolInvocationAuthorized } from "./toolGuard"
 
 // ============================================================================
 // INTERFACE
@@ -52,6 +53,7 @@ export class GetAbapObjectWorkspaceUriTool implements vscode.LanguageModelTool<I
     options: vscode.LanguageModelToolInvocationOptions<IGetAbapObjectWorkspaceUriParameters>,
     _token: vscode.CancellationToken
   ): Promise<vscode.LanguageModelToolResult> {
+    assertToolInvocationAuthorized(options)
     let { objectName, objectType, connectionId } = options.input
     logTelemetry("tool_get_abap_object_workspace_uri_called", { connectionId })
 
@@ -88,14 +90,14 @@ export class GetAbapObjectWorkspaceUriTool implements vscode.LanguageModelTool<I
       const workspaceUri = `adt://${connectionId}${path}`
 
       const resultText =
-        `**ABAP Object Workspace URI** ✅\n\n` +
-        `• **Object:** ${exactMatch["adtcore:name"]}\n` +
-        `• **Type:** ${exactMatch["adtcore:type"]}\n` +
-        `• **Package:** ${exactMatch["adtcore:packageName"] || "Unknown"}\n` +
-        `• **Description:** ${exactMatch["adtcore:description"] || "No description"}\n` +
-        `• **ADT URI:** \`${exactMatch["adtcore:uri"]}\`\n` +
-        `• **Workspace URI:** \`${workspaceUri}\`\n\n` +
-        `**📁 Use the workspace URI to access the object content directly with standard VS Code file operations.**`
+        `ABAP Object Workspace URI\n` +
+        `Object: ${exactMatch["adtcore:name"]}\n` +
+        `Type: ${exactMatch["adtcore:type"]}\n` +
+        `Package: ${exactMatch["adtcore:packageName"] || "unknown"}\n` +
+        `Description: ${exactMatch["adtcore:description"] || "none"}\n` +
+        `ADT URI: ${exactMatch["adtcore:uri"]}\n` +
+        `Workspace URI: ${workspaceUri}\n` +
+        `Use workspace URI with standard VS Code file ops.`
 
       return new vscode.LanguageModelToolResult([new vscode.LanguageModelTextPart(resultText)])
     } catch (error) {

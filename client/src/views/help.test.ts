@@ -2,42 +2,62 @@
  * Tests for views/help.ts - showAbapDoc function
  */
 
-jest.mock("vscode", () => ({
-  ViewColumn: { Beside: 2 },
-  Uri: {
-    parse: jest.fn((s: string) => ({
-      toString: () => s,
-      scheme: s.split(":")[0],
-      authority: "",
-      path: s,
-      query: "",
+jest.mock(
+  "vscode",
+  () => ({
+    ViewColumn: { Beside: 2 },
+    Uri: {
+      parse: jest.fn((s: string) => ({
+        toString: () => s,
+        scheme: s.split(":")[0],
+        authority: "",
+        path: s,
+        query: ""
+      }))
+    }
+  }),
+  { virtual: true }
+)
+
+jest.mock(
+  "../services/funMessenger",
+  () => ({
+    funWindow: {
+      activeTextEditor: undefined,
+      createWebviewPanel: jest.fn(),
+      showErrorMessage: jest.fn()
+    }
+  }),
+  { virtual: true }
+)
+
+jest.mock(
+  "../adt/conections",
+  () => ({
+    ADTSCHEME: "adt",
+    getClient: jest.fn()
+  }),
+  { virtual: true }
+)
+
+jest.mock(
+  "../adt/operations/AdtObjectFinder",
+  () => ({
+    AdtObjectFinder: jest.fn().mockImplementation(() => ({
+      displayAdtUri: jest.fn()
     })),
-  },
-}), { virtual: true })
+    findAbapObject: jest.fn()
+  }),
+  { virtual: true }
+)
 
-jest.mock("../services/funMessenger", () => ({
-  funWindow: {
-    activeTextEditor: undefined,
-    createWebviewPanel: jest.fn(),
-    showErrorMessage: jest.fn(),
-  },
-}), { virtual: true })
-
-jest.mock("../adt/conections", () => ({
-  ADTSCHEME: "adt",
-  getClient: jest.fn(),
-}), { virtual: true })
-
-jest.mock("../adt/operations/AdtObjectFinder", () => ({
-  AdtObjectFinder: jest.fn().mockImplementation(() => ({
-    displayAdtUri: jest.fn(),
-  })),
-  findAbapObject: jest.fn(),
-}), { virtual: true })
-
-jest.mock("./utilities", () => ({
-  injectUrlHandler: jest.fn((html: string) => html + "<!-- injected -->"),
-}), { virtual: true })
+jest.mock(
+  "./utilities",
+  () => ({
+    injectUrlHandler: jest.fn((html: string) => html + "<!-- injected -->")
+  }),
+  { virtual: true }
+)
 
 import { showAbapDoc } from "./help"
 import { funWindow as window } from "../services/funMessenger"
@@ -63,9 +83,9 @@ describe("showAbapDoc", () => {
     const fakeEditor = {
       document: {
         uri: { scheme: "file", toString: () => "file:///foo.ts", authority: "" },
-        getText: jest.fn(() => "code"),
+        getText: jest.fn(() => "code")
       },
-      selection: { active: { line: 0, character: 0 } },
+      selection: { active: { line: 0, character: 0 } }
     }
     ;(mockedWindow as any).activeTextEditor = fakeEditor
     await showAbapDoc()
@@ -77,17 +97,17 @@ describe("showAbapDoc", () => {
     const mockPanel = {
       webview: {
         html: "",
-        onDidReceiveMessage: mockOnDidReceiveMessage,
-      },
+        onDidReceiveMessage: mockOnDidReceiveMessage
+      }
     }
     ;(mockedWindow as any).createWebviewPanel = jest.fn().mockReturnValue(mockPanel)
 
     const fakeEditor = {
       document: {
         uri: { scheme: "adt", toString: () => "adt://dev100/foo.abap", authority: "dev100" },
-        getText: jest.fn(() => "WRITE 'hello'."),
+        getText: jest.fn(() => "WRITE 'hello'.")
       },
-      selection: { active: { line: 5, character: 3 } },
+      selection: { active: { line: 5, character: 3 } }
     }
     ;(mockedWindow as any).activeTextEditor = fakeEditor
 
@@ -106,7 +126,7 @@ describe("showAbapDoc", () => {
       mockObj.path,
       "WRITE 'hello'.",
       6, // line + 1
-      4  // character + 1
+      4 // character + 1
     )
     expect(mockedWindow.createWebviewPanel).toHaveBeenCalledWith(
       "ABAPDOC",
@@ -122,23 +142,25 @@ describe("showAbapDoc", () => {
     const mockPanel = {
       webview: {
         html: "",
-        onDidReceiveMessage: jest.fn((cb: any) => { messageHandlers.push(cb) }),
-        postMessage: jest.fn(),
-      },
+        onDidReceiveMessage: jest.fn((cb: any) => {
+          messageHandlers.push(cb)
+        }),
+        postMessage: jest.fn()
+      }
     }
     ;(mockedWindow as any).createWebviewPanel = jest.fn().mockReturnValue(mockPanel)
 
     const fakeEditor = {
       document: {
         uri: { scheme: "adt", toString: () => "adt://dev100/foo.abap", authority: "dev100" },
-        getText: jest.fn(() => "code"),
+        getText: jest.fn(() => "code")
       },
-      selection: { active: { line: 0, character: 0 } },
+      selection: { active: { line: 0, character: 0 } }
     }
     ;(mockedWindow as any).activeTextEditor = fakeEditor
     mockedGetClient.mockReturnValue({
       abapDocumentation: jest.fn().mockResolvedValue("<html/>"),
-      httpClient: { request: jest.fn() },
+      httpClient: { request: jest.fn() }
     })
     mockedFindAbapObject.mockResolvedValue({ path: "/some/path" })
 
@@ -149,7 +171,13 @@ describe("showAbapDoc", () => {
     ;(AdtObjectFinder as jest.Mock).mockImplementation(() => ({ displayAdtUri: mockDisplayAdtUri }))
 
     const { Uri } = require("vscode")
-    ;(Uri.parse as jest.Mock).mockReturnValueOnce({ scheme: "adt", toString: () => "adt://x/y", authority: "", path: "", query: "" })
+    ;(Uri.parse as jest.Mock).mockReturnValueOnce({
+      scheme: "adt",
+      toString: () => "adt://x/y",
+      authority: "",
+      path: "",
+      query: ""
+    })
 
     if (messageHandlers[0]) {
       await messageHandlers[0]({ command: "click", uri: "adt://dev100/some/path" })
@@ -161,24 +189,26 @@ describe("showAbapDoc", () => {
     const mockPanel = {
       webview: {
         html: "",
-        onDidReceiveMessage: jest.fn((cb: any) => { messageHandlers.push(cb) }),
-        postMessage: jest.fn(),
-      },
+        onDidReceiveMessage: jest.fn((cb: any) => {
+          messageHandlers.push(cb)
+        }),
+        postMessage: jest.fn()
+      }
     }
     ;(mockedWindow as any).createWebviewPanel = jest.fn().mockReturnValue(mockPanel)
 
     const fakeEditor = {
       document: {
         uri: { scheme: "adt", toString: () => "adt://dev100/foo.abap", authority: "dev100" },
-        getText: jest.fn(() => "code"),
+        getText: jest.fn(() => "code")
       },
-      selection: { active: { line: 0, character: 0 } },
+      selection: { active: { line: 0, character: 0 } }
     }
     ;(mockedWindow as any).activeTextEditor = fakeEditor
     const mockRequest = jest.fn().mockResolvedValue({ body: "<html>fetched</html>" })
     mockedGetClient.mockReturnValue({
       abapDocumentation: jest.fn().mockResolvedValue("<html/>"),
-      httpClient: { request: mockRequest },
+      httpClient: { request: mockRequest }
     })
     mockedFindAbapObject.mockResolvedValue({ path: "/some/path" })
 
@@ -189,7 +219,7 @@ describe("showAbapDoc", () => {
       scheme: "https",
       toString: () => "https://example.com/doc",
       path: "/doc",
-      query: "v=1",
+      query: "v=1"
     })
 
     if (messageHandlers[0]) {

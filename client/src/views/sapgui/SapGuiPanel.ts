@@ -4,6 +4,7 @@ import { ADTClient } from "abap-adt-api"
 import { log } from "../../lib"
 import { RemoteManager } from "../../config"
 import { runInSapGui } from "../../adt/sapgui/sapgui"
+import { getObjectTypeConfig } from "abapobject"
 
 /**
  * Manages embedded SAP GUI webview panels for ABAP execution
@@ -239,7 +240,9 @@ export class SapGuiPanel {
    */
   public loadDirectWebGuiUrl(webguiUrl: string) {
     // Check if user prefers VS Code's integrated browser over embedded webview
-    const useIntegratedBrowser = vscode.workspace.getConfiguration("abapfs.sapGui").get<boolean>("useIntegratedBrowser", true)
+    const useIntegratedBrowser = vscode.workspace
+      .getConfiguration("abapfs.sapGui")
+      .get<boolean>("useIntegratedBrowser", true)
     if (useIntegratedBrowser) {
       vscode.commands.executeCommand("simpleBrowser.api.open", webguiUrl, {
         viewColumn: vscode.ViewColumn.Beside,
@@ -583,38 +586,19 @@ export class SapGuiPanel {
       cleanObjectName = objectName.split(".")[0] // ZCL_DEMO_ABAP.main → ZCL_DEMO_ABAP
     }
 
+    const config = getObjectTypeConfig(objectType)
     let transaction: string
     let dynprofield: string
     let okcode: string
 
-    switch (objectType) {
-      case "PROG/P":
-        transaction = "SE38"
-        dynprofield = "RS38M-PROGRAMM"
-        okcode = "STRT"
-        break
-      case "FUGR/FF":
-        transaction = "SE37"
-        dynprofield = "RS38L-NAME"
-        okcode = "WB_EXEC"
-        break
-      case "FUNC/FM":
-        // Individual function module - use SE37 with function module name
-        transaction = "SE37"
-        dynprofield = "RS38L-NAME"
-        okcode = "WB_EXEC"
-        break
-      case "CLAS/OC":
-      case "CLAS/I": // Class include - treat same as class
-        transaction = "SE24"
-        dynprofield = "SEOCLASS-CLSNAME"
-        okcode = "WB_EXEC"
-        break
-      default:
-        transaction = "SE38"
-        dynprofield = "RS38M-PROGRAMM"
-        okcode = "STRT"
-        break
+    if (config?.transactionInfo) {
+      transaction = config.transactionInfo.transaction
+      dynprofield = config.transactionInfo.dynprofield
+      okcode = config.transactionInfo.okcode
+    } else {
+      transaction = "SE38"
+      dynprofield = "RS38M-PROGRAMM"
+      okcode = "STRT"
     }
 
     const sapGuiCommand = {

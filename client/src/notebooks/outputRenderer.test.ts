@@ -1,15 +1,25 @@
-jest.mock("vscode", () => {
-  const mockCellOutputItem = {
-    text: jest.fn((value: string, mime: string) => ({ data: Buffer.from(value), mime })),
-    json: jest.fn((value: unknown) => ({ data: Buffer.from(JSON.stringify(value)), mime: "application/json" })),
-    error: jest.fn((err: any) => ({ data: Buffer.from(JSON.stringify(err)), mime: "application/vnd.code.notebook.error" })),
-  }
-  const mockNotebookCellOutput = jest.fn().mockImplementation((items: any[]) => ({ items }))
-  return {
-    NotebookCellOutput: mockNotebookCellOutput,
-    NotebookCellOutputItem: mockCellOutputItem,
-  }
-}, { virtual: true })
+jest.mock(
+  "vscode",
+  () => {
+    const mockCellOutputItem = {
+      text: jest.fn((value: string, mime: string) => ({ data: Buffer.from(value), mime })),
+      json: jest.fn((value: unknown) => ({
+        data: Buffer.from(JSON.stringify(value)),
+        mime: "application/json"
+      })),
+      error: jest.fn((err: any) => ({
+        data: Buffer.from(JSON.stringify(err)),
+        mime: "application/vnd.code.notebook.error"
+      }))
+    }
+    const mockNotebookCellOutput = jest.fn().mockImplementation((items: any[]) => ({ items }))
+    return {
+      NotebookCellOutput: mockNotebookCellOutput,
+      NotebookCellOutputItem: mockCellOutputItem
+    }
+  },
+  { virtual: true }
+)
 
 import { renderSqlOutput, renderJsOutput, renderErrorOutput } from "./outputRenderer"
 import type { CellResult } from "./types"
@@ -23,27 +33,24 @@ describe("renderSqlOutput", () => {
     const output = renderSqlOutput(result)
     expect(output).toBeDefined()
     const { NotebookCellOutputItem } = require("vscode")
-    expect(NotebookCellOutputItem.text).toHaveBeenCalledWith(
-      "Query returned 0 rows.",
-      "text/plain"
-    )
+    expect(NotebookCellOutputItem.text).toHaveBeenCalledWith("Query returned 0 rows.", "text/plain")
   })
 
   test("returns text output when result is not an array", () => {
     const result: CellResult = { result: null, rowCount: 0 }
     renderSqlOutput(result)
     const { NotebookCellOutputItem } = require("vscode")
-    expect(NotebookCellOutputItem.text).toHaveBeenCalledWith(
-      "Query returned 0 rows.",
-      "text/plain"
-    )
+    expect(NotebookCellOutputItem.text).toHaveBeenCalledWith("Query returned 0 rows.", "text/plain")
   })
 
   test("builds HTML table for rows", () => {
     const result: CellResult = {
       result: [{ NAME: "Alice", AGE: 30 }],
       rowCount: 1,
-      columns: [{ name: "NAME", type: "C" }, { name: "AGE", type: "I" }],
+      columns: [
+        { name: "NAME", type: "C" },
+        { name: "AGE", type: "I" }
+      ]
     }
     renderSqlOutput(result)
     const { NotebookCellOutputItem } = require("vscode")
@@ -60,7 +67,7 @@ describe("renderSqlOutput", () => {
     const result: CellResult = {
       result: [{ FOO: "bar" }],
       rowCount: 1,
-      columns: [],
+      columns: []
     }
     renderSqlOutput(result)
     const { NotebookCellOutputItem } = require("vscode")
@@ -74,7 +81,7 @@ describe("renderSqlOutput", () => {
     const result: CellResult = {
       result: rows,
       rowCount: rows.length,
-      columns: [{ name: "ID", type: "I" }],
+      columns: [{ name: "ID", type: "I" }]
     }
     renderSqlOutput(result)
     const { NotebookCellOutputItem } = require("vscode")
@@ -87,7 +94,7 @@ describe("renderSqlOutput", () => {
     const result: CellResult = {
       result: [{ X: "y" }],
       rowCount: 1,
-      columns: [{ name: "X", type: "C" }],
+      columns: [{ name: "X", type: "C" }]
     }
     renderSqlOutput(result)
     const { NotebookCellOutputItem } = require("vscode")
@@ -99,7 +106,7 @@ describe("renderSqlOutput", () => {
     const result: CellResult = {
       result: [{ X: "a" }, { X: "b" }],
       rowCount: 2,
-      columns: [{ name: "X", type: "C" }],
+      columns: [{ name: "X", type: "C" }]
     }
     renderSqlOutput(result)
     const { NotebookCellOutputItem } = require("vscode")
@@ -111,7 +118,7 @@ describe("renderSqlOutput", () => {
     const result: CellResult = {
       result: [{ CODE: "<script>alert(1)</script>" }],
       rowCount: 1,
-      columns: [{ name: "CODE", type: "C" }],
+      columns: [{ name: "CODE", type: "C" }]
     }
     renderSqlOutput(result)
     const { NotebookCellOutputItem } = require("vscode")
@@ -124,7 +131,7 @@ describe("renderSqlOutput", () => {
     const result: CellResult = {
       result: [{ TEXT: "A & B" }],
       rowCount: 1,
-      columns: [{ name: "TEXT", type: "C" }],
+      columns: [{ name: "TEXT", type: "C" }]
     }
     renderSqlOutput(result)
     const { NotebookCellOutputItem } = require("vscode")
@@ -136,7 +143,7 @@ describe("renderSqlOutput", () => {
     const result: CellResult = {
       result: [{ TEXT: 'say "hello"' }],
       rowCount: 1,
-      columns: [{ name: "TEXT", type: "C" }],
+      columns: [{ name: "TEXT", type: "C" }]
     }
     renderSqlOutput(result)
     const { NotebookCellOutputItem } = require("vscode")
@@ -196,7 +203,9 @@ describe("renderJsOutput", () => {
     const result: CellResult = { result: "done", logs: ["log1", "log2"] }
     renderJsOutput(result)
     const { NotebookCellOutputItem } = require("vscode")
-    const plainCalls = NotebookCellOutputItem.text.mock.calls.filter((c: any[]) => c[1] === "text/plain")
+    const plainCalls = NotebookCellOutputItem.text.mock.calls.filter(
+      (c: any[]) => c[1] === "text/plain"
+    )
     const logCall = plainCalls.find((c: any[]) => c[0].includes("log1"))
     expect(logCall).toBeDefined()
     expect(logCall[0]).toBe("log1\nlog2")

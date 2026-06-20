@@ -1,14 +1,14 @@
 import { RemoteConfig, RemoteManager } from "../../config"
 import { file } from "tmp-promise"
 import { writeAsync } from "fs-jetpack"
-import { log } from "../../lib"
+import { log, caughtToString } from "../../lib"
 import { closeSync } from "fs"
 import opn = require("open")
 import { ProgressLocation, extensions } from "vscode"
 import { funWindow as window } from "../../services/funMessenger"
 import { getClient } from "../conections"
-import { AbapObject, isAbapClassInclude } from "abapobject"
-import { commands, Uri } from "vscode"
+import { AbapObject, isAbapClassInclude, getObjectTypeConfig, getAllConfigs } from "abapobject"
+import { commands, Uri, workspace } from "vscode"
 import * as vscode from "vscode"
 import { ADTClient } from "abap-adt-api"
 import { SapGuiPanel } from "../../views/sapgui/SapGuiPanel"
@@ -38,33 +38,203 @@ function isLoadBalancing(config: guiConfig): config is LoadBalancingGuiConfig {
   return !!(config as LoadBalancingGuiConfig).messageServer
 }
 
+export function getGuiCommand(target: AbapObject | string | SapGuiCommand): SapGuiCommand {
+  if (typeof target === "object" && "type" in target && "command" in target) {
+    return target as SapGuiCommand
+  }
+
+  if (typeof target === "string") {
+    if (target.startsWith("adt://") || target.includes("/sap/bc/adt/")) {
+      return {
+        type: "Transaction",
+        command: "*SADT_START_WB_URI",
+        parameters: [
+          { name: "D_OBJECT_URI", value: target },
+          { name: "DYNP_OKCODE", value: "OKAY" }
+        ]
+      }
+    } else {
+      return {
+        type: "Transaction",
+        command: `*${target}`,
+        parameters: []
+      }
+    }
+  }
+
+  // target is AbapObject
+  const objectType = target.type
+  const objectName = target.name
+
+  const config = getObjectTypeConfig(objectType)
+  if (config?.transactionInfo) {
+    const info = SapGuiPanel.getTransactionInfo(objectType, objectName)
+    return info.sapGuiCommand
+  }
+
+  return {
+    type: "Transaction",
+    command: "*SADT_START_WB_URI",
+    parameters: [
+      { name: "D_OBJECT_URI", value: target.sapGuiUri },
+      { name: "DYNP_OKCODE", value: "OKAY" }
+    ]
+  }
+}
+
+export function detectObjectType(command: string): string {
+  const configs = getAllConfigs()
+  for (const config of configs) {
+    if (
+      config.transactionInfo?.transaction &&
+      command.includes(config.transactionInfo.transaction)
+    ) {
+      return config.type
+    }
+  }
+  return "PROG/P"
+}
+
+export function getWebGuiUrl(config: RemoteConfig, cmd: SapGuiCommand): string {
+  let baseUrl = config.url.replace(/\/sap\/bc\/adt.*$/, "")
+  if (!baseUrl.startsWith("https://") && !baseUrl.startsWith("http://")) {
+    baseUrl = "https://" + baseUrl
+  } else if (baseUrl.startsWith("http://")) {
+    baseUrl = baseUrl.replace("http://", "https://")
+  }
+
+  let transactionPart = ""
+  if (cmd.parameters && cmd.parameters.length > 0) {
+    const okCode = cmd.parameters.find(p => p.name === "DYNP_OKCODE")?.value || ""
+    const targetParam = cmd.parameters.find(p => p.name !== "DYNP_OKCODE")
+    if (targetParam) {
+      transactionPart = `${cmd.command} ${targetParam.name}=${targetParam.value};DYNP_OKCODE=${okCode}`
+    } else {
+      transactionPart = cmd.command
+    }
+  } else {
+    transactionPart = cmd.command
+  }
+
+  const query = `~transaction=${encodeURIComponent(transactionPart)}&sap-client=${config.client}&sap-language=${config.language || "EN"}&saml2=disabled`
+  return `${baseUrl}/sap/bc/gui/sap/its/webgui?${query}`
+}
+
+export async function openInGui(
+  connId: string,
+  target: AbapObject | string | SapGuiCommand,
+  mode?: "SAPGUI" | "WEBGUI" | "EMBEDDED"
+) {
+  return window.withProgress(
+    { location: ProgressLocation.Notification, title: "Opening SAP GUI..." },
+    async () => {
+      const config = RemoteManager.get().byId(connId)
+      if (!config) return
+
+      const cmd = getGuiCommand(target)
+      const client = getClient(connId)
+
+      // Determine the target mode based on argument or configuration preference
+      let targetMode: "SAPGUI" | "WEBGUI" | "EMBEDDED" = mode || "SAPGUI"
+      if (!mode) {
+        const guiType = config.sapGui?.guiType || "SAPGUI"
+        if (guiType === "WEBGUI_UNSAFE_EMBEDDED") {
+          targetMode = "EMBEDDED"
+        } else if (guiType === "WEBGUI_UNSAFE" || guiType === "WEBGUI_CONTROLLED") {
+          targetMode = "WEBGUI"
+        } else {
+          targetMode = "SAPGUI"
+        }
+      }
+
+      const sapGui = SapGui.create(config)
+
+      if (targetMode === "EMBEDDED") {
+        const webguiUrl = getWebGuiUrl(config, cmd)
+
+        // Use VS Code simple browser if configured
+        const useIntegratedBrowser = workspace
+          .getConfiguration("abapfs.sapGui")
+          .get<boolean>("useIntegratedBrowser", true)
+        if (useIntegratedBrowser) {
+          commands.executeCommand("simpleBrowser.api.open", webguiUrl, {
+            viewColumn: vscode.ViewColumn.Beside,
+            preserveFocus: false
+          })
+          return
+        }
+
+        // Otherwise, open in webview panel
+        let extensionUri: Uri
+        try {
+          const extension = extensions.getExtension("murbani.vscode-abap-remote-fs")
+          extensionUri =
+            extension?.extensionUri ||
+            extensions.getExtension("abap-copilot")?.extensionUri ||
+            Uri.file(__dirname)
+        } catch {
+          extensionUri = Uri.file(__dirname)
+        }
+
+        const D_OBJECT_URI = cmd.parameters?.find(p => p.name !== "DYNP_OKCODE")
+        const objectParam = D_OBJECT_URI?.value || "SAP_GUI"
+        const detectedObjectType = detectObjectType(cmd.command)
+
+        const panel = SapGuiPanel.createOrShow(
+          extensionUri,
+          client,
+          config.name || connId,
+          objectParam,
+          detectedObjectType
+        )
+        panel.loadDirectWebGuiUrl(webguiUrl)
+        return
+      }
+
+      if (targetMode === "WEBGUI") {
+        const webguiUrl = getWebGuiUrl(config, cmd)
+        if (config.sapGui?.guiType === "WEBGUI_CONTROLLED") {
+          let ticket: string
+          try {
+            ticket = await client.reentranceTicket()
+          } catch (error) {
+            log("Failed to acquire reentrance ticket for controlled WebGUI:", caughtToString(error))
+            window.showErrorMessage("Failed to acquire SAP reentrance ticket. Cannot open WebGUI.")
+            return
+          }
+          const controlledBaseUrl = config.sapGui?.server
+            ? `${config.url.startsWith("https") ? "https" : "https"}://${config.sapGui.server}`
+            : config.url
+
+          const authenticatedUrl = Uri.parse(controlledBaseUrl).with({
+            path: `/sap/public/myssocntl`,
+            query: `sap-mysapsso=${config.client}${ticket}&sap-mysapred=${encodeURIComponent(webguiUrl)}`
+          })
+          commands.executeCommand("vscode.open", authenticatedUrl)
+        } else {
+          commands.executeCommand("vscode.open", Uri.parse(webguiUrl))
+        }
+        return
+      }
+
+      // Default: Native SAPGUI
+      sapGui.checkConfig()
+      const ticket = await client.reentranceTicket()
+      return sapGui.startGui(cmd, ticket)
+    }
+  )
+}
+
 export function runInSapGui(
   connId: string,
   getCmd: () => Promise<SapGuiCommand | undefined> | SapGuiCommand | undefined
 ) {
   return window.withProgress(
-    { location: ProgressLocation.Notification, title: "Opening SAPGui..." },
+    { location: ProgressLocation.Notification, title: "Opening SAP GUI..." },
     async () => {
-      const config = RemoteManager.get().byId(connId)
-      if (!config) return
-      const sapGui = SapGui.create(config)
-
       const cmd = await getCmd()
       if (cmd) {
-        const client = getClient(connId)
-        switch (config.sapGui?.guiType) {
-          case "WEBGUI_UNSAFE_EMBEDDED":
-          case "WEBGUI_UNSAFE":
-          case "WEBGUI_CONTROLLED":
-            return sapGui.runInBrowser(config, cmd, client)
-          default:
-            if (cmd) {
-              // log("Running " + JSON.stringify(cmd))
-              sapGui.checkConfig()
-              const ticket = await client.reentranceTicket()
-              return sapGui.startGui(cmd, ticket)
-            }
-        }
+        return openInGui(connId, cmd)
       }
     }
   )
@@ -72,40 +242,7 @@ export function runInSapGui(
 
 export function executeInGui(connId: string, object: AbapObject) {
   if (isAbapClassInclude(object) && object.parent) object = object.parent
-  return runInSapGui(connId, () => {
-    const { type, name } = object
-    let transaction = ""
-    let dynprofield = ""
-    let okcode = ""
-    switch (type) {
-      case "PROG/P":
-        transaction = "SE38"
-        dynprofield = "RS38M-PROGRAMM"
-        okcode = "STRT"
-        break
-      case "FUGR/FF":
-        transaction = "SE37"
-        dynprofield = "RS38L-NAME"
-        okcode = "WB_EXEC"
-        break
-      case "CLAS/OC":
-        transaction = "SE24"
-        dynprofield = "SEOCLASS-CLSNAME"
-        okcode = "WB_EXEC"
-        break
-      default:
-        return showInGuiCb(object.sapGuiUri)()
-        break
-    }
-    return {
-      type: "Transaction",
-      command: `*${transaction}`,
-      parameters: [
-        { name: dynprofield, value: name },
-        { name: "DYNP_OKCODE", value: okcode }
-      ]
-    }
-  })
+  return openInGui(connId, object)
 }
 
 export function showInGuiCb(uri: string) {
@@ -246,13 +383,7 @@ export class SapGui {
             extensionUri = vscode.Uri.file(__dirname)
           }
 
-          const detectedObjectType = cmd.command.includes("SE38")
-            ? "PROG/P"
-            : cmd.command.includes("SE24")
-              ? "CLAS/OC"
-              : cmd.command.includes("SE37")
-                ? "FUGR/FF"
-                : "PROG/P"
+          const detectedObjectType = detectObjectType(cmd.command)
 
           const panel = SapGuiPanel.createOrShow(
             extensionUri,
@@ -274,6 +405,8 @@ export class SapGui {
           try {
             ticket2 = await client.reentranceTicket()
           } catch (error) {
+            log("Failed to acquire reentrance ticket for controlled WebGUI:", caughtToString(error))
+            window.showErrorMessage("Failed to acquire SAP reentrance ticket. Cannot open WebGUI.")
             return
           }
 

@@ -757,10 +757,8 @@ export class WebviewManager {
       })
     }
 
-    // Try sending immediately (usually works)
-    setTimeout(sendInitData, 100)
-
-    // Also send when webview signals ready (backup)
+    // Send initial data when webview signals it is ready
+    // (avoids the race-condition double-send that was caused by setTimeout + ready)
     const readyDisposable = panel.webview.onDidReceiveMessage(msg => {
       if (msg.command === "ready") {
         sendInitData()

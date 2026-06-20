@@ -1,4 +1,5 @@
 out
+site
 wiki
 client/out/**
 client/dist/**

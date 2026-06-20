@@ -67,7 +67,13 @@ describe("getSAPSystemInfo", () => {
   test("returns system info with T000 data", async () => {
     const t000 = {
       values: [
-        { MANDT: "100", MTEXT: "Test Client", CCCATEGORY: "T", LOGSYS: "DEVCLNT100", CCNOCLIIND: "0" }
+        {
+          MANDT: "100",
+          MTEXT: "Test Client",
+          CCCATEGORY: "T",
+          LOGSYS: "DEVCLNT100",
+          CCNOCLIIND: "0"
+        }
       ]
     }
     mockGetClient.mockReturnValue(makeClient({ t000 }))
@@ -152,9 +158,7 @@ describe("getSAPSystemInfo", () => {
 
   test("parses timezone with positive UTC offset (P prefix)", async () => {
     const ttz = {
-      values: [
-        { TZONESYS: "CAT", ZONERULE: "P0200", DSTRULE: "NONE", DESCRIPT: "Central Africa" }
-      ]
+      values: [{ TZONESYS: "CAT", ZONERULE: "P0200", DSTRULE: "NONE", DESCRIPT: "Central Africa" }]
     }
     mockGetClient.mockReturnValue(makeClient({ ttz }))
     mockRemoteManagerGet.mockReturnValue(makeRemoteManager())
@@ -169,9 +173,7 @@ describe("getSAPSystemInfo", () => {
 
   test("parses timezone with negative UTC offset (M prefix)", async () => {
     const ttz = {
-      values: [
-        { TZONESYS: "EST", ZONERULE: "M0500", DSTRULE: "US", DESCRIPT: "Eastern Time" }
-      ]
+      values: [{ TZONESYS: "EST", ZONERULE: "M0500", DSTRULE: "US", DESCRIPT: "Eastern Time" }]
     }
     mockGetClient.mockReturnValue(makeClient({ ttz }))
     mockRemoteManagerGet.mockReturnValue(makeRemoteManager())
@@ -418,7 +420,9 @@ describe("client category descriptions via getSAPSystemInfo", () => {
       values: [{ MANDT: "100", MTEXT: "Client", CCCATEGORY: code, LOGSYS: "", CCNOCLIIND: "" }]
     }
     mockGetClient.mockReturnValue(makeClient({ t000 }))
-    mockRemoteManagerGet.mockReturnValue(makeRemoteManager(`https://sap-${code || "empty"}.example.com`))
+    mockRemoteManagerGet.mockReturnValue(
+      makeRemoteManager(`https://sap-${code || "empty"}.example.com`)
+    )
 
     const info = await getSAPSystemInfo("dev100")
     expect(info.currentClient!.category).toBe(description)
@@ -441,7 +445,9 @@ describe("change protection descriptions via getSAPSystemInfo", () => {
       values: [{ MANDT: "100", MTEXT: "Client", CCCATEGORY: "T", LOGSYS: "", CCNOCLIIND: code }]
     }
     mockGetClient.mockReturnValue(makeClient({ t000 }))
-    mockRemoteManagerGet.mockReturnValue(makeRemoteManager(`https://sap-cp-${code || "empty"}.example.com`))
+    mockRemoteManagerGet.mockReturnValue(
+      makeRemoteManager(`https://sap-cp-${code || "empty"}.example.com`)
+    )
 
     const info = await getSAPSystemInfo("dev100")
     expect(info.currentClient!.changeProtection).toBe(description)

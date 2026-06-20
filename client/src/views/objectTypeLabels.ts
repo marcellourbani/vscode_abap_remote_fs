@@ -1,44 +1,11 @@
 import { MainInclude } from "abap-adt-api"
+import { getAllConfigs } from "abapobject"
 
 type TypeLabel = string | ((mainProgram?: MainInclude) => string)
 
-const TYPE_LABELS: Record<string, TypeLabel> = {
-  "CLAS/OC": "Class",
-  "CLAS/OM": "Class Method",
-  "INTF/OI": "Interface",
-  "PROG/P": "Program",
-  "PROG/I": (mainProgram?: MainInclude) => mainProgram ? "Include" : "Program Include",
-  "FUGR/F": "Function Group",
-  "FUGR/FF": "Function Module",
-  "TYPE/TY": "Type Group",
-  "DEVC/K": "Package",
-  "TABL/DT": "Database Table",
-  "TABL/DS": "Structure",
-  "DDLS/DF": "CDS View",
-  "STOB/DO": "CDS Entity",
-  "STOB/ST": "Simple Transformation",
-  "MSAG/N": "Message Class",
-  "TTYP/DA": "Table Type",
-  "TTYP/TT": "Table Type",
-  "DOMA/DD": "Domain",
-  "DOMA/DO": "Domain",
-  "DTEL/DE": "Data Element",
-  "VIEW/DV": "View",
-  "VIEW/V": "Dictionary View",
-  "SHLP/DH": "Search Help",
-  "ENQU/DL": "Lock/Enqueue Object",
-  "TRAN/T": "Transaction",
-  "ENHO/XHB": "Enhancement Implementation",
-  "ENHO/XHH": "Enhancement Implementation",
-  "ENHS/XS": "Enhancement Spot",
-  "SXSD/XD": "BAdI Definition",
-  "SXCI/XI": "BAdI Implementation",
-  "XSLT/XT": "XSLT Program",
-  "SUSO/SO": "Authorization Object",
-  "SUSO/B": "Authorization Object Set",
-  "SUSC/SC": "Authorization Object Class",
-  "PINF/PI": "Package Interface",
-  "NROB/NR": "Number Range Object"
+const TYPE_LABELS: Record<string, TypeLabel> = {}
+for (const config of getAllConfigs()) {
+  TYPE_LABELS[config.type] = config.label
 }
 
 export const OBJECT_TYPE_FILTER_OPTIONS = [

@@ -19,17 +19,48 @@ jest.mock(
       Global: 1,
       Workspace: 2
     },
-    ProgressLocation: { Notification: 15 }
+    ProgressLocation: { Notification: 15 },
+    lm: {
+      selectChatModels: jest.fn().mockResolvedValue([{}])
+    },
+    TreeItem: class {
+      constructor(
+        public label: string,
+        public collapsibleState?: any
+      ) {}
+    },
+    TreeItemCollapsibleState: {
+      None: 0,
+      Collapsed: 1,
+      Expanded: 2
+    },
+    EventEmitter: class {
+      event = jest.fn()
+      fire = jest.fn()
+    },
+    Uri: {
+      parse: jest.fn(),
+      file: jest.fn()
+    }
   }),
   { virtual: true }
 )
+
+jest.mock("./lm-tools/toolGuard", () => ({
+  assertToolInvocationAuthorized: jest.fn(),
+  isToolInvocationAuthorized: jest.fn(() => true)
+}))
 
 jest.mock("./funMessenger", () => ({
   funWindow: {
     showWarningMessage: jest.fn(),
     showInformationMessage: jest.fn(),
-    withProgress: jest.fn()
+    withProgress: jest.fn((options, task) => task({ report: jest.fn() }))
   }
+}))
+
+jest.mock("../adt/conections", () => ({
+  ADTSCHEME: "adt"
 }))
 
 jest.mock("../lib", () => ({
@@ -55,7 +86,11 @@ function makeContext(dismissed = false): any {
   }
 }
 
-function makeConfig(effectiveValue: number | undefined, workspaceValue?: number, globalValue?: number) {
+function makeConfig(
+  effectiveValue: number | undefined,
+  workspaceValue?: number,
+  globalValue?: number
+) {
   return {
     inspect: jest.fn().mockReturnValue({
       defaultValue: 128,
@@ -139,11 +174,11 @@ describe("disableVirtualToolGrouping", () => {
     expect(cfg.update).not.toHaveBeenCalled()
   })
 
-  it("calls withProgress when user chooses 'Disable Grouping & Reload'", async () => {
+  it("calls withProgress when user chooses 'Disable & Reload'", async () => {
     const context = makeContext(false)
     const cfg = makeConfig(128)
     ;(vscode.workspace.getConfiguration as jest.Mock).mockReturnValue(cfg)
-    ;(mockFunWindow.showWarningMessage as jest.Mock).mockResolvedValue("Disable Grouping & Reload")
+    ;(mockFunWindow.showWarningMessage as jest.Mock).mockResolvedValue("Disable & Reload")
     ;(mockFunWindow.withProgress as jest.Mock).mockImplementation((_opts: any, task: any) =>
       task({ report: jest.fn() }, {})
     )
@@ -159,7 +194,7 @@ describe("disableVirtualToolGrouping", () => {
     const context = makeContext(false)
     const cfg = makeConfig(128)
     ;(vscode.workspace.getConfiguration as jest.Mock).mockReturnValue(cfg)
-    ;(mockFunWindow.showWarningMessage as jest.Mock).mockResolvedValue("Disable Grouping & Reload")
+    ;(mockFunWindow.showWarningMessage as jest.Mock).mockResolvedValue("Disable & Reload")
     ;(mockFunWindow.withProgress as jest.Mock).mockImplementation((_opts: any, task: any) =>
       task({ report: jest.fn() }, {})
     )

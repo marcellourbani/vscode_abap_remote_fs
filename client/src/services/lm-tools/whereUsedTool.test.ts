@@ -1,9 +1,13 @@
-jest.mock("vscode", () => ({
-  LanguageModelToolResult: jest.fn().mockImplementation((parts: any[]) => ({ parts })),
-  LanguageModelTextPart: jest.fn().mockImplementation((text: string) => ({ text })),
-  MarkdownString: jest.fn().mockImplementation((text: string) => ({ text })),
-  lm: { registerTool: jest.fn(() => ({ dispose: jest.fn() })) }
-}), { virtual: true })
+jest.mock(
+  "vscode",
+  () => ({
+    LanguageModelToolResult: jest.fn().mockImplementation((parts: any[]) => ({ parts })),
+    LanguageModelTextPart: jest.fn().mockImplementation((text: string) => ({ text })),
+    MarkdownString: jest.fn().mockImplementation((text: string) => ({ text })),
+    lm: { registerTool: jest.fn(() => ({ dispose: jest.fn() })) }
+  }),
+  { virtual: true }
+)
 
 jest.mock("../../adt/conections", () => ({
   getClient: jest.fn(),
@@ -16,6 +20,10 @@ jest.mock("./toolRegistry", () => ({
 jest.mock("../abapSearchService", () => ({ getSearchService: jest.fn() }))
 jest.mock("./shared", () => ({
   getOptimalObjectURI: jest.fn((type: string, uri: string) => uri + "/source/main")
+}))
+jest.mock("./toolGuard", () => ({
+  assertToolInvocationAuthorized: jest.fn(),
+  isToolInvocationAuthorized: jest.fn(() => true)
 }))
 
 import { ABAPWhereUsedTool } from "./whereUsedTool"
@@ -42,9 +50,16 @@ const mockClient = {
 }
 
 /** Helper to build a valid reference object that passes the goodRefs filter */
-function makeRef(fullName: string, opts: {
-  type?: string, name?: string, pkg?: string, desc?: string, uri?: string
-} = {}) {
+function makeRef(
+  fullName: string,
+  opts: {
+    type?: string
+    name?: string
+    pkg?: string
+    desc?: string
+    uri?: string
+  } = {}
+) {
   return {
     objectIdentifier: `ABAPFullName;${fullName}`,
     "adtcore:type": opts.type || "PROG/P",
@@ -152,10 +167,9 @@ describe("ABAPWhereUsedTool", () => {
   describe("invoke", () => {
     it("logs telemetry with connectionId", async () => {
       mockSearcher.searchObjects.mockResolvedValue([])
-      await tool.invoke(
-        makeOptions({ objectName: "ZCLASS", connectionId: "dev100" }),
-        mockToken
-      ).catch(() => {})
+      await tool
+        .invoke(makeOptions({ objectName: "ZCLASS", connectionId: "dev100" }), mockToken)
+        .catch(() => {})
       expect(logTelemetry).toHaveBeenCalledWith("tool_find_where_used_called", {
         connectionId: "dev100"
       })
@@ -163,10 +177,9 @@ describe("ABAPWhereUsedTool", () => {
 
     it("normalizes connectionId to lowercase", async () => {
       mockSearcher.searchObjects.mockResolvedValue([])
-      await tool.invoke(
-        makeOptions({ objectName: "ZCLASS", connectionId: "DEV100" }),
-        mockToken
-      ).catch(() => {})
+      await tool
+        .invoke(makeOptions({ objectName: "ZCLASS", connectionId: "DEV100" }), mockToken)
+        .catch(() => {})
       expect(getSearchService).toHaveBeenCalledWith("dev100")
     })
 
@@ -187,10 +200,7 @@ describe("ABAPWhereUsedTool", () => {
         { name: "ZCLASS", type: "CLAS/OC", uri: "/sap/bc/adt/oo/classes/zclass" }
       ])
       await expect(
-        tool.invoke(
-          makeOptions({ objectName: "ZCLASS", connectionId: "dev100" }),
-          mockToken
-        )
+        tool.invoke(makeOptions({ objectName: "ZCLASS", connectionId: "dev100" }), mockToken)
       ).rejects.toThrow()
     })
 
@@ -215,7 +225,11 @@ describe("ABAPWhereUsedTool", () => {
     })
 
     describe("searchTerm position logic", () => {
-      const searchObj = { name: "ZTEST", type: "PROG/P", uri: "/sap/bc/adt/programs/programs/ztest" }
+      const searchObj = {
+        name: "ZTEST",
+        type: "PROG/P",
+        uri: "/sap/bc/adt/programs/programs/ztest"
+      }
 
       it("finds searchTerm in source and uses its position for where-used", async () => {
         mockSearcher.searchObjects.mockResolvedValue([searchObj])
@@ -260,11 +274,7 @@ describe("ABAPWhereUsedTool", () => {
         )
 
         // Should still find it despite case difference
-        expect(mockUsageReferences).toHaveBeenCalledWith(
-          expect.any(String),
-          2,
-          expect.any(Number)
-        )
+        expect(mockUsageReferences).toHaveBeenCalledWith(expect.any(String), 2, expect.any(Number))
       })
 
       it("defaults to line 1 when no searchTerm, no line, and no declaration found", async () => {
@@ -272,16 +282,9 @@ describe("ABAPWhereUsedTool", () => {
         mockGetObjectSource.mockResolvedValue("DATA lv_val TYPE string.\n")
         mockUsageReferences.mockResolvedValue([makeRef("ZCALLER")])
 
-        await tool.invoke(
-          makeOptions({ objectName: "ZTEST", connectionId: "dev100" }),
-          mockToken
-        )
+        await tool.invoke(makeOptions({ objectName: "ZTEST", connectionId: "dev100" }), mockToken)
 
-        expect(mockUsageReferences).toHaveBeenCalledWith(
-          expect.any(String),
-          1,
-          0
-        )
+        expect(mockUsageReferences).toHaveBeenCalledWith(expect.any(String), 1, 0)
       })
 
       it("uses explicit line and character when provided", async () => {
@@ -299,7 +302,11 @@ describe("ABAPWhereUsedTool", () => {
     })
 
     describe("reference filtering", () => {
-      const searchObj = { name: "ZTEST", type: "PROG/P", uri: "/sap/bc/adt/programs/programs/ztest" }
+      const searchObj = {
+        name: "ZTEST",
+        type: "PROG/P",
+        uri: "/sap/bc/adt/programs/programs/ztest"
+      }
 
       beforeEach(() => {
         mockSearcher.searchObjects.mockResolvedValue([searchObj])
@@ -314,7 +321,8 @@ describe("ABAPWhereUsedTool", () => {
 
         const result: any = await tool.invoke(
           makeOptions({
-            objectName: "ZTEST", connectionId: "dev100",
+            objectName: "ZTEST",
+            connectionId: "dev100",
             filter: { objectNamePattern: "ZCL_*" }
           }),
           mockToken
@@ -335,7 +343,8 @@ describe("ABAPWhereUsedTool", () => {
 
         const result: any = await tool.invoke(
           makeOptions({
-            objectName: "ZTEST", connectionId: "dev100",
+            objectName: "ZTEST",
+            connectionId: "dev100",
             filter: { objectTypes: ["CLAS/OC"] }
           }),
           mockToken
@@ -357,7 +366,8 @@ describe("ABAPWhereUsedTool", () => {
 
         const result: any = await tool.invoke(
           makeOptions({
-            objectName: "ZTEST", connectionId: "dev100",
+            objectName: "ZTEST",
+            connectionId: "dev100",
             filter: { excludeSystemObjects: true }
           }),
           mockToken
@@ -371,13 +381,12 @@ describe("ABAPWhereUsedTool", () => {
       })
 
       it("returns filtered-empty message when all refs excluded by filter", async () => {
-        mockUsageReferences.mockResolvedValue([
-          makeRef("CL_STANDARD", { type: "CLAS/OC" })
-        ])
+        mockUsageReferences.mockResolvedValue([makeRef("CL_STANDARD", { type: "CLAS/OC" })])
 
         const result: any = await tool.invoke(
           makeOptions({
-            objectName: "ZTEST", connectionId: "dev100",
+            objectName: "ZTEST",
+            connectionId: "dev100",
             filter: { excludeSystemObjects: true }
           }),
           mockToken
@@ -397,7 +406,8 @@ describe("ABAPWhereUsedTool", () => {
 
         const result: any = await tool.invoke(
           makeOptions({
-            objectName: "ZTEST", connectionId: "dev100",
+            objectName: "ZTEST",
+            connectionId: "dev100",
             filter: { excludeSystemObjects: true, objectTypes: ["CLAS/OC"] }
           }),
           mockToken
@@ -418,7 +428,8 @@ describe("ABAPWhereUsedTool", () => {
 
         const result: any = await tool.invoke(
           makeOptions({
-            objectName: "ZTEST", connectionId: "dev100",
+            objectName: "ZTEST",
+            connectionId: "dev100",
             filter: { excludeSystemObjects: true }
           }),
           mockToken
@@ -431,7 +442,11 @@ describe("ABAPWhereUsedTool", () => {
     })
 
     describe("pagination", () => {
-      const searchObj = { name: "ZTEST", type: "PROG/P", uri: "/sap/bc/adt/programs/programs/ztest" }
+      const searchObj = {
+        name: "ZTEST",
+        type: "PROG/P",
+        uri: "/sap/bc/adt/programs/programs/ztest"
+      }
 
       beforeEach(() => {
         mockSearcher.searchObjects.mockResolvedValue([searchObj])
@@ -443,8 +458,10 @@ describe("ABAPWhereUsedTool", () => {
 
         const result: any = await tool.invoke(
           makeOptions({
-            objectName: "ZTEST", connectionId: "dev100",
-            startIndex: 3, maxResults: 50
+            objectName: "ZTEST",
+            connectionId: "dev100",
+            startIndex: 3,
+            maxResults: 50
           }),
           mockToken
         )
@@ -463,7 +480,8 @@ describe("ABAPWhereUsedTool", () => {
 
         const result: any = await tool.invoke(
           makeOptions({
-            objectName: "ZTEST", connectionId: "dev100",
+            objectName: "ZTEST",
+            connectionId: "dev100",
             maxResults: 3
           }),
           mockToken
@@ -481,8 +499,10 @@ describe("ABAPWhereUsedTool", () => {
 
         const result: any = await tool.invoke(
           makeOptions({
-            objectName: "ZTEST", connectionId: "dev100",
-            startIndex: 100, maxResults: 50
+            objectName: "ZTEST",
+            connectionId: "dev100",
+            startIndex: 100,
+            maxResults: 50
           }),
           mockToken
         )
@@ -498,21 +518,27 @@ describe("ABAPWhereUsedTool", () => {
 
         const result: any = await tool.invoke(
           makeOptions({
-            objectName: "ZTEST", connectionId: "dev100",
-            maxResults: 3, startIndex: 2
+            objectName: "ZTEST",
+            connectionId: "dev100",
+            maxResults: 3,
+            startIndex: 2
           }),
           mockToken
         )
 
         const text = result.parts[0].text
         // startIndex=2, maxResults=3 → showing items 2,3,4 out of 10 → 5 remaining
-        expect(text).toContain("Remaining results: 5")
-        expect(text).toContain("startIndex: 5")
+        expect(text).toContain("Remaining: 5")
+        expect(text).toContain("startIndex=5")
       })
     })
 
     describe("result format and grouping", () => {
-      const searchObj = { name: "ZTEST", type: "PROG/P", uri: "/sap/bc/adt/programs/programs/ztest" }
+      const searchObj = {
+        name: "ZTEST",
+        type: "PROG/P",
+        uri: "/sap/bc/adt/programs/programs/ztest"
+      }
 
       beforeEach(() => {
         mockSearcher.searchObjects.mockResolvedValue([searchObj])
@@ -572,8 +598,8 @@ describe("ABAPWhereUsedTool", () => {
         )
 
         const text = result.parts[0].text
-        expect(text).toContain("Total References:** 3")
-        expect(text).toContain("Unique Objects:** 2")
+        expect(text).toContain("Total References: 3")
+        expect(text).toContain("Unique Objects: 2")
       })
 
       it("filters out refs without valid ABAPFullName identifier", async () => {
@@ -591,12 +617,16 @@ describe("ABAPWhereUsedTool", () => {
         const text = result.parts[0].text
         expect(text).toContain("ZVALID_OBJ")
         // The invalid refs should not appear (only 1 result)
-        expect(text).toContain("Total References:** 1")
+        expect(text).toContain("Total References: 1")
       })
     })
 
     describe("empty results", () => {
-      const searchObj = { name: "ZTEST", type: "PROG/P", uri: "/sap/bc/adt/programs/programs/ztest" }
+      const searchObj = {
+        name: "ZTEST",
+        type: "PROG/P",
+        uri: "/sap/bc/adt/programs/programs/ztest"
+      }
 
       beforeEach(() => {
         mockSearcher.searchObjects.mockResolvedValue([searchObj])
@@ -641,7 +671,11 @@ describe("ABAPWhereUsedTool", () => {
     })
 
     describe("includeSnippets", () => {
-      const searchObj = { name: "ZTEST", type: "PROG/P", uri: "/sap/bc/adt/programs/programs/ztest" }
+      const searchObj = {
+        name: "ZTEST",
+        type: "PROG/P",
+        uri: "/sap/bc/adt/programs/programs/ztest"
+      }
 
       beforeEach(() => {
         mockSearcher.searchObjects.mockResolvedValue([searchObj])

@@ -10,6 +10,7 @@ import * as fs from "fs"
 import { logTelemetry } from "../telemetry"
 import { logCommands } from "../abapCopilotLogger"
 import { context } from "../../extension"
+import { assertToolInvocationAuthorized } from "./toolGuard"
 
 // ============================================================================
 // TOOL CLASS
@@ -42,6 +43,7 @@ export class GetABAPSQLSyntaxTool implements vscode.LanguageModelTool<{}> {
     options: vscode.LanguageModelToolInvocationOptions<{}>,
     _token: vscode.CancellationToken
   ): Promise<vscode.LanguageModelToolResult> {
+    assertToolInvocationAuthorized(options)
     logTelemetry("tool_get_abap_sql_syntax_called")
 
     try {
@@ -59,8 +61,8 @@ export class GetABAPSQLSyntaxTool implements vscode.LanguageModelTool<{}> {
 
       const syntaxContent = fs.readFileSync(syntaxFilePath, "utf8")
 
-      let resultText = `⚠️ **IMPORTANT: READ THIS COMPLETE SYNTAX GUIDE CAREFULLY BEFORE CALLING execute_data_query**\n\n`
-      resultText += `📘 **ABAP SQL Syntax Documentation**\n\n`
+      let resultText = ` IMPORTANT: READ THIS COMPLETE SYNTAX GUIDE CAREFULLY BEFORE CALLING execute_data_query\n\n`
+      resultText += ` ABAP SQL Syntax Documentation\n\n`
       resultText += `The following syntax guide contains CRITICAL differences between standard SQL and ABAP SQL. `
       resultText += `You MUST follow these rules when constructing SQL queries for SAP systems.\n\n`
       resultText += `---\n\n`
@@ -68,7 +70,7 @@ export class GetABAPSQLSyntaxTool implements vscode.LanguageModelTool<{}> {
 
       return new vscode.LanguageModelToolResult([new vscode.LanguageModelTextPart(resultText)])
     } catch (error) {
-      logCommands.error("❌ Failed to get ABAP SQL syntax:", error)
+      logCommands.error(" Failed to get ABAP SQL syntax:", error)
 
       throw new Error(`Failed to load ABAP SQL syntax documentation: ${error}`)
     }

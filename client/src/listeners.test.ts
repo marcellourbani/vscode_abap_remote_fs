@@ -1,24 +1,28 @@
 // Tests for listeners.ts - focusing on the pure/exported functions
-jest.mock("vscode", () => ({
-  TextDocumentSaveReason: { Manual: 1, AfterDelay: 2, FocusOut: 3 },
-  workspace: {
-    textDocuments: [],
-    onDidChangeTextDocument: jest.fn(),
-    getConfiguration: jest.fn(() => ({ get: jest.fn() }))
-  },
-  window: {
-    showWarningMessage: jest.fn(),
-    showErrorMessage: jest.fn(),
-    showInformationMessage: jest.fn(),
-    activeTextEditor: undefined,
-    visibleTextEditors: []
-  },
-  commands: { executeCommand: jest.fn() },
-  Uri: {
-    parse: jest.fn(s => ({ toString: () => s, scheme: "adt", authority: "host", path: "/file" }))
-  },
-  TabInputTextDiff: class {}
-}), { virtual: true })
+jest.mock(
+  "vscode",
+  () => ({
+    TextDocumentSaveReason: { Manual: 1, AfterDelay: 2, FocusOut: 3 },
+    workspace: {
+      textDocuments: [],
+      onDidChangeTextDocument: jest.fn(),
+      getConfiguration: jest.fn(() => ({ get: jest.fn() }))
+    },
+    window: {
+      showWarningMessage: jest.fn(),
+      showErrorMessage: jest.fn(),
+      showInformationMessage: jest.fn(),
+      activeTextEditor: undefined,
+      visibleTextEditors: []
+    },
+    commands: { executeCommand: jest.fn() },
+    Uri: {
+      parse: jest.fn(s => ({ toString: () => s, scheme: "adt", authority: "host", path: "/file" }))
+    },
+    TabInputTextDiff: class {}
+  }),
+  { virtual: true }
+)
 
 jest.mock("./lib", () => ({
   caughtToString: jest.fn(e => String(e)),
@@ -32,7 +36,7 @@ jest.mock("./adt/conections", () => ({
   abapUri: jest.fn(() => false),
   getRoot: jest.fn()
 }))
-jest.mock("abapobject", () => ({}))
+jest.mock("abapobject", () => jest.requireActual("abapobject"))
 jest.mock("abapfs", () => ({ isAbapStat: jest.fn() }))
 jest.mock("abap-adt-api", () => ({ isCsrfError: jest.fn() }))
 jest.mock("abapfs/out/lockObject", () => ({}))
@@ -40,7 +44,9 @@ jest.mock("./adt/operations/AdtObjectFinder", () => ({ uriAbapFile: jest.fn() })
 jest.mock("./scm/abaprevisions", () => ({ versionRevisions: jest.fn() }))
 jest.mock("./context", () => ({ setContext: jest.fn() }))
 jest.mock("./services/telemetry", () => ({ logTelemetry: jest.fn() }))
-jest.mock("./fs/LocalFsProvider", () => ({ LocalFsProvider: { useLocalStorage: jest.fn(() => false) } }))
+jest.mock("./fs/LocalFsProvider", () => ({
+  LocalFsProvider: { useLocalStorage: jest.fn(() => false) }
+}))
 jest.mock("./langClient", () => ({ triggerSyntaxCheck: jest.fn() }))
 jest.mock("./views/enhancementDecorations", () => ({ updateEnhancementDecorations: jest.fn() }))
 jest.mock("./services/cleanerCommands", () => ({ updateCleanerContext: jest.fn() }))
@@ -59,7 +65,13 @@ jest.mock("./services/funMessenger", () => ({
   }
 }))
 
-import { setSaveReason, getSaveReason, clearSaveReason, listenersubscribers, listener } from "./listeners"
+import {
+  setSaveReason,
+  getSaveReason,
+  clearSaveReason,
+  listenersubscribers,
+  listener
+} from "./listeners"
 import { TextDocumentSaveReason } from "vscode"
 
 describe("listeners.ts - save reason tracking", () => {

@@ -1,8 +1,12 @@
-jest.mock("vscode", () => ({
-  window: {
-    createOutputChannel: jest.fn()
-  }
-}), { virtual: true })
+jest.mock(
+  "vscode",
+  () => ({
+    window: {
+      createOutputChannel: jest.fn()
+    }
+  }),
+  { virtual: true }
+)
 
 jest.mock("../lib/logger", () => {
   const mockChannel = {

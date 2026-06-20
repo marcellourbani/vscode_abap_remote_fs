@@ -20,6 +20,10 @@ jest.mock("./toolRegistry", () => ({
 jest.mock("../funMessenger", () => ({ funWindow: { activeTextEditor: undefined } }))
 jest.mock("../../views/transports", () => ({ readTransports: jest.fn() }))
 
+jest.mock("./toolGuard", () => ({
+  assertToolInvocationAuthorized: jest.fn(),
+  isToolInvocationAuthorized: jest.fn(() => true)
+}))
 import { ManageTransportRequestsTool } from "./transportTool"
 import { getClient } from "../../adt/conections"
 import { logTelemetry } from "../telemetry"
@@ -196,7 +200,7 @@ describe("ManageTransportRequestsTool", () => {
       expect(text).toContain("Tasks: 1")
       expect(text).toContain("Objects: 2")
       expect(text).toContain("Summary")
-      expect(text).toContain("Found 1 transport requests")
+      expect(text).toContain("1 transport requests for user")
     })
 
     it("counts transports across multiple categories and targets", async () => {
@@ -264,7 +268,7 @@ describe("ManageTransportRequestsTool", () => {
       const text: string = result.parts[0].text
 
       // 2 modifiable + 1 released + 1 customizing = 4
-      expect(text).toContain("Found 4 transport requests")
+      expect(text).toContain("4 transport requests for user")
     })
 
     it("shows released section with lock icon", async () => {
@@ -320,7 +324,7 @@ describe("ManageTransportRequestsTool", () => {
 
       expect(text).not.toContain("WORKBENCH")
       expect(text).not.toContain("CUSTOMIZING")
-      expect(text).toContain("Found 0 transport requests")
+      expect(text).toContain("0 transport requests for user")
     })
 
     it("uses client.username when user parameter is not provided", async () => {
@@ -438,7 +442,7 @@ describe("ManageTransportRequestsTool", () => {
       )
       const text: string = result.parts[0].text
 
-      expect(text).toContain("Objects**: 2")
+      expect(text).toContain("Objects: 2")
       expect(text).toContain("ZCL_MYCLASS")
       expect(text).toContain("CLAS")
       expect(text).toContain("ZMYREPORT")
@@ -474,7 +478,7 @@ describe("ManageTransportRequestsTool", () => {
       )
       const text: string = result.parts[0].text
 
-      expect(text).toContain("Tasks** (1)")
+      expect(text).toContain("Tasks (1)")
       expect(text).toContain("DEVK900125")
       expect(text).toContain("Task 1")
     })
@@ -621,8 +625,8 @@ describe("ManageTransportRequestsTool", () => {
       )
       const text: string = result.parts[0].text
 
-      expect(text).toContain("No objects found")
-      expect(text).toContain("Total Objects**: 0")
+      expect(text).toContain("No objects in this transport")
+      expect(text).toContain("Total Objects: 0")
     })
 
     it("counts total objects including task objects", async () => {
@@ -656,7 +660,7 @@ describe("ManageTransportRequestsTool", () => {
       const text: string = result.parts[0].text
 
       // 1 main + 2 task = 3 total
-      expect(text).toContain("Total Objects**: 3")
+      expect(text).toContain("Total Objects: 3")
     })
   })
 
@@ -742,7 +746,7 @@ describe("ManageTransportRequestsTool", () => {
       )
       const text: string = result.parts[0].text
 
-      expect(text).toContain("None")
+      expect(text).toContain("none")
       expect(text).toContain("ZONLY_A")
       expect(text).toContain("ZONLY_B")
     })
@@ -773,7 +777,7 @@ describe("ManageTransportRequestsTool", () => {
       const text: string = result.parts[0].text
 
       // 3 unique objects: OBJ1, OBJ2, OBJ3
-      expect(text).toContain("Total Unique Objects**: 3")
+      expect(text).toContain("Total Unique Objects: 3")
     })
 
     it("handles one transport not found during comparison", async () => {

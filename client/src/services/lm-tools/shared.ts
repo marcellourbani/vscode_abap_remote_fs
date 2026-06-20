@@ -1,4 +1,5 @@
 import { getClient } from "../../adt/conections"
+import { getObjectTypeConfig } from "abapobject"
 
 /**
  * Shared utilities and types for ABAP Language Model Tools
@@ -87,7 +88,7 @@ export async function getTableTypeFromDD(client: any, typeName: string): Promise
       if (row.DECIMALS) structure += ` DECIMALS ${row.DECIMALS}`
       structure += `\n`
     }
-    structure += `\n💡 This is a table type that references line type ${row.ROWTYPE}. To see the actual fields, query the line type structure.`
+    structure += `\n This is a table type that references line type ${row.ROWTYPE}. To see the actual fields, query the line type structure.`
   })
 
   return structure
@@ -240,11 +241,7 @@ export async function getCompleteTableStructure(
           mainStructure = tableFields
 
           const completeStructure =
-            `Complete Structure for ${sanitizedName}:\n` +
-            `${"=".repeat(60)}\n` +
-            `💡 DD Table Query: Includes main object + ALL append structures automatically\n` +
-            `📊 Source: DD03L (Data Dictionary fields)\n` +
-            `${"=".repeat(60)}\n\n` +
+            `Complete Structure for ${sanitizedName} (from DD03L — main object + ALL append structures):\n\n` +
             tableFields
 
           return completeStructure
@@ -262,7 +259,6 @@ export async function getCompleteTableStructure(
 
       if (appendStructuresList.length > 0) {
         allAppendStructures += `\n\nALL APPEND STRUCTURES (${appendStructuresList.length}):\n`
-        allAppendStructures += `${"=".repeat(40)}\n`
         for (const append of appendStructuresList) {
           allAppendStructures += `• ${append.name} (${append.fields} fields)\n`
         }
@@ -271,15 +267,11 @@ export async function getCompleteTableStructure(
       // Append structures are optional
     }
 
-    let completeStructure = `Complete Table Structure for ${sanitizedName}:\n`
-    completeStructure += `${"=".repeat(60)}\n`
-    completeStructure += `💡 SE11-like Table Access: Main table + ALL append structures\n`
-    completeStructure += `📊 Append Structures Found: ${appendStructuresList.length}\n`
-    completeStructure += `${"=".repeat(60)}\n\n`
+    let completeStructure = `Complete Table Structure for ${sanitizedName} (SE11-like, includes ALL append structures):\n`
+    completeStructure += ` Append Structures Found: ${appendStructuresList.length}\n\n`
 
     if (mainStructure) {
       completeStructure += `MAIN TABLE STRUCTURE:\n`
-      completeStructure += `${"=".repeat(40)}\n`
       completeStructure += mainStructure + "\n"
     }
 
@@ -320,24 +312,20 @@ export interface EnhancementResult {
  * or if /source/main is needed for actual source code
  */
 export function getOptimalObjectURI(objectType: string, baseUri: string): string {
-  // Object types where XML metadata contains all needed information
-  const metadataOnlyTypes = ["DTEL/DE", "DOMA/DD", "TTYP/DA"]
-
-  // Object types that require actual source code via /source/main
-  const sourceRequiredTypes = ["CLAS/OC", "FUNC/FF", "PROG/P", "INTF/OI", "TABL/TA"]
-
-  if (metadataOnlyTypes.includes(objectType)) {
-    // XML has all the info we need - no /source/main needed
-    return baseUri
-  } else if (sourceRequiredTypes.includes(objectType)) {
-    // Need actual source code
-    const sourceUri = baseUri.endsWith("/source/main") ? baseUri : `${baseUri}/source/main`
-    return sourceUri
-  } else {
-    // Unknown type - try /source/main as fallback
-    const sourceUri = baseUri.endsWith("/source/main") ? baseUri : `${baseUri}/source/main`
-    return sourceUri
+  const config = getObjectTypeConfig(objectType)
+  if (config) {
+    if (config.sourceRequired) {
+      const sourceUri = baseUri.endsWith("/source/main") ? baseUri : `${baseUri}/source/main`
+      return sourceUri
+    }
+    if (config.extension?.endsWith(".xml")) {
+      return baseUri
+    }
   }
+
+  // Unknown or fallback type - try /source/main
+  const sourceUri = baseUri.endsWith("/source/main") ? baseUri : `${baseUri}/source/main`
+  return sourceUri
 }
 
 /**

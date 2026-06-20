@@ -1,9 +1,13 @@
-jest.mock("vscode", () => ({
-  ProgressLocation: { Notification: 15 },
-  workspace: {
-    openTextDocument: jest.fn()
-  }
-}), { virtual: true })
+jest.mock(
+  "vscode",
+  () => ({
+    ProgressLocation: { Notification: 15 },
+    workspace: {
+      openTextDocument: jest.fn()
+    }
+  }),
+  { virtual: true }
+)
 
 jest.mock("../services/funMessenger", () => ({
   funWindow: {
@@ -34,7 +38,9 @@ const mockGetOrCreateClient = getOrCreateClient as jest.MockedFunction<typeof ge
 
 beforeEach(() => {
   jest.clearAllMocks()
-  ;(mockWindow.withProgress as jest.Mock).mockImplementation((_opts: any, fn: Function) => fn({ report: jest.fn() }))
+  ;(mockWindow.withProgress as jest.Mock).mockImplementation((_opts: any, fn: Function) =>
+    fn({ report: jest.fn() })
+  )
   ;(vscode.workspace.openTextDocument as jest.Mock).mockResolvedValue({ getText: () => "" })
   ;(mockWindow.showTextDocument as jest.Mock).mockResolvedValue(undefined)
 })

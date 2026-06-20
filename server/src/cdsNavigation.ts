@@ -1,22 +1,13 @@
 import { ADTClient, DdicObjectReference } from "abap-adt-api"
 
-export async function ddicRepositoryAccessField(
+async function ddicRepositoryAccessRaw(
   client: ADTClient,
-  source: string,
-  field: string
+  qs: Record<string, string>
 ): Promise<DdicObjectReference | undefined> {
-  const response = await client.httpClient.request(
-    `/sap/bc/adt/ddic/ddl/ddicrepositoryaccess`,
-    {
-      qs: {
-        requestScope: "all",
-        path: `${source}.${field}`,
-        uriRequired: "X",
-        exactMatch: "X"
-      },
-      headers: { Accept: "application/*" }
-    }
-  )
+  const response = await client.httpClient.request(`/sap/bc/adt/ddic/ddl/ddicrepositoryaccess`, {
+    qs: { ...qs, uriRequired: "X" },
+    headers: { Accept: "application/*" }
+  })
   const { fullParse, xmlArray, xmlNodeAttr } = require("abap-adt-api/build/utilities")
   const raw = fullParse(response.body)
   const records = raw["adtcore:objectReferences"]
@@ -32,4 +23,23 @@ export async function ddicRepositoryAccessField(
     }
   })
   return refs.length > 0 && refs[0].uri && refs[0].uri !== "not_used" ? refs[0] : undefined
+}
+
+export async function ddicRepositoryAccessField(
+  client: ADTClient,
+  source: string,
+  field: string
+): Promise<DdicObjectReference | undefined> {
+  return ddicRepositoryAccessRaw(client, {
+    requestScope: "all",
+    path: `${source}.${field}`,
+    exactMatch: "X"
+  })
+}
+
+export async function ddicRepositoryAccessSource(
+  client: ADTClient,
+  name: string
+): Promise<DdicObjectReference | undefined> {
+  return ddicRepositoryAccessRaw(client, { datasource: name })
 }

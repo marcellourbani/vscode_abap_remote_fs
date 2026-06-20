@@ -19,28 +19,6 @@ export interface ReplHealthCheck {
   production: boolean
 }
 
-let interceptorInstalled = false
-
-/** Install a one-time response interceptor that re-serializes parsed JSON objects
- *  back to strings before AxiosHttpClient's `${data}` stringification loses them. */
-function ensureJsonInterceptor(client: ADTClient): void {
-  if (interceptorInstalled) return
-  try {
-    const axios = (client as any).httpClient?.httpclient?.axios
-    if (axios?.interceptors?.response) {
-      axios.interceptors.response.use((resp: any) => {
-        if (resp.data && typeof resp.data === "object" && resp.config?.url?.includes(REPL_PATH)) {
-          resp.data = JSON.stringify(resp.data)
-        }
-        return resp
-      })
-      interceptorInstalled = true
-    }
-  } catch {
-    // If we can't install interceptor, httpClient.request will still work but body will be mangled
-  }
-}
-
 /** Strip control characters from JSON body that ABAP may embed in string values */
 function sanitizeJsonBody(body: string): string {
   // Replace any real newlines/tabs/control chars inside JSON string values
@@ -79,20 +57,18 @@ function sanitizeJsonBody(body: string): string {
 }
 
 export async function checkReplAvailability(client: ADTClient): Promise<ReplHealthCheck> {
-  ensureJsonInterceptor(client)
-
   const response = await (client as any).httpClient.request(REPL_PATH, {
     method: "GET",
     timeout: 10_000
   })
 
-  log.debug(`ABAP REPL health: status=${response.status}, body="${response.body.substring(0, 300)}"`)
+  log.debug(
+    `ABAP REPL health: status=${response.status}, body="${response.body.substring(0, 300)}"`
+  )
   return JSON.parse(sanitizeJsonBody(response.body)) as ReplHealthCheck
 }
 
 export async function executeAbapCode(client: ADTClient, code: string): Promise<ReplResponse> {
-  ensureJsonInterceptor(client)
-
   const reqBody = JSON.stringify({ code })
   log.debug(`ABAP REPL: executing ${code.length} chars, body="${reqBody.substring(0, 200)}"`)
 

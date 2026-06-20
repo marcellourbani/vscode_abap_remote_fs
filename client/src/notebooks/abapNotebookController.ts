@@ -1,6 +1,10 @@
 import * as vscode from "vscode"
 import { NOTEBOOK_TYPE, CellResult, SQL_LANGUAGE_ID } from "./types"
-import { resolveConnection, ResolvedConnection, NotebookConnectionError } from "./connectionResolver"
+import {
+  resolveConnection,
+  ResolvedConnection,
+  NotebookConnectionError
+} from "./connectionResolver"
 import { executeSqlCell } from "./sqlCellExecutor"
 import { executeJsCell } from "./jsCellExecutor"
 import { renderSqlOutput, renderJsOutput, renderErrorOutput } from "./outputRenderer"
@@ -93,7 +97,11 @@ export class AbapNotebookController {
       }
 
       const success = await this.executeCell(
-        cell, results, notebookKey, abortController.signal, sharedConnection
+        cell,
+        results,
+        notebookKey,
+        abortController.signal,
+        sharedConnection
       )
       if (!success) failed = true
     }
@@ -159,9 +167,12 @@ export class AbapNotebookController {
       const maxRows = cell.metadata?.maxRows as number | undefined
 
       if (language !== SQL_LANGUAGE_ID && language !== "javascript") {
-        endExec(false, renderErrorOutput(
-          `Unsupported cell language "${language}". Only "abap-sql" and "javascript" cells can be executed.`
-        ))
+        endExec(
+          false,
+          renderErrorOutput(
+            `Unsupported cell language "${language}". Only "abap-sql" and "javascript" cells can be executed.`
+          )
+        )
         cancelListener.dispose()
         abortSignal.removeEventListener("abort", onAbort)
         return false
@@ -179,26 +190,27 @@ export class AbapNotebookController {
           try {
             connection = await resolveConnection()
           } catch (error: any) {
-            endExec(false, renderErrorOutput(
-              error instanceof NotebookConnectionError ? error : new Error(`Connection failed: ${error.message || error}`)
-            ))
+            endExec(
+              false,
+              renderErrorOutput(
+                error instanceof NotebookConnectionError
+                  ? error
+                  : new Error(`Connection failed: ${error.message || error}`)
+              )
+            )
             cancelListener.dispose()
             abortSignal.removeEventListener("abort", onAbort)
             return false
           }
         }
-        cellResult = await executeSqlCell(
-          code, connection.client, cell.index, results, maxRows
-        )
+        cellResult = await executeSqlCell(code, connection.client, cell.index, results, maxRows)
       } else {
         cellResult = await executeJsCell(code, cell.index, results, abortSignal)
       }
 
       if (!ended) {
         results.set(cell.index, cellResult)
-        const output = isSql
-          ? renderSqlOutput(cellResult)
-          : renderJsOutput(cellResult)
+        const output = isSql ? renderSqlOutput(cellResult) : renderJsOutput(cellResult)
         endExec(true, output)
       }
     } catch (error: any) {

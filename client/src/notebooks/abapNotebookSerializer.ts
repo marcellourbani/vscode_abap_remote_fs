@@ -1,5 +1,11 @@
 import * as vscode from "vscode"
-import { NOTEBOOK_TYPE, AbapNotebookDocument, AbapNotebookCell, CellType, SQL_LANGUAGE_ID } from "./types"
+import {
+  NOTEBOOK_TYPE,
+  AbapNotebookDocument,
+  AbapNotebookCell,
+  CellType,
+  SQL_LANGUAGE_ID
+} from "./types"
 import { log } from "../lib"
 import { funWindow as window } from "../services/funMessenger"
 
@@ -24,7 +30,9 @@ export class AbapNotebookSerializer implements vscode.NotebookSerializer {
     content: Uint8Array,
     _token: vscode.CancellationToken
   ): Promise<vscode.NotebookData> {
-    log.debug(`📒 [Serializer] deserializeNotebook called, content length: ${content.byteLength} bytes`)
+    log.debug(
+      `📒 [Serializer] deserializeNotebook called, content length: ${content.byteLength} bytes`
+    )
     const text = new TextDecoder().decode(content)
     log.debug(`📒 [Serializer] decoded text length: ${text.length} chars`)
     if (text.length < 500) {
@@ -34,25 +42,31 @@ export class AbapNotebookSerializer implements vscode.NotebookSerializer {
     }
 
     const parseResult = parseNotebookJson(text)
-    log.debug(`📒 [Serializer] parseResult: corrupt=${parseResult.corrupt}, cells=${parseResult.doc.cells.length}, version=${parseResult.doc.version}`)
+    log.debug(
+      `📒 [Serializer] parseResult: corrupt=${parseResult.corrupt}, cells=${parseResult.doc.cells.length}, version=${parseResult.doc.version}`
+    )
     for (let i = 0; i < parseResult.doc.cells.length; i++) {
       const c = parseResult.doc.cells[i]
-      log.debug(`📒 [Serializer]   cell[${i}]: type=${c.type}, content length=${c.content.length}, content preview=${JSON.stringify(c.content.substring(0, 80))}`)
+      log.debug(
+        `📒 [Serializer]   cell[${i}]: type=${c.type}, content length=${c.content.length}, content preview=${JSON.stringify(c.content.substring(0, 80))}`
+      )
     }
 
     const cells = parseResult.doc.cells.map(cellToNotebookCell)
     log.debug(`📒 [Serializer] mapped to ${cells.length} NotebookCellData items`)
     for (let i = 0; i < cells.length; i++) {
       const c = cells[i]
-      log.debug(`📒 [Serializer]   nbCell[${i}]: kind=${c.kind}, languageId=${c.languageId}, value length=${c.value.length}, value preview=${JSON.stringify(c.value.substring(0, 80))}`)
+      log.debug(
+        `📒 [Serializer]   nbCell[${i}]: kind=${c.kind}, languageId=${c.languageId}, value length=${c.value.length}, value preview=${JSON.stringify(c.value.substring(0, 80))}`
+      )
     }
 
     if (cells.length === 0 && parseResult.corrupt) {
       const warningCell = new vscode.NotebookCellData(
         vscode.NotebookCellKind.Markup,
         `**Warning:** This file contained invalid JSON and could not be parsed.\n\n` +
-        `If you save now without adding any cells, the original file content will be preserved. ` +
-        `If you add new cells and save, the file will be replaced with valid notebook JSON.`,
+          `If you save now without adding any cells, the original file content will be preserved. ` +
+          `If you add new cells and save, the file will be replaced with valid notebook JSON.`,
         "markdown"
       )
       warningCell.metadata = { [CORRUPT_WARNING_TAG]: true }
@@ -66,7 +80,9 @@ export class AbapNotebookSerializer implements vscode.NotebookSerializer {
       title: parseResult.doc.title || "",
       ...(parseResult.corrupt ? { [CORRUPT_MARKER]: text } : {})
     }
-    log.debug(`📒 [Serializer] returning NotebookData with ${cells.length} cells, metadata: version=${notebookData.metadata.version}, title=${notebookData.metadata.title}`)
+    log.debug(
+      `📒 [Serializer] returning NotebookData with ${cells.length} cells, metadata: version=${notebookData.metadata.version}, title=${notebookData.metadata.title}`
+    )
     return notebookData
   }
 
@@ -87,7 +103,9 @@ export class AbapNotebookSerializer implements vscode.NotebookSerializer {
 
     for (let i = 0; i < realCells.length; i++) {
       const c = realCells[i]
-      log.debug(`📒 [Serializer]   serialize cell[${i}]: kind=${c.kind}, languageId=${c.languageId}, value length=${c.value.length}, value preview=${JSON.stringify(c.value.substring(0, 80))}`)
+      log.debug(
+        `📒 [Serializer]   serialize cell[${i}]: kind=${c.kind}, languageId=${c.languageId}, value length=${c.value.length}, value preview=${JSON.stringify(c.value.substring(0, 80))}`
+      )
     }
 
     const filteredData = new vscode.NotebookData(realCells)
@@ -114,7 +132,9 @@ function parseNotebookJson(text: string): ParseResult {
   let raw: any
   try {
     raw = JSON.parse(text)
-    log.debug(`📒 [Parser] JSON.parse succeeded. typeof raw=${typeof raw}, isArray=${Array.isArray(raw)}`)
+    log.debug(
+      `📒 [Parser] JSON.parse succeeded. typeof raw=${typeof raw}, isArray=${Array.isArray(raw)}`
+    )
   } catch (e1: any) {
     log.debug(`📒 [Parser] JSON.parse failed: ${e1.message}`)
     try {
@@ -134,11 +154,15 @@ function parseNotebookJson(text: string): ParseResult {
   }
 
   const hasCells = Array.isArray(raw.cells)
-  log.debug(`📒 [Parser] raw.version=${raw.version}, raw.connectionId=${raw.connectionId}, raw.title=${raw.title}, raw.cells isArray=${hasCells}, raw.cells length=${hasCells ? raw.cells.length : "N/A"}`)
+  log.debug(
+    `📒 [Parser] raw.version=${raw.version}, raw.connectionId=${raw.connectionId}, raw.title=${raw.title}, raw.cells isArray=${hasCells}, raw.cells length=${hasCells ? raw.cells.length : "N/A"}`
+  )
   if (hasCells && raw.cells.length > 0) {
     for (let i = 0; i < Math.min(raw.cells.length, 5); i++) {
       const c = raw.cells[i]
-      log.debug(`📒 [Parser]   raw.cells[${i}]: type=${c?.type}, content type=${typeof c?.content}, content length=${typeof c?.content === "string" ? c.content.length : "N/A"}`)
+      log.debug(
+        `📒 [Parser]   raw.cells[${i}]: type=${c?.type}, content type=${typeof c?.content}, content length=${typeof c?.content === "string" ? c.content.length : "N/A"}`
+      )
     }
   }
 
@@ -179,9 +203,18 @@ function fixJsonNewlines(text: string): string {
     }
 
     if (inString) {
-      if (ch === "\n") { result += "\\n"; continue }
-      if (ch === "\r") { result += "\\r"; continue }
-      if (ch === "\t") { result += "\\t"; continue }
+      if (ch === "\n") {
+        result += "\\n"
+        continue
+      }
+      if (ch === "\r") {
+        result += "\\r"
+        continue
+      }
+      if (ch === "\t") {
+        result += "\\t"
+        continue
+      }
     }
 
     result += ch
@@ -232,17 +265,14 @@ function notebookDataToDocument(data: vscode.NotebookData): AbapNotebookDocument
 }
 
 function normalizeCellType(raw: unknown): CellType {
-  if (raw === "sql" || raw === "abap-sql" || raw === "javascript" || raw === "markdown") return raw === "abap-sql" ? "sql" : raw as CellType
+  if (raw === "sql" || raw === "abap-sql" || raw === "javascript" || raw === "markdown")
+    return raw === "abap-sql" ? "sql" : (raw as CellType)
   if (raw === "typescript" || raw === "ts" || raw === "js") return "javascript"
   return "markdown"
 }
 
-export function registerNotebookSerializer(
-  context: vscode.ExtensionContext
-): vscode.Disposable {
-  return vscode.workspace.registerNotebookSerializer(
-    NOTEBOOK_TYPE,
-    new AbapNotebookSerializer(),
-    { transientOutputs: true }
-  )
+export function registerNotebookSerializer(context: vscode.ExtensionContext): vscode.Disposable {
+  return vscode.workspace.registerNotebookSerializer(NOTEBOOK_TYPE, new AbapNotebookSerializer(), {
+    transientOutputs: true
+  })
 }

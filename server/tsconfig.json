@@ -13,7 +13,10 @@
     "incremental": true,
     "tsBuildInfoFile": ".tsbuildinfo",
     "skipLibCheck": true,
-    "esModuleInterop": true
+    "esModuleInterop": true,
+    "types": [
+      "jest"
+    ]
   },
   "include": [
     "src"

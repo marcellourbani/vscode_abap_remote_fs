@@ -10,6 +10,7 @@ import { funWindow as window } from "../funMessenger"
 import { getSearchService } from "../abapSearchService"
 import { abapUri } from "../../adt/conections"
 import { logTelemetry } from "../telemetry"
+import { assertToolInvocationAuthorized } from "./toolGuard"
 
 // Tool parameter interface
 export interface ISearchABAPObjectsParameters {
@@ -50,6 +51,9 @@ export interface ISearchABAPObjectsParameters {
     | "SFBS"
     | "JOBD"
     | "NROB"
+    | "BDEF"
+    | "SRVB"
+    | "SUSO"
   >
   maxResults?: number
 }
@@ -84,6 +88,7 @@ export class SearchABAPObjectsTool implements vscode.LanguageModelTool<ISearchAB
     options: vscode.LanguageModelToolInvocationOptions<ISearchABAPObjectsParameters>,
     _token: vscode.CancellationToken
   ): Promise<vscode.LanguageModelToolResult> {
+    assertToolInvocationAuthorized(options)
     let { pattern, types, maxResults = 20, connectionId } = options.input
     logTelemetry("tool_search_abap_objects_called", { connectionId })
 
@@ -131,11 +136,11 @@ export class SearchABAPObjectsTool implements vscode.LanguageModelTool<ISearchAB
         results
           .map(
             obj =>
-              `• **${obj.name}** (${obj.type})\n` +
-              `  - Description: ${obj.description}\n` +
-              `  - Package: ${obj.package}\n` +
-              `  - URI Path: \`${obj.uri}\`\n` +
-              `  - Full ADT Path: \`adt://${actualConnectionId}${obj.uri}\``
+              `• ${obj.name} (${obj.type})\n` +
+              `  ${obj.description}\n` +
+              `  Package: ${obj.package}\n` +
+              `  URI: ${obj.uri}\n` +
+              `  ADT: adt://${actualConnectionId}${obj.uri}`
           )
           .join("\n\n")
 

@@ -17,7 +17,7 @@ describe("initialtemplates", () => {
   test("includes AGENTS.md template", () => {
     const agents = templates.find(t => t.name === "AGENTS.md")
     expect(agents).toBeDefined()
-    expect(agents!.content).toContain("ABAP FS extension")
+    expect(agents!.content).toContain("ABAP VIRTUAL FILESYSTEM")
     expect(agents!.content).toContain("CRITICAL")
   })
 
