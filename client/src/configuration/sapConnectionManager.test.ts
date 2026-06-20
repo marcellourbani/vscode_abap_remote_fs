@@ -448,7 +448,7 @@ describe("message handling: importFromJson", () => {
 
     createManager()
 
-    const newConns = { dev2: { url: "https://h2", username: "u2" } }
+    const newConns = { dev2: { url: "https://h2", username: "u2", client: "100" } }
     await receiveMessageHandler!({
       type: "importFromJson",
       jsonContent: JSON.stringify(newConns),

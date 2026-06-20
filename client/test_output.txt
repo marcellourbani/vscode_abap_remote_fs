@@ -1,0 +1,24 @@
+ts-jest[ts-jest-transformer] (WARN) Define `ts-jest` config under `globals` is deprecated. Please do
+transform: {
+    <transform_regex>: ['ts-jest', { /* ts-jest config goes here in Jest */ }],
+},
+See more at https://kulshekhar.github.io/ts-jest/docs/getting-started/presets#advanced
+ts-jest[config] (WARN) 
+    The "ts-jest" config option "isolatedModules" is deprecated and will be removed in v30.0.0. Please use "isolatedModules: true" in /home/marcello/projects/vscode-abap-remote-fs/client/tsconfig.json instead, see https://www.typescriptlang.org/tsconfig/#isolatedModules
+  
+PASS src/adt/debugger/functions.test.ts
+  md5
+    ✓ returns the digest of the hash (2 ms)
+    ✓ returns a string (1 ms)
+  newClientFromKey
+    ✓ returns undefined when configFromKey returns undefined (1 ms)
+    ✓ creates an ADTClient with http config (no SSL) (1 ms)
+    ✓ creates an ADTClient with HTTPS SSL config (1 ms)
+    ✓ uses futureToken when oauth config is present
+    ✓ passes extra options to ADTClient on HTTPS (1 ms)
+
+Test Suites: 1 passed, 1 total
+Tests:       7 passed, 7 total
+Snapshots:   0 total
+Time:        0.668 s, estimated 1 s
+Ran all test suites matching /src\/adt\/debugger\/functions.test.ts/i.
