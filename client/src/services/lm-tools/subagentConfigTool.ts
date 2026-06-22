@@ -560,6 +560,11 @@ Files are in: ${workspaceFolder.fsPath}/.github/agents/`)
 // ============================================================================
 
 let isHandlingConfigChange = false
+let isHandlingModelChange = false
+// Debounce `onDidChangeChatModels`: the event storms during Copilot startup,
+// and validating mid-storm sees a partial model list and falsely AUTO-DISABLES.
+let modelChangeTimer: ReturnType<typeof setTimeout> | undefined
+const MODEL_CHANGE_DEBOUNCE_MS = 5000
 
 export function registerSubagentConfigTool(context: vscode.ExtensionContext): void {
   context.subscriptions.push(
@@ -567,16 +572,30 @@ export function registerSubagentConfigTool(context: vscode.ExtensionContext): vo
   )
 
   context.subscriptions.push(
-    vscode.lm.onDidChangeChatModels(async () => {
-      await handleModelChange(context)
+    vscode.lm.onDidChangeChatModels(() => {
+      if (modelChangeTimer) clearTimeout(modelChangeTimer)
+      modelChangeTimer = setTimeout(async () => {
+        modelChangeTimer = undefined
+        if (isHandlingModelChange) return
+        isHandlingModelChange = true
+        try {
+          await handleModelChange(context)
+        } finally {
+          isHandlingModelChange = false
+        }
+      }, MODEL_CHANGE_DEBOUNCE_MS)
     })
   )
 
+  context.subscriptions.push({
+    dispose: () => {
+      if (modelChangeTimer) clearTimeout(modelChangeTimer)
+    }
+  })
+
   context.subscriptions.push(
     vscode.workspace.onDidChangeConfiguration(async e => {
-      if (isHandlingConfigChange) {
-        return
-      }
+      if (isHandlingConfigChange) return
 
       if (e.affectsConfiguration("abapfs.subagents.enabled")) {
         isHandlingConfigChange = true
@@ -601,6 +620,13 @@ async function handleManualModelChange(context: vscode.ExtensionContext): Promis
 
   const workspaceFolder = getWorkspaceFolder()
   if (!workspaceFolder) {
+    return
+  }
+
+  // `handleModelChange` validates and auto-disables if anything is invalid.
+  // If it disabled subagents, there's nothing more to do.
+  await handleModelChange(context)
+  if (!getSubagentSettings().enabled) {
     return
   }
 
@@ -632,6 +658,12 @@ async function handleManualSettingsChange(context: vscode.ExtensionContext): Pro
     const result = await enableSubagentsCore(context)
 
     if (!result.success) {
+      // Revert the tick so the UI reflects reality. `enableSubagentsCore`
+      // only reverts on validation_failed; missing_models and no_workspace
+      // return early without touching the config.
+      const config = vscode.workspace.getConfiguration("abapfs.subagents")
+      await config.update("enabled", false, vscode.ConfigurationTarget.Workspace)
+
       if (result.error === "no_workspace") {
         window.showErrorMessage("Cannot enable subagents: No workspace folder found.")
       } else if (result.error === "missing_models") {
