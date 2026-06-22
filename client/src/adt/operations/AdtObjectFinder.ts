@@ -23,6 +23,7 @@ import {
 } from "abapfs"
 import { context } from "../../extension"
 import { funWindow as window } from "../../services/funMessenger"
+import { getRecent, addRecent, clearRecent, RecentObject } from "./recentObjects"
 
 interface AdtSearchResult {
   uri: string
@@ -388,6 +389,18 @@ export class AdtObjectFinder {
     return selectedTypeStrings
   }
 
+  private toMySearchResults(items: RecentObject[]): MySearchResult[] {
+    return items.map(item =>
+      new MySearchResult({
+        "adtcore:uri": item.uri,
+        "adtcore:type": item.type,
+        "adtcore:name": item.name,
+        "adtcore:packageName": item.packageName,
+        "adtcore:description": item.typeLabel || ""
+      })
+    )
+  }
+
   public async findObject(
     prompt: string = "Search an ABAP object",
     objType: string = "",
@@ -395,31 +408,14 @@ export class AdtObjectFinder {
     typeFilter?: string[]
   ): Promise<MySearchResult | undefined> {
     const o = await new Promise<MySearchResult>(async resolve => {
-      const empty: MySearchResult[] = []
-      if (forType === PACKAGE) empty.push(new MySearchResult(this.EPMTYPACKAGE))
       const qp = window.createQuickPick()
       qp.ignoreFocusOut = true
 
-      const getRecentItems = (): MySearchResult[] => {
-        const key = `abapfs.recentObjects.${this.connId}`
-        const recent = context.globalState.get<any[]>(key) || []
-        return recent.map(item => {
-          let packageName = ""
-          const pkgMatch = item.detail?.match(/Package\s+([^\s•]+)/)
-          if (pkgMatch) {
-            packageName = pkgMatch[1]
-          }
-          return new MySearchResult({
-            "adtcore:uri": item.uri,
-            "adtcore:type": item.type,
-            "adtcore:name": item.name,
-            "adtcore:packageName": packageName,
-            "adtcore:description": item.description || ""
-          })
-        })
-      }
-
-      const recentItems = getRecentItems()
+      let recentItems = this.toMySearchResults(getRecent(this.connId))
+      let initialItems: MySearchResult[] =
+        forType === PACKAGE
+          ? [new MySearchResult(this.EPMTYPACKAGE), ...recentItems]
+          : recentItems
 
       // Add button to change type filter (show always when no specific type is requested)
       if (!objType && !forType) {
@@ -443,9 +439,13 @@ export class AdtObjectFinder {
               resolve(result)
             }
           } else if (button === clearHistoryButton) {
-            const key = `abapfs.recentObjects.${this.connId}`
-            await context.globalState.update(key, [])
-            qp.items = []
+            await clearRecent(this.connId)
+            recentItems = []
+            initialItems =
+              forType === PACKAGE
+                ? [new MySearchResult(this.EPMTYPACKAGE)]
+                : []
+            qp.items = initialItems
           }
         })
 
@@ -455,30 +455,22 @@ export class AdtObjectFinder {
 
       const searchParent = async (e: string) => {
         qp.items =
-          e.length >= 2 ? await this.search(e, getClient(this.connId), objType, typeFilter) : recentItems
+          e.length >= 2 ? await this.search(e, getClient(this.connId), objType, typeFilter) : initialItems
       }
 
-      qp.items = recentItems
+      qp.items = initialItems
       qp.onDidChangeValue(async e => searchParent(e))
       qp.placeholder = prompt
-      qp.onDidChangeSelection(async e => {
+      qp.onDidChangeSelection(e => {
         if (e[0]) {
           const selected = e[0] as MySearchResult
-          const recentKey = `abapfs.recentObjects.${this.connId}`
-          let recent: any[] = context.globalState.get<any[]>(recentKey) || []
-          recent = recent.filter(r => r.uri !== selected.uri)
-          recent.unshift({
+          void addRecent(this.connId, {
             uri: selected.uri,
             type: selected.type,
             name: selected.name,
-            description: selected.description || "",
-            detail: selected.detail || ""
+            packageName: selected.packageName || "",
+            typeLabel: selected.description || ""
           })
-          if (recent.length > 10) {
-            recent = recent.slice(0, 10)
-          }
-          await context.globalState.update(recentKey, recent)
-
           resolve(selected)
           qp.hide()
         }
