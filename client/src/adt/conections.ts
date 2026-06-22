@@ -66,35 +66,6 @@ async function create(connId: string) {
     await manager.savePassword(name, username, password)
   }
 
-  // Fix LIKE issue: Add Content-Type header for SQL queries
-  const addContentTypeInterceptor = (adtClient: ADTClient) => {
-    try {
-      const httpClient = adtClient.httpClient as any
-      if (
-        httpClient &&
-        typeof httpClient === "object" &&
-        httpClient.httpclient &&
-        typeof httpClient.httpclient === "object" &&
-        httpClient.httpclient.axios &&
-        typeof httpClient.httpclient.axios.interceptors === "object"
-      ) {
-        httpClient.httpclient.axios.interceptors.request.use((config: any) => {
-          if (!config || typeof config !== "object") return config
-          if (typeof config.url === "string" && config.url.includes("/datapreview/freestyle")) {
-            config.headers = config.headers || {}
-            config.headers["Content-Type"] = "text/plain"
-          }
-          return config
-        })
-      }
-    } catch (error) {
-      log(`⚠️ Failed to add Content-Type interceptor: ${error}`)
-    }
-  }
-
-  addContentTypeInterceptor(client)
-  addContentTypeInterceptor(client.statelessClone)
-
   // @ts-ignore
   const service = new AFsService(client)
   const newRoot = new Root(connId, service)
