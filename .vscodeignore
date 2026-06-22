@@ -15,7 +15,6 @@ skills-lock.json
 vsc-extension-quickstart.md
 tslint.json
 .agents/
-.agents/
 .github/
 .venv
 tmp/**
