@@ -162,8 +162,9 @@ describe("SubagentConfigTool", () => {
     })
 
     it("subscribes to config and model change events", () => {
-      // subscriptions.push is called for: tool registration, onDidChangeChatModels, onDidChangeConfiguration
-      expect(mockContext.subscriptions.push).toHaveBeenCalledTimes(3)
+      // subscriptions.push is called for: tool registration, onDidChangeChatModels,
+      // model-change debounce timer disposable, onDidChangeConfiguration
+      expect(mockContext.subscriptions.push).toHaveBeenCalledTimes(4)
     })
   })
 
