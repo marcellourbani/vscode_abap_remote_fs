@@ -34,6 +34,7 @@ interface AdtSearchResult {
 }
 
 export class MySearchResult implements QuickPickItem, AdtSearchResult {
+  private static packageCache = new Map<string, string>()
   public static async createResults(results: SearchResult[], client: ADTClient) {
     const myresults = results.map(r => new MySearchResult(r))
     if (myresults.find(r => !r.description)) {
@@ -45,6 +46,43 @@ export class MySearchResult implements QuickPickItem, AdtSearchResult {
           r.description = typ ? typ.OBJECT_TYPE_LABEL : r.type
         })
     }
+
+    const toResolve = myresults.filter(r => {
+      if (r.type === PACKAGE) {
+        r.packageName = r.name
+        return false
+      }
+      if (r.packageName && r.packageName !== "unknown") {
+        return false
+      }
+      if (this.packageCache.has(r.uri)) {
+        r.packageName = this.packageCache.get(r.uri)
+        return false
+      }
+      return true
+    })
+
+    if (toResolve.length > 0) {
+      await Promise.all(
+        toResolve.map(async r => {
+          try {
+            const steps = await client.findObjectPath(r.uri)
+            const pkgStep = steps.find(
+              s => s["adtcore:type"] === PACKAGE || s["adtcore:type"].startsWith("DEVC")
+            )
+            if (pkgStep) {
+              r.packageName = pkgStep["adtcore:name"]
+              this.packageCache.set(r.uri, r.packageName)
+            } else {
+              r.packageName = "unknown"
+            }
+          } catch (e) {
+            r.packageName = "unknown"
+          }
+        })
+      )
+    }
+
     myresults.forEach(typ => {
       if (!typ.packageName) typ.packageName = typ.type === PACKAGE ? typ.name : "unknown"
     })
