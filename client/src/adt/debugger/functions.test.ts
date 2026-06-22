@@ -1,3 +1,32 @@
+// Must mock vscode before any imports that reference it
+jest.mock(
+  "vscode",
+  () => ({
+    workspace: {
+      getConfiguration: jest.fn(),
+      workspaceFolders: [] as any[],
+      onDidChangeConfiguration: jest.fn()
+    },
+    Uri: {
+      parse: jest.fn((s: string) => ({ toString: () => s })),
+      file: (p: string) => ({ fsPath: p, toString: () => p })
+    }
+  }),
+  { virtual: true }
+)
+
+jest.mock("../../lib/vscodefunctions", () => ({}))
+jest.mock("../../services/funMessenger", () => ({
+  funWindow: {
+    createOutputChannel: jest.fn(() => ({
+      info: jest.fn(),
+      warn: jest.fn(),
+      error: jest.fn(),
+      debug: jest.fn(),
+      trace: jest.fn()
+    }))
+  }
+}))
 jest.mock("abap-adt-api", () => ({
   ADTClient: jest.fn(),
   createSSLConfig: jest.fn(() => ({ ssl: true }))

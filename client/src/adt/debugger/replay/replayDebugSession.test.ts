@@ -4,13 +4,11 @@ jest.mock("@vscode/debugadapter", () => ({
     this.sendEvent = jest.fn()
   }),
   InitializedEvent: jest.fn().mockImplementation(() => ({ type: "initialized" })),
-  StoppedEvent: jest
-    .fn()
-    .mockImplementation((reason: string, threadId: number) => ({
-      type: "stopped",
-      reason,
-      threadId
-    })),
+  StoppedEvent: jest.fn().mockImplementation((reason: string, threadId: number) => ({
+    type: "stopped",
+    reason,
+    threadId
+  })),
   TerminatedEvent: jest.fn().mockImplementation(() => ({ type: "terminated" })),
   Thread: jest.fn().mockImplementation((id: number, name: string) => ({ id, name })),
   Source: jest.fn().mockImplementation((name: string, path: string) => ({ name, path }))

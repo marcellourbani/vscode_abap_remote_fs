@@ -22,14 +22,12 @@ jest.mock("../../../services/funMessenger", () => ({
   }
 }))
 jest.mock("./variableCapture", () => ({
-  captureScopesBatched: jest
-    .fn()
-    .mockResolvedValue([
-      {
-        name: "LOCAL",
-        variables: [{ id: "V1", name: "X", value: "10", type: "I", metaType: "simple" }]
-      }
-    ])
+  captureScopesBatched: jest.fn().mockResolvedValue([
+    {
+      name: "LOCAL",
+      variables: [{ id: "V1", name: "X", value: "10", type: "I", metaType: "simple" }]
+    }
+  ])
 }))
 
 import { DebugRecorder } from "./debugRecorder"

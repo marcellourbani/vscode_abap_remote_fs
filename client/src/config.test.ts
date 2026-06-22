@@ -45,7 +45,11 @@ jest.mock("./adt/conections", () => ({ ADTSCHEME: "adt" }))
 jest.mock("./adt/adtCommLog", () => ({
   CallLogger: { get: jest.fn(() => undefined) }
 }))
-jest.mock("vscode-abap-remote-fs-sharedapi", () => ({}))
+jest.mock("vscode-abap-remote-fs-sharedapi", () => ({
+  getAuthMethod: jest.fn((c: any) => c.authMethod || "basic"),
+  hasCertAuthConfig: jest.fn(),
+  hasOAuthOnPremConfig: jest.fn()
+}))
 jest.mock("fs", () => ({
   readFileSync: jest.fn(() => {
     throw new Error("not found")
@@ -242,9 +246,10 @@ describe("saveNewRemote", () => {
     } as any
 
     await saveNewRemote(remote, ConfigurationTarget.Global)
+    const { name, ...rest } = remote
     expect(cfg.update).toHaveBeenCalledWith(
       "remote",
-      expect.objectContaining({ mySystem: remote }),
+      expect.objectContaining({ mySystem: rest }),
       ConfigurationTarget.Global
     )
   })

@@ -1,4 +1,11 @@
-import { MainProgram, CommLogEntryData } from "vscode-abap-remote-fs-sharedapi"
+import {
+  MainProgram,
+  CommLogEntryData,
+  AuthHeadersResponse,
+  getAuthMethod,
+  hasCertAuthConfig,
+  hasOAuthOnPremConfig
+} from "vscode-abap-remote-fs-sharedapi"
 import { log, channel, rangeApi2Vsc } from "./lib"
 import {
   AbapObjectDetail,
@@ -29,6 +36,7 @@ import { AbapObject } from "abapobject"
 import { IncludeService, IncludeProvider } from "./adt/includes"
 import * as R from "ramda"
 import { funWindow as window } from "./services/funMessenger"
+import { buildCookieHeaders, errorMessage } from "./auth/utils"
 
 const uriErrors = new Map<string, boolean>()
 const uriError = (uri: string) => new Error(`File not found:${uri}`)
@@ -50,7 +58,7 @@ export async function vsCodeUri(
 
   const tryUris = [normalizedUri, uri]
   const root = getRoot(confKey)
-  let lastError: any
+  let lastError: unknown
 
   for (const u of tryUris) {
     try {
@@ -124,11 +132,122 @@ async function objectDetailFromUrl(url: string) {
 }
 
 export async function configFromKey(connId: string) {
-  const { sapGui, ...cfg } = (await RemoteManager.get()).byId(connId)!
+  const connection = await RemoteManager.get().byIdAsync(connId)
+  if (!connection) return undefined
+  const { sapGui, ...cfg } = connection
   return cfg
 }
 async function getToken(connId: string) {
   return futureToken(formatKey(connId))
+}
+
+/** Provide auth headers (cookies etc.) to the language server for non-basic auth. */
+async function getAuthHeaders(connId: string): Promise<AuthHeadersResponse | undefined> {
+  connId = formatKey(connId)
+  const conn = await RemoteManager.get().byIdAsync(connId)
+  if (!conn) return undefined
+  const authMethod = getAuthMethod(conn)
+  switch (authMethod) {
+    case "kerberos": {
+      const { log: libLog } = await import("./lib")
+      try {
+        libLog.debug(`[langClient] getAuthHeaders: re-negotiating kerberos for ${connId}`)
+        const { refreshKerberosAuth } = await import("./auth/kerberos")
+        const result = await refreshKerberosAuth(
+          connId,
+          conn.kerberosAuth,
+          conn.url,
+          conn.client,
+          !!conn.allowSelfSigned
+        )
+        libLog.debug(`[langClient] getAuthHeaders: kerberos refresh success for ${connId}`)
+        return result.headers ? { httpHeaders: result.headers } : undefined
+      } catch (e) {
+        libLog.debug(
+          `[langClient] getAuthHeaders: kerberos re-negotiation failed for ${connId}: ${errorMessage(e)}`
+        )
+        const { getKerberosCookies } = await import("./auth/kerberos")
+        const cookies = await getKerberosCookies(connId)
+        libLog.debug(
+          `[langClient] getAuthHeaders: falling back to ${cookies.length} cached cookies for ${connId}`
+        )
+        const httpHeaders = buildCookieHeaders(cookies)
+        return httpHeaders ? { httpHeaders } : undefined
+      }
+    }
+    case "browser_sso": {
+      const { log: libLog } = await import("./lib")
+      try {
+        libLog.debug(`[langClient] getAuthHeaders: resolving browser_sso cookies for ${connId}`)
+        const { buildBrowserSsoAuth, getSsoCookies } = await import("./auth/browserSso")
+        const result = await buildBrowserSsoAuth(connId, conn.url, conn.client)
+        if (result.headers) {
+          libLog.debug(`[langClient] getAuthHeaders: browser_sso capture resolved for ${connId}`)
+          return { httpHeaders: result.headers }
+        }
+
+        const cookies = await getSsoCookies(connId)
+        const httpHeaders = buildCookieHeaders(cookies)
+        return httpHeaders ? { httpHeaders } : undefined
+      } catch (e) {
+        libLog.debug(
+          `[langClient] getAuthHeaders: browser_sso capture failed for ${connId}: ${errorMessage(e)}`
+        )
+        const { getSsoCookies } = await import("./auth/browserSso")
+        const cookies = await getSsoCookies(connId)
+        const httpHeaders = buildCookieHeaders(cookies)
+        return httpHeaders ? { httpHeaders } : undefined
+      }
+    }
+    case "cert": {
+      const { log: libLog } = await import("./lib")
+      if (!hasCertAuthConfig(conn)) {
+        libLog.debug(`[langClient] getAuthHeaders: cert auth config missing for ${connId}`)
+        return undefined
+      }
+      libLog.debug(`[langClient] getAuthHeaders: returning cert paths for ${connId}`)
+      const { getCertPassphrase } = await import("./auth/certificate")
+      const passphrase = await getCertPassphrase(connId)
+      return {
+        certAuth: {
+          certPath: conn.certAuth.certPath,
+          keyPath: conn.certAuth.keyPath,
+          caPath: conn.certAuth.caPath || undefined,
+          passphrase: passphrase || undefined
+        }
+      }
+    }
+    case "oauth_onprem": {
+      const { log: libLog } = await import("./lib")
+      libLog.debug(`[langClient] getAuthHeaders: fetching oauth_onprem token for ${connId}`)
+      const { buildOAuthOnPremAuth } = await import("./auth/oauthOnPrem")
+      if (!hasOAuthOnPremConfig(conn)) {
+        libLog.debug(`[langClient] getAuthHeaders: oauth_onprem config missing for ${connId}`)
+        return undefined
+      }
+      try {
+        const result = await buildOAuthOnPremAuth(
+          connId,
+          conn.url,
+          conn.client,
+          conn.oauthOnPrem,
+          !!conn.allowSelfSigned
+        )
+        if (typeof result.passwordOrFetcher === "function") {
+          const token = await result.passwordOrFetcher()
+          libLog.debug(`[langClient] getAuthHeaders: returning Bearer token for ${connId}`)
+          return { httpHeaders: { Authorization: `Bearer ${token}` } }
+        }
+      } catch (e) {
+        libLog.debug(
+          `[langClient] getAuthHeaders: oauth_onprem token fetch failed for ${connId}: ${errorMessage(e)}`
+        )
+      }
+      return undefined
+    }
+    default:
+      return undefined
+  }
 }
 
 let setProgress: ((prog: SearchProgress) => void) | undefined
@@ -217,6 +336,7 @@ export async function startLanguageClient(context: ExtensionContext) {
       client.onRequest(Methods.vsUri, getVSCodeUri)
       client.onRequest(Methods.setSearchProgress, setSearchProgress)
       client.onRequest(Methods.getToken, getToken)
+      client.onRequest(Methods.getAuthHeaders, getAuthHeaders)
       client.onNotification(Methods.commLogEntry, (entry: CommLogEntryData) =>
         CallLogger.get(entry.connId)?.add(hidrateLogData(entry.logData))
       )

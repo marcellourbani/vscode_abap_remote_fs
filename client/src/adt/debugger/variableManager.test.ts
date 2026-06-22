@@ -403,18 +403,16 @@ describe("VariableManager", () => {
       const frameId = threadId * 1000000000000
       mockIdThread.mockReturnValue(threadId)
       const mockClient = makeClient({
-        debuggerVariables: jest
-          .fn()
-          .mockResolvedValue([
-            {
-              META_TYPE: "simple",
-              TECHNICAL_TYPE: "C",
-              VALUE: "hello",
-              ID: "V1",
-              NAME: "V1",
-              TABLE_LINES: 0
-            }
-          ])
+        debuggerVariables: jest.fn().mockResolvedValue([
+          {
+            META_TYPE: "simple",
+            TECHNICAL_TYPE: "C",
+            VALUE: "hello",
+            ID: "V1",
+            NAME: "V1",
+            TABLE_LINES: 0
+          }
+        ])
       })
       const service = makeService(threadId, { client: mockClient })
       const listener = {
