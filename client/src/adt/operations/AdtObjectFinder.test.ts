@@ -181,6 +181,39 @@ describe("MySearchResult", () => {
       const results = await MySearchResult.createResults(rawResults, rawClient)
       expect(results[0]!.packageName).toBe("unknown")
     })
+
+    it("resolves packageName via findObjectPath if missing", async () => {
+      const rawClient: any = {
+        loadTypes: jest.fn().mockResolvedValue([]),
+        findObjectPath: jest.fn().mockResolvedValue([
+          { "adtcore:name": "ZPACKAGE", "adtcore:type": "DEVC/K", "adtcore:uri": "/sap/bc/adt/packages/zpackage" },
+          { "adtcore:name": "ZPROG", "adtcore:type": "PROG/P", "adtcore:uri": "/sap/bc/adt/programs/programs/zprog" }
+        ])
+      }
+      const rawResults = [makeSR({ "adtcore:packageName": undefined, "adtcore:uri": "/my/uri/1" })]
+      const results = await MySearchResult.createResults(rawResults, rawClient)
+      expect(rawClient.findObjectPath).toHaveBeenCalledWith("/my/uri/1")
+      expect(results[0]!.packageName).toBe("ZPACKAGE")
+    })
+
+    it("caches resolved packageName and avoids redundant calls to findObjectPath", async () => {
+      const rawClient: any = {
+        loadTypes: jest.fn().mockResolvedValue([]),
+        findObjectPath: jest.fn().mockResolvedValue([
+          { "adtcore:name": "ZPACKAGE_CACHED", "adtcore:type": "DEVC/K", "adtcore:uri": "/sap/bc/adt/packages/zpackage_cached" }
+        ])
+      }
+      const rawResults1 = [makeSR({ "adtcore:packageName": undefined, "adtcore:uri": "/my/uri/cached" })]
+      const results1 = await MySearchResult.createResults(rawResults1, rawClient)
+      expect(results1[0]!.packageName).toBe("ZPACKAGE_CACHED")
+      expect(rawClient.findObjectPath).toHaveBeenCalledTimes(1)
+
+      // Call again for the same URI, should use cached value and not call findObjectPath again
+      const rawResults2 = [makeSR({ "adtcore:packageName": undefined, "adtcore:uri": "/my/uri/cached" })]
+      const results2 = await MySearchResult.createResults(rawResults2, rawClient)
+      expect(results2[0]!.packageName).toBe("ZPACKAGE_CACHED")
+      expect(rawClient.findObjectPath).toHaveBeenCalledTimes(1) // still 1
+    })
   })
 })
 

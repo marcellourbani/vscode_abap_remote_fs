@@ -23,6 +23,7 @@ import {
 } from "abapfs"
 import { context } from "../../extension"
 import { funWindow as window } from "../../services/funMessenger"
+import { getRecent, addRecent, clearRecent, RecentObject } from "./recentObjects"
 
 interface AdtSearchResult {
   uri: string
@@ -33,6 +34,7 @@ interface AdtSearchResult {
 }
 
 export class MySearchResult implements QuickPickItem, AdtSearchResult {
+  private static packageCache = new Map<string, string>()
   public static async createResults(results: SearchResult[], client: ADTClient) {
     const myresults = results.map(r => new MySearchResult(r))
     if (myresults.find(r => !r.description)) {
@@ -44,6 +46,43 @@ export class MySearchResult implements QuickPickItem, AdtSearchResult {
           r.description = typ ? typ.OBJECT_TYPE_LABEL : r.type
         })
     }
+
+    const toResolve = myresults.filter(r => {
+      if (r.type === PACKAGE) {
+        r.packageName = r.name
+        return false
+      }
+      if (r.packageName && r.packageName !== "unknown") {
+        return false
+      }
+      if (this.packageCache.has(r.uri)) {
+        r.packageName = this.packageCache.get(r.uri)
+        return false
+      }
+      return true
+    })
+
+    if (toResolve.length > 0) {
+      await Promise.all(
+        toResolve.map(async r => {
+          try {
+            const steps = await client.findObjectPath(r.uri)
+            const pkgStep = steps.find(
+              s => s["adtcore:type"] === PACKAGE || s["adtcore:type"].startsWith("DEVC")
+            )
+            if (pkgStep) {
+              r.packageName = pkgStep["adtcore:name"]
+              this.packageCache.set(r.uri, r.packageName)
+            } else {
+              r.packageName = "unknown"
+            }
+          } catch (e) {
+            r.packageName = "unknown"
+          }
+        })
+      )
+    }
+
     myresults.forEach(typ => {
       if (!typ.packageName) typ.packageName = typ.type === PACKAGE ? typ.name : "unknown"
     })
@@ -388,6 +427,18 @@ export class AdtObjectFinder {
     return selectedTypeStrings
   }
 
+  private toMySearchResults(items: RecentObject[]): MySearchResult[] {
+    return items.map(item =>
+      new MySearchResult({
+        "adtcore:uri": item.uri,
+        "adtcore:type": item.type,
+        "adtcore:name": item.name,
+        "adtcore:packageName": item.packageName,
+        "adtcore:description": item.typeLabel || ""
+      })
+    )
+  }
+
   public async findObject(
     prompt: string = "Search an ABAP object",
     objType: string = "",
@@ -395,31 +446,14 @@ export class AdtObjectFinder {
     typeFilter?: string[]
   ): Promise<MySearchResult | undefined> {
     const o = await new Promise<MySearchResult>(async resolve => {
-      const empty: MySearchResult[] = []
-      if (forType === PACKAGE) empty.push(new MySearchResult(this.EPMTYPACKAGE))
       const qp = window.createQuickPick()
       qp.ignoreFocusOut = true
 
-      const getRecentItems = (): MySearchResult[] => {
-        const key = `abapfs.recentObjects.${this.connId}`
-        const recent = context.globalState.get<any[]>(key) || []
-        return recent.map(item => {
-          let packageName = ""
-          const pkgMatch = item.detail?.match(/Package\s+([^\s•]+)/)
-          if (pkgMatch) {
-            packageName = pkgMatch[1]
-          }
-          return new MySearchResult({
-            "adtcore:uri": item.uri,
-            "adtcore:type": item.type,
-            "adtcore:name": item.name,
-            "adtcore:packageName": packageName,
-            "adtcore:description": item.description || ""
-          })
-        })
-      }
-
-      const recentItems = getRecentItems()
+      let recentItems = this.toMySearchResults(getRecent(this.connId))
+      let initialItems: MySearchResult[] =
+        forType === PACKAGE
+          ? [new MySearchResult(this.EPMTYPACKAGE), ...recentItems]
+          : recentItems
 
       // Add button to change type filter (show always when no specific type is requested)
       if (!objType && !forType) {
@@ -443,9 +477,13 @@ export class AdtObjectFinder {
               resolve(result)
             }
           } else if (button === clearHistoryButton) {
-            const key = `abapfs.recentObjects.${this.connId}`
-            await context.globalState.update(key, [])
-            qp.items = []
+            await clearRecent(this.connId)
+            recentItems = []
+            initialItems =
+              forType === PACKAGE
+                ? [new MySearchResult(this.EPMTYPACKAGE)]
+                : []
+            qp.items = initialItems
           }
         })
 
@@ -455,30 +493,22 @@ export class AdtObjectFinder {
 
       const searchParent = async (e: string) => {
         qp.items =
-          e.length >= 2 ? await this.search(e, getClient(this.connId), objType, typeFilter) : recentItems
+          e.length >= 2 ? await this.search(e, getClient(this.connId), objType, typeFilter) : initialItems
       }
 
-      qp.items = recentItems
+      qp.items = initialItems
       qp.onDidChangeValue(async e => searchParent(e))
       qp.placeholder = prompt
-      qp.onDidChangeSelection(async e => {
+      qp.onDidChangeSelection(e => {
         if (e[0]) {
           const selected = e[0] as MySearchResult
-          const recentKey = `abapfs.recentObjects.${this.connId}`
-          let recent: any[] = context.globalState.get<any[]>(recentKey) || []
-          recent = recent.filter(r => r.uri !== selected.uri)
-          recent.unshift({
+          void addRecent(this.connId, {
             uri: selected.uri,
             type: selected.type,
             name: selected.name,
-            description: selected.description || "",
-            detail: selected.detail || ""
+            packageName: selected.packageName || "",
+            typeLabel: selected.description || ""
           })
-          if (recent.length > 10) {
-            recent = recent.slice(0, 10)
-          }
-          await context.globalState.update(recentKey, recent)
-
           resolve(selected)
           qp.hide()
         }

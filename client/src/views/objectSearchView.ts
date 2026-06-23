@@ -15,13 +15,17 @@ import { currentUri, openObject } from "../commands/commands"
 import { caughtToString } from "../lib"
 import { context } from "../extension"
 import { OBJECT_TYPE_FILTER_OPTIONS, getObjectTypeLabel } from "./objectTypeLabels"
+import { RecentObject, addRecent, clearRecent, getRecent } from "../adt/operations/recentObjects"
 
+/** Shape sent to the webview — display strings plus canonical data for storage. */
 type SearchResultMessage = {
   uri: string
   type: string
   name: string
   description?: string
   detail?: string
+  packageName?: string
+  typeLabel?: string
 }
 
 type ConnectionOption = {
@@ -78,12 +82,12 @@ export class ObjectSearchViewProvider implements WebviewViewProvider {
           break
         case "open":
           if (message.connectionId && message.uri) {
-            await this.addToRecent(message.connectionId, {
+            await addRecent(message.connectionId, {
               uri: message.uri,
               type: message.objectType || "",
               name: message.name || "",
-              description: message.description || "",
-              detail: message.detail || ""
+              packageName: message.packageName || "",
+              typeLabel: message.typeLabel || ""
             })
             await this.postState()
             await openObject(message.connectionId, message.uri, message.objectType)
@@ -94,7 +98,7 @@ export class ObjectSearchViewProvider implements WebviewViewProvider {
           break
         case "clearHistory":
           if (message.connectionId) {
-            await this.clearRecent(message.connectionId)
+            await clearRecent(message.connectionId)
             await this.postState()
           }
           break
@@ -124,23 +128,6 @@ export class ObjectSearchViewProvider implements WebviewViewProvider {
     return connections[0]?.id
   }
 
-  private async addToRecent(connectionId: string, item: SearchResultMessage) {
-    if (!connectionId) return
-    const key = `abapfs.recentObjects.${connectionId}`
-    let recent: SearchResultMessage[] = context.globalState.get<SearchResultMessage[]>(key) || []
-    recent = recent.filter(r => r.uri !== item.uri)
-    recent.unshift(item)
-    if (recent.length > 10) {
-      recent = recent.slice(0, 10)
-    }
-    await context.globalState.update(key, recent)
-  }
-
-  private async clearRecent(connectionId: string) {
-    if (!connectionId) return
-    const key = `abapfs.recentObjects.${connectionId}`
-    await context.globalState.update(key, [])
-  }
 
 
   private async postState() {
@@ -151,7 +138,9 @@ export class ObjectSearchViewProvider implements WebviewViewProvider {
     this.currentConnId = connectionId
     const typeFilter = getSavedTypeFilter()
     const recentKey = `abapfs.recentObjects.${connectionId}`
-    const recentObjects = connectionId ? context.globalState.get<SearchResultMessage[]>(recentKey) || [] : []
+    const recentObjects: SearchResultMessage[] = connectionId
+      ? (getRecent(connectionId)).map(recentToSearchResultMessage)
+      : []
 
     await this.view.webview.postMessage({
       type: "state",
@@ -413,10 +402,10 @@ export class ObjectSearchViewProvider implements WebviewViewProvider {
 
       .clear-btn,
       .clear-history-btn {
-        background: transparent !important;
-        border: none !important;
-        padding: 0 !important;
-        width: auto !important;
+        background: transparent;
+        border: none;
+        padding: 0;
+        width: auto;
         cursor: pointer;
         color: var(--vscode-descriptionForeground);
         opacity: 0.6;
@@ -434,12 +423,12 @@ export class ObjectSearchViewProvider implements WebviewViewProvider {
         right: 6px;
         top: 0;
         bottom: 0;
-        height: 100% !important;
-        margin: 0 !important;
+        height: 100%;
+        margin: 0;
       }
 
       .clear-history-btn {
-        height: auto !important;
+        height: auto;
       }
 
       .clear-btn:hover,
@@ -533,6 +522,8 @@ export class ObjectSearchViewProvider implements WebviewViewProvider {
               uri: item.uri,
               objectType: item.type,
               name: item.name,
+              packageName: item.packageName || "",
+              typeLabel: item.typeLabel || "",
               description: item.description,
               detail: item.detail
             })
@@ -721,7 +712,22 @@ function toSearchResultMessage(item: MySearchResult): SearchResultMessage {
     type: item.type,
     name: item.name,
     description: getDisplayDescription(item),
-    detail: buildDetail(item)
+    detail: buildDetail(item),
+    packageName: item.packageName || "",
+    typeLabel: getObjectTypeLabel(item.type)
+  }
+}
+
+function recentToSearchResultMessage(item: RecentObject): SearchResultMessage {
+  const typeLabel = item.typeLabel || getObjectTypeLabel(item.type)
+  return {
+    uri: item.uri,
+    type: item.type,
+    name: item.name,
+    description: typeLabel,
+    detail: item.packageName ? `${typeLabel} • Package ${item.packageName}` : typeLabel,
+    packageName: item.packageName,
+    typeLabel: item.typeLabel
   }
 }
 
