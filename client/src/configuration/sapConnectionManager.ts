@@ -144,6 +144,7 @@ type ConnectionManagerMessage =
 
 interface AbapCloudServiceKey {
   url: string
+  systemid?: string
   uaa: {
     clientid: string
     clientsecret: string
@@ -163,6 +164,73 @@ interface AbapSystemInfo {
 interface AbapUserInfo {
   UNAME: string
   MANDT: string
+}
+
+/**
+ * Best-effort decode of a JWT payload (no signature verification — we already
+ * trust the token because the OAuth grant just succeeded). Returns undefined
+ * if the input is not a well-formed JWT.
+ */
+function decodeJwtPayload(token: string): Record<string, unknown> | undefined {
+  if (typeof token !== "string") return undefined
+  const parts = token.split(".")
+  if (parts.length !== 3) return undefined
+  try {
+    const padded = parts[1] + "===".slice((parts[1].length + 3) % 4)
+    const json = Buffer.from(padded.replace(/-/g, "+").replace(/_/g, "/"), "base64").toString(
+      "utf8"
+    )
+    const parsed = JSON.parse(json)
+    return isRecord(parsed) ? parsed : undefined
+  } catch {
+    return undefined
+  }
+}
+
+function usernameFromJwt(token: string): string | undefined {
+  const payload = decodeJwtPayload(token)
+  if (!payload) return undefined
+  for (const claim of ["user_name", "email", "preferred_username", "sub"] as const) {
+    const value = payload[claim]
+    if (typeof value === "string" && value.length > 0) return value
+  }
+  return undefined
+}
+
+/**
+ * Return only the path + query of a URL — never the host, port, or credentials.
+ * Used for diagnostic logging so we do not leak tenant-specific Steampunk hosts.
+ */
+function pathOf(url: string | undefined): string {
+  if (!url) return "(none)"
+  try {
+    const u = new URL(url)
+    return `${u.pathname}${u.search}`
+  } catch {
+    return "(invalid url)"
+  }
+}
+
+/**
+ * Build a compact diagnostic summary of an error suitable for the output log.
+ * Extracts HTTP status codes from `got` (`response.statusCode`) and `axios`
+ * (`response.status`) shaped errors. Never includes URLs, request bodies, or
+ * response bodies — those may contain tokens or tenant data.
+ */
+function summarizeError(e: unknown): string {
+  if (!e || typeof e !== "object") return String(e)
+  const anyE = e as Record<string, any>
+  const response = anyE.response as Record<string, any> | undefined
+  const status = response?.statusCode ?? response?.status ?? anyE.statusCode ?? anyE.status
+  const code = anyE.code
+  const name = anyE.name || "Error"
+  const message = typeof anyE.message === "string" ? anyE.message : String(e)
+  const parts: string[] = []
+  if (status !== undefined) parts.push(`status=${status}`)
+  if (code !== undefined) parts.push(`code=${code}`)
+  parts.push(`name=${name}`)
+  parts.push(`message="${message}"`)
+  return parts.join(" ")
 }
 
 interface CloudEntityWithName {
@@ -361,6 +429,17 @@ export class SapConnectionManager {
     isEdit: boolean
   ) {
     let backupRemotes: StoredRemotes | undefined
+
+    // Guard against non-string connectionId (would corrupt settings.json).
+    if (typeof connectionId !== "string" || connectionId.length === 0) {
+      const detail = `expected non-empty string, got ${typeof connectionId}`
+      logCommands.error(`[save] invalid connectionId (${detail}) — refusing to save`)
+      this.panel.webview.postMessage({
+        type: "formValidationError",
+        message: `Internal error: invalid connection id (${detail}).`
+      })
+      return
+    }
 
     try {
       const configTarget =
@@ -649,6 +728,7 @@ export class SapConnectionManager {
     serviceKeyJson: string,
     target: ConnectionTarget
   ) {
+    logCommands.debug(`[cloud-svckey] started (target=${target})`)
     try {
       // Parse service key
       const serviceKey = JSON.parse(serviceKeyJson) as unknown
@@ -666,21 +746,73 @@ export class SapConnectionManager {
         uaa: { clientid, clientsecret, url: loginUrl }
       } = parsedServiceKey
 
+      logCommands.debug(
+        `[cloud-svckey] service key parsed ` +
+          `(has url: ${!!url}, has uaa.url: ${!!loginUrl}, has clientid: ${!!clientid}, ` +
+          `has clientsecret: ${!!clientsecret}, has systemid: ${!!parsedServiceKey.systemid})`
+      )
+
       // Get system info to determine name
+      logCommands.debug("[cloud-svckey] starting OAuth code grant")
       const server = loginServer()
       const grant = await cfCodeGrant(loginUrl, clientid, clientsecret, server)
-      const user = (await getAbapUserInfo(url, grant.accessToken)) as AbapUserInfo
-      const info = (await getAbapSystemInfo(url, grant.accessToken)) as AbapSystemInfo
-      server.server.close()
+      logCommands.debug(
+        `[cloud-svckey] OAuth code grant completed ` +
+          `(has accessToken: ${!!grant?.accessToken}, has refreshToken: ${!!grant?.refreshToken})`
+      )
+
+      // a4c_api_session is only available on trial / A4C-enabled systems.
+      // Best-effort: on failure, fall back to service key fields + JWT claims.
+      let user: AbapUserInfo | undefined
+      let info: AbapSystemInfo | undefined
+      let infoLookupError: unknown
+      logCommands.debug(
+        "[cloud-svckey] attempting pre-fill via /sap/bc/http/sap/a4c_api_session (best-effort)"
+      )
+      try {
+        user = (await getAbapUserInfo(url, grant.accessToken)) as AbapUserInfo
+        info = (await getAbapSystemInfo(url, grant.accessToken)) as AbapSystemInfo
+        logCommands.debug(
+          `[cloud-svckey] pre-fill via a4c_api_session succeeded ` +
+            `(has UNAME: ${!!user?.UNAME}, has MANDT: ${!!user?.MANDT}, has SYSID: ${!!info?.SYSID}, ` +
+            `installed languages: ${info?.INSTALLED_LANGUAGES?.length ?? 0})`
+        )
+      } catch (e) {
+        infoLookupError = e
+        logCommands.debug(
+          `[cloud-svckey] pre-fill via a4c_api_session failed — falling back to service key + JWT. ` +
+            `Details: ${summarizeError(e)}`
+        )
+      } finally {
+        server.server.close()
+      }
+
+      const fallbackUsername = usernameFromJwt(grant.accessToken) || ""
+      const fallbackSysid = parsedServiceKey.systemid || ""
+      const resolvedName = info?.SYSID || fallbackSysid
+      logCommands.debug(
+        `[cloud-svckey] fallbacks resolved ` +
+          `(jwt username present: ${!!fallbackUsername}, service key systemid present: ${!!fallbackSysid}, ` +
+          `resolved name present: ${!!resolvedName})`
+      )
+      if (!resolvedName) {
+        // Without a system id we cannot generate a meaningful default name.
+        // Surface the original error so the user knows what to fix.
+        throw infoLookupError || new Error("Could not determine system id")
+      }
+      const availableLanguages = info
+        ? info.INSTALLED_LANGUAGES.map(l => l.ISOLANG?.toLowerCase() || "en")
+        : ["en"]
 
       // Create connection configuration (password not included - stored in credential manager only)
       const connection: ConnectionData = {
-        name: info.SYSID,
+        name: resolvedName,
         url,
-        username: user.UNAME,
+        username: user?.UNAME || fallbackUsername,
         password: "",
         language: "en",
-        client: user.MANDT,
+        // Steampunk defaults to client 100; user can edit in the review form.
+        client: user?.MANDT || "100",
         allowSelfSigned: false,
         diff_formatter: "ADT formatter",
         oauth: {
@@ -691,18 +823,37 @@ export class SapConnectionManager {
         }
       }
 
+      logCommands.debug(
+        `[cloud-svckey] connection ready for review ` +
+          `(name present: ${!!connection.name}, has username: ${!!connection.username}, ` +
+          `client=${connection.client}, language=${connection.language}, oauth: yes)`
+      )
+
       // Send to webview for user to review/edit before saving
       this.panel.webview.postMessage({
         type: "cloudConnectionCreated",
         connection: connection,
-        availableLanguages: info.INSTALLED_LANGUAGES.map(
-          language => language.ISOLANG?.toLowerCase() || "en"
-        )
+        availableLanguages
       })
+      logCommands.debug("[cloud-svckey] posted cloudConnectionCreated to webview")
+
+      if (infoLookupError) {
+        this.panel.webview.postMessage({
+          type: "error",
+          message:
+            "Cloud login succeeded, but the system did not return user/system " +
+            "info (a4c_api_session is restricted on non-trial BTP systems). " +
+            "Please review the pre-filled values — especially username and " +
+            "client — before saving."
+        })
+      }
 
       logTelemetry("command_connection_manager_cloud_connection_created")
     } catch (error) {
-      logCommands.error(`Error creating cloud connection from service key: ${error}`)
+      logCommands.error(
+        `[cloud-svckey] failed: ${summarizeError(error)}`,
+        error
+      )
       this.panel.webview.postMessage({
         type: "error",
         message: `Failed to create cloud connection: ${error}`
@@ -711,6 +862,9 @@ export class SapConnectionManager {
   }
 
   private async createCloudConnectionFromEndpoint(endpoint: string, target: ConnectionTarget) {
+    logCommands.debug(
+      `[cloud-endpoint] started (target=${target}, endpoint path=${pathOf(endpoint)})`
+    )
     try {
       // This will guide the user through the Cloud Foundry login flow
       // vscode is already statically imported above
@@ -718,31 +872,48 @@ export class SapConnectionManager {
       // Import cloud platform utilities (static imports above)
 
       // Get CF info
+      logCommands.debug("[cloud-endpoint] fetching CF info (GET /)")
       const info = await cfInfo(endpoint)
       const loginUrl = info.links.login?.href
+      logCommands.debug(
+        `[cloud-endpoint] CF info received (has login URL: ${!!loginUrl})`
+      )
       if (!loginUrl) {
         throw new Error("Could not determine login URL from endpoint")
       }
 
       // Get username and password from user
+      logCommands.debug("[cloud-endpoint] prompting user for CF credentials")
       const username = await window.showInputBox({
         prompt: "Enter Cloud Foundry username",
         ignoreFocusOut: true
       })
-      if (!username) return
+      if (!username) {
+        logCommands.debug("[cloud-endpoint] cancelled by user at username prompt")
+        return
+      }
 
       const password = await window.showInputBox({
         prompt: "Enter Cloud Foundry password",
         password: true,
         ignoreFocusOut: true
       })
-      if (!password) return
+      if (!password) {
+        logCommands.debug("[cloud-endpoint] cancelled by user at password prompt")
+        return
+      }
 
       // Login
+      logCommands.debug("[cloud-endpoint] requesting CF password grant")
       const grant = await cfPasswordGrant(loginUrl, username, password)
+      logCommands.debug(
+        `[cloud-endpoint] CF password grant completed (has accessToken: ${!!grant?.accessToken})`
+      )
 
       // Get org
+      logCommands.debug("[cloud-endpoint] fetching organizations (GET /v2/organizations)")
       const orgs = await cfOrganizations(endpoint, grant.accessToken)
+      logCommands.debug(`[cloud-endpoint] organizations response: count=${orgs.length}`)
       if (orgs.length === 0) {
         throw new Error("No organizations found")
       }
@@ -751,10 +922,19 @@ export class SapConnectionManager {
       const selectedOrg = await window.showQuickPick(orgItems, {
         placeHolder: "Select Cloud Foundry organization"
       })
-      if (!selectedOrg) return
+      if (!selectedOrg) {
+        logCommands.debug("[cloud-endpoint] cancelled by user at organization picker")
+        return
+      }
 
       // Get space
+      logCommands.debug(
+        `[cloud-endpoint] fetching spaces (GET ${pathOf(
+          `${endpoint}${selectedOrg.org.entity.spaces_url}`
+        )})`
+      )
       const spaces = await cfSpaces(endpoint, selectedOrg.org.entity, grant.accessToken)
+      logCommands.debug(`[cloud-endpoint] spaces response: count=${spaces.length}`)
       if (spaces.length === 0) {
         throw new Error("No spaces found")
       }
@@ -763,36 +943,60 @@ export class SapConnectionManager {
       const selectedSpace = await window.showQuickPick(spaceItems, {
         placeHolder: "Select Cloud Foundry space"
       })
-      if (!selectedSpace) return
+      if (!selectedSpace) {
+        logCommands.debug("[cloud-endpoint] cancelled by user at space picker")
+        return
+      }
 
       // Get services and instances to find ABAP service
+      logCommands.debug("[cloud-endpoint] fetching services (GET /v2/services)")
       const services = await cfServices(endpoint, grant.accessToken)
+      logCommands.debug(`[cloud-endpoint] services response: count=${services.length}`)
+      logCommands.debug(
+        "[cloud-endpoint] fetching service instances (GET .../service_instances)"
+      )
       const instances = await cfServiceInstances(
         endpoint,
         selectedSpace.space.entity,
         grant.accessToken
       )
+      logCommands.debug(
+        `[cloud-endpoint] service instances response: count=${instances.length}`
+      )
 
       // Find ABAP service by tag
       const abapService = services.find(s => s.entity.tags && s.entity.tags.includes("abapcp"))
+      logCommands.debug(
+        `[cloud-endpoint] looking for ABAP service (tag=abapcp): found=${!!abapService}`
+      )
       if (!abapService) {
         throw new Error("No ABAP service found in this space")
       }
 
       // Find instance matching ABAP service
       const abapInstance = instances.find(i => i.entity.service_guid === abapService.metadata.guid)
+      logCommands.debug(
+        `[cloud-endpoint] matching ABAP service instance: found=${!!abapInstance}`
+      )
       if (!abapInstance) {
         throw new Error("No ABAP service instance found")
       }
 
       // Get service keys
+      logCommands.debug(
+        "[cloud-endpoint] fetching service keys (GET .../service_keys)"
+      )
       const keys = await cfInstanceServiceKeys(endpoint, abapInstance.entity, grant.accessToken)
+      logCommands.debug(`[cloud-endpoint] service keys response: count=${keys.length}`)
       if (keys.length === 0) {
         throw new Error("No service keys found for this instance")
       }
 
       // Filter for keys with valid names and credentials
       const validKeys = keys.filter(hasNamedEntity)
+      logCommands.debug(
+        `[cloud-endpoint] service keys with valid name+credentials: count=${validKeys.length}`
+      )
       if (validKeys.length === 0) {
         throw new Error("No valid service keys found")
       }
@@ -804,7 +1008,10 @@ export class SapConnectionManager {
       const selectedKey = await window.showQuickPick(keyItems, {
         placeHolder: "Select service key"
       })
-      if (!selectedKey) return
+      if (!selectedKey) {
+        logCommands.debug("[cloud-endpoint] cancelled by user at service key picker")
+        return
+      }
 
       // Extract credentials from the selected key
       if (!hasCredentialsEntity(selectedKey.key)) {
@@ -816,10 +1023,16 @@ export class SapConnectionManager {
         throw new Error("Selected key has no credentials")
       }
 
+      logCommands.debug(
+        "[cloud-endpoint] handing off credentials to service-key flow"
+      )
       // Now use the credentials to create connection
       await this.createCloudConnectionFromServiceKey(JSON.stringify(credentials), target)
     } catch (error) {
-      logCommands.error(`Error creating cloud connection from endpoint: ${error}`)
+      logCommands.error(
+        `[cloud-endpoint] failed: ${summarizeError(error)}`,
+        error
+      )
       this.panel.webview.postMessage({
         type: "error",
         message: `Failed to create cloud connection: ${error}`
@@ -1554,7 +1767,8 @@ export class SapConnectionManager {
                             <option value="cert">X.509 Client Certificate ⚗️ Experimental</option>
                             <option value="kerberos">Kerberos / SPNEGO (Windows SSO) ⚗️ Experimental</option>
                             <option value="browser_sso">Browser SSO (Cookie Capture) ⚗️ Experimental</option>
-                            <option value="oauth_onprem">OAuth 2.0 (On-Premise SAP) ⚗️ Experimental</option>
+                            <option value="oauth_onprem">OAuth 2.0 (SAP-issued) ⚗️ Experimental</option>
+                            <option value="oauth_cloud">OAuth 2.0 (Cloud / BTP)⚗️ Experimental</option>
                         </select>
                         <div class="help-text" id="authMethodHelp">How this SAP system authenticates users</div>
                     </div>
@@ -1654,14 +1868,14 @@ export class SapConnectionManager {
                 </div>
             </div>
 
-            <!-- OAuth On-Premise Fields -->
+            <!-- OAuth (SAP-issued) Fields -->
             <div class="form-section conditional-field" id="oauthOnPremFields">
-                <h3>OAuth 2.0 Configuration (On-Premise)</h3>
+                <h3>OAuth 2.0 Configuration (SAP-issued)</h3>
                 <div class="form-row">
                     <div class="form-group">
                         <label for="oauthOnPrem_clientId">OAuth Client ID <em>(required)</em></label>
                         <input type="text" id="oauthOnPrem_clientId" name="oauthOnPrem.clientId" placeholder="MY_ADT_CLIENT">
-                        <div class="help-text">Client ID registered in SAP transaction SOAUTH2</div>
+                        <div class="help-text">Client ID from SOAUTH2 (on-prem) or from a Communication Arrangement (S/4HANA Cloud)</div>
                     </div>
                     <div class="form-group">
                         <label for="oauthOnPrem_clientSecret">Client Secret (Optional)</label>
@@ -1678,8 +1892,10 @@ export class SapConnectionManager {
                 </div>
                 <div class="form-row">
                     <div class="help-text" style="padding: 8px; background: var(--vscode-textBlockQuote-background); border-radius: 4px;">
-                        <strong>Prerequisites:</strong> SAP OAuth 2.0 must be configured (transaction SOAUTH2).
-                        An OAuth client must be registered with redirect URI: <code>http://localhost:&lt;port&gt;/callback</code>
+                        <strong>Prerequisites:</strong> An OAuth client must exist on the SAP system —
+                        either registered in transaction SOAUTH2 (on-premise) or provisioned via a
+                        Communication Arrangement (S/4HANA Cloud Public Edition). The client's
+                        redirect URI must be <code>http://localhost:&lt;port&gt;/callback</code>
                         (any localhost port). Uses Authorization Code + PKCE flow with automatic token refresh.
                         <br><br>On first connect, a browser window opens for SAP login. After authentication, tokens are stored securely and refreshed automatically.
                     </div>
@@ -1819,6 +2035,8 @@ export class SapConnectionManager {
             let currentTarget = 'user';
             let editingConnectionKey = null; // Store the connection key (ID) being edited
             let connections = { user: {}, workspace: {} };
+            // Cloud connection awaiting user review; OAuth config is re-attached on save.
+            let pendingCloudConnection = null;
 
             // Initialize
             window.addEventListener('load', () => {
@@ -2110,7 +2328,7 @@ export class SapConnectionManager {
                     'cert': '⚗️ Certificate',
                     'kerberos': '⚗️ Kerberos',
                     'browser_sso': '⚗️ Browser SSO',
-                    'oauth_onprem': '⚗️ OAuth (On-Prem)',
+                    'oauth_onprem': '⚗️ OAuth (SAP)',
                     'oauth': 'OAuth (Cloud)'
                 };
                 return labels[method] || method;
@@ -2172,6 +2390,10 @@ export class SapConnectionManager {
                         usernameHelp.textContent = 'SAP user for display/logging (authentication handled by OAuth)';
                         authMethodHelp.textContent = experimentalNote;
                         break;
+                    case 'oauth_cloud':
+                        usernameHelp.textContent = 'SAP user mapped to the BTP service key (authentication handled by OAuth)';
+                        authMethodHelp.textContent = 'Cloud OAuth credentials were configured automatically from the BTP service key and are stored in the OS credential manager.';
+                        break;
                 }
             }
 
@@ -2207,7 +2429,12 @@ export class SapConnectionManager {
                     document.getElementById('language').value = 'en';
                     document.getElementById('diff_formatter').value = 'ADT formatter';
                     document.getElementById('maxDebugThreads').value = '4';
-                    document.getElementById('authMethod').value = 'basic';
+                    const authMethodEl = document.getElementById('authMethod');
+                    // Make sure the dropdown is editable again — previous open
+                    // may have been a cloud connection which locked it.
+                    authMethodEl.disabled = false;
+                    authMethodEl.title = '';
+                    authMethodEl.value = 'basic';
                     handleAuthMethodChange(); // Reset auth fields visibility
                     document.getElementById('sapGui_enabled').checked = true;
                     document.getElementById('sapGui_guiType').value = 'WEBGUI_UNSAFE_EMBEDDED';
@@ -2222,16 +2449,26 @@ export class SapConnectionManager {
             function closeEditor() {
                 document.getElementById('editorModal').style.display = 'none';
                 editingConnectionKey = null;
+                pendingCloudConnection = null;
             }
 
-            function populateForm(connectionKey, conn) {
+            function populateForm(connectionKey, conn, options) {
+                const opts = options || {};
+                // Name is the storage key when editing; editable when pre-filling a new connection.
+                const readonlyName = opts.readonlyName !== false;
                 const nameField = document.getElementById('name');
                 nameField.value = connectionKey;
-                // Make name field readonly when editing (cannot rename existing connections)
-                nameField.readOnly = true;
-                nameField.style.backgroundColor = 'var(--vscode-input-background)';
-                nameField.style.opacity = '0.6';
-                nameField.title = 'Change name in settings.json if needed.';
+                if (readonlyName) {
+                    nameField.readOnly = true;
+                    nameField.style.backgroundColor = 'var(--vscode-input-background)';
+                    nameField.style.opacity = '0.6';
+                    nameField.title = 'Change name in settings.json if needed.';
+                } else {
+                    nameField.readOnly = false;
+                    nameField.style.backgroundColor = '';
+                    nameField.style.opacity = '';
+                    nameField.title = '';
+                }
                 
                 document.getElementById('url').value = conn.url;
                 document.getElementById('username').value = conn.username;
@@ -2242,9 +2479,17 @@ export class SapConnectionManager {
                 document.getElementById('allowSelfSigned').checked = conn.allowSelfSigned || false;
                 handleAllowSelfSignedChange(); // Update conditional field visibility
 
-                // Auth method
-                const authMethod = conn.authMethod || 'basic';
-                document.getElementById('authMethod').value = authMethod;
+                // Auth method (cloud OAuth is locked — switching would lose clientId/secret).
+                const authMethodEl = document.getElementById('authMethod');
+                if (conn.oauth) {
+                    authMethodEl.value = 'oauth_cloud';
+                    authMethodEl.disabled = true;
+                    authMethodEl.title = 'Cloud OAuth — cannot be changed. Delete and re-create the connection to switch auth methods.';
+                } else {
+                    authMethodEl.disabled = false;
+                    authMethodEl.title = '';
+                    authMethodEl.value = conn.authMethod || 'basic';
+                }
                 handleAuthMethodChange();
 
                 // Certificate auth fields
@@ -2391,7 +2636,7 @@ export class SapConnectionManager {
                 if (authMethod === 'oauth_onprem') {
                     const clientId = formData.get('oauthOnPrem.clientId');
                     if (!clientId) {
-                        formError.textContent = 'OAuth On-Premise requires an OAuth Client ID (configured in SAP transaction SOAUTH2).';
+                        formError.textContent = 'OAuth (SAP-issued) requires an OAuth Client ID (configured in SOAUTH2 on on-prem systems, or in a Communication Arrangement on S/4HANA Cloud).';
                         formError.style.display = 'block';
                         return;
                     }
@@ -2406,7 +2651,10 @@ export class SapConnectionManager {
                     allowSelfSigned: formData.get('allowSelfSigned') === 'on',
                     diff_formatter: formData.get('diff_formatter') || 'ADT formatter',
                     maxDebugThreads: parseInt(formData.get('maxDebugThreads')) || 4,
-                    authMethod: formData.get('authMethod') || 'basic',
+                    // 'oauth_cloud' is UI-only; stored as 'basic' + oauth field.
+                    authMethod: (formData.get('authMethod') === 'oauth_cloud'
+                        ? 'basic'
+                        : (formData.get('authMethod') || 'basic')),
                     atcapprover: formData.get('atcapprover') || undefined,
                     atcVariant: formData.get('atcVariant') || undefined,
                     customCA: formData.get('customCA') || undefined,
@@ -2445,6 +2693,11 @@ export class SapConnectionManager {
                     if (existingConn && existingConn.oauth) {
                         connection.oauth = existingConn.oauth;
                     }
+                }
+
+                // Re-attach cloud OAuth config for a new cloud connection.
+                if (!editingConnectionKey && pendingCloudConnection && pendingCloudConnection.oauth) {
+                    connection.oauth = pendingCloudConnection.oauth;
                 }
 
                 vscode.postMessage({
@@ -2574,12 +2827,15 @@ export class SapConnectionManager {
             }
 
             function handleCloudConnection(connection, availableLanguages) {
-                // Store available languages for the cloud connection
                 connection._availableLanguages = availableLanguages;
-                
-                // Open editor with pre-filled cloud connection data
-                openEditor(connection);
-                
+                pendingCloudConnection = connection;
+
+                // Open editor in "new" mode and pre-fill with cloud connection data.
+                openEditor();
+                populateForm(connection.name || '', connection, { readonlyName: false });
+                const titleEl = document.getElementById('modalTitle');
+                if (titleEl) titleEl.textContent = 'Add Cloud Connection';
+
                 showMessage('Cloud connection created. Please review and save.', 'success');
             }
 

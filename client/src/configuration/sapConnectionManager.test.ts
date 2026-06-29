@@ -47,6 +47,7 @@ jest.mock("../services/abapCopilotLogger", () => ({
   logCommands: {
     error: jest.fn(),
     info: jest.fn(),
+    warn: jest.fn(),
     debug: jest.fn()
   }
 }))
@@ -348,6 +349,57 @@ describe("message handling: saveConnection (new)", () => {
       "remote",
       expect.any(Object),
       vscode.ConfigurationTarget.Workspace
+    )
+  })
+
+  // Regression guard for #385: cloud flow once passed an object as connectionId,
+  // which corrupted settings.json with an "[object Object]" key.
+  test("refuses to save when connectionId is an object (regression guard for #385)", async () => {
+    const cfg = {
+      inspect: jest.fn().mockReturnValue({ globalValue: {}, workspaceValue: {} }),
+      update: jest.fn()
+    }
+    ;(vscode.workspace.getConfiguration as jest.Mock).mockReturnValue(cfg)
+
+    createManager()
+
+    await receiveMessageHandler!({
+      type: "saveConnection",
+      connectionId: { name: "oops", url: "https://h" } as any,
+      connection: { url: "https://h", username: "u" },
+      target: "user",
+      isEdit: true
+    })
+
+    expect(cfg.update).not.toHaveBeenCalled()
+    expect(postMessageMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        type: "formValidationError",
+        message: expect.stringContaining("invalid connection id")
+      })
+    )
+  })
+
+  test("refuses to save when connectionId is an empty string", async () => {
+    const cfg = {
+      inspect: jest.fn().mockReturnValue({ globalValue: {}, workspaceValue: {} }),
+      update: jest.fn()
+    }
+    ;(vscode.workspace.getConfiguration as jest.Mock).mockReturnValue(cfg)
+
+    createManager()
+
+    await receiveMessageHandler!({
+      type: "saveConnection",
+      connectionId: "",
+      connection: { url: "https://h", username: "u" },
+      target: "user",
+      isEdit: false
+    })
+
+    expect(cfg.update).not.toHaveBeenCalled()
+    expect(postMessageMock).toHaveBeenCalledWith(
+      expect.objectContaining({ type: "formValidationError" })
     )
   })
 })
@@ -723,5 +775,196 @@ describe("message handling: createCloudConnection (service key)", () => {
     })
 
     expect(postMessageMock).toHaveBeenCalledWith(expect.objectContaining({ type: "error" }))
+  })
+
+  // ---- issue #385: a4c_api_session fails on productive Steampunk systems ----
+  // The pre-fill must fall back to service key + JWT claims so the user can
+  // finish the wizard manually.
+
+  function makeServiceKey() {
+    return JSON.stringify({
+      url: "https://abc.abap.eu10.hana.ondemand.com",
+      systemid: "ABC",
+      uaa: {
+        clientid: "sb-xyz",
+        clientsecret: "shh",
+        url: "https://abc.authentication.eu10.hana.ondemand.com"
+      }
+    })
+  }
+
+  function makeJwt(claims: Record<string, unknown>) {
+    const header = Buffer.from(JSON.stringify({ alg: "none", typ: "JWT" })).toString("base64url")
+    const payload = Buffer.from(JSON.stringify(claims)).toString("base64url")
+    return `${header}.${payload}.sig`
+  }
+
+  function setupServiceKeyMocks(accessToken: string) {
+    const cloud = require("abap_cloud_platform")
+    ;(cloud.isAbapServiceKey as jest.Mock).mockReturnValue(true)
+    ;(cloud.loginServer as jest.Mock).mockReturnValue({
+      server: { close: jest.fn() }
+    })
+    ;(cloud.cfCodeGrant as jest.Mock).mockResolvedValue({ accessToken })
+    return cloud
+  }
+
+  test("falls back to service key + JWT when a4c_api_session returns 403", async () => {
+    const cloud = setupServiceKeyMocks(makeJwt({ user_name: "PETER" }))
+    ;(cloud.getAbapUserInfo as jest.Mock).mockRejectedValue(
+      Object.assign(new Error("Response code 403 (Unified Connectivity: Forbidden)"), {
+        response: { statusCode: 403 }
+      })
+    )
+    ;(cloud.getAbapSystemInfo as jest.Mock).mockRejectedValue(new Error("not reached"))
+
+    const cfg = makeWorkspaceConfig()
+    ;(vscode.workspace.getConfiguration as jest.Mock).mockReturnValue(cfg)
+
+    createManager()
+
+    await receiveMessageHandler!({
+      type: "createCloudConnection",
+      cloudType: "serviceKey",
+      serviceKey: makeServiceKey(),
+      target: "user"
+    })
+    await new Promise(r => setImmediate(r))
+
+    const createdMsg = postMessageMock.mock.calls
+      .map(c => c[0])
+      .find(m => m && m.type === "cloudConnectionCreated")
+    expect(createdMsg).toBeDefined()
+    expect(createdMsg.connection.name).toBe("ABC")
+    expect(createdMsg.connection.username).toBe("PETER")
+    expect(createdMsg.connection.client).toBe("100")
+    expect(createdMsg.connection.url).toBe("https://abc.abap.eu10.hana.ondemand.com")
+    expect(createdMsg.connection.oauth.clientId).toBe("sb-xyz")
+    expect(createdMsg.availableLanguages).toEqual(["en"])
+
+    // user gets a warning that fields are best-effort
+    const warnMsg = postMessageMock.mock.calls
+      .map(c => c[0])
+      .find(m => m && m.type === "error" && /review the pre-filled/i.test(m.message))
+    expect(warnMsg).toBeDefined()
+  })
+
+  test("falls back to email claim when user_name is missing", async () => {
+    const cloud = setupServiceKeyMocks(makeJwt({ email: "peter@example.com" }))
+    ;(cloud.getAbapUserInfo as jest.Mock).mockRejectedValue(new Error("403"))
+    ;(cloud.getAbapSystemInfo as jest.Mock).mockRejectedValue(new Error("403"))
+
+    ;(vscode.workspace.getConfiguration as jest.Mock).mockReturnValue(makeWorkspaceConfig())
+    createManager()
+
+    await receiveMessageHandler!({
+      type: "createCloudConnection",
+      cloudType: "serviceKey",
+      serviceKey: makeServiceKey(),
+      target: "user"
+    })
+    await new Promise(r => setImmediate(r))
+
+    const createdMsg = postMessageMock.mock.calls
+      .map(c => c[0])
+      .find(m => m && m.type === "cloudConnectionCreated")
+    expect(createdMsg).toBeDefined()
+    expect(createdMsg.connection.username).toBe("peter@example.com")
+  })
+
+  test("leaves username empty when JWT has no usable claim and a4c_api_session fails", async () => {
+    const cloud = setupServiceKeyMocks("not-a-jwt")
+    ;(cloud.getAbapUserInfo as jest.Mock).mockRejectedValue(new Error("403"))
+    ;(cloud.getAbapSystemInfo as jest.Mock).mockRejectedValue(new Error("403"))
+
+    ;(vscode.workspace.getConfiguration as jest.Mock).mockReturnValue(makeWorkspaceConfig())
+    createManager()
+
+    await receiveMessageHandler!({
+      type: "createCloudConnection",
+      cloudType: "serviceKey",
+      serviceKey: makeServiceKey(),
+      target: "user"
+    })
+    await new Promise(r => setImmediate(r))
+
+    const createdMsg = postMessageMock.mock.calls
+      .map(c => c[0])
+      .find(m => m && m.type === "cloudConnectionCreated")
+    expect(createdMsg).toBeDefined()
+    expect(createdMsg.connection.username).toBe("")
+    expect(createdMsg.connection.name).toBe("ABC") // still works via systemid
+  })
+
+  test("uses a4c_api_session values when available (happy path)", async () => {
+    const cloud = setupServiceKeyMocks(makeJwt({ user_name: "PETER" }))
+    ;(cloud.getAbapUserInfo as jest.Mock).mockResolvedValue({ UNAME: "DEVELOPER", MANDT: "200" })
+    ;(cloud.getAbapSystemInfo as jest.Mock).mockResolvedValue({
+      SYSID: "DEV",
+      INSTALLED_LANGUAGES: [{ ISOLANG: "EN" }, { ISOLANG: "DE" }]
+    })
+
+    ;(vscode.workspace.getConfiguration as jest.Mock).mockReturnValue(makeWorkspaceConfig())
+    createManager()
+
+    await receiveMessageHandler!({
+      type: "createCloudConnection",
+      cloudType: "serviceKey",
+      serviceKey: makeServiceKey(),
+      target: "user"
+    })
+    await new Promise(r => setImmediate(r))
+
+    const createdMsg = postMessageMock.mock.calls
+      .map(c => c[0])
+      .find(m => m && m.type === "cloudConnectionCreated")
+    expect(createdMsg).toBeDefined()
+    expect(createdMsg.connection.name).toBe("DEV")
+    expect(createdMsg.connection.username).toBe("DEVELOPER")
+    expect(createdMsg.connection.client).toBe("200")
+    expect(createdMsg.availableLanguages).toEqual(["en", "de"])
+
+    // no warning when a4c_api_session worked
+    const warnMsg = postMessageMock.mock.calls
+      .map(c => c[0])
+      .find(m => m && m.type === "error")
+    expect(warnMsg).toBeUndefined()
+  })
+
+  test("errors out when neither a4c_api_session nor service key provide a system name", async () => {
+    const cloud = setupServiceKeyMocks(makeJwt({ user_name: "PETER" }))
+    ;(cloud.getAbapUserInfo as jest.Mock).mockRejectedValue(new Error("403"))
+    ;(cloud.getAbapSystemInfo as jest.Mock).mockRejectedValue(new Error("403"))
+
+    const keyNoSysid = JSON.stringify({
+      url: "https://abc.abap.eu10.hana.ondemand.com",
+      uaa: {
+        clientid: "sb-xyz",
+        clientsecret: "shh",
+        url: "https://abc.authentication.eu10.hana.ondemand.com"
+      }
+    })
+
+    ;(vscode.workspace.getConfiguration as jest.Mock).mockReturnValue(makeWorkspaceConfig())
+    createManager()
+
+    await receiveMessageHandler!({
+      type: "createCloudConnection",
+      cloudType: "serviceKey",
+      serviceKey: keyNoSysid,
+      target: "user"
+    })
+    await new Promise(r => setImmediate(r))
+
+    const createdMsg = postMessageMock.mock.calls
+      .map(c => c[0])
+      .find(m => m && m.type === "cloudConnectionCreated")
+    expect(createdMsg).toBeUndefined()
+
+    const errMsg = postMessageMock.mock.calls
+      .map(c => c[0])
+      .find(m => m && m.type === "error")
+    expect(errMsg).toBeDefined()
+    expect(errMsg.message).toMatch(/Failed to create cloud connection/)
   })
 })
