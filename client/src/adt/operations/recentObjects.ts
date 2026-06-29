@@ -10,9 +10,7 @@ export interface RecentObject {
   type: string
   name: string
   packageName: string
-  typeLabel: string
   description?: string
-  localizedTypeLabel?: string
 }
 
 const RECENT_KEY_PREFIX = "abapfs.recentObjects."

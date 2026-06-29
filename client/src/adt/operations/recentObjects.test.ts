@@ -18,9 +18,7 @@ const makeItem = (uri: string, name = "OBJ"): RecentObject => ({
   type: "PROG/P",
   name,
   packageName: "ZPKG",
-  typeLabel: "Program",
-  description: "Test description",
-  localizedTypeLabel: "Program"
+  description: "Test description"
 })
 
 describe("recentObjects", () => {

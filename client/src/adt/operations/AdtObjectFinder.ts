@@ -24,6 +24,7 @@ import {
 import { context } from "../../extension"
 import { funWindow as window } from "../../services/funMessenger"
 import { getRecent, addRecent, clearRecent, RecentObject } from "./recentObjects"
+import { getObjectTypeLabel } from "../../views/objectTypeLabels"
 
 interface AdtSearchResult {
   uri: string
@@ -37,15 +38,6 @@ export class MySearchResult implements QuickPickItem, AdtSearchResult {
   private static packageCache = new Map<string, string>()
   public static async createResults(results: SearchResult[], client: ADTClient) {
     const myresults = results.map(r => new MySearchResult(r))
-    if (myresults.find(r => !r.description)) {
-      if (!this.types) this.types = await client.loadTypes()
-      myresults
-        .filter(r => !r.description)
-        .forEach(r => {
-          const typ = this.types.find(t => t.OBJECT_TYPE === r.type)
-          r.description = typ ? typ.OBJECT_TYPE_LABEL : r.type
-        })
-    }
 
     const toResolve = myresults.filter(r => {
       if (r.type === PACKAGE) {
@@ -72,6 +64,12 @@ export class MySearchResult implements QuickPickItem, AdtSearchResult {
             )
             if (pkgStep) {
               r.packageName = pkgStep["adtcore:name"]
+              if (this.packageCache.size >= 1000) {
+                const firstKey = this.packageCache.keys().next().value
+                if (firstKey !== undefined) {
+                  this.packageCache.delete(firstKey)
+                }
+              }
               this.packageCache.set(r.uri, r.packageName)
             } else {
               r.packageName = "unknown"
@@ -88,9 +86,8 @@ export class MySearchResult implements QuickPickItem, AdtSearchResult {
     })
     return myresults
   }
-  private static types: ObjectType[]
   get label(): string {
-    return `${this.name}(${this.description})`
+    return this.name
   }
   public uri: string
   public type: string
@@ -98,7 +95,8 @@ export class MySearchResult implements QuickPickItem, AdtSearchResult {
   public packageName?: string
   public description?: string
   get detail(): string | undefined {
-    return `Package ${this.packageName} type ${this.type}`
+    const typeLabel = getObjectTypeLabel(this.type)
+    return `${typeLabel} • Package ${this.packageName} type ${this.type}`
   }
   public picked: boolean = false
   constructor(r: SearchResult) {
@@ -434,7 +432,7 @@ export class AdtObjectFinder {
         "adtcore:type": item.type,
         "adtcore:name": item.name,
         "adtcore:packageName": item.packageName,
-        "adtcore:description": item.typeLabel || ""
+        "adtcore:description": item.description || getObjectTypeLabel(item.type)
       })
     )
   }
@@ -507,7 +505,7 @@ export class AdtObjectFinder {
             type: selected.type,
             name: selected.name,
             packageName: selected.packageName || "",
-            typeLabel: selected.description || ""
+            description: selected.description
           })
           resolve(selected)
           qp.hide()

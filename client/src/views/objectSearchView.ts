@@ -87,7 +87,7 @@ export class ObjectSearchViewProvider implements WebviewViewProvider {
               type: message.objectType || "",
               name: message.name || "",
               packageName: message.packageName || "",
-              typeLabel: message.typeLabel || ""
+              description: message.description
             })
             await this.postState()
             await openObject(message.connectionId, message.uri, message.objectType)
@@ -137,7 +137,6 @@ export class ObjectSearchViewProvider implements WebviewViewProvider {
     const connectionId = this.resolveConnectionId()
     this.currentConnId = connectionId
     const typeFilter = getSavedTypeFilter()
-    const recentKey = `abapfs.recentObjects.${connectionId}`
     const recentObjects: SearchResultMessage[] = connectionId
       ? (getRecent(connectionId)).map(recentToSearchResultMessage)
       : []
@@ -719,15 +718,15 @@ function toSearchResultMessage(item: MySearchResult): SearchResultMessage {
 }
 
 function recentToSearchResultMessage(item: RecentObject): SearchResultMessage {
-  const typeLabel = item.typeLabel || getObjectTypeLabel(item.type)
+  const typeLabel = getObjectTypeLabel(item.type)
   return {
     uri: item.uri,
     type: item.type,
     name: item.name,
-    description: typeLabel,
+    description: item.description,
     detail: item.packageName ? `${typeLabel} • Package ${item.packageName}` : typeLabel,
     packageName: item.packageName,
-    typeLabel: item.typeLabel
+    typeLabel
   }
 }
 
