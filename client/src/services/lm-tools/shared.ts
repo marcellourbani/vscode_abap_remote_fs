@@ -293,11 +293,12 @@ export async function getCompleteTableStructure(
  * Enhancement types and interfaces
  */
 export interface EnhancementInfo {
-  name: string
+  name: string // ENHO implementation name (e.g., 'Z_MY_ENHANCEMENT')
+  spot: string // Enhancement spot fullname (e.g., '\PR:<PROG>\EX:<SPOT_NAME>\EI')
   startLine: number
   type: string // e.g., 'ENHANCEMENT'
   code?: string // Only included if needCode = true
-  uri?: string // SAP enhancement URI for separate access
+  uri?: string // SAP enhancement URI for separate access (unique per element)
 }
 
 export interface EnhancementResult {
@@ -443,19 +444,22 @@ export async function getObjectEnhancements(
 
     try {
       const apiResult = await client.objectEnhancements(sourceMainPath, undefined, needCode)
-      const allElements = apiResult.implementations.flatMap(impl => impl.elements)
+      const allEnhancements: EnhancementInfo[] = apiResult.implementations.flatMap(impl =>
+        impl.elements.map(el => ({
+          name: impl.name, // ENHO implementation name
+          spot: el.fullname, // Enhancement spot fullname (where it hooks in)
+          startLine: el.position?.startLine ?? 0,
+          type: "ENHANCEMENT" as const,
+          code: el.source,
+          uri: el.uri
+        }))
+      )
 
-      if (allElements.length === 0) return result
+      if (allEnhancements.length === 0) return result
 
       result.hasEnhancements = true
-      result.totalEnhancements = allElements.length
-      result.enhancements = allElements.map(el => ({
-        name: el.fullname,
-        startLine: el.position?.startLine ?? 0,
-        type: "ENHANCEMENT" as const,
-        code: el.source,
-        uri: el.uri
-      }))
+      result.totalEnhancements = allEnhancements.length
+      result.enhancements = allEnhancements
 
       enhancementCache.set(cacheKey, { result, timestamp: now, needCode })
       return result

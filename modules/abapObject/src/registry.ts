@@ -379,6 +379,17 @@ const REGISTRY: ObjectTypeConfig[] = [
   },
 
   // --- Enhancement / BAdI Objects ---
+  // Bare ENHO/XH: ECC reports the parent type instead of the XHB/XHH subtype.
+  // Without this entry, ADT-marked EXPANDABLE=true wraps it in AbapFolder,
+  // refresh() calls childComponents(), isNodeParent("ENHO/XH") returns false,
+  // and the open throws "Operation not supported".
+  {
+    type: "ENHO/XH",
+    label: "Enhancement Implementation",
+    gui_objects: "better",
+    filterLabel: "Enhancement Implementations",
+    creatorClass: "AbapSimple"
+  },
   {
     type: "ENHO/XHB",
     label: "Enhancement Implementation",

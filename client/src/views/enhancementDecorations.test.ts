@@ -239,19 +239,17 @@ describe("showEnhancementSource", () => {
     jest.clearAllMocks()
   })
 
-  it("shows error if no active editor", async () => {
-    ;(mockedWindow as any).activeTextEditor = undefined
-    await showEnhancementSource("ZENH1", "/some/uri", "dev100")
-    expect(mockedWindow.showErrorMessage).toHaveBeenCalledWith("No active editor found")
+  it("shows error if objectUri is missing", async () => {
+    await showEnhancementSource("ZENH1", "", "dev100")
+    expect(mockedWindow.showErrorMessage).toHaveBeenCalledWith(
+      "Missing object URI or connection ID"
+    )
   })
 
-  it("shows error if uriAbapFile returns no object", async () => {
-    const editor = makeEditor("adt", "abap")
-    ;(mockedWindow as any).activeTextEditor = editor
-    mockedUriAbapFile.mockReturnValue(null)
-    await showEnhancementSource("ZENH1", "/some/uri", "dev100")
+  it("shows error if connectionId is missing", async () => {
+    await showEnhancementSource("ZENH1", "/some/uri", "")
     expect(mockedWindow.showErrorMessage).toHaveBeenCalledWith(
-      "Could not get ABAP object from active editor"
+      "Missing object URI or connection ID"
     )
   })
 })
