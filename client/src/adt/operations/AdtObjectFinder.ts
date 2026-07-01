@@ -23,6 +23,8 @@ import {
 } from "abapfs"
 import { context } from "../../extension"
 import { funWindow as window } from "../../services/funMessenger"
+import { getRecent, addRecent, clearRecent, RecentObject } from "./recentObjects"
+import { getObjectTypeLabel } from "../../views/objectTypeLabels"
 
 interface AdtSearchResult {
   uri: string
@@ -33,25 +35,59 @@ interface AdtSearchResult {
 }
 
 export class MySearchResult implements QuickPickItem, AdtSearchResult {
+  private static packageCache = new Map<string, string>()
   public static async createResults(results: SearchResult[], client: ADTClient) {
     const myresults = results.map(r => new MySearchResult(r))
-    if (myresults.find(r => !r.description)) {
-      if (!this.types) this.types = await client.loadTypes()
-      myresults
-        .filter(r => !r.description)
-        .forEach(r => {
-          const typ = this.types.find(t => t.OBJECT_TYPE === r.type)
-          r.description = typ ? typ.OBJECT_TYPE_LABEL : r.type
+
+    const toResolve = myresults.filter(r => {
+      if (r.type === PACKAGE) {
+        r.packageName = r.name
+        return false
+      }
+      if (r.packageName && r.packageName !== "unknown") {
+        return false
+      }
+      if (this.packageCache.has(r.uri)) {
+        r.packageName = this.packageCache.get(r.uri)
+        return false
+      }
+      return true
+    })
+
+    if (toResolve.length > 0) {
+      await Promise.all(
+        toResolve.map(async r => {
+          try {
+            const steps = await client.findObjectPath(r.uri)
+            const pkgStep = steps.find(
+              s => s["adtcore:type"] === PACKAGE || s["adtcore:type"].startsWith("DEVC")
+            )
+            if (pkgStep) {
+              r.packageName = pkgStep["adtcore:name"]
+              if (this.packageCache.size >= 1000) {
+                const firstKey = this.packageCache.keys().next().value
+                if (firstKey !== undefined) {
+                  this.packageCache.delete(firstKey)
+                }
+              }
+              this.packageCache.set(r.uri, r.packageName)
+            } else {
+              r.packageName = "unknown"
+            }
+          } catch (e) {
+            r.packageName = "unknown"
+          }
         })
+      )
     }
+
     myresults.forEach(typ => {
       if (!typ.packageName) typ.packageName = typ.type === PACKAGE ? typ.name : "unknown"
     })
     return myresults
   }
-  private static types: ObjectType[]
   get label(): string {
-    return `${this.name}(${this.description})`
+    return this.name
   }
   public uri: string
   public type: string
@@ -59,7 +95,8 @@ export class MySearchResult implements QuickPickItem, AdtSearchResult {
   public packageName?: string
   public description?: string
   get detail(): string | undefined {
-    return `Package ${this.packageName} type ${this.type}`
+    const typeLabel = getObjectTypeLabel(this.type)
+    return `${typeLabel} • Package ${this.packageName} type ${this.type}`
   }
   public picked: boolean = false
   constructor(r: SearchResult) {
@@ -388,6 +425,18 @@ export class AdtObjectFinder {
     return selectedTypeStrings
   }
 
+  private toMySearchResults(items: RecentObject[]): MySearchResult[] {
+    return items.map(item =>
+      new MySearchResult({
+        "adtcore:uri": item.uri,
+        "adtcore:type": item.type,
+        "adtcore:name": item.name,
+        "adtcore:packageName": item.packageName,
+        "adtcore:description": item.description || getObjectTypeLabel(item.type)
+      })
+    )
+  }
+
   public async findObject(
     prompt: string = "Search an ABAP object",
     objType: string = "",
@@ -395,26 +444,44 @@ export class AdtObjectFinder {
     typeFilter?: string[]
   ): Promise<MySearchResult | undefined> {
     const o = await new Promise<MySearchResult>(async resolve => {
-      const empty: MySearchResult[] = []
-      if (forType === PACKAGE) empty.push(new MySearchResult(this.EPMTYPACKAGE))
       const qp = window.createQuickPick()
       qp.ignoreFocusOut = true
 
+      let recentItems = this.toMySearchResults(getRecent(this.connId))
+      let initialItems: MySearchResult[] =
+        forType === PACKAGE
+          ? [new MySearchResult(this.EPMTYPACKAGE), ...recentItems]
+          : recentItems
+
       // Add button to change type filter (show always when no specific type is requested)
       if (!objType && !forType) {
-        qp.buttons = [
-          {
-            iconPath: new ThemeIcon("filter"),
-            tooltip: "Change Type Filter (Click to select different object types)"
-          }
-        ]
+        const filterButton = {
+          iconPath: new ThemeIcon("filter"),
+          tooltip: "Change Type Filter (Click to select different object types)"
+        }
+        const clearHistoryButton = {
+          iconPath: new ThemeIcon("trash"),
+          tooltip: "Clear Search History"
+        }
 
-        qp.onDidTriggerButton(async () => {
-          qp.hide()
-          // Re-run the full flow (force type selection and ask preference again)
-          const result = await this.findObjectWithTypeFilter(prompt, true)
-          if (result) {
-            resolve(result)
+        qp.buttons = [filterButton, clearHistoryButton]
+
+        qp.onDidTriggerButton(async button => {
+          if (button === filterButton) {
+            qp.hide()
+            // Re-run the full flow (force type selection and ask preference again)
+            const result = await this.findObjectWithTypeFilter(prompt, true)
+            if (result) {
+              resolve(result)
+            }
+          } else if (button === clearHistoryButton) {
+            await clearRecent(this.connId)
+            recentItems = []
+            initialItems =
+              forType === PACKAGE
+                ? [new MySearchResult(this.EPMTYPACKAGE)]
+                : []
+            qp.items = initialItems
           }
         })
 
@@ -424,16 +491,23 @@ export class AdtObjectFinder {
 
       const searchParent = async (e: string) => {
         qp.items =
-          e.length >= 2 ? await this.search(e, getClient(this.connId), objType, typeFilter) : empty
+          e.length >= 2 ? await this.search(e, getClient(this.connId), objType, typeFilter) : initialItems
       }
 
-      qp.items = empty
-      qp.items = [...empty]
+      qp.items = initialItems
       qp.onDidChangeValue(async e => searchParent(e))
       qp.placeholder = prompt
       qp.onDidChangeSelection(e => {
         if (e[0]) {
-          resolve(e[0] as MySearchResult)
+          const selected = e[0] as MySearchResult
+          void addRecent(this.connId, {
+            uri: selected.uri,
+            type: selected.type,
+            name: selected.name,
+            packageName: selected.packageName || "",
+            description: selected.description
+          })
+          resolve(selected)
           qp.hide()
         }
       })

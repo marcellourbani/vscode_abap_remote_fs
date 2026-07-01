@@ -114,15 +114,16 @@ describe("MySearchResult", () => {
     expect(r.description).toBe("My Program")
   })
 
-  it("label combines name and description", () => {
+  it("label returns only the name", () => {
     const r = new MySearchResult(makeSR())
-    expect(r.label).toBe("ZPROG(My Program)")
+    expect(r.label).toBe("ZPROG")
   })
 
-  it("detail shows package and type", () => {
+  it("detail shows package, type label and type ID", () => {
     const r = new MySearchResult(makeSR())
     expect(r.detail).toContain("ZPACKAGE")
     expect(r.detail).toContain("PROG/P")
+    expect(r.detail).toContain("Program")
   })
 
   it("picked defaults to false", () => {
@@ -147,25 +148,12 @@ describe("MySearchResult", () => {
       expect(results[0]).toBeInstanceOf(MySearchResult)
     })
 
-    it("loads types if any result has no description", async () => {
-      const rawClient: any = {
-        loadTypes: jest
-          .fn()
-          .mockResolvedValue([{ OBJECT_TYPE: "PROG/P", OBJECT_TYPE_LABEL: "Program" }])
-      }
+    it("does not load types and keeps description undefined when no description is present", async () => {
+      const rawClient: any = { loadTypes: jest.fn() }
       const rawResults = [makeSR({ "adtcore:description": undefined })]
       const results = await MySearchResult.createResults(rawResults, rawClient)
-      expect(rawClient.loadTypes).toHaveBeenCalled()
-      expect(results[0]!.description).toBe("Program")
-    })
-
-    it("uses type as description fallback when no matching type label", async () => {
-      const rawClient: any = {
-        loadTypes: jest.fn().mockResolvedValue([])
-      }
-      const rawResults = [makeSR({ "adtcore:description": undefined, "adtcore:type": "CLAS/OC" })]
-      const results = await MySearchResult.createResults(rawResults, rawClient)
-      expect(results[0]!.description).toBe("CLAS/OC")
+      expect(rawClient.loadTypes).not.toHaveBeenCalled()
+      expect(results[0]!.description).toBeUndefined()
     })
 
     it("sets packageName from name for PACKAGE type", async () => {
@@ -180,6 +168,39 @@ describe("MySearchResult", () => {
       const rawResults = [makeSR({ "adtcore:packageName": undefined })]
       const results = await MySearchResult.createResults(rawResults, rawClient)
       expect(results[0]!.packageName).toBe("unknown")
+    })
+
+    it("resolves packageName via findObjectPath if missing", async () => {
+      const rawClient: any = {
+        loadTypes: jest.fn().mockResolvedValue([]),
+        findObjectPath: jest.fn().mockResolvedValue([
+          { "adtcore:name": "ZPACKAGE", "adtcore:type": "DEVC/K", "adtcore:uri": "/sap/bc/adt/packages/zpackage" },
+          { "adtcore:name": "ZPROG", "adtcore:type": "PROG/P", "adtcore:uri": "/sap/bc/adt/programs/programs/zprog" }
+        ])
+      }
+      const rawResults = [makeSR({ "adtcore:packageName": undefined, "adtcore:uri": "/my/uri/1" })]
+      const results = await MySearchResult.createResults(rawResults, rawClient)
+      expect(rawClient.findObjectPath).toHaveBeenCalledWith("/my/uri/1")
+      expect(results[0]!.packageName).toBe("ZPACKAGE")
+    })
+
+    it("caches resolved packageName and avoids redundant calls to findObjectPath", async () => {
+      const rawClient: any = {
+        loadTypes: jest.fn().mockResolvedValue([]),
+        findObjectPath: jest.fn().mockResolvedValue([
+          { "adtcore:name": "ZPACKAGE_CACHED", "adtcore:type": "DEVC/K", "adtcore:uri": "/sap/bc/adt/packages/zpackage_cached" }
+        ])
+      }
+      const rawResults1 = [makeSR({ "adtcore:packageName": undefined, "adtcore:uri": "/my/uri/cached" })]
+      const results1 = await MySearchResult.createResults(rawResults1, rawClient)
+      expect(results1[0]!.packageName).toBe("ZPACKAGE_CACHED")
+      expect(rawClient.findObjectPath).toHaveBeenCalledTimes(1)
+
+      // Call again for the same URI, should use cached value and not call findObjectPath again
+      const rawResults2 = [makeSR({ "adtcore:packageName": undefined, "adtcore:uri": "/my/uri/cached" })]
+      const results2 = await MySearchResult.createResults(rawResults2, rawClient)
+      expect(results2[0]!.packageName).toBe("ZPACKAGE_CACHED")
+      expect(rawClient.findObjectPath).toHaveBeenCalledTimes(1) // still 1
     })
   })
 })
