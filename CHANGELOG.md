@@ -1,5 +1,18 @@
 # Changelog
 
+## 2.6.0
+
+### Minor Changes
+
+- 840044d: Add seach History in Search Object Panel and PopUp. Made Search object Panel more dense
+- f0fa7fb: add extra auth methods
+
+### Patch Changes
+
+- df0c967: fix enhancements rendering and opening
+- db6680a: fix subagents settings UX and spam notifications
+- 1902196: Fix: BTP cloud connection wizard fails on production Steampunk systems (issue #385 )
+
 ## 2.5.0
 
 ### Minor Changes
