@@ -7,14 +7,14 @@ import * as vscode from "vscode"
 import { funWindow as window } from "../services/funMessenger"
 import { logCommands } from "../services/abapCopilotLogger"
 import { uriAbapFile } from "../adt/operations/AdtObjectFinder"
-import { getObjectEnhancements } from "../services/lm-tools/shared"
+import { getObjectEnhancements, EnhancementInfo, EnhancementResult } from "../services/lm-tools/shared"
 import { getOrCreateRoot } from "../adt/conections"
 
 // Enhancement decoration types
 let enhancementDecorationType: vscode.TextEditorDecorationType
 
 // Cache for enhancement data to avoid repeated API calls
-const enhancementCache = new Map<string, any>()
+const enhancementCache = new Map<string, EnhancementResult>()
 
 // Track pending decoration update to cancel when editor changes
 let pendingDecorationUpdate: AbortController | undefined
@@ -130,31 +130,42 @@ export async function updateEnhancementDecorations(editor: vscode.TextEditor) {
     // Create decorations for each enhancement position
     const decorations: vscode.DecorationOptions[] = []
 
+    // Group enhancements by line so multiple impls hooking the same spot
+    // don't stack invisibly on top of each other
+    const byLine = new Map<number, EnhancementInfo[]>()
     for (const enhancement of enhancementResult.enhancements) {
-      // Convert SAP line numbers (0-based) to VSCode line numbers (0-based)
       const startLine = Math.max(0, enhancement.startLine)
+      if (startLine >= editor.document.lineCount) continue
+      const list = byLine.get(startLine) ?? []
+      list.push(enhancement)
+      byLine.set(startLine, list)
+    }
 
-      // Create decoration for the enhancement start line
-      if (startLine < editor.document.lineCount) {
-        const line = editor.document.lineAt(startLine)
+    for (const [startLine, group] of byLine) {
+      const line = editor.document.lineAt(startLine)
 
-        // Create markdown with command link
-        const hoverMessage = new vscode.MarkdownString(
-          `**🎯 Enhancement: ${enhancement.name}**\n\n` +
-            `• **Type:** ${enhancement.type}\n` +
-            `• **Line:** ${enhancement.startLine + 1}\n\n` +
-            `[📝 Open Enhancement Source](command:abapfs.showEnhancementSource?${encodeURIComponent(
-              JSON.stringify([enhancement.name, objectUri, connectionId])
-            )})`
-        )
-        hoverMessage.isTrusted = true // Enable command links
+      const header =
+        group.length === 1
+          ? `**🎯 Enhancement: ${group[0].name}**`
+          : `**🎯 ${group.length} Enhancements at line ${startLine + 1}**`
 
-        const decoration: vscode.DecorationOptions = {
-          range: new vscode.Range(startLine, 0, startLine, line.text.length),
-          hoverMessage: hoverMessage
-        }
-        decorations.push(decoration)
-      }
+      const body = group
+        .map(enh => {
+          const key = enh.uri ?? enh.name
+          const openLink = `[📝 Open](command:abapfs.showEnhancementSource?${encodeURIComponent(
+            JSON.stringify([key, objectUri, connectionId])
+          )})`
+          return `- **${enh.name}** — spot \`${enh.spot}\` ${openLink}`
+        })
+        .join("\n")
+
+      const hoverMessage = new vscode.MarkdownString(`${header}\n\n${body}`)
+      hoverMessage.isTrusted = true // Enable command links
+
+      decorations.push({
+        range: new vscode.Range(startLine, 0, startLine, line.text.length),
+        hoverMessage
+      })
     }
 
     // Check if this update was cancelled before applying decorations
@@ -198,37 +209,35 @@ export function clearEnhancementDecorations(editor: vscode.TextEditor) {
 }
 
 /**
- * Command to open enhancement for editing
+ * Command to open enhancement for editing.
+ * `enhancementKey` is the element URI (preferred, unique) or impl name (fallback).
+ */
+/**
+ * Command to open enhancement for editing.
+ * `enhancementKey` is the element URI (preferred, unique) or impl name (fallback).
+ * `objectUri` and `connectionId` are passed by the hover command — do NOT re-derive
+ * from the active editor (it may have lost focus to the hover or another tab).
  */
 export async function showEnhancementSource(
-  enhancementName: string,
+  enhancementKey: string,
   objectUri: string,
   connectionId: string
 ) {
   try {
-    // Get enhancement data to retrieve the enhancement URI
-    // Reconstruct the proper objectUri (similar to decoration function)
-    const activeEditor = window.activeTextEditor
-    if (!activeEditor) {
-      window.showErrorMessage("No active editor found")
+    if (!objectUri || !connectionId) {
+      window.showErrorMessage("Missing object URI or connection ID")
       return
     }
 
-    // uriAbapFile imported at top
-    const abapFile = uriAbapFile(activeEditor.document.uri)
-    if (!abapFile?.object) {
-      window.showErrorMessage("Could not get ABAP object from active editor")
-      return
-    }
+    // Get enhancement information including URI for the host object directly
+    const enhancementResult = await getObjectEnhancements(objectUri, connectionId, false)
 
-    const properObjectUri = abapFile.object.contentsPath()
-
-    // Get enhancement information including URI
-    const enhancementResult = await getObjectEnhancements(properObjectUri, connectionId, false)
-
-    const enhancement = enhancementResult.enhancements.find(e => e.name === enhancementName)
+    // Match by uri first (unique per element), fall back to name for older callers
+    const enhancement =
+      enhancementResult.enhancements.find(e => e.uri === enhancementKey) ??
+      enhancementResult.enhancements.find(e => e.name === enhancementKey)
     if (!enhancement || !enhancement.uri) {
-      window.showWarningMessage(`Could not find enhancement URI for: ${enhancementName}`)
+      window.showWarningMessage(`Could not find enhancement: ${enhancementKey}`)
       return
     }
 
@@ -246,7 +255,7 @@ export async function showEnhancementSource(
 
     if (!path) {
       window.showErrorMessage(
-        `Could not resolve workspace path for enhancement: ${enhancementName}`
+        `Could not resolve workspace path for enhancement: ${enhancement.name}`
       )
       return
     }
