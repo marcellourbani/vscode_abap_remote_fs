@@ -211,12 +211,17 @@ export const AGENT_REGISTRY: AgentMeta[] = [
 // ============================================================================
 
 /**
- * Get subagent settings from workspace configuration
+ * Get subagent settings. `enabled` is read from workspace scope only so a
+ * user-level `true` doesn't auto-trigger validation in unrelated workspaces.
+ * `models` uses normal scope merging so user-level defaults still apply.
  */
 export function getSubagentSettings(): SubagentSettings {
   const config = vscode.workspace.getConfiguration("abapfs.subagents")
+  const enabledInspect = config.inspect<boolean>("enabled")
+  const enabled =
+    enabledInspect?.workspaceFolderValue ?? enabledInspect?.workspaceValue ?? false
   return {
-    enabled: config.get("enabled", false),
+    enabled,
     models: config.get("models", {})
   }
 }

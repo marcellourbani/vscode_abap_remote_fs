@@ -182,8 +182,9 @@ export async function activate(ctx: ExtensionContext): Promise<AbapFsApi> {
     sub.push(
       commands.registerCommand("abapfs.startMcpServer", () => startMcpServerCommand(context))
     )
-    // Validate and regenerate subagent files if enabled, but only do that in background
-    setImmediate(() => validateSubagentsOnStartup(context))
+    // Delay validation so Copilot's chat models finish loading; otherwise
+    // `selectChatModels({})` returns an empty list and triggers a false AUTO-DISABLED.
+    setTimeout(() => validateSubagentsOnStartup(context), 10000)
     log("🚀 ABAP FS services are GO! Houston, we have liftoff! 🌙")
     // ABAP FS Integration - End
   } catch (error) {
