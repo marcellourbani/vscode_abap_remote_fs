@@ -159,12 +159,12 @@ export class SapGuiPanel {
       throw new Error("Connection configuration not found")
     }
 
-    // Build base URL
+    // Build base URL — honour the scheme the user configured. Only default
+    // to https when no scheme is present. Fixes GitHub issue #446: previously
+    // http:// was silently rewritten to https://, breaking HTTP-only systems.
     let baseUrl = config.url.replace(/\/sap\/bc\/adt.*$/, "")
     if (!baseUrl.startsWith("https://") && !baseUrl.startsWith("http://")) {
       baseUrl = "https://" + baseUrl
-    } else if (baseUrl.startsWith("http://")) {
-      baseUrl = baseUrl.replace("http://", "https://")
     }
 
     // Generate WebGUI URL
@@ -475,12 +475,11 @@ export class SapGuiPanel {
         return
       }
 
-      // Build base URL
+      // Build base URL — honour the scheme the user configured. Only default
+      // to https when no scheme is present. Fixes GitHub issue #446.
       let baseUrl = config.url.replace(/\/sap\/bc\/adt.*$/, "")
       if (!baseUrl.startsWith("https://") && !baseUrl.startsWith("http://")) {
         baseUrl = "https://" + baseUrl
-      } else if (baseUrl.startsWith("http://")) {
-        baseUrl = baseUrl.replace("http://", "https://")
       }
 
       // 🎯 USE CENTRALIZED transaction mapping
@@ -541,12 +540,11 @@ export class SapGuiPanel {
       // 🎯 USE CENTRALIZED transaction mapping - NO MORE DUPLICATION!
       const transactionInfo = SapGuiPanel.getTransactionInfo(this._objectType, this._objectName)
 
-      // Build base URL (same as working WebView logic)
+      // Build base URL — honour the scheme the user configured. Only default
+      // to https when no scheme is present. Fixes GitHub issue #446.
       let baseUrl = config.url.replace(/\/sap\/bc\/adt.*$/, "")
       if (!baseUrl.startsWith("https://") && !baseUrl.startsWith("http://")) {
         baseUrl = "https://" + baseUrl
-      } else if (baseUrl.startsWith("http://")) {
-        baseUrl = baseUrl.replace("http://", "https://")
       }
 
       // Use centralized transaction info (same as working WebView)

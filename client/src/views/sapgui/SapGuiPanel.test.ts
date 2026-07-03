@@ -286,12 +286,36 @@ describe("SapGuiPanel.buildWebGuiUrl", () => {
     expect(url).toContain("sap-language=EN")
   })
 
-  it("upgrades http to https", async () => {
+  it("preserves http scheme from configured URL (issue #446)", async () => {
     const mockPanel = makePanelMock()
     ;(mockedWindow.createWebviewPanel as jest.Mock).mockReturnValue(mockPanel)
     ;(mockedRemoteManager.get as jest.Mock).mockReturnValue({
       byId: jest.fn().mockReturnValue({
         url: "http://myserver/sap/bc/adt",
+        client: "001",
+        language: "EN"
+      })
+    })
+
+    const { Uri } = require("vscode")
+    const instance = SapGuiPanel.createOrShow(
+      Uri.parse("/ext"),
+      {} as any,
+      "dev100",
+      "ZPROG",
+      "PROG/P"
+    )
+    const url = await instance!.buildWebGuiUrl()
+    expect(url.startsWith("http://")).toBe(true)
+    expect(url.startsWith("https://")).toBe(false)
+  })
+
+  it("defaults to https when configured URL has no scheme", async () => {
+    const mockPanel = makePanelMock()
+    ;(mockedWindow.createWebviewPanel as jest.Mock).mockReturnValue(mockPanel)
+    ;(mockedRemoteManager.get as jest.Mock).mockReturnValue({
+      byId: jest.fn().mockReturnValue({
+        url: "myserver/sap/bc/adt",
         client: "001",
         language: "EN"
       })
