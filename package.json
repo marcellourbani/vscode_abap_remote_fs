@@ -70,7 +70,8 @@
     "clean": "rimraf out *.vsix node_modules modules/sharedapi/out modules/sharedapi/node_modules&& cd server && npm run clean&& cd ../client &&npm run clean && cd .. ",
     "postinstall": "npm run inst_dep_sharedapi && npm run inst_dep_object &&npm run inst_dep_abapfs && cd server && npm i && cd ../client && npm i",
     "format": "prettier --write .",
-    "format:check": "prettier --check ."
+    "format:check": "prettier --check .",
+    "prepare": "husky"
   },
   "devDependencies": {
     "@changesets/cli": "^2.31.0",
@@ -78,6 +79,7 @@
     "@types/node": "^18.11.18",
     "@vscode/vsce": "^3.3.0",
     "concurrently": "^6.3.0",
+    "husky": "^9.1.7",
     "ovsx": "^0.10.1",
     "rimraf": "^3.0.2",
     "typescript": "^4.9.4",
