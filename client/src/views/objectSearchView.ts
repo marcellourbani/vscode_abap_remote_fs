@@ -128,8 +128,6 @@ export class ObjectSearchViewProvider implements WebviewViewProvider {
     return connections[0]?.id
   }
 
-
-
   private async postState() {
     if (!this.view) return
 
@@ -138,7 +136,7 @@ export class ObjectSearchViewProvider implements WebviewViewProvider {
     this.currentConnId = connectionId
     const typeFilter = getSavedTypeFilter()
     const recentObjects: SearchResultMessage[] = connectionId
-      ? (getRecent(connectionId)).map(recentToSearchResultMessage)
+      ? getRecent(connectionId).map(recentToSearchResultMessage)
       : []
 
     await this.view.webview.postMessage({

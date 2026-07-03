@@ -853,7 +853,6 @@ describe("message handling: createCloudConnection (service key)", () => {
     const cloud = setupServiceKeyMocks(makeJwt({ email: "peter@example.com" }))
     ;(cloud.getAbapUserInfo as jest.Mock).mockRejectedValue(new Error("403"))
     ;(cloud.getAbapSystemInfo as jest.Mock).mockRejectedValue(new Error("403"))
-
     ;(vscode.workspace.getConfiguration as jest.Mock).mockReturnValue(makeWorkspaceConfig())
     createManager()
 
@@ -876,7 +875,6 @@ describe("message handling: createCloudConnection (service key)", () => {
     const cloud = setupServiceKeyMocks("not-a-jwt")
     ;(cloud.getAbapUserInfo as jest.Mock).mockRejectedValue(new Error("403"))
     ;(cloud.getAbapSystemInfo as jest.Mock).mockRejectedValue(new Error("403"))
-
     ;(vscode.workspace.getConfiguration as jest.Mock).mockReturnValue(makeWorkspaceConfig())
     createManager()
 
@@ -903,7 +901,6 @@ describe("message handling: createCloudConnection (service key)", () => {
       SYSID: "DEV",
       INSTALLED_LANGUAGES: [{ ISOLANG: "EN" }, { ISOLANG: "DE" }]
     })
-
     ;(vscode.workspace.getConfiguration as jest.Mock).mockReturnValue(makeWorkspaceConfig())
     createManager()
 
@@ -925,9 +922,7 @@ describe("message handling: createCloudConnection (service key)", () => {
     expect(createdMsg.availableLanguages).toEqual(["en", "de"])
 
     // no warning when a4c_api_session worked
-    const warnMsg = postMessageMock.mock.calls
-      .map(c => c[0])
-      .find(m => m && m.type === "error")
+    const warnMsg = postMessageMock.mock.calls.map(c => c[0]).find(m => m && m.type === "error")
     expect(warnMsg).toBeUndefined()
   })
 
@@ -961,9 +956,7 @@ describe("message handling: createCloudConnection (service key)", () => {
       .find(m => m && m.type === "cloudConnectionCreated")
     expect(createdMsg).toBeUndefined()
 
-    const errMsg = postMessageMock.mock.calls
-      .map(c => c[0])
-      .find(m => m && m.type === "error")
+    const errMsg = postMessageMock.mock.calls.map(c => c[0]).find(m => m && m.type === "error")
     expect(errMsg).toBeDefined()
     expect(errMsg.message).toMatch(/Failed to create cloud connection/)
   })

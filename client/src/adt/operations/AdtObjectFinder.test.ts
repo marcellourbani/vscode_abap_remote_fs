@@ -174,8 +174,16 @@ describe("MySearchResult", () => {
       const rawClient: any = {
         loadTypes: jest.fn().mockResolvedValue([]),
         findObjectPath: jest.fn().mockResolvedValue([
-          { "adtcore:name": "ZPACKAGE", "adtcore:type": "DEVC/K", "adtcore:uri": "/sap/bc/adt/packages/zpackage" },
-          { "adtcore:name": "ZPROG", "adtcore:type": "PROG/P", "adtcore:uri": "/sap/bc/adt/programs/programs/zprog" }
+          {
+            "adtcore:name": "ZPACKAGE",
+            "adtcore:type": "DEVC/K",
+            "adtcore:uri": "/sap/bc/adt/packages/zpackage"
+          },
+          {
+            "adtcore:name": "ZPROG",
+            "adtcore:type": "PROG/P",
+            "adtcore:uri": "/sap/bc/adt/programs/programs/zprog"
+          }
         ])
       }
       const rawResults = [makeSR({ "adtcore:packageName": undefined, "adtcore:uri": "/my/uri/1" })]
@@ -188,16 +196,24 @@ describe("MySearchResult", () => {
       const rawClient: any = {
         loadTypes: jest.fn().mockResolvedValue([]),
         findObjectPath: jest.fn().mockResolvedValue([
-          { "adtcore:name": "ZPACKAGE_CACHED", "adtcore:type": "DEVC/K", "adtcore:uri": "/sap/bc/adt/packages/zpackage_cached" }
+          {
+            "adtcore:name": "ZPACKAGE_CACHED",
+            "adtcore:type": "DEVC/K",
+            "adtcore:uri": "/sap/bc/adt/packages/zpackage_cached"
+          }
         ])
       }
-      const rawResults1 = [makeSR({ "adtcore:packageName": undefined, "adtcore:uri": "/my/uri/cached" })]
+      const rawResults1 = [
+        makeSR({ "adtcore:packageName": undefined, "adtcore:uri": "/my/uri/cached" })
+      ]
       const results1 = await MySearchResult.createResults(rawResults1, rawClient)
       expect(results1[0]!.packageName).toBe("ZPACKAGE_CACHED")
       expect(rawClient.findObjectPath).toHaveBeenCalledTimes(1)
 
       // Call again for the same URI, should use cached value and not call findObjectPath again
-      const rawResults2 = [makeSR({ "adtcore:packageName": undefined, "adtcore:uri": "/my/uri/cached" })]
+      const rawResults2 = [
+        makeSR({ "adtcore:packageName": undefined, "adtcore:uri": "/my/uri/cached" })
+      ]
       const results2 = await MySearchResult.createResults(rawResults2, rawClient)
       expect(results2[0]!.packageName).toBe("ZPACKAGE_CACHED")
       expect(rawClient.findObjectPath).toHaveBeenCalledTimes(1) // still 1

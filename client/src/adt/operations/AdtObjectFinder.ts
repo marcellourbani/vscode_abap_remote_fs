@@ -426,14 +426,15 @@ export class AdtObjectFinder {
   }
 
   private toMySearchResults(items: RecentObject[]): MySearchResult[] {
-    return items.map(item =>
-      new MySearchResult({
-        "adtcore:uri": item.uri,
-        "adtcore:type": item.type,
-        "adtcore:name": item.name,
-        "adtcore:packageName": item.packageName,
-        "adtcore:description": item.description || getObjectTypeLabel(item.type)
-      })
+    return items.map(
+      item =>
+        new MySearchResult({
+          "adtcore:uri": item.uri,
+          "adtcore:type": item.type,
+          "adtcore:name": item.name,
+          "adtcore:packageName": item.packageName,
+          "adtcore:description": item.description || getObjectTypeLabel(item.type)
+        })
     )
   }
 
@@ -449,9 +450,7 @@ export class AdtObjectFinder {
 
       let recentItems = this.toMySearchResults(getRecent(this.connId))
       let initialItems: MySearchResult[] =
-        forType === PACKAGE
-          ? [new MySearchResult(this.EPMTYPACKAGE), ...recentItems]
-          : recentItems
+        forType === PACKAGE ? [new MySearchResult(this.EPMTYPACKAGE), ...recentItems] : recentItems
 
       // Add button to change type filter (show always when no specific type is requested)
       if (!objType && !forType) {
@@ -477,10 +476,7 @@ export class AdtObjectFinder {
           } else if (button === clearHistoryButton) {
             await clearRecent(this.connId)
             recentItems = []
-            initialItems =
-              forType === PACKAGE
-                ? [new MySearchResult(this.EPMTYPACKAGE)]
-                : []
+            initialItems = forType === PACKAGE ? [new MySearchResult(this.EPMTYPACKAGE)] : []
             qp.items = initialItems
           }
         })
@@ -491,7 +487,9 @@ export class AdtObjectFinder {
 
       const searchParent = async (e: string) => {
         qp.items =
-          e.length >= 2 ? await this.search(e, getClient(this.connId), objType, typeFilter) : initialItems
+          e.length >= 2
+            ? await this.search(e, getClient(this.connId), objType, typeFilter)
+            : initialItems
       }
 
       qp.items = initialItems

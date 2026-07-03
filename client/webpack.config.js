@@ -9,10 +9,10 @@ const CopyPlugin = require("copy-webpack-plugin")
 /**@type {import('webpack').Configuration}*/
 const config = {
   target: "node", // vscode extensions run in a Node.js-context 📖 -> https://webpack.js.org/configuration/node/
-  
+
   // Enable webpack caching for faster builds
   cache: {
-    type: 'filesystem',
+    type: "filesystem",
     buildDependencies: {
       config: [__filename]
     }
@@ -31,7 +31,7 @@ const config = {
   devtool: "source-map",
   externals: {
     vscode: "commonjs vscode", // the vscode-module is created on-the-fly and must be excluded. Add other modules that cannot be webpack'ed, 📖 -> https://webpack.js.org/configuration/externals/
-    "@playwright/mcp": "commonjs @playwright/mcp",
+    "@playwright/mcp": "commonjs @playwright/mcp"
   },
   resolve: {
     // support reading TypeScript and JavaScript files, 📖 -> https://github.com/TypeStrong/ts-loader
@@ -43,8 +43,8 @@ const config = {
   plugins: [
     new CopyPlugin({
       patterns: [
-        { 
-          from: "media", 
+        {
+          from: "media",
           to: "media",
           noErrorOnMissing: true,
           force: true,
@@ -72,11 +72,12 @@ const config = {
             }
           }
         ]
-      }, {
+      },
+      {
         test: /\.(node)$/i,
         use: [
           {
-            loader: 'file-loader',
+            loader: "file-loader"
           }
         ]
       },
@@ -101,7 +102,7 @@ const prodConfig = {
       compiler => {
         new TerserPlugin({
           parallel: true,
-          exclude: /media\/.*\.js$/,  // Exclude media JS files from minification
+          exclude: /media\/.*\.js$/, // Exclude media JS files from minification
           terserOptions: {
             keep_classnames: true
           }

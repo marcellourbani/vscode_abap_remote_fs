@@ -8,10 +8,10 @@ const TerserPlugin = require("terser-webpack-plugin")
 /**@type {import('webpack').Configuration}*/
 const config = {
   target: "node", // vscode extensions run in a Node.js-context 📖 -> https://webpack.js.org/configuration/node/
-  
+
   // Enable webpack caching for faster builds
   cache: {
-    type: 'filesystem',
+    type: "filesystem",
     buildDependencies: {
       config: [__filename]
     }
