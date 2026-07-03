@@ -1,0 +1,20 @@
+# Prettier ignore file
+node_modules
+out
+dist
+*.vsix
+package-lock.json
+uv.lock
+.venv
+modules/abapfs/out
+modules/abapObject/out
+modules/sharedapi/out
+client/dist
+server/dist
+client/media
+
+# Exclude specific file types
+*.md
+*.json
+*.yml
+*.yaml

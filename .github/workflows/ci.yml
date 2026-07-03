@@ -2,25 +2,25 @@ name: CI
 
 on:
   pull_request:
-    branches: [ master ]
+    branches: [master]
     paths-ignore:
-      - '**.md'
-      - 'docs/**'
-      - 'wiki/**'
-      - 'mkdocs.yml'
-      - 'pyproject.toml'
-      - 'scripts/build_docs.py'
-      - 'LICENSE'
+      - "**.md"
+      - "docs/**"
+      - "wiki/**"
+      - "mkdocs.yml"
+      - "pyproject.toml"
+      - "scripts/build_docs.py"
+      - "LICENSE"
   push:
-    branches: [ master ]
+    branches: [master]
     paths-ignore:
-      - '**.md'
-      - 'docs/**'
-      - 'wiki/**'
-      - 'mkdocs.yml'
-      - 'pyproject.toml'
-      - 'scripts/build_docs.py'
-      - 'LICENSE'
+      - "**.md"
+      - "docs/**"
+      - "wiki/**"
+      - "mkdocs.yml"
+      - "pyproject.toml"
+      - "scripts/build_docs.py"
+      - "LICENSE"
   workflow_dispatch:
 
 jobs:
@@ -40,7 +40,7 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: ${{ matrix.node-version }}
-          cache: 'npm'
+          cache: "npm"
 
       - name: Install dependencies
         run: npm install
@@ -50,3 +50,6 @@ jobs:
 
       - name: Run unit tests
         run: npm test
+
+      - name: Check formatting
+        run: npm run format:check

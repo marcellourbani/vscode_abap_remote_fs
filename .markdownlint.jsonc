@@ -1,4 +1,4 @@
 {
-    "MD024": false, // Multiple headings with the same content
-    "MD013": false // line length
+  "MD024": false, // Multiple headings with the same content
+  "MD013": false // line length
 }

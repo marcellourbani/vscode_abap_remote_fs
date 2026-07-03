@@ -7,7 +7,11 @@ import * as vscode from "vscode"
 import { funWindow as window } from "../services/funMessenger"
 import { logCommands } from "../services/abapCopilotLogger"
 import { uriAbapFile } from "../adt/operations/AdtObjectFinder"
-import { getObjectEnhancements, EnhancementInfo, EnhancementResult } from "../services/lm-tools/shared"
+import {
+  getObjectEnhancements,
+  EnhancementInfo,
+  EnhancementResult
+} from "../services/lm-tools/shared"
 import { getOrCreateRoot } from "../adt/conections"
 
 // Enhancement decoration types

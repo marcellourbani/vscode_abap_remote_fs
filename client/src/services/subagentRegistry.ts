@@ -218,8 +218,7 @@ export const AGENT_REGISTRY: AgentMeta[] = [
 export function getSubagentSettings(): SubagentSettings {
   const config = vscode.workspace.getConfiguration("abapfs.subagents")
   const enabledInspect = config.inspect<boolean>("enabled")
-  const enabled =
-    enabledInspect?.workspaceFolderValue ?? enabledInspect?.workspaceValue ?? false
+  const enabled = enabledInspect?.workspaceFolderValue ?? enabledInspect?.workspaceValue ?? false
   return {
     enabled,
     models: config.get("models", {})

@@ -6,8 +6,8 @@ module.exports = {
   globals: {
     "ts-jest": {
       tsconfig: "tsconfig.json",
-      isolatedModules: true,  // transpile-only, skip type-checking (10-20x faster)
-      diagnostics: false       // skip diagnostics during test runs
+      isolatedModules: true, // transpile-only, skip type-checking (10-20x faster)
+      diagnostics: false // skip diagnostics during test runs
     }
   },
 

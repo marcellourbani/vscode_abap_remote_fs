@@ -850,10 +850,7 @@ export class SapConnectionManager {
 
       logTelemetry("command_connection_manager_cloud_connection_created")
     } catch (error) {
-      logCommands.error(
-        `[cloud-svckey] failed: ${summarizeError(error)}`,
-        error
-      )
+      logCommands.error(`[cloud-svckey] failed: ${summarizeError(error)}`, error)
       this.panel.webview.postMessage({
         type: "error",
         message: `Failed to create cloud connection: ${error}`
@@ -875,9 +872,7 @@ export class SapConnectionManager {
       logCommands.debug("[cloud-endpoint] fetching CF info (GET /)")
       const info = await cfInfo(endpoint)
       const loginUrl = info.links.login?.href
-      logCommands.debug(
-        `[cloud-endpoint] CF info received (has login URL: ${!!loginUrl})`
-      )
+      logCommands.debug(`[cloud-endpoint] CF info received (has login URL: ${!!loginUrl})`)
       if (!loginUrl) {
         throw new Error("Could not determine login URL from endpoint")
       }
@@ -952,17 +947,13 @@ export class SapConnectionManager {
       logCommands.debug("[cloud-endpoint] fetching services (GET /v2/services)")
       const services = await cfServices(endpoint, grant.accessToken)
       logCommands.debug(`[cloud-endpoint] services response: count=${services.length}`)
-      logCommands.debug(
-        "[cloud-endpoint] fetching service instances (GET .../service_instances)"
-      )
+      logCommands.debug("[cloud-endpoint] fetching service instances (GET .../service_instances)")
       const instances = await cfServiceInstances(
         endpoint,
         selectedSpace.space.entity,
         grant.accessToken
       )
-      logCommands.debug(
-        `[cloud-endpoint] service instances response: count=${instances.length}`
-      )
+      logCommands.debug(`[cloud-endpoint] service instances response: count=${instances.length}`)
 
       // Find ABAP service by tag
       const abapService = services.find(s => s.entity.tags && s.entity.tags.includes("abapcp"))
@@ -975,17 +966,13 @@ export class SapConnectionManager {
 
       // Find instance matching ABAP service
       const abapInstance = instances.find(i => i.entity.service_guid === abapService.metadata.guid)
-      logCommands.debug(
-        `[cloud-endpoint] matching ABAP service instance: found=${!!abapInstance}`
-      )
+      logCommands.debug(`[cloud-endpoint] matching ABAP service instance: found=${!!abapInstance}`)
       if (!abapInstance) {
         throw new Error("No ABAP service instance found")
       }
 
       // Get service keys
-      logCommands.debug(
-        "[cloud-endpoint] fetching service keys (GET .../service_keys)"
-      )
+      logCommands.debug("[cloud-endpoint] fetching service keys (GET .../service_keys)")
       const keys = await cfInstanceServiceKeys(endpoint, abapInstance.entity, grant.accessToken)
       logCommands.debug(`[cloud-endpoint] service keys response: count=${keys.length}`)
       if (keys.length === 0) {
@@ -1023,16 +1010,11 @@ export class SapConnectionManager {
         throw new Error("Selected key has no credentials")
       }
 
-      logCommands.debug(
-        "[cloud-endpoint] handing off credentials to service-key flow"
-      )
+      logCommands.debug("[cloud-endpoint] handing off credentials to service-key flow")
       // Now use the credentials to create connection
       await this.createCloudConnectionFromServiceKey(JSON.stringify(credentials), target)
     } catch (error) {
-      logCommands.error(
-        `[cloud-endpoint] failed: ${summarizeError(error)}`,
-        error
-      )
+      logCommands.error(`[cloud-endpoint] failed: ${summarizeError(error)}`, error)
       this.panel.webview.postMessage({
         type: "error",
         message: `Failed to create cloud connection: ${error}`

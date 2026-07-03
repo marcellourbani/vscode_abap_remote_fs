@@ -10,13 +10,10 @@ module.exports = {
   },
 
   // An array of directory names to be searched recursively up from the requiring module's location
-  moduleDirectories: [
-    "node_modules"
-  ],
+  moduleDirectories: ["node_modules"],
 
   // An array of file extensions your modules use
   moduleFileExtensions: ["ts", "tsx", "js"],
-
 
   // The test environment that will be used for testing
   testEnvironment: "node",

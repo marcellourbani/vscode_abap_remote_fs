@@ -42,11 +42,7 @@
     "markdownlint.config": {
       "no-duplicate-header": false
     },
-    "jest.disabledWorkspaceFolders": [
-      "vscode-abap-remote-fs",
-      "wiki",
-      "sharedapi"
-    ],
+    "jest.disabledWorkspaceFolders": ["vscode-abap-remote-fs", "wiki", "sharedapi"],
     "githubIssues.queries": [
       {
         "label": "My Issues",
@@ -64,7 +60,13 @@
       "editor.defaultFormatter": "esbenp.prettier-vscode"
     },
     "[json]": {
-      "editor.defaultFormatter": "vscode.json-language-features"
+      "editor.defaultFormatter": "esbenp.prettier-vscode"
+    },
+    "[jsonc]": {
+      "editor.defaultFormatter": "esbenp.prettier-vscode"
+    },
+    "[javascript]": {
+      "editor.defaultFormatter": "esbenp.prettier-vscode"
     },
     "[typescript]": {
       "editor.defaultFormatter": "esbenp.prettier-vscode"
