@@ -1,5 +1,11 @@
 # Changelog
 
+## 2.6.1
+
+### Patch Changes
+
+- 532385b: add a workflow to release and publish new versions automatically
+
 ## 2.6.0
 
 ### Minor Changes
