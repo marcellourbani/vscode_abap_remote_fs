@@ -1,4 +1,4 @@
-;(function () {
+(function () {
   const vscode = acquireVsCodeApi()
 
   const systemSelect = document.getElementById("systemSelect")
@@ -91,8 +91,7 @@
       showResult({
         success: false,
         output: "",
-        error:
-          "Execution timed out (65s). The SAP request may still be running. Check ST22 for dumps.",
+        error: "Execution timed out (65s). The SAP request may still be running. Check ST22 for dumps.",
         runtime_ms: 0
       })
     }, 65000)
@@ -167,10 +166,7 @@
   }
 
   function showResult(data) {
-    if (executionTimer) {
-      clearTimeout(executionTimer)
-      executionTimer = null
-    }
+    if (executionTimer) { clearTimeout(executionTimer); executionTimer = null; }
     setRunning(false)
     outputSection.classList.add("visible")
 

@@ -11,6 +11,7 @@ modules/abapObject/out
 modules/sharedapi/out
 client/dist
 server/dist
+client/media
 
 # Exclude specific file types
 *.md
