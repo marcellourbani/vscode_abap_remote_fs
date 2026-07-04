@@ -22,14 +22,10 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: 22
+          node-version: 24
 
       - name: Download VSIX from Release
-        uses: dsaltares/fetch-gh-release-asset@master
-        with:
-          version: ${{ github.event.inputs.version || github.event.release.tag_name }}
-          file: '.*\.vsix'
-          regex: true
+        run: gh release download ${{ github.event.inputs.version || github.event.release.tag_name }} --pattern "*.vsix"
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
