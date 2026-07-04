@@ -29,13 +29,16 @@ jobs:
         run: npm install
 
       - name: Create Release Pull Request
-        if: github.event.head_commit.message != 'Version Packages'
+        if: "!contains(github.event.head_commit.message, 'Version Packages')"
         uses: changesets/action@v1
+        with:
+          commit: "Version Packages"
+          title: "Version Packages"
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Build VSIX and Create Release
-        if: github.event.head_commit.message == 'Version Packages'
+        if: "contains(github.event.head_commit.message, 'Version Packages')"
         run: |
           VERSION=$(node -p "require('./package.json').version")
           npm run release:vsix
