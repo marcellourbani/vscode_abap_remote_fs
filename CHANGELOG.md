@@ -1,5 +1,12 @@
 # Changelog
 
+## 2.6.2
+
+### Patch Changes
+
+- 462f2cd: fix release workflow
+- c026cf9: fix release workflow
+
 ## 2.6.1
 
 ### Patch Changes
