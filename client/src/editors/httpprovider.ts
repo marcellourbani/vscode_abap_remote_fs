@@ -27,8 +27,10 @@ export class HttpProvider implements CustomTextEditorProvider {
       Uri.file(path.join(this.context.extensionPath, "client/media", "editor.css"))
     )
     const service = parseHTTP(source)
+    const escapeHtml = (s: string) =>
+      s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#039;")
     const field = (name: string, value: string) =>
-      `<tr><td><strong>${name}</strong></td><td>${value}</td></tr>`
+      `<tr><td><strong>${escapeHtml(name)}</strong></td><td>${escapeHtml(value)}</td></tr>`
     const tbody =
       field("Handler Class", service.handlerClass) +
       field("Author", service.author) +
@@ -47,7 +49,7 @@ export class HttpProvider implements CustomTextEditorProvider {
         }
         </script></head>
         <body>
-        <h1>${service.name} ${service.text}</h1>
+        <h1>${escapeHtml(service.name)} ${escapeHtml(service.text)}</h1>
         <table><tbody>${tbody}</tbody></table>
         </body></html>`
   }
