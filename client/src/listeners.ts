@@ -330,7 +330,6 @@ export async function activeTextEditorChangedListener(editor: TextEditor | undef
         //   // Enhancement decorations are optional - don't break if they fail
         log(`⚠️ Enhancement decorations failed: ${enhError}`)
       }
-
     }
   } catch (e) {
     await showHideActivate() // reset
