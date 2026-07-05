@@ -16,6 +16,7 @@ import { isAbapFile } from "abapfs"
 import { AdtObjectActivator } from "../operations/AdtObjectActivator"
 import { logTelemetry } from "../../services/telemetry"
 import { assertToolInvocationAuthorized } from "../../services/lm-tools/toolGuard"
+import { showHideActivate } from "../../listeners"
 
 interface ActivateInput {
   url: string
@@ -37,7 +38,9 @@ export class ActivateTool implements LanguageModelTool<ActivateInput> {
         const object = isAbapFile(path?.file) && path?.file?.object
         if (!object) throw new Error("Failed to retrieve object for activation")
         const activator = AdtObjectActivator.get(uri.authority)
-        return activator.activate(object, uri, false)
+        const result = await activator.activate(object, uri, false)
+        showHideActivate(window.activeTextEditor, true)
+        return result
       }
     )
     const contentText = result.ok

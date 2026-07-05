@@ -16,7 +16,15 @@ jest.mock(
     LanguageModelToolResult: jest.fn((content: any[]) => ({ content })),
     ProgressLocation: { Window: 10 },
     window: {
-      withProgress: jest.fn()
+      withProgress: jest.fn(),
+      createOutputChannel: jest.fn(() => ({
+        appendLine: jest.fn(),
+        show: jest.fn(),
+        info: jest.fn(),
+        error: jest.fn(),
+        warn: jest.fn(),
+        debug: jest.fn()
+      }))
     }
   }),
   { virtual: true }
@@ -44,6 +52,10 @@ jest.mock("../../services/telemetry", () => ({
 jest.mock("../../services/lm-tools/toolGuard", () => ({
   assertToolInvocationAuthorized: jest.fn(),
   isToolInvocationAuthorized: jest.fn(() => true)
+}))
+
+jest.mock("../../listeners", () => ({
+  showHideActivate: jest.fn()
 }))
 
 import { ActivateTool } from "./activate"

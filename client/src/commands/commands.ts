@@ -367,9 +367,6 @@ export class AdtCommands {
       await window.withProgress(
         { location: ProgressLocation.Notification, title: "Activating..." },
         async progress => {
-          // Wait for any pending Copilot changes to complete
-          await new Promise(resolve => setTimeout(resolve, 3000))
-
           progress.report({ message: "Validating object..." })
           const obj = await findAbapObject(uri)
 
