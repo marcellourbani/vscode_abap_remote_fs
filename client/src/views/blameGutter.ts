@@ -1236,6 +1236,5 @@ export function initializeBlameGutter(context: vscode.ExtensionContext) {
   })
 
   // Initialize context keys used by the toolbar/menu visibility rules.
-  setContext("abapfs:blameActive", false)
-  setContext("abapfs:blameAvailable", false)
+  updateBlameContext(window.activeTextEditor)
 }
