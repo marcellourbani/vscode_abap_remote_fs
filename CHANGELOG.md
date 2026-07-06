@@ -1,5 +1,12 @@
 # Changelog
 
+## 2.6.4
+
+### Patch Changes
+
+- 1d33325: add auto publish workflow
+- 9547eac: improved ADT Communication log UX\
+
 ## 2.6.3
 
 ### Patch Changes
