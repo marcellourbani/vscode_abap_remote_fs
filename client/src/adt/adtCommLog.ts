@@ -1,9 +1,12 @@
 import {
   CancellationToken,
   commands,
+  env,
+  ProgressLocation,
   WebviewView,
   WebviewViewProvider,
-  WebviewViewResolveContext
+  WebviewViewResolveContext,
+  window
 } from "vscode"
 import { context } from "../extension"
 import { client } from "../langClient"
@@ -40,8 +43,23 @@ const MAX_ENTRIES = 2000
 
 export class CallLogger {
   private static instances = new Map<string, CallLogger>()
+  private static statusListeners = new Set<() => void>()
   private serveractive = false
   entries: AdtLogEntry[] = []
+
+  public static onStatusChange(fn: () => void) {
+    this.statusListeners.add(fn)
+    return () => this.statusListeners.delete(fn)
+  }
+
+  private static notifyStatus() {
+    for (const fn of this.statusListeners) fn()
+  }
+
+  public static getActiveConnIds(): string[] {
+    return Array.from(this.instances.keys())
+  }
+
   public static get(connId: string) {
     return this.instances.get(connId)!
   }
@@ -62,6 +80,7 @@ export class CallLogger {
     const logger = new CallLogger(connId)
     this.instances.set(connId, logger)
     logger.activateServer(true)
+    this.notifyStatus()
     return logger
   }
   @command(AbapFsCommands.activateCommLog)
@@ -83,10 +102,12 @@ export class CallLogger {
     if (!logger) return
     logger.activateServer(false)
     this.instances.delete(connId)
+    this.notifyStatus()
   }
   public static stopLogging() {
     for (const logger of this.instances.values()) logger.activateServer(false)
     this.instances.clear()
+    this.notifyStatus()
   }
   public add(data: LogData) {
     const rh: Record<string, string> = {}
@@ -201,22 +222,84 @@ export class CommLogPanel implements WebviewViewProvider {
       }
     }
 
+    const sendStatus = () => {
+      if (!this.view) return
+      try {
+        this.view.webview.postMessage({
+          type: "status",
+          active: CallLogger.getActiveConnIds()
+        })
+      } catch {
+        /* panel not ready */
+      }
+    }
+
     this.unsub = subscribe(sendSnapshot)
+    const unsubStatus = CallLogger.onStatusChange(sendStatus)
 
     panel.webview.onDidReceiveMessage(msg => {
       switch (msg.command) {
         case "ready":
           sendSnapshot()
+          sendStatus()
           break
         case "clear":
           entries.length = 0
           nextId = 1
           sendSnapshot() // send empty snapshot to win any race with in-flight entries
           break
+        case "toggle":
+          if (CallLogger.getActiveConnIds().length > 0)
+            commands.executeCommand(AbapFsCommands.deactivateCommLog)
+          else commands.executeCommand(AbapFsCommands.activateCommLog)
+          break
+        case "copy":
+          {
+            const entry = entries.find(e => e.id === msg.id)
+            if (!entry) return
+            let text = ""
+            let message = ""
+            if (msg.format === "json") {
+              text = JSON.stringify(entry, null, 2)
+              message = "Copied as JSON"
+            } else if (msg.format === "http") {
+              let url = entry.url
+              if (entry.params && Object.keys(entry.params).length) {
+                const searchParams = new URLSearchParams()
+                for (const [k, v] of Object.entries(entry.params)) searchParams.append(k, v)
+                url += (url.includes("?") ? "&" : "?") + searchParams.toString()
+              }
+              text = `${entry.method} {{baseUrl}}${url}\n`
+              if (entry.requestHeaders) {
+                for (const [k, v] of Object.entries(entry.requestHeaders)) {
+                  const lowerK = k.toLowerCase()
+                  if (lowerK === "cookie") continue
+                  let val = v
+                  if (lowerK === "x-csrf-token" && v.toUpperCase() !== "FETCH")
+                    if (entry.method === "GET") continue
+                    else val = "{{login_csrf_token}}"
+                  text += `${k}: ${val}\n`
+                }
+              }
+              message = "Copied HTTP request"
+            }
+            if (text) {
+              env.clipboard.writeText(text).then(() => {
+                // Auto-dismissing toast: withProgress notifications close when the
+                // inner promise resolves. showInformationMessage has no auto-dismiss.
+                window.withProgress(
+                  { location: ProgressLocation.Notification, title: message },
+                  () => new Promise<void>(resolve => setTimeout(resolve, 2000))
+                )
+              }, ignore)
+            }
+          }
+          break
       }
     })
 
     panel.onDidDispose(() => {
+      unsubStatus()
       if (this.unsub) {
         this.unsub()
         this.unsub = undefined
