@@ -15,6 +15,35 @@ import { SapGuiPanel } from "../views/sapgui/SapGuiPanel"
 import { RemoteManager } from "../config"
 
 /**
+ * Map an ABAP object type (e.g. "PROG/P") to the pseudo-filename suffix that
+ * downstream `parseObjectName` uses to discriminate between programs, classes,
+ * function groups and function modules.
+ *
+ * Using `file.object.type` here (rather than parsing the URI path) keeps the
+ * command working for any SAP logon language: the URI path contains localized
+ * category labels (e.g. "Programs" / "Programme" / "Zdrojové programy"), but
+ * the ADT object type is a stable, language-independent identifier.
+ *
+ * Note: both `FUGR/F` (group) and `FUGR/FF` (module) share the `.fugr.abap`
+ * extension in `abapObject`, so we synthesize `.func.abap` for individual
+ * function modules to keep them distinguishable downstream.
+ */
+function objectNameForType(name: string, type: string): string | undefined {
+  switch (type) {
+    case "PROG/P":
+      return name + ".prog.abap"
+    case "CLAS/OC":
+      return name + ".clas.abap"
+    case "FUGR/F":
+      return name + ".fugr.abap"
+    case "FUGR/FF":
+      return name + ".func.abap"
+    default:
+      return undefined
+  }
+}
+
+/**
  * Manage Text Elements Command
  * Opens a webview for managing text elements (read/create/edit/delete)
  * Can be called from command palette, context menu, or active editor
@@ -51,33 +80,37 @@ export async function manageTextElementsCommand(uri?: vscode.Uri): Promise<void>
       return
     }
 
-    // Check if this is an include FIRST - before extracting program name
+    // Resolve the ABAP object via the abapfs API. `file.object.type` and
+    // `file.object.name` come straight from ADT (`adtcore:type` / `adtcore:name`)
+    // and are language-independent — unlike the URI path, which contains
+    // localized category labels ("Programs" / "Programme" / "Zdrojové programy").
+    // See GitHub issue #445 for the original localization bug.
     try {
       const root = getRoot(sourceUri.authority)
       const file = await root.getNodeAsync(sourceUri.path)
 
-      if (isAbapFile(file) && file.object.type === "PROG/I") {
-        // This is an include - get main program
-        const mainPrograms = await file.object.mainPrograms()
+      if (!isAbapFile(file)) {
+        window.showErrorMessage("Could not determine program name from the current ABAP file.")
+        return
+      }
 
-        if (mainPrograms && mainPrograms.length > 0) {
-          const mainProg = mainPrograms[0]
-
-          // Use adtcore:name directly - it's more reliable than parsing URIs
-          const mainProgName = mainProg["adtcore:name"]
-
-          if (mainProgName) {
-            objectName = mainProgName + ".prog.abap"
-          }
+      const obj = file.object
+      if (obj.type === "PROG/I") {
+        // Include — resolve to its main program(s) and use the first one.
+        const mainPrograms = await obj.mainPrograms()
+        const mainProgName = mainPrograms?.[0]?.["adtcore:name"]
+        if (mainProgName) {
+          objectName = mainProgName + ".prog.abap"
         }
+      } else if (obj.type === "FUGR/FF" && obj.parent?.type === "FUGR/F") {
+        // Function module — text elements live at the function group level,
+        // there is no per-module text pool. Resolve to the parent group.
+        objectName = obj.parent.name + ".fugr.abap"
       } else {
-        // Not an include - extract from current URI
-        objectName = extractProgramNameFromUri(sourceUri.toString()) || undefined
+        objectName = objectNameForType(obj.name, obj.type)
       }
     } catch (error) {
       logCommands.error(`Error resolving object: ${error}`)
-      // Fallback to extracting from current URI
-      objectName = extractProgramNameFromUri(sourceUri.toString()) || undefined
     }
 
     if (!objectName) {
@@ -412,89 +445,6 @@ async function handleRefreshTextElements(
       command: "refreshError",
       error: error.message || String(error)
     })
-  }
-}
-
-/**
- * Extract object name from ADT URI for programs, classes, and function groups
- * Handles URL-encoded namespace objects (e.g., %E2%88%95UGI4%E2%88%95 -> /UGI4/)
- * Also handles division slash (∕) normalization to forward slash (/)
- *
- * Function Group URI patterns handled:
- * - .../Function Groups/FG_NAME/FG_NAME.fugr.abap (direct function group file)
- * - .../Function Groups/FG_NAME/Function Modules/MODULE_NAME.fugr.abap (function module in group)
- * - .../Function Groups/FG_NAME (function group folder without specific file)
- */
-function extractProgramNameFromUri(uriString: string): string | null {
-  try {
-    // Class pattern: adt://system/path/to/Classes/CLASS_NAME/CLASS_NAME.clas.abap
-    const classMatches = uriString.match(/\/Classes\/([^\/]+)\/[^\/]+\.clas\.abap/i)
-    if (classMatches && classMatches[1]) {
-      let decodedName = decodeURIComponent(classMatches[1])
-      // Normalize division slash (∕) to forward slash (/) for SAP compatibility
-      decodedName = decodedName.replace(/∕/g, "/")
-      return decodedName + ".clas.abap" // Include extension for type detection
-    }
-
-    // Function Group pattern 1: adt://system/path/to/Function Groups/FG_NAME/FG_NAME.fugr.abap
-    const fgMatches = uriString.match(/\/Function.*Groups?\/([^\/]+)\/[^\/]+\.fugr\.abap/i)
-    if (fgMatches && fgMatches[1]) {
-      let decodedName = decodeURIComponent(fgMatches[1])
-      // Normalize division slash (∕) to forward slash (/) for SAP compatibility
-      decodedName = decodedName.replace(/∕/g, "/")
-      return decodedName + ".fugr.abap" // Include extension for type detection
-    }
-
-    // Function Group pattern 2: adt://system/path/to/Function Groups/FG_NAME/Function Modules/MODULE_NAME.fugr.abap
-    const fgModuleMatches = uriString.match(
-      /\/Function.*Groups?\/[^\/]+\/Function.*Modules?\/([^\/]+)\.fugr\.abap/i
-    )
-    if (fgModuleMatches && fgModuleMatches[1]) {
-      let decodedName = decodeURIComponent(fgModuleMatches[1])
-      // For function modules, we want the actual function module name, not the function group
-      // So we return it as .func.abap to distinguish from function groups
-      decodedName = decodedName.replace(/∕/g, "/")
-      return decodedName + ".func.abap" // Use .func.abap to distinguish from function groups
-    }
-
-    // Program pattern: adt://system/path/to/Programs/PROGRAM_NAME/PROGRAM_NAME.prog.abap
-    const progMatches = uriString.match(/\/Programs\/([^\/]+)\/[^\/]+\.prog\.abap/i)
-    if (progMatches && progMatches[1]) {
-      let decodedName = decodeURIComponent(progMatches[1])
-      // Normalize division slash (∕) to forward slash (/) for SAP compatibility
-      decodedName = decodedName.replace(/∕/g, "/")
-      return decodedName + ".prog.abap" // Include extension for type detection
-    }
-
-    // Alternative patterns without extension
-    const altClassMatches = uriString.match(/\/Classes\/([^\/\?]+)/i)
-    if (altClassMatches && altClassMatches[1]) {
-      let decodedName = decodeURIComponent(altClassMatches[1])
-      // Normalize division slash (∕) to forward slash (/) for SAP compatibility
-      decodedName = decodedName.replace(/∕/g, "/")
-      return decodedName.toUpperCase()
-    }
-
-    const altFgMatches = uriString.match(/\/Function.*Groups?\/([^\/\?]+)/i)
-    if (altFgMatches && altFgMatches[1]) {
-      let decodedName = decodeURIComponent(altFgMatches[1])
-      // Normalize division slash (∕) to forward slash (/) for SAP compatibility
-      decodedName = decodedName.replace(/∕/g, "/")
-      return decodedName.toUpperCase() + ".fugr.abap" // Add extension for function group type detection
-    }
-
-    const altProgMatches = uriString.match(/\/Programs\/([^\/\?]+)/i)
-    if (altProgMatches && altProgMatches[1]) {
-      let decodedName = decodeURIComponent(altProgMatches[1])
-      // Normalize division slash (∕) to forward slash (/) for SAP compatibility
-      decodedName = decodedName.replace(/∕/g, "/")
-      return decodedName.toUpperCase()
-    }
-
-    return null
-  } catch (error) {
-    logCommands.error(`Error extracting object name from URI: ${error}`)
-    return null
   }
 }
 
