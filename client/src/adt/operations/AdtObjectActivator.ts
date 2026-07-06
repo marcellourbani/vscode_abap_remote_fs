@@ -547,6 +547,12 @@ export class AdtObjectActivator {
     return result
   }
 
+  private async tryActivate2(object: AbapObject, uri: Uri, interactive: boolean) {
+    const result = await this.tryActivate(object, uri, false)
+    if (result.success) return result
+    return this.tryActivate(object, uri, interactive)
+  }
+
   public async activate(
     object: AbapObject,
     uri: Uri,
@@ -555,7 +561,7 @@ export class AdtObjectActivator {
     const inactive = object.lockObject
 
     try {
-      const result = await this.tryActivate(object, uri, interactive)
+      const result = await this.tryActivate2(object, uri, interactive)
       const mainProg = await this.getMain(object, uri)
 
       if (result && result.success) {

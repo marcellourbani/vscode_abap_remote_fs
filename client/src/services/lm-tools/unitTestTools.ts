@@ -9,11 +9,12 @@ import { getSearchService } from "../abapSearchService"
 import { logTelemetry } from "../telemetry"
 import { getOrCreateRoot } from "../../adt/conections"
 import { createUri, uriAbapFile } from "../../adt/operations/AdtObjectFinder"
-import { isAbapClass } from "abapobject"
+import { isAbapClass, isAbapClassInclude } from "abapobject"
 import { UnitTestRunner } from "../../adt/operations/UnitTestRunner"
 import { isAbapFile, isAbapStat, PathItem } from "abapfs"
 import { AdtObjectActivator } from "../../adt/operations/AdtObjectActivator"
 import { assertToolInvocationAuthorized } from "./toolGuard"
+import { showHideActivate } from "../../listeners"
 
 // ============================================================================
 // INTERFACES
@@ -151,11 +152,13 @@ export class RunUnitTestsTool implements vscode.LanguageModelTool<IRunUnitTestsP
   private async activate(path: PathItem, connectionId: string) {
     const object = isAbapFile(path?.file) && path?.file?.object
     if (!object) throw new Error("Failed to retrieve object for unit test run")
-    const struct = await object.loadStructure()
-    if (struct.metaData["adtcore:version"] === "inactive") {
+    const main = isAbapClassInclude(object) ? object.parent : object
+    const struct = await main.loadStructure()
+    if (struct?.metaData["adtcore:version"] === "inactive") {
       const uri = createUri(connectionId, path.path)
       const activator = AdtObjectActivator.get(connectionId)
-      await activator.activate(object, uri)
+      await activator.activate(main, uri, false)
+      showHideActivate(vscode.window.activeTextEditor, true)
     }
   }
 

@@ -8,10 +8,27 @@ jest.mock(
       parse: jest.fn((s: string) => ({ toString: () => s, authority: "dev100", path: "/test" }))
     },
     commands: { executeCommand: jest.fn() },
-    lm: { registerTool: jest.fn(() => ({ dispose: jest.fn() })) }
+    lm: { registerTool: jest.fn(() => ({ dispose: jest.fn() })) },
+    ProgressLocation: { Window: 10 },
+    window: {
+      withProgress: jest.fn(),
+      createOutputChannel: jest.fn(() => ({
+        appendLine: jest.fn(),
+        show: jest.fn(),
+        info: jest.fn(),
+        error: jest.fn(),
+        warn: jest.fn(),
+        debug: jest.fn()
+      }))
+    }
   }),
   { virtual: true }
 )
+
+jest.mock("../../listeners", () => ({
+  showHideActivate: jest.fn(),
+  showHideUnitTest: jest.fn()
+}))
 
 jest.mock("../../adt/conections", () => ({
   getClient: jest.fn(),
@@ -22,7 +39,10 @@ jest.mock("./toolRegistry", () => ({
   registerToolWithRegistry: jest.fn(() => ({ dispose: jest.fn() }))
 }))
 jest.mock("../abapSearchService", () => ({ getSearchService: jest.fn() }))
-jest.mock("abapobject", () => ({ isAbapClass: jest.fn() }))
+jest.mock("abapobject", () => ({
+  isAbapClass: jest.fn(),
+  isAbapClassInclude: jest.fn()
+}))
 jest.mock("abapfs", () => ({ isAbapFile: jest.fn(), isAbapStat: jest.fn() }))
 jest.mock("../../adt/operations/AdtObjectFinder", () => ({
   createUri: jest.fn(),
