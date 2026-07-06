@@ -1,5 +1,13 @@
 # Changelog
 
+## 2.6.3
+
+### Patch Changes
+
+- c156559: Activate multiple includes of the same object without a dialog
+- c7f12b6: fix issues #445 and #446 - fix text elements for non-English languages and honor protocol defined in connection config
+- d1e5ea8: Show show blame button only in ABAP files
+
 ## 2.6.2
 
 ### Patch Changes
