@@ -2,6 +2,7 @@ import {
   CancellationToken,
   commands,
   env,
+  ProgressLocation,
   WebviewView,
   WebviewViewProvider,
   WebviewViewResolveContext,
@@ -284,7 +285,12 @@ export class CommLogPanel implements WebviewViewProvider {
             }
             if (text) {
               env.clipboard.writeText(text).then(() => {
-                window.showInformationMessage(message)
+                // Auto-dismissing toast: withProgress notifications close when the
+                // inner promise resolves. showInformationMessage has no auto-dismiss.
+                window.withProgress(
+                  { location: ProgressLocation.Notification, title: message },
+                  () => new Promise<void>(resolve => setTimeout(resolve, 2000))
+                )
               }, ignore)
             }
           }

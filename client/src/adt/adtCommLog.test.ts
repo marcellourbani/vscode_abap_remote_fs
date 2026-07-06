@@ -3,7 +3,11 @@ jest.mock(
   () => ({
     commands: { executeCommand: jest.fn() },
     env: { clipboard: { writeText: jest.fn().mockResolvedValue(undefined) } },
-    window: { showInformationMessage: jest.fn() },
+    window: {
+      showInformationMessage: jest.fn(),
+      withProgress: jest.fn((_opts, task) => task({ report: jest.fn() }, {}))
+    },
+    ProgressLocation: { Notification: 15 },
     EventEmitter: jest.fn().mockImplementation(() => ({
       event: jest.fn(),
       fire: jest.fn()
@@ -320,7 +324,10 @@ describe("CommLogPanel", () => {
 
     await new Promise(r => setTimeout(r, 0))
     expect(env.clipboard.writeText).toHaveBeenCalledWith(expect.stringContaining("/test-copy"))
-    expect(window.showInformationMessage).toHaveBeenCalledWith("Copied as JSON")
+    expect(window.withProgress).toHaveBeenCalledWith(
+      expect.objectContaining({ title: "Copied as JSON" }),
+      expect.any(Function)
+    )
   })
 
   it("copies entry as HTTP", async () => {
@@ -339,6 +346,9 @@ describe("CommLogPanel", () => {
     expect(copiedText).toContain("POST {{baseUrl}}/sap/bc/adt/test?a=1")
     expect(copiedText).toContain("X-Test: Value")
     expect(copiedText).not.toContain("Cookie")
-    expect(window.showInformationMessage).toHaveBeenCalledWith("Copied HTTP request")
+    expect(window.withProgress).toHaveBeenCalledWith(
+      expect.objectContaining({ title: "Copied HTTP request" }),
+      expect.any(Function)
+    )
   })
 })
