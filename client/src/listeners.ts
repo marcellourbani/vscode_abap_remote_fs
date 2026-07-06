@@ -330,11 +330,11 @@ export async function activeTextEditorChangedListener(editor: TextEditor | undef
         //   // Enhancement decorations are optional - don't break if they fail
         log(`⚠️ Enhancement decorations failed: ${enhError}`)
       }
-
-      // 📋 Update blame gutter state
-      onBlameActiveEditorChanged(editor)
     }
   } catch (e) {
     await showHideActivate() // reset
   }
+
+  // 📋 Update blame gutter state
+  onBlameActiveEditorChanged(editor)
 }
