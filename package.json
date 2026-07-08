@@ -73,7 +73,7 @@
     "release:vsix": "npm run build && npm run createpackage",
     "clean": "rimraf out *.vsix node_modules modules/sharedapi/out modules/sharedapi/node_modules&& cd server && npm run clean&& cd ../client &&npm run clean && cd .. ",
     "postinstall": "npm run inst_dep_sharedapi && npm run inst_dep_object &&npm run inst_dep_abapfs && cd server && npm i && cd ../client && npm i",
-"format": "prettier --write .",
+    "format": "prettier --write .",
     "format:check": "prettier --check .",
     "prepare": "husky"
     },
