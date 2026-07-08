@@ -69,10 +69,10 @@
     "release:vsix": "npm run build && npm run createpackage",
     "clean": "rimraf out *.vsix node_modules modules/sharedapi/out modules/sharedapi/node_modules&& cd server && npm run clean&& cd ../client &&npm run clean && cd .. ",
     "postinstall": "npm run inst_dep_sharedapi && npm run inst_dep_object &&npm run inst_dep_abapfs && cd server && npm i && cd ../client && npm i",
-    "format": "prettier --write .",
+"format": "prettier --write .",
     "format:check": "prettier --check .",
     "prepare": "husky"
-  },
+    },
   "devDependencies": {
     "@changesets/cli": "^2.31.0",
     "@types/mocha": "^7.0.2",
@@ -229,7 +229,7 @@
       "activitybar": [
         {
           "id": "abapfs",
-          "title": "Abap FS",
+          "title": "ABAP FS",
           "icon": "client/images/abapfs_activitybar.svg"
         }
       ],
@@ -2536,31 +2536,31 @@
       {
         "command": "abapfs.startRecording",
         "title": "Start Debug Recording",
-        "category": "ABAP Replay",
+        "category": "ABAP FS",
         "icon": "$(record)"
       },
       {
         "command": "abapfs.stopRecording",
         "title": "Stop Debug Recording",
-        "category": "ABAP Replay",
+        "category": "ABAP FS",
         "icon": "$(debug-stop)"
       },
       {
         "command": "abapfs.replaySession",
         "title": "Replay Debug Recording",
-        "category": "ABAP Replay",
+        "category": "ABAP FS",
         "icon": "$(debug-reverse-continue)"
       },
       {
         "command": "abapfs.compressRecording",
         "title": "Compress Debug Recording",
-        "category": "ABAP Replay",
+        "category": "ABAP FS",
         "icon": "$(file-zip)"
       },
       {
         "command": "abapfs.decompressRecording",
         "title": "Decompress Debug Recording",
-        "category": "ABAP Replay",
+        "category": "ABAP FS",
         "icon": "$(file)"
       },
       {
@@ -5146,7 +5146,7 @@
           {
             "id": "abapfs.walkthrough.debugReplay",
             "title": "Record & Replay Debug Sessions",
-            "description": "Record a debug session, replay offline — even without SAP. Share `.abaprecord` files with teammates.\n\n**Record:** While debugging → **Ctrl/Cmd+Shift+P** → **ABAP Replay: Start Debug Recording**\n**Replay:** **Ctrl/Cmd+Shift+P** → **ABAP Replay: Replay Debug Recording**\n\n[Replay a Recording](command:abapfs.replaySession)",
+            "description": "Record a debug session, replay offline — even without SAP. Share `.abaprecord` files with teammates.\n\n**Record:** While debugging → **Ctrl/Cmd+Shift+P** → **ABAP FS: Start Debug Recording**\n**Replay:** **Ctrl/Cmd+Shift+P** → **ABAP FS: Replay Debug Recording**\n\n[Replay a Recording](command:abapfs.replaySession)",
             "media": {
               "markdown": "client/dist/media/walkthrough/w4-debug-replay.md"
             },

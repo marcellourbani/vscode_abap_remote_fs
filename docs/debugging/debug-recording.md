@@ -17,9 +17,9 @@ Record a live ABAP debug session and replay it offline — forward and backward 
 > Each step takes ~1–3 seconds longer than normal because the extension captures all variable data before SAP discards it.
 
 1. Start a debug session as usual (set breakpoints, attach to user/terminal)
-2. Open the Command Palette (`Ctrl+Shift+P`) → **ABAP: Start Debug Recording**
+2. Open the Command Palette (`Ctrl+Shift+P`) → **ABAP FS: Start Debug Recording**
 3. Step through your code normally — every step is captured
-4. `Ctrl+Shift+P` → **ABAP: Stop Debug Recording**
+4. `Ctrl+Shift+P` → **ABAP FS: Stop Debug Recording**
 5. At the prompt, choose **Save** (plain `.abaprecord`) or **Compress & Save** (`.abaprecord.gz`, ~80–95% smaller)
 
 **What is captured per step:**
@@ -32,7 +32,7 @@ Record a live ABAP debug session and replay it offline — forward and backward 
 
 ## Replaying a Recording
 
-1. `Ctrl+Shift+P` → **ABAP: Replay Debug Recording**
+1. `Ctrl+Shift+P` → **ABAP FS: Replay Debug Recording**
 2. Select a `.abaprecord` or `.abaprecord.gz` file — both are handled automatically
 3. The replay session opens showing code, stack, and variables exactly as recorded
 
@@ -58,8 +58,8 @@ Large sessions can produce files tens of MB in size. Use gzip to reduce storage 
 
 | Command | Description |
 |---------|-------------|
-| **ABAP: Compress Debug Recording** | Compress an existing `.abaprecord` → `.abaprecord.gz` |
-| **ABAP: Decompress Debug Recording** | Convert `.abaprecord.gz` back to plain JSON |
+| **ABAP FS: Compress Debug Recording** | Compress an existing `.abaprecord` → `.abaprecord.gz` |
+| **ABAP FS: Decompress Debug Recording** | Convert `.abaprecord.gz` back to plain JSON |
 
 After compression the extension shows the size reduction (e.g. *42 MB → 3.2 MB, 92% smaller*). Both formats are fully interchangeable.
 
@@ -69,11 +69,11 @@ After compression the extension shows the size reduction (e.g. *42 MB → 3.2 MB
 
 | Command | Description |
 |---------|-------------|
-| `ABAP: Start Debug Recording` | Begin recording the active debug session |
-| `ABAP: Stop Debug Recording` | Stop and save (plain or compressed) |
-| `ABAP: Replay Debug Recording` | Open and replay a recording file |
-| `ABAP: Compress Debug Recording` | Compress an existing `.abaprecord` file |
-| `ABAP: Decompress Debug Recording` | Decompress a `.abaprecord.gz` file |
+| `ABAP FS: Start Debug Recording` | Begin recording the active debug session |
+| `ABAP FS: Stop Debug Recording` | Stop and save (plain or compressed) |
+| `ABAP FS: Replay Debug Recording` | Open and replay a recording file |
+| `ABAP FS: Compress Debug Recording` | Compress an existing `.abaprecord` file |
+| `ABAP FS: Decompress Debug Recording` | Decompress a `.abaprecord.gz` file |
 
 ---
 
