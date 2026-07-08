@@ -76,7 +76,7 @@
     "format": "prettier --write .",
     "format:check": "prettier --check .",
     "prepare": "husky"
-    },
+  },
   "devDependencies": {
     "@changesets/cli": "^2.31.0",
     "@types/mocha": "^7.0.2",
