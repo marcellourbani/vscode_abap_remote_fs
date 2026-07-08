@@ -19,7 +19,11 @@
     "vscode": "^1.90.0"
   },
   "categories": [
-    "Other"
+    "Programming Languages",
+    "Notebooks",
+    "AI",
+    "Debuggers",
+    "SCM Providers"
   ],
   "repository": {
     "type": "git",
