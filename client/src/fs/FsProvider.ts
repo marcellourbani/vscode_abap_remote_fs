@@ -15,7 +15,7 @@ import {
   workspace
 } from "vscode"
 import { after, caughtToString, log } from "../lib"
-import { AbapFile, isAbapFile, isAbapFolder, isFolder, Root } from "abapfs"
+import { AbapFile, AbapFolder, isAbapFile, isAbapFolder, isFolder, Root } from "abapfs"
 import { getSaveReason, clearSaveReason } from "../listeners"
 import { selectTransportIfNeeded } from "../adt/AdtTransports"
 import { LocalFsProvider } from "./LocalFsProvider"
@@ -78,6 +78,9 @@ export class FsProvider implements FileSystemProvider {
   private static instance: FsProvider
   // private editorContentCache = new Map<string, string>() // Track editor content to prevent server overwrites
   private localProvider: LocalFsProvider
+  // Throttles refresh() of SAP standard folders during focus storms.
+  private lastFolderRefresh = new Map<string, number>()
+  private static readonly STANDARD_REFRESH_TTL_MS = 5 * 60_000
   private constructor(private context: ExtensionContext) {
     this.localProvider = new LocalFsProvider(context)
     // forward local provider file changes to this provider so that the extension
@@ -117,6 +120,23 @@ export class FsProvider implements FileSystemProvider {
     )
   }
 
+  // VS Code ADT re-stats every expanded folder on window focus. Custom folders
+  // refresh always; SAP standard refresh only if empty or stale
+  // (see STANDARD_REFRESH_TTL_MS).
+  private async refreshAbapFolder(node: AbapFolder) {
+    const isCustom = /^[ZY$/]/i.test(node.object.name)
+    if (isCustom) {
+      await node.refresh()
+      return
+    }
+    const last = this.lastFolderRefresh.get(node.object.path) ?? 0
+    const stale = Date.now() - last > FsProvider.STANDARD_REFRESH_TTL_MS
+    if (node.size === 0 || stale) {
+      await node.refresh()
+      this.lastFolderRefresh.set(node.object.path, Date.now())
+    }
+  }
+
   public async stat(uri: Uri): Promise<FileStat> {
     // Local storage for .* files and template files
     if (LocalFsProvider.useLocalStorage(uri)) return this.localProvider.stat(uri)
@@ -125,7 +145,7 @@ export class FsProvider implements FileSystemProvider {
       const node = await root.getNodeAsync(uri.path)
       if (!node) throw FileSystemError.FileNotFound(uri)
       if (isAbapFile(node) && !this.isOpenDirtyDocument(uri)) await node.stat()
-      if (isAbapFolder(node)) await node.refresh()
+      if (isAbapFolder(node)) await this.refreshAbapFolder(node)
       return node
     } catch (e) {
       // Don't log FileNotFound errors for method names/debug artifacts to reduce noise
