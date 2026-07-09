@@ -34,7 +34,11 @@ import { FavouritesProvider, FavItem } from "../views/favourites"
 import { findEditor, vsCodeUri } from "../langClient"
 import { showHideActivate } from "../listeners"
 import { UnitTestRunner } from "../adt/operations/UnitTestRunner"
-import { selectTransport } from "../adt/AdtTransports"
+import {
+  selectTransport,
+  pickTransportProgrammatically,
+  TransportPickerError
+} from "../adt/AdtTransports"
 import { showInGuiCb, executeInGui, runInSapGui, openInGui } from "../adt/sapgui/sapgui"
 import { storeTokens, clearTokens } from "../oauth"
 import { showAbapDoc } from "../views/help"
@@ -693,7 +697,32 @@ export class AdtCommands {
         }
       }
 
-      // 5. Let ADT handle transport selection naturally - just call createObject
+      // 5. If a transport request was supplied, override the transport picker so
+      // no VS Code dialog blocks the flow and the caller's choice is honored.
+      // Without this, AdtObjectCreator falls back to selectTransport() which either
+      // shows a QuickPick (blocks) or silently uses ti.LOCKS (silent reassignment).
+      // See GitHub #466.
+      let resolvedTransport: string | undefined
+      if (additionalOptions?.transportRequest) {
+        const tr = additionalOptions.transportRequest
+        creator["pickTransport"] = async (
+          objContentPath: string,
+          devclass: string,
+          transportLayer: string
+        ) => {
+          const sel = await pickTransportProgrammatically(
+            getClient(connId),
+            tr,
+            objContentPath,
+            devclass,
+            transportLayer
+          )
+          resolvedTransport = sel.transport
+          return sel
+        }
+      }
+
+      // 6. Let ADT create the object (transport step now handled above if requested)
       const obj = await creator.createObject(undefined)
 
       if (!obj) {
@@ -717,7 +746,8 @@ export class AdtCommands {
           object: obj,
           objectName: obj.name,
           objectType: obj.type,
-          path: obj.path
+          path: obj.path,
+          transport: resolvedTransport
         }
       }
 
@@ -738,7 +768,8 @@ export class AdtCommands {
         objectName: obj.name,
         objectType: obj.type,
         path: obj.path,
-        nodePath: nodePath
+        nodePath: nodePath,
+        transport: resolvedTransport
       }
     } catch (e) {
       const stack = types.isNativeError(e) ? e.stack || "" : ""
@@ -746,6 +777,16 @@ export class AdtCommands {
 
       // ⚡ PROGRAMMATIC API: Return structured error result, don't show UI popups
       // This is used by AI systems that need to handle the response programmatically
+      if (e instanceof TransportPickerError) {
+        return {
+          success: false,
+          error: "TRANSPORT_REQUEST_INVALID",
+          message: errorMessage,
+          objectName: name,
+          objectType: objectType
+        }
+      }
+
       if (errorMessage.includes("already exists")) {
         return {
           success: false,

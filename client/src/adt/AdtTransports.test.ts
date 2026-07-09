@@ -195,3 +195,197 @@ describe("selectTransport", () => {
     expect(result.cancelled).toBe(true)
   })
 })
+
+describe("pickTransportProgrammatically", () => {
+  const { pickTransportProgrammatically, TransportPickerError } =
+    jest.requireActual("./AdtTransports")
+
+  let mockClient: any
+  beforeEach(() => {
+    jest.clearAllMocks()
+    mockClient = {
+      transportInfo: jest.fn(),
+      createTransport: jest.fn()
+    }
+  })
+
+  it("returns empty transport for LOCAL package and ignores request", async () => {
+    mockClient.transportInfo.mockResolvedValue({
+      DLVUNIT: "LOCAL",
+      TRANSPORTS: [],
+      LOCKS: undefined
+    })
+    const result = await pickTransportProgrammatically(
+      mockClient,
+      { type: "existing", number: "IGNORED" },
+      "/path",
+      "$TMP",
+      ""
+    )
+    expect(result).toEqual({ cancelled: false, transport: "" })
+    expect(mockClient.createTransport).not.toHaveBeenCalled()
+  })
+
+  describe("type: existing", () => {
+    it("uses the requested transport when in the modifiable list", async () => {
+      mockClient.transportInfo.mockResolvedValue({
+        DLVUNIT: "HOME",
+        TRANSPORTS: [{ TRKORR: "DEV1K900123" }, { TRKORR: "DEV1K900124" }],
+        LOCKS: undefined
+      })
+      const result = await pickTransportProgrammatically(
+        mockClient,
+        { type: "existing", number: "DEV1K900123" },
+        "/path",
+        "ZDEV",
+        ""
+      )
+      expect(result).toEqual({ cancelled: false, transport: "DEV1K900123" })
+      expect(mockClient.createTransport).not.toHaveBeenCalled()
+    })
+
+    it("throws TransportPickerError when 'number' is missing", async () => {
+      mockClient.transportInfo.mockResolvedValue({
+        DLVUNIT: "HOME",
+        TRANSPORTS: [],
+        LOCKS: undefined
+      })
+      await expect(
+        pickTransportProgrammatically(mockClient, { type: "existing" }, "/path", "ZDEV", "")
+      ).rejects.toBeInstanceOf(TransportPickerError)
+    })
+
+    it("throws TransportPickerError when the requested number is not modifiable", async () => {
+      mockClient.transportInfo.mockResolvedValue({
+        DLVUNIT: "HOME",
+        TRANSPORTS: [{ TRKORR: "DEV1K900999" }],
+        LOCKS: undefined
+      })
+      await expect(
+        pickTransportProgrammatically(
+          mockClient,
+          { type: "existing", number: "DEV1K900123" },
+          "/path",
+          "ZDEV",
+          ""
+        )
+      ).rejects.toThrow(/DEV1K900123.*not in the modifiable list/)
+    })
+
+    it("throws when package is locked to a different transport (no silent override)", async () => {
+      mockClient.transportInfo.mockResolvedValue({
+        DLVUNIT: "HOME",
+        TRANSPORTS: [],
+        LOCKS: { HEADER: { TRKORR: "DEV1K900999" } }
+      })
+      await expect(
+        pickTransportProgrammatically(
+          mockClient,
+          { type: "existing", number: "DEV1K900123" },
+          "/path",
+          "ZDEV",
+          ""
+        )
+      ).rejects.toThrow(/locked to transport DEV1K900999/)
+    })
+
+    it("allows the requested transport when it matches the lock", async () => {
+      mockClient.transportInfo.mockResolvedValue({
+        DLVUNIT: "HOME",
+        TRANSPORTS: [],
+        LOCKS: { HEADER: { TRKORR: "DEV1K900123" } }
+      })
+      const result = await pickTransportProgrammatically(
+        mockClient,
+        { type: "existing", number: "DEV1K900123" },
+        "/path",
+        "ZDEV",
+        ""
+      )
+      expect(result).toEqual({ cancelled: false, transport: "DEV1K900123" })
+    })
+  })
+
+  describe("type: new", () => {
+    it("creates a new transport with the caller's description and returns it", async () => {
+      mockClient.transportInfo.mockResolvedValue({
+        DLVUNIT: "HOME",
+        TRANSPORTS: [],
+        LOCKS: undefined
+      })
+      mockClient.createTransport.mockResolvedValue("DEV1K900999")
+      const result = await pickTransportProgrammatically(
+        mockClient,
+        { type: "new", description: "New TR from agent" },
+        "/path",
+        "ZDEV",
+        "ZDEV_LAYER"
+      )
+      expect(mockClient.createTransport).toHaveBeenCalledWith(
+        "/path",
+        "New TR from agent",
+        "ZDEV",
+        "ZDEV_LAYER"
+      )
+      expect(result).toEqual({ cancelled: false, transport: "DEV1K900999" })
+    })
+
+    it("throws TransportPickerError when 'description' is missing", async () => {
+      mockClient.transportInfo.mockResolvedValue({
+        DLVUNIT: "HOME",
+        TRANSPORTS: [],
+        LOCKS: undefined
+      })
+      await expect(
+        pickTransportProgrammatically(mockClient, { type: "new" }, "/path", "ZDEV", "")
+      ).rejects.toBeInstanceOf(TransportPickerError)
+      expect(mockClient.createTransport).not.toHaveBeenCalled()
+    })
+
+    it("refuses to create a new transport when the package is already locked", async () => {
+      mockClient.transportInfo.mockResolvedValue({
+        DLVUNIT: "HOME",
+        TRANSPORTS: [],
+        LOCKS: { HEADER: { TRKORR: "DEV1K900123" } }
+      })
+      await expect(
+        pickTransportProgrammatically(
+          mockClient,
+          { type: "new", description: "New TR" },
+          "/path",
+          "ZDEV",
+          ""
+        )
+      ).rejects.toThrow(/already locked to transport DEV1K900123/)
+      expect(mockClient.createTransport).not.toHaveBeenCalled()
+    })
+  })
+
+  it("throws on unknown request type", async () => {
+    mockClient.transportInfo.mockResolvedValue({
+      DLVUNIT: "HOME",
+      TRANSPORTS: [],
+      LOCKS: undefined
+    })
+    await expect(
+      pickTransportProgrammatically(mockClient, { type: "bogus" as any }, "/path", "ZDEV", "")
+    ).rejects.toThrow(/Unknown transportRequest\.type/)
+  })
+
+  it("does not open any VS Code dialog (no calls to showQuickPick/showInputBox)", async () => {
+    mockClient.transportInfo.mockResolvedValue({
+      DLVUNIT: "HOME",
+      TRANSPORTS: [{ TRKORR: "DEV1K900123" }],
+      LOCKS: undefined
+    })
+    await pickTransportProgrammatically(
+      mockClient,
+      { type: "existing", number: "DEV1K900123" },
+      "/path",
+      "ZDEV",
+      ""
+    )
+    expect(mockWindow.showQuickPick).not.toHaveBeenCalled()
+    expect(mockWindow.showInputBox).not.toHaveBeenCalled()
+  })
+})
