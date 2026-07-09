@@ -248,7 +248,10 @@ async function buildCreationDetails(connId: string, input: CreateObjectFormInput
     objtype: input.typeId,
     parentName,
     parentPath: objectPath(typeInfo.parentType as CreatableTypeIds, parentName, ""),
-    responsible
+    responsible,
+    // Use the connection's logon language as master language, otherwise
+    // abap-adt-api falls back to a hardcoded "EN" in the creation XML.
+    language: getClient(connId).language
   }
 
   if (typeInfo.isServiceBinding) {

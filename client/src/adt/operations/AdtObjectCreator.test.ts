@@ -181,6 +181,57 @@ describe("AdtObjectCreator", () => {
     expect(Array.isArray(types)).toBe(true)
   })
 
+  it("createObject passes the connection language as master language", async () => {
+    // Regression: abap-adt-api hardcodes adtcore:masterLanguage="EN" when the
+    // create options carry no language. We must forward the connection language.
+    const createObject = jest.fn().mockResolvedValue(undefined)
+    const { getClient, getRoot } = require("../conections")
+    ;(getClient as jest.Mock).mockReturnValue({
+      username: "TESTUSER",
+      language: "DE",
+      validateNewObject: jest.fn().mockResolvedValue(true),
+      createObject
+    })
+    ;(getRoot as jest.Mock).mockReturnValue({
+      getNode: jest.fn().mockReturnValue(null),
+      getNodePath: jest.fn().mockReturnValue([]),
+      service: {}
+    })
+
+    const { funWindow } = require("../../services/funMessenger")
+    // guessOrSelectObjectType -> selectObjectType
+    ;(funWindow.showQuickPick as jest.Mock).mockResolvedValue({
+      typeId: "PROG/P",
+      label: "Program",
+      maxLen: 40
+    })
+    // askName, then askInput("description")
+    ;(funWindow.showInputBox as jest.Mock)
+      .mockResolvedValueOnce("ZPROG")
+      .mockResolvedValueOnce("desc")
+
+    const { AdtObjectFinder } = require("./AdtObjectFinder")
+    ;(AdtObjectFinder as jest.Mock).mockImplementation(() => ({
+      findObject: jest.fn().mockResolvedValue({ name: "ZPKG" }),
+      vscodeUriWithFile: jest.fn()
+    }))
+
+    const { selectTransport } = require("../AdtTransports")
+    ;(selectTransport as jest.Mock).mockResolvedValue({ cancelled: false, transport: "K123" })
+
+    const { fromNode } = require("abapobject")
+    ;(fromNode as jest.Mock).mockReturnValue({
+      name: "ZPROG",
+      type: "PROG/P",
+      loadStructure: jest.fn().mockResolvedValue(undefined)
+    })
+
+    await creator.createObject(undefined)
+
+    expect(createObject).toHaveBeenCalledTimes(1)
+    expect(createObject.mock.calls[0][0]).toMatchObject({ language: "DE" })
+  })
+
   it("createObject returns undefined when user cancels type selection", async () => {
     // createObject calls guessOrSelectObjectType which needs a non-empty hierarchy
     // With empty hierarchy, selectObjectType is called - mock it to return undefined (cancelled)

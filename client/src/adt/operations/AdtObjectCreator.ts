@@ -311,7 +311,10 @@ export class AdtObjectCreator {
       objtype: objType.typeId,
       parentName,
       parentPath: objectPath(parentType, parentName, ""),
-      responsible
+      responsible,
+      // Use the connection's logon language as master language, otherwise
+      // abap-adt-api falls back to a hardcoded "EN" in the creation XML.
+      language: getClient(this.connId).language
     }
     if (options.objtype === "SRVB/SVB") {
       const o = await this.getServiceOptions(options)
