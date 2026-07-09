@@ -113,4 +113,3 @@ export class AbapFileDecorationProvider implements FileDecorationProvider, Dispo
     }
   }
 }
-
