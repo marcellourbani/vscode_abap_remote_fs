@@ -115,6 +115,8 @@ export const AbapFsCommands = {
   hideBlame: "abapfs.hideBlame",
   // System info
   refreshSystemInfoCache: "abapfs.refreshSystemInfoCache",
+  // Filesystem
+  refreshFilesystem: "abapfs.refreshFilesystem",
   // Communication log
   activateCommLog: "abapfs.activateCommLog",
   deactivateCommLog: "abapfs.deactivateCommLog",

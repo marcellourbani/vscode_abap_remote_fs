@@ -137,6 +137,32 @@ export class FsProvider implements FileSystemProvider {
     }
   }
 
+  // Bypass STANDARD_REFRESH_TTL_MS and refetch immediately: backup for cases
+  // where SAP standard changed and the user cannot wait for the TTL to expire.
+  public async refreshFilesystem(uri?: Uri) {
+    this.lastFolderRefresh.clear()
+    if (!uri || LocalFsProvider.useLocalStorage(uri)) return
+    try {
+      const root = await getOrCreateRoot(uri.authority)
+      const node = await root.getNodeAsync(uri.path)
+      if (isAbapFolder(node)) {
+        await node.refresh()
+      } else {
+        // File or non-abap folder: walk up to the closest AbapFolder.
+        for (const step of root.getNodePath(uri.path)) {
+          if (isAbapFolder(step.file)) {
+            await step.file.refresh()
+            break
+          }
+        }
+      }
+      this.pEventEmitter.fire([{ type: FileChangeType.Changed, uri }])
+    } catch (e) {
+      log.debug(`Error refreshing ${uri.toString()}\n${caughtToString(e)}`)
+      throw this.wrapHttpError(e, uri)
+    }
+  }
+
   public async stat(uri: Uri): Promise<FileStat> {
     // Local storage for .* files and template files
     if (LocalFsProvider.useLocalStorage(uri)) return this.localProvider.stat(uri)

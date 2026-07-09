@@ -2917,6 +2917,15 @@
         }
       },
       {
+        "command": "abapfs.refreshFilesystem",
+        "title": "Refresh ABAP filesystem",
+        "category": "ABAP FS",
+        "icon": {
+          "dark": "client/images/dark/icon-refresh.svg",
+          "light": "client/images/light/icon-refresh.svg"
+        }
+      },
+      {
         "command": "abapfs.transportCopyNumber",
         "title": "Copy transport number to clipboard",
         "icon": {
@@ -3119,7 +3128,7 @@
       },
       {
         "command": "abapfs.atcRefresh",
-        "title": "Refresh",
+        "title": "Refresh ATC",
         "category": "ABAP FS",
         "icon": "$(refresh)"
       },
@@ -3340,6 +3349,10 @@
         {
           "command": "abapfs.refreshSystemInfoCache",
           "when": "abapfs:extensionActive"
+        },
+        {
+          "command": "abapfs.refreshFilesystem",
+          "when": "hideCommands.never"
         },
         {
           "command": "abapfs.runTransaction",
@@ -4104,6 +4117,11 @@
           "command": "abapfs.compareWithOtherSystem",
           "when": "resourceScheme == adt",
           "group": "3_compare@1"
+        },
+        {
+          "command": "abapfs.refreshFilesystem",
+          "when": "resourceScheme == adt",
+          "group": "5_refresh@1"
         }
       ],
       "debug/variables/context": [

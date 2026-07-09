@@ -1173,6 +1173,24 @@ export class AdtCommands {
     }
   }
 
+  /**
+   * Refresh the ABAP filesystem for the right-clicked node, bypassing the
+   * SAP standard folder throttle. Backup for cases where standard SAP
+   * objects changed and the user cannot wait for the TTL to expire.
+   */
+  @command(AbapFsCommands.refreshFilesystem)
+  private static async refreshFilesystem(uri?: Uri) {
+    logTelemetry("command_refresh_filesystem_called")
+    try {
+      await window.withProgress(
+        { location: ProgressLocation.Window, title: "Refreshing ABAP FS filesystem" },
+        () => FsProvider.get().refreshFilesystem(uri)
+      )
+    } catch (e) {
+      window.showErrorMessage(caughtToString(e))
+    }
+  }
+
   @command(AbapFsCommands.createInEditor)
   private static async createObjectInEditorCommand(uri?: Uri) {
     return createObjectInEditorCommand(uri)
