@@ -71,6 +71,7 @@
     "client-oauth2": "^4.3.3",
     "diff": "^8.0.3",
     "docx": "^9.5.1",
+    "exceljs": "^4.4.0",
     "fast-xml-parser": "^5.7.2",
     "fp-ts": "^2.13.1",
     "fs-jetpack": "^5.1.0",

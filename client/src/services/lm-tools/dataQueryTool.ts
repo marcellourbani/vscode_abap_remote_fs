@@ -4,6 +4,7 @@
  */
 
 import * as vscode from "vscode"
+import * as ExcelJS from "exceljs"
 import { registerToolWithRegistry } from "./toolRegistry"
 import { logTelemetry } from "../telemetry"
 import { WebviewManager, RowRange, SortColumn, ColumnFilter } from "../webviewManager"
@@ -26,11 +27,15 @@ export interface IExecuteDataQueryParameters {
     }>
     values: Array<Record<string, any>>
   }
-  displayMode: "internal" | "ui"
+  displayMode: "internal" | "ui" | "download_to_file"
   webviewId?: string
   connectionId?: string
   title?: string
   maxRows?: number
+  /** Required when displayMode = 'download_to_file'. Absolute local path (e.g. 'C:/tmp/mara.xlsx') */
+  filePath?: string
+  /** Required when displayMode = 'download_to_file'. 'xlsx' or 'csv'. */
+  fileType?: "xlsx" | "csv"
   rowRange?: {
     start: number
     end: number
@@ -74,8 +79,8 @@ export class ExecuteDataQueryTool implements vscode.LanguageModelTool<IExecuteDa
       resetFilters
     } = options.input
 
-    if (!displayMode || !["internal", "ui"].includes(displayMode)) {
-      throw new Error('displayMode must be either "internal" or "ui"')
+    if (!displayMode || !["internal", "ui", "download_to_file"].includes(displayMode)) {
+      throw new Error('displayMode must be "internal", "ui", or "download_to_file"')
     }
 
     // Internal mode validations
@@ -100,6 +105,29 @@ export class ExecuteDataQueryTool implements vscode.LanguageModelTool<IExecuteDa
     // UI mode validations
     if (displayMode === "ui" && !webviewId && !sql && !data) {
       throw new Error("UI mode requires SQL query, direct data, or existing webviewId")
+    }
+
+    // download_to_file mode validations
+    if (displayMode === "download_to_file") {
+      if (!options.input.filePath) {
+        throw new Error('download_to_file mode requires "filePath" (absolute path or file:// URI)')
+      }
+      if (!options.input.fileType || !["xlsx", "csv"].includes(options.input.fileType)) {
+        throw new Error('download_to_file mode requires "fileType" to be "xlsx" or "csv"')
+      }
+      if (/\.[a-z0-9]+$/i.test(options.input.filePath)) {
+        throw new Error(
+          "filePath must NOT include an extension — we append it from fileType. Pass e.g. 'C:/tmp/mara', not 'C:/tmp/mara.xlsx'."
+        )
+      }
+      if (webviewId) {
+        throw new Error(
+          "download_to_file mode is for SQL/data → file export; do not pass webviewId"
+        )
+      }
+      if (!sql && !data) {
+        throw new Error("download_to_file mode requires either sql or data")
+      }
     }
 
     if (sql && data) {
@@ -198,12 +226,15 @@ export class ExecuteDataQueryTool implements vscode.LanguageModelTool<IExecuteDa
       : data
         ? "displaying provided data"
         : "executing new query"
-    return {
-      invocationMessage:
-        displayMode === "ui"
-          ? `${action} and displaying results in ${webviewId ? "existing" : "new"} webview...`
-          : `${action} and returning specific rows internally...`
+    let msg: string
+    if (displayMode === "ui") {
+      msg = `${action} and displaying results in ${webviewId ? "existing" : "new"} webview...`
+    } else if (displayMode === "download_to_file") {
+      msg = `${action} and writing results to ${options.input.filePath} (${options.input.fileType})...`
+    } else {
+      msg = `${action} and returning specific rows internally...`
     }
+    return { invocationMessage: msg }
   }
 
   async invoke(
@@ -224,7 +255,9 @@ export class ExecuteDataQueryTool implements vscode.LanguageModelTool<IExecuteDa
         sortColumns,
         filters,
         resetSorting,
-        resetFilters
+        resetFilters,
+        filePath,
+        fileType
       } = options.input
       logTelemetry("tool_execute_data_query_called", { connectionId })
 
@@ -257,6 +290,18 @@ export class ExecuteDataQueryTool implements vscode.LanguageModelTool<IExecuteDa
       }
 
       const isNewData = !webviewId || !!sql || !!data
+
+      if (displayMode === "download_to_file") {
+        return await this.downloadToFile(
+          sql,
+          data,
+          connectionId,
+          maxRows,
+          rowRange,
+          filePath!,
+          fileType!
+        )
+      }
 
       if (displayMode === "internal") {
         // ====================================================================
@@ -413,6 +458,67 @@ export class ExecuteDataQueryTool implements vscode.LanguageModelTool<IExecuteDa
   }
 
   /**
+   * download_to_file mode: execute SQL (or take supplied data), write results
+   * to a local xlsx or csv file. Cross-platform: uses vscode.workspace.fs.
+   */
+  private async downloadToFile(
+    sql: string | undefined,
+    data: IExecuteDataQueryParameters["data"],
+    connectionId: string | undefined,
+    maxRows: number | undefined,
+    rowRange: { start: number; end: number } | undefined,
+    filePath: string,
+    fileType: "xlsx" | "csv"
+  ): Promise<vscode.LanguageModelToolResult> {
+    let columns: Array<{ name: string; type?: string }>
+    let values: Array<Record<string, any>>
+
+    if (data) {
+      columns = data.columns
+      values = data.values
+    } else {
+      const targetConnectionId = connectionId || "default"
+      const client = getClient(targetConnectionId)
+      if (!client) throw new Error(`No client found for connection: ${targetConnectionId}`)
+      const limit = maxRows ?? 10000
+      const result = await client.runQuery(sql!, limit, true)
+      if (!result || !result.columns) {
+        return new vscode.LanguageModelToolResult([
+          new vscode.LanguageModelTextPart("Query returned no results — file not written.")
+        ])
+      }
+      columns = result.columns as Array<{ name: string; type?: string }>
+      values = result.values ?? []
+    }
+
+    // Apply rowRange AFTER fetch (same semantics as internal/ui modes).
+    if (rowRange) {
+      values = values.slice(rowRange.start, rowRange.end)
+    }
+
+    if (values.length === 0) {
+      return new vscode.LanguageModelToolResult([
+        new vscode.LanguageModelTextPart("Query returned 0 rows — file not written.")
+      ])
+    }
+
+    const finalPath = `${filePath}.${fileType}`
+    const targetUri = finalPath.startsWith("file://")
+      ? vscode.Uri.parse(finalPath)
+      : vscode.Uri.file(finalPath)
+
+    const bytes = fileType === "xlsx" ? await buildXlsx(columns, values) : buildCsv(columns, values)
+
+    await vscode.workspace.fs.writeFile(targetUri, bytes)
+
+    return new vscode.LanguageModelToolResult([
+      new vscode.LanguageModelTextPart(
+        `Wrote ${values.length} rows × ${columns.length} columns to ${targetUri.fsPath} (${fileType}).`
+      )
+    ])
+  }
+
+  /**
    * Execute SQL query directly without webview - for internal mode
    */
   private async executeQueryDirectly(
@@ -485,4 +591,138 @@ export function registerDataQueryTool(context: vscode.ExtensionContext): void {
   context.subscriptions.push(
     registerToolWithRegistry("execute_data_query", new ExecuteDataQueryTool())
   )
+}
+
+// ============================================================================
+// FILE WRITERS (cross-platform: return bytes, caller writes via workspace.fs)
+// ============================================================================
+
+const ISO_RE = /^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2}):(\d{2})(?:\.\d+)?Z?$/
+const SAP_DATE_RE = /^(\d{4})(\d{2})(\d{2})$/ // YYYYMMDD (SAP raw DATS)
+const SAP_TIME_RE = /^(\d{2})(\d{2})(\d{2})$/ // HHMMSS   (SAP raw TIMS)
+
+/**
+ * Format one raw cell value the same way the UI does, defensively.
+ *
+ * The ADT client has been observed to return date/time columns as:
+ *   - a Date object,
+ *   - an ISO string "2024-12-05T00:00:00.000Z",
+ *   - a Date.prototype.toString() output "Thu Dec 05 2024 05:30:00 GMT+0530 (…)",
+ *   - the raw SAP form ("20241205" / "141859"),
+ *   - empty string / null for missing values.
+ *
+ * We do NOT call `new Date(anyString)` speculatively — SAP "141859" would be
+ * parsed as year 141859, producing garbage.
+ */
+function formatCell(value: any, type: string | undefined): string {
+  if (value == null) return ""
+  if (value instanceof Date) {
+    if (isNaN(value.getTime())) return ""
+    return formatFromParts(
+      value.getUTCFullYear(),
+      value.getUTCMonth() + 1,
+      value.getUTCDate(),
+      value.getUTCHours(),
+      value.getUTCMinutes(),
+      value.getUTCSeconds(),
+      type
+    )
+  }
+  const s = String(value).trim()
+  if (!s || s === "Invalid Date") return ""
+
+  // 1. ISO string
+  const iso = ISO_RE.exec(s)
+  if (iso) {
+    return formatFromParts(+iso[1], +iso[2], +iso[3], +iso[4], +iso[5], +iso[6], type)
+  }
+
+  // 2. Date.prototype.toString() output — parse defensively, only when it
+  //    starts with a weekday abbreviation. Handled before SAP raw so a stringified
+  //    Date in a D/T column isn't dropped as junk.
+  if (/^(Mon|Tue|Wed|Thu|Fri|Sat|Sun) /.test(s)) {
+    const d = new Date(s)
+    if (!isNaN(d.getTime())) {
+      return formatFromParts(
+        d.getFullYear(),
+        d.getMonth() + 1,
+        d.getDate(),
+        d.getHours(),
+        d.getMinutes(),
+        d.getSeconds(),
+        type
+      )
+    }
+    return ""
+  }
+
+  // 3. Raw SAP forms — trust the column type over the shape
+  if (type === "D") {
+    if (s === "00000000") return "" // SAP null-date marker
+    const m = SAP_DATE_RE.exec(s)
+    if (m) return `${m[3]}-${m[2]}-${m[1]}`
+    return "" // unknown junk in a date column: drop it
+  }
+  if (type === "T") {
+    if (s === "000000") return "" // SAP null-time marker
+    const m = SAP_TIME_RE.exec(s)
+    if (m) return `${m[1]}:${m[2]}:${m[3]}`
+    return ""
+  }
+
+  // 4. Anything else: pass through untouched (numbers, text, material numbers, etc.)
+  return s
+}
+
+function pad2(n: number): string {
+  return n < 10 ? "0" + n : String(n)
+}
+
+function formatFromParts(
+  y: number,
+  mo: number,
+  d: number,
+  h: number,
+  mi: number,
+  se: number,
+  type: string | undefined
+): string {
+  if (type === "D") return `${pad2(d)}-${pad2(mo)}-${y}`
+  if (type === "T") return `${pad2(h)}:${pad2(mi)}:${pad2(se)}`
+  // TIMESTAMP or unknown — keep an unambiguous, locale-free ISO-ish form.
+  return `${y}-${pad2(mo)}-${pad2(d)} ${pad2(h)}:${pad2(mi)}:${pad2(se)}`
+}
+
+async function buildXlsx(
+  columns: Array<{ name: string; type?: string }>,
+  values: Array<Record<string, any>>
+): Promise<Uint8Array> {
+  const wb = new ExcelJS.Workbook()
+  const ws = wb.addWorksheet("Data")
+  const names = columns.map(c => c.name)
+  ws.addRow(names)
+  // Every cell as text (numFmt '@') so Excel does not reinterpret SAP values —
+  // leading-zero material numbers stay intact, dates keep their dd-mm-yyyy form.
+  for (const row of values) {
+    const r = ws.addRow(columns.map(c => formatCell(row[c.name], c.type)))
+    r.eachCell({ includeEmpty: true }, cell => {
+      cell.numFmt = "@"
+    })
+  }
+  const buf = await wb.xlsx.writeBuffer()
+  return new Uint8Array(buf as ArrayBuffer)
+}
+
+function buildCsv(
+  columns: Array<{ name: string; type?: string }>,
+  values: Array<Record<string, any>>
+): Uint8Array {
+  const esc = (v: string) => (/[",\n]/.test(v) ? '"' + v.replace(/"/g, '""') + '"' : v)
+  const names = columns.map(c => c.name)
+  const lines: string[] = [names.map(esc).join(",")]
+  for (const row of values) {
+    lines.push(columns.map(c => esc(formatCell(row[c.name], c.type))).join(","))
+  }
+  // BOM for Excel compatibility, LF line endings
+  return new TextEncoder().encode("\uFEFF" + lines.join("\n"))
 }

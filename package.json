@@ -1190,7 +1190,7 @@
       {
         "name": "execute_data_query",
         "displayName": "Execute Data Query",
-        "modelDescription": "Run ABAP SQL or display structured data in interactive webview. ALWAYS call get_abap_sql_syntax FIRST — ABAP SQL differs from standard SQL, skipping causes syntax errors. Supports sort, filter, row range. For internal mode, rowRange is MANDATORY (max 1000 rows). Default displayMode=ui. Always set meaningful title. Non-SAP data (JIRA, tasks) via 'data' param instead of 'sql'.",
+        "modelDescription": "Run ABAP SQL or display structured data in interactive webview, OR export to xlsx/csv. ALWAYS call get_abap_sql_syntax FIRST — ABAP SQL differs from standard SQL, skipping causes syntax errors. Supports sort, filter, row range. For internal mode, rowRange is MANDATORY (max 1000 rows). For download_to_file mode, filePath and fileType are MANDATORY. Default displayMode=ui. Always set meaningful title. Non-SAP data (JIRA, tasks) via 'data' param instead of 'sql'.",
         "canBeReferencedInPrompt": true,
         "toolReferenceName": "sap-data",
         "icon": "$(database)",
@@ -1250,9 +1250,10 @@
               "type": "string",
               "enum": [
                 "internal",
-                "ui"
+                "ui",
+                "download_to_file"
               ],
-              "description": "How to handle results: 'internal' returns data to you for analysis (rowRange mandatory), 'ui' displays in interactive webview for user"
+              "description": "How to handle results: 'internal' returns data to you for analysis (rowRange mandatory), 'ui' displays in interactive webview for user, 'download_to_file' writes results to a local xlsx/csv file (filePath + fileType mandatory)"
             },
             "webviewId": {
               "type": "string",
@@ -1345,6 +1346,18 @@
             "resetFilters": {
               "type": "boolean",
               "description": "Optional: Clear all existing filters before applying new filters. Use when you want to start fresh"
+            },
+            "filePath": {
+              "type": "string",
+              "description": "MANDATORY for download_to_file: absolute local path WITHOUT extension (e.g. 'C:/tmp/mara'). The extension is appended from fileType."
+            },
+            "fileType": {
+              "type": "string",
+              "enum": [
+                "xlsx",
+                "csv"
+              ],
+              "description": "MANDATORY for download_to_file: output format. 'xlsx' = Excel workbook, 'csv' = comma-separated with UTF-8 BOM."
             }
           },
           "required": [

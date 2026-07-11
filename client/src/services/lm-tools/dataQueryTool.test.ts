@@ -6,7 +6,16 @@ jest.mock(
     LanguageModelToolResult: jest.fn().mockImplementation((parts: any[]) => ({ parts })),
     LanguageModelTextPart: jest.fn().mockImplementation((text: string) => ({ text })),
     MarkdownString: jest.fn().mockImplementation((text: string) => ({ text })),
-    lm: { registerTool: jest.fn(() => ({ dispose: jest.fn() })) }
+    lm: { registerTool: jest.fn(() => ({ dispose: jest.fn() })) },
+    Uri: {
+      parse: (s: string) => ({ scheme: s.split("://")[0], fsPath: s.replace(/^[a-z]+:\/\//, "") }),
+      file: (p: string) => ({ scheme: "file", fsPath: p })
+    },
+    workspace: {
+      fs: {
+        writeFile: jest.fn().mockResolvedValue(undefined)
+      }
+    }
   }),
   { virtual: true }
 )
@@ -23,8 +32,11 @@ jest.mock("../webviewManager", () => ({
 }))
 jest.mock("../sapSystemInfo", () => ({ getSAPSystemInfo: jest.fn() }))
 jest.mock("../funMessenger", () => ({ funWindow: { activeTextEditor: undefined } }))
+jest.mock("./toolGuard", () => ({ assertToolInvocationAuthorized: jest.fn() }))
 
+import * as vscode from "vscode"
 import { ExecuteDataQueryTool } from "./dataQueryTool"
+import { getClient } from "../../adt/conections"
 
 const mockToken = {} as any
 
@@ -289,5 +301,426 @@ describe("ExecuteDataQueryTool - prepareInvocation validation", () => {
         )
       ).rejects.toThrow("name")
     })
+  })
+
+  describe("download_to_file mode validations", () => {
+    it("throws when filePath is missing", async () => {
+      await expect(
+        tool.prepareInvocation(
+          makeOptions({
+            displayMode: "download_to_file",
+            fileType: "xlsx",
+            sql: "SELECT * FROM mara"
+          }),
+          mockToken
+        )
+      ).rejects.toThrow(/filePath/)
+    })
+
+    it("throws when fileType is missing", async () => {
+      await expect(
+        tool.prepareInvocation(
+          makeOptions({
+            displayMode: "download_to_file",
+            filePath: "C:/tmp/mara",
+            sql: "SELECT * FROM mara"
+          }),
+          mockToken
+        )
+      ).rejects.toThrow(/fileType/)
+    })
+
+    it("throws when fileType is not xlsx/csv", async () => {
+      await expect(
+        tool.prepareInvocation(
+          makeOptions({
+            displayMode: "download_to_file",
+            filePath: "C:/tmp/mara",
+            fileType: "json",
+            sql: "SELECT * FROM mara"
+          }),
+          mockToken
+        )
+      ).rejects.toThrow(/fileType/)
+    })
+
+    it("throws when filePath contains an extension", async () => {
+      await expect(
+        tool.prepareInvocation(
+          makeOptions({
+            displayMode: "download_to_file",
+            filePath: "C:/tmp/mara.csv",
+            fileType: "xlsx",
+            sql: "SELECT * FROM mara"
+          }),
+          mockToken
+        )
+      ).rejects.toThrow(/must NOT include an extension/)
+    })
+
+    it("throws when webviewId is passed", async () => {
+      await expect(
+        tool.prepareInvocation(
+          makeOptions({
+            displayMode: "download_to_file",
+            filePath: "C:/tmp/mara",
+            fileType: "xlsx",
+            sql: "SELECT * FROM mara",
+            webviewId: "wv1"
+          }),
+          mockToken
+        )
+      ).rejects.toThrow(/webviewId/)
+    })
+
+    it("throws when neither sql nor data is provided", async () => {
+      await expect(
+        tool.prepareInvocation(
+          makeOptions({
+            displayMode: "download_to_file",
+            filePath: "C:/tmp/mara",
+            fileType: "xlsx"
+          }),
+          mockToken
+        )
+      ).rejects.toThrow(/sql or data/)
+    })
+
+    it("accepts a valid xlsx download config", async () => {
+      await expect(
+        tool.prepareInvocation(
+          makeOptions({
+            displayMode: "download_to_file",
+            filePath: "C:/tmp/mara",
+            fileType: "xlsx",
+            sql: "SELECT * FROM mara"
+          }),
+          mockToken
+        )
+      ).resolves.toBeDefined()
+    })
+
+    it("accepts a valid csv download config with data", async () => {
+      await expect(
+        tool.prepareInvocation(
+          makeOptions({
+            displayMode: "download_to_file",
+            filePath: "C:/tmp/mara",
+            fileType: "csv",
+            data: {
+              columns: [{ name: "MATNR", type: "C" }],
+              values: [{ MATNR: "000123" }]
+            }
+          }),
+          mockToken
+        )
+      ).resolves.toBeDefined()
+    })
+  })
+})
+
+describe("ExecuteDataQueryTool - download_to_file invoke", () => {
+  const fs = (vscode as any).workspace.fs
+  let tool: ExecuteDataQueryTool
+
+  beforeEach(() => {
+    tool = new ExecuteDataQueryTool()
+    jest.clearAllMocks()
+  })
+
+  it("does not write file when query returns 0 rows", async () => {
+    ;(getClient as jest.Mock).mockReturnValue({
+      runQuery: jest.fn().mockResolvedValue({ columns: [{ name: "MATNR" }], values: [] })
+    })
+    const result: any = await tool.invoke(
+      makeOptions({
+        displayMode: "download_to_file",
+        filePath: "C:/tmp/mara",
+        fileType: "csv",
+        sql: "SELECT matnr FROM mara",
+        connectionId: "ged100"
+      }),
+      mockToken
+    )
+    expect(fs.writeFile).not.toHaveBeenCalled()
+    expect(result.parts[0].text).toMatch(/0 rows/)
+  })
+
+  it("does not write file when rowRange slices to empty", async () => {
+    ;(getClient as jest.Mock).mockReturnValue({
+      runQuery: jest.fn().mockResolvedValue({
+        columns: [{ name: "MATNR" }],
+        values: [{ MATNR: "000001" }, { MATNR: "000002" }]
+      })
+    })
+    const result: any = await tool.invoke(
+      makeOptions({
+        displayMode: "download_to_file",
+        filePath: "C:/tmp/mara",
+        fileType: "csv",
+        sql: "SELECT matnr FROM mara",
+        connectionId: "ged100",
+        rowRange: { start: 5, end: 10 }
+      }),
+      mockToken
+    )
+    expect(fs.writeFile).not.toHaveBeenCalled()
+    expect(result.parts[0].text).toMatch(/0 rows/)
+  })
+
+  it("appends fileType extension to the written path", async () => {
+    ;(getClient as jest.Mock).mockReturnValue({
+      runQuery: jest.fn().mockResolvedValue({
+        columns: [{ name: "MATNR" }],
+        values: [{ MATNR: "000001" }]
+      })
+    })
+    await tool.invoke(
+      makeOptions({
+        displayMode: "download_to_file",
+        filePath: "C:/tmp/mara",
+        fileType: "xlsx",
+        sql: "SELECT matnr FROM mara",
+        connectionId: "ged100"
+      }),
+      mockToken
+    )
+    expect(fs.writeFile).toHaveBeenCalledTimes(1)
+    const targetUri = fs.writeFile.mock.calls[0][0]
+    expect(targetUri.fsPath).toBe("C:/tmp/mara.xlsx")
+  })
+
+  it("applies rowRange slice before writing", async () => {
+    ;(getClient as jest.Mock).mockReturnValue({
+      runQuery: jest.fn().mockResolvedValue({
+        columns: [{ name: "MATNR" }],
+        values: [{ MATNR: "A" }, { MATNR: "B" }, { MATNR: "C" }, { MATNR: "D" }]
+      })
+    })
+    const result: any = await tool.invoke(
+      makeOptions({
+        displayMode: "download_to_file",
+        filePath: "C:/tmp/mara",
+        fileType: "csv",
+        sql: "SELECT matnr FROM mara",
+        connectionId: "ged100",
+        rowRange: { start: 1, end: 3 }
+      }),
+      mockToken
+    )
+    expect(fs.writeFile).toHaveBeenCalledTimes(1)
+    const bytes: Uint8Array = fs.writeFile.mock.calls[0][1]
+    const text = new TextDecoder().decode(bytes)
+    expect(text).toContain("MATNR")
+    expect(text).toContain("B")
+    expect(text).toContain("C")
+    expect(text).not.toContain("\nA")
+    expect(text).not.toContain("\nD")
+    expect(result.parts[0].text).toMatch(/2 rows/)
+  })
+
+  it("writes CSV with BOM and preserves leading zeros as-is", async () => {
+    ;(getClient as jest.Mock).mockReturnValue({
+      runQuery: jest.fn().mockResolvedValue({
+        columns: [{ name: "MATNR" }, { name: "ERSDA" }],
+        values: [{ MATNR: "000123", ERSDA: "20241231" }]
+      })
+    })
+    await tool.invoke(
+      makeOptions({
+        displayMode: "download_to_file",
+        filePath: "C:/tmp/x",
+        fileType: "csv",
+        sql: "SELECT matnr, ersda FROM mara",
+        connectionId: "ged100"
+      }),
+      mockToken
+    )
+    const bytes: Uint8Array = fs.writeFile.mock.calls[0][1]
+    const text = new TextDecoder("utf-8", { ignoreBOM: true }).decode(bytes)
+    expect(text.charCodeAt(0)).toBe(0xfeff) // BOM
+    expect(text).toContain("000123")
+    expect(text).toContain("20241231")
+  })
+
+  it("writes xlsx with all cells as text (numFmt @)", async () => {
+    ;(getClient as jest.Mock).mockReturnValue({
+      runQuery: jest.fn().mockResolvedValue({
+        columns: [{ name: "MATNR" }, { name: "ERSDA" }],
+        values: [{ MATNR: "000123", ERSDA: "20241231" }]
+      })
+    })
+    await tool.invoke(
+      makeOptions({
+        displayMode: "download_to_file",
+        filePath: "C:/tmp/y",
+        fileType: "xlsx",
+        sql: "SELECT * FROM mara",
+        connectionId: "ged100"
+      }),
+      mockToken
+    )
+    const bytes: Uint8Array = fs.writeFile.mock.calls[0][1]
+    // Parse back with exceljs to verify cell types and formats
+    const ExcelJS = await import("exceljs")
+    const wb = new ExcelJS.Workbook()
+    await wb.xlsx.load(bytes.buffer as ArrayBuffer)
+    const ws = wb.getWorksheet(1)!
+    // Row 1 = header, Row 2 = data
+    const dataRow = ws.getRow(2)
+    const matnr = dataRow.getCell(1)
+    const ersda = dataRow.getCell(2)
+    expect(matnr.value).toBe("000123")
+    expect(ersda.value).toBe("20241231")
+    expect(matnr.numFmt).toBe("@")
+    expect(ersda.numFmt).toBe("@")
+  })
+
+  it("formats ADT ISO date/time strings the same way the UI does", async () => {
+    ;(getClient as jest.Mock).mockReturnValue({
+      runQuery: jest.fn().mockResolvedValue({
+        columns: [
+          { name: "ERSDA", type: "D" },
+          { name: "ERZET", type: "T" },
+          { name: "AEDAT", type: "P" } // TIMESTAMP: render as "YYYY-MM-DD HH:MM:SS"
+        ],
+        values: [
+          {
+            ERSDA: "2024-12-05T00:00:00.000Z",
+            ERZET: "1970-01-01T14:35:12.000Z",
+            AEDAT: "2024-12-05T09:30:45.000Z"
+          }
+        ]
+      })
+    })
+    await tool.invoke(
+      makeOptions({
+        displayMode: "download_to_file",
+        filePath: "C:/tmp/z",
+        fileType: "csv",
+        sql: "SELECT ersda, erzet, aedat FROM mara",
+        connectionId: "ged100"
+      }),
+      mockToken
+    )
+    const bytes: Uint8Array = fs.writeFile.mock.calls[0][1]
+    const text = new TextDecoder("utf-8", { ignoreBOM: true }).decode(bytes)
+    const dataLine = text.split("\n")[1]
+    expect(dataLine).toBe("05-12-2024,14:35:12,2024-12-05 09:30:45")
+  })
+
+  it("formats Date objects (ADT client may return real Dates, not ISO strings)", async () => {
+    ;(getClient as jest.Mock).mockReturnValue({
+      runQuery: jest.fn().mockResolvedValue({
+        columns: [
+          { name: "ERSDA", type: "D" },
+          { name: "ERZET", type: "T" }
+        ],
+        values: [
+          {
+            ERSDA: new Date("2024-12-05T00:00:00.000Z"),
+            ERZET: new Date("1970-01-01T14:35:12.000Z")
+          }
+        ]
+      })
+    })
+    await tool.invoke(
+      makeOptions({
+        displayMode: "download_to_file",
+        filePath: "C:/tmp/dates",
+        fileType: "csv",
+        sql: "SELECT ersda, erzet FROM mara",
+        connectionId: "ged100"
+      }),
+      mockToken
+    )
+    const bytes: Uint8Array = fs.writeFile.mock.calls[0][1]
+    const text = new TextDecoder("utf-8", { ignoreBOM: true }).decode(bytes)
+    expect(text.split("\n")[1]).toBe("05-12-2024,14:35:12")
+  })
+
+  it("formats stringified Date output (Date.toString()) when column type says D/T", async () => {
+    // Reproduces the real-world case where the value arrived as
+    // "Thu Dec 05 2024 05:30:00 GMT+0530 (India Standard Time)".
+    ;(getClient as jest.Mock).mockReturnValue({
+      runQuery: jest.fn().mockResolvedValue({
+        columns: [{ name: "ERSDA", type: "D" }],
+        values: [{ ERSDA: new Date("2024-12-05T00:00:00.000Z").toString() }]
+      })
+    })
+    await tool.invoke(
+      makeOptions({
+        displayMode: "download_to_file",
+        filePath: "C:/tmp/strdate",
+        fileType: "csv",
+        sql: "SELECT ersda FROM mara",
+        connectionId: "ged100"
+      }),
+      mockToken
+    )
+    const bytes: Uint8Array = fs.writeFile.mock.calls[0][1]
+    const text = new TextDecoder("utf-8", { ignoreBOM: true }).decode(bytes)
+    expect(text.split("\n")[1]).toBe("05-12-2024")
+  })
+
+  it("formats SAP raw YYYYMMDD / HHMMSS values from CDHDR-style tables", async () => {
+    ;(getClient as jest.Mock).mockReturnValue({
+      runQuery: jest.fn().mockResolvedValue({
+        columns: [
+          { name: "UDATE", type: "D" },
+          { name: "UTIME", type: "T" }
+        ],
+        values: [{ UDATE: "20180227", UTIME: "141859" }]
+      })
+    })
+    await tool.invoke(
+      makeOptions({
+        displayMode: "download_to_file",
+        filePath: "C:/tmp/cdhdr",
+        fileType: "csv",
+        sql: "SELECT udate, utime FROM cdhdr",
+        connectionId: "ged100"
+      }),
+      mockToken
+    )
+    const bytes: Uint8Array = fs.writeFile.mock.calls[0][1]
+    const text = new TextDecoder("utf-8", { ignoreBOM: true }).decode(bytes)
+    expect(text.split("\n")[1]).toBe("27-02-2018,14:18:59")
+  })
+
+  it("renders blanks / invalid date / SAP null-dates as empty cells", async () => {
+    ;(getClient as jest.Mock).mockReturnValue({
+      runQuery: jest.fn().mockResolvedValue({
+        columns: [
+          { name: "LAEDA", type: "D" },
+          { name: "AEZET", type: "T" }
+        ],
+        values: [
+          { LAEDA: "", AEZET: "" },
+          { LAEDA: null, AEZET: null },
+          { LAEDA: "00000000", AEZET: "000000" },
+          { LAEDA: "Invalid Date", AEZET: "Invalid Date" }
+        ]
+      })
+    })
+    await tool.invoke(
+      makeOptions({
+        displayMode: "download_to_file",
+        filePath: "C:/tmp/blanks",
+        fileType: "csv",
+        sql: "SELECT laeda, aezet FROM mara",
+        connectionId: "ged100"
+      }),
+      mockToken
+    )
+    const bytes: Uint8Array = fs.writeFile.mock.calls[0][1]
+    const text = new TextDecoder("utf-8", { ignoreBOM: true }).decode(bytes)
+    const lines = text.split("\n")
+    // header + 4 data lines
+    expect(lines[1]).toBe(",")
+    expect(lines[2]).toBe(",")
+    // SAP zero-date "00000000" / zero-time "000000" are "no value" markers.
+    expect(lines[3]).toBe(",")
+    expect(lines[4]).toBe(",")
   })
 })
