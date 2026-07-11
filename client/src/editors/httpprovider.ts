@@ -28,7 +28,12 @@ export class HttpProvider implements CustomTextEditorProvider {
     )
     const service = parseHTTP(source)
     const escapeHtml = (s: string) =>
-      s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#039;")
+      s
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;")
+        .replace(/'/g, "&#039;")
     const field = (name: string, value: string) =>
       `<tr><td><strong>${escapeHtml(name)}</strong></td><td>${escapeHtml(value)}</td></tr>`
     const tbody =
