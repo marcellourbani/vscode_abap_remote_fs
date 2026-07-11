@@ -2,6 +2,7 @@ import { TransportsProvider } from "./views/transports"
 import { FavouritesProvider } from "./views/favourites"
 import { atcProvider, registerSCIDecorator } from "./views/abaptestcockpit"
 import { FsProvider } from "./fs/FsProvider"
+import { AbapFileDecorationProvider } from "./fs/AbapFileDecorationProvider"
 import { workspace, ExtensionContext, languages, commands } from "vscode"
 import {
   activeTextEditorChangedListener,
@@ -200,6 +201,11 @@ export async function activate(ctx: ExtensionContext): Promise<AbapFsApi> {
       isCaseSensitive: true
     })
   )
+
+  // dynamic tooltips for adt:// tree items (uses whatever metadata is loaded)
+  const abapFileDecorationProvider = new AbapFileDecorationProvider()
+  sub.push(abapFileDecorationProvider)
+  sub.push(window.registerFileDecorationProvider(abapFileDecorationProvider))
 
   // change document listener, for locking
   sub.push(workspace.onDidChangeTextDocument(documentChangedListener))

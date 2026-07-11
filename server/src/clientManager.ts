@@ -130,7 +130,6 @@ const refreshClient = async (key: string, conf: ClientConfiguration) => {
 
   const authMethod = getAuthMethod(conf)
   let pwdOrFetch: string | (() => Promise<string>)
-  log(`[server] refreshClient: key=${key}, authMethod=${authMethod}`)
 
   if (authMethod !== "basic" && !conf.oauth) {
     const authResponse = await fetchAuthHeaders(conf.name)
