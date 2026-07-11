@@ -17,6 +17,7 @@ import { registerGetBatchLinesTool } from "./getBatchLinesTool"
 import { registerGetObjectByUriTool } from "./getObjectByUriTool"
 import { registerCreateObjectTool } from "./createObjectTool"
 import { registerOpenObjectTool } from "./openObjectTool"
+import { registerDownloadTool } from "./downloadTool"
 import { registerGetWorkspaceUriTool } from "./getWorkspaceUriTool"
 import { registerGetObjectUrlTool } from "./getObjectUrlTool"
 import { registerDocumentationTool } from "./documentationTool"
@@ -67,6 +68,7 @@ export async function registerAllTools(context: vscode.ExtensionContext): Promis
   registerGetObjectByUriTool(context)
   registerCreateObjectTool(context)
   registerOpenObjectTool(context)
+  registerDownloadTool(context)
   registerGetWorkspaceUriTool(context)
   registerGetObjectUrlTool(context)
 

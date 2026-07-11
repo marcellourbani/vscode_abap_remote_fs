@@ -1571,6 +1571,48 @@
         "when": "abapfs:extensionActive && !abapfs:noSapConnected"
       },
       {
+        "name": "abap_download",
+        "displayName": "Download ABAP Resource",
+        "modelDescription": "Download an ABAP resource (package, program, class, function group, folder, or single file) to a local folder. Recursive for folders/packages. Preferred source: full adt:// workspace URI (from get_abap_object_workspace_uri). Also accepts ADT paths (/sap/bc/adt/...) or bare object names with connectionId (+ optional objectType for disambiguation). NOTE: downloading a program does NOT automatically download its includes — includes are separate objects; download them explicitly (or download the parent package to get everything).",
+        "canBeReferencedInPrompt": true,
+        "toolReferenceName": "abap-download",
+        "icon": "$(cloud-download)",
+        "userDescription": "Download ABAP objects or packages to a local folder",
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "source": {
+              "type": "string",
+              "description": "adt:// URI (preferred), ADT path (/sap/bc/adt/...), or bare object name"
+            },
+            "target": {
+              "type": "string",
+              "description": "Absolute local folder path (e.g. 'C:/wiki/raw/ZFOO')"
+            },
+            "connectionId": {
+              "type": "string",
+              "description": "Required when source is a bare name or an ADT path (e.g. 'ged100')"
+            },
+            "objectType": {
+              "type": "string",
+              "description": "Optional type for disambiguating bare names (e.g. 'CLAS/OC', 'PROG/P', 'DEVC/K')"
+            },
+            "overwrite": {
+              "type": "boolean",
+              "description": "Overwrite existing files at target. Default false (fails if target exists)."
+            }
+          },
+          "required": [
+            "source",
+            "target"
+          ]
+        },
+        "tags": [
+          "abap-fs"
+        ],
+        "when": "abapfs:extensionActive && !abapfs:noSapConnected"
+      },
+      {
         "name": "run_unit_tests",
         "displayName": "Run ABAP Unit Tests",
         "modelDescription": "Run ABAP unit tests for an object. Results shown in VS Code Testing panel with pass/fail.",

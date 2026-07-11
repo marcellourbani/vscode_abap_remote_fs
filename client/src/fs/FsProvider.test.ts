@@ -27,7 +27,8 @@ jest.mock(
       getConfiguration: jest.fn(() => ({
         get: jest.fn(() => true),
         update: jest.fn()
-      }))
+      })),
+      onDidOpenTextDocument: jest.fn(() => new Disposable())
     }
     const commands = { executeCommand: jest.fn() }
     const Uri = {

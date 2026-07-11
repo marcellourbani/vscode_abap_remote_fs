@@ -88,6 +88,22 @@ export class FsProvider implements FileSystemProvider {
     this.context.subscriptions.push(
       this.localProvider.onDidChangeFile(changes => this.pEventEmitter.fire(changes))
     )
+    // Fire the "best viewed in SAP GUI" prompt only when the user actually
+    // opens the object in an editor, not on every programmatic readFile
+    // (which happens during downloads and background LM tool reads).
+    this.context.subscriptions.push(
+      workspace.onDidOpenTextDocument(async doc => {
+        const uri = doc.uri
+        if (uri.scheme !== "adt" || LocalFsProvider.useLocalStorage(uri)) return
+        try {
+          const root = await getOrCreateRoot(uri.authority)
+          const node = await root.getNodeAsync(uri.path)
+          if (isAbapFile(node)) openInGui(uri, node.object)
+        } catch {
+          // ignore — resolution failures are already logged elsewhere
+        }
+      })
+    )
   }
   public static get(context?: ExtensionContext) {
     if (!FsProvider.instance)
@@ -188,7 +204,6 @@ export class FsProvider implements FileSystemProvider {
       const node = await root.getNodeAsync(uri.path)
       if (isAbapFile(node)) {
         const contents = await node.read()
-        openInGui(uri, node.object)
 
         const buf = Buffer.from(contents)
         return buf
