@@ -19,7 +19,11 @@
     "vscode": "^1.90.0"
   },
   "categories": [
-    "Other"
+    "Programming Languages",
+    "Notebooks",
+    "AI",
+    "Debuggers",
+    "SCM Providers"
   ],
   "repository": {
     "type": "git",
@@ -229,7 +233,7 @@
       "activitybar": [
         {
           "id": "abapfs",
-          "title": "Abap FS",
+          "title": "ABAP FS",
           "icon": "client/images/abapfs_activitybar.svg"
         }
       ],
@@ -2591,31 +2595,31 @@
       {
         "command": "abapfs.startRecording",
         "title": "Start Debug Recording",
-        "category": "ABAP Replay",
+        "category": "ABAP FS",
         "icon": "$(record)"
       },
       {
         "command": "abapfs.stopRecording",
         "title": "Stop Debug Recording",
-        "category": "ABAP Replay",
+        "category": "ABAP FS",
         "icon": "$(debug-stop)"
       },
       {
         "command": "abapfs.replaySession",
         "title": "Replay Debug Recording",
-        "category": "ABAP Replay",
+        "category": "ABAP FS",
         "icon": "$(debug-reverse-continue)"
       },
       {
         "command": "abapfs.compressRecording",
         "title": "Compress Debug Recording",
-        "category": "ABAP Replay",
+        "category": "ABAP FS",
         "icon": "$(file-zip)"
       },
       {
         "command": "abapfs.decompressRecording",
         "title": "Decompress Debug Recording",
-        "category": "ABAP Replay",
+        "category": "ABAP FS",
         "icon": "$(file)"
       },
       {
@@ -5219,7 +5223,7 @@
           {
             "id": "abapfs.walkthrough.debugReplay",
             "title": "Record & Replay Debug Sessions",
-            "description": "Record a debug session, replay offline — even without SAP. Share `.abaprecord` files with teammates.\n\n**Record:** While debugging → **Ctrl/Cmd+Shift+P** → **ABAP Replay: Start Debug Recording**\n**Replay:** **Ctrl/Cmd+Shift+P** → **ABAP Replay: Replay Debug Recording**\n\n[Replay a Recording](command:abapfs.replaySession)",
+            "description": "Record a debug session, replay offline — even without SAP. Share `.abaprecord` files with teammates.\n\n**Record:** While debugging → **Ctrl/Cmd+Shift+P** → **ABAP FS: Start Debug Recording**\n**Replay:** **Ctrl/Cmd+Shift+P** → **ABAP FS: Replay Debug Recording**\n\n[Replay a Recording](command:abapfs.replaySession)",
             "media": {
               "markdown": "client/dist/media/walkthrough/w4-debug-replay.md"
             },
