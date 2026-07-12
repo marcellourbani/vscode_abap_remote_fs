@@ -2,6 +2,9 @@ import { TextEdit, DocumentFormattingParams } from "vscode-languageserver"
 import { clientAndObjfromUrl } from "./utilities"
 import { isAbap } from "./functions"
 
+/**
+ * Format the current ABAP document through the ADT pretty printer and return the resulting edits.
+ */
 export async function formatDocument(params: DocumentFormattingParams) {
   if (!isAbap(params.textDocument.uri)) return
   const edits: TextEdit[] = []

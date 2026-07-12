@@ -9,9 +9,15 @@ import { toInt, parts } from "./functions"
 const startIdent = /^((<?[\w]+>?)|(\/\w+\/\w+))/
 const endIdent = /((<?[\w]+>?)|(\/\w+\/\w+))$/
 
+/**
+ * Return true when the range points to a single cursor position.
+ */
 export const rangeIsEmpty = (r: Range) =>
   r.start.line === r.end.line && r.start.character === r.end.character
 
+/**
+ * Map the ABAP severity letter to the LSP diagnostic severity used by the client.
+ */
 export function decodeSeverity(severity: string) {
   switch (severity) {
     case "E":
@@ -27,8 +33,14 @@ export function decodeSeverity(severity: string) {
   return DiagnosticSeverity.Warning
 }
 
+/**
+ * Narrow an unknown value to a string for document and URI handling.
+ */
 export const isString = (s: unknown): s is string => typeof s === "string"
 
+/**
+ * Build a diagnostic range that spans the identifier under the given cursor or line position.
+ */
 export function sourceRange(
   document: TextDocument | string,
   oline: number,
@@ -53,6 +65,9 @@ export function sourceRange(
   }
 }
 
+/**
+ * Decode a VS Code URI fragment that contains the start and end positions of a selection.
+ */
 export function rangeFromUri(uri: string): Range | undefined {
   const [startl, startc, endl, endc] = parts(uri, /\#(?:.*;)?start=(\d+),(\d+);end=(\d+),(\d+)/)
   if (endc)
@@ -63,6 +78,9 @@ export function rangeFromUri(uri: string): Range | undefined {
   return
 }
 
+/**
+ * Shape of the client, object, and source payload used by the server when resolving ABAP content.
+ */
 export interface ClientAndObject {
   confKey: string
   client: ADTClient
@@ -70,6 +88,9 @@ export interface ClientAndObject {
   source: string
 }
 
+/**
+ * Resolve the active ADT client, object metadata, and optionally the source text for a given URI.
+ */
 export async function clientAndObjfromUrl(
   uri: string,
   withSource: boolean = true

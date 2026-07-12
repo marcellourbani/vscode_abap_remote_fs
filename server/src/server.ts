@@ -18,12 +18,18 @@ import { codeActionHandler } from "./codeActions"
 import { updateInclude } from "./objectManager"
 import { TextDocument } from "vscode-languageserver-textdocument"
 import { renameHandler } from "./rename"
+/**
+ * Tracks open documents so the server can react to editor events and refresh diagnostics.
+ */
 export const documents = new TextDocuments(TextDocument)
 
 let hasConfigurationCapability: boolean = false
 let hasWorkspaceFolderCapability: boolean = false
 let hasLiteral: boolean = false
 
+/**
+ * URI scheme used for ADT-backed documents in the language server.
+ */
 export const ADTSCHEME = "adt"
 
 connection.onInitialize((params: InitializeParams) => {

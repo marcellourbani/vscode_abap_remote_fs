@@ -10,12 +10,24 @@ import {
 import { ParseTree, ParseTreeListener, TerminalNode } from "antlr4ts/tree"
 import { Position } from "vscode-languageserver"
 
+/**
+ * Returns true when the parse tree node represents an ANTLR rule context.
+ */
 export const isRuleContext = (tree: ParseTree): tree is ParserRuleContext => !!(tree as any).start
 
+/**
+ * Returns true when the parse tree node is a terminal token.
+ */
 export const isTerminal = (tree: ParseTree): tree is TerminalNode => !!(tree as any).symbol
 
+/**
+ * Returns the ANTLR token type for a terminal node when one exists.
+ */
 export const terminalType = (t: ParseTree) => isTerminal(t) && t.symbol.type
 
+/**
+ * Convert an ANTLR line and character position to the LSP Position shape used by the server.
+ */
 export const vscPosition = (line: number, character: number): Position => ({
   line: line - 1,
   character
@@ -26,6 +38,9 @@ const tokenStartPosition = (t: Token): Position => vscPosition(t.line, t.charPos
 const tokenStopPosition = (t: Token): Position =>
   vscPosition(t.line, t.stopIndex - t.startIndex + t.charPositionInLine)
 
+/**
+ * Determine whether the given cursor position falls inside the visible span of a token.
+ */
 export const positionInToken = (p: Position, t: Token) => {
   const start = tokenStartPosition(t)
   const stop = tokenStopPosition(t)
@@ -37,6 +52,9 @@ export const positionInToken = (p: Position, t: Token) => {
   )
 }
 
+/**
+ * Find the nearest parser rule that contains the requested cursor position.
+ */
 export function positionInContext(ctx: ParserRuleContext, position: Position) {
   const start = tokenStartPosition(ctx.start)
   const stop = tokenStopPosition(ctx.stop || ctx.start)
@@ -52,6 +70,9 @@ export function positionInContext(ctx: ParserRuleContext, position: Position) {
   return start.line < position.line && stop.line > position.line
 }
 
+/**
+ * Walk the parse tree to the deepest node that still contains the cursor.
+ */
 export function findNode(ctx: ParserRuleContext, pos: Position): ParserRuleContext | undefined {
   if (positionInContext(ctx, pos))
     if (ctx.children) {
@@ -120,8 +141,14 @@ const sourceOrFieldCompletion = (
   })
 }
 
+/**
+ * Describe the kind of CDS navigation target that was resolved from the current cursor.
+ */
 export type MatchType = "NONE" | "FIELD" | "SOURCE"
 
+/**
+ * The semantic target resolved from a CDS expression at the cursor position.
+ */
 export type CdsNavTarget =
   | { kind: "source"; name: string } // table/view name (data source)
   | { kind: "field"; source: string; field: string } // alias.field → resolved source.field
@@ -258,6 +285,9 @@ export function cdsNavigationTarget(source: string, pos: Position): CdsNavTarget
   return { kind: "unknown", word }
 }
 
+/**
+ * Inspect CDS source at the cursor and determine whether completion should target data sources or fields.
+ */
 export const cdsCompletionExtractor = (source: string, cursor: Position) => {
   const result = {
     prefix: "",
@@ -280,6 +310,9 @@ export const cdsCompletionExtractor = (source: string, cursor: Position) => {
   return result
 }
 
+/**
+ * Collect the data sources referenced by a CDS view so completion can query their fields.
+ */
 export function cdsDataSources(source: string): string[] {
   try {
     const tree = parseCDS(source)

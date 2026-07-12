@@ -93,6 +93,9 @@ function filterComp(comp: ClassComponent, part: string): ClassComponent[] {
   return components
 }
 
+/**
+ * Build the document symbol tree for the current ABAP object, including class and interface members.
+ */
 export async function documentSymbols(params: DocumentSymbolParams) {
   const symbols: DocumentSymbol[] = []
   try {

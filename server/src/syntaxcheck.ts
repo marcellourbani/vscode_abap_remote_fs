@@ -18,7 +18,10 @@ const DEBOUNCE_DELAY = 500 // Wait 500ms after last keystroke before checking
 // Normalize URI encoding to avoid %24 vs $ mismatch
 const normalizeUri = (uri: string) => decodeURIComponent(uri)
 
-// Debounced syntax check - waits for user to stop typing before making API call
+// Debounced syntax check - waits for user to stop typing before making API call.
+/**
+ * Trigger a syntax validation request after a short pause so rapid typing does not flood the backend.
+ */
 export function syntaxCheck(document: TextDocument) {
   const { uri } = document
 

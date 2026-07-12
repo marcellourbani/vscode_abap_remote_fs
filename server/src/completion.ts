@@ -93,6 +93,9 @@ async function cdsCompletion(co: ClientAndObject, pos: Position) {
   return items
 }
 
+/**
+ * Provide completion items for ABAP and CDS documents based on the current cursor context.
+ */
 export async function completion(params: CompletionParams) {
   try {
     if (!isSupported(params.textDocument.uri)) return
@@ -127,6 +130,9 @@ export async function completion(params: CompletionParams) {
 // When the user selects a completion item, try to get the full insertion text
 // (with method parameters) from the ADT codeCompletionFull endpoint.
 
+/**
+ * Resolve a completion item into its full snippet text when the ADT backend can provide it.
+ */
 export async function completionResolve(item: CompletionItem): Promise<CompletionItem> {
   try {
     log(
@@ -249,6 +255,9 @@ function convertToSnippet(fullText: string, identifier: string): string | undefi
 // ── Signature Help ──────────────────────────────────────────────────────────
 // Shows method parameter hints when typing inside parentheses.
 
+/**
+ * Provide signature help for ABAP method calls based on the current cursor position.
+ */
 export async function signatureHelp(
   params: SignatureHelpParams
 ): Promise<SignatureHelp | undefined> {

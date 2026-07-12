@@ -21,12 +21,34 @@ type ServerSslConfig = ReturnType<typeof createSSLConfig> & {
   headers?: Record<string, string>
 }
 
+/**
+ * Shared connection object for the language server process.
+ */
 export const connection = createConnection(ProposedFeatures.all)
+
+/**
+ * Log an error through the language server connection.
+ */
 export const error = (...params: unknown[]) => connection.console.error(convertParams(...params))
+
+/**
+ * Log a warning through the language server connection.
+ */
 export const warn = (...params: unknown[]) => connection.console.warn(convertParams(...params))
+
+/**
+ * Log informational output through the language server connection.
+ */
 export const info = (...params: unknown[]) => connection.console.info(convertParams(...params))
+
+/**
+ * Log a message through the language server connection.
+ */
 export const log = (...params: unknown[]) => connection.console.log(convertParams(...params))
 
+/**
+ * Extract the connection key from an ADT URI so the server can reuse the same client instance.
+ */
 export function clientKeyFromUrl(url: string) {
   const match = url.match(/adt:\/\/([^\/]*)/)
   return match && match[1]
@@ -52,6 +74,10 @@ async function fetchAuthHeaders(connName: string): Promise<AuthHeadersResponse |
 
 /** Whether the client has the comm-log panel open */
 const activeConnections = new Set<string>()
+
+/**
+ * Track whether a connection should receive comm-log notifications from the server.
+ */
 export function setCommLogActive(active: CommLogTogglePayload) {
   if (active.active) activeConnections.add(active.connId)
   else activeConnections.delete(active.connId)

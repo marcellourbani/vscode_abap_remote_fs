@@ -10,6 +10,9 @@ import { log } from "./clientManager"
 import { FixProposal } from "abap-adt-api"
 import { decode } from "html-entities"
 
+/**
+ * Collect quick fixes and refactoring actions for the current diagnostic context.
+ */
 export async function codeActionHandler(
   parms: CodeActionParams
 ): Promise<CodeAction[] | undefined> {
