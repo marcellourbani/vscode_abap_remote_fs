@@ -35,7 +35,7 @@ jobs:
           version: ./scripts/version-packages.sh
           title: "Version Packages"
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_TOKEN: ${{ secrets.RELEASE_PAT }}
           CI: false
 
       - name: Build VSIX and Create Release
