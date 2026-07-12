@@ -8,7 +8,7 @@ on:
 jobs:
   check-changeset:
     name: Check Changeset
-    if: github.actor != 'github-actions[bot]' || !contains(github.event.pull_request.title, 'Version Packages')
+    if: github.event.pull_request.head.ref != 'changeset-release/master'
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
