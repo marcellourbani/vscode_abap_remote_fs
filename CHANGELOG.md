@@ -1,5 +1,17 @@
 # Changelog
 
+## 2.6.5
+
+### Patch Changes
+
+- 1111e97: show object info on hover
+- be4f894: Fix object creation forcing English master language. Created objects now use the connection's logon language instead of the hardcoded `"EN"` fallback in abap-adt-api's creation XML, so they can be created on non-English master systems.
+- 1022a9b: fix docs, normalize command category and update extension category
+- 2d5f3dc: escape name an value in http services editor
+- 8ba3a72: fix stat: custom folders (Z*, Y*, $_ and /_) refresh every time; SAP standard folders only if empty or stale
+- ba653b1: add download to file option in sql tool
+- 6865b37: Added a new AI tool to download ABAP objects to local system
+
 ## 2.6.4
 
 ### Patch Changes
