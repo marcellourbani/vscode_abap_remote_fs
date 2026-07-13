@@ -6,6 +6,9 @@ import { documents } from "./server"
 const cache: Map<string, AbapObjectDetail> = new Map()
 const vsurlCache: Map<string, string> = new Map()
 
+/**
+ * Refresh the cached include relationship when the owning main program changes.
+ */
 export function updateInclude(prog: MainProgram) {
   const c = cache.get(prog.includeUri)
   if (c && c.mainProgram !== prog.mainProgramUri) {
@@ -15,6 +18,9 @@ export function updateInclude(prog: MainProgram) {
   }
 }
 
+/**
+ * Retrieve object details from the cache or resolve them from the ADT backend.
+ */
 export async function getObject(uri: string) {
   let object: AbapObjectDetail | undefined = cache.get(uri)
   if (!object) {
@@ -25,6 +31,9 @@ export async function getObject(uri: string) {
   return object
 }
 
+/**
+ * Convert an ADT object URI into the VS Code URI that the editor can open.
+ */
 export async function vscUrl(confKey: string, uri: string, main: boolean = true) {
   const isContextualInclude = /\/source\/main/i.test(uri)
   const normalizedUri = isContextualInclude

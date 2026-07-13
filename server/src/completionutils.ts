@@ -3,6 +3,9 @@ import { CompletionItem, Position, Range, TextEdit } from "vscode-languageserver
 
 const INTERFACEROLE = 58 // sccmp_role_intftype in abap
 
+/**
+ * Transform an ADT completion proposal into the LSP shape expected by the client.
+ */
 export const formatItem =
   (textLine: string, p: Position) =>
   (i: CompletionProposal): CompletionItem => {

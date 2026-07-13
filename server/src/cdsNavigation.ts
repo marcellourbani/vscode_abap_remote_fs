@@ -25,6 +25,9 @@ async function ddicRepositoryAccessRaw(
   return refs.length > 0 && refs[0].uri && refs[0].uri !== "not_used" ? refs[0] : undefined
 }
 
+/**
+ * Resolve a CDS field reference to the corresponding DDIC object entry.
+ */
 export async function ddicRepositoryAccessField(
   client: ADTClient,
   source: string,
@@ -37,6 +40,9 @@ export async function ddicRepositoryAccessField(
   })
 }
 
+/**
+ * Resolve a CDS data source name to the corresponding DDIC repository object.
+ */
 export async function ddicRepositoryAccessSource(
   client: ADTClient,
   name: string

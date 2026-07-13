@@ -128,6 +128,9 @@ async function cdsDefinition(params: TextDocumentPositionParams): Promise<Locati
   }
 }
 
+/**
+ * Resolve the definition target for ABAP or CDS documents, including CDS-specific navigation.
+ */
 export async function findDefinition(impl: boolean, params: TextDocumentPositionParams) {
   if (!isAbapOrCds(params.textDocument.uri)) return
 
@@ -296,6 +299,10 @@ const fullname = (usageReference: UsageReference) => {
 }
 
 let lastSearch: CancellationTokenSource | undefined
+
+/**
+ * Cancel the current reference search so the server stops reporting progress for stale requests.
+ */
 export function cancelSearch() {
   if (lastSearch) {
     lastSearch.cancel()
@@ -305,11 +312,15 @@ export function cancelSearch() {
 }
 
 async function startSearch() {
+  // Reset any prior search state before starting a new query.
   await cancelSearch()
   await setSearchProgress({ ended: false, hits: 0, progress: 0 })
   lastSearch = new CancellationTokenSource()
   return lastSearch
 }
+/**
+ * Collect usage references for the symbol at the requested cursor position.
+ */
 export async function findReferences(params: ReferenceParams, token: CancellationToken) {
   if (!isAbapOrCds(params.textDocument.uri)) return
   const mySearch = await startSearch()

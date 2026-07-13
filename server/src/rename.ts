@@ -10,6 +10,9 @@ import { getVSCodeUri } from "./clientapis"
 import { isAbap } from "./functions"
 import { clientAndObjfromUrl } from "./utilities"
 
+/**
+ * Resolve the rename request against the ADT backend and return the resulting workspace edits.
+ */
 export const renameHandler = async (
   params: RenameParams,
   token: CancellationToken,
