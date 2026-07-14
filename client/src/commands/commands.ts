@@ -697,33 +697,27 @@ export class AdtCommands {
         }
       }
 
-      // 5. If a transport request was supplied, override the transport picker so
-      // no VS Code dialog blocks the flow and the caller's choice is honored.
-      // Without this, AdtObjectCreator falls back to selectTransport() which either
-      // shows a QuickPick (blocks) or silently uses ti.LOCKS (silent reassignment).
-      // See GitHub #466.
+      // 5. Build a non-interactive transport picker if a transport request was
+      // supplied. Passed to createObject below so it replaces the default UI
+      // picker without any monkey-patching. Prevents blocking QuickPicks and
+      // silent LOCKS-based reassignment during MCP-driven creation. See #466.
       let resolvedTransport: string | undefined
-      if (additionalOptions?.transportRequest) {
-        const tr = additionalOptions.transportRequest
-        creator["pickTransport"] = async (
-          objContentPath: string,
-          devclass: string,
-          transportLayer: string
-        ) => {
-          const sel = await pickTransportProgrammatically(
-            getClient(connId),
-            tr,
-            objContentPath,
-            devclass,
-            transportLayer
-          )
-          resolvedTransport = sel.transport
-          return sel
-        }
-      }
+      const transportPicker = additionalOptions?.transportRequest
+        ? async (objContentPath: string, devclass: string, transportLayer: string) => {
+            const sel = await pickTransportProgrammatically(
+              getClient(connId),
+              additionalOptions.transportRequest!,
+              objContentPath,
+              devclass,
+              transportLayer
+            )
+            resolvedTransport = sel.transport
+            return sel
+          }
+        : undefined
 
-      // 6. Let ADT create the object (transport step now handled above if requested)
-      const obj = await creator.createObject(undefined)
+      // 6. Let ADT create the object (picker handles transport step if supplied)
+      const obj = await creator.createObject(undefined, transportPicker)
 
       if (!obj) {
         log(`❌ Object creation was cancelled or failed`)

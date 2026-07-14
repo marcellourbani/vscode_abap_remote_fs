@@ -94,6 +94,17 @@ export interface ProgrammaticTransportRequest {
 }
 
 /**
+ * Callback that resolves a transport request for a new object without any UI.
+ * Used by {@link AdtObjectCreator.createObject} to let programmatic callers
+ * inject their own picker (e.g. one backed by {@link pickTransportProgrammatically}).
+ */
+export type TransportPicker = (
+  objContentPath: string,
+  devClass: string,
+  transportLayer: string
+) => Promise<TransportSelection>
+
+/**
  * Non-interactive transport picker for programmatic (MCP/agent) object creation.
  * Honors the caller's explicit choice; never opens a UI dialog.
  * Throws {@link TransportPickerError} with a descriptive message on validation

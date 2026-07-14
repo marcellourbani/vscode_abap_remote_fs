@@ -23,7 +23,7 @@ import {
 import { CreatableTypes } from "abap-adt-api"
 import { Uri, FileStat } from "vscode"
 import { funWindow as window } from "../../services/funMessenger"
-import { selectTransport, TransportSelection } from "../AdtTransports"
+import { selectTransport, TransportPicker } from "../AdtTransports"
 import { fieldOrder, quickPick, rfsExtract, rfsTaskEither, rfsTryCatch, log } from "../../lib"
 import { MySearchResult, AdtObjectFinder, pathSequence, createUri } from "./AdtObjectFinder"
 import { getClient, getRoot } from "../conections"
@@ -81,8 +81,12 @@ export class AdtObjectCreator {
    * Tries to guess object type and parent/package from URI
    *
    * @param uri Creates an ABAP object
+   * @param transportPicker Optional non-interactive transport resolver.
+   *   When provided, replaces the default UI-driven {@link selectTransport}.
+   *   Used by programmatic callers (e.g. the MCP `create_object_programmatically`
+   *   tool) to avoid blocking VS Code dialogs.
    */
-  public async createObject(uri: Uri | undefined) {
+  public async createObject(uri: Uri | undefined, transportPicker?: TransportPicker) {
     try {
       const objDetails = await this.getObjectDetails(uri)
 
@@ -97,11 +101,17 @@ export class AdtObjectCreator {
 
       const layer = hasPackageOptions(options) ? options.transportLayer : ""
 
-      const transport = await this.pickTransport(
-        objectPath(options.objtype, options.name, options.parentName),
-        devclass,
-        layer
-      )
+      const objContentPath = objectPath(options.objtype, options.name, options.parentName)
+      const transport = transportPicker
+        ? await transportPicker(objContentPath, devclass, layer)
+        : await selectTransport(
+            objContentPath,
+            devclass,
+            getClient(this.connId),
+            true,
+            undefined,
+            layer
+          )
       //log("Step 5: Transport selection completed");
       //log("transport: " + JSON.stringify(transport, null, 2));
 
@@ -149,28 +159,6 @@ export class AdtObjectCreator {
 
   public guessParentByType(hierarchy: FileStat[], type: ParentTypeIds): string {
     return hierarchy.filter(isAbapStat).find(n => n.object.type === type)?.object.name || ""
-  }
-
-  /**
-   * Selects a transport for the new object. Delegates to the interactive
-   * {@link selectTransport} by default. Programmatic callers (e.g. the MCP
-   * `create_object_programmatically` tool) override this via bracket access to
-   * inject a non-interactive picker — see `pickTransportProgrammatically` in
-   * `AdtTransports.ts`.
-   */
-  private async pickTransport(
-    objContentPath: string,
-    devclass: string,
-    transportLayer: string
-  ): Promise<TransportSelection> {
-    return selectTransport(
-      objContentPath,
-      devclass,
-      getClient(this.connId),
-      true,
-      undefined,
-      transportLayer
-    )
   }
 
   private async guessOrSelectObjectType(hierarchy: FileStat[]): Promise<CreatableType | undefined> {
