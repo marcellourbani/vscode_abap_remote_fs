@@ -243,7 +243,7 @@ describe("ManageTextElementsTool", () => {
         mockToken
       )
 
-      expect(getClient).toHaveBeenCalledWith("dev100")
+      expect(getClient).toHaveBeenCalledWith("dev100", true)
     })
 
     it("throws when no connectionId and no active editor", async () => {
@@ -284,7 +284,7 @@ describe("ManageTextElementsTool", () => {
         mockToken
       )
 
-      expect(getClient).toHaveBeenCalledWith("dev100")
+      expect(getClient).toHaveBeenCalledWith("dev100", true)
     })
 
     it("throws when getClient returns null", async () => {
