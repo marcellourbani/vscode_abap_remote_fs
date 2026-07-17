@@ -8,6 +8,14 @@ node_modules/**
 .changesets/**
 **/.gitignore
 .gitignore
+.instructions.md
+.python-version
+AGENTS.md
+CLAUDE.md
+SECURITY.md
+.husky/**
+scripts/**
+.prettierignore
 DOCUMENTATION.md
 **/jest.config.js
 tsconfig.json
