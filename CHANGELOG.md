@@ -1,5 +1,17 @@
 # Changelog
 
+## 2.7.0
+
+### Minor Changes
+
+- 4c83cbb: Improve JSDoc and inline documentation in the server module.
+
+### Patch Changes
+
+- a59180a: fix transport selection
+- f95cf69: fix text elements LM tool to use stateful client for create/update and stateless clone for read
+- 8e38014: add a new LM tool that lets Copilot run select ABAP FS commands
+
 ## 2.6.5
 
 ### Patch Changes
