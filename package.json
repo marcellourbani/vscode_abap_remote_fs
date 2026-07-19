@@ -1630,6 +1630,40 @@
         "when": "abapfs:extensionActive && !abapfs:noSapConnected"
       },
       {
+        "name": "abap_execute_command",
+        "displayName": "Run ABAP FS Command",
+        "modelDescription": "Trigger an allow-listed ABAP FS VS Code command. Use this tool to: activate/deactivate ADT communication log, start/stop debug replay recording, open the connection manager, launch the ABAP FS walkthrough, or open ADT feeds manager. Fire-and-forget by default (returns 'triggered'); a small set of setup-style commands wait until finished. No return value from the command itself — dedicated LM tools handle commands that need meaningful args or output.",
+        "canBeReferencedInPrompt": true,
+        "toolReferenceName": "abap-run-command",
+        "icon": "$(play)",
+        "userDescription": "Trigger allow-listed ABAP FS commands (comm log, debug recording, connection manager, walkthrough, feeds manager)",
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "command": {
+              "type": "string",
+              "enum": [
+                "abapfs.activateCommLog",
+                "abapfs.deactivateCommLog",
+                "abapfs.startRecording",
+                "abapfs.stopRecording",
+                "abapfs.connectionManager",
+                "abapfs.showWalkThrough",
+                "abapfs.configureFeeds"
+              ],
+              "description": "The ABAP FS command id to trigger. Only ids in this enum are allowed."
+            }
+          },
+          "required": [
+            "command"
+          ]
+        },
+        "tags": [
+          "abap-fs"
+        ],
+        "when": "abapfs:extensionActive"
+      },
+      {
         "name": "run_unit_tests",
         "displayName": "Run ABAP Unit Tests",
         "modelDescription": "Run ABAP unit tests for an object. Results shown in VS Code Testing panel with pass/fail.",

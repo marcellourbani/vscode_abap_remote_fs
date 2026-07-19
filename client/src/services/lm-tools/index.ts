@@ -18,6 +18,7 @@ import { registerGetObjectByUriTool } from "./getObjectByUriTool"
 import { registerCreateObjectTool } from "./createObjectTool"
 import { registerOpenObjectTool } from "./openObjectTool"
 import { registerDownloadTool } from "./downloadTool"
+import { registerExecuteCommandTool } from "./executeCommandTool"
 import { registerGetWorkspaceUriTool } from "./getWorkspaceUriTool"
 import { registerGetObjectUrlTool } from "./getObjectUrlTool"
 import { registerDocumentationTool } from "./documentationTool"
@@ -69,6 +70,7 @@ export async function registerAllTools(context: vscode.ExtensionContext): Promis
   registerCreateObjectTool(context)
   registerOpenObjectTool(context)
   registerDownloadTool(context)
+  registerExecuteCommandTool(context)
   registerGetWorkspaceUriTool(context)
   registerGetObjectUrlTool(context)
 
