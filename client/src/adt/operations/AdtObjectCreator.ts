@@ -23,7 +23,7 @@ import {
 import { CreatableTypes } from "abap-adt-api"
 import { Uri, FileStat } from "vscode"
 import { funWindow as window } from "../../services/funMessenger"
-import { selectTransport } from "../AdtTransports"
+import { selectTransport, TransportPicker } from "../AdtTransports"
 import { fieldOrder, quickPick, rfsExtract, rfsTaskEither, rfsTryCatch, log } from "../../lib"
 import { MySearchResult, AdtObjectFinder, pathSequence, createUri } from "./AdtObjectFinder"
 import { getClient, getRoot } from "../conections"
@@ -81,8 +81,12 @@ export class AdtObjectCreator {
    * Tries to guess object type and parent/package from URI
    *
    * @param uri Creates an ABAP object
+   * @param transportPicker Optional non-interactive transport resolver.
+   *   When provided, replaces the default UI-driven {@link selectTransport}.
+   *   Used by programmatic callers (e.g. the MCP `create_object_programmatically`
+   *   tool) to avoid blocking VS Code dialogs.
    */
-  public async createObject(uri: Uri | undefined) {
+  public async createObject(uri: Uri | undefined, transportPicker?: TransportPicker) {
     try {
       const objDetails = await this.getObjectDetails(uri)
 
@@ -97,14 +101,17 @@ export class AdtObjectCreator {
 
       const layer = hasPackageOptions(options) ? options.transportLayer : ""
 
-      const transport = await selectTransport(
-        objectPath(options.objtype, options.name, options.parentName),
-        devclass,
-        getClient(this.connId),
-        true,
-        undefined,
-        layer
-      )
+      const objContentPath = objectPath(options.objtype, options.name, options.parentName)
+      const transport = transportPicker
+        ? await transportPicker(objContentPath, devclass, layer)
+        : await selectTransport(
+            objContentPath,
+            devclass,
+            getClient(this.connId),
+            true,
+            undefined,
+            layer
+          )
       //log("Step 5: Transport selection completed");
       //log("transport: " + JSON.stringify(transport, null, 2));
 

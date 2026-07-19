@@ -76,6 +76,101 @@ export async function selectTransport(
   return selection
 }
 
+/**
+ * Error thrown by pickTransportProgrammatically when the caller-supplied
+ * transport request is invalid or conflicts with the target object's state.
+ */
+export class TransportPickerError extends Error {
+  constructor(message: string) {
+    super(message)
+    this.name = "TransportPickerError"
+  }
+}
+
+export interface ProgrammaticTransportRequest {
+  type: "new" | "existing"
+  number?: string
+  description?: string
+}
+
+/**
+ * Callback that resolves a transport request for a new object without any UI.
+ * Used by {@link AdtObjectCreator.createObject} to let programmatic callers
+ * inject their own picker (e.g. one backed by {@link pickTransportProgrammatically}).
+ */
+export type TransportPicker = (
+  objContentPath: string,
+  devClass: string,
+  transportLayer: string
+) => Promise<TransportSelection>
+
+/**
+ * Non-interactive transport picker for programmatic (MCP/agent) object creation.
+ * Honors the caller's explicit choice; never opens a UI dialog.
+ * Throws {@link TransportPickerError} with a descriptive message on validation
+ * failure so headless callers get a clear error instead of a silent override.
+ */
+export async function pickTransportProgrammatically(
+  client: ADTClient,
+  request: ProgrammaticTransportRequest,
+  objContentPath: string,
+  devClass: string,
+  transportLayer = ""
+): Promise<TransportSelection> {
+  const info = await client.transportInfo(objContentPath, devClass, "I")
+  if (info.DLVUNIT === "LOCAL") return trSel("")
+
+  const lockedTr = info.LOCKS?.HEADER.TRKORR
+
+  if (request.type === "existing") {
+    if (!request.number) {
+      throw new TransportPickerError(
+        "transportRequest.type='existing' requires 'number' (transport request ID)"
+      )
+    }
+    if (lockedTr && lockedTr !== request.number) {
+      throw new TransportPickerError(
+        `Cannot assign to transport ${request.number}: package ${devClass} is already ` +
+          `locked to transport ${lockedTr}. Use that transport or release the lock first.`
+      )
+    }
+    const found = info.TRANSPORTS.find(t => t.TRKORR === request.number)
+    if (!found && !lockedTr) {
+      const available = info.TRANSPORTS.map(t => t.TRKORR).join(", ") || "none"
+      throw new TransportPickerError(
+        `Transport ${request.number} is not in the modifiable list for package ` +
+          `${devClass}. Available: ${available}`
+      )
+    }
+    return trSel(request.number)
+  }
+
+  if (request.type === "new") {
+    if (!request.description) {
+      throw new TransportPickerError(
+        "transportRequest.type='new' requires 'description' (request text)"
+      )
+    }
+    if (lockedTr) {
+      throw new TransportPickerError(
+        `Cannot create a new transport: package ${devClass} is already locked to ` +
+          `transport ${lockedTr}. Use type: 'existing' with number: '${lockedTr}' instead.`
+      )
+    }
+    const transport = await client.createTransport(
+      objContentPath,
+      request.description,
+      devClass,
+      transportLayer
+    )
+    return trSel(transport)
+  }
+
+  throw new TransportPickerError(
+    `Unknown transportRequest.type: ${(request as any).type}. Must be 'new' or 'existing'.`
+  )
+}
+
 const failedMsg = (token?: CancellationToken) => {
   if (!token?.isCancellationRequested)
     window.showInformationMessage(`Operation cancelled due to failed transport validation`)

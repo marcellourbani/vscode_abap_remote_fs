@@ -132,12 +132,21 @@ export class CreateABAPObjectTool implements vscode.LanguageModelTool<ICreateObj
         }
       }
 
+      const structured =
+        result && typeof result === "object" && "success" in result ? (result as any) : undefined
+      const transportLine = structured?.transport
+        ? `Transport: ${structured.transport}\n`
+        : structured && "transport" in structured
+          ? `Transport: (local — no transport required)\n`
+          : ""
+
       const resultText =
         `ABAP Object Created Successfully\n` +
         `Object Type: ${objectType}\n` +
         `Name: ${name}\n` +
         `Description: ${description}\n` +
         `Package: ${packageName}\n` +
+        transportLine +
         `Status: created, ready for development`
 
       return new vscode.LanguageModelToolResult([new vscode.LanguageModelTextPart(resultText)])
