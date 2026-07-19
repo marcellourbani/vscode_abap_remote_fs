@@ -45,7 +45,7 @@ jobs:
           npm run release:vsix
           gh release create v$VERSION *.vsix README.md CHANGELOG.md --title "v$VERSION" --generate-notes
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_TOKEN: ${{ secrets.RELEASE_PAT }}
 
       - name: Publish to VS Code Marketplace
         if: "contains(github.event.head_commit.message, 'Version Packages')"
