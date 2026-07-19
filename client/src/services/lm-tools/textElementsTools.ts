@@ -94,8 +94,9 @@ export class ManageTextElementsTool implements vscode.LanguageModelTool<IManageT
         actualConnectionId = activeEditor.document.uri.authority
       }
 
-      // Get connection (use stateless clone like the command does)
-      const client = getClient(actualConnectionId)
+      const stateless_clone = action === "read" ? true : false
+      // Get connection - stateless clone for read and stateful client for create/update
+      const client = getClient(actualConnectionId, stateless_clone)
       if (!client) {
         throw new Error("No ADT connection available. Please connect to an SAP system first.")
       }
