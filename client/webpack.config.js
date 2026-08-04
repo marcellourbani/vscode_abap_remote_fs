@@ -6,6 +6,25 @@ const path = require("path")
 const TerserPlugin = require("terser-webpack-plugin")
 const CopyPlugin = require("copy-webpack-plugin")
 
+/**
+ * Playwright cannot be bundled: its runner forks worker processes by real file path
+ * (`require.resolve("../worker/workerProcessEntry.js")`), resolves sibling packages as
+ * directories, and compiles the user's spec files at run time. So it is copied in as
+ * loose files instead, into a real `node_modules` layout so that Playwright's own
+ * `require("playwright-core")` resolves normally from where it lands.
+ */
+const playwrightPackages = ["playwright", "playwright-core", "@playwright/test"]
+const vendorPatterns = playwrightPackages.map(pkg => ({
+  from: `node_modules/${pkg}`,
+  to: `vendor/node_modules/${pkg}`,
+  globOptions: {
+    // Debug sidecars and readmes only; licence and notice files are kept for attribution.
+    ignore: ["**/*.js.txt", "**/README.md"]
+  },
+  noErrorOnMissing: false,
+  force: true
+}))
+
 /**@type {import('webpack').Configuration}*/
 const config = {
   target: "node", // vscode extensions run in a Node.js-context 📖 -> https://webpack.js.org/configuration/node/
@@ -55,7 +74,14 @@ const config = {
           to: "media/DOCUMENTATION.md",
           noErrorOnMissing: false,
           force: true
-        }
+        },
+        {
+          from: "templates/playwright.config.js",
+          to: "vendor/playwright.config.js",
+          noErrorOnMissing: false,
+          force: true
+        },
+        ...vendorPatterns
       ]
     })
   ],
@@ -102,7 +128,9 @@ const prodConfig = {
       compiler => {
         new TerserPlugin({
           parallel: true,
-          exclude: /media\/.*\.js$/, // Exclude media JS files from minification
+          // Minifying vendored Playwright would rewrite the paths its runner resolves
+          // worker entry points from, and break it.
+          exclude: /(media|vendor)[\\/].*\.js$/,
           terserOptions: {
             keep_classnames: true
           }
