@@ -356,7 +356,9 @@ export class DebugListener {
             this.stopThread(service.threadId)
           this.notifier.fire(e)
         })
-        this.notifier.fire(new StoppedEvent("breakpoint", service.threadId))
+        this.notifier.fire(
+          new StoppedEvent(service.stoppedReason, service.threadId, service.stoppedText)
+        )
       })()
       this.threadCreation = creation.finally(() => (this.threadCreation = undefined))
       await creation

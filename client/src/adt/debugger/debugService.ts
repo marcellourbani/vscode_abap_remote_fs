@@ -1,4 +1,12 @@
-import { ADTClient, Debuggee, DebugStepType, session_types, isAdtError } from "abap-adt-api"
+import {
+  ADTClient,
+  DebugAttach,
+  Debuggee,
+  DebugStep,
+  DebugStepType,
+  session_types,
+  isAdtError
+} from "abap-adt-api"
 import { newClientFromKey } from "./functions"
 import { log, caughtToString, ignore } from "../../lib"
 import { DebugProtocol } from "@vscode/debugprotocol"
@@ -35,6 +43,8 @@ export class DebugService {
   private listeners: Disposable[] = []
   private _stackTrace: StackFrame[] = []
   private _rawStack: RawStackEntry[] = []
+  private _postMortem = false
+  private _steppingBlocked = false
   public threadId: number = 0
 
   constructor(
@@ -51,6 +61,28 @@ export class DebugService {
   }
   get stackTrace() {
     return this._stackTrace
+  }
+  /** true when attached to a dead session (runtime error) - inspection only */
+  get isPostMortem() {
+    return this._postMortem || !!this._dumpId()
+  }
+  get stoppedReason(): "exception" | "breakpoint" {
+    return this.isPostMortem ? "exception" : "breakpoint"
+  }
+  get stoppedText() {
+    const dump = this._dumpId()
+    return dump ? `Runtime error ${dump}` : undefined
+  }
+  private _dumpId() {
+    return this.debuggee.DUMPID || this.debuggee.DUMP_ID || undefined
+  }
+  private _updateDebugState(state?: DebugAttach | DebugStep) {
+    if (!state) return
+    this._postMortem = this._postMortem || !!state.isPostMortem
+    if (state.isPostMortem || state.isSteppingPossible === false) this._steppingBlocked = true
+  }
+  private get _canStep() {
+    return !this._steppingBlocked && !this.isPostMortem
   }
   private get mode() {
     return this.listener.mode
@@ -78,7 +110,13 @@ export class DebugService {
   }
   public async attach() {
     log(`DebugService.attach: attaching to ${this.debuggee.DEBUGGEE_ID}`)
-    await this.client.debuggerAttach(this.mode, this.debuggee.DEBUGGEE_ID, this.username, true)
+    const attach = await this.client.debuggerAttach(
+      this.mode,
+      this.debuggee.DEBUGGEE_ID,
+      this.username,
+      true
+    )
+    this._updateDebugState(attach)
     log(`DebugService.attach: attached, saving settings`)
     // Fire saveSettings in background - not critical for attach
     this.client.debuggerSaveSettings({}).catch(e => {
@@ -108,9 +146,28 @@ export class DebugService {
     return this.client.debuggerStep(stepType)
   }
 
+  private _handleBlockedStep(stepType: DebugStepType, threadId: number) {
+    if (
+      stepType === "stepContinue" ||
+      stepType === "terminateDebuggee" ||
+      stepType === "detachDebugger"
+    ) {
+      this.notifier.fire(new ThreadEvent(THREAD_EXITED, threadId))
+      return
+    }
+    const message = this._dumpId()
+      ? `Debuggee ended with runtime error ${this._dumpId()}. Inspection only - continue to close the thread`
+      : "Stepping is not possible in this state. Inspection only - continue to close the thread"
+    // if (stepType === "stepRunToLine" || stepType === "stepJumpToLine")
+    this.ui.ShowError(message)
+    throw new Error(message)
+  }
+
   public async debuggerStep(stepType: DebugStepType, threadId: number, url?: string) {
+    if (!this._canStep) return this._handleBlockedStep(stepType, threadId)
     try {
       const res = await this.baseDebuggerStep(threadId, stepType, url)
+      this._updateDebugState(res)
       await this.updateStack()
       await this.awaitReplayCapture(threadId)
       this.notifier.fire(new StoppedEvent("step", threadId))
