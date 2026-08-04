@@ -449,6 +449,267 @@
     },
     "languageModelTools": [
       {
+        "name": "get_test_folder",
+        "displayName": "Get Test Folder",
+        "modelDescription": "Get the configured SAP testing folder path. Call this first before reading or writing any test artifact. If the folder is not open in the VS Code workspace, the result will include a warning — tell the user to open it (File > Add Folder to Workspace) before proceeding.",
+        "canBeReferencedInPrompt": true,
+        "toolReferenceName": "test-folder",
+        "icon": "$(folder)",
+        "userDescription": "Get the configured SAP testing folder path",
+        "inputSchema": {
+          "type": "object",
+          "properties": {}
+        },
+        "tags": [
+          "abap-fs"
+        ],
+        "when": "abapfs:extensionActive && abapfs:testingEnabled"
+      },
+      {
+        "name": "get_sap_webgui_url",
+        "displayName": "Get SAP WebGUI URL",
+        "modelDescription": "Given a connectionId, reads the abapfs.remote settings and returns the SAP WebGUI URL for that system. Call this whenever you need to open a SAP WebGUI URL for browser exploration or to pass to playwright_test.",
+        "canBeReferencedInPrompt": true,
+        "toolReferenceName": "sap-webgui-url",
+        "icon": "$(globe)",
+        "userDescription": "Get the SAP WebGUI URL for a connection",
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "connectionId": {
+              "type": "string",
+              "description": "SAP connection ID (e.g., 'dev100')"
+            }
+          },
+          "required": [
+            "connectionId"
+          ]
+        },
+        "tags": [
+          "abap-fs"
+        ],
+        "when": "abapfs:extensionActive && abapfs:testingEnabled"
+      },
+      {
+        "name": "build_test_index",
+        "displayName": "Build Test Case Index",
+        "modelDescription": "Validate every TC-NNN.md and mechanically rebuild tests/<PROGRAM>/test-cases/_index.md and _index.docx, including title, description, category, runnability, and dataRequired. Requires the analysis sourceSnapshot path, records it, and sets analyzedOn automatically. Rejects malformed files, invalid categories, missing required fields, and dataRequired: no cases that nonetheless have a .data.md. A missing .data.md for a dataRequired: yes case is only a warning (those are authored later). This tool is GATED: it refuses to run unless you pass the mandatory reviewerConfirmation field certifying the sap-test-plan-reviewer agent already returned PASS.",
+        "canBeReferencedInPrompt": true,
+        "toolReferenceName": "test-index",
+        "icon": "$(list-tree)",
+        "userDescription": "Rebuild the test-case index for a program",
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "program": {
+              "type": "string",
+              "description": "Program folder name under tests/"
+            },
+            "sourceSnapshot": {
+              "type": "string",
+              "description": "Analysis snapshot folder under tests/<PROGRAM>/sources/, absolute or relative to the configured test folder"
+            },
+            "reviewerConfirmation": {
+              "type": "string",
+              "description": "MANDATORY. Certifies that the sap-test-plan-reviewer agent reviewed this plan and returned PASS. Pass this EXACT text: 'I called the reviewer agent and it passed all test cases'. Only valid after a genuine PASS; the index build is rejected otherwise."
+            }
+          },
+          "required": [
+            "program",
+            "sourceSnapshot",
+            "reviewerConfirmation"
+          ]
+        },
+        "tags": [
+          "abap-fs"
+        ],
+        "when": "abapfs:extensionActive && abapfs:testingEnabled"
+      },
+      {
+        "name": "build_test_index_docx",
+        "displayName": "Build Test Case Index Document",
+        "modelDescription": "Convert the current tests/<PROGRAM>/test-cases/_index.md into a printable _index.docx beside it. Preserves headings, notes, lists, and Markdown tables; every table receives explicit single-line outer and inner borders. Use after editing the preserved Notes section or whenever only the DOCX needs refreshing.",
+        "canBeReferencedInPrompt": true,
+        "toolReferenceName": "test-index-docx",
+        "icon": "$(file)",
+        "userDescription": "Convert the test-case index to a bordered Word document",
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "program": {
+              "type": "string",
+              "description": "Program folder name under tests/"
+            }
+          },
+          "required": [
+            "program"
+          ]
+        },
+        "tags": [
+          "abap-fs"
+        ],
+        "when": "abapfs:extensionActive && abapfs:testingEnabled"
+      },
+      {
+        "name": "split_test_cases",
+        "displayName": "Split Test Cases",
+        "modelDescription": "Split a validated _bulk-*.md aggregate under tests/<PROGRAM>/test-cases into one TC-NNN.md file per <sap-test-case> block. Validates exact IDs, required title/description/dataRequired frontmatter, categories, runnable values, headings, duplicates, and overwrite conflicts before writing. Deletes the aggregate only after complete success. Does not run build_test_index.",
+        "canBeReferencedInPrompt": true,
+        "toolReferenceName": "split-test-cases",
+        "icon": "$(split-horizontal)",
+        "userDescription": "Split an aggregate test-case file into individual cases",
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "sourcePath": {
+              "type": "string",
+              "description": "Absolute path to an _bulk-*.md aggregate directly inside a program's test-cases folder"
+            }
+          },
+          "required": [
+            "sourcePath"
+          ]
+        },
+        "tags": [
+          "abap-fs"
+        ],
+        "when": "abapfs:extensionActive && abapfs:testingEnabled"
+      },
+      {
+        "name": "verify_test_data_usage",
+        "displayName": "Verify Test Data Usage",
+        "modelDescription": "Cross-check a Playwright spec against its .data.md: every data.<key> referenced in the spec must have a matching entry in the .data.md's requires list, and vice versa. Run this right after writing or editing a spec, before telling the user it's ready.",
+        "canBeReferencedInPrompt": true,
+        "toolReferenceName": "verify-test-data",
+        "icon": "$(check)",
+        "userDescription": "Cross-check a test spec against its data spec",
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "program": {
+              "type": "string",
+              "description": "Program folder name under tests/"
+            },
+            "tcId": {
+              "type": "string",
+              "description": "Test case ID, e.g. TC-001"
+            }
+          },
+          "required": [
+            "program",
+            "tcId"
+          ]
+        },
+        "tags": [
+          "abap-fs"
+        ],
+        "when": "abapfs:extensionActive && abapfs:testingEnabled"
+      },
+      {
+        "name": "check_test_data",
+        "displayName": "Check Test Data Readiness",
+        "modelDescription": "Pre-flight check: for every TC-*.data.md under a program, resolve its test data against a system using the exact same resolution logic the Playwright specs use at run time. Reports every case with missing cache keys, unresolved seeded requirements, or broken generated fixtures - before spending time on a real test run. Run this before declaring a system 'ready to test'.",
+        "canBeReferencedInPrompt": true,
+        "toolReferenceName": "check-test-data",
+        "icon": "$(verified)",
+        "userDescription": "Pre-flight check that test data is ready for a system",
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "program": {
+              "type": "string",
+              "description": "Program folder name under tests/"
+            },
+            "connectionId": {
+              "type": "string",
+              "description": "SAP connection ID (e.g., 'dev100'). Also used as the results-folder name."
+            }
+          },
+          "required": [
+            "program",
+            "connectionId"
+          ]
+        },
+        "tags": [
+          "abap-fs"
+        ],
+        "when": "abapfs:extensionActive && abapfs:testingEnabled"
+      },
+      {
+        "name": "build_evidence_report",
+        "displayName": "Build Evidence Report",
+        "modelDescription": "Build the aggregated .docx evidence report for a program+system from every test-results manifest.json found - title page, fully bordered pass/fail summary table, and one section per test case with embedded screenshots. Run this after a batch of test runs completes.",
+        "canBeReferencedInPrompt": true,
+        "toolReferenceName": "evidence-report",
+        "icon": "$(file-pdf)",
+        "userDescription": "Build the Word evidence report for a program and system",
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "program": {
+              "type": "string",
+              "description": "Program folder name under tests/"
+            },
+            "connectionId": {
+              "type": "string",
+              "description": "SAP connection ID (e.g., 'dev100'). Must match the connectionId used during playwright_test runs."
+            }
+          },
+          "required": [
+            "program",
+            "connectionId"
+          ]
+        },
+        "tags": [
+          "abap-fs"
+        ],
+        "when": "abapfs:extensionActive && abapfs:testingEnabled"
+      },
+      {
+        "name": "playwright_test",
+        "displayName": "Run Playwright Test",
+        "modelDescription": "Run one or more Playwright specs from the configured test folder against a given SAP system. Runs the real @playwright/test runner as a subprocess bundled with the extension - no local Node or Playwright install needed. Returns pass/fail per test case plus paths to evidence (screenshots, manifest.json) and any error output. The connectionId is used both to derive the SAP WebGUI URL and as the results-folder name. Use this instead of asking the user to run a terminal command. This tool is GATED: it refuses to run unless you pass the mandatory prerequisiteConfirmation field certifying you completed the run-scripts readiness gate.",
+        "canBeReferencedInPrompt": true,
+        "toolReferenceName": "playwright-test",
+        "icon": "$(play)",
+        "userDescription": "Run a Playwright test case against an SAP system",
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "program": {
+              "type": "string",
+              "description": "Program folder name under tests/, e.g. Z_MY_REPORT"
+            },
+            "tcId": {
+              "type": "string",
+              "description": "Test case ID to run, e.g. TC-001. Omit to run every spec under the program's test-scripts/ folder."
+            },
+            "connectionId": {
+              "type": "string",
+              "description": "SAP connection ID (e.g., 'dev100'). Used to derive the SAP WebGUI URL and as the results-folder name."
+            },
+            "headed": {
+              "type": "boolean",
+              "default": false,
+              "description": "Run with a visible browser window (recommended the first time a new spec runs)."
+            },
+            "prerequisiteConfirmation": {
+              "type": "string",
+              "description": "MANDATORY. Certifies you completed the run-scripts readiness gate (case/spec/_screens.md/_index.md artifacts exist AND check_test_data reports the selected cases resolvable on this connection). Pass this EXACT text: 'I verified all upstream phase gates and test data readiness for this program'. Only valid once that gate is genuinely complete; the run is rejected otherwise."
+            }
+          },
+          "required": [
+            "program",
+            "connectionId",
+            "prerequisiteConfirmation"
+          ]
+        },
+        "tags": [
+          "abap-fs"
+        ],
+        "when": "abapfs:extensionActive && abapfs:testingEnabled"
+      },
+      {
         "name": "search_abap_objects",
         "displayName": "Search ABAP Objects",
         "modelDescription": "Search ABAP objects by name pattern. Wildcards: * ?. Custom code: prefix Z* or Y* (Z*ARTICLE*, not *ARTICLE*). Standard SAP: BAPI_*, CL_*, /SAP/*. MANDATORY before code generation: training data outdated — ALWAYS verify objects exist first, read signatures with get_abap_object_lines, then generate. Unverified code WILL fail at runtime.",
