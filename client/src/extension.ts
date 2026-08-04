@@ -37,6 +37,7 @@ import { setContext } from "./context"
 import { AbapHoverProviderV2 } from "./providers/hoverProvider"
 import { AbapDocumentSymbolProvider } from "./providers/abapDocumentSymbolProvider"
 import { registerAllTools } from "./services/lm-tools"
+import { registerTestingFeatures } from "./services/testing/activation"
 import { registerCleanerCommands, setupCleanerContextMonitoring } from "./services/cleanerCommands"
 import { TelemetryService, logTelemetry } from "./services/telemetry"
 import { AppInsightsService } from "./services/appInsightsService"
@@ -169,6 +170,9 @@ export async function activate(ctx: ExtensionContext): Promise<AbapFsApi> {
 
     // Register Language Model Tools
     await registerAllTools(context)
+
+    // Register SAP UI testing features (dormant until a test folder is configured)
+    registerTestingFeatures(context)
 
     // Register ABAP Cleaner feature
     registerCleanerCommands(context)

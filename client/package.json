@@ -30,7 +30,8 @@
   "scripts": {
     "vscode:prepublish": "fail",
     "clean": "rimraf out dist node_modules server",
-    "webpack": "webpack --config-name production",
+    "build_runtime": "tsc -p tsconfig.runtime.json",
+    "webpack": "npm run build_runtime && webpack --config-name production",
     "test": "jest",
     "watch": "webpack --config-name development --watch --progress"
   },
@@ -38,6 +39,7 @@
     "@playwright/test": "1.61.1",
     "@types/diff": "^7.0.2",
     "@types/jest": "^29.2.5",
+    "@types/js-yaml": "^4.0.9",
     "@types/mocha": "^10.0.1",
     "@types/node": "^18.11.18",
     "@types/open": "^6.2.1",

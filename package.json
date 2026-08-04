@@ -197,12 +197,6 @@
       {
         "path": "./client/dist/media/agents/anst-enhancement-analyser.agent.md",
         "when": "abapfs:testingEnabled"
-      }
-    ],
-    "chatAgents": [
-      {
-        "path": "./client/dist/media/agents/anst-enhancement-analyser.agent.md",
-        "when": "abapfs:testingEnabled"
       },
       {
         "path": "./client/dist/media/agents/sap-source-download.agent.md",
@@ -460,9 +454,6 @@
           "type": "object",
           "properties": {}
         },
-        "tags": [
-          "abap-fs"
-        ],
         "when": "abapfs:extensionActive && abapfs:testingEnabled"
       },
       {
@@ -485,9 +476,6 @@
             "connectionId"
           ]
         },
-        "tags": [
-          "abap-fs"
-        ],
         "when": "abapfs:extensionActive && abapfs:testingEnabled"
       },
       {
@@ -520,9 +508,6 @@
             "reviewerConfirmation"
           ]
         },
-        "tags": [
-          "abap-fs"
-        ],
         "when": "abapfs:extensionActive && abapfs:testingEnabled"
       },
       {
@@ -545,9 +530,6 @@
             "program"
           ]
         },
-        "tags": [
-          "abap-fs"
-        ],
         "when": "abapfs:extensionActive && abapfs:testingEnabled"
       },
       {
@@ -570,9 +552,6 @@
             "sourcePath"
           ]
         },
-        "tags": [
-          "abap-fs"
-        ],
         "when": "abapfs:extensionActive && abapfs:testingEnabled"
       },
       {
@@ -600,9 +579,6 @@
             "tcId"
           ]
         },
-        "tags": [
-          "abap-fs"
-        ],
         "when": "abapfs:extensionActive && abapfs:testingEnabled"
       },
       {
@@ -630,9 +606,6 @@
             "connectionId"
           ]
         },
-        "tags": [
-          "abap-fs"
-        ],
         "when": "abapfs:extensionActive && abapfs:testingEnabled"
       },
       {
@@ -660,9 +633,6 @@
             "connectionId"
           ]
         },
-        "tags": [
-          "abap-fs"
-        ],
         "when": "abapfs:extensionActive && abapfs:testingEnabled"
       },
       {
@@ -704,9 +674,6 @@
             "prerequisiteConfirmation"
           ]
         },
-        "tags": [
-          "abap-fs"
-        ],
         "when": "abapfs:extensionActive && abapfs:testingEnabled"
       },
       {
@@ -2997,13 +2964,40 @@
             "xlsxPath"
           ]
         },
-        "tags": [
-          "abap-fs"
-        ],
         "when": "abapfs:extensionActive && abapfs:testingEnabled"
       }
     ],
     "commands": [
+      {
+        "command": "abapfs.testing.setTestFolder",
+        "title": "Enable SAP UI Testing Features",
+        "category": "ABAP FS",
+        "icon": "$(beaker)"
+      },
+      {
+        "command": "abapfs.testing.openTestFolder",
+        "title": "Open SAP UI Test Folder",
+        "category": "ABAP FS",
+        "icon": "$(folder-opened)"
+      },
+      {
+        "command": "abapfs.testing.selectSystem",
+        "title": "Select System for Playwright Sidebar",
+        "category": "ABAP FS",
+        "icon": "$(beaker)"
+      },
+      {
+        "command": "abapfs.testing.recordWebGuiFlow",
+        "title": "Record SAP WebGUI Flow",
+        "category": "ABAP FS",
+        "icon": "$(record)"
+      },
+      {
+        "command": "abapfs.testing.setSubagentModels",
+        "title": "Set Models for SAP Testing Subagents",
+        "category": "ABAP FS",
+        "icon": "$(hubot)"
+      },
       {
         "command": "abapfs.startRecording",
         "title": "Start Debug Recording",
@@ -4642,6 +4636,27 @@
     "configuration": {
       "title": "ABAP-FS configuration",
       "properties": {
+        "abapfs.testing.folder": {
+          "type": "string",
+          "default": "",
+          "scope": "application",
+          "description": "Folder holding all SAP UI test artifacts: test cases, Playwright scripts, and results. Setting this switches on the SAP testing features. Use the 'ABAP FS: Set Test Folder' command rather than editing this by hand."
+        },
+        "abapfs.testing.edgePath": {
+          "type": "string",
+          "default": "",
+          "scope": "application",
+          "description": "Path to msedge.exe (or another Chromium-based browser) used to run SAP UI tests, avoiding a separate browser download. Leave empty to detect Microsoft Edge automatically."
+        },
+        "abapfs.testing.subagentModels": {
+          "type": "object",
+          "default": {},
+          "scope": "application",
+          "description": "Language model chosen for each SAP testing subagent. Use the 'ABAP FS: Set Models for SAP Testing Subagents' command rather than editing this object by hand.",
+          "additionalProperties": {
+            "type": "string"
+          }
+        },
         "abapfs.remote": {
           "type": "object",
           "description": "ABAP systems",

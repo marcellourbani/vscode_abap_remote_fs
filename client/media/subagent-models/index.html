@@ -1,0 +1,35 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta
+      http-equiv="Content-Security-Policy"
+      content="default-src 'none'; style-src {{CSP_SOURCE}}; script-src {{CSP_SOURCE}}; img-src {{CSP_SOURCE}} data:; base-uri 'none'; form-action 'none';"
+    />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <link rel="stylesheet" href="{{STYLE_URI}}" />
+    <title>Subagent Models</title>
+  </head>
+  <body>
+    <main>
+      <header>
+        <div>
+          <h1>Subagent Models</h1>
+          <p>Choose the model used by each SAP Testing subagent.</p>
+        </div>
+        <button id="refresh" class="secondary" type="button">Refresh Models</button>
+      </header>
+
+      <div id="status" class="status info" role="status" aria-live="polite">
+        Loading available models…
+      </div>
+      <section id="agents" aria-label="Subagent model selectors"></section>
+
+      <footer>
+        <button id="save" type="button" disabled>Save</button>
+        <button id="reload" class="secondary hidden" type="button">Reload Window</button>
+      </footer>
+    </main>
+    <script src="{{SCRIPT_URI}}"></script>
+  </body>
+</html>

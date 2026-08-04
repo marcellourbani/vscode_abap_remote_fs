@@ -219,7 +219,7 @@ Call `build_test_index` with:
 
 - `program` = `<PROGRAM>`
 - `sourceSnapshot` = the snapshot path recorded in `_findings.md`
-- `reviewerConfirmation` = the EXACT text `I called the reviewer agent and it passed all test cases` (only pass this after a real PASS in Step 3 — the tool blocks otherwise, and fabricating it defeats the reviewer gate).
+- `reviewerConfirmation` = the EXACT text `I called the reviewer agent and it passed all test cases` (valid only after a real PASS in Step 3 — the tool rejects the build otherwise).
 
 `_index.md` is a mechanical projection of every `TC-*.md` frontmatter — never hand-edit its tables. The tool also writes the bordered `_index.docx`. It records `analyzedOn`/`sourceSnapshot` itself; never edit those.
 

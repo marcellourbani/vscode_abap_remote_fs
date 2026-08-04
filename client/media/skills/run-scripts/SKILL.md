@@ -17,7 +17,7 @@ The editor may hide tools until searched for, and this is exactly where it bites
 
 ## The `playwright_test` prerequisite gate
 
-`playwright_test` is a GATED tool: it refuses to run unless you pass the mandatory `prerequisiteConfirmation` field. Only pass it after you have completed Step 0 (artifacts present AND `check_test_data` clean for the selected cases). The exact text to pass is: `I verified all upstream phase gates and test data readiness for this program`. Do not fabricate it — it certifies the readiness gate actually happened.
+`playwright_test` is a GATED tool: it refuses to run unless you pass the mandatory `prerequisiteConfirmation` field. Only pass it after you have completed Step 0 (artifacts present AND `check_test_data` clean for the selected cases). The exact text to pass is: `I verified all upstream phase gates and test data readiness for this program`. It is valid only once that gate is genuinely complete; the run is rejected otherwise.
 
 ## Non-negotiable execution gate
 
