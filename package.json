@@ -118,6 +118,50 @@
     ],
     "chatSkills": [
       {
+        "path": "./client/dist/media/skills/sap-testing/SKILL.md",
+        "when": "abapfs:testingEnabled"
+      },
+      {
+        "path": "./client/dist/media/skills/analyze-and-plan/SKILL.md",
+        "when": "abapfs:testingEnabled"
+      },
+      {
+        "path": "./client/dist/media/skills/explore-ui/SKILL.md",
+        "when": "abapfs:testingEnabled"
+      },
+      {
+        "path": "./client/dist/media/skills/design-cases/SKILL.md",
+        "when": "abapfs:testingEnabled"
+      },
+      {
+        "path": "./client/dist/media/skills/define-data/SKILL.md",
+        "when": "abapfs:testingEnabled"
+      },
+      {
+        "path": "./client/dist/media/skills/prepare-data/SKILL.md",
+        "when": "abapfs:testingEnabled"
+      },
+      {
+        "path": "./client/dist/media/skills/build-scripts/SKILL.md",
+        "when": "abapfs:testingEnabled"
+      },
+      {
+        "path": "./client/dist/media/skills/run-scripts/SKILL.md",
+        "when": "abapfs:testingEnabled"
+      },
+      {
+        "path": "./client/dist/media/skills/sap-webgui/SKILL.md",
+        "when": "abapfs:testingEnabled"
+      },
+      {
+        "path": "./client/dist/media/skills/sap-webgui-recording/SKILL.md",
+        "when": "abapfs:testingEnabled"
+      },
+      {
+        "path": "./client/dist/media/skills/helpers-reference/SKILL.md",
+        "when": "abapfs:testingEnabled"
+      },
+      {
         "path": "./client/dist/media/skills/clean-abap/SKILL.md"
       },
       {
@@ -152,6 +196,44 @@
     "chatAgents": [
       {
         "path": "./client/dist/media/agents/anst-enhancement-analyser.agent.md",
+        "when": "abapfs:testingEnabled"
+      }
+    ],
+    "chatAgents": [
+      {
+        "path": "./client/dist/media/agents/anst-enhancement-analyser.agent.md",
+        "when": "abapfs:testingEnabled"
+      },
+      {
+        "path": "./client/dist/media/agents/sap-source-download.agent.md",
+        "when": "abapfs:testingEnabled"
+      },
+      {
+        "path": "./client/dist/media/agents/sap-code-grep.agent.md",
+        "when": "abapfs:testingEnabled"
+      },
+      {
+        "path": "./client/dist/media/agents/sap-enhancement-research.agent.md",
+        "when": "abapfs:testingEnabled"
+      },
+      {
+        "path": "./client/dist/media/agents/sap-findings-reviewer.agent.md",
+        "when": "abapfs:testingEnabled"
+      },
+      {
+        "path": "./client/dist/media/agents/sap-screens-reviewer.agent.md",
+        "when": "abapfs:testingEnabled"
+      },
+      {
+        "path": "./client/dist/media/agents/sap-test-plan-reviewer.agent.md",
+        "when": "abapfs:testingEnabled"
+      },
+      {
+        "path": "./client/dist/media/agents/sap-data-scout.agent.md",
+        "when": "abapfs:testingEnabled"
+      },
+      {
+        "path": "./client/dist/media/agents/sap-task-helper.agent.md",
         "when": "abapfs:testingEnabled"
       }
     ],
