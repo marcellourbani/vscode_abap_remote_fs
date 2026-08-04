@@ -3,12 +3,15 @@
  * `vscode.workspace.getConfiguration` directly outside this file — one place to change
  * if the setting shape ever changes.
  */
-import { ConfigurationTarget, workspace } from "vscode"
+import { ConfigurationTarget, extensions, workspace } from "vscode"
 import * as fs from "fs/promises"
 import { getAuthMethod } from "vscode-abap-remote-fs-sharedapi"
 import { RemoteManager } from "../../config"
 
 const SECTION = "abapfs.testing"
+
+/** Microsoft's Playwright extension — supplies the test sidebar, and nothing else. */
+const PLAYWRIGHT_EXTENSION_ID = "ms-playwright.playwright"
 
 export function getTestFolder(): string {
   return workspace.getConfiguration(SECTION).get<string>("folder", "")
@@ -22,6 +25,25 @@ export async function setTestFolder(folderPath: string): Promise<void> {
 /** User-configured override for the Edge/Chromium executable. Empty string means "auto-detect". */
 export function getEdgePath(): string {
   return workspace.getConfiguration(SECTION).get<string>("edgePath", "")
+}
+
+export function getSubagentModels(): Record<string, string> {
+  return workspace.getConfiguration(SECTION).get<Record<string, string>>("subagentModels", {})
+}
+
+export async function setSubagentModels(models: Record<string, string>): Promise<void> {
+  await workspace
+    .getConfiguration(SECTION)
+    .update("subagentModels", models, ConfigurationTarget.Global)
+}
+
+/**
+ * Whether Microsoft's Playwright extension is installed. Only the sidebar integration
+ * depends on it — running specs and recording both use the bundled Playwright — so the
+ * test folder gets its sidebar scaffolding only when this is true.
+ */
+export function isPlaywrightExtensionInstalled(): boolean {
+  return !!extensions.getExtension(PLAYWRIGHT_EXTENSION_ID)
 }
 
 /** True if the test folder is set AND currently resolves to a real, existing directory. */
