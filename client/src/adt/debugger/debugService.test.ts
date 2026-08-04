@@ -294,7 +294,9 @@ describe("DebugService instance", () => {
       await service.attach()
       const events: any[] = []
       service.addListener((e: any) => events.push(e))
-      await service.debuggerStep("stepOver", 1)
+      await expect(service.debuggerStep("stepOver", 1)).rejects.toThrow(
+        "Stepping is not possible in this state. Inspection only - continue to close the thread"
+      )
       expect(client.debuggerStep).not.toHaveBeenCalled()
       expect(ui.ShowError).toHaveBeenCalled()
       expect(events.length).toBe(0)
@@ -320,7 +322,9 @@ describe("DebugService instance", () => {
     test("stepping blocked when attach reports stepping impossible", async () => {
       client.debuggerAttach.mockResolvedValueOnce({ isSteppingPossible: false })
       await service.attach()
-      await service.debuggerStep("stepOver", 1)
+      await expect(service.debuggerStep("stepOver", 1)).rejects.toThrow(
+        "Stepping is not possible in this state. Inspection only - continue to close the thread"
+      )
       expect(client.debuggerStep).not.toHaveBeenCalled()
       expect(ui.ShowError).toHaveBeenCalled()
     })
@@ -329,7 +333,9 @@ describe("DebugService instance", () => {
       client.debuggerStep.mockResolvedValueOnce({ isSteppingPossible: false })
       await service.debuggerStep("stepOver", 1)
       expect(client.debuggerStep).toHaveBeenCalledTimes(1)
-      await service.debuggerStep("stepOver", 1)
+      await expect(service.debuggerStep("stepOver", 1)).rejects.toThrow(
+        "Stepping is not possible in this state. Inspection only - continue to close the thread"
+      )
       expect(client.debuggerStep).toHaveBeenCalledTimes(1)
       expect(ui.ShowError).toHaveBeenCalled()
     })
