@@ -41,6 +41,15 @@ import {
 } from "./abapDebuggerTool"
 import { registerVersionHistoryTool } from "./versionHistoryTool"
 import { registerSubagentConfigTool } from "./subagentConfigTool"
+import { registerGetTestFolderTool } from "./getTestFolderTool"
+import { registerGetSapWebGuiUrlTool } from "./getSapWebGuiUrlTool"
+import { registerBuildTestIndexTool } from "./buildTestIndexTool"
+import { registerBuildTestIndexDocxTool } from "./buildTestIndexDocxTool"
+import { registerSplitTestCasesTool } from "./splitTestCasesTool"
+import { registerVerifyTestDataUsageTool } from "./verifyTestDataUsageTool"
+import { registerCheckTestDataTool } from "./checkTestDataTool"
+import { registerBuildEvidenceReportTool } from "./buildEvidenceReportTool"
+import { registerPlaywrightTestTool } from "./playwrightTestTool"
 import { WebviewManager } from "../webviewManager"
 import { registerHeartbeatTool, initializeHeartbeatService } from "../heartbeat"
 import { registerAdtDiscoveryTool } from "./adtDiscoveryTool"
@@ -133,6 +142,17 @@ export async function registerAllTools(context: vscode.ExtensionContext): Promis
 
   // 18. ADT Discovery Tool
   registerAdtDiscoveryTool(context)
+
+  // 19. SAP UI Testing Tools (9 tools)
+  registerGetTestFolderTool(context)
+  registerGetSapWebGuiUrlTool(context)
+  registerBuildTestIndexTool(context)
+  registerBuildTestIndexDocxTool(context)
+  registerSplitTestCasesTool(context)
+  registerVerifyTestDataUsageTool(context)
+  registerCheckTestDataTool(context)
+  registerBuildEvidenceReportTool(context)
+  registerPlaywrightTestTool(context)
 
   // Initialize heartbeat service (will auto-start if enabled in config)
   const heartbeatService = initializeHeartbeatService(context)
