@@ -16,7 +16,7 @@
   },
   "homepage": "https://marcellourbani.github.io/vscode_abap_remote_fs",
   "engines": {
-    "vscode": "^1.90.0"
+    "vscode": "^1.105.0"
   },
   "categories": [
     "Programming Languages",
@@ -118,6 +118,50 @@
     ],
     "chatSkills": [
       {
+        "path": "./client/dist/media/skills/sap-testing/SKILL.md",
+        "when": "abapfs:testingEnabled"
+      },
+      {
+        "path": "./client/dist/media/skills/analyze-and-plan/SKILL.md",
+        "when": "abapfs:testingEnabled"
+      },
+      {
+        "path": "./client/dist/media/skills/explore-ui/SKILL.md",
+        "when": "abapfs:testingEnabled"
+      },
+      {
+        "path": "./client/dist/media/skills/design-cases/SKILL.md",
+        "when": "abapfs:testingEnabled"
+      },
+      {
+        "path": "./client/dist/media/skills/define-data/SKILL.md",
+        "when": "abapfs:testingEnabled"
+      },
+      {
+        "path": "./client/dist/media/skills/prepare-data/SKILL.md",
+        "when": "abapfs:testingEnabled"
+      },
+      {
+        "path": "./client/dist/media/skills/build-scripts/SKILL.md",
+        "when": "abapfs:testingEnabled"
+      },
+      {
+        "path": "./client/dist/media/skills/run-scripts/SKILL.md",
+        "when": "abapfs:testingEnabled"
+      },
+      {
+        "path": "./client/dist/media/skills/sap-webgui/SKILL.md",
+        "when": "abapfs:testingEnabled"
+      },
+      {
+        "path": "./client/dist/media/skills/sap-webgui-recording/SKILL.md",
+        "when": "abapfs:testingEnabled"
+      },
+      {
+        "path": "./client/dist/media/skills/helpers-reference/SKILL.md",
+        "when": "abapfs:testingEnabled"
+      },
+      {
         "path": "./client/dist/media/skills/clean-abap/SKILL.md"
       },
       {
@@ -143,6 +187,54 @@
       },
       {
         "path": "./client/dist/media/skills/adt-api-discovery/SKILL.md"
+      },
+      {
+        "path": "./client/dist/media/skills/anst-guide/SKILL.md",
+        "when": "abapfs:testingEnabled"
+      }
+    ],
+    "chatAgents": [
+      {
+        "path": "./client/dist/media/agents/anst-enhancement-analyser.agent.md",
+        "when": "abapfs:testingEnabled"
+      }
+    ],
+    "chatAgents": [
+      {
+        "path": "./client/dist/media/agents/anst-enhancement-analyser.agent.md",
+        "when": "abapfs:testingEnabled"
+      },
+      {
+        "path": "./client/dist/media/agents/sap-source-download.agent.md",
+        "when": "abapfs:testingEnabled"
+      },
+      {
+        "path": "./client/dist/media/agents/sap-code-grep.agent.md",
+        "when": "abapfs:testingEnabled"
+      },
+      {
+        "path": "./client/dist/media/agents/sap-enhancement-research.agent.md",
+        "when": "abapfs:testingEnabled"
+      },
+      {
+        "path": "./client/dist/media/agents/sap-findings-reviewer.agent.md",
+        "when": "abapfs:testingEnabled"
+      },
+      {
+        "path": "./client/dist/media/agents/sap-screens-reviewer.agent.md",
+        "when": "abapfs:testingEnabled"
+      },
+      {
+        "path": "./client/dist/media/agents/sap-test-plan-reviewer.agent.md",
+        "when": "abapfs:testingEnabled"
+      },
+      {
+        "path": "./client/dist/media/agents/sap-data-scout.agent.md",
+        "when": "abapfs:testingEnabled"
+      },
+      {
+        "path": "./client/dist/media/agents/sap-task-helper.agent.md",
+        "when": "abapfs:testingEnabled"
       }
     ],
     "breakpoints": [
@@ -2884,6 +2976,31 @@
           "abap-fs"
         ],
         "when": "abapfs:extensionActive && !abapfs:noSapConnected"
+      },
+      {
+        "name": "analyze_anst_enhancements",
+        "displayName": "Analyze ANST Enhancements",
+        "modelDescription": "Read an xlsx exported from the ANST Customer Code screen, classify every object as USER_EXIT, DEFINITE, POTENTIAL, or STANDARD, and write <xlsx_basename>_analysis.md beside the workbook. The output path is fixed and no external Python installation is required.",
+        "canBeReferencedInPrompt": true,
+        "toolReferenceName": "anst-enhancements",
+        "icon": "$(search)",
+        "userDescription": "Classify an ANST enhancement export",
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "xlsxPath": {
+              "type": "string",
+              "description": "Absolute path to the .xlsx file exported from ANST"
+            }
+          },
+          "required": [
+            "xlsxPath"
+          ]
+        },
+        "tags": [
+          "abap-fs"
+        ],
+        "when": "abapfs:extensionActive && abapfs:testingEnabled"
       }
     ],
     "commands": [

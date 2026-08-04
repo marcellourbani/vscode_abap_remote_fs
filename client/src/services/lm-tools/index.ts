@@ -50,6 +50,7 @@ import { registerVerifyTestDataUsageTool } from "./verifyTestDataUsageTool"
 import { registerCheckTestDataTool } from "./checkTestDataTool"
 import { registerBuildEvidenceReportTool } from "./buildEvidenceReportTool"
 import { registerPlaywrightTestTool } from "./playwrightTestTool"
+import { registerAnalyzeAnstEnhancementsTool } from "./analyzeAnstEnhancementsTool"
 import { WebviewManager } from "../webviewManager"
 import { registerHeartbeatTool, initializeHeartbeatService } from "../heartbeat"
 import { registerAdtDiscoveryTool } from "./adtDiscoveryTool"
@@ -153,6 +154,8 @@ export async function registerAllTools(context: vscode.ExtensionContext): Promis
   registerCheckTestDataTool(context)
   registerBuildEvidenceReportTool(context)
   registerPlaywrightTestTool(context)
+  // 20. ANST Enhancement Analysis Tool
+  registerAnalyzeAnstEnhancementsTool(context)
 
   // Initialize heartbeat service (will auto-start if enabled in config)
   const heartbeatService = initializeHeartbeatService(context)
