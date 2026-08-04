@@ -41,6 +41,7 @@ import {
 } from "./abapDebuggerTool"
 import { registerVersionHistoryTool } from "./versionHistoryTool"
 import { registerSubagentConfigTool } from "./subagentConfigTool"
+import { registerAnalyzeAnstEnhancementsTool } from "./analyzeAnstEnhancementsTool"
 import { WebviewManager } from "../webviewManager"
 import { registerHeartbeatTool, initializeHeartbeatService } from "../heartbeat"
 import { registerAdtDiscoveryTool } from "./adtDiscoveryTool"
@@ -133,6 +134,9 @@ export async function registerAllTools(context: vscode.ExtensionContext): Promis
 
   // 18. ADT Discovery Tool
   registerAdtDiscoveryTool(context)
+
+  // 19. ANST Enhancement Analysis Tool
+  registerAnalyzeAnstEnhancementsTool(context)
 
   // Initialize heartbeat service (will auto-start if enabled in config)
   const heartbeatService = initializeHeartbeatService(context)
