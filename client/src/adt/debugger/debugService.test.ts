@@ -258,6 +258,89 @@ describe("DebugService instance", () => {
     })
   })
 
+  describe("post-mortem debugging", () => {
+    test("attach captures post-mortem state from attach response", async () => {
+      client.debuggerAttach.mockResolvedValueOnce({ isPostMortem: true })
+      await service.attach()
+      expect(service.isPostMortem).toBe(true)
+      expect(service.stoppedReason).toBe("exception")
+    })
+
+    test("normal attach is not post-mortem", async () => {
+      client.debuggerAttach.mockResolvedValueOnce({
+        isPostMortem: false,
+        isSteppingPossible: true
+      })
+      await service.attach()
+      expect(service.isPostMortem).toBe(false)
+      expect(service.stoppedReason).toBe("breakpoint")
+    })
+
+    test("debuggee with dump id is post-mortem before attach", () => {
+      const dumped = new (DebugService as any)(
+        "TST",
+        client,
+        listener,
+        makeDebuggee({ DUMPID: "DUMP123" }),
+        ui
+      )
+      expect(dumped.isPostMortem).toBe(true)
+      expect(dumped.stoppedReason).toBe("exception")
+      expect(dumped.stoppedText).toContain("DUMP123")
+    })
+
+    test("step is refused without calling SAP when post-mortem", async () => {
+      client.debuggerAttach.mockResolvedValueOnce({ isPostMortem: true })
+      await service.attach()
+      const events: any[] = []
+      service.addListener((e: any) => events.push(e))
+      await expect(service.debuggerStep("stepOver", 1)).rejects.toThrow(
+        "Stepping is not possible in this state. Inspection only - continue to close the thread"
+      )
+      expect(client.debuggerStep).not.toHaveBeenCalled()
+      expect(ui.ShowError).toHaveBeenCalled()
+      expect(events.length).toBe(0)
+    })
+
+    test("continue on post-mortem thread reports thread exited", async () => {
+      client.debuggerAttach.mockResolvedValueOnce({ isPostMortem: true })
+      await service.attach()
+      const events: any[] = []
+      service.addListener((e: any) => events.push(e))
+      await service.debuggerStep("stepContinue", 1)
+      expect(client.debuggerStep).not.toHaveBeenCalled()
+      expect(events.some((e: any) => e.type === "thread" && e.reason === "exited")).toBe(true)
+    })
+
+    test("jump step throws when post-mortem", async () => {
+      client.debuggerAttach.mockResolvedValueOnce({ isPostMortem: true })
+      await service.attach()
+      await expect(service.debuggerStep("stepJumpToLine", 1, "some-url")).rejects.toThrow()
+      expect(client.debuggerStep).not.toHaveBeenCalled()
+    })
+
+    test("stepping blocked when attach reports stepping impossible", async () => {
+      client.debuggerAttach.mockResolvedValueOnce({ isSteppingPossible: false })
+      await service.attach()
+      await expect(service.debuggerStep("stepOver", 1)).rejects.toThrow(
+        "Stepping is not possible in this state. Inspection only - continue to close the thread"
+      )
+      expect(client.debuggerStep).not.toHaveBeenCalled()
+      expect(ui.ShowError).toHaveBeenCalled()
+    })
+
+    test("step result with isSteppingPossible false blocks further steps", async () => {
+      client.debuggerStep.mockResolvedValueOnce({ isSteppingPossible: false })
+      await service.debuggerStep("stepOver", 1)
+      expect(client.debuggerStep).toHaveBeenCalledTimes(1)
+      await expect(service.debuggerStep("stepOver", 1)).rejects.toThrow(
+        "Stepping is not possible in this state. Inspection only - continue to close the thread"
+      )
+      expect(client.debuggerStep).toHaveBeenCalledTimes(1)
+      expect(ui.ShowError).toHaveBeenCalled()
+    })
+  })
+
   describe("logout", () => {
     test("calls client logout", async () => {
       await service.logout()
