@@ -6,8 +6,9 @@
  *    → wait-dom-stable → dismiss-popups → screenshot. Tests never call these directly.
  *  - Selectors are role + accessible name, scoped to a container (group / dialog / table).
  *    Never CSS classes, never ref numbers, never positional guessing.
- *  - No login. This project assumes the browser is already authenticated (SSO / launcher
- *    or a saved storage state configured in playwright.config.ts).
+ *  - No login here. The session is already authenticated by the time a spec runs: the
+ *    playwright_test tool mints a SAP reentrance ticket and globalSetup turns it into the
+ *    storage state every spec starts from.
  *
  * Helper names are strictly generic — they describe SAP UI mechanics (setField, pickFromValueHelp),
  * never a business domain (no setMaterial, no pickPlant).
@@ -96,14 +97,14 @@ export class SapSession {
   }
 
   /**
-   * Open the SAP WebGUI base URL (from playwright.config.ts) — assumes the browser
-   * session is already authenticated. Does NOT log in.
+   * Open the SAP WebGUI base URL. The session is already authenticated — see the class
+   * comment — so this navigates only.
    */
   async open(): Promise<void> {
     await this.page.goto(this.buildUrl(), { waitUntil: "domcontentloaded" })
     await waitForServer(this.page)
     await dismissKnownPopups(this.page, this.extraInterrupters)
-    await this.recordStep("Opened SAP home (authenticated session assumed)")
+    await this.recordStep("Opened SAP home")
   }
 
   /**

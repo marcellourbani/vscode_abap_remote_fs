@@ -70,7 +70,14 @@ Do not continue until `<TEST_FOLDER>`, `<PROGRAM>`, selected TC-IDs, required ar
 
 > **Say before acting:** "Starting Step 1: verify the externally authenticated SAP browser session."
 
-The browser session Playwright drives must already be authenticated to the target SAP system. If a run fails on a logon screen, ask the user to log in to SAP and re-run; never add credentials or login steps to a spec.
+The browser session is signed in automatically: before running any spec, `playwright_test` mints a SAP reentrance ticket from the ABAP FS connection, uses it to establish a session, and hands the resulting cookies to every spec. Nothing to do here, and never add credentials or login steps to a spec.
+
+Two cases where that does not happen, both expected:
+
+- The connection sets `webGuiAutoLogin: false` — deliberate, for systems reached through a gateway or proxy that authenticates on the user's behalf.
+- The system issues no reentrance ticket. The run continues unauthenticated and will fail on a logon screen; see the diagnosis table in Step 5.
+
+The extension's `ABAP FS` output channel (Debug level) shows `[sso]` lines for the sign-in, including which cookies were saved — the fastest way to tell an auth failure from a test failure.
 
 > **Say before continuing:** "Step 1 completed. Evidence: SAP authentication is available for the target connection. Next: Step 2 — run the selected specs."
 
@@ -150,7 +157,7 @@ Reporting rule for the final handoff: PASS / BLOCKED / FAIL are three separate b
 | Missing test data (seeded)        | "Missing test data..." mentions "requires seeding via TC-YYY"              | Load `prepare-data` skill — Step 2b (run TC-YYY's spec first, with approval, then resolve)                                                                                                                                                            |
 | Fixture generation failed         | "Missing test data..." mentions "fixture generation failed"                | The `generated` requirement's `args` in `.data.md` is broken (often the wrong format/columns). STOP Phase 7 and follow `define-data` to correct the data specification; this is not a SAP data-resolution failure.                                        |
 | Missing/empty fixture file        | "Missing test data..." mentions "does not exist on disk" or "is empty"     | An `expect: "file"` requirement's `static` path was never generated, or a checked-in fixture is missing — provide the file or switch it to `source: generated`                                                                                        |
-| Auth expired                      | Login page appears in screenshot                                           | Ask the user to log in to SAP again, then re-run; never add login logic to a spec                                                                                                                                                                     |
+| Auto-login failed                 | `SAP runtime error detected (logon)`, or a login page in the screenshot     | Auto-login did not produce a usable session. Check the `[sso]` lines in the `ABAP FS` output channel: `AUTO-LOGIN FAILED` names the cause; `no login URL` means the connection has `webGuiAutoLogin: false`. Report it — never add login logic to a spec                                                |
 | Timing                            | An assertion just after a click, or a general timeout                      | This is a bundled-runtime limitation, not something available to patch in the workspace — report it; do not add `page.waitForTimeout()` to the spec as a workaround                                                                                   |
 | Unexpected popup                  | Popup in screenshot, action clicked wrong thing                            | Report the popup title — the bundled known-safe-popup list is not workspace-editable; if it is a real part of the flow, handle it explicitly in the spec via `sap.continueDialog()`/`sap.cancelDialog()`                                               |
 | Element not found by label        | "could not locate a textbox/checkbox/radio/button/tab/column for X" | Load the `sap-webgui` skill's locator failure patterns. The `setField`/`check`/`selectRadio`/`clickButton`/`clickTab`/`setGridCell` errors now list the controls of that kind actually present as **UNVERIFIED suggestions** (with any `technicalName`) — use them to spot the correct accessible name, but confirm it live and fix `_screens.md` (re-explore via the `explore-ui` skill if needed); never blindly swap in a similar-looking name, a wrong control can pass green. Then follow the `build-scripts` skill to rebuild the spec. |

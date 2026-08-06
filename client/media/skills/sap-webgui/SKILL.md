@@ -222,7 +222,7 @@ Current allow-list of auto-dismissed dialogs:
 
 - `License` → Continue — SAP EULA reminder
 - `System messages` → Continue — SM02 broadcasts
-- `Multiple Logon` → "Continue with this logon and end any other logons in the system" — critical for parallel CI
+- `Multiple Logon` → "Continue with this logon and end any other logons in the system" — keeps parallel runs working. **Note it ends the user's OTHER sessions too**, including a WebGUI tab they have open, because tests run under the developer's own SAP user unless a dedicated test user is configured.
 - `Copyright` → Continue — legal notice
 - `Data Privacy` → Accept — GDPR consent on modern S/4
 - `Password` → Cancel — password-expiration prompts; NEVER let a test change credentials silently
@@ -250,7 +250,7 @@ Key behaviour:
 
 - **`dump`** — classic ABAP short dump ("ABAP Runtime Error", "Runtime Errors", "The current ABAP program terminated..."). Full-page replacement, usually red-themed.
 - **`its`** — ITS/ICM protocol error ("500 Internal Server Error", "ITS Error"). Usually appears after a session or network glitch.
-- **`logon`** — session dropped, browser shows a login screen ("SAP NetWeaver Logon", "Please log on again"). Common when the underlying session times out.
+- **`logon`** — session dropped, browser shows a login screen ("SAP NetWeaver Logon", "Please log on again", or any page with a visible password box). Under `playwright_test` this means the automatic reentrance-ticket sign-in did not produce a usable session — check the `[sso]` lines in the `ABAP FS` output channel. It can also mean the session simply timed out mid-run.
 
 When detected, the guard captures evidence and throws with `kind`, title, URL, and a 500-char body snippet — never silently continue.
 
