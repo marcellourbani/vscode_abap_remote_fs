@@ -3,7 +3,6 @@
 "use strict"
 
 const path = require("path")
-const fs = require("fs")
 const TerserPlugin = require("terser-webpack-plugin")
 const CopyPlugin = require("copy-webpack-plugin")
 
@@ -22,103 +21,6 @@ const vendorPatterns = playwrightPackages.map(pkg => ({
     // Debug sidecars and readmes only; licence and notice files are kept for attribution.
     ignore: ["**/*.js.txt", "**/README.md"]
   },
-  noErrorOnMissing: false,
-  force: true
-}))
-
-/**
- * The SAP testing runtime ships as loose CommonJS (see tsconfig.runtime.json), so unlike
- * everything webpack bundles, its `require("js-yaml")` / `require("exceljs")` are resolved
- * by Node at test-run time — from inside the installed extension, which has no node_modules.
- * These packages and their transitive dependencies therefore have to travel with it.
- */
-const runtimeExternals = ["js-yaml", "exceljs"]
-
-const NODE_MODULES = path.join(__dirname, "node_modules")
-
-/**
- * Directory a package resolves to from `fromDir`, or null when it isn't installed.
- * @param {string} name
- * @param {string} fromDir
- * @returns {string | null}
- */
-function packageDir(name, fromDir) {
-  try {
-    return path.dirname(require.resolve(`${name}/package.json`, { paths: [fromDir] }))
-  } catch {
-    // Packages with an "exports" map may refuse a direct package.json request; resolve the
-    // entry point instead and walk up to the directory that owns it.
-    try {
-      let dir = path.dirname(require.resolve(name, { paths: [fromDir] }))
-      while (!fs.existsSync(path.join(dir, "package.json"))) {
-        const parent = path.dirname(dir)
-        if (parent === dir) return null
-        dir = parent
-      }
-      return dir
-    } catch {
-      return null
-    }
-  }
-}
-
-/**
- * Whether `dir` sits directly in the top-level node_modules (handles @scope/name).
- * @param {string} dir
- */
-function isTopLevel(dir) {
-  const parent = path.dirname(dir)
-  return parent === NODE_MODULES || path.dirname(parent) === NODE_MODULES
-}
-
-/**
- * Walk `dependencies` transitively so nothing the runtime loads is left behind.
- *
- * Resolution is CONTEXTUAL — each dependency is resolved from its dependent's own directory,
- * so a package that bundles an older copy of a shared dependency contributes that copy's
- * requirements rather than the hoisted version's. Only top-level packages are returned:
- * nested ones are already inside the parent directory being copied.
- *
- * @param {string[]} roots
- * @returns {Map<string, string>}
- */
-function collectRuntimeDeps(roots) {
-  /** @type {Map<string, string>} */
-  const flat = new Map()
-  const visited = new Set()
-  /**
-   * @param {string} name
-   * @param {string} fromDir
-   */
-  const visit = (name, fromDir) => {
-    // Type-only packages are never require()d at run time; exceljs lists @types/node as a
-    // runtime dependency regardless, and shipping it wastes megabytes.
-    if (name.startsWith("@types/")) return
-    const dir = packageDir(name, fromDir)
-    if (!dir || visited.has(dir)) return
-    visited.add(dir)
-    // Nested copies already travel inside the parent being copied, so only top-level ones
-    // need their own pattern. Keyed by directory, so a package and a differently-versioned
-    // nested copy of it are treated as the distinct things they are.
-    if (isTopLevel(dir)) flat.set(name, dir)
-    const pkg = JSON.parse(fs.readFileSync(path.join(dir, "package.json"), "utf8"))
-    Object.keys(pkg.dependencies || {}).forEach(dep => visit(dep, dir))
-  }
-  roots.forEach(name => visit(name, __dirname))
-  return flat
-}
-
-// Flattened next to the runtime, mirroring how npm hoists them: a nested node_modules inside
-// any copied package comes along with it, so version conflicts still resolve correctly.
-const runtimeDepPatterns = [...collectRuntimeDeps(runtimeExternals)].map(([name, from]) => ({
-  from,
-  to: `runtime/node_modules/${name}`,
-  // Explicit, because the plugin otherwise infers file-vs-directory from the extension and
-  // collapses dotted package names (lodash.isfunction, fs.realpath) into single files.
-  toType: "dir",
-  // bin/ holds CLI entry points that are never require()d as modules — and some are not
-  // valid standalone modules at all (top-level `return`), which trips the minifier.
-  globOptions: { ignore: ["**/bin/**", "**/*.js.map", "**/README.md"] },
   noErrorOnMissing: false,
   force: true
 }))
@@ -185,8 +87,7 @@ const config = {
           noErrorOnMissing: false,
           force: true
         },
-        ...vendorPatterns,
-        ...runtimeDepPatterns
+        ...vendorPatterns
       ]
     })
   ],
@@ -234,9 +135,8 @@ const prodConfig = {
         new TerserPlugin({
           parallel: true,
           // Copied third-party trees, not our own code. Minifying vendored Playwright would
-          // rewrite the paths its runner resolves worker entry points from; the runtime's
-          // dependencies include CLI scripts that aren't even valid standalone modules.
-          exclude: /(media|vendor|runtime[\\/]node_modules)[\\/].*\.js$/,
+          // rewrite the paths its runner resolves worker entry points from.
+          exclude: /(media|vendor)[\\/].*\.js$/,
           terserOptions: {
             keep_classnames: true
           }
@@ -252,4 +152,66 @@ const devConfig = {
   mode: "development",
   infrastructureLogging: { level: "verbose" }
 }
-module.exports = [devConfig, prodConfig]
+
+/**
+ * The SAP testing runtime, as ONE self-contained CommonJS file next to the `.d.ts` files
+ * `build_runtime` emits. The test folder junctions that directory in as `@sap-testing/runtime`.
+ *
+ * Bundled rather than emitted loose because the extension ships no `node_modules`: as loose
+ * CommonJS its `require("js-yaml")`/`require("exceljs")` would be resolved by Node at test-run
+ * time and find nothing. Bundling puts them inside the file instead.
+ *
+ * `@playwright/test` stays external — the runtime uses it only for types, and at run time the
+ * spec's own Playwright instance must be the one in play.
+ *
+ * @type {import('webpack').Configuration}
+ */
+const runtimeConfig = {
+  name: "runtime",
+  target: "node",
+  mode: "production",
+  entry: "./src/services/testing/runtime/index.ts",
+  output: {
+    path: path.resolve(__dirname, "dist", "runtime"),
+    filename: "index.js",
+    libraryTarget: "commonjs2"
+  },
+  externals: { "@playwright/test": "commonjs @playwright/test" },
+  resolve: { extensions: [".ts", ".js"] },
+  plugins: [
+    // index.js/index.d.ts would resolve by convention anyway, but only for a plain `require`
+    // of the directory. TypeScript's node16/nodenext resolution expects a package.json, so a
+    // test folder using a modern moduleResolution would fail to find the types without this.
+    new CopyPlugin({
+      patterns: [
+        {
+          from: "templates/runtime-package.json",
+          to: "package.json",
+          noErrorOnMissing: false,
+          force: true
+        }
+      ]
+    })
+  ],
+  optimization: {
+    // Left readable on purpose: when a helper throws, this file is what appears in the
+    // Playwright stack trace the user has to read.
+    minimize: false
+  },
+  module: {
+    rules: [
+      {
+        test: /\.ts$/,
+        use: [
+          {
+            loader: "ts-loader",
+            // Type checking happens in build_runtime, which must type-check to emit .d.ts.
+            options: { configFile: "tsconfig.runtime.json", transpileOnly: true }
+          }
+        ]
+      }
+    ]
+  }
+}
+
+module.exports = [devConfig, prodConfig, runtimeConfig]
