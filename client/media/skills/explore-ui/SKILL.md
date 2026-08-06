@@ -73,10 +73,11 @@ Load the `sap-webgui-recording` skill and request the smallest focused recording
 
 > **Say before acting:** "Starting Step 2: open the target transaction in SAP WebGUI."
 
-- Call the `get_sap_webgui_url` tool with the target `connectionId` to get the base URL. Follow the `sap-webgui` skill for theme and iframe rules.
-- Append `&~transaction=<TCODE>` (or `&~transaction=SE38` then run the program if there is no dedicated tcode).
-- Open the full URL with your built-in browser tool, then snapshot the selection screen. This is exploration only — no Playwright, no `sap.*` runtime calls.
-- **If the page shows a SAP logon screen instead of the transaction**, the browser session is not authenticated yet. Do NOT type credentials yourself and never put them in an artifact — ask the user to log in to SAP in that browser window and tell you when they're done, then re-`read_page` and continue. If the logon screen reappears mid-exploration, the session timed out; ask the user to log in again.
+- Call the `get_sap_webgui_url` tool with the target `connectionId` **and** the `transaction` you want. Follow the `sap-webgui` skill for theme and iframe rules.
+- Open the URL it returns **exactly as given** with your built-in browser tool — do not append `~transaction` or anything else. When auto-login applies, that URL is a single-use sign-in link and any modification breaks it. For a program with no dedicated tcode, pass `transaction: "SE38"` and run the program from there.
+- Snapshot the selection screen. This is exploration only — no Playwright, no `sap.*` runtime calls.
+- Once that first page is open the browser session is authenticated, so navigate to further transactions by opening the plain WebGUI URL with `&~transaction=<TCODE>`; do not call the tool again for each one.
+- **If the page still shows a SAP logon screen**, auto-login is off for this connection (`webGuiAutoLogin: false`) or the system issued no ticket. Do NOT type credentials yourself and never put them in an artifact — ask the user to log in in that browser window and tell you when they're done, then re-`read_page` and continue. Same if the logon screen reappears mid-exploration.
 
 > **Say before continuing:** "Step 2 completed. Evidence: the fresh initial selection screen is open and captured. Next: Step 3 — map the selection screen."
 

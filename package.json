@@ -2,7 +2,7 @@
   "name": "vscode-abap-remote-fs",
   "displayName": "ABAP remote filesystem",
   "description": "VS Code-based Agentic AI Platform for SAP ABAP Development",
-  "version": "2.7.4",
+  "version": "2.7.5",
   "publisher": "murbani",
   "publishConfig": {
     "access": "restricted",
@@ -459,7 +459,7 @@
       {
         "name": "get_sap_webgui_url",
         "displayName": "Get SAP WebGUI URL",
-        "modelDescription": "Given a connectionId, reads the abapfs.remote settings and returns the SAP WebGUI URL for that system. Call this whenever you need to open a SAP WebGUI URL for browser exploration or to pass to playwright_test.",
+        "modelDescription": "Returns a ready-to-open SAP WebGUI URL for a connection, already signed in when the connection allows auto-login. Pass the target transaction so the URL lands on it — an auto-login URL is single-use and token-matched, so appending query parameters to it will fail. Open the returned URL exactly as given. Once it is open the browser session is authenticated and you can navigate to other transactions normally. Also use this to obtain the URL for browser exploration.",
         "canBeReferencedInPrompt": true,
         "toolReferenceName": "sap-webgui-url",
         "icon": "$(globe)",
@@ -470,6 +470,10 @@
             "connectionId": {
               "type": "string",
               "description": "SAP connection ID (e.g., 'dev100')"
+            },
+            "transaction": {
+              "type": "string",
+              "description": "Optional transaction code to open (e.g., 'SE16N'). Always pass this when you know which transaction you want — never append ~transaction to the returned URL yourself."
             }
           },
           "required": [
