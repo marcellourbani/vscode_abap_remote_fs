@@ -181,12 +181,12 @@ export async function resolveTestData(
         )
         continue
       }
-    } else if (req.source !== "static" && req.source !== "generated" && cache[req.key]) {
+    } else if (req.source !== "static" && cache[req.key]) {
       // Only sql/seeded/user values come from the prepared cache. A `static` value must come
-      // from the spec's staticValue (below), and `generated` is built fresh (above) — never
-      // let a stale cached copy of either SHADOW the spec (editing the .data.md would then
-      // silently have no effect). prepare-data is told not to cache these, but this guards
-      // against an older cache written before that rule.
+      // from the spec's staticValue (below), and `generated` is built fresh (handled above,
+      // so it never reaches here) — never let a stale cached copy SHADOW the spec (editing the
+      // .data.md would then silently have no effect). prepare-data is told not to cache these,
+      // but this guards against an older cache written before that rule.
       value = cache[req.key]
     } else if (req.source === "static" && req.staticValue !== undefined) {
       value = req.staticValue
