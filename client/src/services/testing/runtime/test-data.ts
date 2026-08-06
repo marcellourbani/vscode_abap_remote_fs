@@ -102,7 +102,14 @@ export type DataRequirement = {
    * other resolved value. This module does not run specs itself; a `seeded` key with
    * no cache entry is reported as missing, same as an unresolved `sql` key.
    */
-  seed?: { viaTcId: string }
+  seed?: { viaTcId: string; manualSteps?: string }
+  /**
+   * Cross-key uniqueness: the names of other requirement keys this value MUST differ from.
+   * Declared on BOTH keys of a pair. Not enforced at run time here (resolveTestData handles
+   * one TC at a time); it is enforced during prepare-data by check_test_data, which resolves
+   * the whole program and fails on a collision. Carried in the type so tooling can read it.
+   */
+  distinctFrom?: string[]
 }
 
 export type ResolvedData = Record<string, string>
@@ -174,7 +181,12 @@ export async function resolveTestData(
         )
         continue
       }
-    } else if (cache[req.key]) {
+    } else if (req.source !== "static" && req.source !== "generated" && cache[req.key]) {
+      // Only sql/seeded/user values come from the prepared cache. A `static` value must come
+      // from the spec's staticValue (below), and `generated` is built fresh (above) — never
+      // let a stale cached copy of either SHADOW the spec (editing the .data.md would then
+      // silently have no effect). prepare-data is told not to cache these, but this guards
+      // against an older cache written before that rule.
       value = cache[req.key]
     } else if (req.source === "static" && req.staticValue !== undefined) {
       value = req.staticValue
@@ -362,6 +374,26 @@ async function loadCache(
     } catch {
       // try next
     }
+  }
+
+  // Case-insensitive fallback: the framework writes/reads the results folder using the
+  // system name uppercased, but a hand-written cache may use a different case (e.g. the
+  // lowercase connectionId). On a case-sensitive filesystem (Linux/macOS) that folder is
+  // otherwise never found. Scan test-results/ for a directory matching the system name
+  // ignoring case and try its data.json.
+  const resultsRoot = path.dirname(path.dirname(dir)) // .../tests/<program>/test-results
+  const wantSystem = system.toUpperCase()
+  try {
+    const entries = await fs.readdir(resultsRoot)
+    const match = entries.find(e => e.toUpperCase() === wantSystem)
+    if (match) {
+      const raw = await fs.readFile(path.join(resultsRoot, match, tcId, "data.json"), "utf8")
+      const { _meta, ...values } = JSON.parse(raw)
+      void _meta
+      return values
+    }
+  } catch {
+    // no results root, or no match — fall through
   }
   return {}
 }

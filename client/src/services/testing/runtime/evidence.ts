@@ -173,6 +173,13 @@ export class Evidence {
   }
 
   async finish(status: "pass" | "fail", errorMessage?: string): Promise<void> {
+    // On failure, capture a final screenshot so the last evidence image IS the failing
+    // state. Without this the newest screenshot predates the throwing assertion, which is
+    // what makes a failure "impossible to diagnose from the manifest" (see the alert bug).
+    // Best-effort: the page may already be gone; never let evidence capture mask the real error.
+    if (status === "fail") {
+      await this.step(errorMessage ? `FAILED: ${errorMessage}` : "FAILED").catch(() => {})
+    }
     await this.writeManifest(status, errorMessage)
   }
 

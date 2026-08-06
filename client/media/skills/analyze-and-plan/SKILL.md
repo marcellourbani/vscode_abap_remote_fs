@@ -92,6 +92,14 @@ The editor may hide language-model tools until they are searched for, and smalle
 
 Confirm the entry object against the confirmed system with `search_abap_objects` and `get_abap_object_info`.
 
+**Resolve a transaction code to its executable object first.** When the user names a TRANSACTION (not a program/class), the tcode is not what you download — find the object it runs, in this order, and STOP and ask only if none resolves:
+
+1. `get_abap_object_info` / `search_abap_objects` on the tcode — often resolves the program or class directly.
+2. If needed, read the transaction definition: `SELECT tcode, pgmna, dypno, cinfo FROM tstc WHERE tcode = '<TCODE>'`. A non-blank `pgmna` is the report/module-pool to download.
+3. If `pgmna` is blank, it is a **parameter or OO transaction** — check `TSTCP` (`param` names the target tcode/report behind a parameter transaction) and `TSTCC` (points at the class/method for an OO transaction), and resolve through to the real executable.
+
+**Naming: keep the folder the name the user asked for; record the resolved object separately.** The program folder is `tests/<the-name-the-user-gave>/` (usually the tcode). Do NOT silently rename it to the resolved program. Record BOTH in `_flow.md` frontmatter — `target: <tcode-or-name-user-gave>` and `resolvedProgram: <the report/class you actually downloaded and analysed>` — so every later phase knows the mapping and no chat re-derives it. Download and analyse the RESOLVED object, but label everything under the user-facing name.
+
 **Custom vs standard — decide now and act on it.** From the object name/type, determine whether this is a CUSTOM (Z/Y) object or a STANDARD SAP transaction/program. If it is a **standard** transaction (ME21N, VA01, MIGO, MM43, …), proactively tell the user up front that complete enhancement coverage for standard SAP needs an **ANST trace** — a static call-surface scan under-reports for large standard transactions — and that Step 5.2 will consume it via the `anst-guide` skill. Offer it now so they can start collecting the trace. For a **custom Z/Y** object, Step 5.2 uses `sap-enhancement-research` instead (no ANST needed). You are expected to know these two paths exist and route to the right one without being asked.
 
 **Source download — MANDATORY.** Invoke `sap-source-download` synchronously with `<TEST_FOLDER>`, `<PROGRAM>`, `connectionId`, object name, and type — and pass ONLY those inputs. Do NOT tell it how to work (e.g. "read the source with `get_abap_object_lines` and write the files"); it downloads the snapshot with `abap_download` itself, and instructing otherwise makes it fabricate the snapshot by hand — the opposite of its purpose. Wait for it. Continue only on `PASS`; on `REJECTED`, report its blocker and stop. Record the returned absolute snapshot folder — you pass it to `sap-code-grep` and record it in every artifact.
@@ -129,6 +137,7 @@ Write `tests/<PROGRAM>/test-cases/_flow.md`:
 ---
 target: <PROGRAM>
 targetType: report | class | transaction | process
+resolvedProgram: <the executable report/class actually downloaded — same as target unless target was a tcode; see Step 1>
 analyzedOn: <DATE> <TIME>
 sourceSnapshot: tests/<PROGRAM>/sources/<YYYYMMDD_HHMMSS>/
 ---
@@ -217,14 +226,16 @@ Prepare the enhancement input, then launch in ONE parallel batch:
 1. `sap-code-grep` with program, connectionId, and `Downloaded source folder: <absolute-path>`.
 2. The enhancement agent — Path A `sap-enhancement-research` (custom Z/Y: pass the recursively-enumerated non-Z call surface) or Path B `anst-enhancement-analyser` (standard tcode: load `anst-guide`, obtain the trace xlsx first).
 
-Wait for both. `sap-code-grep` returns exact per-row tables for MESSAGE, branches, AUTHORITY-CHECK, flow-control exits, and log-cell messages. If either output is incomplete or softened to "N+", rerun that one agent with a tighter prompt before continuing.
+Wait for both. `sap-code-grep` returns exact per-row tables for MESSAGE, branches (each classified `candidate`/`infrastructure`), AUTHORITY-CHECK, DB writes (DML), flow-control exits, and log-cell messages. If either output is incomplete or softened to "N+", rerun that one agent with a tighter prompt before continuing.
+
+**Runtime-assembled messages count too.** A `MESSAGE <var> TYPE ...` whose text is built earlier (via `CONCATENATE`/string template/assignment) has no literal on the statement line — `sap-code-grep` traces the variable back and lists each possible resulting text as its own row. When you read the source, confirm each distinct assembled text became its own MESSAGE row and its own candidate; two branches building two different texts into the same variable are two distinct outcomes, not one.
 
 **Sanity-check the grep line numbers before trusting them.** A common failure is the grep agent READING the source and estimating instead of running a real `Grep` — which fabricates line numbers and misses statements. If the branch/message rows all cluster in the first few hundred lines of a much longer include, or a cited line doesn't actually hold that statement, reject the output and rerun `sap-code-grep`, insisting it run an actual `Grep` over the snapshot files and copy the real line numbers. Paste its verified rows into `_findings.md`; never re-number them yourself from a skim.
 
 ### 5.3 SELECT profiling, background artifacts, input file format
 
 - For each SELECT, run a `COUNT(*)` via `execute_data_query` (call `get_abap_sql_syntax` first, `displayMode: "internal"`). Flag `>100k` performance-sensitive; `0` empty base data.
-- Enumerate every background/persisted artifact (JOB_*, IDOC_*, OPEN DATASET, INSERT/UPDATE/DELETE on Z-tables, spool, `cl_bcs`, `SO_*`). Each = a mandatory verification case, and each earns a `## Post-test verification` row in Phase 3.
+- Enumerate every background/persisted artifact (JOB_*, IDOC_*, OPEN DATASET, `INSERT`/`UPDATE`/`MODIFY`/`DELETE` on DB tables, `EXPORT ... TO DATABASE`, spool, `cl_bcs`, `SO_*`). **Include `MODIFY` — it is the most-missed write statement** (it is both a DB upsert and an internal-table operation, so check each one's target: a real DB table is a persisted effect, an in-memory `gt_*`/`lt_*` table is not). `sap-code-grep`'s DB-writes table already classifies these — cross-check it. Each DB-table write = a mandatory verification case, and each earns a `## Post-test verification` row in Phase 3.
 - Record the exact **input file format** the program parses (Excel via `ALSM_EXCEL_TO_INTERNAL_TABLE`/`KCD_EXCEL_OLE_TO_INT_CONVERT`/`gui_upload` with an xls filter ⇒ `.xlsx`; delimited `GUI_UPLOAD` ⇒ CSV/TXT), with expected column count and headers.
 
 ### 5.4 Write `_findings.md` — paste grep tables VERBATIM, never bucket
@@ -250,18 +261,27 @@ Reference: see `_flow.md` (functional flow) and `_units.md` (unit I/O inventory)
 
 ## Branches (one row PER branch — paste sap-code-grep verbatim, do NOT merge)
 
-| # | Unit (from _units.md) | Line | Exact condition | True-path outcome | False/else outcome |
-| - | --------------------- | ---- | --------------- | ----------------- | ------------------ |
+Keep the `Testable?` column from `sap-code-grep` (`candidate` / `infrastructure` + reason). `infrastructure` rows are listed but do NOT feed the target minimum; every `candidate` row does. A guard that raises a MESSAGE or aborts the flow is always `candidate`.
+
+| # | Unit (from _units.md) | Line | Exact condition | Testable? | True-path outcome | False/else outcome |
+| - | --------------------- | ---- | --------------- | --------- | ----------------- | ------------------ |
 
 ## MESSAGE statements (one row per MESSAGE — verbatim text)
 
-| # | Unit | Line | Type (E/W/S/I/A/X) | Class-Num | Verbatim text | Trigger condition |
-| - | ---- | ---- | ------------------ | --------- | ------------- | ----------------- |
+**Give every row a stable `Msg ID` and reuse it everywhere.** This is the exact token Phase 3 puts in `messagesExpected` and the reviewer cross-checks — so define it once, here: for a T100 message use `<CLASS>-<NNN>` (e.g. `ZDUMMYMSG-014`); for an inline literal, a `TEXT-nnn` text-pool message, or a runtime-assembled message with no class/number, use `MSG-<nn>` numbered in table order (`MSG-01`, `MSG-02`, …). Do NOT prefix with the program name — the file is already program-scoped, and a program-prefixed token would not match what Phase 3 writes. One assembled text = one row = one `Msg ID`.
+
+| # | Msg ID | Unit | Line | Type (E/W/S/I/A/X) | Class-Num (or "inline"/"text-pool"/"assembled") | Verbatim text | Trigger condition |
+| - | ------ | ---- | ---- | ------------------ | ----------------------------------------------- | ------------- | ----------------- |
 
 ## AUTHORITY-CHECK (one row each — each = 2 cases: with, without)
 
 | # | Unit | Object | Fields |
 | - | ---- | ------ | ------ |
+
+## DB writes / persisted effects (one row per DB-table write — from sap-code-grep's DML table)
+
+| # | Unit | Line | Statement (INSERT/UPDATE/MODIFY/DELETE) | Target DB table | Verified in Phase 3 by (table to query) |
+| - | ---- | ---- | --------------------------------------- | --------------- | --------------------------------------- |
 
 ## Flow-control exits / Log-cell messages (one row each)
 
@@ -293,17 +313,19 @@ Reference: see `_flow.md` (functional flow) and `_units.md` (unit I/O inventory)
 | Candidate | Category | Derived from (branch/message/auth/behaviour row) | Runnable? |
 | --------- | -------- | ------------------------------------------------ | --------- |
 
-Rules that produce candidates (apply mechanically):
+Rules that produce candidates (apply mechanically). **Count by DISTINCT OBSERVABLE OUTCOME, not by statement** — the most-missed candidates are the ones with no line to point at:
 - 1 per MESSAGE row (fired) + 1 counter-case where meaningful
-- 1 per branch row (each side / each WHEN)
+- 1 per `candidate` branch **for EACH side that has a distinct observable outcome, including a "does nothing" side.** A branch whose false/else path simply leaves the screen unchanged or the rows untouched is STILL a distinct observable outcome and gets its own candidate — this is the single most-skipped case class precisely because nothing in the code marks it. A branch generates zero candidates only when both sides are observationally identical (pure `infrastructure`).
 - 2 per AUTHORITY-CHECK (with, without)
 - 1 per radio/checkbox visibility rule
 - 1 per behavioural rule (overlap truncation, exact-duplicate drop, start-after-end, each boundary)
 - 1 per value-transformation/default rule (blank field → previous value or fixed default, unit/format conversion) — each is a distinct persisted outcome to verify
-- 1 per background artifact
+- 1 per background artifact / DB-table write
 - (Phase 2 adds 1 per discovered runtime control)
 
-**Preliminary target minimum: N** (honest sum of the rows above; no "sandbox-only" filtering). Phase 2 recomputes after discovered controls.
+Example of the do-nothing outcome (dummy): a guard `IF <flag> IS INITIAL. <skip the update>. ENDIF.` — the true path (update happens) and the false path (nothing is written, rows stay as they were) are TWO candidates: one asserts the update, one asserts the table is unchanged.
+
+**Preliminary target minimum: N** (honest sum of the rows above, counting each distinct observable outcome; no "sandbox-only" filtering). Phase 2 recomputes after discovered controls.
 
 ## Runnability triage (annotation only — never reduces the target)
 

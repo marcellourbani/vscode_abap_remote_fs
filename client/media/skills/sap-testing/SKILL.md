@@ -42,7 +42,8 @@ Rules:
 
 - **All artifacts for a program are siblings** under `tests/<PROGRAM>/`. Never scatter `TC-001.md`, `TC-001.spec.ts`, and its screenshots.
 - Raw user recordings live under `recordings/*.recording.ts`, outside `tests/`. They are temporary reference evidence, not phase outputs or runnable specs.
-- Program folder name = the ABAP object name (report / tcode / class), uppercase, no spaces.
+- Program folder name = **the name the user asked for** (report / tcode / class), uppercase, no spaces. When the user names a TRANSACTION, keep the folder as the tcode — do NOT rename it to the program the tcode runs. Phase 1 resolves the tcode to its executable object and records BOTH in `_flow.md` frontmatter (`target:` = the tcode/name, `resolvedProgram:` = the report/class actually analysed), so the mapping is explicit and no later phase re-derives it.
+- The per-connection results folder is the `connectionId` in **UPPERCASE** (`test-results/<CONNECTION-ID>/`, e.g. `DEV-100`). The framework derives this folder by uppercasing the connectionId at run time, so any hand-written cache/results path MUST use the uppercase form — a lowercase folder is silently not found on a case-sensitive filesystem (Linux/macOS).
 - Every `.spec.ts` you write imports from the fixed specifier `@sap-testing/runtime` — never a relative path (there is no `helpers/` folder in the test folder to point at). See `build-scripts` and `helpers-reference` for the full import convention and method reference.
 
 ## Skills, tools, and agents are three different things — know which is which
@@ -116,6 +117,8 @@ These are separate skills, not sub-agents — they activate automatically when r
 
 Use these dedicated agents for their bounded tasks so large enumerations remain complete and verifiable instead of being shortened when context grows.
 
+**Every subagent is ephemeral and one-shot.** A delegated agent runs with its own fresh context, cannot see your conversation, cannot ask you a follow-up, and returns exactly ONE response — there is no back-and-forth. Two consequences: (1) give it everything it needs UP FRONT (all inputs its contract lists); a missing input means it must reject and you re-invoke, costing a full round. (2) Trust its single response to be complete — a good gate agent reports every gap at once, and a good worker reports every value plus any deviation it made, precisely because it knows it gets no second message. If an agent's rejection is vague ("input invalid"), that's an agent bug to raise with the user, because the ephemeral contract requires it to name the exact missing/invalid thing and the fix.
+
 **Delegation discipline — pass inputs, not methods.** When you delegate to a subagent, pass ONLY the inputs its contract specifies (IDs, paths, the objective, e.g. for `sap-source-download`: `<TEST_FOLDER>`, `<PROGRAM>`, `connectionId`, object name, object type). Do NOT tell it HOW to do its job — which tools to use, to read the source with `get_abap_object_lines`, to "create the files," to skip a step. Every subagent already knows its procedure and has its own guardrails, and over-instructing can OVERRIDE those guardrails and make it do the wrong thing: telling `sap-source-download` to "read the code and write the files" makes it fabricate the compliance snapshot by hand instead of downloading it with `abap_download` — the exact opposite of its purpose. Give it the objective and the inputs; let it choose the method. If you believe a subagent's method is wrong, that's a skill bug to raise with the user — never something to "fix" by adding how-to at the call site.
 
 ## One phase per chat is supported
@@ -131,6 +134,8 @@ Each phase skill is a **standalone operating procedure**. A fresh chat must be a
 7. `run-scripts` validates prerequisites, executes, and produces evidence.
 
 The user should only need to name the phase plus the program or TC-ID. Do not ask them to repeat facts already recorded in `_findings.md`, `_index.md`, `_screens.md`, TC frontmatter, or per-system result folders. Do not rely on conversation memory either: disk artifacts are the handoff contract.
+
+**The phases are mostly linear, with ONE expected loop.** A `seeded` data requirement (Phase 4) points at a spec that only exists after Phase 6, so it cannot be resolved on the first Phase 5 pass — Phase 5 marks it `deferred-until-phase-6`, Phase 6 writes the seeding spec, then Phase 5 runs a SECOND time to resolve just the deferred seeded keys before Phase 7. So the order for programs with seeded preconditions is **4 → 5 → 6 → 5 → 7**. This is expected, not rework; each phase's handoff names any deferred seeded key so the next chat knows a second prepare pass is owed.
 
 **Tools can be hidden.** The editor may not surface every SAP Testing tool until it is searched for, and smaller models often fail to find them and improvise instead. At the start of any phase, if a tool that phase needs (always `get_test_folder`; also `playwright_test` for Phase 7, `build_test_index`/`split_test_cases` for Phase 3–4, etc.) is not available, SEARCH your available tools for it by name before proceeding. Never substitute a terminal command or a fabricated result for a tool you couldn't find — say which tool is missing.
 

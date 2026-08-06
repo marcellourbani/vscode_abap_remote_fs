@@ -159,6 +159,36 @@ async function loadCases(testCasesDir: string, warnings: string[]): Promise<Case
             `Every requirement needs a string key that the spec references as data.<key>.`
         )
       }
+      // Key-alignment check: every `<data-key: k>` placeholder in the TC body (state table,
+      // steps, expected result, post-test verification SQL, absence preconditions) MUST have a
+      // matching `requires` entry — otherwise resolveTestData throws only much later, in Phase 6.
+      const declaredKeys = new Set(
+        requires
+          .map((r: { key?: unknown }) => (typeof r.key === "string" ? r.key : ""))
+          .filter(Boolean)
+      )
+      const placeholderKeys = new Set<string>()
+      for (const m of content.matchAll(/<data-key:\s*([A-Za-z0-9_]+)\s*>/g)) {
+        placeholderKeys.add(m[1])
+      }
+      const undeclared = [...placeholderKeys].filter(k => !declaredKeys.has(k))
+      if (undeclared.length) {
+        throw new Error(
+          `${tcId}.md references <data-key: …> placeholder(s) not declared in ${tcId}.data.md: ` +
+            `${undeclared.join(", ")}. Add a matching "requires:" entry (define-data) — otherwise ` +
+            `resolveTestData resolves undefined and the spec fails at run time.`
+        )
+      }
+      const unreferenced = [...declaredKeys].filter(k => !placeholderKeys.has(k))
+      if (unreferenced.length) {
+        // Not an error: post-test-verification-only keys and seeding references are legitimately
+        // declared without a <data-key:> in the body. Surface as a warning to catch typos.
+        warnings.push(
+          `${tcId}.data.md declares key(s) not referenced by any <data-key: …> in ${tcId}.md: ` +
+            `${unreferenced.join(", ")} (expected for post-test-verification-only or seeding keys; ` +
+            `otherwise a typo).`
+        )
+      }
     }
     rows.push({
       tcId,
@@ -314,6 +344,24 @@ export async function buildTestIndex(
   const rows = await loadCases(testCasesDir, warnings)
   if (!rows.length) {
     throw new Error(`No TC-*.md files found under ${testCasesDir}`)
+  }
+
+  // _screens.md is a Phase 2 output that Phases 3–7 all depend on. Nothing else validates it,
+  // yet it must exist with parseable top-of-file frontmatter (target/targetType/exploredOn/
+  // exploredSystem). Surface a warning here rather than let a missing/malformed one surface as
+  // a broken locator much later. (Warning, not a hard error: the index itself is still valid.)
+  const screensPath = path.join(testCasesDir, "_screens.md")
+  const screensRaw = await fs.readFile(screensPath, "utf8").catch(() => null)
+  if (screensRaw === null) {
+    warnings.push(
+      `_screens.md is missing under ${testCasesDir} — explore-ui (Phase 2) must produce it ` +
+        `before scripts can be built. Every later phase depends on it.`
+    )
+  } else if (!parseFrontmatter(screensRaw)) {
+    warnings.push(
+      `_screens.md has no parseable top-of-file YAML frontmatter (expected target/targetType/` +
+        `exploredOn/exploredSystem as the first "---" block). Fix its frontmatter placement.`
+    )
   }
 
   const unspecified = rows.filter(r => r.runnable === "unspecified")

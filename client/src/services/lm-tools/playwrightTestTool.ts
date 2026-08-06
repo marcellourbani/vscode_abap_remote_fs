@@ -121,9 +121,14 @@ async function resolvePlaywrightCli(extPath: string): Promise<string> {
   return path.join(testPkgDir, binRel)
 }
 
+type JsonReportAttachment = { name: string; path?: string; contentType?: string }
 type JsonReportTestResult = {
   status: string
-  error?: { message?: string }
+  error?: {
+    message?: string
+    location?: { file?: string; line?: number; column?: number }
+  }
+  attachments?: JsonReportAttachment[]
   duration?: number
 }
 type JsonReportTest = {
@@ -169,16 +174,36 @@ function summarizeReport(report: JsonReport): string {
           lines.push(
             last.error.message
               .split("\n")
-              .slice(0, 6)
+              .slice(0, 8)
               .map(l => `        ${l}`)
               .join("\n")
           )
+        }
+        // Point at the exact failing line so diagnosis doesn't start from the spec title alone.
+        const loc = last?.error?.location
+        if (loc?.file) {
+          lines.push(`        at ${loc.file}${loc.line ? `:${loc.line}` : ""}`)
+        }
+        // Surface artifact paths (trace zip, failure screenshot, error context) so the model
+        // can open the trace — which contains the HTTP request/response bodies and per-step DOM
+        // snapshots — instead of guessing. Traces live under <root>/.playwright-artifacts/.
+        for (const att of last?.attachments ?? []) {
+          if (att.path && /trace|screenshot|snapshot|\.zip$|\.png$/i.test(att.name + att.path)) {
+            lines.push(`        [${att.name}] ${att.path}`)
+          }
         }
       }
     }
   }
   lines.push("")
   lines.push(`${passed} passed, ${failed} failed (${specs.length} total)`)
+  if (failed > 0) {
+    lines.push(
+      "For each FAIL: open the trace (path above, under <test-folder>/.playwright-artifacts/) " +
+        "for request/response bodies and per-step DOM; the last step + screenshot are in " +
+        "test-results/<CONNECTION-ID>/<TC-ID>/ (connectionId UPPERCASE). Diagnose before rerunning."
+    )
+  }
   return lines.join("\n")
 }
 

@@ -50,7 +50,7 @@ Run these actions in this exact order in every chat:
    If `_index.md` or `_findings.md` is missing/inconsistent, STOP and follow `design-cases` (or `analyze-and-plan` if `_findings.md` itself is missing). If `_screens.md` is missing, STOP and follow `explore-ui`. If an index row says `Data required? = yes` but the `.data.md` sidecar is missing, STOP and follow `define-data` to author it; if it says `no` but a sidecar exists, that is a case-design error — follow `design-cases`.
 5. Call `get_connected_systems` and confirm the target `connectionId`; ask only if ambiguous.
 6. Confirm the ABAP-tools connection is the SAME physical system. Every query passes explicit `connectionId`; never rely on defaults.
-7. Use `<TEST_FOLDER>/tests/<PROGRAM>/test-results/<connectionId>/<TC-ID>/data.json` as the cache path. Do not use a friendly environment label in place of the exact connectionId.
+7. Cache path is `<TEST_FOLDER>/tests/<PROGRAM>/test-results/<CONNECTION-ID>/<TC-ID>/data.json`, where `<CONNECTION-ID>` is the exact connectionId **in UPPERCASE**. This matters: at run time the framework derives the folder from the connectionId uppercased, so a hand-written lowercase folder is never found on a case-sensitive filesystem (Linux/macOS) — it only "works" on Windows by accident. Use the uppercased connectionId, and never a friendly environment label in its place.
 
 Do not continue to Step 1 until `<TEST_FOLDER>`, `<PROGRAM>`, selected TC-IDs, upstream artifacts, and `connectionId` are all resolved.
 
@@ -110,8 +110,10 @@ Rules:
 
 - **NEVER edit the `.data.md`** — it's the reusable spec.
 - **Always call `get_abap_sql_syntax` before executing** — ABAP SQL differs from standard SQL.
+- **Cap rows with `execute_data_query`'s `rowRange`/`maxRows`, never with SQL row-limit syntax.** ADT rejects `FETCH FIRST n ROWS ONLY`, `LIMIT`, `TOP`, `ROWNUM`. If a `.data.md` SQL contains any of them, that is a spec defect — do NOT silently rewrite it and move on; resolve it via the tool params for now AND report the offending `.data.md` so `define-data` corrects the spec (an uncorrected spec fails on the next run and for the next person).
+- **Resolve a `distinctFrom` group together.** When keys declare `distinctFrom` each other, fetch several candidates for the group in one pass and assign DIFFERENT values to each key — do not resolve them independently and hope. Step 6's `check_test_data` enforces distinctness and FAILs if two mutually-`distinctFrom` keys share a value, so verify before saving.
 - If SQL returns 0 rows: STOP. Do not fabricate. Report to user and suggest amending SQL, creating data manually in SAP, or picking a different test case.
-- If multiple rows and `take: first`: pick row 0. Note in the manifest.
+- If multiple rows and `take: first`: pick row 0. Note in the manifest. (Remember `take:` does NOT guarantee distinctness — that's what `distinctFrom` is for.)
 - **ADT (`execute_data_query`) is the only allowed SQL channel.** No SE16N-via-browser, no fabricated values. If `execute_data_query` returns HTTP 401/403/5xx, ABAP FS almost always can't reach the target system — briefly tell the user "ABAP FS can't reach `<connectionId>` (HTTP …). Please check the connection, then reload VS Code to re-establish the connection and retry." (Universal rule 17 in the `sap-testing` overview.) STOP; do not switch tools or fake values.
 
 #### Step 2a — `source: "generated"` requirements need NOTHING from you here
@@ -136,11 +138,12 @@ This is the only Phase 5 path allowed to invoke `playwright_test`, and only beca
 
 1. Read the requirement's `seed.viaTcId` — the TC whose spec, when run, produces the precondition as a side effect.
 2. Confirm that TC's spec exists (`tests/<PROGRAM>/test-scripts/<viaTcId>.spec.ts`) and has itself already been validated (Phase 6/7 complete for it).
-3. **This is a real write. Get explicit user approval before running it**, exactly like any other destructive action this project touches.
-4. Run it: call `playwright_test` with `program`, `tcId: <viaTcId>`, and `connectionId`.
-5. Resolve the requirement's own `sql` (read-back) exactly as you would for a normal `sql` source, and cache the result the normal way (Step 4). From this point on it behaves exactly like a `sql`-sourced value — `resolveTestData` needs no special handling for it at run time, because by the time a test reads it, it's just another cached key.
+3. **If the seeding spec does NOT exist yet, this requirement is DEFERRED, not failed.** Phase 6 (`build-scripts`) writes specs AFTER this phase, so on the first Phase 5 pass a `seed.viaTcId` spec legitimately may not exist. Classify the key `deferred-until-phase-6`, list it in the handoff, and do NOT block the whole program for it — everything else can still be prepared. After Phase 6 has written the seeding spec, run Phase 5 again (a second pass) to resolve just the deferred seeded keys. This 4→5→6→5→7 loop is expected; note it in the handoff so the next chat knows a second prepare pass is owed.
+4. **This is a real write. Get explicit user approval before running it**, exactly like any other destructive action this project touches.
+5. Run it: call `playwright_test` with `program`, `tcId: <viaTcId>`, and `connectionId`.
+6. Resolve the requirement's own `sql` (read-back) exactly as you would for a normal `sql` source, and cache the result the normal way (Step 4). From this point on it behaves exactly like a `sql`-sourced value — `resolveTestData` needs no special handling for it at run time, because by the time a test reads it, it's just another cached key.
 
-If there is no earlier TC that can seed the precondition, the case stays `blocked-by-data` — don't force a `seeded` source onto a case that has no real setup path.
+If the requirement has `seed.manualSteps` instead of a `seed.viaTcId` (a precondition only a different program/BAdI/interface can write — see Step 2c), present those steps to the user and either have them seed it and then resolve the read-back `sql`, or record it blocked with the writer identified. If there is neither a `viaTcId` nor a manual path, the case stays `blocked-by-data` — don't force a `seeded` source onto a case that has no real setup path.
 
 > **Say before continuing:** "Step 2b completed. Evidence: every seeded requirement was resolved, approved for seeding, or marked blocked with a reason. Next: Step 2c — foreign-writer preconditions."
 
@@ -160,7 +163,21 @@ Do the discovery step FIRST, before trying anything:
 
 Trace-first, ask-second is the rule — never try-random-transactions.
 
-> **Say before continuing:** "Step 2c completed. Evidence: foreign-writer preconditions were traced, presented to the user, and either handed a resolution path or marked blocked with the writer identified. Next: finish Step 2."
+> **Say before continuing:** "Step 2c completed. Evidence: foreign-writer preconditions were traced, presented to the user, and either handed a resolution path or marked blocked with the writer identified. Next: Step 2d — absence preconditions."
+
+#### Step 2d — verify `## Absence preconditions` (a case whose premise is that a value does NOT exist)
+
+> **Say before acting:** "Starting Step 2d: verify absence preconditions for any 'value does not exist' case."
+
+Some cases (invalid-key / not-found / unknown-value) are only valid if a specific value is genuinely ABSENT on this system — a value that happens to exist turns the test green for the wrong reason. For each selected TC that has an `## Absence preconditions` section:
+
+1. Read the absence SQL, substituting the case's resolved candidate value (the `static`/`generated` key from its `.data.md`).
+2. Run it via `execute_data_query` on the confirmed connection.
+3. **Zero rows → precondition holds; the case is preparable.** **One or more rows → the value EXISTS on this system: BLOCK the case** with a concrete reason ("`<key>` value `<v>` exists on `<connectionId>`; the 'not found' premise doesn't hold — pick an absent value or change the case"). Do NOT proceed as if it were fine.
+
+This is a Phase 5 responsibility because `check_test_data` deliberately never touches the DB for absence; only a real query here can prove it.
+
+> **Say before continuing:** "Step 2d completed. Evidence: every absence precondition was queried; cases whose value unexpectedly exists are blocked. Next: finish Step 2."
 
 > **Say before continuing:** "Step 2 completed. Evidence: every unique requirement has a resolved value, generated declaration, user request, or explicit blocker. Next: Step 3 — show values for approval."
 
@@ -176,7 +193,7 @@ Print ONE table of resolved values across the whole batch (key → value + descr
 
 > **Say before acting:** "Starting Step 4: save approved per-connection data caches."
 
-Write to `tests/<PROGRAM>/test-results/<connectionId>/TC-XXX/data.json` — one write per TC, even though Step 1a may have resolved several TCs' shared keys together:
+Write to `tests/<PROGRAM>/test-results/<CONNECTION-ID>/TC-XXX/data.json` (connectionId UPPERCASE, per Step 0) — one write per TC, even though Step 1a may have resolved several TCs' shared keys together:
 
 ```json
 {
@@ -190,7 +207,10 @@ Write to `tests/<PROGRAM>/test-results/<connectionId>/TC-XXX/data.json` — one 
 }
 ```
 
-Never include a `generated`-source key in this file (Step 2a).
+**Cache ONLY `sql`- and `seeded`-resolved keys.** Never write a `static` or `generated` key into `data.json`:
+
+- `generated` — built fresh every run (Step 2a); caching it reintroduces the stale-fixture bug it exists to prevent.
+- `static` — the value already lives in the `.data.md` as `staticValue`. If you also cache it, the cache SHADOWS the spec at run time (cache is read before `static`), so editing the `.data.md` later silently has no effect. Leave static values out; `resolveTestData` reads them straight from the spec. (The runtime now also ignores cached entries for `static`/`generated` keys as a backstop, but don't rely on that — just don't write them.)
 
 At runtime the framework picks the cache folder matching the exact `connectionId`. If you prepare data for several landscapes, their folders sit side-by-side:
 
@@ -222,7 +242,7 @@ If the spec does not exist yet, this is not a Phase 5 failure. Mark the check as
 
 Once every TC in the program has been prepared for a system, call the `check_test_data` tool.
 
-This calls the EXACT SAME `resolveTestData()` the Playwright specs use, for every `TC-*.data.md` in the program, and reports every case that still has a missing key, an unresolved `seeded` requirement, or a fixture that failed to build — before anyone spends time launching a real Playwright run against a half-prepared system.
+This calls the EXACT SAME `resolveTestData()` the Playwright specs use, for every `TC-*.data.md` in the program, and reports every case that still has a missing key, an unresolved `seeded` requirement, or a fixture that failed to build — before anyone spends time launching a real Playwright run against a half-prepared system. It also FAILs on a `distinctFrom` violation (two keys that must differ resolved to the same value) and WARNs when a `data.json` holds a `static`/`generated` key it shouldn't (a cached value shadowing the spec). Act on both — re-resolve the distinct pair, or delete the stray cached key.
 
 Read its breakdown, not just the headline count. It reports how many cases were "prepared from data.json cache (sql/seeded)" versus "no cache needed (static/generated only)" versus "resolved from a TESTDATA_* env pin" versus "FAILED". A high "resolvable" number does NOT mean you prepared a lot of data — the no-cache-needed cases would pass on a brand-new system with zero prep. Only the "prepared from data.json cache" count reflects real work you did here; make sure every `sql`/`seeded` case you intended to prepare is in that bucket, not silently sitting in "no cache needed" because its requirement was mis-declared.
 
@@ -252,6 +272,9 @@ Do not rely on the next chat knowing which rows you chose. Persist approved valu
 - ❌ Saving credentials or user names in `data.json`
 - ❌ Running this phase in prod without explicit user consent — SELECTs on huge tables cost real CPU
 - ❌ Writing a `generated`-source key into `data.json` — it will be ignored at best, and stale-fixture bugs at worst if some future code path starts trusting it
+- ❌ Writing a `static`-source key into `data.json` — the cached copy then SHADOWS the `.data.md`'s `staticValue` at run time (cache is read before static), so later edits to the spec silently have no effect. Cache only `sql`/`seeded` keys.
+- ❌ Silently rewriting a `.data.md` SQL that uses `FETCH FIRST`/`LIMIT` and moving on — cap rows with `rowRange`/`maxRows` AND report the spec so `define-data` fixes it.
+- ❌ Resolving `distinctFrom` keys independently instead of assigning distinct values from one candidate set — `check_test_data` will FAIL on a collision.
 - ❌ Running a `seeded` requirement's setup spec without explicit user approval — it is a real write, no different from any other destructive action
 - ❌ Trying random maintenance transactions (SE38 create, SE16N edit, XD02, SM30, SE37 test) for a foreign-writer precondition instead of tracing the real writer first via `find_where_used` (Step 2c) and asking the user how to proceed
 - ❌ Direct `INSERT`/`UPDATE` on an SAP table to seed data, even when authorised — no CDHDR/CDPOS, no source-of-truth match with production; fabricated audit trail
