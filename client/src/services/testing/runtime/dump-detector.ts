@@ -92,6 +92,24 @@ const LOGON_SCREEN_SIGNATURES = [
   "Session ended"
 ]
 
+/**
+ * Structural logon check, because the title alone is not dependable: SAP's WebGUI logon page
+ * is served from the SAME url as the application and on some systems carries a title that
+ * matches none of the signatures above, so a title-only test lets an unauthenticated session
+ * through as if it were healthy.
+ *
+ * A visible password box is the one thing a logon screen always has and an application screen
+ * never does — SAP renders its own password-change dialogs inside the ITS iframe, whereas the
+ * logon page replaces the whole document.
+ */
+async function hasLogonForm(page: Page): Promise<boolean> {
+  try {
+    return await page.locator('input[type="password"]').first().isVisible({ timeout: 1000 })
+  } catch {
+    return false
+  }
+}
+
 async function safeTitle(page: Page): Promise<string> {
   try {
     return (await page.title()) ?? ""
@@ -147,7 +165,16 @@ export async function detectRuntimeError(page: Page): Promise<RuntimeError | nul
   const logonTitleHit = matchAny(title, LOGON_SCREEN_SIGNATURES)
 
   if (!urlHit && !dumpTitleHit && !logonTitleHit) {
-    // 3) Fallback: body-text signatures. Only run this on outer document —
+    // 3) A logon screen that named itself nothing recognisable still has a password box.
+    if (await hasLogonForm(page)) {
+      return {
+        kind: "logon",
+        title: title || "SAP logon screen",
+        url,
+        snippet: (await safeOuterBody(page)).slice(0, 500)
+      }
+    }
+    // 4) Fallback: body-text signatures. Only run this on outer document —
     //    inside-iframe body is expensive to snapshot, and real dumps replace
     //    the whole document.
     const body = await safeOuterBody(page)

@@ -4803,6 +4803,11 @@
                   "maximum": 20,
                   "default": 4
                 },
+                "webGuiAutoLogin": {
+                  "type": "boolean",
+                  "default": true,
+                  "markdownDescription": "Sign in to Webgui automatically using a SAP reentrance ticket, skipping the logon screen. Turn this off when the connection goes through a gateway or proxy that already authenticates you, or when the system does not issue reentrance tickets."
+                },
                 "oauth": {
                   "type": "object",
                   "properties": {

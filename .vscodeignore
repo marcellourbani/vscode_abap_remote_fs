@@ -27,6 +27,8 @@ tslint.json
 .venv
 tmp/**
 **/tmp/**
+# ...but "tmp" is also an npm package the bundled testing runtime loads at test time.
+!client/dist/runtime/node_modules/tmp/**
 server/**
 !server/dist/server.js
 client/dist/*.map

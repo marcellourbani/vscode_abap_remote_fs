@@ -4,6 +4,7 @@ import * as path from "path"
 import { spawn } from "child_process"
 
 import { pickAdtRoot } from "../../config"
+import { withAutoLogin } from "../../adt/sapgui/sapgui"
 import { getTestFolder, getWebGuiUrl } from "./config"
 import { resolveBrowserExecutable } from "./browserResolver"
 
@@ -21,7 +22,9 @@ async function pickWebGuiUrl(): Promise<string | undefined> {
   if (parsed.protocol !== "http:" && parsed.protocol !== "https:") {
     throw new Error(`The SAP WebGUI URL must use HTTP or HTTPS: ${url}`)
   }
-  return parsed.toString()
+  // Codegen records what the user does; starting on a logon screen would put credential
+  // typing into the recording and leave every generated selector one screen out of step.
+  return withAutoLogin(root.uri.authority, parsed.toString())
 }
 
 async function chooseRecordingPath(testFolder: string): Promise<string | undefined> {

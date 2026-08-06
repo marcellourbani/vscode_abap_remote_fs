@@ -5,7 +5,6 @@
  */
 import { ConfigurationTarget, extensions, workspace } from "vscode"
 import * as fs from "fs/promises"
-import { getAuthMethod } from "vscode-abap-remote-fs-sharedapi"
 import { RemoteManager } from "../../config"
 
 const SECTION = "abapfs.testing"
@@ -71,8 +70,5 @@ export async function getWebGuiUrl(connectionId: string): Promise<string> {
 
   const base = conn.url.replace(/\/sap\/bc\/adt.*$/, "").replace(/\/$/, "")
   const params = [`sap-client=${conn.client}`, `sap-language=${conn.language || "EN"}`]
-  // saml2=disabled forces the basic-auth logon screen; on an SSO-authenticated system
-  // it would suppress the very redirect that logs the user in.
-  if (getAuthMethod(conn) === "basic") params.push("saml2=disabled")
   return `${base}/sap/bc/gui/sap/its/webgui?${params.join("&")}`
 }

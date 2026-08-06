@@ -1,0 +1,4 @@
+{
+  "$comment": "Editor-only. VS Code resolves a file to the nearest config literally named tsconfig.json, so without this it type-checks the runtime against client/tsconfig.json — which has no DOM lib, because the extension host is Node. The page.evaluate() callbacks here run in the browser and legitimately need DOM. Extends the real build config so the two can never drift.",
+  "extends": "../../../../tsconfig.runtime.json"
+}
