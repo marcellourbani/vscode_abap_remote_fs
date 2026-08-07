@@ -6,12 +6,13 @@ import { closeSync } from "fs"
 import opn = require("open")
 import { ProgressLocation, extensions } from "vscode"
 import { funWindow as window } from "../../services/funMessenger"
-import { getClient } from "../conections"
+import { getClient, getOrCreateClient } from "../conections"
 import { AbapObject, isAbapClassInclude, getObjectTypeConfig, getAllConfigs } from "abapobject"
 import { commands, Uri, workspace } from "vscode"
 import * as vscode from "vscode"
 import { ADTClient } from "abap-adt-api"
 import { SapGuiPanel } from "../../views/sapgui/SapGuiPanel"
+import { startSsoFormLauncher, SsoLauncher, SsoLauncherOptions } from "./ssoLaunch"
 
 export interface SapGuiCommand {
   type: "Transaction" | "Report" | "SystemCommand"
@@ -96,12 +97,10 @@ export function detectObjectType(command: string): string {
 }
 
 export function getWebGuiUrl(config: RemoteConfig, cmd: SapGuiCommand): string {
-  let baseUrl = config.url.replace(/\/sap\/bc\/adt.*$/, "")
-  if (!baseUrl.startsWith("https://") && !baseUrl.startsWith("http://")) {
-    baseUrl = "https://" + baseUrl
-  } else if (baseUrl.startsWith("http://")) {
-    baseUrl = baseUrl.replace("http://", "https://")
-  }
+  // Keep the configured scheme: the ADT URL may point at a system, gateway or proxy that
+  // only speaks HTTP, and forcing HTTPS makes WebGUI unreachable for those.
+  let baseUrl = config.url.replace(/\/sap\/bc\/adt.*$/, "").replace(/\/$/, "")
+  if (!/^https?:\/\//i.test(baseUrl)) baseUrl = "https://" + baseUrl
 
   let transactionPart = ""
   if (cmd.parameters && cmd.parameters.length > 0) {
@@ -118,6 +117,78 @@ export function getWebGuiUrl(config: RemoteConfig, cmd: SapGuiCommand): string {
 
   const query = `~transaction=${encodeURIComponent(transactionPart)}&sap-client=${config.client}&sap-language=${config.language || "EN"}&saml2=disabled`
   return `${baseUrl}/sap/bc/gui/sap/its/webgui?${query}`
+}
+
+/**
+ * Reentrance ticket for the ADT session, or undefined when the system can't mint one
+ * (SSO2 tickets not enabled, ticket not trusted). Callers fall back to the logon screen.
+ */
+async function tryReentranceTicket(client: ADTClient): Promise<string | undefined> {
+  try {
+    return await client.reentranceTicket()
+  } catch (error) {
+    log("Failed to acquire reentrance ticket:", caughtToString(error))
+    return undefined
+  }
+}
+
+/**
+ * URL that lands the browser on `webguiUrl` already authenticated, or `webguiUrl` itself
+ * when auto-login is off or no ticket can be obtained — in which case the user sees the SAP
+ * logon screen.
+ */
+async function authenticatedWebGuiUrl(
+  config: RemoteConfig,
+  client: ADTClient,
+  webguiUrl: string
+): Promise<string> {
+  // The launcher shuts itself down once the browser fetches it; nothing to dispose here.
+  return (await ssoLoginUrl(config, client, webguiUrl))?.url ?? webguiUrl
+}
+
+/**
+ * Same as {@link authenticatedWebGuiUrl}, resolving the connection and ADT client from a
+ * connection id — for callers that hold a WebGUI URL but no client. Never throws: a URL that
+ * simply lands on the logon screen beats failing to open anything.
+ */
+export async function withAutoLogin(connId: string, webguiUrl: string): Promise<string> {
+  try {
+    const config = await RemoteManager.get().byIdAsync(connId)
+    if (!config) return webguiUrl
+    // Checked before acquiring a client: on an opted-out connection, connecting purely to
+    // build a client we then discard can trigger a password prompt or an SSO round-trip.
+    if (config.webGuiAutoLogin === false) return webguiUrl
+    return await authenticatedWebGuiUrl(config, await getOrCreateClient(connId), webguiUrl)
+  } catch (error) {
+    log("Auto-login unavailable:", caughtToString(error))
+    return webguiUrl
+  }
+}
+
+/**
+ * One-shot loopback URL that authenticates the browser, or undefined when auto-login is off,
+ * no ticket can be minted, or the launcher can't start. Callers decide whether that means
+ * "open the plain URL" or "skip the login step".
+ */
+export async function ssoLoginUrl(
+  config: RemoteConfig,
+  client: ADTClient,
+  webguiUrl: string,
+  opts?: SsoLauncherOptions
+): Promise<SsoLauncher | undefined> {
+  if (config.webGuiAutoLogin === false) return undefined
+
+  const ticket = await tryReentranceTicket(client)
+  if (!ticket) {
+    log("No reentrance ticket available — SAP will show the logon screen.")
+    return undefined
+  }
+  try {
+    return await startSsoFormLauncher(webguiUrl, config.client, ticket, opts)
+  } catch (error) {
+    log("Failed to start the SSO launcher:", caughtToString(error))
+    return undefined
+  }
 }
 
 export async function openInGui(
@@ -157,10 +228,14 @@ export async function openInGui(
           .getConfiguration("abapfs.sapGui")
           .get<boolean>("useIntegratedBrowser", true)
         if (useIntegratedBrowser) {
-          commands.executeCommand("simpleBrowser.api.open", webguiUrl, {
-            viewColumn: vscode.ViewColumn.Beside,
-            preserveFocus: false
-          })
+          commands.executeCommand(
+            "simpleBrowser.api.open",
+            await authenticatedWebGuiUrl(config, client, webguiUrl),
+            {
+              viewColumn: vscode.ViewColumn.Beside,
+              preserveFocus: false
+            }
+          )
           return
         }
 
@@ -187,33 +262,18 @@ export async function openInGui(
           objectParam,
           detectedObjectType
         )
-        panel.loadDirectWebGuiUrl(webguiUrl)
+        // The panel applies auto-login itself.
+        await panel.loadDirectWebGuiUrl(webguiUrl)
         return
       }
 
       if (targetMode === "WEBGUI") {
         const webguiUrl = getWebGuiUrl(config, cmd)
-        if (config.sapGui?.guiType === "WEBGUI_CONTROLLED") {
-          let ticket: string
-          try {
-            ticket = await client.reentranceTicket()
-          } catch (error) {
-            log("Failed to acquire reentrance ticket for controlled WebGUI:", caughtToString(error))
-            window.showErrorMessage("Failed to acquire SAP reentrance ticket. Cannot open WebGUI.")
-            return
-          }
-          const controlledBaseUrl = config.sapGui?.server
-            ? `${config.url.startsWith("https") ? "https" : "https"}://${config.sapGui.server}`
-            : config.url
-
-          const authenticatedUrl = Uri.parse(controlledBaseUrl).with({
-            path: `/sap/public/myssocntl`,
-            query: `sap-mysapsso=${config.client}${ticket}&sap-mysapred=${encodeURIComponent(webguiUrl)}`
-          })
-          commands.executeCommand("vscode.open", authenticatedUrl)
-        } else {
-          commands.executeCommand("vscode.open", Uri.parse(webguiUrl))
-        }
+        const targetUrl =
+          config.sapGui?.guiType === "WEBGUI_CONTROLLED"
+            ? await authenticatedWebGuiUrl(config, client, webguiUrl)
+            : webguiUrl
+        commands.executeCommand("vscode.open", Uri.parse(targetUrl))
         return
       }
 
@@ -269,7 +329,7 @@ export class SapGui {
           client: config.client
         }
 
-        return new SapGui(gui.disabled, guiconf, config.username, config.name, config.language)
+        return new SapGui(!!gui.disabled, guiconf, config.username, config.name, config.language)
       } else {
         // use the config if found, try to guess if not
         const [server = "", port = ""] = (
@@ -393,8 +453,7 @@ export class SapGui {
             detectedObjectType
           )
 
-          // Load direct WebGUI URL (will show login screen immediately)
-          panel.loadDirectWebGuiUrl(url.toString())
+          await panel.loadDirectWebGuiUrl(url.toString())
           break
         case "WEBGUI_UNSAFE":
           commands.executeCommand("vscode.open", url)

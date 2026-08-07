@@ -6,8 +6,9 @@
  *    → wait-dom-stable → dismiss-popups → screenshot. Tests never call these directly.
  *  - Selectors are role + accessible name, scoped to a container (group / dialog / table).
  *    Never CSS classes, never ref numbers, never positional guessing.
- *  - No login. This project assumes the browser is already authenticated (SSO / launcher
- *    or a saved storage state configured in playwright.config.ts).
+ *  - No login here. The session is already authenticated by the time a spec runs: the
+ *    playwright_test tool mints a SAP reentrance ticket and globalSetup turns it into the
+ *    storage state every spec starts from.
  *
  * Helper names are strictly generic — they describe SAP UI mechanics (setField, pickFromValueHelp),
  * never a business domain (no setMaterial, no pickPlant).
@@ -60,6 +61,16 @@ export class SapSession {
   private evidence: Evidence
   private captureSteps: boolean
   private extraInterrupters: Interrupter[]
+  /**
+   * CSS selector for the iframe that actually holds the SAP ITS content. The page has
+   * TWO iframes — `ITSFRAME1` (the SAP application) and `ITSTERMFRAME` ("Blank ITS Page").
+   * Selecting "the first iframe" by DOM order can pick the blank one, which makes every
+   * locator and assertion query an empty document and report `Last seen: []` while the
+   * text is plainly on screen (the headless-vs-headed "impossible to diagnose" alert bug).
+   * We target `#ITSFRAME1` explicitly, and only fall back if it genuinely isn't present.
+   */
+  private contentFrameSelector = "iframe#ITSFRAME1"
+  private contentFrameResolved = false
 
   constructor(
     public readonly page: Page,
@@ -96,14 +107,14 @@ export class SapSession {
   }
 
   /**
-   * Open the SAP WebGUI base URL (from playwright.config.ts) — assumes the browser
-   * session is already authenticated. Does NOT log in.
+   * Open the SAP WebGUI base URL. The session is already authenticated — see the class
+   * comment — so this navigates only.
    */
   async open(): Promise<void> {
     await this.page.goto(this.buildUrl(), { waitUntil: "domcontentloaded" })
     await waitForServer(this.page)
     await dismissKnownPopups(this.page, this.extraInterrupters)
-    await this.recordStep("Opened SAP home (authenticated session assumed)")
+    await this.recordStep("Opened SAP home")
   }
 
   /**
@@ -625,49 +636,149 @@ export class SapSession {
       )
     }
     await this.guarded(`Set grid cell "${columnTitle}" row ${rowIndex} = "${value}"`, async () => {
-      // 1) Locate the column header <th title="..."> and extract table prefix + col index
-      const header = await this.content()
-        .locator(`th[title="${columnTitle}"]`)
-        .first()
-        .evaluate(th => {
-          const match = th.id.match(/^(.+)\[(\d+),(\d+)\]$/)
-          return match ? { prefix: match[1], col: parseInt(match[3], 10) } : null
-        })
-        .catch(() => null)
+      // WebGUI renders editable grids with one of TWO different DOM schemes; try the
+      // classic dynpro table control first, then the CL_GUI_ALV_GRID control-framework grid.
+      if (await this.trySetTableControlCell(columnTitle, rowIndex, value)) return
+      if (await this.trySetAlvGridCell(columnTitle, rowIndex, value)) return
 
-      if (!header) {
-        const hint = await this.suggestControls(this.content(), columnTitle, {
-          selector: "th[title]",
-          kindLabel: "Grid column headers"
-        }).catch(() => "")
-        throw new Error(
-          `setGridCell could not locate a grid column header with title="${columnTitle}".` +
-            hint +
-            ` The column must be visible on screen — SAP hides scrolled-off columns from the DOM ` +
-            `(reset the layout or scroll it into view). Verify the column title in _screens.md. ` +
-            `Do NOT blindly swap in a similar name.`
-        )
-      }
-
-      const cellId = `${header.prefix}[${rowIndex},${header.col}]`
-
-      // 2) Real Playwright click activates the cell editor. In-page DOM .click() on the
-      //    td does NOT trigger SAP's event pipeline reliably — we need a full mouse event.
-      const cell = this.content().locator(`[id="${cellId}"]`)
-      if (!(await cell.count().catch(() => 0))) {
-        throw new Error(
-          `setGridCell: no cell with id "${cellId}" — row ${rowIndex} probably does not exist ` +
-            `(the grid may have fewer visible rows than requested).`
-        )
-      }
-      await cell.click()
-
-      // 3) SAP renders <input id="<cellId>_c"> inside the same td after the click.
-      //    Wait for it, then fill (fill clears + types atomically).
-      const input = this.content().locator(`[id="${cellId}_c"]`)
-      await input.waitFor({ state: "visible", timeout: 5_000 })
-      await input.fill(value)
+      const hint = await this.suggestControls(this.content(), columnTitle, {
+        selector: "th[title], [id*='#0,'], [id*='[0,']",
+        kindLabel: "Grid column headers"
+      }).catch(() => "")
+      throw new Error(
+        `setGridCell could not locate an editable grid column "${columnTitle}" in either the ` +
+          `dynpro table-control scheme (th[title], <prefix>[r,c]) or the CL_GUI_ALV_GRID scheme ` +
+          `(<prefix>#r,c). ` +
+          hint +
+          ` The column must be visible on screen — SAP removes scrolled-off columns from the DOM ` +
+          `(reset the layout or scroll it into view). Verify the column title in _screens.md. If ` +
+          `the grid uses a renderer neither scheme matches, this is a runtime gap to report — do ` +
+          `NOT hand-roll a raw fill(); a raw fill() skips the commit event and the cell reverts ` +
+          `silently (green on empty data).`
+      )
     })
+  }
+
+  /**
+   * Dynpro table-control cell: header `<th title="Col">` with id `<prefix>[0,col]`, cell
+   * `<prefix>[row,col]`, editor `<prefix>[row,col]_c`. Returns false (not an error) if this
+   * screen isn't a table control, so the caller can try the ALV-grid scheme instead.
+   */
+  private async trySetTableControlCell(
+    columnTitle: string,
+    rowIndex: number,
+    value: string
+  ): Promise<boolean> {
+    const header = await this.content()
+      .locator(`th[title="${columnTitle}"]`)
+      .first()
+      .evaluate(th => {
+        const match = th.id.match(/^(.+)\[(\d+),(\d+)\]$/)
+        return match ? { prefix: match[1], col: parseInt(match[3], 10) } : null
+      })
+      .catch(() => null)
+    if (!header) return false
+
+    const cellId = `${header.prefix}[${rowIndex},${header.col}]`
+    const cell = this.content().locator(`[id="${cellId}"]`)
+    if (!(await cell.count().catch(() => 0))) {
+      throw new Error(
+        `setGridCell: no cell with id "${cellId}" — row ${rowIndex} probably does not exist ` +
+          `(the grid may have fewer visible rows than requested).`
+      )
+    }
+    // Real Playwright click activates the editor — an in-page DOM .click() does not trigger
+    // SAP's event pipeline reliably.
+    await cell.click()
+    const input = this.content().locator(`[id="${cellId}_c"]`)
+    await input.waitFor({ state: "visible", timeout: 5_000 })
+    await input.fill(value)
+    return true
+  }
+
+  /**
+   * CL_GUI_ALV_GRID cell: header/cell ids use a `#`-separated scheme (`<prefix>#<row>,<col>`,
+   * header row is row 0), the header carries the column label as TEXT (usually no `title`),
+   * and the editable input id is `<cellId>#if`. Unlike a table control, the ALV grid only
+   * reads the typed value into its internal buffer on a change/blur/Enter event — a bare
+   * fill() leaves the buffer empty and the cell reverts on commit. So we fill, then commit
+   * with a real Tab, then VERIFY the committed value stuck (throwing loudly on mismatch so a
+   * failed commit can never pass green on empty data). Returns false if this isn't an ALV grid.
+   */
+  private async trySetAlvGridCell(
+    columnTitle: string,
+    rowIndex: number,
+    value: string
+  ): Promise<boolean> {
+    // Find the header cell (row 0) whose visible text equals the column title, and read the
+    // grid prefix + column index from its id (`<prefix>#0,<col>`).
+    const header = await this.content()
+      .locator("[id]")
+      .evaluateAll((els, title) => {
+        for (const el of els) {
+          const m = el.id.match(/^(.+)#(\d+),(\d+)$/)
+          if (!m || m[2] !== "0") continue
+          const text = (el.textContent || "").trim().replace(/\s+/g, " ")
+          if (text === title) return { prefix: m[1], col: parseInt(m[3], 10) }
+        }
+        return null
+      }, columnTitle)
+      .catch(() => null)
+    if (!header) return false
+
+    const cellId = `${header.prefix}#${rowIndex},${header.col}`
+    const cell = this.content().locator(`[id="${cellId}"]`)
+    if (!(await cell.count().catch(() => 0))) {
+      throw new Error(
+        `setGridCell: no ALV cell with id "${cellId}" — row ${rowIndex} probably does not ` +
+          `exist (the grid may have fewer visible rows than requested).`
+      )
+    }
+    await cell.click()
+    const input = this.content().locator(`[id="${cellId}#if"]`)
+    await input.waitFor({ state: "visible", timeout: 5_000 })
+    await input.fill(value)
+    // Commit: a real keypress fires the change/blur the ALV grid listens for. Then let the
+    // server round-trip settle before reading back.
+    await input.press("Tab").catch(() => {})
+    await waitForServer(this.page)
+    await this.verifyGridCellCommitted(cellId, value)
+    return true
+  }
+
+  /**
+   * After an ALV-grid commit, confirm the cell now renders the value we set. A mismatch means
+   * the value did NOT commit (the classic silent-revert-to-0.00). We throw rather than let the
+   * test proceed on empty data. If the cell text can't be read back at all, we also throw — an
+   * unverifiable commit must not be treated as success (report it as a runtime gap instead).
+   */
+  private async verifyGridCellCommitted(cellId: string, value: string): Promise<void> {
+    const rendered = await this.content()
+      .locator(`[id="${cellId}"]`)
+      .textContent()
+      .then(t => (t ?? "").trim().replace(/\s+/g, " "))
+      .catch(() => null)
+    if (rendered === null) {
+      throw new Error(
+        `setGridCell: could not read back ALV cell "${cellId}" to confirm the value committed. ` +
+          `An unverifiable commit is treated as a failure so it can't pass green on empty data — ` +
+          `report this grid as a runtime gap (helpers-reference) rather than working around it.`
+      )
+    }
+    const want = value.trim()
+    // Loose match: SAP may reformat (e.g. "8" → "8.00", leading-zero padding). Accept when
+    // either contains the other; reject a clear mismatch (empty cell, or unrelated text).
+    const ok =
+      want === "" || rendered.includes(want) || (rendered !== "" && want.includes(rendered))
+    if (!ok) {
+      throw new Error(
+        `setGridCell: value did not commit into ALV cell "${cellId}". Expected it to render ` +
+          `"${value}" but the cell shows "${rendered}". The fill likely did not fire the grid's ` +
+          `change/blur event — this is exactly the silent-revert failure setGridCell exists to ` +
+          `catch. Do NOT hand-roll a raw fill(); report as a runtime gap if setGridCell can't ` +
+          `commit on this grid.`
+      )
+    }
   }
 
   /** F4 value help: open, pick a row by text, click OK. Compound action. */
@@ -731,6 +842,7 @@ export class SapSession {
    * We match either. Also matches role=status. ponytail: same regex both places.
    */
   async expectAlert(text: string | RegExp) {
+    await this.ensureContentFrame()
     const pattern = typeof text === "string" ? new RegExp(text, "i") : text
     const deadline = Date.now() + 15_000
     let lastSeen: string[] = []
@@ -750,10 +862,29 @@ export class SapSession {
       }
       await this.page.waitForTimeout(300)
     }
-    throw new Error(`Alert did not match ${pattern}. Last seen: ${JSON.stringify(lastSeen)}`)
+    // Capture evidence of the failing state BEFORE throwing — otherwise the last screenshot
+    // predates the assertion and the run is undiagnosable (the exact headed/headless alert
+    // bug). Also report WHICH frame we queried and how many message elements existed there:
+    // an empty `Last seen` combined with a resolved frame points at frame/scope, not timing.
+    const frameNote = `frame="${this.contentFrameSelector}"${this.contentFrameResolved ? "" : " (unresolved)"}`
+    await this.recordStep(
+      `Alert NOT matched: ${pattern} (${frameNote}; last seen: ${JSON.stringify(lastSeen)})`
+    ).catch(() => {})
+    throw new Error(
+      `Alert did not match ${pattern}. Last seen: ${JSON.stringify(lastSeen)}. ` +
+        `Queried ${frameNote}. An EMPTY "last seen" while the message is on screen usually ` +
+        `means the wrong iframe/scope was queried, not a timing gap — do not add a sleep.`
+    )
   }
 
-  async expectNoAlert() {
+  /**
+   * Assert that no status/alert message is shown. Pass a `pattern` to assert THAT specific
+   * message is absent (the reliable form for "message M is NOT shown"); the bare form fails
+   * on ANY status text — including a leftover message from the previous round-trip — so it
+   * is only meaningful immediately after a round-trip that should have cleared the bar.
+   */
+  async expectNoAlert(pattern?: string | RegExp) {
+    await this.ensureContentFrame()
     const roleTexts = await this.content()
       .locator('[role="alert"], [role="status"]')
       .allTextContents()
@@ -763,6 +894,15 @@ export class SapSession {
       .allTextContents()
       .catch(() => [] as string[])
     const all = [...roleTexts, ...barTexts].filter(t => t.trim())
+    if (pattern) {
+      const re = typeof pattern === "string" ? new RegExp(pattern, "i") : pattern
+      const offending = all.filter(t => re.test(t))
+      if (offending.length) {
+        throw new Error(`Expected no alert matching ${re} but found: ${offending.join(" | ")}`)
+      }
+      await this.recordStep(`No alert matching ${re} (as expected)`)
+      return
+    }
     if (all.length) throw new Error(`Expected no alert but found: ${all.join(" | ")}`)
     await this.recordStep("No alert (as expected)")
   }
@@ -907,6 +1047,7 @@ export class SapSession {
   // ---------- internals ----------
 
   private async guarded(description: string, fn: () => Promise<void>): Promise<void> {
+    await this.ensureContentFrame()
     await dismissKnownPopups(this.page, this.extraInterrupters)
     await fn()
     await waitForServer(this.page)
@@ -945,7 +1086,51 @@ export class SapSession {
    * ponytail: single method, all helpers call it. Upgrade: cache after first non-zero probe.
    */
   content(): FrameLocator {
-    return this.page.frameLocator("iframe").first()
+    return this.page.frameLocator(this.contentFrameSelector)
+  }
+
+  /**
+   * Resolve, once, which iframe carries the SAP ITS content. Prefer `#ITSFRAME1`; if that
+   * id isn't present on this system, pick the first iframe that is NOT the blank
+   * `ITSTERMFRAME`; only if neither can be determined, fall back to the first iframe.
+   *
+   * Called at the start of every `guarded()` action, so by the time any assertion runs
+   * (a spec always performs an action before asserting) the correct frame is already
+   * selected. Cheap and idempotent after the first resolution.
+   */
+  private async ensureContentFrame(): Promise<void> {
+    if (this.contentFrameResolved) return
+    try {
+      const its1 = await this.page
+        .locator("iframe#ITSFRAME1")
+        .count()
+        .catch(() => 0)
+      if (its1 > 0) {
+        this.contentFrameSelector = "iframe#ITSFRAME1"
+        this.contentFrameResolved = true
+        return
+      }
+      const nonBlank = await this.page
+        .locator("iframe:not(#ITSTERMFRAME)")
+        .count()
+        .catch(() => 0)
+      if (nonBlank > 0) {
+        this.contentFrameSelector = "iframe:not(#ITSTERMFRAME)"
+        this.contentFrameResolved = true
+        return
+      }
+      const any = await this.page
+        .locator("iframe")
+        .count()
+        .catch(() => 0)
+      if (any > 0) {
+        this.contentFrameSelector = "iframe"
+        this.contentFrameResolved = true
+      }
+      // If no iframe at all yet (page still loading), leave unresolved and try again next action.
+    } catch {
+      // Leave the default (#ITSFRAME1) in place; do not mark resolved so a later action retries.
+    }
   }
 
   // ---------- escape hatches ----------

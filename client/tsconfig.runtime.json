@@ -1,5 +1,5 @@
 {
-  "$comment": "Emits the SAP testing runtime as loose CommonJS + .d.ts files. It cannot be webpacked: the test folder junctions it in as @sap-testing/runtime, and both the TypeScript language service and Playwright's own transform have to read it as a normal package.",
+  "$comment": "Type-checks the SAP testing runtime and emits its .d.ts files into dist/runtime, beside the index.js webpack bundles there (see the 'runtime' config in webpack.config.js). Kept separate from the client tsconfig because this code runs in a browser via page.evaluate() and so needs the DOM lib.",
   "compilerOptions": {
     "module": "commonjs",
     "target": "ES2022",

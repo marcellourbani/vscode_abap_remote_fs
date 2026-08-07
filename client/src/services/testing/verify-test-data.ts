@@ -113,6 +113,18 @@ export async function verifyTestDataUsage(
   const usedNotDeclared = used.filter(k => !declaredSet.has(k))
   const declaredNotUsed = declared.filter(k => !usedSet.has(k))
 
+  // A declared key the SPEC doesn't use is not automatically stale — it may be consumed
+  // outside the spec: as a `<data-key: k>` placeholder in the TC's `## Post-test verification`
+  // SQL, its `## Absence preconditions`, or as a seeding reference. Read the TC-XXX.md and
+  // treat any declared-not-used key that IS referenced there as legitimate (informational),
+  // and warn only about keys referenced NOWHERE.
+  const tcMdPath = path.resolve(testFolder, "tests", program, "test-cases", `${tcId}.md`)
+  const tcMdContent = await fs.readFile(tcMdPath, "utf8").catch(() => "")
+  const tcBodyKeys = new Set<string>()
+  for (const m of tcMdContent.matchAll(/<data-key:\s*([A-Za-z0-9_]+)\s*>/g)) tcBodyKeys.add(m[1])
+  const usedElsewhere = declaredNotUsed.filter(k => tcBodyKeys.has(k))
+  const trulyUnused = declaredNotUsed.filter(k => !tcBodyKeys.has(k))
+
   const messages: string[] = []
   let ok = true
   if (usedNotDeclared.length) {
@@ -122,9 +134,17 @@ export async function verifyTestDataUsage(
         usedNotDeclared.join(", ")
     )
   }
-  if (declaredNotUsed.length) {
+  if (usedElsewhere.length) {
     messages.push(
-      `WARNING: ${tcId}.data.md declares keys the spec never uses: ` + declaredNotUsed.join(", ")
+      `INFO: ${tcId}.data.md declares keys the spec doesn't use but ${tcId}.md references ` +
+        `(post-test verification / absence precondition / seeding) — these are expected: ` +
+        usedElsewhere.join(", ")
+    )
+  }
+  if (trulyUnused.length) {
+    messages.push(
+      `WARNING: ${tcId}.data.md declares keys used neither in the spec nor in ${tcId}.md: ` +
+        trulyUnused.join(", ")
     )
   }
   if (ok) {

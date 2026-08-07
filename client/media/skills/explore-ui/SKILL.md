@@ -73,10 +73,11 @@ Load the `sap-webgui-recording` skill and request the smallest focused recording
 
 > **Say before acting:** "Starting Step 2: open the target transaction in SAP WebGUI."
 
-- Call the `get_sap_webgui_url` tool with the target `connectionId` to get the base URL. Follow the `sap-webgui` skill for theme and iframe rules.
-- Append `&~transaction=<TCODE>` (or `&~transaction=SE38` then run the program if there is no dedicated tcode).
-- Open the full URL with your built-in browser tool, then snapshot the selection screen. This is exploration only — no Playwright, no `sap.*` runtime calls.
-- **If the page shows a SAP logon screen instead of the transaction**, the browser session is not authenticated yet. Do NOT type credentials yourself and never put them in an artifact — ask the user to log in to SAP in that browser window and tell you when they're done, then re-`read_page` and continue. If the logon screen reappears mid-exploration, the session timed out; ask the user to log in again.
+- Call the `get_sap_webgui_url` tool with the target `connectionId` **and** the `transaction` you want. Follow the `sap-webgui` skill for theme and iframe rules.
+- Open the URL it returns **exactly as given** with your built-in browser tool — do not append `~transaction` or anything else. When auto-login applies, that URL is a single-use sign-in link and any modification breaks it. For a program with no dedicated tcode, pass `transaction: "SE38"` and run the program from there.
+- Snapshot the selection screen. This is exploration only — no Playwright, no `sap.*` runtime calls.
+- Once that first page is open the browser session is authenticated, so navigate to further transactions by opening the plain WebGUI URL with `&~transaction=<TCODE>`; do not call the tool again for each one.
+- **If the page still shows a SAP logon screen**, auto-login is off for this connection (`webGuiAutoLogin: false`) or the system issued no ticket. Do NOT type credentials yourself and never put them in an artifact — ask the user to log in in that browser window and tell you when they're done, then re-`read_page` and continue. Same if the logon screen reappears mid-exploration.
 
 > **Say before continuing:** "Step 2 completed. Evidence: the fresh initial selection screen is open and captured. Next: Step 3 — map the selection screen."
 
@@ -90,6 +91,7 @@ Compare the snapshot to the predicted inputs in `_findings.md`:
 - **Note any field/button/checkbox NOT in the prediction** — from missed includes, PBO logic, user-exits.
 - Record actual group headings as they render.
 - For each control, capture the **accessible name** Playwright will match (often, but not always, the visible label — record both when they differ, per `sap-webgui`).
+- **Controls with NO accessible name — capture the technical name from the live DOM, do NOT invent a positional locator.** Some inputs (a header field, certain ALV editors) render with no usable accessible name. For each, read the input's `lsdata` attribute in the snapshot: its `SID` string ends with the DDIC field name (`.../ctxt<TABLE>-<FIELD>`), and that trailing `-<FIELD>` is the stable technical name Playwright uses via `{ technicalName: "<FIELD>" }` (see `sap-webgui`). Record it in `_screens.md` as `technicalName: <FIELD>` beside the control. The browser is the direct source — read it here, not from ADT later. A control that has NEITHER an accessible name NOR a discoverable technical name is a genuine blocker: STOP and ask the user or request a recording — never fall back to an XPath/DOM-structure or positional locator (banned everywhere, and it breaks on every re-render).
 
 > **Say before continuing:** "Step 3 completed. Evidence: predicted and newly discovered selection controls are mapped with browser labels and groups. Next: Step 4 — record initial state."
 
@@ -133,6 +135,7 @@ Fill only what's required (use realistic values discovered via ABAP SQL if neede
 
 - ALV grid columns: dump the column headers exactly as they render.
 - **Toolbar buttons** — enumerate every button, tooltip (`title`/`aria-label`), menu entry. GUI-status buttons live here — the KEY discovery step.
+- **Overflow toolbar (`>>`) — expand it before enumerating.** When a toolbar is too narrow, ITS hides the extra buttons (often including Execute/F8) behind a `>>` "more" chevron, and those hidden buttons are ABSENT from the accessibility snapshot until you expand it. Click `>>`, re-`read_page`, and record the revealed buttons, tagging each `— toolbar (overflow)`. You do NOT need to reproduce the `>>` click in a spec — the runtime's `clickButton`/`execute` locate overflowed buttons by `title` even when visually collapsed — but you MUST record the buttons so Phase 6 knows they exist. (If you skip the expand, you'll wrongly conclude a button like Execute is missing.)
 - Any "Simulate", "Post", "Refresh", "Export", "Send", "Delete", "Change" = a candidate case; record the button's accessible name.
 - Bottom-of-screen buttons and menu-bar entries.
 - For editable ALV grids and header tab strips, follow `sap-webgui` to record column `title`s and exact tab labels.
@@ -153,6 +156,7 @@ Fill only what's required (use realistic values discovered via ABAP SQL if neede
 - **Destructive** (Post, Submit, Delete, Send, Save, Approve, Release, Confirm, Cancel Document, Reverse, Reset, Reprocess, Retry, Update, Execute in Update/Live mode): DO NOT CLICK without user approval. Note it, flag "destructive — needs user decision". If in doubt about a button, treat it as destructive; there is no cost to asking, and there is a real cost to guessing wrong.
 - Execute itself becomes destructive whenever the selection screen is in an update/live/post mode (see Step 5 destructive-mode gate) — the same approval rule applies.
 - Explore each reachable dialog to depth 1; snapshot its buttons/fields/gridcells. Close via the dialog's Cancel button — NEVER keyboard Escape (it exits the whole transaction).
+- **Dialog-level Cancel vs screen-level Back/Exit/Cancel — they are NOT the same, and confusing them is a known trap.** A dialog's own `Cancel` button just closes that dialog and returns to the screen underneath — safe. But the main-window toolbar `Back` (F3), `Exit` (F15), and `Cancel` (F12) mean "leave THIS screen/transaction," and where they land depends entirely on the transaction's PF-STATUS — sometimes the previous screen, sometimes SAP Easy Access, sometimes a save-prompt. After any screen-level Back/Exit/Cancel you MUST re-`read_page` to see where you actually landed before doing anything else — never assume. Record, per screen, what each of Back/Exit/Cancel does (the observed landing screen), because Phase 6 teardown and inter-case navigation depend on it. If one lands somewhere unexpected, recover by opening the plain WebGUI URL with `&~transaction=<TCODE>` rather than clicking around.
 - Record any unexpected popup (session warnings, license notices) by title; if truly safe-to-dismiss it may belong in `KNOWN_INTERRUPTERS` (see `helpers-reference`).
 
 > **Say before continuing:** "Step 6 completed. Evidence: safe controls probed, dialogs mapped, destructive controls listed unactivated, popups recorded. Next: Step 7 — write _screens.md."
@@ -162,6 +166,8 @@ Fill only what's required (use realistic values discovered via ABAP SQL if neede
 > **Say before acting:** "Starting Step 7: write the authoritative screens map."
 
 **Gate — do not write a single line until you have real snapshots.** Every control, label, ALV column, and initial state you record MUST come from a `read_page` accessibility snapshot you captured in THIS browser session. Before writing, confirm you actually opened and snapshotted each screen you're about to describe. If you have not opened the browser for a screen, you are about to derive it from source — STOP and go back to Step 2/5 and observe it. This is the concrete check that prevents the source-derived `_screens.md` this phase exists to stop.
+
+**Frontmatter is mandatory and must be the very first bytes of the file** — a single `---`-delimited YAML block with `target`, `targetType`, `exploredOn`, `exploredSystem`, before any heading, never inside a code fence (universal rule 13). Downstream phases and `build_test_index` read it; a `_screens.md` without parseable top-of-file frontmatter is rejected. Know this before you start writing, not after the reviewer flags it.
 
 **Unobserved screens: honest blank, never a source guess.** For a screen you genuinely could not reach (needs a valid upload file you don't have, or a native OS dialog — see below), write its `## Screen: <name>` heading with **NOT observed**, the concrete reason, and what's needed to observe it — and NOTHING ELSE. Do NOT fill in a guessed control/column list "expected to match" another screen or inferred from `cl_salv_table`/the source: a plausible-looking guess is worse than an honest blank because Phase 6 will trust it and write broken specs. Explicitly flag each unobserved screen in the handoff as needing a live pass before its cases can be scripted.
 
@@ -221,7 +227,9 @@ Rules:
 
 - EVERY observed control included ONCE, with `initial:` (empty, literal value, CHECKED/UNCHECKED, SELECTED/not) — never omit initial state.
 - Use the EXACT on-screen label / accessible name Playwright will see. ABAP variable names, MODIF IDs, and source snippets do NOT belong here.
-- Mark exploration-discovered controls with `— NEW: not in source`.
+- **Name each screen by its observable on-screen TITLE — never by a dynpro screen number or the program/report/tcode name.** `## Screen: <title as it renders>` (e.g. `## Screen: Item overview (after Execute)`), NOT `## Screen 0200` or `## Screen: SAPMZDUMMY 0100`. Dynpro numbers and program names come from source, mean nothing to Playwright, and are exactly what the reviewer FAILs. If you need to trace a screen back to its dynpro/source, keep that mapping in `_findings.md`, not here.
+- For a nameless control, record `technicalName: <FIELD>` (the DDIC field from its `lsdata` SID, per Step 3) — never a positional/XPath locator.
+- Mark exploration-discovered controls with `— NEW: not in source`; mark overflow-toolbar buttons `— toolbar (overflow)`.
 - Mark each dialog with its trigger (which button/action opens it).
 - Apply the full `_screens.md` control-recording rules from `sap-webgui`, including visible-label-versus-accessible-name and file-textbox-versus-native-file-input.
 - Never derive `_screens.md` from ABAP source alone.
@@ -264,6 +272,8 @@ Make on-disk state sufficient for a fresh `design-cases` chat:
 
 - ❌ Deriving `_screens.md` from ABAP source instead of opening the browser — the labels won't match the accessible names Playwright uses, and the file is worthless to Phase 6.
 - ❌ Putting ABAP variable names, MODIF IDs, `MODIFY SCREEN` snippets, message-class listings, or method line numbers in `_screens.md`.
+- ❌ Naming a screen by its dynpro number or program/tcode name (`## Screen 0200`, `## Screen: SAPMZDUMMY`) instead of its observable on-screen title.
+- ❌ Recording a nameless control with an XPath/DOM-structure or positional locator instead of its `technicalName` from `lsdata` (or escalating it as a blocker).
 - ❌ Listing a screen you did not actually open and observe.
 - ❌ Omitting `initial:` on any control.
 - ❌ Clicking a destructive button without user approval.

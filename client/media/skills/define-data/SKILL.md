@@ -90,6 +90,14 @@ requires:
     sql: |
       SELECT ... FROM ... WHERE ...
     take: first
+    distinctFrom: [sample_other] # declared on BOTH keys of the pair
+  - key: sample_other
+    description: <a second value that MUST differ from sample_something>
+    source: sql
+    sql: |
+      SELECT ... FROM ... WHERE ...
+    take: first
+    distinctFrom: [sample_something] # Phase 5 guarantees these resolve to different values
   - key: some_constant
     description: <what this constant represents>
     source: static
@@ -126,16 +134,23 @@ requires:
 Rules:
 
 - SQL must be portable ABAP SQL (see `get_abap_sql_syntax`). Do NOT bake analysis-system values into `.data.md`.
+- **Never put row-limit syntax in the SQL.** ABAP SQL via ADT rejects `FETCH FIRST n ROWS ONLY`, `LIMIT`, `TOP`, and `ROWNUM`. Choosing among returned rows is what `take: first|last|any` is for; the actual fetch cap is a Phase 5 tool parameter (`execute_data_query`'s `rowRange`/`maxRows`), NOT part of the spec. A `.data.md` SQL that uses `FETCH FIRST` fails the moment Phase 5 runs it.
+- **`take: first`/`last` is NOT a uniqueness guarantee.** A `SELECT` without a deterministic `ORDER BY` has no defined row order, so "first" and "last" can be the SAME row (and with one candidate they always are). If two keys must resolve to DIFFERENT values, do NOT rely on `take:` — declare `distinctFrom` (below).
+- **Cross-key uniqueness → `distinctFrom: [<other_key>, …]`** on BOTH keys that must differ (e.g. two article numbers that must not be equal). This is enforced in Phase 5 by `check_test_data`, which resolves the whole program and FAILs if two mutually-`distinctFrom` keys landed on the same value — a guarantee `take:` cannot give.
 - Static constants → `source: static, staticValue: ...`.
-- A precondition only the application under test can create → `source: seeded`, naming the earlier TC whose spec creates it. Check this before ever marking a case `blocked-by-data`.
+- A precondition only the application under test can create → `source: seeded`, naming the earlier TC whose spec creates it via `seed.viaTcId`. If NO TC can seed it (it's written by a different program/BAdI/interface), leave `seed.viaTcId` off and instead add `seed.manualSteps` describing how a human seeds it, so Phase 5 can present it. Check `seeded` before ever marking a case `blocked-by-data`. **Ordering note:** a `seed.viaTcId` spec is written in Phase 6, AFTER this phase — that is expected. A `seeded` requirement is DEFERRED, not broken; Phase 5 records it as deferred-until-phase-6 and resolves it in a second pass once the seeding spec exists. Record the dependency in BOTH TCs' `## Notes for automation` so the order is never a hidden surprise.
 - `dataRequired: yes` in `TC-XXX.md` → a matching `TC-XXX.data.md` is mandatory. `dataRequired: no` → do not create one.
-- Every `requires` key must be a key the case's `TC-XXX.md` actually references, and every `<data-key: k>` in the `.md` must have a `requires` entry here.
+- Every `requires` key must be a key the case's `TC-XXX.md` actually references, and every `<data-key: k>` in the `.md` must have a `requires` entry here. (Keys used only in `## Post-test verification` SQL or `## Absence preconditions`, or referenced only as a seeding target, are legitimately declared here and consumed outside the spec — that is fine and not an error.)
+- **A pre-test DB-state snapshot is NOT a `requires` key — never declare one.** A "row count before the run" (an `initial_row_count`-style baseline) is a MEASUREMENT Phase 7 takes immediately before the case, not an input resolved once per system. `requires` values are cached in `data.json` at first-prepare time and reused for every later run, so a baseline stored there freezes forever and every rerun then asserts a stale number. Express the check in the TC's `## Post-test verification` instead — as a relative assertion Phase 7 evaluates with a before/after query pair, or (better) an absolute assertion that needs no baseline. If you catch yourself writing a `requires` key that means "how many rows existed before," stop and move it to verification.
+- **Absence-precondition keys (E8): declare the VALUE, not the emptiness.** For a case with an `## Absence preconditions` section (its premise is that a value does not exist), declare the candidate value the case types in — usually `source: static` (a dummy value expected to be absent) or `source: generated`. Do NOT try to express "a value that returns zero rows" as `source: sql` — SQL that returns nothing resolves to a missing key and the case is reported missing-data instead of running. The absence SQL itself lives in the TC; Phase 5 runs it and blocks the case if the row actually exists.
 
 > **Say before continuing:** "Step 2 completed. Evidence: every data-required case has a `.data.md` whose keys match its `.md`. Next: Step 3 — get the fixture format right."
 
 ## Step 3 — Fixture files: match the program's real parser (do NOT default to CSV)
 
-> **Say before acting:** "Starting Step 3: set every generated fixture's format from _findings.md's input file format."
+> **Say before acting:** "Starting Step 3: set every generated fixture's format from _findings.md's input file format (or confirm no fixtures are needed)."
+
+**Step 3 applies ONLY to `source: generated` (upload-fixture) requirements. If you declared none in Step 2 — the program has no file-upload path — say "no generated fixtures required, Step 3 skipped" and go to Step 4.** Do not invent a fixture the program can't consume.
 
 Upload fixtures (`source: generated`) are built by the runtime's fixture builder as either `.xlsx` or `.csv`. The program only accepts ONE of these — and a CSV handed to an Excel parser silently fails, so the "test" passes on a broken upload or errors for the wrong reason. Do NOT reach for CSV because it's simpler.
 
@@ -143,7 +158,7 @@ Upload fixtures (`source: generated`) are built by the runtime's fixture builder
 - Match the EXACT column count and header names from `_findings.md` — e.g. an 11-column Excel with the exact headers the parser expects. A fixture with the wrong columns fails validation inside the program, not in the test harness.
 - Each row's cells may reference other resolved keys via `{{key}}` and use relative-date tokens; never hardcode an absolute date.
 - **Match the EXACT date format the program parses**, taken from `_findings.md`'s recorded format (which is verified from the conversion code — e.g. `MM.DD.YYYY` vs `DD.MM.YYYY`). A fixture whose dates are in the wrong order is silently mis-stored or rejected, and the "test" proves nothing. Set the fixture's `dateFormat` arg to that exact format so relative-date tokens (`today`, `+30d`) render correctly — do NOT rely on the builder's locale default. If `_findings.md` records the format without the proving conversion line, treat it as unverified and confirm against the source before generating.
-- If `_findings.md` doesn't state the format, STOP and follow `analyze-and-plan` to record it (read the upload/parse code) rather than guessing.
+- If the program HAS an upload path but `_findings.md` doesn't state the file format, STOP and follow `analyze-and-plan` to record it (read the upload/parse code) rather than guessing. (If there is no upload path at all, there is nothing to record and nothing to do here — you already skipped this step.)
 
 > **Say before continuing:** "Step 3 completed. Evidence: every generated fixture's format, extension, and columns match the program's parser per `_findings.md`. Next: Step 4 — validate."
 
@@ -180,6 +195,9 @@ Make disk state sufficient for a fresh `prepare-data` chat:
 - ❌ Defaulting an upload fixture to CSV when the program parses Excel (or vice versa) — read `_findings.md`'s input file format.
 - ❌ A generated fixture with the wrong column count/headers — it fails inside the program, not in the harness.
 - ❌ Baking an absolute date or an analysis-system value into `.data.md` — use relative-date tokens and `sql`/`generated` sources.
+- ❌ Putting `FETCH FIRST`/`LIMIT`/`TOP`/`ROWNUM` in a `requires` SQL — ADT rejects it; cap rows with the Phase 5 tool params and pick with `take:`.
+- ❌ Declaring a pre-test row-count/baseline as a `requires` key — it's a Phase 7 measurement, not cached input; put it in `## Post-test verification`.
+- ❌ Relying on `take: first`/`last` to make two keys distinct — use `distinctFrom` on both keys.
 - ❌ Creating a `.data.md` for a `dataRequired: no` case, or leaving a `dataRequired: yes` case without one.
 - ❌ Resolving concrete values here — that is Phase 5. This phase writes the SHAPE only.
 - ❌ Editing `TC-XXX.md` bodies or the index tables — case design is Phase 3.

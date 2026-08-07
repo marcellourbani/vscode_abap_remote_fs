@@ -281,8 +281,7 @@ export async function openTextElementsInSapGui(
       textElementsUrl = baseUrl.replace("DYNP_OKCODE%3dSTRT", "DYNP_OKCODE%3dTEXT")
     }
 
-    // Load the text elements URL directly
-    panel.loadDirectWebGuiUrl(textElementsUrl)
+    await panel.loadDirectWebGuiUrl(textElementsUrl)
   } catch (error) {
     logCommands.error(`❌ Error opening SAP GUI text elements: ${error}`)
     throw error

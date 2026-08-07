@@ -9,6 +9,10 @@
  *
  * Specs at tests/ root (e.g. tests/_smoke.spec.ts) fall back to tests/_shared/test-results/<TC>.
  *
+ * Re-running a test archives the prior run into `<TC-ID>/runs/<timestamp>/` rather than
+ * overwriting it. The most recent run always stays at the top level, so consumers need no
+ * knowledge of the history.
+ *
  * Manifest schema (test-results/<TC-ID>/manifest.json):
  *   {
  *     tcId: "TC-001",
@@ -67,6 +71,7 @@ export class Evidence {
   private counter = 0
   private startedAt = new Date().toISOString()
   private dir: string
+  private archiving?: Promise<void>
 
   constructor(
     private page: Page,
@@ -84,6 +89,59 @@ export class Evidence {
 
   async ensureDir(): Promise<void> {
     await fs.mkdir(this.dir, { recursive: true })
+    // Memoized, so concurrent steps archive exactly once per run.
+    this.archiving ??= this.archivePreviousRun()
+    await this.archiving
+  }
+
+  /**
+   * Move the previous run's artifacts into `runs/<timestamp>/` so re-running a test no longer
+   * overwrites its history. The latest run stays at the top level, which is where
+   * build_evidence_report and every other consumer looks.
+   *
+   * Only files this class produces are moved. Anything else in the folder — above all the
+   * prepared `data.json` cache, which is run INPUT — must stay where it is.
+   */
+  private async archivePreviousRun(): Promise<void> {
+    const archivable = /^(manifest|verification)\.json$|^step-\d+\.png$/
+    let entries: string[]
+    try {
+      entries = (await fs.readdir(this.dir)).filter(e => archivable.test(e))
+    } catch {
+      return
+    }
+    if (!entries.length) return // nothing from a previous run to preserve
+
+    const runDir = path.join(this.dir, "runs", await this.previousRunStamp(entries))
+    await fs.mkdir(runDir, { recursive: true })
+    for (const entry of entries) {
+      await fs.rename(path.join(this.dir, entry), path.join(runDir, entry)).catch(() => {})
+    }
+  }
+
+  /**
+   * When the PREVIOUS run happened — never now, or a month-old run would look like today's.
+   * Its manifest is the source of truth; a crashed run may not have one, so fall back to the
+   * newest artifact's mtime rather than leaving its screenshots to mix into this run.
+   */
+  private async previousRunStamp(entries: string[]): Promise<string> {
+    try {
+      const raw = await fs.readFile(path.join(this.dir, "manifest.json"), "utf8")
+      const previous: Manifest = JSON.parse(raw)
+      const iso = previous.finishedAt ?? previous.startedAt
+      if (iso) return iso.replace(/[:.]/g, "-")
+    } catch {
+      // missing or unparsable manifest — fall through to file times
+    }
+    const times = await Promise.all(
+      entries.map(e =>
+        fs
+          .stat(path.join(this.dir, e))
+          .then(s => s.mtimeMs)
+          .catch(() => 0)
+      )
+    )
+    return new Date(Math.max(...times, 0)).toISOString().replace(/[:.]/g, "-")
   }
 
   async step(description: string, notes?: string): Promise<void> {
@@ -115,6 +173,13 @@ export class Evidence {
   }
 
   async finish(status: "pass" | "fail", errorMessage?: string): Promise<void> {
+    // On failure, capture a final screenshot so the last evidence image IS the failing
+    // state. Without this the newest screenshot predates the throwing assertion, which is
+    // what makes a failure "impossible to diagnose from the manifest" (see the alert bug).
+    // Best-effort: the page may already be gone; never let evidence capture mask the real error.
+    if (status === "fail") {
+      await this.step(errorMessage ? `FAILED: ${errorMessage}` : "FAILED").catch(() => {})
+    }
     await this.writeManifest(status, errorMessage)
   }
 

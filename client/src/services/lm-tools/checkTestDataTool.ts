@@ -43,6 +43,7 @@ export class CheckTestDataTool implements vscode.LanguageModelTool<ICheckTestDat
     const result = await checkTestData(testFolder, options.input.program, connectionId)
     const lines = [
       ...result.failures.map(f => `FAIL  ${f.tcId}\n        ${f.message}`),
+      ...result.distinctViolations.map(v => `DISTINCT VIOLATION  ${v.tcId}\n        ${v.message}`),
       `\n${result.passed}/${result.total} case(s) resolvable on ${connectionId}. Breakdown:`,
       `  - prepared from data.json cache (sql/seeded): ${result.cached.length}` +
         (result.cached.length ? ` — ${result.cached.join(", ")}` : ""),
@@ -50,8 +51,16 @@ export class CheckTestDataTool implements vscode.LanguageModelTool<ICheckTestDat
         (result.noCacheNeeded.length ? ` — ${result.noCacheNeeded.join(", ")}` : ""),
       `  - resolved from a TESTDATA_* env pin, NOT a data.json: ${result.envPinned.length}` +
         (result.envPinned.length ? ` — ${result.envPinned.join(", ")}` : ""),
+      `  - SEED PENDING (deferred — seeded precondition not produced yet; resolve after its viaTcId spec runs): ${result.seedPending.length}` +
+        (result.seedPending.length ? ` — ${result.seedPending.join(", ")}` : ""),
       `  - FAILED: ${result.failures.length}` +
         (result.failures.length ? ` — ${result.failures.map(f => f.tcId).join(", ")}` : ""),
+      result.distinctViolations.length
+        ? `\nDISTINCT: ${result.distinctViolations.length} case(s) have keys that must differ but resolved to the same value — re-resolve them in prepare-data.`
+        : "",
+      ...result.shadowWarnings.map(
+        w => `WARNING (cache shadows spec)  ${w.tcId}\n        ${w.message}`
+      ),
       result.cached.length === 0 && result.noCacheNeeded.length > 0
         ? "\nNote: a high 'resolvable' count here does NOT mean data was prepared — the passing cases above need no per-system cache. Only the 'prepared from data.json cache' count reflects real data preparation."
         : ""

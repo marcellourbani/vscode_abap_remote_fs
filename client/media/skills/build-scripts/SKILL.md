@@ -61,6 +61,12 @@ The `SapSession`/`SapArtifacts` implementation is not present in the test folder
 
 WRITE to: `tests/<PROGRAM>/test-scripts/<TC-XXX>.spec.ts` (create `test-scripts/` if it doesn't exist)
 
+**Be restart-safe — never blindly overwrite an existing spec.** This phase can resume in a fresh chat or after a context compaction, so do not rely on memory of what you've written. Before writing `<TC-XXX>.spec.ts`, check whether it already exists:
+
+- If it exists and you are NOT explicitly rebuilding it, treat it as already-built — leave it and move on (re-creating it from scratch silently discards any fix applied to it since).
+- If it exists and genuinely needs a change, READ it and EDIT the specific part — do not overwrite the whole file.
+- At Step 0, enumerate `test-scripts/*.spec.ts` up front so you know which selected TC-IDs are already done vs still to write; that list, not your memory, is the source of truth for progress.
+
 Rules:
 
 - Labels used in `sap.setField(...)`, `sap.selectRadio(...)`, `sap.clickButton(...)` MUST come from `_screens.md`
@@ -80,13 +86,13 @@ Rules:
 Interaction (via `SapSession`):
 
 - `sap.open()`, `sap.openTx(tcode)`, `sap.runReport(programName)`
-- `sap.setField(name, value, { group?, nth?, technicalName? })` — use `technicalName: "<ABAP_FIELD>"` (e.g. `"EKORG"`, `"LIFNR"`) as a LAST-RESORT fallback only when two visible fields share the same accessible name AND the ABAP field name has been verified from ADT. Never guess it.
+- `sap.setField(name, value, { group?, nth?, technicalName? })` — use `technicalName: "<ABAP_FIELD>"` (e.g. `"EKORG"`, `"LIFNR"`) when the accessible name is **ambiguous (shared by more than one field) OR absent (a nameless control)**, and the ABAP field name was recorded in `_screens.md` (read from the live `lsdata` during exploration — see `sap-webgui`). The runtime tries the accessible name first and falls back to `input[lsdata*="-<FIELD>"]` whenever the name matches 0 or >1 elements, so this is the correct tool for a nameless field, not only a duplicate-label one. For a nameless control, still pass a human-readable `name` (used only for the step description) plus the `technicalName` that actually locates it — e.g. `sap.setField("Header amount", data.sample_amount, { technicalName: "GV_SAMPLE_FIELD" })`. Never guess the technical name.
 - `sap.setRange(name, from, to, { group? })`
 - `sap.check(name, { group?, value? })`
 - `sap.selectRadio(name, { group? })`
 - `sap.clickButton(name, { group?, dialog?, nth? })`
 - `sap.clickTab(tabName)` — for dynpro header/detail tab strips (Delivery/Invoice, Conditions, Org. Data on ME21N; Where, Detail Data on MIGO; etc.). NEVER use `clickButton` on a tab — the ITS DOM has no `role="tab"` and no `title` on tabs, so the button fallback finds nothing. `sap-webgui` covers the ItemTitle/ItmWidthHelper trap.
-- `sap.setGridCell(columnTitle, rowIndex, value)` — for editable ALV/table cells whose inputs have no accessible name (ME21N item overview, MIGO items, VF01 items, service entry lines). `columnTitle` is the header `title` attribute; `rowIndex` is 1-based (row 0 is the header). NEVER use `setField` on a grid-cell input — the input has no accessible name and no title, only the column header does.
+- `sap.setGridCell(columnTitle, rowIndex, value)` — for editable ALV/table cells whose inputs have no accessible name (item-overview / posting tables). `columnTitle` is the header title/text; `rowIndex` is 1-based (row 0 is the header). It handles BOTH WebGUI editable-grid renderers — the dynpro table-control and the `CL_GUI_ALV_GRID` grid — finding the column by header, clicking the cell to materialise the editor, filling, and COMMITTING the value (the ALV grid needs a commit/blur to move the value into its buffer, which a bare `fill()` does not do). NEVER use `setField` on a grid-cell input (the input has no accessible name or title), and NEVER hand-roll a `sap.raw()` `input[id$=...].fill(...)` on a grid cell — a raw `fill()` sets the DOM value but skips the event ITS's ALV listens for, so the cell silently reverts and the test passes green on empty data. If `setGridCell` genuinely cannot drive a particular grid, that is a runtime gap to REPORT (see `helpers-reference`), not something to work around in the spec.
 - `sap.pressKey(key, description?)`
 - `sap.execute()`
 - `sap.continueDialog(dialogTitle?)`, `sap.cancelDialog(dialogTitle?)`
@@ -288,7 +294,8 @@ Once state-table actions are emitted, Steps become mostly nav + Execute + follow
 | "Expected: title Y"                                                                | `sap.expectTitle("Y")`                                                                                                                                               |
 | "Expected: job J finishes" / "IDoc of type T created" / "row in table T where K=V" | Not something the spec checks — it belongs in the TC's `## Post-test verification` (see `design-cases`); executed separately in `run-scripts`, not here |
 | "Expected: file P on app server"                                                   | `await artifacts.verifyAL11FilePresent("P")`                                                                                                                         |
-| "Expected: message M is NOT shown"                                                 | `sap.expectNoAlert()` OR check via manifest                                                                                                                          |
+| "Expected: message M is NOT shown"                                                 | `sap.expectNoAlert(/M/)` — pass the pattern so it asserts THAT message is absent. The bare `sap.expectNoAlert()` fails on ANY status text (e.g. a leftover message from the prior round-trip) → false negatives; use it only for "status bar completely clear". |
+| "Expected: exactly N rows in the grid"                                             | Do NOT use `expectGridHasRow` for a count — it is an unanchored substring match (see anti-patterns). Assert on a business-unique value, or add the count as a `by: sql` `## Post-test verification` check |
 
 When `_screens.md` cites a recording, use it only to clarify validated interaction order and control behavior. Apply the recording classification from `sap-webgui`; never copy a raw generated locator. Map recorded business literals to declared `data.<key>` values, remove recorder noise such as a redundant click before `fill`, preserve intentional Enter/server-roundtrip behavior through helpers, and author assertions from the TC because codegen records actions only. If a required interaction still has no stable semantic contract, STOP, load the `sap-webgui-recording` skill, and request focused exploration; do not manufacture a locator.
 
@@ -321,7 +328,10 @@ Don't just eyeball this — run the deterministic check after writing the spec (
 - ❌ Emitting an action for a control that isn't in `_screens.md` — STOP and follow `explore-ui` to re-explore it.
 - ❌ Using `sap.clickButton(tabName)` for a header tab — tabs have no `role="button"` and no `title`, so the button fallback silently finds a lookalike element or throws. Use `sap.clickTab(tabName)`.
 - ❌ Using `sap.setField(columnTitle, ..., ...)` for an editable ALV grid cell — the cell input has no accessible name and no title, so the lookup fails. Use `sap.setGridCell(columnTitle, rowIndex, value)`.
-- ❌ Hardcoding `tbl<N>` prefixes, `[row,col]` coordinates, or `M0:...` IDs in a `sap.raw()` block — those change across sessions AND across tab switches. If `setGridCell` doesn't fit the case, stop and re-explore.
+- ❌ Hand-rolling a grid-cell fill via `sap.raw()` (e.g. `frameLocator(...).locator('input[id$="#R,C#if"]').fill(...)`) — a raw `fill()` sets the DOM value but skips the change/blur event ITS's ALV grid listens for, so the cell reverts and the case passes green on empty data. Use `sap.setGridCell` (it commits the value); if it can't drive the grid, report a runtime gap, don't hand-roll.
+- ❌ Hardcoding `tbl<N>` prefixes, `[row,col]` / `#R,C#` coordinates, or `M0:...` IDs in a `sap.raw()` block — those change across sessions AND across tab switches. If `setGridCell` doesn't fit the case, stop and re-explore.
+- ❌ Using `expectGridHasRow` to assert a ROW COUNT or match a short numeric literal — it is an UNANCHORED, case-insensitive substring match over cell text, so asserting "4" and "5" appear also matches "14", "45", or an amount of "400". Assert on a business-unique value or pass an anchored regex; count checks belong in `## Post-test verification` as `by: sql`.
+- ❌ Writing a spec, or a second Playwright project, that logs in as a different user for a negative-authorization case — there is NO spec/config mechanism to switch users mid-run (`playwright_test` authenticates one session as the connection's own user; universal rule 5). A negative-auth case runs against a SEPARATE ABAP FS connection (an unauthorized user) and is `runnable-elsewhere`; it is not scriptable here. If a case marked `runnable` actually needs a different user, STOP and follow `design-cases` to re-triage it, don't invent an auth workaround.
 - ❌ Adding `{ technicalName: "..." }` to every `setField` "just in case" — only add it after `_screens.md` documents a duplicate accessible name AND the ABAP field name has been verified from ADT.
 - ❌ Working around a `Popup guard: recognised interrupter "X" but could not click its "Y" button` error by wrapping the action in `try/catch` — the guard is telling you the SAP-version button label changed. Add an `extraInterrupters` entry with the correct label.
 - ❌ Working around a `SAP runtime error detected (dump|its|logon)` error the same way — that's a REAL bug in SAP, not a helper problem. Investigate the SAP-side cause (ST22, SM21, SMICM) before touching the spec.

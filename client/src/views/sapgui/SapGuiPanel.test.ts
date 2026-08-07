@@ -58,7 +58,9 @@ jest.mock(
 jest.mock(
   "../../adt/sapgui/sapgui",
   () => ({
-    runInSapGui: jest.fn()
+    runInSapGui: jest.fn(),
+    // Pass-through: these tests assert on the URL the panel opens, not on auto-login.
+    withAutoLogin: jest.fn(async (_connId: string, url: string) => url)
   }),
   { virtual: true }
 )
@@ -358,7 +360,7 @@ describe("SapGuiPanel sanitizeUrl (via loadDirectWebGuiUrl)", () => {
     ;(SapGuiPanel as any).currentPanels = new Map()
   })
 
-  it("loads direct WebGUI URL without error for valid https URL", () => {
+  it("loads direct WebGUI URL without error for valid https URL", async () => {
     const mockPanel = makePanelMock()
     ;(mockedWindow.createWebviewPanel as jest.Mock).mockReturnValue(mockPanel)
     const { Uri } = require("vscode")
@@ -369,8 +371,8 @@ describe("SapGuiPanel sanitizeUrl (via loadDirectWebGuiUrl)", () => {
       "ZPROG",
       "PROG/P"
     )
-    expect(() =>
+    await expect(
       instance!.loadDirectWebGuiUrl("https://myserver/sap/bc/gui/sap/its/webgui?param=1")
-    ).not.toThrow()
+    ).resolves.not.toThrow()
   })
 })

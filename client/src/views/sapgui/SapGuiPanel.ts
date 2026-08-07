@@ -3,7 +3,7 @@ import { funWindow as window } from "../../services/funMessenger"
 import { ADTClient } from "abap-adt-api"
 import { log } from "../../lib"
 import { RemoteManager } from "../../config"
-import { runInSapGui } from "../../adt/sapgui/sapgui"
+import { withAutoLogin } from "../../adt/sapgui/sapgui"
 import { getObjectTypeConfig } from "abapobject"
 
 /**
@@ -222,7 +222,7 @@ export class SapGuiPanel {
       // Use existing runInSapGui logic but capture the URL instead of opening external browser
       const url = await this.generateSapGuiUrl(config)
       if (url) {
-        this.showEmbeddedSapGui(url)
+        this.showEmbeddedSapGui(await withAutoLogin(this._connectionId, url))
       } else {
         this.showError("Could not generate SAP GUI URL. Please check your connection settings.")
       }
@@ -235,16 +235,25 @@ export class SapGuiPanel {
   }
 
   /**
-   * Load direct WebGUI URL (simple approach - no SSO ticket)
-   * Uses the same authentication cookies that ADT client already has
+   * Open a WebGUI URL, signing in first when the connection allows it.
+   *
+   * Every caller that puts a WebGUI URL in front of the user comes through here, so this is
+   * the one place auto-login has to be applied.
    */
-  public loadDirectWebGuiUrl(webguiUrl: string) {
+  public async loadDirectWebGuiUrl(webguiUrl: string) {
+    // Claimed BEFORE the first await: the webview's own "execute" message arrives while
+    // auto-login is still in flight, and would otherwise start a second logon whose session
+    // cookie supersedes this one's — leaving the loaded page on a session SAP has dropped.
+    this._authenticatedUrlLoaded = true
+
+    const url = await withAutoLogin(this._connectionId, webguiUrl)
+
     // Check if user prefers VS Code's integrated browser over embedded webview
     const useIntegratedBrowser = vscode.workspace
       .getConfiguration("abapfs.sapGui")
       .get<boolean>("useIntegratedBrowser", true)
     if (useIntegratedBrowser) {
-      vscode.commands.executeCommand("simpleBrowser.api.open", webguiUrl, {
+      vscode.commands.executeCommand("simpleBrowser.api.open", url, {
         viewColumn: vscode.ViewColumn.Beside,
         preserveFocus: false
       })
@@ -252,10 +261,7 @@ export class SapGuiPanel {
       return
     }
 
-    // Set flag to prevent duplicate executions
-    this._authenticatedUrlLoaded = true
-
-    this.showDirectWebGui(webguiUrl)
+    this.showDirectWebGui(url)
   }
 
   /**

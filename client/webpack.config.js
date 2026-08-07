@@ -81,6 +81,12 @@ const config = {
           noErrorOnMissing: false,
           force: true
         },
+        {
+          from: "templates/sso-global-setup.js",
+          to: "vendor/sso-global-setup.js",
+          noErrorOnMissing: false,
+          force: true
+        },
         ...vendorPatterns
       ]
     })
@@ -128,8 +134,8 @@ const prodConfig = {
       compiler => {
         new TerserPlugin({
           parallel: true,
-          // Minifying vendored Playwright would rewrite the paths its runner resolves
-          // worker entry points from, and break it.
+          // Copied third-party trees, not our own code. Minifying vendored Playwright would
+          // rewrite the paths its runner resolves worker entry points from.
           exclude: /(media|vendor)[\\/].*\.js$/,
           terserOptions: {
             keep_classnames: true
@@ -146,4 +152,66 @@ const devConfig = {
   mode: "development",
   infrastructureLogging: { level: "verbose" }
 }
-module.exports = [devConfig, prodConfig]
+
+/**
+ * The SAP testing runtime, as ONE self-contained CommonJS file next to the `.d.ts` files
+ * `build_runtime` emits. The test folder junctions that directory in as `@sap-testing/runtime`.
+ *
+ * Bundled rather than emitted loose because the extension ships no `node_modules`: as loose
+ * CommonJS its `require("js-yaml")`/`require("exceljs")` would be resolved by Node at test-run
+ * time and find nothing. Bundling puts them inside the file instead.
+ *
+ * `@playwright/test` stays external — the runtime uses it only for types, and at run time the
+ * spec's own Playwright instance must be the one in play.
+ *
+ * @type {import('webpack').Configuration}
+ */
+const runtimeConfig = {
+  name: "runtime",
+  target: "node",
+  mode: "production",
+  entry: "./src/services/testing/runtime/index.ts",
+  output: {
+    path: path.resolve(__dirname, "dist", "runtime"),
+    filename: "index.js",
+    libraryTarget: "commonjs2"
+  },
+  externals: { "@playwright/test": "commonjs @playwright/test" },
+  resolve: { extensions: [".ts", ".js"] },
+  plugins: [
+    // index.js/index.d.ts would resolve by convention anyway, but only for a plain `require`
+    // of the directory. TypeScript's node16/nodenext resolution expects a package.json, so a
+    // test folder using a modern moduleResolution would fail to find the types without this.
+    new CopyPlugin({
+      patterns: [
+        {
+          from: "templates/runtime-package.json",
+          to: "package.json",
+          noErrorOnMissing: false,
+          force: true
+        }
+      ]
+    })
+  ],
+  optimization: {
+    // Left readable on purpose: when a helper throws, this file is what appears in the
+    // Playwright stack trace the user has to read.
+    minimize: false
+  },
+  module: {
+    rules: [
+      {
+        test: /\.ts$/,
+        use: [
+          {
+            loader: "ts-loader",
+            // Type checking happens in build_runtime, which must type-check to emit .d.ts.
+            options: { configFile: "tsconfig.runtime.json", transpileOnly: true }
+          }
+        ]
+      }
+    ]
+  }
+}
+
+module.exports = [devConfig, prodConfig, runtimeConfig]

@@ -92,7 +92,8 @@ Never “improve” an unsafe ID by shortening it, regex-matching part of it, or
 - PBO logic, GUI status, BAdIs, personalization, and variants can add, remove, rename, disable, or default controls at runtime.
 - SAP file-path fields are usually textboxes, not native file inputs. Use `setField`; reserve `uploadFile` for a verified `<input type="file">`.
 - **Native OS dialogs are outside the iframe and cannot be snapshotted or driven by the runtime.** `cl_gui_frontend_services=>file_save_dialog` / `file_open_dialog` and `F4_FILENAME` may pop a native Windows Save/Open dialog that is not part of the ITS DOM — accessibility snapshots and `sap.*` helpers cannot reach it, and there is no runtime helper for it. During exploration mark such a screen NOT observed; in the plan such a path is normally `manual` (the human picks the file). A path that only needs the RESULTING file path typed into a textbox is different — that's a normal `setField` and IS automatable; only the OS picker itself is the un-automatable part.
-- Dialog Cancel is safer than keyboard Escape, which may leave the transaction.
+- **Dialog-level Cancel ≠ screen-level Back/Exit/Cancel.** A dialog's own `Cancel` closes just that dialog (safe). The main toolbar `Back` (F3) / `Exit` (F15) / `Cancel` (F12) mean "leave this screen/transaction" and where they land is PF-STATUS-dependent (previous screen, Easy Access, or a save prompt). Always re-`read_page` after a screen-level Back/Exit/Cancel; recover a lost position by reopening `&~transaction=<TCODE>`. Never use keyboard Escape to close a dialog — it may exit the whole transaction.
+- **Overflow toolbar (`>>`) hides buttons from the snapshot.** A narrow toolbar collapses its extra buttons (often Execute/F8) behind a `>>` chevron, and those buttons are absent from the accessibility tree until `>>` is clicked. During exploration, expand `>>` and re-`read_page` before concluding a button is missing. In a spec you do NOT need to click `>>` — `clickButton`/`execute` match by `title` and force-click even a visually-collapsed toolbar item — but the button must have been recorded in `_screens.md`.
 - Wait for WebGUI server/busy state and DOM stability through `SapSession`; do not add arbitrary sleeps.
 
 ## SAP selection screens (SE38 / SUBMIT with SELECTION-SCREEN)
@@ -133,9 +134,18 @@ The `sap.clickTab(name)` helper handles all of this: it tries `role=tab` first (
 
 **Live-exploration checklist for a tab strip**: record every tab label EXACTLY as displayed (including punctuation like the period in "Org. Data" or the slash in "Delivery/Invoice"), the currently-selected tab on entry to the screen, and whether the tab strip is at the header or item-detail level (both exist on ME21N).
 
-## Editable ALV grid cells
+## Editable grids — TWO different renderers, do not assume one
 
-Editable ALV tables — the ME21N item overview, the MIGO item table, the VF01 item table, most posting tables — render as sparse HTML tables where individual cells only materialize an `<input>` **after** the user clicks or tabs into them. Structure:
+WebGUI renders editable tables with one of **two different DOM schemes**, and they are NOT interchangeable. Record which one a screen uses during exploration, because a locator built for one fails silently on the other:
+
+1. **Dynpro table control** (classic module-pool tables) — cell ids look like `<prefix>[row,col]` and the editor is `<prefix>[row,col]_c`; the column header `<th>` carries a `title`. This is the scheme detailed below.
+2. **`CL_GUI_ALV_GRID` grid** (the SAP control-framework ALV) — cell/column ids follow a different scheme (a grid container id with `#`-separated row/column parts, e.g. `grid#…#r,c#…`), the header often has NO `title`, and — critically — after you type a value the grid only moves it into its internal buffer on a **change/blur/Enter event**. A bare `fill()` sets the DOM value but the grid never reads it, so on commit the cell reverts and the "test" runs on empty data.
+
+**Always drive editable cells through `sap.setGridCell(columnTitle, rowIndex, value)`, never a hand-rolled `sap.raw()` `fill()`.** The helper detects the renderer, finds the column by its header text/title, clicks the cell to materialise the editor, fills, AND fires the commit the ALV grid needs. A raw `fill()` on a grid input is the specific mistake that produces green-on-empty results. If `setGridCell` cannot drive a particular grid, that is a runtime gap to report (`helpers-reference`) — not a cue to reach for `raw()`.
+
+The dynpro table-control scheme in detail:
+
+Editable ALV/table cells only materialize an `<input>` **after** the user clicks or tabs into them. Structure:
 
 ```html
 <table id="tbl317">
@@ -166,7 +176,7 @@ Key mechanics:
 
 The `sap.setGridCell(columnTitle, rowIndex, value)` helper handles the whole flow: find header by title, derive `tbl<N>` prefix + column index, click the target row-cell, wait for the input to materialize, fill.
 
-**Live-exploration checklist for an editable grid**: record the column `title` for every editable column the case touches (case-sensitive, matches the visible label), how many data rows are visible by default (grids often show 8–10), any personalized variant that changes column order, and whether all columns of interest are visible without horizontal scroll.
+**Live-exploration checklist for an editable grid**: record WHICH renderer it is (dynpro table control vs `CL_GUI_ALV_GRID` — check a cell id in the snapshot: `[r,c]` vs a `#`-separated grid id); the column `title`/header text for every editable column the case touches (case-sensitive, matches the visible label); how many data rows are visible by default (grids often show 8–10); any personalized variant that changes column order; and whether all columns of interest are visible without horizontal scroll. (`setGridCell` handles both renderers — you record the renderer so Phase 6 knows the grid is ALV-type and never hand-rolls a `fill()`.)
 
 Read-only grids (SE16, ALV output of a report) usually work with `sap.expectGridHasRow(text)` or `sap.selectGridRowByText(text)` because their cells carry text content, not editable inputs.
 
@@ -205,7 +215,7 @@ For every screen/dialog used by a case, record in `_screens.md`:
 - control role, visible label, and differing accessible name;
 - containing group/dialog only when verified;
 - initial value, checked/selected state, visibility, and enabled state;
-- duplicate-label disambiguation, including any known `technicalName` from ADT for lsdata fallback;
+- duplicate-label disambiguation, AND the `technicalName` for any control with no usable accessible name — read it DIRECTLY from the control's live `lsdata` SID in the browser snapshot (the trailing `-<FIELD>`), which is the fastest and most accurate source; ADT confirmation is a fallback, not the primary path. A nameless control with no discoverable technical name is a blocker to escalate, never a positional-locator guess;
 - toolbar buttons and their `title`/`aria-label`;
 - tab-strip labels EXACTLY as displayed, and which tab is initially selected;
 - ALV column names and stable row text used for assertions, plus editable column `title` values for grid-cell cases;
@@ -222,7 +232,7 @@ Current allow-list of auto-dismissed dialogs:
 
 - `License` → Continue — SAP EULA reminder
 - `System messages` → Continue — SM02 broadcasts
-- `Multiple Logon` → "Continue with this logon and end any other logons in the system" — critical for parallel CI
+- `Multiple Logon` → "Continue with this logon and end any other logons in the system" — keeps parallel runs working. **Note it ends the user's OTHER sessions too**, including a WebGUI tab they have open, because tests run under the developer's own SAP user unless a dedicated test user is configured.
 - `Copyright` → Continue — legal notice
 - `Data Privacy` → Accept — GDPR consent on modern S/4
 - `Password` → Cancel — password-expiration prompts; NEVER let a test change credentials silently
@@ -250,7 +260,7 @@ Key behaviour:
 
 - **`dump`** — classic ABAP short dump ("ABAP Runtime Error", "Runtime Errors", "The current ABAP program terminated..."). Full-page replacement, usually red-themed.
 - **`its`** — ITS/ICM protocol error ("500 Internal Server Error", "ITS Error"). Usually appears after a session or network glitch.
-- **`logon`** — session dropped, browser shows a login screen ("SAP NetWeaver Logon", "Please log on again"). Common when the underlying session times out.
+- **`logon`** — session dropped, browser shows a login screen ("SAP NetWeaver Logon", "Please log on again", or any page with a visible password box). Under `playwright_test` this means the automatic reentrance-ticket sign-in did not produce a usable session — check the `[sso]` lines in the `ABAP FS` output channel. It can also mean the session simply timed out mid-run.
 
 When detected, the guard captures evidence and throws with `kind`, title, URL, and a 500-char body snippet — never silently continue.
 
@@ -271,7 +281,7 @@ The helper strategy—semantic role and accessible name first—is substantially
 - `setGridCell` requires the target column to be currently visible; scrolled-off columns are removed from the DOM.
 - ALV role/text structure varies by renderer and theme.
 - `uploadFile` should be trusted only after confirming a native file input.
-- iframe selection assumes the first SAP iframe; unusual full-page redirects or shell layouts need a headed verification run.
+- iframe selection targets the SAP content frame (`#ITSFRAME1`) specifically, not merely "the first iframe" — the page also has `ITSTERMFRAME` ("Blank ITS Page"), and picking it by DOM order made assertions query an empty document and report `Last seen: []` while the message was plainly on screen. Unusual full-page redirects or shell layouts still need a headed verification run.
 - popup-guard only auto-dismisses titles on the curated list; program-specific interrupters need `extraInterrupters` at the call site.
 - runtime-error detection uses signature substrings — a customised dump theme or translated error text may slip through; add signatures if you see one repeatedly missed.
 
