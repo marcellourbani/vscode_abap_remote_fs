@@ -24,7 +24,7 @@ export class AbapDebugAdapterFactory implements DebugAdapterDescriptorFactory {
   async createDebugAdapterDescriptor(
     session: AbapDebugSessionCfg
   ): Promise<DebugAdapterDescriptor | undefined> {
-    const { connId, debugUser, terminalMode } = session.configuration
+    const { connId, debugUser, terminalMode, systemDebugging } = session.configuration
     const old = AbapDebugSession.byConnection(connId)
     if (old) {
       const abort = () => {
@@ -39,7 +39,13 @@ export class AbapDebugAdapterFactory implements DebugAdapterDescriptorFactory {
         await old.logOut()
       } else abort()
     }
-    const listener = await DebugListener.create(connId, ui, debugUser, terminalMode)
+    const listener = await DebugListener.create(
+      connId,
+      ui,
+      debugUser,
+      terminalMode,
+      systemDebugging
+    )
     const abapSession = new AbapDebugSession(connId, listener)
     this.loggedinSessions.push(abapSession)
     abapSession.onClose(() => this.sessionClosed(abapSession))

@@ -119,9 +119,11 @@ export class DebugService {
     this._updateDebugState(attach)
     log(`DebugService.attach: attached, saving settings`)
     // Fire saveSettings in background - not critical for attach
-    this.client.debuggerSaveSettings({}).catch(e => {
-      log(`debuggerSaveSettings failed: ${caughtToString(e)}`)
-    })
+    this.client
+      .debuggerSaveSettings({ systemDebugging: this.listener.systemDebugging })
+      .catch(e => {
+        log(`debuggerSaveSettings failed: ${caughtToString(e)}`)
+      })
     log(`DebugService.attach: updating stack`)
     await this.updateStack()
     log(`DebugService.attach: stack updated, capturing replay`)

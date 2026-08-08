@@ -156,7 +156,8 @@ export class DebugListener {
     readonly username: string,
     terminalMode: boolean,
     private ui: DebuggerUI,
-    private services: ServiceCollection
+    private services: ServiceCollection,
+    readonly systemDebugging = false
   ) {
     this.sessionNumber = (sessionNumbers.get(connId) || 0) + 1
     sessionNumbers.set(connId, this.sessionNumber)
@@ -171,14 +172,24 @@ export class DebugListener {
     connId: string,
     ui: DebuggerUI,
     username: string,
-    terminalMode: boolean
+    terminalMode: boolean,
+    systemDebugging = false
   ) {
     const client = await getOrCreateClient(connId)
     if (!client) throw new Error(`Unable to get client for${connId}`)
     const terminalId = await getOrCreateTerminalId()
     const cfg = await configFromKey(connId).catch(ignore)
     const services = new ServiceCollection(cfg?.maxDebugThreads || 4)
-    return new DebugListener(connId, client, terminalId, username, terminalMode, ui, services)
+    return new DebugListener(
+      connId,
+      client,
+      terminalId,
+      username,
+      terminalMode,
+      ui,
+      services,
+      systemDebugging
+    )
   }
 
   addListener(listener: (e: DebugProtocol.Event) => any, thisArg?: any) {

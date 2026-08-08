@@ -147,7 +147,7 @@ export class BreakpointManager {
         bps,
         this.username,
         "external",
-        false,
+        this.listener.systemDebugging,
         false,
         objuri
       )
@@ -172,7 +172,7 @@ export class BreakpointManager {
           newbps,
           this.username,
           "external",
-          false,
+          this.listener.systemDebugging,
           false,
           objuri
         )
@@ -204,7 +204,7 @@ export class BreakpointManager {
           newbps,
           this.username,
           "debugger",
-          false,
+          this.listener.systemDebugging,
           false,
           objuri
         )
