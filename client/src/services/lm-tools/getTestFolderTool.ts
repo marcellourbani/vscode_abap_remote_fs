@@ -25,7 +25,7 @@ export class GetTestFolderTool implements vscode.LanguageModelTool<Record<string
     if (!testFolder) {
       return new vscode.LanguageModelToolResult([
         new vscode.LanguageModelTextPart(
-          'No SAP testing folder configured. Ask the user to run the command "ABAP FS: Set Test Folder" in VS Code.'
+          'No SAP testing folder configured. Ask the user to run the command "ABAP FS: Enable SAP UI Testing Features" in VS Code.'
         )
       ])
     }

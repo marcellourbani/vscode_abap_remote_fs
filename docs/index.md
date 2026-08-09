@@ -23,6 +23,7 @@ This is a high-level summary. See the left navigation for full feature pages.
 | **Editor Experience** | Enhanced hover info, custom editors, object properties, and dedicated ABAP views/panels |
 | **Debug** | Full ABAP debugger with breakpoints, variable inspection, stepping, and debug recording |
 | **Test** | Run unit tests, create test classes, generate test documentation |
+| **SAP UI Testing** | Let Copilot analyse a report, design a test plan, automate it against SAP WebGUI, and produce a Word evidence report — see [SAP Testing](sap-testing/index.md) |
 | **Code Quality** | ATC analysis, syntax validation, where-used, ABAP Cleaner formatting |
 | **Transport** | View and manage transport requests directly |
 | **Version Control** | abapGit integration, revision history, blame gutter |

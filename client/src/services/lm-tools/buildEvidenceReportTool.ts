@@ -36,7 +36,7 @@ export class BuildEvidenceReportTool implements vscode.LanguageModelTool<IBuildE
     const testFolder = getTestFolder()
     if (!testFolder) {
       throw new Error(
-        'No SAP testing folder configured. Ask the user to run "ABAP FS: Set Test Folder".'
+        'No SAP testing folder configured. Ask the user to run "ABAP FS: Enable SAP UI Testing Features".'
       )
     }
     const connectionId = formatKey(options.input.connectionId)

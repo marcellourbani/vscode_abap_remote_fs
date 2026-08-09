@@ -42,6 +42,16 @@
 - testing/unit-tests.md
 - testing/test-classes.md
 - testing/test-documentation.md
+- sap-testing/index.md
+- sap-testing/getting-started.md
+- sap-testing/workflow.md
+- sap-testing/skills.md
+- sap-testing/subagents.md
+- sap-testing/tools.md
+- sap-testing/recording.md
+- sap-testing/anst.md
+- sap-testing/troubleshooting.md
+- sap-testing/technical-reference.md
 - diagrams/mermaid.md
 - diagrams/abap-documentation.md
 - developer-tools/dumps-analysis.md

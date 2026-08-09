@@ -51,7 +51,7 @@ There is no terminal command for SAP Testing execution or evidence generation â€
 Run these actions in this exact order in every chat:
 
 1. Call `get_test_folder` **before reading any test artifact or invoking another SAP Testing tool**. Treat the returned absolute path as `<TEST_FOLDER>`; never infer it from the workspace or a prior chat.
-2. If unset, STOP and ask the user to run "SAP Testing: Set Test Folder". If the folder is not open in the workspace, STOP and ask the user to add it via File > Add Folder to Workspace.
+2. If unset, STOP and ask the user to run "ABAP FS: Enable SAP UI Testing Features". If the folder is not open in the workspace, STOP and ask the user to add it via File > Add Folder to Workspace.
 3. Resolve `<PROGRAM>` and requested TC-IDs from the request. If omitted, inspect `<TEST_FOLDER>/tests/*/test-cases/_index.md` and `test-scripts/*.spec.ts`. Auto-select only when exactly one valid candidate exists; otherwise ask. Treat `_index.md`'s `Data required?` field as authoritative.
 4. Enforce the artifact gate for every selected TC-ID:
    - `test-cases/TC-XXX.md` exists

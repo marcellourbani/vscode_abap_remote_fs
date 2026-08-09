@@ -34,7 +34,7 @@ Goal: 1:1 `.md` → `.spec.ts` conversion using only the helper API, with runtim
 Run these actions in this exact order in every chat:
 
 1. Call `get_test_folder` **before reading or writing any artifact**. Treat the returned absolute path as `<TEST_FOLDER>`; never infer it from the workspace or a prior chat.
-2. If unset, STOP and ask the user to run "SAP Testing: Set Test Folder". If the folder is not open in the workspace, STOP and ask the user to add it via File > Add Folder to Workspace.
+2. If unset, STOP and ask the user to run "ABAP FS: Enable SAP UI Testing Features". If the folder is not open in the workspace, STOP and ask the user to add it via File > Add Folder to Workspace.
 3. Resolve `<PROGRAM>` and selected TC-IDs from the current request. If omitted, inspect `<TEST_FOLDER>/tests/*/test-cases/_index.md`. Auto-select only when exactly one candidate exists; otherwise ask. Use `_index.md` approval, runnability, and `Data required?` state, not prior-chat memory.
 4. Enforce the upstream input gate for the selected program: `_index.md`, `_screens.md`, and every selected `TC-XXX.md` must exist. If `_index.md`/`TC-XXX.md` is missing or inconsistent, STOP and follow `design-cases`; if `_screens.md` is missing, STOP and follow `explore-ui`. Read a matching `TC-XXX.data.md` only when the index says `Data required? = yes` (authored in define-data); `no` means no sidecar may exist.
 5. Call `get_connected_systems` and confirm the primary `connectionId`. Ask only if ambiguous. The spec remains system-agnostic; this identity is used to check readiness and verify source facts.

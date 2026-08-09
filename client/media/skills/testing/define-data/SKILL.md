@@ -30,7 +30,7 @@ The editor may hide tools until searched for. Before Step 0, ensure `get_test_fo
 > **Say before acting:** "Starting Step 0: standalone bootstrap and input gate."
 
 1. Call `get_test_folder` **before reading any artifact**. Treat the result as `<TEST_FOLDER>`; never infer it.
-2. If unset, STOP and ask the user to run "SAP Testing: Set Test Folder". If not open in the workspace, STOP and ask them to add it.
+2. If unset, STOP and ask the user to run "ABAP FS: Enable SAP UI Testing Features". If not open in the workspace, STOP and ask them to add it.
 3. Resolve `<PROGRAM>` from the request; if omitted, inspect `<TEST_FOLDER>/tests/*/test-cases/_index.md`. Auto-select only when exactly one candidate matches; otherwise ask.
 4. **Enforce the Phase 3 input gate:** `_index.md`, `_findings.md`, `_units.md`, `_screens.md`, and every `TC-XXX.md` must exist. If `_index.md` is missing, STOP and follow `design-cases`. From `_index.md`, take the authoritative `Data required?` column — that is the list of cases needing a `.data.md`. Do NOT re-derive it by rereading every TC body.
 5. Read `_findings.md`'s `## Input file format` — the fixture format, column count, and header names come from there.

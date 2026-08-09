@@ -18,7 +18,7 @@ Use this workflow to decide whether user-assisted recording is necessary, coach 
 
 ## Recordings are reference evidence
 
-The command **SAP Testing: Record WebGUI Flow in Edge** writes:
+The command **ABAP FS: Record SAP WebGUI Flow** writes:
 
 `<TEST_FOLDER>/recordings/<descriptive-name>.recording.ts`
 
@@ -61,8 +61,8 @@ State the exact blocker and the smallest interaction that needs recording. Do no
 
 Give these instructions:
 
-1. Select the intended SAP system from the SAP Testing status bar - very important and the first step!
-2. Run **SAP Testing: Record WebGUI Flow in Edge**.
+1. Run **ABAP FS: Record SAP WebGUI Flow**.
+2. Pick the intended SAP system when the command asks — it prompts for the connection and signs the browser in for you.
 3. Enter a descriptive name, for example `me21n-edit-po-item`.
 4. Start from a fresh transaction in English.
 5. Record one focused path with the fewest necessary actions.

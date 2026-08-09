@@ -3,7 +3,7 @@
  *
  * Everything here is dormant until a test folder is configured: the `abapfs:testingEnabled`
  * context key gates all testing skills, agents and LM tools, so a user who never runs
- * "ABAP FS: Set Test Folder" sees none of it.
+ * "ABAP FS: Enable SAP UI Testing Features" sees none of it.
  *
  * Scaffolding inside the test folder comes in two tiers — see testFolderScaffold.ts. The
  * Playwright-sidebar tier is applied and removed as that extension is installed or
@@ -110,7 +110,7 @@ export function registerTestingFeatures(context: vscode.ExtensionContext): void 
     const folder = getTestFolder()
     if (!folder) {
       vscode.window.showWarningMessage(
-        "No SAP testing folder is set yet. Run 'ABAP FS: Set Test Folder' first."
+        "No SAP testing folder is set yet. Run 'ABAP FS: Enable SAP UI Testing Features' first."
       )
       return
     }

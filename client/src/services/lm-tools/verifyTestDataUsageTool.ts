@@ -35,7 +35,7 @@ export class VerifyTestDataUsageTool implements vscode.LanguageModelTool<IVerify
     const testFolder = getTestFolder()
     if (!testFolder) {
       throw new Error(
-        'No SAP testing folder configured. Ask the user to run "ABAP FS: Set Test Folder".'
+        'No SAP testing folder configured. Ask the user to run "ABAP FS: Enable SAP UI Testing Features".'
       )
     }
 
