@@ -61,6 +61,7 @@ export interface RemoteConfig extends ClientConfiguration {
   sapGui?: SapGuiConfig
   /** Off for systems reached through a gateway that authenticates on the user's behalf. */
   webGuiAutoLogin?: boolean
+  systemDebugging?: boolean
 }
 
 export type StoredRemoteConfig = Omit<RemoteConfig, "name">
@@ -331,6 +332,7 @@ export class RemoteManager {
             current.atcVariant = incoming.atcVariant
             current.atcapprover = incoming.atcapprover
             current.webGuiAutoLogin = incoming.webGuiAutoLogin
+            current.systemDebugging = incoming.systemDebugging
           }
         }
       }

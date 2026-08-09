@@ -118,47 +118,47 @@
     ],
     "chatSkills": [
       {
-        "path": "./client/dist/media/skills/sap-testing/SKILL.md",
+        "path": "./client/dist/media/skills/testing/sap-testing/SKILL.md",
         "when": "abapfs:testingEnabled"
       },
       {
-        "path": "./client/dist/media/skills/analyze-and-plan/SKILL.md",
+        "path": "./client/dist/media/skills/testing/analyze-and-plan/SKILL.md",
         "when": "abapfs:testingEnabled"
       },
       {
-        "path": "./client/dist/media/skills/explore-ui/SKILL.md",
+        "path": "./client/dist/media/skills/testing/explore-ui/SKILL.md",
         "when": "abapfs:testingEnabled"
       },
       {
-        "path": "./client/dist/media/skills/design-cases/SKILL.md",
+        "path": "./client/dist/media/skills/testing/design-cases/SKILL.md",
         "when": "abapfs:testingEnabled"
       },
       {
-        "path": "./client/dist/media/skills/define-data/SKILL.md",
+        "path": "./client/dist/media/skills/testing/define-data/SKILL.md",
         "when": "abapfs:testingEnabled"
       },
       {
-        "path": "./client/dist/media/skills/prepare-data/SKILL.md",
+        "path": "./client/dist/media/skills/testing/prepare-data/SKILL.md",
         "when": "abapfs:testingEnabled"
       },
       {
-        "path": "./client/dist/media/skills/build-scripts/SKILL.md",
+        "path": "./client/dist/media/skills/testing/build-scripts/SKILL.md",
         "when": "abapfs:testingEnabled"
       },
       {
-        "path": "./client/dist/media/skills/run-scripts/SKILL.md",
+        "path": "./client/dist/media/skills/testing/run-scripts/SKILL.md",
         "when": "abapfs:testingEnabled"
       },
       {
-        "path": "./client/dist/media/skills/sap-webgui/SKILL.md",
+        "path": "./client/dist/media/skills/testing/sap-webgui/SKILL.md",
         "when": "abapfs:testingEnabled"
       },
       {
-        "path": "./client/dist/media/skills/sap-webgui-recording/SKILL.md",
+        "path": "./client/dist/media/skills/testing/sap-webgui-recording/SKILL.md",
         "when": "abapfs:testingEnabled"
       },
       {
-        "path": "./client/dist/media/skills/helpers-reference/SKILL.md",
+        "path": "./client/dist/media/skills/testing/helpers-reference/SKILL.md",
         "when": "abapfs:testingEnabled"
       },
       {
@@ -189,7 +189,7 @@
         "path": "./client/dist/media/skills/adt-api-discovery/SKILL.md"
       },
       {
-        "path": "./client/dist/media/skills/anst-guide/SKILL.md",
+        "path": "./client/dist/media/skills/testing/anst-guide/SKILL.md",
         "when": "abapfs:testingEnabled"
       }
     ],
@@ -262,6 +262,11 @@
               "terminalMode": {
                 "type": "boolean",
                 "description": "Terminal mode",
+                "default": false
+              },
+              "systemDebugging": {
+                "type": "boolean",
+                "description": "Enable system debugging",
                 "default": false
               }
             }
@@ -4811,6 +4816,11 @@
                   "type": "boolean",
                   "default": true,
                   "markdownDescription": "Sign in to Webgui automatically using a SAP reentrance ticket, skipping the logon screen. Turn this off when the connection goes through a gateway or proxy that already authenticates you, or when the system does not issue reentrance tickets."
+                },
+                "systemDebugging": {
+                  "type": "boolean",
+                  "description": "Enable system debugging by default",
+                  "default": false
                 },
                 "oauth": {
                   "type": "object",

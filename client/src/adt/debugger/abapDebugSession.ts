@@ -13,6 +13,7 @@ export interface AbapDebugConfiguration extends DebugConfiguration {
   connId: string
   debugUser: string
   terminalMode: boolean
+  systemDebugging?: boolean
 }
 export interface AbapDebugSessionCfg extends DebugSession {
   configuration: AbapDebugConfiguration

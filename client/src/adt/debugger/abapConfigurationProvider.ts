@@ -1,6 +1,7 @@
 import { CancellationToken, DebugConfigurationProvider, WorkspaceFolder } from "vscode"
 import { AbapDebugConfiguration } from "./abapDebugSession"
 import { log } from "../../lib"
+import { configFromKey } from "../../langClient"
 
 export const DEBUGTYPE = "abap"
 
@@ -16,15 +17,16 @@ export class AbapConfigurationProvider implements DebugConfigurationProvider {
         request: "attach",
         connId: "${command:abapfs.pickAdtRootConn}",
         debugUser: "",
-        terminalMode: false
+        terminalMode: false,
+        systemDebugging: false
       }
     ]
   }
-  resolveDebugConfiguration(
+  async resolveDebugConfiguration(
     folder: WorkspaceFolder | undefined,
     config: AbapDebugConfiguration,
     token?: CancellationToken
-  ): AbapDebugConfiguration {
+  ): Promise<AbapDebugConfiguration> {
     // config.connId may be the literal "${command:...}" string if VS Code
     // didn't evaluate it (e.g., no launch.json, dynamic config).
     // Treat that as unset and fall through to folder authority or picker.
@@ -43,8 +45,17 @@ export class AbapConfigurationProvider implements DebugConfigurationProvider {
       request: "attach",
       connId,
       terminalMode: false,
-      debugUser: ""
+      debugUser: "",
+      systemDebugging: false
     }
-    return { ...defaultconf, ...config, connId }
+    const connectionConfig = connId.startsWith("${command:")
+      ? undefined
+      : await configFromKey(connId).catch(() => undefined)
+    return {
+      ...defaultconf,
+      ...config,
+      connId,
+      systemDebugging: config.systemDebugging ?? !!connectionConfig?.systemDebugging
+    }
   }
 }
