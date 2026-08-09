@@ -26,6 +26,9 @@ jobs:
       - name: Install dependencies
         run: pip install mkdocs-material pyyaml mdx_truly_sane_lists
 
+      - name: Deploy to GitHub Pages
+        run: mkdocs gh-deploy --force
+
       - name: Build DOCUMENTATION.md from docs/
         run: python scripts/build_docs.py
 
@@ -41,6 +44,3 @@ jobs:
             git remote set-url origin "https://x-access-token:${RELEASE_PAT}@github.com/${{ github.repository }}"
             git push origin HEAD:master
           fi
-
-      - name: Deploy to GitHub Pages
-        run: mkdocs gh-deploy --force
