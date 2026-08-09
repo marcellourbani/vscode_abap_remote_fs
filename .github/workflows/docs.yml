@@ -14,6 +14,7 @@ jobs:
     permissions:
       contents: write
       pages: write
+      pull-requests: write
     steps:
       - uses: actions/checkout@v4
         with:
@@ -29,17 +30,29 @@ jobs:
       - name: Build DOCUMENTATION.md from docs/
         run: python scripts/build_docs.py
 
-      - name: Commit DOCUMENTATION.md if changed
+      - name: Create PR for DOCUMENTATION.md if changed
         env:
           RELEASE_PAT: ${{ secrets.RELEASE_PAT }}
+          GH_TOKEN: ${{ secrets.RELEASE_PAT }}
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
           git add DOCUMENTATION.md
           if ! git diff --staged --quiet; then
+            # Create a unique branch name with timestamp
+            BRANCH_NAME="docs/auto-generate-docs-$(date +%s)"
+            git checkout -b "$BRANCH_NAME"
             git commit -m "docs: auto-generate DOCUMENTATION.md from docs/"
             git remote set-url origin "https://x-access-token:${RELEASE_PAT}@github.com/${{ github.repository }}"
-            git push origin HEAD:master
+            git push origin "$BRANCH_NAME"
+            
+            # Create pull request
+            gh pr create \
+              --base master \
+              --head "$BRANCH_NAME" \
+              --title "docs: auto-generate DOCUMENTATION.md from docs/" \
+              --body "Auto-generated documentation update. Please review and merge if changes look correct." \
+              --no-maintainer-edit || true
           fi
 
       - name: Deploy to GitHub Pages
