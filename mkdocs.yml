@@ -76,6 +76,17 @@ nav:
     - Unit Tests: testing/unit-tests.md
     - Test Classes: testing/test-classes.md
     - Test Documentation: testing/test-documentation.md
+  - SAP Testing:
+    - Overview: sap-testing/index.md
+    - Getting Started: sap-testing/getting-started.md
+    - The Testing Workflow: sap-testing/workflow.md
+    - Skills: sap-testing/skills.md
+    - Subagents: sap-testing/subagents.md
+    - Tools: sap-testing/tools.md
+    - Recording a WebGUI Flow: sap-testing/recording.md
+    - Finding Enhancements with ANST: sap-testing/anst.md
+    - Troubleshooting: sap-testing/troubleshooting.md
+    - Technical Reference: sap-testing/technical-reference.md
   - Diagrams:
     - Mermaid: diagrams/mermaid.md
     - ABAP Documentation: diagrams/abap-documentation.md

@@ -4644,7 +4644,7 @@
           "type": "string",
           "default": "",
           "scope": "application",
-          "description": "Folder holding all SAP UI test artifacts: test cases, Playwright scripts, and results. Setting this switches on the SAP testing features. Use the 'ABAP FS: Set Test Folder' command rather than editing this by hand."
+          "description": "Folder holding all SAP UI test artifacts: test cases, Playwright scripts, and results. Setting this switches on the SAP testing features. Use the 'ABAP FS: Enable SAP UI Testing Features' command rather than editing this by hand."
         },
         "abapfs.testing.edgePath": {
           "type": "string",

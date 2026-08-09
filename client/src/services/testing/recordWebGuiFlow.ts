@@ -136,7 +136,7 @@ export async function runRecordWebGuiFlow(context: vscode.ExtensionContext): Pro
   const testFolder = getTestFolder()
   if (!testFolder) {
     vscode.window.showWarningMessage(
-      "No SAP testing folder configured. Run 'ABAP FS: Set Test Folder' first."
+      "No SAP testing folder configured. Run 'ABAP FS: Enable SAP UI Testing Features' first."
     )
     return
   }

@@ -40,7 +40,7 @@ Goal: turn a system-agnostic `TC-XXX.data.md` requirement spec into a connection
 Run these actions in this exact order in every chat:
 
 1. Call `get_test_folder` **before reading or writing any artifact**. Treat the returned absolute path as `<TEST_FOLDER>`; never infer it from the workspace or a prior chat.
-2. If unset, STOP and ask the user to run "SAP Testing: Set Test Folder". If the folder is not open in the workspace, STOP and ask the user to add it via File > Add Folder to Workspace.
+2. If unset, STOP and ask the user to run "ABAP FS: Enable SAP UI Testing Features". If the folder is not open in the workspace, STOP and ask the user to add it via File > Add Folder to Workspace.
 3. Resolve `<PROGRAM>` and requested TC-IDs from the current request. If omitted, inspect `<TEST_FOLDER>/tests/*/test-cases/_index.md`. Auto-select only when exactly one program is a valid candidate; otherwise ask. Use `_index.md` runnable status, priorities, and `Data required?` column rather than conversation memory or rereading every TC file.
 4. Enforce the upstream input gate. For the selected program, require:
    - `test-cases/_index.md` and `test-cases/_findings.md` (from analyze-and-plan / design-cases)

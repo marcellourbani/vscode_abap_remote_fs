@@ -79,7 +79,7 @@ The editor may hide language-model tools until they are searched for, and smalle
 > **Say before acting:** "Starting Step 0: establish the test folder, target object, and SAP connection."
 
 1. Call `get_test_folder` **before reading or writing any artifact**. Treat the result as `<TEST_FOLDER>`; never infer it.
-2. If unset, STOP and ask the user to run "SAP Testing: Set Test Folder". If not open in the workspace, STOP and ask them to add it.
+2. If unset, STOP and ask the user to run "ABAP FS: Enable SAP UI Testing Features". If not open in the workspace, STOP and ask them to add it.
 3. Identify the target program/transaction. If absent, inspect `tests/*/test-cases/_index.md`; reuse only when exactly one candidate matches, otherwise ask.
 4. Call `get_connected_systems` and confirm the target `connectionId`.
 5. Ask which system only if ambiguous. Confirm an ABAP-tools connection to the same landscape.

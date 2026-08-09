@@ -30,7 +30,7 @@ The editor may hide tools until searched for. Before Step 0, ensure `get_test_fo
 > **Say before acting:** "Starting Step 0: standalone bootstrap and input gate."
 
 1. Call `get_test_folder` **before reading any artifact**. Treat the result as `<TEST_FOLDER>`; never infer it.
-2. If unset, STOP and ask the user to run "SAP Testing: Set Test Folder". If not open in the workspace, STOP and ask them to add it.
+2. If unset, STOP and ask the user to run "ABAP FS: Enable SAP UI Testing Features". If not open in the workspace, STOP and ask them to add it.
 3. Resolve `<PROGRAM>` from the request; if omitted, inspect `<TEST_FOLDER>/tests/*/test-cases/_findings.md`. Auto-select only when exactly one candidate matches; otherwise ask.
 4. **Enforce the Phase 1 + Phase 2 input gate.** All of these must exist:
    - `tests/<PROGRAM>/test-cases/_findings.md`, `_flow.md`, `_units.md` (from analyze-and-plan)
