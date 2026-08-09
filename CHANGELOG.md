@@ -1,5 +1,23 @@
 # Changelog
 
+## 2.8.0
+
+### Minor Changes
+
+- a133f1f: add SAP Testing - LM Tools
+- 9cbe7c9: SAP Testing - commands, context and config
+- a079355: add SAP testing skills and agents
+
+### Patch Changes
+
+- eb9dfe7: System debugging support
+- c381adc: Improve post-mortem bebug session handling
+- b35b4a6: SAP Testing - Playwright
+- e2526e4: add ANST skill, agent and tool
+- 2a205e9: web gui auto-login and fixes
+- 1d7636c: Add SAP Testing documentation, and correct the SAP Testing command names and setting key referenced by the skills and extension messages
+- 1e41d96: allow docs action to push to master
+
 ## 2.7.0
 
 ### Minor Changes
