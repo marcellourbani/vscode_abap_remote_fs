@@ -256,6 +256,21 @@ describe("DebugService instance", () => {
       await service.attach()
       expect(client.debuggerAttach).toHaveBeenCalledWith("user", "DEBUGGEE1", "TESTUSER", true)
     })
+
+    test("saves the connection system debugging setting", async () => {
+      const systemDebugging = makeListener({ systemDebugging: true })
+      const configuredService = new DebugService(
+        "conn",
+        client,
+        systemDebugging,
+        makeDebuggee(),
+        makeUI()
+      )
+
+      await configuredService.attach()
+
+      expect(client.debuggerSaveSettings).toHaveBeenCalledWith({ systemDebugging: true })
+    })
   })
 
   describe("post-mortem debugging", () => {
