@@ -39,7 +39,7 @@ jobs:
           if ! git diff --staged --quiet; then
             git commit -m "docs: auto-generate DOCUMENTATION.md from docs/"
             git remote set-url origin "https://x-access-token:${RELEASE_PAT}@github.com/${{ github.repository }}"
-            git push origin HEAD:master
+            git push --force-with-lease origin HEAD:master
           fi
 
       - name: Deploy to GitHub Pages
