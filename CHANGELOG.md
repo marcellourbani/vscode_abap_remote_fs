@@ -1,5 +1,11 @@
 # Changelog
 
+## 2.8.1
+
+### Patch Changes
+
+- ba7be9f: fix test folder scaffolding error
+
 ## 2.8.0
 
 ### Minor Changes
