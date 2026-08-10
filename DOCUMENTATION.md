@@ -23,6 +23,7 @@ This is a high-level summary. See the left navigation for full feature pages.
 | **Editor Experience** | Enhanced hover info, custom editors, object properties, and dedicated ABAP views/panels |
 | **Debug** | Full ABAP debugger with breakpoints, variable inspection, stepping, and debug recording |
 | **Test** | Run unit tests, create test classes, generate test documentation |
+| **SAP UI Testing** | Let Copilot analyse a report, design a test plan, automate it against SAP WebGUI, and produce a Word evidence report — see [SAP Testing](#sap-testing) |
 | **Code Quality** | ATC analysis, syntax validation, where-used, ABAP Cleaner formatting |
 | **Transport** | View and manage transport requests directly |
 | **Version Control** | abapGit integration, revision history, blame gutter |
@@ -1655,9 +1656,9 @@ Record a live ABAP debug session and replay it offline — forward and backward 
 > Each step takes ~1–3 seconds longer than normal because the extension captures all variable data before SAP discards it.
 
 1. Start a debug session as usual (set breakpoints, attach to user/terminal)
-2. Open the Command Palette (`Ctrl+Shift+P`) → **ABAP: Start Debug Recording**
+2. Open the Command Palette (`Ctrl+Shift+P`) → **ABAP FS: Start Debug Recording**
 3. Step through your code normally — every step is captured
-4. `Ctrl+Shift+P` → **ABAP: Stop Debug Recording**
+4. `Ctrl+Shift+P` → **ABAP FS: Stop Debug Recording**
 5. At the prompt, choose **Save** (plain `.abaprecord`) or **Compress & Save** (`.abaprecord.gz`, ~80–95% smaller)
 
 **What is captured per step:**
@@ -1670,7 +1671,7 @@ Record a live ABAP debug session and replay it offline — forward and backward 
 
 ## Replaying a Recording
 
-1. `Ctrl+Shift+P` → **ABAP: Replay Debug Recording**
+1. `Ctrl+Shift+P` → **ABAP FS: Replay Debug Recording**
 2. Select a `.abaprecord` or `.abaprecord.gz` file — both are handled automatically
 3. The replay session opens showing code, stack, and variables exactly as recorded
 
@@ -1696,8 +1697,8 @@ Large sessions can produce files tens of MB in size. Use gzip to reduce storage 
 
 | Command | Description |
 |---------|-------------|
-| **ABAP: Compress Debug Recording** | Compress an existing `.abaprecord` → `.abaprecord.gz` |
-| **ABAP: Decompress Debug Recording** | Convert `.abaprecord.gz` back to plain JSON |
+| **ABAP FS: Compress Debug Recording** | Compress an existing `.abaprecord` → `.abaprecord.gz` |
+| **ABAP FS: Decompress Debug Recording** | Convert `.abaprecord.gz` back to plain JSON |
 
 After compression the extension shows the size reduction (e.g. *42 MB → 3.2 MB, 92% smaller*). Both formats are fully interchangeable.
 
@@ -1707,11 +1708,11 @@ After compression the extension shows the size reduction (e.g. *42 MB → 3.2 MB
 
 | Command | Description |
 |---------|-------------|
-| `ABAP: Start Debug Recording` | Begin recording the active debug session |
-| `ABAP: Stop Debug Recording` | Stop and save (plain or compressed) |
-| `ABAP: Replay Debug Recording` | Open and replay a recording file |
-| `ABAP: Compress Debug Recording` | Compress an existing `.abaprecord` file |
-| `ABAP: Decompress Debug Recording` | Decompress a `.abaprecord.gz` file |
+| `ABAP FS: Start Debug Recording` | Begin recording the active debug session |
+| `ABAP FS: Stop Debug Recording` | Stop and save (plain or compressed) |
+| `ABAP FS: Replay Debug Recording` | Open and replay a recording file |
+| `ABAP FS: Compress Debug Recording` | Compress an existing `.abaprecord` file |
+| `ABAP FS: Decompress Debug Recording` | Decompress a `.abaprecord.gz` file |
 
 ---
 
@@ -1984,41 +1985,61 @@ Click the **Unlink** icon next to the repository to remove the connection withou
 
 # ABAP Revision History
 
-Every time an ABAP object is activated, SAP stores a version snapshot — the same history you see in SE80 via **Utilities → Versions**. This extension brings that history directly into VS Code with a visual diff editor.
+Every time an ABAP object is activated, SAP stores a version snapshot — the same history you see in SE80 via **Utilities → Versions**. This extension surfaces that history in **VS Code's built-in Source Control view**, with a side-by-side diff editor.
 
 ## Opening Revision History
 
-**Option 1 — Command Palette** (`Ctrl+Shift+P`):
-> `ABAP: Show object history`
+Revisions appear in the standard **Source Control view** (`Ctrl+Shift+G`), under a provider named `ABAP <connId>` (one per connected system).
 
-**Option 2 — Explorer context menu:**
-Right-click any ABAP object → **Show object history**
+There are four ways objects show up there:
 
-**Option 3 — Ask Copilot:**
-> "Show version history for ZCL_MY_CLASS"
+1. **Automatic — Recent group.** Open any ABAP object in the editor. It's added to the **Recent** group of its connection's SCM provider, along with a diff decoration against the previous activated version.
+2. **Whole transport.** In the **Transports** panel (ABAP FS activity bar), right-click a transport → **Add transport to source control**. Every object in that transport is added as its own SCM group.
+3. **Object Property View.** ABAP FS activity bar → **Object Property** panel → **Revision history** section lists every stored version for the currently open object.
+4. **Ask Copilot.** > "Show version history for ZCL_MY_CLASS" or ask to compare any two versions — uses the `get_version_history` tool (see below).
 
 ## Comparing Versions
 
-Once the history panel is open:
+### From the Source Control view
 
-1. Select any revision from the list — it shows date, author, and transport number.
-2. Click a revision to open a **side-by-side diff** against the current active version.
-3. Use the **previous/next** arrows to step through revisions one at a time.
-4. Toggle **Code Normalization** to strip formatting differences (like SE80's normalized comparison), so only meaningful changes are highlighted.
+Click a resource in an `ABAP <connId>` group to open the default diff (current active version vs. previous revision), or use the inline icons on the row:
+
+| Command | What it does |
+|---|---|
+| `Open diff with revision` | Side-by-side diff, active vs. previous revision |
+| `Open diff normalized` | Same diff with formatting/comment differences stripped (SE80-style normalized compare) |
+| `Open current version` | Just opens the current source, no diff |
+
+Inline group actions:
+
+- **Filter unchanged** — hides objects with no differences.
+- **Clear** — empties the group.
+
+### Stepping through revisions in the diff editor
+
+While a revision diff is open, the editor toolbar exposes:
+
+| Command | Scope |
+|---|---|
+| `Previous revision (left pane)` / `Next revision (left pane)` | Move the left (older) side back or forward in history |
+| `Previous revision (right pane)` / `Next revision (right pane)` | Move the right (newer) side back or forward in history |
+| `Toggle code normalization` | Strip formatting/comment differences on the fly |
+
+### From the Object Property View
+
+In the **Revision history** section, tick the checkbox next to any two versions to open a diff between exactly those two.
 
 ## Restoring an Old Version
 
-1. Open the revision you want to restore.
-2. Copy the content from the left pane into your editor, or use the restore action if prompted.
-3. Save and activate as normal.
+There's no one-click restore. Open the diff to the version you want, copy the content from the pane holding the old version into the editor of the current active source, then save and activate as normal.
 
 ## vs. SE80 Version Management
 
 | SE80 (Utilities → Versions) | This Extension |
 |---|---|
-| Opens in SAP GUI | Opens inside VS Code |
+| Opens in SAP GUI | Standard VS Code Source Control + diff editor |
 | Text-based diff | Syntax-highlighted side-by-side diff |
-| Normalized compare available | Normalization toggle available |
+| Normalized compare available | `Toggle code normalization` in diff toolbar |
 | Manual copy to restore | Copy from diff pane |
 
 ## Using Copilot for Version History
@@ -2225,6 +2246,676 @@ Copilot calls the generator and saves a `.docx` file to your workspace.
 - Use **absolute paths** for screenshots (e.g. `C:\tests\...`), not relative paths
 - You can include as many scenarios and screenshots per scenario as needed
 - Specify a custom title or date in your prompt if the defaults don't fit: *"Use title 'Regression Test April' and date 30-04-2026"*
+
+# SAP Testing
+
+SAP Testing turns Copilot into an SAP test engineer. Point it at an ABAP report or transaction and it reads the code, explores the screens in a real browser, designs a test plan, works out what data each test needs, writes automated tests that drive SAP WebGUI, runs them, and hands you a Word evidence report.
+
+You don't write Playwright code, you don't install Node or npm, and you don't open a terminal. You talk to Copilot in chat and review what it produces.
+
+!!! info "GitHub Copilot in VS Code only"
+    SAP Testing is built on VS Code chat skills and agents. It is **not** available through the [MCP Server](#mcp-server-for-external-ai-tools) — so Cursor, Claude Code, Claude Desktop, and other MCP clients cannot use it yet. The rest of ABAP FS still works with those clients.
+
+## What you get
+
+| | |
+|---|---|
+| **A reviewed test plan** | One Markdown file per test case, plus a printable `_index.docx` case list you can hand to a business owner |
+| **Automated tests** | Playwright specs that drive SAP WebGUI — no login code, no hardcoded material numbers |
+| **Per-landscape test data** | The same test runs on DEV, QAS, and PRD; the data is resolved separately for each |
+| **Evidence** | A Word report per program and system: pass/fail summary, every step with a screenshot, and the database checks that prove SAP really did what it said |
+
+## Why it's built this way
+
+A test that passes for the wrong reason is worse than no test. So the framework deliberately slows Copilot down: work is split into seven phases, each producing artifacts on disk, and three of them are checked by an independent reviewer agent before the work is allowed to continue. Copilot cannot skip ahead — the tools that build the test index and run the tests refuse to run until the earlier steps have genuinely been done.
+
+The other consequence is that **every phase can run in its own chat**. The artifacts on disk are the handoff, not the conversation, so you can analyse a program today and design cases next week without losing anything.
+
+## What to expect
+
+Set your expectations before you start, because this is not a push-button that turns a program into a finished test suite.
+
+ABAP is rarely simple. Even a modest report carries years of validations, defaults, enhancements, and special cases, and a lot of that logic is only obvious to someone who knows the business. Copilot reads the code carefully and the reviewer agents catch a great deal, but they will still miss things, misread intent occasionally, and get stuck on screens that need your knowledge.
+
+What the framework genuinely gives you is a **fast, thorough first pass with a rigorous process around it** — the enumeration work nobody enjoys, done exhaustively, with the evidence to check it. What it needs from you is review at the checkpoints, especially the test plan in phase 3, and honest answers when it asks a question.
+
+Treat the output as a draft by a capable new team member who has read all the code but has never run the business. Reviewed properly it saves an enormous amount of time. Accepted blindly it produces tests that look convincing and prove very little.
+
+SAP Testing is also a new feature and still maturing. If something doesn't work or the automation can't drive a control, that's worth reporting rather than working around.
+
+## Prerequisites
+
+Before you start you need:
+
+- **ABAP FS installed and connected** to your SAP system — see [Installation](#installation-steps). The connection must have both a `url` and a `client`.
+- **GitHub Copilot** in Agent mode, on VS Code 1.105 or newer.
+- **SAP WebGUI enabled** on the target system. Everything runs through the browser-based GUI; paths that only work in SAP GUI for Windows (Excel/OLE uploads, native file dialogs) can't be automated here and Copilot will mark them as such.
+- **Microsoft Edge** installed. It is detected automatically; set `abapfs.testing.edgePath` if you keep it somewhere unusual or want to use another Chromium browser.
+- **A system that is safe to test on.** Tests click real buttons in a real SAP system.
+
+You do **not** need Node.js, npm, Playwright, or a browser download — the extension bundles the test runner and uses your installed Edge.
+
+## Where to start
+
+1. [Getting Started](#getting-started-with-sap-testing) — enable the feature and run your first analysis in about five minutes.
+2. [The Testing Workflow](#the-testing-workflow) — the seven phases, what you review at each one.
+3. [Skills](#sap-testing-skills), [Subagents](#sap-testing-subagents), [Tools](#sap-testing-tools) — what's inside the framework.
+4. [Troubleshooting](#sap-testing-troubleshooting) — when something goes wrong.
+
+For internals — folder layout, the runtime API, quality gates, the data-resolution model — see the [Technical Reference](#sap-testing-technical-reference).
+
+# Getting Started with SAP Testing
+
+Five steps. You only do steps 1–4 once.
+
+## Step 1 — Create an empty folder
+
+Create a folder anywhere on your machine to hold your test artifacts, for example:
+
+```
+C:\sap-tests
+```
+
+This is a normal folder you own. Everything Copilot produces — test cases, scripts, results, evidence reports — goes here, and you can put it under Git if you want to share the suite with your team.
+
+## Step 2 — Enable the feature
+
+`Ctrl+Shift+P` → **ABAP FS: Enable SAP UI Testing Features** → pick the folder you just created.
+
+SAP Testing stays completely hidden until you do this. Choosing the folder is what switches on the testing skills, subagents, and tools — before that, none of them appear in Copilot chat.
+
+ABAP FS also drops a few of its own files into the folder at this point. Leave them alone — see [About the files ABAP FS creates](#about-the-files-abap-fs-creates) below for what they are and why they matter.
+
+## Step 3 — Add the folder to your workspace
+
+After you pick the folder, VS Code shows a notification with an **Add to Workspace** button. Click it.
+
+**This step matters** for two reasons:
+
+- **Fewer interruptions.** Copilot can edit files outside the workspace, but VS Code asks you to approve every one of those edits. A single phase writes a lot of files, so you'd spend the session clicking Approve.
+- **Working error detection.** The `tsconfig.json` ABAP FS puts in the test folder only takes effect when the folder is open in the workspace. That's what gives real IntelliSense and red squiggles while Copilot writes test scripts — which means Copilot catches its own mistakes as it writes instead of at run time.
+
+You can also do it later with **File → Add Folder to Workspace**.
+
+## Step 4 — Choose models for the subagents
+
+`Ctrl+Shift+P` → **ABAP FS: Set Models for SAP Testing Subagents**.
+
+A panel opens listing the nine subagents that SAP Testing delegates work to, each with a hint about the kind of model it needs. Pick a model for each and save. VS Code will ask you to reload the window.
+
+**Do this even though the framework ships with defaults.** The defaults name specific models that may not exist in your Copilot subscription, and an agent whose model isn't available falls back to whatever your main chat is using — usually a premium model doing work that a cheap one handles fine, which gets expensive quickly across a long analysis.
+
+The rough shape of a good configuration: small fast models for the mechanical workers (Code Grep, Source Download, Data Scout), and stronger models — ideally from a *different* family than your main chat model — for the three reviewers, since their whole job is to catch mistakes the main agent made. See [Subagents](#sap-testing-subagents) for the full list.
+
+If a model you picked later disappears from Copilot, ABAP FS tells you at startup and offers a **Configure Models** button.
+
+## Step 5 — Start testing
+
+Open Copilot Chat in **Agent mode** and type:
+
+```
+/sap-testing analyze report Z_MY_REPORT on DEV-100
+```
+
+`/sap-testing` is the only skill you need to remember. It's the entry point — it tells Copilot how the whole framework fits together and which of the other skills to load for whatever you asked for. Give it the ABAP object you want to test and the connection ID of the SAP system to use.
+
+From there Copilot takes over: it downloads the source, reads it, and produces the first set of artifacts in your test folder. When it finishes a phase it tells you exactly what to say next, usually something like *"start a new chat and say: Explore the UI for Z_MY_REPORT on DEV-100"*.
+
+You can follow that suggestion or just carry on in the same chat — both work. See [The Testing Workflow](#the-testing-workflow) for what happens in each phase and the trade-off between the two.
+
+## About the files ABAP FS creates
+
+Alongside your test artifacts you'll see a few files that ABAP FS manages itself — `tsconfig.json`, a `node_modules` folder, and (if you have the Playwright extension) `playwright.config.js` and `.sap-active-system`.
+
+**Don't edit or delete them.** They're what gives Copilot real error-checking while it writes test scripts, and what lets the tests run without you installing anything. They point at the extension's own install path, so ABAP FS rewrites them on every startup and after every update — any change you make is overwritten. They're added to `.gitignore` automatically because they're specific to your machine.
+
+If they do get deleted, nothing is lost: reload VS Code and ABAP FS recreates them.
+
+## Optional: the Playwright sidebar
+
+If you install Microsoft's **Playwright Test for VSCode** extension, you get the Test Explorer sidebar for browsing and running specs by hand, plus the trace viewer for debugging failures. ABAP FS adds the extra scaffolding that makes the sidebar work, and removes it again if you uninstall the extension.
+
+It's genuinely optional — Copilot runs tests through ABAP FS's own tool either way, and that tool is given the target system as part of every run.
+
+The sidebar has no way to pass that, so it has to be told in advance. That's what the **`SAP: <system>`** item in the status bar is for: it shows which SAP system the sidebar will run against, and clicking it (or running **ABAP FS: Select System for Playwright Sidebar**) lets you change it. Set it before running anything from the sidebar, or your tests will go to the wrong system.
+
+The status bar item appears only while the Playwright extension is installed. If you never use the sidebar, you'll never see it and you can ignore this entirely.
+
+# The Testing Workflow
+
+Building a test suite runs in seven phases. Each one produces a specific set of files in your test folder and hands off to the next.
+
+You don't have to memorise any of this. Start with `/sap-testing`, and at the end of every phase Copilot tells you exactly what to say to start the next one. This page is here so you know what you're looking at and what's worth reviewing.
+
+| Phase | What Copilot does | What you get |
+|---|---|---|
+| 1. Analyze | Downloads and reads the ABAP source | `_flow.md`, `_units.md`, `_findings.md` |
+| 2. Explore | Opens the transaction in a browser and maps the screens | `_screens.md` |
+| 3. Design | Writes the test plan | `TC-001.md`… plus `_index.md` and `_index.docx` |
+| 4. Define data | Specifies what data each case needs | `TC-001.data.md`… |
+| 5. Prepare data | Finds real values in your SAP system | `data.json` per case, per system |
+| 6. Build scripts | Converts each case into an automated test | `TC-001.spec.ts`… |
+| 7. Run | Executes the tests and verifies the results | Screenshots, checks, and an evidence report |
+
+## One chat or many — your call
+
+Every phase reads what it needs from the files on disk, so a fresh chat loses nothing. Copilot ends each phase by suggesting a new chat and giving you the exact sentence to start it with, but that's a suggestion, not a requirement — carrying straight on in the same conversation works too.
+
+The trade-off:
+
+- **A new chat per phase** keeps the model's context small and focused, which usually means sharper work on long analyses. You review each phase's output as a natural checkpoint.
+- **One continuous chat** is simpler and keeps the thread of your own decisions and asides, which can be handy on a small program. The risk is that a conversation carrying several phases of history gets sloppier as it fills up.
+
+Rule of thumb: a short report is fine in one chat; a large program with dozens of cases is better split.
+
+## Phase 1 — Analyze the code
+
+Copilot resolves your transaction or report to its real executable object, downloads the complete source including every include, reads all of it, and writes down what it found: how the program flows, what every routine reads and writes, and a full list of every validation, message, branch, and authorization check.
+
+The key output is `_findings.md`, which ends with a **target minimum** — the number of test cases this program honestly needs. That number drives the rest of the workflow.
+
+**Worth your attention:** if you're testing a standard SAP transaction (ME21N, VA01, MIGO…), Copilot will suggest capturing an [ANST trace](#finding-enhancements-with-anst) first. Static analysis under-reports enhancements on standard code, so it's worth doing.
+
+## Phase 2 — Explore the screens
+
+Copilot opens the transaction in a real browser and walks through it, recording every field, button, checkbox, and dialog by the exact label the automation will need — plus each control's starting state.
+
+This has to be done by looking, not by reading the ABAP source, because the labels a browser exposes are not the same as the field names in the code. A reviewer agent checks specifically for that mistake.
+
+**Worth your attention:**
+
+- Copilot will not click anything destructive without asking. If the program has a *Test Run* vs *Update* switch, it selects the test side first. If there's no test mode and the program writes data, it stops and asks you.
+- If it hits a control it can't drive, it will ask you either for sample data or for a [recording](#recording-a-webgui-flow). Answering is much better than letting it guess.
+
+## Phase 3 — Design the test cases
+
+Copilot turns the findings and the screen map into one file per test case, each with the full selection-screen state, the steps, the expected result, and — importantly — how the case will be **proven** afterwards in the database, not just on screen.
+
+An independent reviewer agent then reads the actual source again and challenges the plan: cases that were merged when they should be separate, categories that were quietly skipped, state-changing cases with no verification. Copilot fixes what it finds and re-reviews until it passes.
+
+**Worth your attention:** you get `_index.docx`, a printable, bordered case list. This is the document to review yourself, or send to the business owner, before anyone writes a line of automation. Copilot will also ask which cases to prioritise.
+
+## Phase 4 — Define the test data
+
+For every case that needs data, Copilot writes a small spec describing the *shape* of what's needed — "a material of type FERT with a plant assignment" — rather than a specific number. That's what lets the same test run on a different landscape later.
+
+Upload files are described here too, and Copilot matches the file format to what the program actually parses.
+
+## Phase 5 — Prepare the data
+
+Now Copilot finds real values in the SAP system you named, by querying it. It shows you everything it found in one table and **waits for your approval** before saving anything.
+
+Approved values are cached per system, so DEV, QAS, and PRD each get their own set and changing one never affects another.
+
+**Worth your attention:** if a query returns nothing, Copilot stops and tells you rather than inventing a value. If a test needs a record that only the program itself can create, it asks permission before running that setup — it's a real write to your system.
+
+## Phase 6 — Build the scripts
+
+Each approved case becomes one automated test. The scripts are written against a bundled SAP runtime, so they read like SAP steps rather than browser code:
+
+```typescript
+await sap.openTx("Z_MY_TCODE");
+await sap.setField("Material", data.sample_material);
+await sap.execute();
+await sap.expectAlert(/completed/i);
+```
+
+No login code (the runner signs in for you), no hardcoded business data, no manual waits.
+
+## Phase 7 — Run and verify
+
+Copilot checks your data is ready, runs the tests, and then does the part that matters most: it runs the database checks each case declared, because a green screen doesn't prove SAP actually stored the right thing. A case whose UI passed but whose database check failed is reported as a **failure**.
+
+Checks a machine can't do — an application-server file, an XML payload, an email actually arriving — are recorded as *pending* with instructions for you, and stay visible in the report until you confirm them.
+
+Finally you get `<PROGRAM>-<SYSTEM>-report.docx`: a title page with the pass/fail summary, a colour-coded results table, and one section per case with every step, timestamp, and screenshot.
+
+**Worth your attention:** Copilot reports three outcomes, not two. **Blocked** means the test never reached SAP because its data wasn't ready — that's a data problem, not a bug. Don't read it as a failure.
+
+## The one loop
+
+Occasionally a test needs a record that only *another* test can create. That setup script doesn't exist until phase 6, so phase 5 flags the requirement as deferred and you run it a second time after the scripts are built:
+
+**4 → 5 → 6 → 5 → 7**
+
+This is expected, not rework. Copilot names the deferred items in its handoff so the next chat knows a second data pass is owed.
+
+## Running again later
+
+Once a suite exists you don't repeat all seven phases. To run against another system, do phase 5 for that connection and then phase 7. To re-run the same tests after a code change, just phase 7.
+
+# SAP Testing Skills
+
+Skills are instruction sets that Copilot loads when it needs them. SAP Testing adds twelve, and they appear in chat only after you [enable the feature](#getting-started-with-sap-testing).
+
+## The only one you need to know
+
+```
+/sap-testing
+```
+
+This is the entry point. It explains the whole framework to Copilot — the phases, the tools, the subagents, the rules — so Copilot works out which of the other skills to load for whatever you asked. You never have to choose.
+
+Type `/` in the chat box to see every skill as a slash command if you want to invoke one directly, but for normal work `/sap-testing` plus a plain-English request is all it takes.
+
+## Phase skills
+
+One per phase of the [workflow](#the-testing-workflow). Copilot loads these automatically, and each is written to work standalone so a fresh chat can pick up from the files on disk.
+
+| Skill | Phase | What it covers |
+|---|---|---|
+| `analyze-and-plan` | 1 | Downloading and reading the ABAP source, then writing down the program's flow, its routines' inputs and outputs, and every validation, message, branch, and authorization check it contains |
+| `explore-ui` | 2 | Driving the live WebGUI in a browser and mapping every control by the label the automation will use, including the safety rules for anything destructive |
+| `design-cases` | 3 | Turning the analysis into individual test cases with a full screen state, expected results, and the database checks that prove the case |
+| `define-data` | 4 | Specifying what data each case needs as a reusable shape rather than fixed values, including upload file formats |
+| `prepare-data` | 5 | Resolving those specs into real values from a specific SAP system, with your approval, and caching them per landscape |
+| `build-scripts` | 6 | Converting each test case into an automated script, one to one, using only the bundled runtime |
+| `run-scripts` | 7 | Running the tests, performing the post-run verification, building the evidence report, and diagnosing failures |
+
+## Supporting skills
+
+Loaded as needed alongside the phase skills.
+
+| Skill | What it's for |
+|---|---|
+| `sap-webgui` | How SAP WebGUI actually renders — iframes, accessible names, selection screens, tab strips, editable grids, popups, and which locators are stable. This is what keeps the automation from breaking on the next screen refresh |
+| `sap-webgui-recording` | When and how to ask you to [record a flow](#recording-a-webgui-flow) that Copilot can't explore on its own, and how to safely turn that recording into evidence |
+| `helpers-reference` | The bundled test runtime's API — what each method does and what to do when a capability genuinely isn't there |
+| `anst-guide` | Walking you through capturing an [ANST enhancement trace](#finding-enhancements-with-anst) for a standard SAP transaction |
+
+# SAP Testing Subagents
+
+Copilot hands specific jobs to specialised subagents instead of doing everything itself. Each one starts with a clean context, does one job, and reports back once.
+
+Two reasons this matters to you: **large enumerations stay complete** (a subagent counting 200 branches doesn't get lazy near the end the way a main chat running low on context does), and **cost** — mechanical work runs on cheap models while only the reviewers use expensive ones.
+
+!!! note "Not the same as ABAP FS subagents"
+    These are separate from the [general ABAP subagents](#ai-subagents-for-optimized-abap-development) (`@abap-orchestrator` and friends), which are configured through chat and stored in your workspace. SAP Testing's subagents ship with the extension, are configured through a settings panel, and only exist when SAP Testing is enabled. You never call them by name — Copilot delegates to them.
+
+## The nine subagents
+
+### Workers
+
+| Subagent | What it does |
+|---|---|
+| **Source Download** | Finds every include a program pulls in, recursively, and downloads one complete source snapshot |
+| **Code Grep** | Counts and lists every message, branch, and authorization check in that snapshot — mechanically, with real line numbers |
+| **Enhancement Research** | Finds customer enhancements (BAdIs, enhancement points, user exits) running inside the standard code a custom program calls, and explains each well enough to test it |
+| **ANST Enhancement Analyser** | Reads an [ANST export](#finding-enhancements-with-anst), classifies every entry, and researches the customer objects it found |
+| **Data Scout** | Finds real values in a live SAP system that match a requirement — a valid material, an open purchase order, a plant with stock |
+| **Task Helper** | A general-purpose helper for bounded, high-volume work the main agent doesn't want to spend its own context on |
+
+### Reviewers
+
+These are adversarial on purpose: their job is to catch what the main agent got wrong, and the work cannot proceed until they pass it.
+
+| Subagent | What it checks |
+|---|---|
+| **Findings Reviewer** | Re-reads the ABAP source and challenges the phase 1 analysis — invented line numbers, missed messages or branches, wrong date formats, an understated case count |
+| **Screens Reviewer** | Checks the screen map really describes the live browser UI and wasn't quietly derived from the ABAP source instead |
+| **Test Plan Reviewer** | Reads the source again and challenges the test plan — missed cases, merged cases that should be separate, skipped categories, cases that change data but have no verification |
+
+## Configuring models
+
+`Ctrl+Shift+P` → **ABAP FS: Set Models for SAP Testing Subagents**
+
+The panel lists all nine with a hint about the kind of model each needs, and a dropdown of the Copilot models available to you. Pick one for each, save, and reload the window when prompted.
+
+Guidance that actually affects results:
+
+- **Reviewers should be strong models from a different family than your main chat model.** A model reviewing its own family's work tends to agree with it. Independence is the point.
+- **Workers should be small and fast.** Code Grep, Source Download, and Data Scout follow strict formats and use tools; they don't need reasoning power, and they run often.
+- **Enhancement Research is the exception among workers** — it needs genuine reasoning, so give it something mid-tier rather than the cheapest option.
+
+## Why you should configure this even though defaults exist
+
+The bundled agent files name specific models. If those aren't in your Copilot subscription, the agent falls back to your main chat model — so a premium model ends up doing mechanical grep work, repeatedly, for the whole analysis.
+
+Two things to know:
+
+- **After an extension update**, ABAP FS re-applies your saved choices automatically (updates reset the bundled agent files) and asks you to reload the window.
+- **If a model you chose disappears** from Copilot, you get an error notification at startup with a **Configure Models** button.
+
+# SAP Testing Tools
+
+These are the tools Copilot calls while working through the [workflow](#the-testing-workflow). You never invoke them yourself — they're listed here so you recognise the names when Copilot mentions one, and know what it just did.
+
+They appear only when SAP Testing is [enabled](#getting-started-with-sap-testing), and they sit alongside the [regular ABAP FS tools](#abap-language-model-tools-ai-assistant-features) that Copilot uses for reading source and querying tables.
+
+| Tool | What it does |
+|---|---|
+| `get_test_folder` | Returns your configured test folder. Copilot calls this before touching anything, and warns you if the folder isn't open in your workspace |
+| `get_sap_webgui_url` | Builds a ready-to-open SAP WebGUI URL for a connection, already signed in, optionally landing on a specific transaction |
+| `build_test_index` | Validates every test case file and rebuilds the case list — `_index.md` and the printable `_index.docx`. Refuses to run until the test plan reviewer has passed the plan |
+| `build_test_index_docx` | Regenerates just the printable `_index.docx`, for when only the notes changed |
+| `split_test_cases` | Splits one bulk-authored file into individual test case files, validating each before writing |
+| `verify_test_data_usage` | Cross-checks a script against its data spec, so a script can't reference a value nobody defined |
+| `check_test_data` | Pre-flight check: resolves every case's data for a program on a given system and reports what's missing — before you waste a test run finding out |
+| `playwright_test` | Runs one test or a whole program's tests against a system. Signs the browser in, executes, and returns pass/fail plus paths to the screenshots and traces. Refuses to run until the earlier phases are genuinely complete |
+| `build_evidence_report` | Builds the aggregated Word evidence report for a program and system from all the run results |
+| `analyze_anst_enhancements` | Classifies an [ANST export](#finding-enhancements-with-anst) and writes a work list beside it |
+
+## Two tools that push back
+
+`build_test_index` and `playwright_test` are deliberately gated: Copilot has to certify that the required review or readiness check actually happened before either will run. If Copilot tries to skip ahead, the tool rejects the call.
+
+This is why you'll sometimes see Copilot go back and do something it seemed to have finished — the tool told it to. Details in the [Technical Reference](technical-reference.md#quality-gates).
+
+## If Copilot says a tool is missing
+
+VS Code doesn't always surface every tool to the model straight away, and `playwright_test` is the one that most often goes missing. Copilot is instructed to search for a tool by name before giving up, and to tell you rather than improvise — so if it reports a missing tool, that's a genuine report, not a mistake.
+
+Starting a new chat usually clears it. What Copilot must never do is substitute a terminal command; there is no `npx playwright test` route here.
+
+# Recording a WebGUI Flow
+
+Sometimes Copilot hits a screen it can't work out on its own — a control with no readable label, a sequence that depends on how your system is personalised, or a step that needs business judgement. When that happens it asks you to record the flow instead of guessing.
+
+This is an escape hatch, not part of the normal workflow. Copilot should explore on its own first, and it's told not to ask you to record ordinary screens just to save itself effort.
+
+## How to record
+
+`Ctrl+Shift+P` → **ABAP FS: Record SAP WebGUI Flow**
+
+1. Pick the SAP system when prompted. The command signs the browser in for you, so you start on the transaction rather than a logon screen.
+2. Give the recording a short descriptive name, like `me21n-edit-po-item`. Existing recordings are never overwritten.
+3. Microsoft Edge opens with the Playwright recorder attached. Perform the flow.
+4. Close the recorder when you're done. The file opens in your editor automatically.
+
+The result is saved to `recordings/<name>.recording.ts` in your test folder.
+
+## Recording well
+
+- **Record the smallest useful path.** One grid edit or one dialog is usually enough. Copilot should have told you exactly which interaction it needs.
+- **Start from a fresh transaction, in English.** Accessible names are language-specific.
+- **Avoid exploratory clicking.** Every click becomes generated code and adds noise for Copilot to filter out.
+- **Use safe test data.** Never type passwords, secrets, or production personal data — it ends up in the file.
+- **Stop before the destructive action** — Save, Post, Release, Delete, Approve — unless Copilot specifically asked for it. If it did, it should have told you so explicitly, and you should be on a system where changing data is fine.
+
+When you're done, tell Copilot the path and describe what you were doing and anything ambiguous you noticed.
+
+## What happens to it
+
+A recording is **reference evidence, not a test**. Copilot reads it to understand the interaction order and the real control names, then writes those verified observations into the screen map and continues the phase it was in. It never runs the recording, never copies it into your test scripts, and never trusts the raw generated selectors — recorder output is full of session-specific IDs and positions that break on the next screen refresh.
+
+Once the resulting test passes its first run, the recording has done its job and Copilot will offer to delete it.
+
+# Finding Enhancements with ANST
+
+When you test a **standard SAP transaction** — ME21N, VA01, MIGO, MM43 — the code that actually breaks in your system is usually not SAP's. It's your enhancements: BAdI implementations, enhancement points, classic user exits. Reading the call chain statically under-reports them badly, because enhancements are called indirectly and nest several levels deep.
+
+Transaction **ANST** (Automated Note Search and Customer Code Detection Tool) solves this by tracing what actually executes at runtime. Copilot will suggest it during analysis whenever your target is a standard transaction.
+
+This only applies to standard SAP objects. For a custom Z or Y program, Copilot uses static enhancement research instead and no trace is needed.
+
+## Capturing the trace
+
+You do this part in SAP; Copilot walks you through it and consumes the result.
+
+1. Open transaction **ANST**.
+2. Select **Transaction** (or **Program** for a report) and enter your target. A description helps you find the trace later.
+3. Click **Execute**. Your transaction opens inside the trace session.
+4. **Run through the transaction properly.** Complete at least one full flow — for ME21N, fill everything in and actually save the purchase order. Each variation you exercise (different document types, account assignments) may fire different enhancements, so a few passes are better than one.
+5. Press **Back** (F3) to return to ANST. You'll see a tree of the application components touched.
+6. Click **Select All**, then **Customer Code**.
+7. Export the results **as xlsx** — not CSV, not text.
+
+Save it under your test folder, in `tests/<PROGRAM>/sources/anst/`, and give Copilot the full path.
+
+The trace is only as good as the flows you exercised. A trace where you opened the transaction and pressed Back finds almost nothing.
+
+## What Copilot does with it
+
+It classifies every row in the export — genuine customer objects, user exits, potential includes, standard SAP code — writes the classified work list beside your spreadsheet, and then researches each customer object to understand what it actually does. Those findings feed straight into the test plan, so your enhancements get their own test cases rather than being invisible.
+
+If you already have an ANST export from an earlier session, skip the collection steps and just give Copilot the path.
+
+# SAP Testing Troubleshooting
+
+## Setup
+
+### The SAP Testing skills and commands don't appear
+
+The feature is off. It switches on only when `abapfs.testing.folder` points at a folder that exists — run **ABAP FS: Enable SAP UI Testing Features**.
+
+If it worked before and stopped, the folder was probably moved, renamed, or deleted. Point it at a folder that exists again.
+
+### VS Code asks me to approve every file Copilot writes
+
+The test folder isn't open in your workspace, so every edit counts as an out-of-workspace change and needs confirmation. **File → Add Folder to Workspace** and pick your test folder.
+
+You'll also get no IntelliSense or error checking in the generated test scripts until you do, because the `tsconfig.json` in the test folder only applies to workspace folders. Copilot warns about this when it looks the folder up.
+
+### The managed files keep coming back / my edits disappeared
+
+That's intended. `tsconfig.json`, `node_modules`, `playwright.config.js`, and `.sap-active-system` are managed by ABAP FS and rewritten at startup and after every update, because they contain absolute paths into the extension's install directory. Don't edit them; if you delete them, reload VS Code and they come back.
+
+### `ERROR: No abapfs.remote entry for "..."` or `has no "client" property`
+
+The connection Copilot was given doesn't exist or is incomplete. SAP Testing needs both a `url` and a `client` on the connection to build the WebGUI URL — see [Connection Manager](#sap-connection-manager).
+
+## Models
+
+### "SAP testing subagent model configuration is invalid"
+
+One of the models you chose is no longer offered by Copilot. Click **Configure Models** on the notification, or run **ABAP FS: Set Models for SAP Testing Subagents**, and pick replacements.
+
+### "No language models are currently available"
+
+Copilot hadn't finished starting up when the panel loaded. Use **Refresh** in the panel.
+
+## Running tests
+
+### The test fails on a SAP logon screen
+
+Auto-login didn't produce a session. Two normal causes: the connection has `webGuiAutoLogin` turned off, or the system doesn't issue reentrance tickets.
+
+Check the **ABAP FS** output channel at Debug level and look for `[sso]` lines — they name the cause directly, and distinguish an authentication problem from a test problem. Never work around this by putting credentials in a test script; Copilot is instructed to refuse.
+
+### Cases come back BLOCKED instead of passed or failed
+
+Blocked means the test never reached SAP because its data wasn't ready. It's a data problem, not a bug in the program.
+
+Run phase 5 again for that system (`prepare-data`) and re-run. Copilot separates blocked from failed in its report for exactly this reason — six blocked cases and six failures mean very different things.
+
+### A test passed on screen but is reported as failed
+
+That's the framework working. The screen said success but the database check that case declared came back wrong, which usually means a real defect: SAP reported success without persisting the right data. Investigate before dismissing it.
+
+### Microsoft Edge was not found
+
+Set `abapfs.testing.edgePath` to your browser executable, or install Edge. Recording needs it; test runs strongly prefer it.
+
+### An ABAP FS tool returns HTTP 401, 403, or 5xx
+
+ABAP FS can't reach the SAP system — almost always an expired session. Check the connection and reload VS Code to re-establish it, then retry. This is not a permissions restriction to work around, and Copilot is told not to fall back to reading tables through the browser or to invent values.
+
+### `_index.docx` couldn't be written
+
+The file is open in Word. Close it and rebuild. If it can't get the lock, Copilot writes a timestamped copy instead and tells you both paths.
+
+## Working with Copilot
+
+### Copilot says a tool is missing
+
+VS Code doesn't always surface every tool immediately, and `playwright_test` is the usual casualty. Starting a fresh chat normally fixes it. Copilot is instructed to tell you rather than fake a result or fall back to a terminal command — so treat the report as accurate.
+
+### Copilot redid work that looked finished
+
+A reviewer agent or a gated tool rejected it. The reviewers read the actual ABAP source and challenge the analysis or the test plan, and `build_test_index` and `playwright_test` refuse to run until the required review or readiness check genuinely passed. This is the framework catching a gap — see [Quality gates](technical-reference.md#quality-gates).
+
+### Copilot keeps asking instead of just doing it
+
+By design. A control it can't drive, data it can't find, or an ambiguous screen is a stop-and-ask situation, because the alternative — a plausible guess — produces a test that looks finished and silently proves nothing. Give it the answer, a sample file, or a [recording](#recording-a-webgui-flow).
+
+### Copilot won't click a button
+
+Anything destructive — post, delete, release, approve, or Execute on a program in update mode — needs your explicit approval first. Confirm in chat, ideally after checking the system is safe to write in.
+
+# SAP Testing Technical Reference
+
+Internals for people who want them. None of this is needed for day-to-day use — see [Getting Started](#getting-started-with-sap-testing) and [The Testing Workflow](#the-testing-workflow) for that.
+
+## Commands and settings
+
+| Command | Purpose |
+|---|---|
+| **ABAP FS: Enable SAP UI Testing Features** | Pick the test folder. This is what switches the feature on |
+| **ABAP FS: Open SAP UI Test Folder** | Reveal the test folder in your file manager |
+| **ABAP FS: Set Models for SAP Testing Subagents** | Choose the model backing each subagent |
+| **ABAP FS: Record SAP WebGUI Flow** | Record a reference flow in Edge |
+| **ABAP FS: Select System for Playwright Sidebar** | Only for the optional Playwright extension — the sidebar can't ask which system to use |
+
+| Setting | Scope | Purpose |
+|---|---|---|
+| `abapfs.testing.folder` | User | The test folder. Setting it enables the feature |
+| `abapfs.testing.edgePath` | User | Browser executable override; empty means auto-detect Edge |
+| `abapfs.testing.subagentModels` | User | Model chosen per subagent — written by the panel, not by hand |
+| `webGuiAutoLogin` | Per connection | Defaults to true. Turn off for systems behind a gateway that already authenticates you |
+
+Everything is gated behind the `abapfs:testingEnabled` context key, which is set only when `abapfs.testing.folder` resolves to a directory that exists. Skills, subagents, and tools are all contributed conditionally on it.
+
+## Test folder layout
+
+```
+<TEST_FOLDER>/
+├── tsconfig.json                    managed by ABAP FS
+├── node_modules/@sap-testing/runtime  managed by ABAP FS
+├── recordings/                      reference recordings, never runnable specs
+├── .playwright-artifacts/           Playwright traces (kept on failure)
+└── tests/
+    └── <PROGRAM>/                   one folder per object under test
+        ├── sources/<timestamp>/     downloaded ABAP source snapshot
+        ├── sources/anst/            ANST exports, if any
+        ├── test-cases/
+        │     _flow.md  _units.md  _findings.md  _screens.md
+        │     TC-001.md  TC-001.data.md  …
+        │     _index.md  _index.docx
+        ├── test-scripts/
+        │     TC-001.spec.ts  …
+        └── test-results/
+              <CONNECTION-ID>/TC-001/   data.json, step-NN.png,
+              │                          manifest.json, verification.json,
+              │                          fixtures/, runs/<timestamp>/
+              └── <PROGRAM>-<CONNECTION-ID>-report.docx
+```
+
+Two conventions that matter:
+
+- **Everything for one program is siblings.** A case, its data spec, its script, and its results all live under `tests/<PROGRAM>/`.
+- **The results folder is the connection ID in uppercase.** The framework uppercases it at run time, so a hand-written lowercase folder is silently not found on Linux and macOS, and only appears to work on Windows.
+
+## Managed scaffolding
+
+ABAP FS writes a small amount of infrastructure into the test folder and re-applies it on every activation, because the extension's install path changes with each version.
+
+**Always:** a `tsconfig.json` that maps the module specifier `@sap-testing/runtime` to the extension's compiled runtime, a link to that runtime under `node_modules`, and a `.gitignore` entry for both. This is what gives the TypeScript language service real IntelliSense and type errors while Copilot writes a spec — checked against the actual runtime signatures rather than prose in a skill — and what lets the test runner resolve the runtime at execution time. The language-service half only applies while the test folder is open in your workspace; the runner half works either way.
+
+**Only while Microsoft's Playwright extension is installed:** a `playwright.config.js`, links to the bundled Playwright, a `.bin` launcher, and `.sap-active-system`. These exist purely so the Test Explorer sidebar can discover and run specs. They're removed again if you uninstall that extension. The `playwright_test` tool needs none of them — it passes its own config and sets the target system directly in the runner's environment.
+
+All of it is gitignored, because it hardcodes machine-specific absolute paths.
+
+## Artifact fields
+
+Each `TC-NNN.md` carries frontmatter that the index builder validates. The values that are checked against a fixed list:
+
+**`category`** — `happy-path`, `boundary`, `invalid`, `mandatory`, `authorization`, `empty`, `large`, `idempotency`, `cross-tx`, `concurrency`, `background-artifact`, `discovered-control`. Phase 3 walks all twelve and any the program genuinely can't exhibit must be justified in writing, so nothing is silently dropped.
+
+**`runnable`** — `runnable`, `manual`, `blocked-by-data`, `runnable-elsewhere`. The last one covers cases that need a different SAP user; a test run authenticates one session as the connection's own user and there's no way to switch mid-run, so negative-authorization cases must run against a separate connection.
+
+**`verification`** — `sql`, `manual`, `mixed`, `none`. How the case is proven after the UI passes. `none` is only valid when the path can't have written anything.
+
+**`dataRequired`** — `yes` or `no`, and it must agree with whether a `.data.md` exists. Both mismatches are errors.
+
+`_index.md` is a mechanical projection of all that frontmatter and should never be hand-edited — the only section preserved across rebuilds is `## Notes` at the bottom.
+
+One recurring trap: YAML frontmatter must be the literal first bytes of the file, not inside a code fence or under a heading. Misplaced frontmatter in a `.data.md` parses to zero requirements, so every data value silently resolves to undefined.
+
+## The test data model
+
+A `.data.md` declares requirements by shape, not value. Each has a `source`:
+
+| Source | Resolved by |
+|---|---|
+| `sql` | Querying the target system during phase 5, with your approval |
+| `static` | A fixed value written in the spec |
+| `user` | Asking you |
+| `generated` | Building an xlsx or CSV fixture from a declarative column/row spec |
+| `seeded` | Running another test case's script once as an approved setup step, then reading the result back |
+
+At run time each key resolves in this order:
+
+1. Environment pin `TESTDATA_<TCID>_<SYSTEM>_<key>`, then `TESTDATA_<TCID>_<key>`
+2. `generated` — rebuilt fresh on every run, never cached, so date fields can't go stale
+3. The `data.json` cache for this connection
+4. `static` values from the spec
+
+Only `sql` and `seeded` values belong in `data.json`. Caching a `static` value shadows the spec so later edits to it do nothing; caching a `generated` one reintroduces the stale-fixture problem.
+
+Fixtures support `{{other_key}}` substitution and relative date tokens (`today`, `+30d`, `-5d`) resolved against the current run time, so a fixture never carries an absolute date.
+
+Keys that must differ from each other declare `distinctFrom` on both sides; `check_test_data` fails the program if they resolve to the same value. Ordering with `take: first` is not a uniqueness guarantee, because a `SELECT` without `ORDER BY` has no defined row order.
+
+## Quality gates
+
+Three reviewer agents and two tool-level gates keep the workflow honest.
+
+**Reviewer agents** run at the end of phases 1, 2, and 3. Each reads the underlying evidence itself rather than trusting the main agent's summary, returns either a pass or an itemised gap list, and the phase does not hand off until every gap is fixed and it passes.
+
+**Gated tools** require the calling agent to certify that a prerequisite genuinely happened, using an exact confirmation string:
+
+| Tool | Requires |
+|---|---|
+| `build_test_index` | Certification that the test plan reviewer already returned a pass |
+| `playwright_test` | Certification that all upstream phase gates and data readiness were verified |
+
+Both reject the call if the confirmation is missing or wrong, which means an agent that skipped a phase cannot produce the case index or run a test. The gate is a behavioural contract rather than a cryptographic one — its purpose is to stop a model from quietly cutting a corner under pressure, not to defend against a determined attacker.
+
+`build_test_index` also enforces structural rules: valid categories, matching case IDs, parseable frontmatter, and agreement between `dataRequired` and the presence of a `.data.md`. A missing `.data.md` for a case that needs one is a warning during phase 3 (specs come later) and must be zero by the end of phase 4.
+
+## The runtime
+
+Specs import from the fixed specifier `@sap-testing/runtime`, never a relative path. It exposes `SapSession` (the UI driver), `SapArtifacts` (application-server file and spool checks), `resolveTestData`, `buildFixture`, and some formatting helpers.
+
+`SapSession` methods describe SAP mechanics rather than business concepts — `setField`, `setRange`, `check`, `selectRadio`, `clickButton`, `clickTab`, `setGridCell`, `pickFromValueHelp`, `execute`, `captureDownload`, plus assertions like `expectAlert`, `expectTitle`, `expectGridHasRow`. You can't add methods to it, which is what stops business logic leaking into the runtime.
+
+Every action goes through the same guarded cycle:
+
+```
+dismiss known popups → perform the action → wait for the server round-trip
+→ wait for the DOM to settle → dismiss popups again
+→ check for a dump, ITS error, or logon screen → capture an evidence screenshot
+```
+
+That's why specs contain no manual waits and no explicit screenshots, and why a short dump surfaces as a clear failure instead of a confusing timeout on the next step.
+
+The popup guard dismisses a curated allow-list only — license notices, system messages, multiple-logon, copyright, data privacy. Anything else, including "do you want to save?", is left alone for the test to handle deliberately.
+
+For anything the runtime doesn't cover, `sap.raw()` returns the real Playwright page. All SAP content lives inside the ITS iframe, so raw locators must be scoped through it or they query an empty document and can pass vacuously.
+
+## Authentication
+
+No spec ever contains credentials or a login step.
+
+Before running, the tool mints a SAP reentrance ticket from your ABAP FS connection and posts it through a single-use local form (tickets can't travel in a URL query string). The resulting session cookies are saved and handed to every spec, so tests start already signed in. The same mechanism produces the pre-authenticated URLs used for browser exploration and recording — those URLs are single-use, which is why they must be opened exactly as issued.
+
+Setting `webGuiAutoLogin: false` on a connection skips all of it, for landscapes where a gateway handles authentication.
+
+## Execution
+
+`playwright_test` runs the real `@playwright/test` CLI as a subprocess, using VS Code's own Node runtime and a copy of Playwright vendored into the extension. Nothing is installed into your test folder and no browser is downloaded — it drives your installed Edge.
+
+Defaults: one worker, no retries, 60 seconds per test, 10 minutes overall, traces retained on failure under `.playwright-artifacts/`. Tests run headless unless asked for a headed run, which is worth doing the first time a new spec runs.
+
+Serial execution with no retries is deliberate. Parallel SAP sessions interfere with each other, and automatic retries hide flakiness that usually turns out to be a real timing or data problem.
+
+## Evidence output
+
+Each case run writes `manifest.json` (every step, timestamp, and note) plus numbered screenshots into its results folder. Previous runs are archived into `runs/<timestamp>/` rather than deleted, and the data cache survives.
+
+Post-run checks land in `verification.json`, recording each check, who performed it, the SQL or tool used, actual versus expected, and its status. Checks a machine can't perform stay `pending-manual` until you confirm them.
+
+`build_evidence_report` aggregates all of it into one Word document per program and connection: a title page with the pass/fail summary, a colour-coded results table, and one section per case with every step and screenshot. Where a `verification.json` exists, its checks appear too — so a case that passed on screen but failed its database check shows as failed, and a case with unconfirmed manual checks is visibly not fully proven. Rebuilding is cheap and safe to repeat.
 
 # Mermaid Diagram Creation
 
@@ -2763,7 +3454,7 @@ Click any entry to expand it and see:
 
 # Virtual Tool Grouping Fix
 
-VS Code has an experimental setting (`github.copilot.chat.virtualTools.threshold`) that collapses extension tools into virtual groups when their count exceeds a threshold. When active, Copilot often fails to discover these groups — making all 39 ABAP FS AI tools invisible and unusable.
+VS Code has an experimental setting (`github.copilot.chat.virtualTools.threshold`) that collapses extension tools into virtual groups when their count exceeds a threshold. When active, Copilot often fails to discover these groups — making all 52 ABAP FS AI tools invisible and unusable.
 
 ABAP FS detects this condition after your first SAP connection and prompts you to fix it.
 
@@ -2796,7 +3487,7 @@ If you dismissed the prompt and AI tools are still not working:
 
 ## Why This Matters
 
-ABAP FS registers 39 specialized tools covering object search, code reading, unit tests, SQL queries, transport management, and more. If Copilot cannot see these tools, all AI-powered features stop working. Setting the threshold to `0` disables grouping entirely and keeps all tools available.
+ABAP FS registers 52 specialized tools covering object search, code reading, unit tests, SQL queries, transport management, SAP UI testing, and more. If Copilot cannot see these tools, all AI-powered features stop working. Setting the threshold to `0` disables grouping entirely and keeps all tools available.
 
 > **Note:** This prompt only appears if the experimental grouping feature is active. Most users will never see it.
 
