@@ -1,1 +1,8 @@
-npm run format:check && npm run test
+#!/sh
+. "$(dirname "$0")/_/husky.sh"
+
+if [ "$OS" = "Windows_NT" ]; then
+  npm.cmd run format:check && npm.cmd run test
+else
+  npm run format:check && npm run test
+fi
