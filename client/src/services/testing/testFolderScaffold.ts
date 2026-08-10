@@ -150,7 +150,16 @@ async function ensurePackageJunction(linkPath: string, targetPath: string): Prom
   }
 
   await fs.mkdir(path.dirname(linkPath), { recursive: true })
-  await fs.symlink(wanted, linkPath, "junction")
+  try {
+    await fs.symlink(wanted, linkPath, "junction")
+  } catch (error) {
+    // Another concurrent call already recreated it (e.g. an overlapping sync). Accept it
+    // if it now points at the right target, otherwise the failure is genuine.
+    const code = (error as NodeJS.ErrnoException).code
+    if (code !== "EEXIST") throw error
+    const real = await fs.realpath(linkPath).catch(() => null)
+    if (!real || path.resolve(real) !== wanted) throw error
+  }
 }
 
 /**

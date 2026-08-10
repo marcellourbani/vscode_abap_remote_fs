@@ -66,8 +66,7 @@ export function registerTestingFeatures(context: vscode.ExtensionContext): void 
     statusBar.show()
   }
 
-  /** Apply the scaffolding the current environment calls for, and clean up what it doesn't. */
-  async function syncTestFolder(): Promise<void> {
+  async function syncTestFolderUnsafe(): Promise<void> {
     const enabled = await isTestFolderValid()
     await setContext("abapfs:testingEnabled", enabled)
     if (!enabled) {
@@ -83,6 +82,16 @@ export function registerTestingFeatures(context: vscode.ExtensionContext): void 
       await removePlaywrightSidebarSupport(folder)
     }
     await refreshStatusBar()
+  }
+
+  // Multiple triggers (command, config-change event, extensions-change event) can fire
+  // for the same folder in quick succession. Chain them onto one promise so the
+  // filesystem scaffolding in testFolderScaffold.ts never runs concurrently with itself —
+  // overlapping junction creation/removal races and fails with EEXIST otherwise.
+  let syncChain: Promise<void> = Promise.resolve()
+  function syncTestFolder(): Promise<void> {
+    syncChain = syncChain.catch(() => undefined).then(syncTestFolderUnsafe)
+    return syncChain
   }
 
   async function setTestFolderCommand(): Promise<void> {
