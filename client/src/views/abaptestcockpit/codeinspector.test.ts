@@ -28,18 +28,96 @@ jest.mock("./functions", () => ({
   extractPragmas: jest.fn()
 }))
 
+jest.mock("../../adt/atcVariants", () => ({
+  listAtcVariants: jest.fn()
+}))
+
 import { getClient } from "../../adt/conections"
 import { findAbapObject } from "../../adt/operations/AdtObjectFinder"
 import { RemoteManager } from "../../config"
 import { extractPragmas } from "./functions"
+import { listAtcVariants } from "../../adt/atcVariants"
 
 const mockGetClient = getClient as jest.MockedFunction<typeof getClient>
 const mockFindAbapObject = findAbapObject as jest.MockedFunction<typeof findAbapObject>
 const mockRemoteManager = RemoteManager.get as jest.MockedFunction<typeof RemoteManager.get>
 const mockExtractPragmas = extractPragmas as jest.MockedFunction<typeof extractPragmas>
+const mockListAtcVariants = listAtcVariants as jest.MockedFunction<typeof listAtcVariants>
 
 describe("getVariant", () => {
   beforeEach(() => jest.clearAllMocks())
+
+  it("uses overrideVariant when provided, taking precedence over connection config", async () => {
+    const mockCheckVariant = { id: "override_variant" }
+    const mockClient = {
+      atcCheckVariant: jest.fn().mockResolvedValue(mockCheckVariant),
+      atcCustomizing: jest.fn()
+    }
+    mockListAtcVariants.mockResolvedValue([{ name: "OVERRIDE", description: "override variant" }])
+    mockRemoteManager.mockReturnValue({
+      byId: jest.fn().mockReturnValue({ atcVariant: "MYVARIANT" })
+    } as any)
+
+    const result = await getVariant(mockClient as any, "myconn", "OVERRIDE")
+
+    expect(mockListAtcVariants).toHaveBeenCalledWith(mockClient, "OVERRIDE", 1)
+    expect(mockClient.atcCheckVariant).toHaveBeenCalledWith("OVERRIDE")
+    expect(mockClient.atcCustomizing).not.toHaveBeenCalled()
+    expect(result).toEqual({ variant: "OVERRIDE", checkVariant: mockCheckVariant })
+  })
+
+  it("throws when overrideVariant is provided but checkVariant is falsy", async () => {
+    const mockClient = {
+      atcCheckVariant: jest.fn().mockResolvedValue(null),
+      atcCustomizing: jest.fn()
+    }
+    mockListAtcVariants.mockResolvedValue([{ name: "BADOVERRIDE", description: "" }])
+
+    await expect(getVariant(mockClient as any, "myconn", "BADOVERRIDE")).rejects.toThrow(
+      "No matching ATC variant found for system myconn"
+    )
+  })
+
+  it("throws when overrideVariant does not exist in the system's variant list, without silently falling back", async () => {
+    const mockClient = {
+      atcCheckVariant: jest.fn().mockResolvedValue({ id: "default_variant" }),
+      atcCustomizing: jest.fn()
+    }
+    mockListAtcVariants.mockResolvedValue([{ name: "REAL_VARIANT", description: "" }])
+
+    await expect(getVariant(mockClient as any, "myconn", "NOT_A_REAL_VARIANT_XYZ")).rejects.toThrow(
+      "ATC variant 'NOT_A_REAL_VARIANT_XYZ' does not exist on system myconn. Use get_atc_variants to see available variants."
+    )
+    expect(mockClient.atcCheckVariant).not.toHaveBeenCalled()
+  })
+
+  it("still validates via atcCheckVariant when variant listing 404s (endpoint unsupported on this system)", async () => {
+    const mockCheckVariant = { id: "override_variant" }
+    const mockClient = {
+      atcCheckVariant: jest.fn().mockResolvedValue(mockCheckVariant),
+      atcCustomizing: jest.fn()
+    }
+    // Mimics abap-adt-api's AdtErrorException shape for a 404 response
+    const notFoundError = { typeID: Symbol.for("ADT EXCEPTION"), err: 404, message: "Not Found" }
+    mockListAtcVariants.mockRejectedValue(notFoundError)
+
+    const result = await getVariant(mockClient as any, "myconn", "OVERRIDE")
+
+    expect(mockClient.atcCheckVariant).toHaveBeenCalledWith("OVERRIDE")
+    expect(result).toEqual({ variant: "OVERRIDE", checkVariant: mockCheckVariant })
+  })
+
+  it("does not swallow non-404 errors from variant listing (e.g. auth/network failures)", async () => {
+    const mockClient = {
+      atcCheckVariant: jest.fn(),
+      atcCustomizing: jest.fn()
+    }
+    const authError = { typeID: Symbol.for("HTTP EXCEPTION"), status: 401, message: "Unauthorized" }
+    mockListAtcVariants.mockRejectedValue(authError)
+
+    await expect(getVariant(mockClient as any, "myconn", "OVERRIDE")).rejects.toBe(authError)
+    expect(mockClient.atcCheckVariant).not.toHaveBeenCalled()
+  })
 
   it("returns variant from connection config when atcVariant is set", async () => {
     const mockCheckVariant = { id: "myvariant" }

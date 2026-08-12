@@ -28,8 +28,11 @@ import {
   log,
   rangeVscToApi,
   splitAdtUri,
-  channel
+  channel,
+  quickPick,
+  rfsExtract
 } from "../lib"
+import { listAtcVariants } from "../adt/atcVariants"
 import { FavouritesProvider, FavItem } from "../views/favourites"
 import { findEditor, vsCodeUri } from "../langClient"
 import { showHideActivate } from "../listeners"
@@ -1050,12 +1053,43 @@ export class AdtCommands {
       const state = await currentEditState()
       if (!state) return
 
+      const useDefault = "$(check) Use Default"
+      let variantItems: { label: string; description?: string; value: string }[] = []
+      try {
+        const client = getClient(state.uri.authority)
+        const variants = await listAtcVariants(client)
+        variantItems = variants.map(v => ({
+          label: v.name,
+          description: v.description,
+          value: v.name
+        }))
+      } catch (e) {
+        log(`Could not list ATC variants: ${caughtToString(e)}`)
+      }
+
+      const picked = rfsExtract(
+        await quickPick(
+          [
+            {
+              label: useDefault,
+              description: "Connection config or system default",
+              value: useDefault
+            },
+            ...variantItems
+          ],
+          { placeHolder: "Select ATC check variant" },
+          x => x.value
+        )()
+      )
+      if (picked === undefined) return // cancelled
+      const overrideVariant = picked === useDefault ? undefined : picked
+
       await window.withProgress(
         { location: ProgressLocation.Window, title: "Running ABAP Test cockpit" },
         progress => {
           const setvariant = (variant: string) =>
             progress.report({ message: "Using variant " + variant })
-          return atcProvider.runInspector(state.uri, setvariant)
+          return atcProvider.runInspector(state.uri, setvariant, overrideVariant)
         }
       )
     } catch (e) {

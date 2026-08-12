@@ -1723,7 +1723,7 @@
       {
         "name": "run_atc_analysis",
         "displayName": "Run ATC Analysis",
-        "modelDescription": "Run ABAP Test Cockpit checks or fetch finding documentation. Actions: 'run_analysis' returns findings with check variant + docUri per finding (variant name explains context — e.g., S4HANA_READINESS = upgrade compat, not code quality). 'get_documentation' fetches full doc — often contains critical detail missing from finding title (e.g., table name RSEG). Always fetch docs before suggesting fixes. Each finding has unique docs even when titles repeat.",
+        "modelDescription": "Run ABAP Test Cockpit checks, list available check variants, or fetch finding documentation. Actions: 'run_analysis' returns findings with check variant + docUri per finding (variant name explains context — e.g., S4HANA_READINESS = upgrade compat, not code quality). 'get_atc_variants' lists check variants available on a system — use this FIRST if the user names a variant you're not certain exists, before passing variantName to run_analysis. 'get_documentation' fetches full doc — often contains critical detail missing from finding title (e.g., table name RSEG). Always fetch docs before suggesting fixes. Each finding has unique docs even when titles repeat.",
         "canBeReferencedInPrompt": true,
         "toolReferenceName": "atc-analysis",
         "icon": "$(testing-run-icon)",
@@ -1735,9 +1735,10 @@
               "type": "string",
               "enum": [
                 "run_analysis",
+                "get_atc_variants",
                 "get_documentation"
               ],
-              "description": "'run_analysis' (default): run ATC checks. 'get_documentation': fetch detailed check doc — use docUri from prior run_analysis result to identify the finding."
+              "description": "'run_analysis' (default): run ATC checks. 'get_atc_variants': list check variants available on a system, optionally filtered by query. 'get_documentation': fetch detailed check doc — use docUri from prior run_analysis result to identify the finding."
             },
             "objectName": {
               "type": "string",
@@ -1753,7 +1754,7 @@
             },
             "connectionId": {
               "type": "string",
-              "description": "SAP connection ID (required with objectName)"
+              "description": "SAP connection ID (required with objectName, and required for get_atc_variants)"
             },
             "useActiveFile": {
               "type": "boolean",
@@ -1769,9 +1770,23 @@
               ],
               "description": "Analysis scope (future enhancement) - currently only 'object' is supported"
             },
+            "variantName": {
+              "type": "string",
+              "description": "For run_analysis action: optional ATC check variant name to use for this run, overriding the connection's configured/default variant. If unsure the name is correct, call action 'get_atc_variants' first to confirm it exists."
+            },
             "docUri": {
               "type": "string",
               "description": "For get_documentation action: the docUri of the finding (exact value from run_analysis results). Each finding includes a docUri field containing the documentation URL."
+            },
+            "query": {
+              "type": "string",
+              "default": "*",
+              "description": "For get_atc_variants action: wildcard filter on variant name (e.g. 'Z*', '*SECURITY*'). Defaults to '*' (all). IMPORTANT: results are capped by maxItems (default 100) — if you have any idea of a naming pattern, use it here, otherwise variants beyond the cap will be silently missed."
+            },
+            "maxItems": {
+              "type": "number",
+              "default": 100,
+              "description": "For get_atc_variants action: max number of variants to return. Defaults to 100. If the result is capped, narrow it further with the query parameter instead of relying on this alone."
             }
           }
         },
