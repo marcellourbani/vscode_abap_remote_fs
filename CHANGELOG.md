@@ -1,5 +1,11 @@
 # Changelog
 
+## 2.8.2
+
+### Patch Changes
+
+- d2aefcf: add runtime atc variant
+
 ## 2.8.1
 
 ### Patch Changes
