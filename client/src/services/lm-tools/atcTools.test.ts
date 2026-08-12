@@ -10,6 +10,11 @@ jest.mock(
         authority: s.split("//")[1]?.split("/")[0]
       }))
     },
+    ProgressLocation: { Notification: 1 },
+    workspace: {
+      openTextDocument: jest.fn().mockResolvedValue({}),
+      fs: { readFile: jest.fn() }
+    },
     lm: { registerTool: jest.fn(() => ({ dispose: jest.fn() })) }
   }),
   { virtual: true }
@@ -17,16 +22,31 @@ jest.mock(
 
 jest.mock("../../adt/conections", () => ({
   getOrCreateRoot: jest.fn(),
-  abapUri: jest.fn()
+  abapUri: jest.fn(),
+  getClient: jest.fn()
 }))
 jest.mock("../telemetry", () => ({ logTelemetry: jest.fn() }))
 jest.mock("./toolRegistry", () => ({
   registerToolWithRegistry: jest.fn(() => ({ dispose: jest.fn() }))
 }))
 jest.mock("../abapSearchService", () => ({ getSearchService: jest.fn() }))
-jest.mock("../funMessenger", () => ({ funWindow: { activeTextEditor: undefined } }))
-jest.mock("../../views/abaptestcockpit", () => ({ atcProvider: { runAnalysis: jest.fn() } }))
+jest.mock("../funMessenger", () => ({
+  funWindow: {
+    activeTextEditor: undefined,
+    visibleTextEditors: [],
+    showTextDocument: jest.fn(),
+    withProgress: jest.fn((_opts: any, cb: any) => cb())
+  }
+}))
+jest.mock("../../views/abaptestcockpit", () => ({
+  atcProvider: {
+    runAnalysis: jest.fn(),
+    runInspector: jest.fn(),
+    findings: jest.fn(() => [])
+  }
+}))
 jest.mock("../../views/abaptestcockpit/decorations", () => ({ getATCDecorations: jest.fn() }))
+jest.mock("../../adt/atcVariants", () => ({ listAtcVariants: jest.fn() }))
 
 jest.mock("./toolGuard", () => ({
   assertToolInvocationAuthorized: jest.fn(),
@@ -34,10 +54,12 @@ jest.mock("./toolGuard", () => ({
 }))
 import { RunATCAnalysisTool, GetATCDecorationsTool } from "./atcTools"
 import { getSearchService } from "../abapSearchService"
-import { getOrCreateRoot, abapUri } from "../../adt/conections"
+import { getOrCreateRoot, abapUri, getClient } from "../../adt/conections"
 import { logTelemetry } from "../telemetry"
 import { funWindow as window } from "../funMessenger"
 import { getATCDecorations } from "../../views/abaptestcockpit/decorations"
+import { atcProvider } from "../../views/abaptestcockpit"
+import { listAtcVariants } from "../../adt/atcVariants"
 
 const mockToken = {} as any
 
@@ -186,6 +208,91 @@ describe("RunATCAnalysisTool - invoke", () => {
     expect(logTelemetry).toHaveBeenCalledWith("tool_run_atc_analysis_called", {
       connectionId: "DEV100" // connectionId is logged before lowercasing
     })
+  })
+
+  it("passes variantName through to atcProvider.runInspector", async () => {
+    ;(atcProvider.runInspector as jest.Mock).mockResolvedValue("MYVARIANT")
+    await tool.invoke(
+      makeOptions({
+        objectUri: "adt://dev100/sap/bc/adt/programs/programs/zprog",
+        connectionId: "dev100",
+        variantName: "MYVARIANT"
+      }),
+      mockToken
+    )
+    expect(atcProvider.runInspector).toHaveBeenCalledWith(expect.anything(), undefined, "MYVARIANT")
+  })
+
+  it("calls atcProvider.runInspector with undefined variant when not provided", async () => {
+    ;(atcProvider.runInspector as jest.Mock).mockResolvedValue("DEFAULT")
+    await tool.invoke(
+      makeOptions({
+        objectUri: "adt://dev100/sap/bc/adt/programs/programs/zprog",
+        connectionId: "dev100"
+      }),
+      mockToken
+    )
+    expect(atcProvider.runInspector).toHaveBeenCalledWith(expect.anything(), undefined, undefined)
+  })
+})
+
+describe("RunATCAnalysisTool - get_atc_variants action", () => {
+  let tool: RunATCAnalysisTool
+
+  beforeEach(() => {
+    tool = new RunATCAnalysisTool()
+    jest.clearAllMocks()
+    ;(getClient as jest.Mock).mockReturnValue({})
+  })
+
+  it("returns error text when connectionId is missing", async () => {
+    const result: any = await tool.invoke(makeOptions({ action: "get_atc_variants" }), mockToken)
+    expect(result.parts[0].text).toContain("requires `connectionId`")
+  })
+
+  it("lists variants using default query and maxItems", async () => {
+    ;(listAtcVariants as jest.Mock).mockResolvedValue([
+      { name: "DEFAULT", description: "Default variant" }
+    ])
+    const result: any = await tool.invoke(
+      makeOptions({ action: "get_atc_variants", connectionId: "dev100" }),
+      mockToken
+    )
+    expect(listAtcVariants).toHaveBeenCalledWith({}, "*", 100)
+    expect(result.parts[0].text).toContain("DEFAULT")
+  })
+
+  it("passes custom query and maxItems through", async () => {
+    ;(listAtcVariants as jest.Mock).mockResolvedValue([])
+    await tool.invoke(
+      makeOptions({
+        action: "get_atc_variants",
+        connectionId: "dev100",
+        query: "Z*",
+        maxItems: 25
+      }),
+      mockToken
+    )
+    expect(listAtcVariants).toHaveBeenCalledWith({}, "Z*", 25)
+  })
+
+  it("returns a graceful error message when listAtcVariants throws", async () => {
+    ;(listAtcVariants as jest.Mock).mockRejectedValue(new Error("404 Not Found"))
+    const result: any = await tool.invoke(
+      makeOptions({ action: "get_atc_variants", connectionId: "dev100" }),
+      mockToken
+    )
+    expect(result.parts[0].text).toContain("Could not list ATC check variants")
+    expect(result.parts[0].text).toContain("404 Not Found")
+  })
+
+  it("notes when results are capped at maxItems", async () => {
+    ;(listAtcVariants as jest.Mock).mockResolvedValue([{ name: "V1", description: "" }])
+    const result: any = await tool.invoke(
+      makeOptions({ action: "get_atc_variants", connectionId: "dev100", maxItems: 1 }),
+      mockToken
+    )
+    expect(result.parts[0].text).toContain("capped")
   })
 })
 

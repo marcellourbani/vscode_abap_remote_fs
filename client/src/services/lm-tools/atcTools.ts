@@ -12,21 +12,27 @@ import { getClient, getOrCreateRoot, abapUri } from "../../adt/conections"
 import { atcProvider } from "../../views/abaptestcockpit"
 import { getATCDecorations } from "../../views/abaptestcockpit/decorations"
 import { assertToolInvocationAuthorized } from "./toolGuard"
+import { listAtcVariants, AtcVariant } from "../../adt/atcVariants"
 
 // ============================================================================
 // INTERFACES
 // ============================================================================
 
 export interface IRunATCAnalysisParameters {
-  action?: "run_analysis" | "get_documentation"
+  action?: "run_analysis" | "get_documentation" | "get_atc_variants"
   objectName?: string
   objectType?: string
   objectUri?: string
   connectionId?: string
   useActiveFile?: boolean
   scope?: "object" | "package" | "transport"
+  // For run_analysis action
+  variantName?: string
   // For get_documentation action
   docUri?: string
+  // For get_atc_variants action
+  query?: string
+  maxItems?: number
 }
 
 export interface IGetATCDecorationsParameters {
@@ -52,7 +58,9 @@ export class RunATCAnalysisTool implements vscode.LanguageModelTool<IRunATCAnaly
       objectUri,
       connectionId,
       useActiveFile,
-      docUri
+      docUri,
+      variantName,
+      query = "*"
     } = options.input
 
     // get_documentation only needs docUri + connectionId
@@ -69,6 +77,22 @@ export class RunATCAnalysisTool implements vscode.LanguageModelTool<IRunATCAnaly
           title: "Get ATC Documentation",
           message: new vscode.MarkdownString(
             `Fetch documentation for ATC finding from ${connectionId}`
+          )
+        }
+      }
+    }
+
+    // get_atc_variants only needs connectionId
+    if (action === "get_atc_variants") {
+      if (!connectionId) {
+        throw new Error("get_atc_variants requires connectionId")
+      }
+      return {
+        invocationMessage: `Listing ATC check variants...`,
+        confirmationMessages: {
+          title: "List ATC Check Variants",
+          message: new vscode.MarkdownString(
+            `List ATC check variants on ${connectionId} matching \`${query}\``
           )
         }
       }
@@ -101,6 +125,7 @@ export class RunATCAnalysisTool implements vscode.LanguageModelTool<IRunATCAnaly
       message: new vscode.MarkdownString(
         `Run ABAP Test Cockpit analysis on: ${target}` +
           (connectionId ? ` (connection: ${connectionId})` : "") +
+          (variantName ? ` using variant \`${variantName}\`` : "") +
           "\n\nThis will update the ATC panel with visual highlights and return structured results for AI analysis."
       )
     }
@@ -116,7 +141,7 @@ export class RunATCAnalysisTool implements vscode.LanguageModelTool<IRunATCAnaly
     _token: vscode.CancellationToken
   ): Promise<vscode.LanguageModelToolResult> {
     assertToolInvocationAuthorized(options)
-    const { action = "run_analysis" } = options.input
+    const { action = "run_analysis", variantName } = options.input
     let { objectName, objectType, objectUri, connectionId, useActiveFile = true } = options.input
     logTelemetry("tool_run_atc_analysis_called", { connectionId })
 
@@ -127,6 +152,11 @@ export class RunATCAnalysisTool implements vscode.LanguageModelTool<IRunATCAnaly
     // Handle get_documentation action
     if (action === "get_documentation") {
       return this.getDocumentation(options.input)
+    }
+
+    // Handle get_atc_variants action
+    if (action === "get_atc_variants") {
+      return this.getVariants(options.input)
     }
 
     try {
@@ -239,11 +269,11 @@ export class RunATCAnalysisTool implements vscode.LanguageModelTool<IRunATCAnaly
             // Continue with ATC even if file opening fails
           }
 
-          return atcProvider.runInspector(targetUri)
+          return atcProvider.runInspector(targetUri, undefined, variantName)
         }
       )
 
-      const variantName = usedVariant || "unknown"
+      const resolvedVariantName = usedVariant || "unknown"
       const findings = atcProvider.findings()
 
       const structuredFindings = findings.map(finding => ({
@@ -293,7 +323,7 @@ export class RunATCAnalysisTool implements vscode.LanguageModelTool<IRunATCAnaly
         `ATC Analysis Complete\n` +
         `Target: ${targetUri.toString()}\n` +
         `System: ${actualConnectionId}\n` +
-        `Check Variant: ${variantName}\n` +
+        `Check Variant: ${resolvedVariantName}\n` +
         `Findings: ${totalFindings} (${errors}E ${warnings}W ${infos}I, ${exempted} exempted)\n` +
         `Objects Analyzed: ${Object.keys(findingsByObject).length}\n\n` +
         `Per-object:\n` +
@@ -319,7 +349,7 @@ export class RunATCAnalysisTool implements vscode.LanguageModelTool<IRunATCAnaly
                 warnings,
                 infos,
                 exempted,
-                checkVariant: variantName,
+                checkVariant: resolvedVariantName,
                 targetUri: targetUri.toString(),
                 connectionId: actualConnectionId
               },
@@ -385,6 +415,51 @@ export class RunATCAnalysisTool implements vscode.LanguageModelTool<IRunATCAnaly
       `Doc URI: ${docUri}\n` +
       `System: ${connectionId}\n\n` +
       `Documentation:\n\n${plainText}`
+
+    return new vscode.LanguageModelToolResult([new vscode.LanguageModelTextPart(resultText)])
+  }
+
+  private async getVariants(
+    input: IRunATCAnalysisParameters
+  ): Promise<vscode.LanguageModelToolResult> {
+    const { connectionId, query = "*", maxItems = 100 } = input
+
+    if (!connectionId) {
+      return new vscode.LanguageModelToolResult([
+        new vscode.LanguageModelTextPart(
+          "Missing parameter: get_atc_variants requires `connectionId` to know which SAP system to query."
+        )
+      ])
+    }
+
+    let variants: AtcVariant[]
+    try {
+      const client = getClient(connectionId.toLowerCase())
+      variants = await listAtcVariants(client, query, maxItems)
+    } catch (error) {
+      return new vscode.LanguageModelToolResult([
+        new vscode.LanguageModelTextPart(
+          `Could not list ATC check variants on ${connectionId}: ${String(error)}\n\n` +
+            `This system may not support variant listing (older SAP releases). ` +
+            `You can still call run_analysis with a variantName you already know, ` +
+            `or omit variantName to use the connection's configured/default variant.`
+        )
+      ])
+    }
+
+    const capped = variants.length >= maxItems
+
+    const resultText =
+      `ATC Check Variants\n` +
+      `System: ${connectionId}\n` +
+      `Query: ${query}\n` +
+      `Found: ${variants.length}${capped ? " (capped)" : ""}\n\n` +
+      (variants.length
+        ? variants.map(v => `• ${v.name}${v.description ? ` — ${v.description}` : ""}`).join("\n")
+        : "No matching variants found.") +
+      (capped
+        ? `\n\nResults capped at maxItems=${maxItems}. Narrow the \`query\` parameter (wildcard, e.g. 'Z*') to see more without missing variants.`
+        : "")
 
     return new vscode.LanguageModelToolResult([new vscode.LanguageModelTextPart(resultText)])
   }

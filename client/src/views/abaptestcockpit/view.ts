@@ -286,9 +286,13 @@ class AtcProvider implements TreeDataProvider<AtcNode> {
       )
   }
 
-  async runInspectorByAdtUrl(uri: string, connectionId: string): Promise<string> {
+  async runInspectorByAdtUrl(
+    uri: string,
+    connectionId: string,
+    overrideVariant?: string
+  ): Promise<string> {
     const client = getClient(connectionId)
-    const { variant, checkVariant } = await getVariant(client, connectionId)
+    const { variant, checkVariant } = await getVariant(client, connectionId, overrideVariant)
     const system = await this.root.child(connectionId, checkVariant)
     await system.load(() => runInspectorByAdtUrl(uri, system.variant, client))
     commands.executeCommand("abapfs.atcFinds.focus")
@@ -297,9 +301,13 @@ class AtcProvider implements TreeDataProvider<AtcNode> {
     return variant
   }
 
-  async runInspector(uri: Uri, setvariant?: (variant: string) => void): Promise<string> {
+  async runInspector(
+    uri: Uri,
+    setvariant?: (variant: string) => void,
+    overrideVariant?: string
+  ): Promise<string> {
     const client = getClient(uri.authority)
-    const { variant, checkVariant } = await getVariant(client, uri.authority)
+    const { variant, checkVariant } = await getVariant(client, uri.authority, overrideVariant)
     if (setvariant) setvariant(variant)
     const system = await this.root.child(uri.authority, checkVariant)
     await system.load(() => runInspector(uri, system.variant, client))
