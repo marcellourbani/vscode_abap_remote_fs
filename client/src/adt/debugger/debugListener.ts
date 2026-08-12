@@ -15,7 +15,7 @@ import { homedir } from "os"
 import { join } from "path"
 import { StoppedEvent, TerminatedEvent, ThreadEvent } from "@vscode/debugadapter"
 import { v1 } from "uuid"
-import { getWinRegistryReader } from "./winregistry"
+import { readWindowsRegistryString } from "./winregistry"
 import { context } from "../../extension"
 import { DebugService, isEnded } from "./debugService"
 import { BreakpointManager } from "./breakpointManager"
@@ -44,25 +44,42 @@ const getOrCreateIdeId = (): string => {
   return newIdeId
 }
 
+const fileBasedTerminalId = () => {
+  const cfgpath = join(homedir(), ".SAP/ABAPDebugging")
+  const cfgfile = join(cfgpath, "terminalId")
+  try {
+    const terminalId = readFileSync(cfgfile).toString("utf8")
+    log.debug(`getOrCreateTerminalId: reusing file-based terminal ID from ${cfgfile}`)
+    return terminalId
+  } catch (error) {
+    const terminalId = v1().replace(/-/g, "").toUpperCase()
+    if (!existsSync(cfgpath)) mkdirSync(cfgpath, { recursive: true })
+    writeFileSync(cfgfile, terminalId)
+    log.debug(`getOrCreateTerminalId: generated new file-based terminal ID at ${cfgfile}`)
+    return terminalId
+  }
+}
+
 const getOrCreateTerminalId = async () => {
   if (process.platform === "win32") {
-    const reg = getWinRegistryReader()
-    const terminalId =
-      reg && reg("HKEY_CURRENT_USER", "Software\\SAP\\ABAP Debugging", "TerminalID")
-    if (!terminalId) throw new Error("Unable to read terminal ID from windows registry")
-    return terminalId
-  } else {
-    const cfgpath = join(homedir(), ".SAP/ABAPDebugging")
-    const cfgfile = join(cfgpath, "terminalId")
-    try {
-      return readFileSync(cfgfile).toString("utf8")
-    } catch (error) {
-      const terminalId = v1().replace(/-/g, "").toUpperCase()
-      if (!existsSync(cfgpath)) mkdirSync(cfgpath, { recursive: true })
-      writeFileSync(cfgfile, terminalId)
-      return terminalId
+    // Reusing SAP GUI's own TerminalID (when present) keeps terminal-mode debugging
+    // consistent across SAP GUI and VS Code on the same machine. If it's unavailable
+    // (no SAP GUI, or the registry query fails) fall back to the same file-based id
+    // used on other platforms instead of hard-failing.
+    const fromRegistry = readWindowsRegistryString(
+      "HKEY_CURRENT_USER",
+      "Software\\SAP\\ABAP Debugging",
+      "TerminalID"
+    )
+    if (fromRegistry) {
+      log.debug("getOrCreateTerminalId: using terminal ID from Windows registry (SAP GUI)")
+      return fromRegistry
     }
+    log.debug(
+      "getOrCreateTerminalId: no terminal ID in Windows registry, falling back to file-based ID"
+    )
   }
+  return fileBasedTerminalId()
 }
 
 export const errorType = (err: any): string | undefined => {
