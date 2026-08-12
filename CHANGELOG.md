@@ -1,5 +1,11 @@
 # Changelog
 
+## 2.8.3
+
+### Patch Changes
+
+- db7c01e: remove winregistry dependency
+
 ## 2.8.2
 
 ### Patch Changes
