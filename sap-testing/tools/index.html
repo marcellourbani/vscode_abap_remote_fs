@@ -3240,7 +3240,7 @@
 </tr>
 <tr>
 <td><code>verify_test_data_usage</code></td>
-<td>Cross-checks a script against its data spec, so a script can't reference a value nobody defined</td>
+<td>Cross-checks a script against its case and data spec: data keys must match, and every table in <code>se16nTables</code> must have matching SE16N proof</td>
 </tr>
 <tr>
 <td><code>check_test_data</code></td>
@@ -3248,7 +3248,7 @@
 </tr>
 <tr>
 <td><code>playwright_test</code></td>
-<td>Runs one test or a whole program's tests against a system. Signs the browser in, executes, and returns pass/fail plus paths to the screenshots and traces. Refuses to run until the earlier phases are genuinely complete</td>
+<td>Replaces terminal <code>npx playwright test</code>. Runs exact <code>tcIds</code> or a whole program; independent cases may run across up to 5 workers after one login, while dependent/shared-state cases stay in ordered sequential batches. Stops after 3 failures by default (<code>maxFailures</code> cap 10) and rejects incomplete SE16N proof</td>
 </tr>
 <tr>
 <td><code>build_evidence_report</code></td>
