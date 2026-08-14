@@ -536,42 +536,54 @@ describe("Playwright process lifecycle", () => {
     jest.useRealTimers()
   })
 
-  it("kills an active Windows process tree on cancellation", async () => {
-    const child = fakeChild()
-    const taskkill = fakeChild()
-    const calls: any[] = []
-    ;(spawn as unknown as jest.Mock).mockImplementation((...args: any[]) => {
-      calls.push(args)
-      return calls.length === 1 ? child : taskkill
+  describe("on Windows", () => {
+    const platform = Object.getOwnPropertyDescriptor(process, "platform")!
+
+    beforeEach(() => {
+      Object.defineProperty(process, "platform", { value: "win32" })
     })
-    let cancel: (() => void) | undefined
-    const runToken = {
-      onCancellationRequested: jest.fn((handler: () => void) => {
-        cancel = handler
-        return { dispose: jest.fn() }
+
+    afterEach(() => {
+      Object.defineProperty(process, "platform", platform)
+    })
+
+    it("kills an active process tree on cancellation", async () => {
+      const child = fakeChild()
+      const taskkill = fakeChild()
+      const calls: any[] = []
+      ;(spawn as unknown as jest.Mock).mockImplementation((...args: any[]) => {
+        calls.push(args)
+        return calls.length === 1 ? child : taskkill
       })
-    } as any
-    const promise = runProcess("node", [], { cwd: "C:/tests", env: {} }, runToken)
-    cancel!()
-    child.signalCode = "SIGKILL"
-    child.emit("close", null)
-    await promise
-    expect(calls[1][0]).toBe("taskkill")
-    expect(calls[1][1]).toEqual(["/pid", "321", "/T", "/F"])
-  })
+      let cancel: (() => void) | undefined
+      const runToken = {
+        onCancellationRequested: jest.fn((handler: () => void) => {
+          cancel = handler
+          return { dispose: jest.fn() }
+        })
+      } as any
+      const promise = runProcess("node", [], { cwd: "C:/tests", env: {} }, runToken)
+      cancel!()
+      child.signalCode = "SIGKILL"
+      child.emit("close", null)
+      await promise
+      expect(calls[1][0]).toBe("taskkill")
+      expect(calls[1][1]).toEqual(["/pid", "321", "/T", "/F"])
+    })
 
-  it("does not kill a settled child and falls back when taskkill fails", () => {
-    const settled = fakeChild()
-    settled.exitCode = 0
-    killTree(settled)
-    expect(spawn).not.toHaveBeenCalled()
+    it("does not kill a settled child and falls back when taskkill fails", () => {
+      const settled = fakeChild()
+      settled.exitCode = 0
+      killTree(settled)
+      expect(spawn).not.toHaveBeenCalled()
 
-    const child = fakeChild()
-    const taskkill = fakeChild()
-    ;(spawn as unknown as jest.Mock).mockReturnValue(taskkill)
-    killTree(child)
-    taskkill.emit("error", new Error("taskkill unavailable"))
-    expect(child.kill).toHaveBeenCalledTimes(1)
+      const child = fakeChild()
+      const taskkill = fakeChild()
+      ;(spawn as unknown as jest.Mock).mockReturnValue(taskkill)
+      killTree(child)
+      taskkill.emit("error", new Error("taskkill unavailable"))
+      expect(child.kill).toHaveBeenCalledTimes(1)
+    })
   })
 
   it("kills a POSIX process group and falls back to the child when that fails", () => {
