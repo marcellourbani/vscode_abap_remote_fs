@@ -25,4 +25,3 @@ set end_time=%TIME%
 echo ⏰ Build started at %start_time%
 echo ⏰ Build completed at %end_time%
 echo 💡 Restart VS Code or reload the window (Ctrl+Shift+P ^> 'Developer: Reload Window') to use the updated extension.
-pause

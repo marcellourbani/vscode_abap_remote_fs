@@ -1,21 +1,35 @@
 // Loaded by @playwright/test's own CLI, not compiled by our build — plain CommonJS.
 //
 // Signs in once per run so every spec starts with an authenticated session. The playwright_test
-// tool mints a one-shot loopback login URL in the extension host and passes it here; fetching it
-// sets SAP's session cookie, which we save as storage state for the specs to reuse.
+// tool mints a one-shot loopback login form in the extension host; this setup fetches the form,
+// POSTs it through Playwright's browserless request context, and saves the resulting cookie jar.
 //
 // This runs in globalSetup rather than in a spec on purpose: globalSetup is not traced, so the
 // login never lands in a trace.zip written into the user's test folder.
 const fs = require("fs")
-const { chromium } = require("playwright")
+const { request } = require("playwright")
 
 /** A valid but empty state, so `use.storageState` always has a file to read. */
 const EMPTY_STATE = JSON.stringify({ cookies: [], origins: [] })
 
-/** Nothing here should ever take this long; better to run unauthenticated than to hang. */
+/** Nothing here should ever take this long; fail the run rather than hang. */
 const STEP_TIMEOUT_MS = 30_000
-
 const since = start => `${Date.now() - start}ms`
+const errorMessage = error => (error && error.message) || String(error)
+
+const decodeHtml = value =>
+  value
+    .replace(/&quot;/g, '"')
+    .replace(/&#39;/g, "'")
+    .replace(/&lt;/g, "<")
+    .replace(/&gt;/g, ">")
+    .replace(/&amp;/g, "&")
+
+function formValue(html, name) {
+  const escaped = name.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")
+  const match = html.match(new RegExp(`<input[^>]+name="${escaped}"[^>]+value="([^"]*)"`, "i"))
+  return match ? decodeHtml(match[1]) : undefined
+}
 
 module.exports = async () => {
   const loginUrl = process.env.SAP_TESTING_LOGIN_URL
@@ -28,59 +42,40 @@ module.exports = async () => {
   }
 
   const started = Date.now()
-  console.log("[sso] launching browser for auto-login")
-  const browser = await chromium.launch({
-    executablePath: process.env.SAP_TESTING_BROWSER_EXECUTABLE || undefined
-  })
-  console.log(`[sso] browser ready in ${since(started)}`)
+  console.log("[sso] exchanging reentrance ticket without a browser")
+  const api = await request.newContext()
   try {
-    const context = await browser.newContext()
-    const page = await context.newPage()
+    const launcher = await api.get(loginUrl, { timeout: STEP_TIMEOUT_MS })
+    if (!launcher.ok()) throw new Error(`SSO launcher returned HTTP ${launcher.status()}`)
+    const html = await launcher.text()
+    const action = decodeHtml(html.match(/<form[^>]+action="([^"]+)"/i)?.[1] || "")
+    const ticket = formValue(html, "sap-mysapsso")
+    const redirect = formValue(html, "sap-mysapred")
+    if (!action || !ticket) throw new Error("SSO launcher returned an invalid login form")
 
-    // Deliberately NOT waitUntil "networkidle": SAP WebGUI holds long-lived connections open,
-    // so idle may never arrive.
-    const navStarted = Date.now()
-    await page.goto(loginUrl, { waitUntil: "domcontentloaded", timeout: STEP_TIMEOUT_MS })
+    const response = await api.post(action, {
+      form: {
+        "sap-mysapsso": ticket,
+        ...(redirect ? { "sap-mysapred": redirect } : {})
+      },
+      maxRedirects: 0,
+      timeout: STEP_TIMEOUT_MS
+    })
+    if (response.status() >= 400) {
+      throw new Error(`SAP SSO exchange returned HTTP ${response.status()}`)
+    }
 
-    // Wait for the session cookie itself, not for the URL to change. The page auto-submits a
-    // form to myssocntl, so the URL leaves loopback the moment that POST commits — before SAP
-    // has answered it and before any Set-Cookie has been applied. Polling the cookie jar waits
-    // for the thing we actually need, instead of a proxy for it that can win the race.
-    //
-    // Filtered by the WebGUI URL, not just its host: Playwright returns "cookies that affect
-    // those URLs", i.e. domain AND path AND secure all matched. So this asks the question that
-    // actually matters — will a request to the URL the specs hit carry an auth cookie? — and a
-    // cookie that fails to match is one the real request would not have sent either.
-    const sapUrl = process.env[`SAP_URL_${(process.env.SAP_SYSTEM || "").toUpperCase()}`]
-    const deadline = Date.now() + STEP_TIMEOUT_MS
-    let cookies = []
-    while (Date.now() < deadline) {
-      cookies = sapUrl ? await context.cookies(sapUrl) : await context.cookies()
-      if (cookies.length) break
-      await page.waitForTimeout(250)
-    }
-    if (!cookies.length) {
-      throw new Error(
-        `SAP set no session cookie within ${STEP_TIMEOUT_MS}ms — the reentrance ticket was ` +
-          `not accepted. Landed on ${page.url()}`
-      )
-    }
+    const state = await api.storageState()
+    if (!state.cookies.length) throw new Error("SAP SSO exchange set no session cookie")
+    fs.writeFileSync(statePath, JSON.stringify(state))
     console.log(
-      `[sso] session cookie set in ${since(navStarted)}: ${cookies.map(c => c.name).join(", ")}`
+      `[sso] saved ${state.cookies.length} cookies in ${since(started)}: ` +
+        state.cookies.map(cookie => cookie.name).join(", ")
     )
-
-    await context.storageState({ path: statePath })
-    console.log(`[sso] saved ${cookies.length} cookies (total ${since(started)})`)
   } catch (e) {
-    // Never fail the run: the system may already authenticate by other means (gateway, SSO).
-    // A genuinely unauthenticated session surfaces later as a logon-screen detection, which
-    // reports far more usefully than a setup crash. Message only — it may quote a URL.
-    console.error(`[sso] AUTO-LOGIN FAILED after ${since(started)}: ${(e && e.message) || e}`)
-    console.error(
-      "[sso] specs will run unauthenticated unless SAP authenticates them by other means"
-    )
-    fs.writeFileSync(statePath, EMPTY_STATE)
+    console.error(`[sso] AUTO-LOGIN FAILED after ${since(started)}: ${errorMessage(e)}`)
+    throw e
   } finally {
-    await browser.close()
+    await api.dispose()
   }
 }

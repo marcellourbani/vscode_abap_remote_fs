@@ -30,6 +30,12 @@ import { ssoLoginUrl } from "../../adt/sapgui/sapgui"
 import { SsoLauncher } from "../../adt/sapgui/ssoLaunch"
 import { getTestFolder, getWebGuiUrl } from "../testing/config"
 import { resolveBrowserExecutable } from "../testing/browserResolver"
+import {
+  normalizeMaxFailures,
+  normalizeMaxTasks,
+  normalizeTcIds
+} from "../testing/playwright-limits"
+import { findSqlVerificationGateErrors } from "../testing/verification-gate"
 
 /** Time a startup phase into the debug channel, so a slow run points at a specific step. */
 async function timed<T>(label: string, work: () => Promise<T>): Promise<T> {
@@ -44,9 +50,12 @@ async function timed<T>(label: string, work: () => Promise<T>): Promise<T> {
 
 export interface IPlaywrightTestParameters {
   program: string
-  tcId?: string
+  tcIds?: string[]
   connectionId: string
   headed?: boolean
+  maxFailures?: number
+  runInParallel?: boolean
+  maxTasks?: number
   prerequisiteConfirmation: string
 }
 
@@ -148,7 +157,7 @@ function collectSpecs(suite: JsonReportSuite | undefined, out: JsonReportSpec[])
   for (const child of suite.suites ?? []) collectSpecs(child, out)
 }
 
-function summarizeReport(report: JsonReport): string {
+export function summarizeReport(report: JsonReport, maxFailures: number): string {
   const specs: JsonReportSpec[] = []
   for (const suite of report.suites ?? []) collectSpecs(suite, specs)
 
@@ -160,13 +169,23 @@ function summarizeReport(report: JsonReport): string {
   const lines: string[] = []
   let passed = 0
   let failed = 0
+  let interrupted = 0
+  let notRun = 0
+  let total = 0
   for (const spec of specs) {
     for (const test of spec.tests) {
+      total++
       const last = test.results[test.results.length - 1]
       const status = last?.status ?? "unknown"
       if (status === "passed") {
         passed++
         lines.push(`PASS  ${spec.title}`)
+      } else if (status === "interrupted") {
+        interrupted++
+        lines.push(`INTERRUPTED  ${spec.title}`)
+      } else if (status === "skipped" || status === "unknown") {
+        notRun++
+        lines.push(`NOT RUN  ${spec.title}`)
       } else {
         failed++
         lines.push(`FAIL  ${spec.title}`)
@@ -196,7 +215,16 @@ function summarizeReport(report: JsonReport): string {
     }
   }
   lines.push("")
-  lines.push(`${passed} passed, ${failed} failed (${specs.length} total)`)
+  lines.push(
+    `${passed} passed, ${failed} failed, ${interrupted} interrupted, ` +
+      `${notRun} not run (${total} selected)`
+  )
+  const stoppedEarly = (report.errors ?? []).some(error =>
+    /stopped early|maximum allowed failures/i.test(error.message ?? "")
+  )
+  if (stoppedEarly || (failed >= maxFailures && interrupted + notRun > 0)) {
+    lines.push(`Run stopped early after reaching maxFailures=${maxFailures}.`)
+  }
   if (failed > 0) {
     lines.push(
       "For each FAIL: open the trace (path above, under <test-folder>/.playwright-artifacts/) " +
@@ -207,14 +235,23 @@ function summarizeReport(report: JsonReport): string {
   return lines.join("\n")
 }
 
+export function playwrightArgs(configPath: string, tcIds?: string[]): string[] {
+  return ["test", "--config", configPath, ...(tcIds?.map(tcId => `${tcId}.spec.ts`) ?? [])]
+}
+
+export function cleanupStorageState(storageStateFile: string): Promise<void> {
+  return fs.rm(storageStateFile, { force: true }).catch(() => {})
+}
+
 export class PlaywrightTestTool implements vscode.LanguageModelTool<IPlaywrightTestParameters> {
   async prepareInvocation(
     options: vscode.LanguageModelToolInvocationPrepareOptions<IPlaywrightTestParameters>,
     _token: vscode.CancellationToken
   ) {
-    const { program, tcId, connectionId } = options.input
+    const { program, tcIds, connectionId } = options.input
+    const selection = tcIds?.join(", ") ?? "all specs"
     return {
-      invocationMessage: `Running ${tcId ?? "all specs"} for ${program} on ${connectionId}`
+      invocationMessage: `Running ${selection} for ${program} on ${connectionId}`
     }
   }
 
@@ -226,8 +263,15 @@ export class PlaywrightTestTool implements vscode.LanguageModelTool<IPlaywrightT
     logTelemetry("tool_playwright_test_called")
 
     const invokeStarted = Date.now()
-    const { program, tcId, headed } = options.input
-    log.debug(`[playwright] invoke ${tcId ?? "all specs"} for ${program}`)
+    const { program, headed } = options.input
+    const tcIds = normalizeTcIds(options.input.tcIds)
+    const maxFailures = normalizeMaxFailures(options.input.maxFailures)
+    const runInParallel = options.input.runInParallel === true
+    const maxTasks = runInParallel ? normalizeMaxTasks(options.input.maxTasks) : 1
+    log.debug(
+      `[playwright] invoke ${tcIds?.join(", ") ?? "all specs"} for ${program} ` +
+        `(${runInParallel ? `${maxTasks} parallel tasks` : "sequential"})`
+    )
 
     if (
       normalizeConfirmation(options.input.prerequisiteConfirmation) !==
@@ -262,6 +306,28 @@ export class PlaywrightTestTool implements vscode.LanguageModelTool<IPlaywrightT
       throw new Error(`No test-scripts folder found at ${specDir}.`)
     }
 
+    if (tcIds) {
+      const missing: string[] = []
+      for (const tcId of tcIds) {
+        const exists = await fs
+          .stat(path.join(specDir, `${tcId}.spec.ts`))
+          .then(stat => stat.isFile())
+          .catch(() => false)
+        if (!exists) missing.push(tcId)
+      }
+      if (missing.length) {
+        throw new Error(`No spec file found for: ${missing.join(", ")}.`)
+      }
+    }
+
+    const verificationErrors = await findSqlVerificationGateErrors(testFolder, program, tcIds)
+    if (verificationErrors.length) {
+      throw new Error(
+        `playwright_test blocked: SQL/mixed post-validation cases require SE16N screenshot ` +
+          `proof in the matching spec:\n- ${verificationErrors.join("\n- ")}`
+      )
+    }
+
     const extPath = extensionPath()
     const cliPath = await resolvePlaywrightCli(extPath)
     const configPath = path.join(vendorDir(extPath), "playwright.config.js")
@@ -270,8 +336,7 @@ export class PlaywrightTestTool implements vscode.LanguageModelTool<IPlaywrightT
     // Holds a live session cookie, so it lives in the temp dir and is deleted after the run.
     const storageStateFile = path.join(runDir, "storage-state.json")
 
-    const args = ["test", "--config", configPath]
-    if (tcId) args.push(tcId)
+    const args = playwrightArgs(configPath, tcIds)
 
     const browser = await timed("resolve browser executable", () => resolveBrowserExecutable())
     if (browser.warning) {
@@ -290,10 +355,13 @@ export class PlaywrightTestTool implements vscode.LanguageModelTool<IPlaywrightT
       SAP_TESTING_ROOT: testFolder,
       SAP_TESTING_SPEC_DIR: specDir,
       SAP_TESTING_HEADED: headed ? "1" : "0",
+      SAP_TESTING_MAX_FAILURES: String(maxFailures),
+      SAP_TESTING_PARALLEL: runInParallel ? "1" : "0",
+      SAP_TESTING_MAX_TASKS: String(maxTasks),
       SAP_TESTING_REPORT_FILE: reportFile,
       SAP_TESTING_STORAGE_STATE: storageStateFile,
       SAP_SYSTEM: connectionId,
-      [`SAP_URL_${connectionId}`]: url
+      [`SAP_URL_${connectionId.toUpperCase()}`]: url
     }
     if (loginUrl) env.SAP_TESTING_LOGIN_URL = loginUrl.url
     if (browser.executablePath) {
@@ -306,14 +374,14 @@ export class PlaywrightTestTool implements vscode.LanguageModelTool<IPlaywrightT
       // A cancelled run never fetches the login URL, so without this a usable ticket stays
       // served on a loopback port until its expiry elapses.
       loginUrl?.dispose()
-      return fs.rm(storageStateFile, { force: true }).catch(() => {})
+      return cleanupStorageState(storageStateFile)
     })
 
     let summary: string
     const summaryStarted = Date.now()
     try {
       const reportRaw = await fs.readFile(reportFile, "utf8")
-      summary = summarizeReport(JSON.parse(reportRaw))
+      summary = summarizeReport(JSON.parse(reportRaw), maxFailures)
     } catch {
       // JSON reporter didn't produce a file — likely a config/spec-load error before
       // any test ran. Fall back to raw process output so the AI can still diagnose it.
@@ -343,7 +411,7 @@ const STDIO_FLUSH_GRACE_MS = 2_000
  * survive as orphans — still holding the SAP session, which makes every later run contend
  * with a logon that never ended.
  */
-function killTree(child: ReturnType<typeof spawn>): void {
+export function killTree(child: ReturnType<typeof spawn>): void {
   if (child.exitCode !== null || child.signalCode !== null || !child.pid) return
   log.debug(`[playwright] cancelled — killing process tree (pid ${child.pid})`)
   if (process.platform === "win32") {
@@ -360,7 +428,7 @@ function killTree(child: ReturnType<typeof spawn>): void {
   }
 }
 
-function runProcess(
+export function runProcess(
   command: string,
   args: string[],
   opts: { cwd: string; env: NodeJS.ProcessEnv },

@@ -5,6 +5,10 @@ description: Standalone Phase 3 of SAP UI testing. Turns the _findings.md decisi
 
 # Design Cases — Phase 3 (of 7)
 
+If one business scenario has ordered stages on different SAP connections, load and follow
+`multi-system-workflows` alongside this skill. Split it into linked `TC-NNN` stage cases;
+never put multiple systems inside one case script.
+
 Phase order: analyze-and-plan (1) → explore-ui (2) → **design-cases (3)** → define-data (4) → prepare-data (5) → build-scripts (6) → run-scripts (7).
 
 This phase produces `TC-XXX.md` files plus the rebuilt `_index.md`/`_index.docx`. It does NOT author `.data.md` files (Phase 4) and does NOT write specs (Phase 6). Each `TC-XXX.md` still DECLARES `dataRequired: yes|no`; the sidecar itself is written in Phase 4.
@@ -120,6 +124,7 @@ priority: high | medium | low
 runnable: runnable | manual | blocked-by-data | runnable-elsewhere # from _findings.md runnability triage — this is what build_test_index reads for summary counts
 dataRequired: yes | no # mandatory; yes means a TC-XXX.data.md WILL be authored in Phase 4, no means none may exist
 verification: sql | manual | mixed | none # mandatory — HOW this case proves the object did its job AFTER the UI passes (see "Post-test verification is the rule" below). Outcomes the SPEC already asserts on screen are NOT this — this is the DB/artifact truth the spec can't see. A "nothing should have been written" case is `sql` (assert the count/table is unchanged), NOT none. `none` is valid ONLY when the path cannot write anything AND no meaningful count/absence check exists (a pure error/abort case where the message is the whole outcome).
+se16nTables: [EKKO, EKPO] # mandatory for verification: sql|mixed; every SQL-verified business table/effect that business users can inspect. Use [] for manual/none.
 outputs: [alv | excel | email | al11 | table | idoc | job | spool]
 messagesExpected: [] # MANDATORY: every message this case triggers, using the EXACT `Msg ID` token from `_findings.md`'s MESSAGE table — never invent one. For a T100 message that is `<CLASS>-<NNN>` (e.g. ["ZDUMMYMSG-001", "ZDUMMYMSG-004"]); for an inline literal / text-pool / runtime-assembled message it is the `MSG-<nn>` token `_findings.md` assigned it (e.g. ["MSG-03"]). Do NOT prefix with the program name and do NOT make up a scheme — copy the token `_findings.md` already defined, so the reviewer's MESSAGE cross-check matches. ANY case whose Expected Result names a message text MUST list its Msg ID here. Empty ONLY when the case triggers no message at all (rare — typically pure background-artifact or silent happy path).
 messagesForbidden: []
@@ -190,9 +195,9 @@ A test case is not complete until it proves the object actually did what it was 
 
 For every runnable case, look at `_units.md`'s "Effective outputs" for the units the case exercises and add a `## Post-test verification` row for each persisted/emitted effect. Set the `verification` frontmatter field accordingly:
 
-- **`sql`** — every check is a DB read the model can run in Phase 7. This covers most effects, because they land in queryable tables: application tables, IDocs (`EDIDC`/`EDIDS`/`EDID4`), background jobs (`TBTCO`/`TBTCP`), change docs (`CDHDR`/`CDPOS`), spool (`TSP01`). Prefer `sql` whenever the effect is queryable. **This INCLUDES negative-persistence checks:** a case whose whole point is that NOTHING was written (an invalid row rejected before persistence, a duplicate that should be dropped) is proven by a `by: sql` check that the target row-count/table is UNCHANGED — that is `verification: sql`, not `none`.
+- **`sql`** — every authoritative check is a DB read the model runs in Phase 7. Set `se16nTables` to EVERY SQL-verified business table/effect that users can inspect, not the easiest single table. A PO case checking header and items therefore declares `[EKKO, EKPO]`, and Phase 6 writes meaningful SE16N proof for both. The screenshots complement SQL; they never replace it. Negative-persistence checks are `sql`, not `none`, and declare the relevant displayable target tables too.
 - **`manual`** — the effect cannot be proven by SQL and a human must check it: AL11 application-server file contents, an SXMB_MONI / SXI_MONITOR XML payload, an email actually arriving, an external-system record, a spool's rendered layout. Name the exact transaction/tool and what to look for. These become "pending" until the user confirms them.
-- **`mixed`** — there are genuinely BOTH a runnable SQL check AND a non-queryable manual check. Do NOT reach for `mixed` just because part of the outcome is on screen — an on-screen outcome the spec asserts is not a verification check at all.
+- **`mixed`** — there are genuinely BOTH a runnable SQL check AND a non-queryable manual check. Populate `se16nTables` with every displayable table covered by the SQL portion. Do NOT use `mixed` merely because SE16N is on screen; SE16N is supporting evidence, not another classification.
 - **`none`** — VALID ONLY when the path cannot have written anything AND there is no meaningful count/absence check to run: a pure error/validation case where the object aborts before touching any table and the error MESSAGE itself is the entire outcome. If a count-unchanged check is possible and meaningful, the answer is `sql`, not `none`. If you set `none`, it must be obvious from the case (an error case) or stated in Notes — the reviewer challenges every `none` against `_units.md` and against whether a negative check was possible.
 
 **Decision table (apply in order):**

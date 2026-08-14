@@ -5,6 +5,10 @@ description: Standalone Phase 6 of SAP UI testing. Rediscovers the configured te
 
 # Build Scripts — Phase 6 (of 7)
 
+If the scenario crosses SAP connections, load `multi-system-workflows` alongside this
+skill. Keep one system per script and implement only the documented explicit JSON handoff
+between linked stage cases.
+
 Phase order: analyze-and-plan (1) → explore-ui (2) → design-cases (3) → define-data (4) → prepare-data (5) → **build-scripts (6)** → run-scripts (7).
 
 For bounded, self-contained support work, use `sap-task-helper` with explicit inputs, allowed writes, and an output contract. **Never delegate the whole phase** (e.g. "write specs for all 30 cases") to `sap-task-helper` — it is a bounded per-file helper and will reject phase-scale work. Convert cases yourself, or delegate at most a small, explicitly-listed batch of disjoint files with a per-file write boundary.
@@ -57,7 +61,7 @@ MANDATORY reads (parallel):
 - `tests/<PROGRAM>/test-cases/_index.md` — the reviewer's map of all cases. If a case or its runnability must change, STOP and follow `design-cases` to update the TC source artifact, then rerun `build_test_index`; never hand-edit the index tables.
 - Every `<TEST_FOLDER>/recordings/*.recording.ts` path explicitly referenced by a screen used in `_screens.md`. Do not scan unrelated recordings or depend on a recording that `_screens.md` has not reconciled.
 
-The `SapSession`/`SapArtifacts` implementation is not present in the test folder or workspace. Use the method reference in Step 2 and the exposed `@sap-testing/runtime` type declarations as the authoritative API. See `helpers-reference` if a capability is genuinely missing — you cannot add one from the workspace.
+The `SapSession`/`SapArtifacts` implementation is not present in the test folder or workspace. Use the method reference in Step 2 and the exposed `@sap-testing/runtime` type declarations as the authoritative API. Load `helpers-reference` before generating `sap.se16n()` proof, and also use it whenever another capability seems missing — you cannot add runtime methods from the test workspace.
 
 WRITE to: `tests/<PROGRAM>/test-scripts/<TC-XXX>.spec.ts` (create `test-scripts/` if it doesn't exist)
 
@@ -116,7 +120,7 @@ Runtime-safety mechanisms (automatic, no explicit call needed unless noted):
 - Runtime-error detection catches ABAP short dumps, ITS/ICM errors, and dropped-to-logon states after every action; throws with `kind`, title, URL, and a body snippet.
 - `sap.openTx(...)` verifies the transaction actually loaded and throws a specific `S_TCODE`/client-missing message if SAP silently bounces to Easy Access.
 
-Load `helpers-reference` for the auto-mechanism table and `sap-webgui` for the popup allow-list and dump-signature list.
+Load `helpers-reference` for `sap.se16n()` usage and the auto-mechanism table; load `sap-webgui` for the popup allow-list and dump-signature list.
 
 Background artifacts (via `SapArtifacts`) — only these two methods exist. For anything about job status, IDoc counts, or table rows, use the TC's `## Post-test verification` section instead (see `design-cases` and `run-scripts`) — that covers all DB-backed state now. These two remain because a filesystem path and rendered spool output have no SQL equivalent:
 
@@ -180,9 +184,9 @@ test("TC-001 <title>", async ({ page }, testInfo) => {
     await sap.expectAlert(/completed/i);
     await sap.expectGridHasRow(data.sample_material);
 
-    // If the case has a "## Post-test verification" section, do NOT check it
-    // here — Playwright can't run SQL. That check happens later, in run-scripts,
-    // as a separate manual step after this spec reports pass.
+    // SQL still runs later in run-scripts. For verification: sql|mixed, also add
+    // sap.se16n() here after the business action to prove the resulting state is
+    // visible to business users and capture criteria/output screenshots.
 
     await sap.finish("pass");
   } catch (err) {
@@ -191,6 +195,48 @@ test("TC-001 <title>", async ({ page }, testInfo) => {
   }
 });
 ```
+
+### Mandatory SE16N proof for SQL/mixed cases
+
+Before generating any SE16N block, load the `helpers-reference` skill and follow its
+`sap.se16n()` contract, especially the `outputFields` and `expect` decision rules. The
+short examples here show translation patterns; `helpers-reference` is the authoritative
+usage reference for parameters, operators, result fields, screenshot behavior, and
+cardinality assertions.
+
+If TC frontmatter says `verification: sql` or `verification: mixed`, read its mandatory
+`se16nTables` list and write a meaningful `sap.se16n()` assertion for EVERY listed table
+after the business action, using the same resolved keys. Do not optimize for merely
+passing the gate. If a purchase-order case declares `[EKKO, EKPO]`, show the created
+header in EKKO and its expected item rows in EKPO. This is supporting screenshot proof:
+keep every declared Phase 7 SQL/manual check.
+
+Run `verify_test_data_usage` after writing the spec. It compares literal `table` values in
+the calls against `se16nTables`; comments and unrelated calls do not count. The run tool
+enforces the same coverage. For complex joins/deltas, each listed table's SE16N assertion
+shows its meaningful business-visible state while SQL proves the full technical condition.
+
+Example for a created purchase order:
+
+```typescript
+await sap.se16n({
+  table: "EKKO",
+  outputFields: ["EBELN", "BUKRS", "LIFNR", "BSTYP"],
+  where: [{ field: "EBELN", low: data.purchase_order }],
+  expect: { exactRows: 1 }
+})
+await sap.se16n({
+  table: "EKPO",
+  outputFields: ["EBELN", "EBELP", "MATNR", "WERKS", "MENGE"],
+  where: [{ field: "EBELN", low: data.purchase_order }],
+  expect: { minRows: 1 }
+})
+```
+
+In this example, replace EKPO's `minRows: 1` with `exactRows: <expected item count>` when
+the TC knows how many items it created. Likewise, keep `outputFields` narrowly focused on
+the keys and business values the screenshot must prove; never substitute `"*"` to avoid
+identifying technical fields.
 
 #### Variant B — case WITHOUT `.data.md` (no dynamic test data needed)
 
@@ -292,7 +338,7 @@ Once state-table actions are emitted, Steps become mostly nav + Execute + follow
 | "Download Excel"                                                                   | `const p = await sap.captureDownload(() => sap.clickButton("Export"))`                                                                                               |
 | "Expected: message M appears"                                                      | `sap.expectAlert("M")`                                                                                                                                               |
 | "Expected: title Y"                                                                | `sap.expectTitle("Y")`                                                                                                                                               |
-| "Expected: job J finishes" / "IDoc of type T created" / "row in table T where K=V" | Not something the spec checks — it belongs in the TC's `## Post-test verification` (see `design-cases`); executed separately in `run-scripts`, not here |
+| "Expected: job J finishes" / "IDoc of type T created" / "row in table T where K=V" | Keep the authoritative SQL in `## Post-test verification`; for `verification: sql|mixed`, also add a meaningful `sap.se16n()` business-visible proof in the spec |
 | "Expected: file P on app server"                                                   | `await artifacts.verifyAL11FilePresent("P")`                                                                                                                         |
 | "Expected: message M is NOT shown"                                                 | `sap.expectNoAlert(/M/)` — pass the pattern so it asserts THAT message is absent. The bare `sap.expectNoAlert()` fails on ANY status text (e.g. a leftover message from the prior round-trip) → false negatives; use it only for "status bar completely clear". |
 | "Expected: exactly N rows in the grid"                                             | Do NOT use `expectGridHasRow` for a count — it is an unanchored substring match (see anti-patterns). Assert on a business-unique value, or add the count as a `by: sql` `## Post-test verification` check |

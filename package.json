@@ -565,11 +565,11 @@
       {
         "name": "verify_test_data_usage",
         "displayName": "Verify Test Data Usage",
-        "modelDescription": "Cross-check a Playwright spec against its .data.md: every data.<key> referenced in the spec must have a matching entry in the .data.md's requires list, and vice versa. Run this right after writing or editing a spec, before telling the user it's ready.",
+        "modelDescription": "Cross-check a Playwright spec against its case and .data.md: data.<key> declarations must match, and every table declared in se16nTables must have a matching sap.se16n() call. Run this right after writing or editing a spec.",
         "canBeReferencedInPrompt": true,
         "toolReferenceName": "verify-test-data",
         "icon": "$(check)",
-        "userDescription": "Cross-check a test spec against its data spec",
+        "userDescription": "Check test data usage and SE16N table coverage",
         "inputSchema": {
           "type": "object",
           "properties": {
@@ -646,7 +646,7 @@
       {
         "name": "playwright_test",
         "displayName": "Run Playwright Test",
-        "modelDescription": "Run one or more Playwright specs from the configured test folder against a given SAP system. Runs the real @playwright/test runner as a subprocess bundled with the extension - no local Node or Playwright install needed. Returns pass/fail per test case plus paths to evidence (screenshots, manifest.json) and any error output. The connectionId is used both to derive the SAP WebGUI URL and as the results-folder name. Use this instead of asking the user to run a terminal command. This tool is GATED: it refuses to run unless you pass the mandatory prerequisiteConfirmation field certifying you completed the run-scripts readiness gate.",
+        "modelDescription": "Run exact tcIds or every Playwright spec in one program using ABAP FS's bundled tool; NEVER run terminal Playwright. Use runInParallel only after reading case/data/automation notes and confirming cases are independent. Batch producers before consumers and shared-state/order-dependent cases sequentially; when uncertain, stay sequential. Parallel mode uses up to maxTasks isolated workers after one authentication setup. maxFailures defaults 3, caps 10. GATED by readiness and SE16N coverage.",
         "canBeReferencedInPrompt": true,
         "toolReferenceName": "playwright-test",
         "icon": "$(play)",
@@ -658,9 +658,14 @@
               "type": "string",
               "description": "Program folder name under tests/, e.g. Z_MY_REPORT"
             },
-            "tcId": {
-              "type": "string",
-              "description": "Test case ID to run, e.g. TC-001. Omit to run every spec under the program's test-scripts/ folder."
+            "tcIds": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              },
+              "minItems": 1,
+              "uniqueItems": true,
+              "description": "Exact test case IDs to run within this program, e.g. ['TC-001', 'TC-004b']. Omit to run every spec."
             },
             "connectionId": {
               "type": "string",
@@ -670,6 +675,23 @@
               "type": "boolean",
               "default": false,
               "description": "Run with a visible browser window (recommended the first time a new spec runs)."
+            },
+            "maxFailures": {
+              "type": "integer",
+              "minimum": 1,
+              "default": 3,
+              "description": "Stop a suite after this many total failed cases. Defaults to 3; values above 10 are capped at 10."
+            },
+            "runInParallel": {
+              "type": "boolean",
+              "default": false,
+              "description": "Run selected spec files concurrently after one authentication setup. Use only for cases confirmed independent; keep producer/consumer, shared-state, and order-dependent cases in sequential batches."
+            },
+            "maxTasks": {
+              "type": "integer",
+              "minimum": 1,
+              "default": 3,
+              "description": "Maximum concurrent tests when runInParallel is true. Defaults to 3; values above 5 are capped at 5."
             },
             "prerequisiteConfirmation": {
               "type": "string",

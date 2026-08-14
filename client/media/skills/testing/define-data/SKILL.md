@@ -5,6 +5,10 @@ description: Standalone Phase 4 of SAP UI testing. Authors one tests/<PROGRAM>/t
 
 # Define Data — Phase 4 (of 7)
 
+For a cross-system staged scenario, also load `multi-system-workflows`: declare only
+pre-existing inputs here. A key produced by an earlier system at run time belongs in the
+workflow JSON handoff, not a prepared-data requirement.
+
 Phase order: analyze-and-plan (1) → explore-ui (2) → design-cases (3) → **define-data (4)** → prepare-data (5) → build-scripts (6) → run-scripts (7).
 
 This phase produces `TC-XXX.data.md` requirement specs — the reusable, system-agnostic SHAPE of the data each case needs. It does NOT resolve concrete values (that is Phase 5, `prepare-data`) and does NOT write specs (Phase 6).

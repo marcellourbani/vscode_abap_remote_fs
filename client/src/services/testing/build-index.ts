@@ -29,6 +29,7 @@ type CaseRow = {
   dataRequired: "yes" | "no"
   hasDataMd: boolean
   verification: string
+  se16nTables: string[]
   messagesExpected: string[]
   created: string
   changed: string
@@ -200,6 +201,16 @@ async function loadCases(testCasesDir: string, warnings: string[]): Promise<Case
       dataRequired: fm.dataRequired,
       hasDataMd,
       verification: typeof fm.verification === "string" ? fm.verification : "unspecified",
+      se16nTables: Array.isArray(fm.se16nTables)
+        ? [
+            ...new Set(
+              fm.se16nTables
+                .filter((table: unknown) => typeof table === "string")
+                .map((table: string) => table.trim().toUpperCase())
+                .filter(Boolean)
+            )
+          ]
+        : [],
       messagesExpected: Array.isArray(fm.messagesExpected) ? fm.messagesExpected : [],
       created: fm.created ?? "",
       changed: fm.changed ?? "",
@@ -239,12 +250,12 @@ function coverageTable(rows: CaseRow[]): string {
 function casesTable(rows: CaseRow[]): string {
   const cell = (value: string): string => value.replace(/\r?\n/g, " ").replace(/\|/g, "\\|")
   const lines = [
-    "| TC-ID | Title | Description | Category | Priority | Runnable? | Data required? | .data.md? | Verification | Messages expected | Created | Changed |",
-    "| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |"
+    "| TC-ID | Title | Description | Category | Priority | Runnable? | Data required? | .data.md? | Verification | SE16N tables | Messages expected | Created | Changed |",
+    "| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |"
   ]
   for (const r of rows) {
     lines.push(
-      `| ${r.tcId} | ${cell(r.title)} | ${cell(r.description)} | ${r.category} | ${r.priority} | ${r.runnable} | ${r.dataRequired} | ${r.hasDataMd ? "yes" : "no"} | ${r.verification} | ${cell(r.messagesExpected.join(", ") || "—")} | ${r.created || "—"} | ${r.changed || "—"} |`
+      `| ${r.tcId} | ${cell(r.title)} | ${cell(r.description)} | ${r.category} | ${r.priority} | ${r.runnable} | ${r.dataRequired} | ${r.hasDataMd ? "yes" : "no"} | ${r.verification} | ${cell(r.se16nTables.join(", ") || "—")} | ${cell(r.messagesExpected.join(", ") || "—")} | ${r.created || "—"} | ${r.changed || "—"} |`
     )
   }
   return lines.join("\n")
@@ -407,6 +418,16 @@ export async function buildTestIndex(
       `${wrongVerification.length} case(s) have an invalid "verification" value — ` +
         `valid: sql | manual | mixed | none: ` +
         wrongVerification.map(r => `${r.tcId}="${r.verification}"`).join(", ")
+    )
+  }
+  const missingSe16nTables = rows.filter(
+    row => (row.verification === "sql" || row.verification === "mixed") && !row.se16nTables.length
+  )
+  if (missingSe16nTables.length) {
+    throw new Error(
+      `${missingSe16nTables.length} SQL/mixed case(s) have no se16nTables frontmatter. ` +
+        `List every SQL-verified business table/effect that needs business-visible proof: ` +
+        missingSe16nTables.map(row => row.tcId).join(", ")
     )
   }
 

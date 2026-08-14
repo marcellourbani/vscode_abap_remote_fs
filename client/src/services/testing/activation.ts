@@ -40,7 +40,7 @@ function runtimePathsFor(context: vscode.ExtensionContext): RuntimePaths {
   return {
     runtimeDir: path.join(dist, "runtime"),
     playwrightDir: path.join(dist, "vendor", "node_modules", "playwright"),
-    typesDir: path.join(context.extensionPath, "client", "node_modules", "@types")
+    typesDir: path.join(dist, "vendor", "node_modules", "@types")
   }
 }
 

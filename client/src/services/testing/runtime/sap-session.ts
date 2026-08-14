@@ -13,7 +13,8 @@
  * Helper names are strictly generic — they describe SAP UI mechanics (setField, pickFromValueHelp),
  * never a business domain (no setMaterial, no pickPlant).
  */
-import type { Page, TestInfo, Locator, FrameLocator } from "@playwright/test"
+import type { Page, Frame, TestInfo, Locator, FrameLocator } from "@playwright/test"
+import { runSe16n, Se16nSpec, Se16nResult } from "./se16n"
 
 function escapeRe(s: string): string {
   return s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")
@@ -71,6 +72,8 @@ export class SapSession {
    */
   private contentFrameSelector = "iframe#ITSFRAME1"
   private contentFrameResolved = false
+  /** false = this system renders SAP directly in the top document (no ITS iframe at all). */
+  private hasContentFrame: boolean | null = null
 
   constructor(
     public readonly page: Page,
@@ -106,12 +109,35 @@ export class SapSession {
     return `${base}${sep}${query}`
   }
 
+  private async navigate(url: string): Promise<void> {
+    const transientErrors = [
+      "ERR_ABORTED",
+      "ERR_CONNECTION_ABORTED",
+      "ERR_CONNECTION_RESET",
+      "ERR_CONNECTION_CLOSED"
+    ]
+    const retryDelays = [500, 1_500, 3_000]
+    for (let attempt = 0; ; attempt++) {
+      try {
+        await this.page.goto(url, { waitUntil: "commit", timeout: 12_000 })
+        return
+      } catch (error) {
+        const message = error instanceof Error ? error.message : String(error)
+        const transient =
+          transientErrors.some(code => message.includes(code)) ||
+          /Timeout \d+ms exceeded/i.test(message)
+        if (attempt >= retryDelays.length || !transient) throw error
+        await this.page.waitForTimeout(retryDelays[attempt])
+      }
+    }
+  }
+
   /**
    * Open the SAP WebGUI base URL. The session is already authenticated — see the class
    * comment — so this navigates only.
    */
   async open(): Promise<void> {
-    await this.page.goto(this.buildUrl(), { waitUntil: "domcontentloaded" })
+    await this.navigate(this.buildUrl())
     await waitForServer(this.page)
     await dismissKnownPopups(this.page, this.extraInterrupters)
     await this.recordStep("Opened SAP home")
@@ -129,12 +155,14 @@ export class SapSession {
    * error message. Without this check, tests continue against the wrong screen
    * and fail with confusing selector errors much later.
    */
-  async openTx(tcode: string): Promise<void> {
-    await this.guarded(`Open transaction ${tcode}`, async () => {
-      await this.page.goto(this.buildUrl({ "~transaction": tcode }), {
-        waitUntil: "domcontentloaded"
-      })
-    })
+  async openTx(tcode: string, options: { captureEvidence?: boolean } = {}): Promise<void> {
+    await this.guarded(
+      `Open transaction ${tcode}`,
+      async () => {
+        await this.navigate(this.buildUrl({ "~transaction": tcode }))
+      },
+      options.captureEvidence ?? true
+    )
     const bounced = await detectSilentBounce(this.page, tcode)
     if (bounced) {
       throw new Error(
@@ -1046,7 +1074,11 @@ export class SapSession {
 
   // ---------- internals ----------
 
-  private async guarded(description: string, fn: () => Promise<void>): Promise<void> {
+  private async guarded(
+    description: string,
+    fn: () => Promise<void>,
+    captureEvidence = true
+  ): Promise<void> {
     await this.ensureContentFrame()
     await dismissKnownPopups(this.page, this.extraInterrupters)
     await fn()
@@ -1069,7 +1101,7 @@ export class SapSession {
       )
     }
 
-    if (this.captureSteps) await this.evidence.step(description)
+    if (this.captureSteps && captureEvidence) await this.evidence.step(description)
   }
 
   private async recordStep(description: string) {
@@ -1085,8 +1117,56 @@ export class SapSession {
    * If the frame is missing (edge case: full-page redirect), we fall back to page.
    * ponytail: single method, all helpers call it. Upgrade: cache after first non-zero probe.
    */
-  content(): FrameLocator {
+  content(): FrameLocator | Locator {
+    if (this.hasContentFrame === false) return this.page.locator("body")
     return this.page.frameLocator(this.contentFrameSelector)
+  }
+
+  /**
+   * JS execution scope for the SAP content — the ITS iframe's `Frame`, or the `Page`
+   * itself on systems that render SAP directly in the top document. Needed by helpers
+   * that read control metadata with `evaluate` (see `se16n`), because a `FrameLocator`
+   * cannot evaluate.
+   */
+  async contentScope(): Promise<Page | Frame> {
+    await this.ensureContentFrame()
+    if (this.hasContentFrame === false) return this.page
+    const handle = await this.page.$(this.contentFrameSelector).catch(() => null)
+    const frame = handle ? await handle.contentFrame().catch(() => null) : null
+    return frame ?? this.page
+  }
+
+  /**
+   * Popup-dismiss → settle → runtime-error check, WITHOUT recording an evidence step.
+   * `guarded()` is the same thing plus a screenshot; helpers that perform dozens of
+   * micro-interactions (SE16N places a field, ticks a checkbox, fills a cell) use this
+   * and screenshot only at meaningful milestones via `note()`.
+   */
+  async settle(context: string): Promise<void> {
+    await dismissKnownPopups(this.page, this.extraInterrupters)
+    await waitForServer(this.page)
+    await waitForDomStable(this.page, 400, 5_000)
+    await dismissKnownPopups(this.page, this.extraInterrupters)
+    const err = await detectRuntimeError(this.page)
+    if (err) {
+      if (this.captureSteps) {
+        await this.evidence.step(`SAP ${err.kind.toUpperCase()}: ${err.title}`).catch(() => {})
+      }
+      throw new Error(
+        `SAP runtime error during "${context}" (${err.kind}): "${err.title}"\n` +
+          `URL: ${err.url}\n--- snippet ---\n${err.snippet}`
+      )
+    }
+  }
+
+  /**
+   * Drive SE16N end-to-end: open the table, place the requested fields, set output
+   * columns and selection criteria, execute, and return the hit count plus the visible
+   * result grid. See `se16n.ts` for the full contract — every step self-verifies, so a
+   * value can never land in the wrong field.
+   */
+  se16n(spec: Se16nSpec): Promise<Se16nResult> {
+    return runSe16n(this, spec)
   }
 
   /**
@@ -1094,8 +1174,12 @@ export class SapSession {
    * id isn't present on this system, pick the first iframe that is NOT the blank
    * `ITSTERMFRAME`; only if neither can be determined, fall back to the first iframe.
    *
+   * Some WebGUI configurations render SAP directly in the top document with NO iframe at
+   * all (observed on ITS + `sap_fiori_3`). In that case every `frameLocator` query returns
+   * an empty document, so we record `hasContentFrame = false` and scope to the page.
+   *
    * Called at the start of every `guarded()` action, so by the time any assertion runs
-   * (a spec always performs an action before asserting) the correct frame is already
+   * (a spec always performs an action before asserting) the correct scope is already
    * selected. Cheap and idempotent after the first resolution.
    */
   private async ensureContentFrame(): Promise<void> {
@@ -1107,6 +1191,7 @@ export class SapSession {
         .catch(() => 0)
       if (its1 > 0) {
         this.contentFrameSelector = "iframe#ITSFRAME1"
+        this.hasContentFrame = true
         this.contentFrameResolved = true
         return
       }
@@ -1116,6 +1201,7 @@ export class SapSession {
         .catch(() => 0)
       if (nonBlank > 0) {
         this.contentFrameSelector = "iframe:not(#ITSTERMFRAME)"
+        this.hasContentFrame = true
         this.contentFrameResolved = true
         return
       }
@@ -1125,9 +1211,20 @@ export class SapSession {
         .catch(() => 0)
       if (any > 0) {
         this.contentFrameSelector = "iframe"
+        this.hasContentFrame = true
+        this.contentFrameResolved = true
+        return
+      }
+      // No iframe at all: this system renders SAP in the top document. Only conclude that
+      // once the SAP DOM is actually present, so a still-loading page isn't misdetected.
+      const sapInPage = await this.page
+        .locator("[lsdata]")
+        .count()
+        .catch(() => 0)
+      if (sapInPage > 0) {
+        this.hasContentFrame = false
         this.contentFrameResolved = true
       }
-      // If no iframe at all yet (page still loading), leave unresolved and try again next action.
     } catch {
       // Leave the default (#ITSFRAME1) in place; do not mark resolved so a later action retries.
     }

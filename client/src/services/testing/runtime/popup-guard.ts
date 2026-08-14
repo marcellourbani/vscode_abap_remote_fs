@@ -115,9 +115,9 @@ async function readDialogTitle(dlg: Locator): Promise<string> {
 
   const labelledBy = await dlg.getAttribute("aria-labelledby").catch(() => null)
   if (labelledBy) {
-    // Look up the referenced element inside the same dialog root.
+    // Node context has no CSS global — escape quotes manually rather than use CSS.escape().
     const inside = await dlg
-      .locator(`#${CSS.escape(labelledBy)}`)
+      .locator(`[id="${labelledBy.replace(/"/g, '\\"')}"]`)
       .first()
       .textContent()
       .catch(() => null)

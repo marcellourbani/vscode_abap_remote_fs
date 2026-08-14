@@ -13,6 +13,7 @@
 import * as fs from "fs/promises"
 import * as path from "path"
 import { parseFrontmatter } from "./runtime/frontmatter"
+import { sqlVerificationGateError } from "./verification-gate"
 
 export type VerifyResult = {
   ok: boolean
@@ -34,6 +35,19 @@ export async function verifyTestDataUsage(
   const specContent = await fs.readFile(specPath, "utf8").catch(() => null)
   if (specContent === null) {
     throw new Error(`No spec found at ${specPath}`)
+  }
+
+  const tcMdPath = path.resolve(testFolder, "tests", program, "test-cases", `${tcId}.md`)
+  const tcMdContent = await fs.readFile(tcMdPath, "utf8").catch(() => "")
+  const verificationError = sqlVerificationGateError(tcId, tcMdContent, specContent)
+  if (verificationError) {
+    return {
+      ok: false,
+      skipped: false,
+      usedNotDeclared: [],
+      declaredNotUsed: [],
+      messages: [`FAIL: ${verificationError}`]
+    }
   }
 
   const dataMdContent = await fs.readFile(dataMdPath, "utf8").catch(() => null)
@@ -118,8 +132,6 @@ export async function verifyTestDataUsage(
   // SQL, its `## Absence preconditions`, or as a seeding reference. Read the TC-XXX.md and
   // treat any declared-not-used key that IS referenced there as legitimate (informational),
   // and warn only about keys referenced NOWHERE.
-  const tcMdPath = path.resolve(testFolder, "tests", program, "test-cases", `${tcId}.md`)
-  const tcMdContent = await fs.readFile(tcMdPath, "utf8").catch(() => "")
   const tcBodyKeys = new Set<string>()
   for (const m of tcMdContent.matchAll(/<data-key:\s*([A-Za-z0-9_]+)\s*>/g)) tcBodyKeys.add(m[1])
   const usedElsewhere = declaredNotUsed.filter(k => tcBodyKeys.has(k))

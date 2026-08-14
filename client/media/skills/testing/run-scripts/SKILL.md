@@ -5,6 +5,10 @@ description: Standalone Phase 7 of SAP UI testing. Rediscovers the configured te
 
 # Run Scripts — Phase 7 (of 7)
 
+If selected cases are linked stages across SAP connections, load
+`multi-system-workflows` alongside this skill and execute separate connection-specific
+tool calls in stage order. Never put dependent stages in one parallel invocation.
+
 Phase order: analyze-and-plan (1) → explore-ui (2) → design-cases (3) → define-data (4) → prepare-data (5) → build-scripts (6) → **run-scripts (7)**.
 
 For bounded, self-contained support work, use `sap-task-helper` with explicit inputs, allowed writes, and an output contract.
@@ -33,8 +37,10 @@ Goal: execute tests, produce one aggregated evidence `.docx` per program and con
 
 | Task                                      | Tool                                                                           |
 | ----------------------------------------- | ------------------------------------------------------------------------------ |
-| Run one spec                              | `playwright_test` with `program`, `tcId`                                       |
-| Run every spec in a program               | `playwright_test` with `program` only (omit `tcId`)                            |
+| Run one spec                              | `playwright_test` with `program`, `tcIds: ["TC-001"]` |
+| Run an exact subset                       | `playwright_test` with `program`, `tcIds: ["TC-001", "TC-004"]` |
+| Run every spec in a program               | `playwright_test` with `program` only; omit `tcIds` |
+| Run spec files concurrently               | add `runInParallel: true`, optionally `maxTasks: 1..5` (default 3) |
 | Watch it run visibly                      | `playwright_test` with `headed: true` — do this the first time a new spec runs |
 | Pre-flight data readiness                 | `check_test_data` with `program`, `connectionId`                               |
 | Build the .docx report                    | `build_evidence_report` with `program`, `connectionId`                         |
@@ -59,6 +65,7 @@ Run these actions in this exact order in every chat:
    - `test-cases/_screens.md` and `_index.md` exist
    - matching `.data.md` exists exactly when `_index.md` says `Data required? = yes`
    If `_findings.md` is missing, STOP and follow `analyze-and-plan`; if `_screens.md` is missing, follow `explore-ui`; if a `TC-XXX.md`/`_index.md` is missing or wrong, follow `design-cases`; if a `.data.md` is missing, follow `define-data`; if specs are missing, follow `build-scripts`. Never reconstruct any of them from conversation memory.
+    For every case with `verification: sql` or `verification: mixed`, call `verify_test_data_usage`. The tool verifies that every table declared in the case's `se16nTables` frontmatter has a matching `sap.se16n()` call; fix every reported gap before continuing. `playwright_test` checks the same coverage again before running.
 5. Call `get_connected_systems` and identify the exact target `connectionId`; ask only if ambiguous.
 6. **Do not run a `runnable-elsewhere` case against the wrong user.** A negative-authorization case is `runnable-elsewhere` because it must run as a user who LACKS the authorization (see `design-cases`/`build-scripts`). Running it against the primary connection — whose user IS authorized — makes it "pass" for the wrong reason (the action was allowed, not blocked). Only run such a case when the target `connectionId` is the SEPARATE connection configured for the required unauthorized user; otherwise skip it and report it as "needs the unauthorized-user connection", not as passed or failed.
 7. Call `check_test_data` for the program + exact connectionId. If it reports any FAIL for a selected case, STOP that case and follow `prepare-data` to resolve it. Do not start Playwright hoping runtime resolution will work.
@@ -86,7 +93,17 @@ The extension's `ABAP FS` output channel (Debug level) shows `[sso]` lines for t
 
 > **Say before acting:** "Starting Step 2: execute the selected specs on `<connectionId>`."
 
-Call `playwright_test` with `program`, `connectionId`, the mandatory `prerequisiteConfirmation` (exact text: `I verified all upstream phase gates and test data readiness for this program`), and optionally `tcId` — use `headed: true` on the first execution of a new spec.
+Call `playwright_test` with `program`, `connectionId`, the mandatory `prerequisiteConfirmation`, and optionally `tcIds`, `headed`, `maxFailures`, `runInParallel`, and `maxTasks`. `tcIds` is an exact list within one program; omit it for all specs. Parallel mode runs separate spec files concurrently after one authentication setup, using isolated browser contexts seeded from the shared storage state; tests inside one file stay ordered. `maxTasks` defaults to 3 and caps at 5. `maxFailures` defaults to 3 and caps at 10. Because already-running parallel tasks may finish together, the final failure count can exceed the threshold by a small number even though no new tasks are scheduled after it is reached.
+
+**Decide parallel batches deliberately.** Before setting `runInParallel: true`, read the
+selected TC files, data specs, and automation notes and ask whether any case produces data
+another consumes, expects state left by another, changes/cleans the same business record,
+uses the same unique key, or otherwise depends on execution order. Keep every dependency
+chain sequential and producer-before-consumer. Run only clearly independent cases together.
+When the selection contains both, invoke the tool in efficient batches: independent cases
+in parallel, then dependent cases sequentially (or in later independent batches once their
+prerequisites exist). If independence is uncertain, choose sequential execution. Never run
+an entire program in parallel merely because the option exists.
 
 > **Say after the tool returns:** "Step 2 completed. Evidence: `playwright_test` results and result-artifact paths recorded for every selected case. Next: Step 3 — perform required post-test verification."
 
@@ -96,7 +113,7 @@ Call `playwright_test` with `program`, `connectionId`, the mandatory `prerequisi
 
 ## Post-test verification
 
-A UI pass only proves the screen was happy — not that the object actually persisted/emitted what it was supposed to. So for each UI-passed TC with a `## Post-test verification` section, complete its checks here. This never runs before the UI-level pass or inside `playwright_test`. Only cases with `verification: none` (pure error/abort cases that persist nothing) skip this.
+A UI/SE16N pass proves the business-visible screen state, not the authoritative persisted/background truth. For each UI-passed TC, still execute every declared SQL/manual check here. SE16N is mandatory supporting screenshot evidence for `sql|mixed`; it never replaces Phase 7 SQL. Only `verification: none` cases skip this.
 
 Each row in the table is tagged `by: sql` or `by: manual`. Handle them differently:
 
