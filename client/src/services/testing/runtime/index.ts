@@ -1,4 +1,5 @@
 export { SapSession, SapSessionOptions } from "./sap-session"
+export { Se16nSpec, Se16nResult, Se16nCriterion, Se16nValue, Se16nSign, Se16nOption } from "./se16n"
 export { SapArtifacts } from "./sap-artifacts"
 export { Evidence, Manifest, StepRecord } from "./evidence"
 export { dismissKnownPopups, KNOWN_INTERRUPTERS, listOpenDialogs, Interrupter } from "./popup-guard"

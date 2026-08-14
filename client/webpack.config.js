@@ -25,6 +25,17 @@ const vendorPatterns = playwrightPackages.map(pkg => ({
   force: true
 }))
 
+// @types/node is also excluded from the packaged .vsix by .vscodeignore (client/node_modules/**),
+// but scaffolded test-folder tsconfigs point typeRoots at it (see activation.ts) so specs can use
+// Node globals (process, Buffer, ...). Vendor it the same way as the Playwright packages above.
+vendorPatterns.push({
+  from: "node_modules/@types/node",
+  to: "vendor/node_modules/@types/node",
+  globOptions: { ignore: ["**/*.js.txt", "**/README.md"] },
+  noErrorOnMissing: false,
+  force: true
+})
+
 /**@type {import('webpack').Configuration}*/
 const config = {
   target: "node", // vscode extensions run in a Node.js-context 📖 -> https://webpack.js.org/configuration/node/

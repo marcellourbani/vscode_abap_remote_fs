@@ -173,6 +173,10 @@ export async function ensurePlaywrightSidebarSupport(
 ): Promise<void> {
   const nodeModules = path.join(testFolder, "node_modules")
   await ensurePackageJunction(path.join(nodeModules, "playwright"), rp.playwrightDir)
+  await ensurePackageJunction(
+    path.join(nodeModules, "playwright-core"),
+    path.join(path.dirname(rp.playwrightDir), "playwright-core")
+  )
   await ensurePlaywrightTestWrapper(path.join(nodeModules, "@playwright", "test"))
   await ensureBinShims(path.join(nodeModules, ".bin"))
   await ensurePlaywrightConfig(testFolder)
@@ -183,6 +187,7 @@ export async function removePlaywrightSidebarSupport(testFolder: string): Promis
   const nodeModules = path.join(testFolder, "node_modules")
   await Promise.all([
     fs.rm(path.join(nodeModules, "playwright"), { recursive: true, force: true }),
+    fs.rm(path.join(nodeModules, "playwright-core"), { recursive: true, force: true }),
     fs.rm(path.join(nodeModules, "@playwright"), { recursive: true, force: true }),
     fs.rm(path.join(nodeModules, ".bin"), { recursive: true, force: true }),
     fs.rm(path.join(testFolder, "playwright.config.js"), { force: true })

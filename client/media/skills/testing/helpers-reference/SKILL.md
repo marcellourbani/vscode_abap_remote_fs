@@ -39,12 +39,64 @@ For findings/code errors follow `analyze-and-plan`; for screen-map errors follow
 
 | Module                                                                     | Purpose                                                                                                                                                                                                                                               |
 | -------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `SapSession`                                                               | Main class — actions + assertions for on-screen UI                                                                                                                                                                                                    |
+| `SapSession`                                                               | Main class — actions + assertions, including `sap.se16n()` business-visible table proof required by `verification: sql|mixed` specs |
 | `SapArtifacts`                                                             | Verify AL11 files and capture spool text — **unverified against a real system, see `build-scripts` §2 before relying on either**. Jobs/IDocs/table rows are NOT covered here — use `## Post-test verification` (see `design-cases`) for those |
 | `resolveTestData`                                                          | Reads `.data.md` + per-system cache at run time                                                                                                                                                                                                       |
 | `buildFixture`                                                             | Deterministic Excel/CSV generator, powers `source: "generated"`                                                                                                                                                                                       |
 | `padNumericId`, `stripLeadingZeros`, `relativeDate`, `isRelativeDateToken` | Pure formatting helpers                                                                                                                                                                                                                               |
 | `parseFrontmatter`                                                         | YAML-frontmatter parsing shared by `.data.md` and `TC-*.md`                                                                                                                                                                                           |
+
+`sap.se16n()` is supporting visual evidence, not an SQL replacement. SQL/mixed cases
+declare every expected table in `se16nTables` and call it once per listed table after the
+business action with key-addressable criteria; Phase 7 still executes authoritative SQL.
+Never use it for data preparation.
+
+### `sap.se16n()` contract
+
+```typescript
+await sap.se16n({
+  table: "EKKO",                         // DDIC table/view name
+  outputFields: ["EBELN", "BUKRS"],     // only fields needed to prove this TC's outcome
+  where: [                                // optional ABAP-range criteria
+    { field: "EBELN", low: data.po },
+    { field: "BUKRS", low: "1000", sign: "I", option: "EQ" }
+  ],
+  maxHits: 100,                           // optional
+  layout: "Z_LAYOUT",                    // optional, only when deliberate
+  expect: { exactRows: 1 },               // this key must identify exactly one header
+  evidence: { criteria: true, output: true } // optional; both default true
+})
+```
+
+**Choose `outputFields` for evidence quality, not convenience.** Use technical field
+names for the business key plus every value the TC must prove. Do NOT default to `"*"`:
+SE16N then renders many irrelevant columns, pushes important fields off the visible right
+edge, and produces screenshots that do not visibly prove the outcome. Use `"*"` only
+when the TC explicitly requires inspection of the complete record and a layout guarantees
+the relevant fields remain visible. If technical names are not already grounded in source,
+SQL metadata, `_units.md`, or the TC, research them; never avoid that work with `"*"`.
+
+**Choose the strongest truthful `expect` assertion:**
+
+| Expected result | Use |
+| --- | --- |
+| A unique business key must return one row | `{ exactRows: 1 }` |
+| A known item count must return N rows | `{ exactRows: N }` |
+| No matching record may exist | `{ empty: true }` (equivalent intent to exact zero, clearer evidence) |
+| Count is genuinely variable but at least N rows must exist | `{ minRows: N }` |
+| A safety/business ceiling must not be exceeded | `{ maxRows: N }` |
+| Both lower and upper bounds matter | `{ minRows: N, maxRows: M }` |
+
+Do not weaken a known exact outcome to `minRows: 1` merely because it is easier to pass.
+Derive the cardinality from the TC and SQL postcondition. For example, EKKO at a created
+PO key is normally `exactRows: 1`; EKPO should use the expected item count when known,
+and only `minRows: 1` when the case genuinely permits a variable number of items.
+
+`where` entries support `sign: "I" | "E"`, options `EQ NE BT NB CP NP GT LT GE LE`,
+`high` for BT/NB, and `values` for multiple selection. The result exposes `hits`,
+`runtime`, technical `fields`, display `columns`, visible `rows`, `partial`, and `message`.
+Use `expect` for authoritative hit-count assertions and explicit `expect(...)` checks on
+returned rows only when the needed row is guaranteed visible (`partial === false`).
 
 All exported from the single specifier `@sap-testing/runtime` — see `build-scripts` for the full method reference and translation table from `.md` steps to calls.
 

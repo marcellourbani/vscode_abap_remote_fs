@@ -5,6 +5,9 @@ description: Standalone Phase 5 of SAP UI testing. Rediscovers the configured te
 
 # Prepare Data — Phase 5 (of 7)
 
+For a cross-system staged scenario, also load `multi-system-workflows`. Do not cache a
+runtime-produced predecessor key in `data.json`; resolve only genuine pre-run inputs here.
+
 Phase order: analyze-and-plan (1) → explore-ui (2) → design-cases (3) → define-data (4) → **prepare-data (5)** → build-scripts (6) → run-scripts (7). This phase reads the `TC-XXX.data.md` specs authored in Phase 4 and resolves them into per-system `data.json` caches.
 
 For bounded, self-contained support work, use `sap-task-helper` with explicit inputs, allowed writes, and an output contract.
@@ -140,7 +143,7 @@ This is the only Phase 5 path allowed to invoke `playwright_test`, and only beca
 2. Confirm that TC's spec exists (`tests/<PROGRAM>/test-scripts/<viaTcId>.spec.ts`) and has itself already been validated (Phase 6/7 complete for it).
 3. **If the seeding spec does NOT exist yet, this requirement is DEFERRED, not failed.** Phase 6 (`build-scripts`) writes specs AFTER this phase, so on the first Phase 5 pass a `seed.viaTcId` spec legitimately may not exist. Classify the key `deferred-until-phase-6`, list it in the handoff, and do NOT block the whole program for it — everything else can still be prepared. After Phase 6 has written the seeding spec, run Phase 5 again (a second pass) to resolve just the deferred seeded keys. This 4→5→6→5→7 loop is expected; note it in the handoff so the next chat knows a second prepare pass is owed.
 4. **This is a real write. Get explicit user approval before running it**, exactly like any other destructive action this project touches.
-5. Run it: call `playwright_test` with `program`, `tcId: <viaTcId>`, and `connectionId`.
+5. Run it: call `playwright_test` with `program`, `tcIds: [<viaTcId>]`, and `connectionId`.
 6. Resolve the requirement's own `sql` (read-back) exactly as you would for a normal `sql` source, and cache the result the normal way (Step 4). From this point on it behaves exactly like a `sql`-sourced value — `resolveTestData` needs no special handling for it at run time, because by the time a test reads it, it's just another cached key.
 
 If the requirement has `seed.manualSteps` instead of a `seed.viaTcId` (a precondition only a different program/BAdI/interface can write — see Step 2c), present those steps to the user and either have them seed it and then resolve the read-back `sql`, or record it blocked with the writer identified. If there is neither a `viaTcId` nor a manual path, the case stays `blocked-by-data` — don't force a `seeded` source onto a case that has no real setup path.

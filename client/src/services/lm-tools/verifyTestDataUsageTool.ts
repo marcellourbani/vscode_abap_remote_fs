@@ -21,7 +21,7 @@ export class VerifyTestDataUsageTool implements vscode.LanguageModelTool<IVerify
     _token: vscode.CancellationToken
   ) {
     return {
-      invocationMessage: `Cross-checking ${options.input.tcId}.spec.ts against its data spec`
+      invocationMessage: `Checking ${options.input.tcId} data keys and SE16N table coverage`
     }
   }
 
