@@ -1,5 +1,11 @@
 # Changelog
 
+## 2.8.4
+
+### Patch Changes
+
+- 80c27d8: SAP Testing - Fixes and Improvements
+
 ## 2.8.3
 
 ### Patch Changes
