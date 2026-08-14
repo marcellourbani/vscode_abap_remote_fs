@@ -2589,9 +2589,9 @@ They appear only when SAP Testing is [enabled](#getting-started-with-sap-testing
 | `build_test_index` | Validates every test case file and rebuilds the case list — `_index.md` and the printable `_index.docx`. Refuses to run until the test plan reviewer has passed the plan |
 | `build_test_index_docx` | Regenerates just the printable `_index.docx`, for when only the notes changed |
 | `split_test_cases` | Splits one bulk-authored file into individual test case files, validating each before writing |
-| `verify_test_data_usage` | Cross-checks a script against its data spec, so a script can't reference a value nobody defined |
+| `verify_test_data_usage` | Cross-checks a script against its case and data spec: data keys must match, and every table in `se16nTables` must have matching SE16N proof |
 | `check_test_data` | Pre-flight check: resolves every case's data for a program on a given system and reports what's missing — before you waste a test run finding out |
-| `playwright_test` | Runs one test or a whole program's tests against a system. Signs the browser in, executes, and returns pass/fail plus paths to the screenshots and traces. Refuses to run until the earlier phases are genuinely complete |
+| `playwright_test` | Replaces terminal `npx playwright test`. Runs exact `tcIds` or a whole program; independent cases may run across up to 5 workers after one login, while dependent/shared-state cases stay in ordered sequential batches. Stops after 3 failures by default (`maxFailures` cap 10) and rejects incomplete SE16N proof |
 | `build_evidence_report` | Builds the aggregated Word evidence report for a program and system from all the run results |
 | `analyze_anst_enhancements` | Classifies an [ANST export](#finding-enhancements-with-anst) and writes a work list beside it |
 
