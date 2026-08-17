@@ -19,6 +19,7 @@ theme:
   features:
     - navigation.sections
     - navigation.expand
+    - navigation.footer
     - search.suggest
     - search.highlight
     - content.code.copy
