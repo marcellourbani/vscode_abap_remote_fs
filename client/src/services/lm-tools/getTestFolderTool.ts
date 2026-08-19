@@ -7,7 +7,8 @@ import * as vscode from "vscode"
 import { registerToolWithRegistry } from "./toolRegistry"
 import { logTelemetry } from "../telemetry"
 import { assertToolInvocationAuthorized } from "./toolGuard"
-import { getTestFolder } from "../testing/config"
+import { getTestFolder, isTestFolderValid } from "../testing/config"
+import { getTestingAgentReadiness } from "../subagentRegistry"
 
 export class GetTestFolderTool implements vscode.LanguageModelTool<Record<string, never>> {
   async prepareInvocation() {
@@ -36,6 +37,21 @@ export class GetTestFolderTool implements vscode.LanguageModelTool<Record<string
     )
 
     const lines: string[] = [`Test folder: ${testFolder}`]
+    if (await isTestFolderValid()) {
+      const testingAgents = await getTestingAgentReadiness()
+      if (!testingAgents.ready) {
+        lines.push(
+          "WARNING: The SAP testing folder is configured, but the testing-agent group is not ready. " +
+            "Configure all 9 testing agents through ABAP FS: Set Models for Subagents or the manage_subagents tool before starting the testing workflow."
+        )
+        if (testingAgents.missing.length > 0) {
+          lines.push(`Missing testing-agent models: ${testingAgents.missing.join(", ")}.`)
+        }
+        if (testingAgents.unavailable.length > 0) {
+          lines.push(`Unavailable testing-agent models: ${testingAgents.unavailable.join(", ")}.`)
+        }
+      }
+    }
     if (!isOpen) {
       lines.push(
         "WARNING: This folder is NOT currently open in the VS Code workspace. " +

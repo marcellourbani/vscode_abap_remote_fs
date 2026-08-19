@@ -17,6 +17,7 @@ tmp
 bookmarks.json
 *.cpuprofile
 .github/copilot-instructions.md
+.github/agents.md
 .github/agents/
 .github/agents_disabled/
 .github/skills/

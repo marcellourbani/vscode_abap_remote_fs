@@ -63,6 +63,8 @@ Rules:
 - Pass `connectionId` explicitly on every `execute_data_query` call
 - Use `displayMode: "internal"` with `rowRange: { start: 0, end: <count + 2> }` — fetch a few extra in case some rows fail spot-validation
 - Narrow the WHERE clause to match the requirement's filter conditions precisely
+- Select only the key and validation fields needed for the requirement. Avoid `SELECT *` in normal data discovery; use it only for deliberate schema discovery when no field metadata is available, and explain why.
+- Keep the result payload narrow because unnecessary fields increase transfer cost and can expose decoder issues in unrelated columns.
 - For multi-table requirements (e.g. "listed at BOTH site A and site B"), use JOIN or FOR ALL ENTRIES — the syntax guide from Step 3 tells you which is correct for this case
 - Add `ORDER BY` to make results deterministic (prefer recently created/modified data where relevant)
 - **Limit rows with the tool parameters, NEVER with SQL row-limit syntax.** ABAP SQL via ADT does NOT accept `FETCH FIRST n ROWS ONLY`, `LIMIT`, `TOP`, or `ROWNUM` — a query using any of them is rejected. Cap the result set with `execute_data_query`'s `rowRange` (and `maxRows`) instead. If the requirement itself implies a row cap ("give me 5 …"), that cap is the `count` you fetch, applied via `rowRange` — not baked into the SQL.
@@ -128,6 +130,8 @@ BLOCKED: No rows satisfy the requirement on this system. Suggested remedies:
 - **Never write files.** Return values only.
 - **Never modify SAP data.** Read-only queries only — SELECT, never INSERT/UPDATE/DELETE/MODIFY.
 - **Never infer test-case logic.** You are a data finder. What the caller does with the values is not your concern.
+- **Do not broaden business criteria.** A field being technically valid in a DDIC table does not prove it is a valid business prerequisite for a specific test. If the caller has not supplied the required company code, plant, asset class, status, date, or other domain criteria, return BLOCKED or ask for the missing criteria instead of declaring any row suitable.
+- **Do not call production-ready a value without evidence.** Report only the returned database facts; never label a company code, asset, material, or document as safe for a business operation unless the requirement and queried fields prove that claim.
 - **One connectionId, one system.** Never cross-query two systems in one call. If the caller needs data from two landscapes, they invoke you twice.
 - **ADT is your only data channel — no SE16N-via-browser fallback.** If `execute_data_query` fails, do not open a browser and read the table from SE16N; that hides the real problem and produces values the framework can't cache correctly.
 

@@ -32,6 +32,7 @@ import {
 } from "./testFolderScaffold"
 import { SubagentModelsPanel } from "./subagents/subagentModelsPanel"
 import { registerStartupModelReconciliation } from "./subagents/startupReconciliation"
+import { syncTestingAgentContext } from "../subagentRegistry"
 
 const NO_SYSTEM_LABEL = "$(beaker) SAP: (no system)"
 
@@ -69,6 +70,7 @@ export function registerTestingFeatures(context: vscode.ExtensionContext): void 
   async function syncTestFolderUnsafe(): Promise<void> {
     const enabled = await isTestFolderValid()
     await setContext("abapfs:testingEnabled", enabled)
+    await syncTestingAgentContext()
     if (!enabled) {
       statusBar.hide()
       return
@@ -158,6 +160,7 @@ export function registerTestingFeatures(context: vscode.ExtensionContext): void 
     // The folder can be pointed elsewhere, or deleted from disk, at any time.
     vscode.workspace.onDidChangeConfiguration(e => {
       if (e.affectsConfiguration("abapfs.testing.folder")) void syncTestFolder()
+      if (e.affectsConfiguration("abapfs.subagents.models")) void syncTestingAgentContext()
     }),
     // Installing or removing the Playwright extension adds or retires the sidebar tier.
     vscode.extensions.onDidChange(() => void syncTestFolder())

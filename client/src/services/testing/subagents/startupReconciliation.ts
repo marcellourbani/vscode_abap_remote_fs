@@ -39,19 +39,11 @@ async function reconcileModels(
       ]
         .filter(Boolean)
         .join("; ")
-      await showConfigurationError(
-        `SAP testing subagent model configuration is invalid: ${details}.`
-      )
+      await showConfigurationError(`Subagent model configuration is invalid: ${details}.`)
       return
     }
     if (!result.changedFiles.length) return
-    const action = await vscode.window.showInformationMessage(
-      "ABAP FS reapplied saved SAP testing subagent models. Reload the window to use them.",
-      "Reload Window"
-    )
-    if (action === "Reload Window") {
-      await vscode.commands.executeCommand("workbench.action.reloadWindow")
-    }
+    await vscode.window.showInformationMessage("ABAP FS reapplied saved subagent models.")
   } catch (error) {
     await showConfigurationError(
       `ABAP FS could not update its SAP testing subagent files: ${

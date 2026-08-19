@@ -7,21 +7,40 @@ import {
   effectiveSubagentModels,
   saveSubagentModels
 } from "../subagents/modelConfiguration"
-import { SUBAGENT_REGISTRY } from "../subagents/registry"
+import {
+  ALL_AGENT_REGISTRY,
+  ensureCustomAgentDelegationEnabled,
+  getSubagentSettings
+} from "../../subagentRegistry"
+import { isTestFolderValid } from "../config"
 
-type WebviewMessage =
-  | { command: "ready" | "refresh" | "reload" }
-  | { command: "save"; selections?: unknown }
+type WebviewMessage = { command: "ready" | "refresh" } | { command: "save"; selections?: unknown }
 
-function selectionRecord(value: unknown): Record<string, string> | undefined {
+function selectionRecord(
+  value: unknown
+): { models: Record<string, string>; enabledAgents: Record<string, boolean> } | undefined {
   if (!value || typeof value !== "object" || Array.isArray(value)) return undefined
-  const record: Record<string, string> = {}
-  for (const agent of SUBAGENT_REGISTRY) {
-    const selected = (value as Record<string, unknown>)[agent.id]
-    if (typeof selected !== "string") return undefined
-    record[agent.id] = selected
+  const input = value as Record<string, unknown>
+  const models = input.models
+  const enabledAgents = input.enabledAgents
+  if (!models || typeof models !== "object" || Array.isArray(models)) return undefined
+  if (!enabledAgents || typeof enabledAgents !== "object" || Array.isArray(enabledAgents)) {
+    return undefined
   }
-  return record
+
+  const modelRecord: Record<string, string> = {}
+  const enabledRecord: Record<string, boolean> = {}
+  for (const agent of ALL_AGENT_REGISTRY) {
+    const selected = (models as Record<string, unknown>)[agent.id]
+    if (typeof selected !== "string") return undefined
+    modelRecord[agent.id] = selected
+    if (agent.section === "general") {
+      const enabled = (enabledAgents as Record<string, unknown>)[agent.id]
+      if (typeof enabled !== "boolean") return undefined
+      enabledRecord[agent.id] = enabled
+    }
+  }
+  return { models: modelRecord, enabledAgents: enabledRecord }
 }
 
 export class SubagentModelsPanel {
@@ -40,8 +59,8 @@ export class SubagentModelsPanel {
 
   private constructor(private readonly context: vscode.ExtensionContext) {
     this.panel = vscode.window.createWebviewPanel(
-      "abapfs.testing.subagentModels",
-      "SAP Testing Subagent Models",
+      "abapfs.subagentModels",
+      "Subagent Models",
       vscode.ViewColumn.One,
       {
         enableScripts: true,
@@ -113,8 +132,6 @@ export class SubagentModelsPanel {
       case "save":
         await this.saveModels(message.selections)
         return
-      case "reload":
-        await vscode.commands.executeCommand("workbench.action.reloadWindow")
     }
   }
 
@@ -127,20 +144,25 @@ export class SubagentModelsPanel {
     } catch (error) {
       await this.panel.webview.postMessage({
         type: "models",
-        agents: SUBAGENT_REGISTRY,
+        agents: ALL_AGENT_REGISTRY,
         models: [],
         configuredModels: {},
+        enabledAgents: {},
+        testingEnabled: false,
         error: `Could not read the current agent defaults: ${
           error instanceof Error ? error.message : String(error)
         }`
       })
       return
     }
+    const settings = getSubagentSettings()
     await this.panel.webview.postMessage({
       type: "models",
-      agents: SUBAGENT_REGISTRY,
+      agents: ALL_AGENT_REGISTRY,
       models: discovery.models,
       configuredModels,
+      enabledAgents: settings.enabledAgents,
+      testingEnabled: await isTestFolderValid(),
       error: discovery.error
     })
   }
@@ -168,10 +190,25 @@ export class SubagentModelsPanel {
     }
 
     try {
-      const result = await saveSubagentModels(this.context, selections, discovery.models)
+      const testingEnabled = await isTestFolderValid()
+      const requiredAgentIds = ALL_AGENT_REGISTRY.filter(
+        agent => agent.section === "general" && selections.enabledAgents[agent.id] === true
+      ).map(agent => agent.id)
+      const result = await saveSubagentModels(
+        this.context,
+        selections.models,
+        discovery.models,
+        requiredAgentIds
+      )
+      await vscode.workspace
+        .getConfiguration("abapfs.subagents")
+        .update("enabledAgents", selections.enabledAgents, vscode.ConfigurationTarget.Global)
+      const generalEnabled = Object.values(selections.enabledAgents).some(Boolean)
+      if ((generalEnabled || testingEnabled) && (await ensureCustomAgentDelegationEnabled())) {
+        await vscode.window.showInformationMessage("Custom agent delegation enabled.")
+      }
       await this.panel.webview.postMessage({
-        type: "saved",
-        reloadRequired: result.changedFiles.length > 0
+        type: "saved"
       })
     } catch (error) {
       await this.panel.webview.postMessage({

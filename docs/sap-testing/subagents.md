@@ -4,8 +4,8 @@ Copilot hands specific jobs to specialised subagents instead of doing everything
 
 Two reasons this matters to you: **large enumerations stay complete** (a subagent counting 200 branches doesn't get lazy near the end the way a main chat running low on context does), and **cost** — mechanical work runs on cheap models while only the reviewers use expensive ones.
 
-!!! note "Not the same as ABAP FS subagents"
-    These are separate from the [general ABAP subagents](../ai/subagents.md) (`@abap-orchestrator` and friends), which are configured through chat and stored in your workspace. SAP Testing's subagents ship with the extension, are configured through a settings panel, and only exist when SAP Testing is enabled. You never call them by name — Copilot delegates to them.
+!!! note "One unified ABAP FS subagent system"
+    These nine testing agents share the unified registry with the [13 general ABAP agents](../ai/subagents.md). They ship with the extension and use the same user-level model settings. Testing availability is controlled as one group by the valid SAP testing folder; you do not enable testing agents individually.
 
 ## The nine subagents
 
@@ -32,9 +32,11 @@ These are adversarial on purpose: their job is to catch what the main agent got 
 
 ## Configuring models
 
-`Ctrl+Shift+P` → **ABAP FS: Set Models for SAP Testing Subagents**
+`Ctrl+Shift+P` → **ABAP FS: Set Models for Subagents**
 
-The panel lists all nine with a hint about the kind of model each needs, and a dropdown of the Copilot models available to you. Pick one for each, save, and reload the window when prompted.
+The panel lists General agents and Testing agents in separate collapsible sections, with a hint about the kind of model each needs and a dropdown of the Copilot models available to you. Pick models, save, and continue without reloading.
+
+You can also ask Copilot to configure them through `manage_subagents`: it should call `get_status`, then `list_models`, and configure all nine testing agents with exact model names from the model list.
 
 Guidance that actually affects results:
 
@@ -48,5 +50,5 @@ The bundled agent files name specific models. If those aren't in your Copilot su
 
 Two things to know:
 
-- **After an extension update**, ABAP FS re-applies your saved choices automatically (updates reset the bundled agent files) and asks you to reload the window.
+- **After an extension update**, ABAP FS re-applies your saved user-level choices automatically to the new packaged agent files.
 - **If a model you chose disappears** from Copilot, you get an error notification at startup with a **Configure Models** button.

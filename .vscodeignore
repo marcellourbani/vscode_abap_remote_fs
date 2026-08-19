@@ -3,6 +3,7 @@
 .vscode-test/**
 out/test/**
 out/**/*.map
+docs/**
 src/**
 node_modules/**
 .changesets/**

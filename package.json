@@ -2,7 +2,7 @@
   "name": "vscode-abap-remote-fs",
   "displayName": "ABAP remote filesystem",
   "description": "VS Code-based Agentic AI Platform for SAP ABAP Development",
-  "version": "2.8.4",
+  "version": "2.8.18",
   "publisher": "murbani",
   "publishConfig": {
     "access": "restricted",
@@ -194,40 +194,92 @@
     ],
     "chatAgents": [
       {
+        "path": "./client/dist/media/agents/abap-orchestrator.agent.md",
+        "when": "abapfs:generalAgent.abap-orchestrator.enabled"
+      },
+      {
+        "path": "./client/dist/media/agents/abap-code-reviewer.agent.md",
+        "when": "abapfs:generalAgent.abap-code-reviewer.enabled"
+      },
+      {
+        "path": "./client/dist/media/agents/abap-discoverer.agent.md",
+        "when": "abapfs:generalAgent.abap-discoverer.enabled"
+      },
+      {
+        "path": "./client/dist/media/agents/abap-reader.agent.md",
+        "when": "abapfs:generalAgent.abap-reader.enabled"
+      },
+      {
+        "path": "./client/dist/media/agents/abap-usage-analyzer.agent.md",
+        "when": "abapfs:generalAgent.abap-usage-analyzer.enabled"
+      },
+      {
+        "path": "./client/dist/media/agents/abap-quality-checker.agent.md",
+        "when": "abapfs:generalAgent.abap-quality-checker.enabled"
+      },
+      {
+        "path": "./client/dist/media/agents/abap-historian.agent.md",
+        "when": "abapfs:generalAgent.abap-historian.enabled"
+      },
+      {
+        "path": "./client/dist/media/agents/abap-debugger.agent.md",
+        "when": "abapfs:generalAgent.abap-debugger.enabled"
+      },
+      {
+        "path": "./client/dist/media/agents/abap-troubleshooter.agent.md",
+        "when": "abapfs:generalAgent.abap-troubleshooter.enabled"
+      },
+      {
+        "path": "./client/dist/media/agents/abap-data-analyst.agent.md",
+        "when": "abapfs:generalAgent.abap-data-analyst.enabled"
+      },
+      {
+        "path": "./client/dist/media/agents/abap-creator.agent.md",
+        "when": "abapfs:generalAgent.abap-creator.enabled"
+      },
+      {
+        "path": "./client/dist/media/agents/abap-visualizer.agent.md",
+        "when": "abapfs:generalAgent.abap-visualizer.enabled"
+      },
+      {
+        "path": "./client/dist/media/agents/abap-documenter.agent.md",
+        "when": "abapfs:generalAgent.abap-documenter.enabled"
+      },
+      {
         "path": "./client/dist/media/agents/anst-enhancement-analyser.agent.md",
-        "when": "abapfs:testingEnabled"
+        "when": "abapfs:testingAgentsReady"
       },
       {
         "path": "./client/dist/media/agents/sap-source-download.agent.md",
-        "when": "abapfs:testingEnabled"
+        "when": "abapfs:testingAgentsReady"
       },
       {
         "path": "./client/dist/media/agents/sap-code-grep.agent.md",
-        "when": "abapfs:testingEnabled"
+        "when": "abapfs:testingAgentsReady"
       },
       {
         "path": "./client/dist/media/agents/sap-enhancement-research.agent.md",
-        "when": "abapfs:testingEnabled"
+        "when": "abapfs:testingAgentsReady"
       },
       {
         "path": "./client/dist/media/agents/sap-findings-reviewer.agent.md",
-        "when": "abapfs:testingEnabled"
+        "when": "abapfs:testingAgentsReady"
       },
       {
         "path": "./client/dist/media/agents/sap-screens-reviewer.agent.md",
-        "when": "abapfs:testingEnabled"
+        "when": "abapfs:testingAgentsReady"
       },
       {
         "path": "./client/dist/media/agents/sap-test-plan-reviewer.agent.md",
-        "when": "abapfs:testingEnabled"
+        "when": "abapfs:testingAgentsReady"
       },
       {
         "path": "./client/dist/media/agents/sap-data-scout.agent.md",
-        "when": "abapfs:testingEnabled"
+        "when": "abapfs:testingAgentsReady"
       },
       {
         "path": "./client/dist/media/agents/sap-task-helper.agent.md",
-        "when": "abapfs:testingEnabled"
+        "when": "abapfs:testingAgentsReady"
       }
     ],
     "breakpoints": [
@@ -2701,11 +2753,11 @@
       {
         "name": "manage_subagents",
         "displayName": "Manage AI Subagents",
-        "modelDescription": "Configure cost-optimized ABAP subagents. Safe actions: get_status, list_models, list_agents, list_tools, validate. Need user approval: enable, disable, configure, regenerate. Model tier rules — Tier 1 (discoverer, reader, creator, visualizer, documenter): cheapest only (Haiku, Flash, GPT-4o). Tier 2 (usage-analyzer, quality-checker, historian, debugger, troubleshooter, data-analyst): mid (GPT-4o, Sonnet 4, Gemini 2.5 Pro). Tier 3 (orchestrator, code-reviewer): premium allowed with explicit consent. STOP and ask user before Opus / Max / GPT-5.x on any tier — explain cost. Guide new users: explain tier system and cost implications before configuring; use list_agents / list_models / list_tools to show options.",
+        "modelDescription": "Manage 13 general ABAP agents and 9 SAP testing agents. Before configuring or enabling anything, call get_status, then list_models, and use the guidance they return. General agents are configured and enabled individually with agentIds. Testing agents are configured as one all-or-nothing group and are available only when the SAP testing folder is ready. Use exact model names from list_models. Settings are user-level. Model changes and enable/disable changes take effect without a VS Code reload. The legacy regenerate action is a no-op and does not write workspace files.",
         "canBeReferencedInPrompt": true,
         "toolReferenceName": "subagents",
         "icon": "$(hubot)",
-        "userDescription": "Configure AI subagents for cost-optimized ABAP development (requires explicit user consent)",
+        "userDescription": "Configure ABAP and SAP testing subagents (requires explicit user consent)",
         "inputSchema": {
           "type": "object",
           "properties": {
@@ -2722,7 +2774,14 @@
                 "validate",
                 "regenerate"
               ],
-              "description": "Action to perform: enable/disable subagents, get_status, list_models, list_agents, list_tools, configure models, validate configuration, regenerate files"
+              "description": "Action to perform. Read status and model guidance before configure, enable, or disable. Enable/disable applies to general agents; testing-agent availability follows the SAP testing folder. Model changes are stored at user level. regenerate is retained only for compatibility and does not rewrite files."
+            },
+            "agentIds": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              },
+              "description": "For 'enable' or 'disable': general agent IDs to change. Omit to change all 13 general agents. Testing agent IDs cannot be toggled individually."
             },
             "configurations": {
               "type": "array",
@@ -2731,11 +2790,11 @@
                 "properties": {
                   "agentId": {
                     "type": "string",
-                    "description": "Agent ID (e.g., 'abap-discoverer', 'abap-reader')"
+                    "description": "Agent ID from list_agents, including general or SAP testing agents"
                   },
                   "model": {
                     "type": "string",
-                    "description": "Model ID to use for this agent"
+                    "description": "Exact model name from list_models. General agents may be configured selectively. If any testing agent is configured while testing is ready, provide models for all 9 testing agents."
                   }
                 },
                 "required": [
@@ -2743,7 +2802,7 @@
                   "model"
                 ]
               },
-              "description": "For 'configure' action: array of {agentId, model} pairs to set"
+              "description": "For 'configure': array of {agentId, model} pairs. Use exact names from list_models. General agents may be configured one at a time. Testing models may be configured before a testing folder exists, but when testing is ready all 9 testing agents must be configured together."
             }
           },
           "required": [
@@ -3039,7 +3098,7 @@
       },
       {
         "command": "abapfs.testing.setSubagentModels",
-        "title": "Set Models for SAP Testing Subagents",
+        "title": "Set Models for Subagents",
         "category": "ABAP FS",
         "icon": "$(hubot)"
       },
@@ -4697,7 +4756,8 @@
           "type": "object",
           "default": {},
           "scope": "application",
-          "description": "Language model chosen for each SAP testing subagent. Use the 'ABAP FS: Set Models for SAP Testing Subagents' command rather than editing this object by hand.",
+          "description": "Deprecated compatibility setting. Testing agent models are now stored in abapfs.subagents.models.",
+          "deprecationMessage": "Use abapfs.subagents.models instead.",
           "additionalProperties": {
             "type": "string"
           }
@@ -5074,8 +5134,9 @@
         "abapfs.subagents.enabled": {
           "type": "boolean",
           "default": false,
-          "scope": "resource",
-          "description": "Enable AI subagents for optimized ABAP analysis. When enabled, Copilot delegates specialized tasks to cheaper/faster models, reducing costs significantly."
+          "scope": "application",
+          "description": "Deprecated compatibility setting. Use abapfs.subagents.enabledAgents to control general agents individually.",
+          "deprecationMessage": "Use abapfs.subagents.enabledAgents instead."
         },
         "abapfs.subagents.models": {
           "type": "object",
@@ -5092,12 +5153,30 @@
             "abap-troubleshooter": "",
             "abap-data-analyst": "",
             "abap-orchestrator": "",
-            "abap-code-reviewer": ""
+            "abap-code-reviewer": "",
+            "sap-code-grep": "",
+            "sap-source-download": "",
+            "anst-enhancement-analyser": "",
+            "sap-enhancement-research": "",
+            "sap-findings-reviewer": "",
+            "sap-screens-reviewer": "",
+            "sap-test-plan-reviewer": "",
+            "sap-data-scout": "",
+            "sap-task-helper": ""
           },
-          "scope": "resource",
-          "description": "Model selection per agent. Keys are agent IDs (e.g., 'abap-discoverer'), values are model IDs. Ask Copilot to configure this.",
+          "scope": "application",
+          "description": "Model selection per general and SAP testing agent. Keys are agent IDs and values are model names. Use the subagent model command or ask Copilot to use manage_subagents tool.",
           "additionalProperties": {
             "type": "string"
+          }
+        },
+        "abapfs.subagents.enabledAgents": {
+          "type": "object",
+          "default": {},
+          "scope": "application",
+          "description": "Whether each general ABAP agent is visible to Copilot. Testing agents are controlled by the SAP testing folder.",
+          "additionalProperties": {
+            "type": "boolean"
           }
         },
         "abapfs.blame.renderMode": {
@@ -5771,7 +5850,7 @@
           {
             "id": "abapfs.walkthrough.subagents",
             "title": "AI Subagents",
-            "description": "Delegate tasks to cheaper AI models. Ask Copilot: *\"Set up ABAP subagents\"* — it configures models for all 13 agents, then enables them.\n\n> Cannot enable until all agents have models assigned.",
+            "description": "Delegate tasks to specialized AI agents. Use the unified model panel or ask Copilot to call `manage_subagents`; general agents are individually enabled and testing agents follow SAP testing-folder readiness.\n\n> Model assignments and visibility are stored at user level.",
             "media": {
               "markdown": "client/dist/media/walkthrough/w4-subagents.md"
             },

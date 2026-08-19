@@ -243,19 +243,25 @@ Integration with [SAP ABAP Cleaner](https://github.com/SAP/abap-cleaner) for aut
 
 Subagents delegate specialized ABAP tasks to cheaper/faster AI models to reduce costs and preserve context window of main agent.
 
-### `abapfs.subagents.enabled`
+### `abapfs.subagents.enabled` (deprecated)
 
 | Property | Type | Default | Scope | Description |
 |----------|------|---------|-------|-------------|
-| `enabled` | boolean | `false` | resource | Enable AI subagents for optimized ABAP analysis. Copilot delegates tasks to configured models to reduce costs. |
+| `enabled` | boolean | `false` | application | Deprecated compatibility setting. Use `abapfs.subagents.enabledAgents` to control general agents individually. |
 
 ### `abapfs.subagents.models`
 
 | Property | Type | Default | Scope | Description |
 |----------|------|---------|-------|-------------|
-| `models` | object | `{}` | resource | Model assignments for each subagent. Use the `manage_subagents` tool to configure (ask Copilot: "configure subagent models"). |
+| `models` | object | `{}` | application | User-level model assignments for all general and testing agents. Use the unified model panel or `manage_subagents`. |
 
-**Note:** Cannot enable subagents without configuring models first. Use the built-in configuration tool.
+### `abapfs.subagents.enabledAgents`
+
+| Property | Type | Default | Scope | Description |
+|----------|------|---------|-------|-------------|
+| `enabledAgents` | object | `{}` | application | User-level visibility for each general agent. Testing agents are controlled together by SAP testing-folder readiness. |
+
+**Note:** A general agent cannot be enabled without an available model. When SAP Testing is ready, all nine testing agents must have models before the testing group is available. Use the built-in unified configuration tool. Changes take effect without a reload.
 
 ---
 
@@ -488,7 +494,7 @@ These are automatically applied but can be overridden in user settings.
 | SSL certificate errors | `abapfs.remote.*.allowSelfSigned`, `*.customCA` | Set `allowSelfSigned: true` for dev, or provide `customCA` path for corporate CA. |
 | Heartbeat won't start | `abapfs.heartbeat.model` | Must be set before enabling. Use a cheap model like "GPT-4o mini". |
 | ABAP Cleaner not working | `abapfs.cleaner.enabled`, `*.executablePath` | Both must be set. Verify `abap-cleanerc.exe` exists at the path. |
-| Subagents disabled automatically | `abapfs.subagents.models` | Configure model for each agent. User can ask Copilot to "configure subagent models". |
+| Subagents disabled automatically | `abapfs.subagents.models` | Configure an available model for each active agent through the unified panel or `manage_subagents`. |
 | MCP server connection refused | `abapfs.mcpServer.autoStart`, `*.port` | Ensure autoStart is true, verify port isn't in use by another application. |
 | Password not saved in settings | (by design) | Passwords are stored in OS credential manager, not in settings files. |
 
