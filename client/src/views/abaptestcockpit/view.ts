@@ -112,7 +112,7 @@ export class AtcSystem extends TreeItem {
     for (const o of this.children) if (o.hasError) return true
     return false
   }
-  async load(task: Task<AtcWorkList>) {
+  async load(task: Task<AtcWorkList>, showDecorations = true) {
     this.refresh = async () => {
       const wl = await task()
       const finder = new AdtObjectFinder(this.connectionId)
@@ -122,11 +122,11 @@ export class AtcSystem extends TreeItem {
         wl.objects.filter(o => o.findings.length > 0)
       )
       this.objects = await resolveObjects(objects, finder)
-      this.updateChildren()
+      this.updateChildren(showDecorations)
     }
     return this.refresh()
   }
-  updateChildren() {
+  updateChildren(showDecorations = true) {
     this.children = []
     for (const o of this.objects) {
       const relevant = o.findings.filter(
@@ -141,6 +141,7 @@ export class AtcSystem extends TreeItem {
       }
     }
     atcProvider.emitter.fire(this)
+    if (showDecorations) atcProvider.decorationsEmitter.fire()
   }
   constructor(
     public readonly connectionId: string,
@@ -228,6 +229,7 @@ export class AtcFind extends TreeItem {
 export type AtcNode = AtcRoot | AtcSystem | AtcObject | AtcFind
 class AtcProvider implements TreeDataProvider<AtcNode> {
   emitter = new EventEmitter<AtcNode | undefined>()
+  decorationsEmitter = new EventEmitter<void>()
   root = new AtcRoot("systems", this)
   private autoRefresh = false
   activationListeners = new Map<string, Disposable>()
@@ -238,6 +240,9 @@ class AtcProvider implements TreeDataProvider<AtcNode> {
 
   get onDidChangeTreeData() {
     return this.emitter.event
+  }
+  get onDidChangeDecorations() {
+    return this.decorationsEmitter.event
   }
   getTreeItem(element: AtcNode): AtcNode {
     return element
@@ -289,31 +294,37 @@ class AtcProvider implements TreeDataProvider<AtcNode> {
   async runInspectorByAdtUrl(
     uri: string,
     connectionId: string,
-    overrideVariant?: string
+    overrideVariant?: string,
+    showUi = true
   ): Promise<string> {
     const client = getClient(connectionId)
     const { variant, checkVariant } = await getVariant(client, connectionId, overrideVariant)
     const system = await this.root.child(connectionId, checkVariant)
-    await system.load(() => runInspectorByAdtUrl(uri, system.variant, client))
-    commands.executeCommand("abapfs.atcFinds.focus")
-    this.setAutoRefresh(this.autoRefresh)
-    this.reportError(system)
+    await system.load(() => runInspectorByAdtUrl(uri, system.variant, client), showUi)
+    if (showUi) {
+      commands.executeCommand("abapfs.atcFinds.focus")
+      this.setAutoRefresh(this.autoRefresh)
+      this.reportError(system)
+    }
     return variant
   }
 
   async runInspector(
     uri: Uri,
     setvariant?: (variant: string) => void,
-    overrideVariant?: string
+    overrideVariant?: string,
+    showUi = true
   ): Promise<string> {
     const client = getClient(uri.authority)
     const { variant, checkVariant } = await getVariant(client, uri.authority, overrideVariant)
     if (setvariant) setvariant(variant)
     const system = await this.root.child(uri.authority, checkVariant)
-    await system.load(() => runInspector(uri, system.variant, client))
-    commands.executeCommand("abapfs.atcFinds.focus")
-    this.setAutoRefresh(this.autoRefresh)
-    this.reportError(system)
+    await system.load(() => runInspector(uri, system.variant, client), showUi)
+    if (showUi) {
+      commands.executeCommand("abapfs.atcFinds.focus")
+      this.setAutoRefresh(this.autoRefresh)
+      this.reportError(system)
+    }
     return variant
   }
 }

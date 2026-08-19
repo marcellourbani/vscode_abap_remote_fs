@@ -5,10 +5,15 @@ jest.mock(
     LanguageModelTextPart: jest.fn().mockImplementation((text: string) => ({ text })),
     MarkdownString: jest.fn().mockImplementation((text: string) => ({ text })),
     Uri: {
-      parse: jest.fn((s: string) => ({
-        toString: () => s,
-        authority: s.split("//")[1]?.split("/")[0]
-      }))
+      parse: jest.fn((s: string) => {
+        const rest = s.split("//")[1] || ""
+        const pathStart = rest.indexOf("/")
+        return {
+          toString: () => s,
+          authority: pathStart >= 0 ? rest.slice(0, pathStart) : rest,
+          path: pathStart >= 0 ? rest.slice(pathStart) : ""
+        }
+      })
     },
     ProgressLocation: { Notification: 1 },
     workspace: {
@@ -30,6 +35,7 @@ jest.mock("./toolRegistry", () => ({
   registerToolWithRegistry: jest.fn(() => ({ dispose: jest.fn() }))
 }))
 jest.mock("../abapSearchService", () => ({ getSearchService: jest.fn() }))
+jest.mock("../../adt/packageUri", () => ({ packageUri: jest.fn() }))
 jest.mock("../funMessenger", () => ({
   funWindow: {
     activeTextEditor: undefined,
@@ -42,6 +48,7 @@ jest.mock("../../views/abaptestcockpit", () => ({
   atcProvider: {
     runAnalysis: jest.fn(),
     runInspector: jest.fn(),
+    runInspectorByAdtUrl: jest.fn(),
     findings: jest.fn(() => [])
   }
 }))
@@ -60,6 +67,7 @@ import { funWindow as window } from "../funMessenger"
 import { getATCDecorations } from "../../views/abaptestcockpit/decorations"
 import { atcProvider } from "../../views/abaptestcockpit"
 import { listAtcVariants } from "../../adt/atcVariants"
+import { packageUri } from "../../adt/packageUri"
 
 const mockToken = {} as any
 
@@ -69,6 +77,7 @@ function makeOptions(input: any = {}) {
 
 const mockSearcher = { searchObjects: jest.fn() }
 const mockRoot = { findByAdtUri: jest.fn() }
+const mockClient = {}
 
 describe("RunATCAnalysisTool - prepareInvocation validation", () => {
   let tool: RunATCAnalysisTool
@@ -78,6 +87,7 @@ describe("RunATCAnalysisTool - prepareInvocation validation", () => {
     jest.clearAllMocks()
     ;(getSearchService as jest.Mock).mockReturnValue(mockSearcher)
     ;(getOrCreateRoot as jest.Mock).mockResolvedValue(mockRoot)
+    ;(getClient as jest.Mock).mockReturnValue(mockClient)
     ;(window as any).activeTextEditor = undefined
   })
 
@@ -153,6 +163,7 @@ describe("RunATCAnalysisTool - invoke", () => {
     jest.clearAllMocks()
     ;(getSearchService as jest.Mock).mockReturnValue(mockSearcher)
     ;(getOrCreateRoot as jest.Mock).mockResolvedValue(mockRoot)
+    ;(getClient as jest.Mock).mockReturnValue(mockClient)
     ;(window as any).activeTextEditor = undefined
   })
 
@@ -220,7 +231,12 @@ describe("RunATCAnalysisTool - invoke", () => {
       }),
       mockToken
     )
-    expect(atcProvider.runInspector).toHaveBeenCalledWith(expect.anything(), undefined, "MYVARIANT")
+    expect(atcProvider.runInspector).toHaveBeenCalledWith(
+      expect.anything(),
+      undefined,
+      "MYVARIANT",
+      false
+    )
   })
 
   it("calls atcProvider.runInspector with undefined variant when not provided", async () => {
@@ -232,7 +248,74 @@ describe("RunATCAnalysisTool - invoke", () => {
       }),
       mockToken
     )
-    expect(atcProvider.runInspector).toHaveBeenCalledWith(expect.anything(), undefined, undefined)
+    expect(atcProvider.runInspector).toHaveBeenCalledWith(
+      expect.anything(),
+      undefined,
+      undefined,
+      false
+    )
+    expect(window.withProgress).not.toHaveBeenCalled()
+  })
+
+  it("routes package names through the raw ADT URL path silently", async () => {
+    ;(packageUri as jest.Mock).mockResolvedValue("/sap/bc/adt/packages/zpkg")
+    ;(atcProvider.runInspectorByAdtUrl as jest.Mock).mockResolvedValue("DEFAULT")
+
+    await tool.invoke(
+      makeOptions({ objectName: "ZPKG", connectionId: "DEV100", scope: "package" }),
+      mockToken
+    )
+
+    expect(packageUri).toHaveBeenCalledWith(mockClient, "ZPKG")
+    expect(atcProvider.runInspectorByAdtUrl).toHaveBeenCalledWith(
+      "/sap/bc/adt/packages/zpkg",
+      "dev100",
+      undefined,
+      false
+    )
+    expect(getSearchService).not.toHaveBeenCalled()
+    expect(window.withProgress).not.toHaveBeenCalled()
+  })
+
+  it("routes transport names through the raw ADT URL path silently", async () => {
+    ;(atcProvider.runInspectorByAdtUrl as jest.Mock).mockResolvedValue("DEFAULT")
+
+    await tool.invoke(
+      makeOptions({ objectName: "GEDK933871", connectionId: "DEV100", scope: "transport" }),
+      mockToken
+    )
+
+    expect(atcProvider.runInspectorByAdtUrl).toHaveBeenCalledWith(
+      "/sap/bc/adt/cts/transportrequests/GEDK933871",
+      "dev100",
+      undefined,
+      false
+    )
+    expect(getSearchService).not.toHaveBeenCalled()
+    expect(window.withProgress).not.toHaveBeenCalled()
+  })
+
+  it("passes showUi through for visible package analysis", async () => {
+    ;(packageUri as jest.Mock).mockResolvedValue("/sap/bc/adt/packages/zpkg")
+    ;(atcProvider.runInspectorByAdtUrl as jest.Mock).mockResolvedValue("DEFAULT")
+
+    await tool.invoke(
+      makeOptions({
+        objectName: "ZPKG",
+        connectionId: "dev100",
+        scope: "package",
+        showUi: true
+      }),
+      mockToken
+    )
+
+    expect(atcProvider.runInspectorByAdtUrl).toHaveBeenCalledWith(
+      "/sap/bc/adt/packages/zpkg",
+      "dev100",
+      undefined,
+      true
+    )
+    expect(window.withProgress).toHaveBeenCalled()
   })
 })
 

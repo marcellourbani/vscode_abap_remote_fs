@@ -9,6 +9,7 @@ import { funWindow as window } from "../funMessenger"
 import { getSearchService } from "../abapSearchService"
 import { logTelemetry } from "../telemetry"
 import { getClient, getOrCreateRoot, abapUri } from "../../adt/conections"
+import { packageUri } from "../../adt/packageUri"
 import { atcProvider } from "../../views/abaptestcockpit"
 import { getATCDecorations } from "../../views/abaptestcockpit/decorations"
 import { assertToolInvocationAuthorized } from "./toolGuard"
@@ -26,6 +27,7 @@ export interface IRunATCAnalysisParameters {
   connectionId?: string
   useActiveFile?: boolean
   scope?: "object" | "package" | "transport"
+  showUi?: boolean
   // For run_analysis action
   variantName?: string
   // For get_documentation action
@@ -58,6 +60,8 @@ export class RunATCAnalysisTool implements vscode.LanguageModelTool<IRunATCAnaly
       objectUri,
       connectionId,
       useActiveFile,
+      scope = "object",
+      showUi = false,
       docUri,
       variantName,
       query = "*"
@@ -115,9 +119,16 @@ export class RunATCAnalysisTool implements vscode.LanguageModelTool<IRunATCAnaly
 
     let target = "active file"
     if (objectName) {
-      target = objectType ? `${objectType} ${objectName}` : objectName
+      target =
+        scope === "transport"
+          ? `transport ${objectName}`
+          : scope === "package"
+            ? `package ${objectName}`
+            : objectType
+              ? `${objectType} ${objectName}`
+              : objectName
     } else if (objectUri) {
-      target = `object at ${objectUri}`
+      target = `${scope} at ${objectUri}`
     }
 
     const confirmationMessages = {
@@ -126,7 +137,9 @@ export class RunATCAnalysisTool implements vscode.LanguageModelTool<IRunATCAnaly
         `Run ABAP Test Cockpit analysis on: ${target}` +
           (connectionId ? ` (connection: ${connectionId})` : "") +
           (variantName ? ` using variant \`${variantName}\`` : "") +
-          "\n\nThis will update the ATC panel with visual highlights and return structured results for AI analysis."
+          (showUi
+            ? "\n\nThis will update the ATC panel with visual highlights and return structured results for AI analysis."
+            : "\n\nThis will return structured results without opening the ATC panel or showing editor decorations.")
       )
     }
 
@@ -141,7 +154,7 @@ export class RunATCAnalysisTool implements vscode.LanguageModelTool<IRunATCAnaly
     _token: vscode.CancellationToken
   ): Promise<vscode.LanguageModelToolResult> {
     assertToolInvocationAuthorized(options)
-    const { action = "run_analysis", variantName } = options.input
+    const { action = "run_analysis", variantName, scope = "object", showUi = false } = options.input
     let { objectName, objectType, objectUri, connectionId, useActiveFile = true } = options.input
     logTelemetry("tool_run_atc_analysis_called", { connectionId })
 
@@ -162,6 +175,7 @@ export class RunATCAnalysisTool implements vscode.LanguageModelTool<IRunATCAnaly
     try {
       let targetUri: vscode.Uri
       let actualConnectionId = connectionId
+      let targetAdtPath: string | undefined
 
       if (objectUri) {
         if (!objectUri.startsWith("adt://")) {
@@ -169,38 +183,47 @@ export class RunATCAnalysisTool implements vscode.LanguageModelTool<IRunATCAnaly
         }
         targetUri = vscode.Uri.parse(objectUri)
         actualConnectionId = actualConnectionId || targetUri.authority
+        if (scope === "package" || scope === "transport") targetAdtPath = targetUri.path
       } else if (objectName) {
         if (!actualConnectionId) {
           throw new Error("connectionId is required when specifying objectName")
         }
 
-        const searcher = getSearchService(actualConnectionId)
-        const searchResults = await searcher.searchObjects(
-          objectName,
-          objectType ? [objectType as any] : undefined,
-          1
-        )
-
-        if (!searchResults || searchResults.length === 0) {
-          throw new Error(
-            `Could not find ABAP object: ${objectName}${objectType ? ` (type: ${objectType})` : ""}`
+        if (scope === "package") {
+          targetAdtPath = await packageUri(getClient(actualConnectionId), objectName)
+          targetUri = vscode.Uri.parse(`adt://${actualConnectionId}${targetAdtPath}`)
+        } else if (scope === "transport") {
+          targetAdtPath = `/sap/bc/adt/cts/transportrequests/${encodeURIComponent(objectName)}`
+          targetUri = vscode.Uri.parse(`adt://${actualConnectionId}${targetAdtPath}`)
+        } else {
+          const searcher = getSearchService(actualConnectionId)
+          const searchResults = await searcher.searchObjects(
+            objectName,
+            objectType ? [objectType as any] : undefined,
+            1
           )
+
+          if (!searchResults || searchResults.length === 0) {
+            throw new Error(
+              `Could not find ABAP object: ${objectName}${objectType ? ` (type: ${objectType})` : ""}`
+            )
+          }
+
+          const objectInfo = searchResults[0]
+          if (!objectInfo.uri) {
+            throw new Error(`Could not get URI for ABAP object: ${objectName}`)
+          }
+
+          const root = await getOrCreateRoot(actualConnectionId)
+          const { path } = (await root.findByAdtUri(objectInfo.uri, true)) || {}
+
+          if (!path) {
+            throw new Error(`Could not resolve workspace path for object ${objectName}`)
+          }
+
+          const workspaceUri = `adt://${actualConnectionId}${path}`
+          targetUri = vscode.Uri.parse(workspaceUri)
         }
-
-        const objectInfo = searchResults[0]
-        if (!objectInfo.uri) {
-          throw new Error(`Could not get URI for ABAP object: ${objectName}`)
-        }
-
-        const root = await getOrCreateRoot(actualConnectionId)
-        const { path } = (await root.findByAdtUri(objectInfo.uri, true)) || {}
-
-        if (!path) {
-          throw new Error(`Could not resolve workspace path for object ${objectName}`)
-        }
-
-        const workspaceUri = `adt://${actualConnectionId}${path}`
-        targetUri = vscode.Uri.parse(workspaceUri)
       } else if (useActiveFile) {
         const activeEditor = window.activeTextEditor
         if (!activeEditor) {
@@ -225,9 +248,12 @@ export class RunATCAnalysisTool implements vscode.LanguageModelTool<IRunATCAnaly
 
       // atcProvider is imported statically at top
 
-      const existingEditor = window.visibleTextEditors.find(
-        editor => editor.document.uri.toString() === targetUri.toString()
-      )
+      const existingEditor =
+        scope === "object"
+          ? window.visibleTextEditors.find(
+              editor => editor.document.uri.toString() === targetUri.toString()
+            )
+          : undefined
 
       if (existingEditor) {
         try {
@@ -257,21 +283,34 @@ export class RunATCAnalysisTool implements vscode.LanguageModelTool<IRunATCAnaly
         }
       }
 
-      const usedVariant = await window.withProgress(
-        { location: vscode.ProgressLocation.Notification, title: "Running ABAP Test Cockpit" },
-        async () => {
-          try {
-            if (!existingEditor) {
-              const document = await vscode.workspace.openTextDocument(targetUri)
-              await window.showTextDocument(document, { preserveFocus: true })
-            }
-          } catch {
-            // Continue with ATC even if file opening fails
-          }
-
-          return atcProvider.runInspector(targetUri, undefined, variantName)
+      const runAnalysis = async () => {
+        if (scope === "package" || scope === "transport") {
+          return atcProvider.runInspectorByAdtUrl(
+            targetAdtPath!,
+            actualConnectionId!,
+            variantName,
+            showUi
+          )
         }
-      )
+
+        try {
+          if (showUi && !existingEditor) {
+            const document = await vscode.workspace.openTextDocument(targetUri)
+            await window.showTextDocument(document, { preserveFocus: true })
+          }
+        } catch {
+          // Continue with ATC even if file opening fails
+        }
+
+        return atcProvider.runInspector(targetUri, undefined, variantName, showUi)
+      }
+
+      const usedVariant = showUi
+        ? await window.withProgress(
+            { location: vscode.ProgressLocation.Notification, title: "Running ABAP Test Cockpit" },
+            runAnalysis
+          )
+        : await runAnalysis()
 
       const resolvedVariantName = usedVariant || "unknown"
       const findings = atcProvider.findings()
