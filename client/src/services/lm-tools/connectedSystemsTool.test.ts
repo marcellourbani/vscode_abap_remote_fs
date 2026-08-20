@@ -19,8 +19,7 @@ jest.mock("./toolRegistry", () => ({
   registerToolWithRegistry: jest.fn(() => ({ dispose: jest.fn() }))
 }))
 jest.mock("../../config", () => ({
-  connectedRoots: jest.fn(),
-  getConfig: jest.fn()
+  connectedRoots: jest.fn()
 }))
 
 jest.mock("./toolGuard", () => ({
@@ -28,7 +27,7 @@ jest.mock("./toolGuard", () => ({
   isToolInvocationAuthorized: jest.fn(() => true)
 }))
 import { ConnectedSystemsTool } from "./connectedSystemsTool"
-import { connectedRoots, getConfig } from "../../config"
+import { connectedRoots } from "../../config"
 import { logTelemetry } from "../telemetry"
 
 const mockToken = {} as any
