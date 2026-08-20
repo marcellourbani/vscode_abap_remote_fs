@@ -4,6 +4,10 @@ jest.mock(
     LanguageModelToolResult: jest.fn().mockImplementation((parts: any[]) => ({ parts })),
     LanguageModelTextPart: jest.fn().mockImplementation((text: string) => ({ text })),
     MarkdownString: jest.fn().mockImplementation((text: string) => ({ text })),
+    workspace: {
+      workspaceFolders: [],
+      getConfiguration: jest.fn()
+    },
     lm: { registerTool: jest.fn(() => ({ dispose: jest.fn() })) }
   }),
   { virtual: true }
@@ -15,7 +19,8 @@ jest.mock("./toolRegistry", () => ({
   registerToolWithRegistry: jest.fn(() => ({ dispose: jest.fn() }))
 }))
 jest.mock("../../config", () => ({
-  connectedRoots: jest.fn()
+  connectedRoots: jest.fn(),
+  getConfig: jest.fn()
 }))
 
 jest.mock("./toolGuard", () => ({
@@ -23,7 +28,7 @@ jest.mock("./toolGuard", () => ({
   isToolInvocationAuthorized: jest.fn(() => true)
 }))
 import { ConnectedSystemsTool } from "./connectedSystemsTool"
-import { connectedRoots } from "../../config"
+import { connectedRoots, getConfig } from "../../config"
 import { logTelemetry } from "../telemetry"
 
 const mockToken = {} as any

@@ -31,6 +31,7 @@ import { registerTestDocumentationTool } from "./testDocumentationTool"
 import { ManageTextElementsTool } from "./textElementsTools"
 import { registerSAPSystemInfoTool } from "./sapSystemInfoTool"
 import { registerConnectedSystemsTool } from "./connectedSystemsTool"
+import { registerConfiguredSystemsTool } from "./configuredSystemsTool"
 import {
   ABAPDebugSessionTool,
   ABAPBreakpointTool,
@@ -115,6 +116,7 @@ export async function registerAllTools(context: vscode.ExtensionContext): Promis
 
   // 13. Connected Systems Tool (for MCP clients to discover available connections)
   registerConnectedSystemsTool(context)
+  registerConfiguredSystemsTool(context)
 
   // 14. Debugger Tools (6 tools)
   context.subscriptions.push(
