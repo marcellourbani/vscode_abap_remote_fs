@@ -1898,11 +1898,11 @@
       {
         "name": "manage_text_elements",
         "displayName": "Manage Text Elements",
-        "modelDescription": "Read, create, or update text elements (translatable strings) in programs, classes, function groups.",
+        "modelDescription": "Read, create, or update text elements in programs, classes, and function groups. Create is supported only for text symbols. Selection texts and list headings are update-only. Pass category 'selections' or 'headings' for those categories; omit it only for text symbols.",
         "canBeReferencedInPrompt": true,
         "toolReferenceName": "text-elements-manager",
         "icon": "$(symbol-text)",
-        "userDescription": "Manage text elements in ABAP programs, classes, and function groups",
+        "userDescription": "Manage text symbols, selection texts, and list headings in ABAP programs, classes, and function groups",
         "inputSchema": {
           "type": "object",
           "properties": {
@@ -1919,6 +1919,15 @@
               ],
               "description": "Type of ABAP object: 'PROGRAM' for reports/programs, 'CLASS' for classes, 'FUNCTION_GROUP' for function groups"
             },
+            "category": {
+              "type": "string",
+              "enum": [
+                "symbols",
+                "selections",
+                "headings"
+              ],
+              "description": "Text category. Create is supported only for 'symbols'. Pass 'selections' for selection texts or 'headings' for list headings; those categories are update-only. Omit this only for text symbols (default)."
+            },
             "action": {
               "type": "string",
               "enum": [
@@ -1926,7 +1935,7 @@
                 "create",
                 "update"
               ],
-              "description": "Action to perform: 'read' to get existing text elements, 'create' to add new ones, 'update' to modify existing ones"
+              "description": "Action to perform: 'read' to get existing entries, 'create' to add text symbols only, or 'update' to modify existing symbols, selection texts, or list headings"
             },
             "textElements": {
               "type": "array",
@@ -1937,7 +1946,7 @@
                   "id": {
                     "type": "string",
                     "description": "Text element ID (e.g., '001', '002', 'BTN')",
-                    "pattern": "^[A-Z0-9_]{1,8}$"
+                    "pattern": "^[A-Za-z0-9_]{1,20}$"
                   },
                   "text": {
                     "type": "string",

@@ -4,7 +4,8 @@ import { getClient, getRoot } from "../adt/conections"
 import {
   getTextElementsSafe,
   updateTextElementsWithTransport,
-  TextElement
+  TextElement,
+  TextElementCategory
 } from "../adt/textElements"
 import { logCommands } from "../services/abapCopilotLogger"
 import { session_types } from "abap-adt-api"
@@ -13,6 +14,26 @@ import { isAbapFile } from "abapfs"
 import { parseObjectName } from "../adt/textElements"
 import { SapGuiPanel } from "../views/sapgui/SapGuiPanel"
 import { RemoteManager } from "../config"
+
+const TEXT_ELEMENT_CATEGORIES: TextElementCategory[] = ["symbols", "selections", "headings"]
+type TextElementsByCategory = Record<TextElementCategory, TextElement[]>
+
+async function getAllTextElements(
+  client: Parameters<typeof getTextElementsSafe>[0],
+  objectName: string
+): Promise<TextElementsByCategory> {
+  const [symbols, selections, headings] = await Promise.all(
+    TEXT_ELEMENT_CATEGORIES.map(category =>
+      getTextElementsSafe(client, objectName, undefined, category)
+    )
+  )
+
+  return {
+    symbols: symbols.textElements,
+    selections: selections.textElements,
+    headings: headings.textElements
+  }
+}
 
 /**
  * Map an ABAP object type (e.g. "PROG/P") to the pseudo-filename suffix that
@@ -159,12 +180,12 @@ async function showTextElementsEditor(programName: string, sourceUri: vscode.Uri
       try {
         progress.report({ increment: 30, message: "Fetching text elements..." })
 
-        const result = await getTextElementsSafe(client, programName)
+        const textElements = await getAllTextElements(client, programName)
 
         progress.report({ increment: 70, message: "Opening editor..." })
 
         // Create and show text elements manager webview
-        await createTextElementsWebview(programName, result.textElements, connectionId, sourceUri)
+        await createTextElementsWebview(programName, textElements, connectionId)
       } catch (error) {
         // Check if it's a "Resource does not exist" error - fallback to SAP GUI for old systems
         const errorMessage = String(error)
@@ -293,9 +314,8 @@ export async function openTextElementsInSapGui(
  */
 async function createTextElementsWebview(
   programName: string,
-  textElements: TextElement[],
-  connectionId: string,
-  sourceUri: vscode.Uri
+  textElements: TextElementsByCategory,
+  connectionId: string
 ): Promise<void> {
   const panel = window.createWebviewPanel(
     "textElementsManager",
@@ -320,9 +340,9 @@ async function createTextElementsWebview(
         await handleSaveTextElements(
           programName,
           message.textElements,
+          message.category || "symbols",
           panel,
-          connectionId,
-          sourceUri
+          connectionId
         )
         break
 
@@ -352,9 +372,9 @@ async function createTextElementsWebview(
 async function handleSaveTextElements(
   programName: string,
   textElements: TextElement[],
+  category: TextElementCategory,
   panel: vscode.WebviewPanel,
-  connectionId: string,
-  sourceUri: vscode.Uri
+  connectionId: string
 ): Promise<void> {
   try {
     // Get client using the connectionId from the original context - get original client, not clone
@@ -365,36 +385,15 @@ async function handleSaveTextElements(
     }
     client.stateful = session_types.stateful
 
-    await window.withProgress(
-      {
-        location: vscode.ProgressLocation.Notification,
-        title: `Saving text elements for ${programName}...`,
-        cancellable: false
-      },
-      async progress => {
-        progress.report({ increment: 30, message: "Validating..." })
+    const validTextElements = textElements.filter(te => te.id && te.text)
 
-        // Filter out empty text elements
-        const validTextElements = textElements.filter(te => te.id && te.text)
-
-        if (validTextElements.length === 0) {
-          throw new Error("No valid text elements to save")
-        }
-
-        progress.report({ increment: 60, message: "Saving to SAP system..." })
-        //changed below line to not use lock manager version of function
-        await updateTextElementsWithTransport(
-          client,
-          programName,
-          validTextElements,
-          sourceUri.toString()
-        )
-
-        progress.report({ increment: 100, message: "Saved successfully" })
-      }
+    await updateTextElementsWithTransport(
+      client,
+      programName,
+      validTextElements,
+      undefined,
+      category
     )
-
-    window.showInformationMessage(`Text elements saved successfully for ${programName}`)
 
     // Send success message to webview
     panel.webview.postMessage({ command: "saveSuccess" })
@@ -428,12 +427,12 @@ async function handleRefreshTextElements(
     }
 
     // Reload text elements from SAP
-    const result = await getTextElementsSafe(client, programName)
+    const textElements = await getAllTextElements(client, programName)
 
     // Send updated data to webview
     panel.webview.postMessage({
       command: "refresh",
-      textElements: result.textElements
+      textElements
     })
   } catch (error: any) {
     logCommands.error(`Error refreshing text elements: ${error}`)
@@ -450,7 +449,10 @@ async function handleRefreshTextElements(
 /**
  * Generate HTML content for text elements webview
  */
-function getTextElementsWebviewContent(programName: string, textElements: TextElement[]): string {
+function getTextElementsWebviewContent(
+  programName: string,
+  textElements: TextElementsByCategory
+): string {
   const textElementsJson = JSON.stringify(textElements)
 
   return `<!DOCTYPE html>
@@ -507,6 +509,7 @@ function getTextElementsWebviewContent(programName: string, textElements: TextEl
         table {
             width: 100%;
             border-collapse: collapse;
+          table-layout: fixed;
             margin-top: 10px;
         }
         th, td {
@@ -515,8 +518,23 @@ function getTextElementsWebviewContent(programName: string, textElements: TextEl
             text-align: left;
         }
         th {
+          position: relative;
+        }
+        th {
             background-color: var(--vscode-list-headerBackground);
             font-weight: bold;
+        }
+        .column-resizer {
+          position: absolute;
+          top: 0;
+          right: -5px;
+          width: 10px;
+          height: 100%;
+          cursor: col-resize;
+          z-index: 1;
+        }
+        .column-resizer:hover {
+          background-color: var(--vscode-focusBorder);
         }
         tr:nth-child(even) {
             background-color: var(--vscode-list-evenBackground);
@@ -535,24 +553,28 @@ function getTextElementsWebviewContent(programName: string, textElements: TextEl
         input:focus {
             outline: 1px solid var(--vscode-focusBorder);
         }
+        .ddic-reference-cell input[type="checkbox"] {
+          width: auto;
+        }
         .id-input {
-            width: 80px;
+          width: 100%;
         }
         .maxlength-input {
             width: 80px;
         }
         .delete-btn {
-            background-color: var(--vscode-button-secondaryBackground);
-            color: var(--vscode-button-secondaryForeground);
-            border: none;
+          background-color: var(--vscode-button-background);
+          color: var(--vscode-button-foreground);
+          border: 1px solid var(--vscode-button-background);
             padding: 4px 8px;
             border-radius: 3px;
             cursor: pointer;
             font-size: 11px;
         }
         .delete-btn:hover {
-            background-color: var(--vscode-errorBackground);
-            color: var(--vscode-errorForeground);
+          background-color: var(--vscode-errorBackground, #c42b2b);
+          border-color: var(--vscode-errorBackground, #c42b2b);
+          color: var(--vscode-errorForeground, #ffffff);
         }
         .status {
             margin-top: 10px;
@@ -591,6 +613,22 @@ function getTextElementsWebviewContent(programName: string, textElements: TextEl
             color: var(--vscode-descriptionForeground);
             font-size: 11px;
         }
+        .tabs {
+          display: flex;
+          gap: 4px;
+          margin-bottom: 12px;
+        }
+        .tab {
+          background: transparent;
+          color: var(--vscode-foreground);
+          border: 1px solid var(--vscode-panel-border);
+          padding: 6px 12px;
+          cursor: pointer;
+        }
+        .tab.active {
+          background-color: var(--vscode-button-background);
+          color: var(--vscode-button-foreground);
+        }
     </style>
 </head>
 <body>
@@ -598,26 +636,33 @@ function getTextElementsWebviewContent(programName: string, textElements: TextEl
         <div class="title">� Text Elements Manager - ${programName}</div>
         <div class="buttons">
             <button class="btn secondary" onclick="refreshTextElements()">🔄 Refresh</button>
-            <button class="btn secondary" onclick="addRow()">➕ Add Text Element</button> 
+            <button id="addButton" class="btn secondary" onclick="addRow()">➕ Add Text Symbol</button> 
             <button class="btn" onclick="saveTextElements()">💾 Save & Activate</button>
         </div>
     </div>
+
+      <div class="tabs" role="tablist" aria-label="Text element category">
+        <button class="tab active" data-category="symbols" onclick="selectCategory('symbols')">Text Symbols</button>
+        <button class="tab" data-category="selections" onclick="selectCategory('selections')">Selection Texts</button>
+        <button class="tab" data-category="headings" onclick="selectCategory('headings')">List Headings</button>
+      </div>
     
     <div id="status" class="status"></div>
     
     <div class="program-info">
-        <strong>Object:</strong> ${programName} | <strong>Text Elements:</strong> <span id="elementCount">${textElements.length}</span>
+      <strong>Object:</strong> ${programName} | <strong>Text Elements:</strong> <span id="elementCount">${textElements.symbols.length}</span>
     </div>
     
     <div id="content">
         <table id="textElementsTable">
             <thead>
                 <tr>
-                    <th class="row-number">#</th>
-                    <th>ID</th>
-                    <th>Text</th>
-                    <th>Max Length</th>
-                    <th>Actions</th>
+                    <th class="row-number">#<span class="column-resizer" data-column="0"></span></th>
+                    <th>ID<span class="column-resizer" data-column="1"></span></th>
+                    <th>Text<span class="column-resizer" data-column="2"></span></th>
+                    <th>Max Length<span class="column-resizer" data-column="3"></span></th>
+                    <th id="ddicReferenceHeader">DDIC Reference<span class="column-resizer" data-column="4"></span></th>
+                    <th>Actions<span class="column-resizer" data-column="5"></span></th>
                 </tr>
             </thead>
             <tbody id="tableBody">
@@ -632,7 +677,67 @@ function getTextElementsWebviewContent(programName: string, textElements: TextEl
 
     <script>
         const vscode = acquireVsCodeApi();
-        let textElements = ${textElementsJson};
+        const categoryLabels = {
+          symbols: 'Text Symbol',
+          selections: 'Selection Text',
+          headings: 'List Heading'
+        };
+        const table = document.getElementById('textElementsTable');
+        let textElementsByCategory = ${textElementsJson};
+        let activeCategory = 'symbols';
+        let textElements = textElementsByCategory[activeCategory] || [];
+        let pendingDeleteIndex = -1;
+
+        function updateDdicColumnVisibility() {
+          const visible = activeCategory === 'selections';
+          document.getElementById('ddicReferenceHeader').hidden = !visible;
+          document.querySelectorAll('.ddic-reference-cell').forEach(cell => {
+            cell.hidden = !visible;
+          });
+        }
+
+        function updateAddButton() {
+          const addButton = document.getElementById('addButton');
+          addButton.hidden = activeCategory !== 'symbols';
+          addButton.textContent = '➕ Add ' + categoryLabels[activeCategory];
+        }
+
+        function selectCategory(category) {
+          activeCategory = category;
+          textElements = textElementsByCategory[category] || [];
+          document.querySelectorAll('.tab').forEach(tab => {
+            tab.classList.toggle('active', tab.dataset.category === category);
+          });
+            updateAddButton();
+          updateDdicColumnVisibility();
+          renderTable();
+          updateElementCount();
+        }
+
+          document.querySelectorAll('.column-resizer').forEach(resizer => {
+            resizer.addEventListener('pointerdown', event => {
+              event.preventDefault();
+              event.stopPropagation();
+              const column = Number(resizer.dataset.column);
+              const startX = event.clientX;
+              const header = table.querySelector('thead th:nth-child(' + (column + 1) + ')');
+              const startWidth = header.getBoundingClientRect().width;
+
+              const resize = moveEvent => {
+                const width = Math.max(48, startWidth + moveEvent.clientX - startX);
+                table.querySelectorAll('tr > *:nth-child(' + (column + 1) + ')').forEach(cell => {
+                  cell.style.width = width + 'px';
+                });
+              };
+              const stopResize = () => {
+                document.removeEventListener('pointermove', resize);
+                document.removeEventListener('pointerup', stopResize);
+              };
+
+              document.addEventListener('pointermove', resize);
+              document.addEventListener('pointerup', stopResize);
+            });
+          });
         
         function renderTable() {
             const tbody = document.getElementById('tableBody');
@@ -655,22 +760,32 @@ function getTextElementsWebviewContent(programName: string, textElements: TextEl
                              maxlength="8"
                              pattern="[A-Z0-9_]*"
                              title="1-8 characters, letters, numbers, underscore only"
-                             placeholder="e.g., 001">
+                         placeholder="e.g., 001"
+                         \${element.id ? 'readonly' : ''}>
                     </td>
                     <td>
                         <input type="text" value="\${element.text || ''}" 
                              onchange="updateElement(\${index}, 'text', this.value)"
-                             placeholder="Enter text content"> 
+                         placeholder="Enter text content"
+                         \${element.ddicReference ? 'readonly' : ''}> 
                     </td>
                     <td>
                         <input type="number" class="maxlength-input" value="\${element.maxLength || ''}" 
                              onchange="updateElement(\${index}, 'maxLength', parseInt(this.value))"
                              min="1" max="255"
                              placeholder="Auto"
-                             title="Maximum length for this text element">
+                         title="Maximum length for this text element"
+                         \${activeCategory !== 'symbols' ? 'disabled' : ''}>
+                    </td>
+                    <td class="ddic-reference-cell" \${activeCategory !== 'selections' ? 'hidden' : ''}>
+                      <input type="checkbox"
+                         \${element.ddicReference ? 'checked' : ''}
+                         \${!element.ddicReference ? 'disabled' : ''}
+                         onchange="updateDdicReference(\${index}, this.checked)"
+                         title="DDIC reference supplied by ADT">
                     </td>
                     <td>
-                        <button class="delete-btn" onclick="deleteRow(\${index})" title="Delete this text element">🗑️</button>
+                      <button class="delete-btn" onclick="deleteRow(\${index})" title="Delete this text element">\${pendingDeleteIndex === index ? 'Confirm' : '🗑️'}</button>
                     </td> 
                 </tr>
             \`).join('');
@@ -679,16 +794,20 @@ function getTextElementsWebviewContent(programName: string, textElements: TextEl
         // 🚫 DISABLED: Add row functionality disabled due to lock handle issues
         
         function addRow() {
+          if (activeCategory !== 'symbols') return;
+
             // Auto-generate next available ID
             const usedIds = new Set(textElements.map(te => te.id).filter(id => id));
             let nextId = '';
             
             // Find next available numeric ID (001, 002, etc.)
-            for (let i = 1; i <= 999; i++) {
+            if (activeCategory === 'symbols') {
+              for (let i = 1; i <= 999; i++) {
                 const candidateId = i.toString().padStart(3, '0');
                 if (!usedIds.has(candidateId)) {
-                    nextId = candidateId;
-                    break;
+                  nextId = candidateId;
+                  break;
+                }
                 }
             }
             
@@ -709,15 +828,21 @@ function getTextElementsWebviewContent(programName: string, textElements: TextEl
         function refreshTextElements() {
             showStatus('success', 'Refreshing text elements...');
             vscode.postMessage({
-                command: 'refresh'
+              command: 'refresh',
+              category: activeCategory
             });
         }
         
-        // 🚫 DISABLED: Delete row functionality disabled due to lock handle issues
-        
         function deleteRow(index) {
-            if (confirm(\`Delete text element '\${textElements[index].id}' - '\${textElements[index].text}'?\`)) {
+          if (pendingDeleteIndex !== index) {
+            pendingDeleteIndex = index;
+            renderTable();
+            return;
+          }
+
+          if (pendingDeleteIndex === index) {
                 textElements.splice(index, 1);
+            pendingDeleteIndex = -1;
                 renderTable();
                 updateElementCount();
             }
@@ -738,7 +863,7 @@ function getTextElementsWebviewContent(programName: string, textElements: TextEl
             textElements[index][field] = value;
             
             // Auto-update maxLength based on text length if it's currently undefined/empty
-            if (field === 'text' && value) {
+            if (field === 'text' && value && activeCategory === 'symbols') {
                 const currentMaxLength = textElements[index].maxLength;
                 if (!currentMaxLength || currentMaxLength === '' || isNaN(currentMaxLength)) {
                     // Auto-calculate: at least text length + some buffer (minimum 10)
@@ -754,6 +879,12 @@ function getTextElementsWebviewContent(programName: string, textElements: TextEl
                 }
             }
         }
+
+          function updateDdicReference(index, checked) {
+            if (!checked) {
+              delete textElements[index].ddicReference;
+            }
+          }
         
         
         // 🚫 DISABLED: Save functionality disabled due to lock handle issues
@@ -776,7 +907,7 @@ function getTextElementsWebviewContent(programName: string, textElements: TextEl
                     errors.push(\`Row \${index + 1}: Text is required\`);
                 }
                 
-                if (element.maxLength && element.text && element.text.length > element.maxLength) {
+                if (activeCategory === 'symbols' && element.maxLength && element.text && element.text.length > element.maxLength) {
                     errors.push(\`Row \${index + 1}: Text length (\${element.text.length}) exceeds max length (\${element.maxLength})\`);
                 }
             });
@@ -786,10 +917,9 @@ function getTextElementsWebviewContent(programName: string, textElements: TextEl
                 return;
             }
             
-            // Filter out empty rows
             const validElements = textElements.filter(te => te.id && te.text);
-            
-            if (validElements.length === 0) {
+
+            if (textElements.length > 0 && validElements.length === 0) {
                 showStatus('error', 'No valid text elements to save');
                 return;
             }
@@ -797,7 +927,8 @@ function getTextElementsWebviewContent(programName: string, textElements: TextEl
             showStatus('success', 'Saving...');
             vscode.postMessage({
                 command: 'save',
-                textElements: validElements
+              category: activeCategory,
+              textElements: validElements
             });
         }
         
@@ -830,7 +961,8 @@ function getTextElementsWebviewContent(programName: string, textElements: TextEl
                 
                 case 'refresh':
                     // Update textElements array and re-render
-                    textElements = message.textElements || [];
+                  textElementsByCategory = message.textElements || {};
+                  textElements = textElementsByCategory[activeCategory] || [];
                     renderTable();
                     updateElementCount();
                     showStatus('success', 'Text elements refreshed successfully!');
@@ -841,7 +973,8 @@ function getTextElementsWebviewContent(programName: string, textElements: TextEl
             }
         });
         
-        // Initial render
+        updateAddButton();
+        updateDdicColumnVisibility();
         renderTable();
     </script>
 </body>
