@@ -175,8 +175,16 @@ describe("manageTextElementsCommand", () => {
 
     expect(mockGetTextElementsSafe).toHaveBeenCalledWith(
       expect.anything(),
-      expect.stringContaining("ZMAINPROG")
+      expect.stringContaining("ZMAINPROG"),
+      undefined,
+      "symbols"
     )
+    expect(mockGetTextElementsSafe).toHaveBeenCalledTimes(3)
+    expect(mockGetTextElementsSafe.mock.calls.map(call => call[3])).toEqual([
+      "symbols",
+      "selections",
+      "headings"
+    ])
   })
 
   test("shows error when object name cannot be determined", async () => {

@@ -239,6 +239,20 @@ describe("getTextElements (async)", () => {
     expect(result.programName).toBe("ZPROG")
   })
 
+  it("passes non-symbol categories through to the ADT client", async () => {
+    const getTextElementsFn = jest
+      .fn()
+      .mockResolvedValue({ textElements: [], programName: "ZPROG" })
+    const client: any = { getTextElements: getTextElementsFn }
+
+    await getTextElements(client, "ZPROG", undefined, "selections")
+
+    expect(getTextElementsFn).toHaveBeenCalledWith(
+      expect.stringContaining("/sap/bc/adt/textelements/programs/zprog"),
+      "selections"
+    )
+  })
+
   it("returns empty array on 404", async () => {
     const getTextElementsFn = jest.fn().mockRejectedValue({ response: { status: 404 } })
     const client: any = { getTextElements: getTextElementsFn }

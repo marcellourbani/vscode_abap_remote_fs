@@ -1,8 +1,14 @@
-import { ADTClient, AdtLock, TextElement, TextElementsResult } from "abap-adt-api"
+import {
+  ADTClient,
+  AdtLock,
+  TextElement,
+  TextElementsResult,
+  TextElementCategory
+} from "abap-adt-api"
 import { log } from "../lib"
 import { selectTransport } from "./AdtTransports"
 
-export type { TextElement, TextElementsResult }
+export type { TextElement, TextElementsResult, TextElementCategory }
 
 export interface LockResult {
   lockHandle: string
@@ -157,11 +163,12 @@ function getTextElementsBaseUrl(objectName: string, objectType?: string): string
 export async function getTextElements(
   connection: ADTClient,
   objectName: string,
-  objectType?: string
+  objectType?: string,
+  category: TextElementCategory = "symbols"
 ): Promise<TextElementsResult> {
   const url = getTextElementsBaseUrl(objectName, objectType)
   try {
-    return await connection.getTextElements(url, "symbols")
+    return await connection.getTextElements(url, category)
   } catch (error: any) {
     if (error.response?.status === 404) {
       return { textElements: [], programName: objectName.toUpperCase() }
@@ -197,11 +204,12 @@ export async function setTextElements(
   textElements: TextElement[],
   lockHandle: string,
   corrNr?: string,
-  objectType?: string
+  objectType?: string,
+  category: TextElementCategory = "symbols"
 ): Promise<void> {
   const url = getTextElementsBaseUrl(objectName, objectType)
   try {
-    await connection.setTextElements(url, "symbols", textElements, lockHandle, corrNr)
+    await connection.setTextElements(url, category, textElements, lockHandle, corrNr)
     await connection.unLock(url, lockHandle).catch(() => undefined)
     await connection.activate(objectName.toUpperCase(), url)
   } catch (error: any) {
@@ -221,13 +229,12 @@ function validateObjectName(objectName: string): void {
 /**
  * Validate text elements array
  */
-function validateTextElements(textElements: TextElement[]): void {
+function validateTextElements(
+  textElements: TextElement[],
+  category: TextElementCategory = "symbols"
+): void {
   if (!Array.isArray(textElements)) {
     throw new Error("Text elements must be an array")
-  }
-
-  if (textElements.length === 0) {
-    throw new Error("At least one text element is required")
   }
 
   const usedIds = new Set<string>()
@@ -248,19 +255,29 @@ function validateTextElements(textElements: TextElement[]): void {
     }
     usedIds.add(id)
 
-    // Auto-calculate maxLength if not provided or invalid
-    if (element.maxLength === undefined || element.maxLength === null || isNaN(element.maxLength)) {
-      element.maxLength = Math.max(element.text.length, 10) // At least 10, or text length
-    }
+    if (category === "symbols") {
+      // Auto-calculate maxLength if not provided or invalid
+      if (
+        element.maxLength === undefined ||
+        element.maxLength === null ||
+        isNaN(element.maxLength)
+      ) {
+        element.maxLength = Math.max(element.text.length, 10) // At least 10, or text length
+      }
 
-    if (typeof element.maxLength !== "number" || element.maxLength < 1 || element.maxLength > 255) {
-      throw new Error(`Invalid maxLength for element ${id}: must be between 1 and 255`)
-    }
+      if (
+        typeof element.maxLength !== "number" ||
+        element.maxLength < 1 ||
+        element.maxLength > 255
+      ) {
+        throw new Error(`Invalid maxLength for element ${id}: must be between 1 and 255`)
+      }
 
-    if (element.text.length > element.maxLength) {
-      throw new Error(
-        `Text length exceeds maxLength for element ${id}: ${element.text.length} > ${element.maxLength}`
-      )
+      if (element.text.length > element.maxLength) {
+        throw new Error(
+          `Text length exceeds maxLength for element ${id}: ${element.text.length} > ${element.maxLength}`
+        )
+      }
     }
   }
 }
@@ -271,20 +288,22 @@ function validateTextElements(textElements: TextElement[]): void {
 export async function getTextElementsSafe(
   connection: ADTClient,
   objectName: string,
-  objectType?: string
+  objectType?: string,
+  category: TextElementCategory = "symbols"
 ): Promise<TextElementsResult> {
   validateObjectName(objectName)
-  return getTextElements(connection, objectName, objectType)
+  return getTextElements(connection, objectName, objectType, category)
 }
 
 export async function updateTextElementsWithTransport(
   connection: ADTClient,
   objectName: string,
   textElements: TextElement[],
-  objectType?: string // Optional - only required when called from Copilot
+  objectType?: string, // Optional - only required when called from Copilot
+  category: TextElementCategory = "symbols"
 ): Promise<void> {
   validateObjectName(objectName)
-  validateTextElements(textElements)
+  validateTextElements(textElements, category)
 
   let lockResult: LockResult | undefined
 
@@ -319,7 +338,8 @@ export async function updateTextElementsWithTransport(
       textElements,
       lockResult.lockHandle,
       transportToUse,
-      objectType
+      objectType,
+      category
     )
   } catch (error) {
     if (lockResult) {

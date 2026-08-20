@@ -175,11 +175,36 @@ describe("ManageTextElementsTool", () => {
         mockToken
       )
 
-      expect(getTextElementsSafe).toHaveBeenCalledWith(mockClient, "ZREPORT", "PROGRAM")
+      expect(getTextElementsSafe).toHaveBeenCalledWith(mockClient, "ZREPORT", "PROGRAM", "symbols")
       expect(result.parts[0].text).toContain("ZREPORT")
       expect(result.parts[0].text).toContain("001")
       expect(result.parts[0].text).toContain("Hello")
       expect(result.parts[0].text).toContain("max: 20")
+    })
+
+    it("passes the requested category to the ADT helper", async () => {
+      ;(getTextElementsSafe as jest.Mock).mockResolvedValue({
+        programName: "ZREPORT",
+        textElements: [{ id: "P_NAME", text: "Name" }]
+      })
+
+      await tool.invoke(
+        makeOptions({
+          objectName: "ZREPORT",
+          objectType: "PROGRAM",
+          category: "selections",
+          action: "read",
+          connectionId: "dev100"
+        }),
+        mockToken
+      )
+
+      expect(getTextElementsSafe).toHaveBeenCalledWith(
+        mockClient,
+        "ZREPORT",
+        "PROGRAM",
+        "selections"
+      )
     })
 
     it("reports empty text elements", async () => {
@@ -337,6 +362,24 @@ describe("ManageTextElementsTool", () => {
       ).rejects.toThrow("Text elements array is required")
     })
 
+    it("rejects create for selection texts before contacting SAP", async () => {
+      await expect(
+        tool.invoke(
+          makeOptions({
+            objectName: "ZREPORT",
+            objectType: "PROGRAM",
+            category: "selections",
+            action: "create",
+            textElements: [{ id: "P_NEW", text: "New" }],
+            connectionId: "dev100"
+          }),
+          mockToken
+        )
+      ).rejects.toThrow("supports update only")
+
+      expect(getClient).not.toHaveBeenCalled()
+    })
+
     it("calls updateTextElementsWithTransport for create with merged elements", async () => {
       ;(getTextElementsSafe as jest.Mock).mockResolvedValue({
         programName: "ZREPORT",
@@ -363,7 +406,8 @@ describe("ManageTextElementsTool", () => {
           expect.objectContaining({ id: "001", text: "Existing" }),
           expect.objectContaining({ id: "002", text: "New Element" })
         ]),
-        "PROGRAM"
+        "PROGRAM",
+        "symbols"
       )
       expect(result.parts[0].text).toContain("Created")
     })
@@ -419,7 +463,8 @@ describe("ManageTextElementsTool", () => {
         mockClient,
         "ZREPORT",
         [{ id: "001", text: "Only New" }],
-        "PROGRAM"
+        "PROGRAM",
+        "symbols"
       )
       expect(result.parts[0].text).toContain("Created")
     })

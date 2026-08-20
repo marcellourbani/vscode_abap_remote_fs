@@ -4,7 +4,11 @@ import { logCommands } from "../abapCopilotLogger"
 import { session_types } from "abap-adt-api"
 import { logTelemetry } from "../telemetry"
 import { getClient, abapUri } from "../../adt/conections"
-import { getTextElementsSafe, updateTextElementsWithTransport } from "../../adt/textElements"
+import {
+  getTextElementsSafe,
+  updateTextElementsWithTransport,
+  TextElementCategory
+} from "../../adt/textElements"
 import { openTextElementsInSapGui } from "../../commands/textElementsCommands"
 import { assertToolInvocationAuthorized } from "./toolGuard"
 
@@ -12,6 +16,7 @@ import { assertToolInvocationAuthorized } from "./toolGuard"
 export interface IManageTextElementsParameters {
   objectName: string // Name of the ABAP object
   objectType: "PROGRAM" | "CLASS" | "FUNCTION_GROUP" // Type of object (mandatory for Language Model Tool - Copilot provides this)
+  category?: TextElementCategory
   action: "read" | "create" | "update"
   textElements?: Array<{
     id: string
@@ -29,13 +34,24 @@ export class ManageTextElementsTool implements vscode.LanguageModelTool<IManageT
     options: vscode.LanguageModelToolInvocationPrepareOptions<IManageTextElementsParameters>,
     _token: vscode.CancellationToken
   ) {
-    const { objectName, objectType, action, textElements, connectionId } = options.input
+    const {
+      objectName,
+      objectType,
+      category = "symbols",
+      action,
+      textElements,
+      connectionId
+    } = options.input
 
     let message = `**Action:** ${action.toUpperCase()}\n**Object:** ${objectName}`
     if (objectType) {
       message += `\n**Type:** ${objectType}`
     }
+    message += `\n**Category:** ${category}`
     message += `\n**Connection:** ${connectionId || "auto-detect"}`
+    if (action === "create" && category !== "symbols") {
+      message += `\n**Note:** ${category} can only be updated; new entries cannot be created.`
+    }
 
     if (action === "create" || action === "update") {
       message += `\n**Text Elements:** ${textElements?.length || 0}`
@@ -62,8 +78,21 @@ export class ManageTextElementsTool implements vscode.LanguageModelTool<IManageT
     _token: vscode.CancellationToken
   ): Promise<vscode.LanguageModelToolResult> {
     assertToolInvocationAuthorized(options)
-    let { objectName, objectType, action, textElements, connectionId } = options.input
+    let {
+      objectName,
+      objectType,
+      category = "symbols",
+      action,
+      textElements,
+      connectionId
+    } = options.input
     logTelemetry("tool_manage_text_elements_called", { connectionId })
+
+    if (action === "create" && category !== "symbols") {
+      throw new Error(
+        `Cannot create ${category} text elements. ${category} supports update only; use action "update" for existing entries.`
+      )
+    }
 
     // 🚫 FORCE READ ACTION ONLY - Create/Update disabled due to lock handle issues
     // if (action === 'create' || action === 'update') {
@@ -102,7 +131,7 @@ export class ManageTextElementsTool implements vscode.LanguageModelTool<IManageT
       }
 
       if (action === "read") {
-        return await this.handleRead(client, objectName, objectType, actualConnectionId)
+        return await this.handleRead(client, objectName, objectType, category, actualConnectionId)
       } else if (action === "create" || action === "update") {
         if (!textElements || textElements.length === 0) {
           throw new Error("Text elements array is required for create/update operations")
@@ -111,7 +140,7 @@ export class ManageTextElementsTool implements vscode.LanguageModelTool<IManageT
         // For both CREATE and UPDATE, merge with existing text elements to avoid data loss
         let finalTextElements = textElements
         try {
-          const existingResult = await getTextElementsSafe(client, objectName, objectType)
+          const existingResult = await getTextElementsSafe(client, objectName, objectType, category)
           const existingElements = existingResult.textElements
 
           if (existingElements.length > 0) {
@@ -139,6 +168,7 @@ export class ManageTextElementsTool implements vscode.LanguageModelTool<IManageT
           client,
           objectName,
           objectType,
+          category,
           finalTextElements,
           action
         )
@@ -155,11 +185,12 @@ export class ManageTextElementsTool implements vscode.LanguageModelTool<IManageT
     client: any,
     objectName: string,
     objectType?: string,
+    category: TextElementCategory = "symbols",
     connectionId?: string
   ): Promise<vscode.LanguageModelToolResult> {
     try {
       // Use explicit object type when provided, fallback to detection when not
-      const result = await getTextElementsSafe(client, objectName, objectType)
+      const result = await getTextElementsSafe(client, objectName, objectType, category)
 
       let resultText = `Text Elements for ${result.programName}\n`
       resultText += `Object: ${result.programName} | Total: ${result.textElements.length}\n\n`
@@ -215,11 +246,12 @@ export class ManageTextElementsTool implements vscode.LanguageModelTool<IManageT
     client: any,
     objectName: string,
     objectType: string | undefined,
+    category: TextElementCategory,
     textElements: Array<{ id: string; text: string; maxLength?: number }>,
     action: "create" | "update"
   ): Promise<vscode.LanguageModelToolResult> {
     // Transport-aware function imported statically at module top
-    await updateTextElementsWithTransport(client, objectName, textElements, objectType)
+    await updateTextElementsWithTransport(client, objectName, textElements, objectType, category)
 
     let resultText = `Text Elements ${action === "create" ? "Created" : "Updated"} for ${objectName}\n`
     resultText += `Object: ${objectName} | ${action === "create" ? "Created" : "Updated"}: ${textElements.length}\n\n`
@@ -230,10 +262,12 @@ export class ManageTextElementsTool implements vscode.LanguageModelTool<IManageT
       resultText += `• ${element.id}: "${element.text}"${maxLengthInfo}\n`
     })
 
-    resultText += `\nSuccess. Next: update ABAP code to use these elements:`
-    textElements.forEach(element => {
-      resultText += `\n• Replace hardcoded text with: TEXT-${element.id}`
-    })
+    if (category === "symbols") {
+      resultText += `\nSuccess. Next: update ABAP code to use these elements:`
+      textElements.forEach(element => {
+        resultText += `\n• Replace hardcoded text with: TEXT-${element.id}`
+      })
+    }
 
     logCommands.info(
       ` ${action} Text Elements: Successfully processed ${textElements.length} text elements`
