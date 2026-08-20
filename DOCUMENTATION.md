@@ -460,6 +460,13 @@ AI Subagents are specialized AI assistants, each focused on one type of ABAP tas
 
 ## Available Subagents
 
+ABAP FS provides one unified subagent system with **22 packaged agents**:
+
+- **13 general ABAP agents**, individually configurable and individually enabled.
+- **9 SAP testing agents**, available together when the SAP testing folder is ready.
+
+The prompts are packaged with the extension under `client/media/agents`. ABAP FS does not create, rename, disable, or delete `.github/agents` files in your workspace.
+
 | Agent | What it does | Tier |
 |-------|-------------|------|
 | `abap-orchestrator` | Routes tasks, writes all code, coordinates other agents | 3 (Premium) |
@@ -478,7 +485,7 @@ AI Subagents are specialized AI assistants, each focused on one type of ABAP tas
 
 ## How to Use Subagents
 
-In GitHub Copilot Chat, type `@abap-orchestrator` to start. The orchestrator is the only agent exposed directly in the chat dropdown — it calls other agents automatically as needed.
+In GitHub Copilot Chat, type `@abap-orchestrator` to start, or invoke any enabled general agent directly. The orchestrator can call other enabled agents automatically as needed.
 
 ```
 @abap-orchestrator analyze ZCL_ARTICLE_HANDLER and suggest improvements
@@ -491,23 +498,23 @@ For example, the orchestrator might:
 3. Delegate "usage analysis" → `abap-usage-analyzer` (mid-tier)
 4. Synthesize findings and write recommendations itself (premium)
 
-You can also invoke other subagents directly with `@agent-name` if needed. Ask Copilot to make an agent available in the dropdown — it can update the agent's `.agent.md` file to enable this.
+You can also invoke other enabled general agents directly with `@agent-name`. Disabled general agents are removed from agent discovery immediately. Testing agents appear only when the SAP testing folder is valid.
 
 ## Setup
 
-> Subagent configuration is stored at the **workspace level** in `.vscode/settings.json` and `.github/agents/`. Each project can have its own configuration.
+Subagent settings are stored at **user level**. Model assignments use `abapfs.subagents.models`; general-agent visibility uses `abapfs.subagents.enabledAgents`. The deprecated `abapfs.subagents.enabled` setting is migrated for compatibility.
 
-In normal usage, you do not need to edit these files manually. Copilot can configure models, generate/update agent files, validate them, and enable/disable subagents through chat commands.
+In normal usage, do not edit settings JSON manually. Use **ABAP FS: Set Models for Subagents** or the `manage_subagents` tool.
 
 ### Step 1 — Configure models
 
-Ask Copilot:
+Use **ABAP FS: Set Models for Subagents**, or ask Copilot to do it by calling `manage_subagents` with `get_status`, `list_models`, and then `configure`.
 
 ```
-Configure subagents for ABAP development
+Configure models for the general ABAP agents
 ```
 
-Copilot will suggest models for each tier and ask for confirmation before applying. Recommended assignments:
+Use the exact model names returned by `list_models`. The tier guidance is:
 
 | Tier | Agents | Example models |
 |------|--------|---------------|
@@ -525,11 +532,11 @@ Ask Copilot:
 Enable subagents
 ```
 
-This creates agent files in `.github/agents/` and validates them.
+General agents are enabled individually. You can pass selected `agentIds`, or omit them to enable all 13. Every agent being enabled must have an available model.
 
-### Step 3 — Allow agent delegation (if prompted)
+### Step 3 — Use the enabled agents
 
-You may see a notification asking to enable `chat.customAgentInSubagent.enabled`. Click **Enable Setting** — this allows the orchestrator to call other agents.
+No extra ABAP FS delegation setting or workspace agent files are required. Once a general agent is enabled and has an available model, Copilot can invoke it immediately.
 
 ## Managing Subagents
 
@@ -537,55 +544,41 @@ All management is done through Copilot chat:
 
 | What you want | What to ask |
 |---------------|-------------|
-| Check current status | `Show subagent status` |
-| Disable all agents | `Disable subagents` |
-| Re-enable agents | `Enable subagents` |
-| Change a model | `Change abap-discoverer to use GPT-4o` |
-| See available models | `What models can I use for subagents?` |
-| See available tools | `List available tools for subagents` |
+| Check current status and guidance | `manage_subagents` → `get_status` |
+| See available models | `manage_subagents` → `list_models` |
+| Enable or disable selected general agents | `manage_subagents` → `enable` or `disable` with `agentIds` |
+| Enable or disable all general agents | Omit `agentIds` |
+| Change selected models | `manage_subagents` → `configure` |
+| Validate active assignments | `manage_subagents` → `validate` |
+| See available tools | `manage_subagents` → `list_tools` |
 
-When you disable subagents, agent files move to `agents_disabled/` (not deleted). Re-enabling restores them with your customizations intact.
+Enable/disable changes take effect immediately. Model changes also take effect immediately; no VS Code reload is required. After an extension update, startup reconciliation reapplies user-level models to the new packaged agent files automatically.
 
-## Customizing Agent Tools
+## Agent Ownership
 
-Each agent's `.agent.md` file in `.github/agents/` defines which tools it can use. You can edit these files directly or ask Copilot to do it:
-
-```
-Add the abap-trace tool to abap-troubleshooter
-```
-
-Changes survive disable/re-enable cycles — only the `model:` line is updated when you change models.
-
-✅ **User Control**: You decide which models to use for each agent tier
+Agent prompts, tool assignments, tiers, and descriptions are packaged and owned by ABAP FS. User control is provided through model assignments and per-general-agent enablement, not by editing workspace agent files.
 
 ## What to Be Aware Of
 
 ⚠️ **Model Availability**: Some models shown in the list may not work (e.g., "GPT-4o mini"). The system validates and auto-disables if errors are detected.
 
-⚠️ **VS Code Setting Required**: `chat.customAgentInSubagent.enabled` must be true for delegation to work, otherwise main agent's model may be used for all subagents which can result in a lot of premium request usage.
-
-⚠️ **Workspace-Specific**: Settings and agent files are per-workspace, not global
-
-⚠️ **Agent Files in Git**: The `.github/agents/` folder will appear in your version control - add to `.gitignore` if you don't want to share
+⚠️ **User-Level Settings**: Model assignments and general-agent visibility apply across workspaces for the user.
 
 ⚠️ **Frequently-Used Agents**: Agents like `abap-discoverer` and `abap-reader` get called often - using expensive models for these defeats the cost benefit
 
 ## Troubleshooting
 
 ### "Cannot enable subagents - missing models"
-All 13 agents must have models configured. Ask Copilot to configure missing agents.
+Every general agent in the requested `agentIds` must have an available model. Enabling all 13 requires all 13 general models. Testing agents are a separate all-or-nothing group when the testing folder is ready.
 
-### Agent files show validation errors
-Some model names aren't valid for agent files. Try a different model (e.g., use `Claude Haiku 4.5` instead of `GPT-4o mini`).
+### Agent models are not taking effect
+Run `get_status` to confirm the user-level assignment and active state. Model changes take effect without reload. After an extension update, wait for startup reconciliation to reapply the saved assignments.
 
 ### Subagents auto-disabled
-This happens when configured models become unavailable. Reconfigure with available models.
-
-### Ghost files in explorer after disable
-This is a VS Code refresh issue. The extension refreshes the explorer automatically, but occasionally you may need to collapse/expand the folder.
+This happens when a configured model is missing or unavailable. Use `list_models`, configure a currently available model, then enable the affected general agent again.
 
 ### Delegation not using custom agents
-Make sure `chat.customAgentInSubagent.enabled` is set to `true` in your VS Code settings.
+Run `get_status` to confirm the target general agent is enabled and has an available model. If it is disabled, ask Copilot to call `manage_subagents` with `enable` and the agent's `agentIds`.
 
 # AI Skills
 
@@ -2339,9 +2332,11 @@ You can also do it later with **File → Add Folder to Workspace**.
 
 ## Step 4 — Choose models for the subagents
 
-`Ctrl+Shift+P` → **ABAP FS: Set Models for SAP Testing Subagents**.
+`Ctrl+Shift+P` → **ABAP FS: Set Models for Subagents**.
 
-A panel opens listing the nine subagents that SAP Testing delegates work to, each with a hint about the kind of model it needs. Pick a model for each and save. VS Code will ask you to reload the window.
+A panel opens with General agents and Testing agents in separate collapsible sections. Pick a model for each testing agent and save. Testing agents are configured as one group when the testing folder is ready. Model changes take effect without a VS Code reload.
+
+You can also ask Copilot to do this: ask it to call `manage_subagents`, inspect `get_status` and `list_models`, and then configure all nine testing agents with the exact model names returned.
 
 **Do this even though the framework ships with defaults.** The defaults name specific models that may not exist in your Copilot subscription, and an agent whose model isn't available falls back to whatever your main chat is using — usually a premium model doing work that a cheap one handles fine, which gets expensive quickly across a long analysis.
 
@@ -2529,8 +2524,8 @@ Copilot hands specific jobs to specialised subagents instead of doing everything
 
 Two reasons this matters to you: **large enumerations stay complete** (a subagent counting 200 branches doesn't get lazy near the end the way a main chat running low on context does), and **cost** — mechanical work runs on cheap models while only the reviewers use expensive ones.
 
-!!! note "Not the same as ABAP FS subagents"
-    These are separate from the [general ABAP subagents](#ai-subagents-for-optimized-abap-development) (`@abap-orchestrator` and friends), which are configured through chat and stored in your workspace. SAP Testing's subagents ship with the extension, are configured through a settings panel, and only exist when SAP Testing is enabled. You never call them by name — Copilot delegates to them.
+!!! note "One unified ABAP FS subagent system"
+    These nine testing agents share the unified registry with the [13 general ABAP agents](#ai-subagents-for-optimized-abap-development). They ship with the extension and use the same user-level model settings. Testing availability is controlled as one group by the valid SAP testing folder; you do not enable testing agents individually.
 
 ## The nine subagents
 
@@ -2557,9 +2552,11 @@ These are adversarial on purpose: their job is to catch what the main agent got 
 
 ## Configuring models
 
-`Ctrl+Shift+P` → **ABAP FS: Set Models for SAP Testing Subagents**
+`Ctrl+Shift+P` → **ABAP FS: Set Models for Subagents**
 
-The panel lists all nine with a hint about the kind of model each needs, and a dropdown of the Copilot models available to you. Pick one for each, save, and reload the window when prompted.
+The panel lists General agents and Testing agents in separate collapsible sections, with a hint about the kind of model each needs and a dropdown of the Copilot models available to you. Pick models, save, and continue without reloading.
+
+You can also ask Copilot to configure them through `manage_subagents`: it should call `get_status`, then `list_models`, and configure all nine testing agents with exact model names from the model list.
 
 Guidance that actually affects results:
 
@@ -2573,7 +2570,7 @@ The bundled agent files name specific models. If those aren't in your Copilot su
 
 Two things to know:
 
-- **After an extension update**, ABAP FS re-applies your saved choices automatically (updates reset the bundled agent files) and asks you to reload the window.
+- **After an extension update**, ABAP FS re-applies your saved user-level choices automatically to the new packaged agent files.
 - **If a model you chose disappears** from Copilot, you get an error notification at startup with a **Configure Models** button.
 
 # SAP Testing Tools
@@ -2698,7 +2695,7 @@ The connection Copilot was given doesn't exist or is incomplete. SAP Testing nee
 
 ### "SAP testing subagent model configuration is invalid"
 
-One of the models you chose is no longer offered by Copilot. Click **Configure Models** on the notification, or run **ABAP FS: Set Models for SAP Testing Subagents**, and pick replacements.
+One of the models you chose is no longer offered by Copilot. Click **Configure Models** on the notification, or run **ABAP FS: Set Models for Subagents**, and pick replacements. Testing models are one all-or-nothing group when the testing folder is ready.
 
 ### "No language models are currently available"
 
@@ -2762,7 +2759,7 @@ Internals for people who want them. None of this is needed for day-to-day use �
 |---|---|
 | **ABAP FS: Enable SAP UI Testing Features** | Pick the test folder. This is what switches the feature on |
 | **ABAP FS: Open SAP UI Test Folder** | Reveal the test folder in your file manager |
-| **ABAP FS: Set Models for SAP Testing Subagents** | Choose the model backing each subagent |
+| **ABAP FS: Set Models for Subagents** | Choose models for general and testing agents |
 | **ABAP FS: Record SAP WebGUI Flow** | Record a reference flow in Edge |
 | **ABAP FS: Select System for Playwright Sidebar** | Only for the optional Playwright extension — the sidebar can't ask which system to use |
 
@@ -2770,10 +2767,11 @@ Internals for people who want them. None of this is needed for day-to-day use �
 |---|---|---|
 | `abapfs.testing.folder` | User | The test folder. Setting it enables the feature |
 | `abapfs.testing.edgePath` | User | Browser executable override; empty means auto-detect Edge |
-| `abapfs.testing.subagentModels` | User | Model chosen per subagent — written by the panel, not by hand |
+| `abapfs.subagents.models` | User | Model chosen per general and testing agent — written by the unified panel/tool |
+| `abapfs.subagents.enabledAgents` | User | Per-general-agent visibility; testing agents are controlled by testing-folder readiness |
 | `webGuiAutoLogin` | Per connection | Defaults to true. Turn off for systems behind a gateway that already authenticates you |
 
-Everything is gated behind the `abapfs:testingEnabled` context key, which is set only when `abapfs.testing.folder` resolves to a directory that exists. Skills, subagents, and tools are all contributed conditionally on it.
+Everything testing-specific is gated behind the `abapfs:testingEnabled` context key, which is set only when `abapfs.testing.folder` resolves to a directory that exists. General agents use one context key per agent and are controlled by `abapfs.subagents.enabledAgents`. Skills, agents, and tools are contributed conditionally according to these states.
 
 ## Test folder layout
 
