@@ -4,6 +4,10 @@ jest.mock(
     LanguageModelToolResult: jest.fn().mockImplementation((parts: any[]) => ({ parts })),
     LanguageModelTextPart: jest.fn().mockImplementation((text: string) => ({ text })),
     MarkdownString: jest.fn().mockImplementation((text: string) => ({ text })),
+    workspace: {
+      workspaceFolders: [],
+      getConfiguration: jest.fn()
+    },
     lm: { registerTool: jest.fn(() => ({ dispose: jest.fn() })) }
   }),
   { virtual: true }

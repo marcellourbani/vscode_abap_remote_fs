@@ -2692,7 +2692,30 @@
         "tags": [
           "abap-fs"
         ],
-        "when": "abapfs:extensionActive && !abapfs:noSapConnected"
+        "when": "abapfs:extensionActive"
+      },
+      {
+        "name": "get_configured_systems",
+        "displayName": "Get Configured SAP Systems",
+        "modelDescription": "Without connectionId, return only configured SAP connection IDs. With connectionId, return that system's non-sensitive global settings and package.json defaults; configured values are under settings and defaults are under defaults. ADT URL, username, password, and OAuth client secret are omitted for security.",
+        "canBeReferencedInPrompt": true,
+        "toolReferenceName": "configured-systems",
+        "icon": "$(settings-gear)",
+        "userDescription": "List configured SAP IDs, or inspect one system's non-sensitive settings",
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "connectionId": {
+              "type": "string",
+              "description": "Optional SAP connection ID. Omit this to list IDs only; provide it to retrieve one system's settings."
+            }
+          },
+          "required": []
+        },
+        "tags": [
+          "abap-fs"
+        ],
+        "when": "abapfs:extensionActive"
       },
       {
         "name": "get_version_history",
