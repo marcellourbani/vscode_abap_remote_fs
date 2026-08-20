@@ -19,12 +19,23 @@ const toDecoration = (m: AtcFind): DecorationOptions => ({
 
 const fileFindings = new Map<string, AtcFind[]>()
 
+function syncFindings() {
+  fileFindings.clear()
+  for (const finding of atcProvider.findings()) {
+    const current = fileFindings.get(finding.uri)
+    if (current) current.push(finding)
+    else fileFindings.set(finding.uri, [finding])
+  }
+}
+
 /**
  * Get current decoration state for Copilot/AI analysis
  * @param fileUri Optional specific file URI to get decorations for
  * @returns Decoration data for the file(s)
  */
 export function getATCDecorations(fileUri?: string) {
+  syncFindings()
+
   if (fileUri) {
     const findings = fileFindings.get(fileUri) || []
     return {
@@ -174,14 +185,8 @@ export function registerSCIDecorator(context: ExtensionContext) {
     null,
     context.subscriptions
   )
-  atcProvider.onDidChangeTreeData(() => {
-    const findings = atcProvider.findings()
-    fileFindings.clear()
-    for (const finding of findings) {
-      const current = fileFindings.get(finding.uri)
-      if (current) current.push(finding)
-      else fileFindings.set(finding.uri, [finding])
-    }
+  atcProvider.onDidChangeDecorations(() => {
+    syncFindings()
     triggerUpdateDecorations()
   })
 }

@@ -28,6 +28,9 @@ import { addRepo, repoCredentials } from "../scm/abapGit"
 import { isNone, none, isSome } from "fp-ts/lib/Option"
 import { getClient, ADTSCHEME, getOrCreateClient } from "../adt/conections"
 import { AdtObjectFinder, createUri } from "../adt/operations/AdtObjectFinder"
+import { packageUri } from "../adt/packageUri"
+
+export { packageUri }
 
 const confirm = "Confirm"
 interface AbapGitItem extends TreeItem {
@@ -56,13 +59,6 @@ export const confirmPull = (pkg: string) =>
       "Cancel"
     )
     .then(r => r === confirm)
-
-export const packageUri = async (client: ADTClient, name: string) => {
-  const cancreate = await client.collectionFeatureDetails("/sap/bc/adt/packages")
-  return cancreate
-    ? objectPath(PACKAGE, name)
-    : `/sap/bc/adt/vit/wb/object_type/devck/object_name/${encodeURIComponent(name)}`
-}
 
 class AbapGit {
   public unlink(repo: GitRepo, client: ADTClient) {

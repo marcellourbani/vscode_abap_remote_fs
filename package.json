@@ -1841,7 +1841,12 @@
                 "package",
                 "transport"
               ],
-              "description": "Analysis scope (future enhancement) - currently only 'object' is supported"
+              "description": "Analysis scope: object, package, or transport"
+            },
+            "showUi": {
+              "type": "boolean",
+              "default": false,
+              "description": "Show ATC progress, focus the ATC view, open the target editor, and show editor decorations. Defaults to false for silent analysis."
             },
             "variantName": {
               "type": "string",

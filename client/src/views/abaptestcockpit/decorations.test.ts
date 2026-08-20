@@ -29,10 +29,13 @@ jest.mock("../../services/funMessenger", () => ({
   }
 }))
 
+const mockFindings = jest.fn().mockReturnValue([])
+
 jest.mock(".", () => ({
   atcProvider: {
     onDidChangeTreeData: jest.fn(),
-    findings: jest.fn().mockReturnValue([])
+    onDidChangeDecorations: jest.fn(),
+    findings: mockFindings
   }
 }))
 
@@ -41,6 +44,11 @@ jest.mock("./view", () => ({
 }))
 
 import { getATCDecorations } from "./decorations"
+import { atcProvider } from "."
+
+beforeEach(() => {
+  mockFindings.mockReturnValue([])
+})
 
 const makeFinding = (overrides: Partial<any> = {}): any => ({
   start: { line: 4, character: 2 },
@@ -132,5 +140,26 @@ describe("getATCDecorations - decoration type mapping logic (unit tests on logic
   it("character is converted to 1-based", () => {
     const zeroBasedChar = 2
     expect(zeroBasedChar + 1).toBe(3)
+  })
+})
+
+describe("getATCDecorations - silent ATC results", () => {
+  it("reads current provider findings without requiring a tree event", () => {
+    mockFindings.mockReturnValue([
+      makeFinding({
+        uri: "adt://ged100/System%20Library/ZPKG/source.prog.abap",
+        start: { line: 7, character: 3 },
+        finding: { priority: 2, messageTitle: "Warning", checkTitle: "ATC check" }
+      })
+    ])
+
+    const result = getATCDecorations() as any
+
+    expect(atcProvider.findings).toHaveBeenCalled()
+    expect(result.totalFiles).toBe(1)
+    expect(result.totalFindings).toBe(1)
+    expect(result.decorations["adt://ged100/System%20Library/ZPKG/source.prog.abap"]).toEqual([
+      expect.objectContaining({ line: 8, character: 4, priority: 2, decorationType: "warning" })
+    ])
   })
 })
