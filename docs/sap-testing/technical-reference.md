@@ -8,7 +8,7 @@ Internals for people who want them. None of this is needed for day-to-day use â€
 |---|---|
 | **ABAP FS: Enable SAP UI Testing Features** | Pick the test folder. This is what switches the feature on |
 | **ABAP FS: Open SAP UI Test Folder** | Reveal the test folder in your file manager |
-| **ABAP FS: Set Models for SAP Testing Subagents** | Choose the model backing each subagent |
+| **ABAP FS: Set Models for Subagents** | Choose models for general and testing agents |
 | **ABAP FS: Record SAP WebGUI Flow** | Record a reference flow in Edge |
 | **ABAP FS: Select System for Playwright Sidebar** | Only for the optional Playwright extension â€” the sidebar can't ask which system to use |
 
@@ -16,10 +16,11 @@ Internals for people who want them. None of this is needed for day-to-day use â€
 |---|---|---|
 | `abapfs.testing.folder` | User | The test folder. Setting it enables the feature |
 | `abapfs.testing.edgePath` | User | Browser executable override; empty means auto-detect Edge |
-| `abapfs.testing.subagentModels` | User | Model chosen per subagent â€” written by the panel, not by hand |
+| `abapfs.subagents.models` | User | Model chosen per general and testing agent â€” written by the unified panel/tool |
+| `abapfs.subagents.enabledAgents` | User | Per-general-agent visibility; testing agents are controlled by testing-folder readiness |
 | `webGuiAutoLogin` | Per connection | Defaults to true. Turn off for systems behind a gateway that already authenticates you |
 
-Everything is gated behind the `abapfs:testingEnabled` context key, which is set only when `abapfs.testing.folder` resolves to a directory that exists. Skills, subagents, and tools are all contributed conditionally on it.
+Everything testing-specific is gated behind the `abapfs:testingEnabled` context key, which is set only when `abapfs.testing.folder` resolves to a directory that exists. General agents use one context key per agent and are controlled by `abapfs.subagents.enabledAgents`. Skills, agents, and tools are contributed conditionally according to these states.
 
 ## Test folder layout
 

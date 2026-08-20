@@ -17,7 +17,6 @@ main {
 }
 
 header,
-footer,
 .agent-heading {
   display: flex;
   align-items: center;
@@ -27,6 +26,47 @@ footer,
 
 header {
   margin-bottom: 20px;
+}
+
+.sticky-actions {
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  display: flex;
+  justify-content: flex-end;
+  margin: 0 -24px 16px;
+  padding: 10px 24px;
+  background: var(--vscode-editor-background);
+  border-bottom: 1px solid var(--vscode-editorWidget-border);
+}
+
+.agent-section {
+  margin-bottom: 28px;
+}
+
+.agent-section > summary {
+  cursor: pointer;
+  color: var(--vscode-foreground);
+  font-size: 18px;
+  font-weight: 600;
+  list-style-position: outside;
+}
+
+.agent-section > summary::marker {
+  color: var(--vscode-descriptionForeground);
+}
+
+.agent-section[open] > summary {
+  margin-bottom: 8px;
+}
+
+.section-note {
+  margin: 0 0 12px;
+  color: var(--vscode-descriptionForeground);
+}
+
+.section-note.warning {
+  color: var(--vscode-editorWarning-foreground);
 }
 
 h1,
@@ -76,6 +116,18 @@ header p,
   font-size: 16px;
 }
 
+.agent-controls {
+  margin: 8px 0;
+}
+
+.agent-controls label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--vscode-descriptionForeground);
+  font-size: 12px;
+}
+
 .agent-id {
   color: var(--vscode-descriptionForeground);
   font-family: var(--vscode-editor-font-family);
@@ -99,11 +151,6 @@ select {
   min-height: 18px;
   margin: 6px 0 0;
   font-size: 12px;
-}
-
-footer {
-  justify-content: flex-start;
-  margin-top: 20px;
 }
 
 button {

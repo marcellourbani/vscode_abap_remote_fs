@@ -26,7 +26,7 @@ The connection Copilot was given doesn't exist or is incomplete. SAP Testing nee
 
 ### "SAP testing subagent model configuration is invalid"
 
-One of the models you chose is no longer offered by Copilot. Click **Configure Models** on the notification, or run **ABAP FS: Set Models for SAP Testing Subagents**, and pick replacements.
+One of the models you chose is no longer offered by Copilot. Click **Configure Models** on the notification, or run **ABAP FS: Set Models for Subagents**, and pick replacements. Testing models are one all-or-nothing group when the testing folder is ready.
 
 ### "No language models are currently available"
 

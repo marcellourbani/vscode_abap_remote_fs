@@ -4,10 +4,11 @@ const statusElement = document.getElementById("status")
 const agentsElement = document.getElementById("agents")
 const refreshButton = document.getElementById("refresh")
 const saveButton = document.getElementById("save")
-const reloadButton = document.getElementById("reload")
 
 let agents = []
 let models = []
+let enabledAgents = {}
+let testingEnabled = false
 
 function setBusy(busy) {
   refreshButton.disabled = busy
@@ -80,23 +81,59 @@ function createAgentCard(agent, configuredModel) {
   select.addEventListener("change", () => updateModelDetails(select, details))
   updateModelDetails(select, details)
 
-  card.append(heading, guidance, select, details)
+  if (agent.section === "general") {
+    const controls = document.createElement("div")
+    controls.className = "agent-controls"
+    const toggle = document.createElement("input")
+    toggle.type = "checkbox"
+    toggle.checked = enabledAgents[agent.id] === true
+    toggle.dataset.agentEnabled = agent.id
+    const label = document.createElement("label")
+    label.textContent = "Available to Copilot"
+    label.prepend(toggle)
+    controls.appendChild(label)
+    card.append(heading, controls, guidance, select, details)
+  } else {
+    card.append(heading, guidance, select, details)
+  }
   return card
 }
 
 function renderModelSelectors(configuredModels) {
   agentsElement.replaceChildren()
-  for (const agent of agents) {
-    agentsElement.appendChild(createAgentCard(agent, configuredModels[agent.id] || ""))
+  for (const section of ["general", "testing"]) {
+    const sectionAgents = agents.filter(agent => agent.section === section)
+    if (sectionAgents.length === 0) continue
+    const wrapper = document.createElement("details")
+    wrapper.className = "agent-section"
+    const heading = document.createElement("summary")
+    heading.textContent = section === "general" ? "General agents" : "Testing agents"
+    wrapper.appendChild(heading)
+    if (section === "testing") {
+      const note = document.createElement("p")
+      note.className = testingEnabled ? "section-note" : "section-note warning"
+      note.textContent = testingEnabled
+        ? "Available because the SAP testing folder is configured."
+        : "Unavailable until the SAP testing folder is configured. Models can still be selected."
+      wrapper.appendChild(note)
+    }
+    for (const agent of sectionAgents) {
+      wrapper.appendChild(createAgentCard(agent, configuredModels[agent.id] || ""))
+    }
+    agentsElement.appendChild(wrapper)
   }
 }
 
 function selections() {
-  const result = {}
+  const models = {}
   for (const select of agentsElement.querySelectorAll("select[data-agent-id]")) {
-    result[select.dataset.agentId] = select.value
+    models[select.dataset.agentId] = select.value
   }
-  return result
+  const enabled = {}
+  for (const toggle of agentsElement.querySelectorAll("input[data-agent-enabled]")) {
+    enabled[toggle.dataset.agentEnabled] = toggle.checked
+  }
+  return { models, enabledAgents: enabled }
 }
 
 window.addEventListener("message", event => {
@@ -109,7 +146,8 @@ window.addEventListener("message", event => {
     case "models":
       agents = message.agents || []
       models = message.models || []
-      reloadButton.classList.add("hidden")
+      enabledAgents = message.enabledAgents || {}
+      testingEnabled = message.testingEnabled === true
       if (models.length === 0) {
         agentsElement.replaceChildren()
         showStatus(
@@ -131,13 +169,7 @@ window.addEventListener("message", event => {
       break
     case "saved":
       setBusy(false)
-      showStatus(
-        message.reloadRequired
-          ? "Models saved and agent files updated. Reload the window to use the new assignments."
-          : "Models saved. The agent files already contain these assignments.",
-        "success"
-      )
-      reloadButton.classList.toggle("hidden", !message.reloadRequired)
+      showStatus("Models saved. The new assignments are active.", "success")
       break
     case "error":
       setBusy(false)
@@ -152,10 +184,6 @@ refreshButton.addEventListener("click", () => {
 
 saveButton.addEventListener("click", () => {
   vscode.postMessage({ command: "save", selections: selections() })
-})
-
-reloadButton.addEventListener("click", () => {
-  vscode.postMessage({ command: "reload" })
 })
 
 vscode.postMessage({ command: "ready" })

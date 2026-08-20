@@ -2,7 +2,8 @@ import * as fs from "fs/promises"
 import * as path from "path"
 import * as vscode from "vscode"
 
-import { getSubagentModels, setSubagentModels } from "../config"
+import { getSubagentSettings } from "../../subagentRegistry"
+import { isTestFolderValid } from "../config"
 import {
   AvailableModel,
   FileChange,
@@ -11,7 +12,7 @@ import {
   validateModelSelections,
   writeChangesWithRollback
 } from "./modelConfigurationCore"
-import { SUBAGENT_REGISTRY } from "./registry"
+import { ALL_AGENT_REGISTRY } from "../../subagentRegistry"
 
 export interface ModelDiscoveryResult {
   models: AvailableModel[]
@@ -98,18 +99,18 @@ export async function discoverLanguageModels(): Promise<ModelDiscoveryResult> {
 }
 
 export function configuredSubagentModels(): Record<string, string> {
-  return getSubagentModels()
+  return getSubagentSettings().models
 }
 
 export function hasAnyConfiguredModel(models: Record<string, string>): boolean {
-  return SUBAGENT_REGISTRY.some(agent => Boolean(models[agent.id]?.trim()))
+  return ALL_AGENT_REGISTRY.some(agent => Boolean(models[agent.id]?.trim()))
 }
 
 async function readAgentFileModels(
   context: vscode.ExtensionContext
 ): Promise<Record<string, string>> {
   const models: Record<string, string> = {}
-  for (const agent of SUBAGENT_REGISTRY) {
+  for (const agent of ALL_AGENT_REGISTRY) {
     const content = await fs.readFile(agentFilePath(context, agent.fileName), "utf8")
     models[agent.id] = getFrontmatterModel(content) ?? ""
   }
@@ -120,12 +121,13 @@ export async function effectiveSubagentModels(
   context: vscode.ExtensionContext
 ): Promise<Record<string, string>> {
   const configured = configuredSubagentModels()
-  return hasAnyConfiguredModel(configured) ? configured : readAgentFileModels(context)
+  const packaged = await readAgentFileModels(context)
+  return { ...packaged, ...configured }
 }
 
 function normalizedSelections(selections: Record<string, string>): Record<string, string> {
   return Object.fromEntries(
-    SUBAGENT_REGISTRY.map(agent => [agent.id, selections[agent.id]?.trim() ?? ""])
+    ALL_AGENT_REGISTRY.map(agent => [agent.id, selections[agent.id]?.trim() ?? ""])
   )
 }
 
@@ -134,7 +136,7 @@ async function prepareChanges(
   selections: Record<string, string>
 ): Promise<FileChange[]> {
   const changes: FileChange[] = []
-  for (const agent of SUBAGENT_REGISTRY) {
+  for (const agent of ALL_AGENT_REGISTRY) {
     const filePath = agentFilePath(context, agent.fileName)
     const previousContent = await fs.readFile(filePath, "utf8")
     const nextContent = setFrontmatterModel(previousContent, selections[agent.id])
@@ -170,11 +172,12 @@ async function applySubagentModels(
 export async function saveSubagentModels(
   context: vscode.ExtensionContext,
   selections: Record<string, string>,
-  availableModels: readonly AvailableModel[]
+  availableModels: readonly AvailableModel[],
+  requiredAgentIds: readonly string[]
 ): Promise<ApplyModelsResult> {
   return runExclusive(async () => {
     const normalized = normalizedSelections(selections)
-    const validation = validateModelSelections(normalized, availableModels)
+    const validation = validateModelSelections(normalized, availableModels, requiredAgentIds)
     if (validation.missingAgentIds.length) {
       throw new Error(`Select a model for: ${validation.missingAgentIds.join(", ")}.`)
     }
@@ -189,7 +192,9 @@ export async function saveSubagentModels(
     const changes = await prepareChanges(context, normalized)
     await writeChanges(changes)
     try {
-      await setSubagentModels(normalized)
+      await vscode.workspace
+        .getConfiguration("abapfs.subagents")
+        .update("models", normalized, vscode.ConfigurationTarget.Global)
     } catch (error) {
       await restoreChanges(changes)
       throw error
@@ -206,8 +211,12 @@ export async function reconcileConfiguredSubagentModels(
     const configured = configuredSubagentModels()
     const hasConfiguredModels = hasAnyConfiguredModel(configured)
     const selections = hasConfiguredModels ? configured : await readAgentFileModels(context)
+    const settings = getSubagentSettings()
+    const requiredAgentIds = ALL_AGENT_REGISTRY.filter(
+      agent => agent.section === "general" && settings.enabledAgents[agent.id] === true
+    ).map(agent => agent.id)
 
-    const validation = validateModelSelections(selections, availableModels)
+    const validation = validateModelSelections(selections, availableModels, requiredAgentIds)
     if (validation.missingAgentIds.length || validation.unavailable.length) {
       return { status: "invalid", validation }
     }

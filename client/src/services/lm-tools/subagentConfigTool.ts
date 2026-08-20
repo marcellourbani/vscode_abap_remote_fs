@@ -1,39 +1,24 @@
-/**
- * Subagent Configuration Tool
- *
- * Allows Copilot to configure AI subagents through natural conversation.
- * Users can enable/disable subagents, set models, and view current configuration.
- *
- * This is the main tool class that uses:
- * - subagentRegistry.ts for agent metadata and types
- * - subagentFileOps.ts for file operations
- */
-
 import * as vscode from "vscode"
 import { registerToolWithRegistry } from "./toolRegistry"
 import { logTelemetry } from "../telemetry"
 import { assertToolInvocationAuthorized } from "./toolGuard"
 import {
-  AGENT_REGISTRY,
+  ALL_AGENT_REGISTRY,
+  GENERAL_AGENT_REGISTRY,
+  ensureCustomAgentDelegationEnabled as enableCustomAgentDelegation,
   getSubagentSettings,
-  getWorkspaceFolder,
-  getAvailableModels,
-  getExtensionId,
-  validateModelConfiguration,
-  buildFullToolName
+  getTestingAgentReadiness,
+  migrateSubagentSettings,
+  syncGeneralAgentContexts
 } from "../subagentRegistry"
+import { isTestFolderValid } from "../testing/config"
 import {
-  enableSubagentsCore,
-  disableSubagentsCore,
-  disableAgentFiles,
-  writeAgentFile,
-  refreshExplorer
-} from "../subagentFileOps"
+  discoverLanguageModels,
+  effectiveSubagentModels,
+  saveSubagentModels
+} from "../testing/subagents/modelConfiguration"
+import { validateModelSelections } from "../testing/subagents/modelConfigurationCore"
 import { funWindow as window } from "../funMessenger"
-
-// ============================================================================
-// TOOL IMPLEMENTATION
-// ============================================================================
 
 interface SubagentConfigInput {
   action:
@@ -46,14 +31,144 @@ interface SubagentConfigInput {
     | "configure"
     | "validate"
     | "regenerate"
+  agentIds?: string[]
   configurations?: Array<{ agentId: string; model: string }>
 }
 
-class SubagentConfigTool implements vscode.LanguageModelTool<SubagentConfigInput> {
-  private context: vscode.ExtensionContext
+function text(value: string): vscode.LanguageModelToolResult {
+  return new vscode.LanguageModelToolResult([new vscode.LanguageModelTextPart(value)])
+}
 
-  constructor(context: vscode.ExtensionContext) {
-    this.context = context
+function generalModelGuidance(agent: (typeof GENERAL_AGENT_REGISTRY)[number]): string {
+  if (agent.tier === 1) {
+    return "Use a fast, low-cost model for focused discovery, reading, creation, visualization, or documentation."
+  }
+  if (agent.tier === 2) {
+    return "Use a balanced reasoning model for analysis, quality checks, history, debugging, troubleshooting, or data work."
+  }
+  return "Use the strongest available model for orchestration or deep code review."
+}
+
+const MODEL_SELECTION_GUIDANCE = [
+  "MODEL SELECTION GUIDANCE",
+  "- Use the exact model name returned by list_models.",
+  "- General Tier 1 agents: fast/low-cost models are normally sufficient.",
+  "- General Tier 2 agents: choose a balanced reasoning model.",
+  "- General Tier 3 agents: choose the strongest model for orchestration and deep review.",
+  "- Testing mechanical agents (source download, code grep, data scout): fast models are normally sufficient.",
+  "- Testing research/reviewer agents: use a stronger model; reviewers should preferably use a different model family from the main agent.",
+  "- General agents can be configured selectively. Testing models are all-or-nothing when testing is ready: configure all 9 together.",
+  "- Model changes and enable/disable changes take effect without a VS Code reload."
+]
+
+function requiredAgentIds(
+  settings: ReturnType<typeof getSubagentSettings>,
+  testingEnabled: boolean
+): string[] {
+  return ALL_AGENT_REGISTRY.filter(
+    agent =>
+      (agent.section === "general" && settings.enabledAgents[agent.id] === true) ||
+      (agent.section === "testing" && testingEnabled)
+  ).map(agent => agent.id)
+}
+
+async function availableModels() {
+  const result = await discoverLanguageModels()
+  return result
+}
+
+async function ensureCustomAgentDelegationEnabled(): Promise<void> {
+  const settings = getSubagentSettings()
+  const testingReady = await isTestFolderValid()
+  const generalEnabled = GENERAL_AGENT_REGISTRY.some(
+    agent => settings.enabledAgents[agent.id] === true
+  )
+  if (!generalEnabled && !testingReady) return
+
+  if (await enableCustomAgentDelegation()) {
+    window.showInformationMessage("Custom agent delegation enabled.")
+  }
+}
+
+async function updateGeneralEnabled(
+  agentIds: string[] | undefined,
+  enabled: boolean
+): Promise<string[]> {
+  const requested = agentIds?.length ? agentIds : GENERAL_AGENT_REGISTRY.map(agent => agent.id)
+  const unknown = requested.filter(id => !GENERAL_AGENT_REGISTRY.some(agent => agent.id === id))
+  if (unknown.length) return unknown.map(id => `Unknown or non-general agent: ${id}`)
+
+  const settings = getSubagentSettings()
+  if (enabled) {
+    const discovery = await availableModels()
+    const required = requested
+    const validation = validateModelSelections(settings.models, discovery.models, required)
+    if (validation.missingAgentIds.length || validation.unavailable.length) {
+      const missing = validation.missingAgentIds.join(", ")
+      const unavailable = validation.unavailable
+        .map(item => `${item.agentId} (${item.modelName})`)
+        .join(", ")
+      throw new Error(
+        `Cannot enable agents. ${missing ? `Missing models: ${missing}. ` : ""}${unavailable ? `Unavailable models: ${unavailable}.` : ""}`
+      )
+    }
+  }
+
+  const enabledAgents = { ...settings.enabledAgents }
+  for (const id of requested) enabledAgents[id] = enabled
+  await vscode.workspace
+    .getConfiguration("abapfs.subagents")
+    .update("enabledAgents", enabledAgents, vscode.ConfigurationTarget.Global)
+  await syncGeneralAgentContexts()
+  return []
+}
+
+class SubagentConfigTool implements vscode.LanguageModelTool<SubagentConfigInput> {
+  constructor(private readonly context: vscode.ExtensionContext) {}
+
+  prepareInvocation(
+    options: vscode.LanguageModelToolInvocationPrepareOptions<SubagentConfigInput>,
+    _token: vscode.CancellationToken
+  ) {
+    const { action, agentIds, configurations } = options.input
+    const changing = action === "configure" || action === "enable" || action === "disable"
+    const targets = agentIds?.length
+      ? agentIds.join(", ")
+      : action === "enable" || action === "disable"
+        ? "all 13 general agents"
+        : configurations?.length
+          ? configurations.map(configuration => configuration.agentId).join(", ")
+          : "the subagent registry"
+
+    const invocationMessage =
+      action === "get_status"
+        ? "Checking subagent status and model guidance"
+        : action === "list_models"
+          ? "Listing available models and model-selection guidance"
+          : action === "list_agents"
+            ? "Listing unified general and testing agents"
+            : action === "list_tools"
+              ? "Listing tools available to subagents"
+              : action === "validate"
+                ? "Validating active subagent model assignments"
+                : action === "regenerate"
+                  ? "Checking packaged subagent prompts"
+                  : `${action} ${targets}`
+
+    if (!changing) return { invocationMessage }
+
+    return {
+      invocationMessage,
+      confirmationMessages: {
+        title: "Change ABAP FS subagents",
+        message: new vscode.MarkdownString(
+          `**Action:** ${action}\n\n**Targets:** ${targets}\n\n` +
+            (action === "configure"
+              ? "Model assignments are stored at user level and take effect without a reload."
+              : "Agent visibility changes take effect immediately without a reload.")
+        )
+      }
+    }
   }
 
   async invoke(
@@ -62,722 +177,276 @@ class SubagentConfigTool implements vscode.LanguageModelTool<SubagentConfigInput
   ): Promise<vscode.LanguageModelToolResult> {
     assertToolInvocationAuthorized(options)
     logTelemetry("tool_manage_subagents_called")
-    const { action, configurations } = options.input
+    const input = options.input
 
-    switch (action) {
-      case "enable":
-        return this.enableSubagents()
-
-      case "disable":
-        return this.disableSubagents()
-
-      case "get_status":
-        return this.getStatus()
-
-      case "list_models":
-        return this.listModels()
-
-      case "list_agents":
-        return this.listAgents()
-
-      case "list_tools":
-        return this.listTools()
-
-      case "configure":
-        return this.configureModels(configurations || [])
-
-      case "validate":
-        return this.validateConfiguration()
-
-      case "regenerate":
-        return this.regenerateAgentFiles()
-
-      default:
-        return new vscode.LanguageModelToolResult([
-          new vscode.LanguageModelTextPart(
-            `Unknown action: ${action}. Valid actions: enable, disable, get_status, list_models, list_agents, list_tools, configure, validate, regenerate`
+    try {
+      switch (input.action) {
+        case "enable":
+          return await this.enable(input.agentIds)
+        case "disable":
+          return await this.disable(input.agentIds)
+        case "get_status":
+          return await this.getStatus()
+        case "list_models":
+          return await this.listModels()
+        case "list_agents":
+          return await this.listAgents()
+        case "list_tools":
+          return this.listTools()
+        case "configure":
+          return await this.configureModels(input.configurations || [])
+        case "validate":
+          return await this.validateConfiguration()
+        case "regenerate":
+          return text(
+            "Agent prompts are packaged with ABAP FS. Model assignments are applied without writing workspace files."
           )
-        ])
+        default:
+          return text(`Unknown action: ${input.action}.`)
+      }
+    } catch (error) {
+      return text(
+        `Subagent operation failed: ${error instanceof Error ? error.message : String(error)}`
+      )
     }
   }
 
-  private async enableSubagents(): Promise<vscode.LanguageModelToolResult> {
-    const result = await enableSubagentsCore(this.context)
-
-    if (!result.success) {
-      if (result.error === "no_workspace") {
-        return new vscode.LanguageModelToolResult([
-          new vscode.LanguageModelTextPart("Error: No workspace folder found. Open a folder first.")
-        ])
-      }
-
-      if (result.error === "missing_models") {
-        return new vscode.LanguageModelToolResult([
-          new vscode.LanguageModelTextPart(` CANNOT ENABLE SUBAGENTS - Missing Model Configurations
-
-All subagents MUST have a model assigned before enabling. The following ${result.missingModels!.length} agent(s) have no model configured:
-
-${result.missingModels!.map(id => `  • ${id}`).join("\n")}
-
-To fix this:
-1. Use "list_models" action to see available models (use model NAMES like "Claude Sonnet 4", "GPT-4o")
-2. Use "configure" action to assign models to ALL agents
-3. Then try "enable" again
-
-Example configuration:
-{
-  "action": "configure",
-  "configurations": [
-    {"agentId": "abap-orchestrator", "model": "Claude Sonnet 4"},
-    {"agentId": "abap-code-reviewer", "model": "Claude Sonnet 4"},
-    {"agentId": "abap-discoverer", "model": "Claude Haiku 4.5"},
-    ... (all 13 agents must be configured)
-  ]
-}`)
-        ])
-      }
-
-      if (result.error === "validation_failed") {
-        let errorDetails = ""
-        for (const fileError of result.fileErrors!) {
-          errorDetails += `\n${fileError.agentId}:\n`
-          for (const error of fileError.errors) {
-            errorDetails += `  • ${error}\n`
-          }
-        }
-
-        return new vscode.LanguageModelToolResult([
-          new vscode.LanguageModelTextPart(` SUBAGENTS AUTO-DISABLED - Invalid Agent Files
-
-${result.fileErrors!.length} agent file(s) have validation errors (likely invalid model names):
-${errorDetails}
-
-PROBABLE CAUSE: The model names you configured are not actually valid for GitHub Copilot agents, even though they appeared in the available models list.
-
-TO FIX:
-1. Use "list_models" to see available models
-2. Choose DIFFERENT models (avoid ones that show errors)
-3. Use "configure" to set new models for the affected agents: ${result.fileErrors!.map(e => e.agentId).join(", ")}
-4. Try "enable" again
-
-Common issue: "GPT-4o mini" appears in list but isn't valid - try "GPT-4o" or "Claude Haiku 4.5" instead.`)
-        ])
-      }
-    }
-
-    return new vscode.LanguageModelToolResult([
-      new vscode.LanguageModelTextPart(`Subagents ENABLED for this workspace.
-
-${result.fileStatus}
-
-The agents are now available for use. They will help optimize your ABAP development by delegating specialized tasks to cheaper/faster models.
-
-Tier structure:
-- Tier 1 (Fast/Cheap): discoverer, reader, creator, visualizer, documenter
-- Tier 2 (Analysis): usage-analyzer, quality-checker, historian, debugger, troubleshooter, data-analyst
-- Tier 3 (Premium): orchestrator, code-reviewer
-
-Use "list_agents" action to see details, or "configure" to change models.`)
-    ])
+  private async enable(agentIds?: string[]): Promise<vscode.LanguageModelToolResult> {
+    const errors = await updateGeneralEnabled(agentIds, true)
+    if (errors.length) return text(errors.join("\n"))
+    await ensureCustomAgentDelegationEnabled()
+    const enabled = agentIds?.length || GENERAL_AGENT_REGISTRY.length
+    return text(
+      `Enabled ${enabled} general ABAP agent(s). Testing agents are controlled by the SAP testing folder.`
+    )
   }
 
-  private async disableSubagents(): Promise<vscode.LanguageModelToolResult> {
-    const result = await disableSubagentsCore()
-
-    return new vscode.LanguageModelToolResult([
-      new vscode.LanguageModelTextPart(`Subagents DISABLED.
-
-${result.preserved ? "Agent files preserved in agents_disabled folder (will be restored when you re-enable)." : "No agent files to preserve."}
-
-All ABAP tasks will now be handled by the main model directly.`)
-    ])
+  private async disable(agentIds?: string[]): Promise<vscode.LanguageModelToolResult> {
+    const errors = await updateGeneralEnabled(agentIds, false)
+    if (errors.length) return text(errors.join("\n"))
+    const disabled = agentIds?.length || GENERAL_AGENT_REGISTRY.length
+    return text(
+      `Disabled ${disabled} general ABAP agent(s). Their packaged agent files remain untouched.`
+    )
   }
 
   private async getStatus(): Promise<vscode.LanguageModelToolResult> {
     const settings = getSubagentSettings()
-    const workspaceFolder = getWorkspaceFolder()
-    const validation = await validateModelConfiguration()
+    const testingEnabled = await isTestFolderValid()
+    const testingReadiness = await getTestingAgentReadiness()
+    const discovery = await availableModels()
+    const lines = [
+      "SUBAGENT STATUS",
+      "===============",
+      `Testing folder: ${testingEnabled ? "READY" : "NOT CONFIGURED"}`,
+      `Available models: ${discovery.models.length}`,
+      "",
+      ...MODEL_SELECTION_GUIDANCE,
+      "",
+      "GENERAL AGENTS"
+    ]
 
-    const unavailableModels = validation.filter(v => v.configuredModel && !v.available)
-    const unconfiguredAgents = AGENT_REGISTRY.filter(a => !settings.models[a.id])
-
-    let status = `SUBAGENT STATUS
-===============
-
-Enabled: ${settings.enabled ? "YES " : "NO "}
-Workspace: ${workspaceFolder?.fsPath || "None"}
-`
-
-    if (unconfiguredAgents.length > 0) {
-      status += `
- ${unconfiguredAgents.length} agent(s) need model configuration before subagents can be enabled.
-Use "configure" action to assign models to all agents.
-`
-    } else {
-      status += `
- All agents have models configured.
-`
+    for (const agent of GENERAL_AGENT_REGISTRY) {
+      const model = settings.models[agent.id] || "NOT CONFIGURED"
+      lines.push(
+        `- ${agent.id}: ${settings.enabledAgents[agent.id] === true ? "ENABLED" : "DISABLED"}; tier=${agent.tier}; model=${model}`,
+        `  Guidance: ${generalModelGuidance(agent)}`
+      )
     }
-
-    status += `
-AGENT CONFIGURATIONS:
-`
-
-    for (const agent of AGENT_REGISTRY) {
-      const configuredModel = settings.models[agent.id]
-      const validationResult = validation.find(v => v.agentId === agent.id)
-      const available = validationResult?.available ?? true
-
-      const modelDisplay = configuredModel
-        ? `${configuredModel}${available ? "" : "  NOT AVAILABLE"}`
-        : " NOT CONFIGURED (required)"
-
-      status += `\n${agent.id}:
-  Model: ${modelDisplay}
-  Tier: ${agent.tier}
-  Description: ${agent.description}`
+    lines.push("", "TESTING AGENTS")
+    for (const agent of ALL_AGENT_REGISTRY.filter(item => item.section === "testing")) {
+      lines.push(
+        `- ${agent.id}: ${testingReadiness.ready ? "AVAILABLE" : "UNAVAILABLE"}; model=${settings.models[agent.id] || "NOT CONFIGURED"}`,
+        `  Guidance: ${agent.guidance}`
+      )
     }
-
-    if (unavailableModels.length > 0) {
-      status += `\n\n WARNING: ${unavailableModels.length} agent(s) have models that are not currently available.
-Use "configure" action to set different models.`
-    }
-
-    return new vscode.LanguageModelToolResult([new vscode.LanguageModelTextPart(status)])
+    return text(lines.join("\n"))
   }
 
   private async listModels(): Promise<vscode.LanguageModelToolResult> {
-    const models = await getAvailableModels()
-
-    if (models.length === 0) {
-      return new vscode.LanguageModelToolResult([
-        new vscode.LanguageModelTextPart(
-          "No language models available. Make sure GitHub Copilot is installed and active."
+    const discovery = await availableModels()
+    if (!discovery.models.length) {
+      return text(discovery.error || "No Copilot language models are currently available.")
+    }
+    return text(
+      [
+        "AVAILABLE LANGUAGE MODELS",
+        "========================",
+        ...MODEL_SELECTION_GUIDANCE,
+        "",
+        ...discovery.models.map(
+          model =>
+            `${model.name} (${model.vendor}, ${model.family}${model.version ? `, ${model.version}` : ""})`
         )
-      ])
-    }
-
-    let result = `AVAILABLE LANGUAGE MODELS
-========================
-
-IMPORTANT: Use the model NAME (e.g., "Claude Sonnet 4") when configuring agents.
-
-`
-
-    const byVendor = new Map<string, typeof models>()
-    for (const model of models) {
-      const existing = byVendor.get(model.vendor) || []
-      existing.push(model)
-      byVendor.set(model.vendor, existing)
-    }
-
-    for (const [vendor, vendorModels] of byVendor) {
-      result += `${vendor}:\n`
-      for (const model of vendorModels) {
-        result += `  - ${model.name}\n    Family: ${model.family}\n`
-      }
-      result += "\n"
-    }
-
-    result += `\nTo use a model for an agent, use the "configure" action with the model NAME (e.g., "Claude Sonnet 4", "GPT-4o").`
-
-    return new vscode.LanguageModelToolResult([new vscode.LanguageModelTextPart(result)])
+      ].join("\n")
+    )
   }
 
   private async listAgents(): Promise<vscode.LanguageModelToolResult> {
     const settings = getSubagentSettings()
-    const unconfiguredCount = AGENT_REGISTRY.filter(a => !settings.models[a.id]).length
-
-    let result = `AVAILABLE SUBAGENTS
-==================
-`
-
-    if (unconfiguredCount > 0) {
-      result += `
- ${unconfiguredCount} agent(s) need model configuration.
-All agents MUST have a model assigned before subagents can be enabled.
-
-`
-    } else {
-      result += `
- All agents configured and ready.
-
-`
+    const testingEnabled = await isTestFolderValid()
+    const testingReadiness = await getTestingAgentReadiness()
+    const lines = ["AVAILABLE SUBAGENTS", "==================", "", "GENERAL AGENTS"]
+    for (const agent of GENERAL_AGENT_REGISTRY) {
+      lines.push(
+        `${agent.id} - ${settings.enabledAgents[agent.id] === true ? "enabled" : "disabled"} - Tier ${agent.tier} - ${agent.description}`
+      )
     }
-
-    const tiers = [
-      { tier: 3, name: "Tier 3 - Premium (Complex Reasoning)", color: "" },
-      { tier: 2, name: "Tier 2 - Analysis & Understanding", color: "" },
-      { tier: 1, name: "Tier 1 - Fast & Cheap", color: "" }
-    ]
-
-    for (const tierInfo of tiers) {
-      const tierAgents = AGENT_REGISTRY.filter(a => a.tier === tierInfo.tier)
-      result += `${tierInfo.color} ${tierInfo.name}\n${"─".repeat(50)}\n`
-
-      for (const agent of tierAgents) {
-        const configuredModel = settings.models[agent.id]
-        const modelDisplay = configuredModel ? configuredModel : " NOT CONFIGURED"
-        result += `
-${agent.id}
-  ${agent.description}
-  Model: ${modelDisplay}
-  Tools: ${agent.tools ? agent.tools.length + " specific tools" : "All tools"}
-`
-      }
-      result += "\n"
+    lines.push("", "TESTING AGENTS")
+    for (const agent of ALL_AGENT_REGISTRY.filter(item => item.section === "testing")) {
+      lines.push(
+        `${agent.id} - ${testingReadiness.ready ? "available" : testingEnabled ? "unavailable until all testing-agent models are configured" : "unavailable until testing folder is configured"} - ${agent.description}`
+      )
     }
-
-    return new vscode.LanguageModelToolResult([new vscode.LanguageModelTextPart(result)])
+    return text(lines.join("\n"))
   }
 
-  private async listTools(): Promise<vscode.LanguageModelToolResult> {
-    const extensionId = getExtensionId(this.context)
-
-    let result = `AVAILABLE TOOLS FOR SUBAGENTS
-=============================
-
-These are the tool reference names you can use in agent .md files.
-Tools are defined with the full extension prefix: ${extensionId}/<tool-name>
-
-DEFAULT TOOL ASSIGNMENTS:
-`
-
-    for (const agent of AGENT_REGISTRY) {
-      if (agent.tools) {
-        result += `\n${agent.id}:\n`
-        for (const tool of agent.tools) {
-          result += `  - ${buildFullToolName(extensionId, tool)}\n`
-        }
-      } else {
-        result += `\n${agent.id}: (all tools - no restriction)\n`
-      }
+  private listTools(): vscode.LanguageModelToolResult {
+    const tools = new Set<string>()
+    for (const agent of ALL_AGENT_REGISTRY) {
+      for (const tool of agent.tools || []) tools.add(tool)
     }
-
-    result += `
-CUSTOMIZING TOOLS:
-To customize tools for an agent, edit the agent's .md file directly in:
-  .github/agents/<agent-id>.agent.md
-
-Change the 'tools:' line to include only the tools you want that agent to use.
-Example:
-  tools: ['${extensionId}/abap-search', '${extensionId}/abap-info']
-
-ALL AVAILABLE TOOL NAMES:
-`
-
-    // Collect all unique tool names from registry
-    const allTools = new Set<string>()
-    for (const agent of AGENT_REGISTRY) {
-      if (agent.tools) {
-        for (const tool of agent.tools) {
-          allTools.add(tool)
-        }
-      }
-    }
-
-    const sortedTools = Array.from(allTools).sort()
-    for (const tool of sortedTools) {
-      result += `  - ${tool} → ${buildFullToolName(extensionId, tool)}\n`
-    }
-
-    return new vscode.LanguageModelToolResult([new vscode.LanguageModelTextPart(result)])
+    return text(
+      ["AVAILABLE SUBAGENT TOOLS", "========================", ...[...tools].sort()].join("\n")
+    )
   }
 
   private async configureModels(
     configurations: Array<{ agentId: string; model: string }>
   ): Promise<vscode.LanguageModelToolResult> {
-    if (!configurations || configurations.length === 0) {
-      return new vscode.LanguageModelToolResult([
-        new vscode.LanguageModelTextPart(`No configurations provided. 
+    if (!configurations.length) return text("Provide configurations as [{ agentId, model }].")
 
-Usage: Provide an array of {agentId, model} objects.
-
-Available agent IDs:
-${AGENT_REGISTRY.map(a => `- ${a.id}`).join("\n")}
-
-Use "list_models" action to see available models.`)
-      ])
-    }
-
+    const discovery = await availableModels()
     const settings = getSubagentSettings()
-    const currentModels = { ...settings.models }
-    const availableModels = await getAvailableModels()
-    const availableNames = new Set(availableModels.map(m => m.name))
-    const agentIds = new Set(AGENT_REGISTRY.map(a => a.id))
-
-    const results: string[] = []
+    const selections = await effectiveSubagentModels(this.context)
     const warnings: string[] = []
+    const configuredIds: string[] = []
 
-    for (const config of configurations) {
-      if (!agentIds.has(config.agentId)) {
-        warnings.push(`Unknown agent: ${config.agentId}`)
+    for (const configuration of configurations) {
+      if (!ALL_AGENT_REGISTRY.some(agent => agent.id === configuration.agentId)) {
+        warnings.push(`Unknown agent: ${configuration.agentId}`)
         continue
       }
-
-      if (!availableNames.has(config.model)) {
+      selections[configuration.agentId] = configuration.model.trim()
+      configuredIds.push(configuration.agentId)
+      if (!discovery.models.some(model => model.name === configuration.model)) {
         warnings.push(
-          `Model "${config.model}" not available for ${config.agentId} - setting anyway`
+          `Model "${configuration.model}" is not currently available for ${configuration.agentId}`
         )
       }
-
-      currentModels[config.agentId] = config.model
-      results.push(` ${config.agentId} → ${config.model}`)
     }
 
-    const vsConfig = vscode.workspace.getConfiguration("abapfs.subagents")
-    await vsConfig.update("models", currentModels, vscode.ConfigurationTarget.Workspace)
-
-    const workspaceFolder = getWorkspaceFolder()
-    if (settings.enabled && workspaceFolder) {
-      const extensionId = getExtensionId(this.context)
-      for (const config of configurations) {
-        const agent = AGENT_REGISTRY.find(a => a.id === config.agentId)
-        if (agent) {
-          await writeAgentFile(this.context, workspaceFolder, agent, config.model, extensionId)
-        }
-      }
-    }
-
-    let response = `MODEL CONFIGURATION UPDATED
-
-${results.join("\n")}`
-
-    if (warnings.length > 0) {
-      response += `\n\n WARNINGS:\n${warnings.join("\n")}`
-    }
-
-    if (settings.enabled && workspaceFolder) {
-      response += "\n\nAgent files have been updated."
-    } else if (!settings.enabled) {
-      response += '\n\nNote: Subagents are currently disabled. Use "enable" action to activate.'
-    }
-
-    return new vscode.LanguageModelToolResult([new vscode.LanguageModelTextPart(response)])
+    const testingEnabled = await isTestFolderValid()
+    const selectedTesting = configurations.some(configuration =>
+      ALL_AGENT_REGISTRY.some(
+        agent => agent.id === configuration.agentId && agent.section === "testing"
+      )
+    )
+    const required = [
+      ...new Set([
+        ...configuredIds,
+        ...GENERAL_AGENT_REGISTRY.filter(agent => settings.enabledAgents[agent.id] === true).map(
+          agent => agent.id
+        ),
+        ...(selectedTesting && testingEnabled
+          ? ALL_AGENT_REGISTRY.filter(agent => agent.section === "testing").map(agent => agent.id)
+          : [])
+      ])
+    ]
+    const result = await saveSubagentModels(this.context, selections, discovery.models, required)
+    await syncGeneralAgentContexts()
+    await ensureCustomAgentDelegationEnabled()
+    return text(
+      [
+        "MODEL CONFIGURATION UPDATED",
+        "",
+        ...configurations.map(
+          configuration => `- ${configuration.agentId} -> ${configuration.model}`
+        ),
+        warnings.length ? `\nWarnings:\n${warnings.join("\n")}` : "",
+        result.changedFiles.length ? "\nModel assignments are active without a reload." : ""
+      ].join("\n")
+    )
   }
 
   private async validateConfiguration(): Promise<vscode.LanguageModelToolResult> {
-    const validation = await validateModelConfiguration()
     const settings = getSubagentSettings()
-
-    const unavailable = validation.filter(v => v.configuredModel && !v.available)
-    const unconfigured = validation.filter(v => !v.configuredModel)
-
-    if (unconfigured.length > 0) {
-      return new vscode.LanguageModelToolResult([
-        new vscode.LanguageModelTextPart(` INCOMPLETE CONFIGURATION
-
-${unconfigured.length} agent(s) have no model assigned:
-
-${unconfigured.map(u => `  • ${u.agentId}`).join("\n")}
-
- Subagents CANNOT be enabled until ALL agents have models configured.
-
-Use "configure" action to assign models to all agents, then "enable".
-Use "list_models" to see available model names.`)
-      ])
+    const testingEnabled = await isTestFolderValid()
+    const discovery = await availableModels()
+    const required = requiredAgentIds(settings, testingEnabled)
+    const validation = validateModelSelections(settings.models, discovery.models, required)
+    if (!validation.missingAgentIds.length && !validation.unavailable.length) {
+      return text(`All ${required.length} active subagent(s) have available models.`)
     }
-
-    if (unavailable.length === 0) {
-      const readyMessage = settings.enabled
-        ? ` All ${AGENT_REGISTRY.length} agents are configured and ready to use.`
-        : ` All ${AGENT_REGISTRY.length} agents are configured. Use "enable" action to activate subagents.`
-      return new vscode.LanguageModelToolResult([new vscode.LanguageModelTextPart(readyMessage)])
-    }
-
-    let result = ` MODEL AVAILABILITY ISSUES
-
-${unavailable.length} agent(s) have unavailable models:
-
-`
-
-    for (const item of unavailable) {
-      result += `${item.agentId}:
-  Configured: ${item.configuredModel} (NOT AVAILABLE)
-  
-`
-    }
-
-    result += `\nUse "configure" action to set different models (use model NAMES like "Claude Sonnet 4").
-Use "list_models" action to see available model names.`
-
-    return new vscode.LanguageModelToolResult([new vscode.LanguageModelTextPart(result)])
-  }
-
-  private async regenerateAgentFiles(): Promise<vscode.LanguageModelToolResult> {
-    const settings = getSubagentSettings()
-
-    if (!settings.enabled) {
-      return new vscode.LanguageModelToolResult([
-        new vscode.LanguageModelTextPart('Subagents are not enabled. Use "enable" action first.')
-      ])
-    }
-
-    const workspaceFolder = getWorkspaceFolder()
-    if (!workspaceFolder) {
-      return new vscode.LanguageModelToolResult([
-        new vscode.LanguageModelTextPart("Error: No workspace folder found.")
-      ])
-    }
-
-    const extensionId = getExtensionId(this.context)
-    const results: string[] = []
-
-    for (const agent of AGENT_REGISTRY) {
-      const model = settings.models[agent.id] || ""
-      try {
-        const result = await writeAgentFile(
-          this.context,
-          workspaceFolder,
-          agent,
-          model,
-          extensionId
-        )
-        if (result.created) {
-          results.push(` Created ${agent.id}.agent.md`)
-        } else if (result.updated) {
-          results.push(` Updated ${agent.id}.agent.md`)
-        } else {
-          results.push(`- ${agent.id}.agent.md (no changes needed)`)
-        }
-      } catch (error) {
-        results.push(` Failed ${agent.id}: ${error}`)
-      }
-    }
-
-    return new vscode.LanguageModelToolResult([
-      new vscode.LanguageModelTextPart(`AGENT FILES REGENERATED
-
-${results.join("\n")}
-
-Files are in: ${workspaceFolder.fsPath}/.github/agents/`)
-    ])
+    return text(
+      [
+        "SUBAGENT MODEL ISSUES",
+        "",
+        validation.missingAgentIds.length
+          ? `Missing: ${validation.missingAgentIds.join(", ")}`
+          : "",
+        validation.unavailable.length
+          ? `Unavailable: ${validation.unavailable.map(item => `${item.agentId} (${item.modelName})`).join(", ")}`
+          : ""
+      ]
+        .filter(Boolean)
+        .join("\n")
+    )
   }
 }
-
-// ============================================================================
-// REGISTRATION & EVENT HANDLERS
-// ============================================================================
-
-let isHandlingConfigChange = false
-let isHandlingModelChange = false
-// Debounce `onDidChangeChatModels`: the event storms during Copilot startup,
-// and validating mid-storm sees a partial model list and falsely AUTO-DISABLES.
-let modelChangeTimer: ReturnType<typeof setTimeout> | undefined
-const MODEL_CHANGE_DEBOUNCE_MS = 5000
 
 export function registerSubagentConfigTool(context: vscode.ExtensionContext): void {
   context.subscriptions.push(
     registerToolWithRegistry("manage_subagents", new SubagentConfigTool(context))
   )
 
-  context.subscriptions.push(
-    vscode.lm.onDidChangeChatModels(() => {
-      if (modelChangeTimer) clearTimeout(modelChangeTimer)
-      modelChangeTimer = setTimeout(async () => {
-        modelChangeTimer = undefined
-        if (isHandlingModelChange) return
-        isHandlingModelChange = true
-        try {
-          await handleModelChange(context)
-        } finally {
-          isHandlingModelChange = false
-        }
-      }, MODEL_CHANGE_DEBOUNCE_MS)
-    })
-  )
-
-  context.subscriptions.push({
-    dispose: () => {
-      if (modelChangeTimer) clearTimeout(modelChangeTimer)
-    }
-  })
+  void migrateSubagentSettings()
+    .then(() => syncGeneralAgentContexts())
+    .then(() => ensureCustomAgentDelegationEnabled())
 
   context.subscriptions.push(
-    vscode.workspace.onDidChangeConfiguration(async e => {
-      if (isHandlingConfigChange) return
-
-      if (e.affectsConfiguration("abapfs.subagents.enabled")) {
-        isHandlingConfigChange = true
-        try {
-          await handleManualSettingsChange(context)
-        } finally {
-          isHandlingConfigChange = false
-        }
-      } else if (e.affectsConfiguration("abapfs.subagents.models")) {
-        await handleManualModelChange(context)
+    vscode.workspace.onDidChangeConfiguration(async event => {
+      if (event.affectsConfiguration("abapfs.subagents.enabledAgents")) {
+        await syncGeneralAgentContexts()
+      }
+      if (event.affectsConfiguration("abapfs.subagents.models")) {
+        await validateSubagentsOnStartup(context)
       }
     })
   )
 }
 
-async function handleManualModelChange(context: vscode.ExtensionContext): Promise<void> {
+export async function validateSubagentsOnStartup(_context: vscode.ExtensionContext): Promise<void> {
+  try {
+    await migrateSubagentSettings()
+  } catch {
+    // migrateSubagentSettings is fail-open; keep startup validation alive if a future change throws.
+  }
+  await syncGeneralAgentContexts()
+
   const settings = getSubagentSettings()
-
-  if (!settings.enabled) {
-    return
-  }
-
-  const workspaceFolder = getWorkspaceFolder()
-  if (!workspaceFolder) {
-    return
-  }
-
-  // `handleModelChange` validates and auto-disables if anything is invalid.
-  // If it disabled subagents, there's nothing more to do.
-  await handleModelChange(context)
-  if (!getSubagentSettings().enabled) {
-    return
-  }
-
-  const extensionId = getExtensionId(context)
-  let updated = 0
-
-  for (const agent of AGENT_REGISTRY) {
-    const model = settings.models[agent.id]
-    if (model) {
-      try {
-        const result = await writeAgentFile(context, workspaceFolder, agent, model, extensionId)
-        if (result.updated) updated++
-      } catch {
-        // Ignore errors
-      }
-    }
-  }
-
-  if (updated > 0) {
-    await refreshExplorer()
-    window.showInformationMessage(`Updated ${updated} agent file(s) with new model configurations.`)
-  }
-}
-
-async function handleManualSettingsChange(context: vscode.ExtensionContext): Promise<void> {
-  const settings = getSubagentSettings()
-
-  if (settings.enabled) {
-    const result = await enableSubagentsCore(context)
-
-    if (!result.success) {
-      // Revert the tick so the UI reflects reality. `enableSubagentsCore`
-      // only reverts on validation_failed; missing_models and no_workspace
-      // return early without touching the config.
-      const config = vscode.workspace.getConfiguration("abapfs.subagents")
-      await config.update("enabled", false, vscode.ConfigurationTarget.Workspace)
-
-      if (result.error === "no_workspace") {
-        window.showErrorMessage("Cannot enable subagents: No workspace folder found.")
-      } else if (result.error === "missing_models") {
-        window.showErrorMessage(
-          `Cannot enable subagents: ${result.missingModels!.length} agent(s) have no model configured. ` +
-            `Ask Copilot to "configure subagent models" first.`
-        )
-      } else if (result.error === "validation_failed") {
-        const agents = result.fileErrors!.map(e => e.agentId).join(", ")
-        window.showErrorMessage(
-          `Subagents auto-disabled: Invalid model names detected for: ${agents}. ` +
-            `Ask Copilot to "configure subagent models" with valid models.`
-        )
-      }
-    } else {
-      window.showInformationMessage(`Subagents enabled. ${result.fileStatus}`)
-    }
-  } else {
-    const result = await disableSubagentsCore()
-    if (result.preserved) {
-      window.showInformationMessage(
-        "Subagents disabled. Agent files preserved in agents_disabled folder."
-      )
-    }
-  }
-}
-
-async function handleModelChange(context: vscode.ExtensionContext): Promise<void> {
-  const settings = getSubagentSettings()
-
-  if (!settings.enabled) {
-    return
-  }
-
-  const validation = await validateModelConfiguration()
-  const unavailable = validation.filter(v => !v.available)
-
-  if (unavailable.length > 0) {
-    const config = vscode.workspace.getConfiguration("abapfs.subagents")
-    await config.update("enabled", false, vscode.ConfigurationTarget.Workspace)
-
-    const workspaceFolder = getWorkspaceFolder()
-    if (workspaceFolder) {
-      await disableAgentFiles(workspaceFolder)
-    }
-
-    const invalidModels = unavailable.filter(u => u.configuredModel)
-    const modelNames = invalidModels.map(u => u.configuredModel).join(", ")
-
-    window.showWarningMessage(
-      `Subagents AUTO-DISABLED: Model(s) no longer available: ${modelNames}. Agent files preserved in agents_disabled folder.`,
-      "OK"
+  const discovery = await availableModels()
+  if (!discovery.models.length) return
+  const validation = validateModelSelections(
+    settings.models,
+    discovery.models,
+    GENERAL_AGENT_REGISTRY.filter(agent => settings.enabledAgents[agent.id] === true).map(
+      agent => agent.id
     )
-  }
-}
+  )
+  if (!validation.missingAgentIds.length && !validation.unavailable.length) return
 
-// ============================================================================
-// STARTUP VALIDATION
-// ============================================================================
-
-export async function validateSubagentsOnStartup(context: vscode.ExtensionContext): Promise<void> {
-  const settings = getSubagentSettings()
-
-  if (!settings.enabled) {
-    return
-  }
-
-  const validation = await validateModelConfiguration()
-  const unavailable = validation.filter(v => !v.available)
-
-  if (unavailable.length > 0) {
-    const config = vscode.workspace.getConfiguration("abapfs.subagents")
-    await config.update("enabled", false, vscode.ConfigurationTarget.Workspace)
-
-    const workspaceFolder = getWorkspaceFolder()
-    if (workspaceFolder) {
-      await disableAgentFiles(workspaceFolder)
-    }
-
-    const missing = unavailable.filter(u => !u.configuredModel)
-    const invalidModels = unavailable.filter(u => u.configuredModel)
-
-    let details = ""
-    if (missing.length > 0) {
-      details += `Missing model configuration:\n${missing.map(u => `  • ${u.agentId}`).join("\n")}\n\n`
-    }
-    if (invalidModels.length > 0) {
-      details += `Unavailable models:\n${invalidModels.map(u => `  • ${u.agentId}: ${u.configuredModel}`).join("\n")}\n\n`
-    }
-
-    const message = `Subagents have been DISABLED: ${unavailable.length} agent(s) have invalid/missing models.`
-
-    const action = await window.showWarningMessage(message, "View Details", "Dismiss")
-
-    if (action === "View Details") {
-      window.showInformationMessage(
-        `${details}To re-enable subagents:\n1. Ask Copilot to "list models" to see available models\n2. Ask Copilot to "configure subagent models"\n3. Ask Copilot to "enable subagents"`
-      )
-    }
-    return
-  }
-
-  const workspaceFolder = getWorkspaceFolder()
-  if (workspaceFolder) {
-    const extensionId = getExtensionId(context)
-    for (const agent of AGENT_REGISTRY) {
-      const model = settings.models[agent.id]
-      if (model) {
-        try {
-          await writeAgentFile(context, workspaceFolder, agent, model, extensionId)
-        } catch {
-          // Silently fail on startup
-        }
-      }
-    }
-  }
+  const invalidIds = new Set([
+    ...validation.missingAgentIds,
+    ...validation.unavailable.map(item => item.agentId)
+  ])
+  const enabledAgents = { ...settings.enabledAgents }
+  for (const agentId of invalidIds) enabledAgents[agentId] = false
+  await vscode.workspace
+    .getConfiguration("abapfs.subagents")
+    .update("enabledAgents", enabledAgents, vscode.ConfigurationTarget.Global)
+  await syncGeneralAgentContexts()
+  window.showWarningMessage(
+    `Disabled ${invalidIds.size} general agent(s) with missing or unavailable models.`
+  )
 }

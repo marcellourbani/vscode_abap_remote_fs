@@ -3,6 +3,9 @@ import { AGENT_REGISTRY, AgentMeta } from "./subagentRegistry"
 // subagentRegistry imports vscode but only uses it for types in other exported items.
 // AGENT_REGISTRY is a plain array, so we mock vscode to allow the import.
 jest.mock("vscode", () => ({}), { virtual: true })
+jest.mock("./testing/config", () => ({
+  isTestFolderValid: jest.fn().mockResolvedValue(false)
+}))
 
 describe("AGENT_REGISTRY", () => {
   test("is a non-empty array", () => {

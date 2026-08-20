@@ -17,6 +17,8 @@ export type AbapFsContexts =
   | "abapfs:activeEditorIsTable"
   | "abapfs:noSapConnected"
   | "abapfs:testingEnabled"
+  | "abapfs:testingAgentsReady"
+  | `abapfs:generalAgent.${string}.enabled`
 
 export const setContext = (key: AbapFsContexts, value: unknown) =>
   commands.executeCommand("setContext", key, value)

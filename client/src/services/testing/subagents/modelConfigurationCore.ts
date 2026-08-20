@@ -1,4 +1,4 @@
-import { SUBAGENT_REGISTRY } from "./registry"
+import { ALL_AGENT_REGISTRY } from "../../subagentRegistry"
 
 export interface AvailableModel {
   id: string
@@ -67,18 +67,19 @@ export function setFrontmatterModel(content: string, modelName: string): string 
 
 export function validateModelSelections(
   selections: Record<string, string>,
-  availableModels: readonly AvailableModel[]
+  availableModels: readonly AvailableModel[],
+  requiredAgentIds: readonly string[] = ALL_AGENT_REGISTRY.map(agent => agent.id)
 ): ModelValidation {
   const availableNames = new Set(availableModels.map(model => model.name))
   const missingAgentIds: string[] = []
   const unavailable: Array<{ agentId: string; modelName: string }> = []
 
-  for (const agent of SUBAGENT_REGISTRY) {
-    const modelName = selections[agent.id]?.trim()
+  for (const agentId of requiredAgentIds) {
+    const modelName = selections[agentId]?.trim()
     if (!modelName) {
-      missingAgentIds.push(agent.id)
+      missingAgentIds.push(agentId)
     } else if (!availableNames.has(modelName)) {
-      unavailable.push({ agentId: agent.id, modelName })
+      unavailable.push({ agentId, modelName })
     }
   }
   return { missingAgentIds, unavailable }
