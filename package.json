@@ -2,7 +2,7 @@
   "name": "vscode-abap-remote-fs",
   "displayName": "ABAP remote filesystem",
   "description": "VS Code-based Agentic AI Platform for SAP ABAP Development",
-  "version": "2.8.5",
+  "version": "2.8.6",
   "publisher": "murbani",
   "publishConfig": {
     "access": "restricted",
@@ -932,7 +932,7 @@
       {
         "name": "search_abap_object_lines",
         "displayName": "Search ABAP Object Lines",
-        "modelDescription": "Search text inside ABAP source. Literal or regex (isRegexp=true). Prefer over VS Code grep — ABAP source lives on remote system, grep_search misses it. objectName wildcards scan multiple objects (max 10). Class structure trick: regex '^\\s*(CLASS-)?METHODS?\\s+\\w+' with contextLines=0 lists all method names. IMPORTANT: searches committed code only, not unsaved local edits.",
+        "modelDescription": "Search text inside ABAP source. Literal or regex (isRegexp=true). Prefer over VS Code grep — ABAP source lives on remote system, grep_search misses it. objectName wildcards scan multiple objects (max 100). Class structure trick: regex '^\\s*(CLASS-)?METHODS?\\s+\\w+' with contextLines=0 lists all method names. IMPORTANT: searches committed code only, not unsaved local edits.",
         "canBeReferencedInPrompt": true,
         "toolReferenceName": "abap-search-lines",
         "icon": "$(search-stop)",
@@ -966,8 +966,8 @@
               "type": "number",
               "default": 1,
               "minimum": 1,
-              "maximum": 10,
-              "description": "Max objects to scan when objectName has wildcards (Z*, BAPI_*). 1 = single object, max 10 = multi-object batch. Only applies with wildcards."
+              "maximum": 100,
+              "description": "Max objects to scan when objectName has wildcards (Z*, BAPI_*). 1 = single object, max 100 = multi-object batch. Only applies with wildcards."
             }
           },
           "required": [
