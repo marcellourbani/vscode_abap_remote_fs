@@ -58,7 +58,7 @@ describe("searchService.searchObjects", () => {
     const svc = new searchService("myconn")
     await svc.searchObjects("ZFM*", ["FUNC"])
 
-    expect(mockClient.searchObject).toHaveBeenCalledWith("ZFM*", "FUNC")
+    expect(mockClient.searchObject).toHaveBeenCalledWith("ZFM*", "FUNC", 50)
   })
 
   it("converts pattern to uppercase", async () => {
@@ -70,7 +70,7 @@ describe("searchService.searchObjects", () => {
     const svc = new searchService("myconn")
     await svc.searchObjects("zcl_test", ["CLAS"])
 
-    expect(mockClient.searchObject).toHaveBeenCalledWith("ZCL_TEST", "CLAS")
+    expect(mockClient.searchObject).toHaveBeenCalledWith("ZCL_TEST", "CLAS", 50)
   })
 
   it("classifies Z-objects as CUSTOM", async () => {
