@@ -1,5 +1,14 @@
 # Changelog
 
+## 2.8.5
+
+### Patch Changes
+
+- 8d73cb6: add configured systems tool
+- 6d9e275: add package/TR support for ATC LM tool
+- 9cb3614: text elements improvements
+- 21d479b: unify general and testing subagent frameworks
+
 ## 2.8.4
 
 ### Patch Changes
