@@ -84,7 +84,7 @@ export class searchService {
 
       for (const type of searchTypes) {
         try {
-          const searchResults = await client.searchObject(searchPattern, type)
+          const searchResults = await client.searchObject(searchPattern, type, maxResults)
           for (const result of searchResults.slice(0, maxResults)) {
             const objName = result["adtcore:name"]
             const objType = result["adtcore:type"]
