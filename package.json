@@ -536,7 +536,7 @@
             "connectionId"
           ]
         },
-        "when": "abapfs:extensionActive && abapfs:testingEnabled"
+        "when": "abapfs:extensionActive && !abapfs:noSapConnected"
       },
       {
         "name": "build_test_index",
