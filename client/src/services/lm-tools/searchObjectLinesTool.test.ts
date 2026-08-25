@@ -436,20 +436,20 @@ describe("SearchABAPObjectLinesTool", () => {
       expect(mockSearcher.searchObjects).toHaveBeenCalledWith("ZTEST", undefined, 1)
     })
 
-    it("clamps maxObjects above 10 to 10", async () => {
+    it("clamps maxObjects above 100 to 100", async () => {
       mockSearcher.searchObjects.mockResolvedValue([])
 
       await tool.invoke(
         makeOptions({
           objectName: "ZTEST",
           searchTerm: "DATA",
-          maxObjects: 50,
+          maxObjects: 150,
           connectionId: "dev100"
         }),
         mockToken
       )
 
-      expect(mockSearcher.searchObjects).toHaveBeenCalledWith("ZTEST", undefined, 10)
+      expect(mockSearcher.searchObjects).toHaveBeenCalledWith("ZTEST", undefined, 100)
     })
   })
 

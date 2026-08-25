@@ -174,8 +174,8 @@ export class SearchABAPObjectLinesTool implements vscode.LanguageModelTool<ISear
       connectionId = connectionId.toLowerCase()
     }
 
-    if (maxObjects < 1 || maxObjects > 10) {
-      maxObjects = Math.max(1, Math.min(10, maxObjects))
+    if (maxObjects < 1 || maxObjects > 100) {
+      maxObjects = Math.max(1, Math.min(100, maxObjects))
     }
 
     try {
@@ -460,13 +460,12 @@ export class SearchABAPObjectLinesTool implements vscode.LanguageModelTool<ISear
       const resultHeader =
         maxObjects > 1
           ? `Found ${grandTotal} matches for "${searchTerm}" across ${totalObjectsSearched} objects matching ${objectName}:\n` +
-            `Objects: ${totalObjectsSearched}/${searchResults.length} | Base: ${totalMatches} | Enhancement: ${totalEnhancementMatches}\n` +
-            objectListSection
+            `Objects: ${totalObjectsSearched}/${searchResults.length} | Base: ${totalMatches} | Enhancement: ${totalEnhancementMatches}\n\n`
           : `Found ${grandTotal} matches for "${searchTerm}" in ${objectName}:\n` +
             `Base: ${totalMatches} | Enhancement: ${totalEnhancementMatches}\n\n`
 
       return new vscode.LanguageModelToolResult([
-        new vscode.LanguageModelTextPart(resultHeader + allResultsText)
+        new vscode.LanguageModelTextPart(resultHeader + allResultsText + objectListSection)
       ])
     } catch (error) {
       throw new Error(`Failed to search lines in ABAP object: ${String(error)}`)
