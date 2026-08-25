@@ -94,7 +94,7 @@ export const AGENT_REGISTRY: AgentMeta[] = [
     description: "Where-used analysis, dependencies, change impact",
     tier: 2,
     defaultModel: "",
-    tools: ["abap-where-used", "abap-search", "abap-lines", "abap-info"],
+    tools: ["abap-where-used", "abap-relations", "abap-search", "abap-lines", "abap-info"],
     templateFile: "abap-usage-analyzer.agent.md"
   },
   {

@@ -2577,9 +2577,140 @@
         "when": "abapfs:extensionActive && !abapfs:noSapConnected"
       },
       {
+        "name": "analyze_abap_relations",
+        "displayName": "Analyze ABAP Relations",
+        "modelDescription": "Use this tool for object-to-object relationship questions: what an object uses, what uses it, its components, source locations for a relationship, or relationships between two objects. ALWAYS provide objectType for every primary object, even when objectName is supplied. Identify the primary object with objectName plus objectType, or with objectUri plus objectType; do not invent placeholder names when a URI is supplied. For references and compare, ALWAYS provide relatedObjectType for the second object, together with relatedObjectName or relatedObjectUri. It supports used, using, and both directions, custom/standard/type/name/relation filters, and pagination for large results. For report references, it resolves aggregated report relationships to exact target anchors and includes through Object Relations APIs. Use the separate Find Where Used tool (`abap-where-used`) for a symbol, method, variable, or exact source-usage question.",
+        "canBeReferencedInPrompt": true,
+        "toolReferenceName": "abap-relations",
+        "icon": "$(type-hierarchy-sub)",
+        "userDescription": "Query and filter SAP object relations",
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "action": {
+              "type": "string",
+              "enum": [
+                "network",
+                "components",
+                "references",
+                "compare"
+              ],
+              "description": "Operation: network gets related objects; components gets the object hierarchy; references gets source anchors between two objects; compare finds relations between two object sets."
+            },
+            "connectionId": {
+              "type": "string",
+              "description": "SAP connection ID, for example `dev100`."
+            },
+            "objectName": {
+              "type": "string",
+              "description": "Optional primary ABAP object name. Required when objectUri is not supplied; use the real SAP name, never a placeholder."
+            },
+            "objectType": {
+              "type": "string",
+              "description": "Required ADT object type for every primary object, such as PROG/P, CLAS/OC, TABL/DT, or FUGR/FF. It disambiguates objects that share a name and is required with objectName or objectUri."
+            },
+            "objectUri": {
+              "type": "string",
+              "description": "Optional canonical ADT URI for the primary object. When supplied, objectType is required and objectName may be omitted; the name is derived from the URI and object search is skipped."
+            },
+            "relatedObjectName": {
+              "type": "string",
+              "description": "Optional second object name. Required for references and compare only when relatedObjectUri is not supplied; use the real SAP name, never a placeholder."
+            },
+            "relatedObjectType": {
+              "type": "string",
+              "description": "Required ADT object type whenever references or compare identifies a related object. It disambiguates related objects that share a name and is required with relatedObjectName or relatedObjectUri."
+            },
+            "relatedObjectUri": {
+              "type": "string",
+              "description": "Optional canonical ADT URI for the second object. When supplied for references or compare, relatedObjectType is required and relatedObjectName may be omitted; the name is derived from the URI and object search is skipped."
+            },
+            "context": {
+              "type": "string",
+              "description": "Explicit ORO context ID such as ENV or WUL. Overrides direction for network calls. Defaults to ENV for components and references."
+            },
+            "direction": {
+              "type": "string",
+              "enum": [
+                "used",
+                "using",
+                "both"
+              ],
+              "default": "used",
+              "description": "Network direction: used=ENV, using=WUL, both=merge ENV and WUL."
+            },
+            "scope": {
+              "type": "string",
+              "enum": [
+                "all",
+                "custom",
+                "standard"
+              ],
+              "default": "all",
+              "description": "Filter related objects by namespace. Custom means names starting Z or Y; standard excludes those names."
+            },
+            "namePattern": {
+              "type": "string",
+              "description": "Wildcard filter for related object names, supporting * and ?."
+            },
+            "objectTypes": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              },
+              "description": "Only return related objects with these exact ADT types."
+            },
+            "relationTypes": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              },
+              "description": "Only return network edges with these exact SAP relation types."
+            },
+            "startIndex": {
+              "type": "integer",
+              "minimum": 0,
+              "default": 0,
+              "description": "Zero-based result offset for pagination."
+            },
+            "maxResults": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 500,
+              "default": 50,
+              "description": "Maximum objects, relations, components, or anchors returned per page. Capped at 500."
+            },
+            "includeProperties": {
+              "type": "boolean",
+              "default": false,
+              "description": "Include SAP relation/object properties. Leave false to reduce model context."
+            },
+            "includeLinks": {
+              "type": "boolean",
+              "default": false,
+              "description": "Include ADT links on objects. Leave false to reduce model context."
+            },
+            "includeContexts": {
+              "type": "boolean",
+              "default": false,
+              "description": "Include all contexts reported by SAP in network results."
+            }
+          },
+          "required": [
+            "action",
+            "connectionId",
+            "objectType"
+          ]
+        },
+        "tags": [
+          "abap-fs"
+        ],
+        "when": "abapfs:extensionActive && !abapfs:noSapConnected"
+      },
+      {
         "name": "find_where_used",
         "displayName": "Find Where Used",
-        "modelDescription": "Where-used analysis for ABAP objects, methods, variables, symbols. Large result sets (1000+): use startIndex for pagination, filter.objectNamePattern (e.g., 'Z*') or filter.excludeSystemObjects=true to find custom Z/Y code without dumping thousands. WARNING: includeSnippets slow above 50 results — set only when really needed.",
+        "modelDescription": "Use this tool to find exact source usages of an ABAP object, method, variable, or symbol, including source snippets and include locations. Use the separate Analyze ABAP Relations tool (`abap-relations`) for object-to-object relationships, used/using networks, components, or comparing two objects. Large result sets support pagination and filters; request snippets when source context is needed.",
         "canBeReferencedInPrompt": true,
         "toolReferenceName": "abap-where-used",
         "icon": "$(references)",

@@ -55,6 +55,7 @@ import { registerAnalyzeAnstEnhancementsTool } from "./analyzeAnstEnhancementsTo
 import { WebviewManager } from "../webviewManager"
 import { registerHeartbeatTool, initializeHeartbeatService } from "../heartbeat"
 import { registerAdtDiscoveryTool } from "./adtDiscoveryTool"
+import { registerRelationAnalysisTool } from "./relationAnalysisTool"
 
 /**
  * Register all language model tools
@@ -146,7 +147,10 @@ export async function registerAllTools(context: vscode.ExtensionContext): Promis
   // 18. ADT Discovery Tool
   registerAdtDiscoveryTool(context)
 
-  // 19. SAP UI Testing Tools (9 tools)
+  // 19. Object Relations Tool
+  registerRelationAnalysisTool(context)
+
+  // 20. SAP UI Testing Tools (9 tools)
   registerGetTestFolderTool(context)
   registerGetSapWebGuiUrlTool(context)
   registerBuildTestIndexTool(context)
@@ -156,7 +160,7 @@ export async function registerAllTools(context: vscode.ExtensionContext): Promis
   registerCheckTestDataTool(context)
   registerBuildEvidenceReportTool(context)
   registerPlaywrightTestTool(context)
-  // 20. ANST Enhancement Analysis Tool
+  // 21. ANST Enhancement Analysis Tool
   registerAnalyzeAnstEnhancementsTool(context)
 
   // Initialize heartbeat service (will auto-start if enabled in config)
