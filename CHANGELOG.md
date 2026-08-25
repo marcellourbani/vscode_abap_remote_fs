@@ -1,5 +1,13 @@
 # Changelog
 
+## 2.8.6
+
+### Patch Changes
+
+- 935772f: increase search limits and reorder tool output
+- 0a04530: Make the SAP WebGUI URL tool available whenever a SAP system is connected, without requiring SAP UI testing to be enabled.
+- 2fca0aa: Add ABAP Object Relations LM tool
+
 ## 2.8.5
 
 ### Patch Changes
