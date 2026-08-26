@@ -225,7 +225,7 @@ describe("SearchABAPObjectLinesTool", () => {
       mockClient.getObjectSource.mockResolvedValue(sourceCode)
     })
 
-    it.each(["Z*", "Y*", " z* ", " y* "]) (
+    it.each(["Z*", "Y*", " z* ", " y* "])(
       "rejects unbounded custom object pattern %s",
       async objectName => {
         await expect(
