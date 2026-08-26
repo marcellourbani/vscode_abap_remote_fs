@@ -6,7 +6,7 @@
 
 import * as vscode from "vscode"
 import { isTestFolderValid } from "./testing/config"
-import { hasReadyLanguageModels } from "./testing/subagents/modelAvailability"
+import { hasReadyLanguageModels, resolveModel } from "./testing/subagents/modelAvailability"
 
 // ============================================================================
 // TYPES
@@ -360,16 +360,15 @@ export async function getTestingAgentReadiness(): Promise<{
   const settings = getSubagentSettings()
   const testingFolderValid = await isTestFolderValid()
   const availableModels = await getAvailableModels()
-  const availableNames = hasReadyLanguageModels(availableModels)
-    ? new Set(availableModels.map(model => model.name))
-    : new Set<string>()
   const missing: string[] = []
   const unavailable: string[] = []
 
   for (const agent of TESTING_AGENT_REGISTRY) {
     const model = settings.models[agent.id]?.trim()
     if (!model) missing.push(agent.id)
-    else if (!availableNames.has(model)) unavailable.push(`${agent.id} (${model})`)
+    else if (!hasReadyLanguageModels(availableModels) || !resolveModel(model, availableModels)) {
+      unavailable.push(`${agent.id} (${model})`)
+    }
   }
 
   return {

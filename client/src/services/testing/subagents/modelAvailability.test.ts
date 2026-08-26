@@ -1,4 +1,4 @@
-import { hasReadyLanguageModels, isAutoLanguageModel } from "./modelAvailability"
+import { hasReadyLanguageModels, isAutoLanguageModel, resolveModel } from "./modelAvailability"
 
 describe("language model availability", () => {
   it("identifies Auto models by name or family", () => {
@@ -16,5 +16,14 @@ describe("language model availability", () => {
         { name: "provider-model", family: "provider" }
       ])
     ).toBe(true)
+  })
+
+  it("resolves by id and rejects ambiguous legacy names", () => {
+    const models = [
+      { id: "vendor-a-model", name: "Shared Name", vendor: "vendor-a", family: "x", version: "" },
+      { id: "vendor-b-model", name: "Shared Name", vendor: "vendor-b", family: "x", version: "" }
+    ]
+    expect(resolveModel("vendor-a-model", models)?.vendor).toBe("vendor-a")
+    expect(resolveModel("Shared Name", models)).toBeUndefined()
   })
 })

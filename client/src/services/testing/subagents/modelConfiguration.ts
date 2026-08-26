@@ -13,7 +13,7 @@ import {
   writeChangesWithRollback
 } from "./modelConfigurationCore"
 import { ALL_AGENT_REGISTRY } from "../../subagentRegistry"
-import { hasReadyLanguageModels } from "./modelAvailability"
+import { hasReadyLanguageModels, resolveModel } from "./modelAvailability"
 
 export interface ModelDiscoveryResult {
   models: AvailableModel[]
@@ -54,10 +54,10 @@ function agentFilePath(context: vscode.ExtensionContext, fileName: string): stri
 export async function discoverLanguageModels(): Promise<ModelDiscoveryResult> {
   try {
     const selected = await vscode.lm.selectChatModels({})
-    const byName = new Map<string, AvailableModel>()
+    const byId = new Map<string, AvailableModel>()
     for (const model of selected) {
-      if (!byName.has(model.name)) {
-        byName.set(model.name, {
+      if (!byId.has(model.id)) {
+        byId.set(model.id, {
           id: model.id,
           name: model.name,
           vendor: model.vendor,
@@ -66,7 +66,7 @@ export async function discoverLanguageModels(): Promise<ModelDiscoveryResult> {
         })
       }
     }
-    const models = [...byName.values()]
+    const models = [...byId.values()]
     if (!hasReadyLanguageModels(models)) return { models: [] }
     return {
       models: models.sort(
@@ -153,6 +153,18 @@ async function applySubagentModels(
   return { changedFiles: changes.map(change => change.path) }
 }
 
+function canonicalSelections(
+  selections: Record<string, string>,
+  availableModels: readonly AvailableModel[]
+): Record<string, string> {
+  return Object.fromEntries(
+    ALL_AGENT_REGISTRY.map(agent => {
+      const selection = selections[agent.id]?.trim() ?? ""
+      return [agent.id, resolveModel(selection, availableModels)?.id ?? selection]
+    })
+  )
+}
+
 export async function saveSubagentModels(
   context: vscode.ExtensionContext,
   selections: Record<string, string>,
@@ -161,7 +173,8 @@ export async function saveSubagentModels(
 ): Promise<ApplyModelsResult> {
   return runExclusive(async () => {
     const normalized = normalizedSelections(selections)
-    const validation = validateModelSelections(normalized, availableModels, requiredAgentIds)
+    const canonical = canonicalSelections(normalized, availableModels)
+    const validation = validateModelSelections(canonical, availableModels, requiredAgentIds)
     if (validation.missingAgentIds.length) {
       throw new Error(`Select a model for: ${validation.missingAgentIds.join(", ")}.`)
     }
@@ -173,12 +186,12 @@ export async function saveSubagentModels(
       )
     }
 
-    const changes = await prepareChanges(context, normalized)
+    const changes = await prepareChanges(context, canonical)
     await writeChanges(changes)
     try {
       await vscode.workspace
         .getConfiguration("abapfs.subagents")
-        .update("models", normalized, vscode.ConfigurationTarget.Global)
+        .update("models", canonical, vscode.ConfigurationTarget.Global)
     } catch (error) {
       await restoreChanges(changes)
       throw error
