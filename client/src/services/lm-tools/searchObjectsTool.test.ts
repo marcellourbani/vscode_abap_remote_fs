@@ -84,7 +84,7 @@ describe("SearchABAPObjectsTool", () => {
       ;(window as any).activeTextEditor = {
         document: { uri: { scheme: "adt", authority: "dev100" } }
       }
-      await tool.invoke(makeOptions({ pattern: "Z*", connectionId: "dev100" }), mockToken)
+      await tool.invoke(makeOptions({ pattern: "Z*TEST*", connectionId: "dev100" }), mockToken)
       expect(logTelemetry).toHaveBeenCalledWith("tool_search_abap_objects_called", {
         connectionId: "dev100"
       })
@@ -92,7 +92,7 @@ describe("SearchABAPObjectsTool", () => {
 
     it("normalizes connectionId to lowercase", async () => {
       mockSearcher.searchObjects.mockResolvedValue([])
-      await tool.invoke(makeOptions({ pattern: "Z*", connectionId: "DEV100" }), mockToken)
+      await tool.invoke(makeOptions({ pattern: "Z*TEST*", connectionId: "DEV100" }), mockToken)
       expect(getSearchService).toHaveBeenCalledWith("dev100")
     })
 
@@ -103,6 +103,24 @@ describe("SearchABAPObjectsTool", () => {
         mockToken
       )
       expect(result.parts[0].text).toContain("No ABAP objects found")
+    })
+
+    it.each(["Z*", "Y*", " z* ", " y* "])(
+      "rejects unbounded custom object pattern %s",
+      async pattern => {
+        await expect(
+          tool.invoke(makeOptions({ pattern, connectionId: "dev100" }), mockToken)
+        ).rejects.toThrow("too broad")
+        expect(mockSearcher.searchObjects).not.toHaveBeenCalled()
+      }
+    )
+
+    it("allows a constrained custom object pattern", async () => {
+      mockSearcher.searchObjects.mockResolvedValue([])
+
+      await tool.invoke(makeOptions({ pattern: "Z*INVOICE*", connectionId: "dev100" }), mockToken)
+
+      expect(mockSearcher.searchObjects).toHaveBeenCalledWith("Z*INVOICE*", undefined, 20)
     })
 
     it("returns formatted results when objects found", async () => {
@@ -123,26 +141,26 @@ describe("SearchABAPObjectsTool", () => {
 
     it("defaults maxResults to 20", async () => {
       mockSearcher.searchObjects.mockResolvedValue([])
-      await tool.invoke(makeOptions({ pattern: "Z*", connectionId: "dev100" }), mockToken)
-      expect(mockSearcher.searchObjects).toHaveBeenCalledWith("Z*", undefined, 20)
+      await tool.invoke(makeOptions({ pattern: "Z*TEST*", connectionId: "dev100" }), mockToken)
+      expect(mockSearcher.searchObjects).toHaveBeenCalledWith("Z*TEST*", undefined, 20)
     })
 
     it("uses provided maxResults", async () => {
       mockSearcher.searchObjects.mockResolvedValue([])
       await tool.invoke(
-        makeOptions({ pattern: "Z*", connectionId: "dev100", maxResults: 5 }),
+        makeOptions({ pattern: "Z*TEST*", connectionId: "dev100", maxResults: 5 }),
         mockToken
       )
-      expect(mockSearcher.searchObjects).toHaveBeenCalledWith("Z*", undefined, 5)
+      expect(mockSearcher.searchObjects).toHaveBeenCalledWith("Z*TEST*", undefined, 5)
     })
 
     it("passes types filter to searcher", async () => {
       mockSearcher.searchObjects.mockResolvedValue([])
       await tool.invoke(
-        makeOptions({ pattern: "Z*", connectionId: "dev100", types: ["CLAS", "PROG"] }),
+        makeOptions({ pattern: "Z*TEST*", connectionId: "dev100", types: ["CLAS", "PROG"] }),
         mockToken
       )
-      expect(mockSearcher.searchObjects).toHaveBeenCalledWith("Z*", ["CLAS", "PROG"], 20)
+      expect(mockSearcher.searchObjects).toHaveBeenCalledWith("Z*TEST*", ["CLAS", "PROG"], 20)
     })
 
     it("falls back to active editor when no connectionId", async () => {
