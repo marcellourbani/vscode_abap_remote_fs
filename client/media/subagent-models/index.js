@@ -26,7 +26,7 @@ function modelLabel(model) {
 }
 
 function updateModelDetails(select, detailsElement) {
-  const selected = models.find(model => model.name === select.value)
+  const selected = models.find(model => model.id === select.value)
   detailsElement.textContent = selected
     ? [selected.vendor, selected.family, selected.version].filter(Boolean).join(" · ")
     : ""
@@ -59,7 +59,12 @@ function createAgentCard(agent, configuredModel) {
   placeholder.textContent = "Select a model"
   select.appendChild(placeholder)
 
-  if (configuredModel && !models.some(model => model.name === configuredModel)) {
+  const configured =
+    models.find(model => model.id === configuredModel) ||
+    (models.filter(model => model.name === configuredModel).length === 1
+      ? models.find(model => model.name === configuredModel)
+      : undefined)
+  if (configuredModel && !configured) {
     const unavailable = document.createElement("option")
     unavailable.value = configuredModel
     unavailable.textContent = `Unavailable: ${configuredModel}`
@@ -70,9 +75,9 @@ function createAgentCard(agent, configuredModel) {
 
   for (const model of models) {
     const option = document.createElement("option")
-    option.value = model.name
+    option.value = model.id
     option.textContent = modelLabel(model)
-    option.selected = model.name === configuredModel
+    option.selected = model.id === configured?.id
     select.appendChild(option)
   }
 

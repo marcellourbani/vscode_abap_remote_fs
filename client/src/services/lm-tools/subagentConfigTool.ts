@@ -18,6 +18,7 @@ import {
   saveSubagentModels
 } from "../testing/subagents/modelConfiguration"
 import { validateModelSelections } from "../testing/subagents/modelConfigurationCore"
+import { resolveModel } from "../testing/subagents/modelAvailability"
 import { funWindow as window } from "../funMessenger"
 
 interface SubagentConfigInput {
@@ -266,7 +267,7 @@ class SubagentConfigTool implements vscode.LanguageModelTool<SubagentConfigInput
   private async listModels(): Promise<vscode.LanguageModelToolResult> {
     const discovery = await availableModels()
     if (!discovery.models.length) {
-      return text(discovery.error || "No Copilot language models are currently available.")
+      return text(discovery.error || "No language models are currently available.")
     }
     return text(
       [
@@ -329,7 +330,7 @@ class SubagentConfigTool implements vscode.LanguageModelTool<SubagentConfigInput
       }
       selections[configuration.agentId] = configuration.model.trim()
       configuredIds.push(configuration.agentId)
-      if (!discovery.models.some(model => model.name === configuration.model)) {
+      if (!resolveModel(configuration.model, discovery.models)) {
         warnings.push(
           `Model "${configuration.model}" is not currently available for ${configuration.agentId}`
         )

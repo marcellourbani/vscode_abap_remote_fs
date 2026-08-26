@@ -1,4 +1,5 @@
 import { ALL_AGENT_REGISTRY } from "../../subagentRegistry"
+import { resolveModel } from "./modelAvailability"
 
 export interface AvailableModel {
   id: string
@@ -70,7 +71,6 @@ export function validateModelSelections(
   availableModels: readonly AvailableModel[],
   requiredAgentIds: readonly string[] = ALL_AGENT_REGISTRY.map(agent => agent.id)
 ): ModelValidation {
-  const availableNames = new Set(availableModels.map(model => model.name))
   const missingAgentIds: string[] = []
   const unavailable: Array<{ agentId: string; modelName: string }> = []
 
@@ -78,7 +78,7 @@ export function validateModelSelections(
     const modelName = selections[agentId]?.trim()
     if (!modelName) {
       missingAgentIds.push(agentId)
-    } else if (!availableNames.has(modelName)) {
+    } else if (!resolveModel(modelName, availableModels)) {
       unavailable.push({ agentId, modelName })
     }
   }
@@ -90,9 +90,9 @@ export function modelSetsMatch(
   second: readonly AvailableModel[]
 ): boolean {
   if (first.length !== second.length) return false
-  const firstNames = first.map(model => model.name).sort()
-  const secondNames = second.map(model => model.name).sort()
-  return firstNames.every((name, index) => name === secondNames[index])
+  const firstIds = first.map(model => model.id).sort()
+  const secondIds = second.map(model => model.id).sort()
+  return firstIds.every((id, index) => id === secondIds[index])
 }
 
 export async function writeChangesWithRollback(

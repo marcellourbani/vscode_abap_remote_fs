@@ -83,7 +83,10 @@ export function registerStartupModelReconciliation(context: vscode.ExtensionCont
     checking = true
     try {
       const first = await discoverLanguageModels()
-      if (!first.models.length) return
+      if (!first.models.length) {
+        scheduleCheck()
+        return
+      }
       await sleep(STABILITY_CHECK_DELAY_MS)
       if (disposed) return
       const second = await discoverLanguageModels()
