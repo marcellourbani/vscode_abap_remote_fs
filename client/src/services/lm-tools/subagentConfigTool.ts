@@ -266,7 +266,7 @@ class SubagentConfigTool implements vscode.LanguageModelTool<SubagentConfigInput
   private async listModels(): Promise<vscode.LanguageModelToolResult> {
     const discovery = await availableModels()
     if (!discovery.models.length) {
-      return text(discovery.error || "No Copilot language models are currently available.")
+      return text(discovery.error || "No language models are currently available.")
     }
     return text(
       [
