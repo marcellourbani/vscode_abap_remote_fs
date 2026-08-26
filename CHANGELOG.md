@@ -1,5 +1,12 @@
 # Changelog
 
+## 2.8.7
+
+### Patch Changes
+
+- 9635790: Allow all language models for subagents
+- 5895a93: Improve ABAP search guidance and SAP testing setup
+
 ## 2.8.6
 
 ### Patch Changes
