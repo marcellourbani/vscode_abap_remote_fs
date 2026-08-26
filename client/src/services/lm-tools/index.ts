@@ -43,6 +43,7 @@ import {
 import { registerVersionHistoryTool } from "./versionHistoryTool"
 import { registerSubagentConfigTool } from "./subagentConfigTool"
 import { registerGetTestFolderTool } from "./getTestFolderTool"
+import { registerSapTestSetupTool } from "./sapTestSetupTool"
 import { registerGetSapWebGuiUrlTool } from "./getSapWebGuiUrlTool"
 import { registerBuildTestIndexTool } from "./buildTestIndexTool"
 import { registerBuildTestIndexDocxTool } from "./buildTestIndexDocxTool"
@@ -150,7 +151,10 @@ export async function registerAllTools(context: vscode.ExtensionContext): Promis
   // 19. Object Relations Tool
   registerRelationAnalysisTool(context)
 
-  // 20. SAP UI Testing Tools (9 tools)
+  // 20. SAP UI Testing setup
+  registerSapTestSetupTool(context)
+
+  // 21. SAP UI Testing Tools (10 tools)
   registerGetTestFolderTool(context)
   registerGetSapWebGuiUrlTool(context)
   registerBuildTestIndexTool(context)
@@ -160,7 +164,7 @@ export async function registerAllTools(context: vscode.ExtensionContext): Promis
   registerCheckTestDataTool(context)
   registerBuildEvidenceReportTool(context)
   registerPlaywrightTestTool(context)
-  // 21. ANST Enhancement Analysis Tool
+  // 22. ANST Enhancement Analysis Tool
   registerAnalyzeAnstEnhancementsTool(context)
 
   // Initialize heartbeat service (will auto-start if enabled in config)

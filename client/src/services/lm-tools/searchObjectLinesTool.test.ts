@@ -225,6 +225,32 @@ describe("SearchABAPObjectLinesTool", () => {
       mockClient.getObjectSource.mockResolvedValue(sourceCode)
     })
 
+    it.each(["Z*", "Y*", " z* ", " y* "]) (
+      "rejects unbounded custom object pattern %s",
+      async objectName => {
+        await expect(
+          tool.invoke(
+            makeOptions({ objectName, searchTerm: "SELECT", connectionId: "dev100" }),
+            mockToken
+          )
+        ).rejects.toThrow("too broad")
+        expect(mockSearcher.searchObjects).not.toHaveBeenCalled()
+      }
+    )
+
+    it("allows a constrained custom object pattern", async () => {
+      await tool.invoke(
+        makeOptions({
+          objectName: "Z*INVOICE*",
+          searchTerm: "SELECT",
+          connectionId: "dev100"
+        }),
+        mockToken
+      )
+
+      expect(mockSearcher.searchObjects).toHaveBeenCalledWith("Z*INVOICE*", undefined, 1)
+    })
+
     it("finds literal text matches (case-insensitive)", async () => {
       const result: any = await tool.invoke(
         makeOptions({ objectName: "ZTEST", searchTerm: "select", connectionId: "dev100" }),

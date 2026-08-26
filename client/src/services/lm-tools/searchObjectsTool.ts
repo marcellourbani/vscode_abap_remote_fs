@@ -58,6 +58,15 @@ export interface ISearchABAPObjectsParameters {
   maxResults?: number
 }
 
+function rejectUnboundedCustomObjectPattern(pattern: string): void {
+  const normalizedPattern = pattern.trim().toUpperCase()
+  if (normalizedPattern === "Z*" || normalizedPattern === "Y*") {
+    throw new Error(
+      `Wildcard pattern "${pattern}" is too broad. Searching only ${normalizedPattern[0]}* can return a truncated subset of custom objects. Use a more specific pattern, object type, or search term.`
+    )
+  }
+}
+
 /**
  * 🔍 SEARCH ABAP OBJECTS TOOL
  */
@@ -91,6 +100,7 @@ export class SearchABAPObjectsTool implements vscode.LanguageModelTool<ISearchAB
     assertToolInvocationAuthorized(options)
     let { pattern, types, maxResults = 20, connectionId } = options.input
     logTelemetry("tool_search_abap_objects_called", { connectionId })
+    rejectUnboundedCustomObjectPattern(pattern)
 
     // Ensure connectionId is lowercase for consistency
     if (connectionId) {

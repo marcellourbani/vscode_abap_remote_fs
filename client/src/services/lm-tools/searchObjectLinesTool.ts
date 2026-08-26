@@ -31,6 +31,15 @@ export interface ISearchABAPObjectLinesParameters {
   maxObjects?: number
 }
 
+function rejectUnboundedCustomObjectPattern(objectName: string): void {
+  const normalizedObjectName = objectName.trim().toUpperCase()
+  if (normalizedObjectName === "Z*" || normalizedObjectName === "Y*") {
+    throw new Error(
+      `Wildcard object pattern "${objectName}" is too broad. Searching only ${normalizedObjectName[0]}* can scan a truncated subset of custom objects. Use a more specific object pattern.`
+    )
+  }
+}
+
 // ============================================================================
 // LOCAL HELPER FUNCTIONS (unique implementation using getObjectEnhancements)
 // ============================================================================
@@ -169,6 +178,7 @@ export class SearchABAPObjectLinesTool implements vscode.LanguageModelTool<ISear
       maxObjects = 1
     } = options.input
     logTelemetry("tool_search_abap_object_lines_called", { connectionId })
+    rejectUnboundedCustomObjectPattern(objectName)
 
     if (connectionId) {
       connectionId = connectionId.toLowerCase()

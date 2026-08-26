@@ -499,6 +499,20 @@
     },
     "languageModelTools": [
       {
+        "name": "sap_test_setup",
+        "displayName": "SAP Testing Setup",
+        "modelDescription": "Highest-priority route for requests mentioning SAP report UI testing. ABAP FS includes a complete SAP UI testing factory for analysing SAP/ABAP objects/reports, exploring SAP WebGUI, designing test cases, preparing test data, generating and running Playwright tests, and producing evidence reports. If this tool is visible, it means SAP Testing is not enabled. When the user asks about SAP testing and you think this factory could help, call this tool proactively to explain it and guide the user through setup.",
+        "canBeReferencedInPrompt": true,
+        "toolReferenceName": "sap-test-setup",
+        "icon": "$(beaker)",
+        "userDescription": "Explain and enable SAP UI Testing",
+        "inputSchema": {
+          "type": "object",
+          "properties": {}
+        },
+        "when": "abapfs:extensionActive && !abapfs:testingEnabled"
+      },
+      {
         "name": "get_test_folder",
         "displayName": "Get Test Folder",
         "modelDescription": "Get the configured SAP testing folder path. Call this first before reading or writing any test artifact. If the folder is not open in the VS Code workspace, the result will include a warning — tell the user to open it (File > Add Folder to Workspace) before proceeding.",
@@ -761,7 +775,7 @@
       {
         "name": "search_abap_objects",
         "displayName": "Search ABAP Objects",
-        "modelDescription": "Search ABAP objects by name pattern. Wildcards: * ?. Custom code: prefix Z* or Y* (Z*ARTICLE*, not *ARTICLE*). Standard SAP: BAPI_*, CL_*, /SAP/*. MANDATORY before code generation: training data outdated — ALWAYS verify objects exist first, read signatures with get_abap_object_lines, then generate. Unverified code WILL fail at runtime.",
+        "modelDescription": "Search ABAP objects by name pattern. Do not use unbounded Z* or Y* searches: they return only a truncated subset and cannot show the whole custom-code picture. Use a specific pattern such as Z*ARTICLE* or Y*ARTICLE*, or provide an object type. Standard SAP: BAPI_*, CL_*, /SAP/*. MANDATORY before code generation: training data outdated — ALWAYS verify objects exist first, read signatures with get_abap_object_lines, then generate. Unverified code WILL fail at runtime. If a SAP system has already been explicitly established in this chat, continue using that system; in a new chat with no system context, do not infer a system and always ask the user which system the request is for.",
         "canBeReferencedInPrompt": true,
         "toolReferenceName": "abap-search",
         "icon": "$(search)",
@@ -771,7 +785,7 @@
           "properties": {
             "pattern": {
               "type": "string",
-              "description": "Search pattern for object names. Supports wildcards (* and ?). START WITH Z* FOR CUSTOM OBJECTS (Z*invoice*, not *invoice*) Examples: 'USER', '*CUSTOMER*', 'BAPI_*',Z*ART*"
+              "description": "Search pattern for object names. Supports wildcards (* and ?), except unbounded Z* and Y* searches, which are rejected because the result limit makes them incomplete. Use a specific pattern such as Z*invoice* or Y*report*. Examples: 'USER', '*CUSTOMER*', 'BAPI_*', 'Z*ART*'"
             },
             "types": {
               "type": "array",
@@ -932,7 +946,7 @@
       {
         "name": "search_abap_object_lines",
         "displayName": "Search ABAP Object Lines",
-        "modelDescription": "Search text inside ABAP source. Literal or regex (isRegexp=true). Prefer over VS Code grep — ABAP source lives on remote system, grep_search misses it. objectName wildcards scan multiple objects (max 100). Class structure trick: regex '^\\s*(CLASS-)?METHODS?\\s+\\w+' with contextLines=0 lists all method names. IMPORTANT: searches committed code only, not unsaved local edits.",
+        "modelDescription": "Search text inside ABAP source. Literal or regex (isRegexp=true). Prefer over VS Code grep — ABAP source lives on remote system, grep_search misses it. objectName wildcards scan multiple objects (max 100), but unbounded Z* and Y* searches are rejected because the result limit makes them incomplete. Use a specific pattern such as Z*ARTICLE*. Class structure trick: regex '^\\s*(CLASS-)?METHODS?\\s+\\w+' with contextLines=0 lists all method names. IMPORTANT: searches committed code only, not unsaved local edits.",
         "canBeReferencedInPrompt": true,
         "toolReferenceName": "abap-search-lines",
         "icon": "$(search-stop)",
@@ -942,7 +956,7 @@
           "properties": {
             "objectName": {
               "type": "string",
-              "description": "Name of the ABAP object to search within. Supports wildcards (*) to search multiple objects - use maxObjects to control how many"
+              "description": "Name of the ABAP object to search within. Supports specific wildcards (*) to search multiple objects, but unbounded Z* and Y* patterns are rejected because maxObjects can return only an incomplete subset. Use a specific pattern and maxObjects to control how many."
             },
             "searchTerm": {
               "type": "string",
@@ -2819,11 +2833,11 @@
       {
         "name": "get_connected_systems",
         "displayName": "Get Connected SAP Systems",
-        "modelDescription": "List SAP connection IDs currently connected in VS Code. Call first if connectionId unknown. No params.",
+        "modelDescription": "List SAP connection IDs currently connected in VS Code. If a SAP system has already been explicitly established in this chat, continue using that system. In a new chat with no prior system context, do not infer a system or objects; ask the user which system the request is for before using SAP tools. Call this tool only when the user needs to choose among connected systems or the system is genuinely unknown. No params.",
         "canBeReferencedInPrompt": true,
         "toolReferenceName": "connected-systems",
         "icon": "$(plug)",
-        "userDescription": "List all connected SAP systems",
+        "userDescription": "List connected SAP systems",
         "inputSchema": {
           "type": "object",
           "properties": {},
