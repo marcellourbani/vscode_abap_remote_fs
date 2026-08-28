@@ -328,8 +328,8 @@ function createMcpServer(): McpServer {
         "This tool performs a find-and-replace operation on an ABAP source file identified by its workspace URI. " +
         "The oldString must match EXACTLY ONE occurrence in the file - include 3-5 lines of surrounding context to ensure uniqueness. " +
         "The file is automatically locked, saved to SAP, and unlocked.\n\n" +
-        "Prerequisites: First call get_abap_object_workspace_uri to get the fileUri. " +
-        "Then call get_abap_object_lines or search_abap_object_lines to read current content before editing.\n\n" +
+        "Prerequisites: First call abapfs_get_workspace_uri to get the fileUri. " +
+        "Then call abapfs_get_object_source or abapfs_search_object_source to read current content before editing.\n\n" +
         "IMPORTANT: oldString is mandatory whenever the file has any content. An empty oldString is accepted ONLY when the file is currently completely blank (e.g. a freshly created ABAP object with no source yet) - in that case the entire newString becomes the file content.\n\n" +
         "After editing, call get_abap_diagnostics with the same fileUri to verify the code has no syntax errors.",
       inputSchema: {
@@ -337,7 +337,7 @@ function createMcpServer(): McpServer {
           .string()
           .describe(
             "The full workspace URI of the ABAP source file." +
-              "Get this using the get_abap_object_workspace_uri tool."
+              "Get this using the abapfs_get_workspace_uri tool."
           ),
         oldString: z
           .string()
@@ -408,13 +408,13 @@ function createMcpServer(): McpServer {
         "Returns all problems detected by the ABAP language server (syntax check results). " +
         "Use this after editing code with replace_string_in_abap_object to verify there are no syntax errors. " +
         "Always call this after making code changes.\n\n" +
-        "Prerequisite: Use get_abap_object_workspace_uri to get the fileUri.",
+        "Prerequisite: Use abapfs_get_workspace_uri to get the fileUri.",
       inputSchema: {
         fileUri: z
           .string()
           .describe(
             "The full workspace URI of the ABAP source file. " +
-              "Get this using the get_abap_object_workspace_uri tool."
+              "Get this using the abapfs_get_workspace_uri tool."
           )
       }
     },

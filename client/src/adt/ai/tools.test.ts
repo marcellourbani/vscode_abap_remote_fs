@@ -41,7 +41,7 @@ describe("registerChatTools", () => {
   test("registers the activate tool", () => {
     registerChatTools(mockContext)
 
-    expect(mockRegisterTool).toHaveBeenCalledWith("abap_activate", expect.any(Object))
+    expect(mockRegisterTool).toHaveBeenCalledWith("abapfs_activate_object", expect.any(Object))
   })
 
   test("pushes disposable to subscriptions", () => {
@@ -59,10 +59,10 @@ describe("registerChatTools", () => {
   test("registers only activate tool (search and unit are dead code after early return)", () => {
     registerChatTools(mockContext)
 
-    // The function returns early after registering abap_activate
+    // The function returns early after registering abapfs_activate_object
     // search and unit are never registered
     expect(mockRegisterTool).toHaveBeenCalledTimes(1)
-    expect(mockRegisterTool).toHaveBeenCalledWith("abap_activate", expect.any(Object))
+    expect(mockRegisterTool).toHaveBeenCalledWith("abapfs_activate_object", expect.any(Object))
     expect(mockRegisterTool).not.toHaveBeenCalledWith("abap_search", expect.any(Object))
     expect(mockRegisterTool).not.toHaveBeenCalledWith("abap_unit", expect.any(Object))
   })

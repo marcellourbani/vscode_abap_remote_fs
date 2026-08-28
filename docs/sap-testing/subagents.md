@@ -36,7 +36,7 @@ These are adversarial on purpose: their job is to catch what the main agent got 
 
 The panel lists General agents and Testing agents in separate collapsible sections, with a hint about the kind of model each needs and a dropdown of the Copilot models available to you. Pick models, save, and continue without reloading.
 
-You can also ask Copilot to configure them through `manage_subagents`: it should call `get_status`, then `list_models`, and configure all nine testing agents with exact model names from the model list.
+You can also ask Copilot to configure them through `abapfs_manage_subagents`: it should call `get_status`, then `list_models`, and configure all nine testing agents with exact model names from the model list.
 
 Guidance that actually affects results:
 

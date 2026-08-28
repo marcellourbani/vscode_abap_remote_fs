@@ -615,8 +615,10 @@ export class GetATCDecorationsTool implements vscode.LanguageModelTool<IGetATCDe
 // ============================================================================
 
 export function registerAtcTools(context: vscode.ExtensionContext): void {
-  context.subscriptions.push(registerToolWithRegistry("run_atc_analysis", new RunATCAnalysisTool()))
   context.subscriptions.push(
-    registerToolWithRegistry("get_atc_decorations", new GetATCDecorationsTool())
+    registerToolWithRegistry("abapfs_run_atc_analysis", new RunATCAnalysisTool())
+  )
+  context.subscriptions.push(
+    registerToolWithRegistry("abapfs_get_atc_highlights", new GetATCDecorationsTool())
   )
 }

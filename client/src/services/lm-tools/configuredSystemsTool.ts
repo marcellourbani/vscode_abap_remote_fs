@@ -200,7 +200,7 @@ export class ConfiguredSystemsTool implements vscode.LanguageModelTool<IConfigur
 export function registerConfiguredSystemsTool(context: vscode.ExtensionContext): void {
   context.subscriptions.push(
     registerToolWithRegistry(
-      "get_configured_systems",
+      "abapfs_get_configured_systems",
       new ConfiguredSystemsTool(context.extension.packageJSON)
     )
   )

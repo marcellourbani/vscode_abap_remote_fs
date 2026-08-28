@@ -140,6 +140,6 @@ export class CreateTestDocumentationTool implements vscode.LanguageModelTool<ICr
 
 export function registerTestDocumentationTool(context: vscode.ExtensionContext): void {
   context.subscriptions.push(
-    registerToolWithRegistry("create_test_documentation", new CreateTestDocumentationTool())
+    registerToolWithRegistry("abapfs_build_test_documentation", new CreateTestDocumentationTool())
   )
 }

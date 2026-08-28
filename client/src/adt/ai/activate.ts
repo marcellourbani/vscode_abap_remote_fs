@@ -44,7 +44,9 @@ export class ActivateTool implements LanguageModelTool<ActivateInput> {
       }
     )
     const contentText = result.ok
-      ? [`Activation successful for ${url}`]
+      ? [
+          `Activation successful for ${url}. Activation confirms the source currently in SAP is valid, but does not prove that recent local edits synchronized. Verify the changed lines with abapfs_get_object_source or search for a distinctive changed token with abapfs_search_object_source; avoid fetching unchanged source.`
+        ]
       : [`Activation FAILED for ${url}:\n${result.details || result.summary || "Unknown error"}`]
     const content = contentText.map(t => new LanguageModelTextPart(t))
     return new LanguageModelToolResult(content)

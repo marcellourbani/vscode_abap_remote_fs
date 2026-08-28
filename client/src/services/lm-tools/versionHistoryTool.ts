@@ -444,6 +444,6 @@ export class VersionHistoryTool implements vscode.LanguageModelTool<IVersionHist
 
 export function registerVersionHistoryTool(context: vscode.ExtensionContext): void {
   context.subscriptions.push(
-    registerToolWithRegistry("get_version_history", new VersionHistoryTool())
+    registerToolWithRegistry("abapfs_get_version_history", new VersionHistoryTool())
   )
 }

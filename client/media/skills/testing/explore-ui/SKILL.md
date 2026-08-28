@@ -26,13 +26,13 @@ You explore with your interactive browser tool's **accessibility snapshot**, NOT
 - **Snapshot with the accessibility-tree action, and act by `ref`.** In VS Code Copilot these are: `read_page` (returns the accessibility tree WITH element `ref` values — your PRIMARY tool), `click_element` with `ref=<ref>` (click a radio/button/cell), and `type_in_page` with `ref=<ref>` (enter text). Use your environment's equivalent snapshot/click-by-ref/type-by-ref actions if the names differ. `read_page` sees INSIDE the SAP ITS iframe automatically — you do NOT target the iframe yourself.
 - **`read_page` before you act and after every server round-trip.** Clicking a radio or Execute triggers SAP's PBO round-trip and re-renders the screen; re-snapshot to get the new controls and fresh `ref`s (old refs go stale).
 - **`screenshot_page` is for visual confirmation ONLY** — it has no `ref`s, so you cannot act from it, and it does not give you accessible names. Never write `_screens.md` from a screenshot alone.
-- **Do NOT use Playwright during exploration.** `page.locator(...)`, `frameLocator(...)`, `getByRole(...)`, `page.evaluate(...)`, `text=...` do not reliably reach the ITS iframe from page level and will time out. Playwright runs only inside real specs (Phase 6/7 via `playwright_test`), never during exploration. If you catch yourself writing `page.locator`, stop and use `read_page` + `ref`.
+- **Do NOT use Playwright during exploration.** `page.locator(...)`, `frameLocator(...)`, `getByRole(...)`, `page.evaluate(...)`, `text=...` do not reliably reach the ITS iframe from page level and will time out. Playwright runs only inside real specs (Phase 6/7 via `abapfs_run_playwright_tests`), never during exploration. If you catch yourself writing `page.locator`, stop and use `read_page` + `ref`.
 - **Generic roles are normal — record the accessible NAME.** ITS renders many controls (radios, F4 triggers, ALV cells) with role `generic` rather than `radio`/`button`. That is fine and expected: capture the accessible name (e.g. `"Upload"`, `"Report"`), because the runtime helpers (`selectRadio`, `clickButton`) locate by name and handle the missing ARIA role. Do not get stuck hunting for a `radio` role ITS never emits.
 - **If it seems stuck, VERIFY before reacting — and never shortcut.** SAP's PBO round-trip and the ITS "Please wait…" splash can look like a hang or a timeout when the page actually loaded fine. If an action seems to time out, re-run `read_page` and check whether the screen advanced (it usually did) before concluding anything failed. A perceived timeout is NEVER a reason to give up and write `_screens.md` from source. **Know your escape hatches from the start, so you reach for them instead of shortcutting:** if a control genuinely won't drive, or the browser is truly unreachable after a retry, STOP and either (a) ask the user for help/data, or (b) ask the user to record the flow via the `sap-webgui-recording` skill ("ABAP FS: Record SAP WebGUI Flow"). Asking is always allowed and always better than a source-derived guess — you were told this before you started precisely so you don't discover it only after cutting a corner.
 
 ## Non-negotiable execution gate
 
-The `playwright_test` tool (Phase 7) and `build-scripts` (Phase 6) reject cases whose controls are missing from `_screens.md` or were never observed live. Do not guess locators or fabricate a screen you didn't open.
+The `abapfs_run_playwright_tests` tool (Phase 7) and `build-scripts` (Phase 6) reject cases whose controls are missing from `_screens.md` or were never observed live. Do not guess locators or fabricate a screen you didn't open.
 
 ## Why
 
@@ -42,17 +42,17 @@ A wrong or invented label here becomes a broken locator in every spec that touch
 
 **Naming:** when these docs say *call* `X`, `X` is a **tool** (you invoke it and get a result); *delegate to / invoke* `X` is an **agent** (a subagent you launch); *load / follow* `X` is a **skill** (a procedure you read). A name without a verb: see the overview's "Skills, tools, and agents" list.
 
-The editor may hide tools until searched for. Before Step 0, ensure `get_test_folder`, `get_connected_systems`, and `get_sap_webgui_url` are available; if any is missing, search your available tools for it by name. You also need your built-in browser tool for live exploration (NOT Playwright, NOT `playwright_test` — those run actual tests; exploration is manual browsing). If a required tool cannot be found, tell the user which one is missing.
+The editor may hide tools until searched for. Before Step 0, ensure `abapfs_get_test_folder`, `abapfs_get_connected_systems`, and `abapfs_get_sap_webgui_url` are available; if any is missing, search your available tools for it by name. You also need your built-in browser tool for live exploration (NOT Playwright, NOT `abapfs_run_playwright_tests` — those run actual tests; exploration is manual browsing). If a required tool cannot be found, tell the user which one is missing.
 
 ## Step 0 — Standalone bootstrap and Phase 1 input gate (mandatory)
 
 > **Say before acting:** "Starting Step 0: standalone bootstrap and Phase 1 input gate."
 
-1. Call `get_test_folder` **before reading any artifact**. Treat the result as `<TEST_FOLDER>`; never infer it.
+1. Call `abapfs_get_test_folder` **before reading any artifact**. Treat the result as `<TEST_FOLDER>`; never infer it.
 2. If unset, STOP and ask the user to run "ABAP FS: Enable SAP UI Testing Features". If not open in the workspace, STOP and ask them to add it.
 3. Resolve `<PROGRAM>` from the request. If omitted, inspect `<TEST_FOLDER>/tests/*/test-cases/_findings.md`; auto-select only when exactly one candidate matches, otherwise ask.
 4. **Enforce the Phase 1 input gate:** `tests/<PROGRAM>/test-cases/_findings.md` must exist (with `_flow.md` and `_units.md` beside it). If `_findings.md` is missing, STOP and follow `analyze-and-plan` first — you cannot cross-check the live UI against a decision surface you don't have. Read `_findings.md` now (selection-screen inputs, radios/checkboxes, predicted output) and skim `_flow.md` (the end-to-end scenarios tell you which screens the flow actually produces and how to reach each one) so your exploration covers every screen the object can render, not just the initial one.
-5. Call `get_connected_systems` and confirm the target `connectionId`; ask only if ambiguous.
+5. Call `abapfs_get_connected_systems` and confirm the target `connectionId`; ask only if ambiguous.
 6. Use the SAME connection Phase 1 analysed unless the user says otherwise.
 
 > **Say before continuing:** "Step 0 completed. Evidence: test folder, program, `_findings.md`, and connection confirmed. Next: Step 1 — decide exploration approach."
@@ -73,7 +73,7 @@ Load the `sap-webgui-recording` skill and request the smallest focused recording
 
 > **Say before acting:** "Starting Step 2: open the target transaction in SAP WebGUI."
 
-- Call the `get_sap_webgui_url` tool with the target `connectionId` **and** the `transaction` you want. Follow the `sap-webgui` skill for theme and iframe rules.
+- Call the `abapfs_get_sap_webgui_url` tool with the target `connectionId` **and** the `transaction` you want. Follow the `sap-webgui` skill for theme and iframe rules.
 - Open the URL it returns **exactly as given** with your built-in browser tool — do not append `~transaction` or anything else. When auto-login applies, that URL is a single-use sign-in link and any modification breaks it. For a program with no dedicated tcode, pass `transaction: "SE38"` and run the program from there.
 - Snapshot the selection screen. This is exploration only — no Playwright, no `sap.*` runtime calls.
 - Once that first page is open the browser session is authenticated, so navigate to further transactions by opening the plain WebGUI URL with `&~transaction=<TCODE>`; do not call the tool again for each one.
@@ -167,7 +167,7 @@ Fill only what's required (use realistic values discovered via ABAP SQL if neede
 
 **Gate — do not write a single line until you have real snapshots.** Every control, label, ALV column, and initial state you record MUST come from a `read_page` accessibility snapshot you captured in THIS browser session. Before writing, confirm you actually opened and snapshotted each screen you're about to describe. If you have not opened the browser for a screen, you are about to derive it from source — STOP and go back to Step 2/5 and observe it. This is the concrete check that prevents the source-derived `_screens.md` this phase exists to stop.
 
-**Frontmatter is mandatory and must be the very first bytes of the file** — a single `---`-delimited YAML block with `target`, `targetType`, `exploredOn`, `exploredSystem`, before any heading, never inside a code fence (universal rule 13). Downstream phases and `build_test_index` read it; a `_screens.md` without parseable top-of-file frontmatter is rejected. Know this before you start writing, not after the reviewer flags it.
+**Frontmatter is mandatory and must be the very first bytes of the file** — a single `---`-delimited YAML block with `target`, `targetType`, `exploredOn`, `exploredSystem`, before any heading, never inside a code fence (universal rule 13). Downstream phases and `abapfs_build_test_index` read it; a `_screens.md` without parseable top-of-file frontmatter is rejected. Know this before you start writing, not after the reviewer flags it.
 
 **Unobserved screens: honest blank, never a source guess.** For a screen you genuinely could not reach (needs a valid upload file you don't have, or a native OS dialog — see below), write its `## Screen: <name>` heading with **NOT observed**, the concrete reason, and what's needed to observe it — and NOTHING ELSE. Do NOT fill in a guessed control/column list "expected to match" another screen or inferred from `cl_salv_table`/the source: a plausible-looking guess is worse than an honest blank because Phase 6 will trust it and write broken specs. Explicitly flag each unobserved screen in the handoff as needing a live pass before its cases can be scripted.
 

@@ -39,6 +39,6 @@ export class AnalyzeAnstEnhancementsTool implements vscode.LanguageModelTool<IAn
 
 export function registerAnalyzeAnstEnhancementsTool(context: vscode.ExtensionContext): void {
   context.subscriptions.push(
-    registerToolWithRegistry("analyze_anst_enhancements", new AnalyzeAnstEnhancementsTool())
+    registerToolWithRegistry("abapfs_analyze_anst_enhancements", new AnalyzeAnstEnhancementsTool())
   )
 }

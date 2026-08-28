@@ -7,7 +7,7 @@
  *  - Selectors are role + accessible name, scoped to a container (group / dialog / table).
  *    Never CSS classes, never ref numbers, never positional guessing.
  *  - No login here. The session is already authenticated by the time a spec runs: the
- *    playwright_test tool mints a SAP reentrance ticket and globalSetup turns it into the
+ *    abapfs_run_playwright_tests tool mints a SAP reentrance ticket and globalSetup turns it into the
  *    storage state every spec starts from.
  *
  * Helper names are strictly generic — they describe SAP UI mechanics (setField, pickFromValueHelp),
@@ -216,7 +216,7 @@ export class SapSession {
           `is misspelled, or was never prepared. Check ` +
           `tests/<PROGRAM>/test-cases/${this.opts.tcId}.data.md and its ` +
           `tests/<PROGRAM>/test-results/<SYSTEM>/${this.opts.tcId}/data.json cache, and run ` +
-          `verify_test_data_usage.`
+          `abapfs_verify_test_data_usage.`
       )
     }
     await this.guarded(

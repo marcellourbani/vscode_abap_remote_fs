@@ -248,6 +248,6 @@ export class GetABAPObjectInfoTool implements vscode.LanguageModelTool<IGetABAPO
 
 export function registerGetObjectInfoTool(context: vscode.ExtensionContext): void {
   context.subscriptions.push(
-    registerToolWithRegistry("get_abap_object_info", new GetABAPObjectInfoTool())
+    registerToolWithRegistry("abapfs_get_object_info", new GetABAPObjectInfoTool())
   )
 }

@@ -66,11 +66,11 @@ The file is open in Word. Close it and rebuild. If it can't get the lock, Copilo
 
 ### Copilot says a tool is missing
 
-VS Code doesn't always surface every tool immediately, and `playwright_test` is the usual casualty. Starting a fresh chat normally fixes it. Copilot is instructed to tell you rather than fake a result or fall back to a terminal command — so treat the report as accurate.
+VS Code doesn't always surface every tool immediately, and `abapfs_run_playwright_tests` is the usual casualty. Starting a fresh chat normally fixes it. Copilot is instructed to tell you rather than fake a result or fall back to a terminal command — so treat the report as accurate.
 
 ### Copilot redid work that looked finished
 
-A reviewer agent or a gated tool rejected it. The reviewers read the actual ABAP source and challenge the analysis or the test plan, and `build_test_index` and `playwright_test` refuse to run until the required review or readiness check genuinely passed. This is the framework catching a gap — see [Quality gates](technical-reference.md#quality-gates).
+A reviewer agent or a gated tool rejected it. The reviewers read the actual ABAP source and challenge the analysis or the test plan, and `abapfs_build_test_index` and `abapfs_run_playwright_tests` refuse to run until the required review or readiness check genuinely passed. This is the framework catching a gap — see [Quality gates](technical-reference.md#quality-gates).
 
 ### Copilot keeps asking instead of just doing it
 

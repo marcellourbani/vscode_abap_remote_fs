@@ -669,11 +669,11 @@ describe("HeartbeatTool invoke - error handling", () => {
 // ============================================================================
 
 describe("registerHeartbeatTool", () => {
-  test("calls registerToolWithRegistry with 'manage_heartbeat' and HeartbeatTool instance", () => {
+  test("calls registerToolWithRegistry with 'abapfs_manage_heartbeat' and HeartbeatTool instance", () => {
     const mockContext = { subscriptions: { push: jest.fn() } } as any
     registerHeartbeatTool(mockContext)
     expect(registerToolWithRegistry).toHaveBeenCalledWith(
-      "manage_heartbeat",
+      "abapfs_manage_heartbeat",
       expect.any(HeartbeatTool)
     )
     expect(mockContext.subscriptions.push).toHaveBeenCalled()

@@ -10,15 +10,15 @@ disable-model-invocation: false
 
 Generate a rich, structured report that characterizes an SAP system in human-readable terms. You will collect data by running SQL queries, then present the results in a webview table AND provide a narrative AI summary.
 
-**CRITICAL:** Before running ANY query, call `get_abap_sql_syntax` to understand ABAP SQL syntax. Use `get_object_lines` to check table structures before running SQL queries.
+**CRITICAL:** Before running ANY query, call `abapfs_get_sql_syntax` to understand ABAP SQL syntax. Use `get_object_lines` to check table structures before running SQL queries.
 
-**CRITICAL:** All queries must use ABAP SQL syntax (e.g., `ORDER BY field DESCENDING` not `DESC`). Use the `execute_data_query` tool with `displayMode: "internal"` to collect data, then assemble final results into a `displayMode: "ui"` call.
+**CRITICAL:** All queries must use ABAP SQL syntax (e.g., `ORDER BY field DESCENDING` not `DESC`). Use the `abapfs_run_sql_query` tool with `displayMode: "internal"` to collect data, then assemble final results into a `displayMode: "ui"` call.
 
 ---
 
 ## Step 1: System Identity
 
-Get basic system information first. Use the `get_sap_system_info` tool — it returns system type (S/4HANA vs ECC), release, timezone, and client details. No SQL needed for this step.
+Get basic system information first. Use the `abapfs_get_sap_system_info` tool — it returns system type (S/4HANA vs ECC), release, timezone, and client details. No SQL needed for this step.
 
 ---
 
@@ -281,7 +281,7 @@ Group packages into these areas and calculate percentages.
 
 ### Build the Final Display
 
-Use `execute_data_query` with `displayMode: "ui"` and `data` parameter (direct data input) to create the final report as a structured table.
+Use `abapfs_run_sql_query` with `displayMode: "ui"` and `data` parameter (direct data input) to create the final report as a structured table.
 
 Create ONE comprehensive display with these sections as a data table:
 

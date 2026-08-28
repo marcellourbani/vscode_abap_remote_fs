@@ -671,7 +671,7 @@ export class ABAPDebugStepTool implements vscode.LanguageModelTool<IDebugStepPar
             locationInfo =
               "\n⏹️ Program execution completed. No active debug threads.\n" +
               "Session remains active - you can run another program to debug.\n" +
-              "Use `abap_debug_session stop` if you want to end the session."
+              "Use `abapfs_manage_debug_session stop` if you want to end the session."
           } else {
             locationInfo =
               "\n⏹️ Execution continued. Waiting at another breakpoint or running.\n" +
@@ -967,7 +967,7 @@ export class ABAPDebugVariableTool implements vscode.LanguageModelTool<IVariable
         } catch (stackError) {
           debugLog("Variable", `Failed to get stack trace: ${caughtToString(stackError)}`)
           throw new Error(
-            `FrameId ${frameId} is invalid and could not auto-recover. Call abap_debug_stack to get valid frame IDs.`
+            `FrameId ${frameId} is invalid and could not auto-recover. Call abapfs_get_debug_stack to get valid frame IDs.`
           )
         }
       }
@@ -1647,8 +1647,8 @@ export class ABAPDebugStatusTool implements vscode.LanguageModelTool<IDebugStatu
       } else {
         result += `\n Status: No active debugging session\n`
         result += `\n To start debugging:\n`
-        result += `1. Use abap_debug_session tool with action='start'\n`
-        result += `2. Set breakpoints using abap_debug_breakpoint tool\n`
+        result += `1. Use abapfs_manage_debug_session tool with action='start'\n`
+        result += `2. Set breakpoints using abapfs_manage_breakpoints tool\n`
         result += `3. Execute your ABAP program in SAP\n`
         result += `4. Debugger will pause at breakpoints\n`
         result += `5. Use debug tools to control execution and inspect data\n`

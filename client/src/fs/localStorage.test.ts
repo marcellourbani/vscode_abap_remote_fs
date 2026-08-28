@@ -38,7 +38,7 @@ jest.mock(
 
 jest.mock("./initialtemplates", () => ({
   templates: [
-    { name: "abapgit.xml", content: "<abapgit/>" },
+    { name: "abapgit.xml", content: "<abapgit/>", previousContents: ["<legacy/>"] },
     { name: ".abaplint", content: "{}" }
   ]
 }))
@@ -63,7 +63,7 @@ jest.mock("fp-ts/lib/Either", () => ({
   isLeft: jest.fn()
 }))
 
-import { createFolderIfMissing, initializeMainStorage } from "./localStorage"
+import { createFolderIfMissing, initializeFolder, initializeMainStorage } from "./localStorage"
 import * as vscode from "vscode"
 
 describe("localStorage.ts", () => {
@@ -132,8 +132,10 @@ describe("localStorage.ts", () => {
     })
 
     it("does not overwrite existing files", async () => {
-      // stat succeeds for everything - nothing should be created
       ;(vscode.workspace.fs.stat as jest.Mock).mockResolvedValue({})
+      ;(vscode.workspace.fs.readFile as jest.Mock).mockResolvedValue(
+        new TextEncoder().encode("user content")
+      )
 
       const root = {
         path: "/root3",
@@ -144,6 +146,56 @@ describe("localStorage.ts", () => {
       await initializeMainStorage(root as any)
 
       expect(vscode.workspace.fs.writeFile).not.toHaveBeenCalled()
+    })
+
+    it("updates an exact legacy template", async () => {
+      ;(vscode.workspace.fs.stat as jest.Mock).mockResolvedValue({})
+      ;(vscode.workspace.fs.readFile as jest.Mock).mockImplementation((uri: any) => {
+        const content = uri.path.endsWith("abapgit.xml") ? "<legacy/>" : "user content"
+        return Promise.resolve(new TextEncoder().encode(content))
+      })
+      ;(vscode.workspace.fs.writeFile as jest.Mock).mockResolvedValue(undefined)
+
+      const root = {
+        path: "/root4",
+        scheme: "file",
+        authority: "",
+        toString: () => "file:///root4"
+      }
+      await initializeMainStorage(root as any)
+
+      expect(vscode.workspace.fs.writeFile).toHaveBeenCalledTimes(1)
+      expect(vscode.workspace.fs.writeFile).toHaveBeenCalledWith(
+        expect.objectContaining({ path: expect.stringContaining("abapgit.xml") }),
+        new TextEncoder().encode("<abapgit/>")
+      )
+    })
+  })
+
+  describe("initializeFolder", () => {
+    it("updates an exact legacy template for an existing connection", async () => {
+      ;(vscode.workspace.fs.stat as jest.Mock).mockResolvedValue({})
+      ;(vscode.workspace.fs.readFile as jest.Mock).mockImplementation((uri: any) => {
+        const content = uri.path.includes("templates") ? "<abapgit/>" : "<legacy/>"
+        return Promise.resolve(new TextEncoder().encode(content))
+      })
+      ;(vscode.workspace.fs.writeFile as jest.Mock).mockResolvedValue(undefined)
+
+      const root = {
+        path: "/root5",
+        scheme: "file",
+        authority: "",
+        toString: () => "file:///root5"
+      }
+      await initializeFolder(root as any, "existing")
+
+      expect(vscode.workspace.fs.writeFile).toHaveBeenCalledTimes(1)
+      expect(vscode.workspace.fs.writeFile).toHaveBeenCalledWith(
+        expect.objectContaining({
+          path: expect.stringContaining("connections/existing/abapgit.xml")
+        }),
+        new TextEncoder().encode("<abapgit/>")
+      )
     })
   })
 

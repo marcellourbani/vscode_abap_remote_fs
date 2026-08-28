@@ -595,7 +595,7 @@ describe("RelationAnalysisTool", () => {
         })
       )
     ).rejects.toThrow(
-      "SAP system legacy_system does not support the ABAP object-relations APIs. Relation analysis is unavailable on this system. Use find_where_used"
+      "SAP system legacy_system does not support the ABAP object-relations APIs. Relation analysis is unavailable on this system. Use abapfs_find_usages"
     )
   })
 
@@ -792,7 +792,7 @@ describe("RelationAnalysisTool", () => {
     const context = { subscriptions: [] } as any
     registerRelationAnalysisTool(context)
     expect(registerToolWithRegistry).toHaveBeenCalledWith(
-      "analyze_abap_relations",
+      "abapfs_analyze_object_relations",
       expect.any(RelationAnalysisTool)
     )
     expect(context.subscriptions).toHaveLength(1)

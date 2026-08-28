@@ -457,6 +457,6 @@ export class ManageTransportRequestsTool implements vscode.LanguageModelTool<IMa
 
 export function registerTransportTool(context: vscode.ExtensionContext): void {
   context.subscriptions.push(
-    registerToolWithRegistry("manage_transport_requests", new ManageTransportRequestsTool())
+    registerToolWithRegistry("abapfs_manage_transports", new ManageTransportRequestsTool())
   )
 }

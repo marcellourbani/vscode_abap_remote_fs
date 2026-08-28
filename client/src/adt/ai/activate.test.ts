@@ -103,6 +103,8 @@ describe("ActivateTool", () => {
       expect(mockActivator.activate).toHaveBeenCalled()
       const resultContent = (result as any).content
       expect(resultContent[0].value).toContain("Activation successful")
+      expect(resultContent[0].value).toContain("abapfs_get_object_source")
+      expect(resultContent[0].value).toContain("does not prove")
     })
 
     test("throws when object not found in path", async () => {

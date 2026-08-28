@@ -112,6 +112,6 @@ export class GetAbapObjectWorkspaceUriTool implements vscode.LanguageModelTool<I
 
 export function registerGetWorkspaceUriTool(context: vscode.ExtensionContext): void {
   context.subscriptions.push(
-    registerToolWithRegistry("get_abap_object_workspace_uri", new GetAbapObjectWorkspaceUriTool())
+    registerToolWithRegistry("abapfs_get_workspace_uri", new GetAbapObjectWorkspaceUriTool())
   )
 }

@@ -269,7 +269,9 @@ export class RunUnitTestsTool implements vscode.LanguageModelTool<IRunUnitTestsP
 
 export function registerUnitTestTools(context: vscode.ExtensionContext): void {
   context.subscriptions.push(
-    registerToolWithRegistry("create_test_include", new CreateTestIncludeTool())
+    registerToolWithRegistry("abapfs_create_test_include", new CreateTestIncludeTool())
   )
-  context.subscriptions.push(registerToolWithRegistry("run_unit_tests", new RunUnitTestsTool()))
+  context.subscriptions.push(
+    registerToolWithRegistry("abapfs_run_unit_tests", new RunUnitTestsTool())
+  )
 }

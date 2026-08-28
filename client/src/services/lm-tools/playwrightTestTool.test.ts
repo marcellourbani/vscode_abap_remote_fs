@@ -488,7 +488,7 @@ describe("PlaywrightTestTool", () => {
     ;(registerToolWithRegistry as jest.Mock).mockReturnValue("registration")
     registerPlaywrightTestTool(context)
     expect(registerToolWithRegistry).toHaveBeenCalledWith(
-      "playwright_test",
+      "abapfs_run_playwright_tests",
       expect.any(PlaywrightTestTool)
     )
     expect(context.subscriptions.push).toHaveBeenCalledWith("registration")

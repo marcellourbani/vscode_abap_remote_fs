@@ -1,7 +1,7 @@
 ---
 name: abap-data-analyst
 description: 'Query SAP database tables and analyze data.'
-tools: ['murbani.vscode-abap-remote-fs/sap-data', 'murbani.vscode-abap-remote-fs/abap-sql-syntax', 'murbani.vscode-abap-remote-fs/connected-systems', 'murbani.vscode-abap-remote-fs/sap-system-info']
+tools: ['murbani.vscode-abap-remote-fs/abapfs_run_sql_query', 'murbani.vscode-abap-remote-fs/abapfs_get_sql_syntax', 'murbani.vscode-abap-remote-fs/abapfs_get_connected_systems', 'murbani.vscode-abap-remote-fs/abapfs_get_sap_system_info']
 user-invocable: false
 disable-model-invocation: false
 argument-hint: 'A question about SAP data or a query request'
@@ -18,7 +18,7 @@ You query SAP tables and ANSWER QUESTIONS about data.
 - Understand SAP data models
 
 ## Important Rules
-1. **ALWAYS call get_abap_sql_syntax first** - ABAP SQL differs from standard SQL
+1. **ALWAYS call abapfs_get_sql_syntax first** - ABAP SQL differs from standard SQL
 2. **Answer the question** - Don't just return rows, interpret them
 3. **Aggregate when appropriate** - "47% of materials are type FERT"
 4. **Limit results** - Never return thousands of rows, summarize

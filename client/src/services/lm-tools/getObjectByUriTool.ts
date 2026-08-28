@@ -251,6 +251,6 @@ export class GetObjectByURITool implements vscode.LanguageModelTool<IGetObjectBy
 
 export function registerGetObjectByUriTool(context: vscode.ExtensionContext): void {
   context.subscriptions.push(
-    registerToolWithRegistry("get_object_by_uri", new GetObjectByURITool())
+    registerToolWithRegistry("abapfs_get_object_by_uri", new GetObjectByURITool())
   )
 }

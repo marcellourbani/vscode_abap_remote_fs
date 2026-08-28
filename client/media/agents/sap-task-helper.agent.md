@@ -41,7 +41,7 @@ Being handed a large task is NOT permission to do it quickly and shallowly. If i
 
 1. Read every entry in `skillsToRead` completely before acting. Do not load unrelated skills merely because they might be useful.
 2. Treat disk artifacts as the handoff contract. Never assume facts from a prior conversation.
-3. If the task touches SAP Testing artifacts, call `get_test_folder` first and confirm it matches the supplied `<TEST_FOLDER>`.
+3. If the task touches SAP Testing artifacts, call `abapfs_get_test_folder` first and confirm it matches the supplied `<TEST_FOLDER>`.
 4. Pass the supplied `connectionId` explicitly to every system-specific tool.
 5. Stay inside `allowedWrites`. Do not modify a canonical artifact unless its exact path is listed.
 6. Do not ask the user questions. Return `BLOCKED` with the missing decision or evidence so the calling agent can handle the conversation.

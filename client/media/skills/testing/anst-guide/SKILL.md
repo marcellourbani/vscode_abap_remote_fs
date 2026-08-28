@@ -16,7 +16,7 @@ For bounded, self-contained support work, use `sap-task-helper` with explicit in
 
 ## Non-negotiable execution gate
 
-When ANST analysis is required for the target, its trace, analyser result, and the resulting test cases are recorded prerequisites. The `playwright_test` tool verifies them and **will reject every affected case** if any requirement was skipped, deferred, left missing, stale, incomplete, or unverified. Creating a spec in a later phase cannot bypass this validation.
+When ANST analysis is required for the target, its trace, analyser result, and the resulting test cases are recorded prerequisites. The `abapfs_run_playwright_tests` tool verifies them and **will reject every affected case** if any requirement was skipped, deferred, left missing, stale, incomplete, or unverified. Creating a spec in a later phase cannot bypass this validation.
 
 ## Workflow
 
@@ -30,9 +30,9 @@ Walk the user through capturing a runtime enhancement trace using SAP transactio
 
 ## Step 0 — Standalone bootstrap
 
-1. Call `get_test_folder` first. Treat the returned absolute path as `<TEST_FOLDER>`; never infer it from the workspace or a prior chat. If unset, ask the user to run "ABAP FS: Enable SAP UI Testing Features".
+1. Call `abapfs_get_test_folder` first. Treat the returned absolute path as `<TEST_FOLDER>`; never infer it from the workspace or a prior chat. If unset, ask the user to run "ABAP FS: Enable SAP UI Testing Features".
 2. Confirm the target transaction/program from the current request. If omitted, inspect `<TEST_FOLDER>/tests/*/test-cases/_index.md`; ask if more than one candidate exists.
-3. Call `get_connected_systems` and confirm the exact `connectionId` where the trace will be recorded. Ask only if ambiguous.
+3. Call `abapfs_get_connected_systems` and confirm the exact `connectionId` where the trace will be recorded. Ask only if ambiguous.
 4. Keep the exported trace under `<TEST_FOLDER>/tests/<PROGRAM>/sources/anst/` with a descriptive timestamped `.xlsx` filename so a new `analyze-and-plan` chat can find it from disk.
 
 ## Step 1 — Open ANST

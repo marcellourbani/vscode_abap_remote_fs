@@ -31,7 +31,7 @@ export async function getDiagnosticsForUri(fileUri: string): Promise<string> {
   if (uri.scheme !== "adt") {
     throw new Error(
       `Invalid URI scheme '${uri.scheme}'. Expected 'adt://' URI. ` +
-        "Use the get_abap_object_workspace_uri tool to get the correct URI."
+        "Use the abapfs_get_workspace_uri tool to get the correct URI."
     )
   }
 

@@ -7,7 +7,7 @@
  * to be an optional, AI-memory-dependent manual read-through. This makes it a real,
  * deterministic check that either passes or lists exactly what's wrong.
  *
- * Exposed to the AI as the `verify_test_data_usage` language model tool — see
+ * Exposed to the AI as the `abapfs_verify_test_data_usage` language model tool — see
  * src/tools/verifyTestDataUsageTool.ts.
  */
 import * as fs from "fs/promises"

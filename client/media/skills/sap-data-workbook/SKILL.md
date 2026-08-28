@@ -46,7 +46,7 @@ Mandatory: You MUST follow steps 1→2→3 in order. Do NOT create the file with
 
 ## Critical Rules
 
-1. **Get ABAP SQL syntax.** Call `get_abap_sql_syntax` before writing SQL cells. ABAP SQL differs from standard SQL (tilde for table~field, no semicolons, etc.).
+1. **Get ABAP SQL syntax.** Call `abapfs_get_sql_syntax` before writing SQL cells. ABAP SQL differs from standard SQL (tilde for table~field, no semicolons, etc.).
 
 2. **Cell types are exactly:** `"abap-sql"`, `"javascript"`, or `"markdown"`. No other values.
 

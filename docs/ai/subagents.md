@@ -54,11 +54,11 @@ You can also invoke other enabled general agents directly with `@agent-name`. Di
 
 Subagent settings are stored at **user level**. Model assignments use `abapfs.subagents.models`; general-agent visibility uses `abapfs.subagents.enabledAgents`. The deprecated `abapfs.subagents.enabled` setting is migrated for compatibility.
 
-In normal usage, do not edit settings JSON manually. Use **ABAP FS: Set Models for Subagents** or the `manage_subagents` tool.
+In normal usage, do not edit settings JSON manually. Use **ABAP FS: Set Models for Subagents** or the `abapfs_manage_subagents` tool.
 
 ### Step 1 — Configure models
 
-Use **ABAP FS: Set Models for Subagents**, or ask Copilot to do it by calling `manage_subagents` with `get_status`, `list_models`, and then `configure`.
+Use **ABAP FS: Set Models for Subagents**, or ask Copilot to do it by calling `abapfs_manage_subagents` with `get_status`, `list_models`, and then `configure`.
 
 ```
 Configure models for the general ABAP agents
@@ -94,13 +94,13 @@ All management is done through Copilot chat:
 
 | What you want | What to ask |
 |---------------|-------------|
-| Check current status and guidance | `manage_subagents` → `get_status` |
-| See available models | `manage_subagents` → `list_models` |
-| Enable or disable selected general agents | `manage_subagents` → `enable` or `disable` with `agentIds` |
+| Check current status and guidance | `abapfs_manage_subagents` → `get_status` |
+| See available models | `abapfs_manage_subagents` → `list_models` |
+| Enable or disable selected general agents | `abapfs_manage_subagents` → `enable` or `disable` with `agentIds` |
 | Enable or disable all general agents | Omit `agentIds` |
-| Change selected models | `manage_subagents` → `configure` |
-| Validate active assignments | `manage_subagents` → `validate` |
-| See available tools | `manage_subagents` → `list_tools` |
+| Change selected models | `abapfs_manage_subagents` → `configure` |
+| Validate active assignments | `abapfs_manage_subagents` → `validate` |
+| See available tools | `abapfs_manage_subagents` → `list_tools` |
 
 Enable/disable changes take effect immediately. Model changes also take effect immediately; no VS Code reload is required. After an extension update, startup reconciliation reapplies user-level models to the new packaged agent files automatically.
 
@@ -128,4 +128,4 @@ Run `get_status` to confirm the user-level assignment and active state. Model ch
 This happens when a configured model is missing or unavailable. Use `list_models`, configure a currently available model, then enable the affected general agent again.
 
 ### Delegation not using custom agents
-Run `get_status` to confirm the target general agent is enabled and has an available model. If it is disabled, ask Copilot to call `manage_subagents` with `enable` and the agent's `agentIds`.
+Run `get_status` to confirm the target general agent is enabled and has an available model. If it is disabled, ask Copilot to call `abapfs_manage_subagents` with `enable` and the agent's `agentIds`.

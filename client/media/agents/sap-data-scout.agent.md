@@ -45,14 +45,14 @@ Never assume field names — SAP tables have naming conventions that differ acro
 
 For each table you plan to query:
 
-1. Call `get_abap_object_info` with `objectName: "<TABLE>"` and `objectType: "TABL"` to confirm the table exists.
-2. Call `get_abap_object_lines` with `objectName: "<TABLE>"`, `objectType: "TABL"` to read the field definitions — note exact field names, types, and lengths.
-3. If `get_abap_object_lines` returns an empty body (2–4 lines and no fields), the table has no DDL source on this system (common for transported Z-tables on non-dev tiers). Fall back to a zero-row `SELECT * FROM <TABLE> WHERE <any-key> = '<impossible>'` via `execute_data_query` — the response includes full column metadata (name + type) even when 0 rows come back. Do NOT guess field names.
+1. Call `abapfs_get_object_info` with `objectName: "<TABLE>"` and `objectType: "TABL"` to confirm the table exists.
+2. Call `abapfs_get_object_source` with `objectName: "<TABLE>"`, `objectType: "TABL"` to read the field definitions — note exact field names, types, and lengths.
+3. If `abapfs_get_object_source` returns an empty body (2–4 lines and no fields), the table has no DDL source on this system (common for transported Z-tables on non-dev tiers). Fall back to a zero-row `SELECT * FROM <TABLE> WHERE <any-key> = '<impossible>'` via `abapfs_run_sql_query` — the response includes full column metadata (name + type) even when 0 rows come back. Do NOT guess field names.
 4. Only use field names you can see in the output. Never guess or invent field names based on naming patterns.
 
 This applies to ALL tables — standard SAP tables (MARA, EKKO, etc.) AND custom Z-tables. Training data has wrong or outdated field names; the live system is the only truth.
 
-### Step 3 — Call `get_abap_sql_syntax` (mandatory, before writing any query)
+### Step 3 — Call `abapfs_get_sql_syntax` (mandatory, before writing any query)
 
 ABAP SQL has critical differences from standard SQL — JOINs, FOR ALL ENTRIES, date literals, and aggregate syntax all differ from what training data suggests. Always call this after inspecting tables and before writing the query. Never skip it.
 
@@ -60,14 +60,14 @@ ABAP SQL has critical differences from standard SQL — JOINs, FOR ALL ENTRIES, 
 
 Rules:
 
-- Pass `connectionId` explicitly on every `execute_data_query` call
+- Pass `connectionId` explicitly on every `abapfs_run_sql_query` call
 - Use `displayMode: "internal"` with `rowRange: { start: 0, end: <count + 2> }` — fetch a few extra in case some rows fail spot-validation
 - Narrow the WHERE clause to match the requirement's filter conditions precisely
 - Select only the key and validation fields needed for the requirement. Avoid `SELECT *` in normal data discovery; use it only for deliberate schema discovery when no field metadata is available, and explain why.
 - Keep the result payload narrow because unnecessary fields increase transfer cost and can expose decoder issues in unrelated columns.
 - For multi-table requirements (e.g. "listed at BOTH site A and site B"), use JOIN or FOR ALL ENTRIES — the syntax guide from Step 3 tells you which is correct for this case
 - Add `ORDER BY` to make results deterministic (prefer recently created/modified data where relevant)
-- **Limit rows with the tool parameters, NEVER with SQL row-limit syntax.** ABAP SQL via ADT does NOT accept `FETCH FIRST n ROWS ONLY`, `LIMIT`, `TOP`, or `ROWNUM` — a query using any of them is rejected. Cap the result set with `execute_data_query`'s `rowRange` (and `maxRows`) instead. If the requirement itself implies a row cap ("give me 5 …"), that cap is the `count` you fetch, applied via `rowRange` — not baked into the SQL.
+- **Limit rows with the tool parameters, NEVER with SQL row-limit syntax.** ABAP SQL via ADT does NOT accept `FETCH FIRST n ROWS ONLY`, `LIMIT`, `TOP`, or `ROWNUM` — a query using any of them is rejected. Cap the result set with `abapfs_run_sql_query`'s `rowRange` (and `maxRows`) instead. If the requirement itself implies a row cap ("give me 5 …"), that cap is the `count` you fetch, applied via `rowRange` — not baked into the SQL.
 - Never SELECT \* — name only the columns you need
 
 ### Step 5 — Spot-validate the results
@@ -133,11 +133,11 @@ BLOCKED: No rows satisfy the requirement on this system. Suggested remedies:
 - **Do not broaden business criteria.** A field being technically valid in a DDIC table does not prove it is a valid business prerequisite for a specific test. If the caller has not supplied the required company code, plant, asset class, status, date, or other domain criteria, return BLOCKED or ask for the missing criteria instead of declaring any row suitable.
 - **Do not call production-ready a value without evidence.** Report only the returned database facts; never label a company code, asset, material, or document as safe for a business operation unless the requirement and queried fields prove that claim.
 - **One connectionId, one system.** Never cross-query two systems in one call. If the caller needs data from two landscapes, they invoke you twice.
-- **ADT is your only data channel — no SE16N-via-browser fallback.** If `execute_data_query` fails, do not open a browser and read the table from SE16N; that hides the real problem and produces values the framework can't cache correctly.
+- **ADT is your only data channel — no SE16N-via-browser fallback.** If `abapfs_run_sql_query` fails, do not open a browser and read the table from SE16N; that hides the real problem and produces values the framework can't cache correctly.
 
 ## ABAP FS connectivity failure — return BLOCKED, do not work around
 
-If any ABAP FS tool call (`execute_data_query`, `get_abap_object_lines`, `get_abap_object_info`, `get_abap_sql_syntax`, …) returns HTTP 401, 403, or 5xx, ABAP FS is almost certainly unable to reach the target SAP system — usually because the SAP session expired. This is NOT permission to fall back to SE16N, a fabricated value, or a different system. Stop, and return this exact BLOCKED result to the caller:
+If any ABAP FS tool call (`abapfs_run_sql_query`, `abapfs_get_object_source`, `abapfs_get_object_info`, `abapfs_get_sql_syntax`, …) returns HTTP 401, 403, or 5xx, ABAP FS is almost certainly unable to reach the target SAP system — usually because the SAP session expired. This is NOT permission to fall back to SE16N, a fabricated value, or a different system. Stop, and return this exact BLOCKED result to the caller:
 
 ```markdown
 ## Data scout result

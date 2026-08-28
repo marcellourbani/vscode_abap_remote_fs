@@ -225,6 +225,6 @@ export class ABAPFSDocumentationTool implements vscode.LanguageModelTool<IDocume
 
 export function registerDocumentationTool(context: vscode.ExtensionContext): void {
   context.subscriptions.push(
-    registerToolWithRegistry("abap_fs_documentation", new ABAPFSDocumentationTool())
+    registerToolWithRegistry("abapfs_search_documentation", new ABAPFSDocumentationTool())
   )
 }

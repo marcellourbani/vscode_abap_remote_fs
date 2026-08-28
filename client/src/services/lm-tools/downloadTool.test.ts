@@ -174,7 +174,10 @@ describe("DownloadTool", () => {
     it("registers the tool with the registry", () => {
       const ctx = { subscriptions: [] as any[] } as any
       registerDownloadTool(ctx)
-      expect(registerToolWithRegistry).toHaveBeenCalledWith("abap_download", expect.any(Object))
+      expect(registerToolWithRegistry).toHaveBeenCalledWith(
+        "abapfs_download_object",
+        expect.any(Object)
+      )
       expect(ctx.subscriptions.length).toBe(1)
     })
   })

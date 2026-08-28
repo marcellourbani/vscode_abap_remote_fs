@@ -9,7 +9,7 @@ For bounded, self-contained support work, use `sap-task-helper` with explicit in
 
 ## Non-negotiable execution gate
 
-Using a helper does not bypass the SAP Testing phase requirements. The `playwright_test` tool verifies required steps, artifacts, data caches, and script checks and **will reject the run** if any are missing, stale, incomplete, or unverified. A helper or escape-hatch workaround cannot bypass this validation.
+Using a helper does not bypass the SAP Testing phase requirements. The `abapfs_run_playwright_tests` tool verifies required steps, artifacts, data caches, and script checks and **will reject the run** if any are missing, stale, incomplete, or unverified. A helper or escape-hatch workaround cannot bypass this validation.
 
 ## Why
 
@@ -29,7 +29,7 @@ What you CAN see: the type declarations surfaced via `@sap-testing/runtime` (rea
 
 For a general API question, answer directly from this reference. If the user wants you to inspect, write, or fix a real test artifact, first complete the standalone bootstrap in the relevant phase workflow:
 
-1. Call `get_test_folder` and use its returned absolute path as `<TEST_FOLDER>`.
+1. Call `abapfs_get_test_folder` and use its returned absolute path as `<TEST_FOLDER>`.
 2. Resolve the program/TC-ID from the request and artifacts under `<TEST_FOLDER>/tests/`; never depend on a prior chat.
 3. Confirm the exact `connectionId` before any system-specific diagnosis.
 

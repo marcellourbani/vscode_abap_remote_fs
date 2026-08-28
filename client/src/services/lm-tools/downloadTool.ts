@@ -319,5 +319,5 @@ async function runPool<T>(
 }
 
 export function registerDownloadTool(context: vscode.ExtensionContext): void {
-  context.subscriptions.push(registerToolWithRegistry("abap_download", new DownloadTool()))
+  context.subscriptions.push(registerToolWithRegistry("abapfs_download_object", new DownloadTool()))
 }

@@ -74,6 +74,6 @@ export class ConnectedSystemsTool implements vscode.LanguageModelTool<IConnected
 
 export function registerConnectedSystemsTool(context: vscode.ExtensionContext): void {
   context.subscriptions.push(
-    registerToolWithRegistry("get_connected_systems", new ConnectedSystemsTool())
+    registerToolWithRegistry("abapfs_get_connected_systems", new ConnectedSystemsTool())
   )
 }

@@ -1,7 +1,7 @@
 ---
 name: abap-troubleshooter
 description: 'Analyze runtime dumps and performance traces.'
-tools: ['murbani.vscode-abap-remote-fs/abap-dumps', 'murbani.vscode-abap-remote-fs/abap-traces', 'murbani.vscode-abap-remote-fs/abap-lines', 'murbani.vscode-abap-remote-fs/abap-info', 'murbani.vscode-abap-remote-fs/abap-search-lines', 'murbani.vscode-abap-remote-fs/abap_activate']
+tools: ['murbani.vscode-abap-remote-fs/abapfs_analyze_dumps', 'murbani.vscode-abap-remote-fs/abapfs_analyze_traces', 'murbani.vscode-abap-remote-fs/abapfs_get_object_source', 'murbani.vscode-abap-remote-fs/abapfs_get_object_info', 'murbani.vscode-abap-remote-fs/abapfs_search_object_source', 'murbani.vscode-abap-remote-fs/abapfs_activate_object']
 user-invocable: false
 disable-model-invocation: false
 argument-hint: 'A question about dumps, errors, or performance issues'

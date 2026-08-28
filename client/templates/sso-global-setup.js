@@ -1,6 +1,6 @@
 // Loaded by @playwright/test's own CLI, not compiled by our build — plain CommonJS.
 //
-// Signs in once per run so every spec starts with an authenticated session. The playwright_test
+// Signs in once per run so every spec starts with an authenticated session. The abapfs_run_playwright_tests
 // tool mints a one-shot loopback login form in the extension host; this setup fetches the form,
 // POSTs it through Playwright's browserless request context, and saves the resulting cookie jar.
 //

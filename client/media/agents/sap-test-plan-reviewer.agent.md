@@ -1,6 +1,6 @@
 ---
 name: sap-test-plan-reviewer
-description: Adversarial review of a test-case plan produced by design-cases. READS the actual ABAP source snapshot (plus _findings.md, _flow.md, _units.md, and the TC-*.md files) to catch branches and MESSAGEs the plan missed, checks total case count against the enumerated minimum, checks every mandatory category has at least one case, checks no MESSAGE/branch got bucketed into a vague "invalid data" case, and checks every state-changing case (per _units.md's effective outputs) carries a `## Post-test verification` section with the right sql/manual/none classification. Use after writing the TC-*.md files, BEFORE building the index (build_test_index is gated on this agent returning PASS).
+description: Adversarial review of a test-case plan produced by design-cases. READS the actual ABAP source snapshot (plus _findings.md, _flow.md, _units.md, and the TC-*.md files) to catch branches and MESSAGEs the plan missed, checks total case count against the enumerated minimum, checks every mandatory category has at least one case, checks no MESSAGE/branch got bucketed into a vague "invalid data" case, and checks every state-changing case (per _units.md's effective outputs) carries a `## Post-test verification` section with the right sql/manual/none classification. Use after writing the TC-*.md files, BEFORE building the index (abapfs_build_test_index is gated on this agent returning PASS).
 user-invocable: false
 disable-model-invocation: false
 model: GPT-5.4 mini
@@ -25,7 +25,7 @@ You are a deliberately skeptical second pass over another agent's test-case plan
 ## Input you'll receive
 
 - Program name and system
-- Confirmation that `_findings.md`, `_flow.md`, `_units.md`, `_screens.md`, and every `TC-NNN.md` have been written, and the source snapshot exists (its path is in `_findings.md`). You run BEFORE `build_test_index` — do NOT require `_index.md` or any `.data.md` to exist yet (data specs are authored in a later phase, and the index is built only after you PASS). If any of `_findings.md`, `_flow.md`, `_units.md`, `_screens.md`, the source snapshot, or the `TC-*.md` files are missing, return the exact missing item, instruct the caller to complete the relevant phase, then stop.
+- Confirmation that `_findings.md`, `_flow.md`, `_units.md`, `_screens.md`, and every `TC-NNN.md` have been written, and the source snapshot exists (its path is in `_findings.md`). You run BEFORE `abapfs_build_test_index` — do NOT require `_index.md` or any `.data.md` to exist yet (data specs are authored in a later phase, and the index is built only after you PASS). If any of `_findings.md`, `_flow.md`, `_units.md`, `_screens.md`, the source snapshot, or the `TC-*.md` files are missing, return the exact missing item, instruct the caller to complete the relevant phase, then stop.
 - You WILL read the source snapshot yourself as part of the review (see step 1) — comparing the code to the plan is the only way to catch cases the plan skipped.
 
 ## What to check, in order

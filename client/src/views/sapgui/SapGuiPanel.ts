@@ -149,7 +149,7 @@ export class SapGuiPanel {
 
   /**
    * � Build WebGUI URL using existing infrastructure
-   * Made public for the new get_abap_object_url language tool
+   * Made public for the new abapfs_get_object_url language tool
    */
   public async buildWebGuiUrl(): Promise<string> {
     const transactionInfo = SapGuiPanel.getTransactionInfo(this._objectType, this._objectName)

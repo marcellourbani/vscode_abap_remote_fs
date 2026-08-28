@@ -58,7 +58,7 @@ ABAP FS writes a small amount of infrastructure into the test folder and re-appl
 
 **Always:** a `tsconfig.json` that maps the module specifier `@sap-testing/runtime` to the extension's compiled runtime, a link to that runtime under `node_modules`, and a `.gitignore` entry for both. This is what gives the TypeScript language service real IntelliSense and type errors while Copilot writes a spec — checked against the actual runtime signatures rather than prose in a skill — and what lets the test runner resolve the runtime at execution time. The language-service half only applies while the test folder is open in your workspace; the runner half works either way.
 
-**Only while Microsoft's Playwright extension is installed:** a `playwright.config.js`, links to the bundled Playwright, a `.bin` launcher, and `.sap-active-system`. These exist purely so the Test Explorer sidebar can discover and run specs. They're removed again if you uninstall that extension. The `playwright_test` tool needs none of them — it passes its own config and sets the target system directly in the runner's environment.
+**Only while Microsoft's Playwright extension is installed:** a `playwright.config.js`, links to the bundled Playwright, a `.bin` launcher, and `.sap-active-system`. These exist purely so the Test Explorer sidebar can discover and run specs. They're removed again if you uninstall that extension. The `abapfs_run_playwright_tests` tool needs none of them — it passes its own config and sets the target system directly in the runner's environment.
 
 All of it is gitignored, because it hardcodes machine-specific absolute paths.
 
@@ -101,7 +101,7 @@ Only `sql` and `seeded` values belong in `data.json`. Caching a `static` value s
 
 Fixtures support `{{other_key}}` substitution and relative date tokens (`today`, `+30d`, `-5d`) resolved against the current run time, so a fixture never carries an absolute date.
 
-Keys that must differ from each other declare `distinctFrom` on both sides; `check_test_data` fails the program if they resolve to the same value. Ordering with `take: first` is not a uniqueness guarantee, because a `SELECT` without `ORDER BY` has no defined row order.
+Keys that must differ from each other declare `distinctFrom` on both sides; `abapfs_check_test_data` fails the program if they resolve to the same value. Ordering with `take: first` is not a uniqueness guarantee, because a `SELECT` without `ORDER BY` has no defined row order.
 
 ## Quality gates
 
@@ -113,12 +113,12 @@ Three reviewer agents and two tool-level gates keep the workflow honest.
 
 | Tool | Requires |
 |---|---|
-| `build_test_index` | Certification that the test plan reviewer already returned a pass |
-| `playwright_test` | Certification that all upstream phase gates and data readiness were verified |
+| `abapfs_build_test_index` | Certification that the test plan reviewer already returned a pass |
+| `abapfs_run_playwright_tests` | Certification that all upstream phase gates and data readiness were verified |
 
 Both reject the call if the confirmation is missing or wrong, which means an agent that skipped a phase cannot produce the case index or run a test. The gate is a behavioural contract rather than a cryptographic one — its purpose is to stop a model from quietly cutting a corner under pressure, not to defend against a determined attacker.
 
-`build_test_index` also enforces structural rules: valid categories, matching case IDs, parseable frontmatter, and agreement between `dataRequired` and the presence of a `.data.md`. A missing `.data.md` for a case that needs one is a warning during phase 3 (specs come later) and must be zero by the end of phase 4.
+`abapfs_build_test_index` also enforces structural rules: valid categories, matching case IDs, parseable frontmatter, and agreement between `dataRequired` and the presence of a `.data.md`. A missing `.data.md` for a case that needs one is a warning during phase 3 (specs come later) and must be zero by the end of phase 4.
 
 ## The runtime
 
@@ -150,7 +150,7 @@ Setting `webGuiAutoLogin: false` on a connection skips all of it, for landscapes
 
 ## Execution
 
-`playwright_test` runs the real `@playwright/test` CLI as a subprocess, using VS Code's own Node runtime and a copy of Playwright vendored into the extension. Nothing is installed into your test folder and no browser is downloaded — it drives your installed Edge.
+`abapfs_run_playwright_tests` runs the real `@playwright/test` CLI as a subprocess, using VS Code's own Node runtime and a copy of Playwright vendored into the extension. Nothing is installed into your test folder and no browser is downloaded — it drives your installed Edge.
 
 Defaults: one worker, no retries, 60 seconds per test, 10 minutes overall, traces retained on failure under `.playwright-artifacts/`. Tests run headless unless asked for a headed run, which is worth doing the first time a new spec runs.
 
@@ -162,4 +162,4 @@ Each case run writes `manifest.json` (every step, timestamp, and note) plus numb
 
 Post-run checks land in `verification.json`, recording each check, who performed it, the SQL or tool used, actual versus expected, and its status. Checks a machine can't perform stay `pending-manual` until you confirm them.
 
-`build_evidence_report` aggregates all of it into one Word document per program and connection: a title page with the pass/fail summary, a colour-coded results table, and one section per case with every step and screenshot. Where a `verification.json` exists, its checks appear too — so a case that passed on screen but failed its database check shows as failed, and a case with unconfirmed manual checks is visibly not fully proven. Rebuilding is cheap and safe to repeat.
+`abapfs_build_evidence_report` aggregates all of it into one Word document per program and connection: a title page with the pass/fail summary, a colour-coded results table, and one section per case with every step and screenshot. Where a `verification.json` exists, its checks appear too — so a case that passed on screen but failed its database check shows as failed, and a case with unconfirmed manual checks is visibly not fully proven. Rebuilding is cheap and safe to repeat.

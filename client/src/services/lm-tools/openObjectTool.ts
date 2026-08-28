@@ -97,5 +97,5 @@ export class OpenObjectTool implements vscode.LanguageModelTool<IOpenObjectParam
 // ============================================================================
 
 export function registerOpenObjectTool(context: vscode.ExtensionContext): void {
-  context.subscriptions.push(registerToolWithRegistry("open_object", new OpenObjectTool()))
+  context.subscriptions.push(registerToolWithRegistry("abapfs_open_object", new OpenObjectTool()))
 }

@@ -147,7 +147,7 @@ These are the JSON entries stored in `heartbeat.json`. You can let Copilot gener
   "category": "dump",
   "priority": "high",
   "checkInstructions": [
-    "Use analyze_abap_dumps tool with action 'list_dumps'",
+    "Use abapfs_analyze_dumps tool with action 'list_dumps'",
     "Compare dump IDs against lastNotifiedFindings",
     "Only alert for genuinely new dumps",
     "Update lastNotifiedFindings with current dump IDs"
@@ -205,7 +205,7 @@ These are the JSON entries stored in `heartbeat.json`. You can let Copilot gener
 
 When you say something like "remind me tomorrow at 10am", Copilot:
 
-1. Queries the SAP system's timezone using `get_sap_system_info`
+1. Queries the SAP system's timezone using `abapfs_get_sap_system_info`
 2. Converts your local time to the correct UTC timestamp
 3. Stores the result in `startAt` (e.g. `"2026-02-05T08:00:00.000Z"` for UTC+2)
 

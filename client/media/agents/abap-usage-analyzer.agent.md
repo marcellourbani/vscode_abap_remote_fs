@@ -1,7 +1,7 @@
 ---
 name: abap-usage-analyzer
 description: 'Analyze where ABAP objects are used, dependencies, and change impact.'
-tools: ['murbani.vscode-abap-remote-fs/abap-where-used', 'murbani.vscode-abap-remote-fs/abap-search', 'murbani.vscode-abap-remote-fs/abap-lines', 'murbani.vscode-abap-remote-fs/abap-info']
+tools: ['murbani.vscode-abap-remote-fs/abapfs_find_usages', 'murbani.vscode-abap-remote-fs/abapfs_search_objects', 'murbani.vscode-abap-remote-fs/abapfs_get_object_source', 'murbani.vscode-abap-remote-fs/abapfs_get_object_info']
 user-invocable: false
 disable-model-invocation: false
 argument-hint: 'A question about where an object is used or change impact'

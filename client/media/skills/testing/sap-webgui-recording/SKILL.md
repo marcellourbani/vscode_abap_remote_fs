@@ -24,7 +24,7 @@ The command **ABAP FS: Record SAP WebGUI Flow** writes:
 
 A recording is not a test case or production spec:
 
-- never run it through `playwright_test`;
+- never run it through `abapfs_run_playwright_tests`;
 - never copy it verbatim into `test-scripts/`;
 - never treat generated IDs, iframe names, or positions as approved locators;
 - persist verified observations into `_screens.md`;

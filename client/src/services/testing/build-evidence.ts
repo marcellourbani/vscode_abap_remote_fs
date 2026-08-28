@@ -33,7 +33,7 @@ import { borderedTable, borderedTableCell } from "./docx-table"
 
 /**
  * Written by the AI (via run-scripts' "Post-test verification" step), NOT by
- * playwright_test — Playwright can't run SQL or open AL11/SXMB_MONI, so this file
+ * abapfs_run_playwright_tests — Playwright can't run SQL or open AL11/SXMB_MONI, so this file
  * records checks the spec itself structurally cannot make. See run-scripts/SKILL.md.
  *
  * A check is either performed by the model (`by: "sql"` — an ABAP SQL query it ran)
@@ -420,11 +420,11 @@ async function buildProgramReport(
 
 /**
  * Build the .docx evidence report for exactly one program+system.
- * Exposed to the AI as the `build_evidence_report` language model tool — see
+ * Exposed to the AI as the `abapfs_build_evidence_report` language model tool — see
  * src/tools/buildEvidenceReportTool.ts.
  *
  * Throws if there are no test-results (manifest.json files) for that program+system —
- * run playwright_test first.
+ * run abapfs_run_playwright_tests first.
  */
 export async function buildEvidenceReport(
   testFolder: string,
@@ -436,7 +436,7 @@ export async function buildEvidenceReport(
   if (!outPath) {
     throw new Error(
       `No test results found for ${program} on ${system.toUpperCase()} — ` +
-        `run playwright_test first (results live in ${path.join(programDir, "test-results", system.toUpperCase())}).`
+        `run abapfs_run_playwright_tests first (results live in ${path.join(programDir, "test-results", system.toUpperCase())}).`
     )
   }
   return outPath

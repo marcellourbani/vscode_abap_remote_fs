@@ -37,7 +37,7 @@ You can also do it later with **File → Add Folder to Workspace**.
 
 A panel opens with General agents and Testing agents in separate collapsible sections. Pick a model for each testing agent and save. Testing agents are configured as one group when the testing folder is ready. Model changes take effect without a VS Code reload.
 
-You can also ask Copilot to do this: ask it to call `manage_subagents`, inspect `get_status` and `list_models`, and then configure all nine testing agents with the exact model names returned.
+You can also ask Copilot to do this: ask it to call `abapfs_manage_subagents`, inspect `get_status` and `list_models`, and then configure all nine testing agents with the exact model names returned.
 
 **Do this even though the framework ships with defaults.** The defaults name specific models that may not exist in your Copilot subscription, and an agent whose model isn't available falls back to whatever your main chat is using — usually a premium model doing work that a cheap one handles fine, which gets expensive quickly across a long analysis.
 

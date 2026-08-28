@@ -106,7 +106,7 @@ export type DataRequirement = {
   /**
    * Cross-key uniqueness: the names of other requirement keys this value MUST differ from.
    * Declared on BOTH keys of a pair. Not enforced at run time here (resolveTestData handles
-   * one TC at a time); it is enforced during prepare-data by check_test_data, which resolves
+   * one TC at a time); it is enforced during prepare-data by abapfs_check_test_data, which resolves
    * the whole program and fails on a collision. Carried in the type so tooling can read it.
    */
   distinctFrom?: string[]
@@ -120,7 +120,7 @@ function currentSystem(): string {
 }
 
 /**
- * Root of the test folder (contains `tests/<program>/...`). When `playwright_test`
+ * Root of the test folder (contains `tests/<program>/...`). When `abapfs_run_playwright_tests`
  * spawns a spec, it sets both `cwd` AND `SAP_TESTING_ROOT` to the configured test
  * folder, so this works whether or not the caller happens to also be running with
  * that cwd. Extension-host code (the maintenance tools, which run inside the
@@ -224,7 +224,7 @@ export async function resolveTestData(
  * failing much later with a confusing "value is not a string" inside setField.
  *
  * Only DECLARED requirements are populated into `out`; an undeclared `data.foo` access
- * is always a spec/`.data.md` mismatch (the exact thing `verify_test_data_usage` checks
+ * is always a spec/`.data.md` mismatch (the exact thing `abapfs_verify_test_data_usage` checks
  * at build time — this is the run-time backstop). We deliberately let a small set of
  * framework/inspection accessors (await, JSON, logging, test matchers) and all symbols
  * through so wrapping the object never breaks normal handling.
@@ -255,7 +255,7 @@ function guardUndeclaredKeys(out: ResolvedData, tcId: string): ResolvedData {
           `${tcId} spec read data.${prop}, but "${prop}" is not a resolved test-data key. ` +
             `Declare it in ${tcId}.data.md under "requires:" (define-data skill) and prepare it ` +
             `(prepare-data skill), or remove the data.${prop} reference from the spec. ` +
-            `Run verify_test_data_usage to catch this at build time. ` +
+            `Run abapfs_verify_test_data_usage to catch this at build time. ` +
             `Resolved keys: ${Object.keys(target).join(", ") || "(none)"}.`
         )
       }

@@ -1,5 +1,5 @@
 /**
- * playwright_test — runs the real @playwright/test CLI as a subprocess against a
+ * abapfs_run_playwright_tests — runs the real @playwright/test CLI as a subprocess against a
  * spec (or every spec) under a program's test-scripts/ folder, using the extension's
  * own bundled Node/Playwright — the end user never installs or runs anything.
  *
@@ -61,10 +61,10 @@ export interface IPlaywrightTestParameters {
 
 /**
  * The exact sentence the model must pass before a run is allowed. Same behavioral-gate
- * technique as build_test_index's reviewerConfirmation: the tool cannot itself re-derive
+ * technique as abapfs_build_test_index's reviewerConfirmation: the tool cannot itself re-derive
  * every upstream phase gate cheaply, but requiring the model to type this certification
  * forces it to consciously complete the run-scripts Step 0 gate (artifacts present, data
- * readiness confirmed via check_test_data) instead of firing a run and hoping.
+ * readiness confirmed via abapfs_check_test_data) instead of firing a run and hoping.
  */
 const REQUIRED_PREREQUISITE_CONFIRMATION =
   "I verified all upstream phase gates and test data readiness for this program"
@@ -278,9 +278,9 @@ export class PlaywrightTestTool implements vscode.LanguageModelTool<IPlaywrightT
       normalizeConfirmation(REQUIRED_PREREQUISITE_CONFIRMATION)
     ) {
       throw new Error(
-        "playwright_test is blocked: the mandatory 'prerequisiteConfirmation' field was " +
+        "abapfs_run_playwright_tests is blocked: the mandatory 'prerequisiteConfirmation' field was " +
           "missing or did not match. Before running, complete the run-scripts Step 0 gate — " +
-          "confirm the case/spec/screens/index artifacts exist and that check_test_data " +
+          "confirm the case/spec/screens/index artifacts exist and that abapfs_check_test_data " +
           "reports the selected cases resolvable on this connection. Then re-call this tool " +
           `passing prerequisiteConfirmation exactly as: "${REQUIRED_PREREQUISITE_CONFIRMATION}".`
       )
@@ -323,7 +323,7 @@ export class PlaywrightTestTool implements vscode.LanguageModelTool<IPlaywrightT
     const verificationErrors = await findSqlVerificationGateErrors(testFolder, program, tcIds)
     if (verificationErrors.length) {
       throw new Error(
-        `playwright_test blocked: SQL/mixed post-validation cases require SE16N screenshot ` +
+        `abapfs_run_playwright_tests blocked: SQL/mixed post-validation cases require SE16N screenshot ` +
           `proof in the matching spec:\n- ${verificationErrors.join("\n- ")}`
       )
     }
@@ -395,7 +395,9 @@ export class PlaywrightTestTool implements vscode.LanguageModelTool<IPlaywrightT
 }
 
 export function registerPlaywrightTestTool(context: vscode.ExtensionContext): void {
-  context.subscriptions.push(registerToolWithRegistry("playwright_test", new PlaywrightTestTool()))
+  context.subscriptions.push(
+    registerToolWithRegistry("abapfs_run_playwright_tests", new PlaywrightTestTool())
+  )
 }
 
 /**

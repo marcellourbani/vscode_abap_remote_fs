@@ -49,7 +49,7 @@ export interface SubagentSettings {
 /**
  * Agent metadata registry - templates are in separate files
  * NOTE: defaultModel is empty - Copilot must specify model when calling the LM tool
- * Tool names use toolReferenceName from package.json (e.g., 'abap-search' not 'search_abap_objects')
+ * Tool names use toolReferenceName from package.json (e.g., 'abap-search' not 'abapfs_search_objects')
  */
 export const AGENT_REGISTRY: AgentMeta[] = [
   {
@@ -108,7 +108,7 @@ export const AGENT_REGISTRY: AgentMeta[] = [
       "atc-analysis",
       "atc-decorations",
       "abap-test",
-      "abap_activate",
+      "abapfs_activate_object",
       "test-include",
       "abap-info"
     ],
@@ -153,7 +153,7 @@ export const AGENT_REGISTRY: AgentMeta[] = [
       "abap-lines",
       "abap-info",
       "abap-search-lines",
-      "abap_activate"
+      "abapfs_activate_object"
     ],
     templateFile: "abap-troubleshooter.agent.md"
   },
@@ -172,7 +172,13 @@ export const AGENT_REGISTRY: AgentMeta[] = [
     description: "Create new ABAP objects (blank shells)",
     tier: 1,
     defaultModel: "",
-    tools: ["abap-create", "connected-systems", "abap-search", "abap_activate", "abap-test"],
+    tools: [
+      "abap-create",
+      "connected-systems",
+      "abap-search",
+      "abapfs_activate_object",
+      "abap-test"
+    ],
     templateFile: "abap-creator.agent.md"
   },
   {

@@ -1,5 +1,5 @@
 // Loaded by @playwright/test's own CLI, not compiled by our build — plain CommonJS.
-// Values come from environment variables the playwright_test tool sets before spawning,
+// Values come from environment variables the abapfs_run_playwright_tests tool sets before spawning,
 // so this one static file drives every run instead of generating a config per call.
 const path = require("path")
 const { defineConfig } = require("@playwright/test")
