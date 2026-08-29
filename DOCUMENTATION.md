@@ -299,14 +299,14 @@ All 40 ABAP FS tools are exposed, including:
 
 | Tool                        | What It Does                       |
 | --------------------------- | ---------------------------------- |
-| `search_abap_objects`       | Search for objects by name pattern |
-| `get_abap_object_lines`     | Read source code                   |
-| `find_where_used`           | Where-used analysis                |
-| `run_unit_tests`            | Execute ABAP unit tests            |
-| `run_atc_analysis`          | Run ATC code checks                |
-| `execute_data_query`        | Run SQL queries against SAP tables |
-| `manage_transport_requests` | Read transport data                |
-| `abap_activate`             | Activate ABAP objects              |
+| `abapfs_search_objects`       | Search for objects by name pattern |
+| `abapfs_get_object_source`     | Read source code                   |
+| `abapfs_find_usages`           | Where-used analysis                |
+| `abapfs_run_unit_tests`            | Execute ABAP unit tests            |
+| `abapfs_run_atc_analysis`          | Run ATC code checks                |
+| `abapfs_run_sql_query`        | Run SQL queries against SAP tables |
+| `abapfs_manage_transports` | Read transport data                |
+| `abapfs_activate_object`             | Activate ABAP objects              |
 | `replace_string_in_abap_object` | Edit ABAP source code (find & replace) |
 | `get_abap_diagnostics`      | Get syntax errors/warnings for a file  |
 
@@ -314,8 +314,8 @@ All 40 ABAP FS tools are exposed, including:
 
 MCP clients can now edit ABAP source code directly. The workflow:
 
-1. **Get the file URI** — call `get_abap_object_workspace_uri` with object name/type/connection
-2. **Read current code** — call `get_abap_object_lines` or `search_abap_object_lines`
+1. **Get the file URI** — call `abapfs_get_workspace_uri` with object name/type/connection
+2. **Read current code** — call `abapfs_get_object_source` or `abapfs_search_object_source`
 3. **Edit** — call `replace_string_in_abap_object` with the URI, old text, and new text
 4. **Verify** — call `get_abap_diagnostics` with the same URI to check for syntax errors
 
@@ -360,7 +360,7 @@ Make sure you are in **Agent mode** (not Ask or Edit) for full tool access.
 
 ## Connection Requirement
 
-Most tools require an active SAP connection. When no SAP system is connected, tools are hidden from Copilot to save context tokens. The **abap_fs_documentation** tool is always available regardless of connection status — use it to ask about features and setup.
+Most tools require an active SAP connection. When no SAP system is connected, tools are hidden from Copilot to save context tokens. The **abapfs_search_documentation** tool is always available regardless of connection status — use it to ask about features and setup.
 
 Connect to a SAP system (`Ctrl+Shift+P` → **ABAP FS: Connect to an ABAP system**) to enable all 40+ tools.
 
@@ -370,83 +370,83 @@ When you type a question, Copilot picks the appropriate tool behind the scenes:
 
 | What you ask | Tool Copilot uses |
 |---|---|
-| "Where is BAPI_USER_GET_DETAIL used?" | `find_where_used` |
-| "Show me the code for ZCL_MY_CLASS" | `get_abap_object_lines` |
-| "Find all classes with 'pricing' in the name" | `search_abap_objects` |
-| "Create a new class ZCL_TEST" | `create_object_programmatically` |
-| "Run ATC on ZTEST_PROG" | `run_atc_analysis` |
+| "Where is BAPI_USER_GET_DETAIL used?" | `abapfs_find_usages` |
+| "Show me the code for ZCL_MY_CLASS" | `abapfs_get_object_source` |
+| "Find all classes with 'pricing' in the name" | `abapfs_search_objects` |
+| "Create a new class ZCL_TEST" | `abapfs_create_object` |
+| "Run ATC on ZTEST_PROG" | `abapfs_run_atc_analysis` |
 
 ## Available Tools
 
 ### Search & Navigation
 
-1. **search_abap_objects** — Search for objects by name pattern using wildcards (e.g. `Z*PRICING*`, `BAPI_USER*`)
-2. **get_abap_object_lines** — Read source code from any ABAP object. Use `methodName` to extract a single method (e.g. "Show me the FACTORY method from CL_SALV_TABLE")
-3. **search_abap_object_lines** — Search for text within source code; supports regex and can list all methods in a class
-4. **get_abap_object_info** — Get metadata about an object (type, line count, cache status)
-5. **get_batch_lines** — Read source code from multiple objects in one call
-6. **get_object_by_uri** — Access an object directly using its ADT URI path
-7. **find_where_used** — Find all places where an object, method, or symbol is referenced
-8. **get_connected_systems** — List the SAP system connection IDs currently active in VS Code
+1. **abapfs_search_objects** — Search for objects by name pattern using wildcards (e.g. `Z*PRICING*`, `BAPI_USER*`)
+2. **abapfs_get_object_source** — Read source code from any ABAP object. Use `methodName` to extract a single method (e.g. "Show me the FACTORY method from CL_SALV_TABLE")
+3. **abapfs_search_object_source** — Search for text within source code; supports regex and can list all methods in a class
+4. **abapfs_get_object_info** — Get metadata about an object (type, line count, cache status)
+5. **abapfs_batch_get_lines** — Read source code from multiple objects in one call
+6. **abapfs_get_object_by_uri** — Access an object directly using its ADT URI path
+7. **abapfs_find_usages** — Find all places where an object, method, or symbol is referenced
+8. **abapfs_get_connected_systems** — List the SAP system connection IDs currently active in VS Code
 
 ### Object Management
 
-9. **create_object_programmatically** — Create new ABAP objects (classes, reports, function groups, etc.). Note: transport dialogs still appear during creation.
-10. **get_abap_object_url** — Generate a SAP GUI WebGUI URL for an object (useful for browser automation)
-11. **get_abap_object_workspace_uri** — Get the VS Code `adt://` URI for an object (needed before editing it)
-12. **open_object** — Open an object in the VS Code editor
-13. **abap_activate** — Activate ABAP objects after editing (similar to pressing the Activate button in SE80)
+9. **abapfs_create_object** — Create new ABAP objects (classes, reports, function groups, etc.). Note: transport dialogs still appear during creation.
+10. **abapfs_get_object_url** — Generate a SAP GUI WebGUI URL for an object (useful for browser automation)
+11. **abapfs_get_workspace_uri** — Get the VS Code `adt://` URI for an object (needed before editing it)
+12. **abapfs_open_object** — Open an object in the VS Code editor
+13. **abapfs_activate_object** — Activate ABAP objects after editing (similar to pressing the Activate button in SE80)
 
 ### Code Quality & Testing
 
-14. **run_unit_tests** — Run ABAP unit tests and show results in the Testing panel
-15. **create_test_include** — Create a unit test class include for an existing class
-16. **run_atc_analysis** — Run ATC (ABAP Test Cockpit) code quality checks on an object
-17. **get_atc_decorations** — Read the current ATC warning/error highlights visible in the editor
+14. **abapfs_run_unit_tests** — Run ABAP unit tests and show results in the Testing panel
+15. **abapfs_create_test_include** — Create a unit test class include for an existing class
+16. **abapfs_run_atc_analysis** — Run ATC (ABAP Test Cockpit) code quality checks on an object
+17. **abapfs_get_atc_highlights** — Read the current ATC warning/error highlights visible in the editor
 
 ### Transport & Text
 
-18. **manage_transport_requests** — Get transport details, list user transports, compare transports. Falls back to direct SQL on older systems.
-19. **manage_text_elements** — Read, create, or update text elements in programs, classes, or function groups. READ works on all systems; CREATE/UPDATE requires a newer system.
+18. **abapfs_manage_transports** — Get transport details, list user transports, compare transports. Falls back to direct SQL on older systems.
+19. **abapfs_manage_text_elements** — Read, create, or update text elements in programs, classes, or function groups. READ works on all systems; CREATE/UPDATE requires a newer system.
 
 ### Data & SQL
 
-20. **execute_data_query** — Run ABAP SQL queries and display results in an interactive table view
-21. **get_abap_sql_syntax** — Get ABAP SQL syntax rules (Copilot calls this before writing queries to avoid syntax errors)
+20. **abapfs_run_sql_query** — Run ABAP SQL queries and display results in an interactive table view
+21. **abapfs_get_sql_syntax** — Get ABAP SQL syntax rules (Copilot calls this before writing queries to avoid syntax errors)
 
 ### Diagrams
 
-22. **create_mermaid_diagram** — Generate and display flowcharts, sequence diagrams, ER diagrams, and more
-23. **validate_mermaid_syntax** — Check Mermaid diagram code for syntax errors
-24. **get_mermaid_documentation** — Retrieve Mermaid syntax reference for a specific diagram type
-25. **detect_mermaid_diagram_type** — Auto-detect the type of a Mermaid diagram from its code
+22. **abapfs_create_mermaid_diagram** — Generate and display flowcharts, sequence diagrams, ER diagrams, and more
+23. **abapfs_validate_mermaid_syntax** — Check Mermaid diagram code for syntax errors
+24. **abapfs_get_mermaid_documentation** — Retrieve Mermaid syntax reference for a specific diagram type
+25. **abapfs_detect_mermaid_diagram_type** — Auto-detect the type of a Mermaid diagram from its code
 
 ### Runtime Analysis
 
-26. **analyze_abap_dumps** — List and analyze ST22 runtime errors
-27. **analyze_abap_traces** — Analyze performance traces; detects bottlenecks automatically
-28. **get_version_history** — View version history, retrieve source code at a past version, or compare two versions of an object
+26. **abapfs_analyze_dumps** — List and analyze ST22 runtime errors
+27. **abapfs_analyze_traces** — Analyze performance traces; detects bottlenecks automatically
+28. **abapfs_get_version_history** — View version history, retrieve source code at a past version, or compare two versions of an object
 
 ### Debugging
 
-29. **abap_debug_session** — Start or stop an ABAP debugging session
-30. **abap_debug_breakpoint** — Set or remove breakpoints (supports conditions)
-31. **abap_debug_step** — Step over, step into, step return, or continue execution
-32. **abap_debug_variable** — Inspect variable values and internal table contents during a debug session
-33. **abap_debug_stack** — View the current call stack
-34. **abap_debug_status** — Check whether a debug session is active
+29. **abapfs_manage_debug_session** — Start or stop an ABAP debugging session
+30. **abapfs_manage_breakpoints** — Set or remove breakpoints (supports conditions)
+31. **abapfs_step_debugger** — Step over, step into, step return, or continue execution
+32. **abapfs_inspect_variable** — Inspect variable values and internal table contents during a debug session
+33. **abapfs_get_debug_stack** — View the current call stack
+34. **abapfs_get_debug_status** — Check whether a debug session is active
 
 ### System & Extension
 
-35. **get_sap_system_info** — Get SAP system details: client, release, system type (S/4HANA vs ECC), timezone. Results are cached for 24 hours. Use the **Refresh SAP System Info Cache** command to clear the cache.
-36. **abap_fs_documentation** — Search the ABAP FS extension documentation and settings reference
-37. **adt_discovery_export** — Export the full ADT discovery tree from a connected SAP system to markdown files for API investigation
-38. **manage_subagents** — Configure AI subagents that delegate tasks to cheaper/faster models to reduce API costs
-39. **manage_heartbeat** — Control the background heartbeat monitoring service (add monitoring tasks, set reminders, check status)
+35. **abapfs_get_sap_system_info** — Get SAP system details: client, release, system type (S/4HANA vs ECC), timezone. Results are cached for 24 hours. Use the **Refresh SAP System Info Cache** command to clear the cache.
+36. **abapfs_search_documentation** — Search the ABAP FS extension documentation and settings reference
+37. **abapfs_export_adt_discovery** — Export the full ADT discovery tree from a connected SAP system to markdown files for API investigation
+38. **abapfs_manage_subagents** — Configure AI subagents that delegate tasks to cheaper/faster models to reduce API costs
+39. **abapfs_manage_heartbeat** — Control the background heartbeat monitoring service (add monitoring tasks, set reminders, check status)
 
 ### Documentation
 
-40. **create_test_documentation** — Generate a Word document from Playwright test screenshots, organized by scenario
+40. **abapfs_build_test_documentation** — Generate a Word document from Playwright test screenshots, organized by scenario
 
 # AI Subagents for Optimized ABAP Development
 
@@ -504,11 +504,11 @@ You can also invoke other enabled general agents directly with `@agent-name`. Di
 
 Subagent settings are stored at **user level**. Model assignments use `abapfs.subagents.models`; general-agent visibility uses `abapfs.subagents.enabledAgents`. The deprecated `abapfs.subagents.enabled` setting is migrated for compatibility.
 
-In normal usage, do not edit settings JSON manually. Use **ABAP FS: Set Models for Subagents** or the `manage_subagents` tool.
+In normal usage, do not edit settings JSON manually. Use **ABAP FS: Set Models for Subagents** or the `abapfs_manage_subagents` tool.
 
 ### Step 1 — Configure models
 
-Use **ABAP FS: Set Models for Subagents**, or ask Copilot to do it by calling `manage_subagents` with `get_status`, `list_models`, and then `configure`.
+Use **ABAP FS: Set Models for Subagents**, or ask Copilot to do it by calling `abapfs_manage_subagents` with `get_status`, `list_models`, and then `configure`.
 
 ```
 Configure models for the general ABAP agents
@@ -544,13 +544,13 @@ All management is done through Copilot chat:
 
 | What you want | What to ask |
 |---------------|-------------|
-| Check current status and guidance | `manage_subagents` → `get_status` |
-| See available models | `manage_subagents` → `list_models` |
-| Enable or disable selected general agents | `manage_subagents` → `enable` or `disable` with `agentIds` |
+| Check current status and guidance | `abapfs_manage_subagents` → `get_status` |
+| See available models | `abapfs_manage_subagents` → `list_models` |
+| Enable or disable selected general agents | `abapfs_manage_subagents` → `enable` or `disable` with `agentIds` |
 | Enable or disable all general agents | Omit `agentIds` |
-| Change selected models | `manage_subagents` → `configure` |
-| Validate active assignments | `manage_subagents` → `validate` |
-| See available tools | `manage_subagents` → `list_tools` |
+| Change selected models | `abapfs_manage_subagents` → `configure` |
+| Validate active assignments | `abapfs_manage_subagents` → `validate` |
+| See available tools | `abapfs_manage_subagents` → `list_tools` |
 
 Enable/disable changes take effect immediately. Model changes also take effect immediately; no VS Code reload is required. After an extension update, startup reconciliation reapplies user-level models to the new packaged agent files automatically.
 
@@ -578,7 +578,7 @@ Run `get_status` to confirm the user-level assignment and active state. Model ch
 This happens when a configured model is missing or unavailable. Use `list_models`, configure a currently available model, then enable the affected general agent again.
 
 ### Delegation not using custom agents
-Run `get_status` to confirm the target general agent is enabled and has an available model. If it is disabled, ask Copilot to call `manage_subagents` with `enable` and the agent's `agentIds`.
+Run `get_status` to confirm the target general agent is enabled and has an available model. If it is disabled, ask Copilot to call `abapfs_manage_subagents` with `enable` and the agent's `agentIds`.
 
 # AI Skills
 
@@ -791,7 +791,7 @@ These are the JSON entries stored in `heartbeat.json`. You can let Copilot gener
   "category": "dump",
   "priority": "high",
   "checkInstructions": [
-    "Use analyze_abap_dumps tool with action 'list_dumps'",
+    "Use abapfs_analyze_dumps tool with action 'list_dumps'",
     "Compare dump IDs against lastNotifiedFindings",
     "Only alert for genuinely new dumps",
     "Update lastNotifiedFindings with current dump IDs"
@@ -849,7 +849,7 @@ These are the JSON entries stored in `heartbeat.json`. You can let Copilot gener
 
 When you say something like "remind me tomorrow at 10am", Copilot:
 
-1. Queries the SAP system's timezone using `get_sap_system_info`
+1. Queries the SAP system's timezone using `abapfs_get_sap_system_info`
 2. Converts your local time to the correct UTC timestamp
 3. Stores the result in `startAt` (e.g. `"2026-02-05T08:00:00.000Z"` for UTC+2)
 
@@ -1989,7 +1989,7 @@ There are four ways objects show up there:
 1. **Automatic — Recent group.** Open any ABAP object in the editor. It's added to the **Recent** group of its connection's SCM provider, along with a diff decoration against the previous activated version.
 2. **Whole transport.** In the **Transports** panel (ABAP FS activity bar), right-click a transport → **Add transport to source control**. Every object in that transport is added as its own SCM group.
 3. **Object Property View.** ABAP FS activity bar → **Object Property** panel → **Revision history** section lists every stored version for the currently open object.
-4. **Ask Copilot.** > "Show version history for ZCL_MY_CLASS" or ask to compare any two versions — uses the `get_version_history` tool (see below).
+4. **Ask Copilot.** > "Show version history for ZCL_MY_CLASS" or ask to compare any two versions — uses the `abapfs_get_version_history` tool (see below).
 
 ## Comparing Versions
 
@@ -2037,7 +2037,7 @@ There's no one-click restore. Open the diff to the version you want, copy the co
 
 ## Using Copilot for Version History
 
-The `get_version_history` tool supports three actions. Version numbers are **1-based**, where **1 = most recent**.
+The `abapfs_get_version_history` tool supports three actions. Version numbers are **1-based**, where **1 = most recent**.
 
 | Action | What it does |
 |---|---|
@@ -2336,7 +2336,7 @@ You can also do it later with **File → Add Folder to Workspace**.
 
 A panel opens with General agents and Testing agents in separate collapsible sections. Pick a model for each testing agent and save. Testing agents are configured as one group when the testing folder is ready. Model changes take effect without a VS Code reload.
 
-You can also ask Copilot to do this: ask it to call `manage_subagents`, inspect `get_status` and `list_models`, and then configure all nine testing agents with the exact model names returned.
+You can also ask Copilot to do this: ask it to call `abapfs_manage_subagents`, inspect `get_status` and `list_models`, and then configure all nine testing agents with the exact model names returned.
 
 **Do this even though the framework ships with defaults.** The defaults name specific models that may not exist in your Copilot subscription, and an agent whose model isn't available falls back to whatever your main chat is using — usually a premium model doing work that a cheap one handles fine, which gets expensive quickly across a long analysis.
 
@@ -2556,7 +2556,7 @@ These are adversarial on purpose: their job is to catch what the main agent got 
 
 The panel lists General agents and Testing agents in separate collapsible sections, with a hint about the kind of model each needs and a dropdown of the Copilot models available to you. Pick models, save, and continue without reloading.
 
-You can also ask Copilot to configure them through `manage_subagents`: it should call `get_status`, then `list_models`, and configure all nine testing agents with exact model names from the model list.
+You can also ask Copilot to configure them through `abapfs_manage_subagents`: it should call `get_status`, then `list_models`, and configure all nine testing agents with exact model names from the model list.
 
 Guidance that actually affects results:
 
@@ -2581,26 +2581,26 @@ They appear only when SAP Testing is [enabled](#getting-started-with-sap-testing
 
 | Tool | What it does |
 |---|---|
-| `get_test_folder` | Returns your configured test folder. Copilot calls this before touching anything, and warns you if the folder isn't open in your workspace |
-| `get_sap_webgui_url` | Builds a ready-to-open SAP WebGUI URL for a connection, already signed in, optionally landing on a specific transaction |
-| `build_test_index` | Validates every test case file and rebuilds the case list — `_index.md` and the printable `_index.docx`. Refuses to run until the test plan reviewer has passed the plan |
-| `build_test_index_docx` | Regenerates just the printable `_index.docx`, for when only the notes changed |
-| `split_test_cases` | Splits one bulk-authored file into individual test case files, validating each before writing |
-| `verify_test_data_usage` | Cross-checks a script against its case and data spec: data keys must match, and every table in `se16nTables` must have matching SE16N proof |
-| `check_test_data` | Pre-flight check: resolves every case's data for a program on a given system and reports what's missing — before you waste a test run finding out |
-| `playwright_test` | Replaces terminal `npx playwright test`. Runs exact `tcIds` or a whole program; independent cases may run across up to 5 workers after one login, while dependent/shared-state cases stay in ordered sequential batches. Stops after 3 failures by default (`maxFailures` cap 10) and rejects incomplete SE16N proof |
-| `build_evidence_report` | Builds the aggregated Word evidence report for a program and system from all the run results |
-| `analyze_anst_enhancements` | Classifies an [ANST export](#finding-enhancements-with-anst) and writes a work list beside it |
+| `abapfs_get_test_folder` | Returns your configured test folder. Copilot calls this before touching anything, and warns you if the folder isn't open in your workspace |
+| `abapfs_get_sap_webgui_url` | Builds a ready-to-open SAP WebGUI URL for a connection, already signed in, optionally landing on a specific transaction |
+| `abapfs_build_test_index` | Validates every test case file and rebuilds the case list — `_index.md` and the printable `_index.docx`. Refuses to run until the test plan reviewer has passed the plan |
+| `abapfs_build_test_index_docx` | Regenerates just the printable `_index.docx`, for when only the notes changed |
+| `abapfs_split_test_cases` | Splits one bulk-authored file into individual test case files, validating each before writing |
+| `abapfs_verify_test_data_usage` | Cross-checks a script against its case and data spec: data keys must match, and every table in `se16nTables` must have matching SE16N proof |
+| `abapfs_check_test_data` | Pre-flight check: resolves every case's data for a program on a given system and reports what's missing — before you waste a test run finding out |
+| `abapfs_run_playwright_tests` | Replaces terminal `npx playwright test`. Runs exact `tcIds` or a whole program; independent cases may run across up to 5 workers after one login, while dependent/shared-state cases stay in ordered sequential batches. Stops after 3 failures by default (`maxFailures` cap 10) and rejects incomplete SE16N proof |
+| `abapfs_build_evidence_report` | Builds the aggregated Word evidence report for a program and system from all the run results |
+| `abapfs_analyze_anst_enhancements` | Classifies an [ANST export](#finding-enhancements-with-anst) and writes a work list beside it |
 
 ## Two tools that push back
 
-`build_test_index` and `playwright_test` are deliberately gated: Copilot has to certify that the required review or readiness check actually happened before either will run. If Copilot tries to skip ahead, the tool rejects the call.
+`abapfs_build_test_index` and `abapfs_run_playwright_tests` are deliberately gated: Copilot has to certify that the required review or readiness check actually happened before either will run. If Copilot tries to skip ahead, the tool rejects the call.
 
 This is why you'll sometimes see Copilot go back and do something it seemed to have finished — the tool told it to. Details in the [Technical Reference](technical-reference.md#quality-gates).
 
 ## If Copilot says a tool is missing
 
-VS Code doesn't always surface every tool to the model straight away, and `playwright_test` is the one that most often goes missing. Copilot is instructed to search for a tool by name before giving up, and to tell you rather than improvise — so if it reports a missing tool, that's a genuine report, not a mistake.
+VS Code doesn't always surface every tool to the model straight away, and `abapfs_run_playwright_tests` is the one that most often goes missing. Copilot is instructed to search for a tool by name before giving up, and to tell you rather than improvise — so if it reports a missing tool, that's a genuine report, not a mistake.
 
 Starting a new chat usually clears it. What Copilot must never do is substitute a terminal command; there is no `npx playwright test` route here.
 
@@ -2735,11 +2735,11 @@ The file is open in Word. Close it and rebuild. If it can't get the lock, Copilo
 
 ### Copilot says a tool is missing
 
-VS Code doesn't always surface every tool immediately, and `playwright_test` is the usual casualty. Starting a fresh chat normally fixes it. Copilot is instructed to tell you rather than fake a result or fall back to a terminal command — so treat the report as accurate.
+VS Code doesn't always surface every tool immediately, and `abapfs_run_playwright_tests` is the usual casualty. Starting a fresh chat normally fixes it. Copilot is instructed to tell you rather than fake a result or fall back to a terminal command — so treat the report as accurate.
 
 ### Copilot redid work that looked finished
 
-A reviewer agent or a gated tool rejected it. The reviewers read the actual ABAP source and challenge the analysis or the test plan, and `build_test_index` and `playwright_test` refuse to run until the required review or readiness check genuinely passed. This is the framework catching a gap — see [Quality gates](technical-reference.md#quality-gates).
+A reviewer agent or a gated tool rejected it. The reviewers read the actual ABAP source and challenge the analysis or the test plan, and `abapfs_build_test_index` and `abapfs_run_playwright_tests` refuse to run until the required review or readiness check genuinely passed. This is the framework catching a gap — see [Quality gates](technical-reference.md#quality-gates).
 
 ### Copilot keeps asking instead of just doing it
 
@@ -2809,7 +2809,7 @@ ABAP FS writes a small amount of infrastructure into the test folder and re-appl
 
 **Always:** a `tsconfig.json` that maps the module specifier `@sap-testing/runtime` to the extension's compiled runtime, a link to that runtime under `node_modules`, and a `.gitignore` entry for both. This is what gives the TypeScript language service real IntelliSense and type errors while Copilot writes a spec — checked against the actual runtime signatures rather than prose in a skill — and what lets the test runner resolve the runtime at execution time. The language-service half only applies while the test folder is open in your workspace; the runner half works either way.
 
-**Only while Microsoft's Playwright extension is installed:** a `playwright.config.js`, links to the bundled Playwright, a `.bin` launcher, and `.sap-active-system`. These exist purely so the Test Explorer sidebar can discover and run specs. They're removed again if you uninstall that extension. The `playwright_test` tool needs none of them — it passes its own config and sets the target system directly in the runner's environment.
+**Only while Microsoft's Playwright extension is installed:** a `playwright.config.js`, links to the bundled Playwright, a `.bin` launcher, and `.sap-active-system`. These exist purely so the Test Explorer sidebar can discover and run specs. They're removed again if you uninstall that extension. The `abapfs_run_playwright_tests` tool needs none of them — it passes its own config and sets the target system directly in the runner's environment.
 
 All of it is gitignored, because it hardcodes machine-specific absolute paths.
 
@@ -2852,7 +2852,7 @@ Only `sql` and `seeded` values belong in `data.json`. Caching a `static` value s
 
 Fixtures support `{{other_key}}` substitution and relative date tokens (`today`, `+30d`, `-5d`) resolved against the current run time, so a fixture never carries an absolute date.
 
-Keys that must differ from each other declare `distinctFrom` on both sides; `check_test_data` fails the program if they resolve to the same value. Ordering with `take: first` is not a uniqueness guarantee, because a `SELECT` without `ORDER BY` has no defined row order.
+Keys that must differ from each other declare `distinctFrom` on both sides; `abapfs_check_test_data` fails the program if they resolve to the same value. Ordering with `take: first` is not a uniqueness guarantee, because a `SELECT` without `ORDER BY` has no defined row order.
 
 ## Quality gates
 
@@ -2864,12 +2864,12 @@ Three reviewer agents and two tool-level gates keep the workflow honest.
 
 | Tool | Requires |
 |---|---|
-| `build_test_index` | Certification that the test plan reviewer already returned a pass |
-| `playwright_test` | Certification that all upstream phase gates and data readiness were verified |
+| `abapfs_build_test_index` | Certification that the test plan reviewer already returned a pass |
+| `abapfs_run_playwright_tests` | Certification that all upstream phase gates and data readiness were verified |
 
 Both reject the call if the confirmation is missing or wrong, which means an agent that skipped a phase cannot produce the case index or run a test. The gate is a behavioural contract rather than a cryptographic one — its purpose is to stop a model from quietly cutting a corner under pressure, not to defend against a determined attacker.
 
-`build_test_index` also enforces structural rules: valid categories, matching case IDs, parseable frontmatter, and agreement between `dataRequired` and the presence of a `.data.md`. A missing `.data.md` for a case that needs one is a warning during phase 3 (specs come later) and must be zero by the end of phase 4.
+`abapfs_build_test_index` also enforces structural rules: valid categories, matching case IDs, parseable frontmatter, and agreement between `dataRequired` and the presence of a `.data.md`. A missing `.data.md` for a case that needs one is a warning during phase 3 (specs come later) and must be zero by the end of phase 4.
 
 ## The runtime
 
@@ -2901,7 +2901,7 @@ Setting `webGuiAutoLogin: false` on a connection skips all of it, for landscapes
 
 ## Execution
 
-`playwright_test` runs the real `@playwright/test` CLI as a subprocess, using VS Code's own Node runtime and a copy of Playwright vendored into the extension. Nothing is installed into your test folder and no browser is downloaded — it drives your installed Edge.
+`abapfs_run_playwright_tests` runs the real `@playwright/test` CLI as a subprocess, using VS Code's own Node runtime and a copy of Playwright vendored into the extension. Nothing is installed into your test folder and no browser is downloaded — it drives your installed Edge.
 
 Defaults: one worker, no retries, 60 seconds per test, 10 minutes overall, traces retained on failure under `.playwright-artifacts/`. Tests run headless unless asked for a headed run, which is worth doing the first time a new spec runs.
 
@@ -2913,7 +2913,7 @@ Each case run writes `manifest.json` (every step, timestamp, and note) plus numb
 
 Post-run checks land in `verification.json`, recording each check, who performed it, the SQL or tool used, actual versus expected, and its status. Checks a machine can't perform stay `pending-manual` until you confirm them.
 
-`build_evidence_report` aggregates all of it into one Word document per program and connection: a title page with the pass/fail summary, a colour-coded results table, and one section per case with every step and screenshot. Where a `verification.json` exists, its checks appear too — so a case that passed on screen but failed its database check shows as failed, and a case with unconfirmed manual checks is visibly not fully proven. Rebuilding is cheap and safe to repeat.
+`abapfs_build_evidence_report` aggregates all of it into one Word document per program and connection: a title page with the pass/fail summary, a colour-coded results table, and one section per case with every step and screenshot. Where a `verification.json` exists, its checks appear too — so a case that passed on screen but failed its database check shows as failed, and a case with unconfirmed manual checks is visibly not fully proven. Rebuilding is cheap and safe to repeat.
 
 # Mermaid Diagram Creation
 
@@ -3543,9 +3543,9 @@ Tools are capabilities the extension exposes to GitHub Copilot. You don't call t
 
 | What you type | Tool Copilot calls |
 |---|---|
-| "Where is `BAPI_USER_GET_DETAIL` used?" | `find_where_used` |
-| "Show me the code for `ZCL_MY_CLASS`" | `get_abap_object_lines` |
-| "Run ATC checks on this file" | `run_atc_analysis` |
+| "Where is `BAPI_USER_GET_DETAIL` used?" | `abapfs_find_usages` |
+| "Show me the code for `ZCL_MY_CLASS`" | `abapfs_get_object_source` |
+| "Run ATC checks on this file" | `abapfs_run_atc_analysis` |
 
 > **New to VS Code?** Start with commands for direct actions. Use Copilot chat when you want to explore or analyze SAP objects without knowing the exact steps.
 
