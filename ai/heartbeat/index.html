@@ -3765,7 +3765,7 @@
 <a id="__codelineno-5-5" name="__codelineno-5-5" href="#__codelineno-5-5"></a><span class="w">  </span><span class="nt">"category"</span><span class="p">:</span><span class="w"> </span><span class="s2">"dump"</span><span class="p">,</span>
 <a id="__codelineno-5-6" name="__codelineno-5-6" href="#__codelineno-5-6"></a><span class="w">  </span><span class="nt">"priority"</span><span class="p">:</span><span class="w"> </span><span class="s2">"high"</span><span class="p">,</span>
 <a id="__codelineno-5-7" name="__codelineno-5-7" href="#__codelineno-5-7"></a><span class="w">  </span><span class="nt">"checkInstructions"</span><span class="p">:</span><span class="w"> </span><span class="p">[</span>
-<a id="__codelineno-5-8" name="__codelineno-5-8" href="#__codelineno-5-8"></a><span class="w">    </span><span class="s2">"Use analyze_abap_dumps tool with action 'list_dumps'"</span><span class="p">,</span>
+<a id="__codelineno-5-8" name="__codelineno-5-8" href="#__codelineno-5-8"></a><span class="w">    </span><span class="s2">"Use abapfs_analyze_dumps tool with action 'list_dumps'"</span><span class="p">,</span>
 <a id="__codelineno-5-9" name="__codelineno-5-9" href="#__codelineno-5-9"></a><span class="w">    </span><span class="s2">"Compare dump IDs against lastNotifiedFindings"</span><span class="p">,</span>
 <a id="__codelineno-5-10" name="__codelineno-5-10" href="#__codelineno-5-10"></a><span class="w">    </span><span class="s2">"Only alert for genuinely new dumps"</span><span class="p">,</span>
 <a id="__codelineno-5-11" name="__codelineno-5-11" href="#__codelineno-5-11"></a><span class="w">    </span><span class="s2">"Update lastNotifiedFindings with current dump IDs"</span>
@@ -3837,7 +3837,7 @@
 <h2 id="timezone-handling">Timezone Handling<a class="headerlink" href="#timezone-handling" title="Permanent link">&para;</a></h2>
 <p>When you say something like "remind me tomorrow at 10am", Copilot:</p>
 <ol>
-<li>Queries the SAP system's timezone using <code>get_sap_system_info</code></li>
+<li>Queries the SAP system's timezone using <code>abapfs_get_sap_system_info</code></li>
 <li>Converts your local time to the correct UTC timestamp</li>
 <li>Stores the result in <code>startAt</code> (e.g. <code>"2026-02-05T08:00:00.000Z"</code> for UTC+2)</li>
 </ol>

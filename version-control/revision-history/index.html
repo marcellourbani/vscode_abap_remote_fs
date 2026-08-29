@@ -3332,7 +3332,7 @@
 <li><strong>Automatic — Recent group.</strong> Open any ABAP object in the editor. It's added to the <strong>Recent</strong> group of its connection's SCM provider, along with a diff decoration against the previous activated version.</li>
 <li><strong>Whole transport.</strong> In the <strong>Transports</strong> panel (ABAP FS activity bar), right-click a transport → <strong>Add transport to source control</strong>. Every object in that transport is added as its own SCM group.</li>
 <li><strong>Object Property View.</strong> ABAP FS activity bar → <strong>Object Property</strong> panel → <strong>Revision history</strong> section lists every stored version for the currently open object.</li>
-<li><strong>Ask Copilot.</strong> &gt; "Show version history for ZCL_MY_CLASS" or ask to compare any two versions — uses the <code>get_version_history</code> tool (see below).</li>
+<li><strong>Ask Copilot.</strong> &gt; "Show version history for ZCL_MY_CLASS" or ask to compare any two versions — uses the <code>abapfs_get_version_history</code> tool (see below).</li>
 </ol>
 <h2 id="comparing-versions">Comparing Versions<a class="headerlink" href="#comparing-versions" title="Permanent link">&para;</a></h2>
 <h3 id="from-the-source-control-view">From the Source Control view<a class="headerlink" href="#from-the-source-control-view" title="Permanent link">&para;</a></h3>
@@ -3420,7 +3420,7 @@
 </tbody>
 </table>
 <h2 id="using-copilot-for-version-history">Using Copilot for Version History<a class="headerlink" href="#using-copilot-for-version-history" title="Permanent link">&para;</a></h2>
-<p>The <code>get_version_history</code> tool supports three actions. Version numbers are <strong>1-based</strong>, where <strong>1 = most recent</strong>.</p>
+<p>The <code>abapfs_get_version_history</code> tool supports three actions. Version numbers are <strong>1-based</strong>, where <strong>1 = most recent</strong>.</p>
 <table>
 <thead>
 <tr>

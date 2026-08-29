@@ -3438,7 +3438,7 @@
 <p><strong>How to open Copilot Chat:</strong> <code>Ctrl+Shift+I</code> (new chat) or <code>Ctrl+L</code> (inline chat)</p>
 <p>Make sure you are in <strong>Agent mode</strong> (not Ask or Edit) for full tool access.</p>
 <h2 id="connection-requirement">Connection Requirement<a class="headerlink" href="#connection-requirement" title="Permanent link">&para;</a></h2>
-<p>Most tools require an active SAP connection. When no SAP system is connected, tools are hidden from Copilot to save context tokens. The <strong>abap_fs_documentation</strong> tool is always available regardless of connection status — use it to ask about features and setup.</p>
+<p>Most tools require an active SAP connection. When no SAP system is connected, tools are hidden from Copilot to save context tokens. The <strong>abapfs_search_documentation</strong> tool is always available regardless of connection status — use it to ask about features and setup.</p>
 <p>Connect to a SAP system (<code>Ctrl+Shift+P</code> → <strong>ABAP FS: Connect to an ABAP system</strong>) to enable all 40+ tools.</p>
 <h2 id="how-it-works">How it works<a class="headerlink" href="#how-it-works" title="Permanent link">&para;</a></h2>
 <p>When you type a question, Copilot picks the appropriate tool behind the scenes:</p>
@@ -3452,96 +3452,96 @@
 <tbody>
 <tr>
 <td>"Where is BAPI_USER_GET_DETAIL used?"</td>
-<td><code>find_where_used</code></td>
+<td><code>abapfs_find_usages</code></td>
 </tr>
 <tr>
 <td>"Show me the code for ZCL_MY_CLASS"</td>
-<td><code>get_abap_object_lines</code></td>
+<td><code>abapfs_get_object_source</code></td>
 </tr>
 <tr>
 <td>"Find all classes with 'pricing' in the name"</td>
-<td><code>search_abap_objects</code></td>
+<td><code>abapfs_search_objects</code></td>
 </tr>
 <tr>
 <td>"Create a new class ZCL_TEST"</td>
-<td><code>create_object_programmatically</code></td>
+<td><code>abapfs_create_object</code></td>
 </tr>
 <tr>
 <td>"Run ATC on ZTEST_PROG"</td>
-<td><code>run_atc_analysis</code></td>
+<td><code>abapfs_run_atc_analysis</code></td>
 </tr>
 </tbody>
 </table>
 <h2 id="available-tools">Available Tools<a class="headerlink" href="#available-tools" title="Permanent link">&para;</a></h2>
 <h3 id="search-navigation">Search &amp; Navigation<a class="headerlink" href="#search-navigation" title="Permanent link">&para;</a></h3>
 <ol>
-<li><strong>search_abap_objects</strong> — Search for objects by name pattern using wildcards (e.g. <code>Z*PRICING*</code>, <code>BAPI_USER*</code>)</li>
-<li><strong>get_abap_object_lines</strong> — Read source code from any ABAP object. Use <code>methodName</code> to extract a single method (e.g. "Show me the FACTORY method from CL_SALV_TABLE")</li>
-<li><strong>search_abap_object_lines</strong> — Search for text within source code; supports regex and can list all methods in a class</li>
-<li><strong>get_abap_object_info</strong> — Get metadata about an object (type, line count, cache status)</li>
-<li><strong>get_batch_lines</strong> — Read source code from multiple objects in one call</li>
-<li><strong>get_object_by_uri</strong> — Access an object directly using its ADT URI path</li>
-<li><strong>find_where_used</strong> — Find all places where an object, method, or symbol is referenced</li>
-<li><strong>get_connected_systems</strong> — List the SAP system connection IDs currently active in VS Code</li>
+<li><strong>abapfs_search_objects</strong> — Search for objects by name pattern using wildcards (e.g. <code>Z*PRICING*</code>, <code>BAPI_USER*</code>)</li>
+<li><strong>abapfs_get_object_source</strong> — Read source code from any ABAP object. Use <code>methodName</code> to extract a single method (e.g. "Show me the FACTORY method from CL_SALV_TABLE")</li>
+<li><strong>abapfs_search_object_source</strong> — Search for text within source code; supports regex and can list all methods in a class</li>
+<li><strong>abapfs_get_object_info</strong> — Get metadata about an object (type, line count, cache status)</li>
+<li><strong>abapfs_batch_get_lines</strong> — Read source code from multiple objects in one call</li>
+<li><strong>abapfs_get_object_by_uri</strong> — Access an object directly using its ADT URI path</li>
+<li><strong>abapfs_find_usages</strong> — Find all places where an object, method, or symbol is referenced</li>
+<li><strong>abapfs_get_connected_systems</strong> — List the SAP system connection IDs currently active in VS Code</li>
 </ol>
 <h3 id="object-management">Object Management<a class="headerlink" href="#object-management" title="Permanent link">&para;</a></h3>
 <ol>
-<li><strong>create_object_programmatically</strong> — Create new ABAP objects (classes, reports, function groups, etc.). Note: transport dialogs still appear during creation.</li>
-<li><strong>get_abap_object_url</strong> — Generate a SAP GUI WebGUI URL for an object (useful for browser automation)</li>
-<li><strong>get_abap_object_workspace_uri</strong> — Get the VS Code <code>adt://</code> URI for an object (needed before editing it)</li>
-<li><strong>open_object</strong> — Open an object in the VS Code editor</li>
-<li><strong>abap_activate</strong> — Activate ABAP objects after editing (similar to pressing the Activate button in SE80)</li>
+<li><strong>abapfs_create_object</strong> — Create new ABAP objects (classes, reports, function groups, etc.). Note: transport dialogs still appear during creation.</li>
+<li><strong>abapfs_get_object_url</strong> — Generate a SAP GUI WebGUI URL for an object (useful for browser automation)</li>
+<li><strong>abapfs_get_workspace_uri</strong> — Get the VS Code <code>adt://</code> URI for an object (needed before editing it)</li>
+<li><strong>abapfs_open_object</strong> — Open an object in the VS Code editor</li>
+<li><strong>abapfs_activate_object</strong> — Activate ABAP objects after editing (similar to pressing the Activate button in SE80)</li>
 </ol>
 <h3 id="code-quality-testing">Code Quality &amp; Testing<a class="headerlink" href="#code-quality-testing" title="Permanent link">&para;</a></h3>
 <ol>
-<li><strong>run_unit_tests</strong> — Run ABAP unit tests and show results in the Testing panel</li>
-<li><strong>create_test_include</strong> — Create a unit test class include for an existing class</li>
-<li><strong>run_atc_analysis</strong> — Run ATC (ABAP Test Cockpit) code quality checks on an object</li>
-<li><strong>get_atc_decorations</strong> — Read the current ATC warning/error highlights visible in the editor</li>
+<li><strong>abapfs_run_unit_tests</strong> — Run ABAP unit tests and show results in the Testing panel</li>
+<li><strong>abapfs_create_test_include</strong> — Create a unit test class include for an existing class</li>
+<li><strong>abapfs_run_atc_analysis</strong> — Run ATC (ABAP Test Cockpit) code quality checks on an object</li>
+<li><strong>abapfs_get_atc_highlights</strong> — Read the current ATC warning/error highlights visible in the editor</li>
 </ol>
 <h3 id="transport-text">Transport &amp; Text<a class="headerlink" href="#transport-text" title="Permanent link">&para;</a></h3>
 <ol>
-<li><strong>manage_transport_requests</strong> — Get transport details, list user transports, compare transports. Falls back to direct SQL on older systems.</li>
-<li><strong>manage_text_elements</strong> — Read, create, or update text elements in programs, classes, or function groups. READ works on all systems; CREATE/UPDATE requires a newer system.</li>
+<li><strong>abapfs_manage_transports</strong> — Get transport details, list user transports, compare transports. Falls back to direct SQL on older systems.</li>
+<li><strong>abapfs_manage_text_elements</strong> — Read, create, or update text elements in programs, classes, or function groups. READ works on all systems; CREATE/UPDATE requires a newer system.</li>
 </ol>
 <h3 id="data-sql">Data &amp; SQL<a class="headerlink" href="#data-sql" title="Permanent link">&para;</a></h3>
 <ol>
-<li><strong>execute_data_query</strong> — Run ABAP SQL queries and display results in an interactive table view</li>
-<li><strong>get_abap_sql_syntax</strong> — Get ABAP SQL syntax rules (Copilot calls this before writing queries to avoid syntax errors)</li>
+<li><strong>abapfs_run_sql_query</strong> — Run ABAP SQL queries and display results in an interactive table view</li>
+<li><strong>abapfs_get_sql_syntax</strong> — Get ABAP SQL syntax rules (Copilot calls this before writing queries to avoid syntax errors)</li>
 </ol>
 <h3 id="diagrams">Diagrams<a class="headerlink" href="#diagrams" title="Permanent link">&para;</a></h3>
 <ol>
-<li><strong>create_mermaid_diagram</strong> — Generate and display flowcharts, sequence diagrams, ER diagrams, and more</li>
-<li><strong>validate_mermaid_syntax</strong> — Check Mermaid diagram code for syntax errors</li>
-<li><strong>get_mermaid_documentation</strong> — Retrieve Mermaid syntax reference for a specific diagram type</li>
-<li><strong>detect_mermaid_diagram_type</strong> — Auto-detect the type of a Mermaid diagram from its code</li>
+<li><strong>abapfs_create_mermaid_diagram</strong> — Generate and display flowcharts, sequence diagrams, ER diagrams, and more</li>
+<li><strong>abapfs_validate_mermaid_syntax</strong> — Check Mermaid diagram code for syntax errors</li>
+<li><strong>abapfs_get_mermaid_documentation</strong> — Retrieve Mermaid syntax reference for a specific diagram type</li>
+<li><strong>abapfs_detect_mermaid_diagram_type</strong> — Auto-detect the type of a Mermaid diagram from its code</li>
 </ol>
 <h3 id="runtime-analysis">Runtime Analysis<a class="headerlink" href="#runtime-analysis" title="Permanent link">&para;</a></h3>
 <ol>
-<li><strong>analyze_abap_dumps</strong> — List and analyze ST22 runtime errors</li>
-<li><strong>analyze_abap_traces</strong> — Analyze performance traces; detects bottlenecks automatically</li>
-<li><strong>get_version_history</strong> — View version history, retrieve source code at a past version, or compare two versions of an object</li>
+<li><strong>abapfs_analyze_dumps</strong> — List and analyze ST22 runtime errors</li>
+<li><strong>abapfs_analyze_traces</strong> — Analyze performance traces; detects bottlenecks automatically</li>
+<li><strong>abapfs_get_version_history</strong> — View version history, retrieve source code at a past version, or compare two versions of an object</li>
 </ol>
 <h3 id="debugging">Debugging<a class="headerlink" href="#debugging" title="Permanent link">&para;</a></h3>
 <ol>
-<li><strong>abap_debug_session</strong> — Start or stop an ABAP debugging session</li>
-<li><strong>abap_debug_breakpoint</strong> — Set or remove breakpoints (supports conditions)</li>
-<li><strong>abap_debug_step</strong> — Step over, step into, step return, or continue execution</li>
-<li><strong>abap_debug_variable</strong> — Inspect variable values and internal table contents during a debug session</li>
-<li><strong>abap_debug_stack</strong> — View the current call stack</li>
-<li><strong>abap_debug_status</strong> — Check whether a debug session is active</li>
+<li><strong>abapfs_manage_debug_session</strong> — Start or stop an ABAP debugging session</li>
+<li><strong>abapfs_manage_breakpoints</strong> — Set or remove breakpoints (supports conditions)</li>
+<li><strong>abapfs_step_debugger</strong> — Step over, step into, step return, or continue execution</li>
+<li><strong>abapfs_inspect_variable</strong> — Inspect variable values and internal table contents during a debug session</li>
+<li><strong>abapfs_get_debug_stack</strong> — View the current call stack</li>
+<li><strong>abapfs_get_debug_status</strong> — Check whether a debug session is active</li>
 </ol>
 <h3 id="system-extension">System &amp; Extension<a class="headerlink" href="#system-extension" title="Permanent link">&para;</a></h3>
 <ol>
-<li><strong>get_sap_system_info</strong> — Get SAP system details: client, release, system type (S/4HANA vs ECC), timezone. Results are cached for 24 hours. Use the <strong>Refresh SAP System Info Cache</strong> command to clear the cache.</li>
-<li><strong>abap_fs_documentation</strong> — Search the ABAP FS extension documentation and settings reference</li>
-<li><strong>adt_discovery_export</strong> — Export the full ADT discovery tree from a connected SAP system to markdown files for API investigation</li>
-<li><strong>manage_subagents</strong> — Configure AI subagents that delegate tasks to cheaper/faster models to reduce API costs</li>
-<li><strong>manage_heartbeat</strong> — Control the background heartbeat monitoring service (add monitoring tasks, set reminders, check status)</li>
+<li><strong>abapfs_get_sap_system_info</strong> — Get SAP system details: client, release, system type (S/4HANA vs ECC), timezone. Results are cached for 24 hours. Use the <strong>Refresh SAP System Info Cache</strong> command to clear the cache.</li>
+<li><strong>abapfs_search_documentation</strong> — Search the ABAP FS extension documentation and settings reference</li>
+<li><strong>abapfs_export_adt_discovery</strong> — Export the full ADT discovery tree from a connected SAP system to markdown files for API investigation</li>
+<li><strong>abapfs_manage_subagents</strong> — Configure AI subagents that delegate tasks to cheaper/faster models to reduce API costs</li>
+<li><strong>abapfs_manage_heartbeat</strong> — Control the background heartbeat monitoring service (add monitoring tasks, set reminders, check status)</li>
 </ol>
 <h3 id="documentation">Documentation<a class="headerlink" href="#documentation" title="Permanent link">&para;</a></h3>
 <ol>
-<li><strong>create_test_documentation</strong> — Generate a Word document from Playwright test screenshots, organized by scenario</li>
+<li><strong>abapfs_build_test_documentation</strong> — Generate a Word document from Playwright test screenshots, organized by scenario</li>
 </ol>
 
 

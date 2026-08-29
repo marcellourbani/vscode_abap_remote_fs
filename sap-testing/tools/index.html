@@ -3191,52 +3191,52 @@
 </thead>
 <tbody>
 <tr>
-<td><code>get_test_folder</code></td>
+<td><code>abapfs_get_test_folder</code></td>
 <td>Returns your configured test folder. Copilot calls this before touching anything, and warns you if the folder isn't open in your workspace</td>
 </tr>
 <tr>
-<td><code>get_sap_webgui_url</code></td>
+<td><code>abapfs_get_sap_webgui_url</code></td>
 <td>Builds a ready-to-open SAP WebGUI URL for a connection, already signed in, optionally landing on a specific transaction</td>
 </tr>
 <tr>
-<td><code>build_test_index</code></td>
+<td><code>abapfs_build_test_index</code></td>
 <td>Validates every test case file and rebuilds the case list — <code>_index.md</code> and the printable <code>_index.docx</code>. Refuses to run until the test plan reviewer has passed the plan</td>
 </tr>
 <tr>
-<td><code>build_test_index_docx</code></td>
+<td><code>abapfs_build_test_index_docx</code></td>
 <td>Regenerates just the printable <code>_index.docx</code>, for when only the notes changed</td>
 </tr>
 <tr>
-<td><code>split_test_cases</code></td>
+<td><code>abapfs_split_test_cases</code></td>
 <td>Splits one bulk-authored file into individual test case files, validating each before writing</td>
 </tr>
 <tr>
-<td><code>verify_test_data_usage</code></td>
+<td><code>abapfs_verify_test_data_usage</code></td>
 <td>Cross-checks a script against its case and data spec: data keys must match, and every table in <code>se16nTables</code> must have matching SE16N proof</td>
 </tr>
 <tr>
-<td><code>check_test_data</code></td>
+<td><code>abapfs_check_test_data</code></td>
 <td>Pre-flight check: resolves every case's data for a program on a given system and reports what's missing — before you waste a test run finding out</td>
 </tr>
 <tr>
-<td><code>playwright_test</code></td>
+<td><code>abapfs_run_playwright_tests</code></td>
 <td>Replaces terminal <code>npx playwright test</code>. Runs exact <code>tcIds</code> or a whole program; independent cases may run across up to 5 workers after one login, while dependent/shared-state cases stay in ordered sequential batches. Stops after 3 failures by default (<code>maxFailures</code> cap 10) and rejects incomplete SE16N proof</td>
 </tr>
 <tr>
-<td><code>build_evidence_report</code></td>
+<td><code>abapfs_build_evidence_report</code></td>
 <td>Builds the aggregated Word evidence report for a program and system from all the run results</td>
 </tr>
 <tr>
-<td><code>analyze_anst_enhancements</code></td>
+<td><code>abapfs_analyze_anst_enhancements</code></td>
 <td>Classifies an <a href="../anst/">ANST export</a> and writes a work list beside it</td>
 </tr>
 </tbody>
 </table>
 <h2 id="two-tools-that-push-back">Two tools that push back<a class="headerlink" href="#two-tools-that-push-back" title="Permanent link">&para;</a></h2>
-<p><code>build_test_index</code> and <code>playwright_test</code> are deliberately gated: Copilot has to certify that the required review or readiness check actually happened before either will run. If Copilot tries to skip ahead, the tool rejects the call.</p>
+<p><code>abapfs_build_test_index</code> and <code>abapfs_run_playwright_tests</code> are deliberately gated: Copilot has to certify that the required review or readiness check actually happened before either will run. If Copilot tries to skip ahead, the tool rejects the call.</p>
 <p>This is why you'll sometimes see Copilot go back and do something it seemed to have finished — the tool told it to. Details in the <a href="../technical-reference/#quality-gates">Technical Reference</a>.</p>
 <h2 id="if-copilot-says-a-tool-is-missing">If Copilot says a tool is missing<a class="headerlink" href="#if-copilot-says-a-tool-is-missing" title="Permanent link">&para;</a></h2>
-<p>VS Code doesn't always surface every tool to the model straight away, and <code>playwright_test</code> is the one that most often goes missing. Copilot is instructed to search for a tool by name before giving up, and to tell you rather than improvise — so if it reports a missing tool, that's a genuine report, not a mistake.</p>
+<p>VS Code doesn't always surface every tool to the model straight away, and <code>abapfs_run_playwright_tests</code> is the one that most often goes missing. Copilot is instructed to search for a tool by name before giving up, and to tell you rather than improvise — so if it reports a missing tool, that's a genuine report, not a mistake.</p>
 <p>Starting a new chat usually clears it. What Copilot must never do is substitute a terminal command; there is no <code>npx playwright test</code> route here.</p>
 
 

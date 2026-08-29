@@ -3600,35 +3600,35 @@ Also applies to AI agents plugins for vscode like Cline/Continue/Roo code/... un
 </thead>
 <tbody>
 <tr>
-<td><code>search_abap_objects</code></td>
+<td><code>abapfs_search_objects</code></td>
 <td>Search for objects by name pattern</td>
 </tr>
 <tr>
-<td><code>get_abap_object_lines</code></td>
+<td><code>abapfs_get_object_source</code></td>
 <td>Read source code</td>
 </tr>
 <tr>
-<td><code>find_where_used</code></td>
+<td><code>abapfs_find_usages</code></td>
 <td>Where-used analysis</td>
 </tr>
 <tr>
-<td><code>run_unit_tests</code></td>
+<td><code>abapfs_run_unit_tests</code></td>
 <td>Execute ABAP unit tests</td>
 </tr>
 <tr>
-<td><code>run_atc_analysis</code></td>
+<td><code>abapfs_run_atc_analysis</code></td>
 <td>Run ATC code checks</td>
 </tr>
 <tr>
-<td><code>execute_data_query</code></td>
+<td><code>abapfs_run_sql_query</code></td>
 <td>Run SQL queries against SAP tables</td>
 </tr>
 <tr>
-<td><code>manage_transport_requests</code></td>
+<td><code>abapfs_manage_transports</code></td>
 <td>Read transport data</td>
 </tr>
 <tr>
-<td><code>abap_activate</code></td>
+<td><code>abapfs_activate_object</code></td>
 <td>Activate ABAP objects</td>
 </tr>
 <tr>
@@ -3644,8 +3644,8 @@ Also applies to AI agents plugins for vscode like Cline/Continue/Roo code/... un
 <h2 id="write-support">Write Support<a class="headerlink" href="#write-support" title="Permanent link">&para;</a></h2>
 <p>MCP clients can now edit ABAP source code directly. The workflow:</p>
 <ol>
-<li><strong>Get the file URI</strong> — call <code>get_abap_object_workspace_uri</code> with object name/type/connection</li>
-<li><strong>Read current code</strong> — call <code>get_abap_object_lines</code> or <code>search_abap_object_lines</code></li>
+<li><strong>Get the file URI</strong> — call <code>abapfs_get_workspace_uri</code> with object name/type/connection</li>
+<li><strong>Read current code</strong> — call <code>abapfs_get_object_source</code> or <code>abapfs_search_object_source</code></li>
 <li><strong>Edit</strong> — call <code>replace_string_in_abap_object</code> with the URI, old text, and new text</li>
 <li><strong>Verify</strong> — call <code>get_abap_diagnostics</code> with the same URI to check for syntax errors</li>
 </ol>

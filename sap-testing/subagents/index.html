@@ -3327,7 +3327,7 @@
 <h2 id="configuring-models">Configuring models<a class="headerlink" href="#configuring-models" title="Permanent link">&para;</a></h2>
 <p><code>Ctrl+Shift+P</code> → <strong>ABAP FS: Set Models for Subagents</strong></p>
 <p>The panel lists General agents and Testing agents in separate collapsible sections, with a hint about the kind of model each needs and a dropdown of the Copilot models available to you. Pick models, save, and continue without reloading.</p>
-<p>You can also ask Copilot to configure them through <code>manage_subagents</code>: it should call <code>get_status</code>, then <code>list_models</code>, and configure all nine testing agents with exact model names from the model list.</p>
+<p>You can also ask Copilot to configure them through <code>abapfs_manage_subagents</code>: it should call <code>get_status</code>, then <code>list_models</code>, and configure all nine testing agents with exact model names from the model list.</p>
 <p>Guidance that actually affects results:</p>
 <ul>
 <li><strong>Reviewers should be strong models from a different family than your main chat model.</strong> A model reviewing its own family's work tends to agree with it. Independence is the point.</li>

@@ -3572,9 +3572,9 @@
 <p>You can also invoke other enabled general agents directly with <code>@agent-name</code>. Disabled general agents are removed from agent discovery immediately. Testing agents appear only when the SAP testing folder is valid.</p>
 <h2 id="setup">Setup<a class="headerlink" href="#setup" title="Permanent link">&para;</a></h2>
 <p>Subagent settings are stored at <strong>user level</strong>. Model assignments use <code>abapfs.subagents.models</code>; general-agent visibility uses <code>abapfs.subagents.enabledAgents</code>. The deprecated <code>abapfs.subagents.enabled</code> setting is migrated for compatibility.</p>
-<p>In normal usage, do not edit settings JSON manually. Use <strong>ABAP FS: Set Models for Subagents</strong> or the <code>manage_subagents</code> tool.</p>
+<p>In normal usage, do not edit settings JSON manually. Use <strong>ABAP FS: Set Models for Subagents</strong> or the <code>abapfs_manage_subagents</code> tool.</p>
 <h3 id="step-1-configure-models">Step 1 — Configure models<a class="headerlink" href="#step-1-configure-models" title="Permanent link">&para;</a></h3>
-<p>Use <strong>ABAP FS: Set Models for Subagents</strong>, or ask Copilot to do it by calling <code>manage_subagents</code> with <code>get_status</code>, <code>list_models</code>, and then <code>configure</code>.</p>
+<p>Use <strong>ABAP FS: Set Models for Subagents</strong>, or ask Copilot to do it by calling <code>abapfs_manage_subagents</code> with <code>get_status</code>, <code>list_models</code>, and then <code>configure</code>.</p>
 <div class="highlight"><pre><span></span><code><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a>Configure models for the general ABAP agents
 </code></pre></div>
 <p>Use the exact model names returned by <code>list_models</code>. The tier guidance is:</p>
@@ -3624,15 +3624,15 @@
 <tbody>
 <tr>
 <td>Check current status and guidance</td>
-<td><code>manage_subagents</code> → <code>get_status</code></td>
+<td><code>abapfs_manage_subagents</code> → <code>get_status</code></td>
 </tr>
 <tr>
 <td>See available models</td>
-<td><code>manage_subagents</code> → <code>list_models</code></td>
+<td><code>abapfs_manage_subagents</code> → <code>list_models</code></td>
 </tr>
 <tr>
 <td>Enable or disable selected general agents</td>
-<td><code>manage_subagents</code> → <code>enable</code> or <code>disable</code> with <code>agentIds</code></td>
+<td><code>abapfs_manage_subagents</code> → <code>enable</code> or <code>disable</code> with <code>agentIds</code></td>
 </tr>
 <tr>
 <td>Enable or disable all general agents</td>
@@ -3640,15 +3640,15 @@
 </tr>
 <tr>
 <td>Change selected models</td>
-<td><code>manage_subagents</code> → <code>configure</code></td>
+<td><code>abapfs_manage_subagents</code> → <code>configure</code></td>
 </tr>
 <tr>
 <td>Validate active assignments</td>
-<td><code>manage_subagents</code> → <code>validate</code></td>
+<td><code>abapfs_manage_subagents</code> → <code>validate</code></td>
 </tr>
 <tr>
 <td>See available tools</td>
-<td><code>manage_subagents</code> → <code>list_tools</code></td>
+<td><code>abapfs_manage_subagents</code> → <code>list_tools</code></td>
 </tr>
 </tbody>
 </table>
@@ -3667,7 +3667,7 @@
 <h3 id="subagents-auto-disabled">Subagents auto-disabled<a class="headerlink" href="#subagents-auto-disabled" title="Permanent link">&para;</a></h3>
 <p>This happens when a configured model is missing or unavailable. Use <code>list_models</code>, configure a currently available model, then enable the affected general agent again.</p>
 <h3 id="delegation-not-using-custom-agents">Delegation not using custom agents<a class="headerlink" href="#delegation-not-using-custom-agents" title="Permanent link">&para;</a></h3>
-<p>Run <code>get_status</code> to confirm the target general agent is enabled and has an available model. If it is disabled, ask Copilot to call <code>manage_subagents</code> with <code>enable</code> and the agent's <code>agentIds</code>.</p>
+<p>Run <code>get_status</code> to confirm the target general agent is enabled and has an available model. If it is disabled, ask Copilot to call <code>abapfs_manage_subagents</code> with <code>enable</code> and the agent's <code>agentIds</code>.</p>
 
 
 

@@ -3455,7 +3455,7 @@
 <h2 id="managed-scaffolding">Managed scaffolding<a class="headerlink" href="#managed-scaffolding" title="Permanent link">&para;</a></h2>
 <p>ABAP FS writes a small amount of infrastructure into the test folder and re-applies it on every activation, because the extension's install path changes with each version.</p>
 <p><strong>Always:</strong> a <code>tsconfig.json</code> that maps the module specifier <code>@sap-testing/runtime</code> to the extension's compiled runtime, a link to that runtime under <code>node_modules</code>, and a <code>.gitignore</code> entry for both. This is what gives the TypeScript language service real IntelliSense and type errors while Copilot writes a spec — checked against the actual runtime signatures rather than prose in a skill — and what lets the test runner resolve the runtime at execution time. The language-service half only applies while the test folder is open in your workspace; the runner half works either way.</p>
-<p><strong>Only while Microsoft's Playwright extension is installed:</strong> a <code>playwright.config.js</code>, links to the bundled Playwright, a <code>.bin</code> launcher, and <code>.sap-active-system</code>. These exist purely so the Test Explorer sidebar can discover and run specs. They're removed again if you uninstall that extension. The <code>playwright_test</code> tool needs none of them — it passes its own config and sets the target system directly in the runner's environment.</p>
+<p><strong>Only while Microsoft's Playwright extension is installed:</strong> a <code>playwright.config.js</code>, links to the bundled Playwright, a <code>.bin</code> launcher, and <code>.sap-active-system</code>. These exist purely so the Test Explorer sidebar can discover and run specs. They're removed again if you uninstall that extension. The <code>abapfs_run_playwright_tests</code> tool needs none of them — it passes its own config and sets the target system directly in the runner's environment.</p>
 <p>All of it is gitignored, because it hardcodes machine-specific absolute paths.</p>
 <h2 id="artifact-fields">Artifact fields<a class="headerlink" href="#artifact-fields" title="Permanent link">&para;</a></h2>
 <p>Each <code>TC-NNN.md</code> carries frontmatter that the index builder validates. The values that are checked against a fixed list:</p>
@@ -3506,7 +3506,7 @@
 </ol>
 <p>Only <code>sql</code> and <code>seeded</code> values belong in <code>data.json</code>. Caching a <code>static</code> value shadows the spec so later edits to it do nothing; caching a <code>generated</code> one reintroduces the stale-fixture problem.</p>
 <p>Fixtures support <code>{{other_key}}</code> substitution and relative date tokens (<code>today</code>, <code>+30d</code>, <code>-5d</code>) resolved against the current run time, so a fixture never carries an absolute date.</p>
-<p>Keys that must differ from each other declare <code>distinctFrom</code> on both sides; <code>check_test_data</code> fails the program if they resolve to the same value. Ordering with <code>take: first</code> is not a uniqueness guarantee, because a <code>SELECT</code> without <code>ORDER BY</code> has no defined row order.</p>
+<p>Keys that must differ from each other declare <code>distinctFrom</code> on both sides; <code>abapfs_check_test_data</code> fails the program if they resolve to the same value. Ordering with <code>take: first</code> is not a uniqueness guarantee, because a <code>SELECT</code> without <code>ORDER BY</code> has no defined row order.</p>
 <h2 id="quality-gates">Quality gates<a class="headerlink" href="#quality-gates" title="Permanent link">&para;</a></h2>
 <p>Three reviewer agents and two tool-level gates keep the workflow honest.</p>
 <p><strong>Reviewer agents</strong> run at the end of phases 1, 2, and 3. Each reads the underlying evidence itself rather than trusting the main agent's summary, returns either a pass or an itemised gap list, and the phase does not hand off until every gap is fixed and it passes.</p>
@@ -3520,17 +3520,17 @@
 </thead>
 <tbody>
 <tr>
-<td><code>build_test_index</code></td>
+<td><code>abapfs_build_test_index</code></td>
 <td>Certification that the test plan reviewer already returned a pass</td>
 </tr>
 <tr>
-<td><code>playwright_test</code></td>
+<td><code>abapfs_run_playwright_tests</code></td>
 <td>Certification that all upstream phase gates and data readiness were verified</td>
 </tr>
 </tbody>
 </table>
 <p>Both reject the call if the confirmation is missing or wrong, which means an agent that skipped a phase cannot produce the case index or run a test. The gate is a behavioural contract rather than a cryptographic one — its purpose is to stop a model from quietly cutting a corner under pressure, not to defend against a determined attacker.</p>
-<p><code>build_test_index</code> also enforces structural rules: valid categories, matching case IDs, parseable frontmatter, and agreement between <code>dataRequired</code> and the presence of a <code>.data.md</code>. A missing <code>.data.md</code> for a case that needs one is a warning during phase 3 (specs come later) and must be zero by the end of phase 4.</p>
+<p><code>abapfs_build_test_index</code> also enforces structural rules: valid categories, matching case IDs, parseable frontmatter, and agreement between <code>dataRequired</code> and the presence of a <code>.data.md</code>. A missing <code>.data.md</code> for a case that needs one is a warning during phase 3 (specs come later) and must be zero by the end of phase 4.</p>
 <h2 id="the-runtime">The runtime<a class="headerlink" href="#the-runtime" title="Permanent link">&para;</a></h2>
 <p>Specs import from the fixed specifier <code>@sap-testing/runtime</code>, never a relative path. It exposes <code>SapSession</code> (the UI driver), <code>SapArtifacts</code> (application-server file and spool checks), <code>resolveTestData</code>, <code>buildFixture</code>, and some formatting helpers.</p>
 <p><code>SapSession</code> methods describe SAP mechanics rather than business concepts — <code>setField</code>, <code>setRange</code>, <code>check</code>, <code>selectRadio</code>, <code>clickButton</code>, <code>clickTab</code>, <code>setGridCell</code>, <code>pickFromValueHelp</code>, <code>execute</code>, <code>captureDownload</code>, plus assertions like <code>expectAlert</code>, <code>expectTitle</code>, <code>expectGridHasRow</code>. You can't add methods to it, which is what stops business logic leaking into the runtime.</p>
@@ -3547,13 +3547,13 @@
 <p>Before running, the tool mints a SAP reentrance ticket from your ABAP FS connection and posts it through a single-use local form (tickets can't travel in a URL query string). The resulting session cookies are saved and handed to every spec, so tests start already signed in. The same mechanism produces the pre-authenticated URLs used for browser exploration and recording — those URLs are single-use, which is why they must be opened exactly as issued.</p>
 <p>Setting <code>webGuiAutoLogin: false</code> on a connection skips all of it, for landscapes where a gateway handles authentication.</p>
 <h2 id="execution">Execution<a class="headerlink" href="#execution" title="Permanent link">&para;</a></h2>
-<p><code>playwright_test</code> runs the real <code>@playwright/test</code> CLI as a subprocess, using VS Code's own Node runtime and a copy of Playwright vendored into the extension. Nothing is installed into your test folder and no browser is downloaded — it drives your installed Edge.</p>
+<p><code>abapfs_run_playwright_tests</code> runs the real <code>@playwright/test</code> CLI as a subprocess, using VS Code's own Node runtime and a copy of Playwright vendored into the extension. Nothing is installed into your test folder and no browser is downloaded — it drives your installed Edge.</p>
 <p>Defaults: one worker, no retries, 60 seconds per test, 10 minutes overall, traces retained on failure under <code>.playwright-artifacts/</code>. Tests run headless unless asked for a headed run, which is worth doing the first time a new spec runs.</p>
 <p>Serial execution with no retries is deliberate. Parallel SAP sessions interfere with each other, and automatic retries hide flakiness that usually turns out to be a real timing or data problem.</p>
 <h2 id="evidence-output">Evidence output<a class="headerlink" href="#evidence-output" title="Permanent link">&para;</a></h2>
 <p>Each case run writes <code>manifest.json</code> (every step, timestamp, and note) plus numbered screenshots into its results folder. Previous runs are archived into <code>runs/&lt;timestamp&gt;/</code> rather than deleted, and the data cache survives.</p>
 <p>Post-run checks land in <code>verification.json</code>, recording each check, who performed it, the SQL or tool used, actual versus expected, and its status. Checks a machine can't perform stay <code>pending-manual</code> until you confirm them.</p>
-<p><code>build_evidence_report</code> aggregates all of it into one Word document per program and connection: a title page with the pass/fail summary, a colour-coded results table, and one section per case with every step and screenshot. Where a <code>verification.json</code> exists, its checks appear too — so a case that passed on screen but failed its database check shows as failed, and a case with unconfirmed manual checks is visibly not fully proven. Rebuilding is cheap and safe to repeat.</p>
+<p><code>abapfs_build_evidence_report</code> aggregates all of it into one Word document per program and connection: a title page with the pass/fail summary, a colour-coded results table, and one section per case with every step and screenshot. Where a <code>verification.json</code> exists, its checks appear too — so a case that passed on screen but failed its database check shows as failed, and a case with unconfirmed manual checks is visibly not fully proven. Rebuilding is cheap and safe to repeat.</p>
 
 
 
