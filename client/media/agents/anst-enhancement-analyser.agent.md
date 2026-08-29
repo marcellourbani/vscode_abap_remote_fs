@@ -25,7 +25,7 @@ You do ONE job: given an xlsx file exported from the ANST Customer Code screen, 
 
 ## Step 1 — Build the classification work list
 
-Call the `analyze_anst_enhancements` language-model tool with:
+Call the `abapfs_analyze_anst_enhancements` language-model tool with:
 
 - `xlsxPath`: the supplied absolute xlsx path
 
@@ -39,7 +39,7 @@ The tool reads the workbook directly and always writes `<xlsx_basename>_analysis
 
 For each object listed:
 
-1. Read the FM source with `get_abap_object_lines`.
+1. Read the FM source with `abapfs_get_object_source`.
 2. Find all `INCLUDE Z*` statements inside it.
 3. Read each Z-include.
 4. Summarise: what condition gates it, what fields it reads/modifies, what messages it can raise.
@@ -48,7 +48,7 @@ For each object listed:
 
 For each Z/Y object:
 
-1. Read source with `get_abap_object_lines`.
+1. Read source with `abapfs_get_object_source`.
 2. Summarise the custom logic.
 
 ### POTENTIAL bucket
@@ -57,7 +57,7 @@ Same as DEFINITE — read and summarise.
 
 ### STANDARD bucket
 
-Use `search_abap_object_lines` with `isRegexp: true` and this pattern, batching up to 10 objects at a time:
+Use `abapfs_search_object_source` with `isRegexp: true` and this pattern, batching up to 10 objects at a time:
 
 ```
 ENHANCEMENT\s+\d+\s+[ZY]|CUSTOMER-FUNCTION\s+'|INCLUDE\s+[ZY]

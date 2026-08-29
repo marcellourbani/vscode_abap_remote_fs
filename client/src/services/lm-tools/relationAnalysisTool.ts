@@ -514,7 +514,7 @@ export class RelationAnalysisTool implements vscode.LanguageModelTool<RelationAn
     } catch (error) {
       if (isRelationsApiUnavailable(error)) {
         throw new Error(
-          `SAP system ${connectionId} does not support the ABAP object-relations APIs. Relation analysis is unavailable on this system. Use find_where_used for exact source-usage questions.`
+          `SAP system ${connectionId} does not support the ABAP object-relations APIs. Relation analysis is unavailable on this system. Use abapfs_find_usages for exact source-usage questions.`
         )
       }
       throw new Error(`ABAP relation analysis failed: ${String(error)}`)
@@ -524,6 +524,6 @@ export class RelationAnalysisTool implements vscode.LanguageModelTool<RelationAn
 
 export function registerRelationAnalysisTool(context: vscode.ExtensionContext) {
   context.subscriptions.push(
-    registerToolWithRegistry("analyze_abap_relations", new RelationAnalysisTool())
+    registerToolWithRegistry("abapfs_analyze_object_relations", new RelationAnalysisTool())
   )
 }

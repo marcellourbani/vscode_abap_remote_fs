@@ -5,7 +5,7 @@
  * cancels execution, the UI shows "Interrupted" immediately but the
  * SAP-side query runs to completion. The result is discarded by the
  * controller (not stored in cellResults). This matches the behavior
- * of SE16N and the existing execute_data_query LM tool.
+ * of SE16N and the existing abapfs_run_sql_query LM tool.
  */
 
 import { ADTClient } from "abap-adt-api"

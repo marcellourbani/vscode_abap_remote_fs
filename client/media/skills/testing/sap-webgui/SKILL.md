@@ -9,7 +9,7 @@ For bounded, self-contained support work, use `sap-task-helper` with explicit in
 
 ## Non-negotiable execution gate
 
-The `playwright_test` tool verifies the workflow artifacts produced from WebGUI exploration and **will reject affected cases** when required screen mappings or script checks are missing. Do not guess locators or skip live verification.
+The `abapfs_run_playwright_tests` tool verifies the workflow artifacts produced from WebGUI exploration and **will reject affected cases** when required screen mappings or script checks are missing. Do not guess locators or skip live verification.
 
 ## Related workflows
 
@@ -260,7 +260,7 @@ Key behaviour:
 
 - **`dump`** — classic ABAP short dump ("ABAP Runtime Error", "Runtime Errors", "The current ABAP program terminated..."). Full-page replacement, usually red-themed.
 - **`its`** — ITS/ICM protocol error ("500 Internal Server Error", "ITS Error"). Usually appears after a session or network glitch.
-- **`logon`** — session dropped, browser shows a login screen ("SAP NetWeaver Logon", "Please log on again", or any page with a visible password box). Under `playwright_test` this means the automatic reentrance-ticket sign-in did not produce a usable session — check the `[sso]` lines in the `ABAP FS` output channel. It can also mean the session simply timed out mid-run.
+- **`logon`** — session dropped, browser shows a login screen ("SAP NetWeaver Logon", "Please log on again", or any page with a visible password box). Under `abapfs_run_playwright_tests` this means the automatic reentrance-ticket sign-in did not produce a usable session — check the `[sso]` lines in the `ABAP FS` output channel. It can also mean the session simply timed out mid-run.
 
 When detected, the guard captures evidence and throws with `kind`, title, URL, and a 500-char body snippet — never silently continue.
 

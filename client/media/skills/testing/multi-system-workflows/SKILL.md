@@ -12,7 +12,7 @@ and does not add multi-system support inside one spec.
 
 One Playwright spec runs against exactly one `connectionId`. Do not open a second SAP system
 inside that spec, switch `SAP_SYSTEM`, or use Playwright projects as business-process stages.
-The current `playwright_test` tool also has one global `connectionId` per invocation.
+The current `abapfs_run_playwright_tests` tool also has one global `connectionId` per invocation.
 
 Represent one cross-system business scenario as linked stage cases/scripts, one per system:
 
@@ -55,7 +55,7 @@ code small and explicit in the stage specs, and call out this limitation in the 
 
 ## Running the workflow
 
-Copilot orchestrates separate `playwright_test` calls in stage order:
+Copilot orchestrates separate `abapfs_run_playwright_tests` calls in stage order:
 
 ```json
 { "program": "PO_APPOINTMENT", "tcIds": ["TC-021"], "connectionId": "s4dev100" }

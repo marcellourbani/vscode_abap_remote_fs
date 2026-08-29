@@ -45,7 +45,7 @@ export class SplitTestCasesTool implements vscode.LanguageModelTool<ISplitTestCa
           `Split ${result.outputPaths.length} test case(s).`,
           ...result.outputPaths,
           "The aggregate source file was deleted.",
-          "Run build_test_index separately after all test cases are ready."
+          "Run abapfs_build_test_index separately after all test cases are ready."
         ].join("\n")
       )
     ])
@@ -53,5 +53,7 @@ export class SplitTestCasesTool implements vscode.LanguageModelTool<ISplitTestCa
 }
 
 export function registerSplitTestCasesTool(context: vscode.ExtensionContext): void {
-  context.subscriptions.push(registerToolWithRegistry("split_test_cases", new SplitTestCasesTool()))
+  context.subscriptions.push(
+    registerToolWithRegistry("abapfs_split_test_cases", new SplitTestCasesTool())
+  )
 }

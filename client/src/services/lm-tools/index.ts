@@ -110,7 +110,7 @@ export async function registerAllTools(context: vscode.ExtensionContext): Promis
 
   // 11. Text Elements
   context.subscriptions.push(
-    registerToolWithRegistry("manage_text_elements", new ManageTextElementsTool())
+    registerToolWithRegistry("abapfs_manage_text_elements", new ManageTextElementsTool())
   )
 
   // 12. SAP System Info Tool
@@ -122,18 +122,22 @@ export async function registerAllTools(context: vscode.ExtensionContext): Promis
 
   // 14. Debugger Tools (6 tools)
   context.subscriptions.push(
-    registerToolWithRegistry("abap_debug_session", new ABAPDebugSessionTool())
+    registerToolWithRegistry("abapfs_manage_debug_session", new ABAPDebugSessionTool())
   )
   context.subscriptions.push(
-    registerToolWithRegistry("abap_debug_breakpoint", new ABAPBreakpointTool())
+    registerToolWithRegistry("abapfs_manage_breakpoints", new ABAPBreakpointTool())
   )
-  context.subscriptions.push(registerToolWithRegistry("abap_debug_step", new ABAPDebugStepTool()))
   context.subscriptions.push(
-    registerToolWithRegistry("abap_debug_variable", new ABAPDebugVariableTool())
+    registerToolWithRegistry("abapfs_step_debugger", new ABAPDebugStepTool())
   )
-  context.subscriptions.push(registerToolWithRegistry("abap_debug_stack", new ABAPDebugStackTool()))
   context.subscriptions.push(
-    registerToolWithRegistry("abap_debug_status", new ABAPDebugStatusTool())
+    registerToolWithRegistry("abapfs_inspect_variable", new ABAPDebugVariableTool())
+  )
+  context.subscriptions.push(
+    registerToolWithRegistry("abapfs_get_debug_stack", new ABAPDebugStackTool())
+  )
+  context.subscriptions.push(
+    registerToolWithRegistry("abapfs_get_debug_status", new ABAPDebugStatusTool())
   )
 
   // 15. Version History Tool

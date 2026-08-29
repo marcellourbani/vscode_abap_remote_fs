@@ -17,7 +17,7 @@ For bounded, self-contained support work, use `sap-task-helper` with explicit in
 
 ## Non-negotiable execution gate
 
-`build_test_index` is GATED: it refuses to build unless you pass `reviewerConfirmation` certifying the `sap-test-plan-reviewer` agent already returned PASS. You cannot produce the index — and therefore cannot hand off — without the reviewer actually running. Downstream phases and `playwright_test` reject cases whose plan was never reviewed.
+`abapfs_build_test_index` is GATED: it refuses to build unless you pass `reviewerConfirmation` certifying the `sap-test-plan-reviewer` agent already returned PASS. You cannot produce the index — and therefore cannot hand off — without the reviewer actually running. Downstream phases and `abapfs_run_playwright_tests` reject cases whose plan was never reviewed.
 
 ## Why
 
@@ -27,13 +27,13 @@ The test case is the contract for everything after it: Phase 6 writes exactly wh
 
 **Naming:** when these docs say *call* `X`, `X` is a **tool** (you invoke it and get a result); *delegate to / invoke* `X` is an **agent** (a subagent you launch); *load / follow* `X` is a **skill** (a procedure you read). A name without a verb: see the overview's "Skills, tools, and agents" list.
 
-The editor may hide tools until searched for. Before Step 0, ensure `get_test_folder`, `get_connected_systems`, `split_test_cases`, and `build_test_index` are available; if any is missing, search your available tools for it by name. If one cannot be found, tell the user which is missing.
+The editor may hide tools until searched for. Before Step 0, ensure `abapfs_get_test_folder`, `abapfs_get_connected_systems`, `abapfs_split_test_cases`, and `abapfs_build_test_index` are available; if any is missing, search your available tools for it by name. If one cannot be found, tell the user which is missing.
 
 ## Step 0 — Standalone bootstrap and input gate (mandatory)
 
 > **Say before acting:** "Starting Step 0: standalone bootstrap and input gate."
 
-1. Call `get_test_folder` **before reading any artifact**. Treat the result as `<TEST_FOLDER>`; never infer it.
+1. Call `abapfs_get_test_folder` **before reading any artifact**. Treat the result as `<TEST_FOLDER>`; never infer it.
 2. If unset, STOP and ask the user to run "ABAP FS: Enable SAP UI Testing Features". If not open in the workspace, STOP and ask them to add it.
 3. Resolve `<PROGRAM>` from the request; if omitted, inspect `<TEST_FOLDER>/tests/*/test-cases/_findings.md`. Auto-select only when exactly one candidate matches; otherwise ask.
 4. **Enforce the Phase 1 + Phase 2 input gate.** All of these must exist:
@@ -46,8 +46,8 @@ The editor may hide tools until searched for. Before Step 0, ensure `get_test_fo
    - `_units.md` — the unit I/O inventory; the "Effective outputs" column tells you exactly which effects a case must verify (which DB tables, IDocs, jobs, spool, files) and therefore what its `## Post-test verification` rows are.
    - `_screens.md` — the exact control labels for the state table.
 6. **Read the actual source too — a summary is not enough.** `_findings.md` is a distilled map; the source snapshot (path recorded in `_findings.md`) is the ground truth. Before writing a case, read the relevant unit(s) in the snapshot (guided by `_units.md`) to get the EXACT message text, the exact condition that fires it, and the exact expected behaviour (e.g. that an overlap truncates rather than rejects). If while reading you find a branch or message that `_findings.md` missed, STOP and follow `analyze-and-plan` to fix `_findings.md` first — do not silently plan around a gap.
-7. You pass the snapshot path to `build_test_index` as `sourceSnapshot`.
-8. Call `get_connected_systems` and confirm the `connectionId` (used only if you need to re-verify a source fact live).
+7. You pass the snapshot path to `abapfs_build_test_index` as `sourceSnapshot`.
+8. Call `abapfs_get_connected_systems` and confirm the `connectionId` (used only if you need to re-verify a source fact live).
 
 > **Say before continuing:** "Step 0 completed. Evidence: test folder, program, `_findings.md`/`_flow.md`/`_units.md`/`_screens.md` read, source snapshot read for the relevant units, and snapshot path confirmed. Next: Step 1 — category contract and count gate."
 
@@ -108,7 +108,7 @@ If you write a case using only `_findings.md`, you will get the trigger sequence
 
 **File cardinality contract:** one candidate case = one file = one TC-ID. Filenames match exactly `TC-\d{3}.md`. Never create range/group files (`TC-006-TC-010.md`) and never put multiple `# TC-...` headings in one file.
 
-For a large plan you MAY write one temporary `<TEST_FOLDER>/tests/<PROGRAM>/test-cases/_bulk-<name>.md` and call `split_test_cases` with its absolute path. The aggregate contains only `<sap-test-case id="TC-NNN">…</sap-test-case>` blocks with complete frontmatter and body, nothing outside them. The tool validates every block, refuses overwrites/invalid categories/IDs, writes one `TC-NNN.md` per block, and deletes the aggregate only on full success. It does NOT build the index.
+For a large plan you MAY write one temporary `<TEST_FOLDER>/tests/<PROGRAM>/test-cases/_bulk-<name>.md` and call `abapfs_split_test_cases` with its absolute path. The aggregate contains only `<sap-test-case id="TC-NNN">…</sap-test-case>` blocks with complete frontmatter and body, nothing outside them. The tool validates every block, refuses overwrites/invalid categories/IDs, writes one `TC-NNN.md` per block, and deletes the aggregate only on full success. It does NOT build the index.
 
 Template:
 
@@ -121,7 +121,7 @@ target: Z_MY_REPORT
 targetType: report | class | transaction | process
 category: happy-path | boundary | invalid | mandatory | authorization | empty | large | idempotency | cross-tx | concurrency | background-artifact | discovered-control
 priority: high | medium | low
-runnable: runnable | manual | blocked-by-data | runnable-elsewhere # from _findings.md runnability triage — this is what build_test_index reads for summary counts
+runnable: runnable | manual | blocked-by-data | runnable-elsewhere # from _findings.md runnability triage — this is what abapfs_build_test_index reads for summary counts
 dataRequired: yes | no # mandatory; yes means a TC-XXX.data.md WILL be authored in Phase 4, no means none may exist
 verification: sql | manual | mixed | none # mandatory — HOW this case proves the object did its job AFTER the UI passes (see "Post-test verification is the rule" below). Outcomes the SPEC already asserts on screen are NOT this — this is the DB/artifact truth the spec can't see. A "nothing should have been written" case is `sql` (assert the count/table is unchanged), NOT none. `none` is valid ONLY when the path cannot write anything AND no meaningful count/absence check exists (a pure error/abort case where the message is the whole outcome).
 se16nTables: [EKKO, EKPO] # mandatory for verification: sql|mixed; every SQL-verified business table/effect that business users can inspect. Use [] for manual/none.
@@ -183,7 +183,7 @@ Explicit actions for every row where `Vs default = changed or RESET`. Rows at de
 - Known slow steps, popup expectations, related enhancements (from _findings.md).
 ```
 
-The `---` frontmatter must be the literal first lines of `TC-XXX.md` — never wrapped in a code fence or placed under a heading; `build_test_index` rejects a TC with no parseable leading frontmatter. (If you build a `_bulk-*.md` aggregate, each `<sap-test-case>` block's frontmatter is what becomes that file's top — `split_test_cases` writes it correctly.)
+The `---` frontmatter must be the literal first lines of `TC-XXX.md` — never wrapped in a code fence or placed under a heading; `abapfs_build_test_index` rejects a TC with no parseable leading frontmatter. (If you build a `_bulk-*.md` aggregate, each `<sap-test-case>` block's frontmatter is what becomes that file's top — `abapfs_split_test_cases` writes it correctly.)
 
 Field names in Steps and the state table MUST match `_screens.md` labels EXACTLY — Phase 6 uses them verbatim.
 
@@ -213,7 +213,7 @@ During this phase you author only the table + frontmatter; you run nothing. A ru
 
 **Manual vs runnable:** set `runnable:` from the triage in `_findings.md`. Pure UI-inspection, multi-user coordination, or destructive business actions that must stay human-controlled are `manual`; negative-authorization cases are usually `runnable-elsewhere`. Do not silently delete a case you can't run today — give it a file and the right `runnable` value.
 
-**Authorization cases: the POSITIVE side is `runnable`, the NEGATIVE side is `runnable-elsewhere` — never `runnable`.** An `authorization` TC comparing "with role X" vs "without role X" needs a real SAP user for BOTH sides. The positive case runs as the normal run user (whoever the target `connectionId` authenticates as) — `runnable`. The negative case must run as a user who LACKS the authorization, and there is **no spec-level or config-level way to switch users mid-run**: `playwright_test` authenticates one session, as the connection's own user, for the whole run (see `build-scripts` and universal rule 5). So a negative-auth case can only run against a SEPARATE ABAP FS connection configured for an unauthorized user — mark it `runnable: runnable-elsewhere` with that exact reason. Marking it `runnable` is a defect the reviewer FAILs, and it is also dangerous: if it runs as the authorized user it "passes" for the wrong reason (the action was allowed, not blocked). In `## Preconditions` name the required unauthorized user / role gap and the second connection it needs; in `## Notes for automation` state that provisioning that user goes through SU01 / the customer's identity system, not any test-writable path, so `prepare-data` cannot create it. The `.data.md` may pin the user via `source: static` (dummy `staticValue: "ZTESTNOAUTH"`) or `source: user` so a different landscape can substitute a different unauthorized user without editing the spec.
+**Authorization cases: the POSITIVE side is `runnable`, the NEGATIVE side is `runnable-elsewhere` — never `runnable`.** An `authorization` TC comparing "with role X" vs "without role X" needs a real SAP user for BOTH sides. The positive case runs as the normal run user (whoever the target `connectionId` authenticates as) — `runnable`. The negative case must run as a user who LACKS the authorization, and there is **no spec-level or config-level way to switch users mid-run**: `abapfs_run_playwright_tests` authenticates one session, as the connection's own user, for the whole run (see `build-scripts` and universal rule 5). So a negative-auth case can only run against a SEPARATE ABAP FS connection configured for an unauthorized user — mark it `runnable: runnable-elsewhere` with that exact reason. Marking it `runnable` is a defect the reviewer FAILs, and it is also dangerous: if it runs as the authorized user it "passes" for the wrong reason (the action was allowed, not blocked). In `## Preconditions` name the required unauthorized user / role gap and the second connection it needs; in `## Notes for automation` state that provisioning that user goes through SU01 / the customer's identity system, not any test-writable path, so `prepare-data` cannot create it. The `.data.md` may pin the user via `source: static` (dummy `staticValue: "ZTESTNOAUTH"`) or `source: user` so a different landscape can substitute a different unauthorized user without editing the spec.
 
 **A case whose premise is that a value does NOT exist must have that premise PROVEN, not assumed.** For a "no record found" / "invalid key rejected" / "unknown value" case, do NOT hardcode a number you believe is absent and hope it stays absent — a value that exists on the run system turns the test green for the wrong reason. Set the case `dataRequired: yes` and, in the TC, add an `## Absence preconditions` section with the SQL that must return ZERO rows for the case to be valid (using a `<data-key: ...>` placeholder). Phase 4 declares the key; Phase 5 (`prepare-data`) runs the absence SQL and BLOCKS the case if the row actually exists. (`dataRequired: no` forbids a `.data.md`, so an absence-checked case is always `dataRequired: yes`.)
 
@@ -233,7 +233,7 @@ The reviewer does not need `_index.md` to exist yet — it works from `_findings
 
 > **Say before acting:** "Starting Step 4: rebuild the mechanical index."
 
-Call `build_test_index` with:
+Call `abapfs_build_test_index` with:
 
 - `program` = `<PROGRAM>`
 - `sourceSnapshot` = the snapshot path recorded in `_findings.md`
@@ -243,9 +243,9 @@ Call `build_test_index` with:
 
 Expect a WARNING for every `dataRequired: yes` case whose `.data.md` doesn't exist yet — that is EXPECTED here, because data specs are authored in Phase 4. It is NOT a failure. (A `dataRequired: no` case that has a `.data.md` IS an error — fix the frontmatter or delete the stray file.)
 
-The only section the tool preserves verbatim is `## Notes` at the bottom of `_index.md` — write freeform commentary there (explain any missing category, any clustered `manual` cases, links back to `_findings.md`). After editing only `## Notes`, refresh the docx with `build_test_index_docx`.
+The only section the tool preserves verbatim is `## Notes` at the bottom of `_index.md` — write freeform commentary there (explain any missing category, any clustered `manual` cases, links back to `_findings.md`). After editing only `## Notes`, refresh the docx with `abapfs_build_test_index_docx`.
 
-> **Say before continuing:** "Step 4 completed. Evidence: `build_test_index` wrote current `_index.md` and `_index.docx`; only expected `.data.md`-pending warnings remain. Next: Step 5 — present and hand off."
+> **Say before continuing:** "Step 4 completed. Evidence: `abapfs_build_test_index` wrote current `_index.md` and `_index.docx`; only expected `.data.md`-pending warnings remain. Next: Step 5 — present and hand off."
 
 ## Step 5 — Present for approval and hand off to Phase 4 (`define-data`)
 

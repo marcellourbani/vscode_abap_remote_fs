@@ -70,5 +70,7 @@ export class CheckTestDataTool implements vscode.LanguageModelTool<ICheckTestDat
 }
 
 export function registerCheckTestDataTool(context: vscode.ExtensionContext): void {
-  context.subscriptions.push(registerToolWithRegistry("check_test_data", new CheckTestDataTool()))
+  context.subscriptions.push(
+    registerToolWithRegistry("abapfs_check_test_data", new CheckTestDataTool())
+  )
 }

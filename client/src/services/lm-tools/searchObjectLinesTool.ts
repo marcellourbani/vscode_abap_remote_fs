@@ -489,6 +489,6 @@ export class SearchABAPObjectLinesTool implements vscode.LanguageModelTool<ISear
 
 export function registerSearchObjectLinesTool(context: vscode.ExtensionContext): void {
   context.subscriptions.push(
-    registerToolWithRegistry("search_abap_object_lines", new SearchABAPObjectLinesTool())
+    registerToolWithRegistry("abapfs_search_object_source", new SearchABAPObjectLinesTool())
   )
 }

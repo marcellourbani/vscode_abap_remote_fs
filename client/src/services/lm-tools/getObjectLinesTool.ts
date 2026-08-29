@@ -499,6 +499,6 @@ export class GetABAPObjectLinesTool implements vscode.LanguageModelTool<IGetABAP
  */
 export function registerGetObjectLinesTool(context: vscode.ExtensionContext) {
   context.subscriptions.push(
-    registerToolWithRegistry("get_abap_object_lines", new GetABAPObjectLinesTool())
+    registerToolWithRegistry("abapfs_get_object_source", new GetABAPObjectLinesTool())
   )
 }

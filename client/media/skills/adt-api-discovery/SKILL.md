@@ -4,8 +4,8 @@ description: >-
   Investigate SAP ADT REST API endpoints. Use when the user asks about ADT API endpoints,
   request/response XML formats, content types, or how a specific ADT feature works under the hood.
   Teaches how to trace from discovery documents → RES_APP classes → handler classes →
-  Simple Transformations → XML schemas. Requires the adt_discovery_export tool output files
-  and standard ABAP tools (get_abap_object_lines, search_abap_objects, search_abap_object_lines).
+  Simple Transformations → XML schemas. Requires the abapfs_export_adt_discovery tool output files
+  and standard ABAP tools (abapfs_get_object_source, abapfs_search_objects, abapfs_search_object_source).
 argument-hint: '[what ADT endpoint or feature to investigate]'
 user-invocable: true
 disable-model-invocation: false
@@ -17,7 +17,7 @@ You are investigating SAP ADT REST API endpoints. Your goal is to determine the 
 
 ## Prerequisites
 
-Before using this skill, run the `adt_discovery_export` tool with the target `connectionId`. This creates a folder with markdown files containing the raw discovery data. Read these files first.
+Before using this skill, run the `abapfs_export_adt_discovery` tool with the target `connectionId`. This creates a folder with markdown files containing the raw discovery data. Read these files first.
 
 ## The ADT Architecture
 
@@ -52,7 +52,7 @@ The RES_APP class is what registers the endpoint. To find which one:
 
 **Option A — Match by URL pattern**: The discovery URL `/sap/bc/adt/oo/classes` is registered by a RES_APP whose `register_resources()` method contains that URL. Search for it:
 ```
-Use search_abap_object_lines on RES_APP classes from res-app-classes.md, searching for the URL segment (e.g., '/oo/classes' or '/datapreview/')
+Use abapfs_search_object_source on RES_APP classes from res-app-classes.md, searching for the URL segment (e.g., '/oo/classes' or '/datapreview/')
 ```
 
 **Option B — Check RES_APP class names**: The `res-app-classes.md` file lists all RES_APP classes with descriptions. Class names often hint at the feature area (e.g., `CL_ADT_DATAPREVIEW_RES_APP` → data preview, `CL_OO_ADT_RES_APP` → OO classes).
@@ -61,7 +61,7 @@ Use search_abap_object_lines on RES_APP classes from res-app-classes.md, searchi
 
 ### Step 3: Read `register_resources()` to find the handler class
 
-Use `get_abap_object_lines` to read the RES_APP class source. Look for three registration patterns:
+Use `abapfs_get_object_source` to read the RES_APP class source. Look for three registration patterns:
 
 ```abap
 " Pattern 1 — Discoverable resource (in /sap/bc/adt/discovery):
@@ -91,7 +91,7 @@ classrun_col->register_disc_res_w_template(
 The `handler_class` parameter is almost always a **constant reference** like `if_oo_adt_res_class_co=>co_class_name`. You need to resolve it:
 
 1. Identify the interface/class before `=>` (e.g., `IF_OO_ADT_RES_CLASS_CO`)
-2. Read that interface's source with `get_abap_object_lines`
+2. Read that interface's source with `abapfs_get_object_source`
 3. Find `CONSTANTS co_class_name TYPE ... VALUE 'CL_OO_ADT_RES_CLASS'`
 
 **Naming convention**: Handler classes typically have a companion `*_CO` interface that holds all constants:
@@ -147,7 +147,7 @@ request->get_body_data(
 
 ### Step 8: Read the Simple Transformation source
 
-Use `get_abap_object_lines` with `objectType = 'XSLT'` to read the ST source:
+Use `abapfs_get_object_source` with `objectType = 'XSLT'` to read the ST source:
 
 ```
 
@@ -171,7 +171,7 @@ Simple Transformations use `tt:` directives. Here's how to read them:
 
 **Template call chain**: The unnamed (default) `<tt:template>` is the entry point. It calls named templates via `<tt:apply name="xxx">`. Follow the chain to build the full XML structure.
 
-**Included STs**: `<tt:include name="ST_OTHER" template="xxx"/>` means you need to also read `ST_OTHER` with `get_abap_object_lines`.
+**Included STs**: `<tt:include name="ST_OTHER" template="xxx"/>` means you need to also read `ST_OTHER` with `abapfs_get_object_source`.
 
 ## Content Type Convention
 
@@ -207,7 +207,7 @@ Examples:
 
 ## Tips
 
-- **Search broadly first**: Use `search_abap_object_lines` with wildcards on multiple RES_APP classes when unsure which one registers your endpoint
+- **Search broadly first**: Use `abapfs_search_object_source` with wildcards on multiple RES_APP classes when unsure which one registers your endpoint
 - **Read the `*_CO` interface early**: It usually contains ALL constants for the handler — class name, content types, ST names, root names, URI segments
 - **Check for composite content handlers**: Some handlers use `CL_ADT_REST_COMP_CNT_HANDLER` to support multiple content types/versions. Look for `add_handler()` calls
 - **Hidden endpoints are common**: Many endpoints are registered with `register_resource()` and don't appear in discovery. Check the RES_APP source directly

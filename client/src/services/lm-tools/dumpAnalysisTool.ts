@@ -220,6 +220,6 @@ export class ABAPDumpAnalysisTool implements vscode.LanguageModelTool<IDumpAnaly
 
 export function registerDumpAnalysisTool(context: vscode.ExtensionContext): void {
   context.subscriptions.push(
-    registerToolWithRegistry("analyze_abap_dumps", new ABAPDumpAnalysisTool())
+    registerToolWithRegistry("abapfs_analyze_dumps", new ABAPDumpAnalysisTool())
   )
 }

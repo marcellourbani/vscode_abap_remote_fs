@@ -11,7 +11,7 @@ There are four ways objects show up there:
 1. **Automatic — Recent group.** Open any ABAP object in the editor. It's added to the **Recent** group of its connection's SCM provider, along with a diff decoration against the previous activated version.
 2. **Whole transport.** In the **Transports** panel (ABAP FS activity bar), right-click a transport → **Add transport to source control**. Every object in that transport is added as its own SCM group.
 3. **Object Property View.** ABAP FS activity bar → **Object Property** panel → **Revision history** section lists every stored version for the currently open object.
-4. **Ask Copilot.** > "Show version history for ZCL_MY_CLASS" or ask to compare any two versions — uses the `get_version_history` tool (see below).
+4. **Ask Copilot.** > "Show version history for ZCL_MY_CLASS" or ask to compare any two versions — uses the `abapfs_get_version_history` tool (see below).
 
 ## Comparing Versions
 
@@ -59,7 +59,7 @@ There's no one-click restore. Open the diff to the version you want, copy the co
 
 ## Using Copilot for Version History
 
-The `get_version_history` tool supports three actions. Version numbers are **1-based**, where **1 = most recent**.
+The `abapfs_get_version_history` tool supports three actions. Version numbers are **1-based**, where **1 = most recent**.
 
 | Action | What it does |
 |---|---|

@@ -10,7 +10,7 @@
  * unverified against a real system, and strictly worse than just running the SQL
  * directly. The "Post-test SQL verification" feature (see `analyze-and-plan` and
  * `run-scripts` skills — the AI runs SQL itself via the ABAP MCP tools, after
- * `playwright_test` reports a UI-level pass) replaces all five of these more
+ * `abapfs_run_playwright_tests` reports a UI-level pass) replaces all five of these more
  * reliably. The corresponding skill sections describing background-artifact test
  * cases (jobs, IDocs, table rows) need updating to point at that instead of these
  * methods — not yet done, tracked as follow-up work, not silently forgotten.

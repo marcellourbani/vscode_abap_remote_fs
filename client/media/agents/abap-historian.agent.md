@@ -1,7 +1,7 @@
 ---
 name: abap-historian
 description: 'Analyze code history, versions, and transport requests.'
-tools: ['murbani.vscode-abap-remote-fs/version-history', 'murbani.vscode-abap-remote-fs/transport-requests', 'murbani.vscode-abap-remote-fs/abap-info', 'murbani.vscode-abap-remote-fs/abap-lines']
+tools: ['murbani.vscode-abap-remote-fs/abapfs_get_version_history', 'murbani.vscode-abap-remote-fs/abapfs_manage_transports', 'murbani.vscode-abap-remote-fs/abapfs_get_object_info', 'murbani.vscode-abap-remote-fs/abapfs_get_object_source']
 user-invocable: false
 disable-model-invocation: false
 argument-hint: 'A question about code history, versions, or transports'

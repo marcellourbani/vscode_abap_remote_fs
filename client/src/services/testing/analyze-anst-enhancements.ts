@@ -182,7 +182,7 @@ function reportLines(records: EnhancementRecord[], xlsxName: string): string[] {
     POTENTIAL:
       "Object name contains the LZ/LY convention used for local enhancement includes.\n**AI action:** Read the source of each object below to confirm and summarise custom content.\n",
     STANDARD:
-      "Standard SAP objects that may contain embedded customer enhancements.\n**AI action:** Use `search_abap_object_lines` with `isRegexp: true` and pattern `ENHANCEMENT\\s+\\d+\\s+[ZY]|CUSTOMER-FUNCTION\\s+'|INCLUDE\\s+[ZY]` on the objects listed in the batch section below. Report every hit.\n"
+      "Standard SAP objects that may contain embedded customer enhancements.\n**AI action:** Use `abapfs_search_object_source` with `isRegexp: true` and pattern `ENHANCEMENT\\s+\\d+\\s+[ZY]|CUSTOMER-FUNCTION\\s+'|INCLUDE\\s+[ZY]` on the objects listed in the batch section below. Report every hit.\n"
   }
 
   const order: EnhancementClass[] = ["USER_EXIT", "DEFINITE", "POTENTIAL", "STANDARD"]

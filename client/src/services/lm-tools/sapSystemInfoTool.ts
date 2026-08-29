@@ -117,6 +117,6 @@ export class SAPSystemInfoTool implements vscode.LanguageModelTool<ISAPSystemInf
 
 export function registerSAPSystemInfoTool(context: vscode.ExtensionContext): void {
   context.subscriptions.push(
-    registerToolWithRegistry("get_sap_system_info", new SAPSystemInfoTool())
+    registerToolWithRegistry("abapfs_get_sap_system_info", new SAPSystemInfoTool())
   )
 }

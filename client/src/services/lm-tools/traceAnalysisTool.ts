@@ -565,6 +565,6 @@ export class ABAPTraceAnalysisTool implements vscode.LanguageModelTool<ITraceAna
 
 export function registerTraceAnalysisTool(context: vscode.ExtensionContext): void {
   context.subscriptions.push(
-    registerToolWithRegistry("analyze_abap_traces", new ABAPTraceAnalysisTool())
+    registerToolWithRegistry("abapfs_analyze_traces", new ABAPTraceAnalysisTool())
   )
 }

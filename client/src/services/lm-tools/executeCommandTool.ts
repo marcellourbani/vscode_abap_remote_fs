@@ -68,6 +68,6 @@ export class ExecuteCommandTool implements vscode.LanguageModelTool<IExecuteComm
 
 export function registerExecuteCommandTool(context: vscode.ExtensionContext): void {
   context.subscriptions.push(
-    registerToolWithRegistry("abap_execute_command", new ExecuteCommandTool())
+    registerToolWithRegistry("abapfs_run_vscode_command", new ExecuteCommandTool())
   )
 }

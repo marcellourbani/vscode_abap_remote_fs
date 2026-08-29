@@ -46,6 +46,6 @@ export class BuildTestIndexDocxTool implements vscode.LanguageModelTool<IBuildTe
 
 export function registerBuildTestIndexDocxTool(context: vscode.ExtensionContext): void {
   context.subscriptions.push(
-    registerToolWithRegistry("build_test_index_docx", new BuildTestIndexDocxTool())
+    registerToolWithRegistry("abapfs_build_test_index_docx", new BuildTestIndexDocxTool())
   )
 }

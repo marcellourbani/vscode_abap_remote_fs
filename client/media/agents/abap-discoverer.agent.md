@@ -1,7 +1,7 @@
 ---
 name: abap-discoverer
 description: 'Find and identify ABAP objects by name, pattern, or type.'
-tools: ['murbani.vscode-abap-remote-fs/abap-search', 'murbani.vscode-abap-remote-fs/abap-info', 'murbani.vscode-abap-remote-fs/connected-systems']
+tools: ['murbani.vscode-abap-remote-fs/abapfs_search_objects', 'murbani.vscode-abap-remote-fs/abapfs_get_object_info', 'murbani.vscode-abap-remote-fs/abapfs_get_connected_systems']
 user-invocable: false
 disable-model-invocation: false
 argument-hint: 'A question about finding or identifying ABAP objects'

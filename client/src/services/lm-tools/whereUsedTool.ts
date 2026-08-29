@@ -457,7 +457,7 @@ export class ABAPWhereUsedTool implements vscode.LanguageModelTool<IWhereUsedPar
         resultText += `   • /programs/programs/ → Program (PROG/P)\n`
         resultText += `   • /functions/groups/ → Function Module (FUGR/FF)\n`
         resultText += `   • /oo/interfaces/ → Interface (INTF/OI)\n`
-        resultText += `   • Or use the URI with get_object_by_uri to inspect metadata\n\n`
+        resultText += `   • Or use the URI with abapfs_get_object_by_uri to inspect metadata\n\n`
       }
 
       // Get usage snippets if requested - Copilot controls this via includeSnippets parameter
@@ -521,5 +521,7 @@ export class ABAPWhereUsedTool implements vscode.LanguageModelTool<IWhereUsedPar
 // ============================================================================
 
 export function registerWhereUsedTool(context: vscode.ExtensionContext): void {
-  context.subscriptions.push(registerToolWithRegistry("find_where_used", new ABAPWhereUsedTool()))
+  context.subscriptions.push(
+    registerToolWithRegistry("abapfs_find_usages", new ABAPWhereUsedTool())
+  )
 }

@@ -10,8 +10,8 @@
  * access to those built-in tools, so this tool provides equivalent functionality.
  *
  * Flow:
- * 1. AI gets workspace URI via get_abap_object_workspace_uri tool
- * 2. AI reads current content via get_abap_object_lines
+ * 1. AI gets workspace URI via abapfs_get_workspace_uri tool
+ * 2. AI reads current content via abapfs_get_object_source
  * 3. AI calls this tool with the URI, oldString, and newString
  * 4. This tool reads the file, validates the match, replaces, and writes back
  * 5. The adt:// filesystem provider handles locking, transport selection, and SAP sync
@@ -25,7 +25,7 @@ import * as vscode from "vscode"
 
 export interface IMcpReplaceStringParams {
   /** The full workspace URI of the ABAP source file (e.g. 'adt://dev100/path/to/file.prog.abap').
-   * Get this URI using the get_abap_object_workspace_uri tool. */
+   * Get this URI using the abapfs_get_workspace_uri tool. */
   fileUri: string
   /** The exact literal text to find and replace. Must match exactly one occurrence in the file.
    * Include enough context (3-5 surrounding lines) to ensure uniqueness. Cannot be empty. */
@@ -52,7 +52,7 @@ export function findAndReplace(content: string, oldString: string, newString: st
     throw new Error(
       "oldString can only be empty when the file is currently completely blank. " +
         "The file has existing content, so oldString is mandatory. " +
-        "Read the current content with get_abap_object_lines first and include the exact text to replace."
+        "Read the current content with abapfs_get_object_source first and include the exact text to replace."
     )
   }
 
@@ -87,7 +87,7 @@ export function findAndReplace(content: string, oldString: string, newString: st
     throw new Error(
       "Could not find the specified oldString in the file. " +
         "Make sure the text matches exactly (including whitespace and indentation). " +
-        "Use get_abap_object_lines or search_abap_object_lines to read the current file content first."
+        "Use abapfs_get_object_source or abapfs_search_object_source to read the current file content first."
     )
   }
 
@@ -118,7 +118,7 @@ export async function executeReplace(
   if (uri.scheme !== "adt") {
     throw new Error(
       `Invalid URI scheme '${uri.scheme}'. Expected 'adt://' URI. ` +
-        "Use the get_abap_object_workspace_uri tool to get the correct URI."
+        "Use the abapfs_get_workspace_uri tool to get the correct URI."
     )
   }
 

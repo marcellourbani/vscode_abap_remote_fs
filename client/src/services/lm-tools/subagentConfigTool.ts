@@ -398,7 +398,7 @@ class SubagentConfigTool implements vscode.LanguageModelTool<SubagentConfigInput
 
 export function registerSubagentConfigTool(context: vscode.ExtensionContext): void {
   context.subscriptions.push(
-    registerToolWithRegistry("manage_subagents", new SubagentConfigTool(context))
+    registerToolWithRegistry("abapfs_manage_subagents", new SubagentConfigTool(context))
   )
 
   void migrateSubagentSettings()

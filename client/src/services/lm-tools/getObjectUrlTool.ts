@@ -128,6 +128,6 @@ export class GetAbapObjectUrlTool implements vscode.LanguageModelTool<IGetAbapOb
 
 export function registerGetObjectUrlTool(context: vscode.ExtensionContext): void {
   context.subscriptions.push(
-    registerToolWithRegistry("get_abap_object_url", new GetAbapObjectUrlTool())
+    registerToolWithRegistry("abapfs_get_object_url", new GetAbapObjectUrlTool())
   )
 }

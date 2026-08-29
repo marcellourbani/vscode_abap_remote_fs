@@ -21,19 +21,19 @@ Data specs written as an afterthought at the end of a big case-writing session c
 
 ## Non-negotiable execution gate
 
-`prepare-data` (Phase 5), `build-scripts` (Phase 6), and `playwright_test` (Phase 7) all reject cases whose `.data.md` is missing, malformed, or references undeclared keys. Author every required sidecar here, correctly, before handing off.
+`prepare-data` (Phase 5), `build-scripts` (Phase 6), and `abapfs_run_playwright_tests` (Phase 7) all reject cases whose `.data.md` is missing, malformed, or references undeclared keys. Author every required sidecar here, correctly, before handing off.
 
 ## Tool availability (read this if a tool seems missing)
 
 **Naming:** when these docs say *call* `X`, `X` is a **tool** (you invoke it and get a result); *delegate to / invoke* `X` is an **agent** (a subagent you launch); *load / follow* `X` is a **skill** (a procedure you read). A name without a verb: see the overview's "Skills, tools, and agents" list.
 
-The editor may hide tools until searched for. Before Step 0, ensure `get_test_folder` and `build_test_index` are available; if either is missing, search your available tools for it by name. If one cannot be found, tell the user.
+The editor may hide tools until searched for. Before Step 0, ensure `abapfs_get_test_folder` and `abapfs_build_test_index` are available; if either is missing, search your available tools for it by name. If one cannot be found, tell the user.
 
 ## Step 0 — Standalone bootstrap and input gate (mandatory)
 
 > **Say before acting:** "Starting Step 0: standalone bootstrap and input gate."
 
-1. Call `get_test_folder` **before reading any artifact**. Treat the result as `<TEST_FOLDER>`; never infer it.
+1. Call `abapfs_get_test_folder` **before reading any artifact**. Treat the result as `<TEST_FOLDER>`; never infer it.
 2. If unset, STOP and ask the user to run "ABAP FS: Enable SAP UI Testing Features". If not open in the workspace, STOP and ask them to add it.
 3. Resolve `<PROGRAM>` from the request; if omitted, inspect `<TEST_FOLDER>/tests/*/test-cases/_index.md`. Auto-select only when exactly one candidate matches; otherwise ask.
 4. **Enforce the Phase 3 input gate:** `_index.md`, `_findings.md`, `_units.md`, `_screens.md`, and every `TC-XXX.md` must exist. If `_index.md` is missing, STOP and follow `design-cases`. From `_index.md`, take the authoritative `Data required?` column — that is the list of cases needing a `.data.md`. Do NOT re-derive it by rereading every TC body.
@@ -48,7 +48,7 @@ The editor may hide tools until searched for. Before Step 0, ensure `get_test_fo
 
 - From `_index.md`, list every case with `Data required? = yes`. Each needs exactly one `TC-XXX.data.md`.
 - For each such case, read its `TC-XXX.md` and collect every `<data-key: ...>` placeholder used in the state table, Steps, Expected Result, and the `## Post-test verification` SQL rows. Every placeholder becomes a `requires` key.
-- Cases with `Data required? = no` get NO sidecar — creating one is an error `build_test_index` rejects.
+- Cases with `Data required? = no` get NO sidecar — creating one is an error `abapfs_build_test_index` rejects.
 
 > **Say before continuing:** "Step 1 completed. Evidence: data-required cases and their referenced keys enumerated. Next: Step 2 — author each spec."
 
@@ -70,7 +70,7 @@ The editor may hide tools until searched for. Before Step 0, ensure `get_test_fo
   ## Manual override
   ...
   ```
-- ❌ WRONG — `requires:` under a heading or inside a code fence (parses to zero requirements, `build_test_index` and `verify_test_data_usage` will now reject it):
+- ❌ WRONG — `requires:` under a heading or inside a code fence (parses to zero requirements, `abapfs_build_test_index` and `abapfs_verify_test_data_usage` will now reject it):
   ````
   # TC-001 Test Data
   ## Requirements
@@ -137,10 +137,10 @@ requires:
 
 Rules:
 
-- SQL must be portable ABAP SQL (see `get_abap_sql_syntax`). Do NOT bake analysis-system values into `.data.md`.
-- **Never put row-limit syntax in the SQL.** ABAP SQL via ADT rejects `FETCH FIRST n ROWS ONLY`, `LIMIT`, `TOP`, and `ROWNUM`. Choosing among returned rows is what `take: first|last|any` is for; the actual fetch cap is a Phase 5 tool parameter (`execute_data_query`'s `rowRange`/`maxRows`), NOT part of the spec. A `.data.md` SQL that uses `FETCH FIRST` fails the moment Phase 5 runs it.
+- SQL must be portable ABAP SQL (see `abapfs_get_sql_syntax`). Do NOT bake analysis-system values into `.data.md`.
+- **Never put row-limit syntax in the SQL.** ABAP SQL via ADT rejects `FETCH FIRST n ROWS ONLY`, `LIMIT`, `TOP`, and `ROWNUM`. Choosing among returned rows is what `take: first|last|any` is for; the actual fetch cap is a Phase 5 tool parameter (`abapfs_run_sql_query`'s `rowRange`/`maxRows`), NOT part of the spec. A `.data.md` SQL that uses `FETCH FIRST` fails the moment Phase 5 runs it.
 - **`take: first`/`last` is NOT a uniqueness guarantee.** A `SELECT` without a deterministic `ORDER BY` has no defined row order, so "first" and "last" can be the SAME row (and with one candidate they always are). If two keys must resolve to DIFFERENT values, do NOT rely on `take:` — declare `distinctFrom` (below).
-- **Cross-key uniqueness → `distinctFrom: [<other_key>, …]`** on BOTH keys that must differ (e.g. two article numbers that must not be equal). This is enforced in Phase 5 by `check_test_data`, which resolves the whole program and FAILs if two mutually-`distinctFrom` keys landed on the same value — a guarantee `take:` cannot give.
+- **Cross-key uniqueness → `distinctFrom: [<other_key>, …]`** on BOTH keys that must differ (e.g. two article numbers that must not be equal). This is enforced in Phase 5 by `abapfs_check_test_data`, which resolves the whole program and FAILs if two mutually-`distinctFrom` keys landed on the same value — a guarantee `take:` cannot give.
 - Static constants → `source: static, staticValue: ...`.
 - A precondition only the application under test can create → `source: seeded`, naming the earlier TC whose spec creates it via `seed.viaTcId`. If NO TC can seed it (it's written by a different program/BAdI/interface), leave `seed.viaTcId` off and instead add `seed.manualSteps` describing how a human seeds it, so Phase 5 can present it. Check `seeded` before ever marking a case `blocked-by-data`. **Ordering note:** a `seed.viaTcId` spec is written in Phase 6, AFTER this phase — that is expected. A `seeded` requirement is DEFERRED, not broken; Phase 5 records it as deferred-until-phase-6 and resolves it in a second pass once the seeding spec exists. Record the dependency in BOTH TCs' `## Notes for automation` so the order is never a hidden surprise.
 - `dataRequired: yes` in `TC-XXX.md` → a matching `TC-XXX.data.md` is mandatory. `dataRequired: no` → do not create one.
@@ -170,13 +170,13 @@ Upload fixtures (`source: generated`) are built by the runtime's fixture builder
 
 > **Say before acting:** "Starting Step 4: rebuild the index to confirm every dataRequired declaration has its sidecar."
 
-Re-run `build_test_index` (`program`, the `sourceSnapshot` from `_findings.md`, and `reviewerConfirmation` = `I called the reviewer agent and it passed all test cases` — the reviewer already passed in Phase 3). This is where the `.data.md` existence check that was deferred in Phase 3 is enforced: the tool WARNS for every `dataRequired: yes` case still missing its `.data.md`, and ERRORS for any `dataRequired: no` case that has one.
+Re-run `abapfs_build_test_index` (`program`, the `sourceSnapshot` from `_findings.md`, and `reviewerConfirmation` = `I called the reviewer agent and it passed all test cases` — the reviewer already passed in Phase 3). This is where the `.data.md` existence check that was deferred in Phase 3 is enforced: the tool WARNS for every `dataRequired: yes` case still missing its `.data.md`, and ERRORS for any `dataRequired: no` case that has one.
 
-`build_test_index` now also ERRORS if a `.data.md` exists but its `requires:` is not parseable top-of-file frontmatter (e.g. it's in a ` ```yaml ` fence or under a `## Requirements` heading) — a hard stop, because that file resolves to zero keys. Fix the placement, don't work around it.
+`abapfs_build_test_index` now also ERRORS if a `.data.md` exists but its `requires:` is not parseable top-of-file frontmatter (e.g. it's in a ` ```yaml ` fence or under a `## Requirements` heading) — a hard stop, because that file resolves to zero keys. Fix the placement, don't work around it.
 
 **Completion requirement: there must be ZERO "`.data.md` does not exist yet" warnings.** If any remain, author the missing sidecar (or, if the case genuinely needs no data, change its `TC-XXX.md` to `dataRequired: no` — but that is a case-design decision; if unsure, follow `design-cases`). Do not hand off with outstanding warnings.
 
-> **Say before continuing:** "Step 4 completed. Evidence: `build_test_index` reports zero missing-`.data.md` warnings and no `dataRequired`/sidecar mismatches. Next: Step 5 — hand off."
+> **Say before continuing:** "Step 4 completed. Evidence: `abapfs_build_test_index` reports zero missing-`.data.md` warnings and no `dataRequired`/sidecar mismatches. Next: Step 5 — hand off."
 
 ## Step 5 — Write the next-chat handoff to Phase 5 (`prepare-data`)
 

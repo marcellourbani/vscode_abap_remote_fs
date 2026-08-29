@@ -253,7 +253,7 @@ Subagents delegate specialized ABAP tasks to cheaper/faster AI models to reduce 
 
 | Property | Type | Default | Scope | Description |
 |----------|------|---------|-------|-------------|
-| `models` | object | `{}` | application | User-level model assignments for all general and testing agents. Use the unified model panel or `manage_subagents`. |
+| `models` | object | `{}` | application | User-level model assignments for all general and testing agents. Use the unified model panel or `abapfs_manage_subagents`. |
 
 ### `abapfs.subagents.enabledAgents`
 
@@ -494,7 +494,7 @@ These are automatically applied but can be overridden in user settings.
 | SSL certificate errors | `abapfs.remote.*.allowSelfSigned`, `*.customCA` | Set `allowSelfSigned: true` for dev, or provide `customCA` path for corporate CA. |
 | Heartbeat won't start | `abapfs.heartbeat.model` | Must be set before enabling. Use a cheap model like "GPT-4o mini". |
 | ABAP Cleaner not working | `abapfs.cleaner.enabled`, `*.executablePath` | Both must be set. Verify `abap-cleanerc.exe` exists at the path. |
-| Subagents disabled automatically | `abapfs.subagents.models` | Configure an available model for each active agent through the unified panel or `manage_subagents`. |
+| Subagents disabled automatically | `abapfs.subagents.models` | Configure an available model for each active agent through the unified panel or `abapfs_manage_subagents`. |
 | MCP server connection refused | `abapfs.mcpServer.autoStart`, `*.port` | Ensure autoStart is true, verify port isn't in use by another application. |
 | Password not saved in settings | (by design) | Passwords are stored in OS credential manager, not in settings files. |
 

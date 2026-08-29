@@ -61,7 +61,7 @@ export class GetABAPSQLSyntaxTool implements vscode.LanguageModelTool<{}> {
 
       const syntaxContent = fs.readFileSync(syntaxFilePath, "utf8")
 
-      let resultText = ` IMPORTANT: READ THIS COMPLETE SYNTAX GUIDE CAREFULLY BEFORE CALLING execute_data_query\n\n`
+      let resultText = ` IMPORTANT: READ THIS COMPLETE SYNTAX GUIDE CAREFULLY BEFORE CALLING abapfs_run_sql_query\n\n`
       resultText += ` ABAP SQL Syntax Documentation\n\n`
       resultText += `The following syntax guide contains CRITICAL differences between standard SQL and ABAP SQL. `
       resultText += `You MUST follow these rules when constructing SQL queries for SAP systems.\n\n`
@@ -83,6 +83,6 @@ export class GetABAPSQLSyntaxTool implements vscode.LanguageModelTool<{}> {
 
 export function registerSqlSyntaxTool(context: vscode.ExtensionContext): void {
   context.subscriptions.push(
-    registerToolWithRegistry("get_abap_sql_syntax", new GetABAPSQLSyntaxTool())
+    registerToolWithRegistry("abapfs_get_sql_syntax", new GetABAPSQLSyntaxTool())
   )
 }

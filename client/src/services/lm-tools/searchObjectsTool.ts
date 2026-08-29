@@ -166,6 +166,6 @@ export class SearchABAPObjectsTool implements vscode.LanguageModelTool<ISearchAB
  */
 export function registerSearchObjectsTool(context: vscode.ExtensionContext) {
   context.subscriptions.push(
-    registerToolWithRegistry("search_abap_objects", new SearchABAPObjectsTool())
+    registerToolWithRegistry("abapfs_search_objects", new SearchABAPObjectsTool())
   )
 }

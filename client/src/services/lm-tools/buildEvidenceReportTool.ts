@@ -49,6 +49,6 @@ export class BuildEvidenceReportTool implements vscode.LanguageModelTool<IBuildE
 
 export function registerBuildEvidenceReportTool(context: vscode.ExtensionContext): void {
   context.subscriptions.push(
-    registerToolWithRegistry("build_evidence_report", new BuildEvidenceReportTool())
+    registerToolWithRegistry("abapfs_build_evidence_report", new BuildEvidenceReportTool())
   )
 }

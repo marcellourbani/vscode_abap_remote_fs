@@ -113,14 +113,14 @@ All 40 ABAP FS tools are exposed, including:
 
 | Tool                        | What It Does                       |
 | --------------------------- | ---------------------------------- |
-| `search_abap_objects`       | Search for objects by name pattern |
-| `get_abap_object_lines`     | Read source code                   |
-| `find_where_used`           | Where-used analysis                |
-| `run_unit_tests`            | Execute ABAP unit tests            |
-| `run_atc_analysis`          | Run ATC code checks                |
-| `execute_data_query`        | Run SQL queries against SAP tables |
-| `manage_transport_requests` | Read transport data                |
-| `abap_activate`             | Activate ABAP objects              |
+| `abapfs_search_objects`       | Search for objects by name pattern |
+| `abapfs_get_object_source`     | Read source code                   |
+| `abapfs_find_usages`           | Where-used analysis                |
+| `abapfs_run_unit_tests`            | Execute ABAP unit tests            |
+| `abapfs_run_atc_analysis`          | Run ATC code checks                |
+| `abapfs_run_sql_query`        | Run SQL queries against SAP tables |
+| `abapfs_manage_transports` | Read transport data                |
+| `abapfs_activate_object`             | Activate ABAP objects              |
 | `replace_string_in_abap_object` | Edit ABAP source code (find & replace) |
 | `get_abap_diagnostics`      | Get syntax errors/warnings for a file  |
 
@@ -128,8 +128,8 @@ All 40 ABAP FS tools are exposed, including:
 
 MCP clients can now edit ABAP source code directly. The workflow:
 
-1. **Get the file URI** — call `get_abap_object_workspace_uri` with object name/type/connection
-2. **Read current code** — call `get_abap_object_lines` or `search_abap_object_lines`
+1. **Get the file URI** — call `abapfs_get_workspace_uri` with object name/type/connection
+2. **Read current code** — call `abapfs_get_object_source` or `abapfs_search_object_source`
 3. **Edit** — call `replace_string_in_abap_object` with the URI, old text, and new text
 4. **Verify** — call `get_abap_diagnostics` with the same URI to check for syntax errors
 

@@ -97,7 +97,7 @@ export class Evidence {
   /**
    * Move the previous run's artifacts into `runs/<timestamp>/` so re-running a test no longer
    * overwrites its history. The latest run stays at the top level, which is where
-   * build_evidence_report and every other consumer looks.
+   * abapfs_build_evidence_report and every other consumer looks.
    *
    * Only files this class produces are moved. Anything else in the folder — above all the
    * prepared `data.json` cache, which is run INPUT — must stay where it is.

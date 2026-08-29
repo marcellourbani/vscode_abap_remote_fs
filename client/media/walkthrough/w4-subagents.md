@@ -4,7 +4,7 @@
 
 **3 cost tiers:** Simple (cheap), Medium, Complex (premium).
 
-**Setup:** Use **ABAP FS: Set Models for Subagents** or ask Copilot to use `manage_subagents`.
+**Setup:** Use **ABAP FS: Set Models for Subagents** or ask Copilot to use `abapfs_manage_subagents`.
 1. AI lists available models
 2. Assigns models to selected agents
 3. Enables selected general agents; testing agents follow the testing-folder state

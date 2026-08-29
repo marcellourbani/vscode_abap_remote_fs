@@ -1,7 +1,7 @@
 ---
 name: abap-visualizer
 description: 'Create visual diagrams from ABAP code structures.'
-tools: ['murbani.vscode-abap-remote-fs/mermaid-create', 'murbani.vscode-abap-remote-fs/mermaid-validate', 'murbani.vscode-abap-remote-fs/mermaid-docs', 'murbani.vscode-abap-remote-fs/abap-lines', 'murbani.vscode-abap-remote-fs/abap-search-lines', 'murbani.vscode-abap-remote-fs/abap-where-used', 'murbani.vscode-abap-remote-fs/abap-info']
+tools: ['murbani.vscode-abap-remote-fs/abapfs_create_mermaid_diagram', 'murbani.vscode-abap-remote-fs/abapfs_validate_mermaid_syntax', 'murbani.vscode-abap-remote-fs/abapfs_get_mermaid_documentation', 'murbani.vscode-abap-remote-fs/abapfs_get_object_source', 'murbani.vscode-abap-remote-fs/abapfs_search_object_source', 'murbani.vscode-abap-remote-fs/abapfs_find_usages', 'murbani.vscode-abap-remote-fs/abapfs_get_object_info']
 user-invocable: false
 disable-model-invocation: false
 argument-hint: 'Object(s) to visualize and diagram type needed'

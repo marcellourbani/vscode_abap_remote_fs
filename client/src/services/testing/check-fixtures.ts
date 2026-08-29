@@ -13,7 +13,7 @@
  * which gave false confidence that data preparation had happened when, for the
  * cache-free cases, there was nothing to prepare in the first place.
  *
- * Exposed to the AI as the `check_test_data` language model tool — see
+ * Exposed to the AI as the `abapfs_check_test_data` language model tool — see
  * src/tools/checkTestDataTool.ts.
  */
 import * as fs from "fs/promises"

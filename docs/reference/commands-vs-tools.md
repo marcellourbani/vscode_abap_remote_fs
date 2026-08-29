@@ -33,8 +33,8 @@ Tools are capabilities the extension exposes to GitHub Copilot. You don't call t
 
 | What you type | Tool Copilot calls |
 |---|---|
-| "Where is `BAPI_USER_GET_DETAIL` used?" | `find_where_used` |
-| "Show me the code for `ZCL_MY_CLASS`" | `get_abap_object_lines` |
-| "Run ATC checks on this file" | `run_atc_analysis` |
+| "Where is `BAPI_USER_GET_DETAIL` used?" | `abapfs_find_usages` |
+| "Show me the code for `ZCL_MY_CLASS`" | `abapfs_get_object_source` |
+| "Run ATC checks on this file" | `abapfs_run_atc_analysis` |
 
 > **New to VS Code?** Start with commands for direct actions. Use Copilot chat when you want to explore or analyze SAP objects without knowing the exact steps.

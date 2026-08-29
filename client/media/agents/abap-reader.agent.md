@@ -1,7 +1,7 @@
 ---
 name: abap-reader
 description: 'Read ABAP source code and extract specific information.'
-tools: ['murbani.vscode-abap-remote-fs/abap-lines', 'murbani.vscode-abap-remote-fs/abap-batch', 'murbani.vscode-abap-remote-fs/abap-uri', 'murbani.vscode-abap-remote-fs/abap-search-lines', 'murbani.vscode-abap-remote-fs/abap-info']
+tools: ['murbani.vscode-abap-remote-fs/abapfs_get_object_source', 'murbani.vscode-abap-remote-fs/abapfs_batch_get_lines', 'murbani.vscode-abap-remote-fs/abapfs_get_object_by_uri', 'murbani.vscode-abap-remote-fs/abapfs_search_object_source', 'murbani.vscode-abap-remote-fs/abapfs_get_object_info']
 user-invocable: false
 disable-model-invocation: false
 argument-hint: 'A question about ABAP code content or structure'

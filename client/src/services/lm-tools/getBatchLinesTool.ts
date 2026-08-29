@@ -211,5 +211,7 @@ export class GetBatchLinesTool implements vscode.LanguageModelTool<IBatchLinesPa
 // ============================================================================
 
 export function registerGetBatchLinesTool(context: vscode.ExtensionContext): void {
-  context.subscriptions.push(registerToolWithRegistry("get_batch_lines", new GetBatchLinesTool()))
+  context.subscriptions.push(
+    registerToolWithRegistry("abapfs_batch_get_lines", new GetBatchLinesTool())
+  )
 }

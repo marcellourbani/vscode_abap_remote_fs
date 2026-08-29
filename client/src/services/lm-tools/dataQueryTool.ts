@@ -589,7 +589,7 @@ export class ExecuteDataQueryTool implements vscode.LanguageModelTool<IExecuteDa
 
 export function registerDataQueryTool(context: vscode.ExtensionContext): void {
   context.subscriptions.push(
-    registerToolWithRegistry("execute_data_query", new ExecuteDataQueryTool())
+    registerToolWithRegistry("abapfs_run_sql_query", new ExecuteDataQueryTool())
   )
 }
 

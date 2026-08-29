@@ -48,6 +48,6 @@ export class VerifyTestDataUsageTool implements vscode.LanguageModelTool<IVerify
 
 export function registerVerifyTestDataUsageTool(context: vscode.ExtensionContext): void {
   context.subscriptions.push(
-    registerToolWithRegistry("verify_test_data_usage", new VerifyTestDataUsageTool())
+    registerToolWithRegistry("abapfs_verify_test_data_usage", new VerifyTestDataUsageTool())
   )
 }

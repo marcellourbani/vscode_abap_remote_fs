@@ -83,7 +83,7 @@ export class AdtObjectCreator {
    * @param uri Creates an ABAP object
    * @param transportPicker Optional non-interactive transport resolver.
    *   When provided, replaces the default UI-driven {@link selectTransport}.
-   *   Used by programmatic callers (e.g. the MCP `create_object_programmatically`
+   *   Used by programmatic callers (e.g. the MCP `abapfs_create_object`
    *   tool) to avoid blocking VS Code dialogs.
    */
   public async createObject(uri: Uri | undefined, transportPicker?: TransportPicker) {

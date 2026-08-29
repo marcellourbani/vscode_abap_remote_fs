@@ -57,7 +57,7 @@ export class BuildTestIndexTool implements vscode.LanguageModelTool<IBuildTestIn
       normalizeConfirmation(REQUIRED_REVIEWER_CONFIRMATION)
     ) {
       throw new Error(
-        "build_test_index is blocked: the mandatory 'reviewerConfirmation' field was " +
+        "abapfs_build_test_index is blocked: the mandatory 'reviewerConfirmation' field was " +
           "missing or did not match. Before building the index you MUST delegate the plan " +
           "to the sap-test-plan-reviewer agent and get a PASS. Only then, re-call this tool " +
           `passing reviewerConfirmation exactly as: "${REQUIRED_REVIEWER_CONFIRMATION}".`
@@ -83,5 +83,7 @@ export class BuildTestIndexTool implements vscode.LanguageModelTool<IBuildTestIn
 }
 
 export function registerBuildTestIndexTool(context: vscode.ExtensionContext): void {
-  context.subscriptions.push(registerToolWithRegistry("build_test_index", new BuildTestIndexTool()))
+  context.subscriptions.push(
+    registerToolWithRegistry("abapfs_build_test_index", new BuildTestIndexTool())
+  )
 }

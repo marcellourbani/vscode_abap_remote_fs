@@ -72,6 +72,6 @@ export class GetSapWebGuiUrlTool implements vscode.LanguageModelTool<IGetSapWebG
 
 export function registerGetSapWebGuiUrlTool(context: vscode.ExtensionContext): void {
   context.subscriptions.push(
-    registerToolWithRegistry("get_sap_webgui_url", new GetSapWebGuiUrlTool())
+    registerToolWithRegistry("abapfs_get_sap_webgui_url", new GetSapWebGuiUrlTool())
   )
 }

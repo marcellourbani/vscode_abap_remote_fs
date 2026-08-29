@@ -396,18 +396,21 @@ export class DetectMermaidDiagramTypeTool implements vscode.LanguageModelTool<ID
 
 export function registerMermaidTools(context: vscode.ExtensionContext): void {
   context.subscriptions.push(
-    registerToolWithRegistry("create_mermaid_diagram", new CreateMermaidDiagramTool())
+    registerToolWithRegistry("abapfs_create_mermaid_diagram", new CreateMermaidDiagramTool())
   )
 
   context.subscriptions.push(
-    registerToolWithRegistry("validate_mermaid_syntax", new ValidateMermaidSyntaxTool())
+    registerToolWithRegistry("abapfs_validate_mermaid_syntax", new ValidateMermaidSyntaxTool())
   )
 
   context.subscriptions.push(
-    registerToolWithRegistry("get_mermaid_documentation", new GetMermaidDocumentationTool())
+    registerToolWithRegistry("abapfs_get_mermaid_documentation", new GetMermaidDocumentationTool())
   )
 
   context.subscriptions.push(
-    registerToolWithRegistry("detect_mermaid_diagram_type", new DetectMermaidDiagramTypeTool())
+    registerToolWithRegistry(
+      "abapfs_detect_mermaid_diagram_type",
+      new DetectMermaidDiagramTypeTool()
+    )
   )
 }

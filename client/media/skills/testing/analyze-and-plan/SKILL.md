@@ -21,7 +21,7 @@ For bounded, self-contained support work, use `sap-task-helper` with explicit in
 
 ## Non-negotiable execution gate
 
-Every required step and artifact below is a downstream prerequisite. The `playwright_test` tool (Phase 7) and the phase gates in between reject work whose upstream analysis was skipped, stale, incomplete, or unverified.
+Every required step and artifact below is a downstream prerequisite. The `abapfs_run_playwright_tests` tool (Phase 7) and the phase gates in between reject work whose upstream analysis was skipped, stale, incomplete, or unverified.
 
 ## Why three artifacts, not one summary
 
@@ -33,7 +33,7 @@ A single summarised `_findings.md` is lossy: it is tempting to write "Data valid
 
 ## Read the source — the whole reason this phase exists
 
-`sap-source-download` downloads the source; it does NOT read it for you. After the snapshot is on disk you MUST open and read every downloaded file and understand the program's real behaviour before writing any artifact. `sap-code-grep` tells you HOW MANY branches exist; only reading tells you WHAT they do — the overlapping-range, duplicate, and boundary logic that the highest-value cases come from. Read the local files directly; do not re-issue `get_abap_object_lines` for code already on disk.
+`sap-source-download` downloads the source; it does NOT read it for you. After the snapshot is on disk you MUST open and read every downloaded file and understand the program's real behaviour before writing any artifact. `sap-code-grep` tells you HOW MANY branches exist; only reading tells you WHAT they do — the overlapping-range, duplicate, and boundary logic that the highest-value cases come from. Read the local files directly; do not re-issue `abapfs_get_object_source` for code already on disk.
 
 ## Order of operations
 
@@ -50,7 +50,7 @@ A single summarised `_findings.md` is lossy: it is tempting to write "Data valid
 
 **Naming:** when these docs say *call* `X`, `X` is a **tool** (you invoke it and get a result); *delegate to / invoke* `X` is an **agent** (a subagent you launch); *load / follow* `X` is a **skill** (a procedure you read). A name without a verb: see the overview's "Skills, tools, and agents" list.
 
-The editor may hide language-model tools until they are searched for, and smaller models often don't find them. Before Step 0, make sure these are available and, if any is not, search your available tools for it by name: `get_test_folder`, `get_connected_systems`, and the ABAP research tools (`search_abap_objects`, `get_abap_object_info`, `get_abap_object_lines`, `search_abap_object_lines`, `execute_data_query`, `get_abap_sql_syntax`). If a required tool truly cannot be found, tell the user which one — never fake its result.
+The editor may hide language-model tools until they are searched for, and smaller models often don't find them. Before Step 0, make sure these are available and, if any is not, search your available tools for it by name: `abapfs_get_test_folder`, `abapfs_get_connected_systems`, and the ABAP research tools (`abapfs_search_objects`, `abapfs_get_object_info`, `abapfs_get_object_source`, `abapfs_search_object_source`, `abapfs_run_sql_query`, `abapfs_get_sql_syntax`). If a required tool truly cannot be found, tell the user which one — never fake its result.
 
 **ABAP FS connectivity failure.** If any ABAP FS / ADT tool returns HTTP 401, 403, or 5xx during this phase, ABAP FS almost always can't reach the target system (the SAP session has usually expired). Tell the user briefly: "ABAP FS can't reach `<connectionId>` (HTTP …). Please check the ABAP FS connection, reload VS Code to re-establish it, then retry." (Universal rule 17 in the `sap-testing` overview.) Do NOT fabricate source content, do NOT switch to a different system without explicit approval.
 
@@ -78,10 +78,10 @@ The editor may hide language-model tools until they are searched for, and smalle
 
 > **Say before acting:** "Starting Step 0: establish the test folder, target object, and SAP connection."
 
-1. Call `get_test_folder` **before reading or writing any artifact**. Treat the result as `<TEST_FOLDER>`; never infer it.
+1. Call `abapfs_get_test_folder` **before reading or writing any artifact**. Treat the result as `<TEST_FOLDER>`; never infer it.
 2. If unset, STOP and ask the user to run "ABAP FS: Enable SAP UI Testing Features". If not open in the workspace, STOP and ask them to add it.
 3. Identify the target program/transaction. If absent, inspect `tests/*/test-cases/_index.md`; reuse only when exactly one candidate matches, otherwise ask.
-4. Call `get_connected_systems` and confirm the target `connectionId`.
+4. Call `abapfs_get_connected_systems` and confirm the target `connectionId`.
 5. Ask which system only if ambiguous. Confirm an ABAP-tools connection to the same landscape.
 
 > **Say before continuing:** "Step 0 completed. Evidence: test folder `<TEST_FOLDER>`, program `<PROGRAM>`, connection `<connectionId>` confirmed. Next: Step 1 — ingest the target."
@@ -90,11 +90,11 @@ The editor may hide language-model tools until they are searched for, and smalle
 
 > **Say before acting:** "Starting Step 1: ingest and download the complete target source."
 
-Confirm the entry object against the confirmed system with `search_abap_objects` and `get_abap_object_info`.
+Confirm the entry object against the confirmed system with `abapfs_search_objects` and `abapfs_get_object_info`.
 
 **Resolve a transaction code to its executable object first.** When the user names a TRANSACTION (not a program/class), the tcode is not what you download — find the object it runs, in this order, and STOP and ask only if none resolves:
 
-1. `get_abap_object_info` / `search_abap_objects` on the tcode — often resolves the program or class directly.
+1. `abapfs_get_object_info` / `abapfs_search_objects` on the tcode — often resolves the program or class directly.
 2. If needed, read the transaction definition: `SELECT tcode, pgmna, dypno, cinfo FROM tstc WHERE tcode = '<TCODE>'`. A non-blank `pgmna` is the report/module-pool to download.
 3. If `pgmna` is blank, it is a **parameter or OO transaction** — check `TSTCP` (`param` names the target tcode/report behind a parameter transaction) and `TSTCC` (points at the class/method for an OO transaction), and resolve through to the real executable.
 
@@ -102,9 +102,9 @@ Confirm the entry object against the confirmed system with `search_abap_objects`
 
 **Custom vs standard — decide now and act on it.** From the object name/type, determine whether this is a CUSTOM (Z/Y) object or a STANDARD SAP transaction/program. If it is a **standard** transaction (ME21N, VA01, MIGO, MM43, …), proactively tell the user up front that complete enhancement coverage for standard SAP needs an **ANST trace** — a static call-surface scan under-reports for large standard transactions — and that Step 5.2 will consume it via the `anst-guide` skill. Offer it now so they can start collecting the trace. For a **custom Z/Y** object, Step 5.2 uses `sap-enhancement-research` instead (no ANST needed). You are expected to know these two paths exist and route to the right one without being asked.
 
-**Source download — MANDATORY.** Invoke `sap-source-download` synchronously with `<TEST_FOLDER>`, `<PROGRAM>`, `connectionId`, object name, and type — and pass ONLY those inputs. Do NOT tell it how to work (e.g. "read the source with `get_abap_object_lines` and write the files"); it downloads the snapshot with `abap_download` itself, and instructing otherwise makes it fabricate the snapshot by hand — the opposite of its purpose. Wait for it. Continue only on `PASS`; on `REJECTED`, report its blocker and stop. Record the returned absolute snapshot folder — you pass it to `sap-code-grep` and record it in every artifact.
+**Source download — MANDATORY.** Invoke `sap-source-download` synchronously with `<TEST_FOLDER>`, `<PROGRAM>`, `connectionId`, object name, and type — and pass ONLY those inputs. Do NOT tell it how to work (e.g. "read the source with `abapfs_get_object_source` and write the files"); it downloads the snapshot with `abapfs_download_object` itself, and instructing otherwise makes it fabricate the snapshot by hand — the opposite of its purpose. Wait for it. Continue only on `PASS`; on `REJECTED`, report its blocker and stop. Record the returned absolute snapshot folder — you pass it to `sap-code-grep` and record it in every artifact.
 
-Screen field labels are NOT retrievable via `manage_text_elements`; they come from live exploration in Phase 2.
+Screen field labels are NOT retrievable via `abapfs_manage_text_elements`; they come from live exploration in Phase 2.
 
 > **Say before continuing:** "Step 1 completed. Evidence: complete source snapshot `<snapshot-path>`. Next: Step 2 — read the source."
 
@@ -234,7 +234,7 @@ Wait for both. `sap-code-grep` returns exact per-row tables for MESSAGE, branche
 
 ### 5.3 SELECT profiling, background artifacts, input file format
 
-- For each SELECT, run a `COUNT(*)` via `execute_data_query` (call `get_abap_sql_syntax` first, `displayMode: "internal"`). Flag `>100k` performance-sensitive; `0` empty base data.
+- For each SELECT, run a `COUNT(*)` via `abapfs_run_sql_query` (call `abapfs_get_sql_syntax` first, `displayMode: "internal"`). Flag `>100k` performance-sensitive; `0` empty base data.
 - Enumerate every background/persisted artifact (JOB_*, IDOC_*, OPEN DATASET, `INSERT`/`UPDATE`/`MODIFY`/`DELETE` on DB tables, `EXPORT ... TO DATABASE`, spool, `cl_bcs`, `SO_*`). **Include `MODIFY` — it is the most-missed write statement** (it is both a DB upsert and an internal-table operation, so check each one's target: a real DB table is a persisted effect, an in-memory `gt_*`/`lt_*` table is not). `sap-code-grep`'s DB-writes table already classifies these — cross-check it. Each DB-table write = a mandatory verification case, and each earns a `## Post-test verification` row in Phase 3.
 - Record the exact **input file format** the program parses (Excel via `ALSM_EXCEL_TO_INTERNAL_TABLE`/`KCD_EXCEL_OLE_TO_INT_CONVERT`/`gui_upload` with an xls filter ⇒ `.xlsx`; delimited `GUI_UPLOAD` ⇒ CSV/TXT), with expected column count and headers.
 

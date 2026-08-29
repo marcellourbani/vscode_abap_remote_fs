@@ -17,11 +17,11 @@ For bounded, self-contained support work, use `sap-task-helper` with explicit in
 
 **Naming:** when these docs say *call* `X`, `X` is a **tool** (you invoke it and get a result); *delegate to / invoke* `X` is an **agent** (a subagent you launch); *load / follow* `X` is a **skill** (a procedure you read). A name without a verb: see the overview's "Skills, tools, and agents" list.
 
-The editor may hide tools until searched for. Before Step 0, ensure `get_test_folder`, `get_connected_systems`, and `verify_test_data_usage` are available; if any is missing, search your available tools for it by name. If one cannot be found, tell the user.
+The editor may hide tools until searched for. Before Step 0, ensure `abapfs_get_test_folder`, `abapfs_get_connected_systems`, and `abapfs_verify_test_data_usage` are available; if any is missing, search your available tools for it by name. If one cannot be found, tell the user.
 
 ## Non-negotiable execution gate
 
-Every required step and artifact below is recorded as a Phase 6 prerequisite. The `playwright_test` tool verifies script generation and validation and **will reject every affected case** if anything was skipped, deferred, incomplete, stale, or unverified. A `.spec.ts` file existing by itself cannot bypass the tool's validation.
+Every required step and artifact below is recorded as a Phase 6 prerequisite. The `abapfs_run_playwright_tests` tool verifies script generation and validation and **will reject every affected case** if anything was skipped, deferred, incomplete, stale, or unverified. A `.spec.ts` file existing by itself cannot bypass the tool's validation.
 
 ## Why
 
@@ -37,11 +37,11 @@ Goal: 1:1 `.md` → `.spec.ts` conversion using only the helper API, with runtim
 
 Run these actions in this exact order in every chat:
 
-1. Call `get_test_folder` **before reading or writing any artifact**. Treat the returned absolute path as `<TEST_FOLDER>`; never infer it from the workspace or a prior chat.
+1. Call `abapfs_get_test_folder` **before reading or writing any artifact**. Treat the returned absolute path as `<TEST_FOLDER>`; never infer it from the workspace or a prior chat.
 2. If unset, STOP and ask the user to run "ABAP FS: Enable SAP UI Testing Features". If the folder is not open in the workspace, STOP and ask the user to add it via File > Add Folder to Workspace.
 3. Resolve `<PROGRAM>` and selected TC-IDs from the current request. If omitted, inspect `<TEST_FOLDER>/tests/*/test-cases/_index.md`. Auto-select only when exactly one candidate exists; otherwise ask. Use `_index.md` approval, runnability, and `Data required?` state, not prior-chat memory.
 4. Enforce the upstream input gate for the selected program: `_index.md`, `_screens.md`, and every selected `TC-XXX.md` must exist. If `_index.md`/`TC-XXX.md` is missing or inconsistent, STOP and follow `design-cases`; if `_screens.md` is missing, STOP and follow `explore-ui`. Read a matching `TC-XXX.data.md` only when the index says `Data required? = yes` (authored in define-data); `no` means no sidecar may exist.
-5. Call `get_connected_systems` and confirm the primary `connectionId`. Ask only if ambiguous. The spec remains system-agnostic; this identity is used to check readiness and verify source facts.
+5. Call `abapfs_get_connected_systems` and confirm the primary `connectionId`. Ask only if ambiguous. The spec remains system-agnostic; this identity is used to check readiness and verify source facts.
 6. If a selected case has `Data required? = yes`, inspect `<TEST_FOLDER>/tests/<PROGRAM>/test-results/<connectionId>/<TC-ID>/data.json` or run the available readiness check. Missing prepared data does **not** prevent writing a structurally valid spec, but it must be reported in the handoff as a Phase 5 (prepare-data) blocker before execution.
 7. Confirm ABAP tools are available if source verification is needed. Every ABAP-tool call passes explicit `connectionId`.
 
@@ -58,7 +58,7 @@ MANDATORY reads (parallel):
 - `tests/<PROGRAM>/test-cases/<TC-XXX>.md` (frontmatter + steps + expected)
 - `tests/<PROGRAM>/test-cases/<TC-XXX>.data.md` when `_index.md` says `Data required? = yes`
 - `tests/<PROGRAM>/test-cases/_screens.md` — authoritative source of labels, groups, dialogs, buttons. If missing, STOP and follow `explore-ui` — no reliable way to write locators without it.
-- `tests/<PROGRAM>/test-cases/_index.md` — the reviewer's map of all cases. If a case or its runnability must change, STOP and follow `design-cases` to update the TC source artifact, then rerun `build_test_index`; never hand-edit the index tables.
+- `tests/<PROGRAM>/test-cases/_index.md` — the reviewer's map of all cases. If a case or its runnability must change, STOP and follow `design-cases` to update the TC source artifact, then rerun `abapfs_build_test_index`; never hand-edit the index tables.
 - Every `<TEST_FOLDER>/recordings/*.recording.ts` path explicitly referenced by a screen used in `_screens.md`. Do not scan unrelated recordings or depend on a recording that `_screens.md` has not reconciled.
 
 The `SapSession`/`SapArtifacts` implementation is not present in the test folder or workspace. Use the method reference in Step 2 and the exposed `@sap-testing/runtime` type declarations as the authoritative API. Load `helpers-reference` before generating `sap.se16n()` proof, and also use it whenever another capability seems missing — you cannot add runtime methods from the test workspace.
@@ -77,7 +77,7 @@ Rules:
 - If a step references a control not in `_screens.md`, STOP and follow `explore-ui` to re-explore it, or ask the user for the missing evidence.
 - Do NOT invent helper methods. If a required capability is genuinely missing from the method reference below, follow `helpers-reference`: contain one role/name-based implementation in `sap.raw()`, tell the user the gap exists, and never pretend the runtime itself was extended.
 - **Every `sap.raw()` locator MUST scope through the ITS iframe.** `sap.raw()` returns the top-level Playwright `Page`, not the SAP DOM — a bare `sap.raw().getByRole("textbox", { name: "F" })` queries the outer document, which contains no SAP content, and either times out or (worse) passes vacuously (`toBeHidden()` on a never-scoped element). Always use `sap.raw().frameLocator("iframe#ITSFRAME1").getByRole(...)`. Do NOT write `frameLocator("iframe")` — the page has two iframes (`ITSFRAME1` and `ITSTERMFRAME`); the unqualified selector triggers a strict-mode violation.
-- Whenever a TC changes runnability status, follow `design-cases` to update its frontmatter and rerun `build_test_index`; never edit the generated index row directly.
+- Whenever a TC changes runnability status, follow `design-cases` to update its frontmatter and rerun `abapfs_build_test_index`; never edit the generated index row directly.
 
 > **Say before continuing:** "Step 1 completed. Evidence: selected test cases, data specs, `_screens.md`, and `_index.md` were read. Next: Step 2 — confirm the runtime API."
 
@@ -140,7 +140,7 @@ Data (top-level): `resolveTestData(tcId, testInfo)` → returns `{ [key]: string
 - `Data required? = yes` → require `.data.md` and use variant A (imports `resolveTestData`, calls it, references `data.<key>`)
 - `Data required? = no` → require no `.data.md` and use variant B (no `resolveTestData` import, no `data` variable)
 
-Never infer this by rereading the TC body. `build_test_index` already verifies that `dataRequired` and `.data.md` existence agree.
+Never infer this by rereading the TC body. `abapfs_build_test_index` already verifies that `dataRequired` and `.data.md` existence agree.
 
 #### Variant A — case WITH `.data.md`
 
@@ -211,7 +211,7 @@ passing the gate. If a purchase-order case declares `[EKKO, EKPO]`, show the cre
 header in EKKO and its expected item rows in EKPO. This is supporting screenshot proof:
 keep every declared Phase 7 SQL/manual check.
 
-Run `verify_test_data_usage` after writing the spec. It compares literal `table` values in
+Run `abapfs_verify_test_data_usage` after writing the spec. It compares literal `table` values in
 the calls against `se16nTables`; comments and unrelated calls do not count. The run tool
 enforces the same coverage. For complex joins/deltas, each listed table's SE16N assertion
 shows its meaningful business-visible state while SQL proves the full technical condition.
@@ -377,7 +377,7 @@ Don't just eyeball this — run the deterministic check after writing the spec (
 - ❌ Hand-rolling a grid-cell fill via `sap.raw()` (e.g. `frameLocator(...).locator('input[id$="#R,C#if"]').fill(...)`) — a raw `fill()` sets the DOM value but skips the change/blur event ITS's ALV grid listens for, so the cell reverts and the case passes green on empty data. Use `sap.setGridCell` (it commits the value); if it can't drive the grid, report a runtime gap, don't hand-roll.
 - ❌ Hardcoding `tbl<N>` prefixes, `[row,col]` / `#R,C#` coordinates, or `M0:...` IDs in a `sap.raw()` block — those change across sessions AND across tab switches. If `setGridCell` doesn't fit the case, stop and re-explore.
 - ❌ Using `expectGridHasRow` to assert a ROW COUNT or match a short numeric literal — it is an UNANCHORED, case-insensitive substring match over cell text, so asserting "4" and "5" appear also matches "14", "45", or an amount of "400". Assert on a business-unique value or pass an anchored regex; count checks belong in `## Post-test verification` as `by: sql`.
-- ❌ Writing a spec, or a second Playwright project, that logs in as a different user for a negative-authorization case — there is NO spec/config mechanism to switch users mid-run (`playwright_test` authenticates one session as the connection's own user; universal rule 5). A negative-auth case runs against a SEPARATE ABAP FS connection (an unauthorized user) and is `runnable-elsewhere`; it is not scriptable here. If a case marked `runnable` actually needs a different user, STOP and follow `design-cases` to re-triage it, don't invent an auth workaround.
+- ❌ Writing a spec, or a second Playwright project, that logs in as a different user for a negative-authorization case — there is NO spec/config mechanism to switch users mid-run (`abapfs_run_playwright_tests` authenticates one session as the connection's own user; universal rule 5). A negative-auth case runs against a SEPARATE ABAP FS connection (an unauthorized user) and is `runnable-elsewhere`; it is not scriptable here. If a case marked `runnable` actually needs a different user, STOP and follow `design-cases` to re-triage it, don't invent an auth workaround.
 - ❌ Adding `{ technicalName: "..." }` to every `setField` "just in case" — only add it after `_screens.md` documents a duplicate accessible name AND the ABAP field name has been verified from ADT.
 - ❌ Working around a `Popup guard: recognised interrupter "X" but could not click its "Y" button` error by wrapping the action in `try/catch` — the guard is telling you the SAP-version button label changed. Add an `extraInterrupters` entry with the correct label.
 - ❌ Working around a `SAP runtime error detected (dump|its|logon)` error the same way — that's a REAL bug in SAP, not a helper problem. Investigate the SAP-side cause (ST22, SM21, SMICM) before touching the spec.
@@ -389,13 +389,13 @@ Don't just eyeball this — run the deterministic check after writing the spec (
 
 > **Say before acting:** "Starting Step 7: run deterministic verification for every written spec."
 
-Call `verify_test_data_usage` before handing off — mandatory, not optional.
+Call `abapfs_verify_test_data_usage` before handing off — mandatory, not optional.
 
 This fails loudly if the spec references a `data.<key>` that `<TC-XXX>.data.md` never declared (the exact mistake that lets `resolveTestData` throw at run time), and warns about any declared key the spec never ended up using.
 
-Then tell the user it is ready to run with `playwright_test` (`headed: true` is recommended the first time). Do not execute it during Phase 6; execution follows the `run-scripts` workflow in Phase 7.
+Then tell the user it is ready to run with `abapfs_run_playwright_tests` (`headed: true` is recommended the first time). Do not execute it during Phase 6; execution follows the `run-scripts` workflow in Phase 7.
 
-> **Say before continuing:** "Step 7 completed. Evidence: `verify_test_data_usage` results recorded for every new or changed spec. Next: Step 8 — write the handoff."
+> **Say before continuing:** "Step 7 completed. Evidence: `abapfs_verify_test_data_usage` results recorded for every new or changed spec. Next: Step 8 — write the handoff."
 
 ### Step 8 — Write the next-chat handoff
 
@@ -404,7 +404,7 @@ Then tell the user it is ready to run with `playwright_test` (`headed: true` is 
 Before ending Phase 6, make the disk state sufficient for a brand-new `run-scripts` chat:
 
 - One `.spec.ts` exists per selected TC-ID under `<TEST_FOLDER>/tests/<PROGRAM>/test-scripts/`.
-- `verify_test_data_usage` has passed for each new/changed spec, or every failure is reported explicitly.
+- `abapfs_verify_test_data_usage` has passed for each new/changed spec, or every failure is reported explicitly.
 - Data readiness gaps discovered in Step 0 are listed; do not hide them by hardcoding values.
 - Your final response names `<TEST_FOLDER>`, `<PROGRAM>`, primary `connectionId`, built TC-IDs, verification results, and cases not yet runnable.
 

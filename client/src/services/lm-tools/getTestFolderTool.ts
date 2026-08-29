@@ -42,7 +42,7 @@ export class GetTestFolderTool implements vscode.LanguageModelTool<Record<string
       if (!testingAgents.ready) {
         lines.push(
           "WARNING: The SAP testing folder is configured, but the testing-agent group is not ready. " +
-            "Configure all 9 testing agents through ABAP FS: Set Models for Subagents or the manage_subagents tool before starting the testing workflow."
+            "Configure all 9 testing agents through ABAP FS: Set Models for Subagents or the abapfs_manage_subagents tool before starting the testing workflow."
         )
         if (testingAgents.missing.length > 0) {
           lines.push(`Missing testing-agent models: ${testingAgents.missing.join(", ")}.`)
@@ -65,5 +65,7 @@ export class GetTestFolderTool implements vscode.LanguageModelTool<Record<string
 }
 
 export function registerGetTestFolderTool(context: vscode.ExtensionContext): void {
-  context.subscriptions.push(registerToolWithRegistry("get_test_folder", new GetTestFolderTool()))
+  context.subscriptions.push(
+    registerToolWithRegistry("abapfs_get_test_folder", new GetTestFolderTool())
+  )
 }

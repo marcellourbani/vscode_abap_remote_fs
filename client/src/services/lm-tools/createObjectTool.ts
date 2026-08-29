@@ -116,7 +116,7 @@ export class CreateABAPObjectTool implements vscode.LanguageModelTool<ICreateObj
               `Message: ${structuredResult.message}\n\n` +
               `NOTE: object may have been created in SAP — this error is from workspace registration, not object creation.\n` +
               `Next steps:\n` +
-              `1. Call get_abap_object_workspace_uri with name="${name}" type="${objectType}"\n` +
+              `1. Call abapfs_get_workspace_uri with name="${name}" type="${objectType}"\n` +
               `2. If valid URI returned, open it in VS Code to verify\n` +
               `3. SAP creation was likely successful despite this error`
           } else {
@@ -162,6 +162,6 @@ export class CreateABAPObjectTool implements vscode.LanguageModelTool<ICreateObj
 
 export function registerCreateObjectTool(context: vscode.ExtensionContext): void {
   context.subscriptions.push(
-    registerToolWithRegistry("create_object_programmatically", new CreateABAPObjectTool())
+    registerToolWithRegistry("abapfs_create_object", new CreateABAPObjectTool())
   )
 }

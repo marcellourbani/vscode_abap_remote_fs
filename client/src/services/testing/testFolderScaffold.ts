@@ -6,12 +6,12 @@
  * 1. ALWAYS — `tsconfig.json` plus a `@sap-testing/runtime` junction. These give the
  *    editor's TypeScript language service real IntelliSense and type errors while the
  *    AI writes a spec (against the actual SapSession signatures, not prose in a skill),
- *    and let `playwright_test` resolve the runtime at run time.
+ *    and let `abapfs_run_playwright_tests` resolve the runtime at run time.
  *
  * 2. ONLY WHEN Microsoft's Playwright extension is installed — `playwright.config.js`,
  *    `.sap-active-system`, junctions to the bundled Playwright, and a `.bin` launcher.
  *    These exist purely so the Playwright sidebar can discover and run specs. The
- *    `playwright_test` tool needs none of them: it passes its own `--config` and sets
+ *    `abapfs_run_playwright_tests` tool needs none of them: it passes its own `--config` and sets
  *    SAP_SYSTEM / SAP_URL_* directly in the spawned process environment.
  *
  * Everything here is extension-owned, gitignored (it hardcodes absolute, version-specific

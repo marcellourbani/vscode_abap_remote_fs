@@ -16,11 +16,11 @@ For bounded, self-contained support work, use `sap-task-helper` with explicit in
 
 **Naming:** when these docs say *call* `X`, `X` is a **tool** (you invoke it and get a result); *delegate to / invoke* `X` is an **agent** (a subagent you launch); *load / follow* `X` is a **skill** (a procedure you read). A name without a verb: see the overview's "Skills, tools, and agents" list.
 
-The editor may hide tools until searched for. Before Step 0, ensure `get_test_folder`, `get_connected_systems`, `check_test_data`, `verify_test_data_usage`, `get_abap_sql_syntax`, and `execute_data_query` are available; if any is missing, search your available tools for it by name. If one cannot be found, tell the user.
+The editor may hide tools until searched for. Before Step 0, ensure `abapfs_get_test_folder`, `abapfs_get_connected_systems`, `abapfs_check_test_data`, `abapfs_verify_test_data_usage`, `abapfs_get_sql_syntax`, and `abapfs_run_sql_query` are available; if any is missing, search your available tools for it by name. If one cannot be found, tell the user.
 
 ## Non-negotiable execution gate
 
-Every required step and artifact below is recorded as a Phase 5 prerequisite. The `playwright_test` tool verifies data preparation and **will reject every affected case** if preparation was skipped, deferred, incomplete, stale, or unverified. Complete each requirement now; runtime fallback, guessed values, and later phases cannot bypass the tool's validation.
+Every required step and artifact below is recorded as a Phase 5 prerequisite. The `abapfs_run_playwright_tests` tool verifies data preparation and **will reject every affected case** if preparation was skipped, deferred, incomplete, stale, or unverified. Complete each requirement now; runtime fallback, guessed values, and later phases cannot bypass the tool's validation.
 
 ## Why
 
@@ -42,7 +42,7 @@ Goal: turn a system-agnostic `TC-XXX.data.md` requirement spec into a connection
 
 Run these actions in this exact order in every chat:
 
-1. Call `get_test_folder` **before reading or writing any artifact**. Treat the returned absolute path as `<TEST_FOLDER>`; never infer it from the workspace or a prior chat.
+1. Call `abapfs_get_test_folder` **before reading or writing any artifact**. Treat the returned absolute path as `<TEST_FOLDER>`; never infer it from the workspace or a prior chat.
 2. If unset, STOP and ask the user to run "ABAP FS: Enable SAP UI Testing Features". If the folder is not open in the workspace, STOP and ask the user to add it via File > Add Folder to Workspace.
 3. Resolve `<PROGRAM>` and requested TC-IDs from the current request. If omitted, inspect `<TEST_FOLDER>/tests/*/test-cases/_index.md`. Auto-select only when exactly one program is a valid candidate; otherwise ask. Use `_index.md` runnable status, priorities, and `Data required?` column rather than conversation memory or rereading every TC file.
 4. Enforce the upstream input gate. For the selected program, require:
@@ -51,7 +51,7 @@ Run these actions in this exact order in every chat:
    - each selected `TC-XXX.md` (from design-cases)
    - each selected `TC-XXX.data.md` whose `_index.md` row says `Data required? = yes` (from define-data)
    If `_index.md` or `_findings.md` is missing/inconsistent, STOP and follow `design-cases` (or `analyze-and-plan` if `_findings.md` itself is missing). If `_screens.md` is missing, STOP and follow `explore-ui`. If an index row says `Data required? = yes` but the `.data.md` sidecar is missing, STOP and follow `define-data` to author it; if it says `no` but a sidecar exists, that is a case-design error — follow `design-cases`.
-5. Call `get_connected_systems` and confirm the target `connectionId`; ask only if ambiguous.
+5. Call `abapfs_get_connected_systems` and confirm the target `connectionId`; ask only if ambiguous.
 6. Confirm the ABAP-tools connection is the SAME physical system. Every query passes explicit `connectionId`; never rely on defaults.
 7. Cache path is `<TEST_FOLDER>/tests/<PROGRAM>/test-results/<CONNECTION-ID>/<TC-ID>/data.json`, where `<CONNECTION-ID>` is the exact connectionId **in UPPERCASE**. This matters: at run time the framework derives the folder from the connectionId uppercased, so a hand-written lowercase folder is never found on a case-sensitive filesystem (Linux/macOS) — it only "works" on Windows by accident. Use the uppercased connectionId, and never a friendly environment label in its place.
 
@@ -68,7 +68,7 @@ Read the selected rows in `_index.md`:
 - `Data required? = yes` → parse the matching `tests/<PROGRAM>/test-cases/<TC-XXX>.data.md`.
 - `Data required? = no` → report "no data needed" and do not read the TC body or create a cache.
 
-Do not open every `TC-XXX.md` to rediscover this decision; the upstream phases and `build_test_index` already validated it.
+Do not open every `TC-XXX.md` to rediscover this decision; the upstream phases and `abapfs_build_test_index` already validated it.
 
 #### Step 1a — Dedupe before executing anything
 
@@ -94,7 +94,7 @@ For each `requires` entry, act according to `source`:
 | source      | action                                                                                                                                                                                                                                             |
 | ----------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `static`    | Copy `staticValue` into the result                                                                                                                                                                                                                 |
-| `sql`       | **Delegate to the `sap-data-scout` agent** (see note below). Or, if running inline: call `get_abap_sql_syntax` first, then `execute_data_query` with `displayMode: "internal"`, `rowRange: { start: 0, end: 50 }`. Apply `take:` (first/last/any). |
+| `sql`       | **Delegate to the `sap-data-scout` agent** (see note below). Or, if running inline: call `abapfs_get_sql_syntax` first, then `abapfs_run_sql_query` with `displayMode: "internal"`, `rowRange: { start: 0, end: 50 }`. Apply `take:` (first/last/any). |
 | `user`      | Ask the user for the value interactively                                                                                                                                                                                                           |
 | `generated` | Do NOT resolve or cache this here — see Step 2a. It is built fresh by the framework itself at test-run time.                                                                                                                                       |
 | `seeded`    | See Step 2b — requires running another TC's spec first, then resolving like `sql`.                                                                                                                                                                 |
@@ -107,17 +107,17 @@ For each `requires` entry, act according to `source`:
 > - `count` — how many values you need (usually 3-5)
 > - `context` (optional) — the TC-ID this feeds, so the agent can write better filter logic
 >
-> The agent handles `get_abap_sql_syntax` + `execute_data_query` + spot-validation internally. It returns a table of concrete values ready for the Step 3 approval table. After it returns, complete Step 3 (show the user and get approval) and Step 4 (write `data.json`); use the agent only to find data, not to write the cache.
+> The agent handles `abapfs_get_sql_syntax` + `abapfs_run_sql_query` + spot-validation internally. It returns a table of concrete values ready for the Step 3 approval table. After it returns, complete Step 3 (show the user and get approval) and Step 4 (write `data.json`); use the agent only to find data, not to write the cache.
 
 Rules:
 
 - **NEVER edit the `.data.md`** — it's the reusable spec.
-- **Always call `get_abap_sql_syntax` before executing** — ABAP SQL differs from standard SQL.
-- **Cap rows with `execute_data_query`'s `rowRange`/`maxRows`, never with SQL row-limit syntax.** ADT rejects `FETCH FIRST n ROWS ONLY`, `LIMIT`, `TOP`, `ROWNUM`. If a `.data.md` SQL contains any of them, that is a spec defect — do NOT silently rewrite it and move on; resolve it via the tool params for now AND report the offending `.data.md` so `define-data` corrects the spec (an uncorrected spec fails on the next run and for the next person).
-- **Resolve a `distinctFrom` group together.** When keys declare `distinctFrom` each other, fetch several candidates for the group in one pass and assign DIFFERENT values to each key — do not resolve them independently and hope. Step 6's `check_test_data` enforces distinctness and FAILs if two mutually-`distinctFrom` keys share a value, so verify before saving.
+- **Always call `abapfs_get_sql_syntax` before executing** — ABAP SQL differs from standard SQL.
+- **Cap rows with `abapfs_run_sql_query`'s `rowRange`/`maxRows`, never with SQL row-limit syntax.** ADT rejects `FETCH FIRST n ROWS ONLY`, `LIMIT`, `TOP`, `ROWNUM`. If a `.data.md` SQL contains any of them, that is a spec defect — do NOT silently rewrite it and move on; resolve it via the tool params for now AND report the offending `.data.md` so `define-data` corrects the spec (an uncorrected spec fails on the next run and for the next person).
+- **Resolve a `distinctFrom` group together.** When keys declare `distinctFrom` each other, fetch several candidates for the group in one pass and assign DIFFERENT values to each key — do not resolve them independently and hope. Step 6's `abapfs_check_test_data` enforces distinctness and FAILs if two mutually-`distinctFrom` keys share a value, so verify before saving.
 - If SQL returns 0 rows: STOP. Do not fabricate. Report to user and suggest amending SQL, creating data manually in SAP, or picking a different test case.
 - If multiple rows and `take: first`: pick row 0. Note in the manifest. (Remember `take:` does NOT guarantee distinctness — that's what `distinctFrom` is for.)
-- **ADT (`execute_data_query`) is the only allowed SQL channel.** No SE16N-via-browser, no fabricated values. If `execute_data_query` returns HTTP 401/403/5xx, ABAP FS almost always can't reach the target system — briefly tell the user "ABAP FS can't reach `<connectionId>` (HTTP …). Please check the connection, then reload VS Code to re-establish the connection and retry." (Universal rule 17 in the `sap-testing` overview.) STOP; do not switch tools or fake values.
+- **ADT (`abapfs_run_sql_query`) is the only allowed SQL channel.** No SE16N-via-browser, no fabricated values. If `abapfs_run_sql_query` returns HTTP 401/403/5xx, ABAP FS almost always can't reach the target system — briefly tell the user "ABAP FS can't reach `<connectionId>` (HTTP …). Please check the connection, then reload VS Code to re-establish the connection and retry." (Universal rule 17 in the `sap-testing` overview.) STOP; do not switch tools or fake values.
 
 #### Step 2a — `source: "generated"` requirements need NOTHING from you here
 
@@ -137,13 +137,13 @@ Rules:
 
 Some cases need a DB row that nothing but the application under test can legitimately create (e.g. "a record already exists in the target Z-table with this exact combination of keys" — the report's own write path is the only sanctioned way to get one). `INSERT`-ing it directly would be fabrication; leaving the case `blocked-by-data` forever is a bigger loss than doing this properly:
 
-This is the only Phase 5 path allowed to invoke `playwright_test`, and only because it reuses a spec that has already completed Phase 6 validation. All normal Phase 5 requirements remain data-resolution work only.
+This is the only Phase 5 path allowed to invoke `abapfs_run_playwright_tests`, and only because it reuses a spec that has already completed Phase 6 validation. All normal Phase 5 requirements remain data-resolution work only.
 
 1. Read the requirement's `seed.viaTcId` — the TC whose spec, when run, produces the precondition as a side effect.
 2. Confirm that TC's spec exists (`tests/<PROGRAM>/test-scripts/<viaTcId>.spec.ts`) and has itself already been validated (Phase 6/7 complete for it).
 3. **If the seeding spec does NOT exist yet, this requirement is DEFERRED, not failed.** Phase 6 (`build-scripts`) writes specs AFTER this phase, so on the first Phase 5 pass a `seed.viaTcId` spec legitimately may not exist. Classify the key `deferred-until-phase-6`, list it in the handoff, and do NOT block the whole program for it — everything else can still be prepared. After Phase 6 has written the seeding spec, run Phase 5 again (a second pass) to resolve just the deferred seeded keys. This 4→5→6→5→7 loop is expected; note it in the handoff so the next chat knows a second prepare pass is owed.
 4. **This is a real write. Get explicit user approval before running it**, exactly like any other destructive action this project touches.
-5. Run it: call `playwright_test` with `program`, `tcIds: [<viaTcId>]`, and `connectionId`.
+5. Run it: call `abapfs_run_playwright_tests` with `program`, `tcIds: [<viaTcId>]`, and `connectionId`.
 6. Resolve the requirement's own `sql` (read-back) exactly as you would for a normal `sql` source, and cache the result the normal way (Step 4). From this point on it behaves exactly like a `sql`-sourced value — `resolveTestData` needs no special handling for it at run time, because by the time a test reads it, it's just another cached key.
 
 If the requirement has `seed.manualSteps` instead of a `seed.viaTcId` (a precondition only a different program/BAdI/interface can write — see Step 2c), present those steps to the user and either have them seed it and then resolve the read-back `sql`, or record it blocked with the writer identified. If there is neither a `viaTcId` nor a manual path, the case stays `blocked-by-data` — don't force a `seeded` source onto a case that has no real setup path.
@@ -158,7 +158,7 @@ Some data needs a value that no TC in this program can produce because it's writ
 
 Do the discovery step FIRST, before trying anything:
 
-1. **Trace who writes the field.** Use `find_where_used` (or `search_abap_object_lines` with an anchored regex like `UPDATE\s+<table>|MODIFY\s+<table>|INSERT\s+<table>|<field>\s*=`) on the target table AND the specific field name. The real writer usually lands in one of: a Z-maintenance report (`Z*_UPD_*`, `Z*_LOAD_*`, `Z*_MAINT`), a BAdI implementation on a standard tx (VD02/XD02 save exits), an IDoc inbound function module, or a data-migration LSMW/BAPI. Note the exact object and how it's normally invoked.
+1. **Trace who writes the field.** Use `abapfs_find_usages` (or `abapfs_search_object_source` with an anchored regex like `UPDATE\s+<table>|MODIFY\s+<table>|INSERT\s+<table>|<field>\s*=`) on the target table AND the specific field name. The real writer usually lands in one of: a Z-maintenance report (`Z*_UPD_*`, `Z*_LOAD_*`, `Z*_MAINT`), a BAdI implementation on a standard tx (VD02/XD02 save exits), an IDoc inbound function module, or a data-migration LSMW/BAPI. Note the exact object and how it's normally invoked.
 2. **Check if that writer has a callable interface on this system.** A Z-report you can F8-run in SE38 is different from a BAdI that only runs during XD02 save. Note what would be needed to invoke it here (existing seed data, authorisation, a test transport).
 3. **Present the finding to the user and ASK how to proceed.** Something like: "Field `<T>-<F>` for TC-XXX is normally written by `<object>` (BAdI on VD02 save / Z_LOAD_XYZ program / IDoc handler). This system is <change-locked / open>. Options: (a) run `<writer>` with these inputs, (b) pin `TESTDATA_<TC>_<system>_<key>=<value>` for a value you know exists, (c) mark the case `blocked-by-data` with reason `no writer path on this landscape`. Which do you want?" Wait for the answer.
 4. **Never guess your way in** by attempting SE16N/XD02/SM30/SE37 as trial-and-error, and never `INSERT`/`UPDATE` directly — even when authorised, that fabricates the audit trail (no CDHDR/CDPOS, no source-of-truth match with production).
@@ -175,10 +175,10 @@ Trace-first, ask-second is the rule — never try-random-transactions.
 Some cases (invalid-key / not-found / unknown-value) are only valid if a specific value is genuinely ABSENT on this system — a value that happens to exist turns the test green for the wrong reason. For each selected TC that has an `## Absence preconditions` section:
 
 1. Read the absence SQL, substituting the case's resolved candidate value (the `static`/`generated` key from its `.data.md`).
-2. Run it via `execute_data_query` on the confirmed connection.
+2. Run it via `abapfs_run_sql_query` on the confirmed connection.
 3. **Zero rows → precondition holds; the case is preparable.** **One or more rows → the value EXISTS on this system: BLOCK the case** with a concrete reason ("`<key>` value `<v>` exists on `<connectionId>`; the 'not found' premise doesn't hold — pick an absent value or change the case"). Do NOT proceed as if it were fine.
 
-This is a Phase 5 responsibility because `check_test_data` deliberately never touches the DB for absence; only a real query here can prove it.
+This is a Phase 5 responsibility because `abapfs_check_test_data` deliberately never touches the DB for absence; only a real query here can prove it.
 
 > **Say before continuing:** "Step 2d completed. Evidence: every absence precondition was queried; cases whose value unexpectedly exists are blocked. Next: finish Step 2."
 
@@ -231,7 +231,7 @@ Changing one connection's data never affects another connection's runs.
 
 > **Say before acting:** "Starting Step 5: verify data-key usage for existing specs."
 
-If `tests/<PROGRAM>/test-scripts/<TC-XXX>.spec.ts` already exists, call `verify_test_data_usage` instead of eyeballing it.
+If `tests/<PROGRAM>/test-scripts/<TC-XXX>.spec.ts` already exists, call `abapfs_verify_test_data_usage` instead of eyeballing it.
 
 This mechanically diffs every `data.<key>` reference in `TC-XXX.spec.ts` against the `requires:` keys in `TC-XXX.data.md` and fails loudly on any mismatch — no more "optional, if you remember" manual read-through.
 
@@ -243,13 +243,13 @@ If the spec does not exist yet, this is not a Phase 5 failure. Mark the check as
 
 > **Say before acting:** "Starting Step 6: pre-flight all program data for the target connection."
 
-Once every TC in the program has been prepared for a system, call the `check_test_data` tool.
+Once every TC in the program has been prepared for a system, call the `abapfs_check_test_data` tool.
 
 This calls the EXACT SAME `resolveTestData()` the Playwright specs use, for every `TC-*.data.md` in the program, and reports every case that still has a missing key, an unresolved `seeded` requirement, or a fixture that failed to build — before anyone spends time launching a real Playwright run against a half-prepared system. It also FAILs on a `distinctFrom` violation (two keys that must differ resolved to the same value) and WARNs when a `data.json` holds a `static`/`generated` key it shouldn't (a cached value shadowing the spec). Act on both — re-resolve the distinct pair, or delete the stray cached key.
 
 Read its breakdown, not just the headline count. It reports how many cases were "prepared from data.json cache (sql/seeded)" versus "no cache needed (static/generated only)" versus "resolved from a TESTDATA_* env pin" versus "FAILED". A high "resolvable" number does NOT mean you prepared a lot of data — the no-cache-needed cases would pass on a brand-new system with zero prep. Only the "prepared from data.json cache" count reflects real work you did here; make sure every `sql`/`seeded` case you intended to prepare is in that bucket, not silently sitting in "no cache needed" because its requirement was mis-declared.
 
-> **Say before continuing:** "Step 6 completed. Evidence: `check_test_data` result recorded for `<PROGRAM>` on `<connectionId>`. Next: Step 7 — write the handoff."
+> **Say before continuing:** "Step 6 completed. Evidence: `abapfs_check_test_data` result recorded for `<PROGRAM>` on `<connectionId>`. Next: Step 7 — write the handoff."
 
 ### Step 7 — Write the next-chat handoff
 
@@ -259,8 +259,8 @@ Before ending Phase 5, make the disk state sufficient for a brand-new `build-scr
 
 - Every selected case is classified as prepared, no data needed, awaiting explicit seed approval, or blocked with a concrete reason.
 - Approved values are saved only under `<TEST_FOLDER>/tests/<PROGRAM>/test-results/<connectionId>/<TC-ID>/data.json`.
-- `check_test_data` has been run for the program/system when preparing the complete program.
-- Your final response names `<TEST_FOLDER>`, `<PROGRAM>`, `connectionId`, prepared/no-data/blocked TC-IDs, and the `check_test_data` result.
+- `abapfs_check_test_data` has been run for the program/system when preparing the complete program.
+- Your final response names `<TEST_FOLDER>`, `<PROGRAM>`, `connectionId`, prepared/no-data/blocked TC-IDs, and the `abapfs_check_test_data` result.
 
 Do not rely on the next chat knowing which rows you chose. Persist approved values and report blockers. **Your final message MUST tell the user the exact next step: "Next: Phase 6 — start a new chat, load the `build-scripts` skill, and say: Build scripts for `<PROGRAM>` using the approved cases on disk; primary system is `<connectionId>`."** Naming the skill matters — without it the next chat tends to skip loading `build-scripts` and improvise.
 
@@ -270,16 +270,16 @@ Do not rely on the next chat knowing which rows you chose. Persist approved valu
 
 - ❌ Modifying the `.data.md` to inline a value — breaks portability
 - ❌ Guessing a value the SQL didn't return
-- ❌ Skipping `get_abap_sql_syntax` — syntax errors will waste turns
+- ❌ Skipping `abapfs_get_sql_syntax` — syntax errors will waste turns
 - ❌ Executing SQL with `displayMode: "ui"` — pops a webview; use `"internal"` for programmatic capture
 - ❌ Saving credentials or user names in `data.json`
 - ❌ Running this phase in prod without explicit user consent — SELECTs on huge tables cost real CPU
 - ❌ Writing a `generated`-source key into `data.json` — it will be ignored at best, and stale-fixture bugs at worst if some future code path starts trusting it
 - ❌ Writing a `static`-source key into `data.json` — the cached copy then SHADOWS the `.data.md`'s `staticValue` at run time (cache is read before static), so later edits to the spec silently have no effect. Cache only `sql`/`seeded` keys.
 - ❌ Silently rewriting a `.data.md` SQL that uses `FETCH FIRST`/`LIMIT` and moving on — cap rows with `rowRange`/`maxRows` AND report the spec so `define-data` fixes it.
-- ❌ Resolving `distinctFrom` keys independently instead of assigning distinct values from one candidate set — `check_test_data` will FAIL on a collision.
+- ❌ Resolving `distinctFrom` keys independently instead of assigning distinct values from one candidate set — `abapfs_check_test_data` will FAIL on a collision.
 - ❌ Running a `seeded` requirement's setup spec without explicit user approval — it is a real write, no different from any other destructive action
-- ❌ Trying random maintenance transactions (SE38 create, SE16N edit, XD02, SM30, SE37 test) for a foreign-writer precondition instead of tracing the real writer first via `find_where_used` (Step 2c) and asking the user how to proceed
+- ❌ Trying random maintenance transactions (SE38 create, SE16N edit, XD02, SM30, SE37 test) for a foreign-writer precondition instead of tracing the real writer first via `abapfs_find_usages` (Step 2c) and asking the user how to proceed
 - ❌ Direct `INSERT`/`UPDATE` on an SAP table to seed data, even when authorised — no CDHDR/CDPOS, no source-of-truth match with production; fabricated audit trail
 - ❌ Resolving the same `sql` text separately for every TC that needs it instead of deduping per Step 1a
 - ❌ Declaring a case `blocked-by-data` without checking whether an earlier TC's spec could seed it (Step 2b) first
@@ -301,4 +301,4 @@ Missing test data for TC-050 on system QAS:
   - existing_range (A precondition row with an overlapping date range) — requires seeding via TC-001 (prepare-data must run that spec once as a setup step, then cache the result)
 ```
 
-When either error appears, follow this workflow again and resolve the missing data. You can also call `check_test_data` proactively to find every such gap in one pass instead of discovering them one at a time from test failures.
+When either error appears, follow this workflow again and resolve the missing data. You can also call `abapfs_check_test_data` proactively to find every such gap in one pass instead of discovering them one at a time from test failures.

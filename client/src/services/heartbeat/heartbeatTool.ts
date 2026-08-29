@@ -575,5 +575,7 @@ export class HeartbeatTool implements vscode.LanguageModelTool<HeartbeatToolPara
  * Register the heartbeat tool
  */
 export function registerHeartbeatTool(context: vscode.ExtensionContext): void {
-  context.subscriptions.push(registerToolWithRegistry("manage_heartbeat", new HeartbeatTool()))
+  context.subscriptions.push(
+    registerToolWithRegistry("abapfs_manage_heartbeat", new HeartbeatTool())
+  )
 }

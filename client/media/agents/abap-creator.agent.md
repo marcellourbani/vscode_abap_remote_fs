@@ -1,7 +1,7 @@
 ---
 name: abap-creator
 description: 'Create new ABAP objects - classes, reports, function groups, etc.'
-tools: ['murbani.vscode-abap-remote-fs/abap-create', 'murbani.vscode-abap-remote-fs/connected-systems', 'murbani.vscode-abap-remote-fs/abap-search', 'murbani.vscode-abap-remote-fs/abap_activate', 'murbani.vscode-abap-remote-fs/abap-test']
+tools: ['murbani.vscode-abap-remote-fs/abapfs_create_object', 'murbani.vscode-abap-remote-fs/abapfs_get_connected_systems', 'murbani.vscode-abap-remote-fs/abapfs_search_objects', 'murbani.vscode-abap-remote-fs/abapfs_activate_object', 'murbani.vscode-abap-remote-fs/abapfs_run_unit_tests']
 user-invocable: false
 disable-model-invocation: false
 argument-hint: 'Object type and name to create, plus package info'
@@ -18,7 +18,7 @@ You create blank ABAP objects. The orchestrator writes the actual code.
 - Create packages, message classes
 
 ## Important Rules
-1. **Check if object exists first** - Use search_abap_objects
+1. **Check if object exists first** - Use abapfs_search_objects
 2. **Follow naming conventions** - Custom objects start with Z or Y
 3. **Descriptions max 60 chars** - SAP limit
 4. **Report what was created** - Confirm success with details

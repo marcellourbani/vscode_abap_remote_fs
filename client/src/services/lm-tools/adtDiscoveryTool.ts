@@ -242,7 +242,7 @@ function buildIndexMd(
     "2. Use the `adt-api-discovery` skill which teaches how to trace from discovery → RES_APP class → handler class → Simple Transformation → XML schema"
   )
   lines.push(
-    "3. Use ABAP tools (`get_abap_object_lines`, `search_abap_objects`, `search_abap_object_lines`) to read source code"
+    "3. Use ABAP tools (`abapfs_get_object_source`, `abapfs_search_objects`, `abapfs_search_object_source`) to read source code"
   )
   lines.push("")
   return lines.join("\n")
@@ -352,6 +352,6 @@ function getFirstNonAdtFolder(): vscode.Uri | undefined {
 
 export function registerAdtDiscoveryTool(context: vscode.ExtensionContext): void {
   context.subscriptions.push(
-    registerToolWithRegistry("adt_discovery_export", new AdtDiscoveryTool())
+    registerToolWithRegistry("abapfs_export_adt_discovery", new AdtDiscoveryTool())
   )
 }
