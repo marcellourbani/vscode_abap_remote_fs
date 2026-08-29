@@ -1,5 +1,11 @@
 # Changelog
 
+## 2.8.8
+
+### Patch Changes
+
+- 629b344: rename all LM tools, update agents.md ADT folder templates
+
 ## 2.8.7
 
 ### Patch Changes
