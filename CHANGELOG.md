@@ -1,5 +1,11 @@
 # Changelog
 
+## 2.8.9
+
+### Patch Changes
+
+- b094646: allow heartbeat model to call tools
+
 ## 2.8.8
 
 ### Patch Changes
