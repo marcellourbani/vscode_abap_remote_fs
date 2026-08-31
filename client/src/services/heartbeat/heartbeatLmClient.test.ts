@@ -73,6 +73,17 @@ jest.mock("./heartbeatWatchlist", () => ({
   }
 }))
 
+const mockToolRegistry = new Map<string, { invoke: jest.Mock }>()
+jest.mock("../lm-tools/toolRegistry", () => ({ toolRegistry: mockToolRegistry }))
+
+const mockCreateMcpAuthorizedOptions = jest.fn((input: unknown) => ({
+  input,
+  __authorized: true
+}))
+jest.mock("../lm-tools/toolGuard", () => ({
+  createMcpAuthorizedOptions: (input: unknown) => mockCreateMcpAuthorizedOptions(input)
+}))
+
 import { runHeartbeatLM } from "./heartbeatLmClient"
 import { DEFAULT_HEARTBEAT_CONFIG, HeartbeatConfig } from "./heartbeatTypes"
 
@@ -94,6 +105,16 @@ function makeStreamWithText(text: string) {
   }
 }
 
+function makeStreamWithToolCall(toolName: string, input: unknown = {}) {
+  const vscode = require("vscode")
+  const part = new vscode.LanguageModelToolCallPart("call-1", toolName, input)
+  return {
+    stream: (async function* () {
+      yield part
+    })()
+  }
+}
+
 // ============================================================================
 // TESTS
 // ============================================================================
@@ -104,6 +125,7 @@ describe("runHeartbeatLM", () => {
   beforeEach(() => {
     vscode = require("vscode")
     jest.clearAllMocks()
+    mockToolRegistry.clear()
   })
 
   // === No model configured ===
@@ -241,6 +263,49 @@ describe("runHeartbeatLM", () => {
     ])
     const result = await runHeartbeatLM(makeConfig())
     expect(result.toolsUsed).toEqual([])
+  })
+
+  test("invokes registered tool with authorized options, not vscode.lm.invokeTool", async () => {
+    const toolInvoke = jest.fn().mockResolvedValue({ content: [] })
+    mockToolRegistry.set("abapfs_run_sql_query", { invoke: toolInvoke })
+
+    const mockSendRequest = jest
+      .fn()
+      .mockResolvedValueOnce(makeStreamWithToolCall("abapfs_run_sql_query", { sql: "SELECT 1" }))
+      .mockResolvedValueOnce(makeStreamWithText("HEARTBEAT_OK"))
+    vscode.lm.selectChatModels.mockResolvedValue([
+      { name: "TestModel", id: "test", sendRequest: mockSendRequest }
+    ])
+
+    const result = await runHeartbeatLM(makeConfig())
+
+    expect(mockCreateMcpAuthorizedOptions).toHaveBeenCalledWith({ sql: "SELECT 1" })
+    expect(toolInvoke).toHaveBeenCalledTimes(1)
+    expect(toolInvoke.mock.calls[0][0]).toMatchObject({ __authorized: true })
+    expect(vscode.lm.invokeTool).not.toHaveBeenCalled()
+    expect(result.toolsUsed).toContain("abapfs_run_sql_query")
+  })
+
+  test("falls back to vscode.lm.invokeTool for unregistered tools", async () => {
+    vscode.lm.invokeTool.mockResolvedValue({ content: [] })
+
+    const mockSendRequest = jest
+      .fn()
+      .mockResolvedValueOnce(makeStreamWithToolCall("some_other_tool", { foo: "bar" }))
+      .mockResolvedValueOnce(makeStreamWithText("HEARTBEAT_OK"))
+    vscode.lm.selectChatModels.mockResolvedValue([
+      { name: "TestModel", id: "test", sendRequest: mockSendRequest }
+    ])
+
+    await runHeartbeatLM(makeConfig())
+
+    expect(vscode.lm.invokeTool).toHaveBeenCalledTimes(1)
+    expect(vscode.lm.invokeTool).toHaveBeenCalledWith(
+      "some_other_tool",
+      { input: { foo: "bar" }, toolInvocationToken: undefined },
+      expect.anything()
+    )
+    expect(mockCreateMcpAuthorizedOptions).not.toHaveBeenCalled()
   })
 
   // === Custom prompt ===
