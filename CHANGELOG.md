@@ -1,5 +1,12 @@
 # Changelog
 
+## 2.8.10
+
+### Patch Changes
+
+- 1c1724b: update ATC tool description
+- ec98f38: improve password and auth failure handling
+
 ## 2.8.9
 
 ### Patch Changes
