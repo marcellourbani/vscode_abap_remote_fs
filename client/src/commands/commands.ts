@@ -52,7 +52,8 @@ import {
   getRoot,
   uriRoot,
   getOrCreateRoot,
-  disconnect
+  disconnect,
+  clearConnectionFailure
 } from "../adt/conections"
 import { isAbapFolder, isAbapFile, isAbapStat } from "abapfs"
 import { AdtObjectActivator } from "../adt/operations/AdtObjectActivator"
@@ -243,6 +244,7 @@ export class AdtCommands {
   private static async connectAdtServer(selector: any) {
     logTelemetry("command_connect_called")
     let name = ""
+    let username = ""
     try {
       const connectionID = selector && selector.connection
       const manager = RemoteManager.get()
@@ -252,6 +254,7 @@ export class AdtCommands {
         if (!userCancel) throw Error("No remote configuration available in settings")
         else return
       name = remote.name
+      username = remote.username
 
       log(`Connecting to server ${remote.name}`)
       // this might involve asking for a password...
@@ -289,11 +292,17 @@ export class AdtCommands {
 
       // HTTP errors with user-friendly messages
       if (errStr.includes("status code 401")) {
-        return window.showErrorMessage(
-          name
-            ? `Authentication failed for "${name}". Check your username/password in Connection Manager.`
-            : `Authentication failed. Check your credentials.`
-        )
+        const message = name
+          ? `Authentication failed for "${name}" (username: ${username}). Check your username and password.`
+          : `Authentication failed. Check your username and password.`
+        const action = await window.showErrorMessage(message, "Change Username", "Change Password")
+        if (action === "Change Username") {
+          return commands.executeCommand(AbapFsCommands.connectionManager)
+        }
+        if (action === "Change Password") {
+          return commands.executeCommand(AbapFsCommands.changePassword, { connection: name })
+        }
+        return
       }
       if (errStr.includes("status code 503")) {
         return window.showErrorMessage(
@@ -1114,9 +1123,9 @@ export class AdtCommands {
   }
 
   @command(AbapFsCommands.changePassword)
-  private static async changePasswordCmd() {
+  private static async changePasswordCmd(connectionId?: string) {
     const manager = RemoteManager.get()
-    const { remote, userCancel } = await manager.selectConnection()
+    const { remote, userCancel } = await manager.selectConnection(connectionId)
     if (userCancel || !remote) return
 
     const newPassword = await window.showInputBox({
@@ -1128,9 +1137,14 @@ export class AdtCommands {
 
     await manager.clearPassword(remote.name, remote.username)
     await manager.savePassword(remote.name, remote.username, newPassword)
-    vscode.window.showInformationMessage(
-      `Password updated for "${remote.name}". Reconnect to use the new credentials.`
-    )
+    clearConnectionFailure(remote.name)
+    const connectNow = await window.showQuickPick(["Yes", "No"], {
+      title: "Password updated",
+      placeHolder: `Connect to system "${remote.name}" now?`
+    })
+    if (connectNow === "Yes") {
+      return commands.executeCommand(AbapFsCommands.connect, { connection: remote.name })
+    }
   }
 
   private static async createTI(uri: Uri) {

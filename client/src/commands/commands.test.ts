@@ -55,7 +55,8 @@ jest.mock("../adt/conections", () => ({
   getRoot: jest.fn(),
   uriRoot: jest.fn(),
   getOrCreateRoot: jest.fn(),
-  disconnect: jest.fn()
+  disconnect: jest.fn(),
+  clearConnectionFailure: jest.fn()
 }))
 
 jest.mock("../config", () => ({
@@ -143,7 +144,11 @@ jest.mock("../adt/includes", () => ({
 
 jest.mock("./", () => ({
   command: () => (_target: any, _key: string, descriptor: PropertyDescriptor) => descriptor,
-  AbapFsCommands: {}
+  AbapFsCommands: {
+    connect: "abapfs.connect",
+    changePassword: "abapfs.changePassword",
+    connectionManager: "abapfs.connectionManager"
+  }
 }))
 
 jest.mock("./connectionwizard", () => ({
@@ -196,6 +201,7 @@ jest.mock("../services/sapSystemInfo", () => ({
 import { currentUri, currentAbapFile, currentEditState, openObject, AdtCommands } from "./commands"
 import { funWindow as window } from "../services/funMessenger"
 import { ADTSCHEME, getRoot } from "../adt/conections"
+import { RemoteManager } from "../config"
 import { uriAbapFile } from "../adt/operations/AdtObjectFinder"
 import { isAbapFolder, isAbapFile } from "abapfs"
 
@@ -232,6 +238,73 @@ describe("currentUri", () => {
     const uri = makeAdtUri()
     ;(mockWindow as any).activeTextEditor = { document: { uri } }
     expect(currentUri()).toBe(uri)
+  })
+})
+
+describe("connectAdtServer", () => {
+  test("offers username and password actions for authentication failures", async () => {
+    const { getOrCreateRoot } = require("../adt/conections")
+    const mockManager = {
+      selectConnection: jest.fn().mockResolvedValue({
+        remote: { name: "dev100", username: "developer" },
+        userCancel: false
+      })
+    }
+    ;(RemoteManager.get as jest.Mock).mockReturnValue(mockManager)
+    getOrCreateRoot.mockRejectedValue(new Error("Request failed with status code 401"))
+    mockWindow.showErrorMessage.mockResolvedValue("Change Password" as any)
+
+    await (AdtCommands as any).connectAdtServer({})
+
+    expect(mockWindow.showErrorMessage).toHaveBeenCalledWith(
+      'Authentication failed for "dev100" (username: developer). Check your username and password.',
+      "Change Username",
+      "Change Password"
+    )
+    expect(vscode.commands.executeCommand).toHaveBeenCalledWith("abapfs.changePassword", {
+      connection: "dev100"
+    })
+  })
+
+  test("opens Connection Manager when the username action is selected", async () => {
+    const { getOrCreateRoot } = require("../adt/conections")
+    const mockManager = {
+      selectConnection: jest.fn().mockResolvedValue({
+        remote: { name: "dev100", username: "developer" },
+        userCancel: false
+      })
+    }
+    ;(RemoteManager.get as jest.Mock).mockReturnValue(mockManager)
+    getOrCreateRoot.mockRejectedValue(new Error("Request failed with status code 401"))
+    mockWindow.showErrorMessage.mockResolvedValue("Change Username" as any)
+
+    await (AdtCommands as any).connectAdtServer({})
+
+    expect(vscode.commands.executeCommand).toHaveBeenCalledWith("abapfs.connectionManager")
+  })
+
+  test("offers to connect after changing the password", async () => {
+    const mockManager = {
+      selectConnection: jest.fn().mockResolvedValue({
+        remote: { name: "dev100", username: "developer" },
+        userCancel: false
+      }),
+      clearPassword: jest.fn().mockResolvedValue(true),
+      savePassword: jest.fn().mockResolvedValue(true)
+    }
+    ;(RemoteManager.get as jest.Mock).mockReturnValue(mockManager)
+    mockWindow.showInputBox.mockResolvedValue("new-password")
+    mockWindow.showQuickPick.mockResolvedValue("Yes" as any)
+
+    await (AdtCommands as any).changePasswordCmd()
+
+    expect(mockWindow.showQuickPick).toHaveBeenCalledWith(["Yes", "No"], {
+      title: "Password updated",
+      placeHolder: 'Connect to system "dev100" now?'
+    })
+    expect(vscode.commands.executeCommand).toHaveBeenCalledWith("abapfs.connect", {
+      connection: "dev100"
+    })
   })
 })
 

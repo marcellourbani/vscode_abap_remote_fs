@@ -411,6 +411,47 @@ describe("RemoteManager", () => {
     expect(manager.byId("dev")?.password).toBe("secret")
   })
 
+  test("byIdAsync ignores a password in settings when loading basic auth", async () => {
+    const vault = require("./lib").PasswordVault.get()
+    ;(vault.getPassword as jest.Mock).mockResolvedValue("vault-pass")
+    mockWorkspaceConfig(
+      { dev: { url: "https://host", username: "user", password: "settings-pass" } },
+      {
+        globalValue: { dev: { url: "https://host", username: "user", password: "settings-pass" } },
+        workspaceValue: {},
+        workspaceFolderValue: {}
+      }
+    )
+    ;(RemoteManager as any).instance = undefined
+    const manager = RemoteManager.get()
+
+    const connection = await manager.byIdAsync("dev")
+
+    expect(vault.getPassword).toHaveBeenCalledWith("vscode.abapfs.dev", "user")
+    expect(connection?.password).toBe("vault-pass")
+  })
+
+  test("byIdAsync refreshes the vault password for a cached basic connection", async () => {
+    const vault = require("./lib").PasswordVault.get()
+    ;(vault.getPassword as jest.Mock).mockResolvedValueOnce("settings-era-pass")
+    mockWorkspaceConfig(
+      { dev: { url: "https://host", username: "user", password: "settings-pass" } },
+      {
+        globalValue: { dev: { url: "https://host", username: "user", password: "settings-pass" } },
+        workspaceValue: {},
+        workspaceFolderValue: {}
+      }
+    )
+    ;(RemoteManager as any).instance = undefined
+    const manager = RemoteManager.get()
+    const connection = await manager.byIdAsync("dev")
+
+    ;(vault.getPassword as jest.Mock).mockResolvedValueOnce("new-vault-pass")
+    await manager.byIdAsync("dev")
+
+    expect(connection?.password).toBe("new-vault-pass")
+  })
+
   test("getPassword returns empty string when vault has no password", async () => {
     const vault = require("./lib").PasswordVault.get()
     ;(vault.getPassword as jest.Mock).mockResolvedValue(null)
@@ -464,7 +505,7 @@ describe("RemoteManager", () => {
     await expect(manager.selectConnection()).rejects.toThrow()
   })
 
-  test("selectConnection returns first remote without prompting when only one", async () => {
+  test("selectConnection returns metadata without loading a password", async () => {
     const { funWindow: w } = require("./services/funMessenger")
     ;(RemoteManager as any).instance = undefined
     mockWorkspaceConfig(
@@ -477,10 +518,13 @@ describe("RemoteManager", () => {
     )
     const vault = require("./lib").PasswordVault.get()
     ;(vault.getPassword as jest.Mock).mockResolvedValue("stored-pass")
+    ;(vault.getPassword as jest.Mock).mockClear()
     const manager = RemoteManager.get()
     const { remote, userCancel } = await manager.selectConnection()
     expect(w.showQuickPick).not.toHaveBeenCalled()
     expect(remote).toBeDefined()
+    expect(remote?.password).toBe("")
+    expect(vault.getPassword).not.toHaveBeenCalled()
     expect(userCancel).toBe(false)
   })
 
