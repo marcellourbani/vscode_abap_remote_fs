@@ -123,7 +123,7 @@ export const saveNewRemote = async (cfg: ClientConfiguration, target: Configurat
 }
 
 const config = (name: string, remote: StoredRemoteConfig) => {
-  const conf = { ...defaultConfig, ...remote, name, valid: true }
+  const conf = { ...defaultConfig, ...remote, password: "", name, valid: true }
   conf.valid = !!(remote.url && remote.username) // ✅ SECURITY FIX: Removed password validation from settings
   if (conf.customCA && !conf.customCA.match(/-----BEGIN CERTIFICATE-----/gi))
     try {
@@ -352,14 +352,12 @@ export class RemoteManager {
       conn = this.loadRemote(connectionId)
       if (!conn) return
 
-      // Only fetch password from vault for basic auth (other methods use different secrets)
-      const authMethod = getAuthMethod(conn)
-      if (authMethod === "basic" && !conn.password) {
-        conn.password = await this.getPassword(connectionId, conn.username)
-      }
-
       conn.name = connectionId
       this.connections.set(connectionId, conn)
+    }
+    // The settings password is compatibility-only; basic auth always uses the vault.
+    if (getAuthMethod(conn) === "basic") {
+      conn.password = await this.getPassword(connectionId, conn.username)
     }
     return conn
   }
@@ -402,13 +400,6 @@ export class RemoteManager {
       if (selected.userCancel) return selected
       remote = selected.remote
     }
-    if (remote && !remote.password) {
-      const authMethod = getAuthMethod(remote)
-      if (authMethod === "basic") {
-        remote.password = await this.getPassword(formatKey(remote.name), remote.username)
-      }
-    }
-
     return { remote, userCancel: false }
   }
 
