@@ -1810,7 +1810,7 @@
       {
         "name": "abapfs_run_atc_analysis",
         "displayName": "Run ATC Analysis",
-        "modelDescription": "Run ABAP Test Cockpit checks, list available check variants, or fetch finding documentation. Actions: 'run_analysis' returns findings with check variant + docUri per finding (variant name explains context — e.g., S4HANA_READINESS = upgrade compat, not code quality). 'get_atc_variants' lists check variants available on a system — use this FIRST if the user names a variant you're not certain exists, before passing variantName to run_analysis. 'get_documentation' fetches full doc — often contains critical detail missing from finding title (e.g., table name RSEG). Always fetch docs before suggesting fixes. Each finding has unique docs even when titles repeat.",
+        "modelDescription": "Run ABAP Test Cockpit checks, list available check variants, or fetch finding documentation. Actions: 'run_analysis' returns findings with check variant + docUri per finding (variant name explains context — e.g., S4HANA_READINESS = upgrade compat, not code quality). For function modules, pass objectName with objectType 'FUNC' or 'FUNC/FF'; do not use the function module source URI. 'get_atc_variants' lists check variants available on a system — use this FIRST if the user names a variant you're not certain exists, before passing variantName to run_analysis. 'get_documentation' fetches full doc — often contains critical detail missing from finding title (e.g., table name RSEG). Always fetch docs before suggesting fixes. Each finding has unique docs even when titles repeat.",
         "canBeReferencedInPrompt": true,
         "toolReferenceName": "abapfs_run_atc_analysis",
         "icon": "$(testing-run-icon)",
@@ -1833,7 +1833,7 @@
             },
             "objectType": {
               "type": "string",
-              "description": "Object type (e.g., 'PROG/P' for reports, 'CLAS/OC' for classes). Used with objectName for precise targeting"
+              "description": "Object type used with objectName for precise targeting (e.g., 'PROG/P' for reports, 'CLAS/OC' for classes). For function modules, use 'FUNC' or 'FUNC/FF'; function module source URIs are not valid ATC object targets."
             },
             "objectUri": {
               "type": "string",
