@@ -3,12 +3,25 @@
  */
 
 import * as vscode from "vscode"
-import { funWindow as window } from "./funMessenger"
 
 const MARKETPLACE_URL =
   "https://marketplace.visualstudio.com/items?itemName=murbani.vscode-abap-remote-fs"
 const CHANGELOG_URL =
   "https://github.com/marcellourbani/vscode_abap_remote_fs/blob/master/CHANGELOG.md"
+
+type UpgradeNotificationButton = {
+  text: string
+  url: string
+}
+
+const USE_REGULAR_UPGRADE_NOTIFICATION = true
+const CUSTOM_UPGRADE_NOTIFICATION_MESSAGE =
+  "ABAP FS can now help you test ABAP reports and transactions!"
+const CUSTOM_UPGRADE_NOTIFICATION_BUTTON_1: UpgradeNotificationButton = {
+  text: "Learn about SAP UI Testing",
+  url: "https://marcellourbani.github.io/vscode_abap_remote_fs/sap-testing/"
+}
+const CUSTOM_UPGRADE_NOTIFICATION_BUTTON_2: UpgradeNotificationButton | undefined = undefined
 
 const STATE_LAST_VERSION = "abapfs.lastVersion"
 const STATE_UPGRADE_DISMISSED = "abapfs.upgradeStatusBarDismissed"
@@ -43,11 +56,21 @@ export function checkUpgradeNotification(context: vscode.ExtensionContext): void
 // ─── Blinking Status Bar ─────────────────────────────────────────────────────
 
 function showVersionUpgradeNotification(version: string): void {
-  window
-    .showInformationMessage(`ABAP Remote Filesystem has been updated to v${version}`, "What's New")
+  const buttons = USE_REGULAR_UPGRADE_NOTIFICATION
+    ? [{ text: "What's New", url: CHANGELOG_URL }]
+    : [CUSTOM_UPGRADE_NOTIFICATION_BUTTON_1, CUSTOM_UPGRADE_NOTIFICATION_BUTTON_2].filter(
+        (button): button is UpgradeNotificationButton => button !== undefined
+      )
+  const message = USE_REGULAR_UPGRADE_NOTIFICATION
+    ? `ABAP Remote Filesystem has been updated to v${version}`
+    : CUSTOM_UPGRADE_NOTIFICATION_MESSAGE
+
+  vscode.window
+    .showInformationMessage(message, ...buttons.map(button => button.text))
     .then(choice => {
-      if (choice === "What's New") {
-        vscode.env.openExternal(vscode.Uri.parse(CHANGELOG_URL))
+      const selectedButton = buttons.find(button => button.text === choice)
+      if (selectedButton) {
+        vscode.env.openExternal(vscode.Uri.parse(selectedButton.url))
       }
     })
 }
@@ -57,7 +80,7 @@ function showBlinkingStatusBar(context: vscode.ExtensionContext): void {
   if (context.globalState.get<boolean>(STATE_UPGRADE_DISMISSED)) return
 
   // Create status bar item
-  const item = window.createStatusBarItem(vscode.StatusBarAlignment.Left, 1000)
+  const item = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Left, 1000)
   item.command = "abapfs.openUpgradeMarketplace"
   item.tooltip = "ABAP Remote FS v2 — Click to learn about new AI features or just ask Copilot!"
   context.subscriptions.push(item)

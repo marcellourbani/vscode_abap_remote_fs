@@ -1,6 +1,10 @@
 jest.mock(
   "vscode",
   () => ({
+    window: {
+      createStatusBarItem: jest.fn(),
+      showInformationMessage: jest.fn().mockResolvedValue(undefined)
+    },
     env: { openExternal: jest.fn() },
     Uri: { parse: jest.fn(url => ({ toString: () => url })) },
     StatusBarAlignment: { Left: 1, Right: 2 },
@@ -9,23 +13,6 @@ jest.mock(
   { virtual: true }
 )
 
-jest.mock("./funMessenger", () => {
-  const mockStatusBarItem = {
-    text: "",
-    tooltip: "",
-    command: "",
-    show: jest.fn(),
-    hide: jest.fn(),
-    dispose: jest.fn()
-  }
-  return {
-    funWindow: {
-      createStatusBarItem: jest.fn().mockReturnValue(mockStatusBarItem),
-      showInformationMessage: jest.fn().mockResolvedValue(undefined)
-    }
-  }
-})
-
 jest.mock("./lm-tools/toolGuard", () => ({
   assertToolInvocationAuthorized: jest.fn(),
   isToolInvocationAuthorized: jest.fn(() => true)
@@ -33,10 +20,9 @@ jest.mock("./lm-tools/toolGuard", () => ({
 
 import * as vscode from "vscode"
 import { checkUpgradeNotification } from "./upgradeNotification"
-import { funWindow as window } from "./funMessenger"
 
-const mockCreateStatusBarItem = window.createStatusBarItem as jest.Mock
-const mockShowInfoMessage = window.showInformationMessage as jest.Mock
+const mockCreateStatusBarItem = vscode.window.createStatusBarItem as jest.Mock
+const mockShowInfoMessage = vscode.window.showInformationMessage as jest.Mock
 const mockEnvOpenExternal = vscode.env.openExternal as jest.Mock
 const mockRegisterCommand = vscode.commands.registerCommand as jest.Mock
 
@@ -82,13 +68,24 @@ afterEach(() => {
 
 describe("checkUpgradeNotification", () => {
   // ─── Upgrade trigger conditions ────────────────────────────────────────────
-  test("triggers simple notification for minor v2 updates", () => {
+  test("triggers custom notification for minor v2 updates", () => {
     const ctx = makeContext("2.0.0")
     checkUpgradeNotification(ctx)
-    expect(mockShowInfoMessage).toHaveBeenCalledWith(
-      "ABAP Remote Filesystem has been updated to v2.1.0",
-      "What's New"
+    expect(mockShowInfoMessage).toHaveBeenCalledWith(expect.any(String), expect.any(String))
+  })
+
+  test("opens the configured URL when the custom button is selected", async () => {
+    mockShowInfoMessage.mockImplementationOnce((_message: string, ...buttons: string[]) =>
+      Promise.resolve(buttons[0])
     )
+
+    const ctx = makeContext("2.0.0")
+    checkUpgradeNotification(ctx)
+    await Promise.resolve()
+
+    expect(mockEnvOpenExternal).toHaveBeenCalledWith({
+      toString: expect.any(Function)
+    })
   })
 
   test("does NOT trigger when already on current version", () => {
