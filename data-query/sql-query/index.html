@@ -3292,9 +3292,17 @@
 <ul>
 <li><strong>Run &amp; send to Copilot</strong> — proceed with analysis</li>
 <li><strong>Run &amp; show in UI only</strong> — display results without sharing data with Copilot</li>
+<li><strong>Configure for this connection</strong> — choose whether to allow internal SQL for the current session or across workspaces; an allow choice also applies to the current query</li>
 <li><strong>Cancel</strong></li>
 </ul>
 <p>This prevents sensitive production data from being inadvertently included in the AI context.</p>
+<p>To configure a connection before running a query, open the Command Palette and run <strong>ABAP FS: Configure Production SQL Permission</strong>. Select a connected SAP system, then choose:</p>
+<ul>
+<li><strong>Allow in this session</strong> — skip the confirmation until the current extension session ends</li>
+<li><strong>Allow always</strong> — store the permission in your global VS Code settings and apply it across workspaces</li>
+<li><strong>Reset preference</strong> — clear both the session and global permission for that connection</li>
+</ul>
+<p>Permissions are stored per connection ID. If neither a session nor global permission exists, internal queries continue to show the production confirmation dialog. UI-only queries and file exports are unchanged.</p>
 <h2 id="notes">Notes<a class="headerlink" href="#notes" title="Permanent link">&para;</a></h2>
 <ul>
 <li><strong>Row limit:</strong> Default 1000 rows, maximum 50,000. Copilot manages this automatically — the ABAP SQL <code>UP TO x ROWS</code> clause is not supported via ADT, so use natural language like <em>"limit to 500 rows"</em> instead.</li>
