@@ -12,6 +12,10 @@ import { getClient } from "../../adt/conections"
 import { getSAPSystemInfo } from "../sapSystemInfo"
 import { funWindow as window } from "../funMessenger"
 import { assertToolInvocationAuthorized } from "./toolGuard"
+import {
+  configureProductionSqlControlForConnection,
+  getProductionSqlPreference
+} from "../productionSqlControl"
 
 // ============================================================================
 // INTERFACE
@@ -416,6 +420,10 @@ export class ExecuteDataQueryTool implements vscode.LanguageModelTool<IExecuteDa
     connectionId: string
   ): Promise<{ action: "proceed" | "ui_only" | "cancel" }> {
     try {
+      if (getProductionSqlPreference(connectionId) === "allow") {
+        return { action: "proceed" }
+      }
+
       // Get system info (cached, so fast)
       const systemInfo = await getSAPSystemInfo(connectionId)
 
@@ -438,15 +446,23 @@ export class ExecuteDataQueryTool implements vscode.LanguageModelTool<IExecuteDa
       const choice = await window.showWarningMessage(
         ` PRODUCTION SYSTEM DETECTED\n\n` +
           `Copilot wants to run SQL on: ${clientInfo}\n\n` +
-          `Query: ${sqlPreview}`,
+          `Query: ${sqlPreview}\n\n` +
+          `To avoid this prompt in future, choose "Configure for this connection" or run ` +
+          `"ABAP FS: Configure Production SQL Permission" from the Command Palette.`,
         { modal: true },
         { title: "Run & Send results to Copilot", action: "proceed" },
         { title: "Run & Show in UI Only", action: "ui_only" },
+        { title: "Configure for this connection", action: "configure" },
         { title: "Cancel", action: "cancel", isCloseAffordance: true }
       )
 
       if (!choice || choice.action === "cancel") {
         return { action: "cancel" }
+      }
+
+      if (choice.action === "configure") {
+        const preference = await configureProductionSqlControlForConnection(connectionId)
+        return { action: preference === "allow" ? "proceed" : "cancel" }
       }
 
       return { action: choice.action as "proceed" | "ui_only" }

@@ -37,9 +37,18 @@ When Copilot would send data back to itself from a **production system**, a conf
 
 - **Run & send to Copilot** — proceed with analysis
 - **Run & show in UI only** — display results without sharing data with Copilot
+- **Configure for this connection** — choose whether to allow internal SQL for the current session or across workspaces; an allow choice also applies to the current query
 - **Cancel**
 
 This prevents sensitive production data from being inadvertently included in the AI context.
+
+To configure a connection before running a query, open the Command Palette and run **ABAP FS: Configure Production SQL Permission**. Select a connected SAP system, then choose:
+
+- **Allow in this session** — skip the confirmation until the current extension session ends
+- **Allow always** — store the permission in your global VS Code settings and apply it across workspaces
+- **Reset preference** — clear both the session and global permission for that connection
+
+Permissions are stored per connection ID. If neither a session nor global permission exists, internal queries continue to show the production confirmation dialog. UI-only queries and file exports are unchanged.
 
 ## Notes
 

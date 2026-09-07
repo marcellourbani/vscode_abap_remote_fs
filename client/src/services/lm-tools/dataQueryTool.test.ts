@@ -7,11 +7,18 @@ jest.mock(
     LanguageModelTextPart: jest.fn().mockImplementation((text: string) => ({ text })),
     MarkdownString: jest.fn().mockImplementation((text: string) => ({ text })),
     lm: { registerTool: jest.fn(() => ({ dispose: jest.fn() })) },
+    window: {
+      createOutputChannel: jest.fn(() => ({ info: jest.fn(), error: jest.fn(), warn: jest.fn() }))
+    },
     Uri: {
       parse: (s: string) => ({ scheme: s.split("://")[0], fsPath: s.replace(/^[a-z]+:\/\//, "") }),
       file: (p: string) => ({ scheme: "file", fsPath: p })
     },
     workspace: {
+      getConfiguration: jest.fn(() => ({
+        inspect: jest.fn(() => undefined),
+        update: jest.fn().mockResolvedValue(undefined)
+      })),
       fs: {
         writeFile: jest.fn().mockResolvedValue(undefined)
       }
@@ -21,6 +28,10 @@ jest.mock(
 )
 
 jest.mock("../../adt/conections", () => ({ getClient: jest.fn() }))
+jest.mock("../../config", () => ({
+  connectedRoots: jest.fn(() => new Map()),
+  formatKey: jest.fn((connectionId: string) => connectionId.toLowerCase())
+}))
 jest.mock("../telemetry", () => ({ logTelemetry: jest.fn() }))
 jest.mock("./toolRegistry", () => ({
   registerToolWithRegistry: jest.fn(() => ({ dispose: jest.fn() }))
@@ -31,12 +42,23 @@ jest.mock("../webviewManager", () => ({
   }
 }))
 jest.mock("../sapSystemInfo", () => ({ getSAPSystemInfo: jest.fn() }))
-jest.mock("../funMessenger", () => ({ funWindow: { activeTextEditor: undefined } }))
+jest.mock("../funMessenger", () => ({
+  funWindow: {
+    activeTextEditor: undefined,
+    createOutputChannel: jest.fn(() => ({ info: jest.fn(), error: jest.fn(), warn: jest.fn() })),
+    showWarningMessage: jest.fn(),
+    showQuickPick: jest.fn(),
+    showInformationMessage: jest.fn()
+  }
+}))
 jest.mock("./toolGuard", () => ({ assertToolInvocationAuthorized: jest.fn() }))
 
 import * as vscode from "vscode"
 import { ExecuteDataQueryTool } from "./dataQueryTool"
 import { getClient } from "../../adt/conections"
+import { clearSessionProductionSqlPreferences } from "../productionSqlControl"
+import { funWindow } from "../funMessenger"
+import { getSAPSystemInfo } from "../sapSystemInfo"
 
 const mockToken = {} as any
 
@@ -426,6 +448,61 @@ describe("ExecuteDataQueryTool - download_to_file invoke", () => {
   beforeEach(() => {
     tool = new ExecuteDataQueryTool()
     jest.clearAllMocks()
+    clearSessionProductionSqlPreferences()
+  })
+
+  it("shows the production guard when the SAP client is production", async () => {
+    const showWarningMessage = jest
+      .spyOn(funWindow, "showWarningMessage")
+      .mockResolvedValue({ action: "cancel" } as any)
+    ;(getSAPSystemInfo as jest.Mock).mockResolvedValue({
+      currentClient: { category: "Production" }
+    })
+    ;(getClient as jest.Mock).mockReturnValue({
+      runQuery: jest.fn().mockResolvedValue({
+        columns: [{ name: "MATNR" }],
+        values: [{ MATNR: "000001" }]
+      })
+    })
+
+    const result: any = await tool.invoke(
+      makeOptions({
+        displayMode: "internal",
+        sql: "SELECT matnr FROM mara",
+        connectionId: "prd100",
+        rowRange: { start: 0, end: 1 }
+      }),
+      mockToken
+    )
+
+    expect(showWarningMessage).toHaveBeenCalled()
+    expect(result.parts[0].text).toMatch(/cancelled/i)
+  })
+
+  it("runs the current query when production permission is configured from the guard", async () => {
+    jest.spyOn(funWindow, "showWarningMessage").mockResolvedValue({ action: "configure" } as any)
+    jest.spyOn(funWindow, "showQuickPick").mockResolvedValue("Allow in this session" as any)
+    ;(getSAPSystemInfo as jest.Mock).mockResolvedValue({
+      currentClient: { category: "Production" }
+    })
+    const runQuery = jest.fn().mockResolvedValue({
+      columns: [{ name: "MATNR" }],
+      values: [{ MATNR: "000001" }]
+    })
+    ;(getClient as jest.Mock).mockReturnValue({ runQuery })
+
+    const result: any = await tool.invoke(
+      makeOptions({
+        displayMode: "internal",
+        sql: "SELECT matnr FROM mara",
+        connectionId: "prd100",
+        rowRange: { start: 0, end: 1 }
+      }),
+      mockToken
+    )
+
+    expect(runQuery).toHaveBeenCalled()
+    expect(result.parts[0].text).toMatch(/Query executed/)
   })
 
   it("does not write file when query returns 0 rows", async () => {
@@ -438,7 +515,7 @@ describe("ExecuteDataQueryTool - download_to_file invoke", () => {
         filePath: "C:/tmp/mara",
         fileType: "csv",
         sql: "SELECT matnr FROM mara",
-        connectionId: "ged100"
+        connectionId: "dev100"
       }),
       mockToken
     )
@@ -459,7 +536,7 @@ describe("ExecuteDataQueryTool - download_to_file invoke", () => {
         filePath: "C:/tmp/mara",
         fileType: "csv",
         sql: "SELECT matnr FROM mara",
-        connectionId: "ged100",
+        connectionId: "dev100",
         rowRange: { start: 5, end: 10 }
       }),
       mockToken
@@ -481,7 +558,7 @@ describe("ExecuteDataQueryTool - download_to_file invoke", () => {
         filePath: "C:/tmp/mara",
         fileType: "xlsx",
         sql: "SELECT matnr FROM mara",
-        connectionId: "ged100"
+        connectionId: "dev100"
       }),
       mockToken
     )
@@ -503,7 +580,7 @@ describe("ExecuteDataQueryTool - download_to_file invoke", () => {
         filePath: "C:/tmp/mara",
         fileType: "csv",
         sql: "SELECT matnr FROM mara",
-        connectionId: "ged100",
+        connectionId: "dev100",
         rowRange: { start: 1, end: 3 }
       }),
       mockToken
@@ -532,7 +609,7 @@ describe("ExecuteDataQueryTool - download_to_file invoke", () => {
         filePath: "C:/tmp/x",
         fileType: "csv",
         sql: "SELECT matnr, ersda FROM mara",
-        connectionId: "ged100"
+        connectionId: "dev100"
       }),
       mockToken
     )
@@ -556,7 +633,7 @@ describe("ExecuteDataQueryTool - download_to_file invoke", () => {
         filePath: "C:/tmp/y",
         fileType: "xlsx",
         sql: "SELECT * FROM mara",
-        connectionId: "ged100"
+        connectionId: "dev100"
       }),
       mockToken
     )
@@ -599,7 +676,7 @@ describe("ExecuteDataQueryTool - download_to_file invoke", () => {
         filePath: "C:/tmp/z",
         fileType: "csv",
         sql: "SELECT ersda, erzet, aedat FROM mara",
-        connectionId: "ged100"
+        connectionId: "dev100"
       }),
       mockToken
     )
@@ -630,7 +707,7 @@ describe("ExecuteDataQueryTool - download_to_file invoke", () => {
         filePath: "C:/tmp/dates",
         fileType: "csv",
         sql: "SELECT ersda, erzet FROM mara",
-        connectionId: "ged100"
+        connectionId: "dev100"
       }),
       mockToken
     )
@@ -654,7 +731,7 @@ describe("ExecuteDataQueryTool - download_to_file invoke", () => {
         filePath: "C:/tmp/strdate",
         fileType: "csv",
         sql: "SELECT ersda FROM mara",
-        connectionId: "ged100"
+        connectionId: "dev100"
       }),
       mockToken
     )
@@ -679,7 +756,7 @@ describe("ExecuteDataQueryTool - download_to_file invoke", () => {
         filePath: "C:/tmp/cdhdr",
         fileType: "csv",
         sql: "SELECT udate, utime FROM cdhdr",
-        connectionId: "ged100"
+        connectionId: "dev100"
       }),
       mockToken
     )
@@ -709,7 +786,7 @@ describe("ExecuteDataQueryTool - download_to_file invoke", () => {
         filePath: "C:/tmp/blanks",
         fileType: "csv",
         sql: "SELECT laeda, aezet FROM mara",
-        connectionId: "ged100"
+        connectionId: "dev100"
       }),
       mockToken
     )
