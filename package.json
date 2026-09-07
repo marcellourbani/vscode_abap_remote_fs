@@ -188,6 +188,9 @@
         "path": "./client/dist/media/skills/adt-api-discovery/SKILL.md"
       },
       {
+        "path": "./client/dist/media/skills/sap-background-jobs/SKILL.md"
+      },
+      {
         "path": "./client/dist/media/skills/testing/anst-guide/SKILL.md",
         "when": "abapfs:testingEnabled"
       }
