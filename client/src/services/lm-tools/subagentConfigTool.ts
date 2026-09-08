@@ -385,8 +385,7 @@ export function registerSubagentConfigTool(context: vscode.ExtensionContext): vo
     registerToolWithRegistry("abapfs_manage_subagents", new SubagentConfigTool(context))
   )
 
-  void migrateSubagentSettings()
-    .then(() => syncGeneralAgentContexts())
+  void migrateSubagentSettings().then(() => syncGeneralAgentContexts())
 
   context.subscriptions.push(
     vscode.workspace.onDidChangeConfiguration(async event => {
