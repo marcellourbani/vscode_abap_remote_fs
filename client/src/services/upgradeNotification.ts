@@ -3,7 +3,10 @@
  */
 
 import * as vscode from "vscode"
-import { funWindow as window } from "./funMessenger"
+import {
+  UPGRADE_NOTIFICATION_FEATURES,
+  UpgradeNotificationFeature
+} from "./upgradeNotificationFeatures"
 
 const MARKETPLACE_URL =
   "https://marketplace.visualstudio.com/items?itemName=murbani.vscode-abap-remote-fs"
@@ -13,6 +16,7 @@ const CHANGELOG_URL =
 const STATE_LAST_VERSION = "abapfs.lastVersion"
 const STATE_UPGRADE_DISMISSED = "abapfs.upgradeStatusBarDismissed"
 const STATE_STATUS_BAR_PENDING = "abapfs.upgradeStatusBarPending"
+const STATE_NOTIFIED_FEATURES = "abapfs.notifiedUpgradeFeatures"
 
 export function checkUpgradeNotification(context: vscode.ExtensionContext): void {
   const currentVersion: string = context.extension.packageJSON.version ?? "0.0.0"
@@ -30,8 +34,7 @@ export function checkUpgradeNotification(context: vscode.ExtensionContext): void
     // Mark that we want to show the status bar — persists across reloads until dismissed
     context.globalState.update(STATE_STATUS_BAR_PENDING, true)
   } else if (lastVersion && lastVersion !== currentVersion) {
-    // Regular version upgrade — show a simple notification
-    showVersionUpgradeNotification(currentVersion)
+    showUpgradeNotification(context, currentVersion)
   }
 
   // Show status bar if pending (covers both fresh upgrade and post-reload reactivation)
@@ -42,12 +45,40 @@ export function checkUpgradeNotification(context: vscode.ExtensionContext): void
 
 // ─── Blinking Status Bar ─────────────────────────────────────────────────────
 
-function showVersionUpgradeNotification(version: string): void {
-  window
-    .showInformationMessage(`ABAP Remote Filesystem has been updated to v${version}`, "What's New")
+function showUpgradeNotification(context: vscode.ExtensionContext, version: string): void {
+  const notifiedFeatures = context.globalState.get<string[]>(STATE_NOTIFIED_FEATURES, [])
+  const feature = UPGRADE_NOTIFICATION_FEATURES.find(item => !notifiedFeatures.includes(item.id))
+
+  if (feature) {
+    context.globalState.update(STATE_NOTIFIED_FEATURES, [...notifiedFeatures, feature.id])
+    showFeatureNotification(feature)
+    return
+  }
+
+  showVersionUpgradeNotification(version)
+}
+
+function showFeatureNotification(feature: UpgradeNotificationFeature): void {
+  const buttons = feature.buttons ?? []
+
+  vscode.window
+    .showInformationMessage(feature.message, ...buttons.map(button => button.text))
     .then(choice => {
-      if (choice === "What's New") {
-        vscode.env.openExternal(vscode.Uri.parse(CHANGELOG_URL))
+      const selectedButton = buttons.find(button => button.text === choice)
+      if (selectedButton) {
+        vscode.env.openExternal(vscode.Uri.parse(selectedButton.url))
+      }
+    })
+}
+
+function showVersionUpgradeNotification(version: string): void {
+  const button = { text: "What's New", url: CHANGELOG_URL }
+
+  vscode.window
+    .showInformationMessage(`ABAP Remote Filesystem has been updated to v${version}`, button.text)
+    .then(choice => {
+      if (choice === button.text) {
+        vscode.env.openExternal(vscode.Uri.parse(button.url))
       }
     })
 }
@@ -57,7 +88,7 @@ function showBlinkingStatusBar(context: vscode.ExtensionContext): void {
   if (context.globalState.get<boolean>(STATE_UPGRADE_DISMISSED)) return
 
   // Create status bar item
-  const item = window.createStatusBarItem(vscode.StatusBarAlignment.Left, 1000)
+  const item = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Left, 1000)
   item.command = "abapfs.openUpgradeMarketplace"
   item.tooltip = "ABAP Remote FS v2 — Click to learn about new AI features or just ask Copilot!"
   context.subscriptions.push(item)
