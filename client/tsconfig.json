@@ -2,6 +2,7 @@
   "compilerOptions": {
     "experimentalDecorators": true,
     "module": "commonjs",
+    "moduleResolution": "bundler",
     "esModuleInterop": true,
     "target": "ES2021",
     "rootDir": "src",
@@ -10,6 +11,7 @@
       "es2021"
     ],
     "types": [
+      "node",
       "jest"
     ],
     "sourceMap": true,
@@ -31,6 +33,12 @@
     "node_modules",
     ".vscode-test",
     "*.d.ts",
-    "*.test.ts"
+    "src/services/testing/runtime/dump-detector.ts",
+    "src/services/testing/runtime/sap-session.ts",
+    "src/services/testing/runtime/se16n.ts",
+    "src/services/testing/runtime/waiters.ts",
+    "src/services/testing/runtime/popup-guard.ts",
+    "src/services/testing/runtime/sap-artifacts.ts",
+    "src/services/testing/runtime/index.ts"
   ]
 }

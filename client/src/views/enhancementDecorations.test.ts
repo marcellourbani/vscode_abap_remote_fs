@@ -120,10 +120,16 @@ describe("initializeEnhancementDecorations", () => {
 
 describe("updateEnhancementDecorations", () => {
   beforeEach(() => {
+    jest.useFakeTimers()
     jest.clearAllMocks()
     // Reinitialize so decoration type is set
     const subscriptions: any[] = []
     initializeEnhancementDecorations({ subscriptions } as any)
+  })
+
+  afterEach(() => {
+    jest.clearAllTimers()
+    jest.useRealTimers()
   })
 
   it("returns early if no editor", async () => {

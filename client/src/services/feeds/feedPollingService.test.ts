@@ -49,6 +49,15 @@ import { parseFeedResponse } from "./feedParsers"
 import { FeedEntry, FeedType } from "./feedTypes"
 import * as fs from "fs"
 
+beforeEach(() => {
+  jest.useFakeTimers()
+})
+
+afterEach(() => {
+  jest.clearAllTimers()
+  jest.useRealTimers()
+})
+
 // ---- helpers ----------------------------------------------------------------
 
 function makeContext() {

@@ -58,7 +58,7 @@ jest.mock("./debugListener", () => ({
 jest.mock("./replay/types", () => ({}))
 
 import { DebugService, idThread, isEnded, STACK_THREAD_MULTIPLIER } from "./debugService"
-import { isAdtError, session_types } from "abap-adt-api"
+import { ADTClient, isAdtError, session_types } from "abap-adt-api"
 import { newClientFromKey } from "./functions"
 import { vsCodeUri } from "../../langClient"
 import { errorType } from "./debugListener"
@@ -261,7 +261,7 @@ describe("DebugService instance", () => {
       const systemDebugging = makeListener({ systemDebugging: true })
       const configuredService = new DebugService(
         "conn",
-        client,
+        client as unknown as ADTClient,
         systemDebugging,
         makeDebuggee(),
         makeUI()

@@ -76,9 +76,15 @@ import { TextDocumentSaveReason } from "vscode"
 
 describe("listeners.ts - save reason tracking", () => {
   beforeEach(() => {
+    jest.useFakeTimers()
     jest.clearAllMocks()
     // clear any lingering state by round-tripping
     clearSaveReason("adt://host/test")
+  })
+
+  afterEach(() => {
+    jest.runOnlyPendingTimers()
+    jest.useRealTimers()
   })
 
   describe("setSaveReason / getSaveReason", () => {

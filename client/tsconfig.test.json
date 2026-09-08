@@ -1,0 +1,13 @@
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "types": ["node", "jest"],
+    "rootDir": ".",
+    "composite": false,
+    "isolatedModules": true,
+    "tsBuildInfoFile": ".test.tsbuildinfo",
+    "noEmit": true
+  },
+  "include": ["src/**/*.test.ts", "templates/**/*.test.ts"],
+  "exclude": ["node_modules", ".vscode-test"]
+}

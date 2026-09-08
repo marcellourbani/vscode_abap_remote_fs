@@ -42,27 +42,63 @@ function toForwardSlashes(p: string): string {
   return p.replace(/\\/g, "/")
 }
 
-function buildTsconfig(rp: RuntimePaths, existing: any): any {
+export function buildTestFolderTsconfig(rp: RuntimePaths, existing: any, testFolder: string): any {
   const cfg = existing && typeof existing === "object" ? { ...existing } : {}
+  const options = { ...(cfg.compilerOptions ?? {}) }
+  const moduleName = String(options.module ?? "commonjs").toLowerCase()
+  const resolution = String(options.moduleResolution ?? "").toLowerCase()
+  const legacyResolution = ["", "node", "node10", "classic"].includes(resolution)
+  // Node16 works in both older supported VS Code editors and TypeScript 6.
+  // Keep deliberate modern combinations rather than converting every user to ESM.
+  if (moduleName === "nodenext") {
+    options.moduleResolution = "nodenext"
+  } else if (["node16", "node18", "node20"].includes(moduleName)) {
+    options.moduleResolution = "node16"
+  } else if (legacyResolution && moduleName === "commonjs") {
+    options.module = "Node16"
+    options.moduleResolution = "node16"
+  } else if (legacyResolution) {
+    options.moduleResolution = "bundler"
+  }
+  const paths = { ...(options.paths ?? {}) }
+  if (typeof options.baseUrl === "string") {
+    const base = path.resolve(testFolder, options.baseUrl)
+    for (const [alias, targets] of Object.entries(paths)) {
+      if (Array.isArray(targets)) {
+        paths[alias] = targets.map(target =>
+          typeof target === "string" ? toForwardSlashes(path.resolve(base, target)) : target
+        )
+      }
+    }
+    // Retain intentional bare-import lookup for a custom baseUrl. The old managed
+    // "." default only served our absolute runtime mapping and needs no replacement.
+    if (options.baseUrl !== "." && options.baseUrl !== "./" && !paths["*"]) {
+      paths["*"] = [toForwardSlashes(path.join(base, "*"))]
+    }
+    delete options.baseUrl
+  }
   cfg.$comment = MARKER_COMMENT
   cfg.compilerOptions = {
-    ...(cfg.compilerOptions ?? {}),
-    target: cfg.compilerOptions?.target ?? "ES2022",
-    module: cfg.compilerOptions?.module ?? "commonjs",
-    moduleResolution: cfg.compilerOptions?.moduleResolution ?? "node",
+    ...options,
+    target: options.target ?? "ES2022",
+    module: options.module ?? "Node16",
+    moduleResolution: options.moduleResolution ?? "node16",
+    rootDir: options.rootDir ?? ".",
+    noEmit: options.noEmit ?? true,
     esModuleInterop: true,
     skipLibCheck: true,
-    strict: cfg.compilerOptions?.strict ?? false,
-    baseUrl: ".",
+    strict: options.strict ?? false,
     // Do NOT path-map @playwright/test here: Playwright's TypeScript transform honors
     // tsconfig paths, and mapping the test framework to an absolute extension path
     // creates a second module instance during collection, which fails with
     // "test() did not expect to be called here".
     paths: {
+      ...paths,
       "@sap-testing/runtime": [toForwardSlashes(rp.runtimeDir)]
     },
+    // Extension-owned: replace previous installation paths on every activation.
     typeRoots: [toForwardSlashes(rp.typesDir)],
-    types: ["node"]
+    types: Array.from(new Set(["node", ...(options.types ?? [])]))
   }
   cfg.include = cfg.include ?? ["tests/**/*.ts"]
   return cfg
@@ -94,7 +130,7 @@ async function ensureTsconfig(testFolder: string, rp: RuntimePaths): Promise<voi
   } catch {
     // no existing file, or unparsable — start fresh
   }
-  const nextText = JSON.stringify(buildTsconfig(rp, existing), null, 2) + "\n"
+  const nextText = JSON.stringify(buildTestFolderTsconfig(rp, existing, testFolder), null, 2) + "\n"
   // Skip a pointless write, and the "file changed on disk" churn it causes in the editor.
   if (existingRaw !== nextText) await fs.writeFile(tsconfigPath, nextText, "utf8")
 }

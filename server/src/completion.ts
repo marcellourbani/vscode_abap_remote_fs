@@ -135,10 +135,7 @@ export async function completion(params: CompletionParams) {
  */
 export async function completionResolve(item: CompletionItem): Promise<CompletionItem> {
   try {
-    log(
-      "[completionResolve] called for:",
-      typeof item.label === "string" ? item.label : item.label.label
-    )
+    log("[completionResolve] called for:", item.label)
     const proposal: CompletionProposal | undefined = item.data
     if (!proposal) {
       log("[completionResolve] no proposal data on item")

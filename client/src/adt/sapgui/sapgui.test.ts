@@ -309,6 +309,7 @@ describe("executeInGui", () => {
   }
 
   beforeEach(() => {
+    jest.useFakeTimers()
     mockIsAbapClassInclude.mockReturnValue(false)
     ;(RemoteManager.get as jest.Mock).mockReturnValue({
       byId: jest.fn().mockReturnValue(makeConfig())
@@ -316,6 +317,11 @@ describe("executeInGui", () => {
     const { getClient } = require("../conections")
     ;(getClient as jest.Mock).mockReturnValue(mockClientWithTicket)
     ;(window.withProgress as jest.Mock).mockImplementation(async (_opts: any, fn: Function) => fn())
+  })
+
+  afterEach(() => {
+    jest.runOnlyPendingTimers()
+    jest.useRealTimers()
   })
 
   test("builds SE38 command for PROG/P type", async () => {

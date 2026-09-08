@@ -52,14 +52,24 @@ const mockAppInsights = AppInsightsService.getInstance as jest.Mock
 const mockIncrementReviewCounter = incrementReviewCounter as jest.Mock
 const mockVscodeCommands = vscode.commands as any
 
+const contexts: import("vscode").ExtensionContext[] = []
+
 function makeContext(version = "2.1.0") {
   const subscriptions: any[] = []
-  return {
+  const context = {
     globalStorageUri: { fsPath: "/tmp/test-storage" },
     subscriptions,
     extension: { packageJSON: { version } }
   } as any as import("vscode").ExtensionContext
+  contexts.push(context)
+  return context
 }
+
+afterEach(() => {
+  for (const context of contexts.splice(0)) {
+    for (const subscription of context.subscriptions) subscription.dispose()
+  }
+})
 
 beforeEach(() => {
   jest.clearAllMocks()
