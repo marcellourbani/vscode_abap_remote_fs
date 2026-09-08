@@ -20,6 +20,7 @@ jest.mock("./lm-tools/toolGuard", () => ({
 
 import * as vscode from "vscode"
 import { checkUpgradeNotification } from "./upgradeNotification"
+import { UPGRADE_NOTIFICATION_FEATURES } from "./upgradeNotificationFeatures"
 
 const mockCreateStatusBarItem = vscode.window.createStatusBarItem as jest.Mock
 const mockShowInfoMessage = vscode.window.showInformationMessage as jest.Mock
@@ -37,16 +38,21 @@ function makeStatusBarItem() {
   }
 }
 
-function makeContext(lastVersion?: string, upgradeDismissed?: boolean) {
+function makeContext(
+  lastVersion?: string,
+  upgradeDismissed?: boolean,
+  notifiedFeatures?: string[]
+) {
   const state: Record<string, any> = {}
   if (lastVersion !== undefined) state["abapfs.lastVersion"] = lastVersion
   if (upgradeDismissed !== undefined) state["abapfs.upgradeStatusBarDismissed"] = upgradeDismissed
+  if (notifiedFeatures !== undefined) state["abapfs.notifiedUpgradeFeatures"] = notifiedFeatures
 
   const subscriptions: any[] = []
   return {
     extension: { packageJSON: { version: "2.1.0" } },
     globalState: {
-      get: jest.fn((key: string) => state[key]),
+      get: jest.fn((key: string, defaultValue?: any) => state[key] ?? defaultValue),
       update: jest.fn((key: string, value: any) => {
         state[key] = value
       })
@@ -72,6 +78,30 @@ describe("checkUpgradeNotification", () => {
     const ctx = makeContext("2.0.0")
     checkUpgradeNotification(ctx)
     expect(mockShowInfoMessage).toHaveBeenCalledWith(expect.any(String), expect.any(String))
+  })
+
+  test("records the feature after showing it", () => {
+    const ctx = makeContext("2.0.0")
+    checkUpgradeNotification(ctx)
+
+    expect(ctx.globalState.update).toHaveBeenCalledWith("abapfs.notifiedUpgradeFeatures", [
+      UPGRADE_NOTIFICATION_FEATURES[0].id
+    ])
+  })
+
+  test("uses the regular notification after all features have been shown", () => {
+    const ctx = makeContext(
+      "2.0.0",
+      undefined,
+      UPGRADE_NOTIFICATION_FEATURES.map(feature => feature.id)
+    )
+    checkUpgradeNotification(ctx)
+
+    expect(mockShowInfoMessage).toHaveBeenCalledWith(expect.any(String), expect.any(String))
+    expect(ctx.globalState.update).not.toHaveBeenCalledWith(
+      "abapfs.notifiedUpgradeFeatures",
+      expect.anything()
+    )
   })
 
   test("opens the configured URL when the custom button is selected", async () => {

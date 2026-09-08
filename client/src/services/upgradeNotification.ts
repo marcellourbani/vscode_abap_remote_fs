@@ -3,29 +3,20 @@
  */
 
 import * as vscode from "vscode"
+import {
+  UPGRADE_NOTIFICATION_FEATURES,
+  UpgradeNotificationFeature
+} from "./upgradeNotificationFeatures"
 
 const MARKETPLACE_URL =
   "https://marketplace.visualstudio.com/items?itemName=murbani.vscode-abap-remote-fs"
 const CHANGELOG_URL =
   "https://github.com/marcellourbani/vscode_abap_remote_fs/blob/master/CHANGELOG.md"
 
-type UpgradeNotificationButton = {
-  text: string
-  url: string
-}
-
-const USE_REGULAR_UPGRADE_NOTIFICATION = true
-const CUSTOM_UPGRADE_NOTIFICATION_MESSAGE =
-  "ABAP FS can now help you test ABAP reports and transactions!"
-const CUSTOM_UPGRADE_NOTIFICATION_BUTTON_1: UpgradeNotificationButton = {
-  text: "Learn about SAP UI Testing",
-  url: "https://marcellourbani.github.io/vscode_abap_remote_fs/sap-testing/"
-}
-const CUSTOM_UPGRADE_NOTIFICATION_BUTTON_2: UpgradeNotificationButton | undefined = undefined
-
 const STATE_LAST_VERSION = "abapfs.lastVersion"
 const STATE_UPGRADE_DISMISSED = "abapfs.upgradeStatusBarDismissed"
 const STATE_STATUS_BAR_PENDING = "abapfs.upgradeStatusBarPending"
+const STATE_NOTIFIED_FEATURES = "abapfs.notifiedUpgradeFeatures"
 
 export function checkUpgradeNotification(context: vscode.ExtensionContext): void {
   const currentVersion: string = context.extension.packageJSON.version ?? "0.0.0"
@@ -43,8 +34,7 @@ export function checkUpgradeNotification(context: vscode.ExtensionContext): void
     // Mark that we want to show the status bar — persists across reloads until dismissed
     context.globalState.update(STATE_STATUS_BAR_PENDING, true)
   } else if (lastVersion && lastVersion !== currentVersion) {
-    // Regular version upgrade — show a simple notification
-    showVersionUpgradeNotification(currentVersion)
+    showUpgradeNotification(context, currentVersion)
   }
 
   // Show status bar if pending (covers both fresh upgrade and post-reload reactivation)
@@ -55,22 +45,40 @@ export function checkUpgradeNotification(context: vscode.ExtensionContext): void
 
 // ─── Blinking Status Bar ─────────────────────────────────────────────────────
 
-function showVersionUpgradeNotification(version: string): void {
-  const buttons = USE_REGULAR_UPGRADE_NOTIFICATION
-    ? [{ text: "What's New", url: CHANGELOG_URL }]
-    : [CUSTOM_UPGRADE_NOTIFICATION_BUTTON_1, CUSTOM_UPGRADE_NOTIFICATION_BUTTON_2].filter(
-        (button): button is UpgradeNotificationButton => button !== undefined
-      )
-  const message = USE_REGULAR_UPGRADE_NOTIFICATION
-    ? `ABAP Remote Filesystem has been updated to v${version}`
-    : CUSTOM_UPGRADE_NOTIFICATION_MESSAGE
+function showUpgradeNotification(context: vscode.ExtensionContext, version: string): void {
+  const notifiedFeatures = context.globalState.get<string[]>(STATE_NOTIFIED_FEATURES, [])
+  const feature = UPGRADE_NOTIFICATION_FEATURES.find(item => !notifiedFeatures.includes(item.id))
+
+  if (feature) {
+    context.globalState.update(STATE_NOTIFIED_FEATURES, [...notifiedFeatures, feature.id])
+    showFeatureNotification(feature)
+    return
+  }
+
+  showVersionUpgradeNotification(version)
+}
+
+function showFeatureNotification(feature: UpgradeNotificationFeature): void {
+  const buttons = feature.buttons ?? []
 
   vscode.window
-    .showInformationMessage(message, ...buttons.map(button => button.text))
+    .showInformationMessage(feature.message, ...buttons.map(button => button.text))
     .then(choice => {
       const selectedButton = buttons.find(button => button.text === choice)
       if (selectedButton) {
         vscode.env.openExternal(vscode.Uri.parse(selectedButton.url))
+      }
+    })
+}
+
+function showVersionUpgradeNotification(version: string): void {
+  const button = { text: "What's New", url: CHANGELOG_URL }
+
+  vscode.window
+    .showInformationMessage(`ABAP Remote Filesystem has been updated to v${version}`, button.text)
+    .then(choice => {
+      if (choice === button.text) {
+        vscode.env.openExternal(vscode.Uri.parse(button.url))
       }
     })
 }
