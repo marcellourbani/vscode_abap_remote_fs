@@ -96,7 +96,6 @@ jest.mock("../subagentRegistry", () => ({
     missing: ["sap-code-grep"],
     unavailable: []
   }),
-  ensureCustomAgentDelegationEnabled: jest.fn().mockResolvedValue(false),
   migrateSubagentSettings: jest.fn().mockResolvedValue(undefined),
   syncGeneralAgentContexts: jest.fn().mockResolvedValue(undefined)
 }))

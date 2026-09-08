@@ -7,11 +7,7 @@ import {
   effectiveSubagentModels,
   saveSubagentModels
 } from "../subagents/modelConfiguration"
-import {
-  ALL_AGENT_REGISTRY,
-  ensureCustomAgentDelegationEnabled,
-  getSubagentSettings
-} from "../../subagentRegistry"
+import { ALL_AGENT_REGISTRY, getSubagentSettings } from "../../subagentRegistry"
 import { isTestFolderValid } from "../config"
 
 type WebviewMessage = { command: "ready" | "refresh" } | { command: "save"; selections?: unknown }
@@ -190,23 +186,13 @@ export class SubagentModelsPanel {
     }
 
     try {
-      const testingEnabled = await isTestFolderValid()
       const requiredAgentIds = ALL_AGENT_REGISTRY.filter(
         agent => agent.section === "general" && selections.enabledAgents[agent.id] === true
       ).map(agent => agent.id)
-      const result = await saveSubagentModels(
-        this.context,
-        selections.models,
-        discovery.models,
-        requiredAgentIds
-      )
+      await saveSubagentModels(this.context, selections.models, discovery.models, requiredAgentIds)
       await vscode.workspace
         .getConfiguration("abapfs.subagents")
         .update("enabledAgents", selections.enabledAgents, vscode.ConfigurationTarget.Global)
-      const generalEnabled = Object.values(selections.enabledAgents).some(Boolean)
-      if ((generalEnabled || testingEnabled) && (await ensureCustomAgentDelegationEnabled())) {
-        await vscode.window.showInformationMessage("Custom agent delegation enabled.")
-      }
       await this.panel.webview.postMessage({
         type: "saved"
       })
