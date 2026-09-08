@@ -350,14 +350,6 @@ export function generalAgentContextKey(agentId: string): `abapfs:generalAgent.${
   return `abapfs:generalAgent.${agentId}.enabled`
 }
 
-export async function ensureCustomAgentDelegationEnabled(): Promise<boolean> {
-  const chatConfig = vscode.workspace.getConfiguration("chat")
-  if (chatConfig.get<boolean>("customAgentInSubagent.enabled", false)) return false
-
-  await chatConfig.update("customAgentInSubagent.enabled", true, vscode.ConfigurationTarget.Global)
-  return true
-}
-
 export async function getTestingAgentReadiness(): Promise<{
   ready: boolean
   missing: string[]

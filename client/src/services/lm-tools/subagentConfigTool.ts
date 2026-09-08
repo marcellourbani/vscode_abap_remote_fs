@@ -5,7 +5,6 @@ import { assertToolInvocationAuthorized } from "./toolGuard"
 import {
   ALL_AGENT_REGISTRY,
   GENERAL_AGENT_REGISTRY,
-  ensureCustomAgentDelegationEnabled as enableCustomAgentDelegation,
   getSubagentSettings,
   getTestingAgentReadiness,
   migrateSubagentSettings,
@@ -76,19 +75,6 @@ function requiredAgentIds(
 async function availableModels() {
   const result = await discoverLanguageModels()
   return result
-}
-
-async function ensureCustomAgentDelegationEnabled(): Promise<void> {
-  const settings = getSubagentSettings()
-  const testingReady = await isTestFolderValid()
-  const generalEnabled = GENERAL_AGENT_REGISTRY.some(
-    agent => settings.enabledAgents[agent.id] === true
-  )
-  if (!generalEnabled && !testingReady) return
-
-  if (await enableCustomAgentDelegation()) {
-    window.showInformationMessage("Custom agent delegation enabled.")
-  }
 }
 
 async function updateGeneralEnabled(
@@ -215,7 +201,6 @@ class SubagentConfigTool implements vscode.LanguageModelTool<SubagentConfigInput
   private async enable(agentIds?: string[]): Promise<vscode.LanguageModelToolResult> {
     const errors = await updateGeneralEnabled(agentIds, true)
     if (errors.length) return text(errors.join("\n"))
-    await ensureCustomAgentDelegationEnabled()
     const enabled = agentIds?.length || GENERAL_AGENT_REGISTRY.length
     return text(
       `Enabled ${enabled} general ABAP agent(s). Testing agents are controlled by the SAP testing folder.`
@@ -356,7 +341,6 @@ class SubagentConfigTool implements vscode.LanguageModelTool<SubagentConfigInput
     ]
     const result = await saveSubagentModels(this.context, selections, discovery.models, required)
     await syncGeneralAgentContexts()
-    await ensureCustomAgentDelegationEnabled()
     return text(
       [
         "MODEL CONFIGURATION UPDATED",
@@ -403,7 +387,6 @@ export function registerSubagentConfigTool(context: vscode.ExtensionContext): vo
 
   void migrateSubagentSettings()
     .then(() => syncGeneralAgentContexts())
-    .then(() => ensureCustomAgentDelegationEnabled())
 
   context.subscriptions.push(
     vscode.workspace.onDidChangeConfiguration(async event => {
