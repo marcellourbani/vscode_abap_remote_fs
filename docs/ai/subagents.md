@@ -2,6 +2,8 @@
 
 AI Subagents are specialized AI assistants, each focused on one type of ABAP task (finding objects, reading code, running analysis, etc.). Instead of one general AI doing everything, subagents split work across focused specialists.
 
+> **Availability:** Chat agents and subagents are enabled only while at least one SAP system is connected. Configure and connect a system before expecting the agents to appear in Copilot. General agents also need an enabled model; SAP testing agents additionally require the SAP Testing folder and their model configuration.
+
 **Why this matters:**
 
 - **Better results** — a dedicated code reviewer catches more issues than a general assistant juggling multiple goals
