@@ -176,6 +176,9 @@
         "path": "./client/dist/media/skills/abap-performance-hana/SKILL.md",
         "when": "!abapfs:noSapConnected"
       },
+      { "path": "./client/dist/media/skills/abap-code-review-helper/SKILL.md",
+        "when": "!abapfs:noSapConnected"
+      },
       {
         "path": "./client/dist/media/skills/abap-research/SKILL.md",
         "when": "!abapfs:noSapConnected"

@@ -14,6 +14,8 @@ disable-model-invocation: false
 
 Apply ALL rules below when writing or reviewing ABAP code. Every rule is mandatory unless explicitly marked "consider".
 
+Before writing, modifying, or reviewing ABAP code, read the `abap-code-review-helper` skill in full unless its complete contents are already available in your current context. Apply its correctness safeguards alongside these style rules; do not let a style preference change business behavior. Keep passed checks internal.
+
 ---
 
 ## Names
