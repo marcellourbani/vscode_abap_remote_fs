@@ -118,171 +118,180 @@
     "chatSkills": [
       {
         "path": "./client/dist/media/skills/testing/sap-testing/SKILL.md",
-        "when": "abapfs:testingEnabled"
+        "when": "abapfs:testingEnabled && !abapfs:noSapConnected"
       },
       {
         "path": "./client/dist/media/skills/testing/analyze-and-plan/SKILL.md",
-        "when": "abapfs:testingEnabled"
+        "when": "abapfs:testingEnabled && !abapfs:noSapConnected"
       },
       {
         "path": "./client/dist/media/skills/testing/explore-ui/SKILL.md",
-        "when": "abapfs:testingEnabled"
+        "when": "abapfs:testingEnabled && !abapfs:noSapConnected"
       },
       {
         "path": "./client/dist/media/skills/testing/design-cases/SKILL.md",
-        "when": "abapfs:testingEnabled"
+        "when": "abapfs:testingEnabled && !abapfs:noSapConnected"
       },
       {
         "path": "./client/dist/media/skills/testing/define-data/SKILL.md",
-        "when": "abapfs:testingEnabled"
+        "when": "abapfs:testingEnabled && !abapfs:noSapConnected"
       },
       {
         "path": "./client/dist/media/skills/testing/prepare-data/SKILL.md",
-        "when": "abapfs:testingEnabled"
+        "when": "abapfs:testingEnabled && !abapfs:noSapConnected"
       },
       {
         "path": "./client/dist/media/skills/testing/build-scripts/SKILL.md",
-        "when": "abapfs:testingEnabled"
+        "when": "abapfs:testingEnabled && !abapfs:noSapConnected"
       },
       {
         "path": "./client/dist/media/skills/testing/run-scripts/SKILL.md",
-        "when": "abapfs:testingEnabled"
+        "when": "abapfs:testingEnabled && !abapfs:noSapConnected"
       },
       {
         "path": "./client/dist/media/skills/testing/sap-webgui/SKILL.md",
-        "when": "abapfs:testingEnabled"
+        "when": "abapfs:testingEnabled && !abapfs:noSapConnected"
       },
       {
         "path": "./client/dist/media/skills/testing/sap-webgui-recording/SKILL.md",
-        "when": "abapfs:testingEnabled"
+        "when": "abapfs:testingEnabled && !abapfs:noSapConnected"
       },
       {
         "path": "./client/dist/media/skills/testing/helpers-reference/SKILL.md",
-        "when": "abapfs:testingEnabled"
+        "when": "abapfs:testingEnabled && !abapfs:noSapConnected"
       },
       {
-        "path": "./client/dist/media/skills/clean-abap/SKILL.md"
+        "path": "./client/dist/media/skills/clean-abap/SKILL.md",
+        "when": "!abapfs:noSapConnected"
       },
       {
-        "path": "./client/dist/media/skills/abap-code-writing/SKILL.md"
+        "path": "./client/dist/media/skills/abap-code-writing/SKILL.md",
+        "when": "!abapfs:noSapConnected"
       },
       {
-        "path": "./client/dist/media/skills/abap-performance-ecc/SKILL.md"
+        "path": "./client/dist/media/skills/abap-performance-ecc/SKILL.md",
+        "when": "!abapfs:noSapConnected"
       },
       {
-        "path": "./client/dist/media/skills/abap-performance-hana/SKILL.md"
+        "path": "./client/dist/media/skills/abap-performance-hana/SKILL.md",
+        "when": "!abapfs:noSapConnected"
       },
       {
-        "path": "./client/dist/media/skills/abap-research/SKILL.md"
+        "path": "./client/dist/media/skills/abap-research/SKILL.md",
+        "when": "!abapfs:noSapConnected"
       },
       {
-        "path": "./client/dist/media/skills/sap-system-personality-report/SKILL.md"
+        "path": "./client/dist/media/skills/sap-system-personality-report/SKILL.md",
+        "when": "!abapfs:noSapConnected"
       },
       {
-        "path": "./client/dist/media/skills/sap-customizing/SKILL.md"
+        "path": "./client/dist/media/skills/sap-customizing/SKILL.md",
+        "when": "!abapfs:noSapConnected"
       },
       {
-        "path": "./client/dist/media/skills/sap-data-workbook/SKILL.md"
+        "path": "./client/dist/media/skills/sap-data-workbook/SKILL.md",
+        "when": "!abapfs:noSapConnected"
       },
       {
         "path": "./client/dist/media/skills/adt-api-discovery/SKILL.md"
       },
       {
-        "path": "./client/dist/media/skills/sap-background-jobs/SKILL.md"
+        "path": "./client/dist/media/skills/sap-background-jobs/SKILL.md",
+        "when": "!abapfs:noSapConnected"
       },
       {
         "path": "./client/dist/media/skills/testing/anst-guide/SKILL.md",
-        "when": "abapfs:testingEnabled"
+        "when": "abapfs:testingEnabled && !abapfs:noSapConnected"
       }
     ],
     "chatAgents": [
       {
         "path": "./client/dist/media/agents/abap-orchestrator.agent.md",
-        "when": "abapfs:generalAgent.abap-orchestrator.enabled"
+        "when": "abapfs:generalAgent.abap-orchestrator.enabled && !abapfs:noSapConnected"
       },
       {
         "path": "./client/dist/media/agents/abap-code-reviewer.agent.md",
-        "when": "abapfs:generalAgent.abap-code-reviewer.enabled"
+        "when": "abapfs:generalAgent.abap-code-reviewer.enabled && !abapfs:noSapConnected"
       },
       {
         "path": "./client/dist/media/agents/abap-discoverer.agent.md",
-        "when": "abapfs:generalAgent.abap-discoverer.enabled"
+        "when": "abapfs:generalAgent.abap-discoverer.enabled && !abapfs:noSapConnected"
       },
       {
         "path": "./client/dist/media/agents/abap-reader.agent.md",
-        "when": "abapfs:generalAgent.abap-reader.enabled"
+        "when": "abapfs:generalAgent.abap-reader.enabled && !abapfs:noSapConnected"
       },
       {
         "path": "./client/dist/media/agents/abap-usage-analyzer.agent.md",
-        "when": "abapfs:generalAgent.abap-usage-analyzer.enabled"
+        "when": "abapfs:generalAgent.abap-usage-analyzer.enabled && !abapfs:noSapConnected"
       },
       {
         "path": "./client/dist/media/agents/abap-quality-checker.agent.md",
-        "when": "abapfs:generalAgent.abap-quality-checker.enabled"
+        "when": "abapfs:generalAgent.abap-quality-checker.enabled && !abapfs:noSapConnected"
       },
       {
         "path": "./client/dist/media/agents/abap-historian.agent.md",
-        "when": "abapfs:generalAgent.abap-historian.enabled"
+        "when": "abapfs:generalAgent.abap-historian.enabled && !abapfs:noSapConnected"
       },
       {
         "path": "./client/dist/media/agents/abap-debugger.agent.md",
-        "when": "abapfs:generalAgent.abap-debugger.enabled"
+        "when": "abapfs:generalAgent.abap-debugger.enabled && !abapfs:noSapConnected"
       },
       {
         "path": "./client/dist/media/agents/abap-troubleshooter.agent.md",
-        "when": "abapfs:generalAgent.abap-troubleshooter.enabled"
+        "when": "abapfs:generalAgent.abap-troubleshooter.enabled && !abapfs:noSapConnected"
       },
       {
         "path": "./client/dist/media/agents/abap-data-analyst.agent.md",
-        "when": "abapfs:generalAgent.abap-data-analyst.enabled"
+        "when": "abapfs:generalAgent.abap-data-analyst.enabled && !abapfs:noSapConnected"
       },
       {
         "path": "./client/dist/media/agents/abap-creator.agent.md",
-        "when": "abapfs:generalAgent.abap-creator.enabled"
+        "when": "abapfs:generalAgent.abap-creator.enabled && !abapfs:noSapConnected"
       },
       {
         "path": "./client/dist/media/agents/abap-visualizer.agent.md",
-        "when": "abapfs:generalAgent.abap-visualizer.enabled"
+        "when": "abapfs:generalAgent.abap-visualizer.enabled && !abapfs:noSapConnected"
       },
       {
         "path": "./client/dist/media/agents/abap-documenter.agent.md",
-        "when": "abapfs:generalAgent.abap-documenter.enabled"
+        "when": "abapfs:generalAgent.abap-documenter.enabled && !abapfs:noSapConnected"
       },
       {
         "path": "./client/dist/media/agents/anst-enhancement-analyser.agent.md",
-        "when": "abapfs:testingAgentsReady"
+        "when": "abapfs:testingAgentsReady && !abapfs:noSapConnected"
       },
       {
         "path": "./client/dist/media/agents/sap-source-download.agent.md",
-        "when": "abapfs:testingAgentsReady"
+        "when": "abapfs:testingAgentsReady && !abapfs:noSapConnected"
       },
       {
         "path": "./client/dist/media/agents/sap-code-grep.agent.md",
-        "when": "abapfs:testingAgentsReady"
+        "when": "abapfs:testingAgentsReady && !abapfs:noSapConnected"
       },
       {
         "path": "./client/dist/media/agents/sap-enhancement-research.agent.md",
-        "when": "abapfs:testingAgentsReady"
+        "when": "abapfs:testingAgentsReady && !abapfs:noSapConnected"
       },
       {
         "path": "./client/dist/media/agents/sap-findings-reviewer.agent.md",
-        "when": "abapfs:testingAgentsReady"
+        "when": "abapfs:testingAgentsReady && !abapfs:noSapConnected"
       },
       {
         "path": "./client/dist/media/agents/sap-screens-reviewer.agent.md",
-        "when": "abapfs:testingAgentsReady"
+        "when": "abapfs:testingAgentsReady && !abapfs:noSapConnected"
       },
       {
         "path": "./client/dist/media/agents/sap-test-plan-reviewer.agent.md",
-        "when": "abapfs:testingAgentsReady"
+        "when": "abapfs:testingAgentsReady && !abapfs:noSapConnected"
       },
       {
         "path": "./client/dist/media/agents/sap-data-scout.agent.md",
-        "when": "abapfs:testingAgentsReady"
+        "when": "abapfs:testingAgentsReady && !abapfs:noSapConnected"
       },
       {
         "path": "./client/dist/media/agents/sap-task-helper.agent.md",
-        "when": "abapfs:testingAgentsReady"
+        "when": "abapfs:testingAgentsReady && !abapfs:noSapConnected"
       }
     ],
     "breakpoints": [
@@ -527,7 +536,7 @@
           "type": "object",
           "properties": {}
         },
-        "when": "abapfs:extensionActive && abapfs:testingEnabled"
+        "when": "abapfs:extensionActive && abapfs:testingEnabled && !abapfs:noSapConnected"
       },
       {
         "name": "abapfs_get_sap_webgui_url",
@@ -585,7 +594,7 @@
             "reviewerConfirmation"
           ]
         },
-        "when": "abapfs:extensionActive && abapfs:testingEnabled"
+        "when": "abapfs:extensionActive && abapfs:testingEnabled && !abapfs:noSapConnected"
       },
       {
         "name": "abapfs_build_test_index_docx",
@@ -607,7 +616,7 @@
             "program"
           ]
         },
-        "when": "abapfs:extensionActive && abapfs:testingEnabled"
+        "when": "abapfs:extensionActive && abapfs:testingEnabled && !abapfs:noSapConnected"
       },
       {
         "name": "abapfs_split_test_cases",
@@ -629,7 +638,7 @@
             "sourcePath"
           ]
         },
-        "when": "abapfs:extensionActive && abapfs:testingEnabled"
+        "when": "abapfs:extensionActive && abapfs:testingEnabled && !abapfs:noSapConnected"
       },
       {
         "name": "abapfs_verify_test_data_usage",
@@ -656,7 +665,7 @@
             "tcId"
           ]
         },
-        "when": "abapfs:extensionActive && abapfs:testingEnabled"
+        "when": "abapfs:extensionActive && abapfs:testingEnabled && !abapfs:noSapConnected"
       },
       {
         "name": "abapfs_check_test_data",
@@ -683,7 +692,7 @@
             "connectionId"
           ]
         },
-        "when": "abapfs:extensionActive && abapfs:testingEnabled"
+        "when": "abapfs:extensionActive && abapfs:testingEnabled && !abapfs:noSapConnected"
       },
       {
         "name": "abapfs_build_evidence_report",
@@ -710,7 +719,7 @@
             "connectionId"
           ]
         },
-        "when": "abapfs:extensionActive && abapfs:testingEnabled"
+        "when": "abapfs:extensionActive && abapfs:testingEnabled && !abapfs:noSapConnected"
       },
       {
         "name": "abapfs_run_playwright_tests",
@@ -773,7 +782,7 @@
             "prerequisiteConfirmation"
           ]
         },
-        "when": "abapfs:extensionActive && abapfs:testingEnabled"
+        "when": "abapfs:extensionActive && abapfs:testingEnabled && !abapfs:noSapConnected"
       },
       {
         "name": "abapfs_search_objects",
@@ -3253,7 +3262,7 @@
             "xlsxPath"
           ]
         },
-        "when": "abapfs:extensionActive && abapfs:testingEnabled"
+        "when": "abapfs:extensionActive && abapfs:testingEnabled && !abapfs:noSapConnected"
       }
     ],
     "commands": [
