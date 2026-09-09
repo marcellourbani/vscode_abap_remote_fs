@@ -45,7 +45,6 @@ client/tsconfig.runtime.json
 **/.tsbuildinfo*
 **/*.tsbuildinfo
 client/tsconfig.tsbuildinfo
-client/webpack.config.js
 client/.vscodeignore
 sharedapi/**
 wiki/**
@@ -63,3 +62,5 @@ diff.txt
 .changeset/**
 data/**
 .markdownlint.jsonc
+client/tsdown.config.ts
+server/tsdown.config.ts
