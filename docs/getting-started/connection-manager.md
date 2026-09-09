@@ -1,6 +1,6 @@
 # SAP Connection Manager
 
-> **Important:** ABAP FS has 40+ AI tools for Copilot, but they are only available once you connect to a SAP system. Use the Connection Manager to add your first system.
+> **Important:** A connected SAP system is the main availability trigger in ABAP FS. Until at least one system is connected, SAP-backed AI tools, ABAP skills, and chat agents/subagents remain hidden. Use the Connection Manager to add your first system, then run **ABAP FS: Connect to an SAP system**.
 
 The Connection Manager is a visual interface for adding, editing, and organizing your SAP system connections. Open it from the Command Palette (`Ctrl+Shift+P` / `Cmd+Shift+P`) by typing **ABAP FS: Connection Manager**.
 

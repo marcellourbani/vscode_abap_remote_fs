@@ -10,6 +10,8 @@ disable-model-invocation: false
 
 Follow this process **in order** whenever building ABAP solutions. Do NOT skip steps. Do NOT start writing code until Step 6.
 
+Before designing, writing, or modifying ABAP code, read the `abap-code-review-helper` skill in full unless its complete contents are already available in your current context. Apply it throughout the task, including checks of existing code, without reporting passed checks. This applies equally to the main agent working without subagents.
+
 Ask questions at ANY step if something is unclear — it is always better to clarify early than to rewrite later.
 
 ---
