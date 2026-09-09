@@ -6,14 +6,16 @@
  */
 
 // Types
-export {
+export type {
   HeartbeatConfig,
   HeartbeatRunResult,
   HeartbeatRunRecord,
   HeartbeatServiceState,
   HeartbeatEvent,
   HeartbeatEventListener,
-  ActiveHoursConfig,
+  ActiveHoursConfig
+} from "./heartbeatTypes"
+export {
   HEARTBEAT_OK_TOKEN,
   DEFAULT_HEARTBEAT_CONFIG,
   parseDurationMs,
@@ -23,13 +25,15 @@ export {
 } from "./heartbeatTypes"
 
 // Watchlist
-export { HeartbeatWatchlist, WatchlistTask, HeartbeatWatchlistFile } from "./heartbeatWatchlist"
+export { HeartbeatWatchlist } from "./heartbeatWatchlist"
+export type { WatchlistTask, HeartbeatWatchlistFile } from "./heartbeatWatchlist"
 
 // State Manager
 export { HeartbeatStateManager } from "./heartbeatStateManager"
 
 // LM Client
-export { runHeartbeatLM, HeartbeatLMResult } from "./heartbeatLmClient"
+export { runHeartbeatLM } from "./heartbeatLmClient"
+export type { HeartbeatLMResult } from "./heartbeatLmClient"
 
 // Service
 export {
@@ -39,4 +43,5 @@ export {
 } from "./heartbeatService"
 
 // Tool
-export { HeartbeatTool, registerHeartbeatTool, HeartbeatToolParams } from "./heartbeatTool"
+export { HeartbeatTool, registerHeartbeatTool } from "./heartbeatTool"
+export type { HeartbeatToolParams } from "./heartbeatTool"

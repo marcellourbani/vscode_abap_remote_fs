@@ -5,6 +5,7 @@ jest.mock(
       getExtension: jest.fn().mockReturnValue({ packageJSON: { version: "2.1.0" } })
     },
     version: "1.85.0",
+    env: { isTelemetryEnabled: false },
     Disposable: jest.fn().mockImplementation((fn: () => void) => ({ dispose: fn }))
   }),
   { virtual: true }
@@ -86,8 +87,14 @@ function makeContext() {
 }
 
 beforeEach(() => {
+  jest.useFakeTimers()
   jest.clearAllMocks()
   ;(AppInsightsService as any).instance = undefined
+})
+
+afterEach(() => {
+  jest.runOnlyPendingTimers()
+  jest.useRealTimers()
 })
 
 // ─── getInstance ──────────────────────────────────────────────────────────────

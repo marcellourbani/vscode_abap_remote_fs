@@ -58,7 +58,7 @@ jest.mock("./debugListener", () => ({
 jest.mock("./replay/types", () => ({}))
 
 import { DebugService, idThread, isEnded, STACK_THREAD_MULTIPLIER } from "./debugService"
-import { isAdtError, session_types } from "abap-adt-api"
+import { ADTClient, isAdtError, session_types } from "abap-adt-api"
 import { newClientFromKey } from "./functions"
 import { vsCodeUri } from "../../langClient"
 import { errorType } from "./debugListener"
@@ -69,7 +69,7 @@ const mockVsCodeUri = vsCodeUri as jest.MockedFunction<typeof vsCodeUri>
 const mockErrorType = errorType as jest.MockedFunction<typeof errorType>
 
 function makeClient(overrides: Partial<any> = {}) {
-  return {
+  const client = {
     stateful: undefined as any,
     statelessClone: {
       logout: jest.fn().mockResolvedValue(undefined),
@@ -84,6 +84,8 @@ function makeClient(overrides: Partial<any> = {}) {
     logout: jest.fn().mockResolvedValue(undefined),
     ...overrides
   }
+
+  return client as typeof client & ADTClient
 }
 
 function makeDebuggee(overrides: Partial<any> = {}) {

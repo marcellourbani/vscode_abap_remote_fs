@@ -36,6 +36,15 @@ vendorPatterns.push({
   force: true
 })
 
+// Node's fetch declarations import undici-types from their sibling package.
+vendorPatterns.push({
+  from: "node_modules/undici-types",
+  to: "vendor/node_modules/undici-types",
+  globOptions: { ignore: ["**/README.md"] },
+  noErrorOnMissing: false,
+  force: true
+})
+
 /**@type {import('webpack').Configuration}*/
 const config = {
   target: "node", // vscode extensions run in a Node.js-context 📖 -> https://webpack.js.org/configuration/node/
@@ -106,21 +115,13 @@ const config = {
     rules: [
       {
         test: /\.ts$/,
-        exclude: [/node_modules/, /.*\.test\.(d\.)[tj]s/, /media/],
+        exclude: [/node_modules/, /\.test\.ts$/, /media/],
         use: [
           {
             loader: "ts-loader",
             options: {
               transpileOnly: true
             }
-          }
-        ]
-      },
-      {
-        test: /\.(node)$/i,
-        use: [
-          {
-            loader: "file-loader"
           }
         ]
       },
@@ -147,7 +148,7 @@ const prodConfig = {
           parallel: true,
           // Copied third-party trees, not our own code. Minifying vendored Playwright would
           // rewrite the paths its runner resolves worker entry points from.
-          exclude: /(media|vendor)[\\/].*\.js$/,
+          exclude: /(?:^|[\\/])(media|vendor)[\\/]/,
           terserOptions: {
             keep_classnames: true
           }

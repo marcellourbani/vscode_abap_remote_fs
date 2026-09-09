@@ -4,14 +4,6 @@ const { existsSync } = require("fs")
 const setupFiles = ["./setenv.js"].filter(existsSync)
 
 module.exports = {
-  // A set of global variables that need to be available in all test environments
-  globals: {
-    preset: "ts-jest",
-    "ts-jest": {
-      tsConfig: "tsconfig.json"
-    }
-  },
-
   // An array of directory names to be searched recursively up from the requiring module's location
   moduleDirectories: ["node_modules"],
 
@@ -33,6 +25,6 @@ module.exports = {
 
   // A map from regular expressions to paths to transformers
   transform: {
-    "^.+\\.(ts|tsx)$": "ts-jest"
+    "^.+\\.(ts|tsx)$": ["ts-jest", { tsconfig: "tsconfig.test.json" }]
   }
 }

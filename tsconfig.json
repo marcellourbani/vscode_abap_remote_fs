@@ -2,6 +2,9 @@
   "compilerOptions": {
     "experimentalDecorators": true,
     "module": "commonjs",
+    "moduleResolution": "bundler",
+    "types": ["node"],
+    "esModuleInterop": true,
     "target": "ES2021",
     "outDir": "out",
     "lib": [

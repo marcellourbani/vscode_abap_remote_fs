@@ -2,7 +2,9 @@
   "compilerOptions": {
     /* Basic Options */
     "target": "ES2019",
-    "module": "commonjs",
+    "module": "node16",
+    "moduleResolution": "node16",
+    "types": ["node"],
     "lib": ["es6"],
     "skipLibCheck": true,
     "declaration": true /* Generates corresponding '.d.ts' file. */,

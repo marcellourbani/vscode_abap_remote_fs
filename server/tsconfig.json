@@ -3,7 +3,7 @@
     "module": "commonjs",
     "target": "ES2019",
     "rootDir": "src",
-    "moduleResolution": "node",
+    "moduleResolution": "bundler",
     "outDir": "./out",
     "sourceMap": true,
     "strict": true,
@@ -15,6 +15,7 @@
     "skipLibCheck": true,
     "esModuleInterop": true,
     "types": [
+      "node",
       "jest"
     ]
   },

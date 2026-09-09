@@ -1,5 +1,14 @@
-jest.mock("../../adt/conections", () => ({}))
+jest.mock("../../adt/conections", () => {
+  // shared starts its cache-maintenance interval at module load.
+  jest.useFakeTimers()
+  return {}
+})
 import { sanitizeObjectName } from "./shared"
+
+afterAll(() => {
+  jest.clearAllTimers()
+  jest.useRealTimers()
+})
 
 describe("sanitizeObjectName", () => {
   test("accepts valid SAP object name", () => {

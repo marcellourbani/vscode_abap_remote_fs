@@ -1,14 +1,15 @@
 {
   "compilerOptions": {
     "experimentalDecorators": true,
-    "module": "commonjs",
+    "module": "node16",
+    "moduleResolution": "node16",
     "esModuleInterop": true,
     "resolveJsonModule": true,
     "target": "ES2019",
     "rootDir": "src",
     "outDir": "out",
     "lib": ["es2019"],
-    "types": ["node"],
+    "types": ["node", "jest"],
     "sourceMap": true,
     "strict": true,
     "noUnusedLocals": false,

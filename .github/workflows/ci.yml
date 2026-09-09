@@ -48,6 +48,9 @@ jobs:
       - name: Build Project
         run: npm run build
 
+      - name: Type-check all projects and tests
+        run: npm run typecheck
+
       - name: Run unit tests
         run: npm test
 

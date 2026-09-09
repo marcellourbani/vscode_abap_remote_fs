@@ -36,8 +36,14 @@ client/out/**
 client/package.json
 client/package-lock.json
 client/src/**
+client/templates/**
+client/__mocks__/**
 client/media/**
 client/tsconfig.json
+client/tsconfig.test.json
+client/tsconfig.runtime.json
+**/.tsbuildinfo*
+**/*.tsbuildinfo
 client/tsconfig.tsbuildinfo
 client/webpack.config.js
 client/.vscodeignore
