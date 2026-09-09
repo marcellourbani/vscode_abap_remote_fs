@@ -1,5 +1,20 @@
 # Changelog
 
+## 2.9.0
+
+### Minor Changes
+
+- 3558207: Upgrade to Typescript 6.0
+
+### Patch Changes
+
+- 5fc743f: add background jobs skill
+- 1c1724b: update ATC tool description
+- df971e3: Add production SQL permission control
+- ec98f38: improve password and auth failure handling
+- 8c14067: Add SAP UI testing framework information to the upgrade notification
+- bb79dc7: remove deprecated custom agents in subagents setting
+
 ## 2.8.9
 
 ### Patch Changes
