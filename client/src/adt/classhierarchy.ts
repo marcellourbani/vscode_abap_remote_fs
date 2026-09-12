@@ -1,14 +1,14 @@
 import { AbapFsCommands, command, openObject } from "../commands"
 import {
-  TextDocument,
+  type TextDocument,
   Position,
-  CancellationToken,
-  CodeLensProvider,
+  type CancellationToken,
+  type CodeLensProvider,
   CodeLens,
   Range,
   Uri,
   EventEmitter,
-  QuickPickItem,
+  type QuickPickItem,
   ProgressLocation
 } from "vscode"
 import { asyncCache, cache } from "../lib"

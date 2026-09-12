@@ -1,14 +1,14 @@
 import {
   ADTClient,
-  Debuggee,
+  type Debuggee,
   isDebugListenerError,
-  DebuggingMode,
+  type DebuggingMode,
   isAdtError,
   session_types
 } from "abap-adt-api"
 import { readFileSync, writeFileSync, existsSync, mkdirSync } from "fs"
 import { log, caughtToString, ignore, isUnDefined, firstInMap } from "../../lib"
-import { DebugProtocol } from "@vscode/debugprotocol"
+import { type DebugProtocol } from "@vscode/debugprotocol"
 import { Disposable, EventEmitter } from "vscode"
 import { getOrCreateClient } from "../conections"
 import { homedir } from "os"

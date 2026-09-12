@@ -21,7 +21,7 @@
  */
 
 import { execFile } from "child_process"
-import { AuthResult, KerberosAuthConfig } from "./types"
+import { type AuthResult, type KerberosAuthConfig } from "./types"
 import { PasswordVault, log } from "../lib"
 import { formatKey } from "../config"
 import { buildCookieHeaders, errorMessage, sanitizeCookie, toStringArray } from "./utils"

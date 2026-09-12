@@ -15,7 +15,7 @@
  */
 import * as http from "http"
 import { randomBytes } from "crypto"
-import { AddressInfo } from "net"
+import { type AddressInfo } from "net"
 import { log } from "../../lib"
 
 /** How long to wait for the browser to fetch the page before giving up and freeing the port. */

@@ -1,4 +1,4 @@
-import { CellResult } from "./types"
+import { type CellResult } from "./types"
 
 export function interpolateSql(rawSql: string, cellResults: Map<number, CellResult>): string {
   if (!rawSql.includes("${cells[")) return rawSql

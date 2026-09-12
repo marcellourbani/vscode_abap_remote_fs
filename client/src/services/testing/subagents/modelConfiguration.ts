@@ -5,8 +5,8 @@ import * as vscode from "vscode"
 import { getSubagentSettings } from "../../subagentRegistry"
 import { isTestFolderValid } from "../config"
 import {
-  AvailableModel,
-  FileChange,
+  type AvailableModel,
+  type FileChange,
   getFrontmatterModel,
   setFrontmatterModel,
   validateModelSelections,

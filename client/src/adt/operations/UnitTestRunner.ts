@@ -3,27 +3,27 @@ import {
   tests,
   TestRunProfileKind,
   TestRunRequest,
-  TestController,
-  TestItem,
+  type TestController,
+  type TestItem,
   TestMessage,
   MarkdownString,
   commands,
-  TestItemCollection,
-  TestRun,
+  type TestItemCollection,
+  type TestRun,
   Range
 } from "vscode"
 import { getClient, getRoot, uriRoot } from "../conections"
 import { IncludeService } from "../includes"
 import { isAbapFile, isAbapStat, isFolder } from "abapfs"
 import {
-  UnitTestAlert,
+  type UnitTestAlert,
   UnitTestAlertKind,
-  UnitTestClass,
-  UnitTestMethod,
+  type UnitTestClass,
+  type UnitTestMethod,
   uriPartsToString
 } from "abap-adt-api"
 import { lineRange } from "../../lib"
-import { AbapObject, isAbapClassInclude } from "abapobject"
+import { type AbapObject, isAbapClassInclude } from "abapobject"
 import { AdtObjectFinder } from "./AdtObjectFinder"
 import { logTelemetry } from "../../services/telemetry"
 

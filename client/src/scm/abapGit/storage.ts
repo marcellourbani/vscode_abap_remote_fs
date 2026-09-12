@@ -1,8 +1,8 @@
-import { Memento, ExtensionContext } from "vscode"
-import { GitRepo } from "abap-adt-api"
+import { type Memento, type ExtensionContext } from "vscode"
+import { type GitRepo } from "abap-adt-api"
 import { mapGet, ArrayToMap } from "../../lib"
 import { addRepo } from "."
-import { ScmData } from "./scm"
+import { type ScmData } from "./scm"
 import { getOrCreateClient } from "../../adt/conections"
 
 const REPOSSTORAGEKEY = "abapGitRepos"

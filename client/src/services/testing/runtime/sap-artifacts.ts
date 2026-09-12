@@ -19,7 +19,7 @@
  * a file on the application server's filesystem and rendered spool output aren't
  * simple table rows — so UI navigation is still the only option for those two.
  */
-import { SapSession } from "./sap-session"
+import { SapSession } from "./sap-session.js"
 
 export class SapArtifacts {
   constructor(private sap: SapSession) {}

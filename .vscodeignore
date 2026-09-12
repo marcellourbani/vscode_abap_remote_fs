@@ -20,6 +20,7 @@ scripts/**
 DOCUMENTATION.md
 **/jest.config.js
 tsconfig.json
+tsconfig.base.json
 skills-lock.json
 vsc-extension-quickstart.md
 tslint.json

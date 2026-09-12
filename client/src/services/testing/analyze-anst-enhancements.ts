@@ -1,6 +1,6 @@
 import * as fs from "fs/promises"
 import * as path from "path"
-import ExcelJS, { CellValue } from "exceljs"
+import ExcelJS, { type CellValue } from "exceljs"
 
 type EnhancementClass = "USER_EXIT" | "DEFINITE" | "POTENTIAL" | "STANDARD"
 

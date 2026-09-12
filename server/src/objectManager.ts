@@ -1,4 +1,8 @@
-import { AbapObjectDetail, objectIsValid, MainProgram } from "vscode-abap-remote-fs-sharedapi"
+import {
+  type AbapObjectDetail,
+  objectIsValid,
+  type MainProgram
+} from "vscode-abap-remote-fs-sharedapi"
 import { getObjectDetails, getVSCodeUri } from "./clientapis"
 import { syntaxCheck } from "./syntaxcheck"
 import { documents } from "./server"

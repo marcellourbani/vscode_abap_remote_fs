@@ -1,8 +1,8 @@
 import { Root, isAbapFile, isAbapStat } from "abapfs"
 import { cache, log } from "../../lib"
 import { getRoot } from "../conections"
-import { MainInclude } from "abap-adt-api"
-import { PACKAGE, AbapObject } from "abapobject"
+import { type MainInclude } from "abap-adt-api"
+import { PACKAGE, type AbapObject } from "abapobject"
 
 export interface IncludeData {
   current: MainInclude | undefined

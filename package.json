@@ -15,8 +15,10 @@
     "name": "Marcello Urbani"
   },
   "homepage": "https://marcellourbani.github.io/vscode_abap_remote_fs",
+  "type": "module",
   "engines": {
-    "vscode": "^1.105.0"
+    "vscode": "^1.105.0",
+    "node": ">=22"
   },
   "categories": [
     "Programming Languages",
@@ -51,7 +53,7 @@
     "onCommand:abapfs.runInEmbeddedGui",
     "onCommand:abapfs.showWalkThrough"
   ],
-  "main": "./client/dist/extension",
+  "main": "./client/dist/extension.js",
   "scripts": {
     "vscode:prepublish": "npm run bundle && npm run typecheck",
     "bundle": "npm run build_modules&&cd server && npm run bundle && cd ../client && npm run bundle",
@@ -79,13 +81,13 @@
   },
   "devDependencies": {
     "@changesets/cli": "^2.31.0",
-    "@types/mocha": "^7.0.2",
-    "@types/node": "^18.11.18",
+    "@types/node": "^22.0.0",
     "@vscode/vsce": "^3.3.0",
     "concurrently": "^6.3.0",
     "husky": "^9.1.7",
     "ovsx": "^0.10.1",
     "rimraf": "^3.0.2",
+    "ts-morph": "^24.0.0",
     "typescript": "6.0.3"
   },
   "contributes": {

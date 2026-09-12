@@ -7,7 +7,12 @@ import * as vscode from "vscode"
 import * as ExcelJS from "exceljs"
 import { registerToolWithRegistry } from "./toolRegistry"
 import { logTelemetry } from "../telemetry"
-import { WebviewManager, RowRange, SortColumn, ColumnFilter } from "../webviewManager"
+import {
+  WebviewManager,
+  type RowRange,
+  type SortColumn,
+  type ColumnFilter
+} from "../webviewManager"
 import { getClient } from "../../adt/conections"
 import { getSAPSystemInfo } from "../sapSystemInfo"
 import { funWindow as window } from "../funMessenger"

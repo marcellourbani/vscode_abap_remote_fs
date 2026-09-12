@@ -1,4 +1,4 @@
-import { CompletionProposal } from "abap-adt-api"
+import { type CompletionProposal } from "abap-adt-api"
 import { CompletionItem, Position, Range, TextEdit } from "vscode-languageserver-protocol"
 
 const INTERFACEROLE = 58 // sccmp_role_intftype in abap

@@ -2,16 +2,16 @@ import { getOrCreateRoot } from "../adt/conections"
 import {
   FileSystemError,
   FileChangeType,
-  FileSystemProvider,
+  type FileSystemProvider,
   EventEmitter,
-  FileChangeEvent,
+  type FileChangeEvent,
   Uri,
   Disposable,
-  FileStat,
+  type FileStat,
   FileType,
   TextDocumentSaveReason,
   commands,
-  ExtensionContext,
+  type ExtensionContext,
   workspace
 } from "vscode"
 import { after, caughtToString, log } from "../lib"
@@ -20,9 +20,9 @@ import { getSaveReason, clearSaveReason } from "../listeners"
 import { selectTransportIfNeeded } from "../adt/AdtTransports"
 import { LocalFsProvider } from "./LocalFsProvider"
 import { isHttpError } from "abap-adt-api"
-import { ReloginError } from "abapfs/out/lockManager"
+import { ReloginError } from "abapfs"
 import { funWindow as window } from "../services/funMessenger"
-import { AbapObject } from "abapobject"
+import { type AbapObject } from "abapobject"
 
 const openInGui = (uri: Uri, object: AbapObject) => {
   const guiObjects = object.gui_objects

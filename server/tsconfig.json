@@ -1,30 +1,5 @@
 {
-  "compilerOptions": {
-    "module": "commonjs",
-    "target": "ES2019",
-    "rootDir": "src",
-    "moduleResolution": "bundler",
-    "outDir": "./out",
-    "sourceMap": true,
-    "strict": true,
-    // "noUnusedLocals": true,
-    "composite": true,
-    /* Incremental Compilation */
-    "incremental": true,
-    "tsBuildInfoFile": ".tsbuildinfo",
-    "skipLibCheck": true,
-    "esModuleInterop": true,
-    "types": [
-      "node",
-      "jest"
-    ]
-  },
-  "include": [
-    "src"
-  ],
-  "exclude": [
-    "node_modules",
-    ".vscode-test"
-    // "src/**/*.test.ts"
-  ]
+  "extends": "../tsconfig.base.json",
+  "include": ["src"],
+  "exclude": ["node_modules", "src/**/*.test.ts", "src/**/*.spec.ts"]
 }

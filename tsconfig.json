@@ -1,44 +1,5 @@
 {
-  "compilerOptions": {
-    "experimentalDecorators": true,
-    "module": "commonjs",
-    "moduleResolution": "bundler",
-    "types": ["node"],
-    "esModuleInterop": true,
-    "target": "ES2021",
-    "outDir": "out",
-    "lib": [
-      "es2021"
-    ],
-    "sourceMap": true,
-    "noUncheckedIndexedAccess": true,
-    /* Incremental Compilation */
-    "incremental": true,
-    "tsBuildInfoFile": ".tsbuildinfo",
-    /* Strict Type-Checking Option */
-    "strict": true /* enable all strict type-checking options */,
-    /* Additional Checks */
-    "noUnusedLocals": false /* Report errors on unused locals. */
-    // "noImplicitReturns": true, /* Report error when not all code paths in function return a value. */
-    // "noFallthroughCasesInSwitch": true, /* Report errors for fallthrough cases in switch statement. */
-    // "noUnusedParameters": true,  /* Report errors on unused parameters. */
-  },
-  "include": [
-    "src"
-  ],
-  "exclude": [
-    "node_modules",
-    ".vscode-test",
-    "*.d.ts",
-    "tmp",
-    "*.test.ts",
-  ],
-  "references": [
-    {
-      "path": "./server"
-    },
-    {
-      "path": "./client"
-    }
-  ]
+  "$comment": "Editor/solution root. tsc is type-check only per package; nothing builds via project references, so this carries no files.",
+  "extends": "./tsconfig.base.json",
+  "files": []
 }

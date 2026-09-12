@@ -23,7 +23,7 @@ import {
 import { pickTestFolder } from "./setTestFolder"
 import { runRecordWebGuiFlow } from "./recordWebGuiFlow"
 import {
-  RuntimePaths,
+  type RuntimePaths,
   ensurePlaywrightSidebarSupport,
   ensureTestFolderBaseline,
   readActiveSystem,

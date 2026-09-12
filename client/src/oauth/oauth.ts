@@ -1,6 +1,6 @@
 import ClientOAuth2, { Token } from "client-oauth2"
-import { getToken, setToken, TokenData, strip } from "./grantStorage"
-import { RemoteConfig, formatKey, RemoteManager } from "../config"
+import { getToken, setToken, type TokenData, strip } from "./grantStorage"
+import { type RemoteConfig, formatKey, RemoteManager } from "../config"
 import { loginServer, cfCodeGrant } from "abap_cloud_platform"
 import { after, cache } from "../lib"
 import { some, none, toUndefined } from "fp-ts/lib/Option"

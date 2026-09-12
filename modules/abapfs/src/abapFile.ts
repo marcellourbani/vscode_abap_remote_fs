@@ -1,8 +1,8 @@
-import { FileStat, FileType, FileSystemError } from "vscode"
-import { AbapObject } from "../../abapObject"
-import { AbapFsService } from "."
-import { AbapFolder, isAbapFolder } from "./abapFolder"
-import { ObjectVersion, isCreatableTypeId } from "abap-adt-api"
+import { type FileStat, FileType, FileSystemError } from "vscode"
+import { type AbapObject } from "abapobject"
+import { type AbapFsService } from "./index.js"
+import { AbapFolder, isAbapFolder } from "./abapFolder.js"
+import { type ObjectVersion, isCreatableTypeId } from "abap-adt-api"
 const tag = Symbol("AbapFile")
 
 interface FileCache {

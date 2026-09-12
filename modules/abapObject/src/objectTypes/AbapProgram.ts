@@ -1,12 +1,15 @@
-import { AbapObjectBase } from "../AbapObject"
-import { NodeStructure, ADTClient } from "abap-adt-api"
-import { ObjectErrors } from "../AOError"
+import { AbapObjectBase } from "../AbapObject.js"
+import { type NodeStructure, ADTClient } from "abap-adt-api"
+import { ObjectErrors } from "../AOError.js"
 
 const tag = Symbol("AbapProgram")
 
 export class AbapProgram extends AbapObjectBase {
   [tag] = true
-  protected filterInvalid(original: NodeStructure, includeIncludes?: boolean): NodeStructure {
+  protected override filterInvalid(
+    original: NodeStructure,
+    includeIncludes?: boolean
+  ): NodeStructure {
     if (!this.structure) throw ObjectErrors.noStructure(this, `metadata not loaded for ${this.key}`)
 
     const { nodes } = original
@@ -34,11 +37,11 @@ export class AbapProgram extends AbapObjectBase {
     return { categories: [], objectTypes: [], nodes: [mainProgramNode] }
   }
 
-  get extension() {
+  override get extension() {
     return this.expandable ? "" : ".prog.abap"
   }
 
-  async childComponents(includeIncludes?: boolean) {
+  override async childComponents(includeIncludes?: boolean) {
     if (!this.structure) await this.loadStructure()
     if (!this.expandable) return { nodes: [], categories: [], objectTypes: [] }
     // For filesystem operations, filterInvalid() discards all nodeContents results anyway —
