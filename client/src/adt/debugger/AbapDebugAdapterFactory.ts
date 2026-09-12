@@ -1,13 +1,13 @@
 import {
-  DebugAdapterDescriptor,
-  DebugAdapterDescriptorFactory,
+  type DebugAdapterDescriptor,
+  type DebugAdapterDescriptorFactory,
   DebugAdapterInlineImplementation
 } from "vscode"
 import { funWindow as window } from "../../services/funMessenger"
 import { log } from "../../lib"
-import { AbapDebugSession, AbapDebugSessionCfg } from "./abapDebugSession"
+import { AbapDebugSession, type AbapDebugSessionCfg } from "./abapDebugSession"
 import { DebugListener } from "./debugListener"
-import { DebuggerUI } from "./debugService"
+import { type DebuggerUI } from "./debugService"
 
 const ui: DebuggerUI = {
   Confirmator: (message: string) =>

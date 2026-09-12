@@ -1,20 +1,20 @@
 import {
   ADTClient,
-  DebugAttach,
-  Debuggee,
-  DebugStep,
-  DebugStepType,
+  type DebugAttach,
+  type Debuggee,
+  type DebugStep,
+  type DebugStepType,
   session_types,
   isAdtError
 } from "abap-adt-api"
 import { newClientFromKey } from "./functions"
 import { log, caughtToString, ignore } from "../../lib"
-import { DebugProtocol } from "@vscode/debugprotocol"
+import { type DebugProtocol } from "@vscode/debugprotocol"
 import { Disposable, EventEmitter } from "vscode"
 import { ContinuedEvent, Source, StoppedEvent, ThreadEvent } from "@vscode/debugadapter"
 import { vsCodeUri } from "../../langClient"
 import { DebugListener, errorType, THREAD_EXITED } from "./debugListener"
-import { CapturedStackFrame } from "./replay/types"
+import { type CapturedStackFrame } from "./replay/types"
 
 interface RawStackEntry {
   adtUri: string

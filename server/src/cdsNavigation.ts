@@ -1,4 +1,4 @@
-import { ADTClient, DdicObjectReference } from "abap-adt-api"
+import { ADTClient, type DdicObjectReference } from "abap-adt-api"
 
 async function ddicRepositoryAccessRaw(
   client: ADTClient,

@@ -1,8 +1,8 @@
 import {
   debug,
   DebugConfigurationProviderTriggerKind,
-  DebugSession,
-  ExtensionContext
+  type DebugSession,
+  type ExtensionContext
 } from "vscode"
 import { AbapConfigurationProvider, DEBUGTYPE } from "./abapConfigurationProvider"
 import { AbapDebugAdapterFactory } from "./AbapDebugAdapterFactory"

@@ -1,20 +1,20 @@
 import {
-  SourceControlResourceGroup,
-  SourceControlResourceState,
+  type SourceControlResourceGroup,
+  type SourceControlResourceState,
   Uri,
   scm,
-  SourceControl,
+  type SourceControl,
   EventEmitter,
-  Command,
-  ExtensionContext,
+  type Command,
+  type ExtensionContext,
   workspace
 } from "vscode"
 import { cache } from "../../lib"
 import { AbapRevisionService } from "./abaprevisionservice"
 import { AbapFsCommands } from "../../commands"
-import { PathItem, isAbapStat } from "abapfs"
+import { type PathItem, isAbapStat } from "abapfs"
 import { createUri } from "../../adt/operations/AdtObjectFinder"
-import { Revision } from "abap-adt-api"
+import { type Revision } from "abap-adt-api"
 import { AbapRevision, ADTREVISIONSCHEME } from "./documentprovider"
 import { abapUri } from "../../adt/conections"
 import { AbapQuickDiff } from "./quickdiff"

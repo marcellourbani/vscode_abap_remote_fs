@@ -3,7 +3,7 @@ import { afterAll, describe, expect, it, jest } from "@jest/globals"
 
 jest.mock("@playwright/test", () => ({ defineConfig: (config: unknown) => config }))
 
-const configPath = path.resolve(__dirname, "playwright.config.js")
+const configPath = path.resolve(__dirname, "playwright.config.ts")
 const originalEnv = { ...process.env }
 
 function loadConfig(env: Record<string, string | undefined>) {
@@ -14,7 +14,7 @@ function loadConfig(env: Record<string, string | undefined>) {
   }
   let config: any
   jest.isolateModules(() => {
-    config = require(configPath)
+    config = require(configPath).default
   })
   return config
 }

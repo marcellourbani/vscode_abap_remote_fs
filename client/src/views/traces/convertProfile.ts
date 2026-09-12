@@ -1,5 +1,9 @@
-import { TraceHitList, TraceRun, TraceStatementResponse } from "abap-adt-api/build/api/tracetypes"
-import { Profile, ProfileNode } from "v8-inspect-profiler"
+import {
+  type TraceHitList,
+  type TraceRun,
+  type TraceStatementResponse
+} from "abap-adt-api/build/api/tracetypes"
+import { type Profile, type ProfileNode } from "v8-inspect-profiler"
 import { log } from "../../lib"
 // import { splitAdtUri } from "../../lib"
 

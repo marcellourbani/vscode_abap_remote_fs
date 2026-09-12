@@ -11,7 +11,7 @@ const newContext = jest.fn(async () => ({ get, post, storageState, dispose }))
 
 jest.mock("playwright", () => ({ request: { newContext } }))
 
-const setup: () => Promise<void> = require("./sso-global-setup.js")
+const setup: () => Promise<void> = require("./sso-global-setup.ts").default
 const originalEnv = { ...process.env }
 let directory: string
 let statePath: string

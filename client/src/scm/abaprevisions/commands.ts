@@ -1,5 +1,12 @@
 import { command, AbapFsCommands } from "../../commands"
-import { Uri, QuickPickItem, commands, workspace, ProgressLocation, TabInputTextDiff } from "vscode"
+import {
+  Uri,
+  type QuickPickItem,
+  commands,
+  workspace,
+  ProgressLocation,
+  TabInputTextDiff
+} from "vscode"
 import { funWindow as window } from "../../services/funMessenger"
 import {
   abapUri,
@@ -10,12 +17,12 @@ import {
   rootIsConnected
 } from "../../adt/conections"
 import { AbapRevisionService, revLabel } from "./abaprevisionservice"
-import { ADTClient, Revision } from "abap-adt-api"
+import { ADTClient, type Revision } from "abap-adt-api"
 import { AbapQuickDiff } from "./quickdiff"
 import { decodeRevisioUrl, revisionUri } from "./documentprovider"
 import { RemoteManager, formatKey } from "../../config"
 import { isAbapFile } from "abapfs"
-import { AGroup, AState } from "./abapscm"
+import { type AGroup, type AState } from "./abapscm"
 import { caughtToString, atob, btoa } from "../../lib"
 import * as t from "io-ts"
 import { isRight } from "fp-ts/lib/Either"

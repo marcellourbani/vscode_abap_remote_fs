@@ -1,16 +1,16 @@
 import {
   EventEmitter,
-  FileChangeEvent,
-  FileStat,
-  FileSystemProvider,
+  type FileChangeEvent,
+  type FileStat,
+  type FileSystemProvider,
   FileType,
   Disposable,
   Uri,
-  ExtensionContext,
+  type ExtensionContext,
   workspace,
   FileChangeType,
   RelativePattern,
-  FileSystemWatcher
+  type FileSystemWatcher
 } from "vscode"
 import { LocalStorage } from "./localStorage"
 import { ADTSCHEME } from "../adt/conections"

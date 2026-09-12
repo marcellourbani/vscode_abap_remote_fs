@@ -1,10 +1,15 @@
-import { workspace, ExtensionContext, commands } from "vscode"
+import { workspace, type ExtensionContext, commands } from "vscode"
 import { funWindow as window } from "../funMessenger"
 import { getOrCreateClient } from "../../adt/conections"
 import { connectedRoots } from "../../config"
 import { FeedStateManager } from "./feedStateManager"
 import { parseFeedResponse, toFeedMetadata } from "./feedParsers"
-import { FeedSubscriptions, PollingTask, FeedEntry, FeedMetadata } from "./feedTypes"
+import {
+  type FeedSubscriptions,
+  type PollingTask,
+  type FeedEntry,
+  type FeedMetadata
+} from "./feedTypes"
 import { fullParse, xmlArray } from "abap-adt-api/build/utilities"
 
 const MIN_POLL_INTERVAL = 120 // 2 minutes in seconds

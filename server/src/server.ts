@@ -1,11 +1,11 @@
-import { CommLogTogglePayload, Methods } from "vscode-abap-remote-fs-sharedapi"
+import { type CommLogTogglePayload, Methods } from "vscode-abap-remote-fs-sharedapi"
 import {
   TextDocuments,
-  InitializeParams,
+  type InitializeParams,
   DidChangeConfigurationNotification,
   CompletionItem,
   CodeActionKind,
-  InitializeResult,
+  type InitializeResult,
   TextDocumentSyncKind
 } from "vscode-languageserver"
 import { connection, log, setCommLogActive } from "./clientManager"

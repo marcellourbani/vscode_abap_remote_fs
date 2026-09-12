@@ -13,11 +13,11 @@ import * as vscode from "vscode"
 import { randomBytes } from "crypto"
 import { funWindow as window } from "../services/funMessenger"
 import {
-  RemoteConfig,
-  GuiType,
-  SapGuiConfig,
-  StoredRemoteConfig,
-  StoredRemoteMap,
+  type RemoteConfig,
+  type GuiType,
+  type SapGuiConfig,
+  type StoredRemoteConfig,
+  type StoredRemoteMap,
   validateNewConfigId,
   formatKey
 } from "../config"

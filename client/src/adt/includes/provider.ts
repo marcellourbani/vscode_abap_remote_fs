@@ -1,7 +1,14 @@
-import { CodeLensProvider, TextDocument, EventEmitter, CodeLens, Range, Uri } from "vscode"
+import {
+  type CodeLensProvider,
+  type TextDocument,
+  EventEmitter,
+  CodeLens,
+  Range,
+  Uri
+} from "vscode"
 import { abapUri } from "../conections"
 import { IncludeService } from "./service"
-import { MainProgram } from "vscode-abap-remote-fs-sharedapi"
+import { type MainProgram } from "vscode-abap-remote-fs-sharedapi"
 import { AbapFsCommands } from "../../commands"
 import { funWindow as window } from "../../services/funMessenger"
 

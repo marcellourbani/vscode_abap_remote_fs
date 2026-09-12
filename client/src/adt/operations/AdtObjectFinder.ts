@@ -1,29 +1,37 @@
 import { PACKAGE } from "./AdtObjectCreator"
 import {
   ADTClient,
-  CreatableTypeIds,
-  FragmentLocation,
-  ObjectType,
-  SearchResult,
-  UriParts
+  type CreatableTypeIds,
+  type FragmentLocation,
+  type ObjectType,
+  type SearchResult,
+  type UriParts
 } from "abap-adt-api"
-import { QuickPickItem, workspace, commands, Uri, FileStat, Range, ThemeIcon } from "vscode"
+import {
+  type QuickPickItem,
+  workspace,
+  commands,
+  Uri,
+  type FileStat,
+  Range,
+  ThemeIcon
+} from "vscode"
 
 import { splitAdtUri, vscPosition, log, caughtToString, promCache } from "../../lib"
 import { getClient, getRoot, uriRoot } from "../conections"
 import {
-  PathItem,
+  type PathItem,
   isFolder,
   isAbapFolder,
   isAbapFile,
   isAbapStat,
   Root,
   AbapFile,
-  AbapStat
+  type AbapStat
 } from "abapfs"
 import { context } from "../../extension"
 import { funWindow as window } from "../../services/funMessenger"
-import { getRecent, addRecent, clearRecent, RecentObject } from "./recentObjects"
+import { getRecent, addRecent, clearRecent, type RecentObject } from "./recentObjects"
 import { getObjectTypeLabel } from "../../views/objectTypeLabels"
 
 interface AdtSearchResult {

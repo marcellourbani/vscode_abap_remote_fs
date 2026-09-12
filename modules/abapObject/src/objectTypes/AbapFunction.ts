@@ -1,11 +1,11 @@
-import { AbapObjectBase, AbapObject } from "../AbapObject"
-import { AbapObjectService } from "../AOService"
-import { ObjectErrors } from "../AOError"
+import { AbapObjectBase, type AbapObject } from "../AbapObject.js"
+import { type AbapObjectService } from "../AOService.js"
+import { ObjectErrors } from "../AOError.js"
 
 const tag = Symbol("AbapFunction")
 export class AbapFunction extends AbapObjectBase {
   [tag] = true
-  get extension() {
+  override get extension() {
     return ".fugr.abap"
   }
   constructor(
@@ -28,7 +28,7 @@ export class AbapFunction extends AbapObjectBase {
 
     this.parent = parent
   }
-  readonly parent: AbapObject
+  override readonly parent: AbapObject
 }
 
 export const isAbapFunction = (x: any): x is AbapFunction => !!x?.[tag]

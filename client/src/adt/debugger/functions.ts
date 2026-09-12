@@ -1,5 +1,5 @@
-import { ADTClient, ClientOptions, createSSLConfig } from "abap-adt-api"
-import { ClientConfiguration } from "vscode-abap-remote-fs-sharedapi"
+import { ADTClient, type ClientOptions, createSSLConfig } from "abap-adt-api"
+import { type ClientConfiguration } from "vscode-abap-remote-fs-sharedapi"
 import * as https from "https"
 import { readFileSync, existsSync } from "fs"
 import { formatKey } from "../../config"

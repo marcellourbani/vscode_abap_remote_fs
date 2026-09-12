@@ -1,11 +1,11 @@
 import {
   CancellationToken,
   Position,
-  RenameParams,
+  type RenameParams,
   TextEdit,
   WorkspaceEdit
 } from "vscode-languageserver"
-import { WorkDoneProgress } from "vscode-languageserver/lib/progress"
+import { type WorkDoneProgress } from "vscode-languageserver/lib/progress"
 import { getVSCodeUri } from "./clientapis"
 import { isAbap } from "./functions"
 import { clientAndObjfromUrl } from "./utilities"

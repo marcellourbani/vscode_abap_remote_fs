@@ -1,5 +1,5 @@
-import { ScmData, ScmCredentials } from "./scm"
-import { Memento } from "vscode"
+import { type ScmData, type ScmCredentials } from "./scm"
+import { type Memento } from "vscode"
 import {
   PasswordVault,
   createStore,
@@ -8,9 +8,9 @@ import {
   createTaskTransformer,
   inputBox
 } from "../../lib"
-import { some, fromEither, Option, isSome } from "fp-ts/lib/Option"
+import { some, fromEither, type Option, isSome } from "fp-ts/lib/Option"
 import { context } from "../../extension"
-import { ADTClient, GitRepo } from "abap-adt-api"
+import { ADTClient, type GitRepo } from "abap-adt-api"
 import { getClient } from "../../adt/conections"
 
 let uStore: Memento

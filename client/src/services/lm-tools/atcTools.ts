@@ -13,7 +13,7 @@ import { packageUri } from "../../adt/packageUri"
 import { atcProvider } from "../../views/abaptestcockpit"
 import { getATCDecorations } from "../../views/abaptestcockpit/decorations"
 import { assertToolInvocationAuthorized } from "./toolGuard"
-import { listAtcVariants, AtcVariant } from "../../adt/atcVariants"
+import { listAtcVariants, type AtcVariant } from "../../adt/atcVariants"
 
 // ============================================================================
 // INTERFACES

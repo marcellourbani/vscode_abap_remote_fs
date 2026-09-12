@@ -1,9 +1,9 @@
 import * as vscode from "vscode"
 import {
   NOTEBOOK_TYPE,
-  AbapNotebookDocument,
-  AbapNotebookCell,
-  CellType,
+  type AbapNotebookDocument,
+  type AbapNotebookCell,
+  type CellType,
   SQL_LANGUAGE_ID
 } from "./types"
 import { log } from "../lib"

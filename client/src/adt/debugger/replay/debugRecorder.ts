@@ -3,12 +3,12 @@ import { Uri, workspace } from "vscode"
 import { funWindow as window } from "../../../services/funMessenger"
 import { log, caughtToString } from "../../../lib"
 import {
-  DebugSnapshot,
-  DebugRecording,
-  CapturedScope,
-  CapturedStackFrame,
-  CapturedVariable,
-  CaptureOptions,
+  type DebugSnapshot,
+  type DebugRecording,
+  type CapturedScope,
+  type CapturedStackFrame,
+  type CapturedVariable,
+  type CaptureOptions,
   DEFAULT_CAPTURE_OPTIONS
 } from "./types"
 import { captureScopesBatched } from "./variableCapture"

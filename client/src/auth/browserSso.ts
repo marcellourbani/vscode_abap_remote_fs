@@ -21,7 +21,7 @@
 import * as http from "http"
 import { randomBytes } from "crypto"
 import open from "open"
-import { AuthResult } from "./types"
+import { type AuthResult } from "./types"
 import { PasswordVault, log } from "../lib"
 import { formatKey } from "../config"
 import * as vscode from "vscode"

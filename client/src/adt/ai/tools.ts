@@ -1,4 +1,4 @@
-import { ExtensionContext } from "vscode"
+import { type ExtensionContext } from "vscode"
 import { ActivateTool } from "./activate"
 import { registerToolWithRegistry } from "../../services/lm-tools/toolRegistry"
 

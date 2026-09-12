@@ -1,17 +1,22 @@
 import {
-  SourceControl,
-  SourceControlResourceGroup,
-  SourceControlResourceState,
+  type SourceControl,
+  type SourceControlResourceGroup,
+  type SourceControlResourceState,
   Uri,
-  Command,
+  type Command,
   scm
 } from "vscode"
-import { GitRepo, GitStagingObject, GitStagingFile, GitStaging } from "abap-adt-api"
-import { Cache, mapGet, cache } from "../../lib"
+import {
+  type GitRepo,
+  type GitStagingObject,
+  type GitStagingFile,
+  type GitStaging
+} from "abap-adt-api"
+import { type Cache, mapGet, cache } from "../../lib"
 import { dataCredentials } from "./credentials"
 import { gitUrl } from "./documentProvider"
 import { AbapFsCommands } from "../../commands"
-import { isNone, fromNullable, Option, some } from "fp-ts/lib/Option"
+import { isNone, fromNullable, type Option, some } from "fp-ts/lib/Option"
 import { saveRepos } from "./storage"
 import { getClient } from "../../adt/conections"
 
