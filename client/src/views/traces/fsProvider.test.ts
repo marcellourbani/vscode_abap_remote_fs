@@ -211,7 +211,7 @@ describe("ADTPROFILE constant", () => {
 
 describe("adtProfileUri", () => {
   it("creates uri with connId as authority and .cpuprofile extension", () => {
-    const run = { connId: "dev100", run: { id: "/sap/bc/trace/123" } }
+    const run = { connId: "dev100", run: { id: "/sap/bc/trace/123" } } as any
     const uri = adtProfileUri(run)
     expect(uri.scheme).toBe("adt_profile")
     expect(uri.authority).toBe("dev100")

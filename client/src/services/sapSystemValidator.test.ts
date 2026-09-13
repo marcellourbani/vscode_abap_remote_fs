@@ -44,7 +44,7 @@ async function getValidator() {
   const { SapSystemValidator } = await import("./sapSystemValidator")
   // Reset singleton
   ;(SapSystemValidator as any).instance = undefined
-  return SapSystemValidator.getInstance() as InstanceType<typeof SapSystemValidator>
+  return SapSystemValidator.getInstance() as any
 }
 
 import { SapSystemValidator } from "./sapSystemValidator"

@@ -84,18 +84,6 @@ vi.mock("../../lib", () => ({
   log: vi.fn()
 }))
 
-vi.mock("ramda", () => ({
-  sortWith: vi.fn(function () {
-    return (arr: any[]) => arr
-  }),
-  ascend: vi.fn(function () {
-    return vi.fn()
-  }),
-  prop: vi.fn(function () {
-    return vi.fn()
-  })
-}))
-
 import { hasExemption, approvedExemption, AtcRoot, AtcSystem, AtcObject, AtcFind } from "./view"
 import { setContext } from "../../context"
 import * as __$mock_vscode from "vscode"

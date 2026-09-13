@@ -157,7 +157,7 @@ beforeEach(() => {
       return vals[key] !== undefined ? vals[key] : def
     }),
     update: vi.fn().mockResolvedValue(undefined)
-  })
+  } as any)
 
   vi.mocked(vscode.workspace.onDidChangeConfiguration).mockReturnValue({ dispose: vi.fn() })
 
@@ -169,7 +169,7 @@ beforeEach(() => {
     command: undefined,
     tooltip: "",
     backgroundColor: undefined
-  })
+  } as any)
   vi.mocked(funMessenger.funWindow.showWarningMessage).mockResolvedValue(undefined)
   vi.mocked(funMessenger.funWindow.showInformationMessage).mockResolvedValue(undefined)
   vi.mocked(funMessenger.funWindow.showErrorMessage).mockResolvedValue(undefined)
@@ -222,7 +222,7 @@ describe("HeartbeatService start / stop", () => {
       get: vi.fn(function (key: string, def: any) {
         return key === "enabled" ? false : def
       })
-    })
+    } as any)
     const svc = initializeHeartbeatService(context)
     await svc.start()
     expect(svc.getStatus().isRunning).toBe(false)
@@ -236,7 +236,7 @@ describe("HeartbeatService start / stop", () => {
         if (key === "model") return ""
         return def
       })
-    })
+    } as any)
     const svc = initializeHeartbeatService(context)
     await svc.start()
     expect(svc.getStatus().isRunning).toBe(false)
@@ -408,7 +408,7 @@ describe("HeartbeatService.triggerNow", () => {
         if (key === "maxConsecutiveErrors") return 5
         return def
       })
-    })
+    } as any)
     ;(runHeartbeatLM as Mock).mockResolvedValue({
       status: "alert",
       response: "Alert!",
@@ -550,7 +550,7 @@ describe("HeartbeatService consecutive error handling", () => {
         if (key === "notifyOnError") return false
         return def
       })
-    })
+    } as any)
     ;(runHeartbeatLM as Mock).mockResolvedValue({
       status: "error",
       response: "",

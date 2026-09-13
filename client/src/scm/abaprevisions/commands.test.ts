@@ -118,15 +118,6 @@ vi.mock("../../lib", () => ({
   }
 }))
 
-vi.mock("io-ts", () => ({
-  type: vi.fn().mockReturnValue({ decode: vi.fn() }),
-  string: "string"
-}))
-
-vi.mock("fp-ts/lib/Either", () => ({
-  isRight: vi.fn().mockReturnValue(false)
-}))
-
 vi.mock("../../langClient", () => ({
   vsCodeUri: vi.fn()
 }))

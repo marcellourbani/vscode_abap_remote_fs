@@ -20,7 +20,6 @@
 
 import * as http from "http"
 import { randomBytes } from "crypto"
-import open from "open"
 import { type AuthResult } from "./types"
 import { PasswordVault, log } from "../lib"
 import { formatKey } from "../config"
@@ -207,11 +206,17 @@ export function startCookieCaptureServer(
       const helperUrl = `http://127.0.0.1:${getListeningPort(server)}/${token}`
 
       // Open in the user's default browser; only show notification as fallback
-      open(helperUrl)
-        .then(() => {
-          log.debug(`[browser-sso] Browser opened successfully for: ${helperUrl}`)
+      Promise.resolve(vscode.env.openExternal(vscode.Uri.parse(helperUrl)))
+        .then(opened => {
+          if (opened) log.debug(`[browser-sso] Browser opened successfully for: ${helperUrl}`)
+          else {
+            log.debug(
+              `[browser-sso] VS Code declined to open browser, showing notification fallback`
+            )
+            if (notifyUser) notifyUser(helperUrl)
+          }
         })
-        .catch(err => {
+        .catch((err: unknown) => {
           log.debug(`[browser-sso] Failed to open browser (${err}), showing notification fallback`)
           if (notifyUser) notifyUser(helperUrl)
         })

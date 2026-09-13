@@ -51,6 +51,7 @@ import { registerChatTools } from "./adt/ai/tools"
 import { initializeEnhancementDecorations } from "./views/enhancementDecorations"
 import { initializeBlameGutter } from "./views/blameGutter"
 import { clearSystemInfoCache } from "./services/sapSystemInfo"
+import { copilotLogger } from "./services/abapCopilotLogger"
 import { HeartbeatWatchlist } from "./services/heartbeat/heartbeatWatchlist"
 import { RapGeneratorPanel } from "./views/rapGenerator/rapGeneratorView"
 import { visualizeDependencyGraph } from "./services/dependencyGraph"
@@ -155,7 +156,6 @@ export async function activate(ctx: ExtensionContext): Promise<AbapFsApi> {
     // Register List ADT Feeds command
     context.subscriptions.push(commands.registerCommand("abapfs.listAdtFeeds", listAdtFeedsCommand))
 
-    const { copilotLogger } = require("./services/abapCopilotLogger")
     copilotLogger.info(
       "Extension",
       "ABAP FS logging initialized - Ready to document your debugging adventures 🗺️"
@@ -351,7 +351,7 @@ export async function activate(ctx: ExtensionContext): Promise<AbapFsApi> {
   restoreLocks()
   registerAbapGit(context)
 
-  registerCommands(context)
+  await registerCommands(context)
 
   // 📊 Register Dependency Graph Command
   try {

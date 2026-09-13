@@ -119,7 +119,7 @@ function makeStreamWithText(text: string) {
 
 function makeStreamWithToolCall(toolName: string, input: unknown = {}) {
   const vscode = __$mock_vscode
-  const part = new vscode.LanguageModelToolCallPart("call-1", toolName, input)
+  const part = new vscode.LanguageModelToolCallPart("call-1", toolName, input as object)
   return {
     stream: (function* () {
       yield part

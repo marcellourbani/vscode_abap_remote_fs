@@ -42,27 +42,16 @@ vi.mock("../../config", () => ({
   }
 }))
 
-vi.mock("tmp-promise", () => ({
-  file: vi.fn().mockResolvedValue({
-    path: "/tmp/test.sap",
-    fd: 3,
-    cleanup: vi.fn()
-  })
+vi.mock("node:fs/promises", () => ({
+  writeFile: vi.fn().mockResolvedValue(undefined),
+  mkdtemp: vi.fn().mockResolvedValue("/tmp/abapfs_shortcut_abc"),
+  rm: vi.fn().mockResolvedValue(undefined)
 }))
-
-vi.mock("fs-jetpack", () => ({
-  writeAsync: vi.fn().mockResolvedValue(undefined)
-}))
-
 vi.mock("../../lib", () => ({
-  log: vi.fn()
+  log: vi.fn(),
+  caughtToString: vi.fn()
 }))
-
-vi.mock("fs", () => ({
-  closeSync: vi.fn()
-}))
-
-vi.mock("open", () => vi.fn().mockResolvedValue(undefined))
+vi.mock("open", () => ({ default: vi.fn().mockResolvedValue(undefined) }))
 
 vi.mock("../../services/funMessenger", () => ({
   funWindow: {
@@ -333,7 +322,7 @@ describe("executeInGui", () => {
       const config = makeConfig()
       const sapGui = SapGui.create(config as any)
       const origStartGui = sapGui.startGui.bind(sapGui)
-      sapGui.startGui = (cmd: SapGuiCommand) => {
+      sapGui.startGui = async (cmd: SapGuiCommand) => {
         capturedCmd = cmd
       }
       return fn()

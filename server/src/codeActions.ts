@@ -8,7 +8,7 @@ import {
 import { clientAndObjfromUrl, rangeIsEmpty } from "./utilities"
 import { log } from "./clientManager"
 import { type FixProposal } from "abap-adt-api"
-import { decode } from "html-entities"
+import { decodeHTML } from "entities"
 
 /**
  * Collect quick fixes and refactoring actions for the current diagnostic context.
@@ -64,7 +64,10 @@ async function quickfix(parms: CodeActionParams): Promise<CodeAction[] | undefin
         }
       }
     const actions = allProposals.map(p =>
-      CodeAction.create(decode(p["adtcore:name"]), Command.create("fix", "abapfs.quickfix", p, uri))
+      CodeAction.create(
+        decodeHTML(p["adtcore:name"] ?? ""),
+        Command.create("fix", "abapfs.quickfix", p, uri)
+      )
     )
     return actions
   } catch (error) {

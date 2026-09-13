@@ -242,7 +242,7 @@ describe("ObjectPropertyProvider", () => {
     expect(() => provider.scheduleRefresh(true)).not.toThrow()
   })
 
-  it("scheduleRefresh with visible view triggers refresh", done => {
+  it("scheduleRefresh with visible view triggers refresh", async () => {
     const provider = ObjectPropertyProvider.get()
     const mockView = {
       visible: true,
@@ -256,10 +256,7 @@ describe("ObjectPropertyProvider", () => {
     provider.bindView(mockView)
     ;(mockedWindow as any).activeTextEditor = undefined
     provider.scheduleRefresh(true)
-    setTimeout(() => {
-      // No throw is success
-      done()
-    }, 50)
+    await new Promise<void>(resolve => setTimeout(resolve, 50))
   })
 })
 

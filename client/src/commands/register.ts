@@ -1,6 +1,7 @@
 import { type ExtensionContext, commands } from "vscode"
 import { funWindow as window } from "../services/funMessenger"
 import { abapcmds } from "."
+
 // import/export to resolve dependencies
 export { AdtCommands } from "./commands"
 export { IncludeProvider } from "../adt/includes"
@@ -9,13 +10,14 @@ export { ClassHierarchyLensProvider } from "../adt/classhierarchy"
 export { GitCommands } from "../scm/abapGit/commands"
 export { AbapRevisionCommands } from "../scm/abaprevisions/commands"
 
-export const registerCommands = (context: ExtensionContext) => {
+/** Registers all commands. Async so each optional module load is failure-isolated. */
+export const registerCommands = async (context: ExtensionContext) => {
   for (const cmd of abapcmds)
     context.subscriptions.push(commands.registerCommand(cmd.name, cmd.func.bind(cmd.target)))
 
   // 🎯 Register Enhancement Commands
   try {
-    const { showEnhancementSource } = require("../views/enhancementDecorations")
+    const { showEnhancementSource } = await import("../views/enhancementDecorations")
     context.subscriptions.push(
       commands.registerCommand("abapfs.showEnhancementSource", showEnhancementSource)
     )
@@ -25,17 +27,14 @@ export const registerCommands = (context: ExtensionContext) => {
 
   // 🔄 Register SAP System Validator Commands
   try {
-    const { SapSystemValidator } = require("../services/sapSystemValidator")
+    const { SapSystemValidator } = await import("../services/sapSystemValidator")
     const validator = SapSystemValidator.getInstance()
-
     context.subscriptions.push(
       commands.registerCommand("abapfs.retryWhitelist", () => validator.forceRetryWhitelist())
     )
-
     context.subscriptions.push(
       commands.registerCommand("abapfs.showVpnHelp", () => validator.showVpnHelp())
     )
-
     context.subscriptions.push(
       commands.registerCommand("abapfs.refreshWhitelist", async () => {
         try {
@@ -52,7 +51,7 @@ export const registerCommands = (context: ExtensionContext) => {
 
   // 📊 Register Compare With Other System Command
   try {
-    const { registerCompareWithSystemCommand } = require("./compareWithSystem")
+    const { registerCompareWithSystemCommand } = await import("./compareWithSystem")
     registerCompareWithSystemCommand(context)
   } catch (error) {
     console.warn("⚠️ Failed to register compare command:", error)
