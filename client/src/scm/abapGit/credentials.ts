@@ -1,5 +1,5 @@
-import { type ScmData, type ScmCredentials } from "./scm"
-import { type Memento } from "vscode"
+import type { ScmData, ScmCredentials } from "./scm"
+import type { Memento } from "vscode"
 import {
   PasswordVault,
   createStore,

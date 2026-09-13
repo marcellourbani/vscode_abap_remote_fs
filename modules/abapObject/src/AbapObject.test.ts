@@ -1,6 +1,6 @@
 import { AbapObject, convertSlash } from "./AbapObject"
 import { AbapObjectService } from "./AOService"
-import { mock, MockProxy } from "jest-mock-extended"
+import { mock, MockProxy } from "vitest-mock-extended"
 import { isAbapObjectError, Kind } from "./AOError"
 import sampleNodeContents from "./sampledata/nodeContents1.json"
 import sampleMetadata from "./sampledata/classstructure1.json"

@@ -1,39 +1,57 @@
-jest.mock(
-  "vscode",
-  () => ({
-    LanguageModelToolResult: jest.fn().mockImplementation((parts: any[]) => ({ parts })),
-    LanguageModelTextPart: jest.fn().mockImplementation((text: string) => ({ text })),
-    MarkdownString: jest.fn().mockImplementation((value: string) => ({ value })),
-    lm: { registerTool: jest.fn(() => ({ dispose: jest.fn() })) }
+vi.mock("vscode", () => ({
+  LanguageModelToolResult: vi.fn().mockImplementation(function (parts: any[]) {
+    return { parts }
   }),
-  { virtual: true }
-)
+  LanguageModelTextPart: vi.fn().mockImplementation(function (text: string) {
+    return { text }
+  }),
+  MarkdownString: vi.fn().mockImplementation(function (value: string) {
+    return { value }
+  }),
+  lm: {
+    registerTool: vi.fn(function () {
+      return { dispose: vi.fn() }
+    })
+  }
+}))
 
-jest.mock("../../adt/conections", () => ({
-  getClient: jest.fn(),
-  abapUri: jest.fn()
+vi.mock("../../adt/conections", () => ({
+  getClient: vi.fn(),
+  abapUri: vi.fn()
 }))
-jest.mock("../telemetry", () => ({ logTelemetry: jest.fn() }))
-jest.mock("../funMessenger", () => ({ funWindow: { activeTextEditor: undefined } }))
-jest.mock("./toolRegistry", () => ({
-  registerToolWithRegistry: jest.fn(() => ({ dispose: jest.fn() }))
+vi.mock("../telemetry", () => ({ logTelemetry: vi.fn() }))
+vi.mock("../funMessenger", () => ({ funWindow: { activeTextEditor: undefined } }))
+vi.mock("./toolRegistry", () => ({
+  registerToolWithRegistry: vi.fn(function () {
+    return { dispose: vi.fn() }
+  })
 }))
-jest.mock("../abapCopilotLogger", () => ({
-  logCommands: { info: jest.fn(), error: jest.fn(), warn: jest.fn() }
+vi.mock("../abapCopilotLogger", () => ({
+  logCommands: { info: vi.fn(), error: vi.fn(), warn: vi.fn() }
 }))
-jest.mock("../abapSearchService", () => ({ getSearchService: jest.fn() }))
-jest.mock("./shared", () => ({
-  getOptimalObjectURI: jest.fn((type: string, uri: string) => uri + "/source/main"),
-  resolveCorrectURI: jest.fn((uri: string) => Promise.resolve(uri)),
-  getObjectEnhancements: jest.fn(() =>
-    Promise.resolve({ hasEnhancements: false, enhancements: [] })
-  ),
-  getTableTypeFromDD: jest.fn(() => Promise.resolve("")),
-  getTableStructureFromDD: jest.fn(() => Promise.resolve(""))
+vi.mock("../abapSearchService", () => ({ getSearchService: vi.fn() }))
+vi.mock("./shared", () => ({
+  getOptimalObjectURI: vi.fn(function (type: string, uri: string) {
+    return uri + "/source/main"
+  }),
+  resolveCorrectURI: vi.fn(function (uri: string) {
+    return Promise.resolve(uri)
+  }),
+  getObjectEnhancements: vi.fn(function () {
+    return Promise.resolve({ hasEnhancements: false, enhancements: [] })
+  }),
+  getTableTypeFromDD: vi.fn(function () {
+    return Promise.resolve("")
+  }),
+  getTableStructureFromDD: vi.fn(function () {
+    return Promise.resolve("")
+  })
 }))
-jest.mock("./toolGuard", () => ({
-  assertToolInvocationAuthorized: jest.fn(),
-  isToolInvocationAuthorized: jest.fn(() => true)
+vi.mock("./toolGuard", () => ({
+  assertToolInvocationAuthorized: vi.fn(),
+  isToolInvocationAuthorized: vi.fn(function () {
+    return true
+  })
 }))
 
 import { SearchABAPObjectLinesTool } from "./searchObjectLinesTool"
@@ -42,23 +60,24 @@ import { getClient, abapUri } from "../../adt/conections"
 import { funWindow as window } from "../funMessenger"
 import { logTelemetry } from "../telemetry"
 import { getObjectEnhancements } from "./shared"
+import type { Mock } from "vitest"
 
 const mockToken = {} as any
 function makeOptions(input: any = {}) {
   return { input } as any
 }
 
-const mockSearcher = { searchObjects: jest.fn() }
-const mockClient = { getObjectSource: jest.fn() }
+const mockSearcher = { searchObjects: vi.fn() }
+const mockClient = { getObjectSource: vi.fn() }
 
 describe("SearchABAPObjectLinesTool", () => {
   let tool: SearchABAPObjectLinesTool
 
   beforeEach(() => {
     tool = new SearchABAPObjectLinesTool()
-    jest.clearAllMocks()
-    ;(getSearchService as jest.Mock).mockReturnValue(mockSearcher)
-    ;(getClient as jest.Mock).mockReturnValue(mockClient)
+    vi.clearAllMocks()
+    ;(getSearchService as Mock).mockReturnValue(mockSearcher)
+    ;(getClient as Mock).mockReturnValue(mockClient)
     ;(window as any).activeTextEditor = undefined
   })
 
@@ -165,7 +184,7 @@ describe("SearchABAPObjectLinesTool", () => {
       ;(window as any).activeTextEditor = {
         document: { uri: { authority: "local", scheme: "file" } }
       }
-      ;(abapUri as jest.Mock).mockReturnValue(false)
+      ;(abapUri as Mock).mockReturnValue(false)
 
       await expect(
         tool.invoke(makeOptions({ objectName: "ZTEST", searchTerm: "DATA" }), mockToken)
@@ -176,7 +195,7 @@ describe("SearchABAPObjectLinesTool", () => {
       ;(window as any).activeTextEditor = {
         document: { uri: { authority: "dev100", scheme: "adt" } }
       }
-      ;(abapUri as jest.Mock).mockReturnValue(true)
+      ;(abapUri as Mock).mockReturnValue(true)
       mockSearcher.searchObjects.mockResolvedValue([])
 
       await tool.invoke(makeOptions({ objectName: "ZTEST", searchTerm: "DATA" }), mockToken)
@@ -492,7 +511,7 @@ describe("SearchABAPObjectLinesTool", () => {
         }
       ])
       mockClient.getObjectSource.mockResolvedValue("REPORT zreport.\nWRITE 'base'.\n")
-      ;(getObjectEnhancements as jest.Mock).mockResolvedValue({
+      ;(getObjectEnhancements as Mock).mockResolvedValue({
         hasEnhancements: true,
         enhancements: [
           {
@@ -523,7 +542,7 @@ describe("SearchABAPObjectLinesTool", () => {
         }
       ])
       mockClient.getObjectSource.mockResolvedValue("REPORT zreport.\nDATA lv_test TYPE string.\n")
-      ;(getObjectEnhancements as jest.Mock).mockResolvedValue({
+      ;(getObjectEnhancements as Mock).mockResolvedValue({
         hasEnhancements: true,
         enhancements: [
           {

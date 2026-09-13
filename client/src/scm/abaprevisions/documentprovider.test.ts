@@ -1,54 +1,75 @@
-const mockEmitterFire = jest.fn()
-const mockEmitterEvent = jest.fn()
-
-jest.mock(
-  "vscode",
-  () => {
-    class EventEmitter {
-      event = mockEmitterEvent
-      fire = mockEmitterFire
+const { mockEmitterFire, mockEmitterEvent } = vi.hoisted(() => {
+  const mockEmitterFire = vi.fn()
+  const mockEmitterEvent = vi.fn()
+  return { mockEmitterFire, mockEmitterEvent }
+})
+vi.mock("vscode", () => {
+  class EventEmitter {
+    event = mockEmitterEvent
+    fire = mockEmitterFire
+  }
+  return {
+    EventEmitter,
+    Uri: {
+      parse: vi.fn(function (s: string) {
+        return { toString: () => s }
+      })
     }
-    return {
-      EventEmitter,
-      Uri: {
-        parse: jest.fn((s: string) => ({ toString: () => s }))
-      }
-    }
-  },
-  { virtual: true }
-)
+  }
+})
 
-jest.mock("../../lib", () => ({
-  atob: jest.fn((s: string) => Buffer.from(s, "base64").toString()),
-  btoa: jest.fn((s: string) => Buffer.from(s).toString("base64"))
+vi.mock("../../lib", () => ({
+  atob: vi.fn(function (s: string) {
+    return Buffer.from(s, "base64").toString()
+  }),
+  btoa: vi.fn(function (s: string) {
+    return Buffer.from(s).toString("base64")
+  })
 }))
 
-const mockGetObjectSource = jest.fn()
-const mockRead = jest.fn()
-jest.mock("../../adt/conections", () => ({
-  abapUri: jest.fn(),
+const { mockGetObjectSource, mockRead } = vi.hoisted(() => {
+  const mockGetObjectSource = vi.fn()
+  const mockRead = vi.fn()
+  return { mockGetObjectSource, mockRead }
+})
+vi.mock("../../adt/conections", () => ({
+  abapUri: vi.fn(),
   ADTSCHEME: "adt",
-  getClient: jest.fn(),
-  getOrCreateClient: jest.fn().mockResolvedValue({ getObjectSource: mockGetObjectSource }),
-  uriRoot: jest.fn(() => ({
-    getNode: jest.fn(() => ({
-      object: { read: mockRead }
-    }))
-  }))
+  getClient: vi.fn(),
+  getOrCreateClient: vi.fn().mockResolvedValue({ getObjectSource: mockGetObjectSource }),
+  uriRoot: vi.fn(function () {
+    return {
+      getNode: vi.fn(() => ({
+        object: { read: mockRead }
+      }))
+    }
+  })
 }))
 
-jest.mock("abapfs", () => ({
-  isAbapFile: jest.fn(() => true)
+vi.mock("abapfs", () => ({
+  isAbapFile: vi.fn(function () {
+    return true
+  })
 }))
 
-const mockPrettyPrint = jest.fn()
-jest.mock("./prettyprint", () => ({
+const { mockPrettyPrint } = vi.hoisted(() => {
+  const mockPrettyPrint = vi.fn()
+  return { mockPrettyPrint }
+})
+vi.mock("./prettyprint", () => ({
   prettyPrint: mockPrettyPrint
 }))
 
-const mockGetCurrentRevQD = jest.fn()
-jest.mock("./quickdiff", () => ({
-  AbapQuickDiff: { get: jest.fn(() => ({ getCurrentRev: mockGetCurrentRevQD })) }
+const { mockGetCurrentRevQD } = vi.hoisted(() => {
+  const mockGetCurrentRevQD = vi.fn()
+  return { mockGetCurrentRevQD }
+})
+vi.mock("./quickdiff", () => ({
+  AbapQuickDiff: {
+    get: vi.fn(function () {
+      return { getCurrentRev: mockGetCurrentRevQD }
+    })
+  }
 }))
 
 import { abapUri } from "../../adt/conections"
@@ -60,9 +81,10 @@ import {
   decodeRevisioUrl,
   quickDiffUri
 } from "./documentprovider"
+import type { Mock } from "vitest"
 
 beforeEach(() => {
-  jest.clearAllMocks()
+  vi.clearAllMocks()
   ;(AbapRevision as any).instance = undefined
 })
 
@@ -71,7 +93,7 @@ const makeUri = (scheme: string, authority: string, path: string, fragment: stri
   authority,
   path,
   fragment,
-  with: jest.fn(function (this: any, changes: any) {
+  with: vi.fn(function (this: any, changes: any) {
     return { ...this, ...changes, with: this.with }
   })
 })
@@ -84,14 +106,14 @@ describe("ADTREVISIONSCHEME", () => {
 
 describe("revisionUri", () => {
   it("returns undefined for non-ABAP URIs", () => {
-    ;(abapUri as jest.Mock).mockReturnValue(false)
+    ;(abapUri as Mock).mockReturnValue(false)
     const uri = makeUri("file", "", "/path", "")
     const result = revisionUri(uri as any)
     expect(result).toBeUndefined()
   })
 
   it("creates a revision URI with scheme adt_revision", () => {
-    ;(abapUri as jest.Mock).mockReturnValue(true)
+    ;(abapUri as Mock).mockReturnValue(true)
     const uri = makeUri("adt", "dev", "/path", "origFrag")
     const revision = { uri: "/rev/1", versionTitle: "V1" }
 
@@ -106,13 +128,13 @@ describe("revisionUri", () => {
   })
 
   it("encodes revision and normalized flag in fragment", () => {
-    ;(abapUri as jest.Mock).mockReturnValue(true)
+    ;(abapUri as Mock).mockReturnValue(true)
     const uri = makeUri("adt", "dev", "/path", "orig")
     const revision = { uri: "/rev/1", versionTitle: "V1" }
 
     revisionUri(uri as any, revision as any, true)
 
-    const callArg = (uri.with as jest.Mock).mock.calls[0][0]
+    const callArg = (uri.with as Mock).mock.calls[0][0]
     const decoded = JSON.parse(Buffer.from(callArg.fragment, "base64").toString())
     expect(decoded.type).toBe("simple")
     expect(decoded.revision).toEqual(revision)
@@ -121,12 +143,12 @@ describe("revisionUri", () => {
   })
 
   it("works without a revision (undefined)", () => {
-    ;(abapUri as jest.Mock).mockReturnValue(true)
+    ;(abapUri as Mock).mockReturnValue(true)
     const uri = makeUri("adt", "dev", "/path", "")
 
     revisionUri(uri as any, undefined, false)
 
-    const callArg = (uri.with as jest.Mock).mock.calls[0][0]
+    const callArg = (uri.with as Mock).mock.calls[0][0]
     const decoded = JSON.parse(Buffer.from(callArg.fragment, "base64").toString())
     expect(decoded.revision).toBeUndefined()
     expect(decoded.type).toBe("simple")
@@ -176,18 +198,18 @@ describe("decodeRevisioUrl", () => {
 
 describe("quickDiffUri", () => {
   it("returns undefined for non-ABAP URIs", () => {
-    ;(abapUri as jest.Mock).mockReturnValue(false)
+    ;(abapUri as Mock).mockReturnValue(false)
     const uri = makeUri("file", "", "/path", "")
     expect(quickDiffUri(uri as any)).toBeUndefined()
   })
 
   it("creates quickdiff URI with type quickdiff in fragment", () => {
-    ;(abapUri as jest.Mock).mockReturnValue(true)
+    ;(abapUri as Mock).mockReturnValue(true)
     const uri = makeUri("adt", "dev", "/path", "origFrag")
 
     quickDiffUri(uri as any)
 
-    const callArg = (uri.with as jest.Mock).mock.calls[0][0]
+    const callArg = (uri.with as Mock).mock.calls[0][0]
     expect(callArg.scheme).toBe(ADTREVISIONSCHEME)
     const decoded = JSON.parse(Buffer.from(callArg.fragment, "base64").toString())
     expect(decoded.type).toBe("quickdiff")

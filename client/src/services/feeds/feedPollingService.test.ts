@@ -1,44 +1,50 @@
 // Mock vscode BEFORE any imports
-jest.mock(
-  "vscode",
-  () => ({
-    workspace: {
-      getConfiguration: jest.fn(),
-      onDidChangeConfiguration: jest.fn(() => ({ dispose: jest.fn() })),
-      workspaceFolders: []
-    },
-    commands: {
-      executeCommand: jest.fn()
-    }
-  }),
-  { virtual: true }
-)
-
-// Mock modules that have vscode deps
-jest.mock("../../lib", () => ({ log: () => {} }))
-jest.mock("../funMessenger", () => ({
-  funWindow: {
-    showWarningMessage: jest.fn().mockResolvedValue(undefined),
-    showErrorMessage: jest.fn().mockResolvedValue(undefined),
-    showInformationMessage: jest.fn().mockResolvedValue(undefined)
+vi.mock("vscode", () => ({
+  workspace: {
+    getConfiguration: vi.fn(),
+    onDidChangeConfiguration: vi.fn(function () {
+      return { dispose: vi.fn() }
+    }),
+    workspaceFolders: []
+  },
+  commands: {
+    executeCommand: vi.fn()
   }
 }))
-jest.mock("../../adt/conections", () => ({
-  getOrCreateClient: jest.fn()
+
+// Mock modules that have vscode deps
+vi.mock("../../lib", () => ({ log: () => {} }))
+vi.mock("../funMessenger", () => ({
+  funWindow: {
+    showWarningMessage: vi.fn().mockResolvedValue(undefined),
+    showErrorMessage: vi.fn().mockResolvedValue(undefined),
+    showInformationMessage: vi.fn().mockResolvedValue(undefined)
+  }
 }))
-jest.mock("../../config", () => ({
-  connectedRoots: jest.fn(() => new Map())
+vi.mock("../../adt/conections", () => ({
+  getOrCreateClient: vi.fn()
 }))
-jest.mock("./feedParsers", () => ({
-  parseFeedResponse: jest.fn(() => []),
-  toFeedMetadata: jest.fn((f: any) => f)
+vi.mock("../../config", () => ({
+  connectedRoots: vi.fn(function () {
+    return new Map()
+  })
 }))
-jest.mock("abap-adt-api/build/utilities", () => ({
-  fullParse: jest.fn(),
-  xmlArray: jest.fn(() => [])
+vi.mock("./feedParsers", () => ({
+  parseFeedResponse: vi.fn(function () {
+    return []
+  }),
+  toFeedMetadata: vi.fn(function (f: any) {
+    return f
+  })
 }))
-jest.mock("fs")
-jest.mock("path", () => ({ join: (...parts: string[]) => parts.join("/") }))
+vi.mock("abap-adt-api/build/utilities", () => ({
+  fullParse: vi.fn(),
+  xmlArray: vi.fn(function () {
+    return []
+  })
+}))
+vi.mock("fs")
+vi.mock("path", () => ({ join: (...parts: string[]) => parts.join("/") }))
 
 import { workspace } from "vscode"
 import { FeedPollingService } from "./feedPollingService"
@@ -46,16 +52,18 @@ import { FeedStateManager } from "./feedStateManager"
 import { connectedRoots } from "../../config"
 import { getOrCreateClient } from "../../adt/conections"
 import { parseFeedResponse } from "./feedParsers"
-import { FeedEntry, FeedType } from "./feedTypes"
+import { type FeedEntry, FeedType } from "./feedTypes"
 import * as fs from "fs"
+import * as __$mock_funMessenger from "../funMessenger"
+import type { Mock } from "vitest"
 
 beforeEach(() => {
-  jest.useFakeTimers()
+  vi.useFakeTimers()
 })
 
 afterEach(() => {
-  jest.clearAllTimers()
-  jest.useRealTimers()
+  vi.clearAllTimers()
+  vi.useRealTimers()
 })
 
 // ---- helpers ----------------------------------------------------------------
@@ -64,16 +72,16 @@ function makeContext() {
   return {
     globalStorageUri: { fsPath: "/storage" },
     globalState: {
-      get: jest.fn(),
-      update: jest.fn(async () => {})
+      get: vi.fn(),
+      update: vi.fn(function () {})
     },
     subscriptions: [] as { dispose: () => void }[]
   }
 }
 
 function makeStateManager(ctx: any): FeedStateManager {
-  ;(fs.existsSync as jest.Mock).mockReturnValue(false)
-  ;(fs.mkdirSync as jest.Mock).mockReturnValue(undefined)
+  ;(fs.existsSync as Mock).mockReturnValue(false)
+  ;(fs.mkdirSync as Mock).mockReturnValue(undefined)
   return new FeedStateManager(ctx as any)
 }
 
@@ -95,21 +103,21 @@ function makeEntry(id = "e1"): FeedEntry {
 
 function setupWorkspaceConfig(subscriptions = {}) {
   const mockConfig = {
-    get: jest.fn((key: string, def: any) => {
+    get: vi.fn(function (key: string, def: any) {
       if (key === "abapfs.feedSubscriptions") return subscriptions
       return def
     })
   }
-  ;(workspace.getConfiguration as jest.Mock).mockReturnValue(mockConfig)
+  ;(workspace.getConfiguration as Mock).mockReturnValue(mockConfig)
 }
 
 // ---- constructor ------------------------------------------------------------
 
 describe("FeedPollingService construction", () => {
   beforeEach(() => {
-    jest.clearAllMocks()
-    ;(fs.existsSync as jest.Mock).mockReturnValue(false)
-    ;(fs.mkdirSync as jest.Mock).mockReturnValue(undefined)
+    vi.clearAllMocks()
+    ;(fs.existsSync as Mock).mockReturnValue(false)
+    ;(fs.mkdirSync as Mock).mockReturnValue(undefined)
   })
 
   test("can be instantiated", () => {
@@ -123,7 +131,7 @@ describe("FeedPollingService construction", () => {
     const ctx = makeContext()
     const sm = makeStateManager(ctx)
     const service = new FeedPollingService(ctx as any, sm)
-    const cb = jest.fn()
+    const cb = vi.fn()
     service.setOnEntriesChanged(cb)
     // No throw; callback stored for later invocation
     expect(true).toBe(true)
@@ -134,12 +142,12 @@ describe("FeedPollingService construction", () => {
 
 describe("start / stop", () => {
   beforeEach(() => {
-    jest.clearAllMocks()
-    ;(fs.existsSync as jest.Mock).mockReturnValue(false)
-    ;(fs.mkdirSync as jest.Mock).mockReturnValue(undefined)
+    vi.clearAllMocks()
+    ;(fs.existsSync as Mock).mockReturnValue(false)
+    ;(fs.mkdirSync as Mock).mockReturnValue(undefined)
     setupWorkspaceConfig({})
-    ;(connectedRoots as jest.Mock).mockReturnValue(new Map())
-    ;(workspace.onDidChangeConfiguration as jest.Mock).mockReturnValue({ dispose: jest.fn() })
+    ;(connectedRoots as Mock).mockReturnValue(new Map())
+    ;(workspace.onDidChangeConfiguration as Mock).mockReturnValue({ dispose: vi.fn() })
   })
 
   test("start registers config change listener", async () => {
@@ -156,9 +164,9 @@ describe("start / stop", () => {
     const sm = makeStateManager(ctx)
     const service = new FeedPollingService(ctx as any, sm)
     await service.start()
-    const callsBefore = (workspace.onDidChangeConfiguration as jest.Mock).mock.calls.length
+    const callsBefore = (workspace.onDidChangeConfiguration as Mock).mock.calls.length
     await service.start() // second call should be no-op
-    expect((workspace.onDidChangeConfiguration as jest.Mock).mock.calls.length).toBe(callsBefore)
+    expect((workspace.onDidChangeConfiguration as Mock).mock.calls.length).toBe(callsBefore)
     service.stop()
   })
 
@@ -174,8 +182,8 @@ describe("start / stop", () => {
   })
 
   test("stop disposes config listener", async () => {
-    const disposeMock = jest.fn()
-    ;(workspace.onDidChangeConfiguration as jest.Mock).mockReturnValue({ dispose: disposeMock })
+    const disposeMock = vi.fn()
+    ;(workspace.onDidChangeConfiguration as Mock).mockReturnValue({ dispose: disposeMock })
     const ctx = makeContext()
     const sm = makeStateManager(ctx)
     const service = new FeedPollingService(ctx as any, sm)
@@ -196,12 +204,12 @@ describe("start / stop", () => {
 
 describe("restart", () => {
   beforeEach(() => {
-    jest.clearAllMocks()
-    ;(fs.existsSync as jest.Mock).mockReturnValue(false)
-    ;(fs.mkdirSync as jest.Mock).mockReturnValue(undefined)
+    vi.clearAllMocks()
+    ;(fs.existsSync as Mock).mockReturnValue(false)
+    ;(fs.mkdirSync as Mock).mockReturnValue(undefined)
     setupWorkspaceConfig({})
-    ;(connectedRoots as jest.Mock).mockReturnValue(new Map())
-    ;(workspace.onDidChangeConfiguration as jest.Mock).mockReturnValue({ dispose: jest.fn() })
+    ;(connectedRoots as Mock).mockReturnValue(new Map())
+    ;(workspace.onDidChangeConfiguration as Mock).mockReturnValue({ dispose: vi.fn() })
   })
 
   test("restart stops and starts the service", async () => {
@@ -209,10 +217,10 @@ describe("restart", () => {
     const sm = makeStateManager(ctx)
     const service = new FeedPollingService(ctx as any, sm)
     await service.start()
-    const callsBefore = (workspace.onDidChangeConfiguration as jest.Mock).mock.calls.length
+    const callsBefore = (workspace.onDidChangeConfiguration as Mock).mock.calls.length
     await service.restart()
     // After restart, onDidChangeConfiguration should have been called again (new listener)
-    expect((workspace.onDidChangeConfiguration as jest.Mock).mock.calls.length).toBeGreaterThan(
+    expect((workspace.onDidChangeConfiguration as Mock).mock.calls.length).toBeGreaterThan(
       callsBefore
     )
     service.stop()
@@ -223,12 +231,12 @@ describe("restart", () => {
 
 describe("pause / resume", () => {
   beforeEach(() => {
-    jest.clearAllMocks()
-    ;(fs.existsSync as jest.Mock).mockReturnValue(false)
-    ;(fs.mkdirSync as jest.Mock).mockReturnValue(undefined)
+    vi.clearAllMocks()
+    ;(fs.existsSync as Mock).mockReturnValue(false)
+    ;(fs.mkdirSync as Mock).mockReturnValue(undefined)
     setupWorkspaceConfig({})
-    ;(connectedRoots as jest.Mock).mockReturnValue(new Map())
-    ;(workspace.onDidChangeConfiguration as jest.Mock).mockReturnValue({ dispose: jest.fn() })
+    ;(connectedRoots as Mock).mockReturnValue(new Map())
+    ;(workspace.onDidChangeConfiguration as Mock).mockReturnValue({ dispose: vi.fn() })
   })
 
   test("pause while not running is safe", () => {
@@ -271,11 +279,11 @@ describe("pause / resume", () => {
 
 describe("loadAndSchedulePolls with no connected systems", () => {
   beforeEach(() => {
-    jest.clearAllMocks()
-    ;(fs.existsSync as jest.Mock).mockReturnValue(false)
-    ;(fs.mkdirSync as jest.Mock).mockReturnValue(undefined)
-    ;(connectedRoots as jest.Mock).mockReturnValue(new Map())
-    ;(workspace.onDidChangeConfiguration as jest.Mock).mockReturnValue({ dispose: jest.fn() })
+    vi.clearAllMocks()
+    ;(fs.existsSync as Mock).mockReturnValue(false)
+    ;(fs.mkdirSync as Mock).mockReturnValue(undefined)
+    ;(connectedRoots as Mock).mockReturnValue(new Map())
+    ;(workspace.onDidChangeConfiguration as Mock).mockReturnValue({ dispose: vi.fn() })
   })
 
   test("starts cleanly with no connected systems and no subscriptions", async () => {
@@ -292,18 +300,18 @@ describe("loadAndSchedulePolls with no connected systems", () => {
 
 describe("validatePollingInterval (indirectly via scheduling)", () => {
   beforeEach(() => {
-    jest.clearAllMocks()
-    ;(fs.existsSync as jest.Mock).mockReturnValue(false)
-    ;(fs.mkdirSync as jest.Mock).mockReturnValue(undefined)
-    ;(workspace.onDidChangeConfiguration as jest.Mock).mockReturnValue({ dispose: jest.fn() })
+    vi.clearAllMocks()
+    ;(fs.existsSync as Mock).mockReturnValue(false)
+    ;(fs.mkdirSync as Mock).mockReturnValue(undefined)
+    ;(workspace.onDidChangeConfiguration as Mock).mockReturnValue({ dispose: vi.fn() })
   })
 
   test("clamps too-short interval to MIN (120s)", async () => {
     // Set up a connected system with a subscription that has a very short interval
     const systems = new Map([["sys1", { uri: { authority: "sys1" } }]])
-    ;(connectedRoots as jest.Mock).mockReturnValue(systems)
-    ;(getOrCreateClient as jest.Mock).mockResolvedValue({
-      feeds: jest
+    ;(connectedRoots as Mock).mockReturnValue(systems)
+    ;(getOrCreateClient as Mock).mockResolvedValue({
+      feeds: vi
         .fn()
         .mockResolvedValue([
           { href: "/sap/bc/adt/runtime/dumps/feeds", title: "Dumps", queryVariants: [] }
@@ -325,9 +333,9 @@ describe("validatePollingInterval (indirectly via scheduling)", () => {
 
   test("clamps too-long interval to MAX (86400s)", async () => {
     const systems = new Map([["sys1", {}]])
-    ;(connectedRoots as jest.Mock).mockReturnValue(systems)
-    ;(getOrCreateClient as jest.Mock).mockResolvedValue({
-      feeds: jest
+    ;(connectedRoots as Mock).mockReturnValue(systems)
+    ;(getOrCreateClient as Mock).mockResolvedValue({
+      feeds: vi
         .fn()
         .mockResolvedValue([
           { href: "/sap/bc/adt/runtime/dumps/feeds", title: "Dumps", queryVariants: [] }
@@ -356,21 +364,21 @@ describe("validatePollingInterval (indirectly via scheduling)", () => {
 
 describe("handleUnavailableFeed warning notification", () => {
   beforeEach(() => {
-    jest.clearAllMocks()
-    ;(fs.existsSync as jest.Mock).mockReturnValue(false)
-    ;(fs.mkdirSync as jest.Mock).mockReturnValue(undefined)
-    ;(workspace.onDidChangeConfiguration as jest.Mock).mockReturnValue({ dispose: jest.fn() })
+    vi.clearAllMocks()
+    ;(fs.existsSync as Mock).mockReturnValue(false)
+    ;(fs.mkdirSync as Mock).mockReturnValue(undefined)
+    ;(workspace.onDidChangeConfiguration as Mock).mockReturnValue({ dispose: vi.fn() })
   })
 
   test("shows warning when feed is unavailable for the first time", async () => {
-    const { funWindow: w } = require("../funMessenger")
-    ;(w.showWarningMessage as jest.Mock).mockResolvedValue(undefined)
+    const { funWindow: w } = __$mock_funMessenger
+    ;(w.showWarningMessage as Mock).mockResolvedValue(undefined)
 
     const systems = new Map([["sys1", {}]])
-    ;(connectedRoots as jest.Mock).mockReturnValue(systems)
+    ;(connectedRoots as Mock).mockReturnValue(systems)
     // Return empty feeds so the configured feed is unavailable
-    ;(getOrCreateClient as jest.Mock).mockResolvedValue({
-      feeds: jest.fn().mockResolvedValue([])
+    ;(getOrCreateClient as Mock).mockResolvedValue({
+      feeds: vi.fn().mockResolvedValue([])
     })
     setupWorkspaceConfig({
       sys1: {
@@ -396,13 +404,13 @@ describe("handleUnavailableFeed warning notification", () => {
   })
 
   test("does not repeat warning once feed marked unavailable", async () => {
-    const { funWindow: w } = require("../funMessenger")
-    ;(w.showWarningMessage as jest.Mock).mockResolvedValue(undefined)
+    const { funWindow: w } = __$mock_funMessenger
+    ;(w.showWarningMessage as Mock).mockResolvedValue(undefined)
 
     const systems = new Map([["sys1", {}]])
-    ;(connectedRoots as jest.Mock).mockReturnValue(systems)
-    ;(getOrCreateClient as jest.Mock).mockResolvedValue({
-      feeds: jest.fn().mockResolvedValue([])
+    ;(connectedRoots as Mock).mockReturnValue(systems)
+    ;(getOrCreateClient as Mock).mockResolvedValue({
+      feeds: vi.fn().mockResolvedValue([])
     })
     setupWorkspaceConfig({
       sys1: {
@@ -432,17 +440,17 @@ describe("handleUnavailableFeed warning notification", () => {
 
 describe("disabled feed subscriptions", () => {
   beforeEach(() => {
-    jest.clearAllMocks()
-    ;(fs.existsSync as jest.Mock).mockReturnValue(false)
-    ;(fs.mkdirSync as jest.Mock).mockReturnValue(undefined)
-    ;(workspace.onDidChangeConfiguration as jest.Mock).mockReturnValue({ dispose: jest.fn() })
+    vi.clearAllMocks()
+    ;(fs.existsSync as Mock).mockReturnValue(false)
+    ;(fs.mkdirSync as Mock).mockReturnValue(undefined)
+    ;(workspace.onDidChangeConfiguration as Mock).mockReturnValue({ dispose: vi.fn() })
   })
 
   test("does not schedule polls for disabled feeds", async () => {
     const systems = new Map([["sys1", {}]])
-    ;(connectedRoots as jest.Mock).mockReturnValue(systems)
-    ;(getOrCreateClient as jest.Mock).mockResolvedValue({
-      feeds: jest
+    ;(connectedRoots as Mock).mockReturnValue(systems)
+    ;(getOrCreateClient as Mock).mockResolvedValue({
+      feeds: vi
         .fn()
         .mockResolvedValue([
           { href: "/sap/bc/adt/runtime/dumps/feeds", title: "Dumps", queryVariants: [] }

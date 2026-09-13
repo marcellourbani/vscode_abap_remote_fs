@@ -156,11 +156,11 @@ describe("formatDuration", () => {
 
 describe("isWithinActiveHours", () => {
   beforeEach(() => {
-    jest.useFakeTimers()
+    vi.useFakeTimers()
   })
 
   afterEach(() => {
-    jest.useRealTimers()
+    vi.useRealTimers()
   })
 
   test("returns true when no config provided", () => {
@@ -169,49 +169,49 @@ describe("isWithinActiveHours", () => {
 
   test("returns true when current time is within active hours", () => {
     // Set time to 10:00 AM
-    jest.setSystemTime(new Date("2024-01-15T10:00:00"))
+    vi.setSystemTime(new Date("2024-01-15T10:00:00"))
     expect(isWithinActiveHours({ start: "08:00", end: "22:00" })).toBe(true)
   })
 
   test("returns false when current time is before start", () => {
     // Set time to 7:00 AM
-    jest.setSystemTime(new Date("2024-01-15T07:00:00"))
+    vi.setSystemTime(new Date("2024-01-15T07:00:00"))
     expect(isWithinActiveHours({ start: "08:00", end: "22:00" })).toBe(false)
   })
 
   test("returns false when current time is after end", () => {
     // Set time to 11:00 PM
-    jest.setSystemTime(new Date("2024-01-15T23:00:00"))
+    vi.setSystemTime(new Date("2024-01-15T23:00:00"))
     expect(isWithinActiveHours({ start: "08:00", end: "22:00" })).toBe(false)
   })
 
   test("returns true at exactly start time", () => {
-    jest.setSystemTime(new Date("2024-01-15T08:00:00"))
+    vi.setSystemTime(new Date("2024-01-15T08:00:00"))
     expect(isWithinActiveHours({ start: "08:00", end: "22:00" })).toBe(true)
   })
 
   test("returns false at exactly end time", () => {
-    jest.setSystemTime(new Date("2024-01-15T22:00:00"))
+    vi.setSystemTime(new Date("2024-01-15T22:00:00"))
     expect(isWithinActiveHours({ start: "08:00", end: "22:00" })).toBe(false)
   })
 
   test("handles 24:00 as end of day", () => {
-    jest.setSystemTime(new Date("2024-01-15T23:59:00"))
+    vi.setSystemTime(new Date("2024-01-15T23:59:00"))
     expect(isWithinActiveHours({ start: "00:00", end: "24:00" })).toBe(true)
   })
 
   test("returns false at midnight for 08:00-22:00 window", () => {
-    jest.setSystemTime(new Date("2024-01-15T00:00:00"))
+    vi.setSystemTime(new Date("2024-01-15T00:00:00"))
     expect(isWithinActiveHours({ start: "08:00", end: "22:00" })).toBe(false)
   })
 
   test("handles minutes correctly (09:30 in 09:00-22:00)", () => {
-    jest.setSystemTime(new Date("2024-01-15T09:30:00"))
+    vi.setSystemTime(new Date("2024-01-15T09:30:00"))
     expect(isWithinActiveHours({ start: "09:00", end: "22:00" })).toBe(true)
   })
 
   test("handles minutes boundary (08:59 with 09:00 start)", () => {
-    jest.setSystemTime(new Date("2024-01-15T08:59:00"))
+    vi.setSystemTime(new Date("2024-01-15T08:59:00"))
     expect(isWithinActiveHours({ start: "09:00", end: "22:00" })).toBe(false)
   })
 })

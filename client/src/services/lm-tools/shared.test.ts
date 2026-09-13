@@ -1,13 +1,13 @@
-jest.mock("../../adt/conections", () => {
+vi.mock("../../adt/conections", () => {
   // shared starts its cache-maintenance interval at module load.
-  jest.useFakeTimers()
+  vi.useFakeTimers()
   return {}
 })
 import { sanitizeObjectName } from "./shared"
 
 afterAll(() => {
-  jest.clearAllTimers()
-  jest.useRealTimers()
+  vi.clearAllTimers()
+  vi.useRealTimers()
 })
 
 describe("sanitizeObjectName", () => {

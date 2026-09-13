@@ -1,31 +1,32 @@
-jest.mock(
-  "vscode",
-  () => ({
-    window: {
-      createOutputChannel: () => ({
-        info: jest.fn(),
-        warn: jest.fn(),
-        error: jest.fn(),
-        debug: jest.fn(),
-        trace: jest.fn()
-      })
-    }
-  }),
-  { virtual: true }
-)
+vi.mock("vscode", () => ({
+  window: {
+    createOutputChannel: () => ({
+      info: vi.fn(),
+      warn: vi.fn(),
+      error: vi.fn(),
+      debug: vi.fn(),
+      trace: vi.fn()
+    })
+  }
+}))
 
-jest.mock("../../lib", () => ({
-  log: Object.assign(jest.fn(), {
-    info: jest.fn(),
-    warn: jest.fn(),
-    error: jest.fn(),
-    debug: jest.fn(),
-    trace: jest.fn()
+vi.mock("../../lib", () => ({
+  log: Object.assign(vi.fn(), {
+    info: vi.fn(),
+    warn: vi.fn(),
+    error: vi.fn(),
+    debug: vi.fn(),
+    trace: vi.fn()
   })
 }))
 
 import { joinData } from "./dataFetcher"
-import { CustomReference, ItemPiecelistLink, PiecelistEntry, SimplificationItem } from "./types"
+import type {
+  CustomReference,
+  ItemPiecelistLink,
+  PiecelistEntry,
+  SimplificationItem
+} from "./types"
 
 function makeItem(id: string, title: string, note: number): SimplificationItem {
   return { id, version: "R", title, note, replacementId: "" }

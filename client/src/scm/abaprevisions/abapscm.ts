@@ -11,7 +11,7 @@ import {
 } from "vscode"
 import { cache } from "../../lib"
 import { AbapRevisionService } from "./abaprevisionservice"
-import { AbapFsCommands } from "../../commands"
+import { AbapFsCommands } from "../../commands/registry"
 import { type PathItem, isAbapStat } from "abapfs"
 import { createUri } from "../../adt/operations/AdtObjectFinder"
 import { type Revision } from "abap-adt-api"

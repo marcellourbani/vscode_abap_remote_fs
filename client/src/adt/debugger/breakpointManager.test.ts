@@ -1,51 +1,62 @@
-jest.mock("abap-adt-api", () => ({
-  isDebuggerBreakpoint: jest.fn((bp: any) => bp && bp.__isDebuggerBP === true)
+vi.mock("abap-adt-api", () => ({
+  isDebuggerBreakpoint: vi.fn(function (bp: any) {
+    return bp && bp.__isDebuggerBP === true
+  })
 }))
-jest.mock("abapfs", () => ({
-  isAbapFile: jest.fn((node: any) => node && node.__isAbapFile === true)
+vi.mock("abapfs", () => ({
+  isAbapFile: vi.fn(function (node: any) {
+    return node && node.__isAbapFile === true
+  })
 }))
-jest.mock(
-  "vscode",
-  () => ({
-    Uri: {
-      parse: jest.fn((s: string) => ({
+vi.mock("vscode", () => ({
+  Uri: {
+    parse: vi.fn(function (s: string) {
+      return {
         scheme: "adt",
         path: s.replace(/^adt:\/\/[^/]+/, ""),
         toString: () => s
-      }))
+      }
+    })
+  }
+}))
+vi.mock("@vscode/debugadapter", () => ({
+  Breakpoint: vi.fn().mockImplementation(function (verified: boolean, line?: number) {
+    return {
+      verified,
+      line
     }
   }),
-  { virtual: true }
-)
-jest.mock("@vscode/debugadapter", () => ({
-  Breakpoint: jest.fn().mockImplementation((verified: boolean, line?: number) => ({
-    verified,
-    line
-  })),
-  Source: jest.fn().mockImplementation((name: string, path: string) => ({ name, path }))
+  Source: vi.fn().mockImplementation(function (name: string, path: string) {
+    return { name, path }
+  })
 }))
-jest.mock("../../lib", () => ({
-  caughtToString: jest.fn((e: any) => String(e)),
-  ignore: jest.fn(),
-  isDefined: jest.fn((x: any) => x !== undefined && x !== null),
-  log: jest.fn()
+vi.mock("../../lib", () => ({
+  caughtToString: vi.fn(function (e: any) {
+    return String(e)
+  }),
+  ignore: vi.fn(),
+  isDefined: vi.fn(function (x: any) {
+    return x !== undefined && x !== null
+  }),
+  log: vi.fn()
 }))
-jest.mock("../conections", () => ({
-  getClient: jest.fn(),
-  getRoot: jest.fn()
+vi.mock("../conections", () => ({
+  getClient: vi.fn(),
+  getRoot: vi.fn()
 }))
-jest.mock("./debugListener", () => ({}))
-jest.mock("./debugService", () => ({}))
+vi.mock("./debugListener", () => ({}))
+vi.mock("./debugService", () => ({}))
 
 import { BreakpointManager } from "./breakpointManager"
 import { isDebuggerBreakpoint } from "abap-adt-api"
 import { isAbapFile } from "abapfs"
 import { getClient, getRoot } from "../conections"
+import type { MockedFunction } from "vitest"
 
-const mockIsDebuggerBP = isDebuggerBreakpoint as jest.MockedFunction<typeof isDebuggerBreakpoint>
-const mockIsAbapFile = isAbapFile as jest.MockedFunction<typeof isAbapFile>
-const mockGetClient = getClient as jest.MockedFunction<typeof getClient>
-const mockGetRoot = getRoot as jest.MockedFunction<typeof getRoot>
+const mockIsDebuggerBP = isDebuggerBreakpoint as MockedFunction<typeof isDebuggerBreakpoint>
+const mockIsAbapFile = isAbapFile as MockedFunction<typeof isAbapFile>
+const mockGetClient = getClient as MockedFunction<typeof getClient>
+const mockGetRoot = getRoot as MockedFunction<typeof getRoot>
 
 function makeListener(overrides: Partial<any> = {}) {
   return {
@@ -54,15 +65,17 @@ function makeListener(overrides: Partial<any> = {}) {
     ideId: "IDEABC",
     terminalId: "TERM123",
     username: "TESTUSER",
-    activeServices: jest.fn(() => []),
+    activeServices: vi.fn(function () {
+      return []
+    }),
     ...overrides
   } as any
 }
 
 function makeStatelessClient(overrides: Partial<any> = {}) {
   return {
-    debuggerDeleteBreakpoints: jest.fn().mockResolvedValue(undefined),
-    debuggerSetBreakpoints: jest.fn().mockResolvedValue([]),
+    debuggerDeleteBreakpoints: vi.fn().mockResolvedValue(undefined),
+    debuggerSetBreakpoints: vi.fn().mockResolvedValue([]),
     ...overrides
   }
 }
@@ -71,8 +84,8 @@ function makeAdtClient(overrides: Partial<any> = {}) {
   const stateless = makeStatelessClient(overrides.statelessClone)
   return {
     statelessClone: stateless,
-    debuggerDeleteBreakpoints: jest.fn().mockResolvedValue(undefined),
-    debuggerSetBreakpoints: jest.fn().mockResolvedValue([]),
+    debuggerDeleteBreakpoints: vi.fn().mockResolvedValue(undefined),
+    debuggerSetBreakpoints: vi.fn().mockResolvedValue([]),
     ...overrides
   }
 }
@@ -82,9 +95,11 @@ function makeAbapNode(overrides: Partial<any> = {}) {
     __isAbapFile: true,
     object: {
       structure: {},
-      contentsPath: jest.fn(() => "/sap/bc/adt/programs/programs/ZPROG"),
-      loadStructure: jest.fn().mockResolvedValue(undefined),
-      mainPrograms: jest.fn().mockResolvedValue([]),
+      contentsPath: vi.fn(function () {
+        return "/sap/bc/adt/programs/programs/ZPROG"
+      }),
+      loadStructure: vi.fn().mockResolvedValue(undefined),
+      mainPrograms: vi.fn().mockResolvedValue([]),
       name: "ZPROG"
     },
     ...overrides
@@ -93,7 +108,7 @@ function makeAbapNode(overrides: Partial<any> = {}) {
 
 describe("BreakpointManager", () => {
   beforeEach(() => {
-    jest.clearAllMocks()
+    vi.clearAllMocks()
   })
 
   describe("getBreakpoints", () => {
@@ -116,7 +131,7 @@ describe("BreakpointManager", () => {
       const listener = makeListener()
       const bpm = new BreakpointManager(listener)
 
-      const mockRoot = { getNodeAsync: jest.fn().mockResolvedValue({ __isAbapFile: false }) }
+      const mockRoot = { getNodeAsync: vi.fn().mockResolvedValue({ __isAbapFile: false }) }
       mockGetRoot.mockReturnValueOnce(mockRoot as any)
       mockIsAbapFile.mockReturnValueOnce(false)
 
@@ -131,7 +146,7 @@ describe("BreakpointManager", () => {
       const fakeBp = { __isDebuggerBP: true, uri: { range: { start: { line: 10 } } } }
       const client = makeAdtClient({
         statelessClone: makeStatelessClient({
-          debuggerSetBreakpoints: jest.fn().mockResolvedValue([fakeBp])
+          debuggerSetBreakpoints: vi.fn().mockResolvedValue([fakeBp])
         })
       })
       mockGetClient.mockReturnValueOnce(client as any)
@@ -140,7 +155,7 @@ describe("BreakpointManager", () => {
 
       const bpm = new BreakpointManager(listener)
       const node = makeAbapNode()
-      const mockRoot = { getNodeAsync: jest.fn().mockResolvedValue(node) }
+      const mockRoot = { getNodeAsync: vi.fn().mockResolvedValue(node) }
       mockGetRoot.mockReturnValueOnce(mockRoot as any)
       mockIsAbapFile.mockReturnValueOnce(true)
 
@@ -155,7 +170,7 @@ describe("BreakpointManager", () => {
       const fakeBp = { __isDebuggerBP: true, uri: { range: { start: { line: 10 } } } }
       const client = makeAdtClient({
         statelessClone: makeStatelessClient({
-          debuggerSetBreakpoints: jest.fn().mockResolvedValue([fakeBp])
+          debuggerSetBreakpoints: vi.fn().mockResolvedValue([fakeBp])
         })
       })
       mockGetClient.mockReturnValueOnce(client as any)
@@ -163,7 +178,7 @@ describe("BreakpointManager", () => {
       const listener = makeListener({ activeThreads })
       const bpm = new BreakpointManager(listener)
       const node = makeAbapNode()
-      const mockRoot = { getNodeAsync: jest.fn().mockResolvedValue(node) }
+      const mockRoot = { getNodeAsync: vi.fn().mockResolvedValue(node) }
       mockGetRoot.mockReturnValueOnce(mockRoot as any)
       mockIsAbapFile.mockReturnValueOnce(true)
       mockIsDebuggerBP.mockReturnValue(false)
@@ -177,7 +192,7 @@ describe("BreakpointManager", () => {
     test("handles exception in syncBreakpoints gracefully", async () => {
       const adtClient = makeAdtClient({
         statelessClone: makeStatelessClient({
-          debuggerSetBreakpoints: jest.fn().mockRejectedValue(new Error("network error"))
+          debuggerSetBreakpoints: vi.fn().mockRejectedValue(new Error("network error"))
         })
       })
       mockGetClient.mockReturnValueOnce(adtClient as any)
@@ -185,7 +200,7 @@ describe("BreakpointManager", () => {
       const listener = makeListener({ activeThreads })
       const bpm = new BreakpointManager(listener)
       const node = makeAbapNode()
-      const mockRoot = { getNodeAsync: jest.fn().mockResolvedValue(node) }
+      const mockRoot = { getNodeAsync: vi.fn().mockResolvedValue(node) }
       mockGetRoot.mockReturnValueOnce(mockRoot as any)
       mockIsAbapFile.mockReturnValueOnce(true)
 
@@ -221,7 +236,7 @@ describe("BreakpointManager", () => {
       // Using internal access via any cast
       ;(bpm as any).breakpoints.set(path, [fakeBp])
 
-      const mockDeleteBp = jest.fn().mockResolvedValue(undefined)
+      const mockDeleteBp = vi.fn().mockResolvedValue(undefined)
       const thread = {
         client: {
           debuggerDeleteBreakpoints: mockDeleteBp
@@ -242,19 +257,21 @@ describe("BreakpointManager", () => {
       const node = makeAbapNode({
         object: {
           structure: {},
-          contentsPath: jest.fn(() => "/sap/bc/adt/programs/includes/ZINCLUDE"),
-          loadStructure: jest.fn().mockResolvedValue(undefined),
-          mainPrograms: jest.fn().mockResolvedValue([mainProg]),
+          contentsPath: vi.fn(function () {
+            return "/sap/bc/adt/programs/includes/ZINCLUDE"
+          }),
+          loadStructure: vi.fn().mockResolvedValue(undefined),
+          mainPrograms: vi.fn().mockResolvedValue([mainProg]),
           name: "ZINCLUDE"
         }
       })
-      const mockRoot = { getNodeAsync: jest.fn().mockResolvedValue(node) }
+      const mockRoot = { getNodeAsync: vi.fn().mockResolvedValue(node) }
       mockGetRoot.mockReturnValueOnce(mockRoot as any)
       mockIsAbapFile.mockReturnValueOnce(true)
       mockIsDebuggerBP.mockReturnValue(false)
       const adtClient = makeAdtClient({
         statelessClone: makeStatelessClient({
-          debuggerSetBreakpoints: jest.fn().mockResolvedValue([])
+          debuggerSetBreakpoints: vi.fn().mockResolvedValue([])
         })
       })
       mockGetClient.mockReturnValueOnce(adtClient as any)

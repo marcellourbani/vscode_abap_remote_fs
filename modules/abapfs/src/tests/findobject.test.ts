@@ -1,6 +1,6 @@
 import { runTest } from "./connectServer"
 import { isAbapStat, isAbapFile } from "../abapFile"
-import { mock } from "jest-mock-extended"
+import { mock } from "vitest-mock-extended"
 
 test(
   "find object in $TMP",

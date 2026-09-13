@@ -1,87 +1,92 @@
-jest.mock(
-  "vscode",
-  () => {
-    const mockUri = {
-      scheme: "adt",
-      authority: "dev100",
-      path: "/sap/bc/adt/programs/programs/ztest/source/main",
-      with: jest.fn()
-    }
-    return {
-      Uri: {
-        parse: jest.fn((s: string) => {
-          const [scheme, rest] = s.split("://")
-          const [authority, ...pathParts] = (rest || "").split("/")
-          return {
-            scheme,
-            authority,
-            path: "/" + pathParts.join("/"),
-            with: jest.fn((opts: any) => ({ ...mockUri, ...opts })),
-            toString: () => s
-          }
-        })
-      },
-      workspace: {
-        fs: {
-          stat: jest.fn()
+vi.mock("vscode", () => {
+  const mockUri = {
+    scheme: "adt",
+    authority: "dev100",
+    path: "/sap/bc/adt/programs/programs/ztest/source/main",
+    with: vi.fn()
+  }
+  return {
+    Uri: {
+      parse: vi.fn(function (s: string) {
+        const [scheme, rest] = s.split("://")
+        const [authority, ...pathParts] = (rest || "").split("/")
+        return {
+          scheme,
+          authority,
+          path: "/" + pathParts.join("/"),
+          with: vi.fn((opts: any) => ({ ...mockUri, ...opts })),
+          toString: () => s
         }
-      },
-      commands: {
-        registerCommand: jest.fn(() => ({ dispose: jest.fn() })),
-        executeCommand: jest.fn()
+      })
+    },
+    workspace: {
+      fs: {
+        stat: vi.fn()
       }
+    },
+    commands: {
+      registerCommand: vi.fn(function () {
+        return { dispose: vi.fn() }
+      }),
+      executeCommand: vi.fn()
     }
-  },
-  { virtual: true }
-)
+  }
+})
 
-jest.mock("../services/funMessenger", () => ({
+vi.mock("../services/funMessenger", () => ({
   funWindow: {
     activeTextEditor: undefined,
-    showWarningMessage: jest.fn(),
-    showErrorMessage: jest.fn(),
-    showQuickPick: jest.fn()
+    showWarningMessage: vi.fn(),
+    showErrorMessage: vi.fn(),
+    showQuickPick: vi.fn()
   }
 }))
 
-jest.mock("../adt/conections", () => ({
+vi.mock("../adt/conections", () => ({
   ADTSCHEME: "adt"
 }))
 
-jest.mock("../config", () => ({
-  connectedRoots: jest.fn(),
-  formatKey: jest.fn((s: string) => s?.toLowerCase() ?? s)
+vi.mock("../config", () => ({
+  connectedRoots: vi.fn(),
+  formatKey: vi.fn(function (s: string) {
+    return s?.toLowerCase() ?? s
+  })
 }))
 
-jest.mock("../services/telemetry", () => ({
-  logTelemetry: jest.fn()
+vi.mock("../services/telemetry", () => ({
+  logTelemetry: vi.fn()
 }))
 
 import { compareWithOtherSystem, registerCompareWithSystemCommand } from "./compareWithSystem"
 import { funWindow as window } from "../services/funMessenger"
 import { connectedRoots, formatKey } from "../config"
 import * as vscode from "vscode"
+import type { Mocked, MockedFunction, Mock } from "vitest"
 
-const mockWindow = window as jest.Mocked<typeof window>
-const mockConnectedRoots = connectedRoots as jest.MockedFunction<typeof connectedRoots>
-const mockFormatKey = formatKey as jest.MockedFunction<typeof formatKey>
+const mockWindow = window as Mocked<typeof window>
+const mockConnectedRoots = connectedRoots as MockedFunction<typeof connectedRoots>
+const mockFormatKey = formatKey as MockedFunction<typeof formatKey>
 
 function makeUri(authority: string, path: string): vscode.Uri {
   return {
     scheme: "adt",
     authority,
     path,
-    with: jest.fn((opts: any) => makeUri(opts.authority ?? authority, opts.path ?? path)),
+    with: vi.fn(function (opts: any) {
+      return makeUri(opts.authority ?? authority, opts.path ?? path)
+    }),
     toString: () => `adt://${authority}${path}`
   } as any
 }
 
 beforeEach(() => {
-  jest.clearAllMocks()
+  vi.clearAllMocks()
   ;(mockWindow as any).activeTextEditor = undefined
-  ;(vscode.workspace.fs.stat as jest.Mock).mockResolvedValue({})
-  ;(vscode.commands.executeCommand as jest.Mock).mockResolvedValue(undefined)
-  mockFormatKey.mockImplementation((s: string) => s?.toLowerCase() ?? s)
+  ;(vscode.workspace.fs.stat as Mock).mockResolvedValue({})
+  ;(vscode.commands.executeCommand as Mock).mockResolvedValue(undefined)
+  mockFormatKey.mockImplementation(function (s: string) {
+    return s?.toLowerCase() ?? s
+  })
 })
 
 describe("compareWithOtherSystem", () => {
@@ -103,7 +108,7 @@ describe("compareWithOtherSystem", () => {
   })
 
   test("shows warning when URI scheme is not adt", async () => {
-    const uri = { scheme: "file", authority: "dev100", path: "/test", with: jest.fn() } as any
+    const uri = { scheme: "file", authority: "dev100", path: "/test", with: vi.fn() } as any
     await compareWithOtherSystem(uri)
     expect(mockWindow.showWarningMessage).toHaveBeenCalledWith(
       "Please select an ABAP file to compare"
@@ -141,7 +146,7 @@ describe("compareWithOtherSystem", () => {
       ["qas100", { name: "QAS100" }]
     ])
     mockConnectedRoots.mockReturnValue(roots as any)
-    ;(mockWindow.showQuickPick as jest.Mock).mockResolvedValue(undefined)
+    ;(mockWindow.showQuickPick as Mock).mockResolvedValue(undefined)
 
     await compareWithOtherSystem(sourceUri)
     expect(vscode.commands.executeCommand).not.toHaveBeenCalledWith(
@@ -159,7 +164,7 @@ describe("compareWithOtherSystem", () => {
       ["qas100", { name: "QAS100" }]
     ])
     mockConnectedRoots.mockReturnValue(roots as any)
-    ;(mockWindow.showQuickPick as jest.Mock).mockResolvedValue({
+    ;(mockWindow.showQuickPick as Mock).mockResolvedValue({
       label: "QAS100",
       description: "qas100"
     })
@@ -183,7 +188,7 @@ describe("compareWithOtherSystem", () => {
       ["qas100", { name: "QAS100" }]
     ])
     mockConnectedRoots.mockReturnValue(roots as any)
-    ;(mockWindow.showQuickPick as jest.Mock).mockResolvedValue(undefined)
+    ;(mockWindow.showQuickPick as Mock).mockResolvedValue(undefined)
 
     await compareWithOtherSystem(undefined)
     expect(mockWindow.showQuickPick).toHaveBeenCalled()
@@ -199,12 +204,12 @@ describe("compareWithOtherSystem", () => {
       ["qas100", { name: "QAS100" }]
     ])
     mockConnectedRoots.mockReturnValue(roots as any)
-    ;(mockWindow.showQuickPick as jest.Mock).mockResolvedValue({
+    ;(mockWindow.showQuickPick as Mock).mockResolvedValue({
       label: "QAS100",
       description: "qas100"
     })
     // First stat fails, second succeeds
-    ;(vscode.workspace.fs.stat as jest.Mock)
+    ;(vscode.workspace.fs.stat as Mock)
       .mockRejectedValueOnce(new Error("not found"))
       .mockResolvedValueOnce({})
 
@@ -224,11 +229,11 @@ describe("compareWithOtherSystem", () => {
       ["qas100", { name: "QAS100" }]
     ])
     mockConnectedRoots.mockReturnValue(roots as any)
-    ;(mockWindow.showQuickPick as jest.Mock).mockResolvedValue({
+    ;(mockWindow.showQuickPick as Mock).mockResolvedValue({
       label: "QAS100",
       description: "qas100"
     })
-    ;(vscode.workspace.fs.stat as jest.Mock)
+    ;(vscode.workspace.fs.stat as Mock)
       .mockRejectedValueOnce(new Error("not found"))
       .mockResolvedValueOnce({})
 
@@ -248,11 +253,11 @@ describe("compareWithOtherSystem", () => {
       ["qas100", { name: "QAS100" }]
     ])
     mockConnectedRoots.mockReturnValue(roots as any)
-    ;(mockWindow.showQuickPick as jest.Mock).mockResolvedValue({
+    ;(mockWindow.showQuickPick as Mock).mockResolvedValue({
       label: "QAS100",
       description: "qas100"
     })
-    ;(vscode.workspace.fs.stat as jest.Mock).mockRejectedValue(new Error("not found"))
+    ;(vscode.workspace.fs.stat as Mock).mockRejectedValue(new Error("not found"))
 
     await compareWithOtherSystem(sourceUri)
     expect(mockWindow.showErrorMessage).toHaveBeenCalledWith(
@@ -267,17 +272,20 @@ describe("compareWithOtherSystem", () => {
       ["qas100", { name: "QAS100" }]
     ])
     mockConnectedRoots.mockReturnValue(roots as any)
-    ;(mockWindow.showQuickPick as jest.Mock).mockResolvedValue({
+    ;(mockWindow.showQuickPick as Mock).mockResolvedValue({
       label: "QAS100",
       description: "qas100"
     })
 
     let capturedTitle = ""
-    ;(vscode.commands.executeCommand as jest.Mock).mockImplementation(
-      (cmd: string, _a: any, _b: any, title: string) => {
-        if (cmd === "vscode.diff") capturedTitle = title
-      }
-    )
+    ;(vscode.commands.executeCommand as Mock).mockImplementation(function (
+      cmd: string,
+      _a: any,
+      _b: any,
+      title: string
+    ) {
+      if (cmd === "vscode.diff") capturedTitle = title
+    })
 
     await compareWithOtherSystem(sourceUri)
     expect(capturedTitle).not.toContain(".prog.abap")
@@ -286,7 +294,7 @@ describe("compareWithOtherSystem", () => {
 
 describe("registerCompareWithSystemCommand", () => {
   test("registers the command with VS Code", () => {
-    const ctx = { subscriptions: { push: jest.fn() } } as any
+    const ctx = { subscriptions: { push: vi.fn() } } as any
     registerCompareWithSystemCommand(ctx)
     expect(vscode.commands.registerCommand).toHaveBeenCalledWith(
       "abapfs.compareWithOtherSystem",
