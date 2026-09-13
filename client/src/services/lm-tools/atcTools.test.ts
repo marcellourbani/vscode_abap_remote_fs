@@ -1,63 +1,77 @@
-jest.mock(
-  "vscode",
-  () => ({
-    LanguageModelToolResult: jest.fn().mockImplementation((parts: any[]) => ({ parts })),
-    LanguageModelTextPart: jest.fn().mockImplementation((text: string) => ({ text })),
-    MarkdownString: jest.fn().mockImplementation((text: string) => ({ text })),
-    Uri: {
-      parse: jest.fn((s: string) => {
-        const rest = s.split("//")[1] || ""
-        const pathStart = rest.indexOf("/")
-        return {
-          toString: () => s,
-          authority: pathStart >= 0 ? rest.slice(0, pathStart) : rest,
-          path: pathStart >= 0 ? rest.slice(pathStart) : ""
-        }
-      })
-    },
-    ProgressLocation: { Notification: 1 },
-    workspace: {
-      openTextDocument: jest.fn().mockResolvedValue({}),
-      fs: { readFile: jest.fn() }
-    },
-    lm: { registerTool: jest.fn(() => ({ dispose: jest.fn() })) }
+vi.mock("vscode", () => ({
+  LanguageModelToolResult: vi.fn().mockImplementation(function (parts: any[]) {
+    return { parts }
   }),
-  { virtual: true }
-)
+  LanguageModelTextPart: vi.fn().mockImplementation(function (text: string) {
+    return { text }
+  }),
+  MarkdownString: vi.fn().mockImplementation(function (text: string) {
+    return { text }
+  }),
+  Uri: {
+    parse: vi.fn(function (s: string) {
+      const rest = s.split("//")[1] || ""
+      const pathStart = rest.indexOf("/")
+      return {
+        toString: () => s,
+        authority: pathStart >= 0 ? rest.slice(0, pathStart) : rest,
+        path: pathStart >= 0 ? rest.slice(pathStart) : ""
+      }
+    })
+  },
+  ProgressLocation: { Notification: 1 },
+  workspace: {
+    openTextDocument: vi.fn().mockResolvedValue({}),
+    fs: { readFile: vi.fn() }
+  },
+  lm: {
+    registerTool: vi.fn(function () {
+      return { dispose: vi.fn() }
+    })
+  }
+}))
 
-jest.mock("../../adt/conections", () => ({
-  getOrCreateRoot: jest.fn(),
-  abapUri: jest.fn(),
-  getClient: jest.fn()
+vi.mock("../../adt/conections", () => ({
+  getOrCreateRoot: vi.fn(),
+  abapUri: vi.fn(),
+  getClient: vi.fn()
 }))
-jest.mock("../telemetry", () => ({ logTelemetry: jest.fn() }))
-jest.mock("./toolRegistry", () => ({
-  registerToolWithRegistry: jest.fn(() => ({ dispose: jest.fn() }))
+vi.mock("../telemetry", () => ({ logTelemetry: vi.fn() }))
+vi.mock("./toolRegistry", () => ({
+  registerToolWithRegistry: vi.fn(function () {
+    return { dispose: vi.fn() }
+  })
 }))
-jest.mock("../abapSearchService", () => ({ getSearchService: jest.fn() }))
-jest.mock("../../adt/packageUri", () => ({ packageUri: jest.fn() }))
-jest.mock("../funMessenger", () => ({
+vi.mock("../abapSearchService", () => ({ getSearchService: vi.fn() }))
+vi.mock("../../adt/packageUri", () => ({ packageUri: vi.fn() }))
+vi.mock("../funMessenger", () => ({
   funWindow: {
     activeTextEditor: undefined,
     visibleTextEditors: [],
-    showTextDocument: jest.fn(),
-    withProgress: jest.fn((_opts: any, cb: any) => cb())
+    showTextDocument: vi.fn(),
+    withProgress: vi.fn(function (_opts: any, cb: any) {
+      return cb()
+    })
   }
 }))
-jest.mock("../../views/abaptestcockpit", () => ({
+vi.mock("../../views/abaptestcockpit", () => ({
   atcProvider: {
-    runAnalysis: jest.fn(),
-    runInspector: jest.fn(),
-    runInspectorByAdtUrl: jest.fn(),
-    findings: jest.fn(() => [])
+    runAnalysis: vi.fn(),
+    runInspector: vi.fn(),
+    runInspectorByAdtUrl: vi.fn(),
+    findings: vi.fn(function () {
+      return []
+    })
   }
 }))
-jest.mock("../../views/abaptestcockpit/decorations", () => ({ getATCDecorations: jest.fn() }))
-jest.mock("../../adt/atcVariants", () => ({ listAtcVariants: jest.fn() }))
+vi.mock("../../views/abaptestcockpit/decorations", () => ({ getATCDecorations: vi.fn() }))
+vi.mock("../../adt/atcVariants", () => ({ listAtcVariants: vi.fn() }))
 
-jest.mock("./toolGuard", () => ({
-  assertToolInvocationAuthorized: jest.fn(),
-  isToolInvocationAuthorized: jest.fn(() => true)
+vi.mock("./toolGuard", () => ({
+  assertToolInvocationAuthorized: vi.fn(),
+  isToolInvocationAuthorized: vi.fn(function () {
+    return true
+  })
 }))
 import { RunATCAnalysisTool, GetATCDecorationsTool } from "./atcTools"
 import { getSearchService } from "../abapSearchService"
@@ -68,6 +82,7 @@ import { getATCDecorations } from "../../views/abaptestcockpit/decorations"
 import { atcProvider } from "../../views/abaptestcockpit"
 import { listAtcVariants } from "../../adt/atcVariants"
 import { packageUri } from "../../adt/packageUri"
+import type { Mock } from "vitest"
 
 const mockToken = {} as any
 
@@ -75,8 +90,8 @@ function makeOptions(input: any = {}) {
   return { input } as any
 }
 
-const mockSearcher = { searchObjects: jest.fn() }
-const mockRoot = { findByAdtUri: jest.fn() }
+const mockSearcher = { searchObjects: vi.fn() }
+const mockRoot = { findByAdtUri: vi.fn() }
 const mockClient = {}
 
 describe("RunATCAnalysisTool - prepareInvocation validation", () => {
@@ -84,10 +99,10 @@ describe("RunATCAnalysisTool - prepareInvocation validation", () => {
 
   beforeEach(() => {
     tool = new RunATCAnalysisTool()
-    jest.clearAllMocks()
-    ;(getSearchService as jest.Mock).mockReturnValue(mockSearcher)
-    ;(getOrCreateRoot as jest.Mock).mockResolvedValue(mockRoot)
-    ;(getClient as jest.Mock).mockReturnValue(mockClient)
+    vi.clearAllMocks()
+    ;(getSearchService as Mock).mockReturnValue(mockSearcher)
+    ;(getOrCreateRoot as Mock).mockResolvedValue(mockRoot)
+    ;(getClient as Mock).mockReturnValue(mockClient)
     ;(window as any).activeTextEditor = undefined
   })
 
@@ -160,10 +175,10 @@ describe("RunATCAnalysisTool - invoke", () => {
 
   beforeEach(() => {
     tool = new RunATCAnalysisTool()
-    jest.clearAllMocks()
-    ;(getSearchService as jest.Mock).mockReturnValue(mockSearcher)
-    ;(getOrCreateRoot as jest.Mock).mockResolvedValue(mockRoot)
-    ;(getClient as jest.Mock).mockReturnValue(mockClient)
+    vi.clearAllMocks()
+    ;(getSearchService as Mock).mockReturnValue(mockSearcher)
+    ;(getOrCreateRoot as Mock).mockResolvedValue(mockRoot)
+    ;(getClient as Mock).mockReturnValue(mockClient)
     ;(window as any).activeTextEditor = undefined
   })
 
@@ -199,7 +214,7 @@ describe("RunATCAnalysisTool - invoke", () => {
     ;(window as any).activeTextEditor = {
       document: { uri: { scheme: "file", authority: "" } }
     }
-    ;(abapUri as jest.Mock).mockReturnValue(false)
+    ;(abapUri as Mock).mockReturnValue(false)
     await expect(tool.invoke(makeOptions({ useActiveFile: true }), mockToken)).rejects.toThrow(
       "not an ABAP document"
     )
@@ -222,7 +237,7 @@ describe("RunATCAnalysisTool - invoke", () => {
   })
 
   it("passes variantName through to atcProvider.runInspector", async () => {
-    ;(atcProvider.runInspector as jest.Mock).mockResolvedValue("MYVARIANT")
+    ;(atcProvider.runInspector as Mock).mockResolvedValue("MYVARIANT")
     await tool.invoke(
       makeOptions({
         objectUri: "adt://dev100/sap/bc/adt/programs/programs/zprog",
@@ -240,7 +255,7 @@ describe("RunATCAnalysisTool - invoke", () => {
   })
 
   it("calls atcProvider.runInspector with undefined variant when not provided", async () => {
-    ;(atcProvider.runInspector as jest.Mock).mockResolvedValue("DEFAULT")
+    ;(atcProvider.runInspector as Mock).mockResolvedValue("DEFAULT")
     await tool.invoke(
       makeOptions({
         objectUri: "adt://dev100/sap/bc/adt/programs/programs/zprog",
@@ -258,8 +273,8 @@ describe("RunATCAnalysisTool - invoke", () => {
   })
 
   it("routes package names through the raw ADT URL path silently", async () => {
-    ;(packageUri as jest.Mock).mockResolvedValue("/sap/bc/adt/packages/zpkg")
-    ;(atcProvider.runInspectorByAdtUrl as jest.Mock).mockResolvedValue("DEFAULT")
+    ;(packageUri as Mock).mockResolvedValue("/sap/bc/adt/packages/zpkg")
+    ;(atcProvider.runInspectorByAdtUrl as Mock).mockResolvedValue("DEFAULT")
 
     await tool.invoke(
       makeOptions({ objectName: "ZPKG", connectionId: "DEV100", scope: "package" }),
@@ -278,7 +293,7 @@ describe("RunATCAnalysisTool - invoke", () => {
   })
 
   it("routes transport names through the raw ADT URL path silently", async () => {
-    ;(atcProvider.runInspectorByAdtUrl as jest.Mock).mockResolvedValue("DEFAULT")
+    ;(atcProvider.runInspectorByAdtUrl as Mock).mockResolvedValue("DEFAULT")
 
     await tool.invoke(
       makeOptions({ objectName: "GEDK933871", connectionId: "DEV100", scope: "transport" }),
@@ -296,8 +311,8 @@ describe("RunATCAnalysisTool - invoke", () => {
   })
 
   it("passes showUi through for visible package analysis", async () => {
-    ;(packageUri as jest.Mock).mockResolvedValue("/sap/bc/adt/packages/zpkg")
-    ;(atcProvider.runInspectorByAdtUrl as jest.Mock).mockResolvedValue("DEFAULT")
+    ;(packageUri as Mock).mockResolvedValue("/sap/bc/adt/packages/zpkg")
+    ;(atcProvider.runInspectorByAdtUrl as Mock).mockResolvedValue("DEFAULT")
 
     await tool.invoke(
       makeOptions({
@@ -324,8 +339,8 @@ describe("RunATCAnalysisTool - get_atc_variants action", () => {
 
   beforeEach(() => {
     tool = new RunATCAnalysisTool()
-    jest.clearAllMocks()
-    ;(getClient as jest.Mock).mockReturnValue({})
+    vi.clearAllMocks()
+    ;(getClient as Mock).mockReturnValue({})
   })
 
   it("returns error text when connectionId is missing", async () => {
@@ -334,7 +349,7 @@ describe("RunATCAnalysisTool - get_atc_variants action", () => {
   })
 
   it("lists variants using default query and maxItems", async () => {
-    ;(listAtcVariants as jest.Mock).mockResolvedValue([
+    ;(listAtcVariants as Mock).mockResolvedValue([
       { name: "DEFAULT", description: "Default variant" }
     ])
     const result: any = await tool.invoke(
@@ -346,7 +361,7 @@ describe("RunATCAnalysisTool - get_atc_variants action", () => {
   })
 
   it("passes custom query and maxItems through", async () => {
-    ;(listAtcVariants as jest.Mock).mockResolvedValue([])
+    ;(listAtcVariants as Mock).mockResolvedValue([])
     await tool.invoke(
       makeOptions({
         action: "get_atc_variants",
@@ -360,7 +375,7 @@ describe("RunATCAnalysisTool - get_atc_variants action", () => {
   })
 
   it("returns a graceful error message when listAtcVariants throws", async () => {
-    ;(listAtcVariants as jest.Mock).mockRejectedValue(new Error("404 Not Found"))
+    ;(listAtcVariants as Mock).mockRejectedValue(new Error("404 Not Found"))
     const result: any = await tool.invoke(
       makeOptions({ action: "get_atc_variants", connectionId: "dev100" }),
       mockToken
@@ -370,7 +385,7 @@ describe("RunATCAnalysisTool - get_atc_variants action", () => {
   })
 
   it("notes when results are capped at maxItems", async () => {
-    ;(listAtcVariants as jest.Mock).mockResolvedValue([{ name: "V1", description: "" }])
+    ;(listAtcVariants as Mock).mockResolvedValue([{ name: "V1", description: "" }])
     const result: any = await tool.invoke(
       makeOptions({ action: "get_atc_variants", connectionId: "dev100", maxItems: 1 }),
       mockToken
@@ -384,7 +399,7 @@ describe("GetATCDecorationsTool", () => {
 
   beforeEach(() => {
     tool = new GetATCDecorationsTool()
-    jest.clearAllMocks()
+    vi.clearAllMocks()
   })
 
   describe("prepareInvocation", () => {
@@ -396,7 +411,7 @@ describe("GetATCDecorationsTool", () => {
 
   describe("invoke", () => {
     it("logs telemetry", async () => {
-      ;(getATCDecorations as jest.Mock).mockReturnValue({ decorations: [] })
+      ;(getATCDecorations as Mock).mockReturnValue({ decorations: [] })
       await tool.invoke(makeOptions(), mockToken)
       expect(logTelemetry).toHaveBeenCalledWith("tool_get_atc_decorations_called", {
         connectionId: undefined
@@ -404,7 +419,7 @@ describe("GetATCDecorationsTool", () => {
     })
 
     it("returns decorations result", async () => {
-      ;(getATCDecorations as jest.Mock).mockReturnValue({
+      ;(getATCDecorations as Mock).mockReturnValue({
         fileUri: "adt://dev100/path",
         decorations: []
       })
@@ -413,13 +428,13 @@ describe("GetATCDecorationsTool", () => {
     })
 
     it("handles empty decorations", async () => {
-      ;(getATCDecorations as jest.Mock).mockReturnValue({ decorations: [] })
+      ;(getATCDecorations as Mock).mockReturnValue({ decorations: [] })
       const result: any = await tool.invoke(makeOptions(), mockToken)
       expect(result.parts[0].text).toBeDefined()
     })
 
     it("filters by fileUri when provided", async () => {
-      ;(getATCDecorations as jest.Mock).mockReturnValue({
+      ;(getATCDecorations as Mock).mockReturnValue({
         fileUri: "adt://dev100/path",
         decorations: []
       })
@@ -433,7 +448,7 @@ describe("GetATCDecorationsTool", () => {
     })
 
     it("calls getATCDecorations without argument when no fileUri", async () => {
-      ;(getATCDecorations as jest.Mock).mockReturnValue({ decorations: [] })
+      ;(getATCDecorations as Mock).mockReturnValue({ decorations: [] })
       await tool.invoke(makeOptions(), mockToken)
       expect(getATCDecorations).toHaveBeenCalledWith(undefined)
     })

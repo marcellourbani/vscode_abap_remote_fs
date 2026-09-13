@@ -1,36 +1,36 @@
-jest.mock(
-  "vscode",
-  () => ({
-    commands: {
-      executeCommand: jest.fn()
-    },
-    Uri: {
-      parse: jest.fn((s: string) => ({ toString: () => s, scheme: "adt" }))
-    },
-    CancellationToken: {},
-    WebviewView: {},
-    WebviewViewResolveContext: {}
-  }),
-  { virtual: true }
-)
-
-jest.mock("../../adt/conections", () => ({
-  getClient: jest.fn()
+vi.mock("vscode", () => ({
+  commands: {
+    executeCommand: vi.fn()
+  },
+  Uri: {
+    parse: vi.fn(function (s: string) {
+      return { toString: () => s, scheme: "adt" }
+    })
+  },
+  CancellationToken: {},
+  WebviewView: {},
+  WebviewViewResolveContext: {}
 }))
 
-jest.mock("../../adt/operations/AdtObjectFinder", () => ({
-  AdtObjectFinder: jest.fn().mockImplementation(() => ({
-    displayAdtUri: jest.fn()
-  }))
+vi.mock("../../adt/conections", () => ({
+  getClient: vi.fn()
 }))
 
-jest.mock("../../commands", () => ({
+vi.mock("../../adt/operations/AdtObjectFinder", () => ({
+  AdtObjectFinder: vi.fn().mockImplementation(function () {
+    return {
+      displayAdtUri: vi.fn()
+    }
+  })
+}))
+
+vi.mock("../../commands", () => ({
   AbapFsCommands: { atcDocHistoryBack: "back", atcDocHistoryForward: "forward" },
   command: () => (_target: any, _key: string, descriptor: PropertyDescriptor) => descriptor
 }))
 
-jest.mock("../history", () => ({
-  History: jest.fn().mockImplementation((initial?: any) => {
+vi.mock("../history", () => ({
+  History: vi.fn().mockImplementation(function (initial?: any) {
     let items: any[] = initial !== undefined ? [initial] : []
     let idx = 0
     return {
@@ -43,42 +43,45 @@ jest.mock("../history", () => ({
       get hasNext() {
         return idx < items.length - 1
       },
-      append: jest.fn((item: any) => {
+      append: vi.fn((item: any) => {
         items = [...items.slice(0, idx + 1), item]
         idx++
       }),
-      back: jest.fn(() => {
+      back: vi.fn(() => {
         if (idx > 0) idx--
       }),
-      forward: jest.fn(() => {
+      forward: vi.fn(() => {
         if (idx < items.length - 1) idx++
       })
     }
   })
 }))
 
-jest.mock("../utilities", () => ({
-  injectUrlHandler: jest.fn((html: string) => `<injected>${html}</injected>`)
+vi.mock("../utilities", () => ({
+  injectUrlHandler: vi.fn(function (html: string) {
+    return `<injected>${html}</injected>`
+  })
 }))
 
-jest.mock("../../context", () => ({
-  setContext: jest.fn()
+vi.mock("../../context", () => ({
+  setContext: vi.fn()
 }))
 
-import { ATCDocumentation, DocumentationItem } from "./documentation"
+import { ATCDocumentation, type DocumentationItem } from "./documentation"
 import { getClient } from "../../adt/conections"
 import { injectUrlHandler } from "../utilities"
 import { setContext } from "../../context"
+import type { MockedFunction } from "vitest"
 
-const mockGetClient = getClient as jest.MockedFunction<typeof getClient>
-const mockInjectUrlHandler = injectUrlHandler as jest.MockedFunction<typeof injectUrlHandler>
-const mockSetContext = setContext as jest.MockedFunction<typeof setContext>
+const mockGetClient = getClient as MockedFunction<typeof getClient>
+const mockInjectUrlHandler = injectUrlHandler as MockedFunction<typeof injectUrlHandler>
+const mockSetContext = setContext as MockedFunction<typeof setContext>
 
 const makeWebviewPanel = () => ({
   webview: {
     options: {},
     html: "",
-    onDidReceiveMessage: jest.fn()
+    onDidReceiveMessage: vi.fn()
   }
 })
 
@@ -101,7 +104,7 @@ describe("ATCDocumentation.viewType", () => {
 })
 
 describe("ATCDocumentation.showDocumentation", () => {
-  beforeEach(() => jest.clearAllMocks())
+  beforeEach(() => vi.clearAllMocks())
 
   it("returns without setting html when no view is resolved", async () => {
     // Get fresh instance (singleton was created above but view is not set)
@@ -114,7 +117,7 @@ describe("ATCDocumentation.showDocumentation", () => {
   it("fetches html and injects url handler when view is resolved", async () => {
     const panel = makeWebviewPanel()
     const mockClient = {
-      atcDocumentation: jest.fn().mockResolvedValue({ body: "<html>doc</html>" })
+      atcDocumentation: vi.fn().mockResolvedValue({ body: "<html>doc</html>" })
     }
     mockGetClient.mockReturnValue(mockClient as any)
     mockInjectUrlHandler.mockReturnValue("<injected><html>doc</html></injected>")
@@ -135,7 +138,7 @@ describe("ATCDocumentation.showDocumentation", () => {
   it("sets context for navigation flags", async () => {
     const panel = makeWebviewPanel()
     const mockClient = {
-      atcDocumentation: jest.fn().mockResolvedValue({ body: "<html/>" })
+      atcDocumentation: vi.fn().mockResolvedValue({ body: "<html/>" })
     }
     mockGetClient.mockReturnValue(mockClient as any)
 
@@ -155,12 +158,12 @@ describe("ATCDocumentation.showDocumentation", () => {
 })
 
 describe("ATCDocumentation.resolveWebviewView", () => {
-  beforeEach(() => jest.clearAllMocks())
+  beforeEach(() => vi.clearAllMocks())
 
   it("sets webview options to enable scripts", async () => {
     const panel = makeWebviewPanel()
     const mockClient = {
-      atcDocumentation: jest.fn().mockResolvedValue({ body: "" })
+      atcDocumentation: vi.fn().mockResolvedValue({ body: "" })
     }
     mockGetClient.mockReturnValue(mockClient as any)
 

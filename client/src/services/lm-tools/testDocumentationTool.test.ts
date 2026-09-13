@@ -1,71 +1,90 @@
-jest.mock(
-  "vscode",
-  () => ({
-    LanguageModelToolResult: jest.fn().mockImplementation((parts: any[]) => ({ parts })),
-    LanguageModelTextPart: jest.fn().mockImplementation((text: string) => ({ text })),
-    MarkdownString: jest.fn().mockImplementation((value: string) => ({ value })),
-    CancellationTokenSource: jest.fn().mockImplementation(() => ({
-      token: { isCancellationRequested: false, onCancellationRequested: jest.fn() }
-    })),
-    lm: { registerTool: jest.fn(() => ({ dispose: jest.fn() })) },
-    window: { activeTextEditor: undefined },
-    workspace: {
-      workspaceFolders: [],
-      getConfiguration: jest.fn(() => ({ get: jest.fn() }))
-    },
-    Uri: {
-      parse: (s: string) => ({
-        authority: s.split("/")[2] || "",
-        path: s,
-        scheme: "adt",
-        toString: () => s
-      }),
-      file: (s: string) => ({ fsPath: s, scheme: "file", toString: () => `file://${s}` })
-    },
-    env: { openExternal: jest.fn() },
-    debug: { activeDebugSession: undefined }
+vi.mock("vscode", () => ({
+  LanguageModelToolResult: vi.fn().mockImplementation(function (parts: any[]) {
+    return { parts }
   }),
-  { virtual: true }
-)
+  LanguageModelTextPart: vi.fn().mockImplementation(function (text: string) {
+    return { text }
+  }),
+  MarkdownString: vi.fn().mockImplementation(function (value: string) {
+    return { value }
+  }),
+  CancellationTokenSource: vi.fn().mockImplementation(function () {
+    return {
+      token: { isCancellationRequested: false, onCancellationRequested: vi.fn() }
+    }
+  }),
+  lm: {
+    registerTool: vi.fn(function () {
+      return { dispose: vi.fn() }
+    })
+  },
+  window: { activeTextEditor: undefined },
+  workspace: {
+    workspaceFolders: [],
+    getConfiguration: vi.fn(function () {
+      return { get: vi.fn() }
+    })
+  },
+  Uri: {
+    parse: (s: string) => ({
+      authority: s.split("/")[2] || "",
+      path: s,
+      scheme: "adt",
+      toString: () => s
+    }),
+    file: (s: string) => ({ fsPath: s, scheme: "file", toString: () => `file://${s}` })
+  },
+  env: { openExternal: vi.fn() },
+  debug: { activeDebugSession: undefined }
+}))
 
-jest.mock("./toolGuard", () => ({
-  assertToolInvocationAuthorized: jest.fn(),
-  isToolInvocationAuthorized: jest.fn(() => true)
+vi.mock("./toolGuard", () => ({
+  assertToolInvocationAuthorized: vi.fn(),
+  isToolInvocationAuthorized: vi.fn(function () {
+    return true
+  })
 }))
-jest.mock("../../adt/conections", () => ({
-  getClient: jest.fn(),
-  abapUri: jest.fn()
+vi.mock("../../adt/conections", () => ({
+  getClient: vi.fn(),
+  abapUri: vi.fn()
 }))
-jest.mock("../telemetry", () => ({ logTelemetry: jest.fn() }))
-jest.mock("../funMessenger", () => ({
+vi.mock("../telemetry", () => ({ logTelemetry: vi.fn() }))
+vi.mock("../funMessenger", () => ({
   funWindow: {
     activeTextEditor: undefined,
-    showQuickPick: jest.fn(),
-    showInformationMessage: jest.fn(),
-    showWarningMessage: jest.fn()
+    showQuickPick: vi.fn(),
+    showInformationMessage: vi.fn(),
+    showWarningMessage: vi.fn()
   }
 }))
-jest.mock("./toolRegistry", () => ({
-  registerToolWithRegistry: jest.fn(() => ({ dispose: jest.fn() }))
+vi.mock("./toolRegistry", () => ({
+  registerToolWithRegistry: vi.fn(function () {
+    return { dispose: vi.fn() }
+  })
 }))
-jest.mock("../abapCopilotLogger", () => ({
-  logCommands: { info: jest.fn(), error: jest.fn(), warn: jest.fn() }
+vi.mock("../abapCopilotLogger", () => ({
+  logCommands: { info: vi.fn(), error: vi.fn(), warn: vi.fn() }
 }))
 
-const mockCreateDocument = jest.fn().mockResolvedValue(Buffer.from("test"))
-const mockSaveDocument = jest.fn().mockResolvedValue("/path/to/doc.docx")
-
-jest.mock("../testDocumentCreator", () => ({
-  TestDocumentCreator: jest.fn().mockImplementation(() => ({
-    createDocument: mockCreateDocument,
-    saveDocument: mockSaveDocument
-  }))
+const { mockCreateDocument, mockSaveDocument } = vi.hoisted(() => {
+  const mockCreateDocument = vi.fn().mockResolvedValue(Buffer.from("test"))
+  const mockSaveDocument = vi.fn().mockResolvedValue("/path/to/doc.docx")
+  return { mockCreateDocument, mockSaveDocument }
+})
+vi.mock("../testDocumentCreator", () => ({
+  TestDocumentCreator: vi.fn().mockImplementation(function () {
+    return {
+      createDocument: mockCreateDocument,
+      saveDocument: mockSaveDocument
+    }
+  })
 }))
 
 import { CreateTestDocumentationTool } from "./testDocumentationTool"
 import { TestDocumentCreator } from "../testDocumentCreator"
 import { logTelemetry } from "../telemetry"
 import { funWindow as window } from "../funMessenger"
+import type { Mock } from "vitest"
 
 const mockToken = {} as any
 
@@ -90,7 +109,7 @@ describe("CreateTestDocumentationTool", () => {
 
   beforeEach(() => {
     tool = new CreateTestDocumentationTool()
-    jest.clearAllMocks()
+    vi.clearAllMocks()
     mockCreateDocument.mockResolvedValue(Buffer.from("test"))
     mockSaveDocument.mockResolvedValue("/path/to/doc.docx")
   })
@@ -207,7 +226,7 @@ describe("CreateTestDocumentationTool", () => {
 
     it("shows information message with Open File option", async () => {
       mockSaveDocument.mockResolvedValue("/path/to/doc.docx")
-      ;(window.showInformationMessage as jest.Mock).mockResolvedValue(undefined)
+      ;(window.showInformationMessage as Mock).mockResolvedValue(undefined)
 
       const scenarios = makeScenarios(1)
       await tool.invoke(makeOptions({ scenarios }), mockToken)

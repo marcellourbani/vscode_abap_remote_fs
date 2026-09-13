@@ -31,7 +31,7 @@ export const runTest = (f: (s: AOService) => Promise<void>) => {
     try {
       await f(service)
     } finally {
-      jest.setTimeout(5000) // restore the default 5000
+      vi.setConfig({ testTimeout: 5000 }) // restore the default 5000
       if (client.statelessClone.loggedin) client.statelessClone.logout()
       if (client.loggedin) client.logout()
     }

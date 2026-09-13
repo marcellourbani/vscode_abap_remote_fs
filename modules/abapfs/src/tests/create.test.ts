@@ -1,6 +1,6 @@
 import { createRoot, isRoot, TMPFOLDER, LIBFOLDER } from "../root"
-import { AbapFsService } from "../index.js"
-import { mock, MockProxy } from "jest-mock-extended"
+import { AbapFsService } from ".."
+import { mock, MockProxy } from "vitest-mock-extended"
 import { isAbapFolder } from "../abapFolder"
 import { Folder, isFolder } from "../folder"
 import sampleNodeContents from "../testdata/nodeContents1.json"

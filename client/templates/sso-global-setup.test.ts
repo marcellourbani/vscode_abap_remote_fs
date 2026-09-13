@@ -1,23 +1,28 @@
 import * as fs from "fs/promises"
 import * as os from "os"
 import * as path from "path"
-import { afterEach, beforeEach, describe, expect, it, jest } from "@jest/globals"
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 
-const get = jest.fn()
-const post = jest.fn()
-const storageState = jest.fn()
-const dispose = jest.fn()
-const newContext = jest.fn(async () => ({ get, post, storageState, dispose }))
+// Hoisted so the vi.mock("playwright") factory (also hoisted) can reference them.
+const { get, post, storageState, dispose, newContext } = vi.hoisted(() => {
+  const get = vi.fn()
+  const post = vi.fn()
+  const storageState = vi.fn()
+  const dispose = vi.fn()
+  const newContext = vi.fn(async () => ({ get, post, storageState, dispose }))
+  return { get, post, storageState, dispose, newContext }
+})
 
-jest.mock("playwright", () => ({ request: { newContext } }))
+vi.mock("playwright", () => ({ request: { newContext } }))
 
-const setup: () => Promise<void> = require("./sso-global-setup.ts").default
+// Static import so vitest transforms the template and intercepts its require("playwright").
+import setup from "./sso-global-setup"
 const originalEnv = { ...process.env }
 let directory: string
 let statePath: string
 
 beforeEach(async () => {
-  jest.clearAllMocks()
+  vi.clearAllMocks()
   process.env = { ...originalEnv }
   directory = await fs.mkdtemp(path.join(os.tmpdir(), "sso-setup-"))
   statePath = path.join(directory, "state.json")

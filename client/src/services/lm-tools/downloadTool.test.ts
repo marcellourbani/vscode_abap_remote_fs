@@ -1,98 +1,106 @@
 // Tests for services/lm-tools/downloadTool.ts
 
-jest.mock(
-  "vscode",
-  () => {
-    class Uri {
-      constructor(
-        public scheme: string,
-        public authority: string,
-        public path: string,
-        public fsPath: string = path
-      ) {}
-      static parse(s: string) {
-        const m = /^([a-z]+):\/\/([^\/]*)(\/.*)?$/i.exec(s)
-        if (m) return new Uri(m[1], m[2], m[3] ?? "/", m[3] ?? "/")
-        return new Uri("file", "", s, s)
-      }
-      static file(p: string) {
-        return new Uri("file", "", p.replace(/\\/g, "/"), p)
-      }
-      static joinPath(base: Uri, ...segs: string[]) {
-        const joined = base.path.replace(/\/$/, "") + "/" + segs.join("/")
-        return new Uri(base.scheme, base.authority, joined, joined)
-      }
-      toString() {
-        return `${this.scheme}://${this.authority}${this.path}`
+vi.mock("vscode", () => {
+  class Uri {
+    constructor(
+      public scheme: string,
+      public authority: string,
+      public path: string,
+      public fsPath: string = path
+    ) {}
+    static parse(s: string) {
+      const m = /^([a-z]+):\/\/([^\/]*)(\/.*)?$/i.exec(s)
+      if (m) return new Uri(m[1], m[2], m[3] ?? "/", m[3] ?? "/")
+      return new Uri("file", "", s, s)
+    }
+    static file(p: string) {
+      return new Uri("file", "", p.replace(/\\/g, "/"), p)
+    }
+    static joinPath(base: Uri, ...segs: string[]) {
+      const joined = base.path.replace(/\/$/, "") + "/" + segs.join("/")
+      return new Uri(base.scheme, base.authority, joined, joined)
+    }
+    toString() {
+      return `${this.scheme}://${this.authority}${this.path}`
+    }
+  }
+
+  class CancellationTokenSource {
+    private handlers: Array<() => void> = []
+    token = {
+      isCancellationRequested: false,
+      onCancellationRequested: (fn: () => void) => {
+        this.handlers.push(fn)
+        return { dispose: () => {} }
       }
     }
+    cancel() {
+      this.token.isCancellationRequested = true
+      this.handlers.forEach(h => h())
+    }
+    dispose() {}
+  }
 
-    class CancellationTokenSource {
-      private handlers: Array<() => void> = []
-      token = {
-        isCancellationRequested: false,
-        onCancellationRequested: (fn: () => void) => {
-          this.handlers.push(fn)
-          return { dispose: () => {} }
+  class CancellationError extends Error {
+    constructor() {
+      super("Canceled")
+      this.name = "Canceled"
+    }
+  }
+
+  return {
+    Uri,
+    CancellationTokenSource,
+    CancellationError,
+    FileType: { Unknown: 0, File: 1, Directory: 2 },
+    ProgressLocation: { Notification: 15, Window: 10 },
+    LanguageModelToolResult: vi.fn().mockImplementation(function (parts: any[]) {
+      return { parts }
+    }),
+    LanguageModelTextPart: vi.fn().mockImplementation(function (text: string) {
+      return { text }
+    }),
+    MarkdownString: vi.fn().mockImplementation(function (text: string) {
+      return { text }
+    }),
+    lm: {
+      registerTool: vi.fn(function () {
+        return { dispose: vi.fn() }
+      })
+    },
+    window: {
+      withProgress: vi.fn(async function (_opts: any, task: any) {
+        const progress = { report: vi.fn() }
+        const progressToken = {
+          isCancellationRequested: false,
+          onCancellationRequested: (_fn: any) => ({ dispose: () => {} })
         }
-      }
-      cancel() {
-        this.token.isCancellationRequested = true
-        this.handlers.forEach(h => h())
-      }
-      dispose() {}
-    }
-
-    class CancellationError extends Error {
-      constructor() {
-        super("Canceled")
-        this.name = "Canceled"
+        return await task(progress, progressToken)
+      })
+    },
+    workspace: {
+      fs: {
+        stat: vi.fn(),
+        readDirectory: vi.fn(),
+        readFile: vi.fn(),
+        writeFile: vi.fn(),
+        createDirectory: vi.fn()
       }
     }
+  }
+})
 
-    return {
-      Uri,
-      CancellationTokenSource,
-      CancellationError,
-      FileType: { Unknown: 0, File: 1, Directory: 2 },
-      ProgressLocation: { Notification: 15, Window: 10 },
-      LanguageModelToolResult: jest.fn().mockImplementation((parts: any[]) => ({ parts })),
-      LanguageModelTextPart: jest.fn().mockImplementation((text: string) => ({ text })),
-      MarkdownString: jest.fn().mockImplementation((text: string) => ({ text })),
-      lm: { registerTool: jest.fn(() => ({ dispose: jest.fn() })) },
-      window: {
-        withProgress: jest.fn(async (_opts: any, task: any) => {
-          const progress = { report: jest.fn() }
-          const progressToken = {
-            isCancellationRequested: false,
-            onCancellationRequested: (_fn: any) => ({ dispose: () => {} })
-          }
-          return await task(progress, progressToken)
-        })
-      },
-      workspace: {
-        fs: {
-          stat: jest.fn(),
-          readDirectory: jest.fn(),
-          readFile: jest.fn(),
-          writeFile: jest.fn(),
-          createDirectory: jest.fn()
-        }
-      }
-    }
-  },
-  { virtual: true }
-)
-
-jest.mock("./toolRegistry", () => ({
-  registerToolWithRegistry: jest.fn(() => ({ dispose: jest.fn() }))
+vi.mock("./toolRegistry", () => ({
+  registerToolWithRegistry: vi.fn(function () {
+    return { dispose: vi.fn() }
+  })
 }))
-jest.mock("../telemetry", () => ({ logTelemetry: jest.fn() }))
-jest.mock("./toolGuard", () => ({
-  assertToolInvocationAuthorized: jest.fn()
+vi.mock("../telemetry", () => ({ logTelemetry: vi.fn() }))
+vi.mock("./toolGuard", () => ({
+  assertToolInvocationAuthorized: vi.fn()
 }))
-jest.mock("../abapSearchService", () => ({ getSearchService: jest.fn() }))
-jest.mock("../../adt/conections", () => ({ getOrCreateRoot: jest.fn() }))
+vi.mock("../abapSearchService", () => ({ getSearchService: vi.fn() }))
+vi.mock("../../adt/conections", () => ({ getOrCreateRoot: vi.fn() }))
 
 import * as vscode from "vscode"
 import { DownloadTool, registerDownloadTool } from "./downloadTool"
@@ -101,6 +109,7 @@ import { getSearchService } from "../abapSearchService"
 import { logTelemetry } from "../telemetry"
 import { assertToolInvocationAuthorized } from "./toolGuard"
 import { registerToolWithRegistry } from "./toolRegistry"
+import type { Mock } from "vitest"
 
 const F = vscode.FileType.File
 const D = vscode.FileType.Directory
@@ -114,7 +123,7 @@ const fs = vscode.workspace.fs as any
 type Entry = { type: typeof D; children: string[] } | { type: typeof F; bytes?: Uint8Array }
 
 function mountFs(entries: Record<string, Entry>, opts: { targetExists?: boolean } = {}) {
-  fs.stat.mockImplementation(async (uri: vscode.Uri) => {
+  fs.stat.mockImplementation(async function (uri: vscode.Uri) {
     if (uri.scheme === "file") {
       if (opts.targetExists) return { type: F, size: 1 }
       throw new Error("ENOENT")
@@ -124,7 +133,7 @@ function mountFs(entries: Record<string, Entry>, opts: { targetExists?: boolean 
     if (!e) throw new Error(`ENOENT: ${key}`)
     return { type: e.type, size: 0 }
   })
-  fs.readDirectory.mockImplementation(async (uri: vscode.Uri) => {
+  fs.readDirectory.mockImplementation(async function (uri: vscode.Uri) {
     const key = uri.toString()
     const e = entries[key]
     if (!e || e.type !== D) throw new Error(`ENOTDIR: ${key}`)
@@ -133,7 +142,7 @@ function mountFs(entries: Record<string, Entry>, opts: { targetExists?: boolean 
       return [name, child ? child.type : F] as [string, vscode.FileType]
     })
   })
-  fs.readFile.mockImplementation(async (uri: vscode.Uri) => {
+  fs.readFile.mockImplementation(async function (uri: vscode.Uri) {
     const key = uri.toString()
     const e = entries[key]
     if (!e || e.type !== F) throw new Error(`ENOENT: ${key}`)
@@ -158,9 +167,9 @@ describe("DownloadTool", () => {
   let tool: DownloadTool
 
   beforeEach(() => {
-    jest.clearAllMocks()
-    ;(vscode.window.withProgress as jest.Mock).mockImplementation(async (_o: any, task: any) => {
-      const progress = { report: jest.fn() }
+    vi.clearAllMocks()
+    ;(vscode.window.withProgress as Mock).mockImplementation(async function (_o: any, task: any) {
+      const progress = { report: vi.fn() }
       const progressToken = {
         isCancellationRequested: false,
         onCancellationRequested: () => ({ dispose: () => {} })
@@ -211,8 +220,8 @@ describe("DownloadTool", () => {
 
     it("lowercases connectionId", async () => {
       mountFs({ "adt://ged100/pkg": { type: F } })
-      const findByAdtUri = jest.fn().mockResolvedValue({ path: "/pkg" })
-      ;(getOrCreateRoot as jest.Mock).mockResolvedValue({ findByAdtUri })
+      const findByAdtUri = vi.fn().mockResolvedValue({ path: "/pkg" })
+      ;(getOrCreateRoot as Mock).mockResolvedValue({ findByAdtUri })
       await tool.invoke(
         makeInvokeOptions({
           source: "/sap/bc/adt/packages/zpkg",
@@ -226,8 +235,8 @@ describe("DownloadTool", () => {
 
     it("resolves ADT paths via findByAdtUri with main=false", async () => {
       mountFs({ "adt://ged100/pkg": { type: F } })
-      const findByAdtUri = jest.fn().mockResolvedValue({ path: "/pkg" })
-      ;(getOrCreateRoot as jest.Mock).mockResolvedValue({ findByAdtUri })
+      const findByAdtUri = vi.fn().mockResolvedValue({ path: "/pkg" })
+      ;(getOrCreateRoot as Mock).mockResolvedValue({ findByAdtUri })
       await tool.invoke(
         makeInvokeOptions({
           source: "/sap/bc/adt/packages/zpkg",
@@ -242,11 +251,11 @@ describe("DownloadTool", () => {
     it("resolves bare object names via searchObjects then findByAdtUri", async () => {
       mountFs({ "adt://ged100/zfoo": { type: F } })
       const searcher = {
-        searchObjects: jest.fn().mockResolvedValue([{ name: "ZFOO", uri: "/sap/bc/adt/x" }])
+        searchObjects: vi.fn().mockResolvedValue([{ name: "ZFOO", uri: "/sap/bc/adt/x" }])
       }
-      ;(getSearchService as jest.Mock).mockReturnValue(searcher)
-      const findByAdtUri = jest.fn().mockResolvedValue({ path: "/zfoo" })
-      ;(getOrCreateRoot as jest.Mock).mockResolvedValue({ findByAdtUri })
+      ;(getSearchService as Mock).mockReturnValue(searcher)
+      const findByAdtUri = vi.fn().mockResolvedValue({ path: "/zfoo" })
+      ;(getOrCreateRoot as Mock).mockResolvedValue({ findByAdtUri })
       await tool.invoke(
         makeInvokeOptions({
           source: "ZFOO",
@@ -263,14 +272,14 @@ describe("DownloadTool", () => {
     it("prefers exact case-insensitive match over first result", async () => {
       mountFs({ "adt://ged100/zfoo": { type: F } })
       const searcher = {
-        searchObjects: jest.fn().mockResolvedValue([
+        searchObjects: vi.fn().mockResolvedValue([
           { name: "ZFOO_OTHER", uri: "/sap/bc/adt/other" },
           { name: "zfoo", uri: "/sap/bc/adt/right" }
         ])
       }
-      ;(getSearchService as jest.Mock).mockReturnValue(searcher)
-      const findByAdtUri = jest.fn().mockResolvedValue({ path: "/zfoo" })
-      ;(getOrCreateRoot as jest.Mock).mockResolvedValue({ findByAdtUri })
+      ;(getSearchService as Mock).mockReturnValue(searcher)
+      const findByAdtUri = vi.fn().mockResolvedValue({ path: "/zfoo" })
+      ;(getOrCreateRoot as Mock).mockResolvedValue({ findByAdtUri })
       await tool.invoke(
         makeInvokeOptions({ source: "ZFOO", target: "C:/out", connectionId: "ged100" }),
         makeToken()
@@ -288,10 +297,10 @@ describe("DownloadTool", () => {
 
     it("throws when search returns nothing", async () => {
       mountFs({})
-      ;(getSearchService as jest.Mock).mockReturnValue({
-        searchObjects: jest.fn().mockResolvedValue([])
+      ;(getSearchService as Mock).mockReturnValue({
+        searchObjects: vi.fn().mockResolvedValue([])
       })
-      ;(getOrCreateRoot as jest.Mock).mockResolvedValue({ findByAdtUri: jest.fn() })
+      ;(getOrCreateRoot as Mock).mockResolvedValue({ findByAdtUri: vi.fn() })
       await expect(
         tool.invoke(
           makeInvokeOptions({ source: "ZNOPE", target: "C:/out", connectionId: "ged100" }),
@@ -345,7 +354,7 @@ describe("DownloadTool", () => {
         "adt://c/pkg/bad": { type: F, bytes: new TextEncoder().encode("x") }
       })
       const realRead = fs.readFile.getMockImplementation()!
-      fs.readFile.mockImplementation(async (uri: vscode.Uri) => {
+      fs.readFile.mockImplementation(async function (uri: vscode.Uri) {
         if (uri.path.endsWith("/bad")) throw new Error("Unavailable")
         return realRead(uri)
       })

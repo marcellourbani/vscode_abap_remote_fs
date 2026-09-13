@@ -3,28 +3,28 @@ import * as fs from "fs/promises"
 import * as os from "os"
 import * as path from "path"
 
-jest.mock(
-  "vscode",
-  () => ({
-    extensions: { getExtension: jest.fn() },
-    window: { showWarningMessage: jest.fn() },
-    LanguageModelToolResult: jest.fn().mockImplementation((parts: any[]) => ({ parts })),
-    LanguageModelTextPart: jest.fn().mockImplementation((text: string) => ({ text })),
-    lm: { registerTool: jest.fn() }
+vi.mock("vscode", () => ({
+  extensions: { getExtension: vi.fn() },
+  window: { showWarningMessage: vi.fn() },
+  LanguageModelToolResult: vi.fn().mockImplementation(function (parts: any[]) {
+    return { parts }
   }),
-  { virtual: true }
-)
+  LanguageModelTextPart: vi.fn().mockImplementation(function (text: string) {
+    return { text }
+  }),
+  lm: { registerTool: vi.fn() }
+}))
 
-jest.mock("./toolRegistry", () => ({ registerToolWithRegistry: jest.fn() }))
-jest.mock("../telemetry", () => ({ logTelemetry: jest.fn() }))
-jest.mock("./toolGuard", () => ({ assertToolInvocationAuthorized: jest.fn() }))
-jest.mock("../../config", () => ({ formatKey: jest.fn(), RemoteManager: { get: jest.fn() } }))
-jest.mock("../../lib", () => ({ log: { debug: jest.fn() } }))
-jest.mock("../../adt/conections", () => ({ getOrCreateClient: jest.fn() }))
-jest.mock("../../adt/sapgui/sapgui", () => ({ ssoLoginUrl: jest.fn() }))
-jest.mock("../testing/config", () => ({ getTestFolder: jest.fn(), getWebGuiUrl: jest.fn() }))
-jest.mock("../testing/browserResolver", () => ({ resolveBrowserExecutable: jest.fn() }))
-jest.mock("child_process", () => ({ spawn: jest.fn() }))
+vi.mock("./toolRegistry", () => ({ registerToolWithRegistry: vi.fn() }))
+vi.mock("../telemetry", () => ({ logTelemetry: vi.fn() }))
+vi.mock("./toolGuard", () => ({ assertToolInvocationAuthorized: vi.fn() }))
+vi.mock("../../config", () => ({ formatKey: vi.fn(), RemoteManager: { get: vi.fn() } }))
+vi.mock("../../lib", () => ({ log: { debug: vi.fn() } }))
+vi.mock("../../adt/conections", () => ({ getOrCreateClient: vi.fn() }))
+vi.mock("../../adt/sapgui/sapgui", () => ({ ssoLoginUrl: vi.fn() }))
+vi.mock("../testing/config", () => ({ getTestFolder: vi.fn(), getWebGuiUrl: vi.fn() }))
+vi.mock("../testing/browserResolver", () => ({ resolveBrowserExecutable: vi.fn() }))
+vi.mock("child_process", () => ({ spawn: vi.fn() }))
 
 import { spawn } from "child_process"
 import * as vscode from "vscode"
@@ -42,6 +42,7 @@ import {
   summarizeReport
 } from "./playwrightTestTool"
 import { registerToolWithRegistry } from "./toolRegistry"
+import type { Mock } from "vitest"
 
 const result = (status: string, extra: Record<string, unknown> = {}) => ({ status, ...extra })
 const report = (...tests: Array<{ title: string; results: any[] }>) => ({
@@ -152,7 +153,9 @@ const confirmation = "I verified all upstream phase gates and test data readines
 
 function token() {
   return {
-    onCancellationRequested: jest.fn(() => ({ dispose: jest.fn() }))
+    onCancellationRequested: vi.fn(function () {
+      return { dispose: vi.fn() }
+    })
   } as any
 }
 
@@ -161,31 +164,33 @@ function options(input: Record<string, unknown>) {
 }
 
 function mockProcess(reportValue?: unknown, output = { stdout: "runner out", stderr: "" }) {
-  ;(spawn as unknown as jest.Mock).mockImplementation(
-    (_command: string, _args: string[], processOptions: { env: NodeJS.ProcessEnv }) => {
-      const child = new EventEmitter() as any
-      child.stdout = new EventEmitter()
-      child.stderr = new EventEmitter()
-      child.pid = 123
-      child.exitCode = null
-      child.signalCode = null
-      child.kill = jest.fn()
-      setImmediate(async () => {
-        if (output.stdout) child.stdout.emit("data", Buffer.from(output.stdout))
-        if (output.stderr) child.stderr.emit("data", Buffer.from(output.stderr))
-        if (reportValue !== undefined) {
-          await fs.writeFile(
-            processOptions.env.SAP_TESTING_REPORT_FILE!,
-            JSON.stringify(reportValue),
-            "utf8"
-          )
-        }
-        child.exitCode = reportValue === undefined ? 1 : 0
-        child.emit("close", child.exitCode)
-      })
-      return child
-    }
-  )
+  ;(spawn as unknown as Mock).mockImplementation(function (
+    _command: string,
+    _args: string[],
+    processOptions: { env: NodeJS.ProcessEnv }
+  ) {
+    const child = new EventEmitter() as any
+    child.stdout = new EventEmitter()
+    child.stderr = new EventEmitter()
+    child.pid = 123
+    child.exitCode = null
+    child.signalCode = null
+    child.kill = vi.fn()
+    setImmediate(async () => {
+      if (output.stdout) child.stdout.emit("data", Buffer.from(output.stdout))
+      if (output.stderr) child.stderr.emit("data", Buffer.from(output.stderr))
+      if (reportValue !== undefined) {
+        await fs.writeFile(
+          processOptions.env.SAP_TESTING_REPORT_FILE!,
+          JSON.stringify(reportValue),
+          "utf8"
+        )
+      }
+      child.exitCode = reportValue === undefined ? 1 : 0
+      child.emit("close", child.exitCode)
+    })
+    return child
+  })
 }
 
 describe("PlaywrightTestTool", () => {
@@ -195,7 +200,7 @@ describe("PlaywrightTestTool", () => {
   let tool: PlaywrightTestTool
 
   beforeEach(async () => {
-    jest.clearAllMocks()
+    vi.clearAllMocks()
     root = await fs.mkdtemp(path.join(os.tmpdir(), "playwright-tool-"))
     extension = path.join(root, "extension")
     specDir = path.join(root, "tests", "PROGRAM", "test-scripts")
@@ -215,15 +220,17 @@ describe("PlaywrightTestTool", () => {
       JSON.stringify({ bin: { playwright: "cli.js" } })
     )
     await fs.writeFile(path.join(packageDir, "cli.js"), "")
-    ;(vscode.extensions.getExtension as jest.Mock).mockReturnValue({ extensionPath: extension })
-    ;(formatKey as jest.Mock).mockImplementation((value: string) => value.toLowerCase())
-    ;(getTestFolder as jest.Mock).mockReturnValue(root)
-    ;(getWebGuiUrl as jest.Mock).mockResolvedValue("http://sap/webgui")
-    ;(resolveBrowserExecutable as jest.Mock).mockResolvedValue({
+    ;(vscode.extensions.getExtension as Mock).mockReturnValue({ extensionPath: extension })
+    ;(formatKey as Mock).mockImplementation(function (value: string) {
+      return value.toLowerCase()
+    })
+    ;(getTestFolder as Mock).mockReturnValue(root)
+    ;(getWebGuiUrl as Mock).mockResolvedValue("http://sap/webgui")
+    ;(resolveBrowserExecutable as Mock).mockResolvedValue({
       executablePath: "C:/browser.exe"
     })
-    ;(RemoteManager.get as jest.Mock).mockReturnValue({
-      byIdAsync: jest.fn().mockResolvedValue(null)
+    ;(RemoteManager.get as Mock).mockReturnValue({
+      byIdAsync: vi.fn().mockResolvedValue(null)
     })
     tool = new PlaywrightTestTool()
   })
@@ -247,12 +254,12 @@ describe("PlaywrightTestTool", () => {
   it("runs an exact parallel subset with capped limits and one shared login URL", async () => {
     await fs.writeFile(path.join(specDir, "TC-001.spec.ts"), "test")
     await fs.writeFile(path.join(specDir, "TC-002.spec.ts"), "test")
-    const launcher = { url: "http://launcher", dispose: jest.fn() }
-    ;(RemoteManager.get as jest.Mock).mockReturnValue({
-      byIdAsync: jest.fn().mockResolvedValue({ webGuiAutoLogin: true })
+    const launcher = { url: "http://launcher", dispose: vi.fn() }
+    ;(RemoteManager.get as Mock).mockReturnValue({
+      byIdAsync: vi.fn().mockResolvedValue({ webGuiAutoLogin: true })
     })
-    ;(ssoLoginUrl as jest.Mock).mockResolvedValue(launcher)
-    ;(resolveBrowserExecutable as jest.Mock).mockResolvedValue({
+    ;(ssoLoginUrl as Mock).mockResolvedValue(launcher)
+    ;(resolveBrowserExecutable as Mock).mockResolvedValue({
       executablePath: "C:/browser.exe",
       warning: "browser warning"
     })
@@ -275,7 +282,7 @@ describe("PlaywrightTestTool", () => {
 
     expect(value.parts[0].text).toContain("1 passed")
     expect(spawn).toHaveBeenCalledTimes(1)
-    const [_command, args, processOptions] = (spawn as unknown as jest.Mock).mock.calls[0]
+    const [_command, args, processOptions] = (spawn as unknown as Mock).mock.calls[0]
     expect(args).toEqual(expect.arrayContaining(["TC-001.spec.ts", "TC-002.spec.ts"]))
     expect(processOptions.env).toMatchObject({
       SAP_TESTING_PARALLEL: "1",
@@ -303,7 +310,7 @@ describe("PlaywrightTestTool", () => {
     )
     expect(value.parts[0].text).toContain("Playwright did not produce a report (exit code 1)")
     expect(value.parts[0].text).toContain("load failed")
-    const [_command, args, processOptions] = (spawn as unknown as jest.Mock).mock.calls[0]
+    const [_command, args, processOptions] = (spawn as unknown as Mock).mock.calls[0]
     expect(args.some((arg: string) => arg.endsWith(".spec.ts"))).toBe(false)
     expect(processOptions.env).toMatchObject({
       SAP_TESTING_PARALLEL: "0",
@@ -314,8 +321,8 @@ describe("PlaywrightTestTool", () => {
   })
 
   it("continues without auto-login when connection setup throws", async () => {
-    ;(RemoteManager.get as jest.Mock).mockReturnValue({
-      byIdAsync: jest.fn().mockRejectedValue(new Error("session expired"))
+    ;(RemoteManager.get as Mock).mockReturnValue({
+      byIdAsync: vi.fn().mockRejectedValue(new Error("session expired"))
     })
     mockProcess(report({ title: "no login", results: [result("passed")] }))
     const value: any = await tool.invoke(
@@ -327,13 +334,13 @@ describe("PlaywrightTestTool", () => {
       token()
     )
     expect(value.parts[0].text).toContain("1 passed")
-    const processOptions = (spawn as unknown as jest.Mock).mock.calls[0][2]
+    const processOptions = (spawn as unknown as Mock).mock.calls[0][2]
     expect(processOptions.env.SAP_TESTING_LOGIN_URL).toBeUndefined()
   })
 
   it("handles non-Error auto-login failures and stdout-only report fallback", async () => {
-    ;(RemoteManager.get as jest.Mock).mockReturnValue({
-      byIdAsync: jest.fn().mockRejectedValue("offline")
+    ;(RemoteManager.get as Mock).mockReturnValue({
+      byIdAsync: vi.fn().mockRejectedValue("offline")
     })
     mockProcess(undefined, { stdout: "config failed", stderr: "" })
     const value: any = await tool.invoke(
@@ -348,8 +355,8 @@ describe("PlaywrightTestTool", () => {
   })
 
   it("honors explicitly disabled auto-login and ignores storage cleanup failure", async () => {
-    ;(RemoteManager.get as jest.Mock).mockReturnValue({
-      byIdAsync: jest.fn().mockResolvedValue({ webGuiAutoLogin: false })
+    ;(RemoteManager.get as Mock).mockReturnValue({
+      byIdAsync: vi.fn().mockResolvedValue({ webGuiAutoLogin: false })
     })
     mockProcess(report({ title: "disabled login", results: [result("passed")] }))
     const value: any = await tool.invoke(
@@ -371,16 +378,16 @@ describe("PlaywrightTestTool", () => {
   it("rejects invalid readiness, folder, URL, spec directory, selected files, and gates", async () => {
     const base = { program: "PROGRAM", connectionId: "DEV100" }
     await expect(tool.invoke(options(base), token())).rejects.toThrow(/prerequisiteConfirmation/)
-    ;(getTestFolder as jest.Mock).mockReturnValue(undefined)
+    ;(getTestFolder as Mock).mockReturnValue(undefined)
     await expect(
       tool.invoke(options({ ...base, prerequisiteConfirmation: confirmation }), token())
     ).rejects.toThrow(/No SAP testing folder/)
-    ;(getTestFolder as jest.Mock).mockReturnValue(root)
-    ;(getWebGuiUrl as jest.Mock).mockResolvedValue("ERROR: unavailable")
+    ;(getTestFolder as Mock).mockReturnValue(root)
+    ;(getWebGuiUrl as Mock).mockResolvedValue("ERROR: unavailable")
     await expect(
       tool.invoke(options({ ...base, prerequisiteConfirmation: confirmation }), token())
     ).rejects.toThrow("ERROR: unavailable")
-    ;(getWebGuiUrl as jest.Mock).mockResolvedValue("http://sap/webgui")
+    ;(getWebGuiUrl as Mock).mockResolvedValue("http://sap/webgui")
     await fs.rm(specDir, { recursive: true, force: true })
     await expect(
       tool.invoke(options({ ...base, prerequisiteConfirmation: confirmation }), token())
@@ -411,7 +418,7 @@ describe("PlaywrightTestTool", () => {
   })
 
   it("fails clearly when the extension or vendored Playwright package is missing", async () => {
-    ;(vscode.extensions.getExtension as jest.Mock).mockReturnValue(undefined)
+    ;(vscode.extensions.getExtension as Mock).mockReturnValue(undefined)
     await expect(
       tool.invoke(
         options({
@@ -422,7 +429,7 @@ describe("PlaywrightTestTool", () => {
         token()
       )
     ).rejects.toThrow("ABAP FS extension not found")
-    ;(vscode.extensions.getExtension as jest.Mock).mockReturnValue({ extensionPath: extension })
+    ;(vscode.extensions.getExtension as Mock).mockReturnValue({ extensionPath: extension })
     await fs.rm(
       path.join(extension, "client", "dist", "vendor", "node_modules", "@playwright", "test"),
       { recursive: true, force: true }
@@ -459,16 +466,18 @@ describe("PlaywrightTestTool", () => {
       }),
       token()
     )
-    expect((spawn as unknown as jest.Mock).mock.calls[0][1][0]).toMatch(/run\.js$/)
+    expect((spawn as unknown as Mock).mock.calls[0][1][0]).toMatch(/run\.js$/)
 
-    jest.clearAllMocks()
-    ;(vscode.extensions.getExtension as jest.Mock).mockReturnValue({ extensionPath: extension })
-    ;(formatKey as jest.Mock).mockImplementation((value: string) => value.toLowerCase())
-    ;(getTestFolder as jest.Mock).mockReturnValue(root)
-    ;(getWebGuiUrl as jest.Mock).mockResolvedValue("http://sap/webgui")
-    ;(resolveBrowserExecutable as jest.Mock).mockResolvedValue({})
-    ;(RemoteManager.get as jest.Mock).mockReturnValue({
-      byIdAsync: jest.fn().mockResolvedValue(null)
+    vi.clearAllMocks()
+    ;(vscode.extensions.getExtension as Mock).mockReturnValue({ extensionPath: extension })
+    ;(formatKey as Mock).mockImplementation(function (value: string) {
+      return value.toLowerCase()
+    })
+    ;(getTestFolder as Mock).mockReturnValue(root)
+    ;(getWebGuiUrl as Mock).mockResolvedValue("http://sap/webgui")
+    ;(resolveBrowserExecutable as Mock).mockResolvedValue({})
+    ;(RemoteManager.get as Mock).mockReturnValue({
+      byIdAsync: vi.fn().mockResolvedValue(null)
     })
     mockProcess(report({ title: "default bin", results: [result("passed")] }))
     await fs.writeFile(path.join(packageDir, "package.json"), JSON.stringify({}))
@@ -480,12 +489,12 @@ describe("PlaywrightTestTool", () => {
       }),
       token()
     )
-    expect((spawn as unknown as jest.Mock).mock.calls[0][1][0]).toMatch(/cli\.js$/)
+    expect((spawn as unknown as Mock).mock.calls[0][1][0]).toMatch(/cli\.js$/)
   })
 
   it("registers the tool", () => {
-    const context = { subscriptions: { push: jest.fn() } } as any
-    ;(registerToolWithRegistry as jest.Mock).mockReturnValue("registration")
+    const context = { subscriptions: { push: vi.fn() } } as any
+    ;(registerToolWithRegistry as Mock).mockReturnValue("registration")
     registerPlaywrightTestTool(context)
     expect(registerToolWithRegistry).toHaveBeenCalledWith(
       "abapfs_run_playwright_tests",
@@ -502,20 +511,24 @@ function fakeChild() {
   child.pid = 321
   child.exitCode = null
   child.signalCode = null
-  child.kill = jest.fn()
+  child.kill = vi.fn()
   return child
 }
 
 describe("Playwright process lifecycle", () => {
   beforeEach(() => {
-    jest.clearAllMocks()
+    vi.clearAllMocks()
   })
 
   it("captures both streams and settles on close", async () => {
     const child = fakeChild()
-    ;(spawn as unknown as jest.Mock).mockReturnValue(child)
-    const cancel = { dispose: jest.fn() }
-    const runToken = { onCancellationRequested: jest.fn(() => cancel) } as any
+    ;(spawn as unknown as Mock).mockReturnValue(child)
+    const cancel = { dispose: vi.fn() }
+    const runToken = {
+      onCancellationRequested: vi.fn(function () {
+        return cancel
+      })
+    } as any
     const promise = runProcess("node", ["cli"], { cwd: "C:/tests", env: {} }, runToken)
     child.stdout.emit("data", Buffer.from("out\n"))
     child.stderr.emit("data", Buffer.from("err\n"))
@@ -526,14 +539,14 @@ describe("Playwright process lifecycle", () => {
   })
 
   it("settles through the exit grace path when close never arrives", async () => {
-    jest.useFakeTimers()
+    vi.useFakeTimers()
     const child = fakeChild()
-    ;(spawn as unknown as jest.Mock).mockReturnValue(child)
+    ;(spawn as unknown as Mock).mockReturnValue(child)
     const promise = runProcess("node", [], { cwd: "C:/tests", env: {} }, token())
     child.emit("exit", 0)
-    jest.advanceTimersByTime(2_000)
+    vi.advanceTimersByTime(2_000)
     await expect(promise).resolves.toEqual({ code: 0, stdout: "", stderr: "" })
-    jest.useRealTimers()
+    vi.useRealTimers()
   })
 
   describe("on Windows", () => {
@@ -551,15 +564,15 @@ describe("Playwright process lifecycle", () => {
       const child = fakeChild()
       const taskkill = fakeChild()
       const calls: any[] = []
-      ;(spawn as unknown as jest.Mock).mockImplementation((...args: any[]) => {
+      ;(spawn as unknown as Mock).mockImplementation(function (...args: any[]) {
         calls.push(args)
         return calls.length === 1 ? child : taskkill
       })
       let cancel: (() => void) | undefined
       const runToken = {
-        onCancellationRequested: jest.fn((handler: () => void) => {
+        onCancellationRequested: vi.fn(function (handler: () => void) {
           cancel = handler
-          return { dispose: jest.fn() }
+          return { dispose: vi.fn() }
         })
       } as any
       const promise = runProcess("node", [], { cwd: "C:/tests", env: {} }, runToken)
@@ -579,7 +592,7 @@ describe("Playwright process lifecycle", () => {
 
       const child = fakeChild()
       const taskkill = fakeChild()
-      ;(spawn as unknown as jest.Mock).mockReturnValue(taskkill)
+      ;(spawn as unknown as Mock).mockReturnValue(taskkill)
       killTree(child)
       taskkill.emit("error", new Error("taskkill unavailable"))
       expect(child.kill).toHaveBeenCalledTimes(1)
@@ -589,13 +602,15 @@ describe("Playwright process lifecycle", () => {
   it("kills a POSIX process group and falls back to the child when that fails", () => {
     const descriptor = Object.getOwnPropertyDescriptor(process, "platform")!
     Object.defineProperty(process, "platform", { value: "linux" })
-    const processKill = jest.spyOn(process, "kill").mockImplementation(() => true)
+    const processKill = vi.spyOn(process, "kill").mockImplementation(function () {
+      return true
+    })
     try {
       const grouped = fakeChild()
       killTree(grouped)
       expect(processKill).toHaveBeenCalledWith(-321, "SIGKILL")
 
-      processKill.mockImplementation(() => {
+      processKill.mockImplementation(function () {
         throw new Error("no group")
       })
       const fallback = fakeChild()

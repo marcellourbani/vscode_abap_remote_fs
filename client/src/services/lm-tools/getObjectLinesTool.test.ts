@@ -1,36 +1,54 @@
-jest.mock(
-  "vscode",
-  () => ({
-    LanguageModelToolResult: jest.fn().mockImplementation((parts: any[]) => ({ parts })),
-    LanguageModelTextPart: jest.fn().mockImplementation((text: string) => ({ text })),
-    MarkdownString: jest.fn().mockImplementation((text: string) => ({ text })),
-    lm: { registerTool: jest.fn(() => ({ dispose: jest.fn() })) }
+vi.mock("vscode", () => ({
+  LanguageModelToolResult: vi.fn().mockImplementation(function (parts: any[]) {
+    return { parts }
   }),
-  { virtual: true }
-)
+  LanguageModelTextPart: vi.fn().mockImplementation(function (text: string) {
+    return { text }
+  }),
+  MarkdownString: vi.fn().mockImplementation(function (text: string) {
+    return { text }
+  }),
+  lm: {
+    registerTool: vi.fn(function () {
+      return { dispose: vi.fn() }
+    })
+  }
+}))
 
-jest.mock("../../adt/conections", () => ({
-  getClient: jest.fn(),
-  abapUri: jest.fn()
+vi.mock("../../adt/conections", () => ({
+  getClient: vi.fn(),
+  abapUri: vi.fn()
 }))
-jest.mock("../telemetry", () => ({ logTelemetry: jest.fn() }))
-jest.mock("./toolRegistry", () => ({
-  registerToolWithRegistry: jest.fn(() => ({ dispose: jest.fn() }))
+vi.mock("../telemetry", () => ({ logTelemetry: vi.fn() }))
+vi.mock("./toolRegistry", () => ({
+  registerToolWithRegistry: vi.fn(function () {
+    return { dispose: vi.fn() }
+  })
 }))
-jest.mock("./toolGuard", () => ({
-  assertToolInvocationAuthorized: jest.fn(),
-  isToolInvocationAuthorized: jest.fn(() => true)
+vi.mock("./toolGuard", () => ({
+  assertToolInvocationAuthorized: vi.fn(),
+  isToolInvocationAuthorized: vi.fn(function () {
+    return true
+  })
 }))
-jest.mock("../abapSearchService", () => ({ getSearchService: jest.fn() }))
-jest.mock("../funMessenger", () => ({ funWindow: { activeTextEditor: undefined } }))
-jest.mock("./shared", () => ({
-  getOptimalObjectURI: jest.fn((type: string, uri: string) => uri + "/source/main"),
-  resolveCorrectURI: jest.fn((uri: string) => Promise.resolve(uri)),
-  getObjectEnhancements: jest.fn(() =>
-    Promise.resolve({ hasEnhancements: false, enhancements: [] })
-  ),
-  getTableTypeFromDD: jest.fn(() => Promise.resolve("")),
-  getTableStructureFromDD: jest.fn(() => Promise.resolve(""))
+vi.mock("../abapSearchService", () => ({ getSearchService: vi.fn() }))
+vi.mock("../funMessenger", () => ({ funWindow: { activeTextEditor: undefined } }))
+vi.mock("./shared", () => ({
+  getOptimalObjectURI: vi.fn(function (type: string, uri: string) {
+    return uri + "/source/main"
+  }),
+  resolveCorrectURI: vi.fn(function (uri: string) {
+    return Promise.resolve(uri)
+  }),
+  getObjectEnhancements: vi.fn(function () {
+    return Promise.resolve({ hasEnhancements: false, enhancements: [] })
+  }),
+  getTableTypeFromDD: vi.fn(function () {
+    return Promise.resolve("")
+  }),
+  getTableStructureFromDD: vi.fn(function () {
+    return Promise.resolve("")
+  })
 }))
 
 import { GetABAPObjectLinesTool } from "./getObjectLinesTool"
@@ -38,6 +56,7 @@ import { getSearchService } from "../abapSearchService"
 import { getClient } from "../../adt/conections"
 import { logTelemetry } from "../telemetry"
 import { funWindow as window } from "../funMessenger"
+import type { Mock } from "vitest"
 
 const mockToken = {} as any
 
@@ -45,17 +64,17 @@ function makeOptions(input: any = {}) {
   return { input } as any
 }
 
-const mockSearcher = { searchObjects: jest.fn() }
-const mockClient = { getObjectSource: jest.fn() }
+const mockSearcher = { searchObjects: vi.fn() }
+const mockClient = { getObjectSource: vi.fn() }
 
 describe("GetABAPObjectLinesTool", () => {
   let tool: GetABAPObjectLinesTool
 
   beforeEach(() => {
     tool = new GetABAPObjectLinesTool()
-    jest.clearAllMocks()
-    ;(getSearchService as jest.Mock).mockReturnValue(mockSearcher)
-    ;(getClient as jest.Mock).mockReturnValue(mockClient)
+    vi.clearAllMocks()
+    ;(getSearchService as Mock).mockReturnValue(mockSearcher)
+    ;(getClient as Mock).mockReturnValue(mockClient)
     ;(window as any).activeTextEditor = undefined
   })
 

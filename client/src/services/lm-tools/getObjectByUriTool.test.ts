@@ -1,37 +1,53 @@
-jest.mock(
-  "vscode",
-  () => ({
-    LanguageModelToolResult: jest.fn().mockImplementation((parts: any[]) => ({ parts })),
-    LanguageModelTextPart: jest.fn().mockImplementation((text: string) => ({ text })),
-    MarkdownString: jest.fn().mockImplementation((text: string) => ({ text })),
-    lm: { registerTool: jest.fn(() => ({ dispose: jest.fn() })) }
+vi.mock("vscode", () => ({
+  LanguageModelToolResult: vi.fn().mockImplementation(function (parts: any[]) {
+    return { parts }
   }),
-  { virtual: true }
-)
-
-jest.mock("../../adt/conections", () => ({
-  getClient: jest.fn(),
-  abapUri: jest.fn()
-}))
-jest.mock("../telemetry", () => ({ logTelemetry: jest.fn() }))
-jest.mock("./toolRegistry", () => ({
-  registerToolWithRegistry: jest.fn(() => ({ dispose: jest.fn() }))
-}))
-jest.mock("../abapSearchService", () => ({ getSearchService: jest.fn() }))
-jest.mock("../funMessenger", () => ({ funWindow: { activeTextEditor: undefined } }))
-jest.mock("./shared", () => ({
-  getOptimalObjectURI: jest.fn((type: string, uri: string) => uri + "/source/main"),
-  resolveCorrectURI: jest.fn((uri: string) => Promise.resolve(uri))
+  LanguageModelTextPart: vi.fn().mockImplementation(function (text: string) {
+    return { text }
+  }),
+  MarkdownString: vi.fn().mockImplementation(function (text: string) {
+    return { text }
+  }),
+  lm: {
+    registerTool: vi.fn(function () {
+      return { dispose: vi.fn() }
+    })
+  }
 }))
 
-jest.mock("./toolGuard", () => ({
-  assertToolInvocationAuthorized: jest.fn(),
-  isToolInvocationAuthorized: jest.fn(() => true)
+vi.mock("../../adt/conections", () => ({
+  getClient: vi.fn(),
+  abapUri: vi.fn()
+}))
+vi.mock("../telemetry", () => ({ logTelemetry: vi.fn() }))
+vi.mock("./toolRegistry", () => ({
+  registerToolWithRegistry: vi.fn(function () {
+    return { dispose: vi.fn() }
+  })
+}))
+vi.mock("../abapSearchService", () => ({ getSearchService: vi.fn() }))
+vi.mock("../funMessenger", () => ({ funWindow: { activeTextEditor: undefined } }))
+vi.mock("./shared", () => ({
+  getOptimalObjectURI: vi.fn(function (type: string, uri: string) {
+    return uri + "/source/main"
+  }),
+  resolveCorrectURI: vi.fn(function (uri: string) {
+    return Promise.resolve(uri)
+  })
+}))
+
+vi.mock("./toolGuard", () => ({
+  assertToolInvocationAuthorized: vi.fn(),
+  isToolInvocationAuthorized: vi.fn(function () {
+    return true
+  })
 }))
 import { GetObjectByURITool } from "./getObjectByUriTool"
 import { getClient } from "../../adt/conections"
 import { logTelemetry } from "../telemetry"
 import { funWindow as window } from "../funMessenger"
+import * as __$mock_shared from "./shared"
+import type { Mock } from "vitest"
 
 const mockToken = {} as any
 
@@ -39,15 +55,15 @@ function makeOptions(input: any = {}) {
   return { input } as any
 }
 
-const mockClient = { getObjectSource: jest.fn() }
+const mockClient = { getObjectSource: vi.fn() }
 
 describe("GetObjectByURITool", () => {
   let tool: GetObjectByURITool
 
   beforeEach(() => {
     tool = new GetObjectByURITool()
-    jest.clearAllMocks()
-    ;(getClient as jest.Mock).mockReturnValue(mockClient)
+    vi.clearAllMocks()
+    ;(getClient as Mock).mockReturnValue(mockClient)
     ;(window as any).activeTextEditor = undefined
   })
 
@@ -161,8 +177,8 @@ describe("GetObjectByURITool", () => {
     })
 
     it("falls back to original URI when optimal URI fails", async () => {
-      const { getOptimalObjectURI } = require("./shared")
-      getOptimalObjectURI.mockReturnValueOnce("/sap/bc/adt/programs/zprog/source/main")
+      const { getOptimalObjectURI } = __$mock_shared
+      vi.mocked(getOptimalObjectURI).mockReturnValueOnce("/sap/bc/adt/programs/zprog/source/main")
       mockClient.getObjectSource
         .mockRejectedValueOnce(new Error("optimal URI failed"))
         .mockResolvedValueOnce("fallback content")

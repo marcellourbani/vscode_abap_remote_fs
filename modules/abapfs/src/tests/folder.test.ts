@@ -1,5 +1,5 @@
 import { Folder, isFolder } from "../folder"
-import { mock } from "jest-mock-extended"
+import { mock } from "vitest-mock-extended"
 
 const createFile = () => ({ type: 1, mtime: 0, ctime: 0, size: 0 })
 
