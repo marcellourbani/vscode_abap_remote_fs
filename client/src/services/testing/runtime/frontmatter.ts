@@ -14,6 +14,6 @@ import { parse as yamlParse } from "yaml"
 export function parseFrontmatter(markdown: string): Record<string, any> | null {
   const m = markdown.match(/^---\r?\n([\s\S]*?)\r?\n---/)
   if (!m) return null
-  const parsed = yamlParse(m[1])
+  const parsed = yamlParse(m[1], { merge: true, customTags: ["timestamp"] })
   return typeof parsed === "object" && parsed !== null ? (parsed as Record<string, any>) : null
 }
