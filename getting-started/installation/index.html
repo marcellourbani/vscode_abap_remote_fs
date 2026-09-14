@@ -3298,7 +3298,7 @@
 <h1 id="installation-steps">Installation Steps<a class="headerlink" href="#installation-steps" title="Permanent link">&para;</a></h1>
 <p>Before proceeding, ensure you meet the <a href="../prerequisite/">Prerequisites</a>.</p>
 <blockquote>
-<p><strong>Note:</strong> ABAP FS registers 40+ AI tools for Copilot, but only the documentation tool is available until you connect to a SAP system. Connect to SAP first to unlock all tools.</p>
+<p><strong>Note:</strong> A connected SAP system is the main feature gate. Until at least one system is connected, SAP-backed AI tools, ABAP skills, and chat agents/subagents are hidden. The documentation and SAP testing setup tools remain available. Complete the connection steps below to unlock the SAP features.</p>
 </blockquote>
 <h2 id="1-install-the-extension">1. Install the extension<a class="headerlink" href="#1-install-the-extension" title="Permanent link">&para;</a></h2>
 <ol>
@@ -3336,6 +3336,7 @@
 <li>Enter your password if prompted</li>
 <li>Wait a moment for VS Code to establish the connection</li>
 </ol>
+<p>Once the connection is active, ABAP FS enables the SAP-backed AI tools, ABAP skills, and configured chat agents. SAP Testing also requires a testing folder; see <a href="../../sap-testing/">SAP Testing</a>.</p>
 <h2 id="password-management">Password Management<a class="headerlink" href="#password-management" title="Permanent link">&para;</a></h2>
 <ul>
 <li><strong>Change password:</strong> <code>Ctrl+Shift+P</code> → <strong>ABAP FS: Change Connection Password</strong> — select a system and enter your new password.</li>

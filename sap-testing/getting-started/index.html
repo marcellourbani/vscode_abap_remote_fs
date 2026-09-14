@@ -3326,7 +3326,7 @@
 <p>This is a normal folder you own. Everything Copilot produces — test cases, scripts, results, evidence reports — goes here, and you can put it under Git if you want to share the suite with your team.</p>
 <h2 id="step-2-enable-the-feature">Step 2 — Enable the feature<a class="headerlink" href="#step-2-enable-the-feature" title="Permanent link">&para;</a></h2>
 <p><code>Ctrl+Shift+P</code> → <strong>ABAP FS: Enable SAP UI Testing Features</strong> → pick the folder you just created.</p>
-<p>SAP Testing stays completely hidden until you do this. Choosing the folder is what switches on the testing skills, subagents, and tools — before that, none of them appear in Copilot chat.</p>
+<p>Choosing the folder configures the local testing workspace, but it does not by itself make SAP Testing visible in Copilot. At least one SAP system must also be connected. Once both prerequisites are met, the testing skills, subagents, and operational tools can appear; testing agents still require model configuration.</p>
 <p>ABAP FS also drops a few of its own files into the folder at this point. Leave them alone — see <a href="#about-the-files-abap-fs-creates">About the files ABAP FS creates</a> below for what they are and why they matter.</p>
 <h2 id="step-3-add-the-folder-to-your-workspace">Step 3 — Add the folder to your workspace<a class="headerlink" href="#step-3-add-the-folder-to-your-workspace" title="Permanent link">&para;</a></h2>
 <p>After you pick the folder, VS Code shows a notification with an <strong>Add to Workspace</strong> button. Click it.</p>
