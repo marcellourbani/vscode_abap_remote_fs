@@ -1,9 +1,9 @@
 import { type RemoteConfig, RemoteManager } from "../../config"
-import { writeFile, mkdtemp, rm } from "node:fs/promises"
-import { tmpdir } from "node:os"
-import { join } from "node:path"
+import { file } from "tmp-promise"
+import { writeAsync } from "fs-jetpack"
 import { log, caughtToString } from "../../lib"
-import opn from "open"
+import { closeSync } from "fs"
+import opn = require("open")
 import { ProgressLocation, extensions } from "vscode"
 import { funWindow as window } from "../../services/funMessenger"
 import { getClient, getOrCreateClient } from "../conections"
@@ -379,16 +379,25 @@ export class SapGui {
   public async startGui(command: SapGuiCommand, ticket: string) {
     const content = this.createLauncherContent(command, ticket)
     const win32 = process.platform === "win32"
-    const tmpDir = await mkdtemp(join(tmpdir(), "abapfs_shortcut_"))
-    const shortcutPath = join(tmpDir, "launcher.sap")
-    const cleanup = () => rm(tmpDir, { recursive: true, force: true }).catch(() => undefined)
-    await writeFile(shortcutPath, content, { mode: 0o600 })
+    const linux = process.platform === "linux"
+    const shortcut = await file({
+      postfix: ".sap",
+      prefix: "abapfs_shortcut_",
+      keep: win32
+    })
+    await writeAsync(shortcut.path, content)
+    // windows won't open this if still open...
+    if (win32) closeSync(shortcut.fd)
     try {
-      await opn(shortcutPath)
-      // clean up temp dir after SAP GUI launches; on Windows give it 50 s to read the file
-      if (win32) setTimeout(cleanup, 50000)
+      // workaround for bug in opn trying to use /xdg-open...
+      const options: any = {}
+      if (linux) options.app = "xdg-open"
+
+      await opn(shortcut.path, options)
+      // delete after opening sapgui, only on windows
+      if (win32) setTimeout(() => shortcut.cleanup(), 50000)
     } catch (e) {
-      log("Error executing file", shortcutPath)
+      log("Error executing file", shortcut.path)
     }
   }
 

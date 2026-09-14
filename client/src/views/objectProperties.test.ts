@@ -69,7 +69,7 @@ vi.mock("abapfs", () => ({
   isAbapStat: vi.fn()
 }))
 
-vi.mock("abapfs/out/lockObject", () => ({
+vi.mock("abapfs/src/lockObject", () => ({
   LockStatus: {}
 }))
 

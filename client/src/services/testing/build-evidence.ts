@@ -9,8 +9,6 @@
  *   tests/<PROGRAM>/test-results/<PROGRAM>-report.docx
  *     — a single document containing every TC of that program, one section per TC,
  *     with pass/fail summary at the top.
- *
- * Run: `npm run evidence`
  */
 import {
   Document,

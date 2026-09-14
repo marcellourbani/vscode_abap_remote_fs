@@ -54,7 +54,7 @@
  *    that one is never used.
  */
 import type { Page, Frame } from "@playwright/test"
-import type { SapSession } from "./sap-session.js"
+import type { SapSession } from "./sap-session"
 
 /** ABAP range sign: I = include (select), E = exclude (do not select). */
 export type Se16nSign = "I" | "E"

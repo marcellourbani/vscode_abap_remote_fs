@@ -45,7 +45,7 @@ vi.mock("./adt/conections", () => ({
 vi.mock("abapobject", () => vi.importActual("abapobject"))
 vi.mock("abapfs", () => ({ isAbapStat: vi.fn() }))
 vi.mock("abap-adt-api", () => ({ isCsrfError: vi.fn() }))
-vi.mock("abapfs/out/lockObject", () => ({}))
+vi.mock("abapfs/src/lockObject", () => ({}))
 vi.mock("./adt/operations/AdtObjectFinder", () => ({ uriAbapFile: vi.fn() }))
 vi.mock("./scm/abaprevisions", () => ({ versionRevisions: vi.fn() }))
 vi.mock("./context", () => ({ setContext: vi.fn() }))
@@ -64,7 +64,7 @@ vi.mock("./views/blameGutter", () => ({
   onBlameActiveEditorChanged: vi.fn(),
   onBlameDocumentChanged: vi.fn()
 }))
-vi.mock("abapfs/out/lockManager", () => ({ ReloginError: { isReloginError: vi.fn() } }))
+vi.mock("abapfs/src/lockManager", () => ({ ReloginError: { isReloginError: vi.fn() } }))
 vi.mock("./services/funMessenger", () => ({
   funWindow: {
     showWarningMessage: vi.fn(),

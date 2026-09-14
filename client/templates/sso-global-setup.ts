@@ -1,4 +1,4 @@
-// Authored in TypeScript; tsdown bundles this to dist/vendor/sso-global-setup.js (CommonJS),
+// Authored in TypeScript; tsdown bundles this to dist/vendor/sso-global-setup.js as ESM,
 // which @playwright/test's own CLI loads as the config's globalSetup at runtime.
 //
 // Signs in once per run so every spec starts with an authenticated session. The

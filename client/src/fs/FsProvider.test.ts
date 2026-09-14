@@ -116,7 +116,7 @@ vi.mock("./LocalFsProvider", () => {
 })
 
 vi.mock("abap-adt-api", () => ({ isHttpError: vi.fn() }))
-vi.mock("abapfs/out/lockManager", () => ({ ReloginError: { isReloginError: vi.fn() } }))
+vi.mock("abapfs/src/lockManager", () => ({ ReloginError: { isReloginError: vi.fn() } }))
 vi.mock("../services/funMessenger", () => ({
   funWindow: {
     showInformationMessage: vi.fn(),

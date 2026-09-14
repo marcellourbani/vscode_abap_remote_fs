@@ -1,6 +1,6 @@
-import { AbapObjectBase } from "../AbapObject.js"
+import { AbapObjectBase } from "../AbapObject"
 import { type NodeStructure, ADTClient } from "abap-adt-api"
-import { ObjectErrors } from "../AOError.js"
+import { ObjectErrors } from "../AOError"
 
 const tag = Symbol("AbapProgram")
 

@@ -1,4 +1,4 @@
-export { SapSession, type SapSessionOptions } from "./sap-session.js"
+export { SapSession, type SapSessionOptions } from "./sap-session"
 export type {
   Se16nSpec,
   Se16nResult,
@@ -6,30 +6,30 @@ export type {
   Se16nValue,
   Se16nSign,
   Se16nOption
-} from "./se16n.js"
-export { SapArtifacts } from "./sap-artifacts.js"
-export { Evidence, type Manifest, type StepRecord } from "./evidence.js"
+} from "./se16n"
+export { SapArtifacts } from "./sap-artifacts"
+export { Evidence, type Manifest, type StepRecord } from "./evidence"
 export {
   dismissKnownPopups,
   KNOWN_INTERRUPTERS,
   listOpenDialogs,
   type Interrupter
-} from "./popup-guard.js"
-export { detectRuntimeError, detectSilentBounce, type RuntimeError } from "./dump-detector.js"
-export { waitForServer, waitForDomStable } from "./waiters.js"
+} from "./popup-guard"
+export { detectRuntimeError, detectSilentBounce, type RuntimeError } from "./dump-detector"
+export { waitForServer, waitForDomStable } from "./waiters"
 export {
   resolveTestData,
   saveTestDataCache,
   type DataRequirement,
   type DataRequirementSource,
   type ResolvedData
-} from "./test-data.js"
-export { buildFixture, type FixtureSpec, type FixtureCell } from "./fixture-builder.js"
-export { parseFrontmatter } from "./frontmatter.js"
+} from "./test-data"
+export { buildFixture, type FixtureSpec, type FixtureCell } from "./fixture-builder"
+export { parseFrontmatter } from "./frontmatter"
 export {
   padNumericId,
   stripLeadingZeros,
   relativeDate,
   isRelativeDateToken,
   type DateFormat
-} from "./format.js"
+} from "./format"

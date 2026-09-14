@@ -2,6 +2,7 @@
   "name": "vscode-abap-remote-fs-server",
   "displayName": "ABAPfs language server",
   "version": "1.0.0",
+  "private": true,
   "description": "Language server for ABAP remote filesystem",
   "repository": {
     "type": "git",
@@ -13,37 +14,29 @@
   "author": "Marcello Urbani",
   "license": "MIT",
   "type": "module",
-  "engines": {
-    "node": ">=22"
-  },
   "dependencies": {
-    "abap-adt-api": "^8.4.3",
+    "abap-adt-api": "catalog:",
     "abapcdsgrammar": "0.0.7",
     "antlr4ts": "0.5.0-alpha.4",
-    "entities": "^5.0.0",
-    "es-toolkit": "^1.39.0",
-    "fast-xml-parser": "^5.7.2",
-    "vscode-abap-remote-fs-sharedapi": "file:../modules/sharedapi",
+    "entities": "catalog:",
+    "es-toolkit": "^1.52.0",
+    "fast-xml-parser": "catalog:",
+    "vscode-abap-remote-fs-sharedapi": "workspace:*",
     "vscode-languageserver": "^6.1.1",
     "vscode-languageserver-protocol": "^3.17.5",
     "vscode-languageserver-textdocument": "^1.0.8"
   },
   "devDependencies": {
-    "@types/node": "^22.0.0",
-    "@vitest/coverage-v8": "5.0.0",
-    "tsdown": "0.23.0",
-    "typescript": "6.0.3",
-    "vite": "^8.0.0",
-    "vitest": "5.0.0",
-    "vitest-mock-extended": "^4.0.0"
+    "@types/node": "catalog:",
+    "tsdown": "catalog:",
+    "typescript": "catalog:",
+    "vitest": "catalog:",
+    "vitest-mock-extended": "catalog:"
   },
   "scripts": {
     "clean": "node ../scripts/rm.mjs ./out ./dist node_modules",
-    "build": "npm run bundle",
+    "build": "tsdown --config tsdown.config.ts",
     "typecheck": "tsc --noEmit",
-    "bundle": "tsdown --config tsdown.config.ts",
-    "watch": "tsdown --config tsdown.config.ts --watch",
-    "test": "vitest run",
-    "test:watch": "vitest"
+    "watch": "tsdown --config tsdown.config.ts --watch"
   }
 }

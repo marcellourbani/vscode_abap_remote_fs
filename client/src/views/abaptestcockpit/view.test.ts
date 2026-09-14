@@ -72,7 +72,7 @@ vi.mock("../../adt/operations/AdtObjectActivator", () => ({
   }
 }))
 
-vi.mock("abapobject/out/AbapObject", () => ({
+vi.mock("abapobject/src/AbapObject", () => ({
   AbapObjectBase: class {}
 }))
 

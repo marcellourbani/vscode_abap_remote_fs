@@ -1,6 +1,6 @@
-import { AbapObjectBase, type AbapObject } from "../AbapObject.js"
-import { type AbapObjectService } from "../AOService.js"
-import { ObjectErrors } from "../AOError.js"
+import { AbapObjectBase, type AbapObject } from "../AbapObject"
+import { type AbapObjectService } from "../AOService"
+import { ObjectErrors } from "../AOError"
 
 const tag = Symbol("AbapFunction")
 export class AbapFunction extends AbapObjectBase {

@@ -19,10 +19,17 @@ jobs:
       - name: Checkout Repo
         uses: actions/checkout@v4
 
+      - name: Install pnpm
+        uses: pnpm/action-setup@v4
+
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
           node-version: 24
+          cache: "pnpm"
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
 
       - name: Download VSIX from Release
         run: gh release download ${{ github.event.inputs.version || github.event.release.tag_name }} --pattern "*.vsix"
@@ -30,7 +37,7 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Publish to VS Code Marketplace
-        run: npx --yes @vscode/vsce publish --packagePath $(ls *.vsix) -p ${{ secrets.VSCE_PAT }}
+        run: pnpm exec vsce publish --packagePath $(ls *.vsix) -p ${{ secrets.VSCE_PAT }}
 
       - name: Publish to Open VSX Registry
-        run: npx --yes ovsx publish $(ls *.vsix) -p ${{ secrets.OVSX_PAT }}
+        run: pnpm exec ovsx publish $(ls *.vsix) -p ${{ secrets.OVSX_PAT }}

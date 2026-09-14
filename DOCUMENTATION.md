@@ -1955,29 +1955,40 @@ abapGit integration lets you manage Git version control for ABAP objects directl
 ## Common Tasks
 
 ### Link an existing repository
+
 1. In the abapGit panel, click **Link Repository**.
 2. Enter the Git URL and select the SAP package to link.
 
 ### Create a new repository
+
 1. Click **Create Repository**.
 2. Provide the Git URL and target package.
 
 ### View staged/unstaged changes
+
 The abapGit panel lists all changed ABAP objects. Each entry shows whether it is staged or unstaged.
 
 ### Stage and commit (Push)
+
 1. Select objects to stage, or stage all changes.
 2. Click **Push** — this commits and pushes to the remote Git repository.
 3. Enter a commit message when prompted.
 
 ### Pull (update from Git)
+
 1. Click **Pull** on the linked repository.
 2. **Note:** Pull overwrites local ABAP objects with the version from Git. Unsaved local changes will be lost.
 
 ### Register with VS Code Source Control
+
 Click **Register in VS Code SCM** to surface the repository in VS Code's built-in Source Control view (`Ctrl+Shift+G`), enabling diffs and history browsing alongside the ABAP FS panel.
 
+#### SCM diff documents
+
+ABAP FS registers the document provider used by these diffs when the extension activates. Repositories previously added to VS Code Source Control are restored from workspace state when their SAP connection is available. Only the SAP connection ID, repository key, and optional user name are stored; passwords are never persisted.
+
 ### Unlink a repository
+
 Click the **Unlink** icon next to the repository to remove the connection without deleting any code.
 
 ## Tips
@@ -3713,7 +3724,7 @@ This section applies only if you want **central analytics** for your organizatio
 Each event is an action string (e.g., `command_activate_called`, `tool_search_abap_objects_called`) plus:
 
 | Field | Description |
-|---|---|
+| --- | --- |
 | Anonymous user ID | SHA hash of `hostname + username + platform` — cannot be reversed |
 | Session ID | Random ID per VS Code session |
 | Extension version | Version number |
@@ -3745,7 +3756,7 @@ Each event is an action string (e.g., `command_activate_called`, `tool_search_ab
 All auto-collection is off by default. To enable any of the following, edit the `initialize()` method in `client/src/services/appInsightsService.ts`:
 
 | Feature | Change |
-|---|---|
+| --- | --- |
 | Exception tracking | `.setAutoCollectExceptions(false)` → `(true)` |
 | Performance metrics (CPU/memory) | `.setAutoCollectPerformance(false, false)` → `(true, true)` |
 | HTTP request tracking | `.setAutoCollectRequests(false)` → `(true)` |
@@ -3776,21 +3787,21 @@ When the whitelist `developers` structure is configured, telemetry automatically
 
 After completing configuration above:
 
-1. **Install dependencies:**
+**Install dependencies:**
 
-   ```bash
-   npm install
-   ```
+```bash
+pnpm install
+```
 
-2. **Build and package:**
+**Build and package:**
 
-   ```bash
-   # Windows (recommended)
-   build-and-install.bat
+```bash
+# Windows (recommended)
+build-and-install.bat
 
-   # Or manually:
-   npm run compile
-   npx vsce package
-   ```
+# Or manually:
+pnpm build
+pnpm package
+```
 
-3. **Distribute** the generated `.vsix` file to your users. They can install it via Extensions → `...` → **Install from VSIX...**
+**Distribute** the generated `.vsix` file to your users. They can install it via Extensions → `...` → **Install from VSIX...**

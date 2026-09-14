@@ -1,5 +1,6 @@
 import { mock } from "vitest-mock-extended"
-import { AbapFsService, createRoot } from ".."
+import { createRoot } from ".."
+import type { AbapFsService } from ".."
 import sampleNodeContents from "../testdata/nodeContents1.json"
 import sampleclas from "../testdata/zcl_ca_alv.json"
 import { delay } from "../lockObject"
@@ -42,7 +43,7 @@ test("lock/unlock class members", async () => {
   const root = createRoot("MYConn", client)
   try {
     await root.lockManager.requestLock(main)
-    fail("lock should not be allowed until filename is resolved")
+    throw new Error("lock should not be allowed until filename is resolved")
   } catch (error) {
     // expected
   }

@@ -16,12 +16,12 @@ const xmlArray = (node: any, ...keys: string[]): any[] => {
   if (!cur) return []
   return Array.isArray(cur) ? cur : [cur]
 }
-const xmlNodeAttr = (node: unknown): Record<string, string> => {
+const xmlNodeAttr = (node: unknown): Record<string, any> => {
   if (typeof node !== "object" || node === null) return {}
   return Object.fromEntries(
     Object.entries(node as Record<string, unknown>)
       .filter(([k]) => k.startsWith("@_") && !k.startsWith("@_xmlns"))
-      .map(([k, v]) => [k.slice(2), String(v)])
+      .map(([k, v]) => [k.slice(2), v])
   )
 }
 
