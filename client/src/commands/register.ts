@@ -10,14 +10,13 @@ export { ClassHierarchyLensProvider } from "../adt/classhierarchy"
 export { GitCommands } from "../scm/abapGit/commands"
 export { AbapRevisionCommands } from "../scm/abaprevisions/commands"
 
-/** Registers all commands. Async so each optional module load is failure-isolated. */
-export const registerCommands = async (context: ExtensionContext) => {
+export const registerCommands = (context: ExtensionContext) => {
   for (const cmd of abapcmds)
     context.subscriptions.push(commands.registerCommand(cmd.name, cmd.func.bind(cmd.target)))
 
   // 🎯 Register Enhancement Commands
   try {
-    const { showEnhancementSource } = await import("../views/enhancementDecorations")
+    const { showEnhancementSource } = require("../views/enhancementDecorations")
     context.subscriptions.push(
       commands.registerCommand("abapfs.showEnhancementSource", showEnhancementSource)
     )
@@ -27,14 +26,17 @@ export const registerCommands = async (context: ExtensionContext) => {
 
   // 🔄 Register SAP System Validator Commands
   try {
-    const { SapSystemValidator } = await import("../services/sapSystemValidator")
+    const { SapSystemValidator } = require("../services/sapSystemValidator")
     const validator = SapSystemValidator.getInstance()
+
     context.subscriptions.push(
       commands.registerCommand("abapfs.retryWhitelist", () => validator.forceRetryWhitelist())
     )
+
     context.subscriptions.push(
       commands.registerCommand("abapfs.showVpnHelp", () => validator.showVpnHelp())
     )
+
     context.subscriptions.push(
       commands.registerCommand("abapfs.refreshWhitelist", async () => {
         try {
@@ -51,7 +53,7 @@ export const registerCommands = async (context: ExtensionContext) => {
 
   // 📊 Register Compare With Other System Command
   try {
-    const { registerCompareWithSystemCommand } = await import("./compareWithSystem")
+    const { registerCompareWithSystemCommand } = require("./compareWithSystem")
     registerCompareWithSystemCommand(context)
   } catch (error) {
     console.warn("⚠️ Failed to register compare command:", error)
