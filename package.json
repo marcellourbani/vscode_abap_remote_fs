@@ -53,12 +53,12 @@
   ],
   "main": "./client/dist/extension",
   "scripts": {
-    "vscode:prepublish": "npm run webpack && npm run typecheck",
-    "webpack": "npm run build_modules&&cd server && npm run webpack && cd ../client && npm run webpack",
-    "build": "npm run webpack",
+    "vscode:prepublish": "npm run bundle && npm run typecheck",
+    "bundle": "npm run build_modules&&cd server && npm run bundle && cd ../client && npm run bundle",
+    "build": "npm run bundle",
     "typecheck": "npm --prefix modules/sharedapi run typecheck && npm --prefix modules/abapObject run typecheck && npm --prefix modules/abapfs run typecheck && npm --prefix server run typecheck && npm --prefix client run typecheck",
     "build_modules": "cd modules/abapObject&& npm run build&&cd ../abapfs&& npm run build&&cd ../sharedapi&& npm run build",
-    "compile": "npm run webpack",
+    "compile": "npm run bundle",
     "test": "npm run test-object && npm run test-abapfs && npm run test-server && npm run test-client",
     "test-server": "cd server&& npm run test",
     "test-client": "cd client&& npm run test",
@@ -86,8 +86,7 @@
     "husky": "^9.1.7",
     "ovsx": "^0.10.1",
     "rimraf": "^3.0.2",
-    "typescript": "6.0.3",
-    "webpack-cli": "^5.0.1"
+    "typescript": "6.0.3"
   },
   "contributes": {
     "languages": [
