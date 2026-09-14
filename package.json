@@ -2,7 +2,7 @@
   "name": "vscode-abap-remote-fs",
   "displayName": "ABAP remote filesystem",
   "description": "VS Code-based Agentic AI Platform for SAP ABAP Development",
-  "version": "2.8.9",
+  "version": "2.9.0",
   "publisher": "murbani",
   "publishConfig": {
     "access": "restricted",
@@ -177,7 +177,8 @@
         "path": "./client/dist/media/skills/abap-performance-hana/SKILL.md",
         "when": "!abapfs:noSapConnected"
       },
-      { "path": "./client/dist/media/skills/abap-code-review-helper/SKILL.md",
+      {
+        "path": "./client/dist/media/skills/abap-code-review-helper/SKILL.md",
         "when": "!abapfs:noSapConnected"
       },
       {
