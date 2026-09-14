@@ -12,7 +12,7 @@ If you're used to SE38, SE24, or ADT in Eclipse, ABAP FS brings that same direct
 
 ## What you can do
 
-> **Note:** ABAP FS has 40+ AI tools, but only the documentation tool is available until you connect to a SAP system. Add SAP connections using Connection manager and then run `ABAP FS: Connect to an ABAP system` from the Command Palette to unlock all tools.
+> **Note:** A connected SAP system is the main feature gate for ABAP FS. Until you connect at least one system, SAP-backed AI tools, ABAP skills, and chat agents/subagents are hidden. The documentation and SAP testing setup tools remain available so you can configure the extension. Add a connection using Connection Manager, then run `ABAP FS: Connect to an ABAP system` from the Command Palette.
 
 This is a high-level summary. See the left navigation for full feature pages.
 
@@ -55,7 +55,7 @@ See [MCP Server](#mcp-server-for-external-ai-tools) for setup.
 
 Before proceeding, ensure you meet the [Prerequisites](prerequisite.md).
 
-> **Note:** ABAP FS registers 40+ AI tools for Copilot, but only the documentation tool is available until you connect to a SAP system. Connect to SAP first to unlock all tools.
+> **Note:** A connected SAP system is the main feature gate. Until at least one system is connected, SAP-backed AI tools, ABAP skills, and chat agents/subagents are hidden. The documentation and SAP testing setup tools remain available. Complete the connection steps below to unlock the SAP features.
 
 ## 1. Install the extension
 
@@ -89,6 +89,8 @@ Before proceeding, ensure you meet the [Prerequisites](prerequisite.md).
 2. Select the system you configured
 3. Enter your password if prompted
 4. Wait a moment for VS Code to establish the connection
+
+Once the connection is active, ABAP FS enables the SAP-backed AI tools, ABAP skills, and configured chat agents. SAP Testing also requires a testing folder; see [SAP Testing](#sap-testing).
 
 ## Password Management
 
@@ -133,7 +135,7 @@ Alternatively, open **Help → Welcome** from the menu bar, then select the ABAP
 
 # SAP Connection Manager
 
-> **Important:** ABAP FS has 40+ AI tools for Copilot, but they are only available once you connect to a SAP system. Use the Connection Manager to add your first system.
+> **Important:** A connected SAP system is the main availability trigger in ABAP FS. Until at least one system is connected, SAP-backed AI tools, ABAP skills, and chat agents/subagents remain hidden. Use the Connection Manager to add your first system, then run **ABAP FS: Connect to an SAP system**.
 
 The Connection Manager is a visual interface for adding, editing, and organizing your SAP system connections. Open it from the Command Palette (`Ctrl+Shift+P` / `Cmd+Shift+P`) by typing **ABAP FS: Connection Manager**.
 
@@ -452,6 +454,8 @@ When you type a question, Copilot picks the appropriate tool behind the scenes:
 
 AI Subagents are specialized AI assistants, each focused on one type of ABAP task (finding objects, reading code, running analysis, etc.). Instead of one general AI doing everything, subagents split work across focused specialists.
 
+> **Availability:** Chat agents and subagents are enabled only while at least one SAP system is connected. Configure and connect a system before expecting the agents to appear in Copilot. General agents also need an enabled model; SAP testing agents additionally require the SAP Testing folder and their model configuration.
+
 **Why this matters:**
 
 - **Better results** — a dedicated code reviewer catches more issues than a general assistant juggling multiple goals
@@ -585,6 +589,8 @@ Run `get_status` to confirm the target general agent is enabled and has an avail
 Skills are built-in "cheat sheets" that Copilot reads automatically when your question or task matches their domain. They contain ABAP-specific knowledge — coding standards, performance rules, SAP navigation techniques — so you don't have to explain that context yourself.
 
 Copilot only loads a skill's full content when relevant, so having many skills does not slow down unrelated conversations.
+
+> **Availability:** ABAP FS skills are enabled only while at least one SAP system is connected. Before the first connection, they do not appear as slash commands and are not loaded automatically. Connect using **ABAP FS: Connect to an SAP system** to make them available.
 
 ## Using Skills
 
@@ -2258,6 +2264,9 @@ You don't write Playwright code, you don't install Node or npm, and you don't op
 !!! info "GitHub Copilot in VS Code only"
     SAP Testing is built on VS Code chat skills and agents. It is **not** available through the [MCP Server](#mcp-server-for-external-ai-tools) — so Cursor, Claude Code, Claude Desktop, and other MCP clients cannot use it yet. The rest of ABAP FS still works with those clients.
 
+!!! warning "SAP connection required"
+    A connected SAP system is required before SAP Testing skills, agents, and operational tools appear in Copilot. Configuring a testing folder alone is not enough; connect with **ABAP FS: Connect to an SAP system** first.
+
 ## What you get
 
 | | |
@@ -2324,7 +2333,7 @@ This is a normal folder you own. Everything Copilot produces — test cases, scr
 
 `Ctrl+Shift+P` → **ABAP FS: Enable SAP UI Testing Features** → pick the folder you just created.
 
-SAP Testing stays completely hidden until you do this. Choosing the folder is what switches on the testing skills, subagents, and tools — before that, none of them appear in Copilot chat.
+Choosing the folder configures the local testing workspace, but it does not by itself make SAP Testing visible in Copilot. At least one SAP system must also be connected. Once both prerequisites are met, the testing skills, subagents, and operational tools can appear; testing agents still require model configuration.
 
 ABAP FS also drops a few of its own files into the folder at this point. Leave them alone — see [About the files ABAP FS creates](#about-the-files-abap-fs-creates) below for what they are and why they matter.
 
@@ -2490,7 +2499,7 @@ Once a suite exists you don't repeat all seven phases. To run against another sy
 
 # SAP Testing Skills
 
-Skills are instruction sets that Copilot loads when it needs them. SAP Testing adds twelve, and they appear in chat only after you [enable the feature](#getting-started-with-sap-testing).
+Skills are instruction sets that Copilot loads when it needs them. SAP Testing adds twelve, and they appear in chat only after you [enable the feature](#getting-started-with-sap-testing) and connect at least one SAP system.
 
 ## The only one you need to know
 
