@@ -72,7 +72,7 @@ vi.mock("../../adt/operations/AdtObjectActivator", () => ({
   }
 }))
 
-vi.mock("abapobject/out/AbapObject", () => ({
+vi.mock("abapobject/src/AbapObject", () => ({
   AbapObjectBase: class {}
 }))
 
@@ -82,18 +82,6 @@ vi.mock("../../context", () => ({
 
 vi.mock("../../lib", () => ({
   log: vi.fn()
-}))
-
-vi.mock("ramda", () => ({
-  sortWith: vi.fn(function () {
-    return (arr: any[]) => arr
-  }),
-  ascend: vi.fn(function () {
-    return vi.fn()
-  }),
-  prop: vi.fn(function () {
-    return vi.fn()
-  })
 }))
 
 import { hasExemption, approvedExemption, AtcRoot, AtcSystem, AtcObject, AtcFind } from "./view"

@@ -47,26 +47,6 @@ vi.mock("../adt/conections", () => ({
   ADTSCHEME: "adt"
 }))
 
-vi.mock("io-ts", () => {
-  const t = {
-    type: vi.fn(function (fields: any) {
-      return {
-        decode: vi.fn()
-      }
-    }),
-    boolean: { _tag: "BooleanType" },
-    record: vi.fn(function () {
-      return { _tag: "RecordType" }
-    }),
-    string: { _tag: "StringType" }
-  }
-  return t
-})
-
-vi.mock("fp-ts/lib/Either", () => ({
-  isLeft: vi.fn()
-}))
-
 import { createFolderIfMissing, initializeFolder, initializeMainStorage } from "./localStorage"
 import * as vscode from "vscode"
 import type { Mock } from "vitest"

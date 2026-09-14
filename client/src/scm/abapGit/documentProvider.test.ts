@@ -48,7 +48,7 @@ import type { Mock } from "vitest"
 // dynamically AFTER the vi.mocks are established. The provider is registered when
 // registerGitDocProvider() is called, so we invoke it here and capture gitUrl plus
 // the registered scheme/provider for all tests below.
-let gitUrl: (data: unknown, path: string, file: unknown) => unknown
+let gitUrl: (data: any, path: string, file: any) => any
 let registeredProvider: TextDocumentContentProvider
 let registeredScheme: unknown
 
@@ -104,9 +104,9 @@ describe("GitDocProvider.provideTextDocumentContent", () => {
   it("throws for non-ABAPGIT scheme URIs", async () => {
     // Import the module to get access to the provider instance via workspace mock
     const badUri: any = { scheme: "file", query: "", authority: "" }
-    await expect(registeredProvider.provideTextDocumentContent(badUri)).rejects.toThrow(
-      "Unexpected URI scheme"
-    )
+    await expect(
+      registeredProvider.provideTextDocumentContent(badUri, null as any)
+    ).rejects.toThrow("Unexpected URI scheme")
   })
 
   it("throws for invalid (missing key) URLs", async () => {
@@ -116,7 +116,9 @@ describe("GitDocProvider.provideTextDocumentContent", () => {
     mockScmData.mockReturnValue(undefined)
 
     const uri: any = { scheme: "ABAPGIT", query: "xxx", authority: "conn" }
-    await expect(registeredProvider.provideTextDocumentContent(uri)).rejects.toThrow("Invalid URL")
+    await expect(registeredProvider.provideTextDocumentContent(uri, null as any)).rejects.toThrow(
+      "Invalid URL"
+    )
   })
 
   it("calls getObjectSource with correct path when valid", async () => {
@@ -134,7 +136,7 @@ describe("GitDocProvider.provideTextDocumentContent", () => {
     ;(__$mock_scm.scmKey as Mock).mockReturnValue("abapGit_conn_ZPKG")
 
     const uri: any = { scheme: "ABAPGIT", query: "xxx", authority: "conn" }
-    const result = await registeredProvider.provideTextDocumentContent(uri)
+    const result = await registeredProvider.provideTextDocumentContent(uri, null as any)
     expect(mockGetObjectSource).toHaveBeenCalledWith(
       "/sap/bc/adt/path",
       expect.objectContaining({ gitUser: "user1", gitPassword: "pass1" })
@@ -155,7 +157,7 @@ describe("GitDocProvider.provideTextDocumentContent", () => {
     })
 
     const uri: any = { scheme: "ABAPGIT", query: "xxx", authority: "conn" }
-    await registeredProvider.provideTextDocumentContent(uri)
+    await registeredProvider.provideTextDocumentContent(uri, null as any)
     const calledPath = mockGetObjectSource.mock.calls[0]?.[0] as string
     expect(calledPath).not.toContain("#")
     expect(calledPath).toContain("%23")

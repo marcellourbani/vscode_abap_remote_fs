@@ -44,12 +44,18 @@ vi.mock("vscode", () => {
   }
 })
 
-vi.mock("fs-jetpack", () => ({
-  path: vi.fn(function (...parts: string[]) {
+vi.mock("node:path", () => ({
+  resolve: vi.fn(function (...parts: string[]) {
     return parts.join("/")
   }),
-  fileAsync: vi.fn(),
-  readAsync: vi.fn().mockResolvedValue(null)
+  dirname: vi.fn(function (p: string) {
+    return p.split("/").slice(0, -1).join("/")
+  })
+}))
+vi.mock("node:fs/promises", () => ({
+  mkdir: vi.fn().mockResolvedValue(undefined),
+  writeFile: vi.fn().mockResolvedValue(undefined),
+  readFile: vi.fn().mockRejectedValue(Object.assign(new Error("ENOENT"), { code: "ENOENT" }))
 }))
 
 vi.mock("../lib", () => ({
@@ -75,7 +81,7 @@ vi.mock("abapfs", () => ({
 
 import { FavItem, FavouritesProvider, Favourite } from "./favourites"
 import * as __$mock_vscode from "vscode"
-import * as __$mock_fs_jetpack from "fs-jetpack"
+import * as __$mock_fs_promises from "node:fs/promises"
 import type { Mock } from "vitest"
 
 const { TreeItemCollapsibleState } = __$mock_vscode
@@ -224,22 +230,24 @@ describe("FavouritesProvider", () => {
     ;(workspace as any).workspaceFolders = [
       { uri: { authority: "dev100", scheme: "adt", toString: () => "adt://dev100" } }
     ]
-    const { readAsync } = __$mock_fs_jetpack
-    ;(readAsync as Mock).mockResolvedValueOnce([
-      [
-        "dev100",
+    const { readFile } = __$mock_fs_promises
+    ;(readFile as Mock).mockResolvedValueOnce(
+      JSON.stringify([
         [
-          {
-            label: "ZCL_TEST",
-            uri: "adt://dev100/pkg/zcl_test",
-            collapsibleState: 0,
-            children: [],
-            openUri: "",
-            isContainer: false
-          }
+          "dev100",
+          [
+            {
+              label: "ZCL_TEST",
+              uri: "adt://dev100/pkg/zcl_test",
+              collapsibleState: 0,
+              children: [],
+              openUri: "",
+              isContainer: false
+            }
+          ]
         ]
-      ]
-    ])
+      ])
+    )
     ;(FavouritesProvider as any).instance = undefined
     const provider = FavouritesProvider.get()
     provider.storagePath = "/some/path"

@@ -1,5 +1,6 @@
 import { mock } from "vitest-mock-extended"
-import { AbapFsService, createRoot } from ".."
+import { createRoot } from ".."
+import type { AbapFsService } from ".."
 import sampleNodeContents from "../testdata/nodeContents1.json"
 import sampleclas from "../testdata/zcl_ca_alv.json"
 import { delay } from "../lockObject"

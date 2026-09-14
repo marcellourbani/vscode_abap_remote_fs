@@ -214,7 +214,7 @@ describe("FeedInboxProvider.getChildren at root level", () => {
     // Add valid entry
     await sm.addFeedEntries("sys1", "Dumps", [makeEntry({ systemId: "sys1" })])
     const provider = new FeedInboxProvider(sm)
-    // Manually inject an invalid entry into getAllFeedEntries via jest.spyOn
+    // Manually inject an invalid entry into getAllFeedEntries via vi.spyOn
     vi.spyOn(sm, "getAllFeedEntries").mockReturnValue([
       makeEntry({ systemId: "" }),
       makeEntry({ id: "valid", systemId: "sys1" })

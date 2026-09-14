@@ -13,7 +13,7 @@ async function loadConfig(env: Record<string, string | undefined>) {
     else process.env[key] = value
   }
   vi.resetModules()
-  // The CJS config template reads process.env at evaluation time; dynamic import (paired
+  // The config template reads process.env at evaluation time; dynamic import (paired
   // with resetModules) forces a fresh re-evaluation per env set. Module-loading boundary —
   // a static import would evaluate once and cache the first env.
   const mod = await import(/* @vite-ignore */ configPath)

@@ -158,7 +158,7 @@ describe("dataCredentials", () => {
     }
     const result = await dataCredentials(data)
     expect(result).toBeDefined()
-    expect(result?.value).toEqual({ user: "testuser", password: "secret" })
+    expect((result as any)?.value).toEqual({ user: "testuser", password: "secret" })
   })
 
   it("returns public credentials (no password needed) for public repos", async () => {

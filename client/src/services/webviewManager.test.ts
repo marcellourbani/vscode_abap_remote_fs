@@ -300,7 +300,7 @@ describe("WebviewManager", () => {
         (c: any) => c[0]?.command === "applySorting"
       )
       expect(sortMsg).toBeDefined()
-      expect(sortMsg[0].data.sortColumns).toEqual(sortColumns)
+      expect(sortMsg![0].data.sortColumns).toEqual(sortColumns)
     })
 
     it("sends applyFilters message when filters provided", async () => {

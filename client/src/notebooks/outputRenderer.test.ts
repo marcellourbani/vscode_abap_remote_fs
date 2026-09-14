@@ -202,8 +202,8 @@ describe("renderJsOutput", () => {
       .mocked(NotebookCellOutputItem.text)
       .mock.calls.find((c: any[]) => c[1] === "text/html")
     expect(htmlCall).toBeDefined()
-    expect(htmlCall[0]).toContain("Bob")
-    expect(htmlCall[0]).toContain("Carol")
+    expect(htmlCall![0]).toContain("Bob")
+    expect(htmlCall![0]).toContain("Carol")
   })
 
   test("includes log lines as plain text before the main output", () => {
@@ -215,7 +215,7 @@ describe("renderJsOutput", () => {
       .mock.calls.filter((c: any[]) => c[1] === "text/plain")
     const logCall = plainCalls.find((c: any[]) => c[0].includes("log1"))
     expect(logCall).toBeDefined()
-    expect(logCall[0]).toBe("log1\nlog2")
+    expect(logCall![0]).toBe("log1\nlog2")
   })
 
   test("renders only logs when result is undefined but logs exist", () => {
@@ -266,7 +266,7 @@ describe("renderJsOutput", () => {
     const htmlCall = vi
       .mocked(NotebookCellOutputItem.text)
       .mock.calls.find((c: any[]) => c[1] === "text/html")
-    expect(htmlCall[0]).toContain("Showing")
+    expect(htmlCall![0]).toContain("Showing")
   })
 
   test("null result renders as JSON 'null'", () => {
