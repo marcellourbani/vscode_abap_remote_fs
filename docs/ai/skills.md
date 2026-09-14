@@ -4,6 +4,8 @@ Skills are built-in "cheat sheets" that Copilot reads automatically when your qu
 
 Copilot only loads a skill's full content when relevant, so having many skills does not slow down unrelated conversations.
 
+> **Availability:** ABAP FS skills are enabled only while at least one SAP system is connected. Before the first connection, they do not appear as slash commands and are not loaded automatically. Connect using **ABAP FS: Connect to an SAP system** to make them available.
+
 ## Using Skills
 
 **Automatic:** Skills load on their own when Copilot detects a match. Nothing to do.

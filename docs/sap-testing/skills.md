@@ -1,6 +1,6 @@
 # SAP Testing Skills
 
-Skills are instruction sets that Copilot loads when it needs them. SAP Testing adds twelve, and they appear in chat only after you [enable the feature](getting-started.md).
+Skills are instruction sets that Copilot loads when it needs them. SAP Testing adds twelve, and they appear in chat only after you [enable the feature](getting-started.md) and connect at least one SAP system.
 
 ## The only one you need to know
 

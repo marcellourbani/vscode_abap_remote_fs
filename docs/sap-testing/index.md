@@ -7,6 +7,9 @@ You don't write Playwright code, you don't install Node or npm, and you don't op
 !!! info "GitHub Copilot in VS Code only"
     SAP Testing is built on VS Code chat skills and agents. It is **not** available through the [MCP Server](../mcp-server.md) — so Cursor, Claude Code, Claude Desktop, and other MCP clients cannot use it yet. The rest of ABAP FS still works with those clients.
 
+!!! warning "SAP connection required"
+    A connected SAP system is required before SAP Testing skills, agents, and operational tools appear in Copilot. Configuring a testing folder alone is not enough; connect with **ABAP FS: Connect to an SAP system** first.
+
 ## What you get
 
 | | |

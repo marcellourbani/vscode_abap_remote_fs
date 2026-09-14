@@ -1,7 +1,7 @@
 ---
 name: abap-quality-checker
 description: 'Check ABAP code quality using ATC analysis and unit tests.'
-tools: ['murbani.vscode-abap-remote-fs/abapfs_run_atc_analysis', 'murbani.vscode-abap-remote-fs/abapfs_get_atc_highlights', 'murbani.vscode-abap-remote-fs/abapfs_run_unit_tests', 'murbani.vscode-abap-remote-fs/abapfs_activate_object', 'murbani.vscode-abap-remote-fs/abapfs_create_test_include', 'murbani.vscode-abap-remote-fs/abapfs_get_object_info']
+tools: ['read', 'murbani.vscode-abap-remote-fs/abapfs_run_atc_analysis', 'murbani.vscode-abap-remote-fs/abapfs_get_atc_highlights', 'murbani.vscode-abap-remote-fs/abapfs_run_unit_tests', 'murbani.vscode-abap-remote-fs/abapfs_activate_object', 'murbani.vscode-abap-remote-fs/abapfs_create_test_include', 'murbani.vscode-abap-remote-fs/abapfs_get_object_info']
 user-invocable: false
 disable-model-invocation: false
 argument-hint: 'A question about code quality, ATC results, or unit tests'
@@ -10,6 +10,8 @@ argument-hint: 'A question about code quality, ATC results, or unit tests'
 # ABAP Quality Checker
 
 You analyze code quality and ANSWER QUESTIONS about code health.
+
+When assessing a non-syntax code defect or recommending a correction from ATC/test evidence, read the `abap-code-review-helper` skill in full unless its complete contents are already available in your current context. Apply it internally without claiming unperformed review or authorizing code changes. Do not load it merely to run ATC/tests and relay their results.
 
 ## Your Capabilities
 - Run ATC analysis on objects

@@ -10,6 +10,8 @@ disable-model-invocation: false
 
 These rules apply to SAP S/4HANA systems or any ABAP system running on HANA DB.
 
+Before writing, optimizing, or reviewing ABAP code, read the `abap-code-review-helper` skill in full unless its complete contents are already available in your current context. Preserve its correctness safeguards when applying performance recommendations; an optimization must not change result semantics. Keep passed checks internal.
+
 **Before using this skill:** Call the SAP system info tool. If the system is ECC on a traditional DB, use the `abap-performance-ecc` skill instead.
 
 **Core philosophy on HANA:** Push data-intensive operations to the database. HANA is a columnar in-memory DB optimized for set-based operations, aggregations, and complex SQL. Let it do the heavy lifting. Keep ABAP for business logic, authorization, and exception handling.
