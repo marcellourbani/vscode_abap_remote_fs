@@ -351,7 +351,7 @@ export async function activate(ctx: ExtensionContext): Promise<AbapFsApi> {
   restoreLocks()
   registerAbapGit(context)
 
-  await registerCommands(context)
+  registerCommands(context)
 
   // 📊 Register Dependency Graph Command
   try {
