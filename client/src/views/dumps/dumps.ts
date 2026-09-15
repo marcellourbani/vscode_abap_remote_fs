@@ -1,7 +1,7 @@
-import { Dump, Feed } from "abap-adt-api"
+import { type Dump, type Feed } from "abap-adt-api"
 import {
   EventEmitter,
-  TreeDataProvider,
+  type TreeDataProvider,
   TreeItem,
   TreeItemCollapsibleState,
   ViewColumn
@@ -65,7 +65,7 @@ class DumpItem extends TreeItem {
 class SystemItem extends TreeItem {
   readonly tag = "system"
   private dumpFeed?: Feed | "none"
-  contextValue = "system"
+  override contextValue = "system"
   constructor(
     label: string,
     private connId: string

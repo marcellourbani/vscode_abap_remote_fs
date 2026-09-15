@@ -1,4 +1,4 @@
-import { DecorationOptions, ExtensionContext, Position, Range, workspace } from "vscode"
+import { type DecorationOptions, type ExtensionContext, Position, Range, workspace } from "vscode"
 import { funWindow as window } from "../../services/funMessenger"
 import { atcProvider } from "."
 import { AtcFind, hasExemption } from "./view"

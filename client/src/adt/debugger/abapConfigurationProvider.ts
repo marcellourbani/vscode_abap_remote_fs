@@ -1,5 +1,9 @@
-import { CancellationToken, DebugConfigurationProvider, WorkspaceFolder } from "vscode"
-import { AbapDebugConfiguration } from "./abapDebugSession"
+import {
+  type CancellationToken,
+  type DebugConfigurationProvider,
+  type WorkspaceFolder
+} from "vscode"
+import { type AbapDebugConfiguration } from "./abapDebugSession"
 import { log } from "../../lib"
 import { configFromKey } from "../../langClient"
 

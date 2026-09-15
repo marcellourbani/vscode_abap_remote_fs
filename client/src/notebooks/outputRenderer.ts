@@ -1,5 +1,5 @@
 import * as vscode from "vscode"
-import { CellResult, DISPLAY_ROW_LIMIT } from "./types"
+import { type CellResult, DISPLAY_ROW_LIMIT } from "./types"
 
 export function renderSqlOutput(cellResult: CellResult): vscode.NotebookCellOutput {
   if (!Array.isArray(cellResult.result) || cellResult.result.length === 0) {

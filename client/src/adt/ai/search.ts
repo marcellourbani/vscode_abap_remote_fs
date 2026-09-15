@@ -1,12 +1,12 @@
 import {
-  CancellationToken,
+  type CancellationToken,
   LanguageModelTextPart,
-  LanguageModelTool,
-  LanguageModelToolInvocationOptions,
-  LanguageModelToolInvocationPrepareOptions,
+  type LanguageModelTool,
+  type LanguageModelToolInvocationOptions,
+  type LanguageModelToolInvocationPrepareOptions,
   LanguageModelToolResult,
-  PreparedToolInvocation,
-  ProviderResult,
+  type PreparedToolInvocation,
+  type ProviderResult,
   Uri
 } from "vscode"
 import { getClient, getRoot } from "../conections"

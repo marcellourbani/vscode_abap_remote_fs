@@ -1,10 +1,10 @@
-import { AbapObjectBase, convertSlash, AbapObject } from "../AbapObject"
-import { AbapClass } from "./AbapClass"
-import { ADTClient, classIncludes } from "abap-adt-api"
-import { isAbapClass } from "./AbapClass"
-import { AbapObjectService } from "../AOService"
-import { ObjectErrors } from "../AOError"
-import { AbapSimpleStructure } from "abap-adt-api/build/api"
+import { AbapObjectBase, convertSlash, type AbapObject } from "../AbapObject.js"
+import { AbapClass } from "./AbapClass.js"
+import { ADTClient, type classIncludes } from "abap-adt-api"
+import { isAbapClass } from "./AbapClass.js"
+import { type AbapObjectService } from "../AOService.js"
+import { ObjectErrors } from "../AOError.js"
+import type { AbapSimpleStructure } from "abap-adt-api/build/api/objectstructure.js"
 const tag = Symbol("AbapClassInclude")
 const CLASSINCLUDES: any = {
   testclasses: ".testclasses",
@@ -36,7 +36,7 @@ export class AbapClassInclude extends AbapObjectBase {
       )
     this.parent = parent
   }
-  public get structure() {
+  public override get structure() {
     const { includes, metaData } = this.parent.structure || {}
     const include = includes?.find(i => i["class:includeType"] === this.techName)
     if (!include || !metaData) return
@@ -59,32 +59,32 @@ export class AbapClassInclude extends AbapObjectBase {
 
     return structure
   }
-  get expandable() {
+  override get expandable() {
     return false
   }
-  set expandable(x: boolean) {
+  override set expandable(x: boolean) {
     //
   }
-  get lockObject() {
+  override get lockObject() {
     return this.parent
   }
 
-  readonly parent: AbapClass
-  get extension() {
+  override readonly parent: AbapClass
+  override get extension() {
     let type = CLASSINCLUDES[this.techName]
     if (!type && this.techName !== "main")
       type = CLASSINCLUDES[this.name.replace(/.*\./, "")] || `.${this.techName}`
     return `.clas${type}.abap`
   }
-  async loadStructure(refresh = false) {
+  override async loadStructure(refresh = false) {
     await this.parent.loadStructure(refresh)
     return this.structure!
   }
-  get fsName(): string {
+  override get fsName(): string {
     const baseName = this.name.replace(/\..*/, "")
     return this.name ? `${convertSlash(baseName)}${this.extension}` : ""
   }
-  contentsPath() {
+  override contentsPath() {
     const str = this.parent?.structure
     if (str) {
       const include = ADTClient.classIncludes(str).get(this.techName as classIncludes)

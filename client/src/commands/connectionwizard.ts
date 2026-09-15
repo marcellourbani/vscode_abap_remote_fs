@@ -1,15 +1,15 @@
 import {
-  AbapServiceKey,
+  type AbapServiceKey,
   cfCodeGrant,
-  CfInfo,
+  type CfInfo,
   cfInfo,
   cfInstanceServiceKeyCreate,
   cfInstanceServiceKeys,
   cfOrganizations,
   cfPasswordGrant,
-  CfResource,
-  CfServiceEntity,
-  CfServiceInstanceEntity,
+  type CfResource,
+  type CfServiceEntity,
+  type CfServiceInstanceEntity,
   cfServiceInstances,
   cfServices,
   cfSpaces,
@@ -22,8 +22,8 @@ import {
 import { Token } from "client-oauth2"
 import { pipe } from "fp-ts/lib/function"
 import { bind, chain, map } from "fp-ts/lib/TaskEither"
-import { ConfigurationTarget, QuickPickItem, Uri, workspace } from "vscode"
-import { ClientConfiguration } from "vscode-abap-remote-fs-sharedapi"
+import { ConfigurationTarget, type QuickPickItem, Uri, workspace } from "vscode"
+import { type ClientConfiguration } from "vscode-abap-remote-fs-sharedapi"
 import { saveNewRemote, validateNewConfigId } from "../config"
 import {
   after,
@@ -35,7 +35,7 @@ import {
   rfsChainE,
   rfsExtract,
   rfsTaskEither,
-  RfsTaskEither,
+  type RfsTaskEither,
   rfsTryCatch,
   rfsWrap
 } from "../lib"

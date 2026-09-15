@@ -1,9 +1,9 @@
-import { AbapObjectBase } from "../AbapObject"
+import { AbapObjectBase } from "../AbapObject.js"
 const tag = Symbol("AbapCds")
 
 export class AbapCds extends AbapObjectBase {
   public [tag] = true
-  get extension(): string {
+  override get extension(): string {
     switch (this.type) {
       case "DDLS/DF":
         return ".ddls.asddls"
@@ -18,13 +18,13 @@ export class AbapCds extends AbapObjectBase {
     }
     return ".cds" // should never happen...
   }
-  get expandable() {
+  override get expandable() {
     return false
   }
-  set expandable(_: boolean) {
+  override set expandable(_: boolean) {
     // ignore
   }
-  public async mainPrograms() {
+  public override async mainPrograms() {
     return []
   }
 }

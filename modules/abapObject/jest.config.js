@@ -1,9 +1,9 @@
 // For a detailed explanation regarding each configuration property, visit:
 // https://jestjs.io/docs/en/configuration.html
-const { existsSync } = require("fs")
+import { existsSync } from "node:fs"
 const setupFiles = ["./setenv.js"].filter(existsSync)
 
-module.exports = {
+export default {
   // An array of directory names to be searched recursively up from the requiring module's location
   moduleDirectories: ["node_modules"],
 
@@ -18,6 +18,10 @@ module.exports = {
 
   // The glob patterns Jest uses to detect test files
   testMatch: ["**/__tests__/*.+(ts|tsx|js)", "**/*.test.ts"],
+
+  moduleNameMapper: {
+    "^(\\.{1,2}/.*)\\.js$": "$1"
+  },
 
   // A map from regular expressions to paths to transformers
   transform: {

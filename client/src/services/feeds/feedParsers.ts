@@ -1,5 +1,5 @@
-import { FeedEntry, FeedType, FeedMetadata } from "./feedTypes"
-import { Feed } from "abap-adt-api"
+import { type FeedEntry, FeedType, type FeedMetadata } from "./feedTypes"
+import { type Feed } from "abap-adt-api"
 import { log } from "../../lib"
 
 /**

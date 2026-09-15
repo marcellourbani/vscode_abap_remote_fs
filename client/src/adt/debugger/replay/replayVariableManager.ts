@@ -1,7 +1,7 @@
 import { Handles, Scope } from "@vscode/debugadapter"
-import { DebugProtocol } from "@vscode/debugprotocol"
+import { type DebugProtocol } from "@vscode/debugprotocol"
 import { debugMetaIsComplex } from "abap-adt-api"
-import { CapturedVariable, CapturedScope, DebugSnapshot } from "./types"
+import { type CapturedVariable, type CapturedScope, type DebugSnapshot } from "./types"
 
 const HANDLE_BASE = 1000
 

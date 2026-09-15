@@ -1,7 +1,7 @@
 {
   // See http://go.microsoft.com/fwlink/?LinkId=827846
   // for the documentation about the extensions.json format
-  "recommendations": [
-    "amodio.tsl-problem-matcher"
-  ]
+  // The build uses tsdown; watch tasks use inline problemMatchers in tasks.json,
+  // so the webpack problem-matcher extension is no longer needed.
+  "recommendations": []
 }

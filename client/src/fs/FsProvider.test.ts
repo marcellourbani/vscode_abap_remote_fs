@@ -98,7 +98,7 @@ jest.mock("./LocalFsProvider", () => {
 })
 
 jest.mock("abap-adt-api", () => ({ isHttpError: jest.fn() }))
-jest.mock("abapfs/out/lockManager", () => ({ ReloginError: { isReloginError: jest.fn() } }))
+jest.mock("abapfs/src/lockManager", () => ({ ReloginError: { isReloginError: jest.fn() } }))
 jest.mock("../services/funMessenger", () => ({
   funWindow: {
     showInformationMessage: jest.fn(),

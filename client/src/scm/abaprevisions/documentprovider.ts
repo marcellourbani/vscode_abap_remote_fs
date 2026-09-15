@@ -1,5 +1,5 @@
-import { TextDocumentContentProvider, Uri, EventEmitter } from "vscode"
-import { Revision } from "abap-adt-api"
+import { type TextDocumentContentProvider, Uri, EventEmitter } from "vscode"
+import { type Revision } from "abap-adt-api"
 import { atob, btoa } from "../../lib"
 import { abapUri, ADTSCHEME, getClient, getOrCreateClient, uriRoot } from "../../adt/conections"
 import { isAbapFile } from "abapfs"

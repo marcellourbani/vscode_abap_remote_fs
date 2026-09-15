@@ -1,8 +1,8 @@
-import { QuickDiffProvider, Uri } from "vscode"
+import { type QuickDiffProvider, Uri } from "vscode"
 import { AbapRevisionService } from "./abaprevisionservice"
 import { abapUri } from "../../adt/conections"
 import { quickDiffUri, AbapRevision } from "./documentprovider"
-import { Revision } from "abap-adt-api"
+import { type Revision } from "abap-adt-api"
 import { AbapRevisionLens } from "./lenses"
 import { toMs } from "./abapscm"
 

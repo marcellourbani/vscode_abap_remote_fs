@@ -1,24 +1,5 @@
 {
-  "compilerOptions": {
-    /* Basic Options */
-    "target": "ES2019",
-    "module": "node16",
-    "moduleResolution": "node16",
-    "types": ["node"],
-    "lib": ["es6"],
-    "skipLibCheck": true,
-    "declaration": true /* Generates corresponding '.d.ts' file. */,
-    "declarationMap": true /* Generates a sourcemap for each corresponding '.d.ts' file. */,
-    "sourceMap": true /* Generates corresponding '.map' file. */,
-    // "outFile": "./",                       /* Concatenate and emit output to single file. */
-    "outDir": "out" /* Redirect output structure to the directory. */,
-    "rootDir": "src" /* Specify the root directory of input files. Use to control the output directory structure with --outDir. */,
-    /* Incremental Compilation */
-    "incremental": true,
-    "tsBuildInfoFile": ".tsbuildinfo",
-    /* Strict Type-Checking Options */
-    "strict": true /* Enable all strict type-checking options. */,
-    "esModuleInterop": true /* Enables emit interoperability between CommonJS and ES Modules via creation of namespace objects for all imports. Implies 'allowSyntheticDefaultImports'. */
-  },
-  "exclude": ["node_modules", "out"]
+  "extends": "../../tsconfig.base.json",
+  "include": ["src"],
+  "exclude": ["node_modules", "src/**/*.test.ts", "src/**/*.spec.ts"]
 }

@@ -1,9 +1,9 @@
-import { taskEither, TaskEither } from "fp-ts/lib/TaskEither"
+import { taskEither, type TaskEither } from "fp-ts/lib/TaskEither"
 import { right } from "fp-ts/lib/Either"
-import { LeftType } from "./rfsTaskEither"
+import { type LeftType } from "./rfsTaskEither"
 import { decode, encode } from "html-entities"
 import { types } from "util"
-import { Task } from "fp-ts/lib/Task"
+import { type Task } from "fp-ts/lib/Task"
 import { ABAPFile, ABAPObject, MemoryFile, Registry } from "@abaplint/core"
 
 export const isString = (x: any): x is string => typeof x === "string"

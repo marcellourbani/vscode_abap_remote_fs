@@ -5,7 +5,7 @@
 import * as vscode from "vscode"
 import {
   UPGRADE_NOTIFICATION_FEATURES,
-  UpgradeNotificationFeature
+  type UpgradeNotificationFeature
 } from "./upgradeNotificationFeatures"
 
 const MARKETPLACE_URL =

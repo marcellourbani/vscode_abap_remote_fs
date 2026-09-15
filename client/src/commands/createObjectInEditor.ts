@@ -1,14 +1,21 @@
-import { FileStat, ProgressLocation, Uri, ViewColumn, WebviewPanel, commands } from "vscode"
+import {
+  type FileStat,
+  ProgressLocation,
+  Uri,
+  ViewColumn,
+  type WebviewPanel,
+  commands
+} from "vscode"
 import {
   BindinTypes,
-  CreatableType,
-  CreatableTypeIds,
+  type CreatableType,
+  type CreatableTypeIds,
   CreatableTypes,
   objectPath,
-  PackageTypes,
+  type PackageTypes,
   isPackageType,
   parentTypeId,
-  ParentTypeIds
+  type ParentTypeIds
 } from "abap-adt-api"
 import { isAbapStat, isFolder } from "abapfs"
 import { fromNode } from "abapobject"

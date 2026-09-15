@@ -1,5 +1,5 @@
 import {
-  ClientConfiguration,
+  type ClientConfiguration,
   hasCertAuthConfig,
   hasOAuthOnPremConfig,
   getAuthMethod
@@ -7,15 +7,15 @@ import {
 import type { Agent } from "https"
 import {
   workspace,
-  QuickPickItem,
-  WorkspaceFolder,
+  type QuickPickItem,
+  type WorkspaceFolder,
   Uri,
   ConfigurationTarget,
-  Event,
-  ConfigurationChangeEvent
+  type Event,
+  type ConfigurationChangeEvent
 } from "vscode"
 import { funWindow as window } from "./services/funMessenger"
-import { ADTClient, createSSLConfig, LogCallback, LogData } from "abap-adt-api"
+import { ADTClient, createSSLConfig, type LogCallback, type LogData } from "abap-adt-api"
 import { readFileSync } from "fs"
 import { PasswordVault, log } from "./lib"
 import { oauthLogin } from "./oauth"

@@ -1,4 +1,4 @@
-import { createRoot, AFsService, Root } from ".."
+import { createRoot, AFsService, Root } from "../index.js"
 import { ADTClient } from "abap-adt-api"
 import { Agent } from "https"
 /** this will connect to a real server, and mostly rely on abapgit as sample data

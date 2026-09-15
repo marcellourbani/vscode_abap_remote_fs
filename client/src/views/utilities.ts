@@ -1,4 +1,4 @@
-import { SystemUser } from "abap-adt-api"
+import { type SystemUser } from "abap-adt-api"
 import { funWindow as window } from "../services/funMessenger"
 import { getClient } from "../adt/conections"
 

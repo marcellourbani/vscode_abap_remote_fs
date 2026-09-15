@@ -1,5 +1,5 @@
 import { transportValidators } from "./adt/AdtTransports"
-import { Disposable, CancellationToken } from "vscode"
+import { Disposable, type CancellationToken } from "vscode"
 
 export type TransportValidator = (
   transport: string,

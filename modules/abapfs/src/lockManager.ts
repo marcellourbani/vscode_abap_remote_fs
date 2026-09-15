@@ -1,8 +1,8 @@
-import { Root } from "./root"
-import { LockObject, delay } from "./lockObject"
-import { isAbapStat } from "./abapFile"
+import { Root } from "./root.js"
+import { LockObject, delay } from "./lockObject.js"
+import { isAbapStat } from "./abapFile.js"
 import { FileSystemError } from "vscode"
-import { isLoginError, isCsrfError, AdtException, isHttpError } from "abap-adt-api"
+import { isLoginError, isCsrfError, type AdtException, isHttpError } from "abap-adt-api"
 
 export class ReloginError extends Error {
   constructor(public outcome: boolean) {
