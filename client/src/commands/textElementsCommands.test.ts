@@ -1,60 +1,58 @@
-jest.mock(
-  "vscode",
-  () => ({
-    ProgressLocation: { Notification: 15 },
-    ViewColumn: { One: 1 },
-    Uri: {
-      file: jest.fn((p: string) => ({ scheme: "file", path: p, toString: () => `file://${p}` }))
-    },
-    extensions: {
-      getExtension: jest.fn()
-    }
-  }),
-  { virtual: true }
-)
+vi.mock("vscode", () => ({
+  ProgressLocation: { Notification: 15 },
+  ViewColumn: { One: 1 },
+  Uri: {
+    file: vi.fn(function (p: string) {
+      return { scheme: "file", path: p, toString: () => `file://${p}` }
+    })
+  },
+  extensions: {
+    getExtension: vi.fn()
+  }
+}))
 
-jest.mock("../services/funMessenger", () => ({
+vi.mock("../services/funMessenger", () => ({
   funWindow: {
     activeTextEditor: undefined,
-    showErrorMessage: jest.fn(),
-    showInformationMessage: jest.fn(),
-    withProgress: jest.fn(),
-    createWebviewPanel: jest.fn()
+    showErrorMessage: vi.fn(),
+    showInformationMessage: vi.fn(),
+    withProgress: vi.fn(),
+    createWebviewPanel: vi.fn()
   }
 }))
 
-jest.mock("../adt/conections", () => ({
-  getClient: jest.fn(),
-  getRoot: jest.fn()
+vi.mock("../adt/conections", () => ({
+  getClient: vi.fn(),
+  getRoot: vi.fn()
 }))
 
-jest.mock("../adt/textElements", () => ({
-  getTextElementsSafe: jest.fn(),
-  updateTextElementsWithTransport: jest.fn(),
-  parseObjectName: jest.fn()
+vi.mock("../adt/textElements", () => ({
+  getTextElementsSafe: vi.fn(),
+  updateTextElementsWithTransport: vi.fn(),
+  parseObjectName: vi.fn()
 }))
 
-jest.mock("../services/abapCopilotLogger", () => ({
-  logCommands: { error: jest.fn(), info: jest.fn() }
+vi.mock("../services/abapCopilotLogger", () => ({
+  logCommands: { error: vi.fn(), info: vi.fn() }
 }))
 
-jest.mock("../services/telemetry", () => ({
-  logTelemetry: jest.fn()
+vi.mock("../services/telemetry", () => ({
+  logTelemetry: vi.fn()
 }))
 
-jest.mock("abapfs", () => ({
-  isAbapFile: jest.fn()
+vi.mock("abapfs", () => ({
+  isAbapFile: vi.fn()
 }))
 
-jest.mock("../views/sapgui/SapGuiPanel", () => ({
+vi.mock("../views/sapgui/SapGuiPanel", () => ({
   SapGuiPanel: {
-    createOrShow: jest.fn()
+    createOrShow: vi.fn()
   }
 }))
 
-jest.mock("../config", () => ({
+vi.mock("../config", () => ({
   RemoteManager: {
-    get: jest.fn()
+    get: vi.fn()
   }
 }))
 
@@ -66,15 +64,14 @@ import { isAbapFile } from "abapfs"
 import { SapGuiPanel } from "../views/sapgui/SapGuiPanel"
 import { RemoteManager } from "../config"
 import * as vscode from "vscode"
+import type { Mocked, MockedFunction, Mock } from "vitest"
 
-const mockWindow = window as jest.Mocked<typeof window>
-const mockGetClient = getClient as jest.MockedFunction<typeof getClient>
-const mockGetRoot = getRoot as jest.MockedFunction<typeof getRoot>
-const mockGetTextElementsSafe = getTextElementsSafe as jest.MockedFunction<
-  typeof getTextElementsSafe
->
-const mockIsAbapFile = isAbapFile as jest.MockedFunction<typeof isAbapFile>
-const mockParseObjectName = parseObjectName as jest.MockedFunction<typeof parseObjectName>
+const mockWindow = window as Mocked<typeof window>
+const mockGetClient = getClient as MockedFunction<typeof getClient>
+const mockGetRoot = getRoot as MockedFunction<typeof getRoot>
+const mockGetTextElementsSafe = getTextElementsSafe as MockedFunction<typeof getTextElementsSafe>
+const mockIsAbapFile = isAbapFile as MockedFunction<typeof isAbapFile>
+const mockParseObjectName = parseObjectName as MockedFunction<typeof parseObjectName>
 
 function makeAdtUri(
   authority = "dev100",
@@ -89,11 +86,11 @@ function makeAdtUri(
 }
 
 beforeEach(() => {
-  jest.clearAllMocks()
+  vi.clearAllMocks()
   ;(mockWindow as any).activeTextEditor = undefined
-  ;(mockWindow.withProgress as jest.Mock).mockImplementation((_opts: any, fn: Function) =>
-    fn({ report: jest.fn() })
-  )
+  ;(mockWindow.withProgress as Mock).mockImplementation(function (_opts: any, fn: Function) {
+    return fn({ report: vi.fn() })
+  })
 })
 
 describe("manageTextElementsCommand", () => {
@@ -132,14 +129,14 @@ describe("manageTextElementsCommand", () => {
     const mockFile = { object: { type: "PROG/P" } }
     mockIsAbapFile.mockReturnValue(true)
     const mockRoot = {
-      getNodeAsync: jest.fn().mockResolvedValue(mockFile)
+      getNodeAsync: vi.fn().mockResolvedValue(mockFile)
     }
     mockGetRoot.mockReturnValue(mockRoot as any)
-    mockGetClient.mockReturnValue({ someFn: jest.fn() } as any)
+    mockGetClient.mockReturnValue({ someFn: vi.fn() } as any)
     mockGetTextElementsSafe.mockResolvedValue({ textElements: [], programName: "ZTEST" } as any)
-    ;(mockWindow.createWebviewPanel as jest.Mock).mockReturnValue({
-      webview: { html: "", onDidReceiveMessage: jest.fn() },
-      onDidDispose: jest.fn()
+    ;(mockWindow.createWebviewPanel as Mock).mockReturnValue({
+      webview: { html: "", onDidReceiveMessage: vi.fn() },
+      onDidDispose: vi.fn()
     })
 
     await manageTextElementsCommand(uri)
@@ -152,19 +149,19 @@ describe("manageTextElementsCommand", () => {
     const mockIncludeFile = {
       object: {
         type: "PROG/I",
-        mainPrograms: jest.fn().mockResolvedValue([{ "adtcore:name": "ZMAINPROG" }])
+        mainPrograms: vi.fn().mockResolvedValue([{ "adtcore:name": "ZMAINPROG" }])
       }
     }
     mockIsAbapFile.mockReturnValue(true)
     const mockRoot = {
-      getNodeAsync: jest.fn().mockResolvedValue(mockIncludeFile)
+      getNodeAsync: vi.fn().mockResolvedValue(mockIncludeFile)
     }
     mockGetRoot.mockReturnValue(mockRoot as any)
     mockGetClient.mockReturnValue({} as any)
     mockGetTextElementsSafe.mockResolvedValue({ textElements: [], programName: "ZMAINPROG" } as any)
-    ;(mockWindow.createWebviewPanel as jest.Mock).mockReturnValue({
-      webview: { html: "", onDidReceiveMessage: jest.fn() },
-      onDidDispose: jest.fn()
+    ;(mockWindow.createWebviewPanel as Mock).mockReturnValue({
+      webview: { html: "", onDidReceiveMessage: vi.fn() },
+      onDidDispose: vi.fn()
     })
     // showTextElementsEditor uses activeTextEditor to get connectionId
     ;(mockWindow as any).activeTextEditor = {
@@ -191,7 +188,7 @@ describe("manageTextElementsCommand", () => {
     const uri = makeAdtUri("dev100", "/dev100/unknownpath")
     mockIsAbapFile.mockReturnValue(false)
     const mockRoot = {
-      getNodeAsync: jest.fn().mockResolvedValue({})
+      getNodeAsync: vi.fn().mockResolvedValue({})
     }
     mockGetRoot.mockReturnValue(mockRoot as any)
 
@@ -207,13 +204,13 @@ describe("manageTextElementsCommand", () => {
     ;(mockWindow as any).activeTextEditor = { document: { uri: editorUri } }
     const mockFile = { object: { type: "PROG/P" } }
     mockIsAbapFile.mockReturnValue(true)
-    const mockRoot = { getNodeAsync: jest.fn().mockResolvedValue(mockFile) }
+    const mockRoot = { getNodeAsync: vi.fn().mockResolvedValue(mockFile) }
     mockGetRoot.mockReturnValue(mockRoot as any)
     mockGetClient.mockReturnValue({} as any)
     mockGetTextElementsSafe.mockResolvedValue({ textElements: [], programName: "ZTEST" } as any)
-    ;(mockWindow.createWebviewPanel as jest.Mock).mockReturnValue({
-      webview: { html: "", onDidReceiveMessage: jest.fn() },
-      onDidDispose: jest.fn()
+    ;(mockWindow.createWebviewPanel as Mock).mockReturnValue({
+      webview: { html: "", onDidReceiveMessage: vi.fn() },
+      onDidDispose: vi.fn()
     })
 
     await manageTextElementsCommand(undefined)
@@ -229,16 +226,16 @@ describe("openTextElementsInSapGui", () => {
       cleanName: "ZTEST",
       name: "ZTEST.prog.abap"
     })
-    ;(vscode.extensions.getExtension as jest.Mock).mockReturnValue(undefined)
+    ;(vscode.extensions.getExtension as Mock).mockReturnValue(undefined)
   })
 
   test("creates SapGuiPanel for program", async () => {
     mockGetClient.mockReturnValue({} as any)
     const mockPanel = {
-      buildWebGuiUrl: jest.fn().mockResolvedValue("http://dev/webgui?DYNP_OKCODE%3dSTRT"),
-      loadDirectWebGuiUrl: jest.fn()
+      buildWebGuiUrl: vi.fn().mockResolvedValue("http://dev/webgui?DYNP_OKCODE%3dSTRT"),
+      loadDirectWebGuiUrl: vi.fn()
     }
-    ;(SapGuiPanel.createOrShow as jest.Mock).mockReturnValue(mockPanel)
+    ;(SapGuiPanel.createOrShow as Mock).mockReturnValue(mockPanel)
 
     await openTextElementsInSapGui("ZTEST.prog.abap", "dev100")
 
@@ -254,18 +251,18 @@ describe("openTextElementsInSapGui", () => {
     })
     mockGetClient.mockReturnValue({} as any)
     const mockManager = {
-      byId: jest.fn().mockReturnValue({
+      byId: vi.fn().mockReturnValue({
         url: "https://dev100:8000/sap/bc/adt",
         client: "100",
         language: "EN"
       })
     }
-    ;(RemoteManager.get as jest.Mock).mockReturnValue(mockManager)
+    ;(RemoteManager.get as Mock).mockReturnValue(mockManager)
     const mockPanel = {
-      buildWebGuiUrl: jest.fn().mockResolvedValue("http://dev/webgui"),
-      loadDirectWebGuiUrl: jest.fn()
+      buildWebGuiUrl: vi.fn().mockResolvedValue("http://dev/webgui"),
+      loadDirectWebGuiUrl: vi.fn()
     }
-    ;(SapGuiPanel.createOrShow as jest.Mock).mockReturnValue(mockPanel)
+    ;(SapGuiPanel.createOrShow as Mock).mockReturnValue(mockPanel)
 
     await openTextElementsInSapGui("ZCL_TEST.clas.abap", "dev100")
 
@@ -280,10 +277,10 @@ describe("openTextElementsInSapGui", () => {
     })
     mockGetClient.mockReturnValue({} as any)
     const mockPanel = {
-      buildWebGuiUrl: jest.fn().mockResolvedValue("http://dev/webgui?DYNP_OKCODE%3dWB_EXEC"),
-      loadDirectWebGuiUrl: jest.fn()
+      buildWebGuiUrl: vi.fn().mockResolvedValue("http://dev/webgui?DYNP_OKCODE%3dWB_EXEC"),
+      loadDirectWebGuiUrl: vi.fn()
     }
-    ;(SapGuiPanel.createOrShow as jest.Mock).mockReturnValue(mockPanel)
+    ;(SapGuiPanel.createOrShow as Mock).mockReturnValue(mockPanel)
 
     await openTextElementsInSapGui("ZFG_TEST.fugr.abap", "dev100")
 
@@ -296,10 +293,10 @@ describe("openTextElementsInSapGui", () => {
   test("throws error when panel buildWebGuiUrl fails", async () => {
     mockGetClient.mockReturnValue({} as any)
     const mockPanel = {
-      buildWebGuiUrl: jest.fn().mockRejectedValue(new Error("Connection failed")),
-      loadDirectWebGuiUrl: jest.fn()
+      buildWebGuiUrl: vi.fn().mockRejectedValue(new Error("Connection failed")),
+      loadDirectWebGuiUrl: vi.fn()
     }
-    ;(SapGuiPanel.createOrShow as jest.Mock).mockReturnValue(mockPanel)
+    ;(SapGuiPanel.createOrShow as Mock).mockReturnValue(mockPanel)
 
     await expect(openTextElementsInSapGui("ZTEST.prog.abap", "dev100")).rejects.toThrow(
       "Connection failed"

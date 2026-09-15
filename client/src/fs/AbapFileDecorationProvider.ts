@@ -1,16 +1,16 @@
 import {
-  CancellationToken,
+  type CancellationToken,
   Disposable,
   EventEmitter,
   FileDecoration,
-  FileDecorationProvider,
-  ProviderResult,
+  type FileDecorationProvider,
+  type ProviderResult,
   Uri,
   window,
   workspace
 } from "vscode"
 import { isAbapStat } from "abapfs"
-import { AbapObject } from "abapobject"
+import { type AbapObject } from "abapobject"
 import { abapUri, uriRoot } from "../adt/conections"
 
 const NAMESPACE = /^[a-z][a-z0-9]*:/i

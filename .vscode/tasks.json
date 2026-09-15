@@ -56,7 +56,15 @@
       "label": "watch server",
       "script": "watch",
       "path": "server/",
-      "problemMatcher": "$ts-webpack-watch",
+      "problemMatcher": {
+        "owner": "tsdown",
+        "pattern": [{ "regexp": "^\\s*(?:✘|✖|ERROR|error)\\s+(.*)$", "message": 1 }],
+        "background": {
+          "activeOnStart": true,
+          "beginsPattern": "(?:Build start|Starting compilation in watch mode)",
+          "endsPattern": "(?:Build complete|Rebuilt|Watching for file changes)"
+        }
+      },
       "isBackground": true,
       "presentation": {
         "reveal": "never"
@@ -75,7 +83,15 @@
       "label": "watch client",
       "script": "watch",
       "path": "client/",
-      "problemMatcher": "$ts-webpack-watch",
+      "problemMatcher": {
+        "owner": "tsdown",
+        "pattern": [{ "regexp": "^\\s*(?:✘|✖|ERROR|error)\\s+(.*)$", "message": 1 }],
+        "background": {
+          "activeOnStart": true,
+          "beginsPattern": "(?:Build start|Starting compilation in watch mode)",
+          "endsPattern": "(?:Build complete|Rebuilt|Watching for file changes)"
+        }
+      },
       "isBackground": true,
       "presentation": {
         "reveal": "never"

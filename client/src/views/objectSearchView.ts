@@ -1,10 +1,10 @@
 import {
-  CancellationToken,
-  QuickPickItem,
-  Webview,
-  WebviewView,
-  WebviewViewProvider,
-  WebviewViewResolveContext,
+  type CancellationToken,
+  type QuickPickItem,
+  type Webview,
+  type WebviewView,
+  type WebviewViewProvider,
+  type WebviewViewResolveContext,
   window,
   workspace
 } from "vscode"
@@ -15,7 +15,12 @@ import { currentUri, openObject } from "../commands/commands"
 import { caughtToString } from "../lib"
 import { context } from "../extension"
 import { OBJECT_TYPE_FILTER_OPTIONS, getObjectTypeLabel } from "./objectTypeLabels"
-import { RecentObject, addRecent, clearRecent, getRecent } from "../adt/operations/recentObjects"
+import {
+  type RecentObject,
+  addRecent,
+  clearRecent,
+  getRecent
+} from "../adt/operations/recentObjects"
 
 /** Shape sent to the webview — display strings plus canonical data for storage. */
 type SearchResultMessage = {

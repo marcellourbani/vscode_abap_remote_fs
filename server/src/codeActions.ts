@@ -1,5 +1,5 @@
 import {
-  CodeActionParams,
+  type CodeActionParams,
   CodeAction,
   DiagnosticSeverity,
   Command,
@@ -7,7 +7,7 @@ import {
 } from "vscode-languageserver"
 import { clientAndObjfromUrl, rangeIsEmpty } from "./utilities"
 import { log } from "./clientManager"
-import { FixProposal } from "abap-adt-api"
+import { type FixProposal } from "abap-adt-api"
 import { decode } from "html-entities"
 
 /**

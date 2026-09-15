@@ -7,12 +7,12 @@
 
 import { ADTClient } from "abap-adt-api"
 import {
-  CustomReference,
-  GroupedData,
-  ItemGroup,
-  ItemPiecelistLink,
-  PiecelistEntry,
-  SimplificationItem
+  type CustomReference,
+  type GroupedData,
+  type ItemGroup,
+  type ItemPiecelistLink,
+  type PiecelistEntry,
+  type SimplificationItem
 } from "./types"
 import { log } from "../../lib"
 

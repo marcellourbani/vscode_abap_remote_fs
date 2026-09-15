@@ -1,10 +1,10 @@
 import {
-  CustomTextEditorProvider,
-  WebviewPanel,
-  TextDocument,
-  Webview,
+  type CustomTextEditorProvider,
+  type WebviewPanel,
+  type TextDocument,
+  type Webview,
   Uri,
-  ExtensionContext
+  type ExtensionContext
 } from "vscode"
 import { funWindow as window } from "../services/funMessenger"
 import path from "path"

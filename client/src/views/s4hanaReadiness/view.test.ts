@@ -1,41 +1,37 @@
-jest.mock(
-  "vscode",
-  () => {
-    class MockEventEmitter {
-      private listeners: Function[] = []
-      event = (listener: Function) => {
-        this.listeners.push(listener)
-        return { dispose: jest.fn() }
-      }
-      fire = (data: any) => {
-        this.listeners.forEach(l => l(data))
-      }
+vi.mock("vscode", () => {
+  class MockEventEmitter {
+    private listeners: Function[] = []
+    event = (listener: Function) => {
+      this.listeners.push(listener)
+      return { dispose: vi.fn() }
     }
-    return {
-      EventEmitter: MockEventEmitter,
-      TreeItem: class {
-        constructor(label: any, collapsible?: any) {
-          ;(this as any).label = label
-          ;(this as any).collapsibleState = collapsible
-        }
-      },
-      TreeItemCollapsibleState: { None: 0, Collapsed: 1, Expanded: 2 },
-      ThemeColor: class {
-        constructor(public id: string) {}
-      },
-      ThemeIcon: class {
-        constructor(
-          public id: string,
-          public color?: any
-        ) {}
-      }
+    fire = (data: any) => {
+      this.listeners.forEach(l => l(data))
     }
-  },
-  { virtual: true }
-)
+  }
+  return {
+    EventEmitter: MockEventEmitter,
+    TreeItem: class {
+      constructor(label: any, collapsible?: any) {
+        ;(this as any).label = label
+        ;(this as any).collapsibleState = collapsible
+      }
+    },
+    TreeItemCollapsibleState: { None: 0, Collapsed: 1, Expanded: 2 },
+    ThemeColor: class {
+      constructor(public id: string) {}
+    },
+    ThemeIcon: class {
+      constructor(
+        public id: string,
+        public color?: any
+      ) {}
+    }
+  }
+})
 
 import { S4HItemNode, S4HProvider, S4HRefNode, S4HRoot, S4HSummaryNode } from "./view"
-import { CustomReference, GroupedData, ItemGroup } from "./types"
+import type { CustomReference, GroupedData, ItemGroup } from "./types"
 
 function makeRef(overrides: Partial<CustomReference> = {}): CustomReference {
   return {
@@ -110,7 +106,7 @@ describe("S4HProvider", () => {
   })
 
   it("fires change event on setData", () => {
-    const handler = jest.fn()
+    const handler = vi.fn()
     provider.onDidChangeTreeData(handler)
     provider.setData("dev100", makeGroupedData())
     expect(handler).toHaveBeenCalled()

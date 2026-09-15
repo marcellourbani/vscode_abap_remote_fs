@@ -1,48 +1,51 @@
-jest.mock(
-  "vscode",
-  () => ({
-    Uri: {
-      parse: jest.fn((url: string) => {
-        const match = url.match(/^([^:]+):\/\/([^\/]*)(.*)$/)
-        return {
-          scheme: match?.[1] ?? "",
-          authority: match?.[2] ?? "",
-          path: match?.[3] ?? "",
-          toString: () => url
-        }
-      })
-    },
-    LanguageModelTextPart: jest.fn((t: string) => ({ value: t })),
-    LanguageModelToolResult: jest.fn((content: any[]) => ({ content }))
+vi.mock("vscode", () => ({
+  Uri: {
+    parse: vi.fn(function (url: string) {
+      const match = url.match(/^([^:]+):\/\/([^\/]*)(.*)$/)
+      return {
+        scheme: match?.[1] ?? "",
+        authority: match?.[2] ?? "",
+        path: match?.[3] ?? "",
+        toString: () => url
+      }
+    })
+  },
+  LanguageModelTextPart: vi.fn(function (t: string) {
+    return { value: t }
   }),
-  { virtual: true }
-)
-
-jest.mock("../conections", () => ({
-  getClient: jest.fn(),
-  getRoot: jest.fn()
+  LanguageModelToolResult: vi.fn(function (content: any[]) {
+    return { content }
+  })
 }))
 
-jest.mock("../operations/AdtObjectFinder", () => ({
-  createUri: jest.fn((auth: string, path: string) => ({
-    scheme: "adt",
-    authority: auth,
-    path,
-    toString: () => `adt://${auth}${path}`
-  }))
+vi.mock("../conections", () => ({
+  getClient: vi.fn(),
+  getRoot: vi.fn()
+}))
+
+vi.mock("../operations/AdtObjectFinder", () => ({
+  createUri: vi.fn(function (auth: string, path: string) {
+    return {
+      scheme: "adt",
+      authority: auth,
+      path,
+      toString: () => `adt://${auth}${path}`
+    }
+  })
 }))
 
 import { SearchTool } from "./search"
 import { getClient, getRoot } from "../conections"
 import { createUri } from "../operations/AdtObjectFinder"
+import type { MockedFunction, Mock } from "vitest"
 
-const mockGetClient = getClient as jest.MockedFunction<typeof getClient>
-const mockGetRoot = getRoot as jest.MockedFunction<typeof getRoot>
+const mockGetClient = getClient as MockedFunction<typeof getClient>
+const mockGetRoot = getRoot as MockedFunction<typeof getRoot>
 
 const mockToken = {} as any
 
 beforeEach(() => {
-  jest.clearAllMocks()
+  vi.clearAllMocks()
 })
 
 describe("SearchTool", () => {
@@ -62,14 +65,14 @@ describe("SearchTool", () => {
         }
       ]
       const mockClient = {
-        searchObject: jest.fn().mockResolvedValue(mockSearchResult)
+        searchObject: vi.fn().mockResolvedValue(mockSearchResult)
       }
       const mockRoot = {
-        findByAdtUri: jest.fn().mockResolvedValue({ path: "/ztest" })
+        findByAdtUri: vi.fn().mockResolvedValue({ path: "/ztest" })
       }
       mockGetClient.mockReturnValue(mockClient as any)
       mockGetRoot.mockReturnValue(mockRoot as any)
-      ;(createUri as jest.Mock).mockReturnValue({
+      ;(createUri as Mock).mockReturnValue({
         toString: () => "adt://dev100/ztest"
       })
 
@@ -88,10 +91,10 @@ describe("SearchTool", () => {
 
     test("uppercases name and appends wildcard for search query", async () => {
       const mockClient = {
-        searchObject: jest.fn().mockResolvedValue([])
+        searchObject: vi.fn().mockResolvedValue([])
       }
       mockGetClient.mockReturnValue(mockClient as any)
-      mockGetRoot.mockReturnValue({ findByAdtUri: jest.fn() } as any)
+      mockGetRoot.mockReturnValue({ findByAdtUri: vi.fn() } as any)
 
       await tool.invoke(
         { input: { url: "adt://dev100/", name: "ztest", type: "" } } as any,
@@ -107,13 +110,15 @@ describe("SearchTool", () => {
         "adtcore:name": `ZTEST${i}`,
         "adtcore:type": "PROG/P"
       }))
-      const mockClient = { searchObject: jest.fn().mockResolvedValue(manyResults) }
+      const mockClient = { searchObject: vi.fn().mockResolvedValue(manyResults) }
       const mockRoot = {
-        findByAdtUri: jest.fn().mockImplementation(() => Promise.resolve({ path: "/some/path" }))
+        findByAdtUri: vi.fn().mockImplementation(function () {
+          return Promise.resolve({ path: "/some/path" })
+        })
       }
       mockGetClient.mockReturnValue(mockClient as any)
       mockGetRoot.mockReturnValue(mockRoot as any)
-      ;(createUri as jest.Mock).mockReturnValue({ toString: () => "adt://dev100/path" })
+      ;(createUri as Mock).mockReturnValue({ toString: () => "adt://dev100/path" })
 
       const result = await tool.invoke(
         { input: { url: "adt://dev100/", name: "ztest", type: "PROG/P" } } as any,
@@ -133,8 +138,8 @@ describe("SearchTool", () => {
           "adtcore:type": "PROG/P"
         }
       ]
-      const mockClient = { searchObject: jest.fn().mockResolvedValue(mockResults) }
-      const mockRoot = { findByAdtUri: jest.fn().mockResolvedValue(undefined) }
+      const mockClient = { searchObject: vi.fn().mockResolvedValue(mockResults) }
+      const mockRoot = { findByAdtUri: vi.fn().mockResolvedValue(undefined) }
       mockGetClient.mockReturnValue(mockClient as any)
       mockGetRoot.mockReturnValue(mockRoot as any)
 
@@ -149,9 +154,9 @@ describe("SearchTool", () => {
     })
 
     test("includes important instruction in content", async () => {
-      const mockClient = { searchObject: jest.fn().mockResolvedValue([]) }
+      const mockClient = { searchObject: vi.fn().mockResolvedValue([]) }
       mockGetClient.mockReturnValue(mockClient as any)
-      mockGetRoot.mockReturnValue({ findByAdtUri: jest.fn() } as any)
+      mockGetRoot.mockReturnValue({ findByAdtUri: vi.fn() } as any)
 
       const result = await tool.invoke(
         { input: { url: "adt://dev100/", name: "ztest", type: "" } } as any,
@@ -164,9 +169,9 @@ describe("SearchTool", () => {
     })
 
     test("handles empty search type", async () => {
-      const mockClient = { searchObject: jest.fn().mockResolvedValue([]) }
+      const mockClient = { searchObject: vi.fn().mockResolvedValue([]) }
       mockGetClient.mockReturnValue(mockClient as any)
-      mockGetRoot.mockReturnValue({ findByAdtUri: jest.fn() } as any)
+      mockGetRoot.mockReturnValue({ findByAdtUri: vi.fn() } as any)
 
       await tool.invoke(
         { input: { url: "adt://dev100/", name: "ZTEST", type: "" } } as any,

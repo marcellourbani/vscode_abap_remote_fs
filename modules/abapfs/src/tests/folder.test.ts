@@ -1,5 +1,5 @@
 import { Folder, isFolder } from "../folder"
-import { mock } from "jest-mock-extended"
+import { mock } from "vitest-mock-extended"
 
 const createFile = () => ({ type: 1, mtime: 0, ctime: 0, size: 0 })
 
@@ -57,11 +57,11 @@ test("merging folders", () => {
     expect(bar.get("barfile1")).toBeDefined()
     expect(bar.get("barfile2")).toBeDefined()
     expect(bar.size).toBe(2)
-  } else fail("removed manual folder")
+  } else throw new Error("removed manual folder")
   const foo = folder.get("foo")
   if (isFolder(foo)) {
     expect(foo.get("file1")).toBeDefined()
     expect(foo.get("file2")).toBeDefined()
     expect(foo.size).toBe(2)
-  } else fail("folder replaced or removed")
+  } else throw new Error("folder replaced or removed")
 })

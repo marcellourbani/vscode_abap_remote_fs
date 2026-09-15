@@ -1,7 +1,7 @@
 import * as vscode from "vscode"
 
 import { discoverLanguageModels, reconcileConfiguredSubagentModels } from "./modelConfiguration"
-import { AvailableModel, modelSetsMatch } from "./modelConfigurationCore"
+import { type AvailableModel, modelSetsMatch } from "./modelConfigurationCore"
 
 const INITIAL_DELAY_MS = 10_000
 const MODEL_EVENT_DEBOUNCE_MS = 5_000

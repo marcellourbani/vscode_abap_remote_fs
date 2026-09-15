@@ -1,37 +1,44 @@
-jest.mock(
-  "vscode",
-  () => ({
-    commands: { executeCommand: jest.fn() },
-    env: { clipboard: { writeText: jest.fn().mockResolvedValue(undefined) } },
-    window: {
-      showInformationMessage: jest.fn(),
-      withProgress: jest.fn((_opts, task) => task({ report: jest.fn() }, {}))
-    },
-    ProgressLocation: { Notification: 15 },
-    EventEmitter: jest.fn().mockImplementation(() => ({
-      event: jest.fn(),
-      fire: jest.fn()
-    }))
-  }),
-  { virtual: true }
-)
-jest.mock("../extension", () => ({ context: { extensionPath: "/fake/ext" } }))
-jest.mock("../langClient", () => ({
-  client: { sendNotification: jest.fn().mockResolvedValue(undefined) }
+vi.mock("vscode", () => ({
+  commands: { executeCommand: vi.fn() },
+  env: { clipboard: { writeText: vi.fn().mockResolvedValue(undefined) } },
+  window: {
+    showInformationMessage: vi.fn(),
+    withProgress: vi.fn(function (_opts, task) {
+      return task({ report: vi.fn() }, {})
+    })
+  },
+  ProgressLocation: { Notification: 15 },
+  EventEmitter: vi.fn().mockImplementation(function () {
+    return {
+      event: vi.fn(),
+      fire: vi.fn()
+    }
+  })
 }))
-jest.mock("../lib", () => ({ ignore: jest.fn() }))
-jest.mock("../commands", () => ({
+vi.mock("../extension", () => ({ context: { extensionPath: "/fake/ext" } }))
+vi.mock("../langClient", () => ({
+  client: { sendNotification: vi.fn().mockResolvedValue(undefined) }
+}))
+vi.mock("../lib", () => ({ ignore: vi.fn() }))
+vi.mock("../commands", () => ({
   AbapFsCommands: { activateCommLog: "activateCommLog", deactivateCommLog: "deactivateCommLog" },
   command: () => (_t: any, _k: string, desc: PropertyDescriptor) => desc
 }))
-jest.mock("../config", () => ({ pickAdtRoot: jest.fn() }))
-jest.mock("./conections", () => ({ ADTSCHEME: "adt" }))
-jest.mock("../services/telemetry", () => ({ logTelemetry: jest.fn() }))
-jest.mock("path", () => ({ join: (...args: string[]) => args.join("/") }))
-jest.mock("fs", () => ({ readFileSync: jest.fn().mockReturnValue("<html></html>") }))
+vi.mock("../config", () => ({ pickAdtRoot: vi.fn() }))
+vi.mock("./conections", () => ({ ADTSCHEME: "adt" }))
+vi.mock("../services/telemetry", () => ({ logTelemetry: vi.fn() }))
+vi.mock("path", () => ({ join: (...args: string[]) => args.join("/") }))
+vi.mock("fs", () => ({ readFileSync: vi.fn().mockReturnValue("<html></html>") }))
 
-import { addLogEntry, getLogEntries, CallLogger, AdtLogEntry, CommLogPanel } from "./adtCommLog"
+import {
+  addLogEntry,
+  getLogEntries,
+  CallLogger,
+  type AdtLogEntry,
+  CommLogPanel
+} from "./adtCommLog"
 import { commands, env, window } from "vscode"
+import type { Mock } from "vitest"
 
 // Reset module-level state between tests by manipulating entries array
 function clearEntries() {
@@ -164,7 +171,7 @@ describe("CallLogger", () => {
   })
 
   it("notifies listeners on status change", () => {
-    const listener = jest.fn()
+    const listener = vi.fn()
     const unsub = CallLogger.onStatusChange(listener)
 
     CallLogger.getOrCreate("conn3")
@@ -267,7 +274,7 @@ describe("CommLogPanel", () => {
   let messageHandler: (msg: any) => void
 
   beforeEach(() => {
-    jest.clearAllMocks()
+    vi.clearAllMocks()
     clearEntries()
     CallLogger.stopLogging()
     panel = new CommLogPanel()
@@ -275,13 +282,15 @@ describe("CommLogPanel", () => {
       webview: {
         options: {},
         html: "",
-        onDidReceiveMessage: jest.fn(handler => {
+        onDidReceiveMessage: vi.fn(function (handler) {
           messageHandler = handler
-          return { dispose: jest.fn() }
+          return { dispose: vi.fn() }
         }),
-        postMessage: jest.fn()
+        postMessage: vi.fn()
       },
-      onDidDispose: jest.fn(() => ({ dispose: jest.fn() })),
+      onDidDispose: vi.fn(function () {
+        return { dispose: vi.fn() }
+      }),
       visible: true
     }
     panel.resolveWebviewView(mockView, {} as any, {} as any)
@@ -342,7 +351,7 @@ describe("CommLogPanel", () => {
     messageHandler({ command: "copy", id: entry.id, format: "http" })
 
     await new Promise(r => setTimeout(r, 0))
-    const copiedText = (env.clipboard.writeText as jest.Mock).mock.calls[0][0]
+    const copiedText = (env.clipboard.writeText as Mock).mock.calls[0][0]
     expect(copiedText).toContain("POST {{baseUrl}}/sap/bc/adt/test?a=1")
     expect(copiedText).toContain("X-Test: Value")
     expect(copiedText).not.toContain("Cookie")

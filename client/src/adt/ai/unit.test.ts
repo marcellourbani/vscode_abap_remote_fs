@@ -1,45 +1,45 @@
-jest.mock(
-  "vscode",
-  () => ({
-    Uri: {
-      parse: jest.fn((url: string) => {
-        const match = url.match(/^([^:]+):\/\/([^\/]*)(.*)$/)
-        return {
-          scheme: match?.[1] ?? "",
-          authority: match?.[2] ?? "",
-          path: match?.[3] ?? "",
-          toString: () => url
-        }
-      })
-    },
-    LanguageModelTextPart: jest.fn((t: string) => ({ value: t })),
-    LanguageModelToolResult: jest.fn((content: any[]) => ({ content })),
-    ProgressLocation: { Window: 10 },
-    window: {
-      withProgress: jest.fn()
-    }
+vi.mock("vscode", () => ({
+  Uri: {
+    parse: vi.fn(function (url: string) {
+      const match = url.match(/^([^:]+):\/\/([^\/]*)(.*)$/)
+      return {
+        scheme: match?.[1] ?? "",
+        authority: match?.[2] ?? "",
+        path: match?.[3] ?? "",
+        toString: () => url
+      }
+    })
+  },
+  LanguageModelTextPart: vi.fn(function (t: string) {
+    return { value: t }
   }),
-  { virtual: true }
-)
-
-jest.mock("../conections", () => ({
-  getClient: jest.fn(),
-  uriRoot: jest.fn()
-}))
-
-jest.mock("abapfs", () => ({
-  isAbapFile: jest.fn()
-}))
-
-jest.mock("../operations/AdtObjectActivator", () => ({
-  AdtObjectActivator: {
-    get: jest.fn()
+  LanguageModelToolResult: vi.fn(function (content: any[]) {
+    return { content }
+  }),
+  ProgressLocation: { Window: 10 },
+  window: {
+    withProgress: vi.fn()
   }
 }))
 
-jest.mock("../operations/UnitTestRunner", () => ({
+vi.mock("../conections", () => ({
+  getClient: vi.fn(),
+  uriRoot: vi.fn()
+}))
+
+vi.mock("abapfs", () => ({
+  isAbapFile: vi.fn()
+}))
+
+vi.mock("../operations/AdtObjectActivator", () => ({
+  AdtObjectActivator: {
+    get: vi.fn()
+  }
+}))
+
+vi.mock("../operations/UnitTestRunner", () => ({
   UnitTestRunner: {
-    get: jest.fn()
+    get: vi.fn()
   }
 }))
 
@@ -49,16 +49,19 @@ import { isAbapFile } from "abapfs"
 import { AdtObjectActivator } from "../operations/AdtObjectActivator"
 import { UnitTestRunner } from "../operations/UnitTestRunner"
 import * as vscode from "vscode"
+import type { MockedFunction, Mock } from "vitest"
 
-const mockGetClient = getClient as jest.MockedFunction<typeof getClient>
-const mockUriRoot = uriRoot as jest.MockedFunction<typeof uriRoot>
-const mockIsAbapFile = isAbapFile as jest.MockedFunction<typeof isAbapFile>
+const mockGetClient = getClient as MockedFunction<typeof getClient>
+const mockUriRoot = uriRoot as MockedFunction<typeof uriRoot>
+const mockIsAbapFile = isAbapFile as MockedFunction<typeof isAbapFile>
 
 const mockToken = {} as any
 
 beforeEach(() => {
-  jest.clearAllMocks()
-  ;(vscode.window.withProgress as jest.Mock).mockImplementation((_opts: any, fn: Function) => fn())
+  vi.clearAllMocks()
+  ;(vscode.window.withProgress as Mock).mockImplementation(function (_opts: any, fn: Function) {
+    return fn()
+  })
 })
 
 describe("UnitTool", () => {
@@ -71,35 +74,36 @@ describe("UnitTool", () => {
   describe("invoke", () => {
     test("returns unit test results as JSON", async () => {
       const mockObject = {
-        loadStructure: jest.fn().mockResolvedValue({
+        loadStructure: vi.fn().mockResolvedValue({
           metaData: { "adtcore:version": "active" }
         })
       }
       const mockFile = { object: mockObject }
       const mockResults = [{ name: "test1", status: "pass" }]
-      const mockRunner = { addResults: jest.fn().mockResolvedValue(mockResults) }
+      const mockRunner = { addResults: vi.fn().mockResolvedValue(mockResults) }
 
       mockIsAbapFile.mockReturnValue(true)
       const mockRoot = {
-        getNodePathAsync: jest.fn().mockResolvedValue([{ file: mockFile, path: "/ztest" }])
+        getNodePathAsync: vi.fn().mockResolvedValue([{ file: mockFile, path: "/ztest" }])
       }
       mockUriRoot.mockReturnValue(mockRoot as any)
-      ;(UnitTestRunner.get as jest.Mock).mockReturnValue(mockRunner)
-      ;(vscode.window.withProgress as jest.Mock).mockImplementation((_opts: any, fn: Function) =>
-        fn()
-      )
+      ;(UnitTestRunner.get as Mock).mockReturnValue(mockRunner)
+      ;(vscode.window.withProgress as Mock).mockImplementation(function (_opts: any, fn: Function) {
+        return fn()
+      })
 
       // Override withProgress to return the result of fn
-      ;(vscode.window.withProgress as jest.Mock).mockImplementation((_opts: any, fn: Function) =>
-        fn()
-      )
+      ;(vscode.window.withProgress as Mock).mockImplementation(function (_opts: any, fn: Function) {
+        return fn()
+      })
 
       // We need to capture return from withProgress
-      ;(vscode.window.withProgress as jest.Mock).mockImplementation(
-        async (_opts: any, fn: Function) => {
-          return fn()
-        }
-      )
+      ;(vscode.window.withProgress as Mock).mockImplementation(async function (
+        _opts: any,
+        fn: Function
+      ) {
+        return fn()
+      })
 
       const result = await tool.invoke(
         { input: { url: "adt://dev100/sap/bc/adt/programs/programs/ztest" } } as any,
@@ -111,25 +115,28 @@ describe("UnitTool", () => {
     })
 
     test("activates inactive object before running tests", async () => {
-      const mockActivator = { activate: jest.fn().mockResolvedValue(undefined) }
+      const mockActivator = { activate: vi.fn().mockResolvedValue(undefined) }
       const mockObject = {
-        loadStructure: jest.fn().mockResolvedValue({
+        loadStructure: vi.fn().mockResolvedValue({
           metaData: { "adtcore:version": "inactive" }
         })
       }
       const mockFile = { object: mockObject }
-      const mockRunner = { addResults: jest.fn().mockResolvedValue([]) }
+      const mockRunner = { addResults: vi.fn().mockResolvedValue([]) }
 
       mockIsAbapFile.mockReturnValue(true)
       const mockRoot = {
-        getNodePathAsync: jest.fn().mockResolvedValue([{ file: mockFile, path: "/ztest" }])
+        getNodePathAsync: vi.fn().mockResolvedValue([{ file: mockFile, path: "/ztest" }])
       }
       mockUriRoot.mockReturnValue(mockRoot as any)
-      ;(AdtObjectActivator.get as jest.Mock).mockReturnValue(mockActivator)
-      ;(UnitTestRunner.get as jest.Mock).mockReturnValue(mockRunner)
-      ;(vscode.window.withProgress as jest.Mock).mockImplementation(
-        async (_opts: any, fn: Function) => fn()
-      )
+      ;(AdtObjectActivator.get as Mock).mockReturnValue(mockActivator)
+      ;(UnitTestRunner.get as Mock).mockReturnValue(mockRunner)
+      ;(vscode.window.withProgress as Mock).mockImplementation(async function (
+        _opts: any,
+        fn: Function
+      ) {
+        return fn()
+      })
 
       await tool.invoke(
         { input: { url: "adt://dev100/sap/bc/adt/programs/programs/ztest" } } as any,
@@ -140,25 +147,28 @@ describe("UnitTool", () => {
     })
 
     test("does not activate active object", async () => {
-      const mockActivator = { activate: jest.fn() }
+      const mockActivator = { activate: vi.fn() }
       const mockObject = {
-        loadStructure: jest.fn().mockResolvedValue({
+        loadStructure: vi.fn().mockResolvedValue({
           metaData: { "adtcore:version": "active" }
         })
       }
       const mockFile = { object: mockObject }
-      const mockRunner = { addResults: jest.fn().mockResolvedValue([]) }
+      const mockRunner = { addResults: vi.fn().mockResolvedValue([]) }
 
       mockIsAbapFile.mockReturnValue(true)
       const mockRoot = {
-        getNodePathAsync: jest.fn().mockResolvedValue([{ file: mockFile }])
+        getNodePathAsync: vi.fn().mockResolvedValue([{ file: mockFile }])
       }
       mockUriRoot.mockReturnValue(mockRoot as any)
-      ;(AdtObjectActivator.get as jest.Mock).mockReturnValue(mockActivator)
-      ;(UnitTestRunner.get as jest.Mock).mockReturnValue(mockRunner)
-      ;(vscode.window.withProgress as jest.Mock).mockImplementation(
-        async (_opts: any, fn: Function) => fn()
-      )
+      ;(AdtObjectActivator.get as Mock).mockReturnValue(mockActivator)
+      ;(UnitTestRunner.get as Mock).mockReturnValue(mockRunner)
+      ;(vscode.window.withProgress as Mock).mockImplementation(async function (
+        _opts: any,
+        fn: Function
+      ) {
+        return fn()
+      })
 
       await tool.invoke(
         { input: { url: "adt://dev100/sap/bc/adt/programs/programs/ztest" } } as any,
@@ -171,12 +181,15 @@ describe("UnitTool", () => {
     test("throws when object not found", async () => {
       mockIsAbapFile.mockReturnValue(false)
       const mockRoot = {
-        getNodePathAsync: jest.fn().mockResolvedValue([{ file: {}, path: "/" }])
+        getNodePathAsync: vi.fn().mockResolvedValue([{ file: {}, path: "/" }])
       }
       mockUriRoot.mockReturnValue(mockRoot as any)
-      ;(vscode.window.withProgress as jest.Mock).mockImplementation(
-        async (_opts: any, fn: Function) => fn()
-      )
+      ;(vscode.window.withProgress as Mock).mockImplementation(async function (
+        _opts: any,
+        fn: Function
+      ) {
+        return fn()
+      })
 
       await expect(
         tool.invoke({ input: { url: "adt://dev100/bad/path" } } as any, mockToken)

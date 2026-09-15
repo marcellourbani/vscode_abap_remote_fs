@@ -300,11 +300,21 @@ export const funWindow = {
   },
 
   // Pass-through for comprehensive window API (using getters for dynamic properties)
-  createOutputChannel: vscode.window.createOutputChannel,
-  showQuickPick: vscode.window.showQuickPick,
-  showInputBox: vscode.window.showInputBox,
-  showOpenDialog: vscode.window.showOpenDialog,
-  showSaveDialog: vscode.window.showSaveDialog,
+  get createOutputChannel() {
+    return vscode.window.createOutputChannel
+  },
+  get showQuickPick() {
+    return vscode.window.showQuickPick
+  },
+  get showInputBox() {
+    return vscode.window.showInputBox
+  },
+  get showOpenDialog() {
+    return vscode.window.showOpenDialog
+  },
+  get showSaveDialog() {
+    return vscode.window.showSaveDialog
+  },
   get activeTextEditor() {
     return vscode.window.activeTextEditor
   },
@@ -329,33 +339,91 @@ export const funWindow = {
   get tabGroups() {
     return vscode.window.tabGroups
   },
-  showTextDocument: vscode.window.showTextDocument,
-  showNotebookDocument: vscode.window.showNotebookDocument,
-  createQuickPick: vscode.window.createQuickPick,
-  createInputBox: vscode.window.createInputBox,
-  createTreeView: vscode.window.createTreeView,
-  createTerminal: vscode.window.createTerminal,
-  createTextEditorDecorationType: vscode.window.createTextEditorDecorationType,
-  createWebviewPanel: vscode.window.createWebviewPanel,
-  createStatusBarItem: vscode.window.createStatusBarItem,
-  registerTreeDataProvider: vscode.window.registerTreeDataProvider,
-  registerWebviewViewProvider: vscode.window.registerWebviewViewProvider,
-  registerWebviewPanelSerializer: vscode.window.registerWebviewPanelSerializer,
-  registerCustomEditorProvider: vscode.window.registerCustomEditorProvider,
-  registerTerminalLinkProvider: vscode.window.registerTerminalLinkProvider,
-  registerTerminalProfileProvider: vscode.window.registerTerminalProfileProvider,
-  registerFileDecorationProvider: vscode.window.registerFileDecorationProvider,
-  onDidChangeActiveTextEditor: vscode.window.onDidChangeActiveTextEditor,
-  onDidChangeActiveNotebookEditor: vscode.window.onDidChangeActiveNotebookEditor,
-  onDidChangeVisibleNotebookEditors: vscode.window.onDidChangeVisibleNotebookEditors,
-  onDidChangeVisibleTextEditors: vscode.window.onDidChangeVisibleTextEditors,
-  onDidChangeTextEditorSelection: vscode.window.onDidChangeTextEditorSelection,
-  onDidChangeTextEditorVisibleRanges: vscode.window.onDidChangeTextEditorVisibleRanges,
-  onDidChangeTextEditorOptions: vscode.window.onDidChangeTextEditorOptions,
-  onDidChangeTextEditorViewColumn: vscode.window.onDidChangeTextEditorViewColumn,
-  onDidChangeActiveTerminal: vscode.window.onDidChangeActiveTerminal,
-  onDidOpenTerminal: vscode.window.onDidOpenTerminal,
-  onDidCloseTerminal: vscode.window.onDidCloseTerminal,
-  onDidChangeTerminalState: vscode.window.onDidChangeTerminalState,
-  onDidChangeWindowState: vscode.window.onDidChangeWindowState
+  get showTextDocument() {
+    return vscode.window.showTextDocument
+  },
+  get showNotebookDocument() {
+    return vscode.window.showNotebookDocument
+  },
+  get createQuickPick() {
+    return vscode.window.createQuickPick
+  },
+  get createInputBox() {
+    return vscode.window.createInputBox
+  },
+  get createTreeView() {
+    return vscode.window.createTreeView
+  },
+  get createTerminal() {
+    return vscode.window.createTerminal
+  },
+  get createTextEditorDecorationType() {
+    return vscode.window.createTextEditorDecorationType
+  },
+  get createWebviewPanel() {
+    return vscode.window.createWebviewPanel
+  },
+  get createStatusBarItem() {
+    return vscode.window.createStatusBarItem
+  },
+  get registerTreeDataProvider() {
+    return vscode.window.registerTreeDataProvider
+  },
+  get registerWebviewViewProvider() {
+    return vscode.window.registerWebviewViewProvider
+  },
+  get registerWebviewPanelSerializer() {
+    return vscode.window.registerWebviewPanelSerializer
+  },
+  get registerCustomEditorProvider() {
+    return vscode.window.registerCustomEditorProvider
+  },
+  get registerTerminalLinkProvider() {
+    return vscode.window.registerTerminalLinkProvider
+  },
+  get registerTerminalProfileProvider() {
+    return vscode.window.registerTerminalProfileProvider
+  },
+  get registerFileDecorationProvider() {
+    return vscode.window.registerFileDecorationProvider
+  },
+  get onDidChangeActiveTextEditor() {
+    return vscode.window.onDidChangeActiveTextEditor
+  },
+  get onDidChangeActiveNotebookEditor() {
+    return vscode.window.onDidChangeActiveNotebookEditor
+  },
+  get onDidChangeVisibleNotebookEditors() {
+    return vscode.window.onDidChangeVisibleNotebookEditors
+  },
+  get onDidChangeVisibleTextEditors() {
+    return vscode.window.onDidChangeVisibleTextEditors
+  },
+  get onDidChangeTextEditorSelection() {
+    return vscode.window.onDidChangeTextEditorSelection
+  },
+  get onDidChangeTextEditorVisibleRanges() {
+    return vscode.window.onDidChangeTextEditorVisibleRanges
+  },
+  get onDidChangeTextEditorOptions() {
+    return vscode.window.onDidChangeTextEditorOptions
+  },
+  get onDidChangeTextEditorViewColumn() {
+    return vscode.window.onDidChangeTextEditorViewColumn
+  },
+  get onDidChangeActiveTerminal() {
+    return vscode.window.onDidChangeActiveTerminal
+  },
+  get onDidOpenTerminal() {
+    return vscode.window.onDidOpenTerminal
+  },
+  get onDidCloseTerminal() {
+    return vscode.window.onDidCloseTerminal
+  },
+  get onDidChangeTerminalState() {
+    return vscode.window.onDidChangeTerminalState
+  },
+  get onDidChangeWindowState() {
+    return vscode.window.onDidChangeWindowState
+  }
 }

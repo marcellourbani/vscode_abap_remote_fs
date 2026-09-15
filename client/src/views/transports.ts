@@ -1,6 +1,6 @@
 import { PACKAGE } from "../adt/operations/AdtObjectCreator"
 import {
-  TreeDataProvider,
+  type TreeDataProvider,
   TreeItem,
   TreeItemCollapsibleState,
   workspace,
@@ -11,20 +11,20 @@ import {
   env
 } from "vscode"
 import {
-  TransportTarget,
-  TransportRequest,
-  TransportTask,
-  TransportObject,
-  TransportReleaseReport,
+  type TransportTarget,
+  type TransportRequest,
+  type TransportTask,
+  type TransportObject,
+  type TransportReleaseReport,
   SAPRC,
   ADTClient,
-  TransportConfigurationEntry
+  type TransportConfigurationEntry
 } from "abap-adt-api"
 import { command, AbapFsCommands } from "../commands"
 import { funWindow as window } from "../services/funMessenger"
 import { caughtToString, withp } from "../lib"
 import { getClient, ADTSCHEME, getOrCreateClient, getRoot } from "../adt/conections"
-import { isFolder, isAbapStat, PathItem, isAbapFolder } from "abapfs"
+import { isFolder, isAbapStat, type PathItem, isAbapFolder } from "abapfs"
 import { createUri } from "../adt/operations/AdtObjectFinder"
 import { AbapScm, displayRevDiff } from "../scm/abaprevisions"
 import { AbapRevisionService } from "../scm/abaprevisions/abaprevisionservice"
@@ -80,7 +80,7 @@ class ConnectionItem extends CollectionItem {
     return `${this.uri.authority.toUpperCase()} Transport of ${this.user.toUpperCase()}`
   }
 
-  public set label(l: string) {
+  public override set label(l: string) {
     // will never change
   }
 
@@ -89,7 +89,7 @@ class ConnectionItem extends CollectionItem {
     this.contextValue = "tr_connection"
   }
 
-  public async getChildren() {
+  public override async getChildren() {
     if (this.children.length === 0 && !!this.uri) {
       const transports = await readTransports(this.uri.authority, this.user)
 
@@ -130,7 +130,7 @@ const failuretext = (failure: TransportReleaseReport) =>
     .join(" ") || failure["chkrun:statusText"]
 
 class TransportItem extends CollectionItem {
-  label: string | undefined
+  override label: string | undefined
   public static isA(x: any): x is TransportItem {
     return x && (x as TransportItem).typeId === TransportItem.tranTypeId
   }

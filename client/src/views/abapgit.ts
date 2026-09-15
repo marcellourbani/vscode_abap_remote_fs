@@ -1,6 +1,6 @@
 import { isRight } from "fp-ts/lib/Either"
 import {
-  TreeDataProvider,
+  type TreeDataProvider,
   TreeItem,
   workspace,
   EventEmitter,
@@ -10,7 +10,7 @@ import {
   env,
   Uri
 } from "vscode"
-import { GitRepo, ADTClient, objectPath } from "abap-adt-api"
+import { type GitRepo, ADTClient, objectPath } from "abap-adt-api"
 import { v1 } from "uuid"
 import { command, AbapFsCommands } from "../commands"
 import { PACKAGE } from "../adt/operations/AdtObjectCreator"

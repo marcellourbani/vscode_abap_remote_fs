@@ -1,5 +1,5 @@
-import { AOService, AbapObjectService } from "../../abapObject/out"
-import { PathStep, AdtLock, session_types } from "abap-adt-api"
+import { AOService, type AbapObjectService } from "abapobject"
+import { type PathStep, type AdtLock, session_types } from "abap-adt-api"
 
 export interface AbapFsService extends AbapObjectService {
   objectPath: (path: string) => Promise<PathStep[]>

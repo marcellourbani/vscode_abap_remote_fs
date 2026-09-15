@@ -15,7 +15,7 @@
 
 import * as https from "https"
 import { readFileSync, existsSync } from "fs"
-import { AuthResult, CertAuthConfig } from "./types"
+import { type AuthResult, type CertAuthConfig } from "./types"
 import { PasswordVault, log } from "../lib"
 import { formatKey } from "../config"
 

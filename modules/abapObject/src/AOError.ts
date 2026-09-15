@@ -1,4 +1,4 @@
-import { AbapObject } from "./AbapObject"
+import { type AbapObject } from "./AbapObject.js"
 
 const errorTag = Symbol("abapObjectError")
 export type Kind =

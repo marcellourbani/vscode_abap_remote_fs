@@ -2,45 +2,52 @@
 // The module uses module-level state (fileFindings map) that is populated via the atcProvider event.
 // We focus tests on the pure data-transformation function getATCDecorations.
 
-jest.mock(
-  "vscode",
-  () => {
-    const Range = jest.fn((start: any, end: any) => ({ start, end }))
-    const Position = jest.fn((line: number, character: number) => ({ line, character }))
-    return {
-      Range,
-      Position,
-      DecorationOptions: {},
-      workspace: {
-        onDidChangeTextDocument: jest.fn(),
-        onDidSaveTextDocument: jest.fn(),
-        onDidCloseTextDocument: jest.fn()
-      }
+vi.mock("vscode", () => {
+  const Range = vi.fn(function (start: any, end: any) {
+    return { start, end }
+  })
+  const Position = vi.fn(function (line: number, character: number) {
+    return { line, character }
+  })
+  return {
+    Range,
+    Position,
+    DecorationOptions: {},
+    workspace: {
+      onDidChangeTextDocument: vi.fn(),
+      onDidSaveTextDocument: vi.fn(),
+      onDidCloseTextDocument: vi.fn()
     }
-  },
-  { virtual: true }
-)
+  }
+})
 
-jest.mock("../../services/funMessenger", () => ({
+vi.mock("../../services/funMessenger", () => ({
   funWindow: {
     activeTextEditor: undefined,
-    createTextEditorDecorationType: jest.fn(() => ({})),
-    onDidChangeActiveTextEditor: jest.fn()
+    createTextEditorDecorationType: vi.fn(function () {
+      return {}
+    }),
+    onDidChangeActiveTextEditor: vi.fn()
   }
 }))
 
-const mockFindings = jest.fn().mockReturnValue([])
+const { mockFindings } = vi.hoisted(() => {
+  const mockFindings = vi.fn().mockReturnValue([])
+  return { mockFindings }
+})
 
-jest.mock(".", () => ({
+vi.mock(".", () => ({
   atcProvider: {
-    onDidChangeTreeData: jest.fn(),
-    onDidChangeDecorations: jest.fn(),
+    onDidChangeTreeData: vi.fn(),
+    onDidChangeDecorations: vi.fn(),
     findings: mockFindings
   }
 }))
 
-jest.mock("./view", () => ({
-  hasExemption: jest.fn((f: any) => !!f.exemptionApproval)
+vi.mock("./view", () => ({
+  hasExemption: vi.fn(function (f: any) {
+    return !!f.exemptionApproval
+  })
 }))
 
 import { getATCDecorations } from "./decorations"

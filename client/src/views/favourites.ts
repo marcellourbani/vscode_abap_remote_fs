@@ -1,16 +1,16 @@
 import {
-  TreeDataProvider,
+  type TreeDataProvider,
   TreeItem,
   TreeItemCollapsibleState,
   Uri,
   EventEmitter,
   workspace,
-  FileStat
+  type FileStat
 } from "vscode"
 import { path, fileAsync, readAsync } from "fs-jetpack"
 import { NSSLASH, isString } from "../lib"
 import { uriRoot, getRoot, ADTSCHEME } from "../adt/conections"
-import { isAbapFolder, AbapStat, isAbapStat, isFolder } from "abapfs"
+import { isAbapFolder, type AbapStat, isAbapStat, isFolder } from "abapfs"
 
 interface FavouriteCache {
   uri: string

@@ -1,8 +1,8 @@
-import { ProgressLocation, CancellationToken, Uri } from "vscode"
+import { ProgressLocation, type CancellationToken, Uri } from "vscode"
 import { funWindow as window } from "../services/funMessenger"
-import { ADTClient, TransportInfo } from "abap-adt-api"
+import { ADTClient, type TransportInfo } from "abap-adt-api"
 import { fieldOrder, withp } from "../lib"
-import { TransportValidator } from "../api"
+import { type TransportValidator } from "../api"
 import { uriRoot, getClient } from "./conections"
 import { isAbapStat, isAbapFolder } from "abapfs"
 

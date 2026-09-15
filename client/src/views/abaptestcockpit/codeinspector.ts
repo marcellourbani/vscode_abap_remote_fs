@@ -1,4 +1,4 @@
-import { ADTClient, AtcWorkList, isAdtError, isHttpError } from "abap-adt-api"
+import { ADTClient, type AtcWorkList, isAdtError, isHttpError } from "abap-adt-api"
 import { Uri } from "vscode"
 import { getClient } from "../../adt/conections"
 import { findAbapObject } from "../../adt/operations/AdtObjectFinder"

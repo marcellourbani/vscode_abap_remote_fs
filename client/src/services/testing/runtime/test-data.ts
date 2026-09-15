@@ -70,8 +70,8 @@
  */
 import * as fs from "fs/promises"
 import * as path from "path"
-import { parseFrontmatter } from "./frontmatter"
-import { buildFixture, FixtureSpec } from "./fixture-builder"
+import { parseFrontmatter } from "./frontmatter.js"
+import { buildFixture, type FixtureSpec } from "./fixture-builder.js"
 
 export type DataRequirementSource = "sql" | "static" | "user" | "generated" | "seeded"
 

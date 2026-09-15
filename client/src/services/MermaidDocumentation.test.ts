@@ -1,4 +1,4 @@
-import { MERMAID_DOCUMENTATION, DiagramTypeInfo } from "./MermaidDocumentation"
+import { MERMAID_DOCUMENTATION, type DiagramTypeInfo } from "./MermaidDocumentation"
 
 describe("MERMAID_DOCUMENTATION", () => {
   test("is a non-empty object", () => {

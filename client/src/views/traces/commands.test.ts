@@ -1,21 +1,17 @@
-jest.mock(
-  "vscode",
-  () => ({
-    commands: { registerCommand: jest.fn() },
-    Uri: {
-      parse: (s: string) => ({
-        authority: "",
-        path: s,
-        scheme: "file",
-        fsPath: s,
-        toString: () => s
-      })
-    }
-  }),
-  { virtual: true }
-)
+vi.mock("vscode", () => ({
+  commands: { registerCommand: vi.fn() },
+  Uri: {
+    parse: (s: string) => ({
+      authority: "",
+      path: s,
+      scheme: "file",
+      fsPath: s,
+      toString: () => s
+    })
+  }
+}))
 
-jest.mock("../../commands", () => ({
+vi.mock("../../commands", () => ({
   AbapFsCommands: {
     refreshTraces: "abapfs.refreshTraces",
     deleteTrace: "abapfs.deleteTrace"
@@ -23,32 +19,35 @@ jest.mock("../../commands", () => ({
   command: () => () => {} // decorator that does nothing in tests
 }))
 
-jest.mock("./views", () => {
-  const emitterFire = jest.fn()
+vi.mock("./views", () => {
+  const emitterFire = vi.fn()
   return {
     tracesProvider: {
       emitter: { fire: emitterFire },
-      root: jest.fn()
+      root: vi.fn()
     },
-    TraceRunItem: jest.fn()
+    TraceRunItem: vi.fn(class {})
   }
 })
 
-jest.mock("./fsProvider", () => ({
-  adtProfileUri: jest.fn(() => ({
-    scheme: "adt-trace",
-    fsPath: "/trace/profile",
-    toString: () => "adt-trace:/trace/profile"
-  }))
+vi.mock("./fsProvider", () => ({
+  adtProfileUri: vi.fn(function () {
+    return {
+      scheme: "adt-trace",
+      fsPath: "/trace/profile",
+      toString: () => "adt-trace:/trace/profile"
+    }
+  })
 }))
 
-jest.mock("../../adt/conections", () => ({
-  getOrCreateClient: jest.fn()
+vi.mock("../../adt/conections", () => ({
+  getOrCreateClient: vi.fn()
 }))
 
 import { Commands, openCommand } from "./commands"
 import { tracesProvider } from "./views"
 import { getOrCreateClient } from "../../adt/conections"
+import type { Mock } from "vitest"
 
 describe("openCommand", () => {
   it("returns a Command with 'Open' title", () => {
@@ -80,7 +79,7 @@ describe("Commands class", () => {
   let cmds: Commands
 
   beforeEach(() => {
-    jest.clearAllMocks()
+    vi.clearAllMocks()
     cmds = new Commands()
   })
 
@@ -130,10 +129,10 @@ describe("Commands class", () => {
     const deleteTraces = (Commands.prototype as any).deleteTraces
 
     it("deletes a trace run and refreshes runs folder", async () => {
-      const mockClient = { tracesDelete: jest.fn().mockResolvedValue(undefined) }
-      ;(getOrCreateClient as jest.Mock).mockResolvedValue(mockClient)
+      const mockClient = { tracesDelete: vi.fn().mockResolvedValue(undefined) }
+      ;(getOrCreateClient as Mock).mockResolvedValue(mockClient)
       const runsFolder = { contextValue: "runfolder" }
-      ;(tracesProvider.root as jest.Mock).mockReturnValue({ runs: runsFolder })
+      ;(tracesProvider.root as Mock).mockReturnValue({ runs: runsFolder })
 
       const item = {
         contextValue: "run",
@@ -149,10 +148,10 @@ describe("Commands class", () => {
     })
 
     it("deletes a trace configuration and refreshes configs folder", async () => {
-      const mockClient = { tracesDeleteConfiguration: jest.fn().mockResolvedValue(undefined) }
-      ;(getOrCreateClient as jest.Mock).mockResolvedValue(mockClient)
+      const mockClient = { tracesDeleteConfiguration: vi.fn().mockResolvedValue(undefined) }
+      ;(getOrCreateClient as Mock).mockResolvedValue(mockClient)
       const configsFolder = { contextValue: "configfolder" }
-      ;(tracesProvider.root as jest.Mock).mockReturnValue({ configs: configsFolder })
+      ;(tracesProvider.root as Mock).mockReturnValue({ configs: configsFolder })
 
       const item = {
         contextValue: "configuration",
@@ -175,9 +174,9 @@ describe("Commands class", () => {
 
     it("propagates client errors on run deletion", async () => {
       const mockClient = {
-        tracesDelete: jest.fn().mockRejectedValue(new Error("delete failed"))
+        tracesDelete: vi.fn().mockRejectedValue(new Error("delete failed"))
       }
-      ;(getOrCreateClient as jest.Mock).mockResolvedValue(mockClient)
+      ;(getOrCreateClient as Mock).mockResolvedValue(mockClient)
 
       const item = {
         contextValue: "run",
@@ -190,9 +189,9 @@ describe("Commands class", () => {
 
     it("propagates client errors on configuration deletion", async () => {
       const mockClient = {
-        tracesDeleteConfiguration: jest.fn().mockRejectedValue(new Error("config delete failed"))
+        tracesDeleteConfiguration: vi.fn().mockRejectedValue(new Error("config delete failed"))
       }
-      ;(getOrCreateClient as jest.Mock).mockResolvedValue(mockClient)
+      ;(getOrCreateClient as Mock).mockResolvedValue(mockClient)
 
       const item = {
         contextValue: "configuration",
@@ -204,9 +203,9 @@ describe("Commands class", () => {
     })
 
     it("handles tracesProvider.root returning undefined", async () => {
-      const mockClient = { tracesDelete: jest.fn().mockResolvedValue(undefined) }
-      ;(getOrCreateClient as jest.Mock).mockResolvedValue(mockClient)
-      ;(tracesProvider.root as jest.Mock).mockReturnValue(undefined)
+      const mockClient = { tracesDelete: vi.fn().mockResolvedValue(undefined) }
+      ;(getOrCreateClient as Mock).mockResolvedValue(mockClient)
+      ;(tracesProvider.root as Mock).mockReturnValue(undefined)
 
       const item = {
         contextValue: "run",

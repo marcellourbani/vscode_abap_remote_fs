@@ -1,14 +1,14 @@
-jest.mock(
-  "vscode",
-  () => ({
-    LanguageModelTextPart: jest.fn().mockImplementation((text: string) => ({ text })),
-    LanguageModelToolResult: jest.fn().mockImplementation((parts: any[]) => ({ parts }))
+vi.mock("vscode", () => ({
+  LanguageModelTextPart: vi.fn().mockImplementation(function (text: string) {
+    return { text }
   }),
-  { virtual: true }
-)
+  LanguageModelToolResult: vi.fn().mockImplementation(function (parts: any[]) {
+    return { parts }
+  })
+}))
 
-jest.mock("../telemetry", () => ({ logTelemetry: jest.fn() }))
-jest.mock("./toolGuard", () => ({ assertToolInvocationAuthorized: jest.fn() }))
+vi.mock("../telemetry", () => ({ logTelemetry: vi.fn() }))
+vi.mock("./toolGuard", () => ({ assertToolInvocationAuthorized: vi.fn() }))
 
 import { SapTestSetupTool } from "./sapTestSetupTool"
 import { logTelemetry } from "../telemetry"

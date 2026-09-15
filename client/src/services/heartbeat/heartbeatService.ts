@@ -9,11 +9,11 @@ import * as vscode from "vscode"
 import { HeartbeatStateManager } from "./heartbeatStateManager"
 import { runHeartbeatLM } from "./heartbeatLmClient"
 import {
-  HeartbeatConfig,
-  HeartbeatEvent,
-  HeartbeatEventListener,
-  HeartbeatRunResult,
-  HeartbeatRunRecord,
+  type HeartbeatConfig,
+  type HeartbeatEvent,
+  type HeartbeatEventListener,
+  type HeartbeatRunResult,
+  type HeartbeatRunRecord,
   parseDurationMs,
   isWithinActiveHours,
   formatDuration

@@ -1,9 +1,9 @@
-import { FileStat, FileSystemError } from "vscode"
-import { AbapObject, PACKAGE, fromNode, convertSlash } from "../../abapObject"
-import { Folder, isFolder } from "./folder"
-import { NodeStructure, Node, NodeObjectType, isCreatableTypeId } from "abap-adt-api"
-import { AbapFile, isAbapFile } from "./abapFile"
-import { AbapFsService, isAbapStat } from "."
+import { type FileStat, FileSystemError } from "vscode"
+import { type AbapObject, PACKAGE, fromNode, convertSlash } from "abapobject"
+import { Folder, isFolder } from "./folder.js"
+import { type NodeStructure, type Node, type NodeObjectType, isCreatableTypeId } from "abap-adt-api"
+import { AbapFile, isAbapFile } from "./abapFile.js"
+import { type AbapFsService, isAbapStat } from "./index.js"
 
 const tag = Symbol("abapFolder")
 
@@ -35,11 +35,11 @@ export class AbapFolder extends Folder {
   ) {
     super()
   }
-  get ctime() {
+  override get ctime() {
     if (this.object.structure) return this.object.structure.metaData["adtcore:createdAt"]
     return 0
   }
-  get mtime() {
+  override get mtime() {
     if (this.object.structure) return this.object.structure.metaData["adtcore:changedAt"]
     return 0
   }

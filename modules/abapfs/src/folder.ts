@@ -1,4 +1,4 @@
-import { FileStat, FileType } from "vscode"
+import { type FileStat, FileType } from "vscode"
 const tag = Symbol("Folder")
 const refTime = new Date().getMilliseconds()
 

@@ -1,35 +1,46 @@
-jest.mock(
-  "vscode",
-  () => ({
-    LanguageModelToolResult: jest.fn().mockImplementation((parts: any[]) => ({ parts })),
-    LanguageModelTextPart: jest.fn().mockImplementation((text: string) => ({ text })),
-    MarkdownString: jest.fn().mockImplementation((text: string) => ({ text })),
-    lm: { registerTool: jest.fn(() => ({ dispose: jest.fn() })) }
+vi.mock("vscode", () => ({
+  LanguageModelToolResult: vi.fn().mockImplementation(function (parts: any[]) {
+    return { parts }
   }),
-  { virtual: true }
-)
-
-jest.mock("../../adt/conections", () => ({
-  getClient: jest.fn(),
-  getOrCreateRoot: jest.fn()
+  LanguageModelTextPart: vi.fn().mockImplementation(function (text: string) {
+    return { text }
+  }),
+  MarkdownString: vi.fn().mockImplementation(function (text: string) {
+    return { text }
+  }),
+  lm: {
+    registerTool: vi.fn(function () {
+      return { dispose: vi.fn() }
+    })
+  }
 }))
-jest.mock("../telemetry", () => ({ logTelemetry: jest.fn() }))
-jest.mock("./toolRegistry", () => ({
-  registerToolWithRegistry: jest.fn(() => ({ dispose: jest.fn() }))
-}))
-jest.mock("../abapSearchService", () => ({ getSearchService: jest.fn() }))
-jest.mock("abapfs", () => ({ isAbapFile: jest.fn() }))
-jest.mock("abap-adt-api", () => ({}))
-jest.mock("abapobject", () => ({ isAbapClassInclude: jest.fn() }))
 
-jest.mock("./toolGuard", () => ({
-  assertToolInvocationAuthorized: jest.fn(),
-  isToolInvocationAuthorized: jest.fn(() => true)
+vi.mock("../../adt/conections", () => ({
+  getClient: vi.fn(),
+  getOrCreateRoot: vi.fn()
+}))
+vi.mock("../telemetry", () => ({ logTelemetry: vi.fn() }))
+vi.mock("./toolRegistry", () => ({
+  registerToolWithRegistry: vi.fn(function () {
+    return { dispose: vi.fn() }
+  })
+}))
+vi.mock("../abapSearchService", () => ({ getSearchService: vi.fn() }))
+vi.mock("abapfs", () => ({ isAbapFile: vi.fn() }))
+vi.mock("abap-adt-api", () => ({}))
+vi.mock("abapobject", () => ({ isAbapClassInclude: vi.fn() }))
+
+vi.mock("./toolGuard", () => ({
+  assertToolInvocationAuthorized: vi.fn(),
+  isToolInvocationAuthorized: vi.fn(function () {
+    return true
+  })
 }))
 import { VersionHistoryTool } from "./versionHistoryTool"
 import { getSearchService } from "../abapSearchService"
 import { getClient, getOrCreateRoot } from "../../adt/conections"
 import { logTelemetry } from "../telemetry"
+import type { Mock } from "vitest"
 
 const mockToken = {} as any
 
@@ -37,19 +48,19 @@ function makeOptions(input: any = {}) {
   return { input } as any
 }
 
-const mockSearcher = { searchObjects: jest.fn() }
-const mockRoot = { findByAdtUri: jest.fn() }
-const mockClient = { revisions: jest.fn(), getObjectSource: jest.fn() }
+const mockSearcher = { searchObjects: vi.fn() }
+const mockRoot = { findByAdtUri: vi.fn() }
+const mockClient = { revisions: vi.fn(), getObjectSource: vi.fn() }
 
 describe("VersionHistoryTool", () => {
   let tool: VersionHistoryTool
 
   beforeEach(() => {
     tool = new VersionHistoryTool()
-    jest.clearAllMocks()
-    ;(getSearchService as jest.Mock).mockReturnValue(mockSearcher)
-    ;(getOrCreateRoot as jest.Mock).mockResolvedValue(mockRoot)
-    ;(getClient as jest.Mock).mockReturnValue(mockClient)
+    vi.clearAllMocks()
+    ;(getSearchService as Mock).mockReturnValue(mockSearcher)
+    ;(getOrCreateRoot as Mock).mockResolvedValue(mockRoot)
+    ;(getClient as Mock).mockReturnValue(mockClient)
   })
 
   describe("prepareInvocation validation", () => {
@@ -187,7 +198,7 @@ describe("VersionHistoryTool", () => {
     })
 
     it("wraps errors", async () => {
-      ;(getSearchService as jest.Mock).mockImplementation(() => {
+      ;(getSearchService as Mock).mockImplementation(function () {
         throw new Error("search failed")
       })
       const result: any = await tool.invoke(

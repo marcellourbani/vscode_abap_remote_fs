@@ -1,11 +1,11 @@
 import * as vscode from "vscode"
 import {
   AdtRelationApi,
-  RelationComponent,
-  RelationEdge,
-  RelationNetwork,
-  RelationAnchor,
-  RelationObject
+  type RelationComponent,
+  type RelationEdge,
+  type RelationNetwork,
+  type RelationAnchor,
+  type RelationObject
 } from "../../adt/relationApi"
 import { getSearchService } from "../abapSearchService"
 import { logTelemetry } from "../telemetry"

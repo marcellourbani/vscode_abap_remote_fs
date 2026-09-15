@@ -1,26 +1,26 @@
 import {
-  SourceControlResourceGroup,
-  SourceControlResourceState,
-  SourceControl,
-  Memento,
+  type SourceControlResourceGroup,
+  type SourceControlResourceState,
+  type SourceControl,
+  type Memento,
   commands,
-  QuickPickItem,
+  type QuickPickItem,
   Uri,
-  SourceControlResourceDecorations
+  type SourceControlResourceDecorations
 } from "vscode"
 import { command, AbapFsCommands } from "../../commands"
 import {
   refresh,
   fromSC,
-  AgResState,
+  type AgResState,
   isAgResState,
   fromGroup,
   UNSTAGED,
   STAGED,
-  ScmData,
+  type ScmData,
   fileUri,
   IGNORED,
-  AgResGroup,
+  type AgResGroup,
   scmData,
   scmKey
 } from "./scm"
@@ -39,7 +39,7 @@ import {
 } from "../../lib"
 import { map, isNone, none, fromEither, isSome } from "fp-ts/lib/Option"
 import { dataCredentials, listPasswords, deletePassword, deleteDefaultUser } from "./credentials"
-import { GitStagingFile, GitStaging } from "abap-adt-api"
+import { type GitStagingFile, type GitStaging } from "abap-adt-api"
 import { context } from "../../extension"
 import { selectTransport } from "../../adt/AdtTransports"
 import { pickAdtRoot } from "../../config"
