@@ -39,7 +39,7 @@ jest.mock("./adt/conections", () => ({
 jest.mock("abapobject", () => jest.requireActual("abapobject"))
 jest.mock("abapfs", () => ({ isAbapStat: jest.fn() }))
 jest.mock("abap-adt-api", () => ({ isCsrfError: jest.fn() }))
-jest.mock("abapfs/out/lockObject", () => ({}))
+jest.mock("abapfs/src/lockObject", () => ({}))
 jest.mock("./adt/operations/AdtObjectFinder", () => ({ uriAbapFile: jest.fn() }))
 jest.mock("./scm/abaprevisions", () => ({ versionRevisions: jest.fn() }))
 jest.mock("./context", () => ({ setContext: jest.fn() }))
@@ -54,7 +54,7 @@ jest.mock("./views/blameGutter", () => ({
   onBlameActiveEditorChanged: jest.fn(),
   onBlameDocumentChanged: jest.fn()
 }))
-jest.mock("abapfs/out/lockManager", () => ({ ReloginError: { isReloginError: jest.fn() } }))
+jest.mock("abapfs/src/lockManager", () => ({ ReloginError: { isReloginError: jest.fn() } }))
 jest.mock("./services/funMessenger", () => ({
   funWindow: {
     showWarningMessage: jest.fn(),
