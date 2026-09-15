@@ -149,8 +149,7 @@ export function jsonSchemaPropertyToZod(
       break
     case "object":
       const objProperties = propSchema.properties as
-        | Record<string, Record<string, unknown>>
-        | undefined
+        Record<string, Record<string, unknown>> | undefined
       const objRequired = (propSchema.required as string[]) || []
       if (objProperties) {
         const shape: Record<string, z.ZodTypeAny> = {}

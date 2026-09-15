@@ -1,20 +1,12 @@
-# Prettier ignore file
-node_modules
-out
-dist
+**/node_modules/**
+**/out/**
+**/dist/**
+coverage/**
+**/graphify-out/**
 *.vsix
-package-lock.json
+pnpm-lock.yaml
 uv.lock
-.venv
-modules/abapfs/out
-modules/abapObject/out
-modules/sharedapi/out
-client/dist
-server/dist
-client/media
-
-# Exclude specific file types
+.venv/**
+client/media/**
 *.md
-*.json
-*.yml
-*.yaml
+*.svg

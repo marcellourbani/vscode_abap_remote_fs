@@ -1,11 +1,11 @@
 import {
-  AbapObjectStructure,
-  MainInclude,
-  NodeStructure,
-  ObjectVersion,
+  type AbapObjectStructure,
+  type MainInclude,
+  type NodeStructure,
+  type ObjectVersion,
   isNodeParent
 } from "abap-adt-api"
-import { AbapObjectService } from "./AOService"
+import { type AbapObjectService } from "./AOService"
 import { ObjectErrors } from "./AOError"
 import { getObjectTypeConfig } from "./registry"
 const SAPGUIONLY = "This object type is not supported in VS Code."

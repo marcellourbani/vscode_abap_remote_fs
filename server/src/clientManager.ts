@@ -1,16 +1,16 @@
-import { ADTClient, createSSLConfig, LogData, session_types } from "abap-adt-api"
+import { ADTClient, createSSLConfig, type LogData, session_types } from "abap-adt-api"
 import { createConnection, ProposedFeatures } from "vscode-languageserver"
 import { types } from "util"
 import * as https from "https"
 import { readFileSync, existsSync } from "fs"
 import { readConfiguration } from "./clientapis"
 import {
-  ClientConfiguration,
-  AuthHeadersResponse,
-  CertAuthTransport,
+  type ClientConfiguration,
+  type AuthHeadersResponse,
+  type CertAuthTransport,
   getAuthMethod,
   Methods,
-  CommLogTogglePayload
+  type CommLogTogglePayload
 } from "vscode-abap-remote-fs-sharedapi"
 import { isString } from "./functions"
 const clients: Map<string, ADTClient> = new Map()

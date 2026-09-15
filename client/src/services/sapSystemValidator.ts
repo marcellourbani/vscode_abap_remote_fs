@@ -1,5 +1,5 @@
 import * as vscode from "vscode"
-import { StatusBarAlignment, StatusBarItem } from "vscode"
+import { StatusBarAlignment, type StatusBarItem } from "vscode"
 import { funWindow as window } from "./funMessenger"
 import * as crypto from "crypto"
 

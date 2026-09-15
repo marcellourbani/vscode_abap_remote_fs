@@ -15,6 +15,8 @@
     "name": "Marcello Urbani"
   },
   "homepage": "https://marcellourbani.github.io/vscode_abap_remote_fs",
+  "type": "module",
+  "packageManager": "pnpm@12.4.1",
   "engines": {
     "vscode": "^1.105.0"
   },
@@ -45,49 +47,36 @@
   ],
   "activationEvents": [
     "onFileSystem:adt",
-    "onNotebook:sap-data-workbook",
-    "onCommand:abapfs.connect",
-    "onCommand:abapfs.connectionManager",
-    "onCommand:abapfs.runInEmbeddedGui",
-    "onCommand:abapfs.showWalkThrough"
+    "onNotebook:sap-data-workbook"
   ],
-  "main": "./client/dist/extension",
+  "main": "./client/dist/extension.js",
   "scripts": {
-    "vscode:prepublish": "npm run webpack && npm run typecheck",
-    "webpack": "npm run build_modules&&cd server && npm run webpack && cd ../client && npm run webpack",
-    "build": "npm run webpack",
-    "typecheck": "npm --prefix modules/sharedapi run typecheck && npm --prefix modules/abapObject run typecheck && npm --prefix modules/abapfs run typecheck && npm --prefix server run typecheck && npm --prefix client run typecheck",
-    "build_modules": "cd modules/abapObject&& npm run build&&cd ../abapfs&& npm run build&&cd ../sharedapi&& npm run build",
-    "compile": "npm run webpack",
-    "test": "npm run test-object && npm run test-abapfs && npm run test-server && npm run test-client",
-    "test-server": "cd server&& npm run test",
-    "test-client": "cd client&& npm run test",
-    "test-object": "cd modules/abapObject&& npm run test",
-    "test-abapfs": "cd modules/abapfs&& npm run test",
-    "createpackage": "vsce package",
-    "deploy": "vsce publish",
+    "vscode:prepublish": "pnpm build && pnpm typecheck",
+    "build": "pnpm -r --if-present run build",
+    "typecheck": "pnpm -r --if-present run typecheck",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:coverage": "vitest run --coverage",
+    "watch": "pnpm -r --parallel --if-present run watch",
+    "package": "vsce package",
     "docs": "uv run mkdocs serve --livereload",
-    "inst_dep_sharedapi": "cd modules/sharedapi&& npm i && npm run build&& cd ../..",
-    "inst_dep_object": "cd modules/abapObject&& npm i && npm run build&& cd ../..",
-    "inst_dep_abapfs": "cd modules/abapfs&& npm i && npm run build&& cd ../..",
-    "release:vsix": "npm run build && npm run createpackage",
-    "clean": "rimraf out *.vsix node_modules modules/sharedapi/out modules/sharedapi/node_modules&& cd server && npm run clean&& cd ../client &&npm run clean && cd .. ",
-    "postinstall": "npm run inst_dep_sharedapi && npm run inst_dep_object &&npm run inst_dep_abapfs && cd server && npm i && cd ../client && npm i",
+    "release:vsix": "pnpm build && pnpm package",
+    "clean": "node scripts/clean.mjs && pnpm -r --if-present run clean",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
     "prepare": "husky"
   },
   "devDependencies": {
     "@changesets/cli": "^2.31.0",
-    "@types/mocha": "^7.0.2",
-    "@types/node": "^18.11.18",
+    "@types/node": "catalog:",
+    "@vitest/coverage-v8": "5.0.0",
     "@vscode/vsce": "^3.3.0",
-    "concurrently": "^6.3.0",
     "husky": "^9.1.7",
     "ovsx": "^0.10.1",
-    "rimraf": "^3.0.2",
-    "typescript": "6.0.3",
-    "webpack-cli": "^5.0.1"
+    "prettier": "3.9.6",
+    "typescript": "catalog:",
+    "vite": "8.3.0",
+    "vitest": "5.0.0"
   },
   "contributes": {
     "languages": [
@@ -6092,12 +6081,5 @@
         ]
       }
     ]
-  },
-  "dependencies": {
-    "applicationinsights": "^2.9.8",
-    "cors": "^2.8.5",
-    "express": "^4.22.2",
-    "prettier": "^3.8.1",
-    "xml2js": "^0.6.2"
   }
 }

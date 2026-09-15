@@ -1,39 +1,53 @@
-jest.mock(
-  "vscode",
-  () => ({
-    LanguageModelToolResult: jest.fn().mockImplementation((parts: any[]) => ({ parts })),
-    LanguageModelTextPart: jest.fn().mockImplementation((text: string) => ({ text })),
-    MarkdownString: jest.fn().mockImplementation((text: string) => ({ text })),
-    lm: { registerTool: jest.fn(() => ({ dispose: jest.fn() })) }
+vi.mock("vscode", () => ({
+  LanguageModelToolResult: vi.fn().mockImplementation(function (parts: any[]) {
+    return { parts }
   }),
-  { virtual: true }
-)
-
-const network = jest.fn()
-const references = jest.fn()
-const components = jest.fn()
-const compare = jest.fn()
-
-jest.mock("../../adt/relationApi", () => ({
-  AdtRelationApi: jest.fn().mockImplementation(() => ({
-    network,
-    references,
-    components,
-    compare
-  }))
+  LanguageModelTextPart: vi.fn().mockImplementation(function (text: string) {
+    return { text }
+  }),
+  MarkdownString: vi.fn().mockImplementation(function (text: string) {
+    return { text }
+  }),
+  lm: {
+    registerTool: vi.fn(function () {
+      return { dispose: vi.fn() }
+    })
+  }
 }))
-jest.mock("../abapSearchService", () => ({ getSearchService: jest.fn() }))
-jest.mock("../telemetry", () => ({ logTelemetry: jest.fn() }))
-jest.mock("./toolRegistry", () => ({
-  registerToolWithRegistry: jest.fn(() => ({ dispose: jest.fn() }))
+
+const { network, references, components, compare } = vi.hoisted(() => {
+  const network = vi.fn()
+  const references = vi.fn()
+  const components = vi.fn()
+  const compare = vi.fn()
+  return { network, references, components, compare }
+})
+vi.mock("../../adt/relationApi", () => ({
+  AdtRelationApi: vi.fn().mockImplementation(function () {
+    return {
+      network,
+      references,
+      components,
+      compare
+    }
+  })
 }))
-jest.mock("./toolGuard", () => ({ assertToolInvocationAuthorized: jest.fn() }))
+vi.mock("../abapSearchService", () => ({ getSearchService: vi.fn() }))
+vi.mock("../telemetry", () => ({ logTelemetry: vi.fn() }))
+vi.mock("./toolRegistry", () => ({
+  registerToolWithRegistry: vi.fn(function () {
+    return { dispose: vi.fn() }
+  })
+}))
+vi.mock("./toolGuard", () => ({ assertToolInvocationAuthorized: vi.fn() }))
 
 import { getSearchService } from "../abapSearchService"
 import { registerRelationAnalysisTool, RelationAnalysisTool } from "./relationAnalysisTool"
 import { registerToolWithRegistry } from "./toolRegistry"
+import * as __$mock_telemetry from "../telemetry"
+import type { Mock } from "vitest"
 
-const searchObjects = jest.fn()
+const searchObjects = vi.fn()
 const makeOptions = (input: any) => ({ input }) as any
 const parseResult = (result: any) => JSON.parse(result.parts[0].text)
 
@@ -94,11 +108,11 @@ const makeNetwork = (activeContext = "ENV") => ({
 
 describe("RelationAnalysisTool", () => {
   beforeEach(() => {
-    jest.clearAllMocks()
-    ;(getSearchService as jest.Mock).mockReturnValue({ searchObjects })
-    searchObjects.mockImplementation((name: string) =>
-      Promise.resolve([name === report.name ? report : target])
-    )
+    vi.clearAllMocks()
+    ;(getSearchService as Mock).mockReturnValue({ searchObjects })
+    searchObjects.mockImplementation(function (name: string) {
+      return Promise.resolve([name === report.name ? report : target])
+    })
   })
 
   it("resolves report references through matching ORO include relations", async () => {
@@ -620,7 +634,7 @@ describe("RelationAnalysisTool", () => {
         objectType: report.type
       })
     )
-    const { logTelemetry } = require("../telemetry")
+    const { logTelemetry } = __$mock_telemetry
     expect(logTelemetry).toHaveBeenCalledWith("tool_analyze_abap_relations_network_called", {
       connectionId: "dev100"
     })

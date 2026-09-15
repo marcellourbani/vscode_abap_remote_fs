@@ -1,4 +1,4 @@
-import { RemoteConfig, RemoteManager } from "../../config"
+import { type RemoteConfig, RemoteManager } from "../../config"
 import { file } from "tmp-promise"
 import { writeAsync } from "fs-jetpack"
 import { log, caughtToString } from "../../lib"
@@ -7,12 +7,12 @@ import opn = require("open")
 import { ProgressLocation, extensions } from "vscode"
 import { funWindow as window } from "../../services/funMessenger"
 import { getClient, getOrCreateClient } from "../conections"
-import { AbapObject, isAbapClassInclude, getObjectTypeConfig, getAllConfigs } from "abapobject"
+import { type AbapObject, isAbapClassInclude, getObjectTypeConfig, getAllConfigs } from "abapobject"
 import { commands, Uri, workspace } from "vscode"
 import * as vscode from "vscode"
 import { ADTClient } from "abap-adt-api"
 import { SapGuiPanel } from "../../views/sapgui/SapGuiPanel"
-import { startSsoFormLauncher, SsoLauncher, SsoLauncherOptions } from "./ssoLaunch"
+import { startSsoFormLauncher, type SsoLauncher, type SsoLauncherOptions } from "./ssoLaunch"
 
 export interface SapGuiCommand {
   type: "Transaction" | "Report" | "SystemCommand"
@@ -394,7 +394,7 @@ export class SapGui {
       if (linux) options.app = "xdg-open"
 
       await opn(shortcut.path, options)
-      // delete after opening sapgui, only in windows
+      // delete after opening sapgui, only on windows
       if (win32) setTimeout(() => shortcut.cleanup(), 50000)
     } catch (e) {
       log("Error executing file", shortcut.path)

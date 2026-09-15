@@ -1,9 +1,9 @@
 import {
   ADTClient,
-  AdtLock,
-  TextElement,
-  TextElementsResult,
-  TextElementCategory
+  type AdtLock,
+  type TextElement,
+  type TextElementsResult,
+  type TextElementCategory
 } from "abap-adt-api"
 import { log } from "../lib"
 import { selectTransport } from "./AdtTransports"

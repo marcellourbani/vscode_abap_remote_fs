@@ -1,5 +1,10 @@
-import { ADTClient, DebugVariable, DebugChildVariablesHierarchy } from "abap-adt-api"
-import { CapturedVariable, CapturedScope, CaptureOptions, DEFAULT_CAPTURE_OPTIONS } from "./types"
+import { ADTClient, type DebugVariable, type DebugChildVariablesHierarchy } from "abap-adt-api"
+import {
+  type CapturedVariable,
+  type CapturedScope,
+  type CaptureOptions,
+  DEFAULT_CAPTURE_OPTIONS
+} from "./types"
 import { log, caughtToString } from "../../../lib"
 
 /** Max IDs per single ADT API call to avoid server overload */

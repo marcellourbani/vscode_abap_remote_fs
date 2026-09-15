@@ -1,20 +1,20 @@
 import {
   ADTClient,
-  Debuggee,
+  type Debuggee,
   isDebugListenerError,
-  DebuggingMode,
+  type DebuggingMode,
   isAdtError,
   session_types
 } from "abap-adt-api"
 import { readFileSync, writeFileSync, existsSync, mkdirSync } from "fs"
 import { log, caughtToString, ignore, isUnDefined, firstInMap } from "../../lib"
-import { DebugProtocol } from "@vscode/debugprotocol"
+import { type DebugProtocol } from "@vscode/debugprotocol"
 import { Disposable, EventEmitter } from "vscode"
 import { getOrCreateClient } from "../conections"
 import { homedir } from "os"
 import { join } from "path"
 import { StoppedEvent, TerminatedEvent, ThreadEvent } from "@vscode/debugadapter"
-import { v1 } from "uuid"
+import { randomUUID } from "node:crypto"
 import { readWindowsRegistryString } from "./winregistry"
 import { context } from "../../extension"
 import { DebugService, isEnded } from "./debugService"
@@ -39,7 +39,7 @@ export interface DebuggerUI {
 const getOrCreateIdeId = (): string => {
   const ideId = context.workspaceState.get("adt.ideId")
   if (typeof ideId === "string") return ideId
-  const newIdeId = v1().replace(/-/g, "").toUpperCase()
+  const newIdeId = randomUUID().replace(/-/g, "").toUpperCase()
   context.workspaceState.update("adt.ideId", newIdeId)
   return newIdeId
 }
@@ -52,7 +52,7 @@ const fileBasedTerminalId = () => {
     log.debug(`getOrCreateTerminalId: reusing file-based terminal ID from ${cfgfile}`)
     return terminalId
   } catch (error) {
-    const terminalId = v1().replace(/-/g, "").toUpperCase()
+    const terminalId = randomUUID().replace(/-/g, "").toUpperCase()
     if (!existsSync(cfgpath)) mkdirSync(cfgpath, { recursive: true })
     writeFileSync(cfgfile, terminalId)
     log.debug(`getOrCreateTerminalId: generated new file-based terminal ID at ${cfgfile}`)

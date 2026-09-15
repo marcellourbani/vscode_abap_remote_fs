@@ -1,5 +1,12 @@
 import { command, AbapFsCommands } from "../../commands"
-import { Uri, QuickPickItem, commands, workspace, ProgressLocation, TabInputTextDiff } from "vscode"
+import {
+  Uri,
+  type QuickPickItem,
+  commands,
+  workspace,
+  ProgressLocation,
+  TabInputTextDiff
+} from "vscode"
 import { funWindow as window } from "../../services/funMessenger"
 import {
   abapUri,
@@ -10,15 +17,14 @@ import {
   rootIsConnected
 } from "../../adt/conections"
 import { AbapRevisionService, revLabel } from "./abaprevisionservice"
-import { ADTClient, Revision } from "abap-adt-api"
+import { ADTClient, type Revision } from "abap-adt-api"
 import { AbapQuickDiff } from "./quickdiff"
 import { decodeRevisioUrl, revisionUri } from "./documentprovider"
 import { RemoteManager, formatKey } from "../../config"
 import { isAbapFile } from "abapfs"
-import { AGroup, AState } from "./abapscm"
+import type { AGroup, AState } from "./abapscm"
 import { caughtToString, atob, btoa } from "../../lib"
-import * as t from "io-ts"
-import { isRight } from "fp-ts/lib/Either"
+import { z } from "zod"
 import { vsCodeUri } from "../../langClient"
 
 interface RevisionItem extends QuickPickItem {
@@ -26,22 +32,22 @@ interface RevisionItem extends QuickPickItem {
   revision: Revision
 }
 
-const revision = t.type({
-  uri: t.string,
-  date: t.string,
-  author: t.string,
-  version: t.string,
-  versionTitle: t.string
+const revision = z.object({
+  uri: z.string(),
+  date: z.string(),
+  author: z.string(),
+  version: z.string(),
+  versionTitle: z.string()
 })
-const conflictDetails = t.type({
-  conflicting: t.string,
-  transport: t.string,
-  uri: t.string,
+const conflictDetails = z.object({
+  conflicting: z.string(),
+  transport: z.string(),
+  uri: z.string(),
   incoming: revision,
   conflict: revision
 })
 
-type ConflictDetails = t.TypeOf<typeof conflictDetails>
+type ConflictDetails = z.infer<typeof conflictDetails>
 const revItems = (revisions: Revision[]): RevisionItem[] =>
   revisions.map((r, i) => ({
     label: revLabel(r, `revision ${i}`),
@@ -353,8 +359,8 @@ export class AbapRevisionCommands {
 
   @command(AbapFsCommands.mergeEditor)
   private static async mergeEditor(uri: Uri | ConflictDetails) {
-    const details = conflictDetails.decode(uri)
-    if (isRight(details)) this.mergeEditorByDetails(details.right)
+    const details = conflictDetails.safeParse(uri)
+    if (details.success) this.mergeEditorByDetails(details.data)
     if (uri instanceof Uri) this.mergeConflicts(uri)
   }
   @command(AbapFsCommands.clearScmGroup)

@@ -1,7 +1,7 @@
 import { caughtToString, isAbap, parts } from "./functions"
-import { DocumentSymbolParams, DocumentSymbol, SymbolKind } from "vscode-languageserver"
+import { type DocumentSymbolParams, DocumentSymbol, SymbolKind } from "vscode-languageserver"
 import { clientAndObjfromUrl, rangeFromUri } from "./utilities"
-import { ClassComponent, Link } from "abap-adt-api"
+import { type ClassComponent, type Link } from "abap-adt-api"
 import { log } from "./clientManager"
 
 const typeMap: Map<string, SymbolKind> = new Map([

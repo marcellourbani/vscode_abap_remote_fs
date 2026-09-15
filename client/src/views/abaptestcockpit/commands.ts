@@ -1,9 +1,9 @@
-import { AtcProposal } from "abap-adt-api"
+import { type AtcProposal } from "abap-adt-api"
 import {
   commands,
   Position,
   ProgressLocation,
-  QuickPickOptions,
+  type QuickPickOptions,
   Selection,
   Uri,
   workspace,
@@ -18,12 +18,12 @@ import {
   inputBox,
   quickPick,
   rfsExtract,
-  RfsTaskEither,
+  type RfsTaskEither,
   rfsTryCatch,
   showErrorMessage
 } from "../../lib"
 import { ATCDocumentation } from "./documentation"
-import { AtcFind, AtcNode, AtcObject, atcProvider, AtcRoot, AtcSystem } from "./view"
+import { AtcFind, type AtcNode, AtcObject, atcProvider, AtcRoot, AtcSystem } from "./view"
 import { findingPragmas } from "./codeinspector"
 import { AbapFsCommands, command } from "../../commands"
 import { insertPosition } from "./functions"

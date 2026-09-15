@@ -1,9 +1,10 @@
-import { Memento, ExtensionContext } from "vscode"
-import { GitRepo } from "abap-adt-api"
+import type { Memento, ExtensionContext } from "vscode"
+import type { GitRepo } from "abap-adt-api"
 import { mapGet, ArrayToMap } from "../../lib"
 import { addRepo } from "."
-import { ScmData } from "./scm"
+import type { ScmData } from "./scm"
 import { getOrCreateClient } from "../../adt/conections"
+import { registerGitDocProvider } from "./documentProvider"
 
 const REPOSSTORAGEKEY = "abapGitRepos"
 
@@ -35,18 +36,17 @@ export const saveRepos = (scms: Map<string, ScmData>) => {
   if (storage) {
     return storage.update(
       REPOSSTORAGEKEY,
-      [...scms.values()].map(
-        (s): StoredRepo => ({
-          connId: s.connId,
-          repoKey: s.repo.key,
-          user: s.credentials?.user
-        })
-      )
+      [...scms.values()].map((s): StoredRepo => ({
+        connId: s.connId,
+        repoKey: s.repo.key,
+        user: s.credentials?.user
+      }))
     )
   }
 }
 
 export function registerAbapGit(context: ExtensionContext) {
   storage = context.workspaceState
+  context.subscriptions.push(registerGitDocProvider())
   loadRepos()
 }

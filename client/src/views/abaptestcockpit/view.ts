@@ -1,14 +1,14 @@
-import { AtcWorkList } from "abap-adt-api"
-import { Task } from "fp-ts/lib/Task"
+import { type AtcWorkList } from "abap-adt-api"
+import { type Task } from "fp-ts/lib/Task"
 import {
   commands,
   Disposable,
   EventEmitter,
   Position,
-  TextDocumentContentChangeEvent,
+  type TextDocumentContentChangeEvent,
   ThemeColor,
   ThemeIcon,
-  TreeDataProvider,
+  type TreeDataProvider,
   TreeItem,
   TreeItemCollapsibleState,
   Uri
@@ -18,17 +18,16 @@ import { getClient } from "../../adt/conections"
 import { AdtObjectFinder } from "../../adt/operations/AdtObjectFinder"
 import { AbapFsCommands } from "../../commands"
 import {
-  AtcWLFinding,
-  AtcWLobject,
+  type AtcWLFinding,
+  type AtcWLobject,
   getVariant,
   runInspector,
   runInspectorByAdtUrl
 } from "./codeinspector"
-import * as R from "ramda"
 import { AbapFile } from "abapfs"
 import { AdtObjectActivator } from "../../adt/operations/AdtObjectActivator"
 import { atcRefresh } from "./commands"
-import { AbapObjectBase } from "abapobject/out/AbapObject"
+import { AbapObjectBase } from "abapobject"
 import { log } from "../../lib"
 import { setContext } from "../../context"
 
@@ -118,8 +117,8 @@ export class AtcSystem extends TreeItem {
       const finder = new AdtObjectFinder(this.connectionId)
       this.children = []
 
-      const objects = R.sortWith<AtcWLobject>([R.ascend(R.prop("type")), R.ascend(R.prop("name"))])(
-        wl.objects.filter(o => o.findings.length > 0)
+      const objects = [...wl.objects.filter(o => o.findings.length > 0)].sort((a, b) =>
+        a.type < b.type ? -1 : a.type > b.type ? 1 : a.name < b.name ? -1 : a.name > b.name ? 1 : 0
       )
       this.objects = await resolveObjects(objects, finder)
       this.updateChildren(showDecorations)

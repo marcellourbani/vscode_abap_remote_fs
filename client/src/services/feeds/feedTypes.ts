@@ -1,4 +1,4 @@
-import { Feed } from "abap-adt-api"
+import { type Feed } from "abap-adt-api"
 
 /**
  * Feed subscription configuration per system per feed

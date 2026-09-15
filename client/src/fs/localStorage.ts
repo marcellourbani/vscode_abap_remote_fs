@@ -1,6 +1,5 @@
 import { Uri, workspace } from "vscode"
-import * as t from "io-ts"
-import { isLeft } from "fp-ts/lib/Either"
+import { z } from "zod"
 import { ADTSCHEME } from "../adt/conections"
 import { templates } from "./initialtemplates"
 
@@ -8,12 +7,14 @@ const configFile = "folderMap.json"
 const templatesFolder = "templates"
 const connectionsFolder = "connections"
 
-const mappingStatus = t.type({
-  initialised: t.boolean,
-  mappings: t.record(t.string, t.string)
-})
+const mappingStatus = z
+  .object({
+    initialised: z.boolean(),
+    mappings: z.record(z.string(), z.string())
+  })
+  .passthrough()
 
-type MappingStatus = t.TypeOf<typeof mappingStatus>
+type MappingStatus = z.infer<typeof mappingStatus>
 
 export const createFolderIfMissing = async (basePath: Uri) => {
   try {
@@ -113,9 +114,9 @@ export class LocalStorage {
   private async readConfig() {
     const configUri = Uri.joinPath(this.root, configFile)
     const raw = await workspace.fs.readFile(configUri)
-    const parsed = mappingStatus.decode(JSON.parse(new TextDecoder().decode(raw)))
-    if (isLeft(parsed)) throw new Error("Invalid configuration")
-    return { configUri, config: parsed.right }
+    const parsed = mappingStatus.safeParse(JSON.parse(new TextDecoder().decode(raw)))
+    if (!parsed.success) throw new Error("Invalid configuration")
+    return { configUri, config: parsed.data }
   }
 
   private async ensureConnection(

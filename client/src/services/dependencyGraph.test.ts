@@ -4,59 +4,58 @@
  */
 
 // Mock vscode
-jest.mock(
-  "vscode",
-  () => ({
-    window: {
-      showInformationMessage: jest.fn(),
-      showErrorMessage: jest.fn(),
-      showWarningMessage: jest.fn(),
-      createWebviewPanel: jest.fn()
-    },
-    workspace: {
-      getConfiguration: jest.fn().mockReturnValue({ get: jest.fn().mockReturnValue(false) })
-    },
-    ViewColumn: { One: 1, Active: -1 },
-    Uri: { joinPath: jest.fn(), file: jest.fn() }
-  }),
-  { virtual: true }
-)
+vi.mock("vscode", () => ({
+  window: {
+    showInformationMessage: vi.fn(),
+    showErrorMessage: vi.fn(),
+    showWarningMessage: vi.fn(),
+    createWebviewPanel: vi.fn()
+  },
+  workspace: {
+    getConfiguration: vi.fn().mockReturnValue({ get: vi.fn().mockReturnValue(false) })
+  },
+  ViewColumn: { One: 1, Active: -1 },
+  Uri: { joinPath: vi.fn(), file: vi.fn() }
+}))
 
 // Mock internal dependencies
-jest.mock("./funMessenger", () => ({
+vi.mock("./funMessenger", () => ({
   funWindow: {
-    showInformationMessage: jest.fn(),
-    showErrorMessage: jest.fn(),
-    showWarningMessage: jest.fn(),
-    createWebviewPanel: jest.fn()
+    showInformationMessage: vi.fn(),
+    showErrorMessage: vi.fn(),
+    showWarningMessage: vi.fn(),
+    createWebviewPanel: vi.fn()
   }
 }))
 
-jest.mock("../adt/conections", () => ({
-  getClient: jest.fn(),
-  getOrCreateRoot: jest.fn()
+vi.mock("../adt/conections", () => ({
+  getClient: vi.fn(),
+  getOrCreateRoot: vi.fn()
 }))
 
-jest.mock("../lib", () => ({
-  caughtToString: jest.fn((e: any) => String(e)),
-  log: jest.fn()
+vi.mock("../lib", () => ({
+  caughtToString: vi.fn(function (e: any) {
+    return String(e)
+  }),
+  log: vi.fn()
 }))
 
-jest.mock("./webviewManager", () => ({
-  WebviewManager: { getInstance: jest.fn() }
+vi.mock("./webviewManager", () => ({
+  WebviewManager: { getInstance: vi.fn() }
 }))
 
-jest.mock("abapfs", () => ({
-  isAbapFile: jest.fn()
+vi.mock("abapfs", () => ({
+  isAbapFile: vi.fn()
 }))
 
-jest.mock("./lm-tools/shared", () => ({
-  getOptimalObjectURI: jest.fn()
+vi.mock("./lm-tools/shared", () => ({
+  getOptimalObjectURI: vi.fn()
 }))
 
 import { buildGraphData, mergeGraphData, applyFilters, fetchWhereUsedData } from "./dependencyGraph"
 import type { GraphData, GraphNode, GraphEdge, DependencyGraphFilters } from "./dependencyGraph"
 import { getClient } from "../adt/conections"
+import type { Mock } from "vitest"
 
 // Helper to create a minimal UsageReference
 function makeRef(overrides: Record<string, any> = {}): any {
@@ -338,10 +337,10 @@ describe("dependencyGraph", () => {
       const mockRefs = [makeRef()]
       const mockClient = {
         statelessClone: {
-          usageReferences: jest.fn().mockResolvedValue(mockRefs)
+          usageReferences: vi.fn().mockResolvedValue(mockRefs)
         }
       }
-      ;(getClient as jest.Mock).mockReturnValue(mockClient)
+      ;(getClient as Mock).mockReturnValue(mockClient)
 
       const result = await fetchWhereUsedData("/sap/bc/adt/programs/ZTEST", "GED100", 5, 10)
       expect(mockClient.statelessClone.usageReferences).toHaveBeenCalledWith(
@@ -355,10 +354,10 @@ describe("dependencyGraph", () => {
     it("defaults line=1 and character=0 when not provided", async () => {
       const mockClient = {
         statelessClone: {
-          usageReferences: jest.fn().mockResolvedValue([])
+          usageReferences: vi.fn().mockResolvedValue([])
         }
       }
-      ;(getClient as jest.Mock).mockReturnValue(mockClient)
+      ;(getClient as Mock).mockReturnValue(mockClient)
       await fetchWhereUsedData("/sap/bc/adt/programs/ZTEST", "GED100")
       expect(mockClient.statelessClone.usageReferences).toHaveBeenCalledWith(
         "/sap/bc/adt/programs/ZTEST",
@@ -370,10 +369,10 @@ describe("dependencyGraph", () => {
     it("returns empty array when API returns undefined", async () => {
       const mockClient = {
         statelessClone: {
-          usageReferences: jest.fn().mockResolvedValue(undefined)
+          usageReferences: vi.fn().mockResolvedValue(undefined)
         }
       }
-      ;(getClient as jest.Mock).mockReturnValue(mockClient)
+      ;(getClient as Mock).mockReturnValue(mockClient)
       const result = await fetchWhereUsedData("/sap/bc/adt/programs/ZTEST", "GED100")
       expect(result).toEqual([])
     })
@@ -381,10 +380,10 @@ describe("dependencyGraph", () => {
     it("throws error when API throws", async () => {
       const mockClient = {
         statelessClone: {
-          usageReferences: jest.fn().mockRejectedValue(new Error("Network error"))
+          usageReferences: vi.fn().mockRejectedValue(new Error("Network error"))
         }
       }
-      ;(getClient as jest.Mock).mockReturnValue(mockClient)
+      ;(getClient as Mock).mockReturnValue(mockClient)
       await expect(fetchWhereUsedData("/sap/bc/adt/programs/ZTEST", "GED100")).rejects.toThrow(
         "Failed to fetch where-used data"
       )
@@ -393,10 +392,10 @@ describe("dependencyGraph", () => {
     it("normalizes connectionId to lowercase", async () => {
       const mockClient = {
         statelessClone: {
-          usageReferences: jest.fn().mockResolvedValue([])
+          usageReferences: vi.fn().mockResolvedValue([])
         }
       }
-      ;(getClient as jest.Mock).mockReturnValue(mockClient)
+      ;(getClient as Mock).mockReturnValue(mockClient)
       await fetchWhereUsedData("/sap/bc/adt/programs/ZTEST", "GED100")
       expect(getClient).toHaveBeenCalledWith("ged100")
     })

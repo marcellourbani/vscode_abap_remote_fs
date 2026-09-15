@@ -3,7 +3,7 @@ import { FavouritesProvider } from "./views/favourites"
 import { atcProvider, registerSCIDecorator } from "./views/abaptestcockpit"
 import { FsProvider } from "./fs/FsProvider"
 import { AbapFileDecorationProvider } from "./fs/AbapFileDecorationProvider"
-import { workspace, ExtensionContext, languages, commands } from "vscode"
+import { workspace, type ExtensionContext, languages, commands } from "vscode"
 import {
   activeTextEditorChangedListener,
   documentChangedListener,
@@ -18,7 +18,7 @@ import { ClassHierarchyLensProvider } from "./adt/classhierarchy"
 import { abapGitProvider } from "./views/abapgit"
 import { loadTokens, clearTokens } from "./oauth"
 import { registerAbapGit } from "./scm/abapGit"
-import { AbapFsApi, api } from "./api"
+import { type AbapFsApi, api } from "./api"
 import { ADTSCHEME, disconnect, hasLocks } from "./adt/conections"
 import { MessagesProvider } from "./editors/messages"
 import { IncludeProvider } from "./adt/includes"
@@ -51,6 +51,7 @@ import { registerChatTools } from "./adt/ai/tools"
 import { initializeEnhancementDecorations } from "./views/enhancementDecorations"
 import { initializeBlameGutter } from "./views/blameGutter"
 import { clearSystemInfoCache } from "./services/sapSystemInfo"
+import { copilotLogger } from "./services/abapCopilotLogger"
 import { HeartbeatWatchlist } from "./services/heartbeat/heartbeatWatchlist"
 import { RapGeneratorPanel } from "./views/rapGenerator/rapGeneratorView"
 import { visualizeDependencyGraph } from "./services/dependencyGraph"
@@ -155,7 +156,6 @@ export async function activate(ctx: ExtensionContext): Promise<AbapFsApi> {
     // Register List ADT Feeds command
     context.subscriptions.push(commands.registerCommand("abapfs.listAdtFeeds", listAdtFeedsCommand))
 
-    const { copilotLogger } = require("./services/abapCopilotLogger")
     copilotLogger.info(
       "Extension",
       "ABAP FS logging initialized - Ready to document your debugging adventures 🗺️"

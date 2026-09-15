@@ -1,6 +1,6 @@
-import { AbapObjectBase, AbapObjectConstructor, AbapObject } from "./AbapObject"
-import { AbapObjectService } from "./AOService"
-import { Node } from "abap-adt-api"
+import { AbapObjectBase, type AbapObjectConstructor, type AbapObject } from "./AbapObject"
+import { type AbapObjectService } from "./AOService"
+import { type Node } from "abap-adt-api"
 import { AbapObjectError } from "./AOError"
 
 import { AbapClass } from "./objectTypes/AbapClass"

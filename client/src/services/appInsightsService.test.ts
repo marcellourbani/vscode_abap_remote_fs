@@ -1,29 +1,27 @@
-jest.mock(
-  "vscode",
-  () => ({
-    extensions: {
-      getExtension: jest.fn().mockReturnValue({ packageJSON: { version: "2.1.0" } })
-    },
-    version: "1.85.0",
-    env: { isTelemetryEnabled: false },
-    Disposable: jest.fn().mockImplementation((fn: () => void) => ({ dispose: fn }))
-  }),
-  { virtual: true }
-)
+vi.mock("vscode", () => ({
+  extensions: {
+    getExtension: vi.fn().mockReturnValue({ packageJSON: { version: "2.1.0" } })
+  },
+  version: "1.85.0",
+  env: { isTelemetryEnabled: false },
+  Disposable: vi.fn().mockImplementation(function (fn: () => void) {
+    return { dispose: fn }
+  })
+}))
 
-jest.mock("../lib", () => ({ log: jest.fn() }))
+vi.mock("../lib", () => ({ log: vi.fn() }))
 
-jest.mock("applicationinsights", () => ({
-  setup: jest.fn().mockReturnThis(),
-  setAutoCollectRequests: jest.fn().mockReturnThis(),
-  setAutoCollectPerformance: jest.fn().mockReturnThis(),
-  setAutoCollectExceptions: jest.fn().mockReturnThis(),
-  setAutoCollectDependencies: jest.fn().mockReturnThis(),
-  setAutoCollectConsole: jest.fn().mockReturnThis(),
-  setUseDiskRetryCaching: jest.fn().mockReturnThis(),
-  setSendLiveMetrics: jest.fn().mockReturnThis(),
-  setInternalLogging: jest.fn().mockReturnThis(),
-  start: jest.fn(),
+vi.mock("applicationinsights", () => ({
+  setup: vi.fn().mockReturnThis(),
+  setAutoCollectRequests: vi.fn().mockReturnThis(),
+  setAutoCollectPerformance: vi.fn().mockReturnThis(),
+  setAutoCollectExceptions: vi.fn().mockReturnThis(),
+  setAutoCollectDependencies: vi.fn().mockReturnThis(),
+  setAutoCollectConsole: vi.fn().mockReturnThis(),
+  setUseDiskRetryCaching: vi.fn().mockReturnThis(),
+  setSendLiveMetrics: vi.fn().mockReturnThis(),
+  setInternalLogging: vi.fn().mockReturnThis(),
+  start: vi.fn(),
   defaultClient: {
     config: {
       maxBatchIntervalMs: 0,
@@ -34,46 +32,51 @@ jest.mock("applicationinsights", () => ({
       enableAutoCollectRequests: false
     },
     commonProperties: {},
-    trackEvent: jest.fn(),
-    trackMetric: jest.fn(),
-    flush: jest.fn()
+    trackEvent: vi.fn(),
+    trackMetric: vi.fn(),
+    flush: vi.fn()
   }
 }))
 
-jest.mock("os", () => ({
-  hostname: jest.fn().mockReturnValue("test-machine"),
-  userInfo: jest.fn().mockReturnValue({ username: "testuser" }),
-  platform: jest.fn().mockReturnValue("linux"),
-  arch: jest.fn().mockReturnValue("x64")
+vi.mock("os", () => ({
+  hostname: vi.fn().mockReturnValue("test-machine"),
+  userInfo: vi.fn().mockReturnValue({ username: "testuser" }),
+  platform: vi.fn().mockReturnValue("linux"),
+  arch: vi.fn().mockReturnValue("x64")
 }))
 
-jest.mock("crypto", () => {
-  const actual = jest.requireActual("crypto")
+vi.mock("crypto", async () => {
+  const actual = await vi.importActual("crypto")
   return {
     ...actual,
-    randomUUID: jest.fn().mockReturnValue("00000000-0000-0000-0000-000000000001")
+    randomUUID: vi.fn().mockReturnValue("00000000-0000-0000-0000-000000000001")
   }
 })
 
-jest.mock("../config", () => ({
+vi.mock("../config", () => ({
   RemoteManager: {
-    get: jest.fn().mockReturnValue({
-      byId: jest.fn().mockReturnValue(null),
-      remoteList: jest.fn().mockReturnValue([])
+    get: vi.fn().mockReturnValue({
+      byId: vi.fn().mockReturnValue(null),
+      remoteList: vi.fn().mockReturnValue([])
     })
   }
 }))
 
-jest.mock("./sapSystemValidator", () => ({
+// Shared instance so the SUT's require("./sapSystemValidator") and the test observe the
+// SAME getUserMapping mock (require vs import can otherwise resolve distinct mock instances).
+const { mockGetUserMapping } = vi.hoisted(() => ({
+  mockGetUserMapping: vi.fn().mockReturnValue(null)
+}))
+
+vi.mock("./sapSystemValidator", () => ({
   SapSystemValidator: {
-    getInstance: jest.fn().mockReturnValue({
-      getUserMapping: jest.fn().mockReturnValue(null)
-    })
+    getInstance: vi.fn(() => ({ getUserMapping: mockGetUserMapping }))
   }
 }))
 
 import { AppInsightsService } from "./appInsightsService"
 import * as appInsights from "applicationinsights"
+import * as __$mock_sapSystemValidator from "./sapSystemValidator"
 
 const mockDefaultClient = appInsights.defaultClient as any
 
@@ -87,14 +90,14 @@ function makeContext() {
 }
 
 beforeEach(() => {
-  jest.useFakeTimers()
-  jest.clearAllMocks()
+  vi.useFakeTimers()
+  vi.clearAllMocks()
   ;(AppInsightsService as any).instance = undefined
 })
 
 afterEach(() => {
-  jest.runOnlyPendingTimers()
-  jest.useRealTimers()
+  vi.runOnlyPendingTimers()
+  vi.useRealTimers()
 })
 
 // ─── getInstance ──────────────────────────────────────────────────────────────
@@ -220,19 +223,17 @@ describe("getUserMapping priority", () => {
     ;(AppInsightsService as any).instance = undefined
     const svc = AppInsightsService.getInstance(makeContext())
 
-    const mockValidator = require("./sapSystemValidator").SapSystemValidator.getInstance()
-    mockValidator.getUserMapping.mockReturnValue({ uniqueId: "dev-abc", manager: "Boss" })
+    mockGetUserMapping.mockReturnValue({ uniqueId: "dev-abc", manager: "Boss" })
 
     const result = (svc as any).getUserMapping({ username: "john.doe" })
-    expect(mockValidator.getUserMapping).toHaveBeenCalledWith("john.doe")
+    expect(mockGetUserMapping).toHaveBeenCalledWith("john.doe")
   })
 
   test("returns null when validator getUserMapping returns null", () => {
     ;(AppInsightsService as any).instance = undefined
     const svc = AppInsightsService.getInstance(makeContext())
 
-    const mockValidator = require("./sapSystemValidator").SapSystemValidator.getInstance()
-    mockValidator.getUserMapping.mockReturnValue(null)
+    mockGetUserMapping.mockReturnValue(null)
 
     const result = (svc as any).getUserMapping({ username: "unknown.user" })
     expect(result).toBeNull()

@@ -14,7 +14,7 @@
  * never a business domain (no setMaterial, no pickPlant).
  */
 import type { Page, Frame, TestInfo, Locator, FrameLocator } from "@playwright/test"
-import { runSe16n, Se16nSpec, Se16nResult } from "./se16n"
+import { runSe16n, type Se16nSpec, type Se16nResult } from "./se16n"
 
 function escapeRe(s: string): string {
   return s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")
@@ -47,7 +47,7 @@ function nameSimilarity(query: string, candidate: string): number {
   return union ? shared / union : 0
 }
 import { waitForServer, waitForDomStable } from "./waiters"
-import { dismissKnownPopups, Interrupter, listOpenDialogs } from "./popup-guard"
+import { dismissKnownPopups, type Interrupter, listOpenDialogs } from "./popup-guard"
 import { detectRuntimeError, detectSilentBounce } from "./dump-detector"
 import { Evidence } from "./evidence"
 

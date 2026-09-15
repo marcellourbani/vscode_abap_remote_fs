@@ -1,5 +1,5 @@
-import { AbapObjectBase, AbapObject } from "../AbapObject"
-import { AbapObjectService } from "../AOService"
+import { AbapObjectBase, type AbapObject } from "../AbapObject"
+import { type AbapObjectService } from "../AOService"
 import { getObjectTypeConfig } from "../registry"
 const tag = Symbol("AbapSimple")
 
@@ -17,7 +17,7 @@ export class AbapSimple extends AbapObjectBase {
   ) {
     super(type, name, path, false, techName, parent, sapGuiUri, client)
   }
-  get gui_objects(): "yes" | "no" | "better" {
+  override get gui_objects(): "yes" | "no" | "better" {
     const config = getObjectTypeConfig(this.type)
     if (config) return config.gui_objects
     return "yes"

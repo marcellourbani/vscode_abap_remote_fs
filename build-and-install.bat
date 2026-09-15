@@ -3,7 +3,7 @@ echo 🚀 Building and Installing ABAP Intelligence Extension...
 echo ⏰ Build started at %TIME% on %DATE%
 set start_time=%TIME%
 echo 📦 Packaging extension (vsce runs vscode:prepublish, which builds everything)...
-call npx vsce package --allow-star-activation --allow-missing-repository --out "abap-fs-local.vsix"
+call pnpm exec vsce package --allow-star-activation --allow-missing-repository --out "abap-fs-local.vsix"
 if %errorlevel% neq 0 (
     echo ❌ Build or packaging failed!
     pause

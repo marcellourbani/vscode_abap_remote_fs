@@ -1,21 +1,21 @@
 import {
-  TextDocumentPositionParams,
+  type TextDocumentPositionParams,
   Location,
-  ReferenceParams,
+  type ReferenceParams,
   CancellationToken,
   Position,
   CancellationTokenSource
 } from "vscode-languageserver"
 import { sourceRange, clientAndObjfromUrl } from "./utilities"
 import {
-  ReferenceUri,
-  Location as ApiLocation,
+  type ReferenceUri,
+  type Location as ApiLocation,
   ADTClient,
-  ClassComponent,
-  UsageReference
+  type ClassComponent,
+  type UsageReference
 } from "abap-adt-api"
 import { vscUrl } from "./objectManager"
-import { groupBy } from "lodash"
+import { groupBy } from "es-toolkit"
 import { log, warn } from "./clientManager"
 import { getObjectSource, setSearchProgress } from "./clientapis"
 import {

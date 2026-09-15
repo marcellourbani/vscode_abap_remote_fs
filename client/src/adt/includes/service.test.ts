@@ -1,36 +1,42 @@
-jest.mock("vscode", () => ({}), { virtual: true })
-jest.mock("abapfs", () => ({
-  isAbapFile: jest.fn(),
-  isAbapStat: jest.fn()
+vi.mock("vscode", () => ({}))
+vi.mock("abapfs", () => ({
+  isAbapFile: vi.fn(),
+  isAbapStat: vi.fn()
 }))
-jest.mock("../../lib", () => ({
-  cache: jest.fn((fn: any) => ({ get: fn })),
-  log: jest.fn()
+vi.mock("../../lib", () => ({
+  cache: vi.fn(function (fn: any) {
+    return { get: fn }
+  }),
+  log: vi.fn()
 }))
-jest.mock("../conections", () => ({
-  getRoot: jest.fn()
+vi.mock("../conections", () => ({
+  getRoot: vi.fn()
 }))
-jest.mock("abapobject", () => ({ PACKAGE: "DEVC/K" }))
+vi.mock("abapobject", () => ({ PACKAGE: "DEVC/K" }))
 
 import { IncludeService } from "./service"
 import { getRoot } from "../conections"
 import { isAbapFile, isAbapStat } from "abapfs"
+import * as __$mock_lib from "../../lib"
+import type { Mock } from "vitest"
 
-const mockIsAbapFile = isAbapFile as unknown as jest.Mock
-const mockIsAbapStat = isAbapStat as unknown as jest.Mock
+const mockIsAbapFile = isAbapFile as unknown as Mock
+const mockIsAbapStat = isAbapStat as unknown as Mock
 
 // The static get() uses a cache that calls the constructor with getRoot(connId).
 // We need to set up getRoot to return a mock Root.
 const mockRoot = {
-  getNode: jest.fn(),
-  getNodeAsync: jest.fn(),
-  getNodePath: jest.fn(() => [])
+  getNode: vi.fn(),
+  getNodeAsync: vi.fn(),
+  getNodePath: vi.fn(function () {
+    return []
+  })
 }
 
 describe("IncludeService", () => {
   beforeEach(() => {
-    jest.clearAllMocks()
-    ;(getRoot as jest.Mock).mockReturnValue(mockRoot)
+    vi.clearAllMocks()
+    ;(getRoot as Mock).mockReturnValue(mockRoot)
   })
 
   describe("static get", () => {
@@ -170,7 +176,7 @@ describe("IncludeService", () => {
     })
 
     it("logs warning when setting include for unknown path with PROG/I file", () => {
-      const lib = require("../../lib")
+      const lib = __$mock_lib
       const mockFile = { object: { type: "PROG/I" } }
       mockIsAbapFile.mockReturnValue(true)
       mockRoot.getNode.mockReturnValue(mockFile)
@@ -181,7 +187,7 @@ describe("IncludeService", () => {
     })
 
     it("does nothing when node is not an abap file", () => {
-      const lib = require("../../lib")
+      const lib = __$mock_lib
       mockIsAbapFile.mockReturnValue(false)
       mockRoot.getNode.mockReturnValue({})
 
@@ -219,7 +225,9 @@ describe("IncludeService", () => {
         path: "/sap/bc/adt/programs/programs/zprog"
       }
       const parentStat = { object: parentObj }
-      mockIsAbapStat.mockImplementation((f: any) => f === parentStat)
+      mockIsAbapStat.mockImplementation(function (f: any) {
+        return f === parentStat
+      })
       mockRoot.getNodePath.mockReturnValue([{ file: {} }, { file: parentStat }] as any)
 
       const result = service.guessParent("/some/include/path")
@@ -232,7 +240,9 @@ describe("IncludeService", () => {
 
     it("skips DEVC/K (package) parents", () => {
       const pkgStat = { object: { name: "PKG", type: "DEVC/K", path: "/pkg" } }
-      mockIsAbapStat.mockImplementation((f: any) => f === pkgStat)
+      mockIsAbapStat.mockImplementation(function (f: any) {
+        return f === pkgStat
+      })
       mockRoot.getNodePath.mockReturnValue([{ file: {} }, { file: pkgStat }] as any)
 
       const result = service.guessParent("/some/include/path")
@@ -256,7 +266,7 @@ describe("IncludeService", () => {
     })
 
     it("returns undefined for abap file that doesn't need main", async () => {
-      const file = { object: { type: "PROG/P", mainPrograms: jest.fn() } }
+      const file = { object: { type: "PROG/P", mainPrograms: vi.fn() } }
       mockIsAbapFile.mockReturnValue(true)
       mockRoot.getNodeAsync.mockResolvedValue(file)
 
@@ -272,7 +282,7 @@ describe("IncludeService", () => {
         object: {
           type: "PROG/I",
           path: "/include/path",
-          mainPrograms: jest.fn().mockResolvedValue(expectedCandidates)
+          mainPrograms: vi.fn().mockResolvedValue(expectedCandidates)
         }
       }
       mockIsAbapFile.mockReturnValue(true)
@@ -290,7 +300,7 @@ describe("IncludeService", () => {
         object: {
           type: "PROG/I",
           path: "/include/path",
-          mainPrograms: jest.fn().mockResolvedValue(singleCandidate)
+          mainPrograms: vi.fn().mockResolvedValue(singleCandidate)
         }
       }
       mockIsAbapFile.mockReturnValue(true)
@@ -310,7 +320,7 @@ describe("IncludeService", () => {
         object: {
           type: "PROG/I",
           path: "/include/path",
-          mainPrograms: jest.fn().mockResolvedValue(multipleCandidates)
+          mainPrograms: vi.fn().mockResolvedValue(multipleCandidates)
         }
       }
       mockIsAbapFile.mockReturnValue(true)
@@ -329,7 +339,7 @@ describe("IncludeService", () => {
         object: {
           type: "PROG/I",
           path: "/include/path",
-          mainPrograms: jest.fn().mockResolvedValue(candidates)
+          mainPrograms: vi.fn().mockResolvedValue(candidates)
         }
       }
       mockIsAbapFile.mockReturnValue(true)
@@ -345,7 +355,7 @@ describe("IncludeService", () => {
     it("refreshes candidates when refresh=true", async () => {
       const candidates1 = [{ "adtcore:name": "Z1", "adtcore:type": "PROG/P", "adtcore:uri": "/u1" }]
       const candidates2 = [{ "adtcore:name": "Z2", "adtcore:type": "PROG/P", "adtcore:uri": "/u2" }]
-      const mainPrograms = jest
+      const mainPrograms = vi
         .fn()
         .mockResolvedValueOnce(candidates1)
         .mockResolvedValueOnce(candidates2)

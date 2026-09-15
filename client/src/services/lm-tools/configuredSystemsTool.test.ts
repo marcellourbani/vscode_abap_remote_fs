@@ -1,25 +1,28 @@
-jest.mock(
-  "vscode",
-  () => ({
-    LanguageModelToolResult: jest.fn().mockImplementation((parts: any[]) => ({ parts })),
-    LanguageModelTextPart: jest.fn().mockImplementation((text: string) => ({ text })),
-    workspace: {
-      workspaceFolders: [],
-      getConfiguration: jest.fn()
-    }
+vi.mock("vscode", () => ({
+  LanguageModelToolResult: vi.fn().mockImplementation(function (parts: any[]) {
+    return { parts }
   }),
-  { virtual: true }
-)
-
-jest.mock("../telemetry", () => ({ logTelemetry: jest.fn() }))
-jest.mock("./toolRegistry", () => ({
-  registerToolWithRegistry: jest.fn(() => ({ dispose: jest.fn() }))
+  LanguageModelTextPart: vi.fn().mockImplementation(function (text: string) {
+    return { text }
+  }),
+  workspace: {
+    workspaceFolders: [],
+    getConfiguration: vi.fn()
+  }
 }))
-jest.mock("../../config", () => ({ getConfig: jest.fn() }))
-jest.mock("./toolGuard", () => ({ assertToolInvocationAuthorized: jest.fn() }))
+
+vi.mock("../telemetry", () => ({ logTelemetry: vi.fn() }))
+vi.mock("./toolRegistry", () => ({
+  registerToolWithRegistry: vi.fn(function () {
+    return { dispose: vi.fn() }
+  })
+}))
+vi.mock("../../config", () => ({ getConfig: vi.fn() }))
+vi.mock("./toolGuard", () => ({ assertToolInvocationAuthorized: vi.fn() }))
 
 import { ConfiguredSystemsTool } from "./configuredSystemsTool"
 import { getConfig } from "../../config"
+import type { Mock } from "vitest"
 
 const mockToken = {} as any
 
@@ -58,17 +61,17 @@ const packageJSON = {
 
 describe("ConfiguredSystemsTool", () => {
   beforeEach(() => {
-    jest.clearAllMocks()
+    vi.clearAllMocks()
   })
 
   it("lists IDs without expanding every system", async () => {
-    const inspect = jest.fn().mockReturnValue({
+    const inspect = vi.fn().mockReturnValue({
       globalValue: {
         DEV100: { client: "100" },
         QAS200: { client: "200" }
       }
     })
-    ;(getConfig as jest.Mock).mockReturnValue({ inspect })
+    ;(getConfig as Mock).mockReturnValue({ inspect })
 
     const result: any = await new ConfiguredSystemsTool(packageJSON).invoke(
       makeOptions(),
@@ -86,7 +89,7 @@ describe("ConfiguredSystemsTool", () => {
   })
 
   it("returns one system with grouped configured values and package defaults", async () => {
-    const inspect = jest.fn((key: string) => {
+    const inspect = vi.fn(function (key: string) {
       if (key === "remote") {
         return {
           globalValue: {
@@ -117,7 +120,7 @@ describe("ConfiguredSystemsTool", () => {
       }
       return {}
     })
-    ;(getConfig as jest.Mock).mockReturnValue({ inspect })
+    ;(getConfig as Mock).mockReturnValue({ inspect })
 
     const result: any = await new ConfiguredSystemsTool(packageJSON).invoke(
       makeOptions({ connectionId: "dev100" }),
@@ -142,8 +145,8 @@ describe("ConfiguredSystemsTool", () => {
   })
 
   it("returns an empty ID list when no remotes exist", async () => {
-    ;(getConfig as jest.Mock).mockReturnValue({
-      inspect: jest.fn().mockReturnValue({ globalValue: {}, workspaceValue: {} })
+    ;(getConfig as Mock).mockReturnValue({
+      inspect: vi.fn().mockReturnValue({ globalValue: {}, workspaceValue: {} })
     })
 
     const result: any = await new ConfiguredSystemsTool(packageJSON).invoke(
@@ -154,8 +157,8 @@ describe("ConfiguredSystemsTool", () => {
   })
 
   it("rejects unknown connection IDs", async () => {
-    ;(getConfig as jest.Mock).mockReturnValue({
-      inspect: jest.fn().mockReturnValue({ globalValue: { DEV100: {} } })
+    ;(getConfig as Mock).mockReturnValue({
+      inspect: vi.fn().mockReturnValue({ globalValue: { DEV100: {} } })
     })
 
     await expect(
@@ -167,7 +170,7 @@ describe("ConfiguredSystemsTool", () => {
   })
 
   it("wraps configuration errors", async () => {
-    ;(getConfig as jest.Mock).mockImplementation(() => {
+    ;(getConfig as Mock).mockImplementation(function () {
       throw new Error("config error")
     })
 

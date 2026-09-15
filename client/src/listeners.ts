@@ -1,22 +1,22 @@
 import {
-  TextDocument,
-  TextDocumentChangeEvent,
+  type TextDocument,
+  type TextDocumentChangeEvent,
   TextDocumentSaveReason,
-  TextDocumentWillSaveEvent,
-  TextEditor,
+  type TextDocumentWillSaveEvent,
+  type TextEditor,
   Uri,
   Disposable,
-  Event,
+  type Event,
   workspace,
   TabInputTextDiff
 } from "vscode"
 
 import { caughtToString, debounce, log, viewableObjecttypes } from "./lib"
 import { ADTSCHEME, uriRoot, abapUri, getRoot } from "./adt/conections"
-import { AbapObject } from "abapobject"
+import { type AbapObject } from "abapobject"
 import { isAbapStat } from "abapfs"
 import { isCsrfError } from "abap-adt-api"
-import { LockStatus } from "abapfs/out/lockObject"
+import { type LockStatus } from "abapfs"
 import { uriAbapFile } from "./adt/operations/AdtObjectFinder"
 import { versionRevisions } from "./scm/abaprevisions"
 import { setContext } from "./context"
@@ -26,7 +26,7 @@ import { triggerSyntaxCheck } from "./langClient"
 import { updateEnhancementDecorations } from "./views/enhancementDecorations"
 import { updateCleanerContext } from "./services/cleanerCommands"
 import { onBlameActiveEditorChanged, onBlameDocumentChanged } from "./views/blameGutter"
-import { ReloginError } from "abapfs/out/lockManager"
+import { ReloginError } from "abapfs"
 import { funWindow as window } from "./services/funMessenger"
 
 // Global tracking of save reasons to coordinate between documentWillSave and writeFile

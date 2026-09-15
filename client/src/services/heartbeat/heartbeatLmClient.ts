@@ -9,7 +9,7 @@
  */
 
 import * as vscode from "vscode"
-import { HeartbeatConfig, parseHeartbeatResponse, HEARTBEAT_OK_TOKEN } from "./heartbeatTypes"
+import { type HeartbeatConfig, parseHeartbeatResponse, HEARTBEAT_OK_TOKEN } from "./heartbeatTypes"
 import { HeartbeatWatchlist } from "./heartbeatWatchlist"
 import { toolRegistry } from "../lm-tools/toolRegistry"
 import { createMcpAuthorizedOptions } from "../lm-tools/toolGuard"

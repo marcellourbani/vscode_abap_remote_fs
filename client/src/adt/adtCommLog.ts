@@ -1,11 +1,11 @@
 import {
-  CancellationToken,
+  type CancellationToken,
   commands,
   env,
   ProgressLocation,
-  WebviewView,
-  WebviewViewProvider,
-  WebviewViewResolveContext,
+  type WebviewView,
+  type WebviewViewProvider,
+  type WebviewViewResolveContext,
   window
 } from "vscode"
 import { context } from "../extension"
@@ -13,7 +13,7 @@ import { client } from "../langClient"
 import { Methods } from "vscode-abap-remote-fs-sharedapi"
 import * as path from "path"
 import * as fs from "fs"
-import { LogData } from "abap-adt-api/build/requestLogger"
+import { type LogData } from "abap-adt-api/build/requestLogger"
 import { ignore } from "../lib"
 import { AbapFsCommands, command } from "../commands"
 import { pickAdtRoot } from "../config"

@@ -1,18 +1,18 @@
 import {
-  CompletionParams,
+  type CompletionParams,
   CompletionItem,
   CompletionList,
   Position,
   InsertTextFormat,
-  SignatureHelpParams,
-  SignatureHelp,
+  type SignatureHelpParams,
+  type SignatureHelp,
   SignatureInformation,
   ParameterInformation
 } from "vscode-languageserver"
-import { clientAndObjfromUrl, ClientAndObject } from "./utilities"
+import { clientAndObjfromUrl, type ClientAndObject } from "./utilities"
 import { log } from "./clientManager"
 import { isAbap, callThrottler, isCdsView, caughtToString } from "./functions"
-import { CompletionProposal, ADTClient, CompletionElementInfo } from "abap-adt-api"
+import { type CompletionProposal, ADTClient, type CompletionElementInfo } from "abap-adt-api"
 import { cdsCompletionExtractor, cdsDataSources } from "./cdsSyntax"
 import { formatItem } from "./completionutils"
 

@@ -1,0 +1,20 @@
+packages:
+  - client
+  - server
+  - modules/*
+
+allowBuilds:
+  "@scarf/scarf": false
+  "@vscode/vsce-sign": true
+  keytar: false
+
+catalog:
+  "@types/node": ^22.0.0
+  "@types/vscode": ^1.104.0
+  abap-adt-api: ^8.4.3
+  entities: ^8.1.0
+  fast-xml-parser: ^5.11.1
+  tsdown: 0.23.0
+  typescript: 6.0.3
+  vitest: 5.0.0
+  vitest-mock-extended: 5.1.1

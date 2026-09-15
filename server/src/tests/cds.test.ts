@@ -2,7 +2,7 @@ import { cdsCompletionExtractor } from "../cdsSyntax"
 import { parseCDS, findNode } from "../cdsSyntax"
 import { Position } from "vscode-languageserver-protocol"
 import { ABAPCDSParser } from "abapcdsgrammar"
-import { ANTLRErrorListener, Token } from "antlr4ts"
+import type { ANTLRErrorListener, Token } from "antlr4ts"
 
 const sampleview = `@AbapCatalog.sqlViewName: 'ZAPIDUMMY_DDEFSV'
 @AbapCatalog.compiler.compareFilter: true

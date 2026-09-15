@@ -1,22 +1,22 @@
 import {
-  MainProgram,
-  CommLogEntryData,
-  AuthHeadersResponse,
+  type MainProgram,
+  type CommLogEntryData,
+  type AuthHeadersResponse,
   getAuthMethod,
   hasCertAuthConfig,
   hasOAuthOnPremConfig
 } from "vscode-abap-remote-fs-sharedapi"
 import { log, channel, rangeApi2Vsc } from "./lib"
 import {
-  AbapObjectDetail,
+  type AbapObjectDetail,
   Methods,
-  StringWrapper,
-  AbapObjectSource,
+  type StringWrapper,
+  type AbapObjectSource,
   urlFromPath,
-  UriRequest,
-  SearchProgress
+  type UriRequest,
+  type SearchProgress
 } from "vscode-abap-remote-fs-sharedapi"
-import { ExtensionContext, Uri, ProgressLocation, workspace, WorkspaceEdit } from "vscode"
+import { type ExtensionContext, Uri, ProgressLocation, workspace, WorkspaceEdit } from "vscode"
 import {
   LanguageClient,
   TransportKind,
@@ -25,16 +25,15 @@ import {
 } from "vscode-languageclient/node"
 export let client: LanguageClient
 import { join } from "path"
-import { FixProposal, Delta, LogData } from "abap-adt-api"
+import { type FixProposal, type Delta, type LogData } from "abap-adt-api"
 import { command, AbapFsCommands } from "./commands"
 import { RemoteManager, formatKey } from "./config"
 import { futureToken } from "./oauth"
 import { getRoot, ADTSCHEME, uriRoot, getClient } from "./adt/conections"
 import { CallLogger } from "./adt/adtCommLog"
 import { isAbapFile } from "abapfs"
-import { AbapObject } from "abapobject"
+import { type AbapObject } from "abapobject"
 import { IncludeService, IncludeProvider } from "./adt/includes"
-import * as R from "ramda"
 import { funWindow as window } from "./services/funMessenger"
 import { buildCookieHeaders, errorMessage } from "./auth/utils"
 
@@ -358,7 +357,10 @@ export class LanguageCommands {
     const source = await readEditorObjectSource(uri)
 
     const deltaLine = (d: Delta) => d.range.start.line
-    const sortDelta = R.sortWith<Delta>([R.ascend(R.prop("uri")), R.descend(deltaLine)])
+    const sortDelta = (arr: Delta[]): Delta[] =>
+      [...arr].sort((a, b) =>
+        a.uri < b.uri ? -1 : a.uri > b.uri ? 1 : deltaLine(b) - deltaLine(a)
+      )
 
     const deltas = await cl.fixEdits(proposal, source.source).then(sortDelta)
     if (!deltas || deltas.length === 0) return

@@ -1,18 +1,40 @@
-jest.mock("vscode", () => ({}), { virtual: true })
-jest.mock("../../lib", () => ({
-  mapGet: jest.fn(async (map: Map<any, any>, key: any, fn: () => any) => {
+vi.mock("vscode", () => ({}))
+vi.mock("../../lib", () => ({
+  mapGet: vi.fn(async function (map: Map<any, any>, key: any, fn: () => any) {
     if (!map.has(key)) map.set(key, await fn())
     return map.get(key)
   }),
-  ArrayToMap: jest.fn((key: string) => (arr: any[]) => new Map(arr.map((x: any) => [x[key], x])))
+  ArrayToMap: vi.fn(function (key: string) {
+    return (arr: any[]) => new Map(arr.map((x: any) => [x[key], x]))
+  }),
+  cache: (creator: any, keyTranslator: any = (x: any) => x) => {
+    const values = new Map()
+    return {
+      get: (key: any) => {
+        const mapKey = keyTranslator(key)
+        if (!values.has(mapKey)) values.set(mapKey, creator(key))
+        return values.get(mapKey)
+      },
+      get size() {
+        return values.size
+      },
+      *[Symbol.iterator]() {
+        yield* values.values()
+      }
+    }
+  }
 }))
-jest.mock("../../adt/conections", () => ({ getOrCreateClient: jest.fn() }))
-jest.mock(".", () => ({ addRepo: jest.fn() }))
+vi.mock("../../adt/conections", () => ({ getOrCreateClient: vi.fn() }))
+vi.mock(".", () => ({ addRepo: vi.fn() }))
+vi.mock("./documentProvider", () => ({
+  registerGitDocProvider: vi.fn(() => ({ dispose: vi.fn() }))
+}))
 
 import { saveRepos, registerAbapGit } from "./storage"
-import { ScmData, ScmCredentials } from "./scm"
+import type { ScmData, ScmCredentials } from "./scm"
 import { getOrCreateClient } from "../../adt/conections"
 import { addRepo } from "."
+import type { Mock } from "vitest"
 
 function makeScmData(overrides: {
   connId: string
@@ -37,12 +59,13 @@ describe("saveRepos", () => {
   })
 
   it("saves correct StoredRepo format after registration", () => {
-    const mockUpdate = jest.fn()
+    const mockUpdate = vi.fn()
     const mockContext = {
-      workspaceState: { get: jest.fn().mockReturnValue([]), update: mockUpdate }
+      workspaceState: { get: vi.fn().mockReturnValue([]), update: mockUpdate },
+      subscriptions: []
     }
-    ;(getOrCreateClient as jest.Mock).mockResolvedValue({
-      gitRepos: jest.fn().mockResolvedValue([])
+    ;(getOrCreateClient as Mock).mockResolvedValue({
+      gitRepos: vi.fn().mockResolvedValue([])
     })
     registerAbapGit(mockContext as any)
 
@@ -64,12 +87,13 @@ describe("saveRepos", () => {
   })
 
   it("handles empty scms map", () => {
-    const mockUpdate = jest.fn()
+    const mockUpdate = vi.fn()
     const mockContext = {
-      workspaceState: { get: jest.fn().mockReturnValue([]), update: mockUpdate }
+      workspaceState: { get: vi.fn().mockReturnValue([]), update: mockUpdate },
+      subscriptions: []
     }
-    ;(getOrCreateClient as jest.Mock).mockResolvedValue({
-      gitRepos: jest.fn().mockResolvedValue([])
+    ;(getOrCreateClient as Mock).mockResolvedValue({
+      gitRepos: vi.fn().mockResolvedValue([])
     })
     registerAbapGit(mockContext as any)
 
@@ -79,12 +103,13 @@ describe("saveRepos", () => {
   })
 
   it("includes user credentials when present", () => {
-    const mockUpdate = jest.fn()
+    const mockUpdate = vi.fn()
     const mockContext = {
-      workspaceState: { get: jest.fn().mockReturnValue([]), update: mockUpdate }
+      workspaceState: { get: vi.fn().mockReturnValue([]), update: mockUpdate },
+      subscriptions: []
     }
-    ;(getOrCreateClient as jest.Mock).mockResolvedValue({
-      gitRepos: jest.fn().mockResolvedValue([])
+    ;(getOrCreateClient as Mock).mockResolvedValue({
+      gitRepos: vi.fn().mockResolvedValue([])
     })
     registerAbapGit(mockContext as any)
 
@@ -118,12 +143,13 @@ describe("saveRepos", () => {
   })
 
   it("omits user field when credentials are absent", () => {
-    const mockUpdate = jest.fn()
+    const mockUpdate = vi.fn()
     const mockContext = {
-      workspaceState: { get: jest.fn().mockReturnValue([]), update: mockUpdate }
+      workspaceState: { get: vi.fn().mockReturnValue([]), update: mockUpdate },
+      subscriptions: []
     }
-    ;(getOrCreateClient as jest.Mock).mockResolvedValue({
-      gitRepos: jest.fn().mockResolvedValue([])
+    ;(getOrCreateClient as Mock).mockResolvedValue({
+      gitRepos: vi.fn().mockResolvedValue([])
     })
     registerAbapGit(mockContext as any)
 
@@ -144,12 +170,13 @@ describe("saveRepos", () => {
   })
 
   it("saves multiple repos from different connections", () => {
-    const mockUpdate = jest.fn()
+    const mockUpdate = vi.fn()
     const mockContext = {
-      workspaceState: { get: jest.fn().mockReturnValue([]), update: mockUpdate }
+      workspaceState: { get: vi.fn().mockReturnValue([]), update: mockUpdate },
+      subscriptions: []
     }
-    ;(getOrCreateClient as jest.Mock).mockResolvedValue({
-      gitRepos: jest.fn().mockResolvedValue([])
+    ;(getOrCreateClient as Mock).mockResolvedValue({
+      gitRepos: vi.fn().mockResolvedValue([])
     })
     registerAbapGit(mockContext as any)
 
@@ -172,12 +199,13 @@ describe("saveRepos", () => {
 
 describe("registerAbapGit", () => {
   it("uses workspaceState from context and triggers loadRepos", () => {
-    const mockGet = jest.fn().mockReturnValue([])
+    const mockGet = vi.fn().mockReturnValue([])
     const mockContext = {
-      workspaceState: { get: mockGet, update: jest.fn() }
+      workspaceState: { get: mockGet, update: vi.fn() },
+      subscriptions: []
     }
-    ;(getOrCreateClient as jest.Mock).mockResolvedValue({
-      gitRepos: jest.fn().mockResolvedValue([])
+    ;(getOrCreateClient as Mock).mockResolvedValue({
+      gitRepos: vi.fn().mockResolvedValue([])
     })
 
     registerAbapGit(mockContext as any)
@@ -192,13 +220,14 @@ describe("registerAbapGit", () => {
   it("loads stored repos and calls addRepo for matching ones", async () => {
     const mockRepo = { key: "repo1", url: "https://example.com" }
     const storedRepos = [{ connId: "DEV", repoKey: "repo1", user: "admin" }]
-    ;(getOrCreateClient as jest.Mock).mockResolvedValue({
-      gitRepos: jest.fn().mockResolvedValue([mockRepo])
+    ;(getOrCreateClient as Mock).mockResolvedValue({
+      gitRepos: vi.fn().mockResolvedValue([mockRepo])
     })
-    ;(addRepo as jest.Mock).mockResolvedValue({ credentials: undefined })
+    ;(addRepo as Mock).mockResolvedValue({ credentials: undefined })
 
     const mockContext = {
-      workspaceState: { get: jest.fn().mockReturnValue(storedRepos), update: jest.fn() }
+      workspaceState: { get: vi.fn().mockReturnValue(storedRepos), update: vi.fn() },
+      subscriptions: []
     }
 
     registerAbapGit(mockContext as any)

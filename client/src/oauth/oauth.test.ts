@@ -1,62 +1,84 @@
-jest.mock("vscode", () => ({}), { virtual: true })
+vi.mock("vscode", () => ({}))
 
-const mockGetToken = jest.fn()
-const mockSetToken = jest.fn()
-const mockStrip = jest.fn((x: any) => {
-  const { accessToken, refreshToken, tokenType } = x
-  return { accessToken, refreshToken, tokenType }
+const { mockGetToken, mockSetToken, mockStrip } = vi.hoisted(() => {
+  const mockGetToken = vi.fn()
+  const mockSetToken = vi.fn()
+  const mockStrip = vi.fn(function (x: any) {
+    const { accessToken, refreshToken, tokenType } = x
+    return { accessToken, refreshToken, tokenType }
+  })
+  return { mockGetToken, mockSetToken, mockStrip }
 })
-jest.mock("./grantStorage", () => ({
+vi.mock("./grantStorage", () => ({
   getToken: mockGetToken,
   setToken: mockSetToken,
   strip: mockStrip
 }))
 
-const mockSavePassword = jest.fn()
-const mockGetPassword = jest.fn()
-const mockFormatKey = jest.fn((x: string) => x.toLowerCase())
-jest.mock("../config", () => ({
+const { mockSavePassword, mockGetPassword, mockFormatKey } = vi.hoisted(() => {
+  const mockSavePassword = vi.fn()
+  const mockGetPassword = vi.fn()
+  const mockFormatKey = vi.fn(function (x: string) {
+    return x.toLowerCase()
+  })
+  return { mockSavePassword, mockGetPassword, mockFormatKey }
+})
+vi.mock("../config", () => ({
   formatKey: mockFormatKey,
   RemoteManager: {
-    get: jest.fn(() => ({
-      savePassword: mockSavePassword,
-      getPassword: mockGetPassword
-    }))
+    get: vi.fn(function () {
+      return {
+        savePassword: mockSavePassword,
+        getPassword: mockGetPassword
+      }
+    })
   }
 }))
 
-const mockLoginServer = jest.fn()
-const mockCfCodeGrant = jest.fn()
-jest.mock("abap_cloud_platform", () => ({
+const { mockLoginServer, mockCfCodeGrant } = vi.hoisted(() => {
+  const mockLoginServer = vi.fn()
+  const mockCfCodeGrant = vi.fn()
+  return { mockLoginServer, mockCfCodeGrant }
+})
+vi.mock("abap_cloud_platform", () => ({
   loginServer: mockLoginServer,
   cfCodeGrant: mockCfCodeGrant
 }))
 
-jest.mock("../lib", () => ({
-  after: jest.fn((ms: number) => new Promise(() => {})), // never resolves by default
-  cache: jest.fn((fn: any) => fn)
+vi.mock("../lib", () => ({
+  after: vi.fn(function (ms: number) {
+    return new Promise(() => {})
+  }), // never resolves by default
+  cache: vi.fn(function (fn: any) {
+    return fn
+  })
 }))
 
 // We need real fp-ts Option functions
-jest.mock("fp-ts/lib/Option", () => ({
+vi.mock("fp-ts/lib/Option", () => ({
   some: (v: any) => ({ _tag: "Some", value: v }),
   none: { _tag: "None" },
   toUndefined: (o: any) => (o._tag === "Some" ? o.value : undefined)
 }))
 
-const mockCreateToken = jest.fn()
-const mockRefresh = jest.fn()
-const MockClientOAuth2 = jest.fn().mockImplementation(() => ({
-  createToken: mockCreateToken
-}))
-jest.mock("client-oauth2", () => MockClientOAuth2)
+const mockCreateToken = vi.fn()
+const mockRefresh = vi.fn()
+const { MockClientOAuth2 } = vi.hoisted(() => {
+  const MockClientOAuth2 = vi.fn().mockImplementation(function () {
+    return {
+      createToken: mockCreateToken
+    }
+  })
+  return { MockClientOAuth2 }
+})
+vi.mock("client-oauth2", () => ({ default: MockClientOAuth2 }))
 
 import { futureToken, oauthLogin } from "./oauth"
-import { RemoteConfig } from "../config"
+import type { RemoteConfig } from "../config"
 
 describe("futureToken", () => {
   beforeEach(() => {
-    jest.clearAllMocks()
+    vi.clearAllMocks()
   })
 
   it("returns accessToken when grant exists in store", async () => {
@@ -84,8 +106,10 @@ describe("futureToken", () => {
 
 describe("oauthLogin", () => {
   beforeEach(() => {
-    jest.clearAllMocks()
-    mockFormatKey.mockImplementation((x: string) => x.toLowerCase())
+    vi.clearAllMocks()
+    mockFormatKey.mockImplementation(function (x: string) {
+      return x.toLowerCase()
+    })
   })
 
   it("returns undefined when conf.oauth is missing", () => {
@@ -151,7 +175,7 @@ describe("oauthLogin", () => {
       mockGetPassword.mockResolvedValue(undefined)
 
       // Set up login server and grant
-      const mockServer = { server: { close: jest.fn() } }
+      const mockServer = { server: { close: vi.fn() } }
       mockLoginServer.mockReturnValue(mockServer)
       const grantToken = { accessToken: "new-tok", refreshToken: "new-ref", tokenType: "bearer" }
       mockCfCodeGrant.mockResolvedValue(grantToken)
@@ -177,7 +201,7 @@ describe("oauthLogin", () => {
     it("starts login flow when no cached or vault token", async () => {
       mockGetToken.mockReturnValue(undefined)
 
-      const mockServer = { server: { close: jest.fn() } }
+      const mockServer = { server: { close: vi.fn() } }
       mockLoginServer.mockReturnValue(mockServer)
       const grantToken = { accessToken: "granted-tok", refreshToken: "ref", tokenType: "bearer" }
       mockCfCodeGrant.mockResolvedValue(grantToken)
@@ -203,7 +227,7 @@ describe("oauthLogin", () => {
 
     it("calls setToken with the grant result", async () => {
       mockGetToken.mockReturnValue(undefined)
-      const mockServer = { server: { close: jest.fn() } }
+      const mockServer = { server: { close: vi.fn() } }
       mockLoginServer.mockReturnValue(mockServer)
       const grantToken = { accessToken: "tok", refreshToken: "ref", tokenType: "bearer" }
       mockCfCodeGrant.mockResolvedValue(grantToken)
@@ -223,7 +247,7 @@ describe("oauthLogin", () => {
     it("saves to vault when saveCredentials is true", async () => {
       mockGetToken.mockReturnValue(undefined)
       mockGetPassword.mockResolvedValue(undefined)
-      const mockServer = { server: { close: jest.fn() } }
+      const mockServer = { server: { close: vi.fn() } }
       mockLoginServer.mockReturnValue(mockServer)
       const grantToken = { accessToken: "tok", refreshToken: "ref", tokenType: "bearer" }
       mockCfCodeGrant.mockResolvedValue(grantToken)
@@ -247,7 +271,7 @@ describe("oauthLogin", () => {
 
     it("does NOT save to vault when saveCredentials is falsy", async () => {
       mockGetToken.mockReturnValue(undefined)
-      const mockServer = { server: { close: jest.fn() } }
+      const mockServer = { server: { close: vi.fn() } }
       mockLoginServer.mockReturnValue(mockServer)
       const grantToken = { accessToken: "tok", refreshToken: "ref", tokenType: "bearer" }
       mockCfCodeGrant.mockResolvedValue(grantToken)
@@ -279,8 +303,8 @@ describe("oauthLogin", () => {
         refreshToken: "ref2",
         tokenType: "bearer"
       }
-      mockCreateToken.mockReturnValue({ refresh: jest.fn().mockResolvedValue(refreshedToken) })
-      mockStrip.mockImplementation((x: any) => {
+      mockCreateToken.mockReturnValue({ refresh: vi.fn().mockResolvedValue(refreshedToken) })
+      mockStrip.mockImplementation(function (x: any) {
         const { accessToken, refreshToken, tokenType } = x
         return { accessToken, refreshToken, tokenType }
       })
@@ -316,11 +340,11 @@ describe("oauthLogin", () => {
 
       // Refresh fails
       mockCreateToken.mockReturnValue({
-        refresh: jest.fn().mockRejectedValue(new Error("refresh expired"))
+        refresh: vi.fn().mockRejectedValue(new Error("refresh expired"))
       })
 
       // Login flow should kick in
-      const mockServer = { server: { close: jest.fn() } }
+      const mockServer = { server: { close: vi.fn() } }
       mockLoginServer.mockReturnValue(mockServer)
       const grantToken = { accessToken: "new-grant-tok", refreshToken: "ref", tokenType: "bearer" }
       mockCfCodeGrant.mockResolvedValue(grantToken)
@@ -355,7 +379,7 @@ describe("token serialization edge cases", () => {
     mockGetToken.mockReturnValue(undefined)
     mockGetPassword.mockResolvedValue(undefined)
 
-    const mockServer = { server: { close: jest.fn() } }
+    const mockServer = { server: { close: vi.fn() } }
     mockLoginServer.mockReturnValue(mockServer)
     const grantToken = { accessToken: "tok", refreshToken: "ref", tokenType: "bearer" }
     mockCfCodeGrant.mockResolvedValue(grantToken)
@@ -384,7 +408,7 @@ describe("token serialization edge cases", () => {
     // createToken should never be called since JSON.parse throws
     // and fromVault's catch returns none
 
-    const mockServer = { server: { close: jest.fn() } }
+    const mockServer = { server: { close: vi.fn() } }
     mockLoginServer.mockReturnValue(mockServer)
     const grantToken = { accessToken: "tok", refreshToken: "ref", tokenType: "bearer" }
     mockCfCodeGrant.mockResolvedValue(grantToken)
@@ -412,7 +436,7 @@ describe("token serialization edge cases", () => {
     mockGetPassword.mockResolvedValue(JSON.stringify({ accessToken: "tok", tokenType: "bearer" }))
     mockStrip.mockReturnValueOnce(undefined as any)
 
-    const mockServer = { server: { close: jest.fn() } }
+    const mockServer = { server: { close: vi.fn() } }
     mockLoginServer.mockReturnValue(mockServer)
     const grantToken = { accessToken: "fallback", refreshToken: "ref", tokenType: "bearer" }
     mockCfCodeGrant.mockResolvedValue(grantToken)

@@ -1,10 +1,10 @@
-import { AbapObject, AbapObjectBase } from "../AbapObject"
-import { AbapObjectService } from "../AOService"
+import { type AbapObject, AbapObjectBase } from "../AbapObject"
+import { type AbapObjectService } from "../AOService"
 
 const tag = Symbol("AbapInterface")
 export class AbapInterface extends AbapObjectBase {
   [tag] = true
-  get extension() {
+  override get extension() {
     return ".intf.abap"
   }
   constructor(

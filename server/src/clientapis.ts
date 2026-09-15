@@ -1,11 +1,11 @@
 import {
-  ClientConfiguration,
+  type ClientConfiguration,
   Methods,
-  AbapObjectDetail,
-  AbapObjectSource,
-  StringWrapper,
-  UriRequest,
-  SearchProgress
+  type AbapObjectDetail,
+  type AbapObjectSource,
+  type StringWrapper,
+  type UriRequest,
+  type SearchProgress
 } from "vscode-abap-remote-fs-sharedapi"
 import { connection } from "./clientManager"
 
@@ -14,8 +14,7 @@ import { connection } from "./clientManager"
  */
 export async function readConfiguration(key: string) {
   const c = (await connection.sendRequest(Methods.readConfiguration, key)) as
-    | ClientConfiguration
-    | undefined
+    ClientConfiguration | undefined
   return c
 }
 
@@ -24,8 +23,7 @@ export async function readConfiguration(key: string) {
  */
 export async function getObjectDetails(uri: string) {
   const object = (await connection.sendRequest(Methods.objectDetails, uri)) as
-    | AbapObjectDetail
-    | undefined
+    AbapObjectDetail | undefined
   return object
 }
 

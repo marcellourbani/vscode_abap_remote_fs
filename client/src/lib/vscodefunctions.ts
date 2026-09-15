@@ -1,15 +1,15 @@
 import {
-  InputBoxOptions,
+  type InputBoxOptions,
   Uri,
-  Progress,
-  CancellationToken,
+  type Progress,
+  type CancellationToken,
   ProgressLocation,
-  QuickPickItem,
-  Memento,
+  type QuickPickItem,
+  type Memento,
   Position,
   Range,
-  OpenDialogOptions,
-  QuickPickOptions,
+  type OpenDialogOptions,
+  type QuickPickOptions,
   commands
 } from "vscode"
 import {
@@ -20,8 +20,8 @@ import {
   caughtToString,
   isString
 } from "./functions"
-import { Range as ApiRange, UriParts } from "abap-adt-api"
-import { RfsTaskEither, rfsTryCatch } from "./rfsTaskEither"
+import { type Range as ApiRange, type UriParts } from "abap-adt-api"
+import { type RfsTaskEither, rfsTryCatch } from "./rfsTaskEither"
 import { ADTSCHEME } from "../adt/conections"
 import { funWindow as window } from "../services/funMessenger"
 
@@ -67,20 +67,13 @@ export function simpleInputBox(prompt: string, value = "", password = false) {
 }
 
 type simplePickSource<T extends string = string> =
-  | T[]
-  | Promise<T[]>
-  | (() => T[])
-  | (() => Promise<T[]>)
+  T[] | Promise<T[]> | (() => T[]) | (() => Promise<T[]>)
 
 type recordPickSource<T extends QuickPickItem> =
-  | T[]
-  | Promise<T[]>
-  | (() => T[])
-  | (() => Promise<T[]>)
+  T[] | Promise<T[]> | (() => T[]) | (() => Promise<T[]>)
 
 type pickSource<T extends QuickPickItem, T2 extends string> =
-  | simplePickSource<T2>
-  | recordPickSource<T>
+  simplePickSource<T2> | recordPickSource<T>
 
 interface RfsQuickPickOptions extends QuickPickOptions {
   bypassIfSingle?: boolean

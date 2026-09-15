@@ -7,7 +7,7 @@ import { getClient, abapUri } from "../../adt/conections"
 import {
   getTextElementsSafe,
   updateTextElementsWithTransport,
-  TextElementCategory
+  type TextElementCategory
 } from "../../adt/textElements"
 import { openTextElementsInSapGui } from "../../commands/textElementsCommands"
 import { assertToolInvocationAuthorized } from "./toolGuard"

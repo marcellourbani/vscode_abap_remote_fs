@@ -1,9 +1,9 @@
-import { AbapFsService } from "./AFsService"
-import { create, PACKAGE, PACKAGEBASEPATH, TMPPACKAGE } from "../../abapObject"
+import { type AbapFsService } from "./AFsService"
+import { create, PACKAGE, PACKAGEBASEPATH, TMPPACKAGE } from "abapobject"
 import { AbapFolder, isAbapFolder } from "./abapFolder"
-import { Folder, PathItem } from "./folder"
-import { PathStep } from "abap-adt-api"
-import { FileStat } from "vscode"
+import { Folder, type PathItem } from "./folder"
+import { type PathStep } from "abap-adt-api"
+import { type FileStat } from "vscode"
 import { LockManager } from "./lockManager"
 import { isAbapFile, isAbapStat } from "./abapFile"
 
@@ -105,7 +105,7 @@ export class Root extends Folder {
     return node
   }
 
-  async getNodeAsync(path: string) {
+  override async getNodeAsync(path: string) {
     const first = path.split("/").filter(x => x)?.[0]
     if (first) {
       // if belongs to the $TMP of another user, add it to the root - blacklist myself to avoid duplications
