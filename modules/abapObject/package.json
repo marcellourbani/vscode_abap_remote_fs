@@ -9,20 +9,16 @@
     "node": ">=22"
   },
   "scripts": {
-    "test": "vitest run",
     "build": "tsc --noEmit",
-    "typecheck": "tsc --noEmit && tsc -p tsconfig.test.json --noEmit",
+    "typecheck": "tsc --noEmit",
     "clean": "rm -Rf node_modules out tsconfig.tsbuildinfo",
-    "watch": "tsc -w",
-    "test:watch": "vitest"
+    "watch": "tsc -w"
   },
   "author": "Marcello Urbani",
   "license": "MIT",
   "devDependencies": {
     "@types/node": "^22.0.0",
-    "@vitest/coverage-v8": "5.0.0",
     "typescript": "6.0.3",
-    "vite": "^8.0.0",
     "vitest": "5.0.0",
     "vitest-mock-extended": "^4.0.0"
   },

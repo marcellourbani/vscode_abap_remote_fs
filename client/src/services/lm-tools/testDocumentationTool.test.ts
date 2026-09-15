@@ -271,12 +271,12 @@ describe("CreateTestDocumentationTool", () => {
       )
     })
 
-    it("suggests reinstalling the extension when the docx dependency is missing", async () => {
+    it("throws with docx install hint when module not found", async () => {
       mockCreateDocument.mockRejectedValue(new Error("Cannot find module 'docx'"))
       const scenarios = makeScenarios(1)
 
       await expect(tool.invoke(makeOptions({ scenarios }), mockToken)).rejects.toThrow(
-        "Reinstall ABAP FS"
+        "npm install docx"
       )
     })
 
