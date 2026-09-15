@@ -1,11 +1,11 @@
-import { type AbapFsService } from "./AFsService.js"
+import { type AbapFsService } from "./AFsService"
 import { create, PACKAGE, PACKAGEBASEPATH, TMPPACKAGE } from "abapobject"
-import { AbapFolder, isAbapFolder } from "./abapFolder.js"
-import { Folder, type PathItem } from "./folder.js"
+import { AbapFolder, isAbapFolder } from "./abapFolder"
+import { Folder, type PathItem } from "./folder"
 import { type PathStep } from "abap-adt-api"
 import { type FileStat } from "vscode"
-import { LockManager } from "./lockManager.js"
-import { isAbapFile, isAbapStat } from "./abapFile.js"
+import { LockManager } from "./lockManager"
+import { isAbapFile, isAbapStat } from "./abapFile"
 
 const tag = Symbol("fsRoot")
 

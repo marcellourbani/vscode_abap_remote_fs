@@ -1,6 +1,6 @@
 import { type AbapObject } from "abapobject"
 import { type AdtLock, isCsrfError } from "abap-adt-api"
-import { type AbapFsService } from "./AFsService.js"
+import { type AbapFsService } from "./AFsService"
 
 export interface Locked extends AdtLock {
   status: "locked"

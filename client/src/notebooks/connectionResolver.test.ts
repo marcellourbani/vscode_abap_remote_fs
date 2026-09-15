@@ -67,9 +67,7 @@ describe("resolveConnection — single system", () => {
 
   test("shows confirmation dialog when only one system connected", async () => {
     mockShowWarningMessage.mockResolvedValue("Yes, run")
-    mockGetClient.mockReturnValue({
-      /* mock client */
-    })
+    mockGetClient.mockReturnValue({/* mock client */})
     await resolveConnection()
     expect(mockShowWarningMessage).toHaveBeenCalledWith(
       expect.stringContaining("dev100"),

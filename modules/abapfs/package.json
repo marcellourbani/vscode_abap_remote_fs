@@ -1,30 +1,28 @@
 {
   "name": "abapfs",
   "version": "1.0.0",
+  "private": true,
   "description": "Abap filesystem",
   "main": "src/index.ts",
   "types": "src/index.ts",
   "type": "module",
-  "engines": {
-    "node": ">=22"
-  },
   "scripts": {
     "build": "tsc --noEmit",
     "typecheck": "tsc --noEmit",
-    "clean": "rm -Rf node_modules out tsconfig.tsbuildinfo",
+    "clean": "node ../../scripts/rm.mjs out tsconfig.tsbuildinfo",
     "watch": "tsc -w"
   },
   "author": "Marcello Urbani",
   "license": "MIT",
   "devDependencies": {
-    "@types/node": "^22.0.0",
-    "@types/vscode": "^1.74.0",
-    "typescript": "6.0.3",
-    "vitest": "5.0.0",
-    "vitest-mock-extended": "^4.0.0"
+    "@types/node": "catalog:",
+    "@types/vscode": "catalog:",
+    "typescript": "catalog:",
+    "vitest": "catalog:",
+    "vitest-mock-extended": "catalog:"
   },
   "dependencies": {
-    "abap-adt-api": "^8.4.3",
-    "abapobject": "file:../abapObject"
+    "abap-adt-api": "catalog:",
+    "abapobject": "workspace:*"
   }
 }

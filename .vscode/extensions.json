@@ -1,7 +1,3 @@
 {
-  // See http://go.microsoft.com/fwlink/?LinkId=827846
-  // for the documentation about the extensions.json format
-  // The build uses tsdown; watch tasks use inline problemMatchers in tasks.json,
-  // so the webpack problem-matcher extension is no longer needed.
-  "recommendations": []
+  "recommendations": ["esbenp.prettier-vscode", "vitest.explorer", "mikeburgh.xml-format"]
 }

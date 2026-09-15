@@ -1,92 +1,55 @@
 {
   "name": "vscode-abap-remote-fs-client",
-  "displayName": "ABAP fs client",
   "description": "Work on your ABAP code straight from the server",
   "version": "0.7.1",
-  "publisher": "murbani",
+  "private": true,
   "license": "MIT",
-  "icon": "images/abapfs_logo.png",
   "author": {
     "email": "marcello.urbani@gmail.com",
     "name": "Marcello Urbani"
   },
-  "homepage": "https://github.com/marcellourbani/vscode_abap_remote_fs",
   "type": "module",
-  "engines": {
-    "vscode": "^1.105.0",
-    "node": ">=22"
-  },
-  "categories": [
-    "Other"
-  ],
-  "repository": {
-    "type": "git",
-    "url": "https://github.com/marcellourbani/vscode_abap_remote_fs.git"
-  },
-  "keywords": [
-    "ABAP",
-    "sap",
-    "filesystem",
-    "remote"
-  ],
   "scripts": {
-    "vscode:prepublish": "fail",
-    "clean": "rimraf out dist node_modules server",
-    "build_runtime": "rimraf dist/runtime && tsc -p tsconfig.runtime.json --emitDeclarationOnly",
-    "typecheck": "tsc --noEmit && tsc -p tsconfig.runtime.json --noEmit",
-    "bundle": "rimraf dist && npm run build_runtime && tsdown --config tsdown.config.ts",
-    "watch": "npm run build_runtime && concurrently --raw --kill-others \"tsc -p tsconfig.runtime.json --emitDeclarationOnly --watch\" \"tsdown --config tsdown.config.ts --watch\""
+    "clean": "node ../scripts/rm.mjs out dist server",
+    "typecheck": "tsc --noEmit",
+    "build": "node ../scripts/rm.mjs dist && tsdown --config tsdown.config.ts",
+    "watch": "tsdown --config tsdown.config.ts --watch"
   },
   "devDependencies": {
     "@playwright/test": "1.61.1",
     "@types/diff": "^7.0.2",
-    "@types/js-yaml": "^4.0.9",
-    "@types/node": "^22.0.0",
-    "@types/open": "^6.2.1",
-    "@types/ramda": "^0.28.20",
-    "@types/uuid": "^9.0.0",
-    "@types/vscode": "^1.104.0",
-    "concurrently": "6.3.0",
+    "@types/node": "catalog:",
+    "@types/vscode": "catalog:",
     "playwright": "1.61.1",
-    "rimraf": "^6.0.1",
-    "tsdown": "0.23.0",
-    "typescript": "6.0.3",
-    "vitest": "5.0.0",
-    "vitest-mock-extended": "^4.0.0"
+    "tsdown": "catalog:",
+    "typescript": "catalog:",
+    "vitest": "catalog:",
+    "vitest-mock-extended": "catalog:"
   },
   "dependencies": {
     "@abaplint/core": "^2.102.65",
     "@modelcontextprotocol/sdk": "^1.29.0",
-    "@types/tmp": "0.2.3",
     "@vscode/debugadapter": "^1.68.0",
     "@vscode/debugprotocol": "^1.68.0",
     "abap_cloud_platform": "^1.1.4",
-    "abap-adt-api": "^8.4.3",
-    "abapfs": "file:../modules/abapfs",
-    "abapobject": "file:../modules/abapObject",
+    "abap-adt-api": "catalog:",
+    "abapfs": "workspace:*",
+    "abapobject": "workspace:*",
     "applicationinsights": "^2.9.8",
-    "chromadb": "^3.0.17",
     "client-oauth2": "^4.3.3",
     "diff": "^8.0.3",
     "docx": "^9.5.1",
+    "entities": "catalog:",
     "exceljs": "^4.4.0",
-    "fast-xml-parser": "^5.7.2",
+    "fast-xml-parser": "catalog:",
     "fp-ts": "^2.13.1",
     "fs-jetpack": "^5.1.0",
-    "html-entities": "^2.3.3",
-    "html2canvas": "^1.4.1",
-    "io-ts": "^2.2.21",
-    "js-yaml": "^4.1.0",
     "open": "^8.4.0",
-    "ramda": "^0.28.0",
     "tmp-promise": "^3.0.3",
-    "tough-cookie": "^4.1.4",
-    "uuid": "^14.0.0",
-    "v8-inspect-profiler": "^0.1.0",
-    "vscode-abap-remote-fs-sharedapi": "file:../modules/sharedapi",
+    "vscode-abap-remote-fs-sharedapi": "workspace:*",
     "vscode-languageclient": "^9.0.1",
     "vscode-test-adapter-api": "^1.9.0",
-    "xml2js": "^0.6.2",
+    "yaml": "^2.9.1",
     "zod": "^3.25.76"
   }
 }

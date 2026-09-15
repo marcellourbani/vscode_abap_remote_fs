@@ -3,9 +3,11 @@ import {
   type TraceRun,
   type TraceStatementResponse
 } from "abap-adt-api/build/api/tracetypes"
-import { type Profile, type ProfileNode } from "v8-inspect-profiler"
+import type { Profiler } from "node:inspector"
 import { log } from "../../lib"
 // import { splitAdtUri } from "../../lib"
+type Profile = Profiler.Profile
+type ProfileNode = Profiler.ProfileNode
 
 const objectLink = (connId: string, uri: string, id: number) =>
   `command:abapfs.showObject?${encodeURIComponent(JSON.stringify({ connId, uri }))}`

@@ -1,4 +1,4 @@
-import { AbapObjectBase } from "../AbapObject.js"
+import { AbapObjectBase } from "../AbapObject"
 const tag = Symbol("AbapCds")
 
 export class AbapCds extends AbapObjectBase {

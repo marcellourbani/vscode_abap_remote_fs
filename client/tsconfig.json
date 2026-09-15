@@ -1,16 +1,9 @@
 {
   "extends": "../tsconfig.base.json",
-  "include": ["src"],
-  "exclude": [
-    "node_modules",
-    "src/**/*.test.ts",
-    "src/**/*.spec.ts",
-    "src/services/testing/runtime/dump-detector.ts",
-    "src/services/testing/runtime/sap-session.ts",
-    "src/services/testing/runtime/se16n.ts",
-    "src/services/testing/runtime/waiters.ts",
-    "src/services/testing/runtime/popup-guard.ts",
-    "src/services/testing/runtime/sap-artifacts.ts",
-    "src/services/testing/runtime/index.ts"
-  ]
+  "compilerOptions": {
+    "lib": ["ES2023", "DOM"],
+    "types": ["node", "vitest/globals"]
+  },
+  "include": ["src", "templates"],
+  "exclude": ["node_modules"]
 }

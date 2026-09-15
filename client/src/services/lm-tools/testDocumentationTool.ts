@@ -126,7 +126,7 @@ export class CreateTestDocumentationTool implements vscode.LanguageModelTool<ICr
 
       if (errorMessage.includes("Cannot find module 'docx'")) {
         errorMessage =
-          "The docx package is not installed. Please install it by running: npm install docx"
+          "The extension's docx dependency is missing. Reinstall ABAP FS and try again."
       }
 
       throw new Error(`Failed to create test documentation: ${errorMessage}`)

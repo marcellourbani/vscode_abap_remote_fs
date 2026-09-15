@@ -1,7 +1,7 @@
-// Authored in TypeScript; tsdown bundles this to dist/vendor/playwright.config.js (CommonJS,
-// under dist/vendor/package.json {"type":"commonjs"}), which @playwright/test's own CLI loads
-// at runtime. Values come from environment variables the abapfs_run_playwright_tests tool sets
-// before spawning, so this one static file drives every run instead of generating a config per call.
+// Authored in TypeScript; tsdown bundles this to dist/vendor/playwright.config.js as ESM,
+// which @playwright/test's own CLI loads at runtime. Values come from environment variables the
+// abapfs_run_playwright_tests tool sets before spawning, so this one static file drives every run
+// instead of generating a config per call.
 import path from "node:path"
 import { defineConfig } from "@playwright/test"
 
@@ -22,7 +22,7 @@ export default defineConfig({
   workers: parallel ? Number(process.env.SAP_TESTING_MAX_TASKS ?? 3) : 1,
   retries: 0,
   // Sibling file in dist/vendor, emitted by the same build.
-  globalSetup: path.join(__dirname, "sso-global-setup.js"),
+  globalSetup: "./sso-global-setup.js",
   // Traces and videos, NOT our evidence. Must be set explicitly: Playwright derives this from
   // the config file's location, and this config ships inside the extension install.
   outputDir: process.env.SAP_TESTING_ROOT

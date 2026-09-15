@@ -1,6 +1,6 @@
-import { AbapObjectBase, type AbapObject } from "../AbapObject.js"
-import { type AbapObjectService } from "../AOService.js"
-import { getObjectTypeConfig } from "../registry.js"
+import { AbapObjectBase, type AbapObject } from "../AbapObject"
+import { type AbapObjectService } from "../AOService"
+import { getObjectTypeConfig } from "../registry"
 const tag = Symbol("AbapSimple")
 
 export class AbapSimple extends AbapObjectBase {

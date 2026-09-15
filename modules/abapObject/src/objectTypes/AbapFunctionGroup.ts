@@ -1,4 +1,4 @@
-import { AbapObjectBase } from "../AbapObject.js"
+import { AbapObjectBase } from "../AbapObject"
 import { type NodeStructure } from "abap-adt-api"
 
 const tag = Symbol("AbapFunctionGroup")

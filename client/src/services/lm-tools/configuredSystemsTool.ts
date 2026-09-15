@@ -124,8 +124,7 @@ function configuredSystems(packageJSON: unknown, connectionId?: string) {
     if (isRedactedSetting(path)) continue
     const settingKey = `remote.${selectedSystem.name}.${path}`
     const settingInspection = config.inspect<unknown>(settingKey) as
-      | ConfigurationInspection
-      | undefined
+      ConfigurationInspection | undefined
     const isConfigured = settingInspection?.globalValue !== undefined
     const value = isConfigured ? settingInspection.globalValue : getSchemaValue(schema, path)
     if (value === undefined) continue

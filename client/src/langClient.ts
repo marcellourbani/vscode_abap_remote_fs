@@ -34,7 +34,6 @@ import { CallLogger } from "./adt/adtCommLog"
 import { isAbapFile } from "abapfs"
 import { type AbapObject } from "abapobject"
 import { IncludeService, IncludeProvider } from "./adt/includes"
-import * as R from "ramda"
 import { funWindow as window } from "./services/funMessenger"
 import { buildCookieHeaders, errorMessage } from "./auth/utils"
 
@@ -358,7 +357,10 @@ export class LanguageCommands {
     const source = await readEditorObjectSource(uri)
 
     const deltaLine = (d: Delta) => d.range.start.line
-    const sortDelta = R.sortWith<Delta>([R.ascend(R.prop("uri")), R.descend(deltaLine)])
+    const sortDelta = (arr: Delta[]): Delta[] =>
+      [...arr].sort((a, b) =>
+        a.uri < b.uri ? -1 : a.uri > b.uri ? 1 : deltaLine(b) - deltaLine(a)
+      )
 
     const deltas = await cl.fixEdits(proposal, source.source).then(sortDelta)
     if (!deltas || deltas.length === 0) return

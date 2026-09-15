@@ -1,9 +1,9 @@
 import { type FileStat, FileSystemError } from "vscode"
 import { type AbapObject, PACKAGE, fromNode, convertSlash } from "abapobject"
-import { Folder, isFolder } from "./folder.js"
+import { Folder, isFolder } from "./folder"
 import { type NodeStructure, type Node, type NodeObjectType, isCreatableTypeId } from "abap-adt-api"
-import { AbapFile, isAbapFile } from "./abapFile.js"
-import { type AbapFsService, isAbapStat } from "./index.js"
+import { AbapFile, isAbapFile } from "./abapFile"
+import { type AbapFsService, isAbapStat } from "./index"
 
 const tag = Symbol("abapFolder")
 

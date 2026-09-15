@@ -394,7 +394,7 @@ export class SapGui {
       if (linux) options.app = "xdg-open"
 
       await opn(shortcut.path, options)
-      // delete after opening sapgui, only in windows
+      // delete after opening sapgui, only on windows
       if (win32) setTimeout(() => shortcut.cleanup(), 50000)
     } catch (e) {
       log("Error executing file", shortcut.path)

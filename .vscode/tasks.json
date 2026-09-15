@@ -1,13 +1,11 @@
-// See https://go.microsoft.com/fwlink/?LinkId=733558
-// for the documentation about the tasks.json format
 {
   "version": "2.0.0",
   "tasks": [
     {
-      "type": "npm",
+      "type": "shell",
       "label": "watch abapObject",
-      "script": "watch",
-      "path": "modules/abapObject/",
+      "command": "pnpm",
+      "args": ["--dir", "${workspaceFolder}/modules/abapObject", "watch"],
       "problemMatcher": "$tsc-watch",
       "isBackground": true,
       "presentation": {
@@ -19,10 +17,10 @@
       }
     },
     {
-      "type": "npm",
+      "type": "shell",
       "label": "watch abapfs",
-      "script": "watch",
-      "path": "modules/abapfs/",
+      "command": "pnpm",
+      "args": ["--dir", "${workspaceFolder}/modules/abapfs", "watch"],
       "problemMatcher": "$tsc-watch",
       "isBackground": true,
       "presentation": {
@@ -32,15 +30,13 @@
         "kind": "build",
         "isDefault": false
       },
-      "dependsOn": [
-        "watch abapObject"
-      ]
+      "dependsOn": ["watch abapObject"]
     },
     {
-      "type": "npm",
+      "type": "shell",
       "label": "watch sharedapi",
-      "script": "watch",
-      "path": "modules/sharedapi/",
+      "command": "pnpm",
+      "args": ["--dir", "${workspaceFolder}/modules/sharedapi", "watch"],
       "problemMatcher": "$tsc-watch",
       "isBackground": true,
       "presentation": {
@@ -52,10 +48,10 @@
       }
     },
     {
-      "type": "npm",
+      "type": "shell",
       "label": "watch server",
-      "script": "watch",
-      "path": "server/",
+      "command": "pnpm",
+      "args": ["--dir", "${workspaceFolder}/server", "watch"],
       "problemMatcher": {
         "owner": "tsdown",
         "pattern": [{ "regexp": "^\\s*(?:✘|✖|ERROR|error)\\s+(.*)$", "message": 1 }],
@@ -73,16 +69,13 @@
         "kind": "build",
         "isDefault": false
       },
-      "dependsOn": [
-        "watch sharedapi",
-        "watch abapfs"
-      ]
+      "dependsOn": ["watch sharedapi", "watch abapfs"]
     },
     {
-      "type": "npm",
+      "type": "shell",
       "label": "watch client",
-      "script": "watch",
-      "path": "client/",
+      "command": "pnpm",
+      "args": ["--dir", "${workspaceFolder}/client", "watch"],
       "problemMatcher": {
         "owner": "tsdown",
         "pattern": [{ "regexp": "^\\s*(?:✘|✖|ERROR|error)\\s+(.*)$", "message": 1 }],
@@ -100,9 +93,7 @@
         "kind": "build",
         "isDefault": false
       },
-      "dependsOn": [
-        "watch server"
-      ]
+      "dependsOn": ["watch server"]
     }
   ]
 }

@@ -1,4 +1,4 @@
-import { AbapObjectBase } from "../AbapObject.js"
+import { AbapObjectBase } from "../AbapObject"
 import {
   type AbapClassStructure,
   type classIncludes,
@@ -7,7 +7,7 @@ import {
   ADTClient,
   type Node
 } from "abap-adt-api"
-import { ObjectErrors } from "../AOError.js"
+import { ObjectErrors } from "../AOError"
 const tag = Symbol("AbapClass")
 
 export class AbapClass extends AbapObjectBase {
