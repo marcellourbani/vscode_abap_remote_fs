@@ -163,46 +163,47 @@
       },
       {
         "path": "./client/dist/media/skills/clean-abap/SKILL.md",
-        "when": "!abapfs:noSapConnected"
+        "when": "abapfs:skill.clean-abap.enabled && !abapfs:noSapConnected"
       },
       {
         "path": "./client/dist/media/skills/abap-code-writing/SKILL.md",
-        "when": "!abapfs:noSapConnected"
+        "when": "abapfs:skill.abap-code-writing.enabled && !abapfs:noSapConnected"
       },
       {
         "path": "./client/dist/media/skills/abap-performance-ecc/SKILL.md",
-        "when": "!abapfs:noSapConnected"
+        "when": "abapfs:skill.abap-performance-ecc.enabled && !abapfs:noSapConnected"
       },
       {
         "path": "./client/dist/media/skills/abap-performance-hana/SKILL.md",
-        "when": "!abapfs:noSapConnected"
+        "when": "abapfs:skill.abap-performance-hana.enabled && !abapfs:noSapConnected"
       },
       {
         "path": "./client/dist/media/skills/abap-code-review-helper/SKILL.md",
-        "when": "!abapfs:noSapConnected"
+        "when": "abapfs:skill.abap-code-review-helper.enabled && !abapfs:noSapConnected"
       },
       {
         "path": "./client/dist/media/skills/abap-research/SKILL.md",
-        "when": "!abapfs:noSapConnected"
+        "when": "abapfs:skill.abap-research.enabled && !abapfs:noSapConnected"
       },
       {
         "path": "./client/dist/media/skills/sap-system-personality-report/SKILL.md",
-        "when": "!abapfs:noSapConnected"
+        "when": "abapfs:skill.sap-system-personality-report.enabled && !abapfs:noSapConnected"
       },
       {
         "path": "./client/dist/media/skills/sap-customizing/SKILL.md",
-        "when": "!abapfs:noSapConnected"
+        "when": "abapfs:skill.sap-customizing.enabled && !abapfs:noSapConnected"
       },
       {
         "path": "./client/dist/media/skills/sap-data-workbook/SKILL.md",
-        "when": "!abapfs:noSapConnected"
+        "when": "abapfs:skill.sap-data-workbook.enabled && !abapfs:noSapConnected"
       },
       {
-        "path": "./client/dist/media/skills/adt-api-discovery/SKILL.md"
+        "path": "./client/dist/media/skills/adt-api-discovery/SKILL.md",
+        "when": "abapfs:skill.adt-api-discovery.enabled && !abapfs:noSapConnected"
       },
       {
         "path": "./client/dist/media/skills/sap-background-jobs/SKILL.md",
-        "when": "!abapfs:noSapConnected"
+        "when": "abapfs:skill.sap-background-jobs.enabled && !abapfs:noSapConnected"
       },
       {
         "path": "./client/dist/media/skills/testing/anst-guide/SKILL.md",
@@ -3308,6 +3309,12 @@
         "icon": "$(hubot)"
       },
       {
+        "command": "abapfs.skills.configure",
+        "title": "Configure ABAP FS Skills",
+        "category": "ABAP FS",
+        "icon": "$(lightbulb)"
+      },
+      {
         "command": "abapfs.startRecording",
         "title": "Start Debug Recording",
         "category": "ABAP FS",
@@ -5395,6 +5402,27 @@
           "default": {},
           "scope": "application",
           "description": "Whether each general ABAP agent is visible to Copilot. Testing agents are controlled by the SAP testing folder.",
+          "additionalProperties": {
+            "type": "boolean"
+          }
+        },
+        "abapfs.skills.enabledSkills": {
+          "type": "object",
+          "default": {
+            "clean-abap": true,
+            "abap-code-writing": true,
+            "abap-performance-ecc": true,
+            "abap-performance-hana": true,
+            "abap-code-review-helper": true,
+            "abap-research": true,
+            "sap-system-personality-report": true,
+            "sap-customizing": true,
+            "sap-data-workbook": true,
+            "adt-api-discovery": true,
+            "sap-background-jobs": true
+          },
+          "scope": "application",
+          "description": "Whether each general ABAP FS skill is available to Copilot. The map contains skill IDs with true or false values; all general skills default to true. SAP Testing skills are controlled by the SAP testing feature.",
           "additionalProperties": {
             "type": "boolean"
           }
