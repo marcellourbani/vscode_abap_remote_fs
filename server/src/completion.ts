@@ -14,7 +14,7 @@ import { log } from "./clientManager"
 import { isAbap, callThrottler, isCdsView, caughtToString } from "./functions"
 import { CompletionProposal, ADTClient, CompletionElementInfo } from "abap-adt-api"
 import { cdsCompletionExtractor, cdsDataSources } from "./cdsSyntax"
-import { formatItem } from "./completionutils"
+import { completionSourceUrl, convertToSnippet, formatItem } from "./completionutils"
 
 // ── Completion ──────────────────────────────────────────────────────────────
 
@@ -43,14 +43,15 @@ let lastCompletionContext:
 
 async function abapCompletion(co: ClientAndObject, pos: Position, docUri: string) {
   const { client, obj, source } = co
-  const rawItems = await proposals(client, obj.mainUrl, pos, source)
+  const mainUrl = completionSourceUrl(obj.mainUrl, obj.mainProgram)
+  const rawItems = await proposals(client, mainUrl, pos, source)
   const line = source.split(/\n/)[pos.line] || ""
   const items: CompletionItem[] = rawItems.map(formatItem(line, pos))
 
   // Store context for resolve - must use the adt:// document URI, not obj.url
   lastCompletionContext = {
     uri: docUri,
-    mainUrl: obj.mainUrl,
+    mainUrl,
     source,
     position: pos
   }
@@ -177,7 +178,7 @@ export async function completionResolve(item: CompletionItem): Promise<Completio
     log("[completionResolve] fullText:", JSON.stringify(fullText?.substring(0, 200)))
     if (fullText && typeof fullText === "string" && fullText.length > proposal.IDENTIFIER.length) {
       // Convert to a snippet: replace empty assignment spots with tab stops
-      const snippet = convertToSnippet(fullText, proposal.IDENTIFIER)
+      const snippet = convertToSnippet(fullText)
       log("[completionResolve] snippet:", JSON.stringify(snippet?.substring(0, 200)))
       if (snippet) {
         item.insertText = snippet
@@ -196,57 +197,6 @@ export async function completionResolve(item: CompletionItem): Promise<Completio
     log("Exception in completionResolve:", caughtToString(e))
   }
   return item
-}
-
-/**
- * Convert ADT's full insertion text into a VS Code snippet with tab stops.
- * ADT returns text in three known formats depending on system/method:
- *   Format A: multiline, echo on next line: "param = \necho_value\n"
- *   Format B: multiline, inline ABAP comment: "param =                  " comment"
- *   Format C: single-line: "method( param =  )."
- * We normalize all to "param = " and add tab stops.
- */
-function convertToSnippet(fullText: string, identifier: string): string | undefined {
-  // If the full text doesn't contain parentheses, it's not a method call
-  if (!fullText.includes("(")) return undefined
-
-  log("[convertToSnippet] raw fullText:", JSON.stringify(fullText))
-
-  // Normalize line endings
-  let text = fullText.replace(/\r\n/g, "\n")
-
-  // Format A: strip echoed parameter value on next line: "= \n<echo>" → "= \n"
-  text = text.replace(/(=[ \t]*\n)[^\n]*/g, "$1")
-
-  // Format B: strip inline ABAP comment after "=": "= <spaces>" comment" → "= "
-  text = text.replace(/(=)\s*"[^\n]*/g, "$1 ")
-
-  log("[convertToSnippet] cleanedText:", JSON.stringify(text))
-
-  let tabIndex = 0
-  // Replace all empty assignment slots (value is only whitespace before ")", ",", or end-of-line)
-  // Works for both multiline (Format A/B) and single-line (Format C)
-  const snippet = text.replace(
-    /(\b\w+)([ \t]*=[ \t]*)(?=[ \t]*[),\n]|[ \t]*$)/gm,
-    (match, paramName, equals, offset, str) => {
-      // Skip assignments on commented-out lines (line starts with optional spaces then *)
-      const lineStart = str.lastIndexOf("\n", offset - 1) + 1
-      if (/^\s*\*/.test(str.substring(lineStart, offset + paramName.length))) return match
-      tabIndex++
-      return `${paramName}${equals}\${${tabIndex}}`
-    }
-  )
-
-  log(
-    "[convertToSnippet] tabIndex:",
-    tabIndex,
-    "snippet:",
-    JSON.stringify(snippet?.substring(0, 300))
-  )
-
-  if (tabIndex === 0) return undefined
-
-  return snippet + `\$0`
 }
 
 // ── Signature Help ──────────────────────────────────────────────────────────
