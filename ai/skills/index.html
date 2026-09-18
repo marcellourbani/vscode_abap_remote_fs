@@ -917,6 +917,17 @@
 </li>
         
           <li class="md-nav__item">
+  <a href="#abap-code-review-helper" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        ABAP Code Review Helper
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
   <a href="#code-writing-process" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -995,6 +1006,17 @@
         
       </ul>
     </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#skill-settings" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Skill settings
+      
+    </span>
+  </a>
   
 </li>
       
@@ -3294,6 +3316,17 @@
 </li>
         
           <li class="md-nav__item">
+  <a href="#abap-code-review-helper" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        ABAP Code Review Helper
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
   <a href="#code-writing-process" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -3375,6 +3408,17 @@
   
 </li>
       
+        <li class="md-nav__item">
+  <a href="#skill-settings" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Skill settings
+      
+    </span>
+  </a>
+  
+</li>
+      
     </ul>
   
 </nav>
@@ -3401,6 +3445,7 @@
 <blockquote>
 <p><strong>Availability:</strong> ABAP FS skills are enabled only while at least one SAP system is connected. Before the first connection, they do not appear as slash commands and are not loaded automatically. Connect using <strong>ABAP FS: Connect to an SAP system</strong> to make them available.</p>
 </blockquote>
+<p>Use <strong>ABAP FS: Configure ABAP FS Skills</strong> to control the general skills individually. They are all enabled by default; untick any skills you do not want Copilot to discover and choose <strong>Save</strong>. SAP Testing skills are managed separately and remain an all-or-nothing feature controlled by the SAP testing folder.</p>
 <h2 id="using-skills">Using Skills<a class="headerlink" href="#using-skills" title="Permanent link">&para;</a></h2>
 <p><strong>Automatic:</strong> Skills load on their own when Copilot detects a match. Nothing to do.</p>
 <p><strong>Manual:</strong> Type <code>/</code> in the Copilot Chat input to see all skills as slash commands. Select one to invoke it explicitly, for example:</p>
@@ -3421,7 +3466,12 @@
 <tr>
 <td><a href="#clean-abap">Clean ABAP</a></td>
 <td><code>/clean-abap</code></td>
-<td>Writing or reviewing ABAP code</td>
+<td>Clean ABAP style, readability, and maintainability</td>
+</tr>
+<tr>
+<td><a href="#abap-code-review-helper">ABAP Code Review Helper</a></td>
+<td><code>/abap-code-review-helper</code></td>
+<td>Correctness, runtime-safety, security, and performance review</td>
 </tr>
 <tr>
 <td><a href="#code-writing-process">Code Writing Process</a></td>
@@ -3462,7 +3512,9 @@
 </table>
 <hr />
 <h3 id="clean-abap">Clean ABAP<a class="headerlink" href="#clean-abap" title="Permanent link">&para;</a></h3>
-<p>SAP's official <a href="https://github.com/SAP/styleguides">Clean ABAP Style Guide</a> condensed into AI-optimized rules. Covers naming conventions, modern syntax, class/method design, error handling, formatting, and unit testing patterns.</p>
+<p>SAP's official <a href="https://github.com/SAP/styleguides">Clean ABAP Style Guide</a> condensed into AI-optimized rules. Use it for style, readability, naming, modern syntax, structure, formatting, and maintainability. For a general report correctness review, use the ABAP Code Review Helper first.</p>
+<h3 id="abap-code-review-helper">ABAP Code Review Helper<a class="headerlink" href="#abap-code-review-helper" title="Permanent link">&para;</a></h3>
+<p>The primary review guidance for ABAP reports and other objects. It focuses on reachable correctness and runtime defects such as wrong results, dumps, unsafe database access, lost updates, locking issues, security risks, and performance problems. It reports supported findings rather than lists of passed checks; use Clean ABAP separately for style-focused findings.</p>
 <h3 id="code-writing-process">Code Writing Process<a class="headerlink" href="#code-writing-process" title="Permanent link">&para;</a></h3>
 <p>A structured process for building ABAP solutions: validate requirements → explore the system → plan architecture → research existing objects → design → write code. Prevents the AI from guessing at parameters or reimplementing standard SAP functionality that already exists.</p>
 <h3 id="performance-ecc">Performance (ECC)<a class="headerlink" href="#performance-ecc" title="Permanent link">&para;</a></h3>
@@ -3477,6 +3529,8 @@
 <p>Teaches Copilot to navigate SPRO/IMG configuration. Uses systematic lookup procedures to trace from an SPRO activity to its storage tables (via <code>CUS_IMGACH</code>, <code>CUS_ACTH</code>, <code>CUS_ACTOBJ</code>), reverse-look up tables to their SPRO path, and resolve domain fixed values (<code>DD07T</code>).</p>
 <h3 id="sap-data-workbook">SAP Data Workbook<a class="headerlink" href="#sap-data-workbook" title="Permanent link">&para;</a></h3>
 <p>Teaches Copilot to create <code>.sapwb</code> files — VS Code notebooks combining ABAP SQL and JavaScript cells for multi-step SAP data analysis. See <a href="../../data-query/data-workbooks/">SAP Data Workbooks</a> for details on the workbook feature itself.</p>
+<h2 id="skill-settings">Skill settings<a class="headerlink" href="#skill-settings" title="Permanent link">&para;</a></h2>
+<p>Skill availability is stored at user level in <code>abapfs.skills.enabledSkills</code>. A missing skill entry means enabled; the panel writes <code>false</code> for skills that you untick. The setting affects general ABAP FS skills only. Testing skills continue to use the SAP Testing feature gate and are not listed in the general skills panel.</p>
 
 
 
