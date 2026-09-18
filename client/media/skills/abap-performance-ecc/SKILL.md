@@ -10,7 +10,7 @@ disable-model-invocation: false
 
 These rules apply to SAP ECC systems running on traditional databases (Oracle, DB2, MSSQL, MaxDB).
 
-Before writing, optimizing, or reviewing ABAP code, read the `abap-code-review-helper` skill in full unless its complete contents are already available in your current context. Preserve its correctness safeguards when applying performance recommendations; an optimization must not change result semantics. Keep passed checks internal.
+Before writing, optimizing, or reviewing ABAP code, read the `abap-code-review-helper` skill in full (skip if skill is unavailable), unless its complete contents are already available in your current context. Preserve its correctness safeguards; an optimization must not change result semantics. Keep passed checks internal.
 
 **Before using this skill:** Call the SAP system info tool. If the system is S/4HANA or HANA DB, use the `abap-performance-hana` skill instead.
 

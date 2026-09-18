@@ -12,7 +12,7 @@ argument-hint: 'Any ABAP development task or question'
 
 ## ABAP Coding Pitfalls
 
-Before writing, modifying, or reviewing ABAP code, read the `abap-code-review-helper` skill in full unless its complete contents are already available in your current context. Apply it internally, not as a passed-check report. When delegating a code review, require the reviewer to read the skill too; do not assume it inherits your context.
+Before writing, modifying, or reviewing ABAP code, read the `abap-code-review-helper` skill in full (skip if skill is unavailable), unless its complete contents are already available in your current context. Apply it internally, not as a passed-check report. When delegating a code review, ask the reviewer to read the skill (skip if skill is unavailable); do not assume it inherits your context.
 
 Delegation rules below apply only when subagents are enabled and available. Otherwise perform the work directly with the same skill; do not invoke disabled agents.
 

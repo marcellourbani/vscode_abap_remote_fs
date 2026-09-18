@@ -1,6 +1,6 @@
 ---
 name: abap-code-review-helper
-description: 'Requirements for ABAP code to avoid mistakes that pass syntax checks but cause wrong results, dumps, lost updates, or slow processing. Use when writing, changing, refactoring, debugging, or reviewing reports, classes, function modules, enhancements, BAPIs, interfaces, and any other ABAP objects. Covers old values left in loop variables, SELECT and FOR ALL ENTRIES, binary search, parallel cursors, duplicate keys, conversions, commits, locks, and retries. Report problems, not lists of passed checks.'
+description: 'Primary correctness and runtime-safety review guidance for ABAP reports, classes, function modules, enhancements, BAPIs, interfaces, and other ABAP objects. Use first when the user asks to review ABAP code or an ABAP report for wrong results, dumps, lost updates, security defects, or performance risks. Covers old values left in loop variables, SELECT and FOR ALL ENTRIES, binary search, parallel cursors, duplicate keys, conversions, commits, locks, and retries. Report problems, not lists of passed checks; use clean-abap separately for style-focused findings when that skill is available, and continue the correctness review without it when it is disabled or unavailable.'
 ---
 
 # ABAP Coding Pitfalls

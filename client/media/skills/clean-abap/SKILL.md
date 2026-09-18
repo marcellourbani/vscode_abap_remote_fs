@@ -1,6 +1,6 @@
 ---
 name: clean-abap
-description: Clean ABAP coding standards and best practices. Use when writing ABAP code, reviewing ABAP code, or refactoring ABAP code to ensure it follows SAP's official Clean ABAP style guide. Covers naming conventions, modern language constructs, class/method design, error handling, formatting, comments, and unit testing patterns.
+description: Clean ABAP style and maintainability guidance. Use when writing ABAP code or when a review explicitly asks for Clean ABAP style, readability, naming, structure, modern syntax, formatting, comments, or refactoring. For a general ABAP report correctness review, use abap-code-review-helper first; apply this skill second for style findings.
 argument-hint: '[ABAP code task or ABAP code review request]'
 user-invocable: true
 disable-model-invocation: false
@@ -14,7 +14,7 @@ disable-model-invocation: false
 
 Apply ALL rules below when writing or reviewing ABAP code. Every rule is mandatory unless explicitly marked "consider".
 
-Before writing, modifying, or reviewing ABAP code, read the `abap-code-review-helper` skill in full unless its complete contents are already available in your current context. Apply its correctness safeguards alongside these style rules; do not let a style preference change business behavior. Keep passed checks internal.
+Before writing, modifying, or reviewing ABAP code, read the `abap-code-review-helper` skill in full (skip if skill is unavailable), unless its complete contents are already available in your current context. Apply its correctness safeguards alongside these style rules; do not let a style preference change business behavior. Keep passed checks internal.
 
 ---
 

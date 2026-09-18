@@ -10,7 +10,7 @@ disable-model-invocation: false
 
 Follow this process **in order** whenever building ABAP solutions. Do NOT skip steps. Do NOT start writing code until Step 6.
 
-Before designing, writing, or modifying ABAP code, read the `abap-code-review-helper` skill in full unless its complete contents are already available in your current context. Apply it throughout the task, including checks of existing code, without reporting passed checks. This applies equally to the main agent working without subagents.
+Before designing, writing, or modifying ABAP code, read the `abap-code-review-helper` skill in full (skip if skill is unavailable), unless its complete contents are already available in your current context. Apply it throughout the task, including checks of existing code, without reporting passed checks. This applies equally to the main agent working without subagents.
 
 Ask questions at ANY step if something is unclear — it is always better to clarify early than to rewrite later.
 
@@ -146,7 +146,7 @@ Now — using research results from Step 4 — define the concrete architecture 
 Only NOW do you write code.
 
 **Rules:**
-- Follow Clean ABAP rules (if the clean-abap skill is available, load and use it)
+- Follow Clean ABAP rules when the `clean-abap` skill is available; if it is disabled or unavailable, continue without claiming that those rules were loaded.
 - Use modern ABAP syntax appropriate for the system version identified in Step 2
 - Every object/parameter reference in your code must have been verified in Step 4
 - Implement proper error handling as designed in Step 5
