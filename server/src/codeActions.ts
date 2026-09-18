@@ -9,6 +9,7 @@ import { clientAndObjfromUrl, rangeIsEmpty } from "./utilities"
 import { log } from "./clientManager"
 import { FixProposal } from "abap-adt-api"
 import { decode } from "html-entities"
+import { completionSourceUrl } from "./completionutils"
 
 /**
  * Collect quick fixes and refactoring actions for the current diagnostic context.
@@ -52,8 +53,9 @@ async function quickfix(parms: CodeActionParams): Promise<CodeAction[] | undefin
         if (!co) co = await clientAndObjfromUrl(parms.textDocument.uri, true)
         if (!co || !co.client) return
         try {
+          const sourceUrl = completionSourceUrl(co.obj.mainUrl, co.obj.mainProgram)
           const proposals = await co.client.statelessClone.fixProposals(
-            co.obj.mainUrl,
+            sourceUrl,
             co.source,
             d.range.start.line + 1,
             d.range.start.character

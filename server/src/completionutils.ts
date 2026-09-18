@@ -3,6 +3,29 @@ import { CompletionItem, Position, Range, TextEdit } from "vscode-languageserver
 
 const INTERFACEROLE = 58 // sccmp_role_intftype in abap
 
+export const completionSourceUrl = (mainUrl: string, mainProgram?: string) =>
+  mainProgram ? `${mainUrl}?context=${encodeURIComponent(mainProgram)}` : mainUrl
+
+export function convertToSnippet(fullText: string): string | undefined {
+  let text = fullText.replace(/\r\n/g, "\n")
+
+  if (text.includes("(")) text = text.replace(/(=[ \t]*\n)[^\n]*/g, "$1")
+  text = text.replace(/(=)\s*"[^\n]*/g, "$1 ")
+
+  let tabIndex = 0
+  const snippet = text.replace(
+    /(\b\w+)([ \t]*=[ \t]*)(?=[ \t]*[),\n]|[ \t]*$)/gm,
+    (match, paramName, equals, offset, source) => {
+      const lineStart = source.lastIndexOf("\n", offset - 1) + 1
+      if (/^\s*\*/.test(source.substring(lineStart, offset + paramName.length))) return match
+      tabIndex++
+      return `${paramName}${equals}\${${tabIndex}}`
+    }
+  )
+
+  return tabIndex === 0 ? undefined : snippet + `\$0`
+}
+
 /**
  * Transform an ADT completion proposal into the LSP shape expected by the client.
  */
