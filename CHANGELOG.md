@@ -1,5 +1,12 @@
 # Changelog
 
+## 2.9.1
+
+### Patch Changes
+
+- 4963169: code completion fixes
+- 1f80cd4: add option to control skills visibility
+
 ## 2.9.0
 
 ### Minor Changes
