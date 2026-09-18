@@ -592,6 +592,8 @@ Copilot only loads a skill's full content when relevant, so having many skills d
 
 > **Availability:** ABAP FS skills are enabled only while at least one SAP system is connected. Before the first connection, they do not appear as slash commands and are not loaded automatically. Connect using **ABAP FS: Connect to an SAP system** to make them available.
 
+Use **ABAP FS: Configure ABAP FS Skills** to control the general skills individually. They are all enabled by default; untick any skills you do not want Copilot to discover and choose **Save**. SAP Testing skills are managed separately and remain an all-or-nothing feature controlled by the SAP testing folder.
+
 ## Using Skills
 
 **Automatic:** Skills load on their own when Copilot detects a match. Nothing to do.
@@ -605,7 +607,8 @@ Copilot only loads a skill's full content when relevant, so having many skills d
 
 | Skill | Slash command | When it loads |
 |---|---|---|
-| [Clean ABAP](#clean-abap) | `/clean-abap` | Writing or reviewing ABAP code |
+| [Clean ABAP](#clean-abap) | `/clean-abap` | Clean ABAP style, readability, and maintainability |
+| [ABAP Code Review Helper](#abap-code-review-helper) | `/abap-code-review-helper` | Correctness, runtime-safety, security, and performance review |
 | [Code Writing Process](#code-writing-process) | `/abap-code-writing` | Building any ABAP solution |
 | [Performance (ECC)](#performance-ecc) | `/abap-performance-ecc` | Non-HANA systems (Oracle, DB2, MSSQL) |
 | [Performance (HANA)](#performance-hana) | `/abap-performance-hana` | S/4HANA / HANA DB systems |
@@ -618,7 +621,11 @@ Copilot only loads a skill's full content when relevant, so having many skills d
 
 ### Clean ABAP
 
-SAP's official [Clean ABAP Style Guide](https://github.com/SAP/styleguides) condensed into AI-optimized rules. Covers naming conventions, modern syntax, class/method design, error handling, formatting, and unit testing patterns.
+SAP's official [Clean ABAP Style Guide](https://github.com/SAP/styleguides) condensed into AI-optimized rules. Use it for style, readability, naming, modern syntax, structure, formatting, and maintainability. For a general report correctness review, use the ABAP Code Review Helper first.
+
+### ABAP Code Review Helper
+
+The primary review guidance for ABAP reports and other objects. It focuses on reachable correctness and runtime defects such as wrong results, dumps, unsafe database access, lost updates, locking issues, security risks, and performance problems. It reports supported findings rather than lists of passed checks; use Clean ABAP separately for style-focused findings.
 
 ### Code Writing Process
 
@@ -647,6 +654,10 @@ Teaches Copilot to navigate SPRO/IMG configuration. Uses systematic lookup proce
 ### SAP Data Workbook
 
 Teaches Copilot to create `.sapwb` files — VS Code notebooks combining ABAP SQL and JavaScript cells for multi-step SAP data analysis. See [SAP Data Workbooks](#sap-data-workbooks-sapwb) for details on the workbook feature itself.
+
+## Skill settings
+
+Skill availability is stored at user level in `abapfs.skills.enabledSkills`. A missing skill entry means enabled; the panel writes `false` for skills that you untick. The setting affects general ABAP FS skills only. Testing skills continue to use the SAP Testing feature gate and are not listed in the general skills panel.
 
 # Heartbeat - Background Monitoring & Reminders
 
