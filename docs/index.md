@@ -20,6 +20,7 @@ This is a high-level summary. See the left navigation for full feature pages.
 |------|-------------|
 | **AI-Powered Development** | 40 tools give Copilot deep SAP awareness — search objects, read code, run tests, explain dumps, all via natural language |
 | **Edit & Activate** | Browse, open, edit, and activate ABAP objects on the live system |
+| **Repository Comparison** | [Discover and compare scoped repositories](repository-comparison/index.md) across two systems, export results, and prepare reviewed assisted-apply plans |
 | **Editor Experience** | Enhanced hover info, custom editors, object properties, and dedicated ABAP views/panels |
 | **Debug** | Full ABAP debugger with breakpoints, variable inspection, stepping, and debug recording |
 | **Test** | Run unit tests, create test classes, generate test documentation |

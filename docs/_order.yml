@@ -26,6 +26,11 @@
 - object-management/favorites.md
 - object-management/table-contents.md
 - object-management/compare-systems.md
+- repository-comparison/index.md
+- repository-comparison/workflow.md
+- repository-comparison/ai-tools.md
+- repository-comparison/assisted-apply.md
+- repository-comparison/technical-reference.md
 - code-quality/atc-analysis.md
 - code-quality/abap-cleaner.md
 - code-quality/syntax-validation.md

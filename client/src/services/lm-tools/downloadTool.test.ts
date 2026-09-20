@@ -22,6 +22,14 @@ jest.mock(
         const joined = base.path.replace(/\/$/, "") + "/" + segs.join("/")
         return new Uri(base.scheme, base.authority, joined, joined)
       }
+      with(change: { scheme?: string; authority?: string; path?: string }) {
+        return new Uri(
+          change.scheme ?? this.scheme,
+          change.authority ?? this.authority,
+          change.path ?? this.path,
+          change.path ?? this.fsPath
+        )
+      }
       toString() {
         return `${this.scheme}://${this.authority}${this.path}`
       }
@@ -206,6 +214,29 @@ describe("DownloadTool", () => {
       expect(logTelemetry).toHaveBeenCalledWith(
         "tool_download_called",
         expect.objectContaining({ connectionId: "" })
+      )
+    })
+
+    it("uses the target system alternate source library path for a cross-system URI", async () => {
+      mountFs({
+        "adt://qas100/Source Library/Programs/ztest/ztest.prog.abap": {
+          type: F,
+          bytes: new Uint8Array([1])
+        }
+      })
+      await tool.invoke(
+        makeInvokeOptions({
+          source: "adt://dev100/Source Code Library/Programs/ztest/ztest.prog.abap",
+          target: "C:/out",
+          connectionId: "QAS100"
+        }),
+        makeToken()
+      )
+      expect(fs.stat).toHaveBeenCalledWith(
+        expect.objectContaining({
+          authority: "qas100",
+          path: "/Source Library/Programs/ztest/ztest.prog.abap"
+        })
       )
     })
 
