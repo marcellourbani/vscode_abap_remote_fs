@@ -1,19 +1,16 @@
-jest.mock(
-  "vscode",
-  () => ({
-    Uri: { file: (p: string) => ({ fsPath: p }) }
-  }),
-  { virtual: true }
-)
-jest.mock("../../lib", () => ({ log: () => {} }))
-jest.mock("fs")
-jest.mock("path", () => ({
+vi.mock("vscode", () => ({
+  Uri: { file: (p: string) => ({ fsPath: p }) }
+}))
+vi.mock("../../lib", () => ({ log: () => {} }))
+vi.mock("fs")
+vi.mock("path", () => ({
   join: (...parts: string[]) => parts.join("/")
 }))
 
 import * as fs from "fs"
 import { FeedStateManager } from "./feedStateManager"
-import { FeedEntry, FeedType } from "./feedTypes"
+import { type FeedEntry, FeedType } from "./feedTypes"
+import type { Mocked, Mock } from "vitest"
 
 // ---- helpers ----------------------------------------------------------------
 
@@ -22,8 +19,10 @@ function makeContext(storagePath = "/storage") {
   return {
     globalStorageUri: { fsPath: storagePath },
     globalState: {
-      get: jest.fn((key: string) => store[key]),
-      update: jest.fn(async (key: string, value: any) => {
+      get: vi.fn(function (key: string) {
+        return store[key]
+      }),
+      update: vi.fn(async function (key: string, value: any) {
         store[key] = value
       })
     },
@@ -50,15 +49,15 @@ function makeEntry(overrides: Partial<FeedEntry> = {}): FeedEntry {
 
 // ---- setup ------------------------------------------------------------------
 
-let fsMock: jest.Mocked<typeof fs>
+let fsMock: Mocked<typeof fs>
 
 beforeEach(() => {
-  jest.clearAllMocks()
-  fsMock = fs as jest.Mocked<typeof fs>
+  vi.clearAllMocks()
+  fsMock = fs as Mocked<typeof fs>
   // Default: storage dir does not exist, no entries file
-  ;(fsMock.existsSync as jest.Mock).mockReturnValue(false)
-  ;(fsMock.mkdirSync as jest.Mock).mockReturnValue(undefined)
-  ;(fsMock.writeFileSync as jest.Mock).mockReturnValue(undefined)
+  ;(fsMock.existsSync as Mock).mockReturnValue(false)
+  ;(fsMock.mkdirSync as Mock).mockReturnValue(undefined)
+  ;(fsMock.writeFileSync as Mock).mockReturnValue(undefined)
 })
 
 // ---- constructor / init -----------------------------------------------------
@@ -67,14 +66,14 @@ describe("FeedStateManager construction", () => {
   test("creates storage directory when it does not exist", () => {
     makeContext()
     // existsSync returns false for the directory
-    ;(fsMock.existsSync as jest.Mock).mockReturnValue(false)
+    ;(fsMock.existsSync as Mock).mockReturnValue(false)
     const ctx = makeContext()
     new FeedStateManager(ctx as any)
     expect(fsMock.mkdirSync).toHaveBeenCalledWith("/storage", { recursive: true })
   })
 
   test("does not create directory when it already exists", () => {
-    ;(fsMock.existsSync as jest.Mock).mockReturnValue(true)
+    ;(fsMock.existsSync as Mock).mockReturnValue(true)
     const ctx = makeContext()
     new FeedStateManager(ctx as any)
     expect(fsMock.mkdirSync).not.toHaveBeenCalled()
@@ -93,14 +92,14 @@ describe("FeedStateManager construction", () => {
         isAvailable: true
       }
     }
-    ;(ctx.globalState.get as jest.Mock).mockReturnValue(existingState)
+    ;(ctx.globalState.get as Mock).mockReturnValue(existingState)
     const manager = new FeedStateManager(ctx as any)
     expect(manager.getFeedState("sys1", "Dumps")).toEqual(existingState["sys1|Dumps"])
   })
 
   test("loads entries from file when it exists", () => {
     const ctx = makeContext()
-    ;(fsMock.existsSync as jest.Mock).mockImplementation((p: any) => {
+    ;(fsMock.existsSync as Mock).mockImplementation(function (p: any) {
       return String(p).includes("feedEntries.json")
     })
     const stored = {
@@ -120,7 +119,7 @@ describe("FeedStateManager construction", () => {
         }
       ]
     }
-    ;(fsMock.readFileSync as jest.Mock).mockReturnValue(JSON.stringify(stored))
+    ;(fsMock.readFileSync as Mock).mockReturnValue(JSON.stringify(stored))
     const manager = new FeedStateManager(ctx as any)
     const entries = manager.getFeedEntries("sys1", "Dumps")
     expect(entries).toHaveLength(1)
@@ -130,8 +129,8 @@ describe("FeedStateManager construction", () => {
 
   test("handles corrupt entries file gracefully", () => {
     const ctx = makeContext()
-    ;(fsMock.existsSync as jest.Mock).mockReturnValue(true)
-    ;(fsMock.readFileSync as jest.Mock).mockReturnValue("not json{{")
+    ;(fsMock.existsSync as Mock).mockReturnValue(true)
+    ;(fsMock.readFileSync as Mock).mockReturnValue("not json{{")
     const manager = new FeedStateManager(ctx as any)
     // Should not throw; entries should be empty
     expect(manager.getAllFeedEntries()).toHaveLength(0)
@@ -139,13 +138,13 @@ describe("FeedStateManager construction", () => {
 
   test("uses fallback values for missing entry fields", () => {
     const ctx = makeContext()
-    ;(fsMock.existsSync as jest.Mock).mockImplementation((p: any) =>
-      String(p).includes("feedEntries.json")
-    )
+    ;(fsMock.existsSync as Mock).mockImplementation(function (p: any) {
+      return String(p).includes("feedEntries.json")
+    })
     const stored = {
       "s|f": [{ id: "x", timestamp: "bad-date", rawData: {} }]
     }
-    ;(fsMock.readFileSync as jest.Mock).mockReturnValue(JSON.stringify(stored))
+    ;(fsMock.readFileSync as Mock).mockReturnValue(JSON.stringify(stored))
     const manager = new FeedStateManager(ctx as any)
     const entries = manager.getFeedEntries("s", "f")
     expect(entries[0].title).toBe("Untitled")

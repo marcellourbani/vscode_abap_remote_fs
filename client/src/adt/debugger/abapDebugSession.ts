@@ -1,7 +1,7 @@
-import { DebugConfiguration, DebugSession, Uri } from "vscode"
+import { type DebugConfiguration, type DebugSession, Uri } from "vscode"
 import { InitializedEvent, LoggingDebugSession, Thread } from "@vscode/debugadapter"
 import { DEBUGTYPE } from "./abapConfigurationProvider"
-import { DebugProtocol } from "@vscode/debugprotocol"
+import { type DebugProtocol } from "@vscode/debugprotocol"
 import { getRoot } from "../conections"
 import { isAbapFile } from "abapfs"
 import { caughtToString, log } from "../../lib"
@@ -45,10 +45,10 @@ export class AbapDebugSession extends LoggingDebugSession {
     listener.addListener(e => this.sendEvent(e))
   }
 
-  protected dispatchRequest(request: DebugProtocol.Request) {
+  protected override dispatchRequest(request: DebugProtocol.Request) {
     super.dispatchRequest(request)
   }
-  protected async setBreakPointsRequest(
+  protected override async setBreakPointsRequest(
     response: DebugProtocol.SetBreakpointsResponse,
     args: DebugProtocol.SetBreakpointsArguments,
     request?: DebugProtocol.Request
@@ -93,7 +93,7 @@ export class AbapDebugSession extends LoggingDebugSession {
     this.closed = closeCb
   }
 
-  protected threadsRequest(response: DebugProtocol.ThreadsResponse): void {
+  protected override threadsRequest(response: DebugProtocol.ThreadsResponse): void {
     response.body = {
       threads: this.listener.activeThreads.map(
         ([id, s]) => new Thread(id, `${s.debuggee.NAME} ${id}`)
@@ -102,7 +102,7 @@ export class AbapDebugSession extends LoggingDebugSession {
     this.sendResponse(response)
   }
 
-  protected async stepInRequest(
+  protected override async stepInRequest(
     response: DebugProtocol.StepInResponse,
     args: DebugProtocol.StepInArguments
   ): Promise<void> {
@@ -111,7 +111,7 @@ export class AbapDebugSession extends LoggingDebugSession {
     this.sendResponse(response)
   }
 
-  protected async continueRequest(
+  protected override async continueRequest(
     response: DebugProtocol.ContinueResponse,
     args: DebugProtocol.ContinueArguments
   ): Promise<void> {
@@ -122,7 +122,7 @@ export class AbapDebugSession extends LoggingDebugSession {
     this.sendResponse(response)
   }
 
-  protected async nextRequest(
+  protected override async nextRequest(
     response: DebugProtocol.NextResponse,
     args: DebugProtocol.NextArguments
   ): Promise<void> {
@@ -131,7 +131,7 @@ export class AbapDebugSession extends LoggingDebugSession {
     this.sendResponse(response)
   }
 
-  protected async stepOutRequest(
+  protected override async stepOutRequest(
     response: DebugProtocol.StepOutResponse,
     args: DebugProtocol.StepOutArguments
   ): Promise<void> {
@@ -140,7 +140,7 @@ export class AbapDebugSession extends LoggingDebugSession {
     this.sendResponse(response)
   }
 
-  protected async disconnectRequest(
+  protected override async disconnectRequest(
     response: DebugProtocol.DisconnectResponse,
     args: DebugProtocol.DisconnectArguments,
     request?: DebugProtocol.Request
@@ -149,7 +149,7 @@ export class AbapDebugSession extends LoggingDebugSession {
     this.sendResponse(response)
   }
 
-  protected async attachRequest(
+  protected override async attachRequest(
     response: DebugProtocol.AttachResponse,
     args: DebugProtocol.AttachRequestArguments,
     request?: DebugProtocol.Request
@@ -161,14 +161,14 @@ export class AbapDebugSession extends LoggingDebugSession {
     this.sendResponse(response)
   }
 
-  protected configurationDoneRequest(
+  protected override configurationDoneRequest(
     response: DebugProtocol.ConfigurationDoneResponse,
     args: DebugProtocol.ConfigurationDoneArguments
   ): void {
     this.sendResponse(response)
   }
 
-  protected stackTraceRequest(
+  protected override stackTraceRequest(
     response: DebugProtocol.StackTraceResponse,
     args: DebugProtocol.StackTraceArguments
   ): void {
@@ -181,7 +181,7 @@ export class AbapDebugSession extends LoggingDebugSession {
     this.sendResponse(response)
   }
 
-  protected breakpointLocationsRequest(
+  protected override breakpointLocationsRequest(
     response: DebugProtocol.BreakpointLocationsResponse,
     args: DebugProtocol.BreakpointLocationsArguments,
     request?: DebugProtocol.Request
@@ -194,14 +194,14 @@ export class AbapDebugSession extends LoggingDebugSession {
     this.sendResponse(response)
   }
 
-  protected async scopesRequest(
+  protected override async scopesRequest(
     response: DebugProtocol.ScopesResponse,
     args: DebugProtocol.ScopesArguments
   ) {
     response.body = { scopes: await this.listener.variableManager.getScopes(args.frameId) }
     this.sendResponse(response)
   }
-  protected async setVariableRequest(
+  protected override async setVariableRequest(
     response: DebugProtocol.SetVariableResponse,
     args: DebugProtocol.SetVariableArguments,
     request?: DebugProtocol.Request
@@ -216,7 +216,7 @@ export class AbapDebugSession extends LoggingDebugSession {
     this.sendResponse(response)
   }
 
-  protected async variablesRequest(
+  protected override async variablesRequest(
     response: DebugProtocol.VariablesResponse,
     args: DebugProtocol.VariablesArguments,
     request?: DebugProtocol.Request
@@ -227,7 +227,7 @@ export class AbapDebugSession extends LoggingDebugSession {
     this.sendResponse(response)
   }
 
-  protected async evaluateRequest(
+  protected override async evaluateRequest(
     response: DebugProtocol.EvaluateResponse,
     args: DebugProtocol.EvaluateArguments,
     request?: DebugProtocol.Request
@@ -238,7 +238,7 @@ export class AbapDebugSession extends LoggingDebugSession {
     this.sendResponse(response)
   }
 
-  protected async gotoRequest(
+  protected override async gotoRequest(
     response: DebugProtocol.GotoResponse,
     args: DebugProtocol.GotoArguments,
     request?: DebugProtocol.Request
@@ -265,7 +265,7 @@ export class AbapDebugSession extends LoggingDebugSession {
     this.sendResponse(response)
   }
   private targets = new Map<number, DebugProtocol.GotoTarget>()
-  protected async gotoTargetsRequest(
+  protected override async gotoTargetsRequest(
     response: DebugProtocol.GotoTargetsResponse,
     args: DebugProtocol.GotoTargetsArguments,
     request?: DebugProtocol.Request
@@ -297,7 +297,7 @@ export class AbapDebugSession extends LoggingDebugSession {
     this.sendResponse(response)
   }
 
-  protected initializeRequest(
+  protected override initializeRequest(
     response: DebugProtocol.InitializeResponse,
     args: DebugProtocol.InitializeRequestArguments
   ): void {

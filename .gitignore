@@ -40,3 +40,6 @@ modules/*/src/**/*.js.map
 # MemPalace per-project files
 mempalace.yaml
 entities.json
+# Graphify generated knowledge-graph output (regenerable via /graphify)
+graphify-out/
+**/graphify-out/

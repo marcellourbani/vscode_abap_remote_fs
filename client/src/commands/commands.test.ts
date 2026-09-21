@@ -1,148 +1,148 @@
-jest.mock(
-  "vscode",
-  () => {
-    const Uri = {
-      parse: jest.fn((s: string) => ({
+vi.mock("vscode", () => {
+  const Uri = {
+    parse: vi.fn(function (s: string) {
+      return {
         scheme: s.startsWith("adt") ? "adt" : "file",
         authority: s.split("://")[1]?.split("/")[0] ?? "",
         path: "/" + (s.split("://")[1]?.split("/").slice(1).join("/") ?? ""),
         toString: () => s
-      }))
-    }
-    return {
-      Uri,
-      workspace: {
-        openTextDocument: jest.fn(),
-        updateWorkspaceFolders: jest.fn(),
-        workspaceFolders: []
-      },
-      commands: {
-        executeCommand: jest.fn()
-      },
-      ProgressLocation: { Notification: 15, Window: 10 },
-      Range: jest.fn(),
-      FileChangeType: { Changed: 1 },
-      extensions: {
-        getExtension: jest.fn()
-      },
-      debug: {
-        breakpoints: [],
-        startDebugging: jest.fn()
-      },
-      SourceBreakpoint: class {}
-    }
-  },
-  { virtual: true }
-)
+      }
+    })
+  }
+  return {
+    Uri,
+    workspace: {
+      openTextDocument: vi.fn(),
+      updateWorkspaceFolders: vi.fn(),
+      workspaceFolders: []
+    },
+    commands: {
+      executeCommand: vi.fn()
+    },
+    ProgressLocation: { Notification: 15, Window: 10 },
+    Range: vi.fn(class {}),
+    FileChangeType: { Changed: 1 },
+    extensions: {
+      getExtension: vi.fn()
+    },
+    debug: {
+      breakpoints: [],
+      startDebugging: vi.fn()
+    },
+    SourceBreakpoint: class {}
+  }
+})
 
-jest.mock("../services/funMessenger", () => ({
+vi.mock("../services/funMessenger", () => ({
   funWindow: {
     activeTextEditor: undefined,
-    showTextDocument: jest.fn(),
-    showErrorMessage: jest.fn(),
-    showWarningMessage: jest.fn(),
-    showInformationMessage: jest.fn(),
-    withProgress: jest.fn(),
-    showInputBox: jest.fn(),
-    showQuickPick: jest.fn(),
-    createOutputChannel: jest.fn()
+    showTextDocument: vi.fn(),
+    showErrorMessage: vi.fn(),
+    showWarningMessage: vi.fn(),
+    showInformationMessage: vi.fn(),
+    withProgress: vi.fn(),
+    showInputBox: vi.fn(),
+    showQuickPick: vi.fn(),
+    createOutputChannel: vi.fn()
   }
 }))
 
-jest.mock("../adt/conections", () => ({
+vi.mock("../adt/conections", () => ({
   ADTSCHEME: "adt",
-  getClient: jest.fn(),
-  getRoot: jest.fn(),
-  uriRoot: jest.fn(),
-  getOrCreateRoot: jest.fn(),
-  disconnect: jest.fn(),
-  clearConnectionFailure: jest.fn()
+  getClient: vi.fn(),
+  getRoot: vi.fn(),
+  uriRoot: vi.fn(),
+  getOrCreateRoot: vi.fn(),
+  disconnect: vi.fn(),
+  clearConnectionFailure: vi.fn()
 }))
 
-jest.mock("../config", () => ({
-  pickAdtRoot: jest.fn(),
-  RemoteManager: { get: jest.fn() }
+vi.mock("../config", () => ({
+  pickAdtRoot: vi.fn(),
+  RemoteManager: { get: vi.fn() }
 }))
 
-jest.mock("../lib", () => ({
-  caughtToString: jest.fn((e: any) => String(e)),
-  inputBox: jest.fn(),
-  lineRange: jest.fn(),
-  log: jest.fn(),
-  rangeVscToApi: jest.fn(),
-  splitAdtUri: jest.fn(),
-  channel: { appendLine: jest.fn() }
+vi.mock("../lib", () => ({
+  caughtToString: vi.fn(function (e: any) {
+    return String(e)
+  }),
+  inputBox: vi.fn(),
+  lineRange: vi.fn(),
+  log: vi.fn(),
+  rangeVscToApi: vi.fn(),
+  splitAdtUri: vi.fn(),
+  channel: { appendLine: vi.fn() }
 }))
 
-jest.mock("../views/favourites", () => ({
-  FavouritesProvider: { get: jest.fn() },
-  FavItem: jest.fn()
+vi.mock("../views/favourites", () => ({
+  FavouritesProvider: { get: vi.fn() },
+  FavItem: vi.fn(class {})
 }))
 
-jest.mock("../langClient", () => ({
-  findEditor: jest.fn(),
-  vsCodeUri: jest.fn()
+vi.mock("../langClient", () => ({
+  findEditor: vi.fn(),
+  vsCodeUri: vi.fn()
 }))
 
-jest.mock("../listeners", () => ({
-  showHideActivate: jest.fn()
+vi.mock("../listeners", () => ({
+  showHideActivate: vi.fn()
 }))
 
-jest.mock("../adt/operations/UnitTestRunner", () => ({
-  UnitTestRunner: { get: jest.fn().mockReturnValue({ controller: {} }) }
+vi.mock("../adt/operations/UnitTestRunner", () => ({
+  UnitTestRunner: { get: vi.fn().mockReturnValue({ controller: {} }) }
 }))
 
-jest.mock("../adt/AdtTransports", () => ({
-  selectTransport: jest.fn()
+vi.mock("../adt/AdtTransports", () => ({
+  selectTransport: vi.fn()
 }))
 
-jest.mock("../adt/sapgui/sapgui", () => ({
-  showInGuiCb: jest.fn(),
-  executeInGui: jest.fn(),
-  runInSapGui: jest.fn(),
-  SapGui: { create: jest.fn() }
+vi.mock("../adt/sapgui/sapgui", () => ({
+  showInGuiCb: vi.fn(),
+  executeInGui: vi.fn(),
+  runInSapGui: vi.fn(),
+  SapGui: { create: vi.fn() }
 }))
 
-jest.mock("../oauth", () => ({
-  storeTokens: jest.fn(),
-  clearTokens: jest.fn()
+vi.mock("../oauth", () => ({
+  storeTokens: vi.fn(),
+  clearTokens: vi.fn()
 }))
 
-jest.mock("../views/help", () => ({
-  showAbapDoc: jest.fn()
+vi.mock("../views/help", () => ({
+  showAbapDoc: vi.fn()
 }))
 
-jest.mock("../views/query/query", () => ({
-  showQuery: jest.fn()
+vi.mock("../views/query/query", () => ({
+  showQuery: vi.fn()
 }))
 
-jest.mock("abapfs", () => ({
-  isAbapFolder: jest.fn(),
-  isAbapFile: jest.fn(),
-  isAbapStat: jest.fn()
+vi.mock("abapfs", () => ({
+  isAbapFolder: vi.fn(),
+  isAbapFile: vi.fn(),
+  isAbapStat: vi.fn()
 }))
 
-jest.mock("../adt/operations/AdtObjectActivator", () => ({
-  AdtObjectActivator: { get: jest.fn() }
+vi.mock("../adt/operations/AdtObjectActivator", () => ({
+  AdtObjectActivator: { get: vi.fn() }
 }))
 
-jest.mock("../adt/operations/AdtObjectFinder", () => ({
-  AdtObjectFinder: jest.fn(),
-  createUri: jest.fn(),
-  findAbapObject: jest.fn(),
-  uriAbapFile: jest.fn()
+vi.mock("../adt/operations/AdtObjectFinder", () => ({
+  AdtObjectFinder: vi.fn(class {}),
+  createUri: vi.fn(),
+  findAbapObject: vi.fn(),
+  uriAbapFile: vi.fn()
 }))
 
-jest.mock("abapobject", () => ({
-  ...jest.requireActual("abapobject"),
-  isAbapClassInclude: jest.fn()
+vi.mock("abapobject", async () => ({
+  ...(await vi.importActual("abapobject")),
+  isAbapClassInclude: vi.fn()
 }))
 
-jest.mock("../adt/includes", () => ({
-  IncludeProvider: { get: jest.fn() }
+vi.mock("../adt/includes", () => ({
+  IncludeProvider: { get: vi.fn() }
 }))
 
-jest.mock("./", () => ({
+vi.mock("./", () => ({
   command: () => (_target: any, _key: string, descriptor: PropertyDescriptor) => descriptor,
   AbapFsCommands: {
     connect: "abapfs.connect",
@@ -151,51 +151,51 @@ jest.mock("./", () => ({
   }
 }))
 
-jest.mock("./connectionwizard", () => ({
-  createConnection: jest.fn()
+vi.mock("./connectionwizard", () => ({
+  createConnection: vi.fn()
 }))
 
-jest.mock("../configuration/sapConnectionManager", () => ({
-  openConnectionManager: jest.fn()
+vi.mock("../configuration/sapConnectionManager", () => ({
+  openConnectionManager: vi.fn()
 }))
 
-jest.mock("../extension", () => ({
+vi.mock("../extension", () => ({
   context: { subscriptions: [], extensionPath: "/fake" }
 }))
 
-jest.mock("../views/abaptestcockpit", () => ({
-  atcProvider: { get: jest.fn() }
+vi.mock("../views/abaptestcockpit", () => ({
+  atcProvider: { get: vi.fn() }
 }))
 
-jest.mock("../fs/FsProvider", () => ({
-  FsProvider: { get: jest.fn() }
+vi.mock("../fs/FsProvider", () => ({
+  FsProvider: { get: vi.fn() }
 }))
 
-jest.mock("../services/telemetry", () => ({
-  logTelemetry: jest.fn()
+vi.mock("../services/telemetry", () => ({
+  logTelemetry: vi.fn()
 }))
 
-jest.mock("../adt/debugger/abapDebugSession", () => ({
-  AbapDebugSession: { byConnection: jest.fn() }
+vi.mock("../adt/debugger/abapDebugSession", () => ({
+  AbapDebugSession: { byConnection: vi.fn() }
 }))
 
-jest.mock("../adt/operations/AdtObjectCreator", () => ({
+vi.mock("../adt/operations/AdtObjectCreator", () => ({
   PACKAGE: "DEVC/K",
-  AdtObjectCreator: jest.fn()
+  AdtObjectCreator: vi.fn(class {})
 }))
 
-jest.mock("abap-adt-api", () => ({
+vi.mock("abap-adt-api", () => ({
   CreatableTypeIds: {},
   PackageTypes: {},
   CreatableTypes: {}
 }))
 
-jest.mock("../views/sapgui/SapGuiPanel", () => ({
-  SapGuiPanel: { createOrShow: jest.fn() }
+vi.mock("../views/sapgui/SapGuiPanel", () => ({
+  SapGuiPanel: { createOrShow: vi.fn() }
 }))
 
-jest.mock("../services/sapSystemInfo", () => ({
-  clearSystemInfoCache: jest.fn()
+vi.mock("../services/sapSystemInfo", () => ({
+  clearSystemInfoCache: vi.fn()
 }))
 
 import { currentUri, currentAbapFile, currentEditState, openObject, AdtCommands } from "./commands"
@@ -206,19 +206,23 @@ import { uriAbapFile } from "../adt/operations/AdtObjectFinder"
 import { isAbapFolder, isAbapFile } from "abapfs"
 
 // Helper to cast type-guard mocks
-const asMock = (fn: any): jest.Mock => fn as jest.Mock
+const asMock = (fn: any): Mock => fn as Mock
 import * as vscode from "vscode"
+import * as __$mock_adt_conections from "../adt/conections"
+import * as __$mock_adt_operations_AdtObjectCreator from "../adt/operations/AdtObjectCreator"
+import * as __$mock_adt_operations_AdtObjectFinder from "../adt/operations/AdtObjectFinder"
+import type { Mock, Mocked, MockedFunction } from "vitest"
 
-const mockWindow = window as jest.Mocked<typeof window>
-const mockGetRoot = getRoot as jest.MockedFunction<typeof getRoot>
-const mockUriAbapFile = uriAbapFile as jest.MockedFunction<typeof uriAbapFile>
+const mockWindow = window as Mocked<typeof window>
+const mockGetRoot = getRoot as MockedFunction<typeof getRoot>
+const mockUriAbapFile = uriAbapFile as MockedFunction<typeof uriAbapFile>
 
 function makeAdtUri(authority = "dev100", path = "/sap/bc/adt/programs/programs/ztest") {
   return { scheme: "adt", authority, path, toString: () => `adt://${authority}${path}` } as any
 }
 
 beforeEach(() => {
-  jest.clearAllMocks()
+  vi.clearAllMocks()
   ;(mockWindow as any).activeTextEditor = undefined
 })
 
@@ -243,15 +247,15 @@ describe("currentUri", () => {
 
 describe("connectAdtServer", () => {
   test("offers username and password actions for authentication failures", async () => {
-    const { getOrCreateRoot } = require("../adt/conections")
+    const { getOrCreateRoot } = __$mock_adt_conections
     const mockManager = {
-      selectConnection: jest.fn().mockResolvedValue({
+      selectConnection: vi.fn().mockResolvedValue({
         remote: { name: "dev100", username: "developer" },
         userCancel: false
       })
     }
-    ;(RemoteManager.get as jest.Mock).mockReturnValue(mockManager)
-    getOrCreateRoot.mockRejectedValue(new Error("Request failed with status code 401"))
+    ;(RemoteManager.get as Mock).mockReturnValue(mockManager)
+    vi.mocked(getOrCreateRoot).mockRejectedValue(new Error("Request failed with status code 401"))
     mockWindow.showErrorMessage.mockResolvedValue("Change Password" as any)
 
     await (AdtCommands as any).connectAdtServer({})
@@ -267,15 +271,15 @@ describe("connectAdtServer", () => {
   })
 
   test("opens Connection Manager when the username action is selected", async () => {
-    const { getOrCreateRoot } = require("../adt/conections")
+    const { getOrCreateRoot } = __$mock_adt_conections
     const mockManager = {
-      selectConnection: jest.fn().mockResolvedValue({
+      selectConnection: vi.fn().mockResolvedValue({
         remote: { name: "dev100", username: "developer" },
         userCancel: false
       })
     }
-    ;(RemoteManager.get as jest.Mock).mockReturnValue(mockManager)
-    getOrCreateRoot.mockRejectedValue(new Error("Request failed with status code 401"))
+    ;(RemoteManager.get as Mock).mockReturnValue(mockManager)
+    vi.mocked(getOrCreateRoot).mockRejectedValue(new Error("Request failed with status code 401"))
     mockWindow.showErrorMessage.mockResolvedValue("Change Username" as any)
 
     await (AdtCommands as any).connectAdtServer({})
@@ -285,14 +289,14 @@ describe("connectAdtServer", () => {
 
   test("offers to connect after changing the password", async () => {
     const mockManager = {
-      selectConnection: jest.fn().mockResolvedValue({
+      selectConnection: vi.fn().mockResolvedValue({
         remote: { name: "dev100", username: "developer" },
         userCancel: false
       }),
-      clearPassword: jest.fn().mockResolvedValue(true),
-      savePassword: jest.fn().mockResolvedValue(true)
+      clearPassword: vi.fn().mockResolvedValue(true),
+      savePassword: vi.fn().mockResolvedValue(true)
     }
-    ;(RemoteManager.get as jest.Mock).mockReturnValue(mockManager)
+    ;(RemoteManager.get as Mock).mockReturnValue(mockManager)
     mockWindow.showInputBox.mockResolvedValue("new-password")
     mockWindow.showQuickPick.mockResolvedValue("Yes" as any)
 
@@ -319,7 +323,7 @@ describe("createAdtObjectProgrammatically", () => {
       "dev100"
     )
 
-    const { AdtObjectCreator } = require("../adt/operations/AdtObjectCreator")
+    const { AdtObjectCreator } = __$mock_adt_operations_AdtObjectCreator
 
     expect(result).toEqual({
       success: false,
@@ -374,15 +378,15 @@ describe("currentEditState", () => {
 
 describe("openObject", () => {
   beforeEach(() => {
-    ;(mockWindow.withProgress as jest.Mock).mockImplementation(async (_opts: any, fn: Function) =>
-      fn()
-    )
+    ;(mockWindow.withProgress as Mock).mockImplementation(function (_opts: any, fn: Function) {
+      return fn()
+    })
   })
 
   test("calls findByAdtUri on root", async () => {
     const mockFile = {}
     const mockRoot = {
-      findByAdtUri: jest.fn().mockResolvedValue({ file: mockFile, path: "/ztest" })
+      findByAdtUri: vi.fn().mockResolvedValue({ file: mockFile, path: "/ztest" })
     }
     mockGetRoot.mockReturnValue(mockRoot as any)
     asMock(isAbapFolder).mockReturnValue(false)
@@ -395,7 +399,7 @@ describe("openObject", () => {
 
   test("tries to refresh and re-find when object not found initially", async () => {
     const mockRoot = {
-      findByAdtUri: jest
+      findByAdtUri: vi
         .fn()
         .mockResolvedValueOnce(null)
         .mockResolvedValueOnce({ file: {}, path: "/ztest" })
@@ -403,7 +407,7 @@ describe("openObject", () => {
     mockGetRoot.mockReturnValue(mockRoot as any)
     asMock(isAbapFolder).mockReturnValue(false)
     asMock(isAbapFile).mockReturnValue(false)
-    ;(vscode.commands.executeCommand as jest.Mock).mockResolvedValue(undefined)
+    ;(vscode.commands.executeCommand as Mock).mockResolvedValue(undefined)
 
     await openObject("dev100", "/sap/bc/adt/programs/programs/ztest")
 
@@ -414,17 +418,17 @@ describe("openObject", () => {
   })
 
   test("reveals package in explorer when ABAP folder found", async () => {
-    const { PACKAGE } = require("../adt/operations/AdtObjectCreator")
+    const { PACKAGE } = __$mock_adt_operations_AdtObjectCreator
     const mockPackageFile = { object: { type: PACKAGE } }
     const mockRoot = {
-      findByAdtUri: jest.fn().mockResolvedValue({ file: mockPackageFile, path: "/devc/test" })
+      findByAdtUri: vi.fn().mockResolvedValue({ file: mockPackageFile, path: "/devc/test" })
     }
     mockGetRoot.mockReturnValue(mockRoot as any)
     asMock(isAbapFolder).mockReturnValue(true)
     ;(mockPackageFile as any).object.type = PACKAGE
     asMock(isAbapFile).mockReturnValue(false)
-    const { createUri } = require("../adt/operations/AdtObjectFinder")
-    ;(createUri as jest.Mock).mockReturnValue({ toString: () => "adt://dev100/test" })
+    const { createUri } = __$mock_adt_operations_AdtObjectFinder
+    ;(createUri as Mock).mockReturnValue({ toString: () => "adt://dev100/test" })
 
     await openObject("dev100", "/sap/bc/adt/repository/packages/ztest")
 
@@ -436,10 +440,10 @@ describe("openObject", () => {
 
   test("throws when object still not found after refresh", async () => {
     const mockRoot = {
-      findByAdtUri: jest.fn().mockResolvedValue(null)
+      findByAdtUri: vi.fn().mockResolvedValue(null)
     }
     mockGetRoot.mockReturnValue(mockRoot as any)
-    ;(vscode.commands.executeCommand as jest.Mock).mockResolvedValue(undefined)
+    ;(vscode.commands.executeCommand as Mock).mockResolvedValue(undefined)
 
     await expect(openObject("dev100", "/sap/bc/adt/programs/programs/nonexistent")).rejects.toThrow(
       "Object not found in workspace"
@@ -449,16 +453,16 @@ describe("openObject", () => {
   test("opens text document for ABAP file", async () => {
     const mockAbapFile = { object: { type: "PROG/P" } }
     const mockRoot = {
-      findByAdtUri: jest.fn().mockResolvedValue({ file: mockAbapFile, path: "/ztest" })
+      findByAdtUri: vi.fn().mockResolvedValue({ file: mockAbapFile, path: "/ztest" })
     }
     mockGetRoot.mockReturnValue(mockRoot as any)
     asMock(isAbapFolder).mockReturnValue(false)
     asMock(isAbapFile).mockReturnValue(true)
-    const { createUri } = require("../adt/operations/AdtObjectFinder")
-    ;(createUri as jest.Mock).mockReturnValue({ toString: () => "adt://dev100/ztest" })
+    const { createUri } = __$mock_adt_operations_AdtObjectFinder
+    ;(createUri as Mock).mockReturnValue({ toString: () => "adt://dev100/ztest" })
     const mockDoc = {}
-    ;(vscode.workspace.openTextDocument as jest.Mock).mockResolvedValue(mockDoc)
-    ;(mockWindow.showTextDocument as jest.Mock).mockResolvedValue(undefined)
+    ;(vscode.workspace.openTextDocument as Mock).mockResolvedValue(mockDoc)
+    ;(mockWindow.showTextDocument as Mock).mockResolvedValue(undefined)
 
     await openObject("dev100", "/sap/bc/adt/programs/programs/ztest")
 
@@ -469,13 +473,13 @@ describe("openObject", () => {
   test("opens message class with custom editor", async () => {
     const mockAbapFile = { object: { type: "MSAG/N" } }
     const mockRoot = {
-      findByAdtUri: jest.fn().mockResolvedValue({ file: mockAbapFile, path: "/msag/zmsag" })
+      findByAdtUri: vi.fn().mockResolvedValue({ file: mockAbapFile, path: "/msag/zmsag" })
     }
     mockGetRoot.mockReturnValue(mockRoot as any)
     asMock(isAbapFolder).mockReturnValue(false)
     asMock(isAbapFile).mockReturnValue(true)
-    const { createUri } = require("../adt/operations/AdtObjectFinder")
-    ;(createUri as jest.Mock).mockReturnValue({ toString: () => "adt://dev100/msag/zmsag" })
+    const { createUri } = __$mock_adt_operations_AdtObjectFinder
+    ;(createUri as Mock).mockReturnValue({ toString: () => "adt://dev100/msag/zmsag" })
 
     await openObject("dev100", "/sap/bc/adt/messageclass/zmsag", "MSAG/N")
 

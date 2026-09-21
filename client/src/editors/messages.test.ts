@@ -1,51 +1,61 @@
 // Tests for editors/messages.ts - pure logic functions
-jest.mock(
-  "vscode",
-  () => ({
-    workspace: {
-      onDidChangeTextDocument: jest.fn(() => ({ dispose: jest.fn() })),
-      fs: {}
-    },
-    ViewColumn: { Beside: 2, Active: 1 },
-    Range: class {
-      constructor(
-        public start: any,
-        public end: any
-      ) {}
-    },
-    Position: class {
-      constructor(
-        public line: number,
-        public character: number
-      ) {}
-    },
-    WorkspaceEdit: class {
-      replace = jest.fn()
-      insert = jest.fn()
-      delete = jest.fn()
-    }
-  }),
-  { virtual: true }
-)
-
-jest.mock("../adt/conections", () => ({ getClient: jest.fn() }))
-jest.mock("../services/funMessenger", () => ({
-  funWindow: {
-    registerCustomEditorProvider: jest.fn(),
-    showInputBox: jest.fn(),
-    showTextDocument: jest.fn(),
-    createWebviewPanel: jest.fn(() => ({
-      webview: { html: "" }
-    }))
+vi.mock("vscode", () => ({
+  workspace: {
+    onDidChangeTextDocument: vi.fn(function () {
+      return { dispose: vi.fn() }
+    }),
+    fs: {}
+  },
+  ViewColumn: { Beside: 2, Active: 1 },
+  Range: class {
+    constructor(
+      public start: any,
+      public end: any
+    ) {}
+  },
+  Position: class {
+    constructor(
+      public line: number,
+      public character: number
+    ) {}
+  },
+  WorkspaceEdit: class {
+    replace = vi.fn()
+    insert = vi.fn()
+    delete = vi.fn()
   }
 }))
-jest.mock("fast-xml-parser", () => ({
-  XMLParser: jest.fn().mockImplementation(() => ({
-    parse: jest.fn()
-  }))
+
+vi.mock("../adt/conections", () => ({ getClient: vi.fn() }))
+vi.mock("../services/funMessenger", () => ({
+  funWindow: {
+    registerCustomEditorProvider: vi.fn(),
+    showInputBox: vi.fn(),
+    showTextDocument: vi.fn(),
+    createWebviewPanel: vi.fn(function () {
+      return {
+        webview: { html: "" }
+      }
+    })
+  }
 }))
-jest.mock("html-entities", () => ({ decode: jest.fn((s: string) => s) }))
-jest.mock("path", () => ({ join: jest.fn((...args: string[]) => args.join("/")) }))
+vi.mock("fast-xml-parser", () => ({
+  XMLParser: vi.fn().mockImplementation(function () {
+    return {
+      parse: vi.fn()
+    }
+  })
+}))
+vi.mock("html-entities", () => ({
+  decode: vi.fn(function (s: string) {
+    return s
+  })
+}))
+vi.mock("path", () => ({
+  join: vi.fn(function (...args: string[]) {
+    return args.join("/")
+  })
+}))
 
 // We test the pure functions extracted from the module by re-implementing them
 // (parseMessages and getMessageClassName are not exported, so we test them indirectly

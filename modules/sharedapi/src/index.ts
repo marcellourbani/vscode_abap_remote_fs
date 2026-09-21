@@ -1,4 +1,4 @@
-import { LogData } from "abap-adt-api"
+import { type LogData } from "abap-adt-api"
 export enum Methods {
   objectDetails = "vscabap.objDetails",
   readConfiguration = "vscabap.readConfig",

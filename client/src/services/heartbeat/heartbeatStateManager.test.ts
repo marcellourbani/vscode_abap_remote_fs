@@ -2,23 +2,20 @@
  * Tests for heartbeatStateManager.ts
  */
 
-jest.mock(
-  "vscode",
-  () => ({
-    workspace: {
-      getConfiguration: jest.fn()
-    }
-  }),
-  { virtual: true }
-)
+vi.mock("vscode", () => ({
+  workspace: {
+    getConfiguration: vi.fn()
+  }
+}))
 
-jest.mock("../../lib", () => ({ log: jest.fn() }))
+vi.mock("../../lib", () => ({ log: vi.fn() }))
 
 import * as fs from "fs"
 import * as path from "path"
 import * as os from "os"
 import { HeartbeatStateManager } from "./heartbeatStateManager"
-import { HeartbeatRunRecord } from "./heartbeatTypes"
+import type { HeartbeatRunRecord } from "./heartbeatTypes"
+import * as __$mock_vscode from "vscode"
 
 // ============================================================================
 // HELPERS
@@ -27,13 +24,13 @@ import { HeartbeatRunRecord } from "./heartbeatTypes"
 function makeContext(storagePath: string) {
   return {
     globalStorageUri: { fsPath: storagePath },
-    subscriptions: { push: jest.fn() }
+    subscriptions: { push: vi.fn() }
   } as any
 }
 
 function makeConfigMock(overrides: Record<string, any> = {}) {
   return {
-    get: jest.fn((key: string, defaultValue?: any) => {
+    get: vi.fn(function (key: string, defaultValue?: any) {
       return overrides[key] !== undefined ? overrides[key] : defaultValue
     })
   }
@@ -57,13 +54,13 @@ let vscode: any
 
 beforeEach(() => {
   tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "hb-test-"))
-  vscode = require("vscode")
+  vscode = __$mock_vscode
   vscode.workspace.getConfiguration.mockReturnValue(makeConfigMock())
 })
 
 afterEach(() => {
   fs.rmSync(tmpDir, { recursive: true, force: true })
-  jest.clearAllMocks()
+  vi.clearAllMocks()
 })
 
 // ============================================================================
@@ -104,7 +101,7 @@ describe("HeartbeatStateManager constructor", () => {
 // ============================================================================
 
 describe("HeartbeatStateManager loadState", () => {
-  test("loads persisted history from JSON file", async () => {
+  test("loads persisted history from JSON file", () => {
     const stored = {
       version: 1,
       lastRunTime: "2024-01-15T10:00:00.000Z",
@@ -129,7 +126,7 @@ describe("HeartbeatStateManager loadState", () => {
     expect(state.runHistory[0].timestamp).toBeInstanceOf(Date)
   })
 
-  test("always starts with isRunning=false even if persisted otherwise", async () => {
+  test("always starts with isRunning=false even if persisted otherwise", () => {
     // State files can't persist isRunning=true across sessions
     const stored = { version: 1, runHistory: [], consecutiveErrors: 0 }
     fs.writeFileSync(path.join(tmpDir, "heartbeatHistory.json"), JSON.stringify(stored))
@@ -397,7 +394,7 @@ describe("getConfig", () => {
 // ============================================================================
 
 describe("getState immutability", () => {
-  test("returns a shallow copy so external mutations do not affect internal state", async () => {
+  test("returns a shallow copy so external mutations do not affect internal state", () => {
     const mgr = new HeartbeatStateManager(makeContext(tmpDir))
     const state = mgr.getState()
     state.isRunning = true

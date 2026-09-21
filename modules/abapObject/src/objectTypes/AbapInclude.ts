@@ -1,5 +1,5 @@
-import { AbapObjectBase, AbapObject } from "../AbapObject"
-import { AbapObjectService } from "../AOService"
+import { AbapObjectBase, type AbapObject } from "../AbapObject.js"
+import { type AbapObjectService } from "../AOService.js"
 
 const tag = Symbol("AbapInclude")
 export class AbapInclude extends AbapObjectBase {
@@ -20,7 +20,7 @@ export class AbapInclude extends AbapObjectBase {
 
   [tag]: boolean
 
-  get extension() {
+  override get extension() {
     return ".prog.abap"
   }
 }

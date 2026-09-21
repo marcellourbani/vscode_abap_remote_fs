@@ -1,4 +1,4 @@
-import { AgentDefinition, TESTING_AGENT_REGISTRY } from "../../subagentRegistry"
+import { type AgentDefinition, TESTING_AGENT_REGISTRY } from "../../subagentRegistry"
 
 export type SubagentDefinition = AgentDefinition
 export const SUBAGENT_REGISTRY: readonly SubagentDefinition[] = TESTING_AGENT_REGISTRY

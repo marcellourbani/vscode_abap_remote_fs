@@ -1,14 +1,14 @@
-import { AtcWorkList } from "abap-adt-api"
-import { Task } from "fp-ts/lib/Task"
+import { type AtcWorkList } from "abap-adt-api"
+import { type Task } from "fp-ts/lib/Task"
 import {
   commands,
   Disposable,
   EventEmitter,
   Position,
-  TextDocumentContentChangeEvent,
+  type TextDocumentContentChangeEvent,
   ThemeColor,
   ThemeIcon,
-  TreeDataProvider,
+  type TreeDataProvider,
   TreeItem,
   TreeItemCollapsibleState,
   Uri
@@ -18,8 +18,8 @@ import { getClient } from "../../adt/conections"
 import { AdtObjectFinder } from "../../adt/operations/AdtObjectFinder"
 import { AbapFsCommands } from "../../commands"
 import {
-  AtcWLFinding,
-  AtcWLobject,
+  type AtcWLFinding,
+  type AtcWLobject,
   getVariant,
   runInspector,
   runInspectorByAdtUrl
@@ -28,7 +28,7 @@ import * as R from "ramda"
 import { AbapFile } from "abapfs"
 import { AdtObjectActivator } from "../../adt/operations/AdtObjectActivator"
 import { atcRefresh } from "./commands"
-import { AbapObjectBase } from "abapobject/out/AbapObject"
+import { AbapObjectBase } from "abapobject"
 import { log } from "../../lib"
 import { setContext } from "../../context"
 

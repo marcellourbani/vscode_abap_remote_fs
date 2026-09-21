@@ -1,51 +1,59 @@
-jest.mock(
-  "vscode",
-  () => ({
-    commands: { executeCommand: jest.fn() },
-    ProgressLocation: { Notification: 15 },
-    Uri: { parse: jest.fn((s: string) => ({ toString: () => s })) },
-    workspace: { openTextDocument: jest.fn() },
-    Selection: jest.fn((start: any, end: any) => ({ start, end })),
-    WorkspaceEdit: jest.fn().mockImplementation(() => ({ insert: jest.fn() })),
-    Position: jest.fn((line: number, character: number) => ({ line, character }))
+vi.mock("vscode", () => ({
+  commands: { executeCommand: vi.fn() },
+  ProgressLocation: { Notification: 15 },
+  Uri: {
+    parse: vi.fn(function (s: string) {
+      return { toString: () => s }
+    })
+  },
+  workspace: { openTextDocument: vi.fn() },
+  Selection: vi.fn(function (start: any, end: any) {
+    return { start, end }
   }),
-  { virtual: true }
-)
+  WorkspaceEdit: vi.fn().mockImplementation(function () {
+    return { insert: vi.fn() }
+  }),
+  Position: vi.fn(function (line: number, character: number) {
+    return { line, character }
+  })
+}))
 
-jest.mock("../../services/funMessenger", () => ({
+vi.mock("../../services/funMessenger", () => ({
   funWindow: {
-    showTextDocument: jest.fn(),
-    showInformationMessage: jest.fn(),
-    withProgress: jest.fn((_opts: any, cb: any) => cb())
+    showTextDocument: vi.fn(),
+    showInformationMessage: vi.fn(),
+    withProgress: vi.fn(function (_opts: any, cb: any) {
+      return cb()
+    })
   }
 }))
 
-jest.mock("../../adt/conections", () => ({
-  getClient: jest.fn()
+vi.mock("../../adt/conections", () => ({
+  getClient: vi.fn()
 }))
 
-jest.mock("../../config", () => ({
-  RemoteManager: { get: jest.fn().mockReturnValue({ byId: jest.fn() }) }
+vi.mock("../../config", () => ({
+  RemoteManager: { get: vi.fn().mockReturnValue({ byId: vi.fn() }) }
 }))
 
-jest.mock("../../lib", () => ({
-  chainTaskTransformers: jest.fn(),
-  fieldReplacer: jest.fn(),
-  inputBox: jest.fn(),
-  quickPick: jest.fn(),
-  rfsExtract: jest.fn(),
-  rfsTryCatch: jest.fn(),
-  showErrorMessage: jest.fn()
+vi.mock("../../lib", () => ({
+  chainTaskTransformers: vi.fn(),
+  fieldReplacer: vi.fn(),
+  inputBox: vi.fn(),
+  quickPick: vi.fn(),
+  rfsExtract: vi.fn(),
+  rfsTryCatch: vi.fn(),
+  showErrorMessage: vi.fn()
 }))
 
-jest.mock("./documentation", () => ({
+vi.mock("./documentation", () => ({
   ATCDocumentation: {
-    get: jest.fn().mockReturnValue({ showDocumentation: jest.fn() })
+    get: vi.fn().mockReturnValue({ showDocumentation: vi.fn() })
   }
 }))
 
-jest.mock("./view", () => ({
-  AtcFind: jest.fn().mockImplementation(function (
+vi.mock("./view", () => ({
+  AtcFind: vi.fn().mockImplementation(function (
     this: any,
     finding: any,
     parent: any,
@@ -57,27 +65,27 @@ jest.mock("./view", () => ({
     this.uri = uri
     this.start = start
   }),
-  AtcSystem: jest.fn().mockImplementation(function (this: any) {
-    this.refresh = jest.fn()
+  AtcSystem: vi.fn().mockImplementation(function (this: any) {
+    this.refresh = vi.fn()
   }),
-  AtcObject: jest.fn().mockImplementation(function (this: any) {
-    this.parent = { refresh: jest.fn() }
+  AtcObject: vi.fn().mockImplementation(function (this: any) {
+    this.parent = { refresh: vi.fn() }
   }),
-  AtcRoot: jest.fn().mockImplementation(function (this: any) {
+  AtcRoot: vi.fn().mockImplementation(function (this: any) {
     this.children = []
   }),
   atcProvider: {
     root: { children: [] },
-    setAutoRefresh: jest.fn(),
-    setExemptFilter: jest.fn()
+    setAutoRefresh: vi.fn(),
+    setExemptFilter: vi.fn()
   }
 }))
 
-jest.mock("./codeinspector", () => ({
-  findingPragmas: jest.fn()
+vi.mock("./codeinspector", () => ({
+  findingPragmas: vi.fn()
 }))
 
-jest.mock("../../commands", () => ({
+vi.mock("../../commands", () => ({
   AbapFsCommands: {
     openLocation: "openLocation",
     atcIgnore: "atcIgnore",
@@ -93,22 +101,23 @@ jest.mock("../../commands", () => ({
   command: () => (_target: any, _key: string, descriptor: PropertyDescriptor) => descriptor
 }))
 
-jest.mock("./functions", () => ({
-  insertPosition: jest.fn().mockReturnValue(10)
+vi.mock("./functions", () => ({
+  insertPosition: vi.fn().mockReturnValue(10)
 }))
 
 import { atcRefresh } from "./commands"
 import { AtcSystem, AtcObject, AtcFind, AtcRoot, atcProvider } from "./view"
 import { showErrorMessage } from "../../lib"
 import { funWindow as window } from "../../services/funMessenger"
+import type { MockedFunction, Mock } from "vitest"
 
-const mockShowError = showErrorMessage as jest.MockedFunction<typeof showErrorMessage>
+const mockShowError = showErrorMessage as MockedFunction<typeof showErrorMessage>
 
 describe("atcRefresh", () => {
-  beforeEach(() => jest.clearAllMocks())
+  beforeEach(() => vi.clearAllMocks())
 
   it("refreshes all root children when called with no arguments", async () => {
-    const mockRefresh = jest.fn().mockResolvedValue(undefined)
+    const mockRefresh = vi.fn().mockResolvedValue(undefined)
     ;(atcProvider.root as any).children = [{ refresh: mockRefresh }, { refresh: mockRefresh }]
 
     await atcRefresh()
@@ -119,7 +128,7 @@ describe("atcRefresh", () => {
 
   it("refreshes a single AtcSystem when passed one", async () => {
     const system = new (AtcSystem as any)()
-    system.refresh = jest.fn().mockResolvedValue(undefined)
+    system.refresh = vi.fn().mockResolvedValue(undefined)
     system.constructor = AtcSystem
     Object.setPrototypeOf(system, (AtcSystem as any).prototype)
 
@@ -133,7 +142,7 @@ describe("atcRefresh", () => {
   })
 
   it("calls showErrorMessage on exception", async () => {
-    ;(window.withProgress as jest.Mock).mockRejectedValueOnce(new Error("boom"))
+    ;(window.withProgress as Mock).mockRejectedValueOnce(new Error("boom"))
     await atcRefresh()
     expect(mockShowError).toHaveBeenCalled()
   })

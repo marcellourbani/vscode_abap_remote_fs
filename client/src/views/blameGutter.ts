@@ -8,7 +8,7 @@
 
 import * as vscode from "vscode"
 import { diffArrays } from "diff"
-import { Revision } from "abap-adt-api"
+import { type Revision } from "abap-adt-api"
 import { AbapRevisionService } from "../scm/abaprevisions/abaprevisionservice"
 import { abapUri, getClient, ADTSCHEME } from "../adt/conections"
 import { setContext } from "../context"

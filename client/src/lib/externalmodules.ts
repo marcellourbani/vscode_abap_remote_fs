@@ -1,4 +1,4 @@
-import { ExtensionContext } from "vscode"
+import { type ExtensionContext } from "vscode"
 
 /**
  * Secure password storage using VS Code's built-in secrets API.

@@ -1,87 +1,96 @@
-jest.mock("abap-adt-api", () => ({
-  isAdtError: jest.fn((e: any) => e && e.__isAdtError === true),
+vi.mock("abap-adt-api", () => ({
+  isAdtError: vi.fn(function (e: any) {
+    return e && e.__isAdtError === true
+  }),
   session_types: { stateful: "stateful" }
 }))
-jest.mock(
-  "vscode",
-  () => ({
-    EventEmitter: jest.fn().mockImplementation(() => {
-      const listeners: any[] = []
-      return {
-        event: jest.fn((listener: any, _thisArg?: any, disposables?: any[]) => {
-          listeners.push(listener)
-          const d = { dispose: jest.fn() }
-          if (Array.isArray(disposables)) disposables.push(d)
-          return d
-        }),
-        fire: jest.fn((e: any) => {
-          listeners.forEach(l => l(e))
-        }),
-        dispose: jest.fn()
-      }
-    }),
-    Disposable: jest.fn().mockImplementation((fn: any) => ({ dispose: fn }))
+vi.mock("vscode", () => ({
+  EventEmitter: vi.fn().mockImplementation(function () {
+    const listeners: any[] = []
+    return {
+      event: vi.fn((listener: any, _thisArg?: any, disposables?: any[]) => {
+        listeners.push(listener)
+        const d = { dispose: vi.fn() }
+        if (Array.isArray(disposables)) disposables.push(d)
+        return d
+      }),
+      fire: vi.fn((e: any) => {
+        listeners.forEach(l => l(e))
+      }),
+      dispose: vi.fn()
+    }
   }),
-  { virtual: true }
-)
-jest.mock("@vscode/debugadapter", () => ({
-  ContinuedEvent: jest
-    .fn()
-    .mockImplementation((threadId: number) => ({ type: "continued", threadId })),
-  StoppedEvent: jest.fn().mockImplementation((reason: string, threadId: number) => ({
-    type: "stopped",
-    reason,
-    threadId
-  })),
-  ThreadEvent: jest.fn().mockImplementation((reason: string, threadId: number) => ({
-    type: "thread",
-    reason,
-    threadId
-  })),
-  Source: jest.fn().mockImplementation((name: string, path: string) => ({ name, path }))
+  Disposable: vi.fn().mockImplementation(function (fn: any) {
+    return { dispose: fn }
+  })
 }))
-jest.mock("./functions", () => ({
-  newClientFromKey: jest.fn()
+vi.mock("@vscode/debugadapter", () => ({
+  ContinuedEvent: vi.fn().mockImplementation(function (threadId: number) {
+    return { type: "continued", threadId }
+  }),
+  StoppedEvent: vi.fn().mockImplementation(function (reason: string, threadId: number) {
+    return {
+      type: "stopped",
+      reason,
+      threadId
+    }
+  }),
+  ThreadEvent: vi.fn().mockImplementation(function (reason: string, threadId: number) {
+    return {
+      type: "thread",
+      reason,
+      threadId
+    }
+  }),
+  Source: vi.fn().mockImplementation(function (name: string, path: string) {
+    return { name, path }
+  })
 }))
-jest.mock("../../lib", () => ({
-  log: jest.fn(),
-  caughtToString: jest.fn((e: any) => String(e)),
-  ignore: jest.fn()
+vi.mock("./functions", () => ({
+  newClientFromKey: vi.fn()
 }))
-jest.mock("../../langClient", () => ({
-  vsCodeUri: jest.fn()
+vi.mock("../../lib", () => ({
+  log: vi.fn(),
+  caughtToString: vi.fn(function (e: any) {
+    return String(e)
+  }),
+  ignore: vi.fn()
 }))
-jest.mock("./debugListener", () => ({
+vi.mock("../../langClient", () => ({
+  vsCodeUri: vi.fn()
+}))
+vi.mock("./debugListener", () => ({
   THREAD_EXITED: "exited",
-  errorType: jest.fn()
+  errorType: vi.fn()
 }))
-jest.mock("./replay/types", () => ({}))
+vi.mock("./replay/types", () => ({}))
 
 import { DebugService, idThread, isEnded, STACK_THREAD_MULTIPLIER } from "./debugService"
 import { ADTClient, isAdtError, session_types } from "abap-adt-api"
 import { newClientFromKey } from "./functions"
 import { vsCodeUri } from "../../langClient"
 import { errorType } from "./debugListener"
+import type { MockedFunction } from "vitest"
 
-const mockNewClientFromKey = newClientFromKey as jest.MockedFunction<typeof newClientFromKey>
-const mockIsAdtError = isAdtError as jest.MockedFunction<typeof isAdtError>
-const mockVsCodeUri = vsCodeUri as jest.MockedFunction<typeof vsCodeUri>
-const mockErrorType = errorType as jest.MockedFunction<typeof errorType>
+const mockNewClientFromKey = newClientFromKey as MockedFunction<typeof newClientFromKey>
+const mockIsAdtError = isAdtError as MockedFunction<typeof isAdtError>
+const mockVsCodeUri = vsCodeUri as MockedFunction<typeof vsCodeUri>
+const mockErrorType = errorType as MockedFunction<typeof errorType>
 
 function makeClient(overrides: Partial<any> = {}) {
   const client = {
     stateful: undefined as any,
     statelessClone: {
-      logout: jest.fn().mockResolvedValue(undefined),
-      debuggerDeleteBreakpoints: jest.fn().mockResolvedValue(undefined)
+      logout: vi.fn().mockResolvedValue(undefined),
+      debuggerDeleteBreakpoints: vi.fn().mockResolvedValue(undefined)
     },
-    adtCoreDiscovery: jest.fn().mockResolvedValue(undefined),
-    debuggerAttach: jest.fn().mockResolvedValue(undefined),
-    debuggerSaveSettings: jest.fn().mockResolvedValue(undefined),
-    debuggerStackTrace: jest.fn().mockResolvedValue({ stack: [] }),
-    debuggerStep: jest.fn().mockResolvedValue({}),
-    dropSession: jest.fn().mockResolvedValue(undefined),
-    logout: jest.fn().mockResolvedValue(undefined),
+    adtCoreDiscovery: vi.fn().mockResolvedValue(undefined),
+    debuggerAttach: vi.fn().mockResolvedValue(undefined),
+    debuggerSaveSettings: vi.fn().mockResolvedValue(undefined),
+    debuggerStackTrace: vi.fn().mockResolvedValue({ stack: [] }),
+    debuggerStep: vi.fn().mockResolvedValue({}),
+    dropSession: vi.fn().mockResolvedValue(undefined),
+    logout: vi.fn().mockResolvedValue(undefined),
     ...overrides
   }
 
@@ -103,8 +112,8 @@ function makeDebuggee(overrides: Partial<any> = {}) {
 
 function makeUI() {
   return {
-    Confirmator: jest.fn().mockResolvedValue(true),
-    ShowError: jest.fn()
+    Confirmator: vi.fn().mockResolvedValue(true),
+    ShowError: vi.fn()
   }
 }
 
@@ -113,9 +122,9 @@ function makeListener(overrides: Partial<any> = {}) {
     mode: "user",
     username: "TESTUSER",
     variableManager: {
-      resetHandle: jest.fn()
+      resetHandle: vi.fn()
     },
-    shouldRecordThread: jest.fn().mockReturnValue(false),
+    shouldRecordThread: vi.fn().mockReturnValue(false),
     recorder: undefined,
     ...overrides
   } as any
@@ -148,7 +157,7 @@ describe("isEnded", () => {
 
 describe("DebugService.create", () => {
   beforeEach(() => {
-    jest.clearAllMocks()
+    vi.clearAllMocks()
   })
 
   test("throws when client cannot be created", async () => {
@@ -179,7 +188,7 @@ describe("DebugService instance", () => {
   let service: DebugService
 
   beforeEach(() => {
-    jest.clearAllMocks()
+    vi.clearAllMocks()
     client = makeClient()
     listener = makeListener()
     ui = makeUI()
@@ -206,7 +215,7 @@ describe("DebugService instance", () => {
 
   describe("addListener", () => {
     test("adds event listener and returns disposable", () => {
-      const handler = jest.fn()
+      const handler = vi.fn()
       const disposable = service.addListener(handler)
       expect(disposable).toBeDefined()
       expect(typeof disposable.dispose).toBe("function")

@@ -15,8 +15,10 @@
     "name": "Marcello Urbani"
   },
   "homepage": "https://marcellourbani.github.io/vscode_abap_remote_fs",
+  "type": "module",
   "engines": {
-    "vscode": "^1.105.0"
+    "vscode": "^1.105.0",
+    "node": ">=22"
   },
   "categories": [
     "Programming Languages",
@@ -51,19 +53,17 @@
     "onCommand:abapfs.runInEmbeddedGui",
     "onCommand:abapfs.showWalkThrough"
   ],
-  "main": "./client/dist/extension",
+  "main": "./client/dist/extension.js",
   "scripts": {
-    "vscode:prepublish": "npm run webpack && npm run typecheck",
-    "webpack": "npm run build_modules&&cd server && npm run webpack && cd ../client && npm run webpack",
-    "build": "npm run webpack",
+    "vscode:prepublish": "npm run bundle && npm run typecheck",
+    "bundle": "npm run build_modules&&cd server && npm run bundle && cd ../client && npm run bundle",
+    "build": "npm run bundle",
     "typecheck": "npm --prefix modules/sharedapi run typecheck && npm --prefix modules/abapObject run typecheck && npm --prefix modules/abapfs run typecheck && npm --prefix server run typecheck && npm --prefix client run typecheck",
     "build_modules": "cd modules/abapObject&& npm run build&&cd ../abapfs&& npm run build&&cd ../sharedapi&& npm run build",
-    "compile": "npm run webpack",
-    "test": "npm run test-object && npm run test-abapfs && npm run test-server && npm run test-client",
-    "test-server": "cd server&& npm run test",
-    "test-client": "cd client&& npm run test",
-    "test-object": "cd modules/abapObject&& npm run test",
-    "test-abapfs": "cd modules/abapfs&& npm run test",
+    "compile": "npm run bundle",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:coverage": "vitest run --coverage",
     "createpackage": "vsce package",
     "deploy": "vsce publish",
     "docs": "uv run mkdocs serve --livereload",
@@ -79,15 +79,17 @@
   },
   "devDependencies": {
     "@changesets/cli": "^2.31.0",
-    "@types/mocha": "^7.0.2",
-    "@types/node": "^18.11.18",
+    "@types/node": "^22.0.0",
+    "@vitest/coverage-v8": "5.0.0",
     "@vscode/vsce": "^3.3.0",
     "concurrently": "^6.3.0",
     "husky": "^9.1.7",
     "ovsx": "^0.10.1",
     "rimraf": "^3.0.2",
+    "ts-morph": "^24.0.0",
     "typescript": "6.0.3",
-    "webpack-cli": "^5.0.1"
+    "vite": "8.3.0",
+    "vitest": "5.0.0"
   },
   "contributes": {
     "languages": [

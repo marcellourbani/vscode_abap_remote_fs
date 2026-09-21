@@ -1,10 +1,10 @@
 import {
-  MainInclude,
-  AbapObjectStructure,
-  NodeStructure,
+  type MainInclude,
+  type AbapObjectStructure,
+  type NodeStructure,
   ADTClient,
-  NodeParents,
-  ObjectVersion
+  type NodeParents,
+  type ObjectVersion
 } from "abap-adt-api"
 
 export interface AbapObjectService {

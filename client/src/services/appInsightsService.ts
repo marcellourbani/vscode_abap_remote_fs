@@ -7,6 +7,7 @@ import * as vscode from "vscode"
 import * as os from "os"
 import * as crypto from "crypto"
 import { log } from "../lib"
+import { SapSystemValidator } from "./sapSystemValidator"
 
 // Application Insights SDK imported lazily only if telemetry is enabled
 let appInsights: any = null
@@ -173,8 +174,6 @@ export class AppInsightsService {
     username?: string
   }): { uniqueId: string; manager: string; sapSystem: string } | null {
     try {
-      // Import SapSystemValidator dynamically to avoid circular dependency
-      const { SapSystemValidator } = require("./sapSystemValidator")
       const validator = SapSystemValidator.getInstance()
 
       let username: string | null = null

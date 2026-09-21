@@ -1,5 +1,5 @@
-import { ExtensionContext, Uri } from "vscode"
-import { FeedState, FeedStates, FeedEntry } from "./feedTypes"
+import { type ExtensionContext, Uri } from "vscode"
+import { type FeedState, type FeedStates, type FeedEntry } from "./feedTypes"
 import { log } from "../../lib"
 import * as fs from "fs"
 import * as path from "path"

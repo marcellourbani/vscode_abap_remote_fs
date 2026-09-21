@@ -1,6 +1,6 @@
-import { ADTClient, debugMetaIsComplex, DebugMetaType, DebugVariable } from "abap-adt-api"
+import { ADTClient, debugMetaIsComplex, type DebugMetaType, type DebugVariable } from "abap-adt-api"
 import { Handles, Scope } from "@vscode/debugadapter"
-import { DebugProtocol } from "@vscode/debugprotocol"
+import { type DebugProtocol } from "@vscode/debugprotocol"
 import { DebugListener } from "./debugListener"
 import { idThread, STACK_THREAD_MULTIPLIER } from "./debugService"
 import { AbapFsCommands, command } from "../../commands"

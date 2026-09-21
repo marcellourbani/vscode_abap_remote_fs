@@ -1,6 +1,6 @@
-import { Command, Uri, commands } from "vscode"
+import { type Command, Uri, commands } from "vscode"
 import { AbapFsCommands, command } from "../../commands"
-import { TraceRunItem, TraceView, tracesProvider } from "./views"
+import { TraceRunItem, type TraceView, tracesProvider } from "./views"
 import { adtProfileUri } from "./fsProvider"
 import { getOrCreateClient } from "../../adt/conections"
 

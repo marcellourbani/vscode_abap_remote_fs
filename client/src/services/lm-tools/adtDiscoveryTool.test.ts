@@ -1,59 +1,67 @@
-jest.mock(
-  "vscode",
-  () => {
-    class LanguageModelToolResult {
-      constructor(public parts: any[]) {}
-    }
-    class LanguageModelTextPart {
-      constructor(public text: string) {}
-    }
-    class MarkdownString {
-      constructor(public value: string) {}
-    }
-    return {
-      LanguageModelToolResult,
-      LanguageModelTextPart,
-      MarkdownString,
-      lm: { registerTool: jest.fn(() => ({ dispose: jest.fn() })) },
-      workspace: {
-        workspaceFolders: [{ uri: { fsPath: "/test", scheme: "file" } }],
-        fs: {
-          writeFile: jest.fn().mockResolvedValue(undefined),
-          createDirectory: jest.fn().mockResolvedValue(undefined)
-        }
-      },
-      Uri: {
-        parse: (s: string) => ({
-          authority: "",
-          path: s,
-          scheme: "file",
-          fsPath: s,
-          toString: () => s
-        }),
-        file: (s: string) => ({ fsPath: s, scheme: "file", toString: () => s }),
-        joinPath: jest.fn((...args: any[]) => ({
+vi.mock("vscode", () => {
+  class LanguageModelToolResult {
+    constructor(public parts: any[]) {}
+  }
+  class LanguageModelTextPart {
+    constructor(public text: string) {}
+  }
+  class MarkdownString {
+    constructor(public value: string) {}
+  }
+  return {
+    LanguageModelToolResult,
+    LanguageModelTextPart,
+    MarkdownString,
+    lm: {
+      registerTool: vi.fn(function () {
+        return { dispose: vi.fn() }
+      })
+    },
+    workspace: {
+      workspaceFolders: [{ uri: { fsPath: "/test", scheme: "file" } }],
+      fs: {
+        writeFile: vi.fn().mockResolvedValue(undefined),
+        createDirectory: vi.fn().mockResolvedValue(undefined)
+      }
+    },
+    Uri: {
+      parse: (s: string) => ({
+        authority: "",
+        path: s,
+        scheme: "file",
+        fsPath: s,
+        toString: () => s
+      }),
+      file: (s: string) => ({ fsPath: s, scheme: "file", toString: () => s }),
+      joinPath: vi.fn(function (...args: any[]) {
+        return {
           fsPath: args.map((a: any) => a.fsPath || a).join("/"),
           toString: () => args.map((a: any) => a.fsPath || a).join("/")
-        }))
-      }
+        }
+      })
     }
-  },
-  { virtual: true }
-)
+  }
+})
 
-jest.mock("../../adt/conections", () => ({ getClient: jest.fn() }))
-jest.mock("../telemetry", () => ({ logTelemetry: jest.fn() }))
-jest.mock("./toolRegistry", () => ({
-  registerToolWithRegistry: jest.fn(() => ({ dispose: jest.fn() }))
+vi.mock("../../adt/conections", () => ({ getClient: vi.fn() }))
+vi.mock("../telemetry", () => ({ logTelemetry: vi.fn() }))
+vi.mock("./toolRegistry", () => ({
+  registerToolWithRegistry: vi.fn(function () {
+    return { dispose: vi.fn() }
+  })
 }))
 
-jest.mock("./toolGuard", () => ({
-  assertToolInvocationAuthorized: jest.fn(),
-  isToolInvocationAuthorized: jest.fn(() => true)
+vi.mock("./toolGuard", () => ({
+  assertToolInvocationAuthorized: vi.fn(),
+  isToolInvocationAuthorized: vi.fn(function () {
+    return true
+  })
 }))
 import { AdtDiscoveryTool } from "./adtDiscoveryTool"
 import { getClient } from "../../adt/conections"
 import { logTelemetry } from "../telemetry"
+import * as __$mock_vscode from "vscode"
+import type { Mock } from "vitest"
 
 const mockToken = {} as any
 
@@ -67,9 +75,9 @@ function resultText(result: any): string {
 }
 
 const mockClient = {
-  adtDiscovery: jest.fn(),
-  adtCoreDiscovery: jest.fn(),
-  runQuery: jest.fn()
+  adtDiscovery: vi.fn(),
+  adtCoreDiscovery: vi.fn(),
+  runQuery: vi.fn()
 }
 
 describe("AdtDiscoveryTool", () => {
@@ -77,8 +85,8 @@ describe("AdtDiscoveryTool", () => {
 
   beforeEach(() => {
     tool = new AdtDiscoveryTool()
-    jest.clearAllMocks()
-    ;(getClient as jest.Mock).mockReturnValue(mockClient)
+    vi.clearAllMocks()
+    ;(getClient as Mock).mockReturnValue(mockClient)
   })
 
   describe("prepareInvocation", () => {
@@ -167,24 +175,22 @@ describe("AdtDiscoveryTool", () => {
       // Both should be called before either resolves (parallel behavior)
       let discoveryResolved = false
       let coreResolved = false
-      mockClient.adtDiscovery.mockImplementation(
-        () =>
-          new Promise(r =>
-            setTimeout(() => {
-              discoveryResolved = true
-              r(minimalDiscovery)
-            }, 10)
-          )
-      )
-      mockClient.adtCoreDiscovery.mockImplementation(
-        () =>
-          new Promise(r =>
-            setTimeout(() => {
-              coreResolved = true
-              r(minimalCoreDiscovery)
-            }, 10)
-          )
-      )
+      mockClient.adtDiscovery.mockImplementation(function () {
+        return new Promise(r =>
+          setTimeout(() => {
+            discoveryResolved = true
+            r(minimalDiscovery)
+          }, 10)
+        )
+      })
+      mockClient.adtCoreDiscovery.mockImplementation(function () {
+        return new Promise(r =>
+          setTimeout(() => {
+            coreResolved = true
+            r(minimalCoreDiscovery)
+          }, 10)
+        )
+      })
 
       const resultPromise = tool.invoke(makeOptions({ connectionId: "dev100" }), mockToken)
       // Both should have been kicked off before waiting
@@ -196,7 +202,7 @@ describe("AdtDiscoveryTool", () => {
     it("queries SEOMETAREL for RES_APP classes", async () => {
       await tool.invoke(makeOptions({ connectionId: "dev100" }), mockToken)
       expect(mockClient.runQuery).toHaveBeenCalled()
-      const firstCall = (mockClient.runQuery as jest.Mock).mock.calls[0][0] as string
+      const firstCall = (mockClient.runQuery as Mock).mock.calls[0][0] as string
       expect(firstCall).toContain("SEOMETAREL")
       expect(firstCall).toContain("CL_ADT_DISC_RES_APP_BASE")
     })
@@ -204,7 +210,7 @@ describe("AdtDiscoveryTool", () => {
     it("makes second query for CL_ADT_RES_APP_BASE", async () => {
       await tool.invoke(makeOptions({ connectionId: "dev100" }), mockToken)
       expect(mockClient.runQuery).toHaveBeenCalledTimes(2)
-      const secondCall = (mockClient.runQuery as jest.Mock).mock.calls[1][0] as string
+      const secondCall = (mockClient.runQuery as Mock).mock.calls[1][0] as string
       expect(secondCall).toContain("CL_ADT_RES_APP_BASE")
     })
 
@@ -261,7 +267,7 @@ describe("AdtDiscoveryTool", () => {
     })
 
     it("writes 4 markdown files to workspace", async () => {
-      const vscode = require("vscode")
+      const vscode = __$mock_vscode
       await tool.invoke(makeOptions({ connectionId: "dev100" }), mockToken)
       // createDirectory for the folder + 4 writeFile calls
       expect(vscode.workspace.fs.createDirectory).toHaveBeenCalledTimes(1)
@@ -269,45 +275,60 @@ describe("AdtDiscoveryTool", () => {
     })
 
     it("throws when no workspace folders exist", async () => {
-      const vscode = require("vscode")
+      const vscode = __$mock_vscode
       const original = vscode.workspace.workspaceFolders
-      vscode.workspace.workspaceFolders = []
+      Object.defineProperty(vscode.workspace, "workspaceFolders", { value: [], configurable: true })
       try {
         await expect(
           tool.invoke(makeOptions({ connectionId: "dev100" }), mockToken)
         ).rejects.toThrow(/workspace folder/)
       } finally {
-        vscode.workspace.workspaceFolders = original
+        Object.defineProperty(vscode.workspace, "workspaceFolders", {
+          value: original,
+          configurable: true
+        })
       }
     })
 
     it("throws when workspaceFolders is undefined", async () => {
-      const vscode = require("vscode")
+      const vscode = __$mock_vscode
       const original = vscode.workspace.workspaceFolders
-      vscode.workspace.workspaceFolders = undefined
+      Object.defineProperty(vscode.workspace, "workspaceFolders", {
+        value: undefined,
+        configurable: true
+      })
       try {
         await expect(
           tool.invoke(makeOptions({ connectionId: "dev100" }), mockToken)
         ).rejects.toThrow(/workspace folder/)
       } finally {
-        vscode.workspace.workspaceFolders = original
+        Object.defineProperty(vscode.workspace, "workspaceFolders", {
+          value: original,
+          configurable: true
+        })
       }
     })
 
     it("skips ADT-scheme folders when picking workspace folder", async () => {
-      const vscode = require("vscode")
+      const vscode = __$mock_vscode
       const original = vscode.workspace.workspaceFolders
-      vscode.workspace.workspaceFolders = [
-        { uri: { fsPath: "/adt-folder", scheme: "adt" } },
-        { uri: { fsPath: "/local-folder", scheme: "file" } }
-      ]
+      Object.defineProperty(vscode.workspace, "workspaceFolders", {
+        value: [
+          { uri: { fsPath: "/adt-folder", scheme: "adt" } },
+          { uri: { fsPath: "/local-folder", scheme: "file" } }
+        ],
+        configurable: true
+      })
       try {
         await tool.invoke(makeOptions({ connectionId: "dev100" }), mockToken)
         // joinPath should be called with the file-scheme folder
-        const firstJoinArg = vscode.Uri.joinPath.mock.calls[0][0]
+        const firstJoinArg = vi.mocked(vscode.Uri.joinPath).mock.calls[0][0]
         expect(firstJoinArg.scheme).toBe("file")
       } finally {
-        vscode.workspace.workspaceFolders = original
+        Object.defineProperty(vscode.workspace, "workspaceFolders", {
+          value: original,
+          configurable: true
+        })
       }
     })
 
@@ -333,9 +354,9 @@ describe("AdtDiscoveryTool", () => {
     })
 
     it("folder name includes connectionId and timestamp", async () => {
-      const vscode = require("vscode")
+      const vscode = __$mock_vscode
       await tool.invoke(makeOptions({ connectionId: "dev100" }), mockToken)
-      const joinCall = vscode.Uri.joinPath.mock.calls[0]
+      const joinCall = vi.mocked(vscode.Uri.joinPath).mock.calls[0]
       const folderName = joinCall[1] as string
       expect(folderName).toContain("dev100")
       expect(folderName).toMatch(/adt-discovery_dev100_\d{4}/)

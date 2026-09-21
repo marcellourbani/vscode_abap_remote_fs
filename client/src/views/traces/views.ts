@@ -2,14 +2,14 @@ import {
   EventEmitter,
   MarkdownString,
   ThemeIcon,
-  TreeDataProvider,
+  type TreeDataProvider,
   TreeItem,
   TreeItemCollapsibleState,
   Uri
 } from "vscode"
 import { connectedRoots } from "../../config"
 import { getOrCreateClient } from "../../adt/conections"
-import { TraceRequest, TraceRun } from "abap-adt-api/build/api/tracetypes"
+import { type TraceRequest, type TraceRun } from "abap-adt-api/build/api/tracetypes"
 import { cache } from "../../lib"
 import { openCommand } from "./commands"
 import { adtProfileUri } from "./fsProvider"
@@ -77,7 +77,7 @@ const runToolTip = (run: TraceRun) => {
 }
 
 class Configuration extends TreeItem {
-  readonly contextValue = "configuration"
+  override readonly contextValue = "configuration"
   constructor(
     readonly connId: string,
     readonly config: Readonly<TraceRequest>
@@ -86,13 +86,13 @@ class Configuration extends TreeItem {
     super(label, TreeItemCollapsibleState.None)
     this.tooltip = configToolTip(config)
   }
-  iconPath = icons.get("gear")
+  override iconPath = icons.get("gear")
   children() {
     return []
   }
 }
 export class TraceRunItem extends TreeItem {
-  readonly contextValue = "run"
+  override readonly contextValue = "run"
   constructor(
     readonly connId: string,
     readonly run: TraceRun
@@ -107,10 +107,10 @@ export class TraceRunItem extends TreeItem {
     }
     this.tooltip = runToolTip(run)
   }
-  id = this.run.id
+  override id = this.run.id
   error = this.run.extendedData.state.value === "E"
   detailed = !this.run.extendedData.isAggregated
-  iconPath = icons.get(
+  override iconPath = icons.get(
     this.error ? "error" : this.run.extendedData.isAggregated ? "file" : "file-binary"
   )
   children() {
@@ -118,11 +118,11 @@ export class TraceRunItem extends TreeItem {
   }
 }
 class ConfigFolder extends TreeItem {
-  readonly contextValue = "configfolder"
+  override readonly contextValue = "configfolder"
   constructor(private connId: string) {
     super("Configurations", TreeItemCollapsibleState.Expanded)
   }
-  iconPath = icons.get("gear")
+  override iconPath = icons.get("gear")
   async children() {
     const client = await getOrCreateClient(this.connId)
     const { requests } = await client.tracesListRequests()
@@ -131,12 +131,12 @@ class ConfigFolder extends TreeItem {
 }
 
 class RunsFolder extends TreeItem {
-  readonly contextValue = "runfolder"
+  override readonly contextValue = "runfolder"
   runs: TraceRunItem[] | undefined
   constructor(private connId: string) {
     super("Runs", TreeItemCollapsibleState.Expanded)
   }
-  iconPath = icons.get("files")
+  override iconPath = icons.get("files")
   async children() {
     const client = await getOrCreateClient(this.connId)
     const { runs } = await client.tracesList()
@@ -153,7 +153,7 @@ class RunsFolder extends TreeItem {
 }
 
 class SystemFolder extends TreeItem {
-  readonly contextValue = "system"
+  override readonly contextValue = "system"
   readonly runs: RunsFolder
   readonly configs: ConfigFolder
   constructor(readonly connId: string) {
@@ -164,7 +164,7 @@ class SystemFolder extends TreeItem {
   async refresh(node: any) {
     tracesProvider.emitter.fire(node)
   }
-  iconPath = new ThemeIcon("device-desktop")
+  override iconPath = new ThemeIcon("device-desktop")
   async children() {
     return [this.configs, this.runs]
   }

@@ -1,6 +1,7 @@
 {
   "name": "@sap-testing/runtime",
   "private": true,
+  "type": "module",
   "main": "index.js",
   "types": "index.d.ts"
 }

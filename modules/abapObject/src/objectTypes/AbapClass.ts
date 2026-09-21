@@ -1,36 +1,36 @@
-import { AbapObjectBase } from "../AbapObject"
+import { AbapObjectBase } from "../AbapObject.js"
 import {
-  AbapClassStructure,
-  classIncludes,
+  type AbapClassStructure,
+  type classIncludes,
   isClassStructure,
-  NodeStructure,
+  type NodeStructure,
   ADTClient,
-  Node
+  type Node
 } from "abap-adt-api"
-import { ObjectErrors } from "../AOError"
+import { ObjectErrors } from "../AOError.js"
 const tag = Symbol("AbapClass")
 
 export class AbapClass extends AbapObjectBase {
   [tag] = true
   private _cstructure: AbapClassStructure | undefined
-  public get structure(): AbapClassStructure | undefined {
+  public override get structure(): AbapClassStructure | undefined {
     return this._cstructure
   }
-  public set structure(value: AbapClassStructure | undefined) {
+  public override set structure(value: AbapClassStructure | undefined) {
     this._cstructure = value
   }
   public findInclude(name: classIncludes) {
     return this.structure?.includes.find(i => i["class:includeType"] === name)
   }
 
-  async loadStructure(refresh = false): Promise<AbapClassStructure> {
+  override async loadStructure(refresh = false): Promise<AbapClassStructure> {
     const structure = await super.loadStructure(refresh)
     if (!isClassStructure(structure)) throw ObjectErrors.NotSupported(this)
     this.structure = structure
     return this.structure
   }
 
-  public async childComponents(includeIncludes?: boolean): Promise<NodeStructure> {
+  public override async childComponents(includeIncludes?: boolean): Promise<NodeStructure> {
     const nodes: Node[] = []
     const structure = this.structure || (await this.loadStructure())
     const sources = ADTClient.classIncludes(structure)

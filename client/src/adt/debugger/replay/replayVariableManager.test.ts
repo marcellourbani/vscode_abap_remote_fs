@@ -1,30 +1,32 @@
-jest.mock("abap-adt-api", () => ({
-  debugMetaIsComplex: jest.fn((meta: string) =>
-    ["structure", "table", "object", "class", "objectref"].includes(meta)
-  )
+vi.mock("abap-adt-api", () => ({
+  debugMetaIsComplex: vi.fn(function (meta: string) {
+    return ["structure", "table", "object", "class", "objectref"].includes(meta)
+  })
 }))
-jest.mock("@vscode/debugadapter", () => ({
-  Handles: jest.fn().mockImplementation((base: number) => {
+vi.mock("@vscode/debugadapter", () => ({
+  Handles: vi.fn().mockImplementation(function (base: number) {
     const store = new Map<number, any>()
     let counter = base || 1000
     return {
-      create: jest.fn((val: any) => {
+      create: vi.fn((val: any) => {
         const id = counter++
         store.set(id, val)
         return id
       }),
-      get: jest.fn((id: number) => store.get(id)),
-      reset: jest.fn(() => {
+      get: vi.fn((id: number) => store.get(id)),
+      reset: vi.fn(() => {
         store.clear()
         counter = base || 1000
       })
     }
   }),
-  Scope: jest.fn().mockImplementation((name: string, ref: number, expensive: boolean) => ({
-    name,
-    variablesReference: ref,
-    expensive
-  }))
+  Scope: vi.fn().mockImplementation(function (name: string, ref: number, expensive: boolean) {
+    return {
+      name,
+      variablesReference: ref,
+      expensive
+    }
+  })
 }))
 
 import { ReplayVariableManager } from "./replayVariableManager"
@@ -56,7 +58,7 @@ describe("ReplayVariableManager", () => {
   let manager: ReplayVariableManager
 
   beforeEach(() => {
-    jest.clearAllMocks()
+    vi.clearAllMocks()
     manager = new ReplayVariableManager()
   })
 

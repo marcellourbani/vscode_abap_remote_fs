@@ -2,7 +2,7 @@ import { ProgressLocation, Uri, workspace } from "vscode"
 import * as os from "os"
 import * as zlib from "zlib"
 import { promisify } from "util"
-import { DebugRecording } from "./types"
+import { type DebugRecording } from "./types"
 import { log, caughtToString } from "../../../lib"
 import { funWindow as window } from "../../../services/funMessenger"
 

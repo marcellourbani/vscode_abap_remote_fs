@@ -1,75 +1,96 @@
-jest.mock(
-  "vscode",
-  () => ({
-    Memento: jest.fn()
-  }),
-  { virtual: true }
-)
-
-jest.mock("../../lib", () => ({
-  PasswordVault: {
-    get: jest.fn().mockReturnValue({
-      getPassword: jest.fn(),
-      setPassword: jest.fn(),
-      deletePassword: jest.fn(),
-      accounts: jest.fn()
-    })
-  },
-  createStore: jest.fn().mockReturnValue({
-    get: jest.fn().mockReturnValue(""),
-    update: jest.fn()
-  }),
-  chainTaskTransformers: jest.fn(),
-  fieldReplacer: jest.fn(),
-  createTaskTransformer: jest.fn(),
-  inputBox: jest.fn()
+vi.mock("vscode", () => ({
+  Memento: vi.fn(class {})
 }))
 
-jest.mock("../../extension", () => ({
-  context: {
-    globalState: {
-      get: jest.fn(),
-      update: jest.fn()
+vi.mock("../../lib", () => ({
+  PasswordVault: {
+    get: vi.fn().mockReturnValue({
+      getPassword: vi.fn(),
+      setPassword: vi.fn(),
+      deletePassword: vi.fn(),
+      accounts: vi.fn()
+    })
+  },
+  createStore: vi.fn().mockReturnValue({
+    get: vi.fn().mockReturnValue(""),
+    update: vi.fn()
+  }),
+  chainTaskTransformers: vi.fn(),
+  fieldReplacer: vi.fn(),
+  createTaskTransformer: vi.fn(),
+  inputBox: vi.fn(),
+  cache: (creator: any, keyTranslator: any = (x: any) => x) => {
+    const values = new Map()
+    return {
+      get: (key: any) => {
+        const mapKey = keyTranslator(key)
+        if (!values.has(mapKey)) values.set(mapKey, creator(key))
+        return values.get(mapKey)
+      },
+      get size() {
+        return values.size
+      },
+      *[Symbol.iterator]() {
+        yield* values.values()
+      }
     }
   }
 }))
 
-jest.mock("abap-adt-api", () => ({}))
+vi.mock("../../extension", () => ({
+  context: {
+    globalState: {
+      get: vi.fn(),
+      update: vi.fn()
+    }
+  }
+}))
 
-jest.mock("../../adt/conections", () => ({
-  getClient: jest.fn().mockReturnValue({
-    gitExternalRepoInfo: jest.fn().mockResolvedValue({ access_mode: "PUBLIC" })
+vi.mock("abap-adt-api", () => ({}))
+
+vi.mock("../../adt/conections", () => ({
+  getClient: vi.fn().mockReturnValue({
+    gitExternalRepoInfo: vi.fn().mockResolvedValue({ access_mode: "PUBLIC" })
   })
 }))
 
-jest.mock("fp-ts/lib/Option", () => ({
-  some: jest.fn((v: any) => ({ _tag: "Some", value: v })),
-  fromEither: jest.fn((e: any) => e),
-  isSome: jest.fn((v: any) => v?._tag === "Some"),
+vi.mock("fp-ts/lib/Option", () => ({
+  some: vi.fn(function (v: any) {
+    return { _tag: "Some", value: v }
+  }),
+  fromEither: vi.fn(function (e: any) {
+    return e
+  }),
+  isSome: vi.fn(function (v: any) {
+    return v?._tag === "Some"
+  }),
   Option: {}
 }))
 
 import { getDefaultUser, deleteDefaultUser, deletePassword, listPasswords } from "./credentials"
 import { createStore } from "../../lib"
 import { PasswordVault } from "../../lib"
+import * as __$mock_fp_ts_lib_Option from "fp-ts/lib/Option"
+import * as __$mock_adt_conections from "../../adt/conections"
+import type { Mock } from "vitest"
 
 describe("getDefaultUser", () => {
-  it("returns empty string when no user stored", () => {
-    const mockStore = { get: jest.fn().mockReturnValue(undefined), update: jest.fn() }
-    ;(createStore as jest.Mock).mockReturnValueOnce(mockStore)
+  it("returns empty string when no user stored", async () => {
+    const mockStore = { get: vi.fn().mockReturnValue(undefined), update: vi.fn() }
+    ;(createStore as Mock).mockReturnValueOnce(mockStore)
     // Reset the module to clear uStore
-    jest.resetModules()
+    vi.resetModules()
     // re-import after reset
-    const { getDefaultUser: getUser } = require("./credentials")
+    const { getDefaultUser: getUser } = await import("./credentials")
     const result = getUser("https://github.com/repo")
     expect(typeof result).toBe("string")
   })
 
-  it("returns stored user", () => {
-    const mockStore = { get: jest.fn().mockReturnValue("testuser"), update: jest.fn() }
-    ;(createStore as jest.Mock).mockReturnValue(mockStore)
-    jest.resetModules()
-    const { getDefaultUser: getUser } = require("./credentials")
+  it("returns stored user", async () => {
+    const mockStore = { get: vi.fn().mockReturnValue("testuser"), update: vi.fn() }
+    ;(createStore as Mock).mockReturnValue(mockStore)
+    vi.resetModules()
+    const { getDefaultUser: getUser } = await import("./credentials")
     // The first call initializes store, subsequent calls use cached
     const result = getUser("https://github.com/repo")
     expect(typeof result).toBe("string")
@@ -77,11 +98,11 @@ describe("getDefaultUser", () => {
 })
 
 describe("deleteDefaultUser", () => {
-  it("calls store update with empty string", () => {
-    const mockStore = { get: jest.fn().mockReturnValue("user"), update: jest.fn() }
-    ;(createStore as jest.Mock).mockReturnValue(mockStore)
-    jest.resetModules()
-    const { deleteDefaultUser: deleteUser } = require("./credentials")
+  it("calls store update with empty string", async () => {
+    const mockStore = { get: vi.fn().mockReturnValue("user"), update: vi.fn() }
+    ;(createStore as Mock).mockReturnValue(mockStore)
+    vi.resetModules()
+    const { deleteDefaultUser: deleteUser } = await import("./credentials")
     deleteUser("https://github.com/repo")
     // Can't verify the exact store call without resetting, but should not throw
   })
@@ -102,7 +123,7 @@ describe("deletePassword", () => {
     const vault = PasswordVault.get()
     const repo: any = { url: "https://custom-host.com/repo" }
     deletePassword(repo, "user1")
-    const callArg = (vault.deletePassword as jest.Mock).mock.calls.at(-1)?.[0]
+    const callArg = (vault.deletePassword as Mock).mock.calls.at(-1)?.[0]
     expect(callArg).toContain("https://custom-host.com/repo")
   })
 })
@@ -110,7 +131,7 @@ describe("deletePassword", () => {
 describe("listPasswords", () => {
   it("calls PasswordVault.accounts with the repo URL service", () => {
     const vault = PasswordVault.get()
-    ;(vault.accounts as jest.Mock).mockReturnValue(["user1", "user2"])
+    ;(vault.accounts as Mock).mockReturnValue(["user1", "user2"])
     const repo: any = { url: "https://github.com/myrepo" }
     const result = listPasswords(repo)
     expect(vault.accounts).toHaveBeenCalledWith(
@@ -120,13 +141,15 @@ describe("listPasswords", () => {
 })
 
 describe("dataCredentials", () => {
-  beforeEach(() => jest.clearAllMocks())
+  beforeEach(() => vi.clearAllMocks())
 
   it("returns stored credentials if already set with password", async () => {
-    const { dataCredentials } = require("./credentials")
-    const { some, isSome } = require("fp-ts/lib/Option")
-    ;(isSome as jest.Mock).mockReturnValue(true)
-    ;(some as jest.Mock).mockImplementation((v: any) => ({ _tag: "Some", value: v }))
+    const { dataCredentials } = await import("./credentials")
+    const { some, isSome } = __$mock_fp_ts_lib_Option
+    ;(isSome as unknown as Mock).mockReturnValue(true)
+    ;(some as unknown as Mock).mockImplementation(function (v: any) {
+      return { _tag: "Some", value: v }
+    })
 
     const data: any = {
       connId: "conn1",
@@ -135,17 +158,17 @@ describe("dataCredentials", () => {
     }
     const result = await dataCredentials(data)
     expect(result).toBeDefined()
-    expect(result.value).toEqual({ user: "testuser", password: "secret" })
+    expect((result as any)?.value).toEqual({ user: "testuser", password: "secret" })
   })
 
   it("returns public credentials (no password needed) for public repos", async () => {
-    const { dataCredentials } = require("./credentials")
-    const { getClient } = require("../../adt/conections")
-    ;(getClient as jest.Mock).mockReturnValue({
-      gitExternalRepoInfo: jest.fn().mockResolvedValue({ access_mode: "PUBLIC" })
+    const { dataCredentials } = await import("./credentials")
+    const { getClient } = __$mock_adt_conections
+    ;(getClient as Mock).mockReturnValue({
+      gitExternalRepoInfo: vi.fn().mockResolvedValue({ access_mode: "PUBLIC" })
     })
-    const { some } = require("fp-ts/lib/Option")
-    ;(some as jest.Mock).mockReturnValue({ _tag: "Some", value: { user: "", password: "" } })
+    const { some } = __$mock_fp_ts_lib_Option
+    ;(some as unknown as Mock).mockReturnValue({ _tag: "Some", value: { user: "", password: "" } })
 
     const data: any = {
       connId: "conn1",

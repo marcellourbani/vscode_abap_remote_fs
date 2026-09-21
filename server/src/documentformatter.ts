@@ -1,4 +1,4 @@
-import { TextEdit, DocumentFormattingParams } from "vscode-languageserver"
+import { TextEdit, type DocumentFormattingParams } from "vscode-languageserver"
 import { clientAndObjfromUrl } from "./utilities"
 import { isAbap } from "./functions"
 

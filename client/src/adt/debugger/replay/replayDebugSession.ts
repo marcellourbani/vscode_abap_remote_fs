@@ -6,8 +6,8 @@ import {
   Source,
   TerminatedEvent
 } from "@vscode/debugadapter"
-import { DebugProtocol } from "@vscode/debugprotocol"
-import { DebugRecording, DebugSnapshot, REPLAY_DEBUG_TYPE } from "./types"
+import { type DebugProtocol } from "@vscode/debugprotocol"
+import { type DebugRecording, type DebugSnapshot, REPLAY_DEBUG_TYPE } from "./types"
 import { ReplayVariableManager } from "./replayVariableManager"
 
 const REPLAY_THREAD_ID = 1
@@ -36,7 +36,7 @@ export class ReplayDebugSession extends LoggingDebugSession {
 
   // -- Initialization --
 
-  protected initializeRequest(
+  protected override initializeRequest(
     response: DebugProtocol.InitializeResponse,
     _args: DebugProtocol.InitializeRequestArguments
   ): void {
@@ -58,7 +58,7 @@ export class ReplayDebugSession extends LoggingDebugSession {
     this.sendEvent(new InitializedEvent())
   }
 
-  protected configurationDoneRequest(
+  protected override configurationDoneRequest(
     response: DebugProtocol.ConfigurationDoneResponse,
     _args: DebugProtocol.ConfigurationDoneArguments
   ): void {
@@ -73,7 +73,7 @@ export class ReplayDebugSession extends LoggingDebugSession {
 
   // -- Launch --
 
-  protected launchRequest(
+  protected override launchRequest(
     response: DebugProtocol.LaunchResponse,
     _args: DebugProtocol.LaunchRequestArguments
   ): void {
@@ -83,7 +83,7 @@ export class ReplayDebugSession extends LoggingDebugSession {
 
   // -- Threads --
 
-  protected threadsRequest(response: DebugProtocol.ThreadsResponse): void {
+  protected override threadsRequest(response: DebugProtocol.ThreadsResponse): void {
     const snap = this.snapshot
     const threadLabel = snap ? ` [thread ${snap.threadId}]` : ""
     response.body = {
@@ -99,7 +99,7 @@ export class ReplayDebugSession extends LoggingDebugSession {
 
   // -- Stack Trace --
 
-  protected stackTraceRequest(
+  protected override stackTraceRequest(
     response: DebugProtocol.StackTraceResponse,
     _args: DebugProtocol.StackTraceArguments
   ): void {
@@ -136,7 +136,7 @@ export class ReplayDebugSession extends LoggingDebugSession {
 
   // -- Scopes & Variables --
 
-  protected scopesRequest(
+  protected override scopesRequest(
     response: DebugProtocol.ScopesResponse,
     args: DebugProtocol.ScopesArguments
   ): void {
@@ -157,7 +157,7 @@ export class ReplayDebugSession extends LoggingDebugSession {
     this.sendResponse(response)
   }
 
-  protected variablesRequest(
+  protected override variablesRequest(
     response: DebugProtocol.VariablesResponse,
     args: DebugProtocol.VariablesArguments
   ): void {
@@ -167,7 +167,7 @@ export class ReplayDebugSession extends LoggingDebugSession {
     this.sendResponse(response)
   }
 
-  protected evaluateRequest(
+  protected override evaluateRequest(
     response: DebugProtocol.EvaluateResponse,
     args: DebugProtocol.EvaluateArguments
   ): void {
@@ -190,7 +190,7 @@ export class ReplayDebugSession extends LoggingDebugSession {
 
   // -- Forward stepping --
 
-  protected nextRequest(
+  protected override nextRequest(
     response: DebugProtocol.NextResponse,
     _args: DebugProtocol.NextArguments
   ): void {
@@ -198,7 +198,7 @@ export class ReplayDebugSession extends LoggingDebugSession {
     this.stepTo(this.currentStep + 1)
   }
 
-  protected stepInRequest(
+  protected override stepInRequest(
     response: DebugProtocol.StepInResponse,
     _args: DebugProtocol.StepInArguments
   ): void {
@@ -206,7 +206,7 @@ export class ReplayDebugSession extends LoggingDebugSession {
     this.stepTo(this.currentStep + 1)
   }
 
-  protected stepOutRequest(
+  protected override stepOutRequest(
     response: DebugProtocol.StepOutResponse,
     _args: DebugProtocol.StepOutArguments
   ): void {
@@ -214,7 +214,7 @@ export class ReplayDebugSession extends LoggingDebugSession {
     this.stepTo(this.currentStep + 1)
   }
 
-  protected continueRequest(
+  protected override continueRequest(
     response: DebugProtocol.ContinueResponse,
     _args: DebugProtocol.ContinueArguments
   ): void {
@@ -229,7 +229,7 @@ export class ReplayDebugSession extends LoggingDebugSession {
 
   // -- Backward stepping --
 
-  protected stepBackRequest(
+  protected override stepBackRequest(
     response: DebugProtocol.StepBackResponse,
     _args: DebugProtocol.StepBackArguments
   ): void {
@@ -237,7 +237,7 @@ export class ReplayDebugSession extends LoggingDebugSession {
     this.stepTo(this.currentStep - 1)
   }
 
-  protected reverseContinueRequest(
+  protected override reverseContinueRequest(
     response: DebugProtocol.ReverseContinueResponse,
     _args: DebugProtocol.ReverseContinueArguments
   ): void {
@@ -259,14 +259,14 @@ export class ReplayDebugSession extends LoggingDebugSession {
 
   // -- Lifecycle --
 
-  protected disconnectRequest(
+  protected override disconnectRequest(
     response: DebugProtocol.DisconnectResponse,
     _args: DebugProtocol.DisconnectArguments
   ): void {
     this.sendResponse(response)
   }
 
-  protected terminateRequest(
+  protected override terminateRequest(
     response: DebugProtocol.TerminateResponse,
     _args: DebugProtocol.TerminateArguments
   ): void {
@@ -275,7 +275,7 @@ export class ReplayDebugSession extends LoggingDebugSession {
   }
 
   // Replay is always stopped, pause is a no-op
-  protected pauseRequest(
+  protected override pauseRequest(
     response: DebugProtocol.PauseResponse,
     _args: DebugProtocol.PauseArguments
   ): void {
@@ -284,7 +284,7 @@ export class ReplayDebugSession extends LoggingDebugSession {
 
   // -- Breakpoints (no-op for replay) --
 
-  protected setBreakPointsRequest(
+  protected override setBreakPointsRequest(
     response: DebugProtocol.SetBreakpointsResponse,
     args: DebugProtocol.SetBreakpointsArguments
   ): void {
@@ -300,7 +300,7 @@ export class ReplayDebugSession extends LoggingDebugSession {
 
   // -- Source --
 
-  protected sourceRequest(
+  protected override sourceRequest(
     response: DebugProtocol.SourceResponse,
     args: DebugProtocol.SourceArguments
   ): void {

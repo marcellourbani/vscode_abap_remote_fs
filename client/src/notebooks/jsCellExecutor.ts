@@ -12,7 +12,7 @@
 
 import { Worker } from "worker_threads"
 import * as path from "path"
-import { CellResult, JS_EXECUTION_TIMEOUT_MS } from "./types"
+import { type CellResult, JS_EXECUTION_TIMEOUT_MS } from "./types"
 
 function getWorkerScriptPath(): string {
   return path.join(__dirname, "jsWorkerEntry.js")

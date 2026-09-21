@@ -1,30 +1,41 @@
-jest.mock(
-  "vscode",
-  () => ({
-    LanguageModelToolResult: jest.fn().mockImplementation((parts: any[]) => ({ parts })),
-    LanguageModelTextPart: jest.fn().mockImplementation((text: string) => ({ text })),
-    MarkdownString: jest.fn().mockImplementation((text: string) => ({ text })),
-    lm: { registerTool: jest.fn(() => ({ dispose: jest.fn() })) }
+vi.mock("vscode", () => ({
+  LanguageModelToolResult: vi.fn().mockImplementation(function (parts: any[]) {
+    return { parts }
   }),
-  { virtual: true }
-)
+  LanguageModelTextPart: vi.fn().mockImplementation(function (text: string) {
+    return { text }
+  }),
+  MarkdownString: vi.fn().mockImplementation(function (text: string) {
+    return { text }
+  }),
+  lm: {
+    registerTool: vi.fn(function () {
+      return { dispose: vi.fn() }
+    })
+  }
+}))
 
-jest.mock("../../adt/conections", () => ({
-  getClient: jest.fn(),
-  getOrCreateRoot: jest.fn()
+vi.mock("../../adt/conections", () => ({
+  getClient: vi.fn(),
+  getOrCreateRoot: vi.fn()
 }))
-jest.mock("../telemetry", () => ({ logTelemetry: jest.fn() }))
-jest.mock("./toolRegistry", () => ({
-  registerToolWithRegistry: jest.fn(() => ({ dispose: jest.fn() }))
+vi.mock("../telemetry", () => ({ logTelemetry: vi.fn() }))
+vi.mock("./toolRegistry", () => ({
+  registerToolWithRegistry: vi.fn(function () {
+    return { dispose: vi.fn() }
+  })
 }))
-jest.mock("./toolGuard", () => ({
-  assertToolInvocationAuthorized: jest.fn(),
-  isToolInvocationAuthorized: jest.fn(() => true)
+vi.mock("./toolGuard", () => ({
+  assertToolInvocationAuthorized: vi.fn(),
+  isToolInvocationAuthorized: vi.fn(function () {
+    return true
+  })
 }))
 
 import { GetAbapObjectWorkspaceUriTool } from "./getWorkspaceUriTool"
 import { getClient, getOrCreateRoot } from "../../adt/conections"
 import { logTelemetry } from "../telemetry"
+import type { Mock } from "vitest"
 
 const mockToken = {} as any
 
@@ -32,17 +43,17 @@ function makeOptions(input: any = {}) {
   return { input } as any
 }
 
-const mockClient = { searchObject: jest.fn() }
-const mockRoot = { findByAdtUri: jest.fn() }
+const mockClient = { searchObject: vi.fn() }
+const mockRoot = { findByAdtUri: vi.fn() }
 
 describe("GetAbapObjectWorkspaceUriTool", () => {
   let tool: GetAbapObjectWorkspaceUriTool
 
   beforeEach(() => {
     tool = new GetAbapObjectWorkspaceUriTool()
-    jest.clearAllMocks()
-    ;(getClient as jest.Mock).mockReturnValue(mockClient)
-    ;(getOrCreateRoot as jest.Mock).mockResolvedValue(mockRoot)
+    vi.clearAllMocks()
+    ;(getClient as Mock).mockReturnValue(mockClient)
+    ;(getOrCreateRoot as Mock).mockResolvedValue(mockRoot)
   })
 
   describe("prepareInvocation", () => {

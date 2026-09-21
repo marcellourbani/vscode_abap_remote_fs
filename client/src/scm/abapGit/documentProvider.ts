@@ -1,7 +1,7 @@
-import { TextDocumentContentProvider, Uri, workspace } from "vscode"
-import { scmKey, scmData, ScmData } from "./scm"
+import { type TextDocumentContentProvider, Uri, workspace } from "vscode"
+import { scmKey, scmData, type ScmData } from "./scm"
 import { atob, btoa } from "../../lib"
-import { GitStagingFile } from "abap-adt-api"
+import { type GitStagingFile } from "abap-adt-api"
 import { getClient } from "../../adt/conections"
 const GITSCHEME = "ABAPGIT"
 
@@ -24,7 +24,8 @@ class GitDocProvider implements TextDocumentContentProvider {
   }
 }
 
-workspace.registerTextDocumentContentProvider(GITSCHEME, new GitDocProvider())
+export const registerGitDocProvider = () =>
+  workspace.registerTextDocumentContentProvider(GITSCHEME, new GitDocProvider())
 
 export const gitUrl = (data: ScmData, path: string, file: GitStagingFile) => {
   const query = btoa(JSON.stringify({ key: data.repo.key, path }))

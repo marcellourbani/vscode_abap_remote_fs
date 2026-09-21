@@ -3,7 +3,7 @@ import * as fs from "fs"
 import * as path from "path"
 import { connectedRoots } from "../config"
 import { getClient } from "../adt/conections"
-import { executeAbapCode, checkReplAvailability, ReplResponse } from "./replService"
+import { executeAbapCode, checkReplAvailability, type ReplResponse } from "./replService"
 import { getSAPSystemInfo } from "../services/sapSystemInfo"
 import { log } from "../lib"
 

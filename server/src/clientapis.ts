@@ -1,11 +1,11 @@
 import {
-  ClientConfiguration,
+  type ClientConfiguration,
   Methods,
-  AbapObjectDetail,
-  AbapObjectSource,
-  StringWrapper,
-  UriRequest,
-  SearchProgress
+  type AbapObjectDetail,
+  type AbapObjectSource,
+  type StringWrapper,
+  type UriRequest,
+  type SearchProgress
 } from "vscode-abap-remote-fs-sharedapi"
 import { connection } from "./clientManager"
 

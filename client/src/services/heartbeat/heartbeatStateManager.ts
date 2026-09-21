@@ -8,10 +8,10 @@ import * as vscode from "vscode"
 import * as fs from "fs"
 import * as path from "path"
 import {
-  HeartbeatServiceState,
-  HeartbeatStorageData,
-  HeartbeatRunRecord,
-  HeartbeatConfig,
+  type HeartbeatServiceState,
+  type HeartbeatStorageData,
+  type HeartbeatRunRecord,
+  type HeartbeatConfig,
   DEFAULT_HEARTBEAT_CONFIG
 } from "./heartbeatTypes"
 import { log } from "../../lib"

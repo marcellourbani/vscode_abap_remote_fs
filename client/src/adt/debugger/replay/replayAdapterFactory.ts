@@ -1,14 +1,14 @@
 import {
-  CancellationToken,
-  DebugAdapterDescriptor,
-  DebugAdapterDescriptorFactory,
+  type CancellationToken,
+  type DebugAdapterDescriptor,
+  type DebugAdapterDescriptorFactory,
   DebugAdapterInlineImplementation,
-  DebugConfigurationProvider,
-  DebugSession,
+  type DebugConfigurationProvider,
+  type DebugSession,
   Uri,
-  WorkspaceFolder
+  type WorkspaceFolder
 } from "vscode"
-import { DebugRecording, REPLAY_DEBUG_TYPE } from "./types"
+import { type DebugRecording, REPLAY_DEBUG_TYPE } from "./types"
 import { ReplayDebugSession } from "./replayDebugSession"
 import { loadRecording, loadRecordingFromUri } from "./recordingIO"
 import { funWindow as window } from "../../../services/funMessenger"

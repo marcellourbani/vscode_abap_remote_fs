@@ -1,7 +1,12 @@
 import { cache } from "../../lib"
-import { ADTClient, classIncludes, Revision, AbapObjectStructure } from "abap-adt-api"
+import {
+  ADTClient,
+  type classIncludes,
+  type Revision,
+  type AbapObjectStructure
+} from "abap-adt-api"
 import { getClient, abapUri, getRoot } from "../../adt/conections"
-import { AbapObject, isAbapClassInclude } from "abapobject"
+import { type AbapObject, isAbapClassInclude } from "abapobject"
 import { Uri } from "vscode"
 import { isAbapFile } from "abapfs"
 

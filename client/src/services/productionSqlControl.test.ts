@@ -1,23 +1,21 @@
-jest.mock(
-  "vscode",
-  () => ({
-    ConfigurationTarget: { Global: 1 },
-    commands: { registerCommand: jest.fn() },
-    workspace: { getConfiguration: jest.fn() }
-  }),
-  { virtual: true }
-)
-
-jest.mock("../config", () => ({
-  connectedRoots: jest.fn(),
-  formatKey: jest.fn((connectionId: string) => connectionId.toLowerCase())
+vi.mock("vscode", () => ({
+  ConfigurationTarget: { Global: 1 },
+  commands: { registerCommand: vi.fn() },
+  workspace: { getConfiguration: vi.fn() }
 }))
 
-jest.mock("./funMessenger", () => ({
+vi.mock("../config", () => ({
+  connectedRoots: vi.fn(),
+  formatKey: vi.fn(function (connectionId: string) {
+    return connectionId.toLowerCase()
+  })
+}))
+
+vi.mock("./funMessenger", () => ({
   funWindow: {
-    showQuickPick: jest.fn(),
-    showWarningMessage: jest.fn(),
-    showInformationMessage: jest.fn()
+    showQuickPick: vi.fn(),
+    showWarningMessage: vi.fn(),
+    showInformationMessage: vi.fn()
   }
 }))
 
@@ -30,17 +28,20 @@ import {
   getProductionSqlPreference,
   setSessionProductionSqlPreference
 } from "./productionSqlControl"
+import type { MockedFunction, Mock } from "vitest"
 
-const mockConnectedRoots = connectedRoots as jest.MockedFunction<typeof connectedRoots>
-const mockGetConfiguration = workspace.getConfiguration as jest.Mock
-const mockShowQuickPick = window.showQuickPick as jest.Mock
-const mockShowWarningMessage = window.showWarningMessage as jest.Mock
-const mockShowInformationMessage = window.showInformationMessage as jest.Mock
+const mockConnectedRoots = connectedRoots as MockedFunction<typeof connectedRoots>
+const mockGetConfiguration = workspace.getConfiguration as Mock
+const mockShowQuickPick = window.showQuickPick as Mock
+const mockShowWarningMessage = window.showWarningMessage as Mock
+const mockShowInformationMessage = window.showInformationMessage as Mock
 
 function configureGlobalPreferences(globalValue: Record<string, "allow"> = {}) {
-  const update = jest.fn().mockResolvedValue(undefined)
+  const update = vi.fn().mockResolvedValue(undefined)
   mockGetConfiguration.mockReturnValue({
-    inspect: jest.fn(() => ({ globalValue })),
+    inspect: vi.fn(function () {
+      return { globalValue }
+    }),
     update
   })
   return update
@@ -48,7 +49,7 @@ function configureGlobalPreferences(globalValue: Record<string, "allow"> = {}) {
 
 describe("production SQL control", () => {
   beforeEach(() => {
-    jest.clearAllMocks()
+    vi.clearAllMocks()
     clearSessionProductionSqlPreferences()
     mockConnectedRoots.mockReturnValue(new Map())
     configureGlobalPreferences()

@@ -1,8 +1,8 @@
 import {
-  CancellationToken,
-  WebviewView,
-  WebviewViewProvider,
-  WebviewViewResolveContext,
+  type CancellationToken,
+  type WebviewView,
+  type WebviewViewProvider,
+  type WebviewViewResolveContext,
   window,
   commands
 } from "vscode"
@@ -15,7 +15,7 @@ import { selectTransport } from "../../adt/AdtTransports"
 import { AbapFsCommands, command, openObject } from "../../commands"
 import { caughtToString } from "../../lib"
 import { AdtObjectFinder, uriAbapFile } from "../../adt/operations/AdtObjectFinder"
-import { RapGeneratorContent, RapGeneratorId } from "abap-adt-api"
+import { type RapGeneratorContent, type RapGeneratorId } from "abap-adt-api"
 
 export class RapGeneratorPanel implements WebviewViewProvider {
   public static readonly viewType = "abapfs.rapGenerator"
