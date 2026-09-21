@@ -9,6 +9,7 @@ const sourceSelections = {}
 const sourceSelectionRevisions = {}
 const workflowTables = []
 const workflowTableById = {}
+const busyDisabledStates = new WeakMap()
 
 const send = (command, data = {}) => vscode.postMessage({ command, ...data })
 const escapeHtml = value => String(value ?? "").replace(/[&<>"']/g, character => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[character])
@@ -682,7 +683,18 @@ function wireWorkflow(workflow) {
 function check(id, label, checked) { return `<label><input id="${id}" type="checkbox" ${checked ? "checked" : ""}> ${label}</label>` }
 function bind(attribute, action) { document.querySelectorAll(`[data-${attribute}]`).forEach(button => (button.onclick = () => action(button.dataset[attribute], button))) }
 function selected(id) { return Array.from(document.getElementById(id)?.selectedOptions || []).map(option => option.value) }
-function applyBusy() { document.querySelectorAll("button").forEach(button => { if (!button.dataset.originalDisabled) button.dataset.originalDisabled = button.disabled ? "true" : "false"; button.disabled = button.classList.contains("pause") ? pendingTransition : busy || pendingTransition || button.dataset.originalDisabled === "true" }) }
+function applyBusy() {
+  document.querySelectorAll("button").forEach(button => {
+    const shouldDisable = button.classList.contains("pause") ? pendingTransition : busy || pendingTransition
+    if (shouldDisable) {
+      if (!busyDisabledStates.has(button)) busyDisabledStates.set(button, button.disabled)
+      button.disabled = true
+    } else if (busyDisabledStates.has(button)) {
+      button.disabled = busyDisabledStates.get(button)
+      busyDisabledStates.delete(button)
+    }
+  })
+}
 function workflowName(source, target) { const now = new Date(); const pad = value => String(value).padStart(2, "0"); return `${source}_${target}_${now.getFullYear()}${pad(now.getMonth() + 1)}${pad(now.getDate())}_${pad(now.getHours())}${pad(now.getMinutes())}${pad(now.getSeconds())}`.toUpperCase() }
 function clearErrors() { globalError.textContent = ""; document.querySelectorAll(".section-error").forEach(element => (element.textContent = "")) }
 function showSectionError(section, message) { clearErrors(); const target = document.getElementById(`error-${section || "home"}`); if (target) { target.textContent = message || ""; if (message) target.scrollIntoView({ behavior: "smooth", block: "center" }) } else globalError.textContent = message || "" }
