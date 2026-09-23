@@ -104,7 +104,7 @@ function normalizeConfirmation(value: string | undefined): string {
   return (value ?? "").trim().replace(/\s+/g, " ").replace(/[.]+$/, "").toLowerCase()
 }
 
-/** Playwright is copied into the bundle as loose files; webpack cannot bundle its CLI. */
+/** Playwright is copied into the bundle as loose files; its CLI forks worker processes by real path and can't be bundled. */
 function vendorDir(extensionPath: string): string {
   return path.join(extensionPath, "client", "dist", "vendor")
 }
