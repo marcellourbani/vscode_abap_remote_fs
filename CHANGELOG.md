@@ -1,5 +1,11 @@
 # Changelog
 
+## 2.10.0
+
+### Minor Changes
+
+- e5a94ce: Repository Comparison Workflows
+
 ## 2.9.1
 
 ### Patch Changes
