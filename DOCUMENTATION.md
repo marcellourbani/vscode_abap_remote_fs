@@ -20,6 +20,7 @@ This is a high-level summary. See the left navigation for full feature pages.
 |------|-------------|
 | **AI-Powered Development** | 40 tools give Copilot deep SAP awareness — search objects, read code, run tests, explain dumps, all via natural language |
 | **Edit & Activate** | Browse, open, edit, and activate ABAP objects on the live system |
+| **Repository Comparison** | [Discover and compare scoped repositories](#repository-comparison) across two systems, export results, and prepare reviewed assisted-apply plans |
 | **Editor Experience** | Enhanced hover info, custom editors, object properties, and dedicated ABAP views/panels |
 | **Debug** | Full ABAP debugger with breakpoints, variable inspection, stepping, and debug recording |
 | **Test** | Run unit tests, create test classes, generate test documentation |
@@ -364,7 +365,7 @@ Make sure you are in **Agent mode** (not Ask or Edit) for full tool access.
 
 Most tools require an active SAP connection. When no SAP system is connected, tools are hidden from Copilot to save context tokens. The **abapfs_search_documentation** tool is always available regardless of connection status — use it to ask about features and setup.
 
-Connect to a SAP system (`Ctrl+Shift+P` → **ABAP FS: Connect to an ABAP system**) to enable all 40+ tools.
+Connect to a SAP system (`Ctrl+Shift+P` → **ABAP FS: Connect to an ABAP system**) to enable all available SAP tools.
 
 ## How it works
 
@@ -446,9 +447,21 @@ When you type a question, Copilot picks the appropriate tool behind the scenes:
 38. **abapfs_manage_subagents** — Configure AI subagents that delegate tasks to cheaper/faster models to reduce API costs
 39. **abapfs_manage_heartbeat** — Control the background heartbeat monitoring service (add monitoring tasks, set reminders, check status)
 
+### Repository Comparison
+
+40. **abapfs_list_repository_workflows** — List persistent repository comparison workflows and their current status
+41. **abapfs_get_repository_workflow** — Read selected workflow state, criteria, summaries, or a filtered artifact page
+42. **abapfs_create_repository_workflow** — Create a source-to-target comparison between two connected systems
+43. **abapfs_update_repository_workflow_criteria** — Update discovery scope and invalidate earlier derived results
+44. **abapfs_run_repository_workflow_step** — Run discovery, rebuild inventory comparison, or compare selected source
+45. **abapfs_open_repository_workflow** — Open or focus the Repository Comparison Workflow webview
+46. **abapfs_prepare_repository_assisted_apply** — Prepare a non-mutating, safety-reviewed assisted-apply plan
+
+See [Repository Comparison](#repository-comparison) for the complete workflow and safety boundaries.
+
 ### Documentation
 
-40. **abapfs_build_test_documentation** — Generate a Word document from Playwright test screenshots, organized by scenario
+47. **abapfs_build_test_documentation** — Generate a Word document from Playwright test screenshots, organized by scenario
 
 # AI Subagents for Optimized ABAP Development
 
@@ -1403,6 +1416,608 @@ Compare the same ABAP object side-by-side between two connected SAP systems — 
 - The diff opens as a standard VS Code side-by-side comparison — all editor shortcuts (e.g. `F7`/`Shift+F7` to jump between changes) work as normal.
 - Path differences between SAP versions are handled automatically (`Source Code Library` for newer systems, `Source Library` for older ones).
 - If the object does not exist in the target system, an error is shown.
+
+# Repository Comparison
+
+Repository Comparison gives you a persistent, reviewable way to compare a scoped set of ABAP repository objects across two connected SAP systems.
+
+Use it when you need more than a one-object diff: checking what exists in each system, comparing source for hundreds or thousands of objects, exporting the results, or preparing selected changes for careful manual application.
+
+## What the workflow does
+
+The workflow has three stages:
+
+1. **Scope and discovery** — query both systems for matching TADIR objects and compare the saved inventories locally.
+2. **Compare systems** — select objects present on both systems, download source snapshots, and compare them locally.
+3. **Assisted apply** — prepare a safety-checked plan and optionally stage one reviewed source file in the target editor.
+
+Discovery, inventory comparison, source comparison, and plan preparation do not modify SAP objects.
+
+!!! warning "Assisted apply is not deployment automation"
+    Staging places reviewed source in an unsaved target editor. You still review, save, choose a transport when SAP asks, and activate through the normal ABAP FS flow.
+
+## Prerequisites
+
+- Two different SAP systems connected in the current VS Code window
+- A customer object-name or package scope
+- Access to query TADIR and read the selected repository objects on both systems
+
+For example, a workflow could compare source `DEV100` with target `QAS100`, limited to package `ZDEMO*` and object types `CLAS`, `PROG`, and `DDLS`.
+
+## Open the workflow
+
+Open the Command Palette (`Ctrl+Shift+P`) and run:
+
+**ABAP FS: Repository Comparison Workflow**
+
+From the start page you can create, open, duplicate, archive, or permanently delete workflows. A workflow keeps its criteria, checkpoints, inventories, snapshots, comparisons, and plans on disk so you can close VS Code and continue later.
+
+## Where to go next
+
+- [Run a comparison](#run-a-repository-comparison) — create a workflow, choose a scope, select objects, and understand the results.
+- [Use Repository Comparison with Copilot](#repository-comparison-with-copilot) — dedicated LM tools, efficient reads, examples, and safety boundaries.
+- [Use assisted apply safely](#assisted-apply) — review, stage, save, and activate without bypassing safeguards.
+- [Technical reference](#repository-comparison-technical-reference) — criteria, statuses, filtering, concurrency, persistence, exports, and AI tools.
+
+
+# Run a Repository Comparison
+
+This guide follows the three stages shown in the Repository Comparison Workflow webview.
+
+You can run the same persistent workflow through Copilot. See [Repository Comparison with Copilot](#repository-comparison-with-copilot) for the dedicated LM tools, example prompts, and bounded result reads.
+
+## 1. Create the workflow
+
+1. Connect both SAP systems in VS Code.
+2. Run **ABAP FS: Repository Comparison Workflow**.
+3. Select the source and target connections.
+4. Enter an optional description and choose **Create workflow**.
+
+Source and target are fixed for the life of the workflow. Check the direction before running discovery, and check it again before assisted apply.
+
+## 2. Define the discovery scope
+
+Enter at least one object-name pattern or package pattern.
+
+| Criterion | Behaviour |
+|---|---|
+| Object name pattern | One pattern with `*` for any characters and `?` for one character |
+| Exclude object names | Comma-separated wildcard patterns |
+| Package patterns | Comma-separated patterns such as `ZDEMO*` or `/EXAMPLE/*` |
+| Object types | Leave empty for every supported type, or select only the types you need |
+| Customer namespaces | Exact namespace values |
+| Authors | Exact author values |
+| Created from/to | Inclusive dates in `YYYYMMDD` format |
+| Include subpackages | Resolves and includes child packages |
+| Include deleted/generated/`$TMP` | Includes objects normally excluded from discovery |
+
+When both an object-name pattern and package patterns are present, an object must match both.
+
+Package patterns `*` and `/*` are rejected because they are unrestricted. Prefer the narrowest useful scope: broad discovery can query and later download a large part of a repository.
+
+Choose **Save criteria** to persist the scope without running it, or **Run discovery** to save and start.
+
+!!! warning "Saving criteria resets derived results"
+    Saving criteria clears previous discovery output, inventory comparison, source selection, downloaded snapshots, source comparison, and assisted-apply results. Do not use it as a resume button.
+
+## 3. Discover both systems
+
+Discovery queries source and target independently and saves an inventory for each system. When both inventories finish, their existence comparison runs locally and automatically.
+
+The inventory tables show:
+
+- object name and type;
+- package;
+- classification (`custom`, `standard`, `partner`, `generated`, or `uncertain`);
+- the reason for that classification.
+
+You can filter and sort either table, then export it.
+
+If you pause discovery, the current package checkpoint is saved. **Resume discovery** continues from that checkpoint. Running an already completed discovery again is a deliberate rerun and clears downstream results.
+
+## 4. Review inventory presence
+
+The comparison table reports each unique repository key as:
+
+- **Present on both** — potentially available for source comparison;
+- **Only on source** — no corresponding target object;
+- **Only on target** — no corresponding source object;
+- **Error** — inspect the row before continuing.
+
+A repository key includes program ID, object type, and object name. Objects with the same name but different types remain separate rows.
+
+`DEVC` package containers remain visible in the inventory but cannot be selected for source comparison. Downloading a package container could recursively repeat work already represented by its individual objects.
+
+## 5. Select source-comparable objects
+
+By default, all comparable objects are selected.
+
+Use the controls above the table to change that:
+
+- **Select all comparable objects** selects or clears the full comparable set.
+- **Select filtered** adds every comparable row matching the current table filters.
+- **Clear filtered** removes matching rows while preserving selections outside the filter.
+- The checkbox in each row selects one object.
+
+Table filters use prefix matching by default. Add a trailing space for an exact match, or use `*` and `?` wildcards.
+
+For example:
+
+- `CL` matches types beginning with `CL`;
+- `CLAS ` matches only `CLAS`;
+- `ZCL_*` matches class names beginning with `ZCL_`.
+
+## 6. Configure verification and downloads
+
+The comparison stage has three independent concurrency controls:
+
+- **Parallel downloads from source** — 1 to 10 SAP object downloads.
+- **Parallel downloads from target** — 1 to 10 SAP object downloads.
+- **Parallel local snapshot verification** — 1 to 128 local verification tasks; default 32.
+
+The first two values affect SAP and network load. Local verification reads only the workflow folder and does not send SAP requests.
+
+On resume, both sides are verified before missing snapshots are downloaded. The progress label changes from **Verifying current state before resuming…** to **Downloading source and target snapshots…** at the real phase boundary.
+
+Choose **Compare selected source code** to save the selection, download both sides, and run the local comparison.
+
+## 7. Read source-comparison results
+
+| Status | Meaning |
+|---|---|
+| `identical` | Source and target snapshot hashes match |
+| `different` | At least one resource file differs |
+| `partial` | One or both snapshots were incomplete |
+| `source-missing` / `target-missing` | An expected snapshot manifest is absent |
+| `error` | The comparison could not be completed |
+
+The table also shows changed-file and line counts. These are textual metrics: reordered ABAP code can appear as removed and added lines even when its behaviour is similar.
+
+Use **Open diff** for a standard VS Code side-by-side comparison. If an object contains several changed text resources, you are prompted to choose one.
+
+## 8. Pause, resume, and rerun
+
+- Pausing freezes the elapsed timer and preserves completed snapshots.
+- Resuming rechecks saved snapshots locally, then downloads only missing or invalid ones.
+- Changing only the three concurrency values does not invalidate discovery or snapshots.
+- Supplying a new source selection clears earlier snapshots and downstream results.
+- Saving discovery criteria clears the entire derived workflow.
+
+If a step fails, read its displayed error before resetting anything. Retrying without changing criteria or selection preserves reusable artifacts.
+
+When the source comparison is complete:
+
+- continue with [Assisted apply](#assisted-apply) only if you intend to review possible source-to-target changes;
+- see [Repository Comparison with Copilot](#repository-comparison-with-copilot) to inspect results or operate later stages through LM tools;
+- use the [Technical reference](#repository-comparison-technical-reference) for persistence, invalidation, statuses, and limits.
+
+
+# Repository Comparison with Copilot
+
+Copilot can create, inspect, configure, and run repository comparison workflows through dedicated ABAP FS language model tools.
+
+You can ask naturally:
+
+- "Create a repository comparison from DEV100 to QAS100."
+- "Limit the workflow to package ZDEMO* and classes."
+- "Run discovery and compare the inventories."
+- "Show me only objects that exist on the source."
+- "Compare the selected objects with source download concurrency 4."
+- "Prepare an assisted-apply plan and explain what is blocked."
+
+Workflow-changing tools open or focus the Repository Comparison Workflow webview so you can watch progress and review results. Read-only tools do not open it.
+
+## Available tools
+
+| Tool | Purpose |
+|---|---|
+| `abapfs_list_repository_workflows` | List workflow IDs, systems, current step, status, and last error |
+| `abapfs_get_repository_workflow` | Read selected state, criteria, summaries, or one filtered artifact page |
+| `abapfs_create_repository_workflow` | Create a persistent workflow for two connected systems |
+| `abapfs_update_repository_workflow_criteria` | Change discovery scope and invalidate existing derived results |
+| `abapfs_run_repository_workflow_step` | Run discovery, retry local inventory comparison, or run combined source comparison |
+| `abapfs_open_repository_workflow` | Open or focus a workflow without changing it |
+| `abapfs_prepare_repository_assisted_apply` | Prepare a non-mutating assisted-apply review plan |
+
+## Create and configure
+
+Creation requires two different connected system IDs:
+
+```text
+Create a repository comparison from DEV100 to QAS100 named "Demo comparison".
+```
+
+Creating the workflow also creates default criteria, but it does not run discovery.
+
+Ask Copilot to update criteria before discovery:
+
+```text
+Set package scope to ZDEMO*, include subpackages, and select CLAS and PROG only.
+```
+
+Supported criteria include:
+
+- include and exclude object-name patterns;
+- package patterns and subpackage expansion;
+- object types, namespaces, and authors;
+- creation-date range;
+- deleted, generated, and `$TMP` inclusion;
+- source, target, and local verification concurrency.
+
+Updating criteria clears discovery and every downstream artifact. Copilot asks for confirmation before applying the change.
+
+## Run workflow stages
+
+The run tool accepts three user-facing operations.
+
+### `discovery`
+
+Queries both SAP systems, persists their inventories, and automatically compares inventory presence locally.
+
+```text
+Run discovery for the demo comparison.
+```
+
+It does not automatically continue into source download or assisted apply unless you explicitly request those stages too.
+
+### `existenceComparison`
+
+Retries or rebuilds only the local inventory comparison from persisted discovery inventories. It does not query SAP again.
+
+```text
+Retry the inventory comparison without rerunning discovery.
+```
+
+### `sourceComparison`
+
+Performs source selection, verifies reusable snapshots, downloads missing source and target snapshots, then compares them locally.
+
+Omit object keys to select all comparable objects or resume the saved selection:
+
+```text
+Resume source comparison using the existing selection.
+```
+
+Supply exact keys to replace the selection:
+
+```text
+Compare only R3TR:CLAS:ZCL_EXAMPLE.
+```
+
+Object keys must come from the existence-comparison artifact. Source-only, target-only, empty, and excluded `DEVC` selections are rejected.
+
+Optional concurrency values:
+
+- `sourceConcurrency`: 1-10 SAP downloads from source;
+- `targetConcurrency`: 1-10 SAP downloads from target;
+- `verificationConcurrency`: 1-128 local verification tasks.
+
+## Read workflow data efficiently
+
+`abapfs_get_repository_workflow` supports four response sections:
+
+- `state` — complete workflow state or one requested step;
+- `criteria` — persisted scope and concurrency;
+- `summaries` — compact counts for completed stages;
+- `artifact` — one bounded result page.
+
+If no section is requested, the tool returns state only. Ask for the smallest useful response:
+
+```text
+Show only the source-comparison summary.
+```
+
+```text
+Read the sourceDownload step status and last error.
+```
+
+Available artifacts:
+
+- `sourceDiscovery`
+- `targetDiscovery`
+- `existenceComparison`
+- `sourceComparison`
+- `assistedApplyPlan`
+
+Artifact reads accept `offset` and `limit`, with a maximum page size of 200. They can be filtered by status, object name, object type, and package. Object-name filtering supports `*` and `?`.
+
+Examples:
+
+```text
+Show the first 50 source-only classes from the existence comparison.
+```
+
+```text
+Show source differences for objects matching ZCL_EXAMPLE*.
+```
+
+## Assisted apply
+
+Ask Copilot to prepare a plan only after source comparison:
+
+```text
+Prepare an assisted-apply plan for the demo comparison.
+```
+
+The tool returns ready and blocked counts and opens the webview for review. It does not stage or change SAP code.
+
+Only you can:
+
+- click **Stage in target editor**;
+- review the dirty target editor;
+- save and choose a transport;
+- activate the object and related components.
+
+See [Assisted Apply](#assisted-apply) for all safeguards and stale-plan checks.
+
+## Pausing and resuming with Copilot
+
+When you ask Copilot to continue an existing workflow, it reuses persisted work:
+
+- discovery continues without re-saving criteria;
+- a failed inventory comparison can be retried without querying SAP again;
+- source comparison resumes with the saved selection and reusable snapshots;
+- completed stages can be inspected without rerunning them.
+
+If you click **Pause** while a Copilot-run operation is active, its result records `outcome: paused-by-user`, `pausedByUser: true`, and the exact current step state. Copilot can therefore tell you that the run started and that your webview action paused it.
+
+If a step fails, ask Copilot to read that step's state and report `lastError` before resetting anything.
+
+## Safety boundaries
+
+Repository Comparison tools keep these actions outside Copilot's control:
+
+- creating a missing target object from a source-only result;
+- clicking **Stage in target editor**;
+- saving staged content or choosing a transport;
+- activating the object or related components.
+
+Criteria changes and expensive stages require explicit confirmation. Discovery, comparison, and plan preparation do not change SAP objects.
+
+
+# Assisted Apply
+
+Assisted apply helps you review a source difference and place one approved source file in the target editor. It does not save, select a transport, activate, create, or delete SAP objects.
+
+## Prepare the plan
+
+After source comparison completes, choose **Prepare assisted apply**.
+
+Plan preparation reads the persisted comparison and snapshot manifests. It does not contact SAP to change anything.
+
+Each item receives one of these outcomes:
+
+- **Ready** — source differs from target and all plan checks passed.
+- **No action** — source and target are already identical.
+- **Blocked** — one or more safety checks failed.
+
+An item is blocked when, for example:
+
+- either snapshot is incomplete;
+- source and target have different resource-file layouts;
+- the object is generated or classified as standard;
+- source and target object types do not match;
+- the comparison status is not `different`.
+
+Source-only objects are not supported by this workflow. Assisted apply does not create missing target objects.
+
+## Required editor settings
+
+Staging is blocked unless:
+
+- ABAP-effective `files.autoSave` is `off`;
+- `chat.saveBeforeSend` is `false`.
+
+The webview explains which setting is unsafe and provides a link to open it. These checks prevent an editor operation or chat message from silently saving staged ABAP content.
+
+## Review one item
+
+For a ready item:
+
+1. **Review Live source** — open the current source-system resource.
+2. **Review Live target** — open the current target-system resource.
+3. **Review Diff** — compare the saved source snapshot with the current target resource.
+4. **Stage in target editor** — replace the target editor's in-memory text with the reviewed source snapshot.
+5. Review the dirty editor.
+6. Save manually and choose or confirm the appropriate transport.
+7. Activate the object and any related components through the normal ABAP FS activation flow.
+
+If several text resources changed, the workflow asks which one to review or stage. Repeat the process for every related component that must be changed together.
+
+!!! danger "Staged does not mean saved"
+    After staging, the target editor is dirty. SAP is not changed until you save through the normal editor flow.
+
+## Stale-plan protection
+
+Immediately before staging, the workflow verifies:
+
+1. the saved source snapshot still matches the plan;
+2. a freshly downloaded target snapshot still matches the target reviewed by the plan;
+3. the target editor has no existing unsaved changes;
+4. the editor safety settings are still valid.
+
+If source or target changed, the old plan is rejected. Rerun source comparison, prepare a new plan, and review the new diff instead of forcing stale content through.
+
+## What remains manual
+
+The workflow deliberately leaves these decisions to you:
+
+- whether to stage each item;
+- whether the complete object is safe to save;
+- which transport to use;
+- when and how related objects should be activated;
+- how to resolve syntax, dependency, or activation errors.
+
+Copilot can prepare and explain a plan, but it cannot click **Stage**, save the target editor, choose a transport, or claim that sync succeeded.
+
+
+# Repository Comparison Technical Reference
+
+## Persistence and lifecycle
+
+Workflows are stored outside the current workspace by default:
+
+```text
+~/.abapfs/repository-workflows/
+```
+
+Set `abapfs.repositoryWorkflows.root` to use another folder. ABAP FS never automatically archives or deletes workflows.
+
+Each workflow has an isolated folder containing:
+
+```text
+workflow.json
+criteria.json
+events.jsonl
+logs/
+discovery/
+comparison/
+sources/
+assisted-apply/
+exports/
+```
+
+The folder contains repository metadata and downloaded source snapshots. Treat it as sensitive development data, secure it appropriately, and do not commit it to source control.
+
+Workflow actions:
+
+- **Duplicate** creates a new workflow with the same systems and criteria, but no discovery or comparison artifacts.
+- **Archive** moves the complete workflow folder under the configured root's `archive` folder.
+- **Delete** permanently removes the workflow and all local artifacts.
+
+If VS Code closes while a workflow is running, it is marked `interrupted` when the extension starts again. Persisted checkpoints and complete snapshots remain available for resume.
+
+## Settings
+
+| Setting | Default | Purpose |
+|---|---:|---|
+| `abapfs.repositoryWorkflows.root` | Empty | Storage folder; empty uses `~/.abapfs/repository-workflows` |
+| `abapfs.repositoryWorkflows.defaultConcurrency` | `5` | Global default used to initialize both side values for new workflows, from 1 to 10 |
+
+The webview stores per-workflow source download, target download, and local verification concurrency in `criteria.json`.
+
+## Criteria rules
+
+- At least one object-name pattern or package pattern is required.
+- Only one include object-name pattern is supported.
+- Package patterns `*` and `/*` are rejected.
+- `*` matches any characters; `?` matches one character.
+- Name and package criteria are combined with AND.
+- Exclude-name patterns are applied after inclusion.
+- Object type, namespace, and author values are exact, case-insensitive matches.
+- Creation dates are inclusive `YYYYMMDD` values.
+- Deleted, generated, and `$TMP` objects are excluded unless explicitly included.
+
+With **Include subpackages** off, package patterns are sent directly in a scoped TADIR query. With it on, the package hierarchy is read first and package queries are split into batches that fit the ADT SQL-length limit.
+
+Supported types include programs and includes, classes, interfaces, function groups, Dictionary and CDS objects, RAP behavior and service objects, message classes, transactions, enhancements and BAdIs, transformations, number ranges, authorization objects, package interfaces, ICF services, Web Dynpro components, proxies, and job definitions.
+
+## Inventory comparison
+
+Discovery creates one inventory per side. Existence comparison builds the sorted union of their repository keys:
+
+```text
+PGMID:OBJECT_TYPE:OBJECT_NAME
+```
+
+It assigns `both`, `source-only`, `target-only`, or `error`.
+
+The comparison is local and normally fast. It runs automatically after successful discovery. Running it explicitly is useful only to retry or rebuild the local phase from saved inventories.
+
+## Selection and filters
+
+Only `both` rows can be source-compared. `DEVC` package containers are additionally excluded because snapshotting a container can recursively duplicate work represented by individual objects.
+
+Header filters support:
+
+- prefix matching by default;
+- exact matching when the filter ends with a space;
+- `*` and `?` wildcards.
+
+**Select filtered** and **Clear filtered** operate on all rows matching the active filters, not only the rows currently visible in the virtual table.
+
+## Snapshot verification and download
+
+Each selected object gets a source and target snapshot with:
+
+- repository metadata;
+- file paths and byte counts;
+- raw and normalized SHA-256 hashes;
+- completion status and download failures.
+
+Resume has two separate phases:
+
+1. verify all saved source and target snapshots against their manifests;
+2. download snapshots that are missing, partial, failed, or locally changed.
+
+Verification concurrency is local-only, defaults to 32, and can be set from 1 to 128. Source and target download concurrency are separate values from 1 to 10 and control SAP/network load.
+
+Progress is persisted at most every 500 milliseconds, with forced updates at pause, phase changes, and completion.
+
+## Source comparison
+
+Snapshot comparison checks:
+
+- raw aggregate hashes;
+- normalized aggregate hashes;
+- added, removed, and changed resource paths;
+- textual line additions, removals, and replacements.
+
+Normalization converts CRLF to LF and removes trailing spaces and tabs before calculating the normalized hash. Raw differences are still reported; normalization is additional information.
+
+Line counts are textual and should not be treated as proof of semantic ABAP changes.
+
+## Invalidation rules
+
+| Action | Invalidated data |
+|---|---|
+| Save criteria | Discovery and every downstream artifact |
+| Rerun completed discovery | Inventory comparison, selection, snapshots, source comparison, assisted-apply plan |
+| Explicitly rebuild inventory comparison | Selection, snapshots, source comparison, assisted-apply plan |
+| Save a new source selection | Existing snapshots, source comparison, assisted-apply plan |
+| Change concurrency only | Nothing; values are saved for the next start or resume |
+| Refresh assisted-apply plan | The previous plan only |
+
+## Exports
+
+The webview exports these outputs:
+
+- source inventory;
+- target inventory;
+- inventory comparison;
+- source comparison.
+
+XLSX is used while the result fits Excel's row limit. Larger results are offered as CSV. Exported inventories and comparisons may contain object names, packages, authors, system metadata, and source hashes; handle them as sensitive system information.
+
+## Copilot tools
+
+Repository workflows are also available to Copilot:
+
+See [Repository Comparison with Copilot](#repository-comparison-with-copilot) for prompts, stage semantics, bounded artifact reads, and safety guidance.
+
+| Tool | Purpose |
+|---|---|
+| `abapfs_list_repository_workflows` | List workflow IDs and compact status |
+| `abapfs_get_repository_workflow` | Read state, criteria, summaries, or one paged artifact |
+| `abapfs_create_repository_workflow` | Create a workflow for two connected systems |
+| `abapfs_update_repository_workflow_criteria` | Update scope and invalidate derived results |
+| `abapfs_run_repository_workflow_step` | Run discovery, retry inventory comparison, or run combined source comparison |
+| `abapfs_open_repository_workflow` | Open or focus the webview |
+| `abapfs_prepare_repository_assisted_apply` | Prepare a non-mutating assisted-apply plan |
+
+Artifact reads are limited to 200 rows per request and can be filtered by status, object name, object type, and package. Object-name filtering supports `*` and `?`.
+
+Workflow-changing tools open or focus the webview so progress and results remain visible. Read-only inspection tools do not.
+
+## Limits and safety boundaries
+
+- Source-only objects cannot be created on the target.
+- Packages cannot be selected for source comparison.
+- Assisted apply cannot add or remove resource files.
+- Generated and standard objects are blocked from assisted apply.
+- Staging supports reviewed text resources only.
+- There is no bulk stage, automatic save, automatic transport choice, or automatic activation.
+
 
 # ABAP Test Cockpit (ATC) Analysis
 
