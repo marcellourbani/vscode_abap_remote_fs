@@ -2,7 +2,7 @@
   "name": "vscode-abap-remote-fs",
   "displayName": "ABAP remote filesystem",
   "description": "VS Code-based Agentic AI Platform for SAP ABAP Development",
-  "version": "2.9.1",
+  "version": "2.10.0",
   "publisher": "murbani",
   "publishConfig": {
     "access": "restricted",
@@ -528,7 +528,10 @@
         "toolReferenceName": "abapfs_list_repository_workflows",
         "icon": "$(list-selection)",
         "userDescription": "List repository comparison workflows",
-        "inputSchema": { "type": "object", "properties": {} },
+        "inputSchema": {
+          "type": "object",
+          "properties": {}
+        },
         "when": "abapfs:extensionActive"
       },
       {
@@ -542,30 +545,78 @@
         "inputSchema": {
           "type": "object",
           "properties": {
-            "workflowId": { "type": "string", "description": "Immutable workflow ID" },
+            "workflowId": {
+              "type": "string",
+              "description": "Immutable workflow ID"
+            },
             "include": {
               "type": "array",
-              "items": { "type": "string", "enum": ["state", "criteria", "summaries", "artifact"] },
+              "items": {
+                "type": "string",
+                "enum": [
+                  "state",
+                  "criteria",
+                  "summaries",
+                  "artifact"
+                ]
+              },
               "description": "Response sections to include. Defaults to state, or artifact when artifact is supplied. Request only what is needed."
             },
             "step": {
               "type": "string",
-              "enum": ["criteria", "discovery", "existenceComparison", "sourceSelection", "sourceDownload", "sourceComparison", "assistedApplyPlan"],
+              "enum": [
+                "criteria",
+                "discovery",
+                "existenceComparison",
+                "sourceSelection",
+                "sourceDownload",
+                "sourceComparison",
+                "assistedApplyPlan"
+              ],
               "description": "When reading state, return only this step plus current workflow status instead of the full workflow. Inspect existenceComparison to verify the automatic local comparison that follows discovery."
             },
             "artifact": {
               "type": "string",
-              "enum": ["sourceDiscovery", "targetDiscovery", "existenceComparison", "sourceComparison", "assistedApplyPlan"],
+              "enum": [
+                "sourceDiscovery",
+                "targetDiscovery",
+                "existenceComparison",
+                "sourceComparison",
+                "assistedApplyPlan"
+              ],
               "description": "Optional persisted artifact to query. existenceComparison is produced automatically after successful discovery."
             },
-            "offset": { "type": "number", "minimum": 0, "description": "Matched rows to skip" },
-            "limit": { "type": "number", "minimum": 1, "maximum": 200, "description": "Maximum rows to return" },
-            "status": { "type": "string", "description": "Optional exact status filter" },
-            "objectName": { "type": "string", "description": "Optional object name wildcard" },
-            "objectType": { "type": "string", "description": "Optional exact object type" },
-            "packageName": { "type": "string", "description": "Optional exact package" }
+            "offset": {
+              "type": "number",
+              "minimum": 0,
+              "description": "Matched rows to skip"
+            },
+            "limit": {
+              "type": "number",
+              "minimum": 1,
+              "maximum": 200,
+              "description": "Maximum rows to return"
+            },
+            "status": {
+              "type": "string",
+              "description": "Optional exact status filter"
+            },
+            "objectName": {
+              "type": "string",
+              "description": "Optional object name wildcard"
+            },
+            "objectType": {
+              "type": "string",
+              "description": "Optional exact object type"
+            },
+            "packageName": {
+              "type": "string",
+              "description": "Optional exact package"
+            }
           },
-          "required": ["workflowId"]
+          "required": [
+            "workflowId"
+          ]
         },
         "when": "abapfs:extensionActive"
       },
@@ -580,12 +631,23 @@
         "inputSchema": {
           "type": "object",
           "properties": {
-            "name": { "type": "string" },
-            "description": { "type": "string" },
-            "sourceConnectionId": { "type": "string" },
-            "targetConnectionId": { "type": "string" }
+            "name": {
+              "type": "string"
+            },
+            "description": {
+              "type": "string"
+            },
+            "sourceConnectionId": {
+              "type": "string"
+            },
+            "targetConnectionId": {
+              "type": "string"
+            }
           },
-          "required": ["sourceConnectionId", "targetConnectionId"]
+          "required": [
+            "sourceConnectionId",
+            "targetConnectionId"
+          ]
         },
         "when": "abapfs:extensionActive && !abapfs:noSapConnected"
       },
@@ -600,22 +662,48 @@
         "inputSchema": {
           "type": "object",
           "properties": {
-            "workflowId": { "type": "string" },
+            "workflowId": {
+              "type": "string"
+            },
             "step": {
               "type": "string",
-              "enum": ["discovery", "existenceComparison", "sourceComparison"],
+              "enum": [
+                "discovery",
+                "existenceComparison",
+                "sourceComparison"
+              ],
               "description": "discovery automatically performs the local inventory comparison after both inventories complete; existenceComparison retries or rebuilds only that local comparison."
             },
             "objectKeys": {
               "type": "array",
-              "items": { "type": "string" },
+              "items": {
+                "type": "string"
+              },
               "description": "For sourceComparison, exact R3TR:type:name keys to select. Omit to select all source-comparable objects. Keys must exist on both systems; container types such as DEVC are excluded. An empty array is rejected."
             },
-            "sourceConcurrency": { "type": "number", "minimum": 1, "maximum": 10, "description": "Optional source-system parallel download limit for sourceComparison." },
-            "targetConcurrency": { "type": "number", "minimum": 1, "maximum": 10, "description": "Optional target-system parallel download limit for sourceComparison." },
-            "verificationConcurrency": { "type": "number", "minimum": 1, "maximum": 128, "description": "Optional local snapshot verification concurrency for sourceComparison. Does not increase SAP requests." }
+            "sourceConcurrency": {
+              "type": "number",
+              "minimum": 1,
+              "maximum": 10,
+              "description": "Optional source-system parallel download limit for sourceComparison."
+            },
+            "targetConcurrency": {
+              "type": "number",
+              "minimum": 1,
+              "maximum": 10,
+              "description": "Optional target-system parallel download limit for sourceComparison."
+            },
+            "verificationConcurrency": {
+              "type": "number",
+              "minimum": 1,
+              "maximum": 128,
+              "description": "Optional local snapshot verification concurrency for sourceComparison. Does not increase SAP requests."
+            }
           },
-          "required": ["workflowId", "step"]
+          "required": [
+            "workflowId",
+            "step"
+          ]
         },
         "when": "abapfs:extensionActive && !abapfs:noSapConnected"
       },
@@ -630,40 +718,121 @@
         "inputSchema": {
           "type": "object",
           "properties": {
-            "workflowId": { "type": "string" },
+            "workflowId": {
+              "type": "string"
+            },
             "includeNames": {
               "type": "array",
               "maxItems": 1,
-              "items": { "type": "string", "maxLength": 255 },
+              "items": {
+                "type": "string",
+                "maxLength": 255
+              },
               "description": "Optional single object-name wildcard pattern. Comma-separated values are not allowed."
             },
-            "excludeNames": { "type": "array", "items": { "type": "string" } },
+            "excludeNames": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
             "packages": {
               "type": "array",
-              "items": { "type": "string" },
+              "items": {
+                "type": "string"
+              },
               "description": "Optional scoped package patterns such as Z*, Y*, or /XYZ/*. Object name or package is required; when both are supplied, objects must match both. The unrestricted patterns * and /* are rejected."
             },
-            "includeSubpackages": { "type": "boolean" },
+            "includeSubpackages": {
+              "type": "boolean"
+            },
             "objectTypes": {
               "type": "array",
               "items": {
                 "type": "string",
-                "enum": ["PROG", "CLAS", "INTF", "FUGR", "TABL", "DTEL", "DOMA", "TTYP", "VIEW", "SHLP", "ENQU", "DDLS", "DCLS", "DDLX", "BDEF", "SRVD", "SRVB", "MSAG", "TRAN", "ENHO", "ENHS", "SXSD", "SXCI", "XSLT", "NROB", "SUSO", "SUSC", "PINF", "SICF", "WDYN", "SPRX", "JOBD"]
+                "enum": [
+                  "PROG",
+                  "CLAS",
+                  "INTF",
+                  "FUGR",
+                  "TABL",
+                  "DTEL",
+                  "DOMA",
+                  "TTYP",
+                  "VIEW",
+                  "SHLP",
+                  "ENQU",
+                  "DDLS",
+                  "DCLS",
+                  "DDLX",
+                  "BDEF",
+                  "SRVD",
+                  "SRVB",
+                  "MSAG",
+                  "TRAN",
+                  "ENHO",
+                  "ENHS",
+                  "SXSD",
+                  "SXCI",
+                  "XSLT",
+                  "NROB",
+                  "SUSO",
+                  "SUSC",
+                  "PINF",
+                  "SICF",
+                  "WDYN",
+                  "SPRX",
+                  "JOBD"
+                ]
               },
               "description": "Supported TADIR object types. Use an empty array to include all supported types."
             },
-            "namespaces": { "type": "array", "items": { "type": "string" } },
-            "authors": { "type": "array", "items": { "type": "string" } },
-            "createdFrom": { "type": "string" },
-            "createdTo": { "type": "string" },
-            "includeDeleted": { "type": "boolean" },
-            "includeGenerated": { "type": "boolean" },
-            "includeTemporary": { "type": "boolean" },
-            "sourceConcurrency": { "type": "number", "minimum": 1, "maximum": 10 },
-            "targetConcurrency": { "type": "number", "minimum": 1, "maximum": 10 },
-            "verificationConcurrency": { "type": "number", "minimum": 1, "maximum": 128 }
+            "namespaces": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "authors": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "createdFrom": {
+              "type": "string"
+            },
+            "createdTo": {
+              "type": "string"
+            },
+            "includeDeleted": {
+              "type": "boolean"
+            },
+            "includeGenerated": {
+              "type": "boolean"
+            },
+            "includeTemporary": {
+              "type": "boolean"
+            },
+            "sourceConcurrency": {
+              "type": "number",
+              "minimum": 1,
+              "maximum": 10
+            },
+            "targetConcurrency": {
+              "type": "number",
+              "minimum": 1,
+              "maximum": 10
+            },
+            "verificationConcurrency": {
+              "type": "number",
+              "minimum": 1,
+              "maximum": 128
+            }
           },
-          "required": ["workflowId"]
+          "required": [
+            "workflowId"
+          ]
         },
         "when": "abapfs:extensionActive"
       },
@@ -677,8 +846,14 @@
         "userDescription": "Open a repository workflow",
         "inputSchema": {
           "type": "object",
-          "properties": { "workflowId": { "type": "string" } },
-          "required": ["workflowId"]
+          "properties": {
+            "workflowId": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "workflowId"
+          ]
         },
         "when": "abapfs:extensionActive"
       },
@@ -692,8 +867,14 @@
         "userDescription": "Prepare an assisted-apply plan for manual review",
         "inputSchema": {
           "type": "object",
-          "properties": { "workflowId": { "type": "string" } },
-          "required": ["workflowId"]
+          "properties": {
+            "workflowId": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "workflowId"
+          ]
         },
         "when": "abapfs:extensionActive && !abapfs:noSapConnected"
       },
