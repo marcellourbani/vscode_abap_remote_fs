@@ -11,10 +11,10 @@
       
       
       
-        <link rel="prev" href="../abap-cleaner/">
+        <link rel="prev" href="../">
       
       
-        <link rel="next" href="../where-used/">
+        <link rel="next" href="../ai-tools/">
       
       
         
@@ -25,7 +25,7 @@
     
     
       
-        <title>Syntax Validation - ABAP FS Documentation</title>
+        <title>Run a Comparison - ABAP FS Documentation</title>
       
     
     
@@ -76,7 +76,7 @@
     <div data-md-component="skip">
       
         
-        <a href="#syntax-validation" class="md-skip">
+        <a href="#run-a-repository-comparison" class="md-skip">
           Skip to content
         </a>
       
@@ -112,7 +112,7 @@
         <div class="md-header__topic" data-md-component="header-topic">
           <span class="md-ellipsis">
             
-              Syntax Validation
+              Run a Comparison
             
           </span>
         </div>
@@ -710,8 +710,10 @@
       
   
   
+    
   
   
+  
     
     
     
@@ -722,11 +724,11 @@
       
     
     
-    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+    <li class="md-nav__item md-nav__item--active md-nav__item--section md-nav__item--nested">
       
         
         
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4" >
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4" checked>
         
           
           <label class="md-nav__link" for="__nav_4" id="__nav_4_label" tabindex="">
@@ -747,7 +749,7 @@
             <span class="md-nav__icon md-icon"></span>
           </label>
         
-        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_4_label" aria-expanded="false">
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_4_label" aria-expanded="true">
           <label class="md-nav__title" for="__nav_4">
             <span class="md-nav__icon md-icon"></span>
             
@@ -765,7 +767,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../repository-comparison/" class="md-nav__link">
+      <a href="../" class="md-nav__link">
         
   
   
@@ -790,10 +792,37 @@
                 
   
   
+    
   
   
-    <li class="md-nav__item">
-      <a href="../../repository-comparison/workflow/" class="md-nav__link">
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Run a Comparison
+  
+
+    
+  </span>
+  
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
         
   
   
@@ -809,6 +838,114 @@
   
 
       </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#1-create-the-workflow" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        1. Create the workflow
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#2-define-the-discovery-scope" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2. Define the discovery scope
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#3-discover-both-systems" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3. Discover both systems
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#4-review-inventory-presence" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        4. Review inventory presence
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#5-select-source-comparable-objects" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        5. Select source-comparable objects
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#6-configure-verification-and-downloads" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        6. Configure verification and downloads
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#7-read-source-comparison-results" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        7. Read source-comparison results
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#8-pause-resume-and-rerun" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        8. Pause, resume, and rerun
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
     </li>
   
 
@@ -821,7 +958,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../repository-comparison/ai-tools/" class="md-nav__link">
+      <a href="../ai-tools/" class="md-nav__link">
         
   
   
@@ -849,7 +986,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../repository-comparison/assisted-apply/" class="md-nav__link">
+      <a href="../assisted-apply/" class="md-nav__link">
         
   
   
@@ -877,7 +1014,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../repository-comparison/technical-reference/" class="md-nav__link">
+      <a href="../technical-reference/" class="md-nav__link">
         
   
   
@@ -1450,8 +1587,6 @@
       
   
   
-    
-  
   
   
     
@@ -1464,11 +1599,11 @@
       
     
     
-    <li class="md-nav__item md-nav__item--active md-nav__item--section md-nav__item--nested">
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
       
         
         
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_8" checked>
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_8" >
         
           
           <label class="md-nav__link" for="__nav_8" id="__nav_8_label" tabindex="">
@@ -1489,7 +1624,7 @@
             <span class="md-nav__icon md-icon"></span>
           </label>
         
-        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_8_label" aria-expanded="true">
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_8_label" aria-expanded="false">
           <label class="md-nav__title" for="__nav_8">
             <span class="md-nav__icon md-icon"></span>
             
@@ -1507,7 +1642,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../atc-analysis/" class="md-nav__link">
+      <a href="../../code-quality/atc-analysis/" class="md-nav__link">
         
   
   
@@ -1535,7 +1670,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../abap-cleaner/" class="md-nav__link">
+      <a href="../../code-quality/abap-cleaner/" class="md-nav__link">
         
   
   
@@ -1560,37 +1695,10 @@
                 
   
   
-    
   
   
-  
-    <li class="md-nav__item md-nav__item--active">
-      
-      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
-      
-      
-        
-      
-      
-        <label class="md-nav__link md-nav__link--active" for="__toc">
-          
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    Syntax Validation
-  
-
-    
-  </span>
-  
-  
-
-          <span class="md-nav__icon md-icon"></span>
-        </label>
-      
-      <a href="./" class="md-nav__link md-nav__link--active">
+    <li class="md-nav__item">
+      <a href="../../code-quality/syntax-validation/" class="md-nav__link">
         
   
   
@@ -1606,59 +1714,6 @@
   
 
       </a>
-      
-        
-
-<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
-  
-  
-  
-    
-  
-  
-    <label class="md-nav__title" for="__toc">
-      <span class="md-nav__icon md-icon"></span>
-      Table of contents
-    </label>
-    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
-      
-        <li class="md-nav__item">
-  <a href="#when-it-runs" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        When it runs
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#viewing-errors" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Viewing errors
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#fixing-errors" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Fixing errors
-      
-    </span>
-  </a>
-  
-</li>
-      
-    </ul>
-  
-</nav>
-      
     </li>
   
 
@@ -1671,7 +1726,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../where-used/" class="md-nav__link">
+      <a href="../../code-quality/where-used/" class="md-nav__link">
         
   
   
@@ -3376,10 +3431,10 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
-  <a href="#when-it-runs" class="md-nav__link">
+  <a href="#1-create-the-workflow" class="md-nav__link">
     <span class="md-ellipsis">
       
-        When it runs
+        1. Create the workflow
       
     </span>
   </a>
@@ -3387,10 +3442,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#viewing-errors" class="md-nav__link">
+  <a href="#2-define-the-discovery-scope" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Viewing errors
+        2. Define the discovery scope
       
     </span>
   </a>
@@ -3398,10 +3453,65 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#fixing-errors" class="md-nav__link">
+  <a href="#3-discover-both-systems" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Fixing errors
+        3. Discover both systems
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#4-review-inventory-presence" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        4. Review inventory presence
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#5-select-source-comparable-objects" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        5. Select source-comparable objects
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#6-configure-verification-and-downloads" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        6. Configure verification and downloads
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#7-read-source-comparison-results" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        7. Read source-comparison results
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#8-pause-resume-and-rerun" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        8. Pause, resume, and rerun
       
     </span>
   </a>
@@ -3428,44 +3538,166 @@
   
 
 
-<h1 id="syntax-validation">Syntax Validation<a class="headerlink" href="#syntax-validation" title="Permanent link">&para;</a></h1>
-<p>ABAP FS validates your code in real time — no need to run a separate syntax check. Errors appear as you type, directly in the editor and in the Problems panel.</p>
-<h2 id="when-it-runs">When it runs<a class="headerlink" href="#when-it-runs" title="Permanent link">&para;</a></h2>
-<p>Syntax checking triggers automatically on:</p>
-<ul>
-<li><strong>Open</strong> — when you open an ABAP file</li>
-<li><strong>Edit</strong> — as you type</li>
-<li><strong>Save</strong> — when you save changes</li>
-<li><strong>Activate</strong> — when activating the object</li>
-</ul>
-<h2 id="viewing-errors">Viewing errors<a class="headerlink" href="#viewing-errors" title="Permanent link">&para;</a></h2>
+<h1 id="run-a-repository-comparison">Run a Repository Comparison<a class="headerlink" href="#run-a-repository-comparison" title="Permanent link">&para;</a></h1>
+<p>This guide follows the three stages shown in the Repository Comparison Workflow webview.</p>
+<p>You can run the same persistent workflow through Copilot. See <a href="../ai-tools/">Repository Comparison with Copilot</a> for the dedicated LM tools, example prompts, and bounded result reads.</p>
+<h2 id="1-create-the-workflow">1. Create the workflow<a class="headerlink" href="#1-create-the-workflow" title="Permanent link">&para;</a></h2>
+<ol>
+<li>Connect both SAP systems in VS Code.</li>
+<li>Run <strong>ABAP FS: Repository Comparison Workflow</strong>.</li>
+<li>Select the source and target connections.</li>
+<li>Enter an optional description and choose <strong>Create workflow</strong>.</li>
+</ol>
+<p>Source and target are fixed for the life of the workflow. Check the direction before running discovery, and check it again before assisted apply.</p>
+<h2 id="2-define-the-discovery-scope">2. Define the discovery scope<a class="headerlink" href="#2-define-the-discovery-scope" title="Permanent link">&para;</a></h2>
+<p>Enter at least one object-name pattern or package pattern.</p>
 <table>
 <thead>
 <tr>
-<th>Where</th>
-<th>How to open</th>
+<th>Criterion</th>
+<th>Behaviour</th>
 </tr>
 </thead>
 <tbody>
 <tr>
-<td>Inline underlines</td>
-<td>Hover over the underlined code for details</td>
+<td>Object name pattern</td>
+<td>One pattern with <code>*</code> for any characters and <code>?</code> for one character</td>
 </tr>
 <tr>
-<td>Problems panel</td>
-<td><code>Ctrl+Shift+M</code></td>
+<td>Exclude object names</td>
+<td>Comma-separated wildcard patterns</td>
 </tr>
 <tr>
-<td>Error lens (inline)</td>
-<td>Shown automatically next to the offending line</td>
+<td>Package patterns</td>
+<td>Comma-separated patterns such as <code>ZDEMO*</code> or <code>/EXAMPLE/*</code></td>
+</tr>
+<tr>
+<td>Object types</td>
+<td>Leave empty for every supported type, or select only the types you need</td>
+</tr>
+<tr>
+<td>Customer namespaces</td>
+<td>Exact namespace values</td>
+</tr>
+<tr>
+<td>Authors</td>
+<td>Exact author values</td>
+</tr>
+<tr>
+<td>Created from/to</td>
+<td>Inclusive dates in <code>YYYYMMDD</code> format</td>
+</tr>
+<tr>
+<td>Include subpackages</td>
+<td>Resolves and includes child packages</td>
+</tr>
+<tr>
+<td>Include deleted/generated/<code>$TMP</code></td>
+<td>Includes objects normally excluded from discovery</td>
 </tr>
 </tbody>
 </table>
-<h2 id="fixing-errors">Fixing errors<a class="headerlink" href="#fixing-errors" title="Permanent link">&para;</a></h2>
+<p>When both an object-name pattern and package patterns are present, an object must match both.</p>
+<p>Package patterns <code>*</code> and <code>/*</code> are rejected because they are unrestricted. Prefer the narrowest useful scope: broad discovery can query and later download a large part of a repository.</p>
+<p>Choose <strong>Save criteria</strong> to persist the scope without running it, or <strong>Run discovery</strong> to save and start.</p>
+<div class="admonition warning">
+<p class="admonition-title">Saving criteria resets derived results</p>
+<p>Saving criteria clears previous discovery output, inventory comparison, source selection, downloaded snapshots, source comparison, and assisted-apply results. Do not use it as a resume button.</p>
+</div>
+<h2 id="3-discover-both-systems">3. Discover both systems<a class="headerlink" href="#3-discover-both-systems" title="Permanent link">&para;</a></h2>
+<p>Discovery queries source and target independently and saves an inventory for each system. When both inventories finish, their existence comparison runs locally and automatically.</p>
+<p>The inventory tables show:</p>
 <ul>
-<li><strong>Quick Fix</strong> — press <code>Ctrl+.</code> on an error to see available fixes</li>
-<li><strong>AI Chat fix</strong> — click the sparkle icon next to an error to open an inline AI chat for a suggested fix</li>
-<li><strong>Jump to next error</strong> — <code>F8</code> / <code>Shift+F8</code> to cycle through problems</li>
+<li>object name and type;</li>
+<li>package;</li>
+<li>classification (<code>custom</code>, <code>standard</code>, <code>partner</code>, <code>generated</code>, or <code>uncertain</code>);</li>
+<li>the reason for that classification.</li>
+</ul>
+<p>You can filter and sort either table, then export it.</p>
+<p>If you pause discovery, the current package checkpoint is saved. <strong>Resume discovery</strong> continues from that checkpoint. Running an already completed discovery again is a deliberate rerun and clears downstream results.</p>
+<h2 id="4-review-inventory-presence">4. Review inventory presence<a class="headerlink" href="#4-review-inventory-presence" title="Permanent link">&para;</a></h2>
+<p>The comparison table reports each unique repository key as:</p>
+<ul>
+<li><strong>Present on both</strong> — potentially available for source comparison;</li>
+<li><strong>Only on source</strong> — no corresponding target object;</li>
+<li><strong>Only on target</strong> — no corresponding source object;</li>
+<li><strong>Error</strong> — inspect the row before continuing.</li>
+</ul>
+<p>A repository key includes program ID, object type, and object name. Objects with the same name but different types remain separate rows.</p>
+<p><code>DEVC</code> package containers remain visible in the inventory but cannot be selected for source comparison. Downloading a package container could recursively repeat work already represented by its individual objects.</p>
+<h2 id="5-select-source-comparable-objects">5. Select source-comparable objects<a class="headerlink" href="#5-select-source-comparable-objects" title="Permanent link">&para;</a></h2>
+<p>By default, all comparable objects are selected.</p>
+<p>Use the controls above the table to change that:</p>
+<ul>
+<li><strong>Select all comparable objects</strong> selects or clears the full comparable set.</li>
+<li><strong>Select filtered</strong> adds every comparable row matching the current table filters.</li>
+<li><strong>Clear filtered</strong> removes matching rows while preserving selections outside the filter.</li>
+<li>The checkbox in each row selects one object.</li>
+</ul>
+<p>Table filters use prefix matching by default. Add a trailing space for an exact match, or use <code>*</code> and <code>?</code> wildcards.</p>
+<p>For example:</p>
+<ul>
+<li><code>CL</code> matches types beginning with <code>CL</code>;</li>
+<li><code>CLAS</code> matches only <code>CLAS</code>;</li>
+<li><code>ZCL_*</code> matches class names beginning with <code>ZCL_</code>.</li>
+</ul>
+<h2 id="6-configure-verification-and-downloads">6. Configure verification and downloads<a class="headerlink" href="#6-configure-verification-and-downloads" title="Permanent link">&para;</a></h2>
+<p>The comparison stage has three independent concurrency controls:</p>
+<ul>
+<li><strong>Parallel downloads from source</strong> — 1 to 10 SAP object downloads.</li>
+<li><strong>Parallel downloads from target</strong> — 1 to 10 SAP object downloads.</li>
+<li><strong>Parallel local snapshot verification</strong> — 1 to 128 local verification tasks; default 32.</li>
+</ul>
+<p>The first two values affect SAP and network load. Local verification reads only the workflow folder and does not send SAP requests.</p>
+<p>On resume, both sides are verified before missing snapshots are downloaded. The progress label changes from <strong>Verifying current state before resuming…</strong> to <strong>Downloading source and target snapshots…</strong> at the real phase boundary.</p>
+<p>Choose <strong>Compare selected source code</strong> to save the selection, download both sides, and run the local comparison.</p>
+<h2 id="7-read-source-comparison-results">7. Read source-comparison results<a class="headerlink" href="#7-read-source-comparison-results" title="Permanent link">&para;</a></h2>
+<table>
+<thead>
+<tr>
+<th>Status</th>
+<th>Meaning</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>identical</code></td>
+<td>Source and target snapshot hashes match</td>
+</tr>
+<tr>
+<td><code>different</code></td>
+<td>At least one resource file differs</td>
+</tr>
+<tr>
+<td><code>partial</code></td>
+<td>One or both snapshots were incomplete</td>
+</tr>
+<tr>
+<td><code>source-missing</code> / <code>target-missing</code></td>
+<td>An expected snapshot manifest is absent</td>
+</tr>
+<tr>
+<td><code>error</code></td>
+<td>The comparison could not be completed</td>
+</tr>
+</tbody>
+</table>
+<p>The table also shows changed-file and line counts. These are textual metrics: reordered ABAP code can appear as removed and added lines even when its behaviour is similar.</p>
+<p>Use <strong>Open diff</strong> for a standard VS Code side-by-side comparison. If an object contains several changed text resources, you are prompted to choose one.</p>
+<h2 id="8-pause-resume-and-rerun">8. Pause, resume, and rerun<a class="headerlink" href="#8-pause-resume-and-rerun" title="Permanent link">&para;</a></h2>
+<ul>
+<li>Pausing freezes the elapsed timer and preserves completed snapshots.</li>
+<li>Resuming rechecks saved snapshots locally, then downloads only missing or invalid ones.</li>
+<li>Changing only the three concurrency values does not invalidate discovery or snapshots.</li>
+<li>Supplying a new source selection clears earlier snapshots and downstream results.</li>
+<li>Saving discovery criteria clears the entire derived workflow.</li>
+</ul>
+<p>If a step fails, read its displayed error before resetting anything. Retrying without changing criteria or selection preserves reusable artifacts.</p>
+<p>When the source comparison is complete:</p>
+<ul>
+<li>continue with <a href="../assisted-apply/">Assisted apply</a> only if you intend to review possible source-to-target changes;</li>
+<li>see <a href="../ai-tools/">Repository Comparison with Copilot</a> to inspect results or operate later stages through LM tools;</li>
+<li>use the <a href="../technical-reference/">Technical reference</a> for persistence, invalidation, statuses, and limits.</li>
 </ul>
 
 
@@ -3502,7 +3734,7 @@
       <nav class="md-footer__inner md-grid" aria-label="Footer" >
         
           
-          <a href="../abap-cleaner/" class="md-footer__link md-footer__link--prev" aria-label="Previous: ABAP Cleaner">
+          <a href="../" class="md-footer__link md-footer__link--prev" aria-label="Previous: Overview">
             <div class="md-footer__button md-icon">
               
               <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
@@ -3512,20 +3744,20 @@
                 Previous
               </span>
               <div class="md-ellipsis">
-                ABAP Cleaner
+                Overview
               </div>
             </div>
           </a>
         
         
           
-          <a href="../where-used/" class="md-footer__link md-footer__link--next" aria-label="Next: Where-Used Analysis">
+          <a href="../ai-tools/" class="md-footer__link md-footer__link--next" aria-label="Next: Copilot &amp; LM Tools">
             <div class="md-footer__title">
               <span class="md-footer__direction">
                 Next
               </span>
               <div class="md-ellipsis">
-                Where-Used Analysis
+                Copilot & LM Tools
               </div>
             </div>
             <div class="md-footer__button md-icon">
