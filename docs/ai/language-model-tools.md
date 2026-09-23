@@ -10,7 +10,7 @@ Make sure you are in **Agent mode** (not Ask or Edit) for full tool access.
 
 Most tools require an active SAP connection. When no SAP system is connected, tools are hidden from Copilot to save context tokens. The **abapfs_search_documentation** tool is always available regardless of connection status — use it to ask about features and setup.
 
-Connect to a SAP system (`Ctrl+Shift+P` → **ABAP FS: Connect to an ABAP system**) to enable all 40+ tools.
+Connect to a SAP system (`Ctrl+Shift+P` → **ABAP FS: Connect to an ABAP system**) to enable all available SAP tools.
 
 ## How it works
 
@@ -92,6 +92,18 @@ When you type a question, Copilot picks the appropriate tool behind the scenes:
 38. **abapfs_manage_subagents** — Configure AI subagents that delegate tasks to cheaper/faster models to reduce API costs
 39. **abapfs_manage_heartbeat** — Control the background heartbeat monitoring service (add monitoring tasks, set reminders, check status)
 
+### Repository Comparison
+
+40. **abapfs_list_repository_workflows** — List persistent repository comparison workflows and their current status
+41. **abapfs_get_repository_workflow** — Read selected workflow state, criteria, summaries, or a filtered artifact page
+42. **abapfs_create_repository_workflow** — Create a source-to-target comparison between two connected systems
+43. **abapfs_update_repository_workflow_criteria** — Update discovery scope and invalidate earlier derived results
+44. **abapfs_run_repository_workflow_step** — Run discovery, rebuild inventory comparison, or compare selected source
+45. **abapfs_open_repository_workflow** — Open or focus the Repository Comparison Workflow webview
+46. **abapfs_prepare_repository_assisted_apply** — Prepare a non-mutating, safety-reviewed assisted-apply plan
+
+See [Repository Comparison](../repository-comparison/index.md) for the complete workflow and safety boundaries.
+
 ### Documentation
 
-40. **abapfs_build_test_documentation** — Generate a Word document from Playwright test screenshots, organized by scenario
+47. **abapfs_build_test_documentation** — Generate a Word document from Playwright test screenshots, organized by scenario

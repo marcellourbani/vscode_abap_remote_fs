@@ -17,6 +17,7 @@ This document provides a comprehensive reference for all ABAP FS extension setti
 9. [Feed Subscriptions](#9-feed-subscriptions)
 10. [Blame Annotations](#10-blame-annotations)
 11. [Editor Defaults](#11-editor-defaults)
+12. [Repository Comparison](#12-repository-comparison)
 
 ---
 
@@ -483,6 +484,37 @@ These are automatically applied but can be overridden in user settings.
   }
 }
 ```
+
+---
+
+## 12. Repository Comparison
+
+### `abapfs.repositoryWorkflows.root`
+
+| Type | Default | Scope | Description |
+|------|---------|-------|-------------|
+| string | `""` | Application | Folder containing persistent repository comparison workflows. Empty uses `~/.abapfs/repository-workflows`. Workflows are not automatically archived or deleted. |
+
+The folder contains SAP repository metadata and downloaded source snapshots. Keep it outside source control and protect it as sensitive development data.
+
+### `abapfs.repositoryWorkflows.defaultConcurrency`
+
+| Type | Default | Min/Max | Scope | Description |
+|------|---------|---------|-------|-------------|
+| number | `5` | 1-10 | Application | Global default used to initialize both source and target download concurrency for new workflows. Each workflow can then save separate values. |
+
+Local snapshot verification has a separate per-workflow control in the Repository Comparison webview and does not increase SAP requests.
+
+**Example:**
+
+```json
+{
+  "abapfs.repositoryWorkflows.root": "D:\\ABAP-FS\\repository-workflows",
+  "abapfs.repositoryWorkflows.defaultConcurrency": 4
+}
+```
+
+See [Repository Comparison](../../docs/repository-comparison/index.md) for the complete workflow.
 
 ---
 

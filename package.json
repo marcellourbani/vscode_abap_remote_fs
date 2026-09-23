@@ -206,6 +206,10 @@
         "when": "abapfs:skill.sap-background-jobs.enabled && !abapfs:noSapConnected"
       },
       {
+        "path": "./client/dist/media/skills/repository-workflow/SKILL.md",
+        "when": "!abapfs:noSapConnected"
+      },
+      {
         "path": "./client/dist/media/skills/testing/anst-guide/SKILL.md",
         "when": "abapfs:testingEnabled && !abapfs:noSapConnected"
       }
@@ -516,6 +520,183 @@
       ]
     },
     "languageModelTools": [
+      {
+        "name": "abapfs_list_repository_workflows",
+        "displayName": "List Repository Workflows",
+        "modelDescription": "List persisted ABAP repository comparison workflows and their source/target connection IDs, current step, progress state, and last error.",
+        "canBeReferencedInPrompt": true,
+        "toolReferenceName": "abapfs_list_repository_workflows",
+        "icon": "$(list-selection)",
+        "userDescription": "List repository comparison workflows",
+        "inputSchema": { "type": "object", "properties": {} },
+        "when": "abapfs:extensionActive"
+      },
+      {
+        "name": "abapfs_get_repository_workflow",
+        "displayName": "Get Repository Workflow",
+        "modelDescription": "Read only the requested parts of one persisted repository comparison workflow to minimize context. Choose state, criteria, summaries, and/or one bounded artifact. Discovery automatically creates the existence comparison, whose step state, summary, and artifact remain separately inspectable.",
+        "canBeReferencedInPrompt": true,
+        "toolReferenceName": "abapfs_get_repository_workflow",
+        "icon": "$(inspect)",
+        "userDescription": "Inspect a repository comparison workflow",
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "workflowId": { "type": "string", "description": "Immutable workflow ID" },
+            "include": {
+              "type": "array",
+              "items": { "type": "string", "enum": ["state", "criteria", "summaries", "artifact"] },
+              "description": "Response sections to include. Defaults to state, or artifact when artifact is supplied. Request only what is needed."
+            },
+            "step": {
+              "type": "string",
+              "enum": ["criteria", "discovery", "existenceComparison", "sourceSelection", "sourceDownload", "sourceComparison", "assistedApplyPlan"],
+              "description": "When reading state, return only this step plus current workflow status instead of the full workflow. Inspect existenceComparison to verify the automatic local comparison that follows discovery."
+            },
+            "artifact": {
+              "type": "string",
+              "enum": ["sourceDiscovery", "targetDiscovery", "existenceComparison", "sourceComparison", "assistedApplyPlan"],
+              "description": "Optional persisted artifact to query. existenceComparison is produced automatically after successful discovery."
+            },
+            "offset": { "type": "number", "minimum": 0, "description": "Matched rows to skip" },
+            "limit": { "type": "number", "minimum": 1, "maximum": 200, "description": "Maximum rows to return" },
+            "status": { "type": "string", "description": "Optional exact status filter" },
+            "objectName": { "type": "string", "description": "Optional object name wildcard" },
+            "objectType": { "type": "string", "description": "Optional exact object type" },
+            "packageName": { "type": "string", "description": "Optional exact package" }
+          },
+          "required": ["workflowId"]
+        },
+        "when": "abapfs:extensionActive"
+      },
+      {
+        "name": "abapfs_create_repository_workflow",
+        "displayName": "Create Repository Workflow",
+        "modelDescription": "Create an isolated persisted repository comparison workflow using two currently connected ABAP FS connection IDs. Source and target must differ.",
+        "canBeReferencedInPrompt": true,
+        "toolReferenceName": "abapfs_create_repository_workflow",
+        "icon": "$(new-folder)",
+        "userDescription": "Create a repository comparison workflow",
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "name": { "type": "string" },
+            "description": { "type": "string" },
+            "sourceConnectionId": { "type": "string" },
+            "targetConnectionId": { "type": "string" }
+          },
+          "required": ["sourceConnectionId", "targetConnectionId"]
+        },
+        "when": "abapfs:extensionActive && !abapfs:noSapConnected"
+      },
+      {
+        "name": "abapfs_run_repository_workflow_step",
+        "displayName": "Run Repository Workflow Step",
+        "modelDescription": "Run or resume a repository workflow analysis operation matching the webview. discovery queries both systems and then compares their persisted inventories locally. existenceComparison explicitly retries or rebuilds that local comparison. sourceComparison selects objects, downloads snapshots, and compares them. Applying changes is a separate user-controlled assisted-apply flow.",
+        "canBeReferencedInPrompt": true,
+        "toolReferenceName": "abapfs_run_repository_workflow_step",
+        "icon": "$(run-all)",
+        "userDescription": "Run a repository workflow analysis step",
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "workflowId": { "type": "string" },
+            "step": {
+              "type": "string",
+              "enum": ["discovery", "existenceComparison", "sourceComparison"],
+              "description": "discovery automatically performs the local inventory comparison after both inventories complete; existenceComparison retries or rebuilds only that local comparison."
+            },
+            "objectKeys": {
+              "type": "array",
+              "items": { "type": "string" },
+              "description": "For sourceComparison, exact R3TR:type:name keys to select. Omit to select all source-comparable objects. Keys must exist on both systems; container types such as DEVC are excluded. An empty array is rejected."
+            },
+            "sourceConcurrency": { "type": "number", "minimum": 1, "maximum": 10, "description": "Optional source-system parallel download limit for sourceComparison." },
+            "targetConcurrency": { "type": "number", "minimum": 1, "maximum": 10, "description": "Optional target-system parallel download limit for sourceComparison." },
+            "verificationConcurrency": { "type": "number", "minimum": 1, "maximum": 128, "description": "Optional local snapshot verification concurrency for sourceComparison. Does not increase SAP requests." }
+          },
+          "required": ["workflowId", "step"]
+        },
+        "when": "abapfs:extensionActive && !abapfs:noSapConnected"
+      },
+      {
+        "name": "abapfs_update_repository_workflow_criteria",
+        "displayName": "Update Repository Workflow Criteria",
+        "modelDescription": "Update persisted discovery criteria for a repository workflow. This invalidates existing discovery and all downstream artifacts, so confirmation is required.",
+        "canBeReferencedInPrompt": true,
+        "toolReferenceName": "abapfs_update_repository_workflow_criteria",
+        "icon": "$(filter)",
+        "userDescription": "Update repository workflow criteria",
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "workflowId": { "type": "string" },
+            "includeNames": {
+              "type": "array",
+              "maxItems": 1,
+              "items": { "type": "string", "maxLength": 255 },
+              "description": "Optional single object-name wildcard pattern. Comma-separated values are not allowed."
+            },
+            "excludeNames": { "type": "array", "items": { "type": "string" } },
+            "packages": {
+              "type": "array",
+              "items": { "type": "string" },
+              "description": "Optional scoped package patterns such as Z*, Y*, or /XYZ/*. Object name or package is required; when both are supplied, objects must match both. The unrestricted patterns * and /* are rejected."
+            },
+            "includeSubpackages": { "type": "boolean" },
+            "objectTypes": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "enum": ["PROG", "CLAS", "INTF", "FUGR", "TABL", "DTEL", "DOMA", "TTYP", "VIEW", "SHLP", "ENQU", "DDLS", "DCLS", "DDLX", "BDEF", "SRVD", "SRVB", "MSAG", "TRAN", "ENHO", "ENHS", "SXSD", "SXCI", "XSLT", "NROB", "SUSO", "SUSC", "PINF", "SICF", "WDYN", "SPRX", "JOBD"]
+              },
+              "description": "Supported TADIR object types. Use an empty array to include all supported types."
+            },
+            "namespaces": { "type": "array", "items": { "type": "string" } },
+            "authors": { "type": "array", "items": { "type": "string" } },
+            "createdFrom": { "type": "string" },
+            "createdTo": { "type": "string" },
+            "includeDeleted": { "type": "boolean" },
+            "includeGenerated": { "type": "boolean" },
+            "includeTemporary": { "type": "boolean" },
+            "sourceConcurrency": { "type": "number", "minimum": 1, "maximum": 10 },
+            "targetConcurrency": { "type": "number", "minimum": 1, "maximum": 10 },
+            "verificationConcurrency": { "type": "number", "minimum": 1, "maximum": 128 }
+          },
+          "required": ["workflowId"]
+        },
+        "when": "abapfs:extensionActive"
+      },
+      {
+        "name": "abapfs_open_repository_workflow",
+        "displayName": "Open Repository Workflow",
+        "modelDescription": "Open the repository workflow webview at a specified persisted workflow.",
+        "canBeReferencedInPrompt": true,
+        "toolReferenceName": "abapfs_open_repository_workflow",
+        "icon": "$(open-preview)",
+        "userDescription": "Open a repository workflow",
+        "inputSchema": {
+          "type": "object",
+          "properties": { "workflowId": { "type": "string" } },
+          "required": ["workflowId"]
+        },
+        "when": "abapfs:extensionActive"
+      },
+      {
+        "name": "abapfs_prepare_repository_assisted_apply",
+        "displayName": "Prepare Repository Assisted Apply",
+        "modelDescription": "Prepare a local assisted-apply plan from the persisted source comparison. This tool never writes, saves, transports, or activates SAP objects. It only identifies reviewable objects; only the user can review and stage one source in the target editor from the workflow webview, then save and activate manually.",
+        "canBeReferencedInPrompt": true,
+        "toolReferenceName": "abapfs_prepare_repository_assisted_apply",
+        "icon": "$(preview)",
+        "userDescription": "Prepare an assisted-apply plan for manual review",
+        "inputSchema": {
+          "type": "object",
+          "properties": { "workflowId": { "type": "string" } },
+          "required": ["workflowId"]
+        },
+        "when": "abapfs:extensionActive && !abapfs:noSapConnected"
+      },
       {
         "name": "abapfs_setup_sap_testing",
         "displayName": "SAP Testing Setup",
@@ -3509,6 +3690,12 @@
         "category": "ABAP FS"
       },
       {
+        "command": "abapfs.repositoryWorkflow",
+        "title": "Repository Comparison Workflow",
+        "category": "ABAP FS",
+        "icon": "$(compare-changes)"
+      },
+      {
         "command": "abapfs.notebookSetCellMaxRows",
         "title": "SAP Data Workbook: Set Cell Row Limit",
         "category": "ABAP FS"
@@ -4952,6 +5139,20 @@
     "configuration": {
       "title": "ABAP-FS configuration",
       "properties": {
+        "abapfs.repositoryWorkflows.root": {
+          "type": "string",
+          "default": "",
+          "scope": "application",
+          "description": "Folder containing isolated repository comparison workflows. Empty uses ~/.abapfs/repository-workflows. Workflows are never automatically archived or deleted."
+        },
+        "abapfs.repositoryWorkflows.defaultConcurrency": {
+          "type": "number",
+          "default": 5,
+          "minimum": 1,
+          "maximum": 10,
+          "scope": "application",
+          "description": "Global default used to initialize both source and target download concurrency for new repository comparison workflows. Each workflow can then save separate values from 1 to 10."
+        },
         "abapfs.testing.folder": {
           "type": "string",
           "default": "",

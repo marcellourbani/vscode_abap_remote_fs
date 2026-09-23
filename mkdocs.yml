@@ -40,6 +40,12 @@ nav:
     - Favorites: object-management/favorites.md
     - Table Contents: object-management/table-contents.md
     - Compare Across Systems: object-management/compare-systems.md
+  - Repository Comparison:
+    - Overview: repository-comparison/index.md
+    - Run a Comparison: repository-comparison/workflow.md
+    - Copilot & LM Tools: repository-comparison/ai-tools.md
+    - Assisted Apply: repository-comparison/assisted-apply.md
+    - Technical Reference: repository-comparison/technical-reference.md
   - AI Features:
     - Language Model Tools: ai/language-model-tools.md
     - Subagents: ai/subagents.md

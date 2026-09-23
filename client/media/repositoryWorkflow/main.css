@@ -1,0 +1,68 @@
+:root { color-scheme: light dark; }
+body { margin: 0; font-family: var(--vscode-font-family); color: var(--vscode-foreground); background: var(--vscode-editor-background); }
+.shell { max-width: 1120px; margin: 0 auto; padding: 24px 32px; }
+header, .step-head, .workflow-row { display: flex; align-items: center; justify-content: space-between; gap: 16px; }
+header { border-bottom: 1px solid var(--vscode-panel-border); padding-bottom: 16px; }
+h1 { margin: 0; font-size: 22px; } h2 { margin: 10px 0 16px; font-size: 17px; }
+p, .muted, small { color: var(--vscode-descriptionForeground); }
+.start, .existing { border-top: 3px solid var(--vscode-focusBorder); margin-top: 28px; padding-top: 12px; }
+.grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px 20px; }
+.compact-grid { margin: 14px 0; }
+.field { display: flex; flex-direction: column; gap: 6px; min-width: 0; }
+.full { grid-column: 1 / -1; }
+input, select { box-sizing: border-box; width: 100%; padding: 8px; border: 1px solid var(--vscode-input-border); background: var(--vscode-input-background); color: var(--vscode-input-foreground); font: inherit; }
+select[multiple] { min-height: 176px; }
+button { padding: 8px 14px; border: 1px solid var(--vscode-button-border, transparent); background: var(--vscode-button-background); color: var(--vscode-button-foreground); font: inherit; cursor: pointer; }
+button.secondary { background: var(--vscode-button-secondaryBackground); color: var(--vscode-button-secondaryForeground); }
+button.danger { border-color: var(--vscode-errorForeground); background: transparent; color: var(--vscode-errorForeground); }
+button:disabled { opacity: .45; cursor: default; }
+.actions { display: flex; flex-wrap: wrap; gap: 8px; margin: 14px 0; }
+.compact-actions { flex-wrap: nowrap; gap: 4px; margin: 0; }
+.compact-actions button { padding: 4px 7px; white-space: nowrap; }
+.workflow-row { padding: 14px 0; border-bottom: 1px solid var(--vscode-panel-border); }
+.workflow-row .actions { flex: 0 0 auto; margin: 0; }
+.direction { display: inline-block; margin: 5px 18px 0 0; }
+.steps { margin-top: 18px; }
+.step { border-top: 1px solid var(--vscode-panel-border); padding: 18px 0; }
+.step.locked { opacity: .68; }
+.step-status, .step-timings { display: flex; align-items: center; flex-wrap: wrap; justify-content: flex-end; gap: 6px 12px; }
+.status { font-size: 12px; text-transform: uppercase; color: var(--vscode-descriptionForeground); }
+.step-timing { font-size: 12px; color: var(--vscode-descriptionForeground); white-space: nowrap; }
+.progress-label { margin-top: 12px; color: var(--vscode-descriptionForeground); }
+progress { width: 100%; height: 8px; margin-top: 6px; accent-color: var(--vscode-progressBar-background); }
+.result-stack { margin-top: 24px; display: grid; gap: 20px; min-width: 0; }
+.result-block { border-left: 3px solid var(--vscode-focusBorder); padding-left: 14px; min-width: 0; }
+.result-head { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; }
+.result-head h3 { margin: 0 0 10px; font-size: 15px; }
+.table { overflow: auto; max-height: 360px; border: 1px solid var(--vscode-panel-border); }
+.workflow-table { box-sizing: border-box; width: 100%; max-width: 100%; min-width: 0; min-height: 120px; }
+.table-load-error { box-sizing: border-box; padding: 12px; border: 1px solid var(--vscode-errorForeground); color: var(--vscode-errorForeground); }
+.workflow-table.tabulator { border: 1px solid var(--vscode-panel-border); background: var(--vscode-editor-background); color: var(--vscode-foreground); font-family: var(--vscode-font-family); font-size: 12px; }
+.workflow-table .tabulator .tabulator-header, .workflow-table .tabulator .tabulator-header .tabulator-col { background: var(--vscode-editor-background); color: var(--vscode-foreground); border-color: var(--vscode-panel-border); }
+.workflow-table .tabulator .tabulator-row, .workflow-table .tabulator .tabulator-row-even { background: var(--vscode-editor-background); color: var(--vscode-foreground); border-color: var(--vscode-panel-border); }
+.workflow-table .tabulator .tabulator-row:hover { background: var(--vscode-list-hoverBackground); }
+.workflow-table .tabulator .tabulator-cell { border-color: var(--vscode-panel-border); padding: 5px 7px; user-select: text; }
+.workflow-table .tabulator .tabulator-col-content { padding: 6px 7px; }
+.workflow-table .tabulator .tabulator-header-filter input { height: 26px; padding: 3px 6px; background: var(--vscode-input-background); color: var(--vscode-input-foreground); border: 1px solid var(--vscode-input-border); border-radius: 0; font-size: 11px; }
+.workflow-table .tabulator .tabulator-tableholder .tabulator-placeholder { color: var(--vscode-descriptionForeground); }
+.compact-table-button, .compact-table-actions button { padding: 3px 7px; font-size: 11px; }
+.compact-table-actions { display: flex; gap: 4px; align-items: center; height: 100%; }
+.table-selection-checkbox { width: auto; }
+.selection-tools { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; margin: 10px 0; color: var(--vscode-descriptionForeground); }
+.selection-tools button { padding: 4px 8px; }
+.selection-tools #selectedSourceCount { margin-left: auto; }
+.apply-policy { padding: 10px 12px; border-left: 3px solid var(--vscode-focusBorder); }
+.apply-policy.blocked { border-color: var(--vscode-errorForeground); }
+.apply-policy button { margin-left: 8px; padding: 4px 8px; }
+table { width: 100%; border-collapse: collapse; font-size: 12px; }
+th, td { padding: 7px 9px; border-bottom: 1px solid var(--vscode-panel-border); text-align: left; white-space: nowrap; }
+th { position: sticky; top: 0; background: var(--vscode-editor-background); }
+.filter-row th { top: 29px; padding: 5px; }
+.filter-row input { min-width: 110px; padding: 5px 7px; font-size: 11px; }
+tbody tr[hidden] { display: none; }
+.select-column { width: 1%; text-align: center; }
+.select-column input { width: auto; }
+#error, .section-error { padding: 8px 0; color: var(--vscode-errorForeground); }
+.section-error:empty { display: none; }
+.hidden { display: none; }
+@media (max-width: 760px) { .grid { grid-template-columns: 1fr; } .full { grid-column: auto; } .workflow-row { align-items: flex-start; flex-direction: column; } }

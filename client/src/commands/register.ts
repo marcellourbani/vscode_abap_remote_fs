@@ -57,4 +57,13 @@ export const registerCommands = (context: ExtensionContext) => {
   } catch (error) {
     console.warn("⚠️ Failed to register compare command:", error)
   }
+
+  try {
+    const {
+      registerRepositoryWorkflowCommand
+    } = require("../services/repositoryWorkflow/workflowPanel")
+    registerRepositoryWorkflowCommand(context)
+  } catch (error) {
+    console.warn("⚠️ Failed to register Repository workflow command:", error)
+  }
 }

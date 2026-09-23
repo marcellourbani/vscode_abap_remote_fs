@@ -4,7 +4,6 @@
  */
 
 import * as vscode from "vscode"
-import * as ExcelJS from "exceljs"
 import { registerToolWithRegistry } from "./toolRegistry"
 import { logTelemetry } from "../telemetry"
 import { WebviewManager, RowRange, SortColumn, ColumnFilter } from "../webviewManager"
@@ -16,6 +15,7 @@ import {
   configureProductionSqlControlForConnection,
   getProductionSqlPreference
 } from "../productionSqlControl"
+import { buildCsv, buildXlsx } from "../structuredDataExportService"
 
 // ============================================================================
 // INTERFACE
@@ -607,138 +607,4 @@ export function registerDataQueryTool(context: vscode.ExtensionContext): void {
   context.subscriptions.push(
     registerToolWithRegistry("abapfs_run_sql_query", new ExecuteDataQueryTool())
   )
-}
-
-// ============================================================================
-// FILE WRITERS (cross-platform: return bytes, caller writes via workspace.fs)
-// ============================================================================
-
-const ISO_RE = /^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2}):(\d{2})(?:\.\d+)?Z?$/
-const SAP_DATE_RE = /^(\d{4})(\d{2})(\d{2})$/ // YYYYMMDD (SAP raw DATS)
-const SAP_TIME_RE = /^(\d{2})(\d{2})(\d{2})$/ // HHMMSS   (SAP raw TIMS)
-
-/**
- * Format one raw cell value the same way the UI does, defensively.
- *
- * The ADT client has been observed to return date/time columns as:
- *   - a Date object,
- *   - an ISO string "2024-12-05T00:00:00.000Z",
- *   - a Date.prototype.toString() output "Thu Dec 05 2024 05:30:00 GMT+0530 (…)",
- *   - the raw SAP form ("20241205" / "141859"),
- *   - empty string / null for missing values.
- *
- * We do NOT call `new Date(anyString)` speculatively — SAP "141859" would be
- * parsed as year 141859, producing garbage.
- */
-function formatCell(value: any, type: string | undefined): string {
-  if (value == null) return ""
-  if (value instanceof Date) {
-    if (isNaN(value.getTime())) return ""
-    return formatFromParts(
-      value.getUTCFullYear(),
-      value.getUTCMonth() + 1,
-      value.getUTCDate(),
-      value.getUTCHours(),
-      value.getUTCMinutes(),
-      value.getUTCSeconds(),
-      type
-    )
-  }
-  const s = String(value).trim()
-  if (!s || s === "Invalid Date") return ""
-
-  // 1. ISO string
-  const iso = ISO_RE.exec(s)
-  if (iso) {
-    return formatFromParts(+iso[1], +iso[2], +iso[3], +iso[4], +iso[5], +iso[6], type)
-  }
-
-  // 2. Date.prototype.toString() output — parse defensively, only when it
-  //    starts with a weekday abbreviation. Handled before SAP raw so a stringified
-  //    Date in a D/T column isn't dropped as junk.
-  if (/^(Mon|Tue|Wed|Thu|Fri|Sat|Sun) /.test(s)) {
-    const d = new Date(s)
-    if (!isNaN(d.getTime())) {
-      return formatFromParts(
-        d.getFullYear(),
-        d.getMonth() + 1,
-        d.getDate(),
-        d.getHours(),
-        d.getMinutes(),
-        d.getSeconds(),
-        type
-      )
-    }
-    return ""
-  }
-
-  // 3. Raw SAP forms — trust the column type over the shape
-  if (type === "D") {
-    if (s === "00000000") return "" // SAP null-date marker
-    const m = SAP_DATE_RE.exec(s)
-    if (m) return `${m[3]}-${m[2]}-${m[1]}`
-    return "" // unknown junk in a date column: drop it
-  }
-  if (type === "T") {
-    if (s === "000000") return "" // SAP null-time marker
-    const m = SAP_TIME_RE.exec(s)
-    if (m) return `${m[1]}:${m[2]}:${m[3]}`
-    return ""
-  }
-
-  // 4. Anything else: pass through untouched (numbers, text, material numbers, etc.)
-  return s
-}
-
-function pad2(n: number): string {
-  return n < 10 ? "0" + n : String(n)
-}
-
-function formatFromParts(
-  y: number,
-  mo: number,
-  d: number,
-  h: number,
-  mi: number,
-  se: number,
-  type: string | undefined
-): string {
-  if (type === "D") return `${pad2(d)}-${pad2(mo)}-${y}`
-  if (type === "T") return `${pad2(h)}:${pad2(mi)}:${pad2(se)}`
-  // TIMESTAMP or unknown — keep an unambiguous, locale-free ISO-ish form.
-  return `${y}-${pad2(mo)}-${pad2(d)} ${pad2(h)}:${pad2(mi)}:${pad2(se)}`
-}
-
-async function buildXlsx(
-  columns: Array<{ name: string; type?: string }>,
-  values: Array<Record<string, any>>
-): Promise<Uint8Array> {
-  const wb = new ExcelJS.Workbook()
-  const ws = wb.addWorksheet("Data")
-  const names = columns.map(c => c.name)
-  ws.addRow(names)
-  // Every cell as text (numFmt '@') so Excel does not reinterpret SAP values —
-  // leading-zero material numbers stay intact, dates keep their dd-mm-yyyy form.
-  for (const row of values) {
-    const r = ws.addRow(columns.map(c => formatCell(row[c.name], c.type)))
-    r.eachCell({ includeEmpty: true }, cell => {
-      cell.numFmt = "@"
-    })
-  }
-  const buf = await wb.xlsx.writeBuffer()
-  return new Uint8Array(buf as ArrayBuffer)
-}
-
-function buildCsv(
-  columns: Array<{ name: string; type?: string }>,
-  values: Array<Record<string, any>>
-): Uint8Array {
-  const esc = (v: string) => (/[",\n]/.test(v) ? '"' + v.replace(/"/g, '""') + '"' : v)
-  const names = columns.map(c => c.name)
-  const lines: string[] = [names.map(esc).join(",")]
-  for (const row of values) {
-    lines.push(columns.map(c => esc(formatCell(row[c.name], c.type))).join(","))
-  }
-  // BOM for Excel compatibility, LF line endings
-  return new TextEncoder().encode("\uFEFF" + lines.join("\n"))
 }
