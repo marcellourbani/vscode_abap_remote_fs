@@ -85,6 +85,16 @@ For example:
 - `CLAS ` matches only `CLAS`;
 - `ZCL_*` matches class names beginning with `ZCL_`.
 
+For a large explicit selection, export the inventory comparison. Its first column is
+**Selected**. Mark wanted rows with `X`, `TRUE`, `1`, or `YES`, then choose **Import selection**.
+The import replaces the current checks. Unknown keys and objects that are not present on both
+systems, including excluded package containers, are reported and ignored.
+
+Selection controls are locked while source download or comparison is running. After pausing, you
+can change or import a selection and choose **Apply changed selection and resume**. Snapshots for
+deselected objects are deleted, snapshots for retained objects are verified and reused, and newly
+selected or incomplete objects are downloaded.
+
 ## 6. Configure verification and downloads
 
 The comparison stage has three independent concurrency controls:
@@ -116,14 +126,24 @@ Use **Open diff** for a standard VS Code side-by-side comparison. If an object c
 ## 8. Pause, resume, and rerun
 
 - Pausing freezes the elapsed timer and preserves completed snapshots.
+- Closing the Repository Comparison Workflow panel intentionally pauses an active workflow. This
+  provides a safety stop for both manually started and Copilot-started work.
 - Resuming rechecks saved snapshots locally, then downloads only missing or invalid ones.
 - Changing only the three concurrency values does not invalidate discovery or snapshots.
 - Supplying a new source selection clears earlier snapshots and downstream results.
 - Saving discovery criteria clears the entire derived workflow.
 
+If Copilot started the operation, closing the panel is reported to Copilot as a user stop. Copilot
+must inform you that the workflow paused and must not resume it without a new request.
+
+If some selected snapshots cannot be downloaded, successful comparisons remain available and the
+workflow is marked **partial**. You can prepare assisted apply for the successful comparison rows;
+partial rows are blocked individually. Choose **Retry incomplete objects** to retry them while
+reusing verified snapshots.
+
 If a step fails, read its displayed error before resetting anything. Retrying without changing criteria or selection preserves reusable artifacts.
 
-When the source comparison is complete:
+When the source comparison is complete or has reviewable partial results:
 
 - continue with [Assisted apply](assisted-apply.md) only if you intend to review possible source-to-target changes;
 - see [Repository Comparison with Copilot](ai-tools.md) to inspect results or operate later stages through LM tools;

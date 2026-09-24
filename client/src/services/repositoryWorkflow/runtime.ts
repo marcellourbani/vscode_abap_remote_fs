@@ -7,6 +7,7 @@ export interface RepositoryWorkflowChange {
   workflowId: string
   focus: boolean
   progress?: boolean
+  workflowOnly?: boolean
 }
 
 export class RepositoryWorkflowRuntime extends EventEmitter {
@@ -14,6 +15,7 @@ export class RepositoryWorkflowRuntime extends EventEmitter {
   readonly store: WorkflowStore
   readonly engine: RepositoryWorkflowEngine
   readonly ready: Promise<void>
+  private readonly refreshBatchDepth = new Map<string, number>()
 
   private constructor(context: vscode.ExtensionContext) {
     super()
@@ -25,7 +27,27 @@ export class RepositoryWorkflowRuntime extends EventEmitter {
   }
 
   notifyChanged(workflowId: string, focus = false, progress = false) {
-    this.emit("changed", { workflowId, focus, progress } satisfies RepositoryWorkflowChange)
+    const workflowOnly = !focus && !progress && (this.refreshBatchDepth.get(workflowId) || 0) > 0
+    this.emit("changed", {
+      workflowId,
+      focus,
+      progress,
+      workflowOnly
+    } satisfies RepositoryWorkflowChange)
+  }
+
+  async runWithRefreshBatch<T>(workflowId: string, operation: () => Promise<T>): Promise<T> {
+    this.refreshBatchDepth.set(workflowId, (this.refreshBatchDepth.get(workflowId) || 0) + 1)
+    try {
+      return await operation()
+    } finally {
+      const remaining = (this.refreshBatchDepth.get(workflowId) || 1) - 1
+      if (remaining > 0) this.refreshBatchDepth.set(workflowId, remaining)
+      else {
+        this.refreshBatchDepth.delete(workflowId)
+        this.notifyChanged(workflowId)
+      }
+    }
   }
 
   static get(context?: vscode.ExtensionContext) {

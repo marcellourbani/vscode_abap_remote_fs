@@ -244,36 +244,40 @@ class RunRepositoryWorkflowTool implements vscode.LanguageModelTool<RunWorkflowI
     const workflowId = options.input.workflowId
     await showWorkflow(workflowId)
     runtime.notifyChanged(workflowId, true)
-    switch (options.input.step) {
-      case "discovery": {
-        const discovered = await engine.runDiscovery(workflowId)
-        if (discovered.steps.discovery.status === "complete")
-          await engine.compareExistence(workflowId)
-        break
-      }
-      case "existenceComparison":
-        await engine.compareExistence(workflowId)
-        break
-      case "sourceComparison":
-        if (
-          options.input.sourceConcurrency ||
-          options.input.targetConcurrency ||
-          options.input.verificationConcurrency
-        ) {
-          const criteria = await runtime.store.getCriteria(workflowId)
-          if (!criteria) throw new Error("Workflow criteria are missing")
-          await runtime.store.saveDownloadConcurrency(
-            workflowId,
-            options.input.sourceConcurrency ?? criteria.sourceConcurrency,
-            options.input.targetConcurrency ?? criteria.targetConcurrency,
-            options.input.verificationConcurrency ?? criteria.verificationConcurrency
-          )
+    await runtime.runWithRefreshBatch(workflowId, async () => {
+      switch (options.input.step) {
+        case "discovery": {
+          const discovered = await engine.runDiscovery(workflowId)
+          if (discovered.steps.discovery.status === "complete")
+            await engine.compareExistence(workflowId)
+          break
         }
-        await engine.compareSourceCode(workflowId, options.input.objectKeys)
-        break
-    }
+        case "existenceComparison":
+          await engine.compareExistence(workflowId)
+          break
+        case "sourceComparison":
+          if (
+            options.input.sourceConcurrency ||
+            options.input.targetConcurrency ||
+            options.input.verificationConcurrency
+          ) {
+            const criteria = await runtime.store.getCriteria(workflowId)
+            if (!criteria) throw new Error("Workflow criteria are missing")
+            await runtime.store.saveDownloadConcurrency(
+              workflowId,
+              options.input.sourceConcurrency ?? criteria.sourceConcurrency,
+              options.input.targetConcurrency ?? criteria.targetConcurrency,
+              options.input.verificationConcurrency ?? criteria.verificationConcurrency
+            )
+          }
+          await engine.compareSourceCode(workflowId, options.input.objectKeys)
+          break
+      }
+    })
     const workflow = await runtime.store.get(workflowId)
     const pausedByUser = workflow.runState === "paused"
+    const partial = workflow.runState === "partial"
+    const pauseReason = pausedByUser ? workflow.steps[workflow.currentStep].pauseReason : undefined
     return result(
       JSON.stringify(
         {
@@ -284,11 +288,23 @@ class RunRepositoryWorkflowTool implements vscode.LanguageModelTool<RunWorkflowI
           currentStepState: workflow.steps[workflow.currentStep],
           completedStep: workflow.steps[options.input.step],
           pausedByUser,
+          pauseReason,
           ...(pausedByUser
             ? {
                 outcome: "paused-by-user",
+                automaticRetryAllowed: false,
                 message:
-                  "The operation started and was then paused from the Repository Comparison Workflow UI. Completed checkpoints and reusable snapshots were preserved."
+                  pauseReason === "panel-closed"
+                    ? "The user closed the Repository Comparison Workflow panel, which intentionally stopped this operation. Do not restart it automatically. Inform the user that it is paused and wait for an explicit request to resume."
+                    : "The user explicitly paused this operation. Do not restart it automatically. Completed checkpoints and reusable snapshots were preserved."
+              }
+            : {}),
+          ...(partial
+            ? {
+                outcome: "partial",
+                automaticRetryAllowed: false,
+                message:
+                  "The operation produced partial results because some selected objects could not be downloaded or compared. Do not report clean completion or retry automatically. Ask the user whether to retry incomplete objects."
               }
             : {}),
           ...(options.input.step === "discovery"
@@ -335,7 +351,27 @@ class PrepareRepositoryAssistedApplyTool implements vscode.LanguageModelTool<Wor
     await runtime.ready
     await showWorkflow(options.input.workflowId)
     runtime.notifyChanged(options.input.workflowId, true)
-    const plan = await runtime.engine.prepareAssistedApply(options.input.workflowId)
+    const plan = await runtime.runWithRefreshBatch(options.input.workflowId, () =>
+      runtime.engine.prepareAssistedApply(options.input.workflowId)
+    )
+    if (!plan) {
+      const workflow = await runtime.store.get(options.input.workflowId)
+      return result(
+        JSON.stringify(
+          {
+            workflowId: workflow.workflowId,
+            outcome: "paused-by-user",
+            pausedByUser: true,
+            pauseReason: workflow.steps.assistedApplyPlan.pauseReason,
+            automaticRetryAllowed: false,
+            message:
+              "The user stopped assisted-apply preparation. Do not restart it automatically; inform the user and wait for an explicit request to resume."
+          },
+          null,
+          2
+        )
+      )
+    }
     return result(
       JSON.stringify(
         {

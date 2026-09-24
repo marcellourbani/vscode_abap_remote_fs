@@ -23,6 +23,8 @@ export type WorkflowStepStatus =
   | "interrupted"
   | "skipped"
 
+export type WorkflowPauseReason = "explicit-pause" | "panel-closed" | "extension-shutdown"
+
 export interface WorkflowSystem {
   connectionId: string
   role: "source" | "target"
@@ -37,6 +39,7 @@ export interface WorkflowStepState {
   elapsedMs?: number
   checkpoint?: string
   lastError?: string
+  pauseReason?: WorkflowPauseReason
 }
 
 export interface RepositoryWorkflow {
@@ -50,7 +53,7 @@ export interface RepositoryWorkflow {
   source: WorkflowSystem
   target: WorkflowSystem
   currentStep: WorkflowStepId
-  runState: "idle" | "running" | "paused" | "complete" | "failed" | "interrupted"
+  runState: "idle" | "running" | "paused" | "partial" | "complete" | "failed" | "interrupted"
   steps: Record<WorkflowStepId, WorkflowStepState>
   lastError?: string
   revision: number

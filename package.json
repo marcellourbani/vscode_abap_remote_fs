@@ -653,7 +653,7 @@
       {
         "name": "abapfs_run_repository_workflow_step",
         "displayName": "Run Repository Workflow Step",
-        "modelDescription": "Run or resume a repository workflow analysis operation matching the webview. discovery queries both systems and then compares their persisted inventories locally. existenceComparison explicitly retries or rebuilds that local comparison. sourceComparison selects objects, downloads snapshots, and compares them. Applying changes is a separate user-controlled assisted-apply flow.",
+        "modelDescription": "Run or resume a repository workflow analysis operation matching the webview. discovery queries both systems and then compares their persisted inventories locally. existenceComparison explicitly retries or rebuilds that local comparison. sourceComparison selects objects, downloads snapshots, and compares them. Closing the workflow panel is an intentional user stop: when the result is paused-by-user or partial, report it and never retry automatically. Applying changes is a separate user-controlled assisted-apply flow.",
         "canBeReferencedInPrompt": true,
         "toolReferenceName": "abapfs_run_repository_workflow_step",
         "icon": "$(run-all)",
@@ -859,7 +859,7 @@
       {
         "name": "abapfs_prepare_repository_assisted_apply",
         "displayName": "Prepare Repository Assisted Apply",
-        "modelDescription": "Prepare a local assisted-apply plan from the persisted source comparison. This tool never writes, saves, transports, or activates SAP objects. It only identifies reviewable objects; only the user can review and stage one source in the target editor from the workflow webview, then save and activate manually.",
+        "modelDescription": "Prepare a local assisted-apply plan from the persisted source comparison. This tool never writes, saves, transports, or activates SAP objects. Closing the workflow panel is an intentional user stop; report a paused result and never retry automatically. The tool only identifies reviewable objects; only the user can review and stage one source in the target editor from the workflow webview, then save and activate manually.",
         "canBeReferencedInPrompt": true,
         "toolReferenceName": "abapfs_prepare_repository_assisted_apply",
         "icon": "$(preview)",

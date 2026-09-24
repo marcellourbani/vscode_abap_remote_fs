@@ -165,7 +165,14 @@ When you ask Copilot to continue an existing workflow, it reuses persisted work:
 - source comparison resumes with the saved selection and reusable snapshots;
 - completed stages can be inspected without rerunning them.
 
-If you click **Pause** while a Copilot-run operation is active, its result records `outcome: paused-by-user`, `pausedByUser: true`, and the exact current step state. Copilot can therefore tell you that the run started and that your webview action paused it.
+If you click **Pause** or close the workflow panel while a Copilot-run operation is active, its
+result records `outcome: paused-by-user`, `pausedByUser: true`, a `pauseReason`, and the exact
+current step state. Closing the panel is an intentional safety stop. Copilot must report that you
+stopped the operation and must not restart it without a new request.
+
+If downloads or comparisons finish with incomplete objects, the tool returns `outcome: partial`
+and must not report clean completion or retry automatically. Ask Copilot to explain the failures,
+then explicitly request a retry when appropriate; verified successful snapshots are reused.
 
 If a step fails, ask Copilot to read that step's state and report `lastError` before resetting anything.
 

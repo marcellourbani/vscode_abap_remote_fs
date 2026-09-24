@@ -1,6 +1,6 @@
 :root { color-scheme: light dark; }
 body { margin: 0; font-family: var(--vscode-font-family); color: var(--vscode-foreground); background: var(--vscode-editor-background); }
-.shell { max-width: 1120px; margin: 0 auto; padding: 24px 32px; }
+.shell { box-sizing: border-box; width: 100%; max-width: none; margin: 0; padding: 24px clamp(16px, 2.5vw, 40px); }
 header, .step-head, .workflow-row { display: flex; align-items: center; justify-content: space-between; gap: 16px; }
 header { border-bottom: 1px solid var(--vscode-panel-border); padding-bottom: 16px; }
 h1 { margin: 0; font-size: 22px; } h2 { margin: 10px 0 16px; font-size: 17px; }
@@ -16,7 +16,7 @@ button { padding: 8px 14px; border: 1px solid var(--vscode-button-border, transp
 button.secondary { background: var(--vscode-button-secondaryBackground); color: var(--vscode-button-secondaryForeground); }
 button.danger { border-color: var(--vscode-errorForeground); background: transparent; color: var(--vscode-errorForeground); }
 button:disabled { opacity: .45; cursor: default; }
-.actions { display: flex; flex-wrap: wrap; gap: 8px; margin: 14px 0; }
+.actions { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin: 14px 0; }
 .compact-actions { flex-wrap: nowrap; gap: 4px; margin: 0; }
 .compact-actions button { padding: 4px 7px; white-space: nowrap; }
 .workflow-row { padding: 14px 0; border-bottom: 1px solid var(--vscode-panel-border); }
@@ -25,6 +25,7 @@ button:disabled { opacity: .45; cursor: default; }
 .steps { margin-top: 18px; }
 .step { border-top: 1px solid var(--vscode-panel-border); padding: 18px 0; }
 .step.locked { opacity: .68; }
+.run-policy { position: sticky; top: 0; z-index: 5; margin: 8px 0 14px; padding: 10px 12px; border-left: 3px solid var(--vscode-focusBorder); background: var(--vscode-editor-background); color: var(--vscode-foreground); }
 .step-status, .step-timings { display: flex; align-items: center; flex-wrap: wrap; justify-content: flex-end; gap: 6px 12px; }
 .status { font-size: 12px; text-transform: uppercase; color: var(--vscode-descriptionForeground); }
 .step-timing { font-size: 12px; color: var(--vscode-descriptionForeground); white-space: nowrap; }
@@ -32,8 +33,12 @@ button:disabled { opacity: .45; cursor: default; }
 progress { width: 100%; height: 8px; margin-top: 6px; accent-color: var(--vscode-progressBar-background); }
 .result-stack { margin-top: 24px; display: grid; gap: 20px; min-width: 0; }
 .result-block { border-left: 3px solid var(--vscode-focusBorder); padding-left: 14px; min-width: 0; }
-.result-head { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; }
-.result-head h3 { margin: 0 0 10px; font-size: 15px; }
+.result-head, .result-heading { display: flex; align-items: center; gap: 8px 12px; }
+.result-head { justify-content: space-between; flex-wrap: wrap; margin-bottom: 10px; }
+.result-heading { flex-wrap: wrap; }
+.result-head h3 { margin: 0; font-size: 15px; }
+.result-head button { padding: 4px 8px; }
+.source-comparison-head { margin-top: 20px; }
 .table { overflow: auto; max-height: 360px; border: 1px solid var(--vscode-panel-border); }
 .workflow-table { box-sizing: border-box; width: 100%; max-width: 100%; min-width: 0; min-height: 120px; }
 .table-load-error { box-sizing: border-box; padding: 12px; border: 1px solid var(--vscode-errorForeground); color: var(--vscode-errorForeground); }
@@ -51,6 +56,11 @@ progress { width: 100%; height: 8px; margin-top: 6px; accent-color: var(--vscode
 .selection-tools { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; margin: 10px 0; color: var(--vscode-descriptionForeground); }
 .selection-tools button { padding: 4px 8px; }
 .selection-tools #selectedSourceCount { margin-left: auto; }
+.table-tools { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; margin: 10px 0; color: var(--vscode-descriptionForeground); }
+.table-tools label { display: flex; align-items: center; gap: 7px; }
+.table-tools select { width: auto; min-width: 190px; padding: 5px 8px; }
+.table-tools button { padding: 5px 8px; }
+.table-tools span { margin-left: auto; }
 .apply-policy { padding: 10px 12px; border-left: 3px solid var(--vscode-focusBorder); }
 .apply-policy.blocked { border-color: var(--vscode-errorForeground); }
 .apply-policy button { margin-left: 8px; padding: 4px 8px; }

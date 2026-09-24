@@ -60,6 +60,14 @@ function normalizedAggregateHash(files: SnapshotFile[]): string {
   return hash.digest("hex")
 }
 
+export interface SnapshotDownloadSummary {
+  total: number
+  complete: number
+  partial: number
+  failed: number
+  cancelled: boolean
+}
+
 export class WorkflowSnapshotService {
   private readonly downloader = new AbapResourceDownloadService()
 
@@ -78,7 +86,7 @@ export class WorkflowSnapshotService {
     ) => Promise<void>,
     forceRefresh = false,
     verificationConcurrency = DEFAULT_VERIFICATION_CONCURRENCY
-  ): Promise<void> {
+  ): Promise<SnapshotDownloadSummary> {
     const verification = await this.verifySide(
       workflowId,
       side,
@@ -88,8 +96,15 @@ export class WorkflowSnapshotService {
       onProgress,
       forceRefresh
     )
-    if (token.isCancellationRequested) return
-    await this.downloadPending(
+    if (token.isCancellationRequested)
+      return {
+        total: records.length,
+        complete: verification.completed,
+        partial: 0,
+        failed: 0,
+        cancelled: true
+      }
+    return await this.downloadPending(
       workflowId,
       side,
       verification.pending,
@@ -160,9 +175,12 @@ export class WorkflowSnapshotService {
       total: number,
       activity: "verified" | "downloading" | "downloaded"
     ) => Promise<void>
-  ): Promise<void> {
+  ): Promise<SnapshotDownloadSummary> {
     const workflow = await this.store.get(workflowId)
     let completed = initialCompleted
+    let complete = initialCompleted
+    let partial = 0
+    let failed = 0
     await runPool(records, Math.min(10, Math.max(1, concurrency)), async record => {
       if (token.isCancellationRequested) return
       const key = `${record.pgmid}:${record.objectType}:${record.objectName}`.toUpperCase()
@@ -221,19 +239,31 @@ export class WorkflowSnapshotService {
         failures: result.failures
       }
       await this.store.writeJson(manifestPath, manifest)
+      if (manifest.status === "complete") complete++
+      else if (manifest.status === "partial") partial++
+      else failed++
       completed++
       await onProgress(completed, total, "downloaded")
     })
+    return {
+      total,
+      complete,
+      partial,
+      failed,
+      cancelled: token.isCancellationRequested
+    }
   }
 
   async compare(
     workflowId: string,
     keys: string[],
-    onProgress?: (completed: number, total: number) => Promise<void>
+    onProgress?: (completed: number, total: number) => Promise<void>,
+    token?: vscode.CancellationToken
   ): Promise<SourceComparisonRecord[]> {
     const workflow = await this.store.get(workflowId)
     const results: SourceComparisonRecord[] = []
     for (const key of keys) {
+      if (token?.isCancellationRequested) break
       const id = objectFolderId(key)
       const source = await this.readManifest(
         this.store.artifactPath(workflow, "sources", "source", "objects", id, "manifest.json")
@@ -285,7 +315,11 @@ export class WorkflowSnapshotService {
         added,
         removed,
         changed,
-        ...lineCounts
+        ...lineCounts,
+        error:
+          source.status !== "complete" || target.status !== "complete"
+            ? [...source.failures, ...target.failures].join("; ") || "Snapshot is incomplete"
+            : undefined
       })
       await onProgress?.(results.length, keys.length)
     }

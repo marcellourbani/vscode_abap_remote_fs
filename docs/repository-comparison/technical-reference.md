@@ -32,6 +32,10 @@ Workflow actions:
 - **Archive** moves the complete workflow folder under the configured root's `archive` folder.
 - **Delete** permanently removes the workflow and all local artifacts.
 
+Archive and delete are rejected while a workflow is running or still stopping. Closing the
+workflow panel requests a safe pause; the operation owns its lock until in-flight work reaches a
+cancellation checkpoint and persisted state is consistent.
+
 If VS Code closes while a workflow is running, it is marked `interrupted` when the extension starts again. Persisted checkpoints and complete snapshots remain available for resume.
 
 ## Settings
@@ -101,6 +105,11 @@ Verification concurrency is local-only, defaults to 32, and can be set from 1 to
 
 Progress is persisted at most every 500 milliseconds, with forced updates at pause, phase changes, and completion.
 
+An attempted object download may end as `partial` or `failed`. The aggregate workflow remains
+`partial`, successful comparison rows stay available, and assisted apply can classify them while
+blocking incomplete rows individually. **Retry incomplete objects** retries incomplete snapshots
+after verifying reusable complete snapshots.
+
 ## Source comparison
 
 Snapshot comparison checks:
@@ -121,7 +130,7 @@ Line counts are textual and should not be treated as proof of semantic ABAP chan
 | Save criteria | Discovery and every downstream artifact |
 | Rerun completed discovery | Inventory comparison, selection, snapshots, source comparison, assisted-apply plan |
 | Explicitly rebuild inventory comparison | Selection, snapshots, source comparison, assisted-apply plan |
-| Save a new source selection | Existing snapshots, source comparison, assisted-apply plan |
+| Save a new source selection | Deselected snapshots, source comparison, assisted-apply plan; retained snapshots remain reusable |
 | Change concurrency only | Nothing; values are saved for the next start or resume |
 | Refresh assisted-apply plan | The previous plan only |
 
@@ -133,6 +142,11 @@ The webview exports these outputs:
 - target inventory;
 - inventory comparison;
 - source comparison.
+
+The inventory-comparison export places **Selected** first and marks the webview's current
+source-comparison selection with `X`. Users can edit that column and import the XLSX or CSV to
+replace the checks in the webview. Import validates every marked repository key against the
+current comparison and ignores rows that are not source-comparable.
 
 XLSX is used while the result fits Excel's row limit. Larger results are offered as CSV. Exported inventories and comparisons may contain object names, packages, authors, system metadata, and source hashes; handle them as sensitive system information.
 

@@ -31,6 +31,17 @@ function defaultConcurrency(): number {
   return Math.min(10, Math.max(1, value))
 }
 
+export function repositoryWorkflowRefreshMode(
+  change: RepositoryWorkflowChange,
+  selectedWorkflowId: string | undefined,
+  artifactRefreshDepth: number
+): "progress" | "workflow" | "state" | "ignore" {
+  if (change.progress) return selectedWorkflowId === change.workflowId ? "progress" : "ignore"
+  if (selectedWorkflowId === change.workflowId && (change.workflowOnly || artifactRefreshDepth > 0))
+    return "workflow"
+  return "state"
+}
+
 export class RepositoryWorkflowPanel {
   private static instance: RepositoryWorkflowPanel | undefined
   private selectedWorkflowId?: string
@@ -39,6 +50,7 @@ export class RepositoryWorkflowPanel {
   private readonly engine: RepositoryWorkflowEngine
   private readonly exporter: WorkflowExportService
   private progressRefresh?: ReturnType<typeof setTimeout>
+  private artifactRefreshDepth = 0
 
   static async open(context: vscode.ExtensionContext, workflowId?: string) {
     if (this.instance) {
@@ -66,14 +78,26 @@ export class RepositoryWorkflowPanel {
     const runtime = RepositoryWorkflowRuntime.get(context)
     this.store = runtime.store
     this.engine = runtime.engine
-    this.exporter = new WorkflowExportService(this.store)
+    this.exporter = new WorkflowExportService(this.store, context.globalState)
     void runtime.ready.then(() => this.sendState())
     this.panel.webview.html = html(this.panel.webview, context.extensionUri)
     this.panel.webview.onDidReceiveMessage(message => this.handle(message))
     const refresh = (change: RepositoryWorkflowChange) => {
       if (change.focus) this.selectedWorkflowId = change.workflowId
-      if (change.progress) {
-        if (this.selectedWorkflowId === change.workflowId) this.scheduleProgress(change.workflowId)
+      const mode = repositoryWorkflowRefreshMode(
+        change,
+        this.selectedWorkflowId,
+        this.artifactRefreshDepth
+      )
+      if (mode === "ignore") return
+      if (mode === "progress") {
+        this.scheduleProgress(change.workflowId)
+        return
+      }
+      if (mode === "workflow") {
+        if (this.progressRefresh) clearTimeout(this.progressRefresh)
+        this.progressRefresh = undefined
+        void this.sendWorkflowState(change.workflowId)
         return
       }
       if (this.progressRefresh) clearTimeout(this.progressRefresh)
@@ -88,14 +112,12 @@ export class RepositoryWorkflowPanel {
       )
         void this.sendState()
     })
-    this.panel.onDidChangeViewState(event => {
-      if (event.webviewPanel.visible) void this.sendState()
-    })
     this.panel.onDidDispose(() => {
       runtime.off("changed", refresh)
       configurationChanged.dispose()
       if (this.progressRefresh) clearTimeout(this.progressRefresh)
-      if (this.selectedWorkflowId) void this.engine.pause(this.selectedWorkflowId).catch(() => {})
+      if (this.selectedWorkflowId)
+        void this.engine.pause(this.selectedWorkflowId, "panel-closed").catch(() => {})
       RepositoryWorkflowPanel.instance = undefined
     })
   }
@@ -190,7 +212,6 @@ export class RepositoryWorkflowPanel {
           break
         case "stageAssistedSource":
           await this.engine.stageAssistedApplySource(this.requiredWorkflowId(), message.key)
-          await this.sendState()
           break
         case "prepareAssistedApply":
           await this.run(() => this.engine.prepareAssistedApply(this.requiredWorkflowId()))
@@ -208,15 +229,17 @@ export class RepositoryWorkflowPanel {
           )
           break
         case "pause":
-          await this.engine.pause(this.requiredWorkflowId())
-          await this.sendState()
+          await this.engine.pause(this.requiredWorkflowId(), "explicit-pause")
           break
         case "export":
-          await this.export(message.output, message.type)
+          await this.export(message.output, message.type, message.selectedKeys)
+          break
+        case "importSourceSelection":
+          await this.importSourceSelection()
           break
         case "askCopilot":
           await vscode.commands.executeCommand("workbench.action.chat.open", {
-            query: `Inspect repository workflow ${this.requiredWorkflowId()} using abapfs_get_repository_workflow and help with: ${message.prompt}`,
+            query: `Read and follow the repository-workflow skill first. Then inspect repository workflow ${this.requiredWorkflowId()} using abapfs_get_repository_workflow and help with: ${message.prompt}`,
             isPartialQuery: true
           })
           break
@@ -318,19 +341,37 @@ export class RepositoryWorkflowPanel {
     )
   }
 
-  private async export(output: string, type: "xlsx" | "csv") {
+  private async export(output: string, type: "xlsx" | "csv", selectedKeys?: string[]) {
     const workflow = await this.store.get(this.requiredWorkflowId())
-    const exported = await this.exporter.export(workflow, output, type)
+    const exported = await this.exporter.export(workflow, output, type, selectedKeys)
     if (exported) vscode.window.showInformationMessage(`Exported ${exported}`)
   }
 
+  private async importSourceSelection() {
+    const workflow = await this.store.get(this.requiredWorkflowId())
+    const imported = await this.exporter.importSourceSelection(workflow)
+    if (!imported) return
+    await this.panel.webview.postMessage({
+      command: "sourceSelectionImported",
+      workflowId: workflow.workflowId,
+      ...imported
+    })
+  }
+
   private async run(operation: () => Promise<unknown>) {
-    await this.panel.webview.postMessage({ command: "busy", value: true })
+    this.artifactRefreshDepth++
     try {
+      await this.panel.webview.postMessage({ command: "busy", value: true })
       await operation()
     } finally {
-      await this.panel.webview.postMessage({ command: "busy", value: false })
-      await this.sendState()
+      this.artifactRefreshDepth--
+      try {
+        if (this.progressRefresh) clearTimeout(this.progressRefresh)
+        this.progressRefresh = undefined
+        await this.sendState()
+      } finally {
+        await this.panel.webview.postMessage({ command: "busy", value: false })
+      }
     }
   }
 
@@ -387,6 +428,13 @@ export class RepositoryWorkflowPanel {
     })
   }
 
+  private async sendWorkflowState(workflowId: string) {
+    await this.panel.webview.postMessage({
+      command: "workflow",
+      workflow: await this.store.get(workflowId)
+    })
+  }
+
   private scheduleProgress(workflowId: string) {
     if (this.progressRefresh) return
     this.progressRefresh = setTimeout(() => {
@@ -396,19 +444,27 @@ export class RepositoryWorkflowPanel {
   }
 
   private async previews(workflow: RepositoryWorkflow) {
-    const [sourceDiscovery, targetDiscovery, existenceComparison, sourceComparison, plan] =
-      await Promise.all([
-        readInventoryPreview(this.store, workflow, "source"),
-        readInventoryPreview(this.store, workflow, "target"),
-        readExistencePreview(this.store, workflow),
-        readSourceComparisonPreview(this.store, workflow),
-        readJson(this.store.artifactPath(workflow, "assisted-apply", "plan.json"))
-      ])
+    const [
+      sourceDiscovery,
+      targetDiscovery,
+      existenceComparison,
+      sourceComparison,
+      sourceSelection,
+      plan
+    ] = await Promise.all([
+      readInventoryPreview(this.store, workflow, "source"),
+      readInventoryPreview(this.store, workflow, "target"),
+      readExistencePreview(this.store, workflow),
+      readSourceComparisonPreview(this.store, workflow),
+      readJson(this.store.artifactPath(workflow, "comparison", "source-selection.json")),
+      readJson(this.store.artifactPath(workflow, "assisted-apply", "plan.json"))
+    ])
     return {
       sourceDiscovery,
       targetDiscovery,
       existenceComparison,
       sourceComparison,
+      sourceSelection,
       assistedApplyPlan: plan
     }
   }
@@ -473,7 +529,8 @@ export async function readSourceComparisonPreview(
           (row.added?.length ?? 0) + (row.removed?.length ?? 0) + (row.changed?.length ?? 0),
         linesAdded: row.linesAdded,
         linesRemoved: row.linesRemoved,
-        linesChanged: row.linesChanged
+        linesChanged: row.linesChanged,
+        error: row.error
       })
   } catch {}
   return rows
