@@ -3641,6 +3641,14 @@
 <li><code>CLAS</code> matches only <code>CLAS</code>;</li>
 <li><code>ZCL_*</code> matches class names beginning with <code>ZCL_</code>.</li>
 </ul>
+<p>For a large explicit selection, export the inventory comparison. Its first column is
+<strong>Selected</strong>. Mark wanted rows with <code>X</code>, <code>TRUE</code>, <code>1</code>, or <code>YES</code>, then choose <strong>Import selection</strong>.
+The import replaces the current checks. Unknown keys and objects that are not present on both
+systems, including excluded package containers, are reported and ignored.</p>
+<p>Selection controls are locked while source download or comparison is running. After pausing, you
+can change or import a selection and choose <strong>Apply changed selection and resume</strong>. Snapshots for
+deselected objects are deleted, snapshots for retained objects are verified and reused, and newly
+selected or incomplete objects are downloaded.</p>
 <h2 id="6-configure-verification-and-downloads">6. Configure verification and downloads<a class="headerlink" href="#6-configure-verification-and-downloads" title="Permanent link">&para;</a></h2>
 <p>The comparison stage has three independent concurrency controls:</p>
 <ul>
@@ -3687,13 +3695,21 @@
 <h2 id="8-pause-resume-and-rerun">8. Pause, resume, and rerun<a class="headerlink" href="#8-pause-resume-and-rerun" title="Permanent link">&para;</a></h2>
 <ul>
 <li>Pausing freezes the elapsed timer and preserves completed snapshots.</li>
+<li>Closing the Repository Comparison Workflow panel intentionally pauses an active workflow. This
+  provides a safety stop for both manually started and Copilot-started work.</li>
 <li>Resuming rechecks saved snapshots locally, then downloads only missing or invalid ones.</li>
 <li>Changing only the three concurrency values does not invalidate discovery or snapshots.</li>
 <li>Supplying a new source selection clears earlier snapshots and downstream results.</li>
 <li>Saving discovery criteria clears the entire derived workflow.</li>
 </ul>
+<p>If Copilot started the operation, closing the panel is reported to Copilot as a user stop. Copilot
+must inform you that the workflow paused and must not resume it without a new request.</p>
+<p>If some selected snapshots cannot be downloaded, successful comparisons remain available and the
+workflow is marked <strong>partial</strong>. You can prepare assisted apply for the successful comparison rows;
+partial rows are blocked individually. Choose <strong>Retry incomplete objects</strong> to retry them while
+reusing verified snapshots.</p>
 <p>If a step fails, read its displayed error before resetting anything. Retrying without changing criteria or selection preserves reusable artifacts.</p>
-<p>When the source comparison is complete:</p>
+<p>When the source comparison is complete or has reviewable partial results:</p>
 <ul>
 <li>continue with <a href="../assisted-apply/">Assisted apply</a> only if you intend to review possible source-to-target changes;</li>
 <li>see <a href="../ai-tools/">Repository Comparison with Copilot</a> to inspect results or operate later stages through LM tools;</li>

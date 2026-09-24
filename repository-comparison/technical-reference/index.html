@@ -3628,6 +3628,9 @@
 <li><strong>Archive</strong> moves the complete workflow folder under the configured root's <code>archive</code> folder.</li>
 <li><strong>Delete</strong> permanently removes the workflow and all local artifacts.</li>
 </ul>
+<p>Archive and delete are rejected while a workflow is running or still stopping. Closing the
+workflow panel requests a safe pause; the operation owns its lock until in-flight work reaches a
+cancellation checkpoint and persisted state is consistent.</p>
 <p>If VS Code closes while a workflow is running, it is marked <code>interrupted</code> when the extension starts again. Persisted checkpoints and complete snapshots remain available for resume.</p>
 <h2 id="settings">Settings<a class="headerlink" href="#settings" title="Permanent link">&para;</a></h2>
 <table>
@@ -3696,6 +3699,10 @@
 </ol>
 <p>Verification concurrency is local-only, defaults to 32, and can be set from 1 to 128. Source and target download concurrency are separate values from 1 to 10 and control SAP/network load.</p>
 <p>Progress is persisted at most every 500 milliseconds, with forced updates at pause, phase changes, and completion.</p>
+<p>An attempted object download may end as <code>partial</code> or <code>failed</code>. The aggregate workflow remains
+<code>partial</code>, successful comparison rows stay available, and assisted apply can classify them while
+blocking incomplete rows individually. <strong>Retry incomplete objects</strong> retries incomplete snapshots
+after verifying reusable complete snapshots.</p>
 <h2 id="source-comparison">Source comparison<a class="headerlink" href="#source-comparison" title="Permanent link">&para;</a></h2>
 <p>Snapshot comparison checks:</p>
 <ul>
@@ -3729,7 +3736,7 @@
 </tr>
 <tr>
 <td>Save a new source selection</td>
-<td>Existing snapshots, source comparison, assisted-apply plan</td>
+<td>Deselected snapshots, source comparison, assisted-apply plan; retained snapshots remain reusable</td>
 </tr>
 <tr>
 <td>Change concurrency only</td>
@@ -3749,6 +3756,10 @@
 <li>inventory comparison;</li>
 <li>source comparison.</li>
 </ul>
+<p>The inventory-comparison export places <strong>Selected</strong> first and marks the webview's current
+source-comparison selection with <code>X</code>. Users can edit that column and import the XLSX or CSV to
+replace the checks in the webview. Import validates every marked repository key against the
+current comparison and ignores rows that are not source-comparable.</p>
 <p>XLSX is used while the result fits Excel's row limit. Larger results are offered as CSV. Exported inventories and comparisons may contain object names, packages, authors, system metadata, and source hashes; handle them as sensitive system information.</p>
 <h2 id="copilot-tools">Copilot tools<a class="headerlink" href="#copilot-tools" title="Permanent link">&para;</a></h2>
 <p>Repository workflows are also available to Copilot:</p>

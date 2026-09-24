@@ -3737,7 +3737,13 @@
 <li>source comparison resumes with the saved selection and reusable snapshots;</li>
 <li>completed stages can be inspected without rerunning them.</li>
 </ul>
-<p>If you click <strong>Pause</strong> while a Copilot-run operation is active, its result records <code>outcome: paused-by-user</code>, <code>pausedByUser: true</code>, and the exact current step state. Copilot can therefore tell you that the run started and that your webview action paused it.</p>
+<p>If you click <strong>Pause</strong> or close the workflow panel while a Copilot-run operation is active, its
+result records <code>outcome: paused-by-user</code>, <code>pausedByUser: true</code>, a <code>pauseReason</code>, and the exact
+current step state. Closing the panel is an intentional safety stop. Copilot must report that you
+stopped the operation and must not restart it without a new request.</p>
+<p>If downloads or comparisons finish with incomplete objects, the tool returns <code>outcome: partial</code>
+and must not report clean completion or retry automatically. Ask Copilot to explain the failures,
+then explicitly request a retry when appropriate; verified successful snapshots are reused.</p>
 <p>If a step fails, ask Copilot to read that step's state and report <code>lastError</code> before resetting anything.</p>
 <h2 id="safety-boundaries">Safety boundaries<a class="headerlink" href="#safety-boundaries" title="Permanent link">&para;</a></h2>
 <p>Repository Comparison tools keep these actions outside Copilot's control:</p>
