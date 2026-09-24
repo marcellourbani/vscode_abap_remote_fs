@@ -54,10 +54,10 @@
   "main": "./client/dist/extension",
   "scripts": {
     "vscode:prepublish": "npm run bundle && npm run typecheck",
-    "bundle": "npm run build_modules&&cd server && npm run bundle && cd ../client && npm run bundle",
+    "bundle": "npm run build_modules && concurrently --kill-others-on-fail \"npm --prefix server run bundle\" \"npm --prefix client run bundle\"",
     "build": "npm run bundle",
-    "typecheck": "npm --prefix modules/sharedapi run typecheck && npm --prefix modules/abapObject run typecheck && npm --prefix modules/abapfs run typecheck && npm --prefix server run typecheck && npm --prefix client run typecheck",
-    "build_modules": "cd modules/abapObject&& npm run build&&cd ../abapfs&& npm run build&&cd ../sharedapi&& npm run build",
+    "typecheck": "concurrently --kill-others-on-fail \"npm --prefix modules/sharedapi run typecheck\" \"npm --prefix modules/abapObject run typecheck\" \"npm --prefix modules/abapfs run typecheck\" \"npm --prefix server run typecheck\" \"npm --prefix client run typecheck\"",
+    "build_modules": "concurrently --kill-others-on-fail \"npm --prefix modules/sharedapi run build\" \"npm --prefix modules/abapObject run build\" && npm --prefix modules/abapfs run build",
     "compile": "npm run bundle",
     "test": "npm run test-object && npm run test-abapfs && npm run test-server && npm run test-client",
     "test-server": "cd server&& npm run test",
