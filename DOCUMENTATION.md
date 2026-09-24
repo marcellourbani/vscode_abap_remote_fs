@@ -1547,6 +1547,16 @@ For example:
 - `CLAS ` matches only `CLAS`;
 - `ZCL_*` matches class names beginning with `ZCL_`.
 
+For a large explicit selection, export the inventory comparison. Its first column is
+**Selected**. Mark wanted rows with `X`, `TRUE`, `1`, or `YES`, then choose **Import selection**.
+The import replaces the current checks. Unknown keys and objects that are not present on both
+systems, including excluded package containers, are reported and ignored.
+
+Selection controls are locked while source download or comparison is running. After pausing, you
+can change or import a selection and choose **Apply changed selection and resume**. Snapshots for
+deselected objects are deleted, snapshots for retained objects are verified and reused, and newly
+selected or incomplete objects are downloaded.
+
 ## 6. Configure verification and downloads
 
 The comparison stage has three independent concurrency controls:
@@ -1578,14 +1588,24 @@ Use **Open diff** for a standard VS Code side-by-side comparison. If an object c
 ## 8. Pause, resume, and rerun
 
 - Pausing freezes the elapsed timer and preserves completed snapshots.
+- Closing the Repository Comparison Workflow panel intentionally pauses an active workflow. This
+  provides a safety stop for both manually started and Copilot-started work.
 - Resuming rechecks saved snapshots locally, then downloads only missing or invalid ones.
 - Changing only the three concurrency values does not invalidate discovery or snapshots.
 - Supplying a new source selection clears earlier snapshots and downstream results.
 - Saving discovery criteria clears the entire derived workflow.
 
+If Copilot started the operation, closing the panel is reported to Copilot as a user stop. Copilot
+must inform you that the workflow paused and must not resume it without a new request.
+
+If some selected snapshots cannot be downloaded, successful comparisons remain available and the
+workflow is marked **partial**. You can prepare assisted apply for the successful comparison rows;
+partial rows are blocked individually. Choose **Retry incomplete objects** to retry them while
+reusing verified snapshots.
+
 If a step fails, read its displayed error before resetting anything. Retrying without changing criteria or selection preserves reusable artifacts.
 
-When the source comparison is complete:
+When the source comparison is complete or has reviewable partial results:
 
 - continue with [Assisted apply](#assisted-apply) only if you intend to review possible source-to-target changes;
 - see [Repository Comparison with Copilot](#repository-comparison-with-copilot) to inspect results or operate later stages through LM tools;
@@ -1759,7 +1779,14 @@ When you ask Copilot to continue an existing workflow, it reuses persisted work:
 - source comparison resumes with the saved selection and reusable snapshots;
 - completed stages can be inspected without rerunning them.
 
-If you click **Pause** while a Copilot-run operation is active, its result records `outcome: paused-by-user`, `pausedByUser: true`, and the exact current step state. Copilot can therefore tell you that the run started and that your webview action paused it.
+If you click **Pause** or close the workflow panel while a Copilot-run operation is active, its
+result records `outcome: paused-by-user`, `pausedByUser: true`, a `pauseReason`, and the exact
+current step state. Closing the panel is an intentional safety stop. Copilot must report that you
+stopped the operation and must not restart it without a new request.
+
+If downloads or comparisons finish with incomplete objects, the tool returns `outcome: partial`
+and must not report clean completion or retry automatically. Ask Copilot to explain the failures,
+then explicitly request a retry when appropriate; verified successful snapshots are reused.
 
 If a step fails, ask Copilot to read that step's state and report `lastError` before resetting anything.
 
@@ -1885,6 +1912,10 @@ Workflow actions:
 - **Archive** moves the complete workflow folder under the configured root's `archive` folder.
 - **Delete** permanently removes the workflow and all local artifacts.
 
+Archive and delete are rejected while a workflow is running or still stopping. Closing the
+workflow panel requests a safe pause; the operation owns its lock until in-flight work reaches a
+cancellation checkpoint and persisted state is consistent.
+
 If VS Code closes while a workflow is running, it is marked `interrupted` when the extension starts again. Persisted checkpoints and complete snapshots remain available for resume.
 
 ## Settings
@@ -1954,6 +1985,11 @@ Verification concurrency is local-only, defaults to 32, and can be set from 1 to
 
 Progress is persisted at most every 500 milliseconds, with forced updates at pause, phase changes, and completion.
 
+An attempted object download may end as `partial` or `failed`. The aggregate workflow remains
+`partial`, successful comparison rows stay available, and assisted apply can classify them while
+blocking incomplete rows individually. **Retry incomplete objects** retries incomplete snapshots
+after verifying reusable complete snapshots.
+
 ## Source comparison
 
 Snapshot comparison checks:
@@ -1974,7 +2010,7 @@ Line counts are textual and should not be treated as proof of semantic ABAP chan
 | Save criteria | Discovery and every downstream artifact |
 | Rerun completed discovery | Inventory comparison, selection, snapshots, source comparison, assisted-apply plan |
 | Explicitly rebuild inventory comparison | Selection, snapshots, source comparison, assisted-apply plan |
-| Save a new source selection | Existing snapshots, source comparison, assisted-apply plan |
+| Save a new source selection | Deselected snapshots, source comparison, assisted-apply plan; retained snapshots remain reusable |
 | Change concurrency only | Nothing; values are saved for the next start or resume |
 | Refresh assisted-apply plan | The previous plan only |
 
@@ -1986,6 +2022,11 @@ The webview exports these outputs:
 - target inventory;
 - inventory comparison;
 - source comparison.
+
+The inventory-comparison export places **Selected** first and marks the webview's current
+source-comparison selection with `X`. Users can edit that column and import the XLSX or CSV to
+replace the checks in the webview. Import validates every marked repository key against the
+current comparison and ignores rows that are not source-comparable.
 
 XLSX is used while the result fits Excel's row limit. Larger results are offered as CSV. Exported inventories and comparisons may contain object names, packages, authors, system metadata, and source hashes; handle them as sensitive system information.
 
