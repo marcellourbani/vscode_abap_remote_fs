@@ -1,13 +1,20 @@
 import * as fs from "fs/promises"
 import * as path from "path"
+import { homedir } from "os"
 import * as vscode from "vscode"
+import * as ExcelJS from "exceljs"
+
 import {
   buildXlsx,
   EXCEL_MAX_DATA_ROWS,
   ExportColumn,
   streamCsv
 } from "../structuredDataExportService"
-import { RepositoryWorkflow } from "./types"
+import {
+  ExistenceComparisonRecord,
+  RepositoryWorkflow,
+  SOURCE_COMPARISON_EXCLUDED_OBJECT_TYPES
+} from "./types"
 import { WorkflowStore } from "./workflowStore"
 
 interface OutputDefinition {
@@ -15,6 +22,8 @@ interface OutputDefinition {
   columns: ExportColumn[]
   sheetName: string
 }
+
+const LAST_EXPORT_DIRECTORY_KEY = "abapfs.repositoryWorkflows.lastExportDirectory"
 
 const OUTPUTS: Record<string, OutputDefinition> = {
   sourceDiscovery: {
@@ -30,6 +39,7 @@ const OUTPUTS: Record<string, OutputDefinition> = {
   existenceComparison: {
     path: ["comparison", "existence.jsonl"],
     columns: [
+      { name: "selected", header: "Selected" },
       { name: "repositoryKey", header: "Repository Key" },
       { name: "result", header: "Comparison Result" },
       { name: "objectName", header: "Object Name" },
@@ -98,6 +108,15 @@ const OUTPUTS: Record<string, OutputDefinition> = {
   }
 }
 
+const OUTPUT_FILE_LABELS: Record<string, string> = {
+  sourceDiscovery: "src-inv",
+  targetDiscovery: "tgt-inv",
+  existenceComparison: "inv-compare",
+  sourceComparison: "src-compare",
+  assistedApplyPlan: "apply-plan",
+  downloadErrors: "errors"
+}
+
 function objectColumns(): ExportColumn[] {
   return [
     { name: "pgmid", header: "Program ID" },
@@ -118,12 +137,16 @@ function objectColumns(): ExportColumn[] {
 }
 
 export class WorkflowExportService {
-  constructor(private readonly store: WorkflowStore) {}
+  constructor(
+    private readonly store: WorkflowStore,
+    private readonly globalState?: vscode.Memento
+  ) {}
 
   async export(
     workflow: RepositoryWorkflow,
     output: string,
-    type: "xlsx" | "csv"
+    type: "xlsx" | "csv",
+    selectedKeys?: string[]
   ): Promise<string | undefined> {
     const definition = OUTPUTS[output]
     if (!definition) throw new Error(`Unknown workflow output: ${output}`)
@@ -131,24 +154,95 @@ export class WorkflowExportService {
     if (type === "xlsx" && rowCount > EXCEL_MAX_DATA_ROWS)
       throw new Error(`XLSX is unavailable for ${rowCount.toLocaleString()} rows; export CSV`)
 
+    const fileName = workflowExportFileName(workflow, output, type)
     const target = await vscode.window.showSaveDialog({
       defaultUri: vscode.Uri.file(
-        this.store.artifactPath(workflow, "exports", `${output}.${type}`)
+        path.join(this.globalState?.get<string>(LAST_EXPORT_DIRECTORY_KEY) || homedir(), fileName)
       ),
       filters: type === "xlsx" ? { Excel: ["xlsx"] } : { CSV: ["csv"] }
     })
     if (!target) return
+    await this.globalState?.update(LAST_EXPORT_DIRECTORY_KEY, path.dirname(target.fsPath))
+    const selected = selectedKeys ? new Set(selectedKeys) : undefined
     if (type === "csv") {
-      await streamCsv(target.fsPath, definition.columns, this.rows(workflow, output))
+      await streamCsv(target.fsPath, definition.columns, this.rows(workflow, output, selected))
     } else {
       const rows: Array<Record<string, unknown>> = []
-      for await (const row of this.rows(workflow, output)) rows.push(row)
+      for await (const row of this.rows(workflow, output, selected)) rows.push(row)
       await vscode.workspace.fs.writeFile(
         target,
         await buildXlsx(definition.columns, rows, definition.sheetName)
       )
     }
     return target.fsPath
+  }
+
+  async importSourceSelection(workflow: RepositoryWorkflow) {
+    const selected = await vscode.window.showOpenDialog({
+      defaultUri: vscode.Uri.file(homedir()),
+      canSelectMany: false,
+      canSelectFiles: true,
+      canSelectFolders: false,
+      title: "Import source-comparison selection",
+      filters: { "Excel or CSV": ["xlsx", "csv"] }
+    })
+    const file = selected?.[0]
+    if (!file) return undefined
+    const workbook = new ExcelJS.Workbook()
+    if (path.extname(file.fsPath).toLowerCase() === ".csv") await workbook.csv.readFile(file.fsPath)
+    else await workbook.xlsx.readFile(file.fsPath)
+    const sheet = workbook.worksheets[0]
+    if (!sheet) throw new Error("The selected workbook does not contain a worksheet")
+    const columns = new Map<string, number>()
+    sheet.getRow(1).eachCell((cell, column) => {
+      columns.set(
+        cell.text
+          .trim()
+          .replace(/^\uFEFF/, "")
+          .toLowerCase(),
+        column
+      )
+    })
+    const selectedColumn = columns.get("selected")
+    const keyColumn = columns.get("repository key")
+    if (!selectedColumn || !keyColumn)
+      throw new Error("The selection file must contain Selected and Repository Key columns")
+
+    const requested = new Set<string>()
+    let duplicates = 0
+    sheet.eachRow((row, rowNumber) => {
+      if (rowNumber === 1 || !selectedMarker(row.getCell(selectedColumn).text)) return
+      const key = row.getCell(keyColumn).text.trim().toUpperCase()
+      if (!key) return
+      if (requested.has(key)) duplicates++
+      requested.add(key)
+    })
+
+    const keys: string[] = []
+    const found = new Set<string>()
+    let unselectable = 0
+    const excludedTypes = new Set<string>(SOURCE_COMPARISON_EXCLUDED_OBJECT_TYPES)
+    for await (const row of this.store.readJsonLines<ExistenceComparisonRecord>(
+      this.store.artifactPath(workflow, "comparison", "existence.jsonl")
+    )) {
+      if (!requested.has(row.key)) continue
+      found.add(row.key)
+      if (
+        row.status === "both" &&
+        row.source &&
+        !excludedTypes.has(row.source.objectType.toUpperCase())
+      )
+        keys.push(row.key)
+      else unselectable++
+    }
+    return {
+      fileName: path.basename(file.fsPath),
+      keys: keys.sort(),
+      requested: requested.size,
+      duplicates,
+      unselectable,
+      unknown: requested.size - found.size
+    }
   }
 
   async availability(workflow: RepositoryWorkflow, outputs = Object.keys(OUTPUTS)) {
@@ -173,7 +267,8 @@ export class WorkflowExportService {
 
   private async *rows(
     workflow: RepositoryWorkflow,
-    output: string
+    output: string,
+    selectedKeys?: ReadonlySet<string>
   ): AsyncGenerator<Record<string, unknown>> {
     const definition = OUTPUTS[output]
     if (output === "assistedApplyPlan") {
@@ -205,15 +300,62 @@ export class WorkflowExportService {
     }
     const filePath = this.store.artifactPath(workflow, ...definition.path)
     for await (const row of this.store.readJsonLines<Record<string, unknown>>(filePath))
-      yield workflowExportRow(output, row)
+      yield workflowExportRow(output, row, selectedKeys)
   }
+}
+
+export function workflowExportFileName(
+  workflow: RepositoryWorkflow,
+  output: string,
+  type: "xlsx" | "csv",
+  now = new Date()
+): string {
+  const source = safeFileNamePart(workflow.source.connectionId.toUpperCase(), 40)
+  const target = safeFileNamePart(workflow.target.connectionId.toUpperCase(), 40)
+  const workflowName = safeFileNamePart(workflow.name, 48)
+  const normalizedName = workflowName.toUpperCase()
+  const relevantSystems =
+    output === "sourceDiscovery"
+      ? source
+      : output === "targetDiscovery"
+        ? target
+        : normalizedName.includes(source) && normalizedName.includes(target)
+          ? ""
+          : `${source}-${target}`
+  return (
+    [
+      workflowName,
+      OUTPUT_FILE_LABELS[output] || safeFileNamePart(output, 40),
+      relevantSystems,
+      localTimestamp(now)
+    ]
+      .filter(Boolean)
+      .join("_") + `.${type}`
+  )
+}
+
+function safeFileNamePart(value: string, maxLength: number): string {
+  return (
+    value
+      .replace(/[<>:"/\\|?*\u0000-\u001f]/g, "_")
+      .replace(/\s+/g, "_")
+      .replace(/_+/g, "_")
+      .replace(/^[._]+|[._]+$/g, "")
+      .slice(0, maxLength) || "workflow"
+  )
+}
+
+function localTimestamp(value: Date): string {
+  const pad = (part: number) => String(part).padStart(2, "0")
+  return `${value.getFullYear()}${pad(value.getMonth() + 1)}${pad(value.getDate())}-${pad(value.getHours())}${pad(value.getMinutes())}`
 }
 
 export function workflowExportRow(
   output: string,
-  row: Record<string, any>
+  row: Record<string, any>,
+  selectedKeys?: ReadonlySet<string>
 ): Record<string, unknown> {
-  if (output === "existenceComparison") return existenceRow(row)
+  if (output === "existenceComparison") return existenceRow(row, selectedKeys)
   if (output === "sourceComparison") return sourceComparisonRow(row)
   if (output === "assistedApplyPlan") return assistedApplyRow(row)
   if (output === "downloadErrors")
@@ -226,10 +368,18 @@ export function workflowExportRow(
   return row
 }
 
-function existenceRow(row: Record<string, any>): Record<string, unknown> {
+function existenceRow(
+  row: Record<string, any>,
+  selectedKeys?: ReadonlySet<string>
+): Record<string, unknown> {
   const source = row.source ?? {}
   const target = row.target ?? {}
+  const selectable =
+    row.status === "both" &&
+    source.objectType &&
+    !SOURCE_COMPARISON_EXCLUDED_OBJECT_TYPES.includes(source.objectType.toUpperCase())
   return {
+    selected: selectable && selectedKeys?.has(row.key) ? "X" : "",
     repositoryKey: row.key,
     result: comparisonResult(row.status),
     objectName: source.objectName ?? target.objectName,
@@ -304,4 +454,8 @@ function comparisonResult(status: unknown): string {
     error: "Error"
   }
   return labels[String(status)] ?? String(status ?? "")
+}
+
+function selectedMarker(value: string): boolean {
+  return ["x", "true", "1", "yes"].includes(value.trim().toLowerCase())
 }

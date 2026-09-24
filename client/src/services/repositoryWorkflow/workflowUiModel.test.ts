@@ -33,9 +33,19 @@ describe("workflow UI model", () => {
     )
   })
 
+  it("allows useful downstream work from partial results", () => {
+    const value = workflow()
+    value.steps.sourceDownload.status = "partial"
+
+    expect(() => assertWorkflowStepReady(value, "sourceComparison")).not.toThrow()
+    value.steps.sourceComparison.status = "partial"
+    expect(() => assertWorkflowStepReady(value, "assistedApplyPlan")).not.toThrow()
+  })
+
   it("routes command failures to the section that initiated them", () => {
     expect(commandSection("compareExistence")).toBe("existenceComparison")
     expect(commandSection("selectSources")).toBe("sourceComparison")
+    expect(commandSection("importSourceSelection")).toBe("sourceComparison")
     expect(commandSection("stageAssistedSource")).toBe("assistedApply")
   })
 

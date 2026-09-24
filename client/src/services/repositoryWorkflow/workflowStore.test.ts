@@ -84,6 +84,39 @@ describe("WorkflowStore", () => {
     expect(await store.isRunLocked(workflow.workflowId)).toBe(false)
   })
 
+  it("releases only the lock owned by the caller", async () => {
+    const store = new WorkflowStore(context)
+    const workflow = await store.create({
+      name: "Owned lock",
+      sourceConnectionId: "source100",
+      targetConnectionId: "target100"
+    })
+    await store.acquireRunLock(workflow.workflowId, "runner-a")
+
+    expect(await store.releaseRunLock(workflow.workflowId, "runner-b")).toBe(false)
+    expect(await store.isRunLocked(workflow.workflowId)).toBe(true)
+    expect(await store.releaseRunLock(workflow.workflowId, "runner-a")).toBe(true)
+    expect(await store.isRunLocked(workflow.workflowId)).toBe(false)
+  })
+
+  it.each(["archive", "delete"] as const)(
+    "rejects %s while the workflow is running",
+    async action => {
+      const store = new WorkflowStore(context)
+      const workflow = await store.create({
+        name: `Active ${action}`,
+        sourceConnectionId: "source100",
+        targetConnectionId: "target100"
+      })
+      await store.acquireRunLock(workflow.workflowId, "runner")
+
+      await expect(store[action](workflow.workflowId)).rejects.toThrow(/already running/)
+      expect((await store.get(workflow.workflowId)).workflowId).toBe(workflow.workflowId)
+
+      await store.releaseRunLock(workflow.workflowId, "runner")
+    }
+  )
+
   it("clamps concurrency and invalidates derived artifacts when criteria change", async () => {
     const store = new WorkflowStore(context)
     const workflow = await store.create({
@@ -165,5 +198,27 @@ describe("WorkflowStore", () => {
     const recovered = await store.get(workflow.workflowId)
     expect(recovered.runState).toBe("interrupted")
     expect(recovered.steps.discovery.status).toBe("interrupted")
+  })
+
+  it("does not steal a live runner's lock during initialization", async () => {
+    const store = new WorkflowStore(context)
+    const workflow = await store.create({
+      name: "Live runner",
+      sourceConnectionId: "source100",
+      targetConnectionId: "target100"
+    })
+    await store.update(workflow.workflowId, current => ({
+      ...current,
+      runState: "running",
+      currentStep: "discovery",
+      steps: { ...current.steps, discovery: { status: "running" } }
+    }))
+    await store.acquireRunLock(workflow.workflowId, "live-runner")
+
+    await store.initialize()
+
+    expect((await store.get(workflow.workflowId)).runState).toBe("running")
+    expect(await store.isRunLocked(workflow.workflowId)).toBe(true)
+    await store.releaseRunLock(workflow.workflowId, "live-runner")
   })
 })

@@ -5,35 +5,56 @@ const home = document.getElementById("home")
 let state = {}
 let busy = false
 let pendingTransition = false
+let latestWorkflowRevision = 0
 const sourceSelections = {}
 const sourceSelectionRevisions = {}
 const workflowTables = []
 const workflowTableById = {}
+const workflowTableStates = {}
+const workflowTableViews = {}
 const busyDisabledStates = new WeakMap()
+let tableResizeFrame
 
 const send = (command, data = {}) => vscode.postMessage({ command, ...data })
 const escapeHtml = value => String(value ?? "").replace(/[&<>"']/g, character => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[character])
 const list = value => (value || []).join(", ")
 const complete = stepId => state.workflow?.steps?.[stepId]?.status === "complete"
+const reviewable = stepId =>
+  ["complete", "partial"].includes(state.workflow?.steps?.[stepId]?.status)
 
 window.addEventListener("message", event => {
   if (event.data.command === "state") {
     if (
       state.workflow?.workflowId === event.data.workflow?.workflowId &&
-      Number(event.data.workflow?.revision || 0) < Number(state.workflow?.revision || 0)
+      Number(event.data.workflow?.revision || 0) < latestWorkflowRevision
     )
       return
     pendingTransition = false
     state = event.data
+    latestWorkflowRevision = Number(state.workflow?.revision || 0)
     clearErrors()
     render()
   }
+  if (event.data.command === "workflow") {
+    if (state.workflow?.workflowId !== event.data.workflow?.workflowId) return
+    const revision = Number(event.data.workflow?.revision || 0)
+    if (revision < latestWorkflowRevision) return
+    latestWorkflowRevision = revision
+    const renderedRevision = state.workflow.revision
+    state.workflow = { ...event.data.workflow, revision: renderedRevision }
+    pendingTransition = false
+    updateWorkflowChrome()
+  }
   if (event.data.command === "progress") {
     if (state.workflow?.workflowId !== event.data.workflow?.workflowId) return
+    const revision = Number(event.data.workflow?.revision || 0)
+    if (revision < latestWorkflowRevision) return
+    latestWorkflowRevision = revision
     const renderedRevision = state.workflow.revision
     state.workflow = { ...event.data.workflow, revision: renderedRevision }
     updateProgressDisplay()
     updateElapsedCounters()
+    applyBusy()
   }
   if (event.data.command === "error") {
     pendingTransition = false
@@ -44,9 +65,35 @@ window.addEventListener("message", event => {
     busy = event.data.value
     applyBusy()
   }
+  if (event.data.command === "sourceSelectionImported") {
+    if (state.workflow?.workflowId !== event.data.workflowId) return
+    const workflowId = event.data.workflowId
+    sourceSelections[workflowId] = new Set(event.data.keys || [])
+    const table = workflowTableById.existenceComparison
+    if (table)
+      void table.updateData(
+        (state.previews.existenceComparison || []).map(row => ({
+          key: row.key,
+          selected: sourceSelections[workflowId].has(row.key)
+        }))
+      )
+    const comparableCount = (state.previews.existenceComparison || []).filter(sourceComparable).length
+    updateSourceSelectionControls(workflowId, comparableCount)
+    const status = document.getElementById("selectionImportStatus")
+    if (status)
+      status.textContent = `${event.data.keys.length.toLocaleString()} selected from ${event.data.fileName}; ${event.data.unselectable.toLocaleString()} unselectable, ${event.data.unknown.toLocaleString()} unknown, and ${event.data.duplicates.toLocaleString()} duplicate keys ignored.`
+  }
 })
 
 home.onclick = () => { state.workflow = undefined; render() }
+
+window.addEventListener("resize", () => {
+  if (tableResizeFrame) cancelAnimationFrame(tableResizeFrame)
+  tableResizeFrame = requestAnimationFrame(() => {
+    tableResizeFrame = undefined
+    workflowTables.forEach(table => table.redraw(true))
+  })
+})
 
 function render() {
   destroyWorkflowTables()
@@ -117,8 +164,8 @@ function renderWorkflow() {
   document.getElementById("subtitle").textContent = `${workflow.name} · Source: ${sourceLabel} · Target: ${targetLabel}`
   app.innerHTML = `<div class="steps">
     ${step("1. Scope and discovery", "discovery", criteriaForm(criteria, sourceLabel, targetLabel) + discoveryResults(sourceLabel, targetLabel), discoveryActions(), true)}
-    ${step("2. Compare systems", "existenceComparison", comparisonStage(sourceLabel, targetLabel), comparisonActions(), complete("discovery"))}
-    ${step("3. Assisted apply", "assistedApply", assistedApplyView(), assistedApplyActions(), complete("sourceComparison"))}
+    ${step("2. Compare systems", "existenceComparison", comparisonStage(sourceLabel, targetLabel), "", complete("discovery"))}
+    ${step("3. Assisted apply", "assistedApply", assistedApplyView(), assistedApplyActions(), reviewable("sourceComparison"))}
     <section class="step"><div class="step-head"><h2>Copilot assistance</h2></div><label class="field full"><span>What should Copilot help with?</span><input id="copilotPrompt" value="Review the current workflow state and explain the next safe action"></label><div class="actions"><button id="askCopilot">Ask Copilot</button></div></section>
   </div>`
   wireWorkflow(workflow)
@@ -141,15 +188,28 @@ function criteriaForm(criteria, sourceLabel, targetLabel) {
     ${check("includeDeleted", "Include deleted", criteria.includeDeleted)}
     ${check("includeGenerated", "Include generated", criteria.includeGenerated)}
     ${check("includeTemporary", "Include $TMP", criteria.includeTemporary)}
-  </div>`
+  </div><div class="actions"><button id="saveCriteria">Save criteria</button></div>`
 }
 
 function step(title, id, body, actions, enabled) {
   const stepId = displayedStepId(id)
   const value = state.workflow.steps[stepId] || {}
   const progress = stepProgress(id, stepId, value)
-  const content = enabled ? `${body}<div data-step-progress="${id}">${progress}</div><div class="actions">${actions}</div>` : '<p class="muted">Complete the previous stage to continue.</p>'
-  return `<section class="step ${enabled ? "" : "locked"}" data-section="${id}"><div class="step-head"><h2>${title}</h2><div class="step-status"><span class="status" data-step-status="${id}">${escapeHtml(value.status)}</span>${stepTimings(id)}</div></div><div id="error-${id}" class="section-error">${escapeHtml(value.lastError || "")}</div>${content}</section>`
+  const actionBlock = actions
+    ? `<div class="actions" data-step-actions="${id}">${actions}</div>`
+    : ""
+  const progressBlock =
+    id === "existenceComparison"
+      ? ""
+      : `<div data-step-progress="${id}">${progress}</div>`
+  const content = enabled ? `${body}${progressBlock}${actionBlock}` : '<p class="muted">Complete the previous stage to continue.</p>'
+  return `<section class="step ${enabled ? "" : "locked"}" data-section="${id}"><div class="step-head"><h2>${title}</h2><div class="step-status"><span class="status" data-step-status="${id}">${escapeHtml(value.status)}</span><span data-step-timings="${id}">${stepTimings(id)}</span></div></div><div id="error-${id}" class="section-error">${escapeHtml(value.lastError || "")}</div><div data-run-policy="${id}">${runPolicy(value)}</div>${content}</section>`
+}
+
+function runPolicy(value) {
+  return value.status === "running"
+    ? '<p class="run-policy"><strong>Closing this panel pauses the active workflow.</strong> Copilot will be told that you stopped it and must not restart it automatically.</p>'
+    : ""
 }
 
 function stepProgress(id, stepId, value) {
@@ -171,13 +231,52 @@ function updateProgressDisplay() {
   }
 }
 
+function updateWorkflowChrome() {
+  updateProgressDisplay()
+  clearStaleSourceResults()
+  for (const id of ["discovery", "existenceComparison", "assistedApply"]) {
+    const stepId = displayedStepId(id)
+    const value = state.workflow.steps[stepId] || {}
+    const policy = document.querySelector(`[data-run-policy="${id}"]`)
+    if (policy) policy.innerHTML = runPolicy(value)
+    const timings = document.querySelector(`[data-step-timings="${id}"]`)
+    if (timings) timings.innerHTML = stepTimings(id)
+    const error = document.getElementById(`error-${id}`)
+    if (error) error.textContent = value.lastError || ""
+  }
+  updateWorkflowActions()
+  updateElapsedCounters()
+  applyBusy()
+}
+
+function clearStaleSourceResults() {
+  const sourceWorkRunning =
+    state.workflow.runState === "running" &&
+    ["sourceSelection", "sourceDownload", "sourceComparison"].includes(
+      state.workflow.currentStep
+    )
+  if (!sourceWorkRunning) return
+  clearSourceResultViews()
+}
+
+function clearSourceResultViews() {
+  destroyWorkflowTable("sourceComparison")
+  document.querySelector("[data-source-comparison-results]")?.remove()
+  destroyWorkflowTable("assistedApplyPlan")
+  document.querySelector("[data-assisted-apply-results]")?.remove()
+}
+
 function displayedStepId(id) {
   if (id === "assistedApply") return "assistedApplyPlan"
-  if (
-    id === "existenceComparison" &&
-    ["sourceDownload", "sourceComparison"].includes(state.workflow.currentStep)
-  )
-    return state.workflow.currentStep
+  if (id === "existenceComparison") {
+    if (
+      ["sourceSelection", "sourceDownload", "sourceComparison"].includes(
+        state.workflow.currentStep
+      )
+    )
+      return state.workflow.currentStep
+    if (state.workflow.steps.sourceComparison.status === "partial") return "sourceComparison"
+  }
   return id
 }
 
@@ -250,7 +349,15 @@ function discoveryResults(sourceLabel, targetLabel) {
 
 function inventoryBlock(title, rows, output) {
   const count = state.exportAvailability?.[output]?.rows ?? rows?.length ?? 0
-  return `<section class="result-block"><div class="result-head"><h3>${escapeHtml(title)}</h3><span>${count.toLocaleString()} objects</span></div>${inventoryTable(rows, output)}<div class="actions">${singleExport(output, `Export ${title}`)}</div></section>`
+  const typeCounts = countBy(rows || [], row => row.objectType)
+  const views = [...typeCounts.entries()]
+    .sort(([left], [right]) => left.localeCompare(right))
+    .map(([type, typeCount]) => ({
+      value: `type:${type}`,
+      label: type,
+      count: typeCount
+    }))
+  return `<section class="result-block"><div class="result-head"><div class="result-heading"><h3>${escapeHtml(title)}</h3></div><span>${count.toLocaleString()} objects</span></div>${tableTools(output, rows?.length || 0, views, "All object types", singleExport(output, `Export ${title}`))}${inventoryTable(rows, output)}</section>`
 }
 
 function inventoryTable(rows, output) {
@@ -265,7 +372,14 @@ function comparisonStage(sourceLabel, targetLabel) {
     ? `<p class="muted">Choose which objects found on both systems should have their source downloaded and compared. Objects found on only one system cannot be source-compared.</p>`
     : `<p class="muted">Compare the two inventories to see which objects exist on both systems and which exist on only one.</p>`
   const concurrency = existence.length ? downloadConcurrency(sourceLabel, targetLabel) : ""
-  return `${explanation}${concurrency}${existence.length ? existenceTable(existence) : ""}${source.length ? `<h3>Source-code differences</h3>${sourceTable(source)}` : ""}`
+  const existenceResults = existence.length ? existenceTable(existence) : ""
+  const actions = `<div class="actions" data-step-actions="existenceComparison">${comparisonActions()}</div>`
+  const stepId = displayedStepId("existenceComparison")
+  const progress = `<div data-step-progress="existenceComparison">${stepProgress("existenceComparison", stepId, state.workflow.steps[stepId] || {})}</div>`
+  const sourceResults = source.length
+    ? `<div data-source-comparison-results><div class="result-head source-comparison-head"><div class="result-heading"><h3>Source-code differences</h3></div><span>${source.length.toLocaleString()} objects</span></div>${sourceTable(source)}</div>`
+    : ""
+  return `${explanation}${concurrency}${existenceResults}${actions}${progress}${sourceResults}`
 }
 
 function downloadConcurrency(sourceLabel, targetLabel) {
@@ -288,33 +402,79 @@ function existenceTable(rows) {
   const comparisonRevision = state.workflow.steps.existenceComparison?.completedAt || ""
   if (sourceSelectionRevisions[workflowId] !== comparisonRevision) {
     sourceSelectionRevisions[workflowId] = comparisonRevision
-    sourceSelections[workflowId] = new Set(comparableKeys)
+    const persisted = state.previews.sourceSelection?.keys
+    sourceSelections[workflowId] = new Set(
+      Array.isArray(persisted)
+        ? persisted.filter(key => comparableKeys.has(key))
+        : comparableKeys
+    )
   } else
     sourceSelections[workflowId] = new Set(
       [...sourceSelections[workflowId]].filter(key => comparableKeys.has(key))
     )
   const selected = sourceSelections[workflowId]
   const allSelected = comparable.length > 0 && comparable.every(row => selected.has(row.key))
-  return `<p class="muted">${rows.length.toLocaleString()} unique repository keys: ${presentOnBoth.length.toLocaleString()} present on both, ${sourceOnly.toLocaleString()} source-only, and ${targetOnly.toLocaleString()} target-only. ${excludedContainers ? `${excludedContainers.toLocaleString()} container objects excluded from source comparison.` : ""}</p><div class="selection-tools"><label><input id="selectAllSources" type="checkbox" ${allSelected ? "checked" : ""} ${comparable.length ? "" : "disabled"}> Select all comparable objects</label><button id="selectFilteredSources" class="secondary" type="button">Select filtered</button><button id="clearFilteredSources" class="secondary" type="button">Clear filtered</button><span id="selectedSourceCount">${selected.size.toLocaleString()} of ${comparable.length.toLocaleString()} selected</span></div><div id="table-existenceComparison" class="workflow-table"></div>`
+  const selectionLocked = sourceSelectionLocked()
+  const views = [
+    { value: "comparable", label: "Comparable", count: comparable.length },
+    { value: "selected", label: "Selected comparable", count: selected.size },
+    {
+      value: "unselected",
+      label: "Unselected comparable",
+      count: comparable.length - selected.size
+    },
+    { value: "source-only", label: "Source only", count: sourceOnly },
+    { value: "target-only", label: "Target only", count: targetOnly },
+    { value: "packages", label: "Excluded packages", count: excludedContainers }
+  ]
+  return `<p class="muted">${rows.length.toLocaleString()} unique repository keys: ${presentOnBoth.length.toLocaleString()} present on both, ${sourceOnly.toLocaleString()} source-only, and ${targetOnly.toLocaleString()} target-only. ${excludedContainers ? `${excludedContainers.toLocaleString()} packages excluded from source comparison.` : ""}</p><div class="selection-tools"><label><input id="selectAllSources" data-has-comparable="${comparable.length ? "true" : "false"}" type="checkbox" ${allSelected ? "checked" : ""} ${comparable.length && !selectionLocked ? "" : "disabled"}> Select all comparable objects</label><button id="selectFilteredSources" class="secondary" type="button">Select filtered</button><button id="clearFilteredSources" class="secondary" type="button">Clear filtered</button><button id="importSourceSelection" class="secondary" type="button">Import selection</button><span id="selectedSourceCount">${selected.size.toLocaleString()} of ${comparable.length.toLocaleString()} selected</span></div><p class="muted">For a bulk selection, export the inventory comparison, mark wanted rows with <strong>X</strong> in the first <strong>Selected</strong> column, then import the XLSX or CSV. Existing checks are replaced; unknown, source-only, target-only, and package rows are ignored even when marked.</p><p id="selectionImportStatus" class="muted"></p>${tableTools("existenceComparison", rows.length, views, "All inventory results", singleExport("existenceComparison", "Export inventory comparison"))}<div id="table-existenceComparison" class="workflow-table"></div>`
 }
 
 function comparisonActions() {
   const existenceReady = complete("existenceComparison")
   const selected = sourceSelections[state.workflow.workflowId]?.size || 0
   const sourceStep = state.workflow.currentStep
-  const resumable = ["paused", "interrupted", "failed"].includes(state.workflow.runState) &&
-    ["sourceDownload", "sourceComparison"].includes(sourceStep)
+  const incomplete =
+    state.workflow.steps.sourceDownload.status === "partial" ||
+    state.workflow.steps.sourceComparison.status === "partial"
+  const resumable =
+    incomplete ||
+    (["paused", "interrupted", "failed"].includes(state.workflow.runState) &&
+      ["sourceDownload", "sourceComparison"].includes(sourceStep))
+  const selectionChanged = sourceSelectionChanged(state.workflow.workflowId)
   const primaryAction = !existenceReady
     ? '<button id="existence">Compare inventories</button>'
     : resumable
-      ? '<button id="resumeSourceComparison">Resume source comparison</button>'
+      ? `<button id="resumeSourceComparison">${selectionChanged ? "Apply changed selection and resume" : incomplete ? "Retry incomplete objects" : "Resume source comparison"}</button>`
       : `<button id="compareSourceCode" ${selected ? "" : "disabled"}>Compare selected source code</button>`
-  return `${primaryAction}${singleExport("existenceComparison", "Export inventory comparison")}${singleExport("sourceComparison", "Export source comparison")}${pauseButton("sourceDownload")}`
+  return `${primaryAction}${pauseButton("existenceComparison", "sourceSelection", "sourceDownload", "sourceComparison")}`
 }
 
 function sourceTable(rows) {
   if (!rows || !rows.length) return '<div class="muted">No persisted output yet.</div>'
-  return '<p class="muted">Line counts describe the textual diff. Reordered code may appear as removed and added lines.</p><div id="table-sourceComparison" class="workflow-table"></div>'
+  const statusCounts = countBy(rows, row => row.status)
+  const incomplete = rows.filter(
+    row => !["different", "identical"].includes(row.status)
+  ).length
+  const views = [
+    {
+      value: "attention",
+      label: "Needs attention",
+      count: rows.length - (statusCounts.get("identical") || 0)
+    },
+    {
+      value: "different",
+      label: "Different",
+      count: statusCounts.get("different") || 0
+    },
+    { value: "incomplete", label: "Incomplete or failed", count: incomplete },
+    {
+      value: "identical",
+      label: "Identical",
+      count: statusCounts.get("identical") || 0
+    }
+  ]
+  return `<p class="muted">Line counts describe the textual diff. Reordered code may appear as removed and added lines.</p>${tableTools("sourceComparison", rows.length, views, "All source results", singleExport("sourceComparison", "Export source comparison"))}<div id="table-sourceComparison" class="workflow-table"></div>`
 }
 
 function assistedApplyView() {
@@ -332,24 +492,47 @@ function assistedApplyView() {
   const unchanged = plan.items.filter(item => (item.blockingReasons || []).includes("Source status is identical")).length
   const blocked = plan.items.length - eligible - unchanged
   const summary = `<p><strong>${eligible}</strong> ready for assisted apply, <strong>${unchanged}</strong> already identical, <strong>${blocked}</strong> blocked.</p>`
-  return direction + policy + summary + assistedApplyPlanTable(plan.items)
+  return direction + policy + `<div data-assisted-apply-results>${summary}${assistedApplyPlanTable(plan.items)}</div>`
 }
 
 function assistedApplyPlanTable(rows) {
-  return rows?.length
-    ? '<div id="table-assistedApplyPlan" class="workflow-table"></div>'
-    : '<p class="muted">No assisted-apply items.</p>'
+  if (!rows?.length) return '<p class="muted">No assisted-apply items.</p>'
+  const decisionCount = decision =>
+    rows.filter(row => assistedApplyDecision(row) === decision).length
+  const views = [
+    { value: "ready", label: "Ready to stage", count: decisionCount("Ready") },
+    { value: "blocked", label: "Blocked", count: decisionCount("Blocked") },
+    {
+      value: "no-action",
+      label: "No action needed",
+      count: decisionCount("No action")
+    }
+  ]
+  return `${tableTools("assistedApplyPlan", rows.length, views, "All plan items")}<div id="table-assistedApplyPlan" class="workflow-table"></div>`
 }
 
 function discoveryActions() {
   const resumable = ["paused", "interrupted", "failed"].includes(
     state.workflow.steps.discovery.status
   )
-  return `<button id="saveCriteria">Save criteria</button><button id="${resumable ? "resumeDiscovery" : "discover"}">${resumable ? "Resume discovery" : complete("discovery") ? "Run discovery again" : "Run discovery"}</button>${pauseButton("discovery")}`
+  return `<button id="${resumable ? "resumeDiscovery" : "discover"}">${resumable ? "Resume discovery" : complete("discovery") ? "Run discovery again" : "Run discovery"}</button>${pauseButton("discovery")}`
 }
 
 function assistedApplyActions() {
   return `<button id="prepareAssistedApply">${complete("assistedApplyPlan") ? "Refresh assisted-apply plan" : "Prepare assisted apply"}</button>${pauseButton("assistedApplyPlan")}`
+}
+
+function updateWorkflowActions() {
+  const actions = {
+    discovery: discoveryActions(),
+    existenceComparison: comparisonActions(),
+    assistedApply: assistedApplyActions()
+  }
+  for (const [id, content] of Object.entries(actions)) {
+    const container = document.querySelector(`[data-step-actions="${id}"]`)
+    if (container) container.innerHTML = content
+  }
+  wireWorkflowActions(state.workflow)
 }
 
 function pauseButton(...steps) {
@@ -361,6 +544,35 @@ function pauseButton(...steps) {
 function objectKeyParts(key) {
   const [, type = "", ...name] = String(key || "").split(":")
   return { type, name: name.join(":") || key }
+}
+
+function assistedApplyDecision(row) {
+  if (row.eligible) return "Ready"
+  return (row.blockingReasons || []).includes("Source status is identical")
+    ? "No action"
+    : "Blocked"
+}
+
+function countBy(rows, value) {
+  const counts = new Map()
+  for (const row of rows) {
+    const key = String(value(row) || "")
+    if (key) counts.set(key, (counts.get(key) || 0) + 1)
+  }
+  return counts
+}
+
+function tableTools(id, total, views, allLabel, extraActions = "") {
+  const stateKey = `${state.workflow.workflowId}:${id}`
+  const selectedView = workflowTableViews[stateKey] || "all"
+  const options = [
+    `<option value="all" ${selectedView === "all" ? "selected" : ""}>${escapeHtml(allLabel)} (${total.toLocaleString()})</option>`,
+    ...views.map(
+      view =>
+        `<option value="${escapeHtml(view.value)}" data-label="${escapeHtml(view.label)}" ${selectedView === view.value ? "selected" : ""}>${escapeHtml(view.label)} (${view.count.toLocaleString()})</option>`
+    )
+  ]
+  return `<div class="table-tools"><label>Show <select data-table-view="${id}">${options.join("")}</select></label><button class="secondary" type="button" data-clear-table="${id}">Clear filters</button>${extraActions}<span id="table-count-${id}">Showing ${total.toLocaleString()} of ${total.toLocaleString()}</span></div>`
 }
 
 function sourceComparable(row) {
@@ -420,12 +632,12 @@ function wireExistenceTable(workflow) {
         headerFilter: false,
         formatter: cell => {
           const row = cell.getRow().getData()
-          return `<input class="table-selection-checkbox" type="checkbox" ${row.selected ? "checked" : ""} ${sourceComparable(row) ? "" : "disabled"} aria-label="Compare ${escapeHtml(row.objectName || row.key)}">`
+          return `<input class="table-selection-checkbox" data-selectable="${sourceComparable(row) ? "true" : "false"}" type="checkbox" ${row.selected ? "checked" : ""} ${sourceComparable(row) && !sourceSelectionLocked() ? "" : "disabled"} aria-label="Compare ${escapeHtml(row.objectName || row.key)}">`
         },
         cellClick: (event, cell) => {
           if (!event.target?.classList?.contains("table-selection-checkbox")) return
           const row = cell.getRow().getData()
-          if (!sourceComparable(row)) return
+          if (!sourceComparable(row) || sourceSelectionLocked()) return
           if (event.target.checked) sourceSelections[workflow.workflowId].add(row.key)
           else sourceSelections[workflow.workflowId].delete(row.key)
           void cell.getRow().update({ selected: event.target.checked })
@@ -461,6 +673,7 @@ function wireSourceComparisonTable() {
     numberColumn("Lines added", "linesAdded"),
     numberColumn("Lines removed", "linesRemoved"),
     numberColumn("Lines changed", "linesChanged"),
+    textColumn("Details", "error", 260),
     {
       title: "Review",
       headerSort: false,
@@ -479,15 +692,15 @@ function wireSourceComparisonTable() {
 function wireAssistedApplyTable() {
   const rows = (state.previews.assistedApplyPlan?.items || []).map(row => {
     const reasons = row.blockingReasons || []
-    const unchanged = reasons.includes("Source status is identical")
+    const decision = assistedApplyDecision(row)
     return {
       ...row,
       objectName: row.sourceRecord.objectName,
       objectType: row.sourceRecord.objectType,
-      decision: row.eligible ? "Ready" : unchanged ? "No action" : "Blocked",
+      decision,
       reason: row.eligible
         ? "Source differs from target"
-        : unchanged
+        : decision === "No action"
           ? "Source and target are identical"
           : reasons.join("; ")
     }
@@ -532,11 +745,17 @@ function createWorkflowTable(id, data, columns, options = {}) {
     element.classList.add("table-load-error")
     return undefined
   }
-  const table = new Tabulator(element, {
+  const stateKey = `${state.workflow.workflowId}:${id}`
+  const savedState = workflowTableStates[stateKey]
+  const savedSorters = (savedState?.sorters || []).map(sorter => ({
+    column: sorter.column || sorter.field,
+    dir: sorter.dir
+  }))
+  const tableOptions = {
     data,
     columns,
     height: 360,
-    layout: "fitDataStretch",
+    layout: "fitColumns",
     renderVertical: "virtual",
     renderVerticalBuffer: 40,
     placeholder: "No rows",
@@ -549,16 +768,95 @@ function createWorkflowTable(id, data, columns, options = {}) {
       tooltip: true
     },
     ...options
+  }
+  if (savedState) {
+    tableOptions.initialSort = savedSorters
+    tableOptions.initialHeaderFilter = savedState.headerFilters
+  }
+  const table = new Tabulator(element, tableOptions)
+  table.workflowStateKey = stateKey
+  table.on("dataSorted", () => saveWorkflowTableState(table))
+  table.on("dataFiltered", (_filters, rows) => {
+    saveWorkflowTableState(table)
+    updateTableRowCount(id, rows.length, data.length)
   })
   table.on("tableBuilt", () => {
     element.querySelectorAll(".tabulator-header-filter input").forEach(input => {
       input.title = "Type a prefix. Add a trailing space for an exact match. * and ? are supported."
       input.setAttribute("aria-label", input.title)
     })
+    if (savedState)
+      requestAnimationFrame(() => {
+        if (savedSorters.length) table.setSort(savedSorters)
+      })
   })
   workflowTables.push(table)
   workflowTableById[id] = table
+  wireWorkflowTableTools(id, table, stateKey, data.length)
   return table
+}
+
+function wireWorkflowTableTools(id, table, stateKey, total) {
+  const view = document.querySelector(`[data-table-view="${id}"]`)
+  const applyView = value => {
+    workflowTableViews[stateKey] = value
+    if (value === "all") table.clearFilter()
+    else table.setFilter(row => workflowTableViewMatches(id, value, row))
+  }
+  if (view) {
+    view.onchange = () => applyView(view.value)
+  }
+  const clear = document.querySelector(`[data-clear-table="${id}"]`)
+  if (clear)
+    clear.onclick = () => {
+      workflowTableViews[stateKey] = "all"
+      if (view) view.value = "all"
+      table.clearFilter(true)
+      updateTableRowCount(id, total, total)
+    }
+  table.on("tableBuilt", () => {
+    if (view) applyView(workflowTableViews[stateKey] || view.value)
+    else updateTableRowCount(id, table.getDataCount("active"), total)
+  })
+}
+
+function workflowTableViewMatches(id, view, row) {
+  if (["sourceDiscovery", "targetDiscovery"].includes(id))
+    return view.startsWith("type:") && row.objectType === view.slice(5)
+  if (id === "existenceComparison") {
+    if (view === "comparable") return sourceComparable(row)
+    if (view === "selected") return sourceComparable(row) && row.selected
+    if (view === "unselected") return sourceComparable(row) && !row.selected
+    if (view === "packages") return row.status === "both" && !sourceComparable(row)
+    return row.status === view
+  }
+  if (id === "sourceComparison") {
+    if (view === "attention") return row.status !== "identical"
+    if (view === "incomplete")
+      return !["different", "identical"].includes(row.status)
+    return row.status === view
+  }
+  if (id === "assistedApplyPlan")
+    return (
+      (view === "ready" && row.decision === "Ready") ||
+      (view === "blocked" && row.decision === "Blocked") ||
+      (view === "no-action" && row.decision === "No action")
+    )
+  return true
+}
+
+function updateTableRowCount(id, visible, total) {
+  const count = document.getElementById(`table-count-${id}`)
+  if (count)
+    count.textContent = `Showing ${visible.toLocaleString()} of ${total.toLocaleString()}`
+}
+
+function updateTableViewOptionCount(id, value, count) {
+  const option = document.querySelector(
+    `[data-table-view="${id}"] option[value="${value}"]`
+  )
+  if (option)
+    option.textContent = `${option.dataset.label} (${count.toLocaleString()})`
 }
 
 function textColumn(title, field, minWidth) {
@@ -605,11 +903,67 @@ function updateSourceSelectionControls(workflowId, comparableCount) {
   const count = document.getElementById("selectedSourceCount")
   if (count)
     count.textContent = `${selected.toLocaleString()} of ${comparableCount.toLocaleString()} selected`
+  updateTableViewOptionCount("existenceComparison", "selected", selected)
+  updateTableViewOptionCount(
+    "existenceComparison",
+    "unselected",
+    comparableCount - selected
+  )
+  const resume = document.getElementById("resumeSourceComparison")
+  if (resume) {
+    const changed = sourceSelectionChanged(workflowId)
+    resume.textContent = changed
+      ? "Apply changed selection and resume"
+      : state.workflow.steps.sourceDownload.status === "partial" ||
+          state.workflow.steps.sourceComparison.status === "partial"
+        ? "Retry incomplete objects"
+        : "Resume source comparison"
+    resume.disabled = changed && selected === 0
+  }
+}
+
+function sourceSelectionChanged(workflowId) {
+  const comparable = (state.previews.existenceComparison || []).filter(sourceComparable)
+  const persisted = state.previews.sourceSelection?.keys
+  const saved = new Set(
+    Array.isArray(persisted) ? persisted : comparable.map(row => row.key)
+  )
+  const current = sourceSelections[workflowId] || new Set()
+  if (saved.size !== current.size) return true
+  return [...saved].some(key => !current.has(key))
+}
+
+function sourceSelectionLocked() {
+  return busy || pendingTransition || state.workflow?.runState === "running"
+}
+
+function saveWorkflowTableState(table) {
+  try {
+    workflowTableStates[table.workflowStateKey] = {
+      sorters: table.getSorters().map(sorter => ({
+        column: sorter.field,
+        dir: sorter.dir
+      })),
+      headerFilters: table.getHeaderFilters().map(filter => ({
+        field: filter.field,
+        value: filter.value
+      }))
+    }
+  } catch {}
+}
+
+function destroyWorkflowTable(id) {
+  const table = workflowTableById[id]
+  if (!table) return
+  saveWorkflowTableState(table)
+  const index = workflowTables.indexOf(table)
+  if (index >= 0) workflowTables.splice(index, 1)
+  delete workflowTableById[id]
+  table.destroy()
 }
 
 function destroyWorkflowTables() {
-  while (workflowTables.length) workflowTables.pop().destroy()
-  for (const id of Object.keys(workflowTableById)) delete workflowTableById[id]
+  for (const id of Object.keys(workflowTableById)) destroyWorkflowTable(id)
 }
 
 function singleExport(output, label) {
@@ -633,10 +987,8 @@ function criteriaValue() {
 
 function wireWorkflow(workflow) {
   document.getElementById("saveCriteria").onclick = () => send("saveCriteria", { criteria: criteriaValue() })
-  const discover = document.getElementById("discover"); if (discover) discover.onclick = () => send("runDiscovery", { criteria: criteriaValue() })
-  const resumeDiscovery = document.getElementById("resumeDiscovery"); if (resumeDiscovery) resumeDiscovery.onclick = () => send("resumeDiscovery")
-  const existence = document.getElementById("existence"); if (existence) existence.onclick = () => send("compareExistence")
   const selectAllSources = document.getElementById("selectAllSources"); if (selectAllSources) selectAllSources.onchange = () => {
+    if (sourceSelectionLocked()) return
     const table = workflowTableById.existenceComparison
     if (!table) return
     const comparable = (state.previews.existenceComparison || []).filter(sourceComparable)
@@ -652,6 +1004,7 @@ function wireWorkflow(workflow) {
     updateSourceSelectionControls(workflow.workflowId, comparable.length)
   }
   const updateFilteredSources = selected => {
+    if (sourceSelectionLocked()) return
     const table = workflowTableById.existenceComparison
     if (!table) return
     const rows = table.getRows("active").filter(row => sourceComparable(row.getData()))
@@ -666,26 +1019,49 @@ function wireWorkflow(workflow) {
   }
   const selectFilteredSources = document.getElementById("selectFilteredSources"); if (selectFilteredSources) selectFilteredSources.onclick = () => updateFilteredSources(true)
   const clearFilteredSources = document.getElementById("clearFilteredSources"); if (clearFilteredSources) clearFilteredSources.onclick = () => updateFilteredSources(false)
-  const compareSourceCode = document.getElementById("compareSourceCode"); if (compareSourceCode) compareSourceCode.onclick = () => send("compareSourceCode", { keys: [...(sourceSelections[workflow.workflowId] || [])], sourceConcurrency: Number(document.getElementById("sourceConcurrency").value), targetConcurrency: Number(document.getElementById("targetConcurrency").value), verificationConcurrency: Number(document.getElementById("verificationConcurrency").value) })
-  const resumeSourceComparison = document.getElementById("resumeSourceComparison"); if (resumeSourceComparison) resumeSourceComparison.onclick = () => send("resumeSourceComparison", { sourceConcurrency: Number(document.getElementById("sourceConcurrency").value), targetConcurrency: Number(document.getElementById("targetConcurrency").value), verificationConcurrency: Number(document.getElementById("verificationConcurrency").value) })
-  const prepareAssistedApply = document.getElementById("prepareAssistedApply"); if (prepareAssistedApply) prepareAssistedApply.onclick = () => send("prepareAssistedApply")
+  const importSourceSelection = document.getElementById("importSourceSelection"); if (importSourceSelection) importSourceSelection.onclick = () => send("importSourceSelection")
+  wireWorkflowActions(workflow)
   const openAutoSaveSettings = document.getElementById("openAutoSaveSettings"); if (openAutoSaveSettings) openAutoSaveSettings.onclick = () => send("openAutoSaveSettings")
   const openChatSaveSettings = document.getElementById("openChatSaveSettings"); if (openChatSaveSettings) openChatSaveSettings.onclick = () => send("openChatSaveSettings")
+  document.getElementById("askCopilot").onclick = () => send("askCopilot", { prompt: document.getElementById("copilotPrompt").value })
+  document.querySelectorAll("[data-export]").forEach(button => (button.onclick = () => send("export", { output: button.dataset.export, type: button.dataset.type, selectedKeys: button.dataset.export === "existenceComparison" ? [...(sourceSelections[workflow.workflowId] || [])] : undefined })))
+}
+
+function wireWorkflowActions(workflow) {
+  const discover = document.getElementById("discover"); if (discover) discover.onclick = () => send("runDiscovery", { criteria: criteriaValue() })
+  const resumeDiscovery = document.getElementById("resumeDiscovery"); if (resumeDiscovery) resumeDiscovery.onclick = () => send("resumeDiscovery")
+  const existence = document.getElementById("existence"); if (existence) existence.onclick = () => send("compareExistence")
+  const startSourceComparison = command => {
+    pendingTransition = true
+    clearSourceResultViews()
+    const progress = document.querySelector(
+      '[data-step-progress="existenceComparison"]'
+    )
+    if (progress)
+      progress.innerHTML =
+        '<div class="progress-label">Preparing source comparison…</div>'
+    applyBusy()
+    send(command, { keys: [...(sourceSelections[workflow.workflowId] || [])], sourceConcurrency: Number(document.getElementById("sourceConcurrency").value), targetConcurrency: Number(document.getElementById("targetConcurrency").value), verificationConcurrency: Number(document.getElementById("verificationConcurrency").value) })
+  }
+  const compareSourceCode = document.getElementById("compareSourceCode"); if (compareSourceCode) compareSourceCode.onclick = () => startSourceComparison("compareSourceCode")
+  const resumeSourceComparison = document.getElementById("resumeSourceComparison"); if (resumeSourceComparison) resumeSourceComparison.onclick = () => startSourceComparison(sourceSelectionChanged(workflow.workflowId) ? "compareSourceCode" : "resumeSourceComparison")
+  const prepareAssistedApply = document.getElementById("prepareAssistedApply"); if (prepareAssistedApply) prepareAssistedApply.onclick = () => send("prepareAssistedApply")
   document.querySelectorAll(".pause").forEach(button => (button.onclick = () => {
     pendingTransition = true
     applyBusy()
     send("pause")
   }))
-  document.getElementById("askCopilot").onclick = () => send("askCopilot", { prompt: document.getElementById("copilotPrompt").value })
-  document.querySelectorAll("[data-export]").forEach(button => (button.onclick = () => send("export", { output: button.dataset.export, type: button.dataset.type })))
 }
 
 function check(id, label, checked) { return `<label><input id="${id}" type="checkbox" ${checked ? "checked" : ""}> ${label}</label>` }
 function bind(attribute, action) { document.querySelectorAll(`[data-${attribute}]`).forEach(button => (button.onclick = () => action(button.dataset[attribute], button))) }
 function selected(id) { return Array.from(document.getElementById(id)?.selectedOptions || []).map(option => option.value) }
 function applyBusy() {
+  const workflowRunning = state.workflow?.runState === "running"
   document.querySelectorAll("button").forEach(button => {
-    const shouldDisable = button.classList.contains("pause") ? pendingTransition : busy || pendingTransition
+    const shouldDisable = button.classList.contains("pause")
+      ? pendingTransition
+      : busy || pendingTransition || workflowRunning
     if (shouldDisable) {
       if (!busyDisabledStates.has(button)) busyDisabledStates.set(button, button.disabled)
       button.disabled = true
@@ -694,6 +1070,13 @@ function applyBusy() {
       busyDisabledStates.delete(button)
     }
   })
+  const selectionLocked = sourceSelectionLocked()
+  document.querySelectorAll(".table-selection-checkbox").forEach(input => {
+    input.disabled = selectionLocked || input.dataset.selectable !== "true"
+  })
+  const selectAll = document.getElementById("selectAllSources")
+  if (selectAll)
+    selectAll.disabled = selectionLocked || selectAll.dataset.hasComparable !== "true"
 }
 function workflowName(source, target) { const now = new Date(); const pad = value => String(value).padStart(2, "0"); return `${source}_${target}_${now.getFullYear()}${pad(now.getMonth() + 1)}${pad(now.getDate())}_${pad(now.getHours())}${pad(now.getMinutes())}${pad(now.getSeconds())}`.toUpperCase() }
 function clearErrors() { globalError.textContent = ""; document.querySelectorAll(".section-error").forEach(element => (element.textContent = "")) }

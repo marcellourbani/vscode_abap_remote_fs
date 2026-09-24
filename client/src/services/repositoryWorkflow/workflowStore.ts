@@ -17,6 +17,7 @@ import {
 
 const WORKFLOW_FILE = "workflow.json"
 const CRITERIA_FILE = "criteria.json"
+const SNAPSHOT_DELETE_BATCH_SIZE = 32
 
 function sanitizeName(value: string): string {
   const sanitized = value
@@ -56,6 +57,7 @@ export function defaultWorkflowName(source: string, target: string, now = new Da
 
 export class WorkflowStore {
   private readonly updateQueues = new Map<string, Promise<RepositoryWorkflow>>()
+  private readonly sessionId = randomUUID()
 
   constructor(private readonly context: vscode.ExtensionContext) {}
 
@@ -70,25 +72,22 @@ export class WorkflowStore {
   async initialize(): Promise<void> {
     await fs.mkdir(this.rootPath, { recursive: true })
     const workflows = await this.list()
-    await Promise.all(
-      workflows.map(workflow => fs.rm(this.artifactPath(workflow, "run.lock"), { force: true }))
-    )
-    await Promise.all(
-      workflows
-        .filter(workflow => workflow.runState === "running")
-        .map(async workflow => {
-          return this.update(workflow.workflowId, current => ({
-            ...current,
-            runState: "interrupted",
-            steps: Object.fromEntries(
-              Object.entries(current.steps).map(([key, step]) => [
-                key,
-                step.status === "running" ? { ...step, status: "interrupted" } : step
-              ])
-            ) as RepositoryWorkflow["steps"]
-          }))
-        })
-    )
+    for (const workflow of workflows) {
+      const lockPath = this.artifactPath(workflow, "run.lock")
+      if (await liveRunLock(lockPath, this.sessionId)) continue
+      await fs.rm(lockPath, { force: true })
+      if (workflow.runState !== "running") continue
+      await this.update(workflow.workflowId, current => ({
+        ...current,
+        runState: "interrupted",
+        steps: Object.fromEntries(
+          Object.entries(current.steps).map(([key, step]) => [
+            key,
+            step.status === "running" ? { ...step, status: "interrupted" } : step
+          ])
+        ) as RepositoryWorkflow["steps"]
+      }))
+    }
   }
 
   async create(input: {
@@ -210,14 +209,32 @@ export class WorkflowStore {
 
   async delete(workflowId: string): Promise<void> {
     const workflow = await this.get(workflowId)
-    await fs.rm(this.workflowPath(workflow), { recursive: true, force: true })
+    const ownerId = `delete:${randomUUID()}`
+    await this.acquireRunLock(workflowId, ownerId)
+    try {
+      await this.waitForUpdates(workflowId)
+      await fs.rm(this.workflowPath(workflow), { recursive: true, force: true })
+    } catch (error) {
+      await this.releaseRunLock(workflowId, ownerId).catch(() => false)
+      throw error
+    }
   }
 
   async archive(workflowId: string): Promise<void> {
     const workflow = await this.get(workflowId)
+    const ownerId = `archive:${randomUUID()}`
+    await this.acquireRunLock(workflowId, ownerId)
     const archiveRoot = path.join(this.rootPath, "archive")
-    await fs.mkdir(archiveRoot, { recursive: true })
-    await fs.rename(this.workflowPath(workflow), path.join(archiveRoot, workflow.folderName))
+    const archivedPath = path.join(archiveRoot, workflow.folderName)
+    try {
+      await this.waitForUpdates(workflowId)
+      await fs.mkdir(archiveRoot, { recursive: true })
+      await fs.rename(this.workflowPath(workflow), archivedPath)
+      await fs.rm(path.join(archivedPath, "run.lock"), { force: true }).catch(() => undefined)
+    } catch (error) {
+      await this.releaseRunLock(workflowId, ownerId).catch(() => false)
+      throw error
+    }
   }
 
   async duplicate(workflowId: string): Promise<RepositoryWorkflow> {
@@ -330,15 +347,42 @@ export class WorkflowStore {
     return saved
   }
 
-  async invalidateAfterSourceSelection(workflowId: string): Promise<void> {
+  async invalidateAfterSourceSelection(
+    workflowId: string,
+    deselectedKeys?: string[]
+  ): Promise<void> {
     const workflow = await this.get(workflowId)
-    for (const directory of ["sources", "assisted-apply"])
-      await fs.rm(this.artifactPath(workflow, directory), { recursive: true, force: true })
-    await Promise.all(
-      ["sources/source/objects", "sources/target/objects", "assisted-apply"].map(directory =>
-        fs.mkdir(this.artifactPath(workflow, directory), { recursive: true })
+    if (deselectedKeys) {
+      const directories = deselectedKeys.flatMap(key =>
+        ["source", "target"].map(side =>
+          this.artifactPath(
+            workflow,
+            "sources",
+            side,
+            "objects",
+            createHash("sha256").update(key).digest("hex").slice(0, 20)
+          )
+        )
       )
-    )
+      for (let index = 0; index < directories.length; index += SNAPSHOT_DELETE_BATCH_SIZE)
+        await Promise.all(
+          directories
+            .slice(index, index + SNAPSHOT_DELETE_BATCH_SIZE)
+            .map(directory => fs.rm(directory, { recursive: true, force: true }))
+        )
+    } else {
+      await fs.rm(this.artifactPath(workflow, "sources"), { recursive: true, force: true })
+      await Promise.all(
+        ["sources/source/objects", "sources/target/objects"].map(directory =>
+          fs.mkdir(this.artifactPath(workflow, directory), { recursive: true })
+        )
+      )
+    }
+    await fs.rm(this.artifactPath(workflow, "assisted-apply"), {
+      recursive: true,
+      force: true
+    })
+    await fs.mkdir(this.artifactPath(workflow, "assisted-apply"), { recursive: true })
     await fs.rm(this.artifactPath(workflow, "comparison", "source.jsonl"), { force: true })
     await fs.rm(this.artifactPath(workflow, "comparison", "source-summary.json"), { force: true })
     await this.update(workflowId, current => ({
@@ -369,6 +413,22 @@ export class WorkflowStore {
 
   async invalidateAfterExistenceComparison(workflowId: string): Promise<void> {
     await this.invalidateAfterSourceSelection(workflowId)
+  }
+
+  async invalidateAssistedApplyPlan(workflowId: string): Promise<void> {
+    const workflow = await this.get(workflowId)
+    await fs.rm(this.artifactPath(workflow, "assisted-apply"), {
+      recursive: true,
+      force: true
+    })
+    await fs.mkdir(this.artifactPath(workflow, "assisted-apply"), { recursive: true })
+    await this.update(workflowId, current => ({
+      ...current,
+      steps: {
+        ...current.steps,
+        assistedApplyPlan: { status: "not-started" }
+      }
+    }))
   }
 
   private async clearDerivedArtifacts(workflow: RepositoryWorkflow) {
@@ -413,24 +473,41 @@ export class WorkflowStore {
     await fs.appendFile(filePath, `${JSON.stringify(value)}\n`, "utf8")
   }
 
-  async acquireRunLock(workflowId: string): Promise<void> {
+  async acquireRunLock(workflowId: string, ownerId: string = randomUUID()): Promise<string> {
     const workflow = await this.get(workflowId)
     const lockPath = this.artifactPath(workflow, "run.lock")
     try {
       const handle = await fs.open(lockPath, "wx")
       await handle.writeFile(
-        JSON.stringify({ workflowId, processId: process.pid, startedAt: new Date().toISOString() })
+        JSON.stringify({
+          workflowId,
+          ownerId,
+          sessionId: this.sessionId,
+          processId: process.pid,
+          startedAt: new Date().toISOString()
+        })
       )
       await handle.close()
+      return ownerId
     } catch (error: any) {
       if (error?.code === "EEXIST") throw new Error("This workflow is already running")
       throw error
     }
   }
 
-  async releaseRunLock(workflowId: string): Promise<void> {
+  async releaseRunLock(workflowId: string, ownerId?: string): Promise<boolean> {
     const workflow = await this.get(workflowId)
-    await fs.rm(this.artifactPath(workflow, "run.lock"), { force: true })
+    const lockPath = this.artifactPath(workflow, "run.lock")
+    if (ownerId) {
+      try {
+        const lock = await readJson<{ ownerId?: string }>(lockPath)
+        if (lock.ownerId !== ownerId) return false
+      } catch {
+        return false
+      }
+    }
+    await fs.rm(lockPath, { force: true })
+    return true
   }
 
   async replaceJsonLines(filePath: string, values: AsyncIterable<unknown> | Iterable<unknown>) {
@@ -461,10 +538,31 @@ export class WorkflowStore {
     return path.join(this.rootPath, workflow.folderName)
   }
 
+  private async waitForUpdates(workflowId: string): Promise<void> {
+    const pending = this.updateQueues.get(workflowId)
+    if (pending) await pending
+  }
+
   private defaultConcurrency(): number {
     const value = vscode.workspace
       .getConfiguration("abapfs.repositoryWorkflows")
       .get<number>("defaultConcurrency", 5)
     return Math.min(10, Math.max(1, value))
+  }
+}
+
+async function liveRunLock(lockPath: string, sessionId: string): Promise<boolean> {
+  try {
+    const lock = await readJson<{ processId?: number; sessionId?: string }>(lockPath)
+    if (!Number.isInteger(lock.processId) || !lock.processId) return false
+    if (lock.processId === process.pid) return lock.sessionId === sessionId
+    try {
+      process.kill(lock.processId, 0)
+      return true
+    } catch (error: any) {
+      return error?.code === "EPERM"
+    }
+  } catch {
+    return false
   }
 }

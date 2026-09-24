@@ -46,7 +46,21 @@ const PREREQUISITES: Partial<Record<WorkflowStepId, WorkflowStepId>> = {
 
 export function assertWorkflowStepReady(workflow: RepositoryWorkflow, step: WorkflowStepId): void {
   const prerequisite = PREREQUISITES[step]
-  if (prerequisite && workflow.steps[prerequisite].status !== "complete") {
+  const prerequisiteStatus = prerequisite ? workflow.steps[prerequisite].status : undefined
+  const partialDownload =
+    step === "sourceComparison" &&
+    prerequisite === "sourceDownload" &&
+    prerequisiteStatus === "partial"
+  const partialSourceComparison =
+    step === "assistedApplyPlan" &&
+    prerequisite === "sourceComparison" &&
+    prerequisiteStatus === "partial"
+  if (
+    prerequisite &&
+    prerequisiteStatus !== "complete" &&
+    !partialDownload &&
+    !partialSourceComparison
+  ) {
     throw new Error(`Complete ${displayStep(prerequisite)} before ${displayStep(step)}.`)
   }
 }
@@ -55,9 +69,13 @@ export function commandSection(command: string): string {
   if (["saveCriteria", "runDiscovery", "resumeDiscovery"].includes(command)) return "discovery"
   if (command === "compareExistence") return "existenceComparison"
   if (
-    ["selectSources", "downloadSources", "compareSourceCode", "resumeSourceComparison"].includes(
-      command
-    )
+    [
+      "selectSources",
+      "downloadSources",
+      "compareSourceCode",
+      "resumeSourceComparison",
+      "importSourceSelection"
+    ].includes(command)
   )
     return "sourceComparison"
   if (["compareSources", "openDiff"].includes(command)) return "sourceComparison"

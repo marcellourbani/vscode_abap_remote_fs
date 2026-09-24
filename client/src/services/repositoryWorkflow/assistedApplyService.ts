@@ -41,17 +41,24 @@ export class WorkflowAssistedApplyService {
     this.snapshots = new WorkflowSnapshotService(store)
   }
 
-  async prepare(workflowId: string, selectedKeys?: string[]): Promise<AssistedApplyPlan> {
+  async prepare(
+    workflowId: string,
+    selectedKeys?: string[],
+    token?: vscode.CancellationToken
+  ): Promise<AssistedApplyPlan> {
     const workflow = await this.store.get(workflowId)
     const selected = selectedKeys ? new Set(selectedKeys) : undefined
     const comparisons: SourceComparisonRecord[] = []
     for await (const comparison of this.store.readJsonLines<SourceComparisonRecord>(
       this.store.artifactPath(workflow, "comparison", "source.jsonl")
-    ))
+    )) {
+      if (token?.isCancellationRequested) throw new Error("Operation cancelled")
       if (!selected || selected.has(comparison.key)) comparisons.push(comparison)
+    }
 
     const items: AssistedApplyPlanItem[] = []
     for (const comparison of comparisons) {
+      if (token?.isCancellationRequested) throw new Error("Operation cancelled")
       const id = objectFolderId(comparison.key)
       const source = await readManifest(
         this.store.artifactPath(workflow, "sources", "source", "objects", id, "manifest.json")
@@ -84,6 +91,7 @@ export class WorkflowAssistedApplyService {
         blockingReasons: reasons
       })
     }
+    if (token?.isCancellationRequested) throw new Error("Operation cancelled")
     const plan: AssistedApplyPlan = {
       schemaVersion: 1,
       createdAt: new Date().toISOString(),
