@@ -261,9 +261,7 @@ describe("connectAdtServer", () => {
       "Change Username",
       "Change Password"
     )
-    expect(vscode.commands.executeCommand).toHaveBeenCalledWith("abapfs.changePassword", {
-      connection: "dev100"
-    })
+    expect(vscode.commands.executeCommand).toHaveBeenCalledWith("abapfs.changePassword", "dev100")
   })
 
   test("opens Connection Manager when the username action is selected", async () => {
