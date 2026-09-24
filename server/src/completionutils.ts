@@ -6,20 +6,31 @@ const INTERFACEROLE = 58 // sccmp_role_intftype in abap
 export const completionSourceUrl = (mainUrl: string, mainProgram?: string) =>
   mainProgram ? `${mainUrl}?context=${encodeURIComponent(mainProgram)}` : mainUrl
 
+const ADT_SECTION_HEADER = "(?:EXPORTING|IMPORTING|CHANGING|RECEIVING|EXCEPTIONS|TABLES)"
+
 export function convertToSnippet(fullText: string): string | undefined {
   let text = fullText.replace(/\r\n/g, "\n")
 
-  if (text.includes("(")) text = text.replace(/(=[ \t]*\n)[^\n]*/g, "$1")
+  // Format A: ADT may echo a value on the line after "= \n". Strip that echo,
+  // but keep the next parameter, section header, or call closer (via lookahead).
+  if (text.includes("(")) {
+    const protectedNext = `[ \\t]*(?:$|[).]|\\w+[ \\t]*=|${ADT_SECTION_HEADER}\\b)`
+    text = text.replace(new RegExp(`(=[ \\t]*\\n)(?!${protectedNext})[^\\n]*\\n?`, "gi"), "$1")
+  }
+  // Format B: strip inline ABAP comment after "=": `=   " comment` → `= `
   text = text.replace(/(=)\s*"[^\n]*/g, "$1 ")
 
   let tabIndex = 0
+  // Empty assignment slots: before ), ,, newline, EOL, or the next `name =` (Format C).
   const snippet = text.replace(
-    /(\b\w+)([ \t]*=[ \t]*)(?=[ \t]*[),\n]|[ \t]*$)/gm,
+    /(\b\w+)([ \t]*=[ \t]*)(?=[ \t]*(?:[),\n]|$|\w+[ \t]*=))/gm,
     (match, paramName, equals, offset, source) => {
       const lineStart = source.lastIndexOf("\n", offset - 1) + 1
       if (/^\s*\*/.test(source.substring(lineStart, offset + paramName.length))) return match
       tabIndex++
-      return `${paramName}${equals}\${${tabIndex}}`
+      const rest = source.slice(offset + match.length)
+      const gap = /^\w/.test(rest) ? " " : ""
+      return `${paramName}${equals}\${${tabIndex}}${gap}`
     }
   )
 
