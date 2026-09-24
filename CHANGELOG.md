@@ -1,5 +1,22 @@
 # Changelog
 
+## 2.10.1
+
+### Patch Changes
+
+- 87c660e: fix change password command call
+- de2ae6d: speed up build
+- c171f5b: Repository comparison Improvements and fixes
+- 2f703b2: fix code completion
+- 1e78375: Migrate the build system from Webpack to tsdown (Rolldown + Oxc under the hood).
+
+  The extension, notebook JS worker, language server, and SAP testing runtime now bundle with
+  tsdown. Behavioral contracts are preserved: CommonJS output, externals (`vscode`,
+  `@playwright/test`), the vendored Playwright `node_modules` layout, and `keep_classnames`
+  minification. No runtime behavior change; clean builds are dramatically faster and the
+  packaged VSIX is slightly smaller. Removes webpack, webpack-cli, ts-loader,
+  terser-webpack-plugin, and copy-webpack-plugin.
+
 ## 2.10.0
 
 ### Minor Changes
