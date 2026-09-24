@@ -305,23 +305,44 @@ describe("RepositoryWorkflowEngine", () => {
       currentStep: "existenceComparison",
       steps: { ...current.steps, discovery: { status: "complete" } }
     }))
-    const records = async function* () {
-      for (let index = 0; index < 5_000; index++) yield repositoryRecord(`Z${index}`)
-    }
-    await store.replaceJsonLines(
-      store.artifactPath(workflow, "discovery", "source", "tadir.jsonl"),
-      records()
-    )
-    await store.replaceJsonLines(
-      store.artifactPath(workflow, "discovery", "target", "tadir.jsonl"),
-      records()
-    )
+    const sourcePath = store.artifactPath(workflow, "discovery", "source", "tadir.jsonl")
+    const targetPath = store.artifactPath(workflow, "discovery", "target", "tadir.jsonl")
+    await store.replaceJsonLines(sourcePath, [repositoryRecord("ZWAIT")])
+    await store.replaceJsonLines(targetPath, [repositoryRecord("ZWAIT")])
+    const readJsonLines = store.readJsonLines.bind(store)
+    let startRead = () => {}
+    const readStarted = new Promise<void>(resolve => {
+      startRead = resolve
+    })
+    let continueRead = () => {}
+    const readAllowed = new Promise<void>(resolve => {
+      continueRead = resolve
+    })
+    jest.spyOn(store, "readJsonLines").mockImplementation(((filePath: string) => {
+      if (filePath !== sourcePath) return readJsonLines(filePath)
+      return (async function* () {
+        startRead()
+        await readAllowed
+        yield* readJsonLines(filePath)
+      })()
+    }) as typeof store.readJsonLines)
     const engine = new RepositoryWorkflowEngine(store)
 
     const comparison = engine.compareExistence(workflow.workflowId)
-    const paused = await engine.pause(workflow.workflowId, "panel-closed")
+    await readStarted
+    let pauseSettled = false
+    const pause = engine.pause(workflow.workflowId, "panel-closed").then(result => {
+      pauseSettled = true
+      return result
+    })
+    const lockedWhileStopping = await store.isRunLocked(workflow.workflowId)
+    const waitedForComparison = !pauseSettled
+    continueRead()
+    const paused = await pause
     await comparison
 
+    expect(waitedForComparison).toBe(true)
+    expect(lockedWhileStopping).toBe(true)
     expect(paused.runState).toBe("paused")
     expect(paused.steps.existenceComparison.pauseReason).toBe("panel-closed")
     expect(await store.isRunLocked(workflow.workflowId)).toBe(false)
