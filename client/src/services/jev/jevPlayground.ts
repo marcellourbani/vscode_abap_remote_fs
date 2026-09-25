@@ -4,12 +4,7 @@ import * as vscode from "vscode"
 import { AdtObjectFinder } from "../../adt/operations/AdtObjectFinder"
 import { pickAdtRoot } from "../../config"
 import { askJev } from "./jevService"
-import type {
-  JevChoiceQuestion,
-  JevNoulQuestion,
-  JevQuestion,
-  JevScoreQuestion
-} from "./types"
+import type { JevChoiceQuestion, JevNoulQuestion, JevQuestion, JevScoreQuestion } from "./types"
 
 const CONTEXT_WARNING_CHARS = 80_000
 
@@ -108,9 +103,7 @@ class JevPlaygroundPanel {
   private async attach(message: AttachMessage): Promise<void> {
     try {
       const attachment =
-        message.command === "attachFile"
-          ? await this.pickLocalFile()
-          : await this.pickAbapObject()
+        message.command === "attachFile" ? await this.pickLocalFile() : await this.pickAbapObject()
       if (!attachment) {
         await this.panel.webview.postMessage({ command: "attachmentCancelled" })
         return
@@ -160,11 +153,7 @@ class JevPlaygroundPanel {
     if (!selected) return undefined
     const resolved = await finder.vscodeUriWithFile(selected.uri, true)
     const document = await vscode.workspace.openTextDocument(vscode.Uri.parse(resolved.uri))
-    return this.createAttachment(
-      "abap",
-      `${connectionId}:${selected.name}`,
-      document.getText()
-    )
+    return this.createAttachment("abap", `${connectionId}:${selected.name}`, document.getText())
   }
 
   private createAttachment(kind: "file" | "abap", label: string, content: string): Attachment {
@@ -186,19 +175,14 @@ class JevPlaygroundPanel {
 function isAskMessage(value: unknown): value is AskMessage {
   if (!isRecord(value) || value.command !== "ask") return false
   return (
-    (value.primitive === "choice" ||
-      value.primitive === "score" ||
-      value.primitive === "noul") &&
+    (value.primitive === "choice" || value.primitive === "score" || value.primitive === "noul") &&
     typeof value.state === "string" &&
     typeof value.instructions === "string"
   )
 }
 
 function isAttachMessage(value: unknown): value is AttachMessage {
-  return (
-    isRecord(value) &&
-    (value.command === "attachFile" || value.command === "attachAbapObject")
-  )
+  return isRecord(value) && (value.command === "attachFile" || value.command === "attachAbapObject")
 }
 
 function buildQuestion(message: AskMessage): JevQuestion {
@@ -225,7 +209,8 @@ function buildQuestion(message: AskMessage): JevQuestion {
         throw new Error(`Choice label "${label}" is duplicated.`)
       criteria[label] = option.description?.trim() || label
     }
-    if (Object.keys(criteria).length < 2) throw new Error("Choice needs at least two labeled options.")
+    if (Object.keys(criteria).length < 2)
+      throw new Error("Choice needs at least two labeled options.")
     const question: JevChoiceQuestion = { type: "choice", instructions, criteria }
     return question
   }
