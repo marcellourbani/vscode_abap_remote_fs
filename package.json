@@ -3876,6 +3876,12 @@
         "icon": "$(compare-changes)"
       },
       {
+        "command": "abapfs.askJev",
+        "title": "Ask Jev",
+        "category": "ABAP FS",
+        "icon": "$(sparkle)"
+      },
+      {
         "command": "abapfs.notebookSetCellMaxRows",
         "title": "SAP Data Workbook: Set Cell Row Limit",
         "category": "ABAP FS"
