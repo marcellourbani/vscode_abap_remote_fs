@@ -1,5 +1,11 @@
 # Changelog
 
+## 2.10.3
+
+### Patch Changes
+
+- 4bc8344: Migrate the extension and language server to ESM-compatible TypeScript and runtime configuration while preserving the existing bundled entry points and Playwright runtime behavior.
+
 ## 2.10.2
 
 ### Patch Changes
