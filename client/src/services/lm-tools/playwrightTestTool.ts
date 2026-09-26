@@ -27,7 +27,7 @@ import { formatKey, RemoteManager } from "../../config"
 import { log } from "../../lib"
 import { getOrCreateClient } from "../../adt/conections"
 import { ssoLoginUrl } from "../../adt/sapgui/sapgui"
-import { SsoLauncher } from "../../adt/sapgui/ssoLaunch"
+import { type SsoLauncher } from "../../adt/sapgui/ssoLaunch"
 import { getTestFolder, getWebGuiUrl } from "../testing/config"
 import { resolveBrowserExecutable } from "../testing/browserResolver"
 import {

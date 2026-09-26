@@ -1,11 +1,11 @@
-import { AbapObjectBase } from "../AbapObject"
-import { NodeStructure } from "abap-adt-api"
+import { AbapObjectBase } from "../AbapObject.js"
+import { type NodeStructure } from "abap-adt-api"
 
 const tag = Symbol("AbapFunctionGroup")
 export class AbapFunctionGroup extends AbapObjectBase {
   [tag] = true
-  readonly type = "FUGR/F"
-  protected filterInvalid(original: NodeStructure): NodeStructure {
+  override readonly type = "FUGR/F"
+  protected override filterInvalid(original: NodeStructure): NodeStructure {
     const { nodes, objectTypes } = original
     const prefix = `${this.nameSpace}L${this.baseName}`
     const valid = nodes.filter(
@@ -17,7 +17,7 @@ export class AbapFunctionGroup extends AbapObjectBase {
     return { categories: [], objectTypes, nodes: valid }
   }
 
-  async childComponents(includeIncludes?: boolean): Promise<NodeStructure> {
+  override async childComponents(includeIncludes?: boolean): Promise<NodeStructure> {
     try {
       const unfiltered = await this.service.nodeContents(this.type, this.name, this.owner)
       return this.filterInvalid(unfiltered)

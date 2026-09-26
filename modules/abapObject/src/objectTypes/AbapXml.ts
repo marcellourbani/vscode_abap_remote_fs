@@ -1,6 +1,6 @@
-import { AbapObjectBase, AbapObject } from "../AbapObject"
-import { AbapObjectService } from "../AOService"
-import { getObjectTypeConfig } from "../registry"
+import { AbapObjectBase, type AbapObject } from "../AbapObject.js"
+import { type AbapObjectService } from "../AOService.js"
+import { getObjectTypeConfig } from "../registry.js"
 const tag = Symbol("AbapXml")
 
 const extension = (type: string) => {
@@ -25,17 +25,17 @@ export class AbapXml extends AbapObjectBase {
   ) {
     super(type, name, path, false, techName, parent, sapGuiUri, client)
   }
-  get extension() {
+  override get extension() {
     const config = getObjectTypeConfig(this.type)
     if (config?.extension) return config.extension
     return extension(this.type)
   }
-  get gui_objects(): "yes" | "no" | "better" {
+  override get gui_objects(): "yes" | "no" | "better" {
     const config = getObjectTypeConfig(this.type)
     if (config) return config.gui_objects
     return "better"
   }
-  contentsPath() {
+  override contentsPath() {
     if (this.type === "XSLT/VT") return super.contentsPath()
     return this.path
   }

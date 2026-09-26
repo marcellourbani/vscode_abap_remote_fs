@@ -1,22 +1,23 @@
 import { defineConfig } from "tsdown"
-import { cpSync, copyFileSync, existsSync, mkdirSync } from "node:fs"
+import { cpSync, copyFileSync, existsSync, mkdirSync, writeFileSync } from "node:fs"
 import { basename, dirname, resolve } from "node:path"
 import { fileURLToPath } from "node:url"
 
 // tsdown build for the ABAP FS extension client — replaces client/webpack.config.js.
-// Three CJS outputs (Oxc transform + minify, one Rust pass — was ts-loader + terser):
+// Three ESM outputs (Oxc transform + minify, one Rust pass — was ts-loader + terser):
 //   dist/extension.js      (main extension, minified w/ keep_classnames)
 //   dist/jsWorkerEntry.js  (notebook JS worker, spawned by path — self-contained)
 //   dist/runtime/index.js  (SAP testing runtime, UNMINIFIED, @playwright/test external)
+// Every package.json is "type":"module", so these .js files are ESM at runtime.
 //
 // Type-checking stays with `npm run typecheck` (tsc --noEmit); tsdown/Oxc only strips types.
 
 const clientDir = resolve(fileURLToPath(import.meta.url), "..")
 const at = (p: string) => resolve(clientDir, p)
 
-// VS Code loads the bundle via require() of a .js file ("main": "./client/dist/extension"),
-// so force .js — tsdown defaults CJS output to .cjs.
-const cjsJs = () => ({ js: ".js" as const })
+// VS Code loads the bundle via import of a .js file ("main": "./client/dist/extension.js");
+// under "type":"module" that .js is ESM. Force .js (tsdown would otherwise pick .mjs/.cjs).
+const outJs = () => ({ js: ".js" as const })
 
 // Old Terser used `keep_classnames: true` (class names only). Preserve class names through
 // mangling; function names may still be mangled.
@@ -51,8 +52,11 @@ function copyClientAssets() {
   if (existsSync(at("media"))) copyDir(at("media"), at("dist/media"))
   // documentationTool.ts reads this at runtime — fail the build if it's missing.
   copyFile(at("../DOCUMENTATION.md"), at("dist/media/DOCUMENTATION.md"))
-  copyFile(at("templates/playwright.config.js"), at("dist/vendor/playwright.config.js"))
-  copyFile(at("templates/sso-global-setup.js"), at("dist/vendor/sso-global-setup.js"))
+  // The Playwright vendor config + globalSetup are built from templates/*.ts by their own
+  // tsdown entries (below) into dist/vendor/*.js. Root package.json is "type":"module", so pin
+  // a nearer CommonJS boundary here: the Playwright CLI loads those vendor .js as CommonJS.
+  mkdirSync(at("dist/vendor"), { recursive: true })
+  writeFileSync(at("dist/vendor/package.json"), JSON.stringify({ type: "commonjs" }) + "\n")
   // Real node_modules layout so Playwright's runner can require.resolve its worker entry.
   const nm = at("dist/vendor/node_modules")
   for (const pkg of ["playwright", "playwright-core", "@playwright/test"]) {
@@ -84,18 +88,21 @@ const copyRuntimeAssetsPlugin = {
   }
 }
 
-// @modelcontextprotocol/sdk imports sibling files with a .js suffix; allow .ts too.
-const mcpJsResolve = { extensionAlias: { ".js": [".ts", ".js"] } }
+// Bundling TS source (workspace packages resolve to their src) + @modelcontextprotocol/sdk
+// both use `.js` specifiers that must map to `.ts`. Applied to every entry.
+const jsToTs = { extensionAlias: { ".js": [".ts", ".js"] } }
 
 // deps.alwaysBundle inlines every dependency (the VSIX ships no node_modules); only the
 // host/spec-provided packages in each build's `external` stay external. clean:false because
 // dist/runtime also holds tsc-emitted .d.ts and the npm script pre-cleans dist once.
 const shared = {
-  format: "cjs" as const,
+  format: "esm" as const,
   platform: "node" as const,
   dts: false,
   clean: false,
-  outExtensions: cjsJs,
+  outExtensions: outJs,
+  // ESM has no __dirname/__filename/require; inject them so bundled source keeps working.
+  shims: true,
   deps: { alwaysBundle: [/.*/] },
   outputOptions: { codeSplitting: false } // single self-contained file per entry
 }
@@ -108,7 +115,7 @@ export default defineConfig([
     tsconfig: "tsconfig.json",
     sourcemap: true,
     minify: minifyKeepClasses,
-    inputOptions: { external: ["vscode", /^@playwright\/mcp(\/|$)/], resolve: mcpJsResolve },
+    inputOptions: { external: ["vscode", /^@playwright\/mcp(\/|$)/], resolve: jsToTs },
     plugins: [copyClientAssetsPlugin]
   },
   {
@@ -118,7 +125,7 @@ export default defineConfig([
     tsconfig: "tsconfig.json",
     sourcemap: true,
     minify: minifyKeepClasses,
-    inputOptions: { external: ["vscode", /^@playwright\/mcp(\/|$)/], resolve: mcpJsResolve }
+    inputOptions: { external: ["vscode", /^@playwright\/mcp(\/|$)/], resolve: jsToTs }
   },
   {
     ...shared,
@@ -127,7 +134,38 @@ export default defineConfig([
     tsconfig: "tsconfig.runtime.json",
     sourcemap: false,
     minify: false,
-    inputOptions: { external: ["@playwright/test", /^@playwright\/test(\/|$)/] },
+    inputOptions: { external: ["@playwright/test", /^@playwright\/test(\/|$)/], resolve: jsToTs },
     plugins: [copyRuntimeAssetsPlugin]
+  },
+  // Playwright vendor config + globalSetup: authored in templates/*.ts, emitted as CommonJS
+  // .js into dist/vendor (under the {"type":"commonjs"} boundary) for the Playwright CLI to load
+  // directly. Playwright itself stays external (resolved from the vendored dist/vendor/node_modules).
+  {
+    format: "cjs" as const,
+    platform: "node" as const,
+    dts: false,
+    clean: false,
+    outExtensions: outJs,
+    entry: { "vendor/playwright.config": "templates/playwright.config.ts" },
+    outDir: "dist",
+    tsconfig: "tsconfig.json",
+    sourcemap: false,
+    minify: false,
+    inputOptions: { external: ["@playwright/test", "playwright", /^@playwright\//] },
+    outputOptions: { codeSplitting: false }
+  },
+  {
+    format: "cjs" as const,
+    platform: "node" as const,
+    dts: false,
+    clean: false,
+    outExtensions: outJs,
+    entry: { "vendor/sso-global-setup": "templates/sso-global-setup.ts" },
+    outDir: "dist",
+    tsconfig: "tsconfig.json",
+    sourcemap: false,
+    minify: false,
+    inputOptions: { external: ["@playwright/test", "playwright", /^@playwright\//] },
+    outputOptions: { codeSplitting: false }
   }
 ])

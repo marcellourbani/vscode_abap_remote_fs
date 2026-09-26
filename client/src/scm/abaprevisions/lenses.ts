@@ -1,8 +1,15 @@
-import { CodeLensProvider, TextDocument, EventEmitter, Uri, Range, CodeLens } from "vscode"
+import {
+  type CodeLensProvider,
+  type TextDocument,
+  EventEmitter,
+  Uri,
+  Range,
+  CodeLens
+} from "vscode"
 import { abapUri } from "../../adt/conections"
 import { AbapQuickDiff } from "./quickdiff"
 import { AbapRevisionService, revLabel } from "./abaprevisionservice"
-import { Revision } from "abap-adt-api"
+import { type Revision } from "abap-adt-api"
 import { AbapFsCommands } from "../../commands"
 
 const currentQd = (uri: Uri, revisions: Revision[]) => {

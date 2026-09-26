@@ -1,17 +1,17 @@
 import {
-  TreeDataProvider,
+  type TreeDataProvider,
   TreeItem,
   TreeItemCollapsibleState,
   EventEmitter,
-  Event,
+  type Event,
   ViewColumn,
-  WebviewPanel,
+  type WebviewPanel,
   Uri,
   commands,
   ThemeIcon
 } from "vscode"
 import { FeedStateManager } from "../../services/feeds/feedStateManager"
-import { FeedEntry, FeedType } from "../../services/feeds/feedTypes"
+import { type FeedEntry, FeedType } from "../../services/feeds/feedTypes"
 import { getFeedTypeIcon, getSeverityIcon } from "../../services/feeds/feedParsers"
 import { AbapFsCommands, command } from "../../commands"
 import { AdtObjectFinder } from "../../adt/operations/AdtObjectFinder"

@@ -2,10 +2,15 @@
   "name": "abapobject",
   "version": "1.0.0",
   "description": "Abap object details",
-  "main": "out/index.js",
+  "main": "src/index.ts",
+  "types": "src/index.ts",
+  "type": "module",
+  "engines": {
+    "node": ">=22"
+  },
   "scripts": {
     "test": "jest",
-    "build": "tsc",
+    "build": "tsc --noEmit",
     "typecheck": "tsc --noEmit && tsc -p tsconfig.test.json --noEmit",
     "clean": "rm -Rf node_modules out tsconfig.tsbuildinfo",
     "watch": "tsc -w"
@@ -15,7 +20,7 @@
   "devDependencies": {
     "@jest/globals": "29.7.0",
     "@types/jest": "^29.2.5",
-    "@types/node": "18.19.126",
+    "@types/node": "^22.0.0",
     "jest": "^29.3.1",
     "jest-mock-extended": "4.0.1",
     "ts-jest": "29.4.11",

@@ -11,8 +11,10 @@
     "name": "Marcello Urbani"
   },
   "homepage": "https://github.com/marcellourbani/vscode_abap_remote_fs",
+  "type": "module",
   "engines": {
-    "vscode": "^1.50.0"
+    "vscode": "^1.105.0",
+    "node": ">=22"
   },
   "categories": [
     "Other"
@@ -41,8 +43,7 @@
     "@types/diff": "^7.0.2",
     "@types/jest": "^29.2.5",
     "@types/js-yaml": "^4.0.9",
-    "@types/mocha": "^10.0.1",
-    "@types/node": "18.19.126",
+    "@types/node": "^22.0.0",
     "@types/open": "^6.2.1",
     "@types/ramda": "^0.28.20",
     "@types/uuid": "^9.0.0",

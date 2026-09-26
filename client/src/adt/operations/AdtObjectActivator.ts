@@ -2,11 +2,11 @@ import {
   ADTClient,
   isAdtError,
   inactiveObjectsInResults,
-  InactiveObjectRecord,
-  InactiveObjectElement
+  type InactiveObjectRecord,
+  type InactiveObjectElement
 } from "abap-adt-api"
 import { Uri, EventEmitter, QuickPickItemKind } from "vscode"
-import { AbapObject } from "abapobject"
+import { type AbapObject } from "abapobject"
 import { getClient } from "../conections"
 import { IncludeProvider, IncludeService } from "../includes"
 import { isDefined, channel } from "../../lib"

@@ -1,10 +1,10 @@
 import {
-  CancellationToken,
+  type CancellationToken,
   commands,
   Uri,
-  WebviewView,
-  WebviewViewProvider,
-  WebviewViewResolveContext
+  type WebviewView,
+  type WebviewViewProvider,
+  type WebviewViewResolveContext
 } from "vscode"
 import { getClient } from "../../adt/conections"
 import { AdtObjectFinder } from "../../adt/operations/AdtObjectFinder"

@@ -1,23 +1,27 @@
-// Loaded by @playwright/test's own CLI, not compiled by our build — plain CommonJS.
+// Authored in TypeScript; tsdown bundles this to dist/vendor/sso-global-setup.js (CommonJS),
+// which @playwright/test's own CLI loads as the config's globalSetup at runtime.
 //
-// Signs in once per run so every spec starts with an authenticated session. The abapfs_run_playwright_tests
-// tool mints a one-shot loopback login form in the extension host; this setup fetches the form,
-// POSTs it through Playwright's browserless request context, and saves the resulting cookie jar.
+// Signs in once per run so every spec starts with an authenticated session. The
+// abapfs_run_playwright_tests tool mints a one-shot loopback login form in the extension host;
+// this setup fetches the form, POSTs it through Playwright's browserless request context, and
+// saves the resulting cookie jar.
 //
 // This runs in globalSetup rather than in a spec on purpose: globalSetup is not traced, so the
 // login never lands in a trace.zip written into the user's test folder.
-const fs = require("fs")
-const { request } = require("playwright")
+import fs from "node:fs"
+import { request } from "playwright"
 
 /** A valid but empty state, so `use.storageState` always has a file to read. */
 const EMPTY_STATE = JSON.stringify({ cookies: [], origins: [] })
 
 /** Nothing here should ever take this long; fail the run rather than hang. */
 const STEP_TIMEOUT_MS = 30_000
-const since = start => `${Date.now() - start}ms`
-const errorMessage = error => (error && error.message) || String(error)
 
-const decodeHtml = value =>
+const since = (start: number): string => `${Date.now() - start}ms`
+const errorMessage = (error: unknown): string =>
+  (error instanceof Error && error.message) || String(error)
+
+const decodeHtml = (value: string): string =>
   value
     .replace(/&quot;/g, '"')
     .replace(/&#39;/g, "'")
@@ -25,13 +29,13 @@ const decodeHtml = value =>
     .replace(/&gt;/g, ">")
     .replace(/&amp;/g, "&")
 
-function formValue(html, name) {
+function formValue(html: string, name: string): string | undefined {
   const escaped = name.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")
   const match = html.match(new RegExp(`<input[^>]+name="${escaped}"[^>]+value="([^"]*)"`, "i"))
   return match ? decodeHtml(match[1]) : undefined
 }
 
-module.exports = async () => {
+export default async (): Promise<void> => {
   const loginUrl = process.env.SAP_TESTING_LOGIN_URL
   const statePath = process.env.SAP_TESTING_STORAGE_STATE
   if (!statePath) return

@@ -1,15 +1,16 @@
-// Loaded by @playwright/test's own CLI, not compiled by our build — plain CommonJS.
-// Values come from environment variables the abapfs_run_playwright_tests tool sets before spawning,
-// so this one static file drives every run instead of generating a config per call.
-const path = require("path")
-const { defineConfig } = require("@playwright/test")
+// Authored in TypeScript; tsdown bundles this to dist/vendor/playwright.config.js (CommonJS,
+// under dist/vendor/package.json {"type":"commonjs"}), which @playwright/test's own CLI loads
+// at runtime. Values come from environment variables the abapfs_run_playwright_tests tool sets
+// before spawning, so this one static file drives every run instead of generating a config per call.
+import path from "node:path"
+import { defineConfig } from "@playwright/test"
 
 // Set only when auto-login applies. globalSetup guarantees the file exists by the time a
 // worker reads it — this config is evaluated before globalSetup runs, so it cannot check.
 const storageState = process.env.SAP_TESTING_STORAGE_STATE || undefined
 const parallel = process.env.SAP_TESTING_PARALLEL === "1"
 
-module.exports = defineConfig({
+export default defineConfig({
   testDir: process.env.SAP_TESTING_SPEC_DIR,
   timeout: Number(process.env.SAP_TESTING_TIMEOUT_MS ?? 60_000),
   // Bounds the whole run, not just one test. Without it a wedged browser or worker leaves the
@@ -20,6 +21,7 @@ module.exports = defineConfig({
   fullyParallel: false,
   workers: parallel ? Number(process.env.SAP_TESTING_MAX_TASKS ?? 3) : 1,
   retries: 0,
+  // Sibling file in dist/vendor, emitted by the same build.
   globalSetup: path.join(__dirname, "sso-global-setup.js"),
   // Traces and videos, NOT our evidence. Must be set explicitly: Playwright derives this from
   // the config file's location, and this config ships inside the extension install.

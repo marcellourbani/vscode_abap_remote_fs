@@ -1,5 +1,5 @@
 import { createRoot, isRoot, TMPFOLDER, LIBFOLDER } from "../root"
-import { AbapFsService } from ".."
+import { AbapFsService } from "../index.js"
 import { mock, MockProxy } from "jest-mock-extended"
 import { isAbapFolder } from "../abapFolder"
 import { Folder, isFolder } from "../folder"

@@ -2,7 +2,7 @@ import {
   commands,
   debug,
   DebugConfigurationProviderTriggerKind,
-  ExtensionContext,
+  type ExtensionContext,
   Uri
 } from "vscode"
 import {

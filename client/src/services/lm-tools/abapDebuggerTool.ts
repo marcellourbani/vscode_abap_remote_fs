@@ -14,7 +14,7 @@
 
 import * as vscode from "vscode"
 import { funWindow as window } from "../funMessenger"
-import { DebugProtocol } from "@vscode/debugprotocol"
+import { type DebugProtocol } from "@vscode/debugprotocol"
 import { AbapDebugSession } from "../../adt/debugger/abapDebugSession"
 import { logCommands } from "./../abapCopilotLogger"
 import { logTelemetry } from "./../telemetry"

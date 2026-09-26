@@ -1,0 +1,20 @@
+{
+  "$comment": "Shared TypeScript settings for the whole monorepo. Full-ESM + full-bundler: tsdown/Rolldown bundles all source, so tsc is type-check only (noEmit) and uses bundler module resolution everywhere. Per-package tsconfigs extend this and only add include/exclude and the rare override (DOM lib, jest types, declaration emit).",
+  "compilerOptions": {
+    "target": "ES2023",
+    "lib": ["ES2023"],
+    "module": "preserve",
+    "moduleResolution": "bundler",
+    "moduleDetection": "force",
+    "esModuleInterop": true,
+    "resolveJsonModule": true,
+    "isolatedModules": true,
+    "useDefineForClassFields": false,
+    "experimentalDecorators": true,
+    "strict": true,
+    "noImplicitOverride": true,
+    "skipLibCheck": true,
+    "noEmit": true,
+    "types": ["node"]
+  }
+}

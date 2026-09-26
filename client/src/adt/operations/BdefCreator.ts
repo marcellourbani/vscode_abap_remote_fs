@@ -1,4 +1,4 @@
-import { CreatableTypes, CreatableType, CreatableTypeIds } from "abap-adt-api"
+import { CreatableTypes, type CreatableType, type CreatableTypeIds } from "abap-adt-api"
 
 export const BDEF_TYPE_ID = "BDEF/BDO" as CreatableTypeIds
 

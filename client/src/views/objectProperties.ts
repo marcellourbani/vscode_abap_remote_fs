@@ -1,21 +1,21 @@
 import {
   commands,
-  Event,
+  type Event,
   EventEmitter,
   ThemeIcon,
-  TreeDataProvider,
+  type TreeDataProvider,
   TreeItem,
   TreeItemCheckboxState,
   TreeItemCollapsibleState,
-  TreeView,
+  type TreeView,
   Uri,
   workspace,
   Disposable
 } from "vscode"
-import { TransportInfo, MainInclude, Revision } from "abap-adt-api"
+import { type TransportInfo, type MainInclude, type Revision } from "abap-adt-api"
 import { isAbapStat } from "abapfs"
-import { LockStatus } from "abapfs/out/lockObject"
-import { AbapObject } from "abapobject"
+import { type LockStatus } from "abapfs"
+import { type AbapObject } from "abapobject"
 import { AbapFsCommands } from "../commands"
 import { getClient, uriRoot, abapUri } from "../adt/conections"
 import { caughtToString, log } from "../lib"

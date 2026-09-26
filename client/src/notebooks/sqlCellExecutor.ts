@@ -9,7 +9,7 @@
  */
 
 import { ADTClient } from "abap-adt-api"
-import { CellResult, DEFAULT_MAX_ROWS } from "./types"
+import { type CellResult, DEFAULT_MAX_ROWS } from "./types"
 import { interpolateSql } from "./interpolation"
 
 export async function executeSqlCell(

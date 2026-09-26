@@ -4,8 +4,8 @@ import { getClient, getRoot } from "../adt/conections"
 import {
   getTextElementsSafe,
   updateTextElementsWithTransport,
-  TextElement,
-  TextElementCategory
+  type TextElement,
+  type TextElementCategory
 } from "../adt/textElements"
 import { logCommands } from "../services/abapCopilotLogger"
 import { session_types } from "abap-adt-api"

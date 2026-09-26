@@ -1,10 +1,10 @@
 import { PACKAGE, AdtObjectCreator } from "../adt/operations/AdtObjectCreator"
 import {
-  CreatableTypeIds,
-  PackageTypes,
+  type CreatableTypeIds,
+  type PackageTypes,
   CreatableTypes,
   isBindingOptions,
-  NewObjectOptions
+  type NewObjectOptions
 } from "abap-adt-api"
 import { MySearchResult } from "../adt/operations/AdtObjectFinder"
 import { SapGuiPanel } from "../views/sapgui/SapGuiPanel"

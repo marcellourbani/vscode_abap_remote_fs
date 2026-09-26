@@ -1,4 +1,4 @@
-import { MainInclude } from "abap-adt-api"
+import { type MainInclude } from "abap-adt-api"
 import { getAllConfigs } from "abapobject"
 
 type TypeLabel = string | ((mainProgram?: MainInclude) => string)

@@ -1,4 +1,4 @@
-import { BorderStyle, ITableCellOptions, ITableOptions, Table, TableCell } from "docx"
+import { BorderStyle, type ITableCellOptions, type ITableOptions, Table, TableCell } from "docx"
 
 const singleLineBorder = {
   style: BorderStyle.SINGLE,

@@ -1,8 +1,8 @@
 import * as vscode from "vscode"
-import { NOTEBOOK_TYPE, CellResult, SQL_LANGUAGE_ID } from "./types"
+import { NOTEBOOK_TYPE, type CellResult, SQL_LANGUAGE_ID } from "./types"
 import {
   resolveConnection,
-  ResolvedConnection,
+  type ResolvedConnection,
   NotebookConnectionError
 } from "./connectionResolver"
 import { executeSqlCell } from "./sqlCellExecutor"

@@ -1,13 +1,13 @@
 import {
-  CancellationToken,
+  type CancellationToken,
   LanguageModelTextPart,
-  LanguageModelTool,
-  LanguageModelToolInvocationOptions,
-  LanguageModelToolInvocationPrepareOptions,
+  type LanguageModelTool,
+  type LanguageModelToolInvocationOptions,
+  type LanguageModelToolInvocationPrepareOptions,
   LanguageModelToolResult,
-  PreparedToolInvocation,
+  type PreparedToolInvocation,
   ProgressLocation,
-  ProviderResult,
+  type ProviderResult,
   Uri,
   window
 } from "vscode"

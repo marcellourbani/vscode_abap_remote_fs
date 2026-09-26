@@ -4,10 +4,10 @@ import {
   CommonTokenStream,
   ParserRuleContext,
   Token,
-  ANTLRErrorListener,
-  TokenSource
+  type ANTLRErrorListener,
+  type TokenSource
 } from "antlr4ts"
-import { ParseTree, ParseTreeListener, TerminalNode } from "antlr4ts/tree"
+import { type ParseTree, type ParseTreeListener, TerminalNode } from "antlr4ts/tree"
 import { Position } from "vscode-languageserver"
 
 /**

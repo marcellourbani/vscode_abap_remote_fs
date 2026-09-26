@@ -1,4 +1,4 @@
-import { DebugMetaType } from "abap-adt-api"
+import { type DebugMetaType } from "abap-adt-api"
 
 /** A single captured variable value */
 export interface CapturedVariable {

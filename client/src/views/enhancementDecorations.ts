@@ -9,8 +9,8 @@ import { logCommands } from "../services/abapCopilotLogger"
 import { uriAbapFile } from "../adt/operations/AdtObjectFinder"
 import {
   getObjectEnhancements,
-  EnhancementInfo,
-  EnhancementResult
+  type EnhancementInfo,
+  type EnhancementResult
 } from "../services/lm-tools/shared"
 import { getOrCreateRoot } from "../adt/conections"
 

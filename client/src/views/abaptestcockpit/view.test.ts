@@ -64,7 +64,7 @@ jest.mock("../../adt/operations/AdtObjectActivator", () => ({
   }
 }))
 
-jest.mock("abapobject/out/AbapObject", () => ({
+jest.mock("abapobject/src/AbapObject", () => ({
   AbapObjectBase: class {}
 }))
 

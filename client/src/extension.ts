@@ -3,7 +3,7 @@ import { FavouritesProvider } from "./views/favourites"
 import { atcProvider, registerSCIDecorator } from "./views/abaptestcockpit"
 import { FsProvider } from "./fs/FsProvider"
 import { AbapFileDecorationProvider } from "./fs/AbapFileDecorationProvider"
-import { workspace, ExtensionContext, languages, commands } from "vscode"
+import { workspace, type ExtensionContext, languages, commands } from "vscode"
 import {
   activeTextEditorChangedListener,
   documentChangedListener,
@@ -18,7 +18,7 @@ import { ClassHierarchyLensProvider } from "./adt/classhierarchy"
 import { abapGitProvider } from "./views/abapgit"
 import { loadTokens, clearTokens } from "./oauth"
 import { registerAbapGit } from "./scm/abapGit"
-import { AbapFsApi, api } from "./api"
+import { type AbapFsApi, api } from "./api"
 import { ADTSCHEME, disconnect, hasLocks } from "./adt/conections"
 import { MessagesProvider } from "./editors/messages"
 import { IncludeProvider } from "./adt/includes"

@@ -7,11 +7,11 @@ import {
   EventEmitter,
   ThemeColor,
   ThemeIcon,
-  TreeDataProvider,
+  type TreeDataProvider,
   TreeItem,
   TreeItemCollapsibleState
 } from "vscode"
-import { CustomReference, GroupedData, ItemGroup } from "./types"
+import { type CustomReference, type GroupedData, type ItemGroup } from "./types"
 
 export type S4HNode = S4HRoot | S4HItemNode | S4HRefNode | S4HSummaryNode
 

@@ -1,17 +1,17 @@
 import {
   Disposable,
-  Event,
+  type Event,
   EventEmitter,
-  FileChangeEvent,
-  FileStat,
-  FileSystemProvider,
+  type FileChangeEvent,
+  type FileStat,
+  type FileSystemProvider,
   FileType,
   Uri,
   workspace
 } from "vscode"
 import { TraceRunItem, findRun } from "./views"
 import { convertRun, convertStatements } from "./convertProfile"
-import { TraceRun } from "abap-adt-api/build/api/tracetypes"
+import { type TraceRun } from "abap-adt-api/build/api/tracetypes"
 import { getClient } from "../../adt/conections"
 
 const adtProfileId = (uri: Uri) => uri.path.replace(/\.cpuprofile/, "")

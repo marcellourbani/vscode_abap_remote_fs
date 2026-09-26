@@ -1,4 +1,4 @@
-import { ExtensionContext, commands } from "vscode"
+import { type ExtensionContext, commands } from "vscode"
 import { funWindow as window } from "../services/funMessenger"
 import { abapcmds } from "."
 // import/export to resolve dependencies
