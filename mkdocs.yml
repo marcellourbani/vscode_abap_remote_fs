@@ -48,6 +48,7 @@ nav:
     - Technical Reference: repository-comparison/technical-reference.md
   - AI Features:
     - Language Model Tools: ai/language-model-tools.md
+    - Jev Integration and Playground: ai/jev.md
     - Subagents: ai/subagents.md
     - Skills: ai/skills.md
     - Heartbeat: ai/heartbeat.md
