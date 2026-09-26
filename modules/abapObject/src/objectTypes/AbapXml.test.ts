@@ -1,4 +1,4 @@
-import { mock } from "jest-mock-extended"
+import { vi } from "vitest"
 import { AbapObjectStructure } from "abap-adt-api"
 import { create } from "../creator"
 import { AbapObjectService } from "../AOService"
@@ -13,7 +13,12 @@ describe.each([
   const path = `/sap/bc/adt/ddic/${collection}/yexample`
   const xml = '<?xml version="1.0" encoding="UTF-8"?><example/>'
   const setup = () => {
-    const service = mock<AbapObjectService>()
+    const service = {
+      getObjectSource: vi.fn(),
+      objectStructure: vi.fn(),
+      setObjectSource: vi.fn(),
+      invalidateStructCache: vi.fn()
+    } as unknown as AbapObjectService
     const object = create(type, "YEXAMPLE", path, false, "YEXAMPLE", undefined, "", service)
     return { service, object }
   }
@@ -33,7 +38,7 @@ describe.each([
     const { service, object } = setup()
     service.objectStructure.mockResolvedValue({
       objectUrl: path,
-      metaData: mock<AbapObjectStructure["metaData"]>({ "adtcore:version": "inactive" }),
+      metaData: { "adtcore:version": "inactive" } as AbapObjectStructure["metaData"],
       links: []
     })
     await object.loadStructure()

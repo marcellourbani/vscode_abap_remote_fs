@@ -2,21 +2,10 @@ import {
   type SourceControl,
   type SourceControlResourceGroup,
   type SourceControlResourceState,
-  type SourceControl,
-  type SourceControlResourceGroup,
-  type SourceControlResourceState,
   Uri,
-  type Command,
   type Command,
   scm
 } from "vscode"
-import {
-  type GitRepo,
-  type GitStagingObject,
-  type GitStagingFile,
-  type GitStaging
-} from "abap-adt-api"
-import { type Cache, mapGet, cache } from "../../lib"
 import {
   type GitRepo,
   type GitStagingObject,

@@ -20,6 +20,14 @@ vi.mock("vscode", () => {
       const joined = base.path.replace(/\/$/, "") + "/" + segs.join("/")
       return new Uri(base.scheme, base.authority, joined, joined)
     }
+    with(changes: { scheme?: string; authority?: string; path?: string }) {
+      return new Uri(
+        changes.scheme ?? this.scheme,
+        changes.authority ?? this.authority,
+        changes.path ?? this.path,
+        this.fsPath
+      )
+    }
     toString() {
       return `${this.scheme}://${this.authority}${this.path}`
     }
@@ -109,7 +117,7 @@ import { getSearchService } from "../abapSearchService"
 import { logTelemetry } from "../telemetry"
 import { assertToolInvocationAuthorized } from "./toolGuard"
 import { registerToolWithRegistry } from "./toolRegistry"
-import type { Mock } from "vitest"
+import { beforeEach, describe, expect, it, vi, type Mock } from "vitest"
 
 const F = vscode.FileType.File
 const D = vscode.FileType.Directory

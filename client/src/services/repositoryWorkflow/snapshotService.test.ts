@@ -1,38 +1,31 @@
 import * as fs from "fs/promises"
 import * as os from "os"
 import * as path from "path"
+import { createHash } from "crypto"
+import { vi } from "vitest"
 
-jest.mock(
-  "vscode",
-  () => ({
-    Uri: { file: (value: string) => ({ fsPath: value, path: value, scheme: "file" }) },
-    workspace: { fs: {} }
+const { root } = vi.hoisted(() => ({ root: { value: "" } }))
+
+vi.mock("../abapResourceDownloadService", () => ({
+  AbapResourceDownloadService: vi.fn(function () {
+    return {}
   }),
-  { virtual: true }
-)
-jest.mock("../abapResourceDownloadService", () => ({
-  AbapResourceDownloadService: jest.fn().mockImplementation(() => ({})),
-  runPool: jest.fn()
+  runPool: vi.fn()
 }))
 
 import { WorkflowStore } from "./workflowStore"
 import { WorkflowSnapshotService, objectFolderId } from "./snapshotService"
 import { ObjectSnapshotManifest, RepositoryObjectRecord } from "./types"
 
-let root = ""
-jest.mock(
-  "vscode",
-  () => ({
-    Uri: { file: (value: string) => ({ fsPath: value, path: value, scheme: "file" }) },
-    workspace: {
-      fs: {},
-      getConfiguration: jest.fn(() => ({
-        get: jest.fn((_key: string, fallback: unknown) => root || fallback)
-      }))
-    }
-  }),
-  { virtual: true }
-)
+vi.mock("vscode", () => ({
+  Uri: { file: (value: string) => ({ fsPath: value, path: value, scheme: "file" }) },
+  workspace: {
+    fs: {},
+    getConfiguration: vi.fn(() => ({
+      get: vi.fn((_key: string, fallback: unknown) => root.value || fallback)
+    }))
+  }
+}))
 
 const record: RepositoryObjectRecord = {
   pgmid: "R3TR",
@@ -50,9 +43,9 @@ const record: RepositoryObjectRecord = {
 
 describe("WorkflowSnapshotService", () => {
   beforeEach(async () => {
-    root = await fs.mkdtemp(path.join(os.tmpdir(), "snapshot-"))
+    root.value = await fs.mkdtemp(path.join(os.tmpdir(), "snapshot-"))
   })
-  afterEach(async () => fs.rm(root, { recursive: true, force: true }))
+  afterEach(async () => fs.rm(root.value, { recursive: true, force: true }))
 
   it("reports raw difference but normalized equality for line endings and trailing spaces", async () => {
     const store = new WorkflowStore({} as any)
@@ -66,12 +59,9 @@ describe("WorkflowSnapshotService", () => {
       const contentRoot = store.artifactPath(workflow, "sources", side, "objects", id, "content")
       await fs.mkdir(contentRoot, { recursive: true })
       const bytes = Buffer.from(content)
-      const sha256 = require("crypto").createHash("sha256").update(bytes).digest("hex")
+      const sha256 = createHash("sha256").update(bytes).digest("hex")
       const normalizedBytes = Buffer.from(content.replace(/\r\n/g, "\n").replace(/[ \t]+$/gm, ""))
-      const normalizedSha256 = require("crypto")
-        .createHash("sha256")
-        .update(normalizedBytes)
-        .digest("hex")
+      const normalizedSha256 = createHash("sha256").update(normalizedBytes).digest("hex")
       await fs.writeFile(path.join(contentRoot, "resource.abap"), bytes)
       const manifest: ObjectSnapshotManifest = {
         schemaVersion: 1,
@@ -96,7 +86,7 @@ describe("WorkflowSnapshotService", () => {
     }
     await write("source", "WRITE: / 'A'.  \r\n")
     await write("target", "WRITE: / 'A'.\n")
-    const onProgress = jest.fn(async () => {})
+    const onProgress = vi.fn(async () => {})
     const [comparison] = await new WorkflowSnapshotService(store).compare(
       workflow.workflowId,
       ["R3TR:PROG:ZTEST"],

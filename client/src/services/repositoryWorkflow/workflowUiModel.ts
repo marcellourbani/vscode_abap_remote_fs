@@ -1,4 +1,4 @@
-import { RepositoryWorkflow, WorkflowStepId } from "./types"
+import type { RepositoryWorkflow, WorkflowStepId } from "./types"
 
 export const REPOSITORY_OBJECT_TYPES = [
   ["PROG", "Programs and includes"],

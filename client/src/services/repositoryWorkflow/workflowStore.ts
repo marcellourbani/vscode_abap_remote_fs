@@ -9,8 +9,8 @@ import {
   DEFAULT_VERIFICATION_CONCURRENCY,
   initialSteps,
   MAX_VERIFICATION_CONCURRENCY,
-  RepositoryCriteria,
-  RepositoryWorkflow,
+  type RepositoryCriteria,
+  type RepositoryWorkflow,
   defaultRepositoryCriteria,
   WORKFLOW_SCHEMA_VERSION
 } from "./types"

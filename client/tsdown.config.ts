@@ -53,10 +53,10 @@ function copyClientAssets() {
   // documentationTool.ts reads this at runtime — fail the build if it's missing.
   copyFile(at("../DOCUMENTATION.md"), at("dist/media/DOCUMENTATION.md"))
   // The Playwright vendor config + globalSetup are built from templates/*.ts by their own
-  // tsdown entries (below) into dist/vendor/*.js. Root package.json is "type":"module", so pin
-  // a nearer CommonJS boundary here: the Playwright CLI loads those vendor .js as CommonJS.
+  // tsdown entries (below) into dist/vendor/*.js. Keep the boundary ESM so import.meta.dirname
+  // works both when the source is tested and when Playwright loads the emitted config.
   mkdirSync(at("dist/vendor"), { recursive: true })
-  writeFileSync(at("dist/vendor/package.json"), JSON.stringify({ type: "commonjs" }) + "\n")
+  writeFileSync(at("dist/vendor/package.json"), JSON.stringify({ type: "module" }) + "\n")
   // Real node_modules layout so Playwright's runner can require.resolve its worker entry.
   const nm = at("dist/vendor/node_modules")
   for (const pkg of ["playwright", "playwright-core", "@playwright/test"]) {
@@ -137,11 +137,11 @@ export default defineConfig([
     inputOptions: { external: ["@playwright/test", /^@playwright\/test(\/|$)/], resolve: jsToTs },
     plugins: [copyRuntimeAssetsPlugin]
   },
-  // Playwright vendor config + globalSetup: authored in templates/*.ts, emitted as CommonJS
-  // .js into dist/vendor (under the {"type":"commonjs"} boundary) for the Playwright CLI to load
-  // directly. Playwright itself stays external (resolved from the vendored dist/vendor/node_modules).
+  // Playwright vendor config + globalSetup: authored in templates/*.ts, emitted as ESM .js into
+  // dist/vendor for the Playwright CLI to load directly. Playwright stays external (resolved from
+  // the vendored dist/vendor/node_modules).
   {
-    format: "cjs" as const,
+    format: "esm" as const,
     platform: "node" as const,
     dts: false,
     clean: false,
@@ -155,7 +155,7 @@ export default defineConfig([
     outputOptions: { codeSplitting: false }
   },
   {
-    format: "cjs" as const,
+    format: "esm" as const,
     platform: "node" as const,
     dts: false,
     clean: false,

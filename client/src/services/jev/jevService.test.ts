@@ -5,6 +5,7 @@ import {
   APIUserAbortError,
   TypeSafeError
 } from "@typesafe-ai/sdk"
+import { vi } from "vitest"
 import { JevService, JevServiceDependencies } from "./jevService"
 
 const request = {
@@ -56,9 +57,9 @@ const response = {
 } as const
 
 function setup(apiKey: string | undefined = "test-key") {
-  const systemOne = jest.fn()
-  const createClient = jest.fn(() => ({ systemOne }))
-  const readApiKey = jest.fn(() => apiKey)
+  const systemOne = vi.fn()
+  const createClient = vi.fn(() => ({ systemOne }))
+  const readApiKey = vi.fn(() => apiKey)
   const service = new JevService({ readApiKey, createClient })
   return { service, systemOne, createClient, readApiKey }
 }
@@ -113,10 +114,10 @@ describe("JevService", () => {
 
   test("creates a new client when the API key changes", async () => {
     let apiKey = "first"
-    const systemOne = jest.fn().mockResolvedValue(response)
+    const systemOne = vi.fn().mockResolvedValue(response)
     const dependencies: JevServiceDependencies = {
       readApiKey: () => apiKey,
-      createClient: jest.fn(() => ({ systemOne }))
+      createClient: vi.fn(() => ({ systemOne }))
     }
     const service = new JevService(dependencies)
 

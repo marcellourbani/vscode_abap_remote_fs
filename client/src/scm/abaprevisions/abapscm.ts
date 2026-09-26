@@ -1,15 +1,10 @@
 import {
   type SourceControlResourceGroup,
   type SourceControlResourceState,
-  type SourceControlResourceGroup,
-  type SourceControlResourceState,
   Uri,
   scm,
   type SourceControl,
-  type SourceControl,
   EventEmitter,
-  type Command,
-  type ExtensionContext,
   type Command,
   type ExtensionContext,
   workspace
@@ -19,7 +14,6 @@ import { AbapRevisionService } from "./abaprevisionservice"
 import { AbapFsCommands } from "../../commands/registry"
 import { type PathItem, isAbapStat } from "abapfs"
 import { createUri } from "../../adt/operations/AdtObjectFinder"
-import { type Revision } from "abap-adt-api"
 import { type Revision } from "abap-adt-api"
 import { AbapRevision, ADTREVISIONSCHEME } from "./documentprovider"
 import { abapUri } from "../../adt/conections"

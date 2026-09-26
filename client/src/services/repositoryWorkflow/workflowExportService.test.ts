@@ -1,12 +1,10 @@
-jest.mock(
-  "vscode",
-  () => ({
-    window: { showOpenDialog: jest.fn(), showSaveDialog: jest.fn() },
-    workspace: { fs: { writeFile: jest.fn() } },
-    Uri: { file: jest.fn((value: string) => ({ fsPath: value })) }
-  }),
-  { virtual: true }
-)
+import { vi, type Mock } from "vitest"
+
+vi.mock("vscode", () => ({
+  window: { showOpenDialog: vi.fn(), showSaveDialog: vi.fn() },
+  workspace: { fs: { writeFile: vi.fn() } },
+  Uri: { file: vi.fn((value: string) => ({ fsPath: value })) }
+}))
 
 import * as fs from "fs/promises"
 import * as os from "os"
@@ -60,16 +58,16 @@ describe("WorkflowExportService export location", () => {
   it("uses and remembers the user-selected directory instead of artifact storage", async () => {
     const lastDirectory = path.join(os.tmpdir(), "workflow-exports")
     const chosenPath = path.join(lastDirectory, "chosen.xlsx")
-    ;(vscode.window.showSaveDialog as jest.Mock).mockResolvedValue({
+    ;(vscode.window.showSaveDialog as Mock).mockResolvedValue({
       fsPath: chosenPath
     })
     const globalState = {
-      get: jest.fn(() => lastDirectory),
-      update: jest.fn(async () => undefined)
+      get: vi.fn(() => lastDirectory),
+      update: vi.fn(async () => undefined)
     }
     const store = {
-      artifactPath: jest.fn(() => "internal-artifact.jsonl"),
-      readJsonLines: jest.fn(async function* () {})
+      artifactPath: vi.fn(() => "internal-artifact.jsonl"),
+      readJsonLines: vi.fn(async function* () {})
     }
     const workflow = {
       name: "Workflow",
@@ -83,7 +81,7 @@ describe("WorkflowExportService export location", () => {
       "xlsx"
     )
 
-    const defaultPath = (vscode.window.showSaveDialog as jest.Mock).mock.calls.at(-1)[0].defaultUri
+    const defaultPath = (vscode.window.showSaveDialog as Mock).mock.calls.at(-1)[0].defaultUri
       .fsPath
     expect(path.dirname(defaultPath)).toBe(lastDirectory)
     expect(path.basename(defaultPath)).toMatch(/^Workflow_src-inv_SOURCE_\d{8}-\d{4}\.xlsx$/)
@@ -149,10 +147,10 @@ describe("workflowExportRow", () => {
       sheet.addRow(["X", "R3TR:PROG:ZUNKNOWN"])
       sheet.addRow(["", "R3TR:PROG:ZBLANK"])
       await workbook.xlsx.writeFile(filePath)
-      ;(vscode.window.showOpenDialog as jest.Mock).mockResolvedValue([{ fsPath: filePath }])
+      ;(vscode.window.showOpenDialog as Mock).mockResolvedValue([{ fsPath: filePath }])
       const store = {
-        artifactPath: jest.fn(() => "existence.jsonl"),
-        readJsonLines: jest.fn(async function* () {
+        artifactPath: vi.fn(() => "existence.jsonl"),
+        readJsonLines: vi.fn(async function* () {
           yield {
             key: "R3TR:PROG:ZKEEP",
             status: "both",

@@ -1,5 +1,7 @@
-const runQuery = jest.fn()
-jest.mock("../../adt/conections", () => ({ getClient: jest.fn(() => ({ runQuery })) }))
+import { vi } from "vitest"
+
+const { runQuery } = vi.hoisted(() => ({ runQuery: vi.fn() }))
+vi.mock("../../adt/conections", () => ({ getClient: vi.fn(() => ({ runQuery })) }))
 
 import {
   PACKAGE_DISCOVERY_SQL,

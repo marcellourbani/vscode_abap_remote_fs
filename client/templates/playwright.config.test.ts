@@ -4,7 +4,6 @@ import { afterAll, describe, expect, it, vi } from "vitest"
 vi.mock("@playwright/test", () => ({ defineConfig: (config: unknown) => config }))
 
 const configPath = path.resolve(__dirname, "playwright.config.ts")
-const configPath = path.resolve(__dirname, "playwright.config.ts")
 const originalEnv = { ...process.env }
 
 async function loadConfig(env: Record<string, string | undefined>) {

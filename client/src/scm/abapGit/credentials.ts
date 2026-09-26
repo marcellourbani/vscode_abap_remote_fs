@@ -9,9 +9,7 @@ import {
   inputBox
 } from "../../lib"
 import { some, fromEither, type Option, isSome } from "fp-ts/lib/Option"
-import { some, fromEither, type Option, isSome } from "fp-ts/lib/Option"
 import { context } from "../../extension"
-import { ADTClient, type GitRepo } from "abap-adt-api"
 import { ADTClient, type GitRepo } from "abap-adt-api"
 import { getClient } from "../../adt/conections"
 
