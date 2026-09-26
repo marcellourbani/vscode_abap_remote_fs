@@ -1,39 +1,40 @@
-/**
- * Tests for MermaidWebviewManager.ts
- * Tests singleton pattern, initialize/getInstance, and public API behavior.
- */
-
-const mockCreateWebviewPanel = jest.fn()
-const mockShowInfoMessage = jest.fn()
-const mockShowErrorMessage = jest.fn()
-
-jest.mock(
-  "vscode",
-  () => ({
-    window: {
-      showInformationMessage: mockShowInfoMessage,
-      showErrorMessage: mockShowErrorMessage,
-      createWebviewPanel: mockCreateWebviewPanel
-    },
-    workspace: {
-      getConfiguration: jest.fn().mockReturnValue({ get: jest.fn((k: string, d: any) => d) }),
-      fs: { writeFile: jest.fn() }
-    },
-    ViewColumn: { One: 1, Active: -1 },
-    Uri: {
-      joinPath: jest.fn((...args: any[]) => ({
+const { mockCreateWebviewPanel, mockShowInfoMessage, mockShowErrorMessage } = vi.hoisted(() => {
+  const mockCreateWebviewPanel = vi.fn()
+  const mockShowInfoMessage = vi.fn()
+  const mockShowErrorMessage = vi.fn()
+  return { mockCreateWebviewPanel, mockShowInfoMessage, mockShowErrorMessage }
+})
+vi.mock("vscode", () => ({
+  window: {
+    showInformationMessage: mockShowInfoMessage,
+    showErrorMessage: mockShowErrorMessage,
+    createWebviewPanel: mockCreateWebviewPanel
+  },
+  workspace: {
+    getConfiguration: vi.fn().mockReturnValue({
+      get: vi.fn(function (k: string, d: any) {
+        return d
+      })
+    }),
+    fs: { writeFile: vi.fn() }
+  },
+  ViewColumn: { One: 1, Active: -1 },
+  Uri: {
+    joinPath: vi.fn(function (...args: any[]) {
+      return {
         fsPath: args.map(a => a?.fsPath || String(a)).join("/"),
         toString: function () {
           return this.fsPath
         }
-      })),
-      file: jest.fn((p: string) => ({ fsPath: p }))
-    }
-  }),
-  { virtual: true }
-)
+      }
+    }),
+    file: vi.fn(function (p: string) {
+      return { fsPath: p }
+    })
+  }
+}))
 
-jest.mock("./funMessenger", () => ({
+vi.mock("./funMessenger", () => ({
   funWindow: {
     showInformationMessage: mockShowInfoMessage,
     showErrorMessage: mockShowErrorMessage,
@@ -41,26 +42,26 @@ jest.mock("./funMessenger", () => ({
   }
 }))
 
-jest.mock("./abapCopilotLogger", () => ({
+vi.mock("./abapCopilotLogger", () => ({
   logCommands: {
-    info: jest.fn(),
-    error: jest.fn(),
-    warn: jest.fn()
+    info: vi.fn(),
+    error: vi.fn(),
+    warn: vi.fn()
   }
 }))
 
-jest.mock("./DiagramWebviewManager", () => ({
+vi.mock("./DiagramWebviewManager", () => ({
   DiagramWebviewManager: {
-    getInstance: jest.fn().mockReturnValue({
-      displayDiagram: jest.fn().mockResolvedValue({ webviewId: "diagram-1", action: "created" })
+    getInstance: vi.fn().mockReturnValue({
+      displayDiagram: vi.fn().mockResolvedValue({ webviewId: "diagram-1", action: "created" })
     })
   }
 }))
 
 import {
   MermaidWebviewManager,
-  MermaidRenderResult,
-  MermaidValidationResult
+  type MermaidRenderResult,
+  type MermaidValidationResult
 } from "./MermaidWebviewManager"
 
 const mockExtUri = { fsPath: "/ext", toString: () => "/ext" } as any
@@ -72,17 +73,19 @@ function makeMockPanel(readyDelay = 0) {
   const panel = {
     webview: {
       html: "",
-      onDidReceiveMessage: jest.fn((handler: (msg: any) => void) => {
+      onDidReceiveMessage: vi.fn(function (handler: (msg: any) => void) {
         messageHandlers.push(handler)
-        return { dispose: jest.fn() }
+        return { dispose: vi.fn() }
       }),
-      postMessage: jest.fn().mockResolvedValue(true),
-      asWebviewUri: jest.fn((uri: any) => uri)
+      postMessage: vi.fn().mockResolvedValue(true),
+      asWebviewUri: vi.fn(function (uri: any) {
+        return uri
+      })
     },
     title: "Mermaid Renderer",
-    onDidDispose: jest.fn().mockReturnValue({ dispose: jest.fn() }),
-    dispose: jest.fn(),
-    reveal: jest.fn(),
+    onDidDispose: vi.fn().mockReturnValue({ dispose: vi.fn() }),
+    dispose: vi.fn(),
+    reveal: vi.fn(),
     // Helper to simulate webview sending a message back
     _sendMessage: (msg: any) => messageHandlers.forEach(h => h(msg))
   }
@@ -107,15 +110,15 @@ function makeMockPanel(readyDelay = 0) {
 
 describe("MermaidWebviewManager", () => {
   beforeEach(() => {
-    jest.clearAllMocks()
-    jest.useFakeTimers()
+    vi.clearAllMocks()
+    vi.useFakeTimers()
     // Reset singleton
     ;(MermaidWebviewManager as any).instance = undefined
     ;(MermaidWebviewManager as any).isInitialized = false
   })
 
   afterEach(() => {
-    jest.useRealTimers()
+    vi.useRealTimers()
   })
 
   describe("initialize / getInstance", () => {
@@ -154,7 +157,7 @@ describe("MermaidWebviewManager", () => {
       const renderPromise = MermaidWebviewManager.getInstance().renderDiagram("graph LR; A-->B")
 
       // Advance timers to fire the ready event (readyDelay=0)
-      jest.advanceTimersByTime(1)
+      vi.advanceTimersByTime(1)
       // Let microtasks settle so the ready promise resolves and postMessage is called
       await Promise.resolve()
       await Promise.resolve()
@@ -163,7 +166,7 @@ describe("MermaidWebviewManager", () => {
       expect(mockCreateWebviewPanel).toHaveBeenCalledTimes(1)
 
       // Clean up: advance past all timeouts so the promise settles
-      jest.advanceTimersByTime(60000)
+      vi.advanceTimersByTime(60000)
       await renderPromise.catch(() => {}) // swallow timeout error
     })
 
@@ -172,19 +175,21 @@ describe("MermaidWebviewManager", () => {
       const panel = {
         webview: {
           html: "",
-          onDidReceiveMessage: jest.fn().mockReturnValue({ dispose: jest.fn() }),
-          postMessage: jest.fn(),
-          asWebviewUri: jest.fn((u: any) => u)
+          onDidReceiveMessage: vi.fn().mockReturnValue({ dispose: vi.fn() }),
+          postMessage: vi.fn(),
+          asWebviewUri: vi.fn(function (u: any) {
+            return u
+          })
         },
-        onDidDispose: jest.fn().mockReturnValue({ dispose: jest.fn() }),
-        dispose: jest.fn()
+        onDidDispose: vi.fn().mockReturnValue({ dispose: vi.fn() }),
+        dispose: vi.fn()
       }
       mockCreateWebviewPanel.mockReturnValue(panel)
 
       const renderPromise = MermaidWebviewManager.getInstance().renderDiagram("graph LR; A-->B")
 
       // Advance past the 10-second ready timeout
-      jest.advanceTimersByTime(11000)
+      vi.advanceTimersByTime(11000)
 
       await expect(renderPromise).rejects.toThrow()
     })

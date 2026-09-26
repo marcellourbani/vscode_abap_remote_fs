@@ -7,12 +7,12 @@ import * as ExcelJS from "exceljs"
 import {
   buildXlsx,
   EXCEL_MAX_DATA_ROWS,
-  ExportColumn,
+  type ExportColumn,
   streamCsv
 } from "../structuredDataExportService"
 import {
-  ExistenceComparisonRecord,
-  RepositoryWorkflow,
+  type ExistenceComparisonRecord,
+  type RepositoryWorkflow,
   SOURCE_COMPARISON_EXCLUDED_OBJECT_TYPES
 } from "./types"
 import { WorkflowStore } from "./workflowStore"

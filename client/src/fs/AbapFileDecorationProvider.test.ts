@@ -1,6 +1,6 @@
-jest.mock("vscode", () => ({}), { virtual: true })
-jest.mock("../adt/conections", () => ({ abapUri: jest.fn(), uriRoot: jest.fn() }))
-jest.mock("abapfs", () => ({ isAbapStat: jest.fn() }))
+vi.mock("vscode", () => ({}))
+vi.mock("../adt/conections", () => ({ abapUri: vi.fn(), uriRoot: vi.fn() }))
+vi.mock("abapfs", () => ({ isAbapStat: vi.fn() }))
 
 import { buildTooltip } from "./AbapFileDecorationProvider"
 

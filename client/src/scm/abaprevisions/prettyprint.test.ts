@@ -1,7 +1,7 @@
-jest.mock("vscode", () => ({ Uri: {} }), { virtual: true })
-jest.mock("../../adt/conections", () => ({}))
-jest.mock("../../config", () => ({ RemoteManager: { get: () => ({ byId: () => ({}) }) } }))
-jest.mock("../../lib", () => ({ parseAbapFile: () => null }))
+vi.mock("vscode", () => ({ Uri: {} }))
+vi.mock("../../adt/conections", () => ({}))
+vi.mock("../../config", () => ({ RemoteManager: { get: () => ({ byId: () => ({}) }) } }))
+vi.mock("../../lib", () => ({ parseAbapFile: () => null }))
 
 import { normalizeAbap } from "./prettyprint"
 

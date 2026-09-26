@@ -1,6 +1,6 @@
 import { create } from "."
-import { mock } from "jest-mock-extended"
-import { AbapObjectService } from "./AOService"
+import { mock } from "vitest-mock-extended"
+import type { AbapObjectService } from "./AOService"
 
 import { isAbapClass, isAbapCds, isAbapInclude, isAbapClassInclude } from "./objectTypes"
 

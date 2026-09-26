@@ -2,40 +2,37 @@ import * as fs from "fs/promises"
 import * as os from "os"
 import * as path from "path"
 import { createHash } from "crypto"
+import { vi } from "vitest"
 
-let root = ""
-const runQuery = jest.fn()
-const mockSnapshots = {
-  selectedRecords: jest.fn(),
-  verifySide: jest.fn(),
-  downloadPending: jest.fn(),
-  compare: jest.fn()
-}
-const mockAssistedApply = {
-  prepare: jest.fn()
-}
+const mocks = vi.hoisted(() => ({
+  root: "",
+  runQuery: vi.fn(),
+  snapshots: {
+    selectedRecords: vi.fn(),
+    verifySide: vi.fn(),
+    downloadPending: vi.fn(),
+    compare: vi.fn()
+  },
+  assistedApply: { prepare: vi.fn() }
+}))
 
-jest.mock(
-  "vscode",
-  () => ({
-    workspace: {
-      getConfiguration: jest.fn(() => ({
-        get: jest.fn((_key: string, fallback: unknown) => root || fallback)
-      }))
-    },
-    CancellationTokenSource: class {
-      token = { isCancellationRequested: false, onCancellationRequested: () => ({ dispose() {} }) }
-      cancel() {
-        this.token.isCancellationRequested = true
-      }
-      dispose() {}
+vi.mock("vscode", () => ({
+  workspace: {
+    getConfiguration: vi.fn(() => ({
+      get: vi.fn((_key: string, fallback: unknown) => mocks.root || fallback)
+    }))
+  },
+  CancellationTokenSource: class {
+    token = { isCancellationRequested: false, onCancellationRequested: () => ({ dispose() {} }) }
+    cancel() {
+      this.token.isCancellationRequested = true
     }
-  }),
-  { virtual: true }
-)
+    dispose() {}
+  }
+}))
 
-jest.mock("../../config", () => ({
-  connectedRoots: jest.fn(
+vi.mock("../../config", () => ({
+  connectedRoots: vi.fn(
     () =>
       new Map([
         ["source100", {}],
@@ -44,16 +41,20 @@ jest.mock("../../config", () => ({
   )
 }))
 
-jest.mock("../../adt/conections", () => ({
-  getClient: jest.fn(() => ({ runQuery }))
+vi.mock("../../adt/conections", () => ({
+  getClient: vi.fn(() => ({ runQuery: mocks.runQuery }))
 }))
 
-jest.mock("./snapshotService", () => ({
-  WorkflowSnapshotService: jest.fn().mockImplementation(() => mockSnapshots)
+vi.mock("./snapshotService", () => ({
+  WorkflowSnapshotService: vi.fn(function () {
+    return mocks.snapshots
+  })
 }))
 
-jest.mock("./assistedApplyService", () => ({
-  WorkflowAssistedApplyService: jest.fn().mockImplementation(() => mockAssistedApply)
+vi.mock("./assistedApplyService", () => ({
+  WorkflowAssistedApplyService: vi.fn(function () {
+    return mocks.assistedApply
+  })
 }))
 
 import { WorkflowStore } from "./workflowStore"
@@ -91,16 +92,16 @@ const snapshotFolder = (key: string) => createHash("sha256").update(key).digest(
 
 describe("RepositoryWorkflowEngine", () => {
   beforeEach(async () => {
-    jest.clearAllMocks()
-    root = await fs.mkdtemp(path.join(os.tmpdir(), "repository-engine-"))
-    mockSnapshots.selectedRecords.mockResolvedValue({ source: [], target: [] })
-    mockSnapshots.verifySide.mockImplementation(
+    vi.clearAllMocks()
+    mocks.root = await fs.mkdtemp(path.join(os.tmpdir(), "repository-engine-"))
+    mocks.snapshots.selectedRecords.mockResolvedValue({ source: [], target: [] })
+    mocks.snapshots.verifySide.mockImplementation(
       async (_workflowId, _side, records: RepositoryObjectRecord[]) => ({
         completed: 0,
         pending: records
       })
     )
-    mockSnapshots.downloadPending.mockImplementation(
+    mocks.snapshots.downloadPending.mockImplementation(
       async (_workflowId, _side, _records, total) => ({
         total,
         complete: total,
@@ -109,8 +110,8 @@ describe("RepositoryWorkflowEngine", () => {
         cancelled: false
       })
     )
-    mockSnapshots.compare.mockResolvedValue([])
-    mockAssistedApply.prepare.mockResolvedValue({
+    mocks.snapshots.compare.mockResolvedValue([])
+    mocks.assistedApply.prepare.mockResolvedValue({
       schemaVersion: 1,
       createdAt: new Date().toISOString(),
       sourceConnectionId: "source100",
@@ -119,13 +120,17 @@ describe("RepositoryWorkflowEngine", () => {
     })
   })
 
-  afterEach(async () => fs.rm(root, { recursive: true, force: true }))
+  afterEach(async () => fs.rm(mocks.root, { recursive: true, force: true }))
 
   it("persists two discoveries then compares existence locally", async () => {
-    runQuery.mockResolvedValueOnce({ values: [{ DEVCLASS: "ZPKG", PARENTCL: "", NAMESPACE: "" }] })
-    runQuery.mockResolvedValueOnce({ values: [row("ZBOTH"), row("ZSOURCE")] })
-    runQuery.mockResolvedValueOnce({ values: [{ DEVCLASS: "ZPKG", PARENTCL: "", NAMESPACE: "" }] })
-    runQuery.mockResolvedValueOnce({ values: [row("ZBOTH"), row("ZTARGET")] })
+    mocks.runQuery.mockResolvedValueOnce({
+      values: [{ DEVCLASS: "ZPKG", PARENTCL: "", NAMESPACE: "" }]
+    })
+    mocks.runQuery.mockResolvedValueOnce({ values: [row("ZBOTH"), row("ZSOURCE")] })
+    mocks.runQuery.mockResolvedValueOnce({
+      values: [{ DEVCLASS: "ZPKG", PARENTCL: "", NAMESPACE: "" }]
+    })
+    mocks.runQuery.mockResolvedValueOnce({ values: [row("ZBOTH"), row("ZTARGET")] })
     const store = new WorkflowStore({} as any)
     const workflow = await store.create({
       name: "Engine",
@@ -134,10 +139,10 @@ describe("RepositoryWorkflowEngine", () => {
     })
     const engine = new RepositoryWorkflowEngine(store)
     await engine.runDiscovery(workflow.workflowId)
-    const callsAfterDiscovery = runQuery.mock.calls.length
+    const callsAfterDiscovery = mocks.runQuery.mock.calls.length
     await engine.compareExistence(workflow.workflowId)
 
-    expect(runQuery).toHaveBeenCalledTimes(callsAfterDiscovery)
+    expect(mocks.runQuery).toHaveBeenCalledTimes(callsAfterDiscovery)
     const statuses: Record<string, string> = {}
     for await (const result of store.readJsonLines<any>(
       store.artifactPath(workflow, "comparison", "existence.jsonl")
@@ -149,12 +154,16 @@ describe("RepositoryWorkflowEngine", () => {
   })
 
   it("persists only selected objects that exist on both systems", async () => {
-    runQuery.mockResolvedValueOnce({ values: [{ DEVCLASS: "ZPKG", PARENTCL: "", NAMESPACE: "" }] })
-    runQuery.mockResolvedValueOnce({
+    mocks.runQuery.mockResolvedValueOnce({
+      values: [{ DEVCLASS: "ZPKG", PARENTCL: "", NAMESPACE: "" }]
+    })
+    mocks.runQuery.mockResolvedValueOnce({
       values: [row("ZBOTH"), row("ZSOURCE"), { ...row("ZPACKAGE"), OBJECT: "DEVC" }]
     })
-    runQuery.mockResolvedValueOnce({ values: [{ DEVCLASS: "ZPKG", PARENTCL: "", NAMESPACE: "" }] })
-    runQuery.mockResolvedValueOnce({
+    mocks.runQuery.mockResolvedValueOnce({
+      values: [{ DEVCLASS: "ZPKG", PARENTCL: "", NAMESPACE: "" }]
+    })
+    mocks.runQuery.mockResolvedValueOnce({
       values: [row("ZBOTH"), { ...row("ZPACKAGE"), OBJECT: "DEVC" }]
     })
     const store = new WorkflowStore({} as any)
@@ -239,7 +248,7 @@ describe("RepositoryWorkflowEngine", () => {
   })
 
   it("resumes discovery without repeating completed package queries", async () => {
-    runQuery
+    mocks.runQuery
       .mockResolvedValueOnce({ values: [{ DEVCLASS: "ZPKG", PARENTCL: "", NAMESPACE: "" }] })
       .mockResolvedValueOnce({ values: [row("ZSOURCE")] })
       .mockResolvedValueOnce({ values: [{ DEVCLASS: "ZPKG", PARENTCL: "", NAMESPACE: "" }] })
@@ -252,21 +261,21 @@ describe("RepositoryWorkflowEngine", () => {
     })
     const engine = new RepositoryWorkflowEngine(store)
     await engine.runDiscovery(workflow.workflowId)
-    const firstRunCalls = runQuery.mock.calls.length
+    const firstRunCalls = mocks.runQuery.mock.calls.length
     await store.update(workflow.workflowId, current => ({
       ...current,
       currentStep: "discovery",
       steps: { ...current.steps, discovery: { status: "interrupted" } }
     }))
-    runQuery
+    mocks.runQuery
       .mockResolvedValueOnce({ values: [{ DEVCLASS: "ZPKG", PARENTCL: "", NAMESPACE: "" }] })
       .mockResolvedValueOnce({ values: [{ DEVCLASS: "ZPKG", PARENTCL: "", NAMESPACE: "" }] })
     await engine.runDiscovery(workflow.workflowId)
-    expect(runQuery.mock.calls.length - firstRunCalls).toBe(2)
+    expect(mocks.runQuery.mock.calls.length - firstRunCalls).toBe(2)
   })
 
   it("compares object types independently when names are the same", async () => {
-    runQuery
+    mocks.runQuery
       .mockResolvedValueOnce({ values: [{ DEVCLASS: "ZPKG", PARENTCL: "", NAMESPACE: "" }] })
       .mockResolvedValueOnce({
         values: [row("ZSAME"), { ...row("ZSAME"), OBJECT: "CLAS" }]
@@ -318,7 +327,7 @@ describe("RepositoryWorkflowEngine", () => {
     const readAllowed = new Promise<void>(resolve => {
       continueRead = resolve
     })
-    jest.spyOn(store, "readJsonLines").mockImplementation(((filePath: string) => {
+    vi.spyOn(store, "readJsonLines").mockImplementation(((filePath: string) => {
       if (filePath !== sourcePath) return readJsonLines(filePath)
       return (async function* () {
         startRead()
@@ -370,11 +379,11 @@ describe("RepositoryWorkflowEngine", () => {
       updatedAt: new Date().toISOString(),
       keys: ["R3TR:PROG:ZPARTIAL"]
     })
-    mockSnapshots.selectedRecords.mockResolvedValue({
+    mocks.snapshots.selectedRecords.mockResolvedValue({
       source: [repositoryRecord("ZPARTIAL")],
       target: [repositoryRecord("ZPARTIAL")]
     })
-    mockSnapshots.downloadPending.mockImplementation(
+    mocks.snapshots.downloadPending.mockImplementation(
       async (_workflowId, side: "source" | "target", _records, total) => ({
         total,
         complete: side === "source" ? 1 : 0,
@@ -383,7 +392,7 @@ describe("RepositoryWorkflowEngine", () => {
         cancelled: false
       })
     )
-    mockSnapshots.compare.mockResolvedValue([
+    mocks.snapshots.compare.mockResolvedValue([
       {
         key: "R3TR:PROG:ZPARTIAL",
         status: "partial",
@@ -435,7 +444,7 @@ describe("RepositoryWorkflowEngine", () => {
       updatedAt: new Date().toISOString(),
       keys: ["R3TR:PROG:ZWAIT"]
     })
-    mockSnapshots.compare.mockImplementation(async (_id, _keys, _progress, token) => {
+    mocks.snapshots.compare.mockImplementation(async (_id, _keys, _progress, token) => {
       while (!token.isCancellationRequested)
         await new Promise<void>(resolve => setImmediate(resolve))
       return []
@@ -457,7 +466,7 @@ describe("RepositoryWorkflowEngine", () => {
         assistedApplyPlan: { status: "not-started" }
       }
     }))
-    mockAssistedApply.prepare.mockImplementation(async (_id, _keys, token) => {
+    mocks.assistedApply.prepare.mockImplementation(async (_id, _keys, token) => {
       while (!token.isCancellationRequested)
         await new Promise<void>(resolve => setImmediate(resolve))
       throw new Error("Operation cancelled")

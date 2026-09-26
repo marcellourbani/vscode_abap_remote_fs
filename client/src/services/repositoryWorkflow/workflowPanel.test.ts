@@ -1,28 +1,26 @@
-jest.mock(
-  "vscode",
-  () => ({
-    Uri: {
-      joinPath: jest.fn((base: any, ...parts: string[]) => ({
-        ...base,
-        path: [base.path.replace(/\/$/, ""), ...parts].join("/")
-      }))
-    }
-  }),
-  { virtual: true }
-)
+import { vi } from "vitest"
 
-jest.mock("../../config", () => ({ connectedRoots: jest.fn(() => new Map()) }))
-jest.mock("./workflowExportService", () => ({ WorkflowExportService: jest.fn() }))
-jest.mock("./workflowEngine", () => ({ RepositoryWorkflowEngine: jest.fn() }))
-jest.mock("./runtime", () => ({ RepositoryWorkflowRuntime: { get: jest.fn() } }))
-jest.mock("./assistedApplyService", () => ({
-  assistedApplySafety: jest.fn(() => ({
+vi.mock("vscode", () => ({
+  Uri: {
+    joinPath: vi.fn((base: any, ...parts: string[]) => ({
+      ...base,
+      path: [base.path.replace(/\/$/, ""), ...parts].join("/")
+    }))
+  }
+}))
+
+vi.mock("../../config", () => ({ connectedRoots: vi.fn(() => new Map()) }))
+vi.mock("./workflowExportService", () => ({ WorkflowExportService: vi.fn() }))
+vi.mock("./workflowEngine", () => ({ RepositoryWorkflowEngine: vi.fn() }))
+vi.mock("./runtime", () => ({ RepositoryWorkflowRuntime: { get: vi.fn() } }))
+vi.mock("./assistedApplyService", () => ({
+  assistedApplySafety: vi.fn(() => ({
     safe: true,
     autoSave: "off",
     chatSaveBeforeSend: false
   }))
 }))
-jest.mock("./snapshotService", () => ({ objectFolderId: jest.fn(() => "id") }))
+vi.mock("./snapshotService", () => ({ objectFolderId: vi.fn(() => "id") }))
 
 import {
   readExistencePreview,
@@ -84,12 +82,12 @@ describe("repository workflow packaged assets", () => {
 
   it("ships CSP-safe, understandable discovery UI", () => {
     const script = fs.readFileSync(
-      path.join(__dirname, "../../../media/repositoryWorkflow/main.js"),
+      path.join(import.meta.dirname, "../../../media/repositoryWorkflow/main.js"),
       "utf8"
     )
-    const panelSource = fs.readFileSync(path.join(__dirname, "workflowPanel.ts"), "utf8")
+    const panelSource = fs.readFileSync(path.join(import.meta.dirname, "workflowPanel.ts"), "utf8")
     const stylesheet = fs.readFileSync(
-      path.join(__dirname, "../../../media/repositoryWorkflow/main.css"),
+      path.join(import.meta.dirname, "../../../media/repositoryWorkflow/main.css"),
       "utf8"
     )
     expect(script).not.toContain("style=")
@@ -172,8 +170,8 @@ describe("repository workflow packaged assets", () => {
 
   it("returns every inventory comparison as a compact preview row", async () => {
     const store = {
-      artifactPath: jest.fn(() => "existence.jsonl"),
-      readJsonLines: jest.fn(async function* () {
+      artifactPath: vi.fn(() => "existence.jsonl"),
+      readJsonLines: vi.fn(async function* () {
         for (let index = 0; index < 600; index++) {
           yield {
             key: `R3TR:PROG:Z${index}`,
@@ -203,8 +201,8 @@ describe("repository workflow packaged assets", () => {
 
   it("returns every discovery row without carrying unused metadata", async () => {
     const store = {
-      artifactPath: jest.fn(() => "tadir.jsonl"),
-      readJsonLines: jest.fn(async function* () {
+      artifactPath: vi.fn(() => "tadir.jsonl"),
+      readJsonLines: vi.fn(async function* () {
         for (let index = 0; index < 600; index++)
           yield {
             objectName: `Z${index}`,
@@ -231,8 +229,8 @@ describe("repository workflow packaged assets", () => {
 
   it("returns every source comparison as a compact preview row", async () => {
     const store = {
-      artifactPath: jest.fn(() => "source.jsonl"),
-      readJsonLines: jest.fn(async function* () {
+      artifactPath: vi.fn(() => "source.jsonl"),
+      readJsonLines: vi.fn(async function* () {
         for (let index = 0; index < 600; index++)
           yield {
             key: `R3TR:PROG:Z${index}`,

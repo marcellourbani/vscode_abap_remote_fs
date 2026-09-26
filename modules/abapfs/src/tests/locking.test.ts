@@ -1,5 +1,6 @@
-import { mock } from "jest-mock-extended"
-import { AbapFsService, createRoot } from "../index.js"
+import { mock } from "vitest-mock-extended"
+import { createRoot } from ".."
+import type { AbapFsService } from ".."
 import sampleNodeContents from "../testdata/nodeContents1.json"
 import sampleclas from "../testdata/zcl_ca_alv.json"
 import { delay } from "../lockObject"
@@ -10,7 +11,7 @@ const mockClient = () => {
   const locks = new Map<string, string>()
   client.nodeContents.mockReturnValueOnce(Promise.resolve(sampleNodeContents))
   client.objectStructure.mockReturnValueOnce(Promise.resolve(sampleclas))
-  client.lock.mockImplementation(async (path: string) => {
+  client.lock.mockImplementation(async function (path: string) {
     if (locks.get(path)) throw new Error("Object locked by another user")
     await delay(50)
     const LOCK_HANDLE = Math.random().toString()
@@ -25,7 +26,7 @@ const mockClient = () => {
       MODIFICATION_SUPPORT: ""
     }
   })
-  client.unlock.mockImplementation(async (path, handle) => {
+  client.unlock.mockImplementation(async function (path, handle) {
     if (locks.get(path) !== handle) throw new Error(`Lock ID not matching`)
     await delay(50)
     locks.delete(path)
@@ -42,7 +43,7 @@ test("lock/unlock class members", async () => {
   const root = createRoot("MYConn", client)
   try {
     await root.lockManager.requestLock(main)
-    fail("lock should not be allowed until filename is resolved")
+    throw new Error("lock should not be allowed until filename is resolved")
   } catch (error) {
     // expected
   }

@@ -1,109 +1,128 @@
-jest.mock(
-  "vscode",
-  () => {
-    const TabInputTextDiff = jest.fn()
-    return {
-      commands: { executeCommand: jest.fn() },
-      Uri: {
-        parse: jest.fn((s: string) => ({
+vi.mock("vscode", () => {
+  const TabInputTextDiff = vi.fn()
+  return {
+    commands: { executeCommand: vi.fn() },
+    Uri: {
+      parse: vi.fn(function (s: string) {
+        return {
           toString: () => s,
           path: s.replace(/^\w+:\/\/[^/]*/, ""),
           authority: s.match(/^\w+:\/\/([^/]*)/)?.[1] || "",
           scheme: s.match(/^(\w+):/)?.[1] || "",
-          with: jest.fn(function (this: any, overrides: any) {
+          with: vi.fn(function (this: any, overrides: any) {
             return { ...this, ...overrides, toString: () => s }
           })
-        }))
-      },
-      ProgressLocation: { Notification: 15 },
-      workspace: {},
-      QuickPickItem: {},
-      TabInputTextDiff
-    }
-  },
-  { virtual: true }
-)
+        }
+      })
+    },
+    ProgressLocation: { Notification: 15 },
+    workspace: {},
+    QuickPickItem: {},
+    TabInputTextDiff
+  }
+})
 
-jest.mock("../../services/funMessenger", () => ({
+vi.mock("../../services/funMessenger", () => ({
   funWindow: {
-    showQuickPick: jest.fn(),
-    showWarningMessage: jest.fn(),
-    showErrorMessage: jest.fn(),
-    showInformationMessage: jest.fn(),
+    showQuickPick: vi.fn(),
+    showWarningMessage: vi.fn(),
+    showErrorMessage: vi.fn(),
+    showInformationMessage: vi.fn(),
     tabGroups: {
       activeTabGroup: { activeTab: null }
     },
-    withProgress: jest.fn((_opts: any, cb: any) => cb({}, { isCancellationRequested: false }))
+    withProgress: vi.fn(function (_opts: any, cb: any) {
+      return cb({}, { isCancellationRequested: false })
+    })
   }
 }))
 
-jest.mock("../../adt/conections", () => ({
-  abapUri: jest.fn(),
-  uriRoot: jest.fn(),
-  getOrCreateRoot: jest.fn(),
-  getClient: jest.fn(),
+vi.mock("../../adt/conections", () => ({
+  abapUri: vi.fn(),
+  uriRoot: vi.fn(),
+  getOrCreateRoot: vi.fn(),
+  getClient: vi.fn(),
   ADTSCHEME: "adt",
-  rootIsConnected: jest.fn()
+  rootIsConnected: vi.fn()
 }))
 
-jest.mock("./abaprevisionservice", () => ({
+vi.mock("./abaprevisionservice", () => ({
   AbapRevisionService: {
-    get: jest.fn().mockReturnValue({
-      uriRevisions: jest.fn().mockResolvedValue([])
+    get: vi.fn().mockReturnValue({
+      uriRevisions: vi.fn().mockResolvedValue([])
     })
   },
-  revLabel: jest.fn((rev: any, fallback: string) => rev?.version || fallback)
+  revLabel: vi.fn(function (rev: any, fallback: string) {
+    return rev?.version || fallback
+  })
 }))
 
-jest.mock("./documentprovider", () => ({
-  decodeRevisioUrl: jest.fn(),
-  revisionUri: jest.fn((uri: any, rev: any, norm?: boolean) => ({
-    ...uri,
-    scheme: "adt_revision",
-    revision: rev
-  })),
+vi.mock("./documentprovider", () => ({
+  decodeRevisioUrl: vi.fn(),
+  revisionUri: vi.fn(function (uri: any, rev: any, norm?: boolean) {
+    return {
+      ...uri,
+      scheme: "adt_revision",
+      revision: rev
+    }
+  }),
   ADTREVISIONSCHEME: "adt_revision"
 }))
 
-jest.mock("./quickdiff", () => ({
+vi.mock("./quickdiff", () => ({
   AbapQuickDiff: {
-    get: jest.fn().mockReturnValue({ setCurrentRev: jest.fn() })
+    get: vi.fn().mockReturnValue({ setCurrentRev: vi.fn() })
   }
 }))
 
-jest.mock("../../config", () => ({
+vi.mock("../../config", () => ({
   RemoteManager: {
-    get: jest.fn().mockReturnValue({
-      selectConnection: jest.fn().mockResolvedValue({ remote: null, userCancel: true })
+    get: vi.fn().mockReturnValue({
+      selectConnection: vi.fn().mockResolvedValue({ remote: null, userCancel: true })
     })
   },
-  formatKey: jest.fn((s: string) => s.toLowerCase())
+  formatKey: vi.fn(function (s: string) {
+    return s.toLowerCase()
+  })
 }))
 
-jest.mock("abapfs", () => ({
-  isAbapFile: jest.fn()
+vi.mock("abapfs", () => ({
+  isAbapFile: vi.fn()
 }))
 
-jest.mock("../../lib", () => ({
-  caughtToString: jest.fn((e: any) => String(e)),
-  atob: jest.fn((s: string) => Buffer.from(s, "base64").toString()),
-  btoa: jest.fn((s: string) => Buffer.from(s).toString("base64"))
+vi.mock("../../lib", () => ({
+  caughtToString: vi.fn(function (e: any) {
+    return String(e)
+  }),
+  atob: vi.fn(function (s: string) {
+    return Buffer.from(s, "base64").toString()
+  }),
+  btoa: vi.fn(function (s: string) {
+    return Buffer.from(s).toString("base64")
+  }),
+  cache: (creator: any, keyTranslator: any = (x: any) => x) => {
+    const values = new Map()
+    return {
+      get: (key: any) => {
+        const mapKey = keyTranslator(key)
+        if (!values.has(mapKey)) values.set(mapKey, creator(key))
+        return values.get(mapKey)
+      },
+      get size() {
+        return values.size
+      },
+      *[Symbol.iterator]() {
+        yield* values.values()
+      }
+    }
+  }
 }))
 
-jest.mock("io-ts", () => ({
-  type: jest.fn().mockReturnValue({ decode: jest.fn() }),
-  string: "string"
+vi.mock("../../langClient", () => ({
+  vsCodeUri: vi.fn()
 }))
 
-jest.mock("fp-ts/lib/Either", () => ({
-  isRight: jest.fn().mockReturnValue(false)
-}))
-
-jest.mock("../../langClient", () => ({
-  vsCodeUri: jest.fn()
-}))
-
-jest.mock("../../commands", () => ({
+vi.mock("../../commands", () => ({
   AbapFsCommands: {
     changequickdiff: "abapfs.changequickdiff",
     remotediff: "abapfs.remotediff",
@@ -119,7 +138,9 @@ jest.mock("../../commands", () => ({
     opendiffNormalized: "abapfs.opendiffNormalized",
     togglediffNormalize: "abapfs.togglediffNormalize"
   },
-  command: jest.fn(() => jest.fn())
+  command: vi.fn(function () {
+    return vi.fn()
+  })
 }))
 
 import { commands, Uri } from "vscode"
@@ -128,9 +149,10 @@ import { abapUri } from "../../adt/conections"
 import { AbapRevisionService } from "./abaprevisionservice"
 import { displayRevDiff, versionRevisions } from "./commands"
 import { decodeRevisioUrl, revisionUri } from "./documentprovider"
+import type { Mock } from "vitest"
 
 beforeEach(() => {
-  jest.clearAllMocks()
+  vi.clearAllMocks()
 })
 
 describe("displayRevDiff", () => {
@@ -209,7 +231,7 @@ describe("displayRevDiff", () => {
 
 describe("versionRevisions", () => {
   it("returns undefined when decodeRevisioUrl returns undefined", async () => {
-    ;(decodeRevisioUrl as jest.Mock).mockReturnValue(undefined)
+    ;(decodeRevisioUrl as Mock).mockReturnValue(undefined)
     const uri = Uri.parse("adt_revision://dev100/path")
     const result = await versionRevisions(uri)
     expect(result).toBeUndefined()
@@ -218,13 +240,13 @@ describe("versionRevisions", () => {
   it("returns undefined when revision not found in loaded revisions", async () => {
     const innerUri = Uri.parse("adt://dev100/path")
     const revision = { uri: "not-found-uri", version: "1", date: "", author: "", versionTitle: "" }
-    ;(decodeRevisioUrl as jest.Mock).mockReturnValue({
+    ;(decodeRevisioUrl as Mock).mockReturnValue({
       uri: innerUri,
       revision,
       normalized: false
     })
-    const service = { uriRevisions: jest.fn().mockResolvedValue([]) }
-    ;(AbapRevisionService.get as jest.Mock).mockReturnValue(service)
+    const service = { uriRevisions: vi.fn().mockResolvedValue([]) }
+    ;(AbapRevisionService.get as Mock).mockReturnValue(service)
 
     const uri = Uri.parse("adt_revision://dev100/path")
     const result = await versionRevisions(uri)
@@ -240,13 +262,13 @@ describe("versionRevisions", () => {
       author: "user",
       versionTitle: ""
     }
-    ;(decodeRevisioUrl as jest.Mock).mockReturnValue({
+    ;(decodeRevisioUrl as Mock).mockReturnValue({
       uri: innerUri,
       revision,
       normalized: true
     })
-    const service = { uriRevisions: jest.fn().mockResolvedValue([revision]) }
-    ;(AbapRevisionService.get as jest.Mock).mockReturnValue(service)
+    const service = { uriRevisions: vi.fn().mockResolvedValue([revision]) }
+    ;(AbapRevisionService.get as Mock).mockReturnValue(service)
 
     const uri = Uri.parse("adt_revision://dev100/path")
     const result = await versionRevisions(uri, false)

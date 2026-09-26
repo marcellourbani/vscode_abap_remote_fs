@@ -4,13 +4,14 @@ import {
   EXCEL_MAX_DATA_ROWS,
   formatExportCell
 } from "./structuredDataExportService"
+import { vi } from "vitest"
 
-jest.mock("exceljs", () => ({
-  Workbook: jest.fn().mockImplementation(() => ({
-    addWorksheet: jest.fn(() => ({
-      addRow: jest.fn(() => ({ eachCell: jest.fn() }))
+vi.mock("exceljs", () => ({
+  Workbook: vi.fn().mockImplementation(() => ({
+    addWorksheet: vi.fn(() => ({
+      addRow: vi.fn(() => ({ eachCell: vi.fn() }))
     })),
-    xlsx: { writeBuffer: jest.fn().mockResolvedValue(new ArrayBuffer(0)) }
+    xlsx: { writeBuffer: vi.fn().mockResolvedValue(new ArrayBuffer(0)) }
   }))
 }))
 

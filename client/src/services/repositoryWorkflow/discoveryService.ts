@@ -1,5 +1,5 @@
 import { getClient } from "../../adt/conections"
-import { RepositoryCriteria, RepositoryObjectRecord } from "./types"
+import type { RepositoryCriteria, RepositoryObjectRecord } from "./types"
 
 const MAX_DISCOVERY_ROWS = 10_000_000
 export const MAX_ADT_SQL_LENGTH = 255

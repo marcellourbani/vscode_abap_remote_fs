@@ -1,37 +1,35 @@
-jest.mock(
-  "vscode",
-  () => ({
-    Uri: {
-      file: jest.fn((p: string) => ({ fsPath: p, toString: () => `file://${p}` }))
-    },
-    workspace: {
-      fs: {
-        readFile: jest.fn(),
-        writeFile: jest.fn()
-      }
+vi.mock("vscode", () => ({
+  Uri: {
+    file: vi.fn(function (p: string) {
+      return { fsPath: p, toString: () => `file://${p}` }
+    })
+  },
+  workspace: {
+    fs: {
+      readFile: vi.fn(),
+      writeFile: vi.fn()
     }
-  }),
-  { virtual: true }
-)
-
-jest.mock("./funMessenger", () => ({
-  funWindow: {
-    showSaveDialog: jest.fn()
   }
 }))
 
-jest.mock("docx", () => {
-  const Packer = { toBuffer: jest.fn().mockResolvedValue(Buffer.from("mock-doc")) }
-  const Document = jest.fn().mockImplementation(function (this: any, opts: any) {
+vi.mock("./funMessenger", () => ({
+  funWindow: {
+    showSaveDialog: vi.fn()
+  }
+}))
+
+vi.mock("docx", () => {
+  const Packer = { toBuffer: vi.fn().mockResolvedValue(Buffer.from("mock-doc")) }
+  const Document = vi.fn().mockImplementation(function (this: any, opts: any) {
     this.opts = opts
   })
-  const Paragraph = jest.fn().mockImplementation(function (this: any, opts: any) {
+  const Paragraph = vi.fn().mockImplementation(function (this: any, opts: any) {
     this.opts = opts
   })
-  const TextRun = jest.fn().mockImplementation(function (this: any, opts: any) {
+  const TextRun = vi.fn().mockImplementation(function (this: any, opts: any) {
     this.opts = opts
   })
-  const ImageRun = jest.fn().mockImplementation(function (this: any, opts: any) {
+  const ImageRun = vi.fn().mockImplementation(function (this: any, opts: any) {
     this.opts = opts
   })
   const HeadingLevel = {
@@ -43,21 +41,25 @@ jest.mock("docx", () => {
   return { Packer, Document, Paragraph, TextRun, ImageRun, HeadingLevel, AlignmentType }
 })
 
-import { TestDocumentCreator, TestScenario, TestDocumentOptions } from "./testDocumentCreator"
+import {
+  TestDocumentCreator,
+  type TestScenario,
+  type TestDocumentOptions
+} from "./testDocumentCreator"
 import * as vscode from "vscode"
 import { funWindow as window } from "./funMessenger"
 import { Packer } from "docx"
+import * as __$mock_docx from "docx"
+import type { MockedFunction, Mock } from "vitest"
 
-const mockReadFile = vscode.workspace.fs.readFile as jest.MockedFunction<
+const mockReadFile = vscode.workspace.fs.readFile as MockedFunction<
   typeof vscode.workspace.fs.readFile
 >
-const mockWriteFile = vscode.workspace.fs.writeFile as jest.MockedFunction<
+const mockWriteFile = vscode.workspace.fs.writeFile as MockedFunction<
   typeof vscode.workspace.fs.writeFile
 >
-const mockShowSaveDialog = window.showSaveDialog as jest.MockedFunction<
-  typeof window.showSaveDialog
->
-const mockPackerToBuffer = Packer.toBuffer as jest.MockedFunction<typeof Packer.toBuffer>
+const mockShowSaveDialog = window.showSaveDialog as MockedFunction<typeof window.showSaveDialog>
+const mockPackerToBuffer = Packer.toBuffer as MockedFunction<typeof Packer.toBuffer>
 
 const makeScenario = (id = 1, numScreenshots = 1): TestScenario => ({
   scenarioId: id,
@@ -73,7 +75,7 @@ describe("TestDocumentCreator.createDocument", () => {
   let creator: TestDocumentCreator
 
   beforeEach(() => {
-    jest.clearAllMocks()
+    vi.clearAllMocks()
     creator = new TestDocumentCreator()
     mockReadFile.mockResolvedValue(Buffer.from("fake-image-data") as any)
   })
@@ -89,50 +91,50 @@ describe("TestDocumentCreator.createDocument", () => {
   })
 
   it("uses default reportTitle when not provided", async () => {
-    const { Document } = require("docx")
+    const { Document } = __$mock_docx
     await creator.createDocument({ scenarios: [] })
     // Document is called once
     expect(Document).toHaveBeenCalledTimes(1)
   })
 
   it("uses custom reportTitle when provided", async () => {
-    const { Paragraph } = require("docx")
+    const { Paragraph } = __$mock_docx
     await creator.createDocument({
       scenarios: [],
       reportTitle: "My Custom Report"
     })
     // First paragraph should have the custom title
-    const firstCall = (Paragraph as jest.Mock).mock.calls[0][0]
+    const firstCall = (Paragraph as Mock).mock.calls[0][0]
     expect(firstCall.text).toBe("My Custom Report")
   })
 
   it("uses provided testDate in document", async () => {
-    const { TextRun } = require("docx")
+    const { TextRun } = __$mock_docx
     await creator.createDocument({
       scenarios: [],
       testDate: "2024-06-15"
     })
-    const textRunCalls = (TextRun as jest.Mock).mock.calls
+    const textRunCalls = (TextRun as Mock).mock.calls
     const dateRun = textRunCalls.find((call: any[]) => call[0].text?.includes("2024-06-15"))
     expect(dateRun).toBeDefined()
   })
 
   it("uses current date when testDate not provided", async () => {
-    const { TextRun } = require("docx")
+    const { TextRun } = __$mock_docx
     const today = new Date().toISOString().split("T")[0]
     await creator.createDocument({ scenarios: [] })
-    const textRunCalls = (TextRun as jest.Mock).mock.calls
+    const textRunCalls = (TextRun as Mock).mock.calls
     const dateRun = textRunCalls.find((call: any[]) => call[0].text?.includes(today))
     expect(dateRun).toBeDefined()
   })
 
   it("creates paragraphs for each scenario", async () => {
-    const { Paragraph } = require("docx")
-    jest.clearAllMocks()
+    const { Paragraph } = __$mock_docx
+    vi.clearAllMocks()
     const scenarios = [makeScenario(1), makeScenario(2)]
     await creator.createDocument({ scenarios })
     // Should create heading paragraphs for each scenario
-    const headingCalls = (Paragraph as jest.Mock).mock.calls.filter(
+    const headingCalls = (Paragraph as Mock).mock.calls.filter(
       (call: any[]) => call[0].heading === "HEADING_1"
     )
     expect(headingCalls.length).toBe(2)
@@ -151,13 +153,13 @@ describe("TestDocumentCreator.createDocument", () => {
   })
 
   it("adds error paragraph when image fails to load", async () => {
-    const { TextRun } = require("docx")
-    jest.clearAllMocks()
+    const { TextRun } = __$mock_docx
+    vi.clearAllMocks()
     mockReadFile.mockRejectedValue(new Error("File not found"))
     mockPackerToBuffer.mockResolvedValue(Buffer.from("doc"))
     const scenarios = [makeScenario(1, 1)]
     await creator.createDocument({ scenarios })
-    const errorRun = (TextRun as jest.Mock).mock.calls.find((call: any[]) =>
+    const errorRun = (TextRun as Mock).mock.calls.find((call: any[]) =>
       call[0].text?.includes("Error loading image")
     )
     expect(errorRun).toBeDefined()
@@ -169,8 +171,8 @@ describe("TestDocumentCreator.createDocument", () => {
   })
 
   it("processes multiple screenshots per scenario", async () => {
-    const { ImageRun } = require("docx")
-    jest.clearAllMocks()
+    const { ImageRun } = __$mock_docx
+    vi.clearAllMocks()
     mockReadFile.mockResolvedValue(Buffer.from("img") as any)
     mockPackerToBuffer.mockResolvedValue(Buffer.from("doc"))
     const scenarios = [makeScenario(1, 3)]
@@ -179,8 +181,8 @@ describe("TestDocumentCreator.createDocument", () => {
   })
 
   it("screenshot description is included in paragraph text", async () => {
-    const { TextRun } = require("docx")
-    jest.clearAllMocks()
+    const { TextRun } = __$mock_docx
+    vi.clearAllMocks()
     mockReadFile.mockResolvedValue(Buffer.from("img") as any)
     mockPackerToBuffer.mockResolvedValue(Buffer.from("doc"))
     const scenarios: TestScenario[] = [
@@ -192,7 +194,7 @@ describe("TestDocumentCreator.createDocument", () => {
       }
     ]
     await creator.createDocument({ scenarios })
-    const descRun = (TextRun as jest.Mock).mock.calls.find((call: any[]) =>
+    const descRun = (TextRun as Mock).mock.calls.find((call: any[]) =>
       call[0].text?.includes("My Screenshot")
     )
     expect(descRun).toBeDefined()
@@ -203,7 +205,7 @@ describe("TestDocumentCreator.saveDocument", () => {
   let creator: TestDocumentCreator
 
   beforeEach(() => {
-    jest.clearAllMocks()
+    vi.clearAllMocks()
     creator = new TestDocumentCreator()
   })
 
@@ -226,21 +228,21 @@ describe("TestDocumentCreator.saveDocument", () => {
   it("uses provided defaultFileName in save dialog", async () => {
     mockShowSaveDialog.mockResolvedValue(undefined)
     await creator.saveDocument(Buffer.from("test"), "custom.docx")
-    const opts = (mockShowSaveDialog as jest.Mock).mock.calls[0][0]
+    const opts = (mockShowSaveDialog as Mock).mock.calls[0][0]
     expect(opts.defaultUri.fsPath).toContain("custom.docx")
   })
 
   it("uses timestamped default filename when no name provided", async () => {
     mockShowSaveDialog.mockResolvedValue(undefined)
     await creator.saveDocument(Buffer.from("test"))
-    const opts = (mockShowSaveDialog as jest.Mock).mock.calls[0][0]
+    const opts = (mockShowSaveDialog as Mock).mock.calls[0][0]
     expect(opts.defaultUri.fsPath).toMatch(/test-documentation-\d+\.docx/)
   })
 
   it("sets correct file filters in save dialog", async () => {
     mockShowSaveDialog.mockResolvedValue(undefined)
     await creator.saveDocument(Buffer.from("test"))
-    const opts = (mockShowSaveDialog as jest.Mock).mock.calls[0][0]
+    const opts = (mockShowSaveDialog as Mock).mock.calls[0][0]
     expect(opts.filters["Word Documents"]).toEqual(["docx"])
   })
 })

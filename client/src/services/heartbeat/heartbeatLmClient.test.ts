@@ -11,81 +11,93 @@
  * - Tool usage tracking (deduplication)
  */
 
-jest.mock(
-  "vscode",
-  () => {
-    const mockToken = { isCancellationRequested: false, onCancellationRequested: jest.fn() }
-    const CancellationTokenSource = jest.fn(() => ({
-      token: mockToken,
-      cancel: jest.fn(),
-      dispose: jest.fn()
-    }))
-
-    const LanguageModelTextPart = jest.fn(function (this: any, value: string) {
-      this.value = value
-    })
-    const LanguageModelToolCallPart = jest.fn(function (
-      this: any,
-      callId: string,
-      name: string,
-      input: any
-    ) {
-      this.callId = callId
-      this.name = name
-      this.input = input
-    })
-    const LanguageModelToolResultPart = jest.fn(function (
-      this: any,
-      callId: string,
-      content: any[]
-    ) {
-      this.callId = callId
-      this.content = content
-    })
-
-    const LanguageModelChatMessage = {
-      User: jest.fn((content: any) => ({ role: "user", content })),
-      Assistant: jest.fn((content: any) => ({ role: "assistant", content }))
-    }
-
+vi.mock("vscode", () => {
+  const mockToken = { isCancellationRequested: false, onCancellationRequested: vi.fn() }
+  const CancellationTokenSource = vi.fn(function () {
     return {
-      lm: {
-        selectChatModels: jest.fn(),
-        tools: [],
-        invokeTool: jest.fn()
-      },
-      CancellationTokenSource,
-      LanguageModelTextPart,
-      LanguageModelToolCallPart,
-      LanguageModelToolResultPart,
-      LanguageModelChatMessage
+      token: mockToken,
+      cancel: vi.fn(),
+      dispose: vi.fn()
     }
-  },
-  { virtual: true }
-)
+  })
 
-jest.mock("../../lib", () => ({ log: jest.fn() }))
+  const LanguageModelTextPart = vi.fn(function (this: any, value: string) {
+    this.value = value
+  })
+  const LanguageModelToolCallPart = vi.fn(function (
+    this: any,
+    callId: string,
+    name: string,
+    input: any
+  ) {
+    this.callId = callId
+    this.name = name
+    this.input = input
+  })
+  const LanguageModelToolResultPart = vi.fn(function (this: any, callId: string, content: any[]) {
+    this.callId = callId
+    this.content = content
+  })
 
-jest.mock("./heartbeatWatchlist", () => ({
+  const LanguageModelChatMessage = {
+    User: vi.fn(function (content: any) {
+      return { role: "user", content }
+    }),
+    Assistant: vi.fn(function (content: any) {
+      return { role: "assistant", content }
+    })
+  }
+
+  return {
+    lm: {
+      selectChatModels: vi.fn(),
+      tools: [],
+      invokeTool: vi.fn()
+    },
+    CancellationTokenSource,
+    LanguageModelTextPart,
+    LanguageModelToolCallPart,
+    LanguageModelToolResultPart,
+    LanguageModelChatMessage
+  }
+})
+
+vi.mock("../../lib", () => ({ log: vi.fn() }))
+
+vi.mock("./heartbeatWatchlist", () => ({
   HeartbeatWatchlist: {
-    formatForPrompt: jest.fn(() => "No monitoring tasks configured."),
-    getDueTasks: jest.fn(() => [])
+    formatForPrompt: vi.fn(function () {
+      return "No monitoring tasks configured."
+    }),
+    getDueTasks: vi.fn(function () {
+      return []
+    })
   }
 }))
 
-const mockToolRegistry = new Map<string, { invoke: jest.Mock }>()
-jest.mock("../lm-tools/toolRegistry", () => ({ toolRegistry: mockToolRegistry }))
+const { mockToolRegistry } = vi.hoisted(() => {
+  const mockToolRegistry = new Map<string, { invoke: Mock }>()
+  return { mockToolRegistry }
+})
+vi.mock("../lm-tools/toolRegistry", () => ({ toolRegistry: mockToolRegistry }))
 
-const mockCreateMcpAuthorizedOptions = jest.fn((input: unknown) => ({
-  input,
-  __authorized: true
-}))
-jest.mock("../lm-tools/toolGuard", () => ({
+const { mockCreateMcpAuthorizedOptions } = vi.hoisted(() => {
+  const mockCreateMcpAuthorizedOptions = vi.fn(function (input: unknown) {
+    return {
+      input,
+      __authorized: true
+    }
+  })
+  return { mockCreateMcpAuthorizedOptions }
+})
+vi.mock("../lm-tools/toolGuard", () => ({
   createMcpAuthorizedOptions: (input: unknown) => mockCreateMcpAuthorizedOptions(input)
 }))
 
 import { runHeartbeatLM } from "./heartbeatLmClient"
-import { DEFAULT_HEARTBEAT_CONFIG, HeartbeatConfig } from "./heartbeatTypes"
+import { DEFAULT_HEARTBEAT_CONFIG, type HeartbeatConfig } from "./heartbeatTypes"
+import * as __$mock_vscode from "vscode"
+import type { Mock } from "vitest"
 
 // ============================================================================
 // HELPERS
@@ -96,20 +108,20 @@ function makeConfig(overrides: Partial<HeartbeatConfig> = {}): HeartbeatConfig {
 }
 
 function makeStreamWithText(text: string) {
-  const vscode = require("vscode")
+  const vscode = __$mock_vscode
   const part = new vscode.LanguageModelTextPart(text)
   return {
-    stream: (async function* () {
+    stream: (function* () {
       yield part
     })()
   }
 }
 
 function makeStreamWithToolCall(toolName: string, input: unknown = {}) {
-  const vscode = require("vscode")
-  const part = new vscode.LanguageModelToolCallPart("call-1", toolName, input)
+  const vscode = __$mock_vscode
+  const part = new vscode.LanguageModelToolCallPart("call-1", toolName, input as object)
   return {
-    stream: (async function* () {
+    stream: (function* () {
       yield part
     })()
   }
@@ -123,8 +135,8 @@ describe("runHeartbeatLM", () => {
   let vscode: any
 
   beforeEach(() => {
-    vscode = require("vscode")
-    jest.clearAllMocks()
+    vscode = __$mock_vscode
+    vi.clearAllMocks()
     mockToolRegistry.clear()
   })
 
@@ -155,7 +167,7 @@ describe("runHeartbeatLM", () => {
 
   test("returns error when configured model is not in available models", async () => {
     vscode.lm.selectChatModels.mockResolvedValue([
-      { name: "Claude Sonnet", id: "claude-sonnet", sendRequest: jest.fn() }
+      { name: "Claude Sonnet", id: "claude-sonnet", sendRequest: vi.fn() }
     ])
     const result = await runHeartbeatLM(makeConfig({ model: "GPT-NonExistent" }))
     expect(result.status).toBe("error")
@@ -165,7 +177,7 @@ describe("runHeartbeatLM", () => {
   // === Exact model match ===
 
   test("finds model by exact name", async () => {
-    const mockSendRequest = jest.fn().mockResolvedValue(makeStreamWithText("HEARTBEAT_OK"))
+    const mockSendRequest = vi.fn().mockResolvedValue(makeStreamWithText("HEARTBEAT_OK"))
     vscode.lm.selectChatModels.mockResolvedValue([
       { name: "GPT-4o", id: "gpt-4o", sendRequest: mockSendRequest }
     ])
@@ -175,7 +187,7 @@ describe("runHeartbeatLM", () => {
   })
 
   test("finds model by exact id", async () => {
-    const mockSendRequest = jest.fn().mockResolvedValue(makeStreamWithText("HEARTBEAT_OK"))
+    const mockSendRequest = vi.fn().mockResolvedValue(makeStreamWithText("HEARTBEAT_OK"))
     vscode.lm.selectChatModels.mockResolvedValue([
       { name: "My Model", id: "gpt-4o-mini", sendRequest: mockSendRequest }
     ])
@@ -184,7 +196,7 @@ describe("runHeartbeatLM", () => {
   })
 
   test("finds model by partial name match", async () => {
-    const mockSendRequest = jest.fn().mockResolvedValue(makeStreamWithText("HEARTBEAT_OK"))
+    const mockSendRequest = vi.fn().mockResolvedValue(makeStreamWithText("HEARTBEAT_OK"))
     vscode.lm.selectChatModels.mockResolvedValue([
       { name: "Claude Haiku 4.5 (copilot)", id: "some-id", sendRequest: mockSendRequest }
     ])
@@ -195,7 +207,7 @@ describe("runHeartbeatLM", () => {
   // === OK response ===
 
   test("returns status=ok when response contains HEARTBEAT_OK", async () => {
-    const mockSendRequest = jest.fn().mockResolvedValue(makeStreamWithText("HEARTBEAT_OK"))
+    const mockSendRequest = vi.fn().mockResolvedValue(makeStreamWithText("HEARTBEAT_OK"))
     vscode.lm.selectChatModels.mockResolvedValue([
       { name: "TestModel", id: "test", sendRequest: mockSendRequest }
     ])
@@ -206,9 +218,7 @@ describe("runHeartbeatLM", () => {
   // === Alert response ===
 
   test("returns status=alert when response does not contain HEARTBEAT_OK", async () => {
-    const mockSendRequest = jest
-      .fn()
-      .mockResolvedValue(makeStreamWithText("There are 3 new dumps!"))
+    const mockSendRequest = vi.fn().mockResolvedValue(makeStreamWithText("There are 3 new dumps!"))
     vscode.lm.selectChatModels.mockResolvedValue([
       { name: "TestModel", id: "test", sendRequest: mockSendRequest }
     ])
@@ -220,7 +230,7 @@ describe("runHeartbeatLM", () => {
   // === Error path ===
 
   test("returns status=error when model.sendRequest throws", async () => {
-    const mockSendRequest = jest.fn().mockRejectedValue(new Error("Network error"))
+    const mockSendRequest = vi.fn().mockRejectedValue(new Error("Network error"))
     vscode.lm.selectChatModels.mockResolvedValue([
       { name: "TestModel", id: "test", sendRequest: mockSendRequest }
     ])
@@ -240,7 +250,7 @@ describe("runHeartbeatLM", () => {
   // === Duration tracking ===
 
   test("includes durationMs in successful response", async () => {
-    const mockSendRequest = jest.fn().mockResolvedValue(makeStreamWithText("HEARTBEAT_OK"))
+    const mockSendRequest = vi.fn().mockResolvedValue(makeStreamWithText("HEARTBEAT_OK"))
     vscode.lm.selectChatModels.mockResolvedValue([
       { name: "TestModel", id: "test", sendRequest: mockSendRequest }
     ])
@@ -257,7 +267,7 @@ describe("runHeartbeatLM", () => {
   // === Tools used ===
 
   test("returns empty toolsUsed when no tools were called", async () => {
-    const mockSendRequest = jest.fn().mockResolvedValue(makeStreamWithText("HEARTBEAT_OK"))
+    const mockSendRequest = vi.fn().mockResolvedValue(makeStreamWithText("HEARTBEAT_OK"))
     vscode.lm.selectChatModels.mockResolvedValue([
       { name: "TestModel", id: "test", sendRequest: mockSendRequest }
     ])
@@ -266,10 +276,10 @@ describe("runHeartbeatLM", () => {
   })
 
   test("invokes registered tool with authorized options, not vscode.lm.invokeTool", async () => {
-    const toolInvoke = jest.fn().mockResolvedValue({ content: [] })
+    const toolInvoke = vi.fn().mockResolvedValue({ content: [] })
     mockToolRegistry.set("abapfs_run_sql_query", { invoke: toolInvoke })
 
-    const mockSendRequest = jest
+    const mockSendRequest = vi
       .fn()
       .mockResolvedValueOnce(makeStreamWithToolCall("abapfs_run_sql_query", { sql: "SELECT 1" }))
       .mockResolvedValueOnce(makeStreamWithText("HEARTBEAT_OK"))
@@ -289,7 +299,7 @@ describe("runHeartbeatLM", () => {
   test("falls back to vscode.lm.invokeTool for unregistered tools", async () => {
     vscode.lm.invokeTool.mockResolvedValue({ content: [] })
 
-    const mockSendRequest = jest
+    const mockSendRequest = vi
       .fn()
       .mockResolvedValueOnce(makeStreamWithToolCall("some_other_tool", { foo: "bar" }))
       .mockResolvedValueOnce(makeStreamWithText("HEARTBEAT_OK"))
@@ -311,7 +321,7 @@ describe("runHeartbeatLM", () => {
   // === Custom prompt ===
 
   test("uses custom prompt when config.prompt is set", async () => {
-    const mockSendRequest = jest.fn().mockResolvedValue(makeStreamWithText("HEARTBEAT_OK"))
+    const mockSendRequest = vi.fn().mockResolvedValue(makeStreamWithText("HEARTBEAT_OK"))
     vscode.lm.selectChatModels.mockResolvedValue([
       { name: "TestModel", id: "test", sendRequest: mockSendRequest }
     ])

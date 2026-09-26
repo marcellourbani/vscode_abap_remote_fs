@@ -4,21 +4,18 @@ import {
   getSkillSettings,
   skillContextKey
 } from "./skillRegistry"
+import { vi } from "vitest"
 
-const get = jest.fn().mockReturnValue({})
+const { get } = vi.hoisted(() => ({ get: vi.fn().mockReturnValue({}) }))
 
-jest.mock(
-  "vscode",
-  () => ({
-    workspace: {
-      getConfiguration: jest.fn(() => ({ get }))
-    },
-    commands: {
-      executeCommand: jest.fn()
-    }
-  }),
-  { virtual: true }
-)
+vi.mock("vscode", () => ({
+  workspace: {
+    getConfiguration: vi.fn(() => ({ get }))
+  },
+  commands: {
+    executeCommand: vi.fn()
+  }
+}))
 
 describe("GENERAL_SKILL_REGISTRY", () => {
   test("contains only general skills with unique IDs and packaged paths", () => {

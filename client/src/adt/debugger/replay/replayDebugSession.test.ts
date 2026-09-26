@@ -1,33 +1,45 @@
-jest.mock("@vscode/debugadapter", () => ({
-  LoggingDebugSession: jest.fn().mockImplementation(function (this: any) {
-    this.sendResponse = jest.fn()
-    this.sendEvent = jest.fn()
+vi.mock("@vscode/debugadapter", () => ({
+  LoggingDebugSession: vi.fn().mockImplementation(function (this: any) {
+    this.sendResponse = vi.fn()
+    this.sendEvent = vi.fn()
   }),
-  InitializedEvent: jest.fn().mockImplementation(() => ({ type: "initialized" })),
-  StoppedEvent: jest.fn().mockImplementation((reason: string, threadId: number) => ({
-    type: "stopped",
-    reason,
-    threadId
-  })),
-  TerminatedEvent: jest.fn().mockImplementation(() => ({ type: "terminated" })),
-  Thread: jest.fn().mockImplementation((id: number, name: string) => ({ id, name })),
-  Source: jest.fn().mockImplementation((name: string, path: string) => ({ name, path }))
+  InitializedEvent: vi.fn().mockImplementation(function () {
+    return { type: "initialized" }
+  }),
+  StoppedEvent: vi.fn().mockImplementation(function (reason: string, threadId: number) {
+    return {
+      type: "stopped",
+      reason,
+      threadId
+    }
+  }),
+  TerminatedEvent: vi.fn().mockImplementation(function () {
+    return { type: "terminated" }
+  }),
+  Thread: vi.fn().mockImplementation(function (id: number, name: string) {
+    return { id, name }
+  }),
+  Source: vi.fn().mockImplementation(function (name: string, path: string) {
+    return { name, path }
+  })
 }))
-jest.mock("abap-adt-api", () => ({
-  debugMetaIsComplex: jest.fn((meta: string) =>
-    ["structure", "table", "object", "class"].includes(meta)
-  )
+vi.mock("abap-adt-api", () => ({
+  debugMetaIsComplex: vi.fn(function (meta: string) {
+    return ["structure", "table", "object", "class"].includes(meta)
+  })
 }))
-jest.mock("@vscode/debugprotocol", () => ({}))
+vi.mock("@vscode/debugprotocol", () => ({}))
 // ReplayVariableManager is a real import but its deps are mocked above
-jest.mock("./replayVariableManager", () => {
+vi.mock("./replayVariableManager", () => {
   return {
-    ReplayVariableManager: jest.fn().mockImplementation(() => ({
-      reset: jest.fn(),
-      getScopes: jest.fn().mockReturnValue([]),
-      getVariables: jest.fn().mockReturnValue([]),
-      evaluate: jest.fn().mockReturnValue(undefined)
-    }))
+    ReplayVariableManager: vi.fn().mockImplementation(function () {
+      return {
+        reset: vi.fn(),
+        getScopes: vi.fn().mockReturnValue([]),
+        getVariables: vi.fn().mockReturnValue([]),
+        evaluate: vi.fn().mockReturnValue(undefined)
+      }
+    })
   }
 })
 

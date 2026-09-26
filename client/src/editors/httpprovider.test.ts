@@ -1,27 +1,29 @@
 // Tests for editors/httpprovider.ts
-jest.mock(
-  "vscode",
-  () => ({
-    Uri: {
-      file: jest.fn((p: string) => ({ fsPath: p, toString: () => p }))
-    },
-    ExtensionContext: class {}
-  }),
-  { virtual: true }
-)
+vi.mock("vscode", () => ({
+  Uri: {
+    file: vi.fn(function (p: string) {
+      return { fsPath: p, toString: () => p }
+    })
+  },
+  ExtensionContext: class {}
+}))
 
-jest.mock("../services/funMessenger", () => ({
+vi.mock("../services/funMessenger", () => ({
   funWindow: {
-    registerCustomEditorProvider: jest.fn(() => ({ dispose: jest.fn() }))
+    registerCustomEditorProvider: vi.fn(function () {
+      return { dispose: vi.fn() }
+    })
   }
 }))
 
-jest.mock("./httpparser", () => ({
-  parseHTTP: jest.fn()
+vi.mock("./httpparser", () => ({
+  parseHTTP: vi.fn()
 }))
 
-jest.mock("path", () => ({
-  join: jest.fn((...args: string[]) => args.join("/"))
+vi.mock("path", () => ({
+  join: vi.fn(function (...args: string[]) {
+    return args.join("/")
+  })
 }))
 
 import { parseHTTP } from "./httpparser"

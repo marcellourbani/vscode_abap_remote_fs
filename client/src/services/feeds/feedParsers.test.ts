@@ -1,4 +1,4 @@
-jest.mock("../../lib", () => ({ log: () => {} }))
+vi.mock("../../lib", () => ({ log: () => {} }))
 
 import {
   determineFeedType,
@@ -8,7 +8,7 @@ import {
   parseFeedResponse
 } from "./feedParsers"
 import { FeedType } from "./feedTypes"
-import { Feed } from "abap-adt-api"
+import type { Feed } from "abap-adt-api"
 
 const makeFeed = (href: string, title = "Test Feed"): Feed =>
   ({

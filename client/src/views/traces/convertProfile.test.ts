@@ -1,8 +1,12 @@
 // Tests for views/traces/convertProfile.ts
 import { convertStatements, convertRun } from "./convertProfile"
-import { TraceHitList, TraceRun, TraceStatementResponse } from "abap-adt-api/build/api/tracetypes"
+import type {
+  TraceHitList,
+  TraceRun,
+  TraceStatementResponse
+} from "abap-adt-api/build/api/tracetypes"
 
-jest.mock("../../lib", () => ({ log: jest.fn() }))
+vi.mock("../../lib", () => ({ log: vi.fn() }))
 
 const makeRun = (publishedMs = 1000000): TraceRun =>
   ({

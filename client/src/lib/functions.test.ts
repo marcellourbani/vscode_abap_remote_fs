@@ -3,7 +3,7 @@ import { none } from "fp-ts/lib/Option"
 import { right, isLeft, isRight } from "fp-ts/lib/Either"
 import { chain, bind, map } from "fp-ts/lib/TaskEither"
 import {
-  RfsTaskEither,
+  type RfsTaskEither,
   rfsTryCatch,
   chainTaskTransformers,
   addField,
@@ -65,7 +65,7 @@ test("compose text input and selections", async () => {
     fieldReplacer("a", fakeselect("b"), isFalsey)
   )(base2)
   const both2 = await inputBoth2()
-  if (isRight(both2)) fail("Unexpected right")
+  if (isRight(both2)) throw new Error("Unexpected right")
   expect(isLeft(both2) && both2.left).toBe(none)
   const inputBoth3 = chainTaskTransformers<A>(
     fieldReplacer("b", fakeselect("c", rejectPromise)),
@@ -73,7 +73,7 @@ test("compose text input and selections", async () => {
     fieldReplacer("a", fakeselect("b"))
   )(base2)
   const both3 = await inputBoth3()
-  if (isRight(both3)) fail("Unexpected right")
+  if (isRight(both3)) throw new Error("Unexpected right")
   else expect(both3.left.toString()).toBe("Error: foo")
 })
 
@@ -87,7 +87,7 @@ test("compose dependent replacers", async () => {
     dependFieldReplacer("a", () => fakeselect("aa")),
     fieldReplacer("a", fakeselect("aa"))
   )(base3)()
-  if (isLeft(changed)) fail("Unexpected failure")
+  if (isLeft(changed)) throw new Error("Unexpected failure")
   else {
     expect(changed.right.a).toBe("aa")
     expect(changed.right.b).toBe("bsuffix")
@@ -103,7 +103,7 @@ test("compose dependent replacers", async () => {
     dependFieldReplacer("a", () => fakeselect("aa")),
     fieldReplacer("a", fakeselect("aa"))
   )(base3)()
-  if (isRight(changed2)) fail("Unexpected success")
+  if (isRight(changed2)) throw new Error("Unexpected success")
 })
 
 const base = "sap/bc/adt/oo/classes/zfoobar/includes/testclasses"

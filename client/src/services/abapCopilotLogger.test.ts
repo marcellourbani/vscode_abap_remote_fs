@@ -1,34 +1,32 @@
-jest.mock(
-  "vscode",
-  () => ({
-    window: {
-      createOutputChannel: jest.fn()
-    }
-  }),
-  { virtual: true }
-)
+vi.mock("vscode", () => ({
+  window: {
+    createOutputChannel: vi.fn()
+  }
+}))
 
-jest.mock("../lib/logger", () => {
+vi.mock("../lib/logger", () => {
   const mockChannel = {
-    info: jest.fn(),
-    warn: jest.fn(),
-    error: jest.fn(),
-    debug: jest.fn(),
-    trace: jest.fn(),
-    show: jest.fn(),
-    clear: jest.fn(),
-    dispose: jest.fn()
+    info: vi.fn(),
+    warn: vi.fn(),
+    error: vi.fn(),
+    debug: vi.fn(),
+    trace: vi.fn(),
+    show: vi.fn(),
+    clear: vi.fn(),
+    dispose: vi.fn()
   }
   return { channel: mockChannel }
 })
 
 import { copilotLogger, logInlineProvider, logSearch, logCommands } from "./abapCopilotLogger"
 import { channel } from "../lib/logger"
+import type { Mocked } from "vitest"
 
-const mockChannel = channel as any
+// `channel` is the mocked logger channel from the vi.mock above.
+const mockChannel = channel as unknown as Mocked<typeof channel>
 
 beforeEach(() => {
-  jest.clearAllMocks()
+  vi.clearAllMocks()
 })
 
 // ─── copilotLogger singleton ──────────────────────────────────────────────────
@@ -38,9 +36,9 @@ describe("copilotLogger singleton", () => {
     expect(copilotLogger).toBeDefined()
   })
 
-  test("repeated require returns same exported instance", () => {
-    const { copilotLogger: a } = require("./abapCopilotLogger")
-    const { copilotLogger: b } = require("./abapCopilotLogger")
+  test("repeated require returns same exported instance", async () => {
+    const { copilotLogger: a } = await import("./abapCopilotLogger")
+    const { copilotLogger: b } = await import("./abapCopilotLogger")
     expect(a).toBe(b)
   })
 })

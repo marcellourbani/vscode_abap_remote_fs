@@ -1,80 +1,65 @@
 // Tests for fs/localStorage.ts - pure functions and LocalStorage class
-jest.mock(
-  "vscode",
-  () => {
-    const joinPath = (...args: any[]) => {
-      const base = args[0]
-      const parts = args.slice(1)
-      return {
-        ...base,
-        path: [base.path, ...parts].join("/"),
-        toString: () => `file://${[base.path, ...parts].join("/")}`
-      }
-    }
+vi.mock("vscode", () => {
+  const joinPath = (...args: any[]) => {
+    const base = args[0]
+    const parts = args.slice(1)
     return {
-      Uri: {
-        joinPath: jest.fn((base: any, ...parts: string[]) => joinPath(base, ...parts)),
-        parse: jest.fn((s: string) => ({
+      ...base,
+      path: [base.path, ...parts].join("/"),
+      toString: () => `file://${[base.path, ...parts].join("/")}`
+    }
+  }
+  return {
+    Uri: {
+      joinPath: vi.fn(function (base: any, ...parts: string[]) {
+        return joinPath(base, ...parts)
+      }),
+      parse: vi.fn(function (s: string) {
+        return {
           path: s.replace(/^file:\/\//, ""),
           scheme: "file",
           authority: "",
           toString: () => s
-        }))
+        }
+      })
+    },
+    workspace: {
+      fs: {
+        stat: vi.fn(),
+        createDirectory: vi.fn(),
+        writeFile: vi.fn(),
+        readFile: vi.fn(),
+        readDirectory: vi.fn()
       },
-      workspace: {
-        fs: {
-          stat: jest.fn(),
-          createDirectory: jest.fn(),
-          writeFile: jest.fn(),
-          readFile: jest.fn(),
-          readDirectory: jest.fn()
-        },
-        workspaceFolders: []
-      }
+      workspaceFolders: []
     }
-  },
-  { virtual: true }
-)
+  }
+})
 
-jest.mock("./initialtemplates", () => ({
+vi.mock("./initialtemplates", () => ({
   templates: [
     { name: "abapgit.xml", content: "<abapgit/>", previousContents: ["<legacy/>"] },
     { name: ".abaplint", content: "{}" }
   ]
 }))
 
-jest.mock("../adt/conections", () => ({
+vi.mock("../adt/conections", () => ({
   ADTSCHEME: "adt"
-}))
-
-jest.mock("io-ts", () => {
-  const t = {
-    type: jest.fn((fields: any) => ({
-      decode: jest.fn()
-    })),
-    boolean: { _tag: "BooleanType" },
-    record: jest.fn(() => ({ _tag: "RecordType" })),
-    string: { _tag: "StringType" }
-  }
-  return t
-})
-
-jest.mock("fp-ts/lib/Either", () => ({
-  isLeft: jest.fn()
 }))
 
 import { createFolderIfMissing, initializeFolder, initializeMainStorage } from "./localStorage"
 import * as vscode from "vscode"
+import type { Mock } from "vitest"
 
 describe("localStorage.ts", () => {
   beforeEach(() => {
-    jest.clearAllMocks()
+    vi.clearAllMocks()
   })
 
   describe("createFolderIfMissing", () => {
     it("does not create directory if it already exists", async () => {
       const uri = { path: "/existing", scheme: "file", authority: "" }
-      ;(vscode.workspace.fs.stat as jest.Mock).mockResolvedValue({})
+      ;(vscode.workspace.fs.stat as Mock).mockResolvedValue({})
 
       await createFolderIfMissing(uri as any)
 
@@ -83,8 +68,8 @@ describe("localStorage.ts", () => {
 
     it("creates directory if stat throws (not found)", async () => {
       const uri = { path: "/new-folder", scheme: "file", authority: "" }
-      ;(vscode.workspace.fs.stat as jest.Mock).mockRejectedValue(new Error("FileNotFound"))
-      ;(vscode.workspace.fs.createDirectory as jest.Mock).mockResolvedValue(undefined)
+      ;(vscode.workspace.fs.stat as Mock).mockRejectedValue(new Error("FileNotFound"))
+      ;(vscode.workspace.fs.createDirectory as Mock).mockResolvedValue(undefined)
 
       await createFolderIfMissing(uri as any)
 
@@ -93,7 +78,7 @@ describe("localStorage.ts", () => {
 
     it("returns the base path URI", async () => {
       const uri = { path: "/returned-folder", scheme: "file", authority: "" }
-      ;(vscode.workspace.fs.stat as jest.Mock).mockResolvedValue({})
+      ;(vscode.workspace.fs.stat as Mock).mockResolvedValue({})
 
       const result = await createFolderIfMissing(uri as any)
 
@@ -103,9 +88,9 @@ describe("localStorage.ts", () => {
 
   describe("initializeMainStorage", () => {
     it("creates the root folder and connections/templates sub-folders", async () => {
-      ;(vscode.workspace.fs.stat as jest.Mock).mockRejectedValue(new Error("not found"))
-      ;(vscode.workspace.fs.createDirectory as jest.Mock).mockResolvedValue(undefined)
-      ;(vscode.workspace.fs.writeFile as jest.Mock).mockResolvedValue(undefined)
+      ;(vscode.workspace.fs.stat as Mock).mockRejectedValue(new Error("not found"))
+      ;(vscode.workspace.fs.createDirectory as Mock).mockResolvedValue(undefined)
+      ;(vscode.workspace.fs.writeFile as Mock).mockResolvedValue(undefined)
 
       const root = { path: "/root", scheme: "file", authority: "", toString: () => "file:///root" }
       await initializeMainStorage(root as any)
@@ -115,9 +100,9 @@ describe("localStorage.ts", () => {
     })
 
     it("creates template files when they don't exist", async () => {
-      ;(vscode.workspace.fs.stat as jest.Mock).mockRejectedValue(new Error("not found"))
-      ;(vscode.workspace.fs.createDirectory as jest.Mock).mockResolvedValue(undefined)
-      ;(vscode.workspace.fs.writeFile as jest.Mock).mockResolvedValue(undefined)
+      ;(vscode.workspace.fs.stat as Mock).mockRejectedValue(new Error("not found"))
+      ;(vscode.workspace.fs.createDirectory as Mock).mockResolvedValue(undefined)
+      ;(vscode.workspace.fs.writeFile as Mock).mockResolvedValue(undefined)
 
       const root = {
         path: "/root2",
@@ -132,8 +117,8 @@ describe("localStorage.ts", () => {
     })
 
     it("does not overwrite existing files", async () => {
-      ;(vscode.workspace.fs.stat as jest.Mock).mockResolvedValue({})
-      ;(vscode.workspace.fs.readFile as jest.Mock).mockResolvedValue(
+      ;(vscode.workspace.fs.stat as Mock).mockResolvedValue({})
+      ;(vscode.workspace.fs.readFile as Mock).mockResolvedValue(
         new TextEncoder().encode("user content")
       )
 
@@ -149,12 +134,12 @@ describe("localStorage.ts", () => {
     })
 
     it("updates an exact legacy template", async () => {
-      ;(vscode.workspace.fs.stat as jest.Mock).mockResolvedValue({})
-      ;(vscode.workspace.fs.readFile as jest.Mock).mockImplementation((uri: any) => {
+      ;(vscode.workspace.fs.stat as Mock).mockResolvedValue({})
+      ;(vscode.workspace.fs.readFile as Mock).mockImplementation(function (uri: any) {
         const content = uri.path.endsWith("abapgit.xml") ? "<legacy/>" : "user content"
         return Promise.resolve(new TextEncoder().encode(content))
       })
-      ;(vscode.workspace.fs.writeFile as jest.Mock).mockResolvedValue(undefined)
+      ;(vscode.workspace.fs.writeFile as Mock).mockResolvedValue(undefined)
 
       const root = {
         path: "/root4",
@@ -174,12 +159,12 @@ describe("localStorage.ts", () => {
 
   describe("initializeFolder", () => {
     it("updates an exact legacy template for an existing connection", async () => {
-      ;(vscode.workspace.fs.stat as jest.Mock).mockResolvedValue({})
-      ;(vscode.workspace.fs.readFile as jest.Mock).mockImplementation((uri: any) => {
+      ;(vscode.workspace.fs.stat as Mock).mockResolvedValue({})
+      ;(vscode.workspace.fs.readFile as Mock).mockImplementation(function (uri: any) {
         const content = uri.path.includes("templates") ? "<abapgit/>" : "<legacy/>"
         return Promise.resolve(new TextEncoder().encode(content))
       })
-      ;(vscode.workspace.fs.writeFile as jest.Mock).mockResolvedValue(undefined)
+      ;(vscode.workspace.fs.writeFile as Mock).mockResolvedValue(undefined)
 
       const root = {
         path: "/root5",

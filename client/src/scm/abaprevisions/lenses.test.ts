@@ -1,51 +1,63 @@
-const mockFire = jest.fn()
-const mockEvent = jest.fn()
+const { mockFire, mockEvent } = vi.hoisted(() => {
+  const mockFire = vi.fn()
+  const mockEvent = vi.fn()
+  return { mockFire, mockEvent }
+})
+vi.mock("vscode", () => {
+  class EventEmitter {
+    event = mockEvent
+    fire = mockFire
+  }
+  class Range {
+    constructor(
+      public sl: number,
+      public sc: number,
+      public el: number,
+      public ec: number
+    ) {}
+  }
+  class CodeLens {
+    constructor(
+      public range: any,
+      public command?: any
+    ) {}
+  }
+  return { CodeLensProvider: class {}, EventEmitter, Range, CodeLens, Uri: {} }
+})
 
-jest.mock(
-  "vscode",
-  () => {
-    class EventEmitter {
-      event = mockEvent
-      fire = mockFire
-    }
-    class Range {
-      constructor(
-        public sl: number,
-        public sc: number,
-        public el: number,
-        public ec: number
-      ) {}
-    }
-    class CodeLens {
-      constructor(
-        public range: any,
-        public command?: any
-      ) {}
-    }
-    return { CodeLensProvider: class {}, EventEmitter, Range, CodeLens, Uri: {} }
-  },
-  { virtual: true }
-)
-
-const mockGetCurrentRev = jest.fn()
-const mockSetCurrentRev = jest.fn()
-jest.mock("../../adt/conections", () => ({ abapUri: jest.fn() }))
-jest.mock("./quickdiff", () => ({
+const { mockGetCurrentRev, mockSetCurrentRev } = vi.hoisted(() => {
+  const mockGetCurrentRev = vi.fn()
+  const mockSetCurrentRev = vi.fn()
+  return { mockGetCurrentRev, mockSetCurrentRev }
+})
+vi.mock("../../adt/conections", () => ({ abapUri: vi.fn() }))
+vi.mock("./quickdiff", () => ({
   AbapQuickDiff: {
-    get: jest.fn(() => ({
-      getCurrentRev: mockGetCurrentRev,
-      setCurrentRev: mockSetCurrentRev
-    }))
+    get: vi.fn(function () {
+      return {
+        getCurrentRev: mockGetCurrentRev,
+        setCurrentRev: mockSetCurrentRev
+      }
+    })
   }
 }))
 
-const mockUriRevisions = jest.fn()
-const mockRevLabel = jest.fn((rev: any, def: string) => rev?.versionTitle || def)
-jest.mock("./abaprevisionservice", () => ({
-  AbapRevisionService: { get: jest.fn(() => ({ uriRevisions: mockUriRevisions })) },
+const { mockUriRevisions, mockRevLabel } = vi.hoisted(() => {
+  const mockUriRevisions = vi.fn()
+  const mockRevLabel = vi.fn(function (rev: any, def: string) {
+    return rev?.versionTitle || def
+  })
+  return { mockUriRevisions, mockRevLabel }
+})
+vi.mock("./abaprevisionservice", () => ({
+  AbapRevisionService: {
+    get: vi.fn(function () {
+      return { uriRevisions: mockUriRevisions }
+    })
+  },
   revLabel: mockRevLabel
 }))
-jest.mock("../../commands", () => ({
+vi.mock("../../commands", () => ({
   AbapFsCommands: {
     changequickdiff: "cmd1",
     comparediff: "cmd2",
@@ -56,9 +68,10 @@ jest.mock("../../commands", () => ({
 
 import { AbapRevisionLens } from "./lenses"
 import { abapUri } from "../../adt/conections"
+import type { Mock } from "vitest"
 
 beforeEach(() => {
-  jest.clearAllMocks()
+  vi.clearAllMocks()
   // Reset singleton
   ;(AbapRevisionLens as any).instance = undefined
 })
@@ -78,7 +91,7 @@ describe("AbapRevisionLens.get()", () => {
 
 describe("provideCodeLenses", () => {
   it("returns undefined for non-ABAP URIs", async () => {
-    ;(abapUri as jest.Mock).mockReturnValue(false)
+    ;(abapUri as Mock).mockReturnValue(false)
     const lens = AbapRevisionLens.get()
     const doc = { uri: { scheme: "file", authority: "local" } } as any
     const result = await lens.provideCodeLenses(doc)
@@ -86,7 +99,7 @@ describe("provideCodeLenses", () => {
   })
 
   it("returns undefined when no revisions are available", async () => {
-    ;(abapUri as jest.Mock).mockReturnValue(true)
+    ;(abapUri as Mock).mockReturnValue(true)
     mockUriRevisions.mockResolvedValue([])
     const lens = AbapRevisionLens.get()
     const doc = { uri: { scheme: "adt", authority: "dev" } } as any
@@ -95,7 +108,7 @@ describe("provideCodeLenses", () => {
   })
 
   it("returns undefined when revisions is null", async () => {
-    ;(abapUri as jest.Mock).mockReturnValue(true)
+    ;(abapUri as Mock).mockReturnValue(true)
     mockUriRevisions.mockResolvedValue(null)
     const lens = AbapRevisionLens.get()
     const doc = { uri: { scheme: "adt", authority: "dev" } } as any
@@ -104,7 +117,7 @@ describe("provideCodeLenses", () => {
   })
 
   it("returns 4 CodeLens entries with correct commands", async () => {
-    ;(abapUri as jest.Mock).mockReturnValue(true)
+    ;(abapUri as Mock).mockReturnValue(true)
     const revisions = [
       { versionTitle: "Rev 1", uri: "/rev1" },
       { versionTitle: "Rev 2", uri: "/rev2" }
@@ -126,7 +139,7 @@ describe("provideCodeLenses", () => {
   })
 
   it("quickdiff lens title includes current revision label", async () => {
-    ;(abapUri as jest.Mock).mockReturnValue(true)
+    ;(abapUri as Mock).mockReturnValue(true)
     const revisions = [{ versionTitle: "Version 5", uri: "/rev5" }]
     mockUriRevisions.mockResolvedValue(revisions)
     mockGetCurrentRev.mockReturnValue(revisions[0])
@@ -139,7 +152,7 @@ describe("provideCodeLenses", () => {
   })
 
   it("sets current revision to first if none selected", async () => {
-    ;(abapUri as jest.Mock).mockReturnValue(true)
+    ;(abapUri as Mock).mockReturnValue(true)
     const revisions = [{ versionTitle: "First", uri: "/r1" }]
     mockUriRevisions.mockResolvedValue(revisions)
     mockGetCurrentRev.mockReturnValue(null) // no current rev
@@ -152,7 +165,7 @@ describe("provideCodeLenses", () => {
   })
 
   it("all lenses include document URI in arguments", async () => {
-    ;(abapUri as jest.Mock).mockReturnValue(true)
+    ;(abapUri as Mock).mockReturnValue(true)
     const revisions = [{ versionTitle: "V1", uri: "/r" }]
     mockUriRevisions.mockResolvedValue(revisions)
     mockGetCurrentRev.mockReturnValue(revisions[0])
@@ -167,7 +180,7 @@ describe("provideCodeLenses", () => {
   })
 
   it("compare lens has correct title", async () => {
-    ;(abapUri as jest.Mock).mockReturnValue(true)
+    ;(abapUri as Mock).mockReturnValue(true)
     mockUriRevisions.mockResolvedValue([{ versionTitle: "V", uri: "/r" }])
     mockGetCurrentRev.mockReturnValue({ versionTitle: "V", uri: "/r" })
 

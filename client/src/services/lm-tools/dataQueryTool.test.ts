@@ -1,57 +1,77 @@
 // dataQueryTool tests focus purely on prepareInvocation validation logic
 // (the SQL guards and input validations) since invoke requires heavy infrastructure.
-jest.mock(
-  "vscode",
-  () => ({
-    LanguageModelToolResult: jest.fn().mockImplementation((parts: any[]) => ({ parts })),
-    LanguageModelTextPart: jest.fn().mockImplementation((text: string) => ({ text })),
-    MarkdownString: jest.fn().mockImplementation((text: string) => ({ text })),
-    lm: { registerTool: jest.fn(() => ({ dispose: jest.fn() })) },
-    window: {
-      createOutputChannel: jest.fn(() => ({ info: jest.fn(), error: jest.fn(), warn: jest.fn() }))
-    },
-    Uri: {
-      parse: (s: string) => ({ scheme: s.split("://")[0], fsPath: s.replace(/^[a-z]+:\/\//, "") }),
-      file: (p: string) => ({ scheme: "file", fsPath: p })
-    },
-    workspace: {
-      getConfiguration: jest.fn(() => ({
-        inspect: jest.fn(() => undefined),
-        update: jest.fn().mockResolvedValue(undefined)
-      })),
-      fs: {
-        writeFile: jest.fn().mockResolvedValue(undefined)
-      }
-    }
+vi.mock("vscode", () => ({
+  LanguageModelToolResult: vi.fn().mockImplementation(function (parts: any[]) {
+    return { parts }
   }),
-  { virtual: true }
-)
-
-jest.mock("../../adt/conections", () => ({ getClient: jest.fn() }))
-jest.mock("../../config", () => ({
-  connectedRoots: jest.fn(() => new Map()),
-  formatKey: jest.fn((connectionId: string) => connectionId.toLowerCase())
-}))
-jest.mock("../telemetry", () => ({ logTelemetry: jest.fn() }))
-jest.mock("./toolRegistry", () => ({
-  registerToolWithRegistry: jest.fn(() => ({ dispose: jest.fn() }))
-}))
-jest.mock("../webviewManager", () => ({
-  WebviewManager: {
-    getInstance: jest.fn(() => ({ executeQuery: jest.fn(), getWebview: jest.fn() }))
+  LanguageModelTextPart: vi.fn().mockImplementation(function (text: string) {
+    return { text }
+  }),
+  MarkdownString: vi.fn().mockImplementation(function (text: string) {
+    return { text }
+  }),
+  lm: {
+    registerTool: vi.fn(function () {
+      return { dispose: vi.fn() }
+    })
+  },
+  window: {
+    createOutputChannel: vi.fn(function () {
+      return { info: vi.fn(), error: vi.fn(), warn: vi.fn() }
+    })
+  },
+  Uri: {
+    parse: (s: string) => ({ scheme: s.split("://")[0], fsPath: s.replace(/^[a-z]+:\/\//, "") }),
+    file: (p: string) => ({ scheme: "file", fsPath: p })
+  },
+  workspace: {
+    getConfiguration: vi.fn(function () {
+      return {
+        inspect: vi.fn(() => undefined),
+        update: vi.fn().mockResolvedValue(undefined)
+      }
+    }),
+    fs: {
+      writeFile: vi.fn().mockResolvedValue(undefined)
+    }
   }
 }))
-jest.mock("../sapSystemInfo", () => ({ getSAPSystemInfo: jest.fn() }))
-jest.mock("../funMessenger", () => ({
+
+vi.mock("../../adt/conections", () => ({ getClient: vi.fn() }))
+vi.mock("../../config", () => ({
+  connectedRoots: vi.fn(function () {
+    return new Map()
+  }),
+  formatKey: vi.fn(function (connectionId: string) {
+    return connectionId.toLowerCase()
+  })
+}))
+vi.mock("../telemetry", () => ({ logTelemetry: vi.fn() }))
+vi.mock("./toolRegistry", () => ({
+  registerToolWithRegistry: vi.fn(function () {
+    return { dispose: vi.fn() }
+  })
+}))
+vi.mock("../webviewManager", () => ({
+  WebviewManager: {
+    getInstance: vi.fn(function () {
+      return { executeQuery: vi.fn(), getWebview: vi.fn() }
+    })
+  }
+}))
+vi.mock("../sapSystemInfo", () => ({ getSAPSystemInfo: vi.fn() }))
+vi.mock("../funMessenger", () => ({
   funWindow: {
     activeTextEditor: undefined,
-    createOutputChannel: jest.fn(() => ({ info: jest.fn(), error: jest.fn(), warn: jest.fn() })),
-    showWarningMessage: jest.fn(),
-    showQuickPick: jest.fn(),
-    showInformationMessage: jest.fn()
+    createOutputChannel: vi.fn(function () {
+      return { info: vi.fn(), error: vi.fn(), warn: vi.fn() }
+    }),
+    showWarningMessage: vi.fn(),
+    showQuickPick: vi.fn(),
+    showInformationMessage: vi.fn()
   }
 }))
-jest.mock("./toolGuard", () => ({ assertToolInvocationAuthorized: jest.fn() }))
+vi.mock("./toolGuard", () => ({ assertToolInvocationAuthorized: vi.fn() }))
 
 import * as vscode from "vscode"
 import { ExecuteDataQueryTool } from "./dataQueryTool"
@@ -59,6 +79,7 @@ import { getClient } from "../../adt/conections"
 import { clearSessionProductionSqlPreferences } from "../productionSqlControl"
 import { funWindow } from "../funMessenger"
 import { getSAPSystemInfo } from "../sapSystemInfo"
+import type { Mock } from "vitest"
 
 const mockToken = {} as any
 
@@ -447,19 +468,19 @@ describe("ExecuteDataQueryTool - download_to_file invoke", () => {
 
   beforeEach(() => {
     tool = new ExecuteDataQueryTool()
-    jest.clearAllMocks()
+    vi.clearAllMocks()
     clearSessionProductionSqlPreferences()
   })
 
   it("shows the production guard when the SAP client is production", async () => {
-    const showWarningMessage = jest
+    const showWarningMessage = vi
       .spyOn(funWindow, "showWarningMessage")
       .mockResolvedValue({ action: "cancel" } as any)
-    ;(getSAPSystemInfo as jest.Mock).mockResolvedValue({
+    ;(getSAPSystemInfo as Mock).mockResolvedValue({
       currentClient: { category: "Production" }
     })
-    ;(getClient as jest.Mock).mockReturnValue({
-      runQuery: jest.fn().mockResolvedValue({
+    ;(getClient as Mock).mockReturnValue({
+      runQuery: vi.fn().mockResolvedValue({
         columns: [{ name: "MATNR" }],
         values: [{ MATNR: "000001" }]
       })
@@ -480,16 +501,16 @@ describe("ExecuteDataQueryTool - download_to_file invoke", () => {
   })
 
   it("runs the current query when production permission is configured from the guard", async () => {
-    jest.spyOn(funWindow, "showWarningMessage").mockResolvedValue({ action: "configure" } as any)
-    jest.spyOn(funWindow, "showQuickPick").mockResolvedValue("Allow in this session" as any)
-    ;(getSAPSystemInfo as jest.Mock).mockResolvedValue({
+    vi.spyOn(funWindow, "showWarningMessage").mockResolvedValue({ action: "configure" } as any)
+    vi.spyOn(funWindow, "showQuickPick").mockResolvedValue("Allow in this session" as any)
+    ;(getSAPSystemInfo as Mock).mockResolvedValue({
       currentClient: { category: "Production" }
     })
-    const runQuery = jest.fn().mockResolvedValue({
+    const runQuery = vi.fn().mockResolvedValue({
       columns: [{ name: "MATNR" }],
       values: [{ MATNR: "000001" }]
     })
-    ;(getClient as jest.Mock).mockReturnValue({ runQuery })
+    ;(getClient as Mock).mockReturnValue({ runQuery })
 
     const result: any = await tool.invoke(
       makeOptions({
@@ -506,8 +527,8 @@ describe("ExecuteDataQueryTool - download_to_file invoke", () => {
   })
 
   it("does not write file when query returns 0 rows", async () => {
-    ;(getClient as jest.Mock).mockReturnValue({
-      runQuery: jest.fn().mockResolvedValue({ columns: [{ name: "MATNR" }], values: [] })
+    ;(getClient as Mock).mockReturnValue({
+      runQuery: vi.fn().mockResolvedValue({ columns: [{ name: "MATNR" }], values: [] })
     })
     const result: any = await tool.invoke(
       makeOptions({
@@ -524,8 +545,8 @@ describe("ExecuteDataQueryTool - download_to_file invoke", () => {
   })
 
   it("does not write file when rowRange slices to empty", async () => {
-    ;(getClient as jest.Mock).mockReturnValue({
-      runQuery: jest.fn().mockResolvedValue({
+    ;(getClient as Mock).mockReturnValue({
+      runQuery: vi.fn().mockResolvedValue({
         columns: [{ name: "MATNR" }],
         values: [{ MATNR: "000001" }, { MATNR: "000002" }]
       })
@@ -546,8 +567,8 @@ describe("ExecuteDataQueryTool - download_to_file invoke", () => {
   })
 
   it("appends fileType extension to the written path", async () => {
-    ;(getClient as jest.Mock).mockReturnValue({
-      runQuery: jest.fn().mockResolvedValue({
+    ;(getClient as Mock).mockReturnValue({
+      runQuery: vi.fn().mockResolvedValue({
         columns: [{ name: "MATNR" }],
         values: [{ MATNR: "000001" }]
       })
@@ -568,8 +589,8 @@ describe("ExecuteDataQueryTool - download_to_file invoke", () => {
   })
 
   it("applies rowRange slice before writing", async () => {
-    ;(getClient as jest.Mock).mockReturnValue({
-      runQuery: jest.fn().mockResolvedValue({
+    ;(getClient as Mock).mockReturnValue({
+      runQuery: vi.fn().mockResolvedValue({
         columns: [{ name: "MATNR" }],
         values: [{ MATNR: "A" }, { MATNR: "B" }, { MATNR: "C" }, { MATNR: "D" }]
       })
@@ -597,8 +618,8 @@ describe("ExecuteDataQueryTool - download_to_file invoke", () => {
   })
 
   it("writes CSV with BOM and preserves leading zeros as-is", async () => {
-    ;(getClient as jest.Mock).mockReturnValue({
-      runQuery: jest.fn().mockResolvedValue({
+    ;(getClient as Mock).mockReturnValue({
+      runQuery: vi.fn().mockResolvedValue({
         columns: [{ name: "MATNR" }, { name: "ERSDA" }],
         values: [{ MATNR: "000123", ERSDA: "20241231" }]
       })
@@ -621,8 +642,8 @@ describe("ExecuteDataQueryTool - download_to_file invoke", () => {
   })
 
   it("writes xlsx with all cells as text (numFmt @)", async () => {
-    ;(getClient as jest.Mock).mockReturnValue({
-      runQuery: jest.fn().mockResolvedValue({
+    ;(getClient as Mock).mockReturnValue({
+      runQuery: vi.fn().mockResolvedValue({
         columns: [{ name: "MATNR" }, { name: "ERSDA" }],
         values: [{ MATNR: "000123", ERSDA: "20241231" }]
       })
@@ -654,8 +675,8 @@ describe("ExecuteDataQueryTool - download_to_file invoke", () => {
   })
 
   it("formats ADT ISO date/time strings the same way the UI does", async () => {
-    ;(getClient as jest.Mock).mockReturnValue({
-      runQuery: jest.fn().mockResolvedValue({
+    ;(getClient as Mock).mockReturnValue({
+      runQuery: vi.fn().mockResolvedValue({
         columns: [
           { name: "ERSDA", type: "D" },
           { name: "ERZET", type: "T" },
@@ -687,8 +708,8 @@ describe("ExecuteDataQueryTool - download_to_file invoke", () => {
   })
 
   it("formats Date objects (ADT client may return real Dates, not ISO strings)", async () => {
-    ;(getClient as jest.Mock).mockReturnValue({
-      runQuery: jest.fn().mockResolvedValue({
+    ;(getClient as Mock).mockReturnValue({
+      runQuery: vi.fn().mockResolvedValue({
         columns: [
           { name: "ERSDA", type: "D" },
           { name: "ERZET", type: "T" }
@@ -719,8 +740,8 @@ describe("ExecuteDataQueryTool - download_to_file invoke", () => {
   it("formats stringified Date output (Date.toString()) when column type says D/T", async () => {
     // Reproduces the real-world case where the value arrived as
     // "Thu Dec 05 2024 05:30:00 GMT+0530 (India Standard Time)".
-    ;(getClient as jest.Mock).mockReturnValue({
-      runQuery: jest.fn().mockResolvedValue({
+    ;(getClient as Mock).mockReturnValue({
+      runQuery: vi.fn().mockResolvedValue({
         columns: [{ name: "ERSDA", type: "D" }],
         values: [{ ERSDA: new Date("2024-12-05T00:00:00.000Z").toString() }]
       })
@@ -741,8 +762,8 @@ describe("ExecuteDataQueryTool - download_to_file invoke", () => {
   })
 
   it("formats SAP raw YYYYMMDD / HHMMSS values from CDHDR-style tables", async () => {
-    ;(getClient as jest.Mock).mockReturnValue({
-      runQuery: jest.fn().mockResolvedValue({
+    ;(getClient as Mock).mockReturnValue({
+      runQuery: vi.fn().mockResolvedValue({
         columns: [
           { name: "UDATE", type: "D" },
           { name: "UTIME", type: "T" }
@@ -766,8 +787,8 @@ describe("ExecuteDataQueryTool - download_to_file invoke", () => {
   })
 
   it("renders blanks / invalid date / SAP null-dates as empty cells", async () => {
-    ;(getClient as jest.Mock).mockReturnValue({
-      runQuery: jest.fn().mockResolvedValue({
+    ;(getClient as Mock).mockReturnValue({
+      runQuery: vi.fn().mockResolvedValue({
         columns: [
           { name: "LAEDA", type: "D" },
           { name: "AEZET", type: "T" }

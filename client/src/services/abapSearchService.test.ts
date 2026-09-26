@@ -1,20 +1,21 @@
-jest.mock("../adt/conections", () => ({
-  getClient: jest.fn()
+vi.mock("../adt/conections", () => ({
+  getClient: vi.fn()
 }))
 
-jest.mock("./abapCopilotLogger", () => ({
+vi.mock("./abapCopilotLogger", () => ({
   logSearch: {
-    error: jest.fn(),
-    info: jest.fn()
+    error: vi.fn(),
+    info: vi.fn()
   }
 }))
 
-import { searchService, getSearchService, ABAPObjectInfo } from "./abapSearchService"
+import { searchService, getSearchService, type ABAPObjectInfo } from "./abapSearchService"
 import { getClient } from "../adt/conections"
 import { logSearch } from "./abapCopilotLogger"
+import type { MockedFunction } from "vitest"
 
-const mockGetClient = getClient as jest.MockedFunction<typeof getClient>
-const mockLogError = logSearch.error as jest.MockedFunction<typeof logSearch.error>
+const mockGetClient = getClient as MockedFunction<typeof getClient>
+const mockLogError = logSearch.error as MockedFunction<typeof logSearch.error>
 
 const makeSearchResult = (name: string, type: string, overrides: any = {}) => ({
   "adtcore:name": name,
@@ -33,11 +34,11 @@ describe("searchService constructor", () => {
 })
 
 describe("searchService.searchObjects", () => {
-  beforeEach(() => jest.clearAllMocks())
+  beforeEach(() => vi.clearAllMocks())
 
   it("returns results from client.searchObject", async () => {
     const mockClient = {
-      searchObject: jest.fn().mockResolvedValue([makeSearchResult("ZCL_TEST", "CLAS/OC")])
+      searchObject: vi.fn().mockResolvedValue([makeSearchResult("ZCL_TEST", "CLAS/OC")])
     }
     mockGetClient.mockReturnValue(mockClient as any)
 
@@ -51,7 +52,7 @@ describe("searchService.searchObjects", () => {
 
   it("searches specified types only", async () => {
     const mockClient = {
-      searchObject: jest.fn().mockResolvedValue([makeSearchResult("ZFM_TEST", "FUNC/FF")])
+      searchObject: vi.fn().mockResolvedValue([makeSearchResult("ZFM_TEST", "FUNC/FF")])
     }
     mockGetClient.mockReturnValue(mockClient as any)
 
@@ -63,7 +64,7 @@ describe("searchService.searchObjects", () => {
 
   it("converts pattern to uppercase", async () => {
     const mockClient = {
-      searchObject: jest.fn().mockResolvedValue([])
+      searchObject: vi.fn().mockResolvedValue([])
     }
     mockGetClient.mockReturnValue(mockClient as any)
 
@@ -75,7 +76,7 @@ describe("searchService.searchObjects", () => {
 
   it("classifies Z-objects as CUSTOM", async () => {
     const mockClient = {
-      searchObject: jest.fn().mockResolvedValue([makeSearchResult("ZTEST_PROG", "PROG/P")])
+      searchObject: vi.fn().mockResolvedValue([makeSearchResult("ZTEST_PROG", "PROG/P")])
     }
     mockGetClient.mockReturnValue(mockClient as any)
 
@@ -86,7 +87,7 @@ describe("searchService.searchObjects", () => {
 
   it("classifies Y-objects as CUSTOM", async () => {
     const mockClient = {
-      searchObject: jest.fn().mockResolvedValue([makeSearchResult("YTEST_PROG", "PROG/P")])
+      searchObject: vi.fn().mockResolvedValue([makeSearchResult("YTEST_PROG", "PROG/P")])
     }
     mockGetClient.mockReturnValue(mockClient as any)
 
@@ -97,7 +98,7 @@ describe("searchService.searchObjects", () => {
 
   it("classifies non-Z/Y objects as STANDARD", async () => {
     const mockClient = {
-      searchObject: jest.fn().mockResolvedValue([makeSearchResult("CL_ABAP_DEMO", "CLAS/OC")])
+      searchObject: vi.fn().mockResolvedValue([makeSearchResult("CL_ABAP_DEMO", "CLAS/OC")])
     }
     mockGetClient.mockReturnValue(mockClient as any)
 
@@ -111,7 +112,7 @@ describe("searchService.searchObjects", () => {
       makeSearchResult(`ZCL_${i}`, "CLAS/OC")
     )
     const mockClient = {
-      searchObject: jest.fn().mockResolvedValue(manyResults)
+      searchObject: vi.fn().mockResolvedValue(manyResults)
     }
     mockGetClient.mockReturnValue(mockClient as any)
 
@@ -121,7 +122,7 @@ describe("searchService.searchObjects", () => {
   })
 
   it("returns empty array on error", async () => {
-    mockGetClient.mockImplementation(() => {
+    mockGetClient.mockImplementation(function () {
       throw new Error("No client")
     })
 
@@ -131,7 +132,7 @@ describe("searchService.searchObjects", () => {
   })
 
   it("logs errors when outer try-catch fires", async () => {
-    mockGetClient.mockImplementation(() => {
+    mockGetClient.mockImplementation(function () {
       throw new Error("Connection failed")
     })
 
@@ -142,7 +143,7 @@ describe("searchService.searchObjects", () => {
 
   it("skips type when searchObject throws for that type", async () => {
     const mockClient = {
-      searchObject: jest
+      searchObject: vi
         .fn()
         .mockRejectedValueOnce(new Error("Type not supported"))
         .mockResolvedValueOnce([makeSearchResult("ZTABLE", "TABL/DT")])
@@ -157,7 +158,7 @@ describe("searchService.searchObjects", () => {
 
   it("searches all default types when no types provided", async () => {
     const mockClient = {
-      searchObject: jest.fn().mockResolvedValue([])
+      searchObject: vi.fn().mockResolvedValue([])
     }
     mockGetClient.mockReturnValue(mockClient as any)
 
@@ -170,7 +171,7 @@ describe("searchService.searchObjects", () => {
 
   it("includes description from search result", async () => {
     const mockClient = {
-      searchObject: jest
+      searchObject: vi
         .fn()
         .mockResolvedValue([
           makeSearchResult("ZTEST", "CLAS/OC", { "adtcore:description": "My custom class" })
@@ -185,7 +186,7 @@ describe("searchService.searchObjects", () => {
 
   it("falls back to empty string when description is missing", async () => {
     const mockClient = {
-      searchObject: jest
+      searchObject: vi
         .fn()
         .mockResolvedValue([{ "adtcore:name": "ZTEST", "adtcore:type": "CLAS/OC" }])
     }
@@ -198,7 +199,7 @@ describe("searchService.searchObjects", () => {
 
   it("skips results with no name", async () => {
     const mockClient = {
-      searchObject: jest
+      searchObject: vi
         .fn()
         .mockResolvedValue([{ "adtcore:type": "CLAS/OC" }, makeSearchResult("ZVALID", "CLAS/OC")])
     }
@@ -211,7 +212,7 @@ describe("searchService.searchObjects", () => {
 
   it("stops searching types when maxResults is reached across types", async () => {
     const mockClient = {
-      searchObject: jest.fn().mockImplementation((pattern: string, type: string) => {
+      searchObject: vi.fn().mockImplementation(function (pattern: string, type: string) {
         return Promise.resolve([
           makeSearchResult(`Z${type}_1`, `${type}/OC`),
           makeSearchResult(`Z${type}_2`, `${type}/OC`)

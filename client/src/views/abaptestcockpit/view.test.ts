@@ -1,91 +1,95 @@
-jest.mock(
-  "vscode",
-  () => {
-    const Position = jest.fn((line: number, character: number) => ({ line, character }))
-    const Range = jest.fn((start: any, end: any) => ({ start, end }))
-    const ThemeColor = jest.fn((id: string) => ({ id }))
-    const ThemeIcon = jest.fn((id: string, color?: any) => ({ id, color }))
-    return {
-      Position,
-      Range,
-      ThemeColor,
-      ThemeIcon,
-      TreeItem: jest.fn().mockImplementation(function (this: any, label: string, collapsible: any) {
-        this.label = label
-        this.collapsibleState = collapsible
-      }),
-      TreeItemCollapsibleState: { Expanded: 1, Collapsed: 2, None: 0 },
-      EventEmitter: jest.fn().mockImplementation(() => ({
-        fire: jest.fn(),
-        event: jest.fn()
-      })),
-      commands: { executeCommand: jest.fn() }
-    }
-  },
-  { virtual: true }
-)
+vi.mock("vscode", () => {
+  const Position = vi.fn(function (line: number, character: number) {
+    return { line, character }
+  })
+  const Range = vi.fn(function (start: any, end: any) {
+    return { start, end }
+  })
+  const ThemeColor = vi.fn(function (id: string) {
+    return { id }
+  })
+  const ThemeIcon = vi.fn(function (id: string, color?: any) {
+    return { id, color }
+  })
+  return {
+    Position,
+    Range,
+    ThemeColor,
+    ThemeIcon,
+    TreeItem: vi.fn().mockImplementation(function (this: any, label: string, collapsible: any) {
+      this.label = label
+      this.collapsibleState = collapsible
+    }),
+    TreeItemCollapsibleState: { Expanded: 1, Collapsed: 2, None: 0 },
+    EventEmitter: vi.fn().mockImplementation(function () {
+      return {
+        fire: vi.fn(),
+        event: vi.fn()
+      }
+    }),
+    commands: { executeCommand: vi.fn() }
+  }
+})
 
-jest.mock("../../services/funMessenger", () => ({
+vi.mock("../../services/funMessenger", () => ({
   funWindow: {
-    showErrorMessage: jest.fn(),
-    showInformationMessage: jest.fn()
+    showErrorMessage: vi.fn(),
+    showInformationMessage: vi.fn()
   }
 }))
 
-jest.mock("../../adt/conections", () => ({
-  getClient: jest.fn()
+vi.mock("../../adt/conections", () => ({
+  getClient: vi.fn()
 }))
 
-jest.mock("../../adt/operations/AdtObjectFinder", () => ({
-  AdtObjectFinder: jest.fn().mockImplementation(() => ({
-    vscodeRange: jest.fn()
-  }))
+vi.mock("../../adt/operations/AdtObjectFinder", () => ({
+  AdtObjectFinder: vi.fn().mockImplementation(function () {
+    return {
+      vscodeRange: vi.fn()
+    }
+  })
 }))
 
-jest.mock("../../commands", () => ({
+vi.mock("../../commands", () => ({
   AbapFsCommands: {
     openLocation: "openLocation"
   }
 }))
 
-jest.mock("./codeinspector", () => ({
-  getVariant: jest.fn(),
-  runInspector: jest.fn(),
-  runInspectorByAdtUrl: jest.fn()
+vi.mock("./codeinspector", () => ({
+  getVariant: vi.fn(),
+  runInspector: vi.fn(),
+  runInspectorByAdtUrl: vi.fn()
 }))
 
-jest.mock("./commands", () => ({
-  atcRefresh: jest.fn()
+vi.mock("./commands", () => ({
+  atcRefresh: vi.fn()
 }))
 
-jest.mock("../../adt/operations/AdtObjectActivator", () => ({
+vi.mock("../../adt/operations/AdtObjectActivator", () => ({
   AdtObjectActivator: {
-    get: jest.fn().mockReturnValue({ onActivate: jest.fn() })
+    get: vi.fn().mockReturnValue({ onActivate: vi.fn() })
   }
 }))
 
-jest.mock("abapobject/src/AbapObject", () => ({
+vi.mock("abapobject/src/AbapObject", () => ({
   AbapObjectBase: class {}
 }))
 
-jest.mock("../../context", () => ({
-  setContext: jest.fn()
+vi.mock("../../context", () => ({
+  setContext: vi.fn()
 }))
 
-jest.mock("../../lib", () => ({
-  log: jest.fn()
-}))
-
-jest.mock("ramda", () => ({
-  sortWith: jest.fn(() => (arr: any[]) => arr),
-  ascend: jest.fn(() => jest.fn()),
-  prop: jest.fn(() => jest.fn())
+vi.mock("../../lib", () => ({
+  log: vi.fn()
 }))
 
 import { hasExemption, approvedExemption, AtcRoot, AtcSystem, AtcObject, AtcFind } from "./view"
 import { setContext } from "../../context"
+import * as __$mock_vscode from "vscode"
+import type { MockedFunction, Mock } from "vitest"
 
-const mockSetContext = setContext as jest.MockedFunction<typeof setContext>
+const mockSetContext = setContext as MockedFunction<typeof setContext>
 
 const makeFinding = (overrides: any = {}): any => ({
   messageTitle: "Test Finding",
@@ -139,7 +143,7 @@ describe("approvedExemption", () => {
 })
 
 describe("AtcRoot", () => {
-  const makeProvider = (exemptFilter = true) => ({ exemptFilter, emitter: { fire: jest.fn() } })
+  const makeProvider = (exemptFilter = true) => ({ exemptFilter, emitter: { fire: vi.fn() } })
 
   it("filterExempt reflects parent's exemptFilter", () => {
     const provider = makeProvider(true)
@@ -187,7 +191,7 @@ describe("AtcRoot", () => {
 describe("AtcSystem", () => {
   const makeParent = (filterExempt = true) => ({
     filterExempt,
-    emitter: { fire: jest.fn() }
+    emitter: { fire: vi.fn() }
   })
 
   it("hasErrors returns false when no children have errors", () => {
@@ -198,7 +202,7 @@ describe("AtcSystem", () => {
   })
 
   it("children is empty initially", () => {
-    const root = new AtcRoot("systems", { filterExempt: true, emitter: { fire: jest.fn() } } as any)
+    const root = new AtcRoot("systems", { filterExempt: true, emitter: { fire: vi.fn() } } as any)
     const system = new AtcSystem("myconn", "MYVARIANT", root)
     expect(system.children).toEqual([])
   })
@@ -234,8 +238,10 @@ describe("AtcFind", () => {
   it("applyEdits updates start position for edits before current line", () => {
     const finding = makeFinding()
     const parent = makeParent()
-    const MockPos = (line: number, char: number) => ({ line, character: char })
-    ;(require("vscode").Position as jest.Mock).mockImplementation(MockPos)
+    const MockPos = function (line: number, char: number) {
+      return { line, character: char }
+    }
+    ;(__$mock_vscode.Position as Mock).mockImplementation(MockPos)
     const pos = { line: 10, character: 0 } as any
     const f = new AtcFind(finding, parent, "adt://sys/path", pos)
 
@@ -250,8 +256,10 @@ describe("AtcFind", () => {
   it("applyEdits does not update start for edits after current line", () => {
     const finding = makeFinding()
     const parent = makeParent()
-    const MockPos = (line: number, char: number) => ({ line, character: char })
-    ;(require("vscode").Position as jest.Mock).mockImplementation(MockPos)
+    const MockPos = function (line: number, char: number) {
+      return { line, character: char }
+    }
+    ;(__$mock_vscode.Position as Mock).mockImplementation(MockPos)
     const pos = { line: 3, character: 0 } as any
     const f = new AtcFind(finding, parent, "adt://sys/path", pos)
 
@@ -266,8 +274,10 @@ describe("AtcFind", () => {
   it("savePosition persists current position", () => {
     const finding = makeFinding()
     const parent = makeParent()
-    const MockPos = (line: number, char: number) => ({ line, character: char })
-    ;(require("vscode").Position as jest.Mock).mockImplementation(MockPos)
+    const MockPos = function (line: number, char: number) {
+      return { line, character: char }
+    }
+    ;(__$mock_vscode.Position as Mock).mockImplementation(MockPos)
     const pos = { line: 5, character: 0 } as any
     const f = new AtcFind(finding, parent, "adt://sys/path", pos)
 
@@ -281,8 +291,10 @@ describe("AtcFind", () => {
   it("cancelEdits reverts unapplied edits back to saved position", () => {
     const finding = makeFinding()
     const parent = makeParent()
-    const MockPos = (line: number, char: number) => ({ line, character: char })
-    ;(require("vscode").Position as jest.Mock).mockImplementation(MockPos)
+    const MockPos = function (line: number, char: number) {
+      return { line, character: char }
+    }
+    ;(__$mock_vscode.Position as Mock).mockImplementation(MockPos)
     const pos = { line: 5, character: 0 } as any
     const f = new AtcFind(finding, parent, "adt://sys/path", pos)
 

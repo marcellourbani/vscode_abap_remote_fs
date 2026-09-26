@@ -1,6 +1,6 @@
-jest.mock("../services/funMessenger", () => ({ funWindow: {} }))
-jest.mock("../adt/conections", () => ({}))
-jest.mock("vscode", () => ({}), { virtual: true })
+vi.mock("../services/funMessenger", () => ({ funWindow: {} }))
+vi.mock("../adt/conections", () => ({}))
+vi.mock("vscode", () => ({}))
 
 import { injectUrlHandler } from "./utilities"
 

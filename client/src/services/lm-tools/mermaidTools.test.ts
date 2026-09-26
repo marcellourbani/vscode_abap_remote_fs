@@ -1,25 +1,33 @@
-jest.mock(
-  "vscode",
-  () => ({
-    LanguageModelToolResult: jest.fn().mockImplementation((parts: any[]) => ({ parts })),
-    LanguageModelTextPart: jest.fn().mockImplementation((text: string) => ({ text })),
-    MarkdownString: jest.fn().mockImplementation((text: string) => ({ text })),
-    lm: { registerTool: jest.fn(() => ({ dispose: jest.fn() })) }
+vi.mock("vscode", () => ({
+  LanguageModelToolResult: vi.fn().mockImplementation(function (parts: any[]) {
+    return { parts }
   }),
-  { virtual: true }
-)
-
-jest.mock("../../adt/conections", () => ({}))
-jest.mock("../telemetry", () => ({ logTelemetry: jest.fn() }))
-jest.mock("./toolRegistry", () => ({
-  registerToolWithRegistry: jest.fn(() => ({ dispose: jest.fn() }))
-}))
-jest.mock("../MermaidWebviewManager", () => ({
-  MermaidWebviewManager: {
-    getInstance: jest.fn()
+  LanguageModelTextPart: vi.fn().mockImplementation(function (text: string) {
+    return { text }
+  }),
+  MarkdownString: vi.fn().mockImplementation(function (text: string) {
+    return { text }
+  }),
+  lm: {
+    registerTool: vi.fn(function () {
+      return { dispose: vi.fn() }
+    })
   }
 }))
-jest.mock("../MermaidDocumentation", () => ({
+
+vi.mock("../../adt/conections", () => ({}))
+vi.mock("../telemetry", () => ({ logTelemetry: vi.fn() }))
+vi.mock("./toolRegistry", () => ({
+  registerToolWithRegistry: vi.fn(function () {
+    return { dispose: vi.fn() }
+  })
+}))
+vi.mock("../MermaidWebviewManager", () => ({
+  MermaidWebviewManager: {
+    getInstance: vi.fn()
+  }
+}))
+vi.mock("../MermaidDocumentation", () => ({
   MERMAID_DOCUMENTATION: {
     flowchart: {
       description: "Flowchart description",
@@ -36,9 +44,11 @@ jest.mock("../MermaidDocumentation", () => ({
   }
 }))
 
-jest.mock("./toolGuard", () => ({
-  assertToolInvocationAuthorized: jest.fn(),
-  isToolInvocationAuthorized: jest.fn(() => true)
+vi.mock("./toolGuard", () => ({
+  assertToolInvocationAuthorized: vi.fn(),
+  isToolInvocationAuthorized: vi.fn(function () {
+    return true
+  })
 }))
 import {
   CreateMermaidDiagramTool,
@@ -48,6 +58,7 @@ import {
 } from "./mermaidTools"
 import { MermaidWebviewManager } from "../MermaidWebviewManager"
 import { logTelemetry } from "../telemetry"
+import type { Mock } from "vitest"
 
 const mockToken = {} as any
 
@@ -56,9 +67,9 @@ function makeOptions(input: any = {}) {
 }
 
 const mockWebviewManager = {
-  renderDiagram: jest.fn(),
-  validateSyntax: jest.fn(),
-  detectDiagramType: jest.fn()
+  renderDiagram: vi.fn(),
+  validateSyntax: vi.fn(),
+  detectDiagramType: vi.fn()
 }
 
 describe("CreateMermaidDiagramTool", () => {
@@ -66,8 +77,8 @@ describe("CreateMermaidDiagramTool", () => {
 
   beforeEach(() => {
     tool = new CreateMermaidDiagramTool()
-    jest.clearAllMocks()
-    ;(MermaidWebviewManager.getInstance as jest.Mock).mockReturnValue(mockWebviewManager)
+    vi.clearAllMocks()
+    ;(MermaidWebviewManager.getInstance as Mock).mockReturnValue(mockWebviewManager)
   })
 
   describe("prepareInvocation", () => {
@@ -160,8 +171,8 @@ describe("ValidateMermaidSyntaxTool", () => {
 
   beforeEach(() => {
     tool = new ValidateMermaidSyntaxTool()
-    jest.clearAllMocks()
-    ;(MermaidWebviewManager.getInstance as jest.Mock).mockReturnValue(mockWebviewManager)
+    vi.clearAllMocks()
+    ;(MermaidWebviewManager.getInstance as Mock).mockReturnValue(mockWebviewManager)
   })
 
   describe("prepareInvocation", () => {
@@ -212,7 +223,7 @@ describe("GetMermaidDocumentationTool", () => {
 
   beforeEach(() => {
     tool = new GetMermaidDocumentationTool()
-    jest.clearAllMocks()
+    vi.clearAllMocks()
   })
 
   describe("prepareInvocation", () => {
@@ -259,8 +270,8 @@ describe("DetectMermaidDiagramTypeTool", () => {
 
   beforeEach(() => {
     tool = new DetectMermaidDiagramTypeTool()
-    jest.clearAllMocks()
-    ;(MermaidWebviewManager.getInstance as jest.Mock).mockReturnValue(mockWebviewManager)
+    vi.clearAllMocks()
+    ;(MermaidWebviewManager.getInstance as Mock).mockReturnValue(mockWebviewManager)
   })
 
   describe("prepareInvocation", () => {

@@ -1,85 +1,88 @@
-jest.mock(
-  "vscode",
-  () => ({
-    EventEmitter: jest.fn().mockImplementation(() => ({
+vi.mock("vscode", () => ({
+  EventEmitter: vi.fn().mockImplementation(function () {
+    return {
       event: "mockEvent",
-      fire: jest.fn()
-    })),
-    Uri: {
-      parse: jest.fn((s: string) => ({
+      fire: vi.fn()
+    }
+  }),
+  Uri: {
+    parse: vi.fn(function (s: string) {
+      return {
         scheme: "adt",
         authority: "conn",
         path: s,
         toString: () => s
-      }))
-    }
-  }),
-  { virtual: true }
-)
-
-jest.mock("../conections", () => ({
-  getClient: jest.fn()
+      }
+    })
+  }
 }))
 
-jest.mock("../includes", () => ({
+vi.mock("../conections", () => ({
+  getClient: vi.fn()
+}))
+
+vi.mock("../includes", () => ({
   IncludeService: {
-    get: jest.fn().mockReturnValue({
-      needMain: jest.fn().mockReturnValue(false),
-      current: jest.fn().mockReturnValue(null)
+    get: vi.fn().mockReturnValue({
+      needMain: vi.fn().mockReturnValue(false),
+      current: vi.fn().mockReturnValue(null)
     })
   },
   IncludeProvider: {
-    get: jest.fn().mockReturnValue({
-      switchIncludeIfMissing: jest.fn().mockResolvedValue(null)
+    get: vi.fn().mockReturnValue({
+      switchIncludeIfMissing: vi.fn().mockResolvedValue(null)
     })
   }
 }))
 
-jest.mock("../../lib", () => ({
-  isDefined: jest.fn((x: any) => x !== undefined && x !== null),
-  channel: { appendLine: jest.fn() }
+vi.mock("../../lib", () => ({
+  isDefined: vi.fn(function (x: any) {
+    return x !== undefined && x !== null
+  }),
+  channel: { appendLine: vi.fn() }
 }))
 
-jest.mock("abap-adt-api", () => ({
-  isAdtError: jest.fn(),
-  inactiveObjectsInResults: jest.fn(),
+vi.mock("abap-adt-api", () => ({
+  isAdtError: vi.fn(),
+  inactiveObjectsInResults: vi.fn(),
   session_types: { stateful: "stateful" }
 }))
 
-jest.mock("../../services/funMessenger", () => ({
+vi.mock("../../services/funMessenger", () => ({
   funWindow: {
-    showQuickPick: jest.fn(),
-    showErrorMessage: jest.fn(),
-    showInformationMessage: jest.fn(),
-    withProgress: jest.fn()
+    showQuickPick: vi.fn(),
+    showErrorMessage: vi.fn(),
+    showInformationMessage: vi.fn(),
+    withProgress: vi.fn()
   }
 }))
 
-jest.mock("abapobject", () => ({}))
+vi.mock("abapobject", () => ({}))
 
-import { AdtObjectActivator, ActivationEvent } from "./AdtObjectActivator"
+import { AdtObjectActivator, type ActivationEvent } from "./AdtObjectActivator"
 import { getClient } from "../conections"
+import type { Mock } from "vitest"
 
-const mockGetClient = getClient as jest.Mock
+const mockGetClient = getClient as Mock
 
 describe("AdtObjectActivator", () => {
   let mockStatelessClient: any
   let mockClient: any
 
   beforeEach(() => {
-    jest.clearAllMocks()
+    vi.clearAllMocks()
     AdtObjectActivator["instances"].clear()
 
     mockStatelessClient = {
-      activate: jest.fn(),
-      inactiveObjects: jest.fn().mockResolvedValue([]),
+      activate: vi.fn(),
+      inactiveObjects: vi.fn().mockResolvedValue([]),
       statelessClone: {
-        nodeContents: jest.fn().mockResolvedValue({ nodes: [] }),
-        login: jest.fn()
+        nodeContents: vi.fn().mockResolvedValue({ nodes: [] }),
+        login: vi.fn()
       },
-      nodeContents: jest.fn().mockResolvedValue({ nodes: [] }),
+      nodeContents: vi.fn().mockResolvedValue({ nodes: [] }),
       httpClient: {
-        request: jest.fn().mockResolvedValue({ body: "" })
+        request: vi.fn().mockResolvedValue({ body: "" })
       }
     }
     mockClient = {

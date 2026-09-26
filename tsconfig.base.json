@@ -8,6 +8,7 @@
     "moduleDetection": "force",
     "esModuleInterop": true,
     "resolveJsonModule": true,
+    "verbatimModuleSyntax": true,
     "isolatedModules": true,
     "useDefineForClassFields": false,
     "experimentalDecorators": true,

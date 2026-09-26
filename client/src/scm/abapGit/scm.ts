@@ -15,7 +15,7 @@ import {
 import { type Cache, mapGet, cache } from "../../lib"
 import { dataCredentials } from "./credentials"
 import { gitUrl } from "./documentProvider"
-import { AbapFsCommands } from "../../commands"
+import { AbapFsCommands } from "../../commands/registry"
 import { isNone, fromNullable, type Option, some } from "fp-ts/lib/Option"
 import { saveRepos } from "./storage"
 import { getClient } from "../../adt/conections"

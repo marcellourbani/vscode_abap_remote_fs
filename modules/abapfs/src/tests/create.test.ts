@@ -1,6 +1,7 @@
 import { createRoot, isRoot, TMPFOLDER, LIBFOLDER } from "../root"
-import { AbapFsService } from "../index.js"
-import { mock, MockProxy } from "jest-mock-extended"
+import type { AbapFsService } from ".."
+import { mock } from "vitest-mock-extended"
+import type { MockProxy } from "vitest-mock-extended"
 import { isAbapFolder } from "../abapFolder"
 import { Folder, isFolder } from "../folder"
 import sampleNodeContents from "../testdata/nodeContents1.json"
@@ -15,10 +16,10 @@ test("create root", async () => {
 
   const tmp = root.get(TMPFOLDER)
   if (isAbapFolder(tmp)) expect(tmp?.size).toBe(0)
-  else fail("Tmp folder undefined or unexpected type")
+  else throw new Error("Tmp folder undefined or unexpected type")
   const lib = root.get(LIBFOLDER)
   if (isAbapFolder(lib)) expect(lib.size).toBe(0)
-  else fail("Tmp folder undefined or unexpected type")
+  else throw new Error("Tmp folder undefined or unexpected type")
 })
 
 test("find path root", async () => {
@@ -31,13 +32,13 @@ test("find path root", async () => {
     const child = new Folder()
     child.set("foo", createFile())
     tmp.set("child", child)
-  } else fail("Tmp folder undefined or unexpected type")
+  } else throw new Error("Tmp folder undefined or unexpected type")
   const lib = root.get(LIBFOLDER)
   if (isAbapFolder(lib)) {
     const child = new Folder()
     child.set("bar", createFile())
     lib.set("zchild", child)
-  } else fail("Tmp folder undefined or unexpected type")
+  } else throw new Error("Tmp folder undefined or unexpected type")
 
   expect(root.getNode("/")).toBe(root)
   expect(isFolder(root.getNode("/$TMP/child"))).toBe(true)
@@ -54,18 +55,18 @@ test("expand single package", async () => {
   client.nodeContents.mockReturnValueOnce(Promise.resolve(sampleNodeContents))
   const root = createRoot("MYConn", client)
   const tmpPackage = root.get(TMPFOLDER)
-  if (!isAbapFolder(tmpPackage)) fail("Tmp package expected to be a folder")
+  if (!isAbapFolder(tmpPackage)) throw new Error("Tmp package expected to be a folder")
   await tmpPackage.refresh()
   expect(tmpPackage.size).toBe(1)
   const lib = tmpPackage.get("Source Code Library")
-  if (!isFolder(lib)) fail("Source Code Library should be a folder")
+  if (!isFolder(lib)) throw new Error("Source Code Library should be a folder")
   lib.set("foobar", createFile())
   expect(lib.size).toBe(3)
   const classes = lib.get("Classes")
-  if (!isFolder(classes)) fail("Classes expected")
+  if (!isFolder(classes)) throw new Error("Classes expected")
   const programs = lib.get("Programs")
   expect(classes.size).toBe(1)
-  if (!isFolder(programs)) fail("Programs expected")
+  if (!isFolder(programs)) throw new Error("Programs expected")
   expect(programs.size).toBe(4)
   client.nodeContents.mockReturnValueOnce(
     Promise.resolve({ categories: [], objectTypes: [], nodes: [] })
@@ -114,7 +115,7 @@ const addNewClass = (client: MockProxy<AbapFsService>) => {
   // simulate a creation
   const { nodes } = sampleNodeContents
   const clas = nodes.find(n => n.OBJECT_NAME === "ZCL_CA_ALV")
-  if (!clas) fail("not found")
+  if (!clas) throw new Error("not found")
   clas.OBJECT_NAME = "ZCL_NEWLY_CREATED"
   const nc = { ...sampleNodeContents, nodes: [clas] }
   client.nodeContents.mockReturnValueOnce(Promise.resolve(nc))

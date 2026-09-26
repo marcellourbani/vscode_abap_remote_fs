@@ -3,76 +3,58 @@
  * Tests initializeEnhancementDecorations, clearEnhancementDecorations, and updateEnhancementDecorations logic.
  */
 
-jest.mock(
-  "vscode",
-  () => {
-    const mockDisposable = { dispose: jest.fn() }
-    return {
-      Range: jest.fn((sl: number, sc: number, el: number, ec: number) => ({
+vi.mock("vscode", () => {
+  const mockDisposable = { dispose: vi.fn() }
+  return {
+    Range: vi.fn(function (this: object, sl: number, sc: number, el: number, ec: number) {
+      return {
         start: { line: sl, character: sc },
         end: { line: el, character: ec }
-      })),
-      MarkdownString: jest.fn(function (value: string) {
-        ;(this as any).value = value
-        ;(this as any).isTrusted = false
-      }),
-      Uri: {
-        parse: jest.fn((s: string) => ({ toString: () => s }))
-      },
-      workspace: {
-        openTextDocument: jest.fn()
       }
+    }),
+    MarkdownString: vi.fn(function (this: { value?: string; isTrusted?: boolean }, value: string) {
+      this.value = value
+      this.isTrusted = false
+    }),
+    Uri: {
+      parse: vi.fn(function (s: string) {
+        return { toString: () => s }
+      })
+    },
+    workspace: {
+      openTextDocument: vi.fn()
     }
-  },
-  { virtual: true }
-)
+  }
+})
 
-jest.mock(
-  "../services/funMessenger",
-  () => ({
-    funWindow: {
-      activeTextEditor: undefined,
-      createTextEditorDecorationType: jest.fn(() => ({ dispose: jest.fn() })),
-      showTextDocument: jest.fn(),
-      showErrorMessage: jest.fn(),
-      showWarningMessage: jest.fn(),
-      visibleTextEditors: []
-    }
-  }),
-  { virtual: true }
-)
+vi.mock("../services/funMessenger", () => ({
+  funWindow: {
+    activeTextEditor: undefined,
+    createTextEditorDecorationType: vi.fn(function () {
+      return { dispose: vi.fn() }
+    }),
+    showTextDocument: vi.fn(),
+    showErrorMessage: vi.fn(),
+    showWarningMessage: vi.fn(),
+    visibleTextEditors: []
+  }
+}))
 
-jest.mock(
-  "../services/abapCopilotLogger",
-  () => ({
-    logCommands: { warn: jest.fn(), error: jest.fn(), debug: jest.fn() }
-  }),
-  { virtual: true }
-)
+vi.mock("../services/abapCopilotLogger", () => ({
+  logCommands: { warn: vi.fn(), error: vi.fn(), debug: vi.fn() }
+}))
 
-jest.mock(
-  "../adt/operations/AdtObjectFinder",
-  () => ({
-    uriAbapFile: jest.fn()
-  }),
-  { virtual: true }
-)
+vi.mock("../adt/operations/AdtObjectFinder", () => ({
+  uriAbapFile: vi.fn()
+}))
 
-jest.mock(
-  "../services/lm-tools/shared",
-  () => ({
-    getObjectEnhancements: jest.fn()
-  }),
-  { virtual: true }
-)
+vi.mock("../services/lm-tools/shared", () => ({
+  getObjectEnhancements: vi.fn()
+}))
 
-jest.mock(
-  "../adt/conections",
-  () => ({
-    getOrCreateRoot: jest.fn()
-  }),
-  { virtual: true }
-)
+vi.mock("../adt/conections", () => ({
+  getOrCreateRoot: vi.fn()
+}))
 
 import {
   initializeEnhancementDecorations,
@@ -83,10 +65,11 @@ import {
 import { funWindow as window } from "../services/funMessenger"
 import { uriAbapFile } from "../adt/operations/AdtObjectFinder"
 import { getObjectEnhancements } from "../services/lm-tools/shared"
+import type { Mocked, Mock } from "vitest"
 
-const mockedWindow = window as jest.Mocked<typeof window>
-const mockedUriAbapFile = uriAbapFile as jest.Mock
-const mockedGetObjectEnhancements = getObjectEnhancements as jest.Mock
+const mockedWindow = window as Mocked<typeof window>
+const mockedUriAbapFile = uriAbapFile as Mock
+const mockedGetObjectEnhancements = getObjectEnhancements as Mock
 
 function makeEditor(scheme = "adt", lang = "abap") {
   return {
@@ -96,7 +79,7 @@ function makeEditor(scheme = "adt", lang = "abap") {
       lineCount: 5,
       lineAt: (i: number) => ({ text: "some text", length: 9 })
     },
-    setDecorations: jest.fn()
+    setDecorations: vi.fn()
   } as any
 }
 
@@ -120,16 +103,16 @@ describe("initializeEnhancementDecorations", () => {
 
 describe("updateEnhancementDecorations", () => {
   beforeEach(() => {
-    jest.useFakeTimers()
-    jest.clearAllMocks()
+    vi.useFakeTimers()
+    vi.clearAllMocks()
     // Reinitialize so decoration type is set
     const subscriptions: any[] = []
     initializeEnhancementDecorations({ subscriptions } as any)
   })
 
   afterEach(() => {
-    jest.clearAllTimers()
-    jest.useRealTimers()
+    vi.clearAllTimers()
+    vi.useRealTimers()
   })
 
   it("returns early if no editor", async () => {
@@ -161,8 +144,10 @@ describe("updateEnhancementDecorations", () => {
     const editor = makeEditor("adt", "abap")
     const mockObject = {
       structure: true,
-      loadStructure: jest.fn(),
-      contentsPath: jest.fn(() => "/sap/bc/adt/programs/programs/zprog/source/main")
+      loadStructure: vi.fn(),
+      contentsPath: vi.fn(function () {
+        return "/sap/bc/adt/programs/programs/zprog/source/main"
+      })
     }
     mockedUriAbapFile.mockReturnValue({ object: mockObject })
     mockedGetObjectEnhancements.mockResolvedValue({ hasEnhancements: false, enhancements: [] })
@@ -175,8 +160,10 @@ describe("updateEnhancementDecorations", () => {
     const editor = makeEditor("adt", "abap")
     const mockObject = {
       structure: true,
-      loadStructure: jest.fn(),
-      contentsPath: jest.fn(() => "/sap/bc/adt/programs/programs/zprog/source/main")
+      loadStructure: vi.fn(),
+      contentsPath: vi.fn(function () {
+        return "/sap/bc/adt/programs/programs/zprog/source/main"
+      })
     }
     mockedUriAbapFile.mockReturnValue({ object: mockObject })
     mockedGetObjectEnhancements.mockResolvedValue({
@@ -198,8 +185,10 @@ describe("updateEnhancementDecorations", () => {
     const editor = makeEditor("adt", "abap")
     const mockObject = {
       structure: null,
-      loadStructure: jest.fn().mockResolvedValue(undefined),
-      contentsPath: jest.fn(() => "/sap/bc/adt/programs/programs/zprog/source/main")
+      loadStructure: vi.fn().mockResolvedValue(undefined),
+      contentsPath: vi.fn(function () {
+        return "/sap/bc/adt/programs/programs/zprog/source/main"
+      })
     }
     mockedUriAbapFile.mockReturnValue({ object: mockObject })
     mockedGetObjectEnhancements.mockResolvedValue({ hasEnhancements: false, enhancements: [] })
@@ -212,8 +201,10 @@ describe("updateEnhancementDecorations", () => {
     const editor = makeEditor("adt", "abap")
     const mockObject = {
       structure: true,
-      loadStructure: jest.fn(),
-      contentsPath: jest.fn(() => "/sap/bc/adt/programs/programs/zprog/source/main")
+      loadStructure: vi.fn(),
+      contentsPath: vi.fn(function () {
+        return "/sap/bc/adt/programs/programs/zprog/source/main"
+      })
     }
     mockedUriAbapFile.mockReturnValue({ object: mockObject })
     mockedGetObjectEnhancements.mockRejectedValue(new Error("API error"))
@@ -224,7 +215,7 @@ describe("updateEnhancementDecorations", () => {
 
 describe("clearEnhancementDecorations", () => {
   beforeEach(() => {
-    jest.clearAllMocks()
+    vi.clearAllMocks()
     const subscriptions: any[] = []
     initializeEnhancementDecorations({ subscriptions } as any)
   })
@@ -242,7 +233,7 @@ describe("clearEnhancementDecorations", () => {
 
 describe("showEnhancementSource", () => {
   beforeEach(() => {
-    jest.clearAllMocks()
+    vi.clearAllMocks()
   })
 
   it("shows error if objectUri is missing", async () => {

@@ -4,13 +4,13 @@ import { connectedRoots } from "../../config"
 import { WorkflowExportService } from "./workflowExportService"
 import {
   defaultRepositoryCriteria,
-  ExistenceComparisonRecord,
-  RepositoryWorkflow,
+  type ExistenceComparisonRecord,
+  type RepositoryWorkflow,
   SOURCE_COMPARISON_EXCLUDED_OBJECT_TYPES
 } from "./types"
 import { defaultWorkflowName, WorkflowStore } from "./workflowStore"
 import { RepositoryWorkflowEngine } from "./workflowEngine"
-import { RepositoryWorkflowChange, RepositoryWorkflowRuntime } from "./runtime"
+import { type RepositoryWorkflowChange, RepositoryWorkflowRuntime } from "./runtime"
 import { commandSection, REPOSITORY_OBJECT_TYPES } from "./workflowUiModel"
 import { assistedApplySafety } from "./assistedApplyService"
 import { objectFolderId } from "./snapshotService"

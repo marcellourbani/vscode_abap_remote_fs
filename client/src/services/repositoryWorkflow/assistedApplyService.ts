@@ -2,7 +2,7 @@ import * as vscode from "vscode"
 import * as fs from "fs/promises"
 import * as path from "path"
 import { resolveAbapResource } from "../abapResourceDownloadService"
-import {
+import type {
   AssistedApplyPlan,
   AssistedApplyPlanItem,
   ObjectSnapshotManifest,

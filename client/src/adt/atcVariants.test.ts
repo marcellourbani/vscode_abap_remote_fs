@@ -2,7 +2,7 @@ import { listAtcVariants } from "./atcVariants"
 
 describe("listAtcVariants", () => {
   const makeClient = (body: string) => ({
-    httpClient: { request: jest.fn().mockResolvedValue({ body }) }
+    httpClient: { request: vi.fn().mockResolvedValue({ body }) }
   })
 
   it("requests the named-items endpoint with query and maxItems", async () => {

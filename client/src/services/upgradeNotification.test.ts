@@ -1,40 +1,43 @@
-jest.mock(
-  "vscode",
-  () => ({
-    window: {
-      createStatusBarItem: jest.fn(),
-      showInformationMessage: jest.fn().mockResolvedValue(undefined)
-    },
-    env: { openExternal: jest.fn() },
-    Uri: { parse: jest.fn(url => ({ toString: () => url })) },
-    StatusBarAlignment: { Left: 1, Right: 2 },
-    commands: { registerCommand: jest.fn().mockReturnValue({ dispose: jest.fn() }) }
-  }),
-  { virtual: true }
-)
+vi.mock("vscode", () => ({
+  window: {
+    createStatusBarItem: vi.fn(),
+    showInformationMessage: vi.fn().mockResolvedValue(undefined)
+  },
+  env: { openExternal: vi.fn() },
+  Uri: {
+    parse: vi.fn(function (url) {
+      return { toString: () => url }
+    })
+  },
+  StatusBarAlignment: { Left: 1, Right: 2 },
+  commands: { registerCommand: vi.fn().mockReturnValue({ dispose: vi.fn() }) }
+}))
 
-jest.mock("./lm-tools/toolGuard", () => ({
-  assertToolInvocationAuthorized: jest.fn(),
-  isToolInvocationAuthorized: jest.fn(() => true)
+vi.mock("./lm-tools/toolGuard", () => ({
+  assertToolInvocationAuthorized: vi.fn(),
+  isToolInvocationAuthorized: vi.fn(function () {
+    return true
+  })
 }))
 
 import * as vscode from "vscode"
 import { checkUpgradeNotification } from "./upgradeNotification"
 import { UPGRADE_NOTIFICATION_FEATURES } from "./upgradeNotificationFeatures"
+import type { Mock } from "vitest"
 
-const mockCreateStatusBarItem = vscode.window.createStatusBarItem as jest.Mock
-const mockShowInfoMessage = vscode.window.showInformationMessage as jest.Mock
-const mockEnvOpenExternal = vscode.env.openExternal as jest.Mock
-const mockRegisterCommand = vscode.commands.registerCommand as jest.Mock
+const mockCreateStatusBarItem = vscode.window.createStatusBarItem as Mock
+const mockShowInfoMessage = vscode.window.showInformationMessage as Mock
+const mockEnvOpenExternal = vscode.env.openExternal as Mock
+const mockRegisterCommand = vscode.commands.registerCommand as Mock
 
 function makeStatusBarItem() {
   return {
     text: "",
     tooltip: "",
     command: "",
-    show: jest.fn(),
-    hide: jest.fn(),
-    dispose: jest.fn()
+    show: vi.fn(),
+    hide: vi.fn(),
+    dispose: vi.fn()
   }
 }
 
@@ -52,8 +55,10 @@ function makeContext(
   return {
     extension: { packageJSON: { version: "2.1.0" } },
     globalState: {
-      get: jest.fn((key: string, defaultValue?: any) => state[key] ?? defaultValue),
-      update: jest.fn((key: string, value: any) => {
+      get: vi.fn(function (key: string, defaultValue?: any) {
+        return state[key] ?? defaultValue
+      }),
+      update: vi.fn(function (key: string, value: any) {
         state[key] = value
       })
     },
@@ -62,14 +67,14 @@ function makeContext(
 }
 
 beforeEach(() => {
-  jest.clearAllMocks()
-  jest.useFakeTimers()
+  vi.clearAllMocks()
+  vi.useFakeTimers()
   const item = makeStatusBarItem()
   mockCreateStatusBarItem.mockReturnValue(item)
 })
 
 afterEach(() => {
-  jest.useRealTimers()
+  vi.useRealTimers()
 })
 
 describe("checkUpgradeNotification", () => {
@@ -105,9 +110,9 @@ describe("checkUpgradeNotification", () => {
   })
 
   test("opens the configured URL when the custom button is selected", async () => {
-    mockShowInfoMessage.mockImplementationOnce((_message: string, ...buttons: string[]) =>
-      Promise.resolve(buttons[0])
-    )
+    mockShowInfoMessage.mockImplementationOnce(function (_message: string, ...buttons: string[]) {
+      return Promise.resolve(buttons[0])
+    })
 
     const ctx = makeContext("2.0.0")
     checkUpgradeNotification(ctx)
@@ -130,7 +135,7 @@ describe("checkUpgradeNotification", () => {
     const ctx = makeContext("1.5.0")
     checkUpgradeNotification(ctx)
 
-    const updateCalls = (ctx.globalState.update as jest.Mock).mock.calls
+    const updateCalls = (ctx.globalState.update as Mock).mock.calls
     const versionUpdate = updateCalls.find((c: any[]) => c[0] === "abapfs.lastVersion")
     expect(versionUpdate).toBeDefined()
     expect(versionUpdate![1]).toBe("2.1.0")
@@ -140,7 +145,7 @@ describe("checkUpgradeNotification", () => {
     const ctx = makeContext("2.0.5")
     checkUpgradeNotification(ctx)
 
-    const updateCalls = (ctx.globalState.update as jest.Mock).mock.calls
+    const updateCalls = (ctx.globalState.update as Mock).mock.calls
     const versionUpdate = updateCalls.find((c: any[]) => c[0] === "abapfs.lastVersion")
     expect(versionUpdate![1]).toBe("2.1.0")
   })
@@ -186,9 +191,9 @@ describe("checkUpgradeNotification", () => {
     checkUpgradeNotification(ctx)
 
     const initialText = item.text
-    jest.advanceTimersByTime(1500)
+    vi.advanceTimersByTime(1500)
     const textAfterBlink = item.text
-    jest.advanceTimersByTime(1500)
+    vi.advanceTimersByTime(1500)
     const textAfterSecondBlink = item.text
 
     // Should have cycled

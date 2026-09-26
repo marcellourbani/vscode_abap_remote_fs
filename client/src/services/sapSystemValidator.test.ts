@@ -1,81 +1,50 @@
-jest.mock(
-  "vscode",
-  () => ({
-    extensions: { getExtension: jest.fn().mockReturnValue({ packageJSON: { version: "2.1.0" } }) },
-    window: {
-      createStatusBarItem: jest.fn(),
-      showInformationMessage: jest.fn(),
-      showErrorMessage: jest.fn()
-    },
-    StatusBarAlignment: { Left: 1, Right: 2 }
-  }),
-  { virtual: true }
-)
-
-jest.mock("./funMessenger", () => ({
-  funWindow: {
-    createStatusBarItem: jest.fn().mockReturnValue({
-      show: jest.fn(),
-      hide: jest.fn(),
-      dispose: jest.fn(),
+vi.mock("vscode", () => ({
+  extensions: {
+    getExtension: vi.fn().mockReturnValue({ packageJSON: { version: "2.1.0" } })
+  },
+  window: {
+    createStatusBarItem: vi.fn().mockReturnValue({
+      show: vi.fn(),
+      hide: vi.fn(),
+      dispose: vi.fn(),
       text: "",
       tooltip: "",
       command: ""
     }),
-    showInformationMessage: jest.fn().mockResolvedValue(undefined),
-    showErrorMessage: jest.fn().mockResolvedValue(undefined)
+    showInformationMessage: vi.fn().mockResolvedValue(undefined),
+    showErrorMessage: vi.fn().mockResolvedValue(undefined)
+  },
+  StatusBarAlignment: { Left: 1, Right: 2 }
+}))
+
+vi.mock("./funMessenger", () => ({
+  funWindow: {
+    createStatusBarItem: vi.fn().mockReturnValue({
+      show: vi.fn(),
+      hide: vi.fn(),
+      dispose: vi.fn(),
+      text: "",
+      tooltip: "",
+      command: ""
+    }),
+    showInformationMessage: vi.fn().mockResolvedValue(undefined),
+    showErrorMessage: vi.fn().mockResolvedValue(undefined)
   }
 }))
 
 // Reset singleton before each test
 beforeEach(() => {
-  jest.resetModules()
-  jest.clearAllMocks()
+  vi.resetModules()
+  vi.clearAllMocks()
 })
 
 // Helper to get a fresh validator instance after module reset
-function getValidator() {
-  jest.resetModules()
-  jest.mock(
-    "vscode",
-    () => ({
-      extensions: {
-        getExtension: jest.fn().mockReturnValue({ packageJSON: { version: "2.1.0" } })
-      },
-      window: {
-        createStatusBarItem: jest.fn().mockReturnValue({
-          show: jest.fn(),
-          hide: jest.fn(),
-          dispose: jest.fn(),
-          text: "",
-          tooltip: "",
-          command: ""
-        }),
-        showInformationMessage: jest.fn().mockResolvedValue(undefined),
-        showErrorMessage: jest.fn().mockResolvedValue(undefined)
-      },
-      StatusBarAlignment: { Left: 1, Right: 2 }
-    }),
-    { virtual: true }
-  )
-  jest.mock("./funMessenger", () => ({
-    funWindow: {
-      createStatusBarItem: jest.fn().mockReturnValue({
-        show: jest.fn(),
-        hide: jest.fn(),
-        dispose: jest.fn(),
-        text: "",
-        tooltip: "",
-        command: ""
-      }),
-      showInformationMessage: jest.fn().mockResolvedValue(undefined),
-      showErrorMessage: jest.fn().mockResolvedValue(undefined)
-    }
-  }))
-  const { SapSystemValidator } = require("./sapSystemValidator")
+async function getValidator() {
+  vi.resetModules()
+  const { SapSystemValidator } = await import("./sapSystemValidator")
   // Reset singleton
   ;(SapSystemValidator as any).instance = undefined
-  return SapSystemValidator.getInstance() as InstanceType<typeof SapSystemValidator>
+  return SapSystemValidator.getInstance() as any
 }
 
 import { SapSystemValidator } from "./sapSystemValidator"
@@ -104,7 +73,7 @@ describe("initialize with ALLOW_ALL flags", () => {
   test("skips whitelist fetch when both ALLOW_ALL flags are true", async () => {
     const validator = SapSystemValidator.getInstance()
     // Default configuration has ALLOW_ALL_SYSTEMS = true and ALLOW_ALL_USERS = true
-    const fetchSpy = jest.spyOn(validator as any, "fetchWhitelist")
+    const fetchSpy = vi.spyOn(validator as any, "fetchWhitelist")
     await validator.initialize()
     expect(fetchSpy).not.toHaveBeenCalled()
   })
@@ -390,7 +359,7 @@ describe("parseWhitelistData", () => {
   test("throws when version is below minimum", () => {
     const v = SapSystemValidator.getInstance()
     // Force getCurrentExtensionVersion to return 1.0.0
-    jest.spyOn(v as any, "getCurrentExtensionVersion").mockReturnValue("1.0.0")
+    vi.spyOn(v as any, "getCurrentExtensionVersion").mockReturnValue("1.0.0")
 
     const data = {
       allowedDomains: [],
@@ -401,7 +370,7 @@ describe("parseWhitelistData", () => {
 
   test("does not throw when version meets minimum", () => {
     const v = SapSystemValidator.getInstance()
-    jest.spyOn(v as any, "getCurrentExtensionVersion").mockReturnValue("2.1.0")
+    vi.spyOn(v as any, "getCurrentExtensionVersion").mockReturnValue("2.1.0")
 
     const data = {
       allowedDomains: [],

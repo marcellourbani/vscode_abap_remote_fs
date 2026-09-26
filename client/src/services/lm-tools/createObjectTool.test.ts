@@ -1,28 +1,39 @@
-jest.mock(
-  "vscode",
-  () => ({
-    LanguageModelToolResult: jest.fn().mockImplementation((parts: any[]) => ({ parts })),
-    LanguageModelTextPart: jest.fn().mockImplementation((text: string) => ({ text })),
-    MarkdownString: jest.fn().mockImplementation((text: string) => ({ text })),
-    commands: { executeCommand: jest.fn() },
-    lm: { registerTool: jest.fn(() => ({ dispose: jest.fn() })) }
+vi.mock("vscode", () => ({
+  LanguageModelToolResult: vi.fn().mockImplementation(function (parts: any[]) {
+    return { parts }
   }),
-  { virtual: true }
-)
-
-jest.mock("../../adt/conections", () => ({}))
-jest.mock("../telemetry", () => ({ logTelemetry: jest.fn() }))
-jest.mock("./toolRegistry", () => ({
-  registerToolWithRegistry: jest.fn(() => ({ dispose: jest.fn() }))
+  LanguageModelTextPart: vi.fn().mockImplementation(function (text: string) {
+    return { text }
+  }),
+  MarkdownString: vi.fn().mockImplementation(function (text: string) {
+    return { text }
+  }),
+  commands: { executeCommand: vi.fn() },
+  lm: {
+    registerTool: vi.fn(function () {
+      return { dispose: vi.fn() }
+    })
+  }
 }))
 
-jest.mock("./toolGuard", () => ({
-  assertToolInvocationAuthorized: jest.fn(),
-  isToolInvocationAuthorized: jest.fn(() => true)
+vi.mock("../../adt/conections", () => ({}))
+vi.mock("../telemetry", () => ({ logTelemetry: vi.fn() }))
+vi.mock("./toolRegistry", () => ({
+  registerToolWithRegistry: vi.fn(function () {
+    return { dispose: vi.fn() }
+  })
+}))
+
+vi.mock("./toolGuard", () => ({
+  assertToolInvocationAuthorized: vi.fn(),
+  isToolInvocationAuthorized: vi.fn(function () {
+    return true
+  })
 }))
 import { CreateABAPObjectTool } from "./createObjectTool"
 import * as vscode from "vscode"
 import { logTelemetry } from "../telemetry"
+import type { Mock } from "vitest"
 
 const mockToken = {} as any
 
@@ -35,7 +46,7 @@ describe("CreateABAPObjectTool", () => {
 
   beforeEach(() => {
     tool = new CreateABAPObjectTool()
-    jest.clearAllMocks()
+    vi.clearAllMocks()
   })
 
   describe("prepareInvocation", () => {
@@ -86,7 +97,7 @@ describe("CreateABAPObjectTool", () => {
 
   describe("invoke", () => {
     it("logs telemetry with connectionId", async () => {
-      ;(vscode.commands.executeCommand as jest.Mock).mockResolvedValue({ success: true })
+      ;(vscode.commands.executeCommand as Mock).mockResolvedValue({ success: true })
       await tool.invoke(
         makeOptions({
           objectType: "PROG/P",
@@ -102,7 +113,7 @@ describe("CreateABAPObjectTool", () => {
     })
 
     it("normalizes connectionId to lowercase", async () => {
-      ;(vscode.commands.executeCommand as jest.Mock).mockResolvedValue({ success: true })
+      ;(vscode.commands.executeCommand as Mock).mockResolvedValue({ success: true })
       await tool.invoke(
         makeOptions({
           objectType: "PROG/P",
@@ -125,7 +136,7 @@ describe("CreateABAPObjectTool", () => {
     })
 
     it("calls createObjectProgrammatically command with correct args", async () => {
-      ;(vscode.commands.executeCommand as jest.Mock).mockResolvedValue({ success: true })
+      ;(vscode.commands.executeCommand as Mock).mockResolvedValue({ success: true })
       await tool.invoke(
         makeOptions({
           objectType: "CLAS/OC",
@@ -149,7 +160,7 @@ describe("CreateABAPObjectTool", () => {
     })
 
     it("returns success result when command returns {success:true}", async () => {
-      ;(vscode.commands.executeCommand as jest.Mock).mockResolvedValue({
+      ;(vscode.commands.executeCommand as Mock).mockResolvedValue({
         success: true,
         objectUri: "adt://dev100/path"
       })
@@ -166,7 +177,7 @@ describe("CreateABAPObjectTool", () => {
     })
 
     it("returns error result when command returns {success:false}", async () => {
-      ;(vscode.commands.executeCommand as jest.Mock).mockResolvedValue({
+      ;(vscode.commands.executeCommand as Mock).mockResolvedValue({
         success: false,
         error: "Already exists"
       })
@@ -183,7 +194,7 @@ describe("CreateABAPObjectTool", () => {
     })
 
     it("passes additionalOptions to command", async () => {
-      ;(vscode.commands.executeCommand as jest.Mock).mockResolvedValue({ success: true })
+      ;(vscode.commands.executeCommand as Mock).mockResolvedValue({ success: true })
       const additionalOptions = {
         transportRequest: { type: "new" as const, description: "Test TR" }
       }

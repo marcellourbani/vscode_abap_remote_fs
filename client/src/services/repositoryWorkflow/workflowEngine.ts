@@ -7,15 +7,15 @@ import { connectedRoots } from "../../config"
 import { RepositoryDiscoveryService } from "./discoveryService"
 import {
   DEFAULT_VERIFICATION_CONCURRENCY,
-  ExistenceComparisonRecord,
-  RepositoryObjectRecord,
-  RepositoryWorkflow,
+  type ExistenceComparisonRecord,
+  type RepositoryObjectRecord,
+  type RepositoryWorkflow,
   repositoryObjectKey,
   SOURCE_COMPARISON_EXCLUDED_OBJECT_TYPES,
-  SourceSelection,
-  WorkflowPauseReason,
-  WorkflowStepId,
-  WorkflowStepState
+  type SourceSelection,
+  type WorkflowPauseReason,
+  type WorkflowStepId,
+  type WorkflowStepState
 } from "./types"
 import { WorkflowStore } from "./workflowStore"
 import { WorkflowSnapshotService } from "./snapshotService"

@@ -1,95 +1,117 @@
-jest.mock(
-  "vscode",
-  () => ({
-    LanguageModelToolResult: jest.fn().mockImplementation((parts: any[]) => ({ parts })),
-    LanguageModelTextPart: jest.fn().mockImplementation((text: string) => ({ text })),
-    MarkdownString: jest.fn().mockImplementation((value: string) => ({ value })),
-    CancellationTokenSource: jest.fn().mockImplementation(() => ({
-      token: { isCancellationRequested: false, onCancellationRequested: jest.fn() }
-    })),
-    Position: jest
-      .fn()
-      .mockImplementation((line: number, character: number) => ({ line, character })),
-    Location: jest.fn().mockImplementation((uri: any, range: any) => ({ uri, range })),
-    SourceBreakpoint: jest
-      .fn()
-      .mockImplementation((location: any, enabled?: boolean, condition?: string) => ({
-        location,
-        enabled,
-        condition
-      })),
-    lm: { registerTool: jest.fn(() => ({ dispose: jest.fn() })) },
-    window: { activeTextEditor: undefined },
-    workspace: {
-      workspaceFolders: [],
-      getConfiguration: jest.fn(() => ({ get: jest.fn() })),
-      openTextDocument: jest.fn().mockResolvedValue({ uri: { toString: () => "test" } }),
-      textDocuments: []
-    },
-    Uri: {
-      parse: (s: string) => ({
-        authority: s.split("/")[2] || "",
-        path: s,
-        scheme: "adt",
-        toString: () => s
-      })
-    },
-    debug: {
-      activeDebugSession: undefined,
-      startDebugging: jest.fn(),
-      stopDebugging: jest.fn(),
-      breakpoints: [],
-      addBreakpoints: jest.fn(),
-      removeBreakpoints: jest.fn()
-    },
-    env: { openExternal: jest.fn() }
+vi.mock("vscode", () => ({
+  LanguageModelToolResult: vi.fn().mockImplementation(function (parts: any[]) {
+    return { parts }
   }),
-  { virtual: true }
-)
-
-jest.mock("./toolGuard", () => ({
-  assertToolInvocationAuthorized: jest.fn(),
-  isToolInvocationAuthorized: jest.fn(() => true)
+  LanguageModelTextPart: vi.fn().mockImplementation(function (text: string) {
+    return { text }
+  }),
+  MarkdownString: vi.fn().mockImplementation(function (value: string) {
+    return { value }
+  }),
+  CancellationTokenSource: vi.fn().mockImplementation(function () {
+    return {
+      token: { isCancellationRequested: false, onCancellationRequested: vi.fn() }
+    }
+  }),
+  Position: vi.fn().mockImplementation(function (line: number, character: number) {
+    return { line, character }
+  }),
+  Location: vi.fn().mockImplementation(function (uri: any, range: any) {
+    return { uri, range }
+  }),
+  SourceBreakpoint: vi.fn().mockImplementation(function (
+    location: any,
+    enabled?: boolean,
+    condition?: string
+  ) {
+    return {
+      location,
+      enabled,
+      condition
+    }
+  }),
+  lm: {
+    registerTool: vi.fn(function () {
+      return { dispose: vi.fn() }
+    })
+  },
+  window: { activeTextEditor: undefined },
+  workspace: {
+    workspaceFolders: [],
+    getConfiguration: vi.fn(function () {
+      return { get: vi.fn() }
+    }),
+    openTextDocument: vi.fn().mockResolvedValue({ uri: { toString: () => "test" } }),
+    textDocuments: []
+  },
+  Uri: {
+    parse: (s: string) => ({
+      authority: s.split("/")[2] || "",
+      path: s,
+      scheme: "adt",
+      toString: () => s
+    })
+  },
+  debug: {
+    activeDebugSession: undefined,
+    startDebugging: vi.fn(),
+    stopDebugging: vi.fn(),
+    breakpoints: [],
+    addBreakpoints: vi.fn(),
+    removeBreakpoints: vi.fn()
+  },
+  env: { openExternal: vi.fn() }
 }))
 
-jest.mock("../../adt/debugger/abapDebugSession", () => ({
+vi.mock("./toolGuard", () => ({
+  assertToolInvocationAuthorized: vi.fn(),
+  isToolInvocationAuthorized: vi.fn(function () {
+    return true
+  })
+}))
+
+vi.mock("../../adt/debugger/abapDebugSession", () => ({
   AbapDebugSession: {
-    byConnection: jest.fn(),
+    byConnection: vi.fn(),
     activeSessions: 0
   }
 }))
-jest.mock("../../lib", () => ({
+vi.mock("../../lib", () => ({
   caughtToString: (e: any) => (e instanceof Error ? e.message : String(e)),
-  log: jest.fn(),
+  log: vi.fn(),
   viewableObjecttypes: new Set()
 }))
-jest.mock("../../adt/conections", () => ({
-  getClient: jest.fn(),
-  abapUri: jest.fn()
+vi.mock("../../adt/conections", () => ({
+  getClient: vi.fn(),
+  abapUri: vi.fn()
 }))
-jest.mock("../telemetry", () => ({ logTelemetry: jest.fn() }))
-jest.mock("../funMessenger", () => ({
+vi.mock("../telemetry", () => ({ logTelemetry: vi.fn() }))
+vi.mock("../funMessenger", () => ({
   funWindow: {
     activeTextEditor: undefined,
-    showQuickPick: jest.fn(),
-    showInformationMessage: jest.fn(),
-    showWarningMessage: jest.fn(),
-    createOutputChannel: jest.fn(() => ({
-      info: jest.fn(),
-      error: jest.fn(),
-      warn: jest.fn(),
-      debug: jest.fn(),
-      trace: jest.fn()
-    }))
+    showQuickPick: vi.fn(),
+    showInformationMessage: vi.fn(),
+    showWarningMessage: vi.fn(),
+    createOutputChannel: vi.fn(function () {
+      return {
+        info: vi.fn(),
+        error: vi.fn(),
+        warn: vi.fn(),
+        debug: vi.fn(),
+        trace: vi.fn()
+      }
+    })
   }
 }))
-jest.mock("./toolRegistry", () => ({
-  registerToolWithRegistry: jest.fn(() => ({ dispose: jest.fn() }))
+vi.mock("./toolRegistry", () => ({
+  registerToolWithRegistry: vi.fn(function () {
+    return { dispose: vi.fn() }
+  })
 }))
-jest.mock("../abapCopilotLogger", () => ({
-  logCommands: { info: jest.fn(), error: jest.fn(), warn: jest.fn() }
+vi.mock("../abapCopilotLogger", () => ({
+  logCommands: { info: vi.fn(), error: vi.fn(), warn: vi.fn() }
 }))
-jest.mock("../sapSystemInfo", () => ({ getSAPSystemInfo: jest.fn() }))
+vi.mock("../sapSystemInfo", () => ({ getSAPSystemInfo: vi.fn() }))
 
 import {
   ABAPDebugSessionTool,
@@ -103,6 +125,7 @@ import { AbapDebugSession } from "../../adt/debugger/abapDebugSession"
 import { getSAPSystemInfo } from "../sapSystemInfo"
 import { funWindow as window } from "../funMessenger"
 import * as vscode from "vscode"
+import type { Mock } from "vitest"
 
 const mockToken = {} as any
 
@@ -118,8 +141,8 @@ describe("ABAPDebugSessionTool", () => {
 
   beforeEach(() => {
     tool = new ABAPDebugSessionTool()
-    jest.clearAllMocks()
-    ;(AbapDebugSession.byConnection as jest.Mock).mockReturnValue(undefined)
+    vi.clearAllMocks()
+    ;(AbapDebugSession.byConnection as Mock).mockReturnValue(undefined)
     Object.defineProperty(AbapDebugSession, "activeSessions", { value: 0, writable: true })
   })
 
@@ -159,7 +182,7 @@ describe("ABAPDebugSessionTool", () => {
 
   describe("invoke - status action", () => {
     it("returns no active session when none exists", async () => {
-      ;(AbapDebugSession.byConnection as jest.Mock).mockReturnValue(undefined)
+      ;(AbapDebugSession.byConnection as Mock).mockReturnValue(undefined)
       const result: any = await tool.invoke(
         makeOptions({ connectionId: "dev100", action: "status" }),
         mockToken
@@ -168,7 +191,7 @@ describe("ABAPDebugSessionTool", () => {
     })
 
     it("returns active status when session exists", async () => {
-      ;(AbapDebugSession.byConnection as jest.Mock).mockReturnValue({ debugListener: {} })
+      ;(AbapDebugSession.byConnection as Mock).mockReturnValue({ debugListener: {} })
       const result: any = await tool.invoke(
         makeOptions({ connectionId: "dev100", action: "status" }),
         mockToken
@@ -177,7 +200,7 @@ describe("ABAPDebugSessionTool", () => {
     })
 
     it("includes total sessions count in status", async () => {
-      ;(AbapDebugSession.byConnection as jest.Mock).mockReturnValue({ debugListener: {} })
+      ;(AbapDebugSession.byConnection as Mock).mockReturnValue({ debugListener: {} })
       Object.defineProperty(AbapDebugSession, "activeSessions", { value: 3, writable: true })
       const result: any = await tool.invoke(
         makeOptions({ connectionId: "dev100", action: "status" }),
@@ -189,8 +212,8 @@ describe("ABAPDebugSessionTool", () => {
 
   describe("invoke - stop action", () => {
     it("stops existing session successfully", async () => {
-      const mockLogOut = jest.fn().mockResolvedValue(undefined)
-      ;(AbapDebugSession.byConnection as jest.Mock).mockReturnValue({ logOut: mockLogOut })
+      const mockLogOut = vi.fn().mockResolvedValue(undefined)
+      ;(AbapDebugSession.byConnection as Mock).mockReturnValue({ logOut: mockLogOut })
       ;(vscode.debug as any).activeDebugSession = undefined
 
       const result: any = await tool.invoke(
@@ -202,8 +225,8 @@ describe("ABAPDebugSessionTool", () => {
     })
 
     it("stops VS Code debug session if active and type is abap", async () => {
-      const mockLogOut = jest.fn().mockResolvedValue(undefined)
-      ;(AbapDebugSession.byConnection as jest.Mock).mockReturnValue({ logOut: mockLogOut })
+      const mockLogOut = vi.fn().mockResolvedValue(undefined)
+      ;(AbapDebugSession.byConnection as Mock).mockReturnValue({ logOut: mockLogOut })
       const mockAbapSession = { type: "abap" }
       ;(vscode.debug as any).activeDebugSession = mockAbapSession
 
@@ -212,7 +235,7 @@ describe("ABAPDebugSessionTool", () => {
     })
 
     it("returns warning when no session to stop", async () => {
-      ;(AbapDebugSession.byConnection as jest.Mock).mockReturnValue(undefined)
+      ;(AbapDebugSession.byConnection as Mock).mockReturnValue(undefined)
       const result: any = await tool.invoke(
         makeOptions({ connectionId: "dev100", action: "stop" }),
         mockToken
@@ -223,7 +246,7 @@ describe("ABAPDebugSessionTool", () => {
 
   describe("invoke - start action", () => {
     it("returns already-active message when session exists", async () => {
-      ;(AbapDebugSession.byConnection as jest.Mock).mockReturnValue({ debugListener: {} })
+      ;(AbapDebugSession.byConnection as Mock).mockReturnValue({ debugListener: {} })
       const result: any = await tool.invoke(
         makeOptions({ connectionId: "dev100", action: "start" }),
         mockToken
@@ -232,11 +255,11 @@ describe("ABAPDebugSessionTool", () => {
     })
 
     it("calls debug.startDebugging with correct config", async () => {
-      ;(AbapDebugSession.byConnection as jest.Mock).mockReturnValue(undefined)
-      ;(getSAPSystemInfo as jest.Mock).mockResolvedValue({
+      ;(AbapDebugSession.byConnection as Mock).mockReturnValue(undefined)
+      ;(getSAPSystemInfo as Mock).mockResolvedValue({
         currentClient: { category: "Development" }
       })
-      ;(vscode.debug.startDebugging as jest.Mock).mockResolvedValue(true)
+      ;(vscode.debug.startDebugging as Mock).mockResolvedValue(true)
 
       await tool.invoke(
         makeOptions({
@@ -261,11 +284,11 @@ describe("ABAPDebugSessionTool", () => {
     })
 
     it("returns error when startDebugging fails", async () => {
-      ;(AbapDebugSession.byConnection as jest.Mock).mockReturnValue(undefined)
-      ;(getSAPSystemInfo as jest.Mock).mockResolvedValue({
+      ;(AbapDebugSession.byConnection as Mock).mockReturnValue(undefined)
+      ;(getSAPSystemInfo as Mock).mockResolvedValue({
         currentClient: { category: "Development" }
       })
-      ;(vscode.debug.startDebugging as jest.Mock).mockResolvedValue(false)
+      ;(vscode.debug.startDebugging as Mock).mockResolvedValue(false)
 
       const result: any = await tool.invoke(
         makeOptions({ connectionId: "dev100", action: "start" }),
@@ -275,11 +298,11 @@ describe("ABAPDebugSessionTool", () => {
     })
 
     it("defaults action to start when not specified", async () => {
-      ;(AbapDebugSession.byConnection as jest.Mock).mockReturnValue(undefined)
-      ;(getSAPSystemInfo as jest.Mock).mockResolvedValue({
+      ;(AbapDebugSession.byConnection as Mock).mockReturnValue(undefined)
+      ;(getSAPSystemInfo as Mock).mockResolvedValue({
         currentClient: { category: "Development" }
       })
-      ;(vscode.debug.startDebugging as jest.Mock).mockResolvedValue(true)
+      ;(vscode.debug.startDebugging as Mock).mockResolvedValue(true)
 
       const result: any = await tool.invoke(makeOptions({ connectionId: "dev100" }), mockToken)
       expect(vscode.debug.startDebugging).toHaveBeenCalled()
@@ -289,11 +312,11 @@ describe("ABAPDebugSessionTool", () => {
 
   describe("production guard", () => {
     it("cancels when system is production and user declines", async () => {
-      ;(AbapDebugSession.byConnection as jest.Mock).mockReturnValue(undefined)
-      ;(getSAPSystemInfo as jest.Mock).mockResolvedValue({
+      ;(AbapDebugSession.byConnection as Mock).mockReturnValue(undefined)
+      ;(getSAPSystemInfo as Mock).mockResolvedValue({
         currentClient: { category: "Production", clientNumber: "100", clientName: "PROD" }
       })
-      ;(window.showWarningMessage as jest.Mock).mockResolvedValue(undefined) // user dismisses
+      ;(window.showWarningMessage as Mock).mockResolvedValue(undefined) // user dismisses
 
       const result: any = await tool.invoke(
         makeOptions({ connectionId: "prod100", action: "start" }),
@@ -303,12 +326,12 @@ describe("ABAPDebugSessionTool", () => {
     })
 
     it("proceeds when system is production and user confirms", async () => {
-      ;(AbapDebugSession.byConnection as jest.Mock).mockReturnValue(undefined)
-      ;(getSAPSystemInfo as jest.Mock).mockResolvedValue({
+      ;(AbapDebugSession.byConnection as Mock).mockReturnValue(undefined)
+      ;(getSAPSystemInfo as Mock).mockResolvedValue({
         currentClient: { category: "Production", clientNumber: "100", clientName: "PROD" }
       })
-      ;(window.showWarningMessage as jest.Mock).mockResolvedValue({ action: "proceed" })
-      ;(vscode.debug.startDebugging as jest.Mock).mockResolvedValue(true)
+      ;(window.showWarningMessage as Mock).mockResolvedValue({ action: "proceed" })
+      ;(vscode.debug.startDebugging as Mock).mockResolvedValue(true)
 
       const result: any = await tool.invoke(
         makeOptions({ connectionId: "prod100", action: "start" }),
@@ -318,8 +341,8 @@ describe("ABAPDebugSessionTool", () => {
     })
 
     it("cancels when production guard check fails (fail-closed)", async () => {
-      ;(AbapDebugSession.byConnection as jest.Mock).mockReturnValue(undefined)
-      ;(getSAPSystemInfo as jest.Mock).mockRejectedValue(new Error("connection error"))
+      ;(AbapDebugSession.byConnection as Mock).mockReturnValue(undefined)
+      ;(getSAPSystemInfo as Mock).mockRejectedValue(new Error("connection error"))
 
       const result: any = await tool.invoke(
         makeOptions({ connectionId: "dev100", action: "start" }),
@@ -329,22 +352,22 @@ describe("ABAPDebugSessionTool", () => {
     })
 
     it("skips guard for non-production system", async () => {
-      ;(AbapDebugSession.byConnection as jest.Mock).mockReturnValue(undefined)
-      ;(getSAPSystemInfo as jest.Mock).mockResolvedValue({
+      ;(AbapDebugSession.byConnection as Mock).mockReturnValue(undefined)
+      ;(getSAPSystemInfo as Mock).mockResolvedValue({
         currentClient: { category: "Development" }
       })
-      ;(vscode.debug.startDebugging as jest.Mock).mockResolvedValue(true)
+      ;(vscode.debug.startDebugging as Mock).mockResolvedValue(true)
 
       await tool.invoke(makeOptions({ connectionId: "dev100", action: "start" }), mockToken)
       expect(window.showWarningMessage).not.toHaveBeenCalled()
     })
 
     it("detects production via category starting with P", async () => {
-      ;(AbapDebugSession.byConnection as jest.Mock).mockReturnValue(undefined)
-      ;(getSAPSystemInfo as jest.Mock).mockResolvedValue({
+      ;(AbapDebugSession.byConnection as Mock).mockReturnValue(undefined)
+      ;(getSAPSystemInfo as Mock).mockResolvedValue({
         currentClient: { category: "P" }
       })
-      ;(window.showWarningMessage as jest.Mock).mockResolvedValue(undefined)
+      ;(window.showWarningMessage as Mock).mockResolvedValue(undefined)
 
       const result: any = await tool.invoke(
         makeOptions({ connectionId: "prod100", action: "start" }),
@@ -363,7 +386,7 @@ describe("ABAPBreakpointTool", () => {
 
   beforeEach(() => {
     tool = new ABAPBreakpointTool()
-    jest.clearAllMocks()
+    vi.clearAllMocks()
   })
 
   describe("prepareInvocation", () => {
@@ -403,7 +426,7 @@ describe("ABAPBreakpointTool", () => {
 
   describe("invoke", () => {
     it("throws when no debug session exists", async () => {
-      ;(AbapDebugSession.byConnection as jest.Mock).mockReturnValue(undefined)
+      ;(AbapDebugSession.byConnection as Mock).mockReturnValue(undefined)
       const result: any = await tool.invoke(
         makeOptions({
           connectionId: "dev100",
@@ -417,7 +440,7 @@ describe("ABAPBreakpointTool", () => {
     })
 
     it("sets breakpoints via breakpoint manager", async () => {
-      const mockSetBreakpoints = jest.fn().mockResolvedValue([
+      const mockSetBreakpoints = vi.fn().mockResolvedValue([
         { verified: true, line: 10 },
         { verified: false, line: 20 }
       ])
@@ -426,7 +449,7 @@ describe("ABAPBreakpointTool", () => {
           breakpointManager: { setBreakpoints: mockSetBreakpoints }
         }
       }
-      ;(AbapDebugSession.byConnection as jest.Mock).mockReturnValue(mockSession)
+      ;(AbapDebugSession.byConnection as Mock).mockReturnValue(mockSession)
 
       const result: any = await tool.invoke(
         makeOptions({
@@ -442,13 +465,13 @@ describe("ABAPBreakpointTool", () => {
     })
 
     it("removes breakpoints with empty array", async () => {
-      const mockSetBreakpoints = jest.fn().mockResolvedValue([])
+      const mockSetBreakpoints = vi.fn().mockResolvedValue([])
       const mockSession = {
         debugListener: {
           breakpointManager: { setBreakpoints: mockSetBreakpoints }
         }
       }
-      ;(AbapDebugSession.byConnection as jest.Mock).mockReturnValue(mockSession)
+      ;(AbapDebugSession.byConnection as Mock).mockReturnValue(mockSession)
 
       const result: any = await tool.invoke(
         makeOptions({
@@ -463,13 +486,13 @@ describe("ABAPBreakpointTool", () => {
     })
 
     it("defaults action to set", async () => {
-      const mockSetBreakpoints = jest.fn().mockResolvedValue([{ verified: true, line: 10 }])
+      const mockSetBreakpoints = vi.fn().mockResolvedValue([{ verified: true, line: 10 }])
       const mockSession = {
         debugListener: {
           breakpointManager: { setBreakpoints: mockSetBreakpoints }
         }
       }
-      ;(AbapDebugSession.byConnection as jest.Mock).mockReturnValue(mockSession)
+      ;(AbapDebugSession.byConnection as Mock).mockReturnValue(mockSession)
 
       await tool.invoke(
         makeOptions({
@@ -487,7 +510,7 @@ describe("ABAPBreakpointTool", () => {
 
     it("reports error when debugListener is missing", async () => {
       const mockSession = { debugListener: undefined }
-      ;(AbapDebugSession.byConnection as jest.Mock).mockReturnValue(mockSession)
+      ;(AbapDebugSession.byConnection as Mock).mockReturnValue(mockSession)
 
       const result: any = await tool.invoke(
         makeOptions({
@@ -504,10 +527,10 @@ describe("ABAPBreakpointTool", () => {
     it("reports error for unknown action", async () => {
       const mockSession = {
         debugListener: {
-          breakpointManager: { setBreakpoints: jest.fn().mockResolvedValue([]) }
+          breakpointManager: { setBreakpoints: vi.fn().mockResolvedValue([]) }
         }
       }
-      ;(AbapDebugSession.byConnection as jest.Mock).mockReturnValue(mockSession)
+      ;(AbapDebugSession.byConnection as Mock).mockReturnValue(mockSession)
 
       const result: any = await tool.invoke(
         makeOptions({
@@ -522,13 +545,13 @@ describe("ABAPBreakpointTool", () => {
     })
 
     it("passes condition to source breakpoints", async () => {
-      const mockSetBreakpoints = jest.fn().mockResolvedValue([{ verified: true, line: 10 }])
+      const mockSetBreakpoints = vi.fn().mockResolvedValue([{ verified: true, line: 10 }])
       const mockSession = {
         debugListener: {
           breakpointManager: { setBreakpoints: mockSetBreakpoints }
         }
       }
-      ;(AbapDebugSession.byConnection as jest.Mock).mockReturnValue(mockSession)
+      ;(AbapDebugSession.byConnection as Mock).mockReturnValue(mockSession)
 
       await tool.invoke(
         makeOptions({
@@ -555,7 +578,7 @@ describe("ABAPDebugStepTool", () => {
 
   beforeEach(() => {
     tool = new ABAPDebugStepTool()
-    jest.clearAllMocks()
+    vi.clearAllMocks()
     ;(vscode.debug as any).activeDebugSession = undefined
   })
 
@@ -603,7 +626,7 @@ describe("ABAPDebugStepTool", () => {
 
   describe("invoke", () => {
     it("throws when no ABAP debug session exists", async () => {
-      ;(AbapDebugSession.byConnection as jest.Mock).mockReturnValue(undefined)
+      ;(AbapDebugSession.byConnection as Mock).mockReturnValue(undefined)
       const result: any = await tool.invoke(
         makeOptions({ connectionId: "dev100", stepType: "continue" }),
         mockToken
@@ -612,7 +635,7 @@ describe("ABAPDebugStepTool", () => {
     })
 
     it("throws when VS Code debug session is not abap type", async () => {
-      ;(AbapDebugSession.byConnection as jest.Mock).mockReturnValue({})
+      ;(AbapDebugSession.byConnection as Mock).mockReturnValue({})
       ;(vscode.debug as any).activeDebugSession = { type: "node" }
 
       const result: any = await tool.invoke(
@@ -623,12 +646,12 @@ describe("ABAPDebugStepTool", () => {
     })
 
     it("sends continue request", async () => {
-      const mockCustomRequest = jest.fn().mockResolvedValue({})
-      ;(AbapDebugSession.byConnection as jest.Mock).mockReturnValue({})
+      const mockCustomRequest = vi.fn().mockResolvedValue({})
+      ;(AbapDebugSession.byConnection as Mock).mockReturnValue({})
       ;(vscode.debug as any).activeDebugSession = { type: "abap", customRequest: mockCustomRequest }
 
       // Mock stackTrace for post-step location
-      mockCustomRequest.mockImplementation((cmd: string) => {
+      mockCustomRequest.mockImplementation(function (cmd: string) {
         if (cmd === "stackTrace") return Promise.resolve({ stackFrames: [] })
         return Promise.resolve({})
       })
@@ -642,11 +665,11 @@ describe("ABAPDebugStepTool", () => {
     })
 
     it("sends next request for stepOver", async () => {
-      const mockCustomRequest = jest.fn().mockImplementation((cmd: string) => {
+      const mockCustomRequest = vi.fn().mockImplementation(function (cmd: string) {
         if (cmd === "stackTrace") return Promise.resolve({ stackFrames: [] })
         return Promise.resolve({})
       })
-      ;(AbapDebugSession.byConnection as jest.Mock).mockReturnValue({})
+      ;(AbapDebugSession.byConnection as Mock).mockReturnValue({})
       ;(vscode.debug as any).activeDebugSession = { type: "abap", customRequest: mockCustomRequest }
 
       await tool.invoke(makeOptions({ connectionId: "dev100", stepType: "stepOver" }), mockToken)
@@ -654,11 +677,11 @@ describe("ABAPDebugStepTool", () => {
     })
 
     it("sends stepIn request for stepInto", async () => {
-      const mockCustomRequest = jest.fn().mockImplementation((cmd: string) => {
+      const mockCustomRequest = vi.fn().mockImplementation(function (cmd: string) {
         if (cmd === "stackTrace") return Promise.resolve({ stackFrames: [] })
         return Promise.resolve({})
       })
-      ;(AbapDebugSession.byConnection as jest.Mock).mockReturnValue({})
+      ;(AbapDebugSession.byConnection as Mock).mockReturnValue({})
       ;(vscode.debug as any).activeDebugSession = { type: "abap", customRequest: mockCustomRequest }
 
       await tool.invoke(makeOptions({ connectionId: "dev100", stepType: "stepInto" }), mockToken)
@@ -666,11 +689,11 @@ describe("ABAPDebugStepTool", () => {
     })
 
     it("sends stepOut request for stepReturn", async () => {
-      const mockCustomRequest = jest.fn().mockImplementation((cmd: string) => {
+      const mockCustomRequest = vi.fn().mockImplementation(function (cmd: string) {
         if (cmd === "stackTrace") return Promise.resolve({ stackFrames: [] })
         return Promise.resolve({})
       })
-      ;(AbapDebugSession.byConnection as jest.Mock).mockReturnValue({})
+      ;(AbapDebugSession.byConnection as Mock).mockReturnValue({})
       ;(vscode.debug as any).activeDebugSession = { type: "abap", customRequest: mockCustomRequest }
 
       await tool.invoke(makeOptions({ connectionId: "dev100", stepType: "stepReturn" }), mockToken)
@@ -678,8 +701,8 @@ describe("ABAPDebugStepTool", () => {
     })
 
     it("requires targetLine for jumpToLine", async () => {
-      const mockCustomRequest = jest.fn().mockResolvedValue({})
-      ;(AbapDebugSession.byConnection as jest.Mock).mockReturnValue({})
+      const mockCustomRequest = vi.fn().mockResolvedValue({})
+      ;(AbapDebugSession.byConnection as Mock).mockReturnValue({})
       ;(vscode.debug as any).activeDebugSession = { type: "abap", customRequest: mockCustomRequest }
 
       const result: any = await tool.invoke(
@@ -690,11 +713,11 @@ describe("ABAPDebugStepTool", () => {
     })
 
     it("handles jumpToLine with no available targets", async () => {
-      const mockCustomRequest = jest.fn().mockImplementation((cmd: string) => {
+      const mockCustomRequest = vi.fn().mockImplementation(function (cmd: string) {
         if (cmd === "gotoTargets") return Promise.resolve({ targets: [] })
         return Promise.resolve({})
       })
-      ;(AbapDebugSession.byConnection as jest.Mock).mockReturnValue({})
+      ;(AbapDebugSession.byConnection as Mock).mockReturnValue({})
       ;(vscode.debug as any).activeDebugSession = { type: "abap", customRequest: mockCustomRequest }
 
       const result: any = await tool.invoke(
@@ -705,11 +728,11 @@ describe("ABAPDebugStepTool", () => {
     })
 
     it("uses custom threadId when provided", async () => {
-      const mockCustomRequest = jest.fn().mockImplementation((cmd: string) => {
+      const mockCustomRequest = vi.fn().mockImplementation(function (cmd: string) {
         if (cmd === "stackTrace") return Promise.resolve({ stackFrames: [] })
         return Promise.resolve({})
       })
-      ;(AbapDebugSession.byConnection as jest.Mock).mockReturnValue({})
+      ;(AbapDebugSession.byConnection as Mock).mockReturnValue({})
       ;(vscode.debug as any).activeDebugSession = { type: "abap", customRequest: mockCustomRequest }
 
       await tool.invoke(
@@ -720,8 +743,8 @@ describe("ABAPDebugStepTool", () => {
     })
 
     it("reports unknown step type", async () => {
-      const mockCustomRequest = jest.fn().mockResolvedValue({})
-      ;(AbapDebugSession.byConnection as jest.Mock).mockReturnValue({})
+      const mockCustomRequest = vi.fn().mockResolvedValue({})
+      ;(AbapDebugSession.byConnection as Mock).mockReturnValue({})
       ;(vscode.debug as any).activeDebugSession = { type: "abap", customRequest: mockCustomRequest }
 
       const result: any = await tool.invoke(
@@ -741,7 +764,7 @@ describe("ABAPDebugVariableTool", () => {
 
   beforeEach(() => {
     tool = new ABAPDebugVariableTool()
-    jest.clearAllMocks()
+    vi.clearAllMocks()
     ;(vscode.debug as any).activeDebugSession = undefined
   })
 
@@ -781,7 +804,7 @@ describe("ABAPDebugVariableTool", () => {
 
   describe("invoke", () => {
     it("throws when no debug session exists", async () => {
-      ;(AbapDebugSession.byConnection as jest.Mock).mockReturnValue(undefined)
+      ;(AbapDebugSession.byConnection as Mock).mockReturnValue(undefined)
       const result: any = await tool.invoke(
         makeOptions({ connectionId: "dev100", variableName: "LV_TEST" }),
         mockToken
@@ -790,7 +813,7 @@ describe("ABAPDebugVariableTool", () => {
     })
 
     it("throws when VS Code debug session is not abap type", async () => {
-      ;(AbapDebugSession.byConnection as jest.Mock).mockReturnValue({})
+      ;(AbapDebugSession.byConnection as Mock).mockReturnValue({})
       ;(vscode.debug as any).activeDebugSession = { type: "node" }
 
       const result: any = await tool.invoke(
@@ -801,7 +824,7 @@ describe("ABAPDebugVariableTool", () => {
     })
 
     it("auto-recovers invalid frameId from stack trace", async () => {
-      const mockCustomRequest = jest.fn().mockImplementation((cmd: string, args: any) => {
+      const mockCustomRequest = vi.fn().mockImplementation(function (cmd: string, args: any) {
         if (cmd === "scopes" && args.frameId === 0) {
           return Promise.reject(new Error("Invalid frame"))
         }
@@ -820,7 +843,7 @@ describe("ABAPDebugVariableTool", () => {
         }
         return Promise.resolve({})
       })
-      ;(AbapDebugSession.byConnection as jest.Mock).mockReturnValue({})
+      ;(AbapDebugSession.byConnection as Mock).mockReturnValue({})
       ;(vscode.debug as any).activeDebugSession = { type: "abap", customRequest: mockCustomRequest }
 
       const result: any = await tool.invoke(
@@ -831,7 +854,7 @@ describe("ABAPDebugVariableTool", () => {
     })
 
     it("evaluates expressions", async () => {
-      const mockCustomRequest = jest.fn().mockImplementation((cmd: string) => {
+      const mockCustomRequest = vi.fn().mockImplementation(function (cmd: string) {
         if (cmd === "scopes")
           return Promise.resolve({ scopes: [{ name: "Local Variables", variablesReference: 1 }] })
         if (cmd === "evaluate") {
@@ -839,7 +862,7 @@ describe("ABAPDebugVariableTool", () => {
         }
         return Promise.resolve({})
       })
-      ;(AbapDebugSession.byConnection as jest.Mock).mockReturnValue({})
+      ;(AbapDebugSession.byConnection as Mock).mockReturnValue({})
       ;(vscode.debug as any).activeDebugSession = { type: "abap", customRequest: mockCustomRequest }
 
       const result: any = await tool.invoke(
@@ -851,7 +874,7 @@ describe("ABAPDebugVariableTool", () => {
     })
 
     it("lists scopes when no variableName or expression given", async () => {
-      const mockCustomRequest = jest.fn().mockImplementation((cmd: string) => {
+      const mockCustomRequest = vi.fn().mockImplementation(function (cmd: string) {
         if (cmd === "scopes") {
           return Promise.resolve({
             scopes: [
@@ -867,7 +890,7 @@ describe("ABAPDebugVariableTool", () => {
         }
         return Promise.resolve({})
       })
-      ;(AbapDebugSession.byConnection as jest.Mock).mockReturnValue({})
+      ;(AbapDebugSession.byConnection as Mock).mockReturnValue({})
       ;(vscode.debug as any).activeDebugSession = { type: "abap", customRequest: mockCustomRequest }
 
       const result: any = await tool.invoke(
@@ -879,7 +902,7 @@ describe("ABAPDebugVariableTool", () => {
     })
 
     it("returns not-found message for non-existent variable", async () => {
-      const mockCustomRequest = jest.fn().mockImplementation((cmd: string) => {
+      const mockCustomRequest = vi.fn().mockImplementation(function (cmd: string) {
         if (cmd === "scopes") {
           return Promise.resolve({
             scopes: [{ name: "Local Variables", variablesReference: 1 }]
@@ -897,7 +920,7 @@ describe("ABAPDebugVariableTool", () => {
         }
         return Promise.resolve({})
       })
-      ;(AbapDebugSession.byConnection as jest.Mock).mockReturnValue({})
+      ;(AbapDebugSession.byConnection as Mock).mockReturnValue({})
       ;(vscode.debug as any).activeDebugSession = { type: "abap", customRequest: mockCustomRequest }
 
       const result: any = await tool.invoke(
@@ -909,7 +932,7 @@ describe("ABAPDebugVariableTool", () => {
 
     it("defaults frameId to 0", async () => {
       // frameId defaults to 0, which will trigger auto-recovery if invalid
-      const mockCustomRequest = jest.fn().mockImplementation((cmd: string, args: any) => {
+      const mockCustomRequest = vi.fn().mockImplementation(function (cmd: string, args: any) {
         if (cmd === "scopes") {
           return Promise.resolve({
             scopes: [{ name: "Local Variables", variablesReference: 1 }]
@@ -920,7 +943,7 @@ describe("ABAPDebugVariableTool", () => {
         }
         return Promise.resolve({})
       })
-      ;(AbapDebugSession.byConnection as jest.Mock).mockReturnValue({})
+      ;(AbapDebugSession.byConnection as Mock).mockReturnValue({})
       ;(vscode.debug as any).activeDebugSession = { type: "abap", customRequest: mockCustomRequest }
 
       await tool.invoke(makeOptions({ connectionId: "dev100" }), mockToken)
@@ -938,7 +961,7 @@ describe("ABAPDebugStackTool", () => {
 
   beforeEach(() => {
     tool = new ABAPDebugStackTool()
-    jest.clearAllMocks()
+    vi.clearAllMocks()
     ;(vscode.debug as any).activeDebugSession = undefined
   })
 
@@ -962,13 +985,13 @@ describe("ABAPDebugStackTool", () => {
 
   describe("invoke", () => {
     it("throws when no debug session exists", async () => {
-      ;(AbapDebugSession.byConnection as jest.Mock).mockReturnValue(undefined)
+      ;(AbapDebugSession.byConnection as Mock).mockReturnValue(undefined)
       const result: any = await tool.invoke(makeOptions({ connectionId: "dev100" }), mockToken)
       expect(result.parts[0].text).toContain("No active debug session")
     })
 
     it("throws when no VS Code abap debug session", async () => {
-      ;(AbapDebugSession.byConnection as jest.Mock).mockReturnValue({})
+      ;(AbapDebugSession.byConnection as Mock).mockReturnValue({})
       ;(vscode.debug as any).activeDebugSession = { type: "node" }
 
       const result: any = await tool.invoke(makeOptions({ connectionId: "dev100" }), mockToken)
@@ -976,13 +999,13 @@ describe("ABAPDebugStackTool", () => {
     })
 
     it("returns stack frames", async () => {
-      const mockCustomRequest = jest.fn().mockResolvedValue({
+      const mockCustomRequest = vi.fn().mockResolvedValue({
         stackFrames: [
           { id: 1000, name: "IF_TEST~METHOD1", source: { name: "ZCL_TEST" }, line: 42, column: 0 },
           { id: 1001, name: "MAIN", source: { name: "ZPROGRAM" }, line: 10, column: 0 }
         ]
       })
-      ;(AbapDebugSession.byConnection as jest.Mock).mockReturnValue({})
+      ;(AbapDebugSession.byConnection as Mock).mockReturnValue({})
       ;(vscode.debug as any).activeDebugSession = { type: "abap", customRequest: mockCustomRequest }
 
       const result: any = await tool.invoke(makeOptions({ connectionId: "dev100" }), mockToken)
@@ -992,8 +1015,8 @@ describe("ABAPDebugStackTool", () => {
     })
 
     it("throws when no stack trace available", async () => {
-      const mockCustomRequest = jest.fn().mockResolvedValue({ stackFrames: null })
-      ;(AbapDebugSession.byConnection as jest.Mock).mockReturnValue({})
+      const mockCustomRequest = vi.fn().mockResolvedValue({ stackFrames: null })
+      ;(AbapDebugSession.byConnection as Mock).mockReturnValue({})
       ;(vscode.debug as any).activeDebugSession = { type: "abap", customRequest: mockCustomRequest }
 
       const result: any = await tool.invoke(makeOptions({ connectionId: "dev100" }), mockToken)
@@ -1001,10 +1024,10 @@ describe("ABAPDebugStackTool", () => {
     })
 
     it("uses default threadId of 1", async () => {
-      const mockCustomRequest = jest.fn().mockResolvedValue({
+      const mockCustomRequest = vi.fn().mockResolvedValue({
         stackFrames: [{ id: 1, name: "MAIN", source: { name: "TEST" }, line: 1 }]
       })
-      ;(AbapDebugSession.byConnection as jest.Mock).mockReturnValue({})
+      ;(AbapDebugSession.byConnection as Mock).mockReturnValue({})
       ;(vscode.debug as any).activeDebugSession = { type: "abap", customRequest: mockCustomRequest }
 
       await tool.invoke(makeOptions({ connectionId: "dev100" }), mockToken)
@@ -1015,10 +1038,10 @@ describe("ABAPDebugStackTool", () => {
     })
 
     it("uses custom threadId when provided", async () => {
-      const mockCustomRequest = jest.fn().mockResolvedValue({
+      const mockCustomRequest = vi.fn().mockResolvedValue({
         stackFrames: [{ id: 1, name: "MAIN", source: { name: "TEST" }, line: 1 }]
       })
-      ;(AbapDebugSession.byConnection as jest.Mock).mockReturnValue({})
+      ;(AbapDebugSession.byConnection as Mock).mockReturnValue({})
       ;(vscode.debug as any).activeDebugSession = { type: "abap", customRequest: mockCustomRequest }
 
       await tool.invoke(makeOptions({ connectionId: "dev100", threadId: 7 }), mockToken)
@@ -1038,7 +1061,7 @@ describe("ABAPDebugStatusTool", () => {
 
   beforeEach(() => {
     tool = new ABAPDebugStatusTool()
-    jest.clearAllMocks()
+    vi.clearAllMocks()
     ;(vscode.debug as any).activeDebugSession = undefined
   })
 
@@ -1054,7 +1077,7 @@ describe("ABAPDebugStatusTool", () => {
 
   describe("invoke", () => {
     it("returns no active session info when nothing running", async () => {
-      ;(AbapDebugSession.byConnection as jest.Mock).mockReturnValue(undefined)
+      ;(AbapDebugSession.byConnection as Mock).mockReturnValue(undefined)
       Object.defineProperty(AbapDebugSession, "activeSessions", { value: 0, writable: true })
 
       const result: any = await tool.invoke(makeOptions({ connectionId: "dev100" }), mockToken)
@@ -1063,12 +1086,12 @@ describe("ABAPDebugStatusTool", () => {
     })
 
     it("shows active session details when running", async () => {
-      const mockCustomRequest = jest.fn().mockImplementation((cmd: string) => {
+      const mockCustomRequest = vi.fn().mockImplementation(function (cmd: string) {
         if (cmd === "threads") return Promise.resolve({ threads: [{ id: 1, name: "Main" }] })
         if (cmd === "stackTrace") return Promise.resolve({ stackFrames: [] })
         return Promise.resolve({})
       })
-      ;(AbapDebugSession.byConnection as jest.Mock).mockReturnValue({
+      ;(AbapDebugSession.byConnection as Mock).mockReturnValue({
         debugListener: { activeServices: () => [] }
       })
       ;(vscode.debug as any).activeDebugSession = { type: "abap", customRequest: mockCustomRequest }
@@ -1080,7 +1103,7 @@ describe("ABAPDebugStatusTool", () => {
     })
 
     it("shows paused state with current location", async () => {
-      const mockCustomRequest = jest.fn().mockImplementation((cmd: string) => {
+      const mockCustomRequest = vi.fn().mockImplementation(function (cmd: string) {
         if (cmd === "threads") return Promise.resolve({ threads: [{ id: 1, name: "Main" }] })
         if (cmd === "stackTrace") {
           return Promise.resolve({
@@ -1096,7 +1119,7 @@ describe("ABAPDebugStatusTool", () => {
         }
         return Promise.resolve({})
       })
-      ;(AbapDebugSession.byConnection as jest.Mock).mockReturnValue({
+      ;(AbapDebugSession.byConnection as Mock).mockReturnValue({
         debugListener: { activeServices: () => [] }
       })
       ;(vscode.debug as any).activeDebugSession = { type: "abap", customRequest: mockCustomRequest }
@@ -1108,7 +1131,7 @@ describe("ABAPDebugStatusTool", () => {
     })
 
     it("handles error during status check gracefully", async () => {
-      ;(AbapDebugSession.byConnection as jest.Mock).mockImplementation(() => {
+      ;(AbapDebugSession.byConnection as Mock).mockImplementation(function () {
         throw new Error("Connection lost")
       })
 

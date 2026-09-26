@@ -1,87 +1,84 @@
-jest.mock(
-  "vscode",
-  () => {
-    class EventEmitter {
-      event = jest.fn()
-      fire = jest.fn()
-    }
-    class Disposable {
-      constructor(public cb: () => void) {}
-    }
-    const FileType = { File: 1, Directory: 2 }
-    return {
-      EventEmitter,
-      Disposable,
-      FileType,
-      Uri: {
-        parse: (s: string) => {
-          const match = s.match(/^(\w+):\/\/([^/]*)(.*)$/)
-          return {
-            scheme: match?.[1] || "",
-            authority: match?.[2] || "",
-            path: match?.[3] || s,
-            toString: () => s
-          }
+vi.mock("vscode", () => {
+  class EventEmitter {
+    event = vi.fn()
+    fire = vi.fn()
+  }
+  class Disposable {
+    constructor(public cb: () => void) {}
+  }
+  const FileType = { File: 1, Directory: 2 }
+  return {
+    EventEmitter,
+    Disposable,
+    FileType,
+    Uri: {
+      parse: (s: string) => {
+        const match = s.match(/^(\w+):\/\/([^/]*)(.*)$/)
+        return {
+          scheme: match?.[1] || "",
+          authority: match?.[2] || "",
+          path: match?.[3] || s,
+          toString: () => s
         }
-      },
-      workspace: { registerFileSystemProvider: jest.fn() }
-    }
-  },
-  { virtual: true }
-)
+      }
+    },
+    workspace: { registerFileSystemProvider: vi.fn() }
+  }
+})
 
-jest.mock("../../adt/conections", () => ({
-  getClient: jest.fn()
+vi.mock("../../adt/conections", () => ({
+  getClient: vi.fn()
 }))
 
-jest.mock("./views", () => ({
-  findRun: jest.fn()
+vi.mock("./views", () => ({
+  findRun: vi.fn()
 }))
 
-jest.mock("./convertProfile", () => ({
-  convertRun: jest.fn(),
-  convertStatements: jest.fn()
+vi.mock("./convertProfile", () => ({
+  convertRun: vi.fn(),
+  convertStatements: vi.fn()
 }))
 
 import { workspace, FileType, Uri, Disposable } from "vscode"
 import { getClient } from "../../adt/conections"
 import { findRun } from "./views"
 import { convertRun, convertStatements } from "./convertProfile"
+import type { Mock } from "vitest"
 
 // The module registers a filesystem provider at import time, so import after mocks
-const mod = require("./fsProvider")
+const mod = await import("./fsProvider")
 const { ADTPROFILE, adtProfileUri } = mod
 
 // Access the TraceFs instance via the registerFileSystemProvider call
-const registerCall = (workspace.registerFileSystemProvider as jest.Mock).mock.calls[0]
+const registerCall = (workspace.registerFileSystemProvider as Mock).mock.calls[0]
 const registeredScheme = registerCall?.[0]
 const traceFs = registerCall?.[1]
 
 beforeEach(() => {
   // Clear mocks for per-test assertions but preserve module-load-time state
-  ;(findRun as jest.Mock).mockReset()
-  ;(getClient as jest.Mock).mockReset()
-  ;(convertRun as jest.Mock).mockReset()
-  ;(convertStatements as jest.Mock).mockReset()
+  ;(findRun as Mock).mockReset()
+  ;(getClient as Mock).mockReset()
+  ;(convertRun as Mock).mockReset()
+  ;(convertStatements as Mock).mockReset()
 })
 
 describe("TraceFs", () => {
   describe("readFile", () => {
     it("throws when no trace run found", async () => {
-      ;(findRun as jest.Mock).mockResolvedValue(undefined)
+      ;(findRun as Mock).mockResolvedValue(undefined)
       const uri = Uri.parse("adt_profile://dev100/some/trace/id.cpuprofile")
       await expect(traceFs.readFile(uri)).rejects.toThrow("No trace run")
     })
 
     it("loads and returns profile for aggregated run (hitlist)", async () => {
       const fakeRun = { run: { id: "/trace/1" }, connId: "dev100", detailed: false }
-      ;(findRun as jest.Mock).mockResolvedValue(fakeRun)
+      ;(findRun as Mock).mockResolvedValue(fakeRun)
       const mockClient = {
-        tracesHitList: jest.fn().mockResolvedValue({ entries: [] })
+        tracesHitList: vi.fn().mockResolvedValue({ entries: [] })
       }
-      ;(getClient as jest.Mock).mockReturnValue(mockClient)
+      ;(getClient as Mock).mockReturnValue(mockClient)
       const fakeProfile = { startTime: 0, endTime: 1, nodes: [], samples: [], timeDeltas: [] }
-      ;(convertRun as jest.Mock).mockReturnValue(fakeProfile)
+      ;(convertRun as Mock).mockReturnValue(fakeProfile)
 
       const uri = Uri.parse("adt_profile://dev100/trace/1.cpuprofile")
       const result = await traceFs.readFile(uri)
@@ -94,13 +91,13 @@ describe("TraceFs", () => {
 
     it("loads and returns profile for detailed run (statements)", async () => {
       const fakeRun = { run: { id: "/trace/2" }, connId: "dev100", detailed: true }
-      ;(findRun as jest.Mock).mockResolvedValue(fakeRun)
+      ;(findRun as Mock).mockResolvedValue(fakeRun)
       const mockClient = {
-        tracesStatements: jest.fn().mockResolvedValue({ statements: [] })
+        tracesStatements: vi.fn().mockResolvedValue({ statements: [] })
       }
-      ;(getClient as jest.Mock).mockReturnValue(mockClient)
+      ;(getClient as Mock).mockReturnValue(mockClient)
       const fakeProfile = { startTime: 0, endTime: 1, nodes: [], samples: [], timeDeltas: [] }
-      ;(convertStatements as jest.Mock).mockReturnValue(fakeProfile)
+      ;(convertStatements as Mock).mockReturnValue(fakeProfile)
 
       const uri = Uri.parse("adt_profile://dev100/trace/2.cpuprofile")
       const result = await traceFs.readFile(uri)
@@ -114,10 +111,10 @@ describe("TraceFs", () => {
 
     it("caches result and does not reload on second call", async () => {
       const fakeRun = { run: { id: "/trace/3" }, connId: "dev100", detailed: false }
-      ;(findRun as jest.Mock).mockResolvedValue(fakeRun)
-      const mockClient = { tracesHitList: jest.fn().mockResolvedValue({ entries: [] }) }
-      ;(getClient as jest.Mock).mockReturnValue(mockClient)
-      ;(convertRun as jest.Mock).mockReturnValue({
+      ;(findRun as Mock).mockResolvedValue(fakeRun)
+      const mockClient = { tracesHitList: vi.fn().mockResolvedValue({ entries: [] }) }
+      ;(getClient as Mock).mockReturnValue(mockClient)
+      ;(convertRun as Mock).mockReturnValue({
         startTime: 0,
         endTime: 1,
         nodes: [],
@@ -139,11 +136,11 @@ describe("TraceFs", () => {
   describe("stat", () => {
     it("returns FileType.File with correct size", async () => {
       const fakeRun = { run: { id: "/trace/stat" }, connId: "dev100", detailed: false }
-      ;(findRun as jest.Mock).mockResolvedValue(fakeRun)
-      const mockClient = { tracesHitList: jest.fn().mockResolvedValue({ entries: [] }) }
-      ;(getClient as jest.Mock).mockReturnValue(mockClient)
+      ;(findRun as Mock).mockResolvedValue(fakeRun)
+      const mockClient = { tracesHitList: vi.fn().mockResolvedValue({ entries: [] }) }
+      ;(getClient as Mock).mockReturnValue(mockClient)
       const fakeProfile = { data: "test" }
-      ;(convertRun as jest.Mock).mockReturnValue(fakeProfile)
+      ;(convertRun as Mock).mockReturnValue(fakeProfile)
 
       const uri = Uri.parse("adt_profile://dev100/trace/stat.cpuprofile")
       const stat = await traceFs.stat(uri)
@@ -157,7 +154,7 @@ describe("TraceFs", () => {
     })
 
     it("throws when no run found", async () => {
-      ;(findRun as jest.Mock).mockResolvedValue(undefined)
+      ;(findRun as Mock).mockResolvedValue(undefined)
       const uri = Uri.parse("adt_profile://dev100/no/run.cpuprofile")
       await expect(traceFs.stat(uri)).rejects.toThrow("No trace run")
     })
@@ -214,7 +211,7 @@ describe("ADTPROFILE constant", () => {
 
 describe("adtProfileUri", () => {
   it("creates uri with connId as authority and .cpuprofile extension", () => {
-    const run = { connId: "dev100", run: { id: "/sap/bc/trace/123" } }
+    const run = { connId: "dev100", run: { id: "/sap/bc/trace/123" } } as any
     const uri = adtProfileUri(run)
     expect(uri.scheme).toBe("adt_profile")
     expect(uri.authority).toBe("dev100")

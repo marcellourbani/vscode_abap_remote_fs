@@ -1,22 +1,26 @@
 // Tests for oauth/grantStorage.ts
-jest.mock("../extension", () => ({
+vi.mock("../extension", () => ({
   context: {
     globalState: {
-      get: jest.fn(() => []),
-      update: jest.fn()
+      get: vi.fn(function () {
+        return []
+      }),
+      update: vi.fn()
     }
   }
 }))
 
-jest.mock("../lib", () => ({
+vi.mock("../lib", () => ({
   PasswordVault: {
-    get: jest.fn(() => ({
-      setPassword: jest.fn(),
-      deletePassword: jest.fn(),
-      getPassword: jest.fn()
-    }))
+    get: vi.fn(function () {
+      return {
+        setPassword: vi.fn(),
+        deletePassword: vi.fn(),
+        getPassword: vi.fn()
+      }
+    })
   },
-  log: jest.fn()
+  log: vi.fn()
 }))
 
 import {
@@ -26,10 +30,11 @@ import {
   storeTokens,
   clearTokens,
   loadTokens,
-  TokenData
+  type TokenData
 } from "./grantStorage"
 import { PasswordVault, log } from "../lib"
 import { context } from "../extension"
+import type { Mock } from "vitest"
 
 const makeToken = (id = "test"): TokenData => ({
   tokenType: "Bearer",
@@ -39,7 +44,7 @@ const makeToken = (id = "test"): TokenData => ({
 
 describe("grantStorage", () => {
   beforeEach(() => {
-    jest.clearAllMocks()
+    vi.clearAllMocks()
     // Reset the in-memory tokens map by clearing known entries
     clearTokens().catch(() => {})
   })
@@ -95,9 +100,9 @@ describe("grantStorage", () => {
 
   describe("storeTokens", () => {
     it("stores tokens via PasswordVault", async () => {
-      const vault = { setPassword: jest.fn(), deletePassword: jest.fn() }
-      ;(PasswordVault.get as jest.Mock).mockReturnValue(vault)
-      ;(context.globalState.update as jest.Mock).mockResolvedValue(undefined)
+      const vault = { setPassword: vi.fn(), deletePassword: vi.fn() }
+      ;(PasswordVault.get as Mock).mockReturnValue(vault)
+      ;(context.globalState.update as Mock).mockResolvedValue(undefined)
 
       setToken("conn-store", makeToken("store"))
       await storeTokens()
@@ -110,10 +115,10 @@ describe("grantStorage", () => {
     })
 
     it("falls back to globalState on vault error", async () => {
-      ;(PasswordVault.get as jest.Mock).mockReturnValue({
-        setPassword: jest.fn().mockRejectedValue(new Error("vault error"))
+      ;(PasswordVault.get as Mock).mockReturnValue({
+        setPassword: vi.fn().mockRejectedValue(new Error("vault error"))
       })
-      ;(context.globalState.update as jest.Mock).mockResolvedValue(undefined)
+      ;(context.globalState.update as Mock).mockResolvedValue(undefined)
 
       setToken("conn-fallback", makeToken("fallback"))
       await storeTokens()
@@ -124,9 +129,9 @@ describe("grantStorage", () => {
 
   describe("clearTokens", () => {
     it("removes all tokens from vault and memory", async () => {
-      const vault = { setPassword: jest.fn(), deletePassword: jest.fn() }
-      ;(PasswordVault.get as jest.Mock).mockReturnValue(vault)
-      ;(context.globalState.update as jest.Mock).mockResolvedValue(undefined)
+      const vault = { setPassword: vi.fn(), deletePassword: vi.fn() }
+      ;(PasswordVault.get as Mock).mockReturnValue(vault)
+      ;(context.globalState.update as Mock).mockResolvedValue(undefined)
 
       setToken("conn-clear", makeToken("clear"))
       await clearTokens()
@@ -136,10 +141,10 @@ describe("grantStorage", () => {
     })
 
     it("falls back gracefully on vault error", async () => {
-      ;(PasswordVault.get as jest.Mock).mockReturnValue({
-        deletePassword: jest.fn().mockRejectedValue(new Error("delete error"))
+      ;(PasswordVault.get as Mock).mockReturnValue({
+        deletePassword: vi.fn().mockRejectedValue(new Error("delete error"))
       })
-      ;(context.globalState.update as jest.Mock).mockResolvedValue(undefined)
+      ;(context.globalState.update as Mock).mockResolvedValue(undefined)
 
       setToken("conn-err", makeToken())
       await expect(clearTokens()).resolves.not.toThrow()
@@ -149,10 +154,10 @@ describe("grantStorage", () => {
   describe("loadTokens", () => {
     it("migrates legacy tokens from globalState to vault", async () => {
       const legacyToken = makeToken("legacy")
-      ;(context.globalState.get as jest.Mock).mockReturnValue([["legacy-conn", legacyToken]])
-      const vault = { setPassword: jest.fn(), deletePassword: jest.fn() }
-      ;(PasswordVault.get as jest.Mock).mockReturnValue(vault)
-      ;(context.globalState.update as jest.Mock).mockResolvedValue(undefined)
+      ;(context.globalState.get as Mock).mockReturnValue([["legacy-conn", legacyToken]])
+      const vault = { setPassword: vi.fn(), deletePassword: vi.fn() }
+      ;(PasswordVault.get as Mock).mockReturnValue(vault)
+      ;(context.globalState.update as Mock).mockResolvedValue(undefined)
 
       await loadTokens()
 
@@ -162,18 +167,18 @@ describe("grantStorage", () => {
     })
 
     it("handles empty globalState gracefully", async () => {
-      ;(context.globalState.get as jest.Mock).mockReturnValue([])
-      ;(PasswordVault.get as jest.Mock).mockReturnValue({ setPassword: jest.fn() })
+      ;(context.globalState.get as Mock).mockReturnValue([])
+      ;(PasswordVault.get as Mock).mockReturnValue({ setPassword: vi.fn() })
 
       await expect(loadTokens()).resolves.not.toThrow()
     })
 
     it("falls back to legacy load on vault error", async () => {
-      ;(PasswordVault.get as jest.Mock).mockReturnValue({
-        setPassword: jest.fn().mockRejectedValue(new Error("vault broken"))
+      ;(PasswordVault.get as Mock).mockReturnValue({
+        setPassword: vi.fn().mockRejectedValue(new Error("vault broken"))
       })
       const fallbackToken = makeToken("fb")
-      ;(context.globalState.get as jest.Mock).mockReturnValue([["fb-conn", fallbackToken]])
+      ;(context.globalState.get as Mock).mockReturnValue([["fb-conn", fallbackToken]])
 
       await loadTokens()
       // Should not throw, and token loaded via fallback

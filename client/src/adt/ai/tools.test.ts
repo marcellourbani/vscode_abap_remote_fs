@@ -1,41 +1,44 @@
-jest.mock(
-  "vscode",
-  () => ({
-    ExtensionContext: jest.fn()
-  }),
-  { virtual: true }
-)
-
-jest.mock("./search", () => ({
-  SearchTool: jest.fn().mockImplementation(() => ({ id: "search" }))
+vi.mock("vscode", () => ({
+  ExtensionContext: vi.fn(class {})
 }))
 
-jest.mock("./unit", () => ({
-  UnitTool: jest.fn().mockImplementation(() => ({ id: "unit" }))
+vi.mock("./search", () => ({
+  SearchTool: vi.fn().mockImplementation(function () {
+    return { id: "search" }
+  })
 }))
 
-jest.mock("./activate", () => ({
-  ActivateTool: jest.fn().mockImplementation(() => ({ id: "activate" }))
+vi.mock("./unit", () => ({
+  UnitTool: vi.fn().mockImplementation(function () {
+    return { id: "unit" }
+  })
 }))
 
-jest.mock("../../services/lm-tools/toolRegistry", () => ({
-  registerToolWithRegistry: jest.fn(() => ({ dispose: jest.fn() }))
+vi.mock("./activate", () => ({
+  ActivateTool: vi.fn().mockImplementation(function () {
+    return { id: "activate" }
+  })
+}))
+
+vi.mock("../../services/lm-tools/toolRegistry", () => ({
+  registerToolWithRegistry: vi.fn(function () {
+    return { dispose: vi.fn() }
+  })
 }))
 
 import { registerChatTools } from "./tools"
 import { registerToolWithRegistry } from "../../services/lm-tools/toolRegistry"
 import { ActivateTool } from "./activate"
+import type { MockedFunction } from "vitest"
 
-const mockRegisterTool = registerToolWithRegistry as jest.MockedFunction<
-  typeof registerToolWithRegistry
->
+const mockRegisterTool = registerToolWithRegistry as MockedFunction<typeof registerToolWithRegistry>
 
 describe("registerChatTools", () => {
   let mockContext: any
 
   beforeEach(() => {
-    jest.clearAllMocks()
-    mockContext = { subscriptions: { push: jest.fn() } }
+    vi.clearAllMocks()
+    mockContext = { subscriptions: { push: vi.fn() } }
   })
 
   test("registers the activate tool", () => {

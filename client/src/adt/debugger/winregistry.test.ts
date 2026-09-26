@@ -1,22 +1,25 @@
 import { execFileSync } from "child_process"
 
-jest.mock("child_process", () => ({
-  execFileSync: jest.fn()
+vi.mock("child_process", () => ({
+  execFileSync: vi.fn()
 }))
-jest.mock("../../lib", () => ({
-  log: { debug: jest.fn() },
-  caughtToString: jest.fn((e: any) => String(e))
+vi.mock("../../lib", () => ({
+  log: { debug: vi.fn() },
+  caughtToString: vi.fn(function (e: any) {
+    return String(e)
+  })
 }))
 
 import { readWindowsRegistryString } from "./winregistry"
 import { log } from "../../lib"
+import type { MockedFunction } from "vitest"
 
-const mockExecFileSync = execFileSync as jest.MockedFunction<typeof execFileSync>
-const mockLogDebug = log.debug as jest.MockedFunction<typeof log.debug>
+const mockExecFileSync = execFileSync as MockedFunction<typeof execFileSync>
+const mockLogDebug = log.debug as MockedFunction<typeof log.debug>
 
 describe("readWindowsRegistryString", () => {
   beforeEach(() => {
-    jest.clearAllMocks()
+    vi.clearAllMocks()
   })
 
   test("parses a REG_SZ value from reg query output", () => {
@@ -53,7 +56,7 @@ describe("readWindowsRegistryString", () => {
   })
 
   test("returns undefined when reg.exe throws (e.g. key not found)", () => {
-    mockExecFileSync.mockImplementationOnce(() => {
+    mockExecFileSync.mockImplementationOnce(function () {
       throw new Error("ERROR: The system was unable to find the specified registry key.")
     })
     expect(

@@ -12,8 +12,8 @@ import type { CellResult } from "./types"
 // ── Worker mock factory ──────────────────────────────────────────────────────
 
 type MockWorker = EventEmitter & {
-  postMessage: jest.Mock
-  terminate: jest.Mock
+  postMessage: Mock
+  terminate: Mock
   _triggerMessage: (data: any) => void
   _triggerError: (err: Error) => void
   _triggerExit: (code: number) => void
@@ -23,29 +23,31 @@ let lastWorker: MockWorker | undefined
 
 function createMockWorker(): MockWorker {
   const emitter = new EventEmitter() as MockWorker
-  emitter.postMessage = jest.fn()
-  emitter.terminate = jest.fn()
+  emitter.postMessage = vi.fn()
+  emitter.terminate = vi.fn()
   emitter._triggerMessage = (data: any) => emitter.emit("message", data)
   emitter._triggerError = (err: Error) => emitter.emit("error", err)
   emitter._triggerExit = (code: number) => emitter.emit("exit", code)
   return emitter
 }
 
-jest.mock("worker_threads", () => ({
-  Worker: jest.fn().mockImplementation(() => {
+vi.mock("worker_threads", () => ({
+  Worker: vi.fn().mockImplementation(function () {
     lastWorker = createMockWorker()
     return lastWorker
   })
 }))
 
 import { executeJsCell } from "./jsCellExecutor"
+import * as __$mock_worker_threads from "worker_threads"
+import type { Mock } from "vitest"
 
-const { Worker: MockWorkerClass } = require("worker_threads")
+const { Worker: MockWorkerClass } = __$mock_worker_threads
 
 beforeEach(() => {
-  jest.clearAllMocks()
+  vi.clearAllMocks()
   lastWorker = undefined
-  MockWorkerClass.mockImplementation(() => {
+  vi.mocked(MockWorkerClass).mockImplementation(function () {
     lastWorker = createMockWorker()
     return lastWorker
   })
@@ -184,7 +186,7 @@ describe("executeJsCell — error and abort paths", () => {
   })
 
   test("rejects when Worker constructor throws", async () => {
-    MockWorkerClass.mockImplementationOnce(() => {
+    vi.mocked(MockWorkerClass).mockImplementationOnce(function () {
       throw new Error("cannot spawn worker")
     })
     await expect(executeJsCell("1", 0, new Map())).rejects.toThrow("cannot spawn worker")
@@ -192,7 +194,7 @@ describe("executeJsCell — error and abort paths", () => {
 
   test("rejects when postMessage throws (non-serializable data)", async () => {
     // Override Worker constructor to create a worker whose postMessage throws
-    MockWorkerClass.mockImplementationOnce(() => {
+    vi.mocked(MockWorkerClass).mockImplementationOnce(function () {
       lastWorker = createMockWorker()
       lastWorker.postMessage.mockImplementation(() => {
         throw new Error("DataCloneError")
@@ -222,27 +224,27 @@ describe("executeJsCell — error and abort paths", () => {
 // ── Timeout ──────────────────────────────────────────────────────────────────
 
 describe("executeJsCell — timeout", () => {
-  beforeEach(() => jest.useFakeTimers())
-  afterEach(() => jest.useRealTimers())
+  beforeEach(() => vi.useFakeTimers())
+  afterEach(() => vi.useRealTimers())
 
   test("rejects with timeout message after JS_EXECUTION_TIMEOUT_MS", async () => {
     const promise = executeJsCell("while(true){}", 0, new Map())
-    jest.advanceTimersByTime(JS_EXECUTION_TIMEOUT_MS + 1)
+    vi.advanceTimersByTime(JS_EXECUTION_TIMEOUT_MS + 1)
     await expect(promise).rejects.toThrow(/timed out/)
   })
 
   test("terminates worker on timeout", async () => {
     const promise = executeJsCell("while(true){}", 0, new Map()).catch(() => {})
-    jest.advanceTimersByTime(JS_EXECUTION_TIMEOUT_MS + 1)
+    vi.advanceTimersByTime(JS_EXECUTION_TIMEOUT_MS + 1)
     await promise
     // terminate is called via setImmediate which is faked — advance timers to flush it
-    jest.advanceTimersByTime(0)
+    vi.advanceTimersByTime(0)
     expect(lastWorker!.terminate).toHaveBeenCalled()
   })
 
   test("does not timeout if result arrives in time", async () => {
     const promise = executeJsCell("1", 0, new Map())
-    jest.advanceTimersByTime(100)
+    vi.advanceTimersByTime(100)
     lastWorker!._triggerMessage({ success: true, result: 1 })
     const result = await promise
     expect(result.result).toBe(1)

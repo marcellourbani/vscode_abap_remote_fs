@@ -1,22 +1,23 @@
 import * as path from "path"
-import { afterAll, describe, expect, it, jest } from "@jest/globals"
+import { afterAll, describe, expect, it, vi } from "vitest"
 
-jest.mock("@playwright/test", () => ({ defineConfig: (config: unknown) => config }))
+vi.mock("@playwright/test", () => ({ defineConfig: (config: unknown) => config }))
 
 const configPath = path.resolve(__dirname, "playwright.config.ts")
 const originalEnv = { ...process.env }
 
-function loadConfig(env: Record<string, string | undefined>) {
+async function loadConfig(env: Record<string, string | undefined>) {
   process.env = { ...originalEnv }
   for (const [key, value] of Object.entries(env)) {
     if (value === undefined) delete process.env[key]
     else process.env[key] = value
   }
-  let config: any
-  jest.isolateModules(() => {
-    config = require(configPath).default
-  })
-  return config
+  vi.resetModules()
+  // The config template reads process.env at evaluation time; dynamic import (paired
+  // with resetModules) forces a fresh re-evaluation per env set. Module-loading boundary —
+  // a static import would evaluate once and cache the first env.
+  const mod = await import(/* @vite-ignore */ configPath)
+  return mod.default ?? mod
 }
 
 afterAll(() => {
@@ -24,8 +25,8 @@ afterAll(() => {
 })
 
 describe("bundled Playwright config", () => {
-  it("defaults to sequential execution and three failures", () => {
-    const config = loadConfig({
+  it("defaults to sequential execution and three failures", async () => {
+    const config = await loadConfig({
       SAP_TESTING_PARALLEL: undefined,
       SAP_TESTING_MAX_TASKS: undefined,
       SAP_TESTING_MAX_FAILURES: undefined
@@ -37,15 +38,15 @@ describe("bundled Playwright config", () => {
     expect(config.globalSetup).toMatch(/sso-global-setup\.js$/)
   })
 
-  it("parallelizes files only and preserves one global setup", () => {
-    const config = loadConfig({ SAP_TESTING_PARALLEL: "1", SAP_TESTING_MAX_TASKS: "4" })
+  it("parallelizes files only and preserves one global setup", async () => {
+    const config = await loadConfig({ SAP_TESTING_PARALLEL: "1", SAP_TESTING_MAX_TASKS: "4" })
     expect(config.workers).toBe(4)
     expect(config.fullyParallel).toBe(false)
     expect(config.globalSetup).toMatch(/sso-global-setup\.js$/)
   })
 
-  it("passes report, storage, browser, timeout, and output settings through", () => {
-    const config = loadConfig({
+  it("passes report, storage, browser, timeout, and output settings through", async () => {
+    const config = await loadConfig({
       SAP_TESTING_ROOT: "C:/tests",
       SAP_TESTING_SPEC_DIR: "C:/tests/specs",
       SAP_TESTING_REPORT_FILE: "C:/tmp/report.json",

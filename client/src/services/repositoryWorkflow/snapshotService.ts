@@ -6,12 +6,12 @@ import { diffLines } from "diff"
 import { AbapResourceDownloadService, runPool } from "../abapResourceDownloadService"
 import {
   DEFAULT_VERIFICATION_CONCURRENCY,
-  ExistenceComparisonRecord,
+  type ExistenceComparisonRecord,
   MAX_VERIFICATION_CONCURRENCY,
-  ObjectSnapshotManifest,
-  RepositoryObjectRecord,
-  SnapshotFile,
-  SourceComparisonRecord
+  type ObjectSnapshotManifest,
+  type RepositoryObjectRecord,
+  type SnapshotFile,
+  type SourceComparisonRecord
 } from "./types"
 import { WorkflowStore } from "./workflowStore"
 

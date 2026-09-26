@@ -1,53 +1,50 @@
 // Tests for views/traces/views.ts - TraceRunItem and tracesProvider
-jest.mock(
-  "vscode",
-  () => {
-    const MarkdownString = class {
-      constructor(public value = "") {}
-    }
-    const ThemeIcon = class {
-      constructor(public id: string) {}
-    }
-    const TreeItem = class {
-      constructor(
-        public label: string,
-        public collapsibleState?: number
-      ) {}
-      tooltip: any
-      command: any
-      iconPath: any
-      id: any
-      contextValue: any
-    }
-    const TreeItemCollapsibleState = { None: 0, Collapsed: 1, Expanded: 2 }
-    const EventEmitter = class {
-      event = jest.fn()
-      fire = jest.fn()
-    }
-    const Uri = {
-      parse: jest.fn((s: string) => ({ toString: () => s, path: s }))
-    }
-    return { MarkdownString, ThemeIcon, TreeItem, TreeItemCollapsibleState, EventEmitter, Uri }
-  },
-  { virtual: true }
-)
+vi.mock("vscode", () => {
+  const MarkdownString = class {
+    constructor(public value = "") {}
+  }
+  const ThemeIcon = class {
+    constructor(public id: string) {}
+  }
+  const TreeItem = class {
+    constructor(
+      public label: string,
+      public collapsibleState?: number
+    ) {}
+    tooltip: any
+    command: any
+    iconPath: any
+    id: any
+    contextValue: any
+  }
+  const TreeItemCollapsibleState = { None: 0, Collapsed: 1, Expanded: 2 }
+  const EventEmitter = class {
+    event = vi.fn()
+    fire = vi.fn()
+  }
+  const Uri = {
+    parse: vi.fn(function (s: string) {
+      return { toString: () => s, path: s }
+    })
+  }
+  return { MarkdownString, ThemeIcon, TreeItem, TreeItemCollapsibleState, EventEmitter, Uri }
+})
 
-jest.mock("../../config", () => ({
-  connectedRoots: jest.fn(
-    () =>
-      new Map([
-        ["DEV100", {}],
-        ["QA100", {}]
-      ])
-  )
+vi.mock("../../config", () => ({
+  connectedRoots: vi.fn(function () {
+    return new Map([
+      ["DEV100", {}],
+      ["QA100", {}]
+    ])
+  })
 }))
 
-jest.mock("../../adt/conections", () => ({
-  getOrCreateClient: jest.fn()
+vi.mock("../../adt/conections", () => ({
+  getOrCreateClient: vi.fn()
 }))
 
-jest.mock("../../lib", () => ({
-  cache: jest.fn((fn: Function) => {
+vi.mock("../../lib", () => ({
+  cache: vi.fn(function (fn: Function) {
     const map = new Map()
     return {
       get: (k: any) => {
@@ -60,15 +57,21 @@ jest.mock("../../lib", () => ({
   })
 }))
 
-jest.mock("./commands", () => ({
-  openCommand: jest.fn((uri: any) => ({ command: "open", title: "open", arguments: [uri] }))
+vi.mock("./commands", () => ({
+  openCommand: vi.fn(function (uri: any) {
+    return { command: "open", title: "open", arguments: [uri] }
+  })
 }))
 
-jest.mock("./fsProvider", () => ({
-  adtProfileUri: jest.fn((item: any) => `adt://profile/${item.id}`)
+vi.mock("./fsProvider", () => ({
+  adtProfileUri: vi.fn(function (item: any) {
+    return `adt://profile/${item.id}`
+  })
 }))
 
 import { TraceRunItem, tracesProvider, findRun } from "./views"
+import * as __$mock_adt_conections from "../../adt/conections"
+import type { Mock } from "vitest"
 
 const makeTraceRun = (overrides: Partial<any> = {}): any => ({
   id: "run-001",
@@ -211,9 +214,9 @@ describe("tracesProvider", () => {
 
 describe("findRun", () => {
   it("returns undefined when client is not connected and no runs cached", async () => {
-    const { getOrCreateClient } = require("../../adt/conections")
-    ;(getOrCreateClient as jest.Mock).mockResolvedValue({
-      tracesList: jest.fn().mockResolvedValue({ runs: [] })
+    const { getOrCreateClient } = __$mock_adt_conections
+    ;(getOrCreateClient as Mock).mockResolvedValue({
+      tracesList: vi.fn().mockResolvedValue({ runs: [] })
     })
 
     const result = await findRun("DEV100", "nonexistent")

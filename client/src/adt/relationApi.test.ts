@@ -1,7 +1,8 @@
-jest.mock("./conections", () => ({ getClient: jest.fn() }))
+vi.mock("./conections", () => ({ getClient: vi.fn() }))
 
 import { getClient } from "./conections"
-import { AdtRelationApi, RelationObject } from "./relationApi"
+import { AdtRelationApi, type RelationObject } from "./relationApi"
+import type { Mock } from "vitest"
 
 const object = (name: string, type: string, uri: string): RelationObject => ({
   id: uri,
@@ -31,11 +32,11 @@ const referencesXml = `<oroRef:result xmlns:oroRef="http://www.sap.com/adt/objec
 const relationSetXml = `<rel:RelationSetResult xmlns:rel="http://www.sap.com/adt/objectrelations/relations" leftTitle="Left" rightTitle="Right" header="Header"><rel:relation><rel:left adtcore:uri="/left" adtcore:type="PROG/P" adtcore:name="ZLEFT" /><rel:right adtcore:uri="/right" adtcore:type="TABL/DT" adtcore:name="ZRIGHT" /><rel:direction direction="left-to-right" /></rel:relation></rel:RelationSetResult>`
 
 describe("AdtRelationApi", () => {
-  let request: jest.Mock
+  let request: Mock
 
   beforeEach(() => {
-    request = jest.fn()
-    ;(getClient as jest.Mock).mockReturnValue({ httpClient: { request } })
+    request = vi.fn()
+    ;(getClient as Mock).mockReturnValue({ httpClient: { request } })
   })
 
   it("normalizes connectionId and posts network requests", async () => {

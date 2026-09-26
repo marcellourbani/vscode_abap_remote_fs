@@ -1,28 +1,39 @@
-jest.mock(
-  "vscode",
-  () => ({
-    LanguageModelToolResult: jest.fn().mockImplementation((parts: any[]) => ({ parts })),
-    LanguageModelTextPart: jest.fn().mockImplementation((text: string) => ({ text })),
-    MarkdownString: jest.fn().mockImplementation((text: string) => ({ text })),
-    lm: { registerTool: jest.fn(() => ({ dispose: jest.fn() })) }
+vi.mock("vscode", () => ({
+  LanguageModelToolResult: vi.fn().mockImplementation(function (parts: any[]) {
+    return { parts }
   }),
-  { virtual: true }
-)
-
-jest.mock("../../adt/conections", () => ({ getClient: jest.fn() }))
-jest.mock("../telemetry", () => ({ logTelemetry: jest.fn() }))
-jest.mock("../abapCopilotLogger", () => ({ logCommands: { error: jest.fn() } }))
-jest.mock("./toolRegistry", () => ({
-  registerToolWithRegistry: jest.fn(() => ({ dispose: jest.fn() }))
+  LanguageModelTextPart: vi.fn().mockImplementation(function (text: string) {
+    return { text }
+  }),
+  MarkdownString: vi.fn().mockImplementation(function (text: string) {
+    return { text }
+  }),
+  lm: {
+    registerTool: vi.fn(function () {
+      return { dispose: vi.fn() }
+    })
+  }
 }))
-jest.mock("./toolGuard", () => ({
-  assertToolInvocationAuthorized: jest.fn(),
-  isToolInvocationAuthorized: jest.fn(() => true)
+
+vi.mock("../../adt/conections", () => ({ getClient: vi.fn() }))
+vi.mock("../telemetry", () => ({ logTelemetry: vi.fn() }))
+vi.mock("../abapCopilotLogger", () => ({ logCommands: { error: vi.fn() } }))
+vi.mock("./toolRegistry", () => ({
+  registerToolWithRegistry: vi.fn(function () {
+    return { dispose: vi.fn() }
+  })
+}))
+vi.mock("./toolGuard", () => ({
+  assertToolInvocationAuthorized: vi.fn(),
+  isToolInvocationAuthorized: vi.fn(function () {
+    return true
+  })
 }))
 
 import { ABAPTraceAnalysisTool } from "./traceAnalysisTool"
 import { getClient } from "../../adt/conections"
 import { logTelemetry } from "../telemetry"
+import type { Mock } from "vitest"
 
 const mockToken = {} as any
 
@@ -31,8 +42,8 @@ function makeOptions(input: any = {}) {
 }
 
 const mockClient = {
-  getAbapTraceRunList: jest.fn(),
-  getAbapTraceConfigurations: jest.fn()
+  getAbapTraceRunList: vi.fn(),
+  getAbapTraceConfigurations: vi.fn()
 }
 
 describe("ABAPTraceAnalysisTool", () => {
@@ -40,8 +51,8 @@ describe("ABAPTraceAnalysisTool", () => {
 
   beforeEach(() => {
     tool = new ABAPTraceAnalysisTool()
-    jest.clearAllMocks()
-    ;(getClient as jest.Mock).mockReturnValue(mockClient)
+    vi.clearAllMocks()
+    ;(getClient as Mock).mockReturnValue(mockClient)
   })
 
   describe("prepareInvocation", () => {
@@ -96,7 +107,7 @@ describe("ABAPTraceAnalysisTool", () => {
 
   describe("invoke", () => {
     it("logs telemetry", async () => {
-      mockClient.getAbapTraceRunList = jest.fn().mockResolvedValue([])
+      mockClient.getAbapTraceRunList = vi.fn().mockResolvedValue([])
       await tool
         .invoke(makeOptions({ action: "list_runs", connectionId: "dev100" }), mockToken)
         .catch(() => {})
@@ -106,7 +117,7 @@ describe("ABAPTraceAnalysisTool", () => {
     })
 
     it("normalizes connectionId to lowercase", async () => {
-      mockClient.getAbapTraceRunList = jest.fn().mockResolvedValue([])
+      mockClient.getAbapTraceRunList = vi.fn().mockResolvedValue([])
       await tool
         .invoke(makeOptions({ action: "list_runs", connectionId: "DEV100" }), mockToken)
         .catch(() => {})
@@ -132,7 +143,7 @@ describe("ABAPTraceAnalysisTool", () => {
     })
 
     it("wraps client errors", async () => {
-      ;(getClient as jest.Mock).mockImplementation(() => {
+      ;(getClient as Mock).mockImplementation(function () {
         throw new Error("connection error")
       })
       await expect(
@@ -141,7 +152,7 @@ describe("ABAPTraceAnalysisTool", () => {
     })
 
     it("uses maxResults default of 20", async () => {
-      mockClient.getAbapTraceRunList = jest.fn().mockResolvedValue([])
+      mockClient.getAbapTraceRunList = vi.fn().mockResolvedValue([])
       await tool
         .invoke(makeOptions({ action: "list_runs", connectionId: "dev100" }), mockToken)
         .catch(() => {})

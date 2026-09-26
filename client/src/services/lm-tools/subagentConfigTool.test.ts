@@ -1,59 +1,75 @@
-jest.mock(
-  "vscode",
-  () => ({
-    LanguageModelToolResult: jest.fn().mockImplementation((parts: any[]) => ({ parts })),
-    LanguageModelTextPart: jest.fn().mockImplementation((text: string) => ({ text })),
-    MarkdownString: jest.fn().mockImplementation((value: string) => ({ value })),
-    workspace: {
-      getConfiguration: jest.fn(() => ({
-        get: jest.fn((key: string, fallback: unknown) =>
+vi.mock("vscode", () => ({
+  LanguageModelToolResult: vi.fn().mockImplementation(function (parts: any[]) {
+    return { parts }
+  }),
+  LanguageModelTextPart: vi.fn().mockImplementation(function (text: string) {
+    return { text }
+  }),
+  MarkdownString: vi.fn().mockImplementation(function (value: string) {
+    return { value }
+  }),
+  workspace: {
+    getConfiguration: vi.fn(function () {
+      return {
+        get: vi.fn((key: string, fallback: unknown) =>
           key === "models"
             ? { "abap-reader": "Model A" }
             : key === "enabledAgents"
               ? { "abap-reader": false }
               : fallback
         ),
-        inspect: jest.fn(() => ({ workspaceFolderValue: false })),
-        update: jest.fn().mockResolvedValue(undefined)
-      })),
-      onDidChangeConfiguration: jest.fn(() => ({ dispose: jest.fn() }))
-    },
-    commands: { executeCommand: jest.fn().mockResolvedValue(undefined) },
-    lm: { onDidChangeChatModels: jest.fn(() => ({ dispose: jest.fn() })) },
-    ConfigurationTarget: { Workspace: 2, Global: 1 }
-  }),
-  { virtual: true }
-)
+        inspect: vi.fn(() => ({ workspaceFolderValue: false })),
+        update: vi.fn().mockResolvedValue(undefined)
+      }
+    }),
+    onDidChangeConfiguration: vi.fn(function () {
+      return { dispose: vi.fn() }
+    })
+  },
+  commands: { executeCommand: vi.fn().mockResolvedValue(undefined) },
+  lm: {
+    onDidChangeChatModels: vi.fn(function () {
+      return { dispose: vi.fn() }
+    })
+  },
+  ConfigurationTarget: { Workspace: 2, Global: 1 }
+}))
 
-jest.mock("./toolRegistry", () => ({
-  registerToolWithRegistry: jest.fn((name: string, tool: unknown) => ({
-    name,
-    tool,
-    dispose: jest.fn()
-  }))
+vi.mock("./toolRegistry", () => ({
+  registerToolWithRegistry: vi.fn(function (name: string, tool: unknown) {
+    return {
+      name,
+      tool,
+      dispose: vi.fn()
+    }
+  })
 }))
-jest.mock("./toolGuard", () => ({ assertToolInvocationAuthorized: jest.fn() }))
-jest.mock("../telemetry", () => ({ logTelemetry: jest.fn() }))
-jest.mock("../funMessenger", () => ({
-  funWindow: { showWarningMessage: jest.fn(), showInformationMessage: jest.fn() }
+vi.mock("./toolGuard", () => ({ assertToolInvocationAuthorized: vi.fn() }))
+vi.mock("../telemetry", () => ({ logTelemetry: vi.fn() }))
+vi.mock("../funMessenger", () => ({
+  funWindow: { showWarningMessage: vi.fn(), showInformationMessage: vi.fn() }
 }))
-jest.mock("../testing/config", () => ({ isTestFolderValid: jest.fn().mockResolvedValue(false) }))
-jest.mock("../testing/subagents/modelConfiguration", () => ({
-  discoverLanguageModels: jest.fn().mockResolvedValue({
+vi.mock("../testing/config", () => ({ isTestFolderValid: vi.fn().mockResolvedValue(false) }))
+vi.mock("../testing/subagents/modelConfiguration", () => ({
+  discoverLanguageModels: vi.fn().mockResolvedValue({
     models: [{ id: "1", name: "Model A", vendor: "copilot", family: "test", version: "" }]
   }),
-  effectiveSubagentModels: jest.fn().mockResolvedValue({ "abap-reader": "Model A" }),
-  saveSubagentModels: jest.fn().mockResolvedValue({ changedFiles: [] })
+  effectiveSubagentModels: vi.fn().mockResolvedValue({ "abap-reader": "Model A" }),
+  saveSubagentModels: vi.fn().mockResolvedValue({ changedFiles: [] })
 }))
-jest.mock("../testing/subagents/modelConfigurationCore", () => ({
-  validateModelSelections: jest.fn(
-    (selections: Record<string, string>, _models: unknown[], ids: string[]) => ({
+vi.mock("../testing/subagents/modelConfigurationCore", () => ({
+  validateModelSelections: vi.fn(function (
+    selections: Record<string, string>,
+    _models: unknown[],
+    ids: string[]
+  ) {
+    return {
       missingAgentIds: ids.filter(id => !selections[id]),
       unavailable: []
-    })
-  )
+    }
+  })
 }))
-jest.mock("../subagentRegistry", () => ({
+vi.mock("../subagentRegistry", () => ({
   GENERAL_AGENT_REGISTRY: [
     {
       id: "abap-reader",
@@ -87,26 +103,29 @@ jest.mock("../subagentRegistry", () => ({
       tools: null
     }
   ],
-  getSubagentSettings: jest.fn(() => ({
-    models: { "abap-reader": "Model A" },
-    enabledAgents: { "abap-reader": false }
-  })),
-  getTestingAgentReadiness: jest.fn().mockResolvedValue({
+  getSubagentSettings: vi.fn(function () {
+    return {
+      models: { "abap-reader": "Model A" },
+      enabledAgents: { "abap-reader": false }
+    }
+  }),
+  getTestingAgentReadiness: vi.fn().mockResolvedValue({
     ready: false,
     missing: ["sap-code-grep"],
     unavailable: []
   }),
-  migrateSubagentSettings: jest.fn().mockResolvedValue(undefined),
-  syncGeneralAgentContexts: jest.fn().mockResolvedValue(undefined)
+  migrateSubagentSettings: vi.fn().mockResolvedValue(undefined),
+  syncGeneralAgentContexts: vi.fn().mockResolvedValue(undefined)
 }))
 
 import * as vscode from "vscode"
 import { registerSubagentConfigTool } from "./subagentConfigTool"
 import { registerToolWithRegistry } from "./toolRegistry"
 import { syncGeneralAgentContexts } from "../subagentRegistry"
+import type { Mock } from "vitest"
 
 function getTool(): any {
-  const registration = (registerToolWithRegistry as jest.Mock).mock.results[0].value
+  const registration = (registerToolWithRegistry as Mock).mock.results[0].value
   return registration.tool
 }
 
@@ -114,7 +133,7 @@ const context = { subscriptions: [], extensionPath: "C:/extension" } as any
 const token = {} as any
 
 beforeEach(() => {
-  jest.clearAllMocks()
+  vi.clearAllMocks()
   registerSubagentConfigTool(context)
 })
 

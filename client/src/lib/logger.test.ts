@@ -1,16 +1,24 @@
-const mockChannel = {
-  info: jest.fn(),
-  warn: jest.fn(),
-  error: jest.fn(),
-  debug: jest.fn(),
-  trace: jest.fn(),
-  appendLine: jest.fn(),
-  append: jest.fn()
-}
+const { mockCreateOutputChannel, mockChannel, createOutputChannelArgs } = vi.hoisted(() => {
+  const mockChannel = {
+    info: vi.fn(),
+    warn: vi.fn(),
+    error: vi.fn(),
+    debug: vi.fn(),
+    trace: vi.fn(),
+    appendLine: vi.fn(),
+    append: vi.fn()
+  }
+  // Capture the module-load call args in a plain array — survives any mock.calls reset,
+  // since `channel` is created once at import time (before this test file's beforeEach runs).
+  const createOutputChannelArgs: unknown[][] = []
+  const mockCreateOutputChannel = vi.fn((...args: unknown[]) => {
+    createOutputChannelArgs.push(args)
+    return mockChannel
+  })
+  return { mockCreateOutputChannel, mockChannel, createOutputChannelArgs }
+})
 
-const mockCreateOutputChannel = jest.fn().mockReturnValue(mockChannel)
-
-jest.mock("../services/funMessenger", () => ({
+vi.mock("../services/funMessenger", () => ({
   funWindow: {
     createOutputChannel: mockCreateOutputChannel
   }
@@ -37,7 +45,7 @@ describe("logger", () => {
 
   describe("channel creation", () => {
     it("creates output channel with correct name and log option", () => {
-      expect(mockCreateOutputChannel).toHaveBeenCalledWith("ABAP FS", { log: true })
+      expect(createOutputChannelArgs[0]).toEqual(["ABAP FS", { log: true }])
     })
 
     it("channel is the object returned by createOutputChannel", () => {

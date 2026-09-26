@@ -1,17 +1,18 @@
-jest.mock("../../extension", () => ({
+vi.mock("../../extension", () => ({
   context: {
     globalState: {
-      get: jest.fn(),
-      update: jest.fn()
+      get: vi.fn(),
+      update: vi.fn()
     }
   }
 }))
 
-import { getRecent, addRecent, clearRecent, RecentObject, RECENT_MAX } from "./recentObjects"
+import { getRecent, addRecent, clearRecent, type RecentObject, RECENT_MAX } from "./recentObjects"
 import { context } from "../../extension"
+import type { Mock } from "vitest"
 
-const mockGet = context.globalState.get as jest.Mock
-const mockUpdate = context.globalState.update as jest.Mock
+const mockGet = context.globalState.get as Mock
+const mockUpdate = context.globalState.update as Mock
 
 const makeItem = (uri: string, name = "OBJ"): RecentObject => ({
   uri,
@@ -23,7 +24,7 @@ const makeItem = (uri: string, name = "OBJ"): RecentObject => ({
 
 describe("recentObjects", () => {
   beforeEach(() => {
-    jest.clearAllMocks()
+    vi.clearAllMocks()
   })
 
   describe("getRecent", () => {

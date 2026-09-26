@@ -24,7 +24,8 @@ class GitDocProvider implements TextDocumentContentProvider {
   }
 }
 
-workspace.registerTextDocumentContentProvider(GITSCHEME, new GitDocProvider())
+export const registerGitDocProvider = () =>
+  workspace.registerTextDocumentContentProvider(GITSCHEME, new GitDocProvider())
 
 export const gitUrl = (data: ScmData, path: string, file: GitStagingFile) => {
   const query = btoa(JSON.stringify({ key: data.repo.key, path }))

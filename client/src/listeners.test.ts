@@ -1,65 +1,75 @@
 // Tests for listeners.ts - focusing on the pure/exported functions
-jest.mock(
-  "vscode",
-  () => ({
-    TextDocumentSaveReason: { Manual: 1, AfterDelay: 2, FocusOut: 3 },
-    workspace: {
-      textDocuments: [],
-      onDidChangeTextDocument: jest.fn(),
-      getConfiguration: jest.fn(() => ({ get: jest.fn() }))
-    },
-    window: {
-      showWarningMessage: jest.fn(),
-      showErrorMessage: jest.fn(),
-      showInformationMessage: jest.fn(),
-      activeTextEditor: undefined,
-      visibleTextEditors: []
-    },
-    commands: { executeCommand: jest.fn() },
-    Uri: {
-      parse: jest.fn(s => ({ toString: () => s, scheme: "adt", authority: "host", path: "/file" }))
-    },
-    TabInputTextDiff: class {}
-  }),
-  { virtual: true }
-)
+vi.mock("vscode", () => ({
+  TextDocumentSaveReason: { Manual: 1, AfterDelay: 2, FocusOut: 3 },
+  workspace: {
+    textDocuments: [],
+    onDidChangeTextDocument: vi.fn(),
+    getConfiguration: vi.fn(function () {
+      return { get: vi.fn() }
+    })
+  },
+  window: {
+    showWarningMessage: vi.fn(),
+    showErrorMessage: vi.fn(),
+    showInformationMessage: vi.fn(),
+    activeTextEditor: undefined,
+    visibleTextEditors: []
+  },
+  commands: { executeCommand: vi.fn() },
+  Uri: {
+    parse: vi.fn(function (s) {
+      return { toString: () => s, scheme: "adt", authority: "host", path: "/file" }
+    })
+  },
+  TabInputTextDiff: class {}
+}))
 
-jest.mock("./lib", () => ({
-  caughtToString: jest.fn(e => String(e)),
-  debounce: jest.fn((delay: number, fn: Function) => fn),
-  log: jest.fn(),
+vi.mock("./lib", () => ({
+  caughtToString: vi.fn(function (e) {
+    return String(e)
+  }),
+  debounce: vi.fn(function (delay: number, fn: Function) {
+    return fn
+  }),
+  log: vi.fn(),
   viewableObjecttypes: []
 }))
-jest.mock("./adt/conections", () => ({
+vi.mock("./adt/conections", () => ({
   ADTSCHEME: "adt",
-  uriRoot: jest.fn(),
-  abapUri: jest.fn(() => false),
-  getRoot: jest.fn()
+  uriRoot: vi.fn(),
+  abapUri: vi.fn(function () {
+    return false
+  }),
+  getRoot: vi.fn()
 }))
-jest.mock("abapobject", () => jest.requireActual("abapobject"))
-jest.mock("abapfs", () => ({ isAbapStat: jest.fn() }))
-jest.mock("abap-adt-api", () => ({ isCsrfError: jest.fn() }))
-jest.mock("abapfs/src/lockObject", () => ({}))
-jest.mock("./adt/operations/AdtObjectFinder", () => ({ uriAbapFile: jest.fn() }))
-jest.mock("./scm/abaprevisions", () => ({ versionRevisions: jest.fn() }))
-jest.mock("./context", () => ({ setContext: jest.fn() }))
-jest.mock("./services/telemetry", () => ({ logTelemetry: jest.fn() }))
-jest.mock("./fs/LocalFsProvider", () => ({
-  LocalFsProvider: { useLocalStorage: jest.fn(() => false) }
+vi.mock("abapobject", () => vi.importActual("abapobject"))
+vi.mock("abapfs", () => ({ isAbapStat: vi.fn() }))
+vi.mock("abap-adt-api", () => ({ isCsrfError: vi.fn() }))
+vi.mock("abapfs/src/lockObject", () => ({}))
+vi.mock("./adt/operations/AdtObjectFinder", () => ({ uriAbapFile: vi.fn() }))
+vi.mock("./scm/abaprevisions", () => ({ versionRevisions: vi.fn() }))
+vi.mock("./context", () => ({ setContext: vi.fn() }))
+vi.mock("./services/telemetry", () => ({ logTelemetry: vi.fn() }))
+vi.mock("./fs/LocalFsProvider", () => ({
+  LocalFsProvider: {
+    useLocalStorage: vi.fn(function () {
+      return false
+    })
+  }
 }))
-jest.mock("./langClient", () => ({ triggerSyntaxCheck: jest.fn() }))
-jest.mock("./views/enhancementDecorations", () => ({ updateEnhancementDecorations: jest.fn() }))
-jest.mock("./services/cleanerCommands", () => ({ updateCleanerContext: jest.fn() }))
-jest.mock("./views/blameGutter", () => ({
-  onBlameActiveEditorChanged: jest.fn(),
-  onBlameDocumentChanged: jest.fn()
+vi.mock("./langClient", () => ({ triggerSyntaxCheck: vi.fn() }))
+vi.mock("./views/enhancementDecorations", () => ({ updateEnhancementDecorations: vi.fn() }))
+vi.mock("./services/cleanerCommands", () => ({ updateCleanerContext: vi.fn() }))
+vi.mock("./views/blameGutter", () => ({
+  onBlameActiveEditorChanged: vi.fn(),
+  onBlameDocumentChanged: vi.fn()
 }))
-jest.mock("abapfs/src/lockManager", () => ({ ReloginError: { isReloginError: jest.fn() } }))
-jest.mock("./services/funMessenger", () => ({
+vi.mock("abapfs/src/lockManager", () => ({ ReloginError: { isReloginError: vi.fn() } }))
+vi.mock("./services/funMessenger", () => ({
   funWindow: {
-    showWarningMessage: jest.fn(),
-    showErrorMessage: jest.fn(),
-    showInformationMessage: jest.fn(),
+    showWarningMessage: vi.fn(),
+    showErrorMessage: vi.fn(),
+    showInformationMessage: vi.fn(),
     activeTextEditor: undefined,
     visibleTextEditors: []
   }
@@ -76,15 +86,15 @@ import { TextDocumentSaveReason } from "vscode"
 
 describe("listeners.ts - save reason tracking", () => {
   beforeEach(() => {
-    jest.useFakeTimers()
-    jest.clearAllMocks()
+    vi.useFakeTimers()
+    vi.clearAllMocks()
     // clear any lingering state by round-tripping
     clearSaveReason("adt://host/test")
   })
 
   afterEach(() => {
-    jest.runOnlyPendingTimers()
-    jest.useRealTimers()
+    vi.runOnlyPendingTimers()
+    vi.useRealTimers()
   })
 
   describe("setSaveReason / getSaveReason", () => {

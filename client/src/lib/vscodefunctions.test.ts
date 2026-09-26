@@ -1,48 +1,64 @@
-jest.mock(
-  "vscode",
-  () => {
-    const Position = jest.fn((line: number, character: number) => ({ line, character }))
-    const Range = jest.fn((start: any, end: any) => ({ start, end }))
-    const Uri = {
-      parse: jest.fn((s: string) => ({
+vi.mock("vscode", () => {
+  const Position = vi.fn(function (line: number, character: number) {
+    return { line, character }
+  })
+  const Range = vi.fn(function (start: any, end: any) {
+    return { start, end }
+  })
+  const Uri = {
+    parse: vi.fn(function (s: string) {
+      return {
         toString: () => s,
         scheme: s.split("://")[0] || "",
         authority: s.split("://")[1]?.split("/")[0] || "",
         path: "/" + (s.split("://")[1]?.split("/").slice(1).join("/") || ""),
-        with: jest.fn(function (this: any, changes: any) {
+        with: vi.fn(function (this: any, changes: any) {
           return { ...this, ...changes }
         })
-      }))
-    }
-    return { Position, Range, Uri, ProgressLocation: { Window: 10, Notification: 15 } }
-  },
-  { virtual: true }
-)
+      }
+    })
+  }
+  return { Position, Range, Uri, ProgressLocation: { Window: 10, Notification: 15 } }
+})
 
-jest.mock("../services/funMessenger", () => ({
+vi.mock("../services/funMessenger", () => ({
   funWindow: {
-    withProgress: jest.fn((_opts: any, cb: any) => cb()),
-    showOpenDialog: jest.fn(),
-    showInputBox: jest.fn(),
-    showQuickPick: jest.fn(),
-    showErrorMessage: jest.fn()
+    withProgress: vi.fn(function (_opts: any, cb: any) {
+      return cb()
+    }),
+    showOpenDialog: vi.fn(),
+    showInputBox: vi.fn(),
+    showQuickPick: vi.fn(),
+    showErrorMessage: vi.fn()
   }
 }))
 
-jest.mock("./rfsTaskEither", () => ({
-  rfsTryCatch: jest.fn((fn: any) => fn)
+vi.mock("./rfsTaskEither", () => ({
+  rfsTryCatch: vi.fn(function (fn: any) {
+    return fn
+  })
 }))
 
-jest.mock("./functions", () => ({
-  splitAdtUriInternal: jest.fn(),
-  isUnDefined: jest.fn((x: any) => x === undefined),
-  isFn: jest.fn((x: any) => typeof x === "function"),
-  isNonNullable: jest.fn((x: any) => x !== null && x !== undefined),
-  caughtToString: jest.fn((e: any) => String(e)),
-  isString: jest.fn((x: any) => typeof x === "string")
+vi.mock("./functions", () => ({
+  splitAdtUriInternal: vi.fn(),
+  isUnDefined: vi.fn(function (x: any) {
+    return x === undefined
+  }),
+  isFn: vi.fn(function (x: any) {
+    return typeof x === "function"
+  }),
+  isNonNullable: vi.fn(function (x: any) {
+    return x !== null && x !== undefined
+  }),
+  caughtToString: vi.fn(function (e: any) {
+    return String(e)
+  }),
+  isString: vi.fn(function (x: any) {
+    return typeof x === "string"
+  })
 }))
 
-jest.mock("../adt/conections", () => ({
+vi.mock("../adt/conections", () => ({
   ADTSCHEME: "adt"
 }))
 
@@ -64,11 +80,10 @@ import {
 import { splitAdtUriInternal, isUnDefined, isFn, isNonNullable } from "./functions"
 import { funWindow as window } from "../services/funMessenger"
 import { Uri, Position, Range } from "vscode"
+import type { MockedFunction, Mock } from "vitest"
 
-const mockSplitAdtUriInternal = splitAdtUriInternal as jest.MockedFunction<
-  typeof splitAdtUriInternal
->
-const mockIsUnDefined = isUnDefined as jest.MockedFunction<typeof isUnDefined>
+const mockSplitAdtUriInternal = splitAdtUriInternal as MockedFunction<typeof splitAdtUriInternal>
+const mockIsUnDefined = isUnDefined as MockedFunction<typeof isUnDefined>
 
 describe("uriName", () => {
   it("returns the last path segment", () => {
@@ -93,7 +108,7 @@ describe("uriName", () => {
 })
 
 describe("showErrorMessage", () => {
-  beforeEach(() => jest.clearAllMocks())
+  beforeEach(() => vi.clearAllMocks())
 
   it("calls window.showErrorMessage with stringified error", () => {
     showErrorMessage(new Error("test error"))
@@ -108,10 +123,12 @@ describe("showErrorMessage", () => {
 
 describe("vscPosition", () => {
   beforeEach(() => {
-    ;(Position as jest.Mock).mockImplementation((line: number, char: number) => ({
-      line,
-      character: char
-    }))
+    ;(Position as Mock).mockImplementation(function (line: number, char: number) {
+      return {
+        line,
+        character: char
+      }
+    })
   })
 
   it("converts 1-based ADT line to 0-based VS Code line", () => {
@@ -138,11 +155,15 @@ describe("vscPosition", () => {
 
 describe("rangeApi2Vsc", () => {
   beforeEach(() => {
-    ;(Position as jest.Mock).mockImplementation((line: number, char: number) => ({
-      line,
-      character: char
-    }))
-    ;(Range as jest.Mock).mockImplementation((start: any, end: any) => ({ start, end }))
+    ;(Position as Mock).mockImplementation(function (line: number, char: number) {
+      return {
+        line,
+        character: char
+      }
+    })
+    ;(Range as Mock).mockImplementation(function (start: any, end: any) {
+      return { start, end }
+    })
   })
 
   it("converts API range to VS Code range", () => {
@@ -193,11 +214,15 @@ describe("rangeVscToApi", () => {
 
 describe("lineRange", () => {
   beforeEach(() => {
-    ;(Position as jest.Mock).mockImplementation((line: number, char: number) => ({
-      line,
-      character: char
-    }))
-    ;(Range as jest.Mock).mockImplementation((start: any, end: any) => ({ start, end }))
+    ;(Position as Mock).mockImplementation(function (line: number, char: number) {
+      return {
+        line,
+        character: char
+      }
+    })
+    ;(Range as Mock).mockImplementation(function (start: any, end: any) {
+      return { start, end }
+    })
   })
 
   it("creates a range spanning column 0-1 for given line", () => {
@@ -212,9 +237,13 @@ describe("createStore", () => {
   const makeMockMemento = (initial?: [string, any][]) => {
     let stored: [string, any][] = initial || []
     return {
-      keys: jest.fn(() => stored.map(([k]) => k)),
-      get: jest.fn((key: string) => stored.find(([k]) => k === key)?.[1]),
-      update: jest.fn(async (key: string, value: any) => {
+      keys: vi.fn(function () {
+        return stored.map(([k]) => k)
+      }),
+      get: vi.fn(function (key: string) {
+        return stored.find(([k]) => k === key)?.[1]
+      }),
+      update: vi.fn(async function (key: string, value: any) {
         stored = [...stored.filter(([k]) => k !== key), [key, value]]
       })
     }
@@ -237,7 +266,7 @@ describe("createStore", () => {
     const memento = makeMockMemento()
     const store = createStore<string>("mystore", memento)
     await store.update("key1", "value1")
-    jest.clearAllMocks()
+    vi.clearAllMocks()
     await store.update("key1", "value1") // same value
     expect(memento.update).not.toHaveBeenCalled()
   })
@@ -254,10 +283,12 @@ describe("createStore", () => {
 
 describe("splitAdtUri", () => {
   beforeEach(() => {
-    ;(Position as jest.Mock).mockImplementation((line: number, char: number) => ({
-      line,
-      character: char
-    }))
+    ;(Position as Mock).mockImplementation(function (line: number, char: number) {
+      return {
+        line,
+        character: char
+      }
+    })
     mockSplitAdtUriInternal.mockReturnValue({
       path: "/sap/bc/adt/programs/ZTEST",
       type: "PROG",
@@ -279,7 +310,7 @@ describe("splitAdtUri", () => {
   })
 
   it("handles UriParts object input", () => {
-    ;(mockSplitAdtUriInternal as jest.Mock).mockClear()
+    ;(mockSplitAdtUriInternal as Mock).mockClear()
     const uriParts = {
       uri: "/sap/bc/adt/programs/ZTEST",
       range: {
@@ -308,10 +339,12 @@ describe("splitAdtUri", () => {
   })
 
   it("includes start when range has actual extent", () => {
-    ;(Position as jest.Mock).mockImplementation((line: number, char: number) => ({
-      line,
-      character: char
-    }))
+    ;(Position as Mock).mockImplementation(function (line: number, char: number) {
+      return {
+        line,
+        character: char
+      }
+    })
     const uriParts = {
       uri: "/path",
       range: {
@@ -328,8 +361,8 @@ describe("splitAdtUri", () => {
 
 describe("createAdtUri", () => {
   it("creates URI with adt scheme and authority", () => {
-    ;(Uri.parse as jest.Mock).mockReturnValue({
-      with: jest.fn().mockReturnValue({ toString: () => "adt://sys/path?q#f" })
+    ;(Uri.parse as Mock).mockReturnValue({
+      with: vi.fn().mockReturnValue({ toString: () => "adt://sys/path?q#f" })
     })
     const result = createAdtUri("sys", "/path", "q", "f")
     expect(Uri.parse).toHaveBeenCalledWith("adt://sys")
@@ -337,11 +370,13 @@ describe("createAdtUri", () => {
 })
 
 describe("withp", () => {
-  beforeEach(() => jest.clearAllMocks())
+  beforeEach(() => vi.clearAllMocks())
 
   it("calls window.withProgress with correct options", async () => {
-    const cb = jest.fn().mockResolvedValue("result")
-    ;(window.withProgress as jest.Mock).mockImplementation((_opts: any, fn: any) => fn())
+    const cb = vi.fn().mockResolvedValue("result")
+    ;(window.withProgress as Mock).mockImplementation(function (_opts: any, fn: any) {
+      return fn()
+    })
 
     await withp("My Task", cb)
 
@@ -352,8 +387,10 @@ describe("withp", () => {
   })
 
   it("returns the result of the callback", async () => {
-    ;(window.withProgress as jest.Mock).mockImplementation((_opts: any, fn: any) => fn())
-    const cb = jest.fn().mockResolvedValue(42)
+    ;(window.withProgress as Mock).mockImplementation(function (_opts: any, fn: any) {
+      return fn()
+    })
+    const cb = vi.fn().mockResolvedValue(42)
 
     const result = await withp("Task", cb)
     expect(result).toBe(42)

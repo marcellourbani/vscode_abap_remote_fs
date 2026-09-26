@@ -1,29 +1,25 @@
-jest.mock(
-  "vscode",
-  () => ({
-    ProgressLocation: { Notification: 15 },
-    workspace: {
-      openTextDocument: jest.fn()
-    }
-  }),
-  { virtual: true }
-)
-
-jest.mock("../services/funMessenger", () => ({
-  funWindow: {
-    withProgress: jest.fn(),
-    showInformationMessage: jest.fn(),
-    showErrorMessage: jest.fn(),
-    showTextDocument: jest.fn()
+vi.mock("vscode", () => ({
+  ProgressLocation: { Notification: 15 },
+  workspace: {
+    openTextDocument: vi.fn()
   }
 }))
 
-jest.mock("../adt/conections", () => ({
-  getOrCreateClient: jest.fn()
+vi.mock("../services/funMessenger", () => ({
+  funWindow: {
+    withProgress: vi.fn(),
+    showInformationMessage: vi.fn(),
+    showErrorMessage: vi.fn(),
+    showTextDocument: vi.fn()
+  }
 }))
 
-jest.mock("../config", () => ({
-  pickAdtRoot: jest.fn()
+vi.mock("../adt/conections", () => ({
+  getOrCreateClient: vi.fn()
+}))
+
+vi.mock("../config", () => ({
+  pickAdtRoot: vi.fn()
 }))
 
 import { listAdtFeedsCommand } from "./listAdtFeeds"
@@ -31,18 +27,19 @@ import { funWindow as window } from "../services/funMessenger"
 import { getOrCreateClient } from "../adt/conections"
 import { pickAdtRoot } from "../config"
 import * as vscode from "vscode"
+import type { Mocked, MockedFunction, Mock } from "vitest"
 
-const mockWindow = window as jest.Mocked<typeof window>
-const mockPickAdtRoot = pickAdtRoot as jest.MockedFunction<typeof pickAdtRoot>
-const mockGetOrCreateClient = getOrCreateClient as jest.MockedFunction<typeof getOrCreateClient>
+const mockWindow = window as Mocked<typeof window>
+const mockPickAdtRoot = pickAdtRoot as MockedFunction<typeof pickAdtRoot>
+const mockGetOrCreateClient = getOrCreateClient as MockedFunction<typeof getOrCreateClient>
 
 beforeEach(() => {
-  jest.clearAllMocks()
-  ;(mockWindow.withProgress as jest.Mock).mockImplementation((_opts: any, fn: Function) =>
-    fn({ report: jest.fn() })
-  )
-  ;(vscode.workspace.openTextDocument as jest.Mock).mockResolvedValue({ getText: () => "" })
-  ;(mockWindow.showTextDocument as jest.Mock).mockResolvedValue(undefined)
+  vi.clearAllMocks()
+  ;(mockWindow.withProgress as Mock).mockImplementation(function (_opts: any, fn: Function) {
+    return fn({ report: vi.fn() })
+  })
+  ;(vscode.workspace.openTextDocument as Mock).mockResolvedValue({ getText: () => "" })
+  ;(mockWindow.showTextDocument as Mock).mockResolvedValue(undefined)
 })
 
 describe("listAdtFeedsCommand", () => {
@@ -56,7 +53,7 @@ describe("listAdtFeedsCommand", () => {
 
   test("shows info message when no feeds found", async () => {
     mockPickAdtRoot.mockResolvedValue({ uri: { authority: "dev100" } } as any)
-    const mockClient = { feeds: jest.fn().mockResolvedValue([]) }
+    const mockClient = { feeds: vi.fn().mockResolvedValue([]) }
     mockGetOrCreateClient.mockResolvedValue(mockClient as any)
 
     await listAdtFeedsCommand()
@@ -82,7 +79,7 @@ describe("listAdtFeedsCommand", () => {
         attributes: []
       }
     ]
-    const mockClient = { feeds: jest.fn().mockResolvedValue(mockFeeds) }
+    const mockClient = { feeds: vi.fn().mockResolvedValue(mockFeeds) }
     mockGetOrCreateClient.mockResolvedValue(mockClient as any)
 
     await listAdtFeedsCommand()
@@ -115,11 +112,11 @@ describe("listAdtFeedsCommand", () => {
         attributes: [{ label: "user" }, { label: "type" }]
       }
     ]
-    const mockClient = { feeds: jest.fn().mockResolvedValue(mockFeeds) }
+    const mockClient = { feeds: vi.fn().mockResolvedValue(mockFeeds) }
     mockGetOrCreateClient.mockResolvedValue(mockClient as any)
 
     let capturedContent = ""
-    ;(vscode.workspace.openTextDocument as jest.Mock).mockImplementation((opts: any) => {
+    ;(vscode.workspace.openTextDocument as Mock).mockImplementation(function (opts: any) {
       capturedContent = opts.content
       return Promise.resolve({ getText: () => capturedContent })
     })
@@ -149,7 +146,7 @@ describe("listAdtFeedsCommand", () => {
 
   test("handles null feeds response", async () => {
     mockPickAdtRoot.mockResolvedValue({ uri: { authority: "dev100" } } as any)
-    const mockClient = { feeds: jest.fn().mockResolvedValue(null) }
+    const mockClient = { feeds: vi.fn().mockResolvedValue(null) }
     mockGetOrCreateClient.mockResolvedValue(mockClient as any)
 
     await listAdtFeedsCommand()
@@ -161,7 +158,7 @@ describe("listAdtFeedsCommand", () => {
 
   test("uses connection ID from selected root", async () => {
     mockPickAdtRoot.mockResolvedValue({ uri: { authority: "qas200" } } as any)
-    const mockClient = { feeds: jest.fn().mockResolvedValue([]) }
+    const mockClient = { feeds: vi.fn().mockResolvedValue([]) }
     mockGetOrCreateClient.mockResolvedValue(mockClient as any)
 
     await listAdtFeedsCommand()

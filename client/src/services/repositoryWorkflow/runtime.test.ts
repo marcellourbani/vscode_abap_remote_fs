@@ -1,15 +1,18 @@
 import { EventEmitter } from "events"
+import { vi } from "vitest"
 
-const mockEngine = new EventEmitter()
+const { mockEngine } = vi.hoisted(() => ({ mockEngine: { on: vi.fn() } }))
 
-jest.mock("vscode", () => ({}), { virtual: true })
-jest.mock("./workflowEngine", () => ({
-  RepositoryWorkflowEngine: jest.fn(() => mockEngine)
+vi.mock("vscode", () => ({}))
+vi.mock("./workflowEngine", () => ({
+  RepositoryWorkflowEngine: vi.fn(function () {
+    return mockEngine
+  })
 }))
-jest.mock("./workflowStore", () => ({
-  WorkflowStore: jest.fn(() => ({
-    initialize: jest.fn(async () => undefined)
-  }))
+vi.mock("./workflowStore", () => ({
+  WorkflowStore: vi.fn(function () {
+    return { initialize: vi.fn(async () => undefined) }
+  })
 }))
 
 import { RepositoryWorkflowChange, RepositoryWorkflowRuntime } from "./runtime"

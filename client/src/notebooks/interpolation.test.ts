@@ -1,5 +1,5 @@
 import { interpolateSql, InterpolationError } from "./interpolation"
-import { CellResult } from "./types"
+import type { CellResult } from "./types"
 
 const makeResults = (...entries: Array<[number, unknown]>): Map<number, CellResult> => {
   const map = new Map<number, CellResult>()
@@ -137,7 +137,7 @@ describe("interpolateSql", () => {
     const sql = "SELECT * FROM mara WHERE matnr = ${cells[3].result}"
     try {
       interpolateSql(sql, new Map())
-      fail("Should have thrown")
+      throw new Error("Should have thrown")
     } catch (e) {
       expect(e).toBeInstanceOf(InterpolationError)
       expect((e as InterpolationError).cellIndex).toBe(3)

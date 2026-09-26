@@ -12,7 +12,7 @@ import {
   UnprocessableEntityError,
   type RequestOptions
 } from "@typesafe-ai/sdk"
-import {
+import type {
   JevAskOptions,
   JevChoiceQuestion,
   JevEntry,

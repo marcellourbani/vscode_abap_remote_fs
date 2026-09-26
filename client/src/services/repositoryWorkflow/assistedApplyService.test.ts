@@ -1,76 +1,81 @@
 import * as fs from "fs/promises"
 import * as os from "os"
 import * as path from "path"
+import { vi } from "vitest"
 
-const configuration = { autoSave: "off", chatSaveBeforeSend: false }
-const writeFile = jest.fn()
-const applyEdit = jest.fn()
-const openTextDocument = jest.fn()
-const showTextDocument = jest.fn()
-const showInformationMessage = jest.fn()
-const showQuickPick = jest.fn()
-const executeCommand = jest.fn()
-const replace = jest.fn()
-const downloadSide = jest.fn()
-const selectedRecords = jest.fn()
-let sourceAggregateHash = "source-hash"
+const mocks = vi.hoisted(() => ({
+  configuration: { autoSave: "off", chatSaveBeforeSend: false },
+  writeFile: vi.fn(),
+  applyEdit: vi.fn(),
+  openTextDocument: vi.fn(),
+  showTextDocument: vi.fn(),
+  showInformationMessage: vi.fn(),
+  showQuickPick: vi.fn(),
+  executeCommand: vi.fn(),
+  replace: vi.fn(),
+  downloadSide: vi.fn(),
+  selectedRecords: vi.fn(),
+  sourceAggregateHash: "source-hash"
+}))
 
-jest.mock(
-  "vscode",
-  () => ({
-    Uri: {
-      file: jest.fn((fsPath: string) => ({ scheme: "file", fsPath, path: fsPath })),
-      joinPath: jest.fn((base: any, ...parts: string[]) => ({
-        ...base,
-        path: [base.path, ...parts].join("/")
-      }))
-    },
-    Range: class {
-      constructor(
-        readonly start: unknown,
-        readonly end: unknown
-      ) {}
-    },
-    WorkspaceEdit: class {
-      replace = replace
-    },
-    CancellationTokenSource: class {
-      token = { isCancellationRequested: false }
-      dispose() {}
-    },
-    workspace: {
-      getConfiguration: jest.fn((section: string) => ({
-        get: jest.fn((key: string, fallback: unknown) => {
-          if (section === "files" && key === "autoSave") return configuration.autoSave
-          if (section === "chat" && key === "saveBeforeSend")
-            return configuration.chatSaveBeforeSend
-          return fallback
-        })
-      })),
-      fs: { writeFile },
-      applyEdit,
-      openTextDocument
-    },
-    window: { showTextDocument, showInformationMessage, showQuickPick },
-    commands: { executeCommand }
-  }),
-  { virtual: true }
-)
-jest.mock("../abapResourceDownloadService", () => ({
-  resolveAbapResource: jest.fn().mockResolvedValue({
+vi.mock("vscode", () => ({
+  Uri: {
+    file: vi.fn((fsPath: string) => ({ scheme: "file", fsPath, path: fsPath })),
+    joinPath: vi.fn((base: any, ...parts: string[]) => ({
+      ...base,
+      path: [base.path, ...parts].join("/")
+    }))
+  },
+  Range: class {
+    constructor(
+      readonly start: unknown,
+      readonly end: unknown
+    ) {}
+  },
+  WorkspaceEdit: class {
+    replace = mocks.replace
+  },
+  CancellationTokenSource: class {
+    token = { isCancellationRequested: false }
+    dispose() {}
+  },
+  workspace: {
+    getConfiguration: vi.fn((section: string) => ({
+      get: vi.fn((key: string, fallback: unknown) => {
+        if (section === "files" && key === "autoSave") return mocks.configuration.autoSave
+        if (section === "chat" && key === "saveBeforeSend")
+          return mocks.configuration.chatSaveBeforeSend
+        return fallback
+      })
+    })),
+    fs: { writeFile: mocks.writeFile },
+    applyEdit: mocks.applyEdit,
+    openTextDocument: mocks.openTextDocument
+  },
+  window: {
+    showTextDocument: mocks.showTextDocument,
+    showInformationMessage: mocks.showInformationMessage,
+    showQuickPick: mocks.showQuickPick
+  },
+  commands: { executeCommand: mocks.executeCommand }
+}))
+vi.mock("../abapResourceDownloadService", () => ({
+  resolveAbapResource: vi.fn().mockResolvedValue({
     scheme: "adt",
     authority: "target100",
     path: "/target/resource"
   })
 }))
-jest.mock("./snapshotService", () => ({
-  WorkflowSnapshotService: jest.fn().mockImplementation(() => ({
-    downloadSide,
-    selectedRecords
-  })),
-  objectFolderId: jest.fn(() => "id"),
-  listFiles: jest.fn().mockResolvedValue([]),
-  aggregateHash: jest.fn(() => sourceAggregateHash)
+vi.mock("./snapshotService", () => ({
+  WorkflowSnapshotService: vi.fn(function () {
+    return {
+      downloadSide: mocks.downloadSide,
+      selectedRecords: mocks.selectedRecords
+    }
+  }),
+  objectFolderId: vi.fn(() => "id"),
+  listFiles: vi.fn().mockResolvedValue([]),
+  aggregateHash: vi.fn(() => mocks.sourceAggregateHash)
 }))
 
 import { WorkflowAssistedApplyService } from "./assistedApplyService"
@@ -86,9 +91,9 @@ const workflow = {
 
 function store() {
   return {
-    get: jest.fn().mockResolvedValue(workflow),
-    artifactPath: jest.fn((_workflow: unknown, ...parts: string[]) => path.join(root, ...parts)),
-    readJsonLines: jest.fn(async function* () {
+    get: vi.fn().mockResolvedValue(workflow),
+    artifactPath: vi.fn((_workflow: unknown, ...parts: string[]) => path.join(root, ...parts)),
+    readJsonLines: vi.fn(async function* () {
       yield {
         key: "R3TR:PROG:ZTEST",
         status: "different",
@@ -97,21 +102,21 @@ function store() {
         changed: comparisonChanged
       }
     }),
-    writeJson: jest.fn(),
-    appendJsonLine: jest.fn()
+    writeJson: vi.fn(),
+    appendJsonLine: vi.fn()
   } as any
 }
 
 describe("WorkflowAssistedApplyService", () => {
   beforeEach(async () => {
-    jest.clearAllMocks()
+    vi.clearAllMocks()
     root = await fs.mkdtemp(path.join(os.tmpdir(), "assisted-apply-"))
-    configuration.autoSave = "off"
-    configuration.chatSaveBeforeSend = false
-    sourceAggregateHash = "source-hash"
+    mocks.configuration.autoSave = "off"
+    mocks.configuration.chatSaveBeforeSend = false
+    mocks.sourceAggregateHash = "source-hash"
     comparisonChanged = ["resource"]
-    selectedRecords.mockResolvedValue({ source: [], target: [{ objectName: "ZTEST" }] })
-    downloadSide.mockResolvedValue(undefined)
+    mocks.selectedRecords.mockResolvedValue({ source: [], target: [{ objectName: "ZTEST" }] })
+    mocks.downloadSide.mockResolvedValue(undefined)
     const sourceRoot = path.join(root, "sources", "source", "objects", "id")
     const targetRoot = path.join(root, "sources", "target", "objects", "id")
     await fs.mkdir(path.join(sourceRoot, "content"), { recursive: true })
@@ -146,11 +151,11 @@ describe("WorkflowAssistedApplyService", () => {
     )
     const document = {
       isDirty: false,
-      getText: jest.fn(() => "REPORT old."),
-      positionAt: jest.fn((offset: number) => ({ offset }))
+      getText: vi.fn(() => "REPORT old."),
+      positionAt: vi.fn((offset: number) => ({ offset }))
     }
-    openTextDocument.mockResolvedValue(document)
-    applyEdit.mockImplementation(async () => {
+    mocks.openTextDocument.mockResolvedValue(document)
+    mocks.applyEdit.mockImplementation(async () => {
       document.isDirty = true
       return true
     })
@@ -162,36 +167,39 @@ describe("WorkflowAssistedApplyService", () => {
     const service = new WorkflowAssistedApplyService(store())
     await service.stageInTargetEditor("wf", "R3TR:PROG:ZTEST")
 
-    expect(replace).toHaveBeenCalledWith(
+    expect(mocks.replace).toHaveBeenCalledWith(
       expect.objectContaining({ scheme: "adt" }),
       expect.anything(),
       "REPORT ztest.\n"
     )
-    expect(applyEdit).toHaveBeenCalledTimes(1)
-    expect(writeFile).not.toHaveBeenCalled()
-    expect(showTextDocument).toHaveBeenCalledWith(expect.objectContaining({ isDirty: true }), {
-      preview: false
-    })
+    expect(mocks.applyEdit).toHaveBeenCalledTimes(1)
+    expect(mocks.writeFile).not.toHaveBeenCalled()
+    expect(mocks.showTextDocument).toHaveBeenCalledWith(
+      expect.objectContaining({ isDirty: true }),
+      {
+        preview: false
+      }
+    )
   })
 
   it("blocks staging when an editor auto-save setting is unsafe", async () => {
-    configuration.autoSave = "afterDelay"
+    mocks.configuration.autoSave = "afterDelay"
     const service = new WorkflowAssistedApplyService(store())
 
     await expect(service.stageInTargetEditor("wf", "R3TR:PROG:ZTEST")).rejects.toThrow(
       /auto-save is off/
     )
-    expect(applyEdit).not.toHaveBeenCalled()
+    expect(mocks.applyEdit).not.toHaveBeenCalled()
   })
 
   it("blocks staging when chat saves dirty editors before send", async () => {
-    configuration.chatSaveBeforeSend = true
+    mocks.configuration.chatSaveBeforeSend = true
     const service = new WorkflowAssistedApplyService(store())
 
     await expect(service.stageInTargetEditor("wf", "R3TR:PROG:ZTEST")).rejects.toThrow(
       /chat.saveBeforeSend is false/
     )
-    expect(applyEdit).not.toHaveBeenCalled()
+    expect(mocks.applyEdit).not.toHaveBeenCalled()
   })
 
   it("uses one explicit picker and opens a multi-file source from SAP", async () => {
@@ -215,13 +223,13 @@ describe("WorkflowAssistedApplyService", () => {
         ]
       })
     )
-    showQuickPick.mockResolvedValue("resource/includes/zinc.abap")
+    mocks.showQuickPick.mockResolvedValue("resource/includes/zinc.abap")
     const service = new WorkflowAssistedApplyService(store())
 
     await service.openSource("wf", "R3TR:PROG:ZTEST")
 
-    expect(showQuickPick).toHaveBeenCalledTimes(1)
-    expect(openTextDocument).toHaveBeenCalledWith(
+    expect(mocks.showQuickPick).toHaveBeenCalledTimes(1)
+    expect(mocks.openTextDocument).toHaveBeenCalledWith(
       expect.objectContaining({
         scheme: "adt",
         path: expect.stringContaining("includes/zinc.abap")
@@ -245,17 +253,17 @@ describe("WorkflowAssistedApplyService", () => {
     await expect(service.stageInTargetEditor("wf", "R3TR:PROG:ZTEST")).rejects.toThrow(
       /Target changed/
     )
-    expect(applyEdit).not.toHaveBeenCalled()
+    expect(mocks.applyEdit).not.toHaveBeenCalled()
   })
 
   it("rejects a locally changed source snapshot", async () => {
-    sourceAggregateHash = "changed"
+    mocks.sourceAggregateHash = "changed"
     const service = new WorkflowAssistedApplyService(store())
 
     await expect(service.stageInTargetEditor("wf", "R3TR:PROG:ZTEST")).rejects.toThrow(
       /local source snapshot changed/
     )
-    expect(downloadSide).not.toHaveBeenCalled()
-    expect(applyEdit).not.toHaveBeenCalled()
+    expect(mocks.downloadSide).not.toHaveBeenCalled()
+    expect(mocks.applyEdit).not.toHaveBeenCalled()
   })
 })

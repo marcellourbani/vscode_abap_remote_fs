@@ -1,5 +1,5 @@
 import { isRight, isLeft, right, left } from "fp-ts/lib/Either"
-import { none, None } from "fp-ts/lib/Option"
+import { none, type None } from "fp-ts/lib/Option"
 import {
   rfsExtract,
   nullToNone,

@@ -2,84 +2,92 @@
  * Tests for heartbeatService.ts - HeartbeatService, initializeHeartbeatService, getHeartbeatService
  */
 
-jest.mock(
-  "vscode",
-  () => {
-    const mockStatusBarItem = {
-      show: jest.fn(),
-      hide: jest.fn(),
-      dispose: jest.fn(),
-      text: "",
-      command: undefined,
-      tooltip: "",
-      backgroundColor: undefined
-    }
-    const mockConfigObj = {
-      get: jest.fn((key: string, def: any) => {
-        const vals: Record<string, any> = {
-          enabled: true,
-          model: "TestModel",
-          every: "5m",
-          ackMaxChars: 300,
-          maxHistory: 100,
-          maxConsecutiveErrors: 5,
-          notifyOnAlert: true,
-          notifyOnError: true
-        }
-        return vals[key] !== undefined ? vals[key] : def
-      }),
-      update: jest.fn().mockResolvedValue(undefined)
-    }
-
-    const disposablePush = jest.fn()
-
-    return {
-      workspace: {
-        getConfiguration: jest.fn(() => mockConfigObj),
-        onDidChangeConfiguration: jest.fn(() => ({ dispose: jest.fn() }))
-      },
-      window: {
-        createStatusBarItem: jest.fn(() => mockStatusBarItem),
-        showWarningMessage: jest.fn().mockResolvedValue(undefined),
-        showInformationMessage: jest.fn().mockResolvedValue(undefined),
-        showErrorMessage: jest.fn().mockResolvedValue(undefined)
-      },
-      StatusBarAlignment: { Right: 1 },
-      ThemeColor: jest.fn((id: string) => ({ id })),
-      CancellationTokenSource: jest.fn(() => ({
-        token: { isCancellationRequested: false },
-        cancel: jest.fn(),
-        dispose: jest.fn()
-      })),
-      ConfigurationTarget: { Workspace: 2 },
-      commands: {
-        executeCommand: jest.fn()
+vi.mock("vscode", () => {
+  const mockStatusBarItem = {
+    show: vi.fn(),
+    hide: vi.fn(),
+    dispose: vi.fn(),
+    text: "",
+    command: undefined,
+    tooltip: "",
+    backgroundColor: undefined
+  }
+  const mockConfigObj = {
+    get: vi.fn(function (key: string, def: any) {
+      const vals: Record<string, any> = {
+        enabled: true,
+        model: "TestModel",
+        every: "5m",
+        ackMaxChars: 300,
+        maxHistory: 100,
+        maxConsecutiveErrors: 5,
+        notifyOnAlert: true,
+        notifyOnError: true
       }
+      return vals[key] !== undefined ? vals[key] : def
+    }),
+    update: vi.fn().mockResolvedValue(undefined)
+  }
+
+  const disposablePush = vi.fn()
+
+  return {
+    workspace: {
+      getConfiguration: vi.fn(function () {
+        return mockConfigObj
+      }),
+      onDidChangeConfiguration: vi.fn(function () {
+        return { dispose: vi.fn() }
+      })
+    },
+    window: {
+      createStatusBarItem: vi.fn(function () {
+        return mockStatusBarItem
+      }),
+      showWarningMessage: vi.fn().mockResolvedValue(undefined),
+      showInformationMessage: vi.fn().mockResolvedValue(undefined),
+      showErrorMessage: vi.fn().mockResolvedValue(undefined)
+    },
+    StatusBarAlignment: { Right: 1 },
+    ThemeColor: vi.fn(function (id: string) {
+      return { id }
+    }),
+    CancellationTokenSource: vi.fn(function () {
+      return {
+        token: { isCancellationRequested: false },
+        cancel: vi.fn(),
+        dispose: vi.fn()
+      }
+    }),
+    ConfigurationTarget: { Workspace: 2 },
+    commands: {
+      executeCommand: vi.fn()
     }
-  },
-  { virtual: true }
-)
+  }
+})
 
-jest.mock("../../lib", () => ({ log: jest.fn() }))
+vi.mock("../../lib", () => ({ log: vi.fn() }))
 
-jest.mock("./heartbeatLmClient", () => ({
-  runHeartbeatLM: jest.fn()
+vi.mock("./heartbeatLmClient", () => ({
+  runHeartbeatLM: vi.fn()
 }))
 
-jest.mock("../funMessenger", () => ({
+vi.mock("../funMessenger", () => ({
   funWindow: {
-    createStatusBarItem: jest.fn(() => ({
-      show: jest.fn(),
-      hide: jest.fn(),
-      dispose: jest.fn(),
-      text: "",
-      command: undefined,
-      tooltip: "",
-      backgroundColor: undefined
-    })),
-    showWarningMessage: jest.fn().mockResolvedValue(undefined),
-    showInformationMessage: jest.fn().mockResolvedValue(undefined),
-    showErrorMessage: jest.fn().mockResolvedValue(undefined)
+    createStatusBarItem: vi.fn(function () {
+      return {
+        show: vi.fn(),
+        hide: vi.fn(),
+        dispose: vi.fn(),
+        text: "",
+        command: undefined,
+        tooltip: "",
+        backgroundColor: undefined
+      }
+    }),
+    showWarningMessage: vi.fn().mockResolvedValue(undefined),
+    showInformationMessage: vi.fn().mockResolvedValue(undefined),
+    showErrorMessage: vi.fn().mockResolvedValue(undefined)
   }
 }))
 
@@ -93,6 +101,9 @@ import {
 } from "./heartbeatService"
 import { HeartbeatStateManager } from "./heartbeatStateManager"
 import { runHeartbeatLM } from "./heartbeatLmClient"
+import * as __$mock_vscode from "vscode"
+import * as __$mock_funMessenger from "../funMessenger"
+import type { Mock } from "vitest"
 
 // ============================================================================
 // HELPERS
@@ -104,12 +115,12 @@ let context: any
 function makeContext() {
   return {
     globalStorageUri: { fsPath: tmpDir },
-    subscriptions: { push: jest.fn() }
+    subscriptions: { push: vi.fn() }
   } as any
 }
 
 function makeRunHeartbeatLMMock(status: "ok" | "alert" | "error", extra: any = {}) {
-  return jest.fn().mockResolvedValue({
+  return vi.fn().mockResolvedValue({
     status,
     response: status === "ok" ? "HEARTBEAT_OK" : status === "alert" ? "Found 3 dumps!" : "",
     toolsUsed: [],
@@ -126,13 +137,13 @@ function makeRunHeartbeatLMMock(status: "ok" | "alert" | "error", extra: any = {
 beforeEach(() => {
   tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "hb-svc-"))
   context = makeContext()
-  jest.clearAllMocks()
+  vi.clearAllMocks()
 
-  const vscode = require("vscode")
-  const funMessenger = require("../funMessenger")
+  const vscode = __$mock_vscode
+  const funMessenger = __$mock_funMessenger
 
-  vscode.workspace.getConfiguration.mockReturnValue({
-    get: jest.fn((key: string, def: any) => {
+  vi.mocked(vscode.workspace.getConfiguration).mockReturnValue({
+    get: vi.fn(function (key: string, def: any) {
       const vals: Record<string, any> = {
         enabled: true,
         model: "TestModel",
@@ -145,23 +156,23 @@ beforeEach(() => {
       }
       return vals[key] !== undefined ? vals[key] : def
     }),
-    update: jest.fn().mockResolvedValue(undefined)
-  })
+    update: vi.fn().mockResolvedValue(undefined)
+  } as any)
 
-  vscode.workspace.onDidChangeConfiguration.mockReturnValue({ dispose: jest.fn() })
+  vi.mocked(vscode.workspace.onDidChangeConfiguration).mockReturnValue({ dispose: vi.fn() })
 
-  funMessenger.funWindow.createStatusBarItem.mockReturnValue({
-    show: jest.fn(),
-    hide: jest.fn(),
-    dispose: jest.fn(),
+  vi.mocked(funMessenger.funWindow.createStatusBarItem).mockReturnValue({
+    show: vi.fn(),
+    hide: vi.fn(),
+    dispose: vi.fn(),
     text: "",
     command: undefined,
     tooltip: "",
     backgroundColor: undefined
-  })
-  funMessenger.funWindow.showWarningMessage.mockResolvedValue(undefined)
-  funMessenger.funWindow.showInformationMessage.mockResolvedValue(undefined)
-  funMessenger.funWindow.showErrorMessage.mockResolvedValue(undefined)
+  } as any)
+  vi.mocked(funMessenger.funWindow.showWarningMessage).mockResolvedValue(undefined)
+  vi.mocked(funMessenger.funWindow.showInformationMessage).mockResolvedValue(undefined)
+  vi.mocked(funMessenger.funWindow.showErrorMessage).mockResolvedValue(undefined)
 })
 
 afterEach(() => {
@@ -197,57 +208,59 @@ describe("initializeHeartbeatService / getHeartbeatService", () => {
 
 describe("HeartbeatService start / stop", () => {
   test("starts successfully when config is valid", async () => {
-    jest.useFakeTimers()
+    vi.useFakeTimers()
     const svc = initializeHeartbeatService(context)
     await svc.start()
     expect(svc.getStatus().isRunning).toBe(true)
-    jest.useRealTimers()
+    vi.useRealTimers()
     svc.stop()
   })
 
   test("does not start when enabled=false in config", async () => {
-    const vscode = require("vscode")
-    vscode.workspace.getConfiguration.mockReturnValue({
-      get: jest.fn((key: string, def: any) => (key === "enabled" ? false : def))
-    })
+    const vscode = __$mock_vscode
+    vi.mocked(vscode.workspace.getConfiguration).mockReturnValue({
+      get: vi.fn(function (key: string, def: any) {
+        return key === "enabled" ? false : def
+      })
+    } as any)
     const svc = initializeHeartbeatService(context)
     await svc.start()
     expect(svc.getStatus().isRunning).toBe(false)
   })
 
   test("does not start when model is empty", async () => {
-    const vscode = require("vscode")
-    vscode.workspace.getConfiguration.mockReturnValue({
-      get: jest.fn((key: string, def: any) => {
+    const vscode = __$mock_vscode
+    vi.mocked(vscode.workspace.getConfiguration).mockReturnValue({
+      get: vi.fn(function (key: string, def: any) {
         if (key === "enabled") return true
         if (key === "model") return ""
         return def
       })
-    })
+    } as any)
     const svc = initializeHeartbeatService(context)
     await svc.start()
     expect(svc.getStatus().isRunning).toBe(false)
   })
 
   test("does not start twice when already running", async () => {
-    jest.useFakeTimers()
+    vi.useFakeTimers()
     const svc = initializeHeartbeatService(context)
     await svc.start()
     const status1 = svc.getStatus()
     await svc.start() // second call
     const status2 = svc.getStatus()
     expect(status1.isRunning).toBe(status2.isRunning)
-    jest.useRealTimers()
+    vi.useRealTimers()
     svc.stop()
   })
 
   test("stop() sets isRunning to false", async () => {
-    jest.useFakeTimers()
+    vi.useFakeTimers()
     const svc = initializeHeartbeatService(context)
     await svc.start()
     svc.stop()
     expect(svc.getStatus().isRunning).toBe(false)
-    jest.useRealTimers()
+    vi.useRealTimers()
   })
 
   test("stop() is a no-op when already stopped", () => {
@@ -262,12 +275,12 @@ describe("HeartbeatService start / stop", () => {
 
 describe("HeartbeatService pause / resume", () => {
   test("pause() sets isPaused=true when running", async () => {
-    jest.useFakeTimers()
+    vi.useFakeTimers()
     const svc = initializeHeartbeatService(context)
     await svc.start()
     svc.pause()
     expect(svc.getStatus().isPaused).toBe(true)
-    jest.useRealTimers()
+    vi.useRealTimers()
     svc.stop()
   })
 
@@ -278,22 +291,22 @@ describe("HeartbeatService pause / resume", () => {
   })
 
   test("resume() sets isPaused=false", async () => {
-    jest.useFakeTimers()
+    vi.useFakeTimers()
     const svc = initializeHeartbeatService(context)
     await svc.start()
     svc.pause()
     svc.resume()
     expect(svc.getStatus().isPaused).toBe(false)
-    jest.useRealTimers()
+    vi.useRealTimers()
     svc.stop()
   })
 
   test("resume() is a no-op when not paused", async () => {
-    jest.useFakeTimers()
+    vi.useFakeTimers()
     const svc = initializeHeartbeatService(context)
     await svc.start()
     expect(() => svc.resume()).not.toThrow()
-    jest.useRealTimers()
+    vi.useRealTimers()
     svc.stop()
   })
 })
@@ -304,7 +317,7 @@ describe("HeartbeatService pause / resume", () => {
 
 describe("HeartbeatService.triggerNow", () => {
   test("returns ran result when LM succeeds with ok status", async () => {
-    ;(runHeartbeatLM as jest.Mock).mockResolvedValue({
+    ;(runHeartbeatLM as Mock).mockResolvedValue({
       status: "ok",
       response: "HEARTBEAT_OK",
       toolsUsed: [],
@@ -316,7 +329,7 @@ describe("HeartbeatService.triggerNow", () => {
   })
 
   test("returns ran result when LM returns alert", async () => {
-    ;(runHeartbeatLM as jest.Mock).mockResolvedValue({
+    ;(runHeartbeatLM as Mock).mockResolvedValue({
       status: "alert",
       response: "3 new dumps!",
       toolsUsed: [],
@@ -328,7 +341,7 @@ describe("HeartbeatService.triggerNow", () => {
   })
 
   test("returns ran result when LM returns error status", async () => {
-    ;(runHeartbeatLM as jest.Mock).mockResolvedValue({
+    ;(runHeartbeatLM as Mock).mockResolvedValue({
       status: "error",
       response: "",
       toolsUsed: [],
@@ -341,7 +354,7 @@ describe("HeartbeatService.triggerNow", () => {
   })
 
   test("records run in state manager", async () => {
-    ;(runHeartbeatLM as jest.Mock).mockResolvedValue({
+    ;(runHeartbeatLM as Mock).mockResolvedValue({
       status: "ok",
       response: "HEARTBEAT_OK",
       toolsUsed: ["tool1"],
@@ -354,8 +367,8 @@ describe("HeartbeatService.triggerNow", () => {
   })
 
   test("shows notification when alert and notifyOnAlert=true", async () => {
-    const funMessenger = require("../funMessenger")
-    ;(runHeartbeatLM as jest.Mock).mockResolvedValue({
+    const funMessenger = __$mock_funMessenger
+    ;(runHeartbeatLM as Mock).mockResolvedValue({
       status: "alert",
       response: "Found new errors!",
       toolsUsed: [],
@@ -367,8 +380,8 @@ describe("HeartbeatService.triggerNow", () => {
   })
 
   test("shows error notification when error and notifyOnError=true", async () => {
-    const funMessenger = require("../funMessenger")
-    ;(runHeartbeatLM as jest.Mock).mockResolvedValue({
+    const funMessenger = __$mock_funMessenger
+    ;(runHeartbeatLM as Mock).mockResolvedValue({
       status: "error",
       response: "",
       toolsUsed: [],
@@ -381,10 +394,10 @@ describe("HeartbeatService.triggerNow", () => {
   })
 
   test("does not show notification when notifyOnAlert=false", async () => {
-    const vscode = require("vscode")
-    const funMessenger = require("../funMessenger")
-    vscode.workspace.getConfiguration.mockReturnValue({
-      get: jest.fn((key: string, def: any) => {
+    const vscode = __$mock_vscode
+    const funMessenger = __$mock_funMessenger
+    vi.mocked(vscode.workspace.getConfiguration).mockReturnValue({
+      get: vi.fn(function (key: string, def: any) {
         if (key === "enabled") return true
         if (key === "model") return "TestModel"
         if (key === "every") return "5m"
@@ -395,8 +408,8 @@ describe("HeartbeatService.triggerNow", () => {
         if (key === "maxConsecutiveErrors") return 5
         return def
       })
-    })
-    ;(runHeartbeatLM as jest.Mock).mockResolvedValue({
+    } as any)
+    ;(runHeartbeatLM as Mock).mockResolvedValue({
       status: "alert",
       response: "Alert!",
       toolsUsed: [],
@@ -419,7 +432,7 @@ describe("HeartbeatService.getStatus", () => {
   })
 
   test("returns stats with totalRuns after triggerNow", async () => {
-    ;(runHeartbeatLM as jest.Mock).mockResolvedValue({
+    ;(runHeartbeatLM as Mock).mockResolvedValue({
       status: "ok",
       response: "HEARTBEAT_OK",
       toolsUsed: [],
@@ -437,29 +450,29 @@ describe("HeartbeatService.getStatus", () => {
 
 describe("HeartbeatService.onEvent", () => {
   test("listener receives 'started' event when start() is called", async () => {
-    jest.useFakeTimers()
+    vi.useFakeTimers()
     const svc = initializeHeartbeatService(context)
     const events: string[] = []
     svc.onEvent(e => events.push(e.type))
     await svc.start()
     expect(events).toContain("started")
-    jest.useRealTimers()
+    vi.useRealTimers()
     svc.stop()
   })
 
   test("listener receives 'stopped' event when stop() is called", async () => {
-    jest.useFakeTimers()
+    vi.useFakeTimers()
     const svc = initializeHeartbeatService(context)
     await svc.start()
     const events: string[] = []
     svc.onEvent(e => events.push(e.type))
     svc.stop()
     expect(events).toContain("stopped")
-    jest.useRealTimers()
+    vi.useRealTimers()
   })
 
   test("listener receives 'beat_started' event on triggerNow", async () => {
-    ;(runHeartbeatLM as jest.Mock).mockResolvedValue({
+    ;(runHeartbeatLM as Mock).mockResolvedValue({
       status: "ok",
       response: "HEARTBEAT_OK",
       toolsUsed: [],
@@ -474,7 +487,7 @@ describe("HeartbeatService.onEvent", () => {
   })
 
   test("listener receives 'alert' event for alert response", async () => {
-    ;(runHeartbeatLM as jest.Mock).mockResolvedValue({
+    ;(runHeartbeatLM as Mock).mockResolvedValue({
       status: "alert",
       response: "New errors found!",
       toolsUsed: [],
@@ -491,19 +504,19 @@ describe("HeartbeatService.onEvent", () => {
   })
 
   test("disposable removes listener", async () => {
-    jest.useFakeTimers()
+    vi.useFakeTimers()
     const svc = initializeHeartbeatService(context)
     const events: string[] = []
     const disposable = svc.onEvent(e => events.push(e.type))
     disposable.dispose()
     await svc.start()
     expect(events).toHaveLength(0)
-    jest.useRealTimers()
+    vi.useRealTimers()
     svc.stop()
   })
 
   test("error in listener does not crash the service", async () => {
-    ;(runHeartbeatLM as jest.Mock).mockResolvedValue({
+    ;(runHeartbeatLM as Mock).mockResolvedValue({
       status: "ok",
       response: "HEARTBEAT_OK",
       toolsUsed: [],
@@ -524,9 +537,9 @@ describe("HeartbeatService.onEvent", () => {
 describe("HeartbeatService consecutive error handling", () => {
   test("pauses after maxConsecutiveErrors errors when using timer-based beat", async () => {
     // Set maxConsecutiveErrors to 2 for faster testing
-    const vscode = require("vscode")
-    vscode.workspace.getConfiguration.mockReturnValue({
-      get: jest.fn((key: string, def: any) => {
+    const vscode = __$mock_vscode
+    vi.mocked(vscode.workspace.getConfiguration).mockReturnValue({
+      get: vi.fn(function (key: string, def: any) {
         if (key === "enabled") return true
         if (key === "model") return "TestModel"
         if (key === "every") return "5m"
@@ -537,8 +550,8 @@ describe("HeartbeatService consecutive error handling", () => {
         if (key === "notifyOnError") return false
         return def
       })
-    })
-    ;(runHeartbeatLM as jest.Mock).mockResolvedValue({
+    } as any)
+    ;(runHeartbeatLM as Mock).mockResolvedValue({
       status: "error",
       response: "",
       toolsUsed: [],

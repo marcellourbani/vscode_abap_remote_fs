@@ -1,40 +1,49 @@
-/**
- * Tests for cleanerCommands.ts
- * Tests command registration and context update functions.
- */
+const {
+  mockRegisterCommand,
+  mockOnWillSaveTextDocument,
+  mockOnDidChangeConfiguration,
+  mockExecuteCommand,
+  mockShowInformationMessage,
+  mockShowWarningMessage
+} = vi.hoisted(() => {
+  const mockRegisterCommand = vi.fn().mockReturnValue({ dispose: vi.fn() })
+  const mockOnWillSaveTextDocument = vi.fn().mockReturnValue({ dispose: vi.fn() })
+  const mockOnDidChangeConfiguration = vi.fn().mockReturnValue({ dispose: vi.fn() })
+  const mockExecuteCommand = vi.fn().mockResolvedValue(undefined)
+  const mockShowInformationMessage = vi.fn()
+  const mockShowWarningMessage = vi.fn()
+  return {
+    mockRegisterCommand,
+    mockOnWillSaveTextDocument,
+    mockOnDidChangeConfiguration,
+    mockExecuteCommand,
+    mockShowInformationMessage,
+    mockShowWarningMessage
+  }
+})
+vi.mock("vscode", () => ({
+  commands: {
+    registerCommand: mockRegisterCommand,
+    executeCommand: mockExecuteCommand
+  },
+  workspace: {
+    onWillSaveTextDocument: mockOnWillSaveTextDocument,
+    onDidChangeConfiguration: mockOnDidChangeConfiguration,
+    getConfiguration: vi.fn().mockReturnValue({
+      get: vi.fn(function (k: string, d: any) {
+        return d
+      }),
+      update: vi.fn()
+    })
+  },
+  window: {
+    showInformationMessage: mockShowInformationMessage,
+    showWarningMessage: mockShowWarningMessage,
+    visibleTextEditors: []
+  }
+}))
 
-const mockRegisterCommand = jest.fn().mockReturnValue({ dispose: jest.fn() })
-const mockOnWillSaveTextDocument = jest.fn().mockReturnValue({ dispose: jest.fn() })
-const mockOnDidChangeConfiguration = jest.fn().mockReturnValue({ dispose: jest.fn() })
-const mockExecuteCommand = jest.fn().mockResolvedValue(undefined)
-const mockShowInformationMessage = jest.fn()
-const mockShowWarningMessage = jest.fn()
-
-jest.mock(
-  "vscode",
-  () => ({
-    commands: {
-      registerCommand: mockRegisterCommand,
-      executeCommand: mockExecuteCommand
-    },
-    workspace: {
-      onWillSaveTextDocument: mockOnWillSaveTextDocument,
-      onDidChangeConfiguration: mockOnDidChangeConfiguration,
-      getConfiguration: jest.fn().mockReturnValue({
-        get: jest.fn((k: string, d: any) => d),
-        update: jest.fn()
-      })
-    },
-    window: {
-      showInformationMessage: mockShowInformationMessage,
-      showWarningMessage: mockShowWarningMessage,
-      visibleTextEditors: []
-    }
-  }),
-  { virtual: true }
-)
-
-jest.mock("./funMessenger", () => ({
+vi.mock("./funMessenger", () => ({
   funWindow: {
     showInformationMessage: mockShowInformationMessage,
     showWarningMessage: mockShowWarningMessage,
@@ -42,19 +51,19 @@ jest.mock("./funMessenger", () => ({
   }
 }))
 
-jest.mock("./abapCleanerService", () => ({
+vi.mock("./abapCleanerService", () => ({
   ABAPCleanerService: {
-    getInstance: jest.fn().mockReturnValue({
-      isAvailable: jest.fn().mockReturnValue(true),
-      cleanActiveEditor: jest.fn().mockResolvedValue(true),
-      setupWizard: jest.fn().mockResolvedValue(undefined),
-      shouldCleanOnSave: jest.fn().mockReturnValue(false)
+    getInstance: vi.fn().mockReturnValue({
+      isAvailable: vi.fn().mockReturnValue(true),
+      cleanActiveEditor: vi.fn().mockResolvedValue(true),
+      setupWizard: vi.fn().mockResolvedValue(undefined),
+      shouldCleanOnSave: vi.fn().mockReturnValue(false)
     })
   }
 }))
 
-jest.mock("../lib", () => ({ log: jest.fn() }))
-jest.mock("./telemetry", () => ({ logTelemetry: jest.fn() }))
+vi.mock("../lib", () => ({ log: vi.fn() }))
+vi.mock("./telemetry", () => ({ logTelemetry: vi.fn() }))
 
 import * as vscode from "vscode"
 import {
@@ -63,23 +72,24 @@ import {
   setupCleanerContextMonitoring
 } from "./cleanerCommands"
 import { ABAPCleanerService } from "./abapCleanerService"
+import type { Mock } from "vitest"
 
 const mockCleanerService = {
-  isAvailable: jest.fn().mockReturnValue(true),
-  cleanActiveEditor: jest.fn().mockResolvedValue(true),
-  setupWizard: jest.fn().mockResolvedValue(undefined),
-  shouldCleanOnSave: jest.fn().mockReturnValue(false)
+  isAvailable: vi.fn().mockReturnValue(true),
+  cleanActiveEditor: vi.fn().mockResolvedValue(true),
+  setupWizard: vi.fn().mockResolvedValue(undefined),
+  shouldCleanOnSave: vi.fn().mockReturnValue(false)
 }
 
 beforeEach(() => {
-  jest.clearAllMocks()
-  ;(ABAPCleanerService.getInstance as jest.Mock).mockReturnValue(mockCleanerService)
+  vi.clearAllMocks()
+  ;(ABAPCleanerService.getInstance as Mock).mockReturnValue(mockCleanerService)
 })
 
 function makeContext() {
   return {
     subscriptions: [] as any[],
-    globalState: { get: jest.fn(), update: jest.fn() }
+    globalState: { get: vi.fn(), update: vi.fn() }
   } as any
 }
 

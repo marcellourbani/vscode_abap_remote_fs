@@ -1,63 +1,67 @@
 // Tests for views/dumps/dumps.ts
-jest.mock(
-  "vscode",
-  () => {
-    const EventEmitter = class {
-      event = jest.fn()
-      fire = jest.fn()
-    }
-    const TreeItem = class {
-      constructor(
-        public label: string,
-        public collapsibleState?: number
-      ) {}
-      command: any
-      contextValue: any
-    }
-    const TreeItemCollapsibleState = { None: 0, Collapsed: 1, Expanded: 2 }
-    const ViewColumn = { Active: 1, Beside: 2 }
-    return { EventEmitter, TreeItem, TreeItemCollapsibleState, ViewColumn }
-  },
-  { virtual: true }
-)
+vi.mock("vscode", () => {
+  const EventEmitter = class {
+    event = vi.fn()
+    fire = vi.fn()
+  }
+  const TreeItem = class {
+    constructor(
+      public label: string,
+      public collapsibleState?: number
+    ) {}
+    command: any
+    contextValue: any
+  }
+  const TreeItemCollapsibleState = { None: 0, Collapsed: 1, Expanded: 2 }
+  const ViewColumn = { Active: 1, Beside: 2 }
+  return { EventEmitter, TreeItem, TreeItemCollapsibleState, ViewColumn }
+})
 
-jest.mock("../../services/funMessenger", () => ({
+vi.mock("../../services/funMessenger", () => ({
   funWindow: {
-    createWebviewPanel: jest.fn(() => ({
-      webview: {
-        html: "",
-        onDidReceiveMessage: jest.fn(),
-        options: {}
+    createWebviewPanel: vi.fn(function () {
+      return {
+        webview: {
+          html: "",
+          onDidReceiveMessage: vi.fn(),
+          options: {}
+        }
       }
-    }))
+    })
   }
 }))
 
-jest.mock("../../adt/conections", () => ({
-  getOrCreateClient: jest.fn()
+vi.mock("../../adt/conections", () => ({
+  getOrCreateClient: vi.fn()
 }))
 
-jest.mock("../../adt/operations/AdtObjectFinder", () => ({
-  AdtObjectFinder: jest.fn().mockImplementation(() => ({
-    displayAdtUri: jest.fn()
-  }))
+vi.mock("../../adt/operations/AdtObjectFinder", () => ({
+  AdtObjectFinder: vi.fn().mockImplementation(function () {
+    return {
+      displayAdtUri: vi.fn()
+    }
+  })
 }))
 
-jest.mock("../../commands", () => ({
+vi.mock("../../commands", () => ({
   AbapFsCommands: {
     showDump: "abapfs.showDump",
     refreshDumps: "abapfs.refreshDumps"
   },
-  command: jest.fn(
-    (name: string) => (_target: any, _key: string, descriptor: PropertyDescriptor) => descriptor
-  )
+  command: vi.fn(function (name: string) {
+    return (_target: any, _key: string, descriptor: PropertyDescriptor) => descriptor
+  })
 }))
 
-jest.mock("../../config", () => ({
-  connectedRoots: jest.fn(() => new Map([["DEV100", {}]]))
+vi.mock("../../config", () => ({
+  connectedRoots: vi.fn(function () {
+    return new Map([["DEV100", {}]])
+  })
 }))
 
 import { dumpProvider } from "./dumps"
+import * as __$mock_adt_conections from "../../adt/conections"
+import type { Mock } from "vitest"
 
 const jsFooter = `<script type="text/javascript">
 const vscode = acquireVsCodeApi();`
@@ -117,10 +121,10 @@ describe("dumps.ts", () => {
 
     describe("getChildren - system item", () => {
       it("fetches dumps from client when system item provided", async () => {
-        const { getOrCreateClient } = require("../../adt/conections")
-        ;(getOrCreateClient as jest.Mock).mockResolvedValue({
-          feeds: jest.fn().mockResolvedValue([{ href: "/sap/bc/adt/runtime/dumps" }]),
-          dumps: jest.fn().mockResolvedValue({
+        const { getOrCreateClient } = __$mock_adt_conections
+        ;(getOrCreateClient as Mock).mockResolvedValue({
+          feeds: vi.fn().mockResolvedValue([{ href: "/sap/bc/adt/runtime/dumps" }]),
+          dumps: vi.fn().mockResolvedValue({
             dumps: [
               {
                 categories: [{ label: "ABAP runtime error", term: "DUMP_123" }],
@@ -140,12 +144,12 @@ describe("dumps.ts", () => {
       })
 
       it("returns empty array when no dump feed available", async () => {
-        const { getOrCreateClient } = require("../../adt/conections")
-        ;(getOrCreateClient as jest.Mock).mockResolvedValue({
-          feeds: jest.fn().mockResolvedValue([
+        const { getOrCreateClient } = __$mock_adt_conections
+        ;(getOrCreateClient as Mock).mockResolvedValue({
+          feeds: vi.fn().mockResolvedValue([
             { href: "/sap/bc/adt/other" } // No dumps feed
           ]),
-          dumps: jest.fn().mockResolvedValue({ dumps: [] })
+          dumps: vi.fn().mockResolvedValue({ dumps: [] })
         })
 
         const systemChildren = await dumpProvider.getChildren(undefined as any)

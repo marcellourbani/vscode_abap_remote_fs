@@ -1,41 +1,39 @@
-jest.mock(
-  "vscode",
-  () => ({
-    FileSystemError: {
-      FileNotFound: (msg: string) => new Error(`FileNotFound: ${msg}`)
-    },
-    workspace: {
-      workspaceFolders: undefined
-    },
-    Uri: {
-      parse: jest.fn((s: string) => ({
+vi.mock("vscode", () => ({
+  FileSystemError: {
+    FileNotFound: (msg: string) => new Error(`FileNotFound: ${msg}`)
+  },
+  workspace: {
+    workspaceFolders: undefined
+  },
+  Uri: {
+    parse: vi.fn(function (s: string) {
+      return {
         scheme: s.split("://")[0],
         authority: s.split("://")[1]?.split("/")[0],
         toString: () => s
-      }))
-    }
-  }),
-  { virtual: true }
-)
-
-jest.mock("../config", () => ({
-  RemoteManager: { get: jest.fn() },
-  createClient: jest.fn()
-}))
-
-jest.mock("./debugger", () => ({ LogOutPendingDebuggers: jest.fn().mockResolvedValue([]) }))
-jest.mock("../services/sapSystemValidator", () => ({
-  SapSystemValidator: {
-    getInstance: jest
-      .fn()
-      .mockReturnValue({ validateSystemAccess: jest.fn().mockResolvedValue(undefined) })
+      }
+    })
   }
 }))
-jest.mock("../fs/LocalFsProvider", () => ({
-  LocalFsProvider: { useLocalStorage: jest.fn().mockReturnValue(false) }
+
+vi.mock("../config", () => ({
+  RemoteManager: { get: vi.fn() },
+  createClient: vi.fn()
 }))
-jest.mock("../lib", () => ({ log: jest.fn() }))
-jest.mock("abapfs", () => ({}))
+
+vi.mock("./debugger", () => ({ LogOutPendingDebuggers: vi.fn().mockResolvedValue([]) }))
+vi.mock("../services/sapSystemValidator", () => ({
+  SapSystemValidator: {
+    getInstance: vi
+      .fn()
+      .mockReturnValue({ validateSystemAccess: vi.fn().mockResolvedValue(undefined) })
+  }
+}))
+vi.mock("../fs/LocalFsProvider", () => ({
+  LocalFsProvider: { useLocalStorage: vi.fn().mockReturnValue(false) }
+}))
+vi.mock("../lib", () => ({ log: vi.fn() }))
+vi.mock("abapfs", () => ({}))
 
 import {
   ADTSCHEME,
@@ -45,6 +43,7 @@ import {
   getRoot,
   rootIsConnected
 } from "./conections"
+import * as __$mock_vscode from "vscode"
 
 describe("ADTSCHEME", () => {
   it("is 'adt'", () => {
@@ -103,26 +102,35 @@ describe("getRoot", () => {
 
 describe("rootIsConnected", () => {
   it("returns false when workspaceFolders is undefined", () => {
-    const { workspace } = require("vscode")
-    workspace.workspaceFolders = undefined
+    const { workspace } = __$mock_vscode
+    Object.defineProperty(workspace, "workspaceFolders", { value: undefined, configurable: true })
     expect(rootIsConnected("myconn")).toBe(false)
   })
 
   it("returns false when no matching ADT folder", () => {
-    const { workspace } = require("vscode")
-    workspace.workspaceFolders = [{ uri: { scheme: "file", authority: "myconn" } }]
+    const { workspace } = __$mock_vscode
+    Object.defineProperty(workspace, "workspaceFolders", {
+      value: [{ uri: { scheme: "file", authority: "myconn" } }],
+      configurable: true
+    })
     expect(rootIsConnected("myconn")).toBe(false)
   })
 
   it("returns true when matching ADT folder exists", () => {
-    const { workspace } = require("vscode")
-    workspace.workspaceFolders = [{ uri: { scheme: "adt", authority: "myconn" } }]
+    const { workspace } = __$mock_vscode
+    Object.defineProperty(workspace, "workspaceFolders", {
+      value: [{ uri: { scheme: "adt", authority: "myconn" } }],
+      configurable: true
+    })
     expect(rootIsConnected("myconn")).toBe(true)
   })
 
   it("is case-insensitive for connId", () => {
-    const { workspace } = require("vscode")
-    workspace.workspaceFolders = [{ uri: { scheme: "adt", authority: "myconn" } }]
+    const { workspace } = __$mock_vscode
+    Object.defineProperty(workspace, "workspaceFolders", {
+      value: [{ uri: { scheme: "adt", authority: "myconn" } }],
+      configurable: true
+    })
     expect(rootIsConnected("MYCONN")).toBe(true)
   })
 })

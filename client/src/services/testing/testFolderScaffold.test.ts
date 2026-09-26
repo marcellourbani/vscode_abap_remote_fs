@@ -1,5 +1,5 @@
 import * as path from "path"
-import { buildTestFolderTsconfig, RuntimePaths } from "./testFolderScaffold"
+import { buildTestFolderTsconfig, type RuntimePaths } from "./testFolderScaffold"
 
 const folder = path.resolve("test-workspace")
 const paths: RuntimePaths = {

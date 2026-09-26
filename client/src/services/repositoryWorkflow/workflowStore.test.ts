@@ -1,20 +1,17 @@
 import * as fs from "fs/promises"
 import * as os from "os"
 import * as path from "path"
+import { vi } from "vitest"
 
-let root = ""
+const { state } = vi.hoisted(() => ({ state: { root: "" } }))
 
-jest.mock(
-  "vscode",
-  () => ({
-    workspace: {
-      getConfiguration: jest.fn(() => ({
-        get: jest.fn((_key: string, fallback: unknown) => root || fallback)
-      }))
-    }
-  }),
-  { virtual: true }
-)
+vi.mock("vscode", () => ({
+  workspace: {
+    getConfiguration: vi.fn(() => ({
+      get: vi.fn((_key: string, fallback: unknown) => state.root || fallback)
+    }))
+  }
+}))
 
 import { WorkflowStore } from "./workflowStore"
 import { WORKFLOW_SCHEMA_VERSION } from "./types"
@@ -43,11 +40,11 @@ function criteria() {
 
 describe("WorkflowStore", () => {
   beforeEach(async () => {
-    root = await fs.mkdtemp(path.join(os.tmpdir(), "repository-workflow-"))
+    state.root = await fs.mkdtemp(path.join(os.tmpdir(), "repository-workflow-"))
   })
 
   afterEach(async () => {
-    await fs.rm(root, { recursive: true, force: true })
+    await fs.rm(state.root, { recursive: true, force: true })
   })
 
   it("creates isolated workflows and rejects identical connections", async () => {

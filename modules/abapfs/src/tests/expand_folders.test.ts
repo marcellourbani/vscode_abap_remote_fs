@@ -1,7 +1,7 @@
 import { isFolder, isAbapFile, isAbapStat } from "../index.js"
 import { runTest } from "./connectServer"
 import { convertSlash } from "abapobject"
-import { mock } from "jest-mock-extended"
+import { mock } from "vitest-mock-extended"
 
 test(
   "class in $ABAPGIT",
@@ -109,7 +109,7 @@ test(
       "/$TMP/$ADTBACKEND/Transformations/ZABAPGIT_ST_REPO_INFO_EXT_REQ.xslt.xml"
     )
 
-    if (!isAbapFile(tran)) fail("Transformaton should be a file")
+    if (!isAbapFile(tran)) throw new Error("Transformaton should be a file")
     const source = await tran.read()
     expect(source.match(/sap\.transform/i)).toBeTruthy()
   })

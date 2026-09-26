@@ -1,84 +1,84 @@
-jest.mock(
-  "../services/funMessenger",
-  () => ({
-    funWindow: {
-      showWarningMessage: jest.fn(),
-      showQuickPick: jest.fn(),
-      showInputBox: jest.fn(),
-      showErrorMessage: jest.fn(),
-      createOutputChannel: jest.fn(() => ({
-        info: jest.fn(),
-        warn: jest.fn(),
-        error: jest.fn(),
-        debug: jest.fn(),
-        trace: jest.fn()
-      }))
-    }
-  }),
-  { virtual: false }
-)
-jest.mock(
-  "../lib",
-  () => ({
-    log: Object.assign(jest.fn(), {
-      info: jest.fn(),
-      warn: jest.fn(),
-      error: jest.fn(),
-      debug: jest.fn(),
-      trace: jest.fn()
+vi.mock("../services/funMessenger", () => ({
+  funWindow: {
+    showWarningMessage: vi.fn(),
+    showQuickPick: vi.fn(),
+    showInputBox: vi.fn(),
+    showErrorMessage: vi.fn(),
+    createOutputChannel: vi.fn(function () {
+      return {
+        info: vi.fn(),
+        warn: vi.fn(),
+        error: vi.fn(),
+        debug: vi.fn(),
+        trace: vi.fn()
+      }
     })
-  }),
-  { virtual: false }
-)
+  }
+}))
+vi.mock("../lib", () => ({
+  log: Object.assign(vi.fn(), {
+    info: vi.fn(),
+    warn: vi.fn(),
+    error: vi.fn(),
+    debug: vi.fn(),
+    trace: vi.fn()
+  })
+}))
 
-jest.mock(
-  "vscode",
-  () => {
-    const NotebookCellKind = { Markup: 1, Code: 2 }
+vi.mock("vscode", () => {
+  const NotebookCellKind = { Markup: 1, Code: 2 }
 
-    const NotebookCellData = jest
-      .fn()
-      .mockImplementation((kind: number, value: string, languageId: string) => ({
-        kind,
-        value,
-        languageId,
-        metadata: {} as Record<string, any>
-      }))
+  const NotebookCellData = vi.fn().mockImplementation(function (
+    kind: number,
+    value: string,
+    languageId: string
+  ) {
+    return {
+      kind,
+      value,
+      languageId,
+      metadata: {} as Record<string, any>
+    }
+  })
 
-    const NotebookData = jest.fn().mockImplementation((cells: any[]) => ({
+  const NotebookData = vi.fn().mockImplementation(function (cells: any[]) {
+    return {
       cells,
       metadata: {} as Record<string, any>
-    }))
-
-    return {
-      NotebookCellKind,
-      NotebookCellData,
-      NotebookData,
-      workspace: {
-        registerNotebookSerializer: jest.fn(() => ({ dispose: jest.fn() }))
-      }
     }
-  },
-  { virtual: true }
-)
+  })
+
+  return {
+    NotebookCellKind,
+    NotebookCellData,
+    NotebookData,
+    workspace: {
+      registerNotebookSerializer: vi.fn(function () {
+        return { dispose: vi.fn() }
+      })
+    }
+  }
+})
 
 import { AbapNotebookSerializer, registerNotebookSerializer } from "./abapNotebookSerializer"
 import { NOTEBOOK_TYPE, SQL_LANGUAGE_ID } from "./types"
 import vscode from "vscode"
+import * as __$mock_services_funMessenger from "../services/funMessenger"
+import * as __$mock_vscode from "vscode"
 
 // We use a real CancellationToken stub — serialize/deserialize ignore it
-const stubToken: any = { isCancellationRequested: false, onCancellationRequested: jest.fn() }
+const stubToken: any = { isCancellationRequested: false, onCancellationRequested: vi.fn() }
 
 function encode(text: string): Uint8Array {
   return new TextEncoder().encode(text)
 }
 
-async function deserialize(text: string) {
+function deserialize(text: string) {
   const serializer = new AbapNotebookSerializer()
   return serializer.deserializeNotebook(encode(text), stubToken)
 }
 
-async function serialize(data: any) {
+function serialize(data: any) {
   const serializer = new AbapNotebookSerializer()
   return serializer.serializeNotebook(data, stubToken)
 }
@@ -90,7 +90,7 @@ function decodeResult(bytes: Uint8Array): string {
 // ── Deserialization ──────────────────────────────────────────────────────────
 
 describe("AbapNotebookSerializer.deserializeNotebook", () => {
-  beforeEach(() => jest.clearAllMocks())
+  beforeEach(() => vi.clearAllMocks())
 
   test("deserializes empty content to empty notebook with version 1", async () => {
     const data = await deserialize("")
@@ -256,7 +256,7 @@ describe("AbapNotebookSerializer.deserializeNotebook", () => {
   })
 
   test("shows warning message when JSON is corrupt and unfixable", async () => {
-    const { funWindow: win } = require("../services/funMessenger")
+    const { funWindow: win } = __$mock_services_funMessenger
     await deserialize("{not json at all!!")
     expect(win.showWarningMessage).toHaveBeenCalledWith(expect.stringContaining("invalid JSON"))
   })
@@ -281,7 +281,7 @@ describe("AbapNotebookSerializer.deserializeNotebook", () => {
 // ── Serialization ────────────────────────────────────────────────────────────
 
 describe("AbapNotebookSerializer.serializeNotebook", () => {
-  beforeEach(() => jest.clearAllMocks())
+  beforeEach(() => vi.clearAllMocks())
 
   function makeData(cells: any[], meta: Record<string, any> = { version: 1 }) {
     return { cells, metadata: meta }
@@ -414,12 +414,12 @@ describe("AbapNotebookSerializer.serializeNotebook", () => {
 // ── registerNotebookSerializer ───────────────────────────────────────────────
 
 describe("registerNotebookSerializer", () => {
-  beforeEach(() => jest.clearAllMocks())
+  beforeEach(() => vi.clearAllMocks())
 
   test("calls vscode.workspace.registerNotebookSerializer", () => {
-    const context = { subscriptions: { push: jest.fn() } } as any
+    const context = { subscriptions: { push: vi.fn() } } as any
     registerNotebookSerializer(context)
-    const vscode = require("vscode")
+    const vscode = __$mock_vscode
     expect(vscode.workspace.registerNotebookSerializer).toHaveBeenCalledWith(
       NOTEBOOK_TYPE,
       expect.any(AbapNotebookSerializer),
@@ -428,7 +428,7 @@ describe("registerNotebookSerializer", () => {
   })
 
   test("returns a disposable", () => {
-    const context = { subscriptions: { push: jest.fn() } } as any
+    const context = { subscriptions: { push: vi.fn() } } as any
     const disposable = registerNotebookSerializer(context)
     expect(disposable).toBeDefined()
     expect(typeof disposable.dispose).toBe("function")
