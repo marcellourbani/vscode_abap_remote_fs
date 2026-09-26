@@ -1,5 +1,59 @@
 # Changelog
 
+## 2.10.2
+
+### Patch Changes
+
+- 71e6591: Jev playground
+
+## 2.10.1
+
+### Patch Changes
+
+- 87c660e: fix change password command call
+- de2ae6d: speed up build
+- c171f5b: Repository comparison Improvements and fixes
+- 2f703b2: fix code completion
+- 1e78375: Migrate the build system from Webpack to tsdown (Rolldown + Oxc under the hood).
+
+  The extension, notebook JS worker, language server, and SAP testing runtime now bundle with
+  tsdown. Behavioral contracts are preserved: CommonJS output, externals (`vscode`,
+  `@playwright/test`), the vendored Playwright `node_modules` layout, and `keep_classnames`
+  minification. No runtime behavior change; clean builds are dramatically faster and the
+  packaged VSIX is slightly smaller. Removes webpack, webpack-cli, ts-loader,
+  terser-webpack-plugin, and copy-webpack-plugin.
+
+## 2.10.0
+
+### Minor Changes
+
+- e5a94ce: Repository Comparison Workflows
+
+## 2.9.1
+
+### Patch Changes
+
+- 4963169: code completion fixes
+- 1f80cd4: add option to control skills visibility
+
+## 2.9.0
+
+### Minor Changes
+
+- 3558207: Upgrade to Typescript 6.0
+
+### Patch Changes
+
+- 9436354: disable skills and agents when no SAP system is connected
+- 5fc743f: add background jobs skill
+- 1c1724b: update ATC tool description
+- df971e3: Add production SQL permission control
+- ec98f38: improve password and auth failure handling
+- 69c2233: update skills and agents; new code review helper skill
+- 8c14067: Add SAP UI testing framework information to the upgrade notification
+- bb79dc7: remove deprecated custom agents in subagents setting
+- 68b2136: Route domains and table types through the XML editor so their definitions can be read and saved at the DDIC object endpoint.
+
 ## 2.8.9
 
 ### Patch Changes

@@ -12,7 +12,7 @@ If you're used to SE38, SE24, or ADT in Eclipse, ABAP FS brings that same direct
 
 ## What you can do
 
-> **Note:** ABAP FS has 40+ AI tools, but only the documentation tool is available until you connect to a SAP system. Add SAP connections using Connection manager and then run `ABAP FS: Connect to an ABAP system` from the Command Palette to unlock all tools.
+> **Note:** A connected SAP system is the main feature gate for ABAP FS. Until you connect at least one system, SAP-backed AI tools, ABAP skills, and chat agents/subagents are hidden. The documentation and SAP testing setup tools remain available so you can configure the extension. Add a connection using Connection Manager, then run `ABAP FS: Connect to an ABAP system` from the Command Palette.
 
 This is a high-level summary. See the left navigation for full feature pages.
 
@@ -20,6 +20,7 @@ This is a high-level summary. See the left navigation for full feature pages.
 |------|-------------|
 | **AI-Powered Development** | 40 tools give Copilot deep SAP awareness — search objects, read code, run tests, explain dumps, all via natural language |
 | **Edit & Activate** | Browse, open, edit, and activate ABAP objects on the live system |
+| **Repository Comparison** | [Discover and compare scoped repositories](repository-comparison/index.md) across two systems, export results, and prepare reviewed assisted-apply plans |
 | **Editor Experience** | Enhanced hover info, custom editors, object properties, and dedicated ABAP views/panels |
 | **Debug** | Full ABAP debugger with breakpoints, variable inspection, stepping, and debug recording |
 | **Test** | Run unit tests, create test classes, generate test documentation |

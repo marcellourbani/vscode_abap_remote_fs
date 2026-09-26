@@ -301,7 +301,7 @@ export class AdtCommands {
           return commands.executeCommand(AbapFsCommands.connectionManager)
         }
         if (action === "Change Password") {
-          return commands.executeCommand(AbapFsCommands.changePassword, { connection: name })
+          return commands.executeCommand(AbapFsCommands.changePassword, name)
         }
         return
       }

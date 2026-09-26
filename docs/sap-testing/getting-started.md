@@ -16,7 +16,7 @@ This is a normal folder you own. Everything Copilot produces — test cases, scr
 
 `Ctrl+Shift+P` → **ABAP FS: Enable SAP UI Testing Features** → pick the folder you just created.
 
-SAP Testing stays completely hidden until you do this. Choosing the folder is what switches on the testing skills, subagents, and tools — before that, none of them appear in Copilot chat.
+Choosing the folder configures the local testing workspace, but it does not by itself make SAP Testing visible in Copilot. At least one SAP system must also be connected. Once both prerequisites are met, the testing skills, subagents, and operational tools can appear; testing agents still require model configuration.
 
 ABAP FS also drops a few of its own files into the folder at this point. Leave them alone — see [About the files ABAP FS creates](#about-the-files-abap-fs-creates) below for what they are and why they matter.
 

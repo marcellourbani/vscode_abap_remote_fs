@@ -1,4 +1,4 @@
-import { isFolder, isAbapFile, isAbapStat } from ".."
+import { isFolder, isAbapFile, isAbapStat } from "../index.js"
 import { runTest } from "./connectServer"
 import { convertSlash } from "abapobject"
 import { mock } from "vitest-mock-extended"

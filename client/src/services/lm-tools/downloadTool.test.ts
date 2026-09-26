@@ -218,6 +218,29 @@ describe("DownloadTool", () => {
       )
     })
 
+    it("uses the target system alternate source library path for a cross-system URI", async () => {
+      mountFs({
+        "adt://qas100/Source Library/Programs/ztest/ztest.prog.abap": {
+          type: F,
+          bytes: new Uint8Array([1])
+        }
+      })
+      await tool.invoke(
+        makeInvokeOptions({
+          source: "adt://dev100/Source Code Library/Programs/ztest/ztest.prog.abap",
+          target: "C:/out",
+          connectionId: "QAS100"
+        }),
+        makeToken()
+      )
+      expect(fs.stat).toHaveBeenCalledWith(
+        expect.objectContaining({
+          authority: "qas100",
+          path: "/Source Library/Programs/ztest/ztest.prog.abap"
+        })
+      )
+    })
+
     it("lowercases connectionId", async () => {
       mountFs({ "adt://ged100/pkg": { type: F } })
       const findByAdtUri = vi.fn().mockResolvedValue({ path: "/pkg" })

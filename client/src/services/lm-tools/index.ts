@@ -57,6 +57,7 @@ import { WebviewManager } from "../webviewManager"
 import { registerHeartbeatTool, initializeHeartbeatService } from "../heartbeat"
 import { registerAdtDiscoveryTool } from "./adtDiscoveryTool"
 import { registerRelationAnalysisTool } from "./relationAnalysisTool"
+import { registerRepositoryWorkflowTools } from "./repositoryWorkflowTools"
 
 /**
  * Register all language model tools
@@ -170,6 +171,7 @@ export async function registerAllTools(context: vscode.ExtensionContext): Promis
   registerPlaywrightTestTool(context)
   // 22. ANST Enhancement Analysis Tool
   registerAnalyzeAnstEnhancementsTool(context)
+  registerRepositoryWorkflowTools(context)
 
   // Initialize heartbeat service (will auto-start if enabled in config)
   const heartbeatService = initializeHeartbeatService(context)

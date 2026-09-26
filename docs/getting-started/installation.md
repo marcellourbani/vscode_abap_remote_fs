@@ -2,7 +2,7 @@
 
 Before proceeding, ensure you meet the [Prerequisites](prerequisite.md).
 
-> **Note:** ABAP FS registers 40+ AI tools for Copilot, but only the documentation tool is available until you connect to a SAP system. Connect to SAP first to unlock all tools.
+> **Note:** A connected SAP system is the main feature gate. Until at least one system is connected, SAP-backed AI tools, ABAP skills, and chat agents/subagents are hidden. The documentation and SAP testing setup tools remain available. Complete the connection steps below to unlock the SAP features.
 
 ## 1. Install the extension
 
@@ -36,6 +36,8 @@ Before proceeding, ensure you meet the [Prerequisites](prerequisite.md).
 2. Select the system you configured
 3. Enter your password if prompted
 4. Wait a moment for VS Code to establish the connection
+
+Once the connection is active, ABAP FS enables the SAP-backed AI tools, ABAP skills, and configured chat agents. SAP Testing also requires a testing folder; see [SAP Testing](../sap-testing/index.md).
 
 ## Password Management
 

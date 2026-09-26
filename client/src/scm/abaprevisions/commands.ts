@@ -7,6 +7,14 @@ import {
   ProgressLocation,
   TabInputTextDiff
 } from "vscode"
+import {
+  Uri,
+  type QuickPickItem,
+  commands,
+  workspace,
+  ProgressLocation,
+  TabInputTextDiff
+} from "vscode"
 import { funWindow as window } from "../../services/funMessenger"
 import {
   abapUri,
@@ -17,6 +25,7 @@ import {
   rootIsConnected
 } from "../../adt/conections"
 import { AbapRevisionService, revLabel } from "./abaprevisionservice"
+import { ADTClient, type Revision } from "abap-adt-api"
 import { ADTClient, type Revision } from "abap-adt-api"
 import { AbapQuickDiff } from "./quickdiff"
 import { decodeRevisioUrl, revisionUri } from "./documentprovider"

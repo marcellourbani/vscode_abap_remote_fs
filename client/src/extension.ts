@@ -38,6 +38,7 @@ import { AbapHoverProviderV2 } from "./providers/hoverProvider"
 import { AbapDocumentSymbolProvider } from "./providers/abapDocumentSymbolProvider"
 import { registerAllTools } from "./services/lm-tools"
 import { registerTestingFeatures } from "./services/testing/activation"
+import { registerSkillsControl } from "./services/skillsPanel"
 import { registerCleanerCommands, setupCleanerContextMonitoring } from "./services/cleanerCommands"
 import { TelemetryService, logTelemetry } from "./services/telemetry"
 import { AppInsightsService } from "./services/appInsightsService"
@@ -64,6 +65,7 @@ import { ObjectSearchViewProvider } from "./views/objectSearchView"
 import { funWindow as window } from "./services/funMessenger"
 import { initializeReviewPrompt } from "./services/reviewPrompt"
 import { registerBdefType } from "./adt/operations/BdefCreator"
+import { registerJevPlayground } from "./services/jev/jevPlayground"
 
 // Import commands to ensure @command decorators are executed
 import "./commands"
@@ -174,6 +176,9 @@ export async function activate(ctx: ExtensionContext): Promise<AbapFsApi> {
     // Register SAP UI testing features (dormant until a test folder is configured)
     registerTestingFeatures(context)
 
+    // Register general skill availability controls.
+    registerSkillsControl(context)
+
     // Register ABAP Cleaner feature
     registerCleanerCommands(context)
     setupCleanerContextMonitoring(context)
@@ -183,6 +188,9 @@ export async function activate(ctx: ExtensionContext): Promise<AbapFsApi> {
 
     // Initialize SAP Data Workbook (.sapwb)
     registerAbapNotebooks(context)
+
+    // Register the optional Jev playground.
+    registerJevPlayground(context)
 
     sub.push(
       commands.registerCommand("abapfs.startMcpServer", () => startMcpServerCommand(context))

@@ -273,26 +273,30 @@ const REGISTRY: ObjectTypeConfig[] = [
     label: "Table Type",
     gui_objects: "better",
     extension: ".ttyp.xml",
-    filterLabel: "Table Types"
+    filterLabel: "Table Types",
+    creatorClass: "AbapXml"
   },
   {
     type: "TTYP/TT",
     label: "Table Type",
     gui_objects: "better",
-    extension: ".ttyp.xml"
+    extension: ".ttyp.xml",
+    creatorClass: "AbapXml"
   },
   {
     type: "DOMA/DD",
     label: "Domain",
     gui_objects: "better",
     extension: ".doma.xml",
-    filterLabel: "Domains"
+    filterLabel: "Domains",
+    creatorClass: "AbapXml"
   },
   {
     type: "DOMA/DO",
     label: "Domain",
     gui_objects: "better",
-    extension: ".doma.xml"
+    extension: ".doma.xml",
+    creatorClass: "AbapXml"
   },
   {
     type: "VIEW/DV",

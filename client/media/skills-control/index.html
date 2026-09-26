@@ -1,0 +1,32 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta
+      http-equiv="Content-Security-Policy"
+      content="default-src 'none'; style-src {{CSP_SOURCE}}; script-src {{CSP_SOURCE}}; base-uri 'none'; form-action 'none';"
+    />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <link rel="stylesheet" href="{{STYLE_URI}}" />
+    <title>ABAP FS Skills</title>
+  </head>
+  <body>
+    <main>
+      <header>
+        <div>
+          <h1>ABAP FS Skills</h1>
+          <p>Choose which general skills Copilot can use.</p>
+        </div>
+        <button id="refresh" class="secondary" type="button">Refresh</button>
+      </header>
+
+      <div class="sticky-actions">
+        <button id="save" type="button" disabled>Save</button>
+      </div>
+
+      <div id="status" class="status info" role="status" aria-live="polite">Loading skills…</div>
+      <section id="skills" aria-label="ABAP FS skills"></section>
+    </main>
+    <script src="{{SCRIPT_URI}}"></script>
+  </body>
+</html>
