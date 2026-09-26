@@ -1,5 +1,11 @@
 # Changelog
 
+## 2.10.2
+
+### Patch Changes
+
+- 71e6591: Jev playground
+
 ## 2.10.1
 
 ### Patch Changes
