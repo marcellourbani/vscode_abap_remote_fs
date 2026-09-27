@@ -3852,26 +3852,18 @@
 <hr />
 <h2 id="building-and-distributing">Building and Distributing<a class="headerlink" href="#building-and-distributing" title="Permanent link">&para;</a></h2>
 <p>After completing configuration above:</p>
-<ol>
-<li>
 <p><strong>Install dependencies:</strong></p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a>npm<span class="w"> </span>install
+<div class="highlight"><pre><span></span><code><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a>pnpm<span class="w"> </span>install
 </code></pre></div>
-</li>
-<li>
 <p><strong>Build and package:</strong></p>
 <div class="highlight"><pre><span></span><code><a id="__codelineno-6-1" name="__codelineno-6-1" href="#__codelineno-6-1"></a><span class="c1"># Windows (recommended)</span>
 <a id="__codelineno-6-2" name="__codelineno-6-2" href="#__codelineno-6-2"></a>build-and-install.bat
 <a id="__codelineno-6-3" name="__codelineno-6-3" href="#__codelineno-6-3"></a>
 <a id="__codelineno-6-4" name="__codelineno-6-4" href="#__codelineno-6-4"></a><span class="c1"># Or manually:</span>
-<a id="__codelineno-6-5" name="__codelineno-6-5" href="#__codelineno-6-5"></a>npm<span class="w"> </span>run<span class="w"> </span>compile
-<a id="__codelineno-6-6" name="__codelineno-6-6" href="#__codelineno-6-6"></a>npx<span class="w"> </span>vsce<span class="w"> </span>package
+<a id="__codelineno-6-5" name="__codelineno-6-5" href="#__codelineno-6-5"></a>pnpm<span class="w"> </span>build
+<a id="__codelineno-6-6" name="__codelineno-6-6" href="#__codelineno-6-6"></a>pnpm<span class="w"> </span>package
 </code></pre></div>
-</li>
-<li>
 <p><strong>Distribute</strong> the generated <code>.vsix</code> file to your users. They can install it via Extensions → <code>...</code> → <strong>Install from VSIX...</strong></p>
-</li>
-</ol>
 
 
 
