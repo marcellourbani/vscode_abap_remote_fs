@@ -25,8 +25,7 @@ import { assertToolInvocationAuthorized } from "../lm-tools/toolGuard"
 
 export interface HeartbeatToolParams {
   /** Action to perform */
-  action:
-    // Service control
+  action: // Service control
     | "status"
     | "start"
     | "stop"
