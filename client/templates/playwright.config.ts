@@ -22,7 +22,7 @@ export default defineConfig({
   workers: parallel ? Number(process.env.SAP_TESTING_MAX_TASKS ?? 3) : 1,
   retries: 0,
   // Sibling file in dist/vendor, emitted by the same build.
-  globalSetup: path.join(import.meta.dirname, "sso-global-setup.js"),
+  globalSetup: "./sso-global-setup.js",
   // Traces and videos, NOT our evidence. Must be set explicitly: Playwright derives this from
   // the config file's location, and this config ships inside the extension install.
   outputDir: process.env.SAP_TESTING_ROOT

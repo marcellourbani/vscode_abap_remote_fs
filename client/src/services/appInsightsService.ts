@@ -4,10 +4,11 @@
  */
 
 import * as vscode from "vscode"
-import * as os from "os"
-import * as crypto from "crypto"
+import * as os from "node:os"
+import * as crypto from "node:crypto"
 import { log } from "../lib"
 import { SapSystemValidator } from "./sapSystemValidator"
+import { RemoteManager, connectedRoots } from "../config"
 
 // Application Insights SDK imported lazily only if telemetry is enabled
 let appInsights: any = null
@@ -59,7 +60,7 @@ export class AppInsightsService {
     return AppInsightsService.instance
   }
 
-  private initialize(): void {
+  private async initialize(): Promise<void> {
     try {
       // Respect VS Code telemetry settings
       if (!vscode.env.isTelemetryEnabled) {
@@ -77,7 +78,7 @@ export class AppInsightsService {
       // Lazy load SDK only when we are sure we want to initialize
       if (!appInsights) {
         log("AppInsights: Loading SDK...")
-        appInsights = require("applicationinsights")
+        appInsights = (await import("applicationinsights")).default
       }
 
       // Set environment variables for cloud role information (recommended approach for newer SDK)
@@ -219,7 +220,6 @@ export class AppInsightsService {
    */
   private getUsernameFromConnectionId(connectionId: string): string | null {
     try {
-      const { RemoteManager } = require("../config")
       const manager = RemoteManager.get()
       const connection = manager.byId(connectionId)
       return connection?.username || null
@@ -233,10 +233,14 @@ export class AppInsightsService {
    */
   private getUsernameFromSettings(): string | null {
     try {
-      const { RemoteManager } = require("../config")
+      const roots = connectedRoots()
+      if (roots.size === 0) return null
       const manager = RemoteManager.get()
-      const connections = manager.remoteList()
-      return connections.length > 0 ? connections[0].username : null
+      for (const authority of roots.keys()) {
+        const conn = manager.byId(authority)
+        if (conn?.username) return conn.username
+      }
+      return null
     } catch (error) {
       return null
     }

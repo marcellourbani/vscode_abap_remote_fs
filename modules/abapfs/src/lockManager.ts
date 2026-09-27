@@ -1,6 +1,6 @@
-import { Root } from "./root.js"
-import { LockObject, delay } from "./lockObject.js"
-import { isAbapStat } from "./abapFile.js"
+import { Root } from "./root"
+import { LockObject, delay } from "./lockObject"
+import { isAbapStat } from "./abapFile"
 import { FileSystemError } from "vscode"
 import { isLoginError, isCsrfError, type AdtException, isHttpError } from "abap-adt-api"
 

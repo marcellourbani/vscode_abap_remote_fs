@@ -8,42 +8,25 @@
   "_warning": "DO NOT mix different people's IDs in one developer object - this will incorrectly group them as one person!",
   "_example_john": "If John has IDs 'john.doe', 'j0d0o3e', 'john.d' - put all THREE in one developer object",
   "_example_wrong": "WRONG: Putting John's and Jane's IDs together in one developer object",
-  
+
   "version": {
     "minimumExtensionVersion": "1.2.3"
   },
-  
-  "allowedDomains": [
-    "*sapdev*",
-    "*sapqa*",
-    "*sapprd*",
-    "*saptest*"
-  ],
-  
+
+  "allowedDomains": ["*sapdev*", "*sapqa*", "*sapprd*", "*saptest*"],
+
   "developers": [
     {
       "manager": "Team_Lead_Name",
-      "userIds": [
-        "john.doe",
-        "j0d0o3e",
-        "john.d"
-      ]
+      "userIds": ["john.doe", "j0d0o3e", "john.d"]
     },
     {
       "manager": "Another_Manager",
-      "userIds": [
-        "jane.smith",
-        "j0s0m1h"
-      ]
+      "userIds": ["jane.smith", "j0s0m1h"]
     },
     {
       "manager": "Third_Manager",
-      "userIds": [
-        "bob.jones",
-        "b0j0n2s",
-        "robert.jones"
-      ]
+      "userIds": ["bob.jones", "b0j0n2s", "robert.jones"]
     }
   ]
 }
-

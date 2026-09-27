@@ -11,7 +11,7 @@ import {
   Uri
 } from "vscode"
 import { type GitRepo, ADTClient, objectPath } from "abap-adt-api"
-import { v1 } from "uuid"
+import { randomUUID } from "node:crypto"
 import { command, AbapFsCommands } from "../commands"
 import { PACKAGE } from "../adt/operations/AdtObjectCreator"
 import { selectTransport } from "../adt/AdtTransports"
@@ -69,7 +69,7 @@ class AbapGit {
     const item: ServerItem = {
       tag: "server",
       connId,
-      id: v1(),
+      id: randomUUID(),
       contextValue: "system",
       collapsibleState: TreeItemCollapsibleState.Expanded,
       label: connId,
@@ -82,7 +82,7 @@ class AbapGit {
     return {
       tag: "nogit",
       connId,
-      id: v1(),
+      id: randomUUID(),
       label: `${connId} ADT plugin not installed`,
       description: `click to open ${uri}`,
       tooltip: `click to open ${uri}`,
@@ -101,7 +101,7 @@ class AbapGit {
     return {
       tag: "repo",
       repo,
-      id: v1(),
+      id: randomUUID(),
       label: repo.sapPackage,
       contextValue,
       description: repo.url,

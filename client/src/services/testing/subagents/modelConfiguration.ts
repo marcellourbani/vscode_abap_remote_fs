@@ -47,7 +47,7 @@ function runExclusive<T>(operation: () => Promise<T>): Promise<T> {
 }
 
 function agentFilePath(context: vscode.ExtensionContext, fileName: string): string {
-  // Webpack copies client/media verbatim into client/dist/media at build time.
+  // The client build copies client/media verbatim into client/dist/media.
   return path.join(context.extensionPath, "client", "dist", "media", "agents", fileName)
 }
 

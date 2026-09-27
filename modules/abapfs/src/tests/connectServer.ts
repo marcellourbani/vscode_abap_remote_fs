@@ -1,4 +1,4 @@
-import { createRoot, AFsService, Root } from "../index.js"
+import { createRoot, AFsService, Root } from "../index"
 import { ADTClient } from "abap-adt-api"
 import { Agent } from "https"
 /** this will connect to a real server, and mostly rely on abapgit as sample data
@@ -27,7 +27,6 @@ export const runTest = (f: (c: Root) => Promise<void>) => {
     try {
       await f(root)
     } finally {
-      jest.setTimeout(5000) // restore the default 5000
       if (client.statelessClone.loggedin) client.statelessClone.logout()
       if (client.loggedin) client.logout()
     }

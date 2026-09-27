@@ -136,7 +136,9 @@ documents.onDidSave(e => {
 connection.onCodeAction(codeActionHandler)
 connection.onRenameRequest(renameHandler)
 // custom APIs exposed to the client
-connection.onRequest(Methods.cancelSearch, cancelSearch)
+connection.onRequest(Methods.cancelSearch, async () => {
+  await cancelSearch()
+})
 connection.onRequest(Methods.updateMainProgram, updateInclude)
 connection.onRequest(Methods.triggerSyntaxCheck, (uri: string) => {
   const doc = documents.get(uri)

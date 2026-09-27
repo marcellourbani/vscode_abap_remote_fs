@@ -12,7 +12,7 @@ import {
   workspace
 } from "vscode"
 import { XMLParser } from "fast-xml-parser"
-import { decode } from "html-entities"
+import { decodeHTML } from "entities"
 import path from "path"
 import { getClient } from "../adt/conections"
 import { funWindow as window } from "../services/funMessenger"
@@ -64,7 +64,7 @@ const parseMessages = (source: string) => {
 
     return {
       number: msgno,
-      text: decode(m["@_mc:msgtext"]),
+      text: decodeHTML(m["@_mc:msgtext"] ?? ""),
       selfexplainatory: m["@_mc:selfexplainatory"],
       link
     }

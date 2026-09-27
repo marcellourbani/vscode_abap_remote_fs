@@ -1,25 +1,23 @@
 {
   "name": "vscode-abap-remote-fs-sharedapi",
   "version": "1.0.0",
+  "private": true,
   "description": "Types and functions shared between client and server",
   "main": "src/index.ts",
   "types": "src/index.ts",
   "type": "module",
-  "engines": {
-    "node": ">=22"
-  },
   "scripts": {
     "build": "tsc --noEmit",
     "typecheck": "tsc --noEmit",
-    "watch": "tsc -w",
-    "prepublishOnly": "tsc --noEmit"
+    "clean": "node ../../scripts/rm.mjs out tsconfig.tsbuildinfo",
+    "watch": "tsc -w"
   },
   "author": "Marcello Urbani",
   "license": "MIT",
   "devDependencies": {
-    "@types/node": "^22.0.0",
+    "@types/node": "catalog:",
     "method-call-logger": "^1.0.7",
-    "abap-adt-api": "^8.4.3",
-    "typescript": "6.0.3"
+    "abap-adt-api": "catalog:",
+    "typescript": "catalog:"
   }
 }

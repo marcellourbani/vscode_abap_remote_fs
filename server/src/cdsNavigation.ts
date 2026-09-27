@@ -1,4 +1,29 @@
 import { ADTClient, type DdicObjectReference } from "abap-adt-api"
+import { XMLParser } from "fast-xml-parser"
+
+const _parser = new XMLParser({
+  ignoreAttributes: false,
+  attributeNamePrefix: "@_",
+  trimValues: false,
+  parseAttributeValue: true
+})
+
+const fullParse = (xml: string) => _parser.parse(xml)
+
+const xmlArray = (node: any, ...keys: string[]): any[] => {
+  let cur = node
+  for (const k of keys) cur = cur?.[k]
+  if (!cur) return []
+  return Array.isArray(cur) ? cur : [cur]
+}
+const xmlNodeAttr = (node: unknown): Record<string, any> => {
+  if (typeof node !== "object" || node === null) return {}
+  return Object.fromEntries(
+    Object.entries(node as Record<string, unknown>)
+      .filter(([k]) => k.startsWith("@_") && !k.startsWith("@_xmlns"))
+      .map(([k, v]) => [k.slice(2), v])
+  )
+}
 
 async function ddicRepositoryAccessRaw(
   client: ADTClient,
@@ -8,7 +33,6 @@ async function ddicRepositoryAccessRaw(
     qs: { ...qs, uriRequired: "X" },
     headers: { Accept: "application/*" }
   })
-  const { fullParse, xmlArray, xmlNodeAttr } = require("abap-adt-api/build/utilities")
   const raw = fullParse(response.body)
   const records = raw["adtcore:objectReferences"]
     ? xmlArray(raw, "adtcore:objectReferences", "adtcore:objectReference")

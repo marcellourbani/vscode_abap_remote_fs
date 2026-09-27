@@ -5,9 +5,9 @@ import {
   type ObjectVersion,
   isNodeParent
 } from "abap-adt-api"
-import { type AbapObjectService } from "./AOService.js"
-import { ObjectErrors } from "./AOError.js"
-import { getObjectTypeConfig } from "./registry.js"
+import { type AbapObjectService } from "./AOService"
+import { ObjectErrors } from "./AOError"
+import { getObjectTypeConfig } from "./registry"
 const SAPGUIONLY = "This object type is not supported in VS Code."
 const NSSLASH = "\u2215" // used to be hardcoded as "／", aka "\uFF0F"
 export const PACKAGE = "DEVC/K"

@@ -14,7 +14,7 @@
  * never a business domain (no setMaterial, no pickPlant).
  */
 import type { Page, Frame, TestInfo, Locator, FrameLocator } from "@playwright/test"
-import { runSe16n, type Se16nSpec, type Se16nResult } from "./se16n.js"
+import { runSe16n, type Se16nSpec, type Se16nResult } from "./se16n"
 
 function escapeRe(s: string): string {
   return s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")
@@ -46,10 +46,10 @@ function nameSimilarity(query: string, candidate: string): number {
   const union = new Set([...qt, ...ct]).size
   return union ? shared / union : 0
 }
-import { waitForServer, waitForDomStable } from "./waiters.js"
-import { dismissKnownPopups, type Interrupter, listOpenDialogs } from "./popup-guard.js"
-import { detectRuntimeError, detectSilentBounce } from "./dump-detector.js"
-import { Evidence } from "./evidence.js"
+import { waitForServer, waitForDomStable } from "./waiters"
+import { dismissKnownPopups, type Interrupter, listOpenDialogs } from "./popup-guard"
+import { detectRuntimeError, detectSilentBounce } from "./dump-detector"
+import { Evidence } from "./evidence"
 
 export type SapSessionOptions = {
   tcId: string

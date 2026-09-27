@@ -1,9 +1,9 @@
-import { AbapObjectBase, convertSlash, type AbapObject } from "../AbapObject.js"
-import { AbapClass } from "./AbapClass.js"
+import { AbapObjectBase, convertSlash, type AbapObject } from "../AbapObject"
+import { AbapClass } from "./AbapClass"
 import { ADTClient, type classIncludes } from "abap-adt-api"
-import { isAbapClass } from "./AbapClass.js"
-import { type AbapObjectService } from "../AOService.js"
-import { ObjectErrors } from "../AOError.js"
+import { isAbapClass } from "./AbapClass"
+import { type AbapObjectService } from "../AOService"
+import { ObjectErrors } from "../AOError"
 import type { AbapSimpleStructure } from "abap-adt-api/build/api/objectstructure.js"
 const tag = Symbol("AbapClassInclude")
 const CLASSINCLUDES: any = {

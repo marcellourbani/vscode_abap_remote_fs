@@ -1,4 +1,5 @@
 out
+coverage
 site
 wiki
 client/out/**
@@ -26,9 +27,6 @@ bookmarks.json
 .vscode/
 .agents/
 skills-lock.json
-# Webpack cache directories
-client/node_modules/.cache/
-server/node_modules/.cache/
 # Generated JavaScript files (compiled from TypeScript)
 client/src/**/*.js
 client/src/**/*.js.map

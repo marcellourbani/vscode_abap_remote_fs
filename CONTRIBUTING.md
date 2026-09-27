@@ -23,7 +23,7 @@ This extension has been growing since 2018 and has more features than most peopl
 ## Getting Started
 
 1. Fork the repo and clone it locally
-2. `npm install` (this triggers postinstall which builds 3 sub-modules and installs deps for server + client. Go make coffee. Actually, make a full pot)
+2. Install pnpm 12.4.1, then run `pnpm install`
 3. Open the repo folder in VS Code
 4. Press F5 to launch the Extension Development Host
 5. Make changes, test, repeat
@@ -45,10 +45,13 @@ modules/
 ## Building
 
 ```bash
-npm run build          # webpack everything (production)
-npm run test           # runs all tests across all modules
-npm run format         # prettier — run this before committing
+pnpm build        # build all workspace packages in dependency order
+pnpm typecheck    # type-check source and tests across the workspace
+pnpm test         # run all named Vitest projects
+pnpm format       # run Prettier before committing
 ```
+
+Run one test project with `pnpm test --project client`, `server`, `abapObject`, or `abapfs`.
 
 For development, use the watch tasks — open the Command Palette and run `Tasks: Run Task`, then pick "watch client". They chain dependencies automatically so you don't have to rebuild the world every time you breathe on a file.
 
@@ -68,8 +71,8 @@ This compiles everything, packages a `.vsix`, installs it into VS Code, and make
 - Tests are appreciated. We won't reject a PR without them, but we will give you a look
 - The CI must pass. It runs on Node 24. "Works on my machine" is not a valid CI strategy
 - Commit messages: just say what you did. No `feat(scope):` prefixes, no 🎉 emoji, no haiku
-- Run `npm run format` before pushing — CI doesn't enforce it yet, but we can tell when you didn't
-- Create a [changeset](./CONTRIBUTING.md#changesets) by running `npx changeset` from the project root folder and answer the questions ![changeset example](docs/images/changeset.png)
+- Run `pnpm format` before pushing; CI verifies formatting
+- Create a [changeset](./CONTRIBUTING.md#changesets) by running `pnpm exec changeset` from the project root folder and answer the questions ![changeset example](docs/images/changeset.png)
 
 ### Before You Commit
 
@@ -90,15 +93,16 @@ If you're using AI to write code — and let's be honest, you probably are — i
 
 - TypeScript strict mode
 - No `any` unless you have a really good excuse (and "it was easier" is not one)
-- Prettier handles formatting (`npm run format`) — it's not run automatically on build, so run it yourself
+- Prettier handles formatting (`pnpm format`) — it is not run automatically on build
 - No semicolons, double quotes, trailing commas off — see `.prettierrc.json` and don't fight it
 - 100 character line width
+- Use extensionless relative imports in bundled TypeScript source and tests. Keep explicit `.js` only for external package subpaths or unbundled Node ESM; never import `.ts` extensions
 
 ### Hard Rules
 
 These will get your PR rejected instantly:
 
-- **No dynamic imports** (`import()` / `require()` at runtime). Everything must be statically analyzable. Webpack needs to bundle it, and we need to read it. No exceptions
+- **No dynamic imports** (`import()` / `require()` at runtime). Everything must remain statically analyzable for tsdown and for reviewers. No exceptions
 - **No network calls to external services** — this extension talks to the user's SAP system and nowhere else
 
 ### Guidelines

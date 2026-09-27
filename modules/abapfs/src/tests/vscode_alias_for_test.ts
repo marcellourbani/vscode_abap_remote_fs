@@ -1,5 +1,4 @@
-// copied from visual studio code as the jest can't resolve the js implementation
-// can't find a better slution for now
+// Minimal VS Code API surface used by abapfs tests.
 export enum FileType {
   /**
    * The file type is unknown.

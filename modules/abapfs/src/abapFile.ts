@@ -1,7 +1,7 @@
 import { type FileStat, FileType, FileSystemError } from "vscode"
 import { type AbapObject } from "abapobject"
-import { type AbapFsService } from "./index.js"
-import { AbapFolder, isAbapFolder } from "./abapFolder.js"
+import { type AbapFsService } from "./index"
+import { AbapFolder, isAbapFolder } from "./abapFolder"
 import { type ObjectVersion, isCreatableTypeId } from "abap-adt-api"
 const tag = Symbol("AbapFile")
 
