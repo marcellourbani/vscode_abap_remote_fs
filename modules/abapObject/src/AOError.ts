@@ -2,12 +2,7 @@ import { type AbapObject } from "./AbapObject"
 
 const errorTag = Symbol("abapObjectError")
 export type Kind =
-  | "StructureNotLoaded"
-  | "NoStructure"
-  | "NotLeaf"
-  | "NoChildren"
-  | "NotSupported"
-  | "Invalid"
+  "StructureNotLoaded" | "NoStructure" | "NotLeaf" | "NoChildren" | "NotSupported" | "Invalid"
 
 export class AbapObjectError extends Error {
   [errorTag]: true

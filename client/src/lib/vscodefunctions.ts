@@ -67,20 +67,13 @@ export function simpleInputBox(prompt: string, value = "", password = false) {
 }
 
 type simplePickSource<T extends string = string> =
-  | T[]
-  | Promise<T[]>
-  | (() => T[])
-  | (() => Promise<T[]>)
+  T[] | Promise<T[]> | (() => T[]) | (() => Promise<T[]>)
 
 type recordPickSource<T extends QuickPickItem> =
-  | T[]
-  | Promise<T[]>
-  | (() => T[])
-  | (() => Promise<T[]>)
+  T[] | Promise<T[]> | (() => T[]) | (() => Promise<T[]>)
 
 type pickSource<T extends QuickPickItem, T2 extends string> =
-  | simplePickSource<T2>
-  | recordPickSource<T>
+  simplePickSource<T2> | recordPickSource<T>
 
 interface RfsQuickPickOptions extends QuickPickOptions {
   bypassIfSingle?: boolean

@@ -17,10 +17,7 @@ import { assertToolInvocationAuthorized } from "./toolGuard"
 
 export interface IManageTransportRequestsParameters {
   action:
-    | "get_user_transports"
-    | "get_transport_details"
-    | "get_transport_objects"
-    | "compare_transports"
+    "get_user_transports" | "get_transport_details" | "get_transport_objects" | "compare_transports"
   connectionId?: string
   user?: string
   transportNumber?: string
