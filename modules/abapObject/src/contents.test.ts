@@ -127,7 +127,11 @@ test(
 
       const childNodes = await (await obj.childComponents()).nodes
 
-      const main = fromNode(childNodes.find(n => n.TECH_NAME === "main")!, obj, service)
+      const main = fromNode(
+        childNodes.find(n => n.TECH_NAME === "main")!,
+        obj,
+        service
+      )
 
       expect(main.contentsPath()).toMatch(/\/source\/main/)
       const source = await main.read()

@@ -36,13 +36,11 @@ export const saveRepos = (scms: Map<string, ScmData>) => {
   if (storage) {
     return storage.update(
       REPOSSTORAGEKEY,
-      [...scms.values()].map(
-        (s): StoredRepo => ({
-          connId: s.connId,
-          repoKey: s.repo.key,
-          user: s.credentials?.user
-        })
-      )
+      [...scms.values()].map((s): StoredRepo => ({
+        connId: s.connId,
+        repoKey: s.repo.key,
+        user: s.credentials?.user
+      }))
     )
   }
 }

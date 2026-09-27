@@ -1,10 +1,5 @@
 export type JevJsonValue =
-  | string
-  | number
-  | boolean
-  | null
-  | JevJsonValue[]
-  | { [key: string]: JevJsonValue }
+  string | number | boolean | null | JevJsonValue[] | { [key: string]: JevJsonValue }
 
 export type JevEntry = string | JevJsonValue[] | { [key: string]: JevJsonValue } | null
 export type JevInstruction = Exclude<JevEntry, null>
