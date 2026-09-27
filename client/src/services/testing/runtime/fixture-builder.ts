@@ -31,7 +31,7 @@
 import * as fs from "fs/promises"
 import * as path from "path"
 import ExcelJS from "exceljs"
-import { isRelativeDateToken, relativeDate, type DateFormat } from "./format.js"
+import { isRelativeDateToken, relativeDate, type DateFormat } from "./format"
 
 export type FixtureCell = string | number
 

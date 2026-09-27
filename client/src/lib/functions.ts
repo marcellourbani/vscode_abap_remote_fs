@@ -1,7 +1,7 @@
 import { taskEither, type TaskEither } from "fp-ts/lib/TaskEither"
 import { right } from "fp-ts/lib/Either"
 import { type LeftType } from "./rfsTaskEither"
-import { decode, encode } from "html-entities"
+import { decodeHTML, escapeUTF8 } from "entities"
 import { types } from "util"
 import { type Task } from "fp-ts/lib/Task"
 import { ABAPFile, ABAPObject, MemoryFile, Registry } from "@abaplint/core"
@@ -401,12 +401,5 @@ export const caughtToString = (e: any, defaultMsg: string = "") => {
   return defaultMsg || `${e}`
 }
 export const [decodeEntity, encodeEntity] = (() => {
-  return [
-    (s: string) => {
-      return decode(s)
-    },
-    (s: string) => {
-      return encode(s)
-    }
-  ]
+  return [(s: string) => decodeHTML(s ?? ""), (s: string) => escapeUTF8(s ?? "")]
 })()

@@ -1,22 +1,22 @@
 import { defineConfig } from "tsdown"
-import { cpSync, copyFileSync, existsSync, mkdirSync, writeFileSync } from "node:fs"
+import { cpSync, copyFileSync, existsSync, mkdirSync } from "node:fs"
 import { basename, dirname, resolve } from "node:path"
 import { fileURLToPath } from "node:url"
 
-// tsdown build for the ABAP FS extension client — replaces client/webpack.config.js.
-// Three ESM outputs (Oxc transform + minify, one Rust pass — was ts-loader + terser):
+// tsdown build for the ABAP FS extension client.
+// Three ESM outputs (Oxc transform and minify in one Rust pass):
 //   dist/extension.js      (main extension, minified w/ keep_classnames)
 //   dist/jsWorkerEntry.js  (notebook JS worker, spawned by path — self-contained)
 //   dist/runtime/index.js  (SAP testing runtime, UNMINIFIED, @playwright/test external)
 // Every package.json is "type":"module", so these .js files are ESM at runtime.
 //
-// Type-checking stays with `npm run typecheck` (tsc --noEmit); tsdown/Oxc only strips types.
+// Type-checking stays with `pnpm typecheck` (tsc --noEmit); tsdown/Oxc only strips types.
 
 const clientDir = resolve(fileURLToPath(import.meta.url), "..")
 const at = (p: string) => resolve(clientDir, p)
 
 // VS Code loads the bundle via import of a .js file ("main": "./client/dist/extension.js");
-// under "type":"module" that .js is ESM. Force .js (tsdown would otherwise pick .mjs/.cjs).
+// under "type":"module" that .js is ESM. Force the stable .js extension.
 const outJs = () => ({ js: ".js" as const })
 
 // Old Terser used `keep_classnames: true` (class names only). Preserve class names through
@@ -29,7 +29,7 @@ const minifyKeepClasses = {
   mangle: { keepNames: keepClassNames }
 }
 
-// --- asset copying (replaces copy-webpack-plugin) -----------------------------------------
+// --- asset copying ------------------------------------------------------------------------
 // Drop debug sidecars (*.js.txt) + readmes from vendored trees, keep LICENSE/NOTICE.
 const skipSidecarsAndReadme = (s: string) => !(basename(s) === "README.md" || s.endsWith(".js.txt"))
 const skipReadme = (s: string) => basename(s) !== "README.md"
@@ -37,7 +37,7 @@ const skipReadme = (s: string) => basename(s) !== "README.md"
 function copyDir(src: string, dest: string, filter?: (s: string) => boolean) {
   if (!existsSync(src)) throw new Error(`copy-assets: required source missing: ${src}`)
   mkdirSync(dest, { recursive: true })
-  cpSync(src, dest, { recursive: true, force: true, filter })
+  cpSync(src, dest, { recursive: true, force: true, dereference: true, filter })
 }
 function copyFile(src: string, dest: string, optional = false) {
   if (!existsSync(src)) {
@@ -66,8 +66,8 @@ function copyClientAssets() {
   copyDir(at("node_modules/undici-types"), resolve(nm, "undici-types"), skipReadme)
 }
 
-// Reproduces copy-webpack-plugin; `addWatchFile` keeps `--watch` honest (recopies on edits),
-// `writeBundle` runs after the output is on disk.
+// `addWatchFile` keeps `--watch` honest (recopies on edits); `writeBundle` runs after the
+// output is on disk.
 const copyClientAssetsPlugin = {
   name: "abapfs:copy-client-assets",
   buildStart(this: { addWatchFile(id: string): void }) {
@@ -88,13 +88,9 @@ const copyRuntimeAssetsPlugin = {
   }
 }
 
-// Bundling TS source (workspace packages resolve to their src) + @modelcontextprotocol/sdk
-// both use `.js` specifiers that must map to `.ts`. Applied to every entry.
-const jsToTs = { extensionAlias: { ".js": [".ts", ".js"] } }
-
 // deps.alwaysBundle inlines every dependency (the VSIX ships no node_modules); only the
-// host/spec-provided packages in each build's `external` stay external. clean:false because
-// dist/runtime also holds tsc-emitted .d.ts and the npm script pre-cleans dist once.
+// host/spec-provided packages in each build's `external` stay external. The package script
+// pre-cleans dist once, so each entry must leave outputs from the other entries intact.
 const shared = {
   format: "esm" as const,
   platform: "node" as const,
@@ -115,7 +111,7 @@ export default defineConfig([
     tsconfig: "tsconfig.json",
     sourcemap: true,
     minify: minifyKeepClasses,
-    inputOptions: { external: ["vscode", /^@playwright\/mcp(\/|$)/], resolve: jsToTs },
+    inputOptions: { external: ["vscode", /^@playwright\/mcp(\/|$)/] },
     plugins: [copyClientAssetsPlugin]
   },
   {
@@ -125,16 +121,17 @@ export default defineConfig([
     tsconfig: "tsconfig.json",
     sourcemap: true,
     minify: minifyKeepClasses,
-    inputOptions: { external: ["vscode", /^@playwright\/mcp(\/|$)/], resolve: jsToTs }
+    inputOptions: { external: ["vscode", /^@playwright\/mcp(\/|$)/] }
   },
   {
     ...shared,
+    dts: true,
     entry: { index: "src/services/testing/runtime/index.ts" },
     outDir: "dist/runtime",
-    tsconfig: "tsconfig.runtime.json",
+    tsconfig: "tsconfig.json",
     sourcemap: false,
     minify: false,
-    inputOptions: { external: ["@playwright/test", /^@playwright\/test(\/|$)/], resolve: jsToTs },
+    inputOptions: { external: ["@playwright/test", /^@playwright\/test(\/|$)/] },
     plugins: [copyRuntimeAssetsPlugin]
   },
   // Playwright vendor config + globalSetup: authored in templates/*.ts, emitted as ESM .js into

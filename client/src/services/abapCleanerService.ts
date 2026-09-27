@@ -7,12 +7,13 @@
 
 import * as vscode from "vscode"
 import { funWindow as window } from "./funMessenger"
-import * as path from "path"
-import * as fs from "fs"
+import * as path from "node:path"
+import * as fs from "node:fs"
 import { promisify } from "util"
 import { logTelemetry } from "./telemetry"
 import { exec } from "child_process"
 import { log } from "../lib"
+import { homedir, tmpdir } from "node:os"
 
 const execAsync = promisify(exec)
 
@@ -434,8 +435,7 @@ export class ABAPCleanerService {
 
     // Browse for file - Force local filesystem by using file:// URI
     // Get user's home directory as default starting point
-    const os = require("os")
-    const homeDir = os.homedir()
+    const homeDir = homedir()
     const defaultUri = vscode.Uri.file(homeDir)
 
     const result = await window.showOpenDialog({
@@ -546,8 +546,7 @@ export class ABAPCleanerService {
 
     if (useProfile === "Select custom profile") {
       // Force local filesystem by starting from home directory
-      const os = require("os")
-      const homeDir = os.homedir()
+      const homeDir = homedir()
       const defaultUri = vscode.Uri.file(homeDir)
 
       const result = await window.showOpenDialog({
@@ -691,7 +690,7 @@ export class ABAPCleanerService {
   }
 
   private async createTempFile(content: string, suffix: string): Promise<string> {
-    const tempDir = require("os").tmpdir()
+    const tempDir = tmpdir()
     const tempFile = path.join(
       tempDir,
       `abap-cleaner-${Date.now()}-${this.tempFileCounter++}-${suffix}`

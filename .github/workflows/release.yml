@@ -20,13 +20,17 @@ jobs:
         with:
           fetch-depth: 0
 
+      - name: Install pnpm
+        uses: pnpm/action-setup@v4
+
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
           node-version: 24
+          cache: "pnpm"
 
       - name: Install Dependencies
-        run: npm install
+        run: pnpm install --frozen-lockfile
 
       - name: Create Release Pull Request
         if: "!contains(github.event.head_commit.message, 'Version Packages')"
@@ -42,8 +46,7 @@ jobs:
         if: "contains(github.event.head_commit.message, 'Version Packages')"
         run: |
           VERSION=$(node -p "require('./package.json').version")
-          npm run release:vsix
+          pnpm release:vsix
           gh release create v$VERSION *.vsix README.md CHANGELOG.md --title "v$VERSION" --generate-notes
         env:
           GITHUB_TOKEN: ${{ secrets.RELEASE_PAT }}
-

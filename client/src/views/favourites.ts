@@ -7,7 +7,9 @@ import {
   workspace,
   type FileStat
 } from "vscode"
-import { path, fileAsync, readAsync } from "fs-jetpack"
+import { resolve, dirname } from "node:path"
+import { mkdir, writeFile, readFile } from "node:fs/promises"
+import { z } from "zod"
 import { NSSLASH, isString } from "../lib"
 import { uriRoot, getRoot, ADTSCHEME } from "../adt/conections"
 import { isAbapFolder, type AbapStat, isAbapStat, isFolder } from "abapfs"
@@ -93,6 +95,18 @@ interface FavouriteIf {
   openUri: string
   isContainer: boolean
 }
+
+// Recursive Zod schema validates persisted favourites before construction
+const favouriteIfSchema: z.ZodType<FavouriteIf> = z.lazy(() =>
+  z.object({
+    label: z.string(),
+    uri: z.string(),
+    collapsibleState: z.number(),
+    children: z.array(favouriteIfSchema),
+    openUri: z.string(),
+    isContainer: z.boolean()
+  })
+)
 
 const fixold = (x: string) => x.replace(/\uFF0F/g, NSSLASH)
 const fixoldu = (x: string) => x.replace(/\%EF\%BC\%8F/g, encodeURIComponent(NSSLASH))
@@ -183,7 +197,7 @@ export class FavouritesProvider implements TreeDataProvider<FavItem> {
   private static instance?: FavouritesProvider
 
   public set storagePath(storagePath: string | undefined) {
-    this.storage = storagePath ? path(storagePath, "favourites.json") : undefined
+    this.storage = storagePath ? resolve(storagePath, "favourites.json") : undefined
   }
 
   private rootI?: Map<string, Favourite[]>
@@ -260,19 +274,35 @@ export class FavouritesProvider implements TreeDataProvider<FavItem> {
   private async readFavourite() {
     const root: Map<string, Favourite[]> = new Map()
     if (this.storage) {
-      const saved: [string, FavouriteIf[]][] = await readAsync(this.storage, "json")
-      if (Array.isArray(saved))
-        for (const s of saved)
-          root.set(
-            s[0],
-            s[1].map(f => new Favourite(f))
+      const raw: unknown = await readFile(this.storage, "utf-8")
+        .then(text => JSON.parse(text) as unknown)
+        .catch((e: NodeJS.ErrnoException) => (e.code === "ENOENT" ? undefined : Promise.reject(e)))
+      if (Array.isArray(raw))
+        for (const entry of raw) {
+          if (
+            !Array.isArray(entry) ||
+            entry.length < 2 ||
+            typeof entry[0] !== "string" ||
+            !Array.isArray(entry[1])
           )
+            continue
+          const items = (entry[1] as unknown[]).flatMap(item => {
+            const r = favouriteIfSchema.safeParse(item)
+            return r.success ? [new Favourite(r.data)] : []
+          })
+          if (items.length > 0) root.set(entry[0], items)
+        }
     }
     return root
   }
 
   private async save() {
     const root = await this.root
-    if (this.storage) fileAsync(this.storage, { content: [...root] })
+    if (this.storage) {
+      const storage = this.storage
+      mkdir(dirname(storage), { recursive: true })
+        .then(() => writeFile(storage, JSON.stringify([...root], null, 2)))
+        .catch(() => undefined)
+    }
   }
 }

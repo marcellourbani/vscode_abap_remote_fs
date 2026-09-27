@@ -75,7 +75,7 @@ This section applies only if you want **central analytics** for your organizatio
 Each event is an action string (e.g., `command_activate_called`, `tool_search_abap_objects_called`) plus:
 
 | Field | Description |
-|---|---|
+| --- | --- |
 | Anonymous user ID | SHA hash of `hostname + username + platform` — cannot be reversed |
 | Session ID | Random ID per VS Code session |
 | Extension version | Version number |
@@ -107,7 +107,7 @@ Each event is an action string (e.g., `command_activate_called`, `tool_search_ab
 All auto-collection is off by default. To enable any of the following, edit the `initialize()` method in `client/src/services/appInsightsService.ts`:
 
 | Feature | Change |
-|---|---|
+| --- | --- |
 | Exception tracking | `.setAutoCollectExceptions(false)` → `(true)` |
 | Performance metrics (CPU/memory) | `.setAutoCollectPerformance(false, false)` → `(true, true)` |
 | HTTP request tracking | `.setAutoCollectRequests(false)` → `(true)` |
@@ -138,21 +138,21 @@ When the whitelist `developers` structure is configured, telemetry automatically
 
 After completing configuration above:
 
-1. **Install dependencies:**
+**Install dependencies:**
 
-   ```bash
-   npm install
-   ```
+```bash
+pnpm install
+```
 
-2. **Build and package:**
+**Build and package:**
 
-   ```bash
-   # Windows (recommended)
-   build-and-install.bat
+```bash
+# Windows (recommended)
+build-and-install.bat
 
-   # Or manually:
-   npm run compile
-   npx vsce package
-   ```
+# Or manually:
+pnpm build
+pnpm package
+```
 
-3. **Distribute** the generated `.vsix` file to your users. They can install it via Extensions → `...` → **Install from VSIX...**
+**Distribute** the generated `.vsix` file to your users. They can install it via Extensions → `...` → **Install from VSIX...**

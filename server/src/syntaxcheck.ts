@@ -5,7 +5,7 @@ import { getObject, vscUrl } from "./objectManager"
 import { documents } from "./server"
 import { sourceRange, decodeSeverity, clientAndObjfromUrl } from "./utilities"
 import { callThrottler, caughtToString } from "./functions"
-import { memoize, debounce } from "lodash"
+import { memoize } from "es-toolkit"
 
 const oldDiagKeys = new Map<string, string[]>()
 
