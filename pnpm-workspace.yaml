@@ -1,4 +1,6 @@
+# "." makes the root the releasable package changesets targets; `pnpm -r` still skips it.
 packages:
+  - "."
   - client
   - server
   - modules/*
