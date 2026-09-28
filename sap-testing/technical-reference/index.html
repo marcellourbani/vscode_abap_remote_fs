@@ -3683,24 +3683,25 @@
 <h2 id="test-folder-layout">Test folder layout<a class="headerlink" href="#test-folder-layout" title="Permanent link">&para;</a></h2>
 <div class="highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>&lt;TEST_FOLDER&gt;/
 <a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a>├── tsconfig.json                    managed by ABAP FS
-<a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a>├── node_modules/@sap-testing/runtime  managed by ABAP FS
-<a id="__codelineno-0-4" name="__codelineno-0-4" href="#__codelineno-0-4"></a>├── recordings/                      reference recordings, never runnable specs
-<a id="__codelineno-0-5" name="__codelineno-0-5" href="#__codelineno-0-5"></a>├── .playwright-artifacts/           Playwright traces (kept on failure)
-<a id="__codelineno-0-6" name="__codelineno-0-6" href="#__codelineno-0-6"></a>└── tests/
-<a id="__codelineno-0-7" name="__codelineno-0-7" href="#__codelineno-0-7"></a>    └── &lt;PROGRAM&gt;/                   one folder per object under test
-<a id="__codelineno-0-8" name="__codelineno-0-8" href="#__codelineno-0-8"></a>        ├── sources/&lt;timestamp&gt;/     downloaded ABAP source snapshot
-<a id="__codelineno-0-9" name="__codelineno-0-9" href="#__codelineno-0-9"></a>        ├── sources/anst/            ANST exports, if any
-<a id="__codelineno-0-10" name="__codelineno-0-10" href="#__codelineno-0-10"></a>        ├── test-cases/
-<a id="__codelineno-0-11" name="__codelineno-0-11" href="#__codelineno-0-11"></a>        │     _flow.md  _units.md  _findings.md  _screens.md
-<a id="__codelineno-0-12" name="__codelineno-0-12" href="#__codelineno-0-12"></a>        │     TC-001.md  TC-001.data.md  …
-<a id="__codelineno-0-13" name="__codelineno-0-13" href="#__codelineno-0-13"></a>        │     _index.md  _index.docx
-<a id="__codelineno-0-14" name="__codelineno-0-14" href="#__codelineno-0-14"></a>        ├── test-scripts/
-<a id="__codelineno-0-15" name="__codelineno-0-15" href="#__codelineno-0-15"></a>        │     TC-001.spec.ts  …
-<a id="__codelineno-0-16" name="__codelineno-0-16" href="#__codelineno-0-16"></a>        └── test-results/
-<a id="__codelineno-0-17" name="__codelineno-0-17" href="#__codelineno-0-17"></a>              &lt;CONNECTION-ID&gt;/TC-001/   data.json, step-NN.png,
-<a id="__codelineno-0-18" name="__codelineno-0-18" href="#__codelineno-0-18"></a>              │                          manifest.json, verification.json,
-<a id="__codelineno-0-19" name="__codelineno-0-19" href="#__codelineno-0-19"></a>              │                          fixtures/, runs/&lt;timestamp&gt;/
-<a id="__codelineno-0-20" name="__codelineno-0-20" href="#__codelineno-0-20"></a>              └── &lt;PROGRAM&gt;-&lt;CONNECTION-ID&gt;-report.docx
+<a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a>├── package.json                     managed by ABAP FS ("type": "module")
+<a id="__codelineno-0-4" name="__codelineno-0-4" href="#__codelineno-0-4"></a>├── node_modules/@sap-testing/runtime  managed by ABAP FS
+<a id="__codelineno-0-5" name="__codelineno-0-5" href="#__codelineno-0-5"></a>├── recordings/                      reference recordings, never runnable specs
+<a id="__codelineno-0-6" name="__codelineno-0-6" href="#__codelineno-0-6"></a>├── .playwright-artifacts/           Playwright traces (kept on failure)
+<a id="__codelineno-0-7" name="__codelineno-0-7" href="#__codelineno-0-7"></a>└── tests/
+<a id="__codelineno-0-8" name="__codelineno-0-8" href="#__codelineno-0-8"></a>    └── &lt;PROGRAM&gt;/                   one folder per object under test
+<a id="__codelineno-0-9" name="__codelineno-0-9" href="#__codelineno-0-9"></a>        ├── sources/&lt;timestamp&gt;/     downloaded ABAP source snapshot
+<a id="__codelineno-0-10" name="__codelineno-0-10" href="#__codelineno-0-10"></a>        ├── sources/anst/            ANST exports, if any
+<a id="__codelineno-0-11" name="__codelineno-0-11" href="#__codelineno-0-11"></a>        ├── test-cases/
+<a id="__codelineno-0-12" name="__codelineno-0-12" href="#__codelineno-0-12"></a>        │     _flow.md  _units.md  _findings.md  _screens.md
+<a id="__codelineno-0-13" name="__codelineno-0-13" href="#__codelineno-0-13"></a>        │     TC-001.md  TC-001.data.md  …
+<a id="__codelineno-0-14" name="__codelineno-0-14" href="#__codelineno-0-14"></a>        │     _index.md  _index.docx
+<a id="__codelineno-0-15" name="__codelineno-0-15" href="#__codelineno-0-15"></a>        ├── test-scripts/
+<a id="__codelineno-0-16" name="__codelineno-0-16" href="#__codelineno-0-16"></a>        │     TC-001.spec.ts  …
+<a id="__codelineno-0-17" name="__codelineno-0-17" href="#__codelineno-0-17"></a>        └── test-results/
+<a id="__codelineno-0-18" name="__codelineno-0-18" href="#__codelineno-0-18"></a>              &lt;CONNECTION-ID&gt;/TC-001/   data.json, step-NN.png,
+<a id="__codelineno-0-19" name="__codelineno-0-19" href="#__codelineno-0-19"></a>              │                          manifest.json, verification.json,
+<a id="__codelineno-0-20" name="__codelineno-0-20" href="#__codelineno-0-20"></a>              │                          fixtures/, runs/&lt;timestamp&gt;/
+<a id="__codelineno-0-21" name="__codelineno-0-21" href="#__codelineno-0-21"></a>              └── &lt;PROGRAM&gt;-&lt;CONNECTION-ID&gt;-report.docx
 </code></pre></div>
 <p>Two conventions that matter:</p>
 <ul>
@@ -3709,8 +3710,10 @@
 </ul>
 <h2 id="managed-scaffolding">Managed scaffolding<a class="headerlink" href="#managed-scaffolding" title="Permanent link">&para;</a></h2>
 <p>ABAP FS writes a small amount of infrastructure into the test folder and re-applies it on every activation, because the extension's install path changes with each version.</p>
-<p><strong>Always:</strong> a <code>tsconfig.json</code> that maps the module specifier <code>@sap-testing/runtime</code> to the extension's compiled runtime, a link to that runtime under <code>node_modules</code>, and a <code>.gitignore</code> entry for both. This is what gives the TypeScript language service real IntelliSense and type errors while Copilot writes a spec — checked against the actual runtime signatures rather than prose in a skill — and what lets the test runner resolve the runtime at execution time. The language-service half only applies while the test folder is open in your workspace; the runner half works either way.</p>
-<p><strong>Only while Microsoft's Playwright extension is installed:</strong> a <code>playwright.config.js</code>, links to the bundled Playwright, a <code>.bin</code> launcher, and <code>.sap-active-system</code>. These exist purely so the Test Explorer sidebar can discover and run specs. They're removed again if you uninstall that extension. The <code>abapfs_run_playwright_tests</code> tool needs none of them — it passes its own config and sets the target system directly in the runner's environment.</p>
+<p><strong>Always:</strong> a <code>tsconfig.json</code> that maps the module specifier <code>@sap-testing/runtime</code> to the extension's compiled runtime, a <code>package.json</code> marking the folder as an ES module, a link to that runtime under <code>node_modules</code>, and <code>.gitignore</code> entries for all of them. This is what gives the TypeScript language service real IntelliSense and type errors while Copilot writes a spec — checked against the actual runtime signatures rather than prose in a skill — and what lets the test runner resolve the runtime at execution time. The language-service half only applies while the test folder is open in your workspace; the runner half works either way.</p>
+<p>The runtime ships as ESM only, so specs have to be ES modules too. Under <code>node16</code> module resolution a <code>.ts</code> file's format comes from the nearest <code>package.json</code>, which is why the scaffold writes one with <code>"type": "module"</code>. An explicit <code>"type": "commonjs"</code> you set yourself is left alone.</p>
+<p><strong>Only while Microsoft's Playwright extension is installed:</strong> a <code>playwright.config.mjs</code>, links to the bundled Playwright, a <code>.bin</code> launcher, and <code>.sap-active-system</code>. These exist purely so the Test Explorer sidebar can discover and run specs. They're removed again if you uninstall that extension. The <code>abapfs_run_playwright_tests</code> tool needs none of them — it passes its own config and sets the target system directly in the runner's environment.</p>
+<p>The config is <code>.mjs</code> rather than <code>.js</code> so it stays an ES module no matter what the folder's <code>package.json</code> says. Playwright resolves <code>.js</code> ahead of <code>.mjs</code>, so a <code>playwright.config.js</code> left behind by an older ABAP FS version is deleted before the new one is written.</p>
 <p>All of it is gitignored, because it hardcodes machine-specific absolute paths.</p>
 <h2 id="artifact-fields">Artifact fields<a class="headerlink" href="#artifact-fields" title="Permanent link">&para;</a></h2>
 <p>Each <code>TC-NNN.md</code> carries frontmatter that the index builder validates. The values that are checked against a fixed list:</p>
