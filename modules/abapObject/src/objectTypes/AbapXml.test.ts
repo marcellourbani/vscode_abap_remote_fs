@@ -1,7 +1,7 @@
-import { vi } from "vitest"
-import { AbapObjectStructure } from "abap-adt-api"
+import { mock } from "vitest-mock-extended"
+import type { AbapObjectStructure } from "abap-adt-api"
 import { create } from "../creator"
-import { AbapObjectService } from "../AOService"
+import type { AbapObjectService } from "../AOService"
 import { isAbapXml } from "./AbapXml"
 
 describe.each([
@@ -13,12 +13,7 @@ describe.each([
   const path = `/sap/bc/adt/ddic/${collection}/yexample`
   const xml = '<?xml version="1.0" encoding="UTF-8"?><example/>'
   const setup = () => {
-    const service = {
-      getObjectSource: vi.fn(),
-      objectStructure: vi.fn(),
-      setObjectSource: vi.fn(),
-      invalidateStructCache: vi.fn()
-    } as unknown as AbapObjectService
+    const service = mock<AbapObjectService>()
     const object = create(type, "YEXAMPLE", path, false, "YEXAMPLE", undefined, "", service)
     return { service, object }
   }

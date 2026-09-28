@@ -4,6 +4,6 @@
     "lib": ["ES2023", "DOM"],
     "types": ["node", "vitest/globals"]
   },
-  "include": ["src", "templates"],
+  "include": ["src", "templates", "tsdown.config.ts"],
   "exclude": ["node_modules"]
 }

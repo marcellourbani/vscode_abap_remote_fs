@@ -7,7 +7,6 @@
   "types": "src/index.ts",
   "type": "module",
   "scripts": {
-    "build": "tsc --noEmit",
     "typecheck": "tsc --noEmit",
     "clean": "node ../../scripts/rm.mjs out tsconfig.tsbuildinfo",
     "watch": "tsc -w"

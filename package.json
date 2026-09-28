@@ -51,9 +51,10 @@
   ],
   "main": "./client/dist/extension.js",
   "scripts": {
-    "vscode:prepublish": "pnpm build && pnpm typecheck",
-    "build": "pnpm -r --if-present run build",
-    "typecheck": "pnpm -r --if-present run typecheck",
+    "vscode:prepublish": "pnpm build",
+    "build": "pnpm run \"/^(compile|typecheck)$/\"",
+    "compile": "pnpm -r --parallel --if-present run build",
+    "typecheck": "pnpm -r --parallel --if-present run typecheck",
     "test": "vitest run",
     "test:watch": "vitest",
     "test:coverage": "vitest run --coverage",

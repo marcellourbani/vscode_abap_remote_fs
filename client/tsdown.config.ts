@@ -1,7 +1,8 @@
 import { defineConfig } from "tsdown"
-import { cpSync, copyFileSync, existsSync, mkdirSync } from "node:fs"
+import { cpSync, copyFileSync, existsSync, mkdirSync, realpathSync, writeFileSync } from "node:fs"
 import { basename, dirname, resolve } from "node:path"
 import { fileURLToPath } from "node:url"
+import { createRequire } from "node:module"
 
 // tsdown build for the ABAP FS extension client.
 // Three ESM outputs (Oxc transform and minify in one Rust pass):
@@ -36,8 +37,20 @@ const skipReadme = (s: string) => basename(s) !== "README.md"
 
 function copyDir(src: string, dest: string, filter?: (s: string) => boolean) {
   if (!existsSync(src)) throw new Error(`copy-assets: required source missing: ${src}`)
+  // pnpm links deps as Windows junctions, which cpSync's `dereference` doesn't resolve.
+  const realSrc = realpathSync(src)
   mkdirSync(dest, { recursive: true })
-  cpSync(src, dest, { recursive: true, force: true, dereference: true, filter })
+  cpSync(realSrc, dest, { recursive: true, force: true, dereference: true, filter })
+}
+
+// pnpm's node_modules is not flat, so vendored packages must be located by module resolution.
+// Transitive packages resolve from their parent package rather than from the client.
+function packageDir(pkg: string, from = at("package.json")): string {
+  try {
+    return dirname(createRequire(from).resolve(`${pkg}/package.json`))
+  } catch {
+    throw new Error(`copy-assets: cannot resolve package ${pkg} from ${from}`)
+  }
 }
 function copyFile(src: string, dest: string, optional = false) {
   if (!existsSync(src)) {
@@ -59,11 +72,16 @@ function copyClientAssets() {
   writeFileSync(at("dist/vendor/package.json"), JSON.stringify({ type: "module" }) + "\n")
   // Real node_modules layout so Playwright's runner can require.resolve its worker entry.
   const nm = at("dist/vendor/node_modules")
-  for (const pkg of ["playwright", "playwright-core", "@playwright/test"]) {
-    copyDir(at(`node_modules/${pkg}`), resolve(nm, pkg), skipSidecarsAndReadme)
-  }
-  copyDir(at("node_modules/@types/node"), resolve(nm, "@types/node"), skipSidecarsAndReadme)
-  copyDir(at("node_modules/undici-types"), resolve(nm, "undici-types"), skipReadme)
+  const playwrightDir = packageDir("playwright")
+  const typesNodeDir = packageDir("@types/node")
+  const sources: [string, string, (s: string) => boolean][] = [
+    ["playwright", playwrightDir, skipSidecarsAndReadme],
+    ["playwright-core", packageDir("playwright-core", playwrightDir), skipSidecarsAndReadme],
+    ["@playwright/test", packageDir("@playwright/test"), skipSidecarsAndReadme],
+    ["@types/node", typesNodeDir, skipSidecarsAndReadme],
+    ["undici-types", packageDir("undici-types", typesNodeDir), skipReadme]
+  ]
+  for (const [pkg, src, filter] of sources) copyDir(src, resolve(nm, pkg), filter)
 }
 
 // `addWatchFile` keeps `--watch` honest (recopies on edits); `writeBundle` runs after the

@@ -15,7 +15,7 @@ vi.mock("../abapResourceDownloadService", () => ({
 
 import { WorkflowStore } from "./workflowStore"
 import { WorkflowSnapshotService, objectFolderId } from "./snapshotService"
-import { ObjectSnapshotManifest, RepositoryObjectRecord } from "./types"
+import type { ObjectSnapshotManifest, RepositoryObjectRecord } from "./types"
 
 vi.mock("vscode", () => ({
   Uri: { file: (value: string) => ({ fsPath: value, path: value, scheme: "file" }) },

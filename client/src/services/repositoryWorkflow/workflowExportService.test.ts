@@ -81,7 +81,7 @@ describe("WorkflowExportService export location", () => {
       "xlsx"
     )
 
-    const defaultPath = (vscode.window.showSaveDialog as Mock).mock.calls.at(-1)[0].defaultUri
+    const defaultPath = (vscode.window.showSaveDialog as Mock).mock.calls.at(-1)![0].defaultUri
       .fsPath
     expect(path.dirname(defaultPath)).toBe(lastDirectory)
     expect(path.basename(defaultPath)).toMatch(/^Workflow_src-inv_SOURCE_\d{8}-\d{4}\.xlsx$/)

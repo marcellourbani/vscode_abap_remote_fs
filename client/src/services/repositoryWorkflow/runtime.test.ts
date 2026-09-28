@@ -15,7 +15,8 @@ vi.mock("./workflowStore", () => ({
   })
 }))
 
-import { RepositoryWorkflowChange, RepositoryWorkflowRuntime } from "./runtime"
+import { RepositoryWorkflowRuntime } from "./runtime"
+import type { RepositoryWorkflowChange } from "./runtime"
 
 describe("RepositoryWorkflowRuntime refresh batching", () => {
   it("keeps phase changes lightweight and emits one full refresh after completion", async () => {

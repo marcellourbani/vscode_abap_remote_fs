@@ -29,10 +29,11 @@
   "dependencies": {
     "@abaplint/core": "^2.102.65",
     "@modelcontextprotocol/sdk": "^1.29.0",
+    "@typesafe-ai/sdk": "^0.6.0",
     "@vscode/debugadapter": "^1.68.0",
     "@vscode/debugprotocol": "^1.68.0",
-    "abap_cloud_platform": "^1.1.4",
     "abap-adt-api": "catalog:",
+    "abap_cloud_platform": "^1.1.4",
     "abapfs": "workspace:*",
     "abapobject": "workspace:*",
     "applicationinsights": "^2.9.8",

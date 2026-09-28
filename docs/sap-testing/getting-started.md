@@ -61,7 +61,7 @@ You can follow that suggestion or just carry on in the same chat — both work. 
 
 ## About the files ABAP FS creates
 
-Alongside your test artifacts you'll see a few files that ABAP FS manages itself — `tsconfig.json`, a `node_modules` folder, and (if you have the Playwright extension) `playwright.config.js` and `.sap-active-system`.
+Alongside your test artifacts you'll see a few files that ABAP FS manages itself — `tsconfig.json`, `package.json`, a `node_modules` folder, and (if you have the Playwright extension) `playwright.config.mjs` and `.sap-active-system`.
 
 **Don't edit or delete them.** They're what gives Copilot real error-checking while it writes test scripts, and what lets the tests run without you installing anything. They point at the extension's own install path, so ABAP FS rewrites them on every startup and after every update — any change you make is overwritten. They're added to `.gitignore` automatically because they're specific to your machine.
 
