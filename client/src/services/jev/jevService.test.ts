@@ -6,7 +6,8 @@ import {
   TypeSafeError
 } from "@typesafe-ai/sdk"
 import { vi } from "vitest"
-import { JevService, JevServiceDependencies } from "./jevService"
+import { JevService } from "./jevService"
+import type { JevServiceDependencies } from "./jevService"
 
 const request = {
   state: {

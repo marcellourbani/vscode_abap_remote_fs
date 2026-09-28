@@ -16,7 +16,7 @@ You'll also get no IntelliSense or error checking in the generated test scripts 
 
 ### The managed files keep coming back / my edits disappeared
 
-That's intended. `tsconfig.json`, `node_modules`, `playwright.config.js`, and `.sap-active-system` are managed by ABAP FS and rewritten at startup and after every update, because they contain absolute paths into the extension's install directory. Don't edit them; if you delete them, reload VS Code and they come back.
+That's intended. `tsconfig.json`, `package.json`, `node_modules`, `playwright.config.mjs`, and `.sap-active-system` are managed by ABAP FS and rewritten at startup and after every update, because they contain absolute paths into the extension's install directory. Don't edit them; if you delete them, reload VS Code and they come back.
 
 ### `ERROR: No abapfs.remote entry for "..."` or `has no "client" property`
 

@@ -1,5 +1,6 @@
 import { assertWorkflowStepReady, commandSection, REPOSITORY_OBJECT_TYPES } from "./workflowUiModel"
-import { initialSteps, RepositoryWorkflow, WORKFLOW_SCHEMA_VERSION } from "./types"
+import { initialSteps, WORKFLOW_SCHEMA_VERSION } from "./types"
+import type { RepositoryWorkflow } from "./types"
 
 function workflow(): RepositoryWorkflow {
   return {

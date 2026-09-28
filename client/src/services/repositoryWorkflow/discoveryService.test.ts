@@ -8,7 +8,8 @@ import {
   RepositoryDiscoveryService,
   tadirDiscoverySql
 } from "./discoveryService"
-import { WORKFLOW_SCHEMA_VERSION, RepositoryCriteria } from "./types"
+import { WORKFLOW_SCHEMA_VERSION } from "./types"
+import type { RepositoryCriteria } from "./types"
 
 const criteria: RepositoryCriteria = {
   schemaVersion: WORKFLOW_SCHEMA_VERSION,

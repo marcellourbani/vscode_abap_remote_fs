@@ -59,7 +59,7 @@ vi.mock("./assistedApplyService", () => ({
 
 import { WorkflowStore } from "./workflowStore"
 import { RepositoryWorkflowEngine } from "./workflowEngine"
-import { RepositoryObjectRecord } from "./types"
+import type { RepositoryObjectRecord } from "./types"
 
 const row = (name: string) => ({
   PGMID: "R3TR",

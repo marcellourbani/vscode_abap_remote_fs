@@ -27,6 +27,7 @@ Everything testing-specific is gated behind the `abapfs:testingEnabled` context 
 ```
 <TEST_FOLDER>/
 ├── tsconfig.json                    managed by ABAP FS
+├── package.json                     managed by ABAP FS ("type": "module")
 ├── node_modules/@sap-testing/runtime  managed by ABAP FS
 ├── recordings/                      reference recordings, never runnable specs
 ├── .playwright-artifacts/           Playwright traces (kept on failure)
@@ -56,9 +57,13 @@ Two conventions that matter:
 
 ABAP FS writes a small amount of infrastructure into the test folder and re-applies it on every activation, because the extension's install path changes with each version.
 
-**Always:** a `tsconfig.json` that maps the module specifier `@sap-testing/runtime` to the extension's compiled runtime, a link to that runtime under `node_modules`, and a `.gitignore` entry for both. This is what gives the TypeScript language service real IntelliSense and type errors while Copilot writes a spec — checked against the actual runtime signatures rather than prose in a skill — and what lets the test runner resolve the runtime at execution time. The language-service half only applies while the test folder is open in your workspace; the runner half works either way.
+**Always:** a `tsconfig.json` that maps the module specifier `@sap-testing/runtime` to the extension's compiled runtime, a `package.json` marking the folder as an ES module, a link to that runtime under `node_modules`, and `.gitignore` entries for all of them. This is what gives the TypeScript language service real IntelliSense and type errors while Copilot writes a spec — checked against the actual runtime signatures rather than prose in a skill — and what lets the test runner resolve the runtime at execution time. The language-service half only applies while the test folder is open in your workspace; the runner half works either way.
 
-**Only while Microsoft's Playwright extension is installed:** a `playwright.config.js`, links to the bundled Playwright, a `.bin` launcher, and `.sap-active-system`. These exist purely so the Test Explorer sidebar can discover and run specs. They're removed again if you uninstall that extension. The `abapfs_run_playwright_tests` tool needs none of them — it passes its own config and sets the target system directly in the runner's environment.
+The runtime ships as ESM only, so specs have to be ES modules too. Under `node16` module resolution a `.ts` file's format comes from the nearest `package.json`, which is why the scaffold writes one with `"type": "module"`. An explicit `"type": "commonjs"` you set yourself is left alone.
+
+**Only while Microsoft's Playwright extension is installed:** a `playwright.config.mjs`, links to the bundled Playwright, a `.bin` launcher, and `.sap-active-system`. These exist purely so the Test Explorer sidebar can discover and run specs. They're removed again if you uninstall that extension. The `abapfs_run_playwright_tests` tool needs none of them — it passes its own config and sets the target system directly in the runner's environment.
+
+The config is `.mjs` rather than `.js` so it stays an ES module no matter what the folder's `package.json` says. Playwright resolves `.js` ahead of `.mjs`, so a `playwright.config.js` left behind by an older ABAP FS version is deleted before the new one is written.
 
 All of it is gitignored, because it hardcodes machine-specific absolute paths.
 

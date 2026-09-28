@@ -235,6 +235,9 @@ importers:
       '@modelcontextprotocol/sdk':
         specifier: ^1.29.0
         version: 1.30.0(supports-color@10.2.2)(zod@3.25.76)
+      '@typesafe-ai/sdk':
+        specifier: ^0.6.0
+        version: 0.6.0
       '@vscode/debugadapter':
         specifier: ^1.68.0
         version: 1.68.0
@@ -416,8 +419,8 @@ importers:
         specifier: ^6.1.1
         version: 6.1.1
       vscode-languageserver-protocol:
-        specifier: ^3.17.5
-        version: 3.18.3
+        specifier: 3.17.5
+        version: 3.17.5
       vscode-languageserver-textdocument:
         specifier: ^1.0.8
         version: 1.0.14
@@ -1088,6 +1091,10 @@ packages:
 
   '@types/vscode@1.137.0':
     resolution: {integrity: sha512-0dc/BBWxkyUsJzXIZ7PkKSalThmS4xiBT+8YEDiWdCefRKHGVV5ZNkM5NB5ULYamallYJujIfncNoXWFlyzL8A==}
+
+  '@typesafe-ai/sdk@0.6.0':
+    resolution: {integrity: sha512-IddX+Q0XM+VagOUZFeP7wZjaO4SHMdvnh2zEBdrZZnXedWI3BNK1lKhMx3ayrkFWvVLbVcUHJy6AVZlY+e6Jaw==}
+    engines: {node: '>=20'}
 
   '@typespec/ts-http-runtime@0.3.9':
     resolution: {integrity: sha512-edSdeAqkdxBVzA1yL1LrLCml1YjyCVvPMtMqJpbF+6K609tHe8V6sQUzFQSGcYNhcuhOceZtjvN32+mpIth30A==}
@@ -3643,19 +3650,12 @@ packages:
     resolution: {integrity: sha512-C+r0eKJUIfiDIfwJhria30+TYWPtuHJXHtI7J0YlOmKAo7ogxP20T0zxB7HZQIFhIyvoBPwWskjxrvAtfjyZfA==}
     engines: {node: '>=14.0.0'}
 
-  vscode-jsonrpc@9.0.2:
-    resolution: {integrity: sha512-SbQSV9yRemARxeXw6LU5sS6Zq0e9/DgCCX5yelH263ZQWukbTk8EF8fjTrr1dziasf4GwlJbvTwFnTrnQFWZXQ==}
-    engines: {node: '>=14.0.0'}
-
   vscode-languageclient@9.0.1:
     resolution: {integrity: sha512-JZiimVdvimEuHh5olxhxkht09m3JzUGwggb5eRUkzzJhZ2KjCN0nh55VfiED9oez9DyF8/fz1g1iBV3h+0Z2EA==}
     engines: {vscode: ^1.82.0}
 
   vscode-languageserver-protocol@3.17.5:
     resolution: {integrity: sha512-mb1bvRJN8SVznADSGWM9u/b07H7Ecg0I3OgXDuLdn307rl/J3A9YD6/eYOssqhecL27hK1IPZAsaqh00i/Jljg==}
-
-  vscode-languageserver-protocol@3.18.3:
-    resolution: {integrity: sha512-DF49+WeV5py4zO5hhobp60jjsDSK0lAqA0OuKBLBvp423HPWQcCbhZz3JgyfIewsEz2f8U+X75xNIFHdiXZm2w==}
 
   vscode-languageserver-textdocument@1.0.14:
     resolution: {integrity: sha512-EQyqJMi552E4ZTf46izQ4Fj6XquqxCySR3J5ZSD1SisMf6RfpeOWHxGBE8Gr6V0/3GHIGdAzDn8F8+1nTGCnoQ==}
@@ -4543,6 +4543,8 @@ snapshots:
   '@types/tough-cookie@4.0.5': {}
 
   '@types/vscode@1.137.0': {}
+
+  '@typesafe-ai/sdk@0.6.0': {}
 
   '@typespec/ts-http-runtime@0.3.9(supports-color@10.2.2)':
     dependencies:
@@ -7093,8 +7095,6 @@ snapshots:
 
   vscode-jsonrpc@8.2.0: {}
 
-  vscode-jsonrpc@9.0.2: {}
-
   vscode-languageclient@9.0.1:
     dependencies:
       minimatch: 5.1.9
@@ -7106,11 +7106,6 @@ snapshots:
       vscode-jsonrpc: 8.2.0
       vscode-languageserver-types: 3.17.5
 
-  vscode-languageserver-protocol@3.18.3:
-    dependencies:
-      vscode-jsonrpc: 9.0.2
-      vscode-languageserver-types: 3.18.3
-
   vscode-languageserver-textdocument@1.0.14: {}
 
   vscode-languageserver-types@3.17.5: {}
@@ -7119,7 +7114,7 @@ snapshots:
 
   vscode-languageserver@6.1.1:
     dependencies:
-      vscode-languageserver-protocol: 3.18.3
+      vscode-languageserver-protocol: 3.17.5
 
   vscode-test-adapter-api@1.9.0: {}
 

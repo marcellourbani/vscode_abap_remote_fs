@@ -45,11 +45,14 @@ modules/
 ## Building
 
 ```bash
-pnpm build        # build all workspace packages in dependency order
+pnpm build        # compile + type-check everything, in parallel
+pnpm compile      # bundle client & server only (skips type-checking)
 pnpm typecheck    # type-check source and tests across the workspace
 pnpm test         # run all named Vitest projects
 pnpm format       # run Prettier before committing
 ```
+
+`pnpm build` fans out to `compile` and `typecheck` at the same time, so a type error anywhere fails the build. The modules (`abapObject`, `abapfs`, `sharedapi`) are consumed as TypeScript source — `main` points at `src/index.ts` — so they never emit anything and only need type-checking.
 
 Run one test project with `pnpm test --project client`, `server`, `abapObject`, or `abapfs`.
 

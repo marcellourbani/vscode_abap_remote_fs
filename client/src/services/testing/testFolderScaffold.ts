@@ -8,7 +8,7 @@
  *    AI writes a spec (against the actual SapSession signatures, not prose in a skill),
  *    and let `abapfs_run_playwright_tests` resolve the runtime at run time.
  *
- * 2. ONLY WHEN Microsoft's Playwright extension is installed — `playwright.config.js`,
+ * 2. ONLY WHEN Microsoft's Playwright extension is installed — `playwright.config.mjs`,
  *    `.sap-active-system`, junctions to the bundled Playwright, and a `.bin` launcher.
  *    These exist purely so the Playwright sidebar can discover and run specs. The
  *    `abapfs_run_playwright_tests` tool needs none of them: it passes its own `--config` and sets
@@ -22,6 +22,12 @@ import * as fs from "fs/promises"
 import * as path from "path"
 
 const MARKER_COMMENT = "Managed by ABAP FS — do not hand-edit compilerOptions.paths below."
+
+// .mjs, not .js: unconditionally ESM, so the config keeps loading even if a user pins the
+// test folder to "type": "commonjs". Playwright resolves .js before .mjs, so a config left
+// by an older install must be removed rather than left to win.
+const PLAYWRIGHT_CONFIG = "playwright.config.mjs"
+const LEGACY_PLAYWRIGHT_CONFIG = "playwright.config.js"
 
 export type RuntimePaths = {
   /** Absolute path to the extension's compiled runtime helpers (client/dist/runtime). */
@@ -113,11 +119,38 @@ export async function ensureTestFolderBaseline(
   rp: RuntimePaths
 ): Promise<void> {
   await ensureTsconfig(testFolder, rp)
+  await ensurePackageType(testFolder)
   await ensurePackageJunction(
     path.join(testFolder, "node_modules", "@sap-testing", "runtime"),
     rp.runtimeDir
   )
   await ensureGitignored(testFolder)
+}
+
+/**
+ * `@sap-testing/runtime` is ESM-only, so specs importing it must themselves be ES modules
+ * under node16 resolution. An explicit `"type": "commonjs"` is left alone as a deliberate
+ * choice, even though the runtime import will not resolve.
+ */
+async function ensurePackageType(testFolder: string): Promise<void> {
+  const pkgPath = path.join(testFolder, "package.json")
+  let existing: any = null
+  try {
+    existing = JSON.parse(await fs.readFile(pkgPath, "utf8"))
+  } catch {
+    // missing or unparsable — write a fresh minimal manifest
+  }
+  if (existing && typeof existing === "object" && !Array.isArray(existing)) {
+    if (typeof existing.type === "string") return
+    const next = JSON.stringify({ ...existing, type: "module" }, null, 2) + "\n"
+    await fs.writeFile(pkgPath, next, "utf8")
+    return
+  }
+  await fs.writeFile(
+    pkgPath,
+    JSON.stringify({ private: true, type: "module" }, null, 2) + "\n",
+    "utf8"
+  )
 }
 
 async function ensureTsconfig(testFolder: string, rp: RuntimePaths): Promise<void> {
@@ -135,14 +168,14 @@ async function ensureTsconfig(testFolder: string, rp: RuntimePaths): Promise<voi
   if (existingRaw !== nextText) await fs.writeFile(tsconfigPath, nextText, "utf8")
 }
 
-const GITIGNORE_BLOCK = [
-  "# Machine-specific — points at this install's extension path, never portable",
+const GITIGNORE_HEADER =
+  "# Machine-specific — points at this install's extension path, never portable"
+const GITIGNORE_ENTRIES = [
   "tsconfig.json",
-  "playwright.config.js",
+  PLAYWRIGHT_CONFIG,
   "node_modules/",
-  ".sap-active-system",
-  ""
-].join("\n")
+  ".sap-active-system"
+]
 
 async function ensureGitignored(testFolder: string): Promise<void> {
   const gitignorePath = path.join(testFolder, ".gitignore")
@@ -152,10 +185,14 @@ async function ensureGitignored(testFolder: string): Promise<void> {
   } catch {
     // no .gitignore yet — will create one
   }
-  if (content.split(/\r?\n/).some(l => l.trim() === "tsconfig.json")) return
+  const present = new Set(content.split(/\r?\n/).map(l => l.trim()))
+  const missing = GITIGNORE_ENTRIES.filter(e => !present.has(e))
+  if (missing.length === 0) return
 
+  const header = present.has(GITIGNORE_HEADER) ? [] : [GITIGNORE_HEADER]
   const separator = content.length > 0 && !content.endsWith("\n") ? "\n" : ""
-  await fs.writeFile(gitignorePath, content + separator + GITIGNORE_BLOCK, "utf8")
+  const block = [...header, ...missing, ""].join("\n")
+  await fs.writeFile(gitignorePath, content + separator + block, "utf8")
 }
 
 /**
@@ -226,7 +263,8 @@ export async function removePlaywrightSidebarSupport(testFolder: string): Promis
     fs.rm(path.join(nodeModules, "playwright-core"), { recursive: true, force: true }),
     fs.rm(path.join(nodeModules, "@playwright"), { recursive: true, force: true }),
     fs.rm(path.join(nodeModules, ".bin"), { recursive: true, force: true }),
-    fs.rm(path.join(testFolder, "playwright.config.js"), { force: true })
+    fs.rm(path.join(testFolder, PLAYWRIGHT_CONFIG), { force: true }),
+    fs.rm(path.join(testFolder, LEGACY_PLAYWRIGHT_CONFIG), { force: true })
   ])
 }
 
@@ -235,6 +273,10 @@ export async function removePlaywrightSidebarSupport(testFolder: string): Promis
  * resolves the CLI via `require.resolve(".../package.json")` and follows a junction back
  * to the extension's own copy, which launches the wrong CLI and makes the runner and the
  * spec load different Playwright instances.
+ *
+ * Mirrors the real @playwright/test layout, including the ESM entry: specs are ES modules
+ * (the test folder is `"type": "module"`), and `import { test, expect }` against a
+ * CJS-only wrapper fails named-export detection.
  */
 async function ensurePlaywrightTestWrapper(wrapperDir: string): Promise<void> {
   await fs.rm(wrapperDir, { recursive: true, force: true })
@@ -247,6 +289,17 @@ async function ensurePlaywrightTestWrapper(wrapperDir: string): Promise<void> {
         version: "1.61.1",
         main: "index.js",
         types: "index.d.ts",
+        exports: {
+          ".": {
+            types: "./index.d.ts",
+            import: "./index.mjs",
+            require: "./index.js",
+            default: "./index.js"
+          },
+          "./cli": "./cli.js",
+          "./package.json": "./package.json",
+          "./reporter": "./reporter.js"
+        },
         bin: { playwright: "cli.js" }
       },
       null,
@@ -260,10 +313,16 @@ async function ensurePlaywrightTestWrapper(wrapperDir: string): Promise<void> {
     "ascii"
   )
   await fs.writeFile(
+    path.join(wrapperDir, "index.mjs"),
+    'export * from "playwright/test";\nexport { default } from "playwright/test";\n',
+    "ascii"
+  )
+  await fs.writeFile(
     path.join(wrapperDir, "cli.js"),
     '#!/usr/bin/env node\nrequire("../../playwright/cli");\n',
     "ascii"
   )
+  await fs.writeFile(path.join(wrapperDir, "reporter.js"), "module.exports = {};\n", "ascii")
   await fs.writeFile(
     path.join(wrapperDir, "index.d.ts"),
     'export * from "../../playwright/types/test";\n',
@@ -292,11 +351,11 @@ function buildPlaywrightConfig(testFolder: string): string {
   // to be raw JS emitted to the output file.
   const tfDir = JSON.stringify(toForwardSlashes(testFolder))
   return [
-    "// playwright.config.js — managed by ABAP FS, do not hand-edit.",
+    "// " + PLAYWRIGHT_CONFIG + " — managed by ABAP FS, do not hand-edit.",
     "// Lets the Playwright VS Code sidebar run specs through the SAP testing runtime",
     "// without requiring an npm install in the test folder.",
-    "const fs = require('fs');",
-    "const path = require('path');",
+    "import fs from 'node:fs';",
+    "import path from 'node:path';",
     "",
     "function findEdge() {",
     "  const pf = process.env.PROGRAMFILES || 'C:\\\\Program Files';",
@@ -325,11 +384,11 @@ function buildPlaywrightConfig(testFolder: string): string {
     "  if (id && url) process.env['SAP_URL_' + id] = url;",
     "} catch (e) { /* not written yet — pick a system from the status bar */ }",
     "",
-    "// Do NOT require('@playwright/test') here. Loading it in the config consumes",
+    "// Do NOT import '@playwright/test' here. Loading it in the config consumes",
     "// Playwright's test singleton before spec collection, and later spec imports then",
     "// throw 'Playwright Test did not expect test() to be called here'. A plain object",
     "// export is all a Playwright config needs.",
-    "module.exports = {",
+    "export default {",
     "  testDir: path.join(testFolder, 'tests'),",
     "  testMatch: '**/*.spec.ts',",
     "  timeout: 60000,",
@@ -359,7 +418,8 @@ function buildPlaywrightConfig(testFolder: string): string {
 }
 
 async function ensurePlaywrightConfig(testFolder: string): Promise<void> {
-  const configPath = path.join(testFolder, "playwright.config.js")
+  await fs.rm(path.join(testFolder, LEGACY_PLAYWRIGHT_CONFIG), { force: true })
+  const configPath = path.join(testFolder, PLAYWRIGHT_CONFIG)
   const next = buildPlaywrightConfig(testFolder)
   let existing: string | null = null
   try {
