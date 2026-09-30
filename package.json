@@ -59,7 +59,7 @@
     "test:watch": "vitest",
     "test:coverage": "vitest run --coverage",
     "watch": "pnpm -r --parallel --if-present run watch",
-    "package": "vsce package",
+    "package": "vsce package --no-dependencies",
     "docs": "uv run mkdocs serve --livereload",
     "release:vsix": "pnpm build && pnpm package",
     "clean": "node scripts/clean.mjs && pnpm -r --if-present run clean",
