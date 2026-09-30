@@ -31,9 +31,9 @@ describe("availableEngines", () => {
   })
 
   it("does not enable laya just because TYPESAFE_BASE_URL is set", () => {
-    expect(availableEngines(readEnvironment({ TYPESAFE_BASE_URL: "https://example.test" }))).toEqual(
-      []
-    )
+    expect(
+      availableEngines(readEnvironment({ TYPESAFE_BASE_URL: "https://example.test" }))
+    ).toEqual([])
   })
 
   it("reports both when both are configured, so both commands stay available", () => {
@@ -103,17 +103,17 @@ describe("resolveBackend for jev", () => {
 
 describe("resolveBackend for laya", () => {
   it("asks the router to choose a checkpoint rather than pinning one", () => {
-    expect(resolveBackend("laya", readEnvironment({ LAYA_BASE_URL: "http://127.0.0.1:8000" }))).toEqual(
-      {
-        status: "ready",
-        backend: {
-          engine: "laya",
-          baseUrl: "http://127.0.0.1:8000",
-          apiKey: "laya-local-no-auth",
-          defaultModel: "convaiinnovations/laya"
-        }
+    expect(
+      resolveBackend("laya", readEnvironment({ LAYA_BASE_URL: "http://127.0.0.1:8000" }))
+    ).toEqual({
+      status: "ready",
+      backend: {
+        engine: "laya",
+        baseUrl: "http://127.0.0.1:8000",
+        apiKey: "laya-local-no-auth",
+        defaultModel: "convaiinnovations/laya"
       }
-    )
+    })
   })
 
   it("forwards LAYA_API_KEY when the server requires a bearer token", () => {
@@ -137,7 +137,9 @@ describe("resolveBackend for laya", () => {
       "laya",
       readEnvironment({ LAYA_BASE_URL: "http://127.0.0.1:8000///" })
     )
-    expect(resolution.status === "ready" && resolution.backend.baseUrl).toBe("http://127.0.0.1:8000")
+    expect(resolution.status === "ready" && resolution.backend.baseUrl).toBe(
+      "http://127.0.0.1:8000"
+    )
   })
 
   it("is unconfigured without a base URL", () => {
@@ -157,13 +159,12 @@ describe("resolveBackend for laya", () => {
   })
 
   it("rejects a non-http scheme", () => {
-    expect(resolveBackend("laya", readEnvironment({ LAYA_BASE_URL: "ftp://127.0.0.1:8000" }))).toEqual(
-      {
-        status: "invalid",
-        engine: "laya",
-        message: "LAYA_BASE_URL must use http or https, not ftp."
-      }
-    )
+    expect(
+      resolveBackend("laya", readEnvironment({ LAYA_BASE_URL: "ftp://127.0.0.1:8000" }))
+    ).toEqual({
+      status: "invalid",
+      engine: "laya",
+      message: "LAYA_BASE_URL must use http or https, not ftp."
+    })
   })
 })
-

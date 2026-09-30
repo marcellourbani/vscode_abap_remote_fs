@@ -2,10 +2,7 @@ export type SystemOneJsonValue =
   string | number | boolean | null | SystemOneJsonValue[] | { [key: string]: SystemOneJsonValue }
 
 export type SystemOneEntry =
-  | string
-  | SystemOneJsonValue[]
-  | { [key: string]: SystemOneJsonValue }
-  | null
+  string | SystemOneJsonValue[] | { [key: string]: SystemOneJsonValue } | null
 export type SystemOneInstruction = Exclude<SystemOneEntry, null>
 export type SystemOneDescription = SystemOneEntry
 
@@ -43,9 +40,7 @@ export interface SystemOneScoreQuestion<
 }
 
 export type SystemOneQuestion =
-  | SystemOneNoulQuestion
-  | SystemOneChoiceQuestion
-  | SystemOneScoreQuestion
+  SystemOneNoulQuestion | SystemOneChoiceQuestion | SystemOneScoreQuestion
 
 export type SystemOneQuestions = Readonly<Record<string, SystemOneQuestion>>
 

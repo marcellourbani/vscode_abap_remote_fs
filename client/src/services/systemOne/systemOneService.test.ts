@@ -339,7 +339,11 @@ describe("SystemOneService", () => {
     },
     {
       name: "context limit",
-      error: APIError.fromResponse(400, { detail: { error_type: "max_tokens_exceeded" } }, new Headers()),
+      error: APIError.fromResponse(
+        400,
+        { detail: { error_type: "max_tokens_exceeded" } },
+        new Headers()
+      ),
       expected: { status: "failed", reason: "context-limit", statusCode: 400, retryable: false }
     },
     {
@@ -385,15 +389,18 @@ describe("SystemOneService", () => {
   test.each([
     { engine: "jev" as const, backend: jevBackend, variable: "TYPESAFE_API_KEY" },
     { engine: "laya" as const, backend: layaBackend, variable: "LAYA_API_KEY" }
-  ])("points at $variable when $engine rejects the credential", async ({ engine, backend, variable }) => {
-    const { service, systemOne } = setup({ status: "ready", backend })
-    systemOne.mockRejectedValue(APIError.fromResponse(401, {}, new Headers()))
+  ])(
+    "points at $variable when $engine rejects the credential",
+    async ({ engine, backend, variable }) => {
+      const { service, systemOne } = setup({ status: "ready", backend })
+      systemOne.mockRejectedValue(APIError.fromResponse(401, {}, new Headers()))
 
-    const result = await service.ask(engine, request)
+      const result = await service.ask(engine, request)
 
-    if (result.status === "success") throw new Error("Expected the request to fail")
-    expect(result.message).toContain(variable)
-  })
+      if (result.status === "success") throw new Error("Expected the request to fail")
+      expect(result.message).toContain(variable)
+    }
+  )
 
   test("quotes the server's own reason for an oversized state", async () => {
     const { service, systemOne } = setup({ status: "ready", backend: layaBackend })
@@ -548,9 +555,9 @@ describe("per-engine limits", () => {
       status: "failed",
       message: 'Jev Score question "rating" needs between 2 and 10 valid levels.'
     })
-    await expect(
-      withLaya.service.ask("laya", { state: "text", questions })
-    ).resolves.toMatchObject({ status: "success" })
+    await expect(withLaya.service.ask("laya", { state: "text", questions })).resolves.toMatchObject(
+      { status: "success" }
+    )
   })
 
   test("refuses a null state for Laya, which requires one, but not for Jev", async () => {
@@ -565,7 +572,9 @@ describe("per-engine limits", () => {
       reason: "invalid-request",
       message: "Laya needs a state to reason about."
     })
-    await expect(jev.service.ask("jev", { state: null, questions: { noul } })).resolves.toMatchObject({
+    await expect(
+      jev.service.ask("jev", { state: null, questions: { noul } })
+    ).resolves.toMatchObject({
       status: "success"
     })
   })

@@ -70,9 +70,7 @@ const defaultDependencies: SystemOneServiceDependencies = {
 export class SystemOneService {
   private readonly clients = new Map<string, SystemOneTransport>()
 
-  constructor(
-    private readonly dependencies: SystemOneServiceDependencies = defaultDependencies
-  ) {}
+  constructor(private readonly dependencies: SystemOneServiceDependencies = defaultDependencies) {}
 
   async ask<const Questions extends SystemOneQuestions>(
     engine: DecisionEngine,
@@ -122,7 +120,9 @@ export class SystemOneService {
    * client on every call.
    */
   private getClient(backend: DecisionBackend): SystemOneTransport {
-    const key = [backend.engine, backend.baseUrl, backend.apiKey, backend.defaultModel].join("\u0000")
+    const key = [backend.engine, backend.baseUrl, backend.apiKey, backend.defaultModel].join(
+      "\u0000"
+    )
     const existing = this.clients.get(key)
     if (existing) return existing
     const client = this.dependencies.createClient(backend)
@@ -236,18 +236,18 @@ function validateOptions(
   // caller can pass the same options to either engine.
   const budget = limits.tokenBudget
   if (!budget || options.maxLen === undefined) return undefined
-  if (!Number.isInteger(options.maxLen) || options.maxLen < budget.min || options.maxLen > budget.max)
+  if (
+    !Number.isInteger(options.maxLen) ||
+    options.maxLen < budget.min ||
+    options.maxLen > budget.max
+  )
     return invalid(
       `${label} token budget must be a whole number between ${budget.min.toLocaleString()} and ${budget.max.toLocaleString()}.`
     )
   return undefined
 }
 
-function validateQuestion(
-  limits: EngineLimits,
-  id: string,
-  value: unknown
-): Rejection | undefined {
+function validateQuestion(limits: EngineLimits, id: string, value: unknown): Rejection | undefined {
   const { label } = limits
   if (!id.trim() || !isRecord(value) || !isInstruction(value.instructions))
     return invalid(`${label} question "${id}" is invalid.`)
@@ -491,7 +491,11 @@ function apiFailure(
   } as const
 }
 
-function failed(reason: SystemOneFailureReason, message: string, retryable: boolean): FailedOutcome {
+function failed(
+  reason: SystemOneFailureReason,
+  message: string,
+  retryable: boolean
+): FailedOutcome {
   return { status: "failed", reason, message, retryable }
 }
 
