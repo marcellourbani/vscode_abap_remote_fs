@@ -3,10 +3,16 @@ import { basename } from "path"
 import * as vscode from "vscode"
 import { AdtObjectFinder } from "../../adt/operations/AdtObjectFinder"
 import { pickAdtRoot } from "../../config"
-import { askJev } from "./jevService"
-import type { JevChoiceQuestion, JevNoulQuestion, JevQuestion, JevScoreQuestion } from "./types"
-
-const CONTEXT_WARNING_CHARS = 80_000
+import type { DecisionEngine } from "./backend"
+import { engineLimits } from "./engines"
+import { enginePresentation, type EnginePresentation } from "./presentation"
+import { askSystemOne } from "./systemOneService"
+import type {
+  SystemOneChoiceQuestion,
+  SystemOneNoulQuestion,
+  SystemOneQuestion,
+  SystemOneScoreQuestion
+} from "./types"
 
 interface AskMessage {
   command: "ask"
@@ -15,6 +21,7 @@ interface AskMessage {
   instructions: string
   model?: string
   timeoutMs?: number
+  maxLen?: number
   options?: Array<{ label?: string; description?: string }>
   levels?: string[]
   trueCriteria?: string
@@ -31,36 +38,59 @@ interface Attachment {
   content: string
 }
 
-export function registerJevPlayground(context: vscode.ExtensionContext): void {
-  context.subscriptions.push(
-    vscode.commands.registerCommand("abapfs.askJev", () => JevPlaygroundPanel.open(context))
-  )
+/**
+ * What the panel needs in order to describe an engine. The limits it quotes are read from
+ * the service so the copy cannot drift from what is actually enforced, but the panel does
+ * not check them itself: `askSystemOne` refuses a request no engine would accept.
+ */
+interface PanelView extends EnginePresentation {
+  readonly label: string
+  readonly maxStateChars?: number
+  readonly tokenBudget?: { readonly min: number; readonly max: number }
 }
 
-class JevPlaygroundPanel {
-  private static instance?: JevPlaygroundPanel
+function panelView(engine: DecisionEngine): PanelView {
+  const limits = engineLimits(engine)
+  return {
+    ...enginePresentation(engine),
+    label: limits.label,
+    ...(limits.maxStateChars === undefined ? {} : { maxStateChars: limits.maxStateChars }),
+    ...(limits.tokenBudget ? { tokenBudget: limits.tokenBudget } : {})
+  }
+}
+
+export function openPlayground(engine: DecisionEngine): void {
+  PlaygroundPanel.open(panelView(engine))
+}
+
+class PlaygroundPanel {
+  private static readonly instances = new Map<DecisionEngine, PlaygroundPanel>()
   private controller?: AbortController
   private readonly attachments = new Map<string, Attachment>()
 
-  static open(context: vscode.ExtensionContext): void {
-    if (this.instance) {
-      this.instance.panel.reveal()
+  static open(view: PanelView): void {
+    const existing = this.instances.get(view.engine)
+    if (existing) {
+      existing.panel.reveal()
       return
     }
     const panel = vscode.window.createWebviewPanel(
-      "abapfs.askJev",
-      "Ask Jev",
+      view.viewType,
+      `Ask ${view.label}`,
       vscode.ViewColumn.One,
       { enableScripts: true, retainContextWhenHidden: true }
     )
-    this.instance = new JevPlaygroundPanel(panel)
-    panel.webview.html = html(panel.webview)
+    this.instances.set(view.engine, new PlaygroundPanel(panel, view))
+    panel.webview.html = html(view)
   }
 
-  private constructor(private readonly panel: vscode.WebviewPanel) {
+  private constructor(
+    private readonly panel: vscode.WebviewPanel,
+    private readonly view: PanelView
+  ) {
     panel.onDidDispose(() => {
       this.controller?.abort()
-      JevPlaygroundPanel.instance = undefined
+      PlaygroundPanel.instances.delete(view.engine)
     })
     panel.webview.onDidReceiveMessage(message => this.handleMessage(message))
   }
@@ -76,9 +106,10 @@ class JevPlaygroundPanel {
     this.controller = controller
     try {
       const state = this.expandState(message.state)
-      if (!state) throw new Error("Enter the state Jev should evaluate.")
-      const question = buildQuestion(message)
-      const result = await askJev(
+      if (!state) throw new Error(`Enter the state ${this.view.label} should evaluate.`)
+      const question = buildQuestion(this.view, message)
+      const result = await askSystemOne(
+        this.view.engine,
         {
           state,
           questions: { answer: question },
@@ -86,7 +117,8 @@ class JevPlaygroundPanel {
         },
         {
           signal: controller.signal,
-          timeoutMs: validTimeout(message.timeoutMs)
+          timeoutMs: validTimeout(this.view, message.timeoutMs),
+          ...(message.maxLen === undefined ? {} : { maxLen: message.maxLen })
         }
       )
       if (this.controller !== controller) return
@@ -130,7 +162,7 @@ class JevPlaygroundPanel {
       canSelectFiles: true,
       canSelectFolders: false,
       canSelectMany: false,
-      openLabel: "Attach to Jev state"
+      openLabel: `Attach to ${this.view.label} state`
     })
     const uri = selected?.[0]
     if (!uri) return undefined
@@ -185,15 +217,20 @@ function isAttachMessage(value: unknown): value is AttachMessage {
   return isRecord(value) && (value.command === "attachFile" || value.command === "attachAbapObject")
 }
 
-function buildQuestion(message: AskMessage): JevQuestion {
+/**
+ * Turns the form into a question, checking only what the form itself can get wrong. Engine
+ * limits on counts and sizes are left to the service, which reports them as a failed
+ * outcome the same way a server-side refusal arrives.
+ */
+function buildQuestion(view: PanelView, message: AskMessage): SystemOneQuestion {
   const instructions = message.instructions.trim()
-  if (!instructions) throw new Error("Enter a focused question for Jev.")
+  if (!instructions) throw new Error(`Enter a focused question for ${view.label}.`)
   if (message.primitive === "noul") {
     const criteria = {
       ...(message.trueCriteria?.trim() ? { true: message.trueCriteria.trim() } : {}),
       ...(message.falseCriteria?.trim() ? { false: message.falseCriteria.trim() } : {})
     }
-    const question: JevNoulQuestion = {
+    const question: SystemOneNoulQuestion = {
       type: "noul",
       instructions,
       ...(Object.keys(criteria).length ? { criteria } : {})
@@ -211,13 +248,12 @@ function buildQuestion(message: AskMessage): JevQuestion {
     }
     if (Object.keys(criteria).length < 2)
       throw new Error("Choice needs at least two labeled options.")
-    const question: JevChoiceQuestion = { type: "choice", instructions, criteria }
+    const question: SystemOneChoiceQuestion = { type: "choice", instructions, criteria }
     return question
   }
   const levels = (message.levels ?? []).map(level => level.trim()).filter(Boolean)
-  if (levels.length < 2 || levels.length > 10)
-    throw new Error("Score needs between 2 and 10 described levels.")
-  const question: JevScoreQuestion = {
+  if (levels.length < 2) throw new Error("Score needs at least two described levels.")
+  const question: SystemOneScoreQuestion = {
     type: "score",
     instructions,
     criteria: levels as [string, string, ...string[]]
@@ -225,10 +261,13 @@ function buildQuestion(message: AskMessage): JevQuestion {
   return question
 }
 
-function validTimeout(value: number | undefined): number {
-  if (value === undefined) return 10000
-  if (!Number.isFinite(value) || value < 1000 || value > 120000)
-    throw new Error("Timeout must be between 1,000 and 120,000 milliseconds.")
+/** The timeout is the panel's own setting rather than an engine limit, so it checks it. */
+function validTimeout(view: PanelView, value: number | undefined): number {
+  if (value === undefined) return view.defaultTimeoutMs
+  if (!Number.isFinite(value) || value < 1000 || value > view.maxTimeoutMs)
+    throw new Error(
+      `Timeout must be between 1,000 and ${view.maxTimeoutMs.toLocaleString()} milliseconds.`
+    )
   return value
 }
 
@@ -236,15 +275,36 @@ function isRecord(value: unknown): value is Record<string, unknown> {
   return value !== null && typeof value === "object" && !Array.isArray(value)
 }
 
-function html(webview: vscode.Webview): string {
+function stateHint(view: PanelView): string {
+  if (view.maxStateChars === undefined)
+    return (
+      `${view.label} limits tokens, not characters. Around ` +
+      `${view.stateWarningChars.toLocaleString()} expanded characters may exceed its context ` +
+      `limit, but the actual boundary depends on the content and question.`
+    )
+  return (
+    `${view.label} refuses a state over ${view.maxStateChars.toLocaleString()} characters ` +
+    `outright. Below that, the token budget decides how much of the state the model actually ` +
+    `reads; anything past it is dropped and reported after the answer.`
+  )
+}
+
+function html(view: PanelView): string {
   const nonce = randomBytes(16).toString("base64")
+  const budget = view.tokenBudget
+  const config = JSON.stringify({
+    label: view.label,
+    warningChars: view.stateWarningChars,
+    limitChars: view.maxStateChars ?? null,
+    hasTokenBudget: Boolean(budget)
+  })
   return `<!doctype html>
 <html lang="en">
 <head>
   <meta charset="UTF-8">
   <meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'nonce-${nonce}'; script-src 'nonce-${nonce}';">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Ask Jev</title>
+  <title>Ask ${view.label}</title>
   <style nonce="${nonce}">
     :root { color-scheme: light dark; }
     body { margin: 0; color: var(--vscode-foreground); background: var(--vscode-editor-background); font: var(--vscode-font-size)/1.5 var(--vscode-font-family); }
@@ -270,6 +330,7 @@ function html(webview: vscode.Webview): string {
     table { width: 100%; border-collapse: collapse; } th, td { text-align: left; padding: 9px 10px; border-bottom: 1px solid var(--vscode-panel-border); } th { color: var(--vscode-descriptionForeground); font-size: 12px; text-transform: uppercase; }
     .bar-cell { width: 45%; } .bar-track { height: 9px; background: var(--vscode-input-background); border: 1px solid var(--vscode-panel-border); border-radius: 5px; overflow: hidden; } .bar { height: 100%; background: var(--vscode-button-background); }
     .winner { font-weight: 700; } .meta { margin-top: 14px; color: var(--vscode-descriptionForeground); font-size: 12px; }
+    .truncation { margin-top: 14px; padding: 10px 12px; border-left: 4px solid var(--vscode-notificationsWarningIcon-foreground); background: var(--vscode-textBlockQuote-background); font-size: 12px; }
     dialog { width: min(820px, calc(100vw - 48px)); max-height: calc(100vh - 64px); box-sizing: border-box; color: var(--vscode-foreground); background: var(--vscode-editor-background); border: 1px solid var(--vscode-panel-border); border-radius: 8px; padding: 20px; }
     dialog::backdrop { background: rgba(0, 0, 0, .55); } dialog h2 { margin-top: 0; } dialog pre { max-height: calc(100vh - 190px); overflow: auto; padding: 14px; white-space: pre-wrap; overflow-wrap: anywhere; color: var(--vscode-editor-foreground); background: var(--vscode-textCodeBlock-background); border-radius: 4px; font-family: var(--vscode-editor-font-family); }
     .result-actions { margin-top: 14px; }
@@ -278,13 +339,13 @@ function html(webview: vscode.Webview): string {
 </head>
 <body>
 <main>
-  <h1>Ask Jev</h1>
-  <p class="lead">Your state, question, options or criteria, selected model, and attachment contents are sent to TypeSafe when you click Ask Jev. Results are structured, not generated text.</p>
+  <h1>Ask ${view.label}</h1>
+  <p class="lead">${view.dataNotice} Results are structured, not generated text.</p>
   <section class="card">
     <div class="field">
       <label for="state">State</label>
       <textarea id="state" placeholder="Enter any text, including JSON"></textarea>
-      <div class="hint">Jev limits tokens, not characters. Around ${CONTEXT_WARNING_CHARS.toLocaleString()} expanded characters may exceed its context limit, but the actual boundary depends on the content and question.</div>
+      <div class="hint">${stateHint(view)}</div>
       <div class="state-tools">
         <button id="attach-file" class="secondary" type="button">Add file</button>
         <button id="attach-abap" class="secondary" type="button">Add ABAP object</button>
@@ -301,27 +362,32 @@ function html(webview: vscode.Webview): string {
       <div class="field"><label for="false-criteria">False means (optional)</label><input id="false-criteria" placeholder="Condition does not hold"></div>
     </div>
     <div class="grid">
-      <div class="field"><label for="model">Model (optional)</label><input id="model" placeholder="jev-latest"></div>
-      <div class="field"><label for="timeout">Timeout (ms)</label><input id="timeout" type="number" min="1000" max="120000" value="10000"></div>
+      <div class="field"><label for="model">Model (optional)</label><input id="model" placeholder="${view.modelPlaceholder}">${view.modelHint ? `<div class="hint">${view.modelHint}</div>` : ""}</div>
+      <div class="field"><label for="timeout">Timeout (ms)</label><input id="timeout" type="number" min="1000" max="${view.maxTimeoutMs}" value="${view.defaultTimeoutMs}"></div>
+${
+  budget
+    ? `      <div class="field"><label for="max-len">Token budget (optional)</label><input id="max-len" type="number" min="${budget.min}" max="${budget.max}" placeholder="checkpoint default"><div class="hint">${view.tokenBudgetHint ?? ""}</div></div>`
+    : ""
+}
     </div>
-    <div class="actions"><button id="ask" type="button">Ask Jev</button><span id="activity" class="hint"></span></div>
+    <div class="actions"><button id="ask" type="button">Ask ${view.label}</button><span id="activity" class="hint"></span></div>
   </section>
   <section id="result" class="card hidden" aria-live="polite"></section>
   <dialog id="raw-dialog">
-    <h2>Raw Jev output</h2>
+    <h2>Raw ${view.label} output</h2>
     <pre id="raw-output"></pre>
     <button id="close-raw" type="button">Close</button>
   </dialog>
 </main>
 <script nonce="${nonce}">
   const vscode = acquireVsCodeApi()
+  const config = ${config}
   const byId = id => document.getElementById(id)
   const primitive = byId("primitive"), options = byId("options"), levels = byId("levels")
   const state = byId("state"), ask = byId("ask"), activity = byId("activity"), result = byId("result")
   const attachmentStatus = byId("attachment-status"), attachments = byId("attachments")
   const rawDialog = byId("raw-dialog"), rawOutput = byId("raw-output")
   const attachedItems = new Map()
-  const contextWarningCharacters = ${CONTEXT_WARNING_CHARS}
   const typeHints = {
     choice: "Use Choice to select one option from a defined set.",
     score: "Use Score for degree along ordered, concrete levels. The result is a probability-weighted position from 0 to the highest level. For yes/no questions, use Noul.",
@@ -391,7 +457,12 @@ function html(webview: vscode.Webview): string {
       attachmentStatus.textContent = "Attachments are inserted at the cursor and expanded when sent."
       return
     }
-    attachmentStatus.textContent = "Expanded state: approximately " + expandedCharacters.toLocaleString() + " characters." + (expandedCharacters >= contextWarningCharacters ? " This may exceed Jev's context limit; the actual token count depends on the content." : "")
+    let note = "Expanded state: approximately " + expandedCharacters.toLocaleString() + " characters."
+    if (config.limitChars !== null && expandedCharacters > config.limitChars)
+      note += " " + config.label + " refuses more than " + config.limitChars.toLocaleString() + " characters."
+    else if (expandedCharacters >= config.warningChars)
+      note += " This may exceed " + config.label + "'s context limit; the actual token count depends on the content."
+    attachmentStatus.textContent = note
   }
   state.addEventListener("input", renderAttachments)
   function updateQuestionType() {
@@ -409,6 +480,9 @@ function html(webview: vscode.Webview): string {
       command: "ask", primitive: primitive.value, state: state.value,
       instructions: byId("instructions").value, model: byId("model").value,
       timeoutMs: Number(byId("timeout").value),
+      ...(config.hasTokenBudget && byId("max-len").value.trim()
+        ? { maxLen: Number(byId("max-len").value) }
+        : {}),
       options: [...options.children].map(row => ({ label: row.querySelector(".option-label").value, description: row.querySelector(".option-description").value })),
       levels: [...levels.querySelectorAll(".level-description")].map(element => element.value),
       trueCriteria: byId("true-criteria").value, falseCriteria: byId("false-criteria").value
@@ -439,6 +513,15 @@ function html(webview: vscode.Webview): string {
     })
     table.append(head, body); return table
   }
+  function truncationNotice(usage) {
+    if (!usage.truncated) return undefined
+    const dropped = usage.stateTokensDropped
+    const total = usage.stateTokens
+    const detail = dropped !== undefined && total !== undefined
+      ? " It read " + (total - dropped).toLocaleString() + " of " + total.toLocaleString() + " state tokens and dropped " + dropped.toLocaleString() + "."
+      : ""
+    return text("div", config.label + " did not read the whole state." + detail + " Raise the token budget or shorten the state before trusting this answer.", "truncation")
+  }
   function showSuccess(response) {
     clearResult("success")
     const answer = response.answers.answer, summary = text("div", "", "summary")
@@ -446,20 +529,23 @@ function html(webview: vscode.Webview): string {
     if (answer.type === "noul") {
       const likelyAnswer = answer.noul >= .5 ? "Yes" : "No"
       const likelyProbability = answer.noul >= .5 ? answer.noul : 1 - answer.noul
-      summary.append(text("div", "Jev leans "), text("strong", likelyAnswer), text("div", "Probability "), text("strong", (likelyProbability * 100).toFixed(1) + "%"))
+      summary.append(text("div", config.label + " leans "), text("strong", likelyAnswer), text("div", "Probability "), text("strong", (likelyProbability * 100).toFixed(1) + "%"))
       rows = [{ label: "Yes", probability: answer.noul, winner: answer.noul >= .5 }, { label: "No", probability: 1 - answer.noul, winner: answer.noul < .5 }]
     } else if (answer.type === "choice") {
       const selectedProbability = answer.probabilities[answer.choice]
-      summary.append(text("div", "Jev chose "), text("strong", answer.choice), text("div", "Confidence "), text("strong", (answer.confidence * 100).toFixed(1) + "%"))
+      summary.append(text("div", config.label + " chose "), text("strong", answer.choice), text("div", "Confidence "), text("strong", (answer.confidence * 100).toFixed(1) + "%"))
       confidenceMeta = " · Selected probability: " + (selectedProbability * 100).toFixed(1) + "% · Confidence summarizes how concentrated the full distribution is"
       rows = Object.entries(answer.probabilities).sort((a,b) => b[1] - a[1]).map(([label, probability]) => ({ label, probability, winner: label === answer.choice }))
     } else {
       const maximumScore = Math.max(0, Object.keys(answer.legend).length - 1)
-      summary.append(text("div", "Jev scored "), text("strong", answer.score.toFixed(2) + " / " + maximumScore), text("div", "Distribution confidence "), text("strong", (answer.confidence * 100).toFixed(1) + "%"))
+      summary.append(text("div", config.label + " scored "), text("strong", answer.score.toFixed(2) + " / " + maximumScore), text("div", "Distribution confidence "), text("strong", (answer.confidence * 100).toFixed(1) + "%"))
       confidenceMeta = " · Weighted score is the average position implied by all level probabilities"
       rows = Object.entries(answer.probabilities).map(([key, probability]) => ({ label: key + " — " + String(answer.legend[key] ?? ""), probability, winner: false }))
     }
-    result.append(summary, probabilityTable(rows), text("div", "Model: " + response.model + " · Input tokens: " + response.usage.inputTokens + " · Output tokens: " + response.usage.outputTokens + confidenceMeta, "meta"), rawOutputButton(response))
+    result.append(summary, probabilityTable(rows), text("div", "Model: " + response.model + " · Input tokens: " + response.usage.inputTokens + " · Output tokens: " + response.usage.outputTokens + confidenceMeta, "meta"))
+    const notice = truncationNotice(response.usage)
+    if (notice) result.append(notice)
+    result.append(rawOutputButton(response))
   }
   window.addEventListener("message", event => {
     if (event.data.command === "attachment") return insertAttachment(event.data.attachment)
