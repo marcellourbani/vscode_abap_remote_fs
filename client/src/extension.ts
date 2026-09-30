@@ -66,7 +66,7 @@ import { ObjectSearchViewProvider } from "./views/objectSearchView"
 import { funWindow as window } from "./services/funMessenger"
 import { initializeReviewPrompt } from "./services/reviewPrompt"
 import { registerBdefType } from "./adt/operations/BdefCreator"
-import { registerJevPlayground } from "./services/jev/jevPlayground"
+import { registerDecisionModels } from "./services/systemOne/register"
 
 // Import commands to ensure @command decorators are executed
 import "./commands"
@@ -189,8 +189,8 @@ export async function activate(ctx: ExtensionContext): Promise<AbapFsApi> {
     // Initialize SAP Data Workbook (.sapwb)
     registerAbapNotebooks(context)
 
-    // Register the optional Jev playground.
-    registerJevPlayground(context)
+    // Register the optional Jev and Laya playgrounds.
+    registerDecisionModels(context)
 
     sub.push(
       commands.registerCommand("abapfs.startMcpServer", () => startMcpServerCommand(context))

@@ -3873,6 +3873,18 @@
         "icon": "$(sparkle)"
       },
       {
+        "command": "abapfs.askLaya",
+        "title": "Ask Laya",
+        "category": "ABAP FS",
+        "icon": "$(sparkle)"
+      },
+      {
+        "command": "abapfs.decisionModels",
+        "title": "About Jev and Laya",
+        "category": "ABAP FS",
+        "icon": "$(question)"
+      },
+      {
         "command": "abapfs.notebookSetCellMaxRows",
         "title": "SAP Data Workbook: Set Cell Row Limit",
         "category": "ABAP FS"
@@ -4462,6 +4474,17 @@
         },
         {
           "command": "abapfs.abapReplSetupGuide"
+        },
+        {
+          "command": "abapfs.askJev",
+          "when": "abapfs:jevAvailable"
+        },
+        {
+          "command": "abapfs.askLaya",
+          "when": "abapfs:layaAvailable"
+        },
+        {
+          "command": "abapfs.decisionModels"
         },
         {
           "command": "abapfs.startRecording"
