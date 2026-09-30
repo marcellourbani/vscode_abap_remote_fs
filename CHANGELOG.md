@@ -1,5 +1,26 @@
 # Changelog
 
+## 2.10.3
+
+### Patch Changes
+
+- aff39c4: add Laya system one model support
+- 4bc8344: Migrate the extension and language server to ESM-compatible TypeScript and runtime configuration while preserving the existing bundled entry points and Playwright runtime behavior.
+- 1aebc82: Complete the ESM migration for SAP UI testing and the build scripts. The managed test folder is now marked as an ES module, its Playwright config is emitted as `playwright.config.mjs`, and the generated `@playwright/test` wrapper gained an ESM entry point so specs can import `test` and `expect` as named exports. Pins `vscode-languageserver-protocol` to the version the language server expects, restores the missing `@typesafe-ai/sdk` dependency, and runs bundling and type-checking in parallel so `pnpm build` covers both.
+- cf562f9: Modernize dependency usage, repository configuration, CI, documentation, and packaging while retaining the extension's existing runtime contracts.
+- 0e75f67: Migrate the build system from Webpack to tsdown (Rolldown + Oxc under the hood).
+
+  The extension, notebook JS worker, language server, and SAP testing runtime now bundle with
+  tsdown. Behavioral contracts are preserved: CommonJS output, externals (`vscode`,
+  `@playwright/test`), the vendored Playwright `node_modules` layout, and `keep_classnames`
+  minification. No runtime behavior change; clean builds are dramatically faster and the
+  packaged VSIX is slightly smaller. Removes webpack, webpack-cli, ts-loader,
+  terser-webpack-plugin, and copy-webpack-plugin.
+
+- f54cd20: fix build with pnpm
+- 4fbaaf7: fix watch tasks and add typechecking
+- ccc909e: Replace the Jest test runner with named Vitest projects across the client, server, and workspace modules while preserving the existing test coverage and behavior.
+
 ## 2.10.2
 
 ### Patch Changes
