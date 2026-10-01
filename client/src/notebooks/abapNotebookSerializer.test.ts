@@ -434,3 +434,28 @@ describe("registerNotebookSerializer", () => {
     expect(typeof disposable.dispose).toBe("function")
   })
 })
+
+// ── Cell names ───────────────────────────────────────────────────────────────
+
+describe("cell name persistence", () => {
+  test("name survives a load/save round trip; blank names are dropped", async () => {
+    const text = JSON.stringify({
+      version: 1,
+      cells: [
+        { type: "sql", content: "SELECT 1", name: "s1_define", maxRows: 10 },
+        { type: "javascript", content: "1", name: "  " }
+      ]
+    })
+    const data: any = await deserialize(text)
+    expect(data.cells[0].metadata).toEqual({ maxRows: 10, name: "s1_define" })
+    expect(data.cells[1].metadata).toEqual({})
+    const out = JSON.parse(decodeResult(await serialize(data)))
+    expect(out.cells[0]).toEqual({
+      type: "sql",
+      content: "SELECT 1",
+      maxRows: 10,
+      name: "s1_define"
+    })
+    expect(out.cells[1]).toEqual({ type: "javascript", content: "1" })
+  })
+})

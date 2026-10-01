@@ -4395,6 +4395,12 @@
         "command": "abapfs.showWalkThrough",
         "title": "Show Walkthrough",
         "category": "ABAP FS"
+      },
+      {
+        "command": "abapfs.notebookSetCellName",
+        "title": "SAP Data Workbook: Name Cell…",
+        "category": "ABAP FS",
+        "icon": "$(tag)"
       }
     ],
     "keybindings": [
@@ -4845,6 +4851,10 @@
         {
           "command": "abapfs.s4hClearFilter",
           "when": "hideCommands.never"
+        },
+        {
+          "command": "abapfs.notebookSetCellName",
+          "when": "activeEditor == workbench.editor.notebook && notebookType == sap-data-workbook"
         }
       ],
       "view/item/context": [
@@ -5333,6 +5343,13 @@
           "command": "abapfs.rapGenFromEditor",
           "when": "resourceScheme == adt && abapfs:activeEditorIsTable",
           "group": "4_rapGenerator@1"
+        }
+      ],
+      "notebook/cell/title": [
+        {
+          "command": "abapfs.notebookSetCellName",
+          "when": "notebookType == sap-data-workbook",
+          "group": "inline@1"
         }
       ]
     },

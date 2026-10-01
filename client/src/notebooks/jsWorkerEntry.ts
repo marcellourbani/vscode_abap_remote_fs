@@ -19,7 +19,7 @@ import * as v8 from "v8"
 interface WorkerRequest {
   code: string
   cellIndex: number
-  cellResults: Record<string, { result: unknown }>
+  cellResults: Record<string, { result: unknown; system?: string; name?: string; index?: number }>
   timeoutMs: number
 }
 
@@ -122,11 +122,19 @@ function buildCellsAccessor(
   return new Proxy({} as Record<string, { result: unknown }>, {
     get(_target, prop) {
       if (typeof prop !== "string") return undefined
+      if (prop === "then") return undefined // not a thenable
       const entry = cellResults[prop]
       if (!entry) {
-        throw new Error(`Cell [${prop}] has no result yet. Run it first.`)
+        const label = /^\d+$/.test(prop) ? `Cell [${prop}]` : `Cell '${prop}'`
+        throw new Error(
+          `${label} has no result yet. Run it first` +
+            (/^\d+$/.test(prop) ? "." : ", and check that a cell has this name.")
+        )
       }
       return entry
+    },
+    has(_target, prop) {
+      return typeof prop === "string" && prop in cellResults
     }
   })
 }

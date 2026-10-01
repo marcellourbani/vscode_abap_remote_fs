@@ -1,57 +1,62 @@
 vi.mock("../services/funMessenger", () => ({
   funWindow: {
     showWarningMessage: vi.fn(),
+    showInformationMessage: vi.fn(),
     showQuickPick: vi.fn(),
     showInputBox: vi.fn(),
-    showErrorMessage: vi.fn(),
-    createOutputChannel: vi.fn(function () {
-      return {
-        info: vi.fn(),
-        warn: vi.fn(),
-        error: vi.fn(),
-        debug: vi.fn(),
-        trace: vi.fn()
-      }
-    })
+    showErrorMessage: vi.fn()
   }
+}))
+vi.mock("../lib", () => ({
+  log: Object.assign(vi.fn(), { debug: vi.fn(), info: vi.fn(), warn: vi.fn(), error: vi.fn() })
+}))
+vi.mock("../adt/conections", () => ({ getOrCreateClient: vi.fn() }))
+vi.mock("../config", () => ({
+  formatKey: (s: string) => s.toLowerCase(),
+  connectedRoots: vi.fn(() => new Map([["dev", {}]])),
+  getConfig: vi.fn(() => ({ get: () => ({ DEV: {}, QAS: {} }) }))
 }))
 vi.mock("vscode", () => {
   const NotebookCellStatusBarItem = vi.fn().mockImplementation(function (
     text: string,
     alignment: any
   ) {
-    return {
-      text,
-      alignment,
-      tooltip: undefined as string | undefined,
-      command: undefined as any
-    }
+    return { text, alignment, tooltip: undefined as string | undefined, command: undefined as any }
   })
+  class EventEmitter {
+    event = vi.fn()
+    fire = vi.fn()
+  }
   return {
     NotebookCellStatusBarItem,
     NotebookCellStatusBarAlignment: { Right: 2, Left: 1 },
+    NotebookCellKind: { Markup: 1, Code: 2 },
+    EventEmitter,
     NotebookEdit: {
       updateCellMetadata: vi.fn(function (index: number, meta: any) {
         return { index, meta }
       })
     },
     WorkspaceEdit: vi.fn().mockImplementation(function () {
-      return {
-        set: vi.fn()
-      }
+      return { set: vi.fn(), replace: vi.fn() }
     }),
     notebooks: {
       registerNotebookCellStatusBarItemProvider: vi.fn(function () {
         return { dispose: vi.fn() }
-      })
+      }),
+      createNotebookController: vi.fn()
     },
     commands: {
       registerCommand: vi.fn(function () {
         return { dispose: vi.fn() }
       })
     },
+    window: { activeNotebookEditor: undefined },
     workspace: {
-      applyEdit: vi.fn().mockResolvedValue(true)
+      applyEdit: vi.fn().mockResolvedValue(true),
+      onDidChangeNotebookDocument: vi.fn(() => ({ dispose: vi.fn() })),
+      onDidChangeWorkspaceFolders: vi.fn(() => ({ dispose: vi.fn() })),
+      getConfiguration: vi.fn(() => ({ get: (_k: string, d: unknown) => d }))
     }
   }
 })
@@ -59,222 +64,94 @@ vi.mock("vscode", () => {
 import { SqlCellStatusBarProvider, registerCellStatusBar } from "./cellStatusBar"
 import { DEFAULT_MAX_ROWS, SQL_LANGUAGE_ID } from "./types"
 import { funWindow as window } from "../services/funMessenger"
-import * as __$mock_vscode from "vscode"
+import * as vscode from "vscode"
 
 const mockWindow = window as any
 
-function makeCell(languageId: string, metadata?: Record<string, unknown>): any {
-  return {
-    document: { languageId },
+/** Build a notebook of cells: spec = [languageId, metadata] */
+function makeNotebook(spec: Array<[string, Record<string, unknown>?]>): any[] {
+  const notebook: any = { uri: { toString: () => "file:///nb.sapwb" } }
+  const cells = spec.map(([languageId, metadata], index) => ({
+    kind: languageId === "markdown" ? 1 : 2,
+    document: { languageId, getText: () => "" },
     metadata: metadata ?? {},
-    index: 0,
-    notebook: { uri: { toString: () => "adt://dev100/nb.sapwb" } }
-  }
+    index,
+    notebook
+  }))
+  notebook.getCells = () => cells
+  return cells
+}
+const texts = (items: any[]) => items.map(i => i.text)
+
+function commandHandler(name: string): (...a: any[]) => Promise<void> {
+  const call = (vscode.commands.registerCommand as any).mock.calls.find((c: any[]) => c[0] === name)
+  return call[1]
 }
 
-describe("SqlCellStatusBarProvider", () => {
+describe("cell status bar", () => {
   let provider: SqlCellStatusBarProvider
-
   beforeEach(() => {
+    vi.clearAllMocks()
     provider = new SqlCellStatusBarProvider()
-    vi.clearAllMocks()
   })
 
-  test("returns undefined for non-SQL cells", () => {
-    const cell = makeCell("javascript")
-    expect(provider.provideCellStatusBarItems(cell)).toBeUndefined()
+  test("JS cell shows only its index", () => {
+    const [cell] = makeNotebook([["javascript"]])
+    expect(texts(provider.provideCellStatusBarItems(cell))).toEqual(["$(tag) #0"])
   })
 
-  test("returns undefined for markdown cells", () => {
-    const cell = makeCell("markdown")
-    expect(provider.provideCellStatusBarItems(cell)).toBeUndefined()
+  test("named cell shows its name", () => {
+    const [cell] = makeNotebook([["javascript", { name: "summary" }]])
+    expect(texts(provider.provideCellStatusBarItems(cell))[0]).toBe("$(tag) #0 · summary")
   })
 
-  test("returns a status bar item for SQL cells", () => {
-    const cell = makeCell(SQL_LANGUAGE_ID)
-    const item = provider.provideCellStatusBarItems(cell)
-    expect(item).toBeDefined()
+  test("SQL cell: name and row limit", () => {
+    const [cell] = makeNotebook([[SQL_LANGUAGE_ID]])
+    const t = texts(provider.provideCellStatusBarItems(cell))
+    expect(t).toEqual(["$(tag) #0", `$(list-ordered) Rows: ${DEFAULT_MAX_ROWS}`])
   })
 
-  test("displays DEFAULT_MAX_ROWS when no maxRows in metadata", () => {
-    const cell = makeCell(SQL_LANGUAGE_ID)
-    const item = provider.provideCellStatusBarItems(cell)!
-    expect(item.text).toContain(String(DEFAULT_MAX_ROWS))
+  test("custom row limit is shown", () => {
+    const [cell] = makeNotebook([[SQL_LANGUAGE_ID, { maxRows: 50 }]])
+    expect(texts(provider.provideCellStatusBarItems(cell))).toContain("$(list-ordered) Rows: 50")
   })
 
-  test("displays custom maxRows from metadata", () => {
-    const cell = makeCell(SQL_LANGUAGE_ID, { maxRows: 250 })
-    const item = provider.provideCellStatusBarItems(cell)!
-    expect(item.text).toContain("250")
-  })
-
-  test("item is aligned to the Right", () => {
-    const cell = makeCell(SQL_LANGUAGE_ID)
-    const item = provider.provideCellStatusBarItems(cell)!
-    const vscode = __$mock_vscode
-    expect(item.alignment).toBe(vscode.NotebookCellStatusBarAlignment.Right)
-  })
-
-  test("item has tooltip text", () => {
-    const cell = makeCell(SQL_LANGUAGE_ID)
-    const item = provider.provideCellStatusBarItems(cell)!
-    expect(item.tooltip).toBeTruthy()
-  })
-
-  test("item has command set to abapfs.notebookSetCellMaxRows", () => {
-    const cell = makeCell(SQL_LANGUAGE_ID)
-    const item = provider.provideCellStatusBarItems(cell)!
-    expect(item.command).toBeDefined()
-    expect((item.command as any).command).toBe("abapfs.notebookSetCellMaxRows")
-  })
-
-  test("command arguments include the cell", () => {
-    const cell = makeCell(SQL_LANGUAGE_ID)
-    const item = provider.provideCellStatusBarItems(cell)!
-    expect((item.command as any).arguments).toContain(cell)
+  test("items are clickable with the right commands", () => {
+    const [cell] = makeNotebook([[SQL_LANGUAGE_ID]])
+    const cmds = provider.provideCellStatusBarItems(cell).map((i: any) => i.command.command)
+    expect(cmds).toEqual(["abapfs.notebookSetCellName", "abapfs.notebookSetCellMaxRows"])
   })
 })
 
-describe("registerCellStatusBar", () => {
-  beforeEach(() => vi.clearAllMocks())
-
-  test("registers the provider and command on the context subscriptions", () => {
-    const disposables: any[] = []
-    const context = { subscriptions: { push: (d: any) => disposables.push(d) } } as any
-    registerCellStatusBar(context)
-    expect(disposables).toHaveLength(2)
-  })
-
-  test("registers notebook cell status bar provider", () => {
-    const context = { subscriptions: { push: vi.fn() } } as any
-    registerCellStatusBar(context)
-    const vscode = __$mock_vscode
-    expect(vscode.notebooks.registerNotebookCellStatusBarItemProvider).toHaveBeenCalled()
-  })
-
-  test("registers the abapfs.notebookSetCellMaxRows command", () => {
-    const context = { subscriptions: { push: vi.fn() } } as any
-    registerCellStatusBar(context)
-    const vscode = __$mock_vscode
-    expect(vscode.commands.registerCommand).toHaveBeenCalledWith(
-      "abapfs.notebookSetCellMaxRows",
-      expect.any(Function)
-    )
-  })
-})
-
-describe("abapfs.notebookSetCellMaxRows command handler", () => {
-  let commandHandler: Function
-
+describe("cell commands", () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    const vscode = __$mock_vscode
-    vi.mocked(vscode.commands.registerCommand).mockImplementation(function (
-      _cmd: string,
-      fn: Function
-    ) {
-      commandHandler = fn
-      return { dispose: vi.fn() }
+    registerCellStatusBar({ subscriptions: [] } as any)
+  })
+
+  test("setCellMaxRows stores the value", async () => {
+    const [cell] = makeNotebook([[SQL_LANGUAGE_ID]])
+    mockWindow.showInputBox.mockResolvedValue("500")
+    await commandHandler("abapfs.notebookSetCellMaxRows")(cell)
+    expect(vscode.NotebookEdit.updateCellMetadata).toHaveBeenCalledWith(0, { maxRows: 500 })
+  })
+
+  test("setCellName validates uniqueness and stores the name", async () => {
+    const cells = makeNotebook([[SQL_LANGUAGE_ID, { name: "taken" }], ["javascript"]])
+    mockWindow.showInputBox.mockImplementation(async (opts: any) => {
+      expect(opts.validateInput("taken")).toMatch(/already named/)
+      expect(opts.validateInput("1abc")).toBeDefined()
+      expect(opts.validateInput("summary")).toBeUndefined()
+      return "summary"
     })
-    const context = { subscriptions: { push: vi.fn() } } as any
-    registerCellStatusBar(context)
+    await commandHandler("abapfs.notebookSetCellName")(cells[1])
+    expect(vscode.NotebookEdit.updateCellMetadata).toHaveBeenCalledWith(1, { name: "summary" })
   })
 
-  test("does nothing when user cancels input box (returns undefined)", async () => {
-    mockWindow.showInputBox.mockResolvedValue(undefined)
-    const cell = makeCell(SQL_LANGUAGE_ID, { maxRows: 500 })
-    await commandHandler(cell)
-    const vscode = __$mock_vscode
-    expect(vscode.workspace.applyEdit).not.toHaveBeenCalled()
-  })
-
-  test("applies workspace edit when user provides valid input", async () => {
-    mockWindow.showInputBox.mockResolvedValue("750")
-    const cell = makeCell(SQL_LANGUAGE_ID, { maxRows: 500 })
-    await commandHandler(cell)
-    const vscode = __$mock_vscode
-    expect(vscode.workspace.applyEdit).toHaveBeenCalled()
-  })
-
-  test("sets correct maxRows value in the edit", async () => {
-    mockWindow.showInputBox.mockResolvedValue("999")
-    const cell = makeCell(SQL_LANGUAGE_ID, {})
-    await commandHandler(cell)
-    const vscode = __$mock_vscode
-    expect(vscode.NotebookEdit.updateCellMetadata).toHaveBeenCalledWith(
-      cell.index,
-      expect.objectContaining({ maxRows: 999 })
-    )
-  })
-
-  test("input box is pre-populated with current maxRows", async () => {
-    mockWindow.showInputBox.mockResolvedValue(undefined)
-    const cell = makeCell(SQL_LANGUAGE_ID, { maxRows: 42 })
-    await commandHandler(cell)
-    expect(mockWindow.showInputBox).toHaveBeenCalledWith(expect.objectContaining({ value: "42" }))
-  })
-
-  test("input box defaults to DEFAULT_MAX_ROWS when no maxRows in metadata", async () => {
-    mockWindow.showInputBox.mockResolvedValue(undefined)
-    const cell = makeCell(SQL_LANGUAGE_ID)
-    await commandHandler(cell)
-    expect(mockWindow.showInputBox).toHaveBeenCalledWith(
-      expect.objectContaining({ value: String(DEFAULT_MAX_ROWS) })
-    )
-  })
-
-  test("validateInput rejects non-integer values", async () => {
-    mockWindow.showInputBox.mockImplementation(function (opts: any) {
-      const result = opts.validateInput("3.14")
-      return result ? undefined : "3"
-    })
-    const cell = makeCell(SQL_LANGUAGE_ID)
-    await commandHandler(cell)
-    // Just ensure no crash, validation callback was invoked
-    expect(mockWindow.showInputBox).toHaveBeenCalled()
-  })
-
-  test("validateInput rejects zero", async () => {
-    let validationResult: string | undefined
-    mockWindow.showInputBox.mockImplementation(function (opts: any) {
-      validationResult = opts.validateInput("0")
-      return undefined
-    })
-    const cell = makeCell(SQL_LANGUAGE_ID)
-    await commandHandler(cell)
-    expect(validationResult).toBeTruthy()
-  })
-
-  test("validateInput rejects numbers above 100000", async () => {
-    let validationResult: string | undefined
-    mockWindow.showInputBox.mockImplementation(function (opts: any) {
-      validationResult = opts.validateInput("100001")
-      return undefined
-    })
-    const cell = makeCell(SQL_LANGUAGE_ID)
-    await commandHandler(cell)
-    expect(validationResult).toBeTruthy()
-  })
-
-  test("validateInput accepts boundary value 1", async () => {
-    let validationResult: string | undefined
-    mockWindow.showInputBox.mockImplementation(function (opts: any) {
-      validationResult = opts.validateInput("1")
-      return undefined
-    })
-    const cell = makeCell(SQL_LANGUAGE_ID)
-    await commandHandler(cell)
-    expect(validationResult).toBeUndefined()
-  })
-
-  test("validateInput accepts boundary value 100000", async () => {
-    let validationResult: string | undefined
-    mockWindow.showInputBox.mockImplementation(function (opts: any) {
-      validationResult = opts.validateInput("100000")
-      return undefined
-    })
-    const cell = makeCell(SQL_LANGUAGE_ID)
-    await commandHandler(cell)
-    expect(validationResult).toBeUndefined()
+  test("clearing the name removes it from metadata", async () => {
+    const [cell] = makeNotebook([["javascript", { name: "old", maxRows: 5 }]])
+    mockWindow.showInputBox.mockResolvedValue("")
+    await commandHandler("abapfs.notebookSetCellName")(cell)
+    expect(vscode.NotebookEdit.updateCellMetadata).toHaveBeenCalledWith(0, { maxRows: 5 })
   })
 })

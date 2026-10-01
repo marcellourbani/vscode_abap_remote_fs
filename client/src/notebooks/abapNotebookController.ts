@@ -11,9 +11,21 @@ import { renderSqlOutput, renderJsOutput, renderErrorOutput } from "./outputRend
 import { log } from "../lib"
 import { funWindow as window } from "../services/funMessenger"
 
+/** Snapshot of a notebook's results, by current cell position and by name. */
+export interface NotebookResultsView {
+  byIndex: Map<number, CellResult>
+  nameToIndex: Map<string, number>
+}
+
+export function cellName(cell: vscode.NotebookCell): string | undefined {
+  const n = cell.metadata?.name
+  return typeof n === "string" && n.trim() ? n.trim() : undefined
+}
+
 export class AbapNotebookController {
   private readonly controller: vscode.NotebookController
-  private readonly cellResults = new Map<string, Map<number, CellResult>>()
+  /** notebook uri -> (cell document uri -> result). Keyed by cell, so inserts/moves do not shift results. */
+  private readonly cellResults = new Map<string, Map<string, CellResult>>()
   private readonly executionCounters = new Map<string, number>()
   private readonly runningAbortControllers = new Map<string, AbortController>()
   private readonly runGeneration = new Map<string, number>()
@@ -33,6 +45,20 @@ export class AbapNotebookController {
   dispose(): void {
     this.controller.dispose()
     for (const ac of this.runningAbortControllers.values()) ac.abort()
+  }
+
+  /** Results of a notebook by current position / name. */
+  getResultsView(notebook: vscode.NotebookDocument): NotebookResultsView {
+    const stored = this.cellResults.get(notebook.uri.toString())
+    const byIndex = new Map<number, CellResult>()
+    const nameToIndex = new Map<string, number>()
+    for (const cell of notebook.getCells()) {
+      const r = stored?.get(cell.document.uri.toString())
+      if (r) byIndex.set(cell.index, r)
+      const n = cellName(cell)
+      if (n && !nameToIndex.has(n)) nameToIndex.set(n, cell.index)
+    }
+    return { byIndex, nameToIndex }
   }
 
   private interruptHandler(notebook: vscode.NotebookDocument): void {
@@ -58,7 +84,6 @@ export class AbapNotebookController {
     if (!this.cellResults.has(notebookKey)) {
       this.cellResults.set(notebookKey, new Map())
     }
-    const results = this.cellResults.get(notebookKey)!
 
     const abortController = new AbortController()
     this.runningAbortControllers.set(notebookKey, abortController)
@@ -98,7 +123,7 @@ export class AbapNotebookController {
 
       const success = await this.executeCell(
         cell,
-        results,
+        notebook,
         notebookKey,
         abortController.signal,
         sharedConnection
@@ -120,7 +145,7 @@ export class AbapNotebookController {
 
   private async executeCell(
     cell: vscode.NotebookCell,
-    results: Map<number, CellResult>,
+    notebook: vscode.NotebookDocument,
     notebookKey: string,
     abortSignal: AbortSignal,
     sharedConnection?: ResolvedConnection
@@ -178,6 +203,7 @@ export class AbapNotebookController {
         return false
       }
 
+      const view = this.getResultsView(notebook)
       let cellResult: CellResult
 
       const isSql = language === SQL_LANGUAGE_ID
@@ -203,13 +229,26 @@ export class AbapNotebookController {
             return false
           }
         }
-        cellResult = await executeSqlCell(code, connection.client, cell.index, results, maxRows)
+        cellResult = await executeSqlCell(
+          code,
+          connection.client,
+          cell.index,
+          view.byIndex,
+          maxRows,
+          view.nameToIndex
+        )
       } else {
-        cellResult = await executeJsCell(code, cell.index, results, abortSignal)
+        cellResult = await executeJsCell(
+          code,
+          cell.index,
+          view.byIndex,
+          abortSignal,
+          view.nameToIndex
+        )
       }
 
       if (!ended) {
-        results.set(cell.index, cellResult)
+        this.cellResults.get(notebookKey)?.set(cell.document.uri.toString(), cellResult)
         const output = isSql ? renderSqlOutput(cellResult) : renderJsOutput(cellResult)
         endExec(true, output)
       }

@@ -228,7 +228,8 @@ function normalizeCell(raw: any): AbapNotebookCell {
   return {
     type,
     content: typeof raw.content === "string" ? raw.content : "",
-    ...(typeof raw.maxRows === "number" ? { maxRows: raw.maxRows } : {})
+    ...(typeof raw.maxRows === "number" ? { maxRows: raw.maxRows } : {}),
+    ...(typeof raw.name === "string" && raw.name.trim() ? { name: raw.name.trim() } : {})
   }
 }
 
@@ -239,7 +240,8 @@ function cellToNotebookCell(cell: AbapNotebookCell): vscode.NotebookCellData {
 
   const cellData = new vscode.NotebookCellData(kind, cell.content, language)
   cellData.metadata = {
-    ...(cell.maxRows !== undefined ? { maxRows: cell.maxRows } : {})
+    ...(cell.maxRows !== undefined ? { maxRows: cell.maxRows } : {}),
+    ...(cell.name ? { name: cell.name } : {})
   }
   return cellData
 }
@@ -254,6 +256,8 @@ function notebookDataToDocument(data: vscode.NotebookData): AbapNotebookDocument
     if (typeof maxRows === "number") {
       result.maxRows = maxRows
     }
+    const name = cell.metadata?.name
+    if (typeof name === "string" && name.trim()) result.name = name.trim()
     return result
   })
 

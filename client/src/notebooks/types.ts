@@ -9,6 +9,8 @@ export interface AbapNotebookCell {
   type: CellType
   content: string
   maxRows?: number
+  /** Stable name used to reference this cell: cells.<name> (JS) / ${cells.<name>.result...} (SQL). */
+  name?: string
 }
 
 export interface AbapNotebookDocument {
