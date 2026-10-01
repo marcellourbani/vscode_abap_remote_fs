@@ -21,18 +21,45 @@ Create a workbook when the user wants to:
 
 ## How to Create the File
 
-Pick one of the two ways:
+You (GitHub Copilot in VS Code) create and edit workbooks with your notebook tools. Follow these rules exactly:
 
-**A. Notebook tools (default).** Mandatory: follow steps 1→2→3 in order.
-1. Create the `.sapwb` file with ONLY metadata and an empty cells array: `{"version": 1, "title": "Your Title", "cells": []}`
-2. Read the file back to confirm it was created.
-3. Insert ALL cells (including the first markdown cell) using the notebook editing tools. Use language `"abap-sql"` for SQL cells (NOT `"sql"`), `"javascript"` for JS cells, and `"markdown"` for markdown cells.
+1. **Create the whole workbook in ONE `create_file` call**, inside the workspace. Write the cells in your own notebook cell format, NOT the on-disk JSON shown under *File Format* (on-disk JSON written this way ends up as empty or Python cells):
 
-**B. Complete JSON.** Use this when cells need a `name` or `system` (see below) and your notebook tools cannot set cell metadata. Write the whole file in one go **to a file that is not open in an editor**, then read it back and check that it parses as JSON.
+   ```xml
+   <VSCode.Cell language="markdown">
+   # Title
+   What the workbook does.
+   </VSCode.Cell>
+   <VSCode.Cell language="abap-sql">
+   SELECT mandt, mtext FROM t000
+   </VSCode.Cell>
+   <VSCode.Cell language="javascript">
+   return cells[1].result.length
+   </VSCode.Cell>
+   ```
+
+   The JSON form with `cell_type`, `metadata.language` and `source` also works. Languages are exactly `abap-sql` (NOT `sql`), `javascript` and `markdown`.
+
+2. **Read the workbook back** with your notebook read tool and check that every cell is there, with its content and the right language. A file that is valid but has empty cells, missing cells or Python cells is a failure: fix it before you tell the user it is done.
+
+3. **One edit at a time.** Wait for each notebook edit to finish before you start the next; never run edits in parallel (for example inserting a query while changing another cell fails). Read the workbook back after a series of edits.
+
+4. **Never rewrite an existing workbook** (no `create_file` over it, no replacing all cells, no converting it with a generic notebook writer). Your tools cannot carry a cell's `name`, `system` or `maxRows`, so a rewrite silently deletes them. Change only the cells that need changing, one at a time.
+
+## Cell Names, Systems and Row Limits
+
+These are stored with each cell, and **your notebook tools cannot set them**. So:
+
+- **Reference earlier cells by position:** `cells[N]` — 0-based, counting markdown cells. After inserting or moving cells, recount and update the references.
+- **Tell the user what to set**, as a short list at the end of your answer, whenever the workbook needs it:
+  - several SAP systems: *"Click the system in the status bar of cell #1 and pick SYS1, cell #2 → SYS2, cell #3 → SYS3."* Without markers, Run All runs every SQL cell on the one system the user picks.
+  - more than 1000 rows: *"Click `Rows: 1000` on cell #2 and set 50000."*
+  - optionally names: *"Click `#1` and name it `sys1`."* Names keep references working when cells move; once the user has named a cell you may use `cells.sys1`.
+- If cells already have names (the user mentions them or they appear as `#n · name`), use the names.
 
 ## File Format
 
-`.sapwb` files are JSON:
+For reference (reading a `.sapwb` file, or tools that write plain files and have no notebook tools), `.sapwb` files are JSON on disk:
 
 ```json
 {
@@ -47,7 +74,7 @@ Pick one of the two ways:
 }
 ```
 
-Cell properties: `type`, `content`, and optionally `maxRows`, `name` and `system`.
+Cell properties: `type`, `content`, and optionally `maxRows`, `name` and `system` (ABAP SQL cells only). If you are GitHub Copilot in VS Code, do not write this format: use the cell format under *How to Create the File*.
 
 ## Critical Rules
 
@@ -57,10 +84,10 @@ Cell properties: `type`, `content`, and optionally `maxRows`, `name` and `system
 
 3. **SQL cells** execute ABAP SQL via ADT. Only SELECT and WITH are allowed. No DML. No semicolons. No comments containing `${...}`.
 
-4. **Name the cells other cells read** (`"name": "materials"`): letters, digits and `_`, starting with a letter or `_`, unique in the workbook. Names keep working when cells are inserted, moved or deleted. Numeric references (`cells[3]`) also work, but they are **0-based, count markdown cells**, and break when cells move.
+4. **Cell references:** `cells[N]` is 0-based and counts markdown cells. A named cell (`"name"` in the file, `#n · name` in the status bar) can also be referenced as `cells.<name>` and keeps working when cells move. Names are letters, digits and `_`, start with a letter or `_`, and are unique.
 
-5. **JavaScript cells** run in an isolated worker thread. They read earlier results via `cells.<name>.result` (also `cells["name"]` or `cells[N]`):
-   - Write references literally (`cells.materials`). The engine scans the code for them and only passes those results, so `cells[someVar]` receives nothing.
+5. **JavaScript cells** run in an isolated worker thread. They read earlier results via `cells[N].result` (or `cells.<name>.result` for named cells):
+   - Write references literally (`cells[3]`, `cells.materials`). The engine scans the code for them and only passes those results, so `cells[someVar]` receives nothing.
    - SQL cell results are arrays of objects with UPPERCASE keys: `[{FIELD1: "val", FIELD2: "val"}, ...]`. Date fields arrive as JS `Date` objects.
    - Each entry also has `.system` (the SAP system an SQL cell ran on), `.index` and `.name`.
    - Always end with `return <value>`. A JS cell with no `return` outputs `undefined`. Use `return null` if no value is needed.
@@ -74,22 +101,21 @@ Cell properties: `type`, `content`, and optionally `maxRows`, `name` and `system
 
    Returning a plain **array of objects** still renders as a table. A plain object renders as JSON text, a string as text. Keep the status word (RED/YELLOW/GREEN) in its own column, one finding per row, and do not truncate values: tables wrap.
 
-7. **SQL interpolation:** SQL cells reference previous results with `${cells.<name>.result.path}` (or `${cells[N].result.path}`). This resolves before execution.
+7. **SQL interpolation:** SQL cells reference previous results with `${cells[N].result.path}` (or `${cells.<name>.result.path}`). This resolves before execution.
    - **Strings are single-quoted automatically — do NOT add your own quotes.**
    - Arrays are joined with commas (each element auto-quoted). Numbers are inserted bare.
    - The path must start with `.FIELD` after `.result`. Publish named keys on the returned array (`out.FIRST = ...`) instead of using `result[0].X`.
 
 8. **SAP 255-character SQL literal limit.** SAP ADT rejects any SQL where a single literal exceeds 255 characters. This means interpolating large arrays into `IN (...)` clauses WILL FAIL. **Never interpolate arrays that could have more than ~10 values into SQL.** Use a sub-query or filter in a JavaScript cell instead.
 
-9. **maxRows** is optional per SQL cell (default 1000): `{ "type": "abap-sql", "content": "...", "maxRows": 50000 }`. The table shows the first 200 rows (`display.table` `limit` up to 5000); later cells and exports receive all rows.
+9. **Row limit** per SQL cell: 1000 by default; the user changes it with `Rows:` in the status bar (see above). The table shows the first 200 rows (`display.table` `limit` up to 5000); later cells and exports receive all rows.
 
-10. **Several SAP systems:** a cell with `"system": "<ABAP FS connection id>"` is a marker. It and every following cell run on that system, until the next marker.
-    - Put markers on section-header markdown cells.
+10. **Several SAP systems:** a system marker on an ABAP SQL cell applies to it and every following SQL cell, until the next marker. JavaScript and markdown cells have no system.
+    - Use one SQL cell per system (repeat the query), and tell the user which cell gets which system (see above).
     - Run All shows the plan once (e.g. *Cells 3-22 -> dev, 24-47 -> qas*) and offers to map markers that are not connected.
-    - Cells before the first marker ask for a system as before.
-    - When comparing systems, check `cells.a.system !== cells.b.system`.
+    - When comparing systems, check `cells[1].system !== cells[3].system` and say so in the output if the queries ran on the same system.
 
-11. **Start every workbook with a markdown cell** explaining what it does and, if relevant, which systems it uses.
+11. **Start every workbook with a markdown cell** explaining what it does and, if relevant, which cell runs on which system.
 
 12. **File path:** Write to the user's workspace root or a `workbooks/` subfolder.
 
@@ -102,44 +128,82 @@ Cell properties: `type`, `content`, and optionally `maxRows`, `name` and `system
 
 ```javascript
 // Access SQL results (array of row objects)
-const allRows = cells.materials.result;              // full array
-const value = cells.materials.result[0].MATNR;       // specific field
-const ranOn = cells.materials.system;                // SAP system the query ran on
+const allRows = cells[1].result;                     // full array
+const value = cells[1].result[0].MATNR;              // specific field
+const ranOn = cells[1].system;                       // SAP system the query ran on
 
 // Access JS cell results
-const count = cells.summary.result;                  // whatever that cell returned
+const count = cells[2].result;                       // whatever that cell returned
 
 // Use in SQL interpolation (quotes added automatically for strings — do NOT wrap in quotes)
-// "SELECT ... WHERE matnr = ${cells.fert.result.FIRST}"
-// "SELECT ... WHERE lifnr IN (${cells.vendors.result.IDS})"  -- arrays auto-join with commas
+// "SELECT ... WHERE matnr = ${cells[2].result.FIRST}"
+// "SELECT ... WHERE lifnr IN (${cells[2].result.IDS})"  -- arrays auto-join with commas
 ```
+
+## Example: One Query on Three Systems
+
+*"Get the clients from T000 in SYS1, SYS2 and SYS3, add them up and show them in one table."*
+
+```xml
+<VSCode.Cell language="markdown">
+# Clients (T000) in SYS1, SYS2 and SYS3
+Cells #1, #2 and #3 run the same query. Set their systems before Run All: #1 → SYS1, #2 → SYS2, #3 → SYS3.
+</VSCode.Cell>
+<VSCode.Cell language="abap-sql">
+SELECT mandt, mtext FROM t000
+</VSCode.Cell>
+<VSCode.Cell language="abap-sql">
+SELECT mandt, mtext FROM t000
+</VSCode.Cell>
+<VSCode.Cell language="abap-sql">
+SELECT mandt, mtext FROM t000
+</VSCode.Cell>
+<VSCode.Cell language="javascript">
+// one table with every client, plus the totals
+const parts = [cells[1], cells[2], cells[3]];
+const rows = parts.flatMap(c => c.result.map(r => ({ System: c.system, Client: r.MANDT, Name: r.MTEXT })));
+const systems = new Set(parts.map(c => c.system));
+const counts = parts.map(c => c.system + ': ' + c.result.length).join(', ');
+const note = systems.size === 3 ? '' : '\n\n**YELLOW:** the queries ran on ' + systems.size + ' system(s) only. Set the systems of cells #1, #2 and #3.';
+return display.all(
+  display.markdown('## ' + rows.length + ' clients (' + counts + ')' + note),
+  display.table(rows, { wrap: true, title: 'Clients per system' })
+);
+</VSCode.Cell>
+```
+
+Then tell the user: *"Click the system in the status bar of cell #1 and pick SYS1, cell #2 → SYS2, cell #3 → SYS3, then Run All."*
 
 ## Example: Data Quality Workbook
 
-```json
-{
-  "version": 1,
-  "title": "Material Master Data Quality Check",
-  "cells": [
-    {
-      "type": "markdown",
-      "content": "# Material Master Data Quality\nChecks for materials missing a unit of measure or material group."
-    },
-    {
-      "type": "abap-sql",
-      "content": "SELECT matnr, mtart, matkl, meins FROM mara WHERE ersda > '20250101'",
-      "name": "materials",
-      "maxRows": 20000
-    },
-    {
-      "type": "javascript",
-      "name": "quality",
-      "content": "// one row per check, status in its own column\nconst m = cells.materials.result;\nconst noUoM = m.filter(r => !r.MEINS || !r.MEINS.trim()).length;\nconst noGroup = m.filter(r => !r.MATKL || !r.MATKL.trim()).length;\nconst rows = [\n  { Status: m.length ? 'GREEN' : 'YELLOW', Check: 'Materials read', Count: m.length },\n  { Status: noUoM ? 'RED' : 'GREEN', Check: 'Missing unit of measure', Count: noUoM },\n  { Status: noGroup ? 'YELLOW' : 'GREEN', Check: 'Missing material group', Count: noGroup }\n];\nconst worst = rows.some(r => r.Status === 'RED') ? 'RED' : rows.some(r => r.Status === 'YELLOW') ? 'YELLOW' : 'GREEN';\nreturn display.all(\n  display.markdown('## ' + worst + ' — material master quality'),\n  display.table(rows, { wrap: true, highlight: true })\n);"
-    },
-    {
-      "type": "markdown",
-      "content": "## Next steps\nUse **Export…** in the toolbar to send the results as Excel or PDF."
-    }
-  ]
-}
+```xml
+<VSCode.Cell language="markdown">
+# Material Master Data Quality
+Checks for materials missing a unit of measure or material group.
+</VSCode.Cell>
+<VSCode.Cell language="abap-sql">
+SELECT matnr, mtart, matkl, meins FROM mara WHERE ersda > '20250101'
+</VSCode.Cell>
+<VSCode.Cell language="javascript">
+// one row per check, status in its own column
+const m = cells[1].result;
+const noUoM = m.filter(r => !r.MEINS || !r.MEINS.trim()).length;
+const noGroup = m.filter(r => !r.MATKL || !r.MATKL.trim()).length;
+const rows = [
+  { Status: m.length ? 'GREEN' : 'YELLOW', Check: 'Materials read', Count: m.length },
+  { Status: noUoM ? 'RED' : 'GREEN', Check: 'Missing unit of measure', Count: noUoM },
+  { Status: noGroup ? 'YELLOW' : 'GREEN', Check: 'Missing material group', Count: noGroup }
+];
+const worst = rows.some(r => r.Status === 'RED') ? 'RED' : rows.some(r => r.Status === 'YELLOW') ? 'YELLOW' : 'GREEN';
+return display.all(
+  display.markdown('## ' + worst + ' — material master quality'),
+  display.table(rows, { wrap: true, highlight: true })
+);
+</VSCode.Cell>
+<VSCode.Cell language="markdown">
+## Next steps
+Use **Export…** in the toolbar to send the results as Excel or PDF.
+</VSCode.Cell>
 ```
+
+Then tell the user: *"Cell #1 reads up to 1000 rows; click `Rows: 1000` on it to raise the limit."*
