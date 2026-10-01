@@ -1,4 +1,7 @@
-/** Controller: named references and results that survive inserting cells. */
+/**
+ * Controller: system-per-cell routing, single run-plan confirmation, named references,
+ * results that survive inserting cells.
+ */
 const h = vi.hoisted(() => ({
   executeHandler: undefined as any,
   outputs: new Map<number, any[]>(),
@@ -93,6 +96,9 @@ vi.mock("vscode", () => ({
 
 import { AbapNotebookController } from "./abapNotebookController"
 import { SQL_LANGUAGE_ID } from "./types"
+import { funWindow } from "../services/funMessenger"
+import { getOrCreateClient } from "../adt/conections"
+import { resolveConnection } from "./connectionResolver"
 
 let uriSeq = 0
 function notebook(spec: Array<[string, Record<string, unknown>?, string?]>) {
@@ -111,17 +117,92 @@ function notebook(spec: Array<[string, Record<string, unknown>?, string?]>) {
   h.cellsRef = cells
   return { nb, cells }
 }
-describe("controller: named cells", () => {
+const sysOf = (i: number) =>
+  h.outputs.get(i)?.[0]?.items?.[0]?.text?.match(/<tbody><tr><td>([^<]+)<\/td>/)?.[1]
+
+describe("controller: system per cell", () => {
   beforeEach(() => {
     vi.clearAllMocks()
     h.outputs.clear()
     h.ok.clear()
+    h.connected = new Set(["dev", "qas"])
     new AbapNotebookController()
+  })
+
+  test("Run All: cell 0 = DEV, cell 3 = QAS; one confirmation, no system picker", async () => {
+    const { nb, cells } = notebook([
+      ["markdown", { system: "DEV" }],
+      [SQL_LANGUAGE_ID],
+      ["javascript"],
+      [SQL_LANGUAGE_ID, { system: "QAS" }],
+      [SQL_LANGUAGE_ID]
+    ])
+    await h.executeHandler(cells.slice(1), nb)
+    expect([sysOf(1), sysOf(3), sysOf(4)]).toEqual(["dev", "qas", "qas"])
+    expect(funWindow.showWarningMessage).toHaveBeenCalledTimes(1)
+    const detail = (funWindow.showWarningMessage as any).mock.calls[0][1].detail
+    expect(detail).toBe("Cells 1-2 -> DEV  (1 SQL)\nCells 3-4 -> QAS  (2 SQL)")
+    expect(resolveConnection).not.toHaveBeenCalled()
+    expect((getOrCreateClient as any).mock.calls.map((c: any[]) => c[0])).toEqual([
+      "dev",
+      "qas",
+      "qas"
+    ])
+  })
+
+  test("declining the plan runs nothing", async () => {
+    ;(funWindow.showWarningMessage as any).mockResolvedValueOnce(undefined)
+    const { nb, cells } = notebook([[SQL_LANGUAGE_ID, { system: "DEV" }], [SQL_LANGUAGE_ID]])
+    await h.executeHandler(cells, nb)
+    expect(h.outputs.size).toBe(0)
+  })
+
+  test("unknown marker: user maps it to a connected system, marker is saved, run continues", async () => {
+    h.connected = new Set(["erp100"])
+    ;(funWindow.showQuickPick as any).mockImplementation(async (items: any[]) => items[0])
+    const { nb, cells } = notebook([
+      [SQL_LANGUAGE_ID, { system: "DEV" }],
+      [SQL_LANGUAGE_ID, { system: "QAS" }]
+    ])
+    await h.executeHandler(cells, nb)
+    expect(funWindow.showQuickPick).toHaveBeenCalledTimes(2)
+    expect(cells[0].metadata.system).toBe("erp100")
+    expect(cells[1].metadata.system).toBe("erp100")
+    expect([sysOf(0), sysOf(1)]).toEqual(["erp100", "erp100"])
+  })
+
+  test("unknown marker and user cancels: clear message naming what IS connected; nothing runs", async () => {
+    h.connected = new Set(["erp100"])
+    ;(funWindow.showQuickPick as any).mockResolvedValue(undefined)
+    const { nb, cells } = notebook([
+      [SQL_LANGUAGE_ID, { system: "DEV" }],
+      [SQL_LANGUAGE_ID, { system: "QAS" }]
+    ])
+    await h.executeHandler(cells, nb)
+    const msg = (funWindow.showErrorMessage as any).mock.calls[0][0]
+    expect(msg).toMatch(/'DEV'.*not connected.*connected: erp100.*Click the marker/)
+    expect(getOrCreateClient).not.toHaveBeenCalled()
+    expect(h.ok.get(0)).toBe(false)
+  })
+
+  test("single cell with an assigned system runs without prompts", async () => {
+    const { nb, cells } = notebook([[SQL_LANGUAGE_ID, { system: "QAS" }], [SQL_LANGUAGE_ID]])
+    await h.executeHandler([cells[1]], nb)
+    expect(sysOf(1)).toBe("qas")
+    expect(funWindow.showWarningMessage).not.toHaveBeenCalled()
+    expect(resolveConnection).not.toHaveBeenCalled()
+  })
+
+  test("cells without any system keep the old behaviour (ask once)", async () => {
+    const { nb, cells } = notebook([[SQL_LANGUAGE_ID], [SQL_LANGUAGE_ID]])
+    await h.executeHandler(cells, nb)
+    expect(resolveConnection).toHaveBeenCalledTimes(1)
+    expect([sysOf(0), sysOf(1)]).toEqual(["picked", "picked"])
   })
 
   test("named reference resolves, and results survive inserting a cell above", async () => {
     const { nb, cells } = notebook([
-      [SQL_LANGUAGE_ID, { name: "params" }],
+      [SQL_LANGUAGE_ID, { system: "DEV", name: "params" }],
       [SQL_LANGUAGE_ID, {}, "SELECT ${cells.params.result}"]
     ])
     const ctl = new AbapNotebookController()

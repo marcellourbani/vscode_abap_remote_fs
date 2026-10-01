@@ -11,6 +11,11 @@ export interface AbapNotebookCell {
   maxRows?: number
   /** Stable name used to reference this cell: cells.<name> (JS) / ${cells.<name>.result...} (SQL). */
   name?: string
+  /**
+   * ABAP FS connection id. Applies to this cell and every following cell until the next cell
+   * that sets a system ("sticky" marker).
+   */
+  system?: string
 }
 
 export interface AbapNotebookDocument {
@@ -25,6 +30,8 @@ export interface CellResult {
   columns?: Array<{ name: string; type: string }>
   error?: string
   logs?: string[]
+  /** System the cell ran against (SQL cells). */
+  system?: string
 }
 
 export interface CellExecutionContext {

@@ -21,8 +21,8 @@ Alternatively, create any file with the `.sapwb` extension, or ask Copilot: *"Cr
 
 **Running cells**
 
-- Run a single cell with the run button or `Shift+Enter`. You are prompted to select a SAP system.
-- **Run All** (`Ctrl+Shift+Enter`) prompts once and uses that system for all SQL cells.
+- Run a single cell with the run button or `Shift+Enter`. If the cell has no system (see *System markers*), you are prompted to select a SAP system.
+- **Run All** (`Ctrl+Shift+Enter`) uses the system markers. It shows the plan once (e.g. *Cells 3-22 -> dev, Cells 24-47 -> qas*) and runs every SQL cell on its system. Cells before the first marker use a system you pick once.
 
 **Naming cells**
 
@@ -30,7 +30,7 @@ Click `#n` in a cell's status bar to give it a name (letters, digits and `_`, un
 
 **Referencing results between cells**
 
-- In **JavaScript**: `cells.<name>.result` (also `cells["name"]`, or `cells[N]` by position: 0-based, counting markdown cells). Write references literally; only the cells you reference are passed to the cell. Each entry also has `.index` and `.name`.
+- In **JavaScript**: `cells.<name>.result` (also `cells["name"]`, or `cells[N]` by position: 0-based, counting markdown cells). Write references literally; only the cells you reference are passed to the cell. Each entry also has `.system` (the system an SQL cell ran on), `.index` and `.name`.
 - In **ABAP SQL**: interpolate earlier results with `${cells.<name>.result.FIELD}` (or `${cells[N].result.FIELD}`). Strings are auto-quoted; arrays are auto-joined for `IN` clauses. The path after `.result` must be field names / indexes, e.g. `.ROLE_NAME` or `.rows[0].MATNR` — expressions are not evaluated.
 
 ```sql
@@ -38,6 +38,12 @@ Click `#n` in a cell's status bar to give it a name (letters, digits and `_`, un
 SELECT matnr, werks FROM marc
   WHERE matnr IN (${cells.params.result.MATNRS})
 ```
+
+**System markers**
+
+Click the system item in a cell's status bar (or run **SAP Data Workbook: Set System From This Cell…**) to choose an ABAP FS connection. That cell and every following cell run on that system until the next marker, so a marker on a section header covers the whole section. The status bar shows `dev ▸` on a marker and `dev (from #2)` on the cells it covers.
+
+If a marker names a system that is not connected, **Run All** asks which connected system to use instead and updates the marker. **SAP Data Workbook: Show Run Plan** lists every cell with the system it will use.
 
 **Row limits**
 
@@ -58,15 +64,15 @@ Cell 4 (ABAP SQL):            SELECT matnr, werks FROM marc
 
 ## Example: Cross-System Comparison
 
-Run the same query against two systems by executing cells individually and selecting a different system each time. A JavaScript cell then diffs the results.
+Put a system marker on each section header; Run All runs each section on its own system.
 
 ```
-Cell 1 (Markdown):              # Pricing Condition Comparison: DEV vs QAS
+Cell 1 (Markdown, system dev):  # Pricing conditions in DEV
 Cell 2 (ABAP SQL, "dev_a005"):  SELECT KSCHL, VKORG, MATNR, KBETR FROM A005 WHERE KSCHL = 'ZPR1'
-                                → Run, select DEV
-Cell 3 (ABAP SQL, "qas_a005"):  SELECT KSCHL, VKORG, MATNR, KBETR FROM A005 WHERE KSCHL = 'ZPR1'
-                                → Run, select QAS
-Cell 4 (JavaScript):            const devMap = new Map(
+Cell 3 (Markdown, system qas):  # Pricing conditions in QAS
+Cell 4 (ABAP SQL, "qas_a005"):  SELECT KSCHL, VKORG, MATNR, KBETR FROM A005 WHERE KSCHL = 'ZPR1'
+Cell 5 (JavaScript):            if (cells.dev_a005.system === cells.qas_a005.system) return 'Both cells ran on the same system'
+                                const devMap = new Map(
                                   cells.dev_a005.result.map(r => [r.KSCHL + r.VKORG + r.MATNR, r])
                                 );
                                 return cells.qas_a005.result
@@ -80,7 +86,7 @@ Cell 4 (JavaScript):            const devMap = new Map(
                                   }));
 ```
 
-Workbook files store no system IDs, so they can be shared with colleagues who use different system names.
+System markers store connection ids. A colleague whose connections have other names gets a prompt on Run All to map them to their own systems.
 
 ## Limitations
 
@@ -97,3 +103,5 @@ Workbook files store no system IDs, so they can be shared with colleagues who us
 | `ABAP FS: New SAP Data Workbook` | Creates a new `.sapwb` file |
 | `ABAP FS: SAP Data Workbook: Set Cell Row Limit` | Sets the row limit for an SQL cell (also: click `Rows:` in the status bar) |
 | `ABAP FS: SAP Data Workbook: Name Cell…` | Names / renames a cell (also: click `#n` in the status bar) |
+| `ABAP FS: SAP Data Workbook: Set System From This Cell…` | Sets or removes a system marker (also: click the system in the status bar) |
+| `ABAP FS: SAP Data Workbook: Show Run Plan (cell → system)` | Lists every cell with the system it will run on (toolbar button) |

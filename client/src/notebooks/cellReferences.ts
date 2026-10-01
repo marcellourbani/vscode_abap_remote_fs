@@ -56,8 +56,9 @@ export function buildCellData(
   resultsByIndex: Map<number, CellResult>,
   refs: CellRefs,
   nameToIndex: Map<string, number>
-): Record<string, { result: unknown; name?: string; index: number }> {
-  const data: Record<string, { result: unknown; name?: string; index: number }> = {}
+): Record<string, { result: unknown; system?: string; name?: string; index: number }> {
+  const data: Record<string, { result: unknown; system?: string; name?: string; index: number }> =
+    {}
   const indexToName = new Map<number, string>()
   for (const [n, i] of nameToIndex) indexToName.set(i, n)
 
@@ -67,6 +68,7 @@ export function buildCellData(
     data[key] = {
       result: r.result,
       index: idx,
+      ...(r.system ? { system: r.system } : {}),
       ...(indexToName.has(idx) ? { name: indexToName.get(idx) } : {})
     }
   }

@@ -95,7 +95,7 @@ describe("cell status bar", () => {
     provider = new SqlCellStatusBarProvider()
   })
 
-  test("JS cell shows only its index", () => {
+  test("JS cell without system shows only its index", () => {
     const [cell] = makeNotebook([["javascript"]])
     expect(texts(provider.provideCellStatusBarItems(cell))).toEqual(["$(tag) #0"])
   })
@@ -105,10 +105,14 @@ describe("cell status bar", () => {
     expect(texts(provider.provideCellStatusBarItems(cell))[0]).toBe("$(tag) #0 · summary")
   })
 
-  test("SQL cell: name and row limit", () => {
+  test("SQL cell without system: name, 'ask' and row limit", () => {
     const [cell] = makeNotebook([[SQL_LANGUAGE_ID]])
     const t = texts(provider.provideCellStatusBarItems(cell))
-    expect(t).toEqual(["$(tag) #0", `$(list-ordered) Rows: ${DEFAULT_MAX_ROWS}`])
+    expect(t).toEqual([
+      "$(tag) #0",
+      "$(plug) system: ask",
+      `$(list-ordered) Rows: ${DEFAULT_MAX_ROWS}`
+    ])
   })
 
   test("custom row limit is shown", () => {
@@ -116,10 +120,34 @@ describe("cell status bar", () => {
     expect(texts(provider.provideCellStatusBarItems(cell))).toContain("$(list-ordered) Rows: 50")
   })
 
+  test("system marker is sticky until the next marker", () => {
+    const cells = makeNotebook([
+      ["markdown", { system: "DEV" }],
+      [SQL_LANGUAGE_ID],
+      [SQL_LANGUAGE_ID, { system: "QAS" }],
+      [SQL_LANGUAGE_ID]
+    ])
+    expect(texts(provider.provideCellStatusBarItems(cells[0]))[1]).toBe(
+      "$(server-environment) DEV ▸"
+    )
+    expect(texts(provider.provideCellStatusBarItems(cells[1]))[1]).toBe(
+      "$(server-environment) DEV (from #0)"
+    )
+    // QAS is configured but not connected in the mocked window
+    expect(texts(provider.provideCellStatusBarItems(cells[2]))[1]).toBe("$(debug-disconnect) QAS ▸")
+    expect(texts(provider.provideCellStatusBarItems(cells[3]))[1]).toBe(
+      "$(debug-disconnect) QAS (from #2)"
+    )
+  })
+
   test("items are clickable with the right commands", () => {
     const [cell] = makeNotebook([[SQL_LANGUAGE_ID]])
     const cmds = provider.provideCellStatusBarItems(cell).map((i: any) => i.command.command)
-    expect(cmds).toEqual(["abapfs.notebookSetCellName", "abapfs.notebookSetCellMaxRows"])
+    expect(cmds).toEqual([
+      "abapfs.notebookSetCellName",
+      "abapfs.notebookSetCellSystem",
+      "abapfs.notebookSetCellMaxRows"
+    ])
   })
 })
 
@@ -153,5 +181,23 @@ describe("cell commands", () => {
     mockWindow.showInputBox.mockResolvedValue("")
     await commandHandler("abapfs.notebookSetCellName")(cell)
     expect(vscode.NotebookEdit.updateCellMetadata).toHaveBeenCalledWith(0, { maxRows: 5 })
+  })
+
+  test("setCellSystem stores the picked system", async () => {
+    const [cell] = makeNotebook([[SQL_LANGUAGE_ID]])
+    mockWindow.showQuickPick.mockImplementation(async (items: any[]) =>
+      items.find(i => i.value === "QAS")
+    )
+    await commandHandler("abapfs.notebookSetCellSystem")(cell)
+    expect(vscode.NotebookEdit.updateCellMetadata).toHaveBeenCalledWith(0, { system: "QAS" })
+  })
+
+  test("setCellSystem can remove a marker", async () => {
+    const [cell] = makeNotebook([[SQL_LANGUAGE_ID, { system: "DEV" }]])
+    mockWindow.showQuickPick.mockImplementation(async (items: any[]) =>
+      items.find(i => i.action === "clear")
+    )
+    await commandHandler("abapfs.notebookSetCellSystem")(cell)
+    expect(vscode.NotebookEdit.updateCellMetadata).toHaveBeenCalledWith(0, {})
   })
 })

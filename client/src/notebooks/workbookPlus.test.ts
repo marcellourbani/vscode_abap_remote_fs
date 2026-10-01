@@ -5,6 +5,7 @@ import {
   renameReferences,
   validateCellName
 } from "./cellReferences"
+import { buildRunPlan, describePlan, missingSystems, resolveEffectiveSystems } from "./systemPlan"
 import { interpolateSql } from "./interpolation"
 import { type CellResult } from "./types"
 
@@ -23,7 +24,7 @@ describe("named cell references", () => {
 
   test("buildCellData keys by index and by name", () => {
     const results = new Map<number, CellResult>([
-      [4, { result: [1] }],
+      [4, { result: [1], system: "dev" }],
       [9, { result: [2] }]
     ])
     const names = new Map([
@@ -35,7 +36,7 @@ describe("named cell references", () => {
       findCellReferences("cells.s1; cells[9]; cells.missing"),
       names
     )
-    expect(data.s1).toEqual({ result: [1], index: 4, name: "s1" })
+    expect(data.s1).toEqual({ result: [1], index: 4, system: "dev", name: "s1" })
     expect(data["9"]).toEqual({ result: [2], index: 9, name: "s2" })
     expect(data.missing).toBeUndefined()
   })
@@ -88,5 +89,65 @@ describe("SQL interpolation by name", () => {
     expect(() => interpolateSql("x = ${cells.p2.result.A}", results, new Map([["p2", 7]]))).toThrow(
       /'p2' \(cell 7\) has no result/
     )
+  })
+})
+
+describe("system per cell", () => {
+  test("marker is sticky until the next marker", () => {
+    const eff = resolveEffectiveSystems([{ system: "DEV" }, {}, {}, { system: "QAS" }, {}])
+    expect(eff.map(e => e.system)).toEqual(["DEV", "DEV", "DEV", "QAS", "QAS"])
+    expect(eff[2].from).toBe(0)
+    expect(eff[4].from).toBe(3)
+  })
+
+  test("cells before the first marker have no system", () => {
+    expect(resolveEffectiveSystems([{}, { system: "DEV" }]).map(e => e.system)).toEqual([
+      undefined,
+      "DEV"
+    ])
+  })
+
+  test("user example: cell 0 = System1, cell 9 = System2", () => {
+    const cells = Array.from({ length: 12 }, (_, i) =>
+      i === 0 ? { system: "SYS1" } : i === 9 ? { system: "SYS2" } : {}
+    )
+    const eff = resolveEffectiveSystems(cells)
+    expect(eff.slice(0, 9).every(e => e.system === "SYS1")).toBe(true)
+    expect(eff.slice(9).every(e => e.system === "SYS2")).toBe(true)
+  })
+
+  test("run plan groups contiguous cells and counts SQL cells", () => {
+    const eff = resolveEffectiveSystems([{ system: "DEV" }, {}, {}, { system: "QAS" }, {}])
+    const plan = buildRunPlan(
+      [0, 1, 2, 3, 4].map(i => ({ index: i, needsSystem: i !== 2 })),
+      eff
+    )
+    expect(plan).toEqual([
+      { system: "DEV", first: 0, last: 2, sqlCells: 2 },
+      { system: "QAS", first: 3, last: 4, sqlCells: 2 }
+    ])
+    expect(describePlan(plan)).toBe("Cells 0-2 -> DEV  (2 SQL)\nCells 3-4 -> QAS  (2 SQL)")
+    expect(missingSystems(plan, s => s.toLowerCase() === "dev")).toEqual(["QAS"])
+  })
+
+  test("markdown cells between code cells do not split the plan", () => {
+    // Run All passes only code cells: 1, 3, 5, 7, 9 (even cells are markdown)
+    const eff = resolveEffectiveSystems([
+      {},
+      {},
+      { system: "DEV" },
+      {},
+      {},
+      {},
+      { system: "QAS" },
+      {},
+      {},
+      {}
+    ])
+    const plan = buildRunPlan(
+      [1, 3, 5, 7, 9].map(i => ({ index: i, needsSystem: i > 1 })),
+      eff
+    )
+    expect(describePlan(plan)).toBe("Cells 3-5 -> DEV  (2 SQL)\nCells 7-9 -> QAS  (2 SQL)")
   })
 })

@@ -4401,6 +4401,18 @@
         "title": "SAP Data Workbook: Name Cell…",
         "category": "ABAP FS",
         "icon": "$(tag)"
+      },
+      {
+        "command": "abapfs.notebookSetCellSystem",
+        "title": "SAP Data Workbook: Set System From This Cell…",
+        "category": "ABAP FS",
+        "icon": "$(server-environment)"
+      },
+      {
+        "command": "abapfs.notebookShowRunPlan",
+        "title": "SAP Data Workbook: Show Run Plan (cell → system)",
+        "category": "ABAP FS",
+        "icon": "$(list-flat)"
       }
     ],
     "keybindings": [
@@ -4854,6 +4866,14 @@
         },
         {
           "command": "abapfs.notebookSetCellName",
+          "when": "activeEditor == workbench.editor.notebook && notebookType == sap-data-workbook"
+        },
+        {
+          "command": "abapfs.notebookSetCellSystem",
+          "when": "activeEditor == workbench.editor.notebook && notebookType == sap-data-workbook"
+        },
+        {
+          "command": "abapfs.notebookShowRunPlan",
           "when": "activeEditor == workbench.editor.notebook && notebookType == sap-data-workbook"
         }
       ],
@@ -5345,11 +5365,23 @@
           "group": "4_rapGenerator@1"
         }
       ],
+      "notebook/toolbar": [
+        {
+          "command": "abapfs.notebookShowRunPlan",
+          "when": "notebookType == sap-data-workbook",
+          "group": "navigation@10"
+        }
+      ],
       "notebook/cell/title": [
         {
           "command": "abapfs.notebookSetCellName",
           "when": "notebookType == sap-data-workbook",
           "group": "inline@1"
+        },
+        {
+          "command": "abapfs.notebookSetCellSystem",
+          "when": "notebookType == sap-data-workbook",
+          "group": "inline@2"
         }
       ]
     },

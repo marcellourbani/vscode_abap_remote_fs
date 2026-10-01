@@ -2,11 +2,14 @@ import * as vscode from "vscode"
 import { NOTEBOOK_TYPE, SQL_LANGUAGE_ID, DEFAULT_MAX_ROWS } from "./types"
 import { funWindow as window } from "../services/funMessenger"
 import { renameReferences, validateCellName } from "./cellReferences"
-import { cellName } from "./abapNotebookController"
+import { resolveEffectiveSystems } from "./systemPlan"
+import { cellName, cellSystem, isSystemConnected } from "./abapNotebookController"
+import { connectedRoots, getConfig } from "../config"
 
 /**
  * Status bar items on each cell:
  *   left : "#5 · s1_auth"  (click: name / rename the cell)
+ *   left : "⚡ DEV" / "↳ DEV (from #2)"  (click: set the system from this cell on)
  *   right: "Rows: 1000" for SQL cells (click: change the row limit)
  */
 export class SqlCellStatusBarProvider implements vscode.NotebookCellStatusBarItemProvider {
@@ -37,6 +40,37 @@ export class SqlCellStatusBarProvider implements vscode.NotebookCellStatusBarIte
       arguments: [cell]
     }
     items.push(nameItem)
+
+    // system (sticky)
+    const own = cellSystem(cell)
+    const eff = resolveEffectiveSystems(
+      cell.notebook.getCells().map(c => ({ system: cellSystem(c) }))
+    )[cell.index]
+    if (own || eff?.system || isSql) {
+      const sys = eff?.system
+      const connected = sys ? isSystemConnected(sys) : false
+      const icon = !sys ? "$(plug)" : connected ? "$(server-environment)" : "$(debug-disconnect)"
+      const text = own
+        ? `${icon} ${own} ▸`
+        : sys
+          ? `${icon} ${sys} (from #${eff.from})`
+          : `${icon} system: ask`
+      const sysItem = new vscode.NotebookCellStatusBarItem(
+        text,
+        vscode.NotebookCellStatusBarAlignment.Left
+      )
+      sysItem.tooltip = own
+        ? `This cell and all following cells run on '${own}' until the next system marker. Click to change.`
+        : sys
+          ? `Runs on '${sys}' (set on cell #${eff.from})${connected ? "" : " — NOT connected in this window"}. Click to set a different system from this cell on.`
+          : "No system assigned: you will be asked when it runs. Click to assign a system from this cell on."
+      sysItem.command = {
+        command: "abapfs.notebookSetCellSystem",
+        title: "Set system",
+        arguments: [cell]
+      }
+      items.push(sysItem)
+    }
 
     if (isCode && isSql) {
       const maxRows: number = cell.metadata?.maxRows ?? DEFAULT_MAX_ROWS
@@ -77,16 +111,26 @@ function targetCell(arg: unknown): vscode.NotebookCell | undefined {
   return editor.notebook.cellAt(idx)
 }
 
+export function knownSystems(): string[] {
+  const configured = Object.keys((getConfig().get("remote") as Record<string, unknown>) || {})
+  const connected = [...connectedRoots().keys()]
+  const seen = new Map<string, string>()
+  for (const s of [...connected, ...configured])
+    if (!seen.has(s.toLowerCase())) seen.set(s.toLowerCase(), s)
+  return [...seen.values()].sort()
+}
+
 export function registerCellStatusBar(context: vscode.ExtensionContext): SqlCellStatusBarProvider {
   const provider = new SqlCellStatusBarProvider()
   context.subscriptions.push(
     vscode.notebooks.registerNotebookCellStatusBarItemProvider(NOTEBOOK_TYPE, provider)
   )
-  // cell numbers depend on the other cells: refresh when the notebook changes
+  // effective systems depend on other cells and on connections: refresh when either changes
   context.subscriptions.push(
     vscode.workspace.onDidChangeNotebookDocument(e => {
       if (e.notebook.notebookType === NOTEBOOK_TYPE) provider.refresh()
-    })
+    }),
+    vscode.workspace.onDidChangeWorkspaceFolders(() => provider.refresh())
   )
 
   context.subscriptions.push(
@@ -161,6 +205,59 @@ export function registerCellStatusBar(context: vscode.ExtensionContext): SqlCell
         }
       }
       provider.refresh()
+    }),
+
+    vscode.commands.registerCommand("abapfs.notebookSetCellSystem", async (arg?: unknown) => {
+      const cell = targetCell(arg)
+      if (!cell) return
+      const own = cellSystem(cell)
+      type Pick = vscode.QuickPickItem & { value?: string; action?: "clear" | "custom" }
+      const items: Pick[] = knownSystems().map(s => ({
+        label: s,
+        description: isSystemConnected(s) ? "connected" : "not connected",
+        value: s
+      }))
+      items.push({ label: "$(edit) Other…", action: "custom" })
+      if (own)
+        items.push({ label: "$(close) Remove system marker from this cell", action: "clear" })
+      const picked = await window.showQuickPick(items, {
+        title: `System from cell #${cell.index} onwards`,
+        placeHolder: "Cells from here until the next system marker will run on this SAP system"
+      })
+      if (!picked) return
+      let value: string | undefined = picked.value
+      if (picked.action === "clear") value = undefined
+      if (picked.action === "custom") {
+        value = (
+          await window.showInputBox({ prompt: "ABAP FS connection id", value: own ?? "" })
+        )?.trim()
+        if (value === undefined) return
+      }
+      await setCellMetadata(cell, { system: value })
+      provider.refresh()
+    }),
+
+    vscode.commands.registerCommand("abapfs.notebookShowRunPlan", async () => {
+      const editor = vscode.window.activeNotebookEditor
+      if (!editor || editor.notebook.notebookType !== NOTEBOOK_TYPE) return
+      const cells = editor.notebook.getCells()
+      const eff = resolveEffectiveSystems(cells.map(c => ({ system: cellSystem(c) })))
+      const lines = cells
+        .filter(c => c.kind === vscode.NotebookCellKind.Code)
+        .map(c => {
+          const sys =
+            c.document.languageId === SQL_LANGUAGE_ID ? (eff[c.index]?.system ?? "(ask)") : "—"
+          const n = cellName(c)
+          return `#${c.index}${n ? " " + n : ""}  [${c.document.languageId === SQL_LANGUAGE_ID ? "SQL" : "JS"}]  → ${sys}`
+        })
+      const doc = await vscode.workspace.openTextDocument({
+        content: `SAP Data Workbook run plan\n\n${lines.join("\n")}\n`,
+        language: "plaintext"
+      })
+      await vscode.window.showTextDocument(doc, {
+        preview: true,
+        viewColumn: vscode.ViewColumn.Beside
+      })
     })
   )
   return provider
