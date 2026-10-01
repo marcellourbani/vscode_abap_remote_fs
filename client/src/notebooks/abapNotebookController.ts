@@ -7,7 +7,12 @@ import {
 } from "./connectionResolver"
 import { executeSqlCell } from "./sqlCellExecutor"
 import { executeJsCell } from "./jsCellExecutor"
-import { renderSqlOutput, renderJsOutput, renderErrorOutput } from "./outputRenderer"
+import {
+  renderSqlOutput,
+  renderJsOutputs,
+  renderErrorOutput,
+  type RenderSettings
+} from "./outputRenderer"
 import {
   buildRunPlan,
   describePlan,
@@ -38,6 +43,12 @@ export function cellSystem(cell: vscode.NotebookCell): string | undefined {
 
 export function isSystemConnected(system: string): boolean {
   return connectedRoots().has(formatKey(system))
+}
+
+export function renderSettings(): RenderSettings {
+  return {
+    wrap: vscode.workspace.getConfiguration("abapfs").get<boolean>("workbook.tableWrap", true)
+  }
 }
 
 /**
@@ -334,6 +345,7 @@ export class AbapNotebookController {
       }
 
       const view = this.getResultsView(notebook)
+      const settings = renderSettings()
       let cellResult: CellResult
       const isSql = language === SQL_LANGUAGE_ID
 
@@ -374,7 +386,16 @@ export class AbapNotebookController {
 
       if (!ended) {
         this.cellResults.get(notebookKey)?.set(cell.document.uri.toString(), cellResult)
-        endExec(true, isSql ? renderSqlOutput(cellResult) : renderJsOutput(cellResult))
+        if (!isSql && cellResult.error) {
+          // JS errors used to render as a bare "undefined"; show the actual message.
+          const logs = cellResult.logs?.length ? cellResult.logs.join("\n") + "\n" : ""
+          endExec(false, renderErrorOutput(logs + cellResult.error))
+        } else {
+          endExec(
+            true,
+            isSql ? renderSqlOutput(cellResult, settings) : renderJsOutputs(cellResult, settings)
+          )
+        }
       }
     } catch (error: any) {
       const msg = error?.message || String(error)

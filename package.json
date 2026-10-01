@@ -6031,6 +6031,11 @@
               "additionalProperties": false
             }
           }
+        },
+        "abapfs.workbook.tableWrap": {
+          "type": "boolean",
+          "default": true,
+          "description": "SAP Data Workbook: wrap long values in result tables instead of widening the table."
         }
       }
     },

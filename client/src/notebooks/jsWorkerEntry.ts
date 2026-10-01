@@ -15,6 +15,7 @@
 import { parentPort } from "worker_threads"
 import * as vm from "vm"
 import * as v8 from "v8"
+import { createDisplayHelpers } from "./display"
 
 interface WorkerRequest {
   code: string
@@ -45,6 +46,7 @@ parentPort.once("message", async (request: WorkerRequest) => {
 
     const sandbox: Record<string, unknown> = {
       cells: cellsProxy,
+      display: createDisplayHelpers(),
       console: {
         log: (...args: unknown[]) => logs.push(args.map(formatLogArg).join(" ")),
         warn: (...args: unknown[]) => logs.push("[warn] " + args.map(formatLogArg).join(" ")),

@@ -6,6 +6,14 @@ import {
   validateCellName
 } from "./cellReferences"
 import { buildRunPlan, describePlan, missingSystems, resolveEffectiveSystems } from "./systemPlan"
+import {
+  createDisplayHelpers,
+  isDisplayValue,
+  prettyXml,
+  splitDisplay,
+  statusKind,
+  toXml
+} from "./display"
 import { interpolateSql } from "./interpolation"
 import { type CellResult } from "./types"
 
@@ -149,5 +157,39 @@ describe("system per cell", () => {
       eff
     )
     expect(describePlan(plan)).toBe("Cells 3-5 -> DEV  (2 SQL)\nCells 7-9 -> QAS  (2 SQL)")
+  })
+})
+
+describe("display helpers", () => {
+  const display = createDisplayHelpers()
+  test("markers are recognised and carry options", () => {
+    const d = display.table([{ a: 1 }], { wrap: true, highlight: true })
+    expect(isDisplayValue(d)).toBe(true)
+    expect(d.options).toEqual({ wrap: true, highlight: true })
+  })
+  test("data for later cells: table content by default, explicit data wins", () => {
+    expect(splitDisplay(display.table([{ a: 1 }])).data).toEqual([{ a: 1 }])
+    expect(splitDisplay(display.html("<b>x</b>", { data: [{ b: 2 }] })).data).toEqual([{ b: 2 }])
+    expect(
+      splitDisplay(display.all(display.markdown("# t"), display.table([{ c: 3 }]))).data
+    ).toEqual([{ c: 3 }])
+    expect(splitDisplay([{ plain: 1 }])).toEqual({ data: [{ plain: 1 }] })
+  })
+  test("structured clone keeps markers intact", () => {
+    const v8 = require("v8")
+    const d = v8.deserialize(v8.serialize(display.json({ x: 1 }, { title: "T" })))
+    expect(isDisplayValue(d)).toBe(true)
+  })
+  test("toXml and prettyXml", () => {
+    expect(toXml([{ A: "x<y", B: 1 }], "rows")).toBe(
+      "<rows>\n  <row>\n    <A>x&lt;y</A>\n    <B>1</B>\n  </row>\n</rows>"
+    )
+    expect(prettyXml("<a><b>1</b><c/></a>")).toBe("<a>\n  <b>1</b>\n  <c/>\n</a>")
+  })
+  test("status words", () => {
+    expect(statusKind("RED")).toBe("red")
+    expect(statusKind("[PASS]")).toBe("green")
+    expect(statusKind(" warn ")).toBe("yellow")
+    expect(statusKind("REDUCED")).toBeUndefined()
   })
 })

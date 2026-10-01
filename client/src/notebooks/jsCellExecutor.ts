@@ -14,6 +14,7 @@ import { Worker } from "worker_threads"
 import * as path from "path"
 import { type CellResult, JS_EXECUTION_TIMEOUT_MS } from "./types"
 import { buildCellData, findCellReferences } from "./cellReferences"
+import { splitDisplay } from "./display"
 
 function getWorkerScriptPath(): string {
   return path.join(__dirname, "jsWorkerEntry.js")
@@ -92,8 +93,10 @@ export async function executeJsCell(
     worker.on("message", (response: WorkerResponse) => {
       settle(() => {
         if (response.success) {
+          const { data, display } = splitDisplay(response.result)
           resolve({
-            result: response.result,
+            result: data,
+            ...(display ? { display } : {}),
             ...(response.logs && response.logs.length > 0 ? { logs: response.logs } : {})
           })
         } else {

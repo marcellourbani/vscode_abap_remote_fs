@@ -23,6 +23,7 @@ Alternatively, create any file with the `.sapwb` extension, or ask Copilot: *"Cr
 
 - Run a single cell with the run button or `Shift+Enter`. If the cell has no system (see *System markers*), you are prompted to select a SAP system.
 - **Run All** (`Ctrl+Shift+Enter`) uses the system markers. It shows the plan once (e.g. *Cells 3-22 -> dev, Cells 24-47 -> qas*) and runs every SQL cell on its system. Cells before the first marker use a system you pick once.
+- When a JavaScript cell fails, its error message is shown in the cell output and the following cells are skipped.
 
 **Naming cells**
 
@@ -48,6 +49,32 @@ If a marker names a system that is not connected, **Run All** asks which connect
 **Row limits**
 
 Each SQL cell has a configurable row limit (default: 1000). Click `Rows: 1000` in the cell's status bar or run **SAP Data Workbook: Set Cell Row Limit**.
+
+## Formatted Output
+
+A JavaScript cell can return more than a plain table. The `display` helper is available in every JavaScript cell:
+
+| Helper | Shows | Later cells receive |
+|---|---|---|
+| `display.table(rows, { wrap, highlight, title, limit })` | A table. `wrap` wraps long values; `highlight` colours cells whose whole value is `RED`/`FAIL`/`ERROR`, `YELLOW`/`WARN`, `GREEN`/`PASS`/`OK` or `INFO`; `limit` shows up to 5000 rows | the rows |
+| `display.markdown(text)` | Formatted Markdown | the text |
+| `display.html(html)` | HTML | the HTML |
+| `display.json(value)` | Highlighted JSON | the value |
+| `display.xml(value)` | Highlighted XML (an XML string is pretty-printed; rows/objects are converted) | the value |
+| `display.text(text)` | Plain text | the text |
+| `display.all(a, b, …)` | Several outputs in one cell | the first item with `data`, otherwise the first table |
+
+Pass `{ data: x }` in the options to choose what later cells receive:
+
+```javascript
+// verdict headline + colour-coded summary; later cells read cells.summary.result.log
+return display.all(
+  display.markdown("## RED — 3 differences"),
+  display.table(summary, { wrap: true, highlight: true, data: { summary, log } })
+)
+```
+
+Tables wrap long values by default (setting `abapfs.workbook.tableWrap`). Dates are shown as `YYYY-MM-DD`.
 
 ## Example: Data Quality Check
 
