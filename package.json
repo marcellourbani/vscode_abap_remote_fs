@@ -4413,6 +4413,44 @@
         "title": "SAP Data Workbook: Show Run Plan (cell → system)",
         "category": "ABAP FS",
         "icon": "$(list-flat)"
+      },
+      {
+        "command": "abapfs.notebookExport",
+        "title": "SAP Data Workbook: Export…",
+        "category": "ABAP FS",
+        "icon": "$(export)"
+      },
+      {
+        "command": "abapfs.notebookToggleInputs",
+        "title": "SAP Data Workbook: Collapse/Expand All Code",
+        "category": "ABAP FS",
+        "icon": "$(fold)"
+      },
+      {
+        "command": "abapfs.notebookToggleOutputs",
+        "title": "SAP Data Workbook: Collapse/Expand All Outputs",
+        "category": "ABAP FS",
+        "icon": "$(output)"
+      },
+      {
+        "command": "abapfs.notebookCollapseInputs",
+        "title": "SAP Data Workbook: Collapse All Code",
+        "category": "ABAP FS"
+      },
+      {
+        "command": "abapfs.notebookExpandInputs",
+        "title": "SAP Data Workbook: Expand All Code",
+        "category": "ABAP FS"
+      },
+      {
+        "command": "abapfs.notebookCollapseOutputs",
+        "title": "SAP Data Workbook: Collapse All Outputs",
+        "category": "ABAP FS"
+      },
+      {
+        "command": "abapfs.notebookExpandOutputs",
+        "title": "SAP Data Workbook: Expand All Outputs",
+        "category": "ABAP FS"
       }
     ],
     "keybindings": [
@@ -4874,6 +4912,34 @@
         },
         {
           "command": "abapfs.notebookShowRunPlan",
+          "when": "activeEditor == workbench.editor.notebook && notebookType == sap-data-workbook"
+        },
+        {
+          "command": "abapfs.notebookExport",
+          "when": "activeEditor == workbench.editor.notebook && notebookType == sap-data-workbook"
+        },
+        {
+          "command": "abapfs.notebookToggleInputs",
+          "when": "activeEditor == workbench.editor.notebook && notebookType == sap-data-workbook"
+        },
+        {
+          "command": "abapfs.notebookToggleOutputs",
+          "when": "activeEditor == workbench.editor.notebook && notebookType == sap-data-workbook"
+        },
+        {
+          "command": "abapfs.notebookCollapseInputs",
+          "when": "activeEditor == workbench.editor.notebook && notebookType == sap-data-workbook"
+        },
+        {
+          "command": "abapfs.notebookExpandInputs",
+          "when": "activeEditor == workbench.editor.notebook && notebookType == sap-data-workbook"
+        },
+        {
+          "command": "abapfs.notebookCollapseOutputs",
+          "when": "activeEditor == workbench.editor.notebook && notebookType == sap-data-workbook"
+        },
+        {
+          "command": "abapfs.notebookExpandOutputs",
           "when": "activeEditor == workbench.editor.notebook && notebookType == sap-data-workbook"
         }
       ],
@@ -5370,6 +5436,21 @@
           "command": "abapfs.notebookShowRunPlan",
           "when": "notebookType == sap-data-workbook",
           "group": "navigation@10"
+        },
+        {
+          "command": "abapfs.notebookExport",
+          "when": "notebookType == sap-data-workbook",
+          "group": "navigation@13"
+        },
+        {
+          "command": "abapfs.notebookToggleInputs",
+          "when": "notebookType == sap-data-workbook",
+          "group": "navigation@11"
+        },
+        {
+          "command": "abapfs.notebookToggleOutputs",
+          "when": "notebookType == sap-data-workbook",
+          "group": "navigation@12"
         }
       ],
       "notebook/cell/title": [

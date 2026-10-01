@@ -76,6 +76,26 @@ return display.all(
 
 Tables wrap long values by default (setting `abapfs.workbook.tableWrap`). Dates are shown as `YYYY-MM-DD`.
 
+## Exporting a Workbook
+
+Click **Export…** in the workbook toolbar (or run **SAP Data Workbook: Export…**):
+
+1. Tick what to include — any of **Data** (results of the cells that have run; all rows, not only the rows on screen), **Code** (SQL and JavaScript cells) and **Comments** (Markdown cells).
+2. Pick a format: **PDF**, **HTML**, **JSON**, **XML**, **Excel**, **CSV**, **Word** or **Markdown**.
+
+| Content | In the exported file |
+|---|---|
+| SQL and JavaScript cells | Labelled, syntax-highlighted code blocks (`ABAP SQL · name · system`) |
+| `display.json` / `display.xml` output (and plain objects) | Code blocks, written exactly as produced |
+| Tables, strings, `display.html`, `display.markdown` | Normal content (tables, paragraphs, formatted text) |
+| Several outputs from `display.all` | All of them, in order |
+| Markdown tables / fenced code in comment cells | Real tables / code blocks (PDF, Word) |
+
+- **Excel:** one sheet per result table, plus *Contents* and *Code & Comments* sheets; status values are coloured.
+- **CSV:** data only, one file per result table.
+- **PDF / Word:** landscape; tables over 3,000 (PDF) / 2,000 (Word) rows are cut with a note — use Excel or CSV for all rows. The PDF uses the standard PDF fonts, so characters outside Western European languages appear as `?`.
+- Results are kept in memory, so run the workbook before exporting data.
+
 ## Example: Data Quality Check
 
 ```
@@ -132,3 +152,6 @@ System markers store connection ids. A colleague whose connections have other na
 | `ABAP FS: SAP Data Workbook: Name Cell…` | Names / renames a cell (also: click `#n` in the status bar) |
 | `ABAP FS: SAP Data Workbook: Set System From This Cell…` | Sets or removes a system marker (also: click the system in the status bar) |
 | `ABAP FS: SAP Data Workbook: Show Run Plan (cell → system)` | Lists every cell with the system it will run on (toolbar button) |
+| `ABAP FS: SAP Data Workbook: Collapse/Expand All Code` | Toolbar button; also separate *Collapse All Code* / *Expand All Code* commands |
+| `ABAP FS: SAP Data Workbook: Collapse/Expand All Outputs` | Toolbar button; also separate *Collapse All Outputs* / *Expand All Outputs* commands |
+| `ABAP FS: SAP Data Workbook: Export…` | Exports data / code / comments to PDF, HTML, JSON, XML, Excel, CSV, Word or Markdown (toolbar button) |
