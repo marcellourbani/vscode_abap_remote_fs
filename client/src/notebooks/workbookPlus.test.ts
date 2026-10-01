@@ -17,6 +17,8 @@ import {
 import { interpolateSql } from "./interpolation"
 import { type CellResult } from "./types"
 
+const sql = (cells: Array<{ system?: string }>) => cells.map(c => ({ ...c, sql: true }))
+
 describe("named cell references", () => {
   test("finds index, dot and quoted references", () => {
     const r = findCellReferences(
@@ -102,14 +104,14 @@ describe("SQL interpolation by name", () => {
 
 describe("system per cell", () => {
   test("marker is sticky until the next marker", () => {
-    const eff = resolveEffectiveSystems([{ system: "DEV" }, {}, {}, { system: "QAS" }, {}])
+    const eff = resolveEffectiveSystems(sql([{ system: "DEV" }, {}, {}, { system: "QAS" }, {}]))
     expect(eff.map(e => e.system)).toEqual(["DEV", "DEV", "DEV", "QAS", "QAS"])
     expect(eff[2].from).toBe(0)
     expect(eff[4].from).toBe(3)
   })
 
   test("cells before the first marker have no system", () => {
-    expect(resolveEffectiveSystems([{}, { system: "DEV" }]).map(e => e.system)).toEqual([
+    expect(resolveEffectiveSystems(sql([{}, { system: "DEV" }])).map(e => e.system)).toEqual([
       undefined,
       "DEV"
     ])
@@ -119,13 +121,42 @@ describe("system per cell", () => {
     const cells = Array.from({ length: 12 }, (_, i) =>
       i === 0 ? { system: "SYS1" } : i === 9 ? { system: "SYS2" } : {}
     )
-    const eff = resolveEffectiveSystems(cells)
+    const eff = resolveEffectiveSystems(sql(cells))
     expect(eff.slice(0, 9).every(e => e.system === "SYS1")).toBe(true)
     expect(eff.slice(9).every(e => e.system === "SYS2")).toBe(true)
   })
 
+  test("only SQL cells carry or inherit a system", () => {
+    // 0 md(DEV, ignored)  1 sql  2 sql(QAS)  3 js(PRD, ignored)  4 sql  5 js
+    const eff = resolveEffectiveSystems([
+      { system: "DEV", sql: false },
+      { sql: true },
+      { system: "QAS", sql: true },
+      { system: "PRD", sql: false },
+      { sql: true },
+      { sql: false }
+    ])
+    expect(eff).toEqual([{}, {}, { system: "QAS", from: 2 }, {}, { system: "QAS", from: 2 }, {}])
+  })
+
+  test("removing the middle marker of three: later cells point at the right marker", () => {
+    // reviewer scenario: SQL SYS1, SQL SYS2, SQL SYS3, JS — then the SYS2 marker is removed
+    const cells = [
+      { system: "SYS1", sql: true },
+      { sql: true },
+      { system: "SYS3", sql: true },
+      { sql: false }
+    ]
+    expect(resolveEffectiveSystems(cells)).toEqual([
+      { system: "SYS1", from: 0 },
+      { system: "SYS1", from: 0 },
+      { system: "SYS3", from: 2 },
+      {}
+    ])
+  })
+
   test("run plan groups contiguous cells and counts SQL cells", () => {
-    const eff = resolveEffectiveSystems([{ system: "DEV" }, {}, {}, { system: "QAS" }, {}])
+    const eff = resolveEffectiveSystems(sql([{ system: "DEV" }, {}, {}, { system: "QAS" }, {}]))
     const plan = buildRunPlan(
       [0, 1, 2, 3, 4].map(i => ({ index: i, needsSystem: i !== 2 })),
       eff
@@ -138,25 +169,20 @@ describe("system per cell", () => {
     expect(missingSystems(plan, s => s.toLowerCase() === "dev")).toEqual(["QAS"])
   })
 
-  test("markdown cells between code cells do not split the plan", () => {
-    // Run All passes only code cells: 1, 3, 5, 7, 9 (even cells are markdown)
-    const eff = resolveEffectiveSystems([
-      {},
-      {},
-      { system: "DEV" },
-      {},
-      {},
-      {},
-      { system: "QAS" },
-      {},
-      {},
-      {}
-    ])
+  test("JavaScript and markdown cells do not split the plan", () => {
+    // 0 md, 1 js, 2 md, 3 sql(DEV), 4 js, 5 sql, 6 md, 7 sql(QAS), 8 js, 9 sql
+    const isSql = (i: number) => [3, 5, 7, 9].includes(i)
+    const eff = resolveEffectiveSystems(
+      Array.from({ length: 10 }, (_, i) => ({
+        sql: isSql(i),
+        system: i === 3 ? "DEV" : i === 7 ? "QAS" : undefined
+      }))
+    )
     const plan = buildRunPlan(
-      [1, 3, 5, 7, 9].map(i => ({ index: i, needsSystem: i > 1 })),
+      [1, 3, 4, 5, 7, 8, 9].map(i => ({ index: i, needsSystem: isSql(i) })),
       eff
     )
-    expect(describePlan(plan)).toBe("Cells 3-5 -> DEV  (2 SQL)\nCells 7-9 -> QAS  (2 SQL)")
+    expect(describePlan(plan)).toBe("Cells 1-5 -> DEV  (2 SQL)\nCells 7-9 -> QAS  (2 SQL)")
   })
 })
 

@@ -2,14 +2,19 @@ import * as vscode from "vscode"
 import { NOTEBOOK_TYPE, SQL_LANGUAGE_ID, DEFAULT_MAX_ROWS } from "./types"
 import { funWindow as window } from "../services/funMessenger"
 import { renameReferences, validateCellName } from "./cellReferences"
-import { resolveEffectiveSystems } from "./systemPlan"
-import { cellName, cellSystem, isSystemConnected } from "./abapNotebookController"
+import {
+  cellName,
+  cellSystem,
+  effectiveSystems,
+  isSqlCell,
+  isSystemConnected
+} from "./abapNotebookController"
 import { connectedRoots, getConfig } from "../config"
 
 /**
  * Status bar items on each cell:
  *   left : "#5 · s1_auth"  (click: name / rename the cell)
- *   left : "⚡ DEV" / "↳ DEV (from #2)"  (click: set the system from this cell on)
+ *   left : "DEV ▸" / "DEV (from #2)" on ABAP SQL cells  (click: set the system from this cell on)
  *   right: "Rows: 1000" for SQL cells (click: change the row limit)
  */
 export class SqlCellStatusBarProvider implements vscode.NotebookCellStatusBarItemProvider {
@@ -41,36 +46,10 @@ export class SqlCellStatusBarProvider implements vscode.NotebookCellStatusBarIte
     }
     items.push(nameItem)
 
-    // system (sticky)
+    // system (sticky): ABAP SQL cells only
     const own = cellSystem(cell)
-    const eff = resolveEffectiveSystems(
-      cell.notebook.getCells().map(c => ({ system: cellSystem(c) }))
-    )[cell.index]
-    if (own || eff?.system || isSql) {
-      const sys = eff?.system
-      const connected = sys ? isSystemConnected(sys) : false
-      const icon = !sys ? "$(plug)" : connected ? "$(server-environment)" : "$(debug-disconnect)"
-      const text = own
-        ? `${icon} ${own} ▸`
-        : sys
-          ? `${icon} ${sys} (from #${eff.from})`
-          : `${icon} system: ask`
-      const sysItem = new vscode.NotebookCellStatusBarItem(
-        text,
-        vscode.NotebookCellStatusBarAlignment.Left
-      )
-      sysItem.tooltip = own
-        ? `This cell and all following cells run on '${own}' until the next system marker. Click to change.`
-        : sys
-          ? `Runs on '${sys}' (set on cell #${eff.from})${connected ? "" : " — NOT connected in this window"}. Click to set a different system from this cell on.`
-          : "No system assigned: you will be asked when it runs. Click to assign a system from this cell on."
-      sysItem.command = {
-        command: "abapfs.notebookSetCellSystem",
-        title: "Set system",
-        arguments: [cell]
-      }
-      items.push(sysItem)
-    }
+    if (isCode && isSql) items.push(systemItem(cell, own))
+    else if (own) items.push(ignoredMarkerItem(cell, own))
 
     if (isCode && isSql) {
       const maxRows: number = cell.metadata?.maxRows ?? DEFAULT_MAX_ROWS
@@ -88,6 +67,74 @@ export class SqlCellStatusBarProvider implements vscode.NotebookCellStatusBarIte
     }
     return items
   }
+}
+
+function systemItem(cell: vscode.NotebookCell, own: string | undefined) {
+  const eff = effectiveSystems(cell.notebook)[cell.index]
+  const sys = eff?.system
+  const connected = sys ? isSystemConnected(sys) : false
+  const icon = !sys ? "$(plug)" : connected ? "$(server-environment)" : "$(debug-disconnect)"
+  const text = own
+    ? `${icon} ${own} ▸`
+    : sys
+      ? `${icon} ${sys} (from #${eff.from})`
+      : `${icon} system: ask`
+  const item = new vscode.NotebookCellStatusBarItem(
+    text,
+    vscode.NotebookCellStatusBarAlignment.Left
+  )
+  const notConnected = connected ? "" : " — NOT connected in this window"
+  item.tooltip = own
+    ? `This and the following ABAP SQL cells run on '${own}'${notConnected}, until the next system marker. Click to change or remove.`
+    : sys
+      ? `Runs on '${sys}' (marker on cell #${eff.from})${notConnected}. Click to set a different system from this cell on.`
+      : "No system assigned: you will be asked when it runs. Click to assign a system from this cell on."
+  item.command = { command: "abapfs.notebookSetCellSystem", title: "Set system", arguments: [cell] }
+  return item
+}
+
+/** A marker left on a JavaScript / markdown cell (e.g. by an older version): shown so it can be removed. */
+function ignoredMarkerItem(cell: vscode.NotebookCell, own: string) {
+  const item = new vscode.NotebookCellStatusBarItem(
+    `$(warning) ${own} (ignored)`,
+    vscode.NotebookCellStatusBarAlignment.Left
+  )
+  item.tooltip =
+    "System markers apply to ABAP SQL cells only, so this one is ignored. Click to remove it."
+  item.command = { command: "abapfs.notebookSetCellSystem", title: "Set system", arguments: [cell] }
+  return item
+}
+
+type SystemPick = vscode.QuickPickItem & { value?: string; action?: "clear" }
+
+/**
+ * Systems for the marker picker: connected systems first, then the cell's current system, then the
+ * systems that are configured but not connected. No free-text entry: only known connections.
+ */
+export function systemPickItems(current: string | undefined, hasMarker: boolean): SystemPick[] {
+  const isCurrent = (s: string) => !!current && s.toLowerCase() === current.toLowerCase()
+  const others = knownSystems().filter(s => !isCurrent(s))
+  const connected = others.filter(isSystemConnected)
+  const notConnected = others.filter(s => !isSystemConnected(s))
+  const separator = (label: string): SystemPick => ({
+    label,
+    kind: vscode.QuickPickItemKind.Separator
+  })
+  const items: SystemPick[] = [separator("Connected")]
+  items.push(...connected.map(s => ({ label: s, value: s })))
+  if (current)
+    items.push({
+      label: current,
+      value: current,
+      description: isSystemConnected(current) ? "current" : "current · not connected"
+    })
+  if (notConnected.length) items.push(separator("Not connected"))
+  items.push(...notConnected.map(s => ({ label: s, description: "not connected", value: s })))
+  if (hasMarker) {
+    items.push(separator(""))
+    items.push({ label: "$(close) Remove the system marker from this cell", action: "clear" })
+  }
+  return items
 }
 
 async function setCellMetadata(cell: vscode.NotebookCell, patch: Record<string, unknown>) {
@@ -211,28 +258,20 @@ export function registerCellStatusBar(context: vscode.ExtensionContext): SqlCell
       const cell = targetCell(arg)
       if (!cell) return
       const own = cellSystem(cell)
-      type Pick = vscode.QuickPickItem & { value?: string; action?: "clear" | "custom" }
-      const items: Pick[] = knownSystems().map(s => ({
-        label: s,
-        description: isSystemConnected(s) ? "connected" : "not connected",
-        value: s
-      }))
-      items.push({ label: "$(edit) Other…", action: "custom" })
-      if (own)
-        items.push({ label: "$(close) Remove system marker from this cell", action: "clear" })
-      const picked = await window.showQuickPick(items, {
-        title: `System from cell #${cell.index} onwards`,
-        placeHolder: "Cells from here until the next system marker will run on this SAP system"
+      if (!isSqlCell(cell)) {
+        if (own) await setCellMetadata(cell, { system: undefined })
+        else window.showInformationMessage("System markers apply to ABAP SQL cells only.")
+        provider.refresh()
+        return
+      }
+      const current = own ?? effectiveSystems(cell.notebook)[cell.index]?.system
+      const picked = await window.showQuickPick(systemPickItems(current, !!own), {
+        title: `System for ABAP SQL cell #${cell.index} and the following SQL cells`,
+        placeHolder: "SQL cells from here until the next system marker run on this SAP system"
       })
       if (!picked) return
-      let value: string | undefined = picked.value
-      if (picked.action === "clear") value = undefined
-      if (picked.action === "custom") {
-        value = (
-          await window.showInputBox({ prompt: "ABAP FS connection id", value: own ?? "" })
-        )?.trim()
-        if (value === undefined) return
-      }
+      const value = picked.action === "clear" ? undefined : picked.value
+      if (value === own) return
       await setCellMetadata(cell, { system: value })
       provider.refresh()
     }),
@@ -241,7 +280,7 @@ export function registerCellStatusBar(context: vscode.ExtensionContext): SqlCell
       const editor = vscode.window.activeNotebookEditor
       if (!editor || editor.notebook.notebookType !== NOTEBOOK_TYPE) return
       const cells = editor.notebook.getCells()
-      const eff = resolveEffectiveSystems(cells.map(c => ({ system: cellSystem(c) })))
+      const eff = effectiveSystems(editor.notebook)
       const lines = cells
         .filter(c => c.kind === vscode.NotebookCellKind.Code)
         .map(c => {

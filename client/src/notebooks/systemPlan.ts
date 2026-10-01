@@ -1,8 +1,10 @@
 /**
  * System-per-cell resolution.
  *
- * A cell that sets `system` applies to itself and every following cell until the next cell that
- * sets a system. Example: cell 0 = DEV, cell 9 = QAS  =>  cells 0-8 run on DEV, 9..N on QAS.
+ * Only ABAP SQL cells talk to SAP, so only they carry or inherit a system. An SQL cell that sets
+ * `system` applies to itself and every following SQL cell until the next SQL cell that sets one.
+ * Example: SQL cell 1 = DEV, SQL cell 9 = QAS  =>  SQL cells 1-8 run on DEV, 9..N on QAS.
+ * A `system` on a JavaScript or markdown cell is ignored.
  */
 
 export interface PlanCell {
@@ -14,13 +16,14 @@ export interface PlanCell {
 
 export const normalizeSystem = (s: string | undefined) => (s ? s.trim().toLowerCase() : "")
 
-/** Effective system for every cell of the notebook (by position). */
+/** Effective system for every cell of the notebook (by position). Non-SQL cells get none. */
 export function resolveEffectiveSystems(
-  cells: Array<{ system?: string }>
+  cells: Array<{ system?: string; sql: boolean }>
 ): Array<{ system?: string; from?: number }> {
   let current: string | undefined
   let from: number | undefined
   return cells.map((c, i) => {
+    if (!c.sql) return {}
     const s = c.system?.trim()
     if (s) {
       current = s
@@ -46,8 +49,14 @@ export function buildRunPlan(
   for (const c of toRun) {
     const sys = effective[c.index]?.system
     const last = ranges[ranges.length - 1]
+    // JavaScript cells have no system: they join the range they are in
+    if (last && !c.needsSystem) {
+      last.last = c.index
+      continue
+    }
     // consecutive cells on the same system form one range (markdown cells in between are not run)
-    if (last && normalizeSystem(last.system) === normalizeSystem(sys)) {
+    if (last && (!last.sqlCells || normalizeSystem(last.system) === normalizeSystem(sys))) {
+      if (!last.sqlCells) last.system = sys
       last.last = c.index
       if (c.needsSystem) last.sqlCells++
     } else {

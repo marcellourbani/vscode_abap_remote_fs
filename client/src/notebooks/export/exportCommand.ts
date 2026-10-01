@@ -2,8 +2,7 @@ import * as vscode from "vscode"
 import * as path from "path"
 import { NOTEBOOK_TYPE, SQL_LANGUAGE_ID } from "../types"
 import { funWindow as window } from "../../services/funMessenger"
-import { type AbapNotebookController, cellName, cellSystem } from "../abapNotebookController"
-import { resolveEffectiveSystems } from "../systemPlan"
+import { type AbapNotebookController, cellName, effectiveSystems } from "../abapNotebookController"
 import {
   buildExportModel,
   describeModel,
@@ -32,7 +31,7 @@ export function collectCells(
   controller: AbapNotebookController
 ): ExportCellInput[] {
   const view = controller.getResultsView(notebook)
-  const eff = resolveEffectiveSystems(notebook.getCells().map(c => ({ system: cellSystem(c) })))
+  const eff = effectiveSystems(notebook)
   return notebook.getCells().map(c => {
     const lang = c.document.languageId
     const kind: ExportCellInput["kind"] =

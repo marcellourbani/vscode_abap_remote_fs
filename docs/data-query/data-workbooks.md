@@ -22,7 +22,7 @@ Alternatively, create any file with the `.sapwb` extension, or ask Copilot: *"Cr
 **Running cells**
 
 - Run a single cell with the run button or `Shift+Enter`. If the cell has no system (see *System markers*), you are prompted to select a SAP system.
-- **Run All** (`Ctrl+Shift+Enter`) uses the system markers. It shows the plan once (e.g. *Cells 3-22 -> dev, Cells 24-47 -> qas*) and runs every SQL cell on its system. Cells before the first marker use a system you pick once.
+- **Run All** (`Ctrl+Shift+Enter`) uses the system markers. It shows the plan once (e.g. *Cells 3-22 -> dev, Cells 24-47 -> qas*) and runs every SQL cell on its system. SQL cells before the first marker use a system you pick once.
 - When a JavaScript cell fails, its error message is shown in the cell output and the following cells are skipped.
 
 **Naming cells**
@@ -42,7 +42,7 @@ SELECT matnr, werks FROM marc
 
 **System markers**
 
-Click the system item in a cell's status bar (or run **SAP Data Workbook: Set System From This Cell…**) to choose an ABAP FS connection. That cell and every following cell run on that system until the next marker, so a marker on a section header covers the whole section. The status bar shows `dev ▸` on a marker and `dev (from #2)` on the cells it covers.
+System markers belong to ABAP SQL cells: JavaScript and markdown cells do not talk to SAP and have no system. Click the system item in an SQL cell's status bar (or run **SAP Data Workbook: Set System From This Cell…**) and pick an ABAP FS connection: connected systems are listed first, then the cell's current system, then systems that are configured but not connected. That SQL cell and every following SQL cell run on that system until the next marker. The status bar shows `dev ▸` on a marker and `dev (from #2)` on the SQL cells it covers; pick **Remove the system marker** to delete one.
 
 If a marker names a system that is not connected, **Run All** asks which connected system to use instead and updates the marker. **SAP Data Workbook: Show Run Plan** lists every cell with the system it will use.
 
@@ -111,26 +111,26 @@ Cell 4 (ABAP SQL):            SELECT matnr, werks FROM marc
 
 ## Example: Cross-System Comparison
 
-Put a system marker on each section header; Run All runs each section on its own system.
+Put a system marker on the first SQL cell of each section; Run All runs each section on its own system.
 
 ```
-Cell 1 (Markdown, system dev):  # Pricing conditions in DEV
-Cell 2 (ABAP SQL, "dev_a005"):  SELECT KSCHL, VKORG, MATNR, KBETR FROM A005 WHERE KSCHL = 'ZPR1'
-Cell 3 (Markdown, system qas):  # Pricing conditions in QAS
-Cell 4 (ABAP SQL, "qas_a005"):  SELECT KSCHL, VKORG, MATNR, KBETR FROM A005 WHERE KSCHL = 'ZPR1'
-Cell 5 (JavaScript):            if (cells.dev_a005.system === cells.qas_a005.system) return 'Both cells ran on the same system'
-                                const devMap = new Map(
-                                  cells.dev_a005.result.map(r => [r.KSCHL + r.VKORG + r.MATNR, r])
-                                );
-                                return cells.qas_a005.result
-                                  .filter(r => {
-                                    const d = devMap.get(r.KSCHL + r.VKORG + r.MATNR);
-                                    return d && d.KBETR !== r.KBETR;
-                                  })
-                                  .map(r => ({
-                                    ...r,
-                                    DEV_KBETR: devMap.get(r.KSCHL + r.VKORG + r.MATNR).KBETR
-                                  }));
+Cell 1 (Markdown):                         # Pricing conditions in DEV
+Cell 2 (ABAP SQL, "dev_a005", system dev): SELECT KSCHL, VKORG, MATNR, KBETR FROM A005 WHERE KSCHL = 'ZPR1'
+Cell 3 (Markdown):                         # Pricing conditions in QAS
+Cell 4 (ABAP SQL, "qas_a005", system qas): SELECT KSCHL, VKORG, MATNR, KBETR FROM A005 WHERE KSCHL = 'ZPR1'
+Cell 5 (JavaScript):                       if (cells.dev_a005.system === cells.qas_a005.system) return 'Both cells ran on the same system'
+                                           const devMap = new Map(
+                                             cells.dev_a005.result.map(r => [r.KSCHL + r.VKORG + r.MATNR, r])
+                                           );
+                                           return cells.qas_a005.result
+                                             .filter(r => {
+                                               const d = devMap.get(r.KSCHL + r.VKORG + r.MATNR);
+                                               return d && d.KBETR !== r.KBETR;
+                                             })
+                                             .map(r => ({
+                                               ...r,
+                                               DEV_KBETR: devMap.get(r.KSCHL + r.VKORG + r.MATNR).KBETR
+                                             }));
 ```
 
 System markers store connection ids. A colleague whose connections have other names gets a prompt on Run All to map them to their own systems.
@@ -150,7 +150,7 @@ System markers store connection ids. A colleague whose connections have other na
 | `ABAP FS: New SAP Data Workbook` | Creates a new `.sapwb` file |
 | `ABAP FS: SAP Data Workbook: Set Cell Row Limit` | Sets the row limit for an SQL cell (also: click `Rows:` in the status bar) |
 | `ABAP FS: SAP Data Workbook: Name Cell…` | Names / renames a cell (also: click `#n` in the status bar) |
-| `ABAP FS: SAP Data Workbook: Set System From This Cell…` | Sets or removes a system marker (also: click the system in the status bar) |
+| `ABAP FS: SAP Data Workbook: Set System From This Cell…` | Sets or removes a system marker on an ABAP SQL cell (also: click the system in its status bar) |
 | `ABAP FS: SAP Data Workbook: Show Run Plan (cell → system)` | Lists every cell with the system it will run on (toolbar button) |
 | `ABAP FS: SAP Data Workbook: Collapse/Expand All Code` | Toolbar button; also separate *Collapse All Code* / *Expand All Code* commands |
 | `ABAP FS: SAP Data Workbook: Collapse/Expand All Outputs` | Toolbar button; also separate *Collapse All Outputs* / *Expand All Outputs* commands |

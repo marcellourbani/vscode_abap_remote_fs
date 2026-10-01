@@ -13,8 +13,14 @@ vi.mock("../lib", () => ({
 vi.mock("../adt/conections", () => ({ getOrCreateClient: vi.fn() }))
 vi.mock("../config", () => ({
   formatKey: (s: string) => s.toLowerCase(),
-  connectedRoots: vi.fn(() => new Map([["dev", {}]])),
-  getConfig: vi.fn(() => ({ get: () => ({ DEV: {}, QAS: {} }) }))
+  connectedRoots: vi.fn(
+    () =>
+      new Map([
+        ["dev", {}],
+        ["prd", {}]
+      ])
+  ),
+  getConfig: vi.fn(() => ({ get: () => ({ DEV: {}, QAS: {}, PRD: {}, TST: {} }) }))
 }))
 vi.mock("vscode", () => {
   const NotebookCellStatusBarItem = vi.fn().mockImplementation(function (
@@ -31,6 +37,7 @@ vi.mock("vscode", () => {
     NotebookCellStatusBarItem,
     NotebookCellStatusBarAlignment: { Right: 2, Left: 1 },
     NotebookCellKind: { Markup: 1, Code: 2 },
+    QuickPickItemKind: { Separator: -1, Default: 0 },
     EventEmitter,
     NotebookEdit: {
       updateCellMetadata: vi.fn(function (index: number, meta: any) {
@@ -120,24 +127,49 @@ describe("cell status bar", () => {
     expect(texts(provider.provideCellStatusBarItems(cell))).toContain("$(list-ordered) Rows: 50")
   })
 
-  test("system marker is sticky until the next marker", () => {
+  test("system marker is sticky across SQL cells until the next marker", () => {
     const cells = makeNotebook([
-      ["markdown", { system: "DEV" }],
+      [SQL_LANGUAGE_ID, { system: "DEV" }],
+      ["javascript"],
       [SQL_LANGUAGE_ID],
       [SQL_LANGUAGE_ID, { system: "QAS" }],
       [SQL_LANGUAGE_ID]
     ])
-    expect(texts(provider.provideCellStatusBarItems(cells[0]))[1]).toBe(
-      "$(server-environment) DEV ▸"
-    )
-    expect(texts(provider.provideCellStatusBarItems(cells[1]))[1]).toBe(
-      "$(server-environment) DEV (from #0)"
-    )
+    const sys = (i: number) => texts(provider.provideCellStatusBarItems(cells[i]))[1]
+    expect(sys(0)).toBe("$(server-environment) DEV ▸")
+    expect(sys(2)).toBe("$(server-environment) DEV (from #0)")
     // QAS is configured but not connected in the mocked window
-    expect(texts(provider.provideCellStatusBarItems(cells[2]))[1]).toBe("$(debug-disconnect) QAS ▸")
-    expect(texts(provider.provideCellStatusBarItems(cells[3]))[1]).toBe(
-      "$(debug-disconnect) QAS (from #2)"
-    )
+    expect(sys(3)).toBe("$(debug-disconnect) QAS ▸")
+    expect(sys(4)).toBe("$(debug-disconnect) QAS (from #3)")
+  })
+
+  test("JavaScript and markdown cells show no system", () => {
+    const cells = makeNotebook([["markdown"], [SQL_LANGUAGE_ID, { system: "DEV" }], ["javascript"]])
+    expect(texts(provider.provideCellStatusBarItems(cells[0]))).toEqual(["$(tag) #0"])
+    expect(texts(provider.provideCellStatusBarItems(cells[2]))).toEqual(["$(tag) #2"])
+  })
+
+  test("a marker left on a non-SQL cell is shown as ignored and does not apply", () => {
+    const cells = makeNotebook([["markdown", { system: "DEV" }], [SQL_LANGUAGE_ID]])
+    expect(texts(provider.provideCellStatusBarItems(cells[0]))[1]).toBe("$(warning) DEV (ignored)")
+    expect(texts(provider.provideCellStatusBarItems(cells[1]))[1]).toBe("$(plug) system: ask")
+  })
+
+  test("removing the middle of three markers: no cell points at the removed one", () => {
+    const cells = makeNotebook([
+      [SQL_LANGUAGE_ID, { system: "DEV" }],
+      [SQL_LANGUAGE_ID, { system: "QAS" }],
+      [SQL_LANGUAGE_ID, { system: "PRD" }],
+      ["javascript"]
+    ])
+    cells[1].metadata = {} // what the remove command stores
+    const all = cells.map(c => texts(provider.provideCellStatusBarItems(c)).join(" | "))
+    expect(all).toEqual([
+      "$(tag) #0 | $(server-environment) DEV ▸ | $(list-ordered) Rows: 1000",
+      "$(tag) #1 | $(server-environment) DEV (from #0) | $(list-ordered) Rows: 1000",
+      "$(tag) #2 | $(server-environment) PRD ▸ | $(list-ordered) Rows: 1000",
+      "$(tag) #3"
+    ])
   })
 
   test("items are clickable with the right commands", () => {
@@ -192,12 +224,57 @@ describe("cell commands", () => {
     expect(vscode.NotebookEdit.updateCellMetadata).toHaveBeenCalledWith(0, { system: "QAS" })
   })
 
+  test("picker: connected first, then the current system, then not connected; no free text", async () => {
+    const cells = makeNotebook([[SQL_LANGUAGE_ID, { system: "dev" }], [SQL_LANGUAGE_ID]])
+    let shown: any[] = []
+    mockWindow.showQuickPick.mockImplementation(async (items: any[]) => {
+      shown = items
+      return undefined
+    })
+    await commandHandler("abapfs.notebookSetCellSystem")(cells[0])
+    expect(
+      shown.map(i => (i.kind === -1 ? `--${i.label}` : `${i.label}|${i.description ?? ""}`))
+    ).toEqual([
+      "--Connected",
+      "prd|",
+      "dev|current",
+      "--Not connected",
+      "QAS|not connected",
+      "TST|not connected",
+      "--",
+      "$(close) Remove the system marker from this cell|"
+    ])
+    // a cell that inherits its system: the inherited one is current, nothing to remove
+    await commandHandler("abapfs.notebookSetCellSystem")(cells[1])
+    expect(shown.map(i => i.label)).toEqual([
+      "Connected",
+      "prd",
+      "dev",
+      "Not connected",
+      "QAS",
+      "TST"
+    ])
+    expect(vscode.NotebookEdit.updateCellMetadata).not.toHaveBeenCalled()
+  })
+
   test("setCellSystem can remove a marker", async () => {
-    const [cell] = makeNotebook([[SQL_LANGUAGE_ID, { system: "DEV" }]])
+    const [cell] = makeNotebook([[SQL_LANGUAGE_ID, { system: "DEV", name: "a" }]])
     mockWindow.showQuickPick.mockImplementation(async (items: any[]) =>
       items.find(i => i.action === "clear")
     )
     await commandHandler("abapfs.notebookSetCellSystem")(cell)
-    expect(vscode.NotebookEdit.updateCellMetadata).toHaveBeenCalledWith(0, {})
+    expect(vscode.NotebookEdit.updateCellMetadata).toHaveBeenCalledWith(0, { name: "a" })
+  })
+
+  test("non-SQL cells: no picker; a leftover marker is removed", async () => {
+    const cells = makeNotebook([["javascript"], ["markdown", { system: "DEV" }]])
+    await commandHandler("abapfs.notebookSetCellSystem")(cells[0])
+    expect(mockWindow.showQuickPick).not.toHaveBeenCalled()
+    expect(mockWindow.showInformationMessage).toHaveBeenCalledWith(
+      "System markers apply to ABAP SQL cells only."
+    )
+    await commandHandler("abapfs.notebookSetCellSystem")(cells[1])
+    expect(mockWindow.showQuickPick).not.toHaveBeenCalled()
+    expect(vscode.NotebookEdit.updateCellMetadata).toHaveBeenCalledWith(1, {})
   })
 })

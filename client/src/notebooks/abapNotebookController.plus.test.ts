@@ -51,6 +51,7 @@ vi.mock("./jsCellExecutor", () => ({
   executeJsCell: vi.fn(async (_code: string, idx: number) => ({ result: [{ js: idx }] }))
 }))
 vi.mock("vscode", () => ({
+  NotebookCellKind: { Markup: 1, Code: 2 },
   notebooks: {
     createNotebookController: vi.fn(() => ({
       set executeHandler(fn: any) {
@@ -129,10 +130,10 @@ describe("controller: system per cell", () => {
     new AbapNotebookController()
   })
 
-  test("Run All: cell 0 = DEV, cell 3 = QAS; one confirmation, no system picker", async () => {
+  test("Run All: cell 1 = DEV, cell 3 = QAS; one confirmation, no system picker", async () => {
     const { nb, cells } = notebook([
-      ["markdown", { system: "DEV" }],
-      [SQL_LANGUAGE_ID],
+      ["markdown"],
+      [SQL_LANGUAGE_ID, { system: "DEV" }],
       ["javascript"],
       [SQL_LANGUAGE_ID, { system: "QAS" }],
       [SQL_LANGUAGE_ID]

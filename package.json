@@ -5458,11 +5458,6 @@
           "command": "abapfs.notebookSetCellName",
           "when": "notebookType == sap-data-workbook",
           "group": "inline@1"
-        },
-        {
-          "command": "abapfs.notebookSetCellSystem",
-          "when": "notebookType == sap-data-workbook",
-          "group": "inline@2"
         }
       ]
     },

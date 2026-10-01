@@ -41,6 +41,16 @@ export function cellSystem(cell: vscode.NotebookCell): string | undefined {
   return typeof s === "string" && s.trim() ? s.trim() : undefined
 }
 
+export const isSqlCell = (cell: vscode.NotebookCell) =>
+  cell.kind === vscode.NotebookCellKind.Code && cell.document.languageId === SQL_LANGUAGE_ID
+
+/** Effective system of every cell. Only SQL cells carry or inherit a system marker. */
+export function effectiveSystems(notebook: vscode.NotebookDocument) {
+  return resolveEffectiveSystems(
+    notebook.getCells().map(c => ({ system: cellSystem(c), sql: isSqlCell(c) }))
+  )
+}
+
 export function isSystemConnected(system: string): boolean {
   return connectedRoots().has(formatKey(system))
 }
@@ -76,7 +86,7 @@ export async function remapMissingMarkers(
   }
   const edits: vscode.NotebookEdit[] = []
   for (const c of notebook.getCells()) {
-    const own = cellSystem(c)
+    const own = isSqlCell(c) ? cellSystem(c) : undefined
     const target = own ? mapping.get(own.toLowerCase()) : undefined
     if (target)
       edits.push(vscode.NotebookEdit.updateCellMetadata(c.index, { ...c.metadata, system: target }))
@@ -159,9 +169,7 @@ export class AbapNotebookController {
     }
 
     // ---- system plan -------------------------------------------------------------
-    let effective = resolveEffectiveSystems(
-      notebook.getCells().map(c => ({ system: cellSystem(c) }))
-    )
+    let effective = effectiveSystems(notebook)
     const sqlCells = cells.filter(c => c.document.languageId === SQL_LANGUAGE_ID)
     const isMultiCellRun = cells.length > 1
     const planFor = () =>
@@ -192,7 +200,7 @@ export class AbapNotebookController {
         finish()
         return
       }
-      effective = resolveEffectiveSystems(notebook.getCells().map(c => ({ system: cellSystem(c) })))
+      effective = effectiveSystems(notebook)
       plan = planFor()
     }
 
