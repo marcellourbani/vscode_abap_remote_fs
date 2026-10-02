@@ -66,6 +66,12 @@ describe("cell metadata helpers", () => {
       [SQL_LANGUAGE_ID, { system: "DEV" }]
     ])
     expect(effectiveSystems(nb)).toEqual([{}, { system: "DEV", from: 1 }])
+    // preview a change: remove the marker on #1, add one on #0 (ignored: not SQL)
+    const preview = new Map<number, string | undefined>([
+      [0, "QAS"],
+      [1, undefined]
+    ])
+    expect(effectiveSystems(nb, preview)).toEqual([{}, {}])
   })
 
   test("applyCellPatches makes one edit for several cells", async () => {

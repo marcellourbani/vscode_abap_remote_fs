@@ -24,10 +24,19 @@ export function cellSystem(cell: vscode.NotebookCell): string | undefined {
 export const isSqlCell = (cell: vscode.NotebookCell) =>
   cell.kind === vscode.NotebookCellKind.Code && cell.document.languageId === SQL_LANGUAGE_ID
 
-/** Effective system of every cell. Only SQL cells carry or inherit a system marker. */
-export function effectiveSystems(notebook: vscode.NotebookDocument) {
+/**
+ * Effective system of every cell. Only SQL cells carry or inherit a system marker.
+ * `pending` overrides cell markers by index (undefined = no marker), to preview a change.
+ */
+export function effectiveSystems(
+  notebook: vscode.NotebookDocument,
+  pending: Map<number, string | undefined> = new Map()
+) {
   return resolveEffectiveSystems(
-    notebook.getCells().map(c => ({ system: cellSystem(c), sql: isSqlCell(c) }))
+    notebook.getCells().map(c => ({
+      system: pending.has(c.index) ? pending.get(c.index) : cellSystem(c),
+      sql: isSqlCell(c)
+    }))
   )
 }
 
