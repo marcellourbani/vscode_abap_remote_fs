@@ -2,7 +2,8 @@ import * as vscode from "vscode"
 import * as path from "path"
 import { NOTEBOOK_TYPE, SQL_LANGUAGE_ID } from "../types"
 import { funWindow as window } from "../../services/funMessenger"
-import { type AbapNotebookController, cellName, effectiveSystems } from "../abapNotebookController"
+import { type AbapNotebookController } from "../abapNotebookController"
+import { cellName, effectiveSystems } from "../cellMetadata"
 import {
   buildExportModel,
   describeModel,

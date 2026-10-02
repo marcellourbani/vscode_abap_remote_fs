@@ -21,6 +21,15 @@ import {
   resolveEffectiveSystems
 } from "./systemPlan"
 import { connectedRoots, formatKey } from "../config"
+import {
+  applyCellPatches,
+  type CellPatch,
+  cellName,
+  cellSystem,
+  effectiveSystems,
+  isSqlCell,
+  isSystemConnected
+} from "./cellMetadata"
 import { getOrCreateClient } from "../adt/conections"
 import { log } from "../lib"
 import { funWindow as window } from "../services/funMessenger"
@@ -29,30 +38,6 @@ import { funWindow as window } from "../services/funMessenger"
 export interface NotebookResultsView {
   byIndex: Map<number, CellResult>
   nameToIndex: Map<string, number>
-}
-
-export function cellName(cell: vscode.NotebookCell): string | undefined {
-  const n = cell.metadata?.name
-  return typeof n === "string" && n.trim() ? n.trim() : undefined
-}
-
-export function cellSystem(cell: vscode.NotebookCell): string | undefined {
-  const s = cell.metadata?.system
-  return typeof s === "string" && s.trim() ? s.trim() : undefined
-}
-
-export const isSqlCell = (cell: vscode.NotebookCell) =>
-  cell.kind === vscode.NotebookCellKind.Code && cell.document.languageId === SQL_LANGUAGE_ID
-
-/** Effective system of every cell. Only SQL cells carry or inherit a system marker. */
-export function effectiveSystems(notebook: vscode.NotebookDocument) {
-  return resolveEffectiveSystems(
-    notebook.getCells().map(c => ({ system: cellSystem(c), sql: isSqlCell(c) }))
-  )
-}
-
-export function isSystemConnected(system: string): boolean {
-  return connectedRoots().has(formatKey(system))
 }
 
 export function renderSettings(): RenderSettings {
@@ -84,17 +69,13 @@ export async function remapMissingMarkers(
     if (!picked) return false
     mapping.set(m.toLowerCase(), picked.label)
   }
-  const edits: vscode.NotebookEdit[] = []
+  const patches: CellPatch[] = []
   for (const c of notebook.getCells()) {
     const own = isSqlCell(c) ? cellSystem(c) : undefined
     const target = own ? mapping.get(own.toLowerCase()) : undefined
-    if (target)
-      edits.push(vscode.NotebookEdit.updateCellMetadata(c.index, { ...c.metadata, system: target }))
+    if (target) patches.push({ index: c.index, patch: { system: target } })
   }
-  if (edits.length === 0) return false
-  const edit = new vscode.WorkspaceEdit()
-  edit.set(notebook.uri, edits)
-  return vscode.workspace.applyEdit(edit)
+  return applyCellPatches(notebook, patches)
 }
 
 export class AbapNotebookController {

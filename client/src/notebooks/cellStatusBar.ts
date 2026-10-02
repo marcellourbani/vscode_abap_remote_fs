@@ -5,11 +5,14 @@ import { renameReferences, validateCellName } from "./cellReferences"
 import {
   cellName,
   cellSystem,
+  cellsReferencingName,
   effectiveSystems,
   isSqlCell,
-  isSystemConnected
-} from "./abapNotebookController"
-import { connectedRoots, getConfig } from "../config"
+  isSystemConnected,
+  knownSystems,
+  setCellMetadata,
+  validateMaxRows
+} from "./cellMetadata"
 
 /**
  * Status bar items on each cell:
@@ -137,17 +140,6 @@ export function systemPickItems(current: string | undefined, hasMarker: boolean)
   return items
 }
 
-async function setCellMetadata(cell: vscode.NotebookCell, patch: Record<string, unknown>) {
-  const metadata: Record<string, unknown> = { ...cell.metadata }
-  for (const [k, v] of Object.entries(patch)) {
-    if (v === undefined || v === "") delete metadata[k]
-    else metadata[k] = v
-  }
-  const edit = new vscode.WorkspaceEdit()
-  edit.set(cell.notebook.uri, [vscode.NotebookEdit.updateCellMetadata(cell.index, metadata)])
-  await vscode.workspace.applyEdit(edit)
-}
-
 /** Resolve the target cell for commands invoked from the palette / toolbar without an argument. */
 function targetCell(arg: unknown): vscode.NotebookCell | undefined {
   if (arg && typeof arg === "object" && "notebook" in arg && "index" in arg)
@@ -156,15 +148,6 @@ function targetCell(arg: unknown): vscode.NotebookCell | undefined {
   if (!editor || editor.notebook.notebookType !== NOTEBOOK_TYPE) return undefined
   const idx = editor.selections[0]?.start ?? 0
   return editor.notebook.cellAt(idx)
-}
-
-export function knownSystems(): string[] {
-  const configured = Object.keys((getConfig().get("remote") as Record<string, unknown>) || {})
-  const connected = [...connectedRoots().keys()]
-  const seen = new Map<string, string>()
-  for (const s of [...connected, ...configured])
-    if (!seen.has(s.toLowerCase())) seen.set(s.toLowerCase(), s)
-  return [...seen.values()].sort()
 }
 
 export function registerCellStatusBar(context: vscode.ExtensionContext): SqlCellStatusBarProvider {
@@ -189,13 +172,7 @@ export function registerCellStatusBar(context: vscode.ExtensionContext): SqlCell
           title: "Set Max Rows for SQL Cell",
           prompt: "Maximum number of rows to fetch from SAP for this cell",
           value: String(current),
-          validateInput: v => {
-            const n = Number(v)
-            if (!Number.isInteger(n) || n < 1 || n > 100_000) {
-              return "Enter a whole number between 1 and 100,000"
-            }
-            return undefined
-          }
+          validateInput: v => validateMaxRows(Number(v))
         })
 
         if (input === undefined) return
@@ -225,12 +202,7 @@ export function registerCellStatusBar(context: vscode.ExtensionContext): SqlCell
       await setCellMetadata(cell, { name: next || undefined })
 
       if (current && next) {
-        const users = cell.notebook
-          .getCells()
-          .filter(c => c.kind === vscode.NotebookCellKind.Code && c.index !== cell.index)
-          .filter(
-            c => renameReferences(c.document.getText(), current, next) !== c.document.getText()
-          )
+        const users = cellsReferencingName(cell.notebook, current, cell.index)
         if (users.length) {
           const answer = await window.showInformationMessage(
             `Update ${users.length} cell(s) that reference '${current}' to use '${next}'?`,
