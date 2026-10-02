@@ -50,6 +50,17 @@ If a marker names a system that is not connected, **Run All** asks which connect
 
 Each SQL cell has a configurable row limit (default: 1000). Click `Rows: 1000` in the cell's status bar or run **SAP Data Workbook: Set Cell Row Limit**.
 
+**Copilot and cell settings**
+
+Copilot's notebook tools edit cell content but cannot see or set a cell's name, system marker or row limit. ABAP FS adds the **abapfs_workbook_cell_settings** tool for that: Copilot creates the cells, then sets every system, row limit and name in one call, so a cross-system workbook is ready for Run All without clicking markers. The tool:
+
+- reads every cell's name, own or inherited system and row limit when called with only the workbook path;
+- accepts only `.sapwb` files, and changes nothing if any requested setting is invalid (unknown cell, duplicate name, a system or row limit on a JavaScript or markdown cell, a row limit outside 1–100,000);
+- saves a system that is not connected, but warns Copilot so it can tell you;
+- applies all changes as one edit (one Undo), and saves the workbook unless it already had unsaved changes.
+
+It is also available to other AI tools through the [MCP server](../mcp-server.md).
+
 ## Formatted Output
 
 A JavaScript cell can return more than a plain table. The `display` helper is available in every JavaScript cell:

@@ -42,20 +42,46 @@ You (GitHub Copilot in VS Code) create and edit workbooks with your notebook too
 
 2. **Read the workbook back** with your notebook read tool and check that every cell is there, with its content and the right language. A file that is valid but has empty cells, missing cells or Python cells is a failure: fix it before you tell the user it is done.
 
-3. **One edit at a time.** Wait for each notebook edit to finish before you start the next; never run edits in parallel (for example inserting a query while changing another cell fails). Read the workbook back after a series of edits.
+3. **Set systems, row limits and names with `abapfs_workbook_cell_settings`** (see below), in one call, after all cells exist.
 
-4. **Never rewrite an existing workbook** (no `create_file` over it, no replacing all cells, no converting it with a generic notebook writer). Your tools cannot carry a cell's `name`, `system` or `maxRows`, so a rewrite silently deletes them. Change only the cells that need changing, one at a time.
+4. **One edit at a time.** Wait for each notebook edit to finish before you start the next; never run edits in parallel (for example inserting a query while changing another cell fails). Read the workbook back after a series of edits.
+
+5. **Never rewrite an existing workbook** (no `create_file` over it, no replacing all cells, no converting it with a generic notebook writer). Notebook tools cannot carry a cell's `name`, `system` or `maxRows`, so a rewrite silently deletes them. Change only the cells that need changing, one at a time.
 
 ## Cell Names, Systems and Row Limits
 
-These are stored with each cell, and **your notebook tools cannot set them**. So:
+These are stored with each cell. Your notebook tools can neither see nor set them; the **`abapfs_workbook_cell_settings`** tool does both.
 
-- **Reference earlier cells by position:** `cells[N]` — 0-based, counting markdown cells. After inserting or moving cells, recount and update the references.
-- **Tell the user what to set**, as a short list at the end of your answer, whenever the workbook needs it:
-  - several SAP systems: *"Click the system in the status bar of cell #1 and pick SYS1, cell #2 → SYS2, cell #3 → SYS3."* Without markers, Run All runs every SQL cell on the one system the user picks.
-  - more than 1000 rows: *"Click `Rows: 1000` on cell #2 and set 50000."*
-  - optionally names: *"Click `#1` and name it `sys1`."* Names keep references working when cells move; once the user has named a cell you may use `cells.sys1`.
-- If cells already have names (the user mentions them or they appear as `#n · name`), use the names.
+**Read** the current settings: pass only `filePath`. You get one line per cell: index, language, name, own or inherited system (and whether it is connected), row limit and first line. Do this before changing an existing workbook, and whenever you are unsure which index a cell has.
+
+**Change** settings: pass `filePath` and `cells`, one entry per cell, with `index` (0-based, counting markdown cells: the N of `cells[N]`) and at least one of:
+
+| Field | Effect |
+|---|---|
+| `system` | System marker: this ABAP SQL cell and every following SQL cell run on that connection id, until the next marker. SQL cells only. |
+| `clearSystem: true` | Remove the marker; the cell inherits the marker above. |
+| `maxRows` | Row limit of this ABAP SQL cell, 1 to 100000. Leave it out unless the user needs more than 1000 rows. |
+| `name` | Cell name (letters, digits, `_`, unique); other cells can then use `cells.<name>`. |
+| `clearName: true` | Remove the name. |
+
+```json
+{
+  "filePath": "C:/work/workbooks/clients.sapwb",
+  "cells": [
+    { "index": 1, "system": "SYS1" },
+    { "index": 2, "system": "SYS2" },
+    { "index": 3, "system": "SYS3", "maxRows": 5000 }
+  ]
+}
+```
+
+Rules:
+- Make **one call with all settings, after the last cell insert or move**: indexes shift when cells move. If cells moved, read the settings again first.
+- If the tool returns an error, **nothing was changed**: fix every listed problem and call it again.
+- Pass on its **warnings** to the user: a system that is not connected must be connected before Run All; cells that still reference a renamed cell must be updated.
+- Use connection ids from `abapfs_get_connected_systems`, or exactly what the user named.
+- **Reference earlier cells by position** (`cells[N]`) when you write the cells. Name cells only when the user asks or the workbook will be edited a lot; once a cell has a name, `cells.<name>` keeps working when cells move.
+- If `abapfs_workbook_cell_settings` is not available, tell the user what to set instead, as a short list at the end of your answer: *"Click the system in the status bar of cell #1 and pick SYS1, cell #2 → SYS2"*, *"Click `Rows: 1000` on cell #2 and set 50000"*.
 
 ## File Format
 
@@ -108,10 +134,10 @@ Cell properties: `type`, `content`, and optionally `maxRows`, `name` and `system
 
 8. **SAP 255-character SQL literal limit.** SAP ADT rejects any SQL where a single literal exceeds 255 characters. This means interpolating large arrays into `IN (...)` clauses WILL FAIL. **Never interpolate arrays that could have more than ~10 values into SQL.** Use a sub-query or filter in a JavaScript cell instead.
 
-9. **Row limit** per SQL cell: 1000 by default; the user changes it with `Rows:` in the status bar (see above). The table shows the first 200 rows (`display.table` `limit` up to 5000); later cells and exports receive all rows.
+9. **Row limit** per SQL cell: 1000 by default; set `maxRows` with `abapfs_workbook_cell_settings` (see above). The table shows the first 200 rows (`display.table` `limit` up to 5000); later cells and exports receive all rows.
 
 10. **Several SAP systems:** a system marker on an ABAP SQL cell applies to it and every following SQL cell, until the next marker. JavaScript and markdown cells have no system.
-    - Use one SQL cell per system (repeat the query), and tell the user which cell gets which system (see above).
+    - Use one SQL cell per system (repeat the query) and set each cell's system with `abapfs_workbook_cell_settings` (see above).
     - Run All shows the plan once (e.g. *Cells 3-22 -> dev, 24-47 -> qas*) and offers to map markers that are not connected.
     - When comparing systems, check `cells[1].system !== cells[3].system` and say so in the output if the queries ran on the same system.
 
@@ -147,7 +173,7 @@ const count = cells[2].result;                       // whatever that cell retur
 ```xml
 <VSCode.Cell language="markdown">
 # Clients (T000) in SYS1, SYS2 and SYS3
-Cells #1, #2 and #3 run the same query. Set their systems before Run All: #1 → SYS1, #2 → SYS2, #3 → SYS3.
+Cells #1, #2 and #3 run the same query on SYS1, SYS2 and SYS3.
 </VSCode.Cell>
 <VSCode.Cell language="abap-sql">
 SELECT mandt, mtext FROM t000
@@ -164,7 +190,7 @@ const parts = [cells[1], cells[2], cells[3]];
 const rows = parts.flatMap(c => c.result.map(r => ({ System: c.system, Client: r.MANDT, Name: r.MTEXT })));
 const systems = new Set(parts.map(c => c.system));
 const counts = parts.map(c => c.system + ': ' + c.result.length).join(', ');
-const note = systems.size === 3 ? '' : '\n\n**YELLOW:** the queries ran on ' + systems.size + ' system(s) only. Set the systems of cells #1, #2 and #3.';
+const note = systems.size === 3 ? '' : '\n\n**YELLOW:** the queries ran on ' + systems.size + ' system(s) only. Check the systems of cells #1, #2 and #3.';
 return display.all(
   display.markdown('## ' + rows.length + ' clients (' + counts + ')' + note),
   display.table(rows, { wrap: true, title: 'Clients per system' })
@@ -172,7 +198,13 @@ return display.all(
 </VSCode.Cell>
 ```
 
-Then tell the user: *"Click the system in the status bar of cell #1 and pick SYS1, cell #2 → SYS2, cell #3 → SYS3, then Run All."*
+Then read the workbook back, and set the systems in one call:
+
+```json
+{ "filePath": "<path of the workbook>", "cells": [ { "index": 1, "system": "SYS1" }, { "index": 2, "system": "SYS2" }, { "index": 3, "system": "SYS3" } ] }
+```
+
+Tell the user the workbook is ready for Run All, and pass on any warning (e.g. a system that is not connected).
 
 ## Example: Data Quality Workbook
 
@@ -206,4 +238,4 @@ Use **Export…** in the toolbar to send the results as Excel or PDF.
 </VSCode.Cell>
 ```
 
-Then tell the user: *"Cell #1 reads up to 1000 rows; click `Rows: 1000` on it to raise the limit."*
+If the user needs more than 1000 materials, set `maxRows` on cell #1 with `abapfs_workbook_cell_settings`.
