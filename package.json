@@ -3242,6 +3242,67 @@
         "when": "abapfs:extensionActive"
       },
       {
+        "name": "abapfs_workbook_cell_settings",
+        "displayName": "SAP Data Workbook Cell Settings",
+        "modelDescription": "Read or change the per-cell settings of an SAP Data Workbook (.sapwb): cell name, system marker and row limit (maxRows). Notebook editing tools cannot see or set these; use this tool instead. Pass only filePath to read every cell's index, language, name, own or inherited system, row limit and first line. Pass cells to change settings: index is the 0-based cell position counting markdown cells (the N of cells[N]); give at least one of name, system, maxRows, clearName, clearSystem per cell. system and maxRows apply to ABAP SQL cells only; a system marker applies to that SQL cell and every following SQL cell until the next marker, and clearSystem makes the cell inherit the marker above. maxRows defaults to 1000; set it only when the user needs more rows. All changes are validated first: if any entry is invalid, nothing is changed. A system that is not connected is saved with a warning. Edit cell content with the notebook tools first, finish all cell inserts and moves, then call this tool once with all settings, and re-read the indexes if cells moved.",
+        "canBeReferencedInPrompt": true,
+        "toolReferenceName": "abapfs_workbook_cell_settings",
+        "icon": "$(notebook)",
+        "userDescription": "Read or set SAP Data Workbook cell names, systems and row limits",
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "filePath": {
+              "type": "string",
+              "description": "Path of the .sapwb workbook: absolute path (preferred), file URI, or path relative to a workspace folder. Other extensions are rejected."
+            },
+            "cells": {
+              "type": "array",
+              "description": "Cells to change. Omit to only read the current settings.",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "index": {
+                    "type": "number",
+                    "description": "0-based cell position, counting markdown cells (the N in cells[N])."
+                  },
+                  "name": {
+                    "type": "string",
+                    "description": "New cell name: letters, digits and _, starting with a letter or _, unique in the workbook. Other cells can then use cells.<name>."
+                  },
+                  "system": {
+                    "type": "string",
+                    "description": "ABAP FS connection id for this ABAP SQL cell and the following SQL cells, until the next marker."
+                  },
+                  "maxRows": {
+                    "type": "number",
+                    "description": "Row limit for this ABAP SQL cell, 1 to 100000 (default 1000)."
+                  },
+                  "clearName": {
+                    "type": "boolean",
+                    "description": "Remove the cell's name."
+                  },
+                  "clearSystem": {
+                    "type": "boolean",
+                    "description": "Remove the cell's system marker; the cell then inherits the marker above."
+                  }
+                },
+                "required": [
+                  "index"
+                ]
+              }
+            }
+          },
+          "required": [
+            "filePath"
+          ]
+        },
+        "tags": [
+          "abap-fs"
+        ],
+        "when": "abapfs:extensionActive"
+      },
+      {
         "name": "abapfs_get_version_history",
         "displayName": "Get Version History",
         "modelDescription": "ABAP object version history. Actions: list_versions (dates, authors, transports), get_version_source (code at version N), compare_versions (diff between two). Version 1 = most recent.",
@@ -4395,6 +4456,62 @@
         "command": "abapfs.showWalkThrough",
         "title": "Show Walkthrough",
         "category": "ABAP FS"
+      },
+      {
+        "command": "abapfs.notebookSetCellName",
+        "title": "SAP Data Workbook: Name Cell…",
+        "category": "ABAP FS",
+        "icon": "$(tag)"
+      },
+      {
+        "command": "abapfs.notebookSetCellSystem",
+        "title": "SAP Data Workbook: Set System From This Cell…",
+        "category": "ABAP FS",
+        "icon": "$(server-environment)"
+      },
+      {
+        "command": "abapfs.notebookShowRunPlan",
+        "title": "SAP Data Workbook: Show Run Plan (cell → system)",
+        "category": "ABAP FS",
+        "icon": "$(list-flat)"
+      },
+      {
+        "command": "abapfs.notebookExport",
+        "title": "SAP Data Workbook: Export…",
+        "category": "ABAP FS",
+        "icon": "$(export)"
+      },
+      {
+        "command": "abapfs.notebookToggleInputs",
+        "title": "SAP Data Workbook: Collapse/Expand All Code",
+        "category": "ABAP FS",
+        "icon": "$(fold)"
+      },
+      {
+        "command": "abapfs.notebookToggleOutputs",
+        "title": "SAP Data Workbook: Collapse/Expand All Outputs",
+        "category": "ABAP FS",
+        "icon": "$(output)"
+      },
+      {
+        "command": "abapfs.notebookCollapseInputs",
+        "title": "SAP Data Workbook: Collapse All Code",
+        "category": "ABAP FS"
+      },
+      {
+        "command": "abapfs.notebookExpandInputs",
+        "title": "SAP Data Workbook: Expand All Code",
+        "category": "ABAP FS"
+      },
+      {
+        "command": "abapfs.notebookCollapseOutputs",
+        "title": "SAP Data Workbook: Collapse All Outputs",
+        "category": "ABAP FS"
+      },
+      {
+        "command": "abapfs.notebookExpandOutputs",
+        "title": "SAP Data Workbook: Expand All Outputs",
+        "category": "ABAP FS"
       }
     ],
     "keybindings": [
@@ -4845,6 +4962,46 @@
         {
           "command": "abapfs.s4hClearFilter",
           "when": "hideCommands.never"
+        },
+        {
+          "command": "abapfs.notebookSetCellName",
+          "when": "activeEditor == workbench.editor.notebook && notebookType == sap-data-workbook"
+        },
+        {
+          "command": "abapfs.notebookSetCellSystem",
+          "when": "activeEditor == workbench.editor.notebook && notebookType == sap-data-workbook"
+        },
+        {
+          "command": "abapfs.notebookShowRunPlan",
+          "when": "activeEditor == workbench.editor.notebook && notebookType == sap-data-workbook"
+        },
+        {
+          "command": "abapfs.notebookExport",
+          "when": "activeEditor == workbench.editor.notebook && notebookType == sap-data-workbook"
+        },
+        {
+          "command": "abapfs.notebookToggleInputs",
+          "when": "activeEditor == workbench.editor.notebook && notebookType == sap-data-workbook"
+        },
+        {
+          "command": "abapfs.notebookToggleOutputs",
+          "when": "activeEditor == workbench.editor.notebook && notebookType == sap-data-workbook"
+        },
+        {
+          "command": "abapfs.notebookCollapseInputs",
+          "when": "activeEditor == workbench.editor.notebook && notebookType == sap-data-workbook"
+        },
+        {
+          "command": "abapfs.notebookExpandInputs",
+          "when": "activeEditor == workbench.editor.notebook && notebookType == sap-data-workbook"
+        },
+        {
+          "command": "abapfs.notebookCollapseOutputs",
+          "when": "activeEditor == workbench.editor.notebook && notebookType == sap-data-workbook"
+        },
+        {
+          "command": "abapfs.notebookExpandOutputs",
+          "when": "activeEditor == workbench.editor.notebook && notebookType == sap-data-workbook"
         }
       ],
       "view/item/context": [
@@ -5333,6 +5490,35 @@
           "command": "abapfs.rapGenFromEditor",
           "when": "resourceScheme == adt && abapfs:activeEditorIsTable",
           "group": "4_rapGenerator@1"
+        }
+      ],
+      "notebook/toolbar": [
+        {
+          "command": "abapfs.notebookShowRunPlan",
+          "when": "notebookType == sap-data-workbook",
+          "group": "navigation@10"
+        },
+        {
+          "command": "abapfs.notebookExport",
+          "when": "notebookType == sap-data-workbook",
+          "group": "navigation@13"
+        },
+        {
+          "command": "abapfs.notebookToggleInputs",
+          "when": "notebookType == sap-data-workbook",
+          "group": "navigation@11"
+        },
+        {
+          "command": "abapfs.notebookToggleOutputs",
+          "when": "notebookType == sap-data-workbook",
+          "group": "navigation@12"
+        }
+      ],
+      "notebook/cell/title": [
+        {
+          "command": "abapfs.notebookSetCellName",
+          "when": "notebookType == sap-data-workbook",
+          "group": "inline@1"
         }
       ]
     },
@@ -5982,6 +6168,11 @@
               "additionalProperties": false
             }
           }
+        },
+        "abapfs.workbook.tableWrap": {
+          "type": "boolean",
+          "default": true,
+          "description": "SAP Data Workbook: wrap long values in result tables instead of widening the table."
         }
       }
     },

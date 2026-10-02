@@ -125,7 +125,8 @@ describe("executeSqlCell — happy paths", () => {
     await executeSqlCell("SELECT * FROM mara WHERE matnr = 'X'", client, 1, cellResults)
     expect(mockInterpolateSql).toHaveBeenCalledWith(
       "SELECT * FROM mara WHERE matnr = 'X'",
-      cellResults
+      cellResults,
+      new Map()
     )
   })
 

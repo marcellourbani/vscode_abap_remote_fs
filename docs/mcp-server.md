@@ -119,6 +119,7 @@ All 40 ABAP FS tools are exposed, including:
 | `abapfs_run_unit_tests`            | Execute ABAP unit tests            |
 | `abapfs_run_atc_analysis`          | Run ATC code checks                |
 | `abapfs_run_sql_query`        | Run SQL queries against SAP tables |
+| `abapfs_workbook_cell_settings` | Read or set SAP Data Workbook cell names, systems and row limits |
 | `abapfs_manage_transports` | Read transport data                |
 | `abapfs_activate_object`             | Activate ABAP objects              |
 | `replace_string_in_abap_object` | Edit ABAP source code (find & replace) |
