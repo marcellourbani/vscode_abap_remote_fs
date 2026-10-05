@@ -1942,6 +1942,28 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#formatted-output" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Formatted Output
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#exporting-a-workbook" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Exporting a Workbook
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#example-data-quality-check" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -3481,6 +3503,28 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#formatted-output" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Formatted Output
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#exporting-a-workbook" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Exporting a Workbook
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#example-data-quality-check" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -3578,55 +3622,171 @@
 <h2 id="key-concepts">Key Concepts<a class="headerlink" href="#key-concepts" title="Permanent link">&para;</a></h2>
 <p><strong>Running cells</strong></p>
 <ul>
-<li>Run a single cell with the run button or <code>Shift+Enter</code>. You are prompted to select a SAP system.</li>
-<li><strong>Run All</strong> (<code>Ctrl+Shift+Enter</code>) prompts once and uses that system for all SQL cells.</li>
+<li>Run a single cell with the run button or <code>Shift+Enter</code>. If the cell has no system (see <em>System markers</em>), you are prompted to select a SAP system.</li>
+<li><strong>Run All</strong> (<code>Ctrl+Shift+Enter</code>) uses the system markers. It shows the plan once (e.g. <em>Cells 3-22 -&gt; dev, Cells 24-47 -&gt; qas</em>) and runs every SQL cell on its system. SQL cells before the first marker use a system you pick once.</li>
+<li>When a JavaScript cell fails, its error message is shown in the cell output and the following cells are skipped.</li>
 </ul>
+<p><strong>Naming cells</strong></p>
+<p>Click <code>#n</code> in a cell's status bar to give it a name (letters, digits and <code>_</code>, unique in the workbook). Names are saved in the <code>.sapwb</code> file and keep working when cells are inserted, moved or deleted. When you rename a cell, ABAP FS offers to update the references in other cells.</p>
 <p><strong>Referencing results between cells</strong></p>
 <ul>
-<li>In <strong>JavaScript</strong>: access a previous cell's rows via <code>cells[N].result</code> (0-indexed, so cell 2 is <code>cells[1]</code>).</li>
-<li>In <strong>ABAP SQL</strong>: interpolate earlier results using <code>${...}</code>. Strings are auto-quoted; arrays are auto-joined for <code>IN</code> clauses.</li>
+<li>In <strong>JavaScript</strong>: <code>cells.&lt;name&gt;.result</code> (also <code>cells["name"]</code>, or <code>cells[N]</code> by position: 0-based, counting markdown cells). Write references literally; only the cells you reference are passed to the cell. Each entry also has <code>.system</code> (the system an SQL cell ran on), <code>.index</code> and <code>.name</code>.</li>
+<li>In <strong>ABAP SQL</strong>: interpolate earlier results with <code>${cells.&lt;name&gt;.result.FIELD}</code> (or <code>${cells[N].result.FIELD}</code>). Strings are auto-quoted; arrays are auto-joined for <code>IN</code> clauses. The path after <code>.result</code> must be field names / indexes, e.g. <code>.ROLE_NAME</code> or <code>.rows[0].MATNR</code> — expressions are not evaluated.</li>
 </ul>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="c1">-- Use results from cell 2 (index 1) as a filter</span>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="c1">-- params is a JavaScript cell that returns an array with a MATNRS property</span>
 <a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a><span class="k">SELECT</span><span class="w"> </span><span class="n">matnr</span><span class="p">,</span><span class="w"> </span><span class="n">werks</span><span class="w"> </span><span class="k">FROM</span><span class="w"> </span><span class="n">marc</span>
-<a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a><span class="w">  </span><span class="k">WHERE</span><span class="w"> </span><span class="n">matnr</span><span class="w"> </span><span class="k">IN</span><span class="w"> </span><span class="p">(</span><span class="err">${</span><span class="n">cells</span><span class="p">[</span><span class="mi">1</span><span class="p">].</span><span class="k">result</span><span class="p">.</span><span class="k">map</span><span class="p">(</span><span class="n">r</span><span class="w"> </span><span class="o">=&gt;</span><span class="w"> </span><span class="n">r</span><span class="p">.</span><span class="n">MATNR</span><span class="p">)</span><span class="err">}</span><span class="p">)</span>
+<a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a><span class="w">  </span><span class="k">WHERE</span><span class="w"> </span><span class="n">matnr</span><span class="w"> </span><span class="k">IN</span><span class="w"> </span><span class="p">(</span><span class="err">${</span><span class="n">cells</span><span class="p">.</span><span class="n">params</span><span class="p">.</span><span class="k">result</span><span class="p">.</span><span class="n">MATNRS</span><span class="err">}</span><span class="p">)</span>
 </code></pre></div>
+<p><strong>System markers</strong></p>
+<p>System markers belong to ABAP SQL cells: JavaScript and markdown cells do not talk to SAP and have no system. Click the system item in an SQL cell's status bar (or run <strong>SAP Data Workbook: Set System From This Cell…</strong>) and pick an ABAP FS connection: connected systems are listed first, then the cell's current system, then systems that are configured but not connected. That SQL cell and every following SQL cell run on that system until the next marker. The status bar shows <code>dev ▸</code> on a marker and <code>dev (from #2)</code> on the SQL cells it covers; pick <strong>Remove the system marker</strong> to delete one.</p>
+<p>If a marker names a system that is not connected, <strong>Run All</strong> asks which connected system to use instead and updates the marker. <strong>SAP Data Workbook: Show Run Plan</strong> lists every cell with the system it will use.</p>
 <p><strong>Row limits</strong></p>
-<p>Each SQL cell has a configurable row limit (default: 1000). Adjust with <strong>ABAP FS: Set Cell Max Rows</strong>.</p>
+<p>Each SQL cell has a configurable row limit (default: 1000). Click <code>Rows: 1000</code> in the cell's status bar or run <strong>SAP Data Workbook: Set Cell Row Limit</strong>.</p>
+<p><strong>Copilot and cell settings</strong></p>
+<p>Copilot's notebook tools edit cell content but cannot see or set a cell's name, system marker or row limit. ABAP FS adds the <strong>abapfs_workbook_cell_settings</strong> tool for that: Copilot creates the cells, then sets every system, row limit and name in one call, so a cross-system workbook is ready for Run All without clicking markers. The tool:</p>
+<ul>
+<li>reads every cell's name, own or inherited system and row limit when called with only the workbook path;</li>
+<li>accepts only <code>.sapwb</code> files, and changes nothing if any requested setting is invalid (unknown cell, duplicate name, a system or row limit on a JavaScript or markdown cell, a row limit outside 1–100,000);</li>
+<li>saves a system that is not connected, but warns Copilot so it can tell you;</li>
+<li>applies all changes as one edit (one Undo), and saves the workbook unless it already had unsaved changes.</li>
+</ul>
+<p>It is also available to other AI tools through the <a href="../../mcp-server/">MCP server</a>.</p>
+<h2 id="formatted-output">Formatted Output<a class="headerlink" href="#formatted-output" title="Permanent link">&para;</a></h2>
+<p>A JavaScript cell can return more than a plain table. The <code>display</code> helper is available in every JavaScript cell:</p>
+<table>
+<thead>
+<tr>
+<th>Helper</th>
+<th>Shows</th>
+<th>Later cells receive</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>display.table(rows, { wrap, highlight, title, limit })</code></td>
+<td>A table. <code>wrap</code> wraps long values; <code>highlight</code> colours cells whose whole value is <code>RED</code>/<code>FAIL</code>/<code>ERROR</code>, <code>YELLOW</code>/<code>WARN</code>, <code>GREEN</code>/<code>PASS</code>/<code>OK</code> or <code>INFO</code>; <code>limit</code> shows up to 5000 rows</td>
+<td>the rows</td>
+</tr>
+<tr>
+<td><code>display.markdown(text)</code></td>
+<td>Formatted Markdown</td>
+<td>the text</td>
+</tr>
+<tr>
+<td><code>display.html(html)</code></td>
+<td>HTML</td>
+<td>the HTML</td>
+</tr>
+<tr>
+<td><code>display.json(value)</code></td>
+<td>Highlighted JSON</td>
+<td>the value</td>
+</tr>
+<tr>
+<td><code>display.xml(value)</code></td>
+<td>Highlighted XML (an XML string is pretty-printed; rows/objects are converted)</td>
+<td>the value</td>
+</tr>
+<tr>
+<td><code>display.text(text)</code></td>
+<td>Plain text</td>
+<td>the text</td>
+</tr>
+<tr>
+<td><code>display.all(a, b, …)</code></td>
+<td>Several outputs in one cell</td>
+<td>the first item with <code>data</code>, otherwise the first table</td>
+</tr>
+</tbody>
+</table>
+<p>Pass <code>{ data: x }</code> in the options to choose what later cells receive:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a><span class="c1">// verdict headline + colour-coded summary; later cells read cells.summary.result.log</span>
+<a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a><span class="k">return</span><span class="w"> </span><span class="nx">display</span><span class="p">.</span><span class="nx">all</span><span class="p">(</span>
+<a id="__codelineno-1-3" name="__codelineno-1-3" href="#__codelineno-1-3"></a><span class="w">  </span><span class="nx">display</span><span class="p">.</span><span class="nx">markdown</span><span class="p">(</span><span class="s2">"## RED — 3 differences"</span><span class="p">),</span>
+<a id="__codelineno-1-4" name="__codelineno-1-4" href="#__codelineno-1-4"></a><span class="w">  </span><span class="nx">display</span><span class="p">.</span><span class="nx">table</span><span class="p">(</span><span class="nx">summary</span><span class="p">,</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="nx">wrap</span><span class="o">:</span><span class="w"> </span><span class="kc">true</span><span class="p">,</span><span class="w"> </span><span class="nx">highlight</span><span class="o">:</span><span class="w"> </span><span class="kc">true</span><span class="p">,</span><span class="w"> </span><span class="nx">data</span><span class="o">:</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="nx">summary</span><span class="p">,</span><span class="w"> </span><span class="nx">log</span><span class="w"> </span><span class="p">}</span><span class="w"> </span><span class="p">})</span>
+<a id="__codelineno-1-5" name="__codelineno-1-5" href="#__codelineno-1-5"></a><span class="p">)</span>
+</code></pre></div>
+<p>Tables wrap long values by default (setting <code>abapfs.workbook.tableWrap</code>). Dates are shown as <code>YYYY-MM-DD</code>.</p>
+<h2 id="exporting-a-workbook">Exporting a Workbook<a class="headerlink" href="#exporting-a-workbook" title="Permanent link">&para;</a></h2>
+<p>Click <strong>Export…</strong> in the workbook toolbar (or run <strong>SAP Data Workbook: Export…</strong>):</p>
+<ol>
+<li>Tick what to include — any of <strong>Data</strong> (results of the cells that have run; all rows, not only the rows on screen), <strong>Code</strong> (SQL and JavaScript cells) and <strong>Comments</strong> (Markdown cells).</li>
+<li>Pick a format: <strong>PDF</strong>, <strong>HTML</strong>, <strong>JSON</strong>, <strong>XML</strong>, <strong>Excel</strong>, <strong>CSV</strong>, <strong>Word</strong> or <strong>Markdown</strong>.</li>
+</ol>
+<table>
+<thead>
+<tr>
+<th>Content</th>
+<th>In the exported file</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>SQL and JavaScript cells</td>
+<td>Labelled, syntax-highlighted code blocks (<code>ABAP SQL · name · system</code>)</td>
+</tr>
+<tr>
+<td><code>display.json</code> / <code>display.xml</code> output (and plain objects)</td>
+<td>Code blocks, written exactly as produced</td>
+</tr>
+<tr>
+<td>Tables, strings, <code>display.html</code>, <code>display.markdown</code></td>
+<td>Normal content (tables, paragraphs, formatted text)</td>
+</tr>
+<tr>
+<td>Several outputs from <code>display.all</code></td>
+<td>All of them, in order</td>
+</tr>
+<tr>
+<td>Markdown tables / fenced code in comment cells</td>
+<td>Real tables / code blocks (PDF, Word)</td>
+</tr>
+</tbody>
+</table>
+<ul>
+<li><strong>Excel:</strong> one sheet per result table, plus <em>Contents</em> and <em>Code &amp; Comments</em> sheets; status values are coloured.</li>
+<li><strong>CSV:</strong> data only, one file per result table.</li>
+<li><strong>PDF / Word:</strong> landscape; tables over 3,000 (PDF) / 2,000 (Word) rows are cut with a note — use Excel or CSV for all rows. The PDF uses the standard PDF fonts, so characters outside Western European languages appear as <code>?</code>.</li>
+<li>Results are kept in memory, so run the workbook before exporting data.</li>
+</ul>
 <h2 id="example-data-quality-check">Example: Data Quality Check<a class="headerlink" href="#example-data-quality-check" title="Permanent link">&para;</a></h2>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a>Cell 1 (Markdown):   # Material Data Quality Check
-<a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a>Cell 2 (ABAP SQL):   SELECT matnr, mtart, meins FROM mara WHERE mtart = 'FERT'
-<a id="__codelineno-1-3" name="__codelineno-1-3" href="#__codelineno-1-3"></a>Cell 3 (JavaScript): const rows = cells[1].result;
-<a id="__codelineno-1-4" name="__codelineno-1-4" href="#__codelineno-1-4"></a>                     return rows.filter(r =&gt; !r.MEINS).length + " materials missing UoM";
-<a id="__codelineno-1-5" name="__codelineno-1-5" href="#__codelineno-1-5"></a>Cell 4 (ABAP SQL):   SELECT matnr, werks FROM marc
-<a id="__codelineno-1-6" name="__codelineno-1-6" href="#__codelineno-1-6"></a>                       WHERE matnr IN (${cells[1].result.map(r =&gt; r.MATNR)})
+<div class="highlight"><pre><span></span><code><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a>Cell 1 (Markdown):            # Material Data Quality Check
+<a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a>Cell 2 (ABAP SQL, "fert"):    SELECT matnr, mtart, meins FROM mara WHERE mtart = 'FERT'
+<a id="__codelineno-2-3" name="__codelineno-2-3" href="#__codelineno-2-3"></a>Cell 3 (JavaScript, "check"): const rows = cells.fert.result;
+<a id="__codelineno-2-4" name="__codelineno-2-4" href="#__codelineno-2-4"></a>                              const out = rows.filter(r =&gt; !r.MEINS);
+<a id="__codelineno-2-5" name="__codelineno-2-5" href="#__codelineno-2-5"></a>                              out.MATNRS = out.length ? out.slice(0, 10).map(r =&gt; r.MATNR) : [''];
+<a id="__codelineno-2-6" name="__codelineno-2-6" href="#__codelineno-2-6"></a>                              return out;
+<a id="__codelineno-2-7" name="__codelineno-2-7" href="#__codelineno-2-7"></a>Cell 4 (ABAP SQL):            SELECT matnr, werks FROM marc
+<a id="__codelineno-2-8" name="__codelineno-2-8" href="#__codelineno-2-8"></a>                                WHERE matnr IN (${cells.check.result.MATNRS})
 </code></pre></div>
 <h2 id="example-cross-system-comparison">Example: Cross-System Comparison<a class="headerlink" href="#example-cross-system-comparison" title="Permanent link">&para;</a></h2>
-<p>Run the same query against two systems by executing cells individually and selecting a different system each time. A JavaScript cell then diffs the results.</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a>Cell 1 (Markdown):   # Pricing Condition Comparison: DEV vs QAS
-<a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a>Cell 2 (ABAP SQL):   SELECT KSCHL, VKORG, MATNR, KBETR FROM A005 WHERE KSCHL = 'ZPR1'
-<a id="__codelineno-2-3" name="__codelineno-2-3" href="#__codelineno-2-3"></a>                     → Run, select DEV
-<a id="__codelineno-2-4" name="__codelineno-2-4" href="#__codelineno-2-4"></a>Cell 3 (ABAP SQL):   SELECT KSCHL, VKORG, MATNR, KBETR FROM A005 WHERE KSCHL = 'ZPR1'
-<a id="__codelineno-2-5" name="__codelineno-2-5" href="#__codelineno-2-5"></a>                     → Run, select QAS
-<a id="__codelineno-2-6" name="__codelineno-2-6" href="#__codelineno-2-6"></a>Cell 4 (JavaScript): const devMap = new Map(
-<a id="__codelineno-2-7" name="__codelineno-2-7" href="#__codelineno-2-7"></a>                       cells[1].result.map(r =&gt; [r.KSCHL + r.VKORG + r.MATNR, r])
-<a id="__codelineno-2-8" name="__codelineno-2-8" href="#__codelineno-2-8"></a>                     );
-<a id="__codelineno-2-9" name="__codelineno-2-9" href="#__codelineno-2-9"></a>                     return cells[2].result
-<a id="__codelineno-2-10" name="__codelineno-2-10" href="#__codelineno-2-10"></a>                       .filter(r =&gt; {
-<a id="__codelineno-2-11" name="__codelineno-2-11" href="#__codelineno-2-11"></a>                         const d = devMap.get(r.KSCHL + r.VKORG + r.MATNR);
-<a id="__codelineno-2-12" name="__codelineno-2-12" href="#__codelineno-2-12"></a>                         return d &amp;&amp; d.KBETR !== r.KBETR;
-<a id="__codelineno-2-13" name="__codelineno-2-13" href="#__codelineno-2-13"></a>                       })
-<a id="__codelineno-2-14" name="__codelineno-2-14" href="#__codelineno-2-14"></a>                       .map(r =&gt; ({
-<a id="__codelineno-2-15" name="__codelineno-2-15" href="#__codelineno-2-15"></a>                         ...r,
-<a id="__codelineno-2-16" name="__codelineno-2-16" href="#__codelineno-2-16"></a>                         DEV_KBETR: devMap.get(r.KSCHL + r.VKORG + r.MATNR).KBETR
-<a id="__codelineno-2-17" name="__codelineno-2-17" href="#__codelineno-2-17"></a>                       }));
+<p>Put a system marker on the first SQL cell of each section; Run All runs each section on its own system.</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a>Cell 1 (Markdown):                         # Pricing conditions in DEV
+<a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a>Cell 2 (ABAP SQL, "dev_a005", system dev): SELECT KSCHL, VKORG, MATNR, KBETR FROM A005 WHERE KSCHL = 'ZPR1'
+<a id="__codelineno-3-3" name="__codelineno-3-3" href="#__codelineno-3-3"></a>Cell 3 (Markdown):                         # Pricing conditions in QAS
+<a id="__codelineno-3-4" name="__codelineno-3-4" href="#__codelineno-3-4"></a>Cell 4 (ABAP SQL, "qas_a005", system qas): SELECT KSCHL, VKORG, MATNR, KBETR FROM A005 WHERE KSCHL = 'ZPR1'
+<a id="__codelineno-3-5" name="__codelineno-3-5" href="#__codelineno-3-5"></a>Cell 5 (JavaScript):                       if (cells.dev_a005.system === cells.qas_a005.system) return 'Both cells ran on the same system'
+<a id="__codelineno-3-6" name="__codelineno-3-6" href="#__codelineno-3-6"></a>                                           const devMap = new Map(
+<a id="__codelineno-3-7" name="__codelineno-3-7" href="#__codelineno-3-7"></a>                                             cells.dev_a005.result.map(r =&gt; [r.KSCHL + r.VKORG + r.MATNR, r])
+<a id="__codelineno-3-8" name="__codelineno-3-8" href="#__codelineno-3-8"></a>                                           );
+<a id="__codelineno-3-9" name="__codelineno-3-9" href="#__codelineno-3-9"></a>                                           return cells.qas_a005.result
+<a id="__codelineno-3-10" name="__codelineno-3-10" href="#__codelineno-3-10"></a>                                             .filter(r =&gt; {
+<a id="__codelineno-3-11" name="__codelineno-3-11" href="#__codelineno-3-11"></a>                                               const d = devMap.get(r.KSCHL + r.VKORG + r.MATNR);
+<a id="__codelineno-3-12" name="__codelineno-3-12" href="#__codelineno-3-12"></a>                                               return d &amp;&amp; d.KBETR !== r.KBETR;
+<a id="__codelineno-3-13" name="__codelineno-3-13" href="#__codelineno-3-13"></a>                                             })
+<a id="__codelineno-3-14" name="__codelineno-3-14" href="#__codelineno-3-14"></a>                                             .map(r =&gt; ({
+<a id="__codelineno-3-15" name="__codelineno-3-15" href="#__codelineno-3-15"></a>                                               ...r,
+<a id="__codelineno-3-16" name="__codelineno-3-16" href="#__codelineno-3-16"></a>                                               DEV_KBETR: devMap.get(r.KSCHL + r.VKORG + r.MATNR).KBETR
+<a id="__codelineno-3-17" name="__codelineno-3-17" href="#__codelineno-3-17"></a>                                             }));
 </code></pre></div>
-<p>Workbook files store no system IDs, so they can be shared with colleagues who use different system names.</p>
+<p>System markers store connection ids. A colleague whose connections have other names gets a prompt on Run All to map them to their own systems.</p>
 <h2 id="limitations">Limitations<a class="headerlink" href="#limitations" title="Permanent link">&para;</a></h2>
 <ul>
 <li>SQL supports <code>SELECT</code> and <code>WITH</code> only — no <code>INSERT</code>, <code>UPDATE</code>, or <code>DELETE</code></li>
 <li>String literals are limited to 255 characters (SAP ADT constraint)</li>
 <li>Avoid interpolating more than ~10 values into an <code>IN</code> clause — filter in a JavaScript cell instead</li>
 <li>Cancelling a cell shows "Interrupted" immediately, but the query continues running on the SAP side</li>
+<li>Results are kept in memory and lost when the workbook is closed</li>
 </ul>
 <h2 id="commands">Commands<a class="headerlink" href="#commands" title="Permanent link">&para;</a></h2>
 <table>
@@ -3642,8 +3802,32 @@
 <td>Creates a new <code>.sapwb</code> file</td>
 </tr>
 <tr>
-<td><code>ABAP FS: Set Cell Max Rows</code></td>
-<td>Sets row limit for the current SQL cell</td>
+<td><code>ABAP FS: SAP Data Workbook: Set Cell Row Limit</code></td>
+<td>Sets the row limit for an SQL cell (also: click <code>Rows:</code> in the status bar)</td>
+</tr>
+<tr>
+<td><code>ABAP FS: SAP Data Workbook: Name Cell…</code></td>
+<td>Names / renames a cell (also: click <code>#n</code> in the status bar)</td>
+</tr>
+<tr>
+<td><code>ABAP FS: SAP Data Workbook: Set System From This Cell…</code></td>
+<td>Sets or removes a system marker on an ABAP SQL cell (also: click the system in its status bar)</td>
+</tr>
+<tr>
+<td><code>ABAP FS: SAP Data Workbook: Show Run Plan (cell → system)</code></td>
+<td>Lists every cell with the system it will run on (toolbar button)</td>
+</tr>
+<tr>
+<td><code>ABAP FS: SAP Data Workbook: Collapse/Expand All Code</code></td>
+<td>Toolbar button; also separate <em>Collapse All Code</em> / <em>Expand All Code</em> commands</td>
+</tr>
+<tr>
+<td><code>ABAP FS: SAP Data Workbook: Collapse/Expand All Outputs</code></td>
+<td>Toolbar button; also separate <em>Collapse All Outputs</em> / <em>Expand All Outputs</em> commands</td>
+</tr>
+<tr>
+<td><code>ABAP FS: SAP Data Workbook: Export…</code></td>
+<td>Exports data / code / comments to PDF, HTML, JSON, XML, Excel, CSV, Word or Markdown (toolbar button)</td>
 </tr>
 </tbody>
 </table>
