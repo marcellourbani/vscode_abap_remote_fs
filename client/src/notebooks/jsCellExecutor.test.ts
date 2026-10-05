@@ -123,7 +123,7 @@ describe("executeJsCell — happy paths", () => {
     lastWorker!._triggerMessage({ success: true, result: "B" })
     await promise
     const msg = lastWorker!.postMessage.mock.calls[0][0]
-    expect(msg.cellResults["1"]).toEqual({ result: "B" })
+    expect(msg.cellResults["1"]).toEqual({ result: "B", index: 1 })
     expect(msg.cellResults["0"]).toBeUndefined()
     expect(msg.cellResults["2"]).toBeUndefined()
   })

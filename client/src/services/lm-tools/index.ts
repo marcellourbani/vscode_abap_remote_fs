@@ -31,6 +31,7 @@ import { registerTestDocumentationTool } from "./testDocumentationTool"
 import { ManageTextElementsTool } from "./textElementsTools"
 import { registerSAPSystemInfoTool } from "./sapSystemInfoTool"
 import { registerConnectedSystemsTool } from "./connectedSystemsTool"
+import { registerWorkbookCellSettingsTool } from "./workbookCellSettingsTool"
 import { registerConfiguredSystemsTool } from "./configuredSystemsTool"
 import {
   ABAPDebugSessionTool,
@@ -120,6 +121,9 @@ export async function registerAllTools(context: vscode.ExtensionContext): Promis
   // 13. Connected Systems Tool (for MCP clients to discover available connections)
   registerConnectedSystemsTool(context)
   registerConfiguredSystemsTool(context)
+
+  // SAP Data Workbook cell settings (name, system marker, row limit)
+  registerWorkbookCellSettingsTool(context)
 
   // 14. Debugger Tools (6 tools)
   context.subscriptions.push(

@@ -13,6 +13,8 @@
 import { Worker } from "worker_threads"
 import * as path from "path"
 import { type CellResult, JS_EXECUTION_TIMEOUT_MS } from "./types"
+import { buildCellData, findCellReferences } from "./cellReferences"
+import { splitDisplay } from "./display"
 
 function getWorkerScriptPath(): string {
   return path.join(__dirname, "jsWorkerEntry.js")
@@ -29,14 +31,14 @@ export async function executeJsCell(
   code: string,
   cellIndex: number,
   cellResults: Map<number, CellResult>,
-  abortSignal?: AbortSignal
+  abortSignal?: AbortSignal,
+  nameToIndex: Map<string, number> = new Map()
 ): Promise<CellResult> {
   if (!code.trim()) {
     return { result: undefined }
   }
 
-  const referencedIndices = findReferencedCellIndices(code)
-  const cellData = buildCellData(cellResults, referencedIndices)
+  const cellData = buildCellData(cellResults, findCellReferences(code), nameToIndex)
 
   return new Promise<CellResult>((resolve, reject) => {
     let settled = false
@@ -91,8 +93,10 @@ export async function executeJsCell(
     worker.on("message", (response: WorkerResponse) => {
       settle(() => {
         if (response.success) {
+          const { data, display } = splitDisplay(response.result)
           resolve({
-            result: response.result,
+            result: data,
+            ...(display ? { display } : {}),
             ...(response.logs && response.logs.length > 0 ? { logs: response.logs } : {})
           })
         } else {
@@ -126,27 +130,4 @@ export async function executeJsCell(
       settle(() => reject(new Error(`Failed to send data to JS worker: ${err.message}`)))
     }
   })
-}
-
-function findReferencedCellIndices(code: string): Set<number> {
-  const indices = new Set<number>()
-  const pattern = /cells\[(\d+)\]/g
-  let match
-  while ((match = pattern.exec(code)) !== null) {
-    indices.add(parseInt(match[1], 10))
-  }
-  return indices
-}
-
-function buildCellData(
-  cellResults: Map<number, CellResult>,
-  referencedIndices: Set<number>
-): Record<string, { result: unknown }> {
-  const data: Record<string, { result: unknown }> = {}
-  for (const idx of referencedIndices) {
-    const cellResult = cellResults.get(idx)
-    if (!cellResult) continue
-    data[String(idx)] = { result: cellResult.result }
-  }
-  return data
 }

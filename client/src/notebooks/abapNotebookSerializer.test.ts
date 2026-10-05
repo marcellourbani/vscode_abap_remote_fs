@@ -434,3 +434,31 @@ describe("registerNotebookSerializer", () => {
     expect(typeof disposable.dispose).toBe("function")
   })
 })
+
+// ── Workbook-plus: cell names and system markers ─────────────────────────────
+
+describe("cell name / system persistence", () => {
+  test("name and system survive a load/save round trip", async () => {
+    const text = JSON.stringify({
+      version: 1,
+      cells: [
+        { type: "markdown", content: "# h", system: "DEV" },
+        { type: "sql", content: "SELECT 1", name: "s1_define", maxRows: 10 },
+        { type: "javascript", content: "1", name: "  ", system: "" }
+      ]
+    })
+    const data: any = await deserialize(text)
+    expect(data.cells[0].metadata).toEqual({ system: "DEV" })
+    expect(data.cells[1].metadata).toEqual({ maxRows: 10, name: "s1_define" })
+    expect(data.cells[2].metadata).toEqual({})
+    const out = JSON.parse(decodeResult(await serialize(data)))
+    expect(out.cells[0]).toEqual({ type: "markdown", content: "# h", system: "DEV" })
+    expect(out.cells[1]).toEqual({
+      type: "sql",
+      content: "SELECT 1",
+      maxRows: 10,
+      name: "s1_define"
+    })
+    expect(out.cells[2]).toEqual({ type: "javascript", content: "1" })
+  })
+})

@@ -2,6 +2,8 @@ import * as vscode from "vscode"
 import { registerNotebookSerializer } from "./abapNotebookSerializer"
 import { AbapNotebookController } from "./abapNotebookController"
 import { registerCellStatusBar } from "./cellStatusBar"
+import { exportNotebook } from "./export/exportCommand"
+import { toggleCollapse } from "./toolbarCommands"
 import { NOTEBOOK_TYPE, SQL_LANGUAGE_ID } from "./types"
 import { log } from "../lib"
 import { funWindow as window } from "../services/funMessenger"
@@ -17,6 +19,28 @@ export function registerAbapNotebooks(context: vscode.ExtensionContext): void {
   context.subscriptions.push({ dispose: () => controller?.dispose() })
 
   registerCellStatusBar(context)
+
+  context.subscriptions.push(
+    vscode.commands.registerCommand("abapfs.notebookExport", () =>
+      controller ? exportNotebook(controller) : undefined
+    ),
+    vscode.commands.registerCommand("abapfs.notebookToggleInputs", () => toggleCollapse("inputs")),
+    vscode.commands.registerCommand("abapfs.notebookToggleOutputs", () =>
+      toggleCollapse("outputs")
+    ),
+    vscode.commands.registerCommand("abapfs.notebookCollapseInputs", () =>
+      toggleCollapse("inputs", "collapse")
+    ),
+    vscode.commands.registerCommand("abapfs.notebookExpandInputs", () =>
+      toggleCollapse("inputs", "expand")
+    ),
+    vscode.commands.registerCommand("abapfs.notebookCollapseOutputs", () =>
+      toggleCollapse("outputs", "collapse")
+    ),
+    vscode.commands.registerCommand("abapfs.notebookExpandOutputs", () =>
+      toggleCollapse("outputs", "expand")
+    )
+  )
 
   context.subscriptions.push(
     vscode.commands.registerCommand("abapfs.newAbapNotebook", async () => {

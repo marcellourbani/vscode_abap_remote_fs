@@ -256,6 +256,9 @@ importers:
       abapobject:
         specifier: workspace:*
         version: link:../modules/abapObject
+      acorn:
+        specifier: 8.18.0
+        version: 8.18.0
       applicationinsights:
         specifier: ^2.9.8
         version: 2.9.8(supports-color@10.2.2)

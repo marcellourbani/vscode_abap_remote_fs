@@ -307,3 +307,59 @@ describe("renderErrorOutput", () => {
     )
   })
 })
+
+// ── Workbook-plus: rich display outputs ──────────────────────────────────────
+import { renderJsOutputs } from "./outputRenderer"
+import { createDisplayHelpers } from "./display"
+
+describe("renderJsOutputs (display.*)", () => {
+  const display = createDisplayHelpers()
+  const out = (d: any, settings = {}) =>
+    renderJsOutputs({ result: undefined, display: d } as CellResult, settings) as any[]
+  const text = (o: any) => o.items[0].data.toString()
+
+  test("html / markdown / text mime types", () => {
+    expect(out(display.html("<b>x</b>"))[0].items[0].mime).toBe("text/html")
+    expect(out(display.markdown("# x"))[0].items[0].mime).toBe("text/markdown")
+    expect(out(display.text("x"))[0].items[0].mime).toBe("text/plain")
+  })
+
+  test("json and xml render as highlighted code blocks", () => {
+    expect(text(out(display.json({ a: 1 }))[0])).toBe('```json\n{\n  "a": 1\n}\n```')
+    expect(text(out(display.xml("<a><b>1</b></a>"))[0])).toBe("```xml\n<a>\n  <b>1</b>\n</a>\n```")
+    expect(text(out(display.xml([{ A: 1 }]))[0])).toContain("<row>")
+  })
+
+  test("table: wrap, highlight, title and limit", () => {
+    const rows = Array.from({ length: 5 }, (_, i) => ({ Status: i ? "GREEN" : "RED", N: i }))
+    const html = text(
+      out(display.table(rows, { wrap: true, highlight: true, title: "Summary", limit: 2 }))[0]
+    )
+    expect(html).toContain("white-space:normal")
+    expect(html).toContain('<td class="st-red">RED</td>')
+    expect(html).toContain("Summary")
+    expect(html).toContain("Showing 2 of 5 rows")
+  })
+
+  test("setting controls wrap when the cell does not say", () => {
+    expect(text(out(display.table([{ a: 1 }]), { wrap: false })[0])).toContain("white-space:nowrap")
+    expect(text(out(display.table([{ a: 1 }]), { wrap: true })[0])).toContain("white-space:normal")
+  })
+
+  test("display.all gives one output per item, logs first", () => {
+    const r = renderJsOutputs(
+      {
+        result: undefined,
+        logs: ["hello"],
+        display: display.all(display.markdown("a"), display.table([{ x: 1 }]))
+      } as any,
+      {}
+    ) as any[]
+    expect(r.map(o => o.items[0].mime)).toEqual(["text/plain", "text/markdown", "text/html"])
+  })
+
+  test("dates in tables are shown as YYYY-MM-DD", () => {
+    const html = text(out(display.table([{ D: new Date("2023-10-31T00:00:00Z") }]))[0])
+    expect(html).toContain("<td>2023-10-31</td>")
+  })
+})

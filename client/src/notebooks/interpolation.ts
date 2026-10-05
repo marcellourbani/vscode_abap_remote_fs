@@ -1,15 +1,32 @@
 import { type CellResult } from "./types"
 
-export function interpolateSql(rawSql: string, cellResults: Map<number, CellResult>): string {
-  if (!rawSql.includes("${cells[")) return rawSql
+export function interpolateSql(
+  rawSql: string,
+  cellResults: Map<number, CellResult>,
+  nameToIndex: Map<string, number> = new Map()
+): string {
+  if (!rawSql.includes("${cells")) return rawSql
 
-  const pattern = /\$\{cells\[(\d+)\]\.result((?:\.[a-zA-Z_]\w*(?:\[\d+\])?)*)\}/g
+  // ${cells[5].result...} | ${cells.name.result...} | ${cells["name"].result...}
+  const pattern =
+    /\$\{cells(?:\[(\d+)\]|\.([A-Za-z_]\w*)|\[["']([A-Za-z_]\w*)["']\])\.result((?:\.[a-zA-Z_]\w*(?:\[\d+\])?)*)\}/g
 
-  return rawSql.replace(pattern, (_match, indexStr, pathStr) => {
-    const cellIndex = parseInt(indexStr, 10)
+  return rawSql.replace(pattern, (_match, indexStr, dotName, quotedName, pathStr) => {
+    const name: string | undefined = dotName ?? quotedName
+    let cellIndex: number
+    if (name !== undefined) {
+      const idx = nameToIndex.get(name)
+      if (idx === undefined) {
+        throw new InterpolationError(`No cell is named '${name}'.`, -1)
+      }
+      cellIndex = idx
+    } else {
+      cellIndex = parseInt(indexStr, 10)
+    }
+    const label = name !== undefined ? `'${name}' (cell ${cellIndex})` : `[${cellIndex}]`
     const cellResult = cellResults.get(cellIndex)
     if (!cellResult) {
-      throw new InterpolationError(`Cell [${cellIndex}] has no result. Run it first.`, cellIndex)
+      throw new InterpolationError(`Cell ${label} has no result. Run it first.`, cellIndex)
     }
 
     let value: unknown = cellResult.result
@@ -19,7 +36,7 @@ export function interpolateSql(rawSql: string, cellResults: Map<number, CellResu
 
     if (value === null || value === undefined) {
       throw new InterpolationError(
-        `Cell [${cellIndex}] result${pathStr || ""} is ${String(value)}. Cannot interpolate null/undefined into SQL.`,
+        `Cell ${label} result${pathStr || ""} is ${String(value)}. Cannot interpolate null/undefined into SQL.`,
         cellIndex
       )
     }

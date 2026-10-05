@@ -18,6 +18,7 @@ This document provides a comprehensive reference for all ABAP FS extension setti
 10. [Blame Annotations](#10-blame-annotations)
 11. [Editor Defaults](#11-editor-defaults)
 12. [Repository Comparison](#12-repository-comparison)
+13. [SAP Data Workbook](#13-sap-data-workbook)
 
 ---
 
@@ -515,6 +516,17 @@ Local snapshot verification has a separate per-workflow control in the Repositor
 ```
 
 See [Repository Comparison](../../docs/repository-comparison/index.md) for the complete workflow.
+
+---
+
+## 13. SAP Data Workbook
+
+### `abapfs.workbook.tableWrap`
+
+- **Type:** boolean
+- **Default:** `true`
+- **What it does:** In SAP Data Workbook (`.sapwb`) result tables, long values wrap onto several lines instead of making the table wider than the screen. Turn it off to keep every row on one line (the table then scrolls sideways).
+- **Per cell:** a JavaScript cell can override it with `display.table(rows, { wrap: false })`.
 
 ---
 
