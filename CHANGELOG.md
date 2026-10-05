@@ -1,5 +1,15 @@
 # Changelog
 
+## 2.11.0
+
+### Minor Changes
+
+- b864a3c: SAP Data Workbook: new language model tool `abapfs_workbook_cell_settings` lets Copilot (and MCP clients) read and set cell names, system markers and row limits, which notebook editing tools cannot set; the sap-data-workbook skill uses it, so a cross-system workbook is ready for Run All without clicking markers.
+- 0556fdf: SAP Data Workbook: export a workbook from the toolbar — pick any of data, code and comments and save as PDF, HTML, JSON, XML, Excel, CSV, Word or Markdown, with SQL/JavaScript cells and JSON/XML outputs as labelled, syntax-highlighted code blocks; toolbar buttons collapse or expand all code and all outputs; the sap-data-workbook skill describes the new workbook features.
+- 9640b17: SAP Data Workbook: JavaScript cells can show formatted output with `display.table` (wrapped, status-coloured tables), `display.markdown`, `display.html`, `display.json`, `display.xml`, `display.text` and `display.all`; result tables wrap long values by default (new setting `abapfs.workbook.tableWrap`) and show dates as YYYY-MM-DD; a failing JavaScript cell shows its error message instead of `undefined`.
+- 96a9a20: SAP Data Workbook: name cells and reference them by name (`cells.name` in JavaScript, `${cells.name.result.FIELD}` in SQL); names survive inserting, moving and deleting cells, renaming offers to update references, and results stay attached to their cell when cells move.
+- 2bdd6be: SAP Data Workbook: set a system per ABAP SQL cell with sticky system markers, so Run All runs each section on its own SAP system after one confirmation of the plan; markers that are not connected can be mapped to a connected system, SQL results record the system they ran on, and a Show Run Plan command lists the system of every cell.
+
 ## 2.10.3
 
 ### Patch Changes
