@@ -3947,7 +3947,7 @@
       },
       {
         "command": "abapfs.notebookSetCellMaxRows",
-        "title": "SAP Data Workbook: Set Cell Row Limit",
+        "title": "Set Row Limit",
         "category": "ABAP FS"
       },
       {
@@ -4459,58 +4459,58 @@
       },
       {
         "command": "abapfs.notebookSetCellName",
-        "title": "SAP Data Workbook: Name Cell…",
+        "title": "Name Cell…",
         "category": "ABAP FS",
         "icon": "$(tag)"
       },
       {
         "command": "abapfs.notebookSetCellSystem",
-        "title": "SAP Data Workbook: Set System From This Cell…",
+        "title": "Set System…",
         "category": "ABAP FS",
         "icon": "$(server-environment)"
       },
       {
         "command": "abapfs.notebookShowRunPlan",
-        "title": "SAP Data Workbook: Show Run Plan (cell → system)",
+        "title": "Show Run Plan",
         "category": "ABAP FS",
         "icon": "$(list-flat)"
       },
       {
         "command": "abapfs.notebookExport",
-        "title": "SAP Data Workbook: Export…",
+        "title": "Export…",
         "category": "ABAP FS",
         "icon": "$(export)"
       },
       {
         "command": "abapfs.notebookToggleInputs",
-        "title": "SAP Data Workbook: Collapse/Expand All Code",
+        "title": "Collapse/Expand All Code",
         "category": "ABAP FS",
         "icon": "$(fold)"
       },
       {
         "command": "abapfs.notebookToggleOutputs",
-        "title": "SAP Data Workbook: Collapse/Expand All Outputs",
+        "title": "Collapse/Expand All Outputs",
         "category": "ABAP FS",
         "icon": "$(output)"
       },
       {
         "command": "abapfs.notebookCollapseInputs",
-        "title": "SAP Data Workbook: Collapse All Code",
+        "title": "Collapse All Code",
         "category": "ABAP FS"
       },
       {
         "command": "abapfs.notebookExpandInputs",
-        "title": "SAP Data Workbook: Expand All Code",
+        "title": "Expand All Code",
         "category": "ABAP FS"
       },
       {
         "command": "abapfs.notebookCollapseOutputs",
-        "title": "SAP Data Workbook: Collapse All Outputs",
+        "title": "Collapse All Outputs",
         "category": "ABAP FS"
       },
       {
         "command": "abapfs.notebookExpandOutputs",
-        "title": "SAP Data Workbook: Expand All Outputs",
+        "title": "Expand All Outputs",
         "category": "ABAP FS"
       }
     ],
@@ -4965,43 +4965,47 @@
         },
         {
           "command": "abapfs.notebookSetCellName",
-          "when": "activeEditor == workbench.editor.notebook && notebookType == sap-data-workbook"
+          "when": "false"
         },
         {
           "command": "abapfs.notebookSetCellSystem",
-          "when": "activeEditor == workbench.editor.notebook && notebookType == sap-data-workbook"
+          "when": "false"
+        },
+        {
+          "command": "abapfs.notebookSetCellMaxRows",
+          "when": "false"
         },
         {
           "command": "abapfs.notebookShowRunPlan",
-          "when": "activeEditor == workbench.editor.notebook && notebookType == sap-data-workbook"
+          "when": "false"
         },
         {
           "command": "abapfs.notebookExport",
-          "when": "activeEditor == workbench.editor.notebook && notebookType == sap-data-workbook"
+          "when": "false"
         },
         {
           "command": "abapfs.notebookToggleInputs",
-          "when": "activeEditor == workbench.editor.notebook && notebookType == sap-data-workbook"
+          "when": "false"
         },
         {
           "command": "abapfs.notebookToggleOutputs",
-          "when": "activeEditor == workbench.editor.notebook && notebookType == sap-data-workbook"
+          "when": "false"
         },
         {
           "command": "abapfs.notebookCollapseInputs",
-          "when": "activeEditor == workbench.editor.notebook && notebookType == sap-data-workbook"
+          "when": "false"
         },
         {
           "command": "abapfs.notebookExpandInputs",
-          "when": "activeEditor == workbench.editor.notebook && notebookType == sap-data-workbook"
+          "when": "false"
         },
         {
           "command": "abapfs.notebookCollapseOutputs",
-          "when": "activeEditor == workbench.editor.notebook && notebookType == sap-data-workbook"
+          "when": "false"
         },
         {
           "command": "abapfs.notebookExpandOutputs",
-          "when": "activeEditor == workbench.editor.notebook && notebookType == sap-data-workbook"
+          "when": "false"
         }
       ],
       "view/item/context": [
@@ -5501,7 +5505,7 @@
         {
           "command": "abapfs.notebookExport",
           "when": "notebookType == sap-data-workbook",
-          "group": "navigation@13"
+          "group": "navigation@9"
         },
         {
           "command": "abapfs.notebookToggleInputs",

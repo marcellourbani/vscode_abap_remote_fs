@@ -16,6 +16,7 @@ import { parentPort } from "worker_threads"
 import * as vm from "vm"
 import * as v8 from "v8"
 import { createDisplayHelpers } from "./display"
+import { wrapAsAsyncFunction } from "./jsCodeWrapper"
 
 interface WorkerRequest {
   code: string
@@ -139,44 +140,6 @@ function buildCellsAccessor(
       return typeof prop === "string" && prop in cellResults
     }
   })
-}
-
-function wrapAsAsyncFunction(code: string): string {
-  const trimmed = code.trim()
-
-  if (
-    /^\s*return\s/m.test(trimmed) &&
-    !trimmed.startsWith("const ") &&
-    !trimmed.startsWith("let ") &&
-    !trimmed.startsWith("var ") &&
-    !trimmed.startsWith("function")
-  ) {
-    return `(async function() {\n${trimmed}\n})`
-  }
-
-  const withoutTrailingSemicolon = trimmed.replace(/;\s*$/, "")
-  const lines = withoutTrailingSemicolon.split("\n")
-  const lastLine = lines[lines.length - 1].trim()
-
-  if (!lastLine || lastLine.startsWith("//") || lastLine.startsWith("/*")) {
-    return `(async function() {\n${trimmed}\n})`
-  }
-
-  const isNonReturnable =
-    /^(const |let |var |if\b|for\b|while\b|switch\b|try\b|class\b|function\b|throw\b|do\b|\{|\}|\[)/.test(
-      lastLine
-    )
-
-  if (isNonReturnable) {
-    return `(async function() {\n${trimmed}\n})`
-  }
-
-  if (lines.length === 1) {
-    return `(async function() {\nreturn (${withoutTrailingSemicolon})\n})`
-  }
-
-  const allButLast = lines.slice(0, -1).join("\n")
-  return `(async function() {\n${allButLast}\nreturn (${lastLine})\n})`
 }
 
 function withTimeout<T>(promise: Promise<T>, ms: number): Promise<T> {
