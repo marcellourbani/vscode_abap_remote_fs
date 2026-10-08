@@ -360,11 +360,14 @@ export async function activate(ctx: ExtensionContext): Promise<AbapFsApi> {
         "abapfs:noSapConnected",
         !(workspace.workspaceFolders?.some(f => f.uri.scheme === ADTSCHEME) ?? false)
       )
+      // A removed workspace folder owns a live SAP connection, so release that connection without
+      // disturbing other mounted systems.
       for (const folder of event.removed.filter(f => f.uri.scheme === ADTSCHEME)) {
         void disconnectConnection(folder.uri.authority).catch(error =>
           log(`[disconnect] Failed to clean up ${folder.uri.authority}: ${error}`)
         )
       }
+      // Re-adding a folder is an explicit reconnect and clears the retry gate set by removal.
       for (const folder of event.added.filter(f => f.uri.scheme === ADTSCHEME)) {
         void clearConnectionFailure(folder.uri.authority).catch(error =>
           log(`[connect] Failed to restore ${folder.uri.authority}: ${error}`)

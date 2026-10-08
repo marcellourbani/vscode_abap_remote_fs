@@ -110,6 +110,12 @@ const dropSessionContext = (cookies: Map<string, string>) => {
   for (const name of cookies.keys()) if (/^sap-contextid$/i.test(name)) cookies.delete(name)
 }
 
+/**
+ * Give one ADT client a small cookie jar that follows SAP's Set-Cookie updates.
+ *
+ * Browser cookies replace Basic auth. Expired sessions are retried only when the owning
+ * connection has registered a recovery callback and that callback obtains fresh cookies.
+ */
 export function attachBrowserSsoCookies(client: ADTClient, capturedCookies: readonly string[]) {
   const http = client.httpClient
   let cookies = new Map<string, string>()
@@ -163,6 +169,7 @@ export function attachBrowserSsoCookies(client: ADTClient, capturedCookies: read
 
   const request = http.request.bind(http)
   http.request = async (url, options) => {
+    // A changed version means another request renewed this session while this one was in flight.
     const version = session.version
     const wasStateful = http.isStateful
     try {

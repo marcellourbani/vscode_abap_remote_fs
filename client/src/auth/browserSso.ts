@@ -29,6 +29,8 @@ import { buildCookieHeaders, sanitizeCookie, toStringArray } from "./utils"
 const VAULT_SERVICE = "vscode.abapfs.browsersso"
 
 const VAULT_TS_SERVICE = "vscode.abapfs.browsersso.ts"
+// Callers for one connection share a single browser prompt. The generation makes cancellation
+// final even if an older capture finishes after its HTTP server was asked to stop.
 const captureLocks = new Map<string, { pending: Promise<string[]>; controller: AbortController }>()
 const captureGenerations = new Map<string, number>()
 
@@ -57,6 +59,7 @@ function captureCookiesOnce(connId: string, loginUrl: string): Promise<string[]>
       controller.signal
     )
       .then(async cookies => {
+        // Check on both sides of the vault write so a disconnect cannot publish a late result.
         if (controller.signal.aborted) throw new vscode.CancellationError()
         await storeSsoCookies(connId, cookies)
         if (controller.signal.aborted) throw new vscode.CancellationError()
@@ -78,6 +81,7 @@ function captureCookiesOnce(connId: string, loginUrl: string): Promise<string[]>
 
 export async function cancelBrowserSsoCapture(connId: string) {
   const connectionKey = formatKey(connId)
+  // Invalidate every waiter before aborting the shared capture.
   captureGenerations.set(connectionKey, (captureGenerations.get(connectionKey) ?? 0) + 1)
   const capture = captureLocks.get(connectionKey)
   if (!capture) return
@@ -363,6 +367,7 @@ export async function buildBrowserSsoAuth(
 
 /** Open the browser login and store the captured cookies, joining a login already open. */
 export function captureBrowserSsoCookies(connId: string, sapUrl: string, sapClient: string) {
+  // This lightweight ADT endpoint establishes the SAP session without loading repository data.
   const loginUrl = `${sapUrl}/sap/bc/adt/compatibility/graph?sap-client=${encodeURIComponent(sapClient)}`
   return captureCookiesOnce(connId, loginUrl)
 }

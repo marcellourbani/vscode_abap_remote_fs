@@ -182,6 +182,8 @@ async function getAuthHeaders(connId: string): Promise<AuthHeadersResponse | und
       }
     }
     case "browser_sso": {
+      // Header requests must stay non-interactive. If these cookies fail, the server asks the
+      // extension host to run Browser SSO recovery explicitly.
       const { log: libLog } = await import("./lib")
       const { getSsoCookies } = await import("./auth/browserSso")
       const cookies = await getSsoCookies(connId)
@@ -319,6 +321,8 @@ export async function startLanguageClient(context: ExtensionContext) {
 
   IncludeProvider.get().onDidSelectInclude(includeChanged)
   onBrowserSsoLogin(connId => {
+    // A successful manual connection can wake a language-server client paused after an earlier
+    // cancelled or failed Browser SSO attempt.
     if (client.state !== State.Running) return
     client
       .sendNotification(Methods.browserSsoLogin, connId)
@@ -335,6 +339,7 @@ export async function startLanguageClient(context: ExtensionContext) {
       client.onRequest(Methods.setSearchProgress, setSearchProgress)
       client.onRequest(Methods.getToken, getToken)
       client.onRequest(Methods.getAuthHeaders, getAuthHeaders)
+      // Interactive browser work belongs in the extension host, not the language-server process.
       client.onRequest(Methods.recoverBrowserSso, refreshBrowserSsoCookies)
       client.onNotification(Methods.commLogEntry, (entry: CommLogEntryData) =>
         CallLogger.get(entry.connId)?.add(hidrateLogData(entry.logData))

@@ -78,6 +78,7 @@ export class GetAbapObjectUrlTool implements vscode.LanguageModelTool<IGetAbapOb
         throw new Error(`Connection configuration not found for ID: ${activeConnectionId}`)
       }
 
+      // URL generation is deliberately local: this tool must not create a client or start a login.
       const webguiUrl = SapGuiPanel.webGuiUrl(config, objectName, objectType)
       const transactionInfo = SapGuiPanel.getTransactionInfo(objectType, objectName)
 

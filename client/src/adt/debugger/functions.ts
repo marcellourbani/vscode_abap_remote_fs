@@ -126,6 +126,8 @@ export async function newClientFromKey(key: string, options: Partial<ClientOptio
         pwdOrFetch = "oauth-onprem-auth"
       }
     } else if (authMethod === "browser_sso" && !conf.oauth) {
+      // Authentication is supplied by the rotating cookie session below. The placeholder only
+      // satisfies ADTClient's constructor and is never sent as Basic authentication.
       pwdOrFetch = "browser-sso-auth"
     } else if (authMethod !== "basic" && !conf.oauth) {
       const headers = await getDebuggerAuthHeaders(conf)
@@ -145,6 +147,8 @@ export async function newClientFromKey(key: string, options: Partial<ClientOptio
     )
     if (authMethod === "browser_sso" && !conf.oauth) {
       const connectionKey = formatKey(conf.name)
+      // Prefer the saved browser login. Only ask the main connection manager to capture fresh
+      // cookies when none are available, so starting the debugger does not open duplicate prompts.
       let cookies = await getSsoCookies(connectionKey)
       if (!cookies.length && (await refreshBrowserSsoCookies(conf.name)))
         cookies = await getSsoCookies(connectionKey)
@@ -154,6 +158,8 @@ export async function newClientFromKey(key: string, options: Partial<ClientOptio
         )
       attachBrowserSsoCookies(client, cookies)
       attachBrowserSsoCookies(client.statelessClone, cookies)
+      // Main and clone failures share one renewal. This prevents simultaneous debugger requests
+      // from opening more than one browser login.
       const renew = async () => {
         if (await loginWithBrowserSsoCookies(client, await getSsoCookies(connectionKey)))
           return true

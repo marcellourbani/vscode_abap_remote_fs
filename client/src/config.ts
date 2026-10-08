@@ -271,6 +271,8 @@ export async function createAuthenticatedClient(conf: RemoteConfig): Promise<ADT
     case "browser_sso": {
       log.debug(`[auth] Building browser SSO auth for ${conf.name}`)
       const result = await buildBrowserSsoAuth(conf.name, conf.url, conf.client)
+      // Do not pin Cookie in ADTClient's static headers. The session wrapper must replace cookies
+      // after SAP rotates them or the browser login is renewed.
       const { Cookie, ...headers } = result.headers ?? {}
       if (Object.keys(headers).length) sslconf.headers = { ...sslconf.headers, ...headers }
       const capturedCookies = Cookie?.split(";") ?? []
@@ -282,6 +284,7 @@ export async function createAuthenticatedClient(conf: RemoteConfig): Promise<ADT
         conf.language,
         sslconf
       )
+      // Main and stateless clients maintain independent SAP session cookies.
       attachBrowserSsoCookies(client, capturedCookies)
       attachBrowserSsoCookies(client.statelessClone, capturedCookies)
       return client

@@ -147,10 +147,7 @@ export class SapGuiPanel {
     )
   }
 
-  /**
-   * � Build WebGUI URL using existing infrastructure
-   * Made public for the new abapfs_get_object_url language tool
-   */
+  /** Build this panel's WebGUI URL from its connection settings. */
   public async buildWebGuiUrl(): Promise<string> {
     const config = RemoteManager.get().byId(this._connectionId)
 
