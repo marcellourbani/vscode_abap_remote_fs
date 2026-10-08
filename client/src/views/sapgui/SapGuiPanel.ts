@@ -147,17 +147,23 @@ export class SapGuiPanel {
     )
   }
 
-  /**
-   * � Build WebGUI URL using existing infrastructure
-   * Made public for the new abapfs_get_object_url language tool
-   */
+  /** Build this panel's WebGUI URL from its connection settings. */
   public async buildWebGuiUrl(): Promise<string> {
-    const transactionInfo = SapGuiPanel.getTransactionInfo(this._objectType, this._objectName)
     const config = RemoteManager.get().byId(this._connectionId)
 
     if (!config) {
       throw new Error("Connection configuration not found")
     }
+    return SapGuiPanel.webGuiUrl(config, this._objectName, this._objectType)
+  }
+
+  /** WebGUI URL that opens the object; needs only the connection settings, no SAP login. */
+  public static webGuiUrl(
+    config: { url: string; client: string; language?: string },
+    objectName: string,
+    objectType: string
+  ): string {
+    const transactionInfo = SapGuiPanel.getTransactionInfo(objectType, objectName)
 
     // Build base URL — honour the scheme the user configured. Only default
     // to https when no scheme is present. Fixes GitHub issue #446: previously

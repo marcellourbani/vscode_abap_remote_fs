@@ -28,9 +28,11 @@ import { buildCookieHeaders, sanitizeCookie, toStringArray } from "./utils"
 
 const VAULT_SERVICE = "vscode.abapfs.browsersso"
 
-const SSO_COOKIE_TTL_MS = 30 * 60 * 1000 // 30 minutes — SAP session cookies typically expire in 30-60 min
 const VAULT_TS_SERVICE = "vscode.abapfs.browsersso.ts"
-const captureLocks = new Map<string, Promise<string[]>>()
+// Callers for one connection share a single browser prompt. The generation makes cancellation
+// final even if an older capture finishes after its HTTP server was asked to stop.
+const captureLocks = new Map<string, { pending: Promise<string[]>; controller: AbortController }>()
+const captureGenerations = new Map<string, number>()
 
 interface CookieCaptureRequest {
   cookies?: string
@@ -45,47 +47,66 @@ function getListeningPort(server: http.Server): number {
 }
 
 function captureCookiesOnce(connId: string, loginUrl: string): Promise<string[]> {
-  let pending = captureLocks.get(connId)
-  if (!pending) {
-    pending = startCookieCaptureServer(loginUrl, 120_000, vscodeSsoNotify)
+  const connectionKey = formatKey(connId)
+  const generation = captureGenerations.get(connectionKey) ?? 0
+  let capture = captureLocks.get(connectionKey)
+  if (!capture) {
+    const controller = new AbortController()
+    const pending = startCookieCaptureServer(
+      loginUrl,
+      5 * 60_000,
+      vscodeSsoNotify,
+      controller.signal
+    )
       .then(async cookies => {
+        // Check on both sides of the vault write so a disconnect cannot publish a late result.
+        if (controller.signal.aborted) throw new vscode.CancellationError()
         await storeSsoCookies(connId, cookies)
+        if (controller.signal.aborted) throw new vscode.CancellationError()
         return cookies
       })
-      .finally(() => captureLocks.delete(connId))
-    captureLocks.set(connId, pending)
+      .finally(() => {
+        if (captureLocks.get(connectionKey)?.controller === controller)
+          captureLocks.delete(connectionKey)
+      })
+    capture = { pending, controller }
+    captureLocks.set(connectionKey, capture)
   }
-  return pending
+  return capture.pending.then(cookies => {
+    if ((captureGenerations.get(connectionKey) ?? 0) !== generation)
+      throw new vscode.CancellationError()
+    return cookies
+  })
 }
 
-/** Store SSO cookies securely (with timestamp). */
+export async function cancelBrowserSsoCapture(connId: string) {
+  const connectionKey = formatKey(connId)
+  // Invalidate every waiter before aborting the shared capture.
+  captureGenerations.set(connectionKey, (captureGenerations.get(connectionKey) ?? 0) + 1)
+  const capture = captureLocks.get(connectionKey)
+  if (!capture) return
+  capture.controller.abort()
+  await capture.pending.catch(() => undefined)
+}
+
+export async function cancelAllBrowserSsoCaptures() {
+  await Promise.all([...captureLocks.keys()].map(cancelBrowserSsoCapture))
+}
+
+/** Store SSO cookies securely. */
 export async function storeSsoCookies(connId: string, cookies: string[]): Promise<void> {
   const vault = PasswordVault.get()
   await vault.setPassword(VAULT_SERVICE, formatKey(connId), JSON.stringify(cookies))
-  await vault.setPassword(VAULT_TS_SERVICE, formatKey(connId), String(Date.now()))
   log.debug(`[browser-sso] Stored ${cookies.length} cookies for ${connId}`)
 }
 
-/** Retrieve stored SSO cookies (returns empty if expired). */
+/** Retrieve stored SSO cookies; SAP validates them when a client connects. */
 export async function getSsoCookies(connId: string): Promise<string[]> {
   const vault = PasswordVault.get()
   const raw = await vault.getPassword(VAULT_SERVICE, formatKey(connId))
   if (!raw) {
     log.debug(`[browser-sso] No cached cookies for ${connId}`)
     return []
-  }
-  // Check timestamp — consider expired after TTL
-  const tsRaw = await vault.getPassword(VAULT_TS_SERVICE, formatKey(connId))
-  if (tsRaw) {
-    const storedAt = parseInt(tsRaw, 10)
-    const ageMs = Date.now() - storedAt
-    if (ageMs > SSO_COOKIE_TTL_MS) {
-      log.debug(
-        `[browser-sso] Cookies expired for ${connId} (age=${Math.round(ageMs / 1000)}s, ttl=${SSO_COOKIE_TTL_MS / 1000}s)`
-      )
-      await clearSsoCookies(connId)
-      return []
-    }
   }
   try {
     const parsed = JSON.parse(raw)
@@ -118,23 +139,61 @@ export async function clearSsoCookies(connId: string): Promise<void> {
  *    so cross-origin restrictions apply naturally
  *
  * @param sapUrl     The SAP URL to open in the browser for SSO
- * @param timeoutMs  Max wait time (default 120 seconds)
+ * @param timeoutMs  Capture deadline (default five minutes)
  * @param notifyUser Optional callback to show the helper URL to the user if browser launch fails
  */
 export function startCookieCaptureServer(
   sapUrl: string,
-  timeoutMs = 120_000,
-  notifyUser?: (helperUrl: string) => void
+  timeoutMs = 5 * 60_000,
+  notifyUser?: (helperUrl: string) => void,
+  signal?: AbortSignal
 ): Promise<string[]> {
   // Random token that must be present in POST to prevent cross-origin cookie injection
   const token = randomBytes(24).toString("hex")
 
   return new Promise((resolve, reject) => {
+    if (signal?.aborted) {
+      reject(new vscode.CancellationError())
+      return
+    }
+    let deadline = Date.now() + timeoutMs
+    let timer: ReturnType<typeof setTimeout>
+    let settled = false
     const server = http.createServer((req, res) => {
+      if (settled) {
+        res.writeHead(410)
+        res.end("Login is no longer active.")
+        return
+      }
+      if (Date.now() >= deadline) {
+        res.writeHead(410)
+        res.end("Login timed out. Run Connect again.")
+        expire()
+        return
+      }
       // Only serve the helper page at the token URL
       if (req.method === "GET" && req.url === `/${token}`) {
         res.writeHead(200, { "Content-Type": "text/html" })
-        res.end(getHelperPageHtml(sapUrl, token))
+        res.end(getHelperPageHtml(sapUrl, token, deadline))
+        return
+      }
+
+      if (req.method === "POST" && req.url === `/${token}/extend`) {
+        deadline = Date.now() + timeoutMs
+        clearTimeout(timer)
+        timer = setTimeout(expire, timeoutMs)
+        res.writeHead(200, { "Content-Type": "application/json" })
+        res.end(JSON.stringify({ deadline }))
+        return
+      }
+
+      if (req.method === "POST" && req.url === `/${token}/cancel`) {
+        res.writeHead(200, { "Content-Type": "application/json" })
+        res.end(JSON.stringify({ message: "Login cancelled." }))
+        settled = true
+        clearTimeout(timer)
+        server.close()
+        reject(new vscode.CancellationError())
         return
       }
 
@@ -157,6 +216,11 @@ export function startCookieCaptureServer(
         })
         req.on("end", () => {
           if (rejected) return
+          if (settled) {
+            res.writeHead(410)
+            res.end("Login is no longer active.")
+            return
+          }
           try {
             const data = JSON.parse(body) as CookieCaptureRequest
             // Sanitize cookies: strip CR/LF to prevent HTTP header injection
@@ -170,7 +234,10 @@ export function startCookieCaptureServer(
               log.debug(`[browser-sso] POST received but no cookies extracted`)
               res.writeHead(200, { "Content-Type": "application/json" })
               res.end(
-                JSON.stringify({ message: "No cookies received. Make sure you are logged in." })
+                JSON.stringify({
+                  captured: false,
+                  message: "No cookies received. Make sure you are logged in."
+                })
               )
               return
             }
@@ -181,10 +248,12 @@ export function startCookieCaptureServer(
             res.writeHead(200, { "Content-Type": "application/json" })
             res.end(
               JSON.stringify({
+                captured: true,
                 message: `Captured ${cookies.length} cookies. You can close this tab.`
               })
             )
 
+            settled = true
             clearTimeout(timer)
             server.close()
             resolve(cookies)
@@ -203,6 +272,10 @@ export function startCookieCaptureServer(
 
     // Listen on a random available port on loopback only
     server.listen(0, "127.0.0.1", () => {
+      if (settled) {
+        server.close()
+        return
+      }
       const helperUrl = `http://127.0.0.1:${getListeningPort(server)}/${token}`
 
       // Open in the user's default browser; only show notification as fallback
@@ -222,12 +295,29 @@ export function startCookieCaptureServer(
         })
     })
 
-    const timer = setTimeout(() => {
+    function expire() {
+      if (settled) return
+      settled = true
+      clearTimeout(timer)
       server.close()
-      reject(new Error("Browser SSO timed out. No cookies received within the time limit."))
-    }, timeoutMs)
+      reject(new Error("Browser SSO timed out. Run Connect again to retry."))
+    }
+    timer = setTimeout(expire, timeoutMs)
+
+    signal?.addEventListener(
+      "abort",
+      () => {
+        if (settled) return
+        settled = true
+        clearTimeout(timer)
+        if (server.listening) server.close()
+        reject(new vscode.CancellationError())
+      },
+      { once: true }
+    )
 
     server.on("error", err => {
+      settled = true
       clearTimeout(timer)
       reject(new Error(`Cookie capture server error: ${err.message}`))
     })
@@ -257,11 +347,13 @@ export async function buildBrowserSsoAuth(
   sapClient: string
 ): Promise<AuthResult> {
   log.debug(`[browser-sso] buildBrowserSsoAuth starting for ${connId}`)
+  const generation = captureGenerations.get(formatKey(connId)) ?? 0
   let cookies = await getSsoCookies(connId)
+  if ((captureGenerations.get(formatKey(connId)) ?? 0) !== generation)
+    throw new vscode.CancellationError()
   if (cookies.length === 0) {
     log.debug(`[browser-sso] No cached cookies, starting cookie capture for ${connId}`)
-    const loginUrl = `${sapUrl}/sap/bc/adt/discovery?sap-client=${encodeURIComponent(sapClient)}`
-    cookies = await captureCookiesOnce(connId, loginUrl)
+    cookies = await captureBrowserSsoCookies(connId, sapUrl, sapClient)
   }
 
   const headers = buildCookieHeaders(cookies)
@@ -273,31 +365,15 @@ export async function buildBrowserSsoAuth(
   }
 }
 
-/**
- * Re-authenticate browser SSO (clear cookies and re-capture).
- */
-export async function refreshBrowserSsoAuth(
-  connId: string,
-  sapUrl: string,
-  sapClient: string
-): Promise<AuthResult> {
-  log.debug(`[browser-sso] refreshBrowserSsoAuth starting for ${connId}`)
-  await clearSsoCookies(connId)
-  captureLocks.delete(connId)
-  const loginUrl = `${sapUrl}/sap/bc/adt/discovery?sap-client=${encodeURIComponent(sapClient)}`
-  const cookies = await captureCookiesOnce(connId, loginUrl)
-
-  const headers = buildCookieHeaders(cookies)
-
-  log.debug(`[browser-sso] refreshBrowserSsoAuth complete for ${connId}: ${cookies.length} cookies`)
-  return {
-    passwordOrFetcher: "browser-sso",
-    ...(headers ? { headers } : {})
-  }
+/** Open the browser login and store the captured cookies, joining a login already open. */
+export function captureBrowserSsoCookies(connId: string, sapUrl: string, sapClient: string) {
+  // This lightweight ADT endpoint establishes the SAP session without loading repository data.
+  const loginUrl = `${sapUrl}/sap/bc/adt/compatibility/graph?sap-client=${encodeURIComponent(sapClient)}`
+  return captureCookiesOnce(connId, loginUrl)
 }
 
 /** Generate the helper HTML page for cookie capture. */
-function getHelperPageHtml(sapUrl: string, token: string): string {
+function getHelperPageHtml(sapUrl: string, token: string, deadline: number): string {
   // Validate URL protocol before embedding — reject javascript: or data: URIs
   if (!/^https?:\/\//i.test(sapUrl)) {
     sapUrl = "about:blank" // Safe fallback; should never reach here in normal operation
@@ -325,12 +401,17 @@ function getHelperPageHtml(sapUrl: string, token: string): string {
     button { padding: 10px 20px; background: #0066cc; color: #fff; border: none;
              border-radius: 4px; font-size: 14px; cursor: pointer; }
     button:hover { background: #0052a3; }
+    button.secondary { background: #eee; color: #333; }
+    button.secondary:hover { background: #ddd; }
+    #timer { margin: 16px 0; font-variant-numeric: tabular-nums; }
     .success { color: #28a745; font-weight: bold; display: none; }
     .error { color: #dc3545; display: none; }
   </style>
 </head>
 <body>
   <h1>ABAP FS — Browser SSO Login</h1>
+  <p id="timer" role="status" aria-live="polite"></p>
+  <button class="secondary" id="extend" onclick="extendTimer()">Extend time</button>
   <div class="step">
     <b>Step 1:</b> <a href="${escapedUrl}" target="_blank" rel="noopener">Click here to open your SAP system</a>
     and complete the SSO login in the popup window.
@@ -339,11 +420,43 @@ function getHelperPageHtml(sapUrl: string, token: string): string {
     <b>Step 2:</b> After you are logged in, open browser DevTools (F12) → Application → Cookies,
     and copy all cookies for the SAP domain. Paste them below:
     <textarea id="cookieInput" placeholder="Paste cookies here (name=value; name2=value2; ...)"></textarea>
-    <button onclick="submitCookies()">Submit Cookies</button>
+    <button id="submit" onclick="submitCookies()">Submit Cookies</button>
   </div>
+  <button class="secondary" id="cancel" onclick="cancelLogin()">Cancel login</button>
   <p class="success" id="success"></p>
   <p class="error" id="error"></p>
   <script>
+    var deadline = ${deadline};
+    function updateTimer() {
+      var seconds = Math.max(0, Math.ceil((deadline - Date.now()) / 1000));
+      document.getElementById('timer').textContent = seconds
+        ? 'Time remaining: ' + Math.floor(seconds / 60) + ':' + String(seconds % 60).padStart(2, '0')
+        : 'Login timed out. Run Connect again to retry.';
+      document.getElementById('extend').disabled = !seconds;
+      document.getElementById('submit').disabled = !seconds;
+      document.getElementById('cancel').disabled = !seconds;
+    }
+    var countdown = setInterval(updateTimer, 1000);
+    updateTimer();
+    function finish(message) {
+      clearInterval(countdown);
+      document.getElementById('timer').textContent = message;
+      document.getElementById('extend').disabled = true;
+      document.getElementById('submit').disabled = true;
+      document.getElementById('cancel').disabled = true;
+    }
+    function extendTimer() {
+      fetch('/${token}/extend', { method: 'POST' })
+        .then(function(r) { if (!r.ok) throw new Error('Unable to extend time'); return r.json(); })
+        .then(function(data) { deadline = data.deadline; updateTimer(); })
+        .catch(function(e) { finish('Login session unavailable. Run Connect again to retry.'); document.getElementById('error').textContent = String(e); document.getElementById('error').style.display = 'block'; });
+    }
+    function cancelLogin() {
+      fetch('/${token}/cancel', { method: 'POST' })
+        .then(function(r) { if (!r.ok) throw new Error('Unable to cancel login'); return r.json(); })
+        .then(function(data) { finish(data.message); })
+        .catch(function(e) { document.getElementById('error').textContent = String(e); document.getElementById('error').style.display = 'block'; });
+    }
     function submitCookies() {
       var cookies = document.getElementById('cookieInput').value.trim();
       if (!cookies) { document.getElementById('error').textContent = 'Please paste cookies first.'; document.getElementById('error').style.display = 'block'; return; }
@@ -352,14 +465,20 @@ function getHelperPageHtml(sapUrl: string, token: string): string {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ cookies: cookies })
       })
-      .then(function(r) { return r.json(); })
+      .then(function(r) { if (!r.ok) throw new Error('Login session expired'); return r.json(); })
       .then(function(d) {
+        if (!d.captured) {
+          document.getElementById('error').textContent = d.message;
+          document.getElementById('error').style.display = 'block';
+          return;
+        }
+        finish(d.message);
         document.getElementById('success').textContent = d.message;
         document.getElementById('success').style.display = 'block';
         document.getElementById('error').style.display = 'none';
       })
       .catch(function(e) {
-        document.getElementById('error').textContent = 'Error: ' + e;
+        document.getElementById('error').textContent = 'Error: ' + e + '. Run Connect again if the timer expired.';
         document.getElementById('error').style.display = 'block';
       });
     }
