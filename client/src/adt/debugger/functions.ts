@@ -15,6 +15,7 @@ import {
 } from "vscode-abap-remote-fs-sharedapi"
 import { refreshBrowserSsoCookies } from "../conections"
 import { getCertPassphrase } from "../../auth/certificate"
+import { buildOAuthOnPremAuth } from "../../auth/oauthOnPrem"
 import { log } from "../../lib"
 
 export const md5 = (s: string) => createHash("md5").update(s).digest("hex")
@@ -108,7 +109,6 @@ export async function newClientFromKey(key: string, options: Partial<ClientOptio
       const oauthConf = (conf as any).oauthOnPrem
       if (oauthConf) {
         try {
-          const { buildOAuthOnPremAuth } = await import("../../auth/oauthOnPrem")
           const result = await buildOAuthOnPremAuth(
             formatKey(conf.name),
             conf.url,

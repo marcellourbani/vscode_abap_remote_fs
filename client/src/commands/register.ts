@@ -1,6 +1,10 @@
 import { type ExtensionContext, commands } from "vscode"
 import { funWindow as window } from "../services/funMessenger"
 import { abapcmds } from "."
+import { showEnhancementSource } from "../views/enhancementDecorations"
+import { SapSystemValidator } from "../services/sapSystemValidator"
+import { registerCompareWithSystemCommand } from "./compareWithSystem"
+import { registerRepositoryWorkflowCommand } from "../services/repositoryWorkflow/workflowPanel"
 
 // import/export to resolve dependencies
 export { AdtCommands } from "./commands"
@@ -16,7 +20,6 @@ export const registerCommands = (context: ExtensionContext) => {
 
   // 🎯 Register Enhancement Commands
   try {
-    const { showEnhancementSource } = require("../views/enhancementDecorations")
     context.subscriptions.push(
       commands.registerCommand("abapfs.showEnhancementSource", showEnhancementSource)
     )
@@ -26,7 +29,6 @@ export const registerCommands = (context: ExtensionContext) => {
 
   // 🔄 Register SAP System Validator Commands
   try {
-    const { SapSystemValidator } = require("../services/sapSystemValidator")
     const validator = SapSystemValidator.getInstance()
 
     context.subscriptions.push(
@@ -53,16 +55,12 @@ export const registerCommands = (context: ExtensionContext) => {
 
   // 📊 Register Compare With Other System Command
   try {
-    const { registerCompareWithSystemCommand } = require("./compareWithSystem")
     registerCompareWithSystemCommand(context)
   } catch (error) {
     console.warn("⚠️ Failed to register compare command:", error)
   }
 
   try {
-    const {
-      registerRepositoryWorkflowCommand
-    } = require("../services/repositoryWorkflow/workflowPanel")
     registerRepositoryWorkflowCommand(context)
   } catch (error) {
     console.warn("⚠️ Failed to register Repository workflow command:", error)
