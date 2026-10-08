@@ -2,7 +2,8 @@ import {
   type ClientConfiguration,
   hasCertAuthConfig,
   hasOAuthOnPremConfig,
-  getAuthMethod
+  getAuthMethod,
+  attachBrowserSsoCookies
 } from "vscode-abap-remote-fs-sharedapi"
 import type { Agent } from "https"
 import {
@@ -270,7 +271,9 @@ export async function createAuthenticatedClient(conf: RemoteConfig): Promise<ADT
     case "browser_sso": {
       log.debug(`[auth] Building browser SSO auth for ${conf.name}`)
       const result = await buildBrowserSsoAuth(conf.name, conf.url, conf.client)
-      if (result.headers) sslconf.headers = { ...sslconf.headers, ...result.headers }
+      const { Cookie, ...headers } = result.headers ?? {}
+      if (Object.keys(headers).length) sslconf.headers = { ...sslconf.headers, ...headers }
+      const capturedCookies = Cookie?.split(";") ?? []
       const client = new ADTClient(
         conf.url,
         conf.username,
@@ -279,6 +282,8 @@ export async function createAuthenticatedClient(conf: RemoteConfig): Promise<ADT
         conf.language,
         sslconf
       )
+      attachBrowserSsoCookies(client, capturedCookies)
+      attachBrowserSsoCookies(client.statelessClone, capturedCookies)
       return client
     }
     case "oauth_onprem": {

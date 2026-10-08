@@ -8,7 +8,14 @@ import {
   type InitializeResult,
   TextDocumentSyncKind
 } from "vscode-languageserver"
-import { connection, log, setCommLogActive } from "./clientManager"
+import {
+  browserSsoLoginCompleted,
+  clientKeyFromUrl,
+  connection,
+  connectionFolderChanged,
+  log,
+  setCommLogActive
+} from "./clientManager"
 import { syntaxCheck } from "./syntaxcheck"
 import { completion, completionResolve, signatureHelp } from "./completion"
 import { findDefinition, findReferences, cancelSearch } from "./references"
@@ -84,6 +91,9 @@ connection.onInitialized(() => {
   if (hasWorkspaceFolderCapability) {
     connection.workspace.onDidChangeWorkspaceFolders(event => {
       log("Workspace folder change event received.")
+      const connectionIds = (folders: { uri: string }[]) =>
+        folders.flatMap(folder => clientKeyFromUrl(folder.uri) || [])
+      connectionFolderChanged(connectionIds(event.added), connectionIds(event.removed))
     })
   }
 })
@@ -145,6 +155,7 @@ connection.onRequest(Methods.triggerSyntaxCheck, (uri: string) => {
   if (doc) syntaxCheck(doc)
 })
 connection.onNotification(Methods.commLogToggle, setCommLogActive)
+connection.onNotification(Methods.browserSsoLogin, browserSsoLoginCompleted)
 
 documents.listen(connection)
 connection.listen()

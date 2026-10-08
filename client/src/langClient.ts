@@ -29,7 +29,14 @@ import { type FixProposal, type Delta, type LogData } from "abap-adt-api"
 import { command, AbapFsCommands } from "./commands"
 import { RemoteManager, formatKey } from "./config"
 import { futureToken } from "./oauth"
-import { getRoot, ADTSCHEME, uriRoot, getClient } from "./adt/conections"
+import {
+  getRoot,
+  ADTSCHEME,
+  uriRoot,
+  getClient,
+  onBrowserSsoLogin,
+  refreshBrowserSsoCookies
+} from "./adt/conections"
 import { CallLogger } from "./adt/adtCommLog"
 import { isAbapFile } from "abapfs"
 import { type AbapObject } from "abapobject"
@@ -176,27 +183,13 @@ async function getAuthHeaders(connId: string): Promise<AuthHeadersResponse | und
     }
     case "browser_sso": {
       const { log: libLog } = await import("./lib")
-      try {
-        libLog.debug(`[langClient] getAuthHeaders: resolving browser_sso cookies for ${connId}`)
-        const { buildBrowserSsoAuth, getSsoCookies } = await import("./auth/browserSso")
-        const result = await buildBrowserSsoAuth(connId, conn.url, conn.client)
-        if (result.headers) {
-          libLog.debug(`[langClient] getAuthHeaders: browser_sso capture resolved for ${connId}`)
-          return { httpHeaders: result.headers }
-        }
-
-        const cookies = await getSsoCookies(connId)
-        const httpHeaders = buildCookieHeaders(cookies)
-        return httpHeaders ? { httpHeaders } : undefined
-      } catch (e) {
-        libLog.debug(
-          `[langClient] getAuthHeaders: browser_sso capture failed for ${connId}: ${errorMessage(e)}`
-        )
-        const { getSsoCookies } = await import("./auth/browserSso")
-        const cookies = await getSsoCookies(connId)
-        const httpHeaders = buildCookieHeaders(cookies)
-        return httpHeaders ? { httpHeaders } : undefined
-      }
+      const { getSsoCookies } = await import("./auth/browserSso")
+      const cookies = await getSsoCookies(connId)
+      libLog.debug(
+        `[langClient] getAuthHeaders: ${cookies.length} cached browser_sso cookies for ${connId}`
+      )
+      const httpHeaders = buildCookieHeaders(cookies)
+      return httpHeaders ? { httpHeaders } : undefined
     }
     case "cert": {
       const { log: libLog } = await import("./lib")
@@ -325,6 +318,12 @@ export async function startLanguageClient(context: ExtensionContext) {
   )
 
   IncludeProvider.get().onDidSelectInclude(includeChanged)
+  onBrowserSsoLogin(connId => {
+    if (client.state !== State.Running) return
+    client
+      .sendNotification(Methods.browserSsoLogin, connId)
+      .catch(error => log(`[langClient] Browser SSO login notification failed: ${error}`))
+  })
 
   client.onDidChangeState(e => {
     if (e.newState === State.Running) {
@@ -336,6 +335,7 @@ export async function startLanguageClient(context: ExtensionContext) {
       client.onRequest(Methods.setSearchProgress, setSearchProgress)
       client.onRequest(Methods.getToken, getToken)
       client.onRequest(Methods.getAuthHeaders, getAuthHeaders)
+      client.onRequest(Methods.recoverBrowserSso, refreshBrowserSsoCookies)
       client.onNotification(Methods.commLogEntry, (entry: CommLogEntryData) =>
         CallLogger.get(entry.connId)?.add(hidrateLogData(entry.logData))
       )

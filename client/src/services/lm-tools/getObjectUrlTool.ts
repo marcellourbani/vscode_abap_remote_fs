@@ -8,8 +8,7 @@ import { registerToolWithRegistry } from "./toolRegistry"
 import { funWindow as window } from "../funMessenger"
 import { logTelemetry } from "../telemetry"
 import { SapGuiPanel } from "../../views/sapgui/SapGuiPanel"
-import { RemoteManager } from "../../config"
-import { ADTClient } from "abap-adt-api"
+import { RemoteManager, formatKey } from "../../config"
 import { assertToolInvocationAuthorized } from "./toolGuard"
 
 // ============================================================================
@@ -59,7 +58,7 @@ export class GetAbapObjectUrlTool implements vscode.LanguageModelTool<IGetAbapOb
     logTelemetry("tool_get_abap_object_url_called", { connectionId })
 
     if (connectionId) {
-      connectionId = connectionId.toLowerCase()
+      connectionId = formatKey(connectionId)
     }
 
     try {
@@ -68,38 +67,19 @@ export class GetAbapObjectUrlTool implements vscode.LanguageModelTool<IGetAbapOb
       if (!activeConnectionId) {
         const activeEditor = window.activeTextEditor
         if (activeEditor && activeEditor.document.uri.scheme === "adt") {
-          activeConnectionId = activeEditor.document.uri.authority
+          activeConnectionId = formatKey(activeEditor.document.uri.authority)
         } else {
           throw new Error("No connection ID provided and no active ABAP document found")
         }
       }
 
-      const config = RemoteManager.get().byId(activeConnectionId)
+      const config = await RemoteManager.get().byIdAsync(activeConnectionId)
       if (!config) {
         throw new Error(`Connection configuration not found for ID: ${activeConnectionId}`)
       }
 
-      const client = new ADTClient(
-        config.url,
-        config.username,
-        config.password,
-        config.client,
-        config.language
-      )
-
-      const sapGuiPanel = SapGuiPanel.createOrShow(
-        vscode.Uri.file(__dirname),
-        client,
-        activeConnectionId,
-        objectName,
-        objectType
-      )
-
-      const webguiUrl = await sapGuiPanel.buildWebGuiUrl()
-
+      const webguiUrl = SapGuiPanel.webGuiUrl(config, objectName, objectType)
       const transactionInfo = SapGuiPanel.getTransactionInfo(objectType, objectName)
-
-      sapGuiPanel.dispose()
 
       const resultText =
         `SAP GUI URL Generated Successfully\n` +

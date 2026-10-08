@@ -9,11 +9,33 @@ import {
   type AuthHeadersResponse,
   type CertAuthTransport,
   getAuthMethod,
+  attachBrowserSsoCookies,
+  loginWithBrowserSsoCookies,
+  onBrowserSsoAuthFailure,
   Methods,
   type CommLogTogglePayload
 } from "vscode-abap-remote-fs-sharedapi"
 import { isString } from "./functions"
 const clients: Map<string, ADTClient> = new Map()
+const refreshTimers = new Map<string, ReturnType<typeof setInterval>>()
+const initializations = new Map<string, Promise<ADTClient | undefined>>()
+const removedConnections = new Set<string>()
+const blockedBrowserSso = new Set<string>()
+const connectionGenerations = new Map<string, number>()
+const refreshes = new Map<string, Promise<void>>()
+
+// Two refreshes at once would both replace the same old client and leak one of the new ones
+function queueRefresh(key: string, conf: ClientConfiguration) {
+  const previous = refreshes.get(key) ?? Promise.resolve()
+  const next = previous.catch(() => undefined).then(() => refreshClient(key, conf))
+  refreshes.set(key, next)
+  void next
+    .finally(() => {
+      if (refreshes.get(key) === next) refreshes.delete(key)
+    })
+    .catch(() => undefined)
+  return next
+}
 
 type ServerSslConfig = ReturnType<typeof createSSLConfig> & {
   debugCallback?: (logData: LogData) => void
@@ -52,6 +74,15 @@ export const log = (...params: unknown[]) => connection.console.log(convertParam
 export function clientKeyFromUrl(url: string) {
   const match = url.match(/adt:\/\/([^\/]*)/)
   return match && match[1]
+}
+
+// Folder URIs may percent-encode the connection name
+function connectionKey(raw: string) {
+  try {
+    return decodeURIComponent(raw).toLowerCase()
+  } catch {
+    return raw.toLowerCase()
+  }
 }
 
 function createFetchToken(conf: ClientConfiguration) {
@@ -150,15 +181,60 @@ function buildCertificateAgent(
   return new https.Agent(agentOptions)
 }
 
+// Language features stay off until the editor reports the next Browser SSO login.
+function blockBrowserSso(key: string) {
+  blockedBrowserSso.add(key)
+  clearInterval(refreshTimers.get(key))
+  refreshTimers.delete(key)
+  clients.delete(key)
+}
+
+// Try the saved cookies first; only a rejected login asks the editor to open the browser.
+function registerBrowserSsoRecovery(key: string, conf: ClientConfiguration, client: ADTClient) {
+  const isCurrent = () => clients.get(key) === client && !removedConnections.has(key)
+  const loginWithSavedCookies = async () => {
+    const headers = await fetchAuthHeaders(conf.name)
+    if (!isCurrent()) return false
+    return loginWithBrowserSsoCookies(client, headers?.httpHeaders?.Cookie?.split(";") ?? [])
+  }
+  const renew = async () => {
+    if (await loginWithSavedCookies()) return true
+    if (!isCurrent()) return false
+    const refreshed = await (
+      connection.sendRequest(Methods.recoverBrowserSso, key) as Promise<boolean>
+    ).catch(() => false)
+    if (refreshed && isCurrent() && (await loginWithSavedCookies())) return true
+    if (isCurrent()) {
+      blockBrowserSso(key)
+      connection.window.showWarningMessage(
+        `Syntax check and code completion for ${key} are paused because the SAP login was not completed. Run Connect for ${key} to resume.`
+      )
+    }
+    return false
+  }
+  let pending: Promise<boolean> | undefined
+  const recover = () => {
+    if (!isCurrent()) return Promise.resolve(false)
+    pending ??= renew().finally(() => (pending = undefined))
+    return pending
+  }
+  onBrowserSsoAuthFailure(client, recover)
+  onBrowserSsoAuthFailure(client.statelessClone, recover)
+}
+
 const refreshClient = async (key: string, conf: ClientConfiguration) => {
+  if (removedConnections.has(key) || blockedBrowserSso.has(key)) return
+  const generation = connectionGenerations.get(key) ?? 0
   const oldClient = clients.get(key)
   const sslconf = createServerSslConfig(conf, key)
 
   const authMethod = getAuthMethod(conf)
   let pwdOrFetch: string | (() => Promise<string>)
+  let browserSsoCookies: string[] = []
 
   if (authMethod !== "basic" && !conf.oauth) {
     const authResponse = await fetchAuthHeaders(conf.name)
+    if (removedConnections.has(key) || (connectionGenerations.get(key) ?? 0) !== generation) return
     log(
       `[server] refreshClient: auth response received for ${key}: ${authResponse ? [authResponse.httpHeaders ? "httpHeaders" : undefined, authResponse.certAuth ? "certAuth" : undefined].filter(Boolean).join(",") : "null"}`
     )
@@ -192,9 +268,29 @@ const refreshClient = async (key: string, conf: ClientConfiguration) => {
           return t || currentToken
         })
     } else {
-      if (authResponse?.httpHeaders) {
-        sslconf.headers = { ...sslconf.headers, ...authResponse.httpHeaders }
-      } else if (authMethod === "kerberos" || authMethod === "browser_sso") {
+      if (
+        authResponse?.httpHeaders?.Cookie ||
+        (authMethod !== "browser_sso" && authResponse?.httpHeaders)
+      ) {
+        if (authMethod === "browser_sso") {
+          const { Cookie, ...headers } = authResponse.httpHeaders
+          browserSsoCookies = Cookie?.split(";") ?? []
+          sslconf.headers = { ...sslconf.headers, ...headers }
+        } else {
+          sslconf.headers = { ...sslconf.headers, ...authResponse.httpHeaders }
+        }
+      } else if (authMethod === "browser_sso") {
+        if (oldClient) {
+          warn(
+            `Browser SSO cookies unavailable for ${key}; keeping the current client until refresh succeeds`
+          )
+          return
+        }
+        blockBrowserSso(key)
+        throw new Error(
+          `Browser SSO cookies unavailable for ${key}. Language features resume after the next Browser SSO login.`
+        )
+      } else if (authMethod === "kerberos") {
         warn(`${authMethod} auth headers missing for ${key} — user may need to reconnect`)
       }
       pwdOrFetch = `${authMethod}-auth`
@@ -211,28 +307,97 @@ const refreshClient = async (key: string, conf: ClientConfiguration) => {
     conf.language,
     sslconf
   )
+  if (authMethod === "browser_sso" && !conf.oauth) {
+    attachBrowserSsoCookies(baseclient, browserSsoCookies)
+    attachBrowserSsoCookies(baseclient.statelessClone, browserSsoCookies)
+    registerBrowserSsoRecovery(key, conf, baseclient)
+  }
   baseclient.stateful = session_types.stateful
   clients.set(key, baseclient)
   if (oldClient) {
     setTimeout(() => {
       oldClient.stateful = session_types.stateless
-      oldClient.logout()
+      oldClient.logout().catch(err => warn(`Logout of replaced ${key} client failed: ${err}`))
     }, 2000)
   }
 }
 
-export async function clientFromKey(key: string) {
-  key = decodeURIComponent(key)
-  let client = clients.get(key)
-  if (!client) {
-    const conf = await readConfiguration(key)
-    if (conf) {
-      await refreshClient(key, conf)
-      // as clients are stateful, they will expire, usually in 10 minutes. So we need to refresh them every 4 minutes
-      setInterval(() => refreshClient(key, conf), 240000)
+export function connectionFolderChanged(added: string[], removed: string[]) {
+  for (const key of removed) {
+    const normalized = connectionKey(key)
+    const client = clients.get(normalized)
+    removedConnections.add(normalized)
+    blockedBrowserSso.delete(normalized)
+    connectionGenerations.set(normalized, (connectionGenerations.get(normalized) ?? 0) + 1)
+    clearInterval(refreshTimers.get(normalized))
+    refreshTimers.delete(normalized)
+    initializations.delete(normalized)
+    clients.delete(normalized)
+    if (client) {
+      client.stateful = session_types.stateless
+      client.logout().catch(err => warn(`Logout of removed ${normalized} failed: ${err}`))
     }
   }
-  return client
+  for (const key of added) {
+    removedConnections.delete(connectionKey(key))
+    blockedBrowserSso.delete(connectionKey(key))
+  }
+}
+
+export async function browserSsoLoginCompleted(connId: string) {
+  const key = connectionKey(connId)
+  blockedBrowserSso.delete(key)
+  // A working client picks up the new cookies itself the next time SAP rejects the old ones
+  if (removedConnections.has(key) || clients.has(key)) return
+  try {
+    await clientFromKey(key)
+  } catch (err) {
+    warn(`Client refresh after Browser SSO login failed for ${key}: ${err}`)
+  }
+}
+
+export async function clientFromKey(key: string) {
+  key = connectionKey(key)
+  if (removedConnections.has(key) || blockedBrowserSso.has(key)) return undefined
+  const client = clients.get(key)
+  if (client) return client
+  let initialization = initializations.get(key)
+  if (!initialization) {
+    const generation = connectionGenerations.get(key) ?? 0
+    initialization = (async () => {
+      const conf = await readConfiguration(key)
+      if (
+        !conf ||
+        removedConnections.has(key) ||
+        (connectionGenerations.get(key) ?? 0) !== generation
+      )
+        return undefined
+      await queueRefresh(key, conf)
+      if (removedConnections.has(key) || (connectionGenerations.get(key) ?? 0) !== generation)
+        return undefined
+      const created = clients.get(key)
+      if (!created) return undefined
+      refreshTimers.set(
+        key,
+        setInterval(() => {
+          void queueRefresh(key, conf).catch(err =>
+            warn(`Client refresh failed for ${key}: ${err}`)
+          )
+        }, 240000)
+      )
+      return created
+    })()
+    initializations.set(key, initialization)
+    void initialization.then(
+      () => {
+        if (initializations.get(key) === initialization) initializations.delete(key)
+      },
+      () => {
+        if (initializations.get(key) === initialization) initializations.delete(key)
+      }
+    )
+  }
+  return initialization
 }
 
 export async function clientFromUrl(url: string) {

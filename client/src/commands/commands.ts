@@ -16,6 +16,7 @@ import {
   ProgressLocation,
   Range,
   FileChangeType,
+  CancellationError,
   extensions
 } from "vscode"
 import * as vscode from "vscode"
@@ -53,7 +54,8 @@ import {
   uriRoot,
   getOrCreateRoot,
   disconnect,
-  clearConnectionFailure
+  clearConnectionFailure,
+  announceBrowserSsoLogin
 } from "../adt/conections"
 import { isAbapFolder, isAbapFile, isAbapStat } from "abapfs"
 import { AdtObjectActivator } from "../adt/operations/AdtObjectActivator"
@@ -258,8 +260,10 @@ export class AdtCommands {
       username = remote.username
 
       log(`Connecting to server ${remote.name}`)
+      await clearConnectionFailure(remote.name)
       // this might involve asking for a password...
       await getOrCreateRoot(remote.name) // if connection raises an exception don't mount any folder
+      announceBrowserSsoLogin(remote.name)
 
       await storeTokens()
 
@@ -271,6 +275,7 @@ export class AdtCommands {
       extensionContext.subscriptions.push(UnitTestRunner.get(connectionID).controller)
       log(`Connected to server ${remote.name}`)
     } catch (e) {
+      if (e instanceof CancellationError) return
       const body = typeof e === "object" && (e as any)?.response?.body
       if (body) log(body)
       const isMissing = (e: any) => !!`${e}`.match("name.*org.freedesktop.secrets")
@@ -343,7 +348,11 @@ export class AdtCommands {
         workspace.workspaceFolders?.filter(folder => folder.uri.scheme === ADTSCHEME) || []
 
       // Log out from all connections and clear cached data
-      await disconnect()
+      try {
+        await disconnect(abapFolders.map(folder => folder.uri.authority))
+      } catch (e) {
+        log(`[disconnect] SAP logout or cleanup failed: ${caughtToString(e)}`)
+      }
 
       // Remove all ABAP folders from workspace
       if (abapFolders.length > 0) {
@@ -1138,7 +1147,7 @@ export class AdtCommands {
 
     await manager.clearPassword(remote.name, remote.username)
     await manager.savePassword(remote.name, remote.username, newPassword)
-    clearConnectionFailure(remote.name)
+    await clearConnectionFailure(remote.name)
     const connectNow = await window.showQuickPick(["Yes", "No"], {
       title: "Password updated",
       placeHolder: `Connect to system "${remote.name}" now?`

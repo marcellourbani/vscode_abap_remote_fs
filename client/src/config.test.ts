@@ -41,6 +41,7 @@ const { mockVault } = vi.hoisted(() => {
   return { mockVault }
 })
 vi.mock("./lib", () => ({
+  log: Object.assign(vi.fn(), { debug: vi.fn() }),
   PasswordVault: {
     get: vi.fn(function () {
       return mockVault
@@ -60,12 +61,14 @@ vi.mock("./adt/adtCommLog", () => ({
     })
   }
 }))
+vi.mock("./auth", () => ({ buildBrowserSsoAuth: vi.fn() }))
 vi.mock("vscode-abap-remote-fs-sharedapi", () => ({
   getAuthMethod: vi.fn(function (c: any) {
     return c.authMethod || "basic"
   }),
   hasCertAuthConfig: vi.fn(),
-  hasOAuthOnPremConfig: vi.fn()
+  hasOAuthOnPremConfig: vi.fn(),
+  attachBrowserSsoCookies: vi.fn()
 }))
 vi.mock("fs", () => ({
   readFileSync: vi.fn(function () {
@@ -81,6 +84,7 @@ import {
   validateNewConfigId,
   saveNewRemote,
   createClient,
+  createAuthenticatedClient,
   RemoteManager,
   type RemoteConfig
 } from "./config"
@@ -88,6 +92,8 @@ import * as __$mock_abap_adt_api from "abap-adt-api"
 import * as __$mock_oauth from "./oauth"
 import * as __$mock_lib from "./lib"
 import * as __$mock_services_funMessenger from "./services/funMessenger"
+import { buildBrowserSsoAuth } from "./auth"
+import { attachBrowserSsoCookies } from "vscode-abap-remote-fs-sharedapi"
 import type { Mock } from "vitest"
 
 // ---- helpers ----------------------------------------------------------------
@@ -365,6 +371,37 @@ describe("createClient", () => {
     const [, , password] = (ADTClient as unknown as Mock).mock.calls.at(-1)!
     expect(password).toBe("mypass")
   })
+})
+
+test("seeds the main and clone Browser SSO cookie sessions without a fixed header", async () => {
+  const main = { statelessClone: {} }
+  vi.mocked(__$mock_abap_adt_api.ADTClient).mockImplementationOnce(function () {
+    return main as any
+  })
+  vi.mocked(buildBrowserSsoAuth).mockResolvedValueOnce({
+    passwordOrFetcher: "browser-sso",
+    headers: { Cookie: "MYSAPSSO2=ticket; SAP_SESSIONID_DEV_100=old" }
+  })
+
+  await createAuthenticatedClient({
+    name: "dev100",
+    url: "https://host",
+    username: "user",
+    client: "100",
+    authMethod: "browser_sso"
+  } as RemoteConfig)
+
+  expect(attachBrowserSsoCookies).toHaveBeenCalledWith(main, [
+    "MYSAPSSO2=ticket",
+    " SAP_SESSIONID_DEV_100=old"
+  ])
+  expect(attachBrowserSsoCookies).toHaveBeenCalledWith(main.statelessClone, [
+    "MYSAPSSO2=ticket",
+    " SAP_SESSIONID_DEV_100=old"
+  ])
+  expect(vi.mocked(__$mock_abap_adt_api.ADTClient).mock.calls.at(-1)?.[5]).not.toHaveProperty(
+    "headers.Cookie"
+  )
 })
 
 // ---- RemoteManager singleton -----------------------------------------------

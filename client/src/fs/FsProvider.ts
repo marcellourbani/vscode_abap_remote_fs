@@ -1,5 +1,6 @@
 import { getOrCreateRoot } from "../adt/conections"
 import {
+  CancellationError,
   FileSystemError,
   FileChangeType,
   type FileSystemProvider,
@@ -209,6 +210,7 @@ export class FsProvider implements FileSystemProvider {
         return buf
       }
     } catch (error) {
+      if (error instanceof CancellationError) throw error
       log.debug(`Error reading file ${uri?.toString()}\n${caughtToString(error)}`)
     }
     throw FileSystemError.Unavailable(uri)
