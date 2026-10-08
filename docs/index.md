@@ -45,7 +45,9 @@ This is a high-level summary. See the left navigation for full feature pages.
 
 ## Using a non-GitHub Copilot AI tool?
 
-Works with **Cursor, Claude Code, Windsurf, Claude Desktop**, and any MCP-compatible client.  
+Works with **Cursor, Claude Code, Windsurf, Claude Desktop, IBM Bob, 
+Google Antigravity, Cline, Codex, Kiro**, AND all other
+MCP-compatible clients, which these days is all of them.
 See [MCP Server](mcp-server.md) for setup.
 
 ---
