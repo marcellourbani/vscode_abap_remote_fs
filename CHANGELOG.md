@@ -1,5 +1,11 @@
 # Changelog
 
+## 2.11.1
+
+### Patch Changes
+
+- a733b4d: `abapfs.startMcpServer` now returns the MCP server status (`isRunning`, actual `port`, `url`), also when the server is already running
+
 ## 2.11.0
 
 ### Minor Changes
