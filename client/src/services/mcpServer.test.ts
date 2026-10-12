@@ -20,6 +20,7 @@ vi.mock("vscode", () => ({
     showErrorMessage: vi.fn(),
     showWarningMessage: vi.fn()
   },
+  ConfigurationTarget: { Workspace: 2 },
   CancellationTokenSource: vi.fn().mockImplementation(function () {
     return { token: {} }
   }),
@@ -67,6 +68,7 @@ import * as vscode from "vscode"
 import {
   initializeMcpServer,
   getMcpServerStatus,
+  startMcpServerCommand,
   jsonSchemaPropertyToZod,
   jsonSchemaToZod,
   validateApiKey
@@ -138,6 +140,20 @@ describe("mcpServer", () => {
       await initializeMcpServer(mockContext)
       const status = getMcpServerStatus()
       expect(status.isRunning).toBe(false)
+    })
+  })
+
+  describe("startMcpServerCommand", () => {
+    it("returns the server status when the user declines to start", async () => {
+      ;(vscode.lm as any).selectChatModels = vi.fn().mockResolvedValue([{}])
+      ;(vscode.window as any).showQuickPick = vi.fn().mockResolvedValue(undefined)
+      mockContext.globalState.get.mockReturnValue(false)
+
+      const status = await startMcpServerCommand(mockContext)
+
+      expect(status).toEqual(getMcpServerStatus())
+      expect(status.isRunning).toBe(false)
+      expect(status.url).toBe("")
     })
   })
 })
