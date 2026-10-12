@@ -691,11 +691,14 @@ const MCP_COPILOT_DISMISSED_KEY = "abapfs.mcpServer.copilotPromptDismissed"
 
 /**
  * Start MCP server via command. Shows Copilot warning if applicable.
+ * Returns the server status (actual port and URL) on every path.
  */
-export async function startMcpServerCommand(context: vscode.ExtensionContext): Promise<void> {
+export async function startMcpServerCommand(
+  context: vscode.ExtensionContext
+): Promise<McpServerStatus> {
   if (state.isRunning) {
     window.showInformationMessage(`MCP Server is already running on port ${state.port}.`)
-    return
+    return getMcpServerStatus()
   }
 
   // One-time check: if LLM models are available (Copilot active), user may not need MCP
@@ -735,7 +738,7 @@ export async function startMcpServerCommand(context: vscode.ExtensionContext): P
         const config = vscode.workspace.getConfiguration("abapfs.mcpServer")
         await config.update("autoStart", false, vscode.ConfigurationTarget.Workspace)
         log("🔌 MCP Server disabled by user — Copilot provides native tool access")
-        return
+        return getMcpServerStatus()
       }
       // "start" selected
       await context.globalState.update(MCP_COPILOT_DISMISSED_KEY, true)
@@ -764,6 +767,7 @@ export async function startMcpServerCommand(context: vscode.ExtensionContext): P
       `MCP Server failed to start: ${error instanceof Error ? error.message : String(error)}`
     )
   }
+  return getMcpServerStatus()
 }
 
 export async function initializeMcpServer(context: vscode.ExtensionContext): Promise<void> {
@@ -777,10 +781,16 @@ export async function initializeMcpServer(context: vscode.ExtensionContext): Pro
   await startMcpServerCommand(context)
 }
 
+export interface McpServerStatus {
+  isRunning: boolean
+  port: number
+  url: string
+}
+
 /**
  * Get the current MCP server status
  */
-export function getMcpServerStatus(): { isRunning: boolean; port: number; url: string } {
+export function getMcpServerStatus(): McpServerStatus {
   return {
     isRunning: state.isRunning,
     port: state.port,
