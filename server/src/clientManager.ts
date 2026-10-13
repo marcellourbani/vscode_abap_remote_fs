@@ -14,6 +14,7 @@ import {
 } from "vscode-abap-remote-fs-sharedapi"
 import { isString } from "./functions"
 const clients: Map<string, ADTClient> = new Map()
+const initializations = new Map<string, Promise<ADTClient | undefined>>()
 
 type ServerSslConfig = ReturnType<typeof createSSLConfig> & {
   debugCallback?: (logData: LogData) => void
@@ -219,19 +220,41 @@ const refreshClient = async (key: string, conf: ClientConfiguration) => {
       oldClient.logout()
     }, 2000)
   }
+  return baseclient
 }
 
-export async function clientFromKey(key: string) {
+export async function clientFromKey(key: string): Promise<ADTClient | undefined> {
   key = decodeURIComponent(key)
-  let client = clients.get(key)
-  if (!client) {
-    const conf = await readConfiguration(key)
-    if (conf) {
-      await refreshClient(key, conf)
-      // as clients are stateful, they will expire, usually in 10 minutes. So we need to refresh them every 4 minutes
-      setInterval(() => refreshClient(key, conf), 240000)
-    }
+  const client = clients.get(key)
+  if (client) return client
+  const pending = initializations.get(key)
+  if (pending) return pending
+
+  const initialization = initializeClient(key)
+  initializations.set(key, initialization)
+  try {
+    return await initialization
+  } finally {
+    initializations.delete(key)
   }
+}
+
+async function initializeClient(key: string): Promise<ADTClient | undefined> {
+  const conf = await readConfiguration(key)
+  if (!conf) return undefined
+  const client = await refreshClient(key, conf)
+  // Stateful sessions usually expire in 10 minutes; refresh every 4 minutes.
+  // Initialization is single-flight, so each connection owns exactly one timer.
+  let refreshing = false
+  setInterval(() => {
+    if (refreshing) return
+    refreshing = true
+    void refreshClient(key, conf)
+      .catch(e => warn(`Failed to refresh language-server client for ${key}: ${e}`))
+      .finally(() => {
+        refreshing = false
+      })
+  }, 240000)
   return client
 }
 

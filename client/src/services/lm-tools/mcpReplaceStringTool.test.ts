@@ -53,6 +53,24 @@ describe("findAndReplace", () => {
     expect(findAndReplace("one\ntwo\nthree", "two", "changed")).toBe("one\nchanged\nthree")
   })
 
+  it.each(["$&", "$$", "$`", "$'", "$1", "$<name>"])(
+    "inserts replacement token %s literally on both matching paths",
+    token => {
+      expect(findAndReplace("before old after", "old", token)).toBe(`before ${token} after`)
+      expect(findAndReplace("before\r\nold\r\nafter", "before\nold", token)).toBe(
+        `${token}\r\nafter`
+      )
+    }
+  )
+
+  it.each([
+    ["one\r\ntwo\r\none\r\ntwo", "one\ntwo"],
+    ["one\ntwo\none\ntwo", "one\r\ntwo"],
+    ["one\r\ntwo\none\r\ntwo", "one\ntwo"]
+  ])("rejects ambiguous normalized matches", (content, oldString) => {
+    expect(() => findAndReplace(content, oldString, "new")).toThrow(/2 occurrences/)
+  })
+
   it("preserves CRLF line endings when matching normalized input", () => {
     expect(
       findAndReplace(

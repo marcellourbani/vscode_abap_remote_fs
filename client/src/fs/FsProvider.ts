@@ -349,7 +349,13 @@ export class FsProvider implements FileSystemProvider {
           : await selectTransportIfNeeded(uri)
         if (trsel.cancelled) return
         resolvedTransport = trsel.transport
-        await this.writewithRelogin(root, uri, node, content.toString(), trsel.transport)
+        await this.writewithRelogin(
+          root,
+          uri,
+          node,
+          Buffer.from(content).toString("utf8"),
+          trsel.transport
+        )
         if (intent) TransportIntentService.get().succeed(intent.intentId, trsel.transport)
         this.pEventEmitter.fire([{ type: FileChangeType.Changed, uri }])
       } else throw FileSystemError.FileNotFound(uri)

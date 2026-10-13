@@ -423,6 +423,21 @@ describe("FsProvider", () => {
       expect(node.write).toHaveBeenCalledWith("REPORT ztest.", "HANDLE", "DEVK900001")
     })
 
+    it.each(["REPORT zexample.", "WRITE 'café 日本語 '.", "", "line one\r\nline two\r\n"])(
+      "decodes plain Uint8Array writes as UTF-8: %s",
+      async source => {
+        const { root, node } = writableRoot()
+        vi.mocked(__$mock_adt_conections.getOrCreateRoot).mockResolvedValue(root as never)
+        vi.mocked(__$mock_abapfs.isAbapFile).mockReturnValue(true)
+        const encoded = new TextEncoder().encode(source)
+        // A view with nonzero offset must not write bytes outside its bounds.
+        const backing = new Uint8Array(encoded.length + 2)
+        backing.set(encoded, 1)
+        await FsProvider.get(context).writeFile(makeUri(), backing.subarray(1, -1))
+        expect(node.write).toHaveBeenCalledWith(source, "HANDLE", "DEVK900001")
+      }
+    )
+
     it("claims before resolving the root and uses the exact existing-object resolver", async () => {
       const intent = {
         intentId: "intent-1",

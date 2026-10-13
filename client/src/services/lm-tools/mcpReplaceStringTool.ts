@@ -64,24 +64,18 @@ export function findAndReplace(content: string, oldString: string, newString: st
     throw new Error("oldString and newString are identical. No change would be made.")
   }
 
-  // Count occurrences
-  let count = 0
-  let searchIdx = 0
-  while (true) {
-    const idx = content.indexOf(oldString, searchIdx)
-    if (idx === -1) break
-    count++
-    searchIdx = idx + oldString.length
-  }
+  const count = countOccurrences(content, oldString)
 
   if (count === 0) {
     // Try with normalized line endings
     const normalizedContent = content.replace(/\r\n/g, "\n")
     const normalizedOld = oldString.replace(/\r\n/g, "\n")
-    if (normalizedContent.includes(normalizedOld)) {
-      // Match found after EOL normalization - do the replacement on original content
+    const normalizedCount = countOccurrences(normalizedContent, normalizedOld)
+    if (normalizedCount > 0) {
+      assertUniqueMatch(normalizedCount)
+      // Match found after EOL normalization - replace literally and preserve EOL style
       const normalizedNew = newString.replace(/\r\n/g, "\n")
-      const updated = normalizedContent.replace(normalizedOld, normalizedNew)
+      const updated = normalizedContent.replace(normalizedOld, () => normalizedNew)
       // Restore original EOL style if content had \r\n
       if (content.includes("\r\n")) {
         return updated.replace(/(?<!\r)\n/g, "\r\n")
@@ -95,15 +89,28 @@ export function findAndReplace(content: string, oldString: string, newString: st
     )
   }
 
+  assertUniqueMatch(count)
+  return content.replace(oldString, () => newString)
+}
+
+function countOccurrences(content: string, search: string): number {
+  let count = 0
+  let offset = 0
+  while (true) {
+    const index = content.indexOf(search, offset)
+    if (index < 0) return count
+    count++
+    offset = index + search.length
+  }
+}
+
+function assertUniqueMatch(count: number): void {
   if (count > 1) {
     throw new Error(
       `Found ${count} occurrences of oldString. It must match exactly one location. ` +
         "Include more surrounding context lines to make the match unique."
     )
   }
-
-  // Exactly one match - do the replacement
-  return content.replace(oldString, newString)
 }
 
 const replacementQueues = new Map<string, Promise<void>>()
