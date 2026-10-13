@@ -23,6 +23,25 @@ vi.mock("vscode", () => ({
   CancellationTokenSource: vi.fn().mockImplementation(function () {
     return { token: {} }
   }),
+  TreeItem: class {
+    constructor(
+      public label?: string,
+      public collapsibleState?: number
+    ) {}
+  },
+  TreeItemCollapsibleState: { None: 0, Collapsed: 1, Expanded: 2 },
+  EventEmitter: class {
+    event = vi.fn()
+    fire = vi.fn()
+    dispose = vi.fn()
+  },
+  Uri: {
+    parse: vi.fn((value: string) => ({
+      path: value,
+      toString: () => value,
+      with: vi.fn()
+    }))
+  },
   LanguageModelTextPart: class {
     constructor(public value: string) {}
   }
@@ -42,6 +61,14 @@ vi.mock("../lib", () => ({
 
 vi.mock("./lm-tools/toolRegistry", () => ({
   toolRegistry: { get: vi.fn().mockReturnValue(undefined) }
+}))
+
+vi.mock("./lm-tools/mcpReplaceStringTool", () => ({
+  executeReplace: vi.fn()
+}))
+
+vi.mock("./lm-tools/mcpGetDiagnosticsTool", () => ({
+  getDiagnosticsForUri: vi.fn()
 }))
 
 // Mock MCP SDK modules

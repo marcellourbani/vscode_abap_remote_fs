@@ -100,12 +100,13 @@ Optional concurrency values:
 
 ## Read workflow data efficiently
 
-`abapfs_get_repository_workflow` supports four response sections:
+`abapfs_get_repository_workflow` supports five response sections:
 
 - `state` — complete workflow state or one requested step;
 - `criteria` — persisted scope and concurrency;
 - `summaries` — compact counts for completed stages;
-- `artifact` — one bounded result page.
+- `artifact` — one bounded result page;
+- `diff` — a bounded raw or ABAPLint-formatted diff for one repository key.
 
 If no section is requested, the tool returns state only. Ask for the smallest useful response:
 
@@ -127,6 +128,9 @@ Available artifacts:
 
 Artifact reads accept `offset` and `limit`, with a maximum page size of 200. They can be filtered by status, object name, object type, and package. Object-name filtering supports `*` and `?`.
 
+Diff reads require `objectKey`. Set `representation` to `raw` or `formatted`, optionally select one
+changed `filePath`, and bound the response with `maxFiles` and `maxChars`. Formatted is the default.
+
 Examples:
 
 ```text
@@ -137,15 +141,22 @@ Show the first 50 source-only classes from the existence comparison.
 Show source differences for objects matching ZCL_EXAMPLE*.
 ```
 
+```text
+Read the formatted diff for R3TR:CLAS:ZCL_EXAMPLE, limited to three files.
+```
+
 ## Assisted apply
 
 Ask Copilot to prepare a plan only after source comparison:
 
 ```text
-Prepare an assisted-apply plan for the demo comparison.
+Prepare an assisted-apply plan for the demo comparison using formatted differences.
 ```
 
-The tool returns ready and blocked counts and opens the webview for review. It does not stage or change SAP code.
+The tool accepts `comparisonBasis: raw | formatted`; formatted is the default. The basis determines
+which objects and resource paths are relevant, while staging and stale checks always use raw
+snapshots. The tool returns ready and blocked counts and opens the webview for review. It does not
+stage or change SAP code.
 
 Only you can:
 

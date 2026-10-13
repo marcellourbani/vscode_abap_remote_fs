@@ -1,4 +1,4 @@
-import { getOrCreateRoot } from "../adt/conections"
+import { getClient, getOrCreateRoot } from "../adt/conections"
 import {
   FileSystemError,
   FileChangeType,
@@ -17,12 +17,17 @@ import {
 import { after, caughtToString, log } from "../lib"
 import { AbapFile, AbapFolder, isAbapFile, isAbapFolder, isFolder, Root } from "abapfs"
 import { getSaveReason, clearSaveReason } from "../listeners"
-import { selectTransportIfNeeded } from "../adt/AdtTransports"
+import {
+  pickTransportForExistingObjectWrite,
+  selectTransportIfNeeded,
+  trSel
+} from "../adt/AdtTransports"
 import { LocalFsProvider } from "./LocalFsProvider"
 import { isHttpError } from "abap-adt-api"
 import { ReloginError } from "abapfs"
 import { funWindow as window } from "../services/funMessenger"
 import { type AbapObject } from "abapobject"
+import { TransportIntentService, type TransportIntent } from "../services/transportIntentService"
 
 const openInGui = (uri: Uri, object: AbapObject) => {
   const guiObjects = object.gui_objects
@@ -73,6 +78,18 @@ const handleTelemetry = (uri: Uri) => {
     clearSaveReason(uriString)
   } catch (e) {}
 }
+
+async function localTransportSelection(uri: Uri, node: AbapFile) {
+  const info = await getClient(uri.authority.toLowerCase()).transportInfo(
+    node.object.contentsPath(),
+    "",
+    ""
+  )
+  if (info.DLVUNIT !== "LOCAL")
+    throw new Error("The armed local-object save intent no longer refers to a local object")
+  return trSel("")
+}
+
 export class FsProvider implements FileSystemProvider {
   private overwriteRejected = new Set<string>()
   private static instance: FsProvider
@@ -309,7 +326,10 @@ export class FsProvider implements FileSystemProvider {
     if (LocalFsProvider.useLocalStorage(uri))
       return this.localProvider.writeFile(uri, content, undefined)
     let needUnlocking = false
+    let intent: TransportIntent | undefined
+    let resolvedTransport: string | undefined
     try {
+      intent = TransportIntentService.get().claim(uri)
       const root = await getOrCreateRoot(uri.authority)
       const node = await root.getNodeAsync(uri.path)
       if (isAbapFile(node)) {
@@ -318,12 +338,23 @@ export class FsProvider implements FileSystemProvider {
         const oldlock = (await root.lockManager.finalStatus(uri.path)).status
         await root.lockManager.requestLock(uri.path)
         needUnlocking = oldlock === "unlocked"
-        const trsel = await selectTransportIfNeeded(uri)
+        const trsel = intent
+          ? intent.transportChoice.type === "local"
+            ? await localTransportSelection(uri, node)
+            : await pickTransportForExistingObjectWrite(
+                getClient(uri.authority.toLowerCase()),
+                intent.transportChoice,
+                node.object.contentsPath()
+              )
+          : await selectTransportIfNeeded(uri)
         if (trsel.cancelled) return
+        resolvedTransport = trsel.transport
         await this.writewithRelogin(root, uri, node, content.toString(), trsel.transport)
+        if (intent) TransportIntentService.get().succeed(intent.intentId, trsel.transport)
         this.pEventEmitter.fire([{ type: FileChangeType.Changed, uri }])
       } else throw FileSystemError.FileNotFound(uri)
     } catch (e) {
+      if (intent) TransportIntentService.get().fail(intent.intentId, e, resolvedTransport)
       log(`Error writing file ${uri.toString()}\n${caughtToString(e)}`)
       // Clean up lock if we acquired it and write failed
       if (needUnlocking)

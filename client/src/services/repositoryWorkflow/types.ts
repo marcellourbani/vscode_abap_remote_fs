@@ -1,3 +1,5 @@
+import type { ClassMethodElement } from "./classMethodOrder"
+
 export const WORKFLOW_SCHEMA_VERSION = 1
 export const SOURCE_COMPARISON_EXCLUDED_OBJECT_TYPES = ["DEVC"] as const
 export const DEFAULT_VERIFICATION_CONCURRENCY = 32
@@ -11,6 +13,7 @@ export type WorkflowStepId =
   | "sourceDownload"
   | "sourceComparison"
   | "assistedApplyPlan"
+  | "transportCheck"
 
 export type WorkflowStepStatus =
   | "not-started"
@@ -24,6 +27,8 @@ export type WorkflowStepStatus =
   | "skipped"
 
 export type WorkflowPauseReason = "explicit-pause" | "panel-closed" | "extension-shutdown"
+
+export type AssistedApplyMode = "manual" | "copilot"
 
 export interface WorkflowSystem {
   connectionId: string
@@ -55,6 +60,8 @@ export interface RepositoryWorkflow {
   currentStep: WorkflowStepId
   runState: "idle" | "running" | "paused" | "partial" | "complete" | "failed" | "interrupted"
   steps: Record<WorkflowStepId, WorkflowStepState>
+  assistedApplyMode?: AssistedApplyMode
+  copilotAssistedApplyEnabledAt?: string
   lastError?: string
   revision: number
 }
@@ -78,6 +85,7 @@ export interface RepositoryCriteria {
   sourceConcurrency: number
   targetConcurrency: number
   verificationConcurrency?: number
+  transportConcurrency?: number
 }
 
 export interface RepositoryObjectRecord {
@@ -112,7 +120,8 @@ export const WORKFLOW_STEPS: WorkflowStepId[] = [
   "sourceSelection",
   "sourceDownload",
   "sourceComparison",
-  "assistedApplyPlan"
+  "assistedApplyPlan",
+  "transportCheck"
 ]
 
 export function initialSteps(): Record<WorkflowStepId, WorkflowStepState> {
@@ -141,6 +150,17 @@ export interface SnapshotFile {
   text: boolean
 }
 
+export interface ClassMethodSnapshotMap {
+  schemaVersion: 1
+  className: string
+  connectionId: string
+  sourceUri: string
+  rawHash: string
+  filePath: string
+  sourceUrl: string
+  elements: ClassMethodElement[]
+}
+
 export interface ObjectSnapshotManifest {
   schemaVersion: number
   key: string
@@ -154,23 +174,59 @@ export interface ObjectSnapshotManifest {
   files: SnapshotFile[]
   aggregateHash: string
   normalizedAggregateHash: string
+  formattedFiles: SnapshotFile[]
+  formattedAggregateHash?: string
+  formattingState?: "pending" | "complete"
+  formatterVersion: string
+  classMethodMap?: ClassMethodSnapshotMap
+  formattingFailures: string[]
   failures: string[]
 }
+
+export type SnapshotRepresentation = "raw" | "formatted"
+
+export type ObjectTransportCheckStatus =
+  "not-checked" | "locked" | "not-locked" | "no-transport" | "local" | "error"
 
 export interface SourceComparisonRecord {
   key: string
   status: "identical" | "different" | "source-missing" | "target-missing" | "partial" | "error"
   sourceHash?: string
   targetHash?: string
+  sourceRawHash?: string
+  targetRawHash?: string
+  rawIdentical?: boolean
   sourceNormalizedHash?: string
   targetNormalizedHash?: string
   normalizedIdentical?: boolean
+  sourceFormattedHash?: string
+  targetFormattedHash?: string
+  formattedIdentical?: boolean
   added: string[]
   removed: string[]
   changed: string[]
+  rawAdded?: string[]
+  rawRemoved?: string[]
+  rawChanged?: string[]
+  formattedAdded?: string[]
+  formattedRemoved?: string[]
+  formattedChanged?: string[]
+  sourceLines?: number
+  targetLines?: number
   linesAdded?: number
   linesRemoved?: number
   linesChanged?: number
+  rawSourceLines?: number
+  rawTargetLines?: number
+  rawLinesAdded?: number
+  rawLinesRemoved?: number
+  rawLinesChanged?: number
+  formattedSourceLines?: number
+  formattedTargetLines?: number
+  formattedLinesAdded?: number
+  formattedLinesRemoved?: number
+  formattedLinesChanged?: number
+  formattedError?: string
   error?: string
 }
 
@@ -180,8 +236,14 @@ export interface AssistedApplyPlanItem {
   targetRecord: RepositoryObjectRecord
   sourceHash: string
   targetHash: string
+  relevant: boolean
   eligible: boolean
   blockingReasons: string[]
+  transportRequest?: string
+  transportCheckStatus?: ObjectTransportCheckStatus
+  transportDescription?: string
+  transportCheckedAt?: string
+  transportCheckError?: string
 }
 
 export interface AssistedApplyPlan {
@@ -189,7 +251,57 @@ export interface AssistedApplyPlan {
   createdAt: string
   sourceConnectionId: string
   targetConnectionId: string
+  comparisonBasis: SnapshotRepresentation
   items: AssistedApplyPlanItem[]
+}
+
+export interface CopilotAssistedApplySelection {
+  schemaVersion: number
+  updatedAt: string
+  keys: string[]
+  completedKeys?: string[]
+  decisions?: Record<string, CopilotAssistedApplyDecision>
+  decisionReasons?: Record<string, string>
+}
+
+export type CopilotAssistedApplyDecision = "as-is" | "skip" | "needs-human"
+
+export type AssistedApplyExecutionStage =
+  "apply" | "transport" | "save" | "verification" | "activation" | "completion"
+
+export type AssistedApplyExecutionStatus =
+  "started" | "succeeded" | "failed" | "partial" | "timed-out" | "cancelled"
+
+export interface AssistedApplyExecutionEvent {
+  schemaVersion: number
+  eventId: string
+  attemptId: string
+  workflowId: string
+  objectKey: string
+  timestamp: string
+  stage: AssistedApplyExecutionStage
+  status: AssistedApplyExecutionStatus
+  resourcePath?: string
+  intentId?: string
+  transportChoiceType?: "existing" | "new" | "local"
+  transportRequest?: string
+  sourceHash?: string
+  targetHash?: string
+  inactiveSourceVerified?: boolean
+  activationObjectUrls?: string[]
+  error?: string
+}
+
+export interface AssistedApplyExecutionSummary {
+  objectKey: string
+  attemptCount: number
+  eventCount: number
+  lastAttemptId: string
+  lastStage: AssistedApplyExecutionStage
+  lastStatus: AssistedApplyExecutionStatus
+  lastUpdatedAt: string
+  transportRequest?: string
+  lastError?: string
 }
 
 export function defaultRepositoryCriteria(
@@ -211,6 +323,7 @@ export function defaultRepositoryCriteria(
     includeTemporary: false,
     sourceConcurrency: bounded,
     targetConcurrency: bounded,
-    verificationConcurrency: DEFAULT_VERIFICATION_CONCURRENCY
+    verificationConcurrency: DEFAULT_VERIFICATION_CONCURRENCY,
+    transportConcurrency: bounded
   }
 }

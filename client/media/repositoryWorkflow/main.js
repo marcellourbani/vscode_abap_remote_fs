@@ -6,8 +6,13 @@ let state = {}
 let busy = false
 let pendingTransition = false
 let latestWorkflowRevision = 0
+let assistedApplyExecutionHistory
 const sourceSelections = {}
 const sourceSelectionRevisions = {}
+const copilotAssistedApplySelections = {}
+const copilotAssistedApplySelectionRevisions = {}
+const manualAssistedApplySelections = {}
+const manualAssistedApplySelectionRevisions = {}
 const workflowTables = []
 const workflowTableById = {}
 const workflowTableStates = {}
@@ -24,6 +29,7 @@ const reviewable = stepId =>
 
 window.addEventListener("message", event => {
   if (event.data.command === "state") {
+    const previousWorkflowId = state.workflow?.workflowId
     if (
       state.workflow?.workflowId === event.data.workflow?.workflowId &&
       Number(event.data.workflow?.revision || 0) < latestWorkflowRevision
@@ -31,6 +37,8 @@ window.addEventListener("message", event => {
       return
     pendingTransition = false
     state = event.data
+    if (previousWorkflowId !== state.workflow?.workflowId)
+      assistedApplyExecutionHistory = undefined
     latestWorkflowRevision = Number(state.workflow?.revision || 0)
     clearErrors()
     render()
@@ -82,6 +90,43 @@ window.addEventListener("message", event => {
     const status = document.getElementById("selectionImportStatus")
     if (status)
       status.textContent = `${event.data.keys.length.toLocaleString()} selected from ${event.data.fileName}; ${event.data.unselectable.toLocaleString()} unselectable, ${event.data.unknown.toLocaleString()} unknown, and ${event.data.duplicates.toLocaleString()} duplicate keys ignored.`
+  }
+  if (event.data.command === "copilotAssistedApplySelectionImported") {
+    if (state.workflow?.workflowId !== event.data.workflowId) return
+    const workflowId = event.data.workflowId
+    copilotAssistedApplySelections[workflowId] = new Set(event.data.keys || [])
+    const table = workflowTableById.assistedApplyPlan
+    if (table)
+      void table.updateData(
+        (state.previews.assistedApplyPlan?.items || []).map(row => ({
+          key: row.key,
+          selected: copilotAssistedApplySelections[workflowId].has(row.key),
+          copilotStatus: copilotAssistedApplyStatus(
+            row,
+            copilotAssistedApplySelections[workflowId].has(row.key)
+          ),
+          copilotDecision: copilotAssistedApplyDecision(
+            row,
+            copilotAssistedApplySelections[workflowId].has(row.key)
+          ),
+          copilotDecisionReason: copilotAssistedApplyDecisionReason(
+            row,
+            copilotAssistedApplySelections[workflowId].has(row.key)
+          )
+        }))
+      )
+    updateCopilotAssistedApplySelectionControls()
+    const status = document.getElementById("copilotSelectionImportStatus")
+    if (status)
+      status.textContent = `${event.data.keys.length.toLocaleString()} selected from ${event.data.fileName}; ${event.data.unselectable.toLocaleString()} ineligible, ${event.data.unknown.toLocaleString()} unknown, and ${event.data.duplicates.toLocaleString()} duplicate keys ignored. Save the selection to make it available to Copilot.`
+  }
+  if (event.data.command === "assistedApplyExecutionHistory") {
+    if (state.workflow?.workflowId !== event.data.workflowId) return
+    assistedApplyExecutionHistory = {
+      objectKey: event.data.objectKey,
+      events: event.data.events || []
+    }
+    render()
   }
 })
 
@@ -161,11 +206,17 @@ function renderWorkflow() {
   const criteria = state.criteria || {}
   const sourceLabel = workflow.source.connectionId.toUpperCase()
   const targetLabel = workflow.target.connectionId.toUpperCase()
+  const applyTitle =
+    workflow.assistedApplyMode === "manual"
+      ? "3. Assisted apply"
+      : workflow.assistedApplyMode === "copilot"
+        ? "3. Copilot-assisted apply"
+        : "3. Apply changes"
   document.getElementById("subtitle").textContent = `${workflow.name} · Source: ${sourceLabel} · Target: ${targetLabel}`
   app.innerHTML = `<div class="steps">
     ${step("1. Scope and discovery", "discovery", criteriaForm(criteria, sourceLabel, targetLabel) + discoveryResults(sourceLabel, targetLabel), discoveryActions(), true)}
     ${step("2. Compare systems", "existenceComparison", comparisonStage(sourceLabel, targetLabel), "", complete("discovery"))}
-    ${step("3. Assisted apply", "assistedApply", assistedApplyView(), assistedApplyActions(), reviewable("sourceComparison"))}
+    ${step(applyTitle, "assistedApply", assistedApplyStageView(), assistedApplyActions(), reviewable("sourceComparison"))}
     <section class="step"><div class="step-head"><h2>Copilot assistance</h2></div><label class="field full"><span>What should Copilot help with?</span><input id="copilotPrompt" value="Review the current workflow state and explain the next safe action"></label><div class="actions"><button id="askCopilot">Ask Copilot</button></div></section>
   </div>`
   wireWorkflow(workflow)
@@ -267,7 +318,10 @@ function clearSourceResultViews() {
 }
 
 function displayedStepId(id) {
-  if (id === "assistedApply") return "assistedApplyPlan"
+  if (id === "assistedApply")
+    return state.workflow.currentStep === "transportCheck"
+      ? "transportCheck"
+      : "assistedApplyPlan"
   if (id === "existenceComparison") {
     if (
       ["sourceSelection", "sourceDownload", "sourceComparison"].includes(
@@ -284,7 +338,7 @@ function stepTimings(id) {
   const timingSteps = {
     discovery: [["discovery", "Discovery"], ["existenceComparison", "Inventory comparison"]],
     existenceComparison: [["sourceDownload", "Download"], ["sourceComparison", "Source comparison"]],
-    assistedApply: [["assistedApplyPlan", "Plan"]]
+    assistedApply: [["assistedApplyPlan", "Plan"], ["transportCheck", "Transport check"]]
   }[id] || []
   const timings = timingSteps.flatMap(([stepId, label]) => {
     const value = state.workflow.steps[stepId] || {}
@@ -332,10 +386,18 @@ function progressLabel(id, value) {
     return `Verifying current state before resuming… ${value.completed || 0} of ${value.total}`
   if (id === "sourceDownload" && value.checkpoint === "preparing")
     return `Preparing source and target snapshot downloads: ${value.completed || 0} of ${value.total}`
+  if (id === "sourceDownload" && value.checkpoint === "resolving object URIs")
+    return `Resolving source and target objects before download: ${value.completed || 0} of ${value.total}`
   if (id === "sourceDownload")
     return `Downloading source and target snapshots: ${value.completed || 0} of ${value.total}`
+  if (id === "sourceComparison" && value.checkpoint === "getting object structures")
+    return `Getting object structures for formatted comparison: ${value.completed || 0} of ${value.total}`
+  if (id === "sourceComparison" && value.checkpoint === "formatting")
+    return `Formatting source and target snapshots: ${value.completed || 0} of ${value.total}`
   if (id === "sourceComparison")
     return `Comparing downloaded source snapshots: ${value.completed || 0} of ${value.total}`
+  if (id === "transportCheck")
+    return `Checking target transport status: ${value.completed || 0} of ${value.total}`
   return `${value.completed || 0} of ${value.total} complete`
 }
 
@@ -453,6 +515,8 @@ function comparisonActions() {
 function sourceTable(rows) {
   if (!rows || !rows.length) return '<div class="muted">No persisted output yet.</div>'
   const statusCounts = countBy(rows, row => row.status)
+  const rawDifferent = rows.filter(isRawDifferent).length
+  const formattedDifferent = rows.filter(row => row.formattedIdentical === false).length
   const incomplete = rows.filter(
     row => !["different", "identical"].includes(row.status)
   ).length
@@ -463,9 +527,14 @@ function sourceTable(rows) {
       count: rows.length - (statusCounts.get("identical") || 0)
     },
     {
-      value: "different",
-      label: "Different",
-      count: statusCounts.get("different") || 0
+      value: "different-raw",
+      label: "Different (raw)",
+      count: rawDifferent
+    },
+    {
+      value: "different-formatted",
+      label: "Different (formatted)",
+      count: formattedDifferent
     },
     { value: "incomplete", label: "Incomplete or failed", count: incomplete },
     {
@@ -475,6 +544,15 @@ function sourceTable(rows) {
     }
   ]
   return `<p class="muted">Line counts describe the textual diff. Reordered code may appear as removed and added lines.</p>${tableTools("sourceComparison", rows.length, views, "All source results", singleExport("sourceComparison", "Export source comparison"))}<div id="table-sourceComparison" class="workflow-table"></div>`
+}
+
+function assistedApplyStageView() {
+  if (state.workflow.assistedApplyMode === "manual") return assistedApplyView()
+  if (state.workflow.assistedApplyMode === "copilot") return copilotAssistedApplyView()
+  const copilotButton = state.workflow.copilotAssistedApplyEnabledAt
+    ? "Use Copilot-assisted apply"
+    : "Enable Copilot-assisted apply"
+  return `<p class="muted">Choose how changes should be applied to the target system. This choice is saved only for this workflow. You can switch later without losing the saved Copilot selection or completion status.</p><div class="apply-mode-choices"><article><h3>Assisted apply</h3><p>Review each object and stage its raw source in a target editor. You remain responsible for saving, transport selection, and activation.</p><button id="chooseManualAssistedApply">Use assisted apply</button></article><article><h3>Copilot-assisted apply</h3><p>Select the exact objects Copilot may act on. Enabling this mode requires confirmation because later execution can modify the target SAP system.</p><button id="chooseCopilotAssistedApply">${copilotButton}</button></article></div>`
 }
 
 function assistedApplyView() {
@@ -489,18 +567,114 @@ function assistedApplyView() {
   const policy = warnings.join("") || '<p class="apply-policy allowed">Assisted-apply editor safety settings are configured: ABAP auto-save is off and chat save before send is disabled.</p>'
   if (!plan) return direction + policy + '<p class="muted">Prepare an assisted-apply plan to identify changed objects that can be staged safely and explain any exclusions.</p>'
   const eligible = plan.items.filter(item => item.eligible).length
-  const unchanged = plan.items.filter(item => (item.blockingReasons || []).includes("Source status is identical")).length
+  const unchanged = plan.items.filter(item => assistedApplyDecision(item) === "No action").length
   const blocked = plan.items.length - eligible - unchanged
-  const summary = `<p><strong>${eligible}</strong> ready for assisted apply, <strong>${unchanged}</strong> already identical, <strong>${blocked}</strong> blocked.</p>`
-  return direction + policy + `<div data-assisted-apply-results>${summary}${assistedApplyPlanTable(plan.items)}</div>`
+  const summary = `<p>Relevance basis: <strong>${escapeHtml(plan.comparisonBasis || "raw")}</strong>. <strong>${eligible}</strong> ready for assisted apply, <strong>${unchanged}</strong> with no relevant differences, <strong>${blocked}</strong> blocked.</p>`
+  return direction + policy + `<div data-assisted-apply-results>${summary}${assistedApplyPlanTable(plan.items, false)}${assistedApplyExecutionHistoryView()}</div>`
 }
 
-function assistedApplyPlanTable(rows) {
+function copilotAssistedApplyView() {
+  const plan = state.previews.assistedApplyPlan
+  const source = state.workflow.source.connectionId.toUpperCase()
+  const target = state.workflow.target.connectionId.toUpperCase()
+  const direction = `<p><strong>Source: ${escapeHtml(source)}</strong> → <strong>Target: ${escapeHtml(target)}</strong></p><p class="apply-policy blocked"><strong>Copilot-assisted apply is enabled for this workflow.</strong> Only objects you select and save below are approved candidates. Copilot can save all changed text resources for one reviewed object at a time with a user-directed transport. Every attempt is recorded; activation remains a separate verified step.</p>`
+  if (!plan)
+    return direction + '<p class="muted">Prepare the assisted-apply plan, then select the exact eligible objects Copilot may act on.</p>'
+  initializeCopilotAssistedApplySelection(plan)
+  const eligible = plan.items.filter(item => item.eligible).length
+  const selected = copilotAssistedApplySelections[state.workflow.workflowId]?.size || 0
+  const completed = new Set(
+    state.previews.copilotAssistedApplySelection?.completedKeys || []
+  )
+  const done = [...(copilotAssistedApplySelections[state.workflow.workflowId] || [])].filter(
+    key => completed.has(key)
+  ).length
+  const summary = `<p>Relevance basis: <strong>${escapeHtml(plan.comparisonBasis || "raw")}</strong>. <strong>${eligible}</strong> eligible; <strong>${selected}</strong> selected, <strong>${done}</strong> done, and <strong>${selected - done}</strong> pending.</p>`
+  return direction + `<div data-assisted-apply-results>${summary}${assistedApplyPlanTable(plan.items, true)}${assistedApplyExecutionHistoryView()}</div>`
+}
+
+function assistedApplyExecutionHistoryView() {
+  if (!assistedApplyExecutionHistory) return ""
+  const events = assistedApplyExecutionHistory.events || []
+  const rows = [...events]
+    .reverse()
+    .map(
+      event =>
+        `<tr><td>${escapeHtml(event.timestamp)}</td><td>${escapeHtml(event.attemptId)}</td><td>${escapeHtml(event.eventId)}</td><td>${escapeHtml(event.resourcePath || "Object")}</td><td>${escapeHtml(event.stage)}</td><td>${escapeHtml(event.status)}</td><td>${escapeHtml(event.intentId || "")}</td><td>${escapeHtml(event.transportChoiceType || "")}</td><td>${escapeHtml(event.transportRequest || "")}</td><td>${escapeHtml(event.inactiveSourceVerified ?? "")}</td><td>${escapeHtml(event.sourceHash || "")}</td><td>${escapeHtml(event.targetHash || "")}</td><td>${escapeHtml((event.activationObjectUrls || []).join("\n"))}</td><td>${escapeHtml(event.error || "")}</td></tr>`
+    )
+    .join("")
+  return `<section class="execution-history"><div class="execution-history-head"><h3>Execution history: ${escapeHtml(assistedApplyExecutionHistory.objectKey)}</h3><button id="closeAssistedApplyExecutionHistory" class="secondary" type="button">Close</button></div><p class="muted">${events.length.toLocaleString()} persisted lifecycle event${events.length === 1 ? "" : "s"}, newest first.</p><div class="execution-history-table"><table><thead><tr><th>Time</th><th>Attempt</th><th>Event</th><th>Resource</th><th>Stage</th><th>Status</th><th>Intent</th><th>Transport choice</th><th>Transport</th><th>Inactive verified</th><th>Source hash</th><th>Target hash</th><th>Activated URLs</th><th>Error</th></tr></thead><tbody>${rows || '<tr><td colspan="14">No execution history for this object.</td></tr>'}</tbody></table></div></section>`
+}
+
+function initializeCopilotAssistedApplySelection(plan) {
+  const workflowId = state.workflow.workflowId
+  const selection = state.previews.copilotAssistedApplySelection
+  const revision = `${plan.createdAt || ""}:${selection?.updatedAt || ""}`
+  const eligible = new Set(plan.items.filter(item => item.eligible).map(item => item.key))
+  if (copilotAssistedApplySelectionRevisions[workflowId] !== revision) {
+    copilotAssistedApplySelectionRevisions[workflowId] = revision
+    copilotAssistedApplySelections[workflowId] = new Set(
+      (selection?.keys || []).filter(key => eligible.has(key))
+    )
+    return
+  }
+  copilotAssistedApplySelections[workflowId] = new Set(
+    [...(copilotAssistedApplySelections[workflowId] || [])].filter(key => eligible.has(key))
+  )
+}
+
+function initializeManualAssistedApplySelection(plan) {
+  const workflowId = state.workflow.workflowId
+  const revision = plan.createdAt || ""
+  const eligible = new Set(plan.items.filter(item => item.eligible).map(item => item.key))
+  if (manualAssistedApplySelectionRevisions[workflowId] !== revision) {
+    manualAssistedApplySelectionRevisions[workflowId] = revision
+    manualAssistedApplySelections[workflowId] = new Set()
+    return
+  }
+  manualAssistedApplySelections[workflowId] = new Set(
+    [...(manualAssistedApplySelections[workflowId] || [])].filter(key => eligible.has(key))
+  )
+}
+
+function currentAssistedApplySelection() {
+  const workflowId = state.workflow?.workflowId
+  if (!workflowId) return new Set()
+  return state.workflow.assistedApplyMode === "copilot"
+    ? copilotAssistedApplySelections[workflowId] || new Set()
+    : manualAssistedApplySelections[workflowId] || new Set()
+}
+
+function assistedApplyPlanTable(rows, copilot) {
   if (!rows?.length) return '<p class="muted">No assisted-apply items.</p>'
+  if (!copilot) initializeManualAssistedApplySelection(state.previews.assistedApplyPlan)
   const decisionCount = decision =>
     rows.filter(row => assistedApplyDecision(row) === decision).length
+  const selected = currentAssistedApplySelection().size
+  const completed = new Set(
+    state.previews.copilotAssistedApplySelection?.completedKeys || []
+  )
+  const done = [...(copilotAssistedApplySelections[state.workflow.workflowId] || [])].filter(
+    key => completed.has(key)
+  ).length
   const views = [
-    { value: "ready", label: "Ready to stage", count: decisionCount("Ready") },
+    { value: "selected-ready", label: "Selected ready", count: selected },
+    {
+      value: "unselected-ready",
+      label: "Unselected ready",
+      count: decisionCount("Ready") - selected
+    },
+    ...(copilot
+      ? [
+          { value: "pending", label: "Pending", count: selected - done },
+          { value: "done", label: "Done", count: done }
+        ]
+      : []),
+    {
+      value: "ready",
+      label: copilot ? "Eligible" : "Ready to stage",
+      count: decisionCount("Ready")
+    },
     { value: "blocked", label: "Blocked", count: decisionCount("Blocked") },
     {
       value: "no-action",
@@ -508,7 +682,11 @@ function assistedApplyPlanTable(rows) {
       count: decisionCount("No action")
     }
   ]
-  return `${tableTools("assistedApplyPlan", rows.length, views, "All plan items")}<div id="table-assistedApplyPlan" class="workflow-table"></div>`
+  const exportAction = singleExport("assistedApplyPlan", "Export assisted-apply table")
+  const selectionTools = copilot
+    ? `<div class="action-group selection-tools"><span class="action-group-label">Selection</span><label><input id="selectAllCopilotApply" type="checkbox"> Select all eligible</label><button id="selectFilteredCopilotApply" class="secondary" type="button" title="Select every eligible row matching the current table filters">Select filtered</button><button id="clearFilteredCopilotApply" class="secondary" type="button" title="Deselect every eligible row matching the current table filters">Deselect filtered</button><button id="importCopilotAssistedApplySelection" class="secondary" type="button">Import</button><span id="selectedCopilotApplyCount" class="selection-count"></span><button id="saveCopilotAssistedApplySelection" type="button">Save selection</button><span id="copilotSelectionSaveStatus" class="selection-save-status"></span></div><p class="muted">Optional: export the table, mark wanted eligible rows with <strong>X</strong> in <strong>Selected</strong>, then import. Imported checks are not available to Copilot until you save them.</p><p id="copilotSelectionImportStatus" class="muted"></p>`
+    : `<div class="action-group selection-tools"><span class="action-group-label">Selection</span><label><input id="selectAllManualApply" type="checkbox"> Select all eligible</label><button id="selectFilteredManualApply" class="secondary" type="button" title="Select every eligible row matching the current table filters">Select filtered</button><button id="clearFilteredManualApply" class="secondary" type="button" title="Deselect every eligible row matching the current table filters">Deselect filtered</button><span id="selectedManualApplyCount" class="selection-count"></span></div><p class="muted">Tick only the objects whose target transport status should be checked. This selection does not stage or save source.</p>`
+  return `${selectionTools}${tableTools("assistedApplyPlan", rows.length, views, "All plan items", exportAction)}<div id="table-assistedApplyPlan" class="workflow-table"></div>`
 }
 
 function discoveryActions() {
@@ -519,7 +697,15 @@ function discoveryActions() {
 }
 
 function assistedApplyActions() {
-  return `<button id="prepareAssistedApply">${complete("assistedApplyPlan") ? "Refresh assisted-apply plan" : "Prepare assisted apply"}</button>${pauseButton("assistedApplyPlan")}`
+  if (!state.workflow.assistedApplyMode) return ""
+  const basis = state.previews.assistedApplyPlan?.comparisonBasis || "formatted"
+  const selected = currentAssistedApplySelection().size
+  const concurrency = state.criteria?.transportConcurrency || 5
+  const planGroup = `<div class="action-group"><span class="action-group-label">Plan</span><label class="assisted-apply-basis">Relevance <select id="assistedApplyComparisonBasis"><option value="formatted" ${basis === "formatted" ? "selected" : ""}>Formatted differences</option><option value="raw" ${basis === "raw" ? "selected" : ""}>Raw differences</option></select></label><button id="prepareAssistedApply">${complete("assistedApplyPlan") ? "Refresh plan" : "Prepare plan"}</button><button id="changeAssistedApplyMode" class="secondary" type="button">Change apply mode</button>${pauseButton("assistedApplyPlan", "transportCheck")}</div>`
+  const transportGroup = state.previews.assistedApplyPlan
+    ? `<div class="action-group"><span class="action-group-label">Transport</span><label class="assisted-apply-basis" title="How many selected objects to check at once on the target system">Concurrent checks <input id="transportConcurrency" type="number" min="1" max="10" value="${escapeHtml(concurrency)}"></label><button id="determineTransportRequests" ${selected ? "" : "disabled"}>Check selected objects</button></div>`
+    : ""
+  return `<div class="action-groups">${planGroup}${transportGroup}</div>`
 }
 
 function updateWorkflowActions() {
@@ -548,9 +734,40 @@ function objectKeyParts(key) {
 
 function assistedApplyDecision(row) {
   if (row.eligible) return "Ready"
-  return (row.blockingReasons || []).includes("Source status is identical")
+  return row.relevant === false ||
+    (row.relevant === undefined &&
+      (row.blockingReasons || []).includes("Source status is identical"))
     ? "No action"
     : "Blocked"
+}
+
+function copilotAssistedApplyStatus(row, selected) {
+  if (!row.eligible) return "Not applicable"
+  if (!selected) return "Not selected"
+  return (state.previews.copilotAssistedApplySelection?.completedKeys || []).includes(row.key)
+    ? "Done"
+    : "Pending"
+}
+
+function copilotAssistedApplyDecision(row, selected) {
+  if (!row.eligible || !selected) return ""
+  return (
+    state.previews.copilotAssistedApplySelection?.decisions?.[row.key] || "needs-human"
+  )
+}
+
+function copilotAssistedApplyDecisionReason(row, selected) {
+  if (!row.eligible || !selected) return ""
+  return state.previews.copilotAssistedApplySelection?.decisionReasons?.[row.key] || ""
+}
+
+function transportCheckStatusLabel(row) {
+  if (row.transportCheckStatus === "locked") return "Transport found"
+  if (row.transportCheckStatus === "not-locked") return "No transport lock"
+  if (row.transportCheckStatus === "no-transport") return "No TR"
+  if (row.transportCheckStatus === "local") return "Local object"
+  if (row.transportCheckStatus === "error") return "Check failed"
+  return "Not checked"
 }
 
 function countBy(rows, value) {
@@ -572,7 +789,7 @@ function tableTools(id, total, views, allLabel, extraActions = "") {
         `<option value="${escapeHtml(view.value)}" data-label="${escapeHtml(view.label)}" ${selectedView === view.value ? "selected" : ""}>${escapeHtml(view.label)} (${view.count.toLocaleString()})</option>`
     )
   ]
-  return `<div class="table-tools"><label>Show <select data-table-view="${id}">${options.join("")}</select></label><button class="secondary" type="button" data-clear-table="${id}">Clear filters</button>${extraActions}<span id="table-count-${id}">Showing ${total.toLocaleString()} of ${total.toLocaleString()}</span></div>`
+  return `<div class="action-group table-tools"><span class="action-group-label">Table</span><label>Show <select data-table-view="${id}">${options.join("")}</select></label><button class="secondary" type="button" data-clear-table="${id}" title="Clear column filters and the Show view">Clear filters</button>${extraActions}<span id="table-count-${id}" class="table-count">Showing ${total.toLocaleString()} of ${total.toLocaleString()}</span></div>`
 }
 
 function sourceComparable(row) {
@@ -666,35 +883,155 @@ function wireSourceComparisonTable() {
     return { ...row, objectName: object.name, objectType: object.type }
   })
   createWorkflowTable("sourceComparison", rows, [
-    textColumn("Object", "objectName", 220),
-    textColumn("Type", "objectType", 100),
-    textColumn("Status", "status", 130),
-    numberColumn("Files changed", "filesChanged"),
-    numberColumn("Lines added", "linesAdded"),
-    numberColumn("Lines removed", "linesRemoved"),
-    numberColumn("Lines changed", "linesChanged"),
-    textColumn("Details", "error", 260),
+    textColumn("Object", "objectName", 220, "Repository object name."),
+    textColumn("Type", "objectType", 100, "TADIR repository object type."),
+    textColumn(
+      "Status",
+      "status",
+      130,
+      "Overall raw snapshot result. Unlike Raw equal, this also reports incomplete, missing, and failed snapshots."
+    ),
+    textColumn(
+      "Raw equal",
+      "rawIdentical",
+      100,
+      "True when the aggregate hashes of every exact downloaded source and target resource match."
+    ),
+    textColumn(
+      "Formatted equal",
+      "formattedIdentical",
+      125,
+      "True when both ABAPLint-formatted snapshot trees match. ABAP files use the fixed formatter configuration; other resources are copied unchanged."
+    ),
+    numberColumn(
+      "Raw differing files",
+      "rawFilesChanged",
+      "Number of exact downloaded resources that were added, removed, or have different raw hashes."
+    ),
+    numberColumn(
+      "Formatted differing files",
+      "formattedFilesChanged",
+      "Number of resources that remain added, removed, or different after ABAP formatting. Formatting does not create extra files."
+    ),
+    numberColumn(
+      "Raw source lines",
+      "rawSourceLines",
+      "Total text lines across all exact downloaded source resources."
+    ),
+    numberColumn(
+      "Formatted source lines",
+      "formattedSourceLines",
+      "Total text lines across all formatted source resources."
+    ),
+    numberColumn(
+      "Raw target lines",
+      "rawTargetLines",
+      "Total text lines across all exact downloaded target resources."
+    ),
+    numberColumn(
+      "Formatted target lines",
+      "formattedTargetLines",
+      "Total text lines across all formatted target resources."
+    ),
+    numberColumn(
+      "Raw lines added",
+      "rawLinesAdded",
+      "Lines present only in the raw source side after line-based diff alignment."
+    ),
+    numberColumn(
+      "Formatted lines added",
+      "formattedLinesAdded",
+      "Lines present only in the formatted source side after line-based diff alignment."
+    ),
+    numberColumn(
+      "Raw lines removed",
+      "rawLinesRemoved",
+      "Lines present only in the raw target side after line-based diff alignment."
+    ),
+    numberColumn(
+      "Formatted lines removed",
+      "formattedLinesRemoved",
+      "Lines present only in the formatted target side after line-based diff alignment."
+    ),
+    numberColumn(
+      "Raw lines changed",
+      "rawLinesChanged",
+      "Paired raw removed and added lines in the same diff hunk, counted as replacements."
+    ),
+    numberColumn(
+      "Formatted lines changed",
+      "formattedLinesChanged",
+      "Paired formatted removed and added lines in the same diff hunk, counted as replacements."
+    ),
+    textColumn(
+      "Details",
+      "error",
+      260,
+      "Snapshot download, comparison, or ABAP formatting error details."
+    ),
     {
       title: "Review",
+      headerTooltip: "Open the exact downloaded diff or the ABAPLint-formatted diff.",
       headerSort: false,
       headerFilter: false,
-      width: 105,
-      formatter: cell =>
-        `<button class="secondary compact-table-button" ${cell.getRow().getData().status === "different" ? "" : "disabled"}>Open diff</button>`,
-      cellClick: (_event, cell) => {
+      minWidth: 210,
+      formatter: cell => {
         const row = cell.getRow().getData()
-        if (row.status === "different") send("openDiff", { key: row.key })
+        return `<div class="compact-table-actions"><button class="secondary" data-representation="raw" ${row.rawDiffFiles ? "" : "disabled"}>Raw diff</button><button class="secondary" data-representation="formatted" ${row.formattedDiffFiles && !row.formattedError ? "" : "disabled"}>Formatted diff</button></div>`
+      },
+      cellClick: (event, cell) => {
+        const representation = event.target?.dataset?.representation
+        if (!representation || event.target.disabled) return
+        const row = cell.getRow().getData()
+        send("openDiff", { key: row.key, representation })
       }
     }
   ])
 }
 
 function wireAssistedApplyTable() {
+  const copilot = state.workflow.assistedApplyMode === "copilot"
+  const workflowId = state.workflow.workflowId
+  const selections = currentAssistedApplySelection()
+  const comparisons = new Map(
+    (state.previews.sourceComparison || []).map(comparison => [comparison.key, comparison])
+  )
   const rows = (state.previews.assistedApplyPlan?.items || []).map(row => {
     const reasons = row.blockingReasons || []
     const decision = assistedApplyDecision(row)
+    const comparison = comparisons.get(row.key) || {}
+    const execution = state.previews.assistedApplyExecutionSummaries?.[row.key] || {}
     return {
       ...row,
+      selected: selections.has(row.key),
+      copilotStatus: copilot
+        ? copilotAssistedApplyStatus(
+            row,
+            selections.has(row.key)
+          )
+        : undefined,
+      copilotDecision: copilot
+        ? copilotAssistedApplyDecision(
+            row,
+            selections.has(row.key)
+          )
+        : undefined,
+      copilotDecisionReason: copilot
+        ? copilotAssistedApplyDecisionReason(row, selections.has(row.key))
+        : undefined,
+      transportRequest: row.transportRequest || "",
+      transportCheckStatusLabel: transportCheckStatusLabel(row),
+      transportDetails: row.transportCheckError || row.transportDescription || "",
+      transportCheckedAt: row.transportCheckedAt || "",
+      executionAttempts: execution.attemptCount || 0,
+      executionStatus: execution.lastStatus || "Not started",
+      executionStage: execution.lastStage || "",
+      executionUpdatedAt: execution.lastUpdatedAt || "",
+      executionTransport: execution.transportRequest || "",
+      executionError: execution.lastError || "",
+      rawDiffFiles: comparison.rawDiffFiles || 0,
+      formattedDiffFiles: comparison.formattedDiffFiles || 0,
+      formattedError: comparison.formattedError,
       objectName: row.sourceRecord.objectName,
       objectType: row.sourceRecord.objectType,
       decision,
@@ -705,21 +1042,40 @@ function wireAssistedApplyTable() {
           : reasons.join("; ")
     }
   })
-  createWorkflowTable("assistedApplyPlan", rows, [
+  const columns = [
     textColumn("Object", "objectName", 220),
     textColumn("Type", "objectType", 100),
+    textColumn("Transport status", "transportCheckStatusLabel", 145),
+    textColumn("Transport request", "transportRequest", 150),
+    textColumn("Transport details", "transportDetails", 220),
+    textColumn("Transport checked at", "transportCheckedAt", 170),
+    numberColumn("Apply attempts", "executionAttempts", "Persisted Copilot apply attempts."),
+    textColumn("Last execution status", "executionStatus", 150),
+    textColumn("Last execution stage", "executionStage", 145),
+    textColumn("Last execution at", "executionUpdatedAt", 170),
+    textColumn("Actual apply transport", "executionTransport", 165),
+    textColumn("Last execution error", "executionError", 260),
     textColumn("Decision", "decision", 120),
     textColumn("Reason", "reason", 300),
     {
-      title: "Review and apply",
+      title: copilot ? "Review" : "Review and apply",
       headerSort: false,
       headerFilter: false,
       minWidth: 340,
       formatter: cell => {
         const row = cell.getRow().getData()
         const reviewDisabled = row.eligible ? "" : "disabled"
+        const rawDiffDisabled = row.eligible && row.rawDiffFiles ? "" : "disabled"
+        const formattedDiffDisabled =
+          row.eligible && row.formattedDiffFiles && !row.formattedError ? "" : "disabled"
         const stageDisabled = row.eligible && state.assistedApplySafety?.safe ? "" : "disabled"
-        return `<div class="compact-table-actions"><button class="secondary" data-action="source" ${reviewDisabled}>Live source</button><button class="secondary" data-action="target" ${reviewDisabled}>Live target</button><button class="secondary" data-action="diff" ${reviewDisabled}>Diff</button><button data-action="stage" ${stageDisabled}>Stage in target editor</button></div>`
+        const history = row.executionAttempts
+          ? '<button class="secondary" data-action="history">History</button>'
+          : ""
+        const stage = copilot
+          ? history
+          : `<button data-action="stage" ${stageDisabled}>Stage in target editor</button>${history}`
+        return `<div class="compact-table-actions"><button class="secondary" data-action="source" ${reviewDisabled}>Live source</button><button class="secondary" data-action="target" ${reviewDisabled}>Live target</button><button class="secondary" data-action="rawDiff" ${rawDiffDisabled}>Raw diff</button><button class="secondary" data-action="formattedDiff" ${formattedDiffDisabled}>Formatted diff</button>${stage}</div>`
       },
       cellClick: (event, cell) => {
         const action = event.target?.dataset?.action
@@ -728,13 +1084,59 @@ function wireAssistedApplyTable() {
         const commands = {
           source: "openAssistedSource",
           target: "openAssistedTarget",
-          diff: "openAssistedDiff",
-          stage: "stageAssistedSource"
+          rawDiff: "openAssistedDiff",
+          formattedDiff: "openAssistedDiff",
+          stage: "stageAssistedSource",
+          history: "showAssistedApplyHistory"
         }
-        send(commands[action], { key })
+        send(commands[action], {
+          key,
+          representation: action === "formattedDiff" ? "formatted" : "raw"
+        })
       }
     }
-  ])
+  ]
+  if (copilot) {
+    columns.unshift(textColumn("Copilot decision reason", "copilotDecisionReason", 300))
+    columns.unshift(textColumn("Copilot decision", "copilotDecision", 145))
+    columns.unshift(textColumn("Status", "copilotStatus", 110))
+  }
+  columns.unshift({
+    title: "Select",
+    field: "selected",
+    width: 72,
+    hozAlign: "center",
+    headerHozAlign: "center",
+    headerSort: false,
+    headerFilter: false,
+    formatter: cell => {
+      const row = cell.getRow().getData()
+      return `<input class="assisted-apply-selection-checkbox" data-selectable="${row.eligible ? "true" : "false"}" type="checkbox" ${row.selected ? "checked" : ""} ${row.eligible && !assistedApplySelectionLocked() ? "" : "disabled"} aria-label="Select ${escapeHtml(row.objectName || row.key)} for assisted apply">`
+    },
+    cellClick: (event, cell) => {
+      if (!event.target?.classList?.contains("assisted-apply-selection-checkbox")) return
+      const row = cell.getRow().getData()
+      if (!row.eligible || assistedApplySelectionLocked()) return
+      const activeSelections = currentAssistedApplySelection()
+      if (event.target.checked) activeSelections.add(row.key)
+      else activeSelections.delete(row.key)
+      void cell.getRow().update({
+        selected: event.target.checked,
+        copilotStatus: copilot
+          ? copilotAssistedApplyStatus(row, event.target.checked)
+          : undefined,
+        copilotDecision: copilot
+          ? copilotAssistedApplyDecision(row, event.target.checked)
+          : undefined,
+        copilotDecisionReason: copilot
+          ? copilotAssistedApplyDecisionReason(row, event.target.checked)
+          : undefined
+      })
+      updateAssistedApplySelectionControls()
+    }
+  })
+  const table = createWorkflowTable("assistedApplyPlan", rows, columns, { index: "key" })
+  if (table) table.on("tableBuilt", updateAssistedApplySelectionControls)
 }
 
 function createWorkflowTable(id, data, columns, options = {}) {
@@ -832,12 +1234,18 @@ function workflowTableViewMatches(id, view, row) {
   }
   if (id === "sourceComparison") {
     if (view === "attention") return row.status !== "identical"
+    if (view === "different-raw") return isRawDifferent(row)
+    if (view === "different-formatted") return row.formattedIdentical === false
     if (view === "incomplete")
       return !["different", "identical"].includes(row.status)
     return row.status === view
   }
   if (id === "assistedApplyPlan")
     return (
+      (view === "selected-ready" && row.decision === "Ready" && row.selected) ||
+      (view === "unselected-ready" && row.decision === "Ready" && !row.selected) ||
+      (view === "pending" && row.copilotStatus === "Pending") ||
+      (view === "done" && row.copilotStatus === "Done") ||
       (view === "ready" && row.decision === "Ready") ||
       (view === "blocked" && row.decision === "Blocked") ||
       (view === "no-action" && row.decision === "No action")
@@ -859,8 +1267,21 @@ function updateTableViewOptionCount(id, value, count) {
     option.textContent = `${option.dataset.label} (${count.toLocaleString()})`
 }
 
-function textColumn(title, field, minWidth) {
-  return { title, field, minWidth }
+function isRawDifferent(row) {
+  return row.rawIdentical === false || (row.rawIdentical === undefined && row.status === "different")
+}
+
+function columnMinWidth(title, requested = 0) {
+  return Math.max(requested, title.length * 8 + 44)
+}
+
+function textColumn(title, field, minWidth, headerTooltip) {
+  return {
+    title,
+    field,
+    minWidth: columnMinWidth(title, minWidth),
+    headerTooltip
+  }
 }
 
 function workflowHeaderFilter(headerValue, rowValue) {
@@ -880,11 +1301,12 @@ function workflowHeaderFilter(headerValue, rowValue) {
   return new RegExp(`^${pattern}$`, "i").test(value)
 }
 
-function numberColumn(title, field) {
+function numberColumn(title, field, headerTooltip) {
   return {
     title,
     field,
-    minWidth: 115,
+    minWidth: columnMinWidth(title, 115),
+    headerTooltip,
     sorter: "number",
     hozAlign: "right",
     headerHozAlign: "right"
@@ -935,6 +1357,87 @@ function sourceSelectionChanged(workflowId) {
 
 function sourceSelectionLocked() {
   return busy || pendingTransition || state.workflow?.runState === "running"
+}
+
+function copilotAssistedApplySelectionLocked() {
+  return busy || pendingTransition || state.workflow?.runState === "running"
+}
+
+function assistedApplySelectionLocked() {
+  return copilotAssistedApplySelectionLocked()
+}
+
+function copilotAssistedApplySelectionChanged() {
+  const saved = new Set(state.previews.copilotAssistedApplySelection?.keys || [])
+  const current = copilotAssistedApplySelections[state.workflow.workflowId] || new Set()
+  if (saved.size !== current.size) return true
+  return [...saved].some(key => !current.has(key))
+}
+
+function updateCopilotAssistedApplySelectionControls() {
+  const plan = state.previews.assistedApplyPlan
+  if (!plan) return
+  const workflowId = state.workflow.workflowId
+  const selected = copilotAssistedApplySelections[workflowId]?.size || 0
+  const eligible = plan.items.filter(item => item.eligible).length
+  const completed = new Set(
+    state.previews.copilotAssistedApplySelection?.completedKeys || []
+  )
+  const done = [...(copilotAssistedApplySelections[workflowId] || [])].filter(key =>
+    completed.has(key)
+  ).length
+  const selectAll = document.getElementById("selectAllCopilotApply")
+  if (selectAll) {
+    selectAll.checked = eligible > 0 && selected === eligible
+    selectAll.indeterminate = selected > 0 && selected < eligible
+    selectAll.disabled = !eligible || copilotAssistedApplySelectionLocked()
+  }
+  const count = document.getElementById("selectedCopilotApplyCount")
+  if (count)
+    count.textContent = `${selected.toLocaleString()} of ${eligible.toLocaleString()} eligible selected`
+  const changed = copilotAssistedApplySelectionChanged()
+  const save = document.getElementById("saveCopilotAssistedApplySelection")
+  if (save) save.disabled = !changed || copilotAssistedApplySelectionLocked()
+  const saved = state.previews.copilotAssistedApplySelection
+  const status = document.getElementById("copilotSelectionSaveStatus")
+  if (status)
+    status.innerHTML = changed
+      ? `<strong>${selected.toLocaleString()}</strong> objects are selected. Save the selection to make it available to Copilot.`
+      : saved
+        ? `<strong>${saved.keys.length.toLocaleString()} objects have been selected for Copilot-assisted apply:</strong> ${done.toLocaleString()} done and ${(saved.keys.length - done).toLocaleString()} pending.`
+        : "No Copilot-assisted apply selection has been saved."
+  updateTableViewOptionCount("assistedApplyPlan", "selected-ready", selected)
+  updateTableViewOptionCount("assistedApplyPlan", "unselected-ready", eligible - selected)
+  updateTableViewOptionCount("assistedApplyPlan", "pending", selected - done)
+  updateTableViewOptionCount("assistedApplyPlan", "done", done)
+  const determine = document.getElementById("determineTransportRequests")
+  if (determine) determine.disabled = !selected || assistedApplySelectionLocked()
+}
+
+function updateManualAssistedApplySelectionControls() {
+  const plan = state.previews.assistedApplyPlan
+  if (!plan) return
+  const selected = currentAssistedApplySelection().size
+  const eligible = plan.items.filter(item => item.eligible).length
+  const selectAll = document.getElementById("selectAllManualApply")
+  if (selectAll) {
+    selectAll.checked = eligible > 0 && selected === eligible
+    selectAll.indeterminate = selected > 0 && selected < eligible
+    selectAll.disabled = !eligible || assistedApplySelectionLocked()
+  }
+  const count = document.getElementById("selectedManualApplyCount")
+  if (count)
+    count.textContent = `${selected.toLocaleString()} of ${eligible.toLocaleString()} eligible selected`
+  updateTableViewOptionCount("assistedApplyPlan", "selected-ready", selected)
+  updateTableViewOptionCount("assistedApplyPlan", "unselected-ready", eligible - selected)
+  const determine = document.getElementById("determineTransportRequests")
+  if (determine) determine.disabled = !selected || assistedApplySelectionLocked()
+}
+
+function updateAssistedApplySelectionControls() {
+  if (state.workflow.assistedApplyMode === "copilot")
+    updateCopilotAssistedApplySelectionControls()
+  else updateManualAssistedApplySelectionControls()
 }
 
 function saveWorkflowTableState(table) {
@@ -1020,11 +1523,126 @@ function wireWorkflow(workflow) {
   const selectFilteredSources = document.getElementById("selectFilteredSources"); if (selectFilteredSources) selectFilteredSources.onclick = () => updateFilteredSources(true)
   const clearFilteredSources = document.getElementById("clearFilteredSources"); if (clearFilteredSources) clearFilteredSources.onclick = () => updateFilteredSources(false)
   const importSourceSelection = document.getElementById("importSourceSelection"); if (importSourceSelection) importSourceSelection.onclick = () => send("importSourceSelection")
+  const chooseManualAssistedApply = document.getElementById("chooseManualAssistedApply"); if (chooseManualAssistedApply) chooseManualAssistedApply.onclick = () => send("chooseAssistedApplyMode", { mode: "manual" })
+  const chooseCopilotAssistedApply = document.getElementById("chooseCopilotAssistedApply"); if (chooseCopilotAssistedApply) chooseCopilotAssistedApply.onclick = () => send("chooseAssistedApplyMode", { mode: "copilot" })
+  const selectAllCopilotApply = document.getElementById("selectAllCopilotApply"); if (selectAllCopilotApply) selectAllCopilotApply.onchange = () => {
+    if (copilotAssistedApplySelectionLocked()) return
+    const table = workflowTableById.assistedApplyPlan
+    const eligible = (state.previews.assistedApplyPlan?.items || []).filter(item => item.eligible)
+    copilotAssistedApplySelections[workflow.workflowId] = selectAllCopilotApply.checked
+      ? new Set(eligible.map(item => item.key))
+      : new Set()
+    if (table)
+      void table.updateData(
+        (state.previews.assistedApplyPlan?.items || []).map(item => ({
+          key: item.key,
+          selected: selectAllCopilotApply.checked && item.eligible,
+          copilotStatus: copilotAssistedApplyStatus(
+            item,
+            selectAllCopilotApply.checked && item.eligible
+          ),
+          copilotDecision: copilotAssistedApplyDecision(
+            item,
+            selectAllCopilotApply.checked && item.eligible
+          ),
+          copilotDecisionReason: copilotAssistedApplyDecisionReason(
+            item,
+            selectAllCopilotApply.checked && item.eligible
+          )
+        }))
+      )
+    updateCopilotAssistedApplySelectionControls()
+  }
+  const updateFilteredCopilotApply = selected => {
+    if (copilotAssistedApplySelectionLocked()) return
+    const table = workflowTableById.assistedApplyPlan
+    if (!table) return
+    const rows = table.getRows("active").filter(row => row.getData().eligible)
+    for (const row of rows) {
+      const data = row.getData()
+      if (selected) copilotAssistedApplySelections[workflow.workflowId].add(data.key)
+      else copilotAssistedApplySelections[workflow.workflowId].delete(data.key)
+      void row.update({
+        selected,
+        copilotStatus: copilotAssistedApplyStatus(data, selected),
+        copilotDecision: copilotAssistedApplyDecision(data, selected),
+        copilotDecisionReason: copilotAssistedApplyDecisionReason(data, selected)
+      })
+    }
+    updateCopilotAssistedApplySelectionControls()
+  }
+  const selectFilteredCopilotApply = document.getElementById("selectFilteredCopilotApply"); if (selectFilteredCopilotApply) selectFilteredCopilotApply.onclick = () => updateFilteredCopilotApply(true)
+  const clearFilteredCopilotApply = document.getElementById("clearFilteredCopilotApply"); if (clearFilteredCopilotApply) clearFilteredCopilotApply.onclick = () => updateFilteredCopilotApply(false)
+  const importCopilotSelection = document.getElementById("importCopilotAssistedApplySelection"); if (importCopilotSelection) importCopilotSelection.onclick = () => send("importCopilotAssistedApplySelection")
+  const saveCopilotSelection = document.getElementById("saveCopilotAssistedApplySelection"); if (saveCopilotSelection) saveCopilotSelection.onclick = () => send("saveCopilotAssistedApplySelection", { keys: [...(copilotAssistedApplySelections[workflow.workflowId] || [])] })
+  const selectAllManualApply = document.getElementById("selectAllManualApply"); if (selectAllManualApply) selectAllManualApply.onchange = () => {
+    if (assistedApplySelectionLocked()) return
+    const table = workflowTableById.assistedApplyPlan
+    const eligible = (state.previews.assistedApplyPlan?.items || []).filter(item => item.eligible)
+    manualAssistedApplySelections[workflow.workflowId] = selectAllManualApply.checked
+      ? new Set(eligible.map(item => item.key))
+      : new Set()
+    if (table)
+      void table.updateData(
+        (state.previews.assistedApplyPlan?.items || []).map(item => ({
+          key: item.key,
+          selected: selectAllManualApply.checked && item.eligible
+        }))
+      )
+    updateManualAssistedApplySelectionControls()
+  }
+  const updateFilteredManualApply = selected => {
+    if (assistedApplySelectionLocked()) return
+    const table = workflowTableById.assistedApplyPlan
+    if (!table) return
+    const rows = table.getRows("active").filter(row => row.getData().eligible)
+    for (const row of rows) {
+      const data = row.getData()
+      if (selected) manualAssistedApplySelections[workflow.workflowId].add(data.key)
+      else manualAssistedApplySelections[workflow.workflowId].delete(data.key)
+      void row.update({ selected })
+    }
+    updateManualAssistedApplySelectionControls()
+  }
+  const selectFilteredManualApply = document.getElementById("selectFilteredManualApply"); if (selectFilteredManualApply) selectFilteredManualApply.onclick = () => updateFilteredManualApply(true)
+  const clearFilteredManualApply = document.getElementById("clearFilteredManualApply"); if (clearFilteredManualApply) clearFilteredManualApply.onclick = () => updateFilteredManualApply(false)
+  const closeAssistedApplyExecutionHistory = document.getElementById("closeAssistedApplyExecutionHistory"); if (closeAssistedApplyExecutionHistory) closeAssistedApplyExecutionHistory.onclick = () => {
+    assistedApplyExecutionHistory = undefined
+    render()
+  }
   wireWorkflowActions(workflow)
   const openAutoSaveSettings = document.getElementById("openAutoSaveSettings"); if (openAutoSaveSettings) openAutoSaveSettings.onclick = () => send("openAutoSaveSettings")
   const openChatSaveSettings = document.getElementById("openChatSaveSettings"); if (openChatSaveSettings) openChatSaveSettings.onclick = () => send("openChatSaveSettings")
   document.getElementById("askCopilot").onclick = () => send("askCopilot", { prompt: document.getElementById("copilotPrompt").value })
-  document.querySelectorAll("[data-export]").forEach(button => (button.onclick = () => send("export", { output: button.dataset.export, type: button.dataset.type, selectedKeys: button.dataset.export === "existenceComparison" ? [...(sourceSelections[workflow.workflowId] || [])] : undefined })))
+  document.querySelectorAll("[data-export]").forEach(button => (button.onclick = () => {
+    const output = button.dataset.export
+    const selectedKeys =
+      output === "existenceComparison"
+        ? [...(sourceSelections[workflow.workflowId] || [])]
+        : output === "assistedApplyPlan" && workflow.assistedApplyMode === "copilot"
+          ? [...(copilotAssistedApplySelections[workflow.workflowId] || [])]
+          : undefined
+    const completedKeys =
+      output === "assistedApplyPlan" && workflow.assistedApplyMode === "copilot"
+        ? state.previews.copilotAssistedApplySelection?.completedKeys || []
+        : undefined
+    const decisions =
+      output === "assistedApplyPlan" && workflow.assistedApplyMode === "copilot"
+        ? state.previews.copilotAssistedApplySelection?.decisions || {}
+        : undefined
+    const decisionReasons =
+      output === "assistedApplyPlan" && workflow.assistedApplyMode === "copilot"
+        ? state.previews.copilotAssistedApplySelection?.decisionReasons || {}
+        : undefined
+    send("export", {
+      output,
+      type: button.dataset.type,
+      selectedKeys,
+      completedKeys,
+      decisions,
+      decisionReasons
+    })
+  }))
 }
 
 function wireWorkflowActions(workflow) {
@@ -1045,7 +1663,16 @@ function wireWorkflowActions(workflow) {
   }
   const compareSourceCode = document.getElementById("compareSourceCode"); if (compareSourceCode) compareSourceCode.onclick = () => startSourceComparison("compareSourceCode")
   const resumeSourceComparison = document.getElementById("resumeSourceComparison"); if (resumeSourceComparison) resumeSourceComparison.onclick = () => startSourceComparison(sourceSelectionChanged(workflow.workflowId) ? "compareSourceCode" : "resumeSourceComparison")
-  const prepareAssistedApply = document.getElementById("prepareAssistedApply"); if (prepareAssistedApply) prepareAssistedApply.onclick = () => send("prepareAssistedApply")
+  const prepareAssistedApply = document.getElementById("prepareAssistedApply"); if (prepareAssistedApply) prepareAssistedApply.onclick = () => send("prepareAssistedApply", { comparisonBasis: document.getElementById("assistedApplyComparisonBasis")?.value || "formatted" })
+  const determineTransportRequests = document.getElementById("determineTransportRequests"); if (determineTransportRequests) determineTransportRequests.onclick = () => {
+    pendingTransition = true
+    applyBusy()
+    send("determineTransportRequests", {
+      keys: [...currentAssistedApplySelection()],
+      transportConcurrency: Number(document.getElementById("transportConcurrency")?.value) || 5
+    })
+  }
+  const changeAssistedApplyMode = document.getElementById("changeAssistedApplyMode"); if (changeAssistedApplyMode) changeAssistedApplyMode.onclick = () => send("resetAssistedApplyMode")
   document.querySelectorAll(".pause").forEach(button => (button.onclick = () => {
     pendingTransition = true
     applyBusy()
@@ -1073,6 +1700,9 @@ function applyBusy() {
   const selectionLocked = sourceSelectionLocked()
   document.querySelectorAll(".table-selection-checkbox").forEach(input => {
     input.disabled = selectionLocked || input.dataset.selectable !== "true"
+  })
+  document.querySelectorAll(".assisted-apply-selection-checkbox").forEach(input => {
+    input.disabled = assistedApplySelectionLocked() || input.dataset.selectable !== "true"
   })
   const selectAll = document.getElementById("selectAllSources")
   if (selectAll)

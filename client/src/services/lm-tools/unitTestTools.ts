@@ -157,8 +157,9 @@ export class RunUnitTestsTool implements vscode.LanguageModelTool<IRunUnitTestsP
     if (struct?.metaData["adtcore:version"] === "inactive") {
       const uri = createUri(connectionId, path.path)
       const activator = AdtObjectActivator.get(connectionId)
-      await activator.activate(main, uri, false)
+      const result = await activator.activate(main, uri, false)
       showHideActivate(vscode.window.activeTextEditor, true)
+      if (!result.ok) throw new Error(result.summary || "Activation failed before running tests")
     }
   }
 

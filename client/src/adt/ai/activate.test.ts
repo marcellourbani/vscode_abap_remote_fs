@@ -1,3 +1,7 @@
+const mocks = vi.hoisted(() => ({
+  findByAdtUri: vi.fn()
+}))
+
 vi.mock("vscode", () => ({
   Uri: {
     parse: vi.fn(function (url: string) {
@@ -8,6 +12,11 @@ vi.mock("vscode", () => ({
         path: match?.[3] ?? "",
         toString: () => url
       }
+    }),
+    from: vi.fn(function (parts: { scheme: string; authority: string; path: string }) {
+      return {
+        toString: () => `${parts.scheme}://${parts.authority}${parts.path}`
+      }
     })
   },
   LanguageModelTextPart: vi.fn(function (t: string) {
@@ -16,9 +25,7 @@ vi.mock("vscode", () => ({
   LanguageModelToolResult: vi.fn(function (content: any[]) {
     return { content }
   }),
-  ProgressLocation: { Window: 10 },
   window: {
-    withProgress: vi.fn(),
     createOutputChannel: vi.fn(function () {
       return {
         appendLine: vi.fn(),
@@ -34,11 +41,7 @@ vi.mock("vscode", () => ({
 
 vi.mock("../conections", () => ({
   getClient: vi.fn(),
-  uriRoot: vi.fn()
-}))
-
-vi.mock("abapfs", () => ({
-  isAbapFile: vi.fn()
+  getOrCreateRoot: vi.fn(async () => ({ findByAdtUri: mocks.findByAdtUri }))
 }))
 
 vi.mock("../operations/AdtObjectActivator", () => ({
@@ -63,23 +66,27 @@ vi.mock("../../listeners", () => ({
 }))
 
 import { ActivateTool } from "./activate"
-import { getClient, uriRoot } from "../conections"
-import { isAbapFile } from "abapfs"
+import { getClient } from "../conections"
 import { AdtObjectActivator } from "../operations/AdtObjectActivator"
-import * as vscode from "vscode"
 import type { MockedFunction, Mock } from "vitest"
 
 const mockGetClient = getClient as MockedFunction<typeof getClient>
-const mockUriRoot = uriRoot as MockedFunction<typeof uriRoot>
-const mockIsAbapFile = isAbapFile as MockedFunction<typeof isAbapFile>
 
 const mockToken = {} as any
+const inactiveObject = {
+  "adtcore:name": "ZTEST_I01",
+  "adtcore:type": "PROG/I",
+  "adtcore:uri": "/sap/bc/adt/programs/includes/ztest_i01",
+  "adtcore:parentUri": "/sap/bc/adt/programs/programs/ztest",
+  user: "DEVELOPER",
+  deleted: false
+}
 
 beforeEach(() => {
   vi.clearAllMocks()
-  ;(vscode.window.withProgress as Mock).mockImplementation(function (_opts: any, fn: Function) {
-    return fn()
-  })
+  mocks.findByAdtUri.mockImplementation(async (uri: string) => ({
+    path: uri.replace("/sap/bc/adt", "/Source Library")
+  }))
 })
 
 describe("ActivateTool", () => {
@@ -90,58 +97,197 @@ describe("ActivateTool", () => {
   })
 
   describe("invoke", () => {
-    test("activates object and returns success message", async () => {
-      const mockObject = { path: "/sap/bc/adt/programs/programs/ztest" }
-      const mockFile = { object: mockObject }
-      const mockActivator = { activate: vi.fn().mockResolvedValue({ ok: true }) }
-
-      mockIsAbapFile.mockReturnValue(true)
-      const mockRoot = {
-        getNodePathAsync: vi.fn().mockResolvedValue([{ file: mockFile, path: "/ztest" }])
+    test("gets and filters inactive objects", async () => {
+      const mockActivator = {
+        getInactiveObjects: vi.fn().mockResolvedValue([
+          inactiveObject,
+          {
+            ...inactiveObject,
+            "adtcore:name": "ZOTHER",
+            "adtcore:uri": "/sap/bc/adt/programs/includes/zother"
+          }
+        ])
       }
-      mockUriRoot.mockReturnValue(mockRoot as any)
+      mockGetClient.mockReturnValue({} as any)
       ;(AdtObjectActivator.get as Mock).mockReturnValue(mockActivator)
 
       const result = await tool.invoke(
-        { input: { url: "adt://dev100/sap/bc/adt/programs/programs/ztest" } } as any,
-        mockToken
-      )
-
-      expect(mockActivator.activate).toHaveBeenCalled()
-      const resultContent = (result as any).content
-      expect(resultContent[0].value).toContain("Activation successful")
-      expect(resultContent[0].value).toContain("abapfs_get_object_source")
-      expect(resultContent[0].value).toContain("does not prove")
-    })
-
-    test("throws when object not found in path", async () => {
-      mockIsAbapFile.mockReturnValue(false)
-      const mockRoot = {
-        getNodePathAsync: vi.fn().mockResolvedValue([{ file: {}, path: "/" }])
-      }
-      mockUriRoot.mockReturnValue(mockRoot as any)
-      ;(vscode.window.withProgress as Mock).mockImplementation(function (_opts: any, fn: Function) {
-        return fn()
-      })
-
-      await expect(
-        tool.invoke({ input: { url: "adt://dev100/bad/path" } } as any, mockToken)
-      ).rejects.toThrow("Failed to retrieve object for activation")
-    })
-  })
-
-  describe("prepareInvocation", () => {
-    test("returns invocation message when client found", () => {
-      mockGetClient.mockReturnValue({} as any)
-
-      const result = tool.prepareInvocation!(
         {
-          input: { url: "adt://dev100/sap/bc/adt/programs/programs/ztest/ztest.prog.abap" }
+          input: {
+            action: "get_inactive_objects",
+            connectionId: "dev100",
+            regex: "I01$"
+          }
         } as any,
         mockToken
       )
 
-      expect((result as any).invocationMessage).toContain("Activating")
+      const payload = JSON.parse((result as any).content[0].value)
+      expect(payload.count).toBe(1)
+      expect(payload.objects[0]).toMatchObject({
+        name: "ZTEST_I01",
+        url: "adt://dev100/sap/bc/adt/programs/includes/ztest_i01",
+        workspaceUri: "adt://dev100/Source Library/programs/includes/ztest_i01"
+      })
+      expect(mocks.findByAdtUri).toHaveBeenCalledWith(
+        "/sap/bc/adt/programs/includes/ztest_i01",
+        false
+      )
+    })
+
+    test("keeps an inactive object visible when no workspace URI can be resolved", async () => {
+      mocks.findByAdtUri.mockRejectedValue(new Error("not mapped"))
+      const mockActivator = {
+        getInactiveObjects: vi.fn().mockResolvedValue([inactiveObject])
+      }
+      mockGetClient.mockReturnValue({} as any)
+      ;(AdtObjectActivator.get as Mock).mockReturnValue(mockActivator)
+
+      const result = await tool.invoke(
+        {
+          input: {
+            action: "get_inactive_objects",
+            connectionId: "dev100"
+          }
+        } as any,
+        mockToken
+      )
+
+      const payload = JSON.parse((result as any).content[0].value)
+      expect(payload.objects[0]).toMatchObject({
+        name: "ZTEST_I01",
+        url: "adt://dev100/sap/bc/adt/programs/includes/ztest_i01"
+      })
+      expect(payload.objects[0]).not.toHaveProperty("workspaceUri")
+    })
+
+    test("activates URLs in one batch and reports verified results", async () => {
+      const relatedInclude = {
+        ...inactiveObject,
+        "adtcore:name": "ZTEST_C01",
+        "adtcore:uri": "/sap/bc/adt/programs/includes/ztest_c01"
+      }
+      const mockActivator = {
+        activateMultiple: vi.fn().mockResolvedValue({
+          ok: true,
+          availableCount: 2,
+          selectedCount: 2,
+          selectedObjects: [inactiveObject, relatedInclude],
+          stillInactiveObjects: [],
+          relatedStillInactive: [],
+          notInactiveUris: []
+        })
+      }
+      mockGetClient.mockReturnValue({} as any)
+      ;(AdtObjectActivator.get as Mock).mockReturnValue(mockActivator)
+
+      const url = "adt://dev100/sap/bc/adt/programs/includes/ztest_i01"
+      const relatedUrl = "adt://dev100/sap/bc/adt/programs/includes/ztest_c01"
+      const result = await tool.invoke(
+        {
+          input: {
+            action: "activate",
+            connectionId: "dev100",
+            urls: [url, relatedUrl]
+          }
+        } as any,
+        mockToken
+      )
+
+      expect(mockActivator.activateMultiple).toHaveBeenCalledWith(false, [
+        "/sap/bc/adt/programs/includes/ztest_i01",
+        "/sap/bc/adt/programs/includes/ztest_c01"
+      ])
+      const payload = JSON.parse((result as any).content[0].value)
+      expect(payload.status).toBe("success")
+      expect(payload.activatedObjects).toHaveLength(2)
+      expect(payload.stillInactiveObjects).toBeUndefined()
+      expect(payload.relatedStillInactive).toBeUndefined()
+    })
+
+    test("reports related objects that were left inactive", async () => {
+      const mainProgram = {
+        ...inactiveObject,
+        "adtcore:name": "ZTEST",
+        "adtcore:type": "PROG/P",
+        "adtcore:uri": "/sap/bc/adt/programs/programs/ztest"
+      }
+      const summary =
+        "Activated 1 object, but related objects that were not requested are still inactive: ZTEST"
+      const mockActivator = {
+        activateMultiple: vi.fn().mockResolvedValue({
+          ok: true,
+          summary,
+          availableCount: 2,
+          selectedCount: 1,
+          selectedObjects: [inactiveObject],
+          stillInactiveObjects: [],
+          relatedStillInactive: [mainProgram],
+          notInactiveUris: []
+        })
+      }
+      mockGetClient.mockReturnValue({} as any)
+      ;(AdtObjectActivator.get as Mock).mockReturnValue(mockActivator)
+
+      const result = await tool.invoke(
+        {
+          input: {
+            action: "activate",
+            connectionId: "dev100",
+            urls: ["adt://dev100/sap/bc/adt/programs/includes/ztest_i01"]
+          }
+        } as any,
+        mockToken
+      )
+
+      const payload = JSON.parse((result as any).content[0].value)
+      expect(payload.status).toBe("success")
+      expect(payload.summary).toBe(summary)
+      expect(payload.activatedObjects).toHaveLength(1)
+      expect(payload.relatedStillInactive).toHaveLength(1)
+      expect(payload.relatedStillInactive[0]).toMatchObject({
+        name: "ZTEST",
+        url: "adt://dev100/sap/bc/adt/programs/programs/ztest"
+      })
+    })
+
+    test("rejects activation URLs for another connection", async () => {
+      mockGetClient.mockReturnValue({} as any)
+
+      await expect(
+        tool.invoke(
+          {
+            input: {
+              action: "activate",
+              connectionId: "dev100",
+              urls: ["adt://qas100/sap/bc/adt/programs/includes/ztest_i01"]
+            }
+          } as any,
+          mockToken
+        )
+      ).rejects.toThrow("belongs to connection qas100")
+    })
+  })
+
+  describe("prepareInvocation", () => {
+    test("returns activation count when client found", () => {
+      mockGetClient.mockReturnValue({} as any)
+
+      const result = tool.prepareInvocation!(
+        {
+          input: {
+            action: "activate",
+            connectionId: "dev100",
+            urls: [
+              "adt://dev100/sap/bc/adt/programs/includes/ztest_c01",
+              "adt://dev100/sap/bc/adt/programs/includes/ztest_i01"
+            ]
+          }
+        } as any,
+        mockToken
+      )
+
+      expect((result as any).invocationMessage).toContain("Activating 2 object(s)")
     })
 
     test("throws when no client for authority", () => {
@@ -149,24 +295,10 @@ describe("ActivateTool", () => {
 
       expect(() =>
         tool.prepareInvocation!(
-          { input: { url: "adt://unknown/sap/bc/adt/programs" } } as any,
+          { input: { action: "get_inactive_objects", connectionId: "unknown" } } as any,
           mockToken
         )
       ).toThrow("No ABAP filesystem registered")
-    })
-
-    test("strips path and shows only filename in message", () => {
-      mockGetClient.mockReturnValue({} as any)
-
-      const result = tool.prepareInvocation!(
-        {
-          input: { url: "adt://dev100/sap/bc/adt/programs/programs/myprogram.prog.abap" }
-        } as any,
-        mockToken
-      )
-
-      expect((result as any).invocationMessage).toContain("myprogram.prog.abap")
-      expect((result as any).invocationMessage).not.toContain("/sap/bc/adt")
     })
   })
 })

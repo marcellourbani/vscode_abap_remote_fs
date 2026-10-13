@@ -264,10 +264,13 @@ class AtcProvider implements TreeDataProvider<AtcNode> {
         if (this.activationListeners.has(s.connectionId)) continue
         const listener = AdtObjectActivator.get(s.connectionId).onActivate(e => {
           const parent = e.object instanceof AbapObjectBase ? e.object.parent : undefined
-          const h = s.children.find(
-            o =>
-              (o.object.name === e.object.name && o.object.objectTypeId === e.object.type) ||
-              (o.object.name === parent?.name && o.object.objectTypeId === parent?.type)
+          const activated = [
+            ...(e.object ? [{ name: e.object.name, type: e.object.type }] : []),
+            ...(parent ? [{ name: parent.name, type: parent.type }] : []),
+            ...e.objects.map(o => ({ name: o["adtcore:name"], type: o["adtcore:type"] }))
+          ]
+          const h = s.children.find(o =>
+            activated.some(a => o.object.name === a.name && o.object.objectTypeId === a.type)
           )
           if (h) atcRefresh()
         })

@@ -53,9 +53,16 @@ export class AbapFile implements FileStat {
     return source
   }
 
-  write(contents: string, lockId: string, transportId = "") {
+  async write(contents: string, lockId: string, transportId = "") {
     if (!this.object.supported) throw new Error(`Object ${this.object.key} can't be written `)
-    return this.object.write(contents, lockId, transportId)
+    if (!this.object.structure) await this.stat()
+    try {
+      return await this.object.write(contents, lockId, transportId)
+    } finally {
+      this.cache = undefined
+      if (this.timer) clearTimeout(this.timer)
+      this.timer = undefined
+    }
   }
 
   delete(lockId: string, transport: string) {

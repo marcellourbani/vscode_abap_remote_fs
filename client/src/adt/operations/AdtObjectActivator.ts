@@ -1,43 +1,115 @@
-import {
+import type {
   ADTClient,
-  isAdtError,
-  inactiveObjectsInResults,
-  type InactiveObjectRecord,
-  type InactiveObjectElement
+  ActivationResult,
+  InactiveObject,
+  InactiveObjectElement,
+  InactiveObjectRecord,
+  MainInclude
 } from "abap-adt-api"
-import { Uri, EventEmitter, QuickPickItemKind } from "vscode"
+import { Uri, EventEmitter, workspace } from "vscode"
 import { type AbapObject } from "abapobject"
-import { getClient } from "../conections"
+import { isAbapFile, isAbapStat } from "abapfs"
+import { ADTSCHEME, getClient, getRoot } from "../conections"
 import { IncludeProvider, IncludeService } from "../includes"
-import { isDefined, channel } from "../../lib"
-import { funWindow as window } from "../../services/funMessenger"
-
-// Log activation errors to ABAP FS output channel
-const logError = (message: string) => {
-  channel.appendLine(message)
-}
-
-/** Wrap plain InactiveObject[] into InactiveObjectRecord[] for use with showActivationSelectionDialog */
-const toRecords = (objects: any[]): InactiveObjectRecord[] =>
-  objects.map(obj => ({ object: obj }) as InactiveObjectRecord)
+import { caughtToString, createMutex } from "../../lib"
+import {
+  activateReferences,
+  inactiveObjectRecords,
+  type ActivationReference
+} from "./activation/adtActivationApi"
+import { pickInactiveObjects } from "./activation/activationPicker"
+import {
+  describeActivationError,
+  isMainProgramError,
+  logActivation,
+  summarizeActivationFailure
+} from "./activation/activationMessages"
+import {
+  adtObjectUri,
+  hasOtherInactiveIncludes,
+  inactiveProgramUnit,
+  inactiveSiblings,
+  objectsOf,
+  sameAdtUri,
+  uniqueRecords
+} from "./activation/relatedInactive"
 
 export interface ActivationEvent {
-  object: AbapObject
-  uri: Uri
-  activated: AbapObject
+  connectionId: string
+  /** objects sent to SAP that are active now */
+  objects: InactiveObject[]
+  /** the object activation was started from, when started from an editor */
+  object?: AbapObject
+  uri?: Uri
   mainProg?: string
 }
 
+export interface ActivationOutcome {
+  ok: boolean
+  cancelled?: boolean
+  summary?: string
+  details?: string
+}
+
+export interface MultipleActivationResult extends ActivationOutcome {
+  availableCount: number
+  selectedCount: number
+  selectedObjects: InactiveObjectElement[]
+  stillInactiveObjects: InactiveObjectElement[]
+  /** inactive includes or main programs of the requested objects, which were not requested */
+  relatedStillInactive: InactiveObjectElement[]
+  notInactiveUris: string[]
+}
+
+type Attempt =
+  { cancelled: true } | { cancelled?: false; result: ActivationResult; activated: InactiveObject[] }
+
+const CANCELLED = "Activation cancelled by user"
+const NOT_INACTIVE = "None of the requested objects are currently inactive"
+
+const isInactiveStructure = (object: AbapObject) =>
+  object.structure?.metaData["adtcore:version"] === "inactive"
+
+const objectReference = (object: AbapObject): InactiveObject => ({
+  "adtcore:uri": object.path,
+  "adtcore:type": object.type,
+  "adtcore:name": object.name,
+  "adtcore:parentUri": ""
+})
+
+const decodeName = (name: string) => {
+  try {
+    return decodeURIComponent(name)
+  } catch {
+    return name
+  }
+}
+
+const mainProgramName = (main: MainInclude) =>
+  decodeName(main["adtcore:name"] || main["adtcore:uri"].split("/").pop() || "").toUpperCase()
+
+const among = (objects: InactiveObjectElement[], selected: InactiveObject[]) =>
+  objects.filter(object =>
+    selected.some(other => sameAdtUri(other["adtcore:uri"], object["adtcore:uri"]))
+  )
+
+const relatedSummary = (activated: number, related: InactiveObjectElement[]) =>
+  `Activated ${activated} object${activated === 1 ? "" : "s"}, but related objects that were not requested are still inactive: ${related.map(object => object["adtcore:name"]).join(", ")}`
+
 export class AdtObjectActivator {
-  constructor(private client: ADTClient) {}
   private static instances = new Map<string, AdtObjectActivator>()
   private emitter = new EventEmitter<ActivationEvent>()
+  private mutex = createMutex()
+
+  constructor(
+    private client: ADTClient,
+    private connectionId: string
+  ) {}
+
   public static get(connId: string) {
     const instance = this.instances.get(connId)
     if (instance) return instance
-    const stateless_client = getClient(connId, false)
-    // stateful_client.stateful = session_types.stateful
-    const newinstance = new AdtObjectActivator(stateless_client)
+    const newinstance = new AdtObjectActivator(getClient(connId, false), connId)
     this.instances.set(connId, newinstance)
     return newinstance
   }
@@ -46,558 +118,392 @@ export class AdtObjectActivator {
     return this.emitter.event
   }
 
-  private async getMain(object: AbapObject, uri: Uri) {
-    const service = IncludeService.get(uri.authority)
-    if (!service.needMain(object)) return
-    const provider = IncludeProvider.get()
-    const main = service.current(uri.path) || (await provider.switchIncludeIfMissing(uri))
-    return main?.["adtcore:uri"]
+  public async getInactiveObjects(): Promise<InactiveObjectElement[]> {
+    return objectsOf(await inactiveObjectRecords(this.client))
   }
 
-  private async getAllInactiveEntries(): Promise<InactiveObjectRecord[]> {
-    const rawInactive = await this.client.inactiveObjects()
-    const tofilter = rawInactive.length
-      ? rawInactive
-      : await this.client.inactiveObjects("application/xml")
-    return tofilter.filter(r => r.object)
-  }
-
-  private async getAllInactiveObjects() {
-    const entries = await this.getAllInactiveEntries()
-    return entries.map(entry => entry.object).filter(obj => obj)
-  }
-
-  private async siblings(object: AbapObject, uri: Uri) {
-    const rawInactive = await this.client.inactiveObjects()
-    const inactive = rawInactive.map(r => r.object).filter(o => o)
-
-    // For includes, get the main program and then find all related objects
-    if (object.type === "PROG/I") {
-      const mainProgramUri = await this.getMain(object, uri)
-      if (!mainProgramUri) return
-
-      const relatedObjects: any[] = []
-
-      // Check if main program is inactive
-      const mainProgramInactive = inactive.find(o => o?.["adtcore:uri"] === mainProgramUri)
-      if (mainProgramInactive) {
-        relatedObjects.push(mainProgramInactive)
-      }
-
-      // Add current include if inactive
-      const currentIncludeInactive = inactive.find(o => o?.["adtcore:uri"] === object.path)
-      if (currentIncludeInactive) {
-        relatedObjects.push(currentIncludeInactive)
-      }
-
-      // Get other includes of the main program using nodeContents
-      try {
-        const programName = mainProgramUri.split("/").pop()?.toUpperCase()
-        if (programName) {
-          const nodeStructure = await this.client.statelessClone.nodeContents(
-            "PROG/P",
-            programName,
-            undefined,
-            undefined,
-            true
-          )
-
-          const includeNodes = nodeStructure.nodes.filter(n => n.OBJECT_TYPE === "PROG/I")
-
-          includeNodes.forEach(node => {
-            const match = inactive.find(o => o?.["adtcore:uri"] === node.OBJECT_URI)
-            if (match && !relatedObjects.find(r => r["adtcore:uri"] === match["adtcore:uri"])) {
-              relatedObjects.push(match)
-            }
-          })
-        }
-      } catch (error) {
-        // Silently continue - we'll still have main program and current include
-      }
-
-      return relatedObjects.length > 0 ? relatedObjects : undefined
-    }
-
-    // For non-includes, use parentUri matching (classes, etc.)
-    const parentUri = inactive.find(o => o?.["adtcore:uri"] === object.path)?.["adtcore:parentUri"]
-
-    if (!parentUri || inactive.length <= 1) {
-      return
-    }
-
-    const siblings = inactive.filter(isDefined).filter(o => o?.["adtcore:parentUri"] === parentUri)
-
-    return siblings
-  }
-
-  private async getRelatedInactiveObjects(object: AbapObject) {
-    try {
-      const allInactive = await this.getAllInactiveObjects()
-
-      // Find the main object if it's inactive
-      const mainObjectInactive = allInactive.find(obj => obj && obj["adtcore:uri"] === object.path)
-      const relatedObjects: any[] = []
-
-      if (mainObjectInactive) {
-        relatedObjects.push(mainObjectInactive)
-      }
-
-      // For programs, get includes directly from SAP nodeContents API
-      // This bypasses the 'expandable' check which is for filesystem display, not activation
-      if (object.lockObject.type === "PROG/P") {
-        try {
-          const nodeStructure = await this.client.statelessClone.nodeContents(
-            "PROG/P",
-            object.lockObject.name,
-            undefined,
-            undefined,
-            true
-          )
-
-          // Find which includes are inactive
-          const includeNodes = nodeStructure.nodes.filter(
-            n => n.OBJECT_TYPE === "PROG/I" && n.OBJECT_NAME
-          )
-
-          // Helper to extract base URI without /source/main?context=... suffix
-          const getBaseUri = (uri: string) => {
-            const match = uri.match(/^(\/sap\/bc\/adt\/programs\/includes\/[^\/]+)/)
-            return match ? match[1] : uri
-          }
-
-          const inactiveIncludes = includeNodes
-            .map(node => {
-              const nodeBaseUri = getBaseUri(node.OBJECT_URI)
-              const match = allInactive.find(inactiveObj => {
-                if (!inactiveObj) return false
-                const inactiveBaseUri = getBaseUri(inactiveObj["adtcore:uri"])
-                return inactiveBaseUri === nodeBaseUri
-              })
-              return match
-            })
-            .filter(obj => obj !== undefined)
-
-          relatedObjects.push(...inactiveIncludes)
-        } catch (error) {
-          // Silently continue
-        }
-      } else {
-        // For non-programs, use the existing childComponents approach
-        try {
-          if (!object.lockObject.structure) {
-            await object.lockObject.loadStructure()
-          }
-
-          const childComponents = await object.lockObject.childComponents(true)
-
-          const inactiveChildren = childComponents.nodes
-            .map(node => {
-              const match = allInactive.find(
-                inactiveObj => inactiveObj && inactiveObj["adtcore:uri"] === node.OBJECT_URI
-              )
-              return match
-            })
-            .filter(obj => obj !== undefined)
-
-          relatedObjects.push(...inactiveChildren)
-        } catch (error) {
-          // Silently continue
-        }
-      }
-
-      // Remove duplicates based on URI
-      const uniqueObjects = relatedObjects.filter(
-        (obj, index, self) => index === self.findIndex(o => o["adtcore:uri"] === obj["adtcore:uri"])
-      )
-
-      return uniqueObjects
-    } catch (error) {
-      return []
-    }
-  }
-
-  private transportId(uri?: string) {
-    return uri?.split("/").filter(Boolean).pop() || ""
-  }
-
-  private transportGrouping(entry: InactiveObjectRecord) {
-    const transport = entry.transport
-    const task =
-      transport?.["adtcore:name"] ||
-      this.transportId(transport?.["adtcore:uri"]) ||
-      "Without transport"
-    const order = this.transportId(transport?.["adtcore:parentUri"]) || task
-    const description = `${transport?.["adtcore:description"] || ""}`.trim()
-    return {
-      key: `${order}::${task}`,
-      order,
-      task,
-      description
-    }
-  }
-
-  private formatGroupLabel(group: { order: string; task: string; description: string }) {
-    const transportLabel =
-      group.order === group.task ? group.task : `${group.order} / ${group.task}`
-    return group.description ? `${transportLabel}  ${group.description}` : transportLabel
-  }
-
-  private formatObjectDescription(
-    entry: InactiveObjectRecord,
-    group: { order: string; task: string; description: string }
-  ) {
-    const parts = [`${entry.object?.["adtcore:type"] || ""}`]
-    const transportLabel =
-      group.order === group.task ? group.task : `${group.order} / ${group.task}`
-    if (transportLabel) parts.push(transportLabel)
-    if (entry.object?.deleted) parts.push("deleted")
-    if (entry.object?.user) parts.push(entry.object.user)
-    return parts.filter(Boolean).join(" • ")
-  }
-
-  private formatObjectDetail(
-    entry: InactiveObjectRecord,
-    group: { order: string; task: string; description: string }
-  ) {
-    const parts = [group.description, entry.object?.["adtcore:uri"]]
-    return parts.filter(Boolean).join(" • ")
-  }
-
-  private async showActivationSelectionDialog(entries: InactiveObjectRecord[]) {
-    const groupedEntries = new Map<
-      string,
-      { order: string; task: string; description: string; entries: InactiveObjectRecord[] }
-    >()
-
-    for (const entry of entries) {
-      const group = this.transportGrouping(entry)
-      const existing = groupedEntries.get(group.key)
-      if (existing) {
-        existing.entries.push(entry)
-      } else {
-        groupedEntries.set(group.key, { ...group, entries: [entry] })
-      }
-    }
-
-    const items = [...groupedEntries.values()]
-      .sort((left, right) => {
-        const orderCompare = left.order.localeCompare(right.order)
-        if (orderCompare !== 0) return orderCompare
-        return left.task.localeCompare(right.task)
-      })
-      .flatMap(group => {
-        const objectItems = [...group.entries]
-          .sort((left, right) => {
-            const typeCompare = `${left?.object?.["adtcore:type"] || ""}`.localeCompare(
-              `${right?.object?.["adtcore:type"] || ""}`
-            )
-            if (typeCompare !== 0) return typeCompare
-            return `${left?.object?.["adtcore:name"] || ""}`.localeCompare(
-              `${right?.object?.["adtcore:name"] || ""}`
-            )
-          })
-          .map(entry => ({
-            label: `  ${entry.object?.["adtcore:name"]}`,
-            description: this.formatObjectDescription(entry, group),
-            detail: this.formatObjectDetail(entry, group),
-            picked: false,
-            entry
-          }))
-
-        return [
-          {
-            kind: QuickPickItemKind.Separator,
-            label: this.formatGroupLabel(group)
-          },
-          ...objectItems
-        ]
-      })
-
-    const selected = await window.showQuickPick(items, {
-      canPickMany: true,
-      matchOnDescription: true,
-      matchOnDetail: true,
-      placeHolder: "Select unactivated objects grouped by transport order",
-      title: `Select unactivated objects (${entries.length} found)`
-    })
-
-    return selected ? selected.map((item: any) => item.entry.object) : null
-  }
-
-  private summarizeFailure(result: any, defaultObjectName: string) {
-    const normText = (v: any): string => {
-      if (Array.isArray(v)) return v.map(x => normText(x)).join(" ")
-      if (v === undefined || v === null) return ""
-      return `${v}`
-    }
-
-    type Msg = { text: string; href?: string; target: string }
-    const msgs: Msg[] = (result?.messages || [])
-      .map((m: any) => {
-        const textRaw = m.shortText || m.longText || m.message || m.msg || ""
-        const text = normText(textRaw).trim()
-        if (!text) return undefined
-        const href: string | undefined = m.href
-        let target = ""
-
-        if (href) {
-          const parts = href.split("/").filter(Boolean)
-          const sourceIdx = parts.indexOf("source")
-          if (sourceIdx > 0) {
-            target = parts[sourceIdx - 1] || ""
-          } else {
-            const hrefMatch = href.match(
-              /includes\/([^\/\?#]+)|programs\/([^\/\?#]+)|classes\/([^\/\?#]+)/i
-            )
-            if (hrefMatch) target = hrefMatch[1] || hrefMatch[2] || hrefMatch[3] || ""
-          }
-        }
-
-        if (!target && typeof m.objDescr === "string") {
-          const incMatch = m.objDescr.match(/Include\s+([^\s]+)/i)
-          if (incMatch) target = incMatch[1]
-        }
-
-        if (!target) target = defaultObjectName
-
-        return { text, href, target }
-      })
-      .filter(Boolean)
-
-    const grouped = new Map<string, Msg[]>()
-    for (const m of msgs) {
-      const arr = grouped.get(m.target) || []
-      arr.push(m)
-      grouped.set(m.target, arr)
-    }
-
-    const inactiveList = (result?.inactive || [])
-      .map((o: any) =>
-        `${normText(o["adtcore:type"]) || ""} ${normText(o["adtcore:name"]) || ""}`.trim()
-      )
-      .filter(Boolean)
-
-    const errorCount = msgs.length
-    const firstError = msgs[0]?.text || "Unknown error"
-    const firstObject = msgs[0]?.target || defaultObjectName
-    const summary = `Activation failed: ${errorCount} error${errorCount !== 1 ? "s" : ""} in ${firstObject}${errorCount > 1 ? ` (${firstError}...)` : ` (${firstError})`}`
-
-    const detailLines: string[] = []
-    logError(`❌ Activation failed for ${defaultObjectName}:`)
-    for (const [key, vals] of grouped.entries()) {
-      detailLines.push(`${key}:`)
-      logError(`  📍 ${key}:`)
-      vals.forEach(v => {
-        detailLines.push(`  ${v.text}`)
-        logError(`      ${v.text}`)
-      })
-    }
-    if (inactiveList.length) {
-      detailLines.push(`Inactive objects: ${inactiveList.join(", ")}`)
-      logError(`  ⚠️ Inactive objects: ${inactiveList.join(", ")}`)
-    }
-    const details = detailLines.join("\n")
-
-    return { ok: false, summary, details }
-  }
-
-  public async activateMultiple(interactive = true): Promise<{
-    ok: boolean
-    summary?: string
-    details?: string
-    availableCount?: number
-    selectedCount?: number
-    cancelled?: boolean
-  }> {
-    try {
-      const inactiveEntries = await this.getAllInactiveEntries()
-      const inactiveObjects = inactiveEntries.map(entry => entry.object).filter(obj => obj)
-
-      if (inactiveObjects.length === 0) {
-        return { ok: true, availableCount: 0, selectedCount: 0 }
-      }
-
-      const selectedObjects = interactive
-        ? await this.showActivationSelectionDialog(inactiveEntries)
-        : inactiveObjects
-
-      if (!selectedObjects) {
-        return {
-          ok: false,
-          cancelled: true,
-          summary: "Activation cancelled by user",
-          availableCount: inactiveObjects.length,
-          selectedCount: 0
-        }
-      }
-
-      if (selectedObjects.length === 0) {
-        return {
-          ok: false,
-          cancelled: true,
-          summary: "No objects selected for activation",
-          availableCount: inactiveObjects.length,
-          selectedCount: 0
-        }
-      }
-
-      const result = await this.client.activate(selectedObjects)
-      if (result?.success) {
-        return {
-          ok: true,
-          availableCount: inactiveObjects.length,
-          selectedCount: selectedObjects.length
-        }
-      }
-
-      return {
-        ...this.summarizeFailure(result, selectedObjects[0]?.["adtcore:name"] || "selection"),
-        availableCount: inactiveObjects.length,
-        selectedCount: selectedObjects.length
-      }
-    } catch (error) {
-      if (isAdtError(error)) {
-        const status = error.response?.status || error.type || "ADT error"
-        const body = error.response?.body || error.message || ""
-        const bodyText = typeof body === "string" ? body : JSON.stringify(body)
-        const trimmed = bodyText.length > 800 ? `${bodyText.slice(0, 800)}…` : bodyText
-        logError(`❌ Multiple activation ADT error status=${status} body=${trimmed}`)
-        return { ok: false, summary: `Activation failed (${status}): ${trimmed}` }
-      }
-
-      const errorMessage = (error as Error).message || String(error)
-      logError(`❌ Multiple activation error: ${errorMessage}`)
-      return { ok: false, summary: errorMessage }
-    }
-  }
-
-  private async tryActivate(object: AbapObject, uri: Uri, interactive: boolean) {
-    const { name, path } = object.lockObject
-    let result
-    const mainProg = await this.getMain(object, uri)
-
-    // Check for inactive related objects BEFORE attempting activation
-    let relatedObjects: any[] = []
-
-    if (object.lockObject.type === "PROG/P") {
-      // Main programs: Use childComponents to find includes
-      relatedObjects = await this.getRelatedInactiveObjects(object)
-    } else if (object.lockObject.type === "PROG/I") {
-      // Includes: Use siblings to find parent and other includes
-      relatedObjects = (await this.siblings(object, uri)) || []
-    } else {
-      // Classes and other objects: Use original siblings logic
-      relatedObjects = (await this.siblings(object, uri)) || []
-    }
-
-    // If we have inactive related objects, show selection dialog BEFORE main activation
-    if (relatedObjects.length > 1) {
-      // Show user selection dialog for which objects to activate
-      const selectedObjects = interactive
-        ? await this.showActivationSelectionDialog(toRecords(relatedObjects))
-        : relatedObjects
-
-      if (selectedObjects && selectedObjects.length > 0) {
-        // Activate all selected objects (including main object)
-        result = await this.client.activate(selectedObjects)
-      } else {
-        // User cancelled - don't activate anything, return a cancelled result
-        return {
-          success: false,
-          messages: [{ shortText: "Activation cancelled by user" }],
-          inactive: relatedObjects
-        }
-      }
-    } else {
-      // No inactive related objects found, or only one object, just activate the main object
-      result = await this.client.activate(name, path, mainProg, true)
-
-      // If main activation failed, try the fallback logic for any objects returned in the error
-      if (!result.success) {
-        let fallbackObjects: any[] = []
-
-        if (object.lockObject.type === "PROG/P") {
-          // For main programs, we already checked getRelatedInactiveObjects above
-          fallbackObjects = relatedObjects
-        } else {
-          // Classes, includes, and other objects: Use inactive objects from the failed result
-          if (result.inactive.length > 0) {
-            fallbackObjects = inactiveObjectsInResults(result)
-          } else {
-            fallbackObjects = relatedObjects
-          }
-        }
-
-        if (fallbackObjects.length > 1) {
-          // Show user selection dialog for which objects to activate
-          const selectedObjects = interactive
-            ? await this.showActivationSelectionDialog(toRecords(fallbackObjects))
-            : fallbackObjects
-
-          if (selectedObjects && selectedObjects.length > 0) {
-            result = await this.client.activate(selectedObjects)
-          }
-        } else if (fallbackObjects.length === 1) {
-          // Only one object (probably just the main object), activate it directly
-          result = await this.client.activate(fallbackObjects)
-        }
-      }
-    }
-
-    return result
-  }
-
-  private async tryActivate2(object: AbapObject, uri: Uri, interactive: boolean) {
-    const result = await this.tryActivate(object, uri, false)
-    if (result.success) return result
-    return this.tryActivate(object, uri, interactive)
-  }
-
+  /** Activates an editor object, together with its inactive siblings or includes */
   public async activate(
     object: AbapObject,
     uri: Uri,
     interactive = true
-  ): Promise<{ ok: boolean; summary?: string; details?: string }> {
-    const inactive = object.lockObject
+  ): Promise<ActivationOutcome> {
+    try {
+      const main = await this.mainProgram(object, uri)
+      // a silent first attempt keeps tools from blocking on a dialog, the user is asked only on failure
+      let attempt = await this.attemptActivation(object, main, false)
+      if (!attempt.cancelled && !attempt.result.success)
+        attempt = await this.attemptActivation(object, main, interactive)
+
+      if (attempt.cancelled) return { ok: false, cancelled: true, summary: CANCELLED }
+      if (!attempt.result.success) return summarizeActivationFailure(attempt.result, object.name)
+
+      await this.refreshActivated(attempt.activated, object.lockObject)
+      this.emitter.fire({
+        connectionId: this.connectionId,
+        objects: attempt.activated,
+        object,
+        uri,
+        mainProg: main?.["adtcore:uri"]
+      })
+      return { ok: true }
+    } catch (error) {
+      return { ok: false, summary: describeActivationError(error, "Activation") }
+    }
+  }
+
+  /**
+   * Activates inactive objects of the connection
+   * @param objectUris exact objects to activate, skips the selection dialog
+   */
+  public async activateMultiple(
+    interactive = true,
+    objectUris?: string[]
+  ): Promise<MultipleActivationResult> {
+    let availableCount = 0
+    let selectedObjects: InactiveObjectElement[] = []
+    let notInactiveUris: string[] = []
+    const outcome = (
+      fields: ActivationOutcome,
+      stillInactiveObjects: InactiveObjectElement[] = [],
+      relatedStillInactive: InactiveObjectElement[] = []
+    ): MultipleActivationResult => ({
+      ...fields,
+      availableCount,
+      selectedCount: selectedObjects.length,
+      selectedObjects,
+      stillInactiveObjects,
+      relatedStillInactive,
+      notInactiveUris
+    })
 
     try {
-      const result = await this.tryActivate2(object, uri, interactive)
-      const mainProg = await this.getMain(object, uri)
+      const records = await inactiveObjectRecords(this.client)
+      const inactive = objectsOf(records)
+      availableCount = inactive.length
 
-      if (result && result.success) {
-        //log(`✅ ACTIVATE SUCCESS: firing event and loading structure`)
-        this.emitter.fire({ object, uri, activated: inactive, mainProg })
-        await inactive.loadStructure(true)
-        return { ok: true }
+      if (objectUris) {
+        selectedObjects = inactive.filter(object =>
+          objectUris.some(uri => sameAdtUri(uri, object["adtcore:uri"]))
+        )
+        notInactiveUris = objectUris.filter(
+          uri => !selectedObjects.some(object => sameAdtUri(uri, object["adtcore:uri"]))
+        )
+        if (!selectedObjects.length) return outcome({ ok: false, summary: NOT_INACTIVE })
       } else {
-        return this.summarizeFailure(result, object.name)
+        if (!inactive.length) return outcome({ ok: true })
+        const selection = interactive ? await pickInactiveObjects(records) : inactive
+        if (!selection) return outcome({ ok: false, cancelled: true, summary: CANCELLED })
+        if (!selection.length)
+          return outcome({
+            ok: false,
+            cancelled: true,
+            summary: "No objects selected for activation"
+          })
+        selectedObjects = selection
+      }
+
+      const result = await this.send(selectedObjects)
+      const remaining = await inactiveObjectRecords(this.client)
+      const stillInactive = among(objectsOf(remaining), selectedObjects)
+      const activated = selectedObjects.filter(
+        object =>
+          !stillInactive.some(other => sameAdtUri(other["adtcore:uri"], object["adtcore:uri"]))
+      )
+      if (activated.length) {
+        await this.refreshActivated(activated)
+        this.emitter.fire({ connectionId: this.connectionId, objects: activated })
+      }
+      const related = objectUris ? await this.relatedStillInactive(selectedObjects, remaining) : []
+
+      if (!result.success)
+        return outcome(
+          summarizeActivationFailure(result, selectedObjects[0]["adtcore:name"]),
+          stillInactive,
+          related
+        )
+      if (stillInactive.length) {
+        const count = stillInactive.length
+        const names = stillInactive.map(object => object["adtcore:name"]).join(", ")
+        return outcome(
+          {
+            ok: false,
+            summary: `Activation finished, but ${count} selected object${count === 1 ? " is" : "s are"} still inactive: ${names}`
+          },
+          stillInactive,
+          related
+        )
+      }
+      if (related.length)
+        return outcome(
+          { ok: true, summary: relatedSummary(activated.length, related) },
+          [],
+          related
+        )
+      return outcome({ ok: true })
+    } catch (error) {
+      // the activation might have partially happened before the error
+      const stillInactive = selectedObjects.length
+        ? await this.stillInactive(selectedObjects).catch(() => [])
+        : []
+      return outcome(
+        { ok: false, summary: describeActivationError(error, "Multiple activation") },
+        stillInactive
+      )
+    }
+  }
+
+  private async attemptActivation(
+    object: AbapObject,
+    main: MainInclude | undefined,
+    interactive: boolean
+  ): Promise<Attempt> {
+    const lockObject = object.lockObject
+    const records = await this.inactiveRecordsIfAvailable()
+    const related = await this.relatedInactive(object, main, records)
+    if (related.length > 1) return this.activateRecords(related, interactive)
+
+    const result = await this.exclusive(() =>
+      this.client.activate(lockObject.name, lockObject.path, main?.["adtcore:uri"], true)
+    )
+    if (result.success) return { result, activated: [objectReference(lockObject)] }
+
+    // SAP lists the objects it wants activated together, programs rely on their include list
+    const fallback =
+      lockObject.type === "PROG/P" || !result.inactive.length
+        ? related
+        : result.inactive.filter(record => record.object)
+    if (!fallback.length) return { result, activated: [] }
+    const retry = await this.activateRecords(fallback, interactive && fallback.length > 1)
+    return retry.cancelled ? { result, activated: [] } : retry
+  }
+
+  private async activateRecords(
+    records: InactiveObjectRecord[],
+    interactive: boolean
+  ): Promise<Attempt> {
+    const selection = interactive ? await pickInactiveObjects(records) : objectsOf(records)
+    if (!selection?.length) return { cancelled: true }
+    return { result: await this.send(selection), activated: selection }
+  }
+
+  /** The by-name activation does not need the list, so a failing list request is not fatal */
+  private async inactiveRecordsIfAvailable() {
+    try {
+      return await inactiveObjectRecords(this.client)
+    } catch (error) {
+      logActivation(`Could not read inactive objects: ${caughtToString(error)}`)
+      return []
+    }
+  }
+
+  private async relatedInactive(
+    object: AbapObject,
+    main: MainInclude | undefined,
+    records: InactiveObjectRecord[]
+  ): Promise<InactiveObjectRecord[]> {
+    if (!records.length) return []
+    const lockObject = object.lockObject
+
+    if (lockObject.type === "PROG/P") {
+      const includes = hasOtherInactiveIncludes(records)
+        ? await this.programIncludeUris(lockObject.name)
+        : []
+      return inactiveProgramUnit(records, lockObject.path, includes)
+    }
+
+    if (object.type === "PROG/I") {
+      if (!main) return []
+      const includes = hasOtherInactiveIncludes(records, object.path)
+        ? await this.programIncludeUris(mainProgramName(main))
+        : []
+      return inactiveProgramUnit(records, main["adtcore:uri"], includes, object.path)
+    }
+
+    return inactiveSiblings(records, object.path)
+  }
+
+  /** Includes straight from SAP: the file system hides them for non expandable programs */
+  private async programIncludeUris(programName: string) {
+    if (!programName) return []
+    try {
+      const structure = await this.client.statelessClone.nodeContents(
+        "PROG/P",
+        programName,
+        undefined,
+        undefined,
+        true
+      )
+      return structure.nodes
+        .filter(node => node.OBJECT_TYPE === "PROG/I" && node.OBJECT_URI)
+        .map(node => node.OBJECT_URI)
+    } catch (error) {
+      // still activates the main program and the current include
+      logActivation(`Could not read includes of ${programName}: ${caughtToString(error)}`)
+      return []
+    }
+  }
+
+  private async mainProgram(object: AbapObject, uri: Uri): Promise<MainInclude | undefined> {
+    const service = IncludeService.get(uri.authority)
+    if (!service.needMain(object)) return
+    return service.current(uri.path) || (await IncludeProvider.get().switchIncludeIfMissing(uri))
+  }
+
+  private async includeMainUri(object: InactiveObject): Promise<string | undefined> {
+    const objectUri = object["adtcore:uri"]
+    if (object["adtcore:type"] !== "PROG/I") return
+    try {
+      const node = await getRoot(this.connectionId).findByAdtUri(objectUri)
+      if (!node || !isAbapFile(node.file)) return
+      const uri = Uri.from({ scheme: ADTSCHEME, authority: this.connectionId, path: node.path })
+      return (await this.mainProgram(node.file.object, uri))?.["adtcore:uri"]
+    } catch (error) {
+      logActivation(`Could not resolve main program of ${objectUri}: ${caughtToString(error)}`)
+    }
+  }
+
+  private async includeMainUris(objects: InactiveObject[]) {
+    const mains: (string | undefined)[] = []
+    // sequential: resolving a main program can prompt, and concurrent quick picks cancel each other
+    for (const object of objects) mains.push(await this.includeMainUri(object))
+    return mains
+  }
+
+  private references(
+    objects: InactiveObject[],
+    mains: (string | undefined)[],
+    useContext: (mainUri: string) => boolean
+  ): ActivationReference[] {
+    return objects.map((object, index) => {
+      const objectUri = object["adtcore:uri"]
+      const main = mains[index]
+      return {
+        uri:
+          main && useContext(main) ? `${objectUri}?context=${encodeURIComponent(main)}` : objectUri,
+        type: object["adtcore:type"],
+        name: object["adtcore:name"],
+        parentUri: object["adtcore:parentUri"]
+      }
+    })
+  }
+
+  /**
+   * Objects without parent URI come from the plain XML list and need the raw request.
+   * SAP checks an include context against the active main program: a never activated program
+   * needs the context, an active one that lacks a newly added INCLUDE rejects it
+   */
+  private async send(objects: InactiveObject[]): Promise<ActivationResult> {
+    if (objects.every(object => object["adtcore:parentUri"]))
+      return this.exclusive(() => this.client.activate(objects))
+    const mains = await this.includeMainUris(objects)
+    const activate = (useContext: (mainUri: string) => boolean) =>
+      this.exclusive(() =>
+        activateReferences(this.client, this.references(objects, mains, useContext))
+      )
+    const inBatch = (mainUri: string) =>
+      objects.some(object => sameAdtUri(object["adtcore:uri"], mainUri))
+    try {
+      return await activate(() => true)
+    } catch (error) {
+      if (!isMainProgramError(error) || !mains.some(main => main && inBatch(main))) throw error
+      logActivation("SAP rejected the include context, retrying with the main program in the batch")
+      return activate(mainUri => !inBatch(mainUri))
+    }
+  }
+
+  /** Serializes activation requests of this connection, prompts must stay outside */
+  private exclusive<T>(request: () => Promise<T>): Promise<T> {
+    return this.mutex("activation", request)
+  }
+
+  private async stillInactive(selected: InactiveObject[]) {
+    return among(await this.getInactiveObjects(), selected)
+  }
+
+  /** SAP can activate a program against the active version of its includes and leave them behind */
+  private async relatedStillInactive(
+    requested: InactiveObjectElement[],
+    remaining: InactiveObjectRecord[]
+  ) {
+    const others = remaining.filter(
+      record =>
+        !requested.some(object => sameAdtUri(object["adtcore:uri"], record.object?.["adtcore:uri"]))
+    )
+    if (!others.length) return []
+    const related: InactiveObjectRecord[] = []
+    for (const object of requested) related.push(...(await this.relatedRecords(object, others)))
+    return objectsOf(uniqueRecords(related))
+  }
+
+  private async relatedRecords(object: InactiveObjectElement, others: InactiveObjectRecord[]) {
+    const uri = object["adtcore:uri"]
+    if (object["adtcore:type"] === "PROG/P") {
+      const includes = hasOtherInactiveIncludes(others)
+        ? await this.programIncludeUris(object["adtcore:name"])
+        : []
+      return inactiveProgramUnit(others, uri, includes)
+    }
+    if (object["adtcore:type"] === "PROG/I") {
+      const main = await this.knownMainProgram(object)
+      if (!main) return []
+      const includes = hasOtherInactiveIncludes(others, uri)
+        ? await this.programIncludeUris(mainProgramName(main))
+        : []
+      return inactiveProgramUnit(others, main["adtcore:uri"], includes)
+    }
+    return inactiveSiblings([{ object }, ...others], uri).filter(record => record.object !== object)
+  }
+
+  /** Main program the include service can tell without asking the user */
+  private async knownMainProgram(object: InactiveObject): Promise<MainInclude | undefined> {
+    const objectUri = object["adtcore:uri"]
+    try {
+      const node = await getRoot(this.connectionId).findByAdtUri(objectUri)
+      if (!node || !isAbapFile(node.file)) return
+      const service = IncludeService.get(this.connectionId)
+      const current = service.current(node.path)
+      if (current) return current
+      const candidates = await service.candidates(node.path)
+      return candidates?.length === 1 ? candidates[0] : undefined
+    } catch (error) {
+      logActivation(`Could not resolve main program of ${objectUri}: ${caughtToString(error)}`)
+    }
+  }
+
+  /** Drops cached inactive structures, so the activate button and decorations update */
+  private async refreshActivated(objects: InactiveObject[], editorObject?: AbapObject) {
+    const targets = new Set<AbapObject>(editorObject ? [editorObject] : [])
+    try {
+      const root = getRoot(this.connectionId)
+      for (const object of objects)
+        root.service.invalidateStructCache(adtObjectUri(object["adtcore:uri"]))
+      for (const document of workspace.textDocuments) {
+        const { scheme, authority, path } = document.uri
+        if (scheme !== ADTSCHEME || authority !== this.connectionId) continue
+        const node = root.getNode(path)
+        if (!isAbapStat(node)) continue
+        const lockObject = node.object.lockObject
+        const activated = objects.some(
+          object =>
+            sameAdtUri(object["adtcore:uri"], lockObject.path) ||
+            sameAdtUri(object["adtcore:uri"], node.object.path)
+        )
+        if (activated) targets.add(lockObject)
       }
     } catch (error) {
-      // Enhanced error handling: surface ADT response body/status when present
-      if (isAdtError(error)) {
-        const status = error.response?.status || error.type || "ADT error"
-        const body = error.response?.body || error.message || ""
-        const bodyText = typeof body === "string" ? body : JSON.stringify(body)
-        const trimmed = bodyText.length > 800 ? `${bodyText.slice(0, 800)}…` : bodyText
-        logError(`❌ Activation ADT error status=${status} body=${trimmed}`)
-        return { ok: false, summary: `Activation failed (${status}): ${trimmed}` }
-      }
+      logActivation(`Could not refresh activated objects: ${caughtToString(error)}`)
+    }
+    await Promise.all([...targets].map(target => this.reloadStructure(target)))
+  }
 
-      const errorMessage = (error as Error).message || String(error)
-      logError(`❌ Activation error: ${errorMessage}`)
-      if (errorMessage.includes("ECONNRESET") || errorMessage.includes("timeout")) {
-        return {
-          ok: false,
-          summary: `Connection lost during activation. Please reconnect to SAP and try again.`
-        }
-      } else if (errorMessage.includes("401") || errorMessage.includes("403")) {
-        return {
-          ok: false,
-          summary: `Authentication failed. Please reconnect to SAP and try again.`
-        }
-      } else {
-        return { ok: false, summary: errorMessage }
-      }
+  private async reloadStructure(object: AbapObject) {
+    try {
+      await object.loadStructure(true)
+      // loadStructure shares a request started before the activation, that one is stale
+      if (isInactiveStructure(object)) await object.loadStructure(true)
+    } catch (error) {
+      logActivation(`Could not reload ${object.name} after activation: ${caughtToString(error)}`)
     }
   }
 }

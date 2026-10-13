@@ -10,13 +10,20 @@ disable-model-invocation: false
 
 Operate persistent, checkpointed repository comparisons between two connected SAP systems through the `abapfs_*repository_workflow*` LM tools.
 
+This workflow is designed for large SAP landscape comparisons that may inspect thousands of
+repository objects and, during assisted apply, can save and activate source in a live target
+system. A wrong system direction, scope, object, transport, or activation set can create heavy SAP
+load, overwrite pending work, place changes on the wrong request, or activate unrelated code.
+Treat every instruction below as an authorization and safety boundary: never infer permission,
+broaden scope, skip a gate, or continue past uncertainty.
+
 ## Mental Model
 
 The workflow has three user-visible stages:
 
 1. **Scope and discovery** finds matching TADIR objects independently on source and target, then automatically compares the two persisted inventories locally.
 2. **Compare systems** presents inventory presence, selects comparable objects, downloads both source snapshots, and compares their source locally.
-3. **Assisted apply** lets Copilot prepare a safety-reviewed source-to-target plan. The webview can stage one reviewed source file in a dirty target editor, but it never saves or activates SAP objects.
+3. **Assisted apply** lets the user choose manual or Copilot-assisted mode over the same safety-reviewed source-to-target plan. Manual mode can stage one reviewed source file in a dirty target editor. Copilot mode lets the user save the exact objects Copilot may review and permits singular guarded staging and saving after an explicit per-object transport decision. Activation remains separate.
 
 The source/target direction never changes after creation. Always state it explicitly before assisted-apply work.
 
@@ -36,7 +43,13 @@ Mandatory behavior:
 - Before discovery, restate source, target, effective scope, subpackage behavior, and any unusually broad pattern. Ask for confirmation when scope or intent is ambiguous.
 - Before source comparison, state how many objects will be selected, the source/target SAP download concurrency, and the local verification concurrency. Read the existence summary or bounded artifact first when the count is unknown.
 - Before assisted-apply plan preparation, state source-to-target direction and make clear that planning is non-mutating. Prepare it only when requested.
-- Copilot's role ends after preparing and explaining the plan. Only the user can stage a file from the webview, save it through the normal editor flow, choose a transport, and activate related objects.
+- You may inspect only the user's saved Copilot-assisted selection and must record one review
+  decision per object. Each apply worker handles exactly one pending `as-is` object; you may run
+  several workers only through the bounded parallel-wave process below. Never choose or invent a
+  transport. You cannot invoke the bulk transport check, activate through the repository apply
+  tool, or mark an object done before save verification and the required separate activation
+  finishes.
+- The user-only bulk transport check exists in both assisted-apply modes. Explain where to find it when asked, but never claim permission or ability to trigger it.
 
 Load protection:
 
@@ -58,7 +71,11 @@ Load protection:
 | Create | `abapfs_create_repository_workflow` | Requires two different connected systems. |
 | Change discovery scope | `abapfs_update_repository_workflow_criteria` | Invalidates discovery and every downstream result. |
 | Run analysis | `abapfs_run_repository_workflow_step` | `discovery` also performs local inventory comparison; `existenceComparison` retries that local phase; `sourceComparison` performs selection, downloads, and source comparison. |
-| Prepare assisted apply | `abapfs_prepare_repository_assisted_apply` | Creates a review plan only; never changes SAP. |
+| Prepare assisted apply | `abapfs_prepare_repository_assisted_apply` | Creates a review plan only; choose `formatted` (default) or `raw` relevance. Staging still uses raw source and never changes SAP automatically. |
+| Read saved Copilot selection | `abapfs_get_repository_workflow` | Request `assistedApplyObjects`; supports bounded reads, status filtering, and singular decision updates. The user owns the selection. |
+| Recheck one transport | `abapfs_get_object_transport_status` | Read-only, current target check for exactly one object. Never use it as an unbounded substitute for the user-only bulk button. |
+| Apply one reviewed selection | `abapfs_apply_repository_workflow_object` | Copies and saves every applicable changed text resource for one pending, eligible, user-selected `as-is` object; requires a user-directed transport choice, verifies every inactive SAP source, persists the attempt, and returns its ID. |
+| Record verified activation | `abapfs_record_repository_workflow_object_activation` | Records success/failure for the exact apply attempt and activated URL set. Success marks the object done; failure leaves it pending. |
 | Focus the UI | `abapfs_open_repository_workflow` | Opens/selects a workflow; not needed merely to refresh an open webview. |
 
 ## Context-Efficient Reads
@@ -73,12 +90,15 @@ Use `include` with any combination of:
 - `criteria`: current persisted criteria.
 - `summaries`: compact counts for completed stages.
 - `artifact`: rows from exactly one requested artifact.
+- `diff`: a bounded raw or ABAPLint-formatted source diff for one exact repository key.
 
 Defaults:
 
 - No `include` and no `artifact`: state only.
 - `artifact` supplied without `include`: artifact only.
 - If `include` contains `artifact`, `artifact` must also be supplied.
+- If `include` contains `diff`, `objectKey` must also be supplied. Prefer `formatted` unless the
+  user asks for exact downloaded text.
 
 ### Read one step
 
@@ -103,7 +123,12 @@ Examples of efficient intent:
 - “How many objects differ?”: summaries only.
 - “Why is assisted apply blocked?”: assisted-apply plan artifact, preferably filtered/paged.
 - “Show changed source details”: source-comparison artifact only.
+- “Assess this object's code changes”: `diff` with the exact `objectKey`, a requested
+  `representation`, and bounded `maxFiles`/`maxChars`.
 - “Copy another workflow's scope”: criteria only from the old workflow.
+
+Every returned diff is target-to-source: it shows the changes required to make the target match
+the source. Removed lines are current target content; added lines are desired source content.
 
 Tool invocation messages shown to the user describe the requested projection or operation. Choose inputs that make that message truthful and useful.
 
@@ -273,51 +298,91 @@ Large ABAP method reordering can appear as large remove/add blocks. Prefer the D
 
 ## Assisted Apply
 
-Assisted apply is a user-controlled bridge between repository comparison and the normal ABAP editor save and activation flow. It is intentionally not an automated deployment mechanism: there is no bulk apply, automatic SAP write, automatic transport choice, or automatic activation.
+Assisted apply is available only after source comparison. Preparing its local plan does not change
+SAP. Plan rows are **Ready**, **No action**, or **Blocked**; raw snapshots remain authoritative for
+stale checks and every later write.
 
-Call `abapfs_prepare_repository_assisted_apply` only after source comparison and only when the user asks for it. The tool prepares a local review plan and refreshes the webview. Preparing or refreshing the plan does not change SAP.
+The workflow then persists one of two user-selected modes:
 
-Interpret plan decisions:
+- **Assisted apply** (manual): the user stages one reviewed raw resource at a time. The target
+  editor remains dirty, and the user owns save, transport selection, and activation.
+- **Copilot-assisted apply**: the user accepts a workflow-specific risk warning, selects and saves
+  the exact eligible objects Copilot may process, and approves all transport direction.
 
-- **Ready**: source differs from target and all safety checks passed.
-- **No action**: source and target are already identical.
-- **Blocked**: one or more safety checks failed; inspect `blockingReasons`.
+Switching modes preserves the saved Copilot selection and completion state. Both modes expose plan
+export and a user-only **Determine transport request for selected objects** button. You may explain
+that control, but the bulk operation is not exposed through a tool you can call, so you cannot
+invoke it. Do not simulate the bulk operation by looping the singular transport-status tool across
+the selection.
 
-Common blocking reasons include incomplete snapshots, resource topology differences, generated objects, standard objects, object-type mismatch, or a source status other than `different`.
+Before reviewing or acting on any Copilot-assisted object, read the
+`repository-assisted-apply` skill in full. It contains the singular decision, transport, guarded
+save, inactive verification, activation, and recording rules.
 
-Plan preparation can be repeated after a new source comparison. Always state the direction clearly and explain that each approved source is handled separately.
+### One-object subagent
 
-### How the user applies one object
+When enabled, delegate one singular Copilot-assisted object to
+`abap-repository-assisted-apply` subagent. Pass exactly:
 
-Guide the user through this sequence:
+- one `workflowId`;
+- one saved `objectKey`;
+- one complete user-approved transport path: an exact existing request number, an exact
+  per-object new-request description, or local handling.
 
-1. **Review Live source.** This opens the current object on the source SAP system so the user can confirm where the proposed content originated.
-2. **Review Live target.** This opens the current object on the target SAP system so the user can understand the destination and notice changes made after comparison.
-3. **Review Diff.** This compares the source snapshot used by the plan with the current target content. The snapshot makes the proposal stable enough to review; the live target side exposes recent target changes.
-4. **Stage in target editor.** The user clicks this action. The workflow verifies that the reviewed source snapshot and target still match the plan, then replaces the target editor's in-memory text. The editor remains dirty.
-5. **Review the dirty editor.** The user checks the complete staged result, including related includes or components. Staging is not approval and is not a SAP write.
-6. **Save manually.** The user uses the normal editor save flow and chooses or confirms the appropriate transport when SAP asks.
-7. **Activate manually.** The user activates the object and any related staged components together through the existing activation UI, then resolves any syntax or dependency errors.
+The subagent reviews and records one decision, applies every reviewed changed resource only for an
+`as-is` decision, activates an unambiguous related inactive set, and persists the result. It will
+not choose or add objects, choose a transport strategy, invent transports or descriptions,
+simulate the unavailable bulk transport check, process arrays, edit source, activate unrelated
+work, retry failures, launch other agents, or ask the user directly.
 
-For multi-file objects, explain that the user may need to repeat review and staging for each relevant resource before saving and activating the complete object. Do not imply that staging one file completes the object.
+You own the user conversation, transport approval, object ordering, bounded-wave approval, and
+result synthesis. You must obtain the user's transport strategy and expand it into one explicit
+path per object before delegation:
 
-### Safety checks and stale-plan protection
+- when the user wants one shared new request for a set of objects, create it as the main agent and
+  pass its exact approved request number to each applicable worker;
+- when the user wants one new request per object, pass one exact approved description to each
+  worker so that worker creates exactly one request during its guarded save;
+- for existing or local objects, pass the exact approved request number or explicit local handling.
 
-Staging is available only when all of these conditions hold:
+Never delegate with missing or ambiguous transport guidance. Never pass multiple objects to one
+subagent. If the subagent is unavailable, follow the dedicated skill directly with the same
+one-object boundary.
 
-1. The plan item is eligible and has a source difference that can be represented safely.
-2. ABAP-effective `files.autoSave` is `off`, so a dirty target editor cannot be saved automatically.
-3. `chat.saveBeforeSend` is `false`, so sending a Copilot message cannot save staged editors.
-4. The source snapshot still matches the content reviewed when the plan was prepared.
-5. The target still matches the reviewed target snapshot.
+### Bounded parallel orchestration
 
-If either content check fails, tell the user not to force the old proposal through. Rerun source comparison, prepare a fresh assisted-apply plan, and review the new diff. If an editor setting blocks staging, use the webview's settings link, change the setting, and return to the plan.
+You are the orchestrator and owner of every multi-object run. The subagents are isolated
+one-object workers; they do not coordinate the run or communicate with the user.
 
-### Copilot's boundary
+Use this process for a parallel wave:
 
-LM tools can prepare, inspect, and explain the assisted-apply plan. They cannot click Stage, edit the target buffer through this workflow, save, choose a transport, or activate. Those actions remain explicit user decisions in the webview and ABAP editor.
+1. Read the bounded pending saved selection and identify the exact object keys proposed for this
+   wave.
+2. Present the exact wave size and ask the user to approve both the object set and concurrency.
+   Concurrency must be from 1 to 10. A wave contains at most 10 objects.
+3. Before dispatch, collect the user's transport strategy and provide one complete direction for
+   every object. Preserve any object-specific locked request and local handling. For a shared new
+   request, create it first as the main agent and map its exact approved number to each applicable
+   object. For one new request per object, map one exact approved description to each applicable
+   object. Never infer whether requests should be shared or created per object, and never dispatch
+   a worker with a missing mapping.
+4. Start one fresh `abap-repository-assisted-apply` subagent per object, up to the approved
+   concurrency. Give each worker only one `workflowId`, one exact `objectKey`, and that object's
+   explicit transport direction. Never give a worker an array, a wildcard, or another object's
+   instructions.
+5. Let all already-started workers finish and collect their structured results. One worker's
+   failure does not authorize cancelling, retrying, or changing another worker's assignment.
+6. Reconcile the returned statuses with the persisted workflow counts. Read detailed execution
+   history only for a failed, conflicting, timed-out, or otherwise unclear result.
+7. Report `DONE`, `SKIPPED`, `NEEDS_USER_INPUT`, `NEEDS_HUMAN_REVIEW`,
+   `NEEDS_HUMAN_ACTIVATION`, and `FAILED` counts, plus object keys, attempt IDs, actual transports,
+   and exact errors where applicable.
+8. Stop after the wave. Do not retry an object or launch another wave without new user direction.
 
-Never bypass or weaken the safeguards. “Plan prepared” means only that review choices are available. “Source staged” means only that an unsaved target editor is dirty. Say that SAP changes only when the user has completed the normal save flow, and do not claim successful activation without evidence.
+If the selection has more than 10 objects, divide it into ordered waves of at most 10 and obtain
+approval before each wave. Never run the same object in two concurrent workers. If the workflow
+mode, consent, selection, or transport state changes, the worker must fail closed and you must
+return control to the user.
 
 ## Webview Coordination
 
@@ -383,4 +448,5 @@ These recipes are sequencing references, not permission to advance automatically
 - Do not describe identical objects as blocked; they need no action.
 - Do not treat diff counts as semantic ABAP correctness.
 - Do not claim SAP changes from discovery, comparison, or plan preparation.
-- After plan preparation, explain the review, staging, manual save, and manual activation sequence.
+- After plan preparation, explain the manual/Copilot mode choice and keep all Copilot execution
+  inside the dedicated skill's one-object authorization boundary.

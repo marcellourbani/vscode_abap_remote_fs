@@ -1,11 +1,20 @@
 import * as vscode from "vscode"
 import * as fs from "fs/promises"
 import * as path from "path"
+import { randomUUID } from "crypto"
+import { isAbapFile } from "abapfs"
+import { getClient, getOrCreateRoot } from "../../adt/conections"
 import { resolveAbapResource } from "../abapResourceDownloadService"
+import {
+  TransportIntentService,
+  type ObjectSaveTransportChoice,
+  type TransportIntentResult
+} from "../transportIntentService"
 import type {
   AssistedApplyPlan,
   AssistedApplyPlanItem,
   ObjectSnapshotManifest,
+  SnapshotRepresentation,
   SourceComparisonRecord
 } from "./types"
 import {
@@ -20,6 +29,20 @@ export interface AssistedApplySafety {
   safe: boolean
   autoSave: string
   chatSaveBeforeSend: boolean
+}
+
+export interface RepositoryObjectApplyResourceResult extends TransportIntentResult {
+  resourcePath: string
+  inactiveSourceVerified?: boolean
+}
+
+export interface RepositoryObjectApplyResult {
+  attemptId: string
+  objectKey: string
+  status: "succeeded" | "partial" | "failed" | "timed-out" | "cancelled"
+  transportRequest?: string
+  inactiveSourceVerified: boolean
+  resourceResults: RepositoryObjectApplyResourceResult[]
 }
 
 export function assistedApplySafety(scope?: vscode.ConfigurationScope): AssistedApplySafety {
@@ -44,6 +67,7 @@ export class WorkflowAssistedApplyService {
   async prepare(
     workflowId: string,
     selectedKeys?: string[],
+    comparisonBasis: SnapshotRepresentation = "formatted",
     token?: vscode.CancellationToken
   ): Promise<AssistedApplyPlan> {
     const workflow = await this.store.get(workflowId)
@@ -68,7 +92,23 @@ export class WorkflowAssistedApplyService {
       )
       if (!source || !target) continue
       const reasons: string[] = []
-      if (comparison.status !== "different") reasons.push(`Source status is ${comparison.status}`)
+      let relevant = true
+      if (comparisonBasis === "raw") {
+        if (comparison.status === "identical") {
+          relevant = false
+          reasons.push("No raw differences")
+        }
+      } else if (
+        ["different", "identical"].includes(comparison.status) &&
+        comparison.formattedIdentical === true
+      ) {
+        relevant = false
+        reasons.push("No formatted differences")
+      } else if (comparison.formattedIdentical !== false) {
+        reasons.push(comparison.formattedError || "Formatted comparison is unavailable")
+      }
+      if (!["different", "identical"].includes(comparison.status))
+        reasons.push(`Source status is ${comparison.status}`)
       if (source.status !== "complete" || target.status !== "complete")
         reasons.push("Both snapshots must be complete")
       if (comparison.added.length || comparison.removed.length)
@@ -87,18 +127,26 @@ export class WorkflowAssistedApplyService {
         targetRecord: target.record,
         sourceHash: source.aggregateHash,
         targetHash: target.aggregateHash,
-        eligible: reasons.length === 0,
-        blockingReasons: reasons
+        relevant,
+        eligible: relevant && reasons.length === 0,
+        blockingReasons: reasons,
+        transportRequest: "",
+        transportCheckStatus: "not-checked",
+        transportDescription: "",
+        transportCheckedAt: undefined,
+        transportCheckError: undefined
       })
     }
     if (token?.isCancellationRequested) throw new Error("Operation cancelled")
     const plan: AssistedApplyPlan = {
-      schemaVersion: 1,
+      schemaVersion: 2,
       createdAt: new Date().toISOString(),
       sourceConnectionId: workflow.source.connectionId,
       targetConnectionId: workflow.target.connectionId,
+      comparisonBasis,
       items
     }
+    await this.store.removeCopilotAssistedApplySelection(workflow)
     await this.store.writeJson(
       this.store.artifactPath(workflow, "assisted-apply", "plan.json"),
       plan
@@ -122,19 +170,383 @@ export class WorkflowAssistedApplyService {
     await vscode.window.showTextDocument(document, { preview: true })
   }
 
-  async openDiff(workflowId: string, key: string): Promise<void> {
-    const file = await this.selectChangedFile(workflowId, key)
+  async openDiff(
+    workflowId: string,
+    key: string,
+    representation: SnapshotRepresentation
+  ): Promise<void> {
+    const file = await this.selectSnapshotDiffFile(workflowId, key, representation)
     if (!file) return
-    const targetUri = await this.targetUri(workflowId, file.item, file.relativePath)
     await vscode.commands.executeCommand(
       "vscode.diff",
       vscode.Uri.file(file.sourcePath),
-      targetUri,
-      `${key}: source ↔ target`
+      vscode.Uri.file(file.targetPath),
+      `${key}: source ↔ target (${representation})`
     )
   }
 
   async stageInTargetEditor(workflowId: string, key: string): Promise<void> {
+    await this.stage(workflowId, key)
+  }
+
+  async stageAndSaveForCopilot(
+    workflowId: string,
+    key: string,
+    transportChoice: ObjectSaveTransportChoice,
+    token: vscode.CancellationToken
+  ): Promise<RepositoryObjectApplyResult> {
+    const normalizedKey = key.trim().toUpperCase()
+    await this.assertCopilotApplyAuthorized(workflowId, normalizedKey)
+    const attemptId = randomUUID()
+    const files = await this.changedFiles(workflowId, normalizedKey, true)
+    const workflow = await this.store.get(workflowId)
+    const item = files[0].item
+    await this.store.appendAssistedApplyExecutionEvent(workflowId, {
+      attemptId,
+      objectKey: normalizedKey,
+      stage: "apply",
+      status: "started",
+      transportChoiceType: transportChoice.type,
+      sourceHash: item.sourceHash,
+      targetHash: item.targetHash
+    })
+    try {
+      await this.validateReviewedSnapshots(workflowId, normalizedKey, item)
+      const prepared = await Promise.all(
+        files.map(async file => {
+          const targetUri = await this.targetUri(workflowId, file.item, file.relativePath)
+          const document = await vscode.workspace.openTextDocument(targetUri)
+          const safety = assistedApplySafety(document)
+          if (!safety.safe)
+            throw new Error(
+              "Assisted apply is blocked until ABAP auto-save is off and chat.saveBeforeSend is false."
+            )
+          if (document.isDirty)
+            throw new Error(
+              `The target editor for ${file.relativePath} already has unsaved changes. Review or discard them first.`
+            )
+          return {
+            ...file,
+            targetUri,
+            document,
+            source: await fs.readFile(file.sourcePath, "utf8")
+          }
+        })
+      )
+      await this.assertCopilotApplyAuthorized(workflowId, normalizedKey)
+      const resourceResults: RepositoryObjectApplyResourceResult[] = []
+      let currentChoice = transportChoice
+      for (const resource of prepared) {
+        if (token.isCancellationRequested) {
+          const cancelled = this.syntheticResourceResult(
+            attemptId,
+            resource.targetUri,
+            resource.relativePath,
+            "cancelled",
+            "Operation cancelled before this resource was saved"
+          )
+          resourceResults.push(cancelled)
+          await this.recordResourceResult(workflowId, normalizedKey, attemptId, cancelled)
+          break
+        }
+        const result = await this.stageSaveAndVerifyResource(
+          workflowId,
+          normalizedKey,
+          attemptId,
+          workflow.target.connectionId,
+          resource,
+          currentChoice,
+          token
+        )
+        resourceResults.push(result)
+        if (result.status !== "succeeded") break
+        if (currentChoice.type === "new" && result.transportRequest)
+          currentChoice = { type: "existing", number: result.transportRequest }
+      }
+      const status = objectApplyStatus(resourceResults, prepared.length)
+      const transportRequest = [...resourceResults]
+        .reverse()
+        .find(result => result.transportRequest)?.transportRequest
+      const inactiveSourceVerified =
+        resourceResults.length === prepared.length &&
+        resourceResults.every(result => result.inactiveSourceVerified)
+      await this.store.appendAssistedApplyExecutionEvent(workflowId, {
+        attemptId,
+        objectKey: normalizedKey,
+        stage: "apply",
+        status,
+        transportRequest,
+        sourceHash: item.sourceHash,
+        targetHash: item.targetHash,
+        inactiveSourceVerified,
+        error: resourceResults.find(result => result.error)?.error
+      })
+      return {
+        attemptId,
+        objectKey: normalizedKey,
+        status,
+        transportRequest,
+        inactiveSourceVerified,
+        resourceResults
+      }
+    } catch (error) {
+      await this.store.appendAssistedApplyExecutionEvent(workflowId, {
+        attemptId,
+        objectKey: normalizedKey,
+        stage: "apply",
+        status: "failed",
+        sourceHash: item.sourceHash,
+        targetHash: item.targetHash,
+        error: error instanceof Error ? error.message : String(error)
+      })
+      throw error
+    }
+  }
+
+  private async stageSaveAndVerifyResource(
+    workflowId: string,
+    key: string,
+    attemptId: string,
+    targetConnectionId: string,
+    resource: {
+      relativePath: string
+      targetUri: vscode.Uri
+      document: vscode.TextDocument
+      source: string
+    },
+    transportChoice: ObjectSaveTransportChoice,
+    token: vscode.CancellationToken
+  ): Promise<RepositoryObjectApplyResourceResult> {
+    await this.store.appendAssistedApplyExecutionEvent(workflowId, {
+      attemptId,
+      objectKey: key,
+      stage: "transport",
+      status: "started",
+      resourcePath: resource.relativePath,
+      transportChoiceType: transportChoice.type
+    })
+    let intent
+    try {
+      intent = TransportIntentService.get().register({
+        objectUri: resource.targetUri,
+        process: "repository-assisted-apply",
+        transportChoice,
+        workflowId,
+        objectKey: key
+      })
+    } catch (error) {
+      const result = this.syntheticResourceResult(
+        attemptId,
+        resource.targetUri,
+        resource.relativePath,
+        "failed",
+        error instanceof Error ? error.message : String(error)
+      )
+      await this.recordResourceResult(workflowId, key, attemptId, result)
+      return result
+    }
+
+    const edit = new vscode.WorkspaceEdit()
+    edit.replace(
+      resource.targetUri,
+      new vscode.Range(
+        resource.document.positionAt(0),
+        resource.document.positionAt(resource.document.getText().length)
+      ),
+      resource.source
+    )
+    let staged = true
+    try {
+      if (!(await vscode.workspace.applyEdit(edit)))
+        throw new Error("VS Code could not stage the source in the target editor")
+      await vscode.window.showTextDocument(resource.document, { preview: false })
+    } catch (error) {
+      staged = false
+      TransportIntentService.get().cancel(
+        intent.intentId,
+        error instanceof Error ? error.message : String(error)
+      )
+    }
+
+    const completion = TransportIntentService.get().waitForResult(intent.intentId, token, 60_000)
+    if (staged) {
+      try {
+        const save = resource.document.save()
+        void Promise.resolve(save).then(
+          saved => {
+            if (!saved)
+              TransportIntentService.get().fail(
+                intent.intentId,
+                "VS Code reported that the target document was not saved"
+              )
+          },
+          error => TransportIntentService.get().fail(intent.intentId, error)
+        )
+      } catch (error) {
+        TransportIntentService.get().fail(intent.intentId, error)
+      }
+    }
+    const intentResult = await completion
+    const result: RepositoryObjectApplyResourceResult = {
+      ...intentResult,
+      resourcePath: resource.relativePath
+    }
+    await this.recordResourceResult(workflowId, key, attemptId, result)
+    if (result.status !== "succeeded") return result
+
+    await this.store.appendAssistedApplyExecutionEvent(workflowId, {
+      attemptId,
+      objectKey: key,
+      stage: "verification",
+      status: "started",
+      resourcePath: resource.relativePath,
+      intentId: result.intentId,
+      transportRequest: result.transportRequest
+    })
+    try {
+      const connectionId = targetConnectionId.toLowerCase()
+      const root = await getOrCreateRoot(connectionId)
+      const node = await root.getNodeAsync(resource.targetUri.path)
+      if (!isAbapFile(node))
+        throw new Error("Saved target resource could not be resolved for inactive verification")
+      const inactiveSource = await getClient(connectionId).statelessClone.getObjectSource(
+        node.object.contentsPath(),
+        { version: "inactive" }
+      )
+      if (inactiveSource !== resource.source)
+        throw new Error(
+          "SAP accepted the save, but the inactive target source does not match the reviewed raw source"
+        )
+      result.inactiveSourceVerified = true
+      await this.store.appendAssistedApplyExecutionEvent(workflowId, {
+        attemptId,
+        objectKey: key,
+        stage: "verification",
+        status: "succeeded",
+        resourcePath: resource.relativePath,
+        intentId: result.intentId,
+        transportRequest: result.transportRequest,
+        inactiveSourceVerified: true
+      })
+      return result
+    } catch (error) {
+      const failed: RepositoryObjectApplyResourceResult = {
+        ...result,
+        status: "failed",
+        inactiveSourceVerified: false,
+        error: error instanceof Error ? error.message : String(error)
+      }
+      await this.store.appendAssistedApplyExecutionEvent(workflowId, {
+        attemptId,
+        objectKey: key,
+        stage: "verification",
+        status: "failed",
+        resourcePath: resource.relativePath,
+        intentId: result.intentId,
+        transportRequest: result.transportRequest,
+        inactiveSourceVerified: false,
+        error: failed.error
+      })
+      return failed
+    }
+  }
+
+  private syntheticResourceResult(
+    attemptId: string,
+    targetUri: vscode.Uri,
+    resourcePath: string,
+    status: "failed" | "cancelled",
+    error: string
+  ): RepositoryObjectApplyResourceResult {
+    return {
+      intentId: `not-armed:${attemptId}:${resourcePath}`,
+      status,
+      process: "repository-assisted-apply",
+      objectUri: targetUri.toString(),
+      resourcePath,
+      error
+    }
+  }
+
+  private async recordResourceResult(
+    workflowId: string,
+    key: string,
+    attemptId: string,
+    result: RepositoryObjectApplyResourceResult
+  ): Promise<void> {
+    const status = executionStatus(result.status)
+    await this.store.appendAssistedApplyExecutionEvent(workflowId, {
+      attemptId,
+      objectKey: key,
+      stage: "transport",
+      status,
+      resourcePath: result.resourcePath,
+      intentId: result.intentId,
+      transportRequest: result.transportRequest,
+      error: result.error
+    })
+    await this.store.appendAssistedApplyExecutionEvent(workflowId, {
+      attemptId,
+      objectKey: key,
+      stage: "save",
+      status,
+      resourcePath: result.resourcePath,
+      intentId: result.intentId,
+      transportRequest: result.transportRequest,
+      error: result.error
+    })
+  }
+
+  private async validateReviewedSnapshots(
+    workflowId: string,
+    key: string,
+    item: AssistedApplyPlanItem
+  ): Promise<void> {
+    const workflow = await this.store.get(workflowId)
+    const sourceRoot = this.store.artifactPath(
+      workflow,
+      "sources",
+      "source",
+      "objects",
+      objectFolderId(key),
+      "raw"
+    )
+    if (aggregateHash(await listFiles(sourceRoot)) !== item.sourceHash)
+      throw new Error(
+        "The local source snapshot changed since the assisted-apply plan was reviewed. Refresh the comparison."
+      )
+    const cancellation = new vscode.CancellationTokenSource()
+    try {
+      const records = await this.snapshots.selectedRecords(workflowId, [key])
+      await this.snapshots.downloadSide(
+        workflowId,
+        "target",
+        records.target,
+        1,
+        cancellation.token,
+        async () => {},
+        true
+      )
+    } finally {
+      cancellation.dispose()
+    }
+    const currentTarget = await readManifest(
+      this.store.artifactPath(
+        workflow,
+        "sources",
+        "target",
+        "objects",
+        objectFolderId(key),
+        "manifest.json"
+      )
+    )
+    if (!currentTarget || currentTarget.aggregateHash !== item.targetHash)
+      throw new Error(
+        "Target changed since the assisted-apply plan was reviewed. Refresh the comparison."
+      )
+  }
+
+  private async stage(workflowId: string, key: string): Promise<void> {
     const file = await this.selectChangedFile(workflowId, key, true)
     if (!file) return
     const workflow = await this.store.get(workflowId)
@@ -144,7 +556,7 @@ export class WorkflowAssistedApplyService {
       "source",
       "objects",
       objectFolderId(key),
-      "content"
+      "raw"
     )
     if (aggregateHash(await listFiles(sourceRoot)) !== file.item.sourceHash)
       throw new Error(
@@ -199,15 +611,53 @@ export class WorkflowAssistedApplyService {
       new vscode.Range(document.positionAt(0), document.positionAt(document.getText().length)),
       source
     )
-    if (!(await vscode.workspace.applyEdit(edit)))
+    let applied = false
+    try {
+      applied = await vscode.workspace.applyEdit(edit)
+    } catch (error) {
+      throw error
+    }
+    if (!applied) {
       throw new Error("VS Code could not stage the source in the target editor")
+    }
     await vscode.window.showTextDocument(document, { preview: false })
     await vscode.window.showInformationMessage(
       "Source staged in the target editor only. Review it, then save manually and activate related objects together."
     )
   }
 
+  private async assertCopilotApplyAuthorized(workflowId: string, key: string): Promise<void> {
+    const workflow = await this.store.get(workflowId)
+    if (workflow.assistedApplyMode !== "copilot" || !workflow.copilotAssistedApplyEnabledAt)
+      throw new Error("Copilot-assisted apply is not enabled for this workflow")
+    const selection = await this.store.getCopilotAssistedApplySelection(workflowId, workflow)
+    if (!selection?.keys.includes(key))
+      throw new Error(`${key} is not in the user-saved Copilot-assisted apply selection`)
+    if (selection.completedKeys?.includes(key)) throw new Error(`${key} is already marked done`)
+    if (selection.decisions?.[key] !== "as-is")
+      throw new Error(`${key} must have an as-is Copilot decision before it can be saved`)
+    if (!selection.decisionReasons?.[key]?.trim())
+      throw new Error(`${key} must have a Copilot decision reason before it can be saved`)
+  }
+
   private async selectChangedFile(workflowId: string, key: string, requireEligible = false) {
+    const candidates = await this.changedFiles(workflowId, key, requireEligible)
+    const relativePath =
+      candidates.length === 1
+        ? candidates[0].relativePath
+        : await vscode.window.showQuickPick(
+            candidates.map(candidate => candidate.relativePath),
+            {
+              title: `Select changed source for ${key}`,
+              placeHolder: "Choose one source file to review or stage",
+              ignoreFocusOut: true
+            }
+          )
+    if (!relativePath) return undefined
+    return candidates.find(candidate => candidate.relativePath === relativePath)
+  }
+
+  private async changedFiles(workflowId: string, key: string, requireEligible = false) {
     const workflow = await this.store.get(workflowId)
     const plan = (await readJson(
       this.store.artifactPath(workflow, "assisted-apply", "plan.json")
@@ -244,18 +694,13 @@ export class WorkflowAssistedApplyService {
     const textFiles = new Set(
       manifest?.files.filter(file => file.text).map(file => file.path) ?? []
     )
-    const candidates = (comparison?.changed ?? []).filter(file => textFiles.has(file))
+    const changedFiles =
+      plan?.comparisonBasis === "formatted"
+        ? (comparison?.formattedChanged ?? [])
+        : (comparison?.rawChanged ?? comparison?.changed ?? [])
+    const candidates = changedFiles.filter(file => textFiles.has(file))
     if (!candidates.length) throw new Error("No changed text source is available for this object")
-    const relativePath =
-      candidates.length === 1
-        ? candidates[0]
-        : await vscode.window.showQuickPick(candidates, {
-            title: `Select changed source for ${key}`,
-            placeHolder: "Choose one source file to review or stage",
-            ignoreFocusOut: true
-          })
-    if (!relativePath) return undefined
-    return {
+    return candidates.map(relativePath => ({
       item,
       relativePath,
       sourcePath: this.store.artifactPath(
@@ -264,7 +709,60 @@ export class WorkflowAssistedApplyService {
         "source",
         "objects",
         objectFolderId(key),
-        "content",
+        "raw",
+        relativePath
+      )
+    }))
+  }
+
+  private async selectSnapshotDiffFile(
+    workflowId: string,
+    key: string,
+    representation: SnapshotRepresentation
+  ) {
+    const workflow = await this.store.get(workflowId)
+    let comparison: SourceComparisonRecord | undefined
+    for await (const row of this.store.readJsonLines<SourceComparisonRecord>(
+      this.store.artifactPath(workflow, "comparison", "source.jsonl")
+    ))
+      if (row.key === key) {
+        comparison = row
+        break
+      }
+    if (!comparison) throw new Error("Object is not present in the source comparison")
+    if (representation === "formatted" && comparison.formattedError)
+      throw new Error(`Formatted comparison is unavailable: ${comparison.formattedError}`)
+    const candidates =
+      representation === "raw" ? comparison.changed : (comparison.formattedChanged ?? [])
+    if (!candidates.length)
+      throw new Error(`No changed ${representation} source is available for this object`)
+    const relativePath =
+      candidates.length === 1
+        ? candidates[0]
+        : await vscode.window.showQuickPick(candidates, {
+            title: `Select changed ${representation} source for ${key}`,
+            placeHolder: "Choose one source file to compare",
+            ignoreFocusOut: true
+          })
+    if (!relativePath) return undefined
+    return {
+      relativePath,
+      sourcePath: this.store.artifactPath(
+        workflow,
+        "sources",
+        "source",
+        "objects",
+        objectFolderId(key),
+        representation,
+        relativePath
+      ),
+      targetPath: this.store.artifactPath(
+        workflow,
+        "sources",
+        "target",
+        "objects",
+        objectFolderId(key),
+        representation,
         relativePath
       )
     }
@@ -317,4 +815,29 @@ async function readJson(filePath: string): Promise<unknown> {
   } catch {
     return undefined
   }
+}
+
+function executionStatus(
+  status: TransportIntentResult["status"]
+): "succeeded" | "failed" | "timed-out" | "cancelled" {
+  if (status === "succeeded") return "succeeded"
+  if (status === "timed-out") return "timed-out"
+  if (status === "cancelled") return "cancelled"
+  return "failed"
+}
+
+function objectApplyStatus(
+  results: RepositoryObjectApplyResourceResult[],
+  expectedResources: number
+): RepositoryObjectApplyResult["status"] {
+  if (
+    results.length === expectedResources &&
+    results.every(result => result.status === "succeeded" && result.inactiveSourceVerified)
+  )
+    return "succeeded"
+  if (results.some(result => result.status === "succeeded")) return "partial"
+  const last = results[results.length - 1]
+  if (last?.status === "timed-out") return "timed-out"
+  if (last?.status === "cancelled") return "cancelled"
+  return "failed"
 }

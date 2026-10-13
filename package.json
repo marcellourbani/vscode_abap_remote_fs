@@ -197,7 +197,11 @@
       },
       {
         "path": "./client/dist/media/skills/repository-workflow/SKILL.md",
-        "when": "!abapfs:noSapConnected"
+        "when": "abapfs:skill.repository-workflow.enabled && !abapfs:noSapConnected"
+      },
+      {
+        "path": "./client/dist/media/skills/repository-assisted-apply/SKILL.md",
+        "when": "abapfs:skill.repository-assisted-apply.enabled && !abapfs:noSapConnected"
       },
       {
         "path": "./client/dist/media/skills/testing/anst-guide/SKILL.md",
@@ -256,6 +260,10 @@
       {
         "path": "./client/dist/media/agents/abap-documenter.agent.md",
         "when": "abapfs:generalAgent.abap-documenter.enabled && !abapfs:noSapConnected"
+      },
+      {
+        "path": "./client/dist/media/agents/abap-repository-assisted-apply.agent.md",
+        "when": "abapfs:generalAgent.abap-repository-assisted-apply.enabled && !abapfs:noSapConnected"
       },
       {
         "path": "./client/dist/media/agents/anst-enhancement-analyser.agent.md",
@@ -526,12 +534,12 @@
       },
       {
         "name": "abapfs_get_repository_workflow",
-        "displayName": "Get Repository Workflow",
-        "modelDescription": "Read only the requested parts of one persisted repository comparison workflow to minimize context. Choose state, criteria, summaries, and/or one bounded artifact. Discovery automatically creates the existence comparison, whose step state, summary, and artifact remain separately inspectable.",
+        "displayName": "Get or Update Repository Workflow",
+        "modelDescription": "Before using this tool, read the repository-workflow skill in full if you have not already read it in this session. Read only the requested parts of one persisted repository comparison workflow to minimize context. Choose state, criteria, summaries, one bounded artifact, a bounded per-object raw or ABAPLint-formatted source diff, the bounded user-saved Copilot-assisted apply selection, and/or bounded persisted execution history for one exact object. Diffs describe the changes required to make the target match the source: removed lines are target content and added lines are source content. Assisted-apply selection results report total, done, pending, decision statistics, current transport-check state, and latest execution summary. The webview bulk transport check is user-only; never attempt to trigger it. Review each selected object separately, then use setDecision with exactly one objectKey, one decision (as-is, skip, or needs-human), and a concise decision reason. Decisions default to needs-human. Never batch decision updates. Successful activation recording marks an object done automatically; markDone requires an existing successful completion event, while markPending resets status for retry. These actions only update local workflow state and never write SAP. Discovery automatically creates the existence comparison, whose step state, summary, and artifact remain separately inspectable.",
         "canBeReferencedInPrompt": true,
         "toolReferenceName": "abapfs_get_repository_workflow",
         "icon": "$(inspect)",
-        "userDescription": "Inspect a repository comparison workflow",
+        "userDescription": "Inspect a repository workflow or update assisted-apply status",
         "inputSchema": {
           "type": "object",
           "properties": {
@@ -547,10 +555,13 @@
                   "state",
                   "criteria",
                   "summaries",
-                  "artifact"
+                  "artifact",
+                  "diff",
+                  "assistedApplyObjects",
+                  "assistedApplyHistory"
                 ]
               },
-              "description": "Response sections to include. Defaults to state, or artifact when artifact is supplied. Request only what is needed."
+              "description": "Response sections to include. Defaults to state, or artifact when artifact is supplied. assistedApplyObjects returns only objects the user explicitly selected and saved for Copilot-assisted apply, using offset and limit for pagination. assistedApplyHistory returns persisted apply, transport, save, verification, activation, and completion events for one exact objectKey. Request only what is needed."
             },
             "step": {
               "type": "string",
@@ -561,7 +572,8 @@
                 "sourceSelection",
                 "sourceDownload",
                 "sourceComparison",
-                "assistedApplyPlan"
+                "assistedApplyPlan",
+                "transportCheck"
               ],
               "description": "When reading state, return only this step plus current workflow status instead of the full workflow. Inspect existenceComparison to verify the automatic local comparison that follows discovery."
             },
@@ -602,6 +614,70 @@
             "packageName": {
               "type": "string",
               "description": "Optional exact package"
+            },
+            "objectKey": {
+              "type": "string",
+              "description": "Exact repository key required for diff, assistedApplyHistory, or the singular setDecision action, for example R3TR:CLAS:ZCL_EXAMPLE"
+            },
+            "representation": {
+              "type": "string",
+              "enum": [
+                "raw",
+                "formatted"
+              ],
+              "description": "Snapshot representation for diff. Defaults to formatted."
+            },
+            "filePath": {
+              "type": "string",
+              "description": "Optional exact changed snapshot path. Omit to return the first bounded set of changed text files."
+            },
+            "maxFiles": {
+              "type": "number",
+              "minimum": 1,
+              "maximum": 10,
+              "description": "Maximum changed text files to return. Defaults to 3."
+            },
+            "maxChars": {
+              "type": "number",
+              "minimum": 1000,
+              "maximum": 100000,
+              "description": "Maximum total patch characters to return. Defaults to 30000."
+            },
+            "assistedApplyAction": {
+              "type": "string",
+              "enum": [
+                "get",
+                "markDone",
+                "markPending",
+                "setDecision"
+              ],
+              "description": "Action for assistedApplyObjects. get is read-only. Use setDecision after reviewing exactly one user-selected object and provide a concise assistedApplyDecisionReason; batching decisions is not supported. Successful activation recording marks an object done automatically. markDone is accepted only when a successful persisted completion event already exists; use markPending to reset completion status."
+            },
+            "assistedApplyObjectKeys": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              },
+              "maxItems": 200,
+              "description": "Exact user-selected repository keys to mark done or pending. Required for markDone and markPending. Do not use for setDecision, which requires the singular objectKey. Objects outside the saved selection are rejected."
+            },
+            "assistedApplyDecision": {
+              "type": "string",
+              "enum": [
+                "as-is",
+                "skip",
+                "needs-human"
+              ],
+              "description": "Decision for exactly one object when assistedApplyAction is setDecision. Defaults are never inferred for this action; pass the reviewed decision explicitly."
+            },
+            "assistedApplyDecisionReason": {
+              "type": "string",
+              "maxLength": 2000,
+              "description": "Required concise explanation for the singular setDecision action. State the evidence for choosing as-is, skip, or needs-human."
+            },
+            "includeDone": {
+              "type": "boolean",
+              "description": "For assistedApplyObjects, also return done objects. Defaults to false, so only pending objects are returned. Statistics always include both."
             }
           },
           "required": [
@@ -850,7 +926,7 @@
       {
         "name": "abapfs_prepare_repository_assisted_apply",
         "displayName": "Prepare Repository Assisted Apply",
-        "modelDescription": "Prepare a local assisted-apply plan from the persisted source comparison. This tool never writes, saves, transports, or activates SAP objects. Closing the workflow panel is an intentional user stop; report a paused result and never retry automatically. The tool only identifies reviewable objects; only the user can review and stage one source in the target editor from the workflow webview, then save and activate manually.",
+        "modelDescription": "Prepare a local assisted-apply plan from the persisted source comparison for either manual assisted apply or Copilot-assisted apply. Choose raw or formatted differences as the relevance basis; formatted is the default. Raw snapshots remain authoritative for staging and stale checks. This tool never selects objects or writes, saves, transports, or activates SAP objects. Closing the workflow panel is an intentional user stop; report a paused result and never retry automatically. In manual mode, only the user can stage one source in the target editor. In Copilot mode, only the user can select and save the exact objects Copilot may inspect through abapfs_get_repository_workflow.",
         "canBeReferencedInPrompt": true,
         "toolReferenceName": "abapfs_prepare_repository_assisted_apply",
         "icon": "$(preview)",
@@ -860,10 +936,259 @@
           "properties": {
             "workflowId": {
               "type": "string"
+            },
+            "comparisonBasis": {
+              "type": "string",
+              "enum": [
+                "raw",
+                "formatted"
+              ],
+              "description": "Choose which representation determines whether an object is relevant. Defaults to formatted; staging always uses raw source."
             }
           },
           "required": [
             "workflowId"
+          ]
+        },
+        "when": "abapfs:extensionActive && !abapfs:noSapConnected"
+      },
+      {
+        "name": "abapfs_get_object_transport_status",
+        "displayName": "Get ABAP Object Transport Status",
+        "modelDescription": "Read the current transport-lock status for exactly one ABAP object on one connected SAP system. Returns locked with the transport ID, not-locked, or local. This is a read-only point-in-time check intended for generic use and for revalidation immediately before a Copilot-assisted apply. Call it once per object; arrays and bulk checks are not supported. Repository workflow users can run a separate visible bulk check from the webview, but Copilot must not trigger that bulk operation.",
+        "canBeReferencedInPrompt": true,
+        "toolReferenceName": "abapfs_get_object_transport_status",
+        "icon": "$(lock)",
+        "userDescription": "Check one ABAP object's transport lock",
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "connectionId": {
+              "type": "string",
+              "description": "Connected SAP system ID. For repository assisted apply, use the target connection."
+            },
+            "source": {
+              "type": "string",
+              "description": "Exactly one object name, ADT URI, or adt:// workspace URI. Arrays are not supported."
+            },
+            "objectType": {
+              "type": "string",
+              "description": "Optional exact repository object type used when source is an object name."
+            },
+            "packageName": {
+              "type": "string",
+              "description": "Optional target package name supplied to SAP transport-info lookup."
+            }
+          },
+          "required": [
+            "connectionId",
+            "source"
+          ]
+        },
+        "tags": [
+          "abap-fs"
+        ],
+        "when": "abapfs:extensionActive && !abapfs:noSapConnected"
+      },
+      {
+        "name": "abapfs_set_transport_for_next_object_save",
+        "displayName": "Set Transport for Next ABAP Object Save",
+        "modelDescription": "Arm one short-lived transport choice for the next save of one exact adt:// object URI. Always call abapfs_get_object_transport_status first. Never invent or choose a transport request or description: ask the user unless they already explicitly supplied or approved it. If the object is locked, tell the user the current request and obtain approval; a different or new request cannot be used until that lock is resolved. If unlocked, use only an explicitly user-approved existing request or new-request description. The choice is revalidated when the file is written. After editing, recheck transport status and read version inactive to verify the pending SAP source.",
+        "canBeReferencedInPrompt": true,
+        "toolReferenceName": "abapfs_set_transport_for_next_object_save",
+        "icon": "$(repo-push)",
+        "userDescription": "Set the transport for the next save of one ABAP object",
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "objectUri": {
+              "type": "string",
+              "description": "Exact adt:// workspace URI for the object resource. Obtain it with abapfs_get_workspace_uri."
+            },
+            "transportChoice": {
+              "oneOf": [
+                {
+                  "type": "object",
+                  "properties": {
+                    "type": {
+                      "type": "string",
+                      "enum": [
+                        "existing"
+                      ]
+                    },
+                    "number": {
+                      "type": "string",
+                      "description": "Exact existing transport request explicitly approved by the user."
+                    }
+                  },
+                  "required": [
+                    "type",
+                    "number"
+                  ]
+                },
+                {
+                  "type": "object",
+                  "properties": {
+                    "type": {
+                      "type": "string",
+                      "enum": [
+                        "new"
+                      ]
+                    },
+                    "description": {
+                      "type": "string",
+                      "description": "New request description supplied or explicitly approved by the user."
+                    }
+                  },
+                  "required": [
+                    "type",
+                    "description"
+                  ]
+                }
+              ]
+            }
+          },
+          "required": [
+            "objectUri",
+            "transportChoice"
+          ]
+        },
+        "when": "abapfs:extensionActive && !abapfs:noSapConnected"
+      },
+      {
+        "name": "abapfs_apply_repository_workflow_object",
+        "displayName": "Apply Repository Workflow Object",
+        "modelDescription": "Stage and save all applicable changed text resources belonging to exactly one object from a repository-comparison workflow's user-saved Copilot-assisted selection. The workflow must currently be in Copilot-assisted mode, the object must be pending and eligible, and its singular decision must be as-is with a reason. Never invent or choose a transport. Call the transport-status tool first. For a lock, explain its request and obtain user approval; for an unlocked object, use only an existing request or new-request description explicitly supplied or approved by the user; for a local object, use the local choice. The target connection and exact reviewed raw bytes are derived from the workflow. The tool records every attempt and resource result, saves through the normal ABAP filesystem provider, waits for each result, and verifies every inactive SAP source. It returns an attempt ID for later activation recording. It does not activate or mark the object done.",
+        "canBeReferencedInPrompt": true,
+        "toolReferenceName": "abapfs_apply_repository_workflow_object",
+        "icon": "$(cloud-upload)",
+        "userDescription": "Apply one selected repository workflow object",
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "workflowId": {
+              "type": "string",
+              "description": "Exact repository workflow ID."
+            },
+            "objectKey": {
+              "type": "string",
+              "description": "Exact singular repository key from the user-saved Copilot-assisted selection."
+            },
+            "transportChoice": {
+              "oneOf": [
+                {
+                  "type": "object",
+                  "properties": {
+                    "type": {
+                      "type": "string",
+                      "enum": [
+                        "existing"
+                      ]
+                    },
+                    "number": {
+                      "type": "string",
+                      "description": "Exact existing transport request explicitly approved by the user."
+                    }
+                  },
+                  "required": [
+                    "type",
+                    "number"
+                  ]
+                },
+                {
+                  "type": "object",
+                  "properties": {
+                    "type": {
+                      "type": "string",
+                      "enum": [
+                        "new"
+                      ]
+                    },
+                    "description": {
+                      "type": "string",
+                      "description": "New request description supplied or explicitly approved by the user."
+                    }
+                  },
+                  "required": [
+                    "type",
+                    "description"
+                  ]
+                },
+                {
+                  "type": "object",
+                  "description": "Use only when the transport-status tool reports that this exact target object is local.",
+                  "properties": {
+                    "type": {
+                      "type": "string",
+                      "enum": [
+                        "local"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "type"
+                  ]
+                }
+              ]
+            }
+          },
+          "required": [
+            "workflowId",
+            "objectKey",
+            "transportChoice"
+          ]
+        },
+        "when": "abapfs:extensionActive && !abapfs:noSapConnected"
+      },
+      {
+        "name": "abapfs_record_repository_workflow_object_activation",
+        "displayName": "Record Repository Workflow Object Activation",
+        "modelDescription": "Repository workflow processing only; never use this tool for ordinary ABAP edits or activations outside repository comparison. Persist the activation result for exactly one successful repository-workflow apply attempt. Call this only after abapfs_activate_object has returned and verified the exact activated object URL set. Never invent URLs or report success without activation evidence. A successful record marks the selected workflow object done; a failed record preserves the error and leaves it pending. The workflow must still be in Copilot-assisted mode with user consent.",
+        "canBeReferencedInPrompt": true,
+        "toolReferenceName": "abapfs_record_repository_workflow_object_activation",
+        "icon": "$(verified-filled)",
+        "userDescription": "Record activation for one repository workflow object",
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "workflowId": {
+              "type": "string",
+              "description": "Exact repository workflow ID."
+            },
+            "objectKey": {
+              "type": "string",
+              "description": "Exact singular object key from the user-saved selection."
+            },
+            "attemptId": {
+              "type": "string",
+              "description": "Exact successful attempt ID returned by abapfs_apply_repository_workflow_object."
+            },
+            "status": {
+              "type": "string",
+              "enum": [
+                "succeeded",
+                "failed"
+              ]
+            },
+            "activationObjectUrls": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              },
+              "minItems": 1,
+              "description": "Exact object URLs submitted to and reported by the activation tool."
+            },
+            "error": {
+              "type": "string",
+              "description": "Required explanation when activation failed."
+            }
+          },
+          "required": [
+            "workflowId",
+            "objectKey",
+            "attemptId",
+            "status",
+            "activationObjectUrls"
           ]
         },
         "when": "abapfs:extensionActive && !abapfs:noSapConnected"
@@ -1228,7 +1553,7 @@
       {
         "name": "abapfs_get_object_source",
         "displayName": "Get ABAP Object Lines",
-        "modelDescription": "Read active ABAP source. objectType disambiguates same-named objects (MATNR exists as DTEL and DOMA). methodName extracts one method body from a class. MANDATORY before code generation: training data has wrong params — ALWAYS read exact signatures before calling functions/methods, never guess. Unverified params WILL fail at runtime. IMPORTANT: shows committed code only, not unsaved local edits — use VS Code file tools for fresh edits.",
+        "modelDescription": "Read active or inactive ABAP source. Defaults to active; use version inactive to verify source saved to SAP before activation. objectType disambiguates same-named objects (MATNR exists as DTEL and DOMA). methodName extracts one method body from a class. MANDATORY before code generation: training data has wrong params — ALWAYS read exact signatures before calling functions/methods, never guess. Unverified params WILL fail at runtime. IMPORTANT: shows SAP code only, not unsaved local edits — use VS Code file tools for fresh edits.",
         "canBeReferencedInPrompt": true,
         "toolReferenceName": "abapfs_get_object_source",
         "icon": "$(file-code)",
@@ -1297,6 +1622,15 @@
               "type": "number",
               "default": 50,
               "description": "Number of lines to retrieve"
+            },
+            "version": {
+              "type": "string",
+              "enum": [
+                "active",
+                "inactive"
+              ],
+              "default": "active",
+              "description": "SAP source version to read. Use inactive after saving and before activation to verify the pending source."
             },
             "connectionId": {
               "type": "string",
@@ -1442,7 +1776,7 @@
       {
         "name": "abapfs_batch_get_lines",
         "displayName": "Get Batch Lines",
-        "modelDescription": "Read lines from multiple ABAP objects in one call. IMPORTANT: returns committed code only, not unsaved local edits — use VS Code file tools to see fresh edits.",
+        "modelDescription": "Read active or inactive lines from multiple ABAP objects in one call. Defaults to active; use inactive to verify pending SAP source before activation. Does not return unsaved local edits.",
         "canBeReferencedInPrompt": true,
         "toolReferenceName": "abapfs_batch_get_lines",
         "icon": "$(list-tree)",
@@ -1479,6 +1813,15 @@
             "connectionId": {
               "type": "string",
               "description": "SAP connection ID (e.g., 'dev100')"
+            },
+            "version": {
+              "type": "string",
+              "enum": [
+                "active",
+                "inactive"
+              ],
+              "default": "active",
+              "description": "SAP source version to read for every requested object."
             }
           },
           "required": [
@@ -1534,7 +1877,7 @@
       {
         "name": "abapfs_create_object",
         "displayName": "Create ABAP Object Programmatically",
-        "modelDescription": "Create new ABAP objects (classes, reports, function groups, function modules, interfaces, data elements, tables, CDS views, packages, service bindings, etc.). Function modules: objectType='FUGR/FF' and ALWAYS provide parentName with the parent function group name. Service bindings: MANDATORY serviceDefinition, bindingType, bindingCategory. Packages: MANDATORY softwareComponent, packageType, transportLayer.",
+        "modelDescription": "Create new ABAP objects (classes, reports, function groups, function modules, interfaces, data elements, tables, CDS views, packages, service bindings, etc.). Function modules: objectType='FUGR/FF' and ALWAYS provide parentName with the parent function group name. Service bindings: MANDATORY serviceDefinition, bindingType, bindingCategory. Packages: MANDATORY softwareComponent, packageType, transportLayer. Never run this tool in parallel with other tool calls that create, edit or activate objects in the same system: SAP can leave the new object half registered, and saving it then fails with 'Operation terminated' (HTTP 500) for several minutes. Create objects one at a time and wait for each creation to finish before editing the new object or its main program.",
         "canBeReferencedInPrompt": true,
         "toolReferenceName": "abapfs_create_object",
         "icon": "$(add)",
@@ -3366,7 +3709,7 @@
       {
         "name": "abapfs_manage_subagents",
         "displayName": "Manage AI Subagents",
-        "modelDescription": "Manage 13 general ABAP agents and 9 SAP testing agents. Before configuring or enabling anything, call get_status, then list_models, and use the guidance they return. General agents are configured and enabled individually with agentIds. Testing agents are configured as one all-or-nothing group and are available only when the SAP testing folder is ready. Use exact model names from list_models. Settings are user-level. Model changes and enable/disable changes take effect without a VS Code reload. The legacy regenerate action is a no-op and does not write workspace files.",
+        "modelDescription": "Manage 14 general ABAP agents and 9 SAP testing agents. Before configuring or enabling anything, call get_status, then list_models, and use the guidance they return. General agents are configured and enabled individually with agentIds. Testing agents are configured as one all-or-nothing group and are available only when the SAP testing folder is ready. Use exact model names from list_models. Settings are user-level. Model changes and enable/disable changes take effect without a VS Code reload. The legacy regenerate action is a no-op and does not write workspace files.",
         "canBeReferencedInPrompt": true,
         "toolReferenceName": "abapfs_manage_subagents",
         "icon": "$(hubot)",
@@ -3394,7 +3737,7 @@
               "items": {
                 "type": "string"
               },
-              "description": "For 'enable' or 'disable': general agent IDs to change. Omit to change all 13 general agents. Testing agent IDs cannot be toggled individually."
+              "description": "For 'enable' or 'disable': general agent IDs to change. Omit to change all 14 general agents. Testing agent IDs cannot be toggled individually."
             },
             "configurations": {
               "type": "array",
@@ -3643,17 +3986,39 @@
         "displayName": "Activate ABAP objects - equivalent of compiling",
         "canBeReferencedInPrompt": true,
         "toolReferenceName": "abapfs_activate_object",
-        "modelDescription": "Activate ABAP object at given URL (equivalent to compiling). Returns activated objects + any activation errors.",
+        "modelDescription": "List or activate inactive ABAP objects. get_inactive_objects returns each backend activation url and, when resolvable, its ABAP FS workspaceUri. Pass selected URLs together to activate; activation runs as one batch and is verified by reloading the inactive-object list. SAP checks a program against the active version of its includes, so activating only some objects of a program can succeed while related ones stay inactive: these are returned in relatedStillInactive (inactive includes of a requested program, or the main program and sibling includes of a requested include). Review them and activate them too when they belong to the same change. ONLY FOR repository assisted apply workflows: match workspaceUri exactly to the apply result's resourceResults[].objectUri and pass only the corresponding url values; names and parent relationships are not sufficient proof. This also applies to relatedStillInactive: only activate those whose workspaceUri matches the apply result.",
         "inputSchema": {
           "type": "object",
           "properties": {
-            "url": {
+            "action": {
               "type": "string",
-              "description": "Url of the object to activate. Usually the current file's URL."
+              "enum": [
+                "get_inactive_objects",
+                "activate"
+              ],
+              "description": "get_inactive_objects lists candidates; activate submits all supplied URLs in one activation request."
+            },
+            "connectionId": {
+              "type": "string",
+              "description": "SAP connection ID (e.g., 'dev100')."
+            },
+            "regex": {
+              "type": "string",
+              "description": "Optional case-insensitive regular expression matched only against each inactive object's name (for example, '^ZDEMO_PROGRAM_(C|I)01$')."
+            },
+            "urls": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              },
+              "minItems": 1,
+              "uniqueItems": true,
+              "description": "For activate: ADT URLs returned by get_inactive_objects. All URLs must belong to connectionId."
             }
           },
           "required": [
-            "url"
+            "action",
+            "connectionId"
           ]
         },
         "tags": [
@@ -5970,6 +6335,7 @@
             "abap-debugger": "",
             "abap-troubleshooter": "",
             "abap-data-analyst": "",
+            "abap-repository-assisted-apply": "",
             "abap-orchestrator": "",
             "abap-code-reviewer": "",
             "sap-code-grep": "",

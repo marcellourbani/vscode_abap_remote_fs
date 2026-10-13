@@ -26,6 +26,7 @@ import {
   transportValidators,
   selectTransport,
   pickTransportProgrammatically,
+  pickTransportForExistingObjectWrite,
   TransportPickerError
 } from "./AdtTransports"
 import { funWindow as window } from "../services/funMessenger"
@@ -389,6 +390,160 @@ describe("pickTransportProgrammatically", () => {
       "ZDEV",
       ""
     )
+    expect(mockWindow.showQuickPick).not.toHaveBeenCalled()
+    expect(mockWindow.showInputBox).not.toHaveBeenCalled()
+  })
+})
+
+describe("pickTransportForExistingObjectWrite", () => {
+  let mockClient: any
+
+  beforeEach(() => {
+    vi.clearAllMocks()
+    mockClient = {
+      transportInfo: vi.fn(),
+      createTransport: vi.fn()
+    }
+  })
+
+  it("ignores a supplied request for a local object", async () => {
+    mockClient.transportInfo.mockResolvedValue({
+      DLVUNIT: "LOCAL",
+      TRANSPORTS: [],
+      LOCKS: undefined
+    })
+
+    await expect(
+      pickTransportForExistingObjectWrite(
+        mockClient,
+        { type: "existing", number: "DEVK900123" },
+        "/object/source/main"
+      )
+    ).resolves.toEqual({ cancelled: false, transport: "" })
+    expect(mockClient.createTransport).not.toHaveBeenCalled()
+  })
+
+  it("uses an existing request only when it is currently modifiable", async () => {
+    mockClient.transportInfo.mockResolvedValue({
+      DLVUNIT: "HOME",
+      TRANSPORTS: [{ TRKORR: "DEVK900123" }],
+      LOCKS: undefined
+    })
+
+    const result = await pickTransportForExistingObjectWrite(
+      mockClient,
+      { type: "existing", number: " devk900123 " },
+      "/object/source/main"
+    )
+
+    expect(mockClient.transportInfo).toHaveBeenCalledWith("/object/source/main", "", "")
+    expect(result).toEqual({ cancelled: false, transport: "DEVK900123" })
+  })
+
+  it("accepts the existing object lock even when the modifiable list is empty", async () => {
+    mockClient.transportInfo.mockResolvedValue({
+      DLVUNIT: "HOME",
+      TRANSPORTS: [],
+      LOCKS: { HEADER: { TRKORR: "DEVK900123" } }
+    })
+
+    await expect(
+      pickTransportForExistingObjectWrite(
+        mockClient,
+        { type: "existing", number: "DEVK900123" },
+        "/object/source/main"
+      )
+    ).resolves.toEqual({ cancelled: false, transport: "DEVK900123" })
+  })
+
+  it("rejects a request that conflicts with the current object lock", async () => {
+    mockClient.transportInfo.mockResolvedValue({
+      DLVUNIT: "HOME",
+      TRANSPORTS: [{ TRKORR: "DEVK900999" }],
+      LOCKS: { HEADER: { TRKORR: "DEVK900999" } }
+    })
+
+    await expect(
+      pickTransportForExistingObjectWrite(
+        mockClient,
+        { type: "existing", number: "DEVK900123" },
+        "/object/source/main"
+      )
+    ).rejects.toThrow(/already locked to DEVK900999/)
+  })
+
+  it("rejects an existing request that is not currently modifiable", async () => {
+    mockClient.transportInfo.mockResolvedValue({
+      DLVUNIT: "HOME",
+      TRANSPORTS: [{ TRKORR: "DEVK900999" }],
+      LOCKS: undefined
+    })
+
+    await expect(
+      pickTransportForExistingObjectWrite(
+        mockClient,
+        { type: "existing", number: "DEVK900123" },
+        "/object/source/main"
+      )
+    ).rejects.toThrow(/not currently modifiable/)
+  })
+
+  it("creates a user-approved new request with the current object package", async () => {
+    mockClient.transportInfo.mockResolvedValue({
+      DLVUNIT: "HOME",
+      DEVCLASS: "ZCURRENT",
+      TRANSPORTS: [],
+      LOCKS: undefined
+    })
+    mockClient.createTransport.mockResolvedValue("DEVK900555")
+
+    const result = await pickTransportForExistingObjectWrite(
+      mockClient,
+      { type: "new", description: " Approved description " },
+      "/object/source/main",
+      "ZFALLBACK",
+      "ZLAYER"
+    )
+
+    expect(mockClient.createTransport).toHaveBeenCalledWith(
+      "/object/source/main",
+      "Approved description",
+      "ZCURRENT",
+      "ZLAYER"
+    )
+    expect(result).toEqual({ cancelled: false, transport: "DEVK900555" })
+  })
+
+  it("does not create a new request when the object is already locked", async () => {
+    mockClient.transportInfo.mockResolvedValue({
+      DLVUNIT: "HOME",
+      TRANSPORTS: [],
+      LOCKS: { HEADER: { TRKORR: "DEVK900123" } }
+    })
+
+    await expect(
+      pickTransportForExistingObjectWrite(
+        mockClient,
+        { type: "new", description: "Approved description" },
+        "/object/source/main"
+      )
+    ).rejects.toThrow(/already locked/)
+    expect(mockClient.createTransport).not.toHaveBeenCalled()
+  })
+
+  it("never opens an interactive transport dialog", async () => {
+    mockClient.transportInfo.mockResolvedValue({
+      DLVUNIT: "HOME",
+      TRANSPORTS: [{ TRKORR: "DEVK900123" }],
+      LOCKS: undefined
+    })
+
+    await pickTransportForExistingObjectWrite(
+      mockClient,
+      { type: "existing", number: "DEVK900123" },
+      "/object/source/main"
+    )
+
     expect(mockWindow.showQuickPick).not.toHaveBeenCalled()
     expect(mockWindow.showInputBox).not.toHaveBeenCalled()
   })

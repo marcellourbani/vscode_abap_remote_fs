@@ -10,10 +10,12 @@ const mocks = vi.hoisted(() => ({
   snapshots: {
     selectedRecords: vi.fn(),
     verifySide: vi.fn(),
+    preparePendingUris: vi.fn(),
     downloadPending: vi.fn(),
     compare: vi.fn()
   },
-  assistedApply: { prepare: vi.fn() }
+  assistedApply: { prepare: vi.fn(), stageAndSaveForCopilot: vi.fn() },
+  transportCheck: { determine: vi.fn() }
 }))
 
 vi.mock("vscode", () => ({
@@ -54,6 +56,12 @@ vi.mock("./snapshotService", () => ({
 vi.mock("./assistedApplyService", () => ({
   WorkflowAssistedApplyService: vi.fn(function () {
     return mocks.assistedApply
+  })
+}))
+
+vi.mock("./transportCheckService", () => ({
+  WorkflowTransportCheckService: vi.fn(function () {
+    return mocks.transportCheck
   })
 }))
 
@@ -101,6 +109,7 @@ describe("RepositoryWorkflowEngine", () => {
         pending: records
       })
     )
+    mocks.snapshots.preparePendingUris.mockResolvedValue(new Map())
     mocks.snapshots.downloadPending.mockImplementation(
       async (_workflowId, _side, _records, total) => ({
         total,
@@ -112,11 +121,18 @@ describe("RepositoryWorkflowEngine", () => {
     )
     mocks.snapshots.compare.mockResolvedValue([])
     mocks.assistedApply.prepare.mockResolvedValue({
-      schemaVersion: 1,
+      schemaVersion: 2,
       createdAt: new Date().toISOString(),
       sourceConnectionId: "source100",
       targetConnectionId: "target100",
+      comparisonBasis: "formatted",
       items: []
+    })
+    mocks.transportCheck.determine.mockResolvedValue({
+      total: 1,
+      completed: 1,
+      failed: 0,
+      cancelled: false
     })
   })
 
@@ -357,6 +373,65 @@ describe("RepositoryWorkflowEngine", () => {
     expect(await store.isRunLocked(workflow.workflowId)).toBe(false)
   })
 
+  it("verifies completed downloads before a comparison rerun without replacing the saved selection", async () => {
+    const store = new WorkflowStore({} as any)
+    const workflow = await store.create({
+      name: "Completed rerun",
+      sourceConnectionId: "source100",
+      targetConnectionId: "target100"
+    })
+    await store.update(workflow.workflowId, current => ({
+      ...current,
+      currentStep: "assistedApplyPlan",
+      steps: {
+        ...current.steps,
+        discovery: { status: "complete" },
+        existenceComparison: { status: "complete" },
+        sourceSelection: { status: "complete" },
+        sourceDownload: { status: "complete" },
+        sourceComparison: { status: "complete" }
+      }
+    }))
+    const selection = { schemaVersion: 1, updatedAt: "unchanged", keys: ["R3TR:PROG:ZCACHED"] }
+    await store.writeJson(
+      store.artifactPath(workflow, "comparison", "source-selection.json"),
+      selection
+    )
+    mocks.snapshots.selectedRecords.mockResolvedValue({
+      source: [repositoryRecord("ZCACHED")],
+      target: [repositoryRecord("ZCACHED")]
+    })
+    mocks.snapshots.verifySide.mockResolvedValue({ completed: 1, pending: [] })
+    const engine = new RepositoryWorkflowEngine(store)
+    const select = vi.spyOn(engine, "saveSourceSelection")
+    const result = await engine.compareSourceCode(workflow.workflowId)
+    expect(select).not.toHaveBeenCalled()
+    expect(mocks.snapshots.verifySide).toHaveBeenCalledTimes(2)
+    expect(Math.max(...mocks.snapshots.verifySide.mock.invocationCallOrder)).toBeLessThan(
+      mocks.snapshots.compare.mock.invocationCallOrder[0]
+    )
+    for (const call of mocks.snapshots.downloadPending.mock.calls) expect(call[2]).toEqual([])
+    const criteria = await store.getCriteria(workflow.workflowId)
+    for (const call of mocks.snapshots.verifySide.mock.calls)
+      expect(call[3]).toBe(criteria!.verificationConcurrency)
+    expect(mocks.snapshots.compare.mock.calls[0][4]).toEqual({
+      sourceConcurrency: criteria!.sourceConcurrency,
+      targetConcurrency: criteria!.targetConcurrency,
+      onPhase: expect.any(Function)
+    })
+    expect(
+      JSON.parse(
+        await fs.readFile(
+          store.artifactPath(workflow, "comparison", "source-selection.json"),
+          "utf8"
+        )
+      )
+    ).toEqual(selection)
+    expect(result.steps.sourceComparison.status).toBe("complete")
+    expect(mocks.assistedApply.prepare).not.toHaveBeenCalled()
+    expect(mocks.transportCheck.determine).not.toHaveBeenCalled()
+  })
+
   it("reports incomplete downloads and comparisons as partial and resumable", async () => {
     const store = new WorkflowStore({} as any)
     const workflow = await store.create({
@@ -405,6 +480,10 @@ describe("RepositoryWorkflowEngine", () => {
     const engine = new RepositoryWorkflowEngine(store)
 
     const downloaded = await engine.downloadSources(workflow.workflowId)
+    expect(mocks.snapshots.preparePendingUris).toHaveBeenCalledTimes(2)
+    expect(Math.max(...mocks.snapshots.preparePendingUris.mock.invocationCallOrder)).toBeLessThan(
+      Math.min(...mocks.snapshots.downloadPending.mock.invocationCallOrder)
+    )
     expect(downloaded.runState).toBe("partial")
     expect(downloaded.steps.sourceDownload.status).toBe("partial")
     expect(downloaded.currentStep).toBe("sourceComparison")
@@ -466,7 +545,7 @@ describe("RepositoryWorkflowEngine", () => {
         assistedApplyPlan: { status: "not-started" }
       }
     }))
-    mocks.assistedApply.prepare.mockImplementation(async (_id, _keys, token) => {
+    mocks.assistedApply.prepare.mockImplementation(async (_id, _keys, _basis, token) => {
       while (!token.isCancellationRequested)
         await new Promise<void>(resolve => setImmediate(resolve))
       throw new Error("Operation cancelled")
@@ -477,5 +556,99 @@ describe("RepositoryWorkflowEngine", () => {
     await preparation
     expect(pausedPreparation.steps.assistedApplyPlan.pauseReason).toBe("panel-closed")
     expect(await store.isRunLocked(workflow.workflowId)).toBe(false)
+  })
+
+  it("checks target transport status for only the selected plan objects", async () => {
+    const store = new WorkflowStore({} as any)
+    const workflow = await store.create({
+      name: "Transport check",
+      sourceConnectionId: "source100",
+      targetConnectionId: "target100"
+    })
+    await store.update(workflow.workflowId, current => ({
+      ...current,
+      currentStep: "transportCheck",
+      steps: {
+        ...current.steps,
+        sourceComparison: { status: "complete" },
+        assistedApplyPlan: { status: "complete" }
+      }
+    }))
+    const engine = new RepositoryWorkflowEngine(store)
+
+    const result = await engine.determineTransportRequests(
+      workflow.workflowId,
+      ["R3TR:PROG:ZTEST"],
+      4
+    )
+
+    expect(mocks.transportCheck.determine).toHaveBeenCalledWith(
+      workflow.workflowId,
+      ["R3TR:PROG:ZTEST"],
+      4,
+      expect.anything(),
+      expect.any(Function)
+    )
+    expect(result).toMatchObject({ completed: 1, failed: 0 })
+    const updated = await store.get(workflow.workflowId)
+    expect(updated.steps.transportCheck.status).toBe("complete")
+  })
+
+  it("holds one shared run lock across concurrent assisted applies", async () => {
+    const store = new WorkflowStore({} as any)
+    const workflow = await store.create({
+      name: "Apply lock",
+      sourceConnectionId: "source100",
+      targetConnectionId: "target100"
+    })
+    const engine = new RepositoryWorkflowEngine(store)
+    const pending = new Map<string, () => void>()
+    mocks.assistedApply.stageAndSaveForCopilot.mockImplementation(
+      (_workflowId: string, key: string) =>
+        new Promise(resolve => pending.set(key, () => resolve({ objectKey: key })))
+    )
+    const until = async (condition: () => boolean) => {
+      while (!condition()) await new Promise<void>(resolve => setImmediate(resolve))
+    }
+    const choice = { type: "existing", number: "DEVK900123" } as const
+    const token = { isCancellationRequested: false } as any
+
+    const first = engine.applyCopilotAssistedObject(workflow.workflowId, "A", choice, token)
+    const second = engine.applyCopilotAssistedObject(workflow.workflowId, "B", choice, token)
+    await until(() => pending.size === 2)
+
+    expect(await store.isRunLocked(workflow.workflowId)).toBe(true)
+    await expect(store.archive(workflow.workflowId)).rejects.toThrow(/already running/)
+    await expect(store.delete(workflow.workflowId)).rejects.toThrow(/already running/)
+    await expect(engine.compareSources(workflow.workflowId)).rejects.toThrow(/already running/)
+
+    pending.get("A")!()
+    await first
+    expect(await store.isRunLocked(workflow.workflowId)).toBe(true)
+    pending.get("B")!()
+    await second
+    expect(await store.isRunLocked(workflow.workflowId)).toBe(false)
+  })
+
+  it("rejects assisted apply while another workflow step is running", async () => {
+    const store = new WorkflowStore({} as any)
+    const workflow = await store.create({
+      name: "Apply blocked",
+      sourceConnectionId: "source100",
+      targetConnectionId: "target100"
+    })
+    await store.acquireRunLock(workflow.workflowId, "other-runner")
+    const engine = new RepositoryWorkflowEngine(store)
+
+    await expect(
+      engine.applyCopilotAssistedObject(
+        workflow.workflowId,
+        "A",
+        { type: "existing", number: "DEVK900123" },
+        { isCancellationRequested: false } as any
+      )
+    ).rejects.toThrow(/already running/)
+    expect(mocks.assistedApply.stageAndSaveForCopilot).not.toHaveBeenCalled()
+    expect(await store.releaseRunLock(workflow.workflowId, "other-runner")).toBe(true)
   })
 })
