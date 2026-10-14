@@ -6,6 +6,7 @@ import { LogOutPendingDebuggers } from "./debugger"
 import { SapSystemValidator } from "../services/sapSystemValidator"
 import { LocalFsProvider } from "../fs/LocalFsProvider"
 import { log } from "../lib"
+import { installUsageReferencesNamespacePatch } from "./usageReferenceNamespacePatch"
 export const ADTSCHEME = "adt"
 export const ADTURIPATTERN = /\/sap\/bc\/adt\//
 
@@ -65,6 +66,9 @@ async function create(connId: string) {
     const { name, username } = connection
     await manager.savePassword(name, username, password)
   }
+
+  installUsageReferencesNamespacePatch(client)
+  installUsageReferencesNamespacePatch(client.statelessClone)
 
   // @ts-ignore
   const service = new AFsService(client)
