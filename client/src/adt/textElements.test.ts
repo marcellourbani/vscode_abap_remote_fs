@@ -469,13 +469,13 @@ describe("updateTextElementsWithTransport", () => {
         client,
         "ZREPORT",
         [
-          { id: "a", text: "x" },
-          { id: "A", text: "y" }
+          { id: "abc", text: "x" },
+          { id: "ABC", text: "y" }
         ],
         "PROGRAM",
         "symbols"
       )
-    ).rejects.toThrow("Duplicate text element ID: A")
+    ).rejects.toThrow("Duplicate text element ID: ABC")
 
     expect(client.lock).not.toHaveBeenCalled()
   })
@@ -609,5 +609,64 @@ describe("updateTextElementsWithTransport", () => {
     ).rejects.toThrow("Object name is required")
 
     expect(client.lock).not.toHaveBeenCalled()
+  })
+
+  it.each([
+    [
+      "a 4-character symbol key",
+      "symbols",
+      [{ id: "ABCD", text: "x" }],
+      "must be exactly 3 characters"
+    ],
+    ["a symbol key with a blank", "symbols", [{ id: "A B", text: "x" }], "without blanks"],
+    ["an unknown heading key", "headings", [{ id: "FOO", text: "x" }], "Invalid heading key"],
+    [
+      "an over-long LISTHEADER",
+      "headings",
+      [{ id: "LISTHEADER", text: "x".repeat(72) }],
+      "maximum length of 71"
+    ],
+    [
+      "an over-long selection text",
+      "selections",
+      [{ id: "P_NAME", text: "x".repeat(31) }],
+      "maximum length of 30"
+    ]
+  ])("rejects %s before locking", async (_label, category, elements, message) => {
+    const client = makeWriteClient()
+    await expect(
+      updateTextElementsWithTransport(
+        client,
+        "ZREPORT",
+        elements as any,
+        "PROGRAM",
+        category as any
+      )
+    ).rejects.toThrow(message)
+
+    expect(client.lock).not.toHaveBeenCalled()
+  })
+
+  it("accepts valid heading keys and selection text at the limit", async () => {
+    const client = makeWriteClient()
+    await updateTextElementsWithTransport(
+      client,
+      "ZREPORT",
+      [
+        { id: "LISTHEADER", text: "x".repeat(71) },
+        { id: "COLUMNHEADER_1", text: "Col" }
+      ],
+      "PROGRAM",
+      "headings"
+    )
+    await updateTextElementsWithTransport(
+      client,
+      "ZREPORT",
+      [{ id: "P_NAME", text: "x".repeat(30) }],
+      "PROGRAM",
+      "selections"
+    )
+
+    expect(client.setTextElements).toHaveBeenCalledTimes(2)
   })
 })

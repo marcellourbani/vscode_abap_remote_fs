@@ -10,7 +10,6 @@ import {
   type TextElement,
   type TextElementCategory
 } from "../../adt/textElements"
-import { openTextElementsInSapGui } from "../../commands/textElementsCommands"
 import { assertToolInvocationAuthorized } from "./toolGuard"
 
 // Text Elements Tool Interfaces
@@ -49,6 +48,21 @@ function isToolAction(action: string): action is ToolAction {
 
 function invalidActionMessage(action: string): string {
   return `Invalid action: ${action}. Must be 'read', 'create', 'update', or 'delete'`
+}
+
+function isTextElementsApiUnsupported(error: unknown): boolean {
+  const message = String(error)
+  return message.includes("Resource") && message.includes("does not exist")
+}
+
+function unsupportedMessage(connectionId: string, objectName: string): string {
+  return (
+    `ADT text elements API is not available on system ${connectionId.toUpperCase()}. ` +
+    `Nothing was changed and SE38 was not opened. ` +
+    `Ask the user whether to open ${objectName} in SE38 in the browser. ` +
+    `Only if they say yes, call abapfs_get_sap_webgui_url with connectionId "${connectionId}" and transaction "SE38". ` +
+    `In SE38 use Goto > Text Elements.`
+  )
 }
 
 // SAP stores text pool keys in uppercase; the ADT write uppercases them too
@@ -230,7 +244,8 @@ export class ManageTextElementsTool implements vscode.LanguageModelTool<IManageT
         objectType,
         category,
         action,
-        (textElements ?? []).map(el => ({ ...el, id: normalizeId(el.id) }))
+        (textElements ?? []).map(el => ({ ...el, id: normalizeId(el.id) })),
+        actualConnectionId
       )
       if (plan.targetElements.length === 0) {
         return this.handleNoMatch(objectName, action)
@@ -247,9 +262,9 @@ export class ManageTextElementsTool implements vscode.LanguageModelTool<IManageT
   private async handleRead(
     client: any,
     objectName: string,
-    objectType?: string,
-    category: TextElementCategory = "symbols",
-    connectionId?: string
+    objectType: string | undefined,
+    category: TextElementCategory,
+    connectionId: string
   ): Promise<vscode.LanguageModelToolResult> {
     try {
       // Use explicit object type when provided, fallback to detection when not
@@ -272,36 +287,12 @@ export class ManageTextElementsTool implements vscode.LanguageModelTool<IManageT
 
       return new vscode.LanguageModelToolResult([new vscode.LanguageModelTextPart(resultText)])
     } catch (error) {
-      // Check if it's a "Resource does not exist" error - fallback to SAP GUI for old systems
-      const errorMessage = String(error)
-      if (errorMessage.includes("Resource") && errorMessage.includes("does not exist")) {
-        if (!connectionId) {
-          throw new Error("Cannot determine connection ID for SAP GUI fallback")
-        }
-
-        // Call the existing SAP GUI fallback function with proper object type
-        await openTextElementsInSapGui(
-          objectName +
-            (objectType === "CLASS"
-              ? ".clas.abap"
-              : objectType === "FUNCTION_GROUP"
-                ? ".fugr.abap"
-                : ".prog.abap"),
-          connectionId
-        )
-
-        const resultText =
-          `Text Elements Editor Opened in SAP GUI\n` +
-          `Object: ${objectName}\n` +
-          `System: ${connectionId.toUpperCase()}\n` +
-          `Reason: ADT text elements API not available on this system\n\n` +
-          `Editor opened in embedded SAP GUI webview. User can edit text elements directly there.`
-
-        return new vscode.LanguageModelToolResult([new vscode.LanguageModelTextPart(resultText)])
-      } else {
-        // Re-throw other errors
-        throw error
+      if (isTextElementsApiUnsupported(error)) {
+        return new vscode.LanguageModelToolResult([
+          new vscode.LanguageModelTextPart(unsupportedMessage(connectionId, objectName))
+        ])
       }
+      throw error
     }
   }
 
@@ -311,21 +302,35 @@ export class ManageTextElementsTool implements vscode.LanguageModelTool<IManageT
     objectType: string | undefined,
     category: TextElementCategory,
     action: ModifyAction,
-    inputs: TextElementInput[]
+    inputs: TextElementInput[],
+    connectionId: string
   ): Promise<ChangePlan> {
+    // SAP replaces the whole text pool on write, so an unknown current state must not be written
     let existing: TextElement[]
     try {
       existing = (await getTextElementsSafe(client, objectName, objectType, category)).textElements
     } catch (error) {
-      if (action === "delete") {
-        throw new Error(`Could not read existing text elements for delete operation: ${error}`)
+      if (isTextElementsApiUnsupported(error)) {
+        throw new Error(unsupportedMessage(connectionId, objectName))
       }
-      logCommands.warn(` Could not read existing text elements for merge: ${error}`)
-      return planMerge([], inputs as TextElement[])
+      throw new Error(
+        `Could not read existing text elements for ${action} operation; SAP was not changed: ${error}`
+      )
     }
 
     if (action === "delete") return planDelete(existing, inputs)
-    // Text presence is enforced by assertElementsForAction before this point
+
+    const existingIds = new Set(existing.map(el => normalizeId(el.id)))
+    const duplicate = inputs.find(el => existingIds.has(el.id))
+    if (action === "create" && duplicate) {
+      throw new Error(
+        `Text element ${duplicate.id} already exists; use action "update" to change it`
+      )
+    }
+    const unknown = inputs.find(el => !existingIds.has(el.id))
+    if (action === "update" && unknown) {
+      throw new Error(`Text element ${unknown.id} does not exist; use action "create" to add it`)
+    }
     return planMerge(existing, inputs as TextElement[])
   }
 
@@ -351,8 +356,10 @@ export class ManageTextElementsTool implements vscode.LanguageModelTool<IManageT
       category
     )
 
-    const { past } = ACTION_LABELS[action]
     const { targetElements } = plan
+    // Headings and selection texts keep their SAP entry on delete; only the text is cleared
+    const past =
+      action === "delete" && category !== "symbols" ? "Cleared" : ACTION_LABELS[action].past
 
     let resultText = `Text Elements ${past} for ${objectName}\n`
     resultText += `Object: ${objectName} | ${past}: ${targetElements.length}\n\n`
