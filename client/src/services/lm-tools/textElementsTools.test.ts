@@ -153,17 +153,18 @@ describe("ManageTextElementsTool", () => {
       expect(result.invocationMessage).toContain("FUNCTION_GROUP")
     })
 
-    it("shows 0 elements when textElements is undefined for create", async () => {
-      const result = await tool.prepareInvocation(
-        makeOptions({
-          objectName: "ZREPORT",
-          objectType: "PROGRAM",
-          action: "create",
-          connectionId: "dev100"
-        }),
-        mockToken
-      )
-      expect(result.confirmationMessages.message.value).toContain("0")
+    it("rejects create without textElements", async () => {
+      await expect(
+        tool.prepareInvocation(
+          makeOptions({
+            objectName: "ZREPORT",
+            objectType: "PROGRAM",
+            action: "create",
+            connectionId: "dev100"
+          }),
+          mockToken
+        )
+      ).rejects.toThrow("Text elements array is required for create operations")
     })
   })
 
@@ -735,6 +736,808 @@ describe("ManageTextElementsTool", () => {
       expect(result.parts[0].text).toContain("Alpha")
       expect(result.parts[0].text).toContain("Beta")
       expect(result.parts[0].text).toContain("Gamma")
+    })
+  })
+
+  // =========================================================================
+  // prepareInvocation — input validation and delete
+  // =========================================================================
+  describe("prepareInvocation input validation", () => {
+    it("builds delete message with count and warning without requiring text", async () => {
+      const result = await tool.prepareInvocation(
+        makeOptions({
+          objectName: "ZREPORT",
+          objectType: "PROGRAM",
+          category: "selections",
+          action: "delete",
+          textElements: [{ id: "P_NAME" }, { id: "P_DATE" }],
+          connectionId: "dev100"
+        }),
+        mockToken
+      )
+      expect(result.invocationMessage).toContain("Deleting")
+      expect(result.confirmationMessages.title).toBe("Delete Text Elements")
+      expect(result.confirmationMessages.message.value).toContain("**Text Elements:** 2")
+      expect(result.confirmationMessages.message.value).toContain(
+        "This will delete existing text elements"
+      )
+    })
+
+    it("rejects delete without textElements", async () => {
+      await expect(
+        tool.prepareInvocation(
+          makeOptions({ objectName: "ZREPORT", objectType: "PROGRAM", action: "delete" }),
+          mockToken
+        )
+      ).rejects.toThrow("Text elements array is required for delete operations")
+    })
+
+    it("rejects create when one element has no text", async () => {
+      await expect(
+        tool.prepareInvocation(
+          makeOptions({
+            objectName: "ZREPORT",
+            objectType: "PROGRAM",
+            action: "create",
+            textElements: [{ id: "001", text: "Ok" }, { id: "002" }],
+            connectionId: "dev100"
+          }),
+          mockToken
+        )
+      ).rejects.toThrow("Text is required for create operations; element 002 has no text")
+    })
+
+    it("rejects update when text is whitespace only", async () => {
+      await expect(
+        tool.prepareInvocation(
+          makeOptions({
+            objectName: "ZREPORT",
+            objectType: "PROGRAM",
+            action: "update",
+            textElements: [{ id: "001", text: "   " }],
+            connectionId: "dev100"
+          }),
+          mockToken
+        )
+      ).rejects.toThrow("element 001 has no text")
+    })
+
+    it("rejects an unknown action", async () => {
+      await expect(
+        tool.prepareInvocation(
+          makeOptions({ objectName: "ZREPORT", objectType: "PROGRAM", action: "bogus" }),
+          mockToken
+        )
+      ).rejects.toThrow("Invalid action: bogus")
+    })
+  })
+
+  // =========================================================================
+  // invoke — delete action
+  // =========================================================================
+  describe("invoke delete action", () => {
+    const existing = [
+      { id: "001", text: "Alpha", maxLength: 10 },
+      { id: "002", text: "Beta", maxLength: 10 },
+      { id: "003", text: "Gamma", maxLength: 10 }
+    ]
+
+    it("writes only the remaining elements when deleting by ID", async () => {
+      ;(getTextElementsSafe as Mock).mockResolvedValue({
+        programName: "ZREPORT",
+        textElements: existing
+      })
+      ;(updateTextElementsWithTransport as Mock).mockResolvedValue(undefined)
+
+      await tool.invoke(
+        makeOptions({
+          objectName: "ZREPORT",
+          objectType: "PROGRAM",
+          action: "delete",
+          textElements: [{ id: "002" }],
+          connectionId: "dev100"
+        }),
+        mockToken
+      )
+
+      expect(updateTextElementsWithTransport).toHaveBeenCalledWith(
+        mockClient,
+        "ZREPORT",
+        [existing[0], existing[2]],
+        "PROGRAM",
+        "symbols"
+      )
+    })
+
+    it("reports only the elements that were actually deleted", async () => {
+      ;(getTextElementsSafe as Mock).mockResolvedValue({
+        programName: "ZREPORT",
+        textElements: existing
+      })
+      ;(updateTextElementsWithTransport as Mock).mockResolvedValue(undefined)
+
+      const result: any = await tool.invoke(
+        makeOptions({
+          objectName: "ZREPORT",
+          objectType: "PROGRAM",
+          action: "delete",
+          textElements: [{ id: "002" }, { id: "999" }],
+          connectionId: "dev100"
+        }),
+        mockToken
+      )
+
+      expect(result.parts[0].text).toContain("Deleted: 1")
+      expect(result.parts[0].text).toContain("• 002")
+      expect(result.parts[0].text).not.toContain("999")
+    })
+
+    it("does not write to SAP when no requested ID exists", async () => {
+      ;(getTextElementsSafe as Mock).mockResolvedValue({
+        programName: "ZREPORT",
+        textElements: existing
+      })
+
+      const result: any = await tool.invoke(
+        makeOptions({
+          objectName: "ZREPORT",
+          objectType: "PROGRAM",
+          action: "delete",
+          textElements: [{ id: "999" }],
+          connectionId: "dev100"
+        }),
+        mockToken
+      )
+
+      expect(updateTextElementsWithTransport).not.toHaveBeenCalled()
+      expect(result.parts[0].text).toContain("No matching text elements to delete in ZREPORT")
+      expect(result.parts[0].text).toContain("SAP was not changed")
+    })
+
+    it("keeps the client stateless when nothing matches", async () => {
+      ;(getTextElementsSafe as Mock).mockResolvedValue({
+        programName: "ZREPORT",
+        textElements: existing
+      })
+
+      await tool.invoke(
+        makeOptions({
+          objectName: "ZREPORT",
+          objectType: "PROGRAM",
+          action: "delete",
+          textElements: [{ id: "999" }],
+          connectionId: "dev100"
+        }),
+        mockToken
+      )
+
+      expect(mockClient.stateful).toBeUndefined()
+    })
+
+    it("does not write to SAP when the object has no text elements", async () => {
+      ;(getTextElementsSafe as Mock).mockResolvedValue({ programName: "ZREPORT", textElements: [] })
+
+      const result: any = await tool.invoke(
+        makeOptions({
+          objectName: "ZREPORT",
+          objectType: "PROGRAM",
+          action: "delete",
+          textElements: [{ id: "001" }],
+          connectionId: "dev100"
+        }),
+        mockToken
+      )
+
+      expect(updateTextElementsWithTransport).not.toHaveBeenCalled()
+      expect(result.parts[0].text).toContain("No matching text elements")
+    })
+
+    it("throws without writing when existing elements cannot be read", async () => {
+      ;(getTextElementsSafe as Mock).mockRejectedValue(new Error("Read failed"))
+
+      await expect(
+        tool.invoke(
+          makeOptions({
+            objectName: "ZREPORT",
+            objectType: "PROGRAM",
+            action: "delete",
+            textElements: [{ id: "001" }],
+            connectionId: "dev100"
+          }),
+          mockToken
+        )
+      ).rejects.toThrow("Could not read existing text elements for delete operation")
+
+      expect(updateTextElementsWithTransport).not.toHaveBeenCalled()
+    })
+
+    it("sends an empty set when every element is deleted", async () => {
+      ;(getTextElementsSafe as Mock).mockResolvedValue({
+        programName: "ZREPORT",
+        textElements: existing
+      })
+      ;(updateTextElementsWithTransport as Mock).mockResolvedValue(undefined)
+
+      const result: any = await tool.invoke(
+        makeOptions({
+          objectName: "ZREPORT",
+          objectType: "PROGRAM",
+          action: "delete",
+          textElements: [{ id: "001" }, { id: "002" }, { id: "003" }],
+          connectionId: "dev100"
+        }),
+        mockToken
+      )
+
+      expect(updateTextElementsWithTransport).toHaveBeenCalledWith(
+        mockClient,
+        "ZREPORT",
+        [],
+        "PROGRAM",
+        "symbols"
+      )
+      expect(result.parts[0].text).toContain("Deleted: 3")
+    })
+
+    it("keeps existing blank-text elements when deleting another element", async () => {
+      ;(getTextElementsSafe as Mock).mockResolvedValue({
+        programName: "ZREPORT",
+        textElements: [
+          { id: "001", text: "" },
+          { id: "002", text: "Beta" }
+        ]
+      })
+      ;(updateTextElementsWithTransport as Mock).mockResolvedValue(undefined)
+
+      await tool.invoke(
+        makeOptions({
+          objectName: "ZREPORT",
+          objectType: "PROGRAM",
+          action: "delete",
+          textElements: [{ id: "002" }],
+          connectionId: "dev100"
+        }),
+        mockToken
+      )
+
+      expect(updateTextElementsWithTransport).toHaveBeenCalledWith(
+        mockClient,
+        "ZREPORT",
+        [{ id: "001", text: "" }],
+        "PROGRAM",
+        "symbols"
+      )
+    })
+
+    it("sets the client to stateful when a delete writes", async () => {
+      ;(getTextElementsSafe as Mock).mockResolvedValue({
+        programName: "ZREPORT",
+        textElements: existing
+      })
+      ;(updateTextElementsWithTransport as Mock).mockResolvedValue(undefined)
+
+      await tool.invoke(
+        makeOptions({
+          objectName: "ZREPORT",
+          objectType: "PROGRAM",
+          action: "delete",
+          textElements: [{ id: "001" }],
+          connectionId: "dev100"
+        }),
+        mockToken
+      )
+
+      expect(mockClient.stateful).toBeDefined()
+    })
+
+    it("omits TEXT- usage hints after delete", async () => {
+      ;(getTextElementsSafe as Mock).mockResolvedValue({
+        programName: "ZREPORT",
+        textElements: existing
+      })
+      ;(updateTextElementsWithTransport as Mock).mockResolvedValue(undefined)
+
+      const result: any = await tool.invoke(
+        makeOptions({
+          objectName: "ZREPORT",
+          objectType: "PROGRAM",
+          action: "delete",
+          textElements: [{ id: "001" }],
+          connectionId: "dev100"
+        }),
+        mockToken
+      )
+
+      expect(result.parts[0].text).not.toContain("TEXT-")
+    })
+
+    it("deletes from selection texts", async () => {
+      ;(getTextElementsSafe as Mock).mockResolvedValue({
+        programName: "ZREPORT",
+        textElements: [
+          { id: "P_NAME", text: "Name" },
+          { id: "P_DATE", text: "Date" }
+        ]
+      })
+      ;(updateTextElementsWithTransport as Mock).mockResolvedValue(undefined)
+
+      await tool.invoke(
+        makeOptions({
+          objectName: "ZREPORT",
+          objectType: "PROGRAM",
+          category: "selections",
+          action: "delete",
+          textElements: [{ id: "P_NAME" }],
+          connectionId: "dev100"
+        }),
+        mockToken
+      )
+
+      expect(getTextElementsSafe).toHaveBeenCalledWith(
+        mockClient,
+        "ZREPORT",
+        "PROGRAM",
+        "selections"
+      )
+      expect(updateTextElementsWithTransport).toHaveBeenCalledWith(
+        mockClient,
+        "ZREPORT",
+        [{ id: "P_DATE", text: "Date" }],
+        "PROGRAM",
+        "selections"
+      )
+    })
+
+    it("deletes from list headings", async () => {
+      ;(getTextElementsSafe as Mock).mockResolvedValue({
+        programName: "ZREPORT",
+        textElements: [
+          { id: "LISTHEADER", text: "Heading" },
+          { id: "COLUMNHEADER_1", text: "Column" }
+        ]
+      })
+      ;(updateTextElementsWithTransport as Mock).mockResolvedValue(undefined)
+
+      await tool.invoke(
+        makeOptions({
+          objectName: "ZREPORT",
+          objectType: "PROGRAM",
+          category: "headings",
+          action: "delete",
+          textElements: [{ id: "LISTHEADER" }],
+          connectionId: "dev100"
+        }),
+        mockToken
+      )
+
+      expect(getTextElementsSafe).toHaveBeenCalledWith(mockClient, "ZREPORT", "PROGRAM", "headings")
+      expect(updateTextElementsWithTransport).toHaveBeenCalledWith(
+        mockClient,
+        "ZREPORT",
+        [{ id: "COLUMNHEADER_1", text: "Column" }],
+        "PROGRAM",
+        "headings"
+      )
+    })
+  })
+
+  // =========================================================================
+  // invoke — input validation and category support for create/update
+  // =========================================================================
+  describe("invoke input validation and categories", () => {
+    it("rejects update with blank text before contacting SAP", async () => {
+      await expect(
+        tool.invoke(
+          makeOptions({
+            objectName: "ZREPORT",
+            objectType: "PROGRAM",
+            action: "update",
+            textElements: [{ id: "001", text: "" }],
+            connectionId: "dev100"
+          }),
+          mockToken
+        )
+      ).rejects.toThrow("Text is required for update operations; element 001 has no text")
+
+      expect(getClient).not.toHaveBeenCalled()
+      expect(updateTextElementsWithTransport).not.toHaveBeenCalled()
+    })
+
+    it("rejects create when text is missing from a later element", async () => {
+      await expect(
+        tool.invoke(
+          makeOptions({
+            objectName: "ZREPORT",
+            objectType: "PROGRAM",
+            action: "create",
+            textElements: [{ id: "001", text: "Ok" }, { id: "002" }],
+            connectionId: "dev100"
+          }),
+          mockToken
+        )
+      ).rejects.toThrow("element 002 has no text")
+    })
+
+    it("rejects whitespace-only text on create", async () => {
+      await expect(
+        tool.invoke(
+          makeOptions({
+            objectName: "ZREPORT",
+            objectType: "PROGRAM",
+            action: "create",
+            textElements: [{ id: "001", text: "  " }],
+            connectionId: "dev100"
+          }),
+          mockToken
+        )
+      ).rejects.toThrow("Text is required for create operations")
+    })
+
+    it("rejects create without textElements before contacting SAP", async () => {
+      await expect(
+        tool.invoke(
+          makeOptions({ objectName: "ZREPORT", objectType: "PROGRAM", action: "create" }),
+          mockToken
+        )
+      ).rejects.toThrow("Text elements array is required for create operations")
+
+      expect(getClient).not.toHaveBeenCalled()
+    })
+
+    it("rejects create for list headings", async () => {
+      await expect(
+        tool.invoke(
+          makeOptions({
+            objectName: "ZREPORT",
+            objectType: "PROGRAM",
+            category: "headings",
+            action: "create",
+            textElements: [{ id: "LISTHEADER", text: "Heading" }],
+            connectionId: "dev100"
+          }),
+          mockToken
+        )
+      ).rejects.toThrow("Cannot create headings text elements")
+
+      expect(getClient).not.toHaveBeenCalled()
+    })
+
+    it("allows update for list headings without TEXT- hints", async () => {
+      ;(getTextElementsSafe as Mock).mockResolvedValue({
+        programName: "ZREPORT",
+        textElements: [{ id: "LISTHEADER", text: "Old" }]
+      })
+      ;(updateTextElementsWithTransport as Mock).mockResolvedValue(undefined)
+
+      const result: any = await tool.invoke(
+        makeOptions({
+          objectName: "ZREPORT",
+          objectType: "PROGRAM",
+          category: "headings",
+          action: "update",
+          textElements: [{ id: "LISTHEADER", text: "New" }],
+          connectionId: "dev100"
+        }),
+        mockToken
+      )
+
+      expect(updateTextElementsWithTransport).toHaveBeenCalledWith(
+        mockClient,
+        "ZREPORT",
+        [{ id: "LISTHEADER", text: "New" }],
+        "PROGRAM",
+        "headings"
+      )
+      expect(result.parts[0].text).toContain("Updated: 1")
+      expect(result.parts[0].text).not.toContain("TEXT-")
+    })
+
+    it("allows update for selection texts without TEXT- hints", async () => {
+      ;(getTextElementsSafe as Mock).mockResolvedValue({
+        programName: "ZREPORT",
+        textElements: [{ id: "P_NAME", text: "Name" }]
+      })
+      ;(updateTextElementsWithTransport as Mock).mockResolvedValue(undefined)
+
+      const result: any = await tool.invoke(
+        makeOptions({
+          objectName: "ZREPORT",
+          objectType: "PROGRAM",
+          category: "selections",
+          action: "update",
+          textElements: [{ id: "P_NAME", text: "Full name" }],
+          connectionId: "dev100"
+        }),
+        mockToken
+      )
+
+      expect(result.parts[0].text).not.toContain("TEXT-")
+    })
+
+    it("keeps existing blank-text elements when creating another", async () => {
+      ;(getTextElementsSafe as Mock).mockResolvedValue({
+        programName: "ZREPORT",
+        textElements: [{ id: "001", text: "" }]
+      })
+      ;(updateTextElementsWithTransport as Mock).mockResolvedValue(undefined)
+
+      await tool.invoke(
+        makeOptions({
+          objectName: "ZREPORT",
+          objectType: "PROGRAM",
+          action: "create",
+          textElements: [{ id: "002", text: "New" }],
+          connectionId: "dev100"
+        }),
+        mockToken
+      )
+
+      expect(updateTextElementsWithTransport).toHaveBeenCalledWith(
+        mockClient,
+        "ZREPORT",
+        [
+          { id: "001", text: "" },
+          { id: "002", text: "New" }
+        ],
+        "PROGRAM",
+        "symbols"
+      )
+    })
+
+    it("reports only the updated elements, not untouched existing ones", async () => {
+      ;(getTextElementsSafe as Mock).mockResolvedValue({
+        programName: "ZREPORT",
+        textElements: [
+          { id: "001", text: "First" },
+          { id: "002", text: "Second" }
+        ]
+      })
+      ;(updateTextElementsWithTransport as Mock).mockResolvedValue(undefined)
+
+      const result: any = await tool.invoke(
+        makeOptions({
+          objectName: "ZREPORT",
+          objectType: "PROGRAM",
+          action: "update",
+          textElements: [{ id: "001", text: "Changed" }],
+          connectionId: "dev100"
+        }),
+        mockToken
+      )
+
+      expect(result.parts[0].text).toContain("Updated: 1")
+      expect(result.parts[0].text).not.toContain("002:")
+    })
+
+    it("rejects an unknown action before writing", async () => {
+      await expect(
+        tool.invoke(
+          makeOptions({
+            objectName: "ZREPORT",
+            objectType: "PROGRAM",
+            action: "bogus",
+            connectionId: "dev100"
+          }),
+          mockToken
+        )
+      ).rejects.toThrow("Invalid action: bogus")
+
+      expect(updateTextElementsWithTransport).not.toHaveBeenCalled()
+    })
+  })
+
+  // =========================================================================
+  // ID normalization
+  // =========================================================================
+  describe("ID normalization", () => {
+    const invokeWith = (input: any) =>
+      tool.invoke(
+        makeOptions({
+          objectName: "ZREPORT",
+          objectType: "PROGRAM",
+          connectionId: "dev100",
+          ...input
+        }),
+        mockToken
+      )
+
+    beforeEach(() => {
+      ;(updateTextElementsWithTransport as Mock).mockResolvedValue(undefined)
+    })
+
+    it("deletes an uppercase element when the ID is given in lowercase", async () => {
+      ;(getTextElementsSafe as Mock).mockResolvedValue({
+        programName: "ZREPORT",
+        textElements: [
+          { id: "P_NAME", text: "Name" },
+          { id: "P_DATE", text: "Date" }
+        ]
+      })
+
+      const result: any = await invokeWith({
+        category: "selections",
+        action: "delete",
+        textElements: [{ id: "p_name" }]
+      })
+
+      expect(updateTextElementsWithTransport).toHaveBeenCalledWith(
+        mockClient,
+        "ZREPORT",
+        [{ id: "P_DATE", text: "Date" }],
+        "PROGRAM",
+        "selections"
+      )
+      expect(result.parts[0].text).toContain("Deleted: 1")
+    })
+
+    it("trims whitespace around IDs before matching", async () => {
+      ;(getTextElementsSafe as Mock).mockResolvedValue({
+        programName: "ZREPORT",
+        textElements: [
+          { id: "001", text: "A" },
+          { id: "002", text: "B" }
+        ]
+      })
+
+      await invokeWith({ action: "delete", textElements: [{ id: " 001 " }] })
+
+      expect(updateTextElementsWithTransport).toHaveBeenCalledWith(
+        mockClient,
+        "ZREPORT",
+        [{ id: "002", text: "B" }],
+        "PROGRAM",
+        "symbols"
+      )
+    })
+
+    it("matches existing elements whose IDs SAP returned in lowercase", async () => {
+      ;(getTextElementsSafe as Mock).mockResolvedValue({
+        programName: "ZREPORT",
+        textElements: [
+          { id: "a01", text: "A" },
+          { id: "b01", text: "B" }
+        ]
+      })
+
+      await invokeWith({ action: "delete", textElements: [{ id: "A01" }] })
+
+      expect(updateTextElementsWithTransport).toHaveBeenCalledWith(
+        mockClient,
+        "ZREPORT",
+        [{ id: "b01", text: "B" }],
+        "PROGRAM",
+        "symbols"
+      )
+    })
+
+    it("allows the same ID twice in a delete and deletes it once", async () => {
+      ;(getTextElementsSafe as Mock).mockResolvedValue({
+        programName: "ZREPORT",
+        textElements: [
+          { id: "001", text: "A" },
+          { id: "002", text: "B" }
+        ]
+      })
+
+      const result: any = await invokeWith({
+        action: "delete",
+        textElements: [{ id: "001" }, { id: "001" }]
+      })
+
+      expect(result.parts[0].text).toContain("Deleted: 1")
+    })
+
+    it("updates an existing uppercase element instead of adding a duplicate", async () => {
+      ;(getTextElementsSafe as Mock).mockResolvedValue({
+        programName: "ZREPORT",
+        textElements: [
+          { id: "A01", text: "Old" },
+          { id: "B01", text: "Keep" }
+        ]
+      })
+
+      const result: any = await invokeWith({
+        action: "update",
+        textElements: [{ id: "a01", text: "New" }]
+      })
+
+      expect(updateTextElementsWithTransport).toHaveBeenCalledWith(
+        mockClient,
+        "ZREPORT",
+        [
+          { id: "A01", text: "New" },
+          { id: "B01", text: "Keep" }
+        ],
+        "PROGRAM",
+        "symbols"
+      )
+      expect(result.parts[0].text).toContain("• A01:")
+      expect(result.parts[0].text).toContain("TEXT-A01")
+    })
+
+    it("writes new elements with uppercase IDs", async () => {
+      ;(getTextElementsSafe as Mock).mockResolvedValue({ programName: "ZREPORT", textElements: [] })
+
+      const result: any = await invokeWith({
+        action: "create",
+        textElements: [{ id: "t01", text: "Title", maxLength: 20 }]
+      })
+
+      expect(updateTextElementsWithTransport).toHaveBeenCalledWith(
+        mockClient,
+        "ZREPORT",
+        [{ id: "T01", text: "Title", maxLength: 20 }],
+        "PROGRAM",
+        "symbols"
+      )
+      expect(result.parts[0].text).toContain("TEXT-T01")
+    })
+
+    it("uppercases IDs when the existing set cannot be read", async () => {
+      ;(getTextElementsSafe as Mock).mockRejectedValue(new Error("Read failed"))
+
+      await invokeWith({ action: "create", textElements: [{ id: "t01", text: "Title" }] })
+
+      expect(updateTextElementsWithTransport).toHaveBeenCalledWith(
+        mockClient,
+        "ZREPORT",
+        [{ id: "T01", text: "Title" }],
+        "PROGRAM",
+        "symbols"
+      )
+    })
+
+    it("rejects IDs that differ only by case before contacting SAP", async () => {
+      await expect(
+        invokeWith({
+          action: "create",
+          textElements: [
+            { id: "a01", text: "One" },
+            { id: "A01", text: "Two" }
+          ]
+        })
+      ).rejects.toThrow("Duplicate text element ID: A01")
+
+      expect(getClient).not.toHaveBeenCalled()
+    })
+
+    it("rejects case-duplicate IDs in prepareInvocation", async () => {
+      await expect(
+        tool.prepareInvocation(
+          makeOptions({
+            objectName: "ZREPORT",
+            objectType: "PROGRAM",
+            action: "update",
+            textElements: [
+              { id: "a01", text: "One" },
+              { id: " A01", text: "Two" }
+            ]
+          }),
+          mockToken
+        )
+      ).rejects.toThrow("Duplicate text element ID: A01")
+    })
+
+    it("rejects a blank ID for delete before contacting SAP", async () => {
+      await expect(invokeWith({ action: "delete", textElements: [{ id: "  " }] })).rejects.toThrow(
+        "Each text element needs an id for delete operations"
+      )
+
+      expect(getClient).not.toHaveBeenCalled()
+    })
+
+    it("rejects a missing ID in prepareInvocation", async () => {
+      await expect(
+        tool.prepareInvocation(
+          makeOptions({
+            objectName: "ZREPORT",
+            objectType: "PROGRAM",
+            action: "create",
+            textElements: [{ text: "No id" }]
+          }),
+          mockToken
+        )
+      ).rejects.toThrow("Each text element needs an id for create operations")
     })
   })
 })

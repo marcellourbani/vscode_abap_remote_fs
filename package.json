@@ -2282,7 +2282,7 @@
       {
         "name": "abapfs_manage_text_elements",
         "displayName": "Manage Text Elements",
-        "modelDescription": "Read, create, update, or delete text elements in programs, classes, and function groups. Create is supported only for text symbols. Selection texts and list headings are update-only. Pass category 'selections' or 'headings' for those categories; omit it only for text symbols. Delete action removes the provided text element IDs.",
+        "modelDescription": "Read, create, update, or delete text elements in programs, classes, and function groups. Create is supported only for text symbols. Selection texts and list headings are update-only. Pass category 'selections' or 'headings' for those categories; omit it only for text symbols. Delete removes the given IDs in any category and needs only id. Create and update require text.",
         "canBeReferencedInPrompt": true,
         "toolReferenceName": "abapfs_manage_text_elements",
         "icon": "$(symbol-text)",
@@ -2320,22 +2320,22 @@
                 "update",
                 "delete"
               ],
-              "description": "Action to perform: 'read' to get existing entries, 'create' to add text symbols only, 'update' to modify existing symbols, selection texts, or list headings, or 'delete' to remove text elements"
+              "description": "Action to perform: 'read' to get existing entries, 'create' to add text symbols only, 'update' to modify existing symbols, selection texts, or list headings, or 'delete' to remove the given IDs in any category"
             },
             "textElements": {
               "type": "array",
-              "description": "Array of text elements (required for create/update actions)",
+              "description": "Array of text elements. Each needs id. Text is required for create/update and not used for delete.",
               "items": {
                 "type": "object",
                 "properties": {
                   "id": {
                     "type": "string",
-                    "description": "Text element ID (e.g., '001', '002', 'BTN')",
+                    "description": "Text element ID (e.g., '001', 'P_NAME', 'LISTHEADER'). Case-insensitive; stored in uppercase.",
                     "pattern": "^[A-Za-z0-9_]{1,20}$"
                   },
                   "text": {
                     "type": "string",
-                    "description": "Text content for the element",
+                    "description": "Text content for the element. Required for create/update.",
                     "maxLength": 255
                   },
                   "maxLength": {
@@ -2346,8 +2346,7 @@
                   }
                 },
                 "required": [
-                  "id",
-                  "text"
+                  "id"
                 ]
               },
               "minItems": 1

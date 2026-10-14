@@ -244,7 +244,8 @@ function validateTextElements(
       throw new Error("Each text element must have a valid id")
     }
 
-    if (!element.text || typeof element.text !== "string") {
+    // Blank text is allowed: existing blank elements must survive unrelated writes
+    if (typeof element.text !== "string") {
       throw new Error("Each text element must have valid text")
     }
 
