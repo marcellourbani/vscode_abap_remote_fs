@@ -68,7 +68,8 @@ export class WorkflowAssistedApplyService {
     workflowId: string,
     selectedKeys?: string[],
     comparisonBasis: SnapshotRepresentation = "formatted",
-    token?: vscode.CancellationToken
+    token?: vscode.CancellationToken,
+    onProgress?: (completed: number, total: number) => Promise<void>
   ): Promise<AssistedApplyPlan> {
     const workflow = await this.store.get(workflowId)
     const selected = selectedKeys ? new Set(selectedKeys) : undefined
@@ -80,16 +81,33 @@ export class WorkflowAssistedApplyService {
       if (!selected || selected.has(comparison.key)) comparisons.push(comparison)
     }
 
+    await onProgress?.(0, comparisons.length)
+    const manifests: [ObjectSnapshotManifest | undefined, ObjectSnapshotManifest | undefined][] =
+      new Array(comparisons.length)
+    let next = 0
+    let read = 0
+    await Promise.all(
+      Array.from({ length: Math.min(32, comparisons.length) }, async () => {
+        while (next < comparisons.length && !token?.isCancellationRequested) {
+          const index = next++
+          const id = objectFolderId(comparisons[index].key)
+          manifests[index] = await Promise.all([
+            readManifest(
+              this.store.artifactPath(workflow, "sources", "source", "objects", id, "manifest.json")
+            ),
+            readManifest(
+              this.store.artifactPath(workflow, "sources", "target", "objects", id, "manifest.json")
+            )
+          ])
+          await onProgress?.(++read, comparisons.length)
+        }
+      })
+    )
+
     const items: AssistedApplyPlanItem[] = []
-    for (const comparison of comparisons) {
+    for (const [index, comparison] of comparisons.entries()) {
       if (token?.isCancellationRequested) throw new Error("Operation cancelled")
-      const id = objectFolderId(comparison.key)
-      const source = await readManifest(
-        this.store.artifactPath(workflow, "sources", "source", "objects", id, "manifest.json")
-      )
-      const target = await readManifest(
-        this.store.artifactPath(workflow, "sources", "target", "objects", id, "manifest.json")
-      )
+      const [source, target] = manifests[index]
       if (!source || !target) continue
       const reasons: string[] = []
       let relevant = true
@@ -181,7 +199,8 @@ export class WorkflowAssistedApplyService {
       "vscode.diff",
       vscode.Uri.file(file.sourcePath),
       vscode.Uri.file(file.targetPath),
-      `${key}: source ↔ target (${representation})`
+      `${key}: source ↔ target (${representation})`,
+      { preview: false }
     )
   }
 

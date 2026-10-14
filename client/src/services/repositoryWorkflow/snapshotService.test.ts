@@ -11,6 +11,7 @@ const {
   searchObjects,
   findByAdtUri,
   getNodeAsync,
+  objectStructure,
   objectStructureElements,
   workerFormat,
   workerDispose
@@ -21,6 +22,7 @@ const {
   searchObjects: vi.fn(),
   findByAdtUri: vi.fn(),
   getNodeAsync: vi.fn(),
+  objectStructure: vi.fn(),
   objectStructureElements: vi.fn(),
   workerFormat: vi.fn(),
   workerDispose: vi.fn()
@@ -68,7 +70,11 @@ vi.mock("abapfs", () => ({
 }))
 
 import { WorkflowStore } from "./workflowStore"
-import { WorkflowSnapshotService, objectFolderId } from "./snapshotService"
+import {
+  WorkflowSnapshotService,
+  normalizeTextForComparison,
+  objectFolderId
+} from "./snapshotService"
 import type { ObjectSnapshotManifest, RepositoryObjectRecord } from "./types"
 import { formatRepositoryAbap, REPOSITORY_ABAP_FORMAT_VERSION } from "./abapSourceFormatter"
 import { type ClassMethodElement } from "./classMethodOrder"
@@ -209,6 +215,11 @@ describe("WorkflowSnapshotService", () => {
     expect(comparison.linesAdded).toBe(0)
     expect(comparison.linesRemoved).toBe(0)
     expect(onProgress).toHaveBeenCalledWith(1, 1)
+  })
+
+  it("ignores trailing blank lines and missing final newline when normalizing text", () => {
+    expect(normalizeTextForComparison("a\n     \r\n")).toBe(normalizeTextForComparison("a\n     "))
+    expect(normalizeTextForComparison("a\n")).toBe("a")
   })
 
   it("uses a prepared URI before downloading an unresolved record", async () => {
@@ -427,6 +438,7 @@ describe("WorkflowSnapshotService", () => {
   describe("global class formatted snapshots", () => {
     const classRecord = { ...record, objectType: "CLAS", objectName: "ZCL_TEST" }
     const key = "R3TR:CLAS:ZCL_TEST"
+    const mainFile = "ZCL_TEST.clas.abap"
     const sourceUrl = "/sap/bc/adt/oo/classes/zcl_test/source/main"
     const header =
       "CLASS zcl_test DEFINITION. PUBLIC SECTION. METHODS: zebra, alpha. ENDCLASS.\nCLASS zcl_test IMPLEMENTATION.\n"
@@ -466,21 +478,17 @@ describe("WorkflowSnapshotService", () => {
       searchObjects.mockResolvedValue([
         { name: "ZCL_TEST", type: "CLAS/OC", uri: "/sap/bc/adt/oo/classes/zcl_test" }
       ])
-      getNodeAsync.mockImplementation(async (nodePath: string) => ({
-        kind: "folder",
-        mainInclude: () => ({
-          path: `${nodePath}/main.abap`,
-          file: {
-            kind: "file",
-            object: { loadStructure: vi.fn(), version, contentsPath: () => sourceUrl }
-          }
-        })
+      getNodeAsync.mockImplementation(async () => {
+        throw new Error("class method maps must not walk the package tree")
+      })
+      objectStructure.mockImplementation(async () => ({
+        metaData: { "adtcore:version": version }
       }))
       download.mockImplementation(
         async (options: { source: string; target: { fsPath: string } }) => {
           const connectionId = new URL(options.source).hostname
           await fs.mkdir(options.target.fsPath, { recursive: true })
-          await fs.writeFile(path.join(options.target.fsPath, "main.abap"), contents[connectionId])
+          await fs.writeFile(path.join(options.target.fsPath, mainFile), contents[connectionId])
           await fs.writeFile(
             path.join(options.target.fsPath, "testclasses.abap"),
             auxiliaryContents[connectionId]
@@ -500,6 +508,7 @@ describe("WorkflowSnapshotService", () => {
         (connectionId: string) =>
           ({
             statelessClone: {
+              objectStructure,
               objectStructureElements: (...args: unknown[]) =>
                 objectStructureElements(connectionId, ...args)
             }
@@ -560,13 +569,15 @@ describe("WorkflowSnapshotService", () => {
     }
 
     it("preserves raw order while formatted hashes and counts ignore reordered methods", async () => {
-      const { workflow, service, objectRoot } = await snapshot()
-      expect(await fs.readFile(path.join(objectRoot, "raw/resource/main.abap"), "utf8")).toBe(
+      const { workflow, service, objectRoot, manifest } = await snapshot()
+      expect(manifest.adtUrl).toBe("/sap/bc/adt/oo/classes/zcl_test")
+      expect(manifest.classMethodMap?.sourceUrl).toBe(sourceUrl)
+      expect(await fs.readFile(path.join(objectRoot, `raw/resource/${mainFile}`), "utf8")).toBe(
         source
       )
-      expect(await fs.readFile(path.join(objectRoot, "formatted/resource/main.abap"), "utf8")).toBe(
-        formatRepositoryAbap("main.abap", target)
-      )
+      expect(
+        await fs.readFile(path.join(objectRoot, `formatted/resource/${mainFile}`), "utf8")
+      ).toBe(normalizeTextForComparison(formatRepositoryAbap(mainFile, target)))
       const [comparison] = await service.compare(workflow.workflowId, [key])
       expect(comparison.rawIdentical).toBe(false)
       expect(comparison.formattedIdentical).toBe(true)
@@ -648,6 +659,8 @@ describe("WorkflowSnapshotService", () => {
       expect(peak).toEqual({ source100: 2, target100: 1 })
       expect(formattingPeak).toBe(5)
       expect(results.map(result => result.key)).toEqual(keys)
+      expect(onPhase).toHaveBeenCalledWith("scanning snapshots", 0, 3)
+      expect(onPhase).toHaveBeenCalledWith("scanning snapshots", 3, 3)
       expect(onPhase).toHaveBeenCalledWith("getting object structures", 6, 6)
       expect(onPhase).toHaveBeenCalledWith("formatting", 6, 6)
       expect(onPhase).toHaveBeenCalledWith("comparing", 0, 3)
@@ -765,7 +778,7 @@ describe("WorkflowSnapshotService", () => {
       expect(manifest.formattedAggregateHash).toBeUndefined()
       expect(workerFormat).not.toHaveBeenCalled()
       expect(objectStructureElements).not.toHaveBeenCalled()
-      expect(getNodeAsync).not.toHaveBeenCalled()
+      expect(objectStructure).not.toHaveBeenCalled()
     })
 
     it("does not reuse failed formatted results for a raw-identical pair", async () => {
@@ -819,7 +832,7 @@ describe("WorkflowSnapshotService", () => {
       )
       const [comparison] = await service.compare(workflow.workflowId, [key])
       expect(comparison.formattedIdentical).toBe(false)
-      expect(comparison.formattedChanged).toEqual(["resource/main.abap"])
+      expect(comparison.formattedChanged).toEqual([`resource/${mainFile}`])
       expect(comparison.formattedError).toBeUndefined()
     })
 
@@ -829,7 +842,7 @@ describe("WorkflowSnapshotService", () => {
       expect(manifest.status).toBe("complete")
       expect(manifest.formattedAggregateHash).toBeUndefined()
       expect(manifest.formattingFailures.join(" ")).toContain("inventory")
-      expect(await fs.readFile(path.join(objectRoot, "raw/resource/main.abap"), "utf8")).toBe(
+      expect(await fs.readFile(path.join(objectRoot, `raw/resource/${mainFile}`), "utf8")).toBe(
         source
       )
     })
@@ -863,11 +876,11 @@ describe("WorkflowSnapshotService", () => {
       searchObjects.mockResolvedValue([{ name: "ZTEST", type: "PROG/P", uri: "/program" }])
       const { manifest, objectRoot } = await snapshot("source", record)
       expect(objectStructureElements).not.toHaveBeenCalled()
-      expect(getNodeAsync).not.toHaveBeenCalled()
+      expect(objectStructure).not.toHaveBeenCalled()
       expect(manifest.formattingFailures).toEqual([])
-      expect(await fs.readFile(path.join(objectRoot, "formatted/resource/main.abap"), "utf8")).toBe(
-        formatRepositoryAbap("main.abap", source)
-      )
+      expect(
+        await fs.readFile(path.join(objectRoot, `formatted/resource/${mainFile}`), "utf8")
+      ).toBe(normalizeTextForComparison(formatRepositoryAbap(mainFile, source)))
     })
 
     it("regenerates formatted snapshots from cached raw source and metadata after a version change", async () => {
@@ -875,7 +888,7 @@ describe("WorkflowSnapshotService", () => {
       manifest.formatterVersion = "abaplint-upper-token-space-class-method-order-v3"
       await store.writeJson(path.join(objectRoot, "manifest.json"), manifest)
       await fs.writeFile(
-        path.join(objectRoot, "formatted/resource/main.abap"),
+        path.join(objectRoot, `formatted/resource/${mainFile}`),
         "obsolete formatted output"
       )
       const verification = await service.verifySide(
@@ -891,12 +904,12 @@ describe("WorkflowSnapshotService", () => {
       await service.compare(workflow.workflowId, [key])
       expect(download).toHaveBeenCalledTimes(2)
       expect(objectStructureElements).toHaveBeenCalledTimes(2)
-      expect(await fs.readFile(path.join(objectRoot, "raw/resource/main.abap"), "utf8")).toBe(
+      expect(await fs.readFile(path.join(objectRoot, `raw/resource/${mainFile}`), "utf8")).toBe(
         source
       )
-      expect(await fs.readFile(path.join(objectRoot, "formatted/resource/main.abap"), "utf8")).toBe(
-        formatRepositoryAbap("main.abap", target)
-      )
+      expect(
+        await fs.readFile(path.join(objectRoot, `formatted/resource/${mainFile}`), "utf8")
+      ).toBe(normalizeTextForComparison(formatRepositoryAbap(mainFile, target)))
       const updated = JSON.parse(await fs.readFile(path.join(objectRoot, "manifest.json"), "utf8"))
       expect(updated.formatterVersion).toBe(REPOSITORY_ABAP_FORMAT_VERSION)
       expect(updated.aggregateHash).toBe(manifest.aggregateHash)
@@ -924,7 +937,7 @@ describe("WorkflowSnapshotService", () => {
         await service.compare(workflow.workflowId, [key])
         expect(download).toHaveBeenCalledTimes(2)
         expect(objectStructureElements).toHaveBeenCalledTimes(2)
-        expect(await fs.readFile(path.join(objectRoot, "raw/resource/main.abap"), "utf8")).toBe(
+        expect(await fs.readFile(path.join(objectRoot, `raw/resource/${mainFile}`), "utf8")).toBe(
           source
         )
         const updated = JSON.parse(
@@ -940,7 +953,7 @@ describe("WorkflowSnapshotService", () => {
       "repairs %s formatted files without downloading raw source",
       async defect => {
         const { workflow, service, objectRoot } = await snapshot()
-        const formattedPath = path.join(objectRoot, "formatted/resource/main.abap")
+        const formattedPath = path.join(objectRoot, `formatted/resource/${mainFile}`)
         if (defect === "missing")
           await fs.rm(path.join(objectRoot, "formatted"), { recursive: true })
         else await fs.writeFile(formattedPath, "corrupt")
@@ -955,7 +968,7 @@ describe("WorkflowSnapshotService", () => {
         expect(verification.pending).toEqual([])
         await service.compare(workflow.workflowId, [key])
         expect(await fs.readFile(formattedPath, "utf8")).toBe(
-          formatRepositoryAbap("main.abap", target)
+          normalizeTextForComparison(formatRepositoryAbap(mainFile, target))
         )
         expect(download).toHaveBeenCalledTimes(2)
         expect(objectStructureElements).toHaveBeenCalledTimes(2)
@@ -1002,9 +1015,9 @@ describe("WorkflowSnapshotService", () => {
       )
       expect(verification.pending).toEqual([])
       await service.compare(workflow.workflowId, ["R3TR:PROG:ZTEST"])
-      expect(await fs.readFile(path.join(objectRoot, "formatted/resource/main.abap"), "utf8")).toBe(
-        formatRepositoryAbap("main.abap", source)
-      )
+      expect(
+        await fs.readFile(path.join(objectRoot, `formatted/resource/${mainFile}`), "utf8")
+      ).toBe(normalizeTextForComparison(formatRepositoryAbap(mainFile, source)))
       expect(objectStructureElements).not.toHaveBeenCalled()
       expect(download).toHaveBeenCalledTimes(2)
     })
@@ -1014,7 +1027,7 @@ describe("WorkflowSnapshotService", () => {
       async reason => {
         const { store, workflow, service, manifest, objectRoot } = await snapshot()
         if (reason === "corrupt raw")
-          await fs.writeFile(path.join(objectRoot, "raw/resource/main.abap"), "corrupt")
+          await fs.writeFile(path.join(objectRoot, `raw/resource/${mainFile}`), "corrupt")
         if (reason === "incompatible schema") {
           manifest.schemaVersion = -1
           await store.writeJson(path.join(objectRoot, "manifest.json"), manifest)
@@ -1052,14 +1065,6 @@ describe("WorkflowSnapshotService", () => {
     })
 
     it("supports snapshots downloaded directly from the main source file", async () => {
-      getNodeAsync.mockResolvedValue({
-        kind: "file",
-        object: {
-          loadStructure: vi.fn(),
-          version: "active",
-          contentsPath: () => sourceUrl
-        }
-      })
       download.mockImplementation(
         async (options: { source: string; target: { fsPath: string } }) => {
           const connectionId = new URL(options.source).hostname
@@ -1080,7 +1085,7 @@ describe("WorkflowSnapshotService", () => {
       expect(manifest.formattingFailures).toEqual([])
       expect(await fs.readFile(path.join(objectRoot, "raw/resource"), "utf8")).toBe(source)
       expect(await fs.readFile(path.join(objectRoot, "formatted/resource"), "utf8")).toBe(
-        formatRepositoryAbap("zcl_test.clas.abap", target)
+        normalizeTextForComparison(formatRepositoryAbap("zcl_test.clas.abap", target))
       )
     })
 
@@ -1119,7 +1124,7 @@ describe("WorkflowSnapshotService", () => {
       const manifest = JSON.parse(await fs.readFile(path.join(objectRoot, "manifest.json"), "utf8"))
       expect(manifest.status).toBe("complete")
       expect(manifest.formattingState).toBe("pending")
-      expect(await fs.readFile(path.join(objectRoot, "raw/resource/main.abap"), "utf8")).toBe(
+      expect(await fs.readFile(path.join(objectRoot, `raw/resource/${mainFile}`), "utf8")).toBe(
         source
       )
       const [comparison] = await service.compare(workflow.workflowId, [key])
@@ -1136,7 +1141,7 @@ describe("WorkflowSnapshotService", () => {
       )
       expect(
         await fs.readFile(path.join(objectRoot, "formatted/resource/testclasses.abap"), "utf8")
-      ).toBe(formatRepositoryAbap("testclasses.abap", testSource))
+      ).toBe(normalizeTextForComparison(formatRepositoryAbap("testclasses.abap", testSource)))
       auxiliaryContents.target100 = '" Different auxiliary source\n' + testSource
       await service.downloadPending(
         workflow.workflowId,
@@ -1153,29 +1158,92 @@ describe("WorkflowSnapshotService", () => {
       expect(comparison.formattedChanged).toEqual(["resource/testclasses.abap"])
     })
 
-    it("fails formatting if the main class resource cannot be resolved", async () => {
-      getNodeAsync.mockResolvedValue(undefined)
-      const { manifest } = await snapshot()
-      expect(manifest.formattingFailures.join(" ")).toContain("Cannot resolve")
-      expect(objectStructureElements).not.toHaveBeenCalled()
-      expect(manifest.formattedAggregateHash).toBeUndefined()
+    it("fails formatting when a class snapshot has no recorded ADT URL", async () => {
+      const { store, workflow, service, manifest, objectRoot } = await snapshot(
+        "source",
+        classRecord,
+        false
+      )
+      await service.downloadPending(
+        workflow.workflowId,
+        "target",
+        [classRecord],
+        1,
+        0,
+        1,
+        { isCancellationRequested: false } as any,
+        vi.fn(async () => {})
+      )
+      delete manifest.adtUrl
+      await store.writeJson(path.join(objectRoot, "manifest.json"), manifest)
+      await service.compare(workflow.workflowId, [key])
+      const updated = JSON.parse(await fs.readFile(path.join(objectRoot, "manifest.json"), "utf8"))
+      expect(updated.formattingFailures.join(" ")).toContain("no recorded ADT URL")
+      expect(updated.formattedAggregateHash).toBeUndefined()
+      expect(objectStructureElements).toHaveBeenCalledTimes(1)
+    })
+
+    it("records the prepared ADT URL and uses it for the class structure", async () => {
+      const store = new WorkflowStore({} as any)
+      const workflow = await store.create({
+        name: "Prepared class URL",
+        sourceConnectionId: "source100",
+        targetConnectionId: "target100"
+      })
+      const service = new WorkflowSnapshotService(store)
+      const prepared = new Map([
+        [
+          "CLAS:ZCL_TEST",
+          {
+            objectType: "CLAS",
+            objectName: "ZCL_TEST",
+            adtType: "CLAS/OC",
+            adtUri: "/sap/bc/adt/oo/classes/zcl_test"
+          }
+        ]
+      ])
+      for (const side of ["source", "target"] as const)
+        await service.downloadPending(
+          workflow.workflowId,
+          side,
+          [classRecord],
+          1,
+          0,
+          1,
+          { isCancellationRequested: false } as any,
+          vi.fn(async () => {}),
+          prepared
+        )
+      await service.compare(workflow.workflowId, [key])
+      expect(searchObjects).not.toHaveBeenCalled()
+      expect(objectStructure).toHaveBeenCalledWith("/sap/bc/adt/oo/classes/zcl_test")
+      expect(objectStructureElements).toHaveBeenCalledWith(
+        "source100",
+        "/sap/bc/adt/oo/classes/zcl_test",
+        "active"
+      )
     })
 
     it("fails formatting if the main class resource is absent from the download", async () => {
-      getNodeAsync.mockImplementation(async (nodePath: string) => ({
-        kind: "folder",
-        mainInclude: () => ({
-          path: `${nodePath}/missing.abap`,
-          file: {
-            kind: "file",
-            object: {
-              loadStructure: vi.fn(),
-              version: "active",
-              contentsPath: () => sourceUrl
-            }
+      download.mockImplementation(
+        async (options: { source: string; target: { fsPath: string } }) => {
+          const connectionId = new URL(options.source).hostname
+          await fs.mkdir(options.target.fsPath, { recursive: true })
+          await fs.writeFile(
+            path.join(options.target.fsPath, "ZCL_TEST.clas.testclasses.abap"),
+            contents[connectionId]
+          )
+          return {
+            sourceUri: options.source,
+            targetPath: options.target.fsPath,
+            files: 1,
+            folders: 1,
+            skipped: 0,
+            failures: [],
+            cancelled: false
           }
-        })
-      }))
+        }
+      )
       const { manifest } = await snapshot()
       expect(manifest.formattingFailures.join(" ")).toContain("missing from the raw snapshot")
       expect(objectStructureElements).not.toHaveBeenCalled()

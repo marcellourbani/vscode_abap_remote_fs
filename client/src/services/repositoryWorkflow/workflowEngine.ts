@@ -344,6 +344,7 @@ export class RepositoryWorkflowEngine extends EventEmitter {
       let downloading = false
       let verificationComplete = false
       let resolvingUris = false
+      const resolution = { source: [0, 0], target: [0, 0] }
       let lastProgressPersistedAt = 0
       const activity = () =>
         resuming && !verificationComplete
@@ -360,8 +361,8 @@ export class RepositoryWorkflowEngine extends EventEmitter {
         await this.updateProgress(
           workflowId,
           "sourceDownload",
-          sourceDone + targetDone,
-          selection.keys.length * 2,
+          resolvingUris ? resolution.source[0] + resolution.target[0] : sourceDone + targetDone,
+          resolvingUris ? resolution.source[1] + resolution.target[1] : selection.keys.length * 2,
           activity()
         )
       }
@@ -405,14 +406,22 @@ export class RepositoryWorkflowEngine extends EventEmitter {
           "source",
           sourceVerification.pending,
           criteria.sourceConcurrency,
-          active.controller.token
+          active.controller.token,
+          async (completed, total) => {
+            resolution.source = [completed, total]
+            await persistProgress()
+          }
         ),
         this.snapshots.preparePendingUris(
           workflowId,
           "target",
           targetVerification.pending,
           criteria.targetConcurrency,
-          active.controller.token
+          active.controller.token,
+          async (completed, total) => {
+            resolution.target = [completed, total]
+            await persistProgress()
+          }
         )
       ])
       resolvingUris = false
@@ -594,11 +603,23 @@ export class RepositoryWorkflowEngine extends EventEmitter {
     try {
       await this.requireRunnable(workflowId, "assistedApplyPlan", active)
       await this.setRunning(workflowId, "assistedApplyPlan", active)
+      let lastProgressPersistedAt = 0
       const plan = await this.assistedApply.prepare(
         workflowId,
         keys,
         comparisonBasis,
-        active.controller.token
+        active.controller.token,
+        async (completed, total) => {
+          const now = Date.now()
+          if (
+            completed !== 0 &&
+            completed !== total &&
+            now - lastProgressPersistedAt < PROGRESS_PERSIST_INTERVAL_MS
+          )
+            return
+          lastProgressPersistedAt = now
+          await this.updateProgress(workflowId, "assistedApplyPlan", completed, total)
+        }
       )
       const completedAt = new Date()
       const updated = await this.store.update(workflowId, current => ({

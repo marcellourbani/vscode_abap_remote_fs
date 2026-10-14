@@ -68,7 +68,8 @@ export class RepositoryUriPreparationService {
     side: "source" | "target",
     records: RepositoryObjectRecord[],
     concurrency: number,
-    token: vscode.CancellationToken
+    token: vscode.CancellationToken,
+    onProgress?: (completed: number, total: number) => Promise<void>
   ): Promise<Map<string, PreparedRepositoryUri>> {
     const workflow = await this.store.get(workflowId)
     const connectionId = workflow[side].connectionId.toLowerCase()
@@ -78,6 +79,8 @@ export class RepositoryUriPreparationService {
     const groups = this.wildcardGroups(
       records.filter(record => !record.adtUri && !prepared.has(repositoryUriMapKey(record)))
     )
+    let groupsDone = 0
+    await onProgress?.(0, groups.length)
     const stats = {
       wildcardTerms: groups.length,
       skippedTerms: 0,
@@ -104,6 +107,7 @@ export class RepositoryUriPreparationService {
           if (token.isCancellationRequested) return
           if (group.records.every(record => prepared.has(repositoryUriMapKey(record)))) {
             stats.skippedTerms++
+            await onProgress?.(++groupsDone, groups.length)
             return
           }
           try {
@@ -118,6 +122,7 @@ export class RepositoryUriPreparationService {
           } catch {
             stats.failedSearches++
           }
+          await onProgress?.(++groupsDone, groups.length)
         }
       )
     }

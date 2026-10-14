@@ -18,7 +18,6 @@ const workflowTableById = {}
 const workflowTableStates = {}
 const workflowTableViews = {}
 const busyDisabledStates = new WeakMap()
-let tableResizeFrame
 
 const send = (command, data = {}) => vscode.postMessage({ command, ...data })
 const escapeHtml = value => String(value ?? "").replace(/[&<>"']/g, character => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[character])
@@ -67,6 +66,7 @@ window.addEventListener("message", event => {
   if (event.data.command === "error") {
     pendingTransition = false
     showSectionError(event.data.section, event.data.message)
+    if (state.workflow) updateProgressDisplay()
     applyBusy()
   }
   if (event.data.command === "busy") {
@@ -132,13 +132,6 @@ window.addEventListener("message", event => {
 
 home.onclick = () => { state.workflow = undefined; render() }
 
-window.addEventListener("resize", () => {
-  if (tableResizeFrame) cancelAnimationFrame(tableResizeFrame)
-  tableResizeFrame = requestAnimationFrame(() => {
-    tableResizeFrame = undefined
-    workflowTables.forEach(table => table.redraw(true))
-  })
-})
 
 function render() {
   destroyWorkflowTables()
@@ -264,6 +257,8 @@ function runPolicy(value) {
 }
 
 function stepProgress(id, stepId, value) {
+  if (value.total === undefined && value.status === "running")
+    return '<div class="progress-label">Starting…</div>'
   if (value.total !== undefined && ["running", "paused"].includes(value.status))
     return `<div class="progress-label">${escapeHtml(progressLabel(stepId, value))}</div><progress max="${value.total}" value="${value.completed || 0}"></progress>`
   if (value.status === "complete" && id === "discovery")
@@ -387,9 +382,13 @@ function progressLabel(id, value) {
   if (id === "sourceDownload" && value.checkpoint === "preparing")
     return `Preparing source and target snapshot downloads: ${value.completed || 0} of ${value.total}`
   if (id === "sourceDownload" && value.checkpoint === "resolving object URIs")
-    return `Resolving source and target objects before download: ${value.completed || 0} of ${value.total}`
+    return value.total
+      ? `Resolving source and target objects before download: ${value.completed || 0} of ${value.total} name searches`
+      : "Resolving source and target objects before download…"
   if (id === "sourceDownload")
     return `Downloading source and target snapshots: ${value.completed || 0} of ${value.total}`
+  if (id === "sourceComparison" && value.checkpoint === "scanning snapshots")
+    return `Scanning downloaded snapshots for differences: ${value.completed || 0} of ${value.total}`
   if (id === "sourceComparison" && value.checkpoint === "getting object structures")
     return `Getting object structures for formatted comparison: ${value.completed || 0} of ${value.total}`
   if (id === "sourceComparison" && value.checkpoint === "formatting")
@@ -398,6 +397,8 @@ function progressLabel(id, value) {
     return `Comparing downloaded source snapshots: ${value.completed || 0} of ${value.total}`
   if (id === "transportCheck")
     return `Checking target transport status: ${value.completed || 0} of ${value.total}`
+  if (id === "assistedApplyPlan")
+    return `Reading snapshots for the assisted-apply plan: ${value.completed || 0} of ${value.total} objects`
   return `${value.completed || 0} of ${value.total} complete`
 }
 
@@ -789,7 +790,7 @@ function tableTools(id, total, views, allLabel, extraActions = "") {
         `<option value="${escapeHtml(view.value)}" data-label="${escapeHtml(view.label)}" ${selectedView === view.value ? "selected" : ""}>${escapeHtml(view.label)} (${view.count.toLocaleString()})</option>`
     )
   ]
-  return `<div class="action-group table-tools"><span class="action-group-label">Table</span><label>Show <select data-table-view="${id}">${options.join("")}</select></label><button class="secondary" type="button" data-clear-table="${id}" title="Clear column filters and the Show view">Clear filters</button>${extraActions}<span id="table-count-${id}" class="table-count">Showing ${total.toLocaleString()} of ${total.toLocaleString()}</span></div>`
+  return `<div class="action-group table-tools"><span class="action-group-label">Table</span><label>Show <select data-table-view="${id}">${options.join("")}</select></label><button class="secondary" type="button" data-clear-table="${id}" title="Clear column filters and the Show view">Clear filters</button>${total ? `<label>Freeze columns <select data-table-freeze="${id}"></select></label>` : ""}${extraActions}<span id="table-count-${id}" class="table-count">Showing ${total.toLocaleString()} of ${total.toLocaleString()}</span></div>`
 }
 
 function sourceComparable(row) {
@@ -901,7 +902,7 @@ function wireSourceComparisonTable() {
       "Formatted equal",
       "formattedIdentical",
       125,
-      "True when both ABAPLint-formatted snapshot trees match. ABAP files use the fixed formatter configuration; other resources are copied unchanged."
+      "True when both ABAPLint-formatted snapshot trees match. ABAP files use the fixed formatter configuration; other text resources ignore line endings, trailing whitespace, and trailing blank lines."
     ),
     numberColumn(
       "Raw differing files",
@@ -1061,7 +1062,7 @@ function wireAssistedApplyTable() {
       title: copilot ? "Review" : "Review and apply",
       headerSort: false,
       headerFilter: false,
-      minWidth: 340,
+      minWidth: copilot ? 500 : 640,
       formatter: cell => {
         const row = cell.getRow().getData()
         const reviewDisabled = row.eligible ? "" : "disabled"
@@ -1153,9 +1154,10 @@ function createWorkflowTable(id, data, columns, options = {}) {
     column: sorter.column || sorter.field,
     dir: sorter.dir
   }))
+  const frozenColumns = applyFrozenColumns(columns, savedState?.frozenThrough)
   const tableOptions = {
     data,
-    columns,
+    columns: frozenColumns,
     height: 360,
     layout: "fitColumns",
     renderVertical: "virtual",
@@ -1173,10 +1175,11 @@ function createWorkflowTable(id, data, columns, options = {}) {
   }
   if (savedState) {
     tableOptions.initialSort = savedSorters
-    tableOptions.initialHeaderFilter = savedState.headerFilters
+    tableOptions.initialHeaderFilter = savedState.headerFilters || []
   }
   const table = new Tabulator(element, tableOptions)
   table.workflowStateKey = stateKey
+  table.workflowElement = element
   table.on("dataSorted", () => saveWorkflowTableState(table))
   table.on("dataFiltered", (_filters, rows) => {
     saveWorkflowTableState(table)
@@ -1187,14 +1190,21 @@ function createWorkflowTable(id, data, columns, options = {}) {
       input.title = "Type a prefix. Add a trailing space for an exact match. * and ? are supported."
       input.setAttribute("aria-label", input.title)
     })
-    if (savedState)
-      requestAnimationFrame(() => {
-        if (savedSorters.length) table.setSort(savedSorters)
-      })
+    const trackScroll = () =>
+      element
+        .querySelector(".tabulator-tableholder")
+        ?.addEventListener("scroll", event => trackTableScroll(stateKey, event.currentTarget))
+    if (!savedState) return trackScroll()
+    requestAnimationFrame(() => {
+      if (savedSorters.length) table.setSort(savedSorters)
+      restoreTableScroll(table, workflowTableStates[stateKey]?.scroll)
+      trackScroll()
+    })
   })
   workflowTables.push(table)
   workflowTableById[id] = table
   wireWorkflowTableTools(id, table, stateKey, data.length)
+  wireFreezeControl(id, columns, stateKey)
   return table
 }
 
@@ -1442,7 +1452,9 @@ function updateAssistedApplySelectionControls() {
 
 function saveWorkflowTableState(table) {
   try {
-    workflowTableStates[table.workflowStateKey] = {
+    const key = table.workflowStateKey
+    workflowTableStates[key] = {
+      ...workflowTableStates[key],
       sorters: table.getSorters().map(sorter => ({
         column: sorter.field,
         dir: sorter.dir
@@ -1453,6 +1465,49 @@ function saveWorkflowTableState(table) {
       }))
     }
   } catch {}
+}
+
+function trackTableScroll(stateKey, holder) {
+  workflowTableStates[stateKey] = {
+    ...workflowTableStates[stateKey],
+    scroll: { left: holder.scrollLeft, top: holder.scrollTop }
+  }
+}
+
+function restoreTableScroll(table, scroll) {
+  const holder = table.workflowElement?.querySelector(".tabulator-tableholder")
+  if (!holder || !scroll) return
+  holder.scrollLeft = scroll.left
+  holder.scrollTop = scroll.top
+}
+
+function applyFrozenColumns(columns, frozenThrough) {
+  const count = frozenColumnCount(columns, frozenThrough)
+  return columns.map((column, index) => (index < count ? { ...column, frozen: true } : column))
+}
+
+function frozenColumnCount(columns, title) {
+  const index = columns.findIndex(column => column.title === title)
+  return index < 0 ? 0 : index + 1
+}
+
+function wireFreezeControl(id, columns, stateKey) {
+  const select = document.querySelector(`[data-table-freeze="${id}"]`)
+  if (!select) return
+  const titles = columns.map(column => column.title).filter(Boolean)
+  const frozenThrough = workflowTableStates[stateKey]?.frozenThrough
+  select.innerHTML = [
+    '<option value="">None</option>',
+    ...titles.map(title => `<option value="${escapeHtml(title)}">${escapeHtml(title)}</option>`)
+  ].join("")
+  select.value = titles.includes(frozenThrough) ? frozenThrough : ""
+  select.onchange = () => {
+    workflowTableStates[stateKey] = {
+      ...workflowTableStates[stateKey],
+      frozenThrough: select.value || undefined
+    }
+    render()
+  }
 }
 
 function destroyWorkflowTable(id) {
@@ -1646,8 +1701,15 @@ function wireWorkflow(workflow) {
 }
 
 function wireWorkflowActions(workflow) {
-  const discover = document.getElementById("discover"); if (discover) discover.onclick = () => send("runDiscovery", { criteria: criteriaValue() })
-  const resumeDiscovery = document.getElementById("resumeDiscovery"); if (resumeDiscovery) resumeDiscovery.onclick = () => send("resumeDiscovery")
+  const startDiscovery = (command, data) => {
+    pendingTransition = true
+    const progress = document.querySelector('[data-step-progress="discovery"]')
+    if (progress) progress.innerHTML = '<div class="progress-label">Starting discovery…</div>'
+    applyBusy()
+    send(command, data)
+  }
+  const discover = document.getElementById("discover"); if (discover) discover.onclick = () => startDiscovery("runDiscovery", { criteria: criteriaValue() })
+  const resumeDiscovery = document.getElementById("resumeDiscovery"); if (resumeDiscovery) resumeDiscovery.onclick = () => startDiscovery("resumeDiscovery")
   const existence = document.getElementById("existence"); if (existence) existence.onclick = () => send("compareExistence")
   const startSourceComparison = command => {
     pendingTransition = true

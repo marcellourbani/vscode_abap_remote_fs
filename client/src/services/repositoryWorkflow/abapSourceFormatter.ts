@@ -1,7 +1,7 @@
 import { Config, PrettyPrinter } from "@abaplint/core"
 import { parseAbapFile } from "../../lib/functions"
 
-export const REPOSITORY_ABAP_FORMAT_VERSION = "abaplint-upper-token-space-class-method-order-v6"
+export const REPOSITORY_ABAP_FORMAT_VERSION = "abaplint-upper-token-space-class-method-order-v8"
 
 let config: Config | undefined
 

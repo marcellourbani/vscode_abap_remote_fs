@@ -168,6 +168,7 @@ export interface ObjectSnapshotManifest {
   connectionId: string
   record: RepositoryObjectRecord
   sourceUri?: string
+  adtUrl?: string
   status: "complete" | "partial" | "failed"
   startedAt: string
   completedAt: string

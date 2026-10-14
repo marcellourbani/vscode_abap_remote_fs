@@ -432,7 +432,8 @@ export class RepositoryWorkflowPanel {
           relative
         )
       ),
-      `${key}: source ↔ target (${representation})`
+      `${key}: source ↔ target (${representation})`,
+      { preview: false }
     )
   }
 

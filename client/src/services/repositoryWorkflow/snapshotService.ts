@@ -4,7 +4,6 @@ import * as path from "path"
 import { createHash } from "crypto"
 import { diffLines } from "diff"
 import { getClient, getOrCreateRoot } from "../../adt/conections"
-import { isAbapFile, isAbapFolder } from "abapfs"
 import { log } from "../../lib/logger"
 import {
   AbapResourceDownloadService,
@@ -75,13 +74,7 @@ async function listFiles(root: string, current = root): Promise<SnapshotFile[]> 
       const content = await fs.readFile(fullPath)
       const text = !content.includes(0)
       const normalized = text
-        ? Buffer.from(
-            content
-              .toString("utf8")
-              .replace(/\r\n/g, "\n")
-              .replace(/[ \t]+$/gm, ""),
-            "utf8"
-          )
+        ? Buffer.from(normalizeTextForComparison(content.toString("utf8")), "utf8")
         : content
       result.push({
         path: path.relative(root, fullPath).replace(/\\/g, "/"),
@@ -134,9 +127,17 @@ export class WorkflowSnapshotService {
     side: "source" | "target",
     records: RepositoryObjectRecord[],
     concurrency: number,
-    token: vscode.CancellationToken
+    token: vscode.CancellationToken,
+    onProgress?: (completed: number, total: number) => Promise<void>
   ): Promise<Map<string, PreparedRepositoryUri>> {
-    return await this.uriPreparation.prepare(workflowId, side, records, concurrency, token)
+    return await this.uriPreparation.prepare(
+      workflowId,
+      side,
+      records,
+      concurrency,
+      token,
+      onProgress
+    )
   }
 
   async downloadSide(
@@ -275,6 +276,7 @@ export class WorkflowSnapshotService {
         fs.rm(path.join(root, "content"), { recursive: true, force: true })
       ])
       let result
+      let adtUrl: string | undefined
       await onProgress(completed, total, "downloading")
       const prepared = record.adtUri ? undefined : preparedUris.get(repositoryUriMapKey(record))
       const download = (source: string) =>
@@ -287,23 +289,26 @@ export class WorkflowSnapshotService {
           concurrency: 1,
           token
         })
+      const downloadFromSearch = async () => {
+        directSearchWorkers++
+        adtUrl = await this.searchRepositoryObjectUrl(connectionId, record)
+        return await download(await this.resolveKnownRepositoryUri(connectionId, adtUrl))
+      }
       try {
-        let source: string
-        if (record.adtUri)
-          source = await this.resolveKnownRepositoryUri(connectionId, record.adtUri)
-        else if (prepared)
-          source = await this.resolveKnownRepositoryUri(connectionId, prepared.adtUri)
-        else {
-          directSearchWorkers++
-          source = await this.resolveRepositoryObjectByName(connectionId, record)
-        }
-        result = await download(source)
+        if (record.adtUri) {
+          if (!record.adtUri.startsWith("adt://")) adtUrl = record.adtUri
+          result = await download(await this.resolveKnownRepositoryUri(connectionId, record.adtUri))
+        } else if (prepared) {
+          adtUrl = prepared.adtUri
+          result = await download(
+            await this.resolveKnownRepositoryUri(connectionId, prepared.adtUri)
+          )
+        } else result = await downloadFromSearch()
       } catch (error) {
         if (prepared && !token.isCancellationRequested)
           try {
             await fs.rm(path.join(root, "raw"), { recursive: true, force: true })
-            directSearchWorkers++
-            result = await download(await this.resolveRepositoryObjectByName(connectionId, record))
+            result = await downloadFromSearch()
           } catch (fallbackError) {
             result = failedDownload(record.objectName, root, fallbackError, token)
           }
@@ -325,6 +330,7 @@ export class WorkflowSnapshotService {
               }
             : record,
         sourceUri: result.sourceUri,
+        adtUrl: result.failures.length ? undefined : adtUrl,
         status:
           result.cancelled || result.failures.length
             ? files.length
@@ -361,7 +367,7 @@ export class WorkflowSnapshotService {
     }
   }
 
-  private async resolveRepositoryObjectByName(
+  private async searchRepositoryObjectUrl(
     connectionId: string,
     record: RepositoryObjectRecord
   ): Promise<string> {
@@ -388,7 +394,7 @@ export class WorkflowSnapshotService {
     const exact = [...exactByUri.values()][0]
     if (!exact?.uri)
       throw new Error(`Object ${record.objectName} (${objectType}) not found on ${connectionId}`)
-    return await this.resolveKnownRepositoryUri(connectionId, exact.uri)
+    return exact.uri
   }
 
   private async resolveKnownRepositoryUri(connectionId: string, source: string): Promise<string> {
@@ -541,6 +547,8 @@ export class WorkflowSnapshotService {
   ): Promise<void> {
     const workflow = await this.store.get(workflowId)
     const snapshots: FormattingSnapshot[] = []
+    let scanned = 0
+    await options.onPhase?.("scanning snapshots", 0, keys.length)
     await runSnapshotPool(keys, DEFAULT_VERIFICATION_CONCURRENCY, async key => {
       if (token?.isCancellationRequested) return
       const id = objectFolderId(key)
@@ -551,16 +559,17 @@ export class WorkflowSnapshotService {
         this.readManifest(path.join(targetRoot, "manifest.json"))
       ])
       if (
-        source?.status !== "complete" ||
-        target?.status !== "complete" ||
-        source.aggregateHash === target.aggregateHash
+        source?.status === "complete" &&
+        target?.status === "complete" &&
+        source.aggregateHash !== target.aggregateHash
       )
-        return
-      snapshots.push(
-        { root: sourceRoot, side: "source", manifest: source },
-        { root: targetRoot, side: "target", manifest: target }
-      )
+        snapshots.push(
+          { root: sourceRoot, side: "source", manifest: source },
+          { root: targetRoot, side: "target", manifest: target }
+        )
+      await options.onPhase?.("scanning snapshots", ++scanned, keys.length)
     })
+    if (token?.isCancellationRequested) return
     const pendingMaps = snapshots.filter(
       ({ manifest }) =>
         manifest.record.objectType === "CLAS" &&
@@ -644,6 +653,7 @@ export class WorkflowSnapshotService {
         ? {
             connectionId: manifest.connectionId.toLowerCase(),
             className: manifest.record.objectName,
+            adtUrl: manifest.adtUrl,
             cachedMethodMap: manifest.classMethodMap,
             cacheOnly: !!manifest.classMethodMap || manifest.formattingState !== "pending"
           }
@@ -718,6 +728,7 @@ async function formatSnapshot(
   globalClass?: {
     connectionId: string
     className: string
+    adtUrl?: string
     cachedMethodMap?: ClassMethodSnapshotMap
     cacheOnly?: boolean
   }
@@ -744,6 +755,7 @@ async function formatSnapshot(
           connectionId: globalClass.connectionId,
           record: { objectName: globalClass.className },
           sourceUri,
+          adtUrl: globalClass.adtUrl,
           files
         })
       }
@@ -762,20 +774,26 @@ async function formatSnapshot(
     const targetPath = path.join(formattedRoot, file.path)
     await fs.mkdir(path.dirname(targetPath), { recursive: true })
     try {
-      if (!file.text || !isAbapSource(file.path, sourceUri, files.length)) {
+      if (!file.text) {
         await fs.copyFile(sourcePath, targetPath)
         continue
       }
       const source = await fs.readFile(sourcePath, "utf8")
+      if (!isAbapSource(file.path, sourceUri, files.length)) {
+        await fs.writeFile(targetPath, normalizeTextForComparison(source), "utf8")
+        continue
+      }
       await fs.writeFile(
         targetPath,
-        await formatter.format(
-          {
-            fileName: formatFileName(file.path, sourceUri),
-            source,
-            methodMap: methodOrder?.filePath === file.path ? methodOrder : undefined
-          },
-          token
+        normalizeTextForComparison(
+          await formatter.format(
+            {
+              fileName: formatFileName(file.path, sourceUri),
+              source,
+              methodMap: methodOrder?.filePath === file.path ? methodOrder : undefined
+            },
+            token
+          )
         ),
         "utf8"
       )
@@ -794,39 +812,47 @@ async function fetchClassMethodMap(snapshot: {
   connectionId: string
   record: { objectName: string }
   sourceUri?: string
+  adtUrl?: string
   files: SnapshotFile[]
 }): Promise<ClassMethodSnapshotMap> {
   const connectionId = snapshot.connectionId.toLowerCase()
-  const sourceUri = snapshot.sourceUri ?? ""
-  const uri = vscode.Uri.parse(sourceUri)
-  if (uri.scheme !== "adt" || uri.authority.toLowerCase() !== connectionId)
-    throw new Error("Class snapshot does not belong to the selected SAP system")
-  const root = await getOrCreateRoot(connectionId)
-  const node = await root.getNodeAsync(uri.path)
-  const main = isAbapFolder(node) ? node.mainInclude(uri.path) : { file: node, path: uri.path }
-  if (!main || !isAbapFile(main.file)) throw new Error("Cannot resolve global class main source")
-  await main.file.object.loadStructure()
-  const sourceUrl = main.file.object.contentsPath()
-  const filePath = path.posix.join("resource", path.posix.relative(uri.path, main.path))
-  if (!snapshot.files.some(file => file.path === filePath && file.text))
-    throw new Error("Global class main source is missing from the raw snapshot")
-  const objectUrl = sourceUrl.replace(/\/source\/main$/i, "")
-  if (objectUrl === sourceUrl) throw new Error("Global class main source URL is not supported")
-  const version = main.file.object.version === "inactive" ? "inactive" : "active"
-  const elements = await getClient(connectionId).statelessClone.objectStructureElements(
-    objectUrl,
-    version
-  )
+  if (!snapshot.adtUrl)
+    throw new Error(
+      "Class snapshot has no recorded ADT URL; refresh its source to download it again"
+    )
+  const objectUrl = snapshot.adtUrl.replace(/[?#].*$/, "").replace(/\/source\/main$/i, "")
+  const filePath = classMainFilePath(snapshot.files)
+  const client = getClient(connectionId).statelessClone
+  // The download reads the inactive source when one exists, so ranges must come from the same version
+  const structure = await client.objectStructure(objectUrl)
+  const version = structure.metaData["adtcore:version"] === "inactive" ? "inactive" : "active"
+  const elements = await client.objectStructureElements(objectUrl, version)
   return {
     schemaVersion: 1,
     className: snapshot.record.objectName,
     connectionId,
-    sourceUri,
+    sourceUri: snapshot.sourceUri ?? "",
     rawHash: aggregateHash(snapshot.files),
     filePath,
-    sourceUrl,
+    sourceUrl: `${objectUrl}/source/main`,
     elements
   }
+}
+
+function classMainFilePath(files: SnapshotFile[]): string {
+  const text = files.filter(file => file.text)
+  if (text.length === 1 && text[0].path === "resource") return "resource"
+  const mains = text.filter(file => /^resource\/[^/]+\.clas\.abap$/i.test(file.path))
+  if (mains.length !== 1)
+    throw new Error("Global class main source is missing from the raw snapshot")
+  return mains[0].path
+}
+
+export function normalizeTextForComparison(text: string): string {
+  return text
+    .replace(/\r\n/g, "\n")
+    .replace(/[ \t]+$/gm, "")
+    .replace(/\s+$/, "")
 }
 
 function isAbapSource(filePath: string, sourceUri: string, fileCount: number): boolean {
