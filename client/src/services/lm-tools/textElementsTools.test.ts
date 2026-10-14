@@ -572,7 +572,7 @@ describe("ManageTextElementsTool", () => {
           makeOptions({
             objectName: "ZREPORT",
             objectType: "PROGRAM",
-            action: "delete",
+            action: "invalid_action",
             connectionId: "dev100"
           }),
           mockToken

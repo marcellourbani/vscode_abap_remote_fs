@@ -2282,7 +2282,7 @@
       {
         "name": "abapfs_manage_text_elements",
         "displayName": "Manage Text Elements",
-        "modelDescription": "Read, create, or update text elements in programs, classes, and function groups. Create is supported only for text symbols. Selection texts and list headings are update-only. Pass category 'selections' or 'headings' for those categories; omit it only for text symbols.",
+        "modelDescription": "Read, create, update, or delete text elements in programs, classes, and function groups. Create is supported only for text symbols. Selection texts and list headings are update-only. Pass category 'selections' or 'headings' for those categories; omit it only for text symbols. Delete action removes the provided text element IDs.",
         "canBeReferencedInPrompt": true,
         "toolReferenceName": "abapfs_manage_text_elements",
         "icon": "$(symbol-text)",
@@ -2317,9 +2317,10 @@
               "enum": [
                 "read",
                 "create",
-                "update"
+                "update",
+                "delete"
               ],
-              "description": "Action to perform: 'read' to get existing entries, 'create' to add text symbols only, or 'update' to modify existing symbols, selection texts, or list headings"
+              "description": "Action to perform: 'read' to get existing entries, 'create' to add text symbols only, 'update' to modify existing symbols, selection texts, or list headings, or 'delete' to remove text elements"
             },
             "textElements": {
               "type": "array",

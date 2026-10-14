@@ -17,7 +17,7 @@ export interface IManageTextElementsParameters {
   objectName: string // Name of the ABAP object
   objectType: "PROGRAM" | "CLASS" | "FUNCTION_GROUP" // Type of object (mandatory for Language Model Tool - Copilot provides this)
   category?: TextElementCategory
-  action: "read" | "create" | "update"
+  action: "read" | "create" | "update" | "delete"
   textElements?: Array<{
     id: string
     text: string
@@ -53,22 +53,25 @@ export class ManageTextElementsTool implements vscode.LanguageModelTool<IManageT
       message += `\n**Note:** ${category} can only be updated; new entries cannot be created.`
     }
 
-    if (action === "create" || action === "update") {
+    if (action === "create" || action === "update" || action === "delete") {
       message += `\n**Text Elements:** ${textElements?.length || 0}`
       message +=
         "\n\n **Best Practice:** Always read existing text elements first to avoid duplicates and to know which text IDs are already in use."
       if (action === "update") {
         message += "\n\n **This will modify existing text elements in the SAP system.**"
       }
+      if (action === "delete") {
+        message += "\n\n **This will delete existing text elements in the SAP system.**"
+      }
     }
 
     const confirmationMessages = {
-      title: `${action === "read" ? "Read" : action === "create" ? "Create" : "Update"} Text Elements`,
+      title: `${action === "read" ? "Read" : action === "create" ? "Create" : action === "update" ? "Update" : "Delete"} Text Elements`,
       message: new vscode.MarkdownString(message)
     }
 
     return {
-      invocationMessage: `${action === "read" ? "Reading" : action === "create" ? "Creating" : "Updating"} text elements for ${objectType ? objectType + " " : ""}${objectName}...`,
+      invocationMessage: `${action === "read" ? "Reading" : action === "create" ? "Creating" : action === "update" ? "Updating" : "Deleting"} text elements for ${objectType ? objectType + " " : ""}${objectName}...`,
       confirmationMessages
     }
   }
@@ -132,48 +135,66 @@ export class ManageTextElementsTool implements vscode.LanguageModelTool<IManageT
 
       if (action === "read") {
         return await this.handleRead(client, objectName, objectType, category, actualConnectionId)
-      } else if (action === "create" || action === "update") {
+      } else if (action === "create" || action === "update" || action === "delete") {
         if (!textElements || textElements.length === 0) {
-          throw new Error("Text elements array is required for create/update operations")
+          throw new Error(`Text elements array is required for ${action} operations`)
         }
 
-        // For both CREATE and UPDATE, merge with existing text elements to avoid data loss
         let finalTextElements = textElements
+        let targetElements = textElements // Elements that were actually created/updated/deleted for reporting
+
         try {
           const existingResult = await getTextElementsSafe(client, objectName, objectType, category)
           const existingElements = existingResult.textElements
 
-          if (existingElements.length > 0) {
-            // Create a map of new/updated elements by ID
-            const updatesMap = new Map(textElements.map(el => [el.id, el]))
+          if (action === "delete") {
+            if (existingElements.length > 0) {
+              const idsToDelete = new Set(textElements.map(el => el.id))
+              finalTextElements = existingElements.filter(el => !idsToDelete.has(el.id))
+              // Only report elements that were actually present and deleted
+              targetElements = existingElements.filter(el => idsToDelete.has(el.id))
+            } else {
+              finalTextElements = []
+              targetElements = []
+            }
+          } else {
+            // For both CREATE and UPDATE, merge with existing text elements to avoid data loss
+            if (existingElements.length > 0) {
+              // Create a map of new/updated elements by ID
+              const updatesMap = new Map(textElements.map(el => [el.id, el]))
 
-            // Start with existing elements, then apply updates
-            const mergedElements = existingElements.map(
-              existing => updatesMap.get(existing.id) || existing
-            )
+              // Start with existing elements, then apply updates
+              const mergedElements = existingElements.map(
+                existing => updatesMap.get(existing.id) || existing
+              )
 
-            // Add any completely new elements that weren't in existing
-            const existingIds = new Set(existingElements.map(el => el.id))
-            const newElements = textElements.filter(el => !existingIds.has(el.id))
+              // Add any completely new elements that weren't in existing
+              const existingIds = new Set(existingElements.map(el => el.id))
+              const newElements = textElements.filter(el => !existingIds.has(el.id))
 
-            finalTextElements = [...mergedElements, ...newElements]
+              finalTextElements = [...mergedElements, ...newElements]
+            }
           }
         } catch (error) {
-          // If we can't read existing elements, proceed with just the provided ones
+          if (action === "delete") {
+            throw new Error(`Could not read existing text elements for delete operation: ${error}`)
+          }
+          // If we can't read existing elements for create/update, proceed with just the provided ones
           logCommands.warn(` Could not read existing text elements for merge: ${error}`)
         }
 
         client.stateful = session_types.stateful
-        return await this.handleCreateUpdate(
+        return await this.handleModify(
           client,
           objectName,
           objectType,
           category,
           finalTextElements,
+          targetElements,
           action
         )
       } else {
-        throw new Error(`Invalid action: ${action}. Must be 'read', 'create', or 'update'`)
+        throw new Error(`Invalid action: ${action}. Must be 'read', 'create', 'update', or 'delete'`)
       }
     } catch (error) {
       logCommands.error(` Manage Text Elements Tool error: ${error}`)
@@ -242,35 +263,42 @@ export class ManageTextElementsTool implements vscode.LanguageModelTool<IManageT
     }
   }
 
-  private async handleCreateUpdate(
+  private async handleModify(
     client: any,
     objectName: string,
     objectType: string | undefined,
     category: TextElementCategory,
-    textElements: Array<{ id: string; text: string; maxLength?: number }>,
-    action: "create" | "update"
+    finalTextElements: Array<{ id: string; text: string; maxLength?: number }>,
+    targetElements: Array<{ id: string; text: string; maxLength?: number }>,
+    action: "create" | "update" | "delete"
   ): Promise<vscode.LanguageModelToolResult> {
     // Transport-aware function imported statically at module top
-    await updateTextElementsWithTransport(client, objectName, textElements, objectType, category)
+    await updateTextElementsWithTransport(client, objectName, finalTextElements, objectType, category)
 
-    let resultText = `Text Elements ${action === "create" ? "Created" : "Updated"} for ${objectName}\n`
-    resultText += `Object: ${objectName} | ${action === "create" ? "Created" : "Updated"}: ${textElements.length}\n\n`
+    const actionPast = action === "create" ? "Created" : action === "update" ? "Updated" : "Deleted"
 
-    resultText += `${action === "create" ? "Created" : "Updated"} elements:\n`
-    textElements.forEach(element => {
-      const maxLengthInfo = element.maxLength ? ` (max: ${element.maxLength})` : ""
-      resultText += `• ${element.id}: "${element.text}"${maxLengthInfo}\n`
-    })
+    let resultText = `Text Elements ${actionPast} for ${objectName}\n`
+    resultText += `Object: ${objectName} | ${actionPast}: ${targetElements.length}\n\n`
 
-    if (category === "symbols") {
+    if (targetElements.length > 0) {
+      resultText += `${actionPast} elements:\n`
+      targetElements.forEach(element => {
+        const maxLengthInfo = element.maxLength ? ` (max: ${element.maxLength})` : ""
+        resultText += `• ${element.id}: "${element.text}"${maxLengthInfo}\n`
+      })
+    } else {
+      resultText += `No text elements were ${actionPast.toLowerCase()}.\n`
+    }
+
+    if (action !== "delete" && category === "symbols" && targetElements.length > 0) {
       resultText += `\nSuccess. Next: update ABAP code to use these elements:`
-      textElements.forEach(element => {
+      targetElements.forEach(element => {
         resultText += `\n• Replace hardcoded text with: TEXT-${element.id}`
       })
     }
 
     logCommands.info(
-      ` ${action} Text Elements: Successfully processed ${textElements.length} text elements`
+      ` ${action} Text Elements: Successfully processed ${targetElements.length} text elements`
     )
 
     return new vscode.LanguageModelToolResult([new vscode.LanguageModelTextPart(resultText)])
