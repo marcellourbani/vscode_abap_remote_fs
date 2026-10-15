@@ -188,6 +188,19 @@ When enabled, all embedded SAP GUI actions (toolbar button, command palette, Run
 }
 ```
 
+### `abapfs.sapGui.useSapshcut`
+
+| Property | Type | Default | Scope | Description |
+|----------|------|---------|-------|-------------|
+| `useSapshcut` | boolean | `false` | application | On Windows, launch SAP GUI directly with `sapshcut.exe` instead of a temporary `.sap` shortcut. This may be faster on some systems, but is not guaranteed to work with every SAP GUI setup. If ABAP FS cannot start `sapshcut.exe`, it falls back to the standard `.sap` shortcut launch. |
+
+**Example:**
+```json
+{
+  "abapfs.sapGui.useSapshcut": true
+}
+```
+
 ---
 
 ## 5. ABAP Cleaner Integration

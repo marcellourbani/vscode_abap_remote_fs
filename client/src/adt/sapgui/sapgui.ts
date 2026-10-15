@@ -2,7 +2,9 @@ import { type RemoteConfig, RemoteManager } from "../../config"
 import { file } from "tmp-promise"
 import { writeAsync } from "fs-jetpack"
 import { log, caughtToString } from "../../lib"
-import { closeSync } from "fs"
+import { closeSync, existsSync } from "fs"
+import { spawn } from "child_process"
+import * as path from "path"
 import opn = require("open")
 import { ProgressLocation, extensions } from "vscode"
 import { funWindow as window } from "../../services/funMessenger"
@@ -37,6 +39,21 @@ interface LoadBalancingGuiConfig {
 type guiConfig = ServerGuiConfig | LoadBalancingGuiConfig
 function isLoadBalancing(config: guiConfig): config is LoadBalancingGuiConfig {
   return !!(config as LoadBalancingGuiConfig).messageServer
+}
+
+function findSapshcutExecutable(): string {
+  const installRoots = [
+    process.env.ProgramW6432,
+    process.env.ProgramFiles,
+    process.env["ProgramFiles(x86)"]
+  ].filter((root): root is string => !!root)
+
+  for (const root of new Set(installRoots)) {
+    const candidate = path.join(root, "SAP", "FrontEnd", "SAPgui", "sapshcut.exe")
+    if (existsSync(candidate)) return candidate
+  }
+
+  return "sapshcut.exe"
 }
 
 export function getGuiCommand(target: AbapObject | string | SapGuiCommand): SapGuiCommand {
@@ -377,6 +394,11 @@ export class SapGui {
   }
 
   public async startGui(command: SapGuiCommand, ticket: string) {
+    const useSapshcut =
+      process.platform === "win32" &&
+      workspace.getConfiguration("abapfs.sapGui").get<boolean>("useSapshcut", false)
+    if (useSapshcut && (await this.startWithSapshcut(command, ticket))) return
+
     const content = this.createLauncherContent(command, ticket)
     const win32 = process.platform === "win32"
     const linux = process.platform === "linux"
@@ -399,6 +421,41 @@ export class SapGui {
     } catch (e) {
       log("Error executing file", shortcut.path)
     }
+  }
+
+  private async startWithSapshcut(command: SapGuiCommand, ticket: string): Promise<boolean> {
+    const commandLine = this.commandString(command).trim().replace(/^\*/, "")
+    const args = [
+      `-gui=${this.connectionString}`,
+      `-client=${this.config!.client}`,
+      `-user=${this.user || ""}`,
+      `-language=${this.language || "EN"}`,
+      `-type=${command.type}`,
+      `-command=${commandLine}`,
+      `-at=MYSAPSSO2=${ticket}`,
+      "-max",
+      `-system=${this.systemname || "SAP"}`
+    ]
+
+    return new Promise(resolve => {
+      try {
+        const child = spawn(findSapshcutExecutable(), args, {
+          windowsHide: true,
+          stdio: "ignore"
+        })
+        child.once("error", error => {
+          log("Could not start sapshcut.exe; falling back to .sap shortcut:", caughtToString(error))
+          resolve(false)
+        })
+        child.once("spawn", () => {
+          child.unref()
+          resolve(true)
+        })
+      } catch (error) {
+        log("Could not start sapshcut.exe; falling back to .sap shortcut:", caughtToString(error))
+        resolve(false)
+      }
+    })
   }
 
   public async runInBrowser(config: RemoteConfig, cmd: SapGuiCommand, client: ADTClient) {

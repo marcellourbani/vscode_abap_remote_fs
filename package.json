@@ -5830,6 +5830,12 @@
           "default": true,
           "markdownDescription": "Use VS Code's integrated browser instead of the embedded WebView for SAP GUI. Disable this if you prefer Webviews but Webviews can show a blank page (e.g. due to SAP clickjacking frame protection)."
         },
+        "abapfs.sapGui.useSapshcut": {
+          "type": "boolean",
+          "default": false,
+          "scope": "application",
+          "markdownDescription": "On Windows, launch SAP GUI directly with sapshcut.exe instead of a temporary .sap file. This may be faster on some systems, but is not guaranteed to work with every SAP GUI setup. Turn this off to use the standard .sap shortcut launch."
+        },
         "abapfs.sapGui.openXmlInGui": {
           "type": "boolean",
           "default": true,
