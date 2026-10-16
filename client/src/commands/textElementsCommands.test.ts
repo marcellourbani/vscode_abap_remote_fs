@@ -59,7 +59,11 @@ vi.mock("../config", () => ({
 import { manageTextElementsCommand, openTextElementsInSapGui } from "./textElementsCommands"
 import { funWindow as window } from "../services/funMessenger"
 import { getClient, getRoot } from "../adt/conections"
-import { getTextElementsSafe, parseObjectName } from "../adt/textElements"
+import {
+  getTextElementsSafe,
+  parseObjectName,
+  updateTextElementsWithTransport
+} from "../adt/textElements"
 import { isAbapFile } from "abapfs"
 import { SapGuiPanel } from "../views/sapgui/SapGuiPanel"
 import { RemoteManager } from "../config"
@@ -216,6 +220,272 @@ describe("manageTextElementsCommand", () => {
     await manageTextElementsCommand(undefined)
 
     expect(mockGetRoot).toHaveBeenCalledWith("dev100")
+  })
+})
+
+describe("text elements webview save", () => {
+  const programName = "ZTEST.prog.abap"
+
+  async function openWebview(loaded: any[] = []) {
+    const editorUri = makeAdtUri()
+    ;(mockWindow as any).activeTextEditor = { document: { uri: editorUri } }
+    mockIsAbapFile.mockReturnValue(true)
+    mockGetRoot.mockReturnValue({
+      getNodeAsync: vi.fn().mockResolvedValue({ object: { type: "PROG/P", name: "ZTEST" } })
+    } as any)
+    const client: any = { stateful: undefined }
+    mockGetClient.mockReturnValue(client)
+    mockGetTextElementsSafe.mockResolvedValue({ textElements: loaded, programName: "ZTEST" } as any)
+
+    let handler: (message: any) => Promise<void> = async () => undefined
+    const panel = {
+      webview: {
+        html: "",
+        postMessage: vi.fn(),
+        onDidReceiveMessage: vi.fn(function (fn: any) {
+          handler = fn
+        })
+      },
+      onDidDispose: vi.fn(),
+      reveal: vi.fn()
+    }
+    ;(mockWindow.createWebviewPanel as Mock).mockReturnValue(panel)
+
+    await manageTextElementsCommand(undefined)
+    return { panel, client, send: (message: any) => handler(message) }
+  }
+
+  test("embeds blank-text elements loaded from SAP in the webview", async () => {
+    const { panel } = await openWebview([{ id: "001", text: "" }])
+
+    expect(panel.webview.html).toContain('"id":"001"')
+    expect(panel.webview.html).toContain('"text":""')
+  })
+
+  test("saves blank-text elements so existing rows are not deleted", async () => {
+    const { send, panel } = await openWebview()
+
+    await send({
+      command: "save",
+      category: "symbols",
+      textElements: [
+        { id: "001", text: "" },
+        { id: "002", text: "Keep" }
+      ]
+    })
+
+    expect(updateTextElementsWithTransport).toHaveBeenCalledWith(
+      expect.anything(),
+      programName,
+      [
+        { id: "001", text: "" },
+        { id: "002", text: "Keep" }
+      ],
+      undefined,
+      "symbols"
+    )
+    expect(panel.webview.postMessage).toHaveBeenCalledWith({ command: "saveSuccess" })
+  })
+
+  test("drops rows without an ID or without a text string", async () => {
+    const { send } = await openWebview()
+
+    await send({
+      command: "save",
+      category: "selections",
+      textElements: [{ id: "", text: "No id" }, { id: "P_NAME" }, { id: "P_DATE", text: "Date" }]
+    })
+
+    expect(updateTextElementsWithTransport).toHaveBeenCalledWith(
+      expect.anything(),
+      programName,
+      [{ id: "P_DATE", text: "Date" }],
+      undefined,
+      "selections"
+    )
+  })
+
+  test("defaults the category to symbols", async () => {
+    const { send } = await openWebview()
+
+    await send({ command: "save", textElements: [{ id: "001", text: "A" }] })
+
+    expect(updateTextElementsWithTransport).toHaveBeenCalledWith(
+      expect.anything(),
+      programName,
+      [{ id: "001", text: "A" }],
+      undefined,
+      "symbols"
+    )
+  })
+
+  test("uses a stateful client for the save", async () => {
+    const { send, client } = await openWebview()
+
+    await send({ command: "save", textElements: [{ id: "001", text: "A" }] })
+
+    expect(client.stateful).toBe("stateful")
+  })
+
+  test("posts saveError when the write fails", async () => {
+    const { send, panel } = await openWebview()
+    ;(updateTextElementsWithTransport as Mock).mockRejectedValueOnce(new Error("Lock failed"))
+
+    await send({ command: "save", textElements: [{ id: "001", text: "A" }] })
+
+    expect(panel.webview.postMessage).toHaveBeenCalledWith({
+      command: "saveError",
+      error: expect.stringContaining("Lock failed")
+    })
+  })
+})
+
+describe("text elements webview script validation", () => {
+  // Runs the real inline webview script against minimal DOM stubs
+  async function loadScript(loaded: any[]) {
+    ;(mockWindow as any).activeTextEditor = { document: { uri: makeAdtUri() } }
+    mockIsAbapFile.mockReturnValue(true)
+    mockGetRoot.mockReturnValue({
+      getNodeAsync: vi.fn().mockResolvedValue({ object: { type: "PROG/P" } })
+    } as any)
+    mockGetClient.mockReturnValue({} as any)
+    mockGetTextElementsSafe.mockImplementation(async (_c, _n, _t, category) => ({
+      programName: "ZTEST",
+      textElements: category === "symbols" ? loaded : []
+    }))
+    const panel = {
+      webview: { html: "", postMessage: vi.fn(), onDidReceiveMessage: vi.fn() },
+      onDidDispose: vi.fn(),
+      reveal: vi.fn()
+    }
+    ;(mockWindow.createWebviewPanel as Mock).mockReturnValue(panel)
+    await manageTextElementsCommand(undefined)
+
+    const script = panel.webview.html.split("<script>")[1].split("</script>")[0]
+    const stub = (): any => ({
+      hidden: false,
+      textContent: "",
+      innerHTML: "",
+      className: "",
+      dataset: {},
+      style: {},
+      classList: { toggle: vi.fn() },
+      addEventListener: vi.fn(),
+      querySelector: () => null,
+      querySelectorAll: () => [],
+      focus: vi.fn()
+    })
+    const elements: Record<string, any> = {}
+    const document = {
+      getElementById: (id: string) => (elements[id] ??= stub()),
+      querySelectorAll: () => Array.from({ length: 20 }, stub),
+      addEventListener: vi.fn(),
+      removeEventListener: vi.fn()
+    }
+    const posted: any[] = []
+    let onMessage: (event: any) => void = () => undefined
+    const fakeWindow = {
+      addEventListener: (_type: string, fn: any) => {
+        onMessage = fn
+      }
+    }
+    const api = new Function(
+      "acquireVsCodeApi",
+      "document",
+      "window",
+      "setTimeout",
+      `${script}\nreturn { saveTextElements, updateElement, addRow, deleteRow };`
+    )(() => ({ postMessage: (m: any) => posted.push(m) }), document, fakeWindow, vi.fn())
+
+    return {
+      api,
+      posted,
+      status: () => elements["status"]?.textContent ?? "",
+      receive: (data: any) => onMessage({ data })
+    }
+  }
+
+  test("saves rows that were already blank in SAP", async () => {
+    const { api, posted } = await loadScript([
+      { id: "001", text: "" },
+      { id: "002", text: "Keep" }
+    ])
+
+    api.saveTextElements()
+
+    expect(posted).toEqual([
+      {
+        command: "save",
+        category: "symbols",
+        textElements: [
+          { id: "001", text: "" },
+          { id: "002", text: "Keep" }
+        ]
+      }
+    ])
+  })
+
+  test("still requires text on new rows", async () => {
+    const { api, posted, status } = await loadScript([{ id: "001", text: "A" }])
+
+    api.addRow()
+    api.saveTextElements()
+
+    expect(posted).toEqual([])
+    expect(status()).toContain("Row 2: Text is required")
+  })
+
+  test("still requires text when an existing row is cleared", async () => {
+    const { api, posted, status } = await loadScript([{ id: "001", text: "A" }])
+
+    api.updateElement(0, "text", "")
+    api.saveTextElements()
+
+    expect(posted).toEqual([])
+    expect(status()).toContain("Row 1: Text is required")
+  })
+
+  test("allows filling and then clearing a row that was blank in SAP", async () => {
+    const { api, posted } = await loadScript([{ id: "001", text: "" }])
+
+    api.updateElement(0, "text", "Temp")
+    api.updateElement(0, "text", "")
+    api.saveTextElements()
+
+    expect(posted[0].textElements).toEqual([expect.objectContaining({ id: "001", text: "" })])
+  })
+
+  test("recomputes blank rows after refresh", async () => {
+    const { api, posted, status, receive } = await loadScript([{ id: "001", text: "A" }])
+
+    receive({
+      command: "refresh",
+      textElements: { symbols: [{ id: "001", text: "" }], selections: [], headings: [] }
+    })
+    api.saveTextElements()
+    expect(posted).toHaveLength(1)
+
+    receive({
+      command: "refresh",
+      textElements: { symbols: [{ id: "001", text: "B" }], selections: [], headings: [] }
+    })
+    api.updateElement(0, "text", "")
+    api.saveTextElements()
+    expect(posted).toHaveLength(1)
+    expect(status()).toContain("Text is required")
+  })
+
+  test("deleting a row removes it from the saved set", async () => {
+    const { api, posted } = await loadScript([
+      { id: "001", text: "" },
+      { id: "002", text: "B" }
+    ])
+
+    api.deleteRow(1)
+    api.deleteRow(1)
+    api.saveTextElements()
+
+    expect(posted[0].textElements).toEqual([{ id: "001", text: "" }])
   })
 })
 

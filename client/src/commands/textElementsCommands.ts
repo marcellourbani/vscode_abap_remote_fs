@@ -385,7 +385,8 @@ async function handleSaveTextElements(
     }
     client.stateful = session_types.stateful
 
-    const validTextElements = textElements.filter(te => te.id && te.text)
+    // Webview only sends blank text for rows that were already blank in SAP
+    const validTextElements = textElements.filter(te => te.id && typeof te.text === "string")
 
     await updateTextElementsWithTransport(
       client,
@@ -687,6 +688,23 @@ function getTextElementsWebviewContent(
         let activeCategory = 'symbols';
         let textElements = textElementsByCategory[activeCategory] || [];
         let pendingDeleteIndex = -1;
+        let originalBlankIds = collectBlankIds(textElementsByCategory);
+
+        function collectBlankIds(byCategory) {
+          const result = {};
+          Object.keys(byCategory || {}).forEach(category => {
+            result[category] = new Set(
+              (byCategory[category] || []).filter(te => te.id && !te.text).map(te => te.id)
+            );
+          });
+          return result;
+        }
+
+        // Blank text loaded from SAP must round-trip; new or edited rows still need text
+        function isOriginalBlank(element) {
+          const ids = originalBlankIds[activeCategory];
+          return !element.text && !!ids && ids.has(element.id);
+        }
 
         function updateDdicColumnVisibility() {
           const visible = activeCategory === 'selections';
@@ -903,7 +921,7 @@ function getTextElementsWebviewContent(
                     usedIds.add(element.id);
                 }
                 
-                if (!element.text) {
+                if (!element.text && !isOriginalBlank(element)) {
                     errors.push(\`Row \${index + 1}: Text is required\`);
                 }
                 
@@ -917,7 +935,7 @@ function getTextElementsWebviewContent(
                 return;
             }
             
-            const validElements = textElements.filter(te => te.id && te.text);
+            const validElements = textElements.filter(te => te.id && (te.text || isOriginalBlank(te)));
 
             if (textElements.length > 0 && validElements.length === 0) {
                 showStatus('error', 'No valid text elements to save');
@@ -962,6 +980,7 @@ function getTextElementsWebviewContent(
                 case 'refresh':
                     // Update textElements array and re-render
                   textElementsByCategory = message.textElements || {};
+                  originalBlankIds = collectBlankIds(textElementsByCategory);
                   textElements = textElementsByCategory[activeCategory] || [];
                     renderTable();
                     updateElementCount();

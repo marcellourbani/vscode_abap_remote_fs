@@ -32,8 +32,10 @@ import {
   getTextElementsSafe,
   lockTextElements,
   type ObjectInfo,
-  type TextElement
+  type TextElement,
+  updateTextElementsWithTransport
 } from "./textElements"
+import { selectTransport } from "./AdtTransports"
 
 // We also need to test the exported async functions - need to mock ADTClient
 const makeClient = (overrides: Record<string, any> = {}) => ({
@@ -332,5 +334,339 @@ describe("lockTextElements (async)", () => {
     const lockFn = vi.fn().mockRejectedValue(new Error("Connection refused"))
     const client: any = { lock: lockFn }
     await expect(lockTextElements(client, "ZPROG")).rejects.toThrow("Failed to lock text elements")
+  })
+})
+
+describe("updateTextElementsWithTransport", () => {
+  const url = "/sap/bc/adt/textelements/programs/zreport"
+  const makeWriteClient = (lockOverrides: Record<string, any> = {}): any => ({
+    lock: vi.fn().mockResolvedValue({
+      LOCK_HANDLE: "LOCK1",
+      IS_LOCAL: "",
+      CORRNR: "TR100",
+      ...lockOverrides
+    }),
+    unLock: vi.fn().mockResolvedValue(undefined),
+    setTextElements: vi.fn().mockResolvedValue(undefined),
+    activate: vi.fn().mockResolvedValue(undefined)
+  })
+
+  beforeEach(() => {
+    vi.clearAllMocks()
+  })
+
+  it("writes elements with the lock transport, then unlocks and activates", async () => {
+    const client = makeWriteClient()
+    await updateTextElementsWithTransport(
+      client,
+      "ZREPORT",
+      [{ id: "001", text: "Hello" }],
+      "PROGRAM",
+      "symbols"
+    )
+
+    expect(client.setTextElements).toHaveBeenCalledWith(
+      url,
+      "symbols",
+      [expect.objectContaining({ id: "001", text: "Hello" })],
+      "LOCK1",
+      "TR100"
+    )
+    expect(client.unLock).toHaveBeenCalledWith(url, "LOCK1")
+    expect(client.activate).toHaveBeenCalledWith("ZREPORT", url)
+    expect(selectTransport).not.toHaveBeenCalled()
+  })
+
+  it("writes selection texts without adding a symbol maxLength", async () => {
+    const client = makeWriteClient()
+    await updateTextElementsWithTransport(
+      client,
+      "ZREPORT",
+      [{ id: "P_NAME", text: "Name" }],
+      "PROGRAM",
+      "selections"
+    )
+
+    expect(client.setTextElements).toHaveBeenCalledWith(
+      url,
+      "selections",
+      [{ id: "P_NAME", text: "Name" }],
+      "LOCK1",
+      "TR100"
+    )
+  })
+
+  it("accepts blank text on existing elements so unrelated writes are not blocked", async () => {
+    const client = makeWriteClient()
+    await updateTextElementsWithTransport(
+      client,
+      "ZREPORT",
+      [
+        { id: "001", text: "" },
+        { id: "002", text: "Keep" }
+      ],
+      "PROGRAM",
+      "symbols"
+    )
+
+    expect(client.setTextElements).toHaveBeenCalledWith(
+      url,
+      "symbols",
+      [
+        expect.objectContaining({ id: "001", text: "" }),
+        expect.objectContaining({ id: "002", text: "Keep" })
+      ],
+      "LOCK1",
+      "TR100"
+    )
+  })
+
+  it("accepts an empty list so deleting every element writes an empty set", async () => {
+    const client = makeWriteClient()
+    await updateTextElementsWithTransport(client, "ZREPORT", [], "PROGRAM", "symbols")
+
+    expect(client.setTextElements).toHaveBeenCalledWith(url, "symbols", [], "LOCK1", "TR100")
+  })
+
+  it("derives symbol maxLength from text length when not provided", async () => {
+    const client = makeWriteClient()
+    await updateTextElementsWithTransport(
+      client,
+      "ZREPORT",
+      [{ id: "001", text: "x".repeat(50) }],
+      "PROGRAM",
+      "symbols"
+    )
+
+    expect(client.setTextElements).toHaveBeenCalledWith(
+      url,
+      "symbols",
+      [expect.objectContaining({ id: "001", maxLength: 50 })],
+      "LOCK1",
+      "TR100"
+    )
+  })
+
+  it("rejects non-string text before locking", async () => {
+    const client = makeWriteClient()
+    await expect(
+      updateTextElementsWithTransport(
+        client,
+        "ZREPORT",
+        [{ id: "001", text: undefined as any }],
+        "PROGRAM",
+        "symbols"
+      )
+    ).rejects.toThrow("Each text element must have valid text")
+
+    expect(client.lock).not.toHaveBeenCalled()
+  })
+
+  it("rejects duplicate IDs ignoring case before locking", async () => {
+    const client = makeWriteClient()
+    await expect(
+      updateTextElementsWithTransport(
+        client,
+        "ZREPORT",
+        [
+          { id: "abc", text: "x" },
+          { id: "ABC", text: "y" }
+        ],
+        "PROGRAM",
+        "symbols"
+      )
+    ).rejects.toThrow("Duplicate text element ID: ABC")
+
+    expect(client.lock).not.toHaveBeenCalled()
+  })
+
+  it("rejects symbol text longer than its maxLength", async () => {
+    const client = makeWriteClient()
+    await expect(
+      updateTextElementsWithTransport(
+        client,
+        "ZREPORT",
+        [{ id: "001", text: "abcdef", maxLength: 3 }],
+        "PROGRAM",
+        "symbols"
+      )
+    ).rejects.toThrow("Text length exceeds maxLength for element 001: 6 > 3")
+  })
+
+  it("rejects symbol maxLength outside 1 to 255", async () => {
+    const client = makeWriteClient()
+    await expect(
+      updateTextElementsWithTransport(
+        client,
+        "ZREPORT",
+        [{ id: "001", text: "abc", maxLength: 300 }],
+        "PROGRAM",
+        "symbols"
+      )
+    ).rejects.toThrow("Invalid maxLength for element 001")
+  })
+
+  it("asks for a transport when the lock has none and the object is not local", async () => {
+    vi.mocked(selectTransport).mockResolvedValue({ cancelled: false, transport: "TR200" } as any)
+    const client = makeWriteClient({ CORRNR: undefined })
+
+    await updateTextElementsWithTransport(
+      client,
+      "ZREPORT",
+      [{ id: "001", text: "Hello" }],
+      "PROGRAM",
+      "symbols"
+    )
+
+    expect(selectTransport).toHaveBeenCalledWith(url, "", client, false, "", "")
+    expect(client.setTextElements).toHaveBeenCalledWith(
+      url,
+      "symbols",
+      [expect.objectContaining({ id: "001" })],
+      "LOCK1",
+      "TR200"
+    )
+  })
+
+  it("does not ask for a transport for local objects", async () => {
+    const client = makeWriteClient({ CORRNR: undefined, IS_LOCAL: "X" })
+
+    await updateTextElementsWithTransport(
+      client,
+      "ZREPORT",
+      [{ id: "001", text: "Hello" }],
+      "PROGRAM",
+      "symbols"
+    )
+
+    expect(selectTransport).not.toHaveBeenCalled()
+    expect(client.setTextElements).toHaveBeenCalledWith(
+      url,
+      "symbols",
+      [expect.objectContaining({ id: "001" })],
+      "LOCK1",
+      undefined
+    )
+  })
+
+  it("aborts and unlocks when transport selection is cancelled", async () => {
+    vi.mocked(selectTransport).mockResolvedValue({ cancelled: true } as any)
+    const client = makeWriteClient({ CORRNR: undefined })
+
+    await expect(
+      updateTextElementsWithTransport(
+        client,
+        "ZREPORT",
+        [{ id: "001", text: "Hello" }],
+        "PROGRAM",
+        "symbols"
+      )
+    ).rejects.toThrow("Transport selection was cancelled")
+
+    expect(client.setTextElements).not.toHaveBeenCalled()
+    expect(client.unLock).toHaveBeenCalledWith(url, "LOCK1")
+  })
+
+  it("unlocks when the write fails", async () => {
+    const client = makeWriteClient()
+    client.setTextElements = vi.fn().mockRejectedValue(new Error("boom"))
+
+    await expect(
+      updateTextElementsWithTransport(
+        client,
+        "ZREPORT",
+        [{ id: "001", text: "Hello" }],
+        "PROGRAM",
+        "symbols"
+      )
+    ).rejects.toThrow("Failed to set text elements for ZREPORT: boom")
+
+    expect(client.unLock).toHaveBeenCalledWith(url, "LOCK1")
+    expect(client.activate).not.toHaveBeenCalled()
+  })
+
+  it("does not unlock when the lock itself fails", async () => {
+    const client = makeWriteClient()
+    client.lock = vi.fn().mockRejectedValue(new Error("Locked by another user"))
+
+    await expect(
+      updateTextElementsWithTransport(
+        client,
+        "ZREPORT",
+        [{ id: "001", text: "Hello" }],
+        "PROGRAM",
+        "symbols"
+      )
+    ).rejects.toThrow("Failed to lock text elements")
+
+    expect(client.unLock).not.toHaveBeenCalled()
+  })
+
+  it("rejects an empty object name before locking", async () => {
+    const client = makeWriteClient()
+    await expect(
+      updateTextElementsWithTransport(client, "  ", [{ id: "001", text: "x" }], "PROGRAM")
+    ).rejects.toThrow("Object name is required")
+
+    expect(client.lock).not.toHaveBeenCalled()
+  })
+
+  it.each([
+    [
+      "a 4-character symbol key",
+      "symbols",
+      [{ id: "ABCD", text: "x" }],
+      "must be exactly 3 characters"
+    ],
+    ["a symbol key with a blank", "symbols", [{ id: "A B", text: "x" }], "without blanks"],
+    ["an unknown heading key", "headings", [{ id: "FOO", text: "x" }], "Invalid heading key"],
+    [
+      "an over-long LISTHEADER",
+      "headings",
+      [{ id: "LISTHEADER", text: "x".repeat(72) }],
+      "maximum length of 71"
+    ],
+    [
+      "an over-long selection text",
+      "selections",
+      [{ id: "P_NAME", text: "x".repeat(31) }],
+      "maximum length of 30"
+    ]
+  ])("rejects %s before locking", async (_label, category, elements, message) => {
+    const client = makeWriteClient()
+    await expect(
+      updateTextElementsWithTransport(
+        client,
+        "ZREPORT",
+        elements as any,
+        "PROGRAM",
+        category as any
+      )
+    ).rejects.toThrow(message)
+
+    expect(client.lock).not.toHaveBeenCalled()
+  })
+
+  it("accepts valid heading keys and selection text at the limit", async () => {
+    const client = makeWriteClient()
+    await updateTextElementsWithTransport(
+      client,
+      "ZREPORT",
+      [
+        { id: "LISTHEADER", text: "x".repeat(71) },
+        { id: "COLUMNHEADER_1", text: "Col" }
+      ],
+      "PROGRAM",
+      "headings"
+    )
+    await updateTextElementsWithTransport(
+      client,
+      "ZREPORT",
+      [{ id: "P_NAME", text: "x".repeat(30) }],
+      "PROGRAM",
+      "selections"
+    )
+
+    expect(client.setTextElements).toHaveBeenCalledTimes(2)
   })
 })

@@ -7,9 +7,9 @@ import { getClient, abapUri } from "../../adt/conections"
 import {
   getTextElementsSafe,
   updateTextElementsWithTransport,
+  type TextElement,
   type TextElementCategory
 } from "../../adt/textElements"
-import { openTextElementsInSapGui } from "../../commands/textElementsCommands"
 import { assertToolInvocationAuthorized } from "./toolGuard"
 
 // Text Elements Tool Interfaces
@@ -17,13 +17,100 @@ export interface IManageTextElementsParameters {
   objectName: string // Name of the ABAP object
   objectType: "PROGRAM" | "CLASS" | "FUNCTION_GROUP" // Type of object (mandatory for Language Model Tool - Copilot provides this)
   category?: TextElementCategory
-  action: "read" | "create" | "update"
-  textElements?: Array<{
-    id: string
-    text: string
-    maxLength?: number
-  }>
+  action: ToolAction
+  textElements?: TextElementInput[]
   connectionId?: string
+}
+
+type ToolAction = "read" | "create" | "update" | "delete"
+type ModifyAction = Exclude<ToolAction, "read">
+type TextElementInput = { id: string; text?: string; maxLength?: number }
+
+interface ChangePlan {
+  finalTextElements: TextElement[]
+  targetElements: TextElement[]
+}
+
+const ACTION_LABELS: Record<ToolAction, { title: string; invoking: string; past: string }> = {
+  read: { title: "Read", invoking: "Reading", past: "Read" },
+  create: { title: "Create", invoking: "Creating", past: "Created" },
+  update: { title: "Update", invoking: "Updating", past: "Updated" },
+  delete: { title: "Delete", invoking: "Deleting", past: "Deleted" }
+}
+
+function isModifyAction(action: string): action is ModifyAction {
+  return action === "create" || action === "update" || action === "delete"
+}
+
+function isToolAction(action: string): action is ToolAction {
+  return action === "read" || isModifyAction(action)
+}
+
+function invalidActionMessage(action: string): string {
+  return `Invalid action: ${action}. Must be 'read', 'create', 'update', or 'delete'`
+}
+
+function isTextElementsApiUnsupported(error: unknown): boolean {
+  const message = String(error)
+  return message.includes("Resource") && message.includes("does not exist")
+}
+
+function unsupportedMessage(connectionId: string, objectName: string): string {
+  return (
+    `ADT text elements API is not available on system ${connectionId.toUpperCase()}. ` +
+    `Nothing was changed and SE38 was not opened. ` +
+    `Ask the user whether to open ${objectName} in SE38 in the browser. ` +
+    `Only if they say yes, call abapfs_get_sap_webgui_url with connectionId "${connectionId}" and transaction "SE38". ` +
+    `In SE38 use Goto > Text Elements.`
+  )
+}
+
+// SAP stores text pool keys in uppercase; the ADT write uppercases them too
+function normalizeId(id: string): string {
+  return id.trim().toUpperCase()
+}
+
+function assertElementsForAction(
+  action: ModifyAction,
+  elements: TextElementInput[] | undefined
+): void {
+  if (!elements || elements.length === 0) {
+    throw new Error(`Text elements array is required for ${action} operations`)
+  }
+  if (elements.some(el => typeof el.id !== "string" || el.id.trim() === "")) {
+    throw new Error(`Each text element needs an id for ${action} operations`)
+  }
+  if (action === "delete") return
+
+  const missing = elements.find(el => typeof el.text !== "string" || el.text.trim() === "")
+  if (missing) {
+    throw new Error(`Text is required for ${action} operations; element ${missing.id} has no text`)
+  }
+
+  const seen = new Set<string>()
+  for (const el of elements) {
+    const id = normalizeId(el.id)
+    if (seen.has(id)) {
+      throw new Error(`Duplicate text element ID: ${id}`)
+    }
+    seen.add(id)
+  }
+}
+
+function planDelete(existing: TextElement[], inputs: TextElementInput[]): ChangePlan {
+  const idsToDelete = new Set(inputs.map(el => el.id))
+  return {
+    finalTextElements: existing.filter(el => !idsToDelete.has(normalizeId(el.id))),
+    targetElements: existing.filter(el => idsToDelete.has(normalizeId(el.id)))
+  }
+}
+
+function planMerge(existing: TextElement[], writes: TextElement[]): ChangePlan {
+  const writesById = new Map(writes.map(el => [el.id, el]))
+  const existingIds = new Set(existing.map(el => normalizeId(el.id)))
+  const merged = existing.map(el => writesById.get(normalizeId(el.id)) ?? el)
+  const added = writes.filter(el => !existingIds.has(el.id))
+  return { finalTextElements: [...merged, ...added], targetElements: writes }
 }
 
 /**
@@ -43,6 +130,14 @@ export class ManageTextElementsTool implements vscode.LanguageModelTool<IManageT
       connectionId
     } = options.input
 
+    if (!isToolAction(action)) {
+      throw new Error(invalidActionMessage(action))
+    }
+    if (isModifyAction(action)) {
+      assertElementsForAction(action, textElements)
+    }
+    const labels = ACTION_LABELS[action]
+
     let message = `**Action:** ${action.toUpperCase()}\n**Object:** ${objectName}`
     if (objectType) {
       message += `\n**Type:** ${objectType}`
@@ -53,22 +148,25 @@ export class ManageTextElementsTool implements vscode.LanguageModelTool<IManageT
       message += `\n**Note:** ${category} can only be updated; new entries cannot be created.`
     }
 
-    if (action === "create" || action === "update") {
+    if (isModifyAction(action)) {
       message += `\n**Text Elements:** ${textElements?.length || 0}`
       message +=
         "\n\n **Best Practice:** Always read existing text elements first to avoid duplicates and to know which text IDs are already in use."
       if (action === "update") {
         message += "\n\n **This will modify existing text elements in the SAP system.**"
       }
+      if (action === "delete") {
+        message += "\n\n **This will delete existing text elements in the SAP system.**"
+      }
     }
 
     const confirmationMessages = {
-      title: `${action === "read" ? "Read" : action === "create" ? "Create" : "Update"} Text Elements`,
+      title: `${labels.title} Text Elements`,
       message: new vscode.MarkdownString(message)
     }
 
     return {
-      invocationMessage: `${action === "read" ? "Reading" : action === "create" ? "Creating" : "Updating"} text elements for ${objectType ? objectType + " " : ""}${objectName}...`,
+      invocationMessage: `${labels.invoking} text elements for ${objectType ? objectType + " " : ""}${objectName}...`,
       confirmationMessages
     }
   }
@@ -92,6 +190,9 @@ export class ManageTextElementsTool implements vscode.LanguageModelTool<IManageT
       throw new Error(
         `Cannot create ${category} text elements. ${category} supports update only; use action "update" for existing entries.`
       )
+    }
+    if (isModifyAction(action)) {
+      assertElementsForAction(action, textElements)
     }
 
     // 🚫 FORCE READ ACTION ONLY - Create/Update disabled due to lock handle issues
@@ -132,49 +233,26 @@ export class ManageTextElementsTool implements vscode.LanguageModelTool<IManageT
 
       if (action === "read") {
         return await this.handleRead(client, objectName, objectType, category, actualConnectionId)
-      } else if (action === "create" || action === "update") {
-        if (!textElements || textElements.length === 0) {
-          throw new Error("Text elements array is required for create/update operations")
-        }
-
-        // For both CREATE and UPDATE, merge with existing text elements to avoid data loss
-        let finalTextElements = textElements
-        try {
-          const existingResult = await getTextElementsSafe(client, objectName, objectType, category)
-          const existingElements = existingResult.textElements
-
-          if (existingElements.length > 0) {
-            // Create a map of new/updated elements by ID
-            const updatesMap = new Map(textElements.map(el => [el.id, el]))
-
-            // Start with existing elements, then apply updates
-            const mergedElements = existingElements.map(
-              existing => updatesMap.get(existing.id) || existing
-            )
-
-            // Add any completely new elements that weren't in existing
-            const existingIds = new Set(existingElements.map(el => el.id))
-            const newElements = textElements.filter(el => !existingIds.has(el.id))
-
-            finalTextElements = [...mergedElements, ...newElements]
-          }
-        } catch (error) {
-          // If we can't read existing elements, proceed with just the provided ones
-          logCommands.warn(` Could not read existing text elements for merge: ${error}`)
-        }
-
-        client.stateful = session_types.stateful
-        return await this.handleCreateUpdate(
-          client,
-          objectName,
-          objectType,
-          category,
-          finalTextElements,
-          action
-        )
-      } else {
-        throw new Error(`Invalid action: ${action}. Must be 'read', 'create', or 'update'`)
       }
+      if (!isModifyAction(action)) {
+        throw new Error(invalidActionMessage(action))
+      }
+
+      const plan = await this.planChanges(
+        client,
+        objectName,
+        objectType,
+        category,
+        action,
+        (textElements ?? []).map(el => ({ ...el, id: normalizeId(el.id) })),
+        actualConnectionId
+      )
+      if (plan.targetElements.length === 0) {
+        return this.handleNoMatch(objectName, action)
+      }
+
+      client.stateful = session_types.stateful
+      return await this.handleModify(client, objectName, objectType, category, plan, action)
     } catch (error) {
       logCommands.error(` Manage Text Elements Tool error: ${error}`)
       throw new Error(`Failed to ${action} text elements: ${String(error)}`)
@@ -184,9 +262,9 @@ export class ManageTextElementsTool implements vscode.LanguageModelTool<IManageT
   private async handleRead(
     client: any,
     objectName: string,
-    objectType?: string,
-    category: TextElementCategory = "symbols",
-    connectionId?: string
+    objectType: string | undefined,
+    category: TextElementCategory,
+    connectionId: string
   ): Promise<vscode.LanguageModelToolResult> {
     try {
       // Use explicit object type when provided, fallback to detection when not
@@ -209,68 +287,98 @@ export class ManageTextElementsTool implements vscode.LanguageModelTool<IManageT
 
       return new vscode.LanguageModelToolResult([new vscode.LanguageModelTextPart(resultText)])
     } catch (error) {
-      // Check if it's a "Resource does not exist" error - fallback to SAP GUI for old systems
-      const errorMessage = String(error)
-      if (errorMessage.includes("Resource") && errorMessage.includes("does not exist")) {
-        if (!connectionId) {
-          throw new Error("Cannot determine connection ID for SAP GUI fallback")
-        }
-
-        // Call the existing SAP GUI fallback function with proper object type
-        await openTextElementsInSapGui(
-          objectName +
-            (objectType === "CLASS"
-              ? ".clas.abap"
-              : objectType === "FUNCTION_GROUP"
-                ? ".fugr.abap"
-                : ".prog.abap"),
-          connectionId
-        )
-
-        const resultText =
-          `Text Elements Editor Opened in SAP GUI\n` +
-          `Object: ${objectName}\n` +
-          `System: ${connectionId.toUpperCase()}\n` +
-          `Reason: ADT text elements API not available on this system\n\n` +
-          `Editor opened in embedded SAP GUI webview. User can edit text elements directly there.`
-
-        return new vscode.LanguageModelToolResult([new vscode.LanguageModelTextPart(resultText)])
-      } else {
-        // Re-throw other errors
-        throw error
+      if (isTextElementsApiUnsupported(error)) {
+        return new vscode.LanguageModelToolResult([
+          new vscode.LanguageModelTextPart(unsupportedMessage(connectionId, objectName))
+        ])
       }
+      throw error
     }
   }
 
-  private async handleCreateUpdate(
+  private async planChanges(
     client: any,
     objectName: string,
     objectType: string | undefined,
     category: TextElementCategory,
-    textElements: Array<{ id: string; text: string; maxLength?: number }>,
-    action: "create" | "update"
+    action: ModifyAction,
+    inputs: TextElementInput[],
+    connectionId: string
+  ): Promise<ChangePlan> {
+    // SAP replaces the whole text pool on write, so an unknown current state must not be written
+    let existing: TextElement[]
+    try {
+      existing = (await getTextElementsSafe(client, objectName, objectType, category)).textElements
+    } catch (error) {
+      if (isTextElementsApiUnsupported(error)) {
+        throw new Error(unsupportedMessage(connectionId, objectName))
+      }
+      throw new Error(
+        `Could not read existing text elements for ${action} operation; SAP was not changed: ${error}`
+      )
+    }
+
+    if (action === "delete") return planDelete(existing, inputs)
+
+    const existingIds = new Set(existing.map(el => normalizeId(el.id)))
+    const duplicate = inputs.find(el => existingIds.has(el.id))
+    if (action === "create" && duplicate) {
+      throw new Error(
+        `Text element ${duplicate.id} already exists; use action "update" to change it`
+      )
+    }
+    const unknown = inputs.find(el => !existingIds.has(el.id))
+    if (action === "update" && unknown) {
+      throw new Error(`Text element ${unknown.id} does not exist; use action "create" to add it`)
+    }
+    return planMerge(existing, inputs as TextElement[])
+  }
+
+  private handleNoMatch(objectName: string, action: ModifyAction): vscode.LanguageModelToolResult {
+    const resultText = `No matching text elements to ${action} in ${objectName}. SAP was not changed.`
+    return new vscode.LanguageModelToolResult([new vscode.LanguageModelTextPart(resultText)])
+  }
+
+  private async handleModify(
+    client: any,
+    objectName: string,
+    objectType: string | undefined,
+    category: TextElementCategory,
+    plan: ChangePlan,
+    action: ModifyAction
   ): Promise<vscode.LanguageModelToolResult> {
     // Transport-aware function imported statically at module top
-    await updateTextElementsWithTransport(client, objectName, textElements, objectType, category)
+    await updateTextElementsWithTransport(
+      client,
+      objectName,
+      plan.finalTextElements,
+      objectType,
+      category
+    )
 
-    let resultText = `Text Elements ${action === "create" ? "Created" : "Updated"} for ${objectName}\n`
-    resultText += `Object: ${objectName} | ${action === "create" ? "Created" : "Updated"}: ${textElements.length}\n\n`
+    const { targetElements } = plan
+    // Headings and selection texts keep their SAP entry on delete; only the text is cleared
+    const past =
+      action === "delete" && category !== "symbols" ? "Cleared" : ACTION_LABELS[action].past
 
-    resultText += `${action === "create" ? "Created" : "Updated"} elements:\n`
-    textElements.forEach(element => {
+    let resultText = `Text Elements ${past} for ${objectName}\n`
+    resultText += `Object: ${objectName} | ${past}: ${targetElements.length}\n\n`
+
+    resultText += `${past} elements:\n`
+    targetElements.forEach(element => {
       const maxLengthInfo = element.maxLength ? ` (max: ${element.maxLength})` : ""
       resultText += `• ${element.id}: "${element.text}"${maxLengthInfo}\n`
     })
 
-    if (category === "symbols") {
+    if (action !== "delete" && category === "symbols") {
       resultText += `\nSuccess. Next: update ABAP code to use these elements:`
-      textElements.forEach(element => {
+      targetElements.forEach(element => {
         resultText += `\n• Replace hardcoded text with: TEXT-${element.id}`
       })
     }
 
     logCommands.info(
-      ` ${action} Text Elements: Successfully processed ${textElements.length} text elements`
+      ` ${action} Text Elements: Successfully processed ${targetElements.length} text elements`
     )
 
     return new vscode.LanguageModelToolResult([new vscode.LanguageModelTextPart(resultText)])

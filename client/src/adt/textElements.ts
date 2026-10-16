@@ -10,6 +10,14 @@ import { selectTransport } from "./AdtTransports"
 
 export type { TextElement, TextElementsResult, TextElementCategory }
 
+const VALID_HEADINGS = new Set([
+  "LISTHEADER",
+  "COLUMNHEADER_1",
+  "COLUMNHEADER_2",
+  "COLUMNHEADER_3",
+  "COLUMNHEADER_4"
+])
+
 export interface LockResult {
   lockHandle: string
   corrUserId?: string
@@ -227,6 +235,27 @@ function validateObjectName(objectName: string): void {
 }
 
 /**
+ * Key and length rules that SAP enforces, checked before the object is locked.
+ */
+function validateSapRules(id: string, text: string, category: TextElementCategory): void {
+  if (category === "symbols" && (id.length !== 3 || /\s/.test(id))) {
+    throw new Error(`Symbol key "${id}" must be exactly 3 characters without blanks`)
+  }
+  if (category === "headings") {
+    if (!VALID_HEADINGS.has(id)) {
+      throw new Error(`Invalid heading key "${id}". Allowed: ${[...VALID_HEADINGS].join(", ")}`)
+    }
+    const limit = id === "LISTHEADER" ? 71 : 255
+    if (text.length > limit) {
+      throw new Error(`Heading "${id}" text exceeds maximum length of ${limit}`)
+    }
+  }
+  if (category === "selections" && text.length > 30) {
+    throw new Error(`Selection "${id}" text exceeds maximum length of 30`)
+  }
+}
+
+/**
  * Validate text elements array
  */
 function validateTextElements(
@@ -244,7 +273,8 @@ function validateTextElements(
       throw new Error("Each text element must have a valid id")
     }
 
-    if (!element.text || typeof element.text !== "string") {
+    // Blank text is allowed: existing blank elements must survive unrelated writes
+    if (typeof element.text !== "string") {
       throw new Error("Each text element must have valid text")
     }
 
@@ -254,6 +284,7 @@ function validateTextElements(
       throw new Error(`Duplicate text element ID: ${id}`)
     }
     usedIds.add(id)
+    validateSapRules(id, element.text, category)
 
     if (category === "symbols") {
       // Auto-calculate maxLength if not provided or invalid
