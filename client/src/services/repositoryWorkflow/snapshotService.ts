@@ -852,6 +852,9 @@ export function normalizeTextForComparison(text: string): string {
   return text
     .replace(/\r\n/g, "\n")
     .replace(/[ \t]+$/gm, "")
+    .split("\n")
+    .filter(line => line.trim().length > 0)
+    .join("\n")
     .replace(/\s+$/, "")
 }
 

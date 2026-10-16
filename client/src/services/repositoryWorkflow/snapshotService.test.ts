@@ -222,6 +222,14 @@ describe("WorkflowSnapshotService", () => {
     expect(normalizeTextForComparison("a\n")).toBe("a")
   })
 
+  it("ignores blank lines throughout text while preserving indentation and content", () => {
+    expect(normalizeTextForComparison("\r\n \t\r\na  \r\n\r\n \t\r\n  b c\t\r\n\r\n")).toBe(
+      "a\n  b c"
+    )
+    expect(normalizeTextForComparison("\n \t\r\n\n")).toBe("")
+    expect(normalizeTextForComparison("")).toBe("")
+  })
+
   it("uses a prepared URI before downloading an unresolved record", async () => {
     const store = new WorkflowStore({} as any)
     const workflow = await store.create({
