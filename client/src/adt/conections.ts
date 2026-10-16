@@ -19,6 +19,7 @@ import {
   getSsoCookies
 } from "../auth/browserSso"
 import { log } from "../lib"
+import { installUsageReferencesNamespacePatch } from "./usageReferenceNamespacePatch"
 export const ADTSCHEME = "adt"
 export const ADTURIPATTERN = /\/sap\/bc\/adt\//
 
@@ -167,6 +168,9 @@ async function create(connId: string) {
   }
 
   stopIfRemoved(client)
+  installUsageReferencesNamespacePatch(client)
+  installUsageReferencesNamespacePatch(client.statelessClone)
+
   // @ts-ignore
   const service = new AFsService(client)
   const newRoot = new Root(connId, service)
