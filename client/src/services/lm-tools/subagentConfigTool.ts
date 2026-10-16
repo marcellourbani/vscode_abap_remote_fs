@@ -122,7 +122,7 @@ class SubagentConfigTool implements vscode.LanguageModelTool<SubagentConfigInput
     const targets = agentIds?.length
       ? agentIds.join(", ")
       : action === "enable" || action === "disable"
-        ? "all 13 general agents"
+        ? `all ${GENERAL_AGENT_REGISTRY.length} general agents`
         : configurations?.length
           ? configurations.map(configuration => configuration.agentId).join(", ")
           : "the subagent registry"

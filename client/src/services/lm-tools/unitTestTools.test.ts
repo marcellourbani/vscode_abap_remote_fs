@@ -279,7 +279,7 @@ describe("RunUnitTestsTool", () => {
     ;(getSearchService as Mock).mockReturnValue(mockSearcher)
     ;(getOrCreateRoot as Mock).mockResolvedValue(mockRoot)
     mockAddResultsWithReturn.mockResolvedValue(makeTestResults())
-    mockActivate.mockResolvedValue(undefined)
+    mockActivate.mockResolvedValue({ ok: true })
   })
 
   describe("prepareInvocation", () => {
@@ -608,6 +608,36 @@ describe("RunUnitTestsTool", () => {
         )
 
         expect(result.parts[0].text).toContain("Failed to run unit tests")
+      })
+
+      it("activates an inactive object without dialogs before running tests", async () => {
+        setupInvokeToRunner({ version: "inactive" })
+
+        const result: any = await tool.invoke(
+          makeOptions({ objectName: "ZCL_TEST", connectionId: "dev100" }),
+          mockToken
+        )
+
+        expect(mockActivate).toHaveBeenCalledWith(expect.anything(), undefined, false)
+        expect(mockAddResultsWithReturn).toHaveBeenCalled()
+        expect(result.parts[0].text).toContain("Unit Test Results")
+      })
+
+      it("does not run tests when activation fails", async () => {
+        setupInvokeToRunner({ version: "inactive" })
+        mockActivate.mockResolvedValue({
+          ok: false,
+          summary: "Activation failed: 1 error in ZCL_TEST"
+        })
+
+        const result: any = await tool.invoke(
+          makeOptions({ objectName: "ZCL_TEST", connectionId: "dev100" }),
+          mockToken
+        )
+
+        expect(mockAddResultsWithReturn).not.toHaveBeenCalled()
+        expect(result.parts[0].text).toContain("Failed to run unit tests")
+        expect(result.parts[0].text).toContain("1 error in ZCL_TEST")
       })
     })
   })

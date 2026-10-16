@@ -12,9 +12,9 @@ AI Subagents are specialized AI assistants, each focused on one type of ABAP tas
 
 ## Available Subagents
 
-ABAP FS provides one unified subagent system with **22 packaged agents**:
+ABAP FS provides one unified subagent system with **23 packaged agents**:
 
-- **13 general ABAP agents**, individually configurable and individually enabled.
+- **14 general ABAP agents**, individually configurable and individually enabled.
 - **9 SAP testing agents**, available together when the SAP testing folder is ready.
 
 The prompts are packaged with the extension under `client/media/agents`. ABAP FS does not create, rename, disable, or delete `.github/agents` files in your workspace.
@@ -29,11 +29,17 @@ The prompts are packaged with the extension under `client/media/agents`. ABAP FS
 | `abap-debugger` | Runtime debugging — breakpoints, stepping | 2 (Mid-tier) |
 | `abap-troubleshooter` | Analyze dumps, traces, performance issues | 2 (Mid-tier) |
 | `abap-data-analyst` | Query SAP tables, analyze data patterns | 2 (Mid-tier) |
+| `abap-repository-assisted-apply` | Review, apply, verify, and activate one user-selected repository-workflow object | 2 (Mid-tier) |
 | `abap-discoverer` | Find ABAP objects by name/pattern | 1 (Cheap/Fast) |
 | `abap-reader` | Read and extract info from source code | 1 (Cheap/Fast) |
 | `abap-creator` | Create new ABAP objects (shells) | 1 (Cheap/Fast) |
 | `abap-visualizer` | Create diagrams from code | 1 (Cheap/Fast) |
 | `abap-documenter` | Generate technical documentation | 1 (Cheap/Fast) |
+
+`abap-repository-assisted-apply` is deliberately one-object and non-interactive. The parent agent
+must pass one workflow ID, one saved object key, and the user's exact transport direction. The
+worker cannot choose objects or transports, edit source, run the user-only bulk transport check,
+process a batch, or retry a failure.
 
 ## How to Use Subagents
 
@@ -71,7 +77,7 @@ Use the exact model names returned by `list_models`. The tier guidance is:
 | Tier | Agents | Example models |
 |------|--------|---------------|
 | 1 — Cheap/Fast | discoverer, reader, creator, visualizer, documenter | Claude Haiku 4.5, Gemini 3 Flash |
-| 2 — Mid-tier | usage-analyzer, quality-checker, historian, debugger, troubleshooter, data-analyst | GPT-4o, Claude Sonnet 4 |
+| 2 — Mid-tier | usage-analyzer, quality-checker, historian, debugger, troubleshooter, data-analyst, repository-assisted-apply | GPT-4o, Claude Sonnet 4 |
 | 3 — Premium | orchestrator, code-reviewer | Claude Sonnet/Opus 4.6, GPT-5.4 |
 
 **Avoid assigning premium models to Tier 1 agents** — it eliminates the cost benefit without improving results for simple tasks.
@@ -84,7 +90,7 @@ Ask Copilot:
 Enable subagents
 ```
 
-General agents are enabled individually. You can pass selected `agentIds`, or omit them to enable all 13. Every agent being enabled must have an available model.
+General agents are enabled individually. You can pass selected `agentIds`, or omit them to enable all 14. Every agent being enabled must have an available model.
 
 ### Step 3 — Use the enabled agents
 
@@ -121,7 +127,7 @@ Agent prompts, tool assignments, tiers, and descriptions are packaged and owned 
 ## Troubleshooting
 
 ### "Cannot enable subagents - missing models"
-Every general agent in the requested `agentIds` must have an available model. Enabling all 13 requires all 13 general models. Testing agents are a separate all-or-nothing group when the testing folder is ready.
+Every general agent in the requested `agentIds` must have an available model. Enabling all 14 requires all 14 general models. Testing agents are a separate all-or-nothing group when the testing folder is ready.
 
 ### Agent models are not taking effect
 Run `get_status` to confirm the user-level assignment and active state. Model changes take effect without reload. After an extension update, wait for startup reconciliation to reapply the saved assignments.

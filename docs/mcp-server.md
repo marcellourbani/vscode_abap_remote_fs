@@ -121,7 +121,7 @@ All 40 ABAP FS tools are exposed, including:
 | `abapfs_run_sql_query`        | Run SQL queries against SAP tables |
 | `abapfs_workbook_cell_settings` | Read or set SAP Data Workbook cell names, systems and row limits |
 | `abapfs_manage_transports` | Read transport data                |
-| `abapfs_activate_object`             | Activate ABAP objects              |
+| `abapfs_activate_object`             | List and batch-activate inactive ABAP objects |
 | `replace_string_in_abap_object` | Edit ABAP source code (find & replace) |
 | `get_abap_diagnostics`      | Get syntax errors/warnings for a file  |
 
@@ -131,8 +131,14 @@ MCP clients can now edit ABAP source code directly. The workflow:
 
 1. **Get the file URI** — call `abapfs_get_workspace_uri` with object name/type/connection
 2. **Read current code** — call `abapfs_get_object_source` or `abapfs_search_object_source`
-3. **Edit** — call `replace_string_in_abap_object` with the URI, old text, and new text
-4. **Verify** — call `get_abap_diagnostics` with the same URI to check for syntax errors
+3. **Check transport** — call `abapfs_get_object_transport_status` for the exact object. Never
+   invent a request or description; use only a user-supplied or explicitly approved existing/new
+   choice.
+4. **Edit** — call `replace_string_in_abap_object` with the URI, old text, new text, and optional
+   approved `transportChoice`. The tool saves through the normal provider and verifies the
+   resulting inactive SAP source.
+5. **Verify** — read `version: "inactive"` when inspecting pending source, then call
+   `get_abap_diagnostics` with the same URI to check for syntax errors.
 
 Edits are immediately synced to SAP (ABAP FS handles locking, saving, and unlocking automatically). There is no keep/undo UI — changes are applied directly.
 

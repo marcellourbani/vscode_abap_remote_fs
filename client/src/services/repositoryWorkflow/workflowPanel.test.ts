@@ -129,13 +129,19 @@ describe("repository workflow packaged assets", () => {
     expect(script).toContain("files.autoSave")
     expect(script).toContain("chat.saveBeforeSend")
     expect(script).toContain("Stage in target editor")
+    expect(script).toContain("showAssistedApplyHistory")
+    expect(script).toContain("Execution history:")
+    expect(script).toContain("Apply attempts")
     expect(script).not.toContain("executeAssistedApply")
     expect(script).not.toContain("bulkApplyTargets")
     expect(script).toContain("Resume discovery")
     expect(script).toContain("Resume source comparison")
     expect(script).toContain("Verifying current state before resuming")
+    expect(script).toContain("Resolving source and target objects before download")
     expect(script).toContain("Downloading source and target snapshots")
     expect(script).toContain("Comparing downloaded source snapshots")
+    expect(script).toContain("Getting object structures for formatted comparison")
+    expect(script).toContain("Formatting source and target snapshots")
     expect(script).toContain("Preparing source comparison…")
     expect(script).toContain("clearSourceResultViews()")
     expect(script).toContain("Closing this panel pauses the active workflow")
@@ -156,12 +162,44 @@ describe("repository workflow packaged assets", () => {
     expect(script).toContain('row.status === "both"')
     expect(script).toContain("keys: [...(sourceSelections[workflow.workflowId] || [])]")
     expect(script).toContain("Import selection")
+    expect(script).toContain("Enable Copilot-assisted apply")
+    expect(script).toContain("Save selection")
+    expect(script).toContain("objects have been selected for Copilot-assisted apply")
+    expect(script).toContain('textColumn("Status", "copilotStatus"')
+    expect(script).toContain('textColumn("Copilot decision", "copilotDecision"')
+    expect(script).toContain('textColumn("Copilot decision reason", "copilotDecisionReason"')
+    expect(script).toContain('textColumn("Transport status", "transportCheckStatusLabel"')
+    expect(script).toContain('textColumn("Transport request", "transportRequest"')
+    expect(script).toContain('row.transportCheckStatus === "no-transport"')
+    expect(script).toContain("Check selected objects")
+    expect(script).toContain("Concurrent checks")
+    expect(script).toContain('action-group-label">Plan')
+    expect(script).toContain('action-group-label">Transport')
+    expect(script).toContain('action-group-label">Selection')
+    expect(script).toContain("Deselect filtered")
+    expect(script).toContain('send("determineTransportRequests"')
+    expect(script).toContain('"needs-human"')
+    expect(script).toContain('label: "Pending"')
+    expect(script).toContain('label: "Done"')
+    expect(script).toContain("without losing the saved Copilot selection or completion status")
+    expect(script).toContain('send("importCopilotAssistedApplySelection")')
+    expect(script).toContain('send("saveCopilotAssistedApplySelection"')
+    expect(script).toContain(
+      'createWorkflowTable("assistedApplyPlan", rows, columns, { index: "key" })'
+    )
+    expect(script).toContain("Export assisted-apply table")
     expect(script).toContain("Apply changed selection and resume")
     expect(script).toContain("Retry incomplete objects")
     expect(script).toContain('reviewable("sourceComparison")')
     expect(script).toContain('send("importSourceSelection")')
     expect(script).toContain("state.previews.sourceSelection?.keys")
     expect(panelSource).toContain("Read and follow the repository-workflow skill first.")
+    expect(panelSource).toContain("Enable Copilot-assisted apply for this workflow?")
+    expect(panelSource).toContain(
+      "Copilot can lock and save reviewed raw source into the target system with your transport choice"
+    )
+    expect(panelSource).not.toContain("it does not write to SAP yet")
+    expect(panelSource).toContain("importAssistedApplySelection")
     expect(panelSource).toContain("artifactRefreshDepth")
     expect(panelSource).toContain("sendWorkflowState")
     expect(panelSource).not.toContain("onDidChangeViewState")
@@ -241,6 +279,10 @@ describe("repository workflow packaged assets", () => {
             linesAdded: 1,
             linesRemoved: 2,
             linesChanged: 3,
+            formattedChanged: ["main"],
+            formattedLinesAdded: 0,
+            formattedLinesRemoved: 0,
+            formattedLinesChanged: 1,
             error: "Target snapshot failed"
           }
       })
@@ -251,10 +293,12 @@ describe("repository workflow packaged assets", () => {
     expect(rows).toHaveLength(600)
     expect(rows[599]).toMatchObject({
       key: "R3TR:PROG:Z599",
-      filesChanged: 3,
-      linesAdded: 1,
-      linesRemoved: 2,
-      linesChanged: 3,
+      rawFilesChanged: 3,
+      rawLinesAdded: 1,
+      rawLinesRemoved: 2,
+      rawLinesChanged: 3,
+      formattedFilesChanged: 1,
+      formattedLinesChanged: 1,
       error: "Target snapshot failed"
     })
   })

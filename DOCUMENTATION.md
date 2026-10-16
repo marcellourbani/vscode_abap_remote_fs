@@ -310,7 +310,7 @@ All 40 ABAP FS tools are exposed, including:
 | `abapfs_run_sql_query`        | Run SQL queries against SAP tables |
 | `abapfs_workbook_cell_settings` | Read or set SAP Data Workbook cell names, systems and row limits |
 | `abapfs_manage_transports` | Read transport data                |
-| `abapfs_activate_object`             | Activate ABAP objects              |
+| `abapfs_activate_object`             | List and batch-activate inactive ABAP objects |
 | `replace_string_in_abap_object` | Edit ABAP source code (find & replace) |
 | `get_abap_diagnostics`      | Get syntax errors/warnings for a file  |
 
@@ -320,8 +320,14 @@ MCP clients can now edit ABAP source code directly. The workflow:
 
 1. **Get the file URI** — call `abapfs_get_workspace_uri` with object name/type/connection
 2. **Read current code** — call `abapfs_get_object_source` or `abapfs_search_object_source`
-3. **Edit** — call `replace_string_in_abap_object` with the URI, old text, and new text
-4. **Verify** — call `get_abap_diagnostics` with the same URI to check for syntax errors
+3. **Check transport** — call `abapfs_get_object_transport_status` for the exact object. Never
+   invent a request or description; use only a user-supplied or explicitly approved existing/new
+   choice.
+4. **Edit** — call `replace_string_in_abap_object` with the URI, old text, new text, and optional
+   approved `transportChoice`. The tool saves through the normal provider and verifies the
+   resulting inactive SAP source.
+5. **Verify** — read `version: "inactive"` when inspecting pending source, then call
+   `get_abap_diagnostics` with the same URI to check for syntax errors.
 
 Edits are immediately synced to SAP (ABAP FS handles locking, saving, and unlocking automatically). There is no keep/undo UI — changes are applied directly.
 
@@ -385,10 +391,10 @@ When you type a question, Copilot picks the appropriate tool behind the scenes:
 ### Search & Navigation
 
 1. **abapfs_search_objects** — Search for objects by name pattern using wildcards (e.g. `Z*PRICING*`, `BAPI_USER*`)
-2. **abapfs_get_object_source** — Read source code from any ABAP object. Use `methodName` to extract a single method (e.g. "Show me the FACTORY method from CL_SALV_TABLE")
+2. **abapfs_get_object_source** — Read active or inactive source code from any ABAP object. Use `methodName` to extract a single method (e.g. "Show me the FACTORY method from CL_SALV_TABLE")
 3. **abapfs_search_object_source** — Search for text within source code; supports regex and can list all methods in a class
 4. **abapfs_get_object_info** — Get metadata about an object (type, line count, cache status)
-5. **abapfs_batch_get_lines** — Read source code from multiple objects in one call
+5. **abapfs_batch_get_lines** — Read active or inactive source code from multiple objects in one call
 6. **abapfs_get_object_by_uri** — Access an object directly using its ADT URI path
 7. **abapfs_find_usages** — Find all places where an object, method, or symbol is referenced
 8. **abapfs_get_connected_systems** — List the SAP system connection IDs currently active in VS Code
@@ -399,7 +405,7 @@ When you type a question, Copilot picks the appropriate tool behind the scenes:
 10. **abapfs_get_object_url** — Generate a SAP GUI WebGUI URL for an object (useful for browser automation)
 11. **abapfs_get_workspace_uri** — Get the VS Code `adt://` URI for an object (needed before editing it)
 12. **abapfs_open_object** — Open an object in the VS Code editor
-13. **abapfs_activate_object** — Activate ABAP objects after editing (similar to pressing the Activate button in SE80)
+13. **abapfs_activate_object** — List inactive objects with backend activation URLs and resolvable ABAP FS workspace URIs, activate a selected URL batch, then verify that the objects are no longer inactive
 
 ### Code Quality & Testing
 
@@ -411,59 +417,63 @@ When you type a question, Copilot picks the appropriate tool behind the scenes:
 ### Transport & Text
 
 18. **abapfs_manage_transports** — Get transport details, list user transports, compare transports. Falls back to direct SQL on older systems.
-19. **abapfs_manage_text_elements** — Read, create, or update text elements in programs, classes, or function groups. READ works on all systems; CREATE/UPDATE requires a newer system.
+19. **abapfs_get_object_transport_status** — Read the current transport-lock status for exactly one ABAP object. Returns locked, not locked, or local details; it is read-only and does not accept bulk input.
+19a. **abapfs_set_transport_for_next_object_save** — Arm a short-lived, user-approved transport for the next save of one exact `adt://` resource. The choice is revalidated at the write boundary; it never silently chooses another request.
+20. **abapfs_manage_text_elements** — Read, create, or update text elements in programs, classes, or function groups. READ works on all systems; CREATE/UPDATE requires a newer system.
 
 ### Data & SQL
 
-20. **abapfs_run_sql_query** — Run ABAP SQL queries and display results in an interactive table view
-21. **abapfs_get_sql_syntax** — Get ABAP SQL syntax rules (Copilot calls this before writing queries to avoid syntax errors)
-22. **abapfs_workbook_cell_settings** — Read or set the cell names, system markers and row limits of an [SAP Data Workbook](#sap-data-workbooks-sapwb) (`.sapwb`); notebook editing tools cannot set them
+21. **abapfs_run_sql_query** — Run ABAP SQL queries and display results in an interactive table view
+22. **abapfs_get_sql_syntax** — Get ABAP SQL syntax rules (Copilot calls this before writing queries to avoid syntax errors)
+23. **abapfs_workbook_cell_settings** — Read or set the cell names, system markers and row limits of an [SAP Data Workbook](#sap-data-workbooks-sapwb) (`.sapwb`); notebook editing tools cannot set them
 
 ### Diagrams
 
-23. **abapfs_create_mermaid_diagram** — Generate and display flowcharts, sequence diagrams, ER diagrams, and more
-24. **abapfs_validate_mermaid_syntax** — Check Mermaid diagram code for syntax errors
-25. **abapfs_get_mermaid_documentation** — Retrieve Mermaid syntax reference for a specific diagram type
-26. **abapfs_detect_mermaid_diagram_type** — Auto-detect the type of a Mermaid diagram from its code
+24. **abapfs_create_mermaid_diagram** — Generate and display flowcharts, sequence diagrams, ER diagrams, and more
+25. **abapfs_validate_mermaid_syntax** — Check Mermaid diagram code for syntax errors
+26. **abapfs_get_mermaid_documentation** — Retrieve Mermaid syntax reference for a specific diagram type
+27. **abapfs_detect_mermaid_diagram_type** — Auto-detect the type of a Mermaid diagram from its code
 
 ### Runtime Analysis
 
-27. **abapfs_analyze_dumps** — List and analyze ST22 runtime errors
-28. **abapfs_analyze_traces** — Analyze performance traces; detects bottlenecks automatically
-29. **abapfs_get_version_history** — View version history, retrieve source code at a past version, or compare two versions of an object
+28. **abapfs_analyze_dumps** — List and analyze ST22 runtime errors
+29. **abapfs_analyze_traces** — Analyze performance traces; detects bottlenecks automatically
+30. **abapfs_get_version_history** — View version history, retrieve source code at a past version, or compare two versions of an object
 
 ### Debugging
 
-30. **abapfs_manage_debug_session** — Start or stop an ABAP debugging session
-31. **abapfs_manage_breakpoints** — Set or remove breakpoints (supports conditions)
-32. **abapfs_step_debugger** — Step over, step into, step return, or continue execution
-33. **abapfs_inspect_variable** — Inspect variable values and internal table contents during a debug session
-34. **abapfs_get_debug_stack** — View the current call stack
-35. **abapfs_get_debug_status** — Check whether a debug session is active
+31. **abapfs_manage_debug_session** — Start or stop an ABAP debugging session
+32. **abapfs_manage_breakpoints** — Set or remove breakpoints (supports conditions)
+33. **abapfs_step_debugger** — Step over, step into, step return, or continue execution
+34. **abapfs_inspect_variable** — Inspect variable values and internal table contents during a debug session
+35. **abapfs_get_debug_stack** — View the current call stack
+36. **abapfs_get_debug_status** — Check whether a debug session is active
 
 ### System & Extension
 
-36. **abapfs_get_sap_system_info** — Get SAP system details: client, release, system type (S/4HANA vs ECC), timezone. Results are cached for 24 hours. Use the **Refresh SAP System Info Cache** command to clear the cache.
-37. **abapfs_search_documentation** — Search the ABAP FS extension documentation and settings reference
-38. **abapfs_export_adt_discovery** — Export the full ADT discovery tree from a connected SAP system to markdown files for API investigation
-39. **abapfs_manage_subagents** — Configure AI subagents that delegate tasks to cheaper/faster models to reduce API costs
-40. **abapfs_manage_heartbeat** — Control the background heartbeat monitoring service (add monitoring tasks, set reminders, check status)
+37. **abapfs_get_sap_system_info** — Get SAP system details: client, release, system type (S/4HANA vs ECC), timezone. Results are cached for 24 hours. Use the **Refresh SAP System Info Cache** command to clear the cache.
+38. **abapfs_search_documentation** — Search the ABAP FS extension documentation and settings reference
+39. **abapfs_export_adt_discovery** — Export the full ADT discovery tree from a connected SAP system to markdown files for API investigation
+40. **abapfs_manage_subagents** — Configure AI subagents that delegate tasks to cheaper/faster models to reduce API costs
+41. **abapfs_manage_heartbeat** — Control the background heartbeat monitoring service (add monitoring tasks, set reminders, check status)
 
 ### Repository Comparison
 
-41. **abapfs_list_repository_workflows** — List persistent repository comparison workflows and their current status
-42. **abapfs_get_repository_workflow** — Read selected workflow state, criteria, summaries, or a filtered artifact page
-43. **abapfs_create_repository_workflow** — Create a source-to-target comparison between two connected systems
-44. **abapfs_update_repository_workflow_criteria** — Update discovery scope and invalidate earlier derived results
-45. **abapfs_run_repository_workflow_step** — Run discovery, rebuild inventory comparison, or compare selected source
-46. **abapfs_open_repository_workflow** — Open or focus the Repository Comparison Workflow webview
-47. **abapfs_prepare_repository_assisted_apply** — Prepare a non-mutating, safety-reviewed assisted-apply plan
+42. **abapfs_list_repository_workflows** — List persistent repository comparison workflows and their current status
+43. **abapfs_get_repository_workflow** — Read selected workflow state, criteria, summaries, a filtered artifact page, or a bounded per-object raw/formatted diff
+44. **abapfs_create_repository_workflow** — Create a source-to-target comparison between two connected systems
+45. **abapfs_update_repository_workflow_criteria** — Update discovery scope and invalidate earlier derived results
+46. **abapfs_run_repository_workflow_step** — Run discovery, rebuild inventory comparison, or compare selected source
+47. **abapfs_open_repository_workflow** — Open or focus the Repository Comparison Workflow webview
+48. **abapfs_prepare_repository_assisted_apply** — Prepare a non-mutating, safety-reviewed assisted-apply plan
+48a. **abapfs_apply_repository_workflow_object** — Stage and save every applicable changed text resource for one eligible object from the workflow's user-saved Copilot selection, using an explicit user-directed transport choice and inactive-source verification. It persists the complete attempt and returns its ID.
+48b. **abapfs_record_repository_workflow_object_activation** — Persist verified activation success or failure for one apply attempt and its exact object URL set. Success marks the selected object done.
 
 See [Repository Comparison](#repository-comparison) for the complete workflow and safety boundaries.
 
 ### Documentation
 
-48. **abapfs_build_test_documentation** — Generate a Word document from Playwright test screenshots, organized by scenario
+49. **abapfs_build_test_documentation** — Generate a Word document from Playwright test screenshots, organized by scenario
 
 # Decision Models: Jev and Laya
 
@@ -729,9 +739,9 @@ AI Subagents are specialized AI assistants, each focused on one type of ABAP tas
 
 ## Available Subagents
 
-ABAP FS provides one unified subagent system with **22 packaged agents**:
+ABAP FS provides one unified subagent system with **23 packaged agents**:
 
-- **13 general ABAP agents**, individually configurable and individually enabled.
+- **14 general ABAP agents**, individually configurable and individually enabled.
 - **9 SAP testing agents**, available together when the SAP testing folder is ready.
 
 The prompts are packaged with the extension under `client/media/agents`. ABAP FS does not create, rename, disable, or delete `.github/agents` files in your workspace.
@@ -746,11 +756,17 @@ The prompts are packaged with the extension under `client/media/agents`. ABAP FS
 | `abap-debugger` | Runtime debugging — breakpoints, stepping | 2 (Mid-tier) |
 | `abap-troubleshooter` | Analyze dumps, traces, performance issues | 2 (Mid-tier) |
 | `abap-data-analyst` | Query SAP tables, analyze data patterns | 2 (Mid-tier) |
+| `abap-repository-assisted-apply` | Review, apply, verify, and activate one user-selected repository-workflow object | 2 (Mid-tier) |
 | `abap-discoverer` | Find ABAP objects by name/pattern | 1 (Cheap/Fast) |
 | `abap-reader` | Read and extract info from source code | 1 (Cheap/Fast) |
 | `abap-creator` | Create new ABAP objects (shells) | 1 (Cheap/Fast) |
 | `abap-visualizer` | Create diagrams from code | 1 (Cheap/Fast) |
 | `abap-documenter` | Generate technical documentation | 1 (Cheap/Fast) |
+
+`abap-repository-assisted-apply` is deliberately one-object and non-interactive. The parent agent
+must pass one workflow ID, one saved object key, and the user's exact transport direction. The
+worker cannot choose objects or transports, edit source, run the user-only bulk transport check,
+process a batch, or retry a failure.
 
 ## How to Use Subagents
 
@@ -788,7 +804,7 @@ Use the exact model names returned by `list_models`. The tier guidance is:
 | Tier | Agents | Example models |
 |------|--------|---------------|
 | 1 — Cheap/Fast | discoverer, reader, creator, visualizer, documenter | Claude Haiku 4.5, Gemini 3 Flash |
-| 2 — Mid-tier | usage-analyzer, quality-checker, historian, debugger, troubleshooter, data-analyst | GPT-4o, Claude Sonnet 4 |
+| 2 — Mid-tier | usage-analyzer, quality-checker, historian, debugger, troubleshooter, data-analyst, repository-assisted-apply | GPT-4o, Claude Sonnet 4 |
 | 3 — Premium | orchestrator, code-reviewer | Claude Sonnet/Opus 4.6, GPT-5.4 |
 
 **Avoid assigning premium models to Tier 1 agents** — it eliminates the cost benefit without improving results for simple tasks.
@@ -801,7 +817,7 @@ Ask Copilot:
 Enable subagents
 ```
 
-General agents are enabled individually. You can pass selected `agentIds`, or omit them to enable all 13. Every agent being enabled must have an available model.
+General agents are enabled individually. You can pass selected `agentIds`, or omit them to enable all 14. Every agent being enabled must have an available model.
 
 ### Step 3 — Use the enabled agents
 
@@ -838,7 +854,7 @@ Agent prompts, tool assignments, tiers, and descriptions are packaged and owned 
 ## Troubleshooting
 
 ### "Cannot enable subagents - missing models"
-Every general agent in the requested `agentIds` must have an available model. Enabling all 13 requires all 13 general models. Testing agents are a separate all-or-nothing group when the testing folder is ready.
+Every general agent in the requested `agentIds` must have an available model. Enabling all 14 requires all 14 general models. Testing agents are a separate all-or-nothing group when the testing folder is ready.
 
 ### Agent models are not taking effect
 Run `get_status` to confirm the user-level assignment and active state. Model changes take effect without reload. After an extension update, wait for startup reconciliation to reapply the saved assignments.
@@ -1681,7 +1697,9 @@ The workflow has three stages:
 
 1. **Scope and discovery** — query both systems for matching TADIR objects and compare the saved inventories locally.
 2. **Compare systems** — select objects present on both systems, download source snapshots, and compare them locally.
-3. **Assisted apply** — prepare a safety-checked plan and optionally stage one reviewed source file in the target editor.
+3. **Assisted apply** — prepare a safety-checked plan, then either stage one chosen resource
+   manually or let Copilot save all changed text resources for one explicitly selected object with
+   user-directed transport and persisted verification history.
 
 Discovery, inventory comparison, source comparison, and plan preparation do not modify SAP objects.
 
@@ -1833,9 +1851,13 @@ Choose **Compare selected source code** to save the selection, download both sid
 | `source-missing` / `target-missing` | An expected snapshot manifest is absent |
 | `error` | The comparison could not be completed |
 
-The table also shows changed-file and line counts. These are textual metrics: reordered ABAP code can appear as removed and added lines even when its behaviour is similar.
+Each downloaded object keeps an exact raw snapshot and a comparison-only snapshot formatted with
+one fixed ABAPLint configuration. The table shows source/target line totals, changed-file counts,
+and added, removed, and changed lines for both representations.
 
-Use **Open diff** for a standard VS Code side-by-side comparison. If an object contains several changed text resources, you are prompted to choose one.
+Use **Raw diff** to review the exact downloaded SAP source or **Formatted diff** to suppress case
+and layout differences. If an object contains several changed text resources, you are prompted to
+choose one. Formatting failures leave the raw snapshot available and disable the formatted diff.
 
 ## 8. Pause, resume, and rerun
 
@@ -1966,12 +1988,13 @@ Optional concurrency values:
 
 ## Read workflow data efficiently
 
-`abapfs_get_repository_workflow` supports four response sections:
+`abapfs_get_repository_workflow` supports five response sections:
 
 - `state` — complete workflow state or one requested step;
 - `criteria` — persisted scope and concurrency;
 - `summaries` — compact counts for completed stages;
-- `artifact` — one bounded result page.
+- `artifact` — one bounded result page;
+- `diff` — a bounded raw or ABAPLint-formatted diff for one repository key.
 
 If no section is requested, the tool returns state only. Ask for the smallest useful response:
 
@@ -1993,6 +2016,9 @@ Available artifacts:
 
 Artifact reads accept `offset` and `limit`, with a maximum page size of 200. They can be filtered by status, object name, object type, and package. Object-name filtering supports `*` and `?`.
 
+Diff reads require `objectKey`. Set `representation` to `raw` or `formatted`, optionally select one
+changed `filePath`, and bound the response with `maxFiles` and `maxChars`. Formatted is the default.
+
 Examples:
 
 ```text
@@ -2003,15 +2029,22 @@ Show the first 50 source-only classes from the existence comparison.
 Show source differences for objects matching ZCL_EXAMPLE*.
 ```
 
+```text
+Read the formatted diff for R3TR:CLAS:ZCL_EXAMPLE, limited to three files.
+```
+
 ## Assisted apply
 
 Ask Copilot to prepare a plan only after source comparison:
 
 ```text
-Prepare an assisted-apply plan for the demo comparison.
+Prepare an assisted-apply plan for the demo comparison using formatted differences.
 ```
 
-The tool returns ready and blocked counts and opens the webview for review. It does not stage or change SAP code.
+The tool accepts `comparisonBasis: raw | formatted`; formatted is the default. The basis determines
+which objects and resource paths are relevant, while staging and stale checks always use raw
+snapshots. The tool returns ready and blocked counts and opens the webview for review. It does not
+stage or change SAP code.
 
 Only you can:
 
@@ -2056,18 +2089,22 @@ Criteria changes and expensive stages require explicit confirmation. Discovery, 
 
 # Assisted Apply
 
-Assisted apply helps you review a source difference and place one approved source file in the target editor. It does not save, select a transport, activate, create, or delete SAP objects.
+Assisted apply has two modes. Manual mode places one explicitly chosen source resource in a dirty
+target editor and never saves it. Copilot-assisted mode can save every applicable changed text
+resource for one user-selected table object with an explicitly user-directed transport. It verifies
+inactive SAP source and records the complete attempt. Activation remains separate.
 
 ## Prepare the plan
 
-After source comparison completes, choose **Prepare assisted apply**.
+After source comparison completes, choose whether relevance should use **Formatted differences**
+(the default) or **Raw differences**, then choose **Prepare assisted apply**.
 
 Plan preparation reads the persisted comparison and snapshot manifests. It does not contact SAP to change anything.
 
 Each item receives one of these outcomes:
 
-- **Ready** — source differs from target and all plan checks passed.
-- **No action** — source and target are already identical.
+- **Ready** — source differs under the selected basis and all plan checks passed.
+- **No action** — source and target are equal under the selected basis.
 - **Blocked** — one or more safety checks failed.
 
 An item is blocked when, for example:
@@ -2076,7 +2113,10 @@ An item is blocked when, for example:
 - source and target have different resource-file layouts;
 - the object is generated or classified as standard;
 - source and target object types do not match;
-- the comparison status is not `different`.
+- formatted comparison was selected but is unavailable;
+- the raw snapshot status is incomplete or failed.
+
+The basis determines relevance only. Staging and stale checks always use the exact raw snapshots.
 
 Source-only objects are not supported by this workflow. Assisted apply does not create missing target objects.
 
@@ -2089,13 +2129,13 @@ Staging is blocked unless:
 
 The webview explains which setting is unsafe and provides a link to open it. These checks prevent an editor operation or chat message from silently saving staged ABAP content.
 
-## Review one item
+## Manual review of one item
 
 For a ready item:
 
-1. **Review Live source** — open the current source-system resource.
-2. **Review Live target** — open the current target-system resource.
-3. **Review Diff** — compare the saved source snapshot with the current target resource.
+1. **Live source** — open the current source-system resource.
+2. **Live target** — open the current target-system resource.
+3. **Raw diff** or **Formatted diff** — compare the persisted local snapshots.
 4. **Stage in target editor** — replace the target editor's in-memory text with the reviewed source snapshot.
 5. Review the dirty editor.
 6. Save manually and choose or confirm the appropriate transport.
@@ -2127,7 +2167,30 @@ The workflow deliberately leaves these decisions to you:
 - when and how related objects should be activated;
 - how to resolve syntax, dependency, or activation errors.
 
-Copilot can prepare and explain a plan, but it cannot click **Stage**, save the target editor, choose a transport, or claim that sync succeeded.
+In manual mode, Copilot cannot click **Stage**, save the target editor, choose a transport, or
+claim that synchronization succeeded.
+
+## Copilot-assisted execution
+
+The user explicitly enables Copilot-assisted mode, saves the exact eligible object selection, and
+retains ownership of the transport decision. For one selected object, Copilot:
+
+1. reviews a bounded diff and records `as-is`, `skip`, or `needs-human` with a reason;
+2. checks current target transport status and obtains the user's exact transport direction;
+3. invokes the singular repository apply tool;
+4. receives one persisted attempt ID and per-resource save/verification results;
+5. separately activates the exact related URL set;
+6. records activation success or failure against that attempt.
+
+The apply tool processes every applicable changed text resource belonging to that table row. A
+new request created for the first resource is reused as the existing request for later resources.
+It stops on the first unknown or failed resource and reports the object as partial when earlier
+resources succeeded.
+
+Each row shows attempt count, latest stage/status, actual apply transport, time, and error. Use
+**History** to inspect every persisted lifecycle event, including hashes, intent IDs, resource
+paths, transport details, verification, activation URLs, timestamps, and failures. Successful
+activation recording marks the object done; failures leave it pending.
 
 
 # Repository Comparison Technical Reference
@@ -2153,8 +2216,13 @@ discovery/
 comparison/
 sources/
 assisted-apply/
+history/
 exports/
 ```
+
+`history/assisted-apply-execution.jsonl` records every SAP write, verification, and activation
+attempt. Re-running discovery, comparison, or the assisted-apply plan clears the other derived
+folders but keeps this history; only deleting the workflow removes it.
 
 The folder contains repository metadata and downloaded source snapshots. Treat it as sensitive development data, secure it appropriately, and do not commit it to source control.
 
@@ -2164,7 +2232,9 @@ Workflow actions:
 - **Archive** moves the complete workflow folder under the configured root's `archive` folder.
 - **Delete** permanently removes the workflow and all local artifacts.
 
-Archive and delete are rejected while a workflow is running or still stopping. Closing the
+Archive, delete, and other workflow steps are rejected while a workflow is running, still
+stopping, or has a Copilot-assisted apply in progress. Concurrent applies for different objects
+share one run lock, which is released when the last one finishes. Closing the
 workflow panel requests a safe pause; the operation owns its lock until in-flight work reaches a
 cancellation checkpoint and persisted state is consistent.
 
@@ -2247,11 +2317,14 @@ after verifying reusable complete snapshots.
 Snapshot comparison checks:
 
 - raw aggregate hashes;
-- normalized aggregate hashes;
-- added, removed, and changed resource paths;
-- textual line additions, removals, and replacements.
+- ABAPLint-formatted aggregate hashes;
+- raw and formatted added, removed, and changed resource paths;
+- raw and formatted source/target line totals, additions, removals, and replacements.
 
-Normalization converts CRLF to LF and removes trailing spaces and tabs before calculating the normalized hash. Raw differences are still reported; normalization is additional information.
+Raw files are the exact downloaded snapshots and remain authoritative for assisted apply. Formatted
+files are local sidecars produced with one fixed ABAPLint configuration. They normalize ABAP case
+and layout for comparison without replacing the raw source. Non-ABAP resources are copied
+unchanged. A formatting failure is reported separately and does not remove the raw comparison.
 
 Line counts are textual and should not be treated as proof of semantic ABAP changes.
 
@@ -2291,14 +2364,16 @@ See [Repository Comparison with Copilot](#repository-comparison-with-copilot) fo
 | Tool | Purpose |
 |---|---|
 | `abapfs_list_repository_workflows` | List workflow IDs and compact status |
-| `abapfs_get_repository_workflow` | Read state, criteria, summaries, or one paged artifact |
+| `abapfs_get_repository_workflow` | Read state, criteria, summaries, one paged artifact, or one bounded raw/formatted object diff |
 | `abapfs_create_repository_workflow` | Create a workflow for two connected systems |
 | `abapfs_update_repository_workflow_criteria` | Update scope and invalidate derived results |
 | `abapfs_run_repository_workflow_step` | Run discovery, retry inventory comparison, or run combined source comparison |
 | `abapfs_open_repository_workflow` | Open or focus the webview |
 | `abapfs_prepare_repository_assisted_apply` | Prepare a non-mutating assisted-apply plan |
 
-Artifact reads are limited to 200 rows per request and can be filtered by status, object name, object type, and package. Object-name filtering supports `*` and `?`.
+Artifact reads are limited to 200 rows per request and can be filtered by status, object name,
+object type, and package. Object-name filtering supports `*` and `?`. Per-object diff reads are
+bounded to at most 10 files and 100,000 patch characters.
 
 Workflow-changing tools open or focus the webview so progress and results remain visible. Read-only inspection tools do not.
 
@@ -3550,7 +3625,7 @@ Copilot hands specific jobs to specialised subagents instead of doing everything
 Two reasons this matters to you: **large enumerations stay complete** (a subagent counting 200 branches doesn't get lazy near the end the way a main chat running low on context does), and **cost** — mechanical work runs on cheap models while only the reviewers use expensive ones.
 
 !!! note "One unified ABAP FS subagent system"
-    These nine testing agents share the unified registry with the [13 general ABAP agents](#ai-subagents-for-optimized-abap-development). They ship with the extension and use the same user-level model settings. Testing availability is controlled as one group by the valid SAP testing folder; you do not enable testing agents individually.
+    These nine testing agents share the unified registry with the [14 general ABAP agents](#ai-subagents-for-optimized-abap-development). They ship with the extension and use the same user-level model settings. Testing availability is controlled as one group by the valid SAP testing folder; you do not enable testing agents individually.
 
 ## The nine subagents
 

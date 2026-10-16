@@ -11,6 +11,7 @@ import {
   type RepositoryObjectRecord,
   type RepositoryWorkflow,
   repositoryObjectKey,
+  type SnapshotRepresentation,
   SOURCE_COMPARISON_EXCLUDED_OBJECT_TYPES,
   type SourceSelection,
   type WorkflowPauseReason,
@@ -19,8 +20,13 @@ import {
 } from "./types"
 import { WorkflowStore } from "./workflowStore"
 import { WorkflowSnapshotService } from "./snapshotService"
-import { WorkflowAssistedApplyService } from "./assistedApplyService"
+import {
+  type RepositoryObjectApplyResult,
+  WorkflowAssistedApplyService
+} from "./assistedApplyService"
+import { WorkflowTransportCheckService, type TransportCheckResult } from "./transportCheckService"
 import { assertWorkflowStepReady } from "./workflowUiModel"
+import type { ObjectSaveTransportChoice } from "../transportIntentService"
 
 const PROGRESS_PERSIST_INTERVAL_MS = 500
 
@@ -34,16 +40,26 @@ interface ActiveRun {
   pauseReason?: WorkflowPauseReason
 }
 
+interface ApplyLease {
+  ownerId: string
+  count: number
+  acquired: Promise<void>
+  released?: Promise<void>
+}
+
 export class RepositoryWorkflowEngine extends EventEmitter {
   private readonly discovery = new RepositoryDiscoveryService()
   private readonly snapshots: WorkflowSnapshotService
   private readonly assistedApply: WorkflowAssistedApplyService
+  private readonly transportCheck: WorkflowTransportCheckService
   private readonly running = new Map<string, ActiveRun>()
+  private readonly applyLeases = new Map<string, ApplyLease>()
 
   constructor(readonly store: WorkflowStore) {
     super()
     this.snapshots = new WorkflowSnapshotService(store)
     this.assistedApply = new WorkflowAssistedApplyService(store)
+    this.transportCheck = new WorkflowTransportCheckService(store)
   }
 
   async runDiscovery(workflowId: string): Promise<RepositoryWorkflow> {
@@ -327,9 +343,17 @@ export class RepositoryWorkflowEngine extends EventEmitter {
       let targetDone = 0
       let downloading = false
       let verificationComplete = false
+      let resolvingUris = false
+      const resolution = { source: [0, 0], target: [0, 0] }
       let lastProgressPersistedAt = 0
       const activity = () =>
-        resuming && !verificationComplete ? "verifying" : downloading ? "downloading" : "preparing"
+        resuming && !verificationComplete
+          ? "verifying"
+          : resolvingUris
+            ? "resolving object URIs"
+            : downloading
+              ? "downloading"
+              : "preparing"
       const persistProgress = async (force = false) => {
         const now = Date.now()
         if (!force && now - lastProgressPersistedAt < PROGRESS_PERSIST_INTERVAL_MS) return
@@ -337,8 +361,8 @@ export class RepositoryWorkflowEngine extends EventEmitter {
         await this.updateProgress(
           workflowId,
           "sourceDownload",
-          sourceDone + targetDone,
-          selection.keys.length * 2,
+          resolvingUris ? resolution.source[0] + resolution.target[0] : sourceDone + targetDone,
+          resolvingUris ? resolution.source[1] + resolution.target[1] : selection.keys.length * 2,
           activity()
         )
       }
@@ -374,6 +398,37 @@ export class RepositoryWorkflowEngine extends EventEmitter {
         return await this.pauseStep(workflowId, "sourceDownload", active)
       }
       verificationComplete = true
+      resolvingUris = sourceVerification.pending.length > 0 || targetVerification.pending.length > 0
+      if (resolvingUris) await persistProgress(true)
+      const [sourcePreparedUris, targetPreparedUris] = await Promise.all([
+        this.snapshots.preparePendingUris(
+          workflowId,
+          "source",
+          sourceVerification.pending,
+          criteria.sourceConcurrency,
+          active.controller.token,
+          async (completed, total) => {
+            resolution.source = [completed, total]
+            await persistProgress()
+          }
+        ),
+        this.snapshots.preparePendingUris(
+          workflowId,
+          "target",
+          targetVerification.pending,
+          criteria.targetConcurrency,
+          active.controller.token,
+          async (completed, total) => {
+            resolution.target = [completed, total]
+            await persistProgress()
+          }
+        )
+      ])
+      resolvingUris = false
+      if (active.controller.token.isCancellationRequested) {
+        await persistProgress(true)
+        return await this.pauseStep(workflowId, "sourceDownload", active)
+      }
       downloading = sourceVerification.pending.length > 0 || targetVerification.pending.length > 0
       if (downloading) await persistProgress(true)
       const [sourceResult, targetResult] = await Promise.all([
@@ -388,7 +443,8 @@ export class RepositoryWorkflowEngine extends EventEmitter {
           async completed => {
             sourceDone = completed
             await persistProgress()
-          }
+          },
+          sourcePreparedUris
         ),
         this.snapshots.downloadPending(
           workflowId,
@@ -401,7 +457,8 @@ export class RepositoryWorkflowEngine extends EventEmitter {
           async completed => {
             targetDone = completed
             await persistProgress()
-          }
+          },
+          targetPreparedUris
         )
       ])
       await persistProgress(true)
@@ -447,11 +504,31 @@ export class RepositoryWorkflowEngine extends EventEmitter {
         )
       ) as SourceSelection
       await this.updateProgress(workflowId, "sourceComparison", 0, selection.keys.length)
+      const criteria = await this.store.getCriteria(workflowId)
+      let lastPhase = ""
+      let lastProgressPersistedAt = 0
+      const phaseProgress = async (phase: string, completed: number, total: number) => {
+        const now = Date.now()
+        if (
+          phase === lastPhase &&
+          completed !== total &&
+          now - lastProgressPersistedAt < PROGRESS_PERSIST_INTERVAL_MS
+        )
+          return
+        lastPhase = phase
+        lastProgressPersistedAt = now
+        await this.updateProgress(workflowId, "sourceComparison", completed, total, phase)
+      }
       const results = await this.snapshots.compare(
         workflowId,
         selection.keys,
-        (completed, total) => this.updateProgress(workflowId, "sourceComparison", completed, total),
-        active.controller.token
+        (completed, total) => phaseProgress("comparing", completed, total),
+        active.controller.token,
+        {
+          sourceConcurrency: criteria?.sourceConcurrency,
+          targetConcurrency: criteria?.targetConcurrency,
+          onPhase: phaseProgress
+        }
       )
       if (active.controller.token.isCancellationRequested)
         return await this.pauseStep(workflowId, "sourceComparison", active)
@@ -502,13 +579,10 @@ export class RepositoryWorkflowEngine extends EventEmitter {
       const selected = await this.saveSourceSelection(workflowId, keys)
       this.assertStepComplete(selected, "sourceSelection")
     }
-    const afterSelection = await this.store.get(workflowId)
-    if (afterSelection.steps.sourceDownload.status !== "complete") {
-      const downloaded = await this.downloadSources(workflowId)
-      if (downloaded.steps.sourceDownload.status === "paused") return downloaded
-      if (!["complete", "partial"].includes(downloaded.steps.sourceDownload.status))
-        this.assertStepComplete(downloaded, "sourceDownload")
-    }
+    const downloaded = await this.downloadSources(workflowId)
+    if (downloaded.steps.sourceDownload.status === "paused") return downloaded
+    if (!["complete", "partial"].includes(downloaded.steps.sourceDownload.status))
+      this.assertStepComplete(downloaded, "sourceDownload")
     const compared = await this.compareSources(workflowId)
     if (!["complete", "partial"].includes(compared.steps.sourceComparison.status))
       this.assertStepComplete(compared, "sourceComparison")
@@ -520,12 +594,33 @@ export class RepositoryWorkflowEngine extends EventEmitter {
       throw new Error(workflow.steps[step].lastError || workflow.lastError || `${step} failed`)
   }
 
-  async prepareAssistedApply(workflowId: string, keys?: string[]) {
+  async prepareAssistedApply(
+    workflowId: string,
+    keys?: string[],
+    comparisonBasis: SnapshotRepresentation = "formatted"
+  ) {
     const active = this.beginRun(workflowId, "assistedApplyPlan")
     try {
       await this.requireRunnable(workflowId, "assistedApplyPlan", active)
       await this.setRunning(workflowId, "assistedApplyPlan", active)
-      const plan = await this.assistedApply.prepare(workflowId, keys, active.controller.token)
+      let lastProgressPersistedAt = 0
+      const plan = await this.assistedApply.prepare(
+        workflowId,
+        keys,
+        comparisonBasis,
+        active.controller.token,
+        async (completed, total) => {
+          const now = Date.now()
+          if (
+            completed !== 0 &&
+            completed !== total &&
+            now - lastProgressPersistedAt < PROGRESS_PERSIST_INTERVAL_MS
+          )
+            return
+          lastProgressPersistedAt = now
+          await this.updateProgress(workflowId, "assistedApplyPlan", completed, total)
+        }
+      )
       const completedAt = new Date()
       const updated = await this.store.update(workflowId, current => ({
         ...current,
@@ -538,7 +633,8 @@ export class RepositoryWorkflowEngine extends EventEmitter {
             completedAt: completedAt.toISOString(),
             elapsedMs: elapsedAt(current.steps.assistedApplyPlan, completedAt),
             pauseReason: undefined
-          }
+          },
+          transportCheck: { status: "not-started" }
         }
       }))
       await this.releaseActiveLock(workflowId, active)
@@ -568,12 +664,146 @@ export class RepositoryWorkflowEngine extends EventEmitter {
     await this.assistedApply.openTarget(workflowId, key)
   }
 
-  async openAssistedApplyDiff(workflowId: string, key: string): Promise<void> {
-    await this.assistedApply.openDiff(workflowId, key)
+  async openAssistedApplyDiff(
+    workflowId: string,
+    key: string,
+    representation: SnapshotRepresentation
+  ): Promise<void> {
+    await this.assistedApply.openDiff(workflowId, key, representation)
   }
 
   async stageAssistedApplySource(workflowId: string, key: string): Promise<void> {
     await this.assistedApply.stageInTargetEditor(workflowId, key)
+  }
+
+  async applyCopilotAssistedObject(
+    workflowId: string,
+    key: string,
+    transportChoice: ObjectSaveTransportChoice,
+    token: vscode.CancellationToken
+  ): Promise<RepositoryObjectApplyResult> {
+    const lease = await this.acquireApplyLease(workflowId)
+    try {
+      return await this.assistedApply.stageAndSaveForCopilot(
+        workflowId,
+        key,
+        transportChoice,
+        token
+      )
+    } finally {
+      await this.releaseApplyLease(workflowId, lease)
+    }
+  }
+
+  private async acquireApplyLease(workflowId: string): Promise<ApplyLease> {
+    if (this.running.has(workflowId)) throw new Error("This workflow is already running")
+    let lease = this.applyLeases.get(workflowId)
+    while (lease?.released) {
+      await lease.released.catch(() => undefined)
+      lease = this.applyLeases.get(workflowId)
+    }
+    if (lease) {
+      lease.count++
+      try {
+        await lease.acquired
+      } catch (error) {
+        lease.count--
+        throw error
+      }
+      return lease
+    }
+    const ownerId = `apply:${randomUUID()}`
+    const created: ApplyLease = {
+      ownerId,
+      count: 1,
+      acquired: this.store.acquireRunLock(workflowId, ownerId).then(() => undefined)
+    }
+    this.applyLeases.set(workflowId, created)
+    try {
+      await created.acquired
+    } catch (error) {
+      if (this.applyLeases.get(workflowId) === created) this.applyLeases.delete(workflowId)
+      throw error
+    }
+    return created
+  }
+
+  private async releaseApplyLease(workflowId: string, lease: ApplyLease): Promise<void> {
+    lease.count--
+    if (lease.count > 0) return
+    lease.released = this.store
+      .releaseRunLock(workflowId, lease.ownerId)
+      .then(() => undefined)
+      .finally(() => {
+        if (this.applyLeases.get(workflowId) === lease) this.applyLeases.delete(workflowId)
+      })
+    await lease.released.catch(() => undefined)
+  }
+
+  async determineTransportRequests(
+    workflowId: string,
+    keys: string[],
+    concurrency: number
+  ): Promise<TransportCheckResult | undefined> {
+    const active = this.beginRun(workflowId, "transportCheck")
+    try {
+      await this.requireRunnable(workflowId, "transportCheck", active)
+      await this.setRunning(workflowId, "transportCheck", active)
+      await this.updateProgress(workflowId, "transportCheck", 0, keys.length, "target")
+      const result = await this.transportCheck.determine(
+        workflowId,
+        keys,
+        concurrency,
+        active.controller.token,
+        (completed, total) =>
+          this.updateProgress(workflowId, "transportCheck", completed, total, "target")
+      )
+      if (active.controller.token.isCancellationRequested) {
+        await this.pauseStep(workflowId, "transportCheck", active)
+        return undefined
+      }
+      const completedAt = new Date()
+      const updated = await this.store.update(workflowId, current => ({
+        ...current,
+        currentStep: "transportCheck",
+        runState:
+          result.failed || current.steps.sourceComparison.status === "partial"
+            ? "partial"
+            : "complete",
+        steps: {
+          ...current.steps,
+          transportCheck: {
+            ...current.steps.transportCheck,
+            status: result.failed ? "partial" : "complete",
+            completed: result.completed,
+            total: result.total,
+            completedAt: completedAt.toISOString(),
+            elapsedMs: elapsedAt(current.steps.transportCheck, completedAt),
+            checkpoint: "target",
+            pauseReason: undefined,
+            lastError: result.failed
+              ? `${result.failed.toLocaleString()} transport check${result.failed === 1 ? "" : "s"} failed`
+              : undefined
+          }
+        }
+      }))
+      await this.releaseActiveLock(workflowId, active)
+      this.emit("changed", updated)
+      return result
+    } catch (error) {
+      if (active.controller.token.isCancellationRequested && active.lockAcquired) {
+        await this.pauseStep(workflowId, "transportCheck", active)
+        return undefined
+      }
+      if (active.lockAcquired) await this.failStep(workflowId, "transportCheck", error, active)
+      throw error
+    } finally {
+      try {
+        await this.releaseActiveLock(workflowId, active)
+      } finally {
+        this.endRun(workflowId, active)
+      }
+    }
   }
 
   private async requireRunnable(workflowId: string, step: WorkflowStepId, active: ActiveRun) {
@@ -743,7 +973,8 @@ export class RepositoryWorkflowEngine extends EventEmitter {
   }
 
   private beginRun(workflowId: string, step: WorkflowStepId): ActiveRun {
-    if (this.running.has(workflowId)) throw new Error("This workflow is already running")
+    if (this.running.has(workflowId) || this.applyLeases.has(workflowId))
+      throw new Error("This workflow is already running")
     let settle = () => {}
     const settled = new Promise<void>(resolve => {
       settle = resolve

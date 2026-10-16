@@ -48,6 +48,8 @@ describe("workflow UI model", () => {
     expect(commandSection("selectSources")).toBe("sourceComparison")
     expect(commandSection("importSourceSelection")).toBe("sourceComparison")
     expect(commandSection("stageAssistedSource")).toBe("assistedApply")
+    expect(commandSection("chooseAssistedApplyMode")).toBe("assistedApply")
+    expect(commandSection("saveCopilotAssistedApplySelection")).toBe("assistedApply")
   })
 
   it("provides a discoverable object type catalog", () => {

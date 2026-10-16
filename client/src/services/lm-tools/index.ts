@@ -59,6 +59,10 @@ import { registerHeartbeatTool, initializeHeartbeatService } from "../heartbeat"
 import { registerAdtDiscoveryTool } from "./adtDiscoveryTool"
 import { registerRelationAnalysisTool } from "./relationAnalysisTool"
 import { registerRepositoryWorkflowTools } from "./repositoryWorkflowTools"
+import { registerObjectTransportStatusTool } from "./objectTransportStatusTool"
+import { registerSetTransportForNextObjectSaveTool } from "./nextObjectSaveTransportTool"
+import { registerApplyRepositoryWorkflowObjectTool } from "./repositoryWorkflowApplyTool"
+import { registerRecordRepositoryWorkflowObjectActivationTool } from "./repositoryWorkflowActivationRecordTool"
 
 /**
  * Register all language model tools
@@ -176,6 +180,10 @@ export async function registerAllTools(context: vscode.ExtensionContext): Promis
   // 22. ANST Enhancement Analysis Tool
   registerAnalyzeAnstEnhancementsTool(context)
   registerRepositoryWorkflowTools(context)
+  registerObjectTransportStatusTool(context)
+  registerSetTransportForNextObjectSaveTool(context)
+  registerApplyRepositoryWorkflowObjectTool(context)
+  registerRecordRepositoryWorkflowObjectActivationTool(context)
 
   // Initialize heartbeat service (will auto-start if enabled in config)
   const heartbeatService = initializeHeartbeatService(context)

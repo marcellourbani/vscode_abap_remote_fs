@@ -143,6 +143,15 @@ export default defineConfig([
   },
   {
     ...shared,
+    entry: { repositoryFormatWorkerEntry: "src/services/repositoryWorkflow/formatWorkerEntry.ts" },
+    outDir: "dist",
+    tsconfig: "tsconfig.json",
+    sourcemap: true,
+    minify: minifyKeepClasses,
+    inputOptions: { external: ["vscode", /^@playwright\/mcp(\/|$)/] }
+  },
+  {
+    ...shared,
     dts: true,
     entry: { index: "src/services/testing/runtime/index.ts" },
     outDir: "dist/runtime",

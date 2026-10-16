@@ -41,7 +41,8 @@ const PREREQUISITES: Partial<Record<WorkflowStepId, WorkflowStepId>> = {
   sourceSelection: "existenceComparison",
   sourceDownload: "sourceSelection",
   sourceComparison: "sourceDownload",
-  assistedApplyPlan: "sourceComparison"
+  assistedApplyPlan: "sourceComparison",
+  transportCheck: "assistedApplyPlan"
 }
 
 export function assertWorkflowStepReady(workflow: RepositoryWorkflow, step: WorkflowStepId): void {
@@ -86,6 +87,11 @@ export function commandSection(command: string): string {
       "openAssistedTarget",
       "openAssistedDiff",
       "stageAssistedSource",
+      "chooseAssistedApplyMode",
+      "resetAssistedApplyMode",
+      "saveCopilotAssistedApplySelection",
+      "importCopilotAssistedApplySelection",
+      "determineTransportRequests",
       "openAutoSaveSettings",
       "openChatSaveSettings"
     ].includes(command)
@@ -102,6 +108,7 @@ function displayStep(step: WorkflowStepId): string {
     sourceSelection: "source selection",
     sourceDownload: "source download",
     sourceComparison: "local source comparison",
-    assistedApplyPlan: "assisted-apply plan"
+    assistedApplyPlan: "assisted-apply plan",
+    transportCheck: "target transport check"
   }[step]
 }

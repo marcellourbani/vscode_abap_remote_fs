@@ -171,6 +171,57 @@ export async function pickTransportProgrammatically(
   )
 }
 
+/**
+ * Resolves an explicit transport choice for an existing-object source write.
+ * This path is non-interactive: it never opens a picker or silently substitutes
+ * another request.
+ */
+export async function pickTransportForExistingObjectWrite(
+  client: ADTClient,
+  request: ProgrammaticTransportRequest,
+  objContentPath: string,
+  devClass = "",
+  transportLayer = ""
+): Promise<TransportSelection> {
+  const info = await client.transportInfo(objContentPath, devClass, "")
+  if (info.DLVUNIT === "LOCAL") return trSel("")
+
+  const lockedTr = info.LOCKS?.HEADER.TRKORR
+  if (request.type === "existing") {
+    const number = request.number?.trim().toUpperCase()
+    if (!number)
+      throw new TransportPickerError("transportChoice.type='existing' requires a request number")
+    if (lockedTr && lockedTr !== number)
+      throw new TransportPickerError(
+        `Cannot use transport ${number}: the object is already locked to ${lockedTr}`
+      )
+    if (lockedTr === number) return trSel(number)
+    if (!info.TRANSPORTS.some(transport => transport.TRKORR === number)) {
+      const available = info.TRANSPORTS.map(transport => transport.TRKORR).join(", ") || "none"
+      throw new TransportPickerError(
+        `Transport ${number} is not currently modifiable for this object. Available: ${available}`
+      )
+    }
+    return trSel(number)
+  }
+
+  const description = request.description?.trim()
+  if (!description)
+    throw new TransportPickerError("transportChoice.type='new' requires a request description")
+  if (lockedTr)
+    throw new TransportPickerError(
+      `Cannot create a new transport: the object is already locked to ${lockedTr}`
+    )
+  return trSel(
+    await client.createTransport(
+      objContentPath,
+      description,
+      info.DEVCLASS || devClass,
+      transportLayer
+    )
+  )
+}
+
 const failedMsg = (token?: CancellationToken) => {
   if (!token?.isCancellationRequested)
     window.showInformationMessage(`Operation cancelled due to failed transport validation`)

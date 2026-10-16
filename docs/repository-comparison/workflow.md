@@ -119,9 +119,13 @@ Choose **Compare selected source code** to save the selection, download both sid
 | `source-missing` / `target-missing` | An expected snapshot manifest is absent |
 | `error` | The comparison could not be completed |
 
-The table also shows changed-file and line counts. These are textual metrics: reordered ABAP code can appear as removed and added lines even when its behaviour is similar.
+Each downloaded object keeps an exact raw snapshot and a comparison-only snapshot formatted with
+one fixed ABAPLint configuration. The table shows source/target line totals, changed-file counts,
+and added, removed, and changed lines for both representations.
 
-Use **Open diff** for a standard VS Code side-by-side comparison. If an object contains several changed text resources, you are prompted to choose one.
+Use **Raw diff** to review the exact downloaded SAP source or **Formatted diff** to suppress case
+and layout differences. If an object contains several changed text resources, you are prompted to
+choose one. Formatting failures leave the raw snapshot available and disable the formatted diff.
 
 ## 8. Pause, resume, and rerun
 

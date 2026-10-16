@@ -1,17 +1,32 @@
 import * as vscode from "vscode"
 import * as fs from "fs/promises"
+import { createTwoFilesPatch } from "diff"
 import { connectedRoots } from "../../config"
 import { assertToolInvocationAuthorized } from "./toolGuard"
 import { registerToolWithRegistry } from "./toolRegistry"
 import { RepositoryWorkflowRuntime } from "../repositoryWorkflow/runtime"
-import { defaultWorkflowName } from "../repositoryWorkflow/workflowStore"
+import { defaultWorkflowName, hasCompletionForPlanItem } from "../repositoryWorkflow/workflowStore"
+import { objectFolderId } from "../repositoryWorkflow/snapshotService"
+import type {
+  ObjectSnapshotManifest,
+  SnapshotRepresentation,
+  SourceComparisonRecord
+} from "../repositoryWorkflow/types"
 
 interface WorkflowIdInput {
   workflowId: string
 }
 
 interface GetWorkflowInput extends WorkflowIdInput {
-  include?: Array<"state" | "criteria" | "summaries" | "artifact">
+  include?: Array<
+    | "state"
+    | "criteria"
+    | "summaries"
+    | "artifact"
+    | "diff"
+    | "assistedApplyObjects"
+    | "assistedApplyHistory"
+  >
   step?: keyof Awaited<ReturnType<RepositoryWorkflowRuntime["store"]["get"]>>["steps"]
   artifact?:
     | "sourceDiscovery"
@@ -25,6 +40,16 @@ interface GetWorkflowInput extends WorkflowIdInput {
   objectName?: string
   objectType?: string
   packageName?: string
+  objectKey?: string
+  representation?: SnapshotRepresentation
+  filePath?: string
+  maxFiles?: number
+  maxChars?: number
+  assistedApplyAction?: "get" | "markDone" | "markPending" | "setDecision"
+  assistedApplyObjectKeys?: string[]
+  assistedApplyDecision?: "as-is" | "skip" | "needs-human"
+  assistedApplyDecisionReason?: string
+  includeDone?: boolean
 }
 
 class ListRepositoryWorkflowsTool implements vscode.LanguageModelTool<Record<string, never>> {
@@ -56,7 +81,7 @@ class ListRepositoryWorkflowsTool implements vscode.LanguageModelTool<Record<str
   }
 }
 
-class GetRepositoryWorkflowTool implements vscode.LanguageModelTool<GetWorkflowInput> {
+export class GetRepositoryWorkflowTool implements vscode.LanguageModelTool<GetWorkflowInput> {
   async prepareInvocation(
     options: vscode.LanguageModelToolInvocationPrepareOptions<GetWorkflowInput>
   ) {
@@ -65,8 +90,18 @@ class GetRepositoryWorkflowTool implements vscode.LanguageModelTool<GetWorkflowI
       : options.input.artifact
         ? options.input.artifact
         : "state"
+    const action = options.input.assistedApplyAction ?? "get"
+    const actionMessage =
+      action === "markDone"
+        ? `Marking ${(options.input.assistedApplyObjectKeys ?? []).length} Copilot-assisted apply object${(options.input.assistedApplyObjectKeys ?? []).length === 1 ? "" : "s"} done`
+        : action === "markPending"
+          ? `Resetting ${(options.input.assistedApplyObjectKeys ?? []).length} Copilot-assisted apply object${(options.input.assistedApplyObjectKeys ?? []).length === 1 ? "" : "s"} to pending`
+          : `Setting the Copilot decision for ${options.input.objectKey ?? "one assisted-apply object"}`
     return {
-      invocationMessage: `Reading repository workflow ${requested} for ${options.input.workflowId}`
+      invocationMessage:
+        action === "get"
+          ? `Reading repository workflow ${requested} for ${options.input.workflowId}`
+          : actionMessage
     }
   }
 
@@ -100,6 +135,89 @@ class GetRepositoryWorkflowTool implements vscode.LanguageModelTool<GetWorkflowI
       if (!options.input.artifact)
         throw new Error("artifact is required when include contains artifact")
       response.artifact = await readArtifact(runtime, workflow, options.input)
+    }
+    if (include.has("diff")) {
+      if (!options.input.objectKey)
+        throw new Error("objectKey is required when include contains diff")
+      response.diff = await readObjectDiff(runtime, workflow, options.input)
+    }
+    if (include.has("assistedApplyHistory")) {
+      assertCopilotAssistedApplyEnabled(workflow)
+      if (!options.input.objectKey)
+        throw new Error("objectKey is required when include contains assistedApplyHistory")
+      const events = await runtime.store.getAssistedApplyExecutionEvents(
+        workflow.workflowId,
+        options.input.objectKey
+      )
+      const offset = Math.max(0, Math.floor(options.input.offset ?? 0))
+      const limit = Math.min(200, Math.max(1, Math.floor(options.input.limit ?? 50)))
+      response.assistedApplyHistory = {
+        objectKey: options.input.objectKey.trim().toUpperCase(),
+        total: events.length,
+        offset,
+        limit,
+        returned: events.slice(offset, offset + limit).length,
+        hasMore: offset + limit < events.length,
+        nextOffset: offset + limit < events.length ? offset + limit : undefined,
+        events: events.slice(offset, offset + limit)
+      }
+    }
+    const assistedApplyAction = options.input.assistedApplyAction ?? "get"
+    if (assistedApplyAction !== "get" && !include.has("assistedApplyObjects"))
+      throw new Error(
+        "include must contain assistedApplyObjects when using an assisted-apply action"
+      )
+    if (include.has("assistedApplyObjects")) {
+      assertCopilotAssistedApplyEnabled(workflow)
+      let updated = 0
+      if (assistedApplyAction !== "get") {
+        if (assistedApplyAction === "setDecision") {
+          if ((options.input.assistedApplyObjectKeys ?? []).length)
+            throw new Error(
+              "setDecision accepts exactly one objectKey and does not support batches"
+            )
+          if (!options.input.objectKey) throw new Error("objectKey is required for setDecision")
+          if (!options.input.assistedApplyDecision)
+            throw new Error("assistedApplyDecision is required for setDecision")
+          if (!options.input.assistedApplyDecisionReason?.trim())
+            throw new Error("assistedApplyDecisionReason is required for setDecision")
+          await runtime.store.updateCopilotAssistedApplyDecision(
+            workflow.workflowId,
+            options.input.objectKey,
+            options.input.assistedApplyDecision,
+            options.input.assistedApplyDecisionReason
+          )
+          updated = 1
+        } else {
+          const keys = options.input.assistedApplyObjectKeys ?? []
+          if (keys.length > 200)
+            throw new Error("At most 200 assisted-apply objects can be updated per call")
+          if (assistedApplyAction === "markDone")
+            for (const key of keys) {
+              const events = await runtime.store.getAssistedApplyExecutionEvents(
+                workflow.workflowId,
+                key
+              )
+              const planItem = await runtime.store.getAssistedApplyPlanItem(workflow, key)
+              if (!planItem || !hasCompletionForPlanItem(events, planItem))
+                throw new Error(
+                  `${key.trim().toUpperCase()} cannot be marked done until successful activation is recorded`
+                )
+            }
+          await runtime.store.updateCopilotAssistedApplyStatus(
+            workflow.workflowId,
+            keys,
+            assistedApplyAction === "markDone" ? "done" : "pending"
+          )
+          updated = new Set(keys.map(key => key.trim().toUpperCase()).filter(Boolean)).size
+        }
+        runtime.notifyChanged(workflow.workflowId)
+      }
+      response.assistedApplyObjects = {
+        action: assistedApplyAction,
+        updated,
+        ...(await readCopilotAssistedApplyObjects(runtime, workflow, options.input))
+      }
     }
     return result(JSON.stringify(response, null, 2))
   }
@@ -336,23 +454,31 @@ class OpenRepositoryWorkflowTool implements vscode.LanguageModelTool<WorkflowIdI
   }
 }
 
-class PrepareRepositoryAssistedApplyTool implements vscode.LanguageModelTool<WorkflowIdInput> {
+interface PrepareAssistedApplyInput extends WorkflowIdInput {
+  comparisonBasis?: SnapshotRepresentation
+}
+
+class PrepareRepositoryAssistedApplyTool implements vscode.LanguageModelTool<PrepareAssistedApplyInput> {
   async prepareInvocation(
-    options: vscode.LanguageModelToolInvocationPrepareOptions<WorkflowIdInput>
+    options: vscode.LanguageModelToolInvocationPrepareOptions<PrepareAssistedApplyInput>
   ) {
     return {
-      invocationMessage: `Preparing assisted-apply plan for ${options.input.workflowId}`
+      invocationMessage: `Preparing ${options.input.comparisonBasis ?? "formatted"} assisted-apply plan for ${options.input.workflowId}`
     }
   }
 
-  async invoke(options: vscode.LanguageModelToolInvocationOptions<WorkflowIdInput>) {
+  async invoke(options: vscode.LanguageModelToolInvocationOptions<PrepareAssistedApplyInput>) {
     assertToolInvocationAuthorized(options)
     const runtime = RepositoryWorkflowRuntime.get()
     await runtime.ready
     await showWorkflow(options.input.workflowId)
     runtime.notifyChanged(options.input.workflowId, true)
     const plan = await runtime.runWithRefreshBatch(options.input.workflowId, () =>
-      runtime.engine.prepareAssistedApply(options.input.workflowId)
+      runtime.engine.prepareAssistedApply(
+        options.input.workflowId,
+        undefined,
+        options.input.comparisonBasis ?? "formatted"
+      )
     )
     if (!plan) {
       const workflow = await runtime.store.get(options.input.workflowId)
@@ -372,14 +498,18 @@ class PrepareRepositoryAssistedApplyTool implements vscode.LanguageModelTool<Wor
         )
       )
     }
+    const workflow = await runtime.store.get(options.input.workflowId)
     return result(
       JSON.stringify(
         {
           workflowId: options.input.workflowId,
+          comparisonBasis: plan.comparisonBasis,
           eligible: plan.items.filter(item => item.eligible).length,
           blocked: plan.items.filter(item => !item.eligible).length,
           message:
-            "Assisted-apply plan prepared. Open the workflow webview to review source and target. Only the user can stage a dirty target editor; saving and activation remain manual."
+            workflow.assistedApplyMode === "copilot"
+              ? "Assisted-apply plan prepared. The user must select and save the exact Copilot-assisted apply objects in the workflow webview. This tool does not select objects or write to SAP."
+              : "Assisted-apply plan prepared. Open the workflow webview to review source and target. Only the user can stage a dirty target editor; saving and activation remain manual."
         },
         null,
         2
@@ -432,6 +562,255 @@ async function readArtifact(
     if (rows.length >= limit) break
   }
   return { name: input.artifact, offset, limit, returned: rows.length, rows }
+}
+
+async function readObjectDiff(
+  runtime: RepositoryWorkflowRuntime,
+  workflow: Awaited<ReturnType<RepositoryWorkflowRuntime["store"]["get"]>>,
+  input: GetWorkflowInput
+) {
+  const key = input.objectKey!.toUpperCase()
+  const representation = input.representation ?? "formatted"
+  let comparison: SourceComparisonRecord | undefined
+  for await (const row of runtime.store.readJsonLines<SourceComparisonRecord>(
+    runtime.store.artifactPath(workflow, "comparison", "source.jsonl")
+  ))
+    if (row.key === key) {
+      comparison = row
+      break
+    }
+  if (!comparison) throw new Error(`Object ${key} is not present in the source comparison`)
+  if (representation === "formatted" && comparison.formattedError)
+    throw new Error(`Formatted comparison is unavailable: ${comparison.formattedError}`)
+
+  const id = objectFolderId(key)
+  const sourceManifest = await readManifest(
+    runtime.store.artifactPath(workflow, "sources", "source", "objects", id, "manifest.json")
+  )
+  const targetManifest = await readManifest(
+    runtime.store.artifactPath(workflow, "sources", "target", "objects", id, "manifest.json")
+  )
+  if (!sourceManifest || !targetManifest) throw new Error(`Snapshots are missing for ${key}`)
+  const sourceFiles = new Set(
+    manifestFiles(sourceManifest, representation)
+      .filter(file => file.text)
+      .map(file => file.path)
+  )
+  const targetFiles = new Set(
+    manifestFiles(targetManifest, representation)
+      .filter(file => file.text)
+      .map(file => file.path)
+  )
+  const candidates = diffCandidates(comparison, representation).filter(
+    file => sourceFiles.has(file) || targetFiles.has(file)
+  )
+  const requestedPath = input.filePath?.replace(/\\/g, "/")
+  if (requestedPath && !candidates.includes(requestedPath))
+    throw new Error(`${requestedPath} is not a changed ${representation} text file for ${key}`)
+  const maxFiles = Math.min(10, Math.max(1, Math.floor(input.maxFiles ?? 3)))
+  const selected = requestedPath ? [requestedPath] : candidates.slice(0, maxFiles)
+  let remainingChars = Math.min(100_000, Math.max(1_000, Math.floor(input.maxChars ?? 30_000)))
+  const files: Array<Record<string, unknown>> = []
+  for (const relativePath of selected) {
+    if (remainingChars <= 0) break
+    const source = sourceFiles.has(relativePath)
+      ? await fs.readFile(
+          snapshotPath(runtime, workflow, "source", id, representation, relativePath),
+          "utf8"
+        )
+      : ""
+    const target = targetFiles.has(relativePath)
+      ? await fs.readFile(
+          snapshotPath(runtime, workflow, "target", id, representation, relativePath),
+          "utf8"
+        )
+      : ""
+    const patch = createTwoFilesPatch(
+      `target/${relativePath}`,
+      `source/${relativePath}`,
+      target,
+      source,
+      "target",
+      "source",
+      { context: 3 }
+    )
+    const bounded = boundText(patch, remainingChars)
+    remainingChars -= bounded.text.length
+    files.push({
+      path: relativePath,
+      sourcePresent: sourceFiles.has(relativePath),
+      targetPresent: targetFiles.has(relativePath),
+      patch: bounded.text,
+      truncated: bounded.truncated
+    })
+    if (bounded.truncated) break
+  }
+  return {
+    objectKey: key,
+    representation,
+    direction: "target-to-source",
+    directionDescription:
+      "Changes required to make the target match the source; removed lines are target content and added lines are source content.",
+    availableFiles: candidates,
+    returnedFiles: files.length,
+    omittedFiles: candidates.length - files.length,
+    truncated: files.some(file => file.truncated) || files.length < candidates.length,
+    files
+  }
+}
+
+async function readCopilotAssistedApplyObjects(
+  runtime: RepositoryWorkflowRuntime,
+  workflow: Awaited<ReturnType<RepositoryWorkflowRuntime["store"]["get"]>>,
+  input: GetWorkflowInput
+) {
+  assertCopilotAssistedApplyEnabled(workflow)
+  const selection = await runtime.store.getCopilotAssistedApplySelection(workflow.workflowId)
+  const offset = Math.max(0, Math.floor(input.offset ?? 0))
+  const limit = Math.min(200, Math.max(1, Math.floor(input.limit ?? 50)))
+  if (!selection)
+    return {
+      saved: false,
+      statistics: {
+        total: 0,
+        done: 0,
+        pending: 0,
+        decisions: { "as-is": 0, skip: 0, "needs-human": 0 }
+      },
+      includeDone: !!input.includeDone,
+      offset,
+      limit,
+      returned: 0,
+      hasMore: false,
+      rows: []
+    }
+  const plan = JSON.parse(
+    await fs.readFile(runtime.store.artifactPath(workflow, "assisted-apply", "plan.json"), "utf8")
+  )
+  const items = new Map<string, Record<string, any>>(
+    (plan.items ?? []).map((item: Record<string, any>) => [item.key, item])
+  )
+  const completed = new Set(selection.completedKeys ?? [])
+  const decisions = selection.decisions ?? {}
+  const decisionReasons = selection.decisionReasons ?? {}
+  const executionSummaries = await runtime.store.getAssistedApplyExecutionSummaries(
+    workflow.workflowId
+  )
+  const visibleKeys = input.includeDone
+    ? selection.keys
+    : selection.keys.filter(key => !completed.has(key))
+  const rows = visibleKeys.slice(offset, offset + limit).flatMap(key => {
+    const item = items.get(key)
+    if (!item?.eligible) return []
+    return [
+      {
+        key,
+        status: completed.has(key) ? "done" : "pending",
+        decision: decisions[key] ?? "needs-human",
+        decisionReason: decisionReasons[key] ?? "",
+        objectName: item.sourceRecord?.objectName,
+        objectType: item.sourceRecord?.objectType,
+        packageName: item.sourceRecord?.packageName,
+        transportCheckStatus: item.transportCheckStatus ?? "not-checked",
+        transportRequest: item.transportRequest ?? "",
+        transportDescription: item.transportDescription ?? "",
+        transportCheckedAt: item.transportCheckedAt,
+        transportCheckError: item.transportCheckError,
+        sourceHash: item.sourceHash,
+        targetHash: item.targetHash,
+        execution: executionSummaries[key]
+      }
+    ]
+  })
+  return {
+    saved: true,
+    updatedAt: selection.updatedAt,
+    statistics: {
+      total: selection.keys.length,
+      done: selection.keys.filter(key => completed.has(key)).length,
+      pending: selection.keys.filter(key => !completed.has(key)).length,
+      decisions: {
+        "as-is": selection.keys.filter(key => decisions[key] === "as-is").length,
+        skip: selection.keys.filter(key => decisions[key] === "skip").length,
+        "needs-human": selection.keys.filter(
+          key => (decisions[key] ?? "needs-human") === "needs-human"
+        ).length
+      }
+    },
+    includeDone: !!input.includeDone,
+    offset,
+    limit,
+    returned: rows.length,
+    hasMore: offset + limit < visibleKeys.length,
+    nextOffset: offset + limit < visibleKeys.length ? offset + limit : undefined,
+    rows
+  }
+}
+
+function assertCopilotAssistedApplyEnabled(
+  workflow: Awaited<ReturnType<RepositoryWorkflowRuntime["store"]["get"]>>
+) {
+  if (workflow.assistedApplyMode !== "copilot" || !workflow.copilotAssistedApplyEnabledAt)
+    throw new Error("Copilot-assisted apply is not enabled for this workflow")
+}
+
+function manifestFiles(manifest: ObjectSnapshotManifest, representation: SnapshotRepresentation) {
+  return representation === "raw" ? manifest.files : (manifest.formattedFiles ?? [])
+}
+
+function diffCandidates(
+  comparison: SourceComparisonRecord,
+  representation: SnapshotRepresentation
+): string[] {
+  const values =
+    representation === "raw"
+      ? [
+          ...(comparison.rawAdded ?? comparison.added),
+          ...(comparison.rawRemoved ?? comparison.removed),
+          ...(comparison.rawChanged ?? comparison.changed)
+        ]
+      : [
+          ...(comparison.formattedAdded ?? []),
+          ...(comparison.formattedRemoved ?? []),
+          ...(comparison.formattedChanged ?? [])
+        ]
+  return [...new Set(values)].sort()
+}
+
+function snapshotPath(
+  runtime: RepositoryWorkflowRuntime,
+  workflow: Awaited<ReturnType<RepositoryWorkflowRuntime["store"]["get"]>>,
+  side: "source" | "target",
+  id: string,
+  representation: SnapshotRepresentation,
+  relativePath: string
+): string {
+  return runtime.store.artifactPath(
+    workflow,
+    "sources",
+    side,
+    "objects",
+    id,
+    representation,
+    ...relativePath.split("/")
+  )
+}
+
+async function readManifest(filePath: string): Promise<ObjectSnapshotManifest | undefined> {
+  try {
+    return JSON.parse(await fs.readFile(filePath, "utf8")) as ObjectSnapshotManifest
+  } catch {
+    return undefined
+  }
+}
+
+function boundText(value: string, limit: number): { text: string; truncated: boolean } {
+  if (value.length <= limit) return { text: value, truncated: false }
+  const end = value.lastIndexOf("\n", limit)
+  return {
+    text: `${value.slice(0, end > 0 ? end : limit)}\n... diff truncated ...\n`,
+    truncated: true
+  }
 }
 
 async function readSummaries(

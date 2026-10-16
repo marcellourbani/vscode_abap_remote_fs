@@ -6,6 +6,7 @@ import {
   defaultRepositoryCriteria,
   type ExistenceComparisonRecord,
   type RepositoryWorkflow,
+  type SnapshotRepresentation,
   SOURCE_COMPARISON_EXCLUDED_OBJECT_TYPES
 } from "./types"
 import { defaultWorkflowName, WorkflowStore } from "./workflowStore"
@@ -199,7 +200,7 @@ export class RepositoryWorkflowPanel {
           await this.run(() => this.engine.compareSourceCode(this.requiredWorkflowId()))
           break
         case "openDiff":
-          await this.openDiff(message.key)
+          await this.openDiff(message.key, representation(message.representation))
           break
         case "openAssistedSource":
           await this.engine.openAssistedApplySource(this.requiredWorkflowId(), message.key)
@@ -208,13 +209,53 @@ export class RepositoryWorkflowPanel {
           await this.engine.openAssistedApplyTarget(this.requiredWorkflowId(), message.key)
           break
         case "openAssistedDiff":
-          await this.engine.openAssistedApplyDiff(this.requiredWorkflowId(), message.key)
+          await this.engine.openAssistedApplyDiff(
+            this.requiredWorkflowId(),
+            message.key,
+            representation(message.representation)
+          )
           break
         case "stageAssistedSource":
           await this.engine.stageAssistedApplySource(this.requiredWorkflowId(), message.key)
           break
+        case "showAssistedApplyHistory": {
+          const workflowId = this.requiredWorkflowId()
+          const objectKey = String(message.key || "")
+            .trim()
+            .toUpperCase()
+          await this.panel.webview.postMessage({
+            command: "assistedApplyExecutionHistory",
+            workflowId,
+            objectKey,
+            events: await this.store.getAssistedApplyExecutionEvents(workflowId, objectKey)
+          })
+          break
+        }
         case "prepareAssistedApply":
-          await this.run(() => this.engine.prepareAssistedApply(this.requiredWorkflowId()))
+          await this.run(() =>
+            this.engine.prepareAssistedApply(
+              this.requiredWorkflowId(),
+              undefined,
+              assistedApplyComparisonBasis(message.comparisonBasis)
+            )
+          )
+          break
+        case "determineTransportRequests":
+          await this.determineTransportRequests(message)
+          break
+        case "chooseAssistedApplyMode":
+          await this.chooseAssistedApplyMode(message.mode)
+          break
+        case "resetAssistedApplyMode":
+          await this.store.setAssistedApplyMode(this.requiredWorkflowId(), undefined)
+          await this.sendState()
+          break
+        case "saveCopilotAssistedApplySelection":
+          await this.store.saveCopilotAssistedApplySelection(
+            this.requiredWorkflowId(),
+            Array.isArray(message.keys) ? message.keys : []
+          )
+          await this.sendState()
           break
         case "openAutoSaveSettings":
           await vscode.commands.executeCommand(
@@ -232,10 +273,20 @@ export class RepositoryWorkflowPanel {
           await this.engine.pause(this.requiredWorkflowId(), "explicit-pause")
           break
         case "export":
-          await this.export(message.output, message.type, message.selectedKeys)
+          await this.export(
+            message.output,
+            message.type,
+            message.selectedKeys,
+            message.completedKeys,
+            message.decisions,
+            message.decisionReasons
+          )
           break
         case "importSourceSelection":
           await this.importSourceSelection()
+          break
+        case "importCopilotAssistedApplySelection":
+          await this.importCopilotAssistedApplySelection()
           break
         case "askCopilot":
           await vscode.commands.executeCommand("workbench.action.chat.open", {
@@ -264,6 +315,25 @@ export class RepositoryWorkflowPanel {
       targetConnectionId: message.target
     })
     this.selectedWorkflowId = workflow.workflowId
+    await this.sendState()
+  }
+
+  private async chooseAssistedApplyMode(value: unknown) {
+    const mode = value === "copilot" ? "copilot" : "manual"
+    const workflow = await this.store.get(this.requiredWorkflowId())
+    if (mode === "copilot" && !workflow.copilotAssistedApplyEnabledAt) {
+      const enabled = await vscode.window.showWarningMessage(
+        "Enable Copilot-assisted apply for this workflow?",
+        {
+          modal: true,
+          detail:
+            "This mode lets Copilot act on the SAP objects you explicitly select and save. For approved objects, Copilot can lock and save reviewed raw source into the target system with your transport choice, verify the inactive source, and activate related objects as a separate step. Incorrect selections or unexpected dependencies can cause target-system changes."
+        },
+        "Enable Copilot-assisted apply"
+      )
+      if (enabled !== "Enable Copilot-assisted apply") return
+    }
+    await this.store.setAssistedApplyMode(this.requiredWorkflowId(), mode)
     await this.sendState()
   }
 
@@ -315,15 +385,24 @@ export class RepositoryWorkflowPanel {
     )
   }
 
-  private async openDiff(key: string) {
+  private async determineTransportRequests(message: any) {
+    const workflowId = this.requiredWorkflowId()
+    const keys = Array.isArray(message.keys) ? message.keys : []
+    const concurrency = Math.min(10, Math.max(1, Number(message.transportConcurrency) || 5))
+    await this.store.saveTransportConcurrency(workflowId, concurrency)
+    await this.run(() => this.engine.determineTransportRequests(workflowId, keys, concurrency))
+  }
+
+  private async openDiff(key: string, representation: SnapshotRepresentation) {
     const workflow = await this.store.get(this.requiredWorkflowId())
-    const changed = await changedFiles(workflow, this.store, key)
-    if (!changed.length) throw new Error("No changed text file is available for this object")
+    const changed = await changedFiles(workflow, this.store, key, representation)
+    if (!changed.length)
+      throw new Error(`No changed ${representation} text file is available for this object`)
     const relative =
       changed.length === 1
         ? changed[0]
         : await vscode.window.showQuickPick(changed, {
-            title: `Select changed source for ${key}`,
+            title: `Select changed ${representation} source for ${key}`,
             placeHolder: "Choose one source file to compare",
             ignoreFocusOut: true
           })
@@ -332,18 +411,50 @@ export class RepositoryWorkflowPanel {
     await vscode.commands.executeCommand(
       "vscode.diff",
       vscode.Uri.file(
-        this.store.artifactPath(workflow, "sources", "source", "objects", id, "content", relative)
+        this.store.artifactPath(
+          workflow,
+          "sources",
+          "source",
+          "objects",
+          id,
+          representation,
+          relative
+        )
       ),
       vscode.Uri.file(
-        this.store.artifactPath(workflow, "sources", "target", "objects", id, "content", relative)
+        this.store.artifactPath(
+          workflow,
+          "sources",
+          "target",
+          "objects",
+          id,
+          representation,
+          relative
+        )
       ),
-      `${key}: source ↔ target`
+      `${key}: source ↔ target (${representation})`,
+      { preview: false }
     )
   }
 
-  private async export(output: string, type: "xlsx" | "csv", selectedKeys?: string[]) {
+  private async export(
+    output: string,
+    type: "xlsx" | "csv",
+    selectedKeys?: string[],
+    completedKeys?: string[],
+    decisions?: Record<string, string>,
+    decisionReasons?: Record<string, string>
+  ) {
     const workflow = await this.store.get(this.requiredWorkflowId())
-    const exported = await this.exporter.export(workflow, output, type, selectedKeys)
+    const exported = await this.exporter.export(
+      workflow,
+      output,
+      type,
+      selectedKeys,
+      completedKeys,
+      decisions,
+      decisionReasons
+    )
     if (exported) vscode.window.showInformationMessage(`Exported ${exported}`)
   }
 
@@ -353,6 +464,19 @@ export class RepositoryWorkflowPanel {
     if (!imported) return
     await this.panel.webview.postMessage({
       command: "sourceSelectionImported",
+      workflowId: workflow.workflowId,
+      ...imported
+    })
+  }
+
+  private async importCopilotAssistedApplySelection() {
+    const workflow = await this.store.get(this.requiredWorkflowId())
+    if (workflow.assistedApplyMode !== "copilot")
+      throw new Error("Enable Copilot-assisted apply before importing a selection")
+    const imported = await this.exporter.importAssistedApplySelection(workflow)
+    if (!imported) return
+    await this.panel.webview.postMessage({
+      command: "copilotAssistedApplySelectionImported",
       workflowId: workflow.workflowId,
       ...imported
     })
@@ -450,14 +574,18 @@ export class RepositoryWorkflowPanel {
       existenceComparison,
       sourceComparison,
       sourceSelection,
-      plan
+      plan,
+      copilotSelection,
+      executionSummaries
     ] = await Promise.all([
       readInventoryPreview(this.store, workflow, "source"),
       readInventoryPreview(this.store, workflow, "target"),
       readExistencePreview(this.store, workflow),
       readSourceComparisonPreview(this.store, workflow),
       readJson(this.store.artifactPath(workflow, "comparison", "source-selection.json")),
-      readJson(this.store.artifactPath(workflow, "assisted-apply", "plan.json"))
+      readJson(this.store.artifactPath(workflow, "assisted-apply", "plan.json")),
+      this.store.getCopilotAssistedApplySelection(workflow.workflowId, workflow),
+      this.store.getAssistedApplyExecutionSummaries(workflow.workflowId)
     ])
     return {
       sourceDiscovery,
@@ -465,7 +593,9 @@ export class RepositoryWorkflowPanel {
       existenceComparison,
       sourceComparison,
       sourceSelection,
-      assistedApplyPlan: plan
+      assistedApplyPlan: plan,
+      copilotAssistedApplySelection: copilotSelection,
+      assistedApplyExecutionSummaries: executionSummaries
     }
   }
 }
@@ -525,12 +655,30 @@ export async function readSourceComparisonPreview(
       rows.push({
         key: row.key,
         status: row.status,
-        filesChanged:
-          (row.added?.length ?? 0) + (row.removed?.length ?? 0) + (row.changed?.length ?? 0),
-        linesAdded: row.linesAdded,
-        linesRemoved: row.linesRemoved,
-        linesChanged: row.linesChanged,
-        error: row.error
+        rawIdentical: row.rawIdentical,
+        rawFilesChanged:
+          (row.rawAdded?.length ?? row.added?.length ?? 0) +
+          (row.rawRemoved?.length ?? row.removed?.length ?? 0) +
+          (row.rawChanged?.length ?? row.changed?.length ?? 0),
+        rawDiffFiles: row.rawChanged?.length ?? row.changed?.length ?? 0,
+        rawSourceLines: row.rawSourceLines ?? row.sourceLines,
+        rawTargetLines: row.rawTargetLines ?? row.targetLines,
+        rawLinesAdded: row.rawLinesAdded ?? row.linesAdded,
+        rawLinesRemoved: row.rawLinesRemoved ?? row.linesRemoved,
+        rawLinesChanged: row.rawLinesChanged ?? row.linesChanged,
+        formattedIdentical: row.formattedIdentical,
+        formattedFilesChanged:
+          (row.formattedAdded?.length ?? 0) +
+          (row.formattedRemoved?.length ?? 0) +
+          (row.formattedChanged?.length ?? 0),
+        formattedDiffFiles: row.formattedChanged?.length ?? 0,
+        formattedSourceLines: row.formattedSourceLines,
+        formattedTargetLines: row.formattedTargetLines,
+        formattedLinesAdded: row.formattedLinesAdded,
+        formattedLinesRemoved: row.formattedLinesRemoved,
+        formattedLinesChanged: row.formattedLinesChanged,
+        formattedError: row.formattedError,
+        error: [row.error, row.formattedError].filter(Boolean).join("; ") || undefined
       })
   } catch {}
   return rows
@@ -579,11 +727,25 @@ export function registerRepositoryWorkflowCommand(context: vscode.ExtensionConte
 async function changedFiles(
   workflow: RepositoryWorkflow,
   store: WorkflowStore,
-  key: string
+  key: string,
+  representation: SnapshotRepresentation
 ): Promise<string[]> {
   for await (const row of store.readJsonLines<any>(
     store.artifactPath(workflow, "comparison", "source.jsonl")
   ))
-    if (row.key === key) return [...(row.changed || [])]
+    if (row.key === key)
+      return [
+        ...(representation === "raw"
+          ? row.rawChanged || row.changed || []
+          : row.formattedChanged || [])
+      ]
   return []
+}
+
+function representation(value: unknown): SnapshotRepresentation {
+  return value === "formatted" ? "formatted" : "raw"
+}
+
+function assistedApplyComparisonBasis(value: unknown): SnapshotRepresentation {
+  return value === "raw" ? "raw" : "formatted"
 }

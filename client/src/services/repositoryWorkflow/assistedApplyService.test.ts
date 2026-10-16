@@ -13,8 +13,18 @@ const mocks = vi.hoisted(() => ({
   showQuickPick: vi.fn(),
   executeCommand: vi.fn(),
   replace: vi.fn(),
+  save: vi.fn(),
   downloadSide: vi.fn(),
   selectedRecords: vi.fn(),
+  getSelection: vi.fn(),
+  registerIntent: vi.fn(),
+  waitForIntent: vi.fn(),
+  cancelIntent: vi.fn(),
+  failIntent: vi.fn(),
+  getInactiveSource: vi.fn(),
+  getNodeAsync: vi.fn(),
+  getClient: vi.fn(),
+  appendExecutionEvent: vi.fn(),
   sourceAggregateHash: "source-hash"
 }))
 
@@ -77,6 +87,23 @@ vi.mock("./snapshotService", () => ({
   listFiles: vi.fn().mockResolvedValue([]),
   aggregateHash: vi.fn(() => mocks.sourceAggregateHash)
 }))
+vi.mock("../transportIntentService", () => ({
+  TransportIntentService: {
+    get: vi.fn(() => ({
+      register: mocks.registerIntent,
+      waitForResult: mocks.waitForIntent,
+      cancel: mocks.cancelIntent,
+      fail: mocks.failIntent
+    }))
+  }
+}))
+vi.mock("../../adt/conections", () => ({
+  getClient: mocks.getClient,
+  getOrCreateRoot: vi.fn(async () => ({ getNodeAsync: mocks.getNodeAsync }))
+}))
+vi.mock("abapfs", () => ({
+  isAbapFile: vi.fn((value: unknown) => Boolean(value))
+}))
 
 import { WorkflowAssistedApplyService } from "./assistedApplyService"
 import { resolveAbapResource } from "../abapResourceDownloadService"
@@ -86,7 +113,9 @@ let comparisonChanged = ["resource"]
 const workflow = {
   workflowId: "wf",
   source: { connectionId: "source100" },
-  target: { connectionId: "target100" }
+  target: { connectionId: "target100" },
+  assistedApplyMode: "copilot",
+  copilotAssistedApplyEnabledAt: "2026-10-09T12:00:00.000Z"
 }
 
 function store() {
@@ -103,7 +132,10 @@ function store() {
       }
     }),
     writeJson: vi.fn(),
-    appendJsonLine: vi.fn()
+    appendJsonLine: vi.fn(),
+    appendAssistedApplyExecutionEvent: mocks.appendExecutionEvent,
+    getCopilotAssistedApplySelection: mocks.getSelection,
+    removeCopilotAssistedApplySelection: vi.fn()
   } as any
 }
 
@@ -115,13 +147,46 @@ describe("WorkflowAssistedApplyService", () => {
     mocks.configuration.chatSaveBeforeSend = false
     mocks.sourceAggregateHash = "source-hash"
     comparisonChanged = ["resource"]
+    workflow.assistedApplyMode = "copilot"
+    workflow.copilotAssistedApplyEnabledAt = "2026-10-09T12:00:00.000Z"
     mocks.selectedRecords.mockResolvedValue({ source: [], target: [{ objectName: "ZTEST" }] })
     mocks.downloadSide.mockResolvedValue(undefined)
+    mocks.getSelection.mockResolvedValue({
+      keys: ["R3TR:PROG:ZTEST"],
+      completedKeys: [],
+      decisions: { "R3TR:PROG:ZTEST": "as-is" },
+      decisionReasons: { "R3TR:PROG:ZTEST": "Reviewed and safe to apply." }
+    })
+    mocks.registerIntent.mockReturnValue({ intentId: "intent-1" })
+    mocks.appendExecutionEvent.mockImplementation(
+      async (_workflowId: string, event: Record<string, unknown>) => event
+    )
+    mocks.waitForIntent.mockResolvedValue({
+      intentId: "intent-1",
+      status: "succeeded",
+      process: "repository-assisted-apply",
+      objectUri: "adt://target100/target/resource",
+      transportRequest: "DEVK900123"
+    })
+    mocks.save.mockResolvedValue(true)
+    mocks.writeFile.mockResolvedValue(undefined)
+    mocks.getInactiveSource.mockResolvedValue("REPORT ztest.\n")
+    mocks.getClient.mockReturnValue({
+      statelessClone: { getObjectSource: mocks.getInactiveSource }
+    })
+    mocks.getNodeAsync.mockResolvedValue({
+      object: {
+        structure: {},
+        path: "/target/object/source/main",
+        lockObject: { path: "/target/object" },
+        contentsPath: vi.fn(() => "/target/object/source/main")
+      }
+    })
     const sourceRoot = path.join(root, "sources", "source", "objects", "id")
     const targetRoot = path.join(root, "sources", "target", "objects", "id")
-    await fs.mkdir(path.join(sourceRoot, "content"), { recursive: true })
+    await fs.mkdir(path.join(sourceRoot, "raw"), { recursive: true })
     await fs.mkdir(targetRoot, { recursive: true })
-    await fs.writeFile(path.join(sourceRoot, "content", "resource"), "REPORT ztest.\n")
+    await fs.writeFile(path.join(sourceRoot, "raw", "resource"), "REPORT ztest.\n")
     await fs.writeFile(
       path.join(sourceRoot, "manifest.json"),
       JSON.stringify({ files: [{ path: "resource", text: true }] })
@@ -152,7 +217,8 @@ describe("WorkflowAssistedApplyService", () => {
     const document = {
       isDirty: false,
       getText: vi.fn(() => "REPORT old."),
-      positionAt: vi.fn((offset: number) => ({ offset }))
+      positionAt: vi.fn((offset: number) => ({ offset })),
+      save: mocks.save
     }
     mocks.openTextDocument.mockResolvedValue(document)
     mocks.applyEdit.mockImplementation(async () => {
@@ -162,6 +228,49 @@ describe("WorkflowAssistedApplyService", () => {
   })
 
   afterEach(async () => fs.rm(root, { recursive: true, force: true }))
+
+  it("invalidates a saved Copilot selection when the plan is refreshed", async () => {
+    const record = {
+      objectName: "ZTEST",
+      objectType: "PROG",
+      generated: false,
+      classification: "custom"
+    }
+    await fs.writeFile(
+      path.join(root, "sources", "source", "objects", "id", "manifest.json"),
+      JSON.stringify({
+        status: "complete",
+        record,
+        aggregateHash: "source-hash",
+        files: [{ path: "resource", text: true }]
+      })
+    )
+    await fs.writeFile(
+      path.join(root, "sources", "target", "objects", "id", "manifest.json"),
+      JSON.stringify({
+        status: "complete",
+        record,
+        aggregateHash: "target-hash",
+        files: [{ path: "resource", text: true }]
+      })
+    )
+    const workflowStore = store()
+    await new WorkflowAssistedApplyService(workflowStore).prepare("wf")
+
+    expect(workflowStore.removeCopilotAssistedApplySelection).toHaveBeenCalledWith(workflow)
+    expect(workflowStore.writeJson).toHaveBeenCalledWith(
+      expect.stringContaining("plan.json"),
+      expect.objectContaining({
+        items: [
+          expect.objectContaining({
+            key: "R3TR:PROG:ZTEST",
+            transportCheckStatus: "not-checked",
+            transportRequest: ""
+          })
+        ]
+      })
+    )
+  })
 
   it("stages source only in a dirty target editor", async () => {
     const service = new WorkflowAssistedApplyService(store())
@@ -205,13 +314,13 @@ describe("WorkflowAssistedApplyService", () => {
   it("uses one explicit picker and opens a multi-file source from SAP", async () => {
     comparisonChanged = ["resource/main.abap", "resource/includes/zinc.abap"]
     const sourceRoot = path.join(root, "sources", "source", "objects", "id")
-    await fs.rm(path.join(sourceRoot, "content", "resource"))
-    await fs.mkdir(path.join(sourceRoot, "content", "resource", "includes"), {
+    await fs.rm(path.join(sourceRoot, "raw", "resource"))
+    await fs.mkdir(path.join(sourceRoot, "raw", "resource", "includes"), {
       recursive: true
     })
-    await fs.writeFile(path.join(sourceRoot, "content", "resource", "main.abap"), "REPORT ztest.\n")
+    await fs.writeFile(path.join(sourceRoot, "raw", "resource", "main.abap"), "REPORT ztest.\n")
     await fs.writeFile(
-      path.join(sourceRoot, "content", "resource", "includes", "zinc.abap"),
+      path.join(sourceRoot, "raw", "resource", "includes", "zinc.abap"),
       "WRITE text.\n"
     )
     await fs.writeFile(
@@ -265,5 +374,412 @@ describe("WorkflowAssistedApplyService", () => {
     )
     expect(mocks.downloadSide).not.toHaveBeenCalled()
     expect(mocks.applyEdit).not.toHaveBeenCalled()
+  })
+
+  it("writes through the filesystem, waits for the provider, and verifies inactive SAP source", async () => {
+    const token = { isCancellationRequested: false } as any
+    const service = new WorkflowAssistedApplyService(store())
+
+    const result = await service.stageAndSaveForCopilot(
+      "wf",
+      "r3tr:prog:ztest",
+      { type: "existing", number: "DEVK900123" },
+      token
+    )
+
+    expect(mocks.registerIntent).toHaveBeenCalledWith({
+      objectUri: expect.objectContaining({
+        scheme: "adt",
+        authority: "target100",
+        path: "/target/resource"
+      }),
+      process: "repository-assisted-apply",
+      transportChoice: { type: "existing", number: "DEVK900123" },
+      workflowId: "wf",
+      objectKey: "R3TR:PROG:ZTEST"
+    })
+    expect(mocks.writeFile).toHaveBeenCalledWith(
+      expect.objectContaining({ path: "/target/resource" }),
+      Buffer.from("REPORT ztest.\n", "utf8")
+    )
+    expect(mocks.applyEdit).not.toHaveBeenCalled()
+    expect(mocks.save).not.toHaveBeenCalled()
+    expect(mocks.showTextDocument).not.toHaveBeenCalled()
+    expect(mocks.waitForIntent).toHaveBeenCalledWith("intent-1", token, 60_000)
+    expect(mocks.getInactiveSource).toHaveBeenCalledWith("/target/object/source/main", {
+      version: "inactive"
+    })
+    expect(mocks.getClient).toHaveBeenCalledWith("target100")
+    expect(result).toEqual(
+      expect.objectContaining({
+        status: "succeeded",
+        transportRequest: "DEVK900123",
+        inactiveSourceVerified: true
+      })
+    )
+    expect(result.resourceResults[0]).toMatchObject({
+      sapSourceUri: "/target/object/source/main",
+      sapObjectUri: "/target/object/source/main",
+      sapActivationUri: "/target/object"
+    })
+  })
+
+  it("rejects Copilot apply unless the workflow currently has mode and consent", async () => {
+    workflow.assistedApplyMode = "manual"
+    const service = new WorkflowAssistedApplyService(store())
+
+    await expect(
+      service.stageAndSaveForCopilot(
+        "wf",
+        "R3TR:PROG:ZTEST",
+        { type: "existing", number: "DEVK900123" },
+        {} as any
+      )
+    ).rejects.toThrow(/not enabled/)
+    expect(mocks.registerIntent).not.toHaveBeenCalled()
+  })
+
+  it("rechecks Copilot mode immediately before arming the write intent", async () => {
+    mocks.downloadSide.mockImplementation(async () => {
+      workflow.assistedApplyMode = "manual"
+    })
+
+    await expect(
+      new WorkflowAssistedApplyService(store()).stageAndSaveForCopilot(
+        "wf",
+        "R3TR:PROG:ZTEST",
+        { type: "existing", number: "DEVK900123" },
+        {} as any
+      )
+    ).rejects.toThrow(/not enabled/)
+    expect(mocks.registerIntent).not.toHaveBeenCalled()
+    expect(mocks.applyEdit).not.toHaveBeenCalled()
+  })
+
+  it("rejects an object outside the user-saved selection", async () => {
+    mocks.getSelection.mockResolvedValue({
+      keys: ["R3TR:PROG:OTHER"],
+      completedKeys: [],
+      decisions: {},
+      decisionReasons: {}
+    })
+
+    await expect(
+      new WorkflowAssistedApplyService(store()).stageAndSaveForCopilot(
+        "wf",
+        "R3TR:PROG:ZTEST",
+        { type: "existing", number: "DEVK900123" },
+        {} as any
+      )
+    ).rejects.toThrow(/not in the user-saved/)
+    expect(mocks.applyEdit).not.toHaveBeenCalled()
+  })
+
+  it("rejects an already completed object", async () => {
+    mocks.getSelection.mockResolvedValue({
+      keys: ["R3TR:PROG:ZTEST"],
+      completedKeys: ["R3TR:PROG:ZTEST"],
+      decisions: { "R3TR:PROG:ZTEST": "as-is" },
+      decisionReasons: { "R3TR:PROG:ZTEST": "Reviewed." }
+    })
+
+    await expect(
+      new WorkflowAssistedApplyService(store()).stageAndSaveForCopilot(
+        "wf",
+        "R3TR:PROG:ZTEST",
+        { type: "existing", number: "DEVK900123" },
+        {} as any
+      )
+    ).rejects.toThrow(/already marked done/)
+  })
+
+  it.each([
+    {
+      selection: {
+        keys: ["R3TR:PROG:ZTEST"],
+        completedKeys: [],
+        decisions: { "R3TR:PROG:ZTEST": "needs-human" },
+        decisionReasons: { "R3TR:PROG:ZTEST": "Needs review." }
+      },
+      error: /as-is/
+    },
+    {
+      selection: {
+        keys: ["R3TR:PROG:ZTEST"],
+        completedKeys: [],
+        decisions: { "R3TR:PROG:ZTEST": "as-is" },
+        decisionReasons: { "R3TR:PROG:ZTEST": " " }
+      },
+      error: /decision reason/
+    }
+  ])("rejects unsafe review metadata", async ({ selection, error }) => {
+    mocks.getSelection.mockResolvedValue(selection)
+
+    await expect(
+      new WorkflowAssistedApplyService(store()).stageAndSaveForCopilot(
+        "wf",
+        "R3TR:PROG:ZTEST",
+        { type: "existing", number: "DEVK900123" },
+        {} as any
+      )
+    ).rejects.toThrow(error)
+    expect(mocks.registerIntent).not.toHaveBeenCalled()
+  })
+
+  it("fails an armed intent if the filesystem write fails", async () => {
+    mocks.writeFile.mockRejectedValueOnce(new Error("SAP rejected write"))
+    mocks.waitForIntent.mockResolvedValue({
+      intentId: "intent-1",
+      status: "failed",
+      process: "repository-assisted-apply",
+      objectUri: "adt://target100/target/resource",
+      error: "SAP rejected write"
+    })
+
+    const result = await new WorkflowAssistedApplyService(store()).stageAndSaveForCopilot(
+      "wf",
+      "R3TR:PROG:ZTEST",
+      { type: "existing", number: "DEVK900123" },
+      {} as any
+    )
+
+    expect(result).toMatchObject({
+      status: "failed",
+      inactiveSourceVerified: false,
+      resourceResults: [
+        expect.objectContaining({
+          status: "failed",
+          error: "SAP rejected write"
+        })
+      ]
+    })
+    expect(mocks.failIntent).toHaveBeenCalledWith(
+      "intent-1",
+      expect.objectContaining({ message: "SAP rejected write" })
+    )
+    expect(mocks.save).not.toHaveBeenCalled()
+    expect(mocks.getInactiveSource).not.toHaveBeenCalled()
+  })
+
+  it("reports a provider timeout as unknown and skips inactive verification", async () => {
+    mocks.waitForIntent.mockResolvedValue({
+      intentId: "intent-1",
+      status: "timed-out",
+      process: "repository-assisted-apply",
+      objectUri: "adt://target100/target/resource",
+      error: "Save result is still unknown"
+    })
+
+    const result = await new WorkflowAssistedApplyService(store()).stageAndSaveForCopilot(
+      "wf",
+      "R3TR:PROG:ZTEST",
+      { type: "new", description: "Approved request" },
+      {} as any
+    )
+
+    expect(result).toEqual(expect.objectContaining({ status: "timed-out" }))
+    expect(mocks.getInactiveSource).not.toHaveBeenCalled()
+  })
+
+  it("does not verify a rejected write even if the provider already reported success", async () => {
+    mocks.writeFile.mockRejectedValueOnce(new Error("Write did not finish"))
+    mocks.waitForIntent.mockResolvedValue({
+      intentId: "intent-1",
+      status: "succeeded",
+      process: "repository-assisted-apply",
+      objectUri: "adt://target100/target/resource"
+    })
+
+    const result = await new WorkflowAssistedApplyService(store()).stageAndSaveForCopilot(
+      "wf",
+      "R3TR:PROG:ZTEST",
+      { type: "existing", number: "DEVK900123" },
+      {} as any
+    )
+    await Promise.resolve()
+
+    expect(result).toEqual(expect.objectContaining({ status: "failed" }))
+    expect(mocks.failIntent).toHaveBeenCalledWith(
+      "intent-1",
+      expect.objectContaining({ message: "Write did not finish" })
+    )
+    expect(mocks.getInactiveSource).not.toHaveBeenCalled()
+  })
+
+  it("applies every changed text resource for one selected repository object", async () => {
+    comparisonChanged = ["resource/main.abap", "resource/testclasses.abap"]
+    const sourceRoot = path.join(root, "sources", "source", "objects", "id")
+    await fs.rm(path.join(sourceRoot, "raw", "resource"))
+    await fs.mkdir(path.join(sourceRoot, "raw", "resource"), { recursive: true })
+    await fs.writeFile(
+      path.join(sourceRoot, "raw", "resource", "main.abap"),
+      "CLASS zcl_test IMPLEMENTATION.\nENDCLASS.\n"
+    )
+    await fs.writeFile(
+      path.join(sourceRoot, "raw", "resource", "testclasses.abap"),
+      "CLASS ltc_test IMPLEMENTATION.\nENDCLASS.\n"
+    )
+    await fs.writeFile(
+      path.join(sourceRoot, "manifest.json"),
+      JSON.stringify({
+        files: [
+          { path: "resource/main.abap", text: true },
+          { path: "resource/testclasses.abap", text: true }
+        ]
+      })
+    )
+    mocks.registerIntent
+      .mockReturnValueOnce({ intentId: "intent-1" })
+      .mockReturnValueOnce({ intentId: "intent-2" })
+    mocks.waitForIntent
+      .mockResolvedValueOnce({
+        intentId: "intent-1",
+        status: "succeeded",
+        process: "repository-assisted-apply",
+        objectUri: "adt://target100/target/resource/main.abap",
+        transportRequest: "DEVK900555"
+      })
+      .mockResolvedValueOnce({
+        intentId: "intent-2",
+        status: "succeeded",
+        process: "repository-assisted-apply",
+        objectUri: "adt://target100/target/resource/testclasses.abap",
+        transportRequest: "DEVK900555"
+      })
+    mocks.getInactiveSource
+      .mockResolvedValueOnce("CLASS zcl_test IMPLEMENTATION.\nENDCLASS.\n")
+      .mockResolvedValueOnce("CLASS ltc_test IMPLEMENTATION.\nENDCLASS.\n")
+
+    const result = await new WorkflowAssistedApplyService(store()).stageAndSaveForCopilot(
+      "wf",
+      "R3TR:PROG:ZTEST",
+      { type: "new", description: "Approved request" },
+      {} as any
+    )
+
+    expect(result.status).toBe("succeeded")
+    expect(result.resourceResults.map(resource => resource.resourcePath)).toEqual([
+      "resource/main.abap",
+      "resource/testclasses.abap"
+    ])
+    expect(result.resourceResults.map(resource => resource.sapActivationUri)).toEqual([
+      "/target/object",
+      "/target/object"
+    ])
+    expect(mocks.writeFile).toHaveBeenCalledTimes(2)
+    expect(mocks.registerIntent).toHaveBeenNthCalledWith(
+      1,
+      expect.objectContaining({
+        transportChoice: { type: "new", description: "Approved request" }
+      })
+    )
+    expect(mocks.registerIntent).toHaveBeenNthCalledWith(
+      2,
+      expect.objectContaining({
+        transportChoice: { type: "existing", number: "DEVK900555" }
+      })
+    )
+    expect(mocks.appendExecutionEvent).toHaveBeenCalledWith(
+      "wf",
+      expect.objectContaining({
+        stage: "apply",
+        status: "succeeded",
+        inactiveSourceVerified: true
+      })
+    )
+  })
+
+  it("waits for the filesystem write to finish before verifying inactive SAP source", async () => {
+    let finishWrite!: () => void
+    mocks.writeFile.mockImplementationOnce(
+      () =>
+        new Promise<void>(resolve => {
+          finishWrite = resolve
+        })
+    )
+
+    const applying = new WorkflowAssistedApplyService(store()).stageAndSaveForCopilot(
+      "wf",
+      "R3TR:PROG:ZTEST",
+      { type: "existing", number: "DEVK900123" },
+      {} as any
+    )
+
+    try {
+      await vi.waitFor(() => expect(mocks.writeFile).toHaveBeenCalledTimes(1))
+      await new Promise<void>(resolve => setImmediate(resolve))
+      expect(mocks.getInactiveSource).not.toHaveBeenCalled()
+    } finally {
+      finishWrite()
+      await applying
+    }
+
+    expect((await applying).status).toBe("succeeded")
+    expect(mocks.getInactiveSource).toHaveBeenCalledTimes(1)
+  })
+
+  it("accepts SAP line endings and trailing whitespace without changing the written snapshot", async () => {
+    mocks.getInactiveSource.mockResolvedValue("REPORT ztest.  \r\n\r\n")
+
+    const result = await new WorkflowAssistedApplyService(store()).stageAndSaveForCopilot(
+      "wf",
+      "R3TR:PROG:ZTEST",
+      { type: "existing", number: "DEVK900123" },
+      {} as any
+    )
+
+    expect(result.status).toBe("succeeded")
+    expect(mocks.writeFile).toHaveBeenCalledWith(
+      expect.anything(),
+      Buffer.from("REPORT ztest.\n", "utf8")
+    )
+  })
+
+  it("loads missing metadata again before verifying a saved resource", async () => {
+    const loadStructure = vi.fn().mockResolvedValue(undefined)
+    const contentsPath = vi.fn(() => {
+      expect(loadStructure).toHaveBeenCalledTimes(1)
+      return "/target/object/source/main"
+    })
+    mocks.getNodeAsync.mockResolvedValue({
+      object: {
+        path: "/target/object/source/main",
+        lockObject: { path: "/target/object" },
+        loadStructure,
+        contentsPath
+      }
+    })
+
+    const result = await new WorkflowAssistedApplyService(store()).stageAndSaveForCopilot(
+      "wf",
+      "R3TR:PROG:ZTEST",
+      { type: "existing", number: "DEVK900123" },
+      {} as any
+    )
+
+    expect(result.status).toBe("succeeded")
+  })
+
+  it("fails verification when inactive SAP source differs from reviewed raw source", async () => {
+    mocks.getInactiveSource.mockResolvedValue("REPORT unexpected.\n")
+    const setTimeoutSpy = vi.spyOn(globalThis, "setTimeout").mockImplementation(callback => {
+      queueMicrotask(callback as () => void)
+      return undefined as unknown as ReturnType<typeof setTimeout>
+    })
+
+    try {
+      const result = await new WorkflowAssistedApplyService(store()).stageAndSaveForCopilot(
+        "wf",
+        "R3TR:PROG:ZTEST",
+        { type: "existing", number: "DEVK900123" },
+        {} as any
+      )
+
+      expect(result.status).toBe("failed")
+      expect(mocks.getInactiveSource).toHaveBeenCalledTimes(10)
+      expect(result.resourceResults[0].error).toMatch(/First difference at line 1/)
+    } finally {
+      setTimeoutSpy.mockRestore()
+    }
   })
 })

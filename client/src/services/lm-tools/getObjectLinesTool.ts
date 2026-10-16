@@ -22,6 +22,12 @@ import {
   getDomainFromDD
 } from "./shared"
 
+type SourceVersion = "active" | "inactive"
+
+function getVersionedSource(client: any, uri: string, version: SourceVersion) {
+  return client.getObjectSource(uri, { version })
+}
+
 // ============================================================================
 // LOCAL COMPLETE TABLE STRUCTURE (uses enhancement URIs - different from shared)
 // ============================================================================
@@ -29,7 +35,8 @@ import {
 async function getCompleteTableStructure(
   connectionId: string,
   objectName: string,
-  objectUri: string
+  objectUri: string,
+  version: SourceVersion
 ): Promise<string> {
   try {
     const client = getClient(connectionId)
@@ -38,8 +45,9 @@ async function getCompleteTableStructure(
     let mainStructure = ""
 
     try {
-      mainStructure = await client.getObjectSource(mainTableURI)
+      mainStructure = await getVersionedSource(client, mainTableURI, version)
     } catch (mainError) {
+      if (version === "inactive") throw mainError
       try {
         const tableFields = await getTableStructureFromDD(client, objectName)
         if (tableFields) {
@@ -86,7 +94,11 @@ async function getCompleteTableStructure(
                 structureResults[0].type,
                 structureUri
               )
-              const structureContent = await client.getObjectSource(optimalStructureUri)
+              const structureContent = await getVersionedSource(
+                client,
+                optimalStructureUri,
+                version
+              )
 
               if (structureContent && structureContent.trim().length > 0) {
                 allAppendStructures += `\n\n--- Append Structure: ${structureName.toUpperCase()} ---\n`
@@ -130,6 +142,7 @@ export interface IGetABAPObjectLinesParameters {
   lineCount?: number
   connectionId?: string
   methodName?: string // For classes: extract only this specific method
+  version?: SourceVersion
 }
 
 /**
@@ -215,7 +228,8 @@ export class GetABAPObjectLinesTool implements vscode.LanguageModelTool<IGetABAP
       startLine = 0,
       lineCount = 50,
       connectionId,
-      methodName
+      methodName,
+      version = "active"
     } = options.input
 
     const confirmationMessages = {
@@ -223,7 +237,7 @@ export class GetABAPObjectLinesTool implements vscode.LanguageModelTool<IGetABAP
       message: new vscode.MarkdownString(
         methodName
           ? `Extract method \`${methodName}\` from class: \`${objectName}\``
-          : `Retrieve lines ${startLine}-${startLine + lineCount} from ABAP object: \`${objectName}\`` +
+          : `Retrieve ${version} lines ${startLine}-${startLine + lineCount} from ABAP object: \`${objectName}\`` +
               (objectType ? `\nType: ${objectType}` : "") +
               (connectionId ? ` (connection: ${connectionId})` : "")
       )
@@ -248,7 +262,8 @@ export class GetABAPObjectLinesTool implements vscode.LanguageModelTool<IGetABAP
       startLine = 1,
       lineCount = 50,
       connectionId,
-      methodName
+      methodName,
+      version = "active"
     } = options.input
     logTelemetry("tool_get_abap_object_lines_called", { connectionId })
 
@@ -297,12 +312,13 @@ export class GetABAPObjectLinesTool implements vscode.LanguageModelTool<IGetABAP
 
       // Table/Structure/TableType-aware processing
       if (
-        objectInfo.type === "TABL/TA" ||
-        objectInfo.type === "TABL" ||
-        objectInfo.type === "TABL/DT" ||
-        objectInfo.type === "TABL/DS" ||
-        objectInfo.type === "TTYP/DA" ||
-        objectInfo.type === "TTYP"
+        version === "active" &&
+        (objectInfo.type === "TABL/TA" ||
+          objectInfo.type === "TABL" ||
+          objectInfo.type === "TABL/DT" ||
+          objectInfo.type === "TABL/DS" ||
+          objectInfo.type === "TTYP/DA" ||
+          objectInfo.type === "TTYP")
       ) {
         try {
           const client = getClient(actualConnectionId)
@@ -320,7 +336,8 @@ export class GetABAPObjectLinesTool implements vscode.LanguageModelTool<IGetABAP
             completeStructure = await getCompleteTableStructure(
               actualConnectionId,
               objectName,
-              objectInfo.uri
+              objectInfo.uri,
+              version
             )
           }
 
@@ -360,19 +377,19 @@ export class GetABAPObjectLinesTool implements vscode.LanguageModelTool<IGetABAP
       const optimalUri = getOptimalObjectURI(objectInfo.type, objectInfo.uri)
 
       try {
-        sourceContent = await client.getObjectSource(optimalUri)
+        sourceContent = await getVersionedSource(client, optimalUri, version)
         uriUsed = optimalUri
       } catch (optimizedError) {
         if (optimalUri !== objectInfo.uri) {
           try {
-            sourceContent = await client.getObjectSource(objectInfo.uri)
+            sourceContent = await getVersionedSource(client, objectInfo.uri, version)
             uriUsed = objectInfo.uri
           } catch (originalError) {
             const resolvedUri = await resolveCorrectURI(objectInfo.uri, actualConnectionId)
             const finalUri = getOptimalObjectURI(objectInfo.type, resolvedUri)
 
             try {
-              sourceContent = await client.getObjectSource(finalUri)
+              sourceContent = await getVersionedSource(client, finalUri, version)
               uriUsed = finalUri
             } catch (finalError) {
               throw new Error(
@@ -385,12 +402,14 @@ export class GetABAPObjectLinesTool implements vscode.LanguageModelTool<IGetABAP
           const finalUri = getOptimalObjectURI(objectInfo.type, resolvedUri)
 
           try {
-            sourceContent = await client.getObjectSource(finalUri)
+            sourceContent = await getVersionedSource(client, finalUri, version)
             uriUsed = finalUri
           } catch (finalError) {
             try {
               let ddContent = ""
-              if (objectInfo.type === "DTEL/DE" || objectInfo.type === "DTEL") {
+              if (version === "inactive") {
+                throw finalError
+              } else if (objectInfo.type === "DTEL/DE" || objectInfo.type === "DTEL") {
                 ddContent = await getDataElementFromDD(client, objectName)
               } else if (objectInfo.type === "DOMA/DD" || objectInfo.type === "DOMA") {
                 ddContent = await getDomainFromDD(client, objectName)
