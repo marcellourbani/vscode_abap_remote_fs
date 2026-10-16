@@ -44,6 +44,15 @@ vi.mock("../../langClient", () => ({
 vi.mock("../../oauth", () => ({
   futureToken: vi.fn()
 }))
+vi.mock("../../auth/browserSso", () => ({ getSsoCookies: vi.fn() }))
+vi.mock("../conections", () => ({
+  refreshBrowserSsoCookies: vi.fn()
+}))
+vi.mock("vscode-abap-remote-fs-sharedapi", () => ({
+  attachBrowserSsoCookies: vi.fn(),
+  loginWithBrowserSsoCookies: vi.fn(),
+  onBrowserSsoAuthFailure: vi.fn()
+}))
 vi.mock("crypto", () => ({
   createHash: vi.fn(function () {
     return {
@@ -57,6 +66,13 @@ import { md5, newClientFromKey } from "./functions"
 import { ADTClient, createSSLConfig } from "abap-adt-api"
 import { configFromKey } from "../../langClient"
 import { futureToken } from "../../oauth"
+import { getSsoCookies } from "../../auth/browserSso"
+import {
+  attachBrowserSsoCookies,
+  loginWithBrowserSsoCookies,
+  onBrowserSsoAuthFailure
+} from "vscode-abap-remote-fs-sharedapi"
+import { refreshBrowserSsoCookies } from "../conections"
 import type { MockedClass, MockedFunction, Mock } from "vitest"
 
 const MockADTClient = ADTClient as MockedClass<typeof ADTClient>
@@ -132,6 +148,49 @@ describe("newClientFromKey", () => {
     // futureToken is called inside a lambda; ADTClient receives a function
     const pwdOrFetch = MockADTClient.mock.calls[0][2]
     expect(typeof pwdOrFetch).toBe("function")
+  })
+
+  test("attaches rotating Browser SSO cookies to both debugger clients", async () => {
+    const clone = {}
+    const client = { statelessClone: clone }
+    MockADTClient.mockImplementationOnce(function () {
+      return client as any
+    })
+    mockConfigFromKey.mockResolvedValueOnce({ ...baseConf, authMethod: "browser_sso" })
+    vi.mocked(getSsoCookies).mockResolvedValueOnce(["MYSAPSSO2=ticket"])
+
+    expect(await newClientFromKey("somekey")).toBe(client)
+    expect(MockADTClient.mock.calls[0][5]).not.toHaveProperty("headers.Cookie")
+    expect(attachBrowserSsoCookies).toHaveBeenCalledWith(client, ["MYSAPSSO2=ticket"])
+    expect(attachBrowserSsoCookies).toHaveBeenCalledWith(clone, ["MYSAPSSO2=ticket"])
+  })
+
+  test("tries the saved login before asking for a new browser login", async () => {
+    const clone = {}
+    const client = { statelessClone: clone }
+    MockADTClient.mockImplementationOnce(function () {
+      return client as any
+    })
+    mockConfigFromKey.mockResolvedValueOnce({ ...baseConf, authMethod: "browser_sso" })
+    vi.mocked(getSsoCookies)
+      .mockResolvedValueOnce(["MYSAPSSO2=old"])
+      .mockResolvedValueOnce(["MYSAPSSO2=old"])
+      .mockResolvedValueOnce(["MYSAPSSO2=fresh"])
+    vi.mocked(loginWithBrowserSsoCookies).mockResolvedValueOnce(false).mockResolvedValueOnce(true)
+    vi.mocked(refreshBrowserSsoCookies).mockResolvedValueOnce(true)
+
+    await newClientFromKey("somekey")
+    const recover = vi
+      .mocked(onBrowserSsoAuthFailure)
+      .mock.calls.find(([target]) => target === client)?.[1]
+    expect(recover).toBeDefined()
+    const error = new Error("Unauthorized")
+    const results = await Promise.all([recover!(error), recover!(error)])
+
+    expect(results).toEqual([true, true])
+    expect(refreshBrowserSsoCookies).toHaveBeenCalledExactlyOnceWith("myconn")
+    expect(loginWithBrowserSsoCookies).toHaveBeenNthCalledWith(1, client, ["MYSAPSSO2=old"])
+    expect(loginWithBrowserSsoCookies).toHaveBeenNthCalledWith(2, client, ["MYSAPSSO2=fresh"])
   })
 
   test("passes extra options to ADTClient on HTTPS", async () => {

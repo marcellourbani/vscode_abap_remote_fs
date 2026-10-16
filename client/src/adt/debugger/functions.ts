@@ -8,7 +8,14 @@ import { futureToken } from "../../oauth"
 import { createHash } from "crypto"
 import { getKerberosCookies } from "../../auth/kerberos"
 import { getSsoCookies } from "../../auth/browserSso"
+import {
+  attachBrowserSsoCookies,
+  loginWithBrowserSsoCookies,
+  onBrowserSsoAuthFailure
+} from "vscode-abap-remote-fs-sharedapi"
+import { refreshBrowserSsoCookies } from "../conections"
 import { getCertPassphrase } from "../../auth/certificate"
+import { buildOAuthOnPremAuth } from "../../auth/oauthOnPrem"
 import { log } from "../../lib"
 
 export const md5 = (s: string) => createHash("md5").update(s).digest("hex")
@@ -28,13 +35,6 @@ async function getDebuggerAuthHeaders(
     case "kerberos": {
       const cookies = await getKerberosCookies(connId)
       log.debug(`[debugger] kerberos: ${cookies.length} cached cookies for ${connId}`)
-      if (cookies.length > 0)
-        return { Cookie: cookies.map(c => c.replace(/[\r\n\x00-\x1f]/g, "")).join("; ") }
-      return undefined
-    }
-    case "browser_sso": {
-      const cookies = await getSsoCookies(connId)
-      log.debug(`[debugger] browser_sso: ${cookies.length} cached cookies for ${connId}`)
       if (cookies.length > 0)
         return { Cookie: cookies.map(c => c.replace(/[\r\n\x00-\x1f]/g, "")).join("; ") }
       return undefined
@@ -109,7 +109,6 @@ export async function newClientFromKey(key: string, options: Partial<ClientOptio
       const oauthConf = (conf as any).oauthOnPrem
       if (oauthConf) {
         try {
-          const { buildOAuthOnPremAuth } = await import("../../auth/oauthOnPrem")
           const result = await buildOAuthOnPremAuth(
             formatKey(conf.name),
             conf.url,
@@ -126,6 +125,10 @@ export async function newClientFromKey(key: string, options: Partial<ClientOptio
       } else {
         pwdOrFetch = "oauth-onprem-auth"
       }
+    } else if (authMethod === "browser_sso" && !conf.oauth) {
+      // Authentication is supplied by the rotating cookie session below. The placeholder only
+      // satisfies ADTClient's constructor and is never sent as Basic authentication.
+      pwdOrFetch = "browser-sso-auth"
     } else if (authMethod !== "basic" && !conf.oauth) {
       const headers = await getDebuggerAuthHeaders(conf)
       if (headers) sslconf.headers = { ...sslconf.headers, ...headers }
@@ -142,6 +145,32 @@ export async function newClientFromKey(key: string, options: Partial<ClientOptio
       conf.language,
       sslconf
     )
+    if (authMethod === "browser_sso" && !conf.oauth) {
+      const connectionKey = formatKey(conf.name)
+      // Prefer the saved browser login. Only ask the main connection manager to capture fresh
+      // cookies when none are available, so starting the debugger does not open duplicate prompts.
+      let cookies = await getSsoCookies(connectionKey)
+      if (!cookies.length && (await refreshBrowserSsoCookies(conf.name)))
+        cookies = await getSsoCookies(connectionKey)
+      if (!cookies.length)
+        throw new Error(
+          `Browser SSO cookies unavailable for ${conf.name}. Run Connect again to retry.`
+        )
+      attachBrowserSsoCookies(client, cookies)
+      attachBrowserSsoCookies(client.statelessClone, cookies)
+      // Main and clone failures share one renewal. This prevents simultaneous debugger requests
+      // from opening more than one browser login.
+      const renew = async () => {
+        if (await loginWithBrowserSsoCookies(client, await getSsoCookies(connectionKey)))
+          return true
+        if (!(await refreshBrowserSsoCookies(conf.name))) return false
+        return loginWithBrowserSsoCookies(client, await getSsoCookies(connectionKey))
+      }
+      let pending: Promise<boolean> | undefined
+      const recover = () => (pending ??= renew().finally(() => (pending = undefined)))
+      onBrowserSsoAuthFailure(client, recover)
+      onBrowserSsoAuthFailure(client.statelessClone, recover)
+    }
     return client
   }
 }

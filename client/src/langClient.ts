@@ -29,13 +29,24 @@ import { type FixProposal, type Delta, type LogData } from "abap-adt-api"
 import { command, AbapFsCommands } from "./commands"
 import { RemoteManager, formatKey } from "./config"
 import { futureToken } from "./oauth"
-import { getRoot, ADTSCHEME, uriRoot, getClient } from "./adt/conections"
+import {
+  getRoot,
+  ADTSCHEME,
+  uriRoot,
+  getClient,
+  onBrowserSsoLogin,
+  refreshBrowserSsoCookies
+} from "./adt/conections"
 import { CallLogger } from "./adt/adtCommLog"
 import { isAbapFile } from "abapfs"
 import { type AbapObject } from "abapobject"
 import { IncludeService, IncludeProvider } from "./adt/includes"
 import { funWindow as window } from "./services/funMessenger"
 import { buildCookieHeaders, errorMessage } from "./auth/utils"
+import { getKerberosCookies, refreshKerberosAuth } from "./auth/kerberos"
+import { getSsoCookies } from "./auth/browserSso"
+import { getCertPassphrase } from "./auth/certificate"
+import { buildOAuthOnPremAuth } from "./auth/oauthOnPrem"
 
 const uriErrors = new Map<string, boolean>()
 const uriError = (uri: string) => new Error(`File not found:${uri}`)
@@ -148,10 +159,8 @@ async function getAuthHeaders(connId: string): Promise<AuthHeadersResponse | und
   const authMethod = getAuthMethod(conn)
   switch (authMethod) {
     case "kerberos": {
-      const { log: libLog } = await import("./lib")
       try {
-        libLog.debug(`[langClient] getAuthHeaders: re-negotiating kerberos for ${connId}`)
-        const { refreshKerberosAuth } = await import("./auth/kerberos")
+        log.debug(`[langClient] getAuthHeaders: re-negotiating kerberos for ${connId}`)
         const result = await refreshKerberosAuth(
           connId,
           conn.kerberosAuth,
@@ -159,15 +168,14 @@ async function getAuthHeaders(connId: string): Promise<AuthHeadersResponse | und
           conn.client,
           !!conn.allowSelfSigned
         )
-        libLog.debug(`[langClient] getAuthHeaders: kerberos refresh success for ${connId}`)
+        log.debug(`[langClient] getAuthHeaders: kerberos refresh success for ${connId}`)
         return result.headers ? { httpHeaders: result.headers } : undefined
       } catch (e) {
-        libLog.debug(
+        log.debug(
           `[langClient] getAuthHeaders: kerberos re-negotiation failed for ${connId}: ${errorMessage(e)}`
         )
-        const { getKerberosCookies } = await import("./auth/kerberos")
         const cookies = await getKerberosCookies(connId)
-        libLog.debug(
+        log.debug(
           `[langClient] getAuthHeaders: falling back to ${cookies.length} cached cookies for ${connId}`
         )
         const httpHeaders = buildCookieHeaders(cookies)
@@ -175,37 +183,21 @@ async function getAuthHeaders(connId: string): Promise<AuthHeadersResponse | und
       }
     }
     case "browser_sso": {
-      const { log: libLog } = await import("./lib")
-      try {
-        libLog.debug(`[langClient] getAuthHeaders: resolving browser_sso cookies for ${connId}`)
-        const { buildBrowserSsoAuth, getSsoCookies } = await import("./auth/browserSso")
-        const result = await buildBrowserSsoAuth(connId, conn.url, conn.client)
-        if (result.headers) {
-          libLog.debug(`[langClient] getAuthHeaders: browser_sso capture resolved for ${connId}`)
-          return { httpHeaders: result.headers }
-        }
-
-        const cookies = await getSsoCookies(connId)
-        const httpHeaders = buildCookieHeaders(cookies)
-        return httpHeaders ? { httpHeaders } : undefined
-      } catch (e) {
-        libLog.debug(
-          `[langClient] getAuthHeaders: browser_sso capture failed for ${connId}: ${errorMessage(e)}`
-        )
-        const { getSsoCookies } = await import("./auth/browserSso")
-        const cookies = await getSsoCookies(connId)
-        const httpHeaders = buildCookieHeaders(cookies)
-        return httpHeaders ? { httpHeaders } : undefined
-      }
+      // Header requests must stay non-interactive. If these cookies fail, the server asks the
+      // extension host to run Browser SSO recovery explicitly.
+      const cookies = await getSsoCookies(connId)
+      log.debug(
+        `[langClient] getAuthHeaders: ${cookies.length} cached browser_sso cookies for ${connId}`
+      )
+      const httpHeaders = buildCookieHeaders(cookies)
+      return httpHeaders ? { httpHeaders } : undefined
     }
     case "cert": {
-      const { log: libLog } = await import("./lib")
       if (!hasCertAuthConfig(conn)) {
-        libLog.debug(`[langClient] getAuthHeaders: cert auth config missing for ${connId}`)
+        log.debug(`[langClient] getAuthHeaders: cert auth config missing for ${connId}`)
         return undefined
       }
-      libLog.debug(`[langClient] getAuthHeaders: returning cert paths for ${connId}`)
-      const { getCertPassphrase } = await import("./auth/certificate")
+      log.debug(`[langClient] getAuthHeaders: returning cert paths for ${connId}`)
       const passphrase = await getCertPassphrase(connId)
       return {
         certAuth: {
@@ -217,11 +209,9 @@ async function getAuthHeaders(connId: string): Promise<AuthHeadersResponse | und
       }
     }
     case "oauth_onprem": {
-      const { log: libLog } = await import("./lib")
-      libLog.debug(`[langClient] getAuthHeaders: fetching oauth_onprem token for ${connId}`)
-      const { buildOAuthOnPremAuth } = await import("./auth/oauthOnPrem")
+      log.debug(`[langClient] getAuthHeaders: fetching oauth_onprem token for ${connId}`)
       if (!hasOAuthOnPremConfig(conn)) {
-        libLog.debug(`[langClient] getAuthHeaders: oauth_onprem config missing for ${connId}`)
+        log.debug(`[langClient] getAuthHeaders: oauth_onprem config missing for ${connId}`)
         return undefined
       }
       try {
@@ -234,11 +224,11 @@ async function getAuthHeaders(connId: string): Promise<AuthHeadersResponse | und
         )
         if (typeof result.passwordOrFetcher === "function") {
           const token = await result.passwordOrFetcher()
-          libLog.debug(`[langClient] getAuthHeaders: returning Bearer token for ${connId}`)
+          log.debug(`[langClient] getAuthHeaders: returning Bearer token for ${connId}`)
           return { httpHeaders: { Authorization: `Bearer ${token}` } }
         }
       } catch (e) {
-        libLog.debug(
+        log.debug(
           `[langClient] getAuthHeaders: oauth_onprem token fetch failed for ${connId}: ${errorMessage(e)}`
         )
       }
@@ -325,6 +315,14 @@ export async function startLanguageClient(context: ExtensionContext) {
   )
 
   IncludeProvider.get().onDidSelectInclude(includeChanged)
+  onBrowserSsoLogin(connId => {
+    // A successful manual connection can wake a language-server client paused after an earlier
+    // cancelled or failed Browser SSO attempt.
+    if (client.state !== State.Running) return
+    client
+      .sendNotification(Methods.browserSsoLogin, connId)
+      .catch(error => log(`[langClient] Browser SSO login notification failed: ${error}`))
+  })
 
   client.onDidChangeState(e => {
     if (e.newState === State.Running) {
@@ -336,6 +334,8 @@ export async function startLanguageClient(context: ExtensionContext) {
       client.onRequest(Methods.setSearchProgress, setSearchProgress)
       client.onRequest(Methods.getToken, getToken)
       client.onRequest(Methods.getAuthHeaders, getAuthHeaders)
+      // Interactive browser work belongs in the extension host, not the language-server process.
+      client.onRequest(Methods.recoverBrowserSso, refreshBrowserSsoCookies)
       client.onNotification(Methods.commLogEntry, (entry: CommLogEntryData) =>
         CallLogger.get(entry.connId)?.add(hidrateLogData(entry.logData))
       )
