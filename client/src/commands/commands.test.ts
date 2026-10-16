@@ -11,6 +11,7 @@ vi.mock("vscode", () => {
   }
   return {
     Uri,
+    CancellationError: class CancellationError extends Error {},
     workspace: {
       openTextDocument: vi.fn(),
       updateWorkspaceFolders: vi.fn(),
@@ -54,7 +55,8 @@ vi.mock("../adt/conections", () => ({
   uriRoot: vi.fn(),
   getOrCreateRoot: vi.fn(),
   disconnect: vi.fn(),
-  clearConnectionFailure: vi.fn()
+  clearConnectionFailure: vi.fn(),
+  announceBrowserSsoLogin: vi.fn()
 }))
 
 vi.mock("../config", () => ({
@@ -68,7 +70,7 @@ vi.mock("../lib", () => ({
   }),
   inputBox: vi.fn(),
   lineRange: vi.fn(),
-  log: vi.fn(),
+  log: Object.assign(vi.fn(), { debug: vi.fn() }),
   rangeVscToApi: vi.fn(),
   splitAdtUri: vi.fn(),
   channel: { appendLine: vi.fn() }
@@ -224,6 +226,8 @@ function makeAdtUri(authority = "dev100", path = "/sap/bc/adt/programs/programs/
 beforeEach(() => {
   vi.clearAllMocks()
   ;(mockWindow as any).activeTextEditor = undefined
+  Object.defineProperty(vscode.workspace, "workspaceFolders", { value: [], configurable: true })
+  Object.defineProperty(vscode.workspace, "workspaceFile", { value: undefined, configurable: true })
 })
 
 describe("currentUri", () => {
@@ -246,6 +250,22 @@ describe("currentUri", () => {
 })
 
 describe("connectAdtServer", () => {
+  test("does not show an error when folder removal cancels connection", async () => {
+    const { getOrCreateRoot } = __$mock_adt_conections
+    ;(RemoteManager.get as Mock).mockReturnValue({
+      selectConnection: vi.fn().mockResolvedValue({
+        remote: { name: "dev100", username: "developer" },
+        userCancel: false
+      })
+    })
+    vi.mocked(getOrCreateRoot).mockRejectedValue(new vscode.CancellationError())
+
+    await (AdtCommands as any).connectAdtServer({})
+
+    expect(mockWindow.showErrorMessage).not.toHaveBeenCalled()
+    expect(vscode.workspace.updateWorkspaceFolders).not.toHaveBeenCalled()
+  })
+
   test("offers username and password actions for authentication failures", async () => {
     const { getOrCreateRoot } = __$mock_adt_conections
     const mockManager = {
@@ -307,6 +327,40 @@ describe("connectAdtServer", () => {
     expect(vscode.commands.executeCommand).toHaveBeenCalledWith("abapfs.connect", {
       connection: "dev100"
     })
+  })
+})
+
+describe("disconnectAdtServer", () => {
+  test("passes mounted SAP folder IDs for cookie cleanup", async () => {
+    mockWindow.showWarningMessage.mockResolvedValue("Disconnect" as any)
+    Object.defineProperty(vscode.workspace, "workspaceFolders", {
+      value: [{ uri: vscode.Uri.parse("adt://dev100") }],
+      configurable: true
+    })
+
+    await (AdtCommands as any).disconnectAdtServer()
+
+    expect(__$mock_adt_conections.disconnect).toHaveBeenCalledWith(["dev100"])
+  })
+
+  test("removes SAP folders even when a logout fails", async () => {
+    mockWindow.showWarningMessage.mockResolvedValue("Disconnect" as any)
+    Object.defineProperty(vscode.workspace, "workspaceFolders", {
+      value: [
+        { uri: vscode.Uri.parse("file:///local") },
+        { uri: vscode.Uri.parse("adt://dev100") }
+      ],
+      configurable: true
+    })
+    vi.mocked(__$mock_adt_conections.disconnect).mockRejectedValueOnce(new Error("network down"))
+
+    await (AdtCommands as any).disconnectAdtServer()
+
+    expect(vscode.workspace.updateWorkspaceFolders).toHaveBeenCalledWith(1, 1)
+    expect(mockWindow.showErrorMessage).not.toHaveBeenCalled()
+    expect(mockWindow.showInformationMessage).toHaveBeenCalledWith(
+      expect.stringContaining("Disconnected from all ABAP systems")
+    )
   })
 })
 

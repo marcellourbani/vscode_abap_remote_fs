@@ -19,7 +19,13 @@ import { abapGitProvider } from "./views/abapgit"
 import { loadTokens, clearTokens } from "./oauth"
 import { registerAbapGit } from "./scm/abapGit"
 import { type AbapFsApi, api } from "./api"
-import { ADTSCHEME, disconnect, hasLocks } from "./adt/conections"
+import {
+  ADTSCHEME,
+  clearConnectionFailure,
+  disconnect,
+  disconnectConnection,
+  hasLocks
+} from "./adt/conections"
 import { MessagesProvider } from "./editors/messages"
 import { IncludeProvider } from "./adt/includes"
 import { registerCommands } from "./commands/register"
@@ -349,11 +355,24 @@ export async function activate(ctx: ExtensionContext): Promise<AbapFsApi> {
     !(workspace.workspaceFolders?.some(f => f.uri.scheme === ADTSCHEME) ?? false)
   )
   sub.push(
-    workspace.onDidChangeWorkspaceFolders(() => {
+    workspace.onDidChangeWorkspaceFolders(event => {
       setContext(
         "abapfs:noSapConnected",
         !(workspace.workspaceFolders?.some(f => f.uri.scheme === ADTSCHEME) ?? false)
       )
+      // A removed workspace folder owns a live SAP connection, so release that connection without
+      // disturbing other mounted systems.
+      for (const folder of event.removed.filter(f => f.uri.scheme === ADTSCHEME)) {
+        void disconnectConnection(folder.uri.authority).catch(error =>
+          log(`[disconnect] Failed to clean up ${folder.uri.authority}: ${error}`)
+        )
+      }
+      // Re-adding a folder is an explicit reconnect and clears the retry gate set by removal.
+      for (const folder of event.added.filter(f => f.uri.scheme === ADTSCHEME)) {
+        void clearConnectionFailure(folder.uri.authority).catch(error =>
+          log(`[connect] Failed to restore ${folder.uri.authority}: ${error}`)
+        )
+      }
     })
   )
   restoreLocks()
@@ -464,7 +483,7 @@ export async function activate(ctx: ExtensionContext): Promise<AbapFsApi> {
 export async function deactivate() {
   if (hasLocks())
     window.showInformationMessage(
-      "Locks will be dropped now. If the relevant editors are still open they will be restored later"
+      "Locks will be released now. If the relevant editors are still open they will be restored later"
     )
   setContext("abapfs:extensionActive", false)
 
@@ -482,5 +501,5 @@ export async function deactivate() {
     // Ignore - service may not be loaded
   }
 
-  return disconnect()
+  return disconnect([], true)
 }

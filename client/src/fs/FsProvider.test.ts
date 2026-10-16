@@ -57,6 +57,7 @@ vi.mock("vscode", () => {
     })
   }
   return {
+    CancellationError: class CancellationError extends Error {},
     EventEmitter,
     FileChangeType,
     FileType,

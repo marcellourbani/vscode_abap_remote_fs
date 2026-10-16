@@ -1,5 +1,6 @@
 import { getClient, getOrCreateRoot } from "../adt/conections"
 import {
+  CancellationError,
   FileSystemError,
   FileChangeType,
   type FileSystemProvider,
@@ -226,6 +227,9 @@ export class FsProvider implements FileSystemProvider {
         return buf
       }
     } catch (error) {
+      // Preserve intentional Browser SSO cancellation; reporting it as an unavailable filesystem
+      // would show an error and may cause VS Code to retry after the user cancelled login.
+      if (error instanceof CancellationError) throw error
       log.debug(`Error reading file ${uri?.toString()}\n${caughtToString(error)}`)
     }
     throw FileSystemError.Unavailable(uri)
