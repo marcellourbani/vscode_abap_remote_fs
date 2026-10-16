@@ -33,14 +33,16 @@ vi.mock("./toolRegistry", () => ({
 vi.mock("../../views/sapgui/SapGuiPanel", () => ({
   SapGuiPanel: {
     createOrShow: vi.fn(),
+    webGuiUrl: vi.fn(),
     getTransactionInfo: vi.fn()
   }
 }))
 vi.mock("../../config", () => ({
+  formatKey: (id: string) => id.toLowerCase(),
   RemoteManager: {
     get: vi.fn(function () {
       return {
-        byId: vi.fn()
+        byIdAsync: vi.fn()
       }
     })
   }
@@ -52,14 +54,12 @@ vi.mock("./toolGuard", () => ({
   })
 }))
 vi.mock("../funMessenger", () => ({ funWindow: { activeTextEditor: undefined } }))
-vi.mock("abap-adt-api", () => ({
-  ADTClient: vi.fn(class {})
-}))
 
 import { GetAbapObjectUrlTool } from "./getObjectUrlTool"
 import { RemoteManager } from "../../config"
 import { SapGuiPanel } from "../../views/sapgui/SapGuiPanel"
 import { logTelemetry } from "../telemetry"
+import { getClient, getOrCreateRoot } from "../../adt/conections"
 import { funWindow as window } from "../funMessenger"
 import type { Mock } from "vitest"
 
@@ -69,30 +69,24 @@ function makeOptions(input: any = {}) {
   return { input } as any
 }
 
-const mockPanel = {
-  buildWebGuiUrl: vi.fn(),
-  dispose: vi.fn()
-}
-
 describe("GetAbapObjectUrlTool", () => {
   let tool: GetAbapObjectUrlTool
+  let byIdAsync: Mock
   const mockConfig = {
     url: "https://sap.example.com",
     username: "user",
-    password: "pass",
     client: "100",
-    language: "EN"
+    language: "EN",
+    authMethod: "browser_sso"
   }
 
   beforeEach(() => {
     tool = new GetAbapObjectUrlTool()
     vi.clearAllMocks()
-    ;(RemoteManager.get as Mock).mockReturnValue({
-      byId: vi.fn().mockReturnValue(mockConfig)
-    })
-    ;(SapGuiPanel.createOrShow as Mock).mockReturnValue(mockPanel)
+    byIdAsync = vi.fn().mockResolvedValue(mockConfig)
+    ;(RemoteManager.get as Mock).mockReturnValue({ byIdAsync })
     ;(SapGuiPanel.getTransactionInfo as Mock).mockReturnValue({ transaction: "SE38" })
-    mockPanel.buildWebGuiUrl.mockResolvedValue(
+    ;(SapGuiPanel.webGuiUrl as Mock).mockReturnValue(
       "https://sap.example.com/sap/bc/gui/sap/its/webgui?~transaction=SE38"
     )
     ;(window as any).activeTextEditor = undefined
@@ -134,7 +128,7 @@ describe("GetAbapObjectUrlTool", () => {
 
     it("normalizes connectionId to lowercase", async () => {
       await tool.invoke(makeOptions({ objectName: "ZPROG", connectionId: "DEV100" }), mockToken)
-      expect(RemoteManager.get().byId).toHaveBeenCalledWith("dev100")
+      expect(byIdAsync).toHaveBeenCalledWith("dev100")
     })
 
     it("returns URL in result text", async () => {
@@ -155,15 +149,17 @@ describe("GetAbapObjectUrlTool", () => {
       expect(result.parts[0].text).toContain("PROG/P")
     })
 
-    it("disposes panel after URL is built", async () => {
-      await tool.invoke(makeOptions({ objectName: "ZPROG", connectionId: "dev100" }), mockToken)
-      expect(mockPanel.dispose).toHaveBeenCalled()
+    it("builds the URL from the connection settings without opening a panel", async () => {
+      await tool.invoke(
+        makeOptions({ objectName: "ZCLASS", objectType: "CLAS/OC", connectionId: "dev100" }),
+        mockToken
+      )
+      expect(SapGuiPanel.webGuiUrl).toHaveBeenCalledWith(mockConfig, "ZCLASS", "CLAS/OC")
+      expect(SapGuiPanel.createOrShow).not.toHaveBeenCalled()
     })
 
     it("throws when connection config not found", async () => {
-      ;(RemoteManager.get as Mock).mockReturnValue({
-        byId: vi.fn().mockReturnValue(undefined)
-      })
+      byIdAsync.mockResolvedValue(undefined)
       await expect(
         tool.invoke(makeOptions({ objectName: "ZPROG", connectionId: "dev100" }), mockToken)
       ).rejects.toThrow("Connection configuration not found")
@@ -181,7 +177,21 @@ describe("GetAbapObjectUrlTool", () => {
         document: { uri: { scheme: "adt", authority: "dev100" } }
       }
       await tool.invoke(makeOptions({ objectName: "ZPROG" }), mockToken)
-      expect(RemoteManager.get().byId).toHaveBeenCalledWith("dev100")
+      expect(byIdAsync).toHaveBeenCalledWith("dev100")
+    })
+
+    it("returns the plain WebGUI URL without logging in to SAP", async () => {
+      const result: any = await tool.invoke(
+        makeOptions({ objectName: "ZPROG", connectionId: "dev100" }),
+        mockToken
+      )
+
+      expect(result.parts[0].text).toContain(
+        "URL: https://sap.example.com/sap/bc/gui/sap/its/webgui?~transaction=SE38"
+      )
+      expect(result.parts[0].text).toContain("Ask user to login")
+      expect(getClient).not.toHaveBeenCalled()
+      expect(getOrCreateRoot).not.toHaveBeenCalled()
     })
   })
 })
