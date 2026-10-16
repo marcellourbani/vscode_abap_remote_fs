@@ -1,3 +1,7 @@
+import { afterEach, beforeEach, describe, expect, test, vi } from "vitest"
+
+const mockSpawn = vi.hoisted(() => vi.fn())
+
 vi.mock("vscode", () => ({
   ProgressLocation: { Notification: 15 },
   Uri: {
@@ -33,8 +37,15 @@ vi.mock("vscode", () => ({
   },
   extensions: {
     getExtension: vi.fn()
+  },
+  workspace: {
+    getConfiguration: vi.fn(() => ({
+      get: vi.fn((_key: string, defaultValue: unknown) => defaultValue)
+    }))
   }
 }))
+
+vi.mock("child_process", () => ({ spawn: mockSpawn }))
 
 vi.mock("../../config", () => ({
   RemoteManager: {
@@ -132,6 +143,55 @@ function makeConfig(overrides: any = {}) {
     ...overrides
   }
 }
+
+describe("SapGui command-line launch", () => {
+  beforeEach(() => {
+    mockSpawn.mockReset()
+    mockSpawn.mockImplementation(() => {
+      const child: any = {
+        once: vi.fn((event: string, listener: () => void) => {
+          if (event === "spawn") queueMicrotask(listener)
+          return child
+        }),
+        unref: vi.fn()
+      }
+      return child
+    })
+  })
+
+  test("starts sapshcut directly with transaction, ticket, and hidden stdio", async () => {
+    const gui = SapGui.create(makeConfig() as any)
+    const command: SapGuiCommand = {
+      type: "Transaction",
+      command: "*SE38",
+      parameters: [
+        { name: "RS38M-PROGRAMM", value: "ZTEST" },
+        { name: "DYNP_OKCODE", value: "STRT" }
+      ]
+    }
+
+    const started = await (gui as any).startWithSapshcut(command, "TICKET123")
+
+    expect(started).toBe(true)
+    expect(mockSpawn).toHaveBeenCalledOnce()
+    const [executable, args, options] = mockSpawn.mock.calls[0]
+    expect(executable).toMatch(/sapshcut\.exe$/i)
+    expect(args).toEqual(
+      expect.arrayContaining([
+        "-gui=/H/dev100/S/3200",
+        "-client=100",
+        "-user=TESTUSER",
+        "-language=EN",
+        "-type=Transaction",
+        "-command=SE38 RS38M-PROGRAMM = ZTEST; DYNP_OKCODE = STRT;",
+        "-at=MYSAPSSO2=TICKET123",
+        "-max",
+        "-system=DEV100"
+      ])
+    )
+    expect(options).toEqual({ windowsHide: true, stdio: "ignore" })
+  })
+})
 
 beforeEach(() => {
   vi.clearAllMocks()
