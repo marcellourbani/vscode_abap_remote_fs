@@ -637,6 +637,8 @@ describe("WorkflowSnapshotService", () => {
       })
       let formattingActive = 0
       let formattingPeak = 0
+      let releaseFormatting!: () => void
+      const formattingGate = new Promise<void>(resolve => (releaseFormatting = resolve))
       workerFormat.mockImplementation(async (request: FormatWorkerRequest) => {
         expect(objectStructureElements).toHaveBeenCalledTimes(6)
         expect(active).toEqual({ source100: 0, target100: 0 })
@@ -654,7 +656,8 @@ describe("WorkflowSnapshotService", () => {
         }
         formattingActive++
         formattingPeak = Math.max(formattingPeak, formattingActive)
-        await new Promise(resolve => setTimeout(resolve, 10))
+        if (formattingActive === 5) releaseFormatting()
+        await formattingGate
         formattingActive--
         return request.source
       })
