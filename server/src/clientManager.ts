@@ -107,10 +107,10 @@ function stateFor(raw: string) {
 
 // Two refreshes at once would both replace the same old client and leak one of the new ones
 function queueRefresh(state: ServerConnectionState, conf: ClientConfiguration) {
-  const previous = state.refresh ?? Promise.resolve()
-  // Serialize replacements for one connection. Parallel replacements could both install a client
-  // and leave one of the newly created SAP sessions without an owner.
-  const next = previous.catch(() => undefined).then(() => refreshClient(state, conf))
+  if (state.refresh) return state.refresh
+  // Concurrent refresh requests share one replacement. Parallel replacements could both install a
+  // client and leave one of the newly created SAP sessions without an owner.
+  const next = refreshClient(state, conf)
   state.refresh = next
   void next
     .finally(() => {
