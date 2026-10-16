@@ -5,6 +5,7 @@ const patchedHttpClients = new WeakSet<object>()
 
 export function installUsageReferencesNamespacePatch(client: ADTClient): void {
   const httpClient = client.httpClient
+  if (!httpClient || typeof httpClient.request !== "function") return
   if (patchedHttpClients.has(httpClient)) return
 
   const originalRequest = httpClient.request.bind(httpClient)
