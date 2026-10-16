@@ -3888,7 +3888,7 @@ Also applies to AI agents plugins for vscode like Cline/Continue/Roo code/... un
 </tr>
 <tr>
 <td><code>abapfs_activate_object</code></td>
-<td>Activate ABAP objects</td>
+<td>List and batch-activate inactive ABAP objects</td>
 </tr>
 <tr>
 <td><code>replace_string_in_abap_object</code></td>
@@ -3905,8 +3905,14 @@ Also applies to AI agents plugins for vscode like Cline/Continue/Roo code/... un
 <ol>
 <li><strong>Get the file URI</strong> — call <code>abapfs_get_workspace_uri</code> with object name/type/connection</li>
 <li><strong>Read current code</strong> — call <code>abapfs_get_object_source</code> or <code>abapfs_search_object_source</code></li>
-<li><strong>Edit</strong> — call <code>replace_string_in_abap_object</code> with the URI, old text, and new text</li>
-<li><strong>Verify</strong> — call <code>get_abap_diagnostics</code> with the same URI to check for syntax errors</li>
+<li><strong>Check transport</strong> — call <code>abapfs_get_object_transport_status</code> for the exact object. Never
+   invent a request or description; use only a user-supplied or explicitly approved existing/new
+   choice.</li>
+<li><strong>Edit</strong> — call <code>replace_string_in_abap_object</code> with the URI, old text, new text, and optional
+   approved <code>transportChoice</code>. The tool saves through the normal provider and verifies the
+   resulting inactive SAP source.</li>
+<li><strong>Verify</strong> — read <code>version: "inactive"</code> when inspecting pending source, then call
+   <code>get_abap_diagnostics</code> with the same URI to check for syntax errors.</li>
 </ol>
 <p>Edits are immediately synced to SAP (ABAP FS handles locking, saving, and unlocking automatically). There is no keep/undo UI — changes are applied directly.</p>
 <h2 id="limitations">Limitations<a class="headerlink" href="#limitations" title="Permanent link">&para;</a></h2>

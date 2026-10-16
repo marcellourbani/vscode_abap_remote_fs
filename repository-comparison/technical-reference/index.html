@@ -3647,8 +3647,12 @@
 <a id="__codelineno-1-6" name="__codelineno-1-6" href="#__codelineno-1-6"></a>comparison/
 <a id="__codelineno-1-7" name="__codelineno-1-7" href="#__codelineno-1-7"></a>sources/
 <a id="__codelineno-1-8" name="__codelineno-1-8" href="#__codelineno-1-8"></a>assisted-apply/
-<a id="__codelineno-1-9" name="__codelineno-1-9" href="#__codelineno-1-9"></a>exports/
+<a id="__codelineno-1-9" name="__codelineno-1-9" href="#__codelineno-1-9"></a>history/
+<a id="__codelineno-1-10" name="__codelineno-1-10" href="#__codelineno-1-10"></a>exports/
 </code></pre></div>
+<p><code>history/assisted-apply-execution.jsonl</code> records every SAP write, verification, and activation
+attempt. Re-running discovery, comparison, or the assisted-apply plan clears the other derived
+folders but keeps this history; only deleting the workflow removes it.</p>
 <p>The folder contains repository metadata and downloaded source snapshots. Treat it as sensitive development data, secure it appropriately, and do not commit it to source control.</p>
 <p>Workflow actions:</p>
 <ul>
@@ -3656,7 +3660,9 @@
 <li><strong>Archive</strong> moves the complete workflow folder under the configured root's <code>archive</code> folder.</li>
 <li><strong>Delete</strong> permanently removes the workflow and all local artifacts.</li>
 </ul>
-<p>Archive and delete are rejected while a workflow is running or still stopping. Closing the
+<p>Archive, delete, and other workflow steps are rejected while a workflow is running, still
+stopping, or has a Copilot-assisted apply in progress. Concurrent applies for different objects
+share one run lock, which is released when the last one finishes. Closing the
 workflow panel requests a safe pause; the operation owns its lock until in-flight work reaches a
 cancellation checkpoint and persisted state is consistent.</p>
 <p>If VS Code closes while a workflow is running, it is marked <code>interrupted</code> when the extension starts again. Persisted checkpoints and complete snapshots remain available for resume.</p>
@@ -3735,11 +3741,14 @@ after verifying reusable complete snapshots.</p>
 <p>Snapshot comparison checks:</p>
 <ul>
 <li>raw aggregate hashes;</li>
-<li>normalized aggregate hashes;</li>
-<li>added, removed, and changed resource paths;</li>
-<li>textual line additions, removals, and replacements.</li>
+<li>ABAPLint-formatted aggregate hashes;</li>
+<li>raw and formatted added, removed, and changed resource paths;</li>
+<li>raw and formatted source/target line totals, additions, removals, and replacements.</li>
 </ul>
-<p>Normalization converts CRLF to LF and removes trailing spaces and tabs before calculating the normalized hash. Raw differences are still reported; normalization is additional information.</p>
+<p>Raw files are the exact downloaded snapshots and remain authoritative for assisted apply. Formatted
+files are local sidecars produced with one fixed ABAPLint configuration. They normalize ABAP case
+and layout for comparison without replacing the raw source. Non-ABAP resources are copied
+unchanged. A formatting failure is reported separately and does not remove the raw comparison.</p>
 <p>Line counts are textual and should not be treated as proof of semantic ABAP changes.</p>
 <h2 id="invalidation-rules">Invalidation rules<a class="headerlink" href="#invalidation-rules" title="Permanent link">&para;</a></h2>
 <table>
@@ -3806,7 +3815,7 @@ current comparison and ignores rows that are not source-comparable.</p>
 </tr>
 <tr>
 <td><code>abapfs_get_repository_workflow</code></td>
-<td>Read state, criteria, summaries, or one paged artifact</td>
+<td>Read state, criteria, summaries, one paged artifact, or one bounded raw/formatted object diff</td>
 </tr>
 <tr>
 <td><code>abapfs_create_repository_workflow</code></td>
@@ -3830,7 +3839,9 @@ current comparison and ignores rows that are not source-comparable.</p>
 </tr>
 </tbody>
 </table>
-<p>Artifact reads are limited to 200 rows per request and can be filtered by status, object name, object type, and package. Object-name filtering supports <code>*</code> and <code>?</code>.</p>
+<p>Artifact reads are limited to 200 rows per request and can be filtered by status, object name,
+object type, and package. Object-name filtering supports <code>*</code> and <code>?</code>. Per-object diff reads are
+bounded to at most 10 files and 100,000 patch characters.</p>
 <p>Workflow-changing tools open or focus the webview so progress and results remain visible. Read-only inspection tools do not.</p>
 <h2 id="limits-and-safety-boundaries">Limits and safety boundaries<a class="headerlink" href="#limits-and-safety-boundaries" title="Permanent link">&para;</a></h2>
 <ul>

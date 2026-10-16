@@ -933,10 +933,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#review-one-item" class="md-nav__link">
+  <a href="#manual-review-of-one-item" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Review one item
+        Manual review of one item
       
     </span>
   </a>
@@ -959,6 +959,17 @@
     <span class="md-ellipsis">
       
         What remains manual
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#copilot-assisted-execution" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Copilot-assisted execution
       
     </span>
   </a>
@@ -3448,10 +3459,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#review-one-item" class="md-nav__link">
+  <a href="#manual-review-of-one-item" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Review one item
+        Manual review of one item
       
     </span>
   </a>
@@ -3480,6 +3491,17 @@
   
 </li>
       
+        <li class="md-nav__item">
+  <a href="#copilot-assisted-execution" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Copilot-assisted execution
+      
+    </span>
+  </a>
+  
+</li>
+      
     </ul>
   
 </nav>
@@ -3501,14 +3523,18 @@
 
 
 <h1 id="assisted-apply">Assisted Apply<a class="headerlink" href="#assisted-apply" title="Permanent link">&para;</a></h1>
-<p>Assisted apply helps you review a source difference and place one approved source file in the target editor. It does not save, select a transport, activate, create, or delete SAP objects.</p>
+<p>Assisted apply has two modes. Manual mode places one explicitly chosen source resource in a dirty
+target editor and never saves it. Copilot-assisted mode can save every applicable changed text
+resource for one user-selected table object with an explicitly user-directed transport. It verifies
+inactive SAP source and records the complete attempt. Activation remains separate.</p>
 <h2 id="prepare-the-plan">Prepare the plan<a class="headerlink" href="#prepare-the-plan" title="Permanent link">&para;</a></h2>
-<p>After source comparison completes, choose <strong>Prepare assisted apply</strong>.</p>
+<p>After source comparison completes, choose whether relevance should use <strong>Formatted differences</strong>
+(the default) or <strong>Raw differences</strong>, then choose <strong>Prepare assisted apply</strong>.</p>
 <p>Plan preparation reads the persisted comparison and snapshot manifests. It does not contact SAP to change anything.</p>
 <p>Each item receives one of these outcomes:</p>
 <ul>
-<li><strong>Ready</strong> — source differs from target and all plan checks passed.</li>
-<li><strong>No action</strong> — source and target are already identical.</li>
+<li><strong>Ready</strong> — source differs under the selected basis and all plan checks passed.</li>
+<li><strong>No action</strong> — source and target are equal under the selected basis.</li>
 <li><strong>Blocked</strong> — one or more safety checks failed.</li>
 </ul>
 <p>An item is blocked when, for example:</p>
@@ -3517,8 +3543,10 @@
 <li>source and target have different resource-file layouts;</li>
 <li>the object is generated or classified as standard;</li>
 <li>source and target object types do not match;</li>
-<li>the comparison status is not <code>different</code>.</li>
+<li>formatted comparison was selected but is unavailable;</li>
+<li>the raw snapshot status is incomplete or failed.</li>
 </ul>
+<p>The basis determines relevance only. Staging and stale checks always use the exact raw snapshots.</p>
 <p>Source-only objects are not supported by this workflow. Assisted apply does not create missing target objects.</p>
 <h2 id="required-editor-settings">Required editor settings<a class="headerlink" href="#required-editor-settings" title="Permanent link">&para;</a></h2>
 <p>Staging is blocked unless:</p>
@@ -3527,12 +3555,12 @@
 <li><code>chat.saveBeforeSend</code> is <code>false</code>.</li>
 </ul>
 <p>The webview explains which setting is unsafe and provides a link to open it. These checks prevent an editor operation or chat message from silently saving staged ABAP content.</p>
-<h2 id="review-one-item">Review one item<a class="headerlink" href="#review-one-item" title="Permanent link">&para;</a></h2>
+<h2 id="manual-review-of-one-item">Manual review of one item<a class="headerlink" href="#manual-review-of-one-item" title="Permanent link">&para;</a></h2>
 <p>For a ready item:</p>
 <ol>
-<li><strong>Review Live source</strong> — open the current source-system resource.</li>
-<li><strong>Review Live target</strong> — open the current target-system resource.</li>
-<li><strong>Review Diff</strong> — compare the saved source snapshot with the current target resource.</li>
+<li><strong>Live source</strong> — open the current source-system resource.</li>
+<li><strong>Live target</strong> — open the current target-system resource.</li>
+<li><strong>Raw diff</strong> or <strong>Formatted diff</strong> — compare the persisted local snapshots.</li>
 <li><strong>Stage in target editor</strong> — replace the target editor's in-memory text with the reviewed source snapshot.</li>
 <li>Review the dirty editor.</li>
 <li>Save manually and choose or confirm the appropriate transport.</li>
@@ -3561,7 +3589,27 @@
 <li>when and how related objects should be activated;</li>
 <li>how to resolve syntax, dependency, or activation errors.</li>
 </ul>
-<p>Copilot can prepare and explain a plan, but it cannot click <strong>Stage</strong>, save the target editor, choose a transport, or claim that sync succeeded.</p>
+<p>In manual mode, Copilot cannot click <strong>Stage</strong>, save the target editor, choose a transport, or
+claim that synchronization succeeded.</p>
+<h2 id="copilot-assisted-execution">Copilot-assisted execution<a class="headerlink" href="#copilot-assisted-execution" title="Permanent link">&para;</a></h2>
+<p>The user explicitly enables Copilot-assisted mode, saves the exact eligible object selection, and
+retains ownership of the transport decision. For one selected object, Copilot:</p>
+<ol>
+<li>reviews a bounded diff and records <code>as-is</code>, <code>skip</code>, or <code>needs-human</code> with a reason;</li>
+<li>checks current target transport status and obtains the user's exact transport direction;</li>
+<li>invokes the singular repository apply tool;</li>
+<li>receives one persisted attempt ID and per-resource save/verification results;</li>
+<li>separately activates the exact related URL set;</li>
+<li>records activation success or failure against that attempt.</li>
+</ol>
+<p>The apply tool processes every applicable changed text resource belonging to that table row. A
+new request created for the first resource is reused as the existing request for later resources.
+It stops on the first unknown or failed resource and reports the object as partial when earlier
+resources succeeded.</p>
+<p>Each row shows attempt count, latest stage/status, actual apply transport, time, and error. Use
+<strong>History</strong> to inspect every persisted lifecycle event, including hashes, intent IDs, resource
+paths, transport details, verification, activation URLs, timestamps, and failures. Successful
+activation recording marks the object done; failures leave it pending.</p>
 
 
 

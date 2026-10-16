@@ -3718,8 +3718,12 @@ selected or incomplete objects are downloaded.</p>
 </tr>
 </tbody>
 </table>
-<p>The table also shows changed-file and line counts. These are textual metrics: reordered ABAP code can appear as removed and added lines even when its behaviour is similar.</p>
-<p>Use <strong>Open diff</strong> for a standard VS Code side-by-side comparison. If an object contains several changed text resources, you are prompted to choose one.</p>
+<p>Each downloaded object keeps an exact raw snapshot and a comparison-only snapshot formatted with
+one fixed ABAPLint configuration. The table shows source/target line totals, changed-file counts,
+and added, removed, and changed lines for both representations.</p>
+<p>Use <strong>Raw diff</strong> to review the exact downloaded SAP source or <strong>Formatted diff</strong> to suppress case
+and layout differences. If an object contains several changed text resources, you are prompted to
+choose one. Formatting failures leave the raw snapshot available and disable the formatted diff.</p>
 <h2 id="8-pause-resume-and-rerun">8. Pause, resume, and rerun<a class="headerlink" href="#8-pause-resume-and-rerun" title="Permanent link">&para;</a></h2>
 <ul>
 <li>Pausing freezes the elapsed timer and preserves completed snapshots.</li>

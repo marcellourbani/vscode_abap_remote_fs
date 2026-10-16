@@ -3753,10 +3753,10 @@
 <h3 id="search-navigation">Search &amp; Navigation<a class="headerlink" href="#search-navigation" title="Permanent link">&para;</a></h3>
 <ol>
 <li><strong>abapfs_search_objects</strong> — Search for objects by name pattern using wildcards (e.g. <code>Z*PRICING*</code>, <code>BAPI_USER*</code>)</li>
-<li><strong>abapfs_get_object_source</strong> — Read source code from any ABAP object. Use <code>methodName</code> to extract a single method (e.g. "Show me the FACTORY method from CL_SALV_TABLE")</li>
+<li><strong>abapfs_get_object_source</strong> — Read active or inactive source code from any ABAP object. Use <code>methodName</code> to extract a single method (e.g. "Show me the FACTORY method from CL_SALV_TABLE")</li>
 <li><strong>abapfs_search_object_source</strong> — Search for text within source code; supports regex and can list all methods in a class</li>
 <li><strong>abapfs_get_object_info</strong> — Get metadata about an object (type, line count, cache status)</li>
-<li><strong>abapfs_batch_get_lines</strong> — Read source code from multiple objects in one call</li>
+<li><strong>abapfs_batch_get_lines</strong> — Read active or inactive source code from multiple objects in one call</li>
 <li><strong>abapfs_get_object_by_uri</strong> — Access an object directly using its ADT URI path</li>
 <li><strong>abapfs_find_usages</strong> — Find all places where an object, method, or symbol is referenced</li>
 <li><strong>abapfs_get_connected_systems</strong> — List the SAP system connection IDs currently active in VS Code</li>
@@ -3767,7 +3767,7 @@
 <li><strong>abapfs_get_object_url</strong> — Generate a SAP GUI WebGUI URL for an object (useful for browser automation)</li>
 <li><strong>abapfs_get_workspace_uri</strong> — Get the VS Code <code>adt://</code> URI for an object (needed before editing it)</li>
 <li><strong>abapfs_open_object</strong> — Open an object in the VS Code editor</li>
-<li><strong>abapfs_activate_object</strong> — Activate ABAP objects after editing (similar to pressing the Activate button in SE80)</li>
+<li><strong>abapfs_activate_object</strong> — List inactive objects with backend activation URLs and resolvable ABAP FS workspace URIs, activate a selected URL batch, then verify that the objects are no longer inactive</li>
 </ol>
 <h3 id="code-quality-testing">Code Quality &amp; Testing<a class="headerlink" href="#code-quality-testing" title="Permanent link">&para;</a></h3>
 <ol>
@@ -3779,6 +3779,8 @@
 <h3 id="transport-text">Transport &amp; Text<a class="headerlink" href="#transport-text" title="Permanent link">&para;</a></h3>
 <ol>
 <li><strong>abapfs_manage_transports</strong> — Get transport details, list user transports, compare transports. Falls back to direct SQL on older systems.</li>
+<li><strong>abapfs_get_object_transport_status</strong> — Read the current transport-lock status for exactly one ABAP object. Returns locked, not locked, or local details; it is read-only and does not accept bulk input.
+19a. <strong>abapfs_set_transport_for_next_object_save</strong> — Arm a short-lived, user-approved transport for the next save of one exact <code>adt://</code> resource. The choice is revalidated at the write boundary; it never silently chooses another request.</li>
 <li><strong>abapfs_manage_text_elements</strong> — Read, create, or update text elements in programs, classes, or function groups. READ works on all systems; CREATE/UPDATE requires a newer system.</li>
 </ol>
 <h3 id="data-sql">Data &amp; SQL<a class="headerlink" href="#data-sql" title="Permanent link">&para;</a></h3>
@@ -3820,12 +3822,14 @@
 <h3 id="repository-comparison">Repository Comparison<a class="headerlink" href="#repository-comparison" title="Permanent link">&para;</a></h3>
 <ol>
 <li><strong>abapfs_list_repository_workflows</strong> — List persistent repository comparison workflows and their current status</li>
-<li><strong>abapfs_get_repository_workflow</strong> — Read selected workflow state, criteria, summaries, or a filtered artifact page</li>
+<li><strong>abapfs_get_repository_workflow</strong> — Read selected workflow state, criteria, summaries, a filtered artifact page, or a bounded per-object raw/formatted diff</li>
 <li><strong>abapfs_create_repository_workflow</strong> — Create a source-to-target comparison between two connected systems</li>
 <li><strong>abapfs_update_repository_workflow_criteria</strong> — Update discovery scope and invalidate earlier derived results</li>
 <li><strong>abapfs_run_repository_workflow_step</strong> — Run discovery, rebuild inventory comparison, or compare selected source</li>
 <li><strong>abapfs_open_repository_workflow</strong> — Open or focus the Repository Comparison Workflow webview</li>
-<li><strong>abapfs_prepare_repository_assisted_apply</strong> — Prepare a non-mutating, safety-reviewed assisted-apply plan</li>
+<li><strong>abapfs_prepare_repository_assisted_apply</strong> — Prepare a non-mutating, safety-reviewed assisted-apply plan
+48a. <strong>abapfs_apply_repository_workflow_object</strong> — Stage and save every applicable changed text resource for one eligible object from the workflow's user-saved Copilot selection, using an explicit user-directed transport choice and inactive-source verification. It persists the complete attempt and returns its ID.
+48b. <strong>abapfs_record_repository_workflow_object_activation</strong> — Persist verified activation success or failure for one apply attempt and its exact object URL set. Success marks the selected object done.</li>
 </ol>
 <p>See <a href="../../repository-comparison/">Repository Comparison</a> for the complete workflow and safety boundaries.</p>
 <h3 id="documentation">Documentation<a class="headerlink" href="#documentation" title="Permanent link">&para;</a></h3>

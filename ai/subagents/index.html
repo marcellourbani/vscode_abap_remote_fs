@@ -3734,9 +3734,9 @@
 <li><strong>Lower cost</strong> — simple tasks (search, read) use cheaper/faster models; complex tasks use smarter ones</li>
 </ul>
 <h2 id="available-subagents">Available Subagents<a class="headerlink" href="#available-subagents" title="Permanent link">&para;</a></h2>
-<p>ABAP FS provides one unified subagent system with <strong>22 packaged agents</strong>:</p>
+<p>ABAP FS provides one unified subagent system with <strong>23 packaged agents</strong>:</p>
 <ul>
-<li><strong>13 general ABAP agents</strong>, individually configurable and individually enabled.</li>
+<li><strong>14 general ABAP agents</strong>, individually configurable and individually enabled.</li>
 <li><strong>9 SAP testing agents</strong>, available together when the SAP testing folder is ready.</li>
 </ul>
 <p>The prompts are packaged with the extension under <code>client/media/agents</code>. ABAP FS does not create, rename, disable, or delete <code>.github/agents</code> files in your workspace.</p>
@@ -3790,6 +3790,11 @@
 <td>2 (Mid-tier)</td>
 </tr>
 <tr>
+<td><code>abap-repository-assisted-apply</code></td>
+<td>Review, apply, verify, and activate one user-selected repository-workflow object</td>
+<td>2 (Mid-tier)</td>
+</tr>
+<tr>
 <td><code>abap-discoverer</code></td>
 <td>Find ABAP objects by name/pattern</td>
 <td>1 (Cheap/Fast)</td>
@@ -3816,6 +3821,10 @@
 </tr>
 </tbody>
 </table>
+<p><code>abap-repository-assisted-apply</code> is deliberately one-object and non-interactive. The parent agent
+must pass one workflow ID, one saved object key, and the user's exact transport direction. The
+worker cannot choose objects or transports, edit source, run the user-only bulk transport check,
+process a batch, or retry a failure.</p>
 <h2 id="how-to-use-subagents">How to Use Subagents<a class="headerlink" href="#how-to-use-subagents" title="Permanent link">&para;</a></h2>
 <p>In GitHub Copilot Chat, type <code>@abap-orchestrator</code> to start, or invoke any enabled general agent directly. The orchestrator can call other enabled agents automatically as needed.</p>
 <div class="highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>@abap-orchestrator analyze ZCL_ARTICLE_HANDLER and suggest improvements
@@ -3852,7 +3861,7 @@
 </tr>
 <tr>
 <td>2 — Mid-tier</td>
-<td>usage-analyzer, quality-checker, historian, debugger, troubleshooter, data-analyst</td>
+<td>usage-analyzer, quality-checker, historian, debugger, troubleshooter, data-analyst, repository-assisted-apply</td>
 <td>GPT-4o, Claude Sonnet 4</td>
 </tr>
 <tr>
@@ -3867,7 +3876,7 @@
 <p>Ask Copilot:</p>
 <div class="highlight"><pre><span></span><code><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a>Enable subagents
 </code></pre></div>
-<p>General agents are enabled individually. You can pass selected <code>agentIds</code>, or omit them to enable all 13. Every agent being enabled must have an available model.</p>
+<p>General agents are enabled individually. You can pass selected <code>agentIds</code>, or omit them to enable all 14. Every agent being enabled must have an available model.</p>
 <h3 id="step-3-use-the-enabled-agents">Step 3 — Use the enabled agents<a class="headerlink" href="#step-3-use-the-enabled-agents" title="Permanent link">&para;</a></h3>
 <p>No extra ABAP FS delegation setting or workspace agent files are required. Once a general agent is enabled and has an available model, Copilot can invoke it immediately.</p>
 <h2 id="managing-subagents">Managing Subagents<a class="headerlink" href="#managing-subagents" title="Permanent link">&para;</a></h2>
@@ -3919,7 +3928,7 @@
 <p>⚠️ <strong>Frequently-Used Agents</strong>: Agents like <code>abap-discoverer</code> and <code>abap-reader</code> get called often - using expensive models for these defeats the cost benefit</p>
 <h2 id="troubleshooting">Troubleshooting<a class="headerlink" href="#troubleshooting" title="Permanent link">&para;</a></h2>
 <h3 id="cannot-enable-subagents-missing-models">"Cannot enable subagents - missing models"<a class="headerlink" href="#cannot-enable-subagents-missing-models" title="Permanent link">&para;</a></h3>
-<p>Every general agent in the requested <code>agentIds</code> must have an available model. Enabling all 13 requires all 13 general models. Testing agents are a separate all-or-nothing group when the testing folder is ready.</p>
+<p>Every general agent in the requested <code>agentIds</code> must have an available model. Enabling all 14 requires all 14 general models. Testing agents are a separate all-or-nothing group when the testing folder is ready.</p>
 <h3 id="agent-models-are-not-taking-effect">Agent models are not taking effect<a class="headerlink" href="#agent-models-are-not-taking-effect" title="Permanent link">&para;</a></h3>
 <p>Run <code>get_status</code> to confirm the user-level assignment and active state. Model changes take effect without reload. After an extension update, wait for startup reconciliation to reapply the saved assignments.</p>
 <h3 id="subagents-auto-disabled">Subagents auto-disabled<a class="headerlink" href="#subagents-auto-disabled" title="Permanent link">&para;</a></h3>

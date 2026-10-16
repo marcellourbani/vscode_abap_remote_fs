@@ -3718,12 +3718,13 @@
 <li><code>verificationConcurrency</code>: 1-128 local verification tasks.</li>
 </ul>
 <h2 id="read-workflow-data-efficiently">Read workflow data efficiently<a class="headerlink" href="#read-workflow-data-efficiently" title="Permanent link">&para;</a></h2>
-<p><code>abapfs_get_repository_workflow</code> supports four response sections:</p>
+<p><code>abapfs_get_repository_workflow</code> supports five response sections:</p>
 <ul>
 <li><code>state</code> — complete workflow state or one requested step;</li>
 <li><code>criteria</code> — persisted scope and concurrency;</li>
 <li><code>summaries</code> — compact counts for completed stages;</li>
-<li><code>artifact</code> — one bounded result page.</li>
+<li><code>artifact</code> — one bounded result page;</li>
+<li><code>diff</code> — a bounded raw or ABAPLint-formatted diff for one repository key.</li>
 </ul>
 <p>If no section is requested, the tool returns state only. Ask for the smallest useful response:</p>
 <div class="highlight"><pre><span></span><code><a id="__codelineno-6-1" name="__codelineno-6-1" href="#__codelineno-6-1"></a>Show only the source-comparison summary.
@@ -3739,16 +3740,23 @@
 <li><code>assistedApplyPlan</code></li>
 </ul>
 <p>Artifact reads accept <code>offset</code> and <code>limit</code>, with a maximum page size of 200. They can be filtered by status, object name, object type, and package. Object-name filtering supports <code>*</code> and <code>?</code>.</p>
+<p>Diff reads require <code>objectKey</code>. Set <code>representation</code> to <code>raw</code> or <code>formatted</code>, optionally select one
+changed <code>filePath</code>, and bound the response with <code>maxFiles</code> and <code>maxChars</code>. Formatted is the default.</p>
 <p>Examples:</p>
 <div class="highlight"><pre><span></span><code><a id="__codelineno-8-1" name="__codelineno-8-1" href="#__codelineno-8-1"></a>Show the first 50 source-only classes from the existence comparison.
 </code></pre></div>
 <div class="highlight"><pre><span></span><code><a id="__codelineno-9-1" name="__codelineno-9-1" href="#__codelineno-9-1"></a>Show source differences for objects matching ZCL_EXAMPLE*.
 </code></pre></div>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-10-1" name="__codelineno-10-1" href="#__codelineno-10-1"></a>Read the formatted diff for R3TR:CLAS:ZCL_EXAMPLE, limited to three files.
+</code></pre></div>
 <h2 id="assisted-apply">Assisted apply<a class="headerlink" href="#assisted-apply" title="Permanent link">&para;</a></h2>
 <p>Ask Copilot to prepare a plan only after source comparison:</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-10-1" name="__codelineno-10-1" href="#__codelineno-10-1"></a>Prepare an assisted-apply plan for the demo comparison.
+<div class="highlight"><pre><span></span><code><a id="__codelineno-11-1" name="__codelineno-11-1" href="#__codelineno-11-1"></a>Prepare an assisted-apply plan for the demo comparison using formatted differences.
 </code></pre></div>
-<p>The tool returns ready and blocked counts and opens the webview for review. It does not stage or change SAP code.</p>
+<p>The tool accepts <code>comparisonBasis: raw | formatted</code>; formatted is the default. The basis determines
+which objects and resource paths are relevant, while staging and stale checks always use raw
+snapshots. The tool returns ready and blocked counts and opens the webview for review. It does not
+stage or change SAP code.</p>
 <p>Only you can:</p>
 <ul>
 <li>click <strong>Stage in target editor</strong>;</li>
