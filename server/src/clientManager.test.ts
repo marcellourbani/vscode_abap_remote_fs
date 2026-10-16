@@ -119,15 +119,14 @@ it("handles scheduled refresh failure and retains the previous client", async ()
 })
 
 it("does not overlap slow scheduled refreshes", async () => {
-  mocks.readConfiguration.mockResolvedValue({ ...configuration, authMethod: "browser_sso" })
-  mocks.sendRequest.mockResolvedValueOnce({ httpHeaders: { Cookie: "initial-session" } })
+  mocks.readConfiguration.mockResolvedValue({ ...configuration, authMethod: "kerberos" })
   await clientFromKey("slow-refresh")
-  let release!: (value: { httpHeaders: { Cookie: string } }) => void
+  let release!: (value: undefined) => void
   mocks.sendRequest.mockReturnValue(new Promise(resolve => (release = resolve)))
   await vi.advanceTimersByTimeAsync(480000)
   expect(mocks.sendRequest).toHaveBeenCalledTimes(2)
   expect(mocks.createClient).toHaveBeenCalledTimes(1)
-  release({ httpHeaders: { Cookie: "refreshed-session" } })
+  release(undefined)
   await vi.advanceTimersByTimeAsync(0)
-  expect(mocks.createClient).toHaveBeenCalledTimes(2)
+  expect(mocks.createClient).toHaveBeenCalledTimes(3)
 })
