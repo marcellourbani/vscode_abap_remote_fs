@@ -91,20 +91,30 @@ export function currentUri() {
   return uri
 }
 
-async function saveDirtyAdtDocuments(connectionId: string) {
-  const dirtyDocuments = workspace.textDocuments.filter(
-    document =>
-      document.isDirty &&
-      document.uri.scheme === ADTSCHEME &&
-      document.uri.authority === connectionId
-  )
+const SHOW_ACTIVATION_LOG = "Show activation log"
 
+async function saveBeforeActivation(
+  documents: readonly vscode.TextDocument[],
+  report: (message: string) => void
+) {
+  const dirtyDocuments = documents.filter(document => document.isDirty)
+  if (!dirtyDocuments.length) return
+  report("Saving changes...")
   for (const document of dirtyDocuments) {
     const saved = await document.save()
     if (!saved) {
-      throw new Error(`Failed to save ${document.uri.path} before activation.`)
+      throw new Error(
+        `Failed to save ${document.uri.path} before activation. Please save manually and try again.`
+      )
     }
   }
+  // lets the save listeners settle before the activation request
+  await new Promise(resolve => setTimeout(resolve, 100))
+}
+
+async function showActivationError(message: string) {
+  const action = await window.showErrorMessage(message, SHOW_ACTIVATION_LOG)
+  if (action === SHOW_ACTIVATION_LOG) channel.show(true)
 }
 
 export function currentAbapFile() {
@@ -394,53 +404,35 @@ export class AdtCommands {
       const activator = AdtObjectActivator.get(uri.authority)
       const editor = findEditor(uri.toString())
 
-      await window.withProgress(
+      const result = await window.withProgress(
         { location: ProgressLocation.Notification, title: "Activating..." },
         async progress => {
-          progress.report({ message: "Validating object..." })
+          const report = (message: string) => progress.report({ message })
+          report("Validating object...")
           const obj = await findAbapObject(uri)
+          const documents = workspace.textDocuments.filter(
+            document => document.uri.toString() === uri.toString()
+          )
+          await saveBeforeActivation(documents, report)
 
-          // Enhanced save logic with better error handling
-          if (editor && editor.document.isDirty) {
-            progress.report({ message: "Saving changes..." })
-            const saved = await editor.document.save()
-            if (!saved) {
-              throw new Error(
-                "Failed to save file before activation. Please save manually and try again."
-              )
-            }
-            // Small delay to ensure save is completed
-            await new Promise(resolve => setTimeout(resolve, 100))
-          }
-
-          progress.report({ message: "Activating object..." })
-          const { ok, summary } = await activator.activate(obj, uri)
-          if (!ok) {
-            throw new Error(summary || "Activation failed; see ABAP FS output for details")
-          }
-
-          if (editor === window.activeTextEditor) {
+          report("Activating object...")
+          const activation = await activator.activate(obj, uri)
+          if (activation.ok && editor === window.activeTextEditor) {
             await workspace.fs.stat(uri)
             await showHideActivate(editor)
           }
+          return activation
         }
       )
 
-      // Show success message
+      if (result.cancelled) return
+      if (!result.ok) {
+        throw new Error(result.summary || "Activation failed; see ABAP FS output for details")
+      }
       const objectName = uri.path.split("/").pop() || "Object"
       window.showInformationMessage(`✅ ${objectName} activated successfully`)
     } catch (e) {
-      const errorMessage = caughtToString(e)
-
-      const action = await window.showErrorMessage(
-        `Activation failed: ${errorMessage}`,
-        "Show activation log"
-      )
-      if (action === "Show activation log") {
-        channel.show(true)
-      }
-      // Don't re-throw or show additional notifications - user already saw the summary
-      return
+      await showActivationError(`Activation failed: ${caughtToString(e)}`)
     }
   }
 
@@ -460,8 +452,10 @@ export class AdtCommands {
       const result = await window.withProgress(
         { location: ProgressLocation.Notification, title: "Loading unactivated objects..." },
         async progress => {
-          progress.report({ message: "Saving pending changes..." })
-          await saveDirtyAdtDocuments(connectionId)
+          const documents = workspace.textDocuments.filter(
+            document => document.uri.scheme === ADTSCHEME && document.uri.authority === connectionId
+          )
+          await saveBeforeActivation(documents, message => progress.report({ message }))
 
           progress.report({ message: "Loading unactivated objects..." })
           const activationResult = await activator.activateMultiple(true)
@@ -500,15 +494,7 @@ export class AdtCommands {
         `✅ Activated ${result.selectedCount || 0} object${result.selectedCount === 1 ? "" : "s"}`
       )
     } catch (e) {
-      const errorMessage = caughtToString(e)
-
-      const action = await window.showErrorMessage(
-        `Multiple activation failed: ${errorMessage}`,
-        "Show activation log"
-      )
-      if (action === "Show activation log") {
-        channel.show(true)
-      }
+      await showActivationError(`Multiple activation failed: ${caughtToString(e)}`)
     }
   }
 

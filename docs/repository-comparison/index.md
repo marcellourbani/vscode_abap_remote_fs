@@ -10,7 +10,9 @@ The workflow has three stages:
 
 1. **Scope and discovery** — query both systems for matching TADIR objects and compare the saved inventories locally.
 2. **Compare systems** — select objects present on both systems, download source snapshots, and compare them locally.
-3. **Assisted apply** — prepare a safety-checked plan and optionally stage one reviewed source file in the target editor.
+3. **Assisted apply** — prepare a safety-checked plan, then either stage one chosen resource
+   manually or let Copilot save all changed text resources for one explicitly selected object with
+   user-directed transport and persisted verification history.
 
 Discovery, inventory comparison, source comparison, and plan preparation do not modify SAP objects.
 

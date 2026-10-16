@@ -1,3 +1,4 @@
+import { readFileSync } from "node:fs"
 import { AGENT_REGISTRY, type AgentMeta } from "./subagentRegistry"
 
 // subagentRegistry imports vscode but only uses it for types in other exported items.
@@ -6,6 +7,19 @@ vi.mock("vscode", () => ({}))
 vi.mock("./testing/config", () => ({
   isTestFolderValid: vi.fn().mockResolvedValue(false)
 }))
+
+const assistedApplyAgent = readFileSync(
+  new URL("../../media/agents/abap-repository-assisted-apply.agent.md", import.meta.url),
+  "utf8"
+)
+const assistedApplySkill = readFileSync(
+  new URL("../../media/skills/repository-assisted-apply/SKILL.md", import.meta.url),
+  "utf8"
+)
+const repositoryWorkflowSkill = readFileSync(
+  new URL("../../media/skills/repository-workflow/SKILL.md", import.meta.url),
+  "utf8"
+)
 
 describe("AGENT_REGISTRY", () => {
   test("is a non-empty array", () => {
@@ -58,6 +72,61 @@ describe("AGENT_REGISTRY", () => {
     expect(ids).toContain("abap-discoverer")
     expect(ids).toContain("abap-reader")
     expect(ids).toContain("abap-debugger")
+    expect(ids).toContain("abap-repository-assisted-apply")
+  })
+
+  test("repository assisted apply agent has read plus only its five workflow tools", () => {
+    const agent = AGENT_REGISTRY.find(a => a.id === "abap-repository-assisted-apply")
+
+    expect(agent).toMatchObject({
+      tier: 2,
+      templateFile: "abap-repository-assisted-apply.agent.md"
+    })
+    expect(agent?.tools).toEqual([
+      "read",
+      "abapfs_get_repository_workflow",
+      "abapfs_get_object_transport_status",
+      "abapfs_apply_repository_workflow_object",
+      "abapfs_activate_object",
+      "abapfs_record_repository_workflow_object_activation"
+    ])
+  })
+
+  test("repository assisted apply agent fails closed without its mandatory skill", () => {
+    expect(assistedApplyAgent).toContain("tools: ['read'")
+    expect(assistedApplyAgent).toContain("stop immediately and return `SKILL_UNAVAILABLE`")
+    expect(assistedApplyAgent).toContain("not a substitute for reading it")
+  })
+
+  test("repository assisted apply activation requires verified resource or owner identities", () => {
+    for (const instructions of [assistedApplyAgent, assistedApplySkill]) {
+      expect(instructions).toContain("`sapSourceUri`")
+      expect(instructions).toContain("`sapObjectUri`")
+      expect(instructions).toContain("`sapActivationUri`")
+      expect(instructions).toMatch(/not\s+mandatory/)
+      expect(instructions).toContain("unrelated inactive components")
+      expect(instructions).toContain("NEEDS_HUMAN_ACTIVATION")
+      expect(instructions).not.toContain("Require a complete one-to-one correlation")
+    }
+  })
+
+  test("only the parent workflow skill handles unavailable assisted apply agents", () => {
+    expect(repositoryWorkflowSkill).toContain("Never silently fall back to direct execution")
+    expect(repositoryWorkflowSkill).toContain("Wait for the user's choice")
+    expect(repositoryWorkflowSkill).toContain("you (the main agent)")
+    expect(repositoryWorkflowSkill).toContain("abapfs_manage_subagents")
+    expect(assistedApplySkill).not.toContain("Subagent availability gate")
+    expect(assistedApplySkill).not.toContain("abapfs_manage_subagents")
+    expect(repositoryWorkflowSkill).not.toContain('action: "configure"')
+  })
+
+  test("repository workflow skill defines bounded one-object subagent waves", () => {
+    expect(repositoryWorkflowSkill).toContain("You are the orchestrator and owner")
+    expect(repositoryWorkflowSkill).toContain("A wave contains at most 10 objects")
+    expect(repositoryWorkflowSkill).toContain(
+      "one fresh `abap-repository-assisted-apply` subagent per object"
+    )
+    expect(repositoryWorkflowSkill).toContain("Stop after the wave")
   })
 
   test("defaultModel is empty for all agents", () => {

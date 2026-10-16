@@ -18,6 +18,10 @@
  */
 
 import * as vscode from "vscode"
+import { isAbapFile } from "abapfs"
+import { getClient, getOrCreateRoot } from "../../adt/conections"
+import { TransportIntentService, type ObjectSaveTransportChoice } from "../transportIntentService"
+import { RE_READ_ADVICE, verifyInactiveSource } from "../inactiveSourceVerification"
 
 // ============================================================================
 // INTERFACE
@@ -32,6 +36,7 @@ export interface IMcpReplaceStringParams {
   oldString: string
   /** The replacement text. The resulting code must be syntactically valid ABAP. */
   newString: string
+  transportChoice?: Exclude<ObjectSaveTransportChoice, { type: "local" }>
 }
 
 // ============================================================================
@@ -60,24 +65,18 @@ export function findAndReplace(content: string, oldString: string, newString: st
     throw new Error("oldString and newString are identical. No change would be made.")
   }
 
-  // Count occurrences
-  let count = 0
-  let searchIdx = 0
-  while (true) {
-    const idx = content.indexOf(oldString, searchIdx)
-    if (idx === -1) break
-    count++
-    searchIdx = idx + oldString.length
-  }
+  const count = countOccurrences(content, oldString)
 
   if (count === 0) {
     // Try with normalized line endings
     const normalizedContent = content.replace(/\r\n/g, "\n")
     const normalizedOld = oldString.replace(/\r\n/g, "\n")
-    if (normalizedContent.includes(normalizedOld)) {
-      // Match found after EOL normalization - do the replacement on original content
+    const normalizedCount = countOccurrences(normalizedContent, normalizedOld)
+    if (normalizedCount > 0) {
+      assertUniqueMatch(normalizedCount)
+      // Match found after EOL normalization - replace literally and preserve EOL style
       const normalizedNew = newString.replace(/\r\n/g, "\n")
-      const updated = normalizedContent.replace(normalizedOld, normalizedNew)
+      const updated = normalizedContent.replace(normalizedOld, () => normalizedNew)
       // Restore original EOL style if content had \r\n
       if (content.includes("\r\n")) {
         return updated.replace(/(?<!\r)\n/g, "\r\n")
@@ -91,16 +90,31 @@ export function findAndReplace(content: string, oldString: string, newString: st
     )
   }
 
+  assertUniqueMatch(count)
+  return content.replace(oldString, () => newString)
+}
+
+function countOccurrences(content: string, search: string): number {
+  let count = 0
+  let offset = 0
+  while (true) {
+    const index = content.indexOf(search, offset)
+    if (index < 0) return count
+    count++
+    offset = index + search.length
+  }
+}
+
+function assertUniqueMatch(count: number): void {
   if (count > 1) {
     throw new Error(
       `Found ${count} occurrences of oldString. It must match exactly one location. ` +
         "Include more surrounding context lines to make the match unique."
     )
   }
-
-  // Exactly one match - do the replacement
-  return content.replace(oldString, newString)
 }
+
+const replacementQueues = new Map<string, Promise<void>>()
 
 /**
  * Execute the replace operation against the VS Code filesystem.
@@ -110,7 +124,8 @@ export function findAndReplace(content: string, oldString: string, newString: st
 export async function executeReplace(
   fileUri: string,
   oldString: string,
-  newString: string
+  newString: string,
+  transportChoice?: Exclude<ObjectSaveTransportChoice, { type: "local" }>
 ): Promise<string> {
   const uri = vscode.Uri.parse(fileUri)
 
@@ -122,17 +137,71 @@ export async function executeReplace(
     )
   }
 
+  const key = JSON.stringify([uri.authority.toLowerCase(), uri.path])
+  const previous = replacementQueues.get(key) ?? Promise.resolve()
+  const operation = previous.then(() =>
+    replaceAndVerify(uri, oldString, newString, transportChoice)
+  )
+  const settled = operation.then(
+    () => undefined,
+    () => undefined
+  )
+  replacementQueues.set(key, settled)
+  try {
+    return await operation
+  } finally {
+    if (replacementQueues.get(key) === settled) replacementQueues.delete(key)
+  }
+}
+
+async function replaceAndVerify(
+  uri: vscode.Uri,
+  oldString: string,
+  newString: string,
+  transportChoice?: Exclude<ObjectSaveTransportChoice, { type: "local" }>
+): Promise<string> {
   // Read current file content
   const contentBytes = await vscode.workspace.fs.readFile(uri)
   const currentContent = Buffer.from(contentBytes).toString("utf8")
 
   // Perform the replacement
   const updatedContent = findAndReplace(currentContent, oldString, newString)
+  const intent = transportChoice
+    ? TransportIntentService.get().register({
+        objectUri: uri,
+        process: "normal-edit",
+        transportChoice
+      })
+    : undefined
 
   // Write back through the filesystem provider (handles lock/transport/sync)
   // IMPORTANT: Must use Buffer.from() not TextEncoder - the FsProvider calls
   // content.toString() which only decodes UTF-8 correctly on Buffer, not Uint8Array
-  await vscode.workspace.fs.writeFile(uri, Buffer.from(updatedContent, "utf8"))
+  try {
+    await vscode.workspace.fs.writeFile(uri, Buffer.from(updatedContent, "utf8"))
+  } catch (error) {
+    if (intent) TransportIntentService.get().fail(intent.intentId, error)
+    throw error
+  }
+
+  const connectionId = uri.authority.toLowerCase()
+  const path = await savedSourcePath(connectionId, uri.path).catch(error => {
+    throw new Error(
+      `SAP accepted the write, but it could not be verified: ${error?.message || error}. ${RE_READ_ADVICE}`
+    )
+  })
+  const readInactive = () =>
+    getClient(connectionId).statelessClone.getObjectSource(path, { version: "inactive" })
+  await verifyInactiveSource(readInactive, updatedContent, currentContent)
 
   return updatedContent
+}
+
+/** The tree can be refreshed while saving, leaving a node whose metadata is not loaded yet */
+async function savedSourcePath(connectionId: string, path: string) {
+  const root = await getOrCreateRoot(connectionId)
+  const node = await root.getNodeAsync(path)
+  if (!isAbapFile(node)) throw new Error("the saved ABAP resource could not be resolved")
+  if (!node.object.structure) await node.object.loadStructure()
+  return node.object.contentsPath()
 }

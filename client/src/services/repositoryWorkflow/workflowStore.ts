@@ -6,6 +6,15 @@ import * as os from "os"
 import * as path from "path"
 import { randomUUID, createHash } from "crypto"
 import {
+  type AssistedApplyMode,
+  type AssistedApplyExecutionEvent,
+  type AssistedApplyExecutionStage,
+  type AssistedApplyExecutionStatus,
+  type AssistedApplyExecutionSummary,
+  type AssistedApplyPlan,
+  type AssistedApplyPlanItem,
+  type CopilotAssistedApplySelection,
+  type CopilotAssistedApplyDecision,
   DEFAULT_VERIFICATION_CONCURRENCY,
   initialSteps,
   MAX_VERIFICATION_CONCURRENCY,
@@ -18,6 +27,7 @@ import {
 const WORKFLOW_FILE = "workflow.json"
 const CRITERIA_FILE = "criteria.json"
 const SNAPSHOT_DELETE_BATCH_SIZE = 32
+const EXECUTION_HISTORY_PATH = ["history", "assisted-apply-execution.jsonl"]
 
 function sanitizeName(value: string): string {
   const sanitized = value
@@ -57,6 +67,8 @@ export function defaultWorkflowName(source: string, target: string, now = new Da
 
 export class WorkflowStore {
   private readonly updateQueues = new Map<string, Promise<RepositoryWorkflow>>()
+  private readonly executionQueues = new Map<string, Promise<void>>()
+  private readonly selectionQueues = new Map<string, Promise<unknown>>()
   private readonly sessionId = randomUUID()
 
   constructor(private readonly context: vscode.ExtensionContext) {}
@@ -162,6 +174,10 @@ export class WorkflowStore {
     )
     return workflows
       .filter((workflow): workflow is RepositoryWorkflow => !!workflow)
+      .map(workflow => ({
+        ...workflow,
+        steps: { ...initialSteps(), ...workflow.steps }
+      }))
       .sort((left, right) => right.updatedAt.localeCompare(left.updatedAt))
   }
 
@@ -266,6 +282,314 @@ export class WorkflowStore {
     }
   }
 
+  async setAssistedApplyMode(
+    workflowId: string,
+    mode: AssistedApplyMode | undefined
+  ): Promise<RepositoryWorkflow> {
+    return await this.update(workflowId, current => ({
+      ...current,
+      assistedApplyMode: mode,
+      copilotAssistedApplyEnabledAt:
+        mode === "copilot"
+          ? (current.copilotAssistedApplyEnabledAt ?? new Date().toISOString())
+          : current.copilotAssistedApplyEnabledAt
+    }))
+  }
+
+  async getCopilotAssistedApplySelection(
+    workflowId: string,
+    knownWorkflow?: RepositoryWorkflow
+  ): Promise<CopilotAssistedApplySelection | undefined> {
+    const workflow = knownWorkflow ?? (await this.get(workflowId))
+    try {
+      return await readJson<CopilotAssistedApplySelection>(
+        this.artifactPath(workflow, "assisted-apply", "copilot-selection.json")
+      )
+    } catch {
+      return undefined
+    }
+  }
+
+  async saveCopilotAssistedApplySelection(
+    workflowId: string,
+    keys: string[]
+  ): Promise<CopilotAssistedApplySelection> {
+    return this.withSelectionQueue(workflowId, () => this.saveSelection(workflowId, keys))
+  }
+
+  async updateCopilotAssistedApplyStatus(
+    workflowId: string,
+    keys: string[],
+    status: "done" | "pending"
+  ): Promise<CopilotAssistedApplySelection> {
+    return this.withSelectionQueue(workflowId, () =>
+      this.updateSelectionStatus(workflowId, keys, status)
+    )
+  }
+
+  async updateCopilotAssistedApplyDecision(
+    workflowId: string,
+    key: string,
+    decision: CopilotAssistedApplyDecision,
+    reason: string
+  ): Promise<CopilotAssistedApplySelection> {
+    return this.withSelectionQueue(workflowId, () =>
+      this.updateSelectionDecision(workflowId, key, decision, reason)
+    )
+  }
+
+  async removeCopilotAssistedApplySelection(workflow: RepositoryWorkflow): Promise<void> {
+    await this.withSelectionQueue(workflow.workflowId, () =>
+      fs.rm(this.artifactPath(workflow, "assisted-apply", "copilot-selection.json"), {
+        force: true
+      })
+    )
+  }
+
+  private async withSelectionQueue<T>(workflowId: string, action: () => Promise<T>): Promise<T> {
+    const previous = this.selectionQueues.get(workflowId) ?? Promise.resolve()
+    const pending = previous.catch(() => undefined).then(action)
+    this.selectionQueues.set(workflowId, pending)
+    try {
+      return await pending
+    } finally {
+      if (this.selectionQueues.get(workflowId) === pending) this.selectionQueues.delete(workflowId)
+    }
+  }
+
+  private async saveSelection(
+    workflowId: string,
+    keys: string[]
+  ): Promise<CopilotAssistedApplySelection> {
+    const workflow = await this.get(workflowId)
+    if (workflow.assistedApplyMode !== "copilot" || !workflow.copilotAssistedApplyEnabledAt)
+      throw new Error("Enable Copilot-assisted apply for this workflow before saving a selection")
+    const plan = await readJson<AssistedApplyPlan>(
+      this.artifactPath(workflow, "assisted-apply", "plan.json")
+    )
+    const eligible = new Set(plan.items.filter(item => item.eligible).map(item => item.key))
+    const normalized = [
+      ...new Set(keys.map(key => key.trim().toUpperCase()).filter(Boolean))
+    ].sort()
+    const invalid = normalized.filter(key => !eligible.has(key))
+    if (invalid.length)
+      throw new Error(
+        `${invalid.length.toLocaleString()} selected object${invalid.length === 1 ? " is" : "s are"} not eligible for assisted apply`
+      )
+    const previous = await this.getCopilotAssistedApplySelection(workflowId, workflow)
+    const selected = new Set(normalized)
+    const selection: CopilotAssistedApplySelection = {
+      schemaVersion: WORKFLOW_SCHEMA_VERSION,
+      updatedAt: new Date().toISOString(),
+      keys: normalized,
+      completedKeys: (previous?.completedKeys ?? []).filter(key => selected.has(key)),
+      decisions: Object.fromEntries(
+        normalized.map(key => [key, previous?.decisions?.[key] ?? "needs-human"])
+      ),
+      decisionReasons: Object.fromEntries(
+        normalized.flatMap(key => {
+          const reason = previous?.decisionReasons?.[key]
+          return reason ? [[key, reason]] : []
+        })
+      )
+    }
+    await atomicWriteJson(
+      this.artifactPath(workflow, "assisted-apply", "copilot-selection.json"),
+      selection
+    )
+    await this.update(workflowId, current => current)
+    return selection
+  }
+
+  private async updateSelectionStatus(
+    workflowId: string,
+    keys: string[],
+    status: "done" | "pending"
+  ): Promise<CopilotAssistedApplySelection> {
+    const workflow = await this.get(workflowId)
+    if (workflow.assistedApplyMode !== "copilot" || !workflow.copilotAssistedApplyEnabledAt)
+      throw new Error("Copilot-assisted apply is not enabled for this workflow")
+    const selection = await this.getCopilotAssistedApplySelection(workflowId, workflow)
+    if (!selection) throw new Error("No Copilot-assisted apply selection has been saved")
+    const normalized = [...new Set(keys.map(key => key.trim().toUpperCase()).filter(Boolean))]
+    if (!normalized.length) throw new Error("At least one selected object key is required")
+    const selected = new Set(selection.keys)
+    const invalid = normalized.filter(key => !selected.has(key))
+    if (invalid.length)
+      throw new Error(
+        `${invalid.length.toLocaleString()} object${invalid.length === 1 ? " is" : "s are"} not in the user-saved Copilot-assisted apply selection`
+      )
+    const completed = new Set(selection.completedKeys ?? [])
+    for (const key of normalized) {
+      if (status === "done") completed.add(key)
+      else completed.delete(key)
+    }
+    const updated: CopilotAssistedApplySelection = {
+      ...selection,
+      updatedAt: new Date().toISOString(),
+      completedKeys: selection.keys.filter(key => completed.has(key))
+    }
+    await atomicWriteJson(
+      this.artifactPath(workflow, "assisted-apply", "copilot-selection.json"),
+      updated
+    )
+    await this.update(workflowId, current => current)
+    return updated
+  }
+
+  private async updateSelectionDecision(
+    workflowId: string,
+    key: string,
+    decision: CopilotAssistedApplyDecision,
+    reason: string
+  ): Promise<CopilotAssistedApplySelection> {
+    if (!["as-is", "skip", "needs-human"].includes(decision))
+      throw new Error(`Unsupported Copilot-assisted apply decision: ${decision}`)
+    const workflow = await this.get(workflowId)
+    if (workflow.assistedApplyMode !== "copilot" || !workflow.copilotAssistedApplyEnabledAt)
+      throw new Error("Copilot-assisted apply is not enabled for this workflow")
+    const selection = await this.getCopilotAssistedApplySelection(workflowId, workflow)
+    if (!selection) throw new Error("No Copilot-assisted apply selection has been saved")
+    const normalized = key.trim().toUpperCase()
+    if (!normalized) throw new Error("One selected object key is required")
+    const normalizedReason = reason.trim()
+    if (!normalizedReason) throw new Error("A decision reason is required")
+    if (normalizedReason.length > 2000)
+      throw new Error("Decision reason cannot exceed 2,000 characters")
+    if (!selection.keys.includes(normalized))
+      throw new Error(`${normalized} is not in the user-saved Copilot-assisted apply selection`)
+    const updated: CopilotAssistedApplySelection = {
+      ...selection,
+      updatedAt: new Date().toISOString(),
+      decisions: {
+        ...selection.decisions,
+        [normalized]: decision
+      },
+      decisionReasons: {
+        ...selection.decisionReasons,
+        [normalized]: normalizedReason
+      }
+    }
+    await atomicWriteJson(
+      this.artifactPath(workflow, "assisted-apply", "copilot-selection.json"),
+      updated
+    )
+    await this.update(workflowId, current => current)
+    return updated
+  }
+
+  async appendAssistedApplyExecutionEvent(
+    workflowId: string,
+    event: {
+      attemptId: string
+      objectKey: string
+      stage: AssistedApplyExecutionStage
+      status: AssistedApplyExecutionStatus
+      resourcePath?: string
+      intentId?: string
+      transportChoiceType?: "existing" | "new" | "local"
+      transportRequest?: string
+      sourceHash?: string
+      targetHash?: string
+      inactiveSourceVerified?: boolean
+      activationObjectUrls?: string[]
+      error?: string
+    }
+  ): Promise<AssistedApplyExecutionEvent> {
+    const workflow = await this.get(workflowId)
+    const value: AssistedApplyExecutionEvent = {
+      schemaVersion: WORKFLOW_SCHEMA_VERSION,
+      eventId: randomUUID(),
+      attemptId: event.attemptId,
+      workflowId,
+      objectKey: event.objectKey.trim().toUpperCase(),
+      timestamp: new Date().toISOString(),
+      stage: event.stage,
+      status: event.status,
+      resourcePath: event.resourcePath,
+      intentId: event.intentId,
+      transportChoiceType: event.transportChoiceType,
+      transportRequest: event.transportRequest,
+      sourceHash: event.sourceHash,
+      targetHash: event.targetHash,
+      inactiveSourceVerified: event.inactiveSourceVerified,
+      activationObjectUrls: event.activationObjectUrls,
+      error: event.error
+    }
+    const previous = this.executionQueues.get(workflowId) ?? Promise.resolve()
+    const pending = previous.then(() =>
+      this.appendJsonLine(this.artifactPath(workflow, ...EXECUTION_HISTORY_PATH), value)
+    )
+    this.executionQueues.set(workflowId, pending)
+    try {
+      await pending
+    } finally {
+      if (this.executionQueues.get(workflowId) === pending) this.executionQueues.delete(workflowId)
+    }
+    return value
+  }
+
+  async getAssistedApplyExecutionEvents(
+    workflowId: string,
+    objectKey?: string
+  ): Promise<AssistedApplyExecutionEvent[]> {
+    const workflow = await this.get(workflowId)
+    const normalizedKey = objectKey?.trim().toUpperCase()
+    const events: AssistedApplyExecutionEvent[] = []
+    try {
+      for await (const event of this.readJsonLines<AssistedApplyExecutionEvent>(
+        this.artifactPath(workflow, ...EXECUTION_HISTORY_PATH)
+      ))
+        if (!normalizedKey || event.objectKey === normalizedKey) events.push(event)
+    } catch (error: any) {
+      if (error?.code !== "ENOENT") throw error
+    }
+    return events
+  }
+
+  async getAssistedApplyExecutionSummaries(
+    workflowId: string
+  ): Promise<Record<string, AssistedApplyExecutionSummary>> {
+    const events = await this.getAssistedApplyExecutionEvents(workflowId)
+    const attempts = new Map<string, Set<string>>()
+    const summaries: Record<string, AssistedApplyExecutionSummary> = {}
+    for (const event of events) {
+      const objectAttempts = attempts.get(event.objectKey) ?? new Set<string>()
+      objectAttempts.add(event.attemptId)
+      attempts.set(event.objectKey, objectAttempts)
+      const previous = summaries[event.objectKey]
+      const sameAttempt = previous?.lastAttemptId === event.attemptId
+      summaries[event.objectKey] = {
+        objectKey: event.objectKey,
+        attemptCount: objectAttempts.size,
+        eventCount: (previous?.eventCount ?? 0) + 1,
+        lastAttemptId: event.attemptId,
+        lastStage: event.stage,
+        lastStatus: event.status,
+        lastUpdatedAt: event.timestamp,
+        transportRequest:
+          event.transportRequest || (sameAttempt ? previous?.transportRequest : undefined),
+        lastError: event.error
+      }
+    }
+    return summaries
+  }
+
+  async getAssistedApplyPlanItem(
+    workflow: RepositoryWorkflow,
+    objectKey: string
+  ): Promise<AssistedApplyPlanItem | undefined> {
+    const normalizedKey = objectKey.trim().toUpperCase()
+    try {
+      const plan = await readJson<AssistedApplyPlan>(
+        this.artifactPath(workflow, "assisted-apply", "plan.json")
+      )
+      return plan.items.find(item => item.key === normalizedKey)
+    } catch {
+      return undefined
+    }
+  }
+
   async saveCriteria(workflowId: string, criteria: Omit<RepositoryCriteria, "criteriaHash">) {
     const workflow = await this.get(workflowId)
     if (
@@ -294,7 +618,8 @@ export class WorkflowStore {
       verificationConcurrency: Math.min(
         MAX_VERIFICATION_CONCURRENCY,
         Math.max(1, criteria.verificationConcurrency ?? DEFAULT_VERIFICATION_CONCURRENCY)
-      )
+      ),
+      transportConcurrency: Math.min(10, Math.max(1, criteria.transportConcurrency ?? 5))
     }
     const saved: RepositoryCriteria = {
       ...normalized,
@@ -311,6 +636,27 @@ export class WorkflowStore {
         criteria: { status: "complete", completedAt: new Date().toISOString() }
       }
     }))
+    return saved
+  }
+
+  async saveTransportConcurrency(
+    workflowId: string,
+    transportConcurrency: number
+  ): Promise<RepositoryCriteria> {
+    const workflow = await this.get(workflowId)
+    const criteria = await this.getCriteria(workflowId)
+    if (!criteria) throw new Error("Workflow criteria are missing")
+    const { criteriaHash: _criteriaHash, ...base } = criteria
+    const normalized = {
+      ...base,
+      updatedAt: new Date().toISOString(),
+      transportConcurrency: Math.min(10, Math.max(1, transportConcurrency))
+    }
+    const saved: RepositoryCriteria = {
+      ...normalized,
+      criteriaHash: createHash("sha256").update(JSON.stringify(normalized)).digest("hex")
+    }
+    await atomicWriteJson(path.join(this.workflowPath(workflow), CRITERIA_FILE), saved)
     return saved
   }
 
@@ -394,7 +740,8 @@ export class WorkflowStore {
         sourceSelection: { status: "not-started" },
         sourceDownload: { status: "not-started" },
         sourceComparison: { status: "not-started" },
-        assistedApplyPlan: { status: "not-started" }
+        assistedApplyPlan: { status: "not-started" },
+        transportCheck: { status: "not-started" }
       }
     }))
   }
@@ -426,7 +773,8 @@ export class WorkflowStore {
       ...current,
       steps: {
         ...current.steps,
-        assistedApplyPlan: { status: "not-started" }
+        assistedApplyPlan: { status: "not-started" },
+        transportCheck: { status: "not-started" }
       }
     }))
   }
@@ -549,6 +897,33 @@ export class WorkflowStore {
       .get<number>("defaultConcurrency", 5)
     return Math.min(10, Math.max(1, value))
   }
+}
+
+export function isAttemptForPlanItem(
+  events: AssistedApplyExecutionEvent[],
+  attemptId: string,
+  item: Pick<AssistedApplyPlanItem, "sourceHash" | "targetHash">
+): boolean {
+  return events.some(
+    event =>
+      event.attemptId === attemptId &&
+      event.stage === "apply" &&
+      event.status === "succeeded" &&
+      event.sourceHash === item.sourceHash &&
+      event.targetHash === item.targetHash
+  )
+}
+
+export function hasCompletionForPlanItem(
+  events: AssistedApplyExecutionEvent[],
+  item: Pick<AssistedApplyPlanItem, "sourceHash" | "targetHash">
+): boolean {
+  return events.some(
+    event =>
+      event.stage === "completion" &&
+      event.status === "succeeded" &&
+      isAttemptForPlanItem(events, event.attemptId, item)
+  )
 }
 
 async function liveRunLock(lockPath: string, sessionId: string): Promise<boolean> {

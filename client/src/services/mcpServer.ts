@@ -27,6 +27,7 @@ import { createMcpAuthorizedOptions } from "./lm-tools/toolGuard"
 import { funWindow as window } from "./funMessenger"
 import { executeReplace } from "./lm-tools/mcpReplaceStringTool"
 import { getDiagnosticsForUri } from "./lm-tools/mcpGetDiagnosticsTool"
+import type { ObjectSaveTransportChoice } from "./transportIntentService"
 
 // ============================================================================
 // TYPES
@@ -330,7 +331,8 @@ function createMcpServer(): McpServer {
         "Prerequisites: First call abapfs_get_workspace_uri to get the fileUri. " +
         "Then call abapfs_get_object_source or abapfs_search_object_source to read current content before editing.\n\n" +
         "IMPORTANT: oldString is mandatory whenever the file has any content. An empty oldString is accepted ONLY when the file is currently completely blank (e.g. a freshly created ABAP object with no source yet) - in that case the entire newString becomes the file content.\n\n" +
-        "After editing, call get_abap_diagnostics with the same fileUri to verify the code has no syntax errors.",
+        "First call abapfs_get_object_transport_status for the exact object. Never invent a transport number or description. Use an existing request only after the user approves it, or create a request only when the user explicitly asks and supplies or approves the description. " +
+        "This tool verifies that SAP's inactive source matches the requested replacement. After editing, call abapfs_get_object_source with version inactive when inspecting pending source, then call get_abap_diagnostics with the same fileUri.",
       inputSchema: {
         fileUri: z
           .string()
@@ -348,7 +350,24 @@ function createMcpServer(): McpServer {
           ),
         newString: z
           .string()
-          .describe("The replacement text. Ensure the resulting code is syntactically valid ABAP.")
+          .describe("The replacement text. Ensure the resulting code is syntactically valid ABAP."),
+        transportChoice: z
+          .discriminatedUnion("type", [
+            z.object({
+              type: z.literal("existing"),
+              number: z.string().describe("Exact user-approved existing transport request")
+            }),
+            z.object({
+              type: z.literal("new"),
+              description: z
+                .string()
+                .describe("User-supplied or explicitly approved new request description")
+            })
+          ])
+          .optional()
+          .describe(
+            "Optional explicit transport for this write. Never choose one without user direction. Omit to preserve the normal interactive transport picker."
+          )
       }
     },
     async (args: Record<string, unknown>) => {
@@ -356,6 +375,8 @@ function createMcpServer(): McpServer {
         const fileUri = args.fileUri as string
         const oldString = args.oldString as string
         const newString = args.newString as string
+        const transportChoice = args.transportChoice as
+          Exclude<ObjectSaveTransportChoice, { type: "local" }> | undefined
 
         if (!fileUri) {
           throw new Error("fileUri is required")
@@ -367,7 +388,7 @@ function createMcpServer(): McpServer {
         // That check happens inside executeReplace/findAndReplace once the
         // current file content is known.
 
-        await executeReplace(fileUri, oldString, newString)
+        await executeReplace(fileUri, oldString, newString, transportChoice)
 
         const oldLineCount = oldString.split("\n").length
         const newLineCount = newString.split("\n").length

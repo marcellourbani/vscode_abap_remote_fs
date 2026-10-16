@@ -5,7 +5,7 @@ Copilot hands specific jobs to specialised subagents instead of doing everything
 Two reasons this matters to you: **large enumerations stay complete** (a subagent counting 200 branches doesn't get lazy near the end the way a main chat running low on context does), and **cost** — mechanical work runs on cheap models while only the reviewers use expensive ones.
 
 !!! note "One unified ABAP FS subagent system"
-    These nine testing agents share the unified registry with the [13 general ABAP agents](../ai/subagents.md). They ship with the extension and use the same user-level model settings. Testing availability is controlled as one group by the valid SAP testing folder; you do not enable testing agents individually.
+    These nine testing agents share the unified registry with the [14 general ABAP agents](../ai/subagents.md). They ship with the extension and use the same user-level model settings. Testing availability is controlled as one group by the valid SAP testing folder; you do not enable testing agents individually.
 
 ## The nine subagents
 

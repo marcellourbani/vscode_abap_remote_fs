@@ -213,6 +213,23 @@ export const AGENT_REGISTRY: AgentMeta[] = [
       "test-docs"
     ],
     templateFile: "abap-documenter.agent.md"
+  },
+  {
+    id: "abap-repository-assisted-apply",
+    name: "Repository Assisted Apply",
+    description:
+      "Review and execute one explicitly selected repository-workflow object with user-directed transport and verified activation",
+    tier: 2,
+    defaultModel: "",
+    tools: [
+      "read",
+      "abapfs_get_repository_workflow",
+      "abapfs_get_object_transport_status",
+      "abapfs_apply_repository_workflow_object",
+      "abapfs_activate_object",
+      "abapfs_record_repository_workflow_object_activation"
+    ],
+    templateFile: "abap-repository-assisted-apply.agent.md"
   }
 ]
 

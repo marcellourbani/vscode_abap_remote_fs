@@ -178,6 +178,32 @@ describe("GetABAPObjectLinesTool", () => {
         mockToken
       )
       expect(result.parts[0].text).toContain("LINE 1")
+      expect(mockClient.getObjectSource).toHaveBeenCalledWith(
+        "/sap/bc/adt/programs/programs/zprog/source/main",
+        { version: "active" }
+      )
+    })
+
+    it("reads the inactive SAP source when requested", async () => {
+      mockSearcher.searchObjects.mockResolvedValue([
+        { name: "ZPROG", type: "PROG/P", uri: "/sap/bc/adt/programs/programs/zprog" }
+      ])
+      mockClient.getObjectSource.mockResolvedValue("REPORT inactive.")
+
+      const result: any = await tool.invoke(
+        makeOptions({
+          objectName: "ZPROG",
+          connectionId: "DEV100",
+          version: "inactive"
+        }),
+        mockToken
+      )
+
+      expect(mockClient.getObjectSource).toHaveBeenCalledWith(
+        "/sap/bc/adt/programs/programs/zprog/source/main",
+        { version: "inactive" }
+      )
+      expect(result.parts[0].text).toContain("REPORT inactive.")
     })
 
     it("respects startLine offset (1-based)", async () => {

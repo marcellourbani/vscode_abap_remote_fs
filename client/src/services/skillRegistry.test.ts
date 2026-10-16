@@ -19,7 +19,7 @@ vi.mock("vscode", () => ({
 
 describe("GENERAL_SKILL_REGISTRY", () => {
   test("contains only general skills with unique IDs and packaged paths", () => {
-    expect(GENERAL_SKILL_REGISTRY.length).toBe(11)
+    expect(GENERAL_SKILL_REGISTRY.length).toBe(13)
     expect(new Set(GENERAL_SKILL_REGISTRY.map(skill => skill.id)).size).toBe(
       GENERAL_SKILL_REGISTRY.length
     )
@@ -28,6 +28,9 @@ describe("GENERAL_SKILL_REGISTRY", () => {
       expect(skill.description).toBeTruthy()
       expect(skill.path).toMatch(/^skills\/.+\/SKILL\.md$/)
     }
+    expect(GENERAL_SKILL_REGISTRY.map(skill => skill.id)).toEqual(
+      expect.arrayContaining(["repository-workflow", "repository-assisted-apply"])
+    )
   })
 
   test("uses default-on settings for skills without an explicit value", () => {

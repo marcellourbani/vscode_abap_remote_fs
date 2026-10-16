@@ -1,4 +1,13 @@
 // Tests for fs/FsProvider.ts
+const transportMocks = vi.hoisted(() => ({
+  claim: vi.fn(),
+  succeed: vi.fn(),
+  fail: vi.fn(),
+  selectTransportIfNeeded: vi.fn(),
+  pickTransportForExistingObjectWrite: vi.fn(),
+  transportInfo: vi.fn()
+}))
+
 vi.mock("vscode", () => {
   const EventEmitter = class {
     event = vi.fn()
@@ -64,6 +73,7 @@ vi.mock("vscode", () => {
 
 vi.mock("../adt/conections", () => ({
   getOrCreateRoot: vi.fn(),
+  getClient: vi.fn(() => ({ transportInfo: transportMocks.transportInfo })),
   ADTSCHEME: "adt"
 }))
 
@@ -93,7 +103,19 @@ vi.mock("../listeners", () => ({
 }))
 
 vi.mock("../adt/AdtTransports", () => ({
-  selectTransportIfNeeded: vi.fn()
+  selectTransportIfNeeded: transportMocks.selectTransportIfNeeded,
+  pickTransportForExistingObjectWrite: transportMocks.pickTransportForExistingObjectWrite,
+  trSel: vi.fn((transport: string, cancelled = false) => ({ transport, cancelled }))
+}))
+
+vi.mock("../services/transportIntentService", () => ({
+  TransportIntentService: {
+    get: vi.fn(() => ({
+      claim: transportMocks.claim,
+      succeed: transportMocks.succeed,
+      fail: transportMocks.fail
+    }))
+  }
 }))
 
 vi.mock("./LocalFsProvider", () => {
@@ -181,6 +203,16 @@ describe("FsProvider", () => {
         rename: vi.fn()
       }
     })
+    transportMocks.claim.mockReturnValue(undefined)
+    transportMocks.selectTransportIfNeeded.mockResolvedValue({
+      cancelled: false,
+      transport: "DEVK900001"
+    })
+    transportMocks.pickTransportForExistingObjectWrite.mockResolvedValue({
+      cancelled: false,
+      transport: "DEVK900123"
+    })
+    transportMocks.transportInfo.mockResolvedValue({ DLVUNIT: "LOCAL" })
   })
 
   describe("FsProvider.get (singleton)", () => {
@@ -353,6 +385,166 @@ describe("FsProvider", () => {
       const uri = makeUri("/sap/bc/adt/missing")
 
       await expect(instance.stat(uri)).rejects.toBeDefined()
+    })
+  })
+
+  describe("writeFile transport intents", () => {
+    function writableRoot() {
+      const node = {
+        mtime: 1,
+        object: { contentsPath: vi.fn(() => "/object/source/main") },
+        write: vi.fn().mockResolvedValue(undefined)
+      }
+      const lockManager = {
+        finalStatus: vi.fn().mockResolvedValue({ status: "unlocked" }),
+        requestLock: vi.fn().mockResolvedValue({ status: "locked", LOCK_HANDLE: "HANDLE" }),
+        lockStatus: vi.fn(() => ({ status: "locked", LOCK_HANDLE: "HANDLE" })),
+        requestUnlock: vi.fn().mockResolvedValue(undefined)
+      }
+      return {
+        node,
+        root: {
+          getNodeAsync: vi.fn().mockResolvedValue(node),
+          lockManager
+        }
+      }
+    }
+
+    it("preserves the interactive picker when there is no matching intent", async () => {
+      const { root, node } = writableRoot()
+      ;(__$mock_adt_conections.getOrCreateRoot as Mock).mockResolvedValue(root)
+      ;(__$mock_abapfs.isAbapFile as unknown as Mock).mockReturnValue(true)
+      const instance = FsProvider.get(context)
+      const uri = makeUri("/object/source/main", "adt", "DEV100")
+
+      await instance.writeFile(uri, Buffer.from("REPORT ztest.", "utf8"))
+
+      expect(transportMocks.selectTransportIfNeeded).toHaveBeenCalledWith(uri)
+      expect(transportMocks.pickTransportForExistingObjectWrite).not.toHaveBeenCalled()
+      expect(node.write).toHaveBeenCalledWith("REPORT ztest.", "HANDLE", "DEVK900001")
+    })
+
+    it.each(["REPORT zexample.", "WRITE 'café 日本語 '.", "", "line one\r\nline two\r\n"])(
+      "decodes plain Uint8Array writes as UTF-8: %s",
+      async source => {
+        const { root, node } = writableRoot()
+        vi.mocked(__$mock_adt_conections.getOrCreateRoot).mockResolvedValue(root as never)
+        vi.mocked(__$mock_abapfs.isAbapFile).mockReturnValue(true)
+        const encoded = new TextEncoder().encode(source)
+        // A view with nonzero offset must not write bytes outside its bounds.
+        const backing = new Uint8Array(encoded.length + 2)
+        backing.set(encoded, 1)
+        await FsProvider.get(context).writeFile(makeUri(), backing.subarray(1, -1))
+        expect(node.write).toHaveBeenCalledWith(source, "HANDLE", "DEVK900001")
+      }
+    )
+
+    it("claims before resolving the root and uses the exact existing-object resolver", async () => {
+      const intent = {
+        intentId: "intent-1",
+        transportChoice: { type: "existing", number: "DEVK900123" }
+      }
+      transportMocks.claim.mockReturnValue(intent)
+      const { root, node } = writableRoot()
+      ;(__$mock_adt_conections.getOrCreateRoot as Mock).mockImplementation(async () => {
+        expect(transportMocks.claim).toHaveBeenCalled()
+        return root
+      })
+      ;(__$mock_abapfs.isAbapFile as unknown as Mock).mockReturnValue(true)
+      const instance = FsProvider.get(context)
+
+      await instance.writeFile(
+        makeUri("/object/source/main", "adt", "DEV100"),
+        Buffer.from("REPORT ztest.", "utf8")
+      )
+
+      expect(transportMocks.selectTransportIfNeeded).not.toHaveBeenCalled()
+      expect(transportMocks.pickTransportForExistingObjectWrite).toHaveBeenCalledWith(
+        expect.anything(),
+        intent.transportChoice,
+        "/object/source/main"
+      )
+      expect(node.write).toHaveBeenCalledWith("REPORT ztest.", "HANDLE", "DEVK900123")
+      expect(transportMocks.succeed).toHaveBeenCalledWith("intent-1", "DEVK900123")
+    })
+
+    it("normalizes the intent connection before obtaining the ADT client", async () => {
+      transportMocks.claim.mockReturnValue({
+        intentId: "intent-1",
+        transportChoice: { type: "existing", number: "DEVK900123" }
+      })
+      const { root } = writableRoot()
+      ;(__$mock_adt_conections.getOrCreateRoot as Mock).mockResolvedValue(root)
+      ;(__$mock_abapfs.isAbapFile as unknown as Mock).mockReturnValue(true)
+
+      await FsProvider.get(context).writeFile(
+        makeUri("/object/source/main", "adt", "DEV100"),
+        Buffer.from("REPORT ztest.", "utf8")
+      )
+
+      expect(__$mock_adt_conections.getClient).toHaveBeenCalledWith("dev100")
+    })
+
+    it("verifies a local intent at the write boundary and ignores transport selection", async () => {
+      transportMocks.claim.mockReturnValue({
+        intentId: "intent-local",
+        transportChoice: { type: "local" }
+      })
+      const { root, node } = writableRoot()
+      ;(__$mock_adt_conections.getOrCreateRoot as Mock).mockResolvedValue(root)
+      ;(__$mock_abapfs.isAbapFile as unknown as Mock).mockReturnValue(true)
+
+      await FsProvider.get(context).writeFile(
+        makeUri("/object/source/main", "adt", "DEV100"),
+        Buffer.from("REPORT ztest.", "utf8")
+      )
+
+      expect(transportMocks.transportInfo).toHaveBeenCalledWith("/object/source/main", "", "")
+      expect(node.write).toHaveBeenCalledWith("REPORT ztest.", "HANDLE", "")
+      expect(transportMocks.succeed).toHaveBeenCalledWith("intent-local", "")
+    })
+
+    it("rejects a local intent if the object is no longer local", async () => {
+      transportMocks.claim.mockReturnValue({
+        intentId: "intent-local",
+        transportChoice: { type: "local" }
+      })
+      transportMocks.transportInfo.mockResolvedValue({ DLVUNIT: "HOME" })
+      const { root, node } = writableRoot()
+      ;(__$mock_adt_conections.getOrCreateRoot as Mock).mockResolvedValue(root)
+      ;(__$mock_abapfs.isAbapFile as unknown as Mock).mockReturnValue(true)
+
+      await expect(
+        FsProvider.get(context).writeFile(
+          makeUri("/object/source/main", "adt", "DEV100"),
+          Buffer.from("REPORT ztest.", "utf8")
+        )
+      ).rejects.toThrow(/no longer refers to a local object/)
+
+      expect(node.write).not.toHaveBeenCalled()
+      expect(transportMocks.fail).toHaveBeenCalledWith("intent-local", expect.any(Error), undefined)
+    })
+
+    it("completes an intent as failed when the SAP write fails", async () => {
+      transportMocks.claim.mockReturnValue({
+        intentId: "intent-1",
+        transportChoice: { type: "existing", number: "DEVK900123" }
+      })
+      const { root, node } = writableRoot()
+      node.write.mockRejectedValue(new Error("SAP rejected write"))
+      ;(__$mock_adt_conections.getOrCreateRoot as Mock).mockResolvedValue(root)
+      ;(__$mock_abapfs.isAbapFile as unknown as Mock).mockReturnValue(true)
+
+      await expect(
+        FsProvider.get(context).writeFile(
+          makeUri("/object/source/main", "adt", "DEV100"),
+          Buffer.from("REPORT ztest.", "utf8")
+        )
+      ).rejects.toThrow("SAP rejected write")
+
+      expect(transportMocks.succeed).not.toHaveBeenCalled()
+      expect(transportMocks.fail).toHaveBeenCalledWith("intent-1", expect.any(Error), "DEVK900123")
+      expect(root.lockManager.requestUnlock).toHaveBeenCalledWith("/object/source/main", true)
     })
   })
 })

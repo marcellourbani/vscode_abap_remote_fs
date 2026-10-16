@@ -24,6 +24,11 @@ export interface IBatchLinesParameters {
     lineCount?: number
   }>
   connectionId?: string
+  version?: "active" | "inactive"
+}
+
+function getVersionedSource(client: any, uri: string, version: "active" | "inactive") {
+  return client.getObjectSource(uri, { version })
 }
 
 // ============================================================================
@@ -38,7 +43,7 @@ export class GetBatchLinesTool implements vscode.LanguageModelTool<IBatchLinesPa
     options: vscode.LanguageModelToolInvocationPrepareOptions<IBatchLinesParameters>,
     _token: vscode.CancellationToken
   ) {
-    const { requests, connectionId } = options.input
+    const { requests, connectionId, version = "active" } = options.input
 
     const objectNames = requests.map(req => req.objectName).join(", ")
 
@@ -51,7 +56,7 @@ export class GetBatchLinesTool implements vscode.LanguageModelTool<IBatchLinesPa
     }
 
     return {
-      invocationMessage: `Getting batch lines from ${requests.length} objects`,
+      invocationMessage: `Getting ${version} batch lines from ${requests.length} objects`,
       confirmationMessages
     }
   }
@@ -61,7 +66,7 @@ export class GetBatchLinesTool implements vscode.LanguageModelTool<IBatchLinesPa
     _token: vscode.CancellationToken
   ): Promise<vscode.LanguageModelToolResult> {
     assertToolInvocationAuthorized(options)
-    let { requests, connectionId } = options.input
+    let { requests, connectionId, version = "active" } = options.input
     logTelemetry("tool_get_batch_lines_called", { connectionId })
 
     if (connectionId) {
@@ -117,19 +122,19 @@ export class GetBatchLinesTool implements vscode.LanguageModelTool<IBatchLinesPa
             const optimalUri = getOptimalObjectURI(objectInfo.type, objectInfo.uri)
 
             try {
-              sourceContent = await client.getObjectSource(optimalUri)
+              sourceContent = await getVersionedSource(client, optimalUri, version)
               uriUsed = optimalUri
             } catch (optimizedError) {
               if (optimalUri !== objectInfo.uri) {
                 try {
-                  sourceContent = await client.getObjectSource(objectInfo.uri)
+                  sourceContent = await getVersionedSource(client, objectInfo.uri, version)
                   uriUsed = objectInfo.uri
                 } catch (originalError) {
                   const resolvedUri = await resolveCorrectURI(objectInfo.uri, finalConnectionId)
                   const finalUri = getOptimalObjectURI(objectInfo.type, resolvedUri)
 
                   try {
-                    sourceContent = await client.getObjectSource(finalUri)
+                    sourceContent = await getVersionedSource(client, finalUri, version)
                     uriUsed = finalUri
                   } catch (finalError) {
                     throw new Error(
@@ -142,7 +147,7 @@ export class GetBatchLinesTool implements vscode.LanguageModelTool<IBatchLinesPa
                 const finalUri = getOptimalObjectURI(objectInfo.type, resolvedUri)
 
                 try {
-                  sourceContent = await client.getObjectSource(finalUri)
+                  sourceContent = await getVersionedSource(client, finalUri, version)
                   uriUsed = finalUri
                 } catch (finalError) {
                   throw new Error(
@@ -185,7 +190,7 @@ export class GetBatchLinesTool implements vscode.LanguageModelTool<IBatchLinesPa
       )
 
       const resultText =
-        `Batch Lines Results (${requests.length} objects):\n\n` +
+        `Batch ${version} Lines Results (${requests.length} objects):\n\n` +
         results
           .map(result => {
             if (result.success) {

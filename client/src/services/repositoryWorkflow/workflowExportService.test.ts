@@ -200,37 +200,117 @@ describe("workflowExportRow", () => {
       changed: ["main.abap", "testclasses.abap"],
       linesAdded: 4,
       linesRemoved: 2,
-      linesChanged: 3
+      linesChanged: 3,
+      formattedIdentical: false,
+      formattedAdded: [],
+      formattedRemoved: [],
+      formattedChanged: ["main.abap"],
+      formattedLinesAdded: 1,
+      formattedLinesRemoved: 0,
+      formattedLinesChanged: 2
     })
 
     expect(row).toMatchObject({
       objectName: "ZCL_TEST",
       objectType: "CLAS",
-      filesAddedCount: 1,
-      filesRemovedCount: 0,
-      filesChangedCount: 2,
-      addedFiles: "new.abap",
-      changedFiles: "main.abap\ntestclasses.abap"
+      rawFilesAddedCount: 1,
+      rawFilesRemovedCount: 0,
+      rawFilesChangedCount: 2,
+      rawAddedFiles: "new.abap",
+      rawChangedFiles: "main.abap\ntestclasses.abap",
+      formattedFilesChangedCount: 1,
+      formattedChangedFiles: "main.abap",
+      formattedLinesChanged: 2
     })
   })
 
-  it("flattens assisted-apply records and blocking reasons", () => {
-    const row = workflowExportRow("assistedApplyPlan", {
-      key: "R3TR:PROG:ZTEST",
-      eligible: false,
-      blockingReasons: ["Generated object", "Snapshot incomplete"],
-      sourceRecord: { objectName: "ZTEST", objectType: "PROG", packageName: "ZSRC" },
-      targetRecord: { objectName: "ZTEST", objectType: "PROG", packageName: "ZTGT" }
-    })
+  it("flattens assisted-apply records and marks the Copilot selection", () => {
+    const row = workflowExportRow(
+      "assistedApplyPlan",
+      {
+        key: "R3TR:PROG:ZTEST",
+        eligible: true,
+        blockingReasons: [],
+        executionSummary: {
+          attemptCount: 2,
+          lastStatus: "failed",
+          lastStage: "verification",
+          lastUpdatedAt: "2026-10-09T12:30:00.000Z",
+          transportRequest: "DEVK900123",
+          lastError: "Inactive source mismatch"
+        },
+        sourceRecord: { objectName: "ZTEST", objectType: "PROG", packageName: "ZSRC" },
+        targetRecord: { objectName: "ZTEST", objectType: "PROG", packageName: "ZTGT" }
+      },
+      new Set(["R3TR:PROG:ZTEST"]),
+      undefined,
+      { "R3TR:PROG:ZTEST": "as-is" },
+      { "R3TR:PROG:ZTEST": "Reviewed source change is safe to apply as-is." }
+    )
 
     expect(row).toMatchObject({
+      selected: "X",
+      copilotStatus: "Pending",
+      copilotDecision: "as-is",
+      copilotDecisionReason: "Reviewed source change is safe to apply as-is.",
+      transportCheckStatus: "not-checked",
+      transportRequest: "",
+      transportDescription: "",
+      transportCheckedAt: "",
+      transportCheckError: "",
+      executionAttemptCount: 2,
+      lastExecutionStatus: "failed",
+      lastExecutionStage: "verification",
+      lastExecutionAt: "2026-10-09T12:30:00.000Z",
+      lastExecutionTransport: "DEVK900123",
+      lastExecutionError: "Inactive source mismatch",
       objectName: "ZTEST",
       sourcePackage: "ZSRC",
       targetPackage: "ZTGT",
-      decision: "Blocked",
-      blockingReasons: "Generated object\nSnapshot incomplete"
+      decision: "Ready"
     })
+    expect(Object.keys(row)[0]).toBe("selected")
     expect(row).not.toHaveProperty("sourceRecord")
     expect(row).not.toHaveProperty("targetRecord")
+  })
+
+  it("imports only marked eligible assisted-apply plan items", async () => {
+    const root = await fs.mkdtemp(path.join(os.tmpdir(), "assisted-apply-selection-"))
+    const filePath = path.join(root, "selection.csv")
+    const planPath = path.join(root, "plan.json")
+    try {
+      await fs.writeFile(
+        filePath,
+        "Selected,Repository Key\nX,R3TR:PROG:ZREADY\nX,R3TR:PROG:ZBLOCKED\nX,R3TR:PROG:ZUNKNOWN\n",
+        "utf8"
+      )
+      await fs.writeFile(
+        planPath,
+        JSON.stringify({
+          items: [
+            { key: "R3TR:PROG:ZREADY", eligible: true },
+            { key: "R3TR:PROG:ZBLOCKED", eligible: false }
+          ]
+        }),
+        "utf8"
+      )
+      ;(vscode.window.showOpenDialog as Mock).mockResolvedValue([{ fsPath: filePath }])
+      const store = {
+        artifactPath: vi.fn(() => planPath)
+      }
+
+      const imported = await new WorkflowExportService(store as any).importAssistedApplySelection(
+        {} as any
+      )
+
+      expect(imported).toMatchObject({
+        keys: ["R3TR:PROG:ZREADY"],
+        requested: 3,
+        unselectable: 1,
+        unknown: 1
+      })
+    } finally {
+      await fs.rm(root, { recursive: true, force: true })
+    }
   })
 })

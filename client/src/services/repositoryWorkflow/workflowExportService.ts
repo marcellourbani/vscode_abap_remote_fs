@@ -64,18 +64,35 @@ const OUTPUTS: Record<string, OutputDefinition> = {
       { name: "objectName", header: "Object Name" },
       { name: "objectType", header: "Object Type" },
       { name: "status", header: "Comparison Status" },
-      { name: "normalizedIdentical", header: "Equal Ignoring Formatting" },
-      { name: "filesAddedCount", header: "Files Added" },
-      { name: "filesRemovedCount", header: "Files Removed" },
-      { name: "filesChangedCount", header: "Files Changed" },
-      { name: "addedFiles", header: "Added File Paths" },
-      { name: "removedFiles", header: "Removed File Paths" },
-      { name: "changedFiles", header: "Changed File Paths" },
-      { name: "linesAdded", header: "Lines Added" },
-      { name: "linesRemoved", header: "Lines Removed" },
-      { name: "linesChanged", header: "Lines Changed" },
-      { name: "sourceHash", header: "Source Snapshot Hash" },
-      { name: "targetHash", header: "Target Snapshot Hash" },
+      { name: "rawIdentical", header: "Raw Equal" },
+      { name: "rawSourceLines", header: "Raw Source Lines" },
+      { name: "rawTargetLines", header: "Raw Target Lines" },
+      { name: "rawFilesAddedCount", header: "Raw Files Added" },
+      { name: "rawFilesRemovedCount", header: "Raw Files Removed" },
+      { name: "rawFilesChangedCount", header: "Raw Files Changed" },
+      { name: "rawAddedFiles", header: "Raw Added File Paths" },
+      { name: "rawRemovedFiles", header: "Raw Removed File Paths" },
+      { name: "rawChangedFiles", header: "Raw Changed File Paths" },
+      { name: "rawLinesAdded", header: "Raw Lines Added" },
+      { name: "rawLinesRemoved", header: "Raw Lines Removed" },
+      { name: "rawLinesChanged", header: "Raw Lines Changed" },
+      { name: "sourceRawHash", header: "Source Raw Snapshot Hash" },
+      { name: "targetRawHash", header: "Target Raw Snapshot Hash" },
+      { name: "formattedIdentical", header: "Formatted Equal" },
+      { name: "formattedSourceLines", header: "Formatted Source Lines" },
+      { name: "formattedTargetLines", header: "Formatted Target Lines" },
+      { name: "formattedFilesAddedCount", header: "Formatted Files Added" },
+      { name: "formattedFilesRemovedCount", header: "Formatted Files Removed" },
+      { name: "formattedFilesChangedCount", header: "Formatted Files Changed" },
+      { name: "formattedAddedFiles", header: "Formatted Added File Paths" },
+      { name: "formattedRemovedFiles", header: "Formatted Removed File Paths" },
+      { name: "formattedChangedFiles", header: "Formatted Changed File Paths" },
+      { name: "formattedLinesAdded", header: "Formatted Lines Added" },
+      { name: "formattedLinesRemoved", header: "Formatted Lines Removed" },
+      { name: "formattedLinesChanged", header: "Formatted Lines Changed" },
+      { name: "sourceFormattedHash", header: "Source Formatted Snapshot Hash" },
+      { name: "targetFormattedHash", header: "Target Formatted Snapshot Hash" },
+      { name: "formattedError", header: "Formatted Comparison Error" },
       { name: "error", header: "Error" }
     ],
     sheetName: "Source comparison"
@@ -83,6 +100,21 @@ const OUTPUTS: Record<string, OutputDefinition> = {
   assistedApplyPlan: {
     path: ["assisted-apply", "plan.json"],
     columns: [
+      { name: "selected", header: "Selected" },
+      { name: "copilotStatus", header: "Copilot-Assisted Apply Status" },
+      { name: "copilotDecision", header: "Copilot Decision" },
+      { name: "copilotDecisionReason", header: "Copilot Decision Reason" },
+      { name: "transportCheckStatus", header: "Transport Check Status" },
+      { name: "transportRequest", header: "Transport Request" },
+      { name: "transportDescription", header: "Transport Description" },
+      { name: "transportCheckedAt", header: "Transport Checked At" },
+      { name: "transportCheckError", header: "Transport Check Error" },
+      { name: "executionAttemptCount", header: "Apply Attempt Count" },
+      { name: "lastExecutionStatus", header: "Last Execution Status" },
+      { name: "lastExecutionStage", header: "Last Execution Stage" },
+      { name: "lastExecutionAt", header: "Last Execution At" },
+      { name: "lastExecutionTransport", header: "Last Execution Transport" },
+      { name: "lastExecutionError", header: "Last Execution Error" },
       { name: "repositoryKey", header: "Repository Key" },
       { name: "objectName", header: "Object Name" },
       { name: "sourceObjectType", header: "Source Type" },
@@ -146,7 +178,10 @@ export class WorkflowExportService {
     workflow: RepositoryWorkflow,
     output: string,
     type: "xlsx" | "csv",
-    selectedKeys?: string[]
+    selectedKeys?: string[],
+    completedKeys?: string[],
+    decisions?: Record<string, string>,
+    decisionReasons?: Record<string, string>
   ): Promise<string | undefined> {
     const definition = OUTPUTS[output]
     if (!definition) throw new Error(`Unknown workflow output: ${output}`)
@@ -164,11 +199,24 @@ export class WorkflowExportService {
     if (!target) return
     await this.globalState?.update(LAST_EXPORT_DIRECTORY_KEY, path.dirname(target.fsPath))
     const selected = selectedKeys ? new Set(selectedKeys) : undefined
+    const completed = completedKeys ? new Set(completedKeys) : undefined
     if (type === "csv") {
-      await streamCsv(target.fsPath, definition.columns, this.rows(workflow, output, selected))
+      await streamCsv(
+        target.fsPath,
+        definition.columns,
+        this.rows(workflow, output, selected, completed, decisions, decisionReasons)
+      )
     } else {
       const rows: Array<Record<string, unknown>> = []
-      for await (const row of this.rows(workflow, output, selected)) rows.push(row)
+      for await (const row of this.rows(
+        workflow,
+        output,
+        selected,
+        completed,
+        decisions,
+        decisionReasons
+      ))
+        rows.push(row)
       await vscode.workspace.fs.writeFile(
         target,
         await buildXlsx(definition.columns, rows, definition.sheetName)
@@ -178,45 +226,8 @@ export class WorkflowExportService {
   }
 
   async importSourceSelection(workflow: RepositoryWorkflow) {
-    const selected = await vscode.window.showOpenDialog({
-      defaultUri: vscode.Uri.file(homedir()),
-      canSelectMany: false,
-      canSelectFiles: true,
-      canSelectFolders: false,
-      title: "Import source-comparison selection",
-      filters: { "Excel or CSV": ["xlsx", "csv"] }
-    })
-    const file = selected?.[0]
-    if (!file) return undefined
-    const workbook = new ExcelJS.Workbook()
-    if (path.extname(file.fsPath).toLowerCase() === ".csv") await workbook.csv.readFile(file.fsPath)
-    else await workbook.xlsx.readFile(file.fsPath)
-    const sheet = workbook.worksheets[0]
-    if (!sheet) throw new Error("The selected workbook does not contain a worksheet")
-    const columns = new Map<string, number>()
-    sheet.getRow(1).eachCell((cell, column) => {
-      columns.set(
-        cell.text
-          .trim()
-          .replace(/^\uFEFF/, "")
-          .toLowerCase(),
-        column
-      )
-    })
-    const selectedColumn = columns.get("selected")
-    const keyColumn = columns.get("repository key")
-    if (!selectedColumn || !keyColumn)
-      throw new Error("The selection file must contain Selected and Repository Key columns")
-
-    const requested = new Set<string>()
-    let duplicates = 0
-    sheet.eachRow((row, rowNumber) => {
-      if (rowNumber === 1 || !selectedMarker(row.getCell(selectedColumn).text)) return
-      const key = row.getCell(keyColumn).text.trim().toUpperCase()
-      if (!key) return
-      if (requested.has(key)) duplicates++
-      requested.add(key)
-    })
+    const imported = await readSelectionFile("Import source-comparison selection")
+    if (!imported) return undefined
 
     const keys: string[] = []
     const found = new Set<string>()
@@ -225,7 +236,7 @@ export class WorkflowExportService {
     for await (const row of this.store.readJsonLines<ExistenceComparisonRecord>(
       this.store.artifactPath(workflow, "comparison", "existence.jsonl")
     )) {
-      if (!requested.has(row.key)) continue
+      if (!imported.requested.has(row.key)) continue
       found.add(row.key)
       if (
         row.status === "both" &&
@@ -236,12 +247,39 @@ export class WorkflowExportService {
       else unselectable++
     }
     return {
-      fileName: path.basename(file.fsPath),
+      fileName: imported.fileName,
       keys: keys.sort(),
-      requested: requested.size,
-      duplicates,
+      requested: imported.requested.size,
+      duplicates: imported.duplicates,
       unselectable,
-      unknown: requested.size - found.size
+      unknown: imported.requested.size - found.size
+    }
+  }
+
+  async importAssistedApplySelection(workflow: RepositoryWorkflow) {
+    const imported = await readSelectionFile("Import Copilot-assisted apply selection")
+    if (!imported) return undefined
+    const plan = JSON.parse(
+      await fs.readFile(this.store.artifactPath(workflow, "assisted-apply", "plan.json"), "utf8")
+    )
+    const items = new Map<string, Record<string, any>>(
+      (plan.items ?? []).map((item: Record<string, any>) => [item.key, item])
+    )
+    const keys: string[] = []
+    let unselectable = 0
+    for (const key of imported.requested) {
+      const item = items.get(key)
+      if (!item) continue
+      if (item.eligible) keys.push(key)
+      else unselectable++
+    }
+    return {
+      fileName: imported.fileName,
+      keys: keys.sort(),
+      requested: imported.requested.size,
+      duplicates: imported.duplicates,
+      unselectable,
+      unknown: imported.requested.size - keys.length - unselectable
     }
   }
 
@@ -268,14 +306,28 @@ export class WorkflowExportService {
   private async *rows(
     workflow: RepositoryWorkflow,
     output: string,
-    selectedKeys?: ReadonlySet<string>
+    selectedKeys?: ReadonlySet<string>,
+    completedKeys?: ReadonlySet<string>,
+    decisions?: Readonly<Record<string, string>>,
+    decisionReasons?: Readonly<Record<string, string>>
   ): AsyncGenerator<Record<string, unknown>> {
     const definition = OUTPUTS[output]
     if (output === "assistedApplyPlan") {
       const plan = JSON.parse(
         await fs.readFile(this.store.artifactPath(workflow, ...definition.path), "utf8")
       )
-      for (const row of plan.items ?? []) yield workflowExportRow(output, row)
+      const executionSummaries = await this.store.getAssistedApplyExecutionSummaries(
+        workflow.workflowId
+      )
+      for (const row of plan.items ?? [])
+        yield workflowExportRow(
+          output,
+          { ...row, executionSummary: executionSummaries[row.key] },
+          selectedKeys,
+          completedKeys,
+          decisions,
+          decisionReasons
+        )
       return
     }
     if (output === "downloadErrors") {
@@ -353,11 +405,15 @@ function localTimestamp(value: Date): string {
 export function workflowExportRow(
   output: string,
   row: Record<string, any>,
-  selectedKeys?: ReadonlySet<string>
+  selectedKeys?: ReadonlySet<string>,
+  completedKeys?: ReadonlySet<string>,
+  decisions?: Readonly<Record<string, string>>,
+  decisionReasons?: Readonly<Record<string, string>>
 ): Record<string, unknown> {
   if (output === "existenceComparison") return existenceRow(row, selectedKeys)
   if (output === "sourceComparison") return sourceComparisonRow(row)
-  if (output === "assistedApplyPlan") return assistedApplyRow(row)
+  if (output === "assistedApplyPlan")
+    return assistedApplyRow(row, selectedKeys, completedKeys, decisions, decisionReasons)
   if (output === "downloadErrors")
     return {
       side: row.side,
@@ -404,33 +460,76 @@ function sourceComparisonRow(row: Record<string, any>): Record<string, unknown> 
     objectName: key.objectName,
     objectType: key.objectType,
     status: row.status,
-    normalizedIdentical: row.normalizedIdentical,
-    filesAddedCount: row.added?.length ?? 0,
-    filesRemovedCount: row.removed?.length ?? 0,
-    filesChangedCount: row.changed?.length ?? 0,
-    addedFiles: list(row.added),
-    removedFiles: list(row.removed),
-    changedFiles: list(row.changed),
-    linesAdded: row.linesAdded,
-    linesRemoved: row.linesRemoved,
-    linesChanged: row.linesChanged,
-    sourceHash: row.sourceHash,
-    targetHash: row.targetHash,
+    rawIdentical: row.rawIdentical,
+    rawSourceLines: row.rawSourceLines ?? row.sourceLines,
+    rawTargetLines: row.rawTargetLines ?? row.targetLines,
+    rawFilesAddedCount: row.rawAdded?.length ?? row.added?.length ?? 0,
+    rawFilesRemovedCount: row.rawRemoved?.length ?? row.removed?.length ?? 0,
+    rawFilesChangedCount: row.rawChanged?.length ?? row.changed?.length ?? 0,
+    rawAddedFiles: list(row.rawAdded ?? row.added),
+    rawRemovedFiles: list(row.rawRemoved ?? row.removed),
+    rawChangedFiles: list(row.rawChanged ?? row.changed),
+    rawLinesAdded: row.rawLinesAdded ?? row.linesAdded,
+    rawLinesRemoved: row.rawLinesRemoved ?? row.linesRemoved,
+    rawLinesChanged: row.rawLinesChanged ?? row.linesChanged,
+    sourceRawHash: row.sourceRawHash ?? row.sourceHash,
+    targetRawHash: row.targetRawHash ?? row.targetHash,
+    formattedIdentical: row.formattedIdentical,
+    formattedSourceLines: row.formattedSourceLines,
+    formattedTargetLines: row.formattedTargetLines,
+    formattedFilesAddedCount: row.formattedAdded?.length ?? 0,
+    formattedFilesRemovedCount: row.formattedRemoved?.length ?? 0,
+    formattedFilesChangedCount: row.formattedChanged?.length ?? 0,
+    formattedAddedFiles: list(row.formattedAdded),
+    formattedRemovedFiles: list(row.formattedRemoved),
+    formattedChangedFiles: list(row.formattedChanged),
+    formattedLinesAdded: row.formattedLinesAdded,
+    formattedLinesRemoved: row.formattedLinesRemoved,
+    formattedLinesChanged: row.formattedLinesChanged,
+    sourceFormattedHash: row.sourceFormattedHash,
+    targetFormattedHash: row.targetFormattedHash,
+    formattedError: row.formattedError,
     error: row.error
   }
 }
 
-function assistedApplyRow(row: Record<string, any>): Record<string, unknown> {
+function assistedApplyRow(
+  row: Record<string, any>,
+  selectedKeys?: ReadonlySet<string>,
+  completedKeys?: ReadonlySet<string>,
+  decisions?: Readonly<Record<string, string>>,
+  decisionReasons?: Readonly<Record<string, string>>
+): Record<string, unknown> {
   const source = row.sourceRecord ?? {}
   const target = row.targetRecord ?? {}
+  const execution = row.executionSummary ?? {}
   return {
+    selected: row.eligible && selectedKeys?.has(row.key) ? "X" : "",
+    copilotStatus: selectedKeys?.has(row.key)
+      ? completedKeys?.has(row.key)
+        ? "Done"
+        : "Pending"
+      : "",
+    copilotDecision: selectedKeys?.has(row.key) ? (decisions?.[row.key] ?? "needs-human") : "",
+    copilotDecisionReason: selectedKeys?.has(row.key) ? (decisionReasons?.[row.key] ?? "") : "",
+    transportCheckStatus: row.transportCheckStatus ?? "not-checked",
+    transportRequest: row.transportRequest ?? "",
+    transportDescription: row.transportDescription ?? "",
+    transportCheckedAt: row.transportCheckedAt ?? "",
+    transportCheckError: row.transportCheckError ?? "",
+    executionAttemptCount: execution.attemptCount ?? 0,
+    lastExecutionStatus: execution.lastStatus ?? "",
+    lastExecutionStage: execution.lastStage ?? "",
+    lastExecutionAt: execution.lastUpdatedAt ?? "",
+    lastExecutionTransport: execution.transportRequest ?? "",
+    lastExecutionError: execution.lastError ?? "",
     repositoryKey: row.key,
     objectName: source.objectName ?? target.objectName,
     sourceObjectType: source.objectType,
     targetObjectType: target.objectType,
     sourcePackage: source.packageName,
     targetPackage: target.packageName,
-    decision: row.eligible ? "Ready" : "Blocked",
+    decision: row.eligible ? "Ready" : row.relevant === false ? "No action" : "Blocked",
     blockingReasons: list(row.blockingReasons),
     sourceHash: row.sourceHash,
     targetHash: row.targetHash
@@ -458,4 +557,46 @@ function comparisonResult(status: unknown): string {
 
 function selectedMarker(value: string): boolean {
   return ["x", "true", "1", "yes"].includes(value.trim().toLowerCase())
+}
+
+async function readSelectionFile(title: string) {
+  const selected = await vscode.window.showOpenDialog({
+    defaultUri: vscode.Uri.file(homedir()),
+    canSelectMany: false,
+    canSelectFiles: true,
+    canSelectFolders: false,
+    title,
+    filters: { "Excel or CSV": ["xlsx", "csv"] }
+  })
+  const file = selected?.[0]
+  if (!file) return undefined
+  const workbook = new ExcelJS.Workbook()
+  if (path.extname(file.fsPath).toLowerCase() === ".csv") await workbook.csv.readFile(file.fsPath)
+  else await workbook.xlsx.readFile(file.fsPath)
+  const sheet = workbook.worksheets[0]
+  if (!sheet) throw new Error("The selected workbook does not contain a worksheet")
+  const columns = new Map<string, number>()
+  sheet.getRow(1).eachCell((cell, column) => {
+    columns.set(
+      cell.text
+        .trim()
+        .replace(/^\uFEFF/, "")
+        .toLowerCase(),
+      column
+    )
+  })
+  const selectedColumn = columns.get("selected")
+  const keyColumn = columns.get("repository key")
+  if (!selectedColumn || !keyColumn)
+    throw new Error("The selection file must contain Selected and Repository Key columns")
+  const requested = new Set<string>()
+  let duplicates = 0
+  sheet.eachRow((row, rowNumber) => {
+    if (rowNumber === 1 || !selectedMarker(row.getCell(selectedColumn).text)) return
+    const key = row.getCell(keyColumn).text.trim().toUpperCase()
+    if (!key) return
+    if (requested.has(key)) duplicates++
+    requested.add(key)
+  })
+  return { fileName: path.basename(file.fsPath), requested, duplicates }
 }

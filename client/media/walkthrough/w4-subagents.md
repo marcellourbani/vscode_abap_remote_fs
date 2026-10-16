@@ -1,6 +1,6 @@
 ### AI Subagents
 
-**22 packaged agents:** 13 general ABAP agents plus 9 SAP testing agents. General agents are individually configurable; testing agents become available together when SAP Testing is ready.
+**23 packaged agents:** 14 general ABAP agents plus 9 SAP testing agents. General agents are individually configurable; testing agents become available together when SAP Testing is ready.
 
 **3 cost tiers:** Simple (cheap), Medium, Complex (premium).
 

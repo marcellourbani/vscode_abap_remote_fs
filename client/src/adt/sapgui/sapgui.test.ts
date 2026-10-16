@@ -296,9 +296,10 @@ describe("executeInGui", () => {
   const mockClientWithTicket = {
     reentranceTicket: vi.fn().mockResolvedValue("TICKET123")
   }
+  let startGui: Mock
 
   beforeEach(() => {
-    vi.useFakeTimers()
+    startGui = vi.spyOn(SapGui.prototype, "startGui").mockResolvedValue(undefined)
     mockIsAbapClassInclude.mockReturnValue(false)
     ;(RemoteManager.get as Mock).mockReturnValue({
       byId: vi.fn().mockReturnValue(makeConfig())
@@ -311,26 +312,25 @@ describe("executeInGui", () => {
   })
 
   afterEach(() => {
-    vi.runOnlyPendingTimers()
-    vi.useRealTimers()
+    startGui.mockRestore()
   })
 
   test("builds SE38 command for PROG/P type", async () => {
     const object = { type: "PROG/P", name: "ZTEST", sapGuiUri: "/uri" }
-    let capturedCmd: SapGuiCommand | undefined
-    ;(window.withProgress as Mock).mockImplementation(function (_opts: any, fn: Function) {
-      const config = makeConfig()
-      const sapGui = SapGui.create(config as any)
-      const origStartGui = sapGui.startGui.bind(sapGui)
-      sapGui.startGui = async (cmd: SapGuiCommand) => {
-        capturedCmd = cmd
-      }
-      return fn()
-    })
 
     await executeInGui("dev100", object as any)
-    // withProgress ran; we can't capture cmd without deep mocking, so just check it didn't throw
-    expect(window.withProgress).toHaveBeenCalled()
+
+    expect(startGui).toHaveBeenCalledWith(
+      expect.objectContaining({
+        type: "Transaction",
+        command: "*SE38",
+        parameters: expect.arrayContaining([
+          { name: "RS38M-PROGRAMM", value: "ZTEST" },
+          { name: "DYNP_OKCODE", value: "STRT" }
+        ])
+      }),
+      "TICKET123"
+    )
   })
 
   test("unwraps class include to parent before executing", async () => {

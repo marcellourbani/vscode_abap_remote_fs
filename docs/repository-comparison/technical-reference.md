@@ -21,8 +21,13 @@ discovery/
 comparison/
 sources/
 assisted-apply/
+history/
 exports/
 ```
+
+`history/assisted-apply-execution.jsonl` records every SAP write, verification, and activation
+attempt. Re-running discovery, comparison, or the assisted-apply plan clears the other derived
+folders but keeps this history; only deleting the workflow removes it.
 
 The folder contains repository metadata and downloaded source snapshots. Treat it as sensitive development data, secure it appropriately, and do not commit it to source control.
 
@@ -32,7 +37,9 @@ Workflow actions:
 - **Archive** moves the complete workflow folder under the configured root's `archive` folder.
 - **Delete** permanently removes the workflow and all local artifacts.
 
-Archive and delete are rejected while a workflow is running or still stopping. Closing the
+Archive, delete, and other workflow steps are rejected while a workflow is running, still
+stopping, or has a Copilot-assisted apply in progress. Concurrent applies for different objects
+share one run lock, which is released when the last one finishes. Closing the
 workflow panel requests a safe pause; the operation owns its lock until in-flight work reaches a
 cancellation checkpoint and persisted state is consistent.
 
@@ -115,11 +122,14 @@ after verifying reusable complete snapshots.
 Snapshot comparison checks:
 
 - raw aggregate hashes;
-- normalized aggregate hashes;
-- added, removed, and changed resource paths;
-- textual line additions, removals, and replacements.
+- ABAPLint-formatted aggregate hashes;
+- raw and formatted added, removed, and changed resource paths;
+- raw and formatted source/target line totals, additions, removals, and replacements.
 
-Normalization converts CRLF to LF and removes trailing spaces and tabs before calculating the normalized hash. Raw differences are still reported; normalization is additional information.
+Raw files are the exact downloaded snapshots and remain authoritative for assisted apply. Formatted
+files are local sidecars produced with one fixed ABAPLint configuration. They normalize ABAP case
+and layout for comparison without replacing the raw source. Non-ABAP resources are copied
+unchanged. A formatting failure is reported separately and does not remove the raw comparison.
 
 Line counts are textual and should not be treated as proof of semantic ABAP changes.
 
@@ -159,14 +169,16 @@ See [Repository Comparison with Copilot](ai-tools.md) for prompts, stage semanti
 | Tool | Purpose |
 |---|---|
 | `abapfs_list_repository_workflows` | List workflow IDs and compact status |
-| `abapfs_get_repository_workflow` | Read state, criteria, summaries, or one paged artifact |
+| `abapfs_get_repository_workflow` | Read state, criteria, summaries, one paged artifact, or one bounded raw/formatted object diff |
 | `abapfs_create_repository_workflow` | Create a workflow for two connected systems |
 | `abapfs_update_repository_workflow_criteria` | Update scope and invalidate derived results |
 | `abapfs_run_repository_workflow_step` | Run discovery, retry inventory comparison, or run combined source comparison |
 | `abapfs_open_repository_workflow` | Open or focus the webview |
 | `abapfs_prepare_repository_assisted_apply` | Prepare a non-mutating assisted-apply plan |
 
-Artifact reads are limited to 200 rows per request and can be filtered by status, object name, object type, and package. Object-name filtering supports `*` and `?`.
+Artifact reads are limited to 200 rows per request and can be filtered by status, object name,
+object type, and package. Object-name filtering supports `*` and `?`. Per-object diff reads are
+bounded to at most 10 files and 100,000 patch characters.
 
 Workflow-changing tools open or focus the webview so progress and results remain visible. Read-only inspection tools do not.
 

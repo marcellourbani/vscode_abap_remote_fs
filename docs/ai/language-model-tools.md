@@ -29,10 +29,10 @@ When you type a question, Copilot picks the appropriate tool behind the scenes:
 ### Search & Navigation
 
 1. **abapfs_search_objects** — Search for objects by name pattern using wildcards (e.g. `Z*PRICING*`, `BAPI_USER*`)
-2. **abapfs_get_object_source** — Read source code from any ABAP object. Use `methodName` to extract a single method (e.g. "Show me the FACTORY method from CL_SALV_TABLE")
+2. **abapfs_get_object_source** — Read active or inactive source code from any ABAP object. Use `methodName` to extract a single method (e.g. "Show me the FACTORY method from CL_SALV_TABLE")
 3. **abapfs_search_object_source** — Search for text within source code; supports regex and can list all methods in a class
 4. **abapfs_get_object_info** — Get metadata about an object (type, line count, cache status)
-5. **abapfs_batch_get_lines** — Read source code from multiple objects in one call
+5. **abapfs_batch_get_lines** — Read active or inactive source code from multiple objects in one call
 6. **abapfs_get_object_by_uri** — Access an object directly using its ADT URI path
 7. **abapfs_find_usages** — Find all places where an object, method, or symbol is referenced
 8. **abapfs_get_connected_systems** — List the SAP system connection IDs currently active in VS Code
@@ -43,7 +43,7 @@ When you type a question, Copilot picks the appropriate tool behind the scenes:
 10. **abapfs_get_object_url** — Generate a SAP GUI WebGUI URL for an object (useful for browser automation)
 11. **abapfs_get_workspace_uri** — Get the VS Code `adt://` URI for an object (needed before editing it)
 12. **abapfs_open_object** — Open an object in the VS Code editor
-13. **abapfs_activate_object** — Activate ABAP objects after editing (similar to pressing the Activate button in SE80)
+13. **abapfs_activate_object** — List inactive objects with backend activation URLs and resolvable ABAP FS workspace URIs, activate a selected URL batch, then verify that the objects are no longer inactive
 
 ### Code Quality & Testing
 
@@ -55,56 +55,60 @@ When you type a question, Copilot picks the appropriate tool behind the scenes:
 ### Transport & Text
 
 18. **abapfs_manage_transports** — Get transport details, list user transports, compare transports. Falls back to direct SQL on older systems.
-19. **abapfs_manage_text_elements** — Read, create, or update text elements in programs, classes, or function groups. READ works on all systems; CREATE/UPDATE requires a newer system.
+19. **abapfs_get_object_transport_status** — Read the current transport-lock status for exactly one ABAP object. Returns locked, not locked, or local details; it is read-only and does not accept bulk input.
+19a. **abapfs_set_transport_for_next_object_save** — Arm a short-lived, user-approved transport for the next save of one exact `adt://` resource. The choice is revalidated at the write boundary; it never silently chooses another request.
+20. **abapfs_manage_text_elements** — Read, create, or update text elements in programs, classes, or function groups. READ works on all systems; CREATE/UPDATE requires a newer system.
 
 ### Data & SQL
 
-20. **abapfs_run_sql_query** — Run ABAP SQL queries and display results in an interactive table view
-21. **abapfs_get_sql_syntax** — Get ABAP SQL syntax rules (Copilot calls this before writing queries to avoid syntax errors)
-22. **abapfs_workbook_cell_settings** — Read or set the cell names, system markers and row limits of an [SAP Data Workbook](../data-query/data-workbooks.md) (`.sapwb`); notebook editing tools cannot set them
+21. **abapfs_run_sql_query** — Run ABAP SQL queries and display results in an interactive table view
+22. **abapfs_get_sql_syntax** — Get ABAP SQL syntax rules (Copilot calls this before writing queries to avoid syntax errors)
+23. **abapfs_workbook_cell_settings** — Read or set the cell names, system markers and row limits of an [SAP Data Workbook](../data-query/data-workbooks.md) (`.sapwb`); notebook editing tools cannot set them
 
 ### Diagrams
 
-23. **abapfs_create_mermaid_diagram** — Generate and display flowcharts, sequence diagrams, ER diagrams, and more
-24. **abapfs_validate_mermaid_syntax** — Check Mermaid diagram code for syntax errors
-25. **abapfs_get_mermaid_documentation** — Retrieve Mermaid syntax reference for a specific diagram type
-26. **abapfs_detect_mermaid_diagram_type** — Auto-detect the type of a Mermaid diagram from its code
+24. **abapfs_create_mermaid_diagram** — Generate and display flowcharts, sequence diagrams, ER diagrams, and more
+25. **abapfs_validate_mermaid_syntax** — Check Mermaid diagram code for syntax errors
+26. **abapfs_get_mermaid_documentation** — Retrieve Mermaid syntax reference for a specific diagram type
+27. **abapfs_detect_mermaid_diagram_type** — Auto-detect the type of a Mermaid diagram from its code
 
 ### Runtime Analysis
 
-27. **abapfs_analyze_dumps** — List and analyze ST22 runtime errors
-28. **abapfs_analyze_traces** — Analyze performance traces; detects bottlenecks automatically
-29. **abapfs_get_version_history** — View version history, retrieve source code at a past version, or compare two versions of an object
+28. **abapfs_analyze_dumps** — List and analyze ST22 runtime errors
+29. **abapfs_analyze_traces** — Analyze performance traces; detects bottlenecks automatically
+30. **abapfs_get_version_history** — View version history, retrieve source code at a past version, or compare two versions of an object
 
 ### Debugging
 
-30. **abapfs_manage_debug_session** — Start or stop an ABAP debugging session
-31. **abapfs_manage_breakpoints** — Set or remove breakpoints (supports conditions)
-32. **abapfs_step_debugger** — Step over, step into, step return, or continue execution
-33. **abapfs_inspect_variable** — Inspect variable values and internal table contents during a debug session
-34. **abapfs_get_debug_stack** — View the current call stack
-35. **abapfs_get_debug_status** — Check whether a debug session is active
+31. **abapfs_manage_debug_session** — Start or stop an ABAP debugging session
+32. **abapfs_manage_breakpoints** — Set or remove breakpoints (supports conditions)
+33. **abapfs_step_debugger** — Step over, step into, step return, or continue execution
+34. **abapfs_inspect_variable** — Inspect variable values and internal table contents during a debug session
+35. **abapfs_get_debug_stack** — View the current call stack
+36. **abapfs_get_debug_status** — Check whether a debug session is active
 
 ### System & Extension
 
-36. **abapfs_get_sap_system_info** — Get SAP system details: client, release, system type (S/4HANA vs ECC), timezone. Results are cached for 24 hours. Use the **Refresh SAP System Info Cache** command to clear the cache.
-37. **abapfs_search_documentation** — Search the ABAP FS extension documentation and settings reference
-38. **abapfs_export_adt_discovery** — Export the full ADT discovery tree from a connected SAP system to markdown files for API investigation
-39. **abapfs_manage_subagents** — Configure AI subagents that delegate tasks to cheaper/faster models to reduce API costs
-40. **abapfs_manage_heartbeat** — Control the background heartbeat monitoring service (add monitoring tasks, set reminders, check status)
+37. **abapfs_get_sap_system_info** — Get SAP system details: client, release, system type (S/4HANA vs ECC), timezone. Results are cached for 24 hours. Use the **Refresh SAP System Info Cache** command to clear the cache.
+38. **abapfs_search_documentation** — Search the ABAP FS extension documentation and settings reference
+39. **abapfs_export_adt_discovery** — Export the full ADT discovery tree from a connected SAP system to markdown files for API investigation
+40. **abapfs_manage_subagents** — Configure AI subagents that delegate tasks to cheaper/faster models to reduce API costs
+41. **abapfs_manage_heartbeat** — Control the background heartbeat monitoring service (add monitoring tasks, set reminders, check status)
 
 ### Repository Comparison
 
-41. **abapfs_list_repository_workflows** — List persistent repository comparison workflows and their current status
-42. **abapfs_get_repository_workflow** — Read selected workflow state, criteria, summaries, or a filtered artifact page
-43. **abapfs_create_repository_workflow** — Create a source-to-target comparison between two connected systems
-44. **abapfs_update_repository_workflow_criteria** — Update discovery scope and invalidate earlier derived results
-45. **abapfs_run_repository_workflow_step** — Run discovery, rebuild inventory comparison, or compare selected source
-46. **abapfs_open_repository_workflow** — Open or focus the Repository Comparison Workflow webview
-47. **abapfs_prepare_repository_assisted_apply** — Prepare a non-mutating, safety-reviewed assisted-apply plan
+42. **abapfs_list_repository_workflows** — List persistent repository comparison workflows and their current status
+43. **abapfs_get_repository_workflow** — Read selected workflow state, criteria, summaries, a filtered artifact page, or a bounded per-object raw/formatted diff
+44. **abapfs_create_repository_workflow** — Create a source-to-target comparison between two connected systems
+45. **abapfs_update_repository_workflow_criteria** — Update discovery scope and invalidate earlier derived results
+46. **abapfs_run_repository_workflow_step** — Run discovery, rebuild inventory comparison, or compare selected source
+47. **abapfs_open_repository_workflow** — Open or focus the Repository Comparison Workflow webview
+48. **abapfs_prepare_repository_assisted_apply** — Prepare a non-mutating, safety-reviewed assisted-apply plan
+48a. **abapfs_apply_repository_workflow_object** — Stage and save every applicable changed text resource for one eligible object from the workflow's user-saved Copilot selection, using an explicit user-directed transport choice and inactive-source verification. It persists the complete attempt and returns its ID.
+48b. **abapfs_record_repository_workflow_object_activation** — Persist verified activation success or failure for one apply attempt and its exact object URL set. Success marks the selected object done.
 
 See [Repository Comparison](../repository-comparison/index.md) for the complete workflow and safety boundaries.
 
 ### Documentation
 
-48. **abapfs_build_test_documentation** — Generate a Word document from Playwright test screenshots, organized by scenario
+49. **abapfs_build_test_documentation** — Generate a Word document from Playwright test screenshots, organized by scenario

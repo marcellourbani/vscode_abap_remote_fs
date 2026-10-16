@@ -77,6 +77,18 @@ export const GENERAL_SKILL_REGISTRY: readonly SkillDefinition[] = [
     displayName: "SAP Background Jobs",
     description: "Investigates SAP background jobs, logs, and failures.",
     path: "skills/sap-background-jobs/SKILL.md"
+  },
+  {
+    id: "repository-workflow",
+    displayName: "Repository Comparison Workflow",
+    description: "Creates and operates persistent ABAP repository comparison workflows.",
+    path: "skills/repository-workflow/SKILL.md"
+  },
+  {
+    id: "repository-assisted-apply",
+    displayName: "Repository Assisted Apply",
+    description: "Safely applies one selected repository-workflow object with Copilot.",
+    path: "skills/repository-assisted-apply/SKILL.md"
   }
 ]
 

@@ -154,6 +154,33 @@ describe("GetBatchLinesTool", () => {
         mockToken
       )
       expect(result.parts[0].text).toContain("ZPROG")
+      expect(mockClient.getObjectSource).toHaveBeenCalledWith(
+        "/sap/bc/adt/programs/zprog/source/main",
+        { version: "active" }
+      )
+    })
+
+    it("uses the requested inactive version for every source read", async () => {
+      mockSearcher.searchObjects.mockResolvedValue([
+        { name: "ZPROG", type: "PROG/P", uri: "/sap/bc/adt/programs/zprog" }
+      ])
+      mockClient.getObjectSource.mockResolvedValue("REPORT inactive.")
+
+      const result: any = await tool.invoke(
+        makeOptions({
+          requests: [{ objectName: "ZPROG" }, { objectName: "ZOTHER" }],
+          connectionId: "DEV100",
+          version: "inactive"
+        }),
+        mockToken
+      )
+
+      expect(mockClient.getObjectSource).toHaveBeenCalledTimes(2)
+      expect(mockClient.getObjectSource).toHaveBeenCalledWith(
+        "/sap/bc/adt/programs/zprog/source/main",
+        { version: "inactive" }
+      )
+      expect(result.parts[0].text).toContain("inactive")
     })
 
     it("respects startLine and lineCount per request", async () => {
