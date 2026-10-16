@@ -5,6 +5,7 @@ import { randomUUID } from "crypto"
 import { isAbapFile } from "abapfs"
 import { getClient, getOrCreateRoot } from "../../adt/conections"
 import { resolveAbapResource } from "../abapResourceDownloadService"
+import { verifyInactiveSource } from "../inactiveSourceVerification"
 import {
   TransportIntentService,
   type ObjectSaveTransportChoice,
@@ -34,6 +35,9 @@ export interface AssistedApplySafety {
 export interface RepositoryObjectApplyResourceResult extends TransportIntentResult {
   resourcePath: string
   inactiveSourceVerified?: boolean
+  sapSourceUri?: string
+  sapObjectUri?: string
+  sapActivationUri?: string
 }
 
 export interface RepositoryObjectApplyResult {
@@ -365,49 +369,21 @@ export class WorkflowAssistedApplyService {
       return result
     }
 
-    const edit = new vscode.WorkspaceEdit()
-    edit.replace(
-      resource.targetUri,
-      new vscode.Range(
-        resource.document.positionAt(0),
-        resource.document.positionAt(resource.document.getText().length)
-      ),
-      resource.source
-    )
-    let staged = true
-    try {
-      if (!(await vscode.workspace.applyEdit(edit)))
-        throw new Error("VS Code could not stage the source in the target editor")
-      await vscode.window.showTextDocument(resource.document, { preview: false })
-    } catch (error) {
-      staged = false
-      TransportIntentService.get().cancel(
-        intent.intentId,
-        error instanceof Error ? error.message : String(error)
-      )
-    }
-
+    const previousSource = resource.document.getText()
     const completion = TransportIntentService.get().waitForResult(intent.intentId, token, 60_000)
-    if (staged) {
-      try {
-        const save = resource.document.save()
-        void Promise.resolve(save).then(
-          saved => {
-            if (!saved)
-              TransportIntentService.get().fail(
-                intent.intentId,
-                "VS Code reported that the target document was not saved"
-              )
-          },
-          error => TransportIntentService.get().fail(intent.intentId, error)
-        )
-      } catch (error) {
-        TransportIntentService.get().fail(intent.intentId, error)
-      }
+    let writeError: string | undefined
+    try {
+      if (resource.document.isDirty)
+        throw new Error("The target editor has unsaved changes. Review or discard them first.")
+      await vscode.workspace.fs.writeFile(resource.targetUri, Buffer.from(resource.source, "utf8"))
+    } catch (error) {
+      writeError = error instanceof Error ? error.message : String(error)
+      TransportIntentService.get().fail(intent.intentId, error)
     }
     const intentResult = await completion
     const result: RepositoryObjectApplyResourceResult = {
       ...intentResult,
+      ...(writeError ? { status: "failed" as const, error: writeError } : {}),
       resourcePath: resource.relativePath
     }
     await this.recordResourceResult(workflowId, key, attemptId, result)
@@ -428,14 +404,19 @@ export class WorkflowAssistedApplyService {
       const node = await root.getNodeAsync(resource.targetUri.path)
       if (!isAbapFile(node))
         throw new Error("Saved target resource could not be resolved for inactive verification")
-      const inactiveSource = await getClient(connectionId).statelessClone.getObjectSource(
-        node.object.contentsPath(),
-        { version: "inactive" }
+      if (!node.object.structure) await node.object.loadStructure()
+      const sourcePath = node.object.contentsPath()
+      await verifyInactiveSource(
+        () =>
+          getClient(connectionId).statelessClone.getObjectSource(sourcePath, {
+            version: "inactive"
+          }),
+        resource.source,
+        previousSource
       )
-      if (inactiveSource !== resource.source)
-        throw new Error(
-          "SAP accepted the save, but the inactive target source does not match the reviewed raw source"
-        )
+      result.sapSourceUri = sourcePath
+      result.sapObjectUri = node.object.path
+      result.sapActivationUri = node.object.lockObject.path
       result.inactiveSourceVerified = true
       await this.store.appendAssistedApplyExecutionEvent(workflowId, {
         attemptId,

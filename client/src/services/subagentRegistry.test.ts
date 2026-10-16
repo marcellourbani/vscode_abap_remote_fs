@@ -98,13 +98,26 @@ describe("AGENT_REGISTRY", () => {
     expect(assistedApplyAgent).toContain("not a substitute for reading it")
   })
 
-  test("repository assisted apply activation requires exact applied resource URIs", () => {
-    expect(assistedApplyAgent).toContain("every exact `resourceResults[].objectUri`")
-    expect(assistedApplyAgent).toContain("returned `workspaceUri` exactly equals")
-    expect(assistedApplySkill).toContain("every exact `resourceResults[].objectUri`")
-    expect(assistedApplySkill).toContain(
-      "never prove membership without exact workspace-URI equality"
-    )
+  test("repository assisted apply activation requires verified resource or owner identities", () => {
+    for (const instructions of [assistedApplyAgent, assistedApplySkill]) {
+      expect(instructions).toContain("`sapSourceUri`")
+      expect(instructions).toContain("`sapObjectUri`")
+      expect(instructions).toContain("`sapActivationUri`")
+      expect(instructions).toMatch(/not\s+mandatory/)
+      expect(instructions).toContain("unrelated inactive components")
+      expect(instructions).toContain("NEEDS_HUMAN_ACTIVATION")
+      expect(instructions).not.toContain("Require a complete one-to-one correlation")
+    }
+  })
+
+  test("only the parent workflow skill handles unavailable assisted apply agents", () => {
+    expect(repositoryWorkflowSkill).toContain("Never silently fall back to direct execution")
+    expect(repositoryWorkflowSkill).toContain("Wait for the user's choice")
+    expect(repositoryWorkflowSkill).toContain("you (the main agent)")
+    expect(repositoryWorkflowSkill).toContain("abapfs_manage_subagents")
+    expect(assistedApplySkill).not.toContain("Subagent availability gate")
+    expect(assistedApplySkill).not.toContain("abapfs_manage_subagents")
+    expect(repositoryWorkflowSkill).not.toContain('action: "configure"')
   })
 
   test("repository workflow skill defines bounded one-object subagent waves", () => {

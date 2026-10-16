@@ -346,8 +346,14 @@ path per object before delegation:
 - for existing or local objects, pass the exact approved request number or explicit local handling.
 
 Never delegate with missing or ambiguous transport guidance. Never pass multiple objects to one
-subagent. If the subagent is unavailable, follow the dedicated skill directly with the same
-one-object boundary.
+subagent.
+
+If `abap-repository-assisted-apply` is unavailable, tell the user that the dedicated one-object
+worker exists and ask whether to enable it or explicitly authorize you (the main agent) to execute
+the requested work yourself. Wait for the user's choice. Never silently fall back to direct execution.
+If the user chooses enablement, use `abapfs_manage_subagents` to help enable that subagent.
+If the user approves direct execution, follow the dedicated skill within the requested scope and
+the same one-object safety boundary.
 
 ### Bounded parallel orchestration
 

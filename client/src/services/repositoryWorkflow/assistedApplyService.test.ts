@@ -169,12 +169,18 @@ describe("WorkflowAssistedApplyService", () => {
       transportRequest: "DEVK900123"
     })
     mocks.save.mockResolvedValue(true)
+    mocks.writeFile.mockResolvedValue(undefined)
     mocks.getInactiveSource.mockResolvedValue("REPORT ztest.\n")
     mocks.getClient.mockReturnValue({
       statelessClone: { getObjectSource: mocks.getInactiveSource }
     })
     mocks.getNodeAsync.mockResolvedValue({
-      object: { contentsPath: vi.fn(() => "/target/object/source/main") }
+      object: {
+        structure: {},
+        path: "/target/object/source/main",
+        lockObject: { path: "/target/object" },
+        contentsPath: vi.fn(() => "/target/object/source/main")
+      }
     })
     const sourceRoot = path.join(root, "sources", "source", "objects", "id")
     const targetRoot = path.join(root, "sources", "target", "objects", "id")
@@ -370,7 +376,7 @@ describe("WorkflowAssistedApplyService", () => {
     expect(mocks.applyEdit).not.toHaveBeenCalled()
   })
 
-  it("stages, saves, waits for the provider result, and verifies inactive SAP source", async () => {
+  it("writes through the filesystem, waits for the provider, and verifies inactive SAP source", async () => {
     const token = { isCancellationRequested: false } as any
     const service = new WorkflowAssistedApplyService(store())
 
@@ -392,7 +398,13 @@ describe("WorkflowAssistedApplyService", () => {
       workflowId: "wf",
       objectKey: "R3TR:PROG:ZTEST"
     })
-    expect(mocks.save).toHaveBeenCalledTimes(1)
+    expect(mocks.writeFile).toHaveBeenCalledWith(
+      expect.objectContaining({ path: "/target/resource" }),
+      Buffer.from("REPORT ztest.\n", "utf8")
+    )
+    expect(mocks.applyEdit).not.toHaveBeenCalled()
+    expect(mocks.save).not.toHaveBeenCalled()
+    expect(mocks.showTextDocument).not.toHaveBeenCalled()
     expect(mocks.waitForIntent).toHaveBeenCalledWith("intent-1", token, 60_000)
     expect(mocks.getInactiveSource).toHaveBeenCalledWith("/target/object/source/main", {
       version: "inactive"
@@ -405,6 +417,11 @@ describe("WorkflowAssistedApplyService", () => {
         inactiveSourceVerified: true
       })
     )
+    expect(result.resourceResults[0]).toMatchObject({
+      sapSourceUri: "/target/object/source/main",
+      sapObjectUri: "/target/object/source/main",
+      sapActivationUri: "/target/object"
+    })
   })
 
   it("rejects Copilot apply unless the workflow currently has mode and consent", async () => {
@@ -509,14 +526,14 @@ describe("WorkflowAssistedApplyService", () => {
     expect(mocks.registerIntent).not.toHaveBeenCalled()
   })
 
-  it("cancels an armed intent if VS Code cannot stage the edit", async () => {
-    mocks.applyEdit.mockResolvedValue(false)
+  it("fails an armed intent if the filesystem write fails", async () => {
+    mocks.writeFile.mockRejectedValueOnce(new Error("SAP rejected write"))
     mocks.waitForIntent.mockResolvedValue({
       intentId: "intent-1",
-      status: "cancelled",
+      status: "failed",
       process: "repository-assisted-apply",
       objectUri: "adt://target100/target/resource",
-      error: "VS Code could not stage the source in the target editor"
+      error: "SAP rejected write"
     })
 
     const result = await new WorkflowAssistedApplyService(store()).stageAndSaveForCopilot(
@@ -527,20 +544,21 @@ describe("WorkflowAssistedApplyService", () => {
     )
 
     expect(result).toMatchObject({
-      status: "cancelled",
+      status: "failed",
       inactiveSourceVerified: false,
       resourceResults: [
         expect.objectContaining({
-          status: "cancelled",
-          error: expect.stringMatching(/could not stage/i)
+          status: "failed",
+          error: "SAP rejected write"
         })
       ]
     })
-    expect(mocks.cancelIntent).toHaveBeenCalledWith(
+    expect(mocks.failIntent).toHaveBeenCalledWith(
       "intent-1",
-      expect.stringMatching(/could not stage/i)
+      expect.objectContaining({ message: "SAP rejected write" })
     )
     expect(mocks.save).not.toHaveBeenCalled()
+    expect(mocks.getInactiveSource).not.toHaveBeenCalled()
   })
 
   it("reports a provider timeout as unknown and skips inactive verification", async () => {
@@ -563,14 +581,13 @@ describe("WorkflowAssistedApplyService", () => {
     expect(mocks.getInactiveSource).not.toHaveBeenCalled()
   })
 
-  it("records a false document-save result on the armed intent", async () => {
-    mocks.save.mockResolvedValue(false)
+  it("does not verify a rejected write even if the provider already reported success", async () => {
+    mocks.writeFile.mockRejectedValueOnce(new Error("Write did not finish"))
     mocks.waitForIntent.mockResolvedValue({
       intentId: "intent-1",
-      status: "failed",
+      status: "succeeded",
       process: "repository-assisted-apply",
-      objectUri: "adt://target100/target/resource",
-      error: "VS Code reported that the target document was not saved"
+      objectUri: "adt://target100/target/resource"
     })
 
     const result = await new WorkflowAssistedApplyService(store()).stageAndSaveForCopilot(
@@ -584,7 +601,7 @@ describe("WorkflowAssistedApplyService", () => {
     expect(result).toEqual(expect.objectContaining({ status: "failed" }))
     expect(mocks.failIntent).toHaveBeenCalledWith(
       "intent-1",
-      "VS Code reported that the target document was not saved"
+      expect.objectContaining({ message: "Write did not finish" })
     )
     expect(mocks.getInactiveSource).not.toHaveBeenCalled()
   })
@@ -645,7 +662,11 @@ describe("WorkflowAssistedApplyService", () => {
       "resource/main.abap",
       "resource/testclasses.abap"
     ])
-    expect(mocks.save).toHaveBeenCalledTimes(2)
+    expect(result.resourceResults.map(resource => resource.sapActivationUri)).toEqual([
+      "/target/object",
+      "/target/object"
+    ])
+    expect(mocks.writeFile).toHaveBeenCalledTimes(2)
     expect(mocks.registerIntent).toHaveBeenNthCalledWith(
       1,
       expect.objectContaining({
@@ -668,8 +689,37 @@ describe("WorkflowAssistedApplyService", () => {
     )
   })
 
-  it("fails verification when inactive SAP source differs from reviewed raw source", async () => {
-    mocks.getInactiveSource.mockResolvedValue("REPORT unexpected.\n")
+  it("waits for the filesystem write to finish before verifying inactive SAP source", async () => {
+    let finishWrite!: () => void
+    mocks.writeFile.mockImplementationOnce(
+      () =>
+        new Promise<void>(resolve => {
+          finishWrite = resolve
+        })
+    )
+
+    const applying = new WorkflowAssistedApplyService(store()).stageAndSaveForCopilot(
+      "wf",
+      "R3TR:PROG:ZTEST",
+      { type: "existing", number: "DEVK900123" },
+      {} as any
+    )
+
+    try {
+      await vi.waitFor(() => expect(mocks.writeFile).toHaveBeenCalledTimes(1))
+      await new Promise<void>(resolve => setImmediate(resolve))
+      expect(mocks.getInactiveSource).not.toHaveBeenCalled()
+    } finally {
+      finishWrite()
+      await applying
+    }
+
+    expect((await applying).status).toBe("succeeded")
+    expect(mocks.getInactiveSource).toHaveBeenCalledTimes(1)
+  })
+
+  it("accepts SAP line endings and trailing whitespace without changing the written snapshot", async () => {
+    mocks.getInactiveSource.mockResolvedValue("REPORT ztest.  \r\n\r\n")
 
     const result = await new WorkflowAssistedApplyService(store()).stageAndSaveForCopilot(
       "wf",
@@ -678,7 +728,58 @@ describe("WorkflowAssistedApplyService", () => {
       {} as any
     )
 
-    expect(result.status).toBe("failed")
-    expect(result.resourceResults[0].error).toMatch(/inactive target source does not match/)
+    expect(result.status).toBe("succeeded")
+    expect(mocks.writeFile).toHaveBeenCalledWith(
+      expect.anything(),
+      Buffer.from("REPORT ztest.\n", "utf8")
+    )
+  })
+
+  it("loads missing metadata again before verifying a saved resource", async () => {
+    const loadStructure = vi.fn().mockResolvedValue(undefined)
+    const contentsPath = vi.fn(() => {
+      expect(loadStructure).toHaveBeenCalledTimes(1)
+      return "/target/object/source/main"
+    })
+    mocks.getNodeAsync.mockResolvedValue({
+      object: {
+        path: "/target/object/source/main",
+        lockObject: { path: "/target/object" },
+        loadStructure,
+        contentsPath
+      }
+    })
+
+    const result = await new WorkflowAssistedApplyService(store()).stageAndSaveForCopilot(
+      "wf",
+      "R3TR:PROG:ZTEST",
+      { type: "existing", number: "DEVK900123" },
+      {} as any
+    )
+
+    expect(result.status).toBe("succeeded")
+  })
+
+  it("fails verification when inactive SAP source differs from reviewed raw source", async () => {
+    mocks.getInactiveSource.mockResolvedValue("REPORT unexpected.\n")
+    const setTimeoutSpy = vi.spyOn(globalThis, "setTimeout").mockImplementation(callback => {
+      queueMicrotask(callback as () => void)
+      return undefined as unknown as ReturnType<typeof setTimeout>
+    })
+
+    try {
+      const result = await new WorkflowAssistedApplyService(store()).stageAndSaveForCopilot(
+        "wf",
+        "R3TR:PROG:ZTEST",
+        { type: "existing", number: "DEVK900123" },
+        {} as any
+      )
+
+      expect(result.status).toBe("failed")
+      expect(mocks.getInactiveSource).toHaveBeenCalledTimes(10)
+      expect(result.resourceResults[0].error).toMatch(/First difference at line 1/)
+    } finally {
+      setTimeoutSpy.mockRestore()
+    }
   })
 })

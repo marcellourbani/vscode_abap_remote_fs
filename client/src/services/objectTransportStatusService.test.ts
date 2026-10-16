@@ -33,7 +33,10 @@ describe("getAbapObjectTransportStatus", () => {
     mocks.getOrCreateRoot.mockResolvedValue({
       getNodeAsync: vi.fn().mockResolvedValue({
         kind: "file",
-        object: { contentsPath: vi.fn(() => "/sap/bc/adt/programs/programs/ztest/source/main") }
+        object: {
+          structure: {},
+          contentsPath: vi.fn(() => "/sap/bc/adt/programs/programs/ztest/source/main")
+        }
       })
     })
   })
@@ -64,6 +67,33 @@ describe("getAbapObjectTransportStatus", () => {
       transportRequest: "DEVK900123",
       transportDescription: "Repository apply"
     })
+  })
+
+  it("loads missing file metadata before resolving the transport path", async () => {
+    let loaded = false
+    const loadStructure = vi.fn(async () => {
+      loaded = true
+    })
+    const contentsPath = vi.fn(() => {
+      if (!loaded) throw new Error("Unable to retrieve metadata")
+      return "/sap/bc/adt/programs/programs/ztest/source/main"
+    })
+    mocks.getOrCreateRoot.mockResolvedValue({
+      getNodeAsync: vi.fn().mockResolvedValue({
+        kind: "file",
+        object: { loadStructure, contentsPath }
+      })
+    })
+    const transportInfo = vi.fn().mockResolvedValue({ TRANSPORTS: [], DLVUNIT: "HOME" })
+    mocks.getClient.mockReturnValue({ transportInfo })
+
+    const result = await getAbapObjectTransportStatus({
+      connectionId: "target100",
+      source: "ZTEST"
+    })
+
+    expect(loadStructure).toHaveBeenCalledTimes(1)
+    expect(result.status).toBe("not-locked")
   })
 
   it("distinguishes an unlocked object from a local object", async () => {

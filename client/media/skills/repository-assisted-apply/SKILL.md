@@ -70,8 +70,6 @@ the user-only bulk transport check, choose a transport strategy, process arrays,
 agents, or retry failed work. You may create exactly one request only when the parent supplied an
 exact user-approved per-object description. You handle only the one object delegated to you.
 
-If the subagent is unavailable, follow the same singular procedure directly.
-
 ## Review and decision
 
 For one selected pending object:
@@ -123,9 +121,12 @@ The tool, not the model:
 - derives all applicable changed text resources represented by the table object;
 - revalidates reviewed raw source and current target hashes;
 - arms a short-lived transport intent for each resource;
-- stages and saves through the normal ABAP filesystem provider;
-- waits for transport/write completion;
-- verifies every inactive SAP source against the reviewed raw snapshot;
+- writes the reviewed raw bytes directly through the normal ABAP filesystem provider, without
+   editor staging or `document.save()`;
+- waits for the filesystem write and transport result to finish;
+- verifies every inactive SAP source against the reviewed raw snapshot, retrying briefly stale
+   reads and tolerating line-ending and trailing-whitespace differences;
+- returns verified SAP source, object, and activation-owner paths for each resource;
 - persists apply, transport, save, verification, timestamps, request, and errors.
 
 Do not use editor write tools, regenerate source, or apply resources individually. A fully
@@ -141,16 +142,20 @@ of failure. Do not retry automatically.
 Activation is intentionally separate and agent-orchestrated:
 
 1. Call `abapfs_activate_object` with `action: "get_inactive_objects"` on the target connection.
-2. Collect every exact `resourceResults[].objectUri` from the successful repository apply result.
-3. Build the activation set only from returned inactive objects whose `workspaceUri` exactly equals
-   one of those applied resource URIs. Pass only the corresponding returned `url` values to the
-   activate action. Names, types, regex matches, and `parentUri` may support your review, but they
-   never prove membership without exact workspace-URI equality.
-4. Require a complete one-to-one correlation for every applied resource that needs activation. If
-   an applied URI has no exact returned `workspaceUri`, a candidate for this object does not match
-   an applied URI, a related component appears necessary but was not an applied URI, or the set is
-   empty, ambiguous, or incomplete, stop with `NEEDS_HUMAN_ACTIVATION`. Never broaden by name,
-   activate an unmatched URL, or guess.
+2. Collect each successful `resourceResults[]` entry's `objectUri`, `sapSourceUri`, `sapObjectUri`,
+   and `sapActivationUri`. The first is a workspace URI; the `sap*Uri` fields are verified SAP ADT
+   paths, not workspace paths. Do not compare one representation with another.
+3. Correlate each applied resource with an inactive entry on the same target connection. Prefer an
+   exact match between the entry's `uri` and `sapSourceUri` or `sapObjectUri`. Otherwise, an exact
+   match between the entry's `uri` and `sapActivationUri` proves the owning activation object.
+   Exact equality between `workspaceUri` and `objectUri` is also valid when available, but is not
+   mandatory. Names, types, regex matches, path prefixes, and `parentUri` alone never prove membership.
+4. Require complete, unambiguous coverage of every applied resource needing activation. Several
+   resources may map to one owning activation object; this is valid, not a one-to-one requirement.
+   Deduplicate the corresponding returned `url` values. If ownership evidence is missing, coverage
+   is empty or incomplete, or an owner would activate unrelated inactive components that were not
+   applied, stop with `NEEDS_HUMAN_ACTIVATION`. Older apply results without SAP identity fields may
+   use exact workspace equality only; never guess or strip source suffixes to invent ownership.
 5. Call `abapfs_activate_object` once with `action: "activate"` and the complete exact URL set.
 6. Treat activation as successful only when the tool verifies none of the requested objects remain
    inactive.

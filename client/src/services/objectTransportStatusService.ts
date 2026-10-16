@@ -43,6 +43,7 @@ export async function getAbapObjectTransportStatus(
   const node = await root.getNodeAsync(uri.path)
   if (!isAbapFile(node) && !isAbapFolder(node))
     throw new Error(`Cannot resolve an ABAP object for ${input.source}`)
+  if (isAbapFile(node) && !node.object.structure) await node.object.loadStructure()
   const objectPath = isAbapFolder(node) ? node.object.path : node.object.contentsPath()
   let info
   try {

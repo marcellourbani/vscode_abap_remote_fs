@@ -55,20 +55,23 @@ choice.
    - `local` requires the local choice.
 5. If status and direction conflict, stop with `NEEDS_USER_INPUT`. Never substitute another request.
 6. Call `abapfs_apply_repository_workflow_object` once. It derives all changed target resources,
-   saves the reviewed raw snapshots, waits for every write result, and verifies inactive SAP source.
+   writes the reviewed raw snapshots directly through the filesystem provider, waits for every
+   write result, and verifies inactive SAP source without editor staging or `document.save()`.
 7. Stop if apply is not fully `succeeded` with inactive verification true. Report its attempt ID,
    resource outcomes, actual transport, and persisted error. Do not retry automatically.
 8. List target-system inactive objects immediately before activation. From the successful apply
-   result, collect every exact `resourceResults[].objectUri`. Build the activation set only from
-   inactive objects whose returned `workspaceUri` exactly equals one of those applied resource
-   URIs, then pass only those objects' corresponding `url` values to activation. Object names,
-   types, regex matches, and `parentUri` are supporting evidence only; never use them as a
-   substitute for exact workspace-URI equality.
-9. Require a complete one-to-one correlation for every applied resource that needs activation. If
-   an applied URI has no exact returned `workspaceUri`, a candidate for this object does not match
-   an applied URI, a related component appears necessary but was not an applied URI, or the set is
-   otherwise empty, ambiguous, or incomplete, stop and report `NEEDS_HUMAN_ACTIVATION`. Never guess
-   or broaden the set.
+   result, collect each resource's `objectUri`, `sapSourceUri`, `sapObjectUri`, and `sapActivationUri`.
+   Prefer exact inactive `uri` equality with `sapSourceUri` or `sapObjectUri`; otherwise exact
+   equality with `sapActivationUri` proves its owning activation object. Exact `workspaceUri`
+   equality with `objectUri` is also valid, but is not mandatory. Compare SAP paths with SAP paths,
+   not with workspace URIs. Object names, types, regex, prefixes, and `parentUri` alone do not prove
+   membership. Pass only the matched entries' returned `url` values to activation.
+9. Require complete, unambiguous coverage of every applied resource needing activation. Several
+   applied resources may map to one owner; deduplicate its returned URL instead of requiring
+   one-to-one equality. Stop with `NEEDS_HUMAN_ACTIVATION` if coverage or ownership is missing or
+   ambiguous, or an owner would activate unrelated inactive components that were not applied.
+   Older results without SAP identity fields require exact workspace equality. Never guess,
+   invent ownership by stripping suffixes, or broaden the set.
 10. After `abapfs_activate_object` verifies the exact requested set, call
     `abapfs_record_repository_workflow_object_activation` with the apply attempt ID and exact
     activated URLs. Record `succeeded` only from verified activation evidence. Record `failed`
