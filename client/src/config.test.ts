@@ -61,14 +61,14 @@ vi.mock("./adt/adtCommLog", () => ({
     })
   }
 }))
-vi.mock("./auth", () => ({ buildBrowserSsoAuth: vi.fn() }))
+vi.mock("./auth", () => ({ createBrowserSsoSessionProvider: vi.fn() }))
 vi.mock("vscode-abap-remote-fs-sharedapi", () => ({
   getAuthMethod: vi.fn(function (c: any) {
     return c.authMethod || "basic"
   }),
   hasCertAuthConfig: vi.fn(),
   hasOAuthOnPremConfig: vi.fn(),
-  attachBrowserSsoCookies: vi.fn()
+  createBrowserSsoClientOptions: vi.fn()
 }))
 vi.mock("fs", () => ({
   readFileSync: vi.fn(function () {
@@ -92,8 +92,8 @@ import * as __$mock_abap_adt_api from "abap-adt-api"
 import * as __$mock_oauth from "./oauth"
 import * as __$mock_lib from "./lib"
 import * as __$mock_services_funMessenger from "./services/funMessenger"
-import { buildBrowserSsoAuth } from "./auth"
-import { attachBrowserSsoCookies } from "vscode-abap-remote-fs-sharedapi"
+import { createBrowserSsoSessionProvider } from "./auth"
+import { createBrowserSsoClientOptions } from "vscode-abap-remote-fs-sharedapi"
 import type { Mock } from "vitest"
 
 // ---- helpers ----------------------------------------------------------------
@@ -373,32 +373,46 @@ describe("createClient", () => {
   })
 })
 
-test("seeds the main and clone Browser SSO cookie sessions without a fixed header", async () => {
-  const main = { statelessClone: {} }
+test("configures Browser SSO with a session provider instead of fixed cookie headers", async () => {
+  const main = {}
+  const provider = {
+    id: "browser-sso:dev100",
+    logoutMode: "local-only",
+    renew: vi.fn()
+  }
+  const sessionOptions = { session: provider, extensions: [] }
+  const onStatefulFailure = vi.fn()
   vi.mocked(__$mock_abap_adt_api.ADTClient).mockImplementationOnce(function () {
     return main as any
   })
-  vi.mocked(buildBrowserSsoAuth).mockResolvedValueOnce({
-    passwordOrFetcher: "browser-sso",
-    headers: { Cookie: "MYSAPSSO2=ticket; SAP_SESSIONID_DEV_100=old" }
-  })
+  vi.mocked(createBrowserSsoSessionProvider).mockReturnValueOnce(provider as any)
+  vi.mocked(createBrowserSsoClientOptions).mockReturnValueOnce(sessionOptions as any)
 
-  await createAuthenticatedClient({
-    name: "dev100",
-    url: "https://host",
-    username: "user",
-    client: "100",
-    authMethod: "browser_sso"
-  } as RemoteConfig)
+  await createAuthenticatedClient(
+    {
+      name: "dev100",
+      url: "https://host",
+      username: "user",
+      client: "100",
+      authMethod: "browser_sso"
+    } as RemoteConfig,
+    onStatefulFailure
+  )
 
-  expect(attachBrowserSsoCookies).toHaveBeenCalledWith(main, [
-    "MYSAPSSO2=ticket",
-    " SAP_SESSIONID_DEV_100=old"
-  ])
-  expect(attachBrowserSsoCookies).toHaveBeenCalledWith(main.statelessClone, [
-    "MYSAPSSO2=ticket",
-    " SAP_SESSIONID_DEV_100=old"
-  ])
+  expect(createBrowserSsoSessionProvider).toHaveBeenCalledWith(
+    "dev100",
+    "https://host",
+    "100",
+    undefined
+  )
+  expect(createBrowserSsoClientOptions).toHaveBeenCalledWith(
+    provider.id,
+    provider.renew,
+    onStatefulFailure
+  )
+  expect(vi.mocked(__$mock_abap_adt_api.ADTClient).mock.calls.at(-1)?.[5]).toMatchObject(
+    sessionOptions
+  )
   expect(vi.mocked(__$mock_abap_adt_api.ADTClient).mock.calls.at(-1)?.[5]).not.toHaveProperty(
     "headers.Cookie"
   )

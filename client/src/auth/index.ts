@@ -21,5 +21,5 @@ export {
   clearCertPassphrase
 } from "./certificate"
 export { buildKerberosAuth, refreshKerberosAuth, clearKerberosCookies } from "./kerberos"
-export { buildBrowserSsoAuth, clearSsoCookies } from "./browserSso"
+export { createBrowserSsoSessionProvider, clearSsoCookies } from "./browserSso"
 export { buildOAuthOnPremAuth, clearOAuthOnPremTokens } from "./oauthOnPrem"

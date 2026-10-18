@@ -3,7 +3,7 @@ import {
   hasCertAuthConfig,
   hasOAuthOnPremConfig,
   getAuthMethod,
-  attachBrowserSsoCookies
+  createBrowserSsoClientOptions
 } from "vscode-abap-remote-fs-sharedapi"
 import type { Agent } from "https"
 import {
@@ -17,6 +17,7 @@ import {
 } from "vscode"
 import { funWindow as window } from "./services/funMessenger"
 import { ADTClient, createSSLConfig, type LogCallback, type LogData } from "abap-adt-api"
+import type { AdtHTTP } from "abap-adt-api/build/AdtHTTP"
 import { readFileSync } from "fs"
 import { PasswordVault, log } from "./lib"
 import { oauthLogin } from "./oauth"
@@ -25,7 +26,7 @@ import { CallLogger } from "./adt/adtCommLog"
 import {
   buildCertAuth,
   buildKerberosAuth,
-  buildBrowserSsoAuth,
+  createBrowserSsoSessionProvider,
   clearCertPassphrase,
   clearKerberosCookies,
   clearSsoCookies
@@ -214,7 +215,11 @@ export function createClient(conf: RemoteConfig) {
  * For basic auth and oauth, delegates to createClient.
  * For cert/kerberos/browser_sso, builds the auth result and configures the client.
  */
-export async function createAuthenticatedClient(conf: RemoteConfig): Promise<ADTClient> {
+export async function createAuthenticatedClient(
+  conf: RemoteConfig,
+  onStatefulFailure?: (client: Pick<AdtHTTP, "stateful">) => void,
+  onCookiesCaptured?: () => void
+): Promise<ADTClient> {
   const authMethod = getAuthMethod(conf)
 
   if (authMethod === "basic" || conf.oauth) {
@@ -270,24 +275,21 @@ export async function createAuthenticatedClient(conf: RemoteConfig): Promise<ADT
     }
     case "browser_sso": {
       log.debug(`[auth] Building browser SSO auth for ${conf.name}`)
-      const result = await buildBrowserSsoAuth(conf.name, conf.url, conf.client)
-      // Do not pin Cookie in ADTClient's static headers. The session wrapper must replace cookies
-      // after SAP rotates them or the browser login is renewed.
-      const { Cookie, ...headers } = result.headers ?? {}
-      if (Object.keys(headers).length) sslconf.headers = { ...sslconf.headers, ...headers }
-      const capturedCookies = Cookie?.split(";") ?? []
-      const client = new ADTClient(
+      const provider = createBrowserSsoSessionProvider(
+        conf.name,
         conf.url,
-        conf.username,
-        result.passwordOrFetcher,
         conf.client,
-        conf.language,
-        sslconf
+        onCookiesCaptured
       )
-      // Main and stateless clients maintain independent SAP session cookies.
-      attachBrowserSsoCookies(client, capturedCookies)
-      attachBrowserSsoCookies(client.statelessClone, capturedCookies)
-      return client
+      const sessionOptions = createBrowserSsoClientOptions(
+        provider.id,
+        provider.renew,
+        onStatefulFailure
+      )
+      return new ADTClient(conf.url, conf.username, "browser-sso", conf.client, conf.language, {
+        ...sslconf,
+        ...sessionOptions
+      })
     }
     case "oauth_onprem": {
       log.debug(`[auth] Building OAuth on-prem auth for ${conf.name}`)

@@ -24,18 +24,16 @@ vi.mock("abap-adt-api", () => ({
 }))
 vi.mock("vscode-abap-remote-fs-sharedapi", () => ({
   getAuthMethod: (conf: { authMethod?: string }) => conf.authMethod ?? "basic",
-  attachBrowserSsoCookies: vi.fn(),
-  loginWithBrowserSsoCookies: vi.fn(),
-  onBrowserSsoAuthFailure: vi.fn(),
+  createBrowserSsoClientOptions: vi.fn((id, renew, onStatefulFailure) => ({
+    session: { id, logoutMode: "local-only", renew },
+    extensions: [],
+    onStatefulFailure
+  })),
   Methods: { getAuthHeaders: "getAuthHeaders", recoverBrowserSso: "recoverBrowserSso" }
 }))
 
 import { ADTClient } from "abap-adt-api"
-import {
-  attachBrowserSsoCookies,
-  loginWithBrowserSsoCookies,
-  onBrowserSsoAuthFailure
-} from "vscode-abap-remote-fs-sharedapi"
+import { createBrowserSsoClientOptions } from "vscode-abap-remote-fs-sharedapi"
 import { browserSsoLoginCompleted, clientFromKey, connectionFolderChanged } from "../clientManager"
 
 afterEach(() => {
@@ -43,15 +41,7 @@ afterEach(() => {
   readConfiguration.mockReset()
 })
 
-const recoveryFor = (client: unknown) => {
-  const recover = vi
-    .mocked(onBrowserSsoAuthFailure)
-    .mock.calls.findLast(([target]) => target === client)?.[1]
-  if (!recover) throw new Error("No Browser SSO recovery registered")
-  return recover
-}
-
-async function serverSsoClient(name: string) {
+async function serverSsoClient(name: string, authMethod = "browser_sso") {
   const main = {
     statelessClone: {},
     stateful: "stateless",
@@ -64,16 +54,15 @@ async function serverSsoClient(name: string) {
     name,
     url: "https://sap.example.com",
     username: "developer",
-    authMethod: "browser_sso"
+    authMethod
   })
   sendRequest.mockResolvedValueOnce({ httpHeaders: { Cookie: "MYSAPSSO2=old" } })
   await clientFromKey(name)
   sendRequest.mockReset()
-  vi.mocked(loginWithBrowserSsoCookies).mockReset()
   return main
 }
 
-test("seeds both server clients without pinning the Browser SSO Cookie header", async () => {
+test("configures a session provider without pinning the Browser SSO Cookie header", async () => {
   vi.useFakeTimers()
   try {
     const clone = {}
@@ -94,16 +83,17 @@ test("seeds both server clients without pinning the Browser SSO Cookie header", 
 
     await clientFromKey("dev100")
 
-    expect(vi.mocked(ADTClient).mock.calls[0][5]).toHaveProperty("headers.X-Test", "ok")
+    expect(vi.mocked(ADTClient).mock.calls[0][5]).toHaveProperty("session.logoutMode", "local-only")
     expect(vi.mocked(ADTClient).mock.calls[0][5]).not.toHaveProperty("headers.Cookie")
-    expect(attachBrowserSsoCookies).toHaveBeenCalledWith(main, [
-      "MYSAPSSO2=ticket",
-      " SAP_SESSIONID_DEV_100=old"
-    ])
-    expect(attachBrowserSsoCookies).toHaveBeenCalledWith(clone, [
-      "MYSAPSSO2=ticket",
-      " SAP_SESSIONID_DEV_100=old"
-    ])
+    expect(createBrowserSsoClientOptions).toHaveBeenCalledOnce()
+    const provider = vi.mocked(ADTClient).mock.calls[0]?.[5]?.session
+    if (!provider) throw new Error("Browser SSO session provider was not configured")
+    await expect(provider.renew({ reason: "initial-login", client: main as any })).resolves.toEqual(
+      {
+        cookieHeader: "MYSAPSSO2=ticket; SAP_SESSIONID_DEV_100=old",
+        replace: true
+      }
+    )
     expect(main.stateful).toBe("stateful")
   } finally {
     vi.clearAllTimers()
@@ -111,27 +101,7 @@ test("seeds both server clients without pinning the Browser SSO Cookie header", 
   }
 })
 
-test("recovers the server session with the saved cookies without asking the editor", async () => {
-  vi.useFakeTimers()
-  try {
-    const main = await serverSsoClient("saved-login-sso")
-    sendRequest.mockResolvedValue({ httpHeaders: { Cookie: "MYSAPSSO2=saved; SAP_X=1" } })
-    vi.mocked(loginWithBrowserSsoCookies).mockResolvedValue(true)
-
-    await expect(recoveryFor(main)(new Error("expired"))).resolves.toBe(true)
-
-    expect(sendRequest).not.toHaveBeenCalledWith("recoverBrowserSso", expect.anything())
-    expect(loginWithBrowserSsoCookies).toHaveBeenCalledExactlyOnceWith(main, [
-      "MYSAPSSO2=saved",
-      " SAP_X=1"
-    ])
-  } finally {
-    vi.clearAllTimers()
-    vi.useRealTimers()
-  }
-})
-
-test("concurrent server failures ask the editor for one browser login when saved cookies fail", async () => {
+test("coalesces server recovery while the extension captures fresh cookies", async () => {
   vi.useFakeTimers()
   try {
     const main = await serverSsoClient("server-recovery-sso")
@@ -140,18 +110,21 @@ test("concurrent server failures ask the editor for one browser login when saved
       if (method === "recoverBrowserSso") return new Promise(resolve => (finishRecovery = resolve))
       return { httpHeaders: { Cookie: "MYSAPSSO2=fresh" } }
     })
-    vi.mocked(loginWithBrowserSsoCookies).mockResolvedValueOnce(false).mockResolvedValueOnce(true)
-
-    const first = recoveryFor(main)(new Error("expired"))
-    const second = recoveryFor(main.statelessClone)(new Error("expired"))
+    const provider = vi.mocked(ADTClient).mock.calls.at(-1)?.[5]?.session
+    if (!provider) throw new Error("Browser SSO session provider was not configured")
+    const context = { reason: "expired" as const, client: main as any }
+    const first = provider.renew(context)
+    const second = provider.renew(context)
     await vi.waitFor(() => expect(finishRecovery).toBeDefined())
     finishRecovery(true)
 
-    await expect(Promise.all([first, second])).resolves.toEqual([true, true])
+    await expect(Promise.all([first, second])).resolves.toEqual([
+      { cookieHeader: "MYSAPSSO2=fresh", replace: true },
+      { cookieHeader: "MYSAPSSO2=fresh", replace: true }
+    ])
     expect(sendRequest.mock.calls.filter(([method]) => method === "recoverBrowserSso")).toEqual([
       ["recoverBrowserSso", "server-recovery-sso"]
     ])
-    expect(loginWithBrowserSsoCookies).toHaveBeenCalledTimes(2)
     expect(await clientFromKey("server-recovery-sso")).toBe(main)
   } finally {
     vi.clearAllTimers()
@@ -166,14 +139,17 @@ test("a declined browser login pauses the server until the next editor login", a
     sendRequest.mockImplementation(async (method: string) =>
       method === "recoverBrowserSso" ? false : { httpHeaders: { Cookie: "MYSAPSSO2=stale" } }
     )
-    vi.mocked(loginWithBrowserSsoCookies).mockResolvedValue(false)
+    const provider = vi.mocked(ADTClient).mock.calls.at(-1)?.[5]?.session
+    if (!provider) throw new Error("Browser SSO session provider was not configured")
 
-    await expect(recoveryFor(main)(new Error("expired"))).resolves.toBe(false)
+    await expect(provider.renew({ reason: "expired", client: {} as any })).resolves.toBeUndefined()
 
     expect(showWarningMessage).toHaveBeenCalledWith(expect.stringContaining("Run Connect"))
     expect(await clientFromKey("declined-sso")).toBeUndefined()
     expect(vi.getTimerCount()).toBe(0)
-    await expect(recoveryFor(main)(new Error("expired"))).resolves.toBe(false)
+    await expect(
+      provider.renew({ reason: "expired", client: main as any })
+    ).resolves.toBeUndefined()
     expect(
       sendRequest.mock.calls.filter(([method]) => method === "recoverBrowserSso")
     ).toHaveLength(1)
@@ -190,7 +166,6 @@ test("keeps Kerberos headers and client setup unchanged", async () => {
     vi.mocked(ADTClient).mockImplementationOnce(function () {
       return main as any
     })
-    vi.mocked(attachBrowserSsoCookies).mockClear()
     readConfiguration.mockResolvedValueOnce({
       name: "kerberos100",
       url: "https://sap.example.com",
@@ -206,7 +181,6 @@ test("keeps Kerberos headers and client setup unchanged", async () => {
       "headers.Cookie",
       "MYSAPSSO2=ticket"
     )
-    expect(attachBrowserSsoCookies).not.toHaveBeenCalled()
     expect(main.stateful).toBe("stateful")
   } finally {
     vi.clearAllTimers()
@@ -214,119 +188,39 @@ test("keeps Kerberos headers and client setup unchanged", async () => {
   }
 })
 
-test("does not construct or refresh a Browser SSO client without cookies", async () => {
+test("a failed provider renewal pauses features until Browser SSO completes", async () => {
   vi.useFakeTimers()
   try {
-    vi.mocked(ADTClient).mockClear()
-    readConfiguration.mockResolvedValueOnce({
-      name: "missing-sso",
-      url: "https://sap.example.com",
-      username: "developer",
-      authMethod: "browser_sso"
-    })
-    sendRequest.mockResolvedValueOnce(undefined)
-
-    await expect(clientFromKey("missing-sso")).rejects.toThrow("next Browser SSO login")
-    expect(ADTClient).not.toHaveBeenCalled()
-    expect(vi.getTimerCount()).toBe(0)
-  } finally {
-    vi.clearAllTimers()
-    vi.useRealTimers()
-  }
-})
-
-test("an empty Browser SSO Cookie header blocks later background retries", async () => {
-  vi.useFakeTimers()
-  try {
-    vi.mocked(ADTClient).mockClear()
-    readConfiguration.mockResolvedValueOnce({
-      name: "empty-sso",
-      url: "https://sap.example.com",
-      username: "developer",
-      authMethod: "browser_sso"
-    })
-    sendRequest.mockResolvedValueOnce({ httpHeaders: { Cookie: "" } })
-
-    await expect(clientFromKey("empty-sso")).rejects.toThrow("next Browser SSO login")
-    expect(await clientFromKey("empty-sso")).toBeUndefined()
-    expect(sendRequest).toHaveBeenCalledTimes(1)
-    expect(ADTClient).not.toHaveBeenCalled()
-    expect(vi.getTimerCount()).toBe(0)
-  } finally {
-    vi.clearAllTimers()
-    vi.useRealTimers()
-  }
-})
-
-test("a finished Browser SSO login unblocks the language server", async () => {
-  vi.useFakeTimers()
-  try {
-    vi.mocked(ADTClient).mockClear()
     const conf = {
       name: "relogin-sso",
       url: "https://sap.example.com",
       username: "developer",
       authMethod: "browser_sso"
     }
-    readConfiguration.mockResolvedValueOnce(conf)
-    sendRequest.mockResolvedValueOnce(undefined)
-    await expect(clientFromKey("relogin-sso")).rejects.toThrow("next Browser SSO login")
-
-    const main = { statelessClone: {}, stateful: "stateless" }
+    const first = { statelessClone: {}, stateful: "stateless" }
     vi.mocked(ADTClient).mockImplementationOnce(function () {
-      return main as any
+      return first as any
     })
     readConfiguration.mockResolvedValueOnce(conf)
-    sendRequest.mockResolvedValueOnce({ httpHeaders: { Cookie: "MYSAPSSO2=fresh" } })
+    await clientFromKey("relogin-sso")
+    sendRequest.mockResolvedValueOnce(false)
+    const provider = vi.mocked(ADTClient).mock.calls.at(-1)?.[5]?.session
+    if (!provider) throw new Error("Browser SSO session provider was not configured")
+    await expect(
+      provider.renew({ reason: "expired", client: first as any })
+    ).resolves.toBeUndefined()
+    expect(showWarningMessage).toHaveBeenCalledWith(expect.stringContaining("Run Connect"))
+    expect(await clientFromKey("relogin-sso")).toBeUndefined()
+
+    const refreshed = { statelessClone: {}, stateful: "stateless" }
+    vi.mocked(ADTClient).mockImplementationOnce(function () {
+      return refreshed as any
+    })
+    readConfiguration.mockResolvedValueOnce(conf)
 
     await browserSsoLoginCompleted("RELOGIN-SSO")
-    expect(await clientFromKey("relogin-sso")).toBe(main)
+    expect(await clientFromKey("relogin-sso")).toBe(refreshed)
     expect(vi.getTimerCount()).toBe(1)
-  } finally {
-    vi.clearAllTimers()
-    vi.useRealTimers()
-  }
-})
-
-test("keeps a live Browser SSO client and retries after a temporary cookie lookup failure", async () => {
-  vi.useFakeTimers()
-  try {
-    const conf = {
-      name: "temporary-sso",
-      url: "https://sap.example.com",
-      username: "developer",
-      authMethod: "browser_sso"
-    }
-    const first = {
-      statelessClone: {},
-      stateful: "stateless",
-      logout: vi.fn().mockResolvedValue(undefined)
-    }
-    const second = {
-      statelessClone: {},
-      stateful: "stateless",
-      logout: vi.fn().mockResolvedValue(undefined)
-    }
-    vi.mocked(ADTClient)
-      .mockImplementationOnce(function () {
-        return first as any
-      })
-      .mockImplementationOnce(function () {
-        return second as any
-      })
-    readConfiguration.mockResolvedValueOnce(conf)
-    sendRequest
-      .mockResolvedValueOnce({ httpHeaders: { Cookie: "MYSAPSSO2=valid" } })
-      .mockResolvedValueOnce(undefined)
-      .mockResolvedValueOnce({ httpHeaders: { Cookie: "MYSAPSSO2=valid" } })
-    await clientFromKey("temporary-sso")
-
-    await vi.advanceTimersByTimeAsync(240000)
-    expect(await clientFromKey("temporary-sso")).toBe(first)
-    expect(vi.getTimerCount()).toBe(1)
-
-    await vi.advanceTimersByTimeAsync(240000)
-    expect(await clientFromKey("temporary-sso")).toBe(second)
   } finally {
     vi.clearAllTimers()
     vi.useRealTimers()
@@ -426,7 +320,7 @@ test("concurrent first requests share one client and leave no timer after folder
   }
 })
 
-test("folder removal invalidates an in-flight auth response even if the folder is re-added", async () => {
+test("folder removal invalidates an in-flight auth-header lookup even if the folder is re-added", async () => {
   vi.useFakeTimers()
   try {
     vi.mocked(ADTClient).mockClear()
@@ -434,7 +328,7 @@ test("folder removal invalidates an in-flight auth response even if the folder i
       name: "pending-dev100",
       url: "https://sap.example.com",
       username: "developer",
-      authMethod: "browser_sso"
+      authMethod: "kerberos"
     })
     let finishAuth!: (value: unknown) => void
     sendRequest.mockImplementationOnce(() => new Promise(resolve => (finishAuth = resolve)))
@@ -474,7 +368,7 @@ test("removing a folder whose name is percent-encoded stops its server client", 
 test("overlapping refreshes log out every replaced server client", async () => {
   vi.useFakeTimers()
   try {
-    const first = await serverSsoClient("overlap-sso")
+    const first = await serverSsoClient("overlap-sso", "kerberos")
     const newClient = () => ({
       statelessClone: {},
       stateful: "stateless",

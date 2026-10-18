@@ -1,4 +1,4 @@
-import { ADTClient, type ClientOptions, createSSLConfig } from "abap-adt-api"
+import { ADTClient, session_types, type ClientOptions, createSSLConfig } from "abap-adt-api"
 import { type ClientConfiguration } from "vscode-abap-remote-fs-sharedapi"
 import * as https from "https"
 import { readFileSync, existsSync } from "fs"
@@ -8,11 +8,7 @@ import { futureToken } from "../../oauth"
 import { createHash } from "crypto"
 import { getKerberosCookies } from "../../auth/kerberos"
 import { getSsoCookies } from "../../auth/browserSso"
-import {
-  attachBrowserSsoCookies,
-  loginWithBrowserSsoCookies,
-  onBrowserSsoAuthFailure
-} from "vscode-abap-remote-fs-sharedapi"
+import { createBrowserSsoClientOptions } from "vscode-abap-remote-fs-sharedapi"
 import { refreshBrowserSsoCookies } from "../conections"
 import { getCertPassphrase } from "../../auth/certificate"
 import { buildOAuthOnPremAuth } from "../../auth/oauthOnPrem"
@@ -137,6 +133,26 @@ export async function newClientFromKey(key: string, options: Partial<ClientOptio
       pwdOrFetch = createFetchToken(conf) || conf.password
     }
 
+    if (authMethod === "browser_sso" && !conf.oauth) {
+      const connectionKey = formatKey(conf.name)
+      const renew = async ({ reason }: { reason: string }) => {
+        if (reason === "csrf") return undefined
+        let cookies = reason === "initial-login" ? await getSsoCookies(connectionKey) : []
+        if (!cookies.length) {
+          if (!(await refreshBrowserSsoCookies(conf.name))) return undefined
+          cookies = await getSsoCookies(connectionKey)
+        }
+        if (!cookies.length) return undefined
+        return { cookieHeader: cookies.join("; "), replace: true }
+      }
+      Object.assign(
+        sslconf,
+        createBrowserSsoClientOptions(`browser-sso:${connectionKey}:debugger`, renew, client => {
+          client.stateful = session_types.stateless
+        })
+      )
+    }
+
     const client = new ADTClient(
       conf.url,
       conf.username,
@@ -145,32 +161,6 @@ export async function newClientFromKey(key: string, options: Partial<ClientOptio
       conf.language,
       sslconf
     )
-    if (authMethod === "browser_sso" && !conf.oauth) {
-      const connectionKey = formatKey(conf.name)
-      // Prefer the saved browser login. Only ask the main connection manager to capture fresh
-      // cookies when none are available, so starting the debugger does not open duplicate prompts.
-      let cookies = await getSsoCookies(connectionKey)
-      if (!cookies.length && (await refreshBrowserSsoCookies(conf.name)))
-        cookies = await getSsoCookies(connectionKey)
-      if (!cookies.length)
-        throw new Error(
-          `Browser SSO cookies unavailable for ${conf.name}. Run Connect again to retry.`
-        )
-      attachBrowserSsoCookies(client, cookies)
-      attachBrowserSsoCookies(client.statelessClone, cookies)
-      // Main and clone failures share one renewal. This prevents simultaneous debugger requests
-      // from opening more than one browser login.
-      const renew = async () => {
-        if (await loginWithBrowserSsoCookies(client, await getSsoCookies(connectionKey)))
-          return true
-        if (!(await refreshBrowserSsoCookies(conf.name))) return false
-        return loginWithBrowserSsoCookies(client, await getSsoCookies(connectionKey))
-      }
-      let pending: Promise<boolean> | undefined
-      const recover = () => (pending ??= renew().finally(() => (pending = undefined)))
-      onBrowserSsoAuthFailure(client, recover)
-      onBrowserSsoAuthFailure(client.statelessClone, recover)
-    }
     return client
   }
 }

@@ -2,12 +2,6 @@ import { RemoteManager, createClient, createAuthenticatedClient, formatKey } fro
 import { AFsService, Root } from "abapfs"
 import { Uri, FileSystemError, CancellationError, workspace } from "vscode"
 import { ADTClient, session_types } from "abap-adt-api"
-import {
-  isBrowserSsoSessionExpired,
-  loginWithBrowserSsoCookies,
-  onBrowserSsoAuthFailure,
-  replaceBrowserSsoCookies
-} from "vscode-abap-remote-fs-sharedapi"
 import { LogOutPendingDebuggers } from "./debugger"
 import { SapSystemValidator } from "../services/sapSystemValidator"
 import { LocalFsProvider } from "../fs/LocalFsProvider"
@@ -15,11 +9,9 @@ import {
   cancelAllBrowserSsoCaptures,
   cancelBrowserSsoCapture,
   captureBrowserSsoCookies,
-  clearSsoCookies,
-  getSsoCookies
+  clearSsoCookies
 } from "../auth/browserSso"
 import { log } from "../lib"
-import { installUsageReferencesNamespacePatch } from "./usageReferenceNamespacePatch"
 export const ADTSCHEME = "adt"
 export const ADTURIPATTERN = /\/sap\/bc\/adt\//
 
@@ -46,12 +38,8 @@ interface ConnectionState {
   // Shared in-flight operations. Concurrent callers wait for the same promise.
   creation?: Promise<void>
   disconnect?: Promise<void>
-  ssoRecovery?: Promise<boolean>
-  cloneSsoRecovery?: Promise<boolean>
   cookieRefresh?: Promise<boolean>
 
-  // The SSO login was rejected and has not been renewed; the client stays registered.
-  expiredBrowserSso: boolean
   // Failures requiring user action are retained to prevent repeated automatic login prompts.
   failure?: string
 }
@@ -69,8 +57,7 @@ function stateFor(connId: string) {
       browserSso: false,
       removed: false,
       cancelled: false,
-      generation: 0,
-      expiredBrowserSso: false
+      generation: 0
     }
     connectionStates.set(key, state)
   }
@@ -145,7 +132,14 @@ async function create(connId: string) {
 
   if (authMethod !== "basic" && validAuthMethods.includes(authMethod)) {
     log.debug(`[connect] Using createAuthenticatedClient for ${connId} (${authMethod})`)
-    client = await createAuthenticatedClient(connection)
+    client = await createAuthenticatedClient(
+      connection,
+      httpClient => {
+        state.root?.lockManager.dropall(true)
+        httpClient.stateful = session_types.stateless
+      },
+      () => browserSsoLoginListener?.(state.key)
+    )
     stopIfRemoved(client)
     await client.login()
     stopIfRemoved(client)
@@ -168,8 +162,6 @@ async function create(connId: string) {
   }
 
   stopIfRemoved(client)
-  installUsageReferencesNamespacePatch(client)
-  installUsageReferencesNamespacePatch(client.statelessClone)
 
   // @ts-ignore
   const service = new AFsService(client)
@@ -178,7 +170,6 @@ async function create(connId: string) {
   state.client = client
   if (authMethod === "browser_sso") {
     state.browserSso = true
-    registerBrowserSsoRecovery(state, client)
     browserSsoLoginListener?.(state.key)
   }
 }
@@ -192,198 +183,15 @@ function retryConnectionMessage(error: unknown) {
 // Login problems that repeat until the user acts; network errors are worth retrying
 function needsUserAction(error: unknown) {
   const msg = String((error as Error)?.message || error)
-  return (
-    msg.includes("timed out") ||
-    msg.includes("SSO") ||
-    msg.includes("authentication") ||
-    msg.includes("OAuth") ||
-    msg.includes("401") ||
-    msg.includes("403") ||
-    msg.includes("cancelled") ||
-    msg.includes("Can't connect without a password")
+  return /timed out|sso|authentication|oauth|401|403|cancelled|can't connect without a password/i.test(
+    msg
   )
-}
-
-export async function recoverBrowserSsoConnection(
-  connId: string,
-  error: unknown
-): Promise<boolean> {
-  if (!isBrowserSsoSessionExpired(error)) return false
-  return retryBrowserSsoLogin(connId)
-}
-
-async function retryBrowserSsoLogin(connId: string): Promise<boolean> {
-  const state = stateFor(connId)
-  if (disconnecting || state.removed || state.cancelled || state.failure) return false
-  const pending = state.ssoRecovery
-  if (pending) return pending
-  const cloneRecovery = state.cloneSsoRecovery
-  if (cloneRecovery) {
-    await cloneRecovery.catch(() => false)
-    if (disconnecting || state.removed || state.cancelled || state.failure) return false
-  }
-  if (!state.browserSso) {
-    const connection = await RemoteManager.get()
-      .byIdAsync(state.key)
-      .catch(() => undefined)
-    if (connection?.authMethod !== "browser_sso") return false
-  }
-  return reauthenticateBrowserSso(connId)
-}
-
-// Requests that fail while a renewal is running wait for it and are then repeated.
-function registerBrowserSsoRecovery(state: ConnectionState, client: ADTClient) {
-  onBrowserSsoAuthFailure(client, () => retryBrowserSsoLogin(state.key))
-  onBrowserSsoAuthFailure(client.statelessClone, () => retryBrowserSsoClone(state, client))
-}
-
-function retryBrowserSsoClone(state: ConnectionState, client: ADTClient) {
-  if (disconnecting || state.removed || state.cancelled || state.failure)
-    return Promise.resolve(false)
-  const mainRecovery = state.ssoRecovery
-  if (mainRecovery) return mainRecovery
-  let recovery = state.cloneSsoRecovery
-  if (!recovery) {
-    recovery = recoverBrowserSsoClone(state, client).finally(() => {
-      if (state.cloneSsoRecovery === recovery) state.cloneSsoRecovery = undefined
-    })
-    state.cloneSsoRecovery = recovery
-  }
-  return recovery
-}
-
-async function recoverBrowserSsoClone(state: ConnectionState, client: ADTClient) {
-  try {
-    const renewed = await renewBrowserSsoClone(state, client)
-    if (renewed) {
-      state.cancelled = false
-      state.failure = undefined
-    }
-    return renewed
-  } catch (error) {
-    if (state.removed || state.client !== client) return false
-    if (error instanceof CancellationError) {
-      state.cancelled = true
-      throw notConnected(state)
-    }
-    if (needsUserAction(error)) state.failure = retryConnectionMessage(error)
-    throw error
-  }
-}
-
-function reauthenticateBrowserSso(connId: string): Promise<boolean> {
-  const state = stateFor(connId)
-  const pending = state.ssoRecovery
-  if (pending) return pending
-  const recovery = renewBrowserSsoLogin(connId, state).finally(() => {
-    if (state.ssoRecovery === recovery) state.ssoRecovery = undefined
-  })
-  state.ssoRecovery = recovery
-  return recovery
-}
-
-async function renewBrowserSsoLogin(connId: string, state: ConnectionState) {
-  const generation = state.generation
-  const wasRemoved = () => state.removed || state.generation !== generation
-  log.debug(`[browser-sso] Re-authenticating ${state.key} after session failure`)
-  const { client } = state
-  if (client) state.expiredBrowserSso = true
-  try {
-    if (client) await renewBrowserSsoClient(state, client, wasRemoved)
-    else {
-      await clearSsoCookies(state.key)
-      await create(connId)
-    }
-  } catch (error) {
-    if (wasRemoved()) throw notConnected(state)
-    if (error instanceof CancellationError) {
-      state.cancelled = true
-      throw notConnected(state)
-    }
-    if (needsUserAction(error)) state.failure = retryConnectionMessage(error)
-    throw error
-  }
-  state.expiredBrowserSso = false
-  state.failure = undefined
-  return true
-}
-
-async function renewBrowserSsoClone(state: ConnectionState, client: ADTClient) {
-  const generation = state.generation
-  const isCurrent = () =>
-    state.client === client && !state.removed && state.generation === generation
-  let loggedIn = await loginBrowserSsoClient(client.statelessClone, await getSsoCookies(state.key))
-  if (!isCurrent()) return false
-  if (!loggedIn) {
-    const connection = await RemoteManager.get().byIdAsync(state.key)
-    if (!connection || !isCurrent()) return false
-    const cookies = await captureBrowserSsoCookies(
-      connection.name,
-      connection.url,
-      connection.client
-    )
-    if (!isCurrent()) return false
-    loggedIn = await loginBrowserSsoClient(client.statelessClone, cookies)
-  }
-  if (!loggedIn) throw new Error("SAP rejected the new Browser SSO login")
-  if (isCurrent()) browserSsoLoginListener?.(state.key)
-  return isCurrent()
-}
-
-async function loginBrowserSsoClient(client: ADTClient, cookies: readonly string[]) {
-  if (!cookies.some(cookie => cookie.includes("="))) return false
-  replaceBrowserSsoCookies(client, cookies)
-  try {
-    await client.login()
-    return true
-  } catch (error) {
-    if (isBrowserSsoSessionExpired(error)) return false
-    throw error
-  }
-}
-
-// Features keep references to the client, so a renewed login reuses it instead of replacing it.
-async function renewBrowserSsoClient(
-  state: ConnectionState,
-  client: ADTClient,
-  wasRemoved: () => boolean
-) {
-  const connection = await RemoteManager.get().byIdAsync(state.key)
-  if (!connection) throw Error(`Connection not found ${state.key}`)
-  // Locks belonged to the expired SAP session
-  state.root?.lockManager.dropall(true)
-  client.stateful = session_types.stateless
-  // The saved login often still works when only the SAP session timed out
-  let loggedIn = await loginWithBrowserSsoCookies(client, await getSsoCookies(state.key))
-  if (wasRemoved()) {
-    discardClient(state.key, client)
-    throw new CancellationError()
-  }
-  if (!loggedIn) {
-    const cookies = await captureBrowserSsoCookies(
-      connection.name,
-      connection.url,
-      connection.client
-    )
-    if (wasRemoved()) throw new CancellationError()
-    loggedIn = await loginWithBrowserSsoCookies(client, cookies)
-    if (wasRemoved()) {
-      discardClient(state.key, client)
-      throw new CancellationError()
-    }
-  }
-  if (!loggedIn) throw new Error("SAP rejected the new Browser SSO login")
-  browserSsoLoginListener?.(state.key)
 }
 
 /** Capture new cookies for the language server or debugger without restarting editor sessions. */
 export async function refreshBrowserSsoCookies(connId: string): Promise<boolean> {
   const state = stateFor(connId)
   if (disconnecting || state.removed || state.cancelled || state.failure) return false
-  const renewal = state.ssoRecovery
-  if (renewal) return renewal.catch(() => false)
-  const cloneRenewal = state.cloneSsoRecovery
-  if (cloneRenewal) return cloneRenewal.catch(() => false)
   let refresh = state.cookieRefresh
   if (!refresh) {
     refresh = captureFreshBrowserSsoCookies(state).finally(() => {
@@ -424,20 +232,16 @@ function createIfMissing(connId: string) {
   if (state.removed || state.cancelled) return Promise.reject(notConnected(state))
   // If connection previously failed with a non-retryable error, don't retry
   if (state.failure) return Promise.reject(new Error(state.failure))
-  if (state.expiredBrowserSso) {
-    return reauthenticateBrowserSso(connId).then(() => undefined)
-  }
   if (state.root) return
   let creation = state.creation
   if (!creation) {
     const generation = state.generation
-    creation = create(connId).catch(async err => {
+    creation = create(connId).catch(err => {
       if (state.removed || state.generation !== generation) throw notConnected(state)
       if (err instanceof CancellationError) {
         state.cancelled = true
         throw notConnected(state)
       }
-      if (await recoverBrowserSsoConnection(connId, err)) return
       // Mark as permanently failed if it's an interactive/auth error
       // so VS Code filesystem doesn't keep triggering retry loops
       if (needsUserAction(err)) {
@@ -565,7 +369,6 @@ export async function disconnectConnection(connId: string) {
   state.client = undefined
   state.root = undefined
   state.browserSso = false
-  state.expiredBrowserSso = false
   state.failure = undefined
   state.creation = undefined
   const cleanup = (async () => {
@@ -663,7 +466,6 @@ async function disconnectAll(workspaceConnectionIds: string[], preserveBrowserSs
     state.client = undefined
     state.root = undefined
     state.browserSso = false
-    state.expiredBrowserSso = false
     state.failure = undefined
     state.cancelled = false
   }

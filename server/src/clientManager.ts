@@ -9,9 +9,7 @@ import {
   type AuthHeadersResponse,
   type CertAuthTransport,
   getAuthMethod,
-  attachBrowserSsoCookies,
-  loginWithBrowserSsoCookies,
-  onBrowserSsoAuthFailure,
+  createBrowserSsoClientOptions,
   Methods,
   type CommLogTogglePayload
 } from "vscode-abap-remote-fs-sharedapi"
@@ -226,41 +224,62 @@ function blockBrowserSso(state: ServerConnectionState) {
   state.client = undefined
 }
 
-// Try the saved cookies first; only a rejected login asks the editor to open the browser.
-function registerBrowserSsoRecovery(
+function createServerBrowserSsoOptions(
   state: ServerConnectionState,
   conf: ClientConfiguration,
-  client: ADTClient
+  generation: number,
+  setClient: (client: ADTClient) => void
 ) {
-  const isCurrent = () => state.client === client && !state.removed
-  const loginWithSavedCookies = async () => {
-    const headers = await fetchAuthHeaders(conf.name)
-    if (!isCurrent()) return false
-    return loginWithBrowserSsoCookies(client, headers?.httpHeaders?.Cookie?.split(";") ?? [])
-  }
-  const renew = async () => {
-    if (await loginWithSavedCookies()) return true
-    if (!isCurrent()) return false
+  let currentClient: ADTClient | undefined
+  let pending: Promise<{ cookieHeader: string; replace: true } | undefined> | undefined
+  const isCurrent = () =>
+    !!currentClient &&
+    state.client === currentClient &&
+    !state.removed &&
+    state.generation === generation
+  const renew = async ({ reason }: { reason: string }) => {
+    if (reason === "csrf") return undefined
+    if (reason === "initial-login") {
+      const auth = await fetchAuthHeaders(conf.name)
+      if (!isCurrent()) return undefined
+      const cookieHeader = auth?.httpHeaders?.Cookie
+      if (cookieHeader) return { cookieHeader, replace: true as const }
+    }
     const refreshed = await (
       connection.sendRequest(Methods.recoverBrowserSso, state.key) as Promise<boolean>
     ).catch(() => false)
-    if (refreshed && isCurrent() && (await loginWithSavedCookies())) return true
+    if (refreshed && isCurrent()) {
+      const auth = await fetchAuthHeaders(conf.name)
+      if (!isCurrent()) return undefined
+      const cookieHeader = auth?.httpHeaders?.Cookie
+      if (cookieHeader) return { cookieHeader, replace: true as const }
+    }
     if (isCurrent()) {
       blockBrowserSso(state)
       connection.window.showWarningMessage(
         `Syntax check and code completion for ${state.key} are paused because the SAP login was not completed. Run Connect for ${state.key} to resume.`
       )
     }
-    return false
+    return undefined
   }
-  let pending: Promise<boolean> | undefined
-  const recover = () => {
-    if (!isCurrent()) return Promise.resolve(false)
-    pending ??= renew().finally(() => (pending = undefined))
-    return pending
+  const sessionOptions = createBrowserSsoClientOptions(
+    `browser-sso:${state.key}:language-server`,
+    context => {
+      if (!isCurrent()) return Promise.resolve(undefined)
+      pending ??= renew(context).finally(() => (pending = undefined))
+      return pending
+    },
+    client => {
+      client.stateful = session_types.stateless
+    }
+  )
+  return {
+    options: sessionOptions,
+    setClient(client: ADTClient) {
+      currentClient = client
+      setClient(client)
+    }
   }
-  onBrowserSsoAuthFailure(client, recover)
-  onBrowserSsoAuthFailure(client.statelessClone, recover)
 }
 
 const refreshClient = async (state: ServerConnectionState, conf: ClientConfiguration) => {
@@ -271,16 +290,18 @@ const refreshClient = async (state: ServerConnectionState, conf: ClientConfigura
 
   const authMethod = getAuthMethod(conf)
   let pwdOrFetch: string | (() => Promise<string>)
-  let browserSsoCookies: string[] = []
 
   if (authMethod !== "basic" && !conf.oauth) {
-    const authResponse = await fetchAuthHeaders(conf.name)
+    const authResponse =
+      authMethod === "browser_sso" ? undefined : await fetchAuthHeaders(conf.name)
     if (state.removed || state.generation !== generation) return
     log(
       `[server] refreshClient: auth response received for ${state.key}: ${authResponse ? [authResponse.httpHeaders ? "httpHeaders" : undefined, authResponse.certAuth ? "certAuth" : undefined].filter(Boolean).join(",") : "null"}`
     )
 
-    if (authMethod === "cert") {
+    if (authMethod === "browser_sso") {
+      pwdOrFetch = "browser-sso-auth"
+    } else if (authMethod === "cert") {
       log(`[server] refreshClient: reconstructing cert agent for ${state.key}`)
       if (authResponse?.certAuth) {
         try {
@@ -291,7 +312,6 @@ const refreshClient = async (state: ServerConnectionState, conf: ClientConfigura
           )
         } catch (e) {
           warn(`Failed to reconstruct cert httpsAgent for ${state.key}: ${e}`)
-          // Don't create a broken client — propagate the error
           throw new Error(`Certificate auth setup failed for ${state.key}: ${e}`)
         }
       } else {
@@ -309,28 +329,8 @@ const refreshClient = async (state: ServerConnectionState, conf: ClientConfigura
           return t || currentToken
         })
     } else {
-      if (
-        authResponse?.httpHeaders?.Cookie ||
-        (authMethod !== "browser_sso" && authResponse?.httpHeaders)
-      ) {
-        if (authMethod === "browser_sso") {
-          const { Cookie, ...headers } = authResponse.httpHeaders
-          browserSsoCookies = Cookie?.split(";") ?? []
-          sslconf.headers = { ...sslconf.headers, ...headers }
-        } else {
-          sslconf.headers = { ...sslconf.headers, ...authResponse.httpHeaders }
-        }
-      } else if (authMethod === "browser_sso") {
-        if (oldClient) {
-          warn(
-            `Browser SSO cookies unavailable for ${state.key}; keeping the current client until refresh succeeds`
-          )
-          return
-        }
-        blockBrowserSso(state)
-        throw new Error(
-          `Browser SSO cookies unavailable for ${state.key}. Language features resume after the next Browser SSO login.`
-        )
+      if (authResponse?.httpHeaders) {
+        sslconf.headers = { ...sslconf.headers, ...authResponse.httpHeaders }
       } else if (authMethod === "kerberos") {
         warn(`${authMethod} auth headers missing for ${state.key} — user may need to reconnect`)
       }
@@ -340,19 +340,21 @@ const refreshClient = async (state: ServerConnectionState, conf: ClientConfigura
     pwdOrFetch = createFetchToken(conf) || conf.password
   }
 
+  const sso =
+    authMethod === "browser_sso" && !conf.oauth
+      ? createServerBrowserSsoOptions(state, conf, generation, client => {
+          state.client = client
+        })
+      : undefined
   const baseclient = new ADTClient(
     conf.url,
     conf.username,
     pwdOrFetch,
     conf.client,
     conf.language,
-    sslconf
+    { ...sslconf, ...sso?.options }
   )
-  if (authMethod === "browser_sso" && !conf.oauth) {
-    attachBrowserSsoCookies(baseclient, browserSsoCookies)
-    attachBrowserSsoCookies(baseclient.statelessClone, browserSsoCookies)
-    registerBrowserSsoRecovery(state, conf, baseclient)
-  }
+  sso?.setClient(baseclient)
   baseclient.stateful = session_types.stateful
   state.client = baseclient
   if (oldClient) {

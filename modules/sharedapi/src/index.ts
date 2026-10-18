@@ -1,11 +1,5 @@
 import { type LogData } from "abap-adt-api"
-export {
-  attachBrowserSsoCookies,
-  isBrowserSsoSessionExpired,
-  loginWithBrowserSsoCookies,
-  onBrowserSsoAuthFailure,
-  replaceBrowserSsoCookies
-} from "./browserSsoCookieSession"
+export { createBrowserSsoClientOptions } from "./browserSsoCookieSession"
 export enum Methods {
   objectDetails = "vscabap.objDetails",
   readConfiguration = "vscabap.readConfig",

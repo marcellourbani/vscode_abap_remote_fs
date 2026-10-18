@@ -20,7 +20,7 @@
 
 import * as http from "http"
 import { randomBytes } from "crypto"
-import { type AuthResult } from "./types"
+import { type AdtSessionProvider } from "abap-adt-api"
 import { PasswordVault, log } from "../lib"
 import { formatKey } from "../config"
 import * as vscode from "vscode"
@@ -36,6 +36,31 @@ const captureGenerations = new Map<string, number>()
 
 interface CookieCaptureRequest {
   cookies?: string
+}
+
+export function createBrowserSsoSessionProvider(
+  connId: string,
+  sapUrl: string,
+  sapClient: string,
+  onCookiesCaptured?: () => void
+): AdtSessionProvider {
+  return {
+    id: `browser-sso:${formatKey(connId)}`,
+    logoutMode: "local-only",
+    async renew({ reason }) {
+      if (reason === "csrf") return undefined
+      const generation = captureGenerations.get(formatKey(connId)) ?? 0
+      const savedCookies = reason === "initial-login" ? await getSsoCookies(connId) : []
+      if ((captureGenerations.get(formatKey(connId)) ?? 0) !== generation)
+        throw new vscode.CancellationError()
+      const cookies =
+        savedCookies.length > 0
+          ? savedCookies
+          : await captureBrowserSsoCookies(connId, sapUrl, sapClient)
+      if (savedCookies.length === 0) onCookiesCaptured?.()
+      return { cookieHeader: cookies.join("; "), replace: true }
+    }
+  }
 }
 
 function getListeningPort(server: http.Server): number {
@@ -336,33 +361,6 @@ function vscodeSsoNotify(helperUrl: string) {
         vscode.env.openExternal(vscode.Uri.parse(helperUrl))
       }
     })
-}
-
-/**
- * Build an AuthResult using stored or freshly captured SSO cookies.
- */
-export async function buildBrowserSsoAuth(
-  connId: string,
-  sapUrl: string,
-  sapClient: string
-): Promise<AuthResult> {
-  log.debug(`[browser-sso] buildBrowserSsoAuth starting for ${connId}`)
-  const generation = captureGenerations.get(formatKey(connId)) ?? 0
-  let cookies = await getSsoCookies(connId)
-  if ((captureGenerations.get(formatKey(connId)) ?? 0) !== generation)
-    throw new vscode.CancellationError()
-  if (cookies.length === 0) {
-    log.debug(`[browser-sso] No cached cookies, starting cookie capture for ${connId}`)
-    cookies = await captureBrowserSsoCookies(connId, sapUrl, sapClient)
-  }
-
-  const headers = buildCookieHeaders(cookies)
-
-  log.debug(`[browser-sso] buildBrowserSsoAuth complete for ${connId}: ${cookies.length} cookies`)
-  return {
-    passwordOrFetcher: "browser-sso",
-    ...(headers ? { headers } : {})
-  }
 }
 
 /** Open the browser login and store the captured cookies, joining a login already open. */
