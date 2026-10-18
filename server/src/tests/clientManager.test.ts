@@ -16,6 +16,28 @@ vi.mock("vscode-languageserver", () => ({
 vi.mock("../clientapis", () => ({ readConfiguration }))
 vi.mock("abap-adt-api", () => ({
   ADTClient: vi.fn(),
+  createCookieSessionOptions: vi.fn((options: any) => {
+    let pending: Promise<string | undefined> | undefined
+    return {
+      session: {
+        id: options.id,
+        logoutMode: "local-only",
+        async renew({ reason, error }: { reason: string; error?: unknown }) {
+          if (reason === "csrf") return undefined
+          if (reason === "initial-login") {
+            const saved = await options.loadCookies()
+            if (saved) return { cookieHeader: saved, replace: true }
+          }
+          pending ??= options
+            .acquireCookies({ reason: "expired", error })
+            .finally(() => (pending = undefined))
+          const cookieHeader = await pending
+          return cookieHeader ? { cookieHeader, replace: true } : undefined
+        }
+      },
+      extensions: []
+    }
+  }),
   createSSLConfig: vi.fn(() => ({})),
   isAdtError: vi.fn(() => false),
   isCsrfError: vi.fn(() => false),
@@ -24,20 +46,14 @@ vi.mock("abap-adt-api", () => ({
 }))
 vi.mock("vscode-abap-remote-fs-sharedapi", () => ({
   getAuthMethod: (conf: { authMethod?: string }) => conf.authMethod ?? "basic",
-  createBrowserSsoClientOptions: vi.fn((id, renew, onStatefulFailure) => ({
-    session: { id, logoutMode: "local-only", renew },
-    extensions: [],
-    onStatefulFailure
-  })),
-  renewBrowserSsoCookies: vi.fn(async (_client, _id, _cached, capture) => {
-    const cookies = await capture()
-    return cookies.length ? { cookieHeader: cookies.join("; "), replace: true } : undefined
-  }),
-  Methods: { getAuthHeaders: "getAuthHeaders", recoverBrowserSso: "recoverBrowserSso" }
+  Methods: {
+    getAuthHeaders: "getAuthHeaders",
+    recoverBrowserSso: "recoverBrowserSso",
+    storeBrowserSsoCookies: "storeBrowserSsoCookies"
+  }
 }))
 
-import { ADTClient } from "abap-adt-api"
-import { createBrowserSsoClientOptions } from "vscode-abap-remote-fs-sharedapi"
+import { ADTClient, createCookieSessionOptions } from "abap-adt-api"
 import { browserSsoLoginCompleted, clientFromKey, connectionFolderChanged } from "../clientManager"
 
 afterEach(() => {
@@ -89,7 +105,7 @@ test("configures a session provider without pinning the Browser SSO Cookie heade
 
     expect(vi.mocked(ADTClient).mock.calls[0][5]).toHaveProperty("session.logoutMode", "local-only")
     expect(vi.mocked(ADTClient).mock.calls[0][5]).not.toHaveProperty("headers.Cookie")
-    expect(createBrowserSsoClientOptions).toHaveBeenCalledOnce()
+    expect(createCookieSessionOptions).toHaveBeenCalledOnce()
     const provider = vi.mocked(ADTClient).mock.calls[0]?.[5]?.session
     if (!provider) throw new Error("Browser SSO session provider was not configured")
     await expect(provider.renew({ reason: "initial-login", client: main as any })).resolves.toEqual(
@@ -98,6 +114,14 @@ test("configures a session provider without pinning the Browser SSO Cookie heade
         replace: true
       }
     )
+    const cookieOptions = vi.mocked(createCookieSessionOptions).mock.calls[0]?.[0]
+    if (!cookieOptions) throw new Error("Cookie-session callbacks were not configured")
+    expect(cookieOptions.id).toBe("browser-sso:dev100")
+    await cookieOptions.onCookiesChanged?.("MYSAPSSO2=rotated")
+    expect(sendRequest).toHaveBeenCalledWith("storeBrowserSsoCookies", {
+      connId: "dev100",
+      cookieHeader: "MYSAPSSO2=rotated"
+    })
     expect(main.stateful).toBe("stateful")
   } finally {
     vi.clearAllTimers()
@@ -109,7 +133,7 @@ test("coalesces server recovery while the extension captures fresh cookies", asy
   vi.useFakeTimers()
   try {
     const main = await serverSsoClient("server-recovery-sso")
-    let finishRecovery!: (value: boolean) => void
+    let finishRecovery!: (value: string) => void
     sendRequest.mockImplementation(async (method: string) => {
       if (method === "recoverBrowserSso") return new Promise(resolve => (finishRecovery = resolve))
       return { httpHeaders: { Cookie: "MYSAPSSO2=fresh" } }
@@ -120,7 +144,7 @@ test("coalesces server recovery while the extension captures fresh cookies", asy
     const first = provider.renew(context)
     const second = provider.renew(context)
     await vi.waitFor(() => expect(finishRecovery).toBeDefined())
-    finishRecovery(true)
+    finishRecovery("MYSAPSSO2=fresh")
 
     await expect(Promise.all([first, second])).resolves.toEqual([
       { cookieHeader: "MYSAPSSO2=fresh", replace: true },
@@ -141,7 +165,7 @@ test("a declined browser login pauses the server until the next editor login", a
   try {
     const main = await serverSsoClient("declined-sso")
     sendRequest.mockImplementation(async (method: string) =>
-      method === "recoverBrowserSso" ? false : { httpHeaders: { Cookie: "MYSAPSSO2=stale" } }
+      method === "recoverBrowserSso" ? undefined : { httpHeaders: { Cookie: "MYSAPSSO2=stale" } }
     )
     const provider = vi.mocked(ADTClient).mock.calls.at(-1)?.[5]?.session
     if (!provider) throw new Error("Browser SSO session provider was not configured")
@@ -208,7 +232,7 @@ test("a failed provider renewal pauses features until Browser SSO completes", as
     readConfiguration.mockResolvedValueOnce(conf)
     await clientFromKey("relogin-sso")
     sendRequest.mockImplementation(async (method: string) =>
-      method === "recoverBrowserSso" ? false : { httpHeaders: { Cookie: "MYSAPSSO2=stale" } }
+      method === "recoverBrowserSso" ? undefined : { httpHeaders: { Cookie: "MYSAPSSO2=stale" } }
     )
     const provider = vi.mocked(ADTClient).mock.calls.at(-1)?.[5]?.session
     if (!provider) throw new Error("Browser SSO session provider was not configured")

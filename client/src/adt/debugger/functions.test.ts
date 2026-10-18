@@ -44,20 +44,14 @@ vi.mock("../../langClient", () => ({
 vi.mock("../../oauth", () => ({
   futureToken: vi.fn()
 }))
-vi.mock("../../auth/browserSso", () => ({ getSsoCookies: vi.fn() }))
+vi.mock("../../auth/browserSso", () => ({
+  createBrowserSsoClientOptions: vi.fn((connId: string) => ({
+    session: { id: `browser-sso:key:${connId.toLowerCase()}`, logoutMode: "local-only" },
+    extensions: []
+  }))
+}))
 vi.mock("../conections", () => ({
   refreshBrowserSsoCookies: vi.fn()
-}))
-vi.mock("vscode-abap-remote-fs-sharedapi", () => ({
-  createBrowserSsoClientOptions: vi.fn((id, renew) => ({
-    session: { id, logoutMode: "local-only", renew },
-    extensions: []
-  })),
-  renewBrowserSsoCookies: vi.fn(async (_client, _id, cachedCookieHeader, capture) => {
-    if (cachedCookieHeader) return { cookieHeader: cachedCookieHeader, replace: true }
-    const cookies = await capture()
-    return cookies.length ? { cookieHeader: cookies.join("; "), replace: true } : undefined
-  })
 }))
 vi.mock("crypto", () => ({
   createHash: vi.fn(function () {
@@ -72,11 +66,7 @@ import { md5, newClientFromKey } from "./functions"
 import { ADTClient, createSSLConfig } from "abap-adt-api"
 import { configFromKey } from "../../langClient"
 import { futureToken } from "../../oauth"
-import { getSsoCookies } from "../../auth/browserSso"
-import {
-  createBrowserSsoClientOptions,
-  renewBrowserSsoCookies
-} from "vscode-abap-remote-fs-sharedapi"
+import { createBrowserSsoClientOptions } from "../../auth/browserSso"
 import { refreshBrowserSsoCookies } from "../conections"
 import type { MockedClass, MockedFunction, Mock } from "vitest"
 
@@ -165,29 +155,25 @@ describe("newClientFromKey", () => {
 
     expect(await newClientFromKey("somekey")).toBe(client)
     expect(MockADTClient.mock.calls[0][5]).toMatchObject({
-      session: { id: "browser-sso:key:myconn:debugger", logoutMode: "local-only" }
+      session: { id: "browser-sso:key:myconn", logoutMode: "local-only" }
     })
     expect(MockADTClient.mock.calls[0][5]).not.toHaveProperty("headers.Cookie")
     expect(createBrowserSsoClientOptions).toHaveBeenCalledOnce()
   })
 
-  test("reuses saved cookies before capturing after an expired debugger session", async () => {
+  test("configures host-owned recovery for an expired debugger session", async () => {
     const client = { statelessClone: {} }
     MockADTClient.mockImplementationOnce(function () {
       return client as any
     })
     mockConfigFromKey.mockResolvedValueOnce({ ...baseConf, authMethod: "browser_sso" })
-    vi.mocked(getSsoCookies).mockResolvedValueOnce(["MYSAPSSO2=cached"])
+    vi.mocked(refreshBrowserSsoCookies).mockResolvedValueOnce("MYSAPSSO2=fresh")
 
     await newClientFromKey("somekey")
-    const provider = MockADTClient.mock.calls[0]?.[5]?.session
-    if (!provider) throw new Error("Browser SSO session provider was not configured")
-    await expect(provider.renew({ reason: "expired", client: client as any })).resolves.toEqual({
-      cookieHeader: "MYSAPSSO2=cached",
-      replace: true
-    })
-    expect(renewBrowserSsoCookies).toHaveBeenCalledOnce()
-    expect(refreshBrowserSsoCookies).not.toHaveBeenCalled()
+    const acquire = vi.mocked(createBrowserSsoClientOptions).mock.calls[0]?.[3]?.acquireCookies
+    if (!acquire) throw new Error("Browser SSO acquisition callback was not configured")
+    await expect(acquire({ reason: "expired" })).resolves.toBe("MYSAPSSO2=fresh")
+    expect(refreshBrowserSsoCookies).toHaveBeenCalledOnce()
   })
 
   test("passes extra options to ADTClient on HTTPS", async () => {

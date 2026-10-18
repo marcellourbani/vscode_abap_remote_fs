@@ -38,7 +38,7 @@ interface ConnectionState {
   // Shared in-flight operations. Concurrent callers wait for the same promise.
   creation?: Promise<void>
   disconnect?: Promise<void>
-  cookieRefresh?: Promise<boolean>
+  cookieRefresh?: Promise<string | undefined>
 
   // Failures requiring user action are retained to prevent repeated automatic login prompts.
   failure?: string
@@ -138,7 +138,9 @@ async function create(connId: string) {
         state.root?.lockManager.dropall(true)
         httpClient.stateful = session_types.stateless
       },
-      () => browserSsoLoginListener?.(state.key)
+      () => {
+        if (state.root) browserSsoLoginListener?.(state.key)
+      }
     )
     stopIfRemoved(client)
     await client.login()
@@ -188,10 +190,10 @@ function needsUserAction(error: unknown) {
   )
 }
 
-/** Capture new cookies for the language server or debugger without restarting editor sessions. */
-export async function refreshBrowserSsoCookies(connId: string): Promise<boolean> {
+/** Capture cookies for another client and let it persist them through its session callback. */
+export async function refreshBrowserSsoCookies(connId: string): Promise<string | undefined> {
   const state = stateFor(connId)
-  if (disconnecting || state.removed || state.cancelled || state.failure) return false
+  if (disconnecting || state.removed || state.cancelled || state.failure) return undefined
   let refresh = state.cookieRefresh
   if (!refresh) {
     refresh = captureFreshBrowserSsoCookies(state).finally(() => {
@@ -207,17 +209,18 @@ async function captureFreshBrowserSsoCookies(state: ConnectionState) {
   const connection = await RemoteManager.get()
     .byIdAsync(state.key)
     .catch(() => undefined)
-  if (state.removed || state.generation !== generation) return false
-  if (connection?.authMethod !== "browser_sso") return false
+  if (state.removed || state.generation !== generation) return undefined
+  if (connection?.authMethod !== "browser_sso") return undefined
+  let cookies: string[]
   try {
-    await captureBrowserSsoCookies(connection.name, connection.url, connection.client)
+    cookies = await captureBrowserSsoCookies(connection.name, connection.url, connection.client)
   } catch (error) {
+    if (error instanceof CancellationError) throw error
     log(`[browser-sso] Login for ${state.key} did not complete: ${error}`)
-    return false
+    return undefined
   }
   const current = !state.removed && state.generation === generation
-  if (current) browserSsoLoginListener?.(state.key)
-  return current
+  return current && cookies.length ? cookies.join("; ") : undefined
 }
 
 /** Tell the language server to try again; used when the user asks to connect. */

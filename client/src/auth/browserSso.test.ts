@@ -12,27 +12,18 @@ vi.mock("../lib", () => ({
   log: Object.assign(vi.fn(), { debug: vi.fn() })
 }))
 
-vi.mock("vscode-abap-remote-fs-sharedapi", () => ({
-  renewBrowserSsoCookies: vi.fn(async (_client, _id, cachedCookieHeader, capture) => {
-    if (cachedCookieHeader) return { cookieHeader: cachedCookieHeader, replace: true }
-    const cookies = await capture()
-    return cookies.length ? { cookieHeader: cookies.join("; "), replace: true } : undefined
-  })
-}))
-
 import * as vscode from "vscode"
 import { PasswordVault } from "../lib"
-import { renewBrowserSsoCookies } from "vscode-abap-remote-fs-sharedapi"
 import {
   cancelBrowserSsoCapture,
   captureBrowserSsoCookies,
-  createBrowserSsoSessionProvider,
+  createBrowserSsoClientOptions,
   getSsoCookies,
   startCookieCaptureServer,
   storeSsoCookies
 } from "./browserSso"
 
-describe("Browser SSO session provider", () => {
+describe("Browser SSO cookie-session options", () => {
   test("uses saved cookies for initial login without opening the browser", async () => {
     const vault = {
       getPassword: vi.fn().mockResolvedValue('["MYSAPSSO2=ticket"]'),
@@ -40,38 +31,43 @@ describe("Browser SSO session provider", () => {
       deletePassword: vi.fn()
     }
     vi.mocked(PasswordVault.get).mockReturnValue(vault as any)
-    const onCookiesCaptured = vi.fn()
-    const provider = createBrowserSsoSessionProvider(
-      "DEV100",
-      "https://sap.example.com",
-      "100",
-      onCookiesCaptured
-    )
-
-    await expect(provider.renew({ reason: "initial-login", client: {} as any })).resolves.toEqual({
-      cookieHeader: "MYSAPSSO2=ticket",
-      replace: true
+    const onCookiesChanged = vi.fn()
+    const options = createBrowserSsoClientOptions("DEV100", "https://sap.example.com", "100", {
+      onCookiesChanged
     })
 
-    expect(provider).toMatchObject({ id: "browser-sso:dev100", logoutMode: "local-only" })
+    await expect(
+      options.session?.renew({ reason: "initial-login", client: {} as any })
+    ).resolves.toEqual({ cookieHeader: "MYSAPSSO2=ticket", replace: true })
+
+    expect(options.session).toMatchObject({
+      id: "browser-sso:dev100",
+      logoutMode: "local-only"
+    })
     expect(vscode.env.openExternal).not.toHaveBeenCalled()
-    expect(onCookiesCaptured).not.toHaveBeenCalled()
+    expect(onCookiesChanged).not.toHaveBeenCalled()
   })
 
-  test("tries saved cookies first for an expired session", async () => {
+  test("acquires cookies through the injected host callback", async () => {
     const vault = {
-      getPassword: vi.fn().mockResolvedValue('["MYSAPSSO2=ticket"]'),
+      getPassword: vi.fn().mockResolvedValue(undefined),
       setPassword: vi.fn(),
       deletePassword: vi.fn()
     }
     vi.mocked(PasswordVault.get).mockReturnValue(vault as any)
-    const provider = createBrowserSsoSessionProvider("DEV100", "https://sap.example.com", "100")
-
-    await expect(provider.renew({ reason: "expired", client: {} as any })).resolves.toEqual({
-      cookieHeader: "MYSAPSSO2=ticket",
-      replace: true
+    const acquireCookies = vi.fn(async () => "MYSAPSSO2=fresh")
+    const options = createBrowserSsoClientOptions("DEV100", "https://sap.example.com", "100", {
+      acquireCookies
     })
-    expect(renewBrowserSsoCookies).toHaveBeenCalledOnce()
+
+    await expect(
+      options.session?.renew({ reason: "initial-login", client: {} as any })
+    ).resolves.toEqual({ cookieHeader: "MYSAPSSO2=fresh", replace: true })
+    expect(acquireCookies).toHaveBeenCalledOnce()
+    expect(vault.setPassword).not.toHaveBeenCalled()
+
+    await options.session?.onCookiesChanged?.("MYSAPSSO2=fresh")
+    expect(vault.setPassword).toHaveBeenCalledOnce()
     expect(vscode.env.openExternal).not.toHaveBeenCalled()
   })
 })

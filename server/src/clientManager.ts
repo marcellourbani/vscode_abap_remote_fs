@@ -1,4 +1,10 @@
-import { ADTClient, createSSLConfig, type LogData, session_types } from "abap-adt-api"
+import {
+  ADTClient,
+  createCookieSessionOptions,
+  createSSLConfig,
+  type LogData,
+  session_types
+} from "abap-adt-api"
 import { createConnection, ProposedFeatures } from "vscode-languageserver"
 import { types } from "util"
 import * as https from "https"
@@ -7,10 +13,9 @@ import { readConfiguration } from "./clientapis"
 import {
   type ClientConfiguration,
   type AuthHeadersResponse,
+  type BrowserSsoCookieUpdate,
   type CertAuthTransport,
   getAuthMethod,
-  createBrowserSsoClientOptions,
-  renewBrowserSsoCookies,
   Methods,
   type CommLogTogglePayload
 } from "vscode-abap-remote-fs-sharedapi"
@@ -229,61 +234,47 @@ function createServerBrowserSsoOptions(
   state: ServerConnectionState,
   conf: ClientConfiguration,
   generation: number,
-  setClient: (client: ADTClient) => void,
-  clientOptions: ReturnType<typeof createServerSslConfig>
+  setClient: (client: ADTClient) => void
 ) {
   let currentClient: ADTClient | undefined
-  let pending: Promise<{ cookieHeader: string; replace: true } | undefined> | undefined
   const isCurrent = () =>
     !!currentClient &&
     state.client === currentClient &&
     !state.removed &&
     state.generation === generation
-  const renew = async ({ reason, client }: { reason: string; client: ADTClient["httpClient"] }) => {
-    if (reason === "csrf") return undefined
-    const auth = await fetchAuthHeaders(conf.name)
-    if (!isCurrent()) return undefined
-    const cookieHeader = auth?.httpHeaders?.Cookie
-    if (reason === "initial-login" && cookieHeader) return { cookieHeader, replace: true as const }
-
-    const recovered = await renewBrowserSsoCookies(
-      client,
-      `browser-sso:${state.key}:language-server`,
-      reason === "expired" ? cookieHeader : undefined,
-      async () => {
-        const refreshed = await (
-          connection.sendRequest(Methods.recoverBrowserSso, state.key) as Promise<boolean>
-        ).catch(() => false)
-        if (!refreshed || !isCurrent()) return []
-        const refreshedAuth = await fetchAuthHeaders(conf.name)
-        if (!isCurrent()) return []
-        return (refreshedAuth?.httpHeaders?.Cookie ?? "")
-          .split(";")
-          .map(cookie => cookie.trim())
-          .filter(Boolean)
-      },
-      clientOptions
+  const pauseFeatures = () => {
+    if (!isCurrent()) return
+    blockBrowserSso(state)
+    connection.window.showWarningMessage(
+      `Syntax check and code completion for ${state.key} are paused because the SAP login was not completed. Run Connect for ${state.key} to resume.`
     )
-    if (recovered) return recovered
-    if (isCurrent()) {
-      blockBrowserSso(state)
-      connection.window.showWarningMessage(
-        `Syntax check and code completion for ${state.key} are paused because the SAP login was not completed. Run Connect for ${state.key} to resume.`
-      )
-    }
-    return undefined
   }
-  const sessionOptions = createBrowserSsoClientOptions(
-    `browser-sso:${state.key}:language-server`,
-    context => {
-      if (!isCurrent()) return Promise.resolve(undefined)
-      pending ??= renew(context).finally(() => (pending = undefined))
-      return pending!
+  const sessionOptions = createCookieSessionOptions({
+    id: `browser-sso:${state.key}`,
+    loadCookies: async () => {
+      const auth = await fetchAuthHeaders(conf.name)
+      if (!isCurrent()) return undefined
+      return auth?.httpHeaders?.Cookie
     },
-    client => {
+    acquireCookies: async () => {
+      if (!isCurrent()) return undefined
+      const cookieHeader = await connection.sendRequest(Methods.recoverBrowserSso, state.key)
+      if (!isCurrent()) return undefined
+      if (typeof cookieHeader !== "string" || !cookieHeader) {
+        pauseFeatures()
+        return undefined
+      }
+      return cookieHeader
+    },
+    onCookiesChanged: (cookieHeader: string) =>
+      connection.sendRequest(Methods.storeBrowserSsoCookies, {
+        connId: state.key,
+        cookieHeader
+      } satisfies BrowserSsoCookieUpdate),
+    onStatefulSessionLost: ({ client }) => {
       client.stateful = session_types.stateless
     }
-  )
+  })
   return {
     options: sessionOptions,
     setClient(client: ADTClient) {
@@ -353,15 +344,9 @@ const refreshClient = async (state: ServerConnectionState, conf: ClientConfigura
 
   const sso =
     authMethod === "browser_sso" && !conf.oauth
-      ? createServerBrowserSsoOptions(
-          state,
-          conf,
-          generation,
-          client => {
-            state.client = client
-          },
-          sslconf
-        )
+      ? createServerBrowserSsoOptions(state, conf, generation, client => {
+          state.client = client
+        })
       : undefined
   const baseclient = new ADTClient(
     conf.url,

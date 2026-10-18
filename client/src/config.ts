@@ -2,8 +2,7 @@ import {
   type ClientConfiguration,
   hasCertAuthConfig,
   hasOAuthOnPremConfig,
-  getAuthMethod,
-  createBrowserSsoClientOptions
+  getAuthMethod
 } from "vscode-abap-remote-fs-sharedapi"
 import type { Agent } from "https"
 import {
@@ -16,8 +15,13 @@ import {
   type ConfigurationChangeEvent
 } from "vscode"
 import { funWindow as window } from "./services/funMessenger"
-import { ADTClient, createSSLConfig, type LogCallback, type LogData } from "abap-adt-api"
-import type { AdtHTTP } from "abap-adt-api/build/AdtHTTP"
+import {
+  ADTClient,
+  createSSLConfig,
+  type CookieSessionClient,
+  type LogCallback,
+  type LogData
+} from "abap-adt-api"
 import { readFileSync } from "fs"
 import { PasswordVault, log } from "./lib"
 import { oauthLogin } from "./oauth"
@@ -26,7 +30,7 @@ import { CallLogger } from "./adt/adtCommLog"
 import {
   buildCertAuth,
   buildKerberosAuth,
-  createBrowserSsoSessionProvider,
+  createBrowserSsoClientOptions,
   clearCertPassphrase,
   clearKerberosCookies,
   clearSsoCookies
@@ -217,7 +221,7 @@ export function createClient(conf: RemoteConfig) {
  */
 export async function createAuthenticatedClient(
   conf: RemoteConfig,
-  onStatefulFailure?: (client: Pick<AdtHTTP, "stateful">) => void,
+  onStatefulFailure?: (client: CookieSessionClient) => void,
   onCookiesCaptured?: () => void
 ): Promise<ADTClient> {
   const authMethod = getAuthMethod(conf)
@@ -275,18 +279,10 @@ export async function createAuthenticatedClient(
     }
     case "browser_sso": {
       log.debug(`[auth] Building browser SSO auth for ${conf.name}`)
-      const provider = createBrowserSsoSessionProvider(
-        conf.name,
-        conf.url,
-        conf.client,
-        onCookiesCaptured,
-        sslconf
-      )
-      const sessionOptions = createBrowserSsoClientOptions(
-        provider.id,
-        provider.renew,
-        onStatefulFailure
-      )
+      const sessionOptions = createBrowserSsoClientOptions(conf.name, conf.url, conf.client, {
+        onStatefulFailure,
+        onCookiesChanged: onCookiesCaptured
+      })
       return new ADTClient(conf.url, conf.username, "browser-sso", conf.client, conf.language, {
         ...sslconf,
         ...sessionOptions

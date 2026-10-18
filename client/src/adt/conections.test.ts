@@ -96,7 +96,7 @@ const ssoClient = () => ({
 })
 
 describe("Browser SSO cookie refresh", () => {
-  it("coalesces capture requests and notifies the language server", async () => {
+  it("coalesces capture requests and returns the captured cookie header", async () => {
     const client = ssoClient()
     ssoConnection("provider-refresh-sso")
     vi.mocked(createAuthenticatedClient).mockResolvedValueOnce(client as any)
@@ -109,10 +109,13 @@ describe("Browser SSO cookie refresh", () => {
         refreshBrowserSsoCookies("PROVIDER-REFRESH-SSO"),
         refreshBrowserSsoCookies("provider-refresh-sso")
       ])
-    ).resolves.toEqual([true, true])
+    ).resolves.toEqual([
+      "MYSAPSSO2=fresh; SAP_SESSIONID_DEV_100=new",
+      "MYSAPSSO2=fresh; SAP_SESSIONID_DEV_100=new"
+    ])
 
     expect(captureBrowserSsoCookies).toHaveBeenCalledOnce()
-    expect(listener).toHaveBeenCalledExactlyOnceWith("provider-refresh-sso")
+    expect(listener).not.toHaveBeenCalled()
     expect(client.login).toHaveBeenCalledOnce()
   })
 
@@ -140,8 +143,19 @@ describe("Browser SSO cookie refresh", () => {
       authMethod: "browser_sso"
     })
 
-    await expect(refresh).resolves.toBe(false)
+    await expect(refresh).resolves.toBeUndefined()
     expect(captureBrowserSsoCookies).not.toHaveBeenCalled()
+  })
+
+  it("propagates capture cancellation to the requesting ADT client", async () => {
+    ssoConnection("cancelled-capture")
+    vi.mocked(captureBrowserSsoCookies).mockRejectedValueOnce(
+      new (__$mock_vscode as any).CancellationError()
+    )
+
+    await expect(refreshBrowserSsoCookies("cancelled-capture")).rejects.toBeInstanceOf(
+      (__$mock_vscode as any).CancellationError
+    )
   })
 })
 
