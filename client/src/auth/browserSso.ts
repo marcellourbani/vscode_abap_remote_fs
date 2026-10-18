@@ -20,7 +20,8 @@
 
 import * as http from "http"
 import { randomBytes } from "crypto"
-import { type AdtSessionProvider } from "abap-adt-api"
+import { type AdtSessionProvider, type ClientOptions } from "abap-adt-api"
+import { renewBrowserSsoCookies } from "vscode-abap-remote-fs-sharedapi"
 import { PasswordVault, log } from "../lib"
 import { formatKey } from "../config"
 import * as vscode from "vscode"
@@ -42,17 +43,36 @@ export function createBrowserSsoSessionProvider(
   connId: string,
   sapUrl: string,
   sapClient: string,
-  onCookiesCaptured?: () => void
+  onCookiesCaptured?: () => void,
+  clientOptions: ClientOptions = {}
 ): AdtSessionProvider {
+  const id = `browser-sso:${formatKey(connId)}`
   return {
-    id: `browser-sso:${formatKey(connId)}`,
+    id,
     logoutMode: "local-only",
-    async renew({ reason }) {
+    async renew({ reason, client }) {
       if (reason === "csrf") return undefined
       const generation = captureGenerations.get(formatKey(connId)) ?? 0
-      const savedCookies = reason === "initial-login" ? await getSsoCookies(connId) : []
+      const savedCookies =
+        reason === "initial-login" || reason === "expired" ? await getSsoCookies(connId) : []
       if ((captureGenerations.get(formatKey(connId)) ?? 0) !== generation)
         throw new vscode.CancellationError()
+      if (reason === "expired") {
+        const recovered = await renewBrowserSsoCookies(
+          client,
+          id,
+          savedCookies.length ? savedCookies.join("; ") : undefined,
+          async () => {
+            const cookies = await captureBrowserSsoCookies(connId, sapUrl, sapClient)
+            onCookiesCaptured?.()
+            return cookies
+          },
+          clientOptions
+        )
+        if ((captureGenerations.get(formatKey(connId)) ?? 0) !== generation)
+          throw new vscode.CancellationError()
+        return recovered
+      }
       const cookies =
         savedCookies.length > 0
           ? savedCookies

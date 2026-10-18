@@ -1,8 +1,54 @@
 import { ADTClient, session_types } from "abap-adt-api"
 import { HttpClientException, type HttpClientOptions } from "abap-adt-api/build/AdtHTTP"
-import { createBrowserSsoClientOptions } from "vscode-abap-remote-fs-sharedapi"
+import {
+  createBrowserSsoClientOptions,
+  renewBrowserSsoCookies
+} from "vscode-abap-remote-fs-sharedapi"
 
 const LOGIN_URL = "/sap/bc/adt/compatibility/graph"
+
+test("reuses a valid saved ticket and captures fresh cookies when SAP rejects it", async () => {
+  const client = new ADTClient("https://sap.example.com", "developer", "placeholder", "100", "EN")
+  const transport = (client.httpClient as any).httpclient
+  const captures = vi.fn().mockResolvedValue(["MYSAPSSO2=fresh"])
+  transport.request = vi.fn(async (request: HttpClientOptions) => {
+    if (request.url === LOGIN_URL && request.headers?.Cookie === "MYSAPSSO2=cached")
+      throw new HttpClientException("Unauthorized", undefined, 401, undefined, request, {
+        status: 401,
+        statusText: "Unauthorized",
+        body: "",
+        headers: {}
+      })
+    return { status: 200, statusText: "OK", body: "", headers: { "x-csrf-token": "token" } }
+  })
+
+  const recovered = await renewBrowserSsoCookies(
+    client.httpClient,
+    "browser-sso:test",
+    "MYSAPSSO2=cached",
+    captures
+  )
+
+  expect(recovered).toEqual({ cookieHeader: "MYSAPSSO2=fresh", replace: true })
+  expect(captures).toHaveBeenCalledOnce()
+})
+
+test("does not open a browser when the saved ticket still works", async () => {
+  const client = new ADTClient("https://sap.example.com", "developer", "placeholder", "100", "EN")
+  const transport = (client.httpClient as any).httpclient
+  const captures = vi.fn()
+  transport.request = vi.fn(async () => ({
+    status: 200,
+    statusText: "OK",
+    body: "",
+    headers: { "x-csrf-token": "token" }
+  }))
+
+  await expect(
+    renewBrowserSsoCookies(client.httpClient, "browser-sso:test", "MYSAPSSO2=cached", captures)
+  ).resolves.toEqual({ cookieHeader: "MYSAPSSO2=cached", replace: true })
+  expect(captures).not.toHaveBeenCalled()
+})
 
 test("renews a stateful session without replaying the failed request", async () => {
   const renew = vi.fn(async () => ({ cookieHeader: "MYSAPSSO2=fresh", replace: true as const }))

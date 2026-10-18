@@ -1,4 +1,5 @@
 import { ADTClient, session_types, type ClientOptions, createSSLConfig } from "abap-adt-api"
+import type { AdtHTTP } from "abap-adt-api/build/AdtHTTP"
 import { type ClientConfiguration } from "vscode-abap-remote-fs-sharedapi"
 import * as https from "https"
 import { readFileSync, existsSync } from "fs"
@@ -8,7 +9,10 @@ import { futureToken } from "../../oauth"
 import { createHash } from "crypto"
 import { getKerberosCookies } from "../../auth/kerberos"
 import { getSsoCookies } from "../../auth/browserSso"
-import { createBrowserSsoClientOptions } from "vscode-abap-remote-fs-sharedapi"
+import {
+  createBrowserSsoClientOptions,
+  renewBrowserSsoCookies
+} from "vscode-abap-remote-fs-sharedapi"
 import { refreshBrowserSsoCookies } from "../conections"
 import { getCertPassphrase } from "../../auth/certificate"
 import { buildOAuthOnPremAuth } from "../../auth/oauthOnPrem"
@@ -135,14 +139,27 @@ export async function newClientFromKey(key: string, options: Partial<ClientOptio
 
     if (authMethod === "browser_sso" && !conf.oauth) {
       const connectionKey = formatKey(conf.name)
-      const renew = async ({ reason }: { reason: string }) => {
+      const probeOptions = { ...sslconf }
+      const renew = async ({ reason, client }: { reason: string; client: AdtHTTP }) => {
         if (reason === "csrf") return undefined
-        let cookies = reason === "initial-login" ? await getSsoCookies(connectionKey) : []
+        const cookies = await getSsoCookies(connectionKey)
+        if (reason === "expired")
+          return renewBrowserSsoCookies(
+            client,
+            `browser-sso:${connectionKey}:debugger`,
+            cookies.length ? cookies.join("; ") : undefined,
+            async () => {
+              if (!(await refreshBrowserSsoCookies(conf.name))) return []
+              return getSsoCookies(connectionKey)
+            },
+            probeOptions
+          )
         if (!cookies.length) {
           if (!(await refreshBrowserSsoCookies(conf.name))) return undefined
-          cookies = await getSsoCookies(connectionKey)
+          const captured = await getSsoCookies(connectionKey)
+          if (!captured.length) return undefined
+          return { cookieHeader: captured.join("; "), replace: true }
         }
-        if (!cookies.length) return undefined
         return { cookieHeader: cookies.join("; "), replace: true }
       }
       Object.assign(

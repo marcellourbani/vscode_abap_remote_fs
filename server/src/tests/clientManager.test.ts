@@ -29,6 +29,10 @@ vi.mock("vscode-abap-remote-fs-sharedapi", () => ({
     extensions: [],
     onStatefulFailure
   })),
+  renewBrowserSsoCookies: vi.fn(async (_client, _id, _cached, capture) => {
+    const cookies = await capture()
+    return cookies.length ? { cookieHeader: cookies.join("; "), replace: true } : undefined
+  }),
   Methods: { getAuthHeaders: "getAuthHeaders", recoverBrowserSso: "recoverBrowserSso" }
 }))
 
@@ -203,7 +207,9 @@ test("a failed provider renewal pauses features until Browser SSO completes", as
     })
     readConfiguration.mockResolvedValueOnce(conf)
     await clientFromKey("relogin-sso")
-    sendRequest.mockResolvedValueOnce(false)
+    sendRequest.mockImplementation(async (method: string) =>
+      method === "recoverBrowserSso" ? false : { httpHeaders: { Cookie: "MYSAPSSO2=stale" } }
+    )
     const provider = vi.mocked(ADTClient).mock.calls.at(-1)?.[5]?.session
     if (!provider) throw new Error("Browser SSO session provider was not configured")
     await expect(

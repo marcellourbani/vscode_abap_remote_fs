@@ -279,7 +279,8 @@ export async function createAuthenticatedClient(
         conf.name,
         conf.url,
         conf.client,
-        onCookiesCaptured
+        onCookiesCaptured,
+        sslconf
       )
       const sessionOptions = createBrowserSsoClientOptions(
         provider.id,

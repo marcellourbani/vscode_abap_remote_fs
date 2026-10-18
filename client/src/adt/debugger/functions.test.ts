@@ -52,7 +52,12 @@ vi.mock("vscode-abap-remote-fs-sharedapi", () => ({
   createBrowserSsoClientOptions: vi.fn((id, renew) => ({
     session: { id, logoutMode: "local-only", renew },
     extensions: []
-  }))
+  })),
+  renewBrowserSsoCookies: vi.fn(async (_client, _id, cachedCookieHeader, capture) => {
+    if (cachedCookieHeader) return { cookieHeader: cachedCookieHeader, replace: true }
+    const cookies = await capture()
+    return cookies.length ? { cookieHeader: cookies.join("; "), replace: true } : undefined
+  })
 }))
 vi.mock("crypto", () => ({
   createHash: vi.fn(function () {
@@ -68,7 +73,10 @@ import { ADTClient, createSSLConfig } from "abap-adt-api"
 import { configFromKey } from "../../langClient"
 import { futureToken } from "../../oauth"
 import { getSsoCookies } from "../../auth/browserSso"
-import { createBrowserSsoClientOptions } from "vscode-abap-remote-fs-sharedapi"
+import {
+  createBrowserSsoClientOptions,
+  renewBrowserSsoCookies
+} from "vscode-abap-remote-fs-sharedapi"
 import { refreshBrowserSsoCookies } from "../conections"
 import type { MockedClass, MockedFunction, Mock } from "vitest"
 
@@ -163,23 +171,23 @@ describe("newClientFromKey", () => {
     expect(createBrowserSsoClientOptions).toHaveBeenCalledOnce()
   })
 
-  test("refreshes cookies through the provider after an expired debugger session", async () => {
+  test("reuses saved cookies before capturing after an expired debugger session", async () => {
     const client = { statelessClone: {} }
     MockADTClient.mockImplementationOnce(function () {
       return client as any
     })
     mockConfigFromKey.mockResolvedValueOnce({ ...baseConf, authMethod: "browser_sso" })
-    vi.mocked(getSsoCookies).mockResolvedValueOnce(["MYSAPSSO2=fresh"])
-    vi.mocked(refreshBrowserSsoCookies).mockResolvedValueOnce(true)
+    vi.mocked(getSsoCookies).mockResolvedValueOnce(["MYSAPSSO2=cached"])
 
     await newClientFromKey("somekey")
     const provider = MockADTClient.mock.calls[0]?.[5]?.session
     if (!provider) throw new Error("Browser SSO session provider was not configured")
     await expect(provider.renew({ reason: "expired", client: client as any })).resolves.toEqual({
-      cookieHeader: "MYSAPSSO2=fresh",
+      cookieHeader: "MYSAPSSO2=cached",
       replace: true
     })
-    expect(refreshBrowserSsoCookies).toHaveBeenCalledExactlyOnceWith("myconn")
+    expect(renewBrowserSsoCookies).toHaveBeenCalledOnce()
+    expect(refreshBrowserSsoCookies).not.toHaveBeenCalled()
   })
 
   test("passes extra options to ADTClient on HTTPS", async () => {

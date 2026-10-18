@@ -10,6 +10,7 @@ import {
   type CertAuthTransport,
   getAuthMethod,
   createBrowserSsoClientOptions,
+  renewBrowserSsoCookies,
   Methods,
   type CommLogTogglePayload
 } from "vscode-abap-remote-fs-sharedapi"
@@ -228,7 +229,8 @@ function createServerBrowserSsoOptions(
   state: ServerConnectionState,
   conf: ClientConfiguration,
   generation: number,
-  setClient: (client: ADTClient) => void
+  setClient: (client: ADTClient) => void,
+  clientOptions: ReturnType<typeof createServerSslConfig>
 ) {
   let currentClient: ADTClient | undefined
   let pending: Promise<{ cookieHeader: string; replace: true } | undefined> | undefined
@@ -237,23 +239,32 @@ function createServerBrowserSsoOptions(
     state.client === currentClient &&
     !state.removed &&
     state.generation === generation
-  const renew = async ({ reason }: { reason: string }) => {
+  const renew = async ({ reason, client }: { reason: string; client: ADTClient["httpClient"] }) => {
     if (reason === "csrf") return undefined
-    if (reason === "initial-login") {
-      const auth = await fetchAuthHeaders(conf.name)
-      if (!isCurrent()) return undefined
-      const cookieHeader = auth?.httpHeaders?.Cookie
-      if (cookieHeader) return { cookieHeader, replace: true as const }
-    }
-    const refreshed = await (
-      connection.sendRequest(Methods.recoverBrowserSso, state.key) as Promise<boolean>
-    ).catch(() => false)
-    if (refreshed && isCurrent()) {
-      const auth = await fetchAuthHeaders(conf.name)
-      if (!isCurrent()) return undefined
-      const cookieHeader = auth?.httpHeaders?.Cookie
-      if (cookieHeader) return { cookieHeader, replace: true as const }
-    }
+    const auth = await fetchAuthHeaders(conf.name)
+    if (!isCurrent()) return undefined
+    const cookieHeader = auth?.httpHeaders?.Cookie
+    if (reason === "initial-login" && cookieHeader) return { cookieHeader, replace: true as const }
+
+    const recovered = await renewBrowserSsoCookies(
+      client,
+      `browser-sso:${state.key}:language-server`,
+      reason === "expired" ? cookieHeader : undefined,
+      async () => {
+        const refreshed = await (
+          connection.sendRequest(Methods.recoverBrowserSso, state.key) as Promise<boolean>
+        ).catch(() => false)
+        if (!refreshed || !isCurrent()) return []
+        const refreshedAuth = await fetchAuthHeaders(conf.name)
+        if (!isCurrent()) return []
+        return (refreshedAuth?.httpHeaders?.Cookie ?? "")
+          .split(";")
+          .map(cookie => cookie.trim())
+          .filter(Boolean)
+      },
+      clientOptions
+    )
+    if (recovered) return recovered
     if (isCurrent()) {
       blockBrowserSso(state)
       connection.window.showWarningMessage(
@@ -267,7 +278,7 @@ function createServerBrowserSsoOptions(
     context => {
       if (!isCurrent()) return Promise.resolve(undefined)
       pending ??= renew(context).finally(() => (pending = undefined))
-      return pending
+      return pending!
     },
     client => {
       client.stateful = session_types.stateless
@@ -342,9 +353,15 @@ const refreshClient = async (state: ServerConnectionState, conf: ClientConfigura
 
   const sso =
     authMethod === "browser_sso" && !conf.oauth
-      ? createServerBrowserSsoOptions(state, conf, generation, client => {
-          state.client = client
-        })
+      ? createServerBrowserSsoOptions(
+          state,
+          conf,
+          generation,
+          client => {
+            state.client = client
+          },
+          sslconf
+        )
       : undefined
   const baseclient = new ADTClient(
     conf.url,
