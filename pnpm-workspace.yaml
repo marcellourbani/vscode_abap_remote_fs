@@ -13,10 +13,13 @@ allowBuilds:
 catalog:
   "@types/node": ^22.0.0
   "@types/vscode": ^1.104.0
-  abap-adt-api: ^8.4.3
+  abap-adt-api: ^9.2.0
   entities: ^8.1.0
   fast-xml-parser: ^5.11.1
   tsdown: 0.23.0
   typescript: 6.0.3
   vitest: 5.0.0
   vitest-mock-extended: 5.1.1
+
+minimumReleaseAgeExclude:
+  - abap-adt-api@9.2.0

@@ -1,4 +1,4 @@
-import { type DebugBreakpoint, isDebuggerBreakpoint } from "abap-adt-api"
+import { type DebugBreakpoint, isDebugLineBreakpoint, isDebuggerBreakpoint } from "abap-adt-api"
 import { AbapFile, isAbapFile } from "abapfs"
 import { Uri } from "vscode"
 import { Breakpoint, Source } from "@vscode/debugadapter"
@@ -132,6 +132,7 @@ export class BreakpointManager {
     const deleted = oldbps
       .map(o => o.adtBp)
       .filter(isDefined)
+      .filter(isDebugLineBreakpoint)
       .filter(o => !breakpoints.find(b => b.line === o.uri.range.start.line))
     for (const bp of deleted)
       await client.statelessClone
@@ -158,7 +159,7 @@ export class BreakpointManager {
     const conditional = breakpoints.filter(b => b.condition)
     let newbps: (string | DebugBreakpoint)[] = bps
     if (conditional.length) {
-      newbps = actualbps.filter(isDebuggerBreakpoint).map(b => {
+      newbps = actualbps.filter(isDebugLineBreakpoint).map(b => {
         const cond = conditional.find(c => c.line === b.uri.range.start.line)
         if (cond?.condition) return { ...b, condition: cond.condition }
         return b
@@ -213,9 +214,9 @@ export class BreakpointManager {
 
     const confirmed = breakpoints.map(bp => {
       const actual = actualbps.find(
-        a => isDebuggerBreakpoint(a) && a.uri.range.start.line === bp.line
+        a => isDebugLineBreakpoint(a) && a.uri.range.start.line === bp.line
       )
-      if (actual && isDebuggerBreakpoint(actual)) {
+      if (actual && isDebugLineBreakpoint(actual)) {
         const src = new Source(name || "", path)
         return new AdtBreakpoint(true, actual, bp.line, 0, src)
       }

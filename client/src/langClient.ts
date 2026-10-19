@@ -2,6 +2,7 @@ import {
   type MainProgram,
   type CommLogEntryData,
   type AuthHeadersResponse,
+  type BrowserSsoCookieUpdate,
   getAuthMethod,
   hasCertAuthConfig,
   hasOAuthOnPremConfig
@@ -34,6 +35,7 @@ import {
   ADTSCHEME,
   uriRoot,
   getClient,
+  announceBrowserSsoLogin,
   onBrowserSsoLogin,
   refreshBrowserSsoCookies
 } from "./adt/conections"
@@ -44,7 +46,7 @@ import { IncludeService, IncludeProvider } from "./adt/includes"
 import { funWindow as window } from "./services/funMessenger"
 import { buildCookieHeaders, errorMessage } from "./auth/utils"
 import { getKerberosCookies, refreshKerberosAuth } from "./auth/kerberos"
-import { getSsoCookies } from "./auth/browserSso"
+import { getSsoCookies, storeSsoCookieHeader } from "./auth/browserSso"
 import { getCertPassphrase } from "./auth/certificate"
 import { buildOAuthOnPremAuth } from "./auth/oauthOnPrem"
 
@@ -239,6 +241,13 @@ async function getAuthHeaders(connId: string): Promise<AuthHeadersResponse | und
   }
 }
 
+async function storeBrowserSsoCookies(input: BrowserSsoCookieUpdate) {
+  if (!input || typeof input.connId !== "string" || typeof input.cookieHeader !== "string")
+    throw new Error("Invalid Browser SSO cookie update")
+  await storeSsoCookieHeader(input.connId, input.cookieHeader)
+  announceBrowserSsoLogin(input.connId)
+}
+
 let setProgress: ((prog: SearchProgress) => void) | undefined
 async function setSearchProgress(searchProg: SearchProgress) {
   if (setProgress) setProgress(searchProg)
@@ -336,6 +345,7 @@ export async function startLanguageClient(context: ExtensionContext) {
       client.onRequest(Methods.getAuthHeaders, getAuthHeaders)
       // Interactive browser work belongs in the extension host, not the language-server process.
       client.onRequest(Methods.recoverBrowserSso, refreshBrowserSsoCookies)
+      client.onRequest(Methods.storeBrowserSsoCookies, storeBrowserSsoCookies)
       client.onNotification(Methods.commLogEntry, (entry: CommLogEntryData) =>
         CallLogger.get(entry.connId)?.add(hidrateLogData(entry.logData))
       )

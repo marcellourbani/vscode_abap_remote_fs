@@ -1,11 +1,4 @@
 import { type LogData } from "abap-adt-api"
-export {
-  attachBrowserSsoCookies,
-  isBrowserSsoSessionExpired,
-  loginWithBrowserSsoCookies,
-  onBrowserSsoAuthFailure,
-  replaceBrowserSsoCookies
-} from "./browserSsoCookieSession"
 export enum Methods {
   objectDetails = "vscabap.objDetails",
   readConfiguration = "vscabap.readConfig",
@@ -18,10 +11,16 @@ export enum Methods {
   getToken = "vscabap.getToken",
   getAuthHeaders = "vscabap.getAuthHeaders",
   recoverBrowserSso = "vscabap.recoverBrowserSso",
+  storeBrowserSsoCookies = "vscabap.storeBrowserSsoCookies",
   triggerSyntaxCheck = "vscabap.triggerSyntaxCheck",
   commLogEntry = "vscabap.commLogEntry",
   commLogToggle = "vscabap.commLogToggle",
   browserSsoLogin = "vscabap.browserSsoLogin"
+}
+
+export interface BrowserSsoCookieUpdate {
+  connId: string
+  cookieHeader: string
 }
 
 export interface AbapObjectDetail {

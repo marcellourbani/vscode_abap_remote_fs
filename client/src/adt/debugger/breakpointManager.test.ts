@@ -1,4 +1,7 @@
 vi.mock("abap-adt-api", () => ({
+  isDebugLineBreakpoint: vi.fn(function (bp: any) {
+    return bp && bp.kind === "line"
+  }),
   isDebuggerBreakpoint: vi.fn(function (bp: any) {
     return bp && bp.__isDebuggerBP === true
   })
@@ -187,6 +190,30 @@ describe("BreakpointManager", () => {
       // syncBreakpoints returns one AdtBreakpoint per input breakpoint, unverified when no match found
       expect(bps).toHaveLength(1)
       expect(bps[0].verified).toBe(false)
+    })
+
+    test("ignores non-line ADT breakpoints when matching source breakpoints", async () => {
+      const messageBp = { __isDebuggerBP: true, msgId: "ZMSG", kind: "message" }
+      const client = makeAdtClient({
+        statelessClone: makeStatelessClient({
+          debuggerSetBreakpoints: vi.fn().mockResolvedValue([messageBp])
+        })
+      })
+      mockGetClient.mockReturnValueOnce(client as any)
+      const bpm = new BreakpointManager(makeListener({ activeThreads: [] }))
+      const node = makeAbapNode()
+      mockGetRoot.mockReturnValueOnce({ getNodeAsync: vi.fn().mockResolvedValue(node) } as any)
+      mockIsAbapFile.mockReturnValueOnce(true)
+      mockIsDebuggerBP.mockReturnValue(true)
+
+      const path = "adt://TST/sap/bc/adt/programs/programs/ZPROG"
+      ;(bpm as any).breakpoints.set(path, [{ adtBp: messageBp, verified: true }])
+      const result = await bpm.setBreakpoints({ path, name: "ZPROG" }, [
+        { line: 10, condition: "sy-subrc = 0" }
+      ])
+
+      expect(result).toHaveLength(1)
+      expect(result[0].verified).toBe(false)
     })
 
     test("handles exception in syncBreakpoints gracefully", async () => {

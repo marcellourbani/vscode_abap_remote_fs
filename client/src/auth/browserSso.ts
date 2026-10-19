@@ -20,7 +20,12 @@
 
 import * as http from "http"
 import { randomBytes } from "crypto"
-import { type AuthResult } from "./types"
+import {
+  createCookieSessionOptions,
+  type CookieSessionAcquisitionContext,
+  type CookieSessionClient,
+  type CookieSessionOptions
+} from "abap-adt-api"
 import { PasswordVault, log } from "../lib"
 import { formatKey } from "../config"
 import * as vscode from "vscode"
@@ -36,6 +41,48 @@ const captureGenerations = new Map<string, number>()
 
 interface CookieCaptureRequest {
   cookies?: string
+}
+
+export function createBrowserSsoClientOptions(
+  connId: string,
+  sapUrl: string,
+  sapClient: string,
+  callbacks: {
+    acquireCookies?: (context: CookieSessionAcquisitionContext) => Promise<string | undefined>
+    onStatefulFailure?: (client: CookieSessionClient) => void | Promise<void>
+    onCookiesChanged?: () => void | Promise<void>
+    signal?: CookieSessionOptions["signal"]
+  } = {}
+) {
+  return createCookieSessionOptions({
+    id: `browser-sso:${formatKey(connId)}`,
+    loadCookies: async () => {
+      const cookies = await getSsoCookies(connId)
+      return cookies.length ? cookies.join("; ") : undefined
+    },
+    acquireCookies:
+      callbacks.acquireCookies ??
+      (async () => {
+        const cookies = await captureBrowserSsoCookies(connId, sapUrl, sapClient)
+        return cookies.length ? cookies.join("; ") : undefined
+      }),
+    signal: callbacks.signal,
+    onCookiesChanged: async cookieHeader => {
+      await storeSsoCookieHeader(connId, cookieHeader)
+      await callbacks.onCookiesChanged?.()
+    },
+    onStatefulSessionLost: ({ client }) => callbacks.onStatefulFailure?.(client)
+  })
+}
+
+export async function storeSsoCookieHeader(connId: string, cookieHeader: string) {
+  await storeSsoCookies(
+    connId,
+    cookieHeader
+      .split(";")
+      .map(cookie => cookie.trim())
+      .filter(Boolean)
+  )
 }
 
 function getListeningPort(server: http.Server): number {
@@ -58,10 +105,7 @@ function captureCookiesOnce(connId: string, loginUrl: string): Promise<string[]>
       vscodeSsoNotify,
       controller.signal
     )
-      .then(async cookies => {
-        // Check on both sides of the vault write so a disconnect cannot publish a late result.
-        if (controller.signal.aborted) throw new vscode.CancellationError()
-        await storeSsoCookies(connId, cookies)
+      .then(cookies => {
         if (controller.signal.aborted) throw new vscode.CancellationError()
         return cookies
       })
@@ -338,34 +382,7 @@ function vscodeSsoNotify(helperUrl: string) {
     })
 }
 
-/**
- * Build an AuthResult using stored or freshly captured SSO cookies.
- */
-export async function buildBrowserSsoAuth(
-  connId: string,
-  sapUrl: string,
-  sapClient: string
-): Promise<AuthResult> {
-  log.debug(`[browser-sso] buildBrowserSsoAuth starting for ${connId}`)
-  const generation = captureGenerations.get(formatKey(connId)) ?? 0
-  let cookies = await getSsoCookies(connId)
-  if ((captureGenerations.get(formatKey(connId)) ?? 0) !== generation)
-    throw new vscode.CancellationError()
-  if (cookies.length === 0) {
-    log.debug(`[browser-sso] No cached cookies, starting cookie capture for ${connId}`)
-    cookies = await captureBrowserSsoCookies(connId, sapUrl, sapClient)
-  }
-
-  const headers = buildCookieHeaders(cookies)
-
-  log.debug(`[browser-sso] buildBrowserSsoAuth complete for ${connId}: ${cookies.length} cookies`)
-  return {
-    passwordOrFetcher: "browser-sso",
-    ...(headers ? { headers } : {})
-  }
-}
-
-/** Open the browser login and store the captured cookies, joining a login already open. */
+/** Open the browser login and capture cookies, joining a login already open. */
 export function captureBrowserSsoCookies(connId: string, sapUrl: string, sapClient: string) {
   // This lightweight ADT endpoint establishes the SAP session without loading repository data.
   const loginUrl = `${sapUrl}/sap/bc/adt/compatibility/graph?sap-client=${encodeURIComponent(sapClient)}`
