@@ -22,6 +22,16 @@ The Connection Manager is a visual interface for adding, editing, and organizing
 | **OAuth** | Client ID, secret, login URL |
 | **Advanced** | ATC approver, ATC check variant, max debug threads, diff formatter |
 
+## Self-Signed Certificates in VS Code
+
+If a connection fails after enabling **Allow self-signed certificates**, try setting VS Code's `http.proxySupport` setting to `fallback`:
+
+```json
+"http.proxySupport": "fallback"
+```
+
+Open **Preferences: Open User Settings (JSON)** from the Command Palette to add the setting. In some recent VS Code versions, the built-in HTTPS handling can ignore the certificate option used by ABAP FS. This workaround was reported to resolve that behavior. It may affect proxy handling, so restore the previous value if you rely on VS Code's proxy configuration and it causes problems.
+
 ## Import / Export
 
 - **Export** — saves all connections to a JSON file (passwords excluded) for backup or sharing with colleagues.

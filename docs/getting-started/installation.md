@@ -27,6 +27,7 @@ Before proceeding, ensure you meet the [Prerequisites](prerequisite.md).
 **Tips:**
 
 - Passwords are stored in the OS credential manager, not in settings files.
+- If a connection using a self-signed certificate fails, see [Self-Signed Certificates in VS Code](connection-manager.md#self-signed-certificates-in-vs-code).
 - If a colleague already has connections configured, ask them to export via **Import/Export** and send you the JSON. User IDs and passwords are excluded from exports. You can then import and update your credentials in bulk using **Bulk Operations**.
 - For SAP BTP systems, use **Cloud Support** to create a connection from a BTP Service Key or Endpoint.
 
