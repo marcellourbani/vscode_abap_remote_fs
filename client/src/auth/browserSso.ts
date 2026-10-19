@@ -43,6 +43,15 @@ interface CookieCaptureRequest {
   cookies?: string
 }
 
+// A stale SAP session context must not be reused by a renewed login
+const withoutContextId = (cookies: string[]) =>
+  cookies.filter(cookie => !/^\s*sap-contextid\s*=/i.test(cookie))
+
+const toCookieHeader = (cookies: string[]) => {
+  const usable = withoutContextId(cookies)
+  return usable.length ? usable.join("; ") : undefined
+}
+
 export function createBrowserSsoClientOptions(
   connId: string,
   sapUrl: string,
@@ -57,15 +66,15 @@ export function createBrowserSsoClientOptions(
   return createCookieSessionOptions({
     id: `browser-sso:${formatKey(connId)}`,
     loadCookies: async () => {
-      const cookies = await getSsoCookies(connId)
-      return cookies.length ? cookies.join("; ") : undefined
+      return toCookieHeader(await getSsoCookies(connId))
     },
-    acquireCookies:
-      callbacks.acquireCookies ??
-      (async () => {
-        const cookies = await captureBrowserSsoCookies(connId, sapUrl, sapClient)
-        return cookies.length ? cookies.join("; ") : undefined
-      }),
+    acquireCookies: async context => {
+      if (callbacks.acquireCookies) {
+        const header = await callbacks.acquireCookies(context)
+        return header && toCookieHeader(header.split(";").map(c => c.trim()))
+      }
+      return toCookieHeader(await captureBrowserSsoCookies(connId, sapUrl, sapClient))
+    },
     signal: callbacks.signal,
     onCookiesChanged: async cookieHeader => {
       await storeSsoCookieHeader(connId, cookieHeader)

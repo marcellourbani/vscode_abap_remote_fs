@@ -48,6 +48,25 @@ describe("Browser SSO cookie-session options", () => {
     expect(onCookiesChanged).not.toHaveBeenCalled()
   })
 
+  test("drops stale sap-contextid from saved and acquired cookies", async () => {
+    const vault = {
+      getPassword: vi.fn().mockResolvedValue('["MYSAPSSO2=ticket","sap-contextid=old"]'),
+      setPassword: vi.fn(),
+      deletePassword: vi.fn()
+    }
+    vi.mocked(PasswordVault.get).mockReturnValue(vault as any)
+    const options = createBrowserSsoClientOptions("DEV100", "https://sap.example.com", "100", {
+      acquireCookies: async () => "SAP-CONTEXTID=old; MYSAPSSO2=fresh"
+    })
+
+    await expect(
+      options.session?.renew({ reason: "initial-login", client: {} as any })
+    ).resolves.toEqual({ cookieHeader: "MYSAPSSO2=ticket", replace: true })
+    await expect(options.session?.renew({ reason: "expired", client: {} as any })).resolves.toEqual(
+      { cookieHeader: "MYSAPSSO2=fresh", replace: true }
+    )
+  })
+
   test("acquires cookies through the injected host callback", async () => {
     const vault = {
       getPassword: vi.fn().mockResolvedValue(undefined),
