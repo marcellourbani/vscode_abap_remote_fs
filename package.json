@@ -47,7 +47,8 @@
   ],
   "activationEvents": [
     "onFileSystem:adt",
-    "onNotebook:sap-data-workbook"
+    "onNotebook:sap-data-workbook",
+    "onView:abapfs.views.agentChat"
   ],
   "main": "./client/dist/extension.js",
   "scripts": {
@@ -410,6 +411,13 @@
           "title": "ADT Communication Log",
           "icon": "$(radio-tower)"
         }
+      ],
+      "secondarySidebar": [
+        {
+          "id": "abapfsAgents",
+          "title": "ABAP FS - Agent Chat",
+          "icon": "$(hubot)"
+        }
       ]
     },
     "viewsWelcome": [
@@ -419,6 +427,16 @@
       }
     ],
     "views": {
+      "abapfsAgents": [
+        {
+          "type": "webview",
+          "id": "abapfs.views.agentChat",
+          "name": "Agent Chat",
+          "when": "config.abapfs.acp.enabled",
+          "contextualTitle": "ABAP FS - Agent Chat",
+          "icon": "$(hubot)"
+        }
+      ],
       "abapfsCommLog": [
         {
           "type": "webview",
@@ -2053,7 +2071,7 @@
       {
         "name": "abapfs_get_workspace_uri",
         "displayName": "Get ABAP Object Workspace URI",
-        "modelDescription": "Get adt:// workspace URI for an ABAP object — usable with standard VS Code file ops (replace_string_in_file etc.) and/or replace_string_in_abap_object if available. Use when modifying/editing objects in editor OR when user asks to open file in editor. All params MANDATORY for exact object identification. NOTE: for function modules, pass the parent function group name with 'FUGR/F' type, NOT 'FUGR/FF'.",
+        "modelDescription": "Get adt:// workspace URI for an ABAP object — usable with replace_string_in_abap_object (preferred for ABAP edits) or standard VS Code file ops. Use when modifying/editing objects in editor OR when user asks to open file in editor. All params MANDATORY for exact object identification. NOTE: for function modules, pass the parent function group name with 'FUGR/F' type, NOT 'FUGR/FF'.",
         "canBeReferencedInPrompt": true,
         "toolReferenceName": "abapfs_get_workspace_uri",
         "icon": "$(link)",
@@ -2768,6 +2786,84 @@
           "required": [
             "objectName",
             "connectionId"
+          ]
+        },
+        "tags": [
+          "abap-fs"
+        ],
+        "when": "abapfs:extensionActive && !abapfs:noSapConnected"
+      },
+      {
+        "name": "replace_string_in_abap_object",
+        "displayName": "Replace String in ABAP Object",
+        "modelDescription": "Edit ABAP source code (adt:// files) by replacing one exact text string with new text. Use this for ABAP edits; generic file edit tools may not be able to write adt:// files. The oldString must match EXACTLY ONE occurrence in the file - include 3-5 lines of surrounding context to ensure uniqueness. The file is automatically locked, saved to SAP, and unlocked. Prerequisites: call abapfs_get_workspace_uri to get the fileUri, then abapfs_get_object_source or abapfs_search_object_source to read the current content before editing. oldString is mandatory whenever the file has any content; an empty oldString is accepted ONLY when the file is completely blank (e.g. a freshly created object), in which case newString becomes the whole file. First call abapfs_get_object_transport_status for the exact object. Never invent a transport number or description: use an existing request only after the user approves it, or create a request only when the user explicitly asks and supplies or approves the description. This tool verifies that SAP's inactive source matches the requested replacement. After editing, read the source with version inactive when inspecting pending source, check diagnostics, and activate with abapfs_activate_object.",
+        "canBeReferencedInPrompt": true,
+        "toolReferenceName": "replace_string_in_abap_object",
+        "icon": "$(edit)",
+        "userDescription": "Edit ABAP source by replacing an exact text string",
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "fileUri": {
+              "type": "string",
+              "description": "The full adt:// workspace URI of the ABAP source file. Get it with abapfs_get_workspace_uri."
+            },
+            "oldString": {
+              "type": "string",
+              "description": "The exact literal text to replace. Must match exactly one occurrence, including whitespace and indentation. Include 3-5 lines of surrounding context. May be empty ONLY if the file is currently completely blank."
+            },
+            "newString": {
+              "type": "string",
+              "description": "The replacement text. The resulting code must be syntactically valid ABAP."
+            },
+            "transportChoice": {
+              "description": "Optional explicit transport for this write. Never choose one without user direction. Omit to keep the normal interactive transport picker.",
+              "oneOf": [
+                {
+                  "type": "object",
+                  "properties": {
+                    "type": {
+                      "type": "string",
+                      "enum": [
+                        "existing"
+                      ]
+                    },
+                    "number": {
+                      "type": "string",
+                      "description": "Exact user-approved existing transport request."
+                    }
+                  },
+                  "required": [
+                    "type",
+                    "number"
+                  ]
+                },
+                {
+                  "type": "object",
+                  "properties": {
+                    "type": {
+                      "type": "string",
+                      "enum": [
+                        "new"
+                      ]
+                    },
+                    "description": {
+                      "type": "string",
+                      "description": "User-supplied or explicitly approved new request description."
+                    }
+                  },
+                  "required": [
+                    "type",
+                    "description"
+                  ]
+                }
+              ]
+            }
+          },
+          "required": [
+            "fileUri",
+            "oldString",
+            "newString"
           ]
         },
         "tags": [
@@ -4081,6 +4177,113 @@
     ],
     "commands": [
       {
+        "command": "abapfs.editReview.keep",
+        "title": "Keep ABAP Edits",
+        "category": "ABAP FS",
+        "icon": "$(check)"
+      },
+      {
+        "command": "abapfs.editReview.undo",
+        "title": "Undo ABAP Edits",
+        "category": "ABAP FS",
+        "icon": "$(discard)"
+      },
+      {
+        "command": "abapfs.editReview.showDiff",
+        "title": "Show ABAP Edit Changes",
+        "category": "ABAP FS",
+        "icon": "$(diff)"
+      },
+      {
+        "command": "abapfs.acp.connectAgent",
+        "title": "Connect",
+        "category": "ABAP FS Agents",
+        "icon": "$(plug)"
+      },
+      {
+        "command": "abapfs.acp.newConversation",
+        "title": "New Chat",
+        "category": "ABAP FS Agents",
+        "icon": "$(add)"
+      },
+      {
+        "command": "abapfs.acp.showHistory",
+        "title": "Show Chats...",
+        "category": "ABAP FS Agents",
+        "icon": "$(history)"
+      },
+      {
+        "command": "abapfs.acp.sendPrompt",
+        "title": "Focus Chat",
+        "category": "ABAP FS Agents"
+      },
+      {
+        "command": "abapfs.acp.cancelTurn",
+        "title": "Cancel Turn",
+        "category": "ABAP FS Agents",
+        "icon": "$(debug-stop)"
+      },
+      {
+        "command": "abapfs.acp.disconnectAgent",
+        "title": "Disconnect",
+        "category": "ABAP FS Agents",
+        "icon": "$(debug-disconnect)"
+      },
+      {
+        "command": "abapfs.acp.openChat",
+        "title": "Open Chat",
+        "category": "ABAP FS Agents"
+      },
+      {
+        "command": "abapfs.acp.showLog",
+        "title": "Show Log",
+        "category": "ABAP FS Agents"
+      },
+      {
+        "command": "abapfs.acp.showTraffic",
+        "title": "Show Protocol Traffic",
+        "category": "ABAP FS Agents"
+      },
+      {
+        "command": "abapfs.acp.setMode",
+        "title": "Set Mode",
+        "category": "ABAP FS Agents"
+      },
+      {
+        "command": "abapfs.acp.setModel",
+        "title": "Set Model",
+        "category": "ABAP FS Agents"
+      },
+      {
+        "command": "abapfs.acp.attachFile",
+        "title": "Attach File",
+        "category": "ABAP FS Agents",
+        "icon": "$(attach)"
+      },
+      {
+        "command": "abapfs.acp.restartAgent",
+        "title": "Restart",
+        "category": "ABAP FS Agents",
+        "icon": "$(debug-restart)"
+      },
+      {
+        "command": "abapfs.acp.addAgent",
+        "title": "Add Agent",
+        "category": "ABAP FS Agents",
+        "icon": "$(person-add)"
+      },
+      {
+        "command": "abapfs.acp.removeAgent",
+        "title": "Remove Agent",
+        "category": "ABAP FS Agents"
+      },
+      {
+        "command": "abapfs.acp.manageAgents",
+        "title": "Manage Agents (Settings)",
+        "category": "ABAP FS Agents",
+        "icon": "$(gear)"
+      },
+      {
         "command": "abapfs.testing.setTestFolder",
         "title": "Enable SAP UI Testing Features",
         "category": "ABAP FS",
@@ -4963,6 +5166,82 @@
     "menus": {
       "commandPalette": [
         {
+          "command": "abapfs.editReview.keep",
+          "when": "resource in abapfs.editReview.pendingFiles"
+        },
+        {
+          "command": "abapfs.editReview.undo",
+          "when": "resource in abapfs.editReview.pendingFiles"
+        },
+        {
+          "command": "abapfs.editReview.showDiff",
+          "when": "resource in abapfs.editReview.pendingFiles"
+        },
+        {
+          "command": "abapfs.acp.connectAgent",
+          "when": "config.abapfs.acp.enabled"
+        },
+        {
+          "command": "abapfs.acp.newConversation",
+          "when": "config.abapfs.acp.enabled"
+        },
+        {
+          "command": "abapfs.acp.showHistory",
+          "when": "config.abapfs.acp.enabled && abapfs.acp.connected"
+        },
+        {
+          "command": "abapfs.acp.sendPrompt",
+          "when": "config.abapfs.acp.enabled"
+        },
+        {
+          "command": "abapfs.acp.cancelTurn",
+          "when": "config.abapfs.acp.enabled"
+        },
+        {
+          "command": "abapfs.acp.disconnectAgent",
+          "when": "config.abapfs.acp.enabled"
+        },
+        {
+          "command": "abapfs.acp.openChat",
+          "when": "config.abapfs.acp.enabled"
+        },
+        {
+          "command": "abapfs.acp.showLog",
+          "when": "config.abapfs.acp.enabled"
+        },
+        {
+          "command": "abapfs.acp.showTraffic",
+          "when": "config.abapfs.acp.enabled"
+        },
+        {
+          "command": "abapfs.acp.setMode",
+          "when": "config.abapfs.acp.enabled"
+        },
+        {
+          "command": "abapfs.acp.setModel",
+          "when": "config.abapfs.acp.enabled"
+        },
+        {
+          "command": "abapfs.acp.attachFile",
+          "when": "config.abapfs.acp.enabled"
+        },
+        {
+          "command": "abapfs.acp.restartAgent",
+          "when": "config.abapfs.acp.enabled"
+        },
+        {
+          "command": "abapfs.acp.addAgent",
+          "when": "config.abapfs.acp.enabled"
+        },
+        {
+          "command": "abapfs.acp.removeAgent",
+          "when": "config.abapfs.acp.enabled"
+        },
+        {
+          "command": "abapfs.acp.manageAgents",
+          "when": "config.abapfs.acp.enabled"
+        },
+        {
           "command": "abapfs.connect"
         },
         {
@@ -5600,6 +5879,59 @@
       ],
       "view/title": [
         {
+          "command": "abapfs.acp.newConversation",
+          "when": "view == abapfs.views.agentChat",
+          "group": "navigation@1"
+        },
+        {
+          "command": "abapfs.acp.showHistory",
+          "when": "view == abapfs.views.agentChat && abapfs.acp.connected",
+          "group": "navigation@1"
+        },
+        {
+          "command": "abapfs.acp.attachFile",
+          "when": "view == abapfs.views.agentChat",
+          "group": "navigation@2"
+        },
+        {
+          "command": "abapfs.acp.cancelTurn",
+          "when": "view == abapfs.views.agentChat",
+          "group": "navigation@3"
+        },
+        {
+          "command": "abapfs.acp.disconnectAgent",
+          "when": "view == abapfs.views.agentChat",
+          "group": "navigation@4"
+        },
+        {
+          "command": "abapfs.acp.connectAgent",
+          "when": "view == abapfs.views.agentChat"
+        },
+        {
+          "command": "abapfs.acp.addAgent",
+          "when": "view == abapfs.views.agentChat"
+        },
+        {
+          "command": "abapfs.acp.removeAgent",
+          "when": "view == abapfs.views.agentChat"
+        },
+        {
+          "command": "abapfs.acp.manageAgents",
+          "when": "view == abapfs.views.agentChat"
+        },
+        {
+          "command": "abapfs.acp.restartAgent",
+          "when": "view == abapfs.views.agentChat"
+        },
+        {
+          "command": "abapfs.acp.showLog",
+          "when": "view == abapfs.views.agentChat"
+        },
+        {
+          "command": "abapfs.acp.showTraffic",
+          "when": "view == abapfs.views.agentChat"
+        },
+        {
           "command": "abapfs.createInEditor",
           "group": "navigation@3",
           "when": "view == workbench.explorer.fileView && abapfs:extensionActive"
@@ -5666,6 +5998,21 @@
         }
       ],
       "editor/title": [
+        {
+          "command": "abapfs.editReview.keep",
+          "group": "navigation@0.1",
+          "when": "resource in abapfs.editReview.pendingFiles"
+        },
+        {
+          "command": "abapfs.editReview.undo",
+          "group": "navigation@0.2",
+          "when": "resource in abapfs.editReview.pendingFiles"
+        },
+        {
+          "command": "abapfs.editReview.showDiff",
+          "group": "navigation@0.3",
+          "when": "resource in abapfs.editReview.pendingFiles"
+        },
         {
           "command": "abapfs.activateMultiple",
           "group": "navigation@0.4",
@@ -6240,6 +6587,194 @@
           "type": "boolean",
           "default": false,
           "description": "😴 I am boring - Keep notifications professional (disable fun emoji prefixes)"
+        },
+        "abapfs.acp.enabled": {
+          "type": "boolean",
+          "default": false,
+          "markdownDescription": "**Experimental.** Enable the ABAP FS Agents chat panel, which talks to external coding agents over the Agent Client Protocol (ACP). Agents read SAP objects through ABAP FS. Turn on `#abapfs.acp.provideMcpServer#` to also give them the ABAP FS tools for searching, editing and activating objects."
+        },
+        "abapfs.acp.agents": {
+          "type": "object",
+          "default": {},
+          "markdownDescription": "ACP agents available in the ABAP FS Agents panel, keyed by display name. Each entry needs a `command` and optional `args` and `env`. Use whatever command starts your agent in ACP mode (Claude Code, Codex and others ship ACP adapters). **Add Agent...** in the Agents panel offers ready-made entries for common agents; they run through `npx`, so the first start downloads the agent from npm. Example: `{ \"Gemini\": { \"command\": \"gemini\", \"args\": [\"--experimental-acp\"] } }`",
+          "defaultSnippets": [
+            {
+              "label": "Claude Code",
+              "description": "Claude Code through its ACP adapter (npx)",
+              "body": {
+                "Claude Code": {
+                  "command": "npx",
+                  "args": [
+                    "-y",
+                    "@agentclientprotocol/claude-agent-acp@latest"
+                  ],
+                  "env": {}
+                }
+              }
+            },
+            {
+              "label": "GitHub Copilot",
+              "description": "GitHub Copilot language server in ACP mode (npx)",
+              "body": {
+                "GitHub Copilot": {
+                  "command": "npx",
+                  "args": [
+                    "-y",
+                    "@github/copilot-language-server@latest",
+                    "--acp"
+                  ],
+                  "env": {}
+                }
+              }
+            },
+            {
+              "label": "Codex CLI",
+              "description": "Codex through its ACP adapter (npx)",
+              "body": {
+                "Codex CLI": {
+                  "command": "npx",
+                  "args": [
+                    "-y",
+                    "@zed-industries/codex-acp@latest"
+                  ],
+                  "env": {}
+                }
+              }
+            },
+            {
+              "label": "Gemini CLI",
+              "description": "Gemini CLI in ACP mode (npx)",
+              "body": {
+                "Gemini CLI": {
+                  "command": "npx",
+                  "args": [
+                    "-y",
+                    "@google/gemini-cli@latest",
+                    "--experimental-acp"
+                  ],
+                  "env": {}
+                }
+              }
+            },
+            {
+              "label": "Qwen Code",
+              "description": "Qwen Code in ACP mode (npx)",
+              "body": {
+                "Qwen Code": {
+                  "command": "npx",
+                  "args": [
+                    "-y",
+                    "@qwen-code/qwen-code@latest",
+                    "--acp",
+                    "--experimental-skills"
+                  ],
+                  "env": {}
+                }
+              }
+            },
+            {
+              "label": "Auggie CLI",
+              "description": "Augment's Auggie CLI in ACP mode (npx)",
+              "body": {
+                "Auggie CLI": {
+                  "command": "npx",
+                  "args": [
+                    "-y",
+                    "@augmentcode/auggie@latest",
+                    "--acp"
+                  ],
+                  "env": {
+                    "AUGMENT_DISABLE_AUTO_UPDATE": "1"
+                  }
+                }
+              }
+            },
+            {
+              "label": "Qoder CLI",
+              "description": "Qoder CLI in ACP mode (npx)",
+              "body": {
+                "Qoder CLI": {
+                  "command": "npx",
+                  "args": [
+                    "-y",
+                    "@qoder-ai/qodercli@latest",
+                    "--acp"
+                  ],
+                  "env": {}
+                }
+              }
+            },
+            {
+              "label": "OpenCode",
+              "description": "OpenCode in ACP mode (npx)",
+              "body": {
+                "OpenCode": {
+                  "command": "npx",
+                  "args": [
+                    "-y",
+                    "opencode-ai@latest",
+                    "acp"
+                  ],
+                  "env": {}
+                }
+              }
+            }
+          ],
+          "additionalProperties": {
+            "type": "object",
+            "required": [
+              "command"
+            ],
+            "properties": {
+              "command": {
+                "type": "string",
+                "description": "Executable that starts the agent in ACP mode"
+              },
+              "args": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                },
+                "description": "Command-line arguments"
+              },
+              "env": {
+                "type": "object",
+                "additionalProperties": {
+                  "type": "string"
+                },
+                "description": "Extra environment variables for the agent process"
+              }
+            }
+          }
+        },
+        "abapfs.acp.provideMcpServer": {
+          "type": "boolean",
+          "default": false,
+          "markdownDescription": "Give each agent session the ABAP FS MCP tools automatically. When enabled, ABAP FS starts its MCP server (see `#abapfs.mcpServer.port#`) and passes it to the agent when the session is created: over HTTP if the agent accepts HTTP MCP servers through ACP, otherwise through a small stdio bridge bundled with ABAP FS that runs on VS Code's own Node.js.\n\nLeave this off if you have already added the ABAP FS MCP server in the agent's own configuration, otherwise the agent will see the tools twice. When off, configure the MCP server in the agent yourself, using the URL shown when the ABAP FS MCP server starts."
+        },
+        "abapfs.acp.autoApprovePermissions": {
+          "type": "string",
+          "enum": [
+            "ask",
+            "allowAll"
+          ],
+          "default": "ask",
+          "description": "How to answer agent permission requests. 'ask' always prompts, 'allowAll' approves everything."
+        },
+        "abapfs.acp.defaultWorkingDirectory": {
+          "type": "string",
+          "default": "",
+          "description": "Local working directory for agent processes. Leave empty to use the first local workspace folder, or a private ABAP FS folder when the workspace only contains SAP systems."
+        },
+        "abapfs.acp.logTraffic": {
+          "type": "boolean",
+          "default": false,
+          "description": "Log all ACP protocol traffic to the 'ABAP FS Agents Traffic' output channel."
+        },
+        "abapfs.editReview.enabled": {
+          "type": "boolean",
+          "default": false,
+          "markdownDescription": "Show **Keep** / **Undo** for ABAP edits made by the `replace_string_in_abap_object` tool, from Copilot or from MCP clients such as Claude Code. Edits are still saved to SAP immediately: the edited object opens with its changes highlighted, **Keep** acknowledges them, and **Undo** writes the source from before the edits back to SAP. Leave this off if you use ABAP FS tools from clients outside VS Code and don't watch the editor while they work."
         },
         "abapfs.mcpServer.autoStart": {
           "type": "boolean",

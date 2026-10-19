@@ -28,8 +28,10 @@
   },
   "dependencies": {
     "@abaplint/core": "^2.102.65",
+    "@agentclientprotocol/sdk": "^1.9.0",
     "@modelcontextprotocol/sdk": "^1.29.0",
     "@typesafe-ai/sdk": "^0.6.0",
+    "@vscode/codicons": "^0.0.46-24",
     "@vscode/debugadapter": "^1.68.0",
     "@vscode/debugprotocol": "^1.68.0",
     "abap-adt-api": "catalog:",
@@ -46,6 +48,7 @@
     "fast-xml-parser": "catalog:",
     "fp-ts": "^2.13.1",
     "fs-jetpack": "^5.1.0",
+    "marked": "^15.0.12",
     "open": "^8.4.0",
     "tmp-promise": "^3.0.3",
     "vscode-abap-remote-fs-sharedapi": "workspace:*",

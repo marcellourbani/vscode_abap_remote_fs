@@ -209,6 +209,18 @@ To view a copy of this license, visit https://creativecommons.org/licenses/by/3.
 
 Changes made: The original human-oriented style guide (~5000 lines) was distilled into a compact, AI-optimized ruleset (~350 rules) suitable for automated code generation and review. All rationale, discussion, and verbose examples were removed; only the actionable rules and minimal code examples were retained.
 
+## Visual Studio Code Codicons
+
+The agent chat webview displays the VS Code product icons (codicon font and stylesheet), redistributed unmodified in `client/dist/media/codicons/`.
+
+**Source:** https://github.com/microsoft/vscode-codicons  
+**License:** Creative Commons Attribution 4.0 International (CC BY 4.0)  
+**Copyright:** © Microsoft Corporation
+
+To view a copy of this license, visit https://creativecommons.org/licenses/by/4.0/
+
+The license text ships alongside the font as `client/dist/media/codicons/LICENSE`.
+
 ## ABAP MCP Server (Authentication Architecture Reference)
 
 The multi-method authentication implementation in this extension (Kerberos/SPNEGO, X.509 Certificate, Browser SSO, OAuth 2.0 on-premise) was designed using the authentication architecture from the ABAP MCP Server project as a reference.

@@ -46,7 +46,7 @@ vi.mock("../transportIntentService", () => ({
   }
 }))
 
-import { executeReplace, findAndReplace } from "./mcpReplaceStringTool"
+import { executeReplace, findAndReplace } from "./replaceStringTool"
 
 describe("findAndReplace", () => {
   it("replaces exactly one literal occurrence", () => {
@@ -122,6 +122,61 @@ describe("executeReplace transport integration", () => {
     expect(source).toBe("first\nsecond\nthird\nfourth\n")
     expect(mocks.writeFile).toHaveBeenCalledTimes(4)
     expect(mocks.getInactiveSource).toHaveBeenCalledTimes(4)
+  })
+
+  it("reports parallel replacements in save order with their own before and after", async () => {
+    let source = "one\ntwo\n"
+    mocks.readFile.mockImplementation(async () => Buffer.from(source))
+    mocks.writeFile.mockImplementation(async (_uri: unknown, content: Buffer) => {
+      source = content.toString("utf8")
+    })
+    mocks.getInactiveSource.mockImplementation(async () => source)
+    const applied: [string, string][] = []
+    const onApplied = (_uri: unknown, before: string, after: string) => {
+      applied.push([before, after])
+    }
+
+    await Promise.all([
+      executeReplace("adt://dev100/object/source/main", "one", "first", undefined, onApplied),
+      executeReplace("adt://DEV100/object/source/main", "two", "second", undefined, onApplied)
+    ])
+
+    expect(applied).toEqual([
+      ["one\ntwo\n", "first\ntwo\n"],
+      ["first\ntwo\n", "first\nsecond\n"]
+    ])
+  })
+
+  it("does not start the next replacement until the applied callback finishes", async () => {
+    let source = "one\ntwo\n"
+    mocks.readFile.mockImplementation(async () => Buffer.from(source))
+    mocks.writeFile.mockImplementation(async (_uri: unknown, content: Buffer) => {
+      source = content.toString("utf8")
+    })
+    mocks.getInactiveSource.mockImplementation(async () => source)
+    let releaseCallback!: () => void
+    const callbackDone = new Promise<void>(resolve => (releaseCallback = resolve))
+    const onApplied = vi.fn(() => (onApplied.mock.calls.length === 1 ? callbackDone : undefined))
+
+    const first = executeReplace("adt://dev100/object/source/main", "one", "first", undefined, onApplied)
+    const second = executeReplace("adt://dev100/object/source/main", "two", "second", undefined, onApplied)
+    await vi.waitFor(() => expect(onApplied).toHaveBeenCalledTimes(1))
+    await new Promise(resolve => setTimeout(resolve, 0))
+    expect(mocks.readFile).toHaveBeenCalledTimes(1)
+
+    releaseCallback()
+    await Promise.all([first, second])
+    expect(onApplied).toHaveBeenCalledTimes(2)
+  })
+
+  it("reports a write SAP accepted even when verification fails", async () => {
+    mocks.getNodeAsync.mockRejectedValue(new Error("node vanished"))
+    const onApplied = vi.fn()
+
+    await expect(
+      executeReplace("adt://dev100/object/source/main", "old", "new", undefined, onApplied)
+    ).rejects.toThrow(/could not be verified/)
+    expect(onApplied).toHaveBeenCalledWith(expect.anything(), "REPORT old.\n", "REPORT new.\n")
   })
 
   it("does not start the next read until the previous verification completes", async () => {

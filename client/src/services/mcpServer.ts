@@ -25,10 +25,7 @@ import { log } from "../lib"
 import { toolRegistry } from "./lm-tools/toolRegistry"
 import { createMcpAuthorizedOptions } from "./lm-tools/toolGuard"
 import { funWindow as window } from "./funMessenger"
-import { executeReplace } from "./lm-tools/mcpReplaceStringTool"
 import { getDiagnosticsForUri } from "./lm-tools/mcpGetDiagnosticsTool"
-import type { ObjectSaveTransportChoice } from "./transportIntentService"
-
 // ============================================================================
 // TYPES
 // ============================================================================
@@ -317,106 +314,6 @@ function createMcpServer(): McpServer {
   // ============================================================================
   // MCP-ONLY TOOLS (not available as VS Code LM tools)
   // ============================================================================
-
-  // Replace String in ABAP Object - enables MCP clients to edit ABAP source code
-  server.registerTool(
-    "replace_string_in_abap_object",
-    {
-      title: "Replace String In ABAP Object",
-      description:
-        "Edit ABAP source code by replacing a specific text string with new text. " +
-        "This tool performs a find-and-replace operation on an ABAP source file identified by its workspace URI. " +
-        "The oldString must match EXACTLY ONE occurrence in the file - include 3-5 lines of surrounding context to ensure uniqueness. " +
-        "The file is automatically locked, saved to SAP, and unlocked.\n\n" +
-        "Prerequisites: First call abapfs_get_workspace_uri to get the fileUri. " +
-        "Then call abapfs_get_object_source or abapfs_search_object_source to read current content before editing.\n\n" +
-        "IMPORTANT: oldString is mandatory whenever the file has any content. An empty oldString is accepted ONLY when the file is currently completely blank (e.g. a freshly created ABAP object with no source yet) - in that case the entire newString becomes the file content.\n\n" +
-        "First call abapfs_get_object_transport_status for the exact object. Never invent a transport number or description. Use an existing request only after the user approves it, or create a request only when the user explicitly asks and supplies or approves the description. " +
-        "This tool verifies that SAP's inactive source matches the requested replacement. After editing, call abapfs_get_object_source with version inactive when inspecting pending source, then call get_abap_diagnostics with the same fileUri.",
-      inputSchema: {
-        fileUri: z
-          .string()
-          .describe(
-            "The full workspace URI of the ABAP source file." +
-              "Get this using the abapfs_get_workspace_uri tool."
-          ),
-        oldString: z
-          .string()
-          .describe(
-            "The exact literal text to find and replace. Must match exactly one occurrence in the file. " +
-              "Include at least 3-5 lines of surrounding context to ensure uniqueness. " +
-              "Must match whitespace and indentation precisely. " +
-              "May be an empty string ONLY if the target file is currently completely blank; otherwise it is mandatory."
-          ),
-        newString: z
-          .string()
-          .describe("The replacement text. Ensure the resulting code is syntactically valid ABAP."),
-        transportChoice: z
-          .discriminatedUnion("type", [
-            z.object({
-              type: z.literal("existing"),
-              number: z.string().describe("Exact user-approved existing transport request")
-            }),
-            z.object({
-              type: z.literal("new"),
-              description: z
-                .string()
-                .describe("User-supplied or explicitly approved new request description")
-            })
-          ])
-          .optional()
-          .describe(
-            "Optional explicit transport for this write. Never choose one without user direction. Omit to preserve the normal interactive transport picker."
-          )
-      }
-    },
-    async (args: Record<string, unknown>) => {
-      try {
-        const fileUri = args.fileUri as string
-        const oldString = args.oldString as string
-        const newString = args.newString as string
-        const transportChoice = args.transportChoice as
-          Exclude<ObjectSaveTransportChoice, { type: "local" }> | undefined
-
-        if (!fileUri) {
-          throw new Error("fileUri is required")
-        }
-        if (newString === undefined || newString === null) {
-          throw new Error("newString is required (use empty string to delete text)")
-        }
-        // Note: empty oldString is allowed only when the file is blank.
-        // That check happens inside executeReplace/findAndReplace once the
-        // current file content is known.
-
-        await executeReplace(fileUri, oldString, newString, transportChoice)
-
-        const oldLineCount = oldString.split("\n").length
-        const newLineCount = newString.split("\n").length
-
-        return {
-          content: [
-            {
-              type: "text" as const,
-              text:
-                `✅ Successfully replaced ${oldLineCount} line(s) with ${newLineCount} line(s) in ${fileUri}\n\n` +
-                `The file has been saved and synced to SAP.`
-            }
-          ]
-        }
-      } catch (error) {
-        const errorMessage = error instanceof Error ? error.message : String(error)
-        return {
-          content: [
-            {
-              type: "text" as const,
-              text: `❌ Error: ${errorMessage}`
-            }
-          ],
-          isError: true
-        }
-      }
-    }
-  )
 
   // Get Diagnostics - returns syntax errors/warnings for a given ABAP file
   server.registerTool(

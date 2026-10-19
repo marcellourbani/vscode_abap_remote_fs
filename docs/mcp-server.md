@@ -140,7 +140,7 @@ MCP clients can now edit ABAP source code directly. The workflow:
 5. **Verify** — read `version: "inactive"` when inspecting pending source, then call
    `get_abap_diagnostics` with the same URI to check for syntax errors.
 
-Edits are immediately synced to SAP (ABAP FS handles locking, saving, and unlocking automatically). There is no keep/undo UI — changes are applied directly.
+Edits are immediately synced to SAP (ABAP FS handles locking, saving, and unlocking automatically). The same tool is available to Copilot in VS Code. Enable `abapfs.editReview.enabled` to get a per-file Keep/Undo review in VS Code: the edited object opens with its changes highlighted, **Keep** acknowledges them and **Undo** writes the source from before the edits back to SAP. Leave it off when you drive ABAP FS from a client outside VS Code and don't watch the editor.
 
 
 ## Limitations

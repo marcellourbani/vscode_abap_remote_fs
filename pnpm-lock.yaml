@@ -232,12 +232,18 @@ importers:
       '@abaplint/core':
         specifier: ^2.102.65
         version: 2.120.51
+      '@agentclientprotocol/sdk':
+        specifier: ^1.9.0
+        version: 1.9.0(zod@3.25.76)
       '@modelcontextprotocol/sdk':
         specifier: ^1.29.0
         version: 1.30.0(supports-color@10.2.2)(zod@3.25.76)
       '@typesafe-ai/sdk':
         specifier: ^0.6.0
         version: 0.6.0
+      '@vscode/codicons':
+        specifier: ^0.0.46-24
+        version: 0.0.46-24
       '@vscode/debugadapter':
         specifier: ^1.68.0
         version: 1.68.0
@@ -286,6 +292,9 @@ importers:
       fs-jetpack:
         specifier: ^5.1.0
         version: 5.1.0
+      marked:
+        specifier: ^15.0.12
+        version: 15.0.12
       open:
         specifier: ^8.4.0
         version: 8.4.2
@@ -449,6 +458,11 @@ packages:
   '@abaplint/core@2.120.51':
     resolution: {integrity: sha512-ogyvVWoKiaT78XF/0BpBJM6luLa1zcgtAXa02v5a2wWsHKV8BeGWyqKnPCEtXAqUtfCTrV5ZTn/aAPvXq2eQyg==}
     engines: {node: '>=22.0.0'}
+
+  '@agentclientprotocol/sdk@1.9.0':
+    resolution: {integrity: sha512-saCOTPYBK1iqWqJFAYHXbg3+zCoFXyZZFoqQAwdTWkbrZZPpAETr80QOnYr2l+dzPwL0jpNhn3eDY8MoEIDbUA==}
+    peerDependencies:
+      zod: ^3.25.0 || ^4.0.0
 
   '@azu/format-text@1.0.2':
     resolution: {integrity: sha512-Swi4N7Edy1Eqq82GxgEECXSSLyn6GOb5htRFPzBDdUkECGXtlf12ynO5oJSpWKPwCaUssOu7NfhDcCWpIC6Ywg==}
@@ -1133,6 +1147,9 @@ packages:
 
   '@vitest/spy@5.0.0':
     resolution: {integrity: sha512-uy+luWBAPw9XfthoHi5AkfHUnuPYEESjl0p/r+meoBnU8bxg5GDQ3Ey8MjcJ6sqahkL4PFyrvfMJJBw7LbU06g==}
+
+  '@vscode/codicons@0.0.46-24':
+    resolution: {integrity: sha512-KIDWUYxG6eh+DHRg+3G4bS487T+g1ZkLfB4HylOBbCcHsvLdfLMRM/m92DS1Ljhi8nglLr9ucwwWhHTEAC+DpA==}
 
   '@vscode/debugadapter@1.68.0':
     resolution: {integrity: sha512-D6gk5Fw2y4FV8oYmltoXpj+VAZexxJFopN/mcZ6YcgzQE9dgq2L45Aj3GLxScJOD6GeLILcxJIaA8l3v11esGg==}
@@ -2616,6 +2633,11 @@ packages:
     resolution: {integrity: sha512-sHHjZ5fJKlgrG4qns2YwVcdNep35h5fERrfkD2YNsb9UFk0UIHarbiTaHKVMlPuWAoiilyK8Fv/jAm11slsY7Q==}
     hasBin: true
 
+  marked@15.0.12:
+    resolution: {integrity: sha512-8dD6FusOQSrpv9Z1rdNMdlSgQOIP880DHqnohobOmYLElGEqAL/JvxvuxZO16r4HtjTlfPRDC1hbvxC9dPN2nA==}
+    engines: {node: '>= 18'}
+    hasBin: true
+
   math-intrinsics@1.1.0:
     resolution: {integrity: sha512-/IXtbwEk5HTPyEwyKX6hGkYXxM9nbj64B+ilVJnC/R6B0pH5G4V3b0pVbL7DBj4tkhBAppbQUlf6F6Xl9LHu1g==}
     engines: {node: '>= 0.4'}
@@ -3794,6 +3816,10 @@ snapshots:
       json5: 2.2.3
       vscode-languageserver-types: 3.18.3
 
+  '@agentclientprotocol/sdk@1.9.0(zod@3.25.76)':
+    dependencies:
+      zod: 3.25.76
+
   '@azu/format-text@1.0.2': {}
 
   '@azu/style-format@1.0.1':
@@ -4606,6 +4632,8 @@ snapshots:
       vite: 8.3.0(@types/node@22.20.2)(yaml@2.9.1)
 
   '@vitest/spy@5.0.0': {}
+
+  '@vscode/codicons@0.0.46-24': {}
 
   '@vscode/debugadapter@1.68.0':
     dependencies:
@@ -6123,6 +6151,8 @@ snapshots:
       mdurl: 2.1.0
       punycode.js: 2.3.1
       uc.micro: 2.1.0
+
+  marked@15.0.12: {}
 
   math-intrinsics@1.1.0: {}
 
