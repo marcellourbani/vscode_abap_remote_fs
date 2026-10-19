@@ -1,5 +1,27 @@
 # Changelog
 
+## 2.12.0
+
+### Minor Changes
+
+- 64b135c: fix browser SSO auth handling and improve connection lifecycle management
+- 765ae48: refactor SSO support, moving logic in abap-adt-api
+- 44aba90: add optional option to open native SAP GUI via command line instead of creating a .sap shortcut file.
+- a9f1744: Expand repository comparison with Copilot-assisted apply: raw or formatted planning, user-saved object selections, per-object decisions, transport checks, apply and activation history, and richer table filtering and import/export. Formatted comparisons use ABAPLint to produce normalized source snapshots with class-method ordering in a worker pool. Add tools to prepare plans, apply selected objects, inspect workflow state, and record activation outcomes.
+
+  Make ABAP writes transport-aware, with existing, new, or local transport choices, target-status validation, one-shot save intents, and saved-source verification. Strengthen activation handling for programs, includes, and classes, including saving dirty documents and tracking activation outcomes. Add transport-status and next-save tools, plus MCP support for transport-aware source replacement.
+
+  Add the repository-assisted-apply agent and skill, and integrate skill and subagent configuration. Source-reading tools can explicitly select active or inactive versions.
+
+### Patch Changes
+
+- a9f1744: Enforce shared SQL input validation for direct MCP calls as well as Copilot preparation. Insert source replacement text literally and reject ambiguous matches after line-ending normalization. Decode all remote filesystem writes as UTF-8, including plain Uint8Array views. Return initialized language-server clients on the first lookup and share concurrent initialization so each connection gets one refresh timer, with handled and non-overlapping scheduled refreshes.
+- 95e8f3a: add paging to ATC tool, fix ATC result parsing
+- b45f2ea: text elements improvements and fixes
+- 4fc15d3: add few more AI clients in docs
+- 960ca01: update docs about vs code proxy support
+- 2d1b328: Normalize the usage-references namespace prefix so where-used lookups work across SAP systems.
+
 ## 2.11.1
 
 ### Patch Changes
