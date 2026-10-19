@@ -2523,7 +2523,7 @@
       {
         "name": "abapfs_run_atc_analysis",
         "displayName": "Run ATC Analysis",
-        "modelDescription": "Run ABAP Test Cockpit checks, list available check variants, or fetch finding documentation. Actions: 'run_analysis' returns findings with check variant + docUri per finding (variant name explains context — e.g., S4HANA_READINESS = upgrade compat, not code quality). For function modules, pass objectName with objectType 'FUNC' or 'FUNC/FF'; do not use the function module source URI. 'get_atc_variants' lists check variants available on a system — use this FIRST if the user names a variant you're not certain exists, before passing variantName to run_analysis. 'get_documentation' fetches full doc — often contains critical detail missing from finding title (e.g., table name RSEG). Always fetch docs before suggesting fixes. Each finding has unique docs even when titles repeat.",
+        "modelDescription": "Run ABAP Test Cockpit checks, list variants, or fetch finding documentation. 'run_analysis' without resultId runs ATC and caches the complete run for 90 minutes. Returns resultId, full-run summary, a page of findings, hasMore and nextStart. Page indexes resultStart/resultEnd are one-based and inclusive (default 25 findings, maximum 100). To read more, pass the same resultId with resultStart=nextStart; ATC will NOT run again. Each successful cache read refreshes its 90-minute expiry. Cached pages include all findings independently of the UI exemption filter. Missing/expired/evicted result IDs return ATC_RESULT_EXPIRED: run again without resultId and with the original target/variant. Optional includeUri/includeDocUri/includeCheckIds control detail fields. Variant name explains context (e.g. S4HANA_READINESS is upgrade compatibility, not code quality). For function modules use objectName and objectType FUNC or FUNC/FF, not the source URI. 'get_atc_variants' lists available variants; confirm uncertain variant names first. 'get_documentation' fetches full finding documentation using its exact docUri and connectionId; fetch documentation before suggesting fixes. Each finding can have unique documentation even when titles repeat.",
         "canBeReferencedInPrompt": true,
         "toolReferenceName": "abapfs_run_atc_analysis",
         "icon": "$(testing-run-icon)",
@@ -2578,6 +2578,36 @@
             "variantName": {
               "type": "string",
               "description": "For run_analysis action: optional ATC check variant name to use for this run, overriding the connection's configured/default variant. If unsure the name is correct, call action 'get_atc_variants' first to confirm it exists."
+            },
+            "resultId": {
+              "type": "string",
+              "description": "For run_analysis: read a previous result snapshot without running ATC. Cache expires after 90 minutes without a successful read; each read refreshes the timer. Cache is memory-only and holds at most 20 runs (oldest evicted). Target/variant/showUi are ignored for cached reads. On ATC_RESULT_EXPIRED run again without resultId."
+            },
+            "resultStart": {
+              "type": "integer",
+              "minimum": 1,
+              "default": 1,
+              "description": "First finding to return, one-based and inclusive. For subsequent pages pass nextStart from the previous response along with resultId."
+            },
+            "resultEnd": {
+              "type": "integer",
+              "minimum": 1,
+              "description": "Last finding to return, one-based and inclusive. Defaults to resultStart + 24. At most 100 findings per page. Beyond the final finding returns an empty page with hasMore=false."
+            },
+            "includeUri": {
+              "type": "boolean",
+              "default": true,
+              "description": "Include target and source location URIs (default true). Line/character remain available when false."
+            },
+            "includeDocUri": {
+              "type": "boolean",
+              "default": true,
+              "description": "Include documentation URIs (default true). Set false for compact browsing; request the same cached page with true to retrieve documentation links later."
+            },
+            "includeCheckIds": {
+              "type": "boolean",
+              "default": true,
+              "description": "Include technical check IDs (default true). Check titles and messages are always returned."
             },
             "docUri": {
               "type": "string",

@@ -65,6 +65,10 @@ vi.mock("../../views/abaptestcockpit", () => ({
   }
 }))
 vi.mock("../../views/abaptestcockpit/decorations", () => ({ getATCDecorations: vi.fn() }))
+vi.mock("../../views/abaptestcockpit/view", () => ({
+  hasExemption: (finding: { exemptionApproval?: string; noExemption?: string }) =>
+    !!finding.exemptionApproval && finding.noExemption !== "true"
+}))
 vi.mock("../../adt/atcVariants", () => ({ listAtcVariants: vi.fn() }))
 
 vi.mock("./toolGuard", () => ({
@@ -250,7 +254,8 @@ describe("RunATCAnalysisTool - invoke", () => {
       expect.anything(),
       undefined,
       "MYVARIANT",
-      false
+      false,
+      expect.any(Function)
     )
   })
 
@@ -267,7 +272,8 @@ describe("RunATCAnalysisTool - invoke", () => {
       expect.anything(),
       undefined,
       undefined,
-      false
+      false,
+      expect.any(Function)
     )
     expect(window.withProgress).not.toHaveBeenCalled()
   })
@@ -286,7 +292,8 @@ describe("RunATCAnalysisTool - invoke", () => {
       "/sap/bc/adt/packages/zpkg",
       "dev100",
       undefined,
-      false
+      false,
+      expect.any(Function)
     )
     expect(getSearchService).not.toHaveBeenCalled()
     expect(window.withProgress).not.toHaveBeenCalled()
@@ -304,7 +311,8 @@ describe("RunATCAnalysisTool - invoke", () => {
       "/sap/bc/adt/cts/transportrequests/GEDK933871",
       "dev100",
       undefined,
-      false
+      false,
+      expect.any(Function)
     )
     expect(getSearchService).not.toHaveBeenCalled()
     expect(window.withProgress).not.toHaveBeenCalled()
@@ -328,9 +336,162 @@ describe("RunATCAnalysisTool - invoke", () => {
       "/sap/bc/adt/packages/zpkg",
       "dev100",
       undefined,
-      true
+      true,
+      expect.any(Function)
     )
     expect(window.withProgress).toHaveBeenCalled()
+  })
+})
+
+describe("RunATCAnalysisTool - cached pages", () => {
+  let tool: RunATCAnalysisTool
+  const readResult = async (input: Record<string, unknown>) => {
+    const result = (await tool.invoke(makeOptions(input), mockToken)) as any
+    return JSON.parse(result.parts[0].text)
+  }
+
+  beforeEach(() => {
+    vi.clearAllMocks()
+    tool = new RunATCAnalysisTool()
+    ;(window as any).visibleTextEditors = []
+    ;(atcProvider.runInspector as Mock).mockImplementation(async (...args: any[]) => {
+      args[4]([
+        {
+          name: "ZTEST",
+          type: "CLAS",
+          findings: Array.from({ length: 63 }, (_, index) => ({
+            messageTitle: `Finding ${index + 1}`,
+            checkTitle: "Check",
+            checkId: "CHECK_ID",
+            priority: 1,
+            exemptionApproval: "-",
+            noExemption: index === 62 ? "false" : "true",
+            location: { uri: "/source" },
+            start: { line: index, character: 0 },
+            fileuri: "adt://dev100/source",
+            link: { href: "/documentation" }
+          }))
+        }
+      ])
+      return "DEFAULT"
+    })
+  })
+
+  afterEach(() => vi.useRealTimers())
+
+  it("returns bounded one-based pages from the same snapshot without rerunning ATC", async () => {
+    const first = await readResult({ objectUri: "adt://dev100/source" })
+    expect(first).toMatchObject({
+      resultStart: 1,
+      resultEnd: 25,
+      returned: 25,
+      hasMore: true,
+      nextStart: 26
+    })
+    expect(first.summary).toMatchObject({ totalFindings: 63, errors: 63, exempted: 1 })
+    expect(first.findings[0].finding).toMatchObject({ hasExemption: false, exemptionStatus: null })
+    const second = await readResult({ resultId: first.resultId, resultStart: first.nextStart })
+    expect(second).toMatchObject({
+      resultId: first.resultId,
+      resultStart: 26,
+      resultEnd: 50,
+      nextStart: 51
+    })
+    expect(second.findings[0].finding.messageTitle).toBe("Finding 26")
+    const last = await readResult({ resultId: first.resultId, resultStart: 51 })
+    expect(last).toMatchObject({
+      resultStart: 51,
+      resultEnd: 63,
+      returned: 13,
+      hasMore: false,
+      nextStart: null
+    })
+    expect(atcProvider.runInspector).toHaveBeenCalledTimes(1)
+    expect(atcProvider.findings).not.toHaveBeenCalled()
+  })
+
+  it("can omit detail fields and retrieve them later without mutating the cache", async () => {
+    const first = await readResult({
+      objectUri: "adt://dev100/source",
+      includeUri: false,
+      includeDocUri: false,
+      includeCheckIds: false
+    })
+    expect(first.summary).not.toHaveProperty("targetUri")
+    expect(first.findings[0].finding.location).not.toHaveProperty("uri")
+    expect(first.findings[0].finding).not.toHaveProperty("docUri")
+    expect(first.findings[0].finding).not.toHaveProperty("checkId")
+    const detailed = await readResult({ resultId: first.resultId, resultStart: 1, resultEnd: 1 })
+    expect(detailed.findings[0].finding).toMatchObject({
+      docUri: "/documentation",
+      checkId: "CHECK_ID",
+      location: { uri: "adt://dev100/source" }
+    })
+  })
+
+  it("rejects missing and expired IDs without running ATC", async () => {
+    vi.useFakeTimers()
+    const missing = await readResult({ resultId: "missing" })
+    expect(missing.error).toBe("ATC_RESULT_EXPIRED")
+    expect(atcProvider.runInspector).not.toHaveBeenCalled()
+    const first = await readResult({ objectUri: "adt://dev100/source" })
+    const initialExpiry = Date.parse(first.expiresAt)
+    expect(initialExpiry - Date.now()).toBe(90 * 60 * 1000)
+    vi.advanceTimersByTime(89 * 60 * 1000)
+    const refreshed = await readResult({ resultId: first.resultId })
+    expect(Date.parse(refreshed.expiresAt) - Date.now()).toBe(90 * 60 * 1000)
+    vi.advanceTimersByTime(89 * 60 * 1000)
+    expect((await readResult({ resultId: first.resultId })).error).toBeUndefined()
+    vi.advanceTimersByTime(90 * 60 * 1000)
+    const expired = await readResult({ resultId: first.resultId })
+    expect(expired.error).toBe("ATC_RESULT_EXPIRED")
+    expect(atcProvider.runInspector).toHaveBeenCalledTimes(1)
+  })
+
+  it("validates ranges before running ATC", async () => {
+    for (const range of [
+      { resultStart: 0 },
+      { resultStart: 2, resultEnd: 1 },
+      { resultEnd: 101 },
+      { resultStart: 1.5 }
+    ]) {
+      await expect(readResult({ objectUri: "adt://dev100/source", ...range })).rejects.toThrow()
+    }
+    expect(atcProvider.runInspector).not.toHaveBeenCalled()
+  })
+
+  it("returns an empty final page beyond the end", async () => {
+    const first = await readResult({ objectUri: "adt://dev100/source" })
+    const empty = await readResult({ resultId: first.resultId, resultStart: 100 })
+    expect(empty).toMatchObject({
+      returned: 0,
+      resultStart: null,
+      resultEnd: null,
+      hasMore: false,
+      nextStart: null
+    })
+  })
+
+  it("allows cached preparation without a target and rejects a different connection", async () => {
+    expect(
+      await tool.prepareInvocation(makeOptions({ resultId: "cached" }), mockToken)
+    ).toBeDefined()
+    const first = await readResult({ objectUri: "adt://dev100/source" })
+    await expect(
+      readResult({ resultId: first.resultId, connectionId: "other100" })
+    ).rejects.toThrow("different connectionId")
+  })
+
+  it("runs a fresh analysis when no resultId is supplied and bounds cache capacity", async () => {
+    const first = await readResult({ objectUri: "adt://dev100/source" })
+    let latest = first
+    for (let index = 0; index < 20; index++) {
+      latest = await readResult({ objectUri: "adt://dev100/source" })
+    }
+    expect(latest.resultId).not.toBe(first.resultId)
+    expect((await readResult({ resultId: first.resultId })).error).toBe("ATC_RESULT_EXPIRED")
+    expect((await readResult({ resultId: latest.resultId })).returned).toBe(25)
+    expect(atcProvider.runInspector).toHaveBeenCalledTimes(21)
   })
 })
 

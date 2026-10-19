@@ -46,7 +46,7 @@ vi.mock(".", () => ({
 
 vi.mock("./view", () => ({
   hasExemption: vi.fn(function (f: any) {
-    return !!f.exemptionApproval
+    return !!f.exemptionApproval && String(f.noExemption) !== "true"
   })
 }))
 
@@ -71,6 +71,27 @@ const makeFinding = (overrides: Partial<any> = {}): any => ({
 })
 
 describe("getATCDecorations - no state populated", () => {
+  it("uses shared exemption classification for single-file and all-file results", () => {
+    mockFindings.mockReturnValue([
+      makeFinding({
+        finding: {
+          priority: 1,
+          messageTitle: "Normal finding",
+          checkTitle: "Check",
+          exemptionApproval: "-",
+          noExemption: true
+        }
+      })
+    ])
+    const single = getATCDecorations("adt://sys/path") as any
+    expect(single.decorations[0]).toMatchObject({ hasExemption: false, decorationType: "error" })
+    const all = getATCDecorations() as any
+    expect(all.decorations["adt://sys/path"][0]).toMatchObject({
+      hasExemption: false,
+      decorationType: "error"
+    })
+  })
+
   it("returns empty decorations for unknown file URI", () => {
     const result = getATCDecorations("adt://unknown/uri") as any
     expect(result.fileUri).toBe("adt://unknown/uri")
