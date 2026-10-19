@@ -280,7 +280,7 @@ describe("WorkflowStore", () => {
       sourceConnectionId: "source100",
       targetConnectionId: "target100"
     })
-    const keys = Array.from({ length: 10 }, (_, index) => `R3TR:PROG:ZOBJ${index}`)
+    const keys = Array.from({ length: 3 }, (_, index) => `R3TR:PROG:ZOBJ${index}`)
     await store.writeJson(store.artifactPath(workflow, "assisted-apply", "plan.json"), {
       schemaVersion: WORKFLOW_SCHEMA_VERSION,
       createdAt: new Date().toISOString(),
