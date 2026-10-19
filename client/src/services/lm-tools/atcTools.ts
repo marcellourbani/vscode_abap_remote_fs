@@ -4,6 +4,7 @@
  */
 
 import * as vscode from "vscode"
+import { randomUUID } from "crypto"
 import { registerToolWithRegistry } from "./toolRegistry"
 import { funWindow as window } from "../funMessenger"
 import { getSearchService } from "../abapSearchService"
@@ -14,6 +15,7 @@ import { atcProvider } from "../../views/abaptestcockpit"
 import { getATCDecorations } from "../../views/abaptestcockpit/decorations"
 import { assertToolInvocationAuthorized } from "./toolGuard"
 import { listAtcVariants, type AtcVariant } from "../../adt/atcVariants"
+import { hasExemption, type ResObject } from "../../views/abaptestcockpit/view"
 
 // ============================================================================
 // INTERFACES
@@ -35,10 +37,119 @@ export interface IRunATCAnalysisParameters {
   // For get_atc_variants action
   query?: string
   maxItems?: number
+  resultId?: string
+  resultStart?: number
+  resultEnd?: number
+  includeUri?: boolean
+  includeDocUri?: boolean
+  includeCheckIds?: boolean
 }
 
 export interface IGetATCDecorationsParameters {
   fileUri?: string
+}
+
+const resultLifetime = 90 * 60 * 1000
+const defaultPageSize = 25
+const maxPageSize = 100
+const maxCachedRuns = 20
+
+const structureFindings = (objects: ResObject[]) =>
+  objects.flatMap(object =>
+    object.findings.map(finding => ({
+      object: { name: object.name, type: object.type },
+      finding: {
+        messageTitle: finding.messageTitle,
+        checkTitle: finding.checkTitle,
+        checkId: finding.checkId,
+        priority: finding.priority,
+        priorityText:
+          finding.priority === 1 ? "Error" : finding.priority === 2 ? "Warning" : "Info",
+        location: {
+          uri: finding.fileuri || finding.location.uri,
+          line: finding.start ? finding.start.line + 1 : null,
+          character: finding.start ? finding.start.character + 1 : null
+        },
+        hasExemption: hasExemption(finding),
+        exemptionStatus: hasExemption(finding) ? finding.exemptionApproval : null,
+        docUri: finding.link?.href || null
+      }
+    }))
+  )
+
+interface CachedATCResult {
+  expiresAt: number
+  targetUri: string
+  connectionId: string
+  checkVariant: string
+  findings: ReturnType<typeof structureFindings>
+}
+
+function resultRange(input: IRunATCAnalysisParameters) {
+  const start = input.resultStart ?? 1
+  const end = input.resultEnd ?? start + defaultPageSize - 1
+  if (!Number.isSafeInteger(start) || !Number.isSafeInteger(end) || start < 1 || end < start) {
+    throw new Error(
+      "resultStart/resultEnd must be positive integers defining a one-based inclusive range."
+    )
+  }
+  if (end - start + 1 > maxPageSize) {
+    throw new Error(`Request at most ${maxPageSize} findings per page.`)
+  }
+  return { start, end }
+}
+
+function renderResult(resultId: string, cached: CachedATCResult, input: IRunATCAnalysisParameters) {
+  const { start, end } = resultRange(input)
+  const all = cached.findings
+  const findings = all.slice(start - 1, end).map(entry => {
+    const { checkId, docUri, location, ...finding } = entry.finding
+    return {
+      object: entry.object,
+      finding: {
+        ...finding,
+        location:
+          input.includeUri === false
+            ? { line: location.line, character: location.character }
+            : location,
+        ...(input.includeCheckIds === false ? {} : { checkId }),
+        ...(input.includeDocUri === false ? {} : { docUri })
+      }
+    }
+  })
+  const resultEnd = findings.length ? start + findings.length - 1 : null
+  const hasMore = end < all.length
+  const summary = {
+    totalFindings: all.length,
+    errors: all.filter(entry => entry.finding.priority === 1).length,
+    warnings: all.filter(entry => entry.finding.priority === 2).length,
+    infos: all.filter(entry => entry.finding.priority === 3).length,
+    exempted: all.filter(entry => entry.finding.hasExemption).length,
+    objectsWithFindings: new Set(all.map(entry => `${entry.object.type} ${entry.object.name}`))
+      .size,
+    checkVariant: cached.checkVariant,
+    connectionId: cached.connectionId,
+    ...(input.includeUri === false ? {} : { targetUri: cached.targetUri })
+  }
+  return new vscode.LanguageModelToolResult([
+    new vscode.LanguageModelTextPart(
+      JSON.stringify(
+        {
+          resultId,
+          expiresAt: new Date(cached.expiresAt).toISOString(),
+          summary,
+          resultStart: findings.length ? start : null,
+          resultEnd,
+          returned: findings.length,
+          hasMore,
+          nextStart: hasMore ? end + 1 : null,
+          findings
+        },
+        null,
+        2
+      )
+    )
+  ])
 }
 
 // ============================================================================
@@ -49,6 +160,14 @@ export interface IGetATCDecorationsParameters {
  * 🔍 RUN ATC ANALYSIS TOOL - Wrapper for existing ATC logic with AI integration
  */
 export class RunATCAnalysisTool implements vscode.LanguageModelTool<IRunATCAnalysisParameters> {
+  private readonly results = new Map<string, CachedATCResult>()
+
+  private pruneResults() {
+    for (const [id, result] of this.results) {
+      if (result.expiresAt <= Date.now()) this.results.delete(id)
+    }
+  }
+
   async prepareInvocation(
     options: vscode.LanguageModelToolInvocationPrepareOptions<IRunATCAnalysisParameters>,
     _token: vscode.CancellationToken
@@ -100,6 +219,11 @@ export class RunATCAnalysisTool implements vscode.LanguageModelTool<IRunATCAnaly
           )
         }
       }
+    }
+
+    resultRange(options.input)
+    if (options.input.resultId !== undefined) {
+      return { invocationMessage: "Reading cached ATC findings..." }
     }
 
     // Validate: must have objectUri, objectName+connectionId, or useActiveFile
@@ -170,6 +294,29 @@ export class RunATCAnalysisTool implements vscode.LanguageModelTool<IRunATCAnaly
     // Handle get_atc_variants action
     if (action === "get_atc_variants") {
       return this.getVariants(options.input)
+    }
+
+    resultRange(options.input)
+    this.pruneResults()
+    if (options.input.resultId !== undefined) {
+      const cached = this.results.get(options.input.resultId)
+      if (!cached) {
+        return new vscode.LanguageModelToolResult([
+          new vscode.LanguageModelTextPart(
+            JSON.stringify({
+              error: "ATC_RESULT_EXPIRED",
+              message:
+                "ATC result cache expired or is unavailable. Run ATC again without resultId and with the original target and variant. No analysis was run.",
+              resultId: options.input.resultId
+            })
+          )
+        ])
+      }
+      if (connectionId && connectionId !== cached.connectionId) {
+        throw new Error("resultId belongs to a different connectionId.")
+      }
+      cached.expiresAt = Date.now() + resultLifetime
+      return renderResult(options.input.resultId, cached, options.input)
     }
 
     try {
@@ -283,13 +430,18 @@ export class RunATCAnalysisTool implements vscode.LanguageModelTool<IRunATCAnaly
         }
       }
 
+      let capturedFindings: ReturnType<typeof structureFindings> = []
+      const captureResults = (objects: ResObject[]) => {
+        capturedFindings = structureFindings(objects)
+      }
       const runAnalysis = async () => {
         if (scope === "package" || scope === "transport") {
           return atcProvider.runInspectorByAdtUrl(
             targetAdtPath!,
             actualConnectionId!,
             variantName,
-            showUi
+            showUi,
+            captureResults
           )
         }
 
@@ -302,7 +454,7 @@ export class RunATCAnalysisTool implements vscode.LanguageModelTool<IRunATCAnaly
           // Continue with ATC even if file opening fails
         }
 
-        return atcProvider.runInspector(targetUri, undefined, variantName, showUi)
+        return atcProvider.runInspector(targetUri, undefined, variantName, showUi, captureResults)
       }
 
       const usedVariant = showUi
@@ -312,93 +464,21 @@ export class RunATCAnalysisTool implements vscode.LanguageModelTool<IRunATCAnaly
           )
         : await runAnalysis()
 
-      const resolvedVariantName = usedVariant || "unknown"
-      const findings = atcProvider.findings()
-
-      const structuredFindings = findings.map(finding => ({
-        object: {
-          name: finding.parent.object.name,
-          type: finding.parent.object.type
-        },
-        finding: {
-          messageTitle: finding.finding.messageTitle,
-          checkTitle: finding.finding.checkTitle,
-          checkId: finding.finding.checkId,
-          priority: finding.finding.priority,
-          priorityText:
-            finding.finding.priority === 1
-              ? "Error"
-              : finding.finding.priority === 2
-                ? "Warning"
-                : "Info",
-          location: {
-            uri: finding.uri,
-            line: finding.start.line + 1,
-            character: finding.start.character + 1
-          },
-          hasExemption: !!finding.finding.exemptionApproval,
-          exemptionStatus: finding.finding.exemptionApproval || null,
-          docUri: finding.finding.link?.href || null
-        }
-      }))
-
-      const totalFindings = structuredFindings.length
-      const errors = structuredFindings.filter(f => f.finding.priority === 1).length
-      const warnings = structuredFindings.filter(f => f.finding.priority === 2).length
-      const infos = structuredFindings.filter(f => f.finding.priority === 3).length
-      const exempted = structuredFindings.filter(f => f.finding.hasExemption).length
-
-      const findingsByObject = structuredFindings.reduce(
-        (acc, finding) => {
-          const key = `${finding.object.type} ${finding.object.name}`
-          if (!acc[key]) acc[key] = []
-          acc[key].push(finding)
-          return acc
-        },
-        {} as Record<string, any[]>
-      )
-
-      const resultText =
-        `ATC Analysis Complete\n` +
-        `Target: ${targetUri.toString()}\n` +
-        `System: ${actualConnectionId}\n` +
-        `Check Variant: ${resolvedVariantName}\n` +
-        `Findings: ${totalFindings} (${errors}E ${warnings}W ${infos}I, ${exempted} exempted)\n` +
-        `Objects Analyzed: ${Object.keys(findingsByObject).length}\n\n` +
-        `Per-object:\n` +
-        Object.entries(findingsByObject)
-          .map(
-            ([objectKey, findings]) =>
-              `• ${objectKey}: ${findings.length} (` +
-              `${findings.filter(f => f.finding.priority === 1).length}E, ` +
-              `${findings.filter(f => f.finding.priority === 2).length}W, ` +
-              `${findings.filter(f => f.finding.priority === 3).length}I)`
-          )
-          .join("\n") +
-        `\n\nResults also displayed in ATC Finds panel.`
-
-      return new vscode.LanguageModelToolResult([
-        new vscode.LanguageModelTextPart(resultText),
-        new vscode.LanguageModelTextPart(
-          `\nStructured Findings Data:\n${JSON.stringify(
-            {
-              summary: {
-                totalFindings,
-                errors,
-                warnings,
-                infos,
-                exempted,
-                checkVariant: resolvedVariantName,
-                targetUri: targetUri.toString(),
-                connectionId: actualConnectionId
-              },
-              findings: structuredFindings
-            },
-            null,
-            2
-          )}`
-        )
-      ])
+      const resultId = randomUUID()
+      const cached: CachedATCResult = {
+        expiresAt: Date.now() + resultLifetime,
+        targetUri: targetUri.toString(),
+        connectionId: actualConnectionId!,
+        checkVariant: usedVariant || "unknown",
+        findings: capturedFindings
+      }
+      this.pruneResults()
+      while (this.results.size >= maxCachedRuns) {
+        const oldest = this.results.keys().next().value
+        if (oldest) this.results.delete(oldest)
+      }
+      this.results.set(resultId, cached)
+      return renderResult(resultId, cached, options.input)
     } catch (error) {
       throw new Error(`Failed to run ATC analysis: ${String(error)}`)
     }

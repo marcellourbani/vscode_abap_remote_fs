@@ -37,8 +37,13 @@ export interface FindingMarker {
   start: Position
 }
 
-export const hasExemption = (f: AtcWLFinding) => !!f.exemptionApproval
-export const approvedExemption = (f: AtcWLFinding) => f.exemptionApproval === "-"
+const noExemption = (finding: AtcWLFinding & { noExemption?: string | boolean }) =>
+  String(finding.noExemption) === "true"
+
+export const hasExemption = (finding: AtcWLFinding) =>
+  !!finding.exemptionApproval && !noExemption(finding)
+export const approvedExemption = (finding: AtcWLFinding) =>
+  finding.exemptionApproval === "-" && !noExemption(finding)
 
 export class AtcRoot extends TreeItem {
   systems = new Map<string, AtcSystem>()
@@ -74,7 +79,7 @@ interface ResFinding extends AtcWLFinding {
   start?: Position
   file?: AbapFile
 }
-interface ResObject extends AtcWLobject {
+export interface ResObject extends AtcWLobject {
   findings: ResFinding[]
 }
 const zeroPos = new Position(0, 0)
@@ -111,7 +116,11 @@ export class AtcSystem extends TreeItem {
     for (const o of this.children) if (o.hasError) return true
     return false
   }
-  async load(task: Task<AtcWorkList>, showDecorations = true) {
+  async load(
+    task: Task<AtcWorkList>,
+    showDecorations = true,
+    onResults?: (objects: ResObject[]) => void
+  ) {
     this.refresh = async () => {
       const wl = await task()
       const finder = new AdtObjectFinder(this.connectionId)
@@ -121,6 +130,7 @@ export class AtcSystem extends TreeItem {
         a.type < b.type ? -1 : a.type > b.type ? 1 : a.name < b.name ? -1 : a.name > b.name ? 1 : 0
       )
       this.objects = await resolveObjects(objects, finder)
+      onResults?.(this.objects)
       this.updateChildren(showDecorations)
     }
     return this.refresh()
@@ -297,12 +307,13 @@ class AtcProvider implements TreeDataProvider<AtcNode> {
     uri: string,
     connectionId: string,
     overrideVariant?: string,
-    showUi = true
+    showUi = true,
+    onResults?: (objects: ResObject[]) => void
   ): Promise<string> {
     const client = getClient(connectionId)
     const { variant, checkVariant } = await getVariant(client, connectionId, overrideVariant)
     const system = await this.root.child(connectionId, checkVariant)
-    await system.load(() => runInspectorByAdtUrl(uri, system.variant, client), showUi)
+    await system.load(() => runInspectorByAdtUrl(uri, checkVariant, client), showUi, onResults)
     if (showUi) {
       commands.executeCommand("abapfs.atcFinds.focus")
       this.setAutoRefresh(this.autoRefresh)
@@ -315,13 +326,14 @@ class AtcProvider implements TreeDataProvider<AtcNode> {
     uri: Uri,
     setvariant?: (variant: string) => void,
     overrideVariant?: string,
-    showUi = true
+    showUi = true,
+    onResults?: (objects: ResObject[]) => void
   ): Promise<string> {
     const client = getClient(uri.authority)
     const { variant, checkVariant } = await getVariant(client, uri.authority, overrideVariant)
     if (setvariant) setvariant(variant)
     const system = await this.root.child(uri.authority, checkVariant)
-    await system.load(() => runInspector(uri, system.variant, client), showUi)
+    await system.load(() => runInspector(uri, checkVariant, client), showUi, onResults)
     if (showUi) {
       commands.executeCommand("abapfs.atcFinds.focus")
       this.setAutoRefresh(this.autoRefresh)

@@ -86,6 +86,7 @@ vi.mock("../../lib", () => ({
 
 import { hasExemption, approvedExemption, AtcRoot, AtcSystem, AtcObject, AtcFind } from "./view"
 import { setContext } from "../../context"
+import { AdtObjectFinder } from "../../adt/operations/AdtObjectFinder"
 import * as __$mock_vscode from "vscode"
 import type { MockedFunction, Mock } from "vitest"
 
@@ -110,6 +111,17 @@ const makeWLObject = (findings: any[] = []): any => ({
 })
 
 describe("hasExemption", () => {
+  it("honors explicit noExemption on newer systems", () => {
+    for (const noExemption of ["true", true]) {
+      const finding = makeFinding({ exemptionApproval: "-", noExemption })
+      expect(hasExemption(finding)).toBe(false)
+      expect(approvedExemption(finding)).toBe(false)
+    }
+    const finding = makeFinding({ exemptionApproval: "-", noExemption: "false" })
+    expect(hasExemption(finding)).toBe(true)
+    expect(approvedExemption(finding)).toBe(true)
+  })
+
   it("returns true when exemptionApproval is a non-empty string", () => {
     expect(hasExemption(makeFinding({ exemptionApproval: "-" }))).toBe(true)
     expect(hasExemption(makeFinding({ exemptionApproval: "APPROVED" }))).toBe(true)
@@ -205,6 +217,33 @@ describe("AtcSystem", () => {
     const root = new AtcRoot("systems", { filterExempt: true, emitter: { fire: vi.fn() } } as any)
     const system = new AtcSystem("myconn", "MYVARIANT", root)
     expect(system.children).toEqual([])
+  })
+
+  it("captures all findings before exemption and location filters", async () => {
+    const vscodeRange = vi
+      .fn()
+      .mockResolvedValueOnce({ uri: "adt://sys/source", start: { line: 0, character: 0 } })
+      .mockResolvedValueOnce({ uri: "adt://sys/source", start: { line: 1, character: 0 } })
+      .mockRejectedValueOnce(new Error("Location unavailable"))
+    ;(AdtObjectFinder as Mock).mockImplementationOnce(function () {
+      return { vscodeRange }
+    })
+    const parent = { exemptFilter: true, emitter: { fire: vi.fn() } }
+    const root = new AtcRoot("systems", parent as any)
+    const system = new AtcSystem("myconn", "MYVARIANT", root)
+    const normal = makeFinding({ exemptionApproval: "-", noExemption: "true" })
+    const exempt = makeFinding({ exemptionApproval: "-" })
+    const unresolved = makeFinding()
+    const capture = vi.fn()
+    await system.load(
+      async () => ({ objects: [makeWLObject([normal, exempt, unresolved])] }) as any,
+      false,
+      capture
+    )
+    expect(capture.mock.calls[0][0][0].findings).toHaveLength(3)
+    expect(system.children).toHaveLength(1)
+    expect(system.children[0].children).toHaveLength(1)
+    expect(system.children[0].children[0].finding).toMatchObject({ noExemption: "true" })
   })
 })
 

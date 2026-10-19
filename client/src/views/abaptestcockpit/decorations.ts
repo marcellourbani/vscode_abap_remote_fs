@@ -52,8 +52,8 @@ export function getATCDecorations(fileUri?: string) {
               : "Info",
         message: finding.finding.messageTitle,
         checkTitle: finding.finding.checkTitle,
-        hasExemption: !!finding.finding.exemptionApproval,
-        decorationType: !!finding.finding.exemptionApproval
+        hasExemption: hasExemption(finding.finding),
+        decorationType: hasExemption(finding.finding)
           ? "exempted"
           : finding.finding.priority === 1
             ? "error"
@@ -79,8 +79,8 @@ export function getATCDecorations(fileUri?: string) {
             : "Info",
       message: finding.finding.messageTitle,
       checkTitle: finding.finding.checkTitle,
-      hasExemption: !!finding.finding.exemptionApproval,
-      decorationType: !!finding.finding.exemptionApproval
+      hasExemption: hasExemption(finding.finding),
+      decorationType: hasExemption(finding.finding)
         ? "exempted"
         : finding.finding.priority === 1
           ? "error"
