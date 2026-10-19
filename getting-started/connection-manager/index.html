@@ -507,6 +507,17 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#self-signed-certificates-in-vs-code" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Self-Signed Certificates in VS Code
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#import-export" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -3459,6 +3470,17 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#self-signed-certificates-in-vs-code" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Self-Signed Certificates in VS Code
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#import-export" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -3566,6 +3588,11 @@
 </tr>
 </tbody>
 </table>
+<h2 id="self-signed-certificates-in-vs-code">Self-Signed Certificates in VS Code<a class="headerlink" href="#self-signed-certificates-in-vs-code" title="Permanent link">&para;</a></h2>
+<p>If a connection fails after enabling <strong>Allow self-signed certificates</strong>, try setting VS Code's <code>http.proxySupport</code> setting to <code>fallback</code>:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="nt">"http.proxySupport"</span><span class="p">:</span><span class="w"> </span><span class="s2">"fallback"</span>
+</code></pre></div>
+<p>Open <strong>Preferences: Open User Settings (JSON)</strong> from the Command Palette to add the setting. In some recent VS Code versions, the built-in HTTPS handling can ignore the certificate option used by ABAP FS. This workaround was reported to resolve that behavior. It may affect proxy handling, so restore the previous value if you rely on VS Code's proxy configuration and it causes problems.</p>
 <h2 id="import-export">Import / Export<a class="headerlink" href="#import-export" title="Permanent link">&para;</a></h2>
 <ul>
 <li><strong>Export</strong> — saves all connections to a JSON file (passwords excluded) for backup or sharing with colleagues.</li>
