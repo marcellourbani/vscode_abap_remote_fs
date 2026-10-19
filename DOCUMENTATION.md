@@ -83,6 +83,7 @@ Before proceeding, ensure you meet the [Prerequisites](prerequisite.md).
 **Tips:**
 
 - Passwords are stored in the OS credential manager, not in settings files.
+- If a connection using a self-signed certificate fails, see [Self-Signed Certificates in VS Code](connection-manager.md#self-signed-certificates-in-vs-code).
 - If a colleague already has connections configured, ask them to export via **Import/Export** and send you the JSON. User IDs and passwords are excluded from exports. You can then import and update your credentials in bulk using **Bulk Operations**.
 - For SAP BTP systems, use **Cloud Support** to create a connection from a BTP Service Key or Endpoint.
 
@@ -159,6 +160,16 @@ The Connection Manager is a visual interface for adding, editing, and organizing
 | **SAP GUI** | Server, system number, router string, message server, GUI type (Desktop / Embedded WebGUI / Browser) |
 | **OAuth** | Client ID, secret, login URL |
 | **Advanced** | ATC approver, ATC check variant, max debug threads, diff formatter |
+
+## Self-Signed Certificates in VS Code
+
+If a connection fails after enabling **Allow self-signed certificates**, try setting VS Code's `http.proxySupport` setting to `fallback`:
+
+```json
+"http.proxySupport": "fallback"
+```
+
+Open **Preferences: Open User Settings (JSON)** from the Command Palette to add the setting. In some recent VS Code versions, the built-in HTTPS handling can ignore the certificate option used by ABAP FS. This workaround was reported to resolve that behavior. It may affect proxy handling, so restore the previous value if you rely on VS Code's proxy configuration and it causes problems.
 
 ## Import / Export
 
