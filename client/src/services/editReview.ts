@@ -36,7 +36,11 @@ function isEnabled(): boolean {
 }
 
 /** Report a saved tool edit. Must be called inside the object's write queue so edits arrive in save order */
-export async function recordAbapEdit(uri: vscode.Uri, before: string, after: string): Promise<void> {
+export async function recordAbapEdit(
+  uri: vscode.Uri,
+  before: string,
+  after: string
+): Promise<void> {
   if (!decorations || !isEnabled()) return
   try {
     await trackEdit(uri, before, after)
@@ -158,9 +162,13 @@ async function confirmDiscardLaterChanges(uri: vscode.Uri): Promise<boolean> {
 
 async function replaceDocumentText(document: vscode.TextDocument, content: string): Promise<void> {
   const edit = new vscode.WorkspaceEdit()
-  const fullRange = new vscode.Range(document.positionAt(0), document.positionAt(document.getText().length))
+  const fullRange = new vscode.Range(
+    document.positionAt(0),
+    document.positionAt(document.getText().length)
+  )
   edit.replace(document.uri, fullRange, content)
-  if (!(await vscode.workspace.applyEdit(edit))) throw new Error(`unable to edit ${fileName(document.uri)}`)
+  if (!(await vscode.workspace.applyEdit(edit)))
+    throw new Error(`unable to edit ${fileName(document.uri)}`)
   if (!(await document.save())) throw new Error(`unable to save ${fileName(document.uri)}`)
 }
 
@@ -194,9 +202,21 @@ class EditReviewCodeLensProvider implements vscode.CodeLensProvider {
     const line = firstChangedLine(entry, document)
     const range = new vscode.Range(line, 0, line, 0)
     return [
-      new vscode.CodeLens(range, { title: "$(check) Keep", command: "abapfs.editReview.keep", arguments: [entry.uri] }),
-      new vscode.CodeLens(range, { title: "$(discard) Undo", command: "abapfs.editReview.undo", arguments: [entry.uri] }),
-      new vscode.CodeLens(range, { title: "$(diff) Show Changes", command: "abapfs.editReview.showDiff", arguments: [entry.uri] })
+      new vscode.CodeLens(range, {
+        title: "$(check) Keep",
+        command: "abapfs.editReview.keep",
+        arguments: [entry.uri]
+      }),
+      new vscode.CodeLens(range, {
+        title: "$(discard) Undo",
+        command: "abapfs.editReview.undo",
+        arguments: [entry.uri]
+      }),
+      new vscode.CodeLens(range, {
+        title: "$(diff) Show Changes",
+        command: "abapfs.editReview.showDiff",
+        arguments: [entry.uri]
+      })
     ]
   }
 }
@@ -248,9 +268,13 @@ export function registerEditReview(context: vscode.ExtensionContext): void {
     decorations.removed,
     lensChanged,
     vscode.workspace.registerTextDocumentContentProvider(BASELINE_SCHEME, {
-      provideTextDocumentContent: uri => [...pending.values()].find(e => objectWriteKey(e.uri) === uri.query)?.baseline ?? ""
+      provideTextDocumentContent: uri =>
+        [...pending.values()].find(e => objectWriteKey(e.uri) === uri.query)?.baseline ?? ""
     }),
-    vscode.languages.registerCodeLensProvider({ scheme: "adt" }, new EditReviewCodeLensProvider(lensChanged.event)),
+    vscode.languages.registerCodeLensProvider(
+      { scheme: "adt" },
+      new EditReviewCodeLensProvider(lensChanged.event)
+    ),
     vscode.commands.registerCommand("abapfs.editReview.keep", keep),
     vscode.commands.registerCommand("abapfs.editReview.undo", undo),
     vscode.commands.registerCommand("abapfs.editReview.showDiff", showDiff),

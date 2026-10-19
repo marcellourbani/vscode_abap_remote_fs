@@ -158,8 +158,20 @@ describe("executeReplace transport integration", () => {
     const callbackDone = new Promise<void>(resolve => (releaseCallback = resolve))
     const onApplied = vi.fn(() => (onApplied.mock.calls.length === 1 ? callbackDone : undefined))
 
-    const first = executeReplace("adt://dev100/object/source/main", "one", "first", undefined, onApplied)
-    const second = executeReplace("adt://dev100/object/source/main", "two", "second", undefined, onApplied)
+    const first = executeReplace(
+      "adt://dev100/object/source/main",
+      "one",
+      "first",
+      undefined,
+      onApplied
+    )
+    const second = executeReplace(
+      "adt://dev100/object/source/main",
+      "two",
+      "second",
+      undefined,
+      onApplied
+    )
     await vi.waitFor(() => expect(onApplied).toHaveBeenCalledTimes(1))
     await new Promise(resolve => setTimeout(resolve, 0))
     expect(mocks.readFile).toHaveBeenCalledTimes(1)

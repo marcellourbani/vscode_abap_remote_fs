@@ -116,7 +116,11 @@ function assertUniqueMatch(count: number): void {
 }
 
 /** Called inside the per-object write queue, so concurrent edits are reported in the order they were saved */
-export type ReplaceAppliedCallback = (uri: vscode.Uri, before: string, after: string) => Promise<void> | void
+export type ReplaceAppliedCallback = (
+  uri: vscode.Uri,
+  before: string,
+  after: string
+) => Promise<void> | void
 
 /**
  * Execute the replace operation against the VS Code filesystem.
