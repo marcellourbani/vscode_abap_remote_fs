@@ -112,7 +112,8 @@ const record: RepositoryObjectRecord = {
   classificationReason: "Z/Y object name"
 }
 
-describe("WorkflowSnapshotService", () => {
+// Real temp-folder I/O is slowed down a lot by parallel test workers and antivirus scans on Windows
+describe("WorkflowSnapshotService", { timeout: 20_000 }, () => {
   beforeEach(async () => {
     vi.clearAllMocks()
     workerFormat.mockImplementation(async ({ fileName, source, methodMap }: FormatWorkerRequest) =>
@@ -135,7 +136,9 @@ describe("WorkflowSnapshotService", () => {
     ])
     findByAdtUri.mockImplementation(async (uri: string) => ({ path: `/workspace${uri}` }))
   })
-  afterEach(async () => fs.rm(root.value, { recursive: true, force: true }))
+  afterEach(async () =>
+    fs.rm(root.value, { recursive: true, force: true, maxRetries: 5, retryDelay: 50 })
+  )
 
   it("reports raw difference but normalized equality for line endings and trailing spaces", async () => {
     const store = new WorkflowStore({} as any)
