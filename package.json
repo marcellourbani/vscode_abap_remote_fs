@@ -1571,7 +1571,7 @@
       {
         "name": "abapfs_get_object_source",
         "displayName": "Get ABAP Object Lines",
-        "modelDescription": "Read active or inactive ABAP source. Defaults to active; use version inactive to verify source saved to SAP before activation. objectType disambiguates same-named objects (MATNR exists as DTEL and DOMA). methodName extracts one method body from a class. MANDATORY before code generation: training data has wrong params — ALWAYS read exact signatures before calling functions/methods, never guess. Unverified params WILL fail at runtime. IMPORTANT: shows SAP code only, not unsaved local edits — use VS Code file tools for fresh edits.",
+        "modelDescription": "Read active or inactive ABAP source. Defaults to active. BEFORE EDITING, read with version inactive: edits are applied to the inactive version, which can differ from the active one when the object has unactivated changes. If no inactive version exists, inactive returns the active source, so it is always safe to use before editing. Also use inactive to verify source saved to SAP before activation. For tables, structures and table types use active only: active returns the complete structure including append structures. objectType disambiguates same-named objects (MATNR exists as DTEL and DOMA). methodName extracts one method body from a class. MANDATORY before code generation: training data has wrong params — ALWAYS read exact signatures before calling functions/methods, never guess. Unverified params WILL fail at runtime. IMPORTANT: shows SAP code only, not unsaved local edits — use VS Code file tools for fresh edits.",
         "canBeReferencedInPrompt": true,
         "toolReferenceName": "abapfs_get_object_source",
         "icon": "$(file-code)",
@@ -1648,7 +1648,7 @@
                 "inactive"
               ],
               "default": "active",
-              "description": "SAP source version to read. Use inactive after saving and before activation to verify the pending source."
+              "description": "SAP source version to read. Use inactive before editing (edits apply to the inactive version; returns the active source when no inactive version exists) and to verify saved source before activation. Use active for tables, structures and table types."
             },
             "connectionId": {
               "type": "string",
@@ -1794,7 +1794,7 @@
       {
         "name": "abapfs_batch_get_lines",
         "displayName": "Get Batch Lines",
-        "modelDescription": "Read active or inactive lines from multiple ABAP objects in one call. Defaults to active; use inactive to verify pending SAP source before activation. Does not return unsaved local edits.",
+        "modelDescription": "Read active or inactive lines from multiple ABAP objects in one call. Defaults to active. BEFORE EDITING, read with version inactive: edits are applied to the inactive version, which can differ from the active one when an object has unactivated changes. If no inactive version exists, inactive returns the active source. Also use inactive to verify pending SAP source before activation. For tables, structures and table types use active only. Does not return unsaved local edits.",
         "canBeReferencedInPrompt": true,
         "toolReferenceName": "abapfs_batch_get_lines",
         "icon": "$(list-tree)",
@@ -1839,7 +1839,7 @@
                 "inactive"
               ],
               "default": "active",
-              "description": "SAP source version to read for every requested object."
+              "description": "SAP source version to read for every requested object. Use inactive before editing (returns the active source when no inactive version exists); use active for tables, structures and table types."
             }
           },
           "required": [
@@ -2796,7 +2796,7 @@
       {
         "name": "replace_string_in_abap_object",
         "displayName": "Replace String in ABAP Object",
-        "modelDescription": "Edit ABAP source code (adt:// files) by replacing one exact text string with new text. Use this for ABAP edits; generic file edit tools may not be able to write adt:// files. The oldString must match EXACTLY ONE occurrence in the file - include 3-5 lines of surrounding context to ensure uniqueness. The file is automatically locked, saved to SAP, and unlocked. Prerequisites: call abapfs_get_workspace_uri to get the fileUri, then abapfs_get_object_source or abapfs_search_object_source to read the current content before editing. oldString is mandatory whenever the file has any content; an empty oldString is accepted ONLY when the file is completely blank (e.g. a freshly created object), in which case newString becomes the whole file. First call abapfs_get_object_transport_status for the exact object. Never invent a transport number or description: use an existing request only after the user approves it, or create a request only when the user explicitly asks and supplies or approves the description. This tool verifies that SAP's inactive source matches the requested replacement. After editing, read the source with version inactive when inspecting pending source, check diagnostics, and activate with abapfs_activate_object.",
+        "modelDescription": "Edit ABAP source code (adt:// files) by replacing one exact text string with new text. Use this for ABAP edits; generic file edit tools may not be able to write adt:// files. The oldString must match EXACTLY ONE occurrence in the file - include 3-5 lines of surrounding context to ensure uniqueness. The file is automatically locked, saved to SAP, and unlocked. Prerequisites: call abapfs_get_workspace_uri to get the fileUri, then abapfs_get_object_source with version inactive (edits apply to the inactive version) or abapfs_search_object_source to read the current content before editing. oldString is mandatory whenever the file has any content; an empty oldString is accepted ONLY when the file is completely blank (e.g. a freshly created object), in which case newString becomes the whole file. First call abapfs_get_object_transport_status for the exact object. Never invent a transport number or description: use an existing request only after the user approves it, or create a request only when the user explicitly asks and supplies or approves the description. This tool verifies that SAP's inactive source matches the requested replacement. After editing, read the source with version inactive when inspecting pending source, check diagnostics, and activate with abapfs_activate_object.",
         "canBeReferencedInPrompt": true,
         "toolReferenceName": "replace_string_in_abap_object",
         "icon": "$(edit)",
@@ -5195,11 +5195,11 @@
         },
         {
           "command": "abapfs.acp.cancelTurn",
-          "when": "config.abapfs.acp.enabled"
+          "when": "config.abapfs.acp.enabled && abapfs.acp.turnRunning"
         },
         {
           "command": "abapfs.acp.disconnectAgent",
-          "when": "config.abapfs.acp.enabled"
+          "when": "config.abapfs.acp.enabled && abapfs.acp.connected"
         },
         {
           "command": "abapfs.acp.openChat",
@@ -5895,12 +5895,12 @@
         },
         {
           "command": "abapfs.acp.cancelTurn",
-          "when": "view == abapfs.views.agentChat",
+          "when": "view == abapfs.views.agentChat && abapfs.acp.turnRunning",
           "group": "navigation@3"
         },
         {
           "command": "abapfs.acp.disconnectAgent",
-          "when": "view == abapfs.views.agentChat",
+          "when": "view == abapfs.views.agentChat && abapfs.acp.connected",
           "group": "navigation@4"
         },
         {
@@ -6774,7 +6774,7 @@
         "abapfs.editReview.enabled": {
           "type": "boolean",
           "default": false,
-          "markdownDescription": "Show **Keep** / **Undo** for ABAP edits made by the `replace_string_in_abap_object` tool, from Copilot or from MCP clients such as Claude Code. Edits are still saved to SAP immediately: the edited object opens with its changes highlighted, **Keep** acknowledges them, and **Undo** writes the source from before the edits back to SAP. Leave this off if you use ABAP FS tools from clients outside VS Code and don't watch the editor while they work."
+          "markdownDescription": "Show **Keep** / **Undo** for ABAP edits made by the `replace_string_in_abap_object` tool (from Copilot or MCP clients such as Claude Code) and by Agent Chat agents' own file edit tools. Edits are still saved to SAP immediately: the edited object opens with its changes highlighted, **Keep** acknowledges them, and **Undo** writes the source from before the edits back to SAP. Leave this off if you use ABAP FS tools from clients outside VS Code and don't watch the editor while they work."
         },
         "abapfs.mcpServer.autoStart": {
           "type": "boolean",
@@ -6792,6 +6792,11 @@
           "type": "string",
           "default": "",
           "description": "API key for MCP server authentication. When set, clients must include this key in the Authorization header (Bearer token). Leave empty to allow unauthenticated local access (not recommended for shared machines)."
+        },
+        "abapfs.mcpServer.exposeEditTool": {
+          "type": "boolean",
+          "default": true,
+          "markdownDescription": "Offer the `replace_string_in_abap_object` edit tool to MCP clients and Agent Chat agents. Turn off to give them read-only ABAP FS tools; agents in Agent Chat can still edit with their own file tools. Copilot in VS Code always has the tool. Applies to new MCP sessions."
         },
         "abapfs.autoOpenUnsupportedInGui": {
           "type": "boolean",

@@ -420,6 +420,7 @@ function startAcp(context: vscode.ExtensionContext): vscode.Disposable {
         chatWebviewProvider.dispose()
         historyStore.dispose()
         void vscode.commands.executeCommand("setContext", CONNECTED_CONTEXT, false)
+        void vscode.commands.executeCommand("setContext", "abapfs.acp.turnRunning", false)
         disposeChannels()
       }
     }

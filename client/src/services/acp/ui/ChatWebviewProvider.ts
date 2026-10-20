@@ -8,6 +8,8 @@ import { sendEvent } from "../utils/TelemetryManager"
 import { toAgentUri } from "../fs/AbapPathMapper"
 import { ADTSCHEME } from "../../../adt/conections"
 
+const TURN_RUNNING_CONTEXT = "abapfs.acp.turnRunning"
+
 const ATTACHABLE_SCHEMES = new Set(["file", ADTSCHEME])
 
 interface EditorSelection {
@@ -239,6 +241,7 @@ export class ChatWebviewProvider implements vscode.WebviewViewProvider {
 
     // Tell webview we're processing
     this.postMessage({ type: "promptStart" })
+    void vscode.commands.executeCommand("setContext", TURN_RUNNING_CONTEXT, true)
 
     try {
       const capabilities = session.initResponse.agentCapabilities?.promptCapabilities
@@ -279,6 +282,8 @@ export class ChatWebviewProvider implements vscode.WebviewViewProvider {
         message: e.message || "Prompt failed"
       })
       this.postMessage({ type: "promptEnd", stopReason: "error" })
+    } finally {
+      void vscode.commands.executeCommand("setContext", TURN_RUNNING_CONTEXT, false)
     }
   }
 

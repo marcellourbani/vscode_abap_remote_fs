@@ -46,6 +46,7 @@ Open VS Code Settings (`Ctrl+,`) and search for `abapfs.mcpServer`:
 | ---------------------------- | --------------------------------------------------------------------------- |
 | `abapfs.mcpServer.port`      | Default `4847` — change if there's a port conflict                          |
 | `abapfs.mcpServer.apiKey`    | Optional. Recommended on shared machines to prevent unauthorized SAP access |
+| `abapfs.mcpServer.exposeEditTool` | Default `true`. Turn off to give MCP clients read-only tools, without `replace_string_in_abap_object` |
 
 Or add directly to your `settings.json`:
 

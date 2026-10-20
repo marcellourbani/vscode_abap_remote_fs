@@ -1,7 +1,10 @@
 import * as vscode from "vscode"
 import { log, logError } from "../utils/Logger"
 import { toVscodeUri } from "../fs/AbapPathMapper"
+import { toLf, withLineEndingsOf } from "../fs/lineEndings"
 import { ADTSCHEME } from "../../../adt/conections"
+import { recordAbapEdit } from "../../editReview"
+import { serializeObjectWrite } from "../../objectWriteQueue"
 
 import type {
   ReadTextFileRequest,
@@ -31,13 +34,7 @@ export class FileSystemHandler {
       // Check if the file is open in an editor with unsaved changes
       const openDoc = findOpenDocument(uri)
 
-      let content: string
-      if (openDoc) {
-        content = openDoc.getText()
-      } else {
-        const raw = await vscode.workspace.fs.readFile(uri)
-        content = Buffer.from(raw).toString("utf-8")
-      }
+      let content = toLf(openDoc ? openDoc.getText() : await readFileText(uri))
 
       // Handle line/limit parameters
       if (
@@ -70,12 +67,12 @@ export class FileSystemHandler {
         log(`writeTextFile: mapped to ${uri.toString()}`)
       }
 
-      const openDoc = findOpenDocument(uri)
-      if (uri.scheme === ADTSCHEME && openDoc?.isDirty) {
-        await replaceDocumentText(openDoc, params.content)
+      const write = () => writeWithLineEndings(uri, params.content)
+      // SAP objects are also written by the ABAP FS edit tool and by Undo, and edit review needs save order
+      if (uri.scheme === ADTSCHEME) {
+        await serializeObjectWrite(uri, write)
       } else {
-        // The ABAP FS provider decodes with Buffer.toString, so a plain Uint8Array would break UTF-8
-        await vscode.workspace.fs.writeFile(uri, Buffer.from(params.content, "utf-8"))
+        await write()
       }
 
       // Open the file in the editor so the user sees the change
@@ -89,6 +86,25 @@ export class FileSystemHandler {
     }
   }
 }
+async function writeWithLineEndings(uri: vscode.Uri, agentContent: string): Promise<void> {
+  const openDoc = findOpenDocument(uri)
+  const existing = openDoc ? openDoc.getText() : await readFileText(uri).catch(() => undefined)
+  const content = withLineEndingsOf(agentContent, existing)
+  if (uri.scheme === ADTSCHEME && openDoc?.isDirty) {
+    await replaceDocumentText(openDoc, content)
+  } else {
+    // The ABAP FS provider decodes with Buffer.toString, so a plain Uint8Array would break UTF-8
+    await vscode.workspace.fs.writeFile(uri, Buffer.from(content, "utf-8"))
+  }
+  if (uri.scheme === ADTSCHEME && existing !== undefined) {
+    await recordAbapEdit(uri, existing, content)
+  }
+}
+
+async function readFileText(uri: vscode.Uri): Promise<string> {
+  return Buffer.from(await vscode.workspace.fs.readFile(uri)).toString("utf-8")
+}
+
 function findOpenDocument(uri: vscode.Uri): vscode.TextDocument | undefined {
   const key = uri.toString()
   return vscode.workspace.textDocuments.find(doc => doc.uri.toString() === key)

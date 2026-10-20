@@ -19,6 +19,8 @@ This document provides a comprehensive reference for all ABAP FS extension setti
 11. [Editor Defaults](#11-editor-defaults)
 12. [Repository Comparison](#12-repository-comparison)
 13. [SAP Data Workbook](#13-sap-data-workbook)
+14. [Agent Chat (ACP)](#14-agent-chat-acp)
+15. [Edit Review (Keep / Undo)](#15-edit-review-keep--undo)
 
 ---
 
@@ -145,12 +147,19 @@ The MCP (Model Context Protocol) server allows external AI tools like Cursor, Cl
 |----------|------|---------|-------------|
 | `apiKey` | string | `""` | API key for MCP server authentication. Clients must include this as `Authorization: Bearer <key>`. Empty = no authentication (not recommended for shared machines). |
 
+### `abapfs.mcpServer.exposeEditTool`
+
+| Property | Type | Default | Description |
+|----------|------|---------|-------------|
+| `exposeEditTool` | boolean | `true` | Offer the `replace_string_in_abap_object` edit tool to MCP clients and Agent Chat agents. When `false`, they get all other ABAP FS tools (read-only access); Agent Chat agents can still edit with their own file tools. Copilot in VS Code always has the tool. Applies to new MCP sessions. |
+
 **Example:**
 ```json
 {
   "abapfs.mcpServer.autoStart": true,
   "abapfs.mcpServer.port": 4847,
-  "abapfs.mcpServer.apiKey": "your-secret-api-key"
+  "abapfs.mcpServer.apiKey": "your-secret-api-key",
+  "abapfs.mcpServer.exposeEditTool": true
 }
 ```
 
@@ -543,6 +552,82 @@ See [Repository Comparison](../../docs/repository-comparison/index.md) for the c
 
 ---
 
+## 14. Agent Chat (ACP)
+
+Experimental chat panel for external coding agents (Claude Code, Codex, Gemini CLI, GitHub Copilot CLI and other Agent Client Protocol agents). The agent runs as a local process; ABAP FS serves its file reads and writes from SAP and can hand it the ABAP FS tools.
+
+### `abapfs.acp.enabled`
+
+| Property | Type | Default | Description |
+|----------|------|---------|-------------|
+| `enabled` | boolean | `false` | Show the **ABAP FS - Agent Chat** panel (secondary side bar). Turning it off stops all running agents. |
+
+### `abapfs.acp.agents`
+
+| Property | Type | Default | Description |
+|----------|------|---------|-------------|
+| `agents` | object | `{}` | Agents that can be connected, keyed by display name. Each entry has `command` (required), `args` (string array) and `env` (object). **Add Agent** in the panel offers built-in entries for common agents, run through `npx`; the first start downloads the agent from npm. |
+
+### `abapfs.acp.provideMcpServer`
+
+| Property | Type | Default | Description |
+|----------|------|---------|-------------|
+| `provideMcpServer` | boolean | `false` | Give each agent session the ABAP FS tools. ABAP FS starts its MCP server when needed and passes it over HTTP when the agent supports it, otherwise through a bundled stdio bridge. Leave off if the ABAP FS MCP server is already configured in the agent itself, otherwise the agent sees every tool twice. |
+
+### `abapfs.acp.autoApprovePermissions`
+
+| Property | Type | Default | Description |
+|----------|------|---------|-------------|
+| `autoApprovePermissions` | enum | `"ask"` | `ask` shows a picker for every permission request from the agent. `allowAll` approves all requests, including shell commands. |
+
+### `abapfs.acp.defaultWorkingDirectory`
+
+| Property | Type | Default | Description |
+|----------|------|---------|-------------|
+| `defaultWorkingDirectory` | string | `""` | Local folder the agent process and its terminal commands start in. Empty uses the first local workspace folder, or a private ABAP FS folder when the workspace only contains SAP systems. |
+
+### `abapfs.acp.logTraffic`
+
+| Property | Type | Default | Description |
+|----------|------|---------|-------------|
+| `logTraffic` | boolean | `false` | Log all ACP messages to the **ABAP FS Agents Traffic** output channel. Includes prompts and file contents. |
+
+**Example:**
+```json
+{
+  "abapfs.acp.enabled": true,
+  "abapfs.acp.provideMcpServer": true,
+  "abapfs.acp.agents": {
+    "Claude Code": {
+      "command": "npx",
+      "args": ["-y", "@agentclientprotocol/claude-agent-acp@latest"],
+      "env": {}
+    }
+  }
+}
+```
+
+See [Agent Chat](../../docs/agent-chat/index.md) for setup and usage.
+
+---
+
+## 15. Edit Review (Keep / Undo)
+
+### `abapfs.editReview.enabled`
+
+| Property | Type | Default | Description |
+|----------|------|---------|-------------|
+| `enabled` | boolean | `false` | Review ABAP edits made through `replace_string_in_abap_object` (by Copilot, Agent Chat agents or MCP clients) and by Agent Chat agents' own file edit tools. Edits are still saved to SAP immediately; the edited object opens with changes highlighted, **Keep** accepts them and **Undo** writes the source from before the edits back to SAP (inactive). Per file. Leave off when ABAP FS tools are used from clients outside VS Code. |
+
+**Example:**
+```json
+{
+  "abapfs.editReview.enabled": true
+}
+```
+
+---
+
 ## Troubleshooting
 
 | Issue | Setting to Check | Solution |
@@ -553,6 +638,10 @@ See [Repository Comparison](../../docs/repository-comparison/index.md) for the c
 | ABAP Cleaner not working | `abapfs.cleaner.enabled`, `*.executablePath` | Both must be set. Verify `abap-cleanerc.exe` exists at the path. |
 | Subagents disabled automatically | `abapfs.subagents.models` | Configure an available model for each active agent through the unified panel or `abapfs_manage_subagents`. |
 | MCP server connection refused | `abapfs.mcpServer.autoStart`, `*.port` | Ensure autoStart is true, verify port isn't in use by another application. |
+| Agent Chat panel missing | `abapfs.acp.enabled` | Enable it; the panel is in the secondary side bar. |
+| Agent has no ABAP FS tools | `abapfs.acp.provideMcpServer` | Enable it and start a new chat, or add the MCP server in the agent's own config. |
+| MCP client or agent cannot edit with `replace_string_in_abap_object` | `abapfs.mcpServer.exposeEditTool` | Must be `true`; start a new MCP session after changing it. |
+| No Keep / Undo after AI edits | `abapfs.editReview.enabled` | Enable it. Edits through `replace_string_in_abap_object` and Agent Chat agents' file tools are tracked; edits written by MCP clients' own tools outside ABAP FS are not. |
 | Password not saved in settings | (by design) | Passwords are stored in OS credential manager, not in settings files. |
 
 ---

@@ -65,7 +65,7 @@ A typical agent flow with the ABAP FS tools is:
 
 ### Reviewing edits (Keep / Undo)
 
-With `abapfs.editReview.enabled` on, every edit made through `replace_string_in_abap_object`, by Agent Chat, Copilot or any MCP client, can be reviewed in VS Code:
+With `abapfs.editReview.enabled` on, these ABAP edits can be reviewed in VS Code: every edit made through `replace_string_in_abap_object` (by Agent Chat, Copilot or any MCP client), and every edit an Agent Chat agent makes with its own file edit tools.
 
 - The edited object opens, with added and changed lines highlighted.
 - A **Keep | Undo | Show Changes** line appears above the first change, and the same actions are in the editor title bar.

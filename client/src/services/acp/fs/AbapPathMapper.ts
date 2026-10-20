@@ -67,10 +67,16 @@ export function abapWorkspaceHint(): string {
   const systems = (vscode.workspace.workspaceFolders ?? []).filter(f => f.uri.scheme === ADTSCHEME)
   if (!systems.length) return ""
   const lines = systems.map(f => `- ${f.name}: ${toAgentPath(f.uri)}`)
+  const editToolExposed = vscode.workspace
+    .getConfiguration("abapfs.mcpServer")
+    .get<boolean>("exposeEditTool", true)
+  const editHint = editToolExposed
+    ? "To edit ABAP sources use your file edit tools on these paths, or the abap-fs replace_string_in_abap_object tool with the adt:// URI."
+    : "To edit ABAP sources use your file edit tools on these paths."
   return [
     "[ABAP FS context]",
     "SAP systems are exposed as virtual folders that do NOT exist on the local disk: shell commands, grep, glob and existence checks will not find them.",
-    "Read these paths through the client file system (your read file tool) or the abap-fs MCP tools. To edit ABAP sources use the abap-fs replace_string_in_abap_object tool with the adt:// URI.",
+    `Read these paths through the client file system (your read file tool) or the abap-fs MCP tools. ${editHint}`,
     "abap-fs tools return adt:// URIs; the matching path is the system folder below followed by the URI path.",
     ...lines,
     "Use abapfs_search_objects and abapfs_get_workspace_uri to locate objects, and abapfs_activate_object after editing."

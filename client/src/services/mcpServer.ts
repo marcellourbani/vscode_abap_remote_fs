@@ -209,6 +209,15 @@ export function jsonSchemaToZod(
 
 // Tag used to identify ABAP FS tools
 const ABAP_FS_TAG = "abap-fs"
+const EDIT_TOOL_NAMES = new Set(["replace_string_in_abap_object"])
+
+export function isMcpExposedTool(
+  tool: { name: string; tags: readonly string[] },
+  exposeEditTools: boolean
+): boolean {
+  if (!tool.tags.includes(ABAP_FS_TAG)) return false
+  return exposeEditTools || !EDIT_TOOL_NAMES.has(tool.name)
+}
 
 /**
  * Create an MCP server that dynamically wraps all VS Code LM tools
@@ -220,8 +229,10 @@ function createMcpServer(): McpServer {
   })
 
   // Get all registered LM tools and filter to only ABAP FS tools
-  const allTools = vscode.lm.tools
-  const abapTools = allTools.filter(tool => tool.tags.includes(ABAP_FS_TAG))
+  const exposeEditTools = vscode.workspace
+    .getConfiguration("abapfs.mcpServer")
+    .get<boolean>("exposeEditTool", true)
+  const abapTools = vscode.lm.tools.filter(tool => isMcpExposedTool(tool, exposeEditTools))
 
   for (const tool of abapTools) {
     const toolName = tool.name

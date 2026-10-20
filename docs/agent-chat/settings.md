@@ -17,9 +17,10 @@ All settings are in VS Code Settings (`Ctrl+,`). Search for `abapfs.acp`.
 
 | Setting | Default | What it does for Agent Chat |
 | ------- | ------- | --------------------------- |
-| `abapfs.editReview.enabled` | `false` | Keep / Undo review in VS Code for ABAP edits made through `replace_string_in_abap_object`. See [Reviewing edits](using.md#reviewing-edits-keep--undo). |
+| `abapfs.editReview.enabled` | `false` | Keep / Undo review in VS Code for ABAP edits made through `replace_string_in_abap_object` or by the agent's own file edit tools. See [Reviewing edits](using.md#reviewing-edits-keep--undo). |
 | `abapfs.mcpServer.port` | `4847` | Port of the ABAP FS MCP server that agents use. |
 | `abapfs.mcpServer.apiKey` | `""` | Optional key for the MCP server. With `provideMcpServer` on, ABAP FS passes it to the agent automatically. |
+| `abapfs.mcpServer.exposeEditTool` | `true` | Offers the `replace_string_in_abap_object` edit tool to agents and MCP clients. Turn off for read-only ABAP FS tools; agents can still edit with their own file tools. Applies to new sessions. |
 | `abapfs.mcpServer.autoStart` | `false` | Starts the MCP server when VS Code starts. It's not needed for Agent Chat with `provideMcpServer` on, because the server is started when an agent connects. |
 
 ## Where settings are stored

@@ -53,7 +53,8 @@ Expected: SAP systems are not on disk. Ask the agent to use `abapfs_search_objec
 ## Edits don't show Keep / Undo
 
 - Check that `abapfs.editReview.enabled` is on.
-- Only edits through `replace_string_in_abap_object` are tracked. Edits through the agent's own write tool are saved, but not reviewed.
+- Only ABAP objects are tracked, not local files.
+- Edits are tracked when they go through `replace_string_in_abap_object` or the agent's own file tools in Agent Chat. Edits an external MCP client makes with its own tools outside ABAP FS can't be seen.
 
 ## History is empty or a chat can't be reopened
 
