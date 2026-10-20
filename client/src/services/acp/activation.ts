@@ -153,6 +153,9 @@ function startAcp(context: vscode.ExtensionContext): vscode.Disposable {
   sessionManager.on("session-load-start", () => chatWebviewProvider.notifyLoadSessionStart())
   sessionManager.on("session-load-end", (_sessionId: string, _agentName: string, ok: boolean) => {
     chatWebviewProvider.notifyLoadSessionEnd(ok)
+    if (ok) {
+      chatWebviewProvider.notifyActiveSessionChanged()
+    }
   })
 
   // Forward mode/model changes to webview

@@ -10,7 +10,7 @@ All settings are in VS Code Settings (`Ctrl+,`). Search for `abapfs.acp`.
 | `abapfs.acp.agents` | `{}` | The agents you can connect to, keyed by display name. Each entry has `command` (required), `args` and `env`. **Add Agent** fills this in for you. See [Setup](setup.md#editing-agents-in-settingsjson). |
 | `abapfs.acp.provideMcpServer` | `false` | Hands the ABAP FS MCP server, and with it all ABAP FS tools, to every agent session, starting the server when needed. See [ABAP FS Tools for Agents](mcp.md). |
 | `abapfs.acp.autoApprovePermissions` | `ask` | `ask`: every permission request from the agent shows a picker. `allowAll`: allows everything automatically. |
-| `abapfs.acp.defaultWorkingDirectory` | `""` | Local folder the agent process starts in, also used for its terminal commands. When empty, it's the first local (non-SAP) workspace folder, or a private ABAP FS folder if the workspace only has SAP systems. |
+| `abapfs.acp.defaultWorkingDirectory` | `""` | Local folder the agent process starts in, also used for its terminal commands. When empty, it's the first local (non-SAP) workspace folder, or a private ABAP FS folder if the workspace only has SAP systems. Other local workspace folders are offered as additional directories when the agent supports ACP multi-root sessions. SAP folders remain virtual and are provided through the ABAP FS context and tools. |
 | `abapfs.acp.logTraffic` | `false` | Logs every ACP message to the **ABAP FS Agents Traffic** output channel. Useful for troubleshooting; it includes prompts and file contents. |
 
 ## Related settings

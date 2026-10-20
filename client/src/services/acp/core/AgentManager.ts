@@ -110,13 +110,11 @@ export class AgentManager extends EventEmitter {
     const instance: AgentInstance = { id, name, process: child, config }
     this.agents.set(id, instance)
 
-    // Forward stderr for debugging
+    // Agents often stream progress to stderr one token at a time. Keep a
+    // bounded tail for failed exits instead of flooding the output channel.
+    let stderrTail = ""
     child.stderr?.on("data", (data: Buffer) => {
-      const line = data.toString().trim()
-      if (line) {
-        log(`[${name} stderr] ${line}`)
-        this.emit("agent-stderr", { agentId: id, line })
-      }
+      stderrTail = (stderrTail + data.toString()).slice(-2000)
     })
 
     child.on("error", err => {
@@ -127,6 +125,9 @@ export class AgentManager extends EventEmitter {
 
     child.on("close", (code, signal) => {
       log(`Agent "${name}" exited (code=${code}, signal=${signal})`)
+      if (code !== 0 && stderrTail.trim()) {
+        logError(`Agent "${name}" stderr on failed exit`, stderrTail.trim())
+      }
       this.agents.delete(id)
       this.emit("agent-closed", { agentId: id, code, signal })
     })

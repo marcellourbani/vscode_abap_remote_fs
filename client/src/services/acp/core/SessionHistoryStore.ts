@@ -24,6 +24,20 @@ export interface PersistedSessionEntry {
   createdAt: string
   /** ISO timestamp of the most recent activity (prompt end / update). */
   lastActiveAt: string
+  /** Per-response model and usage snapshots, indexed by user-turn order. */
+  responseMetadata?: Array<PersistedResponseMetadata | null>
+}
+
+export interface PersistedResponseMetadata {
+  modelName?: string
+  usage?: {
+    sessionUpdate?: string
+    totalTokens?: number
+    inputTokens?: number
+    outputTokens?: number
+    used?: number
+    size?: number
+  }
 }
 
 /**
@@ -121,6 +135,25 @@ export class SessionHistoryStore {
       return
     }
     entry.firstPrompt = prompt.slice(0, MAX_PROMPT_LEN)
+    this.persist()
+  }
+
+  /** Store response metadata at the corresponding replayed user-turn index. */
+  setResponseMetadata(
+    agentName: string,
+    sessionId: string,
+    responseIndex: number,
+    metadata: PersistedResponseMetadata | null
+  ): void {
+    const entry = this.get(agentName, sessionId)
+    if (!entry || !Number.isSafeInteger(responseIndex) || responseIndex < 0) {
+      return
+    }
+    const responseMetadata = (entry.responseMetadata ??= [])
+    while (responseMetadata.length <= responseIndex) {
+      responseMetadata.push(null)
+    }
+    responseMetadata[responseIndex] = metadata
     this.persist()
   }
 

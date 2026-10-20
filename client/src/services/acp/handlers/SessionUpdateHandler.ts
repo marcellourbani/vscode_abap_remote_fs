@@ -1,4 +1,4 @@
-import { log } from "../utils/Logger"
+import { logError } from "../utils/Logger"
 
 import type { SessionNotification } from "@agentclientprotocol/sdk"
 
@@ -20,14 +20,11 @@ export class SessionUpdateHandler {
   }
 
   handleUpdate(update: SessionNotification): void {
-    const updateType = (update.update as any)?.sessionUpdate || "unknown"
-    log(`sessionUpdate: type=${updateType}, sessionId=${update.sessionId}`)
-
     for (const listener of this.listeners) {
       try {
         listener(update)
       } catch (e) {
-        log(`Error in session update listener: ${e}`)
+        logError("Error in session update listener", e)
       }
     }
   }

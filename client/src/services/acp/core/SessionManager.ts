@@ -19,7 +19,7 @@ import { RequestError } from "@agentclientprotocol/sdk"
 import { AgentManager } from "./AgentManager"
 import { ConnectionManager, type ConnectionInfo } from "./ConnectionManager"
 import { SessionUpdateHandler } from "../handlers/SessionUpdateHandler"
-import { SessionHistoryStore } from "./SessionHistoryStore"
+import { SessionHistoryStore, type PersistedResponseMetadata } from "./SessionHistoryStore"
 import { ACP_CONFIG_SECTION, getAgentConfigs } from "../config/AgentConfig"
 import { log, logError } from "../utils/Logger"
 import { sendEvent, sendError } from "../utils/TelemetryManager"
@@ -115,7 +115,7 @@ export interface SessionInfo {
 
 /**
  * Discovery flags for an agent, derived from `initialize.agentCapabilities`.
- * Populated lazily when {@link SessionManager.ensureConnected} runs.
+ * Populated lazily when {@link SessionManager#ensureConnected} runs.
  */
 export interface AgentCapabilitySummary {
   list: boolean
@@ -205,6 +205,23 @@ export class SessionManager extends EventEmitter {
     }
     const localFolder = vscode.workspace.workspaceFolders?.find(f => f.uri.scheme === "file")
     return localFolder?.uri.fsPath || agentWorkspaceRoot() || process.cwd()
+  }
+
+  /** ACP additional directories only include real local workspace roots. */
+  private additionalDirectories(connInfo: ConnectionInfo, cwd: string): string[] | undefined {
+    if (!connInfo.initResponse.agentCapabilities?.sessionCapabilities?.additionalDirectories) {
+      return undefined
+    }
+    const roots = (vscode.workspace.workspaceFolders ?? [])
+      .filter(folder => folder.uri.scheme === "file")
+      .map(folder => folder.uri.fsPath)
+    const seen = new Set([path.normalize(cwd).toLowerCase()])
+    return roots.filter(root => {
+      const normalized = path.normalize(root).toLowerCase()
+      if (seen.has(normalized)) return false
+      seen.add(normalized)
+      return true
+    })
   }
 
   private summarizeCapabilities(
@@ -398,10 +415,12 @@ export class SessionManager extends EventEmitter {
   ): Promise<SessionInfo> {
     let sessionResponse: NewSessionResponse
     const mcpServers = await abapFsMcpServers(connInfo)
+    const additionalDirectories = this.additionalDirectories(connInfo, cwd)
     try {
       sessionResponse = await connInfo.agent.request("session/new", {
         cwd,
-        mcpServers
+        mcpServers,
+        ...(additionalDirectories?.length ? { additionalDirectories } : {})
       })
     } catch (e: any) {
       if (!this.isAuthRequiredError(e)) {
@@ -414,7 +433,8 @@ export class SessionManager extends EventEmitter {
       try {
         sessionResponse = await connInfo.agent.request("session/new", {
           cwd,
-          mcpServers
+          mcpServers,
+          ...(additionalDirectories?.length ? { additionalDirectories } : {})
         })
       } catch (retryErr) {
         logError("Failed to create session after authentication", retryErr)
@@ -778,6 +798,28 @@ export class SessionManager extends EventEmitter {
     this.historyStore.setFirstPromptIfMissing(session.agentName, sessionId, prompt)
   }
 
+  /** Persist model/usage metadata for an assistant response by conversation turn. */
+  recordResponseMetadata(
+    sessionId: string,
+    responseIndex: number,
+    metadata: PersistedResponseMetadata | null
+  ): void {
+    const session = this.sessions.get(sessionId)
+    if (!session) {
+      return
+    }
+    this.historyStore?.setResponseMetadata(session.agentName, sessionId, responseIndex, metadata)
+  }
+
+  /** Read response metadata for replay, aligned to user-turn order. */
+  getResponseMetadata(sessionId: string): Array<PersistedResponseMetadata | null> {
+    const session = this.sessions.get(sessionId)
+    if (!session) {
+      return []
+    }
+    return this.historyStore?.get(session.agentName, sessionId)?.responseMetadata ?? []
+  }
+
   /** Bump a session's `lastActiveAt` in the history store. */
   touchHistory(sessionId: string): void {
     const session = this.sessions.get(sessionId)
@@ -980,10 +1022,12 @@ export class SessionManager extends EventEmitter {
     this.emit("session-load-start", sessionId, agentName)
 
     try {
+      const additionalDirectories = this.additionalDirectories(conn, cwd)
       const response = await conn.agent.request("session/load", {
         sessionId,
         cwd,
-        mcpServers: await abapFsMcpServers(conn)
+        mcpServers: await abapFsMcpServers(conn),
+        ...(additionalDirectories?.length ? { additionalDirectories } : {})
       })
       // The response carries the latest mode/model/configOptions snapshot.
       placeholder.modes = (response as any).modes ?? null
@@ -1050,10 +1094,12 @@ export class SessionManager extends EventEmitter {
 
     let response: any
     try {
+      const additionalDirectories = this.additionalDirectories(conn, cwd)
       response = await conn.agent.request("session/resume", {
         sessionId,
         cwd,
-        mcpServers: await abapFsMcpServers(conn)
+        mcpServers: await abapFsMcpServers(conn),
+        ...(additionalDirectories?.length ? { additionalDirectories } : {})
       })
     } catch (e: any) {
       const msg = String(e?.message || "")

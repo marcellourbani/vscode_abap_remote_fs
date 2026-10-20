@@ -28,10 +28,7 @@ export class AcpClientImpl {
         log(`Client.writeTextFile: ${params.path}`)
         return this.fsHandler.writeTextFile(params)
       })
-      .onRequest("fs/read_text_file", ({ params }) => {
-        log(`Client.readTextFile: ${params.path}`)
-        return this.fsHandler.readTextFile(params)
-      })
+      .onRequest("fs/read_text_file", ({ params }) => this.fsHandler.readTextFile(params))
       .onRequest("terminal/create", ({ params }) => this.terminalHandler.createTerminal(params))
       .onRequest("terminal/output", ({ params }) => this.terminalHandler.terminalOutput(params))
       .onRequest("terminal/wait_for_exit", ({ params }) =>

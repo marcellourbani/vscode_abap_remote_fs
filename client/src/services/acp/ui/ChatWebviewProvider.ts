@@ -1,9 +1,10 @@
 import * as vscode from "vscode"
+import { randomUUID } from "node:crypto"
 import { marked } from "marked"
 import { SessionManager } from "../core/SessionManager"
 import { SessionUpdateHandler, type SessionUpdateListener } from "../handlers/SessionUpdateHandler"
 import type { ContentBlock, SessionNotification, SubagentUpdate } from "@agentclientprotocol/sdk"
-import { logError } from "../utils/Logger"
+import { log, logError } from "../utils/Logger"
 import { sendEvent } from "../utils/TelemetryManager"
 import { toAgentUri } from "../fs/AbapPathMapper"
 import { ADTSCHEME } from "../../../adt/conections"
@@ -11,6 +12,13 @@ import { ADTSCHEME } from "../../../adt/conections"
 const TURN_RUNNING_CONTEXT = "abapfs.acp.turnRunning"
 
 const ATTACHABLE_SCHEMES = new Set(["file", ADTSCHEME])
+
+interface PastedAttachment {
+  name: string
+  mimeType: string
+  data: string
+  size: number
+}
 
 interface EditorSelection {
   key: string
@@ -35,11 +43,12 @@ export class ChatWebviewProvider implements vscode.WebviewViewProvider {
   private view?: vscode.WebviewView
   private updateListener: SessionUpdateListener
   private _hasChatContent = false
-  private pendingAttachments = new Map<string, vscode.Uri>()
+  private pendingAttachments = new Map<string, vscode.Uri | PastedAttachment>()
   private activeSessionId?: string
   private subagentSessions = new Map<string, SubagentUpdate>()
   private lastEditor?: vscode.TextEditor
   private dismissedSelection?: string
+  private readonly usageReportedSessions = new Set<string>()
   private readonly editorListener = vscode.Disposable.from(
     vscode.window.onDidChangeActiveTextEditor(editor => this.onEditorChanged(editor)),
     vscode.window.onDidChangeTextEditorSelection(e => this.onEditorChanged(e.textEditor))
@@ -101,7 +110,29 @@ export class ChatWebviewProvider implements vscode.WebviewViewProvider {
       switch (message.type) {
         case "sendPrompt":
           this._hasChatContent = true
-          await this.handleSendPrompt(message.text || "", message.attachmentIds || [])
+          await this.handleSendPrompt(
+            message.text || "",
+            message.attachmentIds || [],
+            message.responseIndex
+          )
+          break
+        case "recordResponseMetadata":
+          if (
+            typeof message.sessionId === "string" &&
+            Number.isSafeInteger(message.responseIndex)
+          ) {
+            this.sessionManager.recordResponseMetadata(
+              message.sessionId,
+              message.responseIndex,
+              message.metadata
+            )
+          }
+          break
+        case "pasteAttachments":
+          this.acceptPastedAttachments(message.files)
+          break
+        case "pasteError":
+          void vscode.window.showWarningMessage(message.message)
           break
         case "removeAttachment":
           this.pendingAttachments.delete(message.id)
@@ -139,7 +170,6 @@ export class ChatWebviewProvider implements vscode.WebviewViewProvider {
           }
           break
         case "ready":
-          // Webview loaded — send current session state
           this.sendCurrentState()
           break
         case "renderMarkdown": {
@@ -180,6 +210,15 @@ export class ChatWebviewProvider implements vscode.WebviewViewProvider {
     if (updateData?.sessionUpdate === "config_option_update") {
       this.sessionManager.applyConfigOptions(update.sessionId, updateData.configOptions || [])
     }
+    if (
+      updateData?.sessionUpdate === "usage_update" &&
+      update.sessionId === this.sessionManager.getActiveSessionId()
+    ) {
+      this.usageReportedSessions.add(update.sessionId)
+      log(
+        `ACP usage_update: used=${updateData.used}, size=${updateData.size}, cost=${updateData.cost ? "reported" : "not reported"}`
+      )
+    }
     if (updateData?.sessionUpdate === "session_info_update") {
       this.sessionManager.applySessionInfoUpdate(update.sessionId, {
         title: updateData.title,
@@ -209,7 +248,11 @@ export class ChatWebviewProvider implements vscode.WebviewViewProvider {
   /**
    * Handle a prompt sent from the webview.
    */
-  private async handleSendPrompt(text: string, attachmentIds: string[] = []): Promise<void> {
+  private async handleSendPrompt(
+    text: string,
+    attachmentIds: string[] = [],
+    responseIndex?: number
+  ): Promise<void> {
     const activeId = this.sessionManager.getActiveSessionId()
     if (!activeId) {
       this.postMessage({
@@ -235,12 +278,10 @@ export class ChatWebviewProvider implements vscode.WebviewViewProvider {
       return
     }
 
-    // Record the first prompt for the history store (used as a label
-    // fallback when no title is supplied by the agent).
-    this.sessionManager.recordFirstPrompt(activeId, text)
-
+    // Track whether this particular turn receives a usage update.
+    this.usageReportedSessions.delete(activeId)
     // Tell webview we're processing
-    this.postMessage({ type: "promptStart" })
+    this.postMessage({ type: "promptStart", sessionId: activeId, responseIndex })
     void vscode.commands.executeCommand("setContext", TURN_RUNNING_CONTEXT, true)
 
     try {
@@ -254,21 +295,30 @@ export class ChatWebviewProvider implements vscode.WebviewViewProvider {
       }
       let inlineBudget = 10 * 1024 * 1024
       for (const id of attachmentIds.slice(0, 10)) {
-        const uri = this.pendingAttachments.get(id)
-        if (!uri) {
+        const attachment = this.pendingAttachments.get(id)
+        if (!attachment) {
           continue
         }
-        const prepared = await this.createPromptAttachment(uri, capabilities, inlineBudget)
+        const prepared =
+          attachment instanceof vscode.Uri
+            ? await this.createPromptAttachment(attachment, capabilities, inlineBudget)
+            : this.createPastedBlock(attachment, capabilities, inlineBudget)
         attachments.push(prepared.block)
         inlineBudget = Math.max(0, inlineBudget - prepared.inlineBytes)
       }
       const response = await this.sessionManager.sendPrompt(activeId, text, attachments)
+      // Only label the session after the agent accepted the prompt.
+      this.sessionManager.recordFirstPrompt(activeId, text || "Attachment")
+      const turnUsage = response.usage
+      log(
+        `ACP prompt usage: ${turnUsage ? "reported" : "not reported"}; session usage_update: ${this.usageReportedSessions.has(activeId) ? "received" : "not received"}`
+      )
       // Render the accumulated assistant text as markdown
       // The webview will have sent us the raw text via promptEnd handling
       this.postMessage({
         type: "promptEnd",
         stopReason: response.stopReason,
-        usage: (response as any).usage
+        usage: turnUsage
       })
       this.sessionManager.touchHistory(activeId)
       for (const id of attachmentIds) {
@@ -395,7 +445,8 @@ export class ChatWebviewProvider implements vscode.WebviewViewProvider {
             modes: session.modes,
             models: session.models,
             configOptions: session.configOptions,
-            availableCommands: session.availableCommands
+            availableCommands: session.availableCommands,
+            responseMetadata: this.sessionManager.getResponseMetadata(session.sessionId)
           }
         : null
     })
@@ -411,9 +462,9 @@ export class ChatWebviewProvider implements vscode.WebviewViewProvider {
         : undefined
     this.postMessage({
       type: "attachmentsUpdate",
-      attachments: Array.from(this.pendingAttachments, ([id, uri]) => ({
+      attachments: Array.from(this.pendingAttachments, ([id, attachment]) => ({
         id,
-        name: fileName(uri)
+        name: attachment instanceof vscode.Uri ? fileName(attachment) : attachment.name
       })),
       currentFile: suggested ? { name: fileName(suggested) } : null,
       selection: selection ? { name: selection.label } : null
@@ -487,6 +538,101 @@ export class ChatWebviewProvider implements vscode.WebviewViewProvider {
       type: "text",
       text: `Selected lines ${selection.startLine}-${selection.endLine} of ${toAgentUri(selection.uri)}:\n\`\`\`\n${selection.text}\n\`\`\``
     }
+  }
+
+  private acceptPastedAttachments(files: unknown): void {
+    if (!Array.isArray(files)) return
+    for (const file of files) {
+      if (
+        !file ||
+        typeof file.name !== "string" ||
+        typeof file.mimeType !== "string" ||
+        typeof file.data !== "string" ||
+        !Number.isSafeInteger(file.size) ||
+        file.size < 0 ||
+        file.size > 5 * 1024 * 1024 ||
+        file.data.length > 7 * 1024 * 1024 ||
+        !/^[A-Za-z0-9+/]*={0,2}$/.test(file.data) ||
+        Buffer.byteLength(file.data, "base64") !== file.size
+      )
+        continue
+      const capabilities =
+        this.sessionManager.getActiveSession()?.initResponse.agentCapabilities?.promptCapabilities
+      const image = ["image/png", "image/jpeg", "image/gif", "image/webp"].includes(file.mimeType)
+      const audio = [
+        "audio/aac",
+        "audio/flac",
+        "audio/mp4",
+        "audio/mpeg",
+        "audio/ogg",
+        "audio/opus",
+        "audio/wav",
+        "audio/webm"
+      ].includes(file.mimeType)
+      const text =
+        file.mimeType.startsWith("text/") ||
+        file.mimeType === "application/json" ||
+        /\.(?:abap|cfg|conf|css|csv|diff|html|java|js|json|jsonc|log|md|patch|py|sql|ts|tsx|txt|xml|yaml|yml)$/i.test(
+          file.name
+        )
+      if (!(image && capabilities?.image) && !(audio && capabilities?.audio) && !text) {
+        void vscode.window.showWarningMessage(
+          "This pasted file type is not supported by the connected agent."
+        )
+        continue
+      }
+      if (this.pendingAttachments.size >= 10) {
+        void vscode.window.showWarningMessage("Attach up to 10 files per prompt.")
+        break
+      }
+      const id = `pasted-${randomUUID()}`
+      this.pendingAttachments.set(id, {
+        name: file.name.slice(0, 120),
+        mimeType: file.mimeType,
+        data: file.data,
+        size: file.size
+      })
+    }
+    this.postAttachmentsUpdate()
+  }
+
+  private createPastedBlock(
+    file: PastedAttachment,
+    capabilities: { image?: boolean; audio?: boolean; embeddedContext?: boolean } | undefined,
+    budget: number
+  ): { block: ContentBlock; inlineBytes: number } {
+    if (file.size > budget) throw new Error("Pasted attachments exceed the 10 MB prompt limit.")
+    if (file.mimeType.startsWith("image/") && capabilities?.image) {
+      return {
+        block: { type: "image", data: file.data, mimeType: file.mimeType },
+        inlineBytes: file.size
+      }
+    }
+    if (file.mimeType.startsWith("audio/") && capabilities?.audio) {
+      return {
+        block: { type: "audio", data: file.data, mimeType: file.mimeType },
+        inlineBytes: file.size
+      }
+    }
+    const textExtension =
+      /\.(?:abap|cfg|conf|css|csv|diff|html|java|js|json|jsonc|log|md|patch|py|sql|ts|tsx|txt|xml|yaml|yml)$/i.test(
+        file.name
+      )
+    if (
+      file.mimeType.startsWith("text/") ||
+      file.mimeType === "application/json" ||
+      textExtension
+    ) {
+      const text = new TextDecoder("utf-8", { fatal: true }).decode(
+        Buffer.from(file.data, "base64")
+      )
+      if (text.includes("\0")) throw new Error("Pasted file is not text.")
+      const content = `Pasted file ${file.name}:\n${text}`
+      return { block: { type: "text", text: content }, inlineBytes: file.size }
+    }
+    throw new Error(
+      `The agent cannot receive pasted ${file.mimeType} files. Attach a readable file instead.`
+    )
   }
 
   private async createPromptAttachment(
@@ -776,12 +922,16 @@ export class ChatWebviewProvider implements vscode.WebviewViewProvider {
     /* Messages area */
     .messages {
       flex: 1;
+      min-height: 0;
       overflow-y: auto;
       padding: var(--container-padding);
       display: flex;
       flex-direction: column;
       gap: 8px;
     }
+    body.disconnected .messages > :not(.empty-state) { display: none; }
+    body.disconnected .empty-state { display: flex !important; }
+    .empty-state [hidden] { display: none !important; }
 
     .message {
       padding: 8px 12px;
@@ -971,6 +1121,30 @@ export class ChatWebviewProvider implements vscode.WebviewViewProvider {
       gap: 4px;
       align-self: flex-start;
       max-width: 95%;
+    }
+    .assistant-response {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+      align-self: stretch;
+      max-width: 100%;
+    }
+    .response-meta {
+      max-height: 0;
+      overflow: hidden;
+      opacity: 0;
+      color: var(--vscode-descriptionForeground);
+      font-size: 11px;
+      line-height: 16px;
+      transition: max-height 120ms ease, opacity 120ms ease;
+    }
+    .turn:hover > .response-meta,
+    .turn:focus-within > .response-meta,
+    .assistant-response:hover > .response-meta,
+    .assistant-response:focus-within > .response-meta,
+    .response-meta:hover {
+      max-height: 40px;
+      opacity: 1;
     }
 
     /* Tool calls group inside a turn */
@@ -1229,22 +1403,7 @@ export class ChatWebviewProvider implements vscode.WebviewViewProvider {
       flex-direction: column;
       gap: 4px;
       background: var(--vscode-input-background);
-    }
-
-    /* Resize handle */
-    .input-resize-handle {
-      display: none;
-    }
-    .input-resize-handle::after {
-      content: '';
-      width: 32px;
-      height: 2px;
-      border-radius: 1px;
-      background: var(--vscode-panel-border);
-      transition: background 0.15s;
-    }
-    .input-resize-handle:hover::after {
-      background: var(--vscode-focusBorder);
+      flex-shrink: 0;
     }
 
     /* Toolbar row */
@@ -1424,7 +1583,7 @@ export class ChatWebviewProvider implements vscode.WebviewViewProvider {
     /* Editor wrapper */
     .input-editor-wrap {
       padding: 0 2px;
-      flex: 1;
+      flex: none;
       min-height: 0;
       display: flex;
       flex-direction: column;
@@ -1460,8 +1619,9 @@ export class ChatWebviewProvider implements vscode.WebviewViewProvider {
       cursor: pointer;
     }
     .input-editor-wrap textarea {
-      flex: 1;
+      flex: none;
       resize: none;
+      box-sizing: border-box;
       background: transparent;
       color: var(--vscode-input-foreground);
       border: 0;
@@ -1470,7 +1630,6 @@ export class ChatWebviewProvider implements vscode.WebviewViewProvider {
       font-family: var(--vscode-font-family);
       font-size: var(--vscode-font-size);
       line-height: 1.4;
-      min-height: 56px;
       outline: none;
     }
     .input-editor-wrap textarea:focus {
@@ -1684,7 +1843,9 @@ export class ChatWebviewProvider implements vscode.WebviewViewProvider {
       padding: 2px 4px 2px 0;
       border-radius: 4px;
     }
+    .turn-tools-summary { border: 0; background: transparent; font-family: inherit; text-align: left; }
     .turn-tools-summary:hover { color: var(--vscode-foreground); }
+    .turn-tools-summary:focus-visible { outline: 1px solid var(--vscode-focusBorder); }
     .turn-tools-summary .codicon { font-size: 14px; }
     .turn-tools-list { margin: 2px 0 0 6px; padding-left: 10px; border-left: 1px solid var(--vscode-chat-requestBorder, var(--vscode-widget-border, var(--vscode-panel-border))); }
     .tool-call-inline {
@@ -1756,7 +1917,7 @@ export class ChatWebviewProvider implements vscode.WebviewViewProvider {
       font-size: 12px;
       color: var(--vscode-descriptionForeground);
     }
-    body.processing .progress-row { display: flex; }
+    body.processing .progress-row, body.reconnecting .progress-row { display: flex; }
 
     .empty-state { gap: 8px; padding: 24px 20px; }
     .empty-state .icon { font-size: 48px; line-height: 48px; opacity: 0.9; margin-bottom: 8px; }
@@ -1798,8 +1959,6 @@ export class ChatWebviewProvider implements vscode.WebviewViewProvider {
       font-size: inherit;
       padding: 4px 6px;
       line-height: 20px;
-      min-height: 56px;
-      max-height: 240px;
       overflow-y: auto;
     }
     .input-editor-wrap textarea:focus { border: none; outline: none; }
@@ -1822,7 +1981,19 @@ export class ChatWebviewProvider implements vscode.WebviewViewProvider {
     .send-stop-btn.send:hover, .send-stop-btn.stop:hover { background: var(--vscode-toolbar-hoverBackground); }
     .send-stop-btn.send, .send-stop-btn.stop { background: transparent; color: var(--vscode-icon-foreground, var(--vscode-foreground)); }
     .send-stop-btn.send:disabled { opacity: 0.4; }
-    .picker-row { gap: 2px; flex-wrap: nowrap; min-width: 0; overflow: hidden; }
+    .picker-row {
+      display: inline-flex;
+      align-items: center;
+      gap: 2px;
+      flex-wrap: nowrap;
+      min-width: 0;
+      flex-shrink: 1;
+    }
+    .picker-wrap {
+      display: inline-flex;
+      position: relative;
+      flex-shrink: 0;
+    }
     .picker-btn {
       display: inline-flex;
       align-items: center;
@@ -1900,7 +2071,7 @@ export class ChatWebviewProvider implements vscode.WebviewViewProvider {
     <div class="empty-state" id="emptyState">
       <div class="icon codicon codicon-hubot"></div>
       <div class="title">Ask an agent</div>
-      <div class="subtitle">Chat with Claude Code, Codex, Gemini CLI or any ACP agent. It can read and edit your SAP objects through ABAP FS and use the ABAP FS tools.</div>
+      <div class="subtitle" id="welcomeSubtitle">Chat with Claude Code, Codex, Gemini CLI or any ACP agent. It can read and edit your SAP objects through ABAP FS and use the ABAP FS tools.</div>
       <div class="actions">
         <button class="action-btn primary" id="welcomeConnectAgent">
           <span class="codicon codicon-plug"></span> Connect to Agent
@@ -1914,14 +2085,13 @@ export class ChatWebviewProvider implements vscode.WebviewViewProvider {
   </div>
   <div class="progress-row" id="progressRow">
     <span class="codicon codicon-loading codicon-modifier-spin"></span>
-    <span>Working…</span>
+    <span id="progressLabel">Working…</span>
   </div>
 
   <div class="input-area" id="inputArea">
     <div class="slash-popup" id="slashPopup">
       <div class="slash-popup-header">Commands</div>
     </div>
-    <div class="input-resize-handle" id="resizeHandle"></div>
     <div class="input-editor-wrap">
       <div class="attachment-list" id="attachmentList"></div>
       <textarea
@@ -1973,11 +2143,11 @@ export class ChatWebviewProvider implements vscode.WebviewViewProvider {
     const promptInput = document.getElementById('promptInput');
     const sendStopBtn = document.getElementById('sendStopBtn');
     const statusEl = document.getElementById('toolbarStatus');
+    const progressLabel = document.getElementById('progressLabel');
     const sessionBanner = document.getElementById('sessionBanner');
     const bannerAgent = document.getElementById('bannerAgent');
     const bannerCwd = document.getElementById('bannerCwd');
     const inputArea = document.getElementById('inputArea');
-    const resizeHandle = document.getElementById('resizeHandle');
     const slashPopup = document.getElementById('slashPopup');
     const attachmentList = document.getElementById('attachmentList');
     const attachButton = document.getElementById('attachButton');
@@ -2017,6 +2187,7 @@ export class ChatWebviewProvider implements vscode.WebviewViewProvider {
     let currentThoughtEl = null;
     let currentThoughtTextEl = null;
     let currentThoughtText = '';
+    let pendingThoughtText = '';
     let thoughtStartTime = null;
     let thoughtEndTime = null;
 
@@ -2047,20 +2218,18 @@ export class ChatWebviewProvider implements vscode.WebviewViewProvider {
       const saved = vscode.getState();
       if (!saved) return;
 
-      chatHistory = saved.chatHistory || [];
+      chatHistory = (Array.isArray(saved.chatHistory) ? saved.chatHistory : [])
+        .filter(item => !(item.kind === 'message' && isEmptyThinkText(item.text))
+          && !(item.kind === 'thought' && !item.text?.trim()));
       sessionState = saved.sessionState || null;
-      hasActiveSession = saved.hasActiveSession || false;
-
-      if (hasActiveSession && sessionState) {
-        showSessionConnectedFromState(sessionState);
-      }
+      hasActiveSession = false;
 
       const assistantItems = [];
       for (let i = 0; i < chatHistory.length; i++) {
         const item = chatHistory[i];
         switch (item.kind) {
           case 'message':
-            addMessageDOM(item.role, item.text);
+            addMessageDOM(item.role, item.text, item.responseMeta);
             if (item.role === 'assistant') {
               assistantItems.push({ index: i, text: item.text });
             }
@@ -2087,48 +2256,52 @@ export class ChatWebviewProvider implements vscode.WebviewViewProvider {
       }
     }
 
-    // Start with input disabled
+    // Wait for the extension's live connection state, not the persisted webview flag.
+    document.body.classList.add('disconnected');
     if (inputArea) inputArea.classList.add('disabled');
     let currentAssistantEl = null;
     let currentAssistantText = '';
+    let pendingThinkText = '';
     let currentTurnEl = null;       // .turn container for current response
+    let activeResponseContainers = [];
+    let activeResponseMessageIndexes = [];
+    let activeResponseMetadata = null;
+    let activeResponseIndex = null;
+    let activeResponseSessionId = null;
+    let replayResponseMetadata = [];
+    let replayResponseIndex = 0;
+    let turnUsageUpdate = null;
     let currentToolsListEl = null;  // .turn-tools-list inside current turn
     let currentToolsCountEl = null; // .turn-tools-summary counter
     let currentToolCount = 0;
     let toolCalls = {};
 
-    // --- Resize handle ---
-    let inputAreaHeight = 140;
-    const MIN_INPUT_HEIGHT = 90;
-    const MAX_INPUT_HEIGHT = 400;
-
-    function applyInputHeight(h) {
-      inputAreaHeight = Math.max(MIN_INPUT_HEIGHT, Math.min(MAX_INPUT_HEIGHT, h));
-      inputArea.style.height = inputAreaHeight + 'px';
-    }
-
-    resizeHandle.addEventListener('mousedown', (e) => {
-      e.preventDefault();
-      const startY = e.clientY;
-      const startHeight = inputArea.offsetHeight;
-      function onMove(ev) {
-        const delta = startY - ev.clientY;
-        applyInputHeight(startHeight + delta);
-      }
-      function onUp() {
-        document.removeEventListener('mousemove', onMove);
-        document.removeEventListener('mouseup', onUp);
-      }
-      document.addEventListener('mousemove', onMove);
-      document.addEventListener('mouseup', onUp);
-    });
-
-    // --- Auto-resize textarea (within the input area constraints) ---
+    // Keep whole lines visible, like the VS Code chat composer.
     function autoGrowInput() {
       promptInput.style.height = 'auto';
-      promptInput.style.height = promptInput.scrollHeight + 'px';
+      const scrollH = promptInput.scrollHeight;
+      if (scrollH > 0) {
+        promptInput.style.height = Math.min(Math.max(scrollH, 28), 240) + 'px';
+      }
     }
     promptInput.addEventListener('input', autoGrowInput);
+    window.addEventListener('resize', autoGrowInput);
+    autoGrowInput();
+
+    // A mouse-wheel notch moves one whole line; keep smooth trackpad scrolling native.
+    promptInput.addEventListener('wheel', (event) => {
+      if (event.deltaMode === 0 && Math.abs(event.deltaY) < 40) return;
+      const line = 20;
+      const direction = Math.sign(event.deltaY);
+      const step = event.deltaMode === 1
+        ? Math.max(1, Math.round(Math.abs(event.deltaY)))
+        : Math.max(1, Math.round(Math.abs(event.deltaY) / 100));
+      const next = Math.max(0, Math.min(promptInput.scrollHeight - promptInput.clientHeight,
+        (Math.round(promptInput.scrollTop / line) + direction * step) * line));
+      if (next === promptInput.scrollTop) return;
+      event.preventDefault();
+      promptInput.scrollTop = next;
+    }, { passive: false });
 
     promptInput.addEventListener('input', () => {
       // Slash command autocomplete
@@ -2158,6 +2331,41 @@ export class ChatWebviewProvider implements vscode.WebviewViewProvider {
           promptInput.placeholder = savedPlaceholder;
         }
       }
+    });
+
+    // Clipboard files (including screenshots) arrive as File objects in the webview.
+    // Ordinary text pastes keep their native textarea behavior.
+    promptInput.addEventListener('paste', async (event) => {
+      const files = Array.from(event.clipboardData?.items || [])
+        .filter(item => item.kind === 'file')
+        .map(item => item.getAsFile())
+        .filter(Boolean);
+      if (!files.length) return;
+      event.preventDefault();
+      const attachments = [];
+      for (const file of files.slice(0, 10)) {
+        if (file.size > 5 * 1024 * 1024) {
+          vscode.postMessage({ type: 'pasteError', message: 'Pasted files must be under 5 MB.' });
+          continue;
+        }
+        try {
+          const buffer = await file.arrayBuffer();
+          const bytes = new Uint8Array(buffer);
+          let binary = '';
+          for (let offset = 0; offset < bytes.length; offset += 8192) {
+            binary += String.fromCharCode(...bytes.subarray(offset, offset + 8192));
+          }
+          attachments.push({
+            name: file.name || (file.type.startsWith('image/') ? 'screenshot.png' : 'pasted-file'),
+            mimeType: file.type || 'application/octet-stream',
+            size: file.size,
+            data: btoa(binary),
+          });
+        } catch {
+          vscode.postMessage({ type: 'pasteError', message: 'Could not read the pasted file.' });
+        }
+      }
+      if (attachments.length) vscode.postMessage({ type: 'pasteAttachments', files: attachments });
     });
 
     // Send on Enter (Shift+Enter for newline)
@@ -2195,17 +2403,15 @@ export class ChatWebviewProvider implements vscode.WebviewViewProvider {
 
       if (e.key === 'Enter' && !e.shiftKey) {
         e.preventDefault();
-        if (isProcessing) {
-          handleCancel();
-        } else {
-          handleSend();
-        }
+        handleSend();
       }
     });
 
     function handleSend() {
       const text = promptInput.value.trim();
       if ((!text && pendingAttachments.length === 0 && !editorSelection) || isProcessing) return;
+      const responseIndex = chatHistory.reduce((count, item) =>
+        count + (item.kind === 'message' && item.role === 'user' ? 1 : 0), 0);
 
       const displayText = [
         text,
@@ -2220,9 +2426,11 @@ export class ChatWebviewProvider implements vscode.WebviewViewProvider {
       vscode.postMessage({
         type: 'sendPrompt',
         text,
+        responseIndex,
         attachmentIds: pendingAttachments.map(item => item.id),
       });
     }
+
 
     function renderSuggestedFile() {
       if (!suggestedFile) return;
@@ -2302,7 +2510,7 @@ export class ChatWebviewProvider implements vscode.WebviewViewProvider {
 
     // Wire up buttons
     sendStopBtn.addEventListener('click', () => {
-      if (isProcessing) {
+      if (isProcessing && !promptInput.value.trim() && pendingAttachments.length === 0) {
         handleCancel();
       } else {
         handleSend();
@@ -2318,36 +2526,41 @@ export class ChatWebviewProvider implements vscode.WebviewViewProvider {
     // --- Send/Stop toggle ---
     function setProcessing(processing) {
       isProcessing = processing;
+      document.body.classList.toggle('processing', processing);
+      updateSendButton();
       if (processing) {
-        sendStopBtn.className = 'send-stop-btn stop';
-        sendStopBtn.innerHTML = '<span class="codicon codicon-debug-stop"></span>';
-        sendStopBtn.title = 'Cancel (Escape)';
-        sendStopBtn.setAttribute('aria-label', 'Cancel');
-        sendStopBtn.disabled = false;
-        promptInput.disabled = true;
-        document.body.classList.add('processing');
         statusEl.textContent = '';
       } else {
-        sendStopBtn.className = 'send-stop-btn send';
-        sendStopBtn.innerHTML = '<span class="codicon codicon-send"></span>';
-        sendStopBtn.title = 'Send (Enter)';
-        sendStopBtn.setAttribute('aria-label', 'Send');
-        document.body.classList.remove('processing');
-        sendStopBtn.disabled = false;
-        promptInput.disabled = false;
         renderUsage();
         if (!latestUsage) statusEl.textContent = '';
       }
     }
+
+    function updateSendButton() {
+      const stop = isProcessing && !promptInput.value.trim() && pendingAttachments.length === 0;
+      sendStopBtn.className = 'send-stop-btn ' + (stop ? 'stop' : 'send');
+      sendStopBtn.innerHTML = '<span class="codicon codicon-' + (stop ? 'debug-stop' : 'send') + '"></span>';
+      sendStopBtn.title = stop ? 'Cancel (Escape)' : 'Send (Enter)';
+      sendStopBtn.setAttribute('aria-label', stop ? 'Cancel' : 'Send');
+      sendStopBtn.disabled = false;
+    }
+    promptInput.addEventListener('input', updateSendButton);
 
     // --- Session/load overlay ---
     const loadOverlay = document.getElementById('loadOverlay');
     // True while a session/load replay is in progress. Used to suppress
     // per-chunk markdown rendering until the replay finishes.
     let isLoadingSession = false;
+    let preLoadState = null;
 
     function handleLoadSessionStart() {
       isLoadingSession = true;
+      preLoadState = vscode.getState();
+      replayResponseIndex = 0;
+      activeResponseIndex = null;
+      activeResponseMetadata = null;
+      activeResponseContainers = [];
+      activeResponseMessageIndexes = [];
       // Reset all chat state; behaves like clearChat but keeps the session
       // banner / input area structure intact.
       chatHistory = [];
@@ -2370,16 +2583,21 @@ export class ChatWebviewProvider implements vscode.WebviewViewProvider {
         emptyState.style.display = 'none';
       }
       if (loadOverlay) loadOverlay.classList.add('visible');
-      if (inputArea) inputArea.classList.add('disabled');
       setProcessing(false);
     }
 
     function handleLoadSessionEnd(ok) {
       isLoadingSession = false;
+      if (!ok && preLoadState) {
+        vscode.setState(preLoadState);
+        messagesEl.innerHTML = '';
+        messagesEl.appendChild(emptyState);
+        restoreState();
+      }
+      preLoadState = null;
       // Commit any trailing assistant turn captured during the replay.
       finalizeCurrentAssistantTurn();
       if (loadOverlay) loadOverlay.classList.remove('visible');
-      if (inputArea) inputArea.classList.remove('disabled');
       // Batch-render markdown for every assistant message captured during
       // the replay (avoids per-chunk render storms).
       const items = [];
@@ -2394,7 +2612,7 @@ export class ChatWebviewProvider implements vscode.WebviewViewProvider {
       }
       scrollToBottom();
       if (!ok) {
-        addMessage('error', 'Failed to load session history.');
+        showNoSession();
       }
     }
 
@@ -2849,18 +3067,38 @@ export class ChatWebviewProvider implements vscode.WebviewViewProvider {
     // --- Messages ---
     function addMessage(role, text) {
       finalizeCurrentAssistantTurn();
-      chatHistory.push({ kind: 'message', role, text });
+      const responseMeta = role === 'assistant' && activeResponseMetadata
+        ? { ...activeResponseMetadata }
+        : undefined;
+      const item = {
+        kind: 'message',
+        role,
+        text,
+        ...(responseMeta ? { responseMeta } : {})
+      };
+      const itemIndex = chatHistory.length;
+      chatHistory.push(item);
+      if (responseMeta) activeResponseMessageIndexes.push(itemIndex);
       saveState();
-      return addMessageDOM(role, text);
+      return addMessageDOM(role, text, responseMeta);
     }
 
-    function addMessageDOM(role, text) {
+    function addMessageDOM(role, text, responseMeta) {
       finalizeCurrentAssistantTurn();
       hideEmpty();
       const el = document.createElement('div');
       el.className = 'message ' + role;
       el.textContent = text;
-      messagesEl.appendChild(el);
+      if (role === 'assistant' && (isProcessing || responseMeta)) {
+        const wrapper = document.createElement('div');
+        wrapper.className = 'assistant-response';
+        wrapper.appendChild(el);
+        messagesEl.appendChild(wrapper);
+        if (isProcessing) activeResponseContainers.push(wrapper);
+        updateResponseMetadata(wrapper, responseMeta);
+      } else {
+        messagesEl.appendChild(el);
+      }
       scrollToBottom();
       return el;
     }
@@ -2945,7 +3183,9 @@ export class ChatWebviewProvider implements vscode.WebviewViewProvider {
       iconEl.textContent = '';
     }
 
-    function setToolsSummary(summary, count, collapsed) {
+    function setToolsSummary(summary, count) {
+      const collapsed = summary.nextElementSibling?.classList.contains('collapsed') ?? true;
+      summary.setAttribute('aria-expanded', String(!collapsed));
       summary.innerHTML = '<span class="codicon ' + (collapsed ? 'codicon-chevron-right' : 'codicon-chevron-down') + '"></span>';
       summary.appendChild(document.createTextNode('Used ' + count + ' tool' + (count !== 1 ? 's' : '')));
     }
@@ -2962,16 +3202,16 @@ export class ChatWebviewProvider implements vscode.WebviewViewProvider {
         toolsWrap.className = 'turn-tools';
 
         currentToolCount = 0;
-        const summary = document.createElement('div');
+        const summary = document.createElement('button');
+        summary.type = 'button';
         summary.className = 'turn-tools-summary';
-        setToolsSummary(summary, 0, true);
         currentToolsCountEl = summary;
         summary.addEventListener('click', () => {
           const list = summary.nextElementSibling;
           if (list) {
             const count = parseInt(summary.dataset.count || '0', 10);
-            const collapsed = list.classList.toggle('collapsed');
-            setToolsSummary(summary, count, collapsed);
+            list.classList.toggle('collapsed');
+            setToolsSummary(summary, count);
           }
         });
         toolsWrap.appendChild(summary);
@@ -2979,6 +3219,7 @@ export class ChatWebviewProvider implements vscode.WebviewViewProvider {
         const list = document.createElement('div');
         list.className = 'turn-tools-list';
         toolsWrap.appendChild(list);
+        setToolsSummary(summary, 0);
         currentToolsListEl = list;
 
         currentTurnEl.appendChild(toolsWrap);
@@ -3000,7 +3241,7 @@ export class ChatWebviewProvider implements vscode.WebviewViewProvider {
       currentToolCount++;
       if (currentToolsCountEl) {
         currentToolsCountEl.dataset.count = String(currentToolCount);
-        setToolsSummary(currentToolsCountEl, currentToolCount, false);
+        setToolsSummary(currentToolsCountEl, currentToolCount);
       }
 
       const el = document.createElement('div');
@@ -3217,16 +3458,27 @@ export class ChatWebviewProvider implements vscode.WebviewViewProvider {
 
     function renderUsage() {
       if (!latestUsage) return;
-      const used = Number(latestUsage.used);
-      const size = Number(latestUsage.size);
-      if (!Number.isFinite(used) || !Number.isFinite(size) || size <= 0) return;
-      const percent = Math.min(100, Math.max(0, Math.round((used / size) * 100)));
-      const cost = latestUsage.cost;
-      const costText = cost && Number.isFinite(cost.amount)
-        ? ' · ' + cost.amount.toFixed(2) + ' ' + cost.currency
-        : '';
-      statusEl.title = used.toLocaleString() + ' / ' + size.toLocaleString() + ' tokens';
-      if (!isProcessing) statusEl.textContent = percent + '% context' + costText;
+      if (latestUsage.sessionUpdate === 'usage_update') {
+        const used = Number(latestUsage.used);
+        const size = Number(latestUsage.size);
+        if (!Number.isFinite(used) || !Number.isFinite(size) || size <= 0) return;
+        const percent = Math.min(100, Math.max(0, Math.round((used / size) * 100)));
+        const cost = latestUsage.cost;
+        const costText = cost && Number.isFinite(cost.amount)
+          ? ' · ' + cost.amount.toFixed(2) + ' ' + cost.currency
+          : '';
+        statusEl.title = used.toLocaleString() + ' / ' + size.toLocaleString() + ' tokens';
+        if (!isProcessing) statusEl.textContent = percent + '% context' + costText;
+        return;
+      }
+      const total = Number(latestUsage.totalTokens);
+      if (!Number.isFinite(total)) return;
+      const input = Number(latestUsage.inputTokens);
+      const output = Number(latestUsage.outputTokens);
+      statusEl.title = (Number.isFinite(input) ? input.toLocaleString() : '—') +
+        ' input · ' + (Number.isFinite(output) ? output.toLocaleString() : '—') +
+        ' output tokens across this session';
+      if (!isProcessing) statusEl.textContent = total.toLocaleString() + ' tokens';
     }
 
     function ensureSubagentCard(sessionId, metadata) {
@@ -3437,18 +3689,122 @@ export class ChatWebviewProvider implements vscode.WebviewViewProvider {
       currentTurnEl = document.createElement('div');
       currentTurnEl.className = 'turn';
       messagesEl.appendChild(currentTurnEl);
+      if (isProcessing || activeResponseMetadata) activeResponseContainers.push(currentTurnEl);
       hideEmpty();
+    }
+
+    function beginReplayedResponse() {
+      activeResponseIndex = replayResponseIndex++;
+      activeResponseMetadata = replayResponseMetadata[activeResponseIndex] || null;
+      activeResponseContainers = [];
+      activeResponseMessageIndexes = [];
+    }
+
+    function selectedModelName() {
+      if (useConfigOptions) {
+        const modelOption = configOptions.find(option =>
+          option && (option.category === 'model' || /model/i.test((option.id || '') + ' ' + (option.name || '')))
+        );
+        const selected = modelOption && findOptionValue(modelOption, modelOption.currentValue);
+        if (selected && selected.name) return selected.name;
+        if (modelOption && modelOption.currentValue) return modelOption.currentValue;
+      }
+      const model = availableModels.find(item => item.modelId === currentModelId);
+      return model ? model.name : currentModelId;
+    }
+
+    function responseUsageLabel(usage) {
+      if (!usage) return '';
+      if (usage.sessionUpdate === 'usage_update') {
+        const used = Number(usage.used);
+        const size = Number(usage.size);
+        if (!Number.isFinite(used) || !Number.isFinite(size) || size <= 0) return '';
+        return 'Context ' + used.toLocaleString() + ' / ' + size.toLocaleString() + ' tokens';
+      }
+      const total = Number(usage.totalTokens);
+      if (Number.isFinite(total)) return 'Session ' + total.toLocaleString() + ' tokens';
+      const input = Number(usage.inputTokens);
+      const output = Number(usage.outputTokens);
+      if (Number.isFinite(input) && Number.isFinite(output)) {
+        return input.toLocaleString() + ' input · ' + output.toLocaleString() + ' output tokens';
+      }
+      return '';
+    }
+
+    function updateResponseMetadata(container, metadata) {
+      if (!container || !metadata) return;
+      const parts = [];
+      if (metadata.modelName) parts.push('Model: ' + metadata.modelName);
+      const usageLabel = responseUsageLabel(metadata.usage);
+      if (usageLabel) parts.push(usageLabel);
+      if (parts.length === 0) return;
+      let footer = container.querySelector(':scope > .response-meta');
+      if (!footer) {
+        footer = document.createElement('div');
+        footer.className = 'response-meta';
+        container.appendChild(footer);
+      }
+      footer.textContent = parts.join(' · ');
+      if (metadata.usage && metadata.usage.inputTokens != null && metadata.usage.outputTokens != null) {
+        const inputTokens = Number(metadata.usage.inputTokens);
+        const outputTokens = Number(metadata.usage.outputTokens);
+        if (Number.isFinite(inputTokens) && Number.isFinite(outputTokens)) {
+          footer.title = inputTokens.toLocaleString() + ' input · ' +
+            outputTokens.toLocaleString() + ' output tokens';
+        }
+      }
     }
 
     // A turn is a timeline of text, thought and tool group segments: starting one kind closes the
     // open segment of the other kinds, so chatHistory and the DOM keep the order the agent used.
+    function isEmptyThinkText(text) {
+      return typeof text === 'string' && /^\\s*(?:<think>\\s*<\\/think>\\s*)+$/i.test(text);
+    }
+
+    // Wait for a closing tag before showing a literal think block. Empty ones
+    // should never interrupt a run of tool calls, even across ACP chunks.
+    function visibleAssistantText(chunk) {
+      const text = (pendingThinkText + chunk).replace(/<think>\\s*<\\/think>/gi, '');
+      pendingThinkText = '';
+      const start = text.trimStart().toLowerCase();
+      if (text.length < 4096 && !/<\\/think>/i.test(text)
+        && (start.startsWith('<think>') || (start.startsWith('<') && '<think>'.startsWith(start)))) {
+        pendingThinkText = text;
+        return '';
+      }
+      return text.trim() ? text : '';
+    }
+
     function closeTextSegment() {
+      // An incomplete or non-empty thought must not disappear at a tool boundary.
+      if (pendingThinkText && !/^\\s*<think>\\s*$/i.test(pendingThinkText)) {
+        currentAssistantText += pendingThinkText;
+        if (!currentAssistantEl) {
+          closeToolsGroup();
+          ensureTurn();
+          currentAssistantEl = document.createElement('div');
+          currentAssistantEl.className = 'message assistant';
+          currentTurnEl.appendChild(currentAssistantEl);
+        }
+        currentAssistantEl.textContent = currentAssistantText;
+      }
+      pendingThinkText = '';
       const el = currentAssistantEl;
       const text = currentAssistantText;
       currentAssistantEl = null;
       currentAssistantText = '';
       if (!el) return;
-      chatHistory.push({ kind: 'message', role: 'assistant', text });
+      const item = {
+        kind: 'message',
+        role: 'assistant',
+        text,
+        ...(activeResponseMetadata && (activeResponseMetadata.modelName || activeResponseMetadata.usage)
+          ? { responseMeta: { ...activeResponseMetadata } }
+          : {})
+      };
+      const itemIndex = chatHistory.length;
+      chatHistory.push(item);
+      if (activeResponseMetadata) activeResponseMessageIndexes.push(itemIndex);
       saveState();
       // Replay renders markdown in one batch at loadSessionEnd
       if (isLoadingSession) return;
@@ -3456,10 +3812,21 @@ export class ChatWebviewProvider implements vscode.WebviewViewProvider {
     }
 
     function closeThoughtSegment() {
-      if (!currentThoughtEl) return;
+      if (!currentThoughtEl) {
+        // Preserve unfinished, non-empty thought text at the boundary.
+        if (pendingThoughtText && !/^\\s*<think>\\s*$/i.test(pendingThoughtText)) {
+          pendingThinkText += pendingThoughtText;
+          closeTextSegment();
+        }
+        pendingThoughtText = '';
+        return;
+      }
+      pendingThoughtText = '';
       finalizeThought();
       currentThoughtEl.open = false;
-      if (currentThoughtText) {
+      if (!currentThoughtText.trim() || isEmptyThinkText(currentThoughtText)) {
+        currentThoughtEl.remove();
+      } else {
         const tEnd = thoughtEndTime || Date.now();
         chatHistory.push({
           kind: 'thought',
@@ -3478,7 +3845,7 @@ export class ChatWebviewProvider implements vscode.WebviewViewProvider {
     function closeToolsGroup() {
       if (currentToolsListEl && currentToolCount > 3) {
         currentToolsListEl.classList.add('collapsed');
-        if (currentToolsCountEl) setToolsSummary(currentToolsCountEl, currentToolCount, true);
+        if (currentToolsCountEl) setToolsSummary(currentToolsCountEl, currentToolCount);
       }
       currentToolsListEl = null;
       currentToolsCountEl = null;
@@ -3506,8 +3873,15 @@ export class ChatWebviewProvider implements vscode.WebviewViewProvider {
     }
 
     function showSessionConnected(session) {
+      if (sessionState?.sessionId !== session.sessionId) {
+        latestUsage = null;
+        statusEl.textContent = '';
+        statusEl.title = '';
+      }
       hasActiveSession = true;
+      replayResponseMetadata = Array.isArray(session.responseMetadata) ? session.responseMetadata : [];
       sessionState = {
+        sessionId: session.sessionId,
         agentName: session.agentName,
         cwd: session.cwd,
         title: session.title || undefined,
@@ -3535,6 +3909,7 @@ export class ChatWebviewProvider implements vscode.WebviewViewProvider {
 
     function showSessionConnectedFromState(ss) {
       hasActiveSession = true;
+      document.body.classList.remove('disconnected', 'reconnecting');
       hideEmpty();
       if (bannerAgent) bannerAgent.textContent = ss.title || ss.agentName || 'Agent';
       if (bannerCwd) bannerCwd.textContent = ss.cwd || '';
@@ -3547,12 +3922,17 @@ export class ChatWebviewProvider implements vscode.WebviewViewProvider {
 
     function showNoSession() {
       hasActiveSession = false;
-      sessionState = null;
+      // Keep the saved session identity while reconnecting; only a new chat
+      // or an explicit disconnect should discard its transcript.
+      latestUsage = null;
+      statusEl.textContent = '';
+      statusEl.title = '';
+      document.body.classList.add('disconnected');
       saveState();
       if (sessionBanner) sessionBanner.classList.remove('visible');
       if (emptyState) emptyState.style.display = '';
       if (inputArea) inputArea.classList.add('disabled');
-      // Hide pickers when disconnected
+      promptInput.disabled = true;
       modePickerWrap.classList.add('hidden');
       modelPickerWrap.classList.add('hidden');
       setConfigOptionsState([]);
@@ -3564,6 +3944,13 @@ export class ChatWebviewProvider implements vscode.WebviewViewProvider {
       switch (msg.type) {
         case 'state':
           if (msg.session) {
+            if (sessionState?.sessionId !== msg.session.sessionId) {
+              // A fresh ACP session must not inherit the previous session's transcript.
+              chatHistory = [];
+              messagesEl.innerHTML = '';
+              messagesEl.appendChild(emptyState);
+              saveState();
+            }
             showSessionConnected(msg.session);
           } else {
             showNoSession();
@@ -3575,10 +3962,17 @@ export class ChatWebviewProvider implements vscode.WebviewViewProvider {
           suggestedFile = msg.currentFile || null;
           editorSelection = msg.selection || null;
           renderAttachments();
+          updateSendButton();
           break;
 
         case 'promptStart':
           setProcessing(true);
+          activeResponseContainers = [];
+          activeResponseMessageIndexes = [];
+          activeResponseMetadata = { modelName: selectedModelName() };
+          activeResponseIndex = Number.isSafeInteger(msg.responseIndex) ? msg.responseIndex : null;
+          activeResponseSessionId = typeof msg.sessionId === 'string' ? msg.sessionId : null;
+          turnUsageUpdate = null;
           currentAssistantEl = null;
           currentAssistantText = '';
           currentTurnEl = null;
@@ -3594,6 +3988,34 @@ export class ChatWebviewProvider implements vscode.WebviewViewProvider {
 
         case 'promptEnd':
           finalizeCurrentAssistantTurn();
+          if (msg.usage && latestUsage?.sessionUpdate !== 'usage_update') {
+            latestUsage = msg.usage;
+          }
+          if (activeResponseMetadata) {
+            const metadata = {
+              ...activeResponseMetadata,
+              usage: msg.usage || turnUsageUpdate
+            };
+            activeResponseContainers.forEach(container => updateResponseMetadata(container, metadata));
+            activeResponseMessageIndexes.forEach(index => {
+              if (chatHistory[index]) chatHistory[index].responseMeta = metadata;
+            });
+            if (activeResponseIndex !== null && activeResponseSessionId) {
+              vscode.postMessage({
+                type: 'recordResponseMetadata',
+                sessionId: activeResponseSessionId,
+                responseIndex: activeResponseIndex,
+                metadata: metadata.modelName || metadata.usage ? metadata : null
+              });
+            }
+            saveState();
+          }
+          activeResponseContainers = [];
+          activeResponseMessageIndexes = [];
+          activeResponseMetadata = null;
+          activeResponseIndex = null;
+          activeResponseSessionId = null;
+          turnUsageUpdate = null;
           setProcessing(false);
           break;
 
@@ -3624,6 +4046,8 @@ export class ChatWebviewProvider implements vscode.WebviewViewProvider {
           if (emptyState) emptyState.style.display = '';
           if (sessionBanner) sessionBanner.classList.remove('visible');
           if (inputArea) inputArea.classList.add('disabled');
+          document.body.classList.add('disconnected');
+          promptInput.disabled = true;
           modePickerWrap.classList.add('hidden');
           modelPickerWrap.classList.add('hidden');
           setConfigOptionsState([]);
@@ -3708,7 +4132,9 @@ export class ChatWebviewProvider implements vscode.WebviewViewProvider {
         case 'agent_message_chunk': {
           const content = update.content;
           if (content && content.type === 'text' && content.text) {
-            currentAssistantText += content.text;
+            const visible = visibleAssistantText(content.text);
+            if (!visible) break;
+            currentAssistantText += visible;
             // Don't create visible element until there's non-whitespace content
             if (!currentAssistantEl && !currentAssistantText.trim()) {
               break;
@@ -3746,6 +4172,7 @@ export class ChatWebviewProvider implements vscode.WebviewViewProvider {
               if (el) el.textContent = last.text;
             } else {
               addMessage('user', content.text);
+              beginReplayedResponse();
             }
           } else if (content) {
             finalizeCurrentAssistantTurn();
@@ -3757,6 +4184,17 @@ export class ChatWebviewProvider implements vscode.WebviewViewProvider {
         case 'agent_thought_chunk': {
           const content = update.content;
           if (content && content.type === 'text') {
+            if (!currentThoughtEl) {
+              pendingThoughtText += content.text || '';
+              if (!pendingThoughtText.trim()) break;
+              const start = pendingThoughtText.trimStart().toLowerCase();
+              if (pendingThoughtText.length < 4096 && !/<\\/think>/i.test(pendingThoughtText)
+                && (start.startsWith('<think>') || (start.startsWith('<') && '<think>'.startsWith(start)))) break;
+              if (isEmptyThinkText(pendingThoughtText)) {
+                pendingThoughtText = '';
+                break;
+              }
+            }
             if (!currentThoughtEl) {
               closeTextSegment();
               closeToolsGroup();
@@ -3772,7 +4210,8 @@ export class ChatWebviewProvider implements vscode.WebviewViewProvider {
               thoughtStartTime = Date.now();
               currentThoughtText = '';
             }
-            currentThoughtText += content.text;
+            currentThoughtText += pendingThoughtText || content.text;
+            pendingThoughtText = '';
             currentThoughtTextEl.textContent = currentThoughtText;
             scrollToBottom();
           }
@@ -3821,6 +4260,7 @@ export class ChatWebviewProvider implements vscode.WebviewViewProvider {
 
         case 'usage_update': {
           latestUsage = update;
+          if (activeResponseMetadata) turnUsageUpdate = update;
           renderUsage();
           break;
         }

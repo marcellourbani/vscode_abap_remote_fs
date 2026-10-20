@@ -23,13 +23,8 @@ export class FileSystemHandler {
    * Read a text file. Uses VS Code API to include unsaved editor content.
    */
   async readTextFile(params: ReadTextFileRequest): Promise<ReadTextFileResponse> {
-    log(`readTextFile: ${params.path}`)
-
     try {
       const uri = toVscodeUri(params.path)
-      if (uri.scheme !== "file") {
-        log(`readTextFile: mapped to ${uri.toString()}`)
-      }
 
       // Check if the file is open in an editor with unsaved changes
       const openDoc = findOpenDocument(uri)
