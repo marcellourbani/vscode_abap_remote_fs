@@ -2,6 +2,7 @@ import { RemoteManager, createClient, createAuthenticatedClient, formatKey } fro
 import { AFsService, Root } from "abapfs"
 import { Uri, FileSystemError, CancellationError, workspace } from "vscode"
 import { ADTClient, session_types } from "abap-adt-api"
+import { installObjectCreationContentTypeInterceptor } from "./objectCreationContentTypeInterceptor"
 import { LogOutPendingDebuggers } from "./debugger"
 import { SapSystemValidator } from "../services/sapSystemValidator"
 import { LocalFsProvider } from "../fs/LocalFsProvider"
@@ -164,6 +165,9 @@ async function create(connId: string) {
   }
 
   stopIfRemoved(client)
+
+  installObjectCreationContentTypeInterceptor(client)
+  installObjectCreationContentTypeInterceptor(client.statelessClone)
 
   // @ts-ignore
   const service = new AFsService(client)

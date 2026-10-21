@@ -58,7 +58,20 @@ export async function selectTransport(
   current: string | TransportStatus = "",
   transportLayer = ""
 ): Promise<TransportSelection> {
-  const ti = await client.transportInfo(objContentPath, devClass, forCreation ? "I" : "")
+  let ti: TransportInfo
+  try {
+    ti = await client.transportInfo(objContentPath, devClass, forCreation ? "I" : "")
+  } catch {
+    if (devClass.trim().toUpperCase() === "$TMP") return trSel("")
+
+    const transport = await window.showInputBox({
+      prompt: "TR check failed. Enter TR (blank if local)",
+      placeHolder: "TR number",
+      ignoreFocusOut: true
+    })
+    if (transport === undefined) return trSel("", true)
+    return trSel(transport.trim())
+  }
   // if I have a lock return the locking transport
   // will probably be a task but should be fine
 
@@ -117,7 +130,21 @@ export async function pickTransportProgrammatically(
   devClass: string,
   transportLayer = ""
 ): Promise<TransportSelection> {
-  const info = await client.transportInfo(objContentPath, devClass, "I")
+  let info: TransportInfo
+  try {
+    info = await client.transportInfo(objContentPath, devClass, "I")
+  } catch (error) {
+    if (devClass.trim().toUpperCase() === "$TMP") return trSel("")
+
+    if (request.type === "existing") {
+      const number = request.number?.trim()
+      if (number) return trSel(number)
+      throw new TransportPickerError(
+        "transportRequest.type='existing' requires 'number' (transport request ID)"
+      )
+    }
+    throw error
+  }
   if (info.DLVUNIT === "LOCAL") return trSel("")
 
   const lockedTr = info.LOCKS?.HEADER.TRKORR
@@ -305,6 +332,7 @@ export const selectTransportIfNeeded = async (uri: Uri) => {
       return trSel("")
     case TransportStatus.REQUIRED:
       const { transport } = status
+      if (transport) return trSel(transport)
       const path = isAbapFolder(file) ? file.object.path : file.object.contentsPath()
       const client = getClient(uri.authority)
       const trsel = await selectTransport(path, "", client, false, transport)
