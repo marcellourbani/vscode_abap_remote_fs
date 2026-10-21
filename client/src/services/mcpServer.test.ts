@@ -1,3 +1,5 @@
+import { beforeEach, describe, expect, it, vi } from "vitest"
+
 /**
  * Tests for mcpServer.ts
  * Tests the JSON Schema to Zod converter (jsonSchemaPropertyToZod/jsonSchemaToZod),

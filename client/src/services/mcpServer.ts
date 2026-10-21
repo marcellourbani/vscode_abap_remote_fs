@@ -334,26 +334,57 @@ function createMcpServer(): McpServer {
       description:
         "Get syntax errors, warnings, and other diagnostics for an ABAP source file. " +
         "Returns all problems detected by the ABAP language server (syntax check results). " +
+        "Optionally filter by source (abapfs or abaplint) and severity (error, warning, info, or hint). " +
+        "Results are paged; use the returned resultId and nextStart to read subsequent pages. " +
         "Use this after editing code with replace_string_in_abap_object to verify there are no syntax errors. " +
         "Always call this after making code changes.\n\n" +
         "Prerequisite: Use abapfs_get_workspace_uri to get the fileUri.",
       inputSchema: {
         fileUri: z
           .string()
+          .optional()
           .describe(
             "The full workspace URI of the ABAP source file. " +
-              "Get this using the abapfs_get_workspace_uri tool."
-          )
+              "Get this using abapfs_get_workspace_uri. Required when starting a new request."
+          ),
+        source: z
+          .enum(["abapfs", "abaplint", "all"])
+          .optional()
+          .describe("Filter by Diagnostic.source. Defaults to all sources."),
+        severity: z
+          .enum(["error", "warning", "info", "hint", "all"])
+          .optional()
+          .describe("Filter by VS Code diagnostic severity. Defaults to all severities."),
+        resultId: z
+          .string()
+          .optional()
+          .describe(
+            "Continue reading a previously returned result. When paging, omit fileUri, source, and severity; the cached result retains the original file and filters."
+          ),
+        resultStart: z
+          .number()
+          .int()
+          .min(1)
+          .optional()
+          .describe("One-based first result to return."),
+        resultEnd: z
+          .number()
+          .int()
+          .min(1)
+          .optional()
+          .describe("One-based inclusive last result to return.")
       }
     },
     async (args: Record<string, unknown>) => {
       try {
-        const fileUri = args.fileUri as string
-        if (!fileUri) {
-          throw new Error("fileUri is required")
-        }
-
-        const result = await getDiagnosticsForUri(fileUri)
+        const result = await getDiagnosticsForUri({
+          fileUri: args.fileUri as string | undefined,
+          source: args.source as "abapfs" | "abaplint" | "all" | undefined,
+          severity: args.severity as "error" | "warning" | "info" | "hint" | "all" | undefined,
+          resultId: args.resultId as string | undefined,
+          resultStart: args.resultStart as number | undefined,
+          resultEnd: args.resultEnd as number | undefined
+        })
 
         return {
           content: [{ type: "text" as const, text: result }]

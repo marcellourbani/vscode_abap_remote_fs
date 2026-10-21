@@ -3689,6 +3689,7 @@ export class ChatWebviewProvider implements vscode.WebviewViewProvider {
       currentTurnEl = document.createElement('div');
       currentTurnEl.className = 'turn';
       messagesEl.appendChild(currentTurnEl);
+      if (activeResponseMetadata) updateResponseMetadata(currentTurnEl, activeResponseMetadata);
       if (isProcessing || activeResponseMetadata) activeResponseContainers.push(currentTurnEl);
       hideEmpty();
     }
